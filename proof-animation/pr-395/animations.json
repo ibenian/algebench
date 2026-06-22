@@ -679,7 +679,7 @@
         "operation": "Apply the chain rule to change the derivative's independent variable from $t$ to $h$.",
         "justification": "Apply the chain rule $\\frac{dv}{dt} = \\frac{dv}{dh} \\cdot \\frac{dh}{dt}$ to change the independent variable from $t$ to $h$.",
         "input_latex": "\\frac{dv}{dh} \\cdot \\frac{dh}{dt} = \\frac{\\rho \\cdot v^{2}}{2 \\cdot \\beta}",
-        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__multiply_2}{\\htmlData{n=__deriv_3}{\\frac{d}{d h} \\htmlData{n=v____deriv_3}{v}} \\htmlData{n=__multiply_2__m1}{\\cdot} \\htmlData{n=__deriv_2}{\\frac{d}{d t} \\htmlData{n=h____deriv_2}{h}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_4}{\\frac{\\htmlData{n=__multiply_6}{\\htmlData{n=rho}{\\rho} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=__power_5}{\\htmlData{n=v____power_5}{v}^{\\htmlData{n=__power_5__exp}{2}}}}}{\\htmlData{n=__multiply_7}{\\htmlData{n=__num_8}{2} \\htmlData{n=__multiply_7__m1}{\\cdot} \\htmlData{n=beta}{\\beta}}}}}",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__multiply_2}{\\htmlData{n=__deriv_3}{\\frac{d}{d h} \\htmlData{n=v____deriv_3}{v}} \\htmlData{n=__multiply_2__m1}{\\cdot} \\htmlData{n=__deriv_2}{\\frac{d}{d t} \\htmlData{n=h}{h}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_4}{\\frac{\\htmlData{n=__multiply_6}{\\htmlData{n=rho}{\\rho} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=__power_5}{\\htmlData{n=v____power_5}{v}^{\\htmlData{n=__power_5__exp}{2}}}}}{\\htmlData{n=__multiply_7}{\\htmlData{n=__num_8}{2} \\htmlData{n=__multiply_7__m1}{\\cdot} \\htmlData{n=beta}{\\beta}}}}}",
         "plain": "\\frac{d}{d h} v \\cdot \\frac{d}{d t} h = \\frac{\\rho \\cdot v^{2}}{2 \\cdot \\beta}",
         "confidence": {
           "tier": "grounded",
@@ -747,8 +747,8 @@
         "operation": "Integrate both sides",
         "justification": "Integrate both sides of the equation to solve the differential equation.",
         "input_latex": "\\int \\frac{1}{v} dv = \\int \\frac{\\rho}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} dh",
-        "latex": "\\int \\frac{1}{v} dv = \\int \\frac{\\rho}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} dh",
-        "plain": "\\int \\frac{1}{v} dv = \\int \\frac{\\rho}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} dh",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__integral_2}{\\int \\htmlData{n=__power_3}{\\frac{\\htmlData{n=__power_3__one}{1}}{\\htmlData{n=v}{v}}}\\,dv} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__integral_4}{\\int \\htmlData{n=__multiply_4}{\\frac{\\htmlData{n=rho}{\\rho}}{\\htmlData{n=_r2___multiply_7}{\\htmlData{n=__multiply_7}{\\htmlData{n=__num_8}{2} \\htmlData{n=__multiply_7__m1}{\\cdot} \\htmlData{n=beta}{\\beta}} \\htmlData{n=_r2___multiply_7__m1}{\\cdot} \\htmlData{n=__sin_5}{\\sin\\left(\\htmlData{n=gamma}{\\gamma}\\right)}}}}\\,dh}}",
+        "plain": "\\int \\frac{1}{v}\\,dv = \\int \\frac{\\rho}{2 \\cdot \\beta \\cdot \\sin\\left(\\gamma\\right)}\\,dh",
         "confidence": {
           "tier": "plausible",
           "label": "Plausible",
@@ -911,6 +911,81 @@
         "domain": 0,
         "verified": 1,
         "grounded": 4
+      },
+      "endpoint_reached": true
+    }
+  },
+  {
+    "title": "Integrate by separation",
+    "domain": "calculus",
+    "steps": [
+      {
+        "index": 0,
+        "operation": "Given the separated equation",
+        "justification": "integrate to solve for $v$",
+        "input_latex": "\\frac{1}{v} \\, dv = -k \\, e^{-h/H} \\, dh",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__multiply_2}{\\frac{\\htmlData{n=dv}{dv}}{\\htmlData{n=v}{v}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__negation_4}{\\htmlData{n=__negation_4__op}{-} \\htmlData{n=__multiply_5}{\\htmlData{n=dh}{dh} \\htmlData{n=__multiply_5__m1}{\\cdot} \\htmlData{n=k}{k} \\htmlData{n=__multiply_5__m2}{\\cdot} \\htmlData{n=__power_6}{\\htmlData{n=e}{e}^{\\htmlData{n=__multiply_7}{\\frac{\\left(\\htmlData{n=__negation_8}{\\htmlData{n=__negation_8__op}{-} \\htmlData{n=h}{h}}\\right)}{\\htmlData{n=H}{H}}}}}}}}",
+        "plain": "\\frac{dv}{v} = - dh \\cdot k \\cdot e^{\\frac{\\left(- h\\right)}{H}}",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": null,
+          "reason": "the given starting expression",
+          "type_consistent": true
+        }
+      },
+      {
+        "index": 1,
+        "operation": "Integrate both sides",
+        "justification": "apply $\\int$ to each side",
+        "input_latex": "\\int \\frac{1}{v} \\, dv = \\int -k \\, e^{-h/H} \\, dh",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__integral_2}{\\int \\htmlData{n=__power_3}{\\frac{\\htmlData{n=__power_3__one}{1}}{\\htmlData{n=v}{v}}}\\,dv} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__integral_4}{\\int \\left(\\htmlData{n=__negation_4}{\\htmlData{n=__negation_4__op}{-} \\htmlData{n=__multiply_5}{\\htmlData{n=k}{k} \\htmlData{n=__multiply_5__m1}{\\cdot} \\htmlData{n=__power_6}{\\htmlData{n=e}{e}^{\\htmlData{n=__multiply_7}{\\frac{\\left(\\htmlData{n=__negation_8}{\\htmlData{n=__negation_8__op}{-} \\htmlData{n=h}{h}}\\right)}{\\htmlData{n=H}{H}}}}}}}\\right)\\,dh}}",
+        "plain": "\\int \\frac{1}{v}\\,dv = \\int \\left(- k \\cdot e^{\\frac{\\left(- h\\right)}{H}}\\right)\\,dh",
+        "confidence": {
+          "tier": "plausible",
+          "label": "Plausible",
+          "icon": "🔹",
+          "meaning": "valid math, but the CAS could not decide this step",
+          "relation": "unknown",
+          "reason": "neither equivalence nor a valid narrowing could be established",
+          "type_consistent": true
+        }
+      },
+      {
+        "index": 2,
+        "operation": "Factor the constant out",
+        "justification": "constants pull out of the integral",
+        "input_latex": "\\int \\frac{1}{v} \\, dv = -k \\int e^{-h/H} \\, dh",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__integral_2}{\\int \\htmlData{n=__power_3}{\\frac{\\htmlData{n=__power_3__one}{1}}{\\htmlData{n=v}{v}}}\\,dv} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__negation_4}{\\htmlData{n=__negation_4__op}{-} \\htmlData{n=__multiply_5}{\\htmlData{n=k}{k} \\htmlData{n=__multiply_5__m1}{\\cdot} \\htmlData{n=__integral_4}{\\int \\htmlData{n=__power_6}{\\htmlData{n=e}{e}^{\\htmlData{n=__multiply_7}{\\frac{\\left(\\htmlData{n=__negation_8}{\\htmlData{n=__negation_8__op}{-} \\htmlData{n=h}{h}}\\right)}{\\htmlData{n=H}{H}}}}}\\,dh}}}}",
+        "plain": "\\int \\frac{1}{v}\\,dv = - k \\cdot \\int e^{\\frac{\\left(- h\\right)}{H}}\\,dh",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "equivalent",
+          "reason": "symbolically equivalent to the previous step",
+          "type_consistent": true
+        }
+      }
+    ],
+    "overall_confidence": {
+      "tier": "plausible",
+      "label": "Plausible",
+      "icon": "🔹",
+      "meaning": "valid math, but the CAS could not decide this step",
+      "relation": null,
+      "reason": "1/2 steps verified · 1 plausible · endpoint reached",
+      "type_consistent": true,
+      "counts": {
+        "refuted": 0,
+        "unchecked": 0,
+        "plausible": 1,
+        "domain": 0,
+        "verified": 0,
+        "grounded": 1
       },
       "endpoint_reached": true
     }
