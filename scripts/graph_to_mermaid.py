@@ -331,6 +331,7 @@ def _format_label(
     arity: int = 0,
     has_condition: bool = False,
     has_assertion: bool = False,
+    has_wrt: bool = False,
     nodes_by_id: dict | None = None,
 ) -> str:
     """Format a node label based on the label mode and visible fields.
@@ -365,14 +366,20 @@ def _format_label(
                 if m and int(m.group(1)) > 1:
                     order = f"^{{{m.group(1)}}}"
             return f"$\\dfrac{{{d}{order}}}{{{d} {wrt}{order}}}$"
-        if op in ("integral", "closed_integral") and wrt:
+        if op in ("integral", "closed_integral") and (wrt or has_wrt):
             int_cmd = OPERATOR_LATEX.get(op, r"\int")
             # bounds are stored as node ids (e.g. __num_2) — resolve to values
             lb = _bound_value(node.get("lower_bound", ""), nodes_by_id)
             ub = _bound_value(node.get("upper_bound", ""), nodes_by_id)
+            # The differential (``dx``) is its own node, reached by the ``wrt``
+            # edge — drop it from the sign glyph to avoid duplicating it (mirrors
+            # the derivative ``d/d·`` placeholder when its variable is a visible
+            # child). Only graphs without a differential node (no wrt edge) fall
+            # back to embedding ``d{wrt}``.
+            diff = "" if has_wrt else f" d{wrt}"
             if lb and ub:
-                return f"${int_cmd}_{{{lb}}}^{{{ub}}} d{wrt}$"
-            return f"${int_cmd} d{wrt}$"
+                return f"${int_cmd}_{{{lb}}}^{{{ub}}}{diff}$"
+            return f"${int_cmd}{diff}$"
         if op in ("sum", "product") and wrt:
             agg_cmd = OPERATOR_LATEX.get(op, r"\sum")
             return f"${agg_cmd}_{{{wrt}}}$"
@@ -694,6 +701,7 @@ def semantic_graph_to_mermaid(
     in_degree: dict[str, int] = {}
     has_condition_edge: set[str] = set()
     has_assertion_edge: set[str] = set()
+    has_wrt_edge: set[str] = set()
     for e in edges:
         dst = e.get("to", "")
         in_degree[dst] = in_degree.get(dst, 0) + 1
@@ -701,6 +709,8 @@ def semantic_graph_to_mermaid(
             has_condition_edge.add(dst)
         elif e.get("role") == "assertion":
             has_assertion_edge.add(dst)
+        elif e.get("role") == "wrt":
+            has_wrt_edge.add(dst)
 
     # Node definitions. Mermaid 11's typed-shape form (``@{ ... }``) doesn't
     # accept the inline ``:::className`` shortcut, so we emit those classes
@@ -726,6 +736,7 @@ def semantic_graph_to_mermaid(
                               arity=in_degree.get(node["id"], 0),
                               has_condition=node["id"] in has_condition_edge,
                               has_assertion=node["id"] in has_assertion_edge,
+                              has_wrt=node["id"] in has_wrt_edge,
                               nodes_by_id=_nodes_by_id)
         node_def = _wrap_shape(nid, label, shape)
         # ``operatorVariants`` styling only applies to operator-like nodes.

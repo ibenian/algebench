@@ -24,6 +24,7 @@ NodeType = Literal[
     "expression",
     "text",
     "annotation",
+    "differential",
     "ket",
     "bra",
     "braket",

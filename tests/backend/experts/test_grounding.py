@@ -18,7 +18,7 @@ from backend.experts.modules.proof_completion.grounding import (
 )
 
 SVC = SemanticGraphService()
-x, a, b, n = sp.symbols("x a b n")
+x, y, a, b, n, v = sp.symbols("x y a b n v")
 
 ROUNDTRIP = [
     (r"x^2 + 2 x + 1", x ** 2 + 2 * x + 1),
@@ -28,6 +28,10 @@ ROUNDTRIP = [
     (r"\frac{d}{dx} x^3", sp.Derivative(x ** 3, x)),
     (r"\int_0^1 x^2 dx", sp.Integral(x ** 2, (x, 0, 1))),   # definite
     (r"\int x^2 dx", sp.Integral(x ** 2, x)),                # indefinite
+    # Integration variable read off the first-class ``differential`` node:
+    (r"\int \frac{1}{v} dv", sp.Integral(1 / v, v)),
+    (r"\int dx", sp.Integral(1, x)),                         # bare differential
+    (r"\int \int (x+y) \, dx \, dy", sp.Integral(x + y, x, y)),  # multi-variable
     (r"\frac{a}{b}", a / b),
     (r"x^{n}", x ** n),
 ]

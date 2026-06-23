@@ -2190,6 +2190,26 @@ class SemanticGraphBuilder:
             i += 1
         return f"{base}_{i}"
 
+    def _fresh_diff_id(self, var_id: str) -> str:
+        """Mint the id for an integral differential node from its variable id.
+
+        The natural id is ``d`` + ``var_id`` (``dv`` for variable ``v``) — the
+        SAME id a *loose* differential symbol parses to (``\\,dv`` → id ``dv``),
+        so the integral's differential morphs to/from a non-integral state for
+        free. A numeric suffix is appended only on the pathological collision of
+        two same-variable integrals in one graph (``∫f dx = ∫g dx``), where node
+        ids must still be unique; that case loses the loose-symbol morph but stays
+        a valid graph.
+        """
+        base = f"d{var_id}"
+        existing = {n["id"] for n in self.nodes}
+        if base not in existing:
+            return base
+        i = 2
+        while f"{base}_{i}" in existing:
+            i += 1
+        return f"{base}_{i}"
+
     def _fix_bar_subexpr(self, subexpr: str) -> str:
         """Restore ``|`` conditional bars and ``=`` assertion equals
         in *subexpr* if needed."""
@@ -2954,13 +2974,29 @@ class SemanticGraphBuilder:
             )
             op = "closed_integral" if is_closed else "integral"
             node_id = self._next_id(op)
+            # The integration variable is modeled as a first-class ``differential``
+            # node (``dv`` for ∫…dv) connected to the integral by a ``wrt`` edge —
+            # the wrt edge now carries the differential, NOT the bare variable.
+            # SymPy absorbs the ``dv``
+            # token into ``Integral.limits`` (it never survives as an integrand
+            # factor), so we synthesize the differential here from each limit
+            # variable. This keeps the integrand variable's node un-shared (it
+            # appears only in the integrand, so it keeps a bare id and morphs
+            # across the ∫ boundary "for free"), and lets the differential morph
+            # to/from a loose ``dv`` symbol since both carry the same ``dv`` id.
+            # ``with_respect_to`` is still set on the integral as summary metadata
+            # for the semantic views (mermaid / graph panel).
             wrt_ids: list[str] = []
+            diff_specs: list[tuple[str, str]] = []   # (diff_id, var_latex)
             lower_nid: str | None = None
             upper_nid: str | None = None
             node_attrs: dict[str, str] = {"type": "operator", "op": op}
             for limit_tuple in expr.limits:
-                var_id = self._walk(limit_tuple[0])
+                var = limit_tuple[0]
+                var_id = self._seen_symbols.get(var.name) or self._mint_symbol_id(var.name)
                 wrt_ids.append(var_id)
+                var_latex = self._subexpr_ordered(var)
+                diff_specs.append((self._fresh_diff_id(var_id), var_latex))
                 if len(limit_tuple) >= 3:
                     lower_nid = self._walk(limit_tuple[1])
                     upper_nid = self._walk(limit_tuple[2])
@@ -2970,8 +3006,10 @@ class SemanticGraphBuilder:
             if upper_nid is not None:
                 node_attrs["upper_bound"] = upper_nid
             self._add_node(node_id, **node_attrs)
-            for wid in wrt_ids:
-                self._add_edge(wid, node_id, role="wrt")
+            for (diff_id, var_latex), var_id in zip(diff_specs, wrt_ids):
+                self._add_node(diff_id, type="differential",
+                               latex=f"d{var_latex}", with_respect_to=var_id)
+                self._add_edge(diff_id, node_id, role="wrt")
             if lower_nid is not None:
                 self._add_edge(lower_nid, node_id, role="lb")
             if upper_nid is not None:

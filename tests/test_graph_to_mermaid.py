@@ -212,6 +212,20 @@ class TestAggregateOperatorLabels:
                 "op": "closed_integral"}
         assert _format_label(node, "latex") == r"$\oint$"
 
+    def test_integral_with_differential_node_drops_dx_from_glyph(self):
+        # When the differential (``dx``) is its own node (a ``wrt`` edge into the
+        # integral), the sign glyph stays bare so the variable isn't duplicated —
+        # the parser now always emits such a node. ``has_wrt`` is the per-node
+        # flag the renderer threads in from the ``wrt`` edges.
+        node = {"id": "__integral_1", "type": "operator", "op": "integral",
+                "with_respect_to": "x"}
+        assert _format_label(node, "latex", has_wrt=True) == r"$\int$"
+        bounded = {**node, "lower_bound": "a", "upper_bound": "b"}
+        assert _format_label(bounded, "latex", has_wrt=True) == r"$\int_{a}^{b}$"
+        closed = {"id": "__closed_integral_1", "type": "operator",
+                  "op": "closed_integral", "with_respect_to": "Q"}
+        assert _format_label(closed, "latex", has_wrt=True) == r"$\oint$"
+
     def test_sum_with_wrt(self):
         node = {"id": "__sum_1", "type": "operator", "op": "sum",
                 "with_respect_to": "i"}

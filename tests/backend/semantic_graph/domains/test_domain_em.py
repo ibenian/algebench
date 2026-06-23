@@ -135,8 +135,8 @@ MAXWELL_EXPRESSIONS: list[CatalogEntry] = [
     ("gauss_law",
      r"\oint \vec{E} \cdot d\vec{A} = \frac{Q}{\epsilon_0}",
      PASS,
-     'vec:A,vec:E -> closed_integral; epsilon_0 -> power; Q,power -> multiply; closed_integral,multiply -> rel:equals',
-     'A,E -> __closed_integral_2; epsilon_0 -> __power_4; Q,__power_4 -> __multiply_3; __closed_integral_2,__multiply_3 -> __equals_1',
+     'dA,vec:E -> closed_integral; epsilon_0 -> power; Q,power -> multiply; closed_integral,multiply -> rel:equals',
+     'E,dA -> __closed_integral_2; epsilon_0 -> __power_4; Q,__power_4 -> __multiply_3; __closed_integral_2,__multiply_3 -> __equals_1',
      [{"op": "power", "exponent": "-1"},
       {"op": "closed_integral"}]),
 

@@ -3,10 +3,13 @@ r"""Integral parsing in the semantic graph.
 The calculus domain suite already exercises integrals inside full equations
 (``integral_power``, ``integral_definite``, the fundamental theorem). This file
 pins the **bare** integral forms and the exact node shape the grounder relies on:
-an ``integral`` operator node carrying the integrand (the unroled operand), the
-integration variable (``with_respect_to`` + a ``wrt`` edge), and — for a definite
-integral — ``lb`` / ``ub`` bound edges with ``lower_bound`` / ``upper_bound``
-attributes. ``graph_to_sympy`` reconstructs exactly this into ``sp.Integral``.
+an ``integral`` operator node carrying the integrand (the unroled operand), a
+first-class ``differential`` node per integration variable (``dv`` for ∫…dv)
+connected by a ``wrt`` edge, and — for a definite integral — ``lb`` / ``ub``
+bound edges with ``lower_bound`` / ``upper_bound`` attributes. The integral keeps
+``with_respect_to`` as summary metadata for the semantic views, but the
+authoritative integration variable lives on the differential node.
+``graph_to_sympy`` reconstructs exactly this into ``sp.Integral``.
 """
 
 from __future__ import annotations
@@ -39,13 +42,26 @@ def test_integral_parses_and_is_wellformed(parse, latex):
     assert "integral" in {n.op for n in g.nodes}, f"no integral node for: {latex!r}"
 
 
+def _differential_into(graph, node_id):
+    """The differential node feeding ``node_id`` via a ``wrt`` edge, if any."""
+    diff_ids = {e.from_ for e in graph.edges if e.to == node_id and e.role == "wrt"}
+    return [n for n in graph.nodes if n.id in diff_ids]
+
+
 def test_indefinite_integral_structure(parse):
     g = parse(r"\int x^2 dx")
     node = _integral_node(g)
-    assert node.with_respect_to == "x"
+    assert node.with_respect_to == "x"          # summary metadata kept on integral
     roles = _roles_into(g, node.id)
+    # the integration variable rides a ``wrt`` edge — but from a first-class
+    # ``differential`` node (``dx``), not the bare variable
     assert "wrt" in roles
     assert "lb" not in roles and "ub" not in roles   # indefinite → no bounds
+    diffs = _differential_into(g, node.id)
+    assert len(diffs) == 1
+    assert diffs[0].type == "differential"
+    assert diffs[0].with_respect_to == "x"
+    assert diffs[0].latex == "dx"
 
 
 def test_definite_integral_carries_bounds(parse):

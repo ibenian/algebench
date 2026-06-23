@@ -127,8 +127,8 @@ GENERAL_RELATIVITY: list[CatalogEntry] = [
     ("proper_time",
      r"\tau = \int \sqrt{-g_{\mu\nu} dx^\mu dx^\nu}",
      PASS,
-     'g_munu -> negation; negation -> power; power,x -> integral; integral,tau -> rel:equals',
-     'g_munu -> __negation_4; __negation_4 -> __power_3; __power_3,x -> __integral_2; __integral_2,tau -> __equals_1',
+     'g_munu -> negation; negation -> power; dx,power -> integral; integral,tau -> rel:equals',
+     'g_munu -> __negation_4; __negation_4 -> __power_3; __power_3,dx -> __integral_2; __integral_2,tau -> __equals_1',
      None),
 
     ("stress_energy",

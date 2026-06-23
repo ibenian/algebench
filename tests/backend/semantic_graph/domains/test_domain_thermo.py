@@ -142,8 +142,8 @@ ENTROPY_EXPRESSIONS: list[CatalogEntry] = [
     ("clausius",
      r"\oint \frac{dQ}{T} \leq 0",
      PASS,
-     "T -> power; Q,power -> closed_integral; closed_integral,num -> rel:less_equal",
-     "T -> __power_2; Q,__power_2 -> __closed_integral_1; "
+     "T -> power; dQ,power -> closed_integral; closed_integral,num -> rel:less_equal",
+     "T -> __power_2; __power_2,dQ -> __closed_integral_1; "
      "__closed_integral_1,__num_3 -> __less_equal_4",
      [{"op": "power", "exponent": "-1"},
       {"op": "closed_integral"}]),
