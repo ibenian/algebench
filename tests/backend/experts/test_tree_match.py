@@ -301,6 +301,27 @@ def test_integral_lhs_unchanged_keeps_integral_sign():
     assert "z" in _ids(out) and "y" not in _ids(out)
 
 
+def test_differential_morphs_across_integral_boundary():
+    """``\\frac{1}{v}\\,dv = -k\\,dh`` -> ``\\int \\frac{1}{v}\\,dv = \\int -k\\,dh``:
+    the differentials must keep their ids (``dv``/``dh``) when ``\\int`` is applied.
+
+    The loose differential is a ``scalar`` (``dv``); inside the integral it is a
+    first-class ``differential`` node. The matcher unifies the two so the glyph
+    morphs across the ∫ boundary instead of crossfading — without this the
+    differential collides with the faded loose ``dv`` and dedups to ``_r1_dv``.
+    """
+    p = _g(r"\frac{1}{v} \, dv = -k \, dh")
+    q = _g(r"\int \frac{1}{v} \, dv = \int -k \, dh")
+    out = rebase(p, q)
+    assert canonical_equal(out, q)
+    ids = _ids(out)
+    assert "dv" in ids and "dh" in ids, f"differential ids not preserved: {ids}"
+    assert not any(i.startswith("_r") and i.endswith(("dv", "dh")) for i in ids), \
+        f"a differential was relabeled (lost its morph): {ids}"
+    # the integrand variable v keeps its bare id too
+    assert "v" in ids
+
+
 def test_allen_eggers_target_self_rebase_is_identity():
     """The full Allen-Eggers velocity-altitude result (22 nodes: nested fraction,
     exponentials, sin) rebased onto itself preserves every id and the structure —

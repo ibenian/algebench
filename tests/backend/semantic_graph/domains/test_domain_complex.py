@@ -102,14 +102,14 @@ COMPLEX_EXPRESSIONS: list[CatalogEntry] = [
          "a -> fn:f; z -> fn:f; const:pi,i -> multiply; a -> negation; "
          "negation,z -> add; multiply,num -> multiply; add -> power; "
          "multiply -> power; fn:f,power -> multiply; "
-         "multiply,z -> closed_integral; "
+         "dz,multiply -> closed_integral; "
          "closed_integral,power -> multiply; "
          "fn:f,multiply -> rel:equals",
          "z -> __f_10; a -> __f_2; i,pi -> __multiply_7; "
          "a -> __negation_13; __negation_13,z -> __add_12; "
          "__multiply_7,__num_6 -> __multiply_5; __add_12 -> __power_11; "
          "__multiply_5 -> __power_4; __f_10,__power_11 -> __multiply_9; "
-         "__multiply_9,z -> __closed_integral_8; "
+         "__multiply_9,dz -> __closed_integral_8; "
          "__closed_integral_8,__power_4 -> __multiply_3; "
          "__f_2,__multiply_3 -> __equals_1",
      None),
@@ -117,8 +117,8 @@ COMPLEX_EXPRESSIONS: list[CatalogEntry] = [
     ("complex_residue",
      r"\oint f(z) dz = 2\pi i \sum \text{Res}(f, z_k)",
      PASS,
-         'f,z_k -> fn:Res; z -> fn:f; fn:f,z -> closed_integral; fn:Res -> sum; i,sum -> multiply; const:pi,multiply -> multiply; multiply,num -> multiply; closed_integral,multiply -> rel:equals',
-         'f,z_k -> __Res_9; z -> __f_3; __f_3,z -> __closed_integral_2; __Res_9 -> __sum_8; __sum_8,i -> __multiply_7; __multiply_7,pi -> __multiply_6; __multiply_6,__num_5 -> __multiply_4; __closed_integral_2,__multiply_4 -> __equals_1',
+         'f,z_k -> fn:Res; z -> fn:f; dz,fn:f -> closed_integral; fn:Res -> sum; i,sum -> multiply; const:pi,multiply -> multiply; multiply,num -> multiply; closed_integral,multiply -> rel:equals',
+         'f,z_k -> __Res_9; z -> __f_3; __f_3,dz -> __closed_integral_2; __Res_9 -> __sum_8; __sum_8,i -> __multiply_7; __multiply_7,pi -> __multiply_6; __multiply_6,__num_5 -> __multiply_4; __closed_integral_2,__multiply_4 -> __equals_1',
      None),
 
     ("complex_demoivre",

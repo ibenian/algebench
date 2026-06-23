@@ -122,7 +122,8 @@ from tests.backend.semantic_graph.domains.test_domain_chemistry import (
 # Expand this list as new domain test files are added.
 
 # Report-only showcase (not a test catalog): bare integral forms, so the
-# integral node structure (integrand + wrt + lb/ub bounds) is easy to eyeball.
+# integral node structure (integrand + differential + lb/ub bounds) is easy to
+# eyeball.
 _INTEGRAL_SHOWCASE = [
     ("integral_indefinite", r"\int x^2 \, dx", None),
     ("integral_definite", r"\int_0^1 x^2 \, dx", None),

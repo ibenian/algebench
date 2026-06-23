@@ -44,6 +44,23 @@ from collections import defaultdict
 
 from backend.experts.modules.proof_completion.graph_ops import _content
 
+
+def _match_content(n):
+    """Match identity for a node — ``_content`` with one normalization.
+
+    An integral's differential (``type="differential"``, e.g. ``dv``) and the
+    *loose* differential it morphs to/from (the ``dv`` **scalar** in
+    ``\\frac{1}{v}\\,dv`` before ``\\int`` is applied) are the same glyph either
+    side of the ∫ boundary. They must match here so the differential keeps its id
+    (``dv``) across the boundary and the FLIP engine morphs it instead of
+    crossfading. Their only differences are the node ``type`` and the integral's
+    ``with_respect_to`` bookkeeping, so a differential matches as the equivalent
+    loose scalar leaf — same id and latex, ``type="scalar"``, no ``wrt``.
+    """
+    if n.type == "differential":
+        n = n.model_copy(update={"type": "scalar", "with_respect_to": None})
+    return _content(n)
+
 # GumTree thresholds (paper defaults, tuned for math expressions).
 MIN_HEIGHT = 2   # leaves have height 1; this gates only AMBIGUOUS top-down matches
 MIN_DICE = 0.5   # min shared-descendant similarity to form a container mapping
@@ -90,7 +107,7 @@ def _index(graph) -> _Index:
     for e in graph.edges:
         ch[e.to].append((e.role, e.from_))
         par[e.from_].append((e.role, e.to))
-    content = {nid: _content(n) for nid, n in nodes.items()}
+    content = {nid: _match_content(n) for nid, n in nodes.items()}
 
     sig, size, height, desc = {}, {}, {}, {}
     visiting = set()

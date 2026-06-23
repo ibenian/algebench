@@ -137,11 +137,11 @@ INTEGRAL_EXPRESSIONS: list[CatalogEntry] = [
     ("integral_power",
      r"\int x^n \, dx = \frac{x^{n+1}}{n+1} + C",
      PASS,
-     "n,num -> add; n,num -> add; n,x -> power; power,x -> integral; "
+     "n,num -> add; n,num -> add; n,x -> power; dx,power -> integral; "
      "add -> power; add,x -> power; power,power -> multiply; "
      "C,multiply -> add; add,integral -> rel:equals",
      "__num_11,n -> __add_10; __num_8,n -> __add_7; n,x -> __power_3; "
-     "__power_3,x -> __integral_2; __add_7,x -> __power_6; "
+     "__power_3,dx -> __integral_2; __add_7,x -> __power_6; "
      "__add_10 -> __power_9; __power_6,__power_9 -> __multiply_5; "
      "C,__multiply_5 -> __add_4; __add_4,__integral_2 -> __equals_1",
      [{"op": "integral", "with_respect_to": "x"},
@@ -150,10 +150,10 @@ INTEGRAL_EXPRESSIONS: list[CatalogEntry] = [
     ("integral_definite",
      r"\int_a^b f(x) \, dx = F(b) - F(a)",
      PASS,
-     "a -> fn:F; b -> fn:F; x -> fn:f; a,b,fn:f,x -> integral; "
+     "a -> fn:F; b -> fn:F; x -> fn:f; a,b,dx,fn:f -> integral; "
      "fn:F -> negation; fn:F,negation -> add; add,integral -> rel:equals",
      "b -> __F_5; a -> __F_7; x -> __f_3; "
-     "__f_3,a,b,x -> __integral_2; __F_7 -> __negation_6; "
+     "__f_3,a,b,dx -> __integral_2; __F_7 -> __negation_6; "
      "__F_5,__negation_6 -> __add_4; __add_4,__integral_2 -> __equals_1",
      [{"op": "integral", "with_respect_to": "x",
        "lower_bound": "a", "upper_bound": "b"}]),
@@ -161,9 +161,9 @@ INTEGRAL_EXPRESSIONS: list[CatalogEntry] = [
     ("ftc",
      r"\frac{d}{dx} \int_a^x f(t) \, dt = f(x)",
      PASS,
-     "t -> fn:f; x -> fn:f; a,fn:f,t,x -> integral; integral,x -> derivative; "
+     "t -> fn:f; x -> fn:f; a,dt,fn:f,x -> integral; integral,x -> derivative; "
      "derivative,fn:f -> rel:equals",
-     "t -> __f_4; x -> __f_5; __f_4,a,t,x -> __integral_3; "
+     "t -> __f_4; x -> __f_5; __f_4,a,dt,x -> __integral_3; "
      "__integral_3,x -> __deriv_2; "
      "__deriv_2,__f_5 -> __equals_1",
      [{"op": "integral", "with_respect_to": "t",

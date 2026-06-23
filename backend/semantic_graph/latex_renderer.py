@@ -76,14 +76,14 @@ def to_latex(
     outdeg: dict[str, int] = {nid: 0 for nid in nodes}
     # Structural fan-out, EXCLUDING ``wrt`` metadata edges. Used only to decide
     # whether a node is a shared (DAG) occurrence needing a per-occurrence id.
-    # An integral's variable is the SAME node as its integrand variable
-    # (∫1/v dv): counting the wrt edge would push it to >1 and give it a
-    # ``v__power_…`` id that no longer matches the bare ``v`` in a non-integral
-    # state — breaking the morph. The integral branch renders the differential as
-    # its OWN synthesized ``d<var>`` tag (it reads the wrt variable for the latex
-    # but does not re-emit that node), so the wrt edge never produces a second
-    # rendered occurrence of the variable — hence it must not count toward
-    # ``dag_deg``.
+    # A derivative's variable is the SAME node as a variable inside its operand
+    # (``d/dx (x^2)``): the derivative renders ``\frac{d}{dx}`` from the
+    # ``with_respect_to`` string (it does NOT re-emit the wrt node), so counting
+    # the wrt edge would wrongly push the operand's ``x`` to a shared
+    # ``x__power_…`` id that no longer matches the bare ``x`` elsewhere — breaking
+    # the morph. Hence wrt edges don't count toward ``dag_deg``. (An integral's
+    # variable is a first-class ``differential`` node on a ``wrt`` edge too; it
+    # has out-degree 1 anyway, so it stays bare either way.)
     dag_deg: dict[str, int] = {nid: 0 for nid in nodes}
     for e in graph.edges:
         if e.to not in nodes or e.from_ not in nodes:
@@ -163,6 +163,13 @@ def _emit_body(n, ins, nodes, incoming, child, oid, gw) -> tuple[str, int]:
     t, op = n.type, n.op
 
     if t in ("scalar", "vector"):
+        return (n.latex or n.id, _ATOM)
+    if t == "differential":
+        # An integral's differential (``dv``) — a leaf rendered from its own
+        # latex, like any symbol. It carries a ``data-n`` (its id, e.g. ``dv``)
+        # so it morphs to/from a loose ``dv`` symbol across the ∫ boundary. The
+        # id already includes the ``d`` (``dv``/``dx``), so it is the right
+        # fallback when ``latex`` is absent.
         return (n.latex or n.id, _ATOM)
     if t == "constant":
         name = n.latex or n.id
@@ -273,14 +280,17 @@ def _emit_operator(n, op, ins, nodes, incoming, child, oid, gw) -> tuple[str, in
         return (f"\\frac{{d}}{{d {wrt}}} {child(operands[0], _MUL)}", _MUL)
 
     if op in ("integral", "closed_integral"):
-        # ``\int integrand d<var>``. The integrand is the unroled operand; the
-        # integration variable comes from the ``wrt`` edge(s) — rendered via the
-        # node so the differential carries a ``data-n`` and morphs across states —
-        # falling back to the ``with_respect_to`` string. ``lb``/``ub`` edges make
-        # it a definite integral. Mirrors graph_to_sympy (see grounding.py).
+        # ``\int integrand d<var>``. The integrand is the unroled operand; each
+        # integration variable is a first-class ``differential`` child (``wrt``
+        # edge) rendered like any node — it carries its own ``data-n`` and morphs
+        # to/from a loose ``dv`` symbol for free. ``lb``/``ub`` edges make it a
+        # definite integral. Mirrors graph_to_sympy (see grounding.py).
         operands = [c for role, c in ins if role not in ("wrt", "lb", "ub")]
         if len(operands) != 1:
             raise StructuralRenderError("integral operand")
+        diffs = [c for role, c in ins if role == "wrt"]
+        if not diffs:
+            raise StructuralRenderError("integral differential")
         base = "\\oint" if op == "closed_integral" else "\\int"
         lb = [c for role, c in ins if role == "lb"]
         ub = [c for role, c in ins if role == "ub"]
@@ -288,30 +298,10 @@ def _emit_operator(n, op, ins, nodes, incoming, child, oid, gw) -> tuple[str, in
         # Definite bounds attach to the first sign (the model carries a single
         # lower/upper bound per node — multi-variable definite integrals aren't
         # modeled, and fail the single-root check earlier rather than here).
-        n_signs = max(1, sum(1 for role, _c in ins if role == "wrt"))
         first = base + (f"_{{{child(lb[0], _LOGIC)}}}^{{{child(ub[0], _LOGIC)}}}"
                         if lb and ub else "")
-        sign = first + base * (n_signs - 1)
-        # Differential as a STABLE TAGGED unit. A loose differential parses to the
-        # symbol ``d<var>`` (``\,dv`` -> id ``dv``); tag the integral's differential
-        # with that SAME id (``d`` + the wrt variable's id) so it MORPHS to/from a
-        # non-integral state. The id is synthesized — NOT the wrt node — so it
-        # never duplicates the integrand variable's own ``data-n`` (that variable
-        # keeps its bare id and morphs separately). Fall back to the
-        # ``with_respect_to`` string (untagged) when there is no wrt edge.
-        wrt_children = [c for role, c in ins if role == "wrt"]
-        diff = ""
-        for c in wrt_children:
-            vlatex = nodes[c].latex or c if c in nodes else c
-            did = f"d{c}"
-            if did in nodes:          # avoid colliding with a real node's data-n
-                did = f"{oid}__d_{c}"
-            diff += f"\\,{gw(did, f'd{vlatex}')}"
-        if not diff and n.with_respect_to:
-            diff = "".join(f"\\,d{s.strip()}"
-                           for s in n.with_respect_to.split(",") if s.strip())
-        if not diff:
-            raise StructuralRenderError("integral wrt")
+        sign = first + base * (len(diffs) - 1)
+        diff = "".join(f"\\,{child(c, _MUL)}" for c in diffs)
         return (f"{sign} {child(operands[0], _MUL)}{diff}", _MUL)
 
     if op in _LOGIC_LATEX:

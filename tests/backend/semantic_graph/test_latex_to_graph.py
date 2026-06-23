@@ -900,7 +900,10 @@ class TestComplexFormulas:
         assert _find_node(g, type="relation", op="equals")
         assert _find_node(g, type="operator", op="integral")
         assert _find_node(g, type="operator", op="power")
-        assert _find_node(g, id="x")
+        # The integrand ``e^{-x^2}`` absorbs the exponent as a literal, so ``x``
+        # is not a standalone node — the integration variable is carried by the
+        # first-class differential node (``dx``), which grounds the integral.
+        assert _find_node(g, id="dx", type="differential")
         assert g.classification.kind == "algebraic"
 
     def test_wave_equation_pde(self):
