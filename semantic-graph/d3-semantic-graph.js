@@ -735,11 +735,19 @@ export class D3SemanticGraphRenderer {
         const childrenOf = Object.create(null);
         const conditionEdgeTargets = new Set();
         const assertionEdgeTargets = new Set();
+        // Integrals whose integration variable is a first-class ``differential``
+        // node reached by a ``wrt`` edge — these keep the sign glyph bare (the
+        // ``dx`` shows as its own node). A legacy ``wrt`` edge from a bare
+        // variable (no differential node) must NOT qualify, or the variable
+        // would vanish from the glyph.
+        const differentialChildTargets = new Set();
         for (const e of edges) {
             if (!childrenOf[e.to]) childrenOf[e.to] = [];
             childrenOf[e.to].push(e.from);
             if (e.role === 'condition') conditionEdgeTargets.add(e.to);
             if (e.role === 'assertion') assertionEdgeTargets.add(e.to);
+            if (e.role === 'wrt' && nodeById[e.from]?.type === 'differential')
+                differentialChildTargets.add(e.to);
         }
 
         const annoIds = new Set(nodes.filter(n => n.type === 'annotation').map(n => n.id));
@@ -815,6 +823,7 @@ export class D3SemanticGraphRenderer {
                     _childIds: childrenOf[id] || [],
                     _hasConditionEdge: conditionEdgeTargets.has(id),
                     _hasAssertionEdge: assertionEdgeTargets.has(id),
+                    _hasDifferentialChild: differentialChildTargets.has(id),
                     _lowerBoundLabel: boundLabel(src.lower_bound),
                     _upperBoundLabel: boundLabel(src.upper_bound),
                 },
@@ -1525,11 +1534,14 @@ export class D3SemanticGraphRenderer {
             const wrt = data.with_respect_to;
             const lb = data._lowerBoundLabel || '';   // resolved bound values
             const ub = data._upperBoundLabel || '';   // (not raw bound node ids)
-            if (wrt) {
-                if (lb && ub) return `${cmd}_{${lb}}^{${ub}} d${wrt}`;
-                return `${cmd} d${wrt}`;
-            }
-            return cmd;
+            // The differential (``dx``) is its own child node, reached by the
+            // ``wrt`` edge — keep the sign glyph bare (``∫`` / ``∫_a^b``) so the
+            // variable isn't duplicated, mirroring the derivative ``d/d·``
+            // placeholder. Only graphs without a differential node fall back to
+            // embedding ``d{wrt}``.
+            const diff = (!data._hasDifferentialChild && wrt) ? ` d${wrt}` : '';
+            if (lb && ub) return `${cmd}_{${lb}}^{${ub}}${diff}`;
+            return `${cmd}${diff}`;
         }
         if (op === 'sum' || op === 'product') {
             const cmd = OPERATOR_LATEX[op];
