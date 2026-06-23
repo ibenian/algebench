@@ -5,6 +5,8 @@ Renders every expression from the domain test catalogs as a row containing:
   - rendered LaTeX (KaTeX)
   - Mermaid semantic graph
   - expandable JSON panel
+  - expandable SymPy panel (the grounded ``sympy`` expression + ``srepr``)
+  - expandable JS panel (the ``math.js`` expression, same as ``chartScript``)
 
 Supports two output modes:
   - Single file:  -o report.html  (requires internet for KaTeX/Mermaid CDN)
@@ -34,8 +36,11 @@ try:
 except ImportError:
     from scripts.graph_to_mermaid import semantic_graph_to_mermaid, load_theme
 
+import sympy as sp
+
 from backend.semantic_graph.mathjs_converter import latex_to_mathjs
 from backend.semantic_graph.service import SemanticGraphService
+from backend.experts.modules.proof_completion.grounding import graph_to_sympy
 
 # The report reflects the PRODUCTION renderer — the full service pipeline
 # (preprocess → chain/disjunction handling → translate → postprocess), not the
@@ -504,11 +509,15 @@ def _page_template() -> str:
         top: 0.4rem;
         right: 0.4rem;
       }}
-      .row-panel.row-json {{
+      .row-panel.row-json,
+      .row-panel.row-sympy,
+      .row-panel.row-js {{
         display: none;
         padding: 0;
       }}
-      .row-panel.row-json.open {{
+      .row-panel.row-json.open,
+      .row-panel.row-sympy.open,
+      .row-panel.row-js.open {{
         display: flex;
         gap: 1px;
       }}
@@ -757,6 +766,33 @@ def _render_row(
         )
         success = False
 
+    # Ground the graph to a sympy expression for the SymPy panel. Independent of
+    # mermaid rendering: a graph can render but be ungroundable (e.g. a
+    # closed/line integral), in which case we show the reason instead of erroring.
+    sympy_str: str | None = None
+    sympy_srepr: str | None = None
+    sympy_err: str | None = None
+    if graph_json is not None:
+        try:
+            _expr = graph_to_sympy(graph_obj)
+            sympy_str = str(_expr)
+            sympy_srepr = sp.srepr(_expr)
+        except Exception as exc:  # UngroundableGraph or any sympy build failure
+            sympy_err = f"{type(exc).__name__}: {exc}"
+
+    # The math.js (JS) rendering — the same converter that builds per-node
+    # ``chartScript`` for charting, run on the whole expression. Independent of
+    # the graph; an unconvertible construct shows the reason.
+    mathjs_script: str | None = None
+    mathjs_vars: str | None = None
+    mathjs_err: str | None = None
+    if graph_json is not None:
+        try:
+            mathjs_script, _vars = latex_to_mathjs(latex)
+            mathjs_vars = ", ".join(_vars)
+        except Exception as exc:
+            mathjs_err = f"{type(exc).__name__}: {exc}"
+
     # Always render action buttons so LaTeX source is accessible even on error.
     parts.append(f'  <div class="row-actions">')
     parts.append(
@@ -767,6 +803,14 @@ def _render_row(
         parts.append(
             f'    <button class="row-toggle" data-target="row-json" '
             f'title="Toggle JSON">{{}}</button>'
+        )
+        parts.append(
+            f'    <button class="row-toggle" data-target="row-sympy" '
+            f'title="Toggle SymPy expression">SymPy</button>'
+        )
+        parts.append(
+            f'    <button class="row-toggle" data-target="row-js" '
+            f'title="Toggle math.js (JS) expression">JS</button>'
         )
         parts.append(
             f'    <button class="row-toggle-d3" '
@@ -791,6 +835,52 @@ def _render_row(
             f'<pre>{_escape_html(mermaid_src)}</pre></div>'
             f'</div>'
         )
+        if sympy_err is None:
+            parts.append(
+                f'  <div class="row-panel row-sympy">'
+                f'<div class="row-json-pane">'
+                f'<div class="row-json-header"><span class="row-json-label">SymPy</span>'
+                f'<button class="row-copy-btn" title="Copy SymPy">copy</button></div>'
+                f'<pre>{_escape_html(sympy_str)}</pre></div>'
+                f'<div class="row-json-pane">'
+                f'<div class="row-json-header"><span class="row-json-label">srepr</span>'
+                f'<button class="row-copy-btn" title="Copy srepr">copy</button></div>'
+                f'<pre>{_escape_html(sympy_srepr)}</pre></div>'
+                f'</div>'
+            )
+        else:
+            parts.append(
+                f'  <div class="row-panel row-sympy">'
+                f'<div class="row-json-pane">'
+                f'<div class="row-json-header">'
+                f'<span class="row-json-label">SymPy — ungroundable</span></div>'
+                f'<pre>{_escape_html(sympy_err)}</pre></div>'
+                f'</div>'
+            )
+
+        if mathjs_err is None:
+            parts.append(
+                f'  <div class="row-panel row-js">'
+                f'<div class="row-json-pane">'
+                f'<div class="row-json-header"><span class="row-json-label">math.js</span>'
+                f'<button class="row-copy-btn" title="Copy math.js">copy</button></div>'
+                f'<pre>{_escape_html(mathjs_script)}</pre></div>'
+                f'<div class="row-json-pane">'
+                f'<div class="row-json-header"><span class="row-json-label">variables</span>'
+                f'<button class="row-copy-btn" title="Copy variables">copy</button></div>'
+                f'<pre>{_escape_html(mathjs_vars)}</pre></div>'
+                f'</div>'
+            )
+        else:
+            parts.append(
+                f'  <div class="row-panel row-js">'
+                f'<div class="row-json-pane">'
+                f'<div class="row-json-header">'
+                f'<span class="row-json-label">math.js — unavailable</span></div>'
+                f'<pre>{_escape_html(mathjs_err)}</pre></div>'
+                f'</div>'
+            )
+
         compact_json = json.dumps(
             graph_dict, separators=(",", ":"), ensure_ascii=False,
         )
