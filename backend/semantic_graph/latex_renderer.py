@@ -167,8 +167,10 @@ def _emit_body(n, ins, nodes, incoming, child, oid, gw) -> tuple[str, int]:
     if t == "differential":
         # An integral's differential (``dv``) — a leaf rendered from its own
         # latex, like any symbol. It carries a ``data-n`` (its id, e.g. ``dv``)
-        # so it morphs to/from a loose ``dv`` symbol across the ∫ boundary.
-        return (n.latex or f"d{n.id}", _ATOM)
+        # so it morphs to/from a loose ``dv`` symbol across the ∫ boundary. The
+        # id already includes the ``d`` (``dv``/``dx``), so it is the right
+        # fallback when ``latex`` is absent.
+        return (n.latex or n.id, _ATOM)
     if t == "constant":
         name = n.latex or n.id
         return (_CONSTANT_LATEX.get(name, name), _ATOM)

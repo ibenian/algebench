@@ -44,6 +44,27 @@ def test_graph_grounds_to_source_expression(latex, expected):
     assert is_grounded(g, expected) is True
 
 
+def test_legacy_integral_without_differential_node_still_grounds():
+    """Back-compat: an older graph that carries the integration variable on the
+    integral's ``with_respect_to`` (with a ``wrt`` edge from the bare variable,
+    no ``differential`` node) must still ground to the right ``Integral``."""
+    from backend.model.semantic_graph import SemanticGraph
+    legacy = SemanticGraph.model_validate({
+        "nodes": [
+            {"id": "__integral_1", "type": "operator", "op": "integral",
+             "with_respect_to": "x"},
+            {"id": "x", "type": "scalar", "latex": "x"},
+            {"id": "__power_2", "type": "operator", "op": "power", "exponent": "2"},
+        ],
+        "edges": [
+            {"from": "x", "to": "__integral_1", "role": "wrt"},
+            {"from": "x", "to": "__power_2"},
+            {"from": "__power_2", "to": "__integral_1"},
+        ],
+    })
+    assert sympy_equiv(graph_to_sympy(legacy), sp.Integral(x ** 2, x))
+
+
 def test_grounding_rejects_wrong_expression():
     g = SVC.latex_to_graph(r"x^2 + 2 x + 1")
     assert is_grounded(g, x ** 2 + 3 * x + 1) is False

@@ -180,9 +180,16 @@ def _eval_operator(n, op, ins, ev, nodes) -> sp.Expr:
         if len(operands) != 1:
             raise UngroundableGraph("integral operand")
         f = ev(operands[0])
-        diffs = [c for role, c in ins if role == "wrt"]
+        diffs = [c for role, c in ins
+                 if role == "wrt" and c in nodes and nodes[c].type == "differential"]
         syms = [sp.Symbol((nodes[c].with_respect_to or "").strip())
-                for c in diffs if c in nodes and (nodes[c].with_respect_to or "").strip()]
+                for c in diffs if (nodes[c].with_respect_to or "").strip()]
+        if not syms and n.with_respect_to:
+            # Back-compat: older graphs carry the variable(s) on the integral's
+            # ``with_respect_to`` (with a ``wrt`` edge from the bare variable)
+            # rather than on a differential node.
+            syms = [sp.Symbol(s.strip())
+                    for s in n.with_respect_to.split(",") if s.strip()]
         if not syms:
             raise UngroundableGraph("integral differential")
         lb = [ev(c) for role, c in ins if role == "lb"]
