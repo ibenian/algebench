@@ -1035,7 +1035,7 @@ svg.d3-semantic-graph {
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-06-23 03:09 UTC &middot; theme: default-dark &middot; 18 expressions</div>
+<div class="report-meta">Generated 2026-06-23 03:16 UTC &middot; theme: default-dark &middot; 18 expressions</div>
 <div class="section-title">Relativity (18 expressions)</div>
 <div class="row">
   <div>
@@ -3526,14 +3526,14 @@ svg.d3-semantic-graph {
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
   tau["$\tau$"]:::scalar
-  x["$x$"]:::scalar
-  __integral_2(("$\int dx$")):::operator
+  __integral_2(("$\int$")):::operator
+  dx["$dx$"]
   __power_3(("${(\cdot)}^{1/2}$")):::operator
   __negation_4@{ shape: "flip-tri", label: "$-$" }
   g_munu["$g_{\mu\nu}$"]:::scalar
   class __negation_4 operator
   tau --&gt; __equals_1
-  x --&gt;|wrt| __integral_2
+  dx --&gt;|wrt| __integral_2
   g_munu --&gt; __negation_4
   __negation_4 --&gt; __power_3
   __power_3 --&gt; __integral_2
@@ -3583,18 +3583,6 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "x",
-      "type": "scalar",
-      "latex": "x",
-      "subexpr": "x",
-      "chartScript": {
-        "script": "x",
-        "variables": [
-          "x"
-        ]
-      }
-    },
-    {
       "id": "__integral_2",
       "type": "operator",
       "op": "integral",
@@ -3607,6 +3595,12 @@ svg.d3-semantic-graph {
           "x"
         ]
       }
+    },
+    {
+      "id": "dx",
+      "type": "differential",
+      "latex": "dx",
+      "with_respect_to": "x"
     },
     {
       "id": "__power_3",
@@ -3652,7 +3646,7 @@ svg.d3-semantic-graph {
       "to": "__equals_1"
     },
     {
-      "from": "x",
+      "from": "dx",
       "to": "__integral_2",
       "role": "wrt"
     },
@@ -3691,14 +3685,14 @@ svg.d3-semantic-graph {
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
   tau["$\tau$"]:::scalar
-  x["$x$"]:::scalar
-  __integral_2(("$\int dx$")):::operator
+  __integral_2(("$\int$")):::operator
+  dx["$dx$"]
   __power_3(("${(\cdot)}^{1/2}$")):::operator
   __negation_4@{ shape: "flip-tri", label: "$-$" }
   g_munu["$g_{\mu\nu}$"]:::scalar
   class __negation_4 operator
   tau --&gt; __equals_1
-  x --&gt;|wrt| __integral_2
+  dx --&gt;|wrt| __integral_2
   g_munu --&gt; __negation_4
   __negation_4 --&gt; __power_3
   __power_3 --&gt; __integral_2
@@ -3712,7 +3706,7 @@ svg.d3-semantic-graph {
 </pre></div></div>
   <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(\tau, Integral(sqrt(-g_{\mu\nu}), x))</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(Symbol('\\tau'), Integral(Pow(Mul(Integer(-1), Symbol('g_{\\mu\\nu}')), Rational(1, 2)), Tuple(Symbol('x'))))</pre></div></div>
   <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>tau - x*sqrt(-g_mu*nu)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>g_mu*nu, tau, x</pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\tau = \\int \\sqrt{-g_{\\mu\\nu} dx^\\mu dx^\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;tau - x*sqrt(-g_mu*nu)&quot;,&quot;variables&quot;:[&quot;g_mu*nu&quot;,&quot;tau&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;tau&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\tau&quot;,&quot;subexpr&quot;:&quot;\\tau&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;tau&quot;,&quot;variables&quot;:[&quot;tau&quot;]}},{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;__integral_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;integral&quot;,&quot;with_respect_to&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;\\int \\sqrt{- g_{\\mu\\nu}}\\, dx&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x*sqrt(-g_mu*nu)&quot;,&quot;variables&quot;:[&quot;g_mu*nu&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;__power_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;1/2&quot;,&quot;subexpr&quot;:&quot;\\sqrt{- g_{\\mu\\nu}}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;sqrt(-g_mu*nu)&quot;,&quot;variables&quot;:[&quot;g_mu*nu&quot;]}},{&quot;id&quot;:&quot;__negation_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-g_{\\mu\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-g_mu*nu&quot;,&quot;variables&quot;:[&quot;g_mu*nu&quot;]}},{&quot;id&quot;:&quot;g_munu&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;g_{\\mu\\nu}&quot;,&quot;subexpr&quot;:&quot;g_{\\mu\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;g_mu*nu&quot;,&quot;variables&quot;:[&quot;g_mu*nu&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;tau&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__integral_2&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;g_munu&quot;,&quot;to&quot;:&quot;__negation_4&quot;},{&quot;from&quot;:&quot;__negation_4&quot;,&quot;to&quot;:&quot;__power_3&quot;},{&quot;from&quot;:&quot;__power_3&quot;,&quot;to&quot;:&quot;__integral_2&quot;},{&quot;from&quot;:&quot;__integral_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;},&quot;domain&quot;:&quot;mechanics&quot;}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\tau = \\int \\sqrt{-g_{\\mu\\nu} dx^\\mu dx^\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;tau - x*sqrt(-g_mu*nu)&quot;,&quot;variables&quot;:[&quot;g_mu*nu&quot;,&quot;tau&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;tau&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\tau&quot;,&quot;subexpr&quot;:&quot;\\tau&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;tau&quot;,&quot;variables&quot;:[&quot;tau&quot;]}},{&quot;id&quot;:&quot;__integral_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;integral&quot;,&quot;with_respect_to&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;\\int \\sqrt{- g_{\\mu\\nu}}\\, dx&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x*sqrt(-g_mu*nu)&quot;,&quot;variables&quot;:[&quot;g_mu*nu&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;dx&quot;,&quot;type&quot;:&quot;differential&quot;,&quot;latex&quot;:&quot;dx&quot;,&quot;with_respect_to&quot;:&quot;x&quot;},{&quot;id&quot;:&quot;__power_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;1/2&quot;,&quot;subexpr&quot;:&quot;\\sqrt{- g_{\\mu\\nu}}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;sqrt(-g_mu*nu)&quot;,&quot;variables&quot;:[&quot;g_mu*nu&quot;]}},{&quot;id&quot;:&quot;__negation_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-g_{\\mu\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-g_mu*nu&quot;,&quot;variables&quot;:[&quot;g_mu*nu&quot;]}},{&quot;id&quot;:&quot;g_munu&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;g_{\\mu\\nu}&quot;,&quot;subexpr&quot;:&quot;g_{\\mu\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;g_mu*nu&quot;,&quot;variables&quot;:[&quot;g_mu*nu&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;tau&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;dx&quot;,&quot;to&quot;:&quot;__integral_2&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;g_munu&quot;,&quot;to&quot;:&quot;__negation_4&quot;},{&quot;from&quot;:&quot;__negation_4&quot;,&quot;to&quot;:&quot;__power_3&quot;},{&quot;from&quot;:&quot;__power_3&quot;,&quot;to&quot;:&quot;__integral_2&quot;},{&quot;from&quot;:&quot;__integral_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;},&quot;domain&quot;:&quot;mechanics&quot;}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -7437,8 +7431,8 @@ document.querySelectorAll('.row-copy-btn').forEach(btn => {
 })();
 
 Promise.all([
-  import('./d3-semantic-graph.js?v=1782184078'),
-  import('./sg-chart.js?v=1782184078'),
+  import('./d3-semantic-graph.js?v=1782184527'),
+  import('./sg-chart.js?v=1782184527'),
 ]).then(function(mods) {
   var D3SemanticGraphRenderer = mods[0].D3SemanticGraphRenderer;
   var SgChartManager = mods[1].SgChartManager;

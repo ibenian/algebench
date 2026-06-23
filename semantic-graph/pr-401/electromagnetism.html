@@ -1035,7 +1035,7 @@ svg.d3-semantic-graph {
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-06-23 03:09 UTC &middot; theme: default-dark &middot; 15 expressions</div>
+<div class="report-meta">Generated 2026-06-23 03:16 UTC &middot; theme: default-dark &middot; 15 expressions</div>
 <div class="section-title">Electromagnetism (15 expressions)</div>
 <div class="row">
   <div>
@@ -3261,14 +3261,14 @@ svg.d3-semantic-graph {
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  A["$\vec{A}$"]:::vector
-  __closed_integral_2(("$\oint dA$")):::operator
+  __closed_integral_2(("$\oint$")):::operator
+  dA["$dA$"]
   E["$\vec{E}$"]:::vector
   __multiply_3(("$\times$")):::operator
   Q["$Q$"]:::scalar
   __power_4(("$\dfrac{1}{(\cdot)}$")):::operator
   epsilon_0["$\epsilon_{0}$"]:::scalar
-  A --&gt;|wrt| __closed_integral_2
+  dA --&gt;|wrt| __closed_integral_2
   E --&gt; __closed_integral_2
   __closed_integral_2 --&gt; __equals_1
   Q --&gt; __multiply_3
@@ -3313,19 +3313,6 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "A",
-      "type": "vector",
-      "latex": "\\vec{A}",
-      "subexpr": "\\vec{A}",
-      "chartScript": {
-        "script": "A*vec",
-        "variables": [
-          "A",
-          "vec"
-        ]
-      }
-    },
-    {
       "id": "__closed_integral_2",
       "type": "operator",
       "op": "closed_integral",
@@ -3339,6 +3326,12 @@ svg.d3-semantic-graph {
           "vec"
         ]
       }
+    },
+    {
+      "id": "dA",
+      "type": "differential",
+      "latex": "dA",
+      "with_respect_to": "A"
     },
     {
       "id": "E",
@@ -3407,7 +3400,7 @@ svg.d3-semantic-graph {
   ],
   "edges": [
     {
-      "from": "A",
+      "from": "dA",
       "to": "__closed_integral_2",
       "role": "wrt"
     },
@@ -3454,14 +3447,14 @@ svg.d3-semantic-graph {
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
   __equals_1{"="}:::relation
-  A["$\vec{A}$"]:::vector
-  __closed_integral_2(("$\oint dA$")):::operator
+  __closed_integral_2(("$\oint$")):::operator
+  dA["$dA$"]
   E["$\vec{E}$"]:::vector
   __multiply_3(("$\times$")):::operator
   Q["$Q$"]:::scalar
   __power_4(("$\dfrac{1}{(\cdot)}$")):::operator
   epsilon_0["$\epsilon_{0}$"]:::scalar
-  A --&gt;|wrt| __closed_integral_2
+  dA --&gt;|wrt| __closed_integral_2
   E --&gt; __closed_integral_2
   __closed_integral_2 --&gt; __equals_1
   Q --&gt; __multiply_3
@@ -3478,7 +3471,7 @@ svg.d3-semantic-graph {
 </pre></div></div>
   <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy — ungroundable</span></div><pre>UngroundableGraph: operator 'closed_integral'</pre></div></div>
   <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>A*E*dvec*oint*vec - Q/epsilon_0</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>A, E, Q, dvec, epsilon_0, oint, vec</pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\oint \\vec{E} \\cdot d \\vec{A} = \\frac{Q}{\\epsilon_0}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;A*E*dvec*oint*vec - Q/epsilon_0&quot;,&quot;variables&quot;:[&quot;A&quot;,&quot;E&quot;,&quot;Q&quot;,&quot;dvec&quot;,&quot;epsilon_0&quot;,&quot;oint&quot;,&quot;vec&quot;]}},{&quot;id&quot;:&quot;A&quot;,&quot;type&quot;:&quot;vector&quot;,&quot;latex&quot;:&quot;\\vec{A}&quot;,&quot;subexpr&quot;:&quot;\\vec{A}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;A*vec&quot;,&quot;variables&quot;:[&quot;A&quot;,&quot;vec&quot;]}},{&quot;id&quot;:&quot;__closed_integral_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;closed_integral&quot;,&quot;with_respect_to&quot;:&quot;A&quot;,&quot;subexpr&quot;:&quot;\\int \\vec{E}\\, dA&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;A*E*vec&quot;,&quot;variables&quot;:[&quot;A&quot;,&quot;E&quot;,&quot;vec&quot;]}},{&quot;id&quot;:&quot;E&quot;,&quot;type&quot;:&quot;vector&quot;,&quot;latex&quot;:&quot;\\vec{E}&quot;,&quot;subexpr&quot;:&quot;\\vec{E}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;E*vec&quot;,&quot;variables&quot;:[&quot;E&quot;,&quot;vec&quot;]}},{&quot;id&quot;:&quot;__multiply_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;Q \\frac{1}{\\epsilon_{0}}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Q/epsilon_0&quot;,&quot;variables&quot;:[&quot;Q&quot;,&quot;epsilon_0&quot;]}},{&quot;id&quot;:&quot;Q&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;Q&quot;,&quot;subexpr&quot;:&quot;Q&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Q&quot;,&quot;variables&quot;:[&quot;Q&quot;]}},{&quot;id&quot;:&quot;__power_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{\\epsilon_{0}}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1/epsilon_0&quot;,&quot;variables&quot;:[&quot;epsilon_0&quot;]}},{&quot;id&quot;:&quot;epsilon_0&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\epsilon_{0}&quot;,&quot;subexpr&quot;:&quot;\\epsilon_{0}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;epsilon_0&quot;,&quot;variables&quot;:[&quot;epsilon_0&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;A&quot;,&quot;to&quot;:&quot;__closed_integral_2&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;E&quot;,&quot;to&quot;:&quot;__closed_integral_2&quot;},{&quot;from&quot;:&quot;__closed_integral_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;Q&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;epsilon_0&quot;,&quot;to&quot;:&quot;__power_4&quot;},{&quot;from&quot;:&quot;__power_4&quot;,&quot;to&quot;:&quot;__multiply_3&quot;},{&quot;from&quot;:&quot;__multiply_3&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\oint \\vec{E} \\cdot d \\vec{A} = \\frac{Q}{\\epsilon_0}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;A*E*dvec*oint*vec - Q/epsilon_0&quot;,&quot;variables&quot;:[&quot;A&quot;,&quot;E&quot;,&quot;Q&quot;,&quot;dvec&quot;,&quot;epsilon_0&quot;,&quot;oint&quot;,&quot;vec&quot;]}},{&quot;id&quot;:&quot;__closed_integral_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;closed_integral&quot;,&quot;with_respect_to&quot;:&quot;A&quot;,&quot;subexpr&quot;:&quot;\\int \\vec{E}\\, dA&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;A*E*vec&quot;,&quot;variables&quot;:[&quot;A&quot;,&quot;E&quot;,&quot;vec&quot;]}},{&quot;id&quot;:&quot;dA&quot;,&quot;type&quot;:&quot;differential&quot;,&quot;latex&quot;:&quot;dA&quot;,&quot;with_respect_to&quot;:&quot;A&quot;},{&quot;id&quot;:&quot;E&quot;,&quot;type&quot;:&quot;vector&quot;,&quot;latex&quot;:&quot;\\vec{E}&quot;,&quot;subexpr&quot;:&quot;\\vec{E}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;E*vec&quot;,&quot;variables&quot;:[&quot;E&quot;,&quot;vec&quot;]}},{&quot;id&quot;:&quot;__multiply_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;Q \\frac{1}{\\epsilon_{0}}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Q/epsilon_0&quot;,&quot;variables&quot;:[&quot;Q&quot;,&quot;epsilon_0&quot;]}},{&quot;id&quot;:&quot;Q&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;Q&quot;,&quot;subexpr&quot;:&quot;Q&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Q&quot;,&quot;variables&quot;:[&quot;Q&quot;]}},{&quot;id&quot;:&quot;__power_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{\\epsilon_{0}}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1/epsilon_0&quot;,&quot;variables&quot;:[&quot;epsilon_0&quot;]}},{&quot;id&quot;:&quot;epsilon_0&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\epsilon_{0}&quot;,&quot;subexpr&quot;:&quot;\\epsilon_{0}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;epsilon_0&quot;,&quot;variables&quot;:[&quot;epsilon_0&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;dA&quot;,&quot;to&quot;:&quot;__closed_integral_2&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;E&quot;,&quot;to&quot;:&quot;__closed_integral_2&quot;},{&quot;from&quot;:&quot;__closed_integral_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;Q&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;epsilon_0&quot;,&quot;to&quot;:&quot;__power_4&quot;},{&quot;from&quot;:&quot;__power_4&quot;,&quot;to&quot;:&quot;__multiply_3&quot;},{&quot;from&quot;:&quot;__multiply_3&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -4715,8 +4708,8 @@ document.querySelectorAll('.row-copy-btn').forEach(btn => {
 })();
 
 Promise.all([
-  import('./d3-semantic-graph.js?v=1782184078'),
-  import('./sg-chart.js?v=1782184078'),
+  import('./d3-semantic-graph.js?v=1782184527'),
+  import('./sg-chart.js?v=1782184527'),
 ]).then(function(mods) {
   var D3SemanticGraphRenderer = mods[0].D3SemanticGraphRenderer;
   var SgChartManager = mods[1].SgChartManager;

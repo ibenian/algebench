@@ -1035,7 +1035,7 @@ svg.d3-semantic-graph {
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-06-23 03:09 UTC &middot; theme: default-dark &middot; 15 expressions</div>
+<div class="report-meta">Generated 2026-06-23 03:16 UTC &middot; theme: default-dark &middot; 15 expressions</div>
 <div class="section-title">Thermodynamics (15 expressions)</div>
 <div class="row">
   <div>
@@ -3564,13 +3564,13 @@ svg.d3-semantic-graph {
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  Q["$Q$"]:::scalar
-  __closed_integral_1(("$\oint dQ$")):::operator
+  __closed_integral_1(("$\oint$")):::operator
+  dQ["$dQ$"]
   __power_2(("$\dfrac{1}{(\cdot)}$")):::operator
   T["$T$"]:::scalar
   __num_3["$0$"]:::number
   __less_equal_4{"≤"}:::relation
-  Q --&gt;|wrt| __closed_integral_1
+  dQ --&gt;|wrt| __closed_integral_1
   T --&gt; __power_2
   __power_2 -.-&gt; __closed_integral_1
   __closed_integral_1 --&gt;|lhs| __less_equal_4
@@ -3593,18 +3593,6 @@ svg.d3-semantic-graph {
   <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
   "nodes": [
     {
-      "id": "Q",
-      "type": "scalar",
-      "latex": "Q",
-      "subexpr": "Q",
-      "chartScript": {
-        "script": "Q",
-        "variables": [
-          "Q"
-        ]
-      }
-    },
-    {
       "id": "__closed_integral_1",
       "type": "operator",
       "op": "closed_integral",
@@ -3617,6 +3605,12 @@ svg.d3-semantic-graph {
           "T"
         ]
       }
+    },
+    {
+      "id": "dQ",
+      "type": "differential",
+      "latex": "dQ",
+      "with_respect_to": "Q"
     },
     {
       "id": "__power_2",
@@ -3673,7 +3667,7 @@ svg.d3-semantic-graph {
   ],
   "edges": [
     {
-      "from": "Q",
+      "from": "dQ",
       "to": "__closed_integral_1",
       "role": "wrt"
     },
@@ -3711,13 +3705,13 @@ svg.d3-semantic-graph {
   classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
   classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
-  Q["$Q$"]:::scalar
-  __closed_integral_1(("$\oint dQ$")):::operator
+  __closed_integral_1(("$\oint$")):::operator
+  dQ["$dQ$"]
   __power_2(("$\dfrac{1}{(\cdot)}$")):::operator
   T["$T$"]:::scalar
   __num_3["$0$"]:::number
   __less_equal_4{"≤"}:::relation
-  Q --&gt;|wrt| __closed_integral_1
+  dQ --&gt;|wrt| __closed_integral_1
   T --&gt; __power_2
   __power_2 -.-&gt; __closed_integral_1
   __closed_integral_1 --&gt;|lhs| __less_equal_4
@@ -3730,7 +3724,7 @@ svg.d3-semantic-graph {
 </pre></div></div>
   <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy — ungroundable</span></div><pre>UngroundableGraph: operator 'closed_integral'</pre></div></div>
   <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>dQ*oint/T</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>T, dQ, oint</pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;Q&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;Q&quot;,&quot;subexpr&quot;:&quot;Q&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Q&quot;,&quot;variables&quot;:[&quot;Q&quot;]}},{&quot;id&quot;:&quot;__closed_integral_1&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;closed_integral&quot;,&quot;with_respect_to&quot;:&quot;Q&quot;,&quot;subexpr&quot;:&quot;\\int \\frac{dQ}{T}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Q/T&quot;,&quot;variables&quot;:[&quot;Q&quot;,&quot;T&quot;]}},{&quot;id&quot;:&quot;__power_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{T}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1/T&quot;,&quot;variables&quot;:[&quot;T&quot;]}},{&quot;id&quot;:&quot;T&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;T&quot;,&quot;subexpr&quot;:&quot;T&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;T&quot;,&quot;variables&quot;:[&quot;T&quot;]}},{&quot;id&quot;:&quot;__num_3&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;0&quot;,&quot;subexpr&quot;:&quot;0&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__less_equal_4&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;label&quot;:&quot;less than or equal to&quot;,&quot;emoji&quot;:&quot;≤&quot;,&quot;op&quot;:&quot;less_equal&quot;,&quot;subexpr&quot;:&quot;\\oint \\frac{dQ}{T} \\leq 0&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;dQ*oint/T&quot;,&quot;variables&quot;:[&quot;T&quot;,&quot;dQ&quot;,&quot;oint&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;Q&quot;,&quot;to&quot;:&quot;__closed_integral_1&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;T&quot;,&quot;to&quot;:&quot;__power_2&quot;},{&quot;from&quot;:&quot;__power_2&quot;,&quot;to&quot;:&quot;__closed_integral_1&quot;},{&quot;from&quot;:&quot;__closed_integral_1&quot;,&quot;to&quot;:&quot;__less_equal_4&quot;,&quot;role&quot;:&quot;lhs&quot;},{&quot;from&quot;:&quot;__num_3&quot;,&quot;to&quot;:&quot;__less_equal_4&quot;,&quot;role&quot;:&quot;rhs&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__closed_integral_1&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;closed_integral&quot;,&quot;with_respect_to&quot;:&quot;Q&quot;,&quot;subexpr&quot;:&quot;\\int \\frac{dQ}{T}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Q/T&quot;,&quot;variables&quot;:[&quot;Q&quot;,&quot;T&quot;]}},{&quot;id&quot;:&quot;dQ&quot;,&quot;type&quot;:&quot;differential&quot;,&quot;latex&quot;:&quot;dQ&quot;,&quot;with_respect_to&quot;:&quot;Q&quot;},{&quot;id&quot;:&quot;__power_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{T}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1/T&quot;,&quot;variables&quot;:[&quot;T&quot;]}},{&quot;id&quot;:&quot;T&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;T&quot;,&quot;subexpr&quot;:&quot;T&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;T&quot;,&quot;variables&quot;:[&quot;T&quot;]}},{&quot;id&quot;:&quot;__num_3&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;0&quot;,&quot;subexpr&quot;:&quot;0&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__less_equal_4&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;label&quot;:&quot;less than or equal to&quot;,&quot;emoji&quot;:&quot;≤&quot;,&quot;op&quot;:&quot;less_equal&quot;,&quot;subexpr&quot;:&quot;\\oint \\frac{dQ}{T} \\leq 0&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;dQ*oint/T&quot;,&quot;variables&quot;:[&quot;T&quot;,&quot;dQ&quot;,&quot;oint&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;dQ&quot;,&quot;to&quot;:&quot;__closed_integral_1&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;T&quot;,&quot;to&quot;:&quot;__power_2&quot;},{&quot;from&quot;:&quot;__power_2&quot;,&quot;to&quot;:&quot;__closed_integral_1&quot;},{&quot;from&quot;:&quot;__closed_integral_1&quot;,&quot;to&quot;:&quot;__less_equal_4&quot;,&quot;role&quot;:&quot;lhs&quot;},{&quot;from&quot;:&quot;__num_3&quot;,&quot;to&quot;:&quot;__less_equal_4&quot;,&quot;role&quot;:&quot;rhs&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -4766,8 +4760,8 @@ document.querySelectorAll('.row-copy-btn').forEach(btn => {
 })();
 
 Promise.all([
-  import('./d3-semantic-graph.js?v=1782184078'),
-  import('./sg-chart.js?v=1782184078'),
+  import('./d3-semantic-graph.js?v=1782184527'),
+  import('./sg-chart.js?v=1782184527'),
 ]).then(function(mods) {
   var D3SemanticGraphRenderer = mods[0].D3SemanticGraphRenderer;
   var SgChartManager = mods[1].SgChartManager;
