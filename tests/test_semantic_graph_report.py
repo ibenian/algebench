@@ -40,3 +40,19 @@ def test_sympy_panel_reports_ungroundable_closed_integral():
     assert ok                                         # the graph still renders
     assert "ungroundable" in html.lower()
     assert "closed_integral" in html
+
+
+def test_js_panel_renders_mathjs_expression():
+    # The JS panel uses the same ``latex_to_mathjs`` converter as ``chartScript``.
+    html, ok = _render_row("pythagoras", r"\sqrt{a^2 + b^2}", _THEME)
+    assert ok
+    assert 'data-target="row-js"' in html             # the JS toggle button
+    assert "sqrt(pow(a, 2) + pow(b, 2))" in html      # the math.js script
+    assert ">math.js<" in html and ">variables<" in html
+
+
+def test_js_panel_evaluates_definite_integral():
+    # latex_to_mathjs evaluates the integral to a JS-computable form.
+    html, ok = _render_row("definite", r"\int_0^1 x^2 \, dx", _THEME)
+    assert ok
+    assert "row-js" in html and "1/3" in html

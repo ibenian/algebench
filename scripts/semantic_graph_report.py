@@ -6,6 +6,7 @@ Renders every expression from the domain test catalogs as a row containing:
   - Mermaid semantic graph
   - expandable JSON panel
   - expandable SymPy panel (the grounded ``sympy`` expression + ``srepr``)
+  - expandable JS panel (the ``math.js`` expression, same as ``chartScript``)
 
 Supports two output modes:
   - Single file:  -o report.html  (requires internet for KaTeX/Mermaid CDN)
@@ -509,12 +510,14 @@ def _page_template() -> str:
         right: 0.4rem;
       }}
       .row-panel.row-json,
-      .row-panel.row-sympy {{
+      .row-panel.row-sympy,
+      .row-panel.row-js {{
         display: none;
         padding: 0;
       }}
       .row-panel.row-json.open,
-      .row-panel.row-sympy.open {{
+      .row-panel.row-sympy.open,
+      .row-panel.row-js.open {{
         display: flex;
         gap: 1px;
       }}
@@ -777,6 +780,19 @@ def _render_row(
         except Exception as exc:  # UngroundableGraph or any sympy build failure
             sympy_err = f"{type(exc).__name__}: {exc}"
 
+    # The math.js (JS) rendering — the same converter that builds per-node
+    # ``chartScript`` for charting, run on the whole expression. Independent of
+    # the graph; an unconvertible construct shows the reason.
+    mathjs_script: str | None = None
+    mathjs_vars: str | None = None
+    mathjs_err: str | None = None
+    if graph_json is not None:
+        try:
+            mathjs_script, _vars = latex_to_mathjs(latex)
+            mathjs_vars = ", ".join(_vars)
+        except Exception as exc:
+            mathjs_err = f"{type(exc).__name__}: {exc}"
+
     # Always render action buttons so LaTeX source is accessible even on error.
     parts.append(f'  <div class="row-actions">')
     parts.append(
@@ -791,6 +807,10 @@ def _render_row(
         parts.append(
             f'    <button class="row-toggle" data-target="row-sympy" '
             f'title="Toggle SymPy expression">SymPy</button>'
+        )
+        parts.append(
+            f'    <button class="row-toggle" data-target="row-js" '
+            f'title="Toggle math.js (JS) expression">JS</button>'
         )
         parts.append(
             f'    <button class="row-toggle-d3" '
@@ -835,6 +855,29 @@ def _render_row(
                 f'<div class="row-json-header">'
                 f'<span class="row-json-label">SymPy — ungroundable</span></div>'
                 f'<pre>{_escape_html(sympy_err)}</pre></div>'
+                f'</div>'
+            )
+
+        if mathjs_err is None:
+            parts.append(
+                f'  <div class="row-panel row-js">'
+                f'<div class="row-json-pane">'
+                f'<div class="row-json-header"><span class="row-json-label">math.js</span>'
+                f'<button class="row-copy-btn" title="Copy math.js">copy</button></div>'
+                f'<pre>{_escape_html(mathjs_script)}</pre></div>'
+                f'<div class="row-json-pane">'
+                f'<div class="row-json-header"><span class="row-json-label">variables</span>'
+                f'<button class="row-copy-btn" title="Copy variables">copy</button></div>'
+                f'<pre>{_escape_html(mathjs_vars)}</pre></div>'
+                f'</div>'
+            )
+        else:
+            parts.append(
+                f'  <div class="row-panel row-js">'
+                f'<div class="row-json-pane">'
+                f'<div class="row-json-header">'
+                f'<span class="row-json-label">math.js — unavailable</span></div>'
+                f'<pre>{_escape_html(mathjs_err)}</pre></div>'
                 f'</div>'
             )
 
