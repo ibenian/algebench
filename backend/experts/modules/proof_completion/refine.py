@@ -32,6 +32,16 @@ FEEDBACK_PREAMBLE = (
     "fixes them — keep what was correct, repair what was flagged:\n"
 )
 
+# Re-ask text when an attempt produced an UNPARSEABLE response (a transient
+# sampling slip — a bare list instead of a trajectory object, broken escaping in
+# a backslash-heavy step, etc.) rather than a low-scoring one. The output schema
+# is already in the prompt every call, so this only flags the failure; it does
+# not (and should not) restate the structure.
+_PARSE_FAILURE_FEEDBACK = (
+    "Your previous response could not be parsed. Return one valid trajectory "
+    "compliant with the schema."
+)
+
 
 @dataclass
 class RefineOutcome:
@@ -50,14 +60,15 @@ def refine(
     time_budget_s: Optional[float] = None,
     on_attempt: Optional[Callable[[int, int, object, object], None]] = None,
 ) -> RefineOutcome:
-    """Ask → evaluate → re-ask-with-feedback, keeping the best (never raises here).
+    """Ask → evaluate → re-ask-with-feedback, keeping the best (raises only if EVERY attempt fails).
 
     ``attempt(k, feedback)`` produces attempt ``k`` (0-based); ``feedback`` is
     ``""`` on the first call and the composed issues thereafter. ``evaluate``
     returns a ``RewardResult``. Early-exits on the first ``passed`` result.
-    Exceptions inside ``attempt``/``evaluate`` end the loop early and return the
-    best-so-far (or re-raise on the very first attempt, where there is nothing to
-    fall back to).
+    Exceptions inside ``attempt``/``evaluate`` (e.g. an unparseable LM response)
+    are treated as a failed attempt: if a good attempt already exists the loop
+    stops and returns it; otherwise it retries with parse-failure feedback, and
+    re-raises the last exception only if EVERY attempt fails.
 
     ``time_budget_s`` — optional wall-clock budget. A *new* attempt is only
     started while elapsed time is under it (the first attempt always runs, and a
@@ -74,6 +85,7 @@ def refine(
     best_res: Optional[object] = None
     feedback = ""
     made = 0
+    last_exc: Optional[BaseException] = None
     started = time.monotonic()
 
     for k in range(n):
@@ -85,10 +97,16 @@ def refine(
         try:
             pred = attempt(k, feedback)
             res = evaluate(pred)
-        except Exception:
-            if best_pred is None:
-                raise            # nothing to fall back to — let the caller see it
-            break
+        except Exception as exc:
+            # An unparseable response is a transient sampling slip — reject and
+            # retry rather than salvage it. Keep an earlier good attempt if we
+            # have one; otherwise re-ask with parse-failure feedback. The error
+            # surfaces only if EVERY attempt fails (after the loop).
+            last_exc = exc
+            if best_pred is not None:
+                break
+            feedback = _PARSE_FAILURE_FEEDBACK
+            continue
         made += 1
         if on_attempt is not None:
             on_attempt(k, n, pred, res)
@@ -98,4 +116,6 @@ def refine(
             return RefineOutcome(best_pred, best_res, made, True)
         feedback = FEEDBACK_PREAMBLE + (res.issues or "the derivation scored low")
 
+    if best_pred is None and last_exc is not None:
+        raise last_exc          # every attempt failed — surface the real error
     return RefineOutcome(best_pred, best_res, made, False)
