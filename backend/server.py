@@ -349,6 +349,21 @@ except ImportError:
     TTS_AVAILABLE = False
 static_dir   = script_dir / "static"
 chat_js_path = static_dir / "chat.js"
+version_file_path = script_dir / "VERSION"
+
+
+def get_app_version() -> str:
+    """Read the application version from the root VERSION file.
+
+    The VERSION file (a plain ``MAJOR.MINOR.PATCH`` string) is the single
+    source of truth for the version shown in the in-app About pill and bumped
+    by the `algebench-release` skill. Best-effort: returns "dev" if the file is
+    missing or unreadable so a deploy without it still serves.
+    """
+    try:
+        return version_file_path.read_text(encoding="utf-8").strip() or "dev"
+    except OSError:
+        return "dev"
 
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
 GEMINI_MODEL   = os.environ.get('GEMINI_MODEL', 'gemini-3-flash-preview')
@@ -611,7 +626,8 @@ def generate_html(debug=False, skip_tour=False):
     with open(index_html_path, 'r') as f:
         return (f.read()
                 .replace('__DEBUG_MODE__', debug_mode_js)
-                .replace('__SKIP_TOUR__', skip_tour_js))
+                .replace('__SKIP_TOUR__', skip_tour_js)
+                .replace('__APP_VERSION__', get_app_version()))
 
 from backend.agent_tools import (
     ALL_TOOL_DECLS, _make_tools, build_system_prompt,
@@ -1454,6 +1470,15 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
         'json-browser', 'main', 'proof', 'graph-view', 'expert-client',
         'view-state', 'view-state-bridge', 'nav-history', 'nav-history-core',
     }
+
+    @fastapp.get("/api/version")
+    async def get_version():
+        """Report the running app version (from the root VERSION file).
+
+        Lets the deploy/release tooling verify which version a given host
+        (staging vs prod) is actually serving.
+        """
+        return JSONResponse({"name": "AlgeBench", "version": get_app_version()})
 
     @fastapp.get("/api/graph/themes")
     async def get_graph_themes():

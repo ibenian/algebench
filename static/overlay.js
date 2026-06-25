@@ -1173,3 +1173,48 @@ export function setupCamStatusPopup() {
         });
     }
 }
+
+// ----- About / version popup -----
+
+export function setupAboutPopup() {
+    const about = document.getElementById('about-status');
+    if (!about) return;
+
+    // Version is injected into <body data-app-version> by the server.
+    const version = document.body.dataset.appVersion || 'dev';
+    const versionStr = `v${version}`;
+    const pillVersion = about.querySelector('.about-status-version');
+    if (pillVersion) pillVersion.textContent = versionStr;
+    const popupVersion = document.getElementById('about-popup-version');
+    if (popupVersion) popupVersion.textContent = versionStr;
+
+    const closeBtn = document.getElementById('about-popup-close');
+
+    // Same interaction model as the camera pill: hover previews the popup,
+    // a click pins it open (stays after the mouse leaves). Clicking a pinned
+    // pill unpins and suppresses hover until the mouse leaves, so it closes.
+    const setPinned = (pinned, suppressHover) => {
+        about.classList.toggle('pinned', pinned);
+        if (pinned) about.classList.remove('suppress-hover');
+        else if (suppressHover) about.classList.add('suppress-hover');
+    };
+
+    about.addEventListener('click', (e) => {
+        // Clicks inside the popup body (links, close button) shouldn't toggle it.
+        if (e.target && e.target.closest('#about-popup-close')) return;
+        if (e.target && e.target.closest('.about-status-popup')) return;
+        const pinned = about.classList.contains('pinned');
+        setPinned(!pinned, pinned);
+    });
+
+    about.addEventListener('mouseleave', () => {
+        about.classList.remove('suppress-hover');
+    });
+
+    if (closeBtn) {
+        closeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            setPinned(false, true);
+        });
+    }
+}
