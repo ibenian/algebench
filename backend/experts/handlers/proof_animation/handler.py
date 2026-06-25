@@ -5,7 +5,8 @@ needs (see ``../README.md``):
 
 * **pre** — the client sends the clicked node's expression as ``target_latex``
   plus the proof's givens/goal; the START is either supplied (a proof's
-  ``given`` step) or inferred from a prompt via :func:`endpoints_from_prompt`.
+  ``given`` step) or inferred from the KNOWN target via
+  :func:`start_given_target` (givens/goal as context).
 * **call** — run ``proof_completion`` through ``service.invoke`` (never by
   instantiating the expert directly).
 * **post** — render the returned ``ProofTrajectory`` into FLIP animation data
@@ -33,7 +34,7 @@ from backend.semantic_graph.preprocessor import strip_math_delimiters
 from backend.semantic_graph.service import SemanticGraphService
 
 from .animation import build
-from .prompt_endpoints import endpoints_from_prompt
+from .prompt_endpoints import start_given_target
 
 log = logging.getLogger(__name__)
 
@@ -253,14 +254,15 @@ def derive_proof_animation(req: DeriveProofRequest) -> dict:
     lm_domain = lm_title = ""
     start = (req.start_latex or "").strip()
     if not start:
-        prompt = f"Derive this expression: {req.target_latex}"
-        if givens:
-            prompt += f" given {givens}"
+        # We already KNOW the target, so infer ONLY the start — given the target,
+        # with the givens/goal and preceding steps as context. Using the
+        # both-endpoints namer here wasted an inferred target AND framed the prompt
+        # as "Derive {target} given {goal}", nudging the LM to echo a multi-relation
+        # goal as the start — which came back as an unparseable compound (#396).
         prior = _prior_steps_clause(req)
-        if prior:                        # anchor the inferred start to the lead-up
-            prompt += f", continuing on from the preceding steps: {prior}"
-        start, _lm_target, lm_domain, lm_title, given_label, start_note = \
-            endpoints_from_prompt(prompt)
+        context = "; ".join(p for p in (givens, f"preceding steps: {prior}" if prior else "") if p)
+        start, lm_domain, lm_title, given_label, start_note = \
+            start_given_target(req.target_latex, context)
         if not start:
             return {"error": "Couldn't infer a starting expression for this derivation."}
 

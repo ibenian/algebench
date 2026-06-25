@@ -10,6 +10,9 @@ import pytest
 from pydantic import ValidationError
 
 import backend.experts.handlers.proof_animation.handler as H
+import types
+
+import backend.experts.handlers.proof_animation.prompt_endpoints as PE
 from backend.experts.handlers.proof_animation.handler import (
     DeriveProofRequest,
     Given,
@@ -175,3 +178,28 @@ def test_domain_judge_none_when_rescue_disabled(monkeypatch):
     monkeypatch.setattr(H, "RESCUE_ENABLED", False)
     monkeypatch.setattr(H, "_DOMAIN_JUDGE", None)
     assert _domain_judge() is None
+
+
+# --------------------------------------------------------------------------- #
+# start_given_target — infer ONLY the start from the KNOWN target (#396)
+# --------------------------------------------------------------------------- #
+
+def test_start_given_target_strips_delimiters_and_maps_fields(monkeypatch):
+    # the LM wraps math in $…$; start_given_target must strip them so the start parses
+    ns = types.SimpleNamespace(
+        start_latex="$x^2 = 4$", domain=" algebra ", title=" Solve ",
+        given_label=" Given the quadratic ", start_note=" solve for $x$ ")
+    # predictors are built lazily via _predictor(sig); stub it to skip the LM
+    monkeypatch.setattr(PE, "_predictor", lambda sig: (lambda **kw: ns))
+    start, domain, title, given_label, start_note = PE.start_given_target("x = 2", context="")
+    assert start == "x^2 = 4"           # delimiters stripped → parseable
+    assert (domain, title, given_label, start_note) == (
+        "algebra", "Solve", "Given the quadratic", "solve for $x$")
+
+
+def test_start_given_target_does_not_infer_a_target(monkeypatch):
+    # the signature has no target OUTPUT — we never invent a target to discard
+    assert "target_latex" not in PE.StartGivenTargetSig.output_fields
+    assert "target_latex" in PE.StartGivenTargetSig.input_fields
+    assert set(PE.StartGivenTargetSig.output_fields) == {
+        "start_latex", "domain", "title", "given_label", "start_note"}
