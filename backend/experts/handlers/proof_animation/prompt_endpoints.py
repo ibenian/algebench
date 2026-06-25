@@ -15,9 +15,20 @@ Requires DSPy to be configured first (``init_experts()`` / ``configure_dspy()``)
 
 from __future__ import annotations
 
+from functools import cache
+
 import dspy
 
 from backend.semantic_graph.preprocessor import strip_math_delimiters
+
+
+# Each signature's predictor is built once, LAZILY on first use. This module is
+# imported (e.g. by scripts/proof_animation/derive.py) before configure_dspy()
+# runs, so deferring construction keeps import independent of DSPy config — and
+# matches module.py / judge.py, which build their predictors after configuration.
+@cache
+def _predictor(signature):
+    return dspy.Predict(signature)
 
 
 class BothEndpointsSig(dspy.Signature):
@@ -49,14 +60,9 @@ class BothEndpointsSig(dspy.Signature):
              "may use inline $…$ LaTeX")
 
 
-# Predictors are built once and reused (DSPy resolves the configured LM at call
-# time, so module-level construction is safe and matches module.py / judge.py).
-_both_endpoints_predict = dspy.Predict(BothEndpointsSig)
-
-
 def endpoints_from_prompt(prompt: str) -> tuple[str, str, str, str, str, str]:
     """LM-propose (start, target, domain, title, given_label, start_note) for a request."""
-    ep = _both_endpoints_predict(prompt=prompt)
+    ep = _predictor(BothEndpointsSig)(prompt=prompt)
     # The LM frequently wraps its endpoint LaTeX in $…$ math delimiters; strip
     # them so the start/target both PARSE and render cleanly (titles re-wrap in
     # $…$, so a leftover $ would yield a doubled $$…$$).
@@ -94,9 +100,6 @@ class StartGivenTargetSig(dspy.Signature):
         desc="one short line on the goal / what to do; may use inline $…$ LaTeX")
 
 
-_start_given_target_predict = dspy.Predict(StartGivenTargetSig)
-
-
 def start_given_target(target_latex: str, context: str) -> tuple[str, str, str, str, str]:
     """LM-name (start, domain, title, given_label, start_note) for a KNOWN target.
 
@@ -104,7 +107,7 @@ def start_given_target(target_latex: str, context: str) -> tuple[str, str, str, 
     both-endpoints namer (which wasted an inferred target and nudged the LM to
     echo a multi-relation goal as an unparseable compound start; see #396).
     """
-    ep = _start_given_target_predict(target_latex=target_latex, context=context)
+    ep = _predictor(StartGivenTargetSig)(target_latex=target_latex, context=context)
     return (strip_math_delimiters(ep.start_latex),
             (ep.domain or "").strip(), (ep.title or "").strip(),
             (ep.given_label or "").strip(), (ep.start_note or "").strip())

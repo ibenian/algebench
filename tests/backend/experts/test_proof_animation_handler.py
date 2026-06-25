@@ -189,7 +189,8 @@ def test_start_given_target_strips_delimiters_and_maps_fields(monkeypatch):
     ns = types.SimpleNamespace(
         start_latex="$x^2 = 4$", domain=" algebra ", title=" Solve ",
         given_label=" Given the quadratic ", start_note=" solve for $x$ ")
-    monkeypatch.setattr(PE, "_start_given_target_predict", lambda **kw: ns)
+    # predictors are built lazily via _predictor(sig); stub it to skip the LM
+    monkeypatch.setattr(PE, "_predictor", lambda sig: (lambda **kw: ns))
     start, domain, title, given_label, start_note = PE.start_given_target("x = 2", context="")
     assert start == "x^2 = 4"           # delimiters stripped → parseable
     assert (domain, title, given_label, start_note) == (
