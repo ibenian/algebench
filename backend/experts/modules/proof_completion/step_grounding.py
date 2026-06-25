@@ -29,21 +29,24 @@ judge, and a mislabel (e.g. a narrowing step declared ``rewrite``) downgrades
 the tier by one notch.
 
 Pure module: sympy only — no LM, no DSPy, no SemanticGraphService. Heavy sympy
-calls (solveset / singularities / limit / simplify) run under a wall-clock
-guard so a pathological expression degrades to "unknown" instead of hanging.
+calls (solveset / singularities / limit / simplify) run through the killable
+:func:`cas_guard.guard` so a pathological expression is *stopped* (its worker
+SIGTERM/SIGKILLed and the core reclaimed) and the step degrades to "unknown"
+instead of hanging. Because guarded work crosses a process boundary in the
+default mode, every guarded call passes a **module-level** ``_op_*`` helper (or a
+top-level sympy entry point) — never a lambda/closure, which cannot be pickled.
 """
 
 from __future__ import annotations
 
-import atexit
 import os
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from enum import Enum
 from typing import Literal, Optional, Sequence
 
 import sympy as sp
 
+from .cas_guard import guard as _guard, cas_register_safe_function
 from .grounding import _coerce_expr, sympy_equiv
 
 # --------------------------------------------------------------------------- #
@@ -57,15 +60,23 @@ class Tier(str, Enum):
     RED = "refuted"        # computed and wrong
     GRAY = "unchecked"     # state not sympy-convertible — nothing to check
     BLUE = "plausible"     # convertible, not refuted, undecided
+    DOMAIN = "domain"      # valid by domain knowledge, not a symbolic identity
     SILVER = "verified"    # landmarks match / proven but mislabeled
     GOLD = "grounded"      # symbolically proven, label consistent
 
 
-TIER_RANK = {Tier.RED: 0, Tier.GRAY: 1, Tier.BLUE: 2, Tier.SILVER: 3, Tier.GOLD: 4}
+# DOMAIN sits between BLUE (CAS undecided) and SILVER (strong CAS evidence): an
+# LM domain-expert vouched for the move, which beats "CAS couldn't decide" but
+# never outranks actual symbolic evidence. The pure-CAS pass NEVER emits DOMAIN —
+# it is produced only by the inference-time judge rescue (``domain_rescue.py``),
+# so the offline reward stays CAS-only.
+TIER_RANK = {Tier.RED: 0, Tier.GRAY: 1, Tier.BLUE: 2,
+             Tier.DOMAIN: 3, Tier.SILVER: 4, Tier.GOLD: 5}
 
 TIER_LABEL = {
     Tier.GOLD: "Grounded",
     Tier.SILVER: "Verified",
+    Tier.DOMAIN: "Domain",
     Tier.BLUE: "Plausible",
     Tier.GRAY: "Unchecked",
     Tier.RED: "Refuted",
@@ -74,6 +85,7 @@ TIER_LABEL = {
 TIER_ICON = {
     Tier.GOLD: "🥇",
     Tier.SILVER: "🥈",
+    Tier.DOMAIN: "🎓",
     Tier.BLUE: "🔹",
     Tier.GRAY: "○",
     Tier.RED: "✗",
@@ -84,6 +96,7 @@ TIER_ICON = {
 TIER_MEANING = {
     Tier.GOLD: "symbolically proven to follow from the previous step",
     Tier.SILVER: "strong CAS evidence, short of a symbolic proof",
+    Tier.DOMAIN: "valid by domain knowledge, not a symbolic identity the CAS can check",
     Tier.BLUE: "valid math, but the CAS could not decide this step",
     Tier.GRAY: "this state is not a single convertible expression",
     Tier.RED: "the CAS shows this does NOT follow from the previous step",
@@ -153,44 +166,130 @@ class StepGroundingReport:
 
 
 # --------------------------------------------------------------------------- #
-# timeout guard
+# killable guard + picklable operations
 # --------------------------------------------------------------------------- #
 
-_TIMEOUT_S = float(os.environ.get("ALGEBENCH_VERIFY_TIMEOUT", "2.0"))
+# Every heavy sympy call routes through ``_guard`` (== ``cas_guard.guard``),
+# which in its default mode runs the work in a separate, *killable* process: a
+# wall-clock budget stops the computation and reclaims the core, instead of
+# leaking a forever-busy thread (issue #386). The escalation ladder and all
+# tunables live in ``cas_guard``.
 
-# Indirection so tests can monkeypatch the heavy sympy entry points.
+# Indirection so tests can monkeypatch the heavy sympy entry points (effective
+# in ``thread``/``inline`` isolation, which the test suite uses).
 _solveset = sp.solveset
 _singularities = sp.singularities
 _limit = sp.limit
 
 
-# One SHARED, bounded pool for every guarded call. A timed-out sympy call keeps
-# its worker busy (Python can't kill a thread), so a fresh executor per call
-# would let repeated timeouts accumulate background threads without limit. A
-# fixed-size pool caps that — the worst case is a bounded number of stuck
-# workers, after which guards return ``default`` (grounding degrades to
-# "unknown") instead of leaking. The cap is generous so a single classify's
-# handful of sequential calls never saturates it (fast calls don't queue behind
-# a stuck one); it only bounds the pathological flood of simultaneous overruns.
-_GUARD_POOL = ThreadPoolExecutor(max_workers=32, thread_name_prefix="sg-guard")
-atexit.register(_GUARD_POOL.shutdown, wait=False)
+# -- picklable operations -------------------------------------------------- #
+# In ``process`` isolation the callable handed to ``_guard`` is pickled and sent
+# to a worker, so it must be a module-level function (lambdas/closures cannot be
+# pickled). These wrap the small set of compound checks that previously used
+# inline lambdas. Each takes/returns only picklable sympy values.
+
+# Every op is registered (``@cas_register_safe_function``) so the killable guard's allow-list
+# permits it; an unregistered callable is refused (defense in depth). The three
+# ``_op_*set``/``limit`` wrappers also indirect through the monkeypatchable module
+# globals so the registered, stable callable is what the guard sees while tests
+# can still swap the underlying sympy entry point.
+
+@cas_register_safe_function
+def _op_is_subset(a, b):
+    """``a.is_subset(b)`` — True / False / None (sympy can't decide)."""
+    return a.is_subset(b)
 
 
-def _guard(fn, *args, default=None, timeout=None):
-    """Run ``fn(*args)`` with a wall-clock bound; ``default`` on timeout/error.
+@cas_register_safe_function
+def _op_set_diff(a, b):
+    """Set difference ``a - b`` (the values ``a`` has that ``b`` lacks)."""
+    return a - b
 
-    ``signal.alarm`` is unsafe under the threaded server (and on non-main
-    threads generally), so we wait on a shared, bounded worker pool instead.
-    Caveat: Python cannot kill a thread — the bound is on *waiting*, not CPU; a
-    runaway sympy call keeps its worker busy until it finishes. We mitigate by
-    (a) gating which calls run at all (cheap checks first, univariate only) and
-    (b) capping the pool so background threads can never grow unbounded.
+
+@cas_register_safe_function
+def _op_simplify_diff(a, b):
+    """``simplify(a - b)`` — 0 iff the two are equal."""
+    return sp.simplify(a - b)
+
+
+@cas_register_safe_function
+def _op_scaled_factor(ra, rb):
+    """The proportionality factor ``ra / rb``, cancelled and simplified."""
+    return sp.simplify(sp.cancel(ra / rb))
+
+
+@cas_register_safe_function
+def _op_squared_match(plhs, prhs, lhs, rhs):
+    """Is ``prev`` exactly ``curr`` squared side-for-side? (both sides match)."""
+    return bool(sp.simplify(plhs - lhs ** 2) == 0
+                and sp.simplify(prhs - rhs ** 2) == 0)
+
+
+@cas_register_safe_function
+def _op_branch_equiv(prev, curr):
+    """Do the two equations square to the same statement (equal up to branch)?"""
+    def sq(e):
+        return sp.Eq(e.lhs ** 2, e.rhs ** 2)
+    return bool(sympy_equiv(sq(prev), sq(curr)))
+
+
+@cas_register_safe_function
+def _op_sets_norm_equal(a, b):
+    """Are two finite landmark sets equal after nsimplify/simplify normalisation?"""
+    def norm(s):
+        return frozenset(sp.nsimplify(sp.simplify(v)) for v in s)
+    return norm(a) == norm(b)
+
+
+@cas_register_safe_function
+def _op_solveset(eq, x, domain):
+    """Guarded ``solveset`` (via the monkeypatchable module global)."""
+    return _solveset(eq, x, domain)
+
+
+@cas_register_safe_function
+def _op_singularities(f, x, domain):
+    """Guarded ``singularities`` (via the monkeypatchable module global)."""
+    return _singularities(f, x, domain)
+
+
+@cas_register_safe_function
+def _op_limit(f, x, point, *rest):
+    """Guarded ``limit`` (via the monkeypatchable module global)."""
+    return _limit(f, x, point, *rest)
+
+
+# -- complexity pre-gate (issue #386 option B) ----------------------------- #
+# A cheap O(n) size check run BEFORE the heavy CAS routines: an expression big
+# enough to risk a super-linear blow-up is never fed to simplify/solveset at all,
+# so the step degrades to "plausible" (CAS undecided) without even spawning the
+# guarded work. The killable guard is the hard guarantee; this just spares it the
+# obviously-intractable inputs (and the kill/respawn churn they cause). The
+# budget is generous so authored/derived math is never affected. 0 disables it.
+_MAX_OPS = int(os.environ.get("ALGEBENCH_CAS_MAX_OPS", "2500"))
+
+
+def _too_complex(*exprs) -> bool:
+    """Over budget by a SINGLE node-count pass that early-exits at the cap.
+
+    Counts nodes by walking ``.args`` and bails the instant the count exceeds
+    ``_MAX_OPS`` — so the pre-gate stays cheap even on the giant trees it exists
+    to reject (no full ``count_ops`` traversal, no big ``atoms()`` set alloc).
     """
-    t = _TIMEOUT_S if timeout is None else timeout
+    if _MAX_OPS <= 0:
+        return False
     try:
-        return _GUARD_POOL.submit(fn, *args).result(timeout=t)
+        stack = [e for e in exprs if e is not None]
+        seen = 0
+        while stack:
+            node = stack.pop()
+            seen += 1
+            if seen > _MAX_OPS:
+                return True
+            stack.extend(getattr(node, "args", ()))
     except Exception:
-        return default
+        return False
+    return False
 
 
 # --------------------------------------------------------------------------- #
@@ -225,6 +324,7 @@ def _sole_symbol(*exprs):
     return next(iter(syms)) if len(syms) == 1 else None
 
 
+@cas_register_safe_function
 def _solution_set(e, x, domain=sp.S.Reals):
     """Solution set of a relational / boolean combination of relationals.
 
@@ -278,16 +378,16 @@ def _fingerprint(e) -> Optional[_Fingerprint]:
     if x is None:
         return None
 
-    roots = _finite_set(_guard(_solveset, sp.Eq(f, 0), x, sp.S.Reals))
-    sings = _finite_set(_guard(_singularities, f, x, sp.S.Reals))
+    roots = _finite_set(_guard(_op_solveset, sp.Eq(f, 0), x, sp.S.Reals))
+    sings = _finite_set(_guard(_op_singularities, f, x, sp.S.Reals))
 
     limits: dict = {}
-    limits["+oo"] = _guard(_limit, f, x, sp.oo)
-    limits["-oo"] = _guard(_limit, f, x, -sp.oo)
+    limits["+oo"] = _guard(_op_limit, f, x, sp.oo)
+    limits["-oo"] = _guard(_op_limit, f, x, -sp.oo)
     if isinstance(sings, frozenset):
         for p in sings:
-            limits[f"{p}+"] = _guard(_limit, f, x, p, "+")
-            limits[f"{p}-"] = _guard(_limit, f, x, p, "-")
+            limits[f"{p}+"] = _guard(_op_limit, f, x, p, "+")
+            limits[f"{p}-"] = _guard(_op_limit, f, x, p, "-")
     return _Fingerprint(roots=roots, sings=sings, limits=limits)
 
 
@@ -300,9 +400,10 @@ def _vals_equal(a, b) -> Optional[bool]:
             return True
         if a.has(sp.oo, -sp.oo, sp.zoo, sp.nan) or b.has(sp.oo, -sp.oo, sp.zoo, sp.nan):
             return None  # only finite values are compared for difference
-        return bool(sp.simplify(a - b) == 0)
     except Exception:
         return None
+    d = _guard(_op_simplify_diff, a, b, default=None)
+    return None if d is None else bool(d == 0)
 
 
 def _sets_equal(a, b) -> Optional[bool]:
@@ -311,11 +412,7 @@ def _sets_equal(a, b) -> Optional[bool]:
         return None
     if a == b:
         return True
-    try:
-        norm = lambda s: {sp.nsimplify(sp.simplify(v)) for v in s}  # noqa: E731
-        return norm(a) == norm(b)
-    except Exception:
-        return None
+    return _guard(_op_sets_norm_equal, a, b, default=None)
 
 
 def _fp_compare(a: _Fingerprint, b: _Fingerprint) -> Optional[bool]:
@@ -373,6 +470,12 @@ def classify_pair(prev, curr, change_type: Optional[str] = None,
         return PairVerdict(index, Tier.GRAY, "unknown", "none", change_type, False,
                            f"{which} state is not a single convertible expression")
 
+    # Complexity pre-gate: an expression large enough to risk a CAS blow-up is
+    # not handed to the heavy routines at all — degrade to plausible up front.
+    if _too_complex(prev, curr):
+        return PairVerdict(index, Tier.BLUE, "unknown", "none", change_type, True,
+                           "expression too large to verify within the CAS budget")
+
     relation: Relation = "unknown"
     method: Method = "none"
     reason = "neither equivalence nor a valid narrowing could be established"
@@ -404,11 +507,14 @@ def classify_pair(prev, curr, change_type: Optional[str] = None,
                 relation = "equivalent"
                 if k.is_number:
                     method = "symbolic"
-                    reason = f"both sides scaled by the nonzero constant {k}"
+                    reason = f"both sides scaled by the nonzero constant ${sp.latex(k)}$"
                 else:
                     method = "scaled"
-                    reason = (f"both sides scaled by {k} — "
-                              f"equivalent wherever {k} ≠ 0")
+                    # Render the factor as LaTeX (``$…$``) so the UI tooltip shows
+                    # real math, not a raw sympy ``str`` (``A*dP``, ``\rho``…). The
+                    # factor can be long, so name it once and refer back to it.
+                    reason = (f"both sides scaled by ${sp.latex(k, mul_symbol='dot')}$ — "
+                              f"equivalent wherever that factor ≠ 0")
 
         # 2c) parametric narrows — multivariate solving steps (weakest of the
         # equation checks, so it runs only when scaled equivalence failed)
@@ -458,11 +564,11 @@ def _squared_pair(prev, curr) -> bool:
     """
     if not (isinstance(prev, sp.Equality) and isinstance(curr, sp.Equality)):
         return False
-    def _matches(lhs, rhs):
-        return (sp.simplify(prev.lhs - lhs ** 2) == 0
-                and sp.simplify(prev.rhs - rhs ** 2) == 0)
-    return bool(_guard(_matches, curr.lhs, curr.rhs, default=False)
-                or _guard(_matches, curr.rhs, curr.lhs, default=False))
+    return bool(
+        _guard(_op_squared_match, prev.lhs, prev.rhs, curr.lhs, curr.rhs,
+               default=False)
+        or _guard(_op_squared_match, prev.lhs, prev.rhs, curr.rhs, curr.lhs,
+                  default=False))
 
 
 def _branch_pair(prev, curr) -> bool:
@@ -478,8 +584,7 @@ def _branch_pair(prev, curr) -> bool:
     """
     if not (isinstance(prev, sp.Equality) and isinstance(curr, sp.Equality)):
         return False
-    sq = lambda e: sp.Eq(e.lhs ** 2, e.rhs ** 2)  # noqa: E731
-    return bool(_guard(lambda: sympy_equiv(sq(prev), sq(curr)), default=False))
+    return bool(_guard(_op_branch_equiv, prev, curr, default=False))
 
 
 def _narrows_check(prev, curr, relation, method, reason):
@@ -501,19 +606,19 @@ def _narrows_check(prev, curr, relation, method, reason):
     curr_sols = _guard(_solution_set, curr, x)
     if prev_sols is None or curr_sols is None:
         return relation, method, reason
-    contained = _guard(lambda: curr_sols.is_subset(prev_sols))
+    contained = _guard(_op_is_subset, curr_sols, prev_sols)
     if contained:
         # equal sets are equivalence, not narrowing — don't punish a `rewrite`
         # label (e.g. "multiply both sides by 2") for preserving every solution
-        if _guard(lambda: prev_sols.is_subset(curr_sols)):
+        if _guard(_op_is_subset, prev_sols, curr_sols):
             return ("equivalent", "symbolic",
                     "same solution set as the previous step")
         return ("narrows", "symbolic",
                 "every solution of this step solves the previous one (valid narrowing)")
     # provably introduces non-solutions? (only claim it when the gap is concrete)
-    gap = _guard(lambda: curr_sols - prev_sols)
+    gap = _guard(_op_set_diff, curr_sols, prev_sols)
     if isinstance(gap, sp.FiniteSet) and len(gap) > 0:
-        extra = ", ".join(sorted(str(v) for v in gap))
+        extra = ", ".join(sorted(f"${sp.latex(v)}$" for v in gap))
         return ("refuted", "symbolic",
                 f"introduces value(s) that do not solve the previous step: {extra}")
     return relation, method, reason
@@ -529,7 +634,7 @@ def _approx_close(prev, curr) -> Optional[bool]:
     True/False when the difference evaluates to a number (within / beyond
     tolerance), None when it stays symbolic (tolerance undecidable).
     """
-    d = _guard(lambda: sp.simplify(_residual(prev) - _residual(curr)))
+    d = _guard(_op_simplify_diff, _residual(prev), _residual(curr))
     if d is None or d.free_symbols:
         return None
     try:
@@ -553,7 +658,7 @@ def _scaled_residual(prev, curr):
     if not (isinstance(prev, sp.Equality) and isinstance(curr, sp.Equality)):
         return None
     ra, rb = prev.lhs - prev.rhs, curr.lhs - curr.rhs
-    k = _guard(lambda: sp.simplify(sp.cancel(ra / rb)))
+    k = _guard(_op_scaled_factor, ra, rb)
     if k is None or k == 0 or k.has(sp.oo, -sp.oo, sp.zoo, sp.nan):
         return None
     if k.is_number:
@@ -588,10 +693,10 @@ def _parametric_narrows(prev, curr, relation, method, reason):
         curr_sols = _guard(_solution_set, curr, v, sp.S.Complexes)
         if prev_sols is None or curr_sols is None:
             continue
-        if _guard(lambda: curr_sols.is_subset(prev_sols)):
+        if _guard(_op_is_subset, curr_sols, prev_sols):
             return ("narrows", "parametric",
-                    f"treating {v} as the unknown, every solution of this step "
-                    f"solves the previous one (other symbols as generic parameters)")
+                    f"treating ${sp.latex(v)}$ as the unknown, every solution of this "
+                    f"step solves the previous one (other symbols as generic parameters)")
     return relation, method, reason
 
 
@@ -653,22 +758,37 @@ def ground_steps(states: Sequence, *, change_types: Optional[Sequence] = None,
         if target_expr is not None and final is not None:
             endpoint = bool(_guard(sympy_equiv, final, target_expr, default=False))
 
-    counts = {t.value: 0 for t in Tier}
-    for pv in pairs:
-        counts[pv.tier.value] += 1
-
-    overall = min((pv.tier for pv in pairs), key=TIER_RANK.get, default=Tier.BLUE)
-    # Endpoint gate: GOLD additionally requires *reaching the goal*. Unverified
-    # endpoint caps at SILVER, a missed endpoint at BLUE (locally fine, off-goal).
-    if endpoint is False:
-        overall = min(overall, Tier.BLUE, key=TIER_RANK.get)
-    elif endpoint is None and overall is Tier.GOLD:
-        overall = Tier.SILVER
+    counts = _count_tiers(pairs)
+    overall = finalize_overall(pairs, endpoint)
 
     return StepGroundingReport(
         steps=steps, pairs=pairs, overall=overall, counts=counts,
         endpoint_reached=endpoint, reason=_overall_reason(pairs, counts, endpoint),
     )
+
+
+def _count_tiers(pairs) -> dict:
+    counts = {t.value: 0 for t in Tier}
+    for pv in pairs:
+        counts[pv.tier.value] += 1
+    return counts
+
+
+def finalize_overall(pairs, endpoint) -> Tier:
+    """The chain's overall tier: weakest link, then the endpoint gate.
+
+    Shared by ``ground_steps`` and the inference-time rescue
+    (``domain_rescue.py``), so an overridden pair re-rolls the overall the same
+    way. Endpoint gate: GOLD additionally requires *reaching the goal*; an
+    unverified endpoint caps at SILVER, a missed endpoint at BLUE (locally fine,
+    off-goal).
+    """
+    overall = min((pv.tier for pv in pairs), key=TIER_RANK.get, default=Tier.BLUE)
+    if endpoint is False:
+        overall = min(overall, Tier.BLUE, key=TIER_RANK.get)
+    elif endpoint is None and overall is Tier.GOLD:
+        overall = Tier.SILVER
+    return overall
 
 
 def _safe_coerce(s):
@@ -681,15 +801,23 @@ def _safe_coerce(s):
         return None
 
 
+# Tally wording for the overall summary. Most tier labels work as a bare
+# adjective ("1 refuted", "2 plausible" — i.e. "<n> <adj> step(s)"), but
+# "Domain" is a noun, so it gets an adjectival phrase so the tally reads as a
+# complete fragment ("1 domain-justified" → "1 domain-justified step").
+_TALLY_PHRASE = {Tier.DOMAIN: "domain-justified"}
+
+
 def _overall_reason(pairs, counts, endpoint) -> str:
     n = len(pairs)
     if n == 0:
         return "no steps to verify"
     best = counts[Tier.GOLD.value] + counts[Tier.SILVER.value]
     parts = [f"{best}/{n} steps verified"]
-    for tier in (Tier.RED, Tier.GRAY, Tier.BLUE):
+    for tier in (Tier.RED, Tier.GRAY, Tier.BLUE, Tier.DOMAIN):
         if counts[tier.value]:
-            parts.append(f"{counts[tier.value]} {TIER_LABEL[tier].lower()}")
+            phrase = _TALLY_PHRASE.get(tier, TIER_LABEL[tier].lower())
+            parts.append(f"{counts[tier.value]} {phrase}")
     if endpoint is True:
         parts.append("endpoint reached")
     elif endpoint is False:

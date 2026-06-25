@@ -4,7 +4,9 @@
 // ============================================================
 
 import { state } from '/state.js';
-import { renderKaTeX, renderMarkdown, makeAiAskButton, openChatPanel } from '/labels.js';
+import { renderKaTeX, renderMarkdown, makeAiAskButton, makeDeriveButton, openChatPanel, stripHtmlMacros } from '/labels.js';
+import { SgProofManager } from '/proof-animation/sg-proof.js';
+import { buildProofStepDerivePayload, describeDeriveStart } from '/proof-animation/derive-payload.js';
 
 // ---- Technique metadata ----
 
@@ -158,12 +160,12 @@ function preRenderProofSteps(proof) {
     });
 }
 
-/** Inject AI ask button into the actions strip of a proof step. */
+/** Inject AI ask + Derive buttons into the actions strip of a proof step. */
 function _injectProofAskButtons(stepEl, step, proof) {
     const actionsEl = stepEl.querySelector('.proof-step-actions');
     if (!actionsEl) return;
 
-    // Single "Explain" button for the step
+    // "Explain" button — prose explanation in the chat.
     const btn = makeAiAskButton('proof-ask-btn', 'Explain this step',
         () => {
             let msg = `Explain this proof step: "${step.label}"`;
@@ -171,6 +173,110 @@ function _injectProofAskButtons(stepEl, step, proof) {
             return msg;
         });
     actionsEl.appendChild(btn);
+
+    // "Derive" button — animate the micro-steps leading up to this step. Skip
+    // premises (`given` steps): they're assumptions, with nothing to derive.
+    if (step.math && step.type !== 'given') {
+        const idx = Number(stepEl.dataset.proofStepIndex);
+        const deriveBtn = makeDeriveButton(
+            'proof-ask-btn proof-step-derive-btn',
+            _deriveTooltip(proof, idx),
+            () => _onDeriveStep(idx));
+        actionsEl.appendChild(deriveBtn);
+    }
+}
+
+// ---- Per-step proof derivation (issue #382) ----
+//
+// A lazily-created SgProofManager docks derivation boxes over the proof panel,
+// reusing the same engine the semantic-graph node Derive button uses. Boxes are
+// keyed to the proof step they were launched on; navigating steps shows/hides
+// them. The manager runs without a graph renderer (no pan/zoom), so boxes stay
+// statically positioned over the panel.
+let _proofDeriveManager = null;
+
+/** Stable key for the active proof + step, scoping derivation boxes per step. */
+function _proofStepKey() {
+    if (!state.proofSpec || state.proofActiveIndex < 0) return null;
+    const entry = state.proofSpec[state.proofActiveIndex];
+    return `${_proofKey(entry, state.proofActiveIndex)}#${state.proofStepIndex}`;
+}
+
+/** Get (or lazily create) the proof-panel derivation manager + its host. */
+function _ensureProofDeriveManager() {
+    if (_proofDeriveManager && !_proofDeriveManager._destroyed) return _proofDeriveManager;
+    const panel = document.getElementById('proof-panel');
+    if (!panel) return null;
+    let host = panel.querySelector('#proof-derive-host');
+    if (!host) {
+        host = document.createElement('div');
+        host.id = 'proof-derive-host';
+        panel.appendChild(host);
+    }
+    _proofDeriveManager = new SgProofManager(host);
+    _proofDeriveManager.setCurrentStep(_proofStepKey());
+    return _proofDeriveManager;
+}
+
+/** Tear down the derivation manager (called on scene change — boxes are scene-scoped). */
+function _destroyProofDeriveManager() {
+    if (_proofDeriveManager) {
+        try { _proofDeriveManager.destroy(); } catch (_e) { /* ignore */ }
+        _proofDeriveManager = null;
+    }
+    const host = document.getElementById('proof-derive-host');
+    if (host && host.parentNode) host.parentNode.removeChild(host);
+}
+
+/** Keep the manager's visible boxes in sync with the active proof step. */
+function _syncProofDeriveStep() {
+    if (_proofDeriveManager && !_proofDeriveManager._destroyed) {
+        _proofDeriveManager.setCurrentStep(_proofStepKey());
+    }
+}
+
+/** Word the Derive button's tooltip by where the derivation starts, so the
+ *  learner knows it fills the gap from the previous line (the common case). */
+function _deriveTooltip(proof, index) {
+    switch (describeDeriveStart(proof, index)) {
+        case 'previous step': return 'Derive: fill in the steps from the previous line to here';
+        case 'givens':        return 'Derive: fill in the steps from the givens to here';
+        case 'goal':          return 'Derive: fill in the steps from the goal to here';
+        default:              return 'Derive: fill in the intermediate steps to here';
+    }
+}
+
+/** Launch a derivation for proof step `index`: animate the micro-steps from a
+ *  sensible start (preferring step index-1) to this step's expression.
+ *
+ *  Docks in the roomy semantic-graph canvas (switching to the Math view) when
+ *  the step has a graph; falls back to an in-panel box for the rare graph-less
+ *  step so the button always does something. */
+async function _onDeriveStep(index) {
+    const proof = _activeProof();
+    if (!proof) return;
+    // Make the step active (clicking a step navigates anyway) so the derivation
+    // anchors to the right step's graph / panel box.
+    if (state.proofStepIndex !== index) navigateProof(index);
+
+    const payload = buildProofStepDerivePayload(proof, index);
+    if (!payload) return;   // step has no derivable expression
+
+    // Primary: dock into the semantic-graph canvas (more room, reuses the graph's
+    // proof manager). Returns false when this step has no graph to dock onto.
+    if (typeof window.algebenchDeriveProofPayload === 'function') {
+        try {
+            if (await window.algebenchDeriveProofPayload(payload)) return;
+        } catch (e) { console.warn('proof derive → graph view failed:', e); }
+    }
+
+    // Fallback: dock an in-panel box over the proof panel.
+    const mgr = _ensureProofDeriveManager();
+    if (!mgr) return;
+    mgr.setCurrentStep(_proofStepKey());
+    const container = _activeContainer();
+    const anchor = (container && container.querySelector('.proof-step.active .proof-step-derive-btn')) || null;
+    mgr.openProof(`step:${index}`, anchor, payload);
 }
 
 
@@ -344,6 +450,9 @@ export function navigateProof(index) {
     if (index >= 0 && state._proofPreRendered && state._proofPreRendered[index]) {
         activateHighlights(state._proofPreRendered[index], steps[index]);
     }
+
+    // Keep any docked per-step derivation boxes scoped to the active step.
+    _syncProofDeriveStep();
 
     // Notify subscribers (e.g. semantic graph view) about the step change.
     try {
@@ -699,6 +808,9 @@ export function loadProof(lessonSpec, sceneIndex, stepIndex) {
     if (sceneChanged) {
         // Save step memory for outgoing proof
         _saveProofStepToMemory();
+
+        // Derivation boxes are scene-scoped — drop them when the scene changes.
+        _destroyProofDeriveManager();
 
         // Capture previous active proof id before overwriting state
         const prevProofId = state.proofSpec?.[state.proofActiveIndex]?.proof?.id;
@@ -1063,29 +1175,9 @@ export function getProofContext() {
     const proof = _activeProof();
     if (!proof) return null;
 
-    const stripHlClass = (m) => {
-        if (!m) return null;
-        // Remove all \htmlClass{name}{...} wrappers, keeping inner content
-        let s = m;
-        while (s.includes('\\htmlClass{')) {
-            const start = s.indexOf('\\htmlClass{');
-            // Find the end of the class name: \htmlClass{name}
-            const nameEnd = s.indexOf('}', start + 11);
-            if (nameEnd < 0) break;
-            // Next char should be {, find matching }
-            if (s[nameEnd + 1] !== '{') break;
-            let depth = 1, i = nameEnd + 2;
-            while (i < s.length && depth > 0) {
-                if (s[i] === '{') depth++;
-                else if (s[i] === '}') depth--;
-                i++;
-            }
-            // Replace \htmlClass{name}{content} with content
-            const content = s.slice(nameEnd + 2, i - 1);
-            s = s.slice(0, start) + content + s.slice(i);
-        }
-        return s;
-    };
+    // Unwrap \htmlClass/\htmlData highlight wrappers from step math; null for
+    // missing math (kept distinct from "" so callers can omit absent fields).
+    const stripHlClass = (m) => (m ? stripHtmlMacros(m) : null);
     const steps = proof.steps || [];
     const idx = state.proofStepIndex;
 

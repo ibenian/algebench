@@ -14,6 +14,34 @@ AlgeBench is an interactive 3D math visualizer built on MathBox / Three.js, with
 
 The server runs at `http://localhost:8785`.
 
+### CAS execution guard (sympy timeouts)
+
+Heavy sympy calls in the proof-grounding path (`solveset` / `simplify` / `limit`
+/ …) have no termination guarantee and can peg a CPU core indefinitely. They run
+through a **killable, process-isolated guard** (`backend/experts/modules/
+proof_completion/cas_guard.py`, issue #386): a wall-clock budget actually
+*stops* the computation — the worker is SIGTERM'd (graceful) then SIGKILL'd
+(hard) and the core reclaimed. The client timeout (how long the caller waits) is
+separate from this kill/respawn, so a derive never blocks on a pathological step.
+
+All tunables are environment variables (sensible defaults; nothing to set for
+normal use):
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `ALGEBENCH_CAS_ISOLATION` | `process` | `process` (killable), `thread` (waits only, legacy), or `inline` (no isolation) |
+| `ALGEBENCH_CAS_CLIENT_TIMEOUT` | `ALGEBENCH_VERIFY_TIMEOUT` (2.0s) | rung 1: how long the caller waits before degrading to "unknown" |
+| `ALGEBENCH_CAS_GRACEFUL_TIMEOUT` | `1.0` | rung 2→3: SIGTERM grace before SIGKILL on a wedged worker |
+| `ALGEBENCH_CAS_POOL_SIZE` | `min(4, cores−1)` | number of pre-warmed worker processes |
+| `ALGEBENCH_CAS_MAX_CALLS` | `200` | recycle a worker after N calls (cache/memory hygiene; 0 = never) |
+| `ALGEBENCH_CAS_START_METHOD` | `forkserver` (Linux) / `spawn` | multiprocessing start method |
+| `ALGEBENCH_CAS_SPAWN_TIMEOUT` | `30` | max wait for a fresh worker to warm up (import), charged separately from a call |
+| `ALGEBENCH_CAS_ACQUIRE_TIMEOUT` | client timeout | max wait for a free worker under load before degrading |
+| `ALGEBENCH_CAS_MAX_OPS` | `2500` | complexity pre-gate: skip the CAS on expressions larger than this (0 = off) |
+
+`ALGEBENCH_VERIFY_TIMEOUT` is still honored as the client-timeout default for
+back-compat. The test suite runs in `thread` isolation (see `tests/conftest.py`).
+
 ### Running Scripts
 
 **Always use `./run.sh` to run project Python scripts** — never call `.venv/bin/python` or `python3` directly. `run.sh` handles venv creation and dependency installation automatically.
@@ -119,6 +147,7 @@ docs/              Architecture, sandbox model, feature ideas
 - **Pinned dependencies** — `requirements.txt` pins `gemini-live-tools` to a specific tag. Update the tag intentionally, don't switch back to `HEAD`.
 - **JS from package** — `voice-character-selector.js` is served at runtime from the installed `gemini_live_tools` package via `get_static_content()`. Do not copy it into `static/`.
 - **`.venv` is local** — recreate with `rm -rf .venv && ./algebench` if broken.
+- **Native arm64 venv via `uv`** — `run.sh`/`algebench` provision `.venv` with `uv` when available, on a uv-managed CPython pinned by `.python-version` (3.13). This keeps the venv native arm64 on Apple Silicon instead of an x86 Homebrew Python under Rosetta, which roughly halves sympy throughput (issue #388). Without `uv` they fall back to `python3 -m venv`. Verify with `.venv/bin/python3 -c "import platform; print(platform.machine())"` → `arm64`. Dev-only: cloud deploys (Render, HF) are native Linux and unaffected.
 - **Security** — path traversal and XSS vulnerabilities were previously fixed. Be careful with user-supplied paths in the server and anything that renders untrusted expressions.
 - **Sync `main` before branching.** Run `git fetch origin && git checkout main && git pull --ff-only origin main` *before* `git checkout -b <feature>`. Branching off a stale `main` invites needless rebases and merge conflicts later.
 - **Always create a feature branch before starting work on an issue.** Create the branch immediately — before making any code changes — so all work is tracked from the start.

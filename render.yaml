@@ -32,3 +32,8 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: "3.12.7"
+      # Staging-only: turn on backend.* DEBUG logs for diagnostics. create_app
+      # reads this and configures the `backend` logger, so it works under the
+      # uvicorn/asgi entrypoint (not just the CLI). Prod leaves it unset (WARNING).
+      - key: ALGEBENCH_LOG_LEVEL
+        value: DEBUG

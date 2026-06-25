@@ -6,9 +6,12 @@ number: a graded score in ``[0, 1]`` so a ``Plausible`` derivation scores *mid*
 (not floored) while a ``Refuted`` step drags the blend down on its own weight —
 nothing short-circuits or rejects (that is the threshold's job, in ``reward.py``).
 
-The map is the existing ordinal ``TIER_RANK / 4`` (issue #372 §B):
+The map is the existing ordinal ``TIER_RANK / max_rank`` (issue #372 §B):
 
-    Grounded 1.0 · Verified 0.75 · Plausible 0.5 · Unchecked 0.25 · Refuted 0.0
+    Grounded 1.0 · Verified 0.8 · Plausible 0.4 · Unchecked 0.2 · Refuted 0.0
+
+(The ``DOMAIN`` tier — rank 3 of 5 — only ever appears in the *inference-time*
+judge rescue, never in this pure-CAS reward, so the reward stays CAS-only.)
 
 We score the **mean of per-transition tiers** (a finer gradient than the
 weakest-link overall tier, as the issue notes). This module owns the

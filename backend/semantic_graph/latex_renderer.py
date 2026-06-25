@@ -74,11 +74,25 @@ def to_latex(
 
     incoming: dict[str, list] = {nid: [] for nid in nodes}
     outdeg: dict[str, int] = {nid: 0 for nid in nodes}
+    # Structural fan-out, EXCLUDING ``wrt`` metadata edges. Used only to decide
+    # whether a node is a shared (DAG) occurrence needing a per-occurrence id.
+    # A derivative's variable is the SAME node as a variable inside its operand
+    # (``d/dx (x^2)``): the derivative renders ``\frac{d}{dx}`` from the
+    # ``with_respect_to`` string (it does NOT re-emit the wrt node), so counting
+    # the wrt edge would wrongly push the operand's ``x`` to a shared
+    # ``x__power_…`` id that no longer matches the bare ``x`` elsewhere — breaking
+    # the morph. Hence wrt edges don't count toward ``dag_deg``. (An integral's
+    # variable is a first-class ``differential`` node on a ``wrt`` edge too; it
+    # has out-degree 1 anyway, so it stays bare either way.)
+    dag_deg: dict[str, int] = {nid: 0 for nid in nodes}
     for e in graph.edges:
         if e.to not in nodes or e.from_ not in nodes:
             raise StructuralRenderError("dangling edge")
         incoming[e.to].append((e.role, e.from_))
-        outdeg[e.from_] += 1
+        outdeg[e.from_] += 1            # all edges → root detection (a wrt-only
+                                        # variable is still not a root)
+        if e.role != "wrt":
+            dag_deg[e.from_] += 1
 
     roots = [nid for nid in nodes if outdeg[nid] == 0]
     if len(roots) != 1:
@@ -97,7 +111,7 @@ def to_latex(
         # structure reorders (e.g. an RHS term becoming a fraction numerator).
         # Non-shared nodes keep their bare id (the cross-state match key). ("~"
         # is LaTeX-active, so the separator is "__".)
-        if outdeg[nid] > 1 and parent_oid:
+        if dag_deg[nid] > 1 and parent_oid:
             key = (nid, parent_oid)
             j = occ.get(key, 0)
             occ[key] = j + 1
@@ -149,6 +163,13 @@ def _emit_body(n, ins, nodes, incoming, child, oid, gw) -> tuple[str, int]:
     t, op = n.type, n.op
 
     if t in ("scalar", "vector"):
+        return (n.latex or n.id, _ATOM)
+    if t == "differential":
+        # An integral's differential (``dv``) — a leaf rendered from its own
+        # latex, like any symbol. It carries a ``data-n`` (its id, e.g. ``dv``)
+        # so it morphs to/from a loose ``dv`` symbol across the ∫ boundary. The
+        # id already includes the ``d`` (``dv``/``dx``), so it is the right
+        # fallback when ``latex`` is absent.
         return (n.latex or n.id, _ATOM)
     if t == "constant":
         name = n.latex or n.id
@@ -257,6 +278,31 @@ def _emit_operator(n, op, ins, nodes, incoming, child, oid, gw) -> tuple[str, in
         if not wrt:
             raise StructuralRenderError("derivative wrt")
         return (f"\\frac{{d}}{{d {wrt}}} {child(operands[0], _MUL)}", _MUL)
+
+    if op in ("integral", "closed_integral"):
+        # ``\int integrand d<var>``. The integrand is the unroled operand; each
+        # integration variable is a first-class ``differential`` child (``wrt``
+        # edge) rendered like any node — it carries its own ``data-n`` and morphs
+        # to/from a loose ``dv`` symbol for free. ``lb``/``ub`` edges make it a
+        # definite integral. Mirrors graph_to_sympy (see grounding.py).
+        operands = [c for role, c in ins if role not in ("wrt", "lb", "ub")]
+        if len(operands) != 1:
+            raise StructuralRenderError("integral operand")
+        diffs = [c for role, c in ins if role == "wrt"]
+        if not diffs:
+            raise StructuralRenderError("integral differential")
+        base = "\\oint" if op == "closed_integral" else "\\int"
+        lb = [c for role, c in ins if role == "lb"]
+        ub = [c for role, c in ins if role == "ub"]
+        # One integral sign per integration variable (∫∫ for a double integral).
+        # Definite bounds attach to the first sign (the model carries a single
+        # lower/upper bound per node — multi-variable definite integrals aren't
+        # modeled, and fail the single-root check earlier rather than here).
+        first = base + (f"_{{{child(lb[0], _LOGIC)}}}^{{{child(ub[0], _LOGIC)}}}"
+                        if lb and ub else "")
+        sign = first + base * (len(diffs) - 1)
+        diff = "".join(f"\\,{child(c, _MUL)}" for c in diffs)
+        return (f"{sign} {child(operands[0], _MUL)}{diff}", _MUL)
 
     if op in _LOGIC_LATEX:
         l, r = _binary(ins)

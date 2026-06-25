@@ -10,7 +10,7 @@
 import { ProofAnimator } from '/proof-animation/proof-animation.js';
 import { invokeExpert } from '/expert-client.js';
 import { nextDockSeq } from '/proof-animation/dock-seq.js';
-import { makeAiAskButton } from '/labels.js';
+import { makeAiAskButton, makeDeriveButton } from '/labels.js';
 
 // Session-persistent cache of derivation results, keyed by the FULL request
 // shape (everything that affects the derivation — target/start/domain plus
@@ -20,6 +20,7 @@ const _DERIVE_CACHE = new Map();
 const _cacheKey = (p) => JSON.stringify({
     t: p.target_latex || '', s: p.start_latex || '', d: p.domain || '',
     g: p.goal || '', gv: p.givens || [], i: p.intent || '', c: p.context || null,
+    ps: p.previous_steps || [],   // affects lesson_context + start inference
 });
 
 /** Drop all cached derivations (call on a new lesson — step keys/context change). */
@@ -280,6 +281,9 @@ export class SgProofManager {
     }
 
     async _runDerivation(entry, payload) {
+        // Remember the request so a nested "derive this step" can inherit its
+        // lesson context (the step payload from the animator has none of its own).
+        entry.payload = payload;
         // Guard non-derivable nodes (operators / structural nodes with no
         // expression) — fire nothing, just explain.
         if (!payload || !payload.target_latex || !String(payload.target_latex).trim()) {
@@ -336,6 +340,8 @@ export class SgProofManager {
             entry.animator = new ProofAnimator(paWrap, data, {
                 katex: this.katex,
                 aiAskButton: makeAiAskButton,
+                deriveButton: makeDeriveButton,
+                onDerive: (p, anchorEl) => this._deriveFromAnimator(entry, p, anchorEl),
                 fitHeight: true,
             });
         } catch (e) {
@@ -346,6 +352,21 @@ export class SgProofManager {
         // No re-fit here: the ProofAnimator constructor already fit itself, and any
         // later size change is handled by its own ResizeObserver.
         this._updatePositions();
+    }
+
+    // A "derive this step" click inside ``parentEntry``'s animator: dock a fresh
+    // derivation box for the sub-step, anchored beside the clicked button. The
+    // step payload carries no lesson context, so inherit the parent's.
+    _deriveFromAnimator(parentEntry, payload, anchorEl) {
+        if (this._destroyed || !payload || !payload.target_latex) return;
+        if (!payload.context && parentEntry && parentEntry.payload && parentEntry.payload.context) {
+            payload = { ...payload, context: parentEntry.payload.context };
+        }
+        // Stable id per (parent, target) so re-deriving the same sub-step
+        // re-focuses its box instead of stacking duplicates.
+        const key = String(payload.target_latex).replace(/\s+/g, '');
+        const parentId = parentEntry ? parentEntry.nodeId : 'anim';
+        this.openProof(`${parentId}::sub::${key}`, anchorEl, payload);
     }
 
     _renderLoading(entry, payload) {

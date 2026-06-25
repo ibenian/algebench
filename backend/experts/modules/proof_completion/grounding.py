@@ -26,6 +26,7 @@ import sympy as sp
 
 from backend.model.semantic_graph import SemanticGraph
 
+from .cas_guard import cas_register_safe_function
 from .graph_ops import apply, canonical_equal
 
 # op name -> sympy function (single-argument functions)
@@ -79,6 +80,7 @@ def _symbol(node) -> sp.Expr:
     return sp.Symbol(name)
 
 
+@cas_register_safe_function
 def graph_to_sympy(graph: SemanticGraph) -> sp.Expr:
     """Reconstruct a sympy expression from the graph structure. Raise if unmodeled."""
     nodes = {n.id: n for n in graph.nodes}
@@ -116,7 +118,7 @@ def graph_to_sympy(graph: SemanticGraph) -> sp.Expr:
         elif t == "number":
             res = sp.sympify(n.label if n.label is not None else n.value)
         elif t == "operator":
-            res = _eval_operator(n, op, ins, ev)
+            res = _eval_operator(n, op, ins, ev, nodes)
         elif t == "function":
             args = [ev(c) for _, c in ins]
             fn = _FUNC.get(op or "")
@@ -135,7 +137,7 @@ def graph_to_sympy(graph: SemanticGraph) -> sp.Expr:
     return ev(roots[0])
 
 
-def _eval_operator(n, op, ins, ev) -> sp.Expr:
+def _eval_operator(n, op, ins, ev, nodes) -> sp.Expr:
     if op == "add":
         return sp.Add(*[ev(c) for _, c in ins])
     if op == "multiply":
@@ -170,27 +172,33 @@ def _eval_operator(n, op, ins, ev) -> sp.Expr:
             raise UngroundableGraph("derivative wrt")
         return sp.Derivative(f, *wrt)
     if op == "integral":
-        # Mirrors the derivative case: the integrand is the unroled operand; the
-        # integration variable comes from ``with_respect_to`` (else the ``wrt``
-        # edge); optional ``lb``/``ub`` edges make it a definite integral.
+        # The integrand is the unroled operand; each integration variable is read
+        # off a first-class ``differential`` child (``wrt`` edge), keeping CAS
+        # grounding fidelity — sympy needs the variable explicit or it can't
+        # integrate. Optional ``lb``/``ub`` edges make it a definite integral.
         operands = [c for role, c in ins if role not in ("wrt", "lb", "ub")]
         if len(operands) != 1:
             raise UngroundableGraph("integral operand")
         f = ev(operands[0])
-        if n.with_respect_to:
+        diffs = [c for role, c in ins
+                 if role == "wrt" and c in nodes and nodes[c].type == "differential"]
+        syms = [sp.Symbol((nodes[c].with_respect_to or "").strip())
+                for c in diffs if (nodes[c].with_respect_to or "").strip()]
+        if not syms and n.with_respect_to:
+            # Back-compat: older graphs carry the variable(s) on the integral's
+            # ``with_respect_to`` (with a ``wrt`` edge from the bare variable)
+            # rather than on a differential node.
             syms = [sp.Symbol(s.strip())
                     for s in n.with_respect_to.split(",") if s.strip()]
-            var = syms[0] if syms else None
-        else:
-            wrt = [ev(c) for role, c in ins if role == "wrt"]
-            var = wrt[0] if wrt else None
-        if var is None:
-            raise UngroundableGraph("integral wrt")
+        if not syms:
+            raise UngroundableGraph("integral differential")
         lb = [ev(c) for role, c in ins if role == "lb"]
         ub = [ev(c) for role, c in ins if role == "ub"]
         if lb and ub:
-            return sp.Integral(f, (var, lb[0], ub[0]))
-        return sp.Integral(f, var)
+            # Definite integrals carry a single bound pair (multi-variable
+            # definite integrals aren't modeled); bind it to the first variable.
+            return sp.Integral(f, (syms[0], lb[0], ub[0]))
+        return sp.Integral(f, *syms)
     if op in _LOGIC:
         left, right = _binary_operands(op, ins, ev)
         return _LOGIC[op](left, right)
@@ -263,6 +271,7 @@ def _as_residual(expr):
     return sp.expand(expr)
 
 
+@cas_register_safe_function
 def sympy_equiv(a, b) -> bool:
     """True iff ``a`` and ``b`` denote the same statement.
 

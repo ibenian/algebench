@@ -29,8 +29,8 @@
   "$defs": {
     "nodeType": {
       "type": "string",
-      "enum": ["scalar", "vector", "constant", "number", "operator", "function", "relation", "expression", "text", "annotation", "ket", "bra", "braket"],
-      "description": "The semantic role of the node. ``ket`` / ``bra`` are Dirac-notation state vectors (``|ψ⟩`` / ``⟨ψ|``); ``braket`` is reserved for legacy graphs — newer parses emit inner products as ``type=operator`` with ``op=inner_product``."
+      "enum": ["scalar", "vector", "constant", "number", "operator", "function", "relation", "expression", "text", "annotation", "differential", "ket", "bra", "braket"],
+      "description": "The semantic role of the node. ``differential`` is the integration differential of an integral (``dv`` in ``∫ 1/v dv``) — a leaf node carrying the integration variable in ``with_respect_to`` and connected to its integral by a ``wrt`` edge. ``ket`` / ``bra`` are Dirac-notation state vectors (``|ψ⟩`` / ``⟨ψ|``); ``braket`` is reserved for legacy graphs — newer parses emit inner products as ``type=operator`` with ``op=inner_product``."
     },
     "operatorOp": {
       "type": "string",
@@ -84,7 +84,7 @@
         },
         "with_respect_to": {
           "type": "string",
-          "description": "Comma-separated node ID(s) of the variable(s) of operation for derivative, integral, sum, product, and tends_to operators (e.g. \"x\" for d/dx, \"x, y\" for ∂²/∂x∂y, \"x\" for lim x→a). Each ID references a node in the graph."
+          "description": "Comma-separated node ID(s) of the variable(s) of operation for derivative, integral, sum, product, and tends_to operators (e.g. \"x\" for d/dx, \"x, y\" for ∂²/∂x∂y, \"x\" for lim x→a). On a ``differential`` node it holds the single integration variable id (e.g. \"v\" for the ``dv`` differential). For an ``integral`` node it is summary metadata mirroring its differential nodes' variables; the authoritative variables are the differential children. Each ID references a node in the graph."
         },
         "lower_bound": {
           "type": "string",
@@ -182,7 +182,7 @@
         "role": {
           "type": "string",
           "enum": ["lhs", "rhs", "wrt", "exp", "base", "lb", "ub", "value", "condition", "modulus", "assertion"],
-          "description": "Operand position or relationship. 'lhs'/'rhs' for asymmetric operators (comparisons, tends_to). 'wrt' for the differentiation/integration variable edge into derivative/integral nodes. 'exp' for the exponent edge into a power node with symbolic exponent. 'base' for the base argument edge into a log function node. 'lb'/'ub' for lower/upper bound edges into sum/product nodes. 'value'/'condition' for piecewise branch nodes — 'value' is the branch result, 'condition' is the guard predicate. 'modulus' for the modulus operand of a congruence relation. 'assertion' for an assertion-form relation (e.g. X=k) feeding into a probability function P(X=k). Omit for symmetric operators (add, multiply, equals)."
+          "description": "Operand position or relationship. 'lhs'/'rhs' for asymmetric operators (comparisons, tends_to). 'wrt' for the variable-of-operation edge: the differentiation variable into a derivative node, the index variable into a sum/product node, and the 'differential' node (e.g. the 'dv' of ∫ 1/v dv) into its integral node. 'exp' for the exponent edge into a power node with symbolic exponent. 'base' for the base argument edge into a log function node. 'lb'/'ub' for lower/upper bound edges into sum/product nodes. 'value'/'condition' for piecewise branch nodes — 'value' is the branch result, 'condition' is the guard predicate. 'modulus' for the modulus operand of a congruence relation. 'assertion' for an assertion-form relation (e.g. X=k) feeding into a probability function P(X=k). Omit for symmetric operators (add, multiply, equals)."
         }
       }
     },

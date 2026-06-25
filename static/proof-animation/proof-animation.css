@@ -29,6 +29,28 @@
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.45);
 }
 
+/* Math-aware tooltip (JS-positioned) for confidence badges — unlike the CSS
+   data-tip, this renders inline $…$ LaTeX (the grounding reasons embed real
+   expressions). Anchored within .pa-root (position: relative). */
+.pa-root .pa-mathtip {
+  position: absolute;
+  display: none;
+  z-index: 31;
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: rgba(10, 12, 26, 0.97);
+  border: 1px solid var(--pa-border);
+  color: #e5e7eb;
+  font: 400 0.72rem/1.4 var(--font-sans, system-ui, -apple-system, "Segoe UI", sans-serif);
+  text-align: center;
+  white-space: normal;
+  width: max-content;
+  max-width: 260px;
+  pointer-events: none;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.45);
+}
+.pa-root .pa-mathtip .katex { font-size: 1em; color: #e5e7eb; }
+
 .pa-root {
   --pa-fg: var(--text-color, #1a1a2e);
   --pa-muted: var(--muted-color, #6b7280);
@@ -290,6 +312,8 @@
   --pa-tier-grounded-bg: rgba(212, 160, 23, 0.16);
   --pa-tier-verified: #9aa3b5;                    /* silver — strong evidence */
   --pa-tier-verified-bg: rgba(154, 163, 181, 0.18);
+  --pa-tier-domain: #2fb6a3;                      /* teal   — domain-justified */
+  --pa-tier-domain-bg: rgba(47, 182, 163, 0.18);
   --pa-tier-plausible: var(--pa-accent);          /* blue   — undecided */
   --pa-tier-plausible-bg: rgba(99, 102, 241, 0.16);
   --pa-tier-unchecked: var(--pa-muted);           /* gray   — not convertible */
@@ -299,6 +323,7 @@
 }
 .pa-conf-grounded    { --pa-conf-fg: var(--pa-tier-grounded);    --pa-conf-bg: var(--pa-tier-grounded-bg); }
 .pa-conf-verified  { --pa-conf-fg: var(--pa-tier-verified);  --pa-conf-bg: var(--pa-tier-verified-bg); }
+.pa-conf-domain    { --pa-conf-fg: var(--pa-tier-domain);    --pa-conf-bg: var(--pa-tier-domain-bg); }
 .pa-conf-plausible { --pa-conf-fg: var(--pa-tier-plausible); --pa-conf-bg: var(--pa-tier-plausible-bg); }
 .pa-conf-unchecked { --pa-conf-fg: var(--pa-tier-unchecked); --pa-conf-bg: var(--pa-tier-unchecked-bg); }
 .pa-conf-refuted   { --pa-conf-fg: var(--pa-tier-refuted);   --pa-conf-bg: var(--pa-tier-refuted-bg); }

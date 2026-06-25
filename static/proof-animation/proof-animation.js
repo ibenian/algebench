@@ -54,6 +54,15 @@ export class ProofAnimator {
     // has no chat panel and omits it — no factory, no buttons rendered.
     this._aiAsk = opts.aiAskButton || null;
     this._nextAskBtn = null;
+    // Optional "Derive this step" integration: a button factory (className,
+    // title, onClick) → <button> plus an onDerive(payload, anchorEl) handler the
+    // host uses to dock a fresh derivation. Both come from the app (SgProofManager
+    // passes labels.js makeDeriveButton + a dock callback); the standalone report
+    // omits them, so no derive button renders. Lets a learner break a single
+    // animation step into finer sub-steps on demand.
+    this._deriveBtnFactory = typeof opts.deriveButton === "function" ? opts.deriveButton : null;
+    this._onDerive = typeof opts.onDerive === "function" ? opts.onDerive : null;
+    this._deriveBtnEl = null;
     // Optional host hook fired after every internal relayout (resize / fonts), so
     // a host that scales this widget to fit a box (SgProofManager) can re-fit AFTER
     // our fixed zone heights are final — otherwise its scale races our relayout and
@@ -130,6 +139,14 @@ export class ProofAnimator {
       next.classList.add("pa-has-ask");
       const ask = document.createElement("span"); ask.className = "pa-ask-btn pa-ask-current";
       opHost.append(ask);
+    }
+    // The Derive button is a second inline button in the live op-row — mirror it
+    // here too, or the probe under-measures the caption width (and reserved meta
+    // height) whenever Derive is present, letting the controls row jump.
+    if (this._deriveBtnFactory && this._onDerive) {
+      probe.classList.add("pa-has-ask");
+      const der = document.createElement("span"); der.className = "pa-ask-btn pa-derive-btn";
+      opHost.append(der);
     }
     // (The overall-confidence pill is an absolute OVERLAY on the widget — out
     // of flow, so it does not participate in the meta height reservation.)
@@ -380,6 +397,16 @@ export class ProofAnimator {
       this._nextAskBtn = this._aiAsk("pa-ask-btn pa-ask-next", "Predict the next step with AI",
         () => this._askNextMessage());
       nextPill.classList.add("pa-has-ask");
+    }
+    // Derive button — sits beside the current-step ask button; breaks THIS step
+    // into finer sub-steps (a fresh derivation toward this step's expression).
+    if (this._deriveBtnFactory && this._onDerive) {
+      const meta = this.container.querySelector(".pa-meta");
+      meta.classList.add("pa-has-ask");
+      this._deriveBtnEl = this._deriveBtnFactory(
+        "pa-ask-btn pa-derive-btn", "Derive this step — break it into finer sub-steps",
+        () => this._deriveCurrent(this._deriveBtnEl));
+      meta.querySelector(".pa-op-row").appendChild(this._deriveBtnEl);
     }
     this.container.querySelector(".pa-play").onclick = () => this._togglePlay();
     this.container.querySelector(".pa-speed").onclick = () => {
@@ -1146,12 +1173,61 @@ export class ProofAnimator {
     // Tooltip: when the CAS reached a verdict (or for the start state) the
     // concrete reason IS the story — including a mislabel downgrade, where the
     // generic tier meaning ("could not decide") would contradict it. Only a
-    // genuinely undecided step leads with the tier meaning.
-    let tip = (c.relation === "unknown")
+    // genuinely undecided step leads with the tier meaning. A domain-justified
+    // step (#385) always leads with its specific reason — the judge's rationale
+    // already restates the meaning, so the generic prefix would just repeat it.
+    let tip = (c.relation === "unknown" && c.tier !== "domain")
       ? `${c.label} — ${c.meaning || ""}${c.reason ? ` (${c.reason})` : ""}`
       : `${c.label} — ${c.reason || c.meaning || ""}`;
-    el.setAttribute("data-tip", tip);
-    el.setAttribute("aria-label", tip);
+    this._attachMathTip(el, tip);   // reasons embed $…$ LaTeX — render it
+  }
+
+  // Tooltip (anchored to ``el``) whose text may contain inline $…$ LaTeX,
+  // rendered with KaTeX. The confidence reasons embed real expressions (e.g.
+  // "scaled by $\frac{…}{…}$") that the plain CSS data-tip can't render, so
+  // these badges use a JS tooltip instead. Listeners bind once; re-calls just
+  // swap the text. ``aria-label`` keeps a plain-text version for a11y.
+  _attachMathTip(el, text) {
+    el._mathTipText = text || "";
+    el.setAttribute("aria-label", this._plainOp(text || ""));
+    el.removeAttribute("data-tip");        // ensure no double (CSS) tooltip
+    if (el._mathTipBound) return;
+    el._mathTipBound = true;
+    const show = () => this._showMathTip(el);
+    const hide = () => this._hideMathTip();
+    el.addEventListener("mouseenter", show);
+    el.addEventListener("mouseleave", hide);
+    el.addEventListener("focus", show);
+    el.addEventListener("blur", hide);
+  }
+
+  _showMathTip(el) {
+    const text = el && el._mathTipText;
+    if (!text) return;
+    let tip = this._mathTip;
+    if (!tip) {
+      tip = document.createElement("div");
+      tip.className = "pa-mathtip";
+      this.container.appendChild(tip);
+      this._mathTip = tip;
+    }
+    this._caption(tip, text);              // render $…$ segments with KaTeX
+    tip.style.display = "block";
+    tip.style.left = "0px";
+    tip.style.top = "0px";
+    const cr = this.container.getBoundingClientRect();
+    const br = el.getBoundingClientRect();
+    const tw = tip.offsetWidth, th = tip.offsetHeight;
+    let left = (br.left - cr.left) + br.width / 2 - tw / 2;
+    left = Math.max(4, Math.min(left, cr.width - tw - 4));
+    let top = (br.top - cr.top) - th - 8;
+    if (top < 4) top = (br.bottom - cr.top) + 8;   // flip below when no room above
+    tip.style.left = `${left}px`;
+    tip.style.top = `${top}px`;
+  }
+
+  _hideMathTip() {
+    if (this._mathTip) this._mathTip.style.display = "none";
   }
 
   // The overall-confidence pill (static for the derivation): icon + tier label
@@ -1181,8 +1257,7 @@ export class ProofAnimator {
     // The overall reason already summarizes the chain (tallies + endpoint), so
     // the pill tooltip is "<Label> — <summary>", not the per-step meaning.
     const tip = `${oc.label} — ${oc.reason || oc.meaning || ""} · click to pin details`;
-    el.setAttribute("data-tip", tip);
-    el.setAttribute("aria-label", tip);
+    this._attachMathTip(el, tip);
     // Reveal-on-demand: the chip is COMPACT (icon only) by default; hovering it
     // peeks the full badge display (label + tally + per-step badge + tinted
     // step dots), and clicking pins/unpins that state (pa-conf-on).
@@ -1204,6 +1279,10 @@ export class ProofAnimator {
   _updateStepButtons() {
     this.container.querySelectorAll(".pa-step").forEach((b, i) =>
       b.classList.toggle("pa-active", i === this.current));
+    // The start state (step 0) has nothing before it to derive — hide the button.
+    // Done HERE (not in _syncUI) because forward steps animate via _beginMetaPromote,
+    // which calls _updateStepButtons but skips _syncUI.
+    if (this._deriveBtnEl) this._deriveBtnEl.style.display = this.current === 0 ? "none" : "";
   }
 
   // If the controls row would overflow the container width, hide the numbered
@@ -1253,6 +1332,36 @@ export class ProofAnimator {
     return s.plain || s.input_latex || s.latex || "";
   }
 
+  // Build a derive request for the CURRENT step and hand it to the host to dock.
+  // Target = this step's expression; START = the immediately previous step so the
+  // derivation fills the gap FROM it TO this step. (Leaving the start to inference
+  // produced degenerate results — the model inferred a start ≈ the target, so the
+  // first two states came out identical.) The earlier steps still ride along as
+  // ``previous_steps`` context; domain carries over; the host adds lesson context.
+  _deriveCurrent(anchorEl) {
+    if (!this._onDerive) return;
+    const i = this.current;
+    const target = this._stepExpr(i);
+    if (!target) return;
+    const payload = { target_latex: target };
+    if (this.data.domain) payload.domain = this.data.domain;
+    // Anchor the start to the previous step (skip if it's somehow equal/empty).
+    if (i > 0) {
+      const prev = this._stepExpr(i - 1);
+      if (prev && prev.trim() && prev.trim() !== target.trim()) payload.start_latex = prev;
+    }
+    const previous_steps = this.data.steps.slice(0, i).map((s, k) => ({
+      step: k + 1,
+      label: s.operation || null,
+      math: this._stepExpr(k),
+    })).filter(p => p.math);
+    if (previous_steps.length) payload.previous_steps = previous_steps;
+    // intent hint from the step's own operation (what move produced it)
+    const op = this.data.steps[i].operation;
+    if (op) payload.intent = String(op).trim();
+    this._onDerive(payload, anchorEl);
+  }
+
   // Chat message for the "ask about the current step" button.
   _askCurrentMessage() {
     const i = this.current;
@@ -1261,7 +1370,20 @@ export class ProofAnimator {
       + (this.data.title ? ` "${this.data.title}"` : "") + `:\n$$${this._stepExpr(i)}$$`;
     if (s.operation) msg += `\nOperation: ${s.operation}`;
     if (s.justification) msg += `\nJustification: ${s.justification}`;
-    msg += `\nCan you explain this step — what it does and why it's valid?`;
+    // A DOMAIN-tier step is NOT a symbolic identity — the CAS couldn't verify it
+    // and an LM domain expert vouched for it instead. Pass that verdict + reason
+    // so the AI addresses the domain justification rather than assuming the step
+    // is symbolically proven (and can confirm or challenge the expert's claim).
+    const c = this._conf(i);
+    if (c && c.tier === "domain") {
+      msg += `\n\nNote: a symbolic checker could NOT verify this step — it's marked`
+        + ` "${c.label || "Domain"}" (${c.meaning || "valid by domain knowledge, not a symbolic identity"}).`;
+      if (c.reason) msg += ` The reasoning given was: ${c.reason}.`;
+      msg += `\nIs that domain justification sound? Explain the principle it relies on`
+        + ` and whether the step genuinely follows.`;
+    } else {
+      msg += `\nCan you explain this step — what it does and why it's valid?`;
+    }
     return msg;
   }
 
@@ -1320,10 +1442,9 @@ export class ProofAnimator {
       if (!el.textContent.trim()) return;
       const g = el.cloneNode(true);
       g.classList.add("pa-meta-ghost");
-      // Force absolute inline (beats any selector): the confidence badge carries
-      // a data-tip, and the tooltip rule `.pa-root [data-tip]{position:relative}`
-      // outranks `.pa-meta-ghost{position:absolute}` — a relative ghost would
-      // stay in flow and sink to the bottom of the meta column by the nav.
+      // Force absolute inline (beats any selector that might keep a ghost in
+      // flow) so it fades out exactly over its source spot instead of sinking to
+      // the bottom of the meta column by the nav.
       g.style.position = "absolute";
       g.removeAttribute("data-tip");   // ghosts are decorative — no tooltip
       g.removeAttribute("aria-label");
