@@ -58,6 +58,22 @@ def test_unbalanced_braces_inside_segment_flagged():
     assert any("unbalanced" in m for m in issues)
 
 
+def test_json_mangled_control_char_flagged():
+    # ``\frac`` written with one backslash → JSON parse leaves a form feed where
+    # the ``\f`` was. Delimiters/braces stay balanced, so this is caught only by
+    # the control-char check (the parse-boundary repair normally fixes it first).
+    issues = prose_issues("substitute $F_D = \x0crac{1}{2} \rho A$", where="step 1 operation")
+    assert any("control character" in m for m in issues)
+    assert any("step 1 operation" in m for m in issues)
+
+
+def test_real_whitespace_in_prose_not_flagged_as_mangled():
+    # a genuine line break in prose — even right before a lowercase word, and
+    # even with a CR inside it — is whitespace, not mangling: only control chars
+    # INSIDE $…$ are flagged, so this must NOT raise a false positive.
+    assert prose_issues("first line\nthen more, see $x = 2$", where="op") == []
+
+
 # --------------------------------------------------------------------------- #
 # expr_latex (raw math — no delimiters allowed)
 # --------------------------------------------------------------------------- #

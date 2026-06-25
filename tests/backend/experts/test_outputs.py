@@ -108,6 +108,79 @@ def test_overlong_expr_latex_still_rejected():
                        justification="j", change_type="rewrite")
 
 
+# --- JSON-escape mangling repair (the \frac→"rac", \rho→"ho" bug) -------------
+
+# The model emits a prose field with a SINGLE backslash inside the JSON string
+# (``$\frac…$``); the JSON parser reads ``\f``/``\r`` as control-char escapes and
+# eats the command's first letter. ``\x0c`` (form feed) is what ``\f`` leaves
+# behind, ``\x0d`` (CR) is what ``\r`` leaves behind.
+_MANGLED_OP = "Substitute drag force, $F_D = \x0crac{1}{2} \rho A C_d V^2$, here."
+_FIXED_OP = "Substitute drag force, $F_D = \\frac{1}{2} \\rho A C_d V^2$, here."
+
+
+def test_mangled_operation_is_repaired():
+    step = DerivationStep(operation=_MANGLED_OP, expr_latex="x = 2",
+                          justification="j", change_type="substitute")
+    assert step.operation == _FIXED_OP
+    assert "\x0c" not in step.operation and "\r" not in step.operation
+
+
+def test_mangled_justification_is_repaired():
+    step = DerivationStep(operation="o", expr_latex="x = 2",
+                          justification=_MANGLED_OP, change_type="substitute")
+    assert step.justification == _FIXED_OP
+
+
+def test_repair_is_idempotent_and_noop_for_clean_text():
+    # already-correct prose with doubled backslashes must be left untouched
+    step = DerivationStep(operation=_FIXED_OP, expr_latex="x = 2",
+                          justification="add $\\frac{c}{a}$ to both sides",
+                          change_type="rewrite")
+    assert step.operation == _FIXED_OP
+    assert step.justification == "add $\\frac{c}{a}$ to both sides"
+
+
+def test_repair_leaves_real_whitespace_alone():
+    # a newline/tab NOT followed by a lowercase letter is genuine whitespace
+    step = DerivationStep(operation="line one\n2nd part\tEnd", expr_latex="x = 2",
+                          justification="j", change_type="rewrite")
+    assert step.operation == "line one\n2nd part\tEnd"
+
+
+def test_repair_is_scoped_to_math_real_prose_newline_preserved():
+    # a real line break in PROSE (outside $…$) before a lowercase word must NOT
+    # be turned into a literal '\n' — we only un-mangle whitespace inside math.
+    txt = "first line\nthen the rest, with $x = 2$"
+    step = DerivationStep(operation=txt, expr_latex="x = 2", justification="j",
+                          change_type="rewrite")
+    assert step.operation == txt   # newline preserved as a genuine line break
+
+
+def test_repair_fixes_ambiguous_whitespace_inside_math():
+    # the SAME char that's left alone in prose IS repaired inside $…$: here a CR
+    # (\r) ate the backslash of \rho, sitting inside the math span.
+    step = DerivationStep(operation="density $\rho A$ term", expr_latex="x = 2",
+                          justification="j", change_type="rewrite")
+    assert step.operation == "density $\\rho A$ term"
+
+
+def test_expr_latex_is_never_rewritten():
+    # expression fields are immune — the repair must not touch them even if a
+    # stray control char somehow appears (here a benign one stays as-is).
+    step = DerivationStep(operation="o", expr_latex="\\frac{1}{2} \\rho",
+                          justification="j", change_type="rewrite")
+    assert step.expr_latex == "\\frac{1}{2} \\rho"
+
+
+def test_graph_op_prose_is_repaired():
+    op = GRAPH_OP_ADAPTER.validate_python(
+        {"op": "remove_edge", "edge_from": "a", "edge_to": "b",
+         "explanation": _MANGLED_OP, "justification": _MANGLED_OP}
+    )
+    assert op.explanation == _FIXED_OP
+    assert op.justification == _FIXED_OP
+
+
 def test_change_type_roundtrips_and_is_required():
     # survives a dump/validate round trip
     tagged = DerivationStep(operation="take the root", expr_latex="x = 2",
