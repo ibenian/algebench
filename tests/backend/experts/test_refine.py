@@ -77,7 +77,9 @@ def test_raises_only_when_every_attempt_fails():
 
 
 def test_parse_failure_retries_then_succeeds():
-    # first attempt is unparseable (raises); the retry produces a usable result
+    # first attempt is unparseable (raises); the retry produces a passing result,
+    # so refine exits cleanly on attempt 1 — no reliance on the iterator running
+    # out to stop the loop.
     seen = []
     outcomes = iter([RuntimeError("unparseable"), "good"])
 
@@ -88,11 +90,23 @@ def test_parse_failure_retries_then_succeeds():
             raise nxt
         return nxt
 
-    out = refine(attempt, lambda p: _Res(0.5, False), max_attempts=3)
-    assert out.prediction == "good"                    # recovered — no raise
-    assert out.attempts == 1                           # one SUCCESSFUL attempt
-    assert seen[0] == ""                               # first ask: no feedback
-    assert seen[1] == _PARSE_FAILURE_FEEDBACK          # retry told it the parse failed
+    out = refine(attempt, lambda p: _Res(1.0, True), max_attempts=3)
+    assert out.prediction == "good" and out.passed     # recovered — no raise
+    assert out.attempts == 1                            # one SUCCESSFUL attempt
+    assert seen == ["", _PARSE_FAILURE_FEEDBACK]        # exactly two asks; clean exit
+
+
+def test_time_budget_with_no_usable_attempt_raises():
+    import time as _t
+
+    # the first attempt both raises AND overruns the budget → no usable result,
+    # so the loop must surface the real error, not return a None-prediction outcome.
+    def attempt(k, fb):
+        _t.sleep(0.02)
+        raise RuntimeError("unparseable")
+
+    with pytest.raises(RuntimeError, match="unparseable"):
+        refine(attempt, lambda p: _Res(1.0, True), max_attempts=5, time_budget_s=0.01)
 
 
 def test_later_exception_falls_back_to_best():

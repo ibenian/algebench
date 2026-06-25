@@ -92,7 +92,11 @@ def refine(
         if (k > 0 and time_budget_s is not None
                 and time.monotonic() - started >= time_budget_s):
             # out of time — keep the best so far rather than risk the caller's
-            # request timeout on another full attempt.
+            # request timeout on another full attempt. If NO attempt has produced
+            # a usable result yet (every one so far raised), surface that error —
+            # never hand back an outcome with a None prediction the caller derefs.
+            if best_pred is None:
+                raise last_exc
             return RefineOutcome(best_pred, best_res, made, False, out_of_time=True)
         try:
             pred = attempt(k, feedback)
@@ -100,11 +104,14 @@ def refine(
         except Exception as exc:
             # An unparseable response is a transient sampling slip — reject and
             # retry rather than salvage it. Keep an earlier good attempt if we
-            # have one; otherwise re-ask with parse-failure feedback. The error
-            # surfaces only if EVERY attempt fails (after the loop).
+            # have one; otherwise re-ask with parse-failure feedback. On the final
+            # attempt with nothing to fall back to, re-raise in context so the
+            # original traceback (where parsing/scoring actually failed) is kept.
             last_exc = exc
             if best_pred is not None:
                 break
+            if k == n - 1:
+                raise
             feedback = _PARSE_FAILURE_FEEDBACK
             continue
         made += 1
@@ -116,6 +123,7 @@ def refine(
             return RefineOutcome(best_pred, best_res, made, True)
         feedback = FEEDBACK_PREAMBLE + (res.issues or "the derivation scored low")
 
-    if best_pred is None and last_exc is not None:
-        raise last_exc          # every attempt failed — surface the real error
+    # The loop only reaches here with a usable best_pred: every path that ends
+    # with none — all attempts raised, or out-of-time before any success —
+    # re-raises above, so the caller never sees a None prediction.
     return RefineOutcome(best_pred, best_res, made, False)
