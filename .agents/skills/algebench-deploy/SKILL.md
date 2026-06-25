@@ -206,6 +206,8 @@ Then:
 git push --force-with-lease origin origin/main:deploy/on-render-staging
 ```
 
+After the staging push succeeds, **offer a dev version bump** (see Step 6.5).
+
 #### 5B. Deploy to production (branching flow)
 
 A production deploy is **two decisions**, asked with `AskUserQuestion` in order:
@@ -282,6 +284,50 @@ After a successful deployment:
    - 🤗 Production (Hugging Face mirror): https://ibenian-algebench.hf.space
 4. Note rebuild times: Render typically takes 1–3 minutes; the Hugging Face Docker Space takes ~3–6 minutes (longer on a cold build).
 
+### Step 6.5: Offer a Dev Version Bump (Staging deploys only)
+
+A staging deploy is the moment fresh work goes live for validation, so it's the
+natural point to advance the **dev** version ahead of prod. **After a successful
+staging deploy only**, propose upgrading the `VERSION` file and opening a PR.
+
+Use `AskUserQuestion`:
+
+- **Yes — bump the dev version** → compute the next version with the helper and
+  open a PR (do **not** merge it).
+- **No — keep it** → finish without bumping.
+
+Default to a **minor** bump; mention patch/major if the user wants a different
+level. Then:
+
+```bash
+CUR=$(./run.sh scripts/version.py --get)                 # e.g. 0.10.0
+NEXTDEV=$(./run.sh scripts/version.py --next minor)      # e.g. 0.11.0
+git checkout -b chore/bump-version-v$NEXTDEV
+./run.sh scripts/version.py --set "$NEXTDEV"
+git add VERSION
+# Announce committer per AGENTS.md before committing.
+git commit -m "chore: bump VERSION to $NEXTDEV for next dev cycle"
+git push -u origin chore/bump-version-v$NEXTDEV
+gh pr create --base main \
+  --title "chore: bump VERSION to $NEXTDEV (post-staging deploy)" \
+  --body "$(cat <<EOF
+## Summary
+Staging now runs $CUR. This advances the working/dev version to $NEXTDEV so main
+moves ahead of staging again. The About pill / \`GET /api/version\` reflects
+$NEXTDEV once this merges and is redeployed.
+
+## Test plan
+- \`./run.sh scripts/version.py --get\` → $NEXTDEV
+
+🤖 Co-Authored-By: Claude <81847+claude@users.noreply.github.com>
+EOF
+)" \
+  --label chore
+```
+
+**STOP after creating the PR** — never merge it (per AGENTS.md, the user merges
+explicitly after review). Only offer this once per staging deploy.
+
 ### Step 7: Offer a Version Bump (Production deploys only)
 
 A production deployment is the natural moment to cut a release tag. **After a successful
@@ -317,6 +363,7 @@ at the latest tag, skip the offer.
 - **Fetch before any status check** to ensure data is current
 - **Use AskUserQuestion** for deployment decisions, not plain text prompts
 - **Include GitHub compare links** so the user can review diffs in the browser
+- **After a staging deploy, offer a dev version bump PR** (Step 6.5) — propose upgrading the `VERSION` file via the `scripts/version.py` helper and open a PR; never merge it automatically
 - **After a prod deploy, offer a version bump** via the `algebench-release` skill (Step 7) — never tag automatically without asking
 - **Hugging Face is a prod mirror, never staging** — only ever deploy production content to it, and always via `scripts/deploy_hf.sh` (preview with `--dry-run` first)
 - **Explain the HF deploy-log convention when relevant** — when deploying to HF, reporting HF state, or when the user asks about it: HF state == `deploy/on-huggingface` tip (same commit), each deploy is a stripped standalone snapshot, and the log is trimmable with `--keep N`. Never push to the Space's `main` by hand.

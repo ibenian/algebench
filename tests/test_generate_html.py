@@ -29,13 +29,20 @@ def test_flags_compose():
     assert 'data-skip-tour="true"' in html
 
 
+def test_version_injection():
+    from backend.server import get_app_version
+    html = generate_html()
+    assert f'data-app-version="{get_app_version()}"' in html
+
+
 def test_no_placeholder_leftovers():
-    # Both placeholders must be fully substituted regardless of flag values.
+    # All placeholders must be fully substituted regardless of flag values.
     for debug in (True, False):
         for skip_tour in (True, False):
             html = generate_html(debug=debug, skip_tour=skip_tour)
             assert '__DEBUG_MODE__' not in html
             assert '__SKIP_TOUR__' not in html
+            assert '__APP_VERSION__' not in html
 
 
 def test_defaults_are_false():

@@ -23,7 +23,7 @@
 <link rel="stylesheet" href="/graph-panel/sg-chart.css">
 <link rel="stylesheet" href="/proof-animation/proof-animation.css">
 </head>
-<body data-debug-mode="__DEBUG_MODE__" data-skip-tour="__SKIP_TOUR__">
+<body data-debug-mode="__DEBUG_MODE__" data-skip-tour="__SKIP_TOUR__" data-app-version="__APP_VERSION__">
 <div id="app">
     <div id="title-bar">
         <div id="title-content">
@@ -289,6 +289,29 @@
             </div>
         </span>
         <span id="debug-status-text"></span>
+        <span id="about-status" title="About AlgeBench" role="button" tabindex="0" aria-haspopup="dialog" aria-expanded="false" aria-label="About AlgeBench">
+            <span class="about-status-icon">&#9432;</span>
+            <span class="about-status-label">AlgeBench</span>
+            <span class="about-status-version"></span>
+            <div class="about-status-popup" id="about-popup-content">
+                <div class="about-popup-header">
+                    <span class="about-popup-logo">&#9432;</span>
+                    <span class="about-popup-title">AlgeBench</span>
+                    <button id="about-popup-close" title="Close">&times;</button>
+                </div>
+                <div class="about-popup-tagline">Interactive 3D math visualizer with AI chat and narrated lessons.</div>
+                <div class="about-popup-rows">
+                    <div class="about-popup-row">
+                        <span class="about-popup-key">Version</span>
+                        <span class="about-popup-val" id="about-popup-version"></span>
+                    </div>
+                </div>
+                <div class="about-popup-links">
+                    <a class="about-popup-link" id="about-popup-home" href="https://ibenian.github.io/algebench/" target="_blank" rel="noopener noreferrer" title="Open the AlgeBench home page">Home &#8599;</a>
+                    <a class="about-popup-link" id="about-popup-repo" href="https://github.com/ibenian/algebench" target="_blank" rel="noopener noreferrer" title="View the source code on GitHub">GitHub &#8599;</a>
+                </div>
+            </div>
+        </span>
     </div>
 
     <!-- Memory popup -->

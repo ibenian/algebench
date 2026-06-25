@@ -1032,6 +1032,90 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 }
 #debug-status-text { margin-left: auto; opacity: 0.8; }
 
+/* About / version pill (rightmost in the status bar) */
+#about-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    position: relative;
+    cursor: pointer;
+    padding: 1px 8px;
+    border-radius: 10px;
+    background: rgba(100, 180, 255, 0.10);
+    border: 1px solid rgba(100, 180, 255, 0.25);
+    user-select: none;
+    margin-left: 6px;
+}
+#about-status:hover { filter: brightness(1.15); }
+.about-status-icon { font-size: 12px; line-height: 1; }
+.about-status-label { font-size: 10px; font-weight: bold; letter-spacing: 0.3px; }
+.about-status-version { font-size: 10px; color: rgba(140, 190, 255, 0.9); }
+.about-status-popup {
+    display: none;
+    position: absolute;
+    bottom: 26px;
+    right: 0;
+    min-width: 260px;
+    background: rgba(8, 12, 28, 0.97);
+    border: 1px solid rgba(100, 180, 255, 0.35);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 11px;
+    color: rgba(220, 230, 255, 0.95);
+    box-shadow: 0 6px 24px rgba(0,0,0,0.6);
+    z-index: 9999;
+    white-space: normal;
+    cursor: auto;
+}
+#about-status.pinned .about-status-popup { display: block; }
+#about-status:hover .about-status-popup { display: block; }
+#about-status.suppress-hover:hover .about-status-popup { display: none; }
+.about-popup-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+.about-popup-logo { font-size: 18px; line-height: 1; }
+.about-popup-title { font-size: 14px; font-weight: 700; letter-spacing: 0.3px; }
+#about-popup-close {
+    margin-left: auto;
+    border: none;
+    background: transparent;
+    color: rgba(180, 205, 255, 0.9);
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 2px;
+}
+#about-popup-close:hover { color: #fff; }
+.about-popup-tagline {
+    line-height: 1.5;
+    color: rgba(200, 215, 245, 0.85);
+    margin-bottom: 10px;
+}
+.about-popup-rows { display: flex; flex-direction: column; gap: 4px; }
+.about-popup-row { display: flex; justify-content: space-between; gap: 12px; }
+.about-popup-key { color: rgba(160, 185, 225, 0.8); }
+.about-popup-val {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    color: rgba(220, 235, 255, 0.95);
+    user-select: text;
+}
+.about-popup-links {
+    display: flex;
+    justify-content: flex-end;
+    gap: 14px;
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(100, 180, 255, 0.18);
+}
+.about-popup-link {
+    color: rgba(140, 190, 255, 0.95);
+    text-decoration: none;
+}
+.about-popup-link:hover { text-decoration: underline; }
+
 /* Slider Status Pill */
 #slider-status {
     display: inline-flex;
