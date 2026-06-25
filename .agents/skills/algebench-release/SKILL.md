@@ -48,7 +48,13 @@ git log <prod-tag>..HEAD --oneline            # what's included since prod
 
 Capture two numbers:
 
-- **`PROD`** — the version part of the latest `v*` tag (e.g. `0.9.0`).
+- **`PROD`** — the version part of the latest `v*` tag (e.g. `0.9.0`). **If no
+  `v*` tag exists** (first release, or tags were deleted), treat `PROD` as
+  `0.0.0` so the comparisons below still work:
+  ```bash
+  PROD=$(git tag --sort=-version:refname | head -1 | sed 's/^v//')
+  PROD=${PROD:-0.0.0}
+  ```
 - **`FILE`** — the current `VERSION` file value (e.g. `0.10.0`).
 
 ---
@@ -68,6 +74,7 @@ Compute the inferred next for the comparison:
 
 ```bash
 PROD=$(git tag --sort=-version:refname | head -1 | sed 's/^v//')
+PROD=${PROD:-0.0.0}   # no tags yet → treat prod as 0.0.0
 FILE=$(./run.sh scripts/version.py --get)
 INFERRED=$(./run.sh scripts/version.py --next minor --from "$PROD")
 echo "prod=$PROD  file=$FILE  inferred-next-minor=$INFERRED"
@@ -165,7 +172,7 @@ explicitly after review. The next release will read this bumped `VERSION` as its
 ```bash
 # 1. State
 git checkout main && git fetch origin && git pull --ff-only origin main
-PROD=$(git tag --sort=-version:refname | head -1 | sed 's/^v//')    # 0.9.0
+PROD=$(git tag --sort=-version:refname | head -1 | sed 's/^v//'); PROD=${PROD:-0.0.0}  # 0.9.0
 FILE=$(./run.sh scripts/version.py --get)                           # 0.10.0
 INFERRED=$(./run.sh scripts/version.py --next minor --from "$PROD") # 0.10.0
 # FILE == INFERRED and FILE > PROD → normal path, RELEASE=0.10.0

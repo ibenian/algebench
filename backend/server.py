@@ -352,18 +352,25 @@ chat_js_path = static_dir / "chat.js"
 version_file_path = script_dir / "VERSION"
 
 
+_VERSION_RE = re.compile(r"^v?(\d+\.\d+\.\d+)$")
+
+
 def get_app_version() -> str:
-    """Read the application version from the root VERSION file.
+    """Read and validate the application version from the root VERSION file.
 
     The VERSION file (a plain ``MAJOR.MINOR.PATCH`` string) is the single
     source of truth for the version shown in the in-app About pill and bumped
-    by the `algebench-release` skill. Best-effort: returns "dev" if the file is
-    missing or unreadable so a deploy without it still serves.
+    by the `algebench-release` skill. The value is injected verbatim into
+    ``index.html``, so it is strictly validated here — a missing, unreadable, or
+    malformed file (stray quotes, extra text, leading ``v``) degrades to "dev"
+    rather than emitting an invalid/unsafe HTML attribute.
     """
     try:
-        return version_file_path.read_text(encoding="utf-8").strip() or "dev"
+        raw = version_file_path.read_text(encoding="utf-8").strip()
     except OSError:
         return "dev"
+    m = _VERSION_RE.match(raw)
+    return m.group(1) if m else "dev"
 
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
 GEMINI_MODEL   = os.environ.get('GEMINI_MODEL', 'gemini-3-flash-preview')

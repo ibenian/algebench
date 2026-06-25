@@ -1195,6 +1195,7 @@ export function setupAboutPopup() {
     // pill unpins and suppresses hover until the mouse leaves, so it closes.
     const setPinned = (pinned, suppressHover) => {
         about.classList.toggle('pinned', pinned);
+        about.setAttribute('aria-expanded', pinned ? 'true' : 'false');
         if (pinned) about.classList.remove('suppress-hover');
         else if (suppressHover) about.classList.add('suppress-hover');
     };
@@ -1205,6 +1206,19 @@ export function setupAboutPopup() {
         if (e.target && e.target.closest('.about-status-popup')) return;
         const pinned = about.classList.contains('pinned');
         setPinned(!pinned, pinned);
+    });
+
+    // Keyboard activation: the pill is role="button" tabindex="0", so Enter and
+    // Space toggle the popup; Escape closes a pinned popup.
+    about.addEventListener('keydown', (e) => {
+        if (e.target && e.target.closest('.about-status-popup')) return;
+        if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+            e.preventDefault();
+            setPinned(!about.classList.contains('pinned'), true);
+        } else if (e.key === 'Escape' && about.classList.contains('pinned')) {
+            setPinned(false, true);
+            about.focus();
+        }
     });
 
     about.addEventListener('mouseleave', () => {
