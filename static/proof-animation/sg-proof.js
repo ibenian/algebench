@@ -485,8 +485,9 @@ export class SgProofManager {
 
     // A rounded tooltip rendering the hovered term's node description. Lives on
     // <body> (position:fixed) so the proof box's overflow never clips it; placed
-    // ABOVE the term by default (clearing both the term and the single-line
-    // expression), flipping BELOW only when it would run off the top edge.
+    // on the side the term is nearest — BELOW when the term sits in the lower half
+    // of the viewport (closer to the bottom), ABOVE otherwise — then flipped to the
+    // opposite side if the preferred one would run off-screen.
     _showTermTip(anchorEl, text) {
         let tip = this._termTip;
         if (!tip) {
@@ -500,15 +501,19 @@ export class SgProofManager {
         tip.style.display = 'block';
         tip.style.visibility = 'hidden';     // measure before positioning
         const r = anchorEl.getBoundingClientRect();
+        const vh = window.innerHeight;
         const tw = tip.offsetWidth, th = tip.offsetHeight, GAP = 10;
         let left = r.left + r.width / 2 - tw / 2;
         left = Math.max(8, Math.min(left, window.innerWidth - tw - 8));
-        let top = r.top - th - GAP;                          // prefer above
-        const below = top < 8;
-        if (below) top = r.bottom + GAP;                     // flip below near the top
+        // Prefer the side the term is nearest (below when in the lower half),
+        // then flip if that side has no room.
+        let below = (r.top + r.bottom) / 2 > vh / 2;
+        if (below && r.bottom + GAP + th > vh - 4) below = false;   // no room below
+        else if (!below && r.top - GAP - th < 4) below = true;      // no room above
+        const top = below ? r.bottom + GAP : r.top - th - GAP;
         tip.classList.toggle('sgp-term-tip-below', below);
         tip.style.left = `${Math.round(left)}px`;
-        tip.style.top = `${Math.round(top)}px`;
+        tip.style.top = `${Math.round(Math.max(4, top))}px`;
         tip.style.visibility = 'visible';
     }
 

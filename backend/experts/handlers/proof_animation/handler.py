@@ -18,6 +18,7 @@ Exposed at ``POST /api/expert/proof_animation``. Requires DSPy configured
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 from typing import Optional
@@ -374,12 +375,16 @@ def derive_proof_animation(req: DeriveProofRequest) -> dict:
     terms = data.get("terms")
     if terms and is_configured():
         try:
+            applied = 0
             for tid, desc in describe_terms(terms, domain, lesson_context).items():
                 if tid in terms and desc:
                     terms[tid]["description"] = desc
-            n_desc = sum(1 for t in terms.values() if t.get("description"))
-            log.debug("proof_animation: described %d/%d terms: %s", n_desc, len(terms),
-                      {tid: t.get("description") for tid, t in terms.items()})
+                    applied += 1
+            log.debug("proof_animation: described %d/%d terms", applied, len(terms))
         except Exception:
             log.warning("proof_animation: term-description pass failed", exc_info=True)
+    # Dump the full expert output (steps, confidence, described terms) as one-line
+    # JSON for debugging — the complete response the frontend receives.
+    log.debug("proof_animation: output=%s",
+              json.dumps(data, default=str, ensure_ascii=False, separators=(",", ":")))
     return data
