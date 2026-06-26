@@ -514,6 +514,12 @@ export class D3SemanticGraphRenderer {
         return null;
     }
 
+    /** The node datum for an id (label, description, latex, …), or null. */
+    getNode(nodeId) {
+        if (!nodeId || !this._graph || !Array.isArray(this._graph.nodes)) return null;
+        return this._graph.nodes.find(n => n.id === nodeId) || null;
+    }
+
     /** Toggle a transient hover halo on the node with this id (null clears all). */
     highlightNodeById(nodeId) {
         if (!this._svg || !this._nodeLayer) return;

@@ -346,7 +346,7 @@ export class SgProofManager {
                 // Live terms: hover/click a named term → light up & select its
                 // linked semantic-graph node. No-ops when there's no renderer.
                 liveTerms: true,
-                onTermHover: (chain) => this._onTermHover(chain),
+                onTermHover: (chain, el) => this._onTermHover(chain, el),
                 onTermClick: (chain, _el, ev) => this._onTermClick(chain, ev),
             });
         } catch (e) {
@@ -392,10 +392,50 @@ export class SgProofManager {
         return null;
     }
 
-    _onTermHover(chain) {
+    _onTermHover(chain, anchorEl) {
         const r = this._renderer;
-        if (!r || r._destroyed || typeof r.highlightNodeById !== 'function') return;
-        r.highlightNodeById(this._resolveChain(chain));
+        if (!r || r._destroyed || typeof r.highlightNodeById !== 'function') { this._hideTermTip(); return; }
+        const id = this._resolveChain(chain);
+        r.highlightNodeById(id);
+        // Floating tooltip showing the linked node's description, placed beside the
+        // term (never over it or the expression). No node / no description → hide.
+        const node = id && typeof r.getNode === 'function' ? r.getNode(id) : null;
+        const desc = node && (node.description || '').trim();
+        if (anchorEl && desc) this._showTermTip(anchorEl, desc);
+        else this._hideTermTip();
+    }
+
+    // A rounded tooltip rendering the hovered term's node description. Lives on
+    // <body> (position:fixed) so the proof box's overflow never clips it; placed
+    // ABOVE the term by default (clearing both the term and the single-line
+    // expression), flipping BELOW only when it would run off the top edge.
+    _showTermTip(anchorEl, text) {
+        let tip = this._termTip;
+        if (!tip) {
+            tip = document.createElement('div');
+            tip.className = 'sgp-term-tip';
+            tip.setAttribute('role', 'tooltip');
+            document.body.appendChild(tip);
+            this._termTip = tip;
+        }
+        this._renderInlineMath(tip, text);   // descriptions may carry inline $…$
+        tip.style.display = 'block';
+        tip.style.visibility = 'hidden';     // measure before positioning
+        const r = anchorEl.getBoundingClientRect();
+        const tw = tip.offsetWidth, th = tip.offsetHeight, GAP = 10;
+        let left = r.left + r.width / 2 - tw / 2;
+        left = Math.max(8, Math.min(left, window.innerWidth - tw - 8));
+        let top = r.top - th - GAP;                          // prefer above
+        const below = top < 8;
+        if (below) top = r.bottom + GAP;                     // flip below near the top
+        tip.classList.toggle('sgp-term-tip-below', below);
+        tip.style.left = `${Math.round(left)}px`;
+        tip.style.top = `${Math.round(top)}px`;
+        tip.style.visibility = 'visible';
+    }
+
+    _hideTermTip() {
+        if (this._termTip) this._termTip.style.display = 'none';
     }
 
     _onTermClick(chain, ev) {
@@ -621,6 +661,8 @@ export class SgProofManager {
         this._destroyed = true;
         if (this._rafId) { cancelAnimationFrame(this._rafId); this._rafId = null; }
         if (this._resizeObserver) { try { this._resizeObserver.disconnect(); } catch (_e) {} this._resizeObserver = null; }
+        if (this._termTip && this._termTip.parentNode) this._termTip.parentNode.removeChild(this._termTip);
+        this._termTip = null;
         for (const boxId of Array.from(this.boxes.keys())) this.closeBox(boxId);
     }
 }
