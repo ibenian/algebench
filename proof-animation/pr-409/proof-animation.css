@@ -1,0 +1,610 @@
+/* proof-animation.css — styles for the ProofAnimator (themeable via CSS vars). */
+
+/* Custom tooltip (reliable everywhere, unlike the native title which is slow and
+   doesn't render in some embedded/zoomed contexts). Any element with data-tip
+   shows it on hover/focus. */
+.pa-root [data-tip] { position: relative; }
+.pa-root [data-tip]:hover::after,
+.pa-root [data-tip]:focus-visible::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 7px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: rgba(10, 12, 26, 0.97);
+  border: 1px solid var(--pa-border);
+  color: #e5e7eb;
+  font: 400 0.72rem/1.35 var(--font-sans, system-ui, -apple-system, "Segoe UI", sans-serif);
+  font-style: normal;
+  letter-spacing: normal;
+  text-transform: none;
+  text-align: center;
+  white-space: normal;
+  width: max-content;
+  max-width: 240px;
+  pointer-events: none;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.45);
+}
+
+/* Math-aware tooltip (JS-positioned) for confidence badges — unlike the CSS
+   data-tip, this renders inline $…$ LaTeX (the grounding reasons embed real
+   expressions). Anchored within .pa-root (position: relative). */
+.pa-root .pa-mathtip {
+  position: absolute;
+  display: none;
+  z-index: 31;
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: rgba(10, 12, 26, 0.97);
+  border: 1px solid var(--pa-border);
+  color: #e5e7eb;
+  font: 400 0.72rem/1.4 var(--font-sans, system-ui, -apple-system, "Segoe UI", sans-serif);
+  text-align: center;
+  white-space: normal;
+  width: max-content;
+  max-width: 260px;
+  pointer-events: none;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.45);
+}
+.pa-root .pa-mathtip .katex { font-size: 1em; color: #e5e7eb; }
+
+.pa-root {
+  --pa-fg: var(--text-color, #1a1a2e);
+  --pa-muted: var(--muted-color, #6b7280);
+  --pa-accent: var(--accent-color, #6366f1);
+  --pa-bg: var(--panel-bg, #ffffff);
+  --pa-border: var(--border-color, #e5e7eb);
+  --pa-active-fg: #ffffff;
+
+  font-family: var(--font-sans, system-ui, -apple-system, "Segoe UI", sans-serif);
+  color: var(--pa-fg);
+  background: var(--pa-bg);
+  border: 1px solid var(--pa-border);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: relative;       /* anchor for the overall-confidence overlay */
+}
+
+/* the expression canvas — relative so delete-ghosts can be absolutely placed */
+.pa-stage {
+  position: relative;
+  flex: 0 0 auto;            /* FIXED height (set by _fit to the tallest step) — never shrinks */
+  /* Establish a stacking context so the inserts' z-index:-1 (they slide in BEHIND
+     the moving glyphs) stays scoped to the stage. Without this it escapes to the
+     root context and paints new glyphs BEHIND the panel background — they fade in
+     invisibly, then "pop" into view at the end. */
+  isolation: isolate;
+  min-height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+  font-size: 1.9rem;
+  line-height: 1.2;
+}
+.pa-stage .katex { color: var(--pa-fg); }
+
+/* The expression renders into a fixed-width block (pinned to the scaled widest
+   step via --pa-expr-w), centred in the stage. Its CONTENT is left-aligned so
+   persistent tokens keep a stable left anchor across steps instead of
+   re-centring — which made every token drift sideways at each boundary. KaTeX
+   display mode centres by default, so undo that on the block AND the inner
+   .katex it wraps. */
+.pa-stage > .pa-expr {
+  display: block;
+  width: var(--pa-expr-w, auto);
+  max-width: 100%;
+}
+.pa-stage > .pa-expr .katex-display { margin: 0; text-align: left; }
+.pa-stage > .pa-expr .katex-display > .katex { text-align: left; }
+
+/* Animated tokens must be inline-block — CSS transforms are IGNORED on
+   display:inline elements (KaTeX renders tokens inline), so without this the
+   translate/scale has no visual effect. baseline keeps vertical alignment. */
+.pa-move {
+  display: inline-block;
+  vertical-align: baseline;
+  position: relative;
+  z-index: 2;
+  will-change: transform;
+}
+/* Paint order during a morph (back → front): inserting items, then moving
+   items, then the disappearing ghosts on top. So new items grow in from BEHIND
+   and never occlude the items that are still moving or fading out. */
+.pa-ghost { pointer-events: none; z-index: 4; }
+.pa-move.pa-insert { z-index: -1; }
+
+/* ── Live terms (optional) ───────────────────────────────────────────────────
+   Set by ProofAnimator when opts.liveTerms is on. Each rendered term becomes
+   hoverable/clickable; the hovered term gets a "backlight" — a glow that traces
+   the CONTOURS of the rendered glyphs (drop-shadow follows the glyph alpha, so it
+   hugs the letter shapes rather than drawing a box around them). Stacked shadows
+   give a soft inner + wider outer halo; `filter` doesn't reflow layout. Scoped
+   under .pa-live-terms so non-live animators are untouched. */
+.pa-live-terms .pa-stage > .pa-expr [data-n] {
+  cursor: pointer;
+  transition: filter 130ms ease;
+}
+.pa-live-terms .pa-term-hot {
+  filter:
+    drop-shadow(0 0 2px var(--pa-term-glow, rgba(165, 185, 255, 1)))
+    drop-shadow(0 0 6px var(--pa-term-glow, rgba(150, 170, 255, 0.9)))
+    drop-shadow(0 0 12px var(--pa-term-glow-soft, rgba(120, 145, 255, 0.7)));
+}
+
+/* operation (explanation) stacked above justification, then the "Next" pill.
+   FIXED height (set by _fixMetaSize to the tallest step) + flex:none so the text
+   zone never changes height between steps — the controls below it never shift. */
+.pa-meta {
+  position: relative;        /* anchor for absolutely-positioned meta ghosts */
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;                 /* equal vertical spacing between op / just / pill */
+  min-height: 1.4em;
+  font-size: 0.95rem;
+}
+.pa-op { font-weight: 600; color: var(--pa-fg); }
+.pa-just { color: var(--pa-muted); font-style: italic; }
+
+/* "Next" pill — mirrors the proof-navigator step pills; clickable (= next btn). */
+.pa-next-pill {
+  /* grid (not flex) so the title column can shrink to 0 and ellipsize — a flex
+     item won't shrink past an inline-block (KaTeX) child even with min-width:0. */
+  display: inline-grid;
+  grid-template-columns: auto minmax(0, max-content);
+  align-items: baseline;
+  gap: 7px;
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.16);
+  border: 1px solid rgba(120, 130, 200, 0.40);
+  color: var(--pa-fg);
+  font-size: 0.82em;
+  line-height: 1.3;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s, border-color 0.15s;
+}
+.pa-next-pill, .pa-next-pill * { cursor: pointer; }
+.pa-next-pill:hover { background: rgba(99, 102, 241, 0.30); border-color: var(--pa-accent); }
+.pa-next-pill:focus-visible { outline: 2px solid var(--pa-accent); outline-offset: 2px; }
+.pa-next-pill.pa-next-hidden { display: none; }
+.pa-next-label {
+  font-size: 0.82em;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--pa-accent);
+}
+/* The title shrinks and gets an ellipsis so the pill never exceeds the
+   container width (full text is exposed via the custom data-tip tooltip when
+   truncated). min-width:0 lets this grid column shrink below its content size. */
+.pa-next-body {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* AI ask buttons — only rendered when the host passes an aiAskButton factory
+   (the app does; the standalone report doesn't). Hidden until the widget is
+   hovered, matching the app-wide ask-button convention. */
+.pa-root .pa-ask-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 2px;
+  background: rgba(99, 102, 241, 0.14);
+  border: 1px solid rgba(120, 130, 200, 0.35);
+  border-radius: 4px;
+  color: var(--pa-accent);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s, background 0.15s, border-color 0.15s;
+}
+.pa-root:hover .pa-ask-btn,
+.pa-root .pa-ask-btn:focus-visible { opacity: 1; pointer-events: auto; }
+.pa-root .pa-ask-btn:hover {
+  background: rgba(99, 102, 241, 0.30);
+  border-color: var(--pa-accent);
+}
+.pa-root .pa-ask-btn svg { pointer-events: none; }
+/* Current-step button: inline, right after the explanation text, with a gap.
+   max-width + the op's min-width:0 let a long (KaTeX-bearing) caption shrink and
+   wrap in a narrow box instead of overflowing; the op keeps flex-grow:0 so the
+   button stays beside the text rather than being pushed to the far edge. */
+/* min-height reserves the confidence badge's box (22px + 1px borders) even
+   while it's hidden, so revealing/pinning badges never changes the row height
+   (the badge is taller than a single text line). */
+.pa-op-row { display: flex; align-items: center; gap: 8px; max-width: 100%; min-height: 24px; }
+.pa-op-row .pa-op { min-width: 0; }
+/* Never let the button shrink. In a narrow box the op-row overflows and flexbox
+   would squeeze the button — and it squeezes the empty measuring-probe button
+   MORE than the live (SVG-bearing) one, so the probe gives the caption extra
+   width and under-reserves the meta min-height by a line → the box height jumps
+   between steps. A fixed-size button keeps probe == live so the reservation is
+   exact (and the icon never gets squished). */
+.pa-op-row .pa-ask-btn { flex: 0 0 auto; }
+/* Next-step button rides inside the Next pill as a third grid column. */
+.pa-next-pill.pa-has-ask { grid-template-columns: auto minmax(0, max-content) auto; }
+.pa-next-pill .pa-ask-btn {
+  align-self: center;
+  margin-left: 5px;
+  width: 16px;
+  height: 16px;
+  padding: 1px;
+  border: none;
+  background: transparent;
+}
+
+/* Transient clones used by the meta promote animation. */
+.pa-meta-ghost { position: absolute; pointer-events: none; margin: 0; }
+.pa-promoting { will-change: transform, opacity; }
+
+/* controls — FIXED-height nav row that NEVER wraps (overflowing step numbers are
+   hidden by _fitControls via .pa-compact instead). It's the last zone, so the
+   stage's flex-grow above it (in container mode) keeps it docked to the bottom. */
+.pa-controls {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: nowrap;
+  border-top: 1px solid var(--pa-border);
+  padding-top: 12px;
+}
+/* Never shrink: the row is nowrap, and _fitControls() measures children's
+   offsetWidth to decide when to compact. If the steps box (or its buttons) could
+   shrink, that measurement would under-report the true width and miss the point
+   where the step numbers should be hidden. */
+.pa-steps { display: flex; gap: 6px; flex-shrink: 0; }
+/* When the controls row can't fit, _fitControls() adds .pa-compact and the
+   numbered step buttons are hidden — only prev / next / play / speed / mode
+   remain (navigate with the arrows). */
+.pa-controls.pa-compact .pa-steps { display: none; }
+
+.pa-btn, .pa-step {
+  font: inherit;
+  cursor: pointer;
+  flex-shrink: 0;          /* keep _fitControls' width measurement accurate (see .pa-steps) */
+  border: 1px solid var(--pa-border);
+  background: var(--pa-bg);
+  color: var(--pa-fg);
+  border-radius: 8px;
+  padding: 6px 12px;
+  line-height: 1;
+  /* Labels never wrap to a second line — otherwise a fixed-width button (e.g.
+     .pa-play at 6em) would grow taller in a narrow box, or change height when its
+     label toggles Play↔Pause, breaking the fixed-height nav row. */
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.pa-step { min-width: 34px; text-align: center; }
+.pa-speed { min-width: 3em; text-align: center; font-variant-numeric: tabular-nums; }
+.pa-btn:hover, .pa-step:hover { border-color: var(--pa-accent); }
+
+.pa-step.pa-active {
+  background: var(--pa-accent);
+  color: var(--pa-active-fg);
+  border-color: var(--pa-accent);
+}
+.pa-play { margin-left: auto; width: 6em; box-sizing: border-box; text-align: center; }
+
+/* sequential toggle — icon button (label moved to the title/tooltip) */
+.pa-mode {
+  min-width: 2.4em;
+  text-align: center;
+  font-size: 1.05em;
+  line-height: 1;
+}
+.pa-mode.pa-active {
+  background: var(--pa-accent);
+  color: var(--pa-active-fg);
+  border-color: var(--pa-accent);
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Step-grounding confidence tiers (server-attached `confidence` per step +
+   `overall_confidence`; see step_grounding.py). Five ranked tiers, each with a
+   color pair; a pa-conf-<tier> class sets the pair, and the badge / overall
+   pill / step-dot strip all read it. Payloads without confidence render none
+   of this (the badge is :empty-hidden, the pill is removed).
+   ─────────────────────────────────────────────────────────────────────────── */
+.pa-root {
+  --pa-tier-grounded: #d4a017;                      /* gold   — all checks pass */
+  --pa-tier-grounded-bg: rgba(212, 160, 23, 0.16);
+  --pa-tier-verified: #9aa3b5;                    /* silver — strong evidence */
+  --pa-tier-verified-bg: rgba(154, 163, 181, 0.18);
+  --pa-tier-domain: #2fb6a3;                      /* teal   — domain-justified */
+  --pa-tier-domain-bg: rgba(47, 182, 163, 0.18);
+  --pa-tier-plausible: var(--pa-accent);          /* blue   — undecided */
+  --pa-tier-plausible-bg: rgba(99, 102, 241, 0.16);
+  --pa-tier-unchecked: var(--pa-muted);           /* gray   — not convertible */
+  --pa-tier-unchecked-bg: rgba(120, 130, 150, 0.12);
+  --pa-tier-refuted: #d05a5a;                     /* red    — provably wrong */
+  --pa-tier-refuted-bg: rgba(208, 90, 90, 0.18);
+}
+.pa-conf-grounded    { --pa-conf-fg: var(--pa-tier-grounded);    --pa-conf-bg: var(--pa-tier-grounded-bg); }
+.pa-conf-verified  { --pa-conf-fg: var(--pa-tier-verified);  --pa-conf-bg: var(--pa-tier-verified-bg); }
+.pa-conf-domain    { --pa-conf-fg: var(--pa-tier-domain);    --pa-conf-bg: var(--pa-tier-domain-bg); }
+.pa-conf-plausible { --pa-conf-fg: var(--pa-tier-plausible); --pa-conf-bg: var(--pa-tier-plausible-bg); }
+.pa-conf-unchecked { --pa-conf-fg: var(--pa-tier-unchecked); --pa-conf-bg: var(--pa-tier-unchecked-bg); }
+.pa-conf-refuted   { --pa-conf-fg: var(--pa-tier-refuted);   --pa-conf-bg: var(--pa-tier-refuted-bg); }
+
+/* Per-step badge: a small tier-colored chip right after the explanation text.
+   Empty (no confidence data) → hidden entirely. */
+.pa-conf-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;             /* never squeezed by a long caption (probe == live) */
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 0.78em;
+  line-height: 1;
+  background: var(--pa-conf-bg, transparent);
+  border: 1px solid var(--pa-conf-fg, transparent);
+  cursor: default;
+  user-select: none;
+}
+.pa-conf-badge:empty { display: none; }
+/* Reveal-on-demand: badges are hidden until the user peeks (hovers the overall
+   chip) or pins (clicks it → pa-conf-on on the root). */
+.pa-root:not(.pa-conf-on):not(.pa-conf-peek) .pa-conf-badge { display: none; }
+
+/* Overall-confidence pill: the derivation's seal — an absolute OVERLAY in the
+   widget's top-right corner, out of flow so it never shifts the stage, the
+   text zone, or the controls. Tooltip (data-tip) carries the tally. */
+/* `.pa-root .pa-overall` (not bare `.pa-overall`): must outrank the tooltip
+   rule `.pa-root [data-tip] { position: relative }` or the overlay loses its
+   absolute positioning. */
+.pa-root .pa-overall {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  z-index: 10;               /* foreground: above the stage + every morph layer */
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-size: 0.8em;
+  line-height: 1.3;
+  /* OPAQUE: the tier tint is translucent, so composite it (as a gradient
+     layer — a plain color can't be a background layer) over the solid panel
+     color. Otherwise a tall expression behind the chip bleeds through and it
+     stops reading as foreground. */
+  background-color: var(--pa-bg);
+  background-image: linear-gradient(var(--pa-conf-bg, transparent),
+                                    var(--pa-conf-bg, transparent));
+  border: 1px solid var(--pa-conf-fg, var(--pa-border));
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);   /* lift off the canvas */
+  cursor: pointer;           /* click pins/unpins the full badge display */
+  user-select: none;
+  transition: padding 0.15s, gap 0.15s;
+}
+.pa-root .pa-overall:empty { display: none; }    /* not yet populated (or no data) */
+/* COMPACT by default: icon-only chip. Expands (label + tally) on its own hover
+   (peek) or while pinned. */
+.pa-root:not(.pa-conf-on):not(.pa-conf-peek) .pa-overall { padding: 4px 8px; gap: 0; }
+.pa-root:not(.pa-conf-on):not(.pa-conf-peek) .pa-overall-label,
+.pa-root:not(.pa-conf-on):not(.pa-conf-peek) .pa-overall-count { display: none; }
+.pa-root .pa-overall:focus-visible { outline: 2px solid var(--pa-accent); outline-offset: 2px; }
+/* Its tooltip opens DOWNWARD and right-aligned (the pill sits at the top-right
+   edge — the default above-centered tooltip would clip outside the widget). */
+.pa-root .pa-overall[data-tip]:hover::after,
+.pa-root .pa-overall[data-tip]:focus-visible::after {
+  bottom: auto;
+  top: calc(100% + 7px);
+  left: auto;
+  right: 0;
+  transform: none;
+}
+.pa-overall-label {
+  font-weight: 700;
+  font-size: 0.85em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--pa-conf-fg);
+}
+.pa-overall-count { color: var(--pa-muted); font-variant-numeric: tabular-nums; }
+
+/* Confidence strip: each step-nav button carries its tier as a colored bottom
+   bar, so the dot row reads the whole proof at a glance. The active step's
+   accent background stays dominant; the bar stays visible under it. Part of
+   the full badge display — shown only while peeking or pinned. */
+.pa-root.pa-conf-on .pa-steps .pa-step[class*="pa-conf-"],
+.pa-root.pa-conf-peek .pa-steps .pa-step[class*="pa-conf-"] {
+  box-shadow: inset 0 -3px 0 var(--pa-conf-fg);
+}
+
+/* dark theme friendliness when the host sets a dark background var */
+@media (prefers-color-scheme: dark) {
+  .pa-root {
+    --pa-fg: var(--text-color, #e5e7eb);
+    --pa-bg: var(--panel-bg, #1a1a2e);
+    --pa-border: var(--border-color, #2d2d44);
+    --pa-muted: var(--muted-color, #9ca3af);
+    /* tier colors brighten slightly for dark backgrounds */
+    --pa-tier-grounded: #e6b832;
+    --pa-tier-verified: #aeb8cc;
+    --pa-tier-refuted: #e07a7a;
+  }
+}
+
+
+/* ───────────────────────────────────────────────────────────────────────────
+   SgProofManager dock. The box REUSES the chart classes (.sgc-chart-box,
+   .sgc-chart-header, .sgc-btn, .sgc-resize-handle, .sgc-pinned) so borders and
+   buttons are identical to the charts; only these proof-specific rules remain:
+   the body hosts the animator, which fills the box (fitHeight mode) and scales
+   its expression to fit — no whole-widget transform scaling.
+   ─────────────────────────────────────────────────────────────────────────── */
+.sgp-proof-box {
+    display: flex;
+    flex-direction: column;
+    color: rgba(210, 218, 245, 0.92);
+}
+
+/* Floating description tooltip for a hovered live term (SgProofManager). Appended
+   to <body> with position:fixed so the proof box's overflow never clips it, and
+   positioned by JS ABOVE the term (or below near the top edge) so it covers
+   neither the term nor the expression. App-level theme vars (it's outside the
+   .pa-root scope that defines --pa-*). pointer-events:none so it never steals the
+   hover it describes. */
+.sgp-term-tip {
+    position: fixed;
+    z-index: 10000;
+    max-width: 280px;
+    padding: 8px 11px;
+    border-radius: 10px;
+    background: var(--panel-bg, #1a1a2e);
+    color: var(--text-color, #e5e7eb);
+    border: 1px solid var(--border-color, #2d2d44);
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.40);
+    font-size: 12.5px;
+    line-height: 1.42;
+    overflow-wrap: anywhere;
+    pointer-events: none;
+}
+.sgp-term-tip .katex { font-size: 1em; color: var(--text-color, #e5e7eb); }
+
+.sgp-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    /* Centre the loading / error states; the animator (.sgp-pa) is height:100%,
+       so it fills the box regardless of these alignment values. */
+    align-items: center;
+    justify-content: center;
+}
+
+/* The animator FILLS the box (width + height). Its three zones are a flex column:
+   the stage grows to fill the space left by the FIXED text + nav bars, and the
+   engine (fitHeight mode) scales the expression to fit that fixed stage — so the
+   animation area is the same size on every step and never overflows. No transform
+   scaling of the whole widget (which would un-anchor the nav). */
+.sgp-pa {
+    width: 100%;
+    height: 100%;
+    flex: 0 0 auto;
+}
+/* Stage absorbs the remaining height; text + nav are fixed bars below it. Drop
+   the pa-root's uniform gap and space the zones with margins instead, so the
+   text zone sits flush above the nav divider (only the expression keeps a gap). */
+.sgp-proof-box .sgp-pa { gap: 0; }
+.sgp-proof-box .pa-stage { flex: 1 1 0; min-height: 0; margin-bottom: 12px; }
+/* A little breathing room between the text zone and the nav divider. */
+.sgp-proof-box .pa-meta { margin-bottom: 8px; }
+/* The NEXT pill anchors to the BOTTOM of the fixed-height text zone, so it always
+   sits just above the nav divider regardless of how long the caption is. */
+.sgp-proof-box .pa-next-pill { margin-top: auto; }
+.sgp-pa.pa-root {
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    padding: 12px 14px;
+}
+
+.sgp-status,
+.sgp-error {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 14px;
+    font-size: 0.78rem;
+    color: rgba(210, 218, 245, 0.9);
+    text-align: center;
+}
+.sgp-error { flex-direction: column; }
+.sgp-error-msg { color: rgba(246, 200, 200, 0.95); line-height: 1.35; }
+.sgp-retry {
+    background: rgba(99, 102, 241, 0.18);
+    border: 1px solid rgba(120, 130, 200, 0.5);
+    color: rgba(220, 226, 252, 0.95);
+    border-radius: 6px;
+    padding: 4px 12px;
+    font-size: 0.74rem;
+    cursor: pointer;
+}
+.sgp-retry:hover { background: rgba(99, 102, 241, 0.3); }
+
+/* Loading spinner dots — shared look with the enrichment pill. */
+.sgp-dots { display: inline-flex; align-items: center; gap: 3px; }
+.sgp-dots span {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: rgba(166, 184, 240, 0.95);
+    animation: gei-dot-pulse 1.1s ease-in-out infinite;
+}
+.sgp-dots span:nth-child(2) { animation-delay: 0.18s; }
+.sgp-dots span:nth-child(3) { animation-delay: 0.36s; }
+
+/* "Deriving proof…" pill — lives in the shared .graph-enrich-indicator-stack
+   but with its own class so the enrichment step-visibility toggle never hides
+   it. Visual style mirrors .graph-enrich-indicator. */
+.sgp-derive-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px 6px 8px;
+    background: rgba(10, 12, 26, 0.78);
+    border: 1px solid rgba(110, 124, 180, 0.35);
+    border-radius: 999px;
+    font-size: 0.72rem;
+    color: rgba(210, 218, 245, 0.92);
+    letter-spacing: 0.02em;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    user-select: none;
+    pointer-events: none;
+    animation: gei-fade-in 180ms ease-out;
+}
+.sgp-derive-indicator .gei-dots { display: inline-flex; align-items: center; gap: 3px; }
+.sgp-derive-indicator .gei-dots span {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: rgba(166, 184, 240, 0.95);
+    animation: gei-dot-pulse 1.1s ease-in-out infinite;
+}
+.sgp-derive-indicator .gei-dots span:nth-child(2) { animation-delay: 0.18s; }
+.sgp-derive-indicator .gei-dots span:nth-child(3) { animation-delay: 0.36s; }
+
+/* In the docked proof box the step (nav) buttons grow to fill a NARROW row, but
+   cap their width so they don't stretch into giant bars when the box is wide
+   (the animator now fills the full box width). They NEVER wrap — when they don't
+   fit, _fitControls() hides them (.pa-compact) and the arrows drive navigation,
+   so the nav row stays a single fixed-height line. */
+.sgp-proof-box .pa-controls { gap: 6px; }
+/* Natural-width step buttons (no grow, no shrink) so _fitControls measures the
+   row's TRUE width and compacts (hides the step numbers) when they don't fit —
+   instead of the steps box silently shrinking while its buttons overflow and
+   overlap the rest of the no-wrap row. */
+.sgp-proof-box .pa-steps { flex: 0 0 auto; flex-wrap: nowrap; }
+.sgp-proof-box .pa-steps .pa-step {
+    flex: 0 0 auto;
+    min-width: 30px;
+    max-width: 52px;
+    padding-left: 2px;
+    padding-right: 2px;
+}
+/* Once compacted (a narrow box — the step numbers are already hidden), tighten
+   the remaining controls so the essential buttons fit instead of overflowing:
+   smaller gap and a content-width Play button (drop its fixed 6em). */
+.sgp-proof-box .pa-controls.pa-compact { gap: 4px; }
+.sgp-proof-box .pa-controls.pa-compact .pa-play { width: auto; }

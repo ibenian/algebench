@@ -1,0 +1,1340 @@
+[
+  {
+    "title": "Isolate a",
+    "domain": "algebra",
+    "steps": [
+      {
+        "index": 0,
+        "operation": "Given the equation",
+        "justification": "solve for $a$",
+        "input_latex": "a + b - c = 0",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__add_2}{\\htmlData{n=__add_3}{\\htmlData{n=a}{a} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=b}{b}} \\htmlData{n=__negation_4}{\\htmlData{n=__negation_4__op}{-} \\htmlData{n=c}{c}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__num_5}{0}}",
+        "plain": "a + b - c = 0",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": null,
+          "reason": "the given starting expression",
+          "type_consistent": true
+        }
+      },
+      {
+        "index": 1,
+        "operation": "add $c$ to both sides",
+        "justification": "$c$ crosses the $=$ and flips sign",
+        "input_latex": "a + b = c",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__add_3}{\\htmlData{n=a}{a} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=b}{b}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=c}{c}}",
+        "plain": "a + b = c",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "equivalent",
+          "reason": "symbolically equivalent to the previous step",
+          "type_consistent": true
+        }
+      },
+      {
+        "index": 2,
+        "operation": "subtract $b$ from both sides",
+        "justification": "$b$ crosses over, leaving $a$ isolated",
+        "input_latex": "a = c - b",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=a}{a} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__add_3}{\\htmlData{n=c}{c} \\htmlData{n=__negation_3}{\\htmlData{n=__negation_3__op}{-} \\htmlData{n=b}{b}}}}",
+        "plain": "a = c - b",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "equivalent",
+          "reason": "symbolically equivalent to the previous step",
+          "type_consistent": true
+        }
+      }
+    ],
+    "overall_confidence": {
+      "tier": "grounded",
+      "label": "Grounded",
+      "icon": "🥇",
+      "meaning": "symbolically proven to follow from the previous step",
+      "relation": null,
+      "reason": "2/2 steps verified · endpoint reached",
+      "type_consistent": true,
+      "counts": {
+        "refuted": 0,
+        "unchecked": 0,
+        "plausible": 0,
+        "domain": 0,
+        "verified": 0,
+        "grounded": 2
+      },
+      "endpoint_reached": true
+    },
+    "terms": {
+      "a": {
+        "latex": "a",
+        "name": "a"
+      },
+      "b": {
+        "latex": "b",
+        "name": "b"
+      },
+      "c": {
+        "latex": "c",
+        "name": "c"
+      }
+    }
+  },
+  {
+    "title": "Expand the binomial",
+    "domain": "algebra",
+    "steps": [
+      {
+        "index": 0,
+        "operation": "Given a perfect square",
+        "justification": "expand it",
+        "input_latex": "(x + 1)^2",
+        "latex": "\\htmlData{n=__power_1}{\\left(\\htmlData{n=__add_2}{\\htmlData{n=x}{x} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=__num_3}{1}}\\right)^{\\htmlData{n=__power_1__exp}{2}}}",
+        "plain": "\\left(x + 1\\right)^{2}",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": null,
+          "reason": "the given starting expression",
+          "type_consistent": true
+        }
+      },
+      {
+        "index": 1,
+        "operation": "expand $(x+1)^2$",
+        "justification": "$(x+1)^2 = x^2 + 2x + 1$",
+        "input_latex": "x^2 + 2 x + 1",
+        "latex": "\\htmlData{n=__add_2}{\\htmlData{n=_r1___add_2}{\\htmlData{n=__power_1}{\\htmlData{n=x____power_1}{x}^{\\htmlData{n=__power_1__exp}{2}}} \\htmlData{n=_r1___add_2__op1}{+} \\htmlData{n=__multiply_4}{\\htmlData{n=__num_5}{2} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=x____multiply_4}{x}}} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=__num_3}{1}}",
+        "plain": "x^{2} + 2 \\cdot x + 1",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "equivalent",
+          "reason": "symbolically equivalent to the previous step",
+          "type_consistent": true
+        }
+      }
+    ],
+    "overall_confidence": {
+      "tier": "grounded",
+      "label": "Grounded",
+      "icon": "🥇",
+      "meaning": "symbolically proven to follow from the previous step",
+      "relation": null,
+      "reason": "1/1 steps verified · endpoint reached",
+      "type_consistent": true,
+      "counts": {
+        "refuted": 0,
+        "unchecked": 0,
+        "plausible": 0,
+        "domain": 0,
+        "verified": 0,
+        "grounded": 1
+      },
+      "endpoint_reached": true
+    },
+    "terms": {
+      "__power_1": {
+        "latex": "(x + 1)^2",
+        "name": "(x + 1)^2"
+      },
+      "x": {
+        "latex": "x",
+        "name": "x"
+      }
+    }
+  },
+  {
+    "title": "Factor the difference of squares",
+    "domain": "algebra",
+    "steps": [
+      {
+        "index": 0,
+        "operation": "Given a difference of squares",
+        "justification": "factor it",
+        "input_latex": "a^2 - b^2",
+        "latex": "\\htmlData{n=__add_1}{\\htmlData{n=__power_2}{\\htmlData{n=a}{a}^{\\htmlData{n=__power_2__exp}{2}}} \\htmlData{n=__negation_3}{\\htmlData{n=__negation_3__op}{-} \\htmlData{n=__power_4}{\\htmlData{n=b}{b}^{\\htmlData{n=__power_4__exp}{2}}}}}",
+        "plain": "a^{2} - b^{2}",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": null,
+          "reason": "the given starting expression",
+          "type_consistent": true
+        }
+      },
+      {
+        "index": 1,
+        "operation": "factor",
+        "justification": "$a^2 - b^2 = (a-b)(a+b)$",
+        "input_latex": "(a - b)(a + b)",
+        "latex": "\\htmlData{n=__multiply_1}{\\left(\\htmlData{n=__add_1}{\\htmlData{n=a____add_1}{a} \\htmlData{n=__negation_3}{\\htmlData{n=__negation_3__op}{-} \\htmlData{n=b____negation_3}{b}}}\\right) \\htmlData{n=__multiply_1__m1}{\\cdot} \\left(\\htmlData{n=__add_4}{\\htmlData{n=a____add_4}{a} \\htmlData{n=__add_4__op1}{+} \\htmlData{n=b____add_4}{b}}\\right)}",
+        "plain": "\\left(a - b\\right) \\cdot \\left(a + b\\right)",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "equivalent",
+          "reason": "symbolically equivalent to the previous step",
+          "type_consistent": true
+        }
+      }
+    ],
+    "overall_confidence": {
+      "tier": "grounded",
+      "label": "Grounded",
+      "icon": "🥇",
+      "meaning": "symbolically proven to follow from the previous step",
+      "relation": null,
+      "reason": "1/1 steps verified · endpoint reached",
+      "type_consistent": true,
+      "counts": {
+        "refuted": 0,
+        "unchecked": 0,
+        "plausible": 0,
+        "domain": 0,
+        "verified": 0,
+        "grounded": 1
+      },
+      "endpoint_reached": true
+    },
+    "terms": {
+      "__power_2": {
+        "latex": "a^{2}",
+        "name": "a^{2}"
+      },
+      "a": {
+        "latex": "a",
+        "name": "a"
+      },
+      "__power_4": {
+        "latex": "b^{2}",
+        "name": "b^{2}"
+      },
+      "b": {
+        "latex": "b",
+        "name": "b"
+      }
+    }
+  },
+  {
+    "title": "Relativistic energy–momentum",
+    "domain": "algebra",
+    "steps": [
+      {
+        "index": 0,
+        "operation": "Given the energy–momentum relation",
+        "justification": "solve for $E$",
+        "input_latex": "E^2 = (m c^2)^2 + (p c)^2",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__power_2}{\\htmlData{n=E}{E}^{\\htmlData{n=__power_2__exp}{2}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__add_3}{\\htmlData{n=__power_4}{\\left(\\htmlData{n=__multiply_5}{\\htmlData{n=m}{m} \\htmlData{n=__multiply_5__m1}{\\cdot} \\htmlData{n=__power_6}{\\htmlData{n=c____power_6}{c}^{\\htmlData{n=__power_6__exp}{2}}}}\\right)^{\\htmlData{n=__power_4__exp}{2}}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__power_7}{\\left(\\htmlData{n=__multiply_8}{\\htmlData{n=p}{p} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=c____multiply_8}{c}}\\right)^{\\htmlData{n=__power_7__exp}{2}}}}}",
+        "plain": "E^{2} = \\left(m \\cdot c^{2}\\right)^{2} + \\left(p \\cdot c\\right)^{2}",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": null,
+          "reason": "the given starting expression",
+          "type_consistent": true
+        }
+      },
+      {
+        "index": 1,
+        "operation": "take the square root",
+        "justification": "solve for $E$ (positive root)",
+        "input_latex": "E = \\sqrt{(m c^2)^2 + (p c)^2}",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=E}{E} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=_r1___power_2}{\\sqrt{\\htmlData{n=__add_3}{\\htmlData{n=__power_4}{\\left(\\htmlData{n=__multiply_5}{\\htmlData{n=m}{m} \\htmlData{n=__multiply_5__m1}{\\cdot} \\htmlData{n=__power_6}{\\htmlData{n=c____power_6}{c}^{\\htmlData{n=__power_6__exp}{2}}}}\\right)^{\\htmlData{n=__power_4__exp}{2}}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__power_7}{\\left(\\htmlData{n=__multiply_8}{\\htmlData{n=p}{p} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=c____multiply_8}{c}}\\right)^{\\htmlData{n=__power_7__exp}{2}}}}}}}",
+        "plain": "E = \\sqrt{\\left(m \\cdot c^{2}\\right)^{2} + \\left(p \\cdot c\\right)^{2}}",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "narrows",
+          "reason": "the previous step is exactly this step squared — taking a root keeps only solutions of the original",
+          "type_consistent": true
+        }
+      },
+      {
+        "index": 2,
+        "operation": "expand the squares",
+        "justification": "$(m c^2)^2 = m^2 c^4,\\ (p c)^2 = p^2 c^2$",
+        "input_latex": "E = \\sqrt{m^2 c^4 + p^2 c^2}",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=E}{E} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=_r1___power_2}{\\sqrt{\\htmlData{n=__add_3}{\\htmlData{n=__multiply_4}{\\htmlData{n=__power_5}{\\htmlData{n=m}{m}^{\\htmlData{n=__power_5__exp}{2}}} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=_r1___power_6}{\\htmlData{n=c___r1___power_6}{c}^{\\htmlData{n=_r1___power_6__exp}{4}}}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__multiply_8}{\\htmlData{n=__power_7}{\\htmlData{n=p}{p}^{\\htmlData{n=__power_7__exp}{2}}} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=__power_6}{\\htmlData{n=c____power_6}{c}^{\\htmlData{n=__power_6__exp}{2}}}}}}}}",
+        "plain": "E = \\sqrt{m^{2} \\cdot c^{4} + p^{2} \\cdot c^{2}}",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "equivalent",
+          "reason": "symbolically equivalent to the previous step",
+          "type_consistent": true
+        }
+      },
+      {
+        "index": 3,
+        "operation": "factor out $c^2$",
+        "justification": "$c^2$ is common to both terms",
+        "input_latex": "E = \\sqrt{c^2 \\cdot (m^2 c^2 + p^2)}",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=E}{E} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=_r1___power_2}{\\sqrt{\\htmlData{n=__multiply_8}{\\htmlData{n=__power_4}{\\htmlData{n=c____power_4}{c}^{\\htmlData{n=__power_4__exp}{2}}} \\htmlData{n=__multiply_8__m1}{\\cdot} \\left(\\htmlData{n=__add_3}{\\htmlData{n=__multiply_4}{\\htmlData{n=__power_5}{\\htmlData{n=m}{m}^{\\htmlData{n=__power_5__exp}{2}}} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=__power_6}{\\htmlData{n=c____power_6}{c}^{\\htmlData{n=__power_6__exp}{2}}}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__power_7}{\\htmlData{n=p}{p}^{\\htmlData{n=__power_7__exp}{2}}}}\\right)}}}}",
+        "plain": "E = \\sqrt{c^{2} \\cdot \\left(m^{2} \\cdot c^{2} + p^{2}\\right)}",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "equivalent",
+          "reason": "symbolically equivalent to the previous step",
+          "type_consistent": true
+        }
+      },
+      {
+        "index": 4,
+        "operation": "pull $c$ out of the root",
+        "justification": "$\\sqrt{c^2 x} = c \\sqrt{x}$",
+        "input_latex": "E = c \\sqrt{m^2 c^2 + p^2}",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=E}{E} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_8}{\\htmlData{n=c____multiply_8}{c} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=_r1___power_2}{\\sqrt{\\htmlData{n=__add_3}{\\htmlData{n=__multiply_4}{\\htmlData{n=__power_5}{\\htmlData{n=m}{m}^{\\htmlData{n=__power_5__exp}{2}}} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=__power_6}{\\htmlData{n=c____power_6}{c}^{\\htmlData{n=__power_6__exp}{2}}}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__power_7}{\\htmlData{n=p}{p}^{\\htmlData{n=__power_7__exp}{2}}}}}}}}",
+        "plain": "E = c \\cdot \\sqrt{m^{2} \\cdot c^{2} + p^{2}}",
+        "confidence": {
+          "tier": "verified",
+          "label": "Verified",
+          "icon": "🥈",
+          "meaning": "strong CAS evidence, short of a symbolic proof",
+          "relation": "narrows",
+          "reason": "treating $m$ as the unknown, every solution of this step solves the previous one (other symbols as generic parameters)",
+          "type_consistent": true
+        }
+      },
+      {
+        "index": 5,
+        "operation": "factor out $m^2 c^2$",
+        "justification": "the standard Lorentz-factor form",
+        "input_latex": "E = m c^2 \\sqrt{1 + \\frac{p^2}{m^2 c^2}}",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=E}{E} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_2}{\\htmlData{n=m____multiply_2}{m} \\htmlData{n=__multiply_2__m1}{\\cdot} \\htmlData{n=__multiply_3}{\\htmlData{n=__power_4}{\\htmlData{n=c____power_4}{c}^{\\htmlData{n=__power_4__exp}{2}}} \\htmlData{n=__multiply_3__m1}{\\cdot} \\htmlData{n=_r1___power_2}{\\sqrt{\\htmlData{n=__add_3}{\\htmlData{n=__num_7}{1} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__multiply_8}{\\frac{\\htmlData{n=__power_7}{\\htmlData{n=p}{p}^{\\htmlData{n=__power_7__exp}{2}}}}{\\htmlData{n=__multiply_4}{\\htmlData{n=__power_5}{\\htmlData{n=m____power_5}{m}^{\\htmlData{n=__power_5__exp}{2}}} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=__power_6}{\\htmlData{n=c____power_6}{c}^{\\htmlData{n=__power_6__exp}{2}}}}}}}}}}}}",
+        "plain": "E = m \\cdot c^{2} \\cdot \\sqrt{1 + \\frac{p^{2}}{m^{2} \\cdot c^{2}}}",
+        "confidence": {
+          "tier": "verified",
+          "label": "Verified",
+          "icon": "🥈",
+          "meaning": "strong CAS evidence, short of a symbolic proof",
+          "relation": "narrows",
+          "reason": "treating $p$ as the unknown, every solution of this step solves the previous one (other symbols as generic parameters)",
+          "type_consistent": true
+        }
+      }
+    ],
+    "overall_confidence": {
+      "tier": "verified",
+      "label": "Verified",
+      "icon": "🥈",
+      "meaning": "strong CAS evidence, short of a symbolic proof",
+      "relation": null,
+      "reason": "5/5 steps verified · endpoint reached",
+      "type_consistent": true,
+      "counts": {
+        "refuted": 0,
+        "unchecked": 0,
+        "plausible": 0,
+        "domain": 0,
+        "verified": 2,
+        "grounded": 3
+      },
+      "endpoint_reached": true
+    },
+    "terms": {
+      "__power_2": {
+        "latex": "E^{2}",
+        "name": "E^{2}"
+      },
+      "E": {
+        "latex": "E",
+        "name": "E"
+      },
+      "__power_4": {
+        "latex": "\\left(c^{2} m\\right)^{2}",
+        "name": "\\left(c^{2} m\\right)^{2}"
+      },
+      "m": {
+        "latex": "m",
+        "name": "m"
+      },
+      "__power_6": {
+        "latex": "c^{2}",
+        "name": "c^{2}"
+      },
+      "c": {
+        "latex": "c",
+        "name": "c"
+      },
+      "__power_7": {
+        "latex": "\\left(c p\\right)^{2}",
+        "name": "\\left(c p\\right)^{2}"
+      },
+      "p": {
+        "latex": "p",
+        "name": "p"
+      },
+      "_r1___power_2": {
+        "latex": "\\sqrt{\\left(c p\\right)^{2} + \\left(c^{2} m\\right)^{2}}",
+        "name": "\\sqrt{\\left(c p\\right)^{2} + \\left(c^{2} m\\right)^{2}}"
+      },
+      "__power_5": {
+        "latex": "m^{2}",
+        "name": "m^{2}"
+      },
+      "_r1___power_6": {
+        "latex": "c^{4}",
+        "name": "c^{4}"
+      },
+      "__power_10": {
+        "latex": "\\frac{1}{c^{2} m^{2}}",
+        "name": "\\frac{1}{c^{2} m^{2}}"
+      }
+    }
+  },
+  {
+    "title": "Lorentz time dilation",
+    "domain": "algebra",
+    "steps": [
+      {
+        "index": 0,
+        "operation": "Given the light-clock relation",
+        "justification": "solve for $t$ (invariant $c$)",
+        "input_latex": "(c t)^2 = (c t_0)^2 + (v t)^2",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__power_2}{\\left(\\htmlData{n=__multiply_3}{\\htmlData{n=c____multiply_3}{c} \\htmlData{n=__multiply_3__m1}{\\cdot} \\htmlData{n=t____multiply_3}{t}}\\right)^{\\htmlData{n=__power_2__exp}{2}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__add_4}{\\htmlData{n=__power_5}{\\left(\\htmlData{n=__multiply_6}{\\htmlData{n=c____multiply_6}{c} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=t_0}{t_{0}}}\\right)^{\\htmlData{n=__power_5__exp}{2}}} \\htmlData{n=__add_4__op1}{+} \\htmlData{n=__power_7}{\\left(\\htmlData{n=__multiply_8}{\\htmlData{n=v}{v} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=t____multiply_8}{t}}\\right)^{\\htmlData{n=__power_7__exp}{2}}}}}",
+        "plain": "\\left(c \\cdot t\\right)^{2} = \\left(c \\cdot t_{0}\\right)^{2} + \\left(v \\cdot t\\right)^{2}",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": null,
+          "reason": "the given starting expression",
+          "type_consistent": true
+        }
+      },
+      {
+        "index": 1,
+        "operation": "expand the squares",
+        "justification": "$(c t)^2 = c^2 t^2$, etc.",
+        "input_latex": "c^2 t^2 = c^2 t_0^2 + v^2 t^2",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__multiply_3}{\\htmlData{n=__power_3}{\\htmlData{n=c____power_3}{c}^{\\htmlData{n=__power_3__exp}{2}}} \\htmlData{n=__multiply_3__m1}{\\cdot} \\htmlData{n=__power_4}{\\htmlData{n=t____power_4}{t}^{\\htmlData{n=__power_4__exp}{2}}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__add_4}{\\htmlData{n=__multiply_6}{\\htmlData{n=_r1___power_7}{\\htmlData{n=c___r1___power_7}{c}^{\\htmlData{n=_r1___power_7__exp}{2}}} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=__power_8}{\\htmlData{n=t_0}{t_{0}}^{\\htmlData{n=__power_8__exp}{2}}}} \\htmlData{n=__add_4__op1}{+} \\htmlData{n=__multiply_8}{\\htmlData{n=__power_10}{\\htmlData{n=v}{v}^{\\htmlData{n=__power_10__exp}{2}}} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=__power_11}{\\htmlData{n=t____power_11}{t}^{\\htmlData{n=__power_11__exp}{2}}}}}}",
+        "plain": "c^{2} \\cdot t^{2} = c^{2} \\cdot t_{0}^{2} + v^{2} \\cdot t^{2}",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "equivalent",
+          "reason": "symbolically equivalent to the previous step",
+          "type_consistent": true
+        }
+      },
+      {
+        "index": 2,
+        "operation": "collect the $t$ terms",
+        "justification": "move $v^2 t^2$ to the left",
+        "input_latex": "c^2 t^2 - v^2 t^2 = c^2 t_0^2",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__add_4}{\\htmlData{n=__multiply_3}{\\htmlData{n=__power_3}{\\htmlData{n=c____power_3}{c}^{\\htmlData{n=__power_3__exp}{2}}} \\htmlData{n=__multiply_3__m1}{\\cdot} \\htmlData{n=__power_4}{\\htmlData{n=t____power_4}{t}^{\\htmlData{n=__power_4__exp}{2}}}} \\htmlData{n=__negation_6}{\\htmlData{n=__negation_6__op}{-} \\htmlData{n=__multiply_8}{\\htmlData{n=__power_10}{\\htmlData{n=v}{v}^{\\htmlData{n=__power_10__exp}{2}}} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=__power_11}{\\htmlData{n=t____power_11}{t}^{\\htmlData{n=__power_11__exp}{2}}}}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_6}{\\htmlData{n=_r1___power_7}{\\htmlData{n=c___r1___power_7}{c}^{\\htmlData{n=_r1___power_7__exp}{2}}} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=__power_8}{\\htmlData{n=t_0}{t_{0}}^{\\htmlData{n=__power_8__exp}{2}}}}}",
+        "plain": "c^{2} \\cdot t^{2} - v^{2} \\cdot t^{2} = c^{2} \\cdot t_{0}^{2}",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "equivalent",
+          "reason": "symbolically equivalent to the previous step",
+          "type_consistent": true
+        }
+      },
+      {
+        "index": 3,
+        "operation": "factor out $t^2$",
+        "justification": "$t^2$ is common on the left",
+        "input_latex": "t^2 \\cdot (c^2 - v^2) = c^2 t_0^2",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__multiply_3}{\\htmlData{n=__power_11}{\\htmlData{n=t}{t}^{\\htmlData{n=__power_11__exp}{2}}} \\htmlData{n=__multiply_3__m1}{\\cdot} \\left(\\htmlData{n=__add_4}{\\htmlData{n=__power_3}{\\htmlData{n=c____power_3}{c}^{\\htmlData{n=__power_3__exp}{2}}} \\htmlData{n=__negation_6}{\\htmlData{n=__negation_6__op}{-} \\htmlData{n=__power_10}{\\htmlData{n=v}{v}^{\\htmlData{n=__power_10__exp}{2}}}}}\\right)} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_6}{\\htmlData{n=_r1___power_7}{\\htmlData{n=c___r1___power_7}{c}^{\\htmlData{n=_r1___power_7__exp}{2}}} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=__power_8}{\\htmlData{n=t_0}{t_{0}}^{\\htmlData{n=__power_8__exp}{2}}}}}",
+        "plain": "t^{2} \\cdot \\left(c^{2} - v^{2}\\right) = c^{2} \\cdot t_{0}^{2}",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "equivalent",
+          "reason": "symbolically equivalent to the previous step",
+          "type_consistent": true
+        }
+      },
+      {
+        "index": 4,
+        "operation": "divide by $c^2 - v^2$",
+        "justification": "isolate $t^2$",
+        "input_latex": "t^2 = \\frac{c^2 t_0^2}{c^2 - v^2}",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__power_11}{\\htmlData{n=t}{t}^{\\htmlData{n=__power_11__exp}{2}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_3}{\\frac{\\htmlData{n=__multiply_6}{\\htmlData{n=_r1___power_7}{\\htmlData{n=c___r1___power_7}{c}^{\\htmlData{n=_r1___power_7__exp}{2}}} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=__power_8}{\\htmlData{n=t_0}{t_{0}}^{\\htmlData{n=__power_8__exp}{2}}}}}{\\htmlData{n=__add_4}{\\htmlData{n=__power_3}{\\htmlData{n=c____power_3}{c}^{\\htmlData{n=__power_3__exp}{2}}} \\htmlData{n=__negation_6}{\\htmlData{n=__negation_6__op}{-} \\htmlData{n=__power_10}{\\htmlData{n=v}{v}^{\\htmlData{n=__power_10__exp}{2}}}}}}}}",
+        "plain": "t^{2} = \\frac{c^{2} \\cdot t_{0}^{2}}{c^{2} - v^{2}}",
+        "confidence": {
+          "tier": "verified",
+          "label": "Verified",
+          "icon": "🥈",
+          "meaning": "strong CAS evidence, short of a symbolic proof",
+          "relation": "equivalent",
+          "reason": "both sides scaled by $c^{2} - v^{2}$ — equivalent wherever that factor ≠ 0",
+          "type_consistent": true
+        }
+      },
+      {
+        "index": 5,
+        "operation": "divide top and bottom by $c^2$",
+        "justification": "introduce $\\frac{v^2}{c^2}$",
+        "input_latex": "t^2 = \\frac{t_0^2}{1 - \\frac{v^2}{c^2}}",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__power_11}{\\htmlData{n=t}{t}^{\\htmlData{n=__power_11__exp}{2}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_3}{\\frac{\\htmlData{n=__power_8}{\\htmlData{n=t_0}{t_{0}}^{\\htmlData{n=__power_8__exp}{2}}}}{\\htmlData{n=__add_4}{\\htmlData{n=__num_7}{1} \\htmlData{n=__negation_6}{\\htmlData{n=__negation_6__op}{-} \\htmlData{n=__multiply_9}{\\frac{\\htmlData{n=__power_10}{\\htmlData{n=v}{v}^{\\htmlData{n=__power_10__exp}{2}}}}{\\htmlData{n=__power_3}{\\htmlData{n=c}{c}^{\\htmlData{n=__power_3__exp}{2}}}}}}}}}}",
+        "plain": "t^{2} = \\frac{t_{0}^{2}}{1 - \\frac{v^{2}}{c^{2}}}",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "equivalent",
+          "reason": "symbolically equivalent to the previous step",
+          "type_consistent": true
+        }
+      },
+      {
+        "index": 6,
+        "operation": "take the square root",
+        "justification": "moving clocks run slow by $\\gamma$",
+        "input_latex": "t = \\frac{t_0}{\\sqrt{1 - \\frac{v^2}{c^2}}}",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=t}{t} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_3}{\\frac{\\htmlData{n=t_0}{t_{0}}}{\\htmlData{n=__power_4}{\\sqrt{\\htmlData{n=__add_4}{\\htmlData{n=__num_7}{1} \\htmlData{n=__negation_6}{\\htmlData{n=__negation_6__op}{-} \\htmlData{n=__multiply_9}{\\frac{\\htmlData{n=__power_10}{\\htmlData{n=v}{v}^{\\htmlData{n=__power_10__exp}{2}}}}{\\htmlData{n=__power_3}{\\htmlData{n=c}{c}^{\\htmlData{n=__power_3__exp}{2}}}}}}}}}}}}",
+        "plain": "t = \\frac{t_{0}}{\\sqrt{1 - \\frac{v^{2}}{c^{2}}}}",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "narrows",
+          "reason": "the previous step is exactly this step squared — taking a root keeps only solutions of the original",
+          "type_consistent": true
+        }
+      }
+    ],
+    "overall_confidence": {
+      "tier": "verified",
+      "label": "Verified",
+      "icon": "🥈",
+      "meaning": "strong CAS evidence, short of a symbolic proof",
+      "relation": null,
+      "reason": "6/6 steps verified · endpoint reached",
+      "type_consistent": true,
+      "counts": {
+        "refuted": 0,
+        "unchecked": 0,
+        "plausible": 0,
+        "domain": 0,
+        "verified": 1,
+        "grounded": 5
+      },
+      "endpoint_reached": true
+    },
+    "terms": {
+      "__power_2": {
+        "latex": "\\left(c t\\right)^{2}",
+        "name": "\\left(c t\\right)^{2}"
+      },
+      "c": {
+        "latex": "c",
+        "name": "c"
+      },
+      "t": {
+        "latex": "t",
+        "name": "t"
+      },
+      "__power_5": {
+        "latex": "\\left(c t_{0}\\right)^{2}",
+        "name": "\\left(c t_{0}\\right)^{2}"
+      },
+      "t_0": {
+        "latex": "t_{0}",
+        "name": "t_{0}"
+      },
+      "__power_7": {
+        "latex": "\\left(t v\\right)^{2}",
+        "name": "\\left(t v\\right)^{2}"
+      },
+      "v": {
+        "latex": "v",
+        "name": "v"
+      },
+      "__power_3": {
+        "latex": "c^{2}",
+        "name": "c^{2}"
+      },
+      "__power_4": {
+        "latex": "t^{2}",
+        "name": "t^{2}"
+      },
+      "_r1___power_7": {
+        "latex": "c^{2}",
+        "name": "c^{2}"
+      },
+      "__power_8": {
+        "latex": "t_{0}^{2}",
+        "name": "t_{0}^{2}"
+      },
+      "__power_10": {
+        "latex": "v^{2}",
+        "name": "v^{2}"
+      },
+      "__power_11": {
+        "latex": "t^{2}",
+        "name": "t^{2}"
+      },
+      "_r1___power_11": {
+        "latex": "\\frac{1}{c^{2}}",
+        "name": "\\frac{1}{c^{2}}"
+      }
+    }
+  },
+  {
+    "title": "Quadratic roots & discriminant",
+    "domain": "algebra",
+    "steps": [
+      {
+        "index": 0,
+        "operation": "Given the quadratic equation",
+        "justification": "complete the square; the discriminant is $b^2 - 4ac$",
+        "input_latex": "a \\cdot x^{2} + b \\cdot x + c = 0",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__add_2}{\\htmlData{n=__add_3}{\\htmlData{n=__multiply_4}{\\htmlData{n=a}{a} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=__power_5}{\\htmlData{n=x____power_5}{x}^{\\htmlData{n=__power_5__exp}{2}}}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__multiply_6}{\\htmlData{n=b}{b} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=x____multiply_6}{x}}} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=c}{c}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__num_7}{0}}",
+        "plain": "a \\cdot x^{2} + b \\cdot x + c = 0",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": null,
+          "reason": "the given starting expression",
+          "type_consistent": true
+        }
+      },
+      {
+        "index": 1,
+        "operation": "Divide both sides by $a$.",
+        "justification": "Division property of equality: Dividing both sides of an equation by the same non-zero number maintains the equality.",
+        "input_latex": "x^{2} + \\frac{b}{a} \\cdot x + \\frac{c}{a} = 0",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__add_2}{\\htmlData{n=__add_3}{\\htmlData{n=__power_5}{\\htmlData{n=x____power_5}{x}^{\\htmlData{n=__power_5__exp}{2}}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__multiply_4}{\\htmlData{n=_r1___multiply_6}{\\frac{\\htmlData{n=b}{b}}{\\htmlData{n=a___r1___multiply_6}{a}}} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=x____multiply_4}{x}}} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=__multiply_8}{\\frac{\\htmlData{n=c}{c}}{\\htmlData{n=a____multiply_8}{a}}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__num_7}{0}}",
+        "plain": "x^{2} + \\frac{b}{a} \\cdot x + \\frac{c}{a} = 0",
+        "confidence": {
+          "tier": "verified",
+          "label": "Verified",
+          "icon": "🥈",
+          "meaning": "strong CAS evidence, short of a symbolic proof",
+          "relation": "equivalent",
+          "reason": "both sides scaled by $a$ — equivalent wherever that factor ≠ 0",
+          "type_consistent": true
+        }
+      },
+      {
+        "index": 2,
+        "operation": "Subtract $\\frac{c}{a}$ from both sides.",
+        "justification": "Subtraction property of equality: Subtracting the same quantity from both sides of an equation maintains the equality.",
+        "input_latex": "x^{2} + \\frac{b}{a} \\cdot x = - \\frac{c}{a}",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__add_3}{\\htmlData{n=__power_5}{\\htmlData{n=x____power_5}{x}^{\\htmlData{n=__power_5__exp}{2}}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__multiply_4}{\\htmlData{n=_r1___multiply_6}{\\frac{\\htmlData{n=b}{b}}{\\htmlData{n=a___r1___multiply_6}{a}}} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=x____multiply_4}{x}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__negation_7}{\\htmlData{n=__negation_7__op}{-} \\htmlData{n=__multiply_8}{\\frac{\\htmlData{n=c}{c}}{\\htmlData{n=a____multiply_8}{a}}}}}",
+        "plain": "x^{2} + \\frac{b}{a} \\cdot x = - \\frac{c}{a}",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "equivalent",
+          "reason": "symbolically equivalent to the previous step",
+          "type_consistent": true
+        }
+      },
+      {
+        "index": 3,
+        "operation": "Add $\\left(\\frac{b}{2a}\\right)^{2}$ to both sides to complete the square.",
+        "justification": "Addition property of equality: Adding the same quantity to both sides of an equation maintains the equality. This step prepares the left side for factoring as a perfect square.",
+        "input_latex": "x^{2} + \\frac{b}{a} \\cdot x + \\left(\\frac{b}{2a}\\right)^{2} = - \\frac{c}{a} + \\left(\\frac{b}{2a}\\right)^{2}",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__add_2}{\\htmlData{n=__add_3}{\\htmlData{n=__power_5}{\\htmlData{n=x____power_5}{x}^{\\htmlData{n=__power_5__exp}{2}}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__multiply_4}{\\htmlData{n=_r1___multiply_6}{\\frac{\\htmlData{n=b___r1___multiply_6}{b}}{\\htmlData{n=a___r1___multiply_6}{a}}} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=x____multiply_4}{x}}} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=__power_8}{\\left(\\htmlData{n=__multiply_9}{\\frac{\\htmlData{n=b____multiply_9}{b}}{\\htmlData{n=__multiply_11}{\\htmlData{n=__num_12}{2} \\htmlData{n=__multiply_11__m1}{\\cdot} \\htmlData{n=a____multiply_11}{a}}}}\\right)^{\\htmlData{n=__power_8__exp}{2}}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__add_13}{\\htmlData{n=__negation_7}{\\htmlData{n=__negation_7__op}{-} \\htmlData{n=__multiply_8}{\\frac{\\htmlData{n=c}{c}}{\\htmlData{n=a____multiply_8}{a}}}} \\htmlData{n=__add_13__op1}{+} \\htmlData{n=__power_17}{\\left(\\htmlData{n=__multiply_18}{\\frac{\\htmlData{n=b____multiply_18}{b}}{\\htmlData{n=__multiply_20}{\\htmlData{n=__num_21}{2} \\htmlData{n=__multiply_20__m1}{\\cdot} \\htmlData{n=a____multiply_20}{a}}}}\\right)^{\\htmlData{n=__power_17__exp}{2}}}}}",
+        "plain": "x^{2} + \\frac{b}{a} \\cdot x + \\left(\\frac{b}{2 \\cdot a}\\right)^{2} = - \\frac{c}{a} + \\left(\\frac{b}{2 \\cdot a}\\right)^{2}",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "equivalent",
+          "reason": "symbolically equivalent to the previous step",
+          "type_consistent": true
+        }
+      },
+      {
+        "index": 4,
+        "operation": "Factor the perfect square trinomial on the left side and expand the square on the right side.",
+        "justification": "Algebraic identity $(u+v)^2 = u^2 + 2uv + v^2$ for the left side, and exponent rule $(uv)^n = u^n v^n$ for the right side.",
+        "input_latex": "\\left(x + \\frac{b}{2a}\\right)^{2} = - \\frac{c}{a} + \\frac{b^{2}}{4a^{2}}",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__power_17}{\\left(\\htmlData{n=__add_13}{\\htmlData{n=x}{x} \\htmlData{n=__add_13__op1}{+} \\htmlData{n=__multiply_18}{\\frac{\\htmlData{n=b____multiply_18}{b}}{\\htmlData{n=__multiply_20}{\\htmlData{n=__num_21}{2} \\htmlData{n=__multiply_20__m1}{\\cdot} \\htmlData{n=a____multiply_20}{a}}}}}\\right)^{\\htmlData{n=__power_17__exp}{2}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__add_2}{\\htmlData{n=__negation_7}{\\htmlData{n=__negation_7__op}{-} \\htmlData{n=__multiply_8}{\\frac{\\htmlData{n=c}{c}}{\\htmlData{n=a____multiply_8}{a}}}} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=__multiply_12}{\\frac{\\htmlData{n=__power_13}{\\htmlData{n=b____power_13}{b}^{\\htmlData{n=__power_13__exp}{2}}}}{\\htmlData{n=__multiply_15}{\\htmlData{n=__num_16}{4} \\htmlData{n=__multiply_15__m1}{\\cdot} \\htmlData{n=_r1___power_17}{\\htmlData{n=a___r1___power_17}{a}^{\\htmlData{n=_r1___power_17__exp}{2}}}}}}}}",
+        "plain": "\\left(x + \\frac{b}{2 \\cdot a}\\right)^{2} = - \\frac{c}{a} + \\frac{b^{2}}{4 \\cdot a^{2}}",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "equivalent",
+          "reason": "symbolically equivalent to the previous step",
+          "type_consistent": true
+        }
+      },
+      {
+        "index": 5,
+        "operation": "Find a common denominator and combine the terms on the right side.",
+        "justification": "Arithmetic of fractions: To combine fractions, a common denominator $4a^2$ is found, and the numerators are added.",
+        "input_latex": "\\left(x + \\frac{b}{2a}\\right)^{2} = \\frac{- 4 \\cdot a \\cdot c + b^{2}}{4 \\cdot a^{2}}",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__power_17}{\\left(\\htmlData{n=__add_13}{\\htmlData{n=x}{x} \\htmlData{n=__add_13__op1}{+} \\htmlData{n=__multiply_18}{\\frac{\\htmlData{n=b____multiply_18}{b}}{\\htmlData{n=__multiply_20}{\\htmlData{n=__num_21}{2} \\htmlData{n=__multiply_20__m1}{\\cdot} \\htmlData{n=a____multiply_20}{a}}}}}\\right)^{\\htmlData{n=__power_17__exp}{2}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_12}{\\frac{\\left(\\htmlData{n=__add_2}{\\htmlData{n=__multiply_8}{\\htmlData{n=__multiply_11}{\\htmlData{n=__num_12}{-4} \\htmlData{n=__multiply_11__m1}{\\cdot} \\htmlData{n=a____multiply_11}{a}} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=c}{c}} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=__power_13}{\\htmlData{n=b____power_13}{b}^{\\htmlData{n=__power_13__exp}{2}}}}\\right)}{\\htmlData{n=__multiply_15}{\\htmlData{n=__num_16}{4} \\htmlData{n=__multiply_15__m1}{\\cdot} \\htmlData{n=_r1___power_17}{\\htmlData{n=a___r1___power_17}{a}^{\\htmlData{n=_r1___power_17__exp}{2}}}}}}}",
+        "plain": "\\left(x + \\frac{b}{2 \\cdot a}\\right)^{2} = \\frac{\\left(-4 \\cdot a \\cdot c + b^{2}\\right)}{4 \\cdot a^{2}}",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "equivalent",
+          "reason": "symbolically equivalent to the previous step",
+          "type_consistent": true
+        }
+      },
+      {
+        "index": 6,
+        "operation": "Take the square root of both sides, keeping both branches.",
+        "justification": "Square root property of equality: if $u^2 = v$ then $u = \\pm\\sqrt{v}$ — both the positive and negative branches are kept as a disjunction. Also $\\sqrt{4a^2} = 2a$.",
+        "input_latex": "x + \\frac{b}{2 \\cdot a} = \\frac{\\sqrt{- 4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a} \\lor x + \\frac{b}{2 \\cdot a} = - \\frac{\\sqrt{- 4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a}",
+        "latex": "\\htmlData{n=__disjunction_1}{\\htmlData{n=__equals_1}{\\htmlData{n=__add_13}{\\htmlData{n=x____add_13}{x} \\htmlData{n=__add_13__op1}{+} \\htmlData{n=__multiply_18}{\\frac{\\htmlData{n=b____multiply_18}{b}}{\\htmlData{n=__multiply_20}{\\htmlData{n=__num_21}{2} \\htmlData{n=__multiply_20__m1}{\\cdot} \\htmlData{n=a____multiply_20}{a}}}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_12}{\\frac{\\htmlData{n=d0___power_8}{\\sqrt{\\htmlData{n=__add_2}{\\htmlData{n=__multiply_8}{\\htmlData{n=__multiply_11}{\\htmlData{n=__num_12}{-4} \\htmlData{n=__multiply_11__m1}{\\cdot} \\htmlData{n=a____multiply_11}{a}} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=c____multiply_8}{c}} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=__power_13}{\\htmlData{n=b____power_13}{b}^{\\htmlData{n=__power_13__exp}{2}}}}}}}{\\htmlData{n=__multiply_15}{\\htmlData{n=d0___num_16}{2} \\htmlData{n=__multiply_15__m1}{\\cdot} \\htmlData{n=a____multiply_15}{a}}}}} \\htmlData{n=__disjunction_1__op}{\\lor} \\htmlData{n=d1___equals_1}{\\htmlData{n=d1___add_2}{\\htmlData{n=x__d1___add_2}{x} \\htmlData{n=d1___add_2__op1}{+} \\htmlData{n=d1___multiply_3}{\\frac{\\htmlData{n=b__d1___multiply_3}{b}}{\\htmlData{n=d1___multiply_5}{\\htmlData{n=d1___num_6}{2} \\htmlData{n=d1___multiply_5__m1}{\\cdot} \\htmlData{n=a__d1___multiply_5}{a}}}}} \\htmlData{n=d1___equals_1__op}{=} \\htmlData{n=d1___negation_7}{\\htmlData{n=d1___negation_7__op}{-} \\htmlData{n=d1___multiply_8}{\\htmlData{n=d1___power_9}{\\sqrt{\\htmlData{n=d1___add_10}{\\htmlData{n=d1___multiply_11}{\\htmlData{n=d1___multiply_12}{\\htmlData{n=d1___num_13}{-4} \\htmlData{n=d1___multiply_12__m1}{\\cdot} \\htmlData{n=a__d1___multiply_12}{a}} \\htmlData{n=d1___multiply_11__m1}{\\cdot} \\htmlData{n=c__d1___multiply_11}{c}} \\htmlData{n=d1___add_10__op1}{+} \\htmlData{n=d1___power_14}{\\htmlData{n=b__d1___power_14}{b}^{\\htmlData{n=d1___power_14__exp}{2}}}}}} \\htmlData{n=d1___multiply_8__m1}{\\cdot} \\htmlData{n=d1___multiply_15}{\\frac{\\htmlData{n=d1___num_16}{1/2}}{\\htmlData{n=a__d1___multiply_15}{a}}}}}}}",
+        "plain": "x + \\frac{b}{2 \\cdot a} = \\frac{\\sqrt{-4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a} \\lor x + \\frac{b}{2 \\cdot a} = - \\sqrt{-4 \\cdot a \\cdot c + b^{2}} \\cdot \\frac{1/2}{a}",
+        "confidence": {
+          "tier": "verified",
+          "label": "Verified",
+          "icon": "🥈",
+          "meaning": "strong CAS evidence, short of a symbolic proof",
+          "relation": "narrows",
+          "reason": "treating $x$ as the unknown, every solution of this step solves the previous one (other symbols as generic parameters)",
+          "type_consistent": true
+        }
+      },
+      {
+        "index": 7,
+        "operation": "Subtract $\\frac{b}{2a}$ from both sides in each branch.",
+        "justification": "Subtraction property of equality applied to each branch of the disjunction, isolating $x$.",
+        "input_latex": "x = - \\frac{b}{2 \\cdot a} + \\frac{\\sqrt{- 4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a} \\lor x = - \\frac{b}{2 \\cdot a} - \\frac{\\sqrt{- 4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a}",
+        "latex": "\\htmlData{n=__disjunction_1}{\\htmlData{n=__equals_1}{\\htmlData{n=x____equals_1}{x} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__add_13}{\\htmlData{n=d0___negation_3}{\\htmlData{n=d0___negation_3__op}{-} \\htmlData{n=d1___multiply_3}{\\htmlData{n=b__d1___multiply_3}{b} \\htmlData{n=d1___multiply_3__m1}{\\cdot} \\htmlData{n=d0___multiply_5}{\\frac{\\htmlData{n=d0___num_6}{1/2}}{\\htmlData{n=a__d0___multiply_5}{a}}}}} \\htmlData{n=__add_13__op1}{+} \\htmlData{n=__multiply_12}{\\frac{\\htmlData{n=d0___power_8}{\\sqrt{\\htmlData{n=__add_2}{\\htmlData{n=__multiply_8}{\\htmlData{n=__multiply_11}{\\htmlData{n=__num_12}{-4} \\htmlData{n=__multiply_11__m1}{\\cdot} \\htmlData{n=a____multiply_11}{a}} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=c____multiply_8}{c}} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=__power_13}{\\htmlData{n=b____power_13}{b}^{\\htmlData{n=__power_13__exp}{2}}}}}}}{\\htmlData{n=__multiply_15}{\\htmlData{n=d0___num_16}{2} \\htmlData{n=__multiply_15__m1}{\\cdot} \\htmlData{n=a____multiply_15}{a}}}}}} \\htmlData{n=__disjunction_1__op}{\\lor} \\htmlData{n=d1___equals_1}{\\htmlData{n=x__d1___equals_1}{x} \\htmlData{n=d1___equals_1__op}{=} \\htmlData{n=d1___add_2}{\\htmlData{n=d1___negation_3}{\\htmlData{n=d1___negation_3__op}{-} \\htmlData{n=d1___multiply_8}{\\htmlData{n=b__d1___multiply_8}{b} \\htmlData{n=d1___multiply_8__m1}{\\cdot} \\htmlData{n=d1___multiply_15}{\\frac{\\htmlData{n=d1___num_16}{1/2}}{\\htmlData{n=a__d1___multiply_15}{a}}}}} \\htmlData{n=d1___negation_7}{\\htmlData{n=d1___negation_7__op}{-} \\htmlData{n=__multiply_18}{\\frac{\\htmlData{n=d1___power_9}{\\sqrt{\\htmlData{n=d1___add_10}{\\htmlData{n=d1___multiply_11}{\\htmlData{n=d1___multiply_12}{\\htmlData{n=d1___num_13}{-4} \\htmlData{n=d1___multiply_12__m1}{\\cdot} \\htmlData{n=a__d1___multiply_12}{a}} \\htmlData{n=d1___multiply_11__m1}{\\cdot} \\htmlData{n=c__d1___multiply_11}{c}} \\htmlData{n=d1___add_10__op1}{+} \\htmlData{n=d1___power_14}{\\htmlData{n=b__d1___power_14}{b}^{\\htmlData{n=d1___power_14__exp}{2}}}}}}}{\\htmlData{n=__multiply_20}{\\htmlData{n=__num_21}{2} \\htmlData{n=__multiply_20__m1}{\\cdot} \\htmlData{n=a____multiply_20}{a}}}}}}}}",
+        "plain": "x = - b \\cdot \\frac{1/2}{a} + \\frac{\\sqrt{-4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a} \\lor x = - b \\cdot \\frac{1/2}{a} - \\frac{\\sqrt{-4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a}",
+        "confidence": {
+          "tier": "verified",
+          "label": "Verified",
+          "icon": "🥈",
+          "meaning": "strong CAS evidence, short of a symbolic proof",
+          "relation": "narrows",
+          "reason": "treating $x$ as the unknown, every solution of this step solves the previous one (other symbols as generic parameters)",
+          "type_consistent": true
+        }
+      },
+      {
+        "index": 8,
+        "operation": "Combine each numerator over the common denominator $2a$.",
+        "justification": "Arithmetic of fractions: within each branch the terms share the denominator $2a$, so the numerators combine — giving both quadratic roots.",
+        "input_latex": "x = \\frac{- b + \\sqrt{- 4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a} \\lor x = \\frac{- b - \\sqrt{- 4 \\cdot a \\cdot c + b^{2}}}{2 \\cdot a}",
+        "latex": "\\htmlData{n=__disjunction_1}{\\htmlData{n=__equals_1}{\\htmlData{n=x____equals_1}{x} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_12}{\\frac{\\left(\\htmlData{n=__add_13}{\\htmlData{n=d0___negation_3}{\\htmlData{n=d0___negation_3__op}{-} \\htmlData{n=b__d0___negation_3}{b}} \\htmlData{n=__add_13__op1}{+} \\htmlData{n=d0___power_8}{\\sqrt{\\htmlData{n=__add_2}{\\htmlData{n=__multiply_8}{\\htmlData{n=__multiply_11}{\\htmlData{n=__num_12}{-4} \\htmlData{n=__multiply_11__m1}{\\cdot} \\htmlData{n=a____multiply_11}{a}} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=c____multiply_8}{c}} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=__power_13}{\\htmlData{n=b____power_13}{b}^{\\htmlData{n=__power_13__exp}{2}}}}}}}\\right)}{\\htmlData{n=__multiply_15}{\\htmlData{n=d0___num_16}{2} \\htmlData{n=__multiply_15__m1}{\\cdot} \\htmlData{n=a____multiply_15}{a}}}}} \\htmlData{n=__disjunction_1__op}{\\lor} \\htmlData{n=d1___equals_1}{\\htmlData{n=x__d1___equals_1}{x} \\htmlData{n=d1___equals_1__op}{=} \\htmlData{n=__multiply_18}{\\frac{\\left(\\htmlData{n=d1___add_2}{\\htmlData{n=d1___negation_4}{\\htmlData{n=d1___negation_4__op}{-} \\htmlData{n=b__d1___negation_4}{b}} \\htmlData{n=d1___negation_7}{\\htmlData{n=d1___negation_7__op}{-} \\htmlData{n=d1___power_9}{\\sqrt{\\htmlData{n=d1___add_10}{\\htmlData{n=d1___multiply_11}{\\htmlData{n=d1___multiply_12}{\\htmlData{n=d1___num_13}{-4} \\htmlData{n=d1___multiply_12__m1}{\\cdot} \\htmlData{n=a__d1___multiply_12}{a}} \\htmlData{n=d1___multiply_11__m1}{\\cdot} \\htmlData{n=c__d1___multiply_11}{c}} \\htmlData{n=d1___add_10__op1}{+} \\htmlData{n=d1___power_14}{\\htmlData{n=b__d1___power_14}{b}^{\\htmlData{n=d1___power_14__exp}{2}}}}}}}}\\right)}{\\htmlData{n=__multiply_20}{\\htmlData{n=__num_21}{2} \\htmlData{n=__multiply_20__m1}{\\cdot} \\htmlData{n=a____multiply_20}{a}}}}}}",
+        "plain": "x = \\frac{\\left(- b + \\sqrt{-4 \\cdot a \\cdot c + b^{2}}\\right)}{2 \\cdot a} \\lor x = \\frac{\\left(- b - \\sqrt{-4 \\cdot a \\cdot c + b^{2}}\\right)}{2 \\cdot a}",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "equivalent",
+          "reason": "symbolically equivalent to the previous step",
+          "type_consistent": true
+        }
+      }
+    ],
+    "overall_confidence": {
+      "tier": "verified",
+      "label": "Verified",
+      "icon": "🥈",
+      "meaning": "strong CAS evidence, short of a symbolic proof",
+      "relation": null,
+      "reason": "8/8 steps verified · endpoint reached",
+      "type_consistent": true,
+      "counts": {
+        "refuted": 0,
+        "unchecked": 0,
+        "plausible": 0,
+        "domain": 0,
+        "verified": 3,
+        "grounded": 5
+      },
+      "endpoint_reached": true
+    },
+    "terms": {
+      "a": {
+        "latex": "a",
+        "name": "a"
+      },
+      "__power_5": {
+        "latex": "x^{2}",
+        "name": "x^{2}"
+      },
+      "x": {
+        "latex": "x",
+        "name": "x"
+      },
+      "b": {
+        "latex": "b",
+        "name": "b"
+      },
+      "c": {
+        "latex": "c",
+        "name": "c"
+      },
+      "__power_7": {
+        "latex": "\\frac{1}{a}",
+        "name": "\\frac{1}{a}"
+      },
+      "__power_9": {
+        "latex": "\\frac{1}{a}",
+        "name": "\\frac{1}{a}"
+      },
+      "__power_8": {
+        "latex": "\\left(\\frac{b}{2 a}\\right)^{2}",
+        "name": "\\left(\\frac{b}{2 a}\\right)^{2}"
+      },
+      "__power_10": {
+        "latex": "\\frac{1}{2 a}",
+        "name": "\\frac{1}{2 a}"
+      },
+      "__power_17": {
+        "latex": "\\left(\\frac{b}{2 a}\\right)^{2}",
+        "name": "\\left(\\frac{b}{2 a}\\right)^{2}"
+      },
+      "__power_19": {
+        "latex": "\\frac{1}{2 a}",
+        "name": "\\frac{1}{2 a}"
+      },
+      "__power_13": {
+        "latex": "b^{2}",
+        "name": "b^{2}"
+      },
+      "__power_14": {
+        "latex": "\\frac{1}{4 a^{2}}",
+        "name": "\\frac{1}{4 a^{2}}"
+      },
+      "_r1___power_17": {
+        "latex": "a^{2}",
+        "name": "a^{2}"
+      },
+      "d0___power_8": {
+        "latex": "\\sqrt{- 4 a c + b^{2}}",
+        "name": "\\sqrt{- 4 a c + b^{2}}"
+      },
+      "d1___power_4": {
+        "latex": "\\frac{1}{2 a}",
+        "name": "\\frac{1}{2 a}"
+      },
+      "d1___power_9": {
+        "latex": "\\sqrt{- 4 a c + b^{2}}",
+        "name": "\\sqrt{- 4 a c + b^{2}}"
+      },
+      "d1___power_14": {
+        "latex": "b^{2}",
+        "name": "b^{2}"
+      }
+    }
+  },
+  {
+    "title": "Allen–Eggers entry velocity",
+    "domain": "calculus",
+    "steps": [
+      {
+        "index": 0,
+        "operation": "Given the ballistic entry differential equation, exponential atmospheric model $\\rho = \\rho_0 e^{-h/H}$, and constant flight-path angle $\\gamma$",
+        "justification": "Solve for the velocity $v$ as a function of altitude $h$.",
+        "input_latex": "\\frac{d}{d t} v = - \\frac{\\rho \\cdot v^{2}}{2 \\cdot \\beta}",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__deriv_2}{\\frac{d}{d t} \\htmlData{n=v____deriv_2}{v}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__negation_3}{\\htmlData{n=__negation_3__op}{-} \\htmlData{n=__multiply_4}{\\htmlData{n=rho}{\\rho} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=__power_5}{\\htmlData{n=v____power_5}{v}^{\\htmlData{n=__power_5__exp}{2}}} \\htmlData{n=__multiply_4__m2}{\\cdot} \\htmlData{n=__multiply_6}{\\frac{\\htmlData{n=__num_7}{1/2}}{\\htmlData{n=beta}{\\beta}}}}}}",
+        "plain": "\\frac{d}{d t} v = - \\rho \\cdot v^{2} \\cdot \\frac{1/2}{\\beta}",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": null,
+          "reason": "the given starting expression",
+          "type_consistent": true
+        }
+      },
+      {
+        "index": 1,
+        "operation": "Apply the chain rule (switch the independent variable from $t$ to $h$)",
+        "justification": "By the chain rule $\\frac{dv}{dt} = \\frac{dv}{dh}\\cdot\\frac{dh}{dt}$.",
+        "input_latex": "\\frac{dv}{dh} \\cdot \\frac{dh}{dt} = - \\frac{\\rho \\cdot v^{2}}{2 \\cdot \\beta}",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__multiply_2}{\\htmlData{n=__deriv_3}{\\frac{d}{d h} \\htmlData{n=v____deriv_3}{v}} \\htmlData{n=__multiply_2__m1}{\\cdot} \\htmlData{n=__deriv_2}{\\frac{d}{d t} \\htmlData{n=h}{h}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__negation_3}{\\htmlData{n=__negation_3__op}{-} \\htmlData{n=__multiply_4}{\\htmlData{n=rho}{\\rho} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=__power_5}{\\htmlData{n=v____power_5}{v}^{\\htmlData{n=__power_5__exp}{2}}} \\htmlData{n=__multiply_4__m2}{\\cdot} \\htmlData{n=__multiply_6}{\\frac{\\htmlData{n=__num_7}{1/2}}{\\htmlData{n=beta}{\\beta}}}}}}",
+        "plain": "\\frac{d}{d h} v \\cdot \\frac{d}{d t} h = - \\rho \\cdot v^{2} \\cdot \\frac{1/2}{\\beta}",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "equivalent",
+          "reason": "symbolically equivalent to the previous step",
+          "type_consistent": true
+        }
+      },
+      {
+        "index": 2,
+        "operation": "Substitute the descent relation $\\frac{dh}{dt} = -v\\sin\\gamma$",
+        "justification": "The vehicle descends, so altitude decreases: $\\frac{dh}{dt} = -v\\sin\\gamma$ ($\\gamma$ is the flight-path angle below the horizontal).",
+        "input_latex": "\\frac{dv}{dh} \\cdot \\left(- v \\cdot \\sin{\\left(\\gamma \\right)}\\right) = - \\frac{\\rho \\cdot v^{2}}{2 \\cdot \\beta}",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__multiply_2}{\\htmlData{n=__deriv_3}{\\frac{d}{d h} \\htmlData{n=v____deriv_3}{v}} \\htmlData{n=__multiply_2__m1}{\\cdot} \\htmlData{n=_r1___multiply_4}{\\left(\\htmlData{n=__negation_5}{\\htmlData{n=__negation_5__op}{-} \\htmlData{n=v____negation_5}{v}}\\right) \\htmlData{n=_r1___multiply_4__m1}{\\cdot} \\htmlData{n=__sin_6}{\\sin\\left(\\htmlData{n=gamma}{\\gamma}\\right)}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__negation_3}{\\htmlData{n=__negation_3__op}{-} \\htmlData{n=__multiply_4}{\\htmlData{n=rho}{\\rho} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=__power_5}{\\htmlData{n=v____power_5}{v}^{\\htmlData{n=__power_5__exp}{2}}} \\htmlData{n=__multiply_4__m2}{\\cdot} \\htmlData{n=__multiply_6}{\\frac{\\htmlData{n=__num_7}{1/2}}{\\htmlData{n=beta}{\\beta}}}}}}",
+        "plain": "\\frac{d}{d h} v \\cdot \\left(- v\\right) \\cdot \\sin\\left(\\gamma\\right) = - \\rho \\cdot v^{2} \\cdot \\frac{1/2}{\\beta}",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "equivalent",
+          "reason": "symbolically equivalent to the previous step",
+          "type_consistent": true
+        }
+      },
+      {
+        "index": 3,
+        "operation": "Divide both sides by $-v$",
+        "justification": "Cancel a power of $v$; the two negatives cancel, leaving a positive right-hand side.",
+        "input_latex": "\\frac{dv}{dh} \\cdot \\sin{\\left(\\gamma \\right)} = \\frac{\\rho \\cdot v}{2 \\cdot \\beta}",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=_r1___multiply_4}{\\htmlData{n=__deriv_3}{\\frac{d}{d h} \\htmlData{n=v____deriv_3}{v}} \\htmlData{n=_r1___multiply_4__m1}{\\cdot} \\htmlData{n=__sin_6}{\\sin\\left(\\htmlData{n=gamma}{\\gamma}\\right)}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_4}{\\frac{\\htmlData{n=__multiply_6}{\\htmlData{n=rho}{\\rho} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=v____multiply_6}{v}}}{\\htmlData{n=__multiply_8}{\\htmlData{n=__num_9}{2} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=beta}{\\beta}}}}}",
+        "plain": "\\frac{d}{d h} v \\cdot \\sin\\left(\\gamma\\right) = \\frac{\\rho \\cdot v}{2 \\cdot \\beta}",
+        "confidence": {
+          "tier": "verified",
+          "label": "Verified",
+          "icon": "🥈",
+          "meaning": "strong CAS evidence, short of a symbolic proof",
+          "relation": "equivalent",
+          "reason": "both sides scaled by $- v$ — equivalent wherever that factor ≠ 0",
+          "type_consistent": true
+        }
+      },
+      {
+        "index": 4,
+        "operation": "Separate variables",
+        "justification": "Separate the variables by moving all terms involving $v$ to the left side with $dv$ and all terms involving $h$ (and constants) to the right side with $dh$.",
+        "input_latex": "\\frac{1}{v} dv = \\frac{\\rho}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} dh",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__multiply_2}{\\frac{\\htmlData{n=dv}{dv}}{\\htmlData{n=v}{v}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=_r1___multiply_4}{\\htmlData{n=__multiply_4}{\\frac{\\htmlData{n=rho}{\\rho}}{\\htmlData{n=__multiply_7}{\\htmlData{n=__multiply_8}{\\htmlData{n=__num_9}{2} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=beta}{\\beta}} \\htmlData{n=__multiply_7__m1}{\\cdot} \\htmlData{n=__sin_6}{\\sin\\left(\\htmlData{n=gamma}{\\gamma}\\right)}}}} \\htmlData{n=_r1___multiply_4__m1}{\\cdot} \\htmlData{n=dh}{dh}}}",
+        "plain": "\\frac{dv}{v} = \\frac{\\rho}{2 \\cdot \\beta \\cdot \\sin\\left(\\gamma\\right)} \\cdot dh",
+        "confidence": {
+          "tier": "plausible",
+          "label": "Plausible",
+          "icon": "🔹",
+          "meaning": "valid math, but the CAS could not decide this step",
+          "relation": "unknown",
+          "reason": "neither equivalence nor a valid narrowing could be established",
+          "type_consistent": true
+        }
+      },
+      {
+        "index": 5,
+        "operation": "Integrate both sides",
+        "justification": "Integrate both sides of the equation to solve the differential equation.",
+        "input_latex": "\\int \\frac{1}{v} dv = \\int \\frac{\\rho}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} dh",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__integral_2}{\\int \\htmlData{n=__power_3}{\\frac{\\htmlData{n=__power_3__one}{1}}{\\htmlData{n=v}{v}}}\\,\\htmlData{n=dv}{dv}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__integral_4}{\\int \\htmlData{n=__multiply_4}{\\frac{\\htmlData{n=rho}{\\rho}}{\\htmlData{n=__multiply_7}{\\htmlData{n=__multiply_8}{\\htmlData{n=__num_9}{2} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=beta}{\\beta}} \\htmlData{n=__multiply_7__m1}{\\cdot} \\htmlData{n=__sin_6}{\\sin\\left(\\htmlData{n=gamma}{\\gamma}\\right)}}}}\\,\\htmlData{n=dh}{dh}}}",
+        "plain": "\\int \\frac{1}{v}\\,dv = \\int \\frac{\\rho}{2 \\cdot \\beta \\cdot \\sin\\left(\\gamma\\right)}\\,dh",
+        "confidence": {
+          "tier": "plausible",
+          "label": "Plausible",
+          "icon": "🔹",
+          "meaning": "valid math, but the CAS could not decide this step",
+          "relation": "unknown",
+          "reason": "neither equivalence nor a valid narrowing could be established",
+          "type_consistent": true
+        }
+      },
+      {
+        "index": 6,
+        "operation": "Evaluate the left-hand side integral",
+        "justification": "Evaluate the left-hand side integral: $\\int \\frac{1}{v} dv = \\ln{\\left(v \\right)} + C$. We absorb the constant of integration into $C_1$ on the right side.",
+        "input_latex": "\\ln{\\left(v \\right)} = \\int \\frac{\\rho}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} dh + C_{1}",
+        "latex": "\\ln{\\left(v \\right)} = \\int \\frac{\\rho}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} dh + C_{1}",
+        "plain": "\\ln{\\left(v \\right)} = \\int \\frac{\\rho}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} dh + C_{1}",
+        "confidence": {
+          "tier": "unchecked",
+          "label": "Unchecked",
+          "icon": "○",
+          "meaning": "this state is not a single convertible expression",
+          "relation": "unknown",
+          "reason": "this state is not a single convertible expression",
+          "type_consistent": false
+        }
+      },
+      {
+        "index": 7,
+        "operation": "Substitute $\\rho = \\rho_{0} \\cdot e^{- \\frac{h}{H}}$",
+        "justification": "Substitute the atmospheric density model $\\rho = \\rho_{0} \\cdot e^{- \\frac{h}{H}}$, where $\\rho_0$ is the density at sea level and $H$ is the scale height.",
+        "input_latex": "\\ln{\\left(v \\right)} = \\int \\frac{\\rho_{0} \\cdot e^{- \\frac{h}{H}}}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} dh + C_{1}",
+        "latex": "\\ln{\\left(v \\right)} = \\int \\frac{\\rho_{0} \\cdot e^{- \\frac{h}{H}}}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} dh + C_{1}",
+        "plain": "\\ln{\\left(v \\right)} = \\int \\frac{\\rho_{0} \\cdot e^{- \\frac{h}{H}}}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} dh + C_{1}",
+        "confidence": {
+          "tier": "unchecked",
+          "label": "Unchecked",
+          "icon": "○",
+          "meaning": "this state is not a single convertible expression",
+          "relation": "unknown",
+          "reason": "previous state is not a single convertible expression",
+          "type_consistent": false
+        }
+      },
+      {
+        "index": 8,
+        "operation": "Factor out constants from the integral",
+        "justification": "Move the constant factors $\\frac{\\rho_{0}}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}}$ out of the integral.",
+        "input_latex": "\\ln{\\left(v \\right)} = \\frac{\\rho_{0}}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} \\int e^{- \\frac{h}{H}} dh + C_{1}",
+        "latex": "\\ln{\\left(v \\right)} = \\frac{\\rho_{0}}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} \\int e^{- \\frac{h}{H}} dh + C_{1}",
+        "plain": "\\ln{\\left(v \\right)} = \\frac{\\rho_{0}}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} \\int e^{- \\frac{h}{H}} dh + C_{1}",
+        "confidence": {
+          "tier": "unchecked",
+          "label": "Unchecked",
+          "icon": "○",
+          "meaning": "this state is not a single convertible expression",
+          "relation": "unknown",
+          "reason": "previous state is not a single convertible expression",
+          "type_consistent": false
+        }
+      },
+      {
+        "index": 9,
+        "operation": "Evaluate the integral of $e^{-h/H}$",
+        "justification": "Evaluate the integral $\\int e^{ax} dx = \\frac{1}{a} e^{ax} + C$. For $\\int e^{- \\frac{h}{H}} dh$, $a = -\\frac{1}{H}$, so the integral is $-H \\cdot e^{- \\frac{h}{H}}$.",
+        "input_latex": "\\ln{\\left(v \\right)} = \\frac{\\rho_{0}}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} \\cdot \\left(-H \\cdot e^{- \\frac{h}{H}}\\right) + C_{1}",
+        "latex": "\\ln{\\left(v \\right)} = \\frac{\\rho_{0}}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} \\cdot \\left(-H \\cdot e^{- \\frac{h}{H}}\\right) + C_{1}",
+        "plain": "\\ln{\\left(v \\right)} = \\frac{\\rho_{0}}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} \\cdot \\left(-H \\cdot e^{- \\frac{h}{H}}\\right) + C_{1}",
+        "confidence": {
+          "tier": "unchecked",
+          "label": "Unchecked",
+          "icon": "○",
+          "meaning": "this state is not a single convertible expression",
+          "relation": "unknown",
+          "reason": "previous state is not a single convertible expression",
+          "type_consistent": false
+        }
+      },
+      {
+        "index": 10,
+        "operation": "Simplify the expression",
+        "justification": "Simplify the product of terms.",
+        "input_latex": "\\ln{\\left(v \\right)} = - \\frac{H \\cdot \\rho_{0} \\cdot e^{- \\frac{h}{H}}}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} + C_{1}",
+        "latex": "\\ln{\\left(v \\right)} = - \\frac{H \\cdot \\rho_{0} \\cdot e^{- \\frac{h}{H}}}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} + C_{1}",
+        "plain": "\\ln{\\left(v \\right)} = - \\frac{H \\cdot \\rho_{0} \\cdot e^{- \\frac{h}{H}}}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} + C_{1}",
+        "confidence": {
+          "tier": "unchecked",
+          "label": "Unchecked",
+          "icon": "○",
+          "meaning": "this state is not a single convertible expression",
+          "relation": "unknown",
+          "reason": "previous state is not a single convertible expression",
+          "type_consistent": false
+        }
+      },
+      {
+        "index": 11,
+        "operation": "Exponentiate both sides",
+        "justification": "Exponentiate both sides of the equation to solve for $v$, using the property $e^{\\ln x} = x$.",
+        "input_latex": "v = e^{- \\frac{H \\cdot \\rho_{0} \\cdot e^{- \\frac{h}{H}}}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} + C_{1}}",
+        "latex": "\\htmlData{n=_r1___equals_1}{\\htmlData{n=v}{v} \\htmlData{n=_r1___equals_1__op}{=} \\htmlData{n=__power_2}{\\htmlData{n=e____power_2}{e}^{\\htmlData{n=__add_4}{\\htmlData{n=__negation_5}{\\htmlData{n=__negation_5__op}{-} \\htmlData{n=__multiply_6}{\\htmlData{n=H____multiply_6}{H} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=rho_0}{\\rho_{0}} \\htmlData{n=__multiply_6__m2}{\\cdot} \\htmlData{n=_r2___power_8}{\\htmlData{n=e___r2___power_8}{e}^{\\htmlData{n=__negation_9}{\\htmlData{n=__negation_9__op}{-} \\htmlData{n=__multiply_10}{\\frac{\\htmlData{n=h}{h}}{\\htmlData{n=H____multiply_10}{H}}}}}} \\htmlData{n=__multiply_6__m3}{\\cdot} \\htmlData{n=__multiply_7}{\\frac{\\htmlData{n=__num_7}{1/2}}{\\htmlData{n=beta}{\\beta} \\htmlData{n=__multiply_7__d1}{\\cdot} \\htmlData{n=__sin_6}{\\sin\\left(\\htmlData{n=gamma}{\\gamma}\\right)}}}}} \\htmlData{n=__add_4__op1}{+} \\htmlData{n=C_1}{C_{1}}}}}}",
+        "plain": "v = \\frac{1}{e^{ H \\cdot \\rho_{0} \\cdot \\frac{1}{e^{ \\frac{h}{H}}} \\cdot \\frac{1/2}{\\beta \\cdot \\sin\\left(\\gamma\\right)} + C_{1}}}",
+        "confidence": {
+          "tier": "unchecked",
+          "label": "Unchecked",
+          "icon": "○",
+          "meaning": "this state is not a single convertible expression",
+          "relation": "unknown",
+          "reason": "previous state is not a single convertible expression",
+          "type_consistent": false
+        }
+      },
+      {
+        "index": 12,
+        "operation": "Separate the constant term in the exponent",
+        "justification": "Apply the exponent rule $e^{a+b} = e^a \\cdot e^b$ to separate the constant term.",
+        "input_latex": "v = e^{C_{1}} \\cdot e^{- \\frac{H \\cdot \\rho_{0} \\cdot e^{- \\frac{h}{H}}}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}}}",
+        "latex": "\\htmlData{n=_r1___equals_1}{\\htmlData{n=v}{v} \\htmlData{n=_r1___equals_1__op}{=} \\htmlData{n=__multiply_2}{\\htmlData{n=__power_3}{\\htmlData{n=e____power_3}{e}^{\\htmlData{n=C_1}{C_{1}}}} \\htmlData{n=__multiply_2__m1}{\\cdot} \\htmlData{n=__power_2}{\\htmlData{n=e____power_2}{e}^{\\htmlData{n=__negation_5}{\\htmlData{n=__negation_5__op}{-} \\htmlData{n=__multiply_6}{\\htmlData{n=H____multiply_6}{H} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=rho_0}{\\rho_{0}} \\htmlData{n=__multiply_6__m2}{\\cdot} \\htmlData{n=_r2___power_8}{\\htmlData{n=e___r2___power_8}{e}^{\\htmlData{n=__negation_9}{\\htmlData{n=__negation_9__op}{-} \\htmlData{n=__multiply_10}{\\frac{\\htmlData{n=h}{h}}{\\htmlData{n=H____multiply_10}{H}}}}}} \\htmlData{n=__multiply_6__m3}{\\cdot} \\htmlData{n=__multiply_7}{\\frac{\\htmlData{n=__num_7}{1/2}}{\\htmlData{n=beta}{\\beta} \\htmlData{n=__multiply_7__d1}{\\cdot} \\htmlData{n=__sin_6}{\\sin\\left(\\htmlData{n=gamma}{\\gamma}\\right)}}}}}}}}}",
+        "plain": "v = e^{C_{1}} \\cdot \\frac{1}{e^{ H \\cdot \\rho_{0} \\cdot \\frac{1}{e^{ \\frac{h}{H}}} \\cdot \\frac{1/2}{\\beta \\cdot \\sin\\left(\\gamma\\right)}}}",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "equivalent",
+          "reason": "symbolically equivalent to the previous step",
+          "type_consistent": true
+        }
+      },
+      {
+        "index": 13,
+        "operation": "Substitute $v_{E}$ for $e^{C_{1}}$",
+        "justification": "Define the arbitrary constant $e^{C_1}$ as $v_E$, representing an initial or reference velocity.",
+        "input_latex": "v = v_{E} \\cdot e^{- \\frac{H \\cdot \\rho_{0} \\cdot e^{- \\frac{h}{H}}}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}}}",
+        "latex": "\\htmlData{n=_r1___equals_1}{\\htmlData{n=v}{v} \\htmlData{n=_r1___equals_1__op}{=} \\htmlData{n=__multiply_2}{\\htmlData{n=v_E}{v_{E}} \\htmlData{n=__multiply_2__m1}{\\cdot} \\htmlData{n=__power_2}{\\htmlData{n=e____power_2}{e}^{\\htmlData{n=__negation_5}{\\htmlData{n=__negation_5__op}{-} \\htmlData{n=__multiply_6}{\\htmlData{n=H____multiply_6}{H} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=rho_0}{\\rho_{0}} \\htmlData{n=__multiply_6__m2}{\\cdot} \\htmlData{n=_r2___power_8}{\\htmlData{n=e___r2___power_8}{e}^{\\htmlData{n=__negation_9}{\\htmlData{n=__negation_9__op}{-} \\htmlData{n=__multiply_10}{\\frac{\\htmlData{n=h}{h}}{\\htmlData{n=H____multiply_10}{H}}}}}} \\htmlData{n=__multiply_6__m3}{\\cdot} \\htmlData{n=__multiply_7}{\\frac{\\htmlData{n=__num_7}{1/2}}{\\htmlData{n=beta}{\\beta} \\htmlData{n=__multiply_7__d1}{\\cdot} \\htmlData{n=__sin_6}{\\sin\\left(\\htmlData{n=gamma}{\\gamma}\\right)}}}}}}}}}",
+        "plain": "v = v_{E} \\cdot \\frac{1}{e^{ H \\cdot \\rho_{0} \\cdot \\frac{1}{e^{ \\frac{h}{H}}} \\cdot \\frac{1/2}{\\beta \\cdot \\sin\\left(\\gamma\\right)}}}",
+        "confidence": {
+          "tier": "plausible",
+          "label": "Plausible",
+          "icon": "🔹",
+          "meaning": "valid math, but the CAS could not decide this step",
+          "relation": "unknown",
+          "reason": "neither equivalence nor a valid narrowing could be established",
+          "type_consistent": true
+        }
+      }
+    ],
+    "overall_confidence": {
+      "tier": "unchecked",
+      "label": "Unchecked",
+      "icon": "○",
+      "meaning": "this state is not a single convertible expression",
+      "relation": null,
+      "reason": "4/13 steps verified · 6 unchecked · 3 plausible · endpoint reached",
+      "type_consistent": true,
+      "counts": {
+        "refuted": 0,
+        "unchecked": 6,
+        "plausible": 3,
+        "domain": 0,
+        "verified": 1,
+        "grounded": 3
+      },
+      "endpoint_reached": true
+    },
+    "terms": {
+      "v": {
+        "latex": "v",
+        "name": "v"
+      },
+      "t": {
+        "latex": "t",
+        "name": "t"
+      },
+      "__deriv_2": {
+        "latex": "\\frac{d}{d t} v",
+        "name": "\\frac{d}{d t} v"
+      },
+      "rho": {
+        "latex": "\\rho",
+        "name": "\\rho"
+      },
+      "__power_5": {
+        "latex": "v^{2}",
+        "name": "v^{2}"
+      },
+      "beta": {
+        "latex": "\\beta",
+        "name": "\\beta"
+      },
+      "h": {
+        "latex": "h",
+        "name": "h"
+      },
+      "__deriv_3": {
+        "latex": "\\frac{d}{d h} v",
+        "name": "\\frac{d}{d h} v"
+      },
+      "__sin_6": {
+        "latex": "\\sin{\\left(\\gamma \\right)}",
+        "name": "\\sin{\\left(\\gamma \\right)}"
+      },
+      "gamma": {
+        "latex": "\\gamma",
+        "name": "\\gamma"
+      },
+      "__power_3": {
+        "latex": "\\frac{1}{v}",
+        "name": "\\frac{1}{v}"
+      },
+      "dv": {
+        "latex": "dv",
+        "name": "dv"
+      },
+      "dh": {
+        "latex": "dh",
+        "name": "dh"
+      },
+      "__integral_2": {
+        "latex": "\\int \\frac{1}{v}\\, dv",
+        "name": "\\int \\frac{1}{v}\\, dv"
+      },
+      "__integral_4": {
+        "latex": "\\int \\frac{\\rho}{2 \\beta \\sin{\\left(\\gamma \\right)}}\\, dh",
+        "name": "\\int \\frac{\\rho}{2 \\beta \\sin{\\left(\\gamma \\right)}}\\, dh"
+      },
+      "__power_2": {
+        "latex": "e^{C_{1} - \\frac{e^{- \\frac{h}{H}} H \\rho_{0}}{2 \\beta \\sin{\\left(\\gamma \\right)}}}",
+        "name": "e^{C_{1} - \\frac{e^{- \\frac{h}{H}} H \\rho_{0}}{2 \\beta \\sin{\\left(\\gamma \\right)}}}"
+      },
+      "e": {
+        "latex": "e",
+        "name": "e"
+      },
+      "H": {
+        "latex": "H",
+        "name": "H"
+      },
+      "_r2___power_8": {
+        "latex": "e^{- \\frac{h}{H}}",
+        "name": "e^{- \\frac{h}{H}}"
+      },
+      "__power_11": {
+        "latex": "\\frac{1}{H}",
+        "name": "\\frac{1}{H}"
+      },
+      "C_1": {
+        "latex": "C_{1}",
+        "name": "C_{1}"
+      },
+      "v_E": {
+        "latex": "v_{E}",
+        "name": "v_{E}"
+      }
+    }
+  },
+  {
+    "title": "Integrate by separation",
+    "domain": "calculus",
+    "steps": [
+      {
+        "index": 0,
+        "operation": "Given the separated equation",
+        "justification": "integrate to solve for $v$",
+        "input_latex": "\\frac{1}{v} \\, dv = -k \\, e^{-h/H} \\, dh",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__multiply_2}{\\frac{\\htmlData{n=dv}{dv}}{\\htmlData{n=v}{v}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__negation_4}{\\htmlData{n=__negation_4__op}{-} \\htmlData{n=__multiply_5}{\\htmlData{n=dh}{dh} \\htmlData{n=__multiply_5__m1}{\\cdot} \\htmlData{n=k}{k} \\htmlData{n=__multiply_5__m2}{\\cdot} \\htmlData{n=__power_6}{\\htmlData{n=e}{e}^{\\htmlData{n=__multiply_7}{\\frac{\\left(\\htmlData{n=__negation_8}{\\htmlData{n=__negation_8__op}{-} \\htmlData{n=h}{h}}\\right)}{\\htmlData{n=H}{H}}}}}}}}",
+        "plain": "\\frac{dv}{v} = - dh \\cdot k \\cdot e^{\\frac{\\left(- h\\right)}{H}}",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": null,
+          "reason": "the given starting expression",
+          "type_consistent": true
+        }
+      },
+      {
+        "index": 1,
+        "operation": "Integrate both sides",
+        "justification": "apply $\\int$ to each side",
+        "input_latex": "\\int \\frac{1}{v} \\, dv = \\int -k \\, e^{-h/H} \\, dh",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__integral_2}{\\int \\htmlData{n=__power_3}{\\frac{\\htmlData{n=__power_3__one}{1}}{\\htmlData{n=v}{v}}}\\,\\htmlData{n=dv}{dv}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__integral_4}{\\int \\left(\\htmlData{n=__negation_4}{\\htmlData{n=__negation_4__op}{-} \\htmlData{n=__multiply_5}{\\htmlData{n=k}{k} \\htmlData{n=__multiply_5__m1}{\\cdot} \\htmlData{n=__power_6}{\\htmlData{n=e}{e}^{\\htmlData{n=__multiply_7}{\\frac{\\left(\\htmlData{n=__negation_8}{\\htmlData{n=__negation_8__op}{-} \\htmlData{n=h}{h}}\\right)}{\\htmlData{n=H}{H}}}}}}}\\right)\\,\\htmlData{n=dh}{dh}}}",
+        "plain": "\\int \\frac{1}{v}\\,dv = \\int \\left(- k \\cdot e^{\\frac{\\left(- h\\right)}{H}}\\right)\\,dh",
+        "confidence": {
+          "tier": "plausible",
+          "label": "Plausible",
+          "icon": "🔹",
+          "meaning": "valid math, but the CAS could not decide this step",
+          "relation": "unknown",
+          "reason": "neither equivalence nor a valid narrowing could be established",
+          "type_consistent": true
+        }
+      },
+      {
+        "index": 2,
+        "operation": "Factor the constant out",
+        "justification": "constants pull out of the integral",
+        "input_latex": "\\int \\frac{1}{v} \\, dv = -k \\int e^{-h/H} \\, dh",
+        "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__integral_2}{\\int \\htmlData{n=__power_3}{\\frac{\\htmlData{n=__power_3__one}{1}}{\\htmlData{n=v}{v}}}\\,\\htmlData{n=dv}{dv}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__negation_4}{\\htmlData{n=__negation_4__op}{-} \\htmlData{n=__multiply_5}{\\htmlData{n=k}{k} \\htmlData{n=__multiply_5__m1}{\\cdot} \\htmlData{n=__integral_4}{\\int \\htmlData{n=__power_6}{\\htmlData{n=e}{e}^{\\htmlData{n=__multiply_7}{\\frac{\\left(\\htmlData{n=__negation_8}{\\htmlData{n=__negation_8__op}{-} \\htmlData{n=h}{h}}\\right)}{\\htmlData{n=H}{H}}}}}\\,\\htmlData{n=dh}{dh}}}}}",
+        "plain": "\\int \\frac{1}{v}\\,dv = - k \\cdot \\int e^{\\frac{\\left(- h\\right)}{H}}\\,dh",
+        "confidence": {
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "equivalent",
+          "reason": "symbolically equivalent to the previous step",
+          "type_consistent": true
+        }
+      }
+    ],
+    "overall_confidence": {
+      "tier": "plausible",
+      "label": "Plausible",
+      "icon": "🔹",
+      "meaning": "valid math, but the CAS could not decide this step",
+      "relation": null,
+      "reason": "1/2 steps verified · 1 plausible · endpoint reached",
+      "type_consistent": true,
+      "counts": {
+        "refuted": 0,
+        "unchecked": 0,
+        "plausible": 1,
+        "domain": 0,
+        "verified": 0,
+        "grounded": 1
+      },
+      "endpoint_reached": true
+    },
+    "terms": {
+      "__power_3": {
+        "latex": "\\frac{1}{v}",
+        "name": "\\frac{1}{v}"
+      },
+      "v": {
+        "latex": "v",
+        "name": "v"
+      },
+      "dv": {
+        "latex": "dv",
+        "name": "dv"
+      },
+      "dh": {
+        "latex": "dh",
+        "name": "dh"
+      },
+      "k": {
+        "latex": "k",
+        "name": "k"
+      },
+      "__power_6": {
+        "latex": "e^{\\frac{\\left(-1\\right) h}{H}}",
+        "name": "e^{\\frac{\\left(-1\\right) h}{H}}"
+      },
+      "e": {
+        "latex": "e",
+        "name": "e"
+      },
+      "h": {
+        "latex": "h",
+        "name": "h"
+      },
+      "__power_9": {
+        "latex": "\\frac{1}{H}",
+        "name": "\\frac{1}{H}"
+      },
+      "H": {
+        "latex": "H",
+        "name": "H"
+      },
+      "__integral_2": {
+        "latex": "\\int \\frac{1}{v}\\, dv",
+        "name": "\\int \\frac{1}{v}\\, dv"
+      },
+      "__integral_4": {
+        "latex": "\\int \\left(- e^{\\frac{\\left(-1\\right) h}{H}} k\\right)\\, dh",
+        "name": "\\int \\left(- e^{\\frac{\\left(-1\\right) h}{H}} k\\right)\\, dh"
+      }
+    }
+  }
+]
