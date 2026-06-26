@@ -131,11 +131,24 @@
   cursor: pointer;
   transition: filter 130ms ease;
 }
-.pa-live-terms .pa-term-hot {
+/* Hovered locally (mouse on the glyph) OR linked (the graph node is hovered) —
+   same indigo backlight, so hover reads identically in both sync directions. */
+.pa-live-terms .pa-term-hot,
+.pa-live-terms .pa-term-linked {
   filter:
     drop-shadow(0 0 2px var(--pa-term-glow, rgba(165, 185, 255, 1)))
     drop-shadow(0 0 6px var(--pa-term-glow, rgba(150, 170, 255, 0.9)))
     drop-shadow(0 0 12px var(--pa-term-glow-soft, rgba(120, 145, 255, 0.7)));
+}
+/* Selected (either a term or its graph node was clicked) — GOLD, and wins over a
+   concurrent hover so a selected term stays gold while pointed at. */
+.pa-live-terms .pa-term-selected,
+.pa-live-terms .pa-term-hot.pa-term-selected,
+.pa-live-terms .pa-term-linked.pa-term-selected {
+  filter:
+    drop-shadow(0 0 2px var(--pa-term-gold, rgba(255, 215, 105, 1)))
+    drop-shadow(0 0 6px var(--pa-term-gold, rgba(255, 200, 70, 0.95)))
+    drop-shadow(0 0 13px var(--pa-term-gold-soft, rgba(255, 185, 40, 0.75)));
 }
 
 /* operation (explanation) stacked above justification, then the "Next" pill.
