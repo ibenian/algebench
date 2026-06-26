@@ -376,14 +376,20 @@ export class ProofAnimator {
     };
     this._onStageOver = (ev) => {
       const el = tagOf(ev.target);
-      if (el !== this._hotTermEl) this._setHotTerm(el);
+      // Switch the halo only when entering a REAL term. Moving onto the
+      // expression's structural chrome (a fraction bar, KaTeX struts — tagOf is
+      // null there because it resolves to a spanning wrapper) leaves the current
+      // term lit, so hovering a numerator/denominator doesn't flicker as the
+      // pointer crosses the bar between them.
+      if (el && el !== this._hotTermEl) this._setHotTerm(el);
     };
     this._onStageOut = (ev) => {
-      // Still over a tagged term (moving between glyphs / onto a sibling)? leave
-      // it to the next mouseover. Only clear when truly leaving the expression.
+      // Only drop the halo when the pointer actually LEAVES the stage — never for
+      // a move onto untagged chrome within the expression (that's what made
+      // hovering fraction terms flicker). A move to a different term is handled by
+      // that term's mouseover instead.
       const to = ev.relatedTarget;
-      if (to && this.stage.contains(to) && tagOf(to)) return;
-      this._setHotTerm(null);
+      if (!to || !this.stage.contains(to)) this._setHotTerm(null);
     };
     this._onStageClick = (ev) => {
       const el = tagOf(ev.target);

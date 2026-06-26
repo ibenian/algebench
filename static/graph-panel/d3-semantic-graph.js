@@ -505,9 +505,14 @@ export class D3SemanticGraphRenderer {
         const t = (termText || '').trim();
         if (t) {
             const norm = s => (s || '').replace(/\\cdot|\\[a-zA-Z]+|[{}\\$\s^*·]/g, '').trim();
+            // Skip a purely NUMERIC appearance ("2", "1/2"): a bare number is
+            // ambiguous (an exponent, a denominator, a coefficient all render the
+            // same), so matching it by text mis-links — e.g. a square's "2" to the
+            // "2" in a denominator. Named symbols carry a letter.
             const nt = norm(t);
-            if (nt) {
-                const m = nodes.find(n => norm(n.subexpr || n.label || n.latex) === nt);
+            if (nt && !/^[\d.,/]+$/.test(nt)) {
+                const m = nodes.find(n =>
+                    norm(n.subexpr) === nt || norm(n.latex) === nt || norm(n.label) === nt);
                 if (m) return m.id;
             }
         }

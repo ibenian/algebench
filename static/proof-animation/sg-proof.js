@@ -41,6 +41,18 @@ const GRID_GAP = 8;
 const DEFAULT_COLSPAN = 4;
 const DEFAULT_ROWSPAN = 3;
 
+// A graph node that is just a NUMBER (a literal like 2, or a numeric-valued
+// constant) — not worth a tooltip. Named symbols/constants (π, e, c, ρ) keep a
+// letter once LaTeX commands are unwrapped (\rho → rho).
+function _isNumericNode(node) {
+    if (!node) return false;
+    if (node.type === 'number') return true;
+    const s = String(node.subexpr || node.latex || node.label || '')
+        .replace(/\\[a-zA-Z]+/g, m => m.slice(1))   // \rho → rho (keep the name)
+        .replace(/[{}\\$\s]/g, '');
+    return s !== '' && !/[A-Za-z]/.test(s);          // no letter → numeric
+}
+
 export class SgProofManager {
     constructor(container, opts = {}) {
         this.container = container;
@@ -55,6 +67,14 @@ export class SgProofManager {
         this._seq = 0;
         this._z = 30;                // proof boxes sit above charts (z 20)
         this._stepKey = null;        // boxes belong to the step they were derived in
+        // Stable term→node lookup: a rendered-appearance → nodeId map. A term's
+        // own data-n only matches the graph when it's threaded onto the current
+        // state; intermediate proof steps mint fresh ids that don't. So once ANY
+        // term resolves (by id or by looking like a node), we remember its
+        // rendered text → node, and every identical-looking term — in any step —
+        // reuses it. Keyed to the displayed graph; rebuilt when that changes.
+        this._apprCache = new Map();
+        this._apprCacheGraph = null;
     }
 
     // ── Renderer wiring (identical contract to SgChartManager) ───────────────
@@ -323,6 +343,7 @@ export class SgProofManager {
     _mountAnimator(entry, data) {
         entry.body.innerHTML = '';
         entry.paWrap = null;
+        entry.data = data;   // holds data.terms (per-term descriptions) for tooltips
         if (!data || !Array.isArray(data.steps) || data.steps.length === 0) {
             this._renderError(entry, new Error('The derivation produced no steps.'));
             return;
@@ -346,7 +367,7 @@ export class SgProofManager {
                 // Live terms: hover/click a named term → light up & select its
                 // linked semantic-graph node. No-ops when there's no renderer.
                 liveTerms: true,
-                onTermHover: (chain, el) => this._onTermHover(chain, el),
+                onTermHover: (chain, el) => this._onTermHover(chain, el, entry),
                 onTermClick: (chain, _el, ev) => this._onTermClick(chain, ev),
             });
         } catch (e) {
@@ -380,29 +401,86 @@ export class SgProofManager {
     // as a direct graph interaction would (cmd/ctrl-click keeps multi-selecting).
     // With no renderer (no semantic graph) these are silent no-ops — the term
     // still haloes locally inside the proof box, there's just nothing to sync to.
+    // Cache key from a term's rendered text — strip whitespace / zero-width joiners
+    // so identical-looking terms collapse to one key. Reject only the genuinely
+    // AMBIGUOUS keys: empty, and a bare number (a literal "2" and the "2" of a
+    // square render identically). Operator GLYPHS (·, =, −) are excluded separately
+    // by id when learning, since they repeat for different operator instances.
+    // Single symbols (H, V, E) are kept — each maps to one node — so a lone letter
+    // gets cached and stays stable across steps (no length floor).
+    _apprKey(text) {
+        const k = (text || '').replace(/[\s\u200B-\u200F\u2060\uFEFF]/g, '');
+        return (!k || /^\d+$/.test(k)) ? '' : k;
+    }
+
     // Walk the term's candidate chain (innermost glyph → enclosing operator
     // wrappers) and return the first that maps to a node in the current graph.
+    // The appearance cache makes this STABLE across steps: a term resolved once
+    // (here or in another step) is reused for every identical-looking term.
     _resolveChain(chain) {
         const r = this._renderer;
         if (!r || r._destroyed || typeof r.resolveTermNodeId !== 'function') return null;
+        if (this._apprCacheGraph !== r._graph) { this._apprCache = new Map(); this._apprCacheGraph = r._graph; }
+        const present = id => (id && typeof r.getNode === 'function' && r.getNode(id)) ? id : null;
+        // 1) Appearance cache — a previously-resolved look-alike (still in graph).
+        for (const c of (chain || [])) {
+            const k = this._apprKey(c.text);
+            if (k && this._apprCache.has(k)) { const id = present(this._apprCache.get(k)); if (id) return id; }
+        }
+        // 2) Structural resolution — id, then look-alike-of-a-node; learn on hit.
+        // Don't learn from an operator GLYPH (·, =, ^, …): its bare text repeats
+        // for different operator instances, so its appearance isn't a stable key.
+        const isOpGlyph = id => /__(?:op\d*|exp|one|m\d+)$/.test(id || '');
         for (const c of (chain || [])) {
             const id = r.resolveTermNodeId(c.id, c.text);
-            if (id) return id;
+            if (id) {
+                const k = this._apprKey(c.text);
+                if (k && !isOpGlyph(c.id)) this._apprCache.set(k, id);
+                return id;
+            }
         }
         return null;
     }
 
-    _onTermHover(chain, anchorEl) {
+    _onTermHover(chain, anchorEl, entry) {
         const r = this._renderer;
-        if (!r || r._destroyed || typeof r.highlightNodeById !== 'function') { this._hideTermTip(); return; }
-        const id = this._resolveChain(chain);
-        r.highlightNodeById(id);
-        // Floating tooltip showing the linked node's description, placed beside the
-        // term (never over it or the expression). No node / no description → hide.
-        const node = id && typeof r.getNode === 'function' ? r.getNode(id) : null;
-        const desc = node && (node.description || '').trim();
+        // Highlight the LINKED scene-graph node (best-effort — an intermediate-only
+        // symbol has none, and that's fine; the tooltip still shows).
+        let id = null;
+        if (r && !r._destroyed && typeof r.highlightNodeById === 'function') {
+            id = this._resolveChain(chain);
+            r.highlightNodeById(id);
+        }
+        // Tooltip description: prefer the proof's OWN per-term descriptions (keyed
+        // by the same ids as the annotated LaTeX — covers intermediate symbols that
+        // have no scene-graph node), then fall back to the linked node's description.
+        let desc = this._termDescription(entry, chain);
+        if (!desc && id && r && typeof r.getNode === 'function') {
+            const node = r.getNode(id);
+            // Don't fall back to a NUMBER node's description — "the number 2" is a
+            // meaningless tooltip (the proof's own data.terms already omits numbers).
+            if (node && !_isNumericNode(node)) desc = (node.description || '').trim();
+        }
         if (anchorEl && desc) this._showTermTip(anchorEl, desc);
         else this._hideTermTip();
+    }
+
+    // The first chain term that has a backend-supplied description in data.terms
+    // (keyed by node id). The rendered data-n can carry a rebase prefix (`_r3_…`,
+    // on the threaded spine) and an occurrence suffix (`__<parent>`, on shared
+    // leaves); data.terms is keyed by the clean id, so try the raw id, the
+    // prefix-stripped id, then the canonical symbol before it.
+    _termDescription(entry, chain) {
+        const terms = entry && entry.data && entry.data.terms;
+        if (!terms) return '';
+        for (const c of (chain || [])) {
+            const raw = c.id || '';
+            const clean = raw.replace(/^_r\d+_/, '');
+            const t = terms[raw] || terms[clean] || terms[clean.split('__')[0]];
+            const d = t && (t.description || '').trim();
+            if (d) return d;
+        }
+        return '';
     }
 
     // A rounded tooltip rendering the hovered term's node description. Lives on
