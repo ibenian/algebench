@@ -37,6 +37,21 @@ svg.d3-semantic-graph {
     filter: brightness(1.3);
 }
 
+/* Live-terms hover halo — driven by highlightNodeById() when a learner hovers
+   the LINKED term in a docked proof animation. Mirrors a real mouse hover (the
+   same brightness lift) plus a coloured glow so the cross-highlight reads as a
+   halo, matching the term's own halo in the proof box. Green for data nodes,
+   blue for operators — same hues as the .selected glow. */
+.d3sg-node.d3sg-live-hover .d3sg-var-bg {
+    filter: brightness(1.25) drop-shadow(0 0 6px rgba(109, 240, 142, 0.65));
+}
+.d3sg-node.d3sg-live-hover .d3sg-op-bg {
+    filter: brightness(1.25) drop-shadow(0 0 6px rgba(126, 168, 255, 0.65));
+}
+.d3sg-node.d3sg-live-hover .d3sg-tile-bg {
+    filter: brightness(1.2) drop-shadow(0 0 6px rgba(126, 168, 255, 0.6));
+}
+
 /* Collapsed tile — fill/stroke set by theme via inline attributes */
 .d3sg-tile-bg {
     stroke-width: 2px;

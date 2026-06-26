@@ -343,6 +343,11 @@ export class SgProofManager {
                 deriveButton: makeDeriveButton,
                 onDerive: (p, anchorEl) => this._deriveFromAnimator(entry, p, anchorEl),
                 fitHeight: true,
+                // Live terms: hover/click a named term → light up & select its
+                // linked semantic-graph node. No-ops when there's no renderer.
+                liveTerms: true,
+                onTermHover: (chain) => this._onTermHover(chain),
+                onTermClick: (chain, _el, ev) => this._onTermClick(chain, ev),
             });
         } catch (e) {
             entry.paWrap = null;
@@ -367,6 +372,38 @@ export class SgProofManager {
         const key = String(payload.target_latex).replace(/\s+/g, '');
         const parentId = parentEntry ? parentEntry.nodeId : 'anim';
         this.openProof(`${parentId}::sub::${key}`, anchorEl, payload);
+    }
+
+    // ── Live terms → semantic-graph sync ─────────────────────────────────────
+    // A docked proof animation drives the SAME renderer the graph itself uses, so
+    // hovering/clicking a named term lights up and selects its linked node exactly
+    // as a direct graph interaction would (cmd/ctrl-click keeps multi-selecting).
+    // With no renderer (no semantic graph) these are silent no-ops — the term
+    // still haloes locally inside the proof box, there's just nothing to sync to.
+    // Walk the term's candidate chain (innermost glyph → enclosing operator
+    // wrappers) and return the first that maps to a node in the current graph.
+    _resolveChain(chain) {
+        const r = this._renderer;
+        if (!r || r._destroyed || typeof r.resolveTermNodeId !== 'function') return null;
+        for (const c of (chain || [])) {
+            const id = r.resolveTermNodeId(c.id, c.text);
+            if (id) return id;
+        }
+        return null;
+    }
+
+    _onTermHover(chain) {
+        const r = this._renderer;
+        if (!r || r._destroyed || typeof r.highlightNodeById !== 'function') return;
+        r.highlightNodeById(this._resolveChain(chain));
+    }
+
+    _onTermClick(chain, ev) {
+        const r = this._renderer;
+        if (!r || r._destroyed || typeof r.selectNodeById !== 'function') return;
+        const id = this._resolveChain(chain);
+        if (!id) return;
+        r.selectNodeById(id, { additive: !!(ev && ev.additive) });
     }
 
     _renderLoading(entry, payload) {
