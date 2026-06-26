@@ -897,6 +897,17 @@ async function _renderWithD3(container, graph, step, key) {
     if (!_currentProofManager || _currentProofManager._destroyed) {
         _currentProofManager = new SgProofManager(container, {
             katex: window.katex,
+            // A click on empty space in a proof box deselects everything — clear
+            // the graph selection + info panel, then mirror the empty selection
+            // back onto the terms.
+            onBackgroundDeselect: () => {
+                if (_currentD3Renderer && typeof _currentD3Renderer.clearSelection === 'function') {
+                    _currentD3Renderer.clearSelection();
+                }
+                _hideD3InfoPanel();
+                if (_currentProofManager) _currentProofManager.syncSelectionFromGraph(new Set());
+                try { window.dispatchEvent(new CustomEvent('algebench:selectionchange')); } catch (_) { /* ignore */ }
+            },
         });
     }
 
@@ -915,11 +926,15 @@ async function _renderWithD3(container, graph, step, key) {
                 } else {
                     _showD3InfoPanel(nodeId, nodeData, _d3ActiveGraph);
                 }
+                // Reverse sync: mirror the graph selection onto the proof terms (gold).
+                if (_currentProofManager) _currentProofManager.syncSelectionFromGraph(selectedIds);
                 // Deeplink sync: node selection rewrites the current URL.
                 try { window.dispatchEvent(new CustomEvent('algebench:selectionchange')); } catch (_) { /* ignore */ }
             },
             onBackgroundClick: () => {
                 _hideD3InfoPanel();
+                // Clicking empty graph space clears the selection — un-gold the terms.
+                if (_currentProofManager) _currentProofManager.syncSelectionFromGraph(new Set());
             },
             onNodeHover: (nodeId, nodeData, nodeEl) => {
                 if (nodeId && nodeEl) {
@@ -928,6 +943,8 @@ async function _renderWithD3(container, graph, step, key) {
                 } else {
                     _hideD3NodeAskBtn();
                 }
+                // Reverse sync: light up the matching term(s) in every proof box.
+                if (_currentProofManager) _currentProofManager.highlightTermsForNode(nodeId || null);
             },
             onZoomChange: (pct) => {
                 const label = document.getElementById('graph-zoom-level');

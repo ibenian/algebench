@@ -93,6 +93,14 @@ export class ProofAnimator {
     this._liveTerms = !!opts.liveTerms;
     this._onTermHover = typeof opts.onTermHover === "function" ? opts.onTermHover : null;
     this._onTermClick = typeof opts.onTermClick === "function" ? opts.onTermClick : null;
+    // Reverse-sync hooks (the host drives graph→term highlight/select):
+    //   onAfterRender() — fires after EVERY stage (re)render so the host can
+    //     re-apply persistent term classes (selection/linked highlight) that a
+    //     morph's fresh render would otherwise wipe.
+    //   onTermBackgroundClick() — a click in the expression area that misses every
+    //     term (the host deselects all).
+    this._onAfterRender = typeof opts.onAfterRender === "function" ? opts.onAfterRender : null;
+    this._onTermBackgroundClick = typeof opts.onTermBackgroundClick === "function" ? opts.onTermBackgroundClick : null;
     this._hotTermEl = null;   // currently haloed term (event-delegation bookkeeping)
     // Container-fit mode (set by a host that gives the widget a FIXED-size box,
     // e.g. SgProofManager's grid cell): the stage fills the height the box leaves
@@ -249,7 +257,15 @@ export class ProofAnimator {
   // width — a safety net for cases _fit()'s probe under-measures (e.g. it ran
   // before the KaTeX webfonts loaded, so fallback-font metrics were narrower).
   // Shrinks the stage font (which reflows the existing render) until it fits.
+  // Fires the host's after-render hook (reverse sync re-applies term classes a
+  // fresh render wiped). Hung off _capOverflow because that runs after EVERY stage
+  // (re)render — initial, relayout, and the post-morph settle.
   _capOverflow() {
+    this._capOverflowImpl();
+    if (this._onAfterRender) { try { this._onAfterRender(); } catch (e) {} }
+  }
+
+  _capOverflowImpl() {
     const expr = this.stage.querySelector(".pa-expr");
     if (!expr) return;
     const k = expr.querySelector(".katex-display") || expr.querySelector(".katex");
@@ -365,17 +381,24 @@ export class ProofAnimator {
     // variable/number/operator glyph; the operator's wrapper when over notation
     // that has no leaf of its own — e.g. a derivative's d/dt bar). Anything that
     // maps to a graph node is selectable, so we DON'T restrict to leaves.
-    const tagOf = (t) => {
+    const tagOf = (t, x, y) => {
       const el = t && t.closest ? t.closest("[data-n]") : null;
       if (!el || !this.stage.contains(el)) return null;
       // A leaf glyph is always a term. A wrapper counts only if it's a TIGHT
       // operator — never a spanning combiner — so hovering a fraction bar or the
       // chrome of a product/equation doesn't light the whole sub-expression.
-      if (el.querySelector("[data-n]") && _isSpanningWrapperId(el.getAttribute("data-n"))) return null;
+      if (el.querySelector("[data-n]") && _isSpanningWrapperId(el.getAttribute("data-n"))) {
+        // The pointer hit a spanning wrapper's CHROME — e.g. the dead zone in the
+        // middle of a fraction's denominator, where KaTeX's vlist lets the wrapper
+        // show through above the glyph. Snap to the nearest leaf term by box (its
+        // rect still covers the point), so the whole denominator/numerator is
+        // clickable — but only if close, else it's a real background click.
+        return (x == null) ? null : this._nearestLeafTerm(el, x, y);
+      }
       return el;
     };
     this._onStageOver = (ev) => {
-      const el = tagOf(ev.target);
+      const el = tagOf(ev.target, ev.clientX, ev.clientY);
       // Switch the halo only when entering a REAL term. Moving onto the
       // expression's structural chrome (a fraction bar, KaTeX struts — tagOf is
       // null there because it resolves to a spanning wrapper) leaves the current
@@ -392,8 +415,12 @@ export class ProofAnimator {
       if (!to || !this.stage.contains(to)) this._setHotTerm(null);
     };
     this._onStageClick = (ev) => {
-      const el = tagOf(ev.target);
-      if (!el) return;
+      const el = tagOf(ev.target, ev.clientX, ev.clientY);
+      if (!el) {
+        // A click in the expression area that hit no term → the host deselects all.
+        if (this._onTermBackgroundClick) this._onTermBackgroundClick();
+        return;
+      }
       // Forward the candidate chain — the host resolves the nearest named node.
       if (this._onTermClick) {
         this._onTermClick(this._termChain(el), el, { additive: !!(ev.metaKey || ev.ctrlKey) });
@@ -431,6 +458,26 @@ export class ProofAnimator {
       }
     }
     return out;
+  }
+
+  // Nearest LEAF term inside `wrapper` to the point (x,y), or null if none is close
+  // enough — so a true background click (far from any term) still deselects. A leaf
+  // whose rect CONTAINS the point wins at distance 0, which is the fraction dead
+  // zone: the denominator glyph's box covers the point even where the wrapper shows
+  // through above it.
+  _nearestLeafTerm(wrapper, x, y) {
+    let best = null, bestD = Infinity;
+    for (const leaf of wrapper.querySelectorAll("[data-n]")) {
+      if (leaf.querySelector("[data-n]")) continue;   // leaves only
+      const r = leaf.getBoundingClientRect();
+      if (!r.width || !r.height) continue;
+      const dx = x < r.left ? r.left - x : x > r.right ? x - r.right : 0;
+      const dy = y < r.top ? r.top - y : y > r.bottom ? y - r.bottom : 0;
+      const d = dx * dx + dy * dy;
+      if (d < bestD) { bestD = d; best = leaf; }
+    }
+    const TOL = 14;   // px — beyond this it's a background click, not a near-miss
+    return (best && bestD <= TOL * TOL) ? best : null;
   }
 
   // Apply the current speed multiplier. Animations are created at base duration

@@ -1167,7 +1167,9 @@ export class D3SemanticGraphRenderer {
                 return `translate(${p.x},${p.y}) scale(0.85)`;
             })
             .style('opacity', 0)
-            .style('cursor', d => this._isCollapsible(d) ? 'pointer' : 'default')
+            // Every node is clickable now (select + proof-term sync), not just the
+            // collapsible operators — so they all get the hand cursor.
+            .style('cursor', 'pointer')
             .on('click', function (event, d) {
                 event.stopPropagation();
                 self._handleNodeClick(d, event);
