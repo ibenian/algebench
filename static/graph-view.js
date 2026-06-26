@@ -918,7 +918,7 @@ async function _renderWithD3(container, graph, step, key) {
             direction: _currentDirection,
             labels: _currentLabels,
             theme: _currentTheme,
-            onNodeClick: (nodeId, nodeData, selectedIds) => {
+            onNodeClick: (nodeId, nodeData, selectedIds, additive) => {
                 if (!selectedIds || selectedIds.size === 0) {
                     _hideD3InfoPanel();
                 } else if (selectedIds.size > 1) {
@@ -927,7 +927,8 @@ async function _renderWithD3(container, graph, step, key) {
                     _showD3InfoPanel(nodeId, nodeData, _d3ActiveGraph);
                 }
                 // Reverse sync: mirror the graph selection onto the proof terms (gold).
-                if (_currentProofManager) _currentProofManager.syncSelectionFromGraph(selectedIds);
+                // Pass additive so a PLAIN (replacing) selection also clears off-graph terms.
+                if (_currentProofManager) _currentProofManager.syncSelectionFromGraph(selectedIds, additive);
                 // Deeplink sync: node selection rewrites the current URL.
                 try { window.dispatchEvent(new CustomEvent('algebench:selectionchange')); } catch (_) { /* ignore */ }
             },

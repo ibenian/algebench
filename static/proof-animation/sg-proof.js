@@ -551,9 +551,17 @@ export class SgProofManager {
         // OFF-GRAPH term (no scene node) → select it LOCALLY, keyed by appearance.
         const key = this._apprKey((chain && chain[0] && chain[0].text) || '');
         if (!key) return;
-        if (this._selectedTermKeys.has(key)) this._selectedTermKeys.delete(key);   // toggle
-        else this._selectedTermKeys.add(key);
-        this._applyAllBoxes();
+        if (additive) {
+            // cmd/ctrl → toggle this term, keep the rest of the selection.
+            if (this._selectedTermKeys.has(key)) this._selectedTermKeys.delete(key);
+            else this._selectedTermKeys.add(key);
+            this._applyAllBoxes();
+        } else {
+            // plain → REPLACE: clear the graph selection + every other term first.
+            this._deselectAll();
+            this._selectedTermKeys = new Set([key]);
+            this._applyAllBoxes();
+        }
     }
 
     // ── Reverse sync (graph → term) ──────────────────────────────────────────
@@ -643,11 +651,12 @@ export class SgProofManager {
 
     /** The graph's selection changed (graph-view → here, after any node/term click).
      *  Mirror it onto the terms so selected terms are gold everywhere. */
-    syncSelectionFromGraph(selectedIds) {
+    syncSelectionFromGraph(selectedIds, additive) {
         this._selectedNodeIds = new Set(selectedIds || []);
-        // A full graph deselect (background click, toggling off the last node) means
-        // nothing is selected anywhere — so clear the off-graph term selection too.
-        if (this._selectedNodeIds.size === 0) this._selectedTermKeys.clear();
+        // A PLAIN (non-additive) selection replaces everything, so clear the
+        // off-graph term selection too — only cmd/ctrl keeps both. A full deselect
+        // (empty) clears it regardless.
+        if (!additive || this._selectedNodeIds.size === 0) this._selectedTermKeys.clear();
         this._applyAllBoxes();
     }
 

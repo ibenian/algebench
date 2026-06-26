@@ -1357,7 +1357,7 @@ export class D3SemanticGraphRenderer {
 
         this._applyHighlight();
         if (this.onNodeClick) {
-            this.onNodeClick(nodeId, d.data, new Set(this._selectedNodeIds));
+            this.onNodeClick(nodeId, d.data, new Set(this._selectedNodeIds), multiSelect);
         }
     }
 
