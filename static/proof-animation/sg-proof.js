@@ -10,7 +10,7 @@
 import { ProofAnimator } from '/proof-animation/proof-animation.js';
 import { invokeExpert } from '/expert-client.js';
 import { nextDockSeq } from '/proof-animation/dock-seq.js';
-import { makeAiAskButton, makeDeriveButton } from '/labels.js';
+import { makeAiAskButton, makeDeriveButton, openChatPanel } from '/labels.js';
 
 // Session-persistent cache of derivation results, keyed by the FULL request
 // shape (everything that affects the derivation — target/start/domain plus
@@ -369,6 +369,15 @@ export class SgProofManager {
                 liveTerms: true,
                 onTermHover: (chain, _el) => this._onTermHover(chain),   // ProofAnimator passes (chain, el); we only need the chain
                 onTermClick: (chain, _el, ev) => this._onTermClick(chain, ev),
+                // Prerequisite / follow-up chips → ask the agent with the proof
+                // context baked into the message (chat.js exposes these globally).
+                enableExplore: true,
+                onExplore: ({ message }) => {
+                    try { openChatPanel(); } catch (e) { /* panel optional */ }
+                    if (typeof window !== "undefined" && typeof window.sendChatMessage === "function") {
+                        window.sendChatMessage(message);
+                    }
+                },
                 // Reverse sync: re-apply selection/linked classes after every
                 // (re)render (a morph wipes them); a background click deselects all.
                 onAfterRender: () => this._refreshTermClasses(entry),

@@ -121,13 +121,20 @@ function validateProofData(data) {
     }
   }
 
-  return {
+  const out = {
     title: str(data.title),
     domain: str(data.domain),
     steps,
     terms,
     overall_confidence: cleanConfidence(data.overall_confidence),
   };
+  // Optional model-produced framing, prerequisites, and agentic follow-up prompts.
+  if (data.goal) out.goal = str(data.goal);
+  const strList = (v) => Array.isArray(v)
+    ? v.filter((s) => typeof s === "string" && s.trim()).slice(0, 8).map(str) : undefined;
+  if (strList(data.followups)) out.followups = strList(data.followups);
+  if (strList(data.prerequisites)) out.prerequisites = strList(data.prerequisites);
+  return out;
 }
 
 /** The theme requested in the URL (?theme=), defaulting to dark. */
@@ -397,6 +404,9 @@ async function main() {
 
   const theme = parseTheme();
   applyTheme(theme);
+  // Opt-in "Explore further" follow-up chips via ?explore=1 (off by default).
+  const exploreFollowups = ["1", "true", "yes"].includes(
+    (new URLSearchParams(location.search).get("explore") || "").toLowerCase());
 
   const { valid, bad, overflow } = parseBuiltins();
   setupControlBar(valid, theme);
@@ -436,7 +446,11 @@ async function main() {
       loadedProofs.push({ slug, text });   // capture raw JSON for the { } viewer
       const data = validateProofData(JSON.parse(text));
       if (data.title) title.textContent = data.title;
-      window.__animators.push(new ProofAnimator(card, data, { katex, liveTerms: true }));
+      window.__animators.push(new ProofAnimator(card, data, {
+        katex, liveTerms: true, enableExplore: exploreFollowups,
+        // No onExplore here: standalone, the engine copies the chip text; when this
+        // page is embedded in an iframe, the engine posts the click to the parent.
+      }));
     } catch (e) {
       showError(card, `Could not load "${slug}": ${e.message}`);
     }
