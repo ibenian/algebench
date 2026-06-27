@@ -10,8 +10,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import shutil
 from pathlib import Path
+
+log = logging.getLogger(__name__)
 
 from proof_animation.build import build, build_animation, ProofAnimation
 from backend.experts.modules.proof_completion.outputs import ProofTrajectory, DerivationStep
@@ -49,7 +52,10 @@ def _describe_terms(anim: dict) -> dict:
                 if tid in terms and desc:
                     terms[tid]["description"] = desc
         except Exception:
-            pass
+            # Best-effort — the report still renders highlights without tooltip
+            # text — but make the failure discoverable, not silent.
+            log.warning("proof report: term-description pass failed for %r",
+                        anim.get("title"), exc_info=True)
     return anim
 
 _ROOT = Path(__file__).resolve().parent.parent.parent   # scripts/proof_animation/report.py → repo root

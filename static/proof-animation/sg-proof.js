@@ -367,7 +367,7 @@ export class SgProofManager {
                 // Live terms: hover/click a named term → light up & select its
                 // linked semantic-graph node. No-ops when there's no renderer.
                 liveTerms: true,
-                onTermHover: (chain) => this._onTermHover(chain),
+                onTermHover: (chain, _el) => this._onTermHover(chain),   // ProofAnimator passes (chain, el); we only need the chain
                 onTermClick: (chain, _el, ev) => this._onTermClick(chain, ev),
                 // Reverse sync: re-apply selection/linked classes after every
                 // (re)render (a morph wipes them); a background click deselects all.
