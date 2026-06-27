@@ -1481,13 +1481,15 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
         proof_path = sanitize_path(proofs_dir, path)
         if not proof_path or not proof_path.is_file() or proof_path.suffix != '.json':
             return Response(status_code=404)
-        # Treat proofs as untrusted: cap the size so a huge file can't exhaust
+        # Treat proofs as untrusted: bound the read so a huge file can't exhaust
         # memory/bandwidth (mirrors the client's MAX_BYTES; see the security model).
-        if proof_path.stat().st_size > _MAX_PROOF_BYTES:
-            return Response(status_code=413)
+        # A bounded read (not stat()) keeps this to the single, already-vetted open().
         with open(proof_path, 'rb') as f:
-            return Response(content=f.read(), media_type="application/json",
-                            headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+            data = f.read(_MAX_PROOF_BYTES + 1)
+        if len(data) > _MAX_PROOF_BYTES:
+            return Response(status_code=413)
+        return Response(content=data, media_type="application/json",
+                        headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
 
     @fastapp.get("/chat.js")
     async def get_chat_js():
