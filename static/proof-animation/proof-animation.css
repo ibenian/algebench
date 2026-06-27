@@ -131,6 +131,13 @@
   cursor: pointer;
   transition: filter 130ms ease;
 }
+/* KaTeX draws the √ surd in a `.hide-tail` span whose box spans the WHOLE radicand,
+   so it sits on top of the terms inside the root and swallows their hover/click (the
+   pointer hits that span, which has no data-n, and resolves to the enclosing √
+   wrapper). It's purely decorative — let the pointer fall through to the tagged
+   glyphs beneath so terms inside a square root are hoverable like everywhere else. */
+.pa-live-terms .pa-stage .sqrt .hide-tail,
+.pa-live-terms .pa-stage .sqrt .hide-tail svg { pointer-events: none; }
 /* Hovered locally (mouse on the glyph) OR linked (the graph node is hovered) —
    same indigo backlight, so hover reads identically in both sync directions. */
 .pa-live-terms .pa-term-hot,

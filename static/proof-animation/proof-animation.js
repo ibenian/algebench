@@ -49,7 +49,11 @@ const SPEEDS = [0.25, 0.5, 1, 2, 4];
 const _SPANNING_OP = /^(?:multiply|add|subtract|plus|minus|equals|not_equal|less_than|greater_than|less_equal|greater_equal|implies|iff|conjunction|disjunction)_\d+$/;
 function _isSpanningWrapperId(id) {
   if (!id) return false;
-  const core = id.replace(/^_r\d+_/, "").replace(/^_+/, "");   // strip rebase prefix + leading "_"
+  // Strip any leading id prefixes before matching the op name: rebase (`_r3_`) AND
+  // disjunction-branch (`d0_`, `d1_`, … — the two sides of a `\lor`). Missing the
+  // branch prefix left `d1___multiply_9` unrecognized as a spanning fraction, so
+  // hovering a term inside the 2nd root's denominator lit the whole ratio (#…).
+  const core = id.replace(/^(?:_r\d+_|d\d+_)+/, "").replace(/^_+/, "");
   return _SPANNING_OP.test(core);
 }
 
