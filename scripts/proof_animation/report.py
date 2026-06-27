@@ -140,7 +140,7 @@ _INDEX = """<!DOCTYPE html>
         root.appendChild(div);
         // liveTerms (no graph host here): each term gets the hover backlight + a
         // description tooltip. The app layers graph sync on top via SgProofManager.
-        return new ProofAnimator(div, data, { katex: window.katex, liveTerms: true });
+        return new ProofAnimator(div, data, { katex: window.katex, liveTerms: true, enableExplore: true });
       });
     })();
   </script>

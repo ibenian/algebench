@@ -21,6 +21,18 @@
           "justification": "$b$ crosses over, leaving $a$ isolated",
           "change_type": "rewrite"
         }
+      ],
+      "goal": "This derivation shows how to rearrange the equation $a + b - c = 0$ to solve for $a$.",
+      "prerequisites": [
+        "Algebraic equations",
+        "Addition and subtraction",
+        "Solving for a variable"
+      ],
+      "followups": [
+        "Rearrange the original equation to solve for $b$.",
+        "What if the equation was $2x - y + 5 = 0$? How would you solve for $x$?",
+        "Explain why moving terms across the equals sign changes their sign.",
+        "How would this process change if the equation involved multiplication or division?"
       ]
     }
   },
@@ -40,6 +52,18 @@
           "justification": "$(x+1)^2 = x^2 + 2x + 1$",
           "change_type": "rewrite"
         }
+      ],
+      "goal": "This derivation expands the binomial $(x+1)^2$ to its equivalent polynomial form, $x^2 + 2x + 1$.",
+      "prerequisites": [
+        "Binomials",
+        "Squaring expressions",
+        "Distributive property"
+      ],
+      "followups": [
+        "Expand $(x-1)^2$.",
+        "Expand $(2x+3)^2$.",
+        "What is the general formula for $(a+b)^2$?",
+        "How would you factor $x^2 + 2x + 1$?"
       ]
     }
   },
@@ -59,6 +83,18 @@
           "justification": "$a^2 - b^2 = (a-b)(a+b)$",
           "change_type": "rewrite"
         }
+      ],
+      "goal": "This derivation demonstrates how to factor the difference of two squares, $a^2 - b^2$, into the product of two binomials.",
+      "prerequisites": [
+        "Factoring",
+        "Algebraic expressions",
+        "Binomials"
+      ],
+      "followups": [
+        "Can you show me how to expand $(a-b)(a+b)$ to prove this identity?",
+        "How would you factor $x^2 - 16$ using this identity?",
+        "What happens if the expression is $a^2 + b^2$?",
+        "Can this identity be used to simplify calculations with numbers, like $100^2 - 99^2$?"
       ]
     }
   },
@@ -102,6 +138,19 @@
           "justification": "the standard Lorentz-factor form",
           "change_type": "solve"
         }
+      ],
+      "goal": "This derivation rearranges the relativistic energy-momentum relation $E^2 = (m c^2)^2 + (p c)^2$ to express the total energy $E$ in a factored form $E = m c^2 \\sqrt{1 + \\frac{p^2}{m^2 c^2}}$.",
+      "prerequisites": [
+        "Algebraic manipulation",
+        "Square roots",
+        "Factoring expressions",
+        "Exponent rules"
+      ],
+      "followups": [
+        "How does this expression relate to the simpler $E=mc^2$ equation?",
+        "What happens to the equation if the momentum $p$ is zero?",
+        "Can you show how to derive the Lorentz factor from this expression?",
+        "How would you rearrange this equation to solve for $p$?"
       ]
     }
   },
@@ -151,6 +200,19 @@
           "justification": "moving clocks run slow by $\\gamma$",
           "change_type": "solve"
         }
+      ],
+      "goal": "This derivation shows how to rearrange the equation $(c t)^2 = (c t_0)^2 + (v t)^2$ to solve for $t$, which is fundamental in understanding time dilation in special relativity.",
+      "prerequisites": [
+        "Expanding squares",
+        "Factoring algebraic expressions",
+        "Solving equations",
+        "Algebraic manipulation of fractions"
+      ],
+      "followups": [
+        "What do the variables $t$, $t_0$, $v$, and $c$ represent in the context of special relativity?",
+        "Can you explain what the term 'time dilation' means in simple terms?",
+        "What happens to the value of $t$ if $v$ is very small compared to $c$?",
+        "How would you solve the original equation for $t_0$ instead of $t$?"
       ]
     }
   },
@@ -212,6 +274,19 @@
           "justification": "Arithmetic of fractions: within each branch the terms share the denominator $2a$, so the numerators combine — giving both quadratic roots.",
           "change_type": "rewrite"
         }
+      ],
+      "goal": "This derivation shows how to solve a general quadratic equation $ax^2 + bx + c = 0$ for $x$ by deriving the quadratic formula using the method of completing the square.",
+      "prerequisites": [
+        "Algebraic manipulation",
+        "Factoring perfect square trinomials",
+        "Square root property of equality",
+        "Arithmetic with fractions"
+      ],
+      "followups": [
+        "How can we use the quadratic formula to solve $x^2 - 5x + 6 = 0$?",
+        "What is the discriminant $b^2 - 4ac$ and what does it tell us about the solutions?",
+        "Can we derive the quadratic formula using a different method?",
+        "How does completing the square relate to finding the vertex of a parabola?"
       ]
     }
   },
@@ -303,6 +378,19 @@
           "justification": "Define the arbitrary constant $e^{C_1}$ as $v_E$, representing an initial or reference velocity.",
           "change_type": "rewrite"
         }
+      ],
+      "goal": "This derivation solves a differential equation for vehicle velocity $v$ with respect to time $t$ to obtain an expression for $v$ as a function of altitude $h$, considering atmospheric density and flight-path angle.",
+      "prerequisites": [
+        "Chain Rule",
+        "Separation of Variables",
+        "Integration of $1/x$",
+        "Integration of $e^{ax}$"
+      ],
+      "followups": [
+        "What is the physical meaning or typical value of the integration constant $v_E$?",
+        "How would the final velocity expression change if the flight-path angle $\\gamma$ varied with altitude?",
+        "Derive an expression for the vehicle's altitude $h$ as a function of time $t$.",
+        "How does the velocity $v$ change with altitude $h$ according to this formula?"
       ]
     }
   },
@@ -328,6 +416,18 @@
           "justification": "constants pull out of the integral",
           "expr_latex": "\\int \\frac{1}{v} \\, dv = -k \\int e^{-h/H} \\, dh"
         }
+      ],
+      "goal": "This derivation shows how to prepare a separated differential equation for integration by applying the integral operator to both sides and factoring out constants.",
+      "prerequisites": [
+        "Differential equations",
+        "Integral notation",
+        "Constant multiple rule for integrals"
+      ],
+      "followups": [
+        "Evaluate the integrals on both sides of the equation.",
+        "Explain why we can factor out the constant $k$.",
+        "What would be the next step if we had initial conditions?",
+        "How would this process change for a different type of differential equation?"
       ]
     }
   }
