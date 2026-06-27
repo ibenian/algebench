@@ -368,8 +368,8 @@ export class ProofAnimator {
     }
     if (this._termTip && this._termTip.parentNode) this._termTip.parentNode.removeChild(this._termTip);
     this._termTip = null;
-    // Clear any lingering sg hover-halo this widget drove.
-    if (this._onTermHover) { try { this._onTermHover([], null); } catch (e) {} }   // same shape as _setHotTerm
+    // Clear any host hover state this widget drove (empty chain → no linked term).
+    if (this._onTermHover) { try { this._onTermHover([], null); } catch (e) {} }
   }
 
   // ── Live terms (optional) ──────────────────────────────────────────────────
