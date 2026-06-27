@@ -41,19 +41,6 @@ const GRID_GAP = 8;
 const DEFAULT_COLSPAN = 4;
 const DEFAULT_ROWSPAN = 3;
 
-// A graph node that is just a NUMBER (a literal like 2, or a numeric-valued
-// constant) — not worth a tooltip. Named symbols/constants (π, e, c, ρ) keep a
-// letter once LaTeX commands are unwrapped (\rho → rho).
-function _isNumericNode(node) {
-    if (!node) return false;
-    if (node.type === 'number') return true;
-    const s = String(node.subexpr || node.latex || node.label || '')
-        .replace(/\\(?:[dtc]?frac|cdot|times|div|sqrt|left|right)\b/g, '')   // structural → drop
-        .replace(/\\[a-zA-Z]+/g, 'x')                                        // symbol command → a letter
-        .replace(/[{}()\\$\s_^]/g, '');
-    return s !== '' && !/[A-Za-z]/.test(s);          // nothing but digits/operators → numeric
-}
-
 export class SgProofManager {
     constructor(container, opts = {}) {
         this.container = container;
@@ -380,7 +367,7 @@ export class SgProofManager {
                 // Live terms: hover/click a named term → light up & select its
                 // linked semantic-graph node. No-ops when there's no renderer.
                 liveTerms: true,
-                onTermHover: (chain, el) => this._onTermHover(chain, el, entry),
+                onTermHover: (chain, _el) => this._onTermHover(chain),   // ProofAnimator passes (chain, el); we only need the chain
                 onTermClick: (chain, _el, ev) => this._onTermClick(chain, ev),
                 // Reverse sync: re-apply selection/linked classes after every
                 // (re)render (a morph wipes them); a background click deselects all.
@@ -459,82 +446,15 @@ export class SgProofManager {
         return null;
     }
 
-    _onTermHover(chain, anchorEl, entry) {
+    // Hovering a term lights up its LINKED scene-graph node and every matching
+    // term (in all boxes) together — the same path graph→term hover uses, so it's
+    // symmetric. (The TOOLTIP is owned by ProofAnimator now — graph-free, shared
+    // with the standalone proof-animation page.) Best-effort: an intermediate-only
+    // symbol has no node, which is fine.
+    _onTermHover(chain) {
         const r = this._renderer;
-        // Resolve the LINKED scene-graph node and drive the SHARED hover state, so
-        // the node halo AND every matching term (in all boxes) light up together —
-        // the same path graph→term hover uses, so it's symmetric. Best-effort: an
-        // intermediate-only symbol has no node, and that's fine (tooltip still shows).
         const id = (r && !r._destroyed) ? this._resolveChain(chain) : null;
         this._setHoverNode(id);
-        // Tooltip description: prefer the proof's OWN per-term descriptions (keyed
-        // by the same ids as the annotated LaTeX — covers intermediate symbols that
-        // have no scene-graph node), then fall back to the linked node's description.
-        let desc = this._termDescription(entry, chain);
-        if (!desc && id && r && typeof r.getNode === 'function') {
-            const node = r.getNode(id);
-            // Don't fall back to a NUMBER node's description — "the number 2" is a
-            // meaningless tooltip (the proof's own data.terms already omits numbers).
-            if (node && !_isNumericNode(node)) desc = (node.description || '').trim();
-        }
-        if (anchorEl && desc) this._showTermTip(anchorEl, desc);
-        else this._hideTermTip();
-    }
-
-    // The first chain term that has a backend-supplied description in data.terms
-    // (keyed by node id). The rendered data-n can carry a rebase prefix (`_r3_…`,
-    // on the threaded spine) and an occurrence suffix (`__<parent>`, on shared
-    // leaves); data.terms is keyed by the clean id, so try the raw id, the
-    // prefix-stripped id, then the canonical symbol before it.
-    _termDescription(entry, chain) {
-        const terms = entry && entry.data && entry.data.terms;
-        if (!terms) return '';
-        for (const c of (chain || [])) {
-            const raw = c.id || '';
-            const clean = raw.replace(/^_r\d+_/, '');
-            const t = terms[raw] || terms[clean] || terms[clean.split('__')[0]];
-            const d = t && (t.description || '').trim();
-            if (d) return d;
-        }
-        return '';
-    }
-
-    // A rounded tooltip rendering the hovered term's node description. Lives on
-    // <body> (position:fixed) so the proof box's overflow never clips it; placed
-    // on the side the term is nearest — BELOW when the term sits in the lower half
-    // of the viewport (closer to the bottom), ABOVE otherwise — then flipped to the
-    // opposite side if the preferred one would run off-screen.
-    _showTermTip(anchorEl, text) {
-        let tip = this._termTip;
-        if (!tip) {
-            tip = document.createElement('div');
-            tip.className = 'sgp-term-tip';
-            tip.setAttribute('role', 'tooltip');
-            document.body.appendChild(tip);
-            this._termTip = tip;
-        }
-        this._renderInlineMath(tip, text);   // descriptions may carry inline $…$
-        tip.style.display = 'block';
-        tip.style.visibility = 'hidden';     // measure before positioning
-        const r = anchorEl.getBoundingClientRect();
-        const vh = window.innerHeight;
-        const tw = tip.offsetWidth, th = tip.offsetHeight, GAP = 10;
-        let left = r.left + r.width / 2 - tw / 2;
-        left = Math.max(8, Math.min(left, window.innerWidth - tw - 8));
-        // Prefer the side the term is nearest (below when in the lower half),
-        // then flip if that side has no room.
-        let below = (r.top + r.bottom) / 2 > vh / 2;
-        if (below && r.bottom + GAP + th > vh - 4) below = false;   // no room below
-        else if (!below && r.top - GAP - th < 4) below = true;      // no room above
-        const top = below ? r.bottom + GAP : r.top - th - GAP;
-        tip.classList.toggle('sgp-term-tip-below', below);
-        tip.style.left = `${Math.round(left)}px`;
-        tip.style.top = `${Math.round(Math.max(4, top))}px`;
-        tip.style.visibility = 'visible';
-    }
-
-    _hideTermTip() {
-        if (this._termTip) this._termTip.style.display = 'none';
     }
 
     _onTermClick(chain, ev) {
@@ -885,8 +805,6 @@ export class SgProofManager {
         this._destroyed = true;
         if (this._rafId) { cancelAnimationFrame(this._rafId); this._rafId = null; }
         if (this._resizeObserver) { try { this._resizeObserver.disconnect(); } catch (_e) {} this._resizeObserver = null; }
-        if (this._termTip && this._termTip.parentNode) this._termTip.parentNode.removeChild(this._termTip);
-        this._termTip = null;
         for (const boxId of Array.from(this.boxes.keys())) this.closeBox(boxId);
     }
 }

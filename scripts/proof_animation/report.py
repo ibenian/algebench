@@ -10,12 +10,53 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import shutil
 from pathlib import Path
+
+log = logging.getLogger(__name__)
 
 from proof_animation.build import build, build_animation, ProofAnimation
 from backend.experts.modules.proof_completion.outputs import ProofTrajectory, DerivationStep
 from backend.experts.modules.proof_completion.wellformed import assert_well_formed
+from backend.experts.llm_config import configure_dspy, is_configured
+from backend.experts.handlers.proof_animation.term_descriptions import describe_terms
+
+_LM_READY: bool | None = None
+
+
+def _ensure_lm() -> bool:
+    """Configure dspy once, best-effort. Returns False (and the report renders with
+    highlights but no tooltip text) when no LM key is available — e.g. in CI."""
+    global _LM_READY
+    if _LM_READY is None:
+        try:
+            configure_dspy()
+            _LM_READY = is_configured()
+        except Exception:
+            _LM_READY = False
+    return _LM_READY
+
+
+def _describe_terms(anim: dict) -> dict:
+    """Fill in per-term tooltip descriptions on a built animation, in place.
+
+    ``build()`` collects ``terms`` (id → {latex, name}) but doesn't describe them —
+    that's an LM pass. Do it here so the standalone report's tooltips have content
+    when an LM is configured; without one (e.g. CI), terms stay description-less and
+    the page still shows the hover highlight, just no tooltip text."""
+    terms = anim.get("terms")
+    if terms and _ensure_lm():
+        try:
+            for tid, desc in describe_terms(terms, anim.get("domain") or "", "").items():
+                if tid in terms and desc:
+                    terms[tid]["description"] = desc
+        except Exception:
+            # Best-effort — the report still renders highlights without tooltip
+            # text — but make the failure discoverable, not silent.
+            log.warning("proof report: term-description pass failed for %r",
+                        anim.get("title"), exc_info=True)
+    return anim
 
 _ROOT = Path(__file__).resolve().parent.parent.parent   # scripts/proof_animation/report.py → repo root
 _ASSETS = _ROOT / "static" / "proof-animation"
@@ -27,7 +68,7 @@ _FIXTURES = _ROOT / "tests" / "proof_animation" / "proof_animations.json"
 def _animations_from_file(path: Path, domain: str) -> list[dict]:
     """Load a proofs JSON (list of ProofAnimation) and build each into animation data."""
     data = json.loads(Path(path).read_text(encoding="utf-8"))
-    return [build_animation(ProofAnimation.model_validate(d)) for d in data]
+    return [_describe_terms(build_animation(ProofAnimation.model_validate(d))) for d in data]
 
 _INDEX = """<!DOCTYPE html>
 <html lang="en">
@@ -76,7 +117,9 @@ _INDEX = """<!DOCTYPE html>
         const div = document.createElement("div");
         root.appendChild(h);
         root.appendChild(div);
-        return new ProofAnimator(div, data, { katex: window.katex });
+        // liveTerms (no graph host here): each term gets the hover backlight + a
+        // description tooltip. The app layers graph sync on top via SgProofManager.
+        return new ProofAnimator(div, data, { katex: window.katex, liveTerms: true });
       });
     })();
   </script>
@@ -106,7 +149,7 @@ def main() -> int:
         # Hard edge (issue #372 §A): a hand-authored trajectory has no refinement
         # loop behind it, so malformed captions are an error here, not a low score.
         assert_well_formed(traj)
-        animations = [build(traj, args.domain, args.title or "derivation")]
+        animations = [_describe_terms(build(traj, args.domain, args.title or "derivation"))]
     elif args.states:
         traj = ProofTrajectory(
             start_latex=args.states[0],
@@ -116,7 +159,7 @@ def main() -> int:
                                   justification="(manual)", change_type="rewrite")
                    for i, s in enumerate(args.states[1:], start=1)],
         )
-        animations = [build(traj, args.domain, args.title)]
+        animations = [_describe_terms(build(traj, args.domain, args.title))]
     elif _FIXTURES.exists():       # default: render the curated test suite
         animations = _animations_from_file(_FIXTURES, args.domain)
     else:
