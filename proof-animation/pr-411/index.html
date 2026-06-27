@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Proof Animation</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <link rel="stylesheet" href="./proof-animation.css?v=1782526340">
+  <style>
+    body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+           margin: 0; padding: 40px 20px; background: #f6f7fb; color: #1a1a2e; }
+    .wrap { max-width: 780px; margin: 0 auto; }
+    h1 { font-size: 1.15rem; font-weight: 600; color: #374151; margin: 0 0 8px; }
+    .pa-title { font-size: 1rem; font-weight: 600; color: #4b5563; margin: 28px 0 8px; }
+    .hint { color: #6b7280; font-size: .9rem; margin: 0 0 8px; }
+    /* Match the proof container, which follows prefers-color-scheme: in dark mode
+       the panels go dark (#1a1a2e), so the page sits a touch darker behind them. */
+    @media (prefers-color-scheme: dark) {
+      body { background: #12121c; color: #e5e7eb; }
+      h1 { color: #cbd5e1; }
+      .pa-title { color: #cbd5e1; }
+      .hint { color: #9ca3af; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Proof Animation — examples</h1>
+    <p class="hint">Click any step (0,1,2,…) to jump there — the morph runs between
+    the current state and the one you pick. Toggle “sequential” to stagger the moves.</p>
+    <div id="root"></div>
+  </div>
+  <script type="module">
+    import { ProofAnimator } from "./proof-animation.js?v=1782526340";
+    (async () => {
+      for (let i = 0; i < 100 && !window.katex; i++)
+        await new Promise(r => setTimeout(r, 30));
+      const list = await (await fetch("./animations.json")).json();
+      const root = document.getElementById("root");
+      window.animators = list.map((data) => {
+        const h = document.createElement("h2");
+        h.className = "pa-title";
+        h.textContent = data.title || "derivation";
+        const div = document.createElement("div");
+        root.appendChild(h);
+        root.appendChild(div);
+        // liveTerms (no graph host here): each term gets the hover backlight + a
+        // description tooltip. The app layers graph sync on top via SgProofManager.
+        return new ProofAnimator(div, data, { katex: window.katex, liveTerms: true });
+      });
+    })();
+  </script>
+</body>
+</html>
