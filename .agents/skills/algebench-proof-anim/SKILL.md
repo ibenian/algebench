@@ -28,19 +28,16 @@ silently invent the whole derivation and dump a file — confirm the math first.
 
 ## Workflow
 
-### 1. Research the derivation
+### 1. Decide the endpoints (don't write the steps yourself)
 
-Work out (or look up) the derivation the user wants: the starting expression, the
-ordered steps, and a short justification for each. Each step is a *complete*
-expression reached by one operation.
+Figure out the **start** and **target** LaTeX (and, optionally, the intent) — NOT
+the intermediate steps. The intermediate steps come from `derive.py`, which runs
+the ProofCompletionExpert + CAS so they're model-derived and machine-checked, not
+hand-guessed.
 
-Then **confirm with `AskUserQuestion`**, e.g.:
-- *Is this the right derivation / endpoint?* (show the chain start → … → target)
-- *Which domain parser?* (algebra, calculus, physics, … — affects how LaTeX is parsed)
-- *Add, remove, or reorder any step?*
-- *Tighten any justification?*
-
-Iterate until the user confirms the chain.
+**Confirm with `AskUserQuestion`**, e.g.:
+- *Is this the right start → target?* (e.g. `ax^2+bx+c=0` → the quadratic formula)
+- *Which domain parser?* (algebra, calculus, physics, … — affects LaTeX parsing)
 
 ### 2. Name it
 
@@ -49,61 +46,56 @@ default derived from the title (e.g. "Isolate a" → `algebra/isolate-a`). The s
 must match `^[A-Za-z0-9_-]+/[A-Za-z0-9_-]+$`. Show the file path it will write:
 `proofs/domains/<domain>/<name>.json`.
 
-### 3. Generate the JSON
+### 3. Generate the trajectory with `derive.py`, then save it
 
-Write a **single-entry `ProofAnimation` list** to a scratch file (this is the
-animation-input format; the trajectory is the proof expert's output type verbatim):
-
-```json
-[
-  {
-    "title": "Isolate a",
-    "domain": "algebra",
-    "start_operation": "Given the equation",
-    "start_justification": "solve for $a$",
-    "trajectory": {
-      "kind": "proof_trajectory",
-      "start_latex": "a + b - c = 0",
-      "target_latex": "a = c - b",
-      "steps": [
-        { "operation": "add $c$ to both sides", "expr_latex": "a + b = c",
-          "justification": "$c$ crosses the $=$ and flips sign", "change_type": "rewrite" },
-        { "operation": "subtract $b$ from both sides", "expr_latex": "a = c - b",
-          "justification": "$b$ crosses over, leaving $a$ isolated", "change_type": "rewrite" }
-      ]
-    }
-  }
-]
-```
-
-Notes:
-- `expr_latex` is the **full** expression after that step, not a diff.
-- `justification`/`operation` may carry inline `$…$` math.
-- `change_type` is usually `"rewrite"`.
-
-Then build + save it (reuses the existing pipeline — parse, rebase, annotate,
-CAS-grade, and an LM term-description pass when a key is configured):
+**Always use the derive script** to produce the trajectory — it runs the expert and
+CAS-verifies each step. Do NOT hand-author the chain of `expr_latex` steps.
+(Needs `GEMINI_API_KEY` in `.env.local`.)
 
 ```bash
-./run.sh scripts/proof_animation/report.py --from-file <scratch>.json --save-builtin <domain>/<name>
+# explicit endpoints (precise):
+./run.sh scripts/proof_animation/derive.py "<START>" "<TARGET>" \
+    --title "<Title>" --domain <domain> --out <scratch>/anim.json
+# …or let the model pick endpoints from a prompt:
+./run.sh scripts/proof_animation/derive.py --prompt "<natural language>" --out <scratch>/anim.json
+```
+
+Review the generated steps (print them). If they're wrong, adjust the
+endpoints/prompt and **re-run derive.py** — don't fix the math by hand.
+
+`derive.py --out` writes a single `ProofAnimation`; `report.py --save-builtin`
+wants a one-entry list. Wrap it, then build + save (parse, rebase, annotate,
+CAS-grade, optional LM term descriptions):
+
+```bash
+jq '[.]' <scratch>/anim.json > <scratch>/list.json
+./run.sh scripts/proof_animation/report.py --from-file <scratch>/list.json --save-builtin <domain>/<name>
 ```
 
 This writes `proofs/domains/<domain>/<name>.json`. If the build errors on a
-malformed step (it runs `assert_well_formed`), fix the spec and re-run — do not
-hand-edit the generated JSON.
+malformed step (it runs `assert_well_formed`), re-derive — do not hand-edit the JSON.
 
-### 4. Show it live
+> Fallback (no LM key, or a tiny fixed chain): you may hand-author a single-entry
+> `ProofAnimation` list and pass it straight to `report.py --from-file … --save-builtin`.
+> The shape is `{title, domain, start_operation, start_justification, trajectory:{kind:"proof_trajectory",
+> start_latex, target_latex, steps:[{operation, expr_latex, justification, change_type:"rewrite"}]}}`
+> where each `expr_latex` is the FULL expression after that step. Prefer `derive.py`.
 
-Launch the app straight onto the new proof:
+### 4. Show it live (use the right URL)
 
 ```bash
-./algebench --proof <domain>/<name>
+./algebench --proof <domain>/<name>     # opens /renderproof?builtin=<domain>/<name>
 ```
 
-(Opens `…/renderproof?builtin=<domain>/<name>` in the browser. For headless
-verification, add `--server-only --port <p>` and drive it with the preview tools.)
+For headless verification, run `./algebench --server-only --port <p>` and load the
+**shareable page** in the preview tools:
+`http://localhost:<p>/renderproof?builtin=<domain>/<name>` — that exact path, NOT
+the app root `/` (the main 3D viewer), and confirm the page stayed on that URL
+before screenshotting.
 
-Report the share URL and the embed snippet form (an `<iframe>` of that URL).
+Report the share URL and the embed snippet (an `<iframe>` + the optional
+`embed-resizer.js` script). Use the deployed host in the snippet only once the
+`/renderproof` feature is live there.
 
 ### 5. Confirm or iterate
 
