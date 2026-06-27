@@ -72,6 +72,20 @@
         "grounded": 2
       },
       "endpoint_reached": true
+    },
+    "terms": {
+      "a": {
+        "latex": "a",
+        "name": "a"
+      },
+      "b": {
+        "latex": "b",
+        "name": "b"
+      },
+      "c": {
+        "latex": "c",
+        "name": "c"
+      }
     }
   },
   {
@@ -130,6 +144,16 @@
         "grounded": 1
       },
       "endpoint_reached": true
+    },
+    "terms": {
+      "__power_1": {
+        "latex": "(x + 1)^2",
+        "name": "(x + 1)^2"
+      },
+      "x": {
+        "latex": "x",
+        "name": "x"
+      }
     }
   },
   {
@@ -188,6 +212,24 @@
         "grounded": 1
       },
       "endpoint_reached": true
+    },
+    "terms": {
+      "__power_2": {
+        "latex": "a^{2}",
+        "name": "a^{2}"
+      },
+      "a": {
+        "latex": "a",
+        "name": "a"
+      },
+      "__power_4": {
+        "latex": "b^{2}",
+        "name": "b^{2}"
+      },
+      "b": {
+        "latex": "b",
+        "name": "b"
+      }
     }
   },
   {
@@ -314,6 +356,56 @@
         "grounded": 3
       },
       "endpoint_reached": true
+    },
+    "terms": {
+      "__power_2": {
+        "latex": "E^{2}",
+        "name": "E^{2}"
+      },
+      "E": {
+        "latex": "E",
+        "name": "E"
+      },
+      "__power_4": {
+        "latex": "\\left(c^{2} m\\right)^{2}",
+        "name": "\\left(c^{2} m\\right)^{2}"
+      },
+      "m": {
+        "latex": "m",
+        "name": "m"
+      },
+      "__power_6": {
+        "latex": "c^{2}",
+        "name": "c^{2}"
+      },
+      "c": {
+        "latex": "c",
+        "name": "c"
+      },
+      "__power_7": {
+        "latex": "\\left(c p\\right)^{2}",
+        "name": "\\left(c p\\right)^{2}"
+      },
+      "p": {
+        "latex": "p",
+        "name": "p"
+      },
+      "_r1___power_2": {
+        "latex": "\\sqrt{\\left(c p\\right)^{2} + \\left(c^{2} m\\right)^{2}}",
+        "name": "\\sqrt{\\left(c p\\right)^{2} + \\left(c^{2} m\\right)^{2}}"
+      },
+      "__power_5": {
+        "latex": "m^{2}",
+        "name": "m^{2}"
+      },
+      "_r1___power_6": {
+        "latex": "c^{4}",
+        "name": "c^{4}"
+      },
+      "__power_10": {
+        "latex": "\\frac{1}{c^{2} m^{2}}",
+        "name": "\\frac{1}{c^{2} m^{2}}"
+      }
     }
   },
   {
@@ -457,6 +549,64 @@
         "grounded": 5
       },
       "endpoint_reached": true
+    },
+    "terms": {
+      "__power_2": {
+        "latex": "\\left(c t\\right)^{2}",
+        "name": "\\left(c t\\right)^{2}"
+      },
+      "c": {
+        "latex": "c",
+        "name": "c"
+      },
+      "t": {
+        "latex": "t",
+        "name": "t"
+      },
+      "__power_5": {
+        "latex": "\\left(c t_{0}\\right)^{2}",
+        "name": "\\left(c t_{0}\\right)^{2}"
+      },
+      "t_0": {
+        "latex": "t_{0}",
+        "name": "t_{0}"
+      },
+      "__power_7": {
+        "latex": "\\left(t v\\right)^{2}",
+        "name": "\\left(t v\\right)^{2}"
+      },
+      "v": {
+        "latex": "v",
+        "name": "v"
+      },
+      "__power_3": {
+        "latex": "c^{2}",
+        "name": "c^{2}"
+      },
+      "__power_4": {
+        "latex": "t^{2}",
+        "name": "t^{2}"
+      },
+      "_r1___power_7": {
+        "latex": "c^{2}",
+        "name": "c^{2}"
+      },
+      "__power_8": {
+        "latex": "t_{0}^{2}",
+        "name": "t_{0}^{2}"
+      },
+      "__power_10": {
+        "latex": "v^{2}",
+        "name": "v^{2}"
+      },
+      "__power_11": {
+        "latex": "t^{2}",
+        "name": "t^{2}"
+      },
+      "_r1___power_11": {
+        "latex": "\\frac{1}{c^{2}}",
+        "name": "\\frac{1}{c^{2}}"
+      }
     }
   },
   {
@@ -634,6 +784,80 @@
         "grounded": 5
       },
       "endpoint_reached": true
+    },
+    "terms": {
+      "a": {
+        "latex": "a",
+        "name": "a"
+      },
+      "__power_5": {
+        "latex": "x^{2}",
+        "name": "x^{2}"
+      },
+      "x": {
+        "latex": "x",
+        "name": "x"
+      },
+      "b": {
+        "latex": "b",
+        "name": "b"
+      },
+      "c": {
+        "latex": "c",
+        "name": "c"
+      },
+      "__power_7": {
+        "latex": "\\frac{1}{a}",
+        "name": "\\frac{1}{a}"
+      },
+      "__power_9": {
+        "latex": "\\frac{1}{a}",
+        "name": "\\frac{1}{a}"
+      },
+      "__power_8": {
+        "latex": "\\left(\\frac{b}{2 a}\\right)^{2}",
+        "name": "\\left(\\frac{b}{2 a}\\right)^{2}"
+      },
+      "__power_10": {
+        "latex": "\\frac{1}{2 a}",
+        "name": "\\frac{1}{2 a}"
+      },
+      "__power_17": {
+        "latex": "\\left(\\frac{b}{2 a}\\right)^{2}",
+        "name": "\\left(\\frac{b}{2 a}\\right)^{2}"
+      },
+      "__power_19": {
+        "latex": "\\frac{1}{2 a}",
+        "name": "\\frac{1}{2 a}"
+      },
+      "__power_13": {
+        "latex": "b^{2}",
+        "name": "b^{2}"
+      },
+      "__power_14": {
+        "latex": "\\frac{1}{4 a^{2}}",
+        "name": "\\frac{1}{4 a^{2}}"
+      },
+      "_r1___power_17": {
+        "latex": "a^{2}",
+        "name": "a^{2}"
+      },
+      "d0___power_8": {
+        "latex": "\\sqrt{- 4 a c + b^{2}}",
+        "name": "\\sqrt{- 4 a c + b^{2}}"
+      },
+      "d1___power_4": {
+        "latex": "\\frac{1}{2 a}",
+        "name": "\\frac{1}{2 a}"
+      },
+      "d1___power_9": {
+        "latex": "\\sqrt{- 4 a c + b^{2}}",
+        "name": "\\sqrt{- 4 a c + b^{2}}"
+      },
+      "d1___power_14": {
+        "latex": "b^{2}",
+        "name": "b^{2}"
+      }
     }
   },
   {
@@ -896,6 +1120,108 @@
         "grounded": 3
       },
       "endpoint_reached": true
+    },
+    "terms": {
+      "v": {
+        "latex": "v",
+        "name": "v"
+      },
+      "t": {
+        "latex": "t",
+        "name": "t"
+      },
+      "__deriv_2": {
+        "latex": "\\frac{d}{d t} v",
+        "name": "\\frac{d}{d t} v"
+      },
+      "rho": {
+        "latex": "\\rho",
+        "name": "\\rho"
+      },
+      "__power_5": {
+        "latex": "v^{2}",
+        "name": "v^{2}"
+      },
+      "__power_8": {
+        "latex": "\\frac{1}{\\beta}",
+        "name": "\\frac{1}{\\beta}"
+      },
+      "beta": {
+        "latex": "\\beta",
+        "name": "\\beta"
+      },
+      "h": {
+        "latex": "h",
+        "name": "h"
+      },
+      "__deriv_3": {
+        "latex": "\\frac{d}{d h} v",
+        "name": "\\frac{d}{d h} v"
+      },
+      "__sin_6": {
+        "latex": "\\sin{\\left(\\gamma \\right)}",
+        "name": "\\sin{\\left(\\gamma \\right)}"
+      },
+      "gamma": {
+        "latex": "\\gamma",
+        "name": "\\gamma"
+      },
+      "__power_3": {
+        "latex": "\\frac{1}{v}",
+        "name": "\\frac{1}{v}"
+      },
+      "dv": {
+        "latex": "dv",
+        "name": "dv"
+      },
+      "dh": {
+        "latex": "dh",
+        "name": "dh"
+      },
+      "__integral_2": {
+        "latex": "\\int \\frac{1}{v}\\, dv",
+        "name": "\\int \\frac{1}{v}\\, dv"
+      },
+      "__integral_4": {
+        "latex": "\\int \\frac{\\rho}{2 \\beta \\sin{\\left(\\gamma \\right)}}\\, dh",
+        "name": "\\int \\frac{\\rho}{2 \\beta \\sin{\\left(\\gamma \\right)}}\\, dh"
+      },
+      "__power_2": {
+        "latex": "e^{C_{1} - \\frac{e^{- \\frac{h}{H}} H \\rho_{0}}{2 \\beta \\sin{\\left(\\gamma \\right)}}}",
+        "name": "e^{C_{1} - \\frac{e^{- \\frac{h}{H}} H \\rho_{0}}{2 \\beta \\sin{\\left(\\gamma \\right)}}}"
+      },
+      "e": {
+        "latex": "e",
+        "name": "e"
+      },
+      "H": {
+        "latex": "H",
+        "name": "H"
+      },
+      "rho_0": {
+        "latex": "\\rho_{0}",
+        "name": "\\rho_{0}"
+      },
+      "_r2___power_8": {
+        "latex": "e^{- \\frac{h}{H}}",
+        "name": "e^{- \\frac{h}{H}}"
+      },
+      "__power_11": {
+        "latex": "\\frac{1}{H}",
+        "name": "\\frac{1}{H}"
+      },
+      "__power_13": {
+        "latex": "\\frac{1}{\\beta}",
+        "name": "\\frac{1}{\\beta}"
+      },
+      "C_1": {
+        "latex": "C_{1}",
+        "name": "C_{1}"
+      },
+      "v_E": {
+        "latex": "v_{E}",
+        "name": "v_{E}"
+      }
     }
   },
   {
@@ -971,6 +1297,56 @@
         "grounded": 1
       },
       "endpoint_reached": true
+    },
+    "terms": {
+      "__power_3": {
+        "latex": "\\frac{1}{v}",
+        "name": "\\frac{1}{v}"
+      },
+      "v": {
+        "latex": "v",
+        "name": "v"
+      },
+      "dv": {
+        "latex": "dv",
+        "name": "dv"
+      },
+      "dh": {
+        "latex": "dh",
+        "name": "dh"
+      },
+      "k": {
+        "latex": "k",
+        "name": "k"
+      },
+      "__power_6": {
+        "latex": "e^{\\frac{\\left(-1\\right) h}{H}}",
+        "name": "e^{\\frac{\\left(-1\\right) h}{H}}"
+      },
+      "e": {
+        "latex": "e",
+        "name": "e"
+      },
+      "h": {
+        "latex": "h",
+        "name": "h"
+      },
+      "__power_9": {
+        "latex": "\\frac{1}{H}",
+        "name": "\\frac{1}{H}"
+      },
+      "H": {
+        "latex": "H",
+        "name": "H"
+      },
+      "__integral_2": {
+        "latex": "\\int \\frac{1}{v}\\, dv",
+        "name": "\\int \\frac{1}{v}\\, dv"
+      },
+      "__integral_4": {
+        "latex": "\\int \\left(- e^{\\frac{\\left(-1\\right) h}{H}} k\\right)\\, dh",
+        "name": "\\int \\left(- e^{\\frac{\\left(-1\\right) h}{H}} k\\right)\\, dh"
+      }
     }
   }
 ]
