@@ -107,8 +107,8 @@
 | Field | Value |
 |---|---|
 | **Branch** | `proof-anim-shared-live-terms` |
-| **Commit** | `34b1782` |
-| **Date** | 2026-06-26 22:08:01 -0400 |
+| **Commit** | `5e47bd2` |
+| **Date** | 2026-06-27 02:15:55 +0000 |
 
 > [!NOTE]
 > Charts render on GitHub and in Mermaid-compatible viewers.
@@ -117,7 +117,7 @@
 xychart-beta horizontal
   title "Code Lines by Directory"
   x-axis ["scenes", "static", "tests", "backend", "scripts", "docs", "schemas", "(other)", "themes"]
-  bar [55132, 27900, 14016, 13866, 6622, 2781, 1822, 890, 317]
+  bar [55132, 27900, 14016, 13866, 6625, 2781, 1822, 890, 317]
 ```
 
 ## By Directory
@@ -128,18 +128,18 @@ xychart-beta horizontal
 | `static/` | 27,900 | 2,426 | 2,260 |
 | `tests/` | 14,016 | 1,347 | 3,245 |
 | `backend/` | 13,866 | 1,938 | 2,107 |
-| `scripts/` | 6,622 | 738 | 930 |
+| `scripts/` | 6,625 | 740 | 931 |
 | `docs/` | 2,781 | 7,503 | 2,304 |
 | `schemas/` | 1,822 | 0 | 0 |
 | `(other)/` | 890 | 0 | 0 |
 | `themes/` | 317 | 0 | 0 |
-| **Total** | **123,346** | **13,952** | **10,847** |
+| **Total** | **123,349** | **13,954** | **10,848** |
 
 ```mermaid
 xychart-beta horizontal
   title "Lines of Code by Language"
   x-axis ["JSON", "Python", "JavaScript", "CSS", "HTML", "Shell", "BASH", "YAML", "Dockerfile"]
-  bar [58023, 33749, 21873, 5329, 850, 404, 52, 25, 16]
+  bar [58023, 33752, 21873, 5329, 850, 404, 52, 25, 16]
 ```
 
 ## Summary by Language
@@ -149,7 +149,7 @@ xychart-beta horizontal
  Language              Files        Lines         Code     Comments       Blanks
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  JSON                     45        58024        58023            0            1
- Python                  181        43283        33749         3447         6087
+ Python                  181        43289        33752         3449         6088
  JavaScript               63        25865        21873         2015         1977
  CSS                       6         5966         5329          366          271
  Shell                     5          610          404          136           70
@@ -171,7 +171,7 @@ xychart-beta horizontal
  |- Python                 6          454          414            7           33
  (Total)                            16225         2010        10836         3379
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Total                   381       152203       123346        16928        11929
+ Total                   381       152209       123349        16930        11930
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -285,7 +285,7 @@ xychart-beta horizontal
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  Language              Files        Lines         Code     Comments       Blanks
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Python                  181        43283        33749         3447         6087
+ Python                  181        43289        33752         3449         6088
 ─────────────────────────────────────────────────────────────────────────────────
  |_graph/sympy_translator.py         4167         3346          447          374
  |lgebench/backend/server.py         2471         2040          202          229
@@ -350,7 +350,7 @@ xychart-beta horizontal
  |emantic_graph/constants.py          215          174           12           29
  |mains/test_domain_logic.py          219          171           13           35
  |proof_completion/module.py          237          169           41           27
- |/proof_animation/report.py          190          162            9           19
+ |/proof_animation/report.py          196          165           11           20
  |st_domain_combinatorics.py          206          160           13           33
  |ins/test_domain_complex.py          205          159           13           33
  |ains/test_domain_linalg.py          204          157           13           34
@@ -469,7 +469,7 @@ xychart-beta horizontal
  |lgebench/tests/__init__.py            0            0            0            0
  |ebench/scripts/__init__.py            0            0            0            0
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Total                   181        43283        33749         3447         6087
+ Total                   181        43289        33752         3449         6088
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -478,8 +478,8 @@ xychart-beta horizontal
 | Category | Code Lines | % of JS+Python |
 |---|---|---|
 | JavaScript (frontend) | 21873 | 39% |
-| Python (backend) | 33749 | 61% |
-| **Total** | **55622** | **100%** |
+| Python (backend) | 33752 | 61% |
+| **Total** | **55625** | **100%** |
 
 </script>
 </body>
