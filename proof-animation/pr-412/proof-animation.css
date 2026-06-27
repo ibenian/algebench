@@ -174,6 +174,173 @@
 .pa-op { font-weight: 600; color: var(--pa-fg); }
 .pa-just { color: var(--pa-muted); font-style: italic; }
 
+/* Goal — a small pill in the top-left corner (mirrors the ranking pill top-right).
+   Hover shows the goal popup; click pins it open. */
+.pa-root .pa-goal-pill {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  z-index: 10;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  user-select: none;
+  padding: 4px 11px;
+  border-radius: 999px;
+  background-color: var(--pa-bg);
+  color: var(--pa-muted);
+  border: 1px solid var(--pa-border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.pa-root .pa-goal-pill:hover,
+.pa-root .pa-goal-pill.pa-pinned { color: var(--pa-fg); border-color: var(--pa-accent); }
+.pa-root .pa-goal-pill.pa-pinned {
+  background-image: linear-gradient(rgba(99, 102, 241, 0.14), rgba(99, 102, 241, 0.14));
+}
+.pa-root .pa-goal-pill:focus-visible { outline: 2px solid var(--pa-accent); outline-offset: 2px; }
+/* The goal popup — themed, math-aware (like the term tooltip). */
+.pa-goal-pop {
+  position: fixed;
+  z-index: 10001;
+  max-width: 340px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: var(--panel-bg, #1a1a2e);
+  color: var(--text-color, #e5e7eb);
+  border: 1px solid var(--border-color, #2d2d44);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.40);
+  font-size: 13px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.pa-goal-pop .katex { font-size: 1em; }
+/* Docked goal — a banner at the top of the box (shown when the pill is clicked).
+   When not docked it must take NO space (only the floating pill shows) — an explicit
+   `display` would otherwise override the `hidden` attribute and leave an empty
+   divider, so re-assert display:none while hidden. */
+.pa-goal-dock[hidden] { display: none; }
+.pa-goal-dock {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  cursor: pointer;
+  color: var(--pa-muted);
+  font-size: 0.9rem;
+  line-height: 1.4;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--pa-border);
+}
+.pa-goal-dock-label {
+  flex: 0 0 auto;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--pa-accent);
+}
+.pa-goal-dock-text .katex { font-size: 1em; color: var(--pa-fg); }
+
+/* Explore popup — opened by the ⓘ info pill in the controls row. Bottom-anchored to
+   the pill (it grows UPWARD via the top resize grip): grip → scrollable chip content
+   → tab titles pinned at the BOTTOM. Lives on <body>, so it uses the top-level theme
+   vars (with dark fallbacks), not the .pa-root-scoped --pa-* ones. Each chip asks the
+   host agent (or, embedded, the parent page; else copies). */
+.pa-explore-pop {
+  position: fixed;
+  z-index: 10001;
+  width: 340px;
+  max-width: calc(100vw - 16px);
+  max-height: 70vh;
+  flex-direction: column;        /* display:flex set by JS when shown */
+  overflow: hidden;
+  border-radius: 10px;
+  background: var(--panel-bg, #1a1a2e);
+  color: var(--text-color, #e5e7eb);
+  border: 1px solid var(--border-color, #2d2d44);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.40);
+}
+.pa-explore-resize {
+  flex: 0 0 auto;
+  height: 12px;
+  cursor: ns-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+}
+.pa-explore-resize::before {
+  content: "";
+  width: 28px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border-color, #3a3f55);
+}
+.pa-explore-panel {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 7px;
+  padding: 2px 12px 10px;
+}
+/* Themed, slim scrollbars for the proof's scrollable surfaces (Firefox + WebKit) —
+   a subtle thumb on a transparent track instead of the chunky default. */
+.pa-explore-panel { scrollbar-width: thin; scrollbar-color: var(--border-color, #3a3f55) transparent; }
+.pa-explore-panel::-webkit-scrollbar { width: 10px; height: 10px; }
+.pa-explore-panel::-webkit-scrollbar-track { background: transparent; }
+.pa-explore-panel::-webkit-scrollbar-thumb {
+  background-color: var(--border-color, #3a3f55);
+  border-radius: 8px;
+  border: 3px solid transparent;     /* inset the thumb so it reads as a thin pill */
+  background-clip: content-box;
+}
+.pa-explore-panel::-webkit-scrollbar-thumb:hover { background-color: var(--muted-color, #6b7280); }
+.pa-explore-tabs {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border-color, #2d2d44);
+}
+.pa-explore-tab {
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  padding: 4px 10px;
+  color: var(--muted-color, #9ca3af);
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+.pa-explore-tab:hover { color: var(--text-color, #e5e7eb); }
+.pa-explore-tab.pa-active {
+  color: var(--text-color, #e5e7eb);
+  background: rgba(99, 102, 241, 0.16);
+  border-color: var(--border-color, #2d2d44);
+}
+.pa-explore-chip {
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+  border: 1px solid rgba(120, 130, 200, 0.40);
+  background: rgba(99, 102, 241, 0.14);
+  color: var(--text-color, #e5e7eb);
+  border-radius: 999px;
+  padding: 4px 11px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.pa-explore-chip:hover { background: rgba(99, 102, 241, 0.28); border-color: var(--accent-color, #6366f1); }
+.pa-explore-chip .katex { font-size: 1em; }
+.pa-root .pa-info-pill.pa-pinned { border-color: var(--pa-accent); color: var(--pa-accent); }
+
 /* "Next" pill — mirrors the proof-navigator step pills; clickable (= next btn). */
 .pa-next-pill {
   /* grid (not flex) so the title column can shrink to 0 and ellipsize — a flex
