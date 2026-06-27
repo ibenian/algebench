@@ -87,7 +87,8 @@ def _collect_terms(graph, terms: dict) -> None:
 def build(trajectory: ProofTrajectory, domain: str, title: str = "", *,
           start_operation: str = "Start",
           start_justification: str = "the starting expression",
-          judge=None, lesson_context: str = "") -> dict:
+          judge=None, lesson_context: str = "",
+          include_prerequisites: bool = True, include_followups: bool = True) -> dict:
     """Render a ProofCompletionExpert ``ProofTrajectory`` into animation data.
 
     The trajectory is the expert's output: ``start_latex`` plus ordered
@@ -168,8 +169,17 @@ def build(trajectory: ProofTrajectory, domain: str, title: str = "", *,
     # ``terms`` carries the derivation's symbols (id -> {latex, name}); the handler
     # fills in per-term descriptions via an LM (build() itself stays LM-free, so
     # offline tooling/tests get the symbols without prose).
-    return {"title": title, "domain": domain, "steps": out,
-            "overall_confidence": overall, "terms": terms}
+    result = {"title": title, "domain": domain, "steps": out,
+              "overall_confidence": overall, "terms": terms}
+    # Carry the model-produced framing + agentic continuation prompts through to the
+    # animation so the renderer can set context up front and offer follow-up chips.
+    if getattr(trajectory, "goal", None):
+        result["goal"] = trajectory.goal
+    if include_followups and getattr(trajectory, "followups", None):
+        result["followups"] = list(trajectory.followups)
+    if include_prerequisites and getattr(trajectory, "prerequisites", None):
+        result["prerequisites"] = list(trajectory.prerequisites)
+    return result
 
 
 def _confidence_payload(tier: Tier, relation=None, reason: str = "",
