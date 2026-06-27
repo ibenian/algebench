@@ -1,6 +1,17 @@
 # Mark sanitize_path return value as a path-injection barrier.
 # All file-serving handlers funnel through this function, which
-# validates that resolved paths stay within the allowed directory root.
+# validates that resolved paths stay within the allowed directory root
+# (resolve() + is_relative_to()), returning None on traversal.
+#
+# barrierModel requires CodeQL 2.25.2+ (shipped 2026-04). The [type, path, kind]
+# row is matched against the module the symbol is *accessed through* at the call
+# site, so we must list every import surface — not just where it's defined:
+#   * backend.util.pathutil  — the definition module (module.py imports here)
+#   * backend.util           — the package re-export; server.py + tests do
+#                              `from backend.util import sanitize_path`, and that's
+#                              where all the file-serving routes live. Without this
+#                              row the barrier never binds at those call sites, so
+#                              py/path-injection keeps flagging every sanitized route.
 
 extensions:
   - addsTo:
@@ -9,3 +20,4 @@ extensions:
     data:
       # [type, path, kind]
       - ["backend.util.pathutil", "Member[sanitize_path].ReturnValue", "path-injection"]
+      - ["backend.util", "Member[sanitize_path].ReturnValue", "path-injection"]
