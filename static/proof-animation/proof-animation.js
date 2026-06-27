@@ -366,6 +366,8 @@ export class ProofAnimator {
       this.stage.removeEventListener("click", this._onStageClick);
       this._onStageOver = this._onStageOut = this._onStageClick = null;
     }
+    if (this._termTip && this._termTip.parentNode) this._termTip.parentNode.removeChild(this._termTip);
+    this._termTip = null;
     // Clear any lingering sg hover-halo this widget drove.
     if (this._onTermHover) { try { this._onTermHover([], null); } catch (e) {} }   // same shape as _setHotTerm
   }
@@ -435,11 +437,69 @@ export class ProofAnimator {
     if (this._hotTermEl && this._hotTermEl !== el) this._hotTermEl.classList.remove("pa-term-hot");
     this._hotTermEl = el || null;
     if (el) el.classList.add("pa-term-hot");
-    // Notify the host so the LINKED sg node lights up. The halo stays on the
-    // exact glyph, but resolution gets the whole ancestor chain so a glyph that
-    // is only PART of a named node (e.g. the "2" of a square, or an operator dot)
-    // still reaches that node. The host resolves the nearest one (or null clears).
-    if (this._onTermHover) this._onTermHover(el ? this._termChain(el) : [], el || null);
+    const chain = el ? this._termChain(el) : [];
+    // SHARED tooltip: the term's own description from data.terms — needs no graph,
+    // so it works both in the app and on the standalone proof-animation page.
+    const desc = this._termDescription(chain);
+    if (el && desc) this._showTermTip(el, desc);
+    else this._hideTermTip();
+    // Host hook (optional): the app's SgProofManager lights up + selects the LINKED
+    // graph node. The chain (innermost glyph → enclosing operator wrappers) lets a
+    // glyph that's only PART of a named node still reach it. Absent standalone.
+    if (this._onTermHover) this._onTermHover(chain, el || null);
+  }
+
+  // ── Term tooltip (shared, graph-free) ──────────────────────────────────────
+  // The first chain term that has a description in data.terms (keyed by node id).
+  // The rendered data-n can carry a rebase prefix (`_r3_…`) and an occurrence
+  // suffix (`__<parent>`); data.terms is keyed by the clean id, so try the raw id,
+  // the prefix-stripped id, then the canonical symbol before it.
+  _termDescription(chain) {
+    const terms = this.data && this.data.terms;
+    if (!terms) return "";
+    for (const c of (chain || [])) {
+      const raw = c.id || "";
+      const clean = raw.replace(/^_r\d+_/, "");
+      const t = terms[raw] || terms[clean] || terms[clean.split("__")[0]];
+      const d = t && (t.description || "").trim();
+      if (d) return d;
+    }
+    return "";
+  }
+
+  // A rounded tooltip rendering the hovered term's description. Lives on <body>
+  // (position:fixed) so a host box's overflow never clips it; placed on the side
+  // the term is nearest (below in the lower half of the viewport, above otherwise),
+  // flipped to the opposite side if the preferred one would run off-screen.
+  _showTermTip(anchorEl, text) {
+    let tip = this._termTip;
+    if (!tip) {
+      tip = document.createElement("div");
+      tip.className = "pa-term-tip";
+      tip.setAttribute("role", "tooltip");
+      document.body.appendChild(tip);
+      this._termTip = tip;
+    }
+    this._caption(tip, text);             // descriptions may carry inline $…$
+    tip.style.display = "block";
+    tip.style.visibility = "hidden";      // measure before positioning
+    const r = anchorEl.getBoundingClientRect();
+    const vh = window.innerHeight;
+    const tw = tip.offsetWidth, th = tip.offsetHeight, GAP = 10;
+    let left = r.left + r.width / 2 - tw / 2;
+    left = Math.max(8, Math.min(left, window.innerWidth - tw - 8));
+    let below = (r.top + r.bottom) / 2 > vh / 2;
+    if (below && r.bottom + GAP + th > vh - 4) below = false;   // no room below
+    else if (!below && r.top - GAP - th < 4) below = true;      // no room above
+    const top = below ? r.bottom + GAP : r.top - th - GAP;
+    tip.classList.toggle("pa-term-tip-below", below);
+    tip.style.left = `${Math.round(left)}px`;
+    tip.style.top = `${Math.round(Math.max(4, top))}px`;
+    tip.style.visibility = "visible";
+  }
+
+  _hideTermTip() {
+    if (this._termTip) this._termTip.style.display = "none";
   }
 
   // Tagged terms from the given element up to the stage root, innermost first —

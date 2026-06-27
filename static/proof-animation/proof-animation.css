@@ -475,13 +475,12 @@
     color: rgba(210, 218, 245, 0.92);
 }
 
-/* Floating description tooltip for a hovered live term (SgProofManager). Appended
-   to <body> with position:fixed so the proof box's overflow never clips it, and
-   positioned by JS ABOVE the term (or below near the top edge) so it covers
-   neither the term nor the expression. App-level theme vars (it's outside the
-   .pa-root scope that defines --pa-*). pointer-events:none so it never steals the
-   hover it describes. */
-.sgp-term-tip {
+/* Floating description tooltip for a hovered live term (owned by ProofAnimator, so
+   it's shared with the standalone proof-animation page). Appended to <body> with
+   position:fixed so a host box's overflow never clips it, and positioned by JS on
+   the side the term is nearest. Theme vars have fallbacks so it works outside the
+   app. pointer-events:none so it never steals the hover it describes. */
+.pa-term-tip {
     position: fixed;
     z-index: 10000;
     max-width: 280px;
@@ -496,7 +495,7 @@
     overflow-wrap: anywhere;
     pointer-events: none;
 }
-.sgp-term-tip .katex { font-size: 1em; color: var(--text-color, #e5e7eb); }
+.pa-term-tip .katex { font-size: 1em; color: var(--text-color, #e5e7eb); }
 
 .sgp-body {
     flex: 1 1 auto;
