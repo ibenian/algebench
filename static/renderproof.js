@@ -21,6 +21,18 @@ const FULLSCREEN_ICON =
   '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" ' +
   'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
   '<path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>';
+const BRACES_ICON =
+  '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" ' +
+  'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5a2 2 0 0 0 2 2h1"/>' +
+  '<path d="M16 3h1a2 2 0 0 1 2 2v5a2 2 0 0 0 2 2 2 2 0 0 0-2 2v5a2 2 0 0 1-2 2h-1"/></svg>';
+const CODE_ICON =
+  '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" ' +
+  'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<path d="M8 6l-6 6 6 6"/><path d="M16 6l6 6-6 6"/></svg>';
+
+// Raw JSON text of each loaded proof, for the { } viewer. Filled during load.
+const loadedProofs = [];
 const MAX_PROOFS = 12;
 const MAX_STEPS = 300;
 const MAX_TERMS = 2000;
@@ -264,11 +276,54 @@ async function awaitKatex() {
   return window.katex || null;
 }
 
+/** The { } button: opens a themed modal showing each loaded proof's raw JSON,
+ *  pretty-printed. Shown in both top-level and embedded views. */
+function setupJsonButton() {
+  const btn = document.getElementById("pa-json");
+  const modal = document.getElementById("pa-json-modal");
+  const body = document.getElementById("pa-json-body");
+  const close = document.getElementById("pa-json-close");
+  btn.classList.add("pa-icon-btn");
+  btn.title = "View proof JSON";
+  btn.setAttribute("aria-label", "View proof JSON");
+  btn.innerHTML = BRACES_ICON;
+  btn.hidden = false;
+
+  const render = () => {
+    body.textContent = "";
+    if (!loadedProofs.length) {
+      const pre = document.createElement("pre");
+      pre.textContent = "(no proof loaded)";
+      body.appendChild(pre);
+      return;
+    }
+    const multi = loadedProofs.length > 1;
+    for (const p of loadedProofs) {
+      if (multi) {
+        const h = document.createElement("h3");
+        h.textContent = p.slug;
+        body.appendChild(h);
+      }
+      let txt = p.text;
+      try { txt = JSON.stringify(JSON.parse(p.text), null, 2); } catch (e) { /* show raw */ }
+      const pre = document.createElement("pre");
+      pre.textContent = txt;              // textContent — never innerHTML
+      body.appendChild(pre);
+    }
+  };
+  const hide = () => modal.classList.remove("open");
+  btn.addEventListener("click", () => { render(); modal.classList.add("open"); });
+  close.addEventListener("click", hide);
+  modal.addEventListener("click", (e) => { if (e.target === modal) hide(); }); // click backdrop
+  window.addEventListener("keydown", (e) => { if (e.key === "Escape") hide(); });
+}
+
 /** Top-level: an "Embed" button revealing the embed panel — a theme picker, a
  *  copyable iframe snippet, and a Copy button. Picking a theme updates both the
  *  snippet and the live page (instant preview).
  *  Embedded (in an iframe): a "Full screen" button that escapes to a new tab. */
 function setupControlBar(builtins, theme) {
+  setupJsonButton();                      // the { } viewer — in both modes
   const btn = document.getElementById("pa-action");
   if (window.self !== window.top) {
     // Embedded: a compact full-screen icon (native tooltip via title) — keep the
@@ -292,7 +347,10 @@ function setupControlBar(builtins, theme) {
   const refresh = () => { code.value = embedSnippet(buildEmbedUrl(builtins, sel.value)); };
   refresh();
 
-  btn.textContent = "Embed";
+  btn.classList.add("pa-icon-btn");
+  btn.title = "Get embed script";
+  btn.setAttribute("aria-label", "Get embed script");
+  btn.innerHTML = CODE_ICON;
   btn.hidden = false;
   btn.addEventListener("click", () => {
     const open = panel.classList.toggle("open");
@@ -369,6 +427,7 @@ async function main() {
       if (len && len > MAX_BYTES) throw new Error("proof file too large");
       const text = await resp.text();
       if (text.length > MAX_BYTES) throw new Error("proof file too large");
+      loadedProofs.push({ slug, text });   // capture raw JSON for the { } viewer
       const data = validateProofData(JSON.parse(text));
       if (data.title) title.textContent = data.title;
       window.__animators.push(new ProofAnimator(card, data, { katex, liveTerms: true }));

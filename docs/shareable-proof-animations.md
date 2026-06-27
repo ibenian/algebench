@@ -64,7 +64,7 @@ segment pair, no `..`, no extra slashes. Anything else is rejected before any fe
 [§7](#7-security-model)). The number of proofs per page is capped (default ≤ 12). `theme` is
 validated against the `{dark, light, auto}` allowlist; anything else falls back to `dark`.
 
-**Embedding.** When viewed top-level, an **Embed** button reveals a panel with a **theme picker**
+**Embedding.** When viewed top-level, a **`< >`** button reveals a panel with a **theme picker**
 (updates the live page and the snippet), a **Preview** button (opens a throwaway mock article with
 the embed in context), the copyable snippet, and a **Copy** button. The snippet's `src` is built
 from `location.origin`, so it is **environment-specific** — a dev box emits a `localhost` URL,
@@ -77,6 +77,10 @@ embedded page posts its content height to the host; the resizer sizes the iframe
 is no top/bottom dead space and it adapts as the reader steps through the proof. When viewed inside
 an iframe the page also trims its chrome to the proof (no header; the full-screen control becomes a
 small corner icon) and shows **Full screen** (a new tab) instead of the embed panel.
+
+A **`{ }`** button (left of the `< >` / full-screen control, in both views) opens a themed modal
+showing each loaded proof's raw JSON, pretty-printed and read-only — a "view source" for the
+animation.
 
 **Phase 2** will add `url=<https-url>` and `repo=<owner/repo>&path=<file>` forms, routed through a
 proxy ([§8](#8-phase-2--external-sources-design-only)).

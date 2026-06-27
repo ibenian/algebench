@@ -67,11 +67,28 @@
       margin-top: 0; min-height: 26px; display: flex; align-items: center; padding-right: 40px; }
     .pa-error { color: var(--err-fg); background: var(--err-bg); border: 1px solid var(--err-border);
                 border-radius: 8px; padding: 12px 14px; margin: 12px 0; font-size: .9rem; }
+    /* Proof-JSON viewer (the { } button) — a themed modal overlaying the page. */
+    .pa-json-modal { position: fixed; inset: 0; z-index: 50; display: none;
+                align-items: center; justify-content: center; padding: 16px;
+                background: rgba(0, 0, 0, .5); }
+    .pa-json-modal.open { display: flex; }
+    .pa-json-box { background: var(--panel-bg); color: var(--text-color);
+                border: 1px solid var(--border-color); border-radius: 10px;
+                width: 100%; max-width: 760px; max-height: 90%; display: flex; flex-direction: column;
+                box-shadow: 0 10px 40px rgba(0, 0, 0, .5); }
+    .pa-json-head { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+                padding: 10px 14px; border-bottom: 1px solid var(--border-color);
+                font-family: system-ui, sans-serif; font-weight: 600; font-size: .9rem; }
+    .pa-json-body { overflow: auto; padding: 4px 14px 14px; }
+    .pa-json-body h3 { font: 600 .78rem system-ui, sans-serif; color: var(--muted-color); margin: 14px 0 4px; }
+    .pa-json-body pre { margin: 6px 0 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                font-size: 12px; line-height: 1.5; white-space: pre; overflow-x: auto; }
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="pa-bar">
+      <button id="pa-json" class="pa-btn" type="button" hidden></button>
       <button id="pa-action" class="pa-btn" type="button" hidden></button>
     </div>
     <div id="pa-embed-panel" class="pa-embed-panel">
@@ -87,9 +104,18 @@
         <button id="pa-copy" class="pa-btn" type="button">Copy</button>
         <span id="pa-copied" class="pa-copied" hidden>Copied!</span>
       </div>
-      <textarea id="pa-embed-code" readonly aria-label="Embed code"></textarea>
+      <textarea id="pa-embed-code" readonly aria-label="Embed script"></textarea>
     </div>
     <div id="root"></div>
+  </div>
+  <div id="pa-json-modal" class="pa-json-modal">
+    <div class="pa-json-box">
+      <div class="pa-json-head">
+        <span>Proof JSON</span>
+        <button id="pa-json-close" class="pa-btn" type="button" aria-label="Close">✕</button>
+      </div>
+      <div id="pa-json-body" class="pa-json-body"></div>
+    </div>
   </div>
   <script type="module" src="/renderproof.js"></script>
 </body>
