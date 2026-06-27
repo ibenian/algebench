@@ -38,15 +38,13 @@
               background: var(--btn-bg); color: var(--btn-fg); border-radius: 7px; padding: 6px 12px; }
     .pa-btn:hover { background: var(--btn-hover); }
     .pa-btn.pa-icon-btn { padding: 5px; line-height: 0; display: inline-flex; align-items: center; }
-    .pa-embed-panel { margin: 0 0 18px; display: none; }
-    .pa-embed-panel.open { display: block; }
-    .pa-embed-row { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; }
+    .pa-embed-row { display: flex; align-items: center; gap: 10px; margin: 6px 0 8px; flex-wrap: wrap; }
     .pa-embed-row label { font-size: .85rem; color: var(--muted-color);
               display: flex; align-items: center; gap: 6px; }
     .pa-embed-row select { font: inherit; font-size: .85rem; padding: 5px 8px; border-radius: 7px;
               border: 1px solid var(--btn-border); background: var(--btn-bg); color: var(--btn-fg); }
     .pa-copied { font-size: .8rem; color: var(--muted-color); }
-    .pa-embed-panel textarea { width: 100%; box-sizing: border-box; height: 64px; resize: vertical;
+    #pa-embed-code { width: 100%; box-sizing: border-box; height: 80px; resize: vertical;
               font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .8rem;
               border: 1px solid var(--btn-border); border-radius: 7px; padding: 8px;
               background: var(--panel-bg); color: var(--text-color); }
@@ -67,21 +65,21 @@
       margin-top: 0; min-height: 26px; display: flex; align-items: center; padding-right: 40px; }
     .pa-error { color: var(--err-fg); background: var(--err-bg); border: 1px solid var(--err-border);
                 border-radius: 8px; padding: 12px 14px; margin: 12px 0; font-size: .9rem; }
-    /* Proof-JSON viewer (the { } button) — a themed modal overlaying the page. */
-    .pa-json-modal { position: fixed; inset: 0; z-index: 50; display: none;
+    /* Themed modal overlay — shared by the { } JSON viewer and the < > embed dialog. */
+    .pa-modal { position: fixed; inset: 0; z-index: 50; display: none;
                 align-items: center; justify-content: center; padding: 16px;
                 background: rgba(0, 0, 0, .5); }
-    .pa-json-modal.open { display: flex; }
-    .pa-json-box { background: var(--panel-bg); color: var(--text-color);
+    .pa-modal.open { display: flex; }
+    .pa-modal-box { background: var(--panel-bg); color: var(--text-color);
                 border: 1px solid var(--border-color); border-radius: 10px;
                 width: 100%; max-width: 760px; max-height: 90%; display: flex; flex-direction: column;
                 box-shadow: 0 10px 40px rgba(0, 0, 0, .5); }
-    .pa-json-head { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    .pa-modal-head { display: flex; align-items: center; justify-content: space-between; gap: 10px;
                 padding: 10px 14px; border-bottom: 1px solid var(--border-color);
                 font-family: system-ui, sans-serif; font-weight: 600; font-size: .9rem; }
-    .pa-json-body { overflow: auto; padding: 4px 14px 14px; }
-    .pa-json-body h3 { font: 600 .78rem system-ui, sans-serif; color: var(--muted-color); margin: 14px 0 4px; }
-    .pa-json-body pre { margin: 6px 0 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    .pa-modal-body { overflow: auto; padding: 10px 14px 14px; }
+    .pa-modal-body h3 { font: 600 .78rem system-ui, sans-serif; color: var(--muted-color); margin: 14px 0 4px; }
+    .pa-modal-body pre { margin: 6px 0 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
                 font-size: 12px; line-height: 1.5; white-space: pre; overflow-x: auto; }
   </style>
 </head>
@@ -89,32 +87,41 @@
   <div class="wrap">
     <div class="pa-bar">
       <button id="pa-json" class="pa-btn" type="button" hidden></button>
+      <button id="pa-embed" class="pa-btn" type="button" hidden></button>
       <button id="pa-action" class="pa-btn" type="button" hidden></button>
-    </div>
-    <div id="pa-embed-panel" class="pa-embed-panel">
-      <div class="pa-embed-row">
-        <label>Theme
-          <select id="pa-theme">
-            <option value="dark">Dark</option>
-            <option value="light">Light</option>
-            <option value="auto">Auto</option>
-          </select>
-        </label>
-        <button id="pa-preview" class="pa-btn" type="button">Preview</button>
-        <button id="pa-copy" class="pa-btn" type="button">Copy</button>
-        <span id="pa-copied" class="pa-copied" hidden>Copied!</span>
-      </div>
-      <textarea id="pa-embed-code" readonly aria-label="Embed script"></textarea>
     </div>
     <div id="root"></div>
   </div>
-  <div id="pa-json-modal" class="pa-json-modal">
-    <div class="pa-json-box">
-      <div class="pa-json-head">
+  <div id="pa-embed-modal" class="pa-modal">
+    <div class="pa-modal-box">
+      <div class="pa-modal-head">
+        <span>Embed this proof</span>
+        <button id="pa-embed-close" class="pa-btn" type="button" aria-label="Close">✕</button>
+      </div>
+      <div class="pa-modal-body">
+        <div class="pa-embed-row">
+          <label>Theme
+            <select id="pa-theme">
+              <option value="dark">Dark</option>
+              <option value="light">Light</option>
+              <option value="auto">Auto</option>
+            </select>
+          </label>
+          <button id="pa-preview" class="pa-btn" type="button">Preview</button>
+          <button id="pa-copy" class="pa-btn" type="button">Copy</button>
+          <span id="pa-copied" class="pa-copied" hidden>Copied!</span>
+        </div>
+        <textarea id="pa-embed-code" readonly aria-label="Embed script"></textarea>
+      </div>
+    </div>
+  </div>
+  <div id="pa-json-modal" class="pa-modal">
+    <div class="pa-modal-box">
+      <div class="pa-modal-head">
         <span>Proof JSON</span>
         <button id="pa-json-close" class="pa-btn" type="button" aria-label="Close">✕</button>
       </div>
-      <div id="pa-json-body" class="pa-json-body"></div>
+      <div id="pa-json-body" class="pa-modal-body"></div>
     </div>
   </div>
   <script type="module" src="/renderproof.js"></script>

@@ -318,44 +318,34 @@ function setupJsonButton() {
   window.addEventListener("keydown", (e) => { if (e.key === "Escape") hide(); });
 }
 
-/** Top-level: an "Embed" button revealing the embed panel — a theme picker, a
- *  copyable iframe snippet, and a Copy button. Picking a theme updates both the
- *  snippet and the live page (instant preview).
- *  Embedded (in an iframe): a "Full screen" button that escapes to a new tab. */
-function setupControlBar(builtins, theme) {
-  setupJsonButton();                      // the { } viewer — in both modes
-  const btn = document.getElementById("pa-action");
-  if (window.self !== window.top) {
-    // Embedded: a compact full-screen icon (native tooltip via title) — keep the
-    // chrome minimal so the embed is just the proof.
-    btn.classList.add("pa-icon-btn");
-    btn.title = "Open full screen";
-    btn.setAttribute("aria-label", "Open full screen");
-    btn.innerHTML = FULLSCREEN_ICON;
-    btn.hidden = false;
-    btn.addEventListener("click", () => window.open(location.href, "_blank", "noopener"));
-    return;
-  }
-  const panel = document.getElementById("pa-embed-panel");
+/** The < > button: opens the embed modal — a theme picker (updates the live page
+ *  and the snippet), Preview, Copy, and the copyable iframe snippet. Shown in both
+ *  views so a reader of an embed can grab the script to re-share it. */
+function setupEmbedButton(builtins, theme) {
+  const btn = document.getElementById("pa-embed");
+  const modal = document.getElementById("pa-embed-modal");
+  const close = document.getElementById("pa-embed-close");
   const code = document.getElementById("pa-embed-code");
   const sel = document.getElementById("pa-theme");
   const previewBtn = document.getElementById("pa-preview");
   const copyBtn = document.getElementById("pa-copy");
   const copied = document.getElementById("pa-copied");
 
-  sel.value = theme;
-  const refresh = () => { code.value = embedSnippet(buildEmbedUrl(builtins, sel.value)); };
-  refresh();
-
   btn.classList.add("pa-icon-btn");
   btn.title = "Get embed script";
   btn.setAttribute("aria-label", "Get embed script");
   btn.innerHTML = CODE_ICON;
   btn.hidden = false;
-  btn.addEventListener("click", () => {
-    const open = panel.classList.toggle("open");
-    if (open) { code.focus(); code.select(); }
-  });
+
+  sel.value = theme;
+  const refresh = () => { code.value = embedSnippet(buildEmbedUrl(builtins, sel.value)); };
+  refresh();
+
+  const hide = () => modal.classList.remove("open");
+  btn.addEventListener("click", () => { refresh(); modal.classList.add("open"); code.focus(); code.select(); });
+  close.addEventListener("click", hide);
+  modal.addEventListener("click", (e) => { if (e.target === modal) hide(); });
+  window.addEventListener("keydown", (e) => { if (e.key === "Escape") hide(); });
 
   sel.addEventListener("change", () => {
     refresh();
@@ -383,6 +373,22 @@ function setupControlBar(builtins, theme) {
     copied.hidden = false;
     setTimeout(() => { copied.hidden = true; }, 1500);
   });
+}
+
+/** Wire the control bar: { } JSON viewer and < > embed dialog (both views), plus a
+ *  full-screen icon only when embedded (top-level is already full screen). */
+function setupControlBar(builtins, theme) {
+  setupJsonButton();
+  setupEmbedButton(builtins, theme);
+  if (window.self !== window.top) {
+    const btn = document.getElementById("pa-action");
+    btn.classList.add("pa-icon-btn");
+    btn.title = "Open full screen";
+    btn.setAttribute("aria-label", "Open full screen");
+    btn.innerHTML = FULLSCREEN_ICON;
+    btn.hidden = false;
+    btn.addEventListener("click", () => window.open(location.href, "_blank", "noopener"));
+  }
 }
 
 async function main() {
