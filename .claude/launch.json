@@ -88,7 +88,7 @@
     {
       "name": "renderproof",
       "runtimeExecutable": "./algebench",
-      "runtimeArgs": ["--port", "5751", "--server-only", "--skip-tour"],
+      "runtimeArgs": ["--proof", "algebra/quadratic-formula", "--port", "5751", "--server-only", "--skip-tour"],
       "port": 5751,
       "autoPort": false
     }
