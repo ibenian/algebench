@@ -48,9 +48,10 @@ function _isNumericNode(node) {
     if (!node) return false;
     if (node.type === 'number') return true;
     const s = String(node.subexpr || node.latex || node.label || '')
-        .replace(/\\[a-zA-Z]+/g, m => m.slice(1))   // \rho → rho (keep the name)
-        .replace(/[{}\\$\s]/g, '');
-    return s !== '' && !/[A-Za-z]/.test(s);          // no letter → numeric
+        .replace(/\\(?:[dtc]?frac|cdot|times|div|sqrt|left|right)\b/g, '')   // structural → drop
+        .replace(/\\[a-zA-Z]+/g, 'x')                                        // symbol command → a letter
+        .replace(/[{}()\\$\s_^]/g, '');
+    return s !== '' && !/[A-Za-z]/.test(s);          // nothing but digits/operators → numeric
 }
 
 export class SgProofManager {
@@ -426,7 +427,7 @@ export class SgProofManager {
     // gets cached and stays stable across steps (no length floor).
     _apprKey(text) {
         const k = (text || '').replace(/[\s\u200B-\u200F\u2060\uFEFF]/g, '');
-        return (!k || /^\d+$/.test(k)) ? '' : k;
+        return (!k || /^[\d.,/+\-]+$/.test(k)) ? '' : k;   // reject empty + numeric-only
     }
 
     // Walk the term's candidate chain (innermost glyph → enclosing operator

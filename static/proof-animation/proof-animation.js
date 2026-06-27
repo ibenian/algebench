@@ -367,7 +367,7 @@ export class ProofAnimator {
       this._onStageOver = this._onStageOut = this._onStageClick = null;
     }
     // Clear any lingering sg hover-halo this widget drove.
-    if (this._onTermHover) { try { this._onTermHover(null, "", null); } catch (e) {} }
+    if (this._onTermHover) { try { this._onTermHover([], null); } catch (e) {} }   // same shape as _setHotTerm
   }
 
   // ── Live terms (optional) ──────────────────────────────────────────────────

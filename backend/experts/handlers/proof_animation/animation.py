@@ -39,15 +39,22 @@ _TERM_TYPES = {"scalar", "vector", "constant", "ket", "bra", "braket", "differen
 # NOT multiply/add/equals/relations: those span the whole sub-expression/equation,
 # so describing them as one "term" is meaningless. Functions are caught by type.
 _TERM_OPS = {"power", "derivative", "integral"}
+# Structural LaTeX (a fraction bar, a product dot, a root) — NOT a symbol. Stripping
+# these reveals whether what's left is purely numeric; symbol commands (\rho, \Delta)
+# are kept so e.g. "\rho_0" / "\Delta t" aren't misread as numbers.
+_STRUCTURAL_CMD = re.compile(r"\\(?:[dtc]?frac|cdot|times|div|sqrt|left|right)\b")
+
+
 def _is_numeric(sym: str) -> bool:
     """True for a purely NUMERIC term — a bare literal ("2", "1.5") OR a numeric
     fraction/power ("\\frac{1}{2}", "2^{3}"). Such terms are meaningless to
     describe ("the number 2") and collide with same-looking exponents/denominators.
     Strip LaTeX structure (commands, braces) and check nothing but digits/operators
     remain — a NAMED symbol or sub-expression keeps a letter (V, \\rho, V^{2})."""
-    s = re.sub(r"\\[a-zA-Z]+", "", sym)        # drop \frac, \cdot, \rho → (\rho → "")
-    s = re.sub(r"[{}()\\\s_]", "", s)          # drop braces/parens/backslash/underscore
-    return bool(s) and re.fullmatch(r"[\d.,/^+\-]+", s) is not None
+    s = _STRUCTURAL_CMD.sub("", sym)           # drop STRUCTURAL LaTeX (\frac, \cdot, \sqrt)
+    s = re.sub(r"\\[a-zA-Z]+", "x", s)         # any REMAINING command is a SYMBOL (\rho, \Delta) → a letter
+    s = re.sub(r"[{}()\\\s_^]", "", s)         # drop braces/parens/backslash/space/sub-sup markers
+    return bool(s) and re.fullmatch(r"[\d.,/+\-]+", s) is not None
 
 
 def _is_term_node(n) -> bool:
