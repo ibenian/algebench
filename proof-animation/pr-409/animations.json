@@ -1142,6 +1142,10 @@
         "latex": "v^{2}",
         "name": "v^{2}"
       },
+      "__power_8": {
+        "latex": "\\frac{1}{\\beta}",
+        "name": "\\frac{1}{\\beta}"
+      },
       "beta": {
         "latex": "\\beta",
         "name": "\\beta"
@@ -1194,6 +1198,10 @@
         "latex": "H",
         "name": "H"
       },
+      "rho_0": {
+        "latex": "\\rho_{0}",
+        "name": "\\rho_{0}"
+      },
       "_r2___power_8": {
         "latex": "e^{- \\frac{h}{H}}",
         "name": "e^{- \\frac{h}{H}}"
@@ -1201,6 +1209,10 @@
       "__power_11": {
         "latex": "\\frac{1}{H}",
         "name": "\\frac{1}{H}"
+      },
+      "__power_13": {
+        "latex": "\\frac{1}{\\beta}",
+        "name": "\\frac{1}{\\beta}"
       },
       "C_1": {
         "latex": "C_{1}",
