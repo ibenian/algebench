@@ -39,6 +39,20 @@ const _parenChar = (s) => {
 // Playback speed multipliers the speed button cycles through (click → next).
 const SPEEDS = [0.25, 0.5, 1, 2, 4];
 
+// Synthetic operator-node ids (from the backend structural renderer) for n-ary /
+// relational nodes that SPAN many terms — a product/fraction, a sum, an equation.
+// Hovering the bare chrome of one (a fraction bar, the space between factors)
+// resolves via `closest('[data-n]')` to this big wrapper; we must NOT treat that
+// as the hovered term (it would light the whole sub-expression) and the
+// resolve-chain stops below it. Tight operators (power, derivative, function,
+// negation) are NOT here — those are real, pickable terms.
+const _SPANNING_OP = /^(?:multiply|add|subtract|plus|minus|equals|not_equal|less_than|greater_than|less_equal|greater_equal|implies|iff|conjunction|disjunction)_\d+$/;
+function _isSpanningWrapperId(id) {
+  if (!id) return false;
+  const core = id.replace(/^_r\d+_/, "").replace(/^_+/, "");   // strip rebase prefix + leading "_"
+  return _SPANNING_OP.test(core);
+}
+
 // Caption LaTeX delimiters: $…$, `…` (backticks — what the LM emits), \(…\), \[…\].
 const _CAPTION_RE = /(\$[^$]+\$|`[^`]+`|\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\])/g;
 const _speedLabel = (s) => ({ 0.25: "¼×", 0.5: "½×" }[s] || `${s}×`);
@@ -68,6 +82,26 @@ export class ProofAnimator {
     // our fixed zone heights are final — otherwise its scale races our relayout and
     // ends up stale (content overflows / positions shift on the next step).
     this._onRelayout = typeof opts.onRelayout === "function" ? opts.onRelayout : null;
+    // Optional "live terms" mode — a code parameter, no UI toggle. When on, each
+    // rendered term becomes hoverable/clickable: hovering gives it a soft halo,
+    // and (for NAMED terms — real symbols, not operators/exponents) fires
+    // onTermHover/onTermClick so the host can light up and select the linked
+    // semantic-graph node. The host (SgProofManager) wires these to the graph
+    // renderer; the standalone report omits opts.liveTerms entirely, so the whole
+    // feature is mute there. Every term still haloes locally — only the sg sync is
+    // gated on being a named term that maps to a node.
+    this._liveTerms = !!opts.liveTerms;
+    this._onTermHover = typeof opts.onTermHover === "function" ? opts.onTermHover : null;
+    this._onTermClick = typeof opts.onTermClick === "function" ? opts.onTermClick : null;
+    // Reverse-sync hooks (the host drives graph→term highlight/select):
+    //   onAfterRender() — fires after EVERY stage (re)render so the host can
+    //     re-apply persistent term classes (selection/linked highlight) that a
+    //     morph's fresh render would otherwise wipe.
+    //   onTermBackgroundClick() — a click in the expression area that misses every
+    //     term (the host deselects all).
+    this._onAfterRender = typeof opts.onAfterRender === "function" ? opts.onAfterRender : null;
+    this._onTermBackgroundClick = typeof opts.onTermBackgroundClick === "function" ? opts.onTermBackgroundClick : null;
+    this._hotTermEl = null;   // currently haloed term (event-delegation bookkeeping)
     // Container-fit mode (set by a host that gives the widget a FIXED-size box,
     // e.g. SgProofManager's grid cell): the stage fills the height the box leaves
     // after the fixed text + nav bars, and the expression is scaled to fit that
@@ -101,6 +135,7 @@ export class ProofAnimator {
     this._capOverflow();    // never let the expression spill past the stage
     this._fitControls();    // hide step enumerations if the controls don't fit
     this._observeResize();  // responsive: re-fit on container/window resize
+    this._bindLiveTerms();  // optional: hover/click terms → halo + sg sync (no-op if off)
     // KaTeX webfonts load async; the first _fit() may have measured with narrower
     // fallback-font metrics. Re-fit once the real fonts are ready.
     if (typeof document !== "undefined" && document.fonts && document.fonts.ready) {
@@ -222,7 +257,15 @@ export class ProofAnimator {
   // width — a safety net for cases _fit()'s probe under-measures (e.g. it ran
   // before the KaTeX webfonts loaded, so fallback-font metrics were narrower).
   // Shrinks the stage font (which reflows the existing render) until it fits.
+  // Fires the host's after-render hook (reverse sync re-applies term classes a
+  // fresh render wiped). Hung off _capOverflow because that runs after EVERY stage
+  // (re)render — initial, relayout, and the post-morph settle.
   _capOverflow() {
+    this._capOverflowImpl();
+    if (this._onAfterRender) { try { this._onAfterRender(); } catch (e) {} }
+  }
+
+  _capOverflowImpl() {
     const expr = this.stage.querySelector(".pa-expr");
     if (!expr) return;
     const k = expr.querySelector(".katex-display") || expr.querySelector(".katex");
@@ -317,6 +360,124 @@ export class ProofAnimator {
       try { document.removeEventListener("visibilitychange", this._onVisibility); } catch (e) {}
       this._onVisibility = null;
     }
+    if (this.stage && this._onStageOver) {
+      this.stage.removeEventListener("mouseover", this._onStageOver);
+      this.stage.removeEventListener("mouseout", this._onStageOut);
+      this.stage.removeEventListener("click", this._onStageClick);
+      this._onStageOver = this._onStageOut = this._onStageClick = null;
+    }
+    // Clear any lingering sg hover-halo this widget drove.
+    if (this._onTermHover) { try { this._onTermHover([], null); } catch (e) {} }   // same shape as _setHotTerm
+  }
+
+  // ── Live terms (optional) ──────────────────────────────────────────────────
+  // Event-delegated hover/click on the rendered terms. Delegation on the stage
+  // survives every re-render (initial, resize relayout, and the post-morph settle
+  // all rebuild the stage DOM), so we bind once and never re-attach per glyph.
+  _bindLiveTerms() {
+    if (!this._liveTerms || !this.stage) return;
+    this.container.classList.add("pa-live-terms");
+    // The innermost tagged element under the pointer (a leaf atom when over a
+    // variable/number/operator glyph; the operator's wrapper when over notation
+    // that has no leaf of its own — e.g. a derivative's d/dt bar). Anything that
+    // maps to a graph node is selectable, so we DON'T restrict to leaves.
+    const tagOf = (t, x, y) => {
+      const el = t && t.closest ? t.closest("[data-n]") : null;
+      if (!el || !this.stage.contains(el)) return null;
+      // A leaf glyph is always a term. A wrapper counts only if it's a TIGHT
+      // operator — never a spanning combiner — so hovering a fraction bar or the
+      // chrome of a product/equation doesn't light the whole sub-expression.
+      if (el.querySelector("[data-n]") && _isSpanningWrapperId(el.getAttribute("data-n"))) {
+        // The pointer hit a spanning wrapper's CHROME — e.g. the dead zone in the
+        // middle of a fraction's denominator, where KaTeX's vlist lets the wrapper
+        // show through above the glyph. Snap to the nearest leaf term by box (its
+        // rect still covers the point), so the whole denominator/numerator is
+        // clickable — but only if close, else it's a real background click.
+        return (x == null) ? null : this._nearestLeafTerm(el, x, y);
+      }
+      return el;
+    };
+    this._onStageOver = (ev) => {
+      const el = tagOf(ev.target, ev.clientX, ev.clientY);
+      // Switch the halo only when entering a REAL term. Moving onto the
+      // expression's structural chrome (a fraction bar, KaTeX struts — tagOf is
+      // null there because it resolves to a spanning wrapper) leaves the current
+      // term lit, so hovering a numerator/denominator doesn't flicker as the
+      // pointer crosses the bar between them.
+      if (el && el !== this._hotTermEl) this._setHotTerm(el);
+    };
+    this._onStageOut = (ev) => {
+      // Only drop the halo when the pointer actually LEAVES the stage — never for
+      // a move onto untagged chrome within the expression (that's what made
+      // hovering fraction terms flicker). A move to a different term is handled by
+      // that term's mouseover instead.
+      const to = ev.relatedTarget;
+      if (!to || !this.stage.contains(to)) this._setHotTerm(null);
+    };
+    this._onStageClick = (ev) => {
+      const el = tagOf(ev.target, ev.clientX, ev.clientY);
+      if (!el) {
+        // A click in the expression area that hit no term → the host deselects all.
+        if (this._onTermBackgroundClick) this._onTermBackgroundClick();
+        return;
+      }
+      // Forward the candidate chain — the host resolves the nearest named node.
+      if (this._onTermClick) {
+        this._onTermClick(this._termChain(el), el, { additive: !!(ev.metaKey || ev.ctrlKey) });
+      }
+    };
+    this.stage.addEventListener("mouseover", this._onStageOver);
+    this.stage.addEventListener("mouseout", this._onStageOut);
+    this.stage.addEventListener("click", this._onStageClick);
+  }
+
+  _setHotTerm(el) {
+    if (this._hotTermEl && this._hotTermEl !== el) this._hotTermEl.classList.remove("pa-term-hot");
+    this._hotTermEl = el || null;
+    if (el) el.classList.add("pa-term-hot");
+    // Notify the host so the LINKED sg node lights up. The halo stays on the
+    // exact glyph, but resolution gets the whole ancestor chain so a glyph that
+    // is only PART of a named node (e.g. the "2" of a square, or an operator dot)
+    // still reaches that node. The host resolves the nearest one (or null clears).
+    if (this._onTermHover) this._onTermHover(el ? this._termChain(el) : [], el || null);
+  }
+
+  // Tagged terms from the given element up to the stage root, innermost first —
+  // the candidate chain the host walks to find the nearest term that maps to a
+  // graph node (a leaf glyph, then its operator wrapper, then the wrapper's…).
+  _termChain(el) {
+    const out = [];
+    for (let n = el; n && this.stage.contains(n); n = n.parentElement) {
+      if (n.nodeType === 1 && n.hasAttribute && n.hasAttribute("data-n")) {
+        const id = n.getAttribute("data-n");
+        // Stop below a spanning combiner — a hovered glyph may reach its tight
+        // operator (the "2" of a square → its power), but never the product/
+        // equation above it (which would resolve to a sprawling node).
+        if (n !== el && _isSpanningWrapperId(id)) break;
+        out.push({ id, text: n.textContent || "" });
+      }
+    }
+    return out;
+  }
+
+  // Nearest LEAF term inside `wrapper` to the point (x,y), or null if none is close
+  // enough — so a true background click (far from any term) still deselects. A leaf
+  // whose rect CONTAINS the point wins at distance 0, which is the fraction dead
+  // zone: the denominator glyph's box covers the point even where the wrapper shows
+  // through above it.
+  _nearestLeafTerm(wrapper, x, y) {
+    let best = null, bestD = Infinity;
+    for (const leaf of wrapper.querySelectorAll("[data-n]")) {
+      if (leaf.querySelector("[data-n]")) continue;   // leaves only
+      const r = leaf.getBoundingClientRect();
+      if (!r.width || !r.height) continue;
+      const dx = x < r.left ? r.left - x : x > r.right ? x - r.right : 0;
+      const dy = y < r.top ? r.top - y : y > r.bottom ? y - r.bottom : 0;
+      const d = dx * dx + dy * dy;
+      if (d < bestD) { bestD = d; best = leaf; }
+    }
+    const TOL = 14;   // px — beyond this it's a background click, not a near-miss
+    return (best && bestD <= TOL * TOL) ? best : null;
   }
 
   // Apply the current speed multiplier. Animations are created at base duration

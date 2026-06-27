@@ -13,6 +13,8 @@ calls ``build`` after running the ProofCompletionExpert; the offline tooling
 """
 from __future__ import annotations
 
+import re
+
 from backend.semantic_graph.service import SemanticGraphService
 from backend.semantic_graph.latex_renderer import to_latex
 from backend.experts.modules.proof_completion.tree_match import rebase as _rebase
@@ -24,6 +26,62 @@ from backend.experts.modules.proof_completion.outputs import ProofTrajectory
 from backend.experts.modules.proof_completion.step_grounding import (
     TIER_ICON, TIER_LABEL, TIER_MEANING, Tier, ground_steps,
 )
+
+# Node types that name a quantity/object a learner would want described (the
+# symbols), as opposed to operators / relations / structural nodes. Used to
+# collect the derivation's terms for per-term descriptions (the handler then
+# fills in the prose via an LM; see term_descriptions.py).
+# Leaf symbol nodes (a named quantity/object) worth describing.
+_TERM_TYPES = {"scalar", "vector", "constant", "ket", "bra", "braket", "differential"}
+# UNARY composite operators worth describing as a single term — hovering V² →
+# "the square of the velocity". Their LaTeX is None, so we describe their
+# ``subexpr`` (the full applied form, e.g. "V^{2}", "\frac{d}{dt}V"). Deliberately
+# NOT multiply/add/equals/relations: those span the whole sub-expression/equation,
+# so describing them as one "term" is meaningless. Functions are caught by type.
+_TERM_OPS = {"power", "derivative", "integral"}
+# Structural LaTeX (a fraction bar, a product dot, a root) — NOT a symbol. Stripping
+# these reveals whether what's left is purely numeric; symbol commands (\rho, \Delta)
+# are kept so e.g. "\rho_0" / "\Delta t" aren't misread as numbers.
+_STRUCTURAL_CMD = re.compile(r"\\(?:[dtc]?frac|cdot|times|div|sqrt|left|right)\b")
+
+
+def _is_numeric(sym: str) -> bool:
+    """True for a purely NUMERIC term — a bare literal ("2", "1.5") OR a numeric
+    fraction/power ("\\frac{1}{2}", "2^{3}"). Such terms are meaningless to
+    describe ("the number 2") and collide with same-looking exponents/denominators.
+    Strip LaTeX structure (commands, braces) and check nothing but digits/operators
+    remain — a NAMED symbol or sub-expression keeps a letter (V, \\rho, V^{2})."""
+    s = _STRUCTURAL_CMD.sub("", sym)           # drop STRUCTURAL LaTeX (\frac, \cdot, \sqrt)
+    s = re.sub(r"\\[a-zA-Z]+", "x", s)         # any REMAINING command is a SYMBOL (\rho, \Delta) → a letter
+    s = re.sub(r"[{}()\\\s_^]", "", s)         # drop braces/parens/backslash/space/sub-sup markers
+    return bool(s) and re.fullmatch(r"[\d.,/+\-]+", s) is not None
+
+
+def _is_term_node(n) -> bool:
+    """A leaf symbol, a function application, or a unary composite (power /
+    derivative / integral) — the things a learner would hover to ask "what is
+    this?". Excludes n-ary/relational operators (their subexpr is everything)."""
+    t = getattr(n, "type", None)
+    if t in _TERM_TYPES or t == "function":
+        return True
+    return t == "operator" and getattr(n, "op", None) in _TERM_OPS
+
+
+def _collect_terms(graph, terms: dict) -> None:
+    """Add this state's describable terms to ``terms``, keyed by node id (the same
+    id threaded into the annotated LaTeX). Union across states, so a term that
+    appears only in an intermediate step — and therefore has NO node in the
+    on-screen scene graph — is still captured. First occurrence wins.
+
+    Uses ``subexpr`` (the full form) as the identity, falling back to latex/label —
+    a composite node's latex is None, so subexpr is what carries its meaning."""
+    for n in (getattr(graph, "nodes", None) or []):
+        if not _is_term_node(n):
+            continue
+        sym = (getattr(n, "subexpr", None) or getattr(n, "latex", None)
+               or getattr(n, "label", None) or "").strip()
+        if sym and not _is_numeric(sym) and n.id not in terms:
+            terms[n.id] = {"latex": sym, "name": (getattr(n, "label", None) or sym)}
 
 
 def build(trajectory: ProofTrajectory, domain: str, title: str = "", *,
@@ -62,6 +120,7 @@ def build(trajectory: ProofTrajectory, domain: str, title: str = "", *,
     # states (a scrub/jump) morph instead of delete+insert.
     registry: dict = {}
     out = []
+    terms: dict = {}   # node id -> {latex, name}: the derivation's named symbols
     state_exprs = []   # per-state sympy expr (None: not convertible) for grounding
     for i, (operation, justification, ltx) in enumerate(chain):
         try:
@@ -91,6 +150,7 @@ def build(trajectory: ProofTrajectory, domain: str, title: str = "", *,
                 annotated = to_latex(cand, with_ids=True)   # annotated, stable ids
                 plain = to_latex(cand)                       # for labels/fallback
                 working = cand
+                _collect_terms(cand, terms)                  # named symbols, by id
             except Exception:
                 annotated = plain = ltx
         state_exprs.append(expr)
@@ -105,8 +165,11 @@ def build(trajectory: ProofTrajectory, domain: str, title: str = "", *,
 
     overall = _attach_confidence(out, state_exprs, trajectory, svc, domain,
                                  judge=judge, lesson_context=lesson_context)
+    # ``terms`` carries the derivation's symbols (id -> {latex, name}); the handler
+    # fills in per-term descriptions via an LM (build() itself stays LM-free, so
+    # offline tooling/tests get the symbols without prose).
     return {"title": title, "domain": domain, "steps": out,
-            "overall_confidence": overall}
+            "overall_confidence": overall, "terms": terms}
 
 
 def _confidence_payload(tier: Tier, relation=None, reason: str = "",

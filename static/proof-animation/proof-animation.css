@@ -120,6 +120,37 @@
 .pa-ghost { pointer-events: none; z-index: 4; }
 .pa-move.pa-insert { z-index: -1; }
 
+/* ── Live terms (optional) ───────────────────────────────────────────────────
+   Set by ProofAnimator when opts.liveTerms is on. Each rendered term becomes
+   hoverable/clickable; the hovered term gets a "backlight" — a glow that traces
+   the CONTOURS of the rendered glyphs (drop-shadow follows the glyph alpha, so it
+   hugs the letter shapes rather than drawing a box around them). Stacked shadows
+   give a soft inner + wider outer halo; `filter` doesn't reflow layout. Scoped
+   under .pa-live-terms so non-live animators are untouched. */
+.pa-live-terms .pa-stage > .pa-expr [data-n] {
+  cursor: pointer;
+  transition: filter 130ms ease;
+}
+/* Hovered locally (mouse on the glyph) OR linked (the graph node is hovered) —
+   same indigo backlight, so hover reads identically in both sync directions. */
+.pa-live-terms .pa-term-hot,
+.pa-live-terms .pa-term-linked {
+  filter:
+    drop-shadow(0 0 2px var(--pa-term-glow, rgba(165, 185, 255, 1)))
+    drop-shadow(0 0 6px var(--pa-term-glow, rgba(150, 170, 255, 0.9)))
+    drop-shadow(0 0 12px var(--pa-term-glow-soft, rgba(120, 145, 255, 0.7)));
+}
+/* Selected (either a term or its graph node was clicked) — GOLD, and wins over a
+   concurrent hover so a selected term stays gold while pointed at. */
+.pa-live-terms .pa-term-selected,
+.pa-live-terms .pa-term-hot.pa-term-selected,
+.pa-live-terms .pa-term-linked.pa-term-selected {
+  filter:
+    drop-shadow(0 0 2px var(--pa-term-gold, rgba(255, 215, 105, 1)))
+    drop-shadow(0 0 6px var(--pa-term-gold, rgba(255, 200, 70, 0.95)))
+    drop-shadow(0 0 13px var(--pa-term-gold-soft, rgba(255, 185, 40, 0.75)));
+}
+
 /* operation (explanation) stacked above justification, then the "Next" pill.
    FIXED height (set by _fixMetaSize to the tallest step) + flex:none so the text
    zone never changes height between steps — the controls below it never shift. */
@@ -443,6 +474,29 @@
     flex-direction: column;
     color: rgba(210, 218, 245, 0.92);
 }
+
+/* Floating description tooltip for a hovered live term (SgProofManager). Appended
+   to <body> with position:fixed so the proof box's overflow never clips it, and
+   positioned by JS ABOVE the term (or below near the top edge) so it covers
+   neither the term nor the expression. App-level theme vars (it's outside the
+   .pa-root scope that defines --pa-*). pointer-events:none so it never steals the
+   hover it describes. */
+.sgp-term-tip {
+    position: fixed;
+    z-index: 10000;
+    max-width: 280px;
+    padding: 8px 11px;
+    border-radius: 10px;
+    background: var(--panel-bg, #1a1a2e);
+    color: var(--text-color, #e5e7eb);
+    border: 1px solid var(--border-color, #2d2d44);
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.40);
+    font-size: 12.5px;
+    line-height: 1.42;
+    overflow-wrap: anywhere;
+    pointer-events: none;
+}
+.sgp-term-tip .katex { font-size: 1em; color: var(--text-color, #e5e7eb); }
 
 .sgp-body {
     flex: 1 1 auto;

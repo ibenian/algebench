@@ -18,6 +18,7 @@ Exposed at ``POST /api/expert/proof_animation``. Requires DSPy configured
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 from typing import Optional
@@ -35,6 +36,7 @@ from backend.semantic_graph.service import SemanticGraphService
 
 from .animation import build
 from .prompt_endpoints import start_given_target
+from .term_descriptions import describe_terms
 
 log = logging.getLogger(__name__)
 
@@ -358,7 +360,31 @@ def derive_proof_animation(req: DeriveProofRequest) -> dict:
     start_operation = given_label or f"Given ${start}$"
     # A short caption for step 0 — never the goal formula (it renders as raw $…$).
     start_justification = start_note or "the starting expression"
-    return build(traj, domain, title,
+    data = build(traj, domain, title,
                  start_operation=start_operation,
                  start_justification=start_justification,
                  judge=_domain_judge(), lesson_context=lesson_context)
+    # Per-term descriptions (issue: tooltips for intermediate symbols). build()
+    # collected the derivation's symbols into data["terms"] keyed by node id;
+    # describe each so the frontend can show a tooltip WITHOUT matching the term
+    # back to the on-screen scene graph (which lacks intermediate-only symbols).
+    # Best-effort: only when an LM is configured, and a failure leaves them blank.
+    # ``terms`` IS the dict build() put on ``data`` (a reference, not a copy), so
+    # writing each description back onto it updates ``data["terms"]`` in place. An
+    # empty terms map (or no LM) just skips — nothing to describe.
+    terms = data.get("terms")
+    if terms and is_configured():
+        try:
+            applied = 0
+            for tid, desc in describe_terms(terms, domain, lesson_context).items():
+                if tid in terms and desc:
+                    terms[tid]["description"] = desc
+                    applied += 1
+            log.debug("proof_animation: described %d/%d terms", applied, len(terms))
+        except Exception:
+            log.warning("proof_animation: term-description pass failed", exc_info=True)
+    # Dump the full expert output (steps, confidence, described terms) as one-line
+    # JSON for debugging — the complete response the frontend receives.
+    log.debug("proof_animation: output=%s",
+              json.dumps(data, default=str, ensure_ascii=False, separators=(",", ":")))
+    return data

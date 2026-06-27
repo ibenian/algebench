@@ -41,6 +41,19 @@ const GRID_GAP = 8;
 const DEFAULT_COLSPAN = 4;
 const DEFAULT_ROWSPAN = 3;
 
+// A graph node that is just a NUMBER (a literal like 2, or a numeric-valued
+// constant) — not worth a tooltip. Named symbols/constants (π, e, c, ρ) keep a
+// letter once LaTeX commands are unwrapped (\rho → rho).
+function _isNumericNode(node) {
+    if (!node) return false;
+    if (node.type === 'number') return true;
+    const s = String(node.subexpr || node.latex || node.label || '')
+        .replace(/\\(?:[dtc]?frac|cdot|times|div|sqrt|left|right)\b/g, '')   // structural → drop
+        .replace(/\\[a-zA-Z]+/g, 'x')                                        // symbol command → a letter
+        .replace(/[{}()\\$\s_^]/g, '');
+    return s !== '' && !/[A-Za-z]/.test(s);          // nothing but digits/operators → numeric
+}
+
 export class SgProofManager {
     constructor(container, opts = {}) {
         this.container = container;
@@ -55,6 +68,26 @@ export class SgProofManager {
         this._seq = 0;
         this._z = 30;                // proof boxes sit above charts (z 20)
         this._stepKey = null;        // boxes belong to the step they were derived in
+        // Stable term→node lookup: a rendered-appearance → nodeId map. A term's
+        // own data-n only matches the graph when it's threaded onto the current
+        // state; intermediate proof steps mint fresh ids that don't. So once ANY
+        // term resolves (by id or by looking like a node), we remember its
+        // rendered text → node, and every identical-looking term — in any step —
+        // reuses it. Keyed to the displayed graph; rebuilt when that changes.
+        this._apprCache = new Map();
+        this._apprCacheGraph = null;
+        // Reverse sync (graph → term): which graph node is hovered, and the set of
+        // selected node ids (mirrors the graph's selection). Applied as term
+        // classes across ALL docked boxes so every proof animation stays in sync.
+        this._hoverNodeId = null;
+        this._selectedNodeIds = new Set();
+        // Terms that DON'T map to a scene-graph node (a proof-only symbol like the
+        // derived LHS) can still be selected locally — gold, keyed by appearance.
+        this._selectedTermKeys = new Set();
+        // Host callback (graph-view): clear the whole selection when the user
+        // clicks empty space in a proof box.
+        this._onBackgroundDeselect = typeof opts.onBackgroundDeselect === 'function'
+            ? opts.onBackgroundDeselect : null;
     }
 
     // ── Renderer wiring (identical contract to SgChartManager) ───────────────
@@ -323,6 +356,7 @@ export class SgProofManager {
     _mountAnimator(entry, data) {
         entry.body.innerHTML = '';
         entry.paWrap = null;
+        entry.data = data;   // holds data.terms (per-term descriptions) for tooltips
         if (!data || !Array.isArray(data.steps) || data.steps.length === 0) {
             this._renderError(entry, new Error('The derivation produced no steps.'));
             return;
@@ -343,6 +377,15 @@ export class SgProofManager {
                 deriveButton: makeDeriveButton,
                 onDerive: (p, anchorEl) => this._deriveFromAnimator(entry, p, anchorEl),
                 fitHeight: true,
+                // Live terms: hover/click a named term → light up & select its
+                // linked semantic-graph node. No-ops when there's no renderer.
+                liveTerms: true,
+                onTermHover: (chain, el) => this._onTermHover(chain, el, entry),
+                onTermClick: (chain, _el, ev) => this._onTermClick(chain, ev),
+                // Reverse sync: re-apply selection/linked classes after every
+                // (re)render (a morph wipes them); a background click deselects all.
+                onAfterRender: () => this._refreshTermClasses(entry),
+                onTermBackgroundClick: () => this._deselectAll(),
             });
         } catch (e) {
             entry.paWrap = null;
@@ -367,6 +410,264 @@ export class SgProofManager {
         const key = String(payload.target_latex).replace(/\s+/g, '');
         const parentId = parentEntry ? parentEntry.nodeId : 'anim';
         this.openProof(`${parentId}::sub::${key}`, anchorEl, payload);
+    }
+
+    // ── Live terms → semantic-graph sync ─────────────────────────────────────
+    // A docked proof animation drives the SAME renderer the graph itself uses, so
+    // hovering/clicking a named term lights up and selects its linked node exactly
+    // as a direct graph interaction would (cmd/ctrl-click keeps multi-selecting).
+    // With no renderer (no semantic graph) these are silent no-ops — the term
+    // still haloes locally inside the proof box, there's just nothing to sync to.
+    // Cache key from a term's rendered text — strip whitespace / zero-width joiners
+    // so identical-looking terms collapse to one key. Reject only the genuinely
+    // AMBIGUOUS keys: empty, and a bare number (a literal "2" and the "2" of a
+    // square render identically). Operator GLYPHS (·, =, −) are excluded separately
+    // by id when learning, since they repeat for different operator instances.
+    // Single symbols (H, V, E) are kept — each maps to one node — so a lone letter
+    // gets cached and stays stable across steps (no length floor).
+    _apprKey(text) {
+        const k = (text || '').replace(/[\s\u200B-\u200F\u2060\uFEFF]/g, '');
+        return (!k || /^[\d.,/+\-]+$/.test(k)) ? '' : k;   // reject empty + numeric-only
+    }
+
+    // Walk the term's candidate chain (innermost glyph → enclosing operator
+    // wrappers) and return the first that maps to a node in the current graph.
+    // The appearance cache makes this STABLE across steps: a term resolved once
+    // (here or in another step) is reused for every identical-looking term.
+    _resolveChain(chain) {
+        const r = this._renderer;
+        if (!r || r._destroyed || typeof r.resolveTermNodeId !== 'function') return null;
+        if (this._apprCacheGraph !== r._graph) { this._apprCache = new Map(); this._apprCacheGraph = r._graph; }
+        const present = id => (id && typeof r.getNode === 'function' && r.getNode(id)) ? id : null;
+        // 1) Appearance cache — a previously-resolved look-alike (still in graph).
+        for (const c of (chain || [])) {
+            const k = this._apprKey(c.text);
+            if (k && this._apprCache.has(k)) { const id = present(this._apprCache.get(k)); if (id) return id; }
+        }
+        // 2) Structural resolution — id, then look-alike-of-a-node; learn on hit.
+        // Don't learn from an operator GLYPH (·, =, ^, …): its bare text repeats
+        // for different operator instances, so its appearance isn't a stable key.
+        const isOpGlyph = id => /__(?:op\d*|exp|one|m\d+)$/.test(id || '');
+        for (const c of (chain || [])) {
+            const id = r.resolveTermNodeId(c.id, c.text);
+            if (id) {
+                const k = this._apprKey(c.text);
+                if (k && !isOpGlyph(c.id)) this._apprCache.set(k, id);
+                return id;
+            }
+        }
+        return null;
+    }
+
+    _onTermHover(chain, anchorEl, entry) {
+        const r = this._renderer;
+        // Resolve the LINKED scene-graph node and drive the SHARED hover state, so
+        // the node halo AND every matching term (in all boxes) light up together —
+        // the same path graph→term hover uses, so it's symmetric. Best-effort: an
+        // intermediate-only symbol has no node, and that's fine (tooltip still shows).
+        const id = (r && !r._destroyed) ? this._resolveChain(chain) : null;
+        this._setHoverNode(id);
+        // Tooltip description: prefer the proof's OWN per-term descriptions (keyed
+        // by the same ids as the annotated LaTeX — covers intermediate symbols that
+        // have no scene-graph node), then fall back to the linked node's description.
+        let desc = this._termDescription(entry, chain);
+        if (!desc && id && r && typeof r.getNode === 'function') {
+            const node = r.getNode(id);
+            // Don't fall back to a NUMBER node's description — "the number 2" is a
+            // meaningless tooltip (the proof's own data.terms already omits numbers).
+            if (node && !_isNumericNode(node)) desc = (node.description || '').trim();
+        }
+        if (anchorEl && desc) this._showTermTip(anchorEl, desc);
+        else this._hideTermTip();
+    }
+
+    // The first chain term that has a backend-supplied description in data.terms
+    // (keyed by node id). The rendered data-n can carry a rebase prefix (`_r3_…`,
+    // on the threaded spine) and an occurrence suffix (`__<parent>`, on shared
+    // leaves); data.terms is keyed by the clean id, so try the raw id, the
+    // prefix-stripped id, then the canonical symbol before it.
+    _termDescription(entry, chain) {
+        const terms = entry && entry.data && entry.data.terms;
+        if (!terms) return '';
+        for (const c of (chain || [])) {
+            const raw = c.id || '';
+            const clean = raw.replace(/^_r\d+_/, '');
+            const t = terms[raw] || terms[clean] || terms[clean.split('__')[0]];
+            const d = t && (t.description || '').trim();
+            if (d) return d;
+        }
+        return '';
+    }
+
+    // A rounded tooltip rendering the hovered term's node description. Lives on
+    // <body> (position:fixed) so the proof box's overflow never clips it; placed
+    // on the side the term is nearest — BELOW when the term sits in the lower half
+    // of the viewport (closer to the bottom), ABOVE otherwise — then flipped to the
+    // opposite side if the preferred one would run off-screen.
+    _showTermTip(anchorEl, text) {
+        let tip = this._termTip;
+        if (!tip) {
+            tip = document.createElement('div');
+            tip.className = 'sgp-term-tip';
+            tip.setAttribute('role', 'tooltip');
+            document.body.appendChild(tip);
+            this._termTip = tip;
+        }
+        this._renderInlineMath(tip, text);   // descriptions may carry inline $…$
+        tip.style.display = 'block';
+        tip.style.visibility = 'hidden';     // measure before positioning
+        const r = anchorEl.getBoundingClientRect();
+        const vh = window.innerHeight;
+        const tw = tip.offsetWidth, th = tip.offsetHeight, GAP = 10;
+        let left = r.left + r.width / 2 - tw / 2;
+        left = Math.max(8, Math.min(left, window.innerWidth - tw - 8));
+        // Prefer the side the term is nearest (below when in the lower half),
+        // then flip if that side has no room.
+        let below = (r.top + r.bottom) / 2 > vh / 2;
+        if (below && r.bottom + GAP + th > vh - 4) below = false;   // no room below
+        else if (!below && r.top - GAP - th < 4) below = true;      // no room above
+        const top = below ? r.bottom + GAP : r.top - th - GAP;
+        tip.classList.toggle('sgp-term-tip-below', below);
+        tip.style.left = `${Math.round(left)}px`;
+        tip.style.top = `${Math.round(Math.max(4, top))}px`;
+        tip.style.visibility = 'visible';
+    }
+
+    _hideTermTip() {
+        if (this._termTip) this._termTip.style.display = 'none';
+    }
+
+    _onTermClick(chain, ev) {
+        const r = this._renderer;
+        const additive = !!(ev && ev.additive);
+        const id = (r && !r._destroyed && typeof r.selectNodeById === 'function')
+            ? this._resolveChain(chain) : null;
+        if (id) {
+            // Mapped term → drive the graph's selection; its onNodeClick rounds back
+            // through syncSelectionFromGraph(), which golds the term(s). One source
+            // of truth, so a term-click and a node-click select identically.
+            r.selectNodeById(id, { additive });
+            return;
+        }
+        // OFF-GRAPH term (no scene node) → select it LOCALLY, keyed by appearance.
+        const key = this._apprKey((chain && chain[0] && chain[0].text) || '');
+        if (!key) return;
+        if (additive) {
+            // cmd/ctrl → toggle this term, keep the rest of the selection.
+            if (this._selectedTermKeys.has(key)) this._selectedTermKeys.delete(key);
+            else this._selectedTermKeys.add(key);
+            this._applyAllBoxes();
+        } else {
+            // plain → REPLACE: clear the graph selection + every other term first.
+            this._deselectAll();
+            this._selectedTermKeys = new Set([key]);
+            this._applyAllBoxes();
+        }
+    }
+
+    // ── Reverse sync (graph → term) ──────────────────────────────────────────
+    // Hovering/clicking a graph node lights up / selects the matching term(s) in
+    // EVERY docked proof box. Recursion is avoided structurally: this path only
+    // toggles DOM classes (and highlightNodeById, a no-event method) — it never
+    // re-dispatches the term/node mouse events that would echo back.
+
+    /** The expression element of a box, or null. */
+    _termExpr(entry) {
+        return entry && entry.box ? entry.box.querySelector('.pa-stage > .pa-expr') : null;
+    }
+
+    /** Resolve ONE term element's data-n to a scene-graph node id (cached by
+     *  appearance for stability across steps), or null. */
+    _resolveTermEl(el) {
+        const r = this._renderer;
+        if (!r || r._destroyed || typeof r.resolveTermNodeId !== 'function') return null;
+        const text = el.textContent || '';
+        const k = this._apprKey(text);
+        if (k && this._apprCache.has(k)) {
+            const cid = this._apprCache.get(k);
+            if (cid && typeof r.getNode === 'function' && r.getNode(cid)) return cid;
+        }
+        const nid = r.resolveTermNodeId(el.getAttribute('data-n'), text);
+        if (nid && k) this._apprCache.set(k, nid);
+        return nid;
+    }
+
+    /** (Re)build a box's element → {nodeId, key} map — call after each (re)render,
+     *  since a morph replaces the term elements. `key` is the appearance key, used
+     *  to select terms that have NO scene-graph node (off-graph proof symbols). */
+    _buildTermNodeMap(entry) {
+        // Keep the appearance cache keyed to the current graph (mirrors _resolveChain).
+        const r = this._renderer;
+        if (r && this._apprCacheGraph !== r._graph) { this._apprCache = new Map(); this._apprCacheGraph = r._graph; }
+        const map = new Map();
+        const expr = this._termExpr(entry);
+        if (expr) {
+            for (const el of expr.querySelectorAll('[data-n]')) {
+                const nid = this._resolveTermEl(el);
+                const key = this._apprKey(el.textContent || '');
+                if (nid || key) map.set(el, { nid, key });
+            }
+        }
+        entry._termNodes = map;
+        return map;
+    }
+
+    /** Apply the shared hover/selection state as term classes for one box. */
+    _applyTermClasses(entry) {
+        const map = entry._termNodes || this._buildTermNodeMap(entry);
+        for (const [el, info] of map) {
+            const { nid, key } = info;
+            // Gold if the linked node is selected OR (off-graph) this appearance is.
+            const selected = (nid && this._selectedNodeIds.has(nid)) || (key && this._selectedTermKeys.has(key));
+            el.classList.toggle('pa-term-selected', !!selected);
+            el.classList.toggle('pa-term-linked', !selected && !!nid && nid === this._hoverNodeId);
+        }
+    }
+
+    /** After a (re)render: rebuild the map, then re-apply (the morph wiped classes). */
+    _refreshTermClasses(entry) {
+        this._buildTermNodeMap(entry);
+        this._applyTermClasses(entry);
+    }
+
+    _applyAllBoxes() {
+        for (const entry of this.boxes.values()) this._applyTermClasses(entry);
+    }
+
+    /** Shared hover node (set by a term hover OR a graph-node hover). Lights the
+     *  node on the graph and the matching term(s) in every box. */
+    _setHoverNode(nodeId) {
+        this._hoverNodeId = nodeId || null;
+        const r = this._renderer;
+        if (r && !r._destroyed && typeof r.highlightNodeById === 'function') {
+            r.highlightNodeById(this._hoverNodeId);
+        }
+        this._applyAllBoxes();
+    }
+
+    /** Graph node hovered (graph-view → here). */
+    highlightTermsForNode(nodeId) {
+        this._setHoverNode(nodeId);
+    }
+
+    /** The graph's selection changed (graph-view → here, after any node/term click).
+     *  Mirror it onto the terms so selected terms are gold everywhere. */
+    syncSelectionFromGraph(selectedIds, additive) {
+        this._selectedNodeIds = new Set(selectedIds || []);
+        // A PLAIN (non-additive) selection replaces everything, so clear the
+        // off-graph term selection too — only cmd/ctrl keeps both. A full deselect
+        // (empty) clears it regardless.
+        if (!additive || this._selectedNodeIds.size === 0) this._selectedTermKeys.clear();
+        this._applyAllBoxes();
+    }
+
+    /** A click on empty space in a proof box — deselect everything: the local
+     *  off-graph term selection AND (via the host) the graph selection + info panel
+     *  (which calls back through syncSelectionFromGraph([]) to re-apply). */
+    _deselectAll() {
+        this._selectedTermKeys.clear();
+        if (this._onBackgroundDeselect) this._onBackgroundDeselect();
+        else this._applyAllBoxes();
     }
 
     _renderLoading(entry, payload) {
@@ -584,6 +885,8 @@ export class SgProofManager {
         this._destroyed = true;
         if (this._rafId) { cancelAnimationFrame(this._rafId); this._rafId = null; }
         if (this._resizeObserver) { try { this._resizeObserver.disconnect(); } catch (_e) {} this._resizeObserver = null; }
+        if (this._termTip && this._termTip.parentNode) this._termTip.parentNode.removeChild(this._termTip);
+        this._termTip = null;
         for (const boxId of Array.from(this.boxes.keys())) this.closeBox(boxId);
     }
 }
