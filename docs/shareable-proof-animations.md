@@ -58,6 +58,7 @@ is the heart of this document.
 | `/renderproof?builtin=a/x&builtin=b/y` | Render multiple proofs, each in its own card, stacked vertically |
 | `/renderproof?builtin=a/x,b/y` | Comma-separated convenience form (equivalent to repeated params) |
 | `&theme=<dark\|light\|auto>` | Optional. Page + card theme. Defaults to `dark`; `auto` follows the viewer's OS preference. |
+| `&explore=1` | Optional. Enables the ⓘ info pill (Prerequisites / Explore-further popup), off by default. |
 
 The `builtin` value must match `^[A-Za-z0-9_-]+/[A-Za-z0-9_-]+$` — exactly one `domain/name`
 segment pair, no `..`, no extra slashes. Anything else is rejected before any fetch (see
@@ -109,9 +110,39 @@ consumes. No new schema is invented; we store the engine's existing output verba
   "terms": {
     "a_1": { "latex": "a", "name": "a", "description": "the variable being isolated" }
   },
-  "overall_confidence": { "tier": "…", "label": "…", "counts": { … } }
+  "overall_confidence": { "tier": "…", "label": "…", "counts": { … } },
+  "goal": "Isolate $a$ in $a+b-c=0$.",          // optional: model framing, shown above the steps
+  "prerequisites": ["moving a term across $=$"], // optional: assumed concepts (pills)
+  "followups": [                                 // optional: agentic continuation prompts (chips)
+    "What if $b$ were negative?", "Solve $2a+3-c=0$ for $a$"
+  ]
 }
 ```
+
+`goal`, `prerequisites`, and `followups` are **model-produced** output fields of the
+proof-completion expert (`ProofCompletionSig` → `ProofTrajectory` → the animation dict). The expert
+always produces `goal`; `prerequisites`/`followups` are emitted in the live `/api/expert` response
+only when the request sets `include_prerequisites` / `include_followups` (off by default — a plain
+derivation stays lean; offline `build()`/`derive.py` include them by default). `goal` shows as a
+small **"Goal" pill** in the top-left corner (mirrors the ranking pill top-right): hover reveals it
+in a temporary popup, click **docks it as a banner at the top of the box** (click the banner to
+undock). `prerequisites` and `followups` open from an **ⓘ info pill** in the controls row (next to
+the sequential button) — **gated** (off by default; enabled in the app via `SgProofManager`
+`enableExplore:true`, and on `/renderproof` via `?explore=1`). Hovering the pill shows a popup; a
+hover bridge keeps it open while the pointer is on the pill or popup, and clicking the pill pins it.
+The popup is **bottom-anchored** to the pill with the **tab titles at its bottom** (Prerequisites /
+Explore further) and the chip content above — drag the **grip at the top to resize it upward**.
+
+**Every chip is clickable**, and the engine builds a context-rich `message` (proof title + goal +
+the clicked text) routed by host:
+- **App** — `onExplore` opens the chat and sends the `message` (`sendChatMessage`), so the agent
+  grounds on *this* derivation (plus the app's existing history/scene context).
+- **Embedded** (in an iframe) — the engine `postMessage`s `{type:"algebench-explore", kind, text,
+  message, title}` to the **parent page**, which decides how to handle it.
+- **Standalone** `/renderproof` — the chip copies its text (no backend/agent).
+
+All three fields are optional (older proofs omit them) and render via the same `textContent`/KaTeX
+path as other text, so the [security model](#7-security-model) covers them.
 
 Key property: the `latex` field is **server-generated** by `to_latex(cand, with_ids=True)`; the
 `\htmlData{n=<id>}` wrappers and their ids come from the deterministic graph/rebase pipeline, never

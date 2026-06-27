@@ -4,8 +4,8 @@
   "steps": [
     {
       "index": 0,
-      "operation": "Solve $a x^2 + b x + c = 0$ for $x$",
-      "justification": "Goal: $x = \\dfrac{-b \\pm \\sqrt{b^2 - 4 a c}}{2 a}$",
+      "operation": "Given $a x^2 + b x + c = 0$",
+      "justification": "the starting expression",
       "input_latex": "a \\cdot x^{2} + b \\cdot x + c = 0",
       "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__add_2}{\\htmlData{n=__add_3}{\\htmlData{n=__multiply_4}{\\htmlData{n=a}{a} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=__power_5}{\\htmlData{n=x____power_5}{x}^{\\htmlData{n=__power_5__exp}{2}}}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__multiply_6}{\\htmlData{n=b}{b} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=x____multiply_6}{x}}} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=c}{c}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__num_7}{0}}",
       "plain": "a \\cdot x^{2} + b \\cdot x + c = 0",
@@ -295,5 +295,18 @@
       "name": "\\frac{1}{2 a}",
       "description": "A term appearing as a factor or in the denominator during the solution of a quadratic equation."
     }
-  }
+  },
+  "goal": "This derivation transforms the general quadratic equation $a \\cdot x^{2} + b \\cdot x + c = 0$ into an expression for $x$, specifically finding the positive branch of the quadratic formula.",
+  "followups": [
+    "Derive the negative branch of the quadratic formula.",
+    "What happens to the solutions if the discriminant $b^2 - 4ac$ is negative?",
+    "How can I use this formula to solve a specific quadratic equation like $2x^2 + 5x - 3 = 0$?",
+    "Derive the quadratic formula using an alternative method, such as Vieta's formulas or substitution."
+  ],
+  "prerequisites": [
+    "Completing the square",
+    "Basic algebraic manipulation of equations",
+    "Properties of square roots",
+    "Combining fractions"
+  ]
 }
