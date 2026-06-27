@@ -39,6 +39,7 @@ scenes_dir = script_dir / "scenes"
 # Treat every file here as untrusted input — the render path makes no trust
 # assumptions about its contents. See docs/shareable-proof-animations.md.
 proofs_dir = script_dir / "proofs"
+_MAX_PROOF_BYTES = 2_000_000   # size cap for a served proof JSON (matches the client)
 
 # ---------------------------------------------------------------------------
 # Semantic-graph auto-derivation for proof steps missing explicit graphs.
@@ -1480,6 +1481,10 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
         proof_path = sanitize_path(proofs_dir, path)
         if not proof_path or not proof_path.is_file() or proof_path.suffix != '.json':
             return Response(status_code=404)
+        # Treat proofs as untrusted: cap the size so a huge file can't exhaust
+        # memory/bandwidth (mirrors the client's MAX_BYTES; see the security model).
+        if proof_path.stat().st_size > _MAX_PROOF_BYTES:
+            return Response(status_code=413)
         with open(proof_path, 'rb') as f:
             return Response(content=f.read(), media_type="application/json",
                             headers={"Cache-Control": "no-cache, no-store, must-revalidate"})

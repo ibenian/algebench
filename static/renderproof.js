@@ -205,7 +205,11 @@ function setupEmbedAutoResize() {
   // without changing wrap's content box, so hovering can't drive a resize/flicker loop.
   if (window.ResizeObserver && wrap) new ResizeObserver(() => post()).observe(wrap);
   window.addEventListener("message", (e) => {
-    if (e.data && e.data.type === "algebench-embed-request") post(true);
+    // Only the host (our parent frame) may request a height re-report — ignore any
+    // other frame/injected script so it can't spam measurements.
+    if (e.source === window.parent && e.data && e.data.type === "algebench-embed-request") {
+      post(true);
+    }
   });
   window.addEventListener("load", () => post(true));
   post(true);
