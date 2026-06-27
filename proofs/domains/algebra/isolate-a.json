@@ -1,0 +1,92 @@
+{
+  "title": "Isolate a",
+  "domain": "algebra",
+  "steps": [
+    {
+      "index": 0,
+      "operation": "Given the equation",
+      "justification": "solve for $a$",
+      "input_latex": "a + b - c = 0",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__add_2}{\\htmlData{n=__add_3}{\\htmlData{n=a}{a} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=b}{b}} \\htmlData{n=__negation_4}{\\htmlData{n=__negation_4__op}{-} \\htmlData{n=c}{c}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__num_5}{0}}",
+      "plain": "a + b - c = 0",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": null,
+        "reason": "the given starting expression",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 1,
+      "operation": "add $c$ to both sides",
+      "justification": "$c$ crosses the $=$ and flips sign",
+      "input_latex": "a + b = c",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__add_3}{\\htmlData{n=a}{a} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=b}{b}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=c}{c}}",
+      "plain": "a + b = c",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 2,
+      "operation": "subtract $b$ from both sides",
+      "justification": "$b$ crosses over, leaving $a$ isolated",
+      "input_latex": "a = c - b",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=a}{a} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__add_3}{\\htmlData{n=c}{c} \\htmlData{n=__negation_3}{\\htmlData{n=__negation_3__op}{-} \\htmlData{n=b}{b}}}}",
+      "plain": "a = c - b",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    }
+  ],
+  "overall_confidence": {
+    "tier": "grounded",
+    "label": "Grounded",
+    "icon": "🥇",
+    "meaning": "symbolically proven to follow from the previous step",
+    "relation": null,
+    "reason": "2/2 steps verified · endpoint reached",
+    "type_consistent": true,
+    "counts": {
+      "refuted": 0,
+      "unchecked": 0,
+      "plausible": 0,
+      "domain": 0,
+      "verified": 0,
+      "grounded": 2
+    },
+    "endpoint_reached": true
+  },
+  "terms": {
+    "a": {
+      "latex": "a",
+      "name": "a",
+      "description": "$a$ represents a variable or a constant in an algebraic expression."
+    },
+    "b": {
+      "latex": "b",
+      "name": "b",
+      "description": "$b$ represents a variable or a constant in an algebraic expression."
+    },
+    "c": {
+      "latex": "c",
+      "name": "c",
+      "description": "$c$ represents a variable or a constant in an algebraic expression."
+    }
+  }
+}

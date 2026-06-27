@@ -35,6 +35,10 @@ from google.genai import types
 
 script_dir = Path(__file__).parent.parent.resolve()
 scenes_dir = script_dir / "scenes"
+# Shareable built-in proof animations, served read-only to the /renderproof page.
+# Treat every file here as untrusted input — the render path makes no trust
+# assumptions about its contents. See docs/shareable-proof-animations.md.
+proofs_dir = script_dir / "proofs"
 
 # ---------------------------------------------------------------------------
 # Semantic-graph auto-derivation for proof steps missing explicit graphs.
@@ -1426,6 +1430,54 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
             }
         )
 
+    @fastapp.get("/renderproof")
+    async def get_renderproof():
+        """Serve the shareable proof-animation page.
+
+        After this HTML loads it fetches only same-origin proof JSON (via /proofs)
+        plus KaTeX from the same CDN the rest of the app already uses — and makes
+        no backend round-trip thereafter. The CSP is still tighter than the main
+        app's (no 'unsafe-eval'); the renderer's own guards (KaTeX trust limited to
+        \\htmlData, textContent-only, schema validation) are what keep a hostile
+        proof JSON inert. ``frame-ancestors *`` lets it be embedded anywhere.
+        See docs/shareable-proof-animations.md §7."""
+        path = static_dir / "renderproof.html"
+        if not path.is_file():
+            return Response(status_code=404)
+        with open(path, 'r') as f:
+            html = f.read().replace('__APP_VERSION__', get_app_version())
+        return HTMLResponse(
+            content=html,
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Content-Security-Policy": (
+                    "default-src 'self'; "
+                    "script-src 'self' https://cdn.jsdelivr.net; "
+                    "style-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; "
+                    "font-src 'self' https://cdn.jsdelivr.net data:; "
+                    "img-src 'self' data:; "
+                    "connect-src 'self'; "
+                    "frame-ancestors *; "
+                    "object-src 'none'; "
+                    "base-uri 'none'"
+                ),
+            }
+        )
+
+    @fastapp.get("/proofs/{path:path}")
+    async def get_proof_file(path: str):
+        """Serve a built-in proof JSON from proofs/, confined and .json-only.
+
+        Double-gated against traversal: sanitize_path keeps the result inside
+        proofs/ (rejecting .., absolute paths and symlink escapes) and the suffix
+        allowlist rejects anything that isn't .json."""
+        proof_path = sanitize_path(proofs_dir, path)
+        if not proof_path or not proof_path.is_file() or proof_path.suffix != '.json':
+            return Response(status_code=404)
+        with open(proof_path, 'rb') as f:
+            return Response(content=f.read(), media_type="application/json",
+                            headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+
     @fastapp.get("/chat.js")
     async def get_chat_js():
         with open(chat_js_path, 'r') as f:
@@ -1476,6 +1528,7 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
         'sliders', 'overlay', 'context-browser', 'scene-loader', 'ui',
         'json-browser', 'main', 'proof', 'graph-view', 'expert-client',
         'view-state', 'view-state-bridge', 'nav-history', 'nav-history-core',
+        'renderproof', 'embed-resizer',
     }
 
     @fastapp.get("/api/version")
@@ -2227,7 +2280,7 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
 
 
 def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False, debug=False,
-                   skip_tour=None,
+                   skip_tour=None, initial_proof=None,
                    tts_parallelism=None, tts_min_buffer=None, tts_min_sentence_chars=None,
                    tts_min_sentence_chars_growth=None, tts_chunk_timeout=None,
                    tts_max_retries=None, tts_retry_delay=None, tts_style=None,
@@ -2268,7 +2321,11 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
     time.sleep(0.5)
 
     url = f"http://localhost:{port}/"
-    if initial_scene_path:
+    if initial_proof:
+        # Jump straight to the shareable proof page. ``initial_proof`` is already
+        # validated as <domain>/<name> in main(); quote() is belt-and-suspenders.
+        url = f"http://localhost:{port}/renderproof?builtin={quote(initial_proof)}"
+    elif initial_scene_path:
         # The frontend's ?scene= load path goes through /api/scene_file, which
         # confines reads to scenes/ and REJECTS absolute paths. So only emit
         # ?scene= for files inside scenes/ (as a scenes/<name> relative path
@@ -2364,6 +2421,9 @@ Examples:
         '''
     )
     parser.add_argument('scene', nargs='?', help='Path to scene JSON file')
+    parser.add_argument('--proof', default=None, metavar='DOMAIN/NAME',
+                        help='Open the shareable proof page on a built-in proof '
+                             '(proofs/domains/<domain>/<name>.json) instead of the main app')
     parser.add_argument('--json', action='store_true', help='Output JSON (for MCP integration)')
     parser.add_argument('--port', type=int, default=DEFAULT_PORT, help=f'Port (default: {DEFAULT_PORT})')
     parser.add_argument('--debug', action='store_true', help='Dump full Gemini API requests to console')
@@ -2436,6 +2496,20 @@ Examples:
     kill_server_on_port(args.port)
     time.sleep(0.5)
 
+    initial_proof = None
+    if args.proof:
+        # Validate the same way the page and the /proofs route do, so a bad value
+        # fails loudly here instead of opening a 404 page.
+        if not re.fullmatch(r'[A-Za-z0-9_-]+/[A-Za-z0-9_-]+', args.proof):
+            print(f"Error: --proof must be <domain>/<name>, got: {args.proof!r}", file=sys.stderr)
+            sys.exit(1)
+        if args.scene:
+            print("Error: pass --proof or a scene, not both.", file=sys.stderr)
+            sys.exit(1)
+        initial_proof = args.proof
+        if not args.json:
+            print(f"Opening built-in proof: {initial_proof}")
+
     initial_scene_path = None
     if args.scene:
         scene_path = resolve_scene_path(args.scene)
@@ -2452,6 +2526,7 @@ Examples:
         json_output=args.json,
         debug=args.debug,
         skip_tour=args.skip_tour,
+        initial_proof=initial_proof,
         tts_parallelism=args.tts_parallelism,
         tts_min_buffer=args.tts_min_buffer,
         tts_min_sentence_chars=args.tts_min_sentence_chars,
