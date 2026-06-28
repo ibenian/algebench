@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Proofs you can play with — AlgeBench</title>
+<meta name="description" content="Interactive, CAS-verified math proofs you can step through, embed, and explore in a 3D scene with an AI tutor.">
+<!-- KaTeX for the inline math in the prose. -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+<style>
+  /* Professional math-blog look — Georgia serif body, system-ui for meta, a thin
+     reading column, light/dark by OS preference (mirrors the AlgeBench embed). */
+  :root{
+    color-scheme: light dark;
+    --bg:#fbfbfd; --ink:#1f2430; --muted:#5b6472; --rule:#e6e8ee;
+    --accent:#4f46e5; --bar:#ffffff; --card:#ffffff; --soft:#f4f5f9;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#12121c; --ink:#e7e9ee; --muted:#9aa3b2; --rule:#262b3d;
+           --accent:#8b93f8; --bar:#15151f; --card:#171821; --soft:#1a1c27; }
+  }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--bg); color:var(--ink);
+        font-family:Georgia,"Iowan Old Style","Times New Roman",serif; line-height:1.75;
+        -webkit-font-smoothing:antialiased; }
+  .bar{ border-bottom:1px solid var(--rule); background:var(--bar); position:sticky; top:0; z-index:5;
+        backdrop-filter:saturate(1.4) blur(6px); }
+  .bar .in{ max-width:760px; margin:0 auto; padding:13px 22px; display:flex; align-items:baseline; gap:10px;
+        font-family:system-ui,-apple-system,"Segoe UI",sans-serif; }
+  .bar .brand{ font-weight:800; letter-spacing:-.01em; color:var(--ink); text-decoration:none; }
+  .bar .tag{ color:var(--muted); font-size:.82rem; }
+  .bar .spacer{ flex:1; }
+  .bar a.app{ font-size:.82rem; font-weight:600; color:var(--accent); text-decoration:none; }
+  .bar a.app:hover{ text-decoration:underline; }
+
+  main{ max-width:760px; margin:0 auto; padding:40px 22px 96px; }
+  .kick{ font-family:system-ui,sans-serif; text-transform:uppercase; letter-spacing:.13em;
+         font-size:.72rem; color:var(--accent); font-weight:800; }
+  h1{ font-size:2.4rem; line-height:1.15; margin:10px 0 8px; letter-spacing:-.015em; }
+  .by{ font-family:system-ui,sans-serif; color:var(--muted); font-size:.9rem; margin:0 0 30px; }
+  h2{ font-size:1.5rem; line-height:1.25; margin:48px 0 6px; letter-spacing:-.01em; }
+  p{ margin:0 0 18px; }
+  a{ color:var(--accent); }
+  .lead{ font-size:1.18rem; color:var(--ink); }
+  .muted{ color:var(--muted); }
+
+  /* The embedded proof figure — framed like the AlgeBench embed preview. */
+  figure{ margin:26px 0 14px; }
+  figure iframe{ display:block; width:100%; border:0; border-radius:14px;
+        box-shadow:0 0 0 1px var(--rule), 0 16px 40px rgba(20,22,40,.16); background:var(--card); }
+  figcaption{ font-family:system-ui,sans-serif; color:var(--muted); font-size:.85rem;
+        margin-top:12px; text-align:center; }
+
+  /* Little "how to use this figure" hint under each embed. */
+  .howto{ font-family:system-ui,sans-serif; font-size:.84rem; color:var(--muted);
+        background:var(--soft); border:1px solid var(--rule); border-radius:10px;
+        padding:11px 14px; margin:8px 0 6px; }
+  .howto b{ color:var(--ink); font-weight:600; }
+
+  /* Callout for the proof→app funnel. */
+  .callout{ border:1px solid var(--rule); border-left:3px solid var(--accent);
+        background:var(--soft); border-radius:12px; padding:18px 20px; margin:24px 0; }
+  .callout h3{ font-family:system-ui,sans-serif; font-size:1.02rem; margin:0 0 8px; }
+  .cta{ display:inline-flex; align-items:center; gap:8px; font-family:system-ui,sans-serif;
+        font-weight:700; font-size:.92rem; text-decoration:none; color:#fff; background:var(--accent);
+        padding:10px 16px; border-radius:10px; margin-top:6px; }
+  .cta:hover{ filter:brightness(1.07); }
+
+  .foot{ font-family:system-ui,sans-serif; font-size:.82rem; color:var(--muted);
+        border-top:1px solid var(--rule); margin-top:56px; padding-top:18px; }
+  code{ font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.86em;
+        background:var(--soft); border:1px solid var(--rule); border-radius:5px; padding:1px 5px; }
+</style>
+</head>
+<body>
+  <header class="bar"><div class="in">
+    <a class="brand" href="/">AlgeBench</a>
+    <span class="tag">interactive, step-by-step proofs</span>
+    <span class="spacer"></span>
+    <a class="app" id="nav-app" href="/">Open the app →</a>
+  </div></header>
+
+  <main>
+    <p class="kick">Interactive Mathematics</p>
+    <h1>Proofs you can play with</h1>
+    <p class="by">A short tour of AlgeBench's animated derivations — every step machine-checked.</p>
+
+    <p class="lead">Most math on the web is a static wall of symbols. The figures below are
+    different: each one is a <b>live derivation</b> you can step through. The expression
+    <em>morphs</em> from one line to the next, every term keeps its identity as it moves, and
+    <b>every step carries a confidence badge</b> — whether a computer-algebra system verified it,
+    proved it algebraically, or vouched for it as a domain rule.</p>
+
+    <h2>How to read these figures</h2>
+    <p>Each proof is embedded as a plain <code>&lt;iframe&gt;</code> — the same snippet you could
+    drop into your own blog. After it loads it makes no further calls home, so it is safe to
+    publish anywhere. Three things to try in any figure:</p>
+    <div class="howto">
+      <b>Step or play</b> — use the numbered buttons or <b>▶ Play</b> to morph between lines ·
+      <b>Hover a term</b> — point at any symbol (even one buried inside a √ or fraction) to light
+      it up and read what it means · <b>ⓘ Explore</b> — open prerequisites and follow-up questions.
+    </div>
+
+    <h2>1 · Where the quadratic formula comes from</h2>
+    <p>Everyone memorizes \( x = \dfrac{-b \pm \sqrt{b^2 - 4ac}}{2a} \), but few see <em>why</em> it
+    is true. It is just <b>completing the square</b> on \( ax^2 + bx + c = 0 \), carried out
+    symbol by symbol. Watch the discriminant \( b^2 - 4ac \) assemble itself under the root, and
+    the \( \pm \) split into the two roots.</p>
+    <figure>
+      <iframe data-builtin="algebra/quadratic-formula" height="560" loading="lazy"
+              title="Quadratic formula — interactive proof" data-algebench-embed></iframe>
+      <figcaption>Figure 1 — deriving the quadratic formula by completing the square. Interactive.</figcaption>
+    </figure>
+    <div class="howto">Try hovering \( a \), \( b \), \( c \) and watch every copy of that term
+      light up across the whole derivation.</div>
+
+    <h2>2 · Why moving clocks run slow</h2>
+    <p>Special relativity's time-dilation factor falls straight out of one algebraic rearrangement
+    of the light-clock relation. The result, \( t = \dfrac{t_0}{\sqrt{1 - v^2/c^2}} \), is built
+    here from \( (c\,t)^2 = (c\,t_0)^2 + (v\,t)^2 \) — no hand-waving, each line checked.</p>
+    <figure>
+      <iframe data-builtin="physics/time-dilation" height="560" loading="lazy"
+              title="Lorentz time dilation — interactive proof" data-algebench-embed></iframe>
+      <figcaption>Figure 2 — Lorentz time dilation. Hover \( c \) inside the radical to see its tooltip.</figcaption>
+    </figure>
+
+    <h2>3 · A spacecraft hitting the atmosphere</h2>
+    <p>Now something you would normally only meet in an aerospace course: the <b>Allen–Eggers</b>
+    model for a body entering an atmosphere. Starting from the equation of motion through an
+    exponential atmosphere, the derivation separates variables, integrates, and solves for the
+    velocity as a function of altitude. Notice the mixed badges — some steps the CAS verifies
+    outright, the genuinely uncheckable integration moves are vouched for as domain knowledge.</p>
+    <figure>
+      <iframe data-builtin="physics/allen-eggers-entry" height="600" loading="lazy"
+              title="Allen–Eggers entry velocity — interactive proof" data-algebench-embed></iframe>
+      <figcaption>Figure 3 — Allen–Eggers entry velocity. Open <b>ⓘ Explore</b> for the follow-ups.</figcaption>
+    </figure>
+
+    <div class="callout">
+      <h3>From a proof to a 3D playground — with an AI tutor</h3>
+      <p class="muted" style="margin:0 0 12px">This is where a static figure becomes a
+      conversation. Inside the proof above, the <b>ⓘ Explore</b> pill lists follow-up questions
+      (“What happens at a steeper entry angle?”). Click one and AlgeBench doesn't just show another
+      formula — it <b>opens the full app</b>: the interactive 3D atmospheric-entry scene loads with
+      an <b>AI tutor already listening</b>, primed on exactly the step you came from. You can rotate
+      the trajectory, drag the entry parameters, and simply <em>ask</em> — “why does deceleration
+      peak so high up?” — and talk it through.</p>
+      <a class="cta" id="cta-app" href="/">Open the 3D scene + AI tutor →</a>
+    </div>
+
+    <p class="muted">So the reading path runs in one direction by design: a tweetable GIF or a
+    figure on a blog → an interactive, verified proof → a 3D scene where you can question the model
+    directly. No account, no install — just follow the link.</p>
+
+    <p class="foot">Every figure on this page is a live AlgeBench embed (an <code>&lt;iframe&gt;</code>
+    plus a tiny auto-resize script). The math renders through KaTeX with a strict trust filter, and
+    the page makes no backend calls after the proof loads. Want one of these in your own post? Open
+    any proof in AlgeBench and hit the <code>&lt;/&gt;</code> button to copy the embed snippet.</p>
+  </main>
+
+  <script>
+    // Same-origin in production (algebench.org), the local renderproof server in dev.
+    var HOST = /^(localhost|127\.0\.0\.1)$/.test(location.hostname)
+      ? "http://localhost:5751" : "https://algebench.org";
+    // Point every figure's iframe at its built-in proof (explore pill on, theme follows the reader).
+    document.querySelectorAll("iframe[data-builtin]").forEach(function (f) {
+      f.src = HOST + "/renderproof?builtin=" + f.dataset.builtin + "&theme=auto&explore=1";
+    });
+    // "Open the app" links → the AlgeBench app (the atmospheric-entry scene + AI chat for the CTA).
+    document.getElementById("nav-app").href = HOST + "/";
+    document.getElementById("cta-app").href = HOST + "/?scene=atmospheric-entry-physics";
+    // Auto-fit each embed's height to its content (cross-origin iframes can't size themselves).
+    var s = document.createElement("script"); s.src = HOST + "/embed-resizer.js"; s.async = true;
+    document.body.appendChild(s);
+    // Render the inline math in the prose.
+    document.addEventListener("DOMContentLoaded", function () {
+      if (window.renderMathInElement) renderMathInElement(document.body, {
+        delimiters: [{left:"\\(",right:"\\)",display:false},{left:"$$",right:"$$",display:true}]
+      });
+    });
+  </script>
+</body>
+</html>
