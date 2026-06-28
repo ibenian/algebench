@@ -263,9 +263,9 @@
 
 /* Explore popup — opened by the ⓘ info pill in the controls row. Bottom-anchored to
    the pill (it grows UPWARD via the top resize grip): grip → scrollable chip content
-   → tab titles pinned at the BOTTOM. Lives on <body>, so it uses the top-level theme
-   vars (with dark fallbacks), not the .pa-root-scoped --pa-* ones. Each chip asks the
-   host agent (or, embedded, the parent page; else copies). */
+   → tab titles pinned at the BOTTOM. Contained in the box (.pa-root) — see the
+   position:absolute below. Themed off the top-level theme vars (with dark fallbacks).
+   Each chip asks the host agent (or, embedded, the parent page; else copies). */
 .pa-explore-pop {
   /* Absolute, so it's CONTAINED by the box (.pa-root is position:relative): the
      popup is a child of the box and is removed/hidden with it — no document.body

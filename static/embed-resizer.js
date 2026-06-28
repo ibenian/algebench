@@ -12,10 +12,15 @@
   function onMessage(e) {
     var d = e.data;
     if (!d || d.type !== "algebench-embed-height" || typeof d.height !== "number") return;
+    // Guard against a misbehaving embed: reject non-finite (NaN/Infinity both pass
+    // `typeof === "number"`) and clamp to a sane range so a pathological height
+    // can't thrash the host layout or blow up the iframe.
+    if (!isFinite(d.height)) return;
+    var h = Math.max(0, Math.min(Math.ceil(d.height), 20000));
     var list = embeds();
     for (var i = 0; i < list.length; i++) {
       if (list[i].contentWindow === e.source) {
-        list[i].style.height = Math.ceil(d.height) + "px";
+        list[i].style.height = h + "px";
       }
     }
   }
