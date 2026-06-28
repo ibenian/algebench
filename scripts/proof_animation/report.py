@@ -17,13 +17,16 @@ from pathlib import Path
 
 log = logging.getLogger(__name__)
 
-from proof_animation.build import build, build_animation, ProofAnimation
+from proof_animation.build import build_animation, build_described, ProofAnimation
 from backend.experts.modules.proof_completion.outputs import ProofTrajectory, DerivationStep
 from backend.experts.modules.proof_completion.wellformed import assert_well_formed
 from backend.experts.llm_config import configure_dspy, is_configured
-from backend.experts.handlers.proof_animation.term_descriptions import describe_terms
+from backend.experts.modules.proof_completion.domain_rescue import RESCUE_ENABLED
+from backend.experts.modules.proof_completion.judge import DomainStepJudge
 
 _LM_READY: bool | None = None
+_DOMAIN_RESCUE = True   # toggled off by --no-domain-rescue
+_JUDGE = None           # lazily constructed DomainStepJudge
 
 
 def _ensure_lm() -> bool:
@@ -39,25 +42,20 @@ def _ensure_lm() -> bool:
     return _LM_READY
 
 
-def _describe_terms(anim: dict) -> dict:
-    """Fill in per-term tooltip descriptions on a built animation, in place.
+def _judge():
+    """The shared DomainStepJudge, or None when the rescue is off / no LM.
 
-    ``build()`` collects ``terms`` (id → {latex, name}) but doesn't describe them —
-    that's an LM pass. Do it here so the standalone report's tooltips have content
-    when an LM is configured; without one (e.g. CI), terms stay description-less and
-    the page still shows the hover highlight, just no tooltip text."""
-    terms = anim.get("terms")
-    if terms and _ensure_lm():
-        try:
-            for tid, desc in describe_terms(terms, anim.get("domain") or "", "").items():
-                if tid in terms and desc:
-                    terms[tid]["description"] = desc
-        except Exception:
-            # Best-effort — the report still renders highlights without tooltip
-            # text — but make the failure discoverable, not silent.
-            log.warning("proof report: term-description pass failed for %r",
-                        anim.get("title"), exc_info=True)
-    return anim
+    Default-on so offline-built built-ins match the live server, which always
+    rescues CAS-uncheckable steps into the DOMAIN tier. Mirrors the handler's
+    gate (RESCUE_ENABLED + is_configured); ``--no-domain-rescue`` forces it off."""
+    global _JUDGE
+    if not (_DOMAIN_RESCUE and RESCUE_ENABLED and _ensure_lm()):
+        return None
+    if _JUDGE is None:
+        _JUDGE = DomainStepJudge()
+    return _JUDGE
+
+
 
 _ROOT = Path(__file__).resolve().parent.parent.parent   # scripts/proof_animation/report.py → repo root
 _ASSETS = _ROOT / "static" / "proof-animation"
@@ -89,7 +87,8 @@ _FIXTURES = _ROOT / "tests" / "proof_animation" / "proof_animations.json"
 def _animations_from_file(path: Path, domain: str) -> list[dict]:
     """Load a proofs JSON (list of ProofAnimation) and build each into animation data."""
     data = json.loads(Path(path).read_text(encoding="utf-8"))
-    return [_describe_terms(build_animation(ProofAnimation.model_validate(d))) for d in data]
+    return [build_animation(ProofAnimation.model_validate(d), judge=_judge())
+            for d in data]
 
 _INDEX = """<!DOCTYPE html>
 <html lang="en">
@@ -164,7 +163,14 @@ def main() -> int:
                     help="instead of rendering a /tmp site, save the single built animation as a "
                          "shareable built-in proof at proofs/domains/<domain>/<name>.json "
                          "(reachable via /renderproof?builtin=<domain>/<name>)")
+    ap.add_argument("--no-domain-rescue", action="store_true",
+                    help="disable the DOMAIN-tier rescue of CAS-uncheckable steps. By default "
+                         "(when an LM is configured) the rescue runs so built-ins match the live "
+                         "server; pass this to get pure-CAS confidence instead.")
     args = ap.parse_args()
+
+    global _DOMAIN_RESCUE
+    _DOMAIN_RESCUE = not args.no_domain_rescue
 
     if args.from_file:
         animations = _animations_from_file(Path(args.from_file), args.domain)
@@ -174,7 +180,9 @@ def main() -> int:
         # Hard edge (issue #372 §A): a hand-authored trajectory has no refinement
         # loop behind it, so malformed captions are an error here, not a low score.
         assert_well_formed(traj)
-        animations = [_describe_terms(build(traj, args.domain, args.title or "derivation"))]
+        animations = [build_described(traj, args.domain, args.title or "derivation",
+                                      judge=_judge(),
+                                      lesson_context=f"{args.title or 'derivation'} (domain: {args.domain})")]
     elif args.states:
         traj = ProofTrajectory(
             start_latex=args.states[0],
@@ -184,7 +192,9 @@ def main() -> int:
                                   justification="(manual)", change_type="rewrite")
                    for i, s in enumerate(args.states[1:], start=1)],
         )
-        animations = [_describe_terms(build(traj, args.domain, args.title))]
+        animations = [build_described(traj, args.domain, args.title,
+                                      judge=_judge(),
+                                      lesson_context=f"{args.title} (domain: {args.domain})")]
     elif _FIXTURES.exists():       # default: render the curated test suite
         animations = _animations_from_file(_FIXTURES, args.domain)
     else:
