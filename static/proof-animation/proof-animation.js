@@ -39,6 +39,20 @@ const _parenChar = (s) => {
 // Playback speed multipliers the speed button cycles through (click → next).
 const SPEEDS = [0.25, 0.5, 1, 2, 4];
 
+// Info (ⓘ) icon for the explore pill — static author-controlled markup.
+const INFO_ICON =
+  '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" ' +
+  'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5h.01"/></svg>';
+
+// Goal pill icon — a target/bullseye (the goal is the target). Idle state of the
+// goal pill; hovering expands the pill to reveal the goal text (like the rank pill).
+const GOAL_ICON =
+  '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" ' +
+  'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/>' +
+  '<circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>';
+
 // Synthetic operator-node ids (from the backend structural renderer) for n-ary /
 // relational nodes that SPAN many terms — a product/fraction, a sum, an equation.
 // Hovering the bare chrome of one (a fraction bar, the space between factors)
@@ -49,7 +63,11 @@ const SPEEDS = [0.25, 0.5, 1, 2, 4];
 const _SPANNING_OP = /^(?:multiply|add|subtract|plus|minus|equals|not_equal|less_than|greater_than|less_equal|greater_equal|implies|iff|conjunction|disjunction)_\d+$/;
 function _isSpanningWrapperId(id) {
   if (!id) return false;
-  const core = id.replace(/^_r\d+_/, "").replace(/^_+/, "");   // strip rebase prefix + leading "_"
+  // Strip any leading id prefixes before matching the op name: rebase (`_r3_`) AND
+  // disjunction-branch (`d0_`, `d1_`, … — the two sides of a `\lor`). Missing the
+  // branch prefix left `d1___multiply_9` unrecognized as a spanning fraction, so
+  // hovering a term inside the 2nd root's denominator lit the whole ratio (#…).
+  const core = id.replace(/^(?:_r\d+_|d\d+_)+/, "").replace(/^_+/, "");
   return _SPANNING_OP.test(core);
 }
 
@@ -76,6 +94,14 @@ export class ProofAnimator {
     // animation step into finer sub-steps on demand.
     this._deriveBtnFactory = typeof opts.deriveButton === "function" ? opts.deriveButton : null;
     this._onDerive = typeof opts.onDerive === "function" ? opts.onDerive : null;
+    // Host hook for clicking a prerequisite / follow-up chip. Receives
+    // {kind:'prerequisite'|'followup', text, message} — the app asks its agent with
+    // the context-rich `message`. Absent + embedded → posted to the parent page;
+    // absent + standalone → the chip copies its text.
+    this._onExplore = typeof opts.onExplore === "function" ? opts.onExplore : null;
+    // Gate the bottom "Explore" panel (Prerequisites / Explore-further tabs) — off
+    // unless the host opts in (the app sets it; the standalone page via ?explore=).
+    this._enableExplore = !!opts.enableExplore;
     this._deriveBtnEl = null;
     // Optional host hook fired after every internal relayout (resize / fonts), so
     // a host that scales this widget to fit a box (SgProofManager) can re-fit AFTER
@@ -296,6 +322,9 @@ export class ProofAnimator {
     this._lastFitH = this.container.clientHeight;
     this._ro = new ResizeObserver(() => {
       if (this._destroyed) return;
+      // The Explore popup is anchored to the info pill inside the box; when the
+      // box resizes the pill moves, so re-anchor the popup every tick (cheap).
+      this._repositionPopups();
       const w = this.container.clientWidth;
       const h = this.container.clientHeight;
       // Width changes always matter. In container mode HEIGHT changes matter too
@@ -366,8 +395,13 @@ export class ProofAnimator {
       this.stage.removeEventListener("click", this._onStageClick);
       this._onStageOver = this._onStageOut = this._onStageClick = null;
     }
-    if (this._termTip && this._termTip.parentNode) this._termTip.parentNode.removeChild(this._termTip);
-    this._termTip = null;
+    // Remove the body-appended popups this widget created (else they leak when a
+    // proof box is torn down and recreated in the app).
+    for (const k of ["_termTip", "_mathTip", "_goalPop", "_explorePop"]) {
+      const el = this[k];
+      if (el && el.parentNode) el.parentNode.removeChild(el);
+      this[k] = null;
+    }
     // Clear any host hover state this widget drove (empty chain → no linked term).
     if (this._onTermHover) { try { this._onTermHover([], null); } catch (e) {} }
   }
@@ -562,6 +596,8 @@ export class ProofAnimator {
   _build() {
     this.container.classList.add("pa-root");
     this.container.innerHTML = `
+      <div class="pa-goal-dock" hidden></div>
+      <button class="pa-goal-pill" type="button" hidden aria-label="Goal"></button>
       <div class="pa-stage" aria-live="polite"></div>
       <span class="pa-overall"></span>
       <div class="pa-meta"><div class="pa-op-row"><span class="pa-op"></span><span class="pa-conf-badge"></span></div><span class="pa-just"></span><span class="pa-next-pill" role="button" tabindex="0"></span></div>
@@ -572,6 +608,7 @@ export class ProofAnimator {
         <button type="button" class="pa-btn pa-play" data-tip="Play through" aria-label="Play through">▶ Play</button>
         <button type="button" class="pa-btn pa-speed" data-tip="Animation speed (click to cycle)" aria-label="Animation speed">${_speedLabel(this.speed)}</button>
         <button class="pa-btn pa-mode" type="button" data-tip="Sequential — stagger the moves" aria-label="Sequential — stagger the moves" aria-pressed="false">⇉</button>
+        <button class="pa-btn pa-info-pill" type="button" hidden aria-label="Prerequisites & follow-ups"></button>
       </div>`;
     this.stage = this.container.querySelector(".pa-stage");
     const steps = this.container.querySelector(".pa-steps");
@@ -641,6 +678,276 @@ export class ProofAnimator {
       modeBtn.classList.toggle("pa-active", on);
       modeBtn.setAttribute("aria-pressed", String(on));
     };
+    this._renderGoal();
+    this._renderExplore();
+  }
+
+  // Model-produced framing, shown top-left (mirrors the grounding-rank pill
+  // top-right). IDLE: a compact icon-only pill. HOVER: the pill expands inline to
+  // reveal the goal text (CSS-driven, exactly like the rank pill peeks). CLICK:
+  // docks the goal as a banner at the front of the math view (click the banner to
+  // collapse back to the pill). Hidden when no goal.
+  _renderGoal() {
+    const pill = this.container.querySelector(".pa-goal-pill");
+    const dock = this.container.querySelector(".pa-goal-dock");
+    if (!pill) return;
+    const goal = (this.data && this.data.goal || "").trim();
+    if (!goal) { pill.hidden = true; if (dock) dock.hidden = true; return; }
+    this._goalText = goal;
+    this._goalDocked = false;
+    // icon (always) + label (goal text, revealed on hover via CSS)
+    pill.innerHTML = "";
+    const icon = document.createElement("span");
+    icon.className = "pa-goal-icon";
+    icon.innerHTML = GOAL_ICON;
+    const label = document.createElement("span");
+    label.className = "pa-goal-label";
+    this._caption(label, goal);            // inline math, safe (textContent + KaTeX)
+    pill.append(icon, label);
+    pill.hidden = false;
+    pill.addEventListener("click", () => this._toggleGoalDock());
+    if (dock) dock.addEventListener("click", () => this._toggleGoalDock());  // click banner to collapse
+  }
+
+  // Dock/undock the goal as a top-of-box banner. Docked: the corner pill hides and
+  // the banner (with its own "Goal" label) shows the full goal, pushing the steps
+  // down; click the banner to undock and restore the pill.
+  _toggleGoalDock() {
+    const pill = this.container.querySelector(".pa-goal-pill");
+    const dock = this.container.querySelector(".pa-goal-dock");
+    if (!dock) return;
+    this._goalDocked = !this._goalDocked;
+    this._hideGoalPop();
+    if (this._goalDocked) {
+      dock.innerHTML = "";
+      const label = document.createElement("span");
+      label.className = "pa-goal-dock-label";
+      label.textContent = "Goal";
+      const txt = document.createElement("span");
+      txt.className = "pa-goal-dock-text";
+      this._caption(txt, this._goalText || "");   // inline math, safe
+      dock.appendChild(label);
+      dock.appendChild(txt);
+      dock.hidden = false;
+      pill.hidden = true;
+    } else {
+      dock.hidden = true;
+      dock.innerHTML = "";
+      pill.hidden = false;
+    }
+  }
+
+  // The goal popup — its own element (independent of the term tooltip) so a pinned
+  // goal survives term hovers. Inline math via _caption; positioned under the pill.
+  _showGoalPop() {
+    let tip = this._goalPop;
+    if (!tip) {
+      tip = document.createElement("div");
+      tip.className = "pa-goal-pop";
+      tip.setAttribute("role", "tooltip");
+      document.body.appendChild(tip);
+      this._goalPop = tip;
+    }
+    this._caption(tip, this._goalText || "");   // textContent + KaTeX — never raw HTML
+    tip.style.display = "block";
+    tip.style.visibility = "hidden";
+    const pill = this.container.querySelector(".pa-goal-pill");
+    const r = pill.getBoundingClientRect();
+    const tw = tip.offsetWidth, th = tip.offsetHeight, GAP = 8;
+    let left = Math.max(8, Math.min(r.left, window.innerWidth - tw - 8));
+    let top = r.bottom + GAP;
+    if (top + th > window.innerHeight - 4) top = r.top - th - GAP;   // flip above if no room
+    tip.style.left = `${Math.round(left)}px`;
+    tip.style.top = `${Math.round(Math.max(4, top))}px`;
+    tip.style.visibility = "visible";
+  }
+
+  _hideGoalPop() { if (this._goalPop) this._goalPop.style.display = "none"; }
+
+  // An info (ⓘ) pill in the controls row (next to the sequential button) that opens
+  // a popup with two tabs — Prerequisites and Explore further. Gated by
+  // opts.enableExplore. Hover shows it temporarily; moving onto the popup keeps it
+  // open (hover bridge); leaving both hides it. Clicking the pill pins it open.
+  // Every chip (both kinds) is clickable → _exploreClick.
+  _renderExplore() {
+    const pill = this.container.querySelector(".pa-info-pill");
+    if (!pill) return;
+    const clean = (v) => (Array.isArray(v) ? v : [])
+      .filter((s) => typeof s === "string" && s.trim()).slice(0, 8);
+    const tabs = [];
+    const prereqs = clean(this.data && this.data.prerequisites);
+    const followups = clean(this.data && this.data.followups);
+    if (prereqs.length) tabs.push({ key: "prerequisite", label: "Prerequisites", items: prereqs });
+    if (followups.length) tabs.push({ key: "followup", label: "Explore further", items: followups });
+    if (!this._enableExplore || !tabs.length) { pill.hidden = true; return; }
+
+    pill.classList.add("pa-icon-btn");
+    pill.innerHTML = INFO_ICON;
+    pill.title = "Prerequisites & follow-ups";
+    pill.hidden = false;
+
+    const pop = document.createElement("div");
+    pop.className = "pa-explore-pop";
+    pop.style.display = "none";
+    // Top→bottom: a resize grip, the scrollable chip content, then the tab titles
+    // pinned at the BOTTOM (next to the pill). The panel is bottom-anchored, so it
+    // grows UPWARD — drag the grip to resize.
+    const grip = document.createElement("div");
+    grip.className = "pa-explore-resize";
+    grip.title = "Drag to resize";
+    const contentEl = document.createElement("div");
+    contentEl.className = "pa-explore-panel";
+    const tabsEl = document.createElement("div");
+    tabsEl.className = "pa-explore-tabs";
+    pop.appendChild(grip);
+    pop.appendChild(contentEl);
+    pop.appendChild(tabsEl);
+    // Contained by the box (not document.body): .pa-root is position:relative, so
+    // the popup is positioned against the box and is torn down / hidden with it.
+    this.container.appendChild(pop);
+    this._explorePop = pop;
+    this._wireExploreResize(grip, pop);
+
+    const select = (tab, btn) => {
+      tabsEl.querySelectorAll(".pa-explore-tab").forEach((b) => b.classList.remove("pa-active"));
+      btn.classList.add("pa-active");
+      contentEl.innerHTML = "";
+      for (const item of tab.items) {
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "pa-explore-chip";
+        this._caption(chip, item);     // inline math, safe (no raw HTML)
+        chip.addEventListener("click", () => this._exploreClick(tab.key, item));
+        contentEl.appendChild(chip);
+      }
+    };
+    let firstBtn = null;
+    tabs.forEach((tab, i) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "pa-explore-tab";
+      btn.textContent = tab.label;
+      btn.addEventListener("click", () => select(tab, btn));
+      tabsEl.appendChild(btn);
+      if (i === 0) firstBtn = btn;
+    });
+    if (firstBtn) select(tabs[0], firstBtn);   // default to the first tab
+
+    // Hover (temporary) + click (pinned), with a hover bridge so moving pill→popup
+    // doesn't close it; leaving both closes it (unless pinned).
+    // pinned state lives on the instance so hidePopups() (called when the box is
+    // hidden) can unpin it — else a pinned popup orphans on document.body.
+    this._explorePinned = false;
+    let hideT = null;
+    const show = () => { clearTimeout(hideT); pop.style.display = "flex"; this._positionExplorePop(); };
+    const hide = () => { pop.style.display = "none"; };
+    const scheduleHide = () => { if (this._explorePinned) return; clearTimeout(hideT); hideT = setTimeout(hide, 140); };
+    pill.addEventListener("mouseenter", show);
+    pill.addEventListener("mouseleave", scheduleHide);
+    pop.addEventListener("mouseenter", () => clearTimeout(hideT));
+    pop.addEventListener("mouseleave", scheduleHide);
+    pill.addEventListener("click", () => {
+      this._explorePinned = !this._explorePinned;
+      pill.classList.toggle("pa-pinned", this._explorePinned);
+      if (this._explorePinned) show(); else hide();
+    });
+  }
+
+  // Hide every popup WITHOUT tearing the widget down, and unpin the Explore popup.
+  // The term tip and goal pop are appended to document.body (so removing the box
+  // doesn't hide them); the math tip and Explore popup are contained in the box,
+  // but the Explore popup may be PINNED (display:flex) — unpin it so a box that's
+  // hidden then re-shown doesn't resurrect it. The app calls this when a proof box
+  // is hidden but kept in memory (step/scene switch). (destroy() removes them all
+  // entirely; this just hides + unpins.)
+  hidePopups() {
+    this._hideGoalPop();
+    if (this._termTip) this._termTip.style.display = "none";
+    if (this._mathTip) this._mathTip.style.display = "none";
+    if (this._explorePop) {
+      this._explorePop.style.display = "none";
+      this._explorePinned = false;
+      const pill = this.container.querySelector(".pa-info-pill");
+      if (pill) pill.classList.remove("pa-pinned");
+    }
+  }
+
+  // Position the explore popup so its BOTTOM sits just above the info pill and it's
+  // right-aligned to the pill. Bottom-anchored (top:auto) so growing the height —
+  // via the resize grip — expands the panel UPWARD.
+  // Re-anchor the open Explore popup to the info pill — called on box resize so
+  // the popup tracks the box (no-op when it's closed).
+  _repositionPopups() {
+    if (this._explorePop && this._explorePop.style.display !== "none") this._positionExplorePop();
+  }
+
+  _positionExplorePop() {
+    const pop = this._explorePop;
+    const pill = this.container.querySelector(".pa-info-pill");
+    if (!pop || !pill) return;
+    // Absolute coords within the box (its containing block). Right-aligned to the
+    // info pill and anchored just above it; clamped inside the box on both axes.
+    pop.style.visibility = "hidden";
+    pop.style.right = "auto";
+    pop.style.top = "auto";
+    const GAP = 8;
+    const cr = this.container.getBoundingClientRect();
+    const pr = pill.getBoundingClientRect();
+    const pw = pop.offsetWidth;
+    let left = (pr.right - cr.left) - pw;                 // right edge aligns to pill
+    left = Math.max(4, Math.min(left, cr.width - pw - 4));
+    pop.style.left = `${Math.round(left)}px`;
+    pop.style.bottom = `${Math.round(cr.bottom - pr.top + GAP)}px`;
+    pop.style.visibility = "visible";
+  }
+
+  // Drag the top grip to resize the popup upward (bottom stays anchored to the pill).
+  _wireExploreResize(grip, pop) {
+    let h0 = 0, y0 = 0;
+    const onMove = (e) => {
+      const max = Math.round(window.innerHeight * 0.7);
+      const h = Math.min(Math.max(h0 + (y0 - e.clientY), 120), max);
+      pop.style.height = `${h}px`;
+    };
+    const onUp = () => {
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+    };
+    grip.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      h0 = pop.getBoundingClientRect().height;
+      y0 = e.clientY;
+      document.addEventListener("pointermove", onMove);
+      document.addEventListener("pointerup", onUp);
+    });
+  }
+
+  // A context-rich message for the agent built from the clicked prereq/follow-up +
+  // this derivation's title/goal, so the agent grounds on THIS proof, not a bare prompt.
+  _exploreMessage(kind, text) {
+    const title = this.data && this.data.title ? ` "${this.data.title}"` : "";
+    const goal = this.data && this.data.goal ? ` (${this.data.goal})` : "";
+    if (kind === "prerequisite") {
+      return `In the derivation${title}${goal}, explain the prerequisite "${text}" `
+        + `and how it's used here.`;
+    }
+    return `I'm exploring the derivation${title}${goal}.\n\n${text}`;
+  }
+
+  // Route a chip click: embedded → let the parent page handle it (postMessage);
+  // else the host hook (the app asks its agent with context); else copy the text.
+  _exploreClick(kind, text) {
+    const message = this._exploreMessage(kind, text);
+    if (typeof window !== "undefined" && window.self !== window.top) {
+      try {
+        window.parent.postMessage(
+          { type: "algebench-explore", kind, text, message,
+            title: (this.data && this.data.title) || null }, "*");
+      } catch (e) { /* parent refused */ }
+      return;
+    }
+    if (this._onExplore) { this._onExplore({ kind, text, message }); return; }
+    try { navigator.clipboard.writeText(text); } catch (e) { /* no clipboard */ }
   }
 
   _renderInto(el, latex) {

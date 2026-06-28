@@ -1,7 +1,13 @@
 name: algebench/path-sanitizers
 version: 0.0.0
 library: true
+# extensionTargets must name the pack the data extensions addsTo. Our models add
+# a barrierModel to codeql/python-all (the library pack), so target THAT — not
+# codeql/python-queries. With the wrong target the pack isn't resolved into the
+# analysis, so the barrier never applies (verified: default-setup SARIF showed the
+# pack absent from tool.extensions and the run log reported model-packs: []).
+# Matches the known-good githubsecuritylab/codeql-python-extensions manifest.
 extensionTargets:
-  codeql/python-queries: "*"
+  codeql/python-all: "*"
 dataExtensions:
   - models/**/*.yml

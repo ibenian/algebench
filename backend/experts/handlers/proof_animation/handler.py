@@ -104,6 +104,12 @@ class DeriveProofRequest(BaseModel):
     # full lead-up: `proof.steps[:index]`). Threaded into `lesson_context` so the
     # expert derives with the prior steps in view.
     previous_steps: list[PriorStep] = Field(default_factory=list)
+    # The expert always produces a `goal`; `prerequisites` and `followups` (the
+    # bottom "Explore" tabs / ⓘ pill) are emitted by default so the app surfaces
+    # them. They're only present when the trajectory actually has them (the pill
+    # stays hidden otherwise), so this stays cheap. A caller can pass False to omit.
+    include_prerequisites: bool = True
+    include_followups: bool = True
 
 
 def _format_lesson_context(ctx: Optional[dict]) -> str:
@@ -363,7 +369,9 @@ def derive_proof_animation(req: DeriveProofRequest) -> dict:
     data = build(traj, domain, title,
                  start_operation=start_operation,
                  start_justification=start_justification,
-                 judge=_domain_judge(), lesson_context=lesson_context)
+                 judge=_domain_judge(), lesson_context=lesson_context,
+                 include_prerequisites=req.include_prerequisites,
+                 include_followups=req.include_followups)
     # Per-term descriptions (issue: tooltips for intermediate symbols). build()
     # collected the derivation's symbols into data["terms"] keyed by node id;
     # describe each so the frontend can show a tooltip WITHOUT matching the term

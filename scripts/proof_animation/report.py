@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import re
 import shutil
 from pathlib import Path
 
@@ -60,6 +61,26 @@ def _describe_terms(anim: dict) -> dict:
 
 _ROOT = Path(__file__).resolve().parent.parent.parent   # scripts/proof_animation/report.py → repo root
 _ASSETS = _ROOT / "static" / "proof-animation"
+# Built-in shareable proofs live here; the /renderproof page loads them by
+# ?builtin=<domain>/<name>. See docs/shareable-proof-animations.md.
+_PROOFS_DIR = _ROOT / "proofs" / "domains"
+_SLUG_RE = re.compile(r"^[A-Za-z0-9_-]+/[A-Za-z0-9_-]+$")
+
+
+def _save_builtin(anim: dict, slug: str) -> Path:
+    """Write one built animation dict to proofs/domains/<domain>/<name>.json.
+
+    ``slug`` is ``<domain>/<name>`` and is validated against the same regex the
+    /renderproof page and the server route enforce, so a generated file is always
+    reachable by ``?builtin=<slug>`` and never escapes the proofs dir."""
+    if not _SLUG_RE.match(slug):
+        raise ValueError(
+            f"--save-builtin must be <domain>/<name> matching {_SLUG_RE.pattern!r}, got {slug!r}")
+    domain, name = slug.split("/", 1)
+    out = _PROOFS_DIR / domain / f"{name}.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(anim, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    return out
 # The curated test suite: a list of ProofAnimation objects we keep growing. The
 # report renders these by default (and CI deploys them — see proof-animation.yml).
 _FIXTURES = _ROOT / "tests" / "proof_animation" / "proof_animations.json"
@@ -119,7 +140,7 @@ _INDEX = """<!DOCTYPE html>
         root.appendChild(div);
         // liveTerms (no graph host here): each term gets the hover backlight + a
         // description tooltip. The app layers graph sync on top via SgProofManager.
-        return new ProofAnimator(div, data, { katex: window.katex, liveTerms: true });
+        return new ProofAnimator(div, data, { katex: window.katex, liveTerms: true, enableExplore: true });
       });
     })();
   </script>
@@ -139,6 +160,10 @@ def main() -> int:
     ap.add_argument("--from-json", default=None,
                     help="a single ProofTrajectory (JSON) to animate")
     ap.add_argument("--outdir", default="/tmp/proof_anim")
+    ap.add_argument("--save-builtin", default=None, metavar="DOMAIN/NAME",
+                    help="instead of rendering a /tmp site, save the single built animation as a "
+                         "shareable built-in proof at proofs/domains/<domain>/<name>.json "
+                         "(reachable via /renderproof?builtin=<domain>/<name>)")
     args = ap.parse_args()
 
     if args.from_file:
@@ -164,6 +189,17 @@ def main() -> int:
         animations = _animations_from_file(_FIXTURES, args.domain)
     else:
         ap.error(f"no proofs to render: pass --from-file/--from-json/states, or create {_FIXTURES}")
+
+    if args.save_builtin:
+        # A built-in proof is exactly one self-contained animation dict. When the
+        # input produced several (e.g. the default fixture suite), require the
+        # caller to narrow it down — saving an ambiguous bundle would be a footgun.
+        if len(animations) != 1:
+            ap.error(f"--save-builtin needs exactly one proof, got {len(animations)}; "
+                     "pass --from-json/states (or a single-entry --from-file)")
+        out = _save_builtin(animations[0], args.save_builtin)
+        print(f"saved built-in proof → {out}  (/renderproof?builtin={args.save_builtin})")
+        return 0
 
     out = render_site(animations, args.outdir)
     print(f"wrote {out}/  ({len(animations)} animation(s))")

@@ -302,4 +302,11 @@ class ProofTrajectory(Output):
     start_latex: Optional[str] = None
     target_latex: Optional[str] = None
     title: Optional[str] = None
+    # ``goal`` (one-line framing shown before the steps) and ``followups`` (suggested
+    # next prompts for agentic continuation) are model-produced and bound onto the
+    # trajectory by the expert, like ``title`` — they travel with it into the
+    # animation. Optional so older data / non-generating callers leave them empty.
+    goal: Optional[str] = None
+    followups: List[str] = Field(default_factory=list)
+    prerequisites: List[str] = Field(default_factory=list)
     steps: List[DerivationStep] = Field(default_factory=list)
