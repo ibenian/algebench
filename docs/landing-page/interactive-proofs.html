@@ -59,6 +59,16 @@
         padding:11px 14px; margin:8px 0 6px; }
   .howto b{ color:var(--ink); font-weight:600; }
 
+  /* Confidence-badge legend. */
+  .legend{ list-style:none; padding:0; margin:16px 0 8px; font-family:system-ui,sans-serif;
+        font-size:.94rem; }
+  .legend li{ margin:0 0 10px; display:flex; gap:11px; align-items:baseline; }
+  .legend .g{ flex:0 0 1.4em; text-align:center; font-weight:800; font-size:1.05em; }
+  .legend b{ color:var(--ink); }
+  .legend .grounded{ color:#d4a017; } .legend .verified{ color:#9aa3b5; }
+  .legend .domain{ color:#2fb6a3; }   .legend .plausible{ color:#5b9bf0; }
+  .legend .unchecked{ color:#8a93a5; } .legend .refuted{ color:#e0556b; }
+
   /* Callout for the proof→app funnel. */
   .callout{ border:1px solid var(--rule); border-left:3px solid var(--accent);
         background:var(--soft); border-radius:12px; padding:18px 20px; margin:24px 0; }
@@ -92,6 +102,33 @@
     <em>morphs</em> from one line to the next, every term keeps its identity as it moves, and
     <b>every step carries a confidence badge</b> — whether a computer-algebra system verified it,
     proved it algebraically, or vouched for it as a domain rule.</p>
+
+    <h2>Written by an AI, checked by a computer</h2>
+    <p>Here is the unusual part. Each derivation is <b>written by a language model</b> — and then
+    <b>checked, step by step, by a computer-algebra system (CAS)</b>. The AI proposes the next line;
+    the CAS tries to prove that line genuinely follows from the one before it. The outcome of that
+    check is stamped onto every step as a colored <b>confidence badge</b>, so you never have to take
+    the AI's word for anything. Hover the pill in a card's top-right corner (or the colored dots
+    under the steps) to read each verdict:</p>
+    <ul class="legend">
+      <li><span class="g grounded">★</span><span><b>Grounded</b> — symbolically proven to follow from the previous step.</span></li>
+      <li><span class="g verified">✓</span><span><b>Verified</b> — strong CAS evidence, just short of a full symbolic proof.</span></li>
+      <li><span class="g domain">✦</span><span><b>Domain</b> — valid by domain knowledge the CAS can't express as an identity (see below).</span></li>
+      <li><span class="g plausible">◇</span><span><b>Plausible</b> — valid math, but the CAS couldn't decide this particular step.</span></li>
+      <li><span class="g unchecked">○</span><span><b>Unchecked</b> — not a single convertible expression (e.g. the “…” in a written-out sum).</span></li>
+      <li><span class="g refuted">✗</span><span><b>Refuted</b> — the CAS shows the step does <em>not</em> follow. These are caught and never shipped.</span></li>
+    </ul>
+
+    <h2>When the CAS can't decide: domain rescue</h2>
+    <p>Real derivations contain honest moves that no CAS can verify as a pure symbolic identity —
+    <em>separating the variables</em> of a differential equation, an integration step, a physical
+    modeling assumption. Left alone, the CAS stamps these <b>Unchecked</b>, which is unfair: they are
+    correct, just not mechanically provable as an identity. So a second pass asks an AI acting as a
+    <b>domain expert</b> — “is this step valid, in context?” — and only when it vouches with high
+    confidence is the step promoted to the teal <b>Domain</b> tier. It's a deliberate middle ground:
+    <em>an expert accepts this; the CAS could not prove it</em> — strictly more honest than hiding the
+    gap. It's exactly why the Allen–Eggers proof below reads as a mix: green grounded algebra, with
+    teal <b>Domain</b> badges on the separation-and-integrate moves.</p>
 
     <h2>How to read these figures</h2>
     <p>Each proof is embedded as a plain <code>&lt;iframe&gt;</code> — the same snippet you could
@@ -139,14 +176,18 @@
     </figure>
 
     <div class="callout">
-      <h3>From a proof to a 3D playground — with an AI tutor</h3>
-      <p class="muted" style="margin:0 0 12px">This is where a static figure becomes a
-      conversation. Inside the proof above, the <b>ⓘ Explore</b> pill lists follow-up questions
-      (“What happens at a steeper entry angle?”). Click one and AlgeBench doesn't just show another
-      formula — it <b>opens the full app</b>: the interactive 3D atmospheric-entry scene loads with
-      an <b>AI tutor already listening</b>, primed on exactly the step you came from. You can rotate
-      the trajectory, drag the entry parameters, and simply <em>ask</em> — “why does deceleration
-      peak so high up?” — and talk it through.</p>
+      <h3>The terms are live — and every one is a door to an AI tutor</h3>
+      <p class="muted" style="margin:0 0 12px">Every symbol in these proofs is interactive: hover it
+      to light up each place it appears and read a one-line description. But the real exit is the
+      <b>AI button</b>. Three things open a <em>conversation</em>, not just another formula — the
+      <b>AI&nbsp;ask</b> button on a term or step, a <b>Prerequisite</b> chip, or a <b>follow-up</b>
+      question in the ⓘ Explore panel. Click any of them and AlgeBench <b>opens the full app</b>,
+      landing you in a chat with an <b>AI tutor that already knows the context</b>: which proof you
+      were reading, which step, which symbol — so you pick up the thread instead of re-explaining it.</p>
+      <p class="muted" style="margin:0 0 12px">For Allen–Eggers that doorway leads somewhere special:
+      the interactive <b>3D atmospheric-entry scene</b> loads with the tutor listening. Rotate the
+      trajectory, drag the entry angle, and simply <em>ask</em> — “why does deceleration peak so high
+      up?” — and talk it through.</p>
       <a class="cta" id="cta-app" href="/">Open the 3D scene + AI tutor →</a>
     </div>
 
