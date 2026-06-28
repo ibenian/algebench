@@ -115,6 +115,11 @@ export class SgProofManager {
                 if (entry.box.parentNode !== dest) dest.appendChild(entry.box);
             } else if (entry.box.parentNode) {
                 entry.box.parentNode.removeChild(entry.box);   // hide (keep in memory)
+                // The animator's popups (Explore/goal/term tips) live on
+                // document.body, so removing the box doesn't take them down — hide
+                // them too, else a pinned Explore popup orphans on screen after a
+                // step/scene switch.
+                if (entry.animator && entry.animator.hidePopups) entry.animator.hidePopups();
             }
         }
         // Re-observe the fresh card for resize, then re-snap positions.

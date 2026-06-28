@@ -45,6 +45,14 @@ const INFO_ICON =
   'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
   '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5h.01"/></svg>';
 
+// Goal pill icon — a target/bullseye (the goal is the target). Idle state of the
+// goal pill; hovering expands the pill to reveal the goal text (like the rank pill).
+const GOAL_ICON =
+  '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" ' +
+  'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/>' +
+  '<circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>';
+
 // Synthetic operator-node ids (from the backend structural renderer) for n-ary /
 // relational nodes that SPAN many terms — a product/fraction, a sum, an equation.
 // Hovering the bare chrome of one (a fraction bar, the space between factors)
@@ -314,6 +322,9 @@ export class ProofAnimator {
     this._lastFitH = this.container.clientHeight;
     this._ro = new ResizeObserver(() => {
       if (this._destroyed) return;
+      // The Explore popup is anchored to the info pill inside the box; when the
+      // box resizes the pill moves, so re-anchor the popup every tick (cheap).
+      this._repositionPopups();
       const w = this.container.clientWidth;
       const h = this.container.clientHeight;
       // Width changes always matter. In container mode HEIGHT changes matter too
@@ -586,7 +597,7 @@ export class ProofAnimator {
     this.container.classList.add("pa-root");
     this.container.innerHTML = `
       <div class="pa-goal-dock" hidden></div>
-      <button class="pa-goal-pill" type="button" hidden aria-label="Goal">Goal</button>
+      <button class="pa-goal-pill" type="button" hidden aria-label="Goal"></button>
       <div class="pa-stage" aria-live="polite"></div>
       <span class="pa-overall"></span>
       <div class="pa-meta"><div class="pa-op-row"><span class="pa-op"></span><span class="pa-conf-badge"></span></div><span class="pa-just"></span><span class="pa-next-pill" role="button" tabindex="0"></span></div>
@@ -671,10 +682,11 @@ export class ProofAnimator {
     this._renderExplore();
   }
 
-  // Model-produced framing, shown as a small "Goal" pill in the top-left corner
-  // (mirrors the confidence/ranking pill top-right). Hover shows the goal in a
-  // temporary popup; clicking DOCKS it as a banner at the top of the box (the pill
-  // hides while docked — click the banner to undock). Hidden when no goal.
+  // Model-produced framing, shown top-left (mirrors the grounding-rank pill
+  // top-right). IDLE: a compact icon-only pill. HOVER: the pill expands inline to
+  // reveal the goal text (CSS-driven, exactly like the rank pill peeks). CLICK:
+  // docks the goal as a banner at the front of the math view (click the banner to
+  // collapse back to the pill). Hidden when no goal.
   _renderGoal() {
     const pill = this.container.querySelector(".pa-goal-pill");
     const dock = this.container.querySelector(".pa-goal-dock");
@@ -683,11 +695,18 @@ export class ProofAnimator {
     if (!goal) { pill.hidden = true; if (dock) dock.hidden = true; return; }
     this._goalText = goal;
     this._goalDocked = false;
+    // icon (always) + label (goal text, revealed on hover via CSS)
+    pill.innerHTML = "";
+    const icon = document.createElement("span");
+    icon.className = "pa-goal-icon";
+    icon.innerHTML = GOAL_ICON;
+    const label = document.createElement("span");
+    label.className = "pa-goal-label";
+    this._caption(label, goal);            // inline math, safe (textContent + KaTeX)
+    pill.append(icon, label);
     pill.hidden = false;
-    pill.addEventListener("mouseenter", () => { if (!this._goalDocked) this._showGoalPop(); });
-    pill.addEventListener("mouseleave", () => this._hideGoalPop());
     pill.addEventListener("click", () => this._toggleGoalDock());
-    if (dock) dock.addEventListener("click", () => this._toggleGoalDock());  // click banner to undock
+    if (dock) dock.addEventListener("click", () => this._toggleGoalDock());  // click banner to collapse
   }
 
   // Dock/undock the goal as a top-of-box banner. Docked: the corner pill hides and
@@ -783,7 +802,9 @@ export class ProofAnimator {
     pop.appendChild(grip);
     pop.appendChild(contentEl);
     pop.appendChild(tabsEl);
-    document.body.appendChild(pop);
+    // Contained by the box (not document.body): .pa-root is position:relative, so
+    // the popup is positioned against the box and is torn down / hidden with it.
+    this.container.appendChild(pop);
     this._explorePop = pop;
     this._wireExploreResize(grip, pop);
 
@@ -814,35 +835,68 @@ export class ProofAnimator {
 
     // Hover (temporary) + click (pinned), with a hover bridge so moving pill→popup
     // doesn't close it; leaving both closes it (unless pinned).
-    let pinned = false, hideT = null;
+    // pinned state lives on the instance so hidePopups() (called when the box is
+    // hidden) can unpin it — else a pinned popup orphans on document.body.
+    this._explorePinned = false;
+    let hideT = null;
     const show = () => { clearTimeout(hideT); pop.style.display = "flex"; this._positionExplorePop(); };
     const hide = () => { pop.style.display = "none"; };
-    const scheduleHide = () => { if (pinned) return; clearTimeout(hideT); hideT = setTimeout(hide, 140); };
+    const scheduleHide = () => { if (this._explorePinned) return; clearTimeout(hideT); hideT = setTimeout(hide, 140); };
     pill.addEventListener("mouseenter", show);
     pill.addEventListener("mouseleave", scheduleHide);
     pop.addEventListener("mouseenter", () => clearTimeout(hideT));
     pop.addEventListener("mouseleave", scheduleHide);
     pill.addEventListener("click", () => {
-      pinned = !pinned;
-      pill.classList.toggle("pa-pinned", pinned);
-      if (pinned) show(); else hide();
+      this._explorePinned = !this._explorePinned;
+      pill.classList.toggle("pa-pinned", this._explorePinned);
+      if (this._explorePinned) show(); else hide();
     });
+  }
+
+  // Hide every body-appended popup WITHOUT tearing the widget down. The popups
+  // (term tip, math tip, goal pop, explore pop) live on document.body so they're
+  // not clipped by the box — which means removing the box from the DOM doesn't
+  // take them with it. The app calls this when a proof box is hidden but kept in
+  // memory (e.g. after a step/scene switch), so a pinned Explore popup doesn't
+  // orphan on screen. (destroy() removes them entirely; this just hides + unpins.)
+  hidePopups() {
+    this._hideGoalPop();
+    if (this._termTip) this._termTip.style.display = "none";
+    if (this._mathTip) this._mathTip.style.display = "none";
+    if (this._explorePop) {
+      this._explorePop.style.display = "none";
+      this._explorePinned = false;
+      const pill = this.container.querySelector(".pa-info-pill");
+      if (pill) pill.classList.remove("pa-pinned");
+    }
   }
 
   // Position the explore popup so its BOTTOM sits just above the info pill and it's
   // right-aligned to the pill. Bottom-anchored (top:auto) so growing the height —
   // via the resize grip — expands the panel UPWARD.
+  // Re-anchor the open Explore popup to the info pill — called on box resize so
+  // the popup tracks the box (no-op when it's closed).
+  _repositionPopups() {
+    if (this._explorePop && this._explorePop.style.display !== "none") this._positionExplorePop();
+  }
+
   _positionExplorePop() {
     const pop = this._explorePop;
     const pill = this.container.querySelector(".pa-info-pill");
     if (!pop || !pill) return;
+    // Absolute coords within the box (its containing block). Right-aligned to the
+    // info pill and anchored just above it; clamped inside the box on both axes.
     pop.style.visibility = "hidden";
-    const r = pill.getBoundingClientRect();
-    const pw = pop.offsetWidth, GAP = 8;
-    const left = Math.max(8, Math.min(r.right - pw, window.innerWidth - pw - 8));
-    pop.style.left = `${Math.round(left)}px`;
+    pop.style.right = "auto";
     pop.style.top = "auto";
-    pop.style.bottom = `${Math.round(Math.max(8, window.innerHeight - r.top + GAP))}px`;
+    const GAP = 8;
+    const cr = this.container.getBoundingClientRect();
+    const pr = pill.getBoundingClientRect();
+    const pw = pop.offsetWidth;
+    let left = (pr.right - cr.left) - pw;                 // right edge aligns to pill
+    left = Math.max(4, Math.min(left, cr.width - pw - 4));
+    pop.style.left = `${Math.round(left)}px`;
+    pop.style.bottom = `${Math.round(cr.bottom - pr.top + GAP)}px`;
     pop.style.visibility = "visible";
   }
 
