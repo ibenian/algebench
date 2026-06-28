@@ -113,7 +113,7 @@
         return (t==="dark"||t==="light") ? t
           : (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"); }
       function paint(){ var r=resolved();
-        btn.textContent = r==="dark" ? "☀" : "☾";
+        btn.textContent = r==="dark" ? "☾" : "☀";   // show the current theme (sun = light)
         btn.title = "Switch to " + (r==="dark" ? "light" : "dark") + " theme"; }
       paint();
       btn.addEventListener("click", function(){

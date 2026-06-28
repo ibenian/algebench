@@ -96,6 +96,8 @@
 </style>
 <!-- Apply the saved theme before first paint (shared across all blog pages) — no flash. -->
 <script>try{var t=localStorage.getItem("algebench-theme");if(t==="dark"||t==="light")document.documentElement.dataset.theme=t;}catch(e){}</script>
+<!-- Left-edge up/down section navigator (smooth-scrolls between headings). -->
+<script defer src="../section-nav.js"></script>
 </head>
 <body>
   <header class="bar"><div class="in">
@@ -220,10 +222,21 @@
     // Same-origin in production (algebench.org), the local renderproof server in dev.
     var HOST = /^(localhost|127\.0\.0\.1)$/.test(location.hostname)
       ? "http://localhost:5751" : "https://algebench.org";
-    // Point every figure's iframe at its built-in proof (explore pill on, theme follows the reader).
-    document.querySelectorAll("iframe[data-builtin]").forEach(function (f) {
-      f.src = HOST + "/renderproof?builtin=" + f.dataset.builtin + "&theme=auto&explore=1";
-    });
+
+    var KEY = "algebench-theme";
+    function resolvedTheme(){ var t; try{ t = localStorage.getItem(KEY); }catch(e){}
+      return (t==="dark"||t==="light") ? t
+        : (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"); }
+
+    // Point every figure's iframe at its built-in proof; the embed's theme matches the blog's.
+    function paintFrames(theme){
+      document.querySelectorAll("iframe[data-builtin]").forEach(function (f) {
+        var url = HOST + "/renderproof?builtin=" + f.dataset.builtin + "&theme=" + theme + "&explore=1";
+        if (f.src !== url) f.src = url;   // reload only when the theme actually changed
+      });
+    }
+    paintFrames(resolvedTheme());
+
     // "Open the app" links → the AlgeBench app (the atmospheric-entry scene + AI chat for the CTA).
     document.getElementById("nav-app").href = HOST + "/";
     document.getElementById("cta-app").href = HOST + "/?scene=scenes/atmospheric-entry-physics.json";
@@ -239,18 +252,16 @@
 
     // Shared light/dark toggle — same localStorage key as the blog index.
     (function(){
-      var KEY="algebench-theme", root=document.documentElement, btn=document.getElementById("theme-toggle");
-      function resolved(){ var t=localStorage.getItem(KEY);
-        return (t==="dark"||t==="light") ? t
-          : (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"); }
-      function paint(){ var r=resolved();
-        btn.textContent = r==="dark" ? "☀" : "☾";
+      var root=document.documentElement, btn=document.getElementById("theme-toggle");
+      function paint(){ var r=resolvedTheme();
+        btn.textContent = r==="dark" ? "☾" : "☀";   // show the current theme (sun = light)
         btn.title = "Switch to " + (r==="dark" ? "light" : "dark") + " theme"; }
       paint();
       btn.addEventListener("click", function(){
-        var next = resolved()==="dark" ? "light" : "dark";
+        var next = resolvedTheme()==="dark" ? "light" : "dark";
         try{ localStorage.setItem(KEY, next); }catch(e){}
         root.dataset.theme = next; paint();
+        paintFrames(next);   // keep the embedded proofs in sync with the page theme
       });
     })();
   </script>
