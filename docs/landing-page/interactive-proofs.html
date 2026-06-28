@@ -211,7 +211,7 @@
     });
     // "Open the app" links → the AlgeBench app (the atmospheric-entry scene + AI chat for the CTA).
     document.getElementById("nav-app").href = HOST + "/";
-    document.getElementById("cta-app").href = HOST + "/?scene=atmospheric-entry-physics";
+    document.getElementById("cta-app").href = HOST + "/?scene=scenes/atmospheric-entry-physics.json";
     // Auto-fit each embed's height to its content (cross-origin iframes can't size themselves).
     var s = document.createElement("script"); s.src = HOST + "/embed-resizer.js"; s.async = true;
     document.body.appendChild(s);
