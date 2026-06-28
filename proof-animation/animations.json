@@ -86,7 +86,19 @@
         "latex": "c",
         "name": "c"
       }
-    }
+    },
+    "goal": "This derivation shows how to rearrange the equation $a + b - c = 0$ to solve for $a$.",
+    "followups": [
+      "Rearrange the original equation to solve for $b$.",
+      "What if the equation was $2x - y + 5 = 0$? How would you solve for $x$?",
+      "Explain why moving terms across the equals sign changes their sign.",
+      "How would this process change if the equation involved multiplication or division?"
+    ],
+    "prerequisites": [
+      "Algebraic equations",
+      "Addition and subtraction",
+      "Solving for a variable"
+    ]
   },
   {
     "title": "Expand the binomial",
@@ -154,7 +166,19 @@
         "latex": "x",
         "name": "x"
       }
-    }
+    },
+    "goal": "This derivation expands the binomial $(x+1)^2$ to its equivalent polynomial form, $x^2 + 2x + 1$.",
+    "followups": [
+      "Expand $(x-1)^2$.",
+      "Expand $(2x+3)^2$.",
+      "What is the general formula for $(a+b)^2$?",
+      "How would you factor $x^2 + 2x + 1$?"
+    ],
+    "prerequisites": [
+      "Binomials",
+      "Squaring expressions",
+      "Distributive property"
+    ]
   },
   {
     "title": "Factor the difference of squares",
@@ -230,7 +254,19 @@
         "latex": "b",
         "name": "b"
       }
-    }
+    },
+    "goal": "This derivation demonstrates how to factor the difference of two squares, $a^2 - b^2$, into the product of two binomials.",
+    "followups": [
+      "Can you show me how to expand $(a-b)(a+b)$ to prove this identity?",
+      "How would you factor $x^2 - 16$ using this identity?",
+      "What happens if the expression is $a^2 + b^2$?",
+      "Can this identity be used to simplify calculations with numbers, like $100^2 - 99^2$?"
+    ],
+    "prerequisites": [
+      "Factoring",
+      "Algebraic expressions",
+      "Binomials"
+    ]
   },
   {
     "title": "Relativistic energy–momentum",
@@ -406,7 +442,20 @@
         "latex": "\\frac{1}{c^{2} m^{2}}",
         "name": "\\frac{1}{c^{2} m^{2}}"
       }
-    }
+    },
+    "goal": "This derivation rearranges the relativistic energy-momentum relation $E^2 = (m c^2)^2 + (p c)^2$ to express the total energy $E$ in a factored form $E = m c^2 \\sqrt{1 + \\frac{p^2}{m^2 c^2}}$.",
+    "followups": [
+      "How does this expression relate to the simpler $E=mc^2$ equation?",
+      "What happens to the equation if the momentum $p$ is zero?",
+      "Can you show how to derive the Lorentz factor from this expression?",
+      "How would you rearrange this equation to solve for $p$?"
+    ],
+    "prerequisites": [
+      "Algebraic manipulation",
+      "Square roots",
+      "Factoring expressions",
+      "Exponent rules"
+    ]
   },
   {
     "title": "Lorentz time dilation",
@@ -607,7 +656,20 @@
         "latex": "\\frac{1}{c^{2}}",
         "name": "\\frac{1}{c^{2}}"
       }
-    }
+    },
+    "goal": "This derivation shows how to rearrange the equation $(c t)^2 = (c t_0)^2 + (v t)^2$ to solve for $t$, which is fundamental in understanding time dilation in special relativity.",
+    "followups": [
+      "What do the variables $t$, $t_0$, $v$, and $c$ represent in the context of special relativity?",
+      "Can you explain what the term 'time dilation' means in simple terms?",
+      "What happens to the value of $t$ if $v$ is very small compared to $c$?",
+      "How would you solve the original equation for $t_0$ instead of $t$?"
+    ],
+    "prerequisites": [
+      "Expanding squares",
+      "Factoring algebraic expressions",
+      "Solving equations",
+      "Algebraic manipulation of fractions"
+    ]
   },
   {
     "title": "Quadratic roots & discriminant",
@@ -858,7 +920,20 @@
         "latex": "b^{2}",
         "name": "b^{2}"
       }
-    }
+    },
+    "goal": "This derivation shows how to solve a general quadratic equation $ax^2 + bx + c = 0$ for $x$ by deriving the quadratic formula using the method of completing the square.",
+    "followups": [
+      "How can we use the quadratic formula to solve $x^2 - 5x + 6 = 0$?",
+      "What is the discriminant $b^2 - 4ac$ and what does it tell us about the solutions?",
+      "Can we derive the quadratic formula using a different method?",
+      "How does completing the square relate to finding the vertex of a parabola?"
+    ],
+    "prerequisites": [
+      "Algebraic manipulation",
+      "Factoring perfect square trinomials",
+      "Square root property of equality",
+      "Arithmetic with fractions"
+    ]
   },
   {
     "title": "Allen–Eggers entry velocity",
@@ -974,13 +1049,13 @@
         "latex": "\\ln{\\left(v \\right)} = \\int \\frac{\\rho}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} dh + C_{1}",
         "plain": "\\ln{\\left(v \\right)} = \\int \\frac{\\rho}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} dh + C_{1}",
         "confidence": {
-          "tier": "unchecked",
-          "label": "Unchecked",
-          "icon": "○",
-          "meaning": "this state is not a single convertible expression",
+          "tier": "plausible",
+          "label": "Plausible",
+          "icon": "🔹",
+          "meaning": "valid math, but the CAS could not decide this step",
           "relation": "unknown",
-          "reason": "this state is not a single convertible expression",
-          "type_consistent": false
+          "reason": "neither equivalence nor a valid narrowing could be established",
+          "type_consistent": true
         }
       },
       {
@@ -991,13 +1066,13 @@
         "latex": "\\ln{\\left(v \\right)} = \\int \\frac{\\rho_{0} \\cdot e^{- \\frac{h}{H}}}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} dh + C_{1}",
         "plain": "\\ln{\\left(v \\right)} = \\int \\frac{\\rho_{0} \\cdot e^{- \\frac{h}{H}}}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} dh + C_{1}",
         "confidence": {
-          "tier": "unchecked",
-          "label": "Unchecked",
-          "icon": "○",
-          "meaning": "this state is not a single convertible expression",
+          "tier": "plausible",
+          "label": "Plausible",
+          "icon": "🔹",
+          "meaning": "valid math, but the CAS could not decide this step",
           "relation": "unknown",
-          "reason": "previous state is not a single convertible expression",
-          "type_consistent": false
+          "reason": "neither equivalence nor a valid narrowing could be established",
+          "type_consistent": true
         }
       },
       {
@@ -1008,13 +1083,13 @@
         "latex": "\\ln{\\left(v \\right)} = \\frac{\\rho_{0}}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} \\int e^{- \\frac{h}{H}} dh + C_{1}",
         "plain": "\\ln{\\left(v \\right)} = \\frac{\\rho_{0}}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} \\int e^{- \\frac{h}{H}} dh + C_{1}",
         "confidence": {
-          "tier": "unchecked",
-          "label": "Unchecked",
-          "icon": "○",
-          "meaning": "this state is not a single convertible expression",
-          "relation": "unknown",
-          "reason": "previous state is not a single convertible expression",
-          "type_consistent": false
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "equivalent",
+          "reason": "symbolically equivalent to the previous step",
+          "type_consistent": true
         }
       },
       {
@@ -1025,13 +1100,13 @@
         "latex": "\\ln{\\left(v \\right)} = \\frac{\\rho_{0}}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} \\cdot \\left(-H \\cdot e^{- \\frac{h}{H}}\\right) + C_{1}",
         "plain": "\\ln{\\left(v \\right)} = \\frac{\\rho_{0}}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} \\cdot \\left(-H \\cdot e^{- \\frac{h}{H}}\\right) + C_{1}",
         "confidence": {
-          "tier": "unchecked",
-          "label": "Unchecked",
-          "icon": "○",
-          "meaning": "this state is not a single convertible expression",
-          "relation": "unknown",
-          "reason": "previous state is not a single convertible expression",
-          "type_consistent": false
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "equivalent",
+          "reason": "symbolically equivalent to the previous step",
+          "type_consistent": true
         }
       },
       {
@@ -1042,13 +1117,13 @@
         "latex": "\\ln{\\left(v \\right)} = - \\frac{H \\cdot \\rho_{0} \\cdot e^{- \\frac{h}{H}}}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} + C_{1}",
         "plain": "\\ln{\\left(v \\right)} = - \\frac{H \\cdot \\rho_{0} \\cdot e^{- \\frac{h}{H}}}{2 \\cdot \\beta \\cdot \\sin{\\left(\\gamma \\right)}} + C_{1}",
         "confidence": {
-          "tier": "unchecked",
-          "label": "Unchecked",
-          "icon": "○",
-          "meaning": "this state is not a single convertible expression",
-          "relation": "unknown",
-          "reason": "previous state is not a single convertible expression",
-          "type_consistent": false
+          "tier": "grounded",
+          "label": "Grounded",
+          "icon": "🥇",
+          "meaning": "symbolically proven to follow from the previous step",
+          "relation": "equivalent",
+          "reason": "symbolically equivalent to the previous step",
+          "type_consistent": true
         }
       },
       {
@@ -1059,13 +1134,13 @@
         "latex": "\\htmlData{n=_r1___equals_1}{\\htmlData{n=v}{v} \\htmlData{n=_r1___equals_1__op}{=} \\htmlData{n=__power_2}{\\htmlData{n=e____power_2}{e}^{\\htmlData{n=__add_4}{\\htmlData{n=__negation_5}{\\htmlData{n=__negation_5__op}{-} \\htmlData{n=__multiply_6}{\\htmlData{n=H____multiply_6}{H} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=rho_0}{\\rho_{0}} \\htmlData{n=__multiply_6__m2}{\\cdot} \\htmlData{n=_r2___power_8}{\\htmlData{n=e___r2___power_8}{e}^{\\htmlData{n=__negation_9}{\\htmlData{n=__negation_9__op}{-} \\htmlData{n=__multiply_10}{\\frac{\\htmlData{n=h}{h}}{\\htmlData{n=H____multiply_10}{H}}}}}} \\htmlData{n=__multiply_6__m3}{\\cdot} \\htmlData{n=__multiply_7}{\\frac{\\htmlData{n=__num_7}{1/2}}{\\htmlData{n=beta}{\\beta} \\htmlData{n=__multiply_7__d1}{\\cdot} \\htmlData{n=__sin_6}{\\sin\\left(\\htmlData{n=gamma}{\\gamma}\\right)}}}}} \\htmlData{n=__add_4__op1}{+} \\htmlData{n=C_1}{C_{1}}}}}}",
         "plain": "v = \\frac{1}{e^{ H \\cdot \\rho_{0} \\cdot \\frac{1}{e^{ \\frac{h}{H}}} \\cdot \\frac{1/2}{\\beta \\cdot \\sin\\left(\\gamma\\right)} + C_{1}}}",
         "confidence": {
-          "tier": "unchecked",
-          "label": "Unchecked",
-          "icon": "○",
-          "meaning": "this state is not a single convertible expression",
+          "tier": "plausible",
+          "label": "Plausible",
+          "icon": "🔹",
+          "meaning": "valid math, but the CAS could not decide this step",
           "relation": "unknown",
-          "reason": "previous state is not a single convertible expression",
-          "type_consistent": false
+          "reason": "neither equivalence nor a valid narrowing could be established",
+          "type_consistent": true
         }
       },
       {
@@ -1104,20 +1179,20 @@
       }
     ],
     "overall_confidence": {
-      "tier": "unchecked",
-      "label": "Unchecked",
-      "icon": "○",
-      "meaning": "this state is not a single convertible expression",
+      "tier": "plausible",
+      "label": "Plausible",
+      "icon": "🔹",
+      "meaning": "valid math, but the CAS could not decide this step",
       "relation": null,
-      "reason": "4/13 steps verified · 6 unchecked · 3 plausible · endpoint reached",
+      "reason": "7/13 steps verified · 6 plausible · endpoint reached",
       "type_consistent": true,
       "counts": {
         "refuted": 0,
-        "unchecked": 6,
-        "plausible": 3,
+        "unchecked": 0,
+        "plausible": 6,
         "domain": 0,
         "verified": 1,
-        "grounded": 3
+        "grounded": 6
       },
       "endpoint_reached": true
     },
@@ -1222,7 +1297,20 @@
         "latex": "v_{E}",
         "name": "v_{E}"
       }
-    }
+    },
+    "goal": "This derivation solves a differential equation for vehicle velocity $v$ with respect to time $t$ to obtain an expression for $v$ as a function of altitude $h$, considering atmospheric density and flight-path angle.",
+    "followups": [
+      "What is the physical meaning or typical value of the integration constant $v_E$?",
+      "How would the final velocity expression change if the flight-path angle $\\gamma$ varied with altitude?",
+      "Derive an expression for the vehicle's altitude $h$ as a function of time $t$.",
+      "How does the velocity $v$ change with altitude $h$ according to this formula?"
+    ],
+    "prerequisites": [
+      "Chain Rule",
+      "Separation of Variables",
+      "Integration of $1/x$",
+      "Integration of $e^{ax}$"
+    ]
   },
   {
     "title": "Integrate by separation",
@@ -1347,6 +1435,18 @@
         "latex": "\\int \\left(- e^{\\frac{\\left(-1\\right) h}{H}} k\\right)\\, dh",
         "name": "\\int \\left(- e^{\\frac{\\left(-1\\right) h}{H}} k\\right)\\, dh"
       }
-    }
+    },
+    "goal": "This derivation shows how to prepare a separated differential equation for integration by applying the integral operator to both sides and factoring out constants.",
+    "followups": [
+      "Evaluate the integrals on both sides of the equation.",
+      "Explain why we can factor out the constant $k$.",
+      "What would be the next step if we had initial conditions?",
+      "How would this process change for a different type of differential equation?"
+    ],
+    "prerequisites": [
+      "Differential equations",
+      "Integral notation",
+      "Constant multiple rule for integrals"
+    ]
   }
 ]

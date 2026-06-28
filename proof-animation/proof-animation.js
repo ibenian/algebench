@@ -39,6 +39,35 @@ const _parenChar = (s) => {
 // Playback speed multipliers the speed button cycles through (click → next).
 const SPEEDS = [0.25, 0.5, 1, 2, 4];
 
+// Monochrome tier glyphs for the confidence badges. The server bakes COLOR emoji
+// (🥇🥈🎓🔹…) into the proof JSON, but emoji ignore CSS `color`, so a dark cap
+// muddies against a dark badge. These are plain text glyphs that inherit the
+// badge's tier color (--pa-conf-fg), staying crisp on any theme. Keyed by tier;
+// falls back to the baked icon for an unknown tier.
+const TIER_GLYPH = {
+  grounded:  "★",   // gold   — algebraically grounded (a CAS identity)
+  verified:  "✓",   // silver — verified (strong evidence)
+  domain:    "✦",   // teal   — domain-vouched (expert; CAS couldn't check)
+  plausible: "◇",   // blue   — plausible (tentative)
+  unchecked: "○",   // gray   — unchecked (undecided)
+  refuted:   "✗",   // red    — refuted
+};
+const _tierGlyph = (tier, fallback) => TIER_GLYPH[tier] || fallback || "";
+
+// Info (ⓘ) icon for the explore pill — static author-controlled markup.
+const INFO_ICON =
+  '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" ' +
+  'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5h.01"/></svg>';
+
+// Goal pill icon — a target/bullseye (the goal is the target). Idle state of the
+// goal pill; hovering expands the pill to reveal the goal text (like the rank pill).
+const GOAL_ICON =
+  '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" ' +
+  'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/>' +
+  '<circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>';
+
 // Synthetic operator-node ids (from the backend structural renderer) for n-ary /
 // relational nodes that SPAN many terms — a product/fraction, a sum, an equation.
 // Hovering the bare chrome of one (a fraction bar, the space between factors)
@@ -49,7 +78,11 @@ const SPEEDS = [0.25, 0.5, 1, 2, 4];
 const _SPANNING_OP = /^(?:multiply|add|subtract|plus|minus|equals|not_equal|less_than|greater_than|less_equal|greater_equal|implies|iff|conjunction|disjunction)_\d+$/;
 function _isSpanningWrapperId(id) {
   if (!id) return false;
-  const core = id.replace(/^_r\d+_/, "").replace(/^_+/, "");   // strip rebase prefix + leading "_"
+  // Strip any leading id prefixes before matching the op name: rebase (`_r3_`) AND
+  // disjunction-branch (`d0_`, `d1_`, … — the two sides of a `\lor`). Missing the
+  // branch prefix left `d1___multiply_9` unrecognized as a spanning fraction, so
+  // hovering a term inside the 2nd root's denominator lit the whole ratio (#…).
+  const core = id.replace(/^(?:_r\d+_|d\d+_)+/, "").replace(/^_+/, "");
   return _SPANNING_OP.test(core);
 }
 
@@ -76,6 +109,14 @@ export class ProofAnimator {
     // animation step into finer sub-steps on demand.
     this._deriveBtnFactory = typeof opts.deriveButton === "function" ? opts.deriveButton : null;
     this._onDerive = typeof opts.onDerive === "function" ? opts.onDerive : null;
+    // Host hook for clicking a prerequisite / follow-up chip. Receives
+    // {kind:'prerequisite'|'followup', text, message} — the app asks its agent with
+    // the context-rich `message`. Absent + embedded → posted to the parent page;
+    // absent + standalone → the chip copies its text.
+    this._onExplore = typeof opts.onExplore === "function" ? opts.onExplore : null;
+    // Gate the bottom "Explore" panel (Prerequisites / Explore-further tabs) — off
+    // unless the host opts in (the app sets it; the standalone page via ?explore=).
+    this._enableExplore = !!opts.enableExplore;
     this._deriveBtnEl = null;
     // Optional host hook fired after every internal relayout (resize / fonts), so
     // a host that scales this widget to fit a box (SgProofManager) can re-fit AFTER
@@ -296,6 +337,9 @@ export class ProofAnimator {
     this._lastFitH = this.container.clientHeight;
     this._ro = new ResizeObserver(() => {
       if (this._destroyed) return;
+      // The Explore popup is anchored to the info pill inside the box; when the
+      // box resizes the pill moves, so re-anchor the popup every tick (cheap).
+      this._repositionPopups();
       const w = this.container.clientWidth;
       const h = this.container.clientHeight;
       // Width changes always matter. In container mode HEIGHT changes matter too
@@ -360,14 +404,21 @@ export class ProofAnimator {
       try { document.removeEventListener("visibilitychange", this._onVisibility); } catch (e) {}
       this._onVisibility = null;
     }
-    if (this.stage && this._onStageOver) {
-      this.stage.removeEventListener("mouseover", this._onStageOver);
-      this.stage.removeEventListener("mouseout", this._onStageOut);
+    if (this.stage && this._onStageMove) {
+      this.stage.removeEventListener("mousemove", this._onStageMove);
+      this.stage.removeEventListener("mouseleave", this._onStageLeave);
       this.stage.removeEventListener("click", this._onStageClick);
-      this._onStageOver = this._onStageOut = this._onStageClick = null;
+      this._onStageMove = this._onStageLeave = this._onStageClick = null;
     }
-    // Clear any lingering sg hover-halo this widget drove.
-    if (this._onTermHover) { try { this._onTermHover([], null); } catch (e) {} }   // same shape as _setHotTerm
+    // Remove the body-appended popups this widget created (else they leak when a
+    // proof box is torn down and recreated in the app).
+    for (const k of ["_termTip", "_mathTip", "_goalPop", "_explorePop"]) {
+      const el = this[k];
+      if (el && el.parentNode) el.parentNode.removeChild(el);
+      this[k] = null;
+    }
+    // Clear any host hover state this widget drove (empty chain → no linked term).
+    if (this._onTermHover) { try { this._onTermHover([], null); } catch (e) {} }
   }
 
   // ── Live terms (optional) ──────────────────────────────────────────────────
@@ -377,43 +428,42 @@ export class ProofAnimator {
   _bindLiveTerms() {
     if (!this._liveTerms || !this.stage) return;
     this.container.classList.add("pa-live-terms");
-    // The innermost tagged element under the pointer (a leaf atom when over a
-    // variable/number/operator glyph; the operator's wrapper when over notation
-    // that has no leaf of its own — e.g. a derivative's d/dt bar). Anything that
-    // maps to a graph node is selectable, so we DON'T restrict to leaves.
+    // The term under the pointer. A leaf glyph IS the term; anything that still
+    // wraps tagged leaves — a fraction, power, √, product, equation — snaps to the
+    // NEAREST leaf by box, so the inner term lights up rather than the whole
+    // sub-expression. (KaTeX's transparent layout containers let a wrapper sit
+    // under the pointer in the gaps between glyphs; the box-distance snap is
+    // tolerance-capped, so a true background point still no-ops.) _termChain then
+    // walks UP from the leaf to its enclosing operator, so the graph host can
+    // still resolve the fraction/power/√ from the chain when it wants to.
     const tagOf = (t, x, y) => {
       const el = t && t.closest ? t.closest("[data-n]") : null;
       if (!el || !this.stage.contains(el)) return null;
-      // A leaf glyph is always a term. A wrapper counts only if it's a TIGHT
-      // operator — never a spanning combiner — so hovering a fraction bar or the
-      // chrome of a product/equation doesn't light the whole sub-expression.
-      if (el.querySelector("[data-n]") && _isSpanningWrapperId(el.getAttribute("data-n"))) {
-        // The pointer hit a spanning wrapper's CHROME — e.g. the dead zone in the
-        // middle of a fraction's denominator, where KaTeX's vlist lets the wrapper
-        // show through above the glyph. Snap to the nearest leaf term by box (its
-        // rect still covers the point), so the whole denominator/numerator is
-        // clickable — but only if close, else it's a real background click.
-        return (x == null) ? null : this._nearestLeafTerm(el, x, y);
+      if (el.querySelector("[data-n]")) {
+        if (x == null) return null;
+        // Prefer the nearest inner leaf. Only when the pointer is on NO term at all
+        // (the bare √ surd, a fraction bar) fall back to the wrapper itself — and
+        // only when it's a tight operator (√, fraction, power), never a spanning
+        // combiner (product / sum / equation) whose box sprawls. So the √ "kicks in
+        // last": it's selectable, but only after we know no inner term is hovered.
+        const leaf = this._nearestLeafTerm(el, x, y);
+        if (leaf) return leaf;
+        return _isSpanningWrapperId(el.getAttribute("data-n")) ? null : el;
       }
       return el;
     };
-    this._onStageOver = (ev) => {
+    // mousemove (not mouseover) + mouseleave (not mouseout): hit-test the term
+    // under the cursor on every move and clear only when the pointer truly leaves
+    // the stage. This is immune to the relatedTarget / pointer-events gaps that
+    // KaTeX's transparent layout containers create — the cause of terms inside a √
+    // or fraction flickering or refusing to light up (the enter/exit bug).
+    this._onStageMove = (ev) => {
       const el = tagOf(ev.target, ev.clientX, ev.clientY);
-      // Switch the halo only when entering a REAL term. Moving onto the
-      // expression's structural chrome (a fraction bar, KaTeX struts — tagOf is
-      // null there because it resolves to a spanning wrapper) leaves the current
-      // term lit, so hovering a numerator/denominator doesn't flicker as the
-      // pointer crosses the bar between them.
+      // Switch only to a REAL term; over chrome/gaps (null) keep the current term
+      // lit so crossing a fraction bar between two glyphs never flickers.
       if (el && el !== this._hotTermEl) this._setHotTerm(el);
     };
-    this._onStageOut = (ev) => {
-      // Only drop the halo when the pointer actually LEAVES the stage — never for
-      // a move onto untagged chrome within the expression (that's what made
-      // hovering fraction terms flicker). A move to a different term is handled by
-      // that term's mouseover instead.
-      const to = ev.relatedTarget;
-      if (!to || !this.stage.contains(to)) this._setHotTerm(null);
-    };
+    this._onStageLeave = () => this._setHotTerm(null);
     this._onStageClick = (ev) => {
       const el = tagOf(ev.target, ev.clientX, ev.clientY);
       if (!el) {
@@ -426,8 +476,8 @@ export class ProofAnimator {
         this._onTermClick(this._termChain(el), el, { additive: !!(ev.metaKey || ev.ctrlKey) });
       }
     };
-    this.stage.addEventListener("mouseover", this._onStageOver);
-    this.stage.addEventListener("mouseout", this._onStageOut);
+    this.stage.addEventListener("mousemove", this._onStageMove);
+    this.stage.addEventListener("mouseleave", this._onStageLeave);
     this.stage.addEventListener("click", this._onStageClick);
   }
 
@@ -435,11 +485,69 @@ export class ProofAnimator {
     if (this._hotTermEl && this._hotTermEl !== el) this._hotTermEl.classList.remove("pa-term-hot");
     this._hotTermEl = el || null;
     if (el) el.classList.add("pa-term-hot");
-    // Notify the host so the LINKED sg node lights up. The halo stays on the
-    // exact glyph, but resolution gets the whole ancestor chain so a glyph that
-    // is only PART of a named node (e.g. the "2" of a square, or an operator dot)
-    // still reaches that node. The host resolves the nearest one (or null clears).
-    if (this._onTermHover) this._onTermHover(el ? this._termChain(el) : [], el || null);
+    const chain = el ? this._termChain(el) : [];
+    // SHARED tooltip: the term's own description from data.terms — needs no graph,
+    // so it works both in the app and on the standalone proof-animation page.
+    const desc = this._termDescription(chain);
+    if (el && desc) this._showTermTip(el, desc);
+    else this._hideTermTip();
+    // Host hook (optional): the app's SgProofManager lights up + selects the LINKED
+    // graph node. The chain (innermost glyph → enclosing operator wrappers) lets a
+    // glyph that's only PART of a named node still reach it. Absent standalone.
+    if (this._onTermHover) this._onTermHover(chain, el || null);
+  }
+
+  // ── Term tooltip (shared, graph-free) ──────────────────────────────────────
+  // The first chain term that has a description in data.terms (keyed by node id).
+  // The rendered data-n can carry a rebase prefix (`_r3_…`) and an occurrence
+  // suffix (`__<parent>`); data.terms is keyed by the clean id, so try the raw id,
+  // the prefix-stripped id, then the canonical symbol before it.
+  _termDescription(chain) {
+    const terms = this.data && this.data.terms;
+    if (!terms) return "";
+    for (const c of (chain || [])) {
+      const raw = c.id || "";
+      const clean = raw.replace(/^_r\d+_/, "");
+      const t = terms[raw] || terms[clean] || terms[clean.split("__")[0]];
+      const d = t && (t.description || "").trim();
+      if (d) return d;
+    }
+    return "";
+  }
+
+  // A rounded tooltip rendering the hovered term's description. Lives on <body>
+  // (position:fixed) so a host box's overflow never clips it; placed on the side
+  // the term is nearest (below in the lower half of the viewport, above otherwise),
+  // flipped to the opposite side if the preferred one would run off-screen.
+  _showTermTip(anchorEl, text) {
+    let tip = this._termTip;
+    if (!tip) {
+      tip = document.createElement("div");
+      tip.className = "pa-term-tip";
+      tip.setAttribute("role", "tooltip");
+      document.body.appendChild(tip);
+      this._termTip = tip;
+    }
+    this._caption(tip, text);             // descriptions may carry inline $…$
+    tip.style.display = "block";
+    tip.style.visibility = "hidden";      // measure before positioning
+    const r = anchorEl.getBoundingClientRect();
+    const vh = window.innerHeight;
+    const tw = tip.offsetWidth, th = tip.offsetHeight, GAP = 10;
+    let left = r.left + r.width / 2 - tw / 2;
+    left = Math.max(8, Math.min(left, window.innerWidth - tw - 8));
+    let below = (r.top + r.bottom) / 2 > vh / 2;
+    if (below && r.bottom + GAP + th > vh - 4) below = false;   // no room below
+    else if (!below && r.top - GAP - th < 4) below = true;      // no room above
+    const top = below ? r.bottom + GAP : r.top - th - GAP;
+    tip.classList.toggle("pa-term-tip-below", below);
+    tip.style.left = `${Math.round(left)}px`;
+    tip.style.top = `${Math.round(Math.max(4, top))}px`;
+    tip.style.visibility = "visible";
+  }
+
+  _hideTermTip() {
+    if (this._termTip) this._termTip.style.display = "none";
   }
 
   // Tagged terms from the given element up to the stage root, innermost first —
@@ -502,6 +610,8 @@ export class ProofAnimator {
   _build() {
     this.container.classList.add("pa-root");
     this.container.innerHTML = `
+      <div class="pa-goal-dock" hidden></div>
+      <button class="pa-goal-pill" type="button" hidden aria-label="Goal"></button>
       <div class="pa-stage" aria-live="polite"></div>
       <span class="pa-overall"></span>
       <div class="pa-meta"><div class="pa-op-row"><span class="pa-op"></span><span class="pa-conf-badge"></span></div><span class="pa-just"></span><span class="pa-next-pill" role="button" tabindex="0"></span></div>
@@ -512,6 +622,7 @@ export class ProofAnimator {
         <button type="button" class="pa-btn pa-play" data-tip="Play through" aria-label="Play through">▶ Play</button>
         <button type="button" class="pa-btn pa-speed" data-tip="Animation speed (click to cycle)" aria-label="Animation speed">${_speedLabel(this.speed)}</button>
         <button class="pa-btn pa-mode" type="button" data-tip="Sequential — stagger the moves" aria-label="Sequential — stagger the moves" aria-pressed="false">⇉</button>
+        <button class="pa-btn pa-info-pill" type="button" hidden aria-label="Prerequisites & follow-ups"></button>
       </div>`;
     this.stage = this.container.querySelector(".pa-stage");
     const steps = this.container.querySelector(".pa-steps");
@@ -581,6 +692,276 @@ export class ProofAnimator {
       modeBtn.classList.toggle("pa-active", on);
       modeBtn.setAttribute("aria-pressed", String(on));
     };
+    this._renderGoal();
+    this._renderExplore();
+  }
+
+  // Model-produced framing, shown top-left (mirrors the grounding-rank pill
+  // top-right). IDLE: a compact icon-only pill. HOVER: the pill expands inline to
+  // reveal the goal text (CSS-driven, exactly like the rank pill peeks). CLICK:
+  // docks the goal as a banner at the front of the math view (click the banner to
+  // collapse back to the pill). Hidden when no goal.
+  _renderGoal() {
+    const pill = this.container.querySelector(".pa-goal-pill");
+    const dock = this.container.querySelector(".pa-goal-dock");
+    if (!pill) return;
+    const goal = (this.data && this.data.goal || "").trim();
+    if (!goal) { pill.hidden = true; if (dock) dock.hidden = true; return; }
+    this._goalText = goal;
+    this._goalDocked = false;
+    // icon (always) + label (goal text, revealed on hover via CSS)
+    pill.innerHTML = "";
+    const icon = document.createElement("span");
+    icon.className = "pa-goal-icon";
+    icon.innerHTML = GOAL_ICON;
+    const label = document.createElement("span");
+    label.className = "pa-goal-label";
+    this._caption(label, goal);            // inline math, safe (textContent + KaTeX)
+    pill.append(icon, label);
+    pill.hidden = false;
+    pill.addEventListener("click", () => this._toggleGoalDock());
+    if (dock) dock.addEventListener("click", () => this._toggleGoalDock());  // click banner to collapse
+  }
+
+  // Dock/undock the goal as a top-of-box banner. Docked: the corner pill hides and
+  // the banner (with its own "Goal" label) shows the full goal, pushing the steps
+  // down; click the banner to undock and restore the pill.
+  _toggleGoalDock() {
+    const pill = this.container.querySelector(".pa-goal-pill");
+    const dock = this.container.querySelector(".pa-goal-dock");
+    if (!dock) return;
+    this._goalDocked = !this._goalDocked;
+    this._hideGoalPop();
+    if (this._goalDocked) {
+      dock.innerHTML = "";
+      const label = document.createElement("span");
+      label.className = "pa-goal-dock-label";
+      label.textContent = "Goal";
+      const txt = document.createElement("span");
+      txt.className = "pa-goal-dock-text";
+      this._caption(txt, this._goalText || "");   // inline math, safe
+      dock.appendChild(label);
+      dock.appendChild(txt);
+      dock.hidden = false;
+      pill.hidden = true;
+    } else {
+      dock.hidden = true;
+      dock.innerHTML = "";
+      pill.hidden = false;
+    }
+  }
+
+  // The goal popup — its own element (independent of the term tooltip) so a pinned
+  // goal survives term hovers. Inline math via _caption; positioned under the pill.
+  _showGoalPop() {
+    let tip = this._goalPop;
+    if (!tip) {
+      tip = document.createElement("div");
+      tip.className = "pa-goal-pop";
+      tip.setAttribute("role", "tooltip");
+      document.body.appendChild(tip);
+      this._goalPop = tip;
+    }
+    this._caption(tip, this._goalText || "");   // textContent + KaTeX — never raw HTML
+    tip.style.display = "block";
+    tip.style.visibility = "hidden";
+    const pill = this.container.querySelector(".pa-goal-pill");
+    const r = pill.getBoundingClientRect();
+    const tw = tip.offsetWidth, th = tip.offsetHeight, GAP = 8;
+    let left = Math.max(8, Math.min(r.left, window.innerWidth - tw - 8));
+    let top = r.bottom + GAP;
+    if (top + th > window.innerHeight - 4) top = r.top - th - GAP;   // flip above if no room
+    tip.style.left = `${Math.round(left)}px`;
+    tip.style.top = `${Math.round(Math.max(4, top))}px`;
+    tip.style.visibility = "visible";
+  }
+
+  _hideGoalPop() { if (this._goalPop) this._goalPop.style.display = "none"; }
+
+  // An info (ⓘ) pill in the controls row (next to the sequential button) that opens
+  // a popup with two tabs — Prerequisites and Explore further. Gated by
+  // opts.enableExplore. Hover shows it temporarily; moving onto the popup keeps it
+  // open (hover bridge); leaving both hides it. Clicking the pill pins it open.
+  // Every chip (both kinds) is clickable → _exploreClick.
+  _renderExplore() {
+    const pill = this.container.querySelector(".pa-info-pill");
+    if (!pill) return;
+    const clean = (v) => (Array.isArray(v) ? v : [])
+      .filter((s) => typeof s === "string" && s.trim()).slice(0, 8);
+    const tabs = [];
+    const prereqs = clean(this.data && this.data.prerequisites);
+    const followups = clean(this.data && this.data.followups);
+    if (prereqs.length) tabs.push({ key: "prerequisite", label: "Prerequisites", items: prereqs });
+    if (followups.length) tabs.push({ key: "followup", label: "Explore further", items: followups });
+    if (!this._enableExplore || !tabs.length) { pill.hidden = true; return; }
+
+    pill.classList.add("pa-icon-btn");
+    pill.innerHTML = INFO_ICON;
+    pill.title = "Prerequisites & follow-ups";
+    pill.hidden = false;
+
+    const pop = document.createElement("div");
+    pop.className = "pa-explore-pop";
+    pop.style.display = "none";
+    // Top→bottom: a resize grip, the scrollable chip content, then the tab titles
+    // pinned at the BOTTOM (next to the pill). The panel is bottom-anchored, so it
+    // grows UPWARD — drag the grip to resize.
+    const grip = document.createElement("div");
+    grip.className = "pa-explore-resize";
+    grip.title = "Drag to resize";
+    const contentEl = document.createElement("div");
+    contentEl.className = "pa-explore-panel";
+    const tabsEl = document.createElement("div");
+    tabsEl.className = "pa-explore-tabs";
+    pop.appendChild(grip);
+    pop.appendChild(contentEl);
+    pop.appendChild(tabsEl);
+    // Contained by the box (not document.body): .pa-root is position:relative, so
+    // the popup is positioned against the box and is torn down / hidden with it.
+    this.container.appendChild(pop);
+    this._explorePop = pop;
+    this._wireExploreResize(grip, pop);
+
+    const select = (tab, btn) => {
+      tabsEl.querySelectorAll(".pa-explore-tab").forEach((b) => b.classList.remove("pa-active"));
+      btn.classList.add("pa-active");
+      contentEl.innerHTML = "";
+      for (const item of tab.items) {
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "pa-explore-chip";
+        this._caption(chip, item);     // inline math, safe (no raw HTML)
+        chip.addEventListener("click", () => this._exploreClick(tab.key, item));
+        contentEl.appendChild(chip);
+      }
+    };
+    let firstBtn = null;
+    tabs.forEach((tab, i) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "pa-explore-tab";
+      btn.textContent = tab.label;
+      btn.addEventListener("click", () => select(tab, btn));
+      tabsEl.appendChild(btn);
+      if (i === 0) firstBtn = btn;
+    });
+    if (firstBtn) select(tabs[0], firstBtn);   // default to the first tab
+
+    // Hover (temporary) + click (pinned), with a hover bridge so moving pill→popup
+    // doesn't close it; leaving both closes it (unless pinned).
+    // pinned state lives on the instance so hidePopups() (called when the box is
+    // hidden) can unpin it — else a pinned popup orphans on document.body.
+    this._explorePinned = false;
+    let hideT = null;
+    const show = () => { clearTimeout(hideT); pop.style.display = "flex"; this._positionExplorePop(); };
+    const hide = () => { pop.style.display = "none"; };
+    const scheduleHide = () => { if (this._explorePinned) return; clearTimeout(hideT); hideT = setTimeout(hide, 140); };
+    pill.addEventListener("mouseenter", show);
+    pill.addEventListener("mouseleave", scheduleHide);
+    pop.addEventListener("mouseenter", () => clearTimeout(hideT));
+    pop.addEventListener("mouseleave", scheduleHide);
+    pill.addEventListener("click", () => {
+      this._explorePinned = !this._explorePinned;
+      pill.classList.toggle("pa-pinned", this._explorePinned);
+      if (this._explorePinned) show(); else hide();
+    });
+  }
+
+  // Hide every popup WITHOUT tearing the widget down, and unpin the Explore popup.
+  // The term tip and goal pop are appended to document.body (so removing the box
+  // doesn't hide them); the math tip and Explore popup are contained in the box,
+  // but the Explore popup may be PINNED (display:flex) — unpin it so a box that's
+  // hidden then re-shown doesn't resurrect it. The app calls this when a proof box
+  // is hidden but kept in memory (step/scene switch). (destroy() removes them all
+  // entirely; this just hides + unpins.)
+  hidePopups() {
+    this._hideGoalPop();
+    if (this._termTip) this._termTip.style.display = "none";
+    if (this._mathTip) this._mathTip.style.display = "none";
+    if (this._explorePop) {
+      this._explorePop.style.display = "none";
+      this._explorePinned = false;
+      const pill = this.container.querySelector(".pa-info-pill");
+      if (pill) pill.classList.remove("pa-pinned");
+    }
+  }
+
+  // Position the explore popup so its BOTTOM sits just above the info pill and it's
+  // right-aligned to the pill. Bottom-anchored (top:auto) so growing the height —
+  // via the resize grip — expands the panel UPWARD.
+  // Re-anchor the open Explore popup to the info pill — called on box resize so
+  // the popup tracks the box (no-op when it's closed).
+  _repositionPopups() {
+    if (this._explorePop && this._explorePop.style.display !== "none") this._positionExplorePop();
+  }
+
+  _positionExplorePop() {
+    const pop = this._explorePop;
+    const pill = this.container.querySelector(".pa-info-pill");
+    if (!pop || !pill) return;
+    // Absolute coords within the box (its containing block). Right-aligned to the
+    // info pill and anchored just above it; clamped inside the box on both axes.
+    pop.style.visibility = "hidden";
+    pop.style.right = "auto";
+    pop.style.top = "auto";
+    const GAP = 8;
+    const cr = this.container.getBoundingClientRect();
+    const pr = pill.getBoundingClientRect();
+    const pw = pop.offsetWidth;
+    let left = (pr.right - cr.left) - pw;                 // right edge aligns to pill
+    left = Math.max(4, Math.min(left, cr.width - pw - 4));
+    pop.style.left = `${Math.round(left)}px`;
+    pop.style.bottom = `${Math.round(cr.bottom - pr.top + GAP)}px`;
+    pop.style.visibility = "visible";
+  }
+
+  // Drag the top grip to resize the popup upward (bottom stays anchored to the pill).
+  _wireExploreResize(grip, pop) {
+    let h0 = 0, y0 = 0;
+    const onMove = (e) => {
+      const max = Math.round(window.innerHeight * 0.7);
+      const h = Math.min(Math.max(h0 + (y0 - e.clientY), 120), max);
+      pop.style.height = `${h}px`;
+    };
+    const onUp = () => {
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+    };
+    grip.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      h0 = pop.getBoundingClientRect().height;
+      y0 = e.clientY;
+      document.addEventListener("pointermove", onMove);
+      document.addEventListener("pointerup", onUp);
+    });
+  }
+
+  // A context-rich message for the agent built from the clicked prereq/follow-up +
+  // this derivation's title/goal, so the agent grounds on THIS proof, not a bare prompt.
+  _exploreMessage(kind, text) {
+    const title = this.data && this.data.title ? ` "${this.data.title}"` : "";
+    const goal = this.data && this.data.goal ? ` (${this.data.goal})` : "";
+    if (kind === "prerequisite") {
+      return `In the derivation${title}${goal}, explain the prerequisite "${text}" `
+        + `and how it's used here.`;
+    }
+    return `I'm exploring the derivation${title}${goal}.\n\n${text}`;
+  }
+
+  // Route a chip click: embedded → let the parent page handle it (postMessage);
+  // else the host hook (the app asks its agent with context); else copy the text.
+  _exploreClick(kind, text) {
+    const message = this._exploreMessage(kind, text);
+    if (typeof window !== "undefined" && window.self !== window.top) {
+      try {
+        window.parent.postMessage(
+          { type: "algebench-explore", kind, text, message,
+            title: (this.data && this.data.title) || null }, "*");
+      } catch (e) { /* parent refused */ }
+      return;
+    }
+    if (this._onExplore) { this._onExplore({ kind, text, message }); return; }
+    try { navigator.clipboard.writeText(text); } catch (e) { /* no clipboard */ }
   }
 
   _renderInto(el, latex) {
@@ -1330,7 +1711,7 @@ export class ProofAnimator {
     el.removeAttribute("aria-label");
     if (!c) return;
     el.classList.add(`pa-conf-${c.tier}`);
-    el.textContent = c.icon || "";
+    el.textContent = _tierGlyph(c.tier, c.icon);
     // Tooltip: when the CAS reached a verdict (or for the start state) the
     // concrete reason IS the story — including a mislabel downgrade, where the
     // generic tier meaning ("could not decide") would contradict it. Only a
@@ -1401,7 +1782,7 @@ export class ProofAnimator {
     el.classList.add(`pa-conf-${oc.tier}`);
     const icon = document.createElement("span");
     icon.className = "pa-overall-icon";
-    icon.textContent = oc.icon || "";
+    icon.textContent = _tierGlyph(oc.tier, oc.icon);
     const label = document.createElement("span");
     label.className = "pa-overall-label";
     label.textContent = oc.label || oc.tier;
