@@ -585,6 +585,10 @@
   line-height: 1;
   background: var(--pa-conf-bg, transparent);
   border: 1px solid var(--pa-conf-fg, transparent);
+  /* The glyph is a monochrome text symbol (see TIER_GLYPH) — tint it to the tier
+     color so it stays crisp/high-contrast on any theme (emoji ignored `color`). */
+  color: var(--pa-conf-fg);
+  font-weight: 700;
   cursor: default;
   user-select: none;
 }
@@ -625,6 +629,8 @@
   transition: padding 0.15s, gap 0.15s;
 }
 .pa-root .pa-overall:empty { display: none; }    /* not yet populated (or no data) */
+/* Tint just the glyph to the tier color (the label keeps the readable fg). */
+.pa-root .pa-overall-icon { color: var(--pa-conf-fg); font-weight: 700; }
 /* COMPACT by default: icon-only chip. Expands (label + tally) on its own hover
    (peek) or while pinned. */
 .pa-root:not(.pa-conf-on):not(.pa-conf-peek) .pa-overall { padding: 4px 8px; gap: 0; }
