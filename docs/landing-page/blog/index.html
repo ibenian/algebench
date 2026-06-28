@@ -11,10 +11,21 @@
     --bg:#fbfbfd; --ink:#1f2430; --muted:#5b6472; --rule:#e6e8ee;
     --accent:#4f46e5; --bar:#ffffff; --card:#ffffff; --soft:#f4f5f9;
   }
+  /* Explicit dark (set by the theme toggle, persisted in localStorage). */
+  :root[data-theme="dark"]{
+    color-scheme: dark;
+    --bg:#12121c; --ink:#e7e9ee; --muted:#9aa3b2; --rule:#262b3d;
+    --accent:#8b93f8; --bar:#15151f; --card:#171821; --soft:#1a1c27;
+  }
+  /* Auto-dark only when the reader hasn't made an explicit choice. */
   @media (prefers-color-scheme: dark){
-    :root{ --bg:#12121c; --ink:#e7e9ee; --muted:#9aa3b2; --rule:#262b3d;
+    :root:not([data-theme]){ --bg:#12121c; --ink:#e7e9ee; --muted:#9aa3b2; --rule:#262b3d;
            --accent:#8b93f8; --bar:#15151f; --card:#171821; --soft:#1a1c27; }
   }
+  .theme-btn{ align-self:center; font:inherit; font-size:1rem; line-height:1; cursor:pointer;
+    width:30px; height:30px; padding:0; display:inline-flex; align-items:center; justify-content:center;
+    background:transparent; color:var(--ink); border:1px solid var(--rule); border-radius:8px; }
+  .theme-btn:hover{ border-color:var(--accent); }
   *{ box-sizing:border-box; }
   body{ margin:0; background:var(--bg); color:var(--ink);
         font-family:Georgia,"Iowan Old Style","Times New Roman",serif; line-height:1.7;
@@ -51,12 +62,15 @@
   .foot{ font-family:system-ui,sans-serif; font-size:.82rem; color:var(--muted);
         border-top:1px solid var(--rule); margin-top:40px; padding-top:18px; }
 </style>
+<!-- Apply the saved theme before first paint (shared across all blog pages) — no flash. -->
+<script>try{var t=localStorage.getItem("algebench-theme");if(t==="dark"||t==="light")document.documentElement.dataset.theme=t;}catch(e){}</script>
 </head>
 <body>
   <header class="bar"><div class="in">
     <a class="brand" href="/">AlgeBench</a>
     <span class="tag">Blog</span>
     <span class="spacer"></span>
+    <button class="theme-btn" id="theme-toggle" type="button" aria-label="Toggle dark / light theme"></button>
     <a class="app" id="nav-app" href="/">Open the app →</a>
   </div></header>
 
@@ -91,6 +105,23 @@
     var HOST = /^(localhost|127\.0\.0\.1)$/.test(location.hostname)
       ? "http://localhost:5751" : "https://algebench.org";
     document.getElementById("nav-app").href = HOST + "/";
+
+    // Shared light/dark toggle — persisted to one localStorage key for all blog pages.
+    (function(){
+      var KEY="algebench-theme", root=document.documentElement, btn=document.getElementById("theme-toggle");
+      function resolved(){ var t=localStorage.getItem(KEY);
+        return (t==="dark"||t==="light") ? t
+          : (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"); }
+      function paint(){ var r=resolved();
+        btn.textContent = r==="dark" ? "☀" : "☾";
+        btn.title = "Switch to " + (r==="dark" ? "light" : "dark") + " theme"; }
+      paint();
+      btn.addEventListener("click", function(){
+        var next = resolved()==="dark" ? "light" : "dark";
+        try{ localStorage.setItem(KEY, next); }catch(e){}
+        root.dataset.theme = next; paint();
+      });
+    })();
   </script>
 </body>
 </html>
