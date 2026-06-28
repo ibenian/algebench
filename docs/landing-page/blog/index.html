@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blog — AlgeBench</title>
+<meta name="description" content="Writing from AlgeBench — interactive, AI-written, CAS-verified mathematics.">
+<style>
+  :root{
+    color-scheme: light dark;
+    --bg:#fbfbfd; --ink:#1f2430; --muted:#5b6472; --rule:#e6e8ee;
+    --accent:#4f46e5; --bar:#ffffff; --card:#ffffff; --soft:#f4f5f9;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#12121c; --ink:#e7e9ee; --muted:#9aa3b2; --rule:#262b3d;
+           --accent:#8b93f8; --bar:#15151f; --card:#171821; --soft:#1a1c27; }
+  }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--bg); color:var(--ink);
+        font-family:Georgia,"Iowan Old Style","Times New Roman",serif; line-height:1.7;
+        -webkit-font-smoothing:antialiased; }
+  .bar{ border-bottom:1px solid var(--rule); background:var(--bar); position:sticky; top:0; z-index:5;
+        backdrop-filter:saturate(1.4) blur(6px); }
+  .bar .in{ max-width:760px; margin:0 auto; padding:13px 22px; display:flex; align-items:baseline; gap:10px;
+        font-family:system-ui,-apple-system,"Segoe UI",sans-serif; }
+  .bar .brand{ font-weight:800; letter-spacing:-.01em; color:var(--ink); text-decoration:none; }
+  .bar .tag{ color:var(--muted); font-size:.82rem; }
+  .bar .spacer{ flex:1; }
+  .bar a.app{ font-size:.82rem; font-weight:600; color:var(--accent); text-decoration:none; }
+  .bar a.app:hover{ text-decoration:underline; }
+
+  main{ max-width:760px; margin:0 auto; padding:48px 22px 96px; }
+  .kick{ font-family:system-ui,sans-serif; text-transform:uppercase; letter-spacing:.13em;
+         font-size:.72rem; color:var(--accent); font-weight:800; }
+  h1{ font-size:2.4rem; line-height:1.15; margin:10px 0 8px; letter-spacing:-.015em; }
+  .sub{ font-family:system-ui,sans-serif; color:var(--muted); font-size:1rem; margin:0 0 36px; }
+
+  .posts{ list-style:none; padding:0; margin:0; }
+  .post{ display:block; text-decoration:none; color:inherit; border:1px solid var(--rule);
+         border-radius:14px; background:var(--card); padding:24px 26px; margin:0 0 22px;
+         transition:border-color .15s, box-shadow .15s, transform .15s; }
+  .post:hover{ border-color:var(--accent);
+         box-shadow:0 14px 34px rgba(20,22,40,.14); transform:translateY(-2px); }
+  .post .pk{ font-family:system-ui,sans-serif; text-transform:uppercase; letter-spacing:.1em;
+         font-size:.68rem; color:var(--accent); font-weight:800; }
+  .post h2{ font-size:1.6rem; line-height:1.2; margin:8px 0 8px; letter-spacing:-.01em; }
+  .post .meta{ font-family:system-ui,sans-serif; color:var(--muted); font-size:.84rem; margin:0 0 12px; }
+  .post p{ margin:0 0 14px; }
+  .post .more{ font-family:system-ui,sans-serif; font-weight:700; font-size:.9rem; color:var(--accent); }
+
+  .foot{ font-family:system-ui,sans-serif; font-size:.82rem; color:var(--muted);
+        border-top:1px solid var(--rule); margin-top:40px; padding-top:18px; }
+</style>
+</head>
+<body>
+  <header class="bar"><div class="in">
+    <a class="brand" href="/">AlgeBench</a>
+    <span class="tag">Blog</span>
+    <span class="spacer"></span>
+    <a class="app" id="nav-app" href="/">Open the app →</a>
+  </div></header>
+
+  <main>
+    <p class="kick">The AlgeBench Blog</p>
+    <h1>Writing</h1>
+    <p class="sub">Notes on interactive, AI-written, CAS-verified mathematics — and how to learn from it.</p>
+
+    <ul class="posts">
+      <li>
+        <a class="post" href="proofs-you-can-play-with.html">
+          <span class="pk">Interactive Mathematics</span>
+          <h2>Proofs you can play with</h2>
+          <p class="meta">June 28, 2026 · 6 min read</p>
+          <p>A short tour of AlgeBench's animated derivations — each one written by an AI, checked
+          step by step by a computer-algebra system, and embedded right in the page. Step through the
+          quadratic formula, watch why moving clocks run slow, and follow a spacecraft into the
+          atmosphere — then jump into a 3D scene to ask an AI tutor about it.</p>
+          <span class="more">Read the post →</span>
+        </a>
+      </li>
+    </ul>
+
+    <p class="foot">More posts soon. Want the source? Every figure on this site is a live AlgeBench
+    embed — open any proof in the app and copy its snippet.</p>
+  </main>
+
+  <script>
+    // Point "Open the app" at the live app (same-origin in prod, local server in dev).
+    var HOST = /^(localhost|127\.0\.0\.1)$/.test(location.hostname)
+      ? "http://localhost:5751" : "https://algebench.org";
+    document.getElementById("nav-app").href = HOST + "/";
+  </script>
+</body>
+</html>
