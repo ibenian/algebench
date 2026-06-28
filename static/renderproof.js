@@ -408,9 +408,16 @@ async function main() {
 
   const theme = parseTheme();
   applyTheme(theme);
-  // Opt-in "Explore further" follow-up chips via ?explore=1 (off by default).
-  const exploreFollowups = ["1", "true", "yes"].includes(
-    (new URLSearchParams(location.search).get("explore") || "").toLowerCase());
+  // Explore chips (Prerequisites / "Explore further" follow-ups) show by DEFAULT
+  // on the shareable page — they enrich the proof, and the engine auto-hides the
+  // ⓘ pill for a proof that has none. Opt out with ?explore=0.
+  const exploreFollowups = !["0", "false", "no"].includes(
+    (new URLSearchParams(location.search).get("explore") || "").trim().toLowerCase());
+  // Optional autoplay (?autoplay=true → every proof on the page; ?autoplay=<n> →
+  // only the nth, 1-indexed: 1 = first, 2 = second …). Lets a share/embed link
+  // open already morphing, no click needed.
+  const autoplayRaw = (new URLSearchParams(location.search).get("autoplay") || "")
+    .trim().toLowerCase();
 
   const { valid, bad, overflow } = parseBuiltins();
   setupControlBar(valid, theme);
@@ -431,13 +438,31 @@ async function main() {
     return;
   }
 
+  const paBar = document.querySelector(".pa-bar");
   window.__animators = [];
+  let firstCard = true;
   for (const slug of valid) {
     const title = document.createElement("h2");
     title.className = "pa-card-title";
-    title.textContent = slug;                 // placeholder until data arrives
+    const titleText = document.createElement("span");
+    titleText.className = "pa-card-title-text";
+    titleText.textContent = slug;             // placeholder until data arrives
+    title.appendChild(titleText);
     const card = document.createElement("div");
-    root.appendChild(title);
+    // Top-level only: host the { } / < > action bar on the FIRST proof's title row.
+    // Wrap the <h2> and the bar as SIBLINGS in a flex row rather than nesting the
+    // buttons inside the heading — interactive controls inside an <h2> pollute its
+    // accessible name/structure. Embedded keeps the bar overlaid in the corner.
+    if (firstCard && !embedded && paBar) {
+      const row = document.createElement("div");
+      row.className = "pa-title-row";
+      row.appendChild(title);
+      row.appendChild(paBar);
+      root.appendChild(row);
+    } else {
+      root.appendChild(title);
+    }
+    firstCard = false;
     root.appendChild(card);
 
     try {
@@ -449,7 +474,7 @@ async function main() {
       if (text.length > MAX_BYTES) throw new Error("proof file too large");
       loadedProofs.push({ slug, text });   // capture raw JSON for the { } viewer
       const data = validateProofData(JSON.parse(text));
-      if (data.title) title.textContent = data.title;
+      if (data.title) titleText.textContent = data.title;
       window.__animators.push(new ProofAnimator(card, data, {
         katex, liveTerms: true, enableExplore: exploreFollowups,
         // No onExplore here: standalone, the engine copies the chip text; when this
@@ -458,6 +483,18 @@ async function main() {
     } catch (e) {
       showError(card, `Could not load "${slug}": ${e.message}`);
     }
+  }
+
+  // Trigger autoplay once all animators exist. ``true`` (or ``all``/``yes``) plays
+  // every card; a bare integer plays only that 1-indexed card — so ``autoplay=1``
+  // is the FIRST proof, not a boolean. Out-of-range / unparseable → no-op.
+  if (autoplayRaw && !["0", "false", "no"].includes(autoplayRaw)) {
+    const playAll = ["true", "all", "yes"].includes(autoplayRaw);
+    const n = Number.parseInt(autoplayRaw, 10);
+    const targets = playAll
+      ? window.__animators
+      : (String(n) === autoplayRaw && n >= 1 ? [window.__animators[n - 1]] : []);
+    for (const a of targets) { if (a) { try { a.play(); } catch (e) { /* best-effort */ } } }
   }
 
   if (embedded) setupEmbedAutoResize();

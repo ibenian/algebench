@@ -34,6 +34,12 @@ ROUNDTRIP = [
     (r"\int \int (x+y) \, dx \, dy", sp.Integral(x + y, x, y)),  # multi-variable
     (r"\frac{a}{b}", a / b),
     (r"x^{n}", x ** n),
+    # Logarithms carry their base as a separate ``base``-role operand (``e`` for
+    # ``\ln``/bare ``\log``); the grounder must split it off the argument so the
+    # base doesn't fail the single-arg check (regression: #log-grounding).
+    (r"\ln(v)", sp.log(v)),
+    (r"\log(x)", sp.log(x)),
+    (r"\log_{2}(x)", sp.log(x, 2)),
 ]
 
 

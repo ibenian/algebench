@@ -39,7 +39,33 @@
            border: 3px solid transparent; background-clip: content-box; }
     ::-webkit-scrollbar-thumb:hover { background-color: var(--muted-color); }
     .wrap { max-width: 820px; margin: 0 auto; padding: 24px 20px 56px; }
+    @media (max-width: 480px) { .wrap { padding: 14px 12px 40px; } }
     .pa-bar { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin: 0 0 10px; }
+    /* Brand wordmark on the left: frames the standalone gallery and is a quiet
+       funnel — every shared/standalone proof links back to the main app. Pushed
+       left with margin-right:auto so the action buttons stay right. Hidden in the
+       embed (chrome is trimmed there). */
+    /* Page-title banner: a full-width header band, separated from the proofs below
+       by a divider + breathing room. */
+    .pa-brand { display: flex; flex-direction: column; gap: 3px;
+                margin: 0 0 28px; padding: 0 0 16px;
+                border-bottom: 1px solid var(--border-color);
+                text-decoration: none; line-height: 1.2; }
+    .pa-brand-name { font-weight: 700; font-size: 1.4rem; letter-spacing: -.01em;
+                color: var(--title-fg); }
+    .pa-brand-sub { font-size: .82rem; color: var(--muted-color); }
+    .pa-brand:hover .pa-brand-name { color: var(--text-color); }
+    html[data-embedded] .pa-brand { display: none; }
+    /* Non-embedded: renderproof.js wraps the FIRST proof's <h2> and the action bar
+       as siblings in this row, so the title and the { } / < > buttons share one
+       line (the bar is NOT nested inside the heading — keeps a11y clean). */
+    .pa-title-row { display: flex; align-items: center; justify-content: space-between;
+                gap: 10px; margin: 4px 0 8px; }
+    .pa-title-row .pa-card-title { margin: 0; }
+    .pa-title-row .pa-bar { margin: 0; }
+    /* Match the card's bottom padding to the divider→buttons gap (the controls'
+       padding-top) so the space under the buttons isn't visibly larger than above. */
+    .wrap .pa-root { padding-bottom: 12px; }
     .pa-uibtn { font: inherit; font-size: .85rem; cursor: pointer; border: 1px solid var(--btn-border);
               background: var(--btn-bg); color: var(--btn-fg); border-radius: 7px; padding: 6px 12px; }
     .pa-uibtn:hover { background: var(--btn-hover); }
@@ -91,6 +117,10 @@
 </head>
 <body>
   <div class="wrap">
+    <a class="pa-brand" href="/" aria-label="AlgeBench home">
+      <span class="pa-brand-name">AlgeBench</span>
+      <span class="pa-brand-sub">animated, step-by-step proofs</span>
+    </a>
     <div class="pa-bar">
       <button id="pa-json" class="pa-uibtn" type="button" hidden></button>
       <button id="pa-embed" class="pa-uibtn" type="button" hidden></button>
@@ -130,6 +160,6 @@
       <div id="pa-json-body" class="pa-modal-body"></div>
     </div>
   </div>
-  <script type="module" src="/renderproof.js"></script>
+  <script type="module" src="/renderproof.js?v=__APP_VERSION__"></script>
 </body>
 </html>

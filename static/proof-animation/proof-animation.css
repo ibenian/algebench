@@ -585,6 +585,10 @@
   line-height: 1;
   background: var(--pa-conf-bg, transparent);
   border: 1px solid var(--pa-conf-fg, transparent);
+  /* The glyph is a monochrome text symbol (see TIER_GLYPH) — tint it to the tier
+     color so it stays crisp/high-contrast on any theme (emoji ignored `color`). */
+  color: var(--pa-conf-fg);
+  font-weight: 700;
   cursor: default;
   user-select: none;
 }
@@ -625,6 +629,8 @@
   transition: padding 0.15s, gap 0.15s;
 }
 .pa-root .pa-overall:empty { display: none; }    /* not yet populated (or no data) */
+/* Tint just the glyph to the tier color (the label keeps the readable fg). */
+.pa-root .pa-overall-icon { color: var(--pa-conf-fg); font-weight: 700; }
 /* COMPACT by default: icon-only chip. Expands (label + tally) on its own hover
    (peek) or while pinned. */
 .pa-root:not(.pa-conf-on):not(.pa-conf-peek) .pa-overall { padding: 4px 8px; gap: 0; }
@@ -698,7 +704,13 @@
     max-width: 280px;
     padding: 8px 11px;
     border-radius: 10px;
+    /* ~60% transparent panel tint (text + border stay opaque); a backdrop blur
+       keeps it readable over the math it floats above. Opaque fallback first, so
+       browsers without color-mix() get a solid (still readable) tooltip. */
     background: var(--panel-bg, #1a1a2e);
+    background: color-mix(in srgb, var(--panel-bg, #1a1a2e) 40%, transparent);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
     color: var(--text-color, #e5e7eb);
     border: 1px solid var(--border-color, #2d2d44);
     box-shadow: 0 6px 22px rgba(0, 0, 0, 0.40);
@@ -832,3 +844,15 @@
    smaller gap and a content-width Play button (drop its fixed 6em). */
 .sgp-proof-box .pa-controls.pa-compact { gap: 4px; }
 .sgp-proof-box .pa-controls.pa-compact .pa-play { width: auto; }
+
+/* Phones: even compacted (step numbers already hidden), the fixed nav row can be
+   wider than a ~375px card — so it overflowed the card and pushed the page
+   sideways. Trim the card padding, tighten the gap, drop the Play button's fixed
+   6em, and let the row WRAP to a second line instead of overflowing. (renderproof
+   has a flexible page height + posts its height to the embed host, so a two-line
+   control row is fine here.) */
+@media (max-width: 480px) {
+  .pa-root { padding: 14px; }
+  .pa-controls { flex-wrap: wrap; gap: 6px; row-gap: 8px; }
+  .pa-controls .pa-play { width: auto; }
+}

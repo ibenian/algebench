@@ -23,6 +23,7 @@ from backend.experts.modules.proof_completion.outputs import ProofTrajectory
 # working unchanged. The stable-id matcher was extracted to its own module
 # (``tree_match``) for isolated testing; re-exported here under the old names.
 from backend.experts.handlers.proof_animation.animation import build  # noqa: F401
+from backend.experts.handlers.proof_animation.finalize import build_described
 from backend.experts.modules.proof_completion.tree_match import (  # noqa: F401
     _children, rebase as _rebase,
 )
@@ -48,8 +49,19 @@ class ProofAnimation(BaseModel):
     trajectory: ProofTrajectory
 
 
-def build_animation(anim: ProofAnimation) -> dict:
-    """Build animation data from a ProofAnimation (carries the step-0 caption)."""
-    return build(anim.trajectory, anim.domain, anim.title,
-                 start_operation=anim.start_operation,
-                 start_justification=anim.start_justification)
+def build_animation(anim: ProofAnimation, *, judge=None, lesson_context: str = "",
+                    describe: bool = True) -> dict:
+    """Build complete animation data from a ProofAnimation (carries the step-0 caption).
+
+    Delegates to the shared ``finalize.build_described`` — the same pipeline the
+    live handler uses — so a ``judge`` (DomainStepJudge) + ``lesson_context`` get
+    the DOMAIN-tier rescue, and ``describe`` runs the per-term tooltip pass. With
+    no judge/LM the result is pure-CAS, description-less. ``lesson_context``
+    defaults to the proof's title/domain.
+    """
+    return build_described(anim.trajectory, anim.domain, anim.title,
+                           start_operation=anim.start_operation,
+                           start_justification=anim.start_justification,
+                           judge=judge, describe=describe,
+                           lesson_context=lesson_context
+                           or f"{anim.title} (domain: {anim.domain})")

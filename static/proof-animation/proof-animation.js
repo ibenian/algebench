@@ -39,6 +39,21 @@ const _parenChar = (s) => {
 // Playback speed multipliers the speed button cycles through (click → next).
 const SPEEDS = [0.25, 0.5, 1, 2, 4];
 
+// Monochrome tier glyphs for the confidence badges. The server bakes COLOR emoji
+// (🥇🥈🎓🔹…) into the proof JSON, but emoji ignore CSS `color`, so a dark cap
+// muddies against a dark badge. These are plain text glyphs that inherit the
+// badge's tier color (--pa-conf-fg), staying crisp on any theme. Keyed by tier;
+// falls back to the baked icon for an unknown tier.
+const TIER_GLYPH = {
+  grounded:  "★",   // gold   — algebraically grounded (a CAS identity)
+  verified:  "✓",   // silver — verified (strong evidence)
+  domain:    "✦",   // teal   — domain-vouched (expert; CAS couldn't check)
+  plausible: "◇",   // blue   — plausible (tentative)
+  unchecked: "○",   // gray   — unchecked (undecided)
+  refuted:   "✗",   // red    — refuted
+};
+const _tierGlyph = (tier, fallback) => TIER_GLYPH[tier] || fallback || "";
+
 // Info (ⓘ) icon for the explore pill — static author-controlled markup.
 const INFO_ICON =
   '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" ' +
@@ -1696,7 +1711,7 @@ export class ProofAnimator {
     el.removeAttribute("aria-label");
     if (!c) return;
     el.classList.add(`pa-conf-${c.tier}`);
-    el.textContent = c.icon || "";
+    el.textContent = _tierGlyph(c.tier, c.icon);
     // Tooltip: when the CAS reached a verdict (or for the start state) the
     // concrete reason IS the story — including a mislabel downgrade, where the
     // generic tier meaning ("could not decide") would contradict it. Only a
@@ -1767,7 +1782,7 @@ export class ProofAnimator {
     el.classList.add(`pa-conf-${oc.tier}`);
     const icon = document.createElement("span");
     icon.className = "pa-overall-icon";
-    icon.textContent = oc.icon || "";
+    icon.textContent = _tierGlyph(oc.tier, oc.icon);
     const label = document.createElement("span");
     label.className = "pa-overall-label";
     label.textContent = oc.label || oc.tier;
