@@ -56,12 +56,13 @@
     .pa-brand-sub { font-size: .82rem; color: var(--muted-color); }
     .pa-brand:hover .pa-brand-name { color: var(--text-color); }
     html[data-embedded] .pa-brand { display: none; }
-    /* Non-embedded: renderproof.js moves the action bar onto the FIRST proof's
-       title row (instead of a separate line above it), so the title and the
-       { } / < > buttons share one row. */
-    .pa-card-title.pa-has-actions { display: flex; align-items: center;
-                justify-content: space-between; gap: 10px; }
-    .pa-card-title.pa-has-actions .pa-bar { margin: 0; }
+    /* Non-embedded: renderproof.js wraps the FIRST proof's <h2> and the action bar
+       as siblings in this row, so the title and the { } / < > buttons share one
+       line (the bar is NOT nested inside the heading — keeps a11y clean). */
+    .pa-title-row { display: flex; align-items: center; justify-content: space-between;
+                gap: 10px; margin: 4px 0 8px; }
+    .pa-title-row .pa-card-title { margin: 0; }
+    .pa-title-row .pa-bar { margin: 0; }
     /* Match the card's bottom padding to the divider→buttons gap (the controls'
        padding-top) so the space under the buttons isn't visibly larger than above. */
     .wrap .pa-root { padding-bottom: 12px; }

@@ -448,17 +448,21 @@ async function main() {
     titleText.className = "pa-card-title-text";
     titleText.textContent = slug;             // placeholder until data arrives
     title.appendChild(titleText);
-    // Top-level only: host the { } / < > action bar on the FIRST proof's title row
-    // instead of a separate line above. (Embedded keeps it overlaid in the corner
-    // via CSS, so don't move it there.) Moving the node preserves its wired
-    // buttons; we update titleText (not title) so it never wipes the bar.
+    const card = document.createElement("div");
+    // Top-level only: host the { } / < > action bar on the FIRST proof's title row.
+    // Wrap the <h2> and the bar as SIBLINGS in a flex row rather than nesting the
+    // buttons inside the heading — interactive controls inside an <h2> pollute its
+    // accessible name/structure. Embedded keeps the bar overlaid in the corner.
     if (firstCard && !embedded && paBar) {
-      title.classList.add("pa-has-actions");
-      title.appendChild(paBar);
+      const row = document.createElement("div");
+      row.className = "pa-title-row";
+      row.appendChild(title);
+      row.appendChild(paBar);
+      root.appendChild(row);
+    } else {
+      root.appendChild(title);
     }
     firstCard = false;
-    const card = document.createElement("div");
-    root.appendChild(title);
     root.appendChild(card);
 
     try {

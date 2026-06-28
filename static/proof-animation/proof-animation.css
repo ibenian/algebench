@@ -705,7 +705,9 @@
     padding: 8px 11px;
     border-radius: 10px;
     /* ~60% transparent panel tint (text + border stay opaque); a backdrop blur
-       keeps it readable over the math it floats above. */
+       keeps it readable over the math it floats above. Opaque fallback first, so
+       browsers without color-mix() get a solid (still readable) tooltip. */
+    background: var(--panel-bg, #1a1a2e);
     background: color-mix(in srgb, var(--panel-bg, #1a1a2e) 40%, transparent);
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);

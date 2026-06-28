@@ -130,7 +130,12 @@ def graph_to_sympy(graph: SemanticGraph) -> sp.Expr:
             fn = _FUNC.get(op or "")
             if fn is None or len(args) != 1:
                 raise UngroundableGraph(f"function {op!r}")
-            if base_ins and op in ("log", "ln"):
+            if base_ins:
+                # Only logarithms carry a base, and exactly one — anything else is a
+                # malformed graph; fail fast rather than silently mis-grounding.
+                if op not in ("log", "ln") or len(base_ins) != 1:
+                    raise UngroundableGraph(
+                        f"unexpected base operand(s) on function {op!r}")
                 # sp.log(x, e) auto-simplifies to log(x); sp.log(x, 2) → log base 2
                 res = sp.log(args[0], ev(base_ins[0]))
             else:
