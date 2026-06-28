@@ -104,11 +104,12 @@ class DeriveProofRequest(BaseModel):
     # full lead-up: `proof.steps[:index]`). Threaded into `lesson_context` so the
     # expert derives with the prior steps in view.
     previous_steps: list[PriorStep] = Field(default_factory=list)
-    # Opt-in extras: the expert always produces a `goal`, but `prerequisites` and
-    # `followups` (the bottom "Explore" tabs) are only emitted in the response when
-    # the caller asks for them — off by default so a plain derivation stays lean.
-    include_prerequisites: bool = False
-    include_followups: bool = False
+    # The expert always produces a `goal`; `prerequisites` and `followups` (the
+    # bottom "Explore" tabs / ⓘ pill) are emitted by default so the app surfaces
+    # them. They're only present when the trajectory actually has them (the pill
+    # stays hidden otherwise), so this stays cheap. A caller can pass False to omit.
+    include_prerequisites: bool = True
+    include_followups: bool = True
 
 
 def _format_lesson_context(ctx: Optional[dict]) -> str:
