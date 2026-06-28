@@ -436,11 +436,25 @@ async function main() {
     return;
   }
 
+  const paBar = document.querySelector(".pa-bar");
   window.__animators = [];
+  let firstCard = true;
   for (const slug of valid) {
     const title = document.createElement("h2");
     title.className = "pa-card-title";
-    title.textContent = slug;                 // placeholder until data arrives
+    const titleText = document.createElement("span");
+    titleText.className = "pa-card-title-text";
+    titleText.textContent = slug;             // placeholder until data arrives
+    title.appendChild(titleText);
+    // Top-level only: host the { } / < > action bar on the FIRST proof's title row
+    // instead of a separate line above. (Embedded keeps it overlaid in the corner
+    // via CSS, so don't move it there.) Moving the node preserves its wired
+    // buttons; we update titleText (not title) so it never wipes the bar.
+    if (firstCard && !embedded && paBar) {
+      title.classList.add("pa-has-actions");
+      title.appendChild(paBar);
+    }
+    firstCard = false;
     const card = document.createElement("div");
     root.appendChild(title);
     root.appendChild(card);
@@ -454,7 +468,7 @@ async function main() {
       if (text.length > MAX_BYTES) throw new Error("proof file too large");
       loadedProofs.push({ slug, text });   // capture raw JSON for the { } viewer
       const data = validateProofData(JSON.parse(text));
-      if (data.title) title.textContent = data.title;
+      if (data.title) titleText.textContent = data.title;
       window.__animators.push(new ProofAnimator(card, data, {
         katex, liveTerms: true, enableExplore: exploreFollowups,
         // No onExplore here: standalone, the engine copies the chip text; when this

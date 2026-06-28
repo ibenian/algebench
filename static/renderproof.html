@@ -45,12 +45,21 @@
        funnel — every shared/standalone proof links back to the main app. Pushed
        left with margin-right:auto so the action buttons stay right. Hidden in the
        embed (chrome is trimmed there). */
-    .pa-brand { margin-right: auto; display: flex; flex-direction: column; gap: 1px;
+    .pa-brand { display: inline-flex; flex-direction: column; gap: 1px; margin: 0 0 2px;
                 text-decoration: none; line-height: 1.15; }
     .pa-brand-name { font-weight: 700; font-size: 1rem; color: var(--title-fg); }
     .pa-brand-sub { font-size: .72rem; color: var(--muted-color); }
     .pa-brand:hover .pa-brand-name { color: var(--text-color); }
     html[data-embedded] .pa-brand { display: none; }
+    /* Non-embedded: renderproof.js moves the action bar onto the FIRST proof's
+       title row (instead of a separate line above it), so the title and the
+       { } / < > buttons share one row. */
+    .pa-card-title.pa-has-actions { display: flex; align-items: center;
+                justify-content: space-between; gap: 10px; }
+    .pa-card-title.pa-has-actions .pa-bar { margin: 0; }
+    /* Match the card's bottom padding to the divider→buttons gap (the controls'
+       padding-top) so the space under the buttons isn't visibly larger than above. */
+    .wrap .pa-root { padding-bottom: 12px; }
     .pa-uibtn { font: inherit; font-size: .85rem; cursor: pointer; border: 1px solid var(--btn-border);
               background: var(--btn-bg); color: var(--btn-fg); border-radius: 7px; padding: 6px 12px; }
     .pa-uibtn:hover { background: var(--btn-hover); }
@@ -102,11 +111,11 @@
 </head>
 <body>
   <div class="wrap">
+    <a class="pa-brand" href="/" aria-label="AlgeBench home">
+      <span class="pa-brand-name">AlgeBench</span>
+      <span class="pa-brand-sub">animated, step-by-step proofs</span>
+    </a>
     <div class="pa-bar">
-      <a class="pa-brand" href="/" aria-label="AlgeBench home">
-        <span class="pa-brand-name">AlgeBench</span>
-        <span class="pa-brand-sub">animated, step-by-step proofs</span>
-      </a>
       <button id="pa-json" class="pa-uibtn" type="button" hidden></button>
       <button id="pa-embed" class="pa-uibtn" type="button" hidden></button>
       <button id="pa-action" class="pa-uibtn" type="button" hidden></button>
