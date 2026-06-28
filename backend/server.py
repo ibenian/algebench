@@ -27,7 +27,7 @@ import termios
 import select
 from urllib.parse import quote
 from fastapi import Depends, FastAPI, Request
-from fastapi.responses import StreamingResponse, Response, JSONResponse, HTMLResponse, FileResponse, RedirectResponse
+from fastapi.responses import StreamingResponse, Response, JSONResponse, HTMLResponse, FileResponse
 from pydantic import BaseModel
 import uvicorn
 from google import genai
@@ -1308,8 +1308,7 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
                tts_parallelism=None, tts_min_buffer=None, tts_min_sentence_chars=None,
                tts_min_sentence_chars_growth=None, tts_chunk_timeout=None,
                tts_max_retries=None, tts_retry_delay=None, tts_style=None,
-               tts_live=True, tts_output_file=None, tts_realtime=None,
-               initial_proof=None):
+               tts_live=True, tts_output_file=None, tts_realtime=None):
     """Build and return the AlgeBench FastAPI (ASGI) application.
 
     All routes are registered here so the app can be served either by an
@@ -1415,11 +1414,10 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
     @fastapp.get("/")
     @fastapp.get("/index.html")
     async def get_index():
-        # Launched with --proof? Root redirects to the shareable proof page so the
-        # whole session (incl. a preview that only opens the port root) lands on the
-        # proof instead of the main 3D app. Validated as <domain>/<name> in main().
-        if initial_proof:
-            return RedirectResponse(url=f"/renderproof?builtin={quote(initial_proof)}")
+        # Note: --proof does NOT redirect "/" here. The launcher opens (or prints)
+        # the /renderproof?builtin=… URL directly (see serve_and_open), so the proof
+        # still shows on start — but "/" must keep serving the main app so the user
+        # can navigate back to it from the proof page.
         # Read fresh on each request so edits to index.html are picked up
         # without a server restart (same pattern as /style.css, /*.js).
         return HTMLResponse(
@@ -2319,7 +2317,6 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         tts_live=tts_live,
         tts_output_file=tts_output_file,
         tts_realtime=tts_realtime,
-        initial_proof=initial_proof,
     )
 
     # ---- Start uvicorn in a background thread ----
