@@ -408,9 +408,11 @@ async function main() {
 
   const theme = parseTheme();
   applyTheme(theme);
-  // Opt-in "Explore further" follow-up chips via ?explore=1 (off by default).
-  const exploreFollowups = ["1", "true", "yes"].includes(
-    (new URLSearchParams(location.search).get("explore") || "").toLowerCase());
+  // Explore chips (Prerequisites / "Explore further" follow-ups) show by DEFAULT
+  // on the shareable page — they enrich the proof, and the engine auto-hides the
+  // ⓘ pill for a proof that has none. Opt out with ?explore=0.
+  const exploreFollowups = !["0", "false", "no"].includes(
+    (new URLSearchParams(location.search).get("explore") || "").trim().toLowerCase());
   // Optional autoplay (?autoplay=true → every proof on the page; ?autoplay=<n> →
   // only the nth, 1-indexed: 1 = first, 2 = second …). Lets a share/embed link
   // open already morphing, no click needed.
