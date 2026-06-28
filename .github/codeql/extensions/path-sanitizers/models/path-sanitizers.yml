@@ -1,11 +1,20 @@
-# Mark sanitize_path return value as a path-injection barrier.
-# All file-serving handlers funnel through this function, which
-# validates that resolved paths stay within the allowed directory root.
-
+# Mark sanitize_path's return value as a path-injection barrier.
+#
+# Every file-serving handler in backend/server.py funnels its untrusted
+# filename through backend.util.sanitize_path(root, name), which resolves the
+# path and rejects anything escaping `root` (via Path.resolve() +
+# is_relative_to). The resolved Path it returns is therefore confined, so any
+# py/path-injection flow that passes through it is a false positive.
+#
+# Two rows are required because server.py accesses the function through the
+# package re-export (`from backend.util import sanitize_path`), while the
+# definition lives in backend.util.pathutil. CodeQL's module resolution can
+# land on either qualified name depending on how the access is modelled, so we
+# mark both. Row format: [type, "Member[sanitize_path].ReturnValue", kind].
 extensions:
   - addsTo:
       pack: codeql/python-all
       extensible: barrierModel
     data:
-      # [type, path, kind]
       - ["backend.util.pathutil", "Member[sanitize_path].ReturnValue", "path-injection"]
+      - ["backend.util", "Member[sanitize_path].ReturnValue", "path-injection"]

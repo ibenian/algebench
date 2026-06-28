@@ -1,7 +1,15 @@
 name: algebench/path-sanitizers
 version: 0.0.0
 library: true
+# Inject into codeql/python-all so the barrierModel rows below reach the
+# taint-tracking libraries that py/path-injection is built on. This MUST match
+# the `addsTo.pack` of every data extension in models/ (codeql/python-all), and
+# mirrors the known-good githubsecuritylab/codeql-python-extensions pack.
 extensionTargets:
-  codeql/python-queries: "*"
+  codeql/python-all: "*"
+# List both `*.yml` and `**/*.yml`: a lone `**/*.yml` glob does not reliably
+# match files sitting directly in models/, only ones nested in subdirectories.
+# (The community pack lists both globs for exactly this reason.)
 dataExtensions:
+  - models/*.yml
   - models/**/*.yml
