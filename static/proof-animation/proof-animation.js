@@ -404,6 +404,10 @@ export class ProofAnimator {
       try { document.removeEventListener("visibilitychange", this._onVisibility); } catch (e) {}
       this._onVisibility = null;
     }
+    if (this._onDocExplore) {
+      try { document.removeEventListener("mousedown", this._onDocExplore, true); } catch (e) {}
+      this._onDocExplore = null;
+    }
     if (this.stage && this._onStageMove) {
       this.stage.removeEventListener("mousemove", this._onStageMove);
       this.stage.removeEventListener("mouseleave", this._onStageLeave);
@@ -865,6 +869,20 @@ export class ProofAnimator {
       pill.classList.toggle("pa-pinned", this._explorePinned);
       if (this._explorePinned) show(); else hide();
     });
+
+    // Clicking anywhere outside the pill/popup dismisses a pinned popup (e.g. the
+    // user steps through the proof, hovers a term, or clicks the prose around it).
+    // Capture phase so it fires before in-box click handlers; chips inside the
+    // popup keep it open (their target is within `pop`).
+    if (this._onDocExplore) document.removeEventListener("mousedown", this._onDocExplore, true);
+    this._onDocExplore = (ev) => {
+      if (!this._explorePinned) return;
+      if (pop.contains(ev.target) || pill.contains(ev.target)) return;
+      this._explorePinned = false;
+      pill.classList.remove("pa-pinned");
+      hide();
+    };
+    document.addEventListener("mousedown", this._onDocExplore, true);
   }
 
   // Hide every popup WITHOUT tearing the widget down, and unpin the Explore popup.
