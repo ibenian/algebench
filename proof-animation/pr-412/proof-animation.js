@@ -853,12 +853,13 @@ export class ProofAnimator {
     });
   }
 
-  // Hide every body-appended popup WITHOUT tearing the widget down. The popups
-  // (term tip, math tip, goal pop, explore pop) live on document.body so they're
-  // not clipped by the box — which means removing the box from the DOM doesn't
-  // take them with it. The app calls this when a proof box is hidden but kept in
-  // memory (e.g. after a step/scene switch), so a pinned Explore popup doesn't
-  // orphan on screen. (destroy() removes them entirely; this just hides + unpins.)
+  // Hide every popup WITHOUT tearing the widget down, and unpin the Explore popup.
+  // The term tip and goal pop are appended to document.body (so removing the box
+  // doesn't hide them); the math tip and Explore popup are contained in the box,
+  // but the Explore popup may be PINNED (display:flex) — unpin it so a box that's
+  // hidden then re-shown doesn't resurrect it. The app calls this when a proof box
+  // is hidden but kept in memory (step/scene switch). (destroy() removes them all
+  // entirely; this just hides + unpins.)
   hidePopups() {
     this._hideGoalPop();
     if (this._termTip) this._termTip.style.display = "none";
