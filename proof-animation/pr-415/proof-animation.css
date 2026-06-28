@@ -138,6 +138,24 @@
    glyphs beneath so terms inside a square root are hoverable like everywhere else. */
 .pa-live-terms .pa-stage .sqrt .hide-tail,
 .pa-live-terms .pa-stage .sqrt .hide-tail svg { pointer-events: none; }
+/* Same problem, more general: KaTeX stacks glyphs inside structural layout
+   containers (`.vlist` stacks, struts, the svg-align wrapper) that paint OVER a
+   radicand / fraction numerator+denominator and intercept the pointer — so
+   hovering a term inside a √ or a fraction resolved to the enclosing operator
+   (the WHOLE √ lit up) instead of the term. Make those layout containers
+   pointer-transparent and keep the tagged leaves hittable, so the pointer reaches
+   the actual glyph. Operator chrome that is its OWN mark (the fraction bar, the
+   surd) keeps its hit area via its own rules, so it stays selectable. */
+.pa-live-terms .pa-stage .vlist,
+.pa-live-terms .pa-stage .vlist-r,
+.pa-live-terms .pa-stage .vlist-t,
+.pa-live-terms .pa-stage .pstrut,
+.pa-live-terms .pa-stage .strut,
+.pa-live-terms .pa-stage .svg-align { pointer-events: none; }
+/* Scoped to the live expression subtree (like the cursor rule above), NOT all of
+   .pa-stage — so it never re-enables hit-testing on data-n clones inside morph
+   ghosts (.pa-ghost lives directly under .pa-stage and stays pointer-events:none). */
+.pa-live-terms .pa-stage > .pa-expr [data-n] { pointer-events: auto; }
 /* Hovered locally (mouse on the glyph) OR linked (the graph node is hovered) —
    same indigo backlight, so hover reads identically in both sync directions. */
 .pa-live-terms .pa-term-hot,
@@ -686,7 +704,11 @@
     max-width: 280px;
     padding: 8px 11px;
     border-radius: 10px;
-    background: var(--panel-bg, #1a1a2e);
+    /* ~80% transparent panel tint (text + border stay opaque); a backdrop blur
+       keeps it readable over the math it floats above. */
+    background: color-mix(in srgb, var(--panel-bg, #1a1a2e) 20%, transparent);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
     color: var(--text-color, #e5e7eb);
     border: 1px solid var(--border-color, #2d2d44);
     box-shadow: 0 6px 22px rgba(0, 0, 0, 0.40);

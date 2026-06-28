@@ -404,11 +404,11 @@ export class ProofAnimator {
       try { document.removeEventListener("visibilitychange", this._onVisibility); } catch (e) {}
       this._onVisibility = null;
     }
-    if (this.stage && this._onStageOver) {
-      this.stage.removeEventListener("mouseover", this._onStageOver);
-      this.stage.removeEventListener("mouseout", this._onStageOut);
+    if (this.stage && this._onStageMove) {
+      this.stage.removeEventListener("mousemove", this._onStageMove);
+      this.stage.removeEventListener("mouseleave", this._onStageLeave);
       this.stage.removeEventListener("click", this._onStageClick);
-      this._onStageOver = this._onStageOut = this._onStageClick = null;
+      this._onStageMove = this._onStageLeave = this._onStageClick = null;
     }
     // Remove the body-appended popups this widget created (else they leak when a
     // proof box is torn down and recreated in the app).
@@ -428,43 +428,42 @@ export class ProofAnimator {
   _bindLiveTerms() {
     if (!this._liveTerms || !this.stage) return;
     this.container.classList.add("pa-live-terms");
-    // The innermost tagged element under the pointer (a leaf atom when over a
-    // variable/number/operator glyph; the operator's wrapper when over notation
-    // that has no leaf of its own — e.g. a derivative's d/dt bar). Anything that
-    // maps to a graph node is selectable, so we DON'T restrict to leaves.
+    // The term under the pointer. A leaf glyph IS the term; anything that still
+    // wraps tagged leaves — a fraction, power, √, product, equation — snaps to the
+    // NEAREST leaf by box, so the inner term lights up rather than the whole
+    // sub-expression. (KaTeX's transparent layout containers let a wrapper sit
+    // under the pointer in the gaps between glyphs; the box-distance snap is
+    // tolerance-capped, so a true background point still no-ops.) _termChain then
+    // walks UP from the leaf to its enclosing operator, so the graph host can
+    // still resolve the fraction/power/√ from the chain when it wants to.
     const tagOf = (t, x, y) => {
       const el = t && t.closest ? t.closest("[data-n]") : null;
       if (!el || !this.stage.contains(el)) return null;
-      // A leaf glyph is always a term. A wrapper counts only if it's a TIGHT
-      // operator — never a spanning combiner — so hovering a fraction bar or the
-      // chrome of a product/equation doesn't light the whole sub-expression.
-      if (el.querySelector("[data-n]") && _isSpanningWrapperId(el.getAttribute("data-n"))) {
-        // The pointer hit a spanning wrapper's CHROME — e.g. the dead zone in the
-        // middle of a fraction's denominator, where KaTeX's vlist lets the wrapper
-        // show through above the glyph. Snap to the nearest leaf term by box (its
-        // rect still covers the point), so the whole denominator/numerator is
-        // clickable — but only if close, else it's a real background click.
-        return (x == null) ? null : this._nearestLeafTerm(el, x, y);
+      if (el.querySelector("[data-n]")) {
+        if (x == null) return null;
+        // Prefer the nearest inner leaf. Only when the pointer is on NO term at all
+        // (the bare √ surd, a fraction bar) fall back to the wrapper itself — and
+        // only when it's a tight operator (√, fraction, power), never a spanning
+        // combiner (product / sum / equation) whose box sprawls. So the √ "kicks in
+        // last": it's selectable, but only after we know no inner term is hovered.
+        const leaf = this._nearestLeafTerm(el, x, y);
+        if (leaf) return leaf;
+        return _isSpanningWrapperId(el.getAttribute("data-n")) ? null : el;
       }
       return el;
     };
-    this._onStageOver = (ev) => {
+    // mousemove (not mouseover) + mouseleave (not mouseout): hit-test the term
+    // under the cursor on every move and clear only when the pointer truly leaves
+    // the stage. This is immune to the relatedTarget / pointer-events gaps that
+    // KaTeX's transparent layout containers create — the cause of terms inside a √
+    // or fraction flickering or refusing to light up (the enter/exit bug).
+    this._onStageMove = (ev) => {
       const el = tagOf(ev.target, ev.clientX, ev.clientY);
-      // Switch the halo only when entering a REAL term. Moving onto the
-      // expression's structural chrome (a fraction bar, KaTeX struts — tagOf is
-      // null there because it resolves to a spanning wrapper) leaves the current
-      // term lit, so hovering a numerator/denominator doesn't flicker as the
-      // pointer crosses the bar between them.
+      // Switch only to a REAL term; over chrome/gaps (null) keep the current term
+      // lit so crossing a fraction bar between two glyphs never flickers.
       if (el && el !== this._hotTermEl) this._setHotTerm(el);
     };
-    this._onStageOut = (ev) => {
-      // Only drop the halo when the pointer actually LEAVES the stage — never for
-      // a move onto untagged chrome within the expression (that's what made
-      // hovering fraction terms flicker). A move to a different term is handled by
-      // that term's mouseover instead.
-      const to = ev.relatedTarget;
-      if (!to || !this.stage.contains(to)) this._setHotTerm(null);
-    };
+    this._onStageLeave = () => this._setHotTerm(null);
     this._onStageClick = (ev) => {
       const el = tagOf(ev.target, ev.clientX, ev.clientY);
       if (!el) {
@@ -477,8 +476,8 @@ export class ProofAnimator {
         this._onTermClick(this._termChain(el), el, { additive: !!(ev.metaKey || ev.ctrlKey) });
       }
     };
-    this.stage.addEventListener("mouseover", this._onStageOver);
-    this.stage.addEventListener("mouseout", this._onStageOut);
+    this.stage.addEventListener("mousemove", this._onStageMove);
+    this.stage.addEventListener("mouseleave", this._onStageLeave);
     this.stage.addEventListener("click", this._onStageClick);
   }
 
