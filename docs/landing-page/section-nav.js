@@ -11,12 +11,16 @@
  */
 (function () {
   "use strict";
-  if (window.__sectionNavLoaded) return;
-  window.__sectionNavLoaded = true;
+  // No early-return guard: if this script is injected more than once (live-reload,
+  // preview tooling, bfcache), each run tears down the previous navigator and its
+  // window listeners below, so the page always ends with exactly one navigator.
 
   var CFG = window.SECTION_NAV || {};
   var SELECTOR = CFG.selector || "h1, h2";
   var MIN = CFG.min || 3;          // don't show the control for fewer sections than this
+  var CONTENT = CFG.content || "main, article";   // reading column the arrows hug
+  var GAP = CFG.gap != null ? CFG.gap : 16;       // space between the arrows and the column
+  var EDGE = CFG.edge != null ? CFG.edge : 10;    // min distance from the viewport edge
 
   function ready(fn) {
     if (document.readyState !== "loading") fn();
@@ -24,6 +28,11 @@
   }
 
   ready(function () {
+    // Idempotent: tear down any navigator (and its window listeners) a prior run left behind,
+    // so re-injecting this script can never stack a second control or duplicate handlers.
+    [].forEach.call(document.querySelectorAll(".secnav"), function (n) { n.remove(); });
+    if (window.__secNavCleanup) { try { window.__secNavCleanup(); } catch (e) {} }
+
     var heads = [].slice.call(document.querySelectorAll(SELECTOR))
       .filter(function (h) { return h.offsetParent !== null; });   // visible only
     if (heads.length < MIN) return;
@@ -74,6 +83,19 @@
     nav.appendChild(up); nav.appendChild(down);
     document.body.appendChild(nav);
 
+    // Sit just left of the reading column instead of the viewport edge, so the
+    // arrows stay near the text on wide screens. Clamp so they never run off-screen.
+    var content = document.querySelector(CONTENT);
+    function place() {
+      var left = EDGE;
+      if (content) {
+        var colLeft = content.getBoundingClientRect().left;
+        left = Math.max(EDGE, colLeft - nav.offsetWidth - GAP);
+      }
+      nav.style.left = left + "px";
+    }
+    place();
+
     // Recompute each time — iframe embeds resize after load and shift positions.
     function tops() {
       var off = headerOffset();
@@ -101,7 +123,18 @@
     }
     refresh();
     var t;
-    window.addEventListener("scroll", function () { clearTimeout(t); t = setTimeout(refresh, 80); }, { passive: true });
-    window.addEventListener("resize", refresh);
+    function onScroll() { clearTimeout(t); t = setTimeout(refresh, 80); }
+    function onResize() { place(); refresh(); }
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onResize);
+
+    // Expose teardown so a later run of this script can fully unwind this instance.
+    window.__secNavCleanup = function () {
+      clearTimeout(t);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onResize);
+      nav.remove();
+      window.__secNavCleanup = null;
+    };
   });
 })();

@@ -14,7 +14,7 @@
      reading column, light/dark by OS preference (mirrors the AlgeBench embed). */
   :root{
     color-scheme: light dark;
-    --bg:#fbfbfd; --ink:#1f2430; --muted:#5b6472; --rule:#e6e8ee;
+    --bg:#f6f7fb; --ink:#1f2430; --muted:#5b6472; --rule:#e6e8ee;
     --accent:#4f46e5; --bar:#ffffff; --card:#ffffff; --soft:#f4f5f9;
   }
   /* Explicit dark (set by the theme toggle, persisted in localStorage). */
@@ -57,10 +57,10 @@
   .lead{ font-size:1.18rem; color:var(--ink); }
   .muted{ color:var(--muted); }
 
-  /* The embedded proof figure — framed like the AlgeBench embed preview. */
+  /* The embedded proof figure. The renderproof embed already draws its own card
+     (title bar + border), so the iframe itself carries no frame — no box-in-a-box. */
   figure{ margin:26px 0 14px; }
-  figure iframe{ display:block; width:100%; border:0; border-radius:14px;
-        box-shadow:0 0 0 1px var(--rule), 0 16px 40px rgba(20,22,40,.16); background:var(--card); }
+  figure iframe{ display:block; width:100%; border:0; background:transparent; }
   figcaption{ font-family:system-ui,sans-serif; color:var(--muted); font-size:.85rem;
         margin-top:12px; text-align:center; }
 
@@ -114,48 +114,11 @@
     <h1>Grounded, AI-driven mathematical proof system</h1>
     <p class="by">Every step machine-verified, then animated — built into AlgeBench.</p>
 
-    <p class="lead">Most math on the web is a static wall of symbols. The figures below are
-    different: each one is a <b>live derivation</b> you can step through. The expression
-    <em>morphs</em> from one line to the next, every term keeps its identity as it moves, and
-    <b>every step carries a confidence badge</b> — whether a computer-algebra system verified it,
-    proved it algebraically, or vouched for it as a domain rule.</p>
-
-    <h2>Written by an AI, checked by a computer</h2>
-    <p>Here is the unusual part. Each derivation is <b>written by a language model</b> — and then
-    <b>checked, step by step, by a computer-algebra system (CAS)</b>. The AI proposes the next line;
-    the CAS tries to prove that line genuinely follows from the one before it. The outcome of that
-    check is stamped onto every step as a colored <b>confidence badge</b>, so you never have to take
-    the AI's word for anything. Hover the pill in a card's top-right corner (or the colored dots
-    under the steps) to read each verdict:</p>
-    <ul class="legend">
-      <li><span class="g grounded">★</span><span><b>Grounded</b> — symbolically proven to follow from the previous step.</span></li>
-      <li><span class="g verified">✓</span><span><b>Verified</b> — strong CAS evidence, just short of a full symbolic proof.</span></li>
-      <li><span class="g domain">✦</span><span><b>Domain</b> — valid by domain knowledge the CAS can't express as an identity (see below).</span></li>
-      <li><span class="g plausible">◇</span><span><b>Plausible</b> — valid math, but the CAS couldn't decide this particular step.</span></li>
-      <li><span class="g unchecked">○</span><span><b>Unchecked</b> — not a single convertible expression (e.g. the “…” in a written-out sum).</span></li>
-      <li><span class="g refuted">✗</span><span><b>Refuted</b> — the CAS shows the step does <em>not</em> follow. These are caught and never shipped.</span></li>
-    </ul>
-
-    <h2>When the CAS can't decide: domain rescue</h2>
-    <p>Real derivations contain honest moves that no CAS can verify as a pure symbolic identity —
-    <em>separating the variables</em> of a differential equation, an integration step, a physical
-    modeling assumption. Left alone, the CAS stamps these <b>Unchecked</b>, which is unfair: they are
-    correct, just not mechanically provable as an identity. So a second pass asks an AI acting as a
-    <b>domain expert</b> — “is this step valid, in context?” — and only when it vouches with high
-    confidence is the step promoted to the teal <b>Domain</b> tier. It's a deliberate middle ground:
-    <em>an expert accepts this; the CAS could not prove it</em> — strictly more honest than hiding the
-    gap. It's exactly why the Allen–Eggers proof below reads as a mix: green grounded algebra, with
-    teal <b>Domain</b> badges on the separation-and-integrate moves.</p>
-
-    <h2>How to read these figures</h2>
-    <p>Each proof is embedded as a plain <code>&lt;iframe&gt;</code> — the same snippet you could
-    drop into your own blog. After it loads it makes no further calls home, so it is safe to
-    publish anywhere. Three things to try in any figure:</p>
-    <div class="howto">
-      <b>Step or play</b> — use the numbered buttons or <b>▶ Play</b> to morph between lines ·
-      <b>Hover a term</b> — point at any symbol (even one buried inside a √ or fraction) to light
-      it up and read what it means · <b>ⓘ Explore</b> — open prerequisites and follow-up questions.
-    </div>
+    <p class="lead">Most math on the web is a static wall of symbols. The three figures below are
+    different: each is a <b>live, interactive derivation</b> — step through it, hover any term to see
+    what it is, and watch the expression morph line by line. Every step also carries a
+    <b>confidence badge</b> showing how it was checked. Play with them first — the how and why is
+    just underneath.</p>
 
     <h2>1 · Where the quadratic formula comes from</h2>
     <p>Everyone memorizes \( x = \dfrac{-b \pm \sqrt{b^2 - 4ac}}{2a} \), but few see <em>why</em> it
@@ -191,6 +154,43 @@
               title="Allen–Eggers entry velocity — interactive proof" data-algebench-embed></iframe>
       <figcaption>Figure 3 — Allen–Eggers entry velocity. Open <b>ⓘ Explore</b> for the follow-ups.</figcaption>
     </figure>
+
+    <h2>How it works: written by an AI, checked by a computer</h2>
+    <p>Here is the unusual part. Each derivation above is <b>written by a language model</b> — and then
+    <b>checked, step by step, by a computer-algebra system (CAS)</b>. The AI proposes the next line;
+    the CAS tries to prove that line genuinely follows from the one before it. The outcome of that
+    check is stamped onto every step as a colored <b>confidence badge</b>, so you never have to take
+    the AI's word for anything. Hover the pill in a card's top-right corner (or the colored dots
+    under the steps) to read each verdict:</p>
+    <ul class="legend">
+      <li><span class="g grounded">★</span><span><b>Grounded</b> — symbolically proven to follow from the previous step.</span></li>
+      <li><span class="g verified">✓</span><span><b>Verified</b> — strong CAS evidence, just short of a full symbolic proof.</span></li>
+      <li><span class="g domain">✦</span><span><b>Domain</b> — valid by domain knowledge the CAS can't express as an identity (see below).</span></li>
+      <li><span class="g plausible">◇</span><span><b>Plausible</b> — valid math, but the CAS couldn't decide this particular step.</span></li>
+      <li><span class="g unchecked">○</span><span><b>Unchecked</b> — not a single convertible expression (e.g. the “…” in a written-out sum).</span></li>
+      <li><span class="g refuted">✗</span><span><b>Refuted</b> — the CAS shows the step does <em>not</em> follow. These are caught and never shipped.</span></li>
+    </ul>
+
+    <h2>When the CAS can't decide: domain rescue</h2>
+    <p>Real derivations contain honest moves that no CAS can verify as a pure symbolic identity —
+    <em>separating the variables</em> of a differential equation, an integration step, a physical
+    modeling assumption. Left alone, the CAS stamps these <b>Unchecked</b>, which is unfair: they are
+    correct, just not mechanically provable as an identity. So a second pass asks an AI acting as a
+    <b>domain expert</b> — “is this step valid, in context?” — and only when it vouches with high
+    confidence is the step promoted to the teal <b>Domain</b> tier. It's a deliberate middle ground:
+    <em>an expert accepts this; the CAS could not prove it</em> — strictly more honest than hiding the
+    gap. It's exactly why the Allen–Eggers proof above reads as a mix: green grounded algebra, with
+    teal <b>Domain</b> badges on the separation-and-integrate moves.</p>
+
+    <h2>How these figures are built — and how to embed them</h2>
+    <p>Each proof is embedded as a plain <code>&lt;iframe&gt;</code> — the same snippet you could
+    drop into your own blog. After it loads it makes no further calls home, so it is safe to
+    publish anywhere. Three things to try in any figure:</p>
+    <div class="howto">
+      <b>Step or play</b> — use the numbered buttons or <b>▶ Play</b> to morph between lines ·
+      <b>Hover a term</b> — point at any symbol (even one buried inside a √ or fraction) to light
+      it up and read what it means · <b>ⓘ Explore</b> — open prerequisites and follow-up questions.
+    </div>
 
     <div class="callout">
       <h3>The terms are live — and every one is a door to an AI tutor</h3>
