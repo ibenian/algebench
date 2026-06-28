@@ -45,10 +45,15 @@
        funnel — every shared/standalone proof links back to the main app. Pushed
        left with margin-right:auto so the action buttons stay right. Hidden in the
        embed (chrome is trimmed there). */
-    .pa-brand { display: inline-flex; flex-direction: column; gap: 1px; margin: 0 0 2px;
-                text-decoration: none; line-height: 1.15; }
-    .pa-brand-name { font-weight: 700; font-size: 1rem; color: var(--title-fg); }
-    .pa-brand-sub { font-size: .72rem; color: var(--muted-color); }
+    /* Page-title banner: a full-width header band, separated from the proofs below
+       by a divider + breathing room. */
+    .pa-brand { display: flex; flex-direction: column; gap: 3px;
+                margin: 0 0 28px; padding: 0 0 16px;
+                border-bottom: 1px solid var(--border-color);
+                text-decoration: none; line-height: 1.2; }
+    .pa-brand-name { font-weight: 700; font-size: 1.4rem; letter-spacing: -.01em;
+                color: var(--title-fg); }
+    .pa-brand-sub { font-size: .82rem; color: var(--muted-color); }
     .pa-brand:hover .pa-brand-name { color: var(--text-color); }
     html[data-embedded] .pa-brand { display: none; }
     /* Non-embedded: renderproof.js moves the action bar onto the FIRST proof's
