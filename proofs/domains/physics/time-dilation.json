@@ -1,0 +1,228 @@
+{
+  "title": "Lorentz time dilation",
+  "domain": "algebra",
+  "steps": [
+    {
+      "index": 0,
+      "operation": "Given the light-clock relation",
+      "justification": "solve for $t$ (invariant $c$)",
+      "input_latex": "(c t)^2 = (c t_0)^2 + (v t)^2",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__power_2}{\\left(\\htmlData{n=__multiply_3}{\\htmlData{n=c____multiply_3}{c} \\htmlData{n=__multiply_3__m1}{\\cdot} \\htmlData{n=t____multiply_3}{t}}\\right)^{\\htmlData{n=__power_2__exp}{2}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__add_4}{\\htmlData{n=__power_5}{\\left(\\htmlData{n=__multiply_6}{\\htmlData{n=c____multiply_6}{c} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=t_0}{t_{0}}}\\right)^{\\htmlData{n=__power_5__exp}{2}}} \\htmlData{n=__add_4__op1}{+} \\htmlData{n=__power_7}{\\left(\\htmlData{n=__multiply_8}{\\htmlData{n=v}{v} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=t____multiply_8}{t}}\\right)^{\\htmlData{n=__power_7__exp}{2}}}}}",
+      "plain": "\\left(c \\cdot t\\right)^{2} = \\left(c \\cdot t_{0}\\right)^{2} + \\left(v \\cdot t\\right)^{2}",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": null,
+        "reason": "the given starting expression",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 1,
+      "operation": "expand the squares",
+      "justification": "$(c t)^2 = c^2 t^2$, etc.",
+      "input_latex": "c^2 t^2 = c^2 t_0^2 + v^2 t^2",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__multiply_3}{\\htmlData{n=__power_3}{\\htmlData{n=c____power_3}{c}^{\\htmlData{n=__power_3__exp}{2}}} \\htmlData{n=__multiply_3__m1}{\\cdot} \\htmlData{n=__power_4}{\\htmlData{n=t____power_4}{t}^{\\htmlData{n=__power_4__exp}{2}}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__add_4}{\\htmlData{n=__multiply_6}{\\htmlData{n=_r1___power_7}{\\htmlData{n=c___r1___power_7}{c}^{\\htmlData{n=_r1___power_7__exp}{2}}} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=__power_8}{\\htmlData{n=t_0}{t_{0}}^{\\htmlData{n=__power_8__exp}{2}}}} \\htmlData{n=__add_4__op1}{+} \\htmlData{n=__multiply_8}{\\htmlData{n=__power_10}{\\htmlData{n=v}{v}^{\\htmlData{n=__power_10__exp}{2}}} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=__power_11}{\\htmlData{n=t____power_11}{t}^{\\htmlData{n=__power_11__exp}{2}}}}}}",
+      "plain": "c^{2} \\cdot t^{2} = c^{2} \\cdot t_{0}^{2} + v^{2} \\cdot t^{2}",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 2,
+      "operation": "collect the $t$ terms",
+      "justification": "move $v^2 t^2$ to the left",
+      "input_latex": "c^2 t^2 - v^2 t^2 = c^2 t_0^2",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__add_4}{\\htmlData{n=__multiply_3}{\\htmlData{n=__power_3}{\\htmlData{n=c____power_3}{c}^{\\htmlData{n=__power_3__exp}{2}}} \\htmlData{n=__multiply_3__m1}{\\cdot} \\htmlData{n=__power_4}{\\htmlData{n=t____power_4}{t}^{\\htmlData{n=__power_4__exp}{2}}}} \\htmlData{n=__negation_6}{\\htmlData{n=__negation_6__op}{-} \\htmlData{n=__multiply_8}{\\htmlData{n=__power_10}{\\htmlData{n=v}{v}^{\\htmlData{n=__power_10__exp}{2}}} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=__power_11}{\\htmlData{n=t____power_11}{t}^{\\htmlData{n=__power_11__exp}{2}}}}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_6}{\\htmlData{n=_r1___power_7}{\\htmlData{n=c___r1___power_7}{c}^{\\htmlData{n=_r1___power_7__exp}{2}}} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=__power_8}{\\htmlData{n=t_0}{t_{0}}^{\\htmlData{n=__power_8__exp}{2}}}}}",
+      "plain": "c^{2} \\cdot t^{2} - v^{2} \\cdot t^{2} = c^{2} \\cdot t_{0}^{2}",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 3,
+      "operation": "factor out $t^2$",
+      "justification": "$t^2$ is common on the left",
+      "input_latex": "t^2 \\cdot (c^2 - v^2) = c^2 t_0^2",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__multiply_3}{\\htmlData{n=__power_11}{\\htmlData{n=t}{t}^{\\htmlData{n=__power_11__exp}{2}}} \\htmlData{n=__multiply_3__m1}{\\cdot} \\left(\\htmlData{n=__add_4}{\\htmlData{n=__power_3}{\\htmlData{n=c____power_3}{c}^{\\htmlData{n=__power_3__exp}{2}}} \\htmlData{n=__negation_6}{\\htmlData{n=__negation_6__op}{-} \\htmlData{n=__power_10}{\\htmlData{n=v}{v}^{\\htmlData{n=__power_10__exp}{2}}}}}\\right)} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_6}{\\htmlData{n=_r1___power_7}{\\htmlData{n=c___r1___power_7}{c}^{\\htmlData{n=_r1___power_7__exp}{2}}} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=__power_8}{\\htmlData{n=t_0}{t_{0}}^{\\htmlData{n=__power_8__exp}{2}}}}}",
+      "plain": "t^{2} \\cdot \\left(c^{2} - v^{2}\\right) = c^{2} \\cdot t_{0}^{2}",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 4,
+      "operation": "divide by $c^2 - v^2$",
+      "justification": "isolate $t^2$",
+      "input_latex": "t^2 = \\frac{c^2 t_0^2}{c^2 - v^2}",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__power_11}{\\htmlData{n=t}{t}^{\\htmlData{n=__power_11__exp}{2}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_3}{\\frac{\\htmlData{n=__multiply_6}{\\htmlData{n=_r1___power_7}{\\htmlData{n=c___r1___power_7}{c}^{\\htmlData{n=_r1___power_7__exp}{2}}} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=__power_8}{\\htmlData{n=t_0}{t_{0}}^{\\htmlData{n=__power_8__exp}{2}}}}}{\\htmlData{n=__add_4}{\\htmlData{n=__power_3}{\\htmlData{n=c____power_3}{c}^{\\htmlData{n=__power_3__exp}{2}}} \\htmlData{n=__negation_6}{\\htmlData{n=__negation_6__op}{-} \\htmlData{n=__power_10}{\\htmlData{n=v}{v}^{\\htmlData{n=__power_10__exp}{2}}}}}}}}",
+      "plain": "t^{2} = \\frac{c^{2} \\cdot t_{0}^{2}}{c^{2} - v^{2}}",
+      "confidence": {
+        "tier": "verified",
+        "label": "Verified",
+        "icon": "🥈",
+        "meaning": "strong CAS evidence, short of a symbolic proof",
+        "relation": "equivalent",
+        "reason": "both sides scaled by $c^{2} - v^{2}$ — equivalent wherever that factor ≠ 0",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 5,
+      "operation": "divide top and bottom by $c^2$",
+      "justification": "introduce $\\frac{v^2}{c^2}$",
+      "input_latex": "t^2 = \\frac{t_0^2}{1 - \\frac{v^2}{c^2}}",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__power_11}{\\htmlData{n=t}{t}^{\\htmlData{n=__power_11__exp}{2}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_3}{\\frac{\\htmlData{n=__power_8}{\\htmlData{n=t_0}{t_{0}}^{\\htmlData{n=__power_8__exp}{2}}}}{\\htmlData{n=__add_4}{\\htmlData{n=__num_7}{1} \\htmlData{n=__negation_6}{\\htmlData{n=__negation_6__op}{-} \\htmlData{n=__multiply_9}{\\frac{\\htmlData{n=__power_10}{\\htmlData{n=v}{v}^{\\htmlData{n=__power_10__exp}{2}}}}{\\htmlData{n=__power_3}{\\htmlData{n=c}{c}^{\\htmlData{n=__power_3__exp}{2}}}}}}}}}}",
+      "plain": "t^{2} = \\frac{t_{0}^{2}}{1 - \\frac{v^{2}}{c^{2}}}",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 6,
+      "operation": "take the square root",
+      "justification": "moving clocks run slow by $\\gamma$",
+      "input_latex": "t = \\frac{t_0}{\\sqrt{1 - \\frac{v^2}{c^2}}}",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=t}{t} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_3}{\\frac{\\htmlData{n=t_0}{t_{0}}}{\\htmlData{n=__power_4}{\\sqrt{\\htmlData{n=__add_4}{\\htmlData{n=__num_7}{1} \\htmlData{n=__negation_6}{\\htmlData{n=__negation_6__op}{-} \\htmlData{n=__multiply_9}{\\frac{\\htmlData{n=__power_10}{\\htmlData{n=v}{v}^{\\htmlData{n=__power_10__exp}{2}}}}{\\htmlData{n=__power_3}{\\htmlData{n=c}{c}^{\\htmlData{n=__power_3__exp}{2}}}}}}}}}}}}",
+      "plain": "t = \\frac{t_{0}}{\\sqrt{1 - \\frac{v^{2}}{c^{2}}}}",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "narrows",
+        "reason": "the previous step is exactly this step squared — taking a root keeps only solutions of the original",
+        "type_consistent": true
+      }
+    }
+  ],
+  "overall_confidence": {
+    "tier": "verified",
+    "label": "Verified",
+    "icon": "🥈",
+    "meaning": "strong CAS evidence, short of a symbolic proof",
+    "relation": null,
+    "reason": "6/6 steps verified · endpoint reached",
+    "type_consistent": true,
+    "counts": {
+      "refuted": 0,
+      "unchecked": 0,
+      "plausible": 0,
+      "domain": 0,
+      "verified": 1,
+      "grounded": 5
+    },
+    "endpoint_reached": true
+  },
+  "terms": {
+    "__power_2": {
+      "latex": "\\left(c t\\right)^{2}",
+      "name": "\\left(c t\\right)^{2}",
+      "description": "The square of the distance traveled by light in the stationary frame over time $t$."
+    },
+    "c": {
+      "latex": "c",
+      "name": "c",
+      "description": "The constant speed of light in a vacuum."
+    },
+    "t": {
+      "latex": "t",
+      "name": "t",
+      "description": "The time interval measured by an observer in the stationary frame."
+    },
+    "__power_5": {
+      "latex": "\\left(c t_{0}\\right)^{2}",
+      "name": "\\left(c t_{0}\\right)^{2}",
+      "description": "The square of the distance traveled by light in the moving frame over proper time $t_0$."
+    },
+    "t_0": {
+      "latex": "t_{0}",
+      "name": "t_{0}",
+      "description": "The proper time interval measured by an observer in the moving frame, at rest relative to the event."
+    },
+    "__power_7": {
+      "latex": "\\left(t v\\right)^{2}",
+      "name": "\\left(t v\\right)^{2}",
+      "description": "The square of the distance traveled by the moving object in the stationary frame over time $t$."
+    },
+    "v": {
+      "latex": "v",
+      "name": "v",
+      "description": "The constant relative velocity between the two inertial frames."
+    },
+    "__power_3": {
+      "latex": "c^{2}",
+      "name": "c^{2}",
+      "description": "The square of the speed of light, $c$."
+    },
+    "__power_4": {
+      "latex": "t^{2}",
+      "name": "t^{2}",
+      "description": "The square of the time interval $t$ measured in the stationary frame."
+    },
+    "_r1___power_7": {
+      "latex": "c^{2}",
+      "name": "c^{2}",
+      "description": "The square of the speed of light, $c$."
+    },
+    "__power_8": {
+      "latex": "t_{0}^{2}",
+      "name": "t_{0}^{2}",
+      "description": "The square of the proper time interval $t_0$."
+    },
+    "__power_10": {
+      "latex": "v^{2}",
+      "name": "v^{2}",
+      "description": "The square of the relative velocity $v$."
+    },
+    "__power_11": {
+      "latex": "t^{2}",
+      "name": "t^{2}",
+      "description": "The square of the time interval $t$ measured in the stationary frame."
+    },
+    "_r1___power_11": {
+      "latex": "\\frac{1}{c^{2}}",
+      "name": "\\frac{1}{c^{2}}",
+      "description": "The reciprocal of the square of the speed of light, $c^2$."
+    }
+  },
+  "goal": "This derivation shows how to rearrange the equation $(c t)^2 = (c t_0)^2 + (v t)^2$ to solve for $t$, which is fundamental in understanding time dilation in special relativity.",
+  "followups": [
+    "What do the variables $t$, $t_0$, $v$, and $c$ represent in the context of special relativity?",
+    "Can you explain what the term 'time dilation' means in simple terms?",
+    "What happens to the value of $t$ if $v$ is very small compared to $c$?",
+    "How would you solve the original equation for $t_0$ instead of $t$?"
+  ],
+  "prerequisites": [
+    "Expanding squares",
+    "Factoring algebraic expressions",
+    "Solving equations",
+    "Algebraic manipulation of fractions"
+  ]
+}

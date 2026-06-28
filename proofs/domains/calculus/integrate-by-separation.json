@@ -1,0 +1,149 @@
+{
+  "title": "Integrate by separation",
+  "domain": "calculus",
+  "steps": [
+    {
+      "index": 0,
+      "operation": "Given the separated equation",
+      "justification": "integrate to solve for $v$",
+      "input_latex": "\\frac{1}{v} \\, dv = -k \\, e^{-h/H} \\, dh",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__multiply_2}{\\frac{\\htmlData{n=dv}{dv}}{\\htmlData{n=v}{v}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__negation_4}{\\htmlData{n=__negation_4__op}{-} \\htmlData{n=__multiply_5}{\\htmlData{n=dh}{dh} \\htmlData{n=__multiply_5__m1}{\\cdot} \\htmlData{n=k}{k} \\htmlData{n=__multiply_5__m2}{\\cdot} \\htmlData{n=__power_6}{\\htmlData{n=e}{e}^{\\htmlData{n=__multiply_7}{\\frac{\\left(\\htmlData{n=__negation_8}{\\htmlData{n=__negation_8__op}{-} \\htmlData{n=h}{h}}\\right)}{\\htmlData{n=H}{H}}}}}}}}",
+      "plain": "\\frac{dv}{v} = - dh \\cdot k \\cdot e^{\\frac{\\left(- h\\right)}{H}}",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": null,
+        "reason": "the given starting expression",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 1,
+      "operation": "Integrate both sides",
+      "justification": "apply $\\int$ to each side",
+      "input_latex": "\\int \\frac{1}{v} \\, dv = \\int -k \\, e^{-h/H} \\, dh",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__integral_2}{\\int \\htmlData{n=__power_3}{\\frac{\\htmlData{n=__power_3__one}{1}}{\\htmlData{n=v}{v}}}\\,\\htmlData{n=dv}{dv}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__integral_4}{\\int \\left(\\htmlData{n=__negation_4}{\\htmlData{n=__negation_4__op}{-} \\htmlData{n=__multiply_5}{\\htmlData{n=k}{k} \\htmlData{n=__multiply_5__m1}{\\cdot} \\htmlData{n=__power_6}{\\htmlData{n=e}{e}^{\\htmlData{n=__multiply_7}{\\frac{\\left(\\htmlData{n=__negation_8}{\\htmlData{n=__negation_8__op}{-} \\htmlData{n=h}{h}}\\right)}{\\htmlData{n=H}{H}}}}}}}\\right)\\,\\htmlData{n=dh}{dh}}}",
+      "plain": "\\int \\frac{1}{v}\\,dv = \\int \\left(- k \\cdot e^{\\frac{\\left(- h\\right)}{H}}\\right)\\,dh",
+      "confidence": {
+        "tier": "domain",
+        "label": "Domain",
+        "icon": "🎓",
+        "meaning": "valid by domain knowledge, not a symbolic identity the CAS can check",
+        "relation": "unknown",
+        "reason": "valid by domain knowledge — the CAS could not check this symbolically; a domain expert accepts it (confidence 100%): If two differential forms are equal, their integrals must also be equal.",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 2,
+      "operation": "Factor the constant out",
+      "justification": "constants pull out of the integral",
+      "input_latex": "\\int \\frac{1}{v} \\, dv = -k \\int e^{-h/H} \\, dh",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__integral_2}{\\int \\htmlData{n=__power_3}{\\frac{\\htmlData{n=__power_3__one}{1}}{\\htmlData{n=v}{v}}}\\,\\htmlData{n=dv}{dv}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__negation_4}{\\htmlData{n=__negation_4__op}{-} \\htmlData{n=__multiply_5}{\\htmlData{n=k}{k} \\htmlData{n=__multiply_5__m1}{\\cdot} \\htmlData{n=__integral_4}{\\int \\htmlData{n=__power_6}{\\htmlData{n=e}{e}^{\\htmlData{n=__multiply_7}{\\frac{\\left(\\htmlData{n=__negation_8}{\\htmlData{n=__negation_8__op}{-} \\htmlData{n=h}{h}}\\right)}{\\htmlData{n=H}{H}}}}}\\,\\htmlData{n=dh}{dh}}}}}",
+      "plain": "\\int \\frac{1}{v}\\,dv = - k \\cdot \\int e^{\\frac{\\left(- h\\right)}{H}}\\,dh",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    }
+  ],
+  "overall_confidence": {
+    "tier": "domain",
+    "label": "Domain",
+    "icon": "🎓",
+    "meaning": "valid by domain knowledge, not a symbolic identity the CAS can check",
+    "relation": null,
+    "reason": "1/2 steps verified · 1 domain-justified · endpoint reached",
+    "type_consistent": true,
+    "counts": {
+      "refuted": 0,
+      "unchecked": 0,
+      "plausible": 0,
+      "domain": 1,
+      "verified": 0,
+      "grounded": 1
+    },
+    "endpoint_reached": true
+  },
+  "terms": {
+    "__power_3": {
+      "latex": "\\frac{1}{v}",
+      "name": "\\frac{1}{v}",
+      "description": "This term represents the reciprocal of the variable $v$ that is being integrated."
+    },
+    "v": {
+      "latex": "v",
+      "name": "v",
+      "description": "This is one of the dependent variables being separated for integration."
+    },
+    "dv": {
+      "latex": "dv",
+      "name": "dv",
+      "description": "This is the differential of the variable $v$, indicating integration with respect to $v$."
+    },
+    "dh": {
+      "latex": "dh",
+      "name": "dh",
+      "description": "This is the differential of the variable $h$, indicating integration with respect to $h$."
+    },
+    "k": {
+      "latex": "k",
+      "name": "k",
+      "description": "This is a constant coefficient in the expression being integrated with respect to $h$."
+    },
+    "__power_6": {
+      "latex": "e^{\\frac{\\left(-1\\right) h}{H}}",
+      "name": "e^{\\frac{\\left(-1\\right) h}{H}}",
+      "description": "This is an exponential term involving the variable $h$ and the constant $H$."
+    },
+    "e": {
+      "latex": "e",
+      "name": "e",
+      "description": "This represents Euler's number, the base of the natural logarithm."
+    },
+    "h": {
+      "latex": "h",
+      "name": "h",
+      "description": "This is the other dependent variable being separated for integration."
+    },
+    "__power_9": {
+      "latex": "\\frac{1}{H}",
+      "name": "\\frac{1}{H}",
+      "description": "This term represents the reciprocal of the constant $H$ within the exponent."
+    },
+    "H": {
+      "latex": "H",
+      "name": "H",
+      "description": "This is a constant parameter found in the exponent of the exponential term."
+    },
+    "__integral_2": {
+      "latex": "\\int \\frac{1}{v}\\, dv",
+      "name": "\\int \\frac{1}{v}\\, dv",
+      "description": "This represents the integral of $\\frac{1}{v}$ with respect to $v$."
+    },
+    "__integral_4": {
+      "latex": "\\int \\left(- e^{\\frac{\\left(-1\\right) h}{H}} k\\right)\\, dh",
+      "name": "\\int \\left(- e^{\\frac{\\left(-1\\right) h}{H}} k\\right)\\, dh",
+      "description": "This represents the integral of the expression $\\left(- e^{\\frac{\\left(-1\\right) h}{H}} k\\right)$ with respect to $h$"
+    }
+  },
+  "goal": "This derivation shows how to prepare a separated differential equation for integration by applying the integral operator to both sides and factoring out constants.",
+  "followups": [
+    "Evaluate the integrals on both sides of the equation.",
+    "Explain why we can factor out the constant $k$.",
+    "What would be the next step if we had initial conditions?",
+    "How would this process change for a different type of differential equation?"
+  ],
+  "prerequisites": [
+    "Differential equations",
+    "Integral notation",
+    "Constant multiple rule for integrals"
+  ]
+}
