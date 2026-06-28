@@ -41,6 +41,16 @@
     .wrap { max-width: 820px; margin: 0 auto; padding: 24px 20px 56px; }
     @media (max-width: 480px) { .wrap { padding: 14px 12px 40px; } }
     .pa-bar { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin: 0 0 10px; }
+    /* Brand wordmark on the left: frames the standalone gallery and is a quiet
+       funnel — every shared/standalone proof links back to the main app. Pushed
+       left with margin-right:auto so the action buttons stay right. Hidden in the
+       embed (chrome is trimmed there). */
+    .pa-brand { margin-right: auto; display: flex; flex-direction: column; gap: 1px;
+                text-decoration: none; line-height: 1.15; }
+    .pa-brand-name { font-weight: 700; font-size: 1rem; color: var(--title-fg); }
+    .pa-brand-sub { font-size: .72rem; color: var(--muted-color); }
+    .pa-brand:hover .pa-brand-name { color: var(--text-color); }
+    html[data-embedded] .pa-brand { display: none; }
     .pa-uibtn { font: inherit; font-size: .85rem; cursor: pointer; border: 1px solid var(--btn-border);
               background: var(--btn-bg); color: var(--btn-fg); border-radius: 7px; padding: 6px 12px; }
     .pa-uibtn:hover { background: var(--btn-hover); }
@@ -93,6 +103,10 @@
 <body>
   <div class="wrap">
     <div class="pa-bar">
+      <a class="pa-brand" href="/" aria-label="AlgeBench home">
+        <span class="pa-brand-name">AlgeBench</span>
+        <span class="pa-brand-sub">animated, step-by-step proofs</span>
+      </a>
       <button id="pa-json" class="pa-uibtn" type="button" hidden></button>
       <button id="pa-embed" class="pa-uibtn" type="button" hidden></button>
       <button id="pa-action" class="pa-uibtn" type="button" hidden></button>
