@@ -152,7 +152,10 @@
 .pa-live-terms .pa-stage .pstrut,
 .pa-live-terms .pa-stage .strut,
 .pa-live-terms .pa-stage .svg-align { pointer-events: none; }
-.pa-live-terms .pa-stage [data-n] { pointer-events: auto; }
+/* Scoped to the live expression subtree (like the cursor rule above), NOT all of
+   .pa-stage — so it never re-enables hit-testing on data-n clones inside morph
+   ghosts (.pa-ghost lives directly under .pa-stage and stays pointer-events:none). */
+.pa-live-terms .pa-stage > .pa-expr [data-n] { pointer-events: auto; }
 /* Hovered locally (mouse on the glyph) OR linked (the graph node is hovered) —
    same indigo backlight, so hover reads identically in both sync directions. */
 .pa-live-terms .pa-term-hot,
