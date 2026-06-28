@@ -832,3 +832,15 @@
    smaller gap and a content-width Play button (drop its fixed 6em). */
 .sgp-proof-box .pa-controls.pa-compact { gap: 4px; }
 .sgp-proof-box .pa-controls.pa-compact .pa-play { width: auto; }
+
+/* Phones: even compacted (step numbers already hidden), the fixed nav row can be
+   wider than a ~375px card — so it overflowed the card and pushed the page
+   sideways. Trim the card padding, tighten the gap, drop the Play button's fixed
+   6em, and let the row WRAP to a second line instead of overflowing. (renderproof
+   has a flexible page height + posts its height to the embed host, so a two-line
+   control row is fine here.) */
+@media (max-width: 480px) {
+  .pa-root { padding: 14px; }
+  .pa-controls { flex-wrap: wrap; gap: 6px; row-gap: 8px; }
+  .pa-controls .pa-play { width: auto; }
+}
