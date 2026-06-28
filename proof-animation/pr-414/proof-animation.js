@@ -425,7 +425,15 @@ export class ProofAnimator {
       const el = t && t.closest ? t.closest("[data-n]") : null;
       if (!el || !this.stage.contains(el)) return null;
       if (el.querySelector("[data-n]")) {
-        return (x == null) ? null : this._nearestLeafTerm(el, x, y);
+        if (x == null) return null;
+        // Prefer the nearest inner leaf. Only when the pointer is on NO term at all
+        // (the bare √ surd, a fraction bar) fall back to the wrapper itself — and
+        // only when it's a tight operator (√, fraction, power), never a spanning
+        // combiner (product / sum / equation) whose box sprawls. So the √ "kicks in
+        // last": it's selectable, but only after we know no inner term is hovered.
+        const leaf = this._nearestLeafTerm(el, x, y);
+        if (leaf) return leaf;
+        return _isSpanningWrapperId(el.getAttribute("data-n")) ? null : el;
       }
       return el;
     };
