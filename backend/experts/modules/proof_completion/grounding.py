@@ -120,11 +120,21 @@ def graph_to_sympy(graph: SemanticGraph) -> sp.Expr:
         elif t == "operator":
             res = _eval_operator(n, op, ins, ev, nodes)
         elif t == "function":
-            args = [ev(c) for _, c in ins]
+            # ``\log_b`` / ``\ln`` carry the logarithm base as a separate
+            # ``base``-role operand (``e`` for ``\ln``); every other function has
+            # just its single argument. Split it out so the base doesn't count as
+            # an extra arg (which used to fail the len==1 check, #log-grounding).
+            base_ins = [c for r, c in ins if r == "base"]
+            arg_ins = [c for r, c in ins if r != "base"]
+            args = [ev(c) for c in arg_ins]
             fn = _FUNC.get(op or "")
             if fn is None or len(args) != 1:
                 raise UngroundableGraph(f"function {op!r}")
-            res = fn(args[0])
+            if base_ins and op in ("log", "ln"):
+                # sp.log(x, e) auto-simplifies to log(x); sp.log(x, 2) → log base 2
+                res = sp.log(args[0], ev(base_ins[0]))
+            else:
+                res = fn(args[0])
         elif t == "relation":
             res = _eval_relation(op, ins, ev)
         else:
