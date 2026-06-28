@@ -181,23 +181,39 @@
   top: 10px;
   left: 12px;
   z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: calc(100% - 24px);
   font: inherit;
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 0.8em;
+  line-height: 1.35;
   cursor: pointer;
   user-select: none;
-  padding: 4px 11px;
-  border-radius: 999px;
+  padding: 4px 8px;            /* COMPACT (icon-only) by default */
+  border-radius: 14px;
   background-color: var(--pa-bg);
   color: var(--pa-muted);
   border: 1px solid var(--pa-border);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
-  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  transition: color 0.15s, border-color 0.15s, background 0.15s, padding 0.15s;
 }
+/* The base rule's display:inline-flex outranks the UA [hidden] (display:none), so
+   re-assert it — else a docked goal (pill.hidden=true) or a proof with no goal
+   would still show the pill. */
+.pa-root .pa-goal-pill[hidden] { display: none; }
+.pa-goal-pill .pa-goal-icon { display: inline-flex; line-height: 0; flex: 0 0 auto; }
+/* The goal text: hidden by default → the pill is just an icon. Revealed on hover
+   (peek) or while pinned, expanding the pill inline — mirrors the grounding-rank
+   pill top-right. Normal case (the pill style mustn't uppercase the sentence). */
+.pa-goal-pill .pa-goal-label { display: none; overflow-wrap: anywhere; text-align: left; }
 .pa-root .pa-goal-pill:hover,
-.pa-root .pa-goal-pill.pa-pinned { color: var(--pa-fg); border-color: var(--pa-accent); }
+.pa-root .pa-goal-pill.pa-pinned {
+  color: var(--pa-fg); border-color: var(--pa-accent); padding: 5px 11px;
+}
+.pa-root .pa-goal-pill:hover .pa-goal-label,
+.pa-root .pa-goal-pill.pa-pinned .pa-goal-label { display: inline; }
+.pa-goal-pill .pa-goal-label .katex { font-size: 1em; }
 .pa-root .pa-goal-pill.pa-pinned {
   background-image: linear-gradient(rgba(99, 102, 241, 0.14), rgba(99, 102, 241, 0.14));
 }
@@ -251,11 +267,14 @@
    vars (with dark fallbacks), not the .pa-root-scoped --pa-* ones. Each chip asks the
    host agent (or, embedded, the parent page; else copies). */
 .pa-explore-pop {
-  position: fixed;
+  /* Absolute, so it's CONTAINED by the box (.pa-root is position:relative): the
+     popup is a child of the box and is removed/hidden with it — no document.body
+     orphan after a step/scene switch. Sizes clamp to the box, not the viewport. */
+  position: absolute;
   z-index: 10001;
   width: 340px;
-  max-width: calc(100vw - 16px);
-  max-height: 70vh;
+  max-width: calc(100% - 16px);
+  max-height: calc(100% - 16px);
   flex-direction: column;        /* display:flex set by JS when shown */
   overflow: hidden;
   border-radius: 10px;
@@ -335,6 +354,7 @@
   color: var(--text-color, #e5e7eb);
   border-radius: 999px;
   padding: 4px 11px;
+  text-align: left;              /* multi-line chips align with single-line ones */
   transition: background 0.15s, border-color 0.15s;
 }
 .pa-explore-chip:hover { background: rgba(99, 102, 241, 0.28); border-color: var(--accent-color, #6366f1); }
