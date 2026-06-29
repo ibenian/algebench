@@ -25,10 +25,14 @@ jobs:
 
       - name: Prepare site
         run: |
+          # Publish static web assets from the landing-page tree (any depth, incl.
+          # blog/) by file type. New pages/assets ship without a workflow edit, but
+          # stray non-static files (notes, drafts, .DS_Store) are never published.
           mkdir -p _site
-          cp docs/landing-page/index.html _site/index.html
-          cp docs/landing-page/developers.html _site/developers.html
-          cp docs/landing-page/AlgeBench-Banner.png _site/AlgeBench-Banner.png
+          cd docs/landing-page
+          find . -type f \( \
+              -name '*.html' -o -name '*.css' -o -name '*.js' -o -name '*.png' \) \
+            -exec cp --parents {} ../../_site/ \;
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
