@@ -1,0 +1,124 @@
+/* blog.css — shared styling for every AlgeBench blog page (index + posts).
+ * Professional math-blog look: Georgia serif body, system-ui for meta/UI, a thin
+ * centered reading column, and a light/dark theme driven by a data-theme attribute
+ * (persisted in localStorage) with an OS-preference fallback. Keep all cross-page
+ * styling here so the index and the posts stay visually identical. */
+
+/* ── Theme tokens ─────────────────────────────────────────────────────────── */
+:root{
+  color-scheme: light dark;
+  --bg:#f6f7fb; --ink:#1f2430; --muted:#5b6472; --rule:#e6e8ee;
+  --accent:#4f46e5; --bar:#ffffff; --card:#ffffff; --soft:#f4f5f9;
+  /* Softer blues for the proof→app callout + CTA (gentler than the link accent). */
+  --cta-bg:#6573e0; --callout-bg:#eef1fc; --callout-edge:#c2c9f2;
+}
+/* Explicit dark (set by the theme toggle, persisted in localStorage). */
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --bg:#12121c; --ink:#e7e9ee; --muted:#9aa3b2; --rule:#262b3d;
+  --accent:#8b93f8; --bar:#15151f; --card:#171821; --soft:#1a1c27;
+  --cta-bg:#5c66b8; --callout-bg:#181b29; --callout-edge:#39406e;
+}
+/* Auto-dark only when the reader hasn't made an explicit choice. */
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme]){ --bg:#12121c; --ink:#e7e9ee; --muted:#9aa3b2; --rule:#262b3d;
+         --accent:#8b93f8; --bar:#15151f; --card:#171821; --soft:#1a1c27;
+         --cta-bg:#5c66b8; --callout-bg:#181b29; --callout-edge:#39406e; }
+}
+
+/* Readable text selection — a soft accent tint behind the normal ink color
+   (the default browser highlight washed out against the muted prose). */
+::selection{ background:color-mix(in srgb, var(--accent) 22%, var(--bg)); color:var(--ink); }
+::-moz-selection{ background:color-mix(in srgb, var(--accent) 22%, var(--bg)); color:var(--ink); }
+
+/* ── Base ─────────────────────────────────────────────────────────────────── */
+*{ box-sizing:border-box; }
+body{ margin:0; background:var(--bg); color:var(--ink);
+      font-family:Georgia,"Iowan Old Style","Times New Roman",serif; line-height:1.7;
+      -webkit-font-smoothing:antialiased;
+      transition:background-color .4s ease, color .4s ease; }   /* smooth bg1→bg2 on theme switch */
+a{ color:var(--accent); }
+code{ font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.86em;
+      background:var(--soft); border:1px solid var(--rule); border-radius:5px; padding:1px 5px; }
+
+/* ── Top bar ──────────────────────────────────────────────────────────────── */
+.bar{ border-bottom:1px solid var(--rule); background:var(--bar); position:sticky; top:0; z-index:5;
+      backdrop-filter:saturate(1.4) blur(6px); }
+.bar .in{ max-width:760px; margin:0 auto; padding:13px 22px; display:flex; align-items:baseline; gap:10px;
+      font-family:system-ui,-apple-system,"Segoe UI",sans-serif; }
+.bar .brand{ font-weight:800; letter-spacing:-.01em; color:var(--ink); text-decoration:none; }
+.bar .tag{ color:var(--muted); font-size:.82rem; }
+.bar .spacer{ flex:1; }
+.bar a.app{ font-size:.82rem; font-weight:600; color:var(--accent); text-decoration:none; }
+.bar a.app:hover{ text-decoration:underline; }
+
+.theme-btn{ align-self:center; font:inherit; font-size:1rem; line-height:1; cursor:pointer;
+  width:30px; height:30px; padding:0; display:inline-flex; align-items:center; justify-content:center;
+  background:transparent; color:var(--ink); border:1px solid var(--rule); border-radius:8px; }
+.theme-btn:hover{ border-color:var(--accent); }
+
+/* ── Reading column & shared typography ───────────────────────────────────── */
+main{ max-width:760px; margin:0 auto; padding:44px 22px 96px; }
+.kick{ font-family:system-ui,sans-serif; text-transform:uppercase; letter-spacing:.13em;
+       font-size:.72rem; color:var(--accent); font-weight:800; margin:0; }
+h1{ font-size:2.4rem; line-height:1.15; margin:10px 0 8px; letter-spacing:-.015em; }
+h2{ font-size:1.5rem; line-height:1.25; margin:48px 0 6px; letter-spacing:-.01em; }
+p{ margin:0 0 18px; }
+.sub{ font-family:system-ui,sans-serif; color:var(--muted); font-size:1rem; margin:0 0 36px; }
+.by{ font-family:system-ui,sans-serif; color:var(--muted); font-size:.9rem; margin:0 0 30px; }
+.lead{ font-size:1.18rem; color:var(--ink); }
+.muted{ color:var(--muted); }
+.foot{ font-family:system-ui,sans-serif; font-size:.82rem; color:var(--muted);
+      border-top:1px solid var(--rule); margin-top:48px; padding-top:18px; }
+
+/* ── Index: post cards ────────────────────────────────────────────────────── */
+.posts{ list-style:none; padding:0; margin:0; }
+.post{ display:block; text-decoration:none; color:inherit; border:1px solid var(--rule);
+       border-radius:14px; background:var(--card); padding:24px 26px; margin:0 0 22px;
+       transition:border-color .15s, box-shadow .15s, transform .15s; }
+.post:hover{ border-color:var(--accent);
+       box-shadow:0 14px 34px rgba(20,22,40,.14); transform:translateY(-2px); }
+.post .pk{ font-family:system-ui,sans-serif; text-transform:uppercase; letter-spacing:.1em;
+       font-size:.68rem; color:var(--accent); font-weight:800; }
+.post h2{ font-size:1.6rem; line-height:1.2; margin:8px 0 8px; letter-spacing:-.01em; }
+.post .meta{ font-family:system-ui,sans-serif; color:var(--muted); font-size:.84rem; margin:0 0 12px; }
+.post p{ margin:0 0 14px; }
+.post .more{ font-family:system-ui,sans-serif; font-weight:700; font-size:.9rem; color:var(--accent); }
+
+/* ── Post: embedded proof figures ─────────────────────────────────────────── */
+/* The renderproof embed already draws its own card (title bar + border), so the
+   iframe itself carries no frame — no box-in-a-box. */
+figure{ margin:26px 0 14px; }
+/* Start hidden and fade in on load: the embed paints its own (dark) default
+   background for a frame before its theme CSS applies, which would flash against
+   a light page. Keeping the frame transparent until it's painted hides it. */
+figure iframe{ display:block; width:100%; border:0; background:transparent;
+      opacity:0; transition:opacity .4s ease; }
+figure iframe.is-loaded{ opacity:1; }
+figcaption{ font-family:system-ui,sans-serif; color:var(--muted); font-size:.85rem;
+      margin-top:12px; text-align:center; }
+
+/* "How to use this figure" hint under each embed. */
+.howto{ font-family:system-ui,sans-serif; font-size:.84rem; color:var(--muted);
+      background:var(--soft); border:1px solid var(--rule); border-radius:10px;
+      padding:11px 14px; margin:8px 0 6px; }
+.howto b{ color:var(--ink); font-weight:600; }
+
+/* Confidence-badge legend. */
+.legend{ list-style:none; padding:0; margin:16px 0 8px; font-family:system-ui,sans-serif;
+      font-size:.94rem; }
+.legend li{ margin:0 0 10px; display:flex; gap:11px; align-items:baseline; }
+.legend .g{ flex:0 0 1.4em; text-align:center; font-weight:800; font-size:1.05em; }
+.legend b{ color:var(--ink); }
+.legend .grounded{ color:#d4a017; } .legend .verified{ color:#9aa3b5; }
+.legend .domain{ color:#2fb6a3; }   .legend .plausible{ color:#5b9bf0; }
+.legend .unchecked{ color:#8a93a5; } .legend .refuted{ color:#e0556b; }
+
+/* Callout for the proof→app funnel. */
+.callout{ border:1px solid var(--callout-edge); border-left:3px solid var(--callout-edge);
+      background:var(--callout-bg); border-radius:12px; padding:18px 20px; margin:24px 0; }
+.callout h3{ font-family:system-ui,sans-serif; font-size:1.02rem; margin:0 0 8px; }
+.cta{ display:inline-flex; align-items:center; gap:8px; font-family:system-ui,sans-serif;
+      font-weight:700; font-size:.92rem; text-decoration:none; color:#fff; background:var(--cta-bg);
+      padding:10px 16px; border-radius:10px; margin-top:6px; }
+.cta:hover{ filter:brightness(1.07); }

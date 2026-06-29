@@ -1436,7 +1436,7 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
         )
 
     @fastapp.get("/renderproof")
-    async def get_renderproof():
+    async def get_renderproof(theme: str = ""):
         """Serve the shareable proof-animation page.
 
         After this HTML loads it fetches only same-origin proof JSON (via /proofs)
@@ -1451,6 +1451,13 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
             return Response(status_code=404)
         with open(path, 'r') as f:
             html = f.read().replace('__APP_VERSION__', get_app_version())
+        # Apply an explicit ?theme before first paint to avoid a dark→light flash:
+        # the page CSS defaults to dark and renderproof.js would only switch it after
+        # the module runs (post-paint). CSP forbids inline script, so stamp the
+        # attribute server-side. "auto"/unset stays client-resolved (follows the OS).
+        if theme in ("light", "dark"):
+            html = html.replace('<html lang="en">',
+                                f'<html lang="en" data-theme="{theme}">', 1)
         return HTMLResponse(
             content=html,
             headers={

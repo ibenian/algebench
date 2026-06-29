@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blog — AlgeBench</title>
+<meta name="description" content="Writing from AlgeBench — interactive, AI-written, CAS-verified mathematics.">
+<link rel="stylesheet" href="blog.css">
+<!-- Apply the saved theme before first paint (shared across all blog pages) — no flash. -->
+<script>try{var t=localStorage.getItem("algebench-theme");if(t==="dark"||t==="light")document.documentElement.dataset.theme=t;}catch(e){}</script>
+</head>
+<body>
+  <header class="bar"><div class="in">
+    <a class="brand" href="../index.html">AlgeBench</a>
+    <span class="tag">Blog</span>
+    <span class="spacer"></span>
+    <button class="theme-btn" id="theme-toggle" type="button" aria-label="Toggle dark / light theme"></button>
+    <a class="app" id="nav-app" href="/">Open the app →</a>
+  </div></header>
+
+  <main>
+    <p class="kick">Blog</p>
+    <h1>The AlgeBench Blog</h1>
+    <p class="sub">Notes on using AlgeBench to explore and learn math and science — visually and
+    interactively. Every figure in these posts is live: step through it, hover the terms, and jump
+    into the app to go deeper.</p>
+
+    <ul class="posts">
+      <li>
+        <a class="post" href="grounded-ai-proofs.html">
+          <span class="pk">Interactive Mathematics</span>
+          <h2>Grounded, AI-driven mathematical proof system</h2>
+          <p class="meta">June 28, 2026 · 6 min read</p>
+          <p>A short tour of AlgeBench's animated derivations — each one written by an AI, checked
+          step by step by a computer-algebra system, and embedded right in the page. Step through the
+          quadratic formula, watch why moving clocks run slow, and follow a spacecraft into the
+          atmosphere — then jump into a 3D scene to ask an AI tutor about it.</p>
+          <span class="more">Read the post →</span>
+        </a>
+      </li>
+    </ul>
+
+    <p class="foot">More posts soon. Want the source? Every figure on this site is a live AlgeBench
+    embed — open any proof in the app and copy its snippet.</p>
+  </main>
+
+  <script>
+    // Point "Open the app" at the live app (same-origin in prod, local server in dev).
+    var HOST = /^(localhost|127\.0\.0\.1)$/.test(location.hostname)
+      ? "http://localhost:5751" : "https://algebench.org";
+    document.getElementById("nav-app").href = HOST + "/";
+
+    // Shared light/dark toggle — persisted to one localStorage key for all blog pages.
+    (function(){
+      var KEY="algebench-theme", root=document.documentElement, btn=document.getElementById("theme-toggle");
+      function resolved(){ var t=localStorage.getItem(KEY);
+        return (t==="dark"||t==="light") ? t
+          : (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"); }
+      function paint(){ var r=resolved();
+        btn.textContent = r==="dark" ? "☾" : "☀";   // show the current theme (sun = light)
+        btn.title = "Switch to " + (r==="dark" ? "light" : "dark") + " theme"; }
+      paint();
+      btn.addEventListener("click", function(){
+        var next = resolved()==="dark" ? "light" : "dark";
+        try{ localStorage.setItem(KEY, next); }catch(e){}
+        root.dataset.theme = next; paint();
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -162,6 +162,16 @@ matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
   if (_currentTheme === "auto") applyTheme("auto");
 });
 
+// Let the host recolor the embed live, without a reload — e.g. a blog page whose
+// theme toggle posts the new theme. Only the parent frame may drive it, and only
+// to a known theme; recoloring is pure CSS-var swapping so the proof stays put.
+window.addEventListener("message", (e) => {
+  if (e.source === window.parent && e.data && e.data.type === "algebench-embed-theme"
+      && THEMES.has(e.data.theme)) {
+    applyTheme(e.data.theme);
+  }
+});
+
 /** Build the embeddable URL. The origin comes from wherever this page is served,
  *  so the snippet is environment-specific (localhost in dev, the real host in prod). */
 function buildEmbedUrl(builtins, theme) {
