@@ -50,7 +50,12 @@
       return off + 18;
     }
 
+    // Stable id so a reinjection (live-reload) replaces the style instead of
+    // stacking duplicate <style> blocks in <head>.
+    var prevStyle = document.getElementById("secnav-style");
+    if (prevStyle) prevStyle.remove();
     var style = document.createElement("style");
+    style.id = "secnav-style";
     style.textContent =
       ".secnav{position:fixed;left:18px;top:50%;transform:translateY(-50%);z-index:9999;" +
       "display:flex;flex-direction:column;gap:10px;}" +
@@ -71,7 +76,7 @@
       return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" ' +
              'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + d + '"/></svg>';
     };
-    var nav = document.createElement("div");
+    var nav = document.createElement("nav");   // semantic landmark for assistive tech
     nav.className = "secnav";
     nav.setAttribute("aria-label", "Section navigation");
     var up = document.createElement("button");
