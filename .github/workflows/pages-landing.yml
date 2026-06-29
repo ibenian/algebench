@@ -29,6 +29,11 @@ jobs:
           cp docs/landing-page/index.html _site/index.html
           cp docs/landing-page/developers.html _site/developers.html
           cp docs/landing-page/AlgeBench-Banner.png _site/AlgeBench-Banner.png
+          # Shared section navigator (blog pages reference ../section-nav.js).
+          cp docs/landing-page/section-nav.js _site/section-nav.js
+          # The blog (index + posts + blog.css).
+          mkdir -p _site/blog
+          cp -r docs/landing-page/blog/. _site/blog/
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
