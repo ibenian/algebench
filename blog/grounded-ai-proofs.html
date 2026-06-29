@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grounded, AI-driven mathematical proofs — AlgeBench</title>
+<meta name="description" content="Interactive, CAS-verified math proofs you can step through, embed, and explore in a 3D scene with an AI tutor.">
+<!-- KaTeX for the inline math in the prose. -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+<link rel="stylesheet" href="blog.css">
+<!-- Apply the saved theme before first paint (shared across all blog pages) — no flash. -->
+<script>try{var t=localStorage.getItem("algebench-theme");if(t==="dark"||t==="light")document.documentElement.dataset.theme=t;}catch(e){}</script>
+<!-- Left-edge up/down section navigator (smooth-scrolls between headings). -->
+<script defer src="../section-nav.js"></script>
+</head>
+<body>
+  <header class="bar"><div class="in">
+    <a class="brand" href="../index.html">AlgeBench</a>
+    <span class="tag">·</span>
+    <a class="tag" href="./" style="color:var(--accent); text-decoration:none">Blog</a>
+    <span class="spacer"></span>
+    <button class="theme-btn" id="theme-toggle" type="button" aria-label="Toggle dark / light theme"></button>
+    <a class="app" id="nav-app" href="/">Open the app →</a>
+  </div></header>
+
+  <main>
+    <p class="kick">Interactive Mathematics</p>
+    <h1>Grounded, AI-driven mathematical proof system</h1>
+    <p class="by">Every step machine-verified, then animated — built into AlgeBench.</p>
+
+    <p class="lead">Most math on the web is a static wall of symbols. The three figures below are
+    different: each is a <b>live, interactive derivation</b> — step through it, hover any term to see
+    what it is, and watch the expression morph line by line. Every step also carries a
+    <b>confidence badge</b> showing how it was checked. Play with them first — the how and why is
+    just underneath.</p>
+
+    <h2>1 · Where the quadratic formula comes from</h2>
+    <p>Everyone memorizes \( x = \dfrac{-b \pm \sqrt{b^2 - 4ac}}{2a} \), but few see <em>why</em> it
+    is true. It is just <b>completing the square</b> on \( ax^2 + bx + c = 0 \), carried out
+    symbol by symbol. Watch the discriminant \( b^2 - 4ac \) assemble itself under the root, and
+    the \( \pm \) split into the two roots.</p>
+    <figure>
+      <iframe data-builtin="algebra/quadratic-formula" height="560" loading="lazy"
+              title="Quadratic formula — interactive proof" data-algebench-embed></iframe>
+      <figcaption>Figure 1 — deriving the quadratic formula by completing the square. Interactive.</figcaption>
+    </figure>
+    <div class="howto">Try hovering \( a \), \( b \), \( c \) and watch every copy of that term
+      light up across the whole derivation.</div>
+
+    <h2>2 · Why moving clocks run slow</h2>
+    <p>Special relativity's time-dilation factor falls straight out of one algebraic rearrangement
+    of the light-clock relation. The result, \( t = \dfrac{t_0}{\sqrt{1 - v^2/c^2}} \), is built
+    here from \( (c\,t)^2 = (c\,t_0)^2 + (v\,t)^2 \) — no hand-waving, each line checked.</p>
+    <figure>
+      <iframe data-builtin="physics/time-dilation" height="560" loading="lazy"
+              title="Lorentz time dilation — interactive proof" data-algebench-embed></iframe>
+      <figcaption>Figure 2 — Lorentz time dilation. Hover \( c \) inside the radical to see its tooltip.</figcaption>
+    </figure>
+
+    <h2>3 · A spacecraft hitting the atmosphere</h2>
+    <p>Now something you would normally only meet in an aerospace course: the <b>Allen–Eggers</b>
+    model for a body entering an atmosphere. Starting from the equation of motion through an
+    exponential atmosphere, the derivation separates variables, integrates, and solves for the
+    velocity as a function of altitude. Notice the mixed badges — some steps the CAS verifies
+    outright, the genuinely uncheckable integration moves are vouched for as domain knowledge.</p>
+    <figure>
+      <iframe data-builtin="physics/allen-eggers-entry" height="600" loading="lazy"
+              title="Allen–Eggers entry velocity — interactive proof" data-algebench-embed></iframe>
+      <figcaption>Figure 3 — Allen–Eggers entry velocity. Open <b>ⓘ Explore</b> for the follow-ups.</figcaption>
+    </figure>
+
+    <h2>How it works: written by an AI, checked by a computer</h2>
+    <p>Here is the unusual part. Each derivation above is <b>written by a language model</b> — and then
+    <b>checked, step by step, by a computer-algebra system (CAS)</b>. The AI proposes the next line;
+    the CAS tries to prove that line genuinely follows from the one before it. The outcome of that
+    check is stamped onto every step as a colored <b>confidence badge</b>, so you never have to take
+    the AI's word for anything. Hover the pill in a card's top-right corner (or the colored dots
+    under the steps) to read each verdict:</p>
+    <ul class="legend">
+      <li><span class="g grounded">★</span><span><b>Grounded</b> — symbolically proven to follow from the previous step.</span></li>
+      <li><span class="g verified">✓</span><span><b>Verified</b> — strong CAS evidence, just short of a full symbolic proof.</span></li>
+      <li><span class="g domain">✦</span><span><b>Domain</b> — valid by domain knowledge the CAS can't express as an identity (see below).</span></li>
+      <li><span class="g plausible">◇</span><span><b>Plausible</b> — valid math, but the CAS couldn't decide this particular step.</span></li>
+      <li><span class="g unchecked">○</span><span><b>Unchecked</b> — not a single convertible expression (e.g. the “…” in a written-out sum).</span></li>
+      <li><span class="g refuted">✗</span><span><b>Refuted</b> — the CAS shows the step does <em>not</em> follow. These are caught and never shipped.</span></li>
+    </ul>
+    <p class="muted">Want the full picture — the AI derivation, the CAS grading pipeline, and how the
+    confidence tiers are decided? <a href="https://github.com/ibenian/algebench/discussions/378">Learn
+    how it works →</a></p>
+
+    <h2>When the CAS can't decide: domain rescue</h2>
+    <p>Real derivations contain honest moves that no CAS can verify as a pure symbolic identity —
+    <em>separating the variables</em> of a differential equation, an integration step, a physical
+    modeling assumption. Left alone, the CAS stamps these <b>Unchecked</b>, which is unfair: they are
+    correct, just not mechanically provable as an identity. So a second pass asks an AI acting as a
+    <b>domain expert</b> — “is this step valid, in context?” — and only when it vouches with high
+    confidence is the step promoted to the teal <b>Domain</b> tier. It's a deliberate middle ground:
+    <em>an expert accepts this; the CAS could not prove it</em> — strictly more honest than hiding the
+    gap. It's exactly why the Allen–Eggers proof above reads as a mix: green grounded algebra, with
+    teal <b>Domain</b> badges on the separation-and-integrate moves.</p>
+
+    <h2>How these figures are built — and how to embed them</h2>
+    <p>Each proof is embedded as a plain <code>&lt;iframe&gt;</code> — the same snippet you could
+    drop into your own blog. After it loads it makes no further calls home, so it is safe to
+    publish anywhere. Three things to try in any figure:</p>
+    <div class="howto">
+      <b>Step or play</b> — use the numbered buttons or <b>▶ Play</b> to morph between lines ·
+      <b>Hover a term</b> — point at any symbol (even one buried inside a √ or fraction) to light
+      it up and read what it means · <b>ⓘ Explore</b> — open prerequisites and follow-up questions.
+    </div>
+
+    <div class="callout">
+      <h3>The terms are live — and every one is a door to an AI tutor</h3>
+      <p class="muted" style="margin:0 0 12px">Every symbol in these proofs is interactive: hover it
+      to light up each place it appears and read a one-line description. But the real exit is the
+      <b>AI button</b>. Three things open a <em>conversation</em>, not just another formula — the
+      <b>AI&nbsp;ask</b> button on a term or step, a <b>Prerequisite</b> chip, or a <b>follow-up</b>
+      question in the ⓘ Explore panel. Click any of them and AlgeBench <b>opens the full app</b>,
+      landing you in a chat with an <b>AI tutor that already knows the context</b>: which proof you
+      were reading, which step, which symbol — so you pick up the thread instead of re-explaining it.</p>
+      <p class="muted" style="margin:0 0 12px">For Allen–Eggers that doorway leads somewhere special:
+      the interactive <b>3D atmospheric-entry scene</b> loads with the tutor listening. Rotate the
+      trajectory, drag the entry angle, and simply <em>ask</em> — “why does deceleration peak so high
+      up?” — and talk it through.</p>
+      <a class="cta" id="cta-app" href="/">Open the 3D scene + AI tutor →</a>
+    </div>
+
+    <p class="muted">So the reading path runs in one direction by design: a tweetable GIF or a
+    figure on a blog → an interactive, verified proof → a 3D scene where you can question the model
+    directly. No account, no install — just follow the link.</p>
+
+    <p>Curious how the whole system works under the hood?
+    <a href="https://github.com/ibenian/algebench/discussions/378">Learn how it works →</a></p>
+
+    <p class="foot">Every figure on this page is a live AlgeBench embed (an <code>&lt;iframe&gt;</code>
+    plus a tiny auto-resize script). The math renders through KaTeX with a strict trust filter, and
+    the page makes no backend calls after the proof loads. Want one of these in your own post? Open
+    any proof in AlgeBench and hit the <code>&lt;/&gt;</code> button to copy the embed snippet.</p>
+  </main>
+
+  <script>
+    // Same-origin in production (algebench.org), the local renderproof server in dev.
+    var HOST = /^(localhost|127\.0\.0\.1)$/.test(location.hostname)
+      ? "http://localhost:5751" : "https://algebench.org";
+
+    var KEY = "algebench-theme";
+    function resolvedTheme(){ var t; try{ t = localStorage.getItem(KEY); }catch(e){}
+      return (t==="dark"||t==="light") ? t
+        : (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"); }
+
+    // Initial load: point each figure's iframe at its built-in proof in the current
+    // theme. The server stamps data-theme before first paint, so there's no flash;
+    // the iframe starts hidden (CSS) and fades in once painted (load listener below).
+    function loadFrames(theme){
+      document.querySelectorAll("iframe[data-builtin]").forEach(function (f) {
+        if (!f.src) f.src = HOST + "/renderproof?builtin=" + f.dataset.builtin + "&theme=" + theme + "&explore=1";
+      });
+    }
+    // Theme toggle: recolor the embeds live via postMessage — no reload, no flash.
+    function recolorFrames(theme){
+      document.querySelectorAll("iframe[data-builtin]").forEach(function (f) {
+        try { f.contentWindow.postMessage({ type: "algebench-embed-theme", theme: theme }, "*"); } catch (e) {}
+      });
+    }
+    // Fade each embed in once it has painted (masks the brief load-time render).
+    document.querySelectorAll("iframe[data-builtin]").forEach(function (f) {
+      f.addEventListener("load", function () { f.classList.add("is-loaded"); });
+    });
+    loadFrames(resolvedTheme());
+
+    // "Open the app" links → the AlgeBench app (the atmospheric-entry scene + AI chat for the CTA).
+    document.getElementById("nav-app").href = HOST + "/";
+    document.getElementById("cta-app").href = HOST + "/?scene=scenes/atmospheric-entry-physics.json";
+    // Auto-fit each embed's height to its content (cross-origin iframes can't size themselves).
+    var s = document.createElement("script"); s.src = HOST + "/embed-resizer.js"; s.async = true;
+    document.body.appendChild(s);
+    // Render the inline math in the prose.
+    document.addEventListener("DOMContentLoaded", function () {
+      if (window.renderMathInElement) renderMathInElement(document.body, {
+        delimiters: [{left:"\\(",right:"\\)",display:false},{left:"$$",right:"$$",display:true}]
+      });
+    });
+
+    // Shared light/dark toggle — same localStorage key as the blog index.
+    (function(){
+      var root=document.documentElement, btn=document.getElementById("theme-toggle");
+      function paint(){ var r=resolvedTheme();
+        btn.textContent = r==="dark" ? "☾" : "☀";   // show the current theme (sun = light)
+        btn.title = "Switch to " + (r==="dark" ? "light" : "dark") + " theme"; }
+      paint();
+      btn.addEventListener("click", function(){
+        var next = resolvedTheme()==="dark" ? "light" : "dark";
+        try{ localStorage.setItem(KEY, next); }catch(e){}
+        root.dataset.theme = next; paint();
+        recolorFrames(next);   // live-recolor the embeds (no reload) to match the page
+      });
+    })();
+  </script>
+</body>
+</html>
