@@ -150,14 +150,25 @@
       return (t==="dark"||t==="light") ? t
         : (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"); }
 
-    // Point every figure's iframe at its built-in proof; the embed's theme matches the blog's.
-    function paintFrames(theme){
+    // Initial load: point each figure's iframe at its built-in proof in the current
+    // theme. The server stamps data-theme before first paint, so there's no flash;
+    // the iframe starts hidden (CSS) and fades in once painted (load listener below).
+    function loadFrames(theme){
       document.querySelectorAll("iframe[data-builtin]").forEach(function (f) {
-        var url = HOST + "/renderproof?builtin=" + f.dataset.builtin + "&theme=" + theme + "&explore=1";
-        if (f.src !== url) f.src = url;   // reload only when the theme actually changed
+        if (!f.src) f.src = HOST + "/renderproof?builtin=" + f.dataset.builtin + "&theme=" + theme + "&explore=1";
       });
     }
-    paintFrames(resolvedTheme());
+    // Theme toggle: recolor the embeds live via postMessage — no reload, no flash.
+    function recolorFrames(theme){
+      document.querySelectorAll("iframe[data-builtin]").forEach(function (f) {
+        try { f.contentWindow.postMessage({ type: "algebench-embed-theme", theme: theme }, "*"); } catch (e) {}
+      });
+    }
+    // Fade each embed in once it has painted (masks the brief load-time render).
+    document.querySelectorAll("iframe[data-builtin]").forEach(function (f) {
+      f.addEventListener("load", function () { f.classList.add("is-loaded"); });
+    });
+    loadFrames(resolvedTheme());
 
     // "Open the app" links → the AlgeBench app (the atmospheric-entry scene + AI chat for the CTA).
     document.getElementById("nav-app").href = HOST + "/";
@@ -183,7 +194,7 @@
         var next = resolvedTheme()==="dark" ? "light" : "dark";
         try{ localStorage.setItem(KEY, next); }catch(e){}
         root.dataset.theme = next; paint();
-        paintFrames(next);   // keep the embedded proofs in sync with the page theme
+        recolorFrames(next);   // live-recolor the embeds (no reload) to match the page
       });
     })();
   </script>

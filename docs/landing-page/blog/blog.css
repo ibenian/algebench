@@ -35,7 +35,8 @@
 *{ box-sizing:border-box; }
 body{ margin:0; background:var(--bg); color:var(--ink);
       font-family:Georgia,"Iowan Old Style","Times New Roman",serif; line-height:1.7;
-      -webkit-font-smoothing:antialiased; }
+      -webkit-font-smoothing:antialiased;
+      transition:background-color .4s ease, color .4s ease; }   /* smooth bg1→bg2 on theme switch */
 a{ color:var(--accent); }
 code{ font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.86em;
       background:var(--soft); border:1px solid var(--rule); border-radius:5px; padding:1px 5px; }
@@ -88,7 +89,12 @@ p{ margin:0 0 18px; }
 /* The renderproof embed already draws its own card (title bar + border), so the
    iframe itself carries no frame — no box-in-a-box. */
 figure{ margin:26px 0 14px; }
-figure iframe{ display:block; width:100%; border:0; background:transparent; }
+/* Start hidden and fade in on load: the embed paints its own (dark) default
+   background for a frame before its theme CSS applies, which would flash against
+   a light page. Keeping the frame transparent until it's painted hides it. */
+figure iframe{ display:block; width:100%; border:0; background:transparent;
+      opacity:0; transition:opacity .4s ease; }
+figure iframe.is-loaded{ opacity:1; }
 figcaption{ font-family:system-ui,sans-serif; color:var(--muted); font-size:.85rem;
       margin-top:12px; text-align:center; }
 
