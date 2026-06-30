@@ -1,0 +1,151 @@
+{
+  "title": "The Coriolis Term Emerges",
+  "domain": "physics",
+  "deeplink": "/?builtin=rotating-habitat&view=math&panel=chat&pp=1&sc=rotating-space-habitats&st=the-coriolis-effect&pf=coriolis-effect&ps=coriolis&nodes=__equals_1&pa=physics/rotating-habitat-coriolis",
+  "steps": [
+    {
+      "index": 0,
+      "operation": "Given $a = \\frac{(\\omega R + v)^2}{R}$",
+      "justification": "expand the square and split into the artificial-gravity term, the Coriolis term 2 omega v, and a small correction",
+      "input_latex": "a = \\frac{\\left(R \\cdot \\omega + v\\right)^{2}}{R}",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=a}{a} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_2}{\\frac{\\htmlData{n=__power_3}{\\left(\\htmlData{n=__add_4}{\\htmlData{n=__multiply_5}{\\htmlData{n=R____multiply_5}{R} \\htmlData{n=__multiply_5__m1}{\\cdot} \\htmlData{n=omega}{\\omega}} \\htmlData{n=__add_4__op1}{+} \\htmlData{n=v}{v}}\\right)^{\\htmlData{n=__power_3__exp}{2}}}}{\\htmlData{n=R____multiply_2}{R}}}}",
+      "plain": "a = \\frac{\\left(R \\cdot \\omega + v\\right)^{2}}{R}",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": null,
+        "reason": "the given starting expression",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 1,
+      "operation": "Expand the square in the numerator using the binomial formula.",
+      "justification": "Apply the binomial expansion formula $(A+B)^2 = A^2 + 2AB + B^2$ to the term $(R \\cdot \\omega + v)^2$.",
+      "input_latex": "a = \\frac{R^{2} \\cdot \\omega^{2} + 2 \\cdot R \\cdot \\omega \\cdot v + v^{2}}{R}",
+      "latex": "\\htmlData{n=_r1___equals_1}{\\htmlData{n=a}{a} \\htmlData{n=_r1___equals_1__op}{=} \\htmlData{n=_r2___multiply_2}{\\frac{\\left(\\htmlData{n=__add_3}{\\htmlData{n=_r3___add_4}{\\htmlData{n=_r4___multiply_5}{\\htmlData{n=_r5___power_6}{\\htmlData{n=R___r5___power_6}{R}^{\\htmlData{n=_r5___power_6__exp}{2}}} \\htmlData{n=_r4___multiply_5__m1}{\\cdot} \\htmlData{n=__power_7}{\\htmlData{n=omega____power_7}{\\omega}^{\\htmlData{n=__power_7__exp}{2}}}} \\htmlData{n=_r3___add_4__op1}{+} \\htmlData{n=__multiply_8}{\\htmlData{n=__multiply_9}{\\htmlData{n=__multiply_10}{\\htmlData{n=__num_11}{2} \\htmlData{n=__multiply_10__m1}{\\cdot} \\htmlData{n=R____multiply_10}{R}} \\htmlData{n=__multiply_9__m1}{\\cdot} \\htmlData{n=omega____multiply_9}{\\omega}} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=v____multiply_8}{v}}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__power_12}{\\htmlData{n=v____power_12}{v}^{\\htmlData{n=__power_12__exp}{2}}}}\\right)}{\\htmlData{n=R___r2___multiply_2}{R}}}}",
+      "plain": "a = \\frac{\\left(R^{2} \\cdot \\omega^{2} + 2 \\cdot R \\cdot \\omega \\cdot v + v^{2}\\right)}{R}",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 2,
+      "operation": "Distribute the denominator $R$ to each term in the numerator.",
+      "justification": "Separate the fraction into a sum of fractions by distributing the denominator to each term in the numerator: $\\frac{A+B+C}{D} = \\frac{A}{D} + \\frac{B}{D} + \\frac{C}{D}$.",
+      "input_latex": "a = \\frac{R^{2} \\cdot \\omega^{2}}{R} + \\frac{2 \\cdot R \\cdot \\omega \\cdot v}{R} + \\frac{v^{2}}{R}",
+      "latex": "\\htmlData{n=_r1___equals_1}{\\htmlData{n=a}{a} \\htmlData{n=_r1___equals_1__op}{=} \\htmlData{n=__add_3}{\\htmlData{n=_r3___add_4}{\\htmlData{n=__multiply_4}{\\frac{\\htmlData{n=_r4___multiply_5}{\\htmlData{n=_r5___power_6}{\\htmlData{n=R___r5___power_6}{R}^{\\htmlData{n=_r5___power_6__exp}{2}}} \\htmlData{n=_r4___multiply_5__m1}{\\cdot} \\htmlData{n=__power_7}{\\htmlData{n=omega____power_7}{\\omega}^{\\htmlData{n=__power_7__exp}{2}}}}}{\\htmlData{n=R____multiply_4}{R}}} \\htmlData{n=_r3___add_4__op1}{+} \\htmlData{n=_r2___multiply_2}{\\frac{\\htmlData{n=__multiply_8}{\\htmlData{n=__multiply_9}{\\htmlData{n=__multiply_10}{\\htmlData{n=__num_11}{2} \\htmlData{n=__multiply_10__m1}{\\cdot} \\htmlData{n=R____multiply_10}{R}} \\htmlData{n=__multiply_9__m1}{\\cdot} \\htmlData{n=omega____multiply_9}{\\omega}} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=v____multiply_8}{v}}}{\\htmlData{n=R___r2___multiply_2}{R}}}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__multiply_15}{\\frac{\\htmlData{n=__power_12}{\\htmlData{n=v____power_12}{v}^{\\htmlData{n=__power_12__exp}{2}}}}{\\htmlData{n=R____multiply_15}{R}}}}}",
+      "plain": "a = \\frac{R^{2} \\cdot \\omega^{2}}{R} + \\frac{2 \\cdot R \\cdot \\omega \\cdot v}{R} + \\frac{v^{2}}{R}",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 3,
+      "operation": "Simplify each term by canceling common factors.",
+      "justification": "Cancel $R$ from the numerator and denominator in the first two terms: $\\frac{R^2 \\cdot \\omega^2}{R} = R \\cdot \\omega^2$ and $\\frac{2 \\cdot R \\cdot \\omega \\cdot v}{R} = 2 \\cdot \\omega \\cdot v$. The third term remains as is.",
+      "input_latex": "a = R \\cdot \\omega^{2} + 2 \\cdot \\omega \\cdot v + \\frac{v^{2}}{R}",
+      "latex": "\\htmlData{n=_r1___equals_1}{\\htmlData{n=a}{a} \\htmlData{n=_r1___equals_1__op}{=} \\htmlData{n=__add_3}{\\htmlData{n=_r3___add_4}{\\htmlData{n=_r4___multiply_5}{\\htmlData{n=R___r4___multiply_5}{R} \\htmlData{n=_r4___multiply_5__m1}{\\cdot} \\htmlData{n=__power_7}{\\htmlData{n=omega____power_7}{\\omega}^{\\htmlData{n=__power_7__exp}{2}}}} \\htmlData{n=_r3___add_4__op1}{+} \\htmlData{n=__multiply_9}{\\htmlData{n=__multiply_10}{\\htmlData{n=__num_11}{2} \\htmlData{n=__multiply_10__m1}{\\cdot} \\htmlData{n=omega____multiply_10}{\\omega}} \\htmlData{n=__multiply_9__m1}{\\cdot} \\htmlData{n=v____multiply_9}{v}}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__multiply_15}{\\frac{\\htmlData{n=__power_12}{\\htmlData{n=v____power_12}{v}^{\\htmlData{n=__power_12__exp}{2}}}}{\\htmlData{n=R____multiply_15}{R}}}}}",
+      "plain": "a = R \\cdot \\omega^{2} + 2 \\cdot \\omega \\cdot v + \\frac{v^{2}}{R}",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    }
+  ],
+  "overall_confidence": {
+    "tier": "grounded",
+    "label": "Grounded",
+    "icon": "🥇",
+    "meaning": "symbolically proven to follow from the previous step",
+    "relation": null,
+    "reason": "3/3 steps verified · endpoint reached",
+    "type_consistent": true,
+    "counts": {
+      "refuted": 0,
+      "unchecked": 0,
+      "plausible": 0,
+      "domain": 0,
+      "verified": 0,
+      "grounded": 3
+    },
+    "endpoint_reached": true
+  },
+  "terms": {
+    "a": {
+      "latex": "a",
+      "name": "a"
+    },
+    "__power_3": {
+      "latex": "\\left(R \\omega + v\\right)^{2}",
+      "name": "\\left(R \\omega + v\\right)^{2}"
+    },
+    "R": {
+      "latex": "R",
+      "name": "R"
+    },
+    "omega": {
+      "latex": "\\omega",
+      "name": "\\omega"
+    },
+    "v": {
+      "latex": "v",
+      "name": "v"
+    },
+    "__power_6": {
+      "latex": "\\frac{1}{R}",
+      "name": "\\frac{1}{R}"
+    },
+    "_r5___power_6": {
+      "latex": "R^{2}",
+      "name": "R^{2}"
+    },
+    "__power_7": {
+      "latex": "\\omega^{2}",
+      "name": "\\omega^{2}"
+    },
+    "__power_12": {
+      "latex": "v^{2}",
+      "name": "v^{2}"
+    },
+    "__power_8": {
+      "latex": "\\frac{1}{R}",
+      "name": "\\frac{1}{R}"
+    },
+    "__power_17": {
+      "latex": "\\frac{1}{R}",
+      "name": "\\frac{1}{R}"
+    }
+  },
+  "goal": "This derivation expands the expression for acceleration $a$ in a rotating frame, $a = \\frac{(R \\cdot \\omega + v)^2}{R}$, to identify and separate the contributing terms, often associated with artificial gravity, the Coriolis effect, and a linear acceleration term.",
+  "followups": [
+    "What is the physical significance of each term in the expanded expression for $a$?",
+    "How does the Coriolis effect manifest in everyday life or engineering?",
+    "Can we derive a similar expression for the acceleration if the velocity $v$ was perpendicular to $R \\cdot \\omega$?",
+    "What are typical values for $R$, $\\omega$, and $v$ in a space station context?"
+  ],
+  "prerequisites": [
+    "Binomial expansion $(A+B)^2$",
+    "Distribution of division over addition",
+    "Simplification of algebraic fractions"
+  ]
+}
