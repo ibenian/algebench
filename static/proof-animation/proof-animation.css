@@ -175,6 +175,41 @@
     drop-shadow(0 0 6px var(--pa-term-gold, rgba(255, 200, 70, 0.95)))
     drop-shadow(0 0 13px var(--pa-term-gold-soft, rgba(255, 185, 40, 0.75)));
 }
+/* Engine-owned ask-selection (standalone/embedded term-ask). A class DISTINCT from
+   pa-term-selected so the in-app host keeps sole ownership of that one; visually
+   identical gold so selection reads the same in both contexts. */
+.pa-live-terms .pa-term-ask,
+.pa-live-terms .pa-term-hot.pa-term-ask {
+  filter:
+    drop-shadow(0 0 2px var(--pa-term-gold, rgba(255, 215, 105, 1)))
+    drop-shadow(0 0 6px var(--pa-term-gold, rgba(255, 200, 70, 0.95)))
+    drop-shadow(0 0 13px var(--pa-term-gold-soft, rgba(255, 185, 40, 0.75)));
+}
+/* The AI "Ask" button that FADES IN next to the hovered term — mirrors the
+   semantic-graph node ask button. Lives on document.body (position:fixed, set
+   inline), so a docked box's overflow never clips it; visibility is driven by the
+   inline opacity the engine toggles, so this rule only styles the chip + fade. */
+.pa-term-ask-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--pa-accent, #6366f1);
+  border: 1px solid var(--pa-accent, #6366f1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  /* Identical fade in and out (200ms) so the button eases in and out at the same
+     rate; paired with the JS grace delay + stay-clickable-through-fade, the user
+     always has time to move onto it and click. */
+  transition: opacity 200ms ease, filter 120ms ease;
+}
+.pa-term-ask-btn:hover { filter: brightness(1.12); }
+.pa-term-ask-btn:focus-visible { outline: 2px solid var(--pa-accent); outline-offset: 2px; }
+.pa-term-ask-btn svg { display: block; }
 
 /* operation (explanation) stacked above justification, then the "Next" pill.
    FIXED height (set by _fixMetaSize to the tallest step) + flex:none so the text
@@ -377,6 +412,15 @@
 }
 .pa-explore-chip:hover { background: rgba(99, 102, 241, 0.28); border-color: var(--accent-color, #6366f1); }
 .pa-explore-chip .katex { font-size: 1em; }
+/* Sparkle marking the chip as an AI action — sits before the text, tinted accent. */
+.pa-explore-chip-icon {
+  display: inline-flex;
+  vertical-align: -1px;
+  margin-right: 6px;
+  color: var(--accent-color, #6366f1);
+}
+.pa-explore-chip:hover .pa-explore-chip-icon { color: inherit; }
+.pa-explore-chip-icon svg { display: block; }
 .pa-root .pa-info-pill.pa-pinned { border-color: var(--pa-accent); color: var(--pa-accent); }
 
 /* "Next" pill — mirrors the proof-navigator step pills; clickable (= next btn). */

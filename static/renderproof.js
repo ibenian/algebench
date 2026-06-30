@@ -66,6 +66,27 @@ function str(v) {
   return String(v).slice(0, MAX_STR);
 }
 
+/**
+ * Sanitize a proof "deeplink" — the full-app view an "Ask AI" opens. Hostile
+ * input (this JSON may be hand-edited or third-party), so allow ONLY a same-origin
+ * RELATIVE form: a leading "/" path or a bare "?query". Reject any scheme
+ * (javascript:, data:, http:), protocol-relative "//host", and off-origin URLs;
+ * drop the hash. Returns the normalized "pathname + search", or undefined.
+ */
+function cleanDeeplink(v) {
+  if (typeof v !== "string") return undefined;
+  const s = v.trim();
+  if (!s || s.length > 1024) return undefined;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(s)) return undefined;   // any scheme → reject
+  if (s.startsWith("//")) return undefined;               // protocol-relative
+  if (!(s.startsWith("/") || s.startsWith("?"))) return undefined;
+  try {
+    const u = new URL(s, location.origin);
+    if (u.origin !== location.origin) return undefined;
+    return u.pathname + u.search;                         // normalized, hash dropped
+  } catch (e) { return undefined; }
+}
+
 /** Shallow-sanitize a confidence object: keep known keys, primitives only. */
 function cleanConfidence(c) {
   if (!c || typeof c !== "object") return undefined;
@@ -100,7 +121,7 @@ function validateProofData(data) {
   }
   const steps = data.steps.map((s, i) => {
     if (!s || typeof s !== "object") throw new Error(`step ${i} is not an object`);
-    return {
+    const out = {
       index: typeof s.index === "number" && isFinite(s.index) ? s.index : i,
       operation: str(s.operation),
       justification: str(s.justification),
@@ -109,6 +130,10 @@ function validateProofData(data) {
       plain: str(s.plain),
       confidence: cleanConfidence(s.confidence),
     };
+    // Optional per-step deeplink override (where an "Ask AI" on this step lands).
+    const dl = cleanDeeplink(s.deeplink);
+    if (dl) out.deeplink = dl;
+    return out;
   });
 
   const terms = {};
@@ -134,6 +159,10 @@ function validateProofData(data) {
     ? v.filter((s) => typeof s === "string" && s.trim()).slice(0, 8).map(str) : undefined;
   if (strList(data.followups)) out.followups = strList(data.followups);
   if (strList(data.prerequisites)) out.prerequisites = strList(data.prerequisites);
+  // Optional proof-level deeplink (where an "Ask AI" lands by default — overridden
+  // per-step). Sanitized to a same-origin relative URL; dropped if malformed.
+  const dl = cleanDeeplink(data.deeplink);
+  if (dl) out.deeplink = dl;
   return out;
 }
 
@@ -423,6 +452,10 @@ async function main() {
   // ⓘ pill for a proof that has none. Opt out with ?explore=0.
   const exploreFollowups = !["0", "false", "no"].includes(
     (new URLSearchParams(location.search).get("explore") || "").trim().toLowerCase());
+  // Opt-in term-ask via ?ai=1 (off by default): proof terms become click-selectable
+  // and a floating "Ask AI" opens the linked full-app view + auto-asks the agent.
+  const termAsk = ["1", "true", "yes"].includes(
+    (new URLSearchParams(location.search).get("ai") || "").trim().toLowerCase());
   // Optional autoplay (?autoplay=true → every proof on the page; ?autoplay=<n> →
   // only the nth, 1-indexed: 1 = first, 2 = second …). Lets a share/embed link
   // open already morphing, no click needed.
@@ -487,8 +520,10 @@ async function main() {
       if (data.title) titleText.textContent = data.title;
       window.__animators.push(new ProofAnimator(card, data, {
         katex, liveTerms: true, enableExplore: exploreFollowups,
-        // No onExplore here: standalone, the engine copies the chip text; when this
-        // page is embedded in an iframe, the engine posts the click to the parent.
+        enableTermAsk: termAsk,
+        // No onTermAsk/onExplore host hooks: standalone the engine routes asks
+        // itself (embedded → open the proof's deeplink in a new tab + auto-ask;
+        // else copy/postMessage). The deeplink lives on the proof JSON.
       }));
     } catch (e) {
       showError(card, `Could not load "${slug}": ${e.message}`);

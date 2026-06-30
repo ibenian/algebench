@@ -24,9 +24,14 @@ import { setActiveProof, navigateProof, setProofPanelOpen } from '/proof.js';
 import { setSliderValue } from '/sliders.js';
 import { animateCamera, switchProjection } from '/camera.js';
 import { dataCameraToWorld, worldCameraToData } from '/coords.js';
+import { openChatPanel } from '/labels.js';
 
 let _applying = false;
 const _sceneMapCache = new WeakMap();
+// Auto-ask (?aa=) fires AT MOST once per session — a deeplink from an embedded
+// proof's "Ask AI". Latched so back/forward/reload can't re-ask (belt-and-braces
+// with the fromHistory skip + `aa` not being serialized back into the URL).
+let _autoAskFired = false;
 
 /** True while applyViewState is driving the app (suppresses outbound sync). */
 export function isApplyingViewState() {
@@ -244,6 +249,23 @@ export async function applyViewState(vs, opts = {}) {
             window.switchPanelTab(vs.panel === 'chat' ? 'chat' : 'doc');
         }
         setProofPanelOpen(!!vs.pp);
+
+        // 5d. Auto-ask: a deeplinked AI question (?aa=), e.g. from an embedded
+        //     proof's "Ask AI". Fire ONCE, after navigation + proof open so the
+        //     agent grounds on the now-current scene/proof. Skipped on back/forward
+        //     (the user didn't click an ask). `aa` is sent verbatim as a chat
+        //     message — same trust level as the user typing it (not eval'd / not
+        //     inserted as HTML); the linking deeplink is origin-locked upstream.
+        if (vs.aa && !opts.fromHistory && !_autoAskFired) {
+            _autoAskFired = true;
+            try { if (typeof window.switchPanelTab === 'function') window.switchPanelTab('chat'); } catch (_e) { /* no panel */ }
+            try { openChatPanel(); } catch (_e) { /* panel optional */ }
+            // Defer a tick so the proof/graph render settles before the agent reads context.
+            const _ask = String(vs.aa);
+            setTimeout(() => {
+                try { if (typeof window.sendChatMessage === 'function') window.sendChatMessage(_ask); } catch (_e) { /* chat optional */ }
+            }, 0);
+        }
 
         // 6. 3D viewport: projection, selected view preset, then exact camera.
         //    Projection is applied ONLY when the link carries viewport info

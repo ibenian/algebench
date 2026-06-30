@@ -383,6 +383,17 @@ export class SgProofManager {
                         window.sendChatMessage(message);
                     }
                 },
+                // Term-ask: a floating "Ask AI" appears when ≥1 term is selected.
+                // In-app there's chat already, so just ask (no navigation). The
+                // ordered, graph-enriched message is built from the host's selection.
+                enableTermAsk: true,
+                onTermAsk: ({ message }) => {
+                    try { openChatPanel(); } catch (e) { /* panel optional */ }
+                    if (typeof window !== "undefined" && typeof window.sendChatMessage === "function") {
+                        window.sendChatMessage(message);
+                    }
+                },
+                onBuildTermAskMessage: (focus) => this._buildTermAskMessage(entry, focus),
                 // Reverse sync: re-apply selection/linked classes after every
                 // (re)render (a morph wipes them); a background click deselects all.
                 onAfterRender: () => this._refreshTermClasses(entry),
@@ -566,6 +577,48 @@ export class SgProofManager {
 
     _applyAllBoxes() {
         for (const entry of this.boxes.values()) this._applyTermClasses(entry);
+    }
+
+    // Build the graph-enriched ask message for a box's "Ask AI" button. The engine
+    // passes the hovered FOCUS term; we resolve it (and the gold context terms) to
+    // graph nodes and frame the focus as the subject + the rest as context —
+    // mirroring the multi-node graph ask (hovered = subject, selected = context).
+    _buildTermAskMessage(entry, focus) {
+        const r = this._renderer;
+        const graph = r && r._graph;
+        const getNode = (id) => (r && typeof r.getNode === 'function') ? r.getNode(id)
+            : ((graph && Array.isArray(graph.nodes)) ? graph.nodes.find((n) => n.id === id) : null);
+        const title = entry && entry.data && entry.data.title ? ` "${entry.data.title}"` : '';
+
+        // Focus = the hovered term (its linked node if it maps, else its text).
+        const focusNid = (focus && focus.chain) ? this._resolveChain(focus.chain) : null;
+        const focusNode = focusNid ? getNode(focusNid) : null;
+        const focusLabel = focusNode ? (focusNode.label || focusNode.id) : ((focus && focus.text) || '');
+        const focusKey = focus ? this._apprKey(focus.text || '') : '';
+
+        // Context = the gold selection, minus the focus term: graph nodes first,
+        // then any off-graph proof-only terms.
+        const ctxNodeIds = [...this._selectedNodeIds].filter((id) => id !== focusNid);
+        const ctxTermKeys = [...this._selectedTermKeys].filter((k) => k !== focusKey);
+        const ctx = [];
+        for (const id of ctxNodeIds) {
+            const n = getNode(id);
+            if (n) {
+                let line = `- ${n.label || n.id}`;
+                if (n.type) line += ` (${n.type})`;
+                if (n.description) line += ` — ${n.description}`;
+                ctx.push(line);
+            } else {
+                ctx.push(`- ${id}`);
+            }
+        }
+        for (const key of ctxTermKeys) ctx.push(`- "${key}"`);
+
+        if (!focusLabel && !ctx.length) return '';
+        let head = `In the derivation${title}, explain the term "${focusLabel}"`;
+        if (focusNode && focusNode.description) head += ` (${focusNode.description})`;
+        if (!ctx.length) return head + ' — what it represents and its role here.';
+        return head + ' and how it relates to:\n' + ctx.join('\n');
     }
 
     /** Shared hover node (set by a term hover OR a graph-node hover). Lights the

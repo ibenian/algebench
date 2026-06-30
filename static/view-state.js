@@ -25,7 +25,12 @@
 //     cam: {              // camera (data-space)            -> ?cam=px,py,pz,tx,ty,tz[,ux,uy,uz]
 //       position:[x,y,z], target:[x,y,z], up?:[x,y,z]
 //     },
+//     aa,                 // auto-ask: a chat message to fire ONCE on boot -> ?aa=
 //   }
+//
+// NOTE: `aa` is a fire-once boot DIRECTIVE, not canonical shareable state — it is
+// parsed but deliberately NOT re-serialized, so the post-apply replaceView() strips
+// it from the URL (preventing a re-ask on reload / back / forward).
 // ============================================================
 
 const CAM_DECIMALS = 4;
@@ -164,6 +169,11 @@ export function parseViewState(search) {
 
     const panel = params.get('panel');
     if (panel) vs.panel = panel;
+
+    // Auto-ask: a chat message to fire once on boot (see header note). Capped to
+    // bound the chat payload; not serialized, so it never round-trips into a URL.
+    const aa = params.get('aa');
+    if (aa) vs.aa = String(aa).slice(0, 2000);
 
     const pp = params.get('pp');
     if (pp === '1' || pp === 'true') vs.pp = true;

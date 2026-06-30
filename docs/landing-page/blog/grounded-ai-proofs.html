@@ -155,7 +155,7 @@
     // the iframe starts hidden (CSS) and fades in once painted (load listener below).
     function loadFrames(theme){
       document.querySelectorAll("iframe[data-builtin]").forEach(function (f) {
-        if (!f.src) f.src = HOST + "/renderproof?builtin=" + f.dataset.builtin + "&theme=" + theme + "&explore=1";
+        if (!f.src) f.src = HOST + "/renderproof?builtin=" + f.dataset.builtin + "&theme=" + theme + "&explore=1&ai=1";
       });
     }
     // Theme toggle: recolor the embeds live via postMessage — no reload, no flash.
