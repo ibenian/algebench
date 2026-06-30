@@ -235,13 +235,23 @@ export async function applyViewState(vs, opts = {}) {
         // 5b. View: open the Math (graph) tab when the link targets it — either
         //     explicitly (view=math) or implicitly because nodes are selected.
         //     This renders the graph and flushes the pending selection above.
-        const wantGraph = vs.view === 'math' || (Array.isArray(vs.nodes) && vs.nodes.length);
+        const wantGraph = vs.view === 'math' || (Array.isArray(vs.nodes) && vs.nodes.length) || !!vs.pa;
         const g = window.__algebenchGraph;
         if (g) {
             try {
                 if (wantGraph && g.showGraphView) await g.showGraphView();
                 else if (g.showSceneView) await g.showSceneView();  // restore Scenes on back-nav
             } catch (_) { /* ignore */ }
+        }
+
+        // 5b′. Pre-baked proof animation (?pa=): fetch + dock it on the selected
+        //      node, so a deeplink SHOWS the proof animation without an LM re-derive.
+        //      Runs after the graph rendered (5b); load-once (not serialized), so it
+        //      doesn't re-fire on back/forward. Best-effort — never blocks the rest.
+        if (vs.pa && !opts.fromHistory && g && typeof g.dockProofAnimation === 'function') {
+            const anchorNode = (Array.isArray(vs.nodes) && vs.nodes.length)
+                ? vs.nodes[vs.nodes.length - 1] : null;
+            try { await g.dockProofAnimation(vs.pa, anchorNode); } catch (_) { /* ignore */ }
         }
 
         // 5c. Right panel tab (Doc/Chat) and proof panel open/closed.

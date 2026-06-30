@@ -6,6 +6,9 @@
 // no app side effects — so it is unit-testable under `node --test` and
 // reusable for breadcrumbs / an AI "jump to view" tool later.
 //
+// Full param reference (incl. the /renderproof page + proof `deeplink` field):
+//   docs/deeplink-params.md
+//
 // Canonical ViewState shape (all fields optional):
 //   {
 //     builtin,            // built-in lesson name           -> ?builtin=
@@ -26,11 +29,12 @@
 //       position:[x,y,z], target:[x,y,z], up?:[x,y,z]
 //     },
 //     aa,                 // auto-ask: a chat message to fire ONCE on boot -> ?aa=
+//     pa,                 // pre-baked proof animation to load ONCE (<domain>/<name>) -> ?pa=
 //   }
 //
-// NOTE: `aa` is a fire-once boot DIRECTIVE, not canonical shareable state — it is
-// parsed but deliberately NOT re-serialized, so the post-apply replaceView() strips
-// it from the URL (preventing a re-ask on reload / back / forward).
+// NOTE: `aa` and `pa` are fire-once boot DIRECTIVES, not canonical shareable state —
+// they are parsed but deliberately NOT re-serialized, so the post-apply replaceView()
+// strips them from the URL (preventing a re-fire on reload / back / forward).
 // ============================================================
 
 const CAM_DECIMALS = 4;
@@ -174,6 +178,11 @@ export function parseViewState(search) {
     // bound the chat payload; not serialized, so it never round-trips into a URL.
     const aa = params.get('aa');
     if (aa) vs.aa = String(aa).slice(0, 2000);
+
+    // Pre-baked proof animation to load on boot: a "<domain>/<name>" slug under
+    // proofs/domains/. Like `aa`, a load-once directive — parsed but NOT serialized.
+    const pa = params.get('pa');
+    if (pa && /^[A-Za-z0-9_/-]+$/.test(pa)) vs.pa = pa;
 
     const pp = params.get('pp');
     if (pp === '1' || pp === 'true') vs.pp = true;

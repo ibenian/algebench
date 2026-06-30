@@ -1,7 +1,7 @@
 {
   "title": "Allen–Eggers entry velocity",
   "domain": "calculus",
-  "deeplink": "/?builtin=atmospheric-entry-physics&view=math&panel=chat&pp=1&sc=trajectory-and-the-entry-corridor&st=computed-corridor&pf=allen_eggers_velocity&ps=velocity-as-a-function-of-altitude&nodes=__equals_1",
+  "deeplink": "/?builtin=atmospheric-entry-physics&view=math&panel=chat&pp=1&sc=trajectory-and-the-entry-corridor&st=computed-corridor&pf=allen_eggers_velocity&ps=velocity-as-a-function-of-altitude&nodes=__equals_1&pa=physics/allen-eggers-entry",
   "steps": [
     {
       "index": 0,

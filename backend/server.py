@@ -1941,6 +1941,7 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
         "sg-proof.js": ("sg-proof.js", "application/javascript"),
         "dock-seq.js": ("dock-seq.js", "application/javascript"),
         "derive-payload.js": ("derive-payload.js", "application/javascript"),
+        "validate-proof.js": ("validate-proof.js", "application/javascript"),
     }
 
     @fastapp.get("/proof-animation/{filename:path}")

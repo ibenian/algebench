@@ -219,8 +219,10 @@ export class SgProofManager {
         }
     }
 
-    // ── Public entry: derive + dock a proof animation for a node ─────────────
-    openProof(nodeId, anchorEl, payload) {
+    // ── Public entry: dock a proof animation for a node ──────────────────────
+    // `prebaked` (optional): an already-validated proof JSON — mount it directly
+    // and SKIP the LM derivation (used to show a pre-baked proof from a deeplink).
+    openProof(nodeId, anchorEl, payload, prebaked) {
         if (this._destroyed) return;
 
         const dedupKey = `${this._stepKey}|${nodeId}`;   // one box per node PER STEP
@@ -228,7 +230,10 @@ export class SgProofManager {
         if (existingId && this.boxes.has(existingId)) {
             const e = this.boxes.get(existingId);
             e.box.style.zIndex = String(++this._z);
-            if (e.state === 'error') this._runDerivation(e, payload);
+            if (e.state === 'error') {
+                if (prebaked) this._mountPrebaked(e, payload, prebaked);
+                else this._runDerivation(e, payload);
+            }
             return;
         }
 
@@ -301,8 +306,19 @@ export class SgProofManager {
         this._makeDraggable(entry, header);
         this._addResizeHandle(entry);
 
-        this._runDerivation(entry, payload);
+        if (prebaked) this._mountPrebaked(entry, payload, prebaked);
+        else this._runDerivation(entry, payload);
         this._updatePositions();
+    }
+
+    // Mount a pre-baked (already-validated) proof animation directly — no LM call.
+    // Mirrors the cache-hit branch of _runDerivation. `payload` is kept only so a
+    // nested "derive this step" can inherit the lesson context.
+    _mountPrebaked(entry, payload, data) {
+        entry.payload = payload;
+        if (data && data.title) this._renderInlineMath(entry.titleEl, data.title);
+        this._mountAnimator(entry, data);
+        entry.state = 'ready';
     }
 
     async _runDerivation(entry, payload) {
