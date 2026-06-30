@@ -1214,7 +1214,7 @@ const _PROOF_PATH_RE = /^[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+$/;
  *  same whitelist the standalone /renderproof page uses, and mounts it on the graph
  *  anchored to `nodeId` (the deeplink's selected node). Best-effort: a missing /
  *  malformed proof is a silent no-op so it never breaks the rest of the deeplink. */
-async function dockProofAnimation(proofPath, nodeId) {
+async function dockProofAnimation(proofPath, nodeId, step) {
     if (!_currentProofManager || _currentProofManager._destroyed) return;
     if (typeof proofPath !== 'string' || proofPath.includes('..') || !_PROOF_PATH_RE.test(proofPath)) return;
     let data;
@@ -1227,9 +1227,10 @@ async function dockProofAnimation(proofPath, nodeId) {
     // Lesson context so a nested "derive this step" inside the animation still works.
     const payload = _proofContextPayload(_d3ActiveGraph);
     // Open the pre-baked proof at 2× the default cell (8×6 of the 8×8 grid) — it's
-    // the thing the deeplink landed on, so give it room to read.
+    // the thing the deeplink landed on, so give it room to read — and on the step
+    // the learner was viewing (?pas=), not step 0.
     _currentProofManager.openProof(nodeId || `prebaked::${proofPath}`, anchor, payload, data,
-        { colSpan: 8, rowSpan: 6 });
+        { colSpan: 8, rowSpan: 6, step: Number.isFinite(step) ? step : undefined });
 }
 
 /** Find a graph node whose displayed expression matches ``target`` (loose

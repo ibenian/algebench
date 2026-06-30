@@ -36,6 +36,7 @@ AlgeBench has **two** URL surfaces that take query parameters:
 | `cam` | `cam=px,py,pz,tx,ty,tz[,ux,uy,uz]` | — | Exact camera (data-space): position + target, optional up. | ✅ |
 | `aa` | `aa=<question>` | — | **Auto-ask** — a chat message fired ONCE on boot. | ❌ (boot-only) |
 | `pa` | `pa=physics/allen-eggers-entry` | — | **Pre-baked proof animation** to load ONCE on boot. | ❌ (boot-only) |
+| `pas` | `pas=3` | step 0 | **Pre-baked animation step** (with `pa`) — the derivation step the learner was viewing. | ❌ (boot-only) |
 
 **Serialized** params round-trip into share links and nav history (they describe the
 restorable view). The two **boot-only** directives below do not.
@@ -56,6 +57,9 @@ question out of the address bar.
   it, and **docks the pre-baked proof animation** on the graph anchored to the last
   `nodes=` node — *without* an LM re-derivation. Requires the Math view (it's forced
   on when `pa` is present). Best-effort: a missing/malformed proof is a silent no-op.
+- **`pas=<n>`** — with `pa`, opens that docked animation on step `<n>` (the derivation
+  step the learner was on when they clicked), rather than step 0. The engine appends
+  it to the deeplink at click time from the proof animation's current step.
 
 ---
 

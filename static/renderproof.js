@@ -337,6 +337,8 @@ async function main() {
   const embedded = window.self !== window.top;
   if (embedded) document.documentElement.dataset.embedded = "1";
 
+  // NOTE: the /renderproof page query params (theme/explore/ai/autoplay/builtin)
+  // are documented in docs/deeplink-params.md — keep it in sync when changing them.
   const theme = parseTheme();
   applyTheme(theme);
   // Explore chips (Prerequisites / "Explore further" follow-ups) show by DEFAULT

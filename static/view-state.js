@@ -6,8 +6,11 @@
 // no app side effects — so it is unit-testable under `node --test` and
 // reusable for breadcrumbs / an AI "jump to view" tool later.
 //
-// Full param reference (incl. the /renderproof page + proof `deeplink` field):
-//   docs/deeplink-params.md
+// ⚠️  KEEP IN SYNC: this module is the source of truth for the full-app deeplink
+//     params. Whenever you ADD, REMOVE, or CHANGE a param here (parseViewState /
+//     serializeViewState / the shape below), update the reference doc in the SAME
+//     change:  docs/deeplink-params.md
+//     (it also covers the /renderproof page params and the proof `deeplink` field.)
 //
 // Canonical ViewState shape (all fields optional):
 //   {
@@ -30,9 +33,10 @@
 //     },
 //     aa,                 // auto-ask: a chat message to fire ONCE on boot -> ?aa=
 //     pa,                 // pre-baked proof animation to load ONCE (<domain>/<name>) -> ?pa=
+//     pas,                // step to open that animation on (with pa)            -> ?pas=
 //   }
 //
-// NOTE: `aa` and `pa` are fire-once boot DIRECTIVES, not canonical shareable state —
+// NOTE: `aa`, `pa` and `pas` are fire-once boot DIRECTIVES, not canonical shareable state —
 // they are parsed but deliberately NOT re-serialized, so the post-apply replaceView()
 // strips them from the URL (preventing a re-fire on reload / back / forward).
 // ============================================================
@@ -108,6 +112,7 @@ export function decodeCamera(str) {
 }
 
 // ----- ViewState <-> query string -----
+// Adding/changing a param below? Update docs/deeplink-params.md in the same change.
 
 /** Serialize a ViewState to a query string (no leading '?'). */
 export function serializeViewState(vs) {
@@ -154,6 +159,7 @@ export function serializeViewState(vs) {
 
 /** Parse a query string (or URLSearchParams) into a ViewState. */
 export function parseViewState(search) {
+    // Adding/changing a param below? Update docs/deeplink-params.md in the same change.
     let params;
     if (search instanceof URLSearchParams) {
         params = search;
@@ -183,6 +189,9 @@ export function parseViewState(search) {
     // proofs/domains/. Like `aa`, a load-once directive — parsed but NOT serialized.
     const pa = params.get('pa');
     if (pa && /^[A-Za-z0-9_/-]+$/.test(pa)) vs.pa = pa;
+    // pas: which step of the pre-baked animation to open on (load-once, not serialized).
+    const pas = params.get('pas');
+    if (pas != null && /^\d{1,4}$/.test(pas)) vs.pas = Number(pas);
 
     const pp = params.get('pp');
     if (pp === '1' || pp === 'true') vs.pp = true;

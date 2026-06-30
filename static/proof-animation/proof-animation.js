@@ -185,7 +185,11 @@ export class ProofAnimator {
     this._baseStepPause = opts.stepPause ?? 1000;  // Play: reading pause between steps (1× ≈ 1s)
     this._speedIdx = SPEEDS.indexOf(opts.speed ?? 1);
     if (this._speedIdx < 0) this._speedIdx = SPEEDS.indexOf(1);
-    this.current = 0;
+    // Open on a specific step (e.g. a deeplink that carries the learner's current
+    // derivation step), clamped to the available steps. Defaults to the first.
+    this.current = Math.max(0, Math.min(
+      Number.isFinite(opts.startStep) ? Math.floor(opts.startStep) : 0,
+      (this.data.steps ? this.data.steps.length : 1) - 1));
     this._running = [];
     this._ghosts = [];
     this._token = null;
@@ -199,7 +203,7 @@ export class ProofAnimator {
     this._baseFontPx = parseFloat(getComputedStyle(this.stage).fontSize) || 30;
     this._fixMetaSize();    // pin the caption area first so the stage's flex height is known
     this._fit();            // scale the expression to fit the stage (width; +height in container mode)
-    this._renderInto(this.stage, this.data.steps[0].latex);
+    this._renderInto(this.stage, this.data.steps[this.current].latex);
     this._syncUI();
     this._capOverflow();    // never let the expression spill past the stage
     this._fitControls();    // hide step enumerations if the controls don't fit
@@ -898,6 +902,9 @@ export class ProofAnimator {
       if (u.origin !== origin) return null;   // off-origin deeplink → reject
       u.searchParams.set("panel", "chat");
       u.searchParams.set("aa", String(message).slice(0, 1500));
+      // If the deeplink loads a pre-baked proof animation (?pa=), carry the step the
+      // learner is currently on so the docked animation opens there, not at step 0.
+      if (u.searchParams.has("pa")) u.searchParams.set("pas", String(this.current));
       return u.href;
     } catch (e) { return null; }
   }

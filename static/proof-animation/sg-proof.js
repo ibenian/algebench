@@ -272,6 +272,7 @@ export class SgProofManager {
             paWrap: null,
             colSpan: Math.max(2, Math.min(GRID_COLS, opts.colSpan || DEFAULT_COLSPAN)),
             rowSpan: Math.max(2, Math.min(GRID_ROWS, opts.rowSpan || DEFAULT_ROWSPAN)),
+            startStep: Number.isFinite(opts.step) ? opts.step : undefined,   // open the animation on this step
             graphX: 0, graphY: 0,
             pinned: false, docked: false,
             state: 'loading', animator: null,
@@ -386,6 +387,7 @@ export class SgProofManager {
                 deriveButton: makeDeriveButton,
                 onDerive: (p, anchorEl) => this._deriveFromAnimator(entry, p, anchorEl),
                 fitHeight: true,
+                startStep: entry.startStep,   // open on the deeplinked step (?pas=), else step 0
                 // Live terms: hover/click a named term → light up & select its
                 // linked semantic-graph node. No-ops when there's no renderer.
                 liveTerms: true,

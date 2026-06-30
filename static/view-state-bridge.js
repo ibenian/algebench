@@ -251,7 +251,7 @@ export async function applyViewState(vs, opts = {}) {
         if (vs.pa && !opts.fromHistory && g && typeof g.dockProofAnimation === 'function') {
             const anchorNode = (Array.isArray(vs.nodes) && vs.nodes.length)
                 ? vs.nodes[vs.nodes.length - 1] : null;
-            try { await g.dockProofAnimation(vs.pa, anchorNode); } catch (_) { /* ignore */ }
+            try { await g.dockProofAnimation(vs.pa, anchorNode, vs.pas); } catch (_) { /* ignore */ }
         }
 
         // 5c. Right panel tab (Doc/Chat) and proof panel open/closed.
