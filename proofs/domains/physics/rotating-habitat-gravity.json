@@ -6,7 +6,7 @@
     {
       "index": 0,
       "operation": "Given $a = \\frac{v^2}{R}$",
-      "justification": "substitute the rim speed v = \\omega R (a point at radius R on a body spinning at angular velocity omega) to express artificial gravity in terms of spin rate",
+      "justification": "Substitute the rim speed $v = \\omega R$ — a point at radius $R$ on a body spinning at angular velocity $\\omega$ — to express artificial gravity in terms of the spin rate.",
       "input_latex": "a = \\frac{v^{2}}{R}",
       "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=a}{a} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_2}{\\frac{\\htmlData{n=__power_3}{\\htmlData{n=v}{v}^{\\htmlData{n=__power_3__exp}{2}}}}{\\htmlData{n=R}{R}}}}",
       "plain": "a = \\frac{v^{2}}{R}",
