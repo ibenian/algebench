@@ -3,165 +3,64 @@
   "scenes": [
     {
       "title": "Rotating Space Habitats",
-      "description": "Engineering artificial gravity through rotation \u2014 explore angular velocity, centripetal force, Coriolis effect, and the comfort constraints that shape real spacecraft design.",
-      "markdown": "# Rotating Space Habitats\n\n## The Problem: Weightlessness Kills\n\nIn deep space there is no natural gravity. Without it, astronauts suffer:\n- **Bone density loss** (~1\u20132% per month)\n- **Muscle atrophy** (heart included)\n- **Vestibular disruption**, fluid shifts, vision changes\n\nFor a Mars transit (6\u20139 months each way), this is unacceptable.\n\n## The Solution: Spin It\n\nA rotating habitat pushes occupants against the outer wall through **centripetal acceleration**. From inside, this is indistinguishable from gravity \u2014 it's the same fundamental effect.\n\n$$g_a = \\omega^2 R = \\left(\\frac{2\\pi n}{60}\\right)^2 R$$\n\nwhere $\\omega$ is angular velocity (rad/s), $n$ is spin rate (RPM), and $R$ is radius (m).\n\n## The Design Constraints\n\nThree competing physics effects must all be satisfied simultaneously:\n\n| Effect | Constraint | Why |\n|--------|-----------|-----|\n| Gravity level $g_a$ | $0.5 \u2013 1.2\\,g$ | Too little: no benefit. Too much: overloading. |\n| Spin rate $n$ | $< 3$ RPM | Higher spin \u2192 Coriolis sickness, vestibular cross-coupling |\n| Gravity gradient | $< 10\\%$ | Head-to-foot $\\Delta g > 10\\%$ feels deeply wrong |\n\n## Historical Benchmarks\n\n| Design | Radius | RPM | $g_a$ |\n|--------|--------|-----|-------|\n| Stanford Torus | 895 m | 1.0 | 1.00 g |\n| O'Neill Cylinder | 3200 m | 0.5 | 0.90 g |\n| Near-term viable | ~100 m | ~3.0 | ~1.00 g |\n\nThe near-term constraint is clear: **you need at least ~100 m radius** to stay within all comfort bounds at acceptable gravity.\n\n## Key Formulas\n\n$$\\omega = \\frac{2\\pi n}{60} \\quad [\\text{rad/s}]$$\n\n$$g_a = \\omega^2 R \\quad [\\text{m/s}^2] \\quad = \\frac{\\omega^2 R}{9.81} \\quad [g]$$\n\n$$a_{\\text{Cor}} = 2\\omega v \\quad [\\text{m/s}^2]\\quad \\text{(for radial walking at speed } v\\text{)}$$\n\n$$\\Delta g / g = \\Delta r / R \\approx 1.8 / R \\quad \\text{(head-to-foot, \\%)}$$\n\n## Symbol Definitions\n\n$$P(t) = (R\\cos(\\omega t),\\;R\\sin(\\omega t),\\;0)$$\nPosition of an occupant on the rotating rim at time $t$.\n\n$$\\Delta g = g_{\\mathrm{feet}} - g_{\\mathrm{head}} = \\omega^2\\Delta r$$\nAbsolute head-to-foot gravity difference across body height $\\Delta r\\approx1.8\\,\\mathrm{m}$.\n\n$$\\Delta g/g = \\frac{\\Delta g}{g_{\\mathrm{feet}}} \\approx \\frac{\\Delta r}{R}$$\nRelative gravity gradient (usually reported as a percent). Smaller is more comfortable.",
+      "description": "Engineering artificial gravity through rotation — explore angular velocity, centripetal force, Coriolis effect, and the comfort constraints that shape real spacecraft design.",
+      "markdown": "# Rotating Space Habitats\n\n## The Problem: Weightlessness Kills\n\nIn deep space there is no natural gravity. Without it, astronauts suffer:\n- **Bone density loss** (~1–2% per month)\n- **Muscle atrophy** (heart included)\n- **Vestibular disruption**, fluid shifts, vision changes\n\nFor a Mars transit (6–9 months each way), this is unacceptable.\n\n## The Solution: Spin It\n\nA rotating habitat pushes occupants against the outer wall through **centripetal acceleration**. From inside, this is indistinguishable from gravity — it's the same fundamental effect.\n\n$$g_a = \\omega^2 R = \\left(\\frac{2\\pi n}{60}\\right)^2 R$$\n\nwhere $\\omega$ is angular velocity (rad/s), $n$ is spin rate (RPM), and $R$ is radius (m).\n\n## The Design Constraints\n\nThree competing physics effects must all be satisfied simultaneously:\n\n| Effect | Constraint | Why |\n|--------|-----------|-----|\n| Gravity level $g_a$ | $0.5 – 1.2\\,g$ | Too little: no benefit. Too much: overloading. |\n| Spin rate $n$ | $< 3$ RPM | Higher spin → Coriolis sickness, vestibular cross-coupling |\n| Gravity gradient | $< 10\\%$ | Head-to-foot $\\Delta g > 10\\%$ feels deeply wrong |\n\n## Historical Benchmarks\n\n| Design | Radius | RPM | $g_a$ |\n|--------|--------|-----|-------|\n| Stanford Torus | 895 m | 1.0 | 1.00 g |\n| O'Neill Cylinder | 3200 m | 0.5 | 0.90 g |\n| Near-term viable | ~100 m | ~3.0 | ~1.00 g |\n\nThe near-term constraint is clear: **you need at least ~100 m radius** to stay within all comfort bounds at acceptable gravity.\n\n## Key Formulas\n\n$$\\omega = \\frac{2\\pi n}{60} \\quad [\\text{rad/s}]$$\n\n$$g_a = \\omega^2 R \\quad [\\text{m/s}^2] \\quad = \\frac{\\omega^2 R}{9.81} \\quad [g]$$\n\n$$a_{\\text{Cor}} = 2\\omega v \\quad [\\text{m/s}^2]\\quad \\text{(for radial walking at speed } v\\text{)}$$\n\n$$\\Delta g / g = \\Delta r / R \\approx 1.8 / R \\quad \\text{(head-to-foot, \\%)}$$\n\n## Symbol Definitions\n\n$$P(t) = (R\\cos(\\omega t),\\;R\\sin(\\omega t),\\;0)$$\nPosition of an occupant on the rotating rim at time $t$.\n\n$$\\Delta g = g_{\\mathrm{feet}} - g_{\\mathrm{head}} = \\omega^2\\Delta r$$\nAbsolute head-to-foot gravity difference across body height $\\Delta r\\approx1.8\\,\\mathrm{m}$.\n\n$$\\Delta g/g = \\frac{\\Delta g}{g_{\\mathrm{feet}}} \\approx \\frac{\\Delta r}{R}$$\nRelative gravity gradient (usually reported as a percent). Smaller is more comfortable.",
       "range": [
-        [
-          -1100,
-          1100
-        ],
-        [
-          -1100,
-          1100
-        ],
-        [
-          -100,
-          100
-        ]
+        [-1100, 1100],
+        [-1100, 1100],
+        [-100, 100]
       ],
       "camera": {
-        "position": [
-          240,
-          180,
-          120
-        ],
-        "target": [
-          0,
-          0,
-          0
-        ]
+        "position": [240, 180, 120],
+        "target": [0, 0, 0]
       },
-      "starfield": {
-        "enabled": true,
-        "count": 1200,
-        "radiusMin": 21000,
-        "radiusMax": 47500,
-        "size": 1.8,
-        "opacity": 0.9,
-        "color": "#d7e3ff",
-        "twinkle": 0.35
-      },
+      "starfield": {"enabled": true, "count": 1200, "radiusMin": 21000, "radiusMax": 47500, "size": 1.8, "opacity": 0.9, "color": "#d7e3ff", "twinkle": 0.35},
       "views": [
         {
           "name": "Overview",
           "description": "Default 3D perspective view",
-          "position": [
-            240,
-            180,
-            120
-          ],
-          "target": [
-            0,
-            0,
-            0
-          ]
+          "position": [240, 180, 120],
+          "target": [0, 0, 0]
         },
         {
           "name": "Top",
           "description": "Top-down view along spin axis",
-          "position": [
-            0,
-            0,
-            900
-          ],
-          "target": [
-            0,
-            0,
-            0
-          ],
-          "up": [
-            0,
-            1,
-            0
-          ]
+          "position": [0, 0, 900],
+          "target": [0, 0, 0],
+          "up": [0, 1, 0]
         },
         {
           "name": "Side",
           "description": "Side view in the XZ plane",
-          "position": [
-            0,
-            900,
-            0
-          ],
-          "target": [
-            0,
-            0,
-            0
-          ],
-          "up": [
-            0,
-            0,
-            1
-          ]
+          "position": [0, 900, 0],
+          "target": [0, 0, 0],
+          "up": [0, 0, 1]
         },
         {
           "name": "Ride Along",
-          "description": "Follow the person on the rotating rim \u2014 camera tracks from above along spin axis",
+          "description": "Follow the person on the rotating rim — camera tracks from above along spin axis",
           "follow": "person_walk",
-          "offset": [
-            0,
-            0,
-            20
-          ],
-          "angleLockAxis": [
-            0,
-            0,
-            1
-          ],
-          "angleLockVector": [
-            "walk_vel_vec",
-            "walk_vel_vec_full"
-          ],
-          "angleLockDirection": [
-            "person_walk",
-            "person_walk_head"
-          ],
-          "up": [
-            0,
-            1,
-            0
-          ]
+          "offset": [0, 0, 20],
+          "angleLockAxis": [0, 0, 1],
+          "angleLockVector": ["walk_vel_vec", "walk_vel_vec_full"],
+          "angleLockDirection": ["person_walk", "person_walk_head"],
+          "up": [0, 1, 0]
         },
         {
           "name": "Stationary Marker",
           "description": "Follow the stationary rim marker from above along spin axis",
           "follow": "person_stat",
-          "offset": [
-            0,
-            0,
-            20
-          ],
-          "angleLockAxis": [
-            0,
-            0,
-            1
-          ],
-          "up": [
-            0,
-            1,
-            0
-          ]
+          "offset": [0, 0, 20],
+          "angleLockAxis": [0, 0, 1],
+          "up": [0, 1, 0]
         }
       ],
       "elements": [
-        {
-          "id": "deep_space_bg",
-          "type": "skybox",
-          "style": "gradient",
-          "topColor": "#102040",
-          "bottomColor": "#01040b",
-          "starCount": 1400,
-          "starColor": "#dfe9ff",
-          "starMinSize": 0.5,
-          "starMaxSize": 2.2
-        },
+        {"id": "deep_space_bg", "type": "skybox", "style": "gradient", "topColor": "#102040", "bottomColor": "#01040b", "starCount": 1400, "starColor": "#dfe9ff", "starMinSize": 0.5, "starMaxSize": 2.2},
         {
           "type": "axis",
           "axis": "z",
-          "range": [
-            -80,
-            80
-          ],
+          "range": [-80, 80],
           "color": "#8899ff",
           "width": 0.08,
           "label": "spin axis"
@@ -170,47 +69,18 @@
       "steps": [
         {
           "title": "The Cylinder",
-          "description": "The habitat is a rotating cylinder. The outer curved wall becomes the floor \u2014 people live on the inside surface, pressed outward by spin. Adjust $R$ to see how radius changes the structure, and $n$ to feel the scale of what's being designed.",
+          "description": "The habitat is a rotating cylinder. The outer curved wall becomes the floor — people live on the inside surface, pressed outward by spin. Adjust $R$ to see how radius changes the structure, and $n$ to feel the scale of what's being designed.",
           "sliders": [
-            {
-              "id": "R",
-              "label": "$R$ \u2014 Radius (m)",
-              "min": 20,
-              "max": 1000,
-              "step": 5,
-              "default": 100
-            },
-            {
-              "id": "rpm",
-              "label": "$n$ \u2014 Spin Rate (RPM)",
-              "min": 0.1,
-              "max": 10,
-              "step": 0.1,
-              "default": 2
-            },
-            {
-              "id": "v_walk",
-              "label": "$v$ \u2014 Walk speed: $+$ prograde / $-$ retrograde (m/s)",
-              "min": -4,
-              "max": 4,
-              "step": 0.1,
-              "default": 1.5
-            }
+            {"id": "R", "label": "$R$ — Radius (m)", "min": 20, "max": 1000, "step": 5, "default": 100},
+            {"id": "rpm", "label": "$n$ — Spin Rate (RPM)", "min": 0.1, "max": 10, "step": 0.1, "default": 2},
+            {"id": "v_walk", "label": "$v$ — Walk speed: $+$ prograde / $-$ retrograde (m/s)", "min": -4, "max": 4, "step": 0.1, "default": 1.5}
           ],
           "add": [
             {
               "id": "axis_z_main",
               "type": "animated_cylinder",
-              "fromExpr": [
-                "0",
-                "0",
-                "-16"
-              ],
-              "expr": [
-                "0",
-                "0",
-                "16"
-              ],
+              "fromExpr": ["0", "0", "-16"],
+              "expr": ["0", "0", "16"],
               "radius": 0.35,
               "radialSegments": 24,
               "openEnded": false,
@@ -220,220 +90,115 @@
             {
               "id": "hull_shell",
               "type": "animated_cylinder",
-              "fromExpr": [
-                "0",
-                "0",
-                "-25"
-              ],
-              "expr": [
-                "0",
-                "0",
-                "25"
-              ],
+              "fromExpr": ["0", "0", "-25"],
+              "expr": ["0", "0", "25"],
               "radiusExpr": "R + 10",
               "openEnded": true,
               "radialSegments": 64,
               "color": "#4488ff",
               "opacity": 0.16,
-              "shader": {
-                "type": "phong",
-                "shininess": 25,
-                "specular": "#88aaff",
-                "depthWrite": false
-              }
+              "shader": {"type": "phong", "shininess": 25, "specular": "#88aaff", "depthWrite": false}
             },
             {
               "id": "spoke_e",
               "type": "animated_cylinder",
-              "fromExpr": [
-                "(R+9.4)*cos(t * 2*PI*rpm/60 + PI)",
-                "(R+9.4)*sin(t * 2*PI*rpm/60 + PI)",
-                "0.08"
-              ],
-              "expr": [
-                "(R+9.4)*cos(t * 2*PI*rpm/60 + 0.0000000000)",
-                "(R+9.4)*sin(t * 2*PI*rpm/60 + 0.0000000000)",
-                "0.08"
-              ],
+              "fromExpr": ["(R+9.4)*cos(t * 2*PI*rpm/60 + PI)", "(R+9.4)*sin(t * 2*PI*rpm/60 + PI)", "0.08"],
+              "expr": ["(R+9.4)*cos(t * 2*PI*rpm/60 + 0.0000000000)", "(R+9.4)*sin(t * 2*PI*rpm/60 + 0.0000000000)", "0.08"],
               "radius": 5,
               "color": "#4c2f7a",
               "opacity": 1,
               "radialSegments": 20,
               "openEnded": false,
-              "shader": {
-                "type": "phong",
-                "shininess": 35
-              }
+              "shader": {"type": "phong", "shininess": 35}
             },
             {
               "id": "spoke_n",
               "type": "animated_cylinder",
-              "fromExpr": [
-                "(R+9.4)*cos(t * 2*PI*rpm/60 + 3*PI/2)",
-                "(R+9.4)*sin(t * 2*PI*rpm/60 + 3*PI/2)",
-                "0.08"
-              ],
-              "expr": [
-                "(R+9.4)*cos(t * 2*PI*rpm/60 + 1.5707963268)",
-                "(R+9.4)*sin(t * 2*PI*rpm/60 + 1.5707963268)",
-                "0.08"
-              ],
+              "fromExpr": ["(R+9.4)*cos(t * 2*PI*rpm/60 + 3*PI/2)", "(R+9.4)*sin(t * 2*PI*rpm/60 + 3*PI/2)", "0.08"],
+              "expr": ["(R+9.4)*cos(t * 2*PI*rpm/60 + 1.5707963268)", "(R+9.4)*sin(t * 2*PI*rpm/60 + 1.5707963268)", "0.08"],
               "radius": 5,
               "color": "#4c2f7a",
               "opacity": 1,
               "radialSegments": 20,
               "openEnded": false,
-              "shader": {
-                "type": "phong",
-                "shininess": 35
-              }
+              "shader": {"type": "phong", "shininess": 35}
             },
             {
               "id": "spoke_cross_ne",
               "type": "animated_cylinder",
-              "fromExpr": [
-                "(R+9.4)*cos(t * 2*PI*rpm/60 + 5*PI/4)",
-                "(R+9.4)*sin(t * 2*PI*rpm/60 + 5*PI/4)",
-                "0.08"
-              ],
-              "expr": [
-                "(R+9.4)*cos(t * 2*PI*rpm/60 + PI/4)",
-                "(R+9.4)*sin(t * 2*PI*rpm/60 + PI/4)",
-                "0.08"
-              ],
+              "fromExpr": ["(R+9.4)*cos(t * 2*PI*rpm/60 + 5*PI/4)", "(R+9.4)*sin(t * 2*PI*rpm/60 + 5*PI/4)", "0.08"],
+              "expr": ["(R+9.4)*cos(t * 2*PI*rpm/60 + PI/4)", "(R+9.4)*sin(t * 2*PI*rpm/60 + PI/4)", "0.08"],
               "radius": 2.5,
               "color": "#2ecc71",
               "opacity": 1,
               "radialSegments": 20,
               "openEnded": false,
-              "shader": {
-                "type": "phong",
-                "shininess": 35
-              }
+              "shader": {"type": "phong", "shininess": 35}
             },
             {
               "id": "spoke_cross_nw",
               "type": "animated_cylinder",
-              "fromExpr": [
-                "(R+9.4)*cos(t * 2*PI*rpm/60 + 7*PI/4)",
-                "(R+9.4)*sin(t * 2*PI*rpm/60 + 7*PI/4)",
-                "0.08"
-              ],
-              "expr": [
-                "(R+9.4)*cos(t * 2*PI*rpm/60 + 3*PI/4)",
-                "(R+9.4)*sin(t * 2*PI*rpm/60 + 3*PI/4)",
-                "0.08"
-              ],
+              "fromExpr": ["(R+9.4)*cos(t * 2*PI*rpm/60 + 7*PI/4)", "(R+9.4)*sin(t * 2*PI*rpm/60 + 7*PI/4)", "0.08"],
+              "expr": ["(R+9.4)*cos(t * 2*PI*rpm/60 + 3*PI/4)", "(R+9.4)*sin(t * 2*PI*rpm/60 + 3*PI/4)", "0.08"],
               "radius": 2.5,
               "color": "#2ecc71",
               "opacity": 1,
               "radialSegments": 20,
               "openEnded": false,
-              "shader": {
-                "type": "phong",
-                "shininess": 35
-              }
+              "shader": {"type": "phong", "shininess": 35}
             },
             {
               "id": "strut_e_top",
               "type": "animated_cylinder",
-              "fromExpr": [
-                "R*cos(t * 2*PI*rpm/60 + 0.0000000000)",
-                "R*sin(t * 2*PI*rpm/60 + 0.0000000000)",
-                "25"
-              ],
-              "expr": [
-                "R*cos(t * 2*PI*rpm/60 + 0.0000000000)",
-                "R*sin(t * 2*PI*rpm/60 + 0.0000000000)",
-                "-25"
-              ],
+              "fromExpr": ["R*cos(t * 2*PI*rpm/60 + 0.0000000000)", "R*sin(t * 2*PI*rpm/60 + 0.0000000000)", "25"],
+              "expr": ["R*cos(t * 2*PI*rpm/60 + 0.0000000000)", "R*sin(t * 2*PI*rpm/60 + 0.0000000000)", "-25"],
               "radius": 0.45,
               "color": "#335577",
               "opacity": 1,
               "radialSegments": 20,
               "openEnded": false,
-              "shader": {
-                "type": "phong",
-                "shininess": 35
-              }
+              "shader": {"type": "phong", "shininess": 35}
             },
             {
               "id": "strut_n_top",
               "type": "animated_cylinder",
-              "fromExpr": [
-                "R*cos(t * 2*PI*rpm/60 + 1.5707963268)",
-                "R*sin(t * 2*PI*rpm/60 + 1.5707963268)",
-                "25"
-              ],
-              "expr": [
-                "R*cos(t * 2*PI*rpm/60 + 1.5707963268)",
-                "R*sin(t * 2*PI*rpm/60 + 1.5707963268)",
-                "-25"
-              ],
+              "fromExpr": ["R*cos(t * 2*PI*rpm/60 + 1.5707963268)", "R*sin(t * 2*PI*rpm/60 + 1.5707963268)", "25"],
+              "expr": ["R*cos(t * 2*PI*rpm/60 + 1.5707963268)", "R*sin(t * 2*PI*rpm/60 + 1.5707963268)", "-25"],
               "radius": 0.45,
               "color": "#335577",
               "opacity": 1,
               "radialSegments": 20,
               "openEnded": false,
-              "shader": {
-                "type": "phong",
-                "shininess": 35
-              }
+              "shader": {"type": "phong", "shininess": 35}
             },
             {
               "id": "strut_w_top",
               "type": "animated_cylinder",
-              "fromExpr": [
-                "R*cos(t * 2*PI*rpm/60 + 3.1415926536)",
-                "R*sin(t * 2*PI*rpm/60 + 3.1415926536)",
-                "25"
-              ],
-              "expr": [
-                "R*cos(t * 2*PI*rpm/60 + 3.1415926536)",
-                "R*sin(t * 2*PI*rpm/60 + 3.1415926536)",
-                "-25"
-              ],
+              "fromExpr": ["R*cos(t * 2*PI*rpm/60 + 3.1415926536)", "R*sin(t * 2*PI*rpm/60 + 3.1415926536)", "25"],
+              "expr": ["R*cos(t * 2*PI*rpm/60 + 3.1415926536)", "R*sin(t * 2*PI*rpm/60 + 3.1415926536)", "-25"],
               "radius": 0.45,
               "color": "#335577",
               "opacity": 1,
               "radialSegments": 20,
               "openEnded": false,
-              "shader": {
-                "type": "phong",
-                "shininess": 35
-              }
+              "shader": {"type": "phong", "shininess": 35}
             },
             {
               "id": "strut_s_top",
               "type": "animated_cylinder",
-              "fromExpr": [
-                "R*cos(t * 2*PI*rpm/60 + 4.7123889804)",
-                "R*sin(t * 2*PI*rpm/60 + 4.7123889804)",
-                "25"
-              ],
-              "expr": [
-                "R*cos(t * 2*PI*rpm/60 + 4.7123889804)",
-                "R*sin(t * 2*PI*rpm/60 + 4.7123889804)",
-                "-25"
-              ],
+              "fromExpr": ["R*cos(t * 2*PI*rpm/60 + 4.7123889804)", "R*sin(t * 2*PI*rpm/60 + 4.7123889804)", "25"],
+              "expr": ["R*cos(t * 2*PI*rpm/60 + 4.7123889804)", "R*sin(t * 2*PI*rpm/60 + 4.7123889804)", "-25"],
               "radius": 0.45,
               "color": "#335577",
               "opacity": 1,
               "radialSegments": 20,
               "openEnded": false,
-              "shader": {
-                "type": "phong",
-                "shininess": 35
-              }
+              "shader": {"type": "phong", "shininess": 35}
             },
             {
               "id": "center_hub",
               "type": "point",
-              "position": [
-                0,
-                0,
-                0
-              ],
+              "position": [0, 0, 0],
               "size": 4,
               "color": "#8899bb",
               "label": "hub"
@@ -441,43 +206,18 @@
           ]
         },
         {
-          "title": "Angular Velocity \u03c9",
-          "description": "The habitat rotates at $n$ RPM \u2014 angular velocity $\\omega = 2\\pi n/60$ rad/s. The yellow ball is a stationary rim marker (0.5 m diameter). Orange shows tangential speed $v = \\omega R$.",
+          "title": "Angular Velocity ω",
+          "description": "The habitat rotates at $n$ RPM — angular velocity $\\omega = 2\\pi n/60$ rad/s. The yellow ball is a stationary rim marker (0.5 m diameter). Orange shows tangential speed $v = \\omega R$.",
           "sliders": [
-            {
-              "id": "R",
-              "label": "$R$ \u2014 Radius (m)",
-              "min": 20,
-              "max": 1000,
-              "step": 5,
-              "default": 100
-            },
-            {
-              "id": "rpm",
-              "label": "$n$ \u2014 Spin Rate (RPM)",
-              "min": 0.1,
-              "max": 10,
-              "step": 0.1,
-              "default": 2
-            },
-            {
-              "id": "v_walk",
-              "label": "$v$ \u2014 Walk speed: $+$ prograde / $-$ retrograde (m/s)",
-              "min": -4,
-              "max": 4,
-              "step": 0.1,
-              "default": 0
-            }
+            {"id": "R", "label": "$R$ — Radius (m)", "min": 20, "max": 1000, "step": 5, "default": 100},
+            {"id": "rpm", "label": "$n$ — Spin Rate (RPM)", "min": 0.1, "max": 10, "step": 0.1, "default": 2},
+            {"id": "v_walk", "label": "$v$ — Walk speed: $+$ prograde / $-$ retrograde (m/s)", "min": -4, "max": 4, "step": 0.1, "default": 0}
           ],
           "add": [
             {
               "id": "person_stat",
               "type": "animated_point",
-              "expr": [
-                "-R*cos(t * 2*PI*rpm/60)",
-                "-R*sin(t * 2*PI*rpm/60)",
-                "12.5"
-              ],
+              "expr": ["-R*cos(t * 2*PI*rpm/60)", "-R*sin(t * 2*PI*rpm/60)", "12.5"],
               "radius": 0.25,
               "color": "#ffdd00",
               "label": "stationary marker"
@@ -486,16 +226,8 @@
               "id": "omega_label",
               "type": "line",
               "points": [
-                [
-                  0,
-                  0,
-                  -75
-                ],
-                [
-                  0,
-                  0,
-                  78
-                ]
+                [0, 0, -75],
+                [0, 0, 78]
               ],
               "color": "#aaaaff",
               "width": 0.2,
@@ -509,137 +241,65 @@
               "x": "25*cos(t)",
               "y": "25*sin(t)",
               "z": "68",
-              "range": [
-                0,
-                5.5
-              ],
+              "range": [0, 5.5],
               "samples": 64
             },
             {
               "id": "vel_vec",
               "type": "animated_vector",
-              "fromExpr": [
-                "-R*cos(t * 2*PI*rpm/60)",
-                "-R*sin(t * 2*PI*rpm/60)",
-                "12.5"
-              ],
-              "expr": [
-                "-R*cos(t * 2*PI*rpm/60) + 0.3*(2*PI*rpm/60)*R*sin(t * 2*PI*rpm/60)",
-                "-R*sin(t * 2*PI*rpm/60) - 0.3*(2*PI*rpm/60)*R*cos(t * 2*PI*rpm/60)",
-                "12.5"
-              ],
+              "fromExpr": ["-R*cos(t * 2*PI*rpm/60)", "-R*sin(t * 2*PI*rpm/60)", "12.5"],
+              "expr": ["-R*cos(t * 2*PI*rpm/60) + 0.3*(2*PI*rpm/60)*R*sin(t * 2*PI*rpm/60)", "-R*sin(t * 2*PI*rpm/60) - 0.3*(2*PI*rpm/60)*R*cos(t * 2*PI*rpm/60)", "12.5"],
               "color": "#ffaa00",
               "width": 0.2,
               "label": "$\\vec{v} = \\omega R$"
             }
           ],
           "info": [
-            {
-              "id": "omega_info",
-              "position": "top-left",
-              "content": "### Angular Velocity\\n$\\omega = 2\\pi n / 60$\\n---\\n$n = {{rpm}}$ RPM\\n$\\omega = {{toFixed(2*PI*rpm/60, 4)}}$ rad/s\\n$T = {{toFixed(60/rpm, 1)}}$ s per revolution\\n$v = \\omega R = {{toFixed((2*PI*rpm/60)*R, 1)}}$ m/s"
-            }
+            {"id": "omega_info", "position": "top-left", "content": "### Angular Velocity\\n$\\omega = 2\\pi n / 60$\\n---\\n$n = {{rpm}}$ RPM\\n$\\omega = {{toFixed(2*PI*rpm/60, 4)}}$ rad/s\\n$T = {{toFixed(60/rpm, 1)}}$ s per revolution\\n$v = \\omega R = {{toFixed((2*PI*rpm/60)*R, 1)}}$ m/s"}
           ]
         },
         {
-          "title": "Artificial Gravity \u2014 $g_a = \\omega^2 R$",
-          "description": "Centripetal acceleration felt as outward gravity: $g_a = \\omega^2 R$. The red line shows effective gravity at the stationary rim marker. Target: $0.9$\u2013$1.0\\,g$.",
+          "title": "Artificial Gravity — $g_a = \\omega^2 R$",
+          "description": "Centripetal acceleration felt as outward gravity: $g_a = \\omega^2 R$. The red line shows effective gravity at the stationary rim marker. Target: $0.9$–$1.0\\,g$.",
           "sliders": [
-            {
-              "id": "R",
-              "label": "$R$ \u2014 Radius (m)",
-              "min": 20,
-              "max": 1000,
-              "step": 5,
-              "default": 100
-            },
-            {
-              "id": "rpm",
-              "label": "$n$ \u2014 Spin Rate (RPM)",
-              "min": 0.1,
-              "max": 10,
-              "step": 0.1,
-              "default": 2
-            }
+            {"id": "R", "label": "$R$ — Radius (m)", "min": 20, "max": 1000, "step": 5, "default": 100},
+            {"id": "rpm", "label": "$n$ — Spin Rate (RPM)", "min": 0.1, "max": 10, "step": 0.1, "default": 2}
           ],
           "remove": [
-            {
-              "id": "omega_arc"
-            },
-            {
-              "id": "vel_vec"
-            }
+            {"id": "omega_arc"},
+            {"id": "vel_vec"}
           ],
           "add": [
             {
               "id": "gravity_vec",
               "type": "animated_vector",
-              "fromExpr": [
-                "-R*cos(t * (2*PI*rpm/60 + v_walk/R))",
-                "-R*sin(t * (2*PI*rpm/60 + v_walk/R))",
-                "12.5"
-              ],
-              "expr": [
-                "-(R+pow(2*PI*rpm/60 + v_walk/R,2)*R/9.81*35)*cos(t * (2*PI*rpm/60 + v_walk/R))",
-                "-(R+pow(2*PI*rpm/60 + v_walk/R,2)*R/9.81*35)*sin(t * (2*PI*rpm/60 + v_walk/R))",
-                "12.5"
-              ],
+              "fromExpr": ["-R*cos(t * (2*PI*rpm/60 + v_walk/R))", "-R*sin(t * (2*PI*rpm/60 + v_walk/R))", "12.5"],
+              "expr": ["-(R+pow(2*PI*rpm/60 + v_walk/R,2)*R/9.81*35)*cos(t * (2*PI*rpm/60 + v_walk/R))", "-(R+pow(2*PI*rpm/60 + v_walk/R,2)*R/9.81*35)*sin(t * (2*PI*rpm/60 + v_walk/R))", "12.5"],
               "color": "#ff2222",
               "width": 0.2,
               "label": "$\\vec{g}_a$"
             }
           ],
           "info": [
-            {
-              "id": "gravity_info",
-              "position": "top-left",
-              "content": "### Artificial Gravity\\n$g_a = \\omega_{\\mathrm{eff}}^2 R$\\n---\\n$\\omega = {{toFixed(2*PI*rpm/60, 3)}}$ rad/s\\n$\\omega_{\\mathrm{eff}} = \\omega + v/R = {{toFixed(2*PI*rpm/60 + v_walk/R, 4)}}$ rad/s\\n$R = {{R}}$ m\\n$g_a = {{toFixed(pow(2*PI*rpm/60 + v_walk/R,2)*R, 2)}}$ m/s\u00b2\\n$g_a = {{toFixed(pow(2*PI*rpm/60 + v_walk/R,2)*R/9.81, 3)}}$ g\\n---\\n**Target: 0.9 \u2013 1.0 g**"
-            }
+            {"id": "gravity_info", "position": "top-left", "content": "### Artificial Gravity\\n$g_a = \\omega_{\\mathrm{eff}}^2 R$\\n---\\n$\\omega = {{toFixed(2*PI*rpm/60, 3)}}$ rad/s\\n$\\omega_{\\mathrm{eff}} = \\omega + v/R = {{toFixed(2*PI*rpm/60 + v_walk/R, 4)}}$ rad/s\\n$R = {{R}}$ m\\n$g_a = {{toFixed(pow(2*PI*rpm/60 + v_walk/R,2)*R, 2)}}$ m/s²\\n$g_a = {{toFixed(pow(2*PI*rpm/60 + v_walk/R,2)*R/9.81, 3)}}$ g\\n---\\n**Target: 0.9 – 1.0 g**"}
           ]
         },
         {
           "title": "The Coriolis Effect",
           "description": "Walking **tangentially** inside a rotating frame produces a radial Coriolis push: $a_{\\text{Cor}} = 2\\omega v$. Red is artificial gravity and blue is Coriolis at the same walker position, so you can see when they align (prograde) or oppose (retrograde).",
           "sliders": [
-            {
-              "id": "R",
-              "label": "$R$ \u2014 Radius (m)",
-              "min": 20,
-              "max": 1000,
-              "step": 5,
-              "default": 100
-            },
-            {
-              "id": "rpm",
-              "label": "$n$ \u2014 Spin Rate (RPM)",
-              "min": 0.1,
-              "max": 10,
-              "step": 0.1,
-              "default": 2
-            },
-            {
-              "id": "v_walk",
-              "label": "$v$ \u2014 Walk speed: $+$ prograde / $-$ retrograde (m/s)",
-              "min": -4,
-              "max": 4,
-              "step": 0.1,
-              "default": 1.5
-            }
+            {"id": "R", "label": "$R$ — Radius (m)", "min": 20, "max": 1000, "step": 5, "default": 100},
+            {"id": "rpm", "label": "$n$ — Spin Rate (RPM)", "min": 0.1, "max": 10, "step": 0.1, "default": 2},
+            {"id": "v_walk", "label": "$v$ — Walk speed: $+$ prograde / $-$ retrograde (m/s)", "min": -4, "max": 4, "step": 0.1, "default": 1.5}
           ],
           "remove": [
-            {
-              "id": "gravity_vec"
-            }
+            {"id": "gravity_vec"}
           ],
           "add": [
             {
               "id": "person_walk",
               "type": "animated_point",
-              "expr": [
-                "R*cos(t * (2*PI*rpm/60 + v_walk/R))",
-                "R*sin(t * (2*PI*rpm/60 + v_walk/R))",
-                "12.5"
-              ],
+              "expr": ["R*cos(t * (2*PI*rpm/60 + v_walk/R))", "R*sin(t * (2*PI*rpm/60 + v_walk/R))", "12.5"],
               "radius": 0.35,
               "color": "#44ffaa",
               "label": "walker"
@@ -647,11 +307,7 @@
             {
               "id": "person_walk_head",
               "type": "animated_point",
-              "expr": [
-                "(R-1.8)*cos(t * (2*PI*rpm/60 + v_walk/R))",
-                "(R-1.8)*sin(t * (2*PI*rpm/60 + v_walk/R))",
-                "12.5"
-              ],
+              "expr": ["(R-1.8)*cos(t * (2*PI*rpm/60 + v_walk/R))", "(R-1.8)*sin(t * (2*PI*rpm/60 + v_walk/R))", "12.5"],
               "radius": 0.2,
               "color": "#44ffaa",
               "label": "head"
@@ -659,16 +315,8 @@
             {
               "id": "gravity_vec_coriolis",
               "type": "animated_vector",
-              "fromExpr": [
-                "-R*cos(t * 2*PI*rpm/60)",
-                "-R*sin(t * 2*PI*rpm/60)",
-                "12.5"
-              ],
-              "expr": [
-                "-(R+pow(2*PI*rpm/60,2)*R/9.81*35)*cos(t * 2*PI*rpm/60)",
-                "-(R+pow(2*PI*rpm/60,2)*R/9.81*35)*sin(t * 2*PI*rpm/60)",
-                "12.5"
-              ],
+              "fromExpr": ["-R*cos(t * 2*PI*rpm/60)", "-R*sin(t * 2*PI*rpm/60)", "12.5"],
+              "expr": ["-(R+pow(2*PI*rpm/60,2)*R/9.81*35)*cos(t * 2*PI*rpm/60)", "-(R+pow(2*PI*rpm/60,2)*R/9.81*35)*sin(t * 2*PI*rpm/60)", "12.5"],
               "color": "#ff2222",
               "width": 0.2,
               "label": "$\\vec{g}_a$"
@@ -677,16 +325,8 @@
               "id": "coriolis_vec",
               "type": "animated_vector",
               "abstract": true,
-              "fromExpr": [
-                "R*cos(t * (2*PI*rpm/60 + v_walk/R))",
-                "R*sin(t * (2*PI*rpm/60 + v_walk/R))",
-                "12.5"
-              ],
-              "expr": [
-                "(R+2*(2*PI*rpm/60)*v_walk/9.81*35)*cos(t * (2*PI*rpm/60 + v_walk/R))",
-                "(R+2*(2*PI*rpm/60)*v_walk/9.81*35)*sin(t * (2*PI*rpm/60 + v_walk/R))",
-                "12.5"
-              ],
+              "fromExpr": ["R*cos(t * (2*PI*rpm/60 + v_walk/R))", "R*sin(t * (2*PI*rpm/60 + v_walk/R))", "12.5"],
+              "expr": ["(R+2*(2*PI*rpm/60)*v_walk/9.81*35)*cos(t * (2*PI*rpm/60 + v_walk/R))", "(R+2*(2*PI*rpm/60)*v_walk/9.81*35)*sin(t * (2*PI*rpm/60 + v_walk/R))", "12.5"],
               "color": "#22aaff",
               "width": 0.12,
               "label": "$\\vec{a}_{\\mathrm{Cor}}$"
@@ -697,75 +337,35 @@
               "arrowScale": 0.7,
               "arrowMinFactor": 0.0004,
               "arrowMaxFactor": 0.004,
-              "fromExpr": [
-                "R*cos(t * (2*PI*rpm/60 + v_walk/R))",
-                "R*sin(t * (2*PI*rpm/60 + v_walk/R))",
-                "12.5"
-              ],
-              "expr": [
-                "R*cos(t * (2*PI*rpm/60 + v_walk/R)) + 0.8*v_walk*(-sin(t * (2*PI*rpm/60 + v_walk/R)))",
-                "R*sin(t * (2*PI*rpm/60 + v_walk/R)) + 0.8*v_walk*( cos(t * (2*PI*rpm/60 + v_walk/R)))",
-                "12.5"
-              ],
+              "fromExpr": ["R*cos(t * (2*PI*rpm/60 + v_walk/R))", "R*sin(t * (2*PI*rpm/60 + v_walk/R))", "12.5"],
+              "expr": ["R*cos(t * (2*PI*rpm/60 + v_walk/R)) + 0.8*v_walk*(-sin(t * (2*PI*rpm/60 + v_walk/R)))", "R*sin(t * (2*PI*rpm/60 + v_walk/R)) + 0.8*v_walk*( cos(t * (2*PI*rpm/60 + v_walk/R)))", "12.5"],
               "color": "#ffaa33",
               "width": 0.2,
               "label": "$\\vec{v}_{\\mathrm{walk}}$"
             }
           ],
           "info": [
-            {
-              "id": "coriolis_info",
-              "position": "top-left",
-              "content": "### Coriolis Effect\\n$a_{\\mathrm{Cor}} = 2\\omega v$\\n---\\n$\\omega = {{toFixed(2*PI*rpm/60, 3)}}$ rad/s\\n$v = {{v_walk}}$ m/s\\n$a_{\\mathrm{Cor}} = {{toFixed(2*(2*PI*rpm/60)*abs(v_walk)/9.81, 4)}}$ g\\n{{v_walk > 0 ? 'Prograde \u2192 heavier' : v_walk < 0 ? 'Retrograde \u2192 lighter' : 'No walk \u2192 no Coriolis'}}\\n---\\n$\\omega_{\\mathrm{eff}} = {{toFixed(2*PI*rpm/60 + v_walk/R, 4)}}$ rad/s"
-            }
+            {"id": "coriolis_info", "position": "top-left", "content": "### Coriolis Effect\\n$a_{\\mathrm{Cor}} = 2\\omega v$\\n---\\n$\\omega = {{toFixed(2*PI*rpm/60, 3)}}$ rad/s\\n$v = {{v_walk}}$ m/s\\n$a_{\\mathrm{Cor}} = {{toFixed(2*(2*PI*rpm/60)*abs(v_walk)/9.81, 4)}}$ g\\n{{v_walk > 0 ? 'Prograde → heavier' : v_walk < 0 ? 'Retrograde → lighter' : 'No walk → no Coriolis'}}\\n---\\n$\\omega_{\\mathrm{eff}} = {{toFixed(2*PI*rpm/60 + v_walk/R, 4)}}$ rad/s"}
           ]
         },
         {
-          "title": "Gravity Gradient \u2014 Head vs. Feet",
+          "title": "Gravity Gradient — Head vs. Feet",
           "description": "Your head is $1.8$ m closer to the spin axis than your feet. Since $g \\propto r$, your head experiences less gravity: $\\Delta g/g = 1.8/R$. The two orange arrows show gravity at feet (longer) and head (shorter).",
           "sliders": [
-            {
-              "id": "R",
-              "label": "$R$ \u2014 Radius (m)",
-              "min": 20,
-              "max": 1000,
-              "step": 5,
-              "default": 100
-            },
-            {
-              "id": "rpm",
-              "label": "$n$ \u2014 Spin Rate (RPM)",
-              "min": 0.1,
-              "max": 10,
-              "step": 0.1,
-              "default": 2
-            }
+            {"id": "R", "label": "$R$ — Radius (m)", "min": 20, "max": 1000, "step": 5, "default": 100},
+            {"id": "rpm", "label": "$n$ — Spin Rate (RPM)", "min": 0.1, "max": 10, "step": 0.1, "default": 2}
           ],
           "remove": [
-            {
-              "id": "coriolis_vec"
-            },
-            {
-              "id": "gravity_vec_coriolis"
-            },
-            {
-              "id": "walk_vel_vec"
-            }
+            {"id": "coriolis_vec"},
+            {"id": "gravity_vec_coriolis"},
+            {"id": "walk_vel_vec"}
           ],
           "add": [
             {
               "id": "g_feet",
               "type": "animated_vector",
-              "fromExpr": [
-                "R*cos(t * (2*PI*rpm/60 + v_walk/R))",
-                "R*sin(t * (2*PI*rpm/60 + v_walk/R))",
-                "12.5"
-              ],
-              "expr": [
-                "(R+pow(2*PI*rpm/60 + v_walk/R,2)*R/9.81*35)*cos(t * (2*PI*rpm/60 + v_walk/R))",
-                "(R+pow(2*PI*rpm/60 + v_walk/R,2)*R/9.81*35)*sin(t * (2*PI*rpm/60 + v_walk/R))",
-                "12.5"
-              ],
+              "fromExpr": ["R*cos(t * (2*PI*rpm/60 + v_walk/R))", "R*sin(t * (2*PI*rpm/60 + v_walk/R))", "12.5"],
+              "expr": ["(R+pow(2*PI*rpm/60 + v_walk/R,2)*R/9.81*35)*cos(t * (2*PI*rpm/60 + v_walk/R))", "(R+pow(2*PI*rpm/60 + v_walk/R,2)*R/9.81*35)*sin(t * (2*PI*rpm/60 + v_walk/R))", "12.5"],
               "color": "#ff8822",
               "width": 0.2,
               "label": "$g_{\\mathrm{feet}}$"
@@ -773,80 +373,35 @@
             {
               "id": "g_head",
               "type": "animated_vector",
-              "fromExpr": [
-                "(R-1.8)*cos(t * (2*PI*rpm/60 + v_walk/R))",
-                "(R-1.8)*sin(t * (2*PI*rpm/60 + v_walk/R))",
-                "12.5"
-              ],
-              "expr": [
-                "(R-1.8+pow(2*PI*rpm/60 + v_walk/R,2)*(R-1.8)/9.81*35)*cos(t * (2*PI*rpm/60 + v_walk/R))",
-                "(R-1.8+pow(2*PI*rpm/60 + v_walk/R,2)*(R-1.8)/9.81*35)*sin(t * (2*PI*rpm/60 + v_walk/R))",
-                "12.5"
-              ],
+              "fromExpr": ["(R-1.8)*cos(t * (2*PI*rpm/60 + v_walk/R))", "(R-1.8)*sin(t * (2*PI*rpm/60 + v_walk/R))", "12.5"],
+              "expr": ["(R-1.8+pow(2*PI*rpm/60 + v_walk/R,2)*(R-1.8)/9.81*35)*cos(t * (2*PI*rpm/60 + v_walk/R))", "(R-1.8+pow(2*PI*rpm/60 + v_walk/R,2)*(R-1.8)/9.81*35)*sin(t * (2*PI*rpm/60 + v_walk/R))", "12.5"],
               "color": "#ffaa44",
               "width": 0.2,
               "label": "$g_{\\mathrm{head}}$"
             }
           ],
           "info": [
-            {
-              "id": "gradient_info",
-              "position": "top-left",
-              "content": "### Gravity Gradient\\n$\\Delta g / g = 1.8 / R$\\n---\\n$\\omega_{\\mathrm{eff}} = \\omega + v/R = {{toFixed(2*PI*rpm/60 + v_walk/R, 4)}}$ rad/s\\n$g_{\\mathrm{feet}} = {{toFixed(pow(2*PI*rpm/60 + v_walk/R,2)*R/9.81, 3)}}$ g\\n$g_{\\mathrm{head}} = {{toFixed(pow(2*PI*rpm/60 + v_walk/R,2)*(R-1.8)/9.81, 3)}}$ g\\n$\\Delta g / g = {{toFixed(180/R, 2)}}$%\\n---\\n**Gradient tolerance:** {{(180/R) < 10 ? 'within tolerance (<10%)' : (180/R) < 50 ? 'warning (<50%)' : 'out of tolerance'}}"
-            }
+            {"id": "gradient_info", "position": "top-left", "content": "### Gravity Gradient\\n$\\Delta g / g = 1.8 / R$\\n---\\n$\\omega_{\\mathrm{eff}} = \\omega + v/R = {{toFixed(2*PI*rpm/60 + v_walk/R, 4)}}$ rad/s\\n$g_{\\mathrm{feet}} = {{toFixed(pow(2*PI*rpm/60 + v_walk/R,2)*R/9.81, 3)}}$ g\\n$g_{\\mathrm{head}} = {{toFixed(pow(2*PI*rpm/60 + v_walk/R,2)*(R-1.8)/9.81, 3)}}$ g\\n$\\Delta g / g = {{toFixed(180/R, 2)}}$%\\n---\\n**Gradient tolerance:** {{(180/R) < 10 ? 'within tolerance (<10%)' : (180/R) < 50 ? 'warning (<50%)' : 'out of tolerance'}}"}
           ]
         },
         {
-          "title": "Full Simulation \u2014 Design Your Habitat",
+          "title": "Full Simulation — Design Your Habitat",
           "description": "All effects simultaneously. Yellow is stationary, green is walker, orange is walk velocity, blue is Coriolis, red is artificial gravity.",
           "sliders": [
-            {
-              "id": "R",
-              "label": "$R$ \u2014 Radius (m)",
-              "min": 20,
-              "max": 1000,
-              "step": 5,
-              "default": 100
-            },
-            {
-              "id": "rpm",
-              "label": "$n$ \u2014 Spin Rate (RPM)",
-              "min": 0.1,
-              "max": 10,
-              "step": 0.1,
-              "default": 2
-            },
-            {
-              "id": "v_walk",
-              "label": "$v$ \u2014 Walk speed: $+$ prograde / $-$ retrograde (m/s)",
-              "min": -4,
-              "max": 4,
-              "step": 0.1,
-              "default": 1.5
-            }
+            {"id": "R", "label": "$R$ — Radius (m)", "min": 20, "max": 1000, "step": 5, "default": 100},
+            {"id": "rpm", "label": "$n$ — Spin Rate (RPM)", "min": 0.1, "max": 10, "step": 0.1, "default": 2},
+            {"id": "v_walk", "label": "$v$ — Walk speed: $+$ prograde / $-$ retrograde (m/s)", "min": -4, "max": 4, "step": 0.1, "default": 1.5}
           ],
           "remove": [
-            {
-              "id": "g_feet"
-            },
-            {
-              "id": "g_head"
-            }
+            {"id": "g_feet"},
+            {"id": "g_head"}
           ],
           "add": [
             {
               "id": "gravity_vec_full",
               "type": "animated_vector",
-              "fromExpr": [
-                "R*cos(t * (2*PI*rpm/60 + v_walk/R))",
-                "R*sin(t * (2*PI*rpm/60 + v_walk/R))",
-                "12.5"
-              ],
-              "expr": [
-                "(R+pow(2*PI*rpm/60,2)*R/9.81*35)*cos(t * (2*PI*rpm/60 + v_walk/R))",
-                "(R+pow(2*PI*rpm/60,2)*R/9.81*35)*sin(t * (2*PI*rpm/60 + v_walk/R))",
-                "12.5"
-              ],
+              "fromExpr": ["R*cos(t * (2*PI*rpm/60 + v_walk/R))", "R*sin(t * (2*PI*rpm/60 + v_walk/R))", "12.5"],
+              "expr": ["(R+pow(2*PI*rpm/60,2)*R/9.81*35)*cos(t * (2*PI*rpm/60 + v_walk/R))", "(R+pow(2*PI*rpm/60,2)*R/9.81*35)*sin(t * (2*PI*rpm/60 + v_walk/R))", "12.5"],
               "color": "#ff2222",
               "width": 0.2,
               "label": "$\\vec{g}_a$"
@@ -855,16 +410,8 @@
               "id": "coriolis_vec_full",
               "type": "animated_vector",
               "abstract": true,
-              "fromExpr": [
-                "R*cos(t * (2*PI*rpm/60 + v_walk/R))",
-                "R*sin(t * (2*PI*rpm/60 + v_walk/R))",
-                "12.5"
-              ],
-              "expr": [
-                "(R+2*(2*PI*rpm/60)*v_walk/9.81*35)*cos(t * (2*PI*rpm/60 + v_walk/R))",
-                "(R+2*(2*PI*rpm/60)*v_walk/9.81*35)*sin(t * (2*PI*rpm/60 + v_walk/R))",
-                "12.5"
-              ],
+              "fromExpr": ["R*cos(t * (2*PI*rpm/60 + v_walk/R))", "R*sin(t * (2*PI*rpm/60 + v_walk/R))", "12.5"],
+              "expr": ["(R+2*(2*PI*rpm/60)*v_walk/9.81*35)*cos(t * (2*PI*rpm/60 + v_walk/R))", "(R+2*(2*PI*rpm/60)*v_walk/9.81*35)*sin(t * (2*PI*rpm/60 + v_walk/R))", "12.5"],
               "color": "#22aaff",
               "width": 0.12,
               "label": "$\\vec{a}_{\\mathrm{Cor}}$"
@@ -875,31 +422,734 @@
               "arrowScale": 0.7,
               "arrowMinFactor": 0.0004,
               "arrowMaxFactor": 0.004,
-              "fromExpr": [
-                "R*cos(t * (2*PI*rpm/60 + v_walk/R))",
-                "R*sin(t * (2*PI*rpm/60 + v_walk/R))",
-                "12.5"
-              ],
-              "expr": [
-                "R*cos(t * (2*PI*rpm/60 + v_walk/R)) + 0.8*v_walk*(-sin(t * (2*PI*rpm/60 + v_walk/R)))",
-                "R*sin(t * (2*PI*rpm/60 + v_walk/R)) + 0.8*v_walk*( cos(t * (2*PI*rpm/60 + v_walk/R)))",
-                "12.5"
-              ],
+              "fromExpr": ["R*cos(t * (2*PI*rpm/60 + v_walk/R))", "R*sin(t * (2*PI*rpm/60 + v_walk/R))", "12.5"],
+              "expr": ["R*cos(t * (2*PI*rpm/60 + v_walk/R)) + 0.8*v_walk*(-sin(t * (2*PI*rpm/60 + v_walk/R)))", "R*sin(t * (2*PI*rpm/60 + v_walk/R)) + 0.8*v_walk*( cos(t * (2*PI*rpm/60 + v_walk/R)))", "12.5"],
               "color": "#ffaa33",
               "width": 0.2,
               "label": "$\\vec{v}_{\\mathrm{walk}}$"
             }
           ],
           "info": [
-            {
-              "id": "full_sim",
-              "position": "top-left",
-              "content": "### Habitat Analysis\\n$R = {{R}}$ m  |  $n = {{rpm}}$ RPM\\n---\\n$\\omega = {{toFixed(2*PI*rpm/60, 3)}}$ rad/s\\n$g_a = {{toFixed(pow(2*PI*rpm/60,2)*R/9.81, 3)}}$ g\\n$a_{\\mathrm{Cor}} = {{toFixed(2*(2*PI*rpm/60)*abs(v_walk)/9.81, 4)}}$ g ({{v_walk >= 0 ? 'prograde' : 'retrograde'}})\\n$\\Delta g / g = {{toFixed(180/R, 2)}}$%\\n**Comfort status:** {{toFixed(100*exp(-pow(pow(2*PI*rpm/60,2)*R/9.81-1,2)/0.18)*exp(-pow(max(0,rpm-3),2)/3.0)*exp(-pow(min(180/R,20)/10,2)/1.0), 0) >= 50 ? 'within tolerance' : toFixed(100*exp(-pow(pow(2*PI*rpm/60,2)*R/9.81-1,2)/0.18)*exp(-pow(max(0,rpm-3),2)/3.0)*exp(-pow(min(180/R,20)/10,2)/1.0), 0) >= 10 ? 'warning' : 'out of tolerance'}}\\n---\\n**Comfort: {{toFixed(100*exp(-pow(pow(2*PI*rpm/60,2)*R/9.81-1,2)/0.18)*exp(-pow(max(0,rpm-3),2)/3.0)*exp(-pow(min(180/R,20)/10,2)/1.0), 0)}} / 100**"
-            }
+            {"id": "full_sim", "position": "top-left", "content": "### Habitat Analysis\\n$R = {{R}}$ m  |  $n = {{rpm}}$ RPM\\n---\\n$\\omega = {{toFixed(2*PI*rpm/60, 3)}}$ rad/s\\n$g_a = {{toFixed(pow(2*PI*rpm/60,2)*R/9.81, 3)}}$ g\\n$a_{\\mathrm{Cor}} = {{toFixed(2*(2*PI*rpm/60)*abs(v_walk)/9.81, 4)}}$ g ({{v_walk >= 0 ? 'prograde' : 'retrograde'}})\\n$\\Delta g / g = {{toFixed(180/R, 2)}}$%\\n**Comfort status:** {{toFixed(100*exp(-pow(pow(2*PI*rpm/60,2)*R/9.81-1,2)/0.18)*exp(-pow(max(0,rpm-3),2)/3.0)*exp(-pow(min(180/R,20)/10,2)/1.0), 0) >= 50 ? 'within tolerance' : toFixed(100*exp(-pow(pow(2*PI*rpm/60,2)*R/9.81-1,2)/0.18)*exp(-pow(max(0,rpm-3),2)/3.0)*exp(-pow(min(180/R,20)/10,2)/1.0), 0) >= 10 ? 'warning' : 'out of tolerance'}}\\n---\\n**Comfort: {{toFixed(100*exp(-pow(pow(2*PI*rpm/60,2)*R/9.81-1,2)/0.18)*exp(-pow(max(0,rpm-3),2)/3.0)*exp(-pow(min(180/R,20)/10,2)/1.0), 0)}} / 100**"}
           ]
         }
       ],
-      "prompt": "Teach rotating-habitat artificial gravity with concise, equation-linked explanations. When the user changes sliders, explicitly connect each change to $\\omega$, $g_a$, Coriolis magnitude, and gradient ratio. Use symbol definitions exactly as shown: $P(t)$ is the occupant position on the rim, $\\Delta g = g_{\\mathrm{feet}} - g_{\\mathrm{head}}$, and $\\Delta g/g$ is the head-to-foot relative gravity gradient. Prioritize comfort constraints (target ~1 g, RPM <= 3, gradient < 10%) and call out when values exceed limits."
+      "prompt": "Teach rotating-habitat artificial gravity with concise, equation-linked explanations. When the user changes sliders, explicitly connect each change to $\\omega$, $g_a$, Coriolis magnitude, and gradient ratio. Use symbol definitions exactly as shown: $P(t)$ is the occupant position on the rim, $\\Delta g = g_{\\mathrm{feet}} - g_{\\mathrm{head}}$, and $\\Delta g/g$ is the head-to-foot relative gravity gradient. Prioritize comfort constraints (target ~1 g, RPM <= 3, gradient < 10%) and call out when values exceed limits.",
+      "proof": [
+        {
+          "id": "artificial-gravity",
+          "title": "Artificial Gravity from Spin",
+          "technique": "direct",
+          "techniqueHint": "The centripetal acceleration of circular motion is felt as outward weight.",
+          "goal": "Derive the apparent gravity $g_a = \\omega^2 R$ at the rim of a habitat spinning at angular velocity $\\omega$.",
+          "prompt": "Connect the spin rate to the felt gravity inside the rotating cylinder.",
+          "steps": [
+            {
+              "id": "omega-from-rpm",
+              "type": "given",
+              "label": "Angular velocity from spin rate",
+              "math": "\\omega = \\frac{2\\pi \\htmlClass{hl-n}{n}}{60}",
+              "highlights": {
+                "n": {"color": "yellow", "label": "Spin rate in revolutions per minute (RPM)"}
+              },
+              "justification": "One revolution is $2\\pi$ radians, and dividing the per-minute rate by 60 converts to radians per second.",
+              "explanation": "The habitat's spin rate $n$ (RPM) sets the angular velocity $\\omega$ in rad/s.",
+              "sceneStep": 1,
+              "tags": ["given"],
+              "semanticGraph": {
+                "graph": {
+                  "nodes": [
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "\\omega = \\frac{2\\pi n}{60}", "description": "Equation relating angular velocity $\\omega$ to the spin rate $n$ in revolutions per minute."},
+                    {"id": "omega", "type": "scalar", "emoji": "💫", "latex": "\\omega", "subexpr": "\\omega", "description": "Angular velocity $\\omega$, the rate of rotation of the habitat.", "quantity": "angular_velocity", "dimension": "T⁻¹", "unit": "rad/s"},
+                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "2 \\pi n \\frac{1}{60}", "description": "The complete expression for converting spin rate $n$ (RPM) into angular velocity $\\omega$ (rad/s).", "quantity": "angular_velocity", "dimension": "T⁻¹", "unit": "rad/s"},
+                    {"id": "__multiply_3", "type": "operator", "op": "multiply", "subexpr": "2 \\pi n", "description": "The total angle in radians turned per minute, from a spin rate of $n$ revolutions per minute.", "quantity": "angular_velocity", "dimension": "T⁻¹", "unit": "rad/min"},
+                    {"id": "__num_4", "type": "number", "label": "2", "subexpr": "2", "description": "The number 2, part of the conversion factor $2\\pi$ from revolutions to radians.", "dimension": "1", "unit": "", "value": 2},
+                    {"id": "__multiply_5", "type": "operator", "op": "multiply", "subexpr": "\\pi n", "description": "The product of pi and the spin rate $n$.", "dimension": "T⁻¹", "unit": "rad/min"},
+                    {"id": "pi", "type": "constant", "emoji": "🥧", "latex": "\\pi", "subexpr": "\\pi", "description": "The mathematical constant pi ($\\pi \\approx 3.14159$), representing the ratio of a circle's circumference to its diameter.", "quantity": "pi", "dimension": "1", "unit": "rad", "value": 3.14159},
+                    {"id": "n", "type": "scalar", "emoji": "🔄", "latex": "n", "subexpr": "n", "description": "Spin rate in revolutions per minute (RPM).", "quantity": "spin_rate", "dimension": "T⁻¹", "unit": "rpm", "color": "yellow", "highlight": "n"},
+                    {"id": "__power_6", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{60}", "description": "The conversion factor from per minute to per second, by dividing by 60 seconds per minute.", "dimension": "1", "unit": "min/s"},
+                    {"id": "__num_7", "type": "number", "label": "60", "subexpr": "60", "description": "The number of seconds in a minute, used as a conversion factor.", "quantity": "time_conversion", "dimension": "1", "unit": "s/min", "value": 60}
+                  ],
+                  "edges": [
+                    {"from": "omega", "to": "__equals_1"},
+                    {"from": "__num_4", "to": "__multiply_3", "semantic": "direct", "weight": 1.0},
+                    {"from": "pi", "to": "__multiply_5", "semantic": "direct", "weight": 1.0},
+                    {"from": "n", "to": "__multiply_5", "semantic": "direct", "weight": 1.0},
+                    {"from": "__multiply_5", "to": "__multiply_3", "semantic": "direct", "weight": 1.0},
+                    {"from": "__multiply_3", "to": "__multiply_2", "semantic": "direct", "weight": 1.0},
+                    {"from": "__num_7", "to": "__power_6"},
+                    {"from": "__power_6", "to": "__multiply_2"},
+                    {"from": "__multiply_2", "to": "__equals_1"}
+                  ],
+                  "classification": {"kind": "algebraic"},
+                  "domain": "classical_mechanics",
+                  "enrichment": {
+                    "reasoning": "Context is about rotating habitats and angular velocity, so the domain is `classical_mechanics`. The symbol $\\omega$ is angular velocity and $n$ is spin rate in RPM.",
+                    "fields": ["domain", "nodes.__equals_1.description", "nodes.omega.description", "nodes.omega.dimension", "nodes.omega.emoji", "nodes.omega.quantity", "nodes.omega.unit", "nodes.__multiply_2.description", "nodes.__multiply_2.dimension", "nodes.__multiply_2.quantity", "nodes.__multiply_2.unit", "nodes.__multiply_3.description", "nodes.__multiply_3.dimension", "nodes.__multiply_3.quantity", "nodes.__multiply_3.unit", "nodes.__num_4.description", "nodes.__num_4.dimension", "nodes.__num_4.unit", "nodes.__num_4.value", "nodes.__multiply_5.description", "nodes.__multiply_5.dimension", "nodes.__multiply_5.unit", "nodes.pi.description", "nodes.pi.dimension", "nodes.pi.emoji", "nodes.pi.quantity", "nodes.pi.unit", "nodes.pi.value", "nodes.n.description", "nodes.n.dimension", "nodes.n.emoji", "nodes.n.quantity", "nodes.n.unit", "nodes.__power_6.description", "nodes.__power_6.dimension", "nodes.__power_6.unit", "nodes.__num_7.description", "nodes.__num_7.dimension", "nodes.__num_7.quantity", "nodes.__num_7.unit", "nodes.__num_7.value"]
+                  }
+                }
+              }
+            },
+            {
+              "id": "rim-speed",
+              "type": "step",
+              "label": "Tangential speed at the rim",
+              "math": "\\htmlClass{hl-v}{v} = \\omega R",
+              "highlights": {
+                "v": {"color": "orange", "label": "Tangential (rim) speed"}
+              },
+              "justification": "A point at radius $R$ on a body rotating at $\\omega$ moves at speed $v = \\omega R$.",
+              "explanation": "Every point on the rim sweeps a circle of radius $R$, so its speed is $\\omega R$.",
+              "sceneStep": 1,
+              "tags": ["step"],
+              "semanticGraph": {
+                "graph": {
+                  "nodes": [
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "v = \\omega R", "description": "Relates tangential speed to the product of angular velocity and radius."},
+                    {"id": "v", "type": "scalar", "emoji": "💨", "latex": "v", "subexpr": "v", "description": "Tangential speed, the instantaneous velocity of a point on the rim of the rotating habitat.", "quantity": "tangential_velocity", "dimension": "L·T⁻¹", "unit": "m/s", "color": "orange", "highlight": "v"},
+                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "\\omega R", "description": "The product of angular velocity and radius gives the tangential speed at the rim.", "quantity": "tangential_velocity", "dimension": "L·T⁻¹", "unit": "m/s"},
+                    {"id": "omega", "type": "scalar", "emoji": "🔄", "latex": "\\omega", "subexpr": "\\omega", "description": "Angular velocity $\\\\omega$, the rate at which the space habitat rotates.", "quantity": "angular_velocity", "dimension": "T⁻¹", "unit": "rad/s"},
+                    {"id": "R", "type": "scalar", "emoji": "📏", "latex": "R", "subexpr": "R", "description": "The radius of the rotating space habitat, from the center to the rim.", "quantity": "radius", "dimension": "L", "unit": "m"}
+                  ],
+                  "edges": [
+                    {"from": "v", "to": "__equals_1"},
+                    {"from": "omega", "to": "__multiply_2", "semantic": "direct", "weight": 1.0},
+                    {"from": "R", "to": "__multiply_2", "semantic": "direct", "weight": 1.0},
+                    {"from": "__multiply_2", "to": "__equals_1"}
+                  ],
+                  "classification": {"kind": "algebraic"},
+                  "domain": "classical_mechanics",
+                  "enrichment": {
+                    "reasoning": "The context describes artificial gravity using rotation, angular velocity, and radius, which falls under classical mechanics.",
+                    "fields": ["domain", "nodes.__equals_1.description", "nodes.v.description", "nodes.v.dimension", "nodes.v.emoji", "nodes.v.quantity", "nodes.v.unit", "nodes.__multiply_2.description", "nodes.__multiply_2.dimension", "nodes.__multiply_2.quantity", "nodes.__multiply_2.unit", "nodes.omega.description", "nodes.omega.dimension", "nodes.omega.emoji", "nodes.omega.quantity", "nodes.omega.unit", "nodes.R.description", "nodes.R.dimension", "nodes.R.emoji", "nodes.R.quantity", "nodes.R.unit"]
+                  }
+                }
+              }
+            },
+            {
+              "id": "centripetal",
+              "type": "step",
+              "label": "Centripetal acceleration",
+              "math": "a_c = \\frac{\\htmlClass{hl-v2}{v^2}}{R}",
+              "highlights": {
+                "v2": {"color": "orange", "label": "Square of the rim speed"}
+              },
+              "justification": "Uniform circular motion requires an inward acceleration $v^2/R$ toward the axis.",
+              "explanation": "To stay on its circular path, a rim point must accelerate inward at $v^2/R$.",
+              "sceneStep": 2,
+              "tags": ["step"],
+              "semanticGraph": {
+                "graph": {
+                  "nodes": [
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "a_c = \\frac{v^2}{R}", "description": "Defines centripetal acceleration in terms of tangential velocity and radius."},
+                    {"id": "a_c", "type": "scalar", "emoji": "🔄", "latex": "a_{c}", "subexpr": "a_{c}", "description": "Centripetal acceleration, the inward pull felt as artificial gravity on the spinning habitat.", "quantity": "acceleration", "dimension": "L·T⁻²", "unit": "m/s²"},
+                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "v^{2} \\frac{1}{R}", "description": "Calculates the centripetal acceleration by combining rim speed and radius as $v^{2}/R$.", "quantity": "acceleration", "dimension": "L·T⁻²", "unit": "m/s²"},
+                    {"id": "__power_3", "type": "operator", "op": "power", "exponent": "2", "subexpr": "v^{2}", "description": "The square of the tangential velocity at the rim, $v^{2}$.", "dimension": "L²·T⁻²", "unit": "m²/s²", "color": "orange", "highlight": "v2"},
+                    {"id": "v", "type": "scalar", "emoji": "💨", "latex": "v", "subexpr": "v", "description": "Tangential velocity, the speed of a point on the habitat's rim.", "quantity": "velocity", "dimension": "L·T⁻¹", "unit": "m/s"},
+                    {"id": "__power_4", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{R}", "description": "The reciprocal of the radius, $1/R$, also known as the curvature.", "quantity": "curvature", "dimension": "L⁻¹", "unit": "m⁻¹"},
+                    {"id": "R", "type": "scalar", "emoji": "📏", "latex": "R", "subexpr": "R", "description": "The radius of the rotating space habitat from the center to the rim.", "quantity": "radius", "dimension": "L", "unit": "m"}
+                  ],
+                  "edges": [
+                    {"from": "a_c", "to": "__equals_1"},
+                    {"from": "v", "to": "__power_3"},
+                    {"from": "__power_3", "to": "__multiply_2", "semantic": "direct", "weight": 1.0},
+                    {"from": "R", "to": "__power_4"},
+                    {"from": "__power_4", "to": "__multiply_2"},
+                    {"from": "__multiply_2", "to": "__equals_1"}
+                  ],
+                  "classification": {"kind": "algebraic"},
+                  "domain": "classical_mechanics",
+                  "enrichment": {
+                    "reasoning": "The context is artificial gravity in a rotating space habitat, so the domain is `classical_mechanics`. The symbols `a_c`, `v`, and `R` are centripetal acceleration, tangential velocity, and radius.",
+                    "fields": ["domain", "nodes.__equals_1.description", "nodes.a_c.description", "nodes.a_c.dimension", "nodes.a_c.emoji", "nodes.a_c.quantity", "nodes.a_c.unit", "nodes.__multiply_2.description", "nodes.__multiply_2.dimension", "nodes.__multiply_2.quantity", "nodes.__multiply_2.unit", "nodes.__power_3.description", "nodes.__power_3.dimension", "nodes.__power_3.unit", "nodes.v.description", "nodes.v.dimension", "nodes.v.emoji", "nodes.v.quantity", "nodes.v.unit", "nodes.__power_4.description", "nodes.__power_4.dimension", "nodes.__power_4.quantity", "nodes.__power_4.unit", "nodes.R.description", "nodes.R.dimension", "nodes.R.emoji", "nodes.R.quantity", "nodes.R.unit"]
+                  }
+                }
+              }
+            },
+            {
+              "id": "substitute",
+              "type": "step",
+              "label": "Express in terms of ω",
+              "math": "a_c = \\frac{(\\omega R)^2}{R} = \\htmlClass{hl-ga}{\\omega^2 R}",
+              "highlights": {
+                "ga": {"color": "red", "label": "Acceleration in terms of spin and radius"}
+              },
+              "justification": "Substitute $v = \\omega R$ and cancel one factor of $R$.",
+              "explanation": "Replacing $v$ with $\\omega R$ collapses the expression to $\\omega^2 R$.",
+              "sceneStep": 2,
+              "tags": ["step"],
+              "semanticGraph": {
+                "graph": {
+                  "nodes": [
+                    {"id": "a_c", "type": "scalar", "emoji": "🔄", "latex": "a_{c}", "subexpr": "a_c", "description": "Centripetal acceleration, the inward acceleration that keeps an object moving in a circle.", "quantity": "acceleration", "dimension": "L·T⁻²", "unit": "m/s²"},
+                    {"id": "s1___multiply_1", "type": "operator", "op": "multiply", "subexpr": "\\frac{(\\omega R)^2}{R}", "description": "The centripetal acceleration, calculated by squaring the tangential velocity $v = \\omega R$ and dividing by the radius $R$.", "quantity": "acceleration", "dimension": "L·T⁻²", "unit": "m/s²"},
+                    {"id": "s1___power_2", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\left(R \\omega\\right)^{2}", "description": "The square of the tangential velocity, $v^2 = (\\omega R)^2$, a key component of the centripetal acceleration formula.", "quantity": "velocity_squared", "dimension": "L²·T⁻²", "unit": "(m/s)²"},
+                    {"id": "s1___multiply_3", "type": "operator", "op": "multiply", "subexpr": "\\omega R", "description": "The tangential velocity $v$ at the rim of the habitat, given by the product of angular velocity $\\omega$ and radius $R$.", "quantity": "velocity", "dimension": "L·T⁻¹", "unit": "m/s"},
+                    {"id": "omega", "type": "scalar", "emoji": "🔄", "latex": "\\omega", "subexpr": "\\omega", "description": "Angular velocity $\\omega$, the rate at which the space habitat rotates.", "quantity": "angular_velocity", "dimension": "T⁻¹", "unit": "rad/s"},
+                    {"id": "R", "type": "scalar", "emoji": "📏", "latex": "R", "subexpr": "R", "description": "The radius $R$ of the rotating space habitat, from the center to the rim.", "quantity": "radius", "dimension": "L", "unit": "m"},
+                    {"id": "s1___power_4", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{R}", "description": "The reciprocal of the radius, $1/R$, used to calculate centripetal acceleration from tangential velocity.", "quantity": "inverse_length", "dimension": "L⁻¹", "unit": "m⁻¹"},
+                    {"id": "s2___multiply_1", "type": "operator", "op": "multiply", "subexpr": "\\omega^2 R", "description": "The apparent gravity $g_a$, expressed as the product of the squared angular velocity $\\omega^2$ and the radius $R$.", "quantity": "acceleration", "dimension": "L·T⁻²", "unit": "m/s²", "color": "red", "highlight": "ga"},
+                    {"id": "s2___power_2", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\omega^{2}", "description": "The square of the angular velocity, $\\omega^2$.", "quantity": "angular_velocity_squared", "dimension": "T⁻²", "unit": "(rad/s)²"},
+                    {"id": "__equals_1", "type": "operator", "op": "equals", "subexpr": "a_c = \\frac{(\\omega R)^2}{R} = \\omega^2 R", "description": "An equation relating the centripetal acceleration $a_c$ to two equivalent expressions involving the habitat's radius $R$ and angular velocity $\\omega$."}
+                  ],
+                  "edges": [
+                    {"from": "omega", "to": "s1___multiply_3"},
+                    {"from": "R", "to": "s1___multiply_3"},
+                    {"from": "s1___multiply_3", "to": "s1___power_2"},
+                    {"from": "s1___power_2", "to": "s1___multiply_1"},
+                    {"from": "R", "to": "s1___power_4"},
+                    {"from": "s1___power_4", "to": "s1___multiply_1"},
+                    {"from": "omega", "to": "s2___power_2"},
+                    {"from": "s2___power_2", "to": "s2___multiply_1"},
+                    {"from": "R", "to": "s2___multiply_1"},
+                    {"from": "a_c", "to": "__equals_1"},
+                    {"from": "s1___multiply_1", "to": "__equals_1"},
+                    {"from": "s2___multiply_1", "to": "__equals_1"}
+                  ],
+                  "classification": {"kind": "algebraic"},
+                  "domain": "classical_mechanics",
+                  "enrichment": {
+                    "reasoning": "The context of a rotating space habitat and artificial gravity establishes the domain as classical_mechanics, defining symbols like $\\omega$ as angular velocity and $a_c$ as centripetal acceleration.",
+                    "fields": ["domain", "nodes.a_c.description", "nodes.a_c.dimension", "nodes.a_c.emoji", "nodes.a_c.quantity", "nodes.a_c.unit", "nodes.s1___multiply_1.description", "nodes.s1___multiply_1.dimension", "nodes.s1___multiply_1.quantity", "nodes.s1___multiply_1.unit", "nodes.s1___power_2.description", "nodes.s1___power_2.dimension", "nodes.s1___power_2.quantity", "nodes.s1___power_2.unit", "nodes.s1___multiply_3.description", "nodes.s1___multiply_3.dimension", "nodes.s1___multiply_3.quantity", "nodes.s1___multiply_3.unit", "nodes.omega.description", "nodes.omega.dimension", "nodes.omega.emoji", "nodes.omega.quantity", "nodes.omega.unit", "nodes.R.description", "nodes.R.dimension", "nodes.R.emoji", "nodes.R.quantity", "nodes.R.unit", "nodes.s1___power_4.description", "nodes.s1___power_4.dimension", "nodes.s1___power_4.quantity", "nodes.s1___power_4.unit", "nodes.s2___multiply_1.description", "nodes.s2___multiply_1.dimension", "nodes.s2___multiply_1.quantity", "nodes.s2___multiply_1.unit", "nodes.s2___power_2.description", "nodes.s2___power_2.dimension", "nodes.s2___power_2.quantity", "nodes.s2___power_2.unit", "nodes.__equals_1.description"]
+                  }
+                }
+              }
+            },
+            {
+              "id": "g-apparent",
+              "type": "conclusion",
+              "label": "Artificial gravity",
+              "math": "\\htmlClass{hl-result}{g_a = \\omega^2 R}",
+              "highlights": {
+                "result": {"color": "green", "label": "Apparent gravity at the rim"}
+              },
+              "justification": "The floor pushes occupants inward at $a_c$; by equivalence they feel an equal and opposite outward weight.",
+              "explanation": "Occupants standing on the inner wall feel this inward push as outward gravity $g_a = \\omega^2 R$.",
+              "sceneStep": 2,
+              "tags": ["conclusion", "key-insight"],
+              "prompt": "Point out the red gravity arrow at the rim and how it grows as the spin increases.",
+              "semanticGraph": {
+                "graph": {
+                  "nodes": [
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "g_a = \\omega^2 R", "description": "Relates apparent gravity $g_a$ to the square of the angular velocity $\\omega$ and the habitat's radius $R$.", "color": "green", "highlight": "result"},
+                    {"id": "g_a", "type": "scalar", "emoji": "🛰️", "latex": "g_{a}", "subexpr": "g_{a}", "description": "Apparent gravity, the artificial gravity felt by occupants at the rim of the rotating habitat.", "quantity": "apparent_gravity", "dimension": "L·T⁻²", "unit": "m/s²"},
+                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "\\omega^{2} R", "description": "The product of the squared angular velocity and the radius, which gives the centripetal acceleration.", "quantity": "acceleration", "dimension": "L·T⁻²", "unit": "m/s²"},
+                    {"id": "__power_3", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\omega^{2}", "description": "The square of the angular velocity, a key component in the centripetal acceleration formula.", "quantity": "angular_velocity_squared", "dimension": "T⁻²", "unit": "rad²/s²"},
+                    {"id": "omega", "type": "scalar", "emoji": "🔄", "latex": "\\omega", "subexpr": "\\omega", "description": "The angular velocity of the rotating space habitat.", "quantity": "angular_velocity", "dimension": "T⁻¹", "unit": "rad/s"},
+                    {"id": "R", "type": "scalar", "emoji": "📏", "latex": "R", "subexpr": "R", "description": "The radius of the rotating space habitat, from the center to the rim.", "quantity": "radius", "dimension": "L", "unit": "m"}
+                  ],
+                  "edges": [
+                    {"from": "g_a", "to": "__equals_1"},
+                    {"from": "omega", "to": "__power_3"},
+                    {"from": "__power_3", "to": "__multiply_2", "semantic": "direct", "weight": 1.0},
+                    {"from": "R", "to": "__multiply_2", "semantic": "direct", "weight": 1.0},
+                    {"from": "__multiply_2", "to": "__equals_1"}
+                  ],
+                  "classification": {"kind": "algebraic"},
+                  "domain": "classical_mechanics",
+                  "enrichment": {
+                    "reasoning": "The context describes artificial gravity in a rotating habitat, so the domain is classical_mechanics. Symbols are identified as apparent gravity $g_a$, angular velocity $\\omega$, and radius $R$.",
+                    "fields": ["domain", "nodes.__equals_1.description", "nodes.g_a.description", "nodes.g_a.dimension", "nodes.g_a.emoji", "nodes.g_a.quantity", "nodes.g_a.unit", "nodes.__multiply_2.description", "nodes.__multiply_2.dimension", "nodes.__multiply_2.quantity", "nodes.__multiply_2.unit", "nodes.__power_3.description", "nodes.__power_3.dimension", "nodes.__power_3.quantity", "nodes.__power_3.unit", "nodes.omega.description", "nodes.omega.dimension", "nodes.omega.emoji", "nodes.omega.quantity", "nodes.omega.unit", "nodes.R.description", "nodes.R.dimension", "nodes.R.emoji", "nodes.R.quantity", "nodes.R.unit"]
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "coriolis-effect",
+          "title": "The Coriolis Push",
+          "technique": "direct",
+          "techniqueHint": "Compare the centripetal demand of a moving walker to that of a stationary rim point.",
+          "goal": "Show that walking tangentially at speed $v$ produces a Coriolis acceleration $a_{Cor} = 2\\omega v$.",
+          "prompt": "Explain why moving inside a spinning frame creates a sideways push.",
+          "steps": [
+            {
+              "id": "walker-speed",
+              "type": "given",
+              "label": "Total speed of a tangential walker",
+              "math": "v' = \\omega R + \\htmlClass{hl-v}{v}",
+              "highlights": {
+                "v": {"color": "green", "label": "Walking speed relative to the floor"}
+              },
+              "justification": "In the inertial frame the walker's own speed adds to the rim's spin speed $\\omega R$.",
+              "explanation": "Walking prograde, the walker's inertial speed is the rim speed plus their own.",
+              "sceneStep": 3,
+              "tags": ["given"],
+              "semanticGraph": {
+                "graph": {
+                  "nodes": [
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "v' = \\omega R + v", "description": "This equation defines the walker's total speed in the non-rotating inertial frame."},
+                    {"id": "v", "type": "scalar", "emoji": "💨", "latex": "v'", "subexpr": "v'", "description": "The walker's total tangential speed $v'$ as seen from the inertial (non-rotating) frame of reference.", "quantity": "speed", "dimension": "L·T⁻¹", "unit": "m/s", "color": "green", "highlight": "v"},
+                    {"id": "__add_2", "type": "operator", "op": "add", "subexpr": "v + \\omega R", "description": "The sum of the habitat's rim speed and the walker's speed relative to the rim, giving the total inertial speed.", "quantity": "speed", "dimension": "L·T⁻¹", "unit": "m/s"},
+                    {"id": "__multiply_3", "type": "operator", "op": "multiply", "subexpr": "\\omega R", "description": "The product of the habitat's angular velocity and its radius, which gives the tangential speed of the rim.", "quantity": "speed", "dimension": "L·T⁻¹", "unit": "m/s"},
+                    {"id": "omega", "type": "scalar", "emoji": "🔄", "latex": "\\omega", "subexpr": "\\omega", "description": "The angular velocity $\\\\omega$ of the rotating space habitat.", "quantity": "angular_velocity", "dimension": "T⁻¹", "unit": "rad/s"},
+                    {"id": "R", "type": "scalar", "emoji": "📏", "latex": "R", "subexpr": "R", "description": "The radius $R$ of the rotating space habitat, from the center to the rim.", "quantity": "radius", "dimension": "L", "unit": "m"},
+                    {"id": "v_2", "type": "scalar", "emoji": "👟", "latex": "v", "subexpr": "v", "description": "The walker's speed $v$ relative to the floor of the habitat.", "quantity": "speed", "dimension": "L·T⁻¹", "unit": "m/s"}
+                  ],
+                  "edges": [
+                    {"from": "v", "to": "__equals_1"},
+                    {"from": "omega", "to": "__multiply_3", "semantic": "direct", "weight": 1.0},
+                    {"from": "R", "to": "__multiply_3", "semantic": "direct", "weight": 1.0},
+                    {"from": "__multiply_3", "to": "__add_2"},
+                    {"from": "v_2", "to": "__add_2"},
+                    {"from": "__add_2", "to": "__equals_1"}
+                  ],
+                  "classification": {"kind": "algebraic"},
+                  "domain": "classical_mechanics",
+                  "enrichment": {
+                    "reasoning": "The context of a rotating space habitat, angular velocity, and Coriolis acceleration places the problem in the domain of classical mechanics.",
+                    "fields": ["domain", "nodes.__equals_1.description", "nodes.v.description", "nodes.v.dimension", "nodes.v.emoji", "nodes.v.quantity", "nodes.v.unit", "nodes.__add_2.description", "nodes.__add_2.dimension", "nodes.__add_2.quantity", "nodes.__add_2.unit", "nodes.__multiply_3.description", "nodes.__multiply_3.dimension", "nodes.__multiply_3.quantity", "nodes.__multiply_3.unit", "nodes.omega.description", "nodes.omega.dimension", "nodes.omega.emoji", "nodes.omega.quantity", "nodes.omega.unit", "nodes.R.description", "nodes.R.dimension", "nodes.R.emoji", "nodes.R.quantity", "nodes.R.unit", "nodes.v_2.description", "nodes.v_2.dimension", "nodes.v_2.emoji", "nodes.v_2.quantity", "nodes.v_2.unit"]
+                  }
+                }
+              }
+            },
+            {
+              "id": "centripetal-demand",
+              "type": "step",
+              "label": "Centripetal acceleration required",
+              "math": "a = \\frac{(\\omega R + v)^2}{R}",
+              "highlights": {},
+              "justification": "Moving on the same circle of radius $R$ at the higher speed $v'$ demands ${v'}^2/R$.",
+              "explanation": "Staying on the rim at the faster speed requires more inward acceleration.",
+              "sceneStep": 3,
+              "tags": ["step"],
+              "semanticGraph": {
+                "graph": {
+                  "nodes": [
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "a = \\frac{(\\omega R + v)^2}{R}", "description": "Equation for the total centripetal acceleration $a$ required for an object moving at tangential speed $v$ on a rim of radius $R$ rotating at angular velocity $\\omega$."},
+                    {"id": "a", "type": "scalar", "emoji": "💨", "latex": "a", "subexpr": "a", "description": "Total centripetal acceleration required to stay on the rim.", "quantity": "acceleration", "dimension": "L·T⁻²", "unit": "m/s²"},
+                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "\\frac{1}{R} \\left(R \\omega + v\\right)^{2}", "description": "The total centripetal acceleration, calculated as the square of the total tangential velocity divided by the radius, $v_{total}^2/R$.", "quantity": "acceleration", "dimension": "L·T⁻²", "unit": "m/s²"},
+                    {"id": "__power_3", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\left(R \\omega + v\\right)^{2}", "description": "The square of the total tangential velocity, a key term in the centripetal acceleration formula.", "quantity": "velocity_squared", "dimension": "L²·T⁻²", "unit": "m²/s²"},
+                    {"id": "__add_4", "type": "operator", "op": "add", "subexpr": "\\omega R + v", "description": "Total tangential velocity of a person relative to a non-rotating frame, the sum of the rim's velocity and the person's walking velocity.", "quantity": "velocity", "dimension": "L·T⁻¹", "unit": "m/s"},
+                    {"id": "__multiply_5", "type": "operator", "op": "multiply", "subexpr": "\\omega R", "description": "Tangential velocity of the habitat's rim, calculated as angular velocity $ω$ times radius $R$.", "quantity": "velocity", "dimension": "L·T⁻¹", "unit": "m/s"},
+                    {"id": "omega", "type": "scalar", "emoji": "🔄", "latex": "\\omega", "subexpr": "\\omega", "description": "Angular velocity of the rotating space habitat.", "quantity": "angular_velocity", "dimension": "T⁻¹", "unit": "rad/s"},
+                    {"id": "R", "type": "scalar", "emoji": "📏", "latex": "R", "subexpr": "R", "description": "Radius of the rotating space habitat.", "quantity": "radius", "dimension": "L", "unit": "m"},
+                    {"id": "v", "type": "scalar", "emoji": "🚶", "latex": "v", "subexpr": "v", "description": "Tangential velocity of a person walking along the habitat's rim.", "quantity": "velocity", "dimension": "L·T⁻¹", "unit": "m/s"},
+                    {"id": "__power_6", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{R}", "description": "The reciprocal of the habitat's radius, $1/R$.", "quantity": "inverse_length", "dimension": "L⁻¹", "unit": "m⁻¹"}
+                  ],
+                  "edges": [
+                    {"from": "a", "to": "__equals_1"},
+                    {"from": "omega", "to": "__multiply_5", "semantic": "direct", "weight": 1.0},
+                    {"from": "R", "to": "__multiply_5", "semantic": "direct", "weight": 1.0},
+                    {"from": "__multiply_5", "to": "__add_4"},
+                    {"from": "v", "to": "__add_4"},
+                    {"from": "__add_4", "to": "__power_3"},
+                    {"from": "__power_3", "to": "__multiply_2", "semantic": "direct", "weight": 1.0},
+                    {"from": "R", "to": "__power_6"},
+                    {"from": "__power_6", "to": "__multiply_2"},
+                    {"from": "__multiply_2", "to": "__equals_1"}
+                  ],
+                  "classification": {"kind": "algebraic"},
+                  "domain": "classical_mechanics",
+                  "enrichment": {
+                    "reasoning": "The context of a rotating space habitat sets the domain to classical mechanics. Symbols a, ω, R, and v correspond to acceleration, angular velocity, radius, and tangential velocity.",
+                    "fields": ["domain", "nodes.__equals_1.description", "nodes.a.description", "nodes.a.dimension", "nodes.a.emoji", "nodes.a.quantity", "nodes.a.unit", "nodes.__multiply_2.description", "nodes.__multiply_2.dimension", "nodes.__multiply_2.quantity", "nodes.__multiply_2.unit", "nodes.__power_3.description", "nodes.__power_3.dimension", "nodes.__power_3.quantity", "nodes.__power_3.unit", "nodes.__add_4.description", "nodes.__add_4.dimension", "nodes.__add_4.quantity", "nodes.__add_4.unit", "nodes.__multiply_5.description", "nodes.__multiply_5.dimension", "nodes.__multiply_5.quantity", "nodes.__multiply_5.unit", "nodes.omega.description", "nodes.omega.dimension", "nodes.omega.emoji", "nodes.omega.quantity", "nodes.omega.unit", "nodes.R.description", "nodes.R.dimension", "nodes.R.emoji", "nodes.R.quantity", "nodes.R.unit", "nodes.v.description", "nodes.v.dimension", "nodes.v.emoji", "nodes.v.quantity", "nodes.v.unit", "nodes.__power_6.description", "nodes.__power_6.dimension", "nodes.__power_6.quantity", "nodes.__power_6.unit"]
+                  }
+                }
+              }
+            },
+            {
+              "id": "expand",
+              "type": "step",
+              "label": "Expand the square",
+              "math": "a = \\frac{\\omega^2 R^2 + 2\\omega R v + v^2}{R}",
+              "highlights": {},
+              "justification": "Expand $(\\omega R + v)^2 = \\omega^2 R^2 + 2\\omega R v + v^2$.",
+              "explanation": "The binomial square produces three terms.",
+              "sceneStep": 3,
+              "tags": ["step"],
+              "semanticGraph": {
+                "graph": {
+                  "nodes": [
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "a = \\frac{\\omega^2 R^2 + 2\\omega R v + v^2}{R}", "description": "Equation for the total acceleration $a$ experienced by an object moving at tangential velocity $v$ in a rotating frame."},
+                    {"id": "a", "type": "scalar", "emoji": "🎢", "latex": "a", "subexpr": "a", "description": "Total acceleration experienced by an object in the rotating reference frame.", "quantity": "acceleration", "dimension": "L·T⁻²", "unit": "m/s²"},
+                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "\\frac{1}{R} \\left(v^{2} + \\omega^{2} R^{2} + 2 \\omega R v\\right)", "description": "The sum of squared tangential velocities, divided by the habitat radius, gives the total acceleration.", "quantity": "acceleration", "dimension": "L·T⁻²", "unit": "m/s²"},
+                    {"id": "__add_3", "type": "operator", "op": "add", "subexpr": "v^{2} + \\omega^{2} R^{2} + 2 \\omega R v", "description": "The sum of the squared tangential velocities from walking and rotation, plus the Coriolis term's contribution.", "quantity": "velocity_squared", "dimension": "L²·T⁻²", "unit": "m²/s²"},
+                    {"id": "__add_4", "type": "operator", "op": "add", "subexpr": "\\omega^{2} R^{2} + 2 \\omega R v", "description": "The sum of the squared rotational velocity and the Coriolis term's contribution.", "dimension": "L²·T⁻²", "unit": "m²/s²"},
+                    {"id": "__multiply_5", "type": "operator", "op": "multiply", "subexpr": "\\omega^{2} R^{2}", "description": "The square of the tangential velocity $v_{rot} = \\omega R$ due to the habitat's rotation.", "dimension": "L²·T⁻²", "unit": "m²/s²"},
+                    {"id": "__power_6", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\omega^{2}", "description": "The square of the angular velocity.", "dimension": "T⁻²", "unit": "rad²/s²"},
+                    {"id": "omega", "type": "scalar", "emoji": "🔄", "latex": "\\omega", "subexpr": "\\omega", "description": "Angular velocity of the rotating space habitat.", "quantity": "angular_velocity", "dimension": "T⁻¹", "unit": "rad/s"},
+                    {"id": "__power_7", "type": "operator", "op": "power", "exponent": "2", "subexpr": "R^{2}", "description": "The square of the habitat's radius.", "dimension": "L²", "unit": "m²"},
+                    {"id": "R", "type": "scalar", "emoji": "📏", "latex": "R", "subexpr": "R", "description": "Radius of the rotating space habitat.", "quantity": "radius", "dimension": "L", "unit": "m"},
+                    {"id": "__multiply_8", "type": "operator", "op": "multiply", "subexpr": "2 \\omega R v", "description": "A term proportional to both the habitat's rotation and the person's walking speed, related to the Coriolis effect.", "dimension": "L²·T⁻²", "unit": "m²/s²"},
+                    {"id": "__num_9", "type": "number", "label": "2", "emoji": "🔢", "subexpr": "2", "description": "The numeric constant 2, a factor in the expansion of the binomial square.", "quantity": "coefficient", "dimension": "1", "unit": "", "value": 2},
+                    {"id": "__multiply_10", "type": "operator", "op": "multiply", "subexpr": "\\omega R v", "description": "The product of angular velocity, radius, and tangential walking speed.", "dimension": "L²·T⁻²", "unit": "m²/s²"},
+                    {"id": "__multiply_11", "type": "operator", "op": "multiply", "subexpr": "R v", "description": "The product of the habitat's radius and the person's walking speed.", "dimension": "L²·T⁻¹", "unit": "m²/s"},
+                    {"id": "v", "type": "scalar", "emoji": "🏃", "latex": "v", "subexpr": "v", "description": "Tangential speed of a person walking inside the habitat.", "quantity": "velocity", "dimension": "L·T⁻¹", "unit": "m/s"},
+                    {"id": "__power_12", "type": "operator", "op": "power", "exponent": "2", "subexpr": "v^{2}", "description": "The square of the person's tangential walking speed.", "dimension": "L²·T⁻²", "unit": "m²/s²"},
+                    {"id": "__power_13", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{R}", "description": "The reciprocal of the habitat's radius.", "dimension": "L⁻¹", "unit": "m⁻¹"}
+                  ],
+                  "edges": [
+                    {"from": "a", "to": "__equals_1"},
+                    {"from": "omega", "to": "__power_6"},
+                    {"from": "__power_6", "to": "__multiply_5", "semantic": "direct", "weight": 1.0},
+                    {"from": "R", "to": "__power_7"},
+                    {"from": "__power_7", "to": "__multiply_5", "semantic": "direct", "weight": 1.0},
+                    {"from": "__multiply_5", "to": "__add_4"},
+                    {"from": "__num_9", "to": "__multiply_8", "semantic": "direct", "weight": 1.0},
+                    {"from": "omega", "to": "__multiply_10", "semantic": "direct", "weight": 1.0},
+                    {"from": "R", "to": "__multiply_11", "semantic": "direct", "weight": 1.0},
+                    {"from": "v", "to": "__multiply_11", "semantic": "direct", "weight": 1.0},
+                    {"from": "__multiply_11", "to": "__multiply_10", "semantic": "direct", "weight": 1.0},
+                    {"from": "__multiply_10", "to": "__multiply_8", "semantic": "direct", "weight": 1.0},
+                    {"from": "__multiply_8", "to": "__add_4"},
+                    {"from": "__add_4", "to": "__add_3"},
+                    {"from": "v", "to": "__power_12"},
+                    {"from": "__power_12", "to": "__add_3"},
+                    {"from": "__add_3", "to": "__multiply_2", "semantic": "direct", "weight": 1.0},
+                    {"from": "R", "to": "__power_13"},
+                    {"from": "__power_13", "to": "__multiply_2"},
+                    {"from": "__multiply_2", "to": "__equals_1"}
+                  ],
+                  "classification": {"kind": "algebraic"},
+                  "domain": "classical_mechanics",
+                  "enrichment": {
+                    "reasoning": "The context describes a rotating space habitat, with terms like angular velocity and Coriolis acceleration. The domain is `classical_mechanics`. Symbols are identified as acceleration ($a$), angular velocity ($\\omega$), radius ($R$), and tangential velocity ($v$).",
+                    "fields": ["domain", "nodes.__equals_1.description", "nodes.a.description", "nodes.a.dimension", "nodes.a.emoji", "nodes.a.quantity", "nodes.a.unit", "nodes.__multiply_2.description", "nodes.__multiply_2.dimension", "nodes.__multiply_2.quantity", "nodes.__multiply_2.unit", "nodes.__add_3.description", "nodes.__add_3.dimension", "nodes.__add_3.quantity", "nodes.__add_3.unit", "nodes.__add_4.description", "nodes.__add_4.dimension", "nodes.__add_4.unit", "nodes.__multiply_5.description", "nodes.__multiply_5.dimension", "nodes.__multiply_5.unit", "nodes.__power_6.description", "nodes.__power_6.dimension", "nodes.__power_6.unit", "nodes.omega.description", "nodes.omega.dimension", "nodes.omega.emoji", "nodes.omega.quantity", "nodes.omega.unit", "nodes.__power_7.description", "nodes.__power_7.dimension", "nodes.__power_7.unit", "nodes.R.description", "nodes.R.dimension", "nodes.R.emoji", "nodes.R.quantity", "nodes.R.unit", "nodes.__multiply_8.description", "nodes.__multiply_8.dimension", "nodes.__multiply_8.unit", "nodes.__num_9.description", "nodes.__num_9.dimension", "nodes.__num_9.emoji", "nodes.__num_9.quantity", "nodes.__num_9.unit", "nodes.__num_9.value", "nodes.__multiply_10.description", "nodes.__multiply_10.dimension", "nodes.__multiply_10.unit", "nodes.__multiply_11.description", "nodes.__multiply_11.dimension", "nodes.__multiply_11.unit", "nodes.v.description", "nodes.v.dimension", "nodes.v.emoji", "nodes.v.quantity", "nodes.v.unit", "nodes.__power_12.description", "nodes.__power_12.dimension", "nodes.__power_12.unit", "nodes.__power_13.description", "nodes.__power_13.dimension", "nodes.__power_13.unit"]
+                  }
+                }
+              }
+            },
+            {
+              "id": "separate",
+              "type": "step",
+              "label": "Separate the contributions",
+              "math": "a = \\htmlClass{hl-ga}{\\omega^2 R} + \\htmlClass{hl-cor}{2\\omega v} + \\frac{v^2}{R}",
+              "highlights": {
+                "ga": {"color": "red", "label": "Artificial gravity (stationary part)"},
+                "cor": {"color": "blue", "label": "The Coriolis term"}
+              },
+              "justification": "Divide each term by $R$ to split the acceleration into named pieces.",
+              "explanation": "The first term is the usual artificial gravity; the last is a tiny correction; the middle term is new.",
+              "sceneStep": 3,
+              "tags": ["step"],
+              "semanticGraph": {
+                "graph": {
+                  "nodes": [
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "a = \\omega^2 R + 2\\omega v + \\frac{v^2}{R}", "description": "Equation relating the total perceived acceleration to its three components: centripetal, Coriolis, and tangential."},
+                    {"id": "a", "type": "scalar", "emoji": "🏃", "latex": "a", "subexpr": "a", "description": "Total perceived acceleration by a person moving inside the rotating habitat.", "quantity": "acceleration", "dimension": "L·T⁻²", "unit": "m/s²"},
+                    {"id": "__add_2", "type": "operator", "op": "add", "subexpr": "\\omega^{2} R + 2 \\omega v + \\frac{1}{R} v^{2}", "description": "The sum of the centripetal, Coriolis, and tangential accelerations, giving the total perceived acceleration.", "quantity": "acceleration", "dimension": "L·T⁻²", "unit": "m/s²"},
+                    {"id": "__add_3", "type": "operator", "op": "add", "subexpr": "\\omega^{2} R + 2 \\omega v", "description": "The sum of the primary acceleration components: the main centripetal 'artificial gravity' and the Coriolis acceleration.", "quantity": "acceleration", "dimension": "L·T⁻²", "unit": "m/s²"},
+                    {"id": "__multiply_4", "type": "operator", "op": "multiply", "subexpr": "\\omega^{2} R", "description": "The centripetal acceleration, which provides the sensation of artificial gravity for a stationary observer.", "quantity": "centripetal_acceleration", "dimension": "L·T⁻²", "unit": "m/s²", "color": "red", "highlight": "ga"},
+                    {"id": "__power_5", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\omega^{2}", "description": "The square of the angular velocity.", "quantity": "angular_velocity_squared", "dimension": "T⁻²", "unit": "s⁻²"},
+                    {"id": "omega", "type": "scalar", "emoji": "🔄", "latex": "\\omega", "subexpr": "\\omega", "description": "Angular velocity of the rotating space habitat.", "quantity": "angular_velocity", "dimension": "T⁻¹", "unit": "rad/s"},
+                    {"id": "R", "type": "scalar", "emoji": "📏", "latex": "R", "subexpr": "R", "description": "Radius of the rotating space habitat, from the center of rotation to the 'floor'.", "quantity": "radius", "dimension": "L", "unit": "m"},
+                    {"id": "__multiply_6", "type": "operator", "op": "multiply", "subexpr": "2 \\omega v", "description": "The Coriolis acceleration, experienced as a sideways push when moving tangentially in the rotating frame.", "quantity": "coriolis_acceleration", "dimension": "L·T⁻²", "unit": "m/s²", "color": "blue", "highlight": "cor"},
+                    {"id": "__num_7", "type": "number", "label": "2", "subexpr": "2", "description": "The factor of 2 in the Coriolis acceleration term, arising from the transformation to a rotating reference frame.", "quantity": "coefficient", "dimension": "1", "unit": ""},
+                    {"id": "__multiply_8", "type": "operator", "op": "multiply", "subexpr": "\\omega v", "description": "The product of angular velocity and tangential velocity, a key component of the Coriolis acceleration.", "quantity": "acceleration", "dimension": "L·T⁻²", "unit": "m/s²"},
+                    {"id": "v", "type": "scalar", "emoji": "👟", "latex": "v", "subexpr": "v", "description": "Tangential velocity of a person walking along the 'floor' of the rotating habitat.", "quantity": "velocity", "dimension": "L·T⁻¹", "unit": "m/s"},
+                    {"id": "__multiply_9", "type": "operator", "op": "multiply", "subexpr": "\\frac{1}{R} v^{2}", "description": "A small acceleration term resulting from the person's own tangential motion relative to the habitat.", "quantity": "acceleration", "dimension": "L·T⁻²", "unit": "m/s²"},
+                    {"id": "__power_10", "type": "operator", "op": "power", "exponent": "2", "subexpr": "v^{2}", "description": "The square of the person's tangential velocity.", "quantity": "velocity_squared", "dimension": "L²·T⁻²", "unit": "m²/s²"},
+                    {"id": "__power_11", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{R}", "description": "The reciprocal of the habitat's radius.", "quantity": "inverse_radius", "dimension": "L⁻¹", "unit": "m⁻¹"}
+                  ],
+                  "edges": [
+                    {"from": "a", "to": "__equals_1"},
+                    {"from": "omega", "to": "__power_5"},
+                    {"from": "__power_5", "to": "__multiply_4", "semantic": "direct", "weight": 1.0},
+                    {"from": "R", "to": "__multiply_4", "semantic": "direct", "weight": 1.0},
+                    {"from": "__multiply_4", "to": "__add_3"},
+                    {"from": "__num_7", "to": "__multiply_6", "semantic": "direct", "weight": 1.0},
+                    {"from": "omega", "to": "__multiply_8", "semantic": "direct", "weight": 1.0},
+                    {"from": "v", "to": "__multiply_8", "semantic": "direct", "weight": 1.0},
+                    {"from": "__multiply_8", "to": "__multiply_6", "semantic": "direct", "weight": 1.0},
+                    {"from": "__multiply_6", "to": "__add_3"},
+                    {"from": "__add_3", "to": "__add_2"},
+                    {"from": "v", "to": "__power_10"},
+                    {"from": "__power_10", "to": "__multiply_9", "semantic": "direct", "weight": 1.0},
+                    {"from": "R", "to": "__power_11"},
+                    {"from": "__power_11", "to": "__multiply_9"},
+                    {"from": "__multiply_9", "to": "__add_2"},
+                    {"from": "__add_2", "to": "__equals_1"}
+                  ],
+                  "classification": {"kind": "algebraic"},
+                  "domain": "classical_mechanics",
+                  "enrichment": {
+                    "reasoning": "The context discusses artificial gravity, centripetal force, and Coriolis acceleration, establishing the domain as classical mechanics. Symbols `ω`, `R`, and `v` are identified as angular velocity, radius, and tangential velocity, respectively.",
+                    "fields": ["domain", "nodes.__equals_1.description", "nodes.a.description", "nodes.a.dimension", "nodes.a.emoji", "nodes.a.quantity", "nodes.a.unit", "nodes.__add_2.description", "nodes.__add_2.dimension", "nodes.__add_2.quantity", "nodes.__add_2.unit", "nodes.__add_3.description", "nodes.__add_3.dimension", "nodes.__add_3.quantity", "nodes.__add_3.unit", "nodes.__multiply_4.description", "nodes.__multiply_4.dimension", "nodes.__multiply_4.quantity", "nodes.__multiply_4.unit", "nodes.__power_5.description", "nodes.__power_5.dimension", "nodes.__power_5.quantity", "nodes.__power_5.unit", "nodes.omega.description", "nodes.omega.dimension", "nodes.omega.emoji", "nodes.omega.quantity", "nodes.omega.unit", "nodes.R.description", "nodes.R.dimension", "nodes.R.emoji", "nodes.R.quantity", "nodes.R.unit", "nodes.__multiply_6.description", "nodes.__multiply_6.dimension", "nodes.__multiply_6.quantity", "nodes.__multiply_6.unit", "nodes.__num_7.description", "nodes.__num_7.dimension", "nodes.__num_7.quantity", "nodes.__num_7.unit", "nodes.__multiply_8.description", "nodes.__multiply_8.dimension", "nodes.__multiply_8.quantity", "nodes.__multiply_8.unit", "nodes.v.description", "nodes.v.dimension", "nodes.v.emoji", "nodes.v.quantity", "nodes.v.unit", "nodes.__multiply_9.description", "nodes.__multiply_9.dimension", "nodes.__multiply_9.quantity", "nodes.__multiply_9.unit", "nodes.__power_10.description", "nodes.__power_10.dimension", "nodes.__power_10.quantity", "nodes.__power_10.unit", "nodes.__power_11.description", "nodes.__power_11.dimension", "nodes.__power_11.quantity", "nodes.__power_11.unit"]
+                  }
+                }
+              }
+            },
+            {
+              "id": "coriolis",
+              "type": "conclusion",
+              "label": "The Coriolis acceleration",
+              "math": "\\htmlClass{hl-result}{a_{Cor} = 2\\omega v}",
+              "highlights": {
+                "result": {"color": "blue", "label": "Coriolis acceleration"}
+              },
+              "justification": "The velocity-dependent middle term is the Coriolis acceleration in the rotating frame.",
+              "explanation": "This sideways push grows with both spin rate and walking speed — why fast spins feel disorienting.",
+              "sceneStep": 3,
+              "tags": ["conclusion", "key-insight"],
+              "prompt": "Show the blue Coriolis arrow against the red gravity arrow as the walker speeds up.",
+              "semanticGraph": {
+                "graph": {
+                  "nodes": [
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "a_{Cor} = 2\\omega v", "description": "The Coriolis acceleration is equal to twice the product of the habitat's angular velocity and a person's tangential velocity.", "color": "blue", "highlight": "result"},
+                    {"id": "a_Cor", "type": "scalar", "emoji": "🌀", "latex": "a_{Cor}", "subexpr": "a_{Cor}", "description": "The Coriolis acceleration, a sideways push experienced when moving within a rotating frame of reference.", "quantity": "acceleration", "dimension": "L·T⁻²", "unit": "m/s²"},
+                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "2 \\omega v", "description": "The product of twice the angular velocity and the tangential velocity, which yields the Coriolis acceleration.", "quantity": "acceleration", "dimension": "L·T⁻²", "unit": "m/s²"},
+                    {"id": "__num_3", "type": "number", "label": "2", "subexpr": "2", "description": "The factor of 2 in the Coriolis acceleration formula, arising from the transformation to a rotating reference frame.", "quantity": "coefficient", "dimension": "1", "unit": "", "value": 2},
+                    {"id": "__multiply_4", "type": "operator", "op": "multiply", "subexpr": "\\omega v", "description": "The product of the angular velocity of the habitat and the tangential walking speed of the person inside.", "quantity": "acceleration", "dimension": "L·T⁻²", "unit": "m/s²"},
+                    {"id": "omega", "type": "scalar", "emoji": "🔄", "latex": "\\omega", "subexpr": "\\omega", "description": "The angular velocity of the rotating space habitat, representing its spin rate.", "quantity": "angular_velocity", "dimension": "T⁻¹", "unit": "rad/s"},
+                    {"id": "v", "type": "scalar", "emoji": "🚶", "latex": "v", "subexpr": "v", "description": "The tangential velocity of a person walking inside the rotating habitat.", "quantity": "velocity", "dimension": "L·T⁻¹", "unit": "m/s"}
+                  ],
+                  "edges": [
+                    {"from": "a_Cor", "to": "__equals_1"},
+                    {"from": "__num_3", "to": "__multiply_2", "semantic": "direct", "weight": 1.0},
+                    {"from": "omega", "to": "__multiply_4", "semantic": "direct", "weight": 1.0},
+                    {"from": "v", "to": "__multiply_4", "semantic": "direct", "weight": 1.0},
+                    {"from": "__multiply_4", "to": "__multiply_2", "semantic": "direct", "weight": 1.0},
+                    {"from": "__multiply_2", "to": "__equals_1"}
+                  ],
+                  "classification": {"kind": "algebraic"},
+                  "domain": "classical_mechanics",
+                  "enrichment": {
+                    "reasoning": "The context of a rotating space habitat and Coriolis acceleration firmly places the domain in classical mechanics. The symbols `ω` and `v` are identified as angular and tangential velocity, respectively.",
+                    "fields": ["domain", "nodes.__equals_1.description", "nodes.a_Cor.description", "nodes.a_Cor.dimension", "nodes.a_Cor.emoji", "nodes.a_Cor.quantity", "nodes.a_Cor.unit", "nodes.__multiply_2.description", "nodes.__multiply_2.dimension", "nodes.__multiply_2.quantity", "nodes.__multiply_2.unit", "nodes.__num_3.description", "nodes.__num_3.dimension", "nodes.__num_3.quantity", "nodes.__num_3.unit", "nodes.__num_3.value", "nodes.__multiply_4.description", "nodes.__multiply_4.dimension", "nodes.__multiply_4.quantity", "nodes.__multiply_4.unit", "nodes.omega.description", "nodes.omega.dimension", "nodes.omega.emoji", "nodes.omega.quantity", "nodes.omega.unit", "nodes.v.description", "nodes.v.dimension", "nodes.v.emoji", "nodes.v.quantity", "nodes.v.unit"]
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "gravity-gradient",
+          "title": "Head-to-Feet Gravity Gradient",
+          "technique": "direct",
+          "techniqueHint": "Apparent gravity scales linearly with radius, so it differs along your body.",
+          "goal": "Show the relative gravity difference between head and feet is $\\frac{\\Delta g}{g} = \\frac{h}{R}$.",
+          "prompt": "Explain why a small habitat radius makes standing up feel strange.",
+          "steps": [
+            {
+              "id": "g-of-r",
+              "type": "given",
+              "label": "Gravity varies with radius",
+              "math": "g(r) = \\omega^2 \\htmlClass{hl-r}{r}",
+              "highlights": {
+                "r": {"color": "cyan", "label": "Distance from the spin axis"}
+              },
+              "justification": "From $g_a = \\omega^2 R$, the apparent gravity at any radius $r$ is $\\omega^2 r$.",
+              "explanation": "Closer to the axis means a smaller spin radius, hence less gravity.",
+              "sceneStep": 4,
+              "tags": ["given"],
+              "semanticGraph": {
+                "graph": {
+                  "nodes": [
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "g(r) = \\omega^2 r", "description": "The relation defining apparent gravity $g$ at a radius $r$ for a given angular velocity $\\omega$."},
+                    {"id": "__g_2", "type": "function", "emoji": "📉", "op": "g", "subexpr": "g{\\left(r \\right)}", "description": "Apparent gravity $g(r)$ as a function of the radius $r$.", "quantity": "apparent_gravity", "dimension": "L·T⁻²", "unit": "m/s²"},
+                    {"id": "r", "type": "scalar", "emoji": "📏", "latex": "r", "subexpr": "r", "description": "The distance from the central axis of rotation.", "quantity": "radius", "dimension": "L", "unit": "m", "color": "cyan", "highlight": "r"},
+                    {"id": "__multiply_3", "type": "operator", "op": "multiply", "subexpr": "r \\omega^{2}", "description": "The product of the radius and the square of the angular velocity, which calculates the centripetal acceleration or apparent gravity.", "quantity": "acceleration", "dimension": "L·T⁻²", "unit": "m/s²"},
+                    {"id": "__power_4", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\omega^{2}", "description": "The square of the angular velocity.", "dimension": "T⁻²", "unit": "rad²/s²"},
+                    {"id": "omega", "type": "scalar", "emoji": "🔄", "latex": "\\omega", "subexpr": "\\omega", "description": "The angular velocity of the rotating space habitat.", "quantity": "angular_velocity", "dimension": "T⁻¹", "unit": "rad/s"}
+                  ],
+                  "edges": [
+                    {"from": "r", "to": "__g_2"},
+                    {"from": "__g_2", "to": "__equals_1"},
+                    {"from": "omega", "to": "__power_4"},
+                    {"from": "__power_4", "to": "__multiply_3", "semantic": "direct", "weight": 1.0},
+                    {"from": "r", "to": "__multiply_3", "semantic": "direct", "weight": 1.0},
+                    {"from": "__multiply_3", "to": "__equals_1"}
+                  ],
+                  "classification": {"kind": "algebraic"},
+                  "domain": "classical_mechanics",
+                  "enrichment": {
+                    "reasoning": "The context is a lesson on artificial gravity in rotating habitats, so the domain is classical mechanics. `g` is apparent gravity, `ω` is angular velocity, and `r` is radius.",
+                    "fields": ["domain", "nodes.__equals_1.description", "nodes.__g_2.description", "nodes.__g_2.dimension", "nodes.__g_2.emoji", "nodes.__g_2.quantity", "nodes.__g_2.unit", "nodes.r.description", "nodes.r.dimension", "nodes.r.emoji", "nodes.r.quantity", "nodes.r.unit", "nodes.__multiply_3.description", "nodes.__multiply_3.dimension", "nodes.__multiply_3.quantity", "nodes.__multiply_3.unit", "nodes.__power_4.description", "nodes.__power_4.dimension", "nodes.__power_4.unit", "nodes.omega.description", "nodes.omega.dimension", "nodes.omega.emoji", "nodes.omega.quantity", "nodes.omega.unit"]
+                  }
+                }
+              }
+            },
+            {
+              "id": "feet",
+              "type": "step",
+              "label": "Gravity at the feet",
+              "math": "g_{feet} = \\omega^2 R",
+              "highlights": {},
+              "justification": "The feet rest on the floor at the full radius $R$.",
+              "explanation": "Standing on the rim, your feet are at radius $R$.",
+              "sceneStep": 4,
+              "tags": ["step"],
+              "semanticGraph": {
+                "graph": {
+                  "nodes": [
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "g_{feet} = \\omega^2 R", "description": "States that the artificial gravity at the feet equals the centripetal acceleration."},
+                    {"id": "g_feet", "type": "scalar", "emoji": "👟", "latex": "g_{feet}", "subexpr": "g_{feet}", "description": "Artificial gravity (centripetal acceleration) experienced at the feet.", "quantity": "acceleration", "dimension": "L·T⁻²", "unit": "m/s²"},
+                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "\\omega^{2} R", "description": "The product of the squared angular velocity and the radius, which defines the centripetal acceleration.", "quantity": "acceleration", "dimension": "L·T⁻²", "unit": "m/s²"},
+                    {"id": "__power_3", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\omega^{2}", "description": "The square of the angular velocity, a key component of centripetal acceleration.", "quantity": "squared_angular_velocity", "dimension": "T⁻²", "unit": "rad²/s²"},
+                    {"id": "omega", "type": "scalar", "emoji": "🔄", "latex": "\\omega", "subexpr": "\\omega", "description": "Angular velocity of the rotating space habitat.", "quantity": "angular_velocity", "dimension": "T⁻¹", "unit": "rad/s"},
+                    {"id": "R", "type": "scalar", "emoji": "📏", "latex": "R", "subexpr": "R", "description": "The maximum radius of the rotating space habitat.", "quantity": "radius", "dimension": "L", "unit": "m"}
+                  ],
+                  "edges": [
+                    {"from": "g_feet", "to": "__equals_1"},
+                    {"from": "omega", "to": "__power_3"},
+                    {"from": "__power_3", "to": "__multiply_2", "semantic": "direct", "weight": 1.0},
+                    {"from": "R", "to": "__multiply_2", "semantic": "direct", "weight": 1.0},
+                    {"from": "__multiply_2", "to": "__equals_1"}
+                  ],
+                  "classification": {"kind": "algebraic"},
+                  "domain": "classical_mechanics",
+                  "enrichment": {
+                    "reasoning": "The context describes artificial gravity in a rotating habitat, so the domain is classical_mechanics. `g` is acceleration, `ω` is angular velocity, and `R` is the habitat radius.",
+                    "fields": ["domain", "nodes.__equals_1.description", "nodes.g_feet.description", "nodes.g_feet.dimension", "nodes.g_feet.emoji", "nodes.g_feet.quantity", "nodes.g_feet.unit", "nodes.__multiply_2.description", "nodes.__multiply_2.dimension", "nodes.__multiply_2.quantity", "nodes.__multiply_2.unit", "nodes.__power_3.description", "nodes.__power_3.dimension", "nodes.__power_3.quantity", "nodes.__power_3.unit", "nodes.omega.description", "nodes.omega.dimension", "nodes.omega.emoji", "nodes.omega.quantity", "nodes.omega.unit", "nodes.R.description", "nodes.R.dimension", "nodes.R.emoji", "nodes.R.quantity", "nodes.R.unit"]
+                  }
+                }
+              }
+            },
+            {
+              "id": "head",
+              "type": "step",
+              "label": "Gravity at the head",
+              "math": "g_{head} = \\omega^2 (R - \\htmlClass{hl-h}{h})",
+              "highlights": {
+                "h": {"color": "yellow", "label": "Your height — the head is closer to the axis"}
+              },
+              "justification": "The head sits a height $h$ nearer the axis, at radius $R - h$.",
+              "explanation": "Your head is at the smaller radius $R-h$, so it feels less gravity.",
+              "sceneStep": 4,
+              "tags": ["step"],
+              "semanticGraph": {
+                "graph": {
+                  "nodes": [
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "g_{head} = \\omega^2 (R - h)", "description": "This equation states that the centripetal acceleration at the head equals the angular velocity squared times the head's radius of rotation."},
+                    {"id": "g_head", "type": "scalar", "emoji": "🧠", "latex": "g_{head}", "subexpr": "g_{head}", "description": "Centripetal acceleration experienced at the head, which provides the sensation of gravity.", "quantity": "acceleration", "dimension": "L·T⁻²", "unit": "m/s²"},
+                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "\\omega^{2} \\left(R - h\\right)", "description": "The product of the squared angular velocity and the head's radius, yielding the centripetal acceleration at the head.", "quantity": "acceleration", "dimension": "L·T⁻²", "unit": "m/s²"},
+                    {"id": "__power_3", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\omega^{2}", "description": "The square of the angular velocity.", "dimension": "T⁻²", "unit": "s⁻²"},
+                    {"id": "omega", "type": "scalar", "emoji": "🌀", "latex": "\\omega", "subexpr": "\\omega", "description": "Angular velocity of the rotating space habitat.", "quantity": "angular_velocity", "dimension": "T⁻¹", "unit": "rad/s"},
+                    {"id": "__add_4", "type": "operator", "op": "add", "subexpr": "R - h", "description": "The radius at the head, calculated by subtracting the person's height from the station's maximum radius.", "quantity": "radius", "dimension": "L", "unit": "m"},
+                    {"id": "R", "type": "scalar", "emoji": "🛰️", "latex": "R", "subexpr": "R", "description": "The maximum radius of the rotating space habitat, from the central axis to the floor.", "quantity": "radius", "dimension": "L", "unit": "m"},
+                    {"id": "__negation_5", "type": "operator", "op": "negation", "subexpr": "-h", "description": "The negative of the person's height, used in the radius calculation.", "quantity": "height", "dimension": "L", "unit": "m"},
+                    {"id": "h", "type": "scalar", "emoji": "🧍", "latex": "h", "subexpr": "h", "description": "A person's height, representing the distance from their feet to their head.", "quantity": "height", "dimension": "L", "unit": "m", "color": "yellow", "highlight": "h"}
+                  ],
+                  "edges": [
+                    {"from": "g_head", "to": "__equals_1"},
+                    {"from": "omega", "to": "__power_3"},
+                    {"from": "__power_3", "to": "__multiply_2", "semantic": "direct", "weight": 1.0},
+                    {"from": "R", "to": "__add_4"},
+                    {"from": "h", "to": "__negation_5"},
+                    {"from": "__negation_5", "to": "__add_4"},
+                    {"from": "__add_4", "to": "__multiply_2", "semantic": "direct", "weight": 1.0},
+                    {"from": "__multiply_2", "to": "__equals_1"}
+                  ],
+                  "classification": {"kind": "algebraic"},
+                  "domain": "classical_mechanics",
+                  "enrichment": {
+                    "reasoning": "The context discusses artificial gravity and rotation in a space habitat, so the domain is `classical_mechanics`. Symbols `g`, `ω`, `R`, and `h` represent acceleration, angular velocity, radius, and height.",
+                    "fields": ["domain", "nodes.__equals_1.description", "nodes.g_head.description", "nodes.g_head.dimension", "nodes.g_head.emoji", "nodes.g_head.quantity", "nodes.g_head.unit", "nodes.__multiply_2.description", "nodes.__multiply_2.dimension", "nodes.__multiply_2.quantity", "nodes.__multiply_2.unit", "nodes.__power_3.description", "nodes.__power_3.dimension", "nodes.__power_3.unit", "nodes.omega.description", "nodes.omega.dimension", "nodes.omega.emoji", "nodes.omega.quantity", "nodes.omega.unit", "nodes.__add_4.description", "nodes.__add_4.dimension", "nodes.__add_4.quantity", "nodes.__add_4.unit", "nodes.R.description", "nodes.R.dimension", "nodes.R.emoji", "nodes.R.quantity", "nodes.R.unit", "nodes.__negation_5.description", "nodes.__negation_5.dimension", "nodes.__negation_5.quantity", "nodes.__negation_5.unit", "nodes.h.description", "nodes.h.dimension", "nodes.h.emoji", "nodes.h.quantity", "nodes.h.unit"]
+                  }
+                }
+              }
+            },
+            {
+              "id": "difference",
+              "type": "step",
+              "label": "Gravity difference",
+              "math": "\\Delta g = g_{feet} - g_{head} = \\omega^2 h",
+              "highlights": {},
+              "justification": "Subtract: $\\omega^2 R - \\omega^2(R-h) = \\omega^2 h$.",
+              "explanation": "The absolute difference depends only on your height $h$.",
+              "sceneStep": 4,
+              "tags": ["step"],
+              "semanticGraph": {
+                "graph": {
+                  "nodes": [
+                    {"id": "Delta_g", "type": "scalar", "label": "Δg", "emoji": "📏", "latex": "\\Delta g", "subexpr": "\\Delta g", "description": "The difference in artificial gravity experienced between a person's head and feet.", "quantity": "acceleration", "dimension": "L·T⁻²", "unit": "m/s²"},
+                    {"id": "s1___add_1", "type": "operator", "op": "add", "subexpr": "g_{feet} - g_{head}", "description": "The subtraction of head-level gravity from feet-level gravity to find the absolute difference.", "quantity": "acceleration", "dimension": "L·T⁻²", "unit": "m/s²"},
+                    {"id": "g_feet", "type": "scalar", "label": "g_feet", "emoji": "👟", "latex": "g_{feet}", "subexpr": "g_{feet}", "description": "Artificial gravity experienced at the feet, at radius $R$.", "quantity": "acceleration", "dimension": "L·T⁻²", "unit": "m/s²"},
+                    {"id": "s1___negation_2", "type": "operator", "op": "negation", "subexpr": "-g_{head}", "description": "Negation of the head-level gravity for the subtraction.", "quantity": "acceleration", "dimension": "L·T⁻²", "unit": "m/s²"},
+                    {"id": "g_head", "type": "scalar", "label": "g_head", "emoji": "🧠", "latex": "g_{head}", "subexpr": "g_{head}", "description": "Artificial gravity experienced at the head, at radius $R-h$.", "quantity": "acceleration", "dimension": "L·T⁻²", "unit": "m/s²"},
+                    {"id": "s2___multiply_1", "type": "operator", "op": "multiply", "subexpr": "\\omega^2 h", "description": "The product of squared angular velocity and height, giving the gravity gradient.", "quantity": "acceleration", "dimension": "L·T⁻²", "unit": "m/s²"},
+                    {"id": "s2___power_2", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\omega^{2}", "description": "Angular velocity squared, a component of centripetal acceleration.", "dimension": "T⁻²", "unit": "rad²/s²"},
+                    {"id": "omega", "type": "scalar", "label": "ω", "emoji": "🔄", "latex": "\\omega", "subexpr": "\\omega", "description": "The angular velocity of the rotating space habitat.", "quantity": "angular_velocity", "dimension": "T⁻¹", "unit": "rad/s"},
+                    {"id": "h", "type": "scalar", "label": "h", "emoji": "🧑", "latex": "h", "subexpr": "h", "description": "The height of the person in the habitat.", "quantity": "height", "dimension": "L", "unit": "m"},
+                    {"id": "__equals_1", "type": "operator", "op": "equals", "subexpr": "\\Delta g = g_{feet} - g_{head} = \\omega^2 h", "description": "An equation relating the gravity difference to the habitat's angular velocity and a person's height."}
+                  ],
+                  "edges": [
+                    {"from": "g_feet", "to": "s1___add_1"},
+                    {"from": "g_head", "to": "s1___negation_2"},
+                    {"from": "s1___negation_2", "to": "s1___add_1"},
+                    {"from": "omega", "to": "s2___power_2"},
+                    {"from": "s2___power_2", "to": "s2___multiply_1"},
+                    {"from": "h", "to": "s2___multiply_1"},
+                    {"from": "Delta_g", "to": "__equals_1"},
+                    {"from": "s1___add_1", "to": "__equals_1"},
+                    {"from": "s2___multiply_1", "to": "__equals_1"}
+                  ],
+                  "classification": {"kind": "algebraic"},
+                  "domain": "classical_mechanics",
+                  "enrichment": {
+                    "reasoning": "The context is a rotating space habitat, which falls under classical mechanics. Symbols relate to artificial gravity, angular velocity (ω), and height (h).",
+                    "fields": ["domain", "nodes.Delta_g.description", "nodes.Delta_g.dimension", "nodes.Delta_g.emoji", "nodes.Delta_g.label", "nodes.Delta_g.quantity", "nodes.Delta_g.unit", "nodes.s1___add_1.description", "nodes.s1___add_1.dimension", "nodes.s1___add_1.quantity", "nodes.s1___add_1.unit", "nodes.g_feet.description", "nodes.g_feet.dimension", "nodes.g_feet.emoji", "nodes.g_feet.label", "nodes.g_feet.quantity", "nodes.g_feet.unit", "nodes.s1___negation_2.description", "nodes.s1___negation_2.dimension", "nodes.s1___negation_2.quantity", "nodes.s1___negation_2.unit", "nodes.g_head.description", "nodes.g_head.dimension", "nodes.g_head.emoji", "nodes.g_head.label", "nodes.g_head.quantity", "nodes.g_head.unit", "nodes.s2___multiply_1.description", "nodes.s2___multiply_1.dimension", "nodes.s2___multiply_1.quantity", "nodes.s2___multiply_1.unit", "nodes.s2___power_2.description", "nodes.s2___power_2.dimension", "nodes.s2___power_2.unit", "nodes.omega.description", "nodes.omega.dimension", "nodes.omega.emoji", "nodes.omega.label", "nodes.omega.quantity", "nodes.omega.unit", "nodes.h.description", "nodes.h.dimension", "nodes.h.emoji", "nodes.h.label", "nodes.h.quantity", "nodes.h.unit", "nodes.__equals_1.description"]
+                  }
+                }
+              }
+            },
+            {
+              "id": "ratio",
+              "type": "conclusion",
+              "label": "Relative gradient",
+              "math": "\\htmlClass{hl-result}{\\frac{\\Delta g}{g} = \\frac{\\omega^2 h}{\\omega^2 R} = \\frac{h}{R}}",
+              "highlights": {
+                "result": {"color": "green", "label": "Fractional head-to-feet gravity drop"}
+              },
+              "justification": "Divide $\\Delta g$ by $g = \\omega^2 R$; the $\\omega^2$ cancels, leaving $h/R$.",
+              "explanation": "A 1.8 m person in a small habitat feels a large fractional drop standing up — why designers want a big $R$.",
+              "sceneStep": 4,
+              "tags": ["conclusion", "key-insight"],
+              "prompt": "Compare the feet vs head gravity arrows and shrink $R$ to exaggerate the gap.",
+              "semanticGraph": {
+                "graph": {
+                  "nodes": [
+                    {"id": "s0___multiply_1", "type": "operator", "op": "multiply", "subexpr": "\\frac{\\Delta g}{g}", "description": "The ratio of the gravity gradient to the local gravity, which gives the fractional change felt by the person.", "quantity": "relative_gravity_gradient", "dimension": "1", "unit": ""},
+                    {"id": "Delta_g", "type": "scalar", "emoji": "📏", "latex": "\\Delta g", "subexpr": "\\Delta g", "description": "The gravity gradient, or the difference in artificial gravity between a person's head and feet.", "quantity": "gravity_gradient", "dimension": "L·T⁻²", "unit": "m/s²"},
+                    {"id": "s0___power_2", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{g}", "description": "The reciprocal of the local artificial gravity at the person's feet."},
+                    {"id": "g", "type": "scalar", "emoji": "🌍", "latex": "g", "subexpr": "g", "description": "The local artificial gravity, which is the centripetal acceleration at radius $R$.", "quantity": "centripetal_acceleration", "dimension": "L·T⁻²", "unit": "m/s²"},
+                    {"id": "s1___multiply_1", "type": "operator", "op": "multiply", "subexpr": "\\frac{\\omega^2 h}{\\omega^2 R}", "description": "The ratio of the gravity gradient to local gravity, in terms of angular velocity, height, and radius.", "quantity": "relative_gravity_gradient", "dimension": "1", "unit": ""},
+                    {"id": "s1___multiply_2", "type": "operator", "op": "multiply", "subexpr": "\\omega^{2} h", "description": "The numerator term representing the gravity gradient, calculated from angular velocity and a person's height.", "dimension": "L·T⁻²", "unit": "m/s²"},
+                    {"id": "s1___power_3", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\omega^{2}", "description": "The square of the angular velocity."},
+                    {"id": "omega", "type": "scalar", "emoji": "🔄", "latex": "\\omega", "subexpr": "\\omega", "description": "The angular velocity of the rotating space habitat.", "quantity": "angular_velocity", "dimension": "T⁻¹", "unit": "rad/s"},
+                    {"id": "h", "type": "scalar", "emoji": "🧍", "latex": "h", "subexpr": "h", "description": "The height of a person standing in the habitat.", "quantity": "height", "dimension": "L", "unit": "m"},
+                    {"id": "s1___power_4", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{R \\omega^{2}}", "description": "The reciprocal of the local artificial gravity $g = \\\\omega^2 R$."},
+                    {"id": "s1___multiply_5", "type": "operator", "op": "multiply", "subexpr": "\\omega^{2} R", "description": "The local artificial gravity, or centripetal acceleration, at the habitat's floor.", "dimension": "L·T⁻²", "unit": "m/s²"},
+                    {"id": "s1___power_6", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\omega^{2}", "description": "The square of the angular velocity."},
+                    {"id": "R", "type": "scalar", "emoji": "⭕", "latex": "R", "subexpr": "R", "description": "The radius of the rotating space habitat.", "quantity": "radius", "dimension": "L", "unit": "m"},
+                    {"id": "s2___multiply_1", "type": "operator", "op": "multiply", "subexpr": "\\frac{h}{R}", "description": "The simplified ratio of person's height to habitat radius, representing the fractional gravity drop.", "quantity": "relative_gravity_gradient", "dimension": "1", "unit": ""},
+                    {"id": "s2___power_2", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{R}", "description": "The reciprocal of the habitat radius."},
+                    {"id": "__equals_1", "type": "operator", "op": "equals", "subexpr": "\\frac{\\Delta g}{g} = \\frac{\\omega^2 h}{\\omega^2 R} = \\frac{h}{R}", "description": "The equality showing the fractional head-to-feet gravity drop is the ratio of the person's height to the habitat's radius.", "color": "green", "highlight": "result"}
+                  ],
+                  "edges": [
+                    {"from": "Delta_g", "to": "s0___multiply_1"},
+                    {"from": "g", "to": "s0___power_2"},
+                    {"from": "s0___power_2", "to": "s0___multiply_1"},
+                    {"from": "omega", "to": "s1___power_3"},
+                    {"from": "s1___power_3", "to": "s1___multiply_2"},
+                    {"from": "h", "to": "s1___multiply_2"},
+                    {"from": "s1___multiply_2", "to": "s1___multiply_1"},
+                    {"from": "omega", "to": "s1___power_6"},
+                    {"from": "s1___power_6", "to": "s1___multiply_5"},
+                    {"from": "R", "to": "s1___multiply_5"},
+                    {"from": "s1___multiply_5", "to": "s1___power_4"},
+                    {"from": "s1___power_4", "to": "s1___multiply_1"},
+                    {"from": "h", "to": "s2___multiply_1"},
+                    {"from": "R", "to": "s2___power_2"},
+                    {"from": "s2___power_2", "to": "s2___multiply_1"},
+                    {"from": "s0___multiply_1", "to": "__equals_1"},
+                    {"from": "s1___multiply_1", "to": "__equals_1"},
+                    {"from": "s2___multiply_1", "to": "__equals_1"}
+                  ],
+                  "classification": {"kind": "algebraic"},
+                  "domain": "classical_mechanics",
+                  "enrichment": {
+                    "reasoning": "Context is a space habitat with artificial gravity, so the domain is classical mechanics. Symbols are g (gravity), R (radius), h (height), and ω (angular velocity).",
+                    "fields": ["domain", "nodes.s0___multiply_1.description", "nodes.s0___multiply_1.dimension", "nodes.s0___multiply_1.quantity", "nodes.s0___multiply_1.unit", "nodes.Delta_g.description", "nodes.Delta_g.dimension", "nodes.Delta_g.emoji", "nodes.Delta_g.quantity", "nodes.Delta_g.unit", "nodes.s0___power_2.description", "nodes.g.description", "nodes.g.dimension", "nodes.g.emoji", "nodes.g.quantity", "nodes.g.unit", "nodes.s1___multiply_1.description", "nodes.s1___multiply_1.dimension", "nodes.s1___multiply_1.quantity", "nodes.s1___multiply_1.unit", "nodes.s1___multiply_2.description", "nodes.s1___multiply_2.dimension", "nodes.s1___multiply_2.unit", "nodes.s1___power_3.description", "nodes.omega.description", "nodes.omega.dimension", "nodes.omega.emoji", "nodes.omega.quantity", "nodes.omega.unit", "nodes.h.description", "nodes.h.dimension", "nodes.h.emoji", "nodes.h.quantity", "nodes.h.unit", "nodes.s1___power_4.description", "nodes.s1___multiply_5.description", "nodes.s1___multiply_5.dimension", "nodes.s1___multiply_5.unit", "nodes.s1___power_6.description", "nodes.R.description", "nodes.R.dimension", "nodes.R.emoji", "nodes.R.quantity", "nodes.R.unit", "nodes.s2___multiply_1.description", "nodes.s2___multiply_1.dimension", "nodes.s2___multiply_1.quantity", "nodes.s2___multiply_1.unit", "nodes.s2___power_2.description", "nodes.__equals_1.description"]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }
