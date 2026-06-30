@@ -2157,6 +2157,14 @@ export class ProofAnimator {
       count.textContent = `· ${good}/${total}`;
       el.append(count);
     }
+    // AI button (same factory as the step ask buttons, so it routes the same way):
+    // explain what this confidence badge means. Revealed with the expanded badge;
+    // its own click stops propagation, so it never pins/unpins the pill.
+    if (this._aiAsk) {
+      el.classList.add("pa-overall-has-ask");
+      el.append(this._aiAsk("pa-ask-btn pa-ask-overall", "Explain this confidence rating",
+        () => this._askOverallMessage()));
+    }
     // The overall reason already summarizes the chain (tallies + endpoint), so
     // the pill tooltip is "<Label> — <summary>", not the per-step meaning.
     const tip = `${oc.label} — ${oc.reason || oc.meaning || ""} · click to pin details`;
@@ -2311,6 +2319,29 @@ export class ProofAnimator {
       + ` let me attempt the result, and only then confirm or correct it.`;
     return msg;
   }
+
+  // Chat message for the "explain this confidence badge" button on the overall pill.
+  _askOverallMessage() {
+    const oc = (this.data && this.data.overall_confidence) || {};
+    const title = this.data && this.data.title ? ` "${this.data.title}"` : "";
+    const tier = oc.label || oc.tier || "this";
+    const counts = oc.counts || {};
+    const total = Object.values(counts).reduce((a, b) => a + (b || 0), 0);
+    let m = `The derivation${title} carries an overall confidence of "${tier}"`;
+    if (total) {
+      const good = (counts.grounded || 0) + (counts.verified || 0);
+      const bits = [`${good}/${total} steps verified`];
+      if (counts.plausible) bits.push(`${counts.plausible} plausible`);
+      if (counts.domain) bits.push(`${counts.domain} domain-vouched`);
+      if (oc.endpoint_reached === false) bits.push(`the target endpoint was not reached`);
+      m += ` (${bits.join(", ")})`;
+    }
+    if (oc.meaning) m += `. ${oc.meaning}`;
+    return m + `.\n\nExplain what this "${tier}" confidence rating means here — how the`
+      + ` steps are checked, why the derivation earned this tier rather than a higher one,`
+      + ` and how much I should trust the result.`;
+  }
+
   // Meta "promote" animation for a forward (next) step: the current explanation
   // and justification fade OUT, and the title shown in the "Next" pill slides UP
   // into the title position to become the new explanation. Returns a finish()

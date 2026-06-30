@@ -685,7 +685,14 @@
    (peek) or while pinned. */
 .pa-root:not(.pa-conf-on):not(.pa-conf-peek) .pa-overall { padding: 4px 8px; gap: 0; }
 .pa-root:not(.pa-conf-on):not(.pa-conf-peek) .pa-overall-label,
-.pa-root:not(.pa-conf-on):not(.pa-conf-peek) .pa-overall-count { display: none; }
+.pa-root:not(.pa-conf-on):not(.pa-conf-peek) .pa-overall-count,
+.pa-root:not(.pa-conf-on):not(.pa-conf-peek) .pa-ask-overall { display: none; }
+/* The "explain this badge" AI button sits inside the pill and reveals WITH the
+   expanded badge (peek/pin) — independent of the widget-hover that reveals the
+   step ask buttons, so it's visible whenever the badge is open. */
+.pa-overall .pa-ask-overall { width: 16px; height: 16px; padding: 1px; margin-left: 2px; flex: 0 0 auto; border: none; background: transparent; }
+.pa-root.pa-conf-on .pa-ask-overall,
+.pa-root.pa-conf-peek .pa-ask-overall { opacity: 1; pointer-events: auto; }
 .pa-root .pa-overall:focus-visible { outline: 2px solid var(--pa-accent); outline-offset: 2px; }
 /* Its tooltip opens DOWNWARD and right-aligned (the pill sits at the top-right
    edge — the default above-centered tooltip would clip outside the widget). */
