@@ -120,6 +120,8 @@ export class ProofAnimator {
     this._askBtnFocus = null;   // the term the button is anchored to (the ask subject)
     this._askBtnHideTimer = null;
     this._askBtnFadeTimer = null;
+    this._askBtnRelocateTimer = null;   // intent-delay before moving the button to a new term
+    this._askBtnRelocateEl = null;
     // Standalone/embedded term-ask has no host chat factory, but we still want the
     // per-step ask buttons — render engine-native ones that route via _routeAsk
     // (embedded → new tab + auto-ask; standalone → clipboard). The app path keeps
@@ -446,6 +448,7 @@ export class ProofAnimator {
     }
     if (this._askBtnHideTimer) { clearTimeout(this._askBtnHideTimer); this._askBtnHideTimer = null; }
     if (this._askBtnFadeTimer) { clearTimeout(this._askBtnFadeTimer); this._askBtnFadeTimer = null; }
+    if (this._askBtnRelocateTimer) { clearTimeout(this._askBtnRelocateTimer); this._askBtnRelocateTimer = null; }
     // Remove the body-appended popups/buttons this widget created (else they leak
     // when a proof box is torn down and recreated in the app).
     for (const k of ["_termTip", "_mathTip", "_goalPop", "_explorePop", "_termAskBtnEl"]) {
@@ -498,6 +501,9 @@ export class ProofAnimator {
       // Switch only to a REAL term; over chrome/gaps (null) keep the current term
       // lit so crossing a fraction bar between two glyphs never flickers.
       if (el && el !== this._hotTermEl) this._setHotTerm(el);
+      // Over chrome/gap (or the same term): the pointer isn't settling on a NEW
+      // term, so drop any pending button relocate — it may be heading to the button.
+      else if (!el && this._enableTermAsk) this._cancelAskBtnRelocate();
     };
     this._onStageLeave = () => this._setHotTerm(null);
     this._onStageClick = (ev) => {
@@ -537,8 +543,8 @@ export class ProofAnimator {
     // Fade the "Ask AI" button in beside the hovered term (graph-node style); a
     // grace-delayed hide when the pointer leaves lets the cursor reach the button.
     if (this._enableTermAsk) {
-      if (el) this._showTermAskBtn(el);
-      else this._scheduleHideTermAskBtn();
+      if (el) this._requestTermAskBtn(el);
+      else { this._cancelAskBtnRelocate(); this._scheduleHideTermAskBtn(); }
     }
     // Host hook (optional): the app's SgProofManager lights up + selects the LINKED
     // graph node. The chain (innermost glyph → enclosing operator wrappers) lets a
@@ -703,11 +709,41 @@ export class ProofAnimator {
     // delay (below) is what lets the cursor cross the gap from term to button.
     btn.addEventListener("mouseenter", () => {
       if (this._askBtnHideTimer) { clearTimeout(this._askBtnHideTimer); this._askBtnHideTimer = null; }
+      this._cancelAskBtnRelocate();   // reached the button → don't let it jump to a new term
     });
     btn.addEventListener("mouseleave", () => this._scheduleHideTermAskBtn());
     btn.addEventListener("click", (e) => { e.stopPropagation(); this._termAskClick(); });
     document.body.appendChild(btn);
     this._termAskBtnEl = btn;
+  }
+
+  // Show the ask button for `el`, but DON'T yank an already-shown button off a term
+  // the pointer may be reaching for. First appearance (or moving back onto the same
+  // term) snaps instantly; moving to a DIFFERENT term while a button is up waits for
+  // the pointer to SETTLE there (~150ms). A move to empty chrome or onto the button
+  // itself cancels the pending relocate (see _onStageMove / the button's mouseenter),
+  // so a cursor traveling to the button never loses it.
+  _requestTermAskBtn(el) {
+    const btn = this._termAskBtnEl;
+    const visible = btn && btn.style.opacity === "1";
+    if (!visible || !this._askBtnFocus || this._askBtnFocus.el === el) {
+      this._cancelAskBtnRelocate();
+      this._showTermAskBtn(el);
+      return;
+    }
+    if (this._askBtnRelocateEl === el) return;   // already pending for this term
+    this._cancelAskBtnRelocate();
+    this._askBtnRelocateEl = el;
+    this._askBtnRelocateTimer = setTimeout(() => {
+      this._askBtnRelocateTimer = null;
+      this._askBtnRelocateEl = null;
+      this._showTermAskBtn(el);
+    }, 150);
+  }
+
+  _cancelAskBtnRelocate() {
+    if (this._askBtnRelocateTimer) { clearTimeout(this._askBtnRelocateTimer); this._askBtnRelocateTimer = null; }
+    this._askBtnRelocateEl = null;
   }
 
   // Fade the button in just above the hovered term (flipped below if no room),
@@ -730,8 +766,11 @@ export class ProofAnimator {
     // empty space above the line, so the cursor reaches it WITHOUT crossing the
     // next inline glyph (which would relocate the button out from under you). The
     // button overlaps the corner by ~⅓ so a short up-right move lands on it.
-    let left = r.right - bw / 3;
-    let top = r.top - bh * (2 / 3);
+    // Nudged out (right + up) to clear the term — ⅔ of a ⅓-glyph-height step (i.e.
+    // a third closer than a full ⅓-height nudge).
+    const shift = r.height * 2 / 9;
+    let left = r.right - bw / 3 + shift;
+    let top = r.top - bh * (2 / 3) - shift;
     // Flip below if there's no room above; nudge left if it would run off-screen.
     if (top < 4) top = r.bottom - bh / 3;
     left = Math.max(4, Math.min(left, window.innerWidth - bw - 4));
@@ -752,6 +791,7 @@ export class ProofAnimator {
 
   _hideTermAskBtn() {
     if (this._askBtnHideTimer) { clearTimeout(this._askBtnHideTimer); this._askBtnHideTimer = null; }
+    this._cancelAskBtnRelocate();
     const btn = this._termAskBtnEl;
     if (!btn) return;
     btn.style.opacity = "0";

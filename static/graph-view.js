@@ -1226,7 +1226,10 @@ async function dockProofAnimation(proofPath, nodeId) {
     const anchor = (nodeId && _d3NodeElById(nodeId)) || null;
     // Lesson context so a nested "derive this step" inside the animation still works.
     const payload = _proofContextPayload(_d3ActiveGraph);
-    _currentProofManager.openProof(nodeId || `prebaked::${proofPath}`, anchor, payload, data);
+    // Open the pre-baked proof at 2× the default cell (8×6 of the 8×8 grid) — it's
+    // the thing the deeplink landed on, so give it room to read.
+    _currentProofManager.openProof(nodeId || `prebaked::${proofPath}`, anchor, payload, data,
+        { colSpan: 8, rowSpan: 6 });
 }
 
 /** Find a graph node whose displayed expression matches ``target`` (loose

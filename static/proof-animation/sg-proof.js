@@ -222,7 +222,7 @@ export class SgProofManager {
     // ── Public entry: dock a proof animation for a node ──────────────────────
     // `prebaked` (optional): an already-validated proof JSON — mount it directly
     // and SKIP the LM derivation (used to show a pre-baked proof from a deeplink).
-    openProof(nodeId, anchorEl, payload, prebaked) {
+    openProof(nodeId, anchorEl, payload, prebaked, opts = {}) {
         if (this._destroyed) return;
 
         const dedupKey = `${this._stepKey}|${nodeId}`;   // one box per node PER STEP
@@ -270,7 +270,8 @@ export class SgProofManager {
         const entry = {
             boxId: `proof_${++this._seq}`, nodeId, stepKey: this._stepKey, box, body, titleEl, header, dockBtn,
             paWrap: null,
-            colSpan: DEFAULT_COLSPAN, rowSpan: DEFAULT_ROWSPAN,
+            colSpan: Math.max(2, Math.min(GRID_COLS, opts.colSpan || DEFAULT_COLSPAN)),
+            rowSpan: Math.max(2, Math.min(GRID_ROWS, opts.rowSpan || DEFAULT_ROWSPAN)),
             graphX: 0, graphY: 0,
             pinned: false, docked: false,
             state: 'loading', animator: null,
