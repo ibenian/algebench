@@ -1,0 +1,101 @@
+#!/bin/bash
+# run — task runner for AlgeBench dev conveniences.
+#
+# Usage:
+#   ./run landing-page [--port PORT]
+#       Serve the static landing page (docs/landing-page) on PORT (default 5760).
+#
+#   ./run landing-page-with-algebench [--port PORT] [--app-port APP_PORT]
+#       Same, but also start the AlgeBench app on APP_PORT (default 5751) if it
+#       isn't already running — so the blog's interactive-proof embeds (which point
+#       at :5751) render live. An app started here is stopped again on exit; a
+#       pre-existing one is left alone.
+#
+# (For running project Python scripts, use ./run.sh instead.)
+
+set -euo pipefail
+DIR="$(cd "$(dirname "$0")" && pwd)"
+
+usage() {
+    cat <<'EOF'
+Usage: ./run <command>
+
+Commands:
+  landing-page [--port PORT]
+      Serve the static landing page (default port 5760)
+
+  landing-page-with-algebench [--port PORT] [--app-port APP_PORT]
+      Serve the landing page AND start the AlgeBench app (default :5751) if it
+      isn't already running, so the blog's proof embeds render live
+EOF
+}
+
+# Serve docs/landing-page on $1 (foreground). Does not return.
+serve_landing() {
+    local port="$1"
+    echo "▶ Landing page → http://localhost:$port"
+    python3 -m http.server "$port" --directory "$DIR/docs/landing-page"
+}
+
+cmd="${1:-}"
+case "$cmd" in
+    landing-page)
+        shift
+        PORT=5760
+        while [[ $# -gt 0 ]]; do
+            case "$1" in
+                --port) PORT="$2"; shift 2 ;;
+                *) echo "Unknown arg: $1" >&2; exit 1 ;;
+            esac
+        done
+        # Plain static HTML — no venv or app server. (For the blog's interactive
+        # embeds, use landing-page-with-algebench instead.)
+        exec python3 -m http.server "$PORT" --directory "$DIR/docs/landing-page"
+        ;;
+
+    landing-page-with-algebench)
+        shift
+        PORT=5760
+        APP_PORT=5751
+        while [[ $# -gt 0 ]]; do
+            case "$1" in
+                --port) PORT="$2"; shift 2 ;;
+                --app-port) APP_PORT="$2"; shift 2 ;;
+                *) echo "Unknown arg: $1" >&2; exit 1 ;;
+            esac
+        done
+        # Probe with curl (already required below) rather than lsof, so this works on
+        # systems that don't ship lsof. A 2xx/anything response means it's up.
+        if curl -s -o /dev/null "http://localhost:$APP_PORT/" 2>/dev/null; then
+            echo "▶ AlgeBench app already running on :$APP_PORT — reusing it"
+        else
+            APP_LOG="/tmp/algebench-$APP_PORT.log"
+            echo "▶ Starting AlgeBench app → http://localhost:$APP_PORT  (logs: $APP_LOG)"
+            "$DIR/algebench" --server-only --skip-tour --port "$APP_PORT" >"$APP_LOG" 2>&1 &
+            APP_PID=$!
+            # Stop the app WE started when this script exits (Ctrl-C); a pre-existing
+            # one is never touched (we only set the trap in this branch).
+            trap 'kill "$APP_PID" 2>/dev/null || true' EXIT INT TERM
+            printf "  waiting for app to be ready"
+            for _ in $(seq 1 40); do
+                if curl -s -o /dev/null "http://localhost:$APP_PORT/" 2>/dev/null; then break; fi
+                printf "."; sleep 0.5
+            done
+            echo " ✓"
+        fi
+        serve_landing "$PORT"
+        ;;
+
+    -h|--help|help)
+        usage
+        ;;
+    "")
+        usage >&2
+        exit 1
+        ;;
+    *)
+        echo "Unknown command: $cmd" >&2
+        echo "Try: ./run landing-page  |  ./run landing-page-with-algebench" >&2
+        exit 1
+        ;;
+esac

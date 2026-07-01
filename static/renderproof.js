@@ -13,6 +13,7 @@
 //   4. The /renderproof CSP (script-src 'self', no unsafe-eval) is the backstop.
 // See docs/shareable-proof-animations.md §7.
 import { ProofAnimator } from "/proof-animation/proof-animation.js";
+import { validateProofData } from "/proof-animation/validate-proof.js";
 
 const SLUG_RE = /^[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+$/;
 const THEMES = new Set(["dark", "light", "auto"]);
@@ -34,9 +35,6 @@ const CODE_ICON =
 // Raw JSON text of each loaded proof, for the { } viewer. Filled during load.
 const loadedProofs = [];
 const MAX_PROOFS = 12;
-const MAX_STEPS = 300;
-const MAX_TERMS = 2000;
-const MAX_STR = 50000;          // generous per-field cap (annotated latex is long)
 const MAX_BYTES = 2_000_000;    // per-proof response cap
 
 const root = document.getElementById("root");
@@ -58,83 +56,6 @@ function parseBuiltins() {
     else bad.push(s);
   }
   return { valid: valid.slice(0, MAX_PROOFS), bad, overflow: valid.length > MAX_PROOFS };
-}
-
-/** Coerce a value to a bounded string (defends against huge / non-string fields). */
-function str(v) {
-  if (v == null) return "";
-  return String(v).slice(0, MAX_STR);
-}
-
-/** Shallow-sanitize a confidence object: keep known keys, primitives only. */
-function cleanConfidence(c) {
-  if (!c || typeof c !== "object") return undefined;
-  const out = {};
-  for (const k of ["tier", "label", "icon", "meaning", "relation", "reason"]) {
-    if (c[k] != null) out[k] = str(c[k]);
-  }
-  if (typeof c.type_consistent === "boolean") out.type_consistent = c.type_consistent;
-  if (typeof c.endpoint_reached === "boolean") out.endpoint_reached = c.endpoint_reached;
-  if (c.counts && typeof c.counts === "object") {
-    out.counts = {};
-    for (const [k, n] of Object.entries(c.counts)) {
-      if (typeof n === "number" && isFinite(n)) out.counts[str(k)] = n;
-    }
-  }
-  return out;
-}
-
-/**
- * Whitelist-validate a proof payload into a clean object the engine can consume.
- * Throws on anything structurally wrong. Unknown keys are simply dropped.
- */
-function validateProofData(data) {
-  if (!data || typeof data !== "object" || Array.isArray(data)) {
-    throw new Error("proof must be a JSON object");
-  }
-  if (!Array.isArray(data.steps) || data.steps.length === 0) {
-    throw new Error("proof has no steps");
-  }
-  if (data.steps.length > MAX_STEPS) {
-    throw new Error(`too many steps (${data.steps.length} > ${MAX_STEPS})`);
-  }
-  const steps = data.steps.map((s, i) => {
-    if (!s || typeof s !== "object") throw new Error(`step ${i} is not an object`);
-    return {
-      index: typeof s.index === "number" && isFinite(s.index) ? s.index : i,
-      operation: str(s.operation),
-      justification: str(s.justification),
-      input_latex: str(s.input_latex),
-      latex: str(s.latex),
-      plain: str(s.plain),
-      confidence: cleanConfidence(s.confidence),
-    };
-  });
-
-  const terms = {};
-  if (data.terms && typeof data.terms === "object" && !Array.isArray(data.terms)) {
-    let n = 0;
-    for (const [id, t] of Object.entries(data.terms)) {
-      if (n++ >= MAX_TERMS) break;
-      if (!t || typeof t !== "object") continue;
-      terms[str(id)] = { latex: str(t.latex), name: str(t.name), description: str(t.description) };
-    }
-  }
-
-  const out = {
-    title: str(data.title),
-    domain: str(data.domain),
-    steps,
-    terms,
-    overall_confidence: cleanConfidence(data.overall_confidence),
-  };
-  // Optional model-produced framing, prerequisites, and agentic follow-up prompts.
-  if (data.goal) out.goal = str(data.goal);
-  const strList = (v) => Array.isArray(v)
-    ? v.filter((s) => typeof s === "string" && s.trim()).slice(0, 8).map(str) : undefined;
-  if (strList(data.followups)) out.followups = strList(data.followups);
-  if (strList(data.prerequisites)) out.prerequisites = strList(data.prerequisites);
-  return out;
 }
 
 /** The theme requested in the URL (?theme=), defaulting to dark. */
@@ -416,6 +337,8 @@ async function main() {
   const embedded = window.self !== window.top;
   if (embedded) document.documentElement.dataset.embedded = "1";
 
+  // NOTE: the /renderproof page query params (theme/explore/ai/autoplay/builtin)
+  // are documented in docs/deeplink-params.md — keep it in sync when changing them.
   const theme = parseTheme();
   applyTheme(theme);
   // Explore chips (Prerequisites / "Explore further" follow-ups) show by DEFAULT
@@ -423,6 +346,10 @@ async function main() {
   // ⓘ pill for a proof that has none. Opt out with ?explore=0.
   const exploreFollowups = !["0", "false", "no"].includes(
     (new URLSearchParams(location.search).get("explore") || "").trim().toLowerCase());
+  // Opt-in term-ask via ?ai=1 (off by default): proof terms become click-selectable
+  // and a floating "Ask AI" opens the linked full-app view + auto-asks the agent.
+  const termAsk = ["1", "true", "yes"].includes(
+    (new URLSearchParams(location.search).get("ai") || "").trim().toLowerCase());
   // Optional autoplay (?autoplay=true → every proof on the page; ?autoplay=<n> →
   // only the nth, 1-indexed: 1 = first, 2 = second …). Lets a share/embed link
   // open already morphing, no click needed.
@@ -487,8 +414,10 @@ async function main() {
       if (data.title) titleText.textContent = data.title;
       window.__animators.push(new ProofAnimator(card, data, {
         katex, liveTerms: true, enableExplore: exploreFollowups,
-        // No onExplore here: standalone, the engine copies the chip text; when this
-        // page is embedded in an iframe, the engine posts the click to the parent.
+        enableTermAsk: termAsk,
+        // No onTermAsk/onExplore host hooks: standalone the engine routes asks
+        // itself (embedded → open the proof's deeplink in a new tab + auto-ask;
+        // else copy/postMessage). The deeplink lives on the proof JSON.
       }));
     } catch (e) {
       showError(card, `Could not load "${slug}": ${e.message}`);

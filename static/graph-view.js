@@ -21,6 +21,7 @@ import { SemanticGraphPanel } from '/graph-panel/graph-panel.js';
 import { D3SemanticGraphRenderer, nodeLongLabel } from '/graph-panel/d3-semantic-graph.js';
 import { SgChartManager } from '/graph-panel/sg-chart.js';
 import { SgProofManager, clearDeriveCache } from '/proof-animation/sg-proof.js';
+import { validateProofData } from '/proof-animation/validate-proof.js';
 import { buildEnrichContext } from '/proof-animation/derive-payload.js';
 import {
     makeAiAskButton, makeDeriveButton, renderKaTeX,
@@ -104,6 +105,7 @@ if (typeof window !== 'undefined') {
         getCurrentView,
         showGraphView,
         showSceneView,
+        dockProofAnimation,
     };
 }
 
@@ -1201,6 +1203,40 @@ function _proofContextPayload(graph) {
 function _buildDerivePayload(nodeId, fullNode, graph) {
     const target = _stripHtmlMacros(nodeLongLabel(fullNode) || fullNode.subexpr || fullNode.label || '');
     return { ..._proofContextPayload(graph), target_latex: target };
+}
+
+// Built-in proof slug: "<domain>/<name>" — mirrors renderproof's SLUG_RE so a
+// deeplink's ?pa= can't reach outside proofs/domains/.
+const _PROOF_PATH_RE = /^[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+$/;
+const _PROOF_MAX_BYTES = 2_000_000;    // per-proof response cap (mirrors renderproof)
+
+/** Dock a PRE-BAKED proof animation (no LM derivation) — called from a deeplink's
+ *  ?pa=<domain>/<name>. Fetches /proofs/domains/<path>.json, validates it with the
+ *  same whitelist the standalone /renderproof page uses, and mounts it on the graph
+ *  anchored to `nodeId` (the deeplink's selected node). Best-effort: a missing /
+ *  malformed proof is a silent no-op so it never breaks the rest of the deeplink. */
+async function dockProofAnimation(proofPath, nodeId, step) {
+    if (!_currentProofManager || _currentProofManager._destroyed) return;
+    if (typeof proofPath !== 'string' || proofPath.includes('..') || !_PROOF_PATH_RE.test(proofPath)) return;
+    let data;
+    try {
+        const resp = await fetch(`/proofs/domains/${proofPath}.json`, { cache: 'no-store' });
+        if (!resp.ok) return;
+        // Cap the body like /renderproof does — don't parse an unexpectedly huge file.
+        const len = Number(resp.headers.get('content-length') || 0);
+        if (len && len > _PROOF_MAX_BYTES) return;
+        const text = await resp.text();
+        if (text.length > _PROOF_MAX_BYTES) return;
+        data = validateProofData(JSON.parse(text));
+    } catch (e) { return; }   // missing / malformed → no-op
+    const anchor = (nodeId && _d3NodeElById(nodeId)) || null;
+    // Lesson context so a nested "derive this step" inside the animation still works.
+    const payload = _proofContextPayload(_d3ActiveGraph);
+    // Open the pre-baked proof at 2× the default cell (8×6 of the 8×8 grid) — it's
+    // the thing the deeplink landed on, so give it room to read — and on the step
+    // the learner was viewing (?pas=), not step 0.
+    _currentProofManager.openProof(nodeId || `prebaked::${proofPath}`, anchor, payload, data,
+        { colSpan: 8, rowSpan: 6, step: Number.isFinite(step) ? step : undefined });
 }
 
 /** Find a graph node whose displayed expression matches ``target`` (loose

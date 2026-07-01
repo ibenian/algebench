@@ -151,3 +151,33 @@ test('viewStatesEqual compares by serialization', () => {
     assert.ok(viewStatesEqual({ sc: 'a', nodes: ['x'] }, { sc: 'a', nodes: ['x'] }));
     assert.ok(!viewStatesEqual({ sc: 'a' }, { sc: 'b' }));
 });
+
+// Boot-only directives (auto-ask + pre-baked proof): parsed for one-shot use but
+// deliberately NOT serialized, so they never round-trip back into a URL.
+test('aa (auto-ask) is captured on parse and capped, never serialized', () => {
+    assert.equal(parseViewState('aa=explain%20this').aa, 'explain this');
+    // capped to 2000 chars
+    assert.equal(parseViewState('aa=' + 'x'.repeat(2500)).aa.length, 2000);
+    // load-once: not emitted back out
+    assert.equal(serializeViewState({ aa: 'explain this', sc: 's1' }), 'sc=s1');
+});
+
+test('pa (pre-baked proof slug) accepts only "<domain>/<name>", never serialized', () => {
+    assert.equal(parseViewState('pa=physics/rotating-habitat-gravity').pa,
+        'physics/rotating-habitat-gravity');
+    // rejected shapes leave pa undefined (a slug the dock rejects must not set vs.pa)
+    assert.equal(parseViewState('pa=/physics/x').pa, undefined);      // leading slash
+    assert.equal(parseViewState('pa=a/b/c').pa, undefined);           // extra slash
+    assert.equal(parseViewState('pa=nolash').pa, undefined);          // no slash
+    assert.equal(parseViewState('pa=bad%20name/x').pa, undefined);    // illegal char
+    // load-once: not serialized
+    assert.equal(serializeViewState({ pa: 'physics/x', sc: 's1' }), 'sc=s1');
+});
+
+test('pas (pre-baked proof step) parses a small int, never serialized', () => {
+    assert.equal(parseViewState('pas=3').pas, 3);
+    assert.equal(parseViewState('pas=0').pas, 0);
+    assert.equal(parseViewState('pas=abc').pas, undefined);   // non-numeric ignored
+    assert.equal(parseViewState('pas=99999').pas, undefined); // >4 digits ignored
+    assert.equal(serializeViewState({ pas: 3, sc: 's1' }), 'sc=s1');
+});

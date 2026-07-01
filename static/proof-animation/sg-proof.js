@@ -219,8 +219,10 @@ export class SgProofManager {
         }
     }
 
-    // ── Public entry: derive + dock a proof animation for a node ─────────────
-    openProof(nodeId, anchorEl, payload) {
+    // ── Public entry: dock a proof animation for a node ──────────────────────
+    // `prebaked` (optional): an already-validated proof JSON — mount it directly
+    // and SKIP the LM derivation (used to show a pre-baked proof from a deeplink).
+    openProof(nodeId, anchorEl, payload, prebaked, opts = {}) {
         if (this._destroyed) return;
 
         const dedupKey = `${this._stepKey}|${nodeId}`;   // one box per node PER STEP
@@ -228,7 +230,10 @@ export class SgProofManager {
         if (existingId && this.boxes.has(existingId)) {
             const e = this.boxes.get(existingId);
             e.box.style.zIndex = String(++this._z);
-            if (e.state === 'error') this._runDerivation(e, payload);
+            if (e.state === 'error') {
+                if (prebaked) this._mountPrebaked(e, payload, prebaked);
+                else this._runDerivation(e, payload);
+            }
             return;
         }
 
@@ -265,7 +270,9 @@ export class SgProofManager {
         const entry = {
             boxId: `proof_${++this._seq}`, nodeId, stepKey: this._stepKey, box, body, titleEl, header, dockBtn,
             paWrap: null,
-            colSpan: DEFAULT_COLSPAN, rowSpan: DEFAULT_ROWSPAN,
+            colSpan: Math.max(2, Math.min(GRID_COLS, opts.colSpan || DEFAULT_COLSPAN)),
+            rowSpan: Math.max(2, Math.min(GRID_ROWS, opts.rowSpan || DEFAULT_ROWSPAN)),
+            startStep: Number.isFinite(opts.step) ? opts.step : undefined,   // open the animation on this step
             graphX: 0, graphY: 0,
             pinned: false, docked: false,
             state: 'loading', animator: null,
@@ -301,8 +308,19 @@ export class SgProofManager {
         this._makeDraggable(entry, header);
         this._addResizeHandle(entry);
 
-        this._runDerivation(entry, payload);
+        if (prebaked) this._mountPrebaked(entry, payload, prebaked);
+        else this._runDerivation(entry, payload);
         this._updatePositions();
+    }
+
+    // Mount a pre-baked (already-validated) proof animation directly — no LM call.
+    // Mirrors the cache-hit branch of _runDerivation. `payload` is kept only so a
+    // nested "derive this step" can inherit the lesson context.
+    _mountPrebaked(entry, payload, data) {
+        entry.payload = payload;
+        if (data && data.title) this._renderInlineMath(entry.titleEl, data.title);
+        this._mountAnimator(entry, data);
+        entry.state = 'ready';
     }
 
     async _runDerivation(entry, payload) {
@@ -369,6 +387,7 @@ export class SgProofManager {
                 deriveButton: makeDeriveButton,
                 onDerive: (p, anchorEl) => this._deriveFromAnimator(entry, p, anchorEl),
                 fitHeight: true,
+                startStep: entry.startStep,   // open on the deeplinked step (?pas=), else step 0
                 // Live terms: hover/click a named term → light up & select its
                 // linked semantic-graph node. No-ops when there's no renderer.
                 liveTerms: true,
@@ -383,6 +402,17 @@ export class SgProofManager {
                         window.sendChatMessage(message);
                     }
                 },
+                // Term-ask: a floating "Ask AI" appears when ≥1 term is selected.
+                // In-app there's chat already, so just ask (no navigation). The
+                // ordered, graph-enriched message is built from the host's selection.
+                enableTermAsk: true,
+                onTermAsk: ({ message }) => {
+                    try { openChatPanel(); } catch (e) { /* panel optional */ }
+                    if (typeof window !== "undefined" && typeof window.sendChatMessage === "function") {
+                        window.sendChatMessage(message);
+                    }
+                },
+                onBuildTermAskMessage: (focus) => this._buildTermAskMessage(entry, focus),
                 // Reverse sync: re-apply selection/linked classes after every
                 // (re)render (a morph wipes them); a background click deselects all.
                 onAfterRender: () => this._refreshTermClasses(entry),
@@ -566,6 +596,48 @@ export class SgProofManager {
 
     _applyAllBoxes() {
         for (const entry of this.boxes.values()) this._applyTermClasses(entry);
+    }
+
+    // Build the graph-enriched ask message for a box's "Ask AI" button. The engine
+    // passes the hovered FOCUS term; we resolve it (and the gold context terms) to
+    // graph nodes and frame the focus as the subject + the rest as context —
+    // mirroring the multi-node graph ask (hovered = subject, selected = context).
+    _buildTermAskMessage(entry, focus) {
+        const r = this._renderer;
+        const graph = r && r._graph;
+        const getNode = (id) => (r && typeof r.getNode === 'function') ? r.getNode(id)
+            : ((graph && Array.isArray(graph.nodes)) ? graph.nodes.find((n) => n.id === id) : null);
+        const title = entry && entry.data && entry.data.title ? ` "${entry.data.title}"` : '';
+
+        // Focus = the hovered term (its linked node if it maps, else its text).
+        const focusNid = (focus && focus.chain) ? this._resolveChain(focus.chain) : null;
+        const focusNode = focusNid ? getNode(focusNid) : null;
+        const focusLabel = focusNode ? (focusNode.label || focusNode.id) : ((focus && focus.text) || '');
+        const focusKey = focus ? this._apprKey(focus.text || '') : '';
+
+        // Context = the gold selection, minus the focus term: graph nodes first,
+        // then any off-graph proof-only terms.
+        const ctxNodeIds = [...this._selectedNodeIds].filter((id) => id !== focusNid);
+        const ctxTermKeys = [...this._selectedTermKeys].filter((k) => k !== focusKey);
+        const ctx = [];
+        for (const id of ctxNodeIds) {
+            const n = getNode(id);
+            if (n) {
+                let line = `- ${n.label || n.id}`;
+                if (n.type) line += ` (${n.type})`;
+                if (n.description) line += ` — ${n.description}`;
+                ctx.push(line);
+            } else {
+                ctx.push(`- ${id}`);
+            }
+        }
+        for (const key of ctxTermKeys) ctx.push(`- "${key}"`);
+
+        if (!focusLabel && !ctx.length) return '';
+        let head = `In the derivation${title}, explain the term "${focusLabel}"`;
+        if (focusNode && focusNode.description) head += ` (${focusNode.description})`;
+        if (!ctx.length) return head + ' — what it represents and its role here.';
+        return head + ' and how it relates to:\n' + ctx.join('\n');
     }
 
     /** Shared hover node (set by a term hover OR a graph-node hover). Lights the
