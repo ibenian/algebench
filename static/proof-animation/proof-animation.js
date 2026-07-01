@@ -708,6 +708,11 @@ export class ProofAnimator {
     btn.style.position = "fixed";
     btn.style.opacity = "0";
     btn.style.pointerEvents = "none";
+    // Starts invisible: keep it out of the tab order and hidden from assistive tech
+    // so keyboard/SR users don't land on a control they can't see. _showTermAskBtn /
+    // _hideTermAskBtn flip these back in step with the opacity.
+    btn.tabIndex = -1;
+    btn.setAttribute("aria-hidden", "true");
     btn.style.zIndex = "10001";   // above the term tooltip (z 10000) so it's never covered
     // Moving onto the button cancels the hide; leaving it hides it. The grace
     // delay (below) is what lets the cursor cross the gap from term to button.
@@ -783,6 +788,8 @@ export class ProofAnimator {
     btn.style.top = `${Math.round(top)}px`;
     btn.style.opacity = "1";
     btn.style.pointerEvents = "auto";
+    btn.tabIndex = 0;                     // now visible → reachable + announced
+    btn.removeAttribute("aria-hidden");
   }
 
   // Grace period before the button fades out — long enough to move the cursor
@@ -799,6 +806,10 @@ export class ProofAnimator {
     const btn = this._termAskBtnEl;
     if (!btn) return;
     btn.style.opacity = "0";
+    // Leave the tab order / assistive tree immediately (before the fade finishes) so
+    // it can't be focused while invisible; clicks still work through the fade below.
+    btn.tabIndex = -1;
+    btn.setAttribute("aria-hidden", "true");
     // Stay clickable through the fade (matches the fade-in timing), so a click that
     // lands while the button is still visibly fading still registers; disable it
     // only once it's actually invisible.

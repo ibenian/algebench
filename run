@@ -64,7 +64,9 @@ case "$cmd" in
                 *) echo "Unknown arg: $1" >&2; exit 1 ;;
             esac
         done
-        if lsof -ti "tcp:$APP_PORT" >/dev/null 2>&1; then
+        # Probe with curl (already required below) rather than lsof, so this works on
+        # systems that don't ship lsof. A 2xx/anything response means it's up.
+        if curl -s -o /dev/null "http://localhost:$APP_PORT/" 2>/dev/null; then
             echo "▶ AlgeBench app already running on :$APP_PORT — reusing it"
         else
             APP_LOG="/tmp/algebench-$APP_PORT.log"
