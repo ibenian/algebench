@@ -1236,7 +1236,7 @@ async function dockProofAnimation(proofPath, nodeId, step) {
     // the thing the deeplink landed on, so give it room to read — and on the step
     // the learner was viewing (?pas=), not step 0.
     _currentProofManager.openProof(nodeId || `prebaked::${proofPath}`, anchor, payload, data,
-        { colSpan: 8, rowSpan: 6, step: Number.isFinite(step) ? step : undefined });
+        { colSpan: 8, rowSpan: 6, step: Number.isFinite(step) ? step : undefined, dock: true });
 }
 
 /** Find a graph node whose displayed expression matches ``target`` (loose
