@@ -5,8 +5,10 @@
 // treated as hostile input (hand-edited or third-party): this whitelists fields
 // and caps sizes, returning a clean object the ProofAnimator can consume.
 //
-// Pure module: no DOM, no side effects on import (unlike renderproof.js, whose
-// body calls main()), so it's safe to import anywhere.
+// No side effects on import (unlike renderproof.js, whose body calls main()), so
+// it's safe to import from any module. Runtime is browser-only, though:
+// cleanDeeplink() reads `location.origin` to resolve host-relative deeplinks, so a
+// non-browser caller (e.g. a Node unit test) must polyfill `location`.
 
 const MAX_STEPS = 300;
 const MAX_TERMS = 2000;

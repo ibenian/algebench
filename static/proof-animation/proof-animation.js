@@ -871,9 +871,14 @@ export class ProofAnimator {
     const embedded = typeof window !== "undefined" && window.self !== window.top;
     if (url) {
       try {
-        if (embedded) window.open(url, "_blank", "noopener");
-        else window.location.assign(url);
-        return;
+        if (embedded) {
+          // A blocked popup returns `null` WITHOUT throwing — treat that as a
+          // failure so the postMessage fallback still runs (don't lose the ask).
+          if (window.open(url, "_blank", "noopener")) return;
+        } else {
+          window.location.assign(url);
+          return;
+        }
       } catch (e) { /* blocked — fall through to the fallback */ }
     }
     const fail = embedded ? onEmbeddedFail : onStandaloneFail;

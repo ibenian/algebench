@@ -188,7 +188,9 @@ export function parseViewState(search) {
     // Pre-baked proof animation to load on boot: a "<domain>/<name>" slug under
     // proofs/domains/. Like `aa`, a load-once directive — parsed but NOT serialized.
     const pa = params.get('pa');
-    if (pa && /^[A-Za-z0-9_/-]+$/.test(pa)) vs.pa = pa;
+    // Exactly "<domain>/<name>" — mirror graph-view's _PROOF_PATH_RE so a slug the
+    // dock will reject (leading/extra slashes) can't set vs.pa and force Math view.
+    if (pa && /^[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+$/.test(pa)) vs.pa = pa;
     // pas: which step of the pre-baked animation to open on (load-once, not serialized).
     const pas = params.get('pas');
     if (pas != null && /^\d{1,4}$/.test(pas)) vs.pas = Number(pas);

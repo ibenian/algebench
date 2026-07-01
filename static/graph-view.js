@@ -1208,6 +1208,7 @@ function _buildDerivePayload(nodeId, fullNode, graph) {
 // Built-in proof slug: "<domain>/<name>" — mirrors renderproof's SLUG_RE so a
 // deeplink's ?pa= can't reach outside proofs/domains/.
 const _PROOF_PATH_RE = /^[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+$/;
+const _PROOF_MAX_BYTES = 2_000_000;    // per-proof response cap (mirrors renderproof)
 
 /** Dock a PRE-BAKED proof animation (no LM derivation) — called from a deeplink's
  *  ?pa=<domain>/<name>. Fetches /proofs/domains/<path>.json, validates it with the
@@ -1221,7 +1222,12 @@ async function dockProofAnimation(proofPath, nodeId, step) {
     try {
         const resp = await fetch(`/proofs/domains/${proofPath}.json`, { cache: 'no-store' });
         if (!resp.ok) return;
-        data = validateProofData(JSON.parse(await resp.text()));
+        // Cap the body like /renderproof does — don't parse an unexpectedly huge file.
+        const len = Number(resp.headers.get('content-length') || 0);
+        if (len && len > _PROOF_MAX_BYTES) return;
+        const text = await resp.text();
+        if (text.length > _PROOF_MAX_BYTES) return;
+        data = validateProofData(JSON.parse(text));
     } catch (e) { return; }   // missing / malformed → no-op
     const anchor = (nodeId && _d3NodeElById(nodeId)) || null;
     // Lesson context so a nested "derive this step" inside the animation still works.

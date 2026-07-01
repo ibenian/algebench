@@ -137,7 +137,8 @@ export async function loadInitialSceneFromQuery() {
     const hasDeeplink = !!(
         vs.view || vs.panel || vs.pp || vs.sc || vs.st || vs.pf || vs.ps ||
         vs.nodes || vs.sliders || vs.cv || vs.proj || Number.isFinite(vs.oz) || vs.cam ||
-        vs.aa   // a deeplinked auto-ask (e.g. from an embedded proof) must still apply
+        vs.aa ||          // a deeplinked auto-ask (e.g. from an embedded proof) must still apply
+        vs.pa || Number.isFinite(vs.pas)   // a pre-baked proof to dock (?pa=/?pas=) even without other fields
     );
     const applyRest = async () => {
         if (hasDeeplink && typeof window.applyViewState === 'function') {
