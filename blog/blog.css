@@ -7,10 +7,12 @@
 /* ── Theme tokens ─────────────────────────────────────────────────────────── */
 :root{
   color-scheme: light dark;
-  --bg:#f6f7fb; --ink:#1f2430; --muted:#5b6472; --rule:#e6e8ee;
-  --accent:#4f46e5; --bar:#ffffff; --card:#ffffff; --soft:#f4f5f9;
-  /* Softer blues for the proof→app callout + CTA (gentler than the link accent). */
-  --cta-bg:#6573e0; --callout-bg:#eef1fc; --callout-edge:#c2c9f2;
+  /* Warm, book-like paper tones (cream + brown-ink) rather than a cold blue-white. */
+  --bg:#f7f1e6; --ink:#2d2820; --muted:#6f6555; --rule:#e8ddca;
+  --accent:#4f46e5; --bar:#fdfaf2; --card:#fefcf6; --soft:#f1e9d8;
+  /* Warm parchment for the proof→app callout + a softer periwinkle CTA (gentler
+     than the vivid link accent, so it doesn't read as a hard dark-blue slab). */
+  --cta-bg:#7b82dd; --callout-bg:#f4edda; --callout-edge:#e2d5b6;
 }
 /* Explicit dark (set by the theme toggle, persisted in localStorage). */
 :root[data-theme="dark"]{
@@ -92,7 +94,7 @@ figure{ margin:26px 0 14px; }
 /* Start hidden and fade in on load: the embed paints its own (dark) default
    background for a frame before its theme CSS applies, which would flash against
    a light page. Keeping the frame transparent until it's painted hides it. */
-figure iframe{ display:block; width:100%; border:0; background:transparent;
+figure iframe{ display:block; width:100%; border:0; border-radius:14px; background:transparent;
       opacity:0; transition:opacity .4s ease; }
 figure iframe.is-loaded{ opacity:1; }
 figcaption{ font-family:system-ui,sans-serif; color:var(--muted); font-size:.85rem;
