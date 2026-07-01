@@ -969,7 +969,9 @@ export class ProofAnimator {
       b.type = "button";   // never submit a surrounding <form>
       b.className = "pa-step";
       b.textContent = String(i);
-      let tip = `${i}. ${this._plainOp(s.operation || `state ${i}`)}`;
+      // Keep the RAW operation (with $…$) so the tooltip renders the math via KaTeX
+      // (the plain data-tip mangled e.g. "$v = \omega R$" into "v = R").
+      let tip = `${i}. ${s.operation || `state ${i}`}`;
       // Confidence tint: the row of step buttons doubles as an at-a-glance
       // confidence strip (a colored bar per step, tier-keyed).
       const c = this._conf(i);
@@ -977,8 +979,7 @@ export class ProofAnimator {
         b.classList.add(`pa-conf-${c.tier}`);
         tip += ` — ${c.label || c.tier}`;
       }
-      b.setAttribute("data-tip", tip);
-      b.setAttribute("aria-label", tip);
+      this._attachMathTip(b, tip);   // KaTeX-rendered tooltip (sets aria-label too)
       b.addEventListener("click", () => this._userGoTo(i));
       steps.appendChild(b);
     });
@@ -1239,7 +1240,7 @@ export class ProofAnimator {
   hidePopups() {
     this._hideGoalPop();
     if (this._termTip) this._termTip.style.display = "none";
-    if (this._mathTip) this._mathTip.style.display = "none";
+    if (this._mathTip) this._mathTip.style.opacity = "0";
     this._hideTermAskBtn();
     if (this._explorePop) {
       this._explorePop.style.display = "none";
@@ -2115,9 +2116,8 @@ export class ProofAnimator {
       this._mathTip = tip;
     }
     this._caption(tip, text);              // render $…$ segments with KaTeX
-    tip.style.display = "block";
-    tip.style.left = "0px";
-    tip.style.top = "0px";
+    // Measured while at opacity 0 (always display:block) — no display toggle, so the
+    // opacity transition (fade) isn't interrupted and there's no resize animation.
     const cr = this.container.getBoundingClientRect();
     const br = el.getBoundingClientRect();
     const tw = tip.offsetWidth, th = tip.offsetHeight;
@@ -2127,10 +2127,11 @@ export class ProofAnimator {
     if (top < 4) top = (br.bottom - cr.top) + 8;   // flip below when no room above
     tip.style.left = `${left}px`;
     tip.style.top = `${top}px`;
+    tip.style.opacity = "1";               // fade in
   }
 
   _hideMathTip() {
-    if (this._mathTip) this._mathTip.style.display = "none";
+    if (this._mathTip) this._mathTip.style.opacity = "0";   // fade out
   }
 
   // The overall-confidence pill (static for the derivation): icon + tier label
