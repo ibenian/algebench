@@ -1,0 +1,161 @@
+{
+  "title": "Artificial Gravity from Spin",
+  "domain": "physics",
+  "deeplink": "/?builtin=rotating-habitat&view=math&panel=chat&pp=1&sc=rotating-space-habitats&st=artificial-gravity-g-a-omega-2-r&pf=artificial-gravity&ps=g-apparent&nodes=__equals_1&pa=physics/rotating-habitat-gravity",
+  "steps": [
+    {
+      "index": 0,
+      "operation": "Given $a = \\frac{v^2}{R}$",
+      "justification": "Substitute the rim speed $v = \\omega R$ — a point at radius $R$ on a body spinning at angular velocity $\\omega$ — to express artificial gravity in terms of the spin rate.",
+      "input_latex": "a = \\frac{v^{2}}{R}",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=a}{a} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_2}{\\frac{\\htmlData{n=__power_3}{\\htmlData{n=v}{v}^{\\htmlData{n=__power_3__exp}{2}}}}{\\htmlData{n=R}{R}}}}",
+      "plain": "a = \\frac{v^{2}}{R}",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": null,
+        "reason": "the given starting expression",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 1,
+      "operation": "Substitute $v = \\omega R$ into the equation",
+      "justification": "The tangential velocity $v$ of a point at radius $R$ on a rotating object is given by $v = \\omega R$, where $\\omega$ is the angular velocity.",
+      "input_latex": "a = \\frac{(\\omega R)^{2}}{R}",
+      "latex": "\\htmlData{n=_r1___equals_1}{\\htmlData{n=a}{a} \\htmlData{n=_r1___equals_1__op}{=} \\htmlData{n=_r2___multiply_2}{\\frac{\\htmlData{n=_r3___power_3}{\\left(\\htmlData{n=__multiply_4}{\\htmlData{n=omega}{\\omega} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=R____multiply_4}{R}}\\right)^{\\htmlData{n=_r3___power_3__exp}{2}}}}{\\htmlData{n=R___r2___multiply_2}{R}}}}",
+      "plain": "a = \\frac{\\left(\\omega \\cdot R\\right)^{2}}{R}",
+      "confidence": {
+        "tier": "plausible",
+        "label": "Plausible",
+        "icon": "🔹",
+        "meaning": "valid math, but the CAS could not decide this step",
+        "relation": "unknown",
+        "reason": "neither equivalence nor a valid narrowing could be established",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 2,
+      "operation": "Expand the square term in the numerator",
+      "justification": "The power of a product is the product of the powers: $(xy)^n = x^n y^n$.",
+      "input_latex": "a = \\frac{\\omega^{2} R^{2}}{R}",
+      "latex": "\\htmlData{n=_r1___equals_1}{\\htmlData{n=a}{a} \\htmlData{n=_r1___equals_1__op}{=} \\htmlData{n=_r2___multiply_2}{\\frac{\\htmlData{n=__multiply_4}{\\htmlData{n=_r1___power_4}{\\htmlData{n=omega}{\\omega}^{\\htmlData{n=_r1___power_4__exp}{2}}} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=__power_5}{\\htmlData{n=R____power_5}{R}^{\\htmlData{n=__power_5__exp}{2}}}}}{\\htmlData{n=R___r2___multiply_2}{R}}}}",
+      "plain": "a = \\frac{\\omega^{2} \\cdot R^{2}}{R}",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 3,
+      "operation": "Simplify the fraction by canceling $R$",
+      "justification": "We can cancel one factor of $R$ from the numerator and the denominator, since $\\frac{R^2}{R} = R$ for $R \\neq 0$.",
+      "input_latex": "a = \\omega^{2} R",
+      "latex": "\\htmlData{n=_r1___equals_1}{\\htmlData{n=a}{a} \\htmlData{n=_r1___equals_1__op}{=} \\htmlData{n=__multiply_4}{\\htmlData{n=_r1___power_4}{\\htmlData{n=omega}{\\omega}^{\\htmlData{n=_r1___power_4__exp}{2}}} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=R}{R}}}",
+      "plain": "a = \\omega^{2} \\cdot R",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 4,
+      "operation": "Rearrange the terms",
+      "justification": "Multiplication is commutative, so the order of terms can be changed without altering the result.",
+      "input_latex": "a = R \\cdot \\omega^{2}",
+      "latex": "\\htmlData{n=_r1___equals_1}{\\htmlData{n=a}{a} \\htmlData{n=_r1___equals_1__op}{=} \\htmlData{n=__multiply_4}{\\htmlData{n=R}{R} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=_r1___power_4}{\\htmlData{n=omega}{\\omega}^{\\htmlData{n=_r1___power_4__exp}{2}}}}}",
+      "plain": "a = R \\cdot \\omega^{2}",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    }
+  ],
+  "overall_confidence": {
+    "tier": "plausible",
+    "label": "Plausible",
+    "icon": "🔹",
+    "meaning": "valid math, but the CAS could not decide this step",
+    "relation": null,
+    "reason": "3/4 steps verified · 1 plausible · endpoint reached",
+    "type_consistent": true,
+    "counts": {
+      "refuted": 0,
+      "unchecked": 0,
+      "plausible": 1,
+      "domain": 0,
+      "verified": 0,
+      "grounded": 3
+    },
+    "endpoint_reached": true
+  },
+  "terms": {
+    "a": {
+      "latex": "a",
+      "name": "a"
+    },
+    "__power_3": {
+      "latex": "v^{2}",
+      "name": "v^{2}"
+    },
+    "v": {
+      "latex": "v",
+      "name": "v"
+    },
+    "__power_4": {
+      "latex": "\\frac{1}{R}",
+      "name": "\\frac{1}{R}"
+    },
+    "R": {
+      "latex": "R",
+      "name": "R"
+    },
+    "_r3___power_3": {
+      "latex": "\\left(R \\omega\\right)^{2}",
+      "name": "\\left(R \\omega\\right)^{2}"
+    },
+    "omega": {
+      "latex": "\\omega",
+      "name": "\\omega"
+    },
+    "_r1___power_4": {
+      "latex": "\\omega^{2}",
+      "name": "\\omega^{2}"
+    },
+    "__power_5": {
+      "latex": "R^{2}",
+      "name": "R^{2}"
+    }
+  },
+  "goal": "This derivation shows how to express the centripetal acceleration $a$ of an object in circular motion in terms of its radius $R$ and angular velocity $\\omega$, starting from its definition using tangential velocity $v$.",
+  "followups": [
+    "What are the units for angular velocity $\\omega$?",
+    "How does this formula apply to artificial gravity in a spinning space station?",
+    "Can we also express the centripetal force using this new formula for acceleration?",
+    "What if the object is not moving in a perfect circle?"
+  ],
+  "prerequisites": [
+    "Definition of centripetal acceleration $a = \\frac{v^2}{R}$",
+    "Relationship between tangential and angular velocity $v = \\omega R$",
+    "Rules for exponents: $(xy)^n = x^n y^n$",
+    "Simplifying algebraic fractions"
+  ]
+}

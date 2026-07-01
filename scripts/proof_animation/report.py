@@ -10,15 +10,75 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
+import re
 import shutil
 from pathlib import Path
 
-from proof_animation.build import build, build_animation, ProofAnimation
+log = logging.getLogger(__name__)
+
+from proof_animation.build import build_animation, build_described, ProofAnimation
 from backend.experts.modules.proof_completion.outputs import ProofTrajectory, DerivationStep
 from backend.experts.modules.proof_completion.wellformed import assert_well_formed
+from backend.experts.llm_config import configure_dspy, is_configured
+from backend.experts.modules.proof_completion.domain_rescue import RESCUE_ENABLED
+from backend.experts.modules.proof_completion.judge import DomainStepJudge
+
+_LM_READY: bool | None = None
+_DOMAIN_RESCUE = True   # toggled off by --no-domain-rescue
+_JUDGE = None           # lazily constructed DomainStepJudge
+
+
+def _ensure_lm() -> bool:
+    """Configure dspy once, best-effort. Returns False (and the report renders with
+    highlights but no tooltip text) when no LM key is available — e.g. in CI."""
+    global _LM_READY
+    if _LM_READY is None:
+        try:
+            configure_dspy()
+            _LM_READY = is_configured()
+        except Exception:
+            _LM_READY = False
+    return _LM_READY
+
+
+def _judge():
+    """The shared DomainStepJudge, or None when the rescue is off / no LM.
+
+    Default-on so offline-built built-ins match the live server, which always
+    rescues CAS-uncheckable steps into the DOMAIN tier. Mirrors the handler's
+    gate (RESCUE_ENABLED + is_configured); ``--no-domain-rescue`` forces it off."""
+    global _JUDGE
+    if not (_DOMAIN_RESCUE and RESCUE_ENABLED and _ensure_lm()):
+        return None
+    if _JUDGE is None:
+        _JUDGE = DomainStepJudge()
+    return _JUDGE
+
+
 
 _ROOT = Path(__file__).resolve().parent.parent.parent   # scripts/proof_animation/report.py → repo root
 _ASSETS = _ROOT / "static" / "proof-animation"
+# Built-in shareable proofs live here; the /renderproof page loads them by
+# ?builtin=<domain>/<name>. See docs/shareable-proof-animations.md.
+_PROOFS_DIR = _ROOT / "proofs" / "domains"
+_SLUG_RE = re.compile(r"^[A-Za-z0-9_-]+/[A-Za-z0-9_-]+$")
+
+
+def _save_builtin(anim: dict, slug: str) -> Path:
+    """Write one built animation dict to proofs/domains/<domain>/<name>.json.
+
+    ``slug`` is ``<domain>/<name>`` and is validated against the same regex the
+    /renderproof page and the server route enforce, so a generated file is always
+    reachable by ``?builtin=<slug>`` and never escapes the proofs dir."""
+    if not _SLUG_RE.match(slug):
+        raise ValueError(
+            f"--save-builtin must be <domain>/<name> matching {_SLUG_RE.pattern!r}, got {slug!r}")
+    domain, name = slug.split("/", 1)
+    out = _PROOFS_DIR / domain / f"{name}.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(anim, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    return out
 # The curated test suite: a list of ProofAnimation objects we keep growing. The
 # report renders these by default (and CI deploys them — see proof-animation.yml).
 _FIXTURES = _ROOT / "tests" / "proof_animation" / "proof_animations.json"
@@ -27,7 +87,8 @@ _FIXTURES = _ROOT / "tests" / "proof_animation" / "proof_animations.json"
 def _animations_from_file(path: Path, domain: str) -> list[dict]:
     """Load a proofs JSON (list of ProofAnimation) and build each into animation data."""
     data = json.loads(Path(path).read_text(encoding="utf-8"))
-    return [build_animation(ProofAnimation.model_validate(d)) for d in data]
+    return [build_animation(ProofAnimation.model_validate(d), judge=_judge())
+            for d in data]
 
 _INDEX = """<!DOCTYPE html>
 <html lang="en">
@@ -76,7 +137,9 @@ _INDEX = """<!DOCTYPE html>
         const div = document.createElement("div");
         root.appendChild(h);
         root.appendChild(div);
-        return new ProofAnimator(div, data, { katex: window.katex });
+        // liveTerms (no graph host here): each term gets the hover backlight + a
+        // description tooltip. The app layers graph sync on top via SgProofManager.
+        return new ProofAnimator(div, data, { katex: window.katex, liveTerms: true, enableExplore: true });
       });
     })();
   </script>
@@ -96,7 +159,18 @@ def main() -> int:
     ap.add_argument("--from-json", default=None,
                     help="a single ProofTrajectory (JSON) to animate")
     ap.add_argument("--outdir", default="/tmp/proof_anim")
+    ap.add_argument("--save-builtin", default=None, metavar="DOMAIN/NAME",
+                    help="instead of rendering a /tmp site, save the single built animation as a "
+                         "shareable built-in proof at proofs/domains/<domain>/<name>.json "
+                         "(reachable via /renderproof?builtin=<domain>/<name>)")
+    ap.add_argument("--no-domain-rescue", action="store_true",
+                    help="disable the DOMAIN-tier rescue of CAS-uncheckable steps. By default "
+                         "(when an LM is configured) the rescue runs so built-ins match the live "
+                         "server; pass this to get pure-CAS confidence instead.")
     args = ap.parse_args()
+
+    global _DOMAIN_RESCUE
+    _DOMAIN_RESCUE = not args.no_domain_rescue
 
     if args.from_file:
         animations = _animations_from_file(Path(args.from_file), args.domain)
@@ -106,7 +180,9 @@ def main() -> int:
         # Hard edge (issue #372 §A): a hand-authored trajectory has no refinement
         # loop behind it, so malformed captions are an error here, not a low score.
         assert_well_formed(traj)
-        animations = [build(traj, args.domain, args.title or "derivation")]
+        animations = [build_described(traj, args.domain, args.title or "derivation",
+                                      judge=_judge(),
+                                      lesson_context=f"{args.title or 'derivation'} (domain: {args.domain})")]
     elif args.states:
         traj = ProofTrajectory(
             start_latex=args.states[0],
@@ -116,11 +192,24 @@ def main() -> int:
                                   justification="(manual)", change_type="rewrite")
                    for i, s in enumerate(args.states[1:], start=1)],
         )
-        animations = [build(traj, args.domain, args.title)]
+        animations = [build_described(traj, args.domain, args.title,
+                                      judge=_judge(),
+                                      lesson_context=f"{args.title} (domain: {args.domain})")]
     elif _FIXTURES.exists():       # default: render the curated test suite
         animations = _animations_from_file(_FIXTURES, args.domain)
     else:
         ap.error(f"no proofs to render: pass --from-file/--from-json/states, or create {_FIXTURES}")
+
+    if args.save_builtin:
+        # A built-in proof is exactly one self-contained animation dict. When the
+        # input produced several (e.g. the default fixture suite), require the
+        # caller to narrow it down — saving an ambiguous bundle would be a footgun.
+        if len(animations) != 1:
+            ap.error(f"--save-builtin needs exactly one proof, got {len(animations)}; "
+                     "pass --from-json/states (or a single-entry --from-file)")
+        out = _save_builtin(animations[0], args.save_builtin)
+        print(f"saved built-in proof → {out}  (/renderproof?builtin={args.save_builtin})")
+        return 0
 
     out = render_site(animations, args.outdir)
     print(f"wrote {out}/  ({len(animations)} animation(s))")

@@ -185,6 +185,13 @@ class ProofCompletionExpert(dspy.Module):
         traj.target_latex = target_latex or None
         # normalise an empty/whitespace title to None so callers can fall back
         traj.title = (pred.title or "").strip() or None
+        # goal (framing) + followups (agentic continuation prompts) ride along too;
+        # tolerate a model that omits them (older/compiled programs) — getattr default.
+        traj.goal = (getattr(pred, "goal", "") or "").strip() or None
+        traj.followups = [f.strip() for f in (getattr(pred, "followups", None) or [])
+                          if isinstance(f, str) and f.strip()]
+        traj.prerequisites = [p.strip() for p in (getattr(pred, "prerequisites", None) or [])
+                              if isinstance(p, str) and p.strip()]
         return traj
 
     def forward(self, *, context: GraphTransition, context_id: str,

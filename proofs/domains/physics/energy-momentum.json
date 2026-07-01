@@ -1,0 +1,201 @@
+{
+  "title": "Relativistic energy–momentum",
+  "domain": "algebra",
+  "steps": [
+    {
+      "index": 0,
+      "operation": "Given the energy–momentum relation",
+      "justification": "solve for $E$",
+      "input_latex": "E^2 = (m c^2)^2 + (p c)^2",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__power_2}{\\htmlData{n=E}{E}^{\\htmlData{n=__power_2__exp}{2}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__add_3}{\\htmlData{n=__power_4}{\\left(\\htmlData{n=__multiply_5}{\\htmlData{n=m}{m} \\htmlData{n=__multiply_5__m1}{\\cdot} \\htmlData{n=__power_6}{\\htmlData{n=c____power_6}{c}^{\\htmlData{n=__power_6__exp}{2}}}}\\right)^{\\htmlData{n=__power_4__exp}{2}}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__power_7}{\\left(\\htmlData{n=__multiply_8}{\\htmlData{n=p}{p} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=c____multiply_8}{c}}\\right)^{\\htmlData{n=__power_7__exp}{2}}}}}",
+      "plain": "E^{2} = \\left(m \\cdot c^{2}\\right)^{2} + \\left(p \\cdot c\\right)^{2}",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": null,
+        "reason": "the given starting expression",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 1,
+      "operation": "take the square root",
+      "justification": "solve for $E$ (positive root)",
+      "input_latex": "E = \\sqrt{(m c^2)^2 + (p c)^2}",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=E}{E} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=_r1___power_2}{\\sqrt{\\htmlData{n=__add_3}{\\htmlData{n=__power_4}{\\left(\\htmlData{n=__multiply_5}{\\htmlData{n=m}{m} \\htmlData{n=__multiply_5__m1}{\\cdot} \\htmlData{n=__power_6}{\\htmlData{n=c____power_6}{c}^{\\htmlData{n=__power_6__exp}{2}}}}\\right)^{\\htmlData{n=__power_4__exp}{2}}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__power_7}{\\left(\\htmlData{n=__multiply_8}{\\htmlData{n=p}{p} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=c____multiply_8}{c}}\\right)^{\\htmlData{n=__power_7__exp}{2}}}}}}}",
+      "plain": "E = \\sqrt{\\left(m \\cdot c^{2}\\right)^{2} + \\left(p \\cdot c\\right)^{2}}",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "narrows",
+        "reason": "the previous step is exactly this step squared — taking a root keeps only solutions of the original",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 2,
+      "operation": "expand the squares",
+      "justification": "$(m c^2)^2 = m^2 c^4,\\ (p c)^2 = p^2 c^2$",
+      "input_latex": "E = \\sqrt{m^2 c^4 + p^2 c^2}",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=E}{E} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=_r1___power_2}{\\sqrt{\\htmlData{n=__add_3}{\\htmlData{n=__multiply_4}{\\htmlData{n=__power_5}{\\htmlData{n=m}{m}^{\\htmlData{n=__power_5__exp}{2}}} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=_r1___power_6}{\\htmlData{n=c___r1___power_6}{c}^{\\htmlData{n=_r1___power_6__exp}{4}}}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__multiply_8}{\\htmlData{n=__power_7}{\\htmlData{n=p}{p}^{\\htmlData{n=__power_7__exp}{2}}} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=__power_6}{\\htmlData{n=c____power_6}{c}^{\\htmlData{n=__power_6__exp}{2}}}}}}}}",
+      "plain": "E = \\sqrt{m^{2} \\cdot c^{4} + p^{2} \\cdot c^{2}}",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 3,
+      "operation": "factor out $c^2$",
+      "justification": "$c^2$ is common to both terms",
+      "input_latex": "E = \\sqrt{c^2 \\cdot (m^2 c^2 + p^2)}",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=E}{E} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=_r1___power_2}{\\sqrt{\\htmlData{n=__multiply_8}{\\htmlData{n=__power_4}{\\htmlData{n=c____power_4}{c}^{\\htmlData{n=__power_4__exp}{2}}} \\htmlData{n=__multiply_8__m1}{\\cdot} \\left(\\htmlData{n=__add_3}{\\htmlData{n=__multiply_4}{\\htmlData{n=__power_5}{\\htmlData{n=m}{m}^{\\htmlData{n=__power_5__exp}{2}}} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=__power_6}{\\htmlData{n=c____power_6}{c}^{\\htmlData{n=__power_6__exp}{2}}}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__power_7}{\\htmlData{n=p}{p}^{\\htmlData{n=__power_7__exp}{2}}}}\\right)}}}}",
+      "plain": "E = \\sqrt{c^{2} \\cdot \\left(m^{2} \\cdot c^{2} + p^{2}\\right)}",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 4,
+      "operation": "pull $c$ out of the root",
+      "justification": "$\\sqrt{c^2 x} = c \\sqrt{x}$",
+      "input_latex": "E = c \\sqrt{m^2 c^2 + p^2}",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=E}{E} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_8}{\\htmlData{n=c____multiply_8}{c} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=_r1___power_2}{\\sqrt{\\htmlData{n=__add_3}{\\htmlData{n=__multiply_4}{\\htmlData{n=__power_5}{\\htmlData{n=m}{m}^{\\htmlData{n=__power_5__exp}{2}}} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=__power_6}{\\htmlData{n=c____power_6}{c}^{\\htmlData{n=__power_6__exp}{2}}}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__power_7}{\\htmlData{n=p}{p}^{\\htmlData{n=__power_7__exp}{2}}}}}}}}",
+      "plain": "E = c \\cdot \\sqrt{m^{2} \\cdot c^{2} + p^{2}}",
+      "confidence": {
+        "tier": "verified",
+        "label": "Verified",
+        "icon": "🥈",
+        "meaning": "strong CAS evidence, short of a symbolic proof",
+        "relation": "narrows",
+        "reason": "treating $m$ as the unknown, every solution of this step solves the previous one (other symbols as generic parameters)",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 5,
+      "operation": "factor out $m^2 c^2$",
+      "justification": "the standard Lorentz-factor form",
+      "input_latex": "E = m c^2 \\sqrt{1 + \\frac{p^2}{m^2 c^2}}",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=E}{E} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_2}{\\htmlData{n=m____multiply_2}{m} \\htmlData{n=__multiply_2__m1}{\\cdot} \\htmlData{n=__multiply_3}{\\htmlData{n=__power_4}{\\htmlData{n=c____power_4}{c}^{\\htmlData{n=__power_4__exp}{2}}} \\htmlData{n=__multiply_3__m1}{\\cdot} \\htmlData{n=_r1___power_2}{\\sqrt{\\htmlData{n=__add_3}{\\htmlData{n=__num_7}{1} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__multiply_8}{\\frac{\\htmlData{n=__power_7}{\\htmlData{n=p}{p}^{\\htmlData{n=__power_7__exp}{2}}}}{\\htmlData{n=__multiply_4}{\\htmlData{n=__power_5}{\\htmlData{n=m____power_5}{m}^{\\htmlData{n=__power_5__exp}{2}}} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=__power_6}{\\htmlData{n=c____power_6}{c}^{\\htmlData{n=__power_6__exp}{2}}}}}}}}}}}}",
+      "plain": "E = m \\cdot c^{2} \\cdot \\sqrt{1 + \\frac{p^{2}}{m^{2} \\cdot c^{2}}}",
+      "confidence": {
+        "tier": "verified",
+        "label": "Verified",
+        "icon": "🥈",
+        "meaning": "strong CAS evidence, short of a symbolic proof",
+        "relation": "narrows",
+        "reason": "treating $p$ as the unknown, every solution of this step solves the previous one (other symbols as generic parameters)",
+        "type_consistent": true
+      }
+    }
+  ],
+  "overall_confidence": {
+    "tier": "verified",
+    "label": "Verified",
+    "icon": "🥈",
+    "meaning": "strong CAS evidence, short of a symbolic proof",
+    "relation": null,
+    "reason": "5/5 steps verified · endpoint reached",
+    "type_consistent": true,
+    "counts": {
+      "refuted": 0,
+      "unchecked": 0,
+      "plausible": 0,
+      "domain": 0,
+      "verified": 2,
+      "grounded": 3
+    },
+    "endpoint_reached": true
+  },
+  "terms": {
+    "__power_2": {
+      "latex": "E^{2}",
+      "name": "E^{2}",
+      "description": "This represents the square of the total relativistic energy $E$ of a particle."
+    },
+    "E": {
+      "latex": "E",
+      "name": "E",
+      "description": "This represents the total relativistic energy of a particle."
+    },
+    "__power_4": {
+      "latex": "\\left(c^{2} m\\right)^{2}",
+      "name": "\\left(c^{2} m\\right)^{2}",
+      "description": "This represents the square of the rest energy of a particle, $(mc^2)^2$."
+    },
+    "m": {
+      "latex": "m",
+      "name": "m",
+      "description": "This represents the invariant mass (or rest mass) of the particle."
+    },
+    "__power_6": {
+      "latex": "c^{2}",
+      "name": "c^{2}",
+      "description": "This represents the square of the speed of light in a vacuum."
+    },
+    "c": {
+      "latex": "c",
+      "name": "c",
+      "description": "This represents the speed of light in a vacuum."
+    },
+    "__power_7": {
+      "latex": "\\left(c p\\right)^{2}",
+      "name": "\\left(c p\\right)^{2}",
+      "description": "This represents the square of the product of the speed of light and the relativistic momentum, $(cp)^2$."
+    },
+    "p": {
+      "latex": "p",
+      "name": "p",
+      "description": "This represents the relativistic momentum of the particle."
+    },
+    "_r1___power_2": {
+      "latex": "\\sqrt{\\left(c p\\right)^{2} + \\left(c^{2} m\\right)^{2}}",
+      "name": "\\sqrt{\\left(c p\\right)^{2} + \\left(c^{2} m\\right)^{2}}",
+      "description": "This represents the total relativistic energy $E$, derived from the particle's momentum and rest mass."
+    },
+    "__power_5": {
+      "latex": "m^{2}",
+      "name": "m^{2}",
+      "description": "This represents the square of the invariant mass of the particle."
+    },
+    "_r1___power_6": {
+      "latex": "c^{4}",
+      "name": "c^{4}",
+      "description": "This represents the speed of light in a vacuum raised to the fourth power, $c^4$."
+    },
+    "__power_10": {
+      "latex": "\\frac{1}{c^{2} m^{2}}",
+      "name": "\\frac{1}{c^{2} m^{2}}",
+      "description": "This represents the inverse of the square of the product of the speed of light and the invariant mass, $\\frac{1}{c^2 m^2}$."
+    }
+  },
+  "goal": "This derivation rearranges the relativistic energy-momentum relation $E^2 = (m c^2)^2 + (p c)^2$ to express the total energy $E$ in a factored form $E = m c^2 \\sqrt{1 + \\frac{p^2}{m^2 c^2}}$.",
+  "followups": [
+    "How does this expression relate to the simpler $E=mc^2$ equation?",
+    "What happens to the equation if the momentum $p$ is zero?",
+    "Can you show how to derive the Lorentz factor from this expression?",
+    "How would you rearrange this equation to solve for $p$?"
+  ],
+  "prerequisites": [
+    "Algebraic manipulation",
+    "Square roots",
+    "Factoring expressions",
+    "Exponent rules"
+  ]
+}

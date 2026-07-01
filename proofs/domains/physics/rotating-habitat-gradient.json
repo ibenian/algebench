@@ -1,0 +1,173 @@
+{
+  "title": "Head-to-Feet Gravity Gradient",
+  "domain": "physics",
+  "deeplink": "/?builtin=rotating-habitat&view=math&panel=chat&pp=1&sc=rotating-space-habitats&st=gravity-gradient-head-vs-feet&pf=gravity-gradient&ps=ratio&nodes=__equals_1&pa=physics/rotating-habitat-gradient",
+  "steps": [
+    {
+      "index": 0,
+      "operation": "Given $\\frac{\\Delta g}{g} = \\frac{\\omega^2 R - \\omega^2 (R - h)}{\\omega^2 R}$",
+      "justification": "simplify the numerator and cancel omega squared R to get the fractional head-to-feet gravity drop",
+      "input_latex": "\\frac{\\Delta g}{g} = \\frac{R \\cdot \\omega^{2} - \\omega^{2} \\cdot \\left(R - h\\right)}{R \\cdot \\omega^{2}}",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__multiply_2}{\\frac{\\htmlData{n=Delta_g}{\\Delta g}}{\\htmlData{n=g}{g}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_4}{\\frac{\\left(\\htmlData{n=__add_5}{\\htmlData{n=__multiply_6}{\\htmlData{n=R____multiply_6}{R} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=__power_7}{\\htmlData{n=omega____power_7}{\\omega}^{\\htmlData{n=__power_7__exp}{2}}}} \\htmlData{n=__negation_8}{\\htmlData{n=__negation_8__op}{-} \\htmlData{n=__multiply_9}{\\htmlData{n=__power_10}{\\htmlData{n=omega____power_10}{\\omega}^{\\htmlData{n=__power_10__exp}{2}}} \\htmlData{n=__multiply_9__m1}{\\cdot} \\left(\\htmlData{n=__add_11}{\\htmlData{n=R____add_11}{R} \\htmlData{n=__negation_12}{\\htmlData{n=__negation_12__op}{-} \\htmlData{n=h}{h}}}\\right)}}}\\right)}{\\htmlData{n=__multiply_14}{\\htmlData{n=R____multiply_14}{R} \\htmlData{n=__multiply_14__m1}{\\cdot} \\htmlData{n=__power_15}{\\htmlData{n=omega____power_15}{\\omega}^{\\htmlData{n=__power_15__exp}{2}}}}}}}",
+      "plain": "\\frac{\\Delta g}{g} = \\frac{\\left(R \\cdot \\omega^{2} - \\omega^{2} \\cdot \\left(R - h\\right)\\right)}{R \\cdot \\omega^{2}}",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": null,
+        "reason": "the given starting expression",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 1,
+      "operation": "Expand the product $\\omega^{2} \\cdot \\left(R - h\\right)$",
+      "justification": "Distribute $\\omega^2$ into the term $(R - h)$ in the numerator.",
+      "input_latex": "\\frac{\\Delta g}{g} = \\frac{R \\cdot \\omega^{2} - \\left(R \\cdot \\omega^{2} - h \\cdot \\omega^{2}\\right)}{R \\cdot \\omega^{2}}",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__multiply_2}{\\frac{\\htmlData{n=Delta_g}{\\Delta g}}{\\htmlData{n=g}{g}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_4}{\\frac{\\left(\\htmlData{n=__add_5}{\\htmlData{n=__multiply_6}{\\htmlData{n=R____multiply_6}{R} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=__power_7}{\\htmlData{n=omega____power_7}{\\omega}^{\\htmlData{n=__power_7__exp}{2}}}} \\htmlData{n=__negation_8}{\\htmlData{n=__negation_8__op}{-} \\left(\\htmlData{n=__add_9}{\\htmlData{n=__multiply_9}{\\htmlData{n=R____multiply_9}{R} \\htmlData{n=__multiply_9__m1}{\\cdot} \\htmlData{n=__power_10}{\\htmlData{n=omega____power_10}{\\omega}^{\\htmlData{n=__power_10__exp}{2}}}} \\htmlData{n=_r1___negation_12}{\\htmlData{n=_r1___negation_12__op}{-} \\htmlData{n=__multiply_13}{\\htmlData{n=h}{h} \\htmlData{n=__multiply_13__m1}{\\cdot} \\htmlData{n=__power_14}{\\htmlData{n=omega____power_14}{\\omega}^{\\htmlData{n=__power_14__exp}{2}}}}}}\\right)}}\\right)}{\\htmlData{n=__multiply_14}{\\htmlData{n=R____multiply_14}{R} \\htmlData{n=__multiply_14__m1}{\\cdot} \\htmlData{n=__power_15}{\\htmlData{n=omega____power_15}{\\omega}^{\\htmlData{n=__power_15__exp}{2}}}}}}}",
+      "plain": "\\frac{\\Delta g}{g} = \\frac{\\left(R \\cdot \\omega^{2} - \\left(R \\cdot \\omega^{2} - h \\cdot \\omega^{2}\\right)\\right)}{R \\cdot \\omega^{2}}",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 2,
+      "operation": "Remove parentheses in the numerator",
+      "justification": "Distribute the negative sign across the terms in the parentheses in the numerator.",
+      "input_latex": "\\frac{\\Delta g}{g} = \\frac{R \\cdot \\omega^{2} - R \\cdot \\omega^{2} + h \\cdot \\omega^{2}}{R \\cdot \\omega^{2}}",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__multiply_2}{\\frac{\\htmlData{n=Delta_g}{\\Delta g}}{\\htmlData{n=g}{g}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_4}{\\frac{\\left(\\htmlData{n=__add_9}{\\htmlData{n=__add_5}{\\htmlData{n=__multiply_6}{\\htmlData{n=R____multiply_6}{R} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=__power_7}{\\htmlData{n=omega____power_7}{\\omega}^{\\htmlData{n=__power_7__exp}{2}}}} \\htmlData{n=__negation_8}{\\htmlData{n=__negation_8__op}{-} \\htmlData{n=__multiply_9}{\\htmlData{n=R____multiply_9}{R} \\htmlData{n=__multiply_9__m1}{\\cdot} \\htmlData{n=__power_10}{\\htmlData{n=omega____power_10}{\\omega}^{\\htmlData{n=__power_10__exp}{2}}}}}} \\htmlData{n=__add_9__op1}{+} \\htmlData{n=__multiply_13}{\\htmlData{n=h}{h} \\htmlData{n=__multiply_13__m1}{\\cdot} \\htmlData{n=__power_14}{\\htmlData{n=omega____power_14}{\\omega}^{\\htmlData{n=__power_14__exp}{2}}}}}\\right)}{\\htmlData{n=__multiply_14}{\\htmlData{n=R____multiply_14}{R} \\htmlData{n=__multiply_14__m1}{\\cdot} \\htmlData{n=__power_15}{\\htmlData{n=omega____power_15}{\\omega}^{\\htmlData{n=__power_15__exp}{2}}}}}}}",
+      "plain": "\\frac{\\Delta g}{g} = \\frac{\\left(R \\cdot \\omega^{2} - R \\cdot \\omega^{2} + h \\cdot \\omega^{2}\\right)}{R \\cdot \\omega^{2}}",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 3,
+      "operation": "Simplify the numerator",
+      "justification": "Combine the like terms $R \\cdot \\omega^{2}$ and $-R \\cdot \\omega^{2}$ in the numerator, which cancel each other out.",
+      "input_latex": "\\frac{\\Delta g}{g} = \\frac{h \\cdot \\omega^{2}}{R \\cdot \\omega^{2}}",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__multiply_2}{\\frac{\\htmlData{n=Delta_g}{\\Delta g}}{\\htmlData{n=g}{g}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_4}{\\frac{\\htmlData{n=__multiply_13}{\\htmlData{n=h}{h} \\htmlData{n=__multiply_13__m1}{\\cdot} \\htmlData{n=__power_14}{\\htmlData{n=omega____power_14}{\\omega}^{\\htmlData{n=__power_14__exp}{2}}}}}{\\htmlData{n=__multiply_14}{\\htmlData{n=R}{R} \\htmlData{n=__multiply_14__m1}{\\cdot} \\htmlData{n=__power_15}{\\htmlData{n=omega____power_15}{\\omega}^{\\htmlData{n=__power_15__exp}{2}}}}}}}",
+      "plain": "\\frac{\\Delta g}{g} = \\frac{h \\cdot \\omega^{2}}{R \\cdot \\omega^{2}}",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 4,
+      "operation": "Cancel common factors",
+      "justification": "Cancel the common factor $\\omega^2$ from the numerator and the denominator.",
+      "input_latex": "\\frac{\\Delta g}{g} = \\frac{h}{R}",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__multiply_2}{\\frac{\\htmlData{n=Delta_g}{\\Delta g}}{\\htmlData{n=g}{g}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=_r1___multiply_4}{\\frac{\\htmlData{n=h}{h}}{\\htmlData{n=R}{R}}}}",
+      "plain": "\\frac{\\Delta g}{g} = \\frac{h}{R}",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    }
+  ],
+  "overall_confidence": {
+    "tier": "grounded",
+    "label": "Grounded",
+    "icon": "🥇",
+    "meaning": "symbolically proven to follow from the previous step",
+    "relation": null,
+    "reason": "4/4 steps verified · endpoint reached",
+    "type_consistent": true,
+    "counts": {
+      "refuted": 0,
+      "unchecked": 0,
+      "plausible": 0,
+      "domain": 0,
+      "verified": 0,
+      "grounded": 4
+    },
+    "endpoint_reached": true
+  },
+  "terms": {
+    "Delta_g": {
+      "latex": "\\Delta g",
+      "name": "\\Delta g"
+    },
+    "__power_3": {
+      "latex": "\\frac{1}{g}",
+      "name": "\\frac{1}{g}"
+    },
+    "g": {
+      "latex": "g",
+      "name": "g"
+    },
+    "R": {
+      "latex": "R",
+      "name": "R"
+    },
+    "__power_7": {
+      "latex": "\\omega^{2}",
+      "name": "\\omega^{2}"
+    },
+    "omega": {
+      "latex": "\\omega",
+      "name": "\\omega"
+    },
+    "__power_10": {
+      "latex": "\\omega^{2}",
+      "name": "\\omega^{2}"
+    },
+    "h": {
+      "latex": "h",
+      "name": "h"
+    },
+    "__power_13": {
+      "latex": "\\frac{1}{R \\omega^{2}}",
+      "name": "\\frac{1}{R \\omega^{2}}"
+    },
+    "__power_15": {
+      "latex": "\\omega^{2}",
+      "name": "\\omega^{2}"
+    },
+    "__power_14": {
+      "latex": "\\omega^{2}",
+      "name": "\\omega^{2}"
+    },
+    "__power_5": {
+      "latex": "\\frac{1}{R}",
+      "name": "\\frac{1}{R}"
+    }
+  },
+  "goal": "This derivation simplifies an expression for the fractional change in apparent gravity due to Earth's rotation at a height $h$ above the surface, showing that it is approximately equal to the ratio of the height $h$ to the Earth's radius $R$.",
+  "followups": [
+    "What does $\\Delta g$ represent in this context?",
+    "How is the initial expression derived in physics?",
+    "What assumptions are made in this simplification?",
+    "Can we use this simplified expression to calculate the fractional change for a specific height $h$ and radius $R$?"
+  ],
+  "prerequisites": [
+    "Algebraic simplification",
+    "Distributive property",
+    "Combining like terms",
+    "Canceling common factors in fractions"
+  ]
+}

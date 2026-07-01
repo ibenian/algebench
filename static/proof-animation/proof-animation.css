@@ -14,9 +14,9 @@
   z-index: 30;
   padding: 5px 9px;
   border-radius: 6px;
-  background: rgba(10, 12, 26, 0.97);
+  background: var(--panel-bg, rgba(10, 12, 26, 0.97));
   border: 1px solid var(--pa-border);
-  color: #e5e7eb;
+  color: var(--text-color, #e5e7eb);
   font: 400 0.72rem/1.35 var(--font-sans, system-ui, -apple-system, "Segoe UI", sans-serif);
   font-style: normal;
   letter-spacing: normal;
@@ -34,22 +34,26 @@
    expressions). Anchored within .pa-root (position: relative). */
 .pa-root .pa-mathtip {
   position: absolute;
-  display: none;
   z-index: 31;
-  padding: 5px 9px;
-  border-radius: 6px;
-  background: rgba(10, 12, 26, 0.97);
+  padding: 6px 10px;
+  /* Match the step button's surface (theme-correct in light AND dark) rather than a
+     hardcoded dark panel. */
+  border-radius: 8px;
+  background: var(--pa-bg, #ffffff);
   border: 1px solid var(--pa-border);
-  color: #e5e7eb;
+  color: var(--pa-fg);
   font: 400 0.72rem/1.4 var(--font-sans, system-ui, -apple-system, "Segoe UI", sans-serif);
   text-align: center;
   white-space: normal;
   width: max-content;
   max-width: 260px;
   pointer-events: none;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  /* Just fade in/out — no resize/scale animation; content is measured off-screen. */
+  opacity: 0;
+  transition: opacity 0.14s ease;
 }
-.pa-root .pa-mathtip .katex { font-size: 1em; color: #e5e7eb; }
+.pa-root .pa-mathtip .katex { font-size: 1em; color: var(--pa-fg); }
 
 .pa-root {
   --pa-fg: var(--text-color, #1a1a2e);
@@ -120,6 +124,103 @@
 .pa-ghost { pointer-events: none; z-index: 4; }
 .pa-move.pa-insert { z-index: -1; }
 
+/* ── Live terms (optional) ───────────────────────────────────────────────────
+   Set by ProofAnimator when opts.liveTerms is on. Each rendered term becomes
+   hoverable/clickable; the hovered term gets a "backlight" — a glow that traces
+   the CONTOURS of the rendered glyphs (drop-shadow follows the glyph alpha, so it
+   hugs the letter shapes rather than drawing a box around them). Stacked shadows
+   give a soft inner + wider outer halo; `filter` doesn't reflow layout. Scoped
+   under .pa-live-terms so non-live animators are untouched. */
+.pa-live-terms .pa-stage > .pa-expr [data-n] {
+  cursor: pointer;
+  transition: filter 130ms ease;
+}
+/* KaTeX draws the √ surd in a `.hide-tail` span whose box spans the WHOLE radicand,
+   so it sits on top of the terms inside the root and swallows their hover/click (the
+   pointer hits that span, which has no data-n, and resolves to the enclosing √
+   wrapper). It's purely decorative — let the pointer fall through to the tagged
+   glyphs beneath so terms inside a square root are hoverable like everywhere else. */
+.pa-live-terms .pa-stage .sqrt .hide-tail,
+.pa-live-terms .pa-stage .sqrt .hide-tail svg { pointer-events: none; }
+/* Same problem, more general: KaTeX stacks glyphs inside structural layout
+   containers (`.vlist` stacks, struts, the svg-align wrapper) that paint OVER a
+   radicand / fraction numerator+denominator and intercept the pointer — so
+   hovering a term inside a √ or a fraction resolved to the enclosing operator
+   (the WHOLE √ lit up) instead of the term. Make those layout containers
+   pointer-transparent and keep the tagged leaves hittable, so the pointer reaches
+   the actual glyph. Operator chrome that is its OWN mark (the fraction bar, the
+   surd) keeps its hit area via its own rules, so it stays selectable. */
+.pa-live-terms .pa-stage .vlist,
+.pa-live-terms .pa-stage .vlist-r,
+.pa-live-terms .pa-stage .vlist-t,
+.pa-live-terms .pa-stage .pstrut,
+.pa-live-terms .pa-stage .strut,
+.pa-live-terms .pa-stage .svg-align { pointer-events: none; }
+/* Scoped to the live expression subtree (like the cursor rule above), NOT all of
+   .pa-stage — so it never re-enables hit-testing on data-n clones inside morph
+   ghosts (.pa-ghost lives directly under .pa-stage and stays pointer-events:none). */
+.pa-live-terms .pa-stage > .pa-expr [data-n] { pointer-events: auto; }
+/* Hovered locally (mouse on the glyph) OR linked (the graph node is hovered) —
+   same indigo backlight, so hover reads identically in both sync directions. */
+.pa-live-terms .pa-term-hot,
+.pa-live-terms .pa-term-linked {
+  filter:
+    drop-shadow(0 0 2px var(--pa-term-glow, rgba(165, 185, 255, 1)))
+    drop-shadow(0 0 6px var(--pa-term-glow, rgba(150, 170, 255, 0.9)))
+    drop-shadow(0 0 12px var(--pa-term-glow-soft, rgba(120, 145, 255, 0.7)));
+}
+/* Selected (either a term or its graph node was clicked) — GOLD, and wins over a
+   concurrent hover so a selected term stays gold while pointed at. */
+.pa-live-terms .pa-term-selected,
+.pa-live-terms .pa-term-hot.pa-term-selected,
+.pa-live-terms .pa-term-linked.pa-term-selected {
+  filter:
+    drop-shadow(0 0 2px var(--pa-term-gold, rgba(255, 215, 105, 1)))
+    drop-shadow(0 0 6px var(--pa-term-gold, rgba(255, 200, 70, 0.95)))
+    drop-shadow(0 0 13px var(--pa-term-gold-soft, rgba(255, 185, 40, 0.75)));
+}
+/* Engine-owned ask-selection (standalone/embedded term-ask). A class DISTINCT from
+   pa-term-selected so the in-app host keeps sole ownership of that one; visually
+   identical gold so selection reads the same in both contexts. */
+.pa-live-terms .pa-term-ask,
+.pa-live-terms .pa-term-hot.pa-term-ask {
+  filter:
+    drop-shadow(0 0 2px var(--pa-term-gold, rgba(255, 215, 105, 1)))
+    drop-shadow(0 0 6px var(--pa-term-gold, rgba(255, 200, 70, 0.95)))
+    drop-shadow(0 0 13px var(--pa-term-gold-soft, rgba(255, 185, 40, 0.75)));
+}
+/* The AI "Ask" button that FADES IN next to the hovered term — mirrors the
+   semantic-graph node ask button. Lives on document.body (position:fixed, set
+   inline), so a docked box's overflow never clips it; visibility is driven by the
+   inline opacity the engine toggles, so this rule only styles the chip + fade. */
+.pa-term-ask-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 50%;
+  /* Indigo disc echoing the semantic-graph node ask button, but theme-robust: a
+     TRANSLUCENT indigo fill (no opaque base) so it sits well on both the dark graph
+     and a light-theme page, with a SOLID indigo sparkle that stays legible on
+     either. Hover deepens the fill + border and adds an indigo glow. */
+  background: rgba(99, 102, 241, 0.14);
+  border: 1px solid rgba(99, 102, 241, 0.45);
+  color: var(--pa-accent, #6366f1);
+  cursor: pointer;
+  /* opacity is driven inline by the engine (fade in/out, 200ms grace + stay-
+     clickable-through-fade); keep that easing and add the brighten-on-hover. */
+  transition: opacity 200ms ease, background 0.12s, border-color 0.12s, box-shadow 0.12s;
+}
+.pa-term-ask-btn:hover {
+  background: rgba(99, 102, 241, 0.30);
+  border-color: rgba(99, 102, 241, 0.9);
+  box-shadow: 0 0 8px rgba(99, 102, 241, 0.45);
+}
+.pa-term-ask-btn:focus-visible { outline: 2px solid rgba(99, 102, 241, 0.7); outline-offset: 2px; }
+.pa-term-ask-btn svg { display: block; pointer-events: none; }
+
 /* operation (explanation) stacked above justification, then the "Next" pill.
    FIXED height (set by _fixMetaSize to the tallest step) + flex:none so the text
    zone never changes height between steps — the controls below it never shift. */
@@ -135,6 +236,202 @@
 }
 .pa-op { font-weight: 600; color: var(--pa-fg); }
 .pa-just { color: var(--pa-muted); font-style: italic; }
+
+/* Goal — a small pill in the top-left corner (mirrors the ranking pill top-right).
+   Hover shows the goal popup; click pins it open. */
+.pa-root .pa-goal-pill {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: calc(100% - 24px);
+  font: inherit;
+  font-size: 0.8em;
+  line-height: 1.35;
+  cursor: pointer;
+  user-select: none;
+  padding: 4px 8px;            /* COMPACT (icon-only) by default */
+  border-radius: 14px;
+  background-color: var(--pa-bg);
+  color: var(--pa-muted);
+  border: 1px solid var(--pa-border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  transition: color 0.15s, border-color 0.15s, background 0.15s, padding 0.15s;
+}
+/* The base rule's display:inline-flex outranks the UA [hidden] (display:none), so
+   re-assert it — else a docked goal (pill.hidden=true) or a proof with no goal
+   would still show the pill. */
+.pa-root .pa-goal-pill[hidden] { display: none; }
+.pa-goal-pill .pa-goal-icon { display: inline-flex; line-height: 0; flex: 0 0 auto; }
+/* The goal text: hidden by default → the pill is just an icon. Revealed on hover
+   (peek) or while pinned, expanding the pill inline — mirrors the grounding-rank
+   pill top-right. Normal case (the pill style mustn't uppercase the sentence). */
+.pa-goal-pill .pa-goal-label { display: none; overflow-wrap: anywhere; text-align: left; }
+.pa-root .pa-goal-pill:hover,
+.pa-root .pa-goal-pill.pa-pinned {
+  color: var(--pa-fg); border-color: var(--pa-accent); padding: 5px 11px;
+}
+.pa-root .pa-goal-pill:hover .pa-goal-label,
+.pa-root .pa-goal-pill.pa-pinned .pa-goal-label { display: inline; }
+.pa-goal-pill .pa-goal-label .katex { font-size: 1em; }
+.pa-root .pa-goal-pill.pa-pinned {
+  background-image: linear-gradient(rgba(99, 102, 241, 0.14), rgba(99, 102, 241, 0.14));
+}
+.pa-root .pa-goal-pill:focus-visible { outline: 2px solid var(--pa-accent); outline-offset: 2px; }
+/* The goal popup — themed, math-aware (like the term tooltip). */
+.pa-goal-pop {
+  position: fixed;
+  z-index: 10001;
+  max-width: 340px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: var(--panel-bg, #1a1a2e);
+  color: var(--text-color, #e5e7eb);
+  border: 1px solid var(--border-color, #2d2d44);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.40);
+  font-size: 13px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.pa-goal-pop .katex { font-size: 1em; }
+/* Docked goal — a banner at the top of the box (shown when the pill is clicked).
+   When not docked it must take NO space (only the floating pill shows) — an explicit
+   `display` would otherwise override the `hidden` attribute and leave an empty
+   divider, so re-assert display:none while hidden. */
+.pa-goal-dock[hidden] { display: none; }
+.pa-goal-dock {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  cursor: pointer;
+  color: var(--pa-muted);
+  font-size: 0.9rem;
+  line-height: 1.4;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--pa-border);
+}
+.pa-goal-dock-label {
+  flex: 0 0 auto;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--pa-accent);
+}
+.pa-goal-dock-text .katex { font-size: 1em; color: var(--pa-fg); }
+
+/* Explore popup — opened by the ⓘ info pill in the controls row. Bottom-anchored to
+   the pill (it grows UPWARD via the top resize grip): grip → scrollable chip content
+   → tab titles pinned at the BOTTOM. Contained in the box (.pa-root) — see the
+   position:absolute below. Themed off the top-level theme vars (with dark fallbacks).
+   Each chip asks the host agent (or, embedded, the parent page; else copies). */
+.pa-explore-pop {
+  /* Absolute, so it's CONTAINED by the box (.pa-root is position:relative): the
+     popup is a child of the box and is removed/hidden with it — no document.body
+     orphan after a step/scene switch. Sizes clamp to the box, not the viewport. */
+  position: absolute;
+  z-index: 10001;
+  width: 340px;
+  max-width: calc(100% - 16px);
+  max-height: calc(100% - 16px);
+  flex-direction: column;        /* display:flex set by JS when shown */
+  overflow: hidden;
+  border-radius: 10px;
+  background: var(--panel-bg, #1a1a2e);
+  color: var(--text-color, #e5e7eb);
+  border: 1px solid var(--border-color, #2d2d44);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.40);
+}
+.pa-explore-resize {
+  flex: 0 0 auto;
+  height: 12px;
+  cursor: ns-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+}
+.pa-explore-resize::before {
+  content: "";
+  width: 28px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border-color, #3a3f55);
+}
+.pa-explore-panel {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 7px;
+  padding: 2px 12px 10px;
+}
+/* Themed, slim scrollbars for the proof's scrollable surfaces (Firefox + WebKit) —
+   a subtle thumb on a transparent track instead of the chunky default. */
+.pa-explore-panel { scrollbar-width: thin; scrollbar-color: var(--border-color, #3a3f55) transparent; }
+.pa-explore-panel::-webkit-scrollbar { width: 10px; height: 10px; }
+.pa-explore-panel::-webkit-scrollbar-track { background: transparent; }
+.pa-explore-panel::-webkit-scrollbar-thumb {
+  background-color: var(--border-color, #3a3f55);
+  border-radius: 8px;
+  border: 3px solid transparent;     /* inset the thumb so it reads as a thin pill */
+  background-clip: content-box;
+}
+.pa-explore-panel::-webkit-scrollbar-thumb:hover { background-color: var(--muted-color, #6b7280); }
+.pa-explore-tabs {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border-color, #2d2d44);
+}
+.pa-explore-tab {
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  padding: 4px 10px;
+  color: var(--muted-color, #9ca3af);
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+.pa-explore-tab:hover { color: var(--text-color, #e5e7eb); }
+.pa-explore-tab.pa-active {
+  color: var(--text-color, #e5e7eb);
+  background: rgba(99, 102, 241, 0.16);
+  border-color: var(--border-color, #2d2d44);
+}
+.pa-explore-chip {
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+  border: 1px solid rgba(120, 130, 200, 0.40);
+  background: rgba(99, 102, 241, 0.14);
+  color: var(--text-color, #e5e7eb);
+  border-radius: 999px;
+  padding: 4px 11px;
+  text-align: left;              /* multi-line chips align with single-line ones */
+  transition: background 0.15s, border-color 0.15s;
+}
+.pa-explore-chip:hover { background: rgba(99, 102, 241, 0.28); border-color: var(--accent-color, #6366f1); }
+.pa-explore-chip .katex { font-size: 1em; }
+/* Sparkle marking the chip as an AI action — sits before the text, tinted accent. */
+.pa-explore-chip-icon {
+  display: inline-flex;
+  vertical-align: -1px;
+  margin-right: 6px;
+  color: var(--accent-color, #6366f1);
+}
+.pa-explore-chip:hover .pa-explore-chip-icon { color: inherit; }
+.pa-explore-chip-icon svg { display: block; }
+.pa-root .pa-info-pill.pa-pinned { border-color: var(--pa-accent); color: var(--pa-accent); }
 
 /* "Next" pill — mirrors the proof-navigator step pills; clickable (= next btn). */
 .pa-next-pill {
@@ -255,10 +552,37 @@
    shrink, that measurement would under-report the true width and miss the point
    where the step numbers should be hidden. */
 .pa-steps { display: flex; gap: 6px; flex-shrink: 0; }
-/* When the controls row can't fit, _fitControls() adds .pa-compact and the
-   numbered step buttons are hidden — only prev / next / play / speed / mode
-   remain (navigate with the arrows). */
-.pa-controls.pa-compact .pa-steps { display: none; }
+/* When the controls row can't fit, _fitControls() adds .pa-compact and the numbered
+   step buttons collapse to a row of small DOTS — no numbers, far less space. They
+   sit FAINT at rest (only the current step is clearly lit) and smoothly fade in on
+   hover so you can pick one; clicking a dot still jumps to that step. The
+   `.pa-steps .pa-step` specificity beats the docked-box step sizing so dots win there too. */
+.pa-controls.pa-compact .pa-steps { gap: 5px; align-items: center; }
+.pa-controls.pa-compact .pa-steps .pa-step {
+  min-width: 0;
+  max-width: none;
+  width: 7px;
+  height: 7px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--pa-muted, #8a93a5);
+  color: transparent;            /* hide the number */
+  font-size: 0;
+  line-height: 0;
+  opacity: 0.32;                 /* faint at rest */
+  transition: opacity 0.22s ease, background 0.15s, transform 0.12s;
+}
+.pa-controls.pa-compact .pa-steps .pa-step.pa-active {
+  background: var(--pa-active-bg, #7b82dd);
+  opacity: 1;                    /* the current step stays fully visible at rest */
+  transform: scale(1.5);         /* …and reads 1.5× larger than the rest */
+}
+/* On strip hover the other dots lift only part-way — visible enough to aim at, but
+   still clearly dimmer than the selected one (which stays lit + enlarged). */
+.pa-controls.pa-compact .pa-steps:hover .pa-step:not(.pa-active) { opacity: 0.55; }
+/* The specific dot under the cursor comes up further, but not past the active dot. */
+.pa-controls.pa-compact .pa-steps .pa-step:not(.pa-active):hover { opacity: 0.85; transform: scale(1.3); }
 
 .pa-btn, .pa-step {
   font: inherit;
@@ -281,9 +605,11 @@
 .pa-btn:hover, .pa-step:hover { border-color: var(--pa-accent); }
 
 .pa-step.pa-active {
-  background: var(--pa-accent);
+  /* Softer periwinkle than the vivid --pa-accent so the selected step doesn't read
+     as a hard dark-blue slab (white label still clears contrast). */
+  background: var(--pa-active-bg, #7b82dd);
   color: var(--pa-active-fg);
-  border-color: var(--pa-accent);
+  border-color: var(--pa-active-bg, #7b82dd);
 }
 .pa-play { margin-left: auto; width: 6em; box-sizing: border-box; text-align: center; }
 
@@ -342,6 +668,10 @@
   line-height: 1;
   background: var(--pa-conf-bg, transparent);
   border: 1px solid var(--pa-conf-fg, transparent);
+  /* The glyph is a monochrome text symbol (see TIER_GLYPH) — tint it to the tier
+     color so it stays crisp/high-contrast on any theme (emoji ignored `color`). */
+  color: var(--pa-conf-fg);
+  font-weight: 700;
   cursor: default;
   user-select: none;
 }
@@ -382,11 +712,20 @@
   transition: padding 0.15s, gap 0.15s;
 }
 .pa-root .pa-overall:empty { display: none; }    /* not yet populated (or no data) */
+/* Tint just the glyph to the tier color (the label keeps the readable fg). */
+.pa-root .pa-overall-icon { color: var(--pa-conf-fg); font-weight: 700; }
 /* COMPACT by default: icon-only chip. Expands (label + tally) on its own hover
    (peek) or while pinned. */
 .pa-root:not(.pa-conf-on):not(.pa-conf-peek) .pa-overall { padding: 4px 8px; gap: 0; }
 .pa-root:not(.pa-conf-on):not(.pa-conf-peek) .pa-overall-label,
-.pa-root:not(.pa-conf-on):not(.pa-conf-peek) .pa-overall-count { display: none; }
+.pa-root:not(.pa-conf-on):not(.pa-conf-peek) .pa-overall-count,
+.pa-root:not(.pa-conf-on):not(.pa-conf-peek) .pa-ask-overall { display: none; }
+/* The "explain this badge" AI button sits inside the pill and reveals WITH the
+   expanded badge (peek/pin) — independent of the widget-hover that reveals the
+   step ask buttons, so it's visible whenever the badge is open. */
+.pa-overall .pa-ask-overall { width: 16px; height: 16px; padding: 1px; margin-left: 2px; flex: 0 0 auto; border: none; background: transparent; }
+.pa-root.pa-conf-on .pa-ask-overall,
+.pa-root.pa-conf-peek .pa-ask-overall { opacity: 1; pointer-events: auto; }
 .pa-root .pa-overall:focus-visible { outline: 2px solid var(--pa-accent); outline-offset: 2px; }
 /* Its tooltip opens DOWNWARD and right-aligned (the pill sits at the top-right
    edge — the default above-centered tooltip would clip outside the widget). */
@@ -443,6 +782,34 @@
     flex-direction: column;
     color: rgba(210, 218, 245, 0.92);
 }
+
+/* Floating description tooltip for a hovered live term (owned by ProofAnimator, so
+   it's shared with the standalone proof-animation page). Appended to <body> with
+   position:fixed so a host box's overflow never clips it, and positioned by JS on
+   the side the term is nearest. Theme vars have fallbacks so it works outside the
+   app. pointer-events:none so it never steals the hover it describes. */
+.pa-term-tip {
+    position: fixed;
+    z-index: 10000;
+    max-width: 280px;
+    padding: 8px 11px;
+    border-radius: 10px;
+    /* ~60% transparent panel tint (text + border stay opaque); a backdrop blur
+       keeps it readable over the math it floats above. Opaque fallback first, so
+       browsers without color-mix() get a solid (still readable) tooltip. */
+    background: var(--panel-bg, #1a1a2e);
+    background: color-mix(in srgb, var(--panel-bg, #1a1a2e) 40%, transparent);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    color: var(--text-color, #e5e7eb);
+    border: 1px solid var(--border-color, #2d2d44);
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.40);
+    font-size: 12.5px;
+    line-height: 1.42;
+    overflow-wrap: anywhere;
+    pointer-events: none;
+}
+.pa-term-tip .katex { font-size: 1em; color: var(--text-color, #e5e7eb); }
 
 .sgp-body {
     flex: 1 1 auto;
@@ -567,3 +934,15 @@
    smaller gap and a content-width Play button (drop its fixed 6em). */
 .sgp-proof-box .pa-controls.pa-compact { gap: 4px; }
 .sgp-proof-box .pa-controls.pa-compact .pa-play { width: auto; }
+
+/* Phones: even compacted (step numbers already hidden), the fixed nav row can be
+   wider than a ~375px card — so it overflowed the card and pushed the page
+   sideways. Trim the card padding, tighten the gap, drop the Play button's fixed
+   6em, and let the row WRAP to a second line instead of overflowing. (renderproof
+   has a flexible page height + posts its height to the embed host, so a two-line
+   control row is fine here.) */
+@media (max-width: 480px) {
+  .pa-root { padding: 14px; }
+  .pa-controls { flex-wrap: wrap; gap: 6px; row-gap: 8px; }
+  .pa-controls .pa-play { width: auto; }
+}

@@ -10,7 +10,7 @@
 import { ProofAnimator } from '/proof-animation/proof-animation.js';
 import { invokeExpert } from '/expert-client.js';
 import { nextDockSeq } from '/proof-animation/dock-seq.js';
-import { makeAiAskButton, makeDeriveButton } from '/labels.js';
+import { makeAiAskButton, makeDeriveButton, openChatPanel } from '/labels.js';
 
 // Session-persistent cache of derivation results, keyed by the FULL request
 // shape (everything that affects the derivation — target/start/domain plus
@@ -55,6 +55,26 @@ export class SgProofManager {
         this._seq = 0;
         this._z = 30;                // proof boxes sit above charts (z 20)
         this._stepKey = null;        // boxes belong to the step they were derived in
+        // Stable term→node lookup: a rendered-appearance → nodeId map. A term's
+        // own data-n only matches the graph when it's threaded onto the current
+        // state; intermediate proof steps mint fresh ids that don't. So once ANY
+        // term resolves (by id or by looking like a node), we remember its
+        // rendered text → node, and every identical-looking term — in any step —
+        // reuses it. Keyed to the displayed graph; rebuilt when that changes.
+        this._apprCache = new Map();
+        this._apprCacheGraph = null;
+        // Reverse sync (graph → term): which graph node is hovered, and the set of
+        // selected node ids (mirrors the graph's selection). Applied as term
+        // classes across ALL docked boxes so every proof animation stays in sync.
+        this._hoverNodeId = null;
+        this._selectedNodeIds = new Set();
+        // Terms that DON'T map to a scene-graph node (a proof-only symbol like the
+        // derived LHS) can still be selected locally — gold, keyed by appearance.
+        this._selectedTermKeys = new Set();
+        // Host callback (graph-view): clear the whole selection when the user
+        // clicks empty space in a proof box.
+        this._onBackgroundDeselect = typeof opts.onBackgroundDeselect === 'function'
+            ? opts.onBackgroundDeselect : null;
     }
 
     // ── Renderer wiring (identical contract to SgChartManager) ───────────────
@@ -95,6 +115,11 @@ export class SgProofManager {
                 if (entry.box.parentNode !== dest) dest.appendChild(entry.box);
             } else if (entry.box.parentNode) {
                 entry.box.parentNode.removeChild(entry.box);   // hide (keep in memory)
+                // The animator's popups (Explore/goal/term tips) live on
+                // document.body, so removing the box doesn't take them down — hide
+                // them too, else a pinned Explore popup orphans on screen after a
+                // step/scene switch.
+                if (entry.animator && entry.animator.hidePopups) entry.animator.hidePopups();
             }
         }
         // Re-observe the fresh card for resize, then re-snap positions.
@@ -194,8 +219,10 @@ export class SgProofManager {
         }
     }
 
-    // ── Public entry: derive + dock a proof animation for a node ─────────────
-    openProof(nodeId, anchorEl, payload) {
+    // ── Public entry: dock a proof animation for a node ──────────────────────
+    // `prebaked` (optional): an already-validated proof JSON — mount it directly
+    // and SKIP the LM derivation (used to show a pre-baked proof from a deeplink).
+    openProof(nodeId, anchorEl, payload, prebaked, opts = {}) {
         if (this._destroyed) return;
 
         const dedupKey = `${this._stepKey}|${nodeId}`;   // one box per node PER STEP
@@ -203,7 +230,10 @@ export class SgProofManager {
         if (existingId && this.boxes.has(existingId)) {
             const e = this.boxes.get(existingId);
             e.box.style.zIndex = String(++this._z);
-            if (e.state === 'error') this._runDerivation(e, payload);
+            if (e.state === 'error') {
+                if (prebaked) this._mountPrebaked(e, payload, prebaked);
+                else this._runDerivation(e, payload);
+            }
             return;
         }
 
@@ -240,7 +270,9 @@ export class SgProofManager {
         const entry = {
             boxId: `proof_${++this._seq}`, nodeId, stepKey: this._stepKey, box, body, titleEl, header, dockBtn,
             paWrap: null,
-            colSpan: DEFAULT_COLSPAN, rowSpan: DEFAULT_ROWSPAN,
+            colSpan: Math.max(2, Math.min(GRID_COLS, opts.colSpan || DEFAULT_COLSPAN)),
+            rowSpan: Math.max(2, Math.min(GRID_ROWS, opts.rowSpan || DEFAULT_ROWSPAN)),
+            startStep: Number.isFinite(opts.step) ? opts.step : undefined,   // open the animation on this step
             graphX: 0, graphY: 0,
             pinned: false, docked: false,
             state: 'loading', animator: null,
@@ -276,8 +308,19 @@ export class SgProofManager {
         this._makeDraggable(entry, header);
         this._addResizeHandle(entry);
 
-        this._runDerivation(entry, payload);
+        if (prebaked) this._mountPrebaked(entry, payload, prebaked);
+        else this._runDerivation(entry, payload);
         this._updatePositions();
+    }
+
+    // Mount a pre-baked (already-validated) proof animation directly — no LM call.
+    // Mirrors the cache-hit branch of _runDerivation. `payload` is kept only so a
+    // nested "derive this step" can inherit the lesson context.
+    _mountPrebaked(entry, payload, data) {
+        entry.payload = payload;
+        if (data && data.title) this._renderInlineMath(entry.titleEl, data.title);
+        this._mountAnimator(entry, data);
+        entry.state = 'ready';
     }
 
     async _runDerivation(entry, payload) {
@@ -323,6 +366,7 @@ export class SgProofManager {
     _mountAnimator(entry, data) {
         entry.body.innerHTML = '';
         entry.paWrap = null;
+        entry.data = data;   // holds data.terms (per-term descriptions) for tooltips
         if (!data || !Array.isArray(data.steps) || data.steps.length === 0) {
             this._renderError(entry, new Error('The derivation produced no steps.'));
             return;
@@ -343,6 +387,36 @@ export class SgProofManager {
                 deriveButton: makeDeriveButton,
                 onDerive: (p, anchorEl) => this._deriveFromAnimator(entry, p, anchorEl),
                 fitHeight: true,
+                startStep: entry.startStep,   // open on the deeplinked step (?pas=), else step 0
+                // Live terms: hover/click a named term → light up & select its
+                // linked semantic-graph node. No-ops when there's no renderer.
+                liveTerms: true,
+                onTermHover: (chain, _el) => this._onTermHover(chain),   // ProofAnimator passes (chain, el); we only need the chain
+                onTermClick: (chain, _el, ev) => this._onTermClick(chain, ev),
+                // Prerequisite / follow-up chips → ask the agent with the proof
+                // context baked into the message (chat.js exposes these globally).
+                enableExplore: true,
+                onExplore: ({ message }) => {
+                    try { openChatPanel(); } catch (e) { /* panel optional */ }
+                    if (typeof window !== "undefined" && typeof window.sendChatMessage === "function") {
+                        window.sendChatMessage(message);
+                    }
+                },
+                // Term-ask: a floating "Ask AI" appears when ≥1 term is selected.
+                // In-app there's chat already, so just ask (no navigation). The
+                // ordered, graph-enriched message is built from the host's selection.
+                enableTermAsk: true,
+                onTermAsk: ({ message }) => {
+                    try { openChatPanel(); } catch (e) { /* panel optional */ }
+                    if (typeof window !== "undefined" && typeof window.sendChatMessage === "function") {
+                        window.sendChatMessage(message);
+                    }
+                },
+                onBuildTermAskMessage: (focus) => this._buildTermAskMessage(entry, focus),
+                // Reverse sync: re-apply selection/linked classes after every
+                // (re)render (a morph wipes them); a background click deselects all.
+                onAfterRender: () => this._refreshTermClasses(entry),
+                onTermBackgroundClick: () => this._deselectAll(),
             });
         } catch (e) {
             entry.paWrap = null;
@@ -367,6 +441,239 @@ export class SgProofManager {
         const key = String(payload.target_latex).replace(/\s+/g, '');
         const parentId = parentEntry ? parentEntry.nodeId : 'anim';
         this.openProof(`${parentId}::sub::${key}`, anchorEl, payload);
+    }
+
+    // ── Live terms → semantic-graph sync ─────────────────────────────────────
+    // A docked proof animation drives the SAME renderer the graph itself uses, so
+    // hovering/clicking a named term lights up and selects its linked node exactly
+    // as a direct graph interaction would (cmd/ctrl-click keeps multi-selecting).
+    // With no renderer (no semantic graph) these are silent no-ops — the term
+    // still haloes locally inside the proof box, there's just nothing to sync to.
+    // Cache key from a term's rendered text — strip whitespace / zero-width joiners
+    // so identical-looking terms collapse to one key. Reject only the genuinely
+    // AMBIGUOUS keys: empty, and a bare number (a literal "2" and the "2" of a
+    // square render identically). Operator GLYPHS (·, =, −) are excluded separately
+    // by id when learning, since they repeat for different operator instances.
+    // Single symbols (H, V, E) are kept — each maps to one node — so a lone letter
+    // gets cached and stays stable across steps (no length floor).
+    _apprKey(text) {
+        const k = (text || '').replace(/[\s\u200B-\u200F\u2060\uFEFF]/g, '');
+        return (!k || /^[\d.,/+\-]+$/.test(k)) ? '' : k;   // reject empty + numeric-only
+    }
+
+    // Walk the term's candidate chain (innermost glyph → enclosing operator
+    // wrappers) and return the first that maps to a node in the current graph.
+    // The appearance cache makes this STABLE across steps: a term resolved once
+    // (here or in another step) is reused for every identical-looking term.
+    _resolveChain(chain) {
+        const r = this._renderer;
+        if (!r || r._destroyed || typeof r.resolveTermNodeId !== 'function') return null;
+        if (this._apprCacheGraph !== r._graph) { this._apprCache = new Map(); this._apprCacheGraph = r._graph; }
+        const present = id => (id && typeof r.getNode === 'function' && r.getNode(id)) ? id : null;
+        // 1) Appearance cache — a previously-resolved look-alike (still in graph).
+        for (const c of (chain || [])) {
+            const k = this._apprKey(c.text);
+            if (k && this._apprCache.has(k)) { const id = present(this._apprCache.get(k)); if (id) return id; }
+        }
+        // 2) Structural resolution — id, then look-alike-of-a-node; learn on hit.
+        // Don't learn from an operator GLYPH (·, =, ^, …): its bare text repeats
+        // for different operator instances, so its appearance isn't a stable key.
+        const isOpGlyph = id => /__(?:op\d*|exp|one|m\d+)$/.test(id || '');
+        for (const c of (chain || [])) {
+            const id = r.resolveTermNodeId(c.id, c.text);
+            if (id) {
+                const k = this._apprKey(c.text);
+                if (k && !isOpGlyph(c.id)) this._apprCache.set(k, id);
+                return id;
+            }
+        }
+        return null;
+    }
+
+    // Hovering a term lights up its LINKED scene-graph node and every matching
+    // term (in all boxes) together — the same path graph→term hover uses, so it's
+    // symmetric. (The TOOLTIP is owned by ProofAnimator now — graph-free, shared
+    // with the standalone proof-animation page.) Best-effort: an intermediate-only
+    // symbol has no node, which is fine.
+    _onTermHover(chain) {
+        const r = this._renderer;
+        const id = (r && !r._destroyed) ? this._resolveChain(chain) : null;
+        this._setHoverNode(id);
+    }
+
+    _onTermClick(chain, ev) {
+        const r = this._renderer;
+        const additive = !!(ev && ev.additive);
+        const id = (r && !r._destroyed && typeof r.selectNodeById === 'function')
+            ? this._resolveChain(chain) : null;
+        if (id) {
+            // Mapped term → drive the graph's selection; its onNodeClick rounds back
+            // through syncSelectionFromGraph(), which golds the term(s). One source
+            // of truth, so a term-click and a node-click select identically.
+            r.selectNodeById(id, { additive });
+            return;
+        }
+        // OFF-GRAPH term (no scene node) → select it LOCALLY, keyed by appearance.
+        const key = this._apprKey((chain && chain[0] && chain[0].text) || '');
+        if (!key) return;
+        if (additive) {
+            // cmd/ctrl → toggle this term, keep the rest of the selection.
+            if (this._selectedTermKeys.has(key)) this._selectedTermKeys.delete(key);
+            else this._selectedTermKeys.add(key);
+            this._applyAllBoxes();
+        } else {
+            // plain → REPLACE: clear the graph selection + every other term first.
+            this._deselectAll();
+            this._selectedTermKeys = new Set([key]);
+            this._applyAllBoxes();
+        }
+    }
+
+    // ── Reverse sync (graph → term) ──────────────────────────────────────────
+    // Hovering/clicking a graph node lights up / selects the matching term(s) in
+    // EVERY docked proof box. Recursion is avoided structurally: this path only
+    // toggles DOM classes (and highlightNodeById, a no-event method) — it never
+    // re-dispatches the term/node mouse events that would echo back.
+
+    /** The expression element of a box, or null. */
+    _termExpr(entry) {
+        return entry && entry.box ? entry.box.querySelector('.pa-stage > .pa-expr') : null;
+    }
+
+    /** Resolve ONE term element's data-n to a scene-graph node id (cached by
+     *  appearance for stability across steps), or null. */
+    _resolveTermEl(el) {
+        const r = this._renderer;
+        if (!r || r._destroyed || typeof r.resolveTermNodeId !== 'function') return null;
+        const text = el.textContent || '';
+        const k = this._apprKey(text);
+        if (k && this._apprCache.has(k)) {
+            const cid = this._apprCache.get(k);
+            if (cid && typeof r.getNode === 'function' && r.getNode(cid)) return cid;
+        }
+        const nid = r.resolveTermNodeId(el.getAttribute('data-n'), text);
+        if (nid && k) this._apprCache.set(k, nid);
+        return nid;
+    }
+
+    /** (Re)build a box's element → {nodeId, key} map — call after each (re)render,
+     *  since a morph replaces the term elements. `key` is the appearance key, used
+     *  to select terms that have NO scene-graph node (off-graph proof symbols). */
+    _buildTermNodeMap(entry) {
+        // Keep the appearance cache keyed to the current graph (mirrors _resolveChain).
+        const r = this._renderer;
+        if (r && this._apprCacheGraph !== r._graph) { this._apprCache = new Map(); this._apprCacheGraph = r._graph; }
+        const map = new Map();
+        const expr = this._termExpr(entry);
+        if (expr) {
+            for (const el of expr.querySelectorAll('[data-n]')) {
+                const nid = this._resolveTermEl(el);
+                const key = this._apprKey(el.textContent || '');
+                if (nid || key) map.set(el, { nid, key });
+            }
+        }
+        entry._termNodes = map;
+        return map;
+    }
+
+    /** Apply the shared hover/selection state as term classes for one box. */
+    _applyTermClasses(entry) {
+        const map = entry._termNodes || this._buildTermNodeMap(entry);
+        for (const [el, info] of map) {
+            const { nid, key } = info;
+            // Gold if the linked node is selected OR (off-graph) this appearance is.
+            const selected = (nid && this._selectedNodeIds.has(nid)) || (key && this._selectedTermKeys.has(key));
+            el.classList.toggle('pa-term-selected', !!selected);
+            el.classList.toggle('pa-term-linked', !selected && !!nid && nid === this._hoverNodeId);
+        }
+    }
+
+    /** After a (re)render: rebuild the map, then re-apply (the morph wiped classes). */
+    _refreshTermClasses(entry) {
+        this._buildTermNodeMap(entry);
+        this._applyTermClasses(entry);
+    }
+
+    _applyAllBoxes() {
+        for (const entry of this.boxes.values()) this._applyTermClasses(entry);
+    }
+
+    // Build the graph-enriched ask message for a box's "Ask AI" button. The engine
+    // passes the hovered FOCUS term; we resolve it (and the gold context terms) to
+    // graph nodes and frame the focus as the subject + the rest as context —
+    // mirroring the multi-node graph ask (hovered = subject, selected = context).
+    _buildTermAskMessage(entry, focus) {
+        const r = this._renderer;
+        const graph = r && r._graph;
+        const getNode = (id) => (r && typeof r.getNode === 'function') ? r.getNode(id)
+            : ((graph && Array.isArray(graph.nodes)) ? graph.nodes.find((n) => n.id === id) : null);
+        const title = entry && entry.data && entry.data.title ? ` "${entry.data.title}"` : '';
+
+        // Focus = the hovered term (its linked node if it maps, else its text).
+        const focusNid = (focus && focus.chain) ? this._resolveChain(focus.chain) : null;
+        const focusNode = focusNid ? getNode(focusNid) : null;
+        const focusLabel = focusNode ? (focusNode.label || focusNode.id) : ((focus && focus.text) || '');
+        const focusKey = focus ? this._apprKey(focus.text || '') : '';
+
+        // Context = the gold selection, minus the focus term: graph nodes first,
+        // then any off-graph proof-only terms.
+        const ctxNodeIds = [...this._selectedNodeIds].filter((id) => id !== focusNid);
+        const ctxTermKeys = [...this._selectedTermKeys].filter((k) => k !== focusKey);
+        const ctx = [];
+        for (const id of ctxNodeIds) {
+            const n = getNode(id);
+            if (n) {
+                let line = `- ${n.label || n.id}`;
+                if (n.type) line += ` (${n.type})`;
+                if (n.description) line += ` — ${n.description}`;
+                ctx.push(line);
+            } else {
+                ctx.push(`- ${id}`);
+            }
+        }
+        for (const key of ctxTermKeys) ctx.push(`- "${key}"`);
+
+        if (!focusLabel && !ctx.length) return '';
+        let head = `In the derivation${title}, explain the term "${focusLabel}"`;
+        if (focusNode && focusNode.description) head += ` (${focusNode.description})`;
+        if (!ctx.length) return head + ' — what it represents and its role here.';
+        return head + ' and how it relates to:\n' + ctx.join('\n');
+    }
+
+    /** Shared hover node (set by a term hover OR a graph-node hover). Lights the
+     *  node on the graph and the matching term(s) in every box. */
+    _setHoverNode(nodeId) {
+        this._hoverNodeId = nodeId || null;
+        const r = this._renderer;
+        if (r && !r._destroyed && typeof r.highlightNodeById === 'function') {
+            r.highlightNodeById(this._hoverNodeId);
+        }
+        this._applyAllBoxes();
+    }
+
+    /** Graph node hovered (graph-view → here). */
+    highlightTermsForNode(nodeId) {
+        this._setHoverNode(nodeId);
+    }
+
+    /** The graph's selection changed (graph-view → here, after any node/term click).
+     *  Mirror it onto the terms so selected terms are gold everywhere. */
+    syncSelectionFromGraph(selectedIds, additive) {
+        this._selectedNodeIds = new Set(selectedIds || []);
+        // A PLAIN (non-additive) selection replaces everything, so clear the
+        // off-graph term selection too — only cmd/ctrl keeps both. A full deselect
+        // (empty) clears it regardless.
+        if (!additive || this._selectedNodeIds.size === 0) this._selectedTermKeys.clear();
+        this._applyAllBoxes();
+    }
+
+    /** A click on empty space in a proof box — deselect everything: the local
+     *  off-graph term selection AND (via the host) the graph selection + info panel
+     *  (which calls back through syncSelectionFromGraph([]) to re-apply). */
+    _deselectAll() {
+        this._selectedTermKeys.clear();
+        if (this._onBackgroundDeselect) this._onBackgroundDeselect();
+        else this._applyAllBoxes();
     }
 
     _renderLoading(entry, payload) {

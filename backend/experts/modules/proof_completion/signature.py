@@ -58,6 +58,18 @@ class ProofCompletionSig(dspy.Signature):
     - Also give a short `title`: a few plain words naming what the derivation
       shows (e.g. "Completing the square", "Lorentz time dilation"). It is a
       human-readable display label, NOT a formula or a restatement of the target.
+    - Give a one-sentence `goal` that states what this derivation establishes and
+      why — the context a reader needs up front, BEFORE the steps (e.g. "Solve the
+      general quadratic $ax^2+bx+c=0$ for $x$ to obtain the quadratic formula").
+      Inline math in `$…$`. It is the framing, not a step.
+    - Give `followups`: 2–4 short, self-contained prompts a learner could ask next
+      to keep exploring this result with an AI tutor, BEYOND what these steps show
+      (e.g. "Apply this to $2x^2+3x-5=0$", "When are the roots complex?", "Derive
+      the vertex form"). Each is a question/instruction in plain words (inline math
+      in `$…$` is fine), phrased so it stands alone as the next turn of a chat.
+    - Give `prerequisites`: 1–4 short concepts/skills a learner should already know
+      to follow this derivation (e.g. "completing the square", "the square root of
+      both sides", "$\sqrt{x^2}=|x|$"). Concept names, not steps; inline math in `$…$`.
     """
 
     start_latex: str = dspy.InputField(desc="the starting expression, as LaTeX")
@@ -72,4 +84,16 @@ class ProofCompletionSig(dspy.Signature):
     title: str = dspy.OutputField(
         desc="a short, human-readable display title naming what this derivation shows "
              "(e.g. 'Completing the square') — plain words, NOT a formula"
+    )
+    goal: str = dspy.OutputField(
+        desc="one sentence stating what the derivation establishes and why, to set "
+             "context before the steps; inline math in $…$ (NOT a step, NOT the title)"
+    )
+    followups: list[str] = dspy.OutputField(
+        desc="2-4 short, self-contained prompts to keep exploring this result with an "
+             "AI tutor beyond the rendered steps; each stands alone as the next chat turn"
+    )
+    prerequisites: list[str] = dspy.OutputField(
+        desc="1-4 short concepts/skills a learner should already know to follow this "
+             "derivation (concept names, not steps); inline math in $…$"
     )

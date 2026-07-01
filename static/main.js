@@ -10,7 +10,7 @@ import { animateSlider } from '/sliders.js';
 import { setupDragDrop, setupFilePicker, setupScenesDropdown, setupVideoExportControls,
          loadBuiltinScenesList, loadInitialSceneFromQuery } from '/ui.js';
 import { setupSettingsPanel, initLightControls, setupPanelResize, setupExplainToggle,
-         setupDocSpeakButtons, setupCaptionDrag, setupSceneDescDrag, setupCamStatusPopup,
+         setupDocSpeakButtons, setupCaptionDrag, setupSceneDescDrag, setupCamStatusPopup, setupAboutPopup,
          getAllElements, addInfoOverlay, removeAllInfoOverlays, updateInfoOverlays,
          setBuildSceneTreeFn } from '/overlay.js';
 import { setupFollowAngleLockToggle } from '/follow-cam.js';
@@ -58,6 +58,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupJsonViewer();
     setupContextStatusPopup();
     setupCamStatusPopup();
+    setupAboutPopup();
     // Deeplink sync must be live before the initial scene loads so the URL
     // reflects navigation, and applyViewState exists before ui.js calls it.
     setupViewSync();

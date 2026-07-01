@@ -29,10 +29,32 @@ Two surfaces over one checker (see issue #372 §A):
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import List
 
 from backend.util.latex import braces_balanced, delimiters_balanced, math_segments
+
+# Control chars that signal JSON-mangled LaTeX in a prose caption: the model
+# wrote a command with a single backslash (``$\frac…$``), and the JSON parser
+# read ``\f``/``\b``/``\r``/``\n``/``\t`` as a control-char escape, eating the
+# command's first letter (``\frac``→``\x0crac``). ``\x08``/``\x0c`` never occur
+# in real prose, so they are flagged anywhere; ``\r``/``\n``/``\t`` double as
+# real whitespace, so they are flagged only when they begin a command (followed
+# by a lowercase letter) INSIDE a ``$…$`` segment — matching the scope of the
+# parse-boundary repair (``outputs._unmangle_json_escapes``), so a real line
+# break in prose is never mistaken for corruption. The repair normally fixes
+# these first; this gate is belt-and-suspenders so a corrupted caption that
+# bypassed the repair still scores 0 in the reward and is fed back for retry.
+_HARD_CTRL_RE = re.compile(r"[\x08\x0c]")
+_WS_CTRL_RE = re.compile(r"[\r\n\t](?=[a-z])")
+
+
+def _has_mangled_ctrl(text: str) -> bool:
+    """True iff ``text`` carries a JSON-mangle control char (see above)."""
+    if _HARD_CTRL_RE.search(text):
+        return True
+    return any(_WS_CTRL_RE.search(seg.content) for seg in math_segments(text))
 
 
 class MalformedCaption(ValueError):
@@ -63,6 +85,10 @@ def prose_issues(text: str, *, where: str) -> List[str]:
     (e.g. ``"step 2 operation"``).
     """
     issues: List[str] = []
+    if _has_mangled_ctrl(text):
+        issues.append(f"{where}: contains a stray control character where a LaTeX "
+                      f"command should be — write inline math with DOUBLED "
+                      f"backslashes (e.g. '\\\\frac', '\\\\rho')")
     if not delimiters_balanced(text):
         issues.append(f"{where}: unbalanced '$' — every inline-math segment must "
                       f"open and close with a matching '$'")

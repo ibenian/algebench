@@ -136,7 +136,9 @@ export async function loadInitialSceneFromQuery() {
     // re-apply the captured ViewState after the source load rewrites the URL.
     const hasDeeplink = !!(
         vs.view || vs.panel || vs.pp || vs.sc || vs.st || vs.pf || vs.ps ||
-        vs.nodes || vs.sliders || vs.cv || vs.proj || Number.isFinite(vs.oz) || vs.cam
+        vs.nodes || vs.sliders || vs.cv || vs.proj || Number.isFinite(vs.oz) || vs.cam ||
+        vs.aa ||          // a deeplinked auto-ask (e.g. from an embedded proof) must still apply
+        vs.pa || Number.isFinite(vs.pas)   // a pre-baked proof to dock (?pa=/?pas=) even without other fields
     );
     const applyRest = async () => {
         if (hasDeeplink && typeof window.applyViewState === 'function') {
@@ -156,6 +158,7 @@ export async function loadInitialSceneFromQuery() {
                 const spec = await res.json();
                 if (spec && Array.isArray(spec.scenes) && spec.scenes.length) {
                     await loadLesson(spec);
+                    await applyRest();   // apply panel/aa/etc. on the default scene too
                     return;
                 }
             }
@@ -163,6 +166,7 @@ export async function loadInitialSceneFromQuery() {
             hideSceneLoading();
         }
         loadScene(null);
+        await applyRest();   // apply the deeplink even with no scene loaded
         return;
     }
     try {

@@ -39,6 +39,60 @@ const _parenChar = (s) => {
 // Playback speed multipliers the speed button cycles through (click → next).
 const SPEEDS = [0.25, 0.5, 1, 2, 4];
 
+// Monochrome tier glyphs for the confidence badges. The server bakes COLOR emoji
+// (🥇🥈🎓🔹…) into the proof JSON, but emoji ignore CSS `color`, so a dark cap
+// muddies against a dark badge. These are plain text glyphs that inherit the
+// badge's tier color (--pa-conf-fg), staying crisp on any theme. Keyed by tier;
+// falls back to the baked icon for an unknown tier.
+const TIER_GLYPH = {
+  grounded:  "★",   // gold   — algebraically grounded (a CAS identity)
+  verified:  "✓",   // silver — verified (strong evidence)
+  domain:    "✦",   // teal   — domain-vouched (expert; CAS couldn't check)
+  plausible: "◇",   // blue   — plausible (tentative)
+  unchecked: "○",   // gray   — unchecked (undecided)
+  refuted:   "✗",   // red    — refuted
+};
+const _tierGlyph = (tier, fallback) => TIER_GLYPH[tier] || fallback || "";
+
+// Info (ⓘ) icon for the explore pill — static author-controlled markup.
+const INFO_ICON =
+  '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" ' +
+  'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.5h.01"/></svg>';
+
+// Goal pill icon — a target/bullseye (the goal is the target). Idle state of the
+// goal pill; hovering expands the pill to reveal the goal text (like the rank pill).
+const GOAL_ICON =
+  '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" ' +
+  'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/>' +
+  '<circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>';
+
+// AI sparkle icon for the engine-native ask buttons (rendered only when the app
+// gives no aiAskButton factory but term-ask is enabled — standalone/embedded).
+// Mirrors labels.js AI_SPARKLE_SVG so the engine stays dependency-free.
+const AI_SPARKLE_SVG =
+  '<svg viewBox="0 0 16 16" fill="currentColor" width="11" height="11" aria-hidden="true">' +
+  '<path d="M8 1c0 4-3 6.5-7 7 4 .5 7 3 7 7 0-4 3-6.5 7-7-4-.5-7-3-7-7z"/></svg>';
+
+// Synthetic operator-node ids (from the backend structural renderer) for n-ary /
+// relational nodes that SPAN many terms — a product/fraction, a sum, an equation.
+// Hovering the bare chrome of one (a fraction bar, the space between factors)
+// resolves via `closest('[data-n]')` to this big wrapper; we must NOT treat that
+// as the hovered term (it would light the whole sub-expression) and the
+// resolve-chain stops below it. Tight operators (power, derivative, function,
+// negation) are NOT here — those are real, pickable terms.
+const _SPANNING_OP = /^(?:multiply|add|subtract|plus|minus|equals|not_equal|less_than|greater_than|less_equal|greater_equal|implies|iff|conjunction|disjunction)_\d+$/;
+function _isSpanningWrapperId(id) {
+  if (!id) return false;
+  // Strip any leading id prefixes before matching the op name: rebase (`_r3_`) AND
+  // disjunction-branch (`d0_`, `d1_`, … — the two sides of a `\lor`). Missing the
+  // branch prefix left `d1___multiply_9` unrecognized as a spanning fraction, so
+  // hovering a term inside the 2nd root's denominator lit the whole ratio (#…).
+  const core = id.replace(/^(?:_r\d+_|d\d+_)+/, "").replace(/^_+/, "");
+  return _SPANNING_OP.test(core);
+}
+
 // Caption LaTeX delimiters: $…$, `…` (backticks — what the LM emits), \(…\), \[…\].
 const _CAPTION_RE = /(\$[^$]+\$|`[^`]+`|\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\])/g;
 const _speedLabel = (s) => ({ 0.25: "¼×", 0.5: "½×" }[s] || `${s}×`);
@@ -54,6 +108,27 @@ export class ProofAnimator {
     // has no chat panel and omits it — no factory, no buttons rendered.
     this._aiAsk = opts.aiAskButton || null;
     this._nextAskBtn = null;
+    // Term-ask (proof terms → AI exploration). Gated by enableTermAsk; works
+    // standalone/embedded (?ai=1) and in-app (docked boxes). onTermAsk lets the app
+    // route the ask to chat; onBuildTermAskMessage lets it supply a graph-enriched
+    // message built from its own ordered selection.
+    this._enableTermAsk = !!opts.enableTermAsk;
+    this._onTermAsk = typeof opts.onTermAsk === "function" ? opts.onTermAsk : null;
+    this._onBuildTermAskMessage = typeof opts.onBuildTermAskMessage === "function" ? opts.onBuildTermAskMessage : null;
+    this._askSel = [];          // gold CONTEXT terms [{key, chain, text, desc}] (standalone)
+    this._termAskBtnEl = null;  // the fade-in "Ask AI" button (on document.body)
+    this._askBtnFocus = null;   // the term the button is anchored to (the ask subject)
+    this._askBtnHideTimer = null;
+    this._askBtnFadeTimer = null;
+    this._askBtnRelocateTimer = null;   // intent-delay before moving the button to a new term
+    this._askBtnRelocateEl = null;
+    // Standalone/embedded term-ask has no host chat factory, but we still want the
+    // per-step ask buttons — render engine-native ones that route via _routeAsk
+    // (embedded → new tab + auto-ask; standalone → clipboard). The app path keeps
+    // its own factory (opts.aiAskButton), which asks chat directly.
+    if (!this._aiAsk && this._enableTermAsk) {
+      this._aiAsk = (cls, title, getMessage) => this._makeRoutedAskButton(cls, title, getMessage);
+    }
     // Optional "Derive this step" integration: a button factory (className,
     // title, onClick) → <button> plus an onDerive(payload, anchorEl) handler the
     // host uses to dock a fresh derivation. Both come from the app (SgProofManager
@@ -62,12 +137,40 @@ export class ProofAnimator {
     // animation step into finer sub-steps on demand.
     this._deriveBtnFactory = typeof opts.deriveButton === "function" ? opts.deriveButton : null;
     this._onDerive = typeof opts.onDerive === "function" ? opts.onDerive : null;
+    // Host hook for clicking a prerequisite / follow-up chip. Receives
+    // {kind:'prerequisite'|'followup', text, message} — the app asks its agent with
+    // the context-rich `message`. Absent + embedded → posted to the parent page;
+    // absent + standalone → the chip copies its text.
+    this._onExplore = typeof opts.onExplore === "function" ? opts.onExplore : null;
+    // Gate the bottom "Explore" panel (Prerequisites / Explore-further tabs) — off
+    // unless the host opts in (the app sets it; the standalone page via ?explore=).
+    this._enableExplore = !!opts.enableExplore;
     this._deriveBtnEl = null;
     // Optional host hook fired after every internal relayout (resize / fonts), so
     // a host that scales this widget to fit a box (SgProofManager) can re-fit AFTER
     // our fixed zone heights are final — otherwise its scale races our relayout and
     // ends up stale (content overflows / positions shift on the next step).
     this._onRelayout = typeof opts.onRelayout === "function" ? opts.onRelayout : null;
+    // Optional "live terms" mode — a code parameter, no UI toggle. When on, each
+    // rendered term becomes hoverable/clickable: hovering gives it a soft halo,
+    // and (for NAMED terms — real symbols, not operators/exponents) fires
+    // onTermHover/onTermClick so the host can light up and select the linked
+    // semantic-graph node. The host (SgProofManager) wires these to the graph
+    // renderer; the standalone report omits opts.liveTerms entirely, so the whole
+    // feature is mute there. Every term still haloes locally — only the sg sync is
+    // gated on being a named term that maps to a node.
+    this._liveTerms = !!opts.liveTerms;
+    this._onTermHover = typeof opts.onTermHover === "function" ? opts.onTermHover : null;
+    this._onTermClick = typeof opts.onTermClick === "function" ? opts.onTermClick : null;
+    // Reverse-sync hooks (the host drives graph→term highlight/select):
+    //   onAfterRender() — fires after EVERY stage (re)render so the host can
+    //     re-apply persistent term classes (selection/linked highlight) that a
+    //     morph's fresh render would otherwise wipe.
+    //   onTermBackgroundClick() — a click in the expression area that misses every
+    //     term (the host deselects all).
+    this._onAfterRender = typeof opts.onAfterRender === "function" ? opts.onAfterRender : null;
+    this._onTermBackgroundClick = typeof opts.onTermBackgroundClick === "function" ? opts.onTermBackgroundClick : null;
+    this._hotTermEl = null;   // currently haloed term (event-delegation bookkeeping)
     // Container-fit mode (set by a host that gives the widget a FIXED-size box,
     // e.g. SgProofManager's grid cell): the stage fills the height the box leaves
     // after the fixed text + nav bars, and the expression is scaled to fit that
@@ -82,7 +185,11 @@ export class ProofAnimator {
     this._baseStepPause = opts.stepPause ?? 1000;  // Play: reading pause between steps (1× ≈ 1s)
     this._speedIdx = SPEEDS.indexOf(opts.speed ?? 1);
     if (this._speedIdx < 0) this._speedIdx = SPEEDS.indexOf(1);
-    this.current = 0;
+    // Open on a specific step (e.g. a deeplink that carries the learner's current
+    // derivation step), clamped to the available steps. Defaults to the first.
+    this.current = Math.max(0, Math.min(
+      Number.isFinite(opts.startStep) ? Math.floor(opts.startStep) : 0,
+      (this.data.steps ? this.data.steps.length : 1) - 1));
     this._running = [];
     this._ghosts = [];
     this._token = null;
@@ -96,11 +203,12 @@ export class ProofAnimator {
     this._baseFontPx = parseFloat(getComputedStyle(this.stage).fontSize) || 30;
     this._fixMetaSize();    // pin the caption area first so the stage's flex height is known
     this._fit();            // scale the expression to fit the stage (width; +height in container mode)
-    this._renderInto(this.stage, this.data.steps[0].latex);
+    this._renderInto(this.stage, this.data.steps[this.current].latex);
     this._syncUI();
     this._capOverflow();    // never let the expression spill past the stage
     this._fitControls();    // hide step enumerations if the controls don't fit
     this._observeResize();  // responsive: re-fit on container/window resize
+    this._bindLiveTerms();  // optional: hover/click terms → halo + sg sync (no-op if off)
     // KaTeX webfonts load async; the first _fit() may have measured with narrower
     // fallback-font metrics. Re-fit once the real fonts are ready.
     if (typeof document !== "undefined" && document.fonts && document.fonts.ready) {
@@ -222,7 +330,19 @@ export class ProofAnimator {
   // width — a safety net for cases _fit()'s probe under-measures (e.g. it ran
   // before the KaTeX webfonts loaded, so fallback-font metrics were narrower).
   // Shrinks the stage font (which reflows the existing render) until it fits.
+  // Fires the host's after-render hook (reverse sync re-applies term classes a
+  // fresh render wiped). Hung off _capOverflow because that runs after EVERY stage
+  // (re)render — initial, relayout, and the post-morph settle.
   _capOverflow() {
+    this._capOverflowImpl();
+    // Re-apply the engine-owned ask-selection a fresh render wiped (standalone
+    // only; in-app the host re-applies its own classes via onAfterRender). Keyed
+    // by appearance, so it survives the morph's brand-new term elements.
+    if (this._enableTermAsk && !this._onTermClick) { try { this._applyAskClasses(); } catch (e) {} }
+    if (this._onAfterRender) { try { this._onAfterRender(); } catch (e) {} }
+  }
+
+  _capOverflowImpl() {
     const expr = this.stage.querySelector(".pa-expr");
     if (!expr) return;
     const k = expr.querySelector(".katex-display") || expr.querySelector(".katex");
@@ -253,6 +373,9 @@ export class ProofAnimator {
     this._lastFitH = this.container.clientHeight;
     this._ro = new ResizeObserver(() => {
       if (this._destroyed) return;
+      // The Explore popup is anchored to the info pill inside the box; when the
+      // box resizes the pill moves, so re-anchor the popup every tick (cheap).
+      this._repositionPopups();
       const w = this.container.clientWidth;
       const h = this.container.clientHeight;
       // Width changes always matter. In container mode HEIGHT changes matter too
@@ -317,6 +440,506 @@ export class ProofAnimator {
       try { document.removeEventListener("visibilitychange", this._onVisibility); } catch (e) {}
       this._onVisibility = null;
     }
+    if (this._onDocExplore) {
+      try { document.removeEventListener("mousedown", this._onDocExplore, true); } catch (e) {}
+      this._onDocExplore = null;
+    }
+    if (this.stage && this._onStageMove) {
+      this.stage.removeEventListener("mousemove", this._onStageMove);
+      this.stage.removeEventListener("mouseleave", this._onStageLeave);
+      this.stage.removeEventListener("click", this._onStageClick);
+      this._onStageMove = this._onStageLeave = this._onStageClick = null;
+    }
+    if (this._askBtnHideTimer) { clearTimeout(this._askBtnHideTimer); this._askBtnHideTimer = null; }
+    if (this._askBtnFadeTimer) { clearTimeout(this._askBtnFadeTimer); this._askBtnFadeTimer = null; }
+    if (this._askBtnRelocateTimer) { clearTimeout(this._askBtnRelocateTimer); this._askBtnRelocateTimer = null; }
+    // Remove the body-appended popups/buttons this widget created (else they leak
+    // when a proof box is torn down and recreated in the app).
+    for (const k of ["_termTip", "_mathTip", "_goalPop", "_explorePop", "_termAskBtnEl"]) {
+      const el = this[k];
+      if (el && el.parentNode) el.parentNode.removeChild(el);
+      this[k] = null;
+    }
+    // Clear any host hover state this widget drove (empty chain → no linked term).
+    if (this._onTermHover) { try { this._onTermHover([], null); } catch (e) {} }
+  }
+
+  // ── Live terms (optional) ──────────────────────────────────────────────────
+  // Event-delegated hover/click on the rendered terms. Delegation on the stage
+  // survives every re-render (initial, resize relayout, and the post-morph settle
+  // all rebuild the stage DOM), so we bind once and never re-attach per glyph.
+  _bindLiveTerms() {
+    if (!this._liveTerms || !this.stage) return;
+    this.container.classList.add("pa-live-terms");
+    // The term under the pointer. A leaf glyph IS the term; anything that still
+    // wraps tagged leaves — a fraction, power, √, product, equation — snaps to the
+    // NEAREST leaf by box, so the inner term lights up rather than the whole
+    // sub-expression. (KaTeX's transparent layout containers let a wrapper sit
+    // under the pointer in the gaps between glyphs; the box-distance snap is
+    // tolerance-capped, so a true background point still no-ops.) _termChain then
+    // walks UP from the leaf to its enclosing operator, so the graph host can
+    // still resolve the fraction/power/√ from the chain when it wants to.
+    const tagOf = (t, x, y) => {
+      const el = t && t.closest ? t.closest("[data-n]") : null;
+      if (!el || !this.stage.contains(el)) return null;
+      if (el.querySelector("[data-n]")) {
+        if (x == null) return null;
+        // Prefer the nearest inner leaf. Only when the pointer is on NO term at all
+        // (the bare √ surd, a fraction bar) fall back to the wrapper itself — and
+        // only when it's a tight operator (√, fraction, power), never a spanning
+        // combiner (product / sum / equation) whose box sprawls. So the √ "kicks in
+        // last": it's selectable, but only after we know no inner term is hovered.
+        const leaf = this._nearestLeafTerm(el, x, y);
+        if (leaf) return leaf;
+        return _isSpanningWrapperId(el.getAttribute("data-n")) ? null : el;
+      }
+      return el;
+    };
+    // mousemove (not mouseover) + mouseleave (not mouseout): hit-test the term
+    // under the cursor on every move and clear only when the pointer truly leaves
+    // the stage. This is immune to the relatedTarget / pointer-events gaps that
+    // KaTeX's transparent layout containers create — the cause of terms inside a √
+    // or fraction flickering or refusing to light up (the enter/exit bug).
+    this._onStageMove = (ev) => {
+      const el = tagOf(ev.target, ev.clientX, ev.clientY);
+      // Switch only to a REAL term; over chrome/gaps (null) keep the current term
+      // lit so crossing a fraction bar between two glyphs never flickers.
+      if (el && el !== this._hotTermEl) this._setHotTerm(el);
+      // Over chrome/gap (or the same term): the pointer isn't settling on a NEW
+      // term, so drop any pending button relocate — it may be heading to the button.
+      else if (!el && this._enableTermAsk) this._cancelAskBtnRelocate();
+    };
+    this._onStageLeave = () => this._setHotTerm(null);
+    this._onStageClick = (ev) => {
+      const el = tagOf(ev.target, ev.clientX, ev.clientY);
+      if (!el) {
+        // A click in the expression area that hit no term → deselect: the host (if
+        // any) clears its selection; otherwise the engine clears its ask-selection.
+        if (this._onTermBackgroundClick) this._onTermBackgroundClick();
+        else if (this._enableTermAsk && !this._onTermClick) this._clearAskSel();
+        return;
+      }
+      const additive = !!(ev.metaKey || ev.ctrlKey);
+      if (this._onTermClick) {
+        // Host owns selection (sg-proof) — forward the candidate chain so it can
+        // resolve the nearest named graph node.
+        this._onTermClick(this._termChain(el), el, { additive });
+      } else if (this._enableTermAsk) {
+        // Standalone/embedded (no host): the engine owns an ordered ask-selection.
+        this._toggleAskTerm(el, additive);
+      }
+    };
+    this.stage.addEventListener("mousemove", this._onStageMove);
+    this.stage.addEventListener("mouseleave", this._onStageLeave);
+    this.stage.addEventListener("click", this._onStageClick);
+  }
+
+  _setHotTerm(el) {
+    if (this._hotTermEl && this._hotTermEl !== el) this._hotTermEl.classList.remove("pa-term-hot");
+    this._hotTermEl = el || null;
+    if (el) el.classList.add("pa-term-hot");
+    const chain = el ? this._termChain(el) : [];
+    // SHARED tooltip: the term's own description from data.terms — needs no graph,
+    // so it works both in the app and on the standalone proof-animation page.
+    const desc = this._termDescription(chain);
+    if (el && desc) this._showTermTip(el, desc);
+    else this._hideTermTip();
+    // Fade the "Ask AI" button in beside the hovered term (graph-node style); a
+    // grace-delayed hide when the pointer leaves lets the cursor reach the button.
+    if (this._enableTermAsk) {
+      if (el) this._requestTermAskBtn(el);
+      else { this._cancelAskBtnRelocate(); this._scheduleHideTermAskBtn(); }
+    }
+    // Host hook (optional): the app's SgProofManager lights up + selects the LINKED
+    // graph node. The chain (innermost glyph → enclosing operator wrappers) lets a
+    // glyph that's only PART of a named node still reach it. Absent standalone.
+    if (this._onTermHover) this._onTermHover(chain, el || null);
+  }
+
+  // ── Term tooltip (shared, graph-free) ──────────────────────────────────────
+  // The first chain term that has a description in data.terms (keyed by node id).
+  // The rendered data-n can carry a rebase prefix (`_r3_…`) and an occurrence
+  // suffix (`__<parent>`); data.terms is keyed by the clean id, so try the raw id,
+  // the prefix-stripped id, then the canonical symbol before it.
+  _termDescription(chain) {
+    const terms = this.data && this.data.terms;
+    if (!terms) return "";
+    for (const c of (chain || [])) {
+      const raw = c.id || "";
+      const clean = raw.replace(/^_r\d+_/, "");
+      const t = terms[raw] || terms[clean] || terms[clean.split("__")[0]];
+      const d = t && (t.description || "").trim();
+      if (d) return d;
+    }
+    return "";
+  }
+
+  // A rounded tooltip rendering the hovered term's description. Lives on <body>
+  // (position:fixed) so a host box's overflow never clips it; placed on the side
+  // the term is nearest (below in the lower half of the viewport, above otherwise),
+  // flipped to the opposite side if the preferred one would run off-screen.
+  _showTermTip(anchorEl, text) {
+    let tip = this._termTip;
+    if (!tip) {
+      tip = document.createElement("div");
+      tip.className = "pa-term-tip";
+      tip.setAttribute("role", "tooltip");
+      document.body.appendChild(tip);
+      this._termTip = tip;
+    }
+    this._caption(tip, text);             // descriptions may carry inline $…$
+    tip.style.display = "block";
+    tip.style.visibility = "hidden";      // measure before positioning
+    const r = anchorEl.getBoundingClientRect();
+    const vh = window.innerHeight;
+    const tw = tip.offsetWidth, th = tip.offsetHeight, GAP = 10;
+    let left = r.left + r.width / 2 - tw / 2;
+    left = Math.max(8, Math.min(left, window.innerWidth - tw - 8));
+    let below = (r.top + r.bottom) / 2 > vh / 2;
+    if (below && r.bottom + GAP + th > vh - 4) below = false;   // no room below
+    else if (!below && r.top - GAP - th < 4) below = true;      // no room above
+    const top = below ? r.bottom + GAP : r.top - th - GAP;
+    tip.classList.toggle("pa-term-tip-below", below);
+    tip.style.left = `${Math.round(left)}px`;
+    tip.style.top = `${Math.round(Math.max(4, top))}px`;
+    tip.style.visibility = "visible";
+  }
+
+  _hideTermTip() {
+    if (this._termTip) this._termTip.style.display = "none";
+  }
+
+  // Tagged terms from the given element up to the stage root, innermost first —
+  // the candidate chain the host walks to find the nearest term that maps to a
+  // graph node (a leaf glyph, then its operator wrapper, then the wrapper's…).
+  _termChain(el) {
+    const out = [];
+    for (let n = el; n && this.stage.contains(n); n = n.parentElement) {
+      if (n.nodeType === 1 && n.hasAttribute && n.hasAttribute("data-n")) {
+        const id = n.getAttribute("data-n");
+        // Stop below a spanning combiner — a hovered glyph may reach its tight
+        // operator (the "2" of a square → its power), but never the product/
+        // equation above it (which would resolve to a sprawling node).
+        if (n !== el && _isSpanningWrapperId(id)) break;
+        out.push({ id, text: n.textContent || "" });
+      }
+    }
+    return out;
+  }
+
+  // Nearest LEAF term inside `wrapper` to the point (x,y), or null if none is close
+  // enough — so a true background click (far from any term) still deselects. A leaf
+  // whose rect CONTAINS the point wins at distance 0, which is the fraction dead
+  // zone: the denominator glyph's box covers the point even where the wrapper shows
+  // through above it.
+  _nearestLeafTerm(wrapper, x, y) {
+    let best = null, bestD = Infinity;
+    for (const leaf of wrapper.querySelectorAll("[data-n]")) {
+      if (leaf.querySelector("[data-n]")) continue;   // leaves only
+      const r = leaf.getBoundingClientRect();
+      if (!r.width || !r.height) continue;
+      const dx = x < r.left ? r.left - x : x > r.right ? x - r.right : 0;
+      const dy = y < r.top ? r.top - y : y > r.bottom ? y - r.bottom : 0;
+      const d = dx * dx + dy * dy;
+      if (d < bestD) { bestD = d; best = leaf; }
+    }
+    const TOL = 14;   // px — beyond this it's a background click, not a near-miss
+    return (best && bestD <= TOL * TOL) ? best : null;
+  }
+
+  // ── Term ask-selection (engine-owned; standalone/embedded term-ask only) ────
+  // Appearance key — identical-looking terms collapse to one key; reject empty +
+  // numeric-only (a literal "2" and the "2" of a square render identically). Same
+  // rule SgProofManager uses, so selection behaves consistently across contexts.
+  _apprKey(text) {
+    const k = (text || "").replace(/[\s\u200B-\u200F\u2060\uFEFF]/g, "");
+    return (!k || /^[\d.,/+\-]+$/.test(k)) ? "" : k;
+  }
+
+  // Toggle a term in the ask CONTEXT set (gold). These are the "also include
+  // these" terms that ride along when you ask about a hovered focus term — like
+  // cmd/ctrl-selecting extra graph nodes. Plain click REPLACES; cmd/ctrl toggles.
+  _toggleAskTerm(el, additive) {
+    const chain = this._termChain(el);
+    const text = (chain[0] && chain[0].text) || (el.textContent || "");
+    const key = this._apprKey(text);
+    if (!key) return;
+    if (additive) {
+      const at = this._askSel.findIndex((s) => s.key === key);
+      if (at >= 0) this._askSel.splice(at, 1);                        // toggle off
+      else this._askSel.push({ key, chain, text, desc: this._termDescription(chain) });
+    } else {
+      this._askSel = [{ key, chain, text, desc: this._termDescription(chain) }];
+    }
+    this._applyAskClasses();
+  }
+
+  _clearAskSel() {
+    if (!this._askSel.length) return;
+    this._askSel = [];
+    this._applyAskClasses();
+  }
+
+  // Paint the ask CONTEXT set gold (pa-term-ask). A class DISTINCT from
+  // pa-term-selected so the in-app host keeps sole ownership of that one. Keyed by
+  // appearance, so a re-render (morph) re-applies it from _capOverflow.
+  _applyAskClasses() {
+    const expr = this.stage && this.stage.querySelector(".pa-expr");
+    if (!expr) return;
+    const keys = new Set(this._askSel.map((s) => s.key));
+    for (const node of expr.querySelectorAll("[data-n]")) {
+      const k = this._apprKey(node.textContent || "");
+      node.classList.toggle("pa-term-ask", !!k && keys.has(k));
+    }
+  }
+
+  // The AI sparkle button that FADES IN next to the hovered term — mirrors the
+  // semantic-graph node ask button (graph-view._showD3NodeAskBtn). One reusable
+  // button on document.body (position:fixed), so a box's overflow never clips it.
+  // Engine-level so it works both standalone (?ai=1) and in-app (docked boxes).
+  _buildTermAskButton() {
+    if (!this._enableTermAsk) return;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "pa-term-ask-btn";
+    btn.innerHTML = AI_SPARKLE_SVG;
+    btn.title = "Ask AI about this term";
+    btn.setAttribute("aria-label", "Ask AI about this term");
+    btn.style.position = "fixed";
+    btn.style.opacity = "0";
+    btn.style.pointerEvents = "none";
+    // Starts invisible: keep it out of the tab order and hidden from assistive tech
+    // so keyboard/SR users don't land on a control they can't see. _showTermAskBtn /
+    // _hideTermAskBtn flip these back in step with the opacity.
+    btn.tabIndex = -1;
+    btn.setAttribute("aria-hidden", "true");
+    btn.style.zIndex = "10001";   // above the term tooltip (z 10000) so it's never covered
+    // Moving onto the button cancels the hide; leaving it hides it. The grace
+    // delay (below) is what lets the cursor cross the gap from term to button.
+    btn.addEventListener("mouseenter", () => {
+      if (this._askBtnHideTimer) { clearTimeout(this._askBtnHideTimer); this._askBtnHideTimer = null; }
+      this._cancelAskBtnRelocate();   // reached the button → don't let it jump to a new term
+    });
+    btn.addEventListener("mouseleave", () => this._scheduleHideTermAskBtn());
+    btn.addEventListener("click", (e) => { e.stopPropagation(); this._termAskClick(); });
+    document.body.appendChild(btn);
+    this._termAskBtnEl = btn;
+  }
+
+  // Show the ask button for `el`, but DON'T yank an already-shown button off a term
+  // the pointer may be reaching for. First appearance (or moving back onto the same
+  // term) snaps instantly; moving to a DIFFERENT term while a button is up waits for
+  // the pointer to SETTLE there (~150ms). A move to empty chrome or onto the button
+  // itself cancels the pending relocate (see _onStageMove / the button's mouseenter),
+  // so a cursor traveling to the button never loses it.
+  _requestTermAskBtn(el) {
+    const btn = this._termAskBtnEl;
+    const visible = btn && btn.style.opacity === "1";
+    if (!visible || !this._askBtnFocus || this._askBtnFocus.el === el) {
+      this._cancelAskBtnRelocate();
+      this._showTermAskBtn(el);
+      return;
+    }
+    if (this._askBtnRelocateEl === el) return;   // already pending for this term
+    this._cancelAskBtnRelocate();
+    this._askBtnRelocateEl = el;
+    this._askBtnRelocateTimer = setTimeout(() => {
+      this._askBtnRelocateTimer = null;
+      this._askBtnRelocateEl = null;
+      this._showTermAskBtn(el);
+    }, 150);
+  }
+
+  _cancelAskBtnRelocate() {
+    if (this._askBtnRelocateTimer) { clearTimeout(this._askBtnRelocateTimer); this._askBtnRelocateTimer = null; }
+    this._askBtnRelocateEl = null;
+  }
+
+  // Fade the button in just above the hovered term (flipped below if no room),
+  // and remember that term as the ask FOCUS. Clamped inside the viewport.
+  _showTermAskBtn(el) {
+    const btn = this._termAskBtnEl;
+    if (!btn || !el) return;
+    if (this._askBtnHideTimer) { clearTimeout(this._askBtnHideTimer); this._askBtnHideTimer = null; }
+    const chain = this._termChain(el);
+    this._askBtnFocus = {
+      el, chain,
+      text: (chain[0] && chain[0].text) || (el.textContent || ""),
+      desc: this._termDescription(chain),
+    };
+    const r = el.getBoundingClientRect();
+    const bRect = btn.getBoundingClientRect();
+    const bw = bRect.width || btn.offsetWidth || 22;
+    const bh = bRect.height || btn.offsetHeight || 22;
+    // TOP-RIGHT corner of the term, like a superscript badge — it sits in the
+    // empty space above the line, so the cursor reaches it WITHOUT crossing the
+    // next inline glyph (which would relocate the button out from under you). The
+    // button overlaps the corner by ~⅓ so a short up-right move lands on it.
+    // Nudged out (right + up) to clear the term — ⅔ of a ⅓-glyph-height step (i.e.
+    // a third closer than a full ⅓-height nudge).
+    const shift = r.height * 2 / 9;
+    let left = r.right - bw / 3 + shift;
+    let top = r.top - bh * (2 / 3) - shift;
+    // Flip below if there's no room above; nudge left if it would run off-screen.
+    if (top < 4) top = r.bottom - bh / 3;
+    left = Math.max(4, Math.min(left, window.innerWidth - bw - 4));
+    top = Math.max(4, Math.min(top, window.innerHeight - bh - 4));
+    btn.style.left = `${Math.round(left)}px`;
+    btn.style.top = `${Math.round(top)}px`;
+    btn.style.opacity = "1";
+    btn.style.pointerEvents = "auto";
+    btn.tabIndex = 0;                     // now visible → reachable + announced
+    btn.removeAttribute("aria-hidden");
+  }
+
+  // Grace period before the button fades out — long enough to move the cursor
+  // from the term onto the button (its mouseenter cancels the timer).
+  _scheduleHideTermAskBtn() {
+    if (!this._termAskBtnEl) return;
+    if (this._askBtnHideTimer) clearTimeout(this._askBtnHideTimer);
+    this._askBtnHideTimer = setTimeout(() => this._hideTermAskBtn(), 600);
+  }
+
+  _hideTermAskBtn() {
+    if (this._askBtnHideTimer) { clearTimeout(this._askBtnHideTimer); this._askBtnHideTimer = null; }
+    this._cancelAskBtnRelocate();
+    const btn = this._termAskBtnEl;
+    if (!btn) return;
+    btn.style.opacity = "0";
+    // Leave the tab order / assistive tree immediately (before the fade finishes) so
+    // it can't be focused while invisible; clicks still work through the fade below.
+    btn.tabIndex = -1;
+    btn.setAttribute("aria-hidden", "true");
+    // Stay clickable through the fade (matches the fade-in timing), so a click that
+    // lands while the button is still visibly fading still registers; disable it
+    // only once it's actually invisible.
+    if (this._askBtnFadeTimer) clearTimeout(this._askBtnFadeTimer);
+    this._askBtnFadeTimer = setTimeout(() => {
+      if (btn.style.opacity === "0") btn.style.pointerEvents = "none";
+    }, 200);
+  }
+
+  // Resolve the deeplink for an ask: a step's own override, else the proof-level
+  // one. Empty when neither is present (the route then falls back).
+  _stepDeeplink(idx) {
+    const s = this.data && this.data.steps && this.data.steps[idx];
+    return (s && s.deeplink) || (this.data && this.data.deeplink) || "";
+  }
+
+  // Button click: ask about the FOCUS term (the one the button is anchored to),
+  // with any gold context terms riding along. Host-enriched in-app, else built by
+  // the engine. Mirrors the graph node ask (hovered = subject, selected = context).
+  _termAskClick() {
+    const focus = this._askBtnFocus;
+    let message = null;
+    if (this._onBuildTermAskMessage) {
+      try { message = this._onBuildTermAskMessage(focus); } catch (e) { message = null; }
+    }
+    if (!message) message = this._buildTermAskMessage(focus);
+    if (!message) return;
+    this._hideTermAskBtn();
+    this._routeAsk(message, this._stepDeeplink(this.current));
+  }
+
+  // Standalone ask message: the focus term + any gold context terms. Deliberately
+  // omits the full $$expr$$ (the deep-linked app already has the proof) so the
+  // auto-ask URL stays short.
+  _buildTermAskMessage(focus) {
+    if (!focus || !focus.text) return "";
+    const title = this.data && this.data.title ? ` "${this.data.title}"` : "";
+    const goal = this.data && this.data.goal ? ` (${this.data.goal})` : "";
+    const i = this.current;
+    const others = this._askSel.filter((s) => s.key !== this._apprKey(focus.text));
+    let head = `In the derivation${title}${goal}, at step ${i}, explain the term "${focus.text}"`;
+    if (focus.desc) head += ` (${focus.desc})`;
+    if (!others.length) return head + ` — what it represents and its role here.`;
+    const lines = [head + ` and how it relates to:`];
+    for (const t of others) lines.push(`- "${t.text}"${t.desc ? ` — ${t.desc}` : ""}`);
+    return lines.join("\n");
+  }
+
+  // Route an AI ask to the right place. THREE contexts, checked in order:
+  //   1. IN-APP   — a host hook is wired (e.g. docked boxes) → ask in the existing chat.
+  //   2. EMBEDDED — this widget is in an iframe → open the app in a NEW TAB.
+  //   3. STANDALONE — top-level renderproof page → navigate THIS tab to the app.
+  // Cases 2 and 3 go to the SAME url (built by _askTargetUrl); only HOW it's opened
+  // differs, and that lives in _openAppUrl. Shared by the term button, the per-step
+  // buttons, and the explore chips.
+  _routeAsk(message, deeplink) {
+    if (!message) return;
+    if (this._onTermAsk) { this._onTermAsk({ message }); return; }   // (1) in-app → chat
+    this._openAppUrl(                                                // (2) embedded / (3) standalone
+      this._askTargetUrl(deeplink, message),
+      () => this._postToParent({ type: "algebench-term-ask", message }),           // embedded fallback
+      () => { try { navigator.clipboard.writeText(message); } catch (e) {} });     // standalone fallback
+  }
+
+  // Open `url` in the app, the way the current context allows:
+  //   EMBEDDED  → a NEW TAB (an iframe can't navigate its host page);
+  //   STANDALONE → THIS tab (reliable — a new tab can be popup-blocked).
+  // Runs the matching fallback only if there's no usable url or the open was blocked.
+  _openAppUrl(url, onEmbeddedFail, onStandaloneFail) {
+    const embedded = typeof window !== "undefined" && window.self !== window.top;
+    if (url) {
+      try {
+        if (embedded) {
+          // A blocked popup returns `null` WITHOUT throwing — treat that as a
+          // failure so the postMessage fallback still runs (don't lose the ask).
+          if (window.open(url, "_blank", "noopener")) return;
+        } else {
+          window.location.assign(url);
+          return;
+        }
+      } catch (e) { /* blocked — fall through to the fallback */ }
+    }
+    const fail = embedded ? onEmbeddedFail : onStandaloneFail;
+    if (fail) fail();
+  }
+
+  // Last-resort fallback when embedded and we couldn't open a tab: notify an
+  // AlgeBench-aware parent page. Tagged with this proof's title.
+  _postToParent(payload) {
+    try {
+      window.parent.postMessage(
+        { ...payload, title: (this.data && this.data.title) || null }, "*");
+    } catch (e) { /* parent refused */ }
+  }
+
+  // Where an ask should open, and how the question travels. The origin is the
+  // CURRENT one, so it's automatically environment-specific (localhost in dev, the
+  // real host in prod). The question rides in the `aa` query param — the app reads
+  // it on boot, opens chat, and sends it once (then strips it from the URL).
+  //   • with a deeplink → that scene/step view + ?panel=chat&aa=<question>;
+  //   • without        → the app's MAIN PAGE + ?panel=chat&aa=<question>.
+  _askTargetUrl(deeplink, message) {
+    try {
+      const origin = window.location.origin;
+      const u = new URL(deeplink || "/", origin);
+      if (u.origin !== origin) return null;   // off-origin deeplink → reject
+      u.searchParams.set("panel", "chat");
+      u.searchParams.set("aa", String(message).slice(0, 1500));
+      // If the deeplink loads a pre-baked proof animation (?pa=), carry the step the
+      // learner is currently on so the docked animation opens there, not at step 0.
+      if (u.searchParams.has("pa")) u.searchParams.set("pas", String(this.current));
+      return u.href;
+    } catch (e) { return null; }
+  }
+
+  // Engine-native ask button (used only when the app supplies no aiAskButton
+  // factory but term-ask is on). Routes via _routeAsk instead of asking chat.
+  _makeRoutedAskButton(className, title, getMessage) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = className;
+    btn.title = title;
+    btn.innerHTML = AI_SPARKLE_SVG;
+    btn.setAttribute("aria-label", title);
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const message = getMessage();
+      if (message) this._routeAsk(message, this._stepDeeplink(this.current));
+    });
+    return btn;
   }
 
   // Apply the current speed multiplier. Animations are created at base duration
@@ -341,6 +964,8 @@ export class ProofAnimator {
   _build() {
     this.container.classList.add("pa-root");
     this.container.innerHTML = `
+      <div class="pa-goal-dock" hidden></div>
+      <button class="pa-goal-pill" type="button" hidden aria-label="Goal"></button>
       <div class="pa-stage" aria-live="polite"></div>
       <span class="pa-overall"></span>
       <div class="pa-meta"><div class="pa-op-row"><span class="pa-op"></span><span class="pa-conf-badge"></span></div><span class="pa-just"></span><span class="pa-next-pill" role="button" tabindex="0"></span></div>
@@ -351,6 +976,7 @@ export class ProofAnimator {
         <button type="button" class="pa-btn pa-play" data-tip="Play through" aria-label="Play through">▶ Play</button>
         <button type="button" class="pa-btn pa-speed" data-tip="Animation speed (click to cycle)" aria-label="Animation speed">${_speedLabel(this.speed)}</button>
         <button class="pa-btn pa-mode" type="button" data-tip="Sequential — stagger the moves" aria-label="Sequential — stagger the moves" aria-pressed="false">⇉</button>
+        <button class="pa-btn pa-info-pill" type="button" hidden aria-label="Prerequisites & follow-ups"></button>
       </div>`;
     this.stage = this.container.querySelector(".pa-stage");
     const steps = this.container.querySelector(".pa-steps");
@@ -359,7 +985,9 @@ export class ProofAnimator {
       b.type = "button";   // never submit a surrounding <form>
       b.className = "pa-step";
       b.textContent = String(i);
-      let tip = `${i}. ${this._plainOp(s.operation || `state ${i}`)}`;
+      // Keep the RAW operation (with $…$) so the tooltip renders the math via KaTeX
+      // (the plain data-tip mangled e.g. "$v = \omega R$" into "v = R").
+      let tip = `${i}. ${s.operation || `state ${i}`}`;
       // Confidence tint: the row of step buttons doubles as an at-a-glance
       // confidence strip (a colored bar per step, tier-keyed).
       const c = this._conf(i);
@@ -367,8 +995,7 @@ export class ProofAnimator {
         b.classList.add(`pa-conf-${c.tier}`);
         tip += ` — ${c.label || c.tier}`;
       }
-      b.setAttribute("data-tip", tip);
-      b.setAttribute("aria-label", tip);
+      this._attachMathTip(b, tip);   // KaTeX-rendered tooltip (sets aria-label too)
       b.addEventListener("click", () => this._userGoTo(i));
       steps.appendChild(b);
     });
@@ -420,6 +1047,299 @@ export class ProofAnimator {
       modeBtn.classList.toggle("pa-active", on);
       modeBtn.setAttribute("aria-pressed", String(on));
     };
+    this._renderGoal();
+    this._renderExplore();
+    this._buildTermAskButton();
+  }
+
+  // Model-produced framing, shown top-left (mirrors the grounding-rank pill
+  // top-right). IDLE: a compact icon-only pill. HOVER: the pill expands inline to
+  // reveal the goal text (CSS-driven, exactly like the rank pill peeks). CLICK:
+  // docks the goal as a banner at the front of the math view (click the banner to
+  // collapse back to the pill). Hidden when no goal.
+  _renderGoal() {
+    const pill = this.container.querySelector(".pa-goal-pill");
+    const dock = this.container.querySelector(".pa-goal-dock");
+    if (!pill) return;
+    const goal = (this.data && this.data.goal || "").trim();
+    if (!goal) { pill.hidden = true; if (dock) dock.hidden = true; return; }
+    this._goalText = goal;
+    this._goalDocked = false;
+    // icon (always) + label (goal text, revealed on hover via CSS)
+    pill.innerHTML = "";
+    const icon = document.createElement("span");
+    icon.className = "pa-goal-icon";
+    icon.innerHTML = GOAL_ICON;
+    const label = document.createElement("span");
+    label.className = "pa-goal-label";
+    this._caption(label, goal);            // inline math, safe (textContent + KaTeX)
+    pill.append(icon, label);
+    pill.hidden = false;
+    pill.addEventListener("click", () => this._toggleGoalDock());
+    if (dock) dock.addEventListener("click", () => this._toggleGoalDock());  // click banner to collapse
+  }
+
+  // Dock/undock the goal as a top-of-box banner. Docked: the corner pill hides and
+  // the banner (with its own "Goal" label) shows the full goal, pushing the steps
+  // down; click the banner to undock and restore the pill.
+  _toggleGoalDock() {
+    const pill = this.container.querySelector(".pa-goal-pill");
+    const dock = this.container.querySelector(".pa-goal-dock");
+    if (!dock) return;
+    this._goalDocked = !this._goalDocked;
+    this._hideGoalPop();
+    if (this._goalDocked) {
+      dock.innerHTML = "";
+      const label = document.createElement("span");
+      label.className = "pa-goal-dock-label";
+      label.textContent = "Goal";
+      const txt = document.createElement("span");
+      txt.className = "pa-goal-dock-text";
+      this._caption(txt, this._goalText || "");   // inline math, safe
+      dock.appendChild(label);
+      dock.appendChild(txt);
+      dock.hidden = false;
+      pill.hidden = true;
+    } else {
+      dock.hidden = true;
+      dock.innerHTML = "";
+      pill.hidden = false;
+    }
+  }
+
+  // The goal popup — its own element (independent of the term tooltip) so a pinned
+  // goal survives term hovers. Inline math via _caption; positioned under the pill.
+  _showGoalPop() {
+    let tip = this._goalPop;
+    if (!tip) {
+      tip = document.createElement("div");
+      tip.className = "pa-goal-pop";
+      tip.setAttribute("role", "tooltip");
+      document.body.appendChild(tip);
+      this._goalPop = tip;
+    }
+    this._caption(tip, this._goalText || "");   // textContent + KaTeX — never raw HTML
+    tip.style.display = "block";
+    tip.style.visibility = "hidden";
+    const pill = this.container.querySelector(".pa-goal-pill");
+    const r = pill.getBoundingClientRect();
+    const tw = tip.offsetWidth, th = tip.offsetHeight, GAP = 8;
+    let left = Math.max(8, Math.min(r.left, window.innerWidth - tw - 8));
+    let top = r.bottom + GAP;
+    if (top + th > window.innerHeight - 4) top = r.top - th - GAP;   // flip above if no room
+    tip.style.left = `${Math.round(left)}px`;
+    tip.style.top = `${Math.round(Math.max(4, top))}px`;
+    tip.style.visibility = "visible";
+  }
+
+  _hideGoalPop() { if (this._goalPop) this._goalPop.style.display = "none"; }
+
+  // An info (ⓘ) pill in the controls row (next to the sequential button) that opens
+  // a popup with two tabs — Prerequisites and Explore further. Gated by
+  // opts.enableExplore. Hover shows it temporarily; moving onto the popup keeps it
+  // open (hover bridge); leaving both hides it. Clicking the pill pins it open.
+  // Every chip (both kinds) is clickable → _exploreClick.
+  _renderExplore() {
+    const pill = this.container.querySelector(".pa-info-pill");
+    if (!pill) return;
+    const clean = (v) => (Array.isArray(v) ? v : [])
+      .filter((s) => typeof s === "string" && s.trim()).slice(0, 8);
+    const tabs = [];
+    const prereqs = clean(this.data && this.data.prerequisites);
+    const followups = clean(this.data && this.data.followups);
+    if (prereqs.length) tabs.push({ key: "prerequisite", label: "Prerequisites", items: prereqs });
+    if (followups.length) tabs.push({ key: "followup", label: "Explore further", items: followups });
+    if (!this._enableExplore || !tabs.length) { pill.hidden = true; return; }
+
+    pill.classList.add("pa-icon-btn");
+    pill.innerHTML = INFO_ICON;
+    pill.title = "Prerequisites & follow-ups";
+    pill.hidden = false;
+
+    const pop = document.createElement("div");
+    pop.className = "pa-explore-pop";
+    pop.style.display = "none";
+    // Top→bottom: a resize grip, the scrollable chip content, then the tab titles
+    // pinned at the BOTTOM (next to the pill). The panel is bottom-anchored, so it
+    // grows UPWARD — drag the grip to resize.
+    const grip = document.createElement("div");
+    grip.className = "pa-explore-resize";
+    grip.title = "Drag to resize";
+    const contentEl = document.createElement("div");
+    contentEl.className = "pa-explore-panel";
+    const tabsEl = document.createElement("div");
+    tabsEl.className = "pa-explore-tabs";
+    pop.appendChild(grip);
+    pop.appendChild(contentEl);
+    pop.appendChild(tabsEl);
+    // Contained by the box (not document.body): .pa-root is position:relative, so
+    // the popup is positioned against the box and is torn down / hidden with it.
+    this.container.appendChild(pop);
+    this._explorePop = pop;
+    this._wireExploreResize(grip, pop);
+
+    const select = (tab, btn) => {
+      tabsEl.querySelectorAll(".pa-explore-tab").forEach((b) => b.classList.remove("pa-active"));
+      btn.classList.add("pa-active");
+      contentEl.innerHTML = "";
+      for (const item of tab.items) {
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "pa-explore-chip";
+        // A sparkle icon marks the chip as an AI action — clicking it asks the
+        // agent (in-app: chat; embedded: opens the linked view + auto-asks), the
+        // same scene-linking flow the term button uses.
+        const icon = document.createElement("span");
+        icon.className = "pa-explore-chip-icon";
+        icon.innerHTML = AI_SPARKLE_SVG;
+        const text = document.createElement("span");
+        text.className = "pa-explore-chip-text";
+        this._caption(text, item);     // inline math, safe (no raw HTML)
+        chip.append(icon, text);
+        chip.addEventListener("click", () => this._exploreClick(tab.key, item));
+        contentEl.appendChild(chip);
+      }
+    };
+    let firstBtn = null;
+    tabs.forEach((tab, i) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "pa-explore-tab";
+      btn.textContent = tab.label;
+      btn.addEventListener("click", () => select(tab, btn));
+      tabsEl.appendChild(btn);
+      if (i === 0) firstBtn = btn;
+    });
+    if (firstBtn) select(tabs[0], firstBtn);   // default to the first tab
+
+    // Hover (temporary) + click (pinned), with a hover bridge so moving pill→popup
+    // doesn't close it; leaving both closes it (unless pinned).
+    // pinned state lives on the instance so hidePopups() (called when the box is
+    // hidden) can unpin it — else a pinned popup orphans on document.body.
+    this._explorePinned = false;
+    let hideT = null;
+    const show = () => { clearTimeout(hideT); pop.style.display = "flex"; this._positionExplorePop(); };
+    const hide = () => { pop.style.display = "none"; };
+    const scheduleHide = () => { if (this._explorePinned) return; clearTimeout(hideT); hideT = setTimeout(hide, 140); };
+    pill.addEventListener("mouseenter", show);
+    pill.addEventListener("mouseleave", scheduleHide);
+    pop.addEventListener("mouseenter", () => clearTimeout(hideT));
+    pop.addEventListener("mouseleave", scheduleHide);
+    pill.addEventListener("click", () => {
+      this._explorePinned = !this._explorePinned;
+      pill.classList.toggle("pa-pinned", this._explorePinned);
+      if (this._explorePinned) show(); else hide();
+    });
+
+    // Clicking anywhere outside the pill/popup dismisses a pinned popup (e.g. the
+    // user steps through the proof, hovers a term, or clicks the prose around it).
+    // Capture phase so it fires before in-box click handlers; chips inside the
+    // popup keep it open (their target is within `pop`).
+    if (this._onDocExplore) document.removeEventListener("mousedown", this._onDocExplore, true);
+    this._onDocExplore = (ev) => {
+      if (!this._explorePinned) return;
+      if (pop.contains(ev.target) || pill.contains(ev.target)) return;
+      this._explorePinned = false;
+      pill.classList.remove("pa-pinned");
+      hide();
+    };
+    document.addEventListener("mousedown", this._onDocExplore, true);
+  }
+
+  // Hide every popup WITHOUT tearing the widget down, and unpin the Explore popup.
+  // The term tip and goal pop are appended to document.body (so removing the box
+  // doesn't hide them); the math tip and Explore popup are contained in the box,
+  // but the Explore popup may be PINNED (display:flex) — unpin it so a box that's
+  // hidden then re-shown doesn't resurrect it. The app calls this when a proof box
+  // is hidden but kept in memory (step/scene switch). (destroy() removes them all
+  // entirely; this just hides + unpins.)
+  hidePopups() {
+    this._hideGoalPop();
+    if (this._termTip) this._termTip.style.display = "none";
+    if (this._mathTip) this._mathTip.style.opacity = "0";
+    this._hideTermAskBtn();
+    if (this._explorePop) {
+      this._explorePop.style.display = "none";
+      this._explorePinned = false;
+      const pill = this.container.querySelector(".pa-info-pill");
+      if (pill) pill.classList.remove("pa-pinned");
+    }
+  }
+
+  // Position the explore popup so its BOTTOM sits just above the info pill and it's
+  // right-aligned to the pill. Bottom-anchored (top:auto) so growing the height —
+  // via the resize grip — expands the panel UPWARD.
+  // Re-anchor the open Explore popup to the info pill — called on box resize so
+  // the popup tracks the box (no-op when it's closed).
+  _repositionPopups() {
+    if (this._explorePop && this._explorePop.style.display !== "none") this._positionExplorePop();
+  }
+
+  _positionExplorePop() {
+    const pop = this._explorePop;
+    const pill = this.container.querySelector(".pa-info-pill");
+    if (!pop || !pill) return;
+    // Absolute coords within the box (its containing block). Right-aligned to the
+    // info pill and anchored just above it; clamped inside the box on both axes.
+    pop.style.visibility = "hidden";
+    pop.style.right = "auto";
+    pop.style.top = "auto";
+    const GAP = 8;
+    const cr = this.container.getBoundingClientRect();
+    const pr = pill.getBoundingClientRect();
+    const pw = pop.offsetWidth;
+    let left = (pr.right - cr.left) - pw;                 // right edge aligns to pill
+    left = Math.max(4, Math.min(left, cr.width - pw - 4));
+    pop.style.left = `${Math.round(left)}px`;
+    pop.style.bottom = `${Math.round(cr.bottom - pr.top + GAP)}px`;
+    pop.style.visibility = "visible";
+  }
+
+  // Drag the top grip to resize the popup upward (bottom stays anchored to the pill).
+  _wireExploreResize(grip, pop) {
+    let h0 = 0, y0 = 0;
+    const onMove = (e) => {
+      const max = Math.round(window.innerHeight * 0.7);
+      const h = Math.min(Math.max(h0 + (y0 - e.clientY), 120), max);
+      pop.style.height = `${h}px`;
+    };
+    const onUp = () => {
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+    };
+    grip.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      h0 = pop.getBoundingClientRect().height;
+      y0 = e.clientY;
+      document.addEventListener("pointermove", onMove);
+      document.addEventListener("pointerup", onUp);
+    });
+  }
+
+  // A context-rich message for the agent built from the clicked prereq/follow-up +
+  // this derivation's title/goal, so the agent grounds on THIS proof, not a bare prompt.
+  _exploreMessage(kind, text) {
+    const title = this.data && this.data.title ? ` "${this.data.title}"` : "";
+    const goal = this.data && this.data.goal ? ` (${this.data.goal})` : "";
+    if (kind === "prerequisite") {
+      return `In the derivation${title}${goal}, explain the prerequisite "${text}" `
+        + `and how it's used here.`;
+    }
+    return `I'm exploring the derivation${title}${goal}.\n\n${text}`;
+  }
+
+  // Route a prerequisite / follow-up chip click — SAME three contexts as _routeAsk
+  // (in-app → chat; embedded → new tab; standalone → this tab). Chips are about the
+  // whole proof, so they use the proof-level deeplink (scene/step + auto-ask) if
+  // present, else the app's main page with chat. (A future PR can give each chip
+  // its own deeplink.)
+  _exploreClick(kind, text) {
+    const message = this._exploreMessage(kind, text);
+    if (this._onExplore) { this._onExplore({ kind, text, message }); return; }   // (1) in-app → chat
+    this._openAppUrl(                                                            // (2) embedded / (3) standalone
+      this._askTargetUrl((this.data && this.data.deeplink) || "", message),
+      () => this._postToParent({ type: "algebench-explore", kind, text, message }),  // embedded fallback
+      () => { try { navigator.clipboard.writeText(text); } catch (e) {} });          // standalone fallback
   }
 
   _renderInto(el, latex) {
@@ -1169,7 +2089,7 @@ export class ProofAnimator {
     el.removeAttribute("aria-label");
     if (!c) return;
     el.classList.add(`pa-conf-${c.tier}`);
-    el.textContent = c.icon || "";
+    el.textContent = _tierGlyph(c.tier, c.icon);
     // Tooltip: when the CAS reached a verdict (or for the start state) the
     // concrete reason IS the story — including a mislabel downgrade, where the
     // generic tier meaning ("could not decide") would contradict it. Only a
@@ -1212,9 +2132,8 @@ export class ProofAnimator {
       this._mathTip = tip;
     }
     this._caption(tip, text);              // render $…$ segments with KaTeX
-    tip.style.display = "block";
-    tip.style.left = "0px";
-    tip.style.top = "0px";
+    // Measured while at opacity 0 (always display:block) — no display toggle, so the
+    // opacity transition (fade) isn't interrupted and there's no resize animation.
     const cr = this.container.getBoundingClientRect();
     const br = el.getBoundingClientRect();
     const tw = tip.offsetWidth, th = tip.offsetHeight;
@@ -1224,10 +2143,11 @@ export class ProofAnimator {
     if (top < 4) top = (br.bottom - cr.top) + 8;   // flip below when no room above
     tip.style.left = `${left}px`;
     tip.style.top = `${top}px`;
+    tip.style.opacity = "1";               // fade in
   }
 
   _hideMathTip() {
-    if (this._mathTip) this._mathTip.style.display = "none";
+    if (this._mathTip) this._mathTip.style.opacity = "0";   // fade out
   }
 
   // The overall-confidence pill (static for the derivation): icon + tier label
@@ -1240,7 +2160,7 @@ export class ProofAnimator {
     el.classList.add(`pa-conf-${oc.tier}`);
     const icon = document.createElement("span");
     icon.className = "pa-overall-icon";
-    icon.textContent = oc.icon || "";
+    icon.textContent = _tierGlyph(oc.tier, oc.icon);
     const label = document.createElement("span");
     label.className = "pa-overall-label";
     label.textContent = oc.label || oc.tier;
@@ -1253,6 +2173,14 @@ export class ProofAnimator {
       count.className = "pa-overall-count";
       count.textContent = `· ${good}/${total}`;
       el.append(count);
+    }
+    // AI button (same factory as the step ask buttons, so it routes the same way):
+    // explain what this confidence badge means. Revealed with the expanded badge;
+    // its own click stops propagation, so it never pins/unpins the pill.
+    if (this._aiAsk) {
+      el.classList.add("pa-overall-has-ask");
+      el.append(this._aiAsk("pa-ask-btn pa-ask-overall", "Explain this confidence rating",
+        () => this._askOverallMessage()));
     }
     // The overall reason already summarizes the chain (tallies + endpoint), so
     // the pill tooltip is "<Label> — <summary>", not the per-step meaning.
@@ -1408,6 +2336,29 @@ export class ProofAnimator {
       + ` let me attempt the result, and only then confirm or correct it.`;
     return msg;
   }
+
+  // Chat message for the "explain this confidence badge" button on the overall pill.
+  _askOverallMessage() {
+    const oc = (this.data && this.data.overall_confidence) || {};
+    const title = this.data && this.data.title ? ` "${this.data.title}"` : "";
+    const tier = oc.label || oc.tier || "this";
+    const counts = oc.counts || {};
+    const total = Object.values(counts).reduce((a, b) => a + (b || 0), 0);
+    let m = `The derivation${title} carries an overall confidence of "${tier}"`;
+    if (total) {
+      const good = (counts.grounded || 0) + (counts.verified || 0);
+      const bits = [`${good}/${total} steps verified`];
+      if (counts.plausible) bits.push(`${counts.plausible} plausible`);
+      if (counts.domain) bits.push(`${counts.domain} domain-vouched`);
+      if (oc.endpoint_reached === false) bits.push(`the target endpoint was not reached`);
+      m += ` (${bits.join(", ")})`;
+    }
+    if (oc.meaning) m += `. ${oc.meaning}`;
+    return m + `.\n\nExplain what this "${tier}" confidence rating means here — how the`
+      + ` steps are checked, why the derivation earned this tier rather than a higher one,`
+      + ` and how much I should trust the result.`;
+  }
+
   // Meta "promote" animation for a forward (next) step: the current explanation
   // and justification fade OUT, and the title shown in the "Next" pill slides UP
   // into the title position to become the new explanation. Returns a finish()
