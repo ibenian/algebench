@@ -68,6 +68,13 @@ const GOAL_ICON =
   '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/>' +
   '<circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>';
 
+// AI sparkle icon for the engine-native ask buttons (rendered only when the app
+// gives no aiAskButton factory but term-ask is enabled — standalone/embedded).
+// Mirrors labels.js AI_SPARKLE_SVG so the engine stays dependency-free.
+const AI_SPARKLE_SVG =
+  '<svg viewBox="0 0 16 16" fill="currentColor" width="11" height="11" aria-hidden="true">' +
+  '<path d="M8 1c0 4-3 6.5-7 7 4 .5 7 3 7 7 0-4 3-6.5 7-7-4-.5-7-3-7-7z"/></svg>';
+
 // Synthetic operator-node ids (from the backend structural renderer) for n-ary /
 // relational nodes that SPAN many terms — a product/fraction, a sum, an equation.
 // Hovering the bare chrome of one (a fraction bar, the space between factors)
@@ -101,6 +108,27 @@ export class ProofAnimator {
     // has no chat panel and omits it — no factory, no buttons rendered.
     this._aiAsk = opts.aiAskButton || null;
     this._nextAskBtn = null;
+    // Term-ask (proof terms → AI exploration). Gated by enableTermAsk; works
+    // standalone/embedded (?ai=1) and in-app (docked boxes). onTermAsk lets the app
+    // route the ask to chat; onBuildTermAskMessage lets it supply a graph-enriched
+    // message built from its own ordered selection.
+    this._enableTermAsk = !!opts.enableTermAsk;
+    this._onTermAsk = typeof opts.onTermAsk === "function" ? opts.onTermAsk : null;
+    this._onBuildTermAskMessage = typeof opts.onBuildTermAskMessage === "function" ? opts.onBuildTermAskMessage : null;
+    this._askSel = [];          // gold CONTEXT terms [{key, chain, text, desc}] (standalone)
+    this._termAskBtnEl = null;  // the fade-in "Ask AI" button (on document.body)
+    this._askBtnFocus = null;   // the term the button is anchored to (the ask subject)
+    this._askBtnHideTimer = null;
+    this._askBtnFadeTimer = null;
+    this._askBtnRelocateTimer = null;   // intent-delay before moving the button to a new term
+    this._askBtnRelocateEl = null;
+    // Standalone/embedded term-ask has no host chat factory, but we still want the
+    // per-step ask buttons — render engine-native ones that route via _routeAsk
+    // (embedded → new tab + auto-ask; standalone → clipboard). The app path keeps
+    // its own factory (opts.aiAskButton), which asks chat directly.
+    if (!this._aiAsk && this._enableTermAsk) {
+      this._aiAsk = (cls, title, getMessage) => this._makeRoutedAskButton(cls, title, getMessage);
+    }
     // Optional "Derive this step" integration: a button factory (className,
     // title, onClick) → <button> plus an onDerive(payload, anchorEl) handler the
     // host uses to dock a fresh derivation. Both come from the app (SgProofManager
@@ -157,7 +185,11 @@ export class ProofAnimator {
     this._baseStepPause = opts.stepPause ?? 1000;  // Play: reading pause between steps (1× ≈ 1s)
     this._speedIdx = SPEEDS.indexOf(opts.speed ?? 1);
     if (this._speedIdx < 0) this._speedIdx = SPEEDS.indexOf(1);
-    this.current = 0;
+    // Open on a specific step (e.g. a deeplink that carries the learner's current
+    // derivation step), clamped to the available steps. Defaults to the first.
+    this.current = Math.max(0, Math.min(
+      Number.isFinite(opts.startStep) ? Math.floor(opts.startStep) : 0,
+      (this.data.steps ? this.data.steps.length : 1) - 1));
     this._running = [];
     this._ghosts = [];
     this._token = null;
@@ -171,7 +203,7 @@ export class ProofAnimator {
     this._baseFontPx = parseFloat(getComputedStyle(this.stage).fontSize) || 30;
     this._fixMetaSize();    // pin the caption area first so the stage's flex height is known
     this._fit();            // scale the expression to fit the stage (width; +height in container mode)
-    this._renderInto(this.stage, this.data.steps[0].latex);
+    this._renderInto(this.stage, this.data.steps[this.current].latex);
     this._syncUI();
     this._capOverflow();    // never let the expression spill past the stage
     this._fitControls();    // hide step enumerations if the controls don't fit
@@ -303,6 +335,10 @@ export class ProofAnimator {
   // (re)render — initial, relayout, and the post-morph settle.
   _capOverflow() {
     this._capOverflowImpl();
+    // Re-apply the engine-owned ask-selection a fresh render wiped (standalone
+    // only; in-app the host re-applies its own classes via onAfterRender). Keyed
+    // by appearance, so it survives the morph's brand-new term elements.
+    if (this._enableTermAsk && !this._onTermClick) { try { this._applyAskClasses(); } catch (e) {} }
     if (this._onAfterRender) { try { this._onAfterRender(); } catch (e) {} }
   }
 
@@ -404,15 +440,22 @@ export class ProofAnimator {
       try { document.removeEventListener("visibilitychange", this._onVisibility); } catch (e) {}
       this._onVisibility = null;
     }
+    if (this._onDocExplore) {
+      try { document.removeEventListener("mousedown", this._onDocExplore, true); } catch (e) {}
+      this._onDocExplore = null;
+    }
     if (this.stage && this._onStageMove) {
       this.stage.removeEventListener("mousemove", this._onStageMove);
       this.stage.removeEventListener("mouseleave", this._onStageLeave);
       this.stage.removeEventListener("click", this._onStageClick);
       this._onStageMove = this._onStageLeave = this._onStageClick = null;
     }
-    // Remove the body-appended popups this widget created (else they leak when a
-    // proof box is torn down and recreated in the app).
-    for (const k of ["_termTip", "_mathTip", "_goalPop", "_explorePop"]) {
+    if (this._askBtnHideTimer) { clearTimeout(this._askBtnHideTimer); this._askBtnHideTimer = null; }
+    if (this._askBtnFadeTimer) { clearTimeout(this._askBtnFadeTimer); this._askBtnFadeTimer = null; }
+    if (this._askBtnRelocateTimer) { clearTimeout(this._askBtnRelocateTimer); this._askBtnRelocateTimer = null; }
+    // Remove the body-appended popups/buttons this widget created (else they leak
+    // when a proof box is torn down and recreated in the app).
+    for (const k of ["_termTip", "_mathTip", "_goalPop", "_explorePop", "_termAskBtnEl"]) {
       const el = this[k];
       if (el && el.parentNode) el.parentNode.removeChild(el);
       this[k] = null;
@@ -462,18 +505,28 @@ export class ProofAnimator {
       // Switch only to a REAL term; over chrome/gaps (null) keep the current term
       // lit so crossing a fraction bar between two glyphs never flickers.
       if (el && el !== this._hotTermEl) this._setHotTerm(el);
+      // Over chrome/gap (or the same term): the pointer isn't settling on a NEW
+      // term, so drop any pending button relocate — it may be heading to the button.
+      else if (!el && this._enableTermAsk) this._cancelAskBtnRelocate();
     };
     this._onStageLeave = () => this._setHotTerm(null);
     this._onStageClick = (ev) => {
       const el = tagOf(ev.target, ev.clientX, ev.clientY);
       if (!el) {
-        // A click in the expression area that hit no term → the host deselects all.
+        // A click in the expression area that hit no term → deselect: the host (if
+        // any) clears its selection; otherwise the engine clears its ask-selection.
         if (this._onTermBackgroundClick) this._onTermBackgroundClick();
+        else if (this._enableTermAsk && !this._onTermClick) this._clearAskSel();
         return;
       }
-      // Forward the candidate chain — the host resolves the nearest named node.
+      const additive = !!(ev.metaKey || ev.ctrlKey);
       if (this._onTermClick) {
-        this._onTermClick(this._termChain(el), el, { additive: !!(ev.metaKey || ev.ctrlKey) });
+        // Host owns selection (sg-proof) — forward the candidate chain so it can
+        // resolve the nearest named graph node.
+        this._onTermClick(this._termChain(el), el, { additive });
+      } else if (this._enableTermAsk) {
+        // Standalone/embedded (no host): the engine owns an ordered ask-selection.
+        this._toggleAskTerm(el, additive);
       }
     };
     this.stage.addEventListener("mousemove", this._onStageMove);
@@ -491,6 +544,12 @@ export class ProofAnimator {
     const desc = this._termDescription(chain);
     if (el && desc) this._showTermTip(el, desc);
     else this._hideTermTip();
+    // Fade the "Ask AI" button in beside the hovered term (graph-node style); a
+    // grace-delayed hide when the pointer leaves lets the cursor reach the button.
+    if (this._enableTermAsk) {
+      if (el) this._requestTermAskBtn(el);
+      else { this._cancelAskBtnRelocate(); this._scheduleHideTermAskBtn(); }
+    }
     // Host hook (optional): the app's SgProofManager lights up + selects the LINKED
     // graph node. The chain (innermost glyph → enclosing operator wrappers) lets a
     // glyph that's only PART of a named node still reach it. Absent standalone.
@@ -588,6 +647,301 @@ export class ProofAnimator {
     return (best && bestD <= TOL * TOL) ? best : null;
   }
 
+  // ── Term ask-selection (engine-owned; standalone/embedded term-ask only) ────
+  // Appearance key — identical-looking terms collapse to one key; reject empty +
+  // numeric-only (a literal "2" and the "2" of a square render identically). Same
+  // rule SgProofManager uses, so selection behaves consistently across contexts.
+  _apprKey(text) {
+    const k = (text || "").replace(/[\s\u200B-\u200F\u2060\uFEFF]/g, "");
+    return (!k || /^[\d.,/+\-]+$/.test(k)) ? "" : k;
+  }
+
+  // Toggle a term in the ask CONTEXT set (gold). These are the "also include
+  // these" terms that ride along when you ask about a hovered focus term — like
+  // cmd/ctrl-selecting extra graph nodes. Plain click REPLACES; cmd/ctrl toggles.
+  _toggleAskTerm(el, additive) {
+    const chain = this._termChain(el);
+    const text = (chain[0] && chain[0].text) || (el.textContent || "");
+    const key = this._apprKey(text);
+    if (!key) return;
+    if (additive) {
+      const at = this._askSel.findIndex((s) => s.key === key);
+      if (at >= 0) this._askSel.splice(at, 1);                        // toggle off
+      else this._askSel.push({ key, chain, text, desc: this._termDescription(chain) });
+    } else {
+      this._askSel = [{ key, chain, text, desc: this._termDescription(chain) }];
+    }
+    this._applyAskClasses();
+  }
+
+  _clearAskSel() {
+    if (!this._askSel.length) return;
+    this._askSel = [];
+    this._applyAskClasses();
+  }
+
+  // Paint the ask CONTEXT set gold (pa-term-ask). A class DISTINCT from
+  // pa-term-selected so the in-app host keeps sole ownership of that one. Keyed by
+  // appearance, so a re-render (morph) re-applies it from _capOverflow.
+  _applyAskClasses() {
+    const expr = this.stage && this.stage.querySelector(".pa-expr");
+    if (!expr) return;
+    const keys = new Set(this._askSel.map((s) => s.key));
+    for (const node of expr.querySelectorAll("[data-n]")) {
+      const k = this._apprKey(node.textContent || "");
+      node.classList.toggle("pa-term-ask", !!k && keys.has(k));
+    }
+  }
+
+  // The AI sparkle button that FADES IN next to the hovered term — mirrors the
+  // semantic-graph node ask button (graph-view._showD3NodeAskBtn). One reusable
+  // button on document.body (position:fixed), so a box's overflow never clips it.
+  // Engine-level so it works both standalone (?ai=1) and in-app (docked boxes).
+  _buildTermAskButton() {
+    if (!this._enableTermAsk) return;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "pa-term-ask-btn";
+    btn.innerHTML = AI_SPARKLE_SVG;
+    btn.title = "Ask AI about this term";
+    btn.setAttribute("aria-label", "Ask AI about this term");
+    btn.style.position = "fixed";
+    btn.style.opacity = "0";
+    btn.style.pointerEvents = "none";
+    // Starts invisible: keep it out of the tab order and hidden from assistive tech
+    // so keyboard/SR users don't land on a control they can't see. _showTermAskBtn /
+    // _hideTermAskBtn flip these back in step with the opacity.
+    btn.tabIndex = -1;
+    btn.setAttribute("aria-hidden", "true");
+    btn.style.zIndex = "10001";   // above the term tooltip (z 10000) so it's never covered
+    // Moving onto the button cancels the hide; leaving it hides it. The grace
+    // delay (below) is what lets the cursor cross the gap from term to button.
+    btn.addEventListener("mouseenter", () => {
+      if (this._askBtnHideTimer) { clearTimeout(this._askBtnHideTimer); this._askBtnHideTimer = null; }
+      this._cancelAskBtnRelocate();   // reached the button → don't let it jump to a new term
+    });
+    btn.addEventListener("mouseleave", () => this._scheduleHideTermAskBtn());
+    btn.addEventListener("click", (e) => { e.stopPropagation(); this._termAskClick(); });
+    document.body.appendChild(btn);
+    this._termAskBtnEl = btn;
+  }
+
+  // Show the ask button for `el`, but DON'T yank an already-shown button off a term
+  // the pointer may be reaching for. First appearance (or moving back onto the same
+  // term) snaps instantly; moving to a DIFFERENT term while a button is up waits for
+  // the pointer to SETTLE there (~150ms). A move to empty chrome or onto the button
+  // itself cancels the pending relocate (see _onStageMove / the button's mouseenter),
+  // so a cursor traveling to the button never loses it.
+  _requestTermAskBtn(el) {
+    const btn = this._termAskBtnEl;
+    const visible = btn && btn.style.opacity === "1";
+    if (!visible || !this._askBtnFocus || this._askBtnFocus.el === el) {
+      this._cancelAskBtnRelocate();
+      this._showTermAskBtn(el);
+      return;
+    }
+    if (this._askBtnRelocateEl === el) return;   // already pending for this term
+    this._cancelAskBtnRelocate();
+    this._askBtnRelocateEl = el;
+    this._askBtnRelocateTimer = setTimeout(() => {
+      this._askBtnRelocateTimer = null;
+      this._askBtnRelocateEl = null;
+      this._showTermAskBtn(el);
+    }, 150);
+  }
+
+  _cancelAskBtnRelocate() {
+    if (this._askBtnRelocateTimer) { clearTimeout(this._askBtnRelocateTimer); this._askBtnRelocateTimer = null; }
+    this._askBtnRelocateEl = null;
+  }
+
+  // Fade the button in just above the hovered term (flipped below if no room),
+  // and remember that term as the ask FOCUS. Clamped inside the viewport.
+  _showTermAskBtn(el) {
+    const btn = this._termAskBtnEl;
+    if (!btn || !el) return;
+    if (this._askBtnHideTimer) { clearTimeout(this._askBtnHideTimer); this._askBtnHideTimer = null; }
+    const chain = this._termChain(el);
+    this._askBtnFocus = {
+      el, chain,
+      text: (chain[0] && chain[0].text) || (el.textContent || ""),
+      desc: this._termDescription(chain),
+    };
+    const r = el.getBoundingClientRect();
+    const bRect = btn.getBoundingClientRect();
+    const bw = bRect.width || btn.offsetWidth || 22;
+    const bh = bRect.height || btn.offsetHeight || 22;
+    // TOP-RIGHT corner of the term, like a superscript badge — it sits in the
+    // empty space above the line, so the cursor reaches it WITHOUT crossing the
+    // next inline glyph (which would relocate the button out from under you). The
+    // button overlaps the corner by ~⅓ so a short up-right move lands on it.
+    // Nudged out (right + up) to clear the term — ⅔ of a ⅓-glyph-height step (i.e.
+    // a third closer than a full ⅓-height nudge).
+    const shift = r.height * 2 / 9;
+    let left = r.right - bw / 3 + shift;
+    let top = r.top - bh * (2 / 3) - shift;
+    // Flip below if there's no room above; nudge left if it would run off-screen.
+    if (top < 4) top = r.bottom - bh / 3;
+    left = Math.max(4, Math.min(left, window.innerWidth - bw - 4));
+    top = Math.max(4, Math.min(top, window.innerHeight - bh - 4));
+    btn.style.left = `${Math.round(left)}px`;
+    btn.style.top = `${Math.round(top)}px`;
+    btn.style.opacity = "1";
+    btn.style.pointerEvents = "auto";
+    btn.tabIndex = 0;                     // now visible → reachable + announced
+    btn.removeAttribute("aria-hidden");
+  }
+
+  // Grace period before the button fades out — long enough to move the cursor
+  // from the term onto the button (its mouseenter cancels the timer).
+  _scheduleHideTermAskBtn() {
+    if (!this._termAskBtnEl) return;
+    if (this._askBtnHideTimer) clearTimeout(this._askBtnHideTimer);
+    this._askBtnHideTimer = setTimeout(() => this._hideTermAskBtn(), 600);
+  }
+
+  _hideTermAskBtn() {
+    if (this._askBtnHideTimer) { clearTimeout(this._askBtnHideTimer); this._askBtnHideTimer = null; }
+    this._cancelAskBtnRelocate();
+    const btn = this._termAskBtnEl;
+    if (!btn) return;
+    btn.style.opacity = "0";
+    // Leave the tab order / assistive tree immediately (before the fade finishes) so
+    // it can't be focused while invisible; clicks still work through the fade below.
+    btn.tabIndex = -1;
+    btn.setAttribute("aria-hidden", "true");
+    // Stay clickable through the fade (matches the fade-in timing), so a click that
+    // lands while the button is still visibly fading still registers; disable it
+    // only once it's actually invisible.
+    if (this._askBtnFadeTimer) clearTimeout(this._askBtnFadeTimer);
+    this._askBtnFadeTimer = setTimeout(() => {
+      if (btn.style.opacity === "0") btn.style.pointerEvents = "none";
+    }, 200);
+  }
+
+  // Resolve the deeplink for an ask: a step's own override, else the proof-level
+  // one. Empty when neither is present (the route then falls back).
+  _stepDeeplink(idx) {
+    const s = this.data && this.data.steps && this.data.steps[idx];
+    return (s && s.deeplink) || (this.data && this.data.deeplink) || "";
+  }
+
+  // Button click: ask about the FOCUS term (the one the button is anchored to),
+  // with any gold context terms riding along. Host-enriched in-app, else built by
+  // the engine. Mirrors the graph node ask (hovered = subject, selected = context).
+  _termAskClick() {
+    const focus = this._askBtnFocus;
+    let message = null;
+    if (this._onBuildTermAskMessage) {
+      try { message = this._onBuildTermAskMessage(focus); } catch (e) { message = null; }
+    }
+    if (!message) message = this._buildTermAskMessage(focus);
+    if (!message) return;
+    this._hideTermAskBtn();
+    this._routeAsk(message, this._stepDeeplink(this.current));
+  }
+
+  // Standalone ask message: the focus term + any gold context terms. Deliberately
+  // omits the full $$expr$$ (the deep-linked app already has the proof) so the
+  // auto-ask URL stays short.
+  _buildTermAskMessage(focus) {
+    if (!focus || !focus.text) return "";
+    const title = this.data && this.data.title ? ` "${this.data.title}"` : "";
+    const goal = this.data && this.data.goal ? ` (${this.data.goal})` : "";
+    const i = this.current;
+    const others = this._askSel.filter((s) => s.key !== this._apprKey(focus.text));
+    let head = `In the derivation${title}${goal}, at step ${i}, explain the term "${focus.text}"`;
+    if (focus.desc) head += ` (${focus.desc})`;
+    if (!others.length) return head + ` — what it represents and its role here.`;
+    const lines = [head + ` and how it relates to:`];
+    for (const t of others) lines.push(`- "${t.text}"${t.desc ? ` — ${t.desc}` : ""}`);
+    return lines.join("\n");
+  }
+
+  // Route an AI ask to the right place. THREE contexts, checked in order:
+  //   1. IN-APP   — a host hook is wired (e.g. docked boxes) → ask in the existing chat.
+  //   2. EMBEDDED — this widget is in an iframe → open the app in a NEW TAB.
+  //   3. STANDALONE — top-level renderproof page → navigate THIS tab to the app.
+  // Cases 2 and 3 go to the SAME url (built by _askTargetUrl); only HOW it's opened
+  // differs, and that lives in _openAppUrl. Shared by the term button, the per-step
+  // buttons, and the explore chips.
+  _routeAsk(message, deeplink) {
+    if (!message) return;
+    if (this._onTermAsk) { this._onTermAsk({ message }); return; }   // (1) in-app → chat
+    this._openAppUrl(                                                // (2) embedded / (3) standalone
+      this._askTargetUrl(deeplink, message),
+      () => this._postToParent({ type: "algebench-term-ask", message }),           // embedded fallback
+      () => { try { navigator.clipboard.writeText(message); } catch (e) {} });     // standalone fallback
+  }
+
+  // Open `url` in the app, the way the current context allows:
+  //   EMBEDDED  → a NEW TAB (an iframe can't navigate its host page);
+  //   STANDALONE → THIS tab (reliable — a new tab can be popup-blocked).
+  // Runs the matching fallback only if there's no usable url or the open was blocked.
+  _openAppUrl(url, onEmbeddedFail, onStandaloneFail) {
+    const embedded = typeof window !== "undefined" && window.self !== window.top;
+    if (url) {
+      try {
+        if (embedded) {
+          // A blocked popup returns `null` WITHOUT throwing — treat that as a
+          // failure so the postMessage fallback still runs (don't lose the ask).
+          if (window.open(url, "_blank", "noopener")) return;
+        } else {
+          window.location.assign(url);
+          return;
+        }
+      } catch (e) { /* blocked — fall through to the fallback */ }
+    }
+    const fail = embedded ? onEmbeddedFail : onStandaloneFail;
+    if (fail) fail();
+  }
+
+  // Last-resort fallback when embedded and we couldn't open a tab: notify an
+  // AlgeBench-aware parent page. Tagged with this proof's title.
+  _postToParent(payload) {
+    try {
+      window.parent.postMessage(
+        { ...payload, title: (this.data && this.data.title) || null }, "*");
+    } catch (e) { /* parent refused */ }
+  }
+
+  // Where an ask should open, and how the question travels. The origin is the
+  // CURRENT one, so it's automatically environment-specific (localhost in dev, the
+  // real host in prod). The question rides in the `aa` query param — the app reads
+  // it on boot, opens chat, and sends it once (then strips it from the URL).
+  //   • with a deeplink → that scene/step view + ?panel=chat&aa=<question>;
+  //   • without        → the app's MAIN PAGE + ?panel=chat&aa=<question>.
+  _askTargetUrl(deeplink, message) {
+    try {
+      const origin = window.location.origin;
+      const u = new URL(deeplink || "/", origin);
+      if (u.origin !== origin) return null;   // off-origin deeplink → reject
+      u.searchParams.set("panel", "chat");
+      u.searchParams.set("aa", String(message).slice(0, 1500));
+      // If the deeplink loads a pre-baked proof animation (?pa=), carry the step the
+      // learner is currently on so the docked animation opens there, not at step 0.
+      if (u.searchParams.has("pa")) u.searchParams.set("pas", String(this.current));
+      return u.href;
+    } catch (e) { return null; }
+  }
+
+  // Engine-native ask button (used only when the app supplies no aiAskButton
+  // factory but term-ask is on). Routes via _routeAsk instead of asking chat.
+  _makeRoutedAskButton(className, title, getMessage) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = className;
+    btn.title = title;
+    btn.innerHTML = AI_SPARKLE_SVG;
+    btn.setAttribute("aria-label", title);
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const message = getMessage();
+      if (message) this._routeAsk(message, this._stepDeeplink(this.current));
+    });
+    return btn;
+  }
+
   // Apply the current speed multiplier. Animations are created at base duration
   // and play at this.speed via playbackRate, so changing it here ALSO rescales
   // whatever is mid-flight (immediate effect), then updates the button label.
@@ -631,7 +985,9 @@ export class ProofAnimator {
       b.type = "button";   // never submit a surrounding <form>
       b.className = "pa-step";
       b.textContent = String(i);
-      let tip = `${i}. ${this._plainOp(s.operation || `state ${i}`)}`;
+      // Keep the RAW operation (with $…$) so the tooltip renders the math via KaTeX
+      // (the plain data-tip mangled e.g. "$v = \omega R$" into "v = R").
+      let tip = `${i}. ${s.operation || `state ${i}`}`;
       // Confidence tint: the row of step buttons doubles as an at-a-glance
       // confidence strip (a colored bar per step, tier-keyed).
       const c = this._conf(i);
@@ -639,8 +995,7 @@ export class ProofAnimator {
         b.classList.add(`pa-conf-${c.tier}`);
         tip += ` — ${c.label || c.tier}`;
       }
-      b.setAttribute("data-tip", tip);
-      b.setAttribute("aria-label", tip);
+      this._attachMathTip(b, tip);   // KaTeX-rendered tooltip (sets aria-label too)
       b.addEventListener("click", () => this._userGoTo(i));
       steps.appendChild(b);
     });
@@ -694,6 +1049,7 @@ export class ProofAnimator {
     };
     this._renderGoal();
     this._renderExplore();
+    this._buildTermAskButton();
   }
 
   // Model-produced framing, shown top-left (mirrors the grounding-rank pill
@@ -830,7 +1186,16 @@ export class ProofAnimator {
         const chip = document.createElement("button");
         chip.type = "button";
         chip.className = "pa-explore-chip";
-        this._caption(chip, item);     // inline math, safe (no raw HTML)
+        // A sparkle icon marks the chip as an AI action — clicking it asks the
+        // agent (in-app: chat; embedded: opens the linked view + auto-asks), the
+        // same scene-linking flow the term button uses.
+        const icon = document.createElement("span");
+        icon.className = "pa-explore-chip-icon";
+        icon.innerHTML = AI_SPARKLE_SVG;
+        const text = document.createElement("span");
+        text.className = "pa-explore-chip-text";
+        this._caption(text, item);     // inline math, safe (no raw HTML)
+        chip.append(icon, text);
         chip.addEventListener("click", () => this._exploreClick(tab.key, item));
         contentEl.appendChild(chip);
       }
@@ -865,6 +1230,20 @@ export class ProofAnimator {
       pill.classList.toggle("pa-pinned", this._explorePinned);
       if (this._explorePinned) show(); else hide();
     });
+
+    // Clicking anywhere outside the pill/popup dismisses a pinned popup (e.g. the
+    // user steps through the proof, hovers a term, or clicks the prose around it).
+    // Capture phase so it fires before in-box click handlers; chips inside the
+    // popup keep it open (their target is within `pop`).
+    if (this._onDocExplore) document.removeEventListener("mousedown", this._onDocExplore, true);
+    this._onDocExplore = (ev) => {
+      if (!this._explorePinned) return;
+      if (pop.contains(ev.target) || pill.contains(ev.target)) return;
+      this._explorePinned = false;
+      pill.classList.remove("pa-pinned");
+      hide();
+    };
+    document.addEventListener("mousedown", this._onDocExplore, true);
   }
 
   // Hide every popup WITHOUT tearing the widget down, and unpin the Explore popup.
@@ -877,7 +1256,8 @@ export class ProofAnimator {
   hidePopups() {
     this._hideGoalPop();
     if (this._termTip) this._termTip.style.display = "none";
-    if (this._mathTip) this._mathTip.style.display = "none";
+    if (this._mathTip) this._mathTip.style.opacity = "0";
+    this._hideTermAskBtn();
     if (this._explorePop) {
       this._explorePop.style.display = "none";
       this._explorePinned = false;
@@ -948,20 +1328,18 @@ export class ProofAnimator {
     return `I'm exploring the derivation${title}${goal}.\n\n${text}`;
   }
 
-  // Route a chip click: embedded → let the parent page handle it (postMessage);
-  // else the host hook (the app asks its agent with context); else copy the text.
+  // Route a prerequisite / follow-up chip click — SAME three contexts as _routeAsk
+  // (in-app → chat; embedded → new tab; standalone → this tab). Chips are about the
+  // whole proof, so they use the proof-level deeplink (scene/step + auto-ask) if
+  // present, else the app's main page with chat. (A future PR can give each chip
+  // its own deeplink.)
   _exploreClick(kind, text) {
     const message = this._exploreMessage(kind, text);
-    if (typeof window !== "undefined" && window.self !== window.top) {
-      try {
-        window.parent.postMessage(
-          { type: "algebench-explore", kind, text, message,
-            title: (this.data && this.data.title) || null }, "*");
-      } catch (e) { /* parent refused */ }
-      return;
-    }
-    if (this._onExplore) { this._onExplore({ kind, text, message }); return; }
-    try { navigator.clipboard.writeText(text); } catch (e) { /* no clipboard */ }
+    if (this._onExplore) { this._onExplore({ kind, text, message }); return; }   // (1) in-app → chat
+    this._openAppUrl(                                                            // (2) embedded / (3) standalone
+      this._askTargetUrl((this.data && this.data.deeplink) || "", message),
+      () => this._postToParent({ type: "algebench-explore", kind, text, message }),  // embedded fallback
+      () => { try { navigator.clipboard.writeText(text); } catch (e) {} });          // standalone fallback
   }
 
   _renderInto(el, latex) {
@@ -1754,9 +2132,8 @@ export class ProofAnimator {
       this._mathTip = tip;
     }
     this._caption(tip, text);              // render $…$ segments with KaTeX
-    tip.style.display = "block";
-    tip.style.left = "0px";
-    tip.style.top = "0px";
+    // Measured while at opacity 0 (always display:block) — no display toggle, so the
+    // opacity transition (fade) isn't interrupted and there's no resize animation.
     const cr = this.container.getBoundingClientRect();
     const br = el.getBoundingClientRect();
     const tw = tip.offsetWidth, th = tip.offsetHeight;
@@ -1766,10 +2143,11 @@ export class ProofAnimator {
     if (top < 4) top = (br.bottom - cr.top) + 8;   // flip below when no room above
     tip.style.left = `${left}px`;
     tip.style.top = `${top}px`;
+    tip.style.opacity = "1";               // fade in
   }
 
   _hideMathTip() {
-    if (this._mathTip) this._mathTip.style.display = "none";
+    if (this._mathTip) this._mathTip.style.opacity = "0";   // fade out
   }
 
   // The overall-confidence pill (static for the derivation): icon + tier label
@@ -1795,6 +2173,14 @@ export class ProofAnimator {
       count.className = "pa-overall-count";
       count.textContent = `· ${good}/${total}`;
       el.append(count);
+    }
+    // AI button (same factory as the step ask buttons, so it routes the same way):
+    // explain what this confidence badge means. Revealed with the expanded badge;
+    // its own click stops propagation, so it never pins/unpins the pill.
+    if (this._aiAsk) {
+      el.classList.add("pa-overall-has-ask");
+      el.append(this._aiAsk("pa-ask-btn pa-ask-overall", "Explain this confidence rating",
+        () => this._askOverallMessage()));
     }
     // The overall reason already summarizes the chain (tallies + endpoint), so
     // the pill tooltip is "<Label> — <summary>", not the per-step meaning.
@@ -1950,6 +2336,29 @@ export class ProofAnimator {
       + ` let me attempt the result, and only then confirm or correct it.`;
     return msg;
   }
+
+  // Chat message for the "explain this confidence badge" button on the overall pill.
+  _askOverallMessage() {
+    const oc = (this.data && this.data.overall_confidence) || {};
+    const title = this.data && this.data.title ? ` "${this.data.title}"` : "";
+    const tier = oc.label || oc.tier || "this";
+    const counts = oc.counts || {};
+    const total = Object.values(counts).reduce((a, b) => a + (b || 0), 0);
+    let m = `The derivation${title} carries an overall confidence of "${tier}"`;
+    if (total) {
+      const good = (counts.grounded || 0) + (counts.verified || 0);
+      const bits = [`${good}/${total} steps verified`];
+      if (counts.plausible) bits.push(`${counts.plausible} plausible`);
+      if (counts.domain) bits.push(`${counts.domain} domain-vouched`);
+      if (oc.endpoint_reached === false) bits.push(`the target endpoint was not reached`);
+      m += ` (${bits.join(", ")})`;
+    }
+    if (oc.meaning) m += `. ${oc.meaning}`;
+    return m + `.\n\nExplain what this "${tier}" confidence rating means here — how the`
+      + ` steps are checked, why the derivation earned this tier rather than a higher one,`
+      + ` and how much I should trust the result.`;
+  }
+
   // Meta "promote" animation for a forward (next) step: the current explanation
   // and justification fade OUT, and the title shown in the "Next" pill slides UP
   // into the title position to become the new explanation. Returns a finish()
