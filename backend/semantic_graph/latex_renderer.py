@@ -178,6 +178,32 @@ def _emit_body(n, ins, nodes, incoming, child, oid, gw) -> tuple[str, int]:
         val = n.label if n.label is not None else n.value
         return (str(val), _ATOM)
     if t == "function":
+        # log/ln carry an optional ``base``-role operand (the parser splits the
+        # base out as its own node — natural log gets base ``e``, ``log_b`` an
+        # explicit base). That makes the node arity-2, so without this branch it
+        # hit the arity gate below and raised — dropping the id-annotated LaTeX
+        # (and thus term highlighting) on every log step. Render base-aware: an
+        # ``e`` base (or ``ln``) stays implicit; any other base becomes a subscript.
+        if op in ("log", "ln"):
+            arg_ins = [c for role, c in ins if role != "base"]
+            base_ins = [c for role, c in ins if role == "base"]
+            if len(arg_ins) == 1 and len(base_ins) <= 1:
+                arg = child(arg_ins[0], _LOGIC)
+                # Preserve the glyph: the parser gives ``\log`` ``latex="\log"``
+                # but ``\ln`` ``latex=None`` (both op ``log``), so a missing latex
+                # uniquely means ``\ln`` — deriving from ``op`` would flip it.
+                fn = getattr(n, "latex", None) or r"\ln"
+                if base_ins:
+                    bnode = nodes.get(base_ins[0])
+                    # Natural base ``e`` stays implicit; any other base (a number
+                    # like 10/2, or a symbol) becomes a subscript rendered via
+                    # child() so numeric bases show their value, not a blank latex.
+                    natural = (bnode is not None and bnode.type == "constant"
+                               and getattr(bnode, "latex", None) == "e")
+                    if not natural:
+                        base = child(base_ins[0], _LOGIC)
+                        return (rf"{fn}_{{{base}}}\left({arg}\right)", _ATOM)
+                return (f"{fn}\\left({arg}\\right)", _ATOM)   # natural / implicit base
         if len(ins) != 1:
             raise StructuralRenderError(f"function {op!r} arity {len(ins)}")
         arg = child(ins[0][1], _LOGIC)
