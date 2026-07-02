@@ -463,6 +463,88 @@ export class D3SemanticGraphRenderer {
         return new Set(this._selectedNodeIds);
     }
 
+    // ── Live-terms bridge ────────────────────────────────────────────────────
+    // A docked proof animation (SgProofManager) can make each rendered term
+    // "live": hovering/clicking a term lights up — and selects — its linked node
+    // here. These three methods are the public surface that bridge uses. They
+    // never run when there's no graph (the bridge no-ops if the renderer is gone),
+    // so the feature is mute without a semantic graph.
+
+    /**
+     * Resolve a proof-animation term id (its `data-n`) to a node id in THIS
+     * graph, or null if the term has no selectable node here. The animation is
+     * derived independently, but node ids are deterministic slugs of the symbol
+     * name (see backend id_utils._slug_id), so a *named* term shares this graph's
+     * id-space. Try, in order: the exact id; the canonical symbol (occurrence
+     * suffix `__<parent>` stripped) against node ids' own canonical symbols; then
+     * a loose label/latex match on the rendered glyph text.
+     */
+    resolveTermNodeId(termId, termText) {
+        if (!termId || !this._graph || !Array.isArray(this._graph.nodes)) return null;
+        const nodes = this._graph.nodes;
+        const has = id => (id && nodes.some(n => n.id === id)) ? id : null;
+        // The animation's ids carry affixes the graph node ids don't: a glyph
+        // suffix on operator/structural glyphs (`__op`/`__op<n>`, `__exp`,
+        // `__one`, `__m<n>`), and a rebase prefix on the threaded spine
+        // (`_r<n>_`). Strip each (and the data-occurrence suffix `__<parent>`) to
+        // recover candidate node ids, then take the first that exists here.
+        const noGlyph = termId.replace(/__(?:op\d*|exp|one|m\d+)$/, '');
+        const cands = [termId, noGlyph, noGlyph.replace(/^_r\d+_/, '')];
+        for (const c of cands) { const h = has(c); if (h) return h; }
+        const base = termId.split('__')[0];                        // canonical symbol
+        if (base) {
+            if (has(base)) return base;
+            const m = nodes.find(n => n.id.split('__')[0] === base);
+            if (m) return m.id;
+        }
+        // Loose match on the rendered text — the safety net for nodes whose
+        // positional id (operators, powers like a square) differs between the
+        // independently-derived animation and this graph. Compare against label /
+        // latex / subexpr (a power node carries only `subexpr`, e.g. "V^{2}"), with
+        // superscripts and multiplication dots normalised away so "V²" ≡ "V^{2}".
+        const t = (termText || '').trim();
+        if (t) {
+            const norm = s => (s || '').replace(/\\cdot|\\[a-zA-Z]+|[{}\\$\s^*·]/g, '').trim();
+            // Skip a purely NUMERIC appearance ("2", "1/2"): a bare number is
+            // ambiguous (an exponent, a denominator, a coefficient all render the
+            // same), so matching it by text mis-links — e.g. a square's "2" to the
+            // "2" in a denominator. Named symbols carry a letter.
+            const nt = norm(t);
+            if (nt && !/^[\d.,/]+$/.test(nt)) {
+                const m = nodes.find(n =>
+                    norm(n.subexpr) === nt || norm(n.latex) === nt || norm(n.label) === nt);
+                if (m) return m.id;
+            }
+        }
+        return null;
+    }
+
+    /** The node datum for an id (label, description, latex, …), or null. */
+    getNode(nodeId) {
+        if (!nodeId || !this._graph || !Array.isArray(this._graph.nodes)) return null;
+        return this._graph.nodes.find(n => n.id === nodeId) || null;
+    }
+
+    /** Toggle a transient hover halo on the node with this id (null clears all). */
+    highlightNodeById(nodeId) {
+        if (!this._svg || !this._nodeLayer) return;
+        this._nodeLayer.selectAll('g.d3sg-node')
+            .classed('d3sg-live-hover', d => !!nodeId && d.data.id === nodeId);
+    }
+
+    /**
+     * Select a node by id as though it were clicked — reuses _handleNodeClick's
+     * exact single/multi-select semantics (additive = Cmd/Ctrl-click) and fires
+     * onNodeClick, so the info panel and `algebench:selectionchange` event happen
+     * identically to a real click. No-op if the id isn't in this graph.
+     */
+    selectNodeById(nodeId, opts = {}) {
+        if (!this._graph || !Array.isArray(this._graph.nodes)) return;
+        const node = this._graph.nodes.find(n => n.id === nodeId);
+        if (!node) return;
+        this._handleNodeClick({ data: node }, { metaKey: !!opts.additive, ctrlKey: false });
+    }
+
     saveState() {
         return {
             collapsed: new Set(this._collapsed),
@@ -1085,7 +1167,9 @@ export class D3SemanticGraphRenderer {
                 return `translate(${p.x},${p.y}) scale(0.85)`;
             })
             .style('opacity', 0)
-            .style('cursor', d => this._isCollapsible(d) ? 'pointer' : 'default')
+            // Every node is clickable now (select + proof-term sync), not just the
+            // collapsible operators — so they all get the hand cursor.
+            .style('cursor', 'pointer')
             .on('click', function (event, d) {
                 event.stopPropagation();
                 self._handleNodeClick(d, event);
@@ -1273,7 +1357,7 @@ export class D3SemanticGraphRenderer {
 
         this._applyHighlight();
         if (this.onNodeClick) {
-            this.onNodeClick(nodeId, d.data, new Set(this._selectedNodeIds));
+            this.onNodeClick(nodeId, d.data, new Set(this._selectedNodeIds), multiSelect);
         }
     }
 

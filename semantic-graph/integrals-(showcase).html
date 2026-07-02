@@ -280,11 +280,15 @@
     top: 0.4rem;
     right: 0.4rem;
   }
-  .row-panel.row-json {
+  .row-panel.row-json,
+  .row-panel.row-sympy,
+  .row-panel.row-js {
     display: none;
     padding: 0;
   }
-  .row-panel.row-json.open {
+  .row-panel.row-json.open,
+  .row-panel.row-sympy.open,
+  .row-panel.row-js.open {
     display: flex;
     gap: 1px;
   }
@@ -400,6 +404,21 @@ svg.d3-semantic-graph {
 }
 .d3sg-node:hover .d3sg-op-bg {
     filter: brightness(1.3);
+}
+
+/* Live-terms hover halo — driven by highlightNodeById() when a learner hovers
+   the LINKED term in a docked proof animation. Mirrors a real mouse hover (the
+   same brightness lift) plus a coloured glow so the cross-highlight reads as a
+   halo, matching the term's own halo in the proof box. Green for data nodes,
+   blue for operators — same hues as the .selected glow. */
+.d3sg-node.d3sg-live-hover .d3sg-var-bg {
+    filter: brightness(1.25) drop-shadow(0 0 6px rgba(109, 240, 142, 0.65));
+}
+.d3sg-node.d3sg-live-hover .d3sg-op-bg {
+    filter: brightness(1.25) drop-shadow(0 0 6px rgba(126, 168, 255, 0.65));
+}
+.d3sg-node.d3sg-live-hover .d3sg-tile-bg {
+    filter: brightness(1.2) drop-shadow(0 0 6px rgba(126, 168, 255, 0.6));
 }
 
 /* Collapsed tile — fill/stroke set by theme via inline attributes */
@@ -1031,7 +1050,7 @@ svg.d3-semantic-graph {
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-06-23 03:14 UTC &middot; theme: default-dark &middot; 4 expressions</div>
+<div class="report-meta">Generated 2026-07-02 23:10 UTC &middot; theme: default-dark &middot; 4 expressions</div>
 <div class="section-title">Integrals (showcase) (4 expressions)</div>
 <div class="row">
   <div>
@@ -1066,6 +1085,8 @@ svg.d3-semantic-graph {
   <div class="row-actions">
     <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
     <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle" data-target="row-sympy" title="Toggle SymPy expression">SymPy</button>
+    <button class="row-toggle" data-target="row-js" title="Toggle math.js (JS) expression">JS</button>
     <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
   </div>
   <div class="row-panel row-latex-src" data-latex="\int x^2 \, dx"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>\int x^2 \, dx</div>
@@ -1157,6 +1178,8 @@ svg.d3-semantic-graph {
   linkStyle 1 stroke:#aaa,stroke-width:2px
   linkStyle 2 stroke:#ef5350,stroke-width:6px
 </pre></div></div>
+  <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Integral(x**2, x)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Integral(Pow(Symbol('x'), Integer(2)), Tuple(Symbol('x')))</pre></div></div>
+  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>(1/3)*pow(x, 3)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>x</pre></div></div>
   <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__integral_1&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;integral&quot;,&quot;with_respect_to&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;\\int x^2 \\, dx&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;(1/3)*pow(x, 3)&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;dx&quot;,&quot;type&quot;:&quot;differential&quot;,&quot;latex&quot;:&quot;dx&quot;,&quot;with_respect_to&quot;:&quot;x&quot;},{&quot;id&quot;:&quot;__power_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;x^{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(x, 2)&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x&quot;,&quot;variables&quot;:[&quot;x&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;dx&quot;,&quot;to&quot;:&quot;__integral_1&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__power_2&quot;},{&quot;from&quot;:&quot;__power_2&quot;,&quot;to&quot;:&quot;__integral_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
@@ -1198,6 +1221,8 @@ svg.d3-semantic-graph {
   <div class="row-actions">
     <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
     <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle" data-target="row-sympy" title="Toggle SymPy expression">SymPy</button>
+    <button class="row-toggle" data-target="row-js" title="Toggle math.js (JS) expression">JS</button>
     <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
   </div>
   <div class="row-panel row-latex-src" data-latex="\int_0^1 x^2 \, dx"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>\int_0^1 x^2 \, dx</div>
@@ -1325,6 +1350,8 @@ svg.d3-semantic-graph {
   linkStyle 3 stroke:#aaa,stroke-width:2px
   linkStyle 4 stroke:#ef5350,stroke-width:6px
 </pre></div></div>
+  <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Integral(x**2, (x, 0, 1))</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Integral(Pow(Symbol('x'), Integer(2)), Tuple(Symbol('x'), Integer(0), Integer(1)))</pre></div></div>
+  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>1/3</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre></pre></div></div>
   <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__num_2&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;0&quot;,&quot;subexpr&quot;:&quot;0&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__num_3&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;1&quot;,&quot;subexpr&quot;:&quot;1&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__integral_1&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;integral&quot;,&quot;with_respect_to&quot;:&quot;x&quot;,&quot;lower_bound&quot;:&quot;__num_2&quot;,&quot;upper_bound&quot;:&quot;__num_3&quot;,&quot;subexpr&quot;:&quot;\\int_0^1 x^2 \\, dx&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1/3&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;dx&quot;,&quot;type&quot;:&quot;differential&quot;,&quot;latex&quot;:&quot;dx&quot;,&quot;with_respect_to&quot;:&quot;x&quot;},{&quot;id&quot;:&quot;__power_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;x^{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(x, 2)&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x&quot;,&quot;variables&quot;:[&quot;x&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;dx&quot;,&quot;to&quot;:&quot;__integral_1&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;__num_2&quot;,&quot;to&quot;:&quot;__integral_1&quot;,&quot;role&quot;:&quot;lb&quot;},{&quot;from&quot;:&quot;__num_3&quot;,&quot;to&quot;:&quot;__integral_1&quot;,&quot;role&quot;:&quot;ub&quot;},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__power_4&quot;},{&quot;from&quot;:&quot;__power_4&quot;,&quot;to&quot;:&quot;__integral_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
@@ -1366,6 +1393,8 @@ svg.d3-semantic-graph {
   <div class="row-actions">
     <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
     <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle" data-target="row-sympy" title="Toggle SymPy expression">SymPy</button>
+    <button class="row-toggle" data-target="row-js" title="Toggle math.js (JS) expression">JS</button>
     <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
   </div>
   <div class="row-panel row-latex-src" data-latex="\int_a^b \frac{1}{x} \, dx"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>\int_a^b \frac{1}{x} \, dx</div>
@@ -1501,6 +1530,8 @@ svg.d3-semantic-graph {
   linkStyle 3 stroke:#aaa,stroke-width:2px
   linkStyle 4 stroke:#42a5f5,stroke-width:1px
 </pre></div></div>
+  <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Integral(1/x, (x, a, b))</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Integral(Pow(Symbol('x'), Integer(-1)), Tuple(Symbol('x'), Symbol('a'), Symbol('b')))</pre></div></div>
+  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>-log(a) + log(b)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>a, b</pre></div></div>
   <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;a&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;a&quot;,&quot;subexpr&quot;:&quot;a&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;a&quot;,&quot;variables&quot;:[&quot;a&quot;]}},{&quot;id&quot;:&quot;b&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;b&quot;,&quot;subexpr&quot;:&quot;b&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;b&quot;,&quot;variables&quot;:[&quot;b&quot;]}},{&quot;id&quot;:&quot;__integral_1&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;integral&quot;,&quot;with_respect_to&quot;:&quot;x&quot;,&quot;lower_bound&quot;:&quot;a&quot;,&quot;upper_bound&quot;:&quot;b&quot;,&quot;subexpr&quot;:&quot;\\int_a^b \\frac{1}{x} \\, dx&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-log(a) + log(b)&quot;,&quot;variables&quot;:[&quot;a&quot;,&quot;b&quot;]}},{&quot;id&quot;:&quot;dx&quot;,&quot;type&quot;:&quot;differential&quot;,&quot;latex&quot;:&quot;dx&quot;,&quot;with_respect_to&quot;:&quot;x&quot;},{&quot;id&quot;:&quot;__power_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{x}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1/x&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x&quot;,&quot;variables&quot;:[&quot;x&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;dx&quot;,&quot;to&quot;:&quot;__integral_1&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;a&quot;,&quot;to&quot;:&quot;__integral_1&quot;,&quot;role&quot;:&quot;lb&quot;},{&quot;from&quot;:&quot;b&quot;,&quot;to&quot;:&quot;__integral_1&quot;,&quot;role&quot;:&quot;ub&quot;},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__power_2&quot;},{&quot;from&quot;:&quot;__power_2&quot;,&quot;to&quot;:&quot;__integral_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
@@ -1558,6 +1589,8 @@ svg.d3-semantic-graph {
   <div class="row-actions">
     <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
     <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle" data-target="row-sympy" title="Toggle SymPy expression">SymPy</button>
+    <button class="row-toggle" data-target="row-js" title="Toggle math.js (JS) expression">JS</button>
     <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
   </div>
   <div class="row-panel row-latex-src" data-latex="\int_0^h e^{-z/H} \, dz"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>\int_0^h e^{-z/H} \, dz</div>
@@ -1790,6 +1823,8 @@ svg.d3-semantic-graph {
   linkStyle 8 stroke:#aaa,stroke-width:2px
   linkStyle 9 stroke:#aaa,stroke-width:2px
 </pre></div></div>
+  <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Integral(exp(-z/H), (z, 0, h))</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Integral(exp(Mul(Integer(-1), Pow(Symbol('H'), Integer(-1)), Symbol('z'))), Tuple(Symbol('z'), Integer(0), Symbol('h')))</pre></div></div>
+  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>H - H*exp(-h/H)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>H, h</pre></div></div>
   <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__num_2&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;0&quot;,&quot;subexpr&quot;:&quot;0&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;h&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;h&quot;,&quot;subexpr&quot;:&quot;h&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;h&quot;,&quot;variables&quot;:[&quot;h&quot;]}},{&quot;id&quot;:&quot;__integral_1&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;integral&quot;,&quot;with_respect_to&quot;:&quot;z&quot;,&quot;lower_bound&quot;:&quot;__num_2&quot;,&quot;upper_bound&quot;:&quot;h&quot;,&quot;subexpr&quot;:&quot;\\int_0^h e^{-z/H} \\, dz&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;H - H*exp(-h/H)&quot;,&quot;variables&quot;:[&quot;H&quot;,&quot;h&quot;]}},{&quot;id&quot;:&quot;dz&quot;,&quot;type&quot;:&quot;differential&quot;,&quot;latex&quot;:&quot;dz&quot;,&quot;with_respect_to&quot;:&quot;z&quot;},{&quot;id&quot;:&quot;__power_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;e^{\\frac{\\left(-1\\right) z}{H}}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;exp(-z/H)&quot;,&quot;variables&quot;:[&quot;H&quot;,&quot;z&quot;]}},{&quot;id&quot;:&quot;e&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;e&quot;,&quot;subexpr&quot;:&quot;e&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;e&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{H} -z&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-z + 1/H&quot;,&quot;variables&quot;:[&quot;H&quot;,&quot;z&quot;]}},{&quot;id&quot;:&quot;__negation_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-z&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-z&quot;,&quot;variables&quot;:[&quot;z&quot;]}},{&quot;id&quot;:&quot;z&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;z&quot;,&quot;subexpr&quot;:&quot;z&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;z&quot;,&quot;variables&quot;:[&quot;z&quot;]}},{&quot;id&quot;:&quot;__power_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{H}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1/H&quot;,&quot;variables&quot;:[&quot;H&quot;]}},{&quot;id&quot;:&quot;H&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;H&quot;,&quot;subexpr&quot;:&quot;H&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;H&quot;,&quot;variables&quot;:[&quot;H&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;dz&quot;,&quot;to&quot;:&quot;__integral_1&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;__num_2&quot;,&quot;to&quot;:&quot;__integral_1&quot;,&quot;role&quot;:&quot;lb&quot;},{&quot;from&quot;:&quot;h&quot;,&quot;to&quot;:&quot;__integral_1&quot;,&quot;role&quot;:&quot;ub&quot;},{&quot;from&quot;:&quot;e&quot;,&quot;to&quot;:&quot;__power_3&quot;},{&quot;from&quot;:&quot;z&quot;,&quot;to&quot;:&quot;__negation_5&quot;},{&quot;from&quot;:&quot;__negation_5&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;H&quot;,&quot;to&quot;:&quot;__power_6&quot;},{&quot;from&quot;:&quot;__power_6&quot;,&quot;to&quot;:&quot;__multiply_4&quot;},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__power_3&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_3&quot;,&quot;to&quot;:&quot;__integral_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="summary">✅ <span class="count">4</span> rendered, <span class="count">0</span> errors out of <span class="count">4</span> expressions</div>
@@ -1853,8 +1888,8 @@ document.querySelectorAll('.row-copy-btn').forEach(btn => {
 })();
 
 Promise.all([
-  import('./d3-semantic-graph.js?v=1782184406'),
-  import('./sg-chart.js?v=1782184406'),
+  import('./d3-semantic-graph.js?v=1783033785'),
+  import('./sg-chart.js?v=1783033785'),
 ]).then(function(mods) {
   var D3SemanticGraphRenderer = mods[0].D3SemanticGraphRenderer;
   var SgChartManager = mods[1].SgChartManager;
