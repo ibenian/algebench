@@ -1,0 +1,148 @@
+{
+  "title": "Square of a binomial",
+  "domain": "algebra",
+  "steps": [
+    {
+      "index": 0,
+      "operation": "Given $(a+b)^2$",
+      "justification": "the starting expression",
+      "input_latex": "\\left(a + b\\right)^{2}",
+      "latex": "\\htmlData{n=__power_1}{\\left(\\htmlData{n=__add_2}{\\htmlData{n=a}{a} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=b}{b}}\\right)^{\\htmlData{n=__power_1__exp}{2}}}",
+      "plain": "\\left(a + b\\right)^{2}",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": null,
+        "reason": "the given starting expression",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 1,
+      "operation": "Rewrite the square as a product of two identical binomials",
+      "justification": "The definition of squaring a quantity is to multiply it by itself.",
+      "input_latex": "\\left(a + b\\right) \\cdot \\left(a + b\\right)",
+      "latex": "\\htmlData{n=__multiply_1}{\\left(\\htmlData{n=__add_2}{\\htmlData{n=a____add_2}{a} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=b____add_2}{b}}\\right) \\htmlData{n=__multiply_1__m1}{\\cdot} \\left(\\htmlData{n=__add_3}{\\htmlData{n=a____add_3}{a} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=b____add_3}{b}}\\right)}",
+      "plain": "\\left(a + b\\right) \\cdot \\left(a + b\\right)",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 2,
+      "operation": "Apply the distributive property (FOIL method)",
+      "justification": "Distribute each term from the first binomial to each term in the second binomial.",
+      "input_latex": "a \\cdot a + a \\cdot b + b \\cdot a + b \\cdot b",
+      "latex": "\\htmlData{n=__add_1}{\\htmlData{n=__add_3}{\\htmlData{n=__add_2}{\\htmlData{n=__multiply_4}{\\htmlData{n=a____multiply_4}{a} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=a____multiply_4_1}{a}} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=__multiply_5}{\\htmlData{n=a____multiply_5}{a} \\htmlData{n=__multiply_5__m1}{\\cdot} \\htmlData{n=b____multiply_5}{b}}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__multiply_6}{\\htmlData{n=b____multiply_6}{b} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=a____multiply_6}{a}}} \\htmlData{n=__add_1__op1}{+} \\htmlData{n=__multiply_7}{\\htmlData{n=b____multiply_7}{b} \\htmlData{n=__multiply_7__m1}{\\cdot} \\htmlData{n=b____multiply_7_1}{b}}}",
+      "plain": "a \\cdot a + a \\cdot b + b \\cdot a + b \\cdot b",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 3,
+      "operation": "Simplify the products",
+      "justification": "Simplify $a \\cdot a$ to $a^2$ and $b \\cdot b$ to $b^2$.",
+      "input_latex": "a^{2} + a \\cdot b + b \\cdot a + b^{2}",
+      "latex": "\\htmlData{n=__add_1}{\\htmlData{n=__add_3}{\\htmlData{n=__add_2}{\\htmlData{n=__power_4}{\\htmlData{n=a____power_4}{a}^{\\htmlData{n=__power_4__exp}{2}}} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=__multiply_5}{\\htmlData{n=a____multiply_5}{a} \\htmlData{n=__multiply_5__m1}{\\cdot} \\htmlData{n=b____multiply_5}{b}}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__multiply_6}{\\htmlData{n=b____multiply_6}{b} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=a____multiply_6}{a}}} \\htmlData{n=__add_1__op1}{+} \\htmlData{n=__power_7}{\\htmlData{n=b____power_7}{b}^{\\htmlData{n=__power_7__exp}{2}}}}",
+      "plain": "a^{2} + a \\cdot b + b \\cdot a + b^{2}",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 4,
+      "operation": "Use the commutative property of multiplication and combine like terms",
+      "justification": "Since $b \\cdot a = a \\cdot b$, we can combine $a \\cdot b + b \\cdot a$ to $2 \\cdot a \\cdot b$.",
+      "input_latex": "a^{2} + 2 \\cdot a \\cdot b + b^{2}",
+      "latex": "\\htmlData{n=__add_3}{\\htmlData{n=__add_2}{\\htmlData{n=__power_4}{\\htmlData{n=a____power_4}{a}^{\\htmlData{n=__power_4__exp}{2}}} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=__multiply_5}{\\htmlData{n=__multiply_6}{\\htmlData{n=__num_6}{2} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=a____multiply_6}{a}} \\htmlData{n=__multiply_5__m1}{\\cdot} \\htmlData{n=b____multiply_5}{b}}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__power_7}{\\htmlData{n=b____power_7}{b}^{\\htmlData{n=__power_7__exp}{2}}}}",
+      "plain": "a^{2} + 2 \\cdot a \\cdot b + b^{2}",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    }
+  ],
+  "overall_confidence": {
+    "tier": "grounded",
+    "label": "Grounded",
+    "icon": "🥇",
+    "meaning": "symbolically proven to follow from the previous step",
+    "relation": null,
+    "reason": "4/4 steps verified · endpoint reached",
+    "type_consistent": true,
+    "counts": {
+      "refuted": 0,
+      "unchecked": 0,
+      "plausible": 0,
+      "domain": 0,
+      "verified": 0,
+      "grounded": 4
+    },
+    "endpoint_reached": true
+  },
+  "terms": {
+    "__power_1": {
+      "latex": "\\left(a + b\\right)^{2}",
+      "name": "\\left(a + b\\right)^{2}",
+      "description": "This term represents the square of the sum of the two variables, $a$ and $b$."
+    },
+    "a": {
+      "latex": "a",
+      "name": "a",
+      "description": "This variable represents the first term in the binomial $(a+b)$."
+    },
+    "b": {
+      "latex": "b",
+      "name": "b",
+      "description": "This variable represents the second term in the binomial $(a+b)$."
+    },
+    "__power_4": {
+      "latex": "a^{2}",
+      "name": "a^{2}",
+      "description": "This term represents the square of the first variable, $a$."
+    },
+    "__power_7": {
+      "latex": "b^{2}",
+      "name": "b^{2}",
+      "description": "This term represents the square of the second variable, $b$."
+    }
+  },
+  "goal": "This derivation shows how to expand the binomial $(a+b)^2$ into its trinomial form $a^2 + 2ab + b^2$, which is a fundamental identity in algebra.",
+  "followups": [
+    "How would I expand $(a-b)^2$?",
+    "What is the general formula for $(a+b)^3$?",
+    "Can you show me an example of using this formula with numbers?",
+    "How does this relate to factoring a perfect square trinomial?"
+  ],
+  "prerequisites": [
+    "Distributive property",
+    "Exponent rules",
+    "Combining like terms"
+  ]
+}
