@@ -30,7 +30,7 @@
     <h1>Grounded, AI-driven mathematical proof system</h1>
     <p class="by">Every step machine-verified, then animated — built into AlgeBench.</p>
 
-    <p class="lead">Most math on the web is a static wall of symbols. The three figures below are
+    <p class="lead">Most math on the web is a static wall of symbols. The five figures below are
     different: each is a <b>live, interactive derivation</b> — step through it, hover any term to see
     what it is, and watch the expression morph line by line. Every step also carries a
     <b>confidence badge</b> showing how it was checked. Play with them first — the how and why is
@@ -74,6 +74,30 @@
       <iframe data-builtin="physics/allen-eggers-entry" height="600" loading="lazy"
               style="background:transparent" title="Allen–Eggers entry velocity — interactive proof" data-algebench-embed></iframe>
       <figcaption>Figure 3 — Allen–Eggers entry velocity. Open <b>ⓘ Explore</b> for the follow-ups.</figcaption>
+    </figure>
+
+    <h2>4 · How much “push” a rocket really has</h2>
+    <p>The most important equation in rocketry is the <b>Tsiolkovsky rocket equation</b>: the total
+    velocity change \( \Delta v \) a stage can deliver depends only on its exhaust speed \( v_e \) and
+    how much of its mass is propellant. It falls straight out of conservation of momentum — separate
+    the variables, integrate, and the mass ratio becomes a logarithm. This is the “\( \Delta v \) you
+    <em>have</em>” — watch for the teal <b>Domain</b> badges on the honest integration steps.</p>
+    <figure>
+      <iframe data-builtin="physics/tsiolkovsky-rocket-equation" height="560" loading="lazy"
+              style="background:transparent" title="Tsiolkovsky rocket equation — interactive proof" data-algebench-embed></iframe>
+      <figcaption>Figure 4 — the Tsiolkovsky rocket equation, \( \Delta v = v_e \log(m_0/m_f) \) (natural log, as the CAS writes it). Interactive.</figcaption>
+    </figure>
+
+    <h2>5 · The burn that sends you to the Moon</h2>
+    <p>So that’s the \( \Delta v \) you <em>have</em>; here’s the \( \Delta v \) you <em>need</em>.
+    Artemis II's <b>trans-lunar injection</b> (TLI) is a single push, and its size is just a
+    <em>difference of two orbital speeds</em>: the perigee speed on the transfer ellipse (from the
+    <b>vis-viva</b> equation) minus the circular parking-orbit speed. Watch \( \Delta v = v_p - v_c \)
+    take on the two velocity formulas and collapse to one clean expression.</p>
+    <figure>
+      <iframe data-builtin="physics/trans-lunar-injection" height="560" loading="lazy"
+              style="background:transparent" title="Trans-lunar injection Δv — interactive proof" data-algebench-embed></iframe>
+      <figcaption>Figure 5 — the trans-lunar injection Δv, from \( v_p - v_c \) to the factored form. Interactive.</figcaption>
     </figure>
 
     <h2>How it works: written by an AI, checked by a computer</h2>

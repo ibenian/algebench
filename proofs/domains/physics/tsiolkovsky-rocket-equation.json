@@ -1,0 +1,214 @@
+{
+  "title": "Tsiolkovsky Rocket Equation",
+  "domain": "physics",
+  "deeplink": "/?builtin=artemis-ii-mission-simulation&view=math&panel=chat&pp=1&sc=the-sls-rocket-orion-spacecraft&pf=tsiolkovsky-rocket-equation&ps=rocket-equation&pa=physics/tsiolkovsky-rocket-equation",
+  "steps": [
+    {
+      "index": 0,
+      "operation": "Given $m \\, dv = - v_e \\, dm$",
+      "justification": "the starting expression",
+      "input_latex": "dv \\cdot m = - dm \\cdot v_{e}",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__multiply_2}{\\htmlData{n=dv}{dv} \\htmlData{n=__multiply_2__m1}{\\cdot} \\htmlData{n=m}{m}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_3}{\\left(\\htmlData{n=__negation_4}{\\htmlData{n=__negation_4__op}{-} \\htmlData{n=dm}{dm}}\\right) \\htmlData{n=__multiply_3__m1}{\\cdot} \\htmlData{n=v_e}{v_{e}}}}",
+      "plain": "dv \\cdot m = \\left(- dm\\right) \\cdot v_{e}",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": null,
+        "reason": "the given starting expression",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 1,
+      "operation": "Divide both sides by $m$",
+      "justification": "To prepare for integration, divide both sides by $m$ to separate the differentials $dv$ and $dm$.",
+      "input_latex": "dv = - \\frac{v_{e}}{m} dm",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=dv}{dv} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__negation_2}{\\htmlData{n=__negation_2__op}{-} \\htmlData{n=__multiply_3}{\\frac{\\htmlData{n=dm}{dm} \\htmlData{n=__multiply_3__m1}{\\cdot} \\htmlData{n=v_e}{v_{e}}}{\\htmlData{n=m}{m}}}}}",
+      "plain": "dv = - \\frac{dm \\cdot v_{e}}{m}",
+      "confidence": {
+        "tier": "verified",
+        "label": "Verified",
+        "icon": "🥈",
+        "meaning": "strong CAS evidence, short of a symbolic proof",
+        "relation": "equivalent",
+        "reason": "both sides scaled by $m$ — equivalent wherever that factor ≠ 0",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 2,
+      "operation": "Rewrite the right side to prepare for integration",
+      "justification": "Rewrite the right side to explicitly show the term $\\frac{1}{m}$, which is a standard integral form.",
+      "input_latex": "dv = - v_{e} \\cdot \\frac{1}{m} dm",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=dv}{dv} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_2}{\\left(\\htmlData{n=__negation_3}{\\htmlData{n=__negation_3__op}{-} \\htmlData{n=v_e}{v_{e}}}\\right) \\htmlData{n=__multiply_2__m1}{\\cdot} \\htmlData{n=__multiply_3}{\\frac{\\htmlData{n=dm}{dm}}{\\htmlData{n=m}{m}}}}}",
+      "plain": "dv = \\left(- v_{e}\\right) \\cdot \\frac{dm}{m}",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 3,
+      "operation": "Integrate both sides with definite limits",
+      "justification": "Integrate both sides of the equation. The left side is integrated from an initial velocity $v_0$ to a final velocity $v_f$, and the right side is integrated from an initial mass $m_0$ to a final mass $m_f$.",
+      "input_latex": "\\int_{v_{0}}^{v_{f}} dv = \\int_{m_{0}}^{m_{f}} - v_{e} \\cdot \\frac{1}{m} dm",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__integral_2}{\\int_{\\htmlData{n=v_0}{v_{0}}}^{\\htmlData{n=v_f}{v_{f}}} \\htmlData{n=__num_3}{1}\\,\\htmlData{n=dv}{dv}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__integral_4}{\\int_{\\htmlData{n=m_0}{m_{0}}}^{\\htmlData{n=m_f}{m_{f}}} \\htmlData{n=__multiply_3}{\\frac{\\left(\\htmlData{n=__negation_3}{\\htmlData{n=__negation_3__op}{-} \\htmlData{n=v_e}{v_{e}}}\\right)}{\\htmlData{n=m}{m}}}\\,\\htmlData{n=dm}{dm}}}",
+      "plain": "\\int_{v_{0}}^{v_{f}} 1\\,dv = \\int_{m_{0}}^{m_{f}} \\frac{\\left(- v_{e}\\right)}{m}\\,dm",
+      "confidence": {
+        "tier": "domain",
+        "label": "Domain",
+        "icon": "🎓",
+        "meaning": "valid by domain knowledge, not a symbolic identity the CAS can check",
+        "relation": "unknown",
+        "reason": "valid by domain knowledge — the CAS could not check this symbolically; a domain expert accepts it (confidence 100%): Integration of both sides of a differential equation is a standard mathematical operation in physics.",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 4,
+      "operation": "Evaluate the definite integrals",
+      "justification": "Evaluate each definite integral directly by applying the Fundamental Theorem of Calculus: the antiderivative of $dv$ is $v$ (giving $v_f-v_0$), and of $\\frac{1}{m}dm$ is $\\log m$ (giving $\\log m_f-\\log m_0$).",
+      "input_latex": "v_{f} - v_{0} = - v_{e} \\cdot \\left(\\log{\\left(m_{f} \\right)} - \\log{\\left(m_{0} \\right)}\\right)",
+      "latex": "v_{f} - v_{0} = - v_{e} \\cdot \\left(\\log{\\left(m_{f} \\right)} - \\log{\\left(m_{0} \\right)}\\right)",
+      "plain": "v_{f} - v_{0} = - v_{e} \\cdot \\left(\\log{\\left(m_{f} \\right)} - \\log{\\left(m_{0} \\right)}\\right)",
+      "confidence": {
+        "tier": "domain",
+        "label": "Domain",
+        "icon": "🎓",
+        "meaning": "valid by domain knowledge, not a symbolic identity the CAS can check",
+        "relation": "unknown",
+        "reason": "valid by domain knowledge — the CAS could not check this symbolically; a domain expert accepts it (confidence 100%): Fundamental Theorem of Calculus",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 5,
+      "operation": "Apply the logarithm property $\\log a - \\log b = \\log \\left(\\frac{a}{b}\\right)$",
+      "justification": "Use the logarithm property $\\log a - \\log b = \\log \\left(\\frac{a}{b}\\right)$ to combine the logarithmic terms.",
+      "input_latex": "v_{f} - v_{0} = - v_{e} \\cdot \\log{\\left(\\frac{m_{f}}{m_{0}} \\right)}",
+      "latex": "v_{f} - v_{0} = - v_{e} \\cdot \\log{\\left(\\frac{m_{f}}{m_{0}} \\right)}",
+      "plain": "v_{f} - v_{0} = - v_{e} \\cdot \\log{\\left(\\frac{m_{f}}{m_{0}} \\right)}",
+      "confidence": {
+        "tier": "domain",
+        "label": "Domain",
+        "icon": "🎓",
+        "meaning": "valid by domain knowledge, not a symbolic identity the CAS can check",
+        "relation": "narrows",
+        "reason": "valid by domain knowledge — the CAS could not check this symbolically; a domain expert accepts it (confidence 100%): Application of the logarithm property: $\\log a - \\log b = \\log \\left(\\frac{a}{b}\\right)$. This is a standard mathematical identity routinely used in physics derivations.",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 6,
+      "operation": "Substitute $\\Delta v = v_f - v_0$ and apply the logarithm property $- \\log x = \\log \\left(x^{-1}\\right)$",
+      "justification": "Substitute $\\Delta v = v_f - v_0$ to represent the total change in velocity. Then, use the logarithm property $- \\log x = \\log \\left(x^{-1}\\right)$ to remove the negative sign and invert the fraction inside the logarithm, matching the target form of the Tsiolkovsky rocket equation.",
+      "input_latex": "\\Delta v = v_{e} \\cdot \\log{\\left(\\frac{m_{0}}{m_{f}} \\right)}",
+      "latex": "\\Delta v = v_{e} \\cdot \\log{\\left(\\frac{m_{0}}{m_{f}} \\right)}",
+      "plain": "\\Delta v = v_{e} \\cdot \\log{\\left(\\frac{m_{0}}{m_{f}} \\right)}",
+      "confidence": {
+        "tier": "domain",
+        "label": "Domain",
+        "icon": "🎓",
+        "meaning": "valid by domain knowledge, not a symbolic identity the CAS can check",
+        "relation": "unknown",
+        "reason": "valid by domain knowledge — the CAS could not check this symbolically; a domain expert accepts it (confidence 100%): Definition of change in velocity ($\\Delta v$) and logarithm property $- \\log x = \\log(x^{-1})$.",
+        "type_consistent": true
+      }
+    }
+  ],
+  "overall_confidence": {
+    "tier": "domain",
+    "label": "Domain",
+    "icon": "🎓",
+    "meaning": "valid by domain knowledge, not a symbolic identity the CAS can check",
+    "relation": null,
+    "reason": "2/6 steps verified · 4 domain-justified · endpoint reached",
+    "type_consistent": true,
+    "counts": {
+      "refuted": 0,
+      "unchecked": 0,
+      "plausible": 0,
+      "domain": 4,
+      "verified": 1,
+      "grounded": 1
+    },
+    "endpoint_reached": true
+  },
+  "terms": {
+    "dv": {
+      "latex": "dv",
+      "name": "dv",
+      "description": "The infinitesimal change in the rocket's velocity."
+    },
+    "m": {
+      "latex": "m",
+      "name": "m",
+      "description": "The instantaneous total mass of the rocket at a given moment."
+    },
+    "dm": {
+      "latex": "dm",
+      "name": "dm",
+      "description": "The infinitesimal change in the rocket's mass due to the expulsion of propellant."
+    },
+    "v_e": {
+      "latex": "v_{e}",
+      "name": "v_{e}",
+      "description": "The constant exhaust velocity of the propellant relative to the rocket."
+    },
+    "__power_4": {
+      "latex": "\\frac{1}{m}",
+      "name": "\\frac{1}{m}",
+      "description": "The inverse of the instantaneous mass of the rocket, $1/m$, appearing in the integral."
+    },
+    "v_0": {
+      "latex": "v_{0}",
+      "name": "v_{0}",
+      "description": "The initial velocity of the rocket."
+    },
+    "v_f": {
+      "latex": "v_{f}",
+      "name": "v_{f}",
+      "description": "The final velocity of the rocket after propellant expulsion."
+    },
+    "__integral_2": {
+      "latex": "\\int\\limits_{v_{0}}^{v_{f}} 1\\, dv",
+      "name": "\\int\\limits_{v_{0}}^{v_{f}} 1\\, dv",
+      "description": "The definite integral representing the total change in the rocket's velocity from its initial to final state."
+    },
+    "m_0": {
+      "latex": "m_{0}",
+      "name": "m_{0}",
+      "description": "The initial total mass of the rocket, including all propellant."
+    },
+    "m_f": {
+      "latex": "m_{f}",
+      "name": "m_{f}",
+      "description": "The final total mass of the rocket after all propellant has been expelled."
+    },
+    "__integral_4": {
+      "latex": "\\int\\limits_{m_{0}}^{m_{f}} \\frac{\\left(-1\\right) v_{e}}{m}\\, dm",
+      "name": "\\int\\limits_{m_{0}}^{m_{f}} \\frac{\\left(-1\\right) v_{e}}{m}\\, dm",
+      "description": "The definite integral representing the contribution of the exhaust velocity and mass change to the total velocity change."
+    }
+  },
+  "goal": "Derive the Tsiolkovsky rocket equation, which relates the change in velocity of a rocket to its exhaust velocity and the ratio of its initial to final mass, from its differential form.",
+  "followups": [
+    "What are the practical implications of the Tsiolkovsky rocket equation for rocket design and space travel?",
+    "How does the exhaust velocity $v_e$ affect the $\\Delta v$ a rocket can achieve?",
+    "Can we use this equation to determine the initial mass required to achieve a certain $\\Delta v$ for a given payload?",
+    "What are the main assumptions made in the derivation of the Tsiolkovsky rocket equation?"
+  ],
+  "prerequisites": [
+    "Separation of variables for differential equations",
+    "Definite integration",
+    "Properties of logarithms",
+    "Basic understanding of kinematics (velocity and change in velocity)"
+  ]
+}
