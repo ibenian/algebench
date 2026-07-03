@@ -2154,24 +2154,818 @@
       ],
       "steps": [
         {
-          "title": "The crisis of the infinite",
-          "description": "Classical prediction: short wavelengths run away. Planck's resolution: energy comes in quanta. Blackbody radiation forced a deeper idea — energy exchange is quantized.",
-          "prompt": "Frame the ultraviolet catastrophe as the reason the energy rule had to change. Avoid overclaiming: Planck quantized exchange of energy, not simply spatial wavelength.",
+          "title": "Hot things glow",
+          "description": "Before any theory, the everyday fact: heat something and it glows. Embers glow dull red, the Sun burns yellow-white, the hottest stars shine blue-white. Predict: heat a piece of iron hotter and hotter — does its glow shift toward red or toward blue?",
+          "prompt": "Anchor the phenomenon before any theory. Ask the learner to commit: hotter iron glows redder or bluer? Use the everyday anchors — embers about 800 K are dull red, the Sun about 5800 K is yellow-white, the hottest stars are blue-white. Do not mention modes or kT yet. The temperature slider here is in relative units.",
           "remove": [
             {
               "type": "info"
             }
           ],
-          "add": [],
+          "sliders": [
+            {
+              "id": "Temp",
+              "label": "$T$ (temperature)",
+              "min": 0.6,
+              "max": 1.6,
+              "step": 0.05,
+              "default": 1.2
+            }
+          ],
+          "add": [
+            {
+              "id": "uv_glow_strip",
+              "type": "polygon",
+              "vertices": [
+                [
+                  0.5,
+                  4.4,
+                  0
+                ],
+                [
+                  6.5,
+                  4.4,
+                  0
+                ],
+                [
+                  6.5,
+                  5.0,
+                  0
+                ],
+                [
+                  0.5,
+                  5.0,
+                  0
+                ]
+              ],
+              "opacity": 0.95,
+              "shader": {
+                "type": "basic"
+              },
+              "gradient": {
+                "direction": "x",
+                "stops": [
+                  {
+                    "t": 0.0,
+                    "color": "#2b0a04"
+                  },
+                  {
+                    "t": 0.15,
+                    "color": "#7a1a05"
+                  },
+                  {
+                    "t": 0.35,
+                    "color": "#d1490a"
+                  },
+                  {
+                    "t": 0.55,
+                    "color": "#f59b31"
+                  },
+                  {
+                    "t": 0.75,
+                    "color": "#ffe8b0"
+                  },
+                  {
+                    "t": 1.0,
+                    "color": "#bcd4ff"
+                  }
+                ],
+                "segments": 60
+              }
+            },
+            {
+              "id": "uv_glow_point",
+              "type": "animated_point",
+              "positionExpr": [
+                "0.5 + 6*(Temp - 0.6)",
+                "4.7",
+                "0.1"
+              ],
+              "color": "#ffffff",
+              "radius": 0.1,
+              "label": "$T$"
+            },
+            {
+              "id": "uv_glow_embers",
+              "type": "text",
+              "text": "embers $\\sim$800 K",
+              "position": [
+                0.6,
+                4.12,
+                0
+              ],
+              "color": "#d1490a",
+              "size": 11
+            },
+            {
+              "id": "uv_glow_sun",
+              "type": "text",
+              "text": "Sun $\\sim$5800 K",
+              "position": [
+                4.1,
+                4.12,
+                0
+              ],
+              "color": "#f59b31",
+              "size": 11
+            },
+            {
+              "id": "uv_glow_stars",
+              "type": "text",
+              "text": "hot stars",
+              "position": [
+                6.0,
+                4.12,
+                0
+              ],
+              "color": "#bcd4ff",
+              "size": 11
+            },
+            {
+              "id": "uv_glow_title",
+              "type": "text",
+              "text": "the glow of a hot object",
+              "position": [
+                2.4,
+                5.3,
+                0
+              ],
+              "color": "#f59b31",
+              "size": 13
+            }
+          ],
           "info": [
             {
-              "id": "s0_planck_info",
+              "id": "uv_glow_info",
               "position": "top-right",
-              "content": "**Planck's move**\n\nEnergy exchange is not arbitrary:\n\n$$E=hf$$\n\nThis is the bridge from the wave picture to photons."
+              "content": "**Predict first**\n\nHeat a piece of iron hotter and hotter. Does its glow shift toward **red** or toward **blue**?\n\nDrag $T$ along the strip and commit to an answer.\n\nEveryday anchors:\n\n- embers ($\\sim$800 K): dull red\n- the Sun ($\\sim$5800 K): yellow-white\n- the hottest stars ($\\sim$20\\,000 K): blue-white\n\nCurrent $T = {{toFixed(Temp, 2)}}$ (relative units). This whole scene explains *why* the color shifts."
+            }
+          ]
+        },
+        {
+          "title": "Inside a hot box: modes and $kT$",
+          "description": "Physicists model a glowing object as a hot box (cavity) full of light waves. Two words before the theory: a *mode* is one allowed standing-wave pattern of light in the box, and $kT$ is the typical thermal energy per jiggle at temperature $T$. Classical physics gives every mode the same average energy $kT$ — and short wavelengths pack in unlimited modes. Predict the total radiated energy of a warm oven.",
+          "prompt": "Define the jargon before using it: a mode is one allowed standing-wave pattern in the box (point at the three shapes), and kT is the typical thermal energy per jiggle, with k the Boltzmann constant. Then set up the predict question: classical physics gives every mode kT and there are unlimited short-wavelength modes, so what is the classical total? Also explain how to read the chart axes in plain words: frequency across, energy content at each frequency up. Do not reveal the divergence yet.",
+          "remove": [
+            {
+              "type": "info"
+            }
+          ],
+          "add": [
+            {
+              "id": "uv_cavity_wall",
+              "type": "line",
+              "points": [
+                [
+                  4.9,
+                  1.9,
+                  0
+                ],
+                [
+                  7.2,
+                  1.9,
+                  0
+                ],
+                [
+                  7.2,
+                  3.9,
+                  0
+                ],
+                [
+                  4.9,
+                  3.9,
+                  0
+                ],
+                [
+                  4.9,
+                  1.9,
+                  0
+                ]
+              ],
+              "color": "#9aa4ad",
+              "width": 2,
+              "opacity": 0.8
+            },
+            {
+              "id": "uv_mode1",
+              "type": "animated_curve",
+              "expr": "2.9 + 0.7*sin(pi*(x - 4.9)/2.3)",
+              "range": [
+                4.9,
+                7.2
+              ],
+              "samples": 80,
+              "color": "#6ec6ff",
+              "width": 2,
+              "opacity": 0.55,
+              "legendGroup": "standing-wave modes"
+            },
+            {
+              "id": "uv_mode2",
+              "type": "animated_curve",
+              "expr": "2.9 + 0.7*sin(2*pi*(x - 4.9)/2.3)",
+              "range": [
+                4.9,
+                7.2
+              ],
+              "samples": 80,
+              "color": "#6ec6ff",
+              "width": 2,
+              "opacity": 0.45,
+              "legendGroup": "standing-wave modes"
+            },
+            {
+              "id": "uv_mode3",
+              "type": "animated_curve",
+              "expr": "2.9 + 0.7*sin(3*pi*(x - 4.9)/2.3)",
+              "range": [
+                4.9,
+                7.2
+              ],
+              "samples": 80,
+              "color": "#6ec6ff",
+              "width": 2,
+              "opacity": 0.35,
+              "legendGroup": "standing-wave modes"
+            },
+            {
+              "id": "uv_modes_label",
+              "type": "text",
+              "text": "modes $n=1,2,3$ in a hot cavity",
+              "position": [
+                4.9,
+                4.15,
+                0
+              ],
+              "color": "#6ec6ff",
+              "size": 12,
+              "label": "standing-wave modes"
+            }
+          ],
+          "info": [
+            {
+              "id": "uv_mode_info",
+              "position": "top-right",
+              "content": "**Two words you need**\n\n- a **mode** = one allowed standing-wave pattern of light in the box (the three shapes shown)\n- $kT$ = the typical thermal energy per jiggle at temperature $T$ ($k$ = Boltzmann's constant)\n\n**The classical rule:** every mode gets the same average energy $kT$ — and short wavelengths pack in **unlimited** modes.\n\n**Predict:** what total radiated energy does classical physics assign a warm oven?\n\n*Reading the chart:* frequency increases to the right; the curve height is the energy content at each frequency."
+            }
+          ]
+        },
+        {
+          "title": "The catastrophe, revealed",
+          "description": "The classical answer is infinity. The red Rayleigh–Jeans curve $u \\propto T f^2$ climbs without limit — it shoots off the top of the chart. Real ovens follow the gold Planck curve instead: it agrees with the classical curve at low frequency, then turns over and dies. The red shading is energy the classical rule predicts that simply is not there.",
+          "prompt": "Reveal the answer to the predict question: classical physics says a warm oven radiates infinite energy, which is absurd — that absurdity is the ultraviolet catastrophe. Walk the two curves: red Rayleigh-Jeans grows like T f squared forever and exits the top of the chart; gold Planck agrees at low frequency then turns over. The red shaded gap is energy that is not actually there. Let the learner drag T (or watch it bounce) and notice the gold peak grows and slides right while red always diverges.",
+          "remove": [
+            {
+              "type": "info"
+            },
+            {
+              "id": "uv_glow_strip"
+            },
+            {
+              "id": "uv_glow_point"
+            },
+            {
+              "id": "uv_glow_embers"
+            },
+            {
+              "id": "uv_glow_sun"
+            },
+            {
+              "id": "uv_glow_stars"
+            },
+            {
+              "id": "uv_glow_title"
+            },
+            {
+              "id": "uv_cavity_wall"
+            },
+            {
+              "id": "uv_mode1"
+            },
+            {
+              "id": "uv_mode2"
+            },
+            {
+              "id": "uv_mode3"
+            },
+            {
+              "id": "uv_modes_label"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "Temp",
+              "label": "$T$ (temperature)",
+              "min": 0.6,
+              "max": 1.6,
+              "step": 0.05,
+              "default": 1.2,
+              "animate": true,
+              "animateMode": "bounce",
+              "duration": 8000
+            }
+          ],
+          "add": [
+            {
+              "id": "uv_planck_curve",
+              "type": "animated_curve",
+              "expr": "0.85 * x^3 / (exp(x/Temp) - 1)",
+              "range": [
+                0.02,
+                7.4
+              ],
+              "samples": 260,
+              "color": "#ffd700",
+              "width": 3.5,
+              "legendGroup": "Planck (what ovens do)",
+              "fillRegions": [
+                {
+                  "id": "uv_planck_fill",
+                  "color": "#ffd700",
+                  "opacity": 0.12,
+                  "above": "0"
+                }
+              ]
+            },
+            {
+              "id": "uv_rj_curve",
+              "type": "animated_curve",
+              "expr": "0.85 * Temp * x^2",
+              "rangeExpr": [
+                "0.02",
+                "sqrt(6.6/Temp)"
+              ],
+              "samples": 160,
+              "color": "#ff4444",
+              "width": 3.5,
+              "legendGroup": "Rayleigh–Jeans (classical)",
+              "fillRegions": [
+                {
+                  "id": "uv_rj_gap",
+                  "color": "#ff4444",
+                  "opacity": 0.18,
+                  "above": "0.85 * x^3 / (exp(x/Temp) - 1)"
+                }
+              ]
+            },
+            {
+              "id": "uv_rj_offchart",
+              "type": "animated_curve",
+              "expr": "0.85 * x^3 / (exp(x/Temp) - 1)",
+              "range": [
+                0.02,
+                7.4
+              ],
+              "samples": 260,
+              "showCurve": false,
+              "color": "#ff4444",
+              "fillRegions": [
+                {
+                  "id": "uv_gap_beyond",
+                  "color": "#ff4444",
+                  "opacity": 0.09,
+                  "below": "5.6",
+                  "rightOf": "sqrt(6.6/Temp)"
+                }
+              ]
+            },
+            {
+              "id": "uv_rj_label",
+              "type": "text",
+              "text": "Rayleigh–Jeans (classical)",
+              "position": [
+                2.75,
+                5.75,
+                0
+              ],
+              "color": "#ff4444",
+              "size": 13,
+              "label": "Rayleigh–Jeans (classical)"
+            },
+            {
+              "id": "uv_planck_label",
+              "type": "text",
+              "text": "Planck (what ovens do)",
+              "position": [
+                5.6,
+                0.5,
+                0
+              ],
+              "color": "#ffd700",
+              "size": 13,
+              "label": "Planck (what ovens do)"
+            }
+          ],
+          "info": [
+            {
+              "id": "uv_reveal_info",
+              "position": "top-right",
+              "content": "**Answer: infinity.**\n\nClassical (red): $u_{RJ} \\propto T f^2$ — every mode gets $kT$, and modes never run out, so the curve climbs off the chart. The red shading is energy the classical rule predicts that **is not there**.\n\nReal ovens follow the gold curve — Planck's law:\n\n$$u(f) = \\frac{8\\pi h f^3}{c^3}\\,\\frac{1}{e^{hf/kT}-1}$$\n\nDrag $T$: at low $f$ the two curves agree; at high $f$ the gold curve is frozen out."
+            }
+          ]
+        },
+        {
+          "title": "Count the energy",
+          "description": "Add up the energy frequency by frequency: slide the cutoff $f_{cut}$ to the right. The classical total (red area) grows like $f_{cut}^3$ — without bound. The quantum total (gold area) converges to a finite number proportional to $T^4$: the Stefan–Boltzmann law.",
+          "prompt": "This step makes the divergence quantitative. As f_cut sweeps right, read the two live totals: the classical area grows like f_cut cubed forever, while the Planck area converges to about 5.5 T to the fourth — the Stefan-Boltzmann law. Emphasize: same box, same temperature, one rule gives infinity and the other gives a finite T-to-the-fourth total that matches experiment.",
+          "remove": [
+            {
+              "type": "info"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "fcut",
+              "label": "$f_{cut}$ (count up to here)",
+              "min": 1,
+              "max": 7,
+              "step": 0.1,
+              "default": 2.5,
+              "animate": true,
+              "animateMode": "once",
+              "duration": 6000
+            }
+          ],
+          "add": [
+            {
+              "id": "uv_count_planck",
+              "type": "animated_curve",
+              "expr": "0.85 * x^3 / (exp(x/Temp) - 1)",
+              "range": [
+                0.02,
+                7.4
+              ],
+              "samples": 260,
+              "showCurve": false,
+              "color": "#ffd700",
+              "fillRegions": [
+                {
+                  "id": "uv_count_gold",
+                  "color": "#ffd700",
+                  "opacity": 0.35,
+                  "leftOf": "fcut"
+                }
+              ]
+            },
+            {
+              "id": "uv_count_rj",
+              "type": "animated_curve",
+              "expr": "0.85 * Temp * x^2",
+              "rangeExpr": [
+                "0.02",
+                "sqrt(6.6/Temp)"
+              ],
+              "samples": 160,
+              "showCurve": false,
+              "color": "#ff4444",
+              "fillRegions": [
+                {
+                  "id": "uv_count_red",
+                  "color": "#ff4444",
+                  "opacity": 0.28,
+                  "leftOf": "fcut"
+                }
+              ]
+            },
+            {
+              "id": "uv_fcut_line",
+              "type": "animated_line",
+              "points": [
+                [
+                  "fcut",
+                  "0",
+                  "0"
+                ],
+                [
+                  "fcut",
+                  "5.6",
+                  "0"
+                ]
+              ],
+              "color": "#ffffff",
+              "width": 1.5,
+              "opacity": 0.5,
+              "label": "$f_{cut}$"
+            }
+          ],
+          "info": [
+            {
+              "id": "uv_count_info",
+              "position": "top-right",
+              "content": "**Add it up, frequency by frequency**\n\nEnergy counted up to $f_{cut} = {{toFixed(fcut, 1)}}$:\n\n- classical (red area): $\\propto {{toFixed(0.2833*Temp*fcut^3, 1)}}$ — grows like $f_{cut}^3$, **without bound**\n- Planck total (gold area): converges to $\\propto {{toFixed(5.52*Temp^4, 1)}}$ — **finite**\n\n$$\\int_0^{\\infty} u(f)\\,df = \\frac{8\\pi^5 k^4}{15 c^3 h^3}\\,T^4$$\n\nA finite total, growing as $T^4$ — the Stefan–Boltzmann law, exactly what hot objects do."
+            }
+          ]
+        },
+        {
+          "title": "Planck's move: $E = hf$",
+          "description": "Planck's resolution: energy exchange is not arbitrary. A mode of frequency $f$ can only trade energy in whole chunks of size $E = hf$. High-frequency chunks cost more than the thermal budget $kT$ can pay, so they are frozen out — the spectrum turns over. Drag $T$: the peak slides right as $f_{peak} \\propto T$, and the glow shifts red, to white, to blue — exactly the strip from the first step.",
+          "prompt": "Land the resolution. Planck quantized the exchange of energy: E = hf per chunk, so high-frequency modes are frozen out because one chunk costs more than kT. Connect the Wien peak marker to the color strip from step 0: as T rises the peak crosses the visible band and the glow shifts red to white to blue. Close with the bridge: this E = hf is the same energy rule the rest of the lesson builds on — it is the bridge from the wave picture to photons. Avoid overclaiming: Planck quantized energy exchange, not spatial wavelength.",
+          "remove": [
+            {
+              "type": "info"
+            },
+            {
+              "id": "uv_count_planck"
+            },
+            {
+              "id": "uv_count_rj"
+            },
+            {
+              "id": "uv_fcut_line"
+            },
+            {
+              "type": "slider"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "Temp",
+              "label": "$T$ (temperature)",
+              "min": 0.6,
+              "max": 1.6,
+              "step": 0.05,
+              "default": 1.2,
+              "animate": true,
+              "animateMode": "bounce",
+              "duration": 8000
+            }
+          ],
+          "add": [
+            {
+              "id": "uv_visband",
+              "type": "polygon",
+              "vertices": [
+                [
+                  1.5,
+                  -0.75,
+                  0
+                ],
+                [
+                  2.6,
+                  -0.75,
+                  0
+                ],
+                [
+                  2.6,
+                  -0.35,
+                  0
+                ],
+                [
+                  1.5,
+                  -0.35,
+                  0
+                ]
+              ],
+              "opacity": 0.95,
+              "shader": {
+                "type": "basic"
+              },
+              "gradient": {
+                "direction": "x",
+                "stops": [
+                  {
+                    "t": 0.0,
+                    "color": "#990000"
+                  },
+                  {
+                    "t": 0.2,
+                    "color": "#FF5500"
+                  },
+                  {
+                    "t": 0.4,
+                    "color": "#CCDD00"
+                  },
+                  {
+                    "t": 0.6,
+                    "color": "#22CC44"
+                  },
+                  {
+                    "t": 0.8,
+                    "color": "#0066FF"
+                  },
+                  {
+                    "t": 1.0,
+                    "color": "#8B00FF"
+                  }
+                ],
+                "segments": 40
+              }
+            },
+            {
+              "id": "uv_visband_label",
+              "type": "text",
+              "text": "visible band",
+              "position": [
+                2.75,
+                -0.55,
+                0
+              ],
+              "color": "#22CC44",
+              "size": 10
+            },
+            {
+              "id": "uv_wien_point",
+              "type": "animated_point",
+              "positionExpr": [
+                "2.82*Temp",
+                "1.203*Temp^3",
+                "0"
+              ],
+              "color": "#ffffff",
+              "radius": 0.11,
+              "label": "peak (Wien)"
+            },
+            {
+              "id": "uv_wien_drop",
+              "type": "animated_line",
+              "points": [
+                [
+                  "2.82*Temp",
+                  "0",
+                  "0"
+                ],
+                [
+                  "2.82*Temp",
+                  "1.203*Temp^3",
+                  "0"
+                ]
+              ],
+              "color": "#ffffff",
+              "width": 1,
+              "opacity": 0.3,
+              "legendGroup": "peak (Wien)"
+            }
+          ],
+          "info": [
+            {
+              "id": "uv_planck_move_info",
+              "position": "top-right",
+              "content": "**Planck's move**\n\nEnergy exchange is not arbitrary — a mode of frequency $f$ trades energy only in whole chunks:\n\n$$E = hf$$\n\nHigh-$f$ chunks cost more than $kT$ can pay, so they are frozen out — the gold curve turns over instead of diverging.\n\nPeak frequency: $f_{peak} = 2.82\\,T = {{toFixed(2.82*Temp, 2)}}$ — it slides right as $T$ grows (Wien's law), sweeping the glow from red through white toward blue.\n\nThis is the bridge from the wave picture to photons."
             }
           ]
         }
-      ]
+      ],
+      "proof": {
+        "id": "taming_catastrophe",
+        "title": "Taming the catastrophe",
+        "technique": "derivation",
+        "goal": "Show that classical equipartition makes the blackbody energy diverge, and that Planck's quantization $E_n = nhf$ replaces it with the finite law $u(f) = \\frac{8\\pi h f^3}{c^3}\\,\\frac{1}{e^{hf/kT}-1}$.",
+        "prompt": "Walk the historical derivation at intro-university depth. The two givens (mode density and equipartition) are stated, not derived — say so honestly. The pivotal step is Planck's quantized average: energy comes in chunks of hf, Boltzmann-weighted, and the geometric sums give hf over (e^(hf/kT) - 1). Emphasize the two limits: low frequency recovers the classical kT, high frequency is exponentially frozen out. That freeze-out is what makes the total integral finite.",
+        "steps": [
+          {
+            "id": "mode_density",
+            "type": "given",
+            "label": "Mode density of a cavity",
+            "math": "g(\\htmlClass{hl-freq}{f})\\,d\\htmlClass{hl-freq}{f} = \\frac{8\\pi \\htmlClass{hl-freq}{f}^2}{c^3}\\,d\\htmlClass{hl-freq}{f}",
+            "highlights": {
+              "freq": {
+                "color": "cyan",
+                "label": "Frequency"
+              }
+            },
+            "justification": "Counting standing-wave patterns that fit in a box of unit volume (two polarizations included). Stated as given; the counting argument appears in the discrete-wavelengths scene.",
+            "explanation": "How many modes live near frequency $f$? The number grows like $f^2$ — short wavelengths pack in ever more standing-wave patterns. This is the 'unlimited modes' fact from the visualization.",
+            "prompt": "Explain that this counts the standing-wave patterns per unit volume near frequency f. The key qualitative point: the count grows like f squared, so there is no shortage of high-frequency modes.",
+            "sceneStep": 1
+          },
+          {
+            "id": "equipartition",
+            "type": "given",
+            "label": "Classical equipartition",
+            "math": "\\langle E \\rangle_{\\text{classical}} = \\htmlClass{hl-kt}{kT}",
+            "highlights": {
+              "kt": {
+                "color": "orange",
+                "label": "Thermal energy per mode (k = Boltzmann constant)"
+              }
+            },
+            "justification": "Classical statistical mechanics: in thermal equilibrium every quadratic degree of freedom carries the same average energy, so every mode gets $kT$ regardless of its frequency.",
+            "explanation": "The classical rule is democratic: every mode — whatever its frequency — holds the same average energy $kT$. Democracy plus unlimited modes is where the trouble starts.",
+            "prompt": "Define kT in plain words: the typical thermal energy per jiggle at temperature T. Stress that the classical rule pays every mode the same, no matter how high its frequency.",
+            "sceneStep": 1
+          },
+          {
+            "id": "rj_law",
+            "type": "step",
+            "label": "Rayleigh–Jeans law",
+            "math": "u_{RJ}(f) = g(f)\\,\\langle E \\rangle = \\frac{8\\pi \\htmlClass{hl-freq}{f}^2 \\htmlClass{hl-kt}{kT}}{c^3}",
+            "highlights": {
+              "freq": {
+                "color": "cyan",
+                "label": "Frequency"
+              },
+              "kt": {
+                "color": "orange",
+                "label": "Energy per mode"
+              }
+            },
+            "justification": "Energy density = (number of modes at $f$) × (average energy per mode).",
+            "explanation": "Multiply the two givens: the classical spectrum grows like $f^2$ forever. This is the red curve shooting off the top of the chart.",
+            "prompt": "Point at the red curve in the scene: this formula is that curve. Modes times energy per mode. Ask what happens as f keeps growing.",
+            "sceneStep": 2
+          },
+          {
+            "id": "divergence",
+            "type": "step",
+            "label": "The catastrophe",
+            "math": "\\int_0^{\\infty} \\frac{8\\pi f^2 \\htmlClass{hl-kt}{kT}}{c^3}\\,df = \\htmlClass{hl-infty}{\\infty}",
+            "highlights": {
+              "kt": {
+                "color": "orange",
+                "label": "Energy per mode"
+              },
+              "infty": {
+                "color": "red",
+                "label": "Divergent total — the ultraviolet catastrophe"
+              }
+            },
+            "justification": "$\\int_0^{F} f^2\\,df = F^3/3 \\to \\infty$ as $F \\to \\infty$: the integrand grows, so the integral diverges.",
+            "explanation": "Add up $kT$ per mode over unlimited modes and the total energy of a warm oven comes out infinite. Every oven should vaporize the universe in ultraviolet light. Something in the assumptions is wrong.",
+            "prompt": "Tie this to the count-the-energy step: the red area grows like f_cut cubed and never stops. Name it: this absurdity is the ultraviolet catastrophe, and it means one of the two givens must be wrong.",
+            "sceneStep": 3
+          },
+          {
+            "id": "planck_quanta",
+            "type": "step",
+            "label": "Planck's quantization",
+            "math": "E_n = n\\htmlClass{hl-hf}{hf} \\;\\Rightarrow\\; \\langle E \\rangle = \\frac{\\htmlClass{hl-hf}{hf}}{\\htmlClass{hl-denom}{e^{hf/kT} - 1}}",
+            "highlights": {
+              "hf": {
+                "color": "gold",
+                "label": "One quantum of energy"
+              },
+              "denom": {
+                "color": "magenta",
+                "label": "Boltzmann-weighted cost of a quantum vs the thermal budget"
+              }
+            },
+            "justification": "Allow a mode only the energies $0, hf, 2hf, \\dots$, weighted by Boltzmann factors $e^{-nhf/kT}$. The two geometric series in the average $\\sum n h f e^{-nhf/kT} / \\sum e^{-nhf/kT}$ sum to $hf/(e^{hf/kT}-1)$.",
+            "explanation": "Planck's move: a mode cannot hold an arbitrary sliver of energy — only whole chunks of $hf$. Averaging over Boltzmann-weighted chunk counts replaces the flat $kT$ with an average that *depends on frequency*.",
+            "prompt": "This is the pivotal step. Energy comes in chunks of hf; the thermal average over whole chunks gives hf over (e^(hf/kT) minus 1). If the learner wants the algebra, sketch the two geometric series; otherwise stress the meaning: expensive chunks are rarely afforded.",
+            "sceneStep": 3
+          },
+          {
+            "id": "planck_law",
+            "type": "step",
+            "label": "Planck's law",
+            "math": "u(f) = g(f)\\,\\langle E \\rangle = \\frac{8\\pi h \\htmlClass{hl-freq}{f}^3}{c^3}\\,\\frac{1}{\\htmlClass{hl-denom}{e^{hf/kT} - 1}}",
+            "highlights": {
+              "freq": {
+                "color": "cyan",
+                "label": "Frequency"
+              },
+              "denom": {
+                "color": "magenta",
+                "label": "The factor that tames the catastrophe"
+              }
+            },
+            "justification": "Same mode count $g(f)$ as before — only the average energy per mode changed.",
+            "explanation": "Multiply the unchanged mode density by the new quantized average. This is the gold curve: it rises like $f^3$ at first, then the denominator takes over and kills it.",
+            "prompt": "Point at the gold curve: same mode counting, new energy rule. Note that only the second given was replaced — the mode density survives intact.",
+            "sceneStep": 3
+          },
+          {
+            "id": "limits",
+            "type": "step",
+            "label": "Two limits",
+            "math": "\\htmlClass{hl-hf}{hf} \\ll \\htmlClass{hl-kt}{kT}: \\;\\langle E \\rangle \\to kT \\qquad\\quad \\htmlClass{hl-hf}{hf} \\gg \\htmlClass{hl-kt}{kT}: \\;\\langle E \\rangle \\to hf\\,e^{-hf/kT} \\to 0",
+            "highlights": {
+              "hf": {
+                "color": "gold",
+                "label": "Quantum size"
+              },
+              "kt": {
+                "color": "orange",
+                "label": "Thermal budget"
+              }
+            },
+            "justification": "Cheap quanta ($hf \\ll kT$): $e^{hf/kT} - 1 \\approx hf/kT$, so $\\langle E \\rangle \\approx kT$ — the classical result. Expensive quanta ($hf \\gg kT$): the exponential dominates and the mode is frozen out.",
+            "explanation": "When chunks are cheap, quantization is invisible and the classical $kT$ reappears — that is why the red and gold curves agree at low frequency. When one chunk costs more than the thermal budget, the mode can afford nothing at all: frozen out.",
+            "prompt": "Connect both limits to the chart: at low f the curves hug each other (classical physics recovered); at high f the gold curve dies exponentially. Freeze-out is the physical answer to why the glow is not ultraviolet.",
+            "sceneStep": 3
+          },
+          {
+            "id": "finite_total",
+            "type": "conclusion",
+            "label": "The total is finite",
+            "math": "\\int_0^{\\infty} u(f)\\,df = \\frac{8\\pi^5 k^4}{15 c^3 h^3}\\,\\htmlClass{hl-kt}{T}^4 \\;<\\; \\htmlClass{hl-infty}{\\infty}",
+            "highlights": {
+              "kt": {
+                "color": "orange",
+                "label": "Temperature — Stefan–Boltzmann T⁴ law"
+              },
+              "infty": {
+                "color": "red",
+                "label": "No more catastrophe"
+              }
+            },
+            "justification": "With the substitution $x = hf/kT$ the integral becomes $\\int_0^\\infty x^3/(e^x - 1)\\,dx = \\pi^4/15$, a finite number.",
+            "explanation": "Quantizing energy exchange — $E = hf$ — is exactly what makes the total finite: hot objects radiate a finite power growing as $T^4$, matching experiment. This one formula is the birth of quantum mechanics, and the rest of the lesson runs on it.",
+            "prompt": "Close the arc: E = hf turned infinity into T to the fourth. Preview the next scene: quantization explains blackbody glow, but the direct experimental proof that light itself arrives in chunks is the photoelectric effect.",
+            "sceneStep": 4
+          }
+        ]
+      }
     },
     {
       "title": "The Photoelectric Effect: Light Arrives in Chunks",
