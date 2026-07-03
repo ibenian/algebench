@@ -226,9 +226,13 @@ retries, default 2).
 ./run.sh scripts/prebake_semantic_graph_enrichment.py <scene.json> --write --all  # re-enrich all
 ```
 
-Reports how many graphs it enriched, how many it left untouched, how many
-failed, and the size delta. A per-graph failure is caught and counted (`failed`)
-— the rest still process; re-run to retry the failures.
+The console line reports how many graphs it enriched, how many it left
+untouched, how many **failed**, and the size delta. In `--json`, per-graph
+failures are the **`errors`** array (each `{scene, proof, step, error}`), not a
+`failed` key; `len(errors)` is what the console prints as "failed", and a nonzero
+`errors` is the nonzero exit code. A failure is caught and counted — the rest
+still process; **re-run to retry** (each retry re-attempts only what's still
+unenriched).
 
 ### E4 — Verify
 
@@ -236,9 +240,11 @@ failed, and the size delta. A per-graph failure is caught and counted (`failed`)
 ./run.sh scripts/prebake_semantic_graph_enrichment.py <scene.json> --status --json
 ```
 
-Expect `unenriched == 0` (only `enriched` and any un-baked `noGraph` remain).
-Also worth a final `validate_content.py` on the scene to confirm the scene still
-passes with the enriched graphs.
+Expect `unenriched == 0` (only `enriched` and any un-baked `noGraph` remain) —
+**but only if the write had no failures.** Any graph that errored in E3 stays
+`unenriched`, so a nonzero count here means "re-run to pick up the failures,"
+not a bug. Also worth a final `validate_content.py` on the scene to confirm it
+still passes with the enriched graphs.
 
 ## Important rules
 
