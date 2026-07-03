@@ -1595,14 +1595,58 @@ async function renderCurrentStepGraph(force = false) {
     const sg = step && step.semanticGraph;
     const graph = sg && sg.graph;
     if (!graph) {
-        // No graph for this step — wipe whatever is there so the user
-        // doesn't see a stale diagram from the previous step and the
-        // empty-state message can surface.
-        clearGraph();
         // If the server attached a parse-failure record (issue #137),
         // surface it in place of the generic empty state.
-        const err = step && step.semanticGraph && step.semanticGraph.error;
-        if (err) showErrorState(err);
+        const err = sg && sg.error;
+        if (err) {
+            clearGraph();
+            showErrorState(err);
+            return;
+        }
+        // On-demand derivation: load-time autofill only derives up to
+        // ALGEBENCH_GRAPH_AUTOFILL_LIMIT graphs eagerly; steps past the
+        // budget ship without a semanticGraph. Derive the first time the
+        // graph view actually shows such a step, and cache the result on
+        // the step so it only happens once. Raw math goes to the server so
+        // \htmlClass highlight bindings survive (same pipeline as eager).
+        if (step && typeof step.math === 'string' && step.math && !step.__sgDeriving) {
+            step.__sgDeriving = true;
+            clearGraph();
+            container.innerHTML = '<div style="color:#9aa4ad; padding:2rem;">Deriving graph…</div>';
+            try {
+                const resp = await fetch('/api/graph/from-latex', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ latex: step.math, highlights: step.highlights || null }),
+                });
+                const data = resp.ok ? await resp.json() : null;
+                if (data && data.graph) {
+                    step.semanticGraph = { graph: data.graph };
+                } else {
+                    step.semanticGraph = { error: {
+                        reason: 'parse_failed',
+                        message: 'Parser could not derive a semantic graph for this expression (on-demand).',
+                        math: step.math,
+                    } };
+                }
+            } catch (e) {
+                console.warn('[graph-view] on-demand graph derivation failed:', e);
+                step.semanticGraph = { error: {
+                    reason: 'derive_request_failed',
+                    message: 'On-demand graph derivation request failed: ' + (e && e.message ? e.message : e),
+                    math: step.math,
+                } };
+            } finally {
+                delete step.__sgDeriving;
+            }
+            // Re-render only if the user is still on this step.
+            if (currentProofStep() === step) await renderCurrentStepGraph(true);
+            return;
+        }
+        // No graph and nothing to derive — wipe whatever is there so the
+        // user doesn't see a stale diagram from the previous step and the
+        // empty-state message can surface.
+        clearGraph();
         return;
     }
 
