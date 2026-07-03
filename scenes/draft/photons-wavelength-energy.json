@@ -1372,7 +1372,7 @@
         {
           "title": "The full picture: $\\vec{E}$ and $\\vec{B}$",
           "description": "An electromagnetic wave has two perpendicular oscillating fields. Until now we showed only the electric field $\\vec{E}$ (in $y$). The magnetic field $\\vec{B}$ oscillates in $z$, perpendicular to both $\\vec{E}$ and the propagation direction. Switch to the Iso view to see both components in 3D. This wave depicts a steady many-photon beam, not a single photon.",
-          "prompt": "Reveal the magnetic field component oscillating in the z-direction. Explain that every EM wave has both E and B perpendicular to each other and to the propagation direction. We showed only E because it dominates interactions with charged matter. Note B = E/c in SI units; we exaggerate B visually for clarity. Make the beam-vs-photon distinction explicit: this travelling wave is a steady many-photon beam (a coherent state, like a laser), not a single photon — a single photon would be a localized wave packet, shown later in the wave-packet scene.",
+          "prompt": "Reveal the magnetic field component oscillating in the z-direction. Explain that every EM wave has both E and B perpendicular to each other and to the propagation direction. We showed only E because it dominates interactions with charged matter. Note B = E/c in SI units; we exaggerate B visually for clarity. Make the beam-vs-photon distinction explicit: this travelling wave is a steady many-photon beam (a coherent state, like a laser), not a single photon — a single photon would be a localized wave packet, shown later in the wave-packet scene. Point out the two arrows at the sample point x0: they are the instantaneous field values — what a detector parked there feels — while the curves show the whole wave at once.",
           "camera": {
             "position": [
               6,
@@ -1463,6 +1463,60 @@
               ],
               "color": "#9aa4ad",
               "size": 14
+            },
+            {
+              "id": "s0_x0_guide",
+              "type": "line",
+              "points": [
+                [
+                  10.5,
+                  -1.3,
+                  0
+                ],
+                [
+                  10.5,
+                  1.3,
+                  0
+                ]
+              ],
+              "color": "#9aa4ad",
+              "width": 1,
+              "opacity": 0.35,
+              "legendGroup": "$x_0$ (sample point)"
+            },
+            {
+              "id": "s0_E_inst",
+              "type": "animated_vector",
+              "from": [
+                10.5,
+                0,
+                0
+              ],
+              "expr": [
+                "10.5",
+                "sin(2*pi*10.5/lambda - 2*t)",
+                "0"
+              ],
+              "color": "#2f9e9b",
+              "width": 3,
+              "label": "$E_y(x_0,t)$ — instantaneous"
+            },
+            {
+              "id": "s0_B_inst",
+              "type": "animated_vector",
+              "from": [
+                10.5,
+                0,
+                0
+              ],
+              "expr": [
+                "10.5",
+                "0",
+                "sin(2*pi*10.5/lambda - 2*t)"
+              ],
+              "color": "#e85d75",
+              "width": 3,
+              "label": "$B_z(x_0,t)$ — instantaneous"
             }
           ],
           "info": [
@@ -1480,6 +1534,11 @@
               "id": "s0_beam_meaning_info",
               "position": "top-left",
               "content": "**What this wave shows**\n\nA steady classical beam — countless photons marching in lockstep (a *coherent state*, like a laser). It is **not** a single photon.\n\nA single photon would be a localized **wave packet** — a few oscillations that taper off. That picture comes later, in the wave-packet scene."
+            },
+            {
+              "id": "s0_inst_info",
+              "position": "top-left",
+              "content": "**Instantaneous field values**\n\nFix a point $x_0$ (gray line): the two arrows show the field values *right now* — $E_y(x_0,t)$ oscillating in $y$, $B_z(x_0,t)$ in $z$, in phase, with $B = E/c$ in SI units (drawn same-height here for visibility).\n\nThe curves show the whole wave; the arrows show what a detector parked at $x_0$ actually feels."
             }
           ]
         }
