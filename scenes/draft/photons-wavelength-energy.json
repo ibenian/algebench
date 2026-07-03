@@ -1371,8 +1371,8 @@
         },
         {
           "title": "The full picture: $\\vec{E}$ and $\\vec{B}$",
-          "description": "An electromagnetic wave has two perpendicular oscillating fields. Until now we showed only the electric field $\\vec{E}$ (in $y$). The magnetic field $\\vec{B}$ oscillates in $z$, perpendicular to both $\\vec{E}$ and the propagation direction. Switch to the Iso view to see both components in 3D.",
-          "prompt": "Reveal the magnetic field component oscillating in the z-direction. Explain that every EM wave has both E and B perpendicular to each other and to the propagation direction. We showed only E because it dominates interactions with charged matter. Note B = E/c in SI units; we exaggerate B visually for clarity.",
+          "description": "An electromagnetic wave has two perpendicular oscillating fields. Until now we showed only the electric field $\\vec{E}$ (in $y$). The magnetic field $\\vec{B}$ oscillates in $z$, perpendicular to both $\\vec{E}$ and the propagation direction. Switch to the Iso view to see both components in 3D. This wave depicts a steady many-photon beam, not a single photon.",
+          "prompt": "Reveal the magnetic field component oscillating in the z-direction. Explain that every EM wave has both E and B perpendicular to each other and to the propagation direction. We showed only E because it dominates interactions with charged matter. Note B = E/c in SI units; we exaggerate B visually for clarity. Make the beam-vs-photon distinction explicit: this travelling wave is a steady many-photon beam (a coherent state, like a laser), not a single photon — a single photon would be a localized wave packet, shown later in the wave-packet scene.",
           "camera": {
             "position": [
               6,
@@ -1396,10 +1396,9 @@
           "add": [
             {
               "id": "s0_B_wave",
-              "type": "parametric_curve",
-              "x": "t",
-              "y": "0",
-              "z": "sin(2*pi*t/lambda)",
+              "type": "animated_curve",
+              "expr": "sin(2*pi*x/lambda - 2*t)",
+              "plane": "xz",
               "range": [
                 0,
                 12
@@ -1476,6 +1475,11 @@
               "id": "s0_hook_info",
               "position": "bottom-right",
               "content": "**Where this is headed**\n\nMaxwell's wave picture is perfect — until you ask how much energy a hot box should radiate. That question breaks classical physics. Next scene: the crisis."
+            },
+            {
+              "id": "s0_beam_meaning_info",
+              "position": "top-left",
+              "content": "**What this wave shows**\n\nA steady classical beam — countless photons marching in lockstep (a *coherent state*, like a laser). It is **not** a single photon.\n\nA single photon would be a localized **wave packet** — a few oscillations that taper off. That picture comes later, in the wave-packet scene."
             }
           ]
         }
