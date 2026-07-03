@@ -1,0 +1,247 @@
+{
+  "title": "Bloch Sphere Parameterization",
+  "domain": "quantum",
+  "deeplink": "/?builtin=quantum-states&view=math&panel=chat&pp=1&dock=1&sc=angles-encode-amplitudes&st=read-off-amplitudes&pf=s2_bloch_parameterization&ps=the-bloch-parameterization&nodes=__equals_1&pa=quantum/bloch-parameterization",
+  "steps": [
+    {
+      "index": 0,
+      "operation": "Start with an arbitrary normalized qubit state.",
+      "justification": "This is the general form of a qubit state, where $\\alpha$ and $\\beta$ are complex amplitudes satisfying the normalization condition $|\\alpha|^2 + |\\beta|^2 = 1$.",
+      "input_latex": "|\\psi\\rangle = \\alpha|0\\rangle + \\beta|1\\rangle",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__ket_2}{\\left|\\psi\\right\\rangle} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__add_3}{\\htmlData{n=__multiply_4}{\\htmlData{n=alpha}{\\alpha} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=__ket_5}{\\left|0\\right\\rangle}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=__multiply_6}{\\htmlData{n=beta}{\\beta} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=__ket_7}{\\left|1\\right\\rangle}}}}",
+      "plain": "\\left|\\psi\\right\\rangle = \\alpha \\cdot \\left|0\\right\\rangle + \\beta \\cdot \\left|1\\right\\rangle",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": null,
+        "reason": "the given starting expression",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 1,
+      "operation": "Express the complex amplitudes $\\alpha$ and $\\beta$ in polar form.",
+      "justification": "Any complex number $z$ can be written in polar form as $z = |z|e^{i\\arg(z)}$, where $|z|$ is its magnitude and $\\arg(z)$ is its phase.",
+      "input_latex": "|\\psi\\rangle = |\\alpha|e^{i\\arg(\\alpha)}|0\\rangle + |\\beta|e^{i\\arg(\\beta)}|1\\rangle",
+      "latex": "\\htmlData{n=_r1___equals_1}{\\htmlData{n=__ket_2}{\\left|\\psi\\right\\rangle} \\htmlData{n=_r1___equals_1__op}{=} \\htmlData{n=_r2___add_3}{\\htmlData{n=_r3___multiply_4}{\\htmlData{n=__abs_5}{\\left|\\htmlData{n=alpha____abs_5}{\\alpha}\\right|} \\htmlData{n=_r3___multiply_4__m1}{\\cdot} \\htmlData{n=_r4___multiply_6}{\\htmlData{n=__power_7}{\\htmlData{n=e____power_7}{e}^{\\htmlData{n=__multiply_8}{\\htmlData{n=i____multiply_8}{i} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=__arg_9}{\\arg\\left(\\htmlData{n=alpha____arg_9}{\\alpha}\\right)}}}} \\htmlData{n=_r4___multiply_6__m1}{\\cdot} \\htmlData{n=__ket_5}{\\left|0\\right\\rangle}}} \\htmlData{n=_r2___add_3__op1}{+} \\htmlData{n=__multiply_11}{\\htmlData{n=__abs_12}{\\left|\\htmlData{n=beta____abs_12}{\\beta}\\right|} \\htmlData{n=__multiply_11__m1}{\\cdot} \\htmlData{n=__multiply_13}{\\htmlData{n=__power_14}{\\htmlData{n=e____power_14}{e}^{\\htmlData{n=__multiply_15}{\\htmlData{n=i____multiply_15}{i} \\htmlData{n=__multiply_15__m1}{\\cdot} \\htmlData{n=__arg_16}{\\arg\\left(\\htmlData{n=beta____arg_16}{\\beta}\\right)}}}} \\htmlData{n=__multiply_13__m1}{\\cdot} \\htmlData{n=__ket_7}{\\left|1\\right\\rangle}}}}}",
+      "plain": "\\left|\\psi\\right\\rangle = \\left|\\alpha\\right| \\cdot e^{i \\cdot \\arg\\left(\\alpha\\right)} \\cdot \\left|0\\right\\rangle + \\left|\\beta\\right| \\cdot e^{i \\cdot \\arg\\left(\\beta\\right)} \\cdot \\left|1\\right\\rangle",
+      "confidence": {
+        "tier": "domain",
+        "label": "Domain",
+        "icon": "🎓",
+        "meaning": "valid by domain knowledge, not a symbolic identity the CAS can check",
+        "relation": "unknown",
+        "reason": "valid by domain knowledge — the CAS could not check this symbolically; a domain expert accepts it (confidence 100%): Definition of polar form for complex numbers.",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 2,
+      "operation": "Factor out the global phase $e^{i\\arg(\\alpha)}$.",
+      "justification": "A global phase factor does not affect the physical properties of a quantum state and can be disregarded when representing the state on the Bloch sphere.",
+      "input_latex": "|\\psi\\rangle = e^{i\\arg(\\alpha)} \\cdot \\left( |\\alpha||0\\rangle + |\\beta|e^{i(\\arg(\\beta) - \\arg(\\alpha))}|1\\rangle \\right)",
+      "latex": "\\htmlData{n=_r1___equals_1}{\\htmlData{n=__ket_2}{\\left|\\psi\\right\\rangle} \\htmlData{n=_r1___equals_1__op}{=} \\htmlData{n=_r4___multiply_6}{\\htmlData{n=__power_7}{\\htmlData{n=e____power_7}{e}^{\\htmlData{n=__multiply_8}{\\htmlData{n=i}{i} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=__arg_9}{\\arg\\left(\\htmlData{n=alpha____arg_9}{\\alpha}\\right)}}}} \\htmlData{n=_r4___multiply_6__m1}{\\cdot} \\left(\\htmlData{n=_r2___add_3}{\\htmlData{n=_r3___multiply_4}{\\htmlData{n=__abs_5}{\\left|\\htmlData{n=alpha____abs_5}{\\alpha}\\right|} \\htmlData{n=_r3___multiply_4__m1}{\\cdot} \\htmlData{n=__ket_5}{\\left|0\\right\\rangle}} \\htmlData{n=_r2___add_3__op1}{+} \\htmlData{n=__multiply_11}{\\htmlData{n=__abs_12}{\\left|\\htmlData{n=beta____abs_12}{\\beta}\\right|} \\htmlData{n=__multiply_11__m1}{\\cdot} \\htmlData{n=__multiply_13}{\\htmlData{n=_r1___power_14}{\\htmlData{n=e___r1___power_14}{e}^{\\htmlData{n=__i_15}{i\\left(\\htmlData{n=__add_16}{\\htmlData{n=__arg_16}{\\arg\\left(\\htmlData{n=beta____arg_16}{\\beta}\\right)} \\htmlData{n=__negation_18}{\\htmlData{n=__negation_18__op}{-} \\htmlData{n=__arg_19}{\\arg\\left(\\htmlData{n=alpha____arg_19}{\\alpha}\\right)}}}\\right)}}} \\htmlData{n=__multiply_13__m1}{\\cdot} \\htmlData{n=__ket_7}{\\left|1\\right\\rangle}}}}\\right)}}",
+      "plain": "\\left|\\psi\\right\\rangle = e^{i \\cdot \\arg\\left(\\alpha\\right)} \\cdot \\left(\\left|\\alpha\\right| \\cdot \\left|0\\right\\rangle + \\left|\\beta\\right| \\cdot e^{i\\left(\\arg\\left(\\beta\\right) - \\arg\\left(\\alpha\\right)\\right)} \\cdot \\left|1\\right\\rangle\\right)",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 3,
+      "operation": "Define $\\phi = \\arg(\\beta) - \\arg(\\alpha)$ as the relative phase, and consider the state without the global phase.",
+      "justification": "The relative phase $\\phi$ is physically significant, unlike the global phase. We remove the global phase to obtain a canonical representation.",
+      "input_latex": "|\\psi\\rangle = |\\alpha||0\\rangle + |\\beta|e^{i\\phi}|1\\rangle",
+      "latex": "\\htmlData{n=_r1___equals_1}{\\htmlData{n=__ket_2}{\\left|\\psi\\right\\rangle} \\htmlData{n=_r1___equals_1__op}{=} \\htmlData{n=_r2___add_3}{\\htmlData{n=_r3___multiply_4}{\\htmlData{n=__abs_5}{\\left|\\htmlData{n=alpha}{\\alpha}\\right|} \\htmlData{n=_r3___multiply_4__m1}{\\cdot} \\htmlData{n=__ket_5}{\\left|0\\right\\rangle}} \\htmlData{n=_r2___add_3__op1}{+} \\htmlData{n=__multiply_7}{\\htmlData{n=__abs_12}{\\left|\\htmlData{n=beta}{\\beta}\\right|} \\htmlData{n=__multiply_7__m1}{\\cdot} \\htmlData{n=__multiply_9}{\\htmlData{n=__power_10}{\\htmlData{n=e}{e}^{\\htmlData{n=_r1___multiply_11}{\\htmlData{n=i}{i} \\htmlData{n=_r1___multiply_11__m1}{\\cdot} \\htmlData{n=phi}{\\phi}}}} \\htmlData{n=__multiply_9__m1}{\\cdot} \\htmlData{n=__ket_7}{\\left|1\\right\\rangle}}}}}",
+      "plain": "\\left|\\psi\\right\\rangle = \\left|\\alpha\\right| \\cdot \\left|0\\right\\rangle + \\left|\\beta\\right| \\cdot e^{i \\cdot \\phi} \\cdot \\left|1\\right\\rangle",
+      "confidence": {
+        "tier": "domain",
+        "label": "Domain",
+        "icon": "🎓",
+        "meaning": "valid by domain knowledge, not a symbolic identity the CAS can check",
+        "relation": "unknown",
+        "reason": "valid by domain knowledge — the CAS could not check this symbolically; a domain expert accepts it (confidence 100%): Global phase factors do not affect the physical state in quantum mechanics, so they can be removed to obtain a canonical representation. The definition of the relative phase is also standard.",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 4,
+      "operation": "Parameterize the real magnitudes $|\\alpha|$ and $|\\beta|$ using a half-angle $\\frac{\\theta}{2}$.",
+      "justification": "Since the state is normalized, $|\\alpha|^2 + |\\beta|^2 = 1$. We can set $|\\alpha| = \\cos(\\frac{\\theta}{2})$ and $|\\beta| = \\sin(\\frac{\\theta}{2})$ for some $\\theta \\in [0, \\pi]$, which ensures both magnitudes are non-negative and satisfy the normalization condition.",
+      "input_latex": "|\\psi\\rangle = \\cos\\!\\left(\\frac{\\theta}{2}\\right)|0\\rangle + \\sin\\!\\left(\\frac{\\theta}{2}\\right) e^{i\\phi}|1\\rangle",
+      "latex": "\\htmlData{n=_r1___equals_1}{\\htmlData{n=__ket_2}{\\left|\\psi\\right\\rangle} \\htmlData{n=_r1___equals_1__op}{=} \\htmlData{n=_r2___add_3}{\\htmlData{n=__multiply_4}{\\htmlData{n=__cos_5}{\\cos\\left(\\htmlData{n=__multiply_6}{\\frac{\\htmlData{n=theta____multiply_6}{\\theta}}{\\htmlData{n=__num_8}{2}}}\\right)} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=__ket_5}{\\left|0\\right\\rangle}} \\htmlData{n=_r2___add_3__op1}{+} \\htmlData{n=__multiply_7}{\\htmlData{n=__sin_11}{\\sin\\left(\\htmlData{n=__multiply_12}{\\frac{\\htmlData{n=theta____multiply_12}{\\theta}}{\\htmlData{n=__num_14}{2}}}\\right)} \\htmlData{n=__multiply_7__m1}{\\cdot} \\htmlData{n=__multiply_9}{\\htmlData{n=__power_10}{\\htmlData{n=e}{e}^{\\htmlData{n=_r1___multiply_11}{\\htmlData{n=i}{i} \\htmlData{n=_r1___multiply_11__m1}{\\cdot} \\htmlData{n=phi}{\\phi}}}} \\htmlData{n=__multiply_9__m1}{\\cdot} \\htmlData{n=__ket_7}{\\left|1\\right\\rangle}}}}}",
+      "plain": "\\left|\\psi\\right\\rangle = \\cos\\left(\\frac{\\theta}{2}\\right) \\cdot \\left|0\\right\\rangle + \\sin\\left(\\frac{\\theta}{2}\\right) \\cdot e^{i \\cdot \\phi} \\cdot \\left|1\\right\\rangle",
+      "confidence": {
+        "tier": "domain",
+        "label": "Domain",
+        "icon": "🎓",
+        "meaning": "valid by domain knowledge, not a symbolic identity the CAS can check",
+        "relation": "unknown",
+        "reason": "valid by domain knowledge — the CAS could not check this symbolically; a domain expert accepts it (confidence 100%): Standard Bloch sphere parameterization for a normalized qubit state.",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 5,
+      "operation": "Rearrange the terms in the second amplitude to match the standard form.",
+      "justification": "The order of multiplication does not change the result.",
+      "input_latex": "|\\psi\\rangle = \\cos\\!\\left(\\frac{\\theta}{2}\\right)| 0\\rangle + e^{i\\phi}\\sin\\!\\left(\\frac{\\theta}{2}\\right)| 1\\rangle",
+      "latex": "\\htmlData{n=_r1___equals_1}{\\htmlData{n=__ket_2}{\\left|\\psi\\right\\rangle} \\htmlData{n=_r1___equals_1__op}{=} \\htmlData{n=_r2___add_3}{\\htmlData{n=__multiply_4}{\\htmlData{n=__cos_5}{\\cos\\left(\\htmlData{n=__multiply_6}{\\frac{\\htmlData{n=theta____multiply_6}{\\theta}}{\\htmlData{n=__num_8}{2}}}\\right)} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=__ket_5}{\\left|0\\right\\rangle}} \\htmlData{n=_r2___add_3__op1}{+} \\htmlData{n=__multiply_9}{\\htmlData{n=__power_10}{\\htmlData{n=e}{e}^{\\htmlData{n=_r1___multiply_11}{\\htmlData{n=i}{i} \\htmlData{n=_r1___multiply_11__m1}{\\cdot} \\htmlData{n=phi}{\\phi}}}} \\htmlData{n=__multiply_9__m1}{\\cdot} \\htmlData{n=__multiply_7}{\\htmlData{n=__sin_11}{\\sin\\left(\\htmlData{n=__multiply_12}{\\frac{\\htmlData{n=theta____multiply_12}{\\theta}}{\\htmlData{n=__num_14}{2}}}\\right)} \\htmlData{n=__multiply_7__m1}{\\cdot} \\htmlData{n=__ket_7}{\\left|1\\right\\rangle}}}}}",
+      "plain": "\\left|\\psi\\right\\rangle = \\cos\\left(\\frac{\\theta}{2}\\right) \\cdot \\left|0\\right\\rangle + e^{i \\cdot \\phi} \\cdot \\sin\\left(\\frac{\\theta}{2}\\right) \\cdot \\left|1\\right\\rangle",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    }
+  ],
+  "overall_confidence": {
+    "tier": "domain",
+    "label": "Domain",
+    "icon": "🎓",
+    "meaning": "valid by domain knowledge, not a symbolic identity the CAS can check",
+    "relation": null,
+    "reason": "2/5 steps verified · 3 domain-justified · endpoint reached",
+    "type_consistent": true,
+    "counts": {
+      "refuted": 0,
+      "unchecked": 0,
+      "plausible": 0,
+      "domain": 3,
+      "verified": 0,
+      "grounded": 2
+    },
+    "endpoint_reached": true
+  },
+  "terms": {
+    "__ket_2": {
+      "latex": "\\left|\\psi\\right\\rangle",
+      "name": "\\left|\\psi\\right\\rangle",
+      "description": "The general quantum state vector being parameterized on the Bloch sphere."
+    },
+    "alpha": {
+      "latex": "\\alpha",
+      "name": "\\alpha",
+      "description": "The complex probability amplitude for the quantum state to be in the $\\left|0\\right\\rangle$ state."
+    },
+    "__ket_5": {
+      "latex": "\\left|0\\right\\rangle",
+      "name": "\\left|0\\right\\rangle",
+      "description": "The computational basis state representing the '0' state of a qubit."
+    },
+    "beta": {
+      "latex": "\\beta",
+      "name": "\\beta",
+      "description": "The complex probability amplitude for the quantum state to be in the $\\left|1\\right\\rangle$ state."
+    },
+    "__ket_7": {
+      "latex": "\\left|1\\right\\rangle",
+      "name": "\\left|1\\right\\rangle",
+      "description": "The computational basis state representing the '1' state of a qubit."
+    },
+    "__abs_5": {
+      "latex": "\\left|{\\alpha}\\right|",
+      "name": "\\left|{\\alpha}\\right|",
+      "description": "The magnitude of the complex amplitude $\\alpha$ for the $\\left|0\\right\\rangle$ state."
+    },
+    "__power_7": {
+      "latex": "e^{i \\arg{\\left(\\alpha \\right)}}",
+      "name": "e^{i \\arg{\\left(\\alpha \\right)}}",
+      "description": "The phase factor of the complex amplitude $\\alpha$."
+    },
+    "e": {
+      "latex": "e",
+      "name": "e",
+      "description": "Euler's number, the base of the natural logarithm."
+    },
+    "i": {
+      "latex": "i",
+      "name": "i",
+      "description": "The imaginary unit, defined as $i^2 = -1$."
+    },
+    "__arg_9": {
+      "latex": "\\arg{\\left(\\alpha \\right)}",
+      "name": "\\arg{\\left(\\alpha \\right)}",
+      "description": "The argument (phase angle) of the complex amplitude $\\alpha$."
+    },
+    "__abs_12": {
+      "latex": "\\left|{\\beta}\\right|",
+      "name": "\\left|{\\beta}\\right|",
+      "description": "The magnitude of the complex amplitude $\\beta$ for the $\\left|1\\right\\rangle$ state."
+    },
+    "__power_14": {
+      "latex": "e^{i \\arg{\\left(\\beta \\right)}}",
+      "name": "e^{i \\arg{\\left(\\beta \\right)}}",
+      "description": "The phase factor of the complex amplitude $\\beta$."
+    },
+    "__arg_16": {
+      "latex": "\\arg{\\left(\\beta \\right)}",
+      "name": "\\arg{\\left(\\beta \\right)}",
+      "description": "The argument (phase angle) of the complex amplitude $\\beta$."
+    },
+    "_r1___power_14": {
+      "latex": "e^{i{\\left(- \\arg{\\left(\\alpha \\right)} + \\arg{\\left(\\beta \\right)} \\right)}}",
+      "name": "e^{i{\\left(- \\arg{\\left(\\alpha \\right)} + \\arg{\\left(\\beta \\right)} \\right)}}",
+      "description": "The relative phase factor between the complex amplitudes $\\beta$ and $\\alpha$."
+    },
+    "__i_15": {
+      "latex": "i{\\left(- \\arg{\\left(\\alpha \\right)} + \\arg{\\left(\\beta \\right)} \\right)}",
+      "name": "i{\\left(- \\arg{\\left(\\alpha \\right)} + \\arg{\\left(\\beta \\right)} \\right)}",
+      "description": "The exponent of the relative phase factor, including the imaginary unit $i$."
+    },
+    "__arg_19": {
+      "latex": "\\arg{\\left(\\alpha \\right)}",
+      "name": "\\arg{\\left(\\alpha \\right)}",
+      "description": "The argument (phase angle) of the complex amplitude $\\alpha$."
+    },
+    "__power_10": {
+      "latex": "e^{i \\phi}",
+      "name": "e^{i \\phi}",
+      "description": "The overall relative phase factor $e^{i\\phi}$ in the Bloch sphere parameterization."
+    },
+    "phi": {
+      "latex": "\\phi",
+      "name": "\\phi",
+      "description": "The azimuthal angle on the Bloch sphere, representing the relative phase between the $\\left|0\\right\\rangle$ and $\\left|1\\right\\rangle$ components."
+    },
+    "__cos_5": {
+      "latex": "\\cos{\\left(\\frac{\\theta}{2} \\right)}",
+      "name": "\\cos{\\left(\\frac{\\theta}{2} \\right)}",
+      "description": "The cosine of half the polar angle $\\theta$, representing the real amplitude of the $\\left|0\\right\\rangle$ component."
+    },
+    "theta": {
+      "latex": "\\theta",
+      "name": "\\theta",
+      "description": "The polar angle on the Bloch sphere, which determines the superposition of the $\\left|0\\right\\rangle$ and $\\left|1\\right\\rangle$ states."
+    },
+    "__sin_11": {
+      "latex": "\\sin{\\left(\\frac{\\theta}{2} \\right)}",
+      "name": "\\sin{\\left(\\frac{\\theta}{2} \\right)}",
+      "description": "The sine of half the polar angle $\\theta$, representing the real amplitude of the $\\left|1\\right\\rangle$ component."
+    }
+  },
+  "goal": "This derivation shows how an arbitrary normalized qubit state $|\\psi\\rangle = \\alpha|0\\rangle + \\beta|1\\rangle$ can be expressed in terms of two real angles, $\\theta$ and $\\phi$, which define its coordinates on the Bloch sphere, by factoring out an unobservable global phase.",
+  "followups": [
+    "How do the angles $\\theta$ and $\\phi$ relate to measurements in different bases?",
+    "What does a state like $|+\\rangle = \\frac{1}{\\sqrt{2}}(|0\\rangle + |1\\rangle)$ look like on the Bloch sphere?",
+    "Can you derive the Bloch z-component $z = \\cos\\theta$ of this state, starting from the expectation value of $Z$?",
+    "What are the physical implications of the global phase being unobservable?"
+  ],
+  "prerequisites": [
+    "Complex numbers in polar form",
+    "Normalization condition for quantum states",
+    "Dirac notation (bra-ket notation)",
+    "Understanding of global phase in quantum mechanics"
+  ]
+}

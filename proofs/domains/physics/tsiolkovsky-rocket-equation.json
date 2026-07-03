@@ -1,7 +1,7 @@
 {
   "title": "Tsiolkovsky Rocket Equation",
   "domain": "physics",
-  "deeplink": "/?builtin=artemis-ii-mission-simulation&view=math&panel=chat&pp=1&sc=the-sls-rocket-orion-spacecraft&pf=tsiolkovsky-rocket-equation&ps=rocket-equation&pa=physics/tsiolkovsky-rocket-equation",
+  "deeplink": "/?builtin=artemis-ii-mission-simulation&view=math&panel=chat&pp=1&dock=1&sc=the-sls-rocket-orion-spacecraft&st=why-staging&pf=tsiolkovsky-rocket-equation&ps=rocket-equation&pa=physics/tsiolkovsky-rocket-equation",
   "steps": [
     {
       "index": 0,

@@ -24,6 +24,7 @@ AlgeBench has **two** URL surfaces that take query parameters:
 | `view` | `view=math` | `scene` | `math` → the semantic-graph (Math) tab; otherwise the 3D scene. | ✅ |
 | `panel` | `panel=chat` | `doc` | Right panel tab: `chat` → AI chat; otherwise the doc. | ✅ |
 | `pp` | `pp=1` | off | Proof panel open. | ✅ |
+| `dock` | `dock=1` | (user pref) | Graph **docked** (split) view — the semantic graph shown alongside the 3D viewport. `dock=1` forces split (and implies the Math view); `dock=0` forces full. **Absent leaves the user's own persisted dock preference untouched.** | ✅ (only when on) |
 | `sc` | `sc=intro` | — | Scene id (resolved hybrid: id → slug(title) → index). | ✅ |
 | `st` | `st=expand` | base step | Step id; absent ⇒ the scene's base step. | ✅ |
 | `pf` | `pf=allen_eggers_velocity` | — | Proof id (within the lesson). | ✅ |

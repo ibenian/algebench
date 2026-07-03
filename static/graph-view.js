@@ -106,6 +106,12 @@ if (typeof window !== 'undefined') {
         showGraphView,
         showSceneView,
         dockProofAnimation,
+        // Dock (split) layout — read for deeplink serialization, set when a
+        // deeplink requests it. `setDocked` forces the requested state but does
+        // NOT persist it (persist=false), so applying a `?dock=1` link changes
+        // the live layout without overwriting the user's saved dock preference.
+        isDocked: () => _docked,
+        setDocked: (on) => toggleDockMode(!!on, false),
     };
 }
 
@@ -506,11 +512,14 @@ function _syncDockButton() {
         : 'Dock graph alongside 3D viewport (D)';
 }
 
-function toggleDockMode(forceDocked) {
+function toggleDockMode(forceDocked, persist = true) {
     const next = typeof forceDocked === 'boolean' ? forceDocked : !_docked;
     if (next === _docked) return;
     _docked = next;
-    _lsSet(LS_KEYS.docked, String(_docked));
+    // A user gesture (D key / dock button) persists the preference; a deeplink
+    // apply (persist=false) only sets the live layout, so a shared `?dock=1`
+    // link never silently overwrites the recipient's saved dock preference.
+    if (persist) _lsSet(LS_KEYS.docked, String(_docked));
 
     if (!isGraphModeActive()) {
         _syncDockButton();

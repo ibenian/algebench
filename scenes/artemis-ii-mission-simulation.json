@@ -538,6 +538,7 @@
             {
               "type": "given",
               "label": "Newton's Third Law",
+              "id": "newtons-third-law",
               "math": "\\htmlClass{hl-action}{\\vec{F}_{\\text{action}}} = -\\htmlClass{hl-reaction}{\\vec{F}_{\\text{reaction}}}",
               "justification": "Every force has an equal and opposite reaction. The rocket pushes exhaust backward; the exhaust pushes the rocket forward.",
               "explanation": "A rocket engine works by expelling mass (hot gas) at high speed out the nozzle. By Newton's third law, the exhaust pushing backward creates an equal forward force on the rocket.",
@@ -571,6 +572,7 @@
             {
               "type": "given",
               "label": "Newton's Second Law (momentum form)",
+              "id": "newtons-second-law",
               "math": "\\htmlClass{hl-force}{\\vec{F}} = \\frac{d\\htmlClass{hl-momentum}{\\vec{p}}}{dt} = \\frac{d(m\\vec{v})}{dt}",
               "justification": "Force equals the rate of change of momentum — the most general form of Newton's second law.",
               "explanation": "For a rocket, both mass and velocity are changing: the rocket gets lighter as it burns fuel, and it accelerates. We need the momentum form, not just $F = ma$.",
@@ -615,6 +617,7 @@
             {
               "type": "step",
               "label": "Apply to rocket exhaust",
+              "id": "apply-to-exhaust",
               "math": "F_{\\text{exhaust}} = \\frac{dp}{dt} = \\htmlClass{hl-mdot}{\\frac{dm_{\\text{exhaust}}}{dt}} \\cdot \\htmlClass{hl-ve}{v_e} = \\htmlClass{hl-mdot}{\\dot{m}} \\cdot \\htmlClass{hl-ve}{v_e} \\quad (v_e \\text{ constant})",
               "justification": "In a small time $dt$, the rocket expels mass $dm$ at a constant exhaust velocity $v_e$ (set by the nozzle design and combustion temperature). The momentum carried away is $dp = dm \\cdot v_e$, so the rate of momentum change is $\\dot{m} \\cdot v_e$.",
               "explanation": "A key assumption: the exhaust velocity $v_e$ is approximately constant for a given engine — it depends on the propellant chemistry and nozzle geometry, not on the rocket's speed. This is what makes the equation simple: only the mass flow rate $\\dot{m}$ varies during a burn.",
@@ -668,6 +671,7 @@
             {
               "type": "step",
               "label": "Exhaust momentum rate",
+              "id": "exhaust-momentum-rate",
               "math": "\\htmlClass{hl-thrust}{T} = \\htmlClass{hl-mdot}{\\dot{m}} \\cdot \\htmlClass{hl-ve}{v_e}",
               "justification": "The thrust $T$ equals the mass flow rate $\\dot{m}$ (kg/s of propellant expelled) times the exhaust velocity $v_e$ (speed of the gas leaving the nozzle).",
               "explanation": "Each second, $\\dot{m}$ kilograms of propellant leave the nozzle at speed $v_e$. The momentum carried away per second is $\\dot{m} v_e$, which by Newton's third law equals the thrust force on the rocket.",
@@ -717,6 +721,7 @@
             {
               "type": "step",
               "label": "Total impulse from propellant",
+              "id": "total-impulse",
               "math": "\\htmlClass{hl-impulse}{J} = T \\cdot t = \\dot{m} \\cdot \\htmlClass{hl-ve}{v_e} \\cdot t = \\htmlClass{hl-mprop}{m_{\\text{prop}}} \\cdot \\htmlClass{hl-ve}{v_e}",
               "justification": "Impulse is force times time. Since $\\dot{m} \\cdot t = m_{\\text{prop}}$ (total propellant mass burned), the total impulse equals propellant mass times exhaust velocity.",
               "explanation": "Impulse measures the total \"push\" delivered over a burn. A longer burn or higher thrust both increase impulse. This tells us how much momentum the rocket gains from burning all its fuel.",
@@ -770,6 +775,7 @@
             {
               "type": "step",
               "label": "Impulse per unit weight of propellant",
+              "id": "impulse-per-weight",
               "math": "\\htmlClass{hl-isp}{I_{sp}} = \\frac{J}{\\htmlClass{hl-mprop}{m_{\\text{prop}}} \\cdot \\htmlClass{hl-g0}{g_0}} = \\frac{\\htmlClass{hl-mprop}{m_{\\text{prop}}} \\cdot \\htmlClass{hl-ve}{v_e}}{\\htmlClass{hl-mprop}{m_{\\text{prop}}} \\cdot \\htmlClass{hl-g0}{g_0}} = \\frac{\\htmlClass{hl-ve}{v_e}}{\\htmlClass{hl-g0}{g_0}}",
               "justification": "Dividing total impulse by propellant weight ($m_{\\text{prop}} \\cdot g_0$) gives specific impulse — impulse per unit weight. The propellant mass cancels, leaving $v_e / g_0$.",
               "explanation": "The word \"specific\" means \"per unit weight.\" We divide by weight (not mass) for historical reasons — it gives $I_{sp}$ units of seconds, which is the same in both metric and imperial systems. An $I_{sp}$ of 452 s means one kilogram of propellant produces 452 seconds of 9.81 N thrust.",
@@ -832,6 +838,7 @@
             {
               "type": "step",
               "label": "Thrust in terms of Isp",
+              "id": "thrust-from-isp",
               "math": "\\htmlClass{hl-thrust}{T} = \\htmlClass{hl-mdot}{\\dot{m}} \\cdot \\htmlClass{hl-isp}{I_{sp}} \\cdot \\htmlClass{hl-g0}{g_0}",
               "justification": "Substituting $v_e = I_{sp} \\cdot g_0$ back into the thrust equation.",
               "explanation": "This form is useful because $I_{sp}$ is how engines are rated. It separates thrust into three factors: how much propellant leaves each second, how efficiently the engine converts propellant into exhaust speed, and the standard-gravity conversion factor built into the historical definition of specific impulse.",
@@ -887,6 +894,7 @@
         },
         {
           "id": "tsiolkovsky-rocket-equation",
+          "sceneStep": 5,
           "title": "Tsiolkovsky Rocket Equation",
           "technique": "derivation",
           "goal": "Derive the Tsiolkovsky rocket equation, which relates the change in velocity of a rocket to its exhaust velocity and the ratio of its initial to final mass, from its differential form.",
@@ -894,6 +902,8 @@
             {
               "type": "given",
               "label": "Given",
+              "id": "given",
+              "sceneStep": 5,
               "math": "dv \\cdot m = - dm \\cdot v_{e}",
               "justification": "the starting expression",
               "semanticGraph": {
@@ -929,6 +939,8 @@
             {
               "type": "step",
               "label": "Divide both sides by $m$",
+              "id": "divide-by-mass",
+              "sceneStep": 5,
               "math": "dv = - \\frac{v_{e}}{m} dm",
               "justification": "To prepare for integration, divide both sides by $m$ to separate the differentials $dv$ and $dm$.",
               "semanticGraph": {
@@ -964,6 +976,8 @@
             {
               "type": "step",
               "label": "Rewrite the right side to prepare for integration",
+              "id": "separate-differentials",
+              "sceneStep": 5,
               "math": "dv = - v_{e} \\cdot \\frac{1}{m} dm",
               "justification": "Rewrite the right side to explicitly show the term $\\frac{1}{m}$, which is a standard integral form.",
               "semanticGraph": {
@@ -1001,6 +1015,8 @@
             {
               "type": "step",
               "label": "Integrate both sides with definite limits",
+              "id": "integrate",
+              "sceneStep": 5,
               "math": "\\int_{v_{0}}^{v_{f}} dv = \\int_{m_{0}}^{m_{f}} - v_{e} \\cdot \\frac{1}{m} dm",
               "justification": "Integrate both sides of the equation. The left side is integrated from an initial velocity $v_0$ to a final velocity $v_f$, and the right side is integrated from an initial mass $m_0$ to a final mass $m_f$.",
               "semanticGraph": {
@@ -1050,6 +1066,8 @@
             {
               "type": "step",
               "label": "Evaluate the definite integrals",
+              "id": "evaluate-integrals",
+              "sceneStep": 5,
               "math": "v_{f} - v_{0} = - v_{e} \\cdot \\left(\\log{\\left(m_{f} \\right)} - \\log{\\left(m_{0} \\right)}\\right)",
               "justification": "Evaluate each definite integral directly by applying the Fundamental Theorem of Calculus: the antiderivative of $dv$ is $v$ (giving $v_f-v_0$), and of $\\frac{1}{m}dm$ is $\\log m$ (giving $\\log m_f-\\log m_0$).",
               "semanticGraph": {
@@ -1100,6 +1118,8 @@
             {
               "type": "step",
               "label": "Apply the logarithm property $\\log a - \\log b = \\log \\left(\\frac{a}{b}\\right)$",
+              "id": "apply-log-quotient",
+              "sceneStep": 5,
               "math": "v_{f} - v_{0} = - v_{e} \\cdot \\log{\\left(\\frac{m_{f}}{m_{0}} \\right)}",
               "justification": "Use the logarithm property $\\log a - \\log b = \\log \\left(\\frac{a}{b}\\right)$ to combine the logarithmic terms.",
               "semanticGraph": {
@@ -1147,6 +1167,7 @@
             {
               "type": "step",
               "label": "Substitute $\\Delta v = v_f - v_0$ and apply the logarithm property $- \\log x = \\log \\left(x^{-1}\\right)$",
+              "sceneStep": 5,
               "math": "\\Delta v = v_{e} \\cdot \\log{\\left(\\frac{m_{0}}{m_{f}} \\right)}",
               "justification": "Substitute $\\Delta v = v_f - v_0$ to represent the total change in velocity. Then, use the logarithm property $- \\log x = \\log \\left(x^{-1}\\right)$ to remove the negative sign and invert the fraction inside the logarithm, matching the target form of the Tsiolkovsky rocket equation.",
               "semanticGraph": {
@@ -1323,6 +1344,7 @@
       "proof": [
         {
           "id": "circular-orbital-velocity",
+          "sceneStep": 0,
           "title": "Circular Orbital Velocity",
           "technique": "derivation",
           "goal": "This derivation transforms the equation for centripetal force equaling gravitational force, $\\frac{m \\cdot v^{2}}{r} = \\frac{G \\cdot M \\cdot m}{r^{2}}$, into an expression for orbital speed, $v = \\sqrt{\\frac{G \\cdot M}{r}}$. This shows how orbital speed depends only on the masses and radius, not the orbiting object's mass.",
@@ -1330,6 +1352,8 @@
             {
               "type": "given",
               "label": "Given",
+              "id": "given",
+              "sceneStep": 0,
               "math": "\\frac{m \\cdot v^{2}}{r} = \\frac{G \\cdot M \\cdot m}{r^{2}}",
               "justification": "the starting expression",
               "semanticGraph": {
@@ -1381,6 +1405,8 @@
             {
               "type": "step",
               "label": "Divide both sides by $m$",
+              "id": "divide-by-mass",
+              "sceneStep": 0,
               "math": "\\frac{v^{2}}{r} = \\frac{G \\cdot M}{r^{2}}",
               "justification": "Since $m$ represents mass, it is non-zero, allowing us to divide both sides by $m$. This simplifies the equation.",
               "semanticGraph": {
@@ -1425,6 +1451,8 @@
             {
               "type": "step",
               "label": "Multiply both sides by $r$",
+              "id": "multiply-by-r",
+              "sceneStep": 0,
               "math": "v^{2} = \\frac{G \\cdot M \\cdot r}{r^{2}}",
               "justification": "To isolate $v^2$, multiply both sides by $r$. Since $r$ represents a radius, it is non-zero, so this is a valid operation.",
               "semanticGraph": {
@@ -1467,6 +1495,8 @@
             {
               "type": "step",
               "label": "Simplify the right-hand side by canceling $r$",
+              "id": "cancel-r",
+              "sceneStep": 0,
               "math": "v^{2} = \\frac{G \\cdot M}{r}",
               "justification": "The $r$ in the numerator cancels with one $r$ in the denominator on the right-hand side ($r/r^2 = 1/r$).",
               "semanticGraph": {
@@ -1504,6 +1534,8 @@
             {
               "type": "step",
               "label": "Take the square root of both sides",
+              "id": "take-square-root",
+              "sceneStep": 0,
               "math": "v = \\sqrt{\\frac{G \\cdot M}{r}}",
               "justification": "To solve for $v$, take the square root of both sides. In this physical context, $v$ represents speed, which is non-negative, so we only consider the positive root.",
               "semanticGraph": {
@@ -1542,6 +1574,7 @@
         },
         {
           "id": "escape-velocity",
+          "sceneStep": 0,
           "title": "Escape Velocity",
           "technique": "derivation",
           "goal": "To derive the expression for orbital velocity $v$ from the equality of kinetic energy and gravitational potential energy, showing how $v$ depends on the gravitational constant $G$, masses $M$, and orbital radius $r$.",
@@ -1549,6 +1582,8 @@
             {
               "type": "given",
               "label": "Given",
+              "id": "given",
+              "sceneStep": 0,
               "math": "\\frac{m \\cdot v^{2}}{2} = \\frac{G \\cdot M \\cdot m}{r}",
               "justification": "the starting expression",
               "semanticGraph": {
@@ -1599,6 +1634,8 @@
             {
               "type": "step",
               "label": "Multiply both sides by $2$",
+              "id": "multiply-by-2",
+              "sceneStep": 0,
               "math": "m \\cdot v^{2} = \\frac{2 \\cdot G \\cdot M \\cdot m}{r}",
               "justification": "Multiplying both sides of an equation by the same non-zero number maintains the equality.",
               "semanticGraph": {
@@ -1647,6 +1684,8 @@
             {
               "type": "step",
               "label": "Divide both sides by $m$",
+              "id": "divide-by-mass",
+              "sceneStep": 0,
               "math": "v^{2} = \\frac{2 \\cdot G \\cdot M}{r}",
               "justification": "Dividing both sides of an equation by the same non-zero number maintains the equality. The variable $m$ cancels out from the numerator and denominator on the right side.",
               "semanticGraph": {
@@ -1688,6 +1727,8 @@
             {
               "type": "step",
               "label": "Take the square root of both sides",
+              "id": "take-square-root",
+              "sceneStep": 0,
               "math": "v = \\sqrt{\\frac{2 \\cdot G \\cdot M}{r}}",
               "justification": "To solve for $v$, we take the square root of both sides. In physics, speed is a positive quantity, so we consider the positive root.",
               "semanticGraph": {
@@ -1729,6 +1770,8 @@
             {
               "type": "step",
               "label": "Apply the product rule for square roots",
+              "id": "product-rule-roots",
+              "sceneStep": 0,
               "math": "v = \\sqrt{2} \\cdot \\sqrt{\\frac{G \\cdot M}{r}}",
               "justification": "The square root of a product can be written as the product of the square roots: $\\sqrt{a \\cdot b} = \\sqrt{a} \\cdot \\sqrt{b}$.",
               "semanticGraph": {
@@ -1773,6 +1816,7 @@
         },
         {
           "id": "vis-viva",
+          "sceneStep": 0,
           "title": "Vis-viva Equation",
           "technique": "derivation",
           "goal": "This derivation transforms the conservation of energy equation for an orbiting body into the Vis-Viva equation, which explicitly shows the square of its velocity, $v^2$, in terms of the gravitational constant $G$, the central mass $M$, the orbital radius $r$, and the semi-major axis $a$.",
@@ -1780,6 +1824,8 @@
             {
               "type": "given",
               "label": "Given",
+              "id": "given",
+              "sceneStep": 0,
               "math": "- \\frac{G \\cdot M}{r} + \\frac{v^{2}}{2} = - \\frac{G \\cdot M}{2 \\cdot a}",
               "justification": "the starting expression",
               "semanticGraph": {
@@ -1839,6 +1885,8 @@
             {
               "type": "step",
               "label": "Add $\\frac{G \\cdot M}{r}$ to both sides of the equation",
+              "id": "add-gm-over-r",
+              "sceneStep": 0,
               "math": "\\frac{v^{2}}{2} = - \\frac{G \\cdot M}{2 \\cdot a} + \\frac{G \\cdot M}{r}",
               "justification": "This isolates the kinetic energy term on the left side, preparing to solve for $v^2$.",
               "semanticGraph": {
@@ -1898,6 +1946,8 @@
             {
               "type": "step",
               "label": "Multiply both sides by $2$",
+              "id": "multiply-by-2",
+              "sceneStep": 0,
               "math": "v^{2} = 2 \\cdot \\left( - \\frac{G \\cdot M}{2 \\cdot a} + \\frac{G \\cdot M}{r} \\right)",
               "justification": "This step isolates $v^2$ on the left side.",
               "semanticGraph": {
@@ -1955,6 +2005,8 @@
             {
               "type": "step",
               "label": "Distribute the $2$ on the right side",
+              "id": "distribute-2",
+              "sceneStep": 0,
               "math": "v^{2} = - \\frac{2 \\cdot G \\cdot M}{2 \\cdot a} + \\frac{2 \\cdot G \\cdot M}{r}",
               "justification": "Applying the distributive property simplifies the terms inside the parenthesis.",
               "semanticGraph": {
@@ -2014,6 +2066,8 @@
             {
               "type": "step",
               "label": "Simplify the first term on the right side",
+              "id": "simplify-first-term",
+              "sceneStep": 0,
               "math": "v^{2} = - \\frac{G \\cdot M}{a} + \\frac{2 \\cdot G \\cdot M}{r}",
               "justification": "The factor of $2$ in the numerator and denominator of the first term cancels out.",
               "semanticGraph": {
@@ -2067,6 +2121,8 @@
             {
               "type": "step",
               "label": "Factor out $G \\cdot M$ from the terms on the right side",
+              "id": "factor-gm",
+              "sceneStep": 0,
               "math": "v^{2} = G \\cdot M \\cdot \\left( - \\frac{1}{a} + \\frac{2}{r} \\right)",
               "justification": "Factoring out the common term $G \\cdot M$ sets up the expression to match the target form.",
               "semanticGraph": {
@@ -2116,6 +2172,8 @@
             {
               "type": "step",
               "label": "Rearrange the terms inside the parenthesis",
+              "id": "rearrange",
+              "sceneStep": 0,
               "math": "v^{2} = G \\cdot M \\cdot \\left( \\frac{2}{r} - \\frac{1}{a} \\right)",
               "justification": "Rearranging the terms within the parenthesis to match the desired order for clarity and consistency with the standard form of the Vis-Viva equation.",
               "semanticGraph": {
@@ -2166,6 +2224,7 @@
         },
         {
           "id": "trans-lunar-injection",
+          "sceneStep": 0,
           "title": "Trans-Lunar Injection Δv",
           "technique": "derivation",
           "goal": "This derivation shows how to express the change in velocity $\\Delta v$ required to transition from a circular orbit at radius $r$ to an elliptical orbit with periapsis radius $r$ and apoapsis radius $r_a$.",
@@ -2173,6 +2232,8 @@
             {
               "type": "given",
               "label": "Given",
+              "id": "given",
+              "sceneStep": 0,
               "math": "\\Delta v = - v_{c} + v_{p}",
               "justification": "Substitute expressions for $v_p$ and $v_c$ and simplify.",
               "semanticGraph": {
@@ -2204,6 +2265,8 @@
             {
               "type": "step",
               "label": "Substitute the formula for circular orbital velocity.",
+              "id": "substitute-circular-velocity",
+              "sceneStep": 0,
               "math": "\\Delta v = - \\sqrt{\\frac{G \\cdot M}{r}} + v_{p}",
               "justification": "The circular orbital velocity at radius $r$ is given by $v_c = \\sqrt{\\frac{G \\cdot M}{r}}$, where $G$ is the gravitational constant and $M$ is the mass of the central body. This $r$ is the radius of the circular orbit.",
               "semanticGraph": {
@@ -2247,6 +2310,8 @@
             {
               "type": "step",
               "label": "Substitute the formula for velocity at periapsis.",
+              "id": "substitute-periapsis-velocity",
+              "sceneStep": 0,
               "math": "\\Delta v = - \\sqrt{\\frac{G \\cdot M}{r}} + \\sqrt{\\frac{G \\cdot M}{r}} \\cdot \\sqrt{2} \\cdot \\sqrt{\\frac{r_a}{r + r_a}}",
               "justification": "The velocity at periapsis $r$ of an elliptical orbit with apoapsis $r_a$ is derived from the vis-viva equation $v = \\sqrt{G \\cdot M \\cdot \\left(\\frac{2}{r} - \\frac{1}{a}\\right)}$, where $a = \\frac{r + r_a}{2}$ is the semi-major axis. This leads to $v_p = \\sqrt{\\frac{G \\cdot M}{r}} \\cdot \\sqrt{2} \\cdot \\sqrt{\\frac{r_a}{r + r_a}}$.",
               "semanticGraph": {
@@ -2319,6 +2384,8 @@
             {
               "type": "step",
               "label": "Factor out the common term $\\sqrt{\\frac{G \\cdot M}{r}}$.",
+              "id": "factor-common-term",
+              "sceneStep": 0,
               "math": "\\Delta v = \\sqrt{\\frac{G \\cdot M}{r}} \\cdot \\left(-1 + \\sqrt{2} \\cdot \\sqrt{\\frac{r_a}{r + r_a}}\\right)",
               "justification": "Factor out the common term to simplify the expression.",
               "semanticGraph": {
@@ -2380,6 +2447,7 @@
             {
               "type": "step",
               "label": "Rearrange the terms inside the parenthesis.",
+              "sceneStep": 0,
               "math": "\\Delta v = \\sqrt{\\frac{G \\cdot M}{r}} \\cdot \\left(\\sqrt{2} \\cdot \\sqrt{\\frac{r_a}{r + r_a}} - 1\\right)",
               "justification": "Reorder the terms within the parenthesis for clarity and to match the target form.",
               "semanticGraph": {
@@ -2443,6 +2511,7 @@
         },
         {
           "id": "orbital-period",
+          "sceneStep": 0,
           "title": "Orbital Period (Kepler III)",
           "technique": "derivation",
           "goal": "This derivation rearranges the formula for the orbital period $T$ of a satellite in a circular orbit around a central body of mass $M$, expressing it in a more compact form involving $r^{3/2}$.",
@@ -2450,6 +2519,8 @@
             {
               "type": "given",
               "label": "Given",
+              "id": "given",
+              "sceneStep": 0,
               "math": "T = \\frac{2 \\cdot \\pi \\cdot r}{\\sqrt{\\frac{G \\cdot M}{r}}}",
               "justification": "the starting expression",
               "semanticGraph": {
@@ -2500,6 +2571,8 @@
             {
               "type": "step",
               "label": "Apply the property of square roots $\\sqrt{\\frac{a}{b}} = \\frac{\\sqrt{a}}{\\sqrt{b}}$ to the denominator",
+              "id": "sqrt-property",
+              "sceneStep": 0,
               "math": "T = \\frac{2 \\cdot \\pi \\cdot r}{\\frac{\\sqrt{G \\cdot M}}{\\sqrt{r}}}",
               "justification": "The square root of a fraction can be written as the square root of the numerator divided by the square root of the denominator.",
               "semanticGraph": {
@@ -2552,6 +2625,8 @@
             {
               "type": "step",
               "label": "Multiply the numerator by the reciprocal of the denominator",
+              "id": "multiply-reciprocal",
+              "sceneStep": 0,
               "math": "T = 2 \\cdot \\pi \\cdot r \\cdot \\frac{\\sqrt{r}}{\\sqrt{G \\cdot M}}",
               "justification": "Dividing by a fraction is equivalent to multiplying by its reciprocal.",
               "semanticGraph": {
@@ -2602,6 +2677,8 @@
             {
               "type": "step",
               "label": "Combine $r$ and $\\sqrt{r}$ using exponent rules, $x \\cdot \\sqrt{x} = x^{3/2}$",
+              "id": "combine-exponents",
+              "sceneStep": 0,
               "math": "T = 2 \\cdot \\pi \\cdot \\frac{r^{3/2}}{\\sqrt{G \\cdot M}}",
               "justification": "Since $r = r^1$ and $\\sqrt{r} = r^{1/2}$, their product is $r^{1 + 1/2} = r^{3/2}$.",
               "semanticGraph": {
@@ -2657,6 +2734,8 @@
             {
               "type": "step",
               "label": "Rewrite $r^{3/2}$ as $\\sqrt{r^3}$",
+              "id": "rewrite-power",
+              "sceneStep": 0,
               "math": "T = 2 \\cdot \\pi \\cdot \\frac{\\sqrt{r^3}}{\\sqrt{G \\cdot M}}",
               "justification": "The fractional exponent $a^{m/n}$ is equivalent to $\\sqrt[n]{a^m}$, so $r^{3/2} = \\sqrt{r^3}$.",
               "semanticGraph": {
@@ -2706,6 +2785,8 @@
             {
               "type": "step",
               "label": "Combine the square roots using $\\frac{\\sqrt{a}}{\\sqrt{b}} = \\sqrt{\\frac{a}{b}}$",
+              "id": "combine-roots",
+              "sceneStep": 0,
               "math": "T = 2 \\cdot \\pi \\cdot \\sqrt{\\frac{r^{3}}{G \\cdot M}}",
               "justification": "The ratio of two square roots can be expressed as the square root of their ratio.",
               "semanticGraph": {
@@ -2776,8 +2857,8 @@
         {
           "name": "Perigee Close",
           "description": "Focus on the low point where departure burns matter most",
-          "position": [1.5, 1.2, 6],
-          "target": [0.7, 0, 0]
+          "position": [-1.5, 1.2, 6],
+          "target": [-0.7, 0, 0]
         },
         {
           "name": "Departure View",
@@ -2810,7 +2891,7 @@
         {
           "id": "s2_perigee",
           "type": "point",
-          "position": [0.6556, 0, 0],
+          "position": [-0.6556, 0, 0],
           "color": "#ffd166",
           "size": 8,
           "label": "Perigee"
@@ -2818,7 +2899,7 @@
         {
           "id": "s2_apogee",
           "type": "point",
-          "position": [-7.8016, 0, 0],
+          "position": [7.8016, 0, 0],
           "color": "#f5b041",
           "size": 8,
           "label": "Apogee"

@@ -46,10 +46,21 @@
               style="background:transparent" title="Quadratic formula — interactive proof" data-algebench-embed></iframe>
       <figcaption>Figure 1 — deriving the quadratic formula by completing the square. Interactive.</figcaption>
     </figure>
-    <div class="howto">Try hovering \( a \), \( b \), \( c \) and watch every copy of that term
-      light up across the whole derivation. Hover a term and a small <b>✦ AI button</b> fades in
-      beside it — click it to jump into the full app and chat with an <b>AI tutor</b> about that
-      exact symbol, the proof and the step you were on already loaded as context.</div>
+    <div class="howto">The point of these proofs isn't the animation — it's that <b>every step is
+      graded, and you can read the grades at a glance.</b> The pill in the card's <b>top-right
+      corner</b> is the <b>overall badge</b> — a single verdict for the whole proof. <b>Click it and
+      it stays pinned open</b>, and every step lights up with its own <b>per-step badge</b> across the
+      step navigator, each number underlined in its tier color. Hover any badge to read the verdict in
+      words. The colors and icons run from strongest to weakest:
+      <span style="color:#d4a017">★</span> <b>Grounded</b> (symbolically proven from the line above) ·
+      <span style="color:#9aa3b5">✓</span> <b>Verified</b> (strong CAS evidence) ·
+      <span style="color:#2fb6a3">✦</span> <b>Domain</b> (vouched for by a domain expert) ·
+      <span style="color:#5b9bf0">◇</span> <b>Plausible</b> (valid, but the CAS couldn't decide) ·
+      <span style="color:#8a93a5">○</span> <b>Unchecked</b> (nothing to convert) ·
+      <span style="color:#e0556b">✗</span> <b>Refuted</b> (disproven — caught and never shipped).
+      In this proof almost every step glows <span style="color:#d4a017">★</span> <b>gold</b>:
+      completing the square is pure algebra the CAS proves line by line. The full grading pipeline is
+      spelled out in <b>How it works</b>, below.</div>
 
     <h2>2 · How a spinning station fakes gravity</h2>
     <p>Spin a space station and the floor pushes its occupants outward — artificial gravity, no mass
@@ -61,8 +72,12 @@
               style="background:transparent" title="Artificial gravity from spin — interactive proof" data-algebench-embed></iframe>
       <figcaption>Figure 2 — deriving artificial gravity \( g_a = \omega^2 R \) for a rotating habitat. Interactive.</figcaption>
     </figure>
-    <div class="howto">Click the term AI button on \( \omega \) or \( R \) to open the live
-      <b>3D rotating habitat</b> — spin it up and watch the gravity arrow grow as you derived it.</div>
+    <div class="howto">Every symbol is live. Hover any term — say \( \omega \) or \( R \) — and
+      every copy of it lights up across the whole derivation. A small <b>✦ AI button</b> fades in
+      beside it: click it to jump into the full app and chat with an <b>AI tutor</b> that already
+      has the proof and the exact step you were on loaded as context. Here it opens the live
+      <b>3D rotating habitat</b> — spin it up and watch the gravity arrow grow, just as you
+      derived it.</div>
 
     <h2>3 · A spacecraft hitting the atmosphere</h2>
     <p>Now something you would normally only meet in an aerospace course: the <b>Allen–Eggers</b>
@@ -99,6 +114,24 @@
               style="background:transparent" title="Trans-lunar injection Δv — interactive proof" data-algebench-embed></iframe>
       <figcaption>Figure 5 — the trans-lunar injection Δv, from \( v_p - v_c \) to the factored form. Interactive.</figcaption>
     </figure>
+
+    <h2>6 · Why a qubit is a point on a sphere</h2>
+    <p>One from quantum computing to finish. A qubit's state is two complex amplitudes — four real
+    numbers — yet every textbook draws it as a single point on the <b>Bloch sphere</b>. This
+    derivation shows why: normalization removes one degree of freedom, the unobservable
+    <b>global phase</b> removes another, and what survives is exactly two angles,
+    \( \lvert\psi\rangle = \cos(\theta/2)\lvert 0\rangle + e^{i\phi}\sin(\theta/2)\lvert 1\rangle \).
+    The badge mix tells the honest story again: the phase-factoring algebra is <b>Grounded</b>,
+    while genuinely physical moves — writing amplitudes in polar form, discarding the global
+    phase — carry teal <b>Domain</b> badges.</p>
+    <figure>
+      <iframe data-builtin="quantum/bloch-parameterization" height="560" loading="lazy"
+              style="background:transparent" title="Bloch sphere parameterization — interactive proof" data-algebench-embed></iframe>
+      <figcaption>Figure 6 — parameterizing a qubit onto the Bloch sphere, \( (\theta, \phi) \). Interactive.</figcaption>
+    </figure>
+    <div class="howto">Hover \( \theta \) or \( \phi \) to see what each angle means, then click the
+      <b>✦ AI button</b> to land in the quantum-states lesson — the proof and the step you were on
+      already loaded next to the live Bloch sphere.</div>
 
     <h2>How it works: written by an AI, checked by a computer</h2>
     <p>Here is the unusual part. Each derivation above is <b>written by a language model</b> — and then
