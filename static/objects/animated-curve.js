@@ -42,12 +42,17 @@ export function renderAnimatedCurve(el, view) {
         } catch(e) { return 0; }
     }
 
+    // Optional plane selection: 'xy' (default) plots expr along y; 'xz' plots it along z.
+    // fillRegions are only supported in the default 'xy' plane.
+    const curvePlane = el.plane === 'xz' ? 'xz' : 'xy';
+
     function buildCurvePoints(tSec) {
         const [rL, rR] = evalRange(tSec);
         const pts = [];
         for (let i = 0; i <= samples; i++) {
             const x = rL + (rR - rL) * (i / samples);
-            pts.push([x, evalAtX(x, tSec), 0]);
+            const v = evalAtX(x, tSec);
+            pts.push(curvePlane === 'xz' ? [x, 0, v] : [x, v, 0]);
         }
         return pts;
     }
@@ -90,8 +95,11 @@ export function renderAnimatedCurve(el, view) {
         }
     }
 
-    // Fill regions
-    const fillRegions = Array.isArray(el.fillRegions) ? el.fillRegions : [];
+    // Fill regions (xy plane only — geometry is built in the xy plane)
+    if (curvePlane === 'xz' && Array.isArray(el.fillRegions) && el.fillRegions.length) {
+        console.warn(`animated_curve "${el.id || ''}": fillRegions are ignored when plane is "xz"`);
+    }
+    const fillRegions = curvePlane === 'xz' ? [] : (Array.isArray(el.fillRegions) ? el.fillRegions : []);
     const FILL_MAX_FLOATS = 1024 * 18;
 
     const fillEntries = fillRegions.map(fr => {
