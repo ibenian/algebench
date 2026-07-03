@@ -124,7 +124,7 @@
         {
           "title": "A travelling EM wave",
           "description": "A sinusoidal electromagnetic wave gives the first mental model: a spatially spread disturbance with a wavelength $\\lambda$.",
-          "prompt": "Introduce wavelength as crest-to-crest spacing. Do not talk about photons as tiny balls.",
+          "prompt": "Introduce wavelength as crest-to-crest spacing, amplitude as peak height, and frequency as crests passing per second (period T = 1/f). The wave now visibly travels. Do not talk about photons as tiny balls.",
           "sliders": [
             {
               "id": "lambda",
@@ -138,10 +138,8 @@
           "add": [
             {
               "id": "s0_wave",
-              "type": "parametric_curve",
-              "x": "t",
-              "y": "sin(2*pi*t/lambda)",
-              "z": "0",
+              "type": "animated_curve",
+              "expr": "sin(2*pi*x/lambda - 2*t)",
               "range": [
                 0,
                 12
@@ -222,19 +220,91 @@
               "color": "#2f9e9b",
               "size": 15,
               "label": "$\\text{EM wave}$"
+            },
+            {
+              "id": "s0_amp_top",
+              "type": "line",
+              "points": [
+                [
+                  0,
+                  1,
+                  0
+                ],
+                [
+                  12,
+                  1,
+                  0
+                ]
+              ],
+              "color": "#9aa4ad",
+              "width": 1,
+              "opacity": 0.3,
+              "legendGroup": "$A$"
+            },
+            {
+              "id": "s0_amp_bottom",
+              "type": "line",
+              "points": [
+                [
+                  0,
+                  -1,
+                  0
+                ],
+                [
+                  12,
+                  -1,
+                  0
+                ]
+              ],
+              "color": "#9aa4ad",
+              "width": 1,
+              "opacity": 0.3,
+              "legendGroup": "$A$"
+            },
+            {
+              "id": "s0_amp_span",
+              "type": "line",
+              "points": [
+                [
+                  11.4,
+                  0,
+                  0
+                ],
+                [
+                  11.4,
+                  1,
+                  0
+                ]
+              ],
+              "color": "#ff7b72",
+              "width": 5,
+              "label": "$A$"
             }
           ],
           "info": [
             {
               "id": "s0_wave_info",
               "position": "top-right",
-              "content": "$$c=f\\lambda$$\nFor fixed $c$, increasing $\\lambda$ decreases $f$."
+              "content": "**Anatomy of a wave**\n\n- $\\lambda$ — crest-to-crest spacing (gold span)\n- $A$ — peak height above rest (coral span)\n- $f$ — crests passing a point per second; period $T = 1/f$\n\n$$c=f\\lambda$$\n\nRelative frequency $\\propto 1/\\lambda = {{toFixed(1/lambda, 2)}}$"
+            }
+          ]
+        },
+        {
+          "title": "Predict: double the wavelength",
+          "description": "Before revealing the graph: with $c$ fixed, if you double the wavelength $\\lambda$, what happens to the frequency $f$? Halves, doubles, or stays the same? And what shape will the $f$ vs $\\lambda$ graph be — a straight line or a curve?",
+          "prompt": "Ask the learner to commit to an answer before advancing. If they hesitate, point back at c = f·lambda: the product must stay fixed. Do not reveal the answer; the next step shows the hyperbola.",
+          "add": [],
+          "info": [
+            {
+              "id": "s0_predict_info",
+              "position": "top-center",
+              "content": "**Predict first**\n\nDouble $\\lambda$ (drag the slider from 2 to 4).\n\n1. Does $f$ halve, double, or stay the same?\n2. Straight line or curve?\n\nCommit to an answer, then advance to check."
             }
           ]
         },
         {
           "title": "Frequency falls as wavelength grows",
-          "description": "With $c$ fixed, the frequency scales like $1/\\lambda$. The scale bars below compare $\\lambda$ to nanoscale objects: visible light wavelengths are on the order of viruses and bacteria.",
+          "description": "Answer: $f$ halves — $f = c/\\lambda$ is an inverse proportion, so the graph is a hyperbola, not a line. With $c$ fixed, the frequency scales like $1/\\lambda$. The scale bars below compare $\\lambda$ to nanoscale objects: visible light wavelengths are on the order of viruses and bacteria.",
           "prompt": "Use the slider to compare short and long wavelengths. Ask the learner what happens to f when lambda doubles. Draw attention to the scale bars: when lambda is around 1, the wavelength is about the size of a flu virus; at lambda 5, it matches the width of an E. coli bacterium. Visible light lives in this extraordinary nanoscale world.",
           "add": [
             {
@@ -1401,6 +1471,11 @@
               "id": "s0_eb_info",
               "position": "top-right",
               "content": "**Complete EM wave**\n\n$$\\vec{E}=E_0\\sin(kx-\\omega t)\\,\\hat{y}$$\n\n$$\\vec{B}=\\frac{E_0}{c}\\sin(kx-\\omega t)\\,\\hat{z}$$\n\n$\\vec{E}\\perp\\vec{B}\\perp\\hat{x}$\n\nPrevious steps showed only $\\vec{E}$ because it dominates interactions with charged matter."
+            },
+            {
+              "id": "s0_hook_info",
+              "position": "bottom-right",
+              "content": "**Where this is headed**\n\nMaxwell's wave picture is perfect — until you ask how much energy a hot box should radiate. That question breaks classical physics. Next scene: the crisis."
             }
           ]
         }
@@ -1487,7 +1562,7 @@
               "justification": "Frequency is the reciprocal of period: $f=1/T$. Substitute $T=\\lambda/c$.",
               "explanation": "Rearranging gives the wave relation: frequency equals speed divided by wavelength.",
               "prompt": "Show the algebra step by step: T = lambda/c, so f = 1/T = c/lambda.",
-              "sceneStep": 1
+              "sceneStep": 2
             },
             {
               "id": "wave_equation",
@@ -1511,7 +1586,7 @@
               "justification": "Multiply both sides of $f=c/\\lambda$ by $\\lambda$.",
               "explanation": "This is just $x=vt$ applied to one cycle: speed equals frequency times wavelength.",
               "prompt": "Emphasize that c = f lambda is not a new law — it is x = v t for one wave cycle.",
-              "sceneStep": 1
+              "sceneStep": 2
             }
           ]
         },
@@ -1519,8 +1594,8 @@
           "id": "em_wave_equation",
           "title": "Maxwell to $\\vec{E}=E_0\\sin(kx-\\omega t)\\,\\hat{y}$",
           "technique": "derivation",
-          "goal": "Derive the electromagnetic wave equation from Maxwell's equations and show that a sinusoidal $\\vec{E}$ field is a solution.",
-          "prompt": "Start from Maxwell's curl equations in free space. Take the curl of Faraday's law and use the vector identity to get the wave equation. Show the sinusoidal solution and extract the dispersion relation omega = ck.",
+          "goal": "(Optional deep dive — requires vector calculus.) Derive the electromagnetic wave equation from Maxwell's equations and show that a sinusoidal $\\vec{E}$ field is a solution.",
+          "prompt": "This derivation uses vector calculus (curl, partial derivatives). Tell novice learners it is safe to skip — the take-away is that Maxwell's equations predict waves moving at exactly c. Start from Maxwell's curl equations in free space. Take the curl of Faraday's law and use the vector identity to get the wave equation. Show the sinusoidal solution and extract the dispersion relation omega = ck.",
           "steps": [
             {
               "id": "maxwell_faraday",
@@ -1764,7 +1839,7 @@
               "justification": "The sinusoidal ansatz satisfies Maxwell's wave equation provided $\\omega=ck$. This is the wave shown in the 3D view.",
               "explanation": "A sinusoidal electric field oscillating in $\\hat{y}$ and propagating in $\\hat{x}$ is a valid electromagnetic wave — exactly what the teal curve shows.",
               "prompt": "This is the equation behind the visualization. The teal curve is E_0 sin(kx - ωt) in the y-direction.",
-              "sceneStep": 3
+              "sceneStep": 4
             }
           ]
         },
@@ -1772,8 +1847,8 @@
           "id": "B_from_E",
           "title": "Faraday's law: $\\vec{B}$ from $\\vec{E}$",
           "technique": "derivation",
-          "goal": "Derive the magnetic field $\\vec{B}=\\frac{E_0}{c}\\sin(kx-\\omega t)\\,\\hat{z}$ from the electric field using Faraday's law.",
-          "prompt": "Start from the known E field solution and apply Faraday's law to derive B. Compute the curl component by component, integrate in time, and use omega=ck to get B=E/c.",
+          "goal": "(Optional deep dive — requires vector calculus.) Derive the magnetic field $\\vec{B}=\\frac{E_0}{c}\\sin(kx-\\omega t)\\,\\hat{z}$ from the electric field using Faraday's law.",
+          "prompt": "This derivation uses vector calculus (curl, partial derivatives). Tell novice learners it is safe to skip — the take-away is that Maxwell's equations predict waves moving at exactly c. Start from the known E field solution and apply Faraday's law to derive B. Compute the curl component by component, integrate in time, and use omega=ck to get B=E/c.",
           "steps": [
             {
               "id": "start_from_E",
@@ -1805,7 +1880,7 @@
               "justification": "From the previous proof: this $\\vec{E}$ solves Maxwell's wave equation.",
               "explanation": "We start with the electric field we already derived — now we use it to find the magnetic field.",
               "prompt": "Recall the E field solution from the previous proof. Now we will find B.",
-              "sceneStep": 3
+              "sceneStep": 4
             },
             {
               "id": "faraday_applied",
@@ -1829,7 +1904,7 @@
               "justification": "Faraday's law connects the spatial variation of $\\vec{E}$ to the time variation of $\\vec{B}$.",
               "explanation": "If $\\vec{E}$ varies in space, Faraday's law tells us $\\vec{B}$ must be changing in time.",
               "prompt": "Faraday's law is the bridge: given E, it tells us what B must be.",
-              "sceneStep": 3
+              "sceneStep": 4
             },
             {
               "id": "compute_curl",
@@ -1861,7 +1936,7 @@
               "justification": "Since $\\vec{E}$ has only a $y$-component that depends on $x$, the only nonzero curl component is $\\partial E_y/\\partial x$ in the $\\hat{z}$ direction.",
               "explanation": "The curl picks out how the $y$-field changes along $x$ — and points it in the $z$-direction. This is why $\\vec{B}$ will be in $\\hat{z}$.",
               "prompt": "Only one component of the curl survives: dEy/dx gives a z-component. This determines the direction of B.",
-              "sceneStep": 3
+              "sceneStep": 4
             },
             {
               "id": "faraday_z",
@@ -1889,7 +1964,7 @@
               "justification": "Equate the $z$-component of the curl to $-\\partial B_z/\\partial t$.",
               "explanation": "Faraday's law now gives us a simple equation: the time derivative of $B_z$ equals $-E_0 k\\cos(kx-\\omega t)$.",
               "prompt": "Write out the z-component of Faraday's law explicitly.",
-              "sceneStep": 3
+              "sceneStep": 4
             },
             {
               "id": "integrate",
@@ -1917,7 +1992,7 @@
               "justification": "Integrate $-\\partial B_z/\\partial t$ with respect to $t$. The integral of $\\cos(kx-\\omega t)$ with respect to $t$ is $\\frac{1}{\\omega}\\sin(kx-\\omega t)$.",
               "explanation": "Integrating the cosine in time gives back a sine — the magnetic field oscillates in phase with the electric field, with amplitude $E_0 k/\\omega$.",
               "prompt": "Integrate both sides with respect to time. The cosine integrates to sine, picking up a factor of 1/omega.",
-              "sceneStep": 3
+              "sceneStep": 4
             },
             {
               "id": "use_dispersion",
@@ -1941,7 +2016,7 @@
               "justification": "The dispersion relation $\\omega=ck$ from the wave equation simplifies $k/\\omega$ to $1/c$.",
               "explanation": "The ratio $k/\\omega$ collapses to $1/c$ — the wave number and frequency are locked together by the speed of light.",
               "prompt": "This is where the dispersion relation omega=ck pays off. The k cancels beautifully.",
-              "sceneStep": 3
+              "sceneStep": 4
             },
             {
               "id": "B_solution",
@@ -1977,7 +2052,7 @@
               "justification": "Substitute $k/\\omega=1/c$. The magnetic field is perpendicular to $\\vec{E}$ and to the propagation direction, with magnitude $B_0=E_0/c$.",
               "explanation": "$\\vec{B}$ oscillates in $\\hat{z}$, perpendicular to both $\\vec{E}$ (in $\\hat{y}$) and propagation (in $\\hat{x}$). Its amplitude is $E_0/c$ — about $3\\times 10^{-9}$ times smaller in SI units, which is why $\\vec{E}$ dominates interactions with matter.",
               "prompt": "This is the red curve in the 3D view. B is perpendicular to E, in phase, and c times smaller. That's why we usually only need to think about E.",
-              "sceneStep": 3
+              "sceneStep": 4
             }
           ]
         }
