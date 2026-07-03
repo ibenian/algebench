@@ -19,7 +19,7 @@
 //     view,               // 'math' (Math tab); scene=default  -> ?view=
 //     panel,              // 'chat' (right panel); doc=default -> ?panel=
 //     pp,                 // true => proof panel open           -> ?pp=1
-//     dock,               // true => graph docked (split) view; false => full -> ?dock=1
+//     dock,               // true => graph docked (split) view -> ?dock=1 (only true serializes; false/absent omitted)
 //     sc,                 // scene id (resolved)            -> ?sc=
 //     st,                 // step id; absent => base step   -> ?st=
 //     pf,                 // proof id                       -> ?pf=

@@ -24,7 +24,7 @@ import re
 from typing import Optional
 
 import sympy as sp
-from sympy.physics.quantum.state import Ket
+from sympy.physics.quantum.state import Ket, Bra
 
 from backend.model.semantic_graph import SemanticGraph
 
@@ -83,20 +83,30 @@ def _symbol(node) -> sp.Expr:
 
 
 _KET_LATEX = re.compile(r"^\\left\|\s*(.*?)\s*\\right\\rangle$")
+_BRA_LATEX = re.compile(r"^\\left\\langle\s*(.*?)\s*\\right\|$")
+
+
+def _dirac(node, pattern, ctor, kind):
+    """A Dirac ket/bra leaf as a sympy quantum ``Ket``/``Bra``, keyed by content.
+
+    The key must come from the rendered content (``|0⟩`` → ``Ket('0')``,
+    ``⟨0|`` → ``Bra('0')``), not the node id — ids are graph-local counters, and
+    cross-state equivalence depends on the same ket/bra in two states mapping to
+    the same atom.
+    """
+    latex = node.latex or ""
+    m = pattern.match(latex)
+    if not m or not m.group(1):
+        raise UngroundableGraph(f"{kind} content {latex!r}")
+    return ctor(m.group(1))
 
 
 def _ket(node) -> sp.Expr:
-    """A ket leaf as a sympy quantum ``Ket``, keyed by its content.
+    return _dirac(node, _KET_LATEX, Ket, "ket")
 
-    The key must come from the rendered content (``|0⟩`` → ``Ket('0')``), not
-    the node id — ids are graph-local counters, and cross-state equivalence
-    depends on the same ket in two states mapping to the same atom.
-    """
-    latex = node.latex or ""
-    m = _KET_LATEX.match(latex)
-    if not m or not m.group(1):
-        raise UngroundableGraph(f"ket content {latex!r}")
-    return Ket(m.group(1))
+
+def _bra(node) -> sp.Expr:
+    return _dirac(node, _BRA_LATEX, Bra, "bra")
 
 
 @cas_register_safe_function
@@ -136,6 +146,8 @@ def graph_to_sympy(graph: SemanticGraph) -> sp.Expr:
             res = _symbol(n)
         elif t == "ket":
             res = _ket(n)
+        elif t == "bra":
+            res = _bra(n)
         elif t == "number":
             res = sp.sympify(n.label if n.label is not None else n.value)
         elif t == "operator":

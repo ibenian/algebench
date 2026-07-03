@@ -166,6 +166,22 @@ def test_dataset_carries_source_expressions():
         assert is_grounded(applied, ex.target_expr) is not False
 
 
+def test_dirac_kets_and_bras_ground_symmetrically():
+    # Kets and bras are Dirac leaves keyed by their rendered content, so the same
+    # ket/bra in two states maps to the same sympy atom (cross-state equivalence).
+    # The renderer handles both `ket` and `bra`; grounding must too (regression:
+    # bra nodes used to raise "node type 'bra'" while kets grounded).
+    from sympy.physics.quantum.state import Ket, Bra
+    ket = graph_to_sympy(SVC.latex_to_graph(
+        r"\lvert\psi\rangle = \alpha\lvert 0\rangle + \beta\lvert 1\rangle", domain="quantum"))
+    al, be = sp.symbols(r"\alpha \beta")
+    assert ket == sp.Eq(Ket(r"\psi"), al * Ket("0") + be * Ket("1"))
+    # bra: same shape, Bra atoms — must not raise
+    bra = graph_to_sympy(SVC.latex_to_graph(
+        r"\langle\phi\rvert = 2\langle 0\rvert + 3\langle 1\rvert", domain="quantum"))
+    assert bra == sp.Eq(Bra(r"\phi"), 2 * Bra("0") + 3 * Bra("1"))
+
+
 def test_chained_inequality_grounds_as_conjunction():
     # "a <= g <= b" (an entry-corridor-style bound) parses with a nested
     # relation; it must ground to the standard conjunction And(a<=g, g<=b).
