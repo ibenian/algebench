@@ -1,6 +1,6 @@
 ---
 name: algebench-prebake-graphs
-description: Check an AlgeBench lesson for semantic-graph prebaking — validate which baked graphs are still correct, identify which steps need (re)baking, and bake them into the JSON so the server doesn't derive them at request time.
+description: Check an AlgeBench lesson for semantic-graph prebaking — validate which baked graphs are still correct, identify which steps need (re)baking, and bake them into the JSON so the server doesn't derive them at request time. Pass `enrich` to also fill node metadata (descriptions, units, dimensions, emoji, domain) in a second LM pass.
 triggers:
   - prebake
   - prebake graphs
@@ -8,6 +8,9 @@ triggers:
   - bake graphs
   - check graph prebaking
   - validate prebaked graphs
+  - prebake and enrich
+  - enrich graphs
+  - enrich semantic graphs
 ---
 
 # Prebake Semantic Graphs
@@ -30,10 +33,21 @@ The skill is a thin orchestrator around `scripts/prebake_semantic_graphs.py`
 graph is byte-identical to what the server would produce — baking changes
 *when* the work happens, never the result).
 
+**Two passes, one skill.** Prebaking bakes graph *structure* (nodes/edges) —
+the nodes come out "bare". A separate **enrichment** pass
+(`scripts/prebake_semantic_graph_enrichment.py`) fills the physics *metadata*
+onto those nodes (`description`, `quantity`, `dimension`, `unit`, `emoji`, and
+the graph `domain`) via an LM — this is what the hover tooltips and the AI tutor
+read. Enrichment is **opt-in**: run it by passing **`enrich`** in the invocation
+(e.g. `prebake enrich scenes/foo.json`). It runs *after* the structural bake
+(you can only enrich graphs that exist) — see the [Enrichment](#enrichment-opt-in--pass-enrich) stage below.
+
 ## Inputs
 
 - A scene/lesson JSON path (e.g. `scenes/atmospheric-entry-physics.json`).
   If the user didn't name one, ask which file to check.
+- Optional **`enrich`** flag anywhere in the invocation → after prebaking, also
+  run the enrichment pass (LM metadata). Without it, only structure is baked.
 
 ## Workflow
 
@@ -167,6 +181,71 @@ The load-time win was already measured and reported by `--write` in Step 4
 (the before/after `load (server parse)` line), so no separate timing run is
 needed.
 
+## Enrichment (opt-in — pass `enrich`)
+
+Only when the invocation includes **`enrich`**. Run this **after** the
+structural bake above (Steps 1–5) — enrichment fills metadata onto *baked*
+graphs, so anything still unbaked has nothing to enrich. Same shape as the bake:
+status → present → confirm → write → verify, around
+`scripts/prebake_semantic_graph_enrichment.py`.
+
+Enrichment is an **LM pass** (real Gemini calls; needs `GEMINI_API_KEY`) — it
+labels each node's `description`, `quantity`, `dimension`, `unit`, `emoji`, and
+the graph `domain`. By default it only touches **unenriched** graphs; `--all`
+re-enriches every baked graph.
+
+### E1 — Status (read-only)
+
+```bash
+./run.sh scripts/prebake_semantic_graph_enrichment.py <scene.json> --status --json
+```
+
+Reports `counts` = `{enriched, unenriched, noGraph}`. If `unenriched == 0`,
+say so and **stop** — everything is already enriched (or `--all` to redo).
+
+### E2 — Confirm (LM cost)
+
+Enrichment makes one LM call per unenriched graph (default concurrency 3, so a
+big lesson is minutes and real tokens). **Confirm before writing** via
+`AskUserQuestion`:
+
+- **Enrich unenriched** (recommended) — fills only the graphs missing metadata.
+  Maps to `--write`.
+- **Re-enrich everything** — rewrites metadata on every baked graph (use after a
+  domain/vocabulary change). Maps to `--write --all`.
+- **No — leave as is** — stop.
+
+`--dry-run` runs the LM but skips the write, if you want to preview cost/output
+first. Tunables: `--concurrency N` (default 3), `--retries N` (output-validation
+retries, default 2).
+
+### E3 — Write
+
+```bash
+./run.sh scripts/prebake_semantic_graph_enrichment.py <scene.json> --write        # unenriched only
+./run.sh scripts/prebake_semantic_graph_enrichment.py <scene.json> --write --all  # re-enrich all
+```
+
+The console line reports how many graphs it enriched, how many it left
+untouched, how many **failed**, and the size delta. In `--json`, per-graph
+failures are the **`errors`** array (each `{scene, proof, step, error}`), not a
+`failed` key; `len(errors)` is what the console prints as "failed", and a nonzero
+`errors` is the nonzero exit code. A failure is caught and counted — the rest
+still process; **re-run to retry** (each retry re-attempts only what's still
+unenriched).
+
+### E4 — Verify
+
+```bash
+./run.sh scripts/prebake_semantic_graph_enrichment.py <scene.json> --status --json
+```
+
+Expect `unenriched == 0` (only `enriched` and any un-baked `noGraph` remain) —
+**but only if the write had no failures.** Any graph that errored in E3 stays
+`unenriched`, so a nonzero count here means "re-run to pick up the failures,"
+not a bug. Also worth a final `validate_content.py` on the scene to confirm it
+still passes with the enriched graphs.
+
 ## Important rules
 
 - **Validate before writing — always.** The validate pass is the safety check
@@ -185,3 +264,9 @@ needed.
 - Baked graphs match server output exactly; if a re-validate ever shows
   `stale` right after baking, that's a bug in the derivation pipeline, not the
   scene — surface it rather than rebaking in a loop.
+- **Enrichment is opt-in and LM-backed.** Only run it when the invocation says
+  `enrich`. It costs real Gemini tokens (one call per graph), so confirm before
+  writing — and always **prebake first**: enrichment only fills metadata onto
+  graphs that already exist. Unlike the structural bake (deterministic,
+  byte-identical), enrichment output can vary run-to-run, so prefer
+  "unenriched only" over `--all` unless the vocabulary/domain actually changed.
