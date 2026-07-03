@@ -100,6 +100,24 @@
       <figcaption>Figure 5 — the trans-lunar injection Δv, from \( v_p - v_c \) to the factored form. Interactive.</figcaption>
     </figure>
 
+    <h2>6 · Why a qubit is a point on a sphere</h2>
+    <p>One from quantum computing to finish. A qubit's state is two complex amplitudes — four real
+    numbers — yet every textbook draws it as a single point on the <b>Bloch sphere</b>. This
+    derivation shows why: normalization removes one degree of freedom, the unobservable
+    <b>global phase</b> removes another, and what survives is exactly two angles,
+    \( \lvert\psi\rangle = \cos(\theta/2)\lvert 0\rangle + e^{i\phi}\sin(\theta/2)\lvert 1\rangle \).
+    The badge mix tells the honest story again: the phase-factoring algebra is <b>Grounded</b>,
+    while genuinely physical moves — writing amplitudes in polar form, discarding the global
+    phase — carry teal <b>Domain</b> badges.</p>
+    <figure>
+      <iframe data-builtin="quantum/bloch-parameterization" height="560" loading="lazy"
+              style="background:transparent" title="Bloch sphere parameterization — interactive proof" data-algebench-embed></iframe>
+      <figcaption>Figure 6 — parameterizing a qubit onto the Bloch sphere, \( (\theta, \phi) \). Interactive.</figcaption>
+    </figure>
+    <div class="howto">Hover \( \theta \) or \( \phi \) to see what each angle means, then click the
+      <b>✦ AI button</b> to land in the quantum-states lesson — the proof and the step you were on
+      already loaded next to the live Bloch sphere.</div>
+
     <h2>How it works: written by an AI, checked by a computer</h2>
     <p>Here is the unusual part. Each derivation above is <b>written by a language model</b> — and then
     <b>checked, step by step, by a computer-algebra system (CAS)</b>. The AI proposes the next line;
