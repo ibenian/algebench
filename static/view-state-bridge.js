@@ -130,9 +130,14 @@ export function captureViewState({ includeCamera = false } = {}) {
         ? window.__algebenchGraph.getCurrentView() : 'scene';
     if (view === 'math') vs.view = 'math';
 
-    // Dock (split) layout — serialize only when on, so a shared link reproduces
-    // the split view; an undocked view stays implicit (see view-state.js).
-    if (window.__algebenchGraph && typeof window.__algebenchGraph.isDocked === 'function'
+    // Dock (split) layout — serialize only when the dock is actually SHOWING:
+    // docked AND on the Math view. The dock preference (`_docked`) persists even
+    // while the user is on the Scenes tab, but the split layout only renders in
+    // graph mode — so gating on `view === 'math'` (mirrors graph-view's
+    // `_docked && dockActive`) keeps a scene-view capture from emitting `dock=1`,
+    // which would otherwise force the recipient into graph view via `wantGraph`.
+    if (view === 'math' && window.__algebenchGraph
+        && typeof window.__algebenchGraph.isDocked === 'function'
         && window.__algebenchGraph.isDocked()) {
         vs.dock = true;
     }
