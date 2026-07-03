@@ -4,9 +4,11 @@ name: Tests
 # report on every PR — path-filtering the workflow would leave a docs-only PR
 # stuck on "Expected — waiting for status to be reported" forever. So the suite
 # ALWAYS runs (the check always reports); what varies is depth: a PR that touches
-# Python runs the FULL exhaustive cross-product (~504 combos), while a PR with no
-# Python changes runs a faster SAMPLED subset (conftest's default 200). push(main)
-# and manual dispatch always run exhaustive — main must stay fully green.
+# Python runs the FULL exhaustive semantic-graph cross-product, while a PR with no
+# Python changes runs a faster SAMPLED subset (conftest's default --sampled 200).
+# In practice that's ~5193 collected tests exhaustive vs ~3977 sampled — the delta
+# is the cross-product coverage test; the rest of the suite runs the same either
+# way. push(main) and manual dispatch always run exhaustive — main must stay green.
 on:
   pull_request:
   push:
