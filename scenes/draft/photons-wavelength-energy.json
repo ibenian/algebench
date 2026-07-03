@@ -1406,7 +1406,7 @@
               "samples": 300,
               "color": "#e85d75",
               "width": 4,
-              "label": "$\\vec{B}$ (magnetic)"
+              "legendGroup": "$\\vec{B}$ (magnetic)"
             },
             {
               "id": "s0_z_ref",
@@ -1438,7 +1438,8 @@
                 0
               ],
               "color": "#2f9e9b",
-              "size": 16
+              "size": 16,
+              "label": "$\\vec{E}$ (electric)"
             },
             {
               "id": "s0_B_field_label",
@@ -1450,7 +1451,8 @@
                 1.4
               ],
               "color": "#e85d75",
-              "size": 16
+              "size": 16,
+              "label": "$\\vec{B}$ (magnetic)"
             },
             {
               "id": "s0_prop_label",
@@ -1499,7 +1501,7 @@
               ],
               "color": "#2f9e9b",
               "width": 3,
-              "label": "$E_y(x_0,t)$ — instantaneous"
+              "label": "$E_y(x_0,t)$"
             },
             {
               "id": "s0_B_inst",
@@ -1516,7 +1518,7 @@
               ],
               "color": "#e85d75",
               "width": 3,
-              "label": "$B_z(x_0,t)$ — instantaneous"
+              "label": "$B_z(x_0,t)$"
             }
           ],
           "info": [
@@ -2219,7 +2221,7 @@
         {
           "title": "Hot things glow",
           "description": "Before any theory, the everyday fact: heat something and it glows. Embers glow dull red, the Sun burns yellow-white, the hottest stars shine blue-white. Predict: heat a piece of iron hotter and hotter — does its glow shift toward red or toward blue?",
-          "prompt": "Anchor the phenomenon before any theory. Ask the learner to commit: hotter iron glows redder or bluer? Use the everyday anchors — embers about 800 K are dull red, the Sun about 5800 K is yellow-white, the hottest stars are blue-white. Do not mention modes or kT yet. The temperature slider here is in relative units.",
+          "prompt": "Anchor the phenomenon before any theory. Ask the learner to commit: hotter iron glows redder or bluer? Use the everyday anchors — embers about 800 K are dull red, the Sun about 5800 K is yellow-white, the hottest stars are blue-white. Do not mention modes or kT yet. The temperature slider here is in relative units. The gold curve is the measured blackbody spectrum — treat it as an experimental fact here; the theory fight over explaining it comes next.",
           "remove": [
             {
               "type": "info"
@@ -2355,6 +2357,31 @@
               ],
               "color": "#f59b31",
               "size": 13
+            },
+            {
+              "id": "uv_measured",
+              "type": "animated_curve",
+              "expr": "0.85 * x^3 / (exp(x/Temp) - 1)",
+              "range": [
+                0.02,
+                7
+              ],
+              "samples": 300,
+              "color": "#ffd700",
+              "width": 4,
+              "label": "the measured glow"
+            },
+            {
+              "id": "uv_measured_peak",
+              "type": "animated_point",
+              "expr": [
+                "2.82*Temp",
+                "0.85*(2.82*Temp)^3/(exp(2.82)-1)",
+                "0"
+              ],
+              "color": "#ffffff",
+              "size": 10,
+              "legendGroup": "the measured glow"
             }
           ],
           "info": [
@@ -2362,6 +2389,11 @@
               "id": "uv_glow_info",
               "position": "top-right",
               "content": "**Predict first**\n\nHeat a piece of iron hotter and hotter. Does its glow shift toward **red** or toward **blue**?\n\nDrag $T$ along the strip and commit to an answer.\n\nEveryday anchors:\n\n- embers ($\\sim$800 K): dull red\n- the Sun ($\\sim$5800 K): yellow-white\n- the hottest stars ($\\sim$20\\,000 K): blue-white\n\nCurrent $T = {{toFixed(Temp, 2)}}$ (relative units). This whole scene explains *why* the color shifts."
+            },
+            {
+              "id": "uv_measured_info",
+              "position": "bottom-right",
+              "content": "**The measured spectrum**\n\nPoint a spectrometer at any hot object and you get this curve: energy per frequency, with a single peak. Drag $T$ — the peak slides toward higher frequency (bluer glow) exactly as the strip above shows.\n\nEvery hot body makes this same shape. *Explaining it* is the crisis ahead."
             }
           ]
         },
@@ -2513,6 +2545,12 @@
             },
             {
               "id": "uv_modes_label"
+            },
+            {
+              "id": "uv_measured"
+            },
+            {
+              "id": "uv_measured_peak"
             }
           ],
           "sliders": [
