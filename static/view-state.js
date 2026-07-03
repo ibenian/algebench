@@ -19,6 +19,7 @@
 //     view,               // 'math' (Math tab); scene=default  -> ?view=
 //     panel,              // 'chat' (right panel); doc=default -> ?panel=
 //     pp,                 // true => proof panel open           -> ?pp=1
+//     dock,               // true => graph docked (split) view; false => full -> ?dock=1
 //     sc,                 // scene id (resolved)            -> ?sc=
 //     st,                 // step id; absent => base step   -> ?st=
 //     pf,                 // proof id                       -> ?pf=
@@ -124,6 +125,9 @@ export function serializeViewState(vs) {
     if (vs.view && vs.view !== 'scene') pairs.push(['view', vs.view]);
     if (vs.panel && vs.panel !== 'doc') pairs.push(['panel', vs.panel]);
     if (vs.pp) pairs.push(['pp', '1']);
+    // Dock (split) layout: only the docked state is shareable — an absent param
+    // leaves the recipient's own dock preference untouched (see parseViewState).
+    if (vs.dock === true) pairs.push(['dock', '1']);
 
     if (vs.sc != null && vs.sc !== '') pairs.push(['sc', vs.sc]);
     if (vs.st != null && vs.st !== '') pairs.push(['st', vs.st]);
@@ -197,6 +201,13 @@ export function parseViewState(search) {
 
     const pp = params.get('pp');
     if (pp === '1' || pp === 'true') vs.pp = true;
+
+    // Dock (split) view. Explicit only: `dock=1`/`true` forces split, `dock=0`/
+    // `false` forces full — absent leaves `vs.dock` undefined so applyViewState
+    // won't touch the user's persisted dock preference on an ordinary link.
+    const dock = params.get('dock');
+    if (dock === '1' || dock === 'true') vs.dock = true;
+    else if (dock === '0' || dock === 'false') vs.dock = false;
 
     const sc = params.get('sc');
     const st = params.get('st');

@@ -106,6 +106,11 @@ if (typeof window !== 'undefined') {
         showGraphView,
         showSceneView,
         dockProofAnimation,
+        // Dock (split) layout — read for deeplink serialization, set when a
+        // deeplink requests it. `setDocked` mirrors the D-key toggle but is
+        // idempotent and forced to the requested state.
+        isDocked: () => _docked,
+        setDocked: (on) => toggleDockMode(!!on),
     };
 }
 
