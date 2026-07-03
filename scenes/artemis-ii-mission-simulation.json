@@ -2857,8 +2857,8 @@
         {
           "name": "Perigee Close",
           "description": "Focus on the low point where departure burns matter most",
-          "position": [1.5, 1.2, 6],
-          "target": [0.7, 0, 0]
+          "position": [-1.5, 1.2, 6],
+          "target": [-0.7, 0, 0]
         },
         {
           "name": "Departure View",
@@ -2891,7 +2891,7 @@
         {
           "id": "s2_perigee",
           "type": "point",
-          "position": [0.6556, 0, 0],
+          "position": [-0.6556, 0, 0],
           "color": "#ffd166",
           "size": 8,
           "label": "Perigee"
@@ -2899,7 +2899,7 @@
         {
           "id": "s2_apogee",
           "type": "point",
-          "position": [-7.8016, 0, 0],
+          "position": [7.8016, 0, 0],
           "color": "#f5b041",
           "size": 8,
           "label": "Apogee"
