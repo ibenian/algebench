@@ -1,7 +1,7 @@
 {
   "title": "Artificial Gravity from Spin",
   "domain": "physics",
-  "deeplink": "/?builtin=rotating-habitat&view=math&panel=chat&pp=1&sc=rotating-space-habitats&st=artificial-gravity-g-a-omega-2-r&pf=artificial-gravity&ps=g-apparent&nodes=__equals_1&pa=physics/rotating-habitat-gravity",
+  "deeplink": "/?builtin=rotating-habitat&view=math&panel=chat&pp=1&dock=1&sc=rotating-space-habitats&st=artificial-gravity-g-a-omega-2-r&pf=artificial-gravity&ps=g-apparent&nodes=__equals_1&pa=physics/rotating-habitat-gravity",
   "steps": [
     {
       "index": 0,

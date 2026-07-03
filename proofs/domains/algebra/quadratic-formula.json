@@ -1,7 +1,7 @@
 {
   "title": "Quadratic Roots",
   "domain": "algebra",
-  "deeplink": "/?builtin=quadratic-formula&view=math&panel=chat&pp=1&sc=deriving-the-quadratic-formula&st=the-complete-picture&pf=quadratic-formula&ps=qed&nodes=__equals_1&pa=algebra/quadratic-formula",
+  "deeplink": "/?builtin=quadratic-formula&view=math&panel=chat&pp=1&dock=1&sc=deriving-the-quadratic-formula&st=the-complete-picture&pf=quadratic-formula&ps=qed&nodes=__equals_1&pa=algebra/quadratic-formula",
   "steps": [
     {
       "index": 0,

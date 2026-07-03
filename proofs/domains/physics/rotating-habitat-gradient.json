@@ -1,7 +1,7 @@
 {
   "title": "Head-to-Feet Gravity Gradient",
   "domain": "physics",
-  "deeplink": "/?builtin=rotating-habitat&view=math&panel=chat&pp=1&sc=rotating-space-habitats&st=gravity-gradient-head-vs-feet&pf=gravity-gradient&ps=ratio&nodes=__equals_1&pa=physics/rotating-habitat-gradient",
+  "deeplink": "/?builtin=rotating-habitat&view=math&panel=chat&pp=1&dock=1&sc=rotating-space-habitats&st=gravity-gradient-head-vs-feet&pf=gravity-gradient&ps=ratio&nodes=__equals_1&pa=physics/rotating-habitat-gradient",
   "steps": [
     {
       "index": 0,

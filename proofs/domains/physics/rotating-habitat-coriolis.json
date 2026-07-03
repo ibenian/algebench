@@ -1,7 +1,7 @@
 {
   "title": "The Coriolis Term Emerges",
   "domain": "physics",
-  "deeplink": "/?builtin=rotating-habitat&view=math&panel=chat&pp=1&sc=rotating-space-habitats&st=the-coriolis-effect&pf=coriolis-effect&ps=coriolis&nodes=__equals_1&pa=physics/rotating-habitat-coriolis",
+  "deeplink": "/?builtin=rotating-habitat&view=math&panel=chat&pp=1&dock=1&sc=rotating-space-habitats&st=the-coriolis-effect&pf=coriolis-effect&ps=coriolis&nodes=__equals_1&pa=physics/rotating-habitat-coriolis",
   "steps": [
     {
       "index": 0,
