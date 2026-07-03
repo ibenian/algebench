@@ -58,11 +58,27 @@ jobs:
           # otherwise a faster sampled run (conftest defaults to --sampled 200).
           if [ "${{ github.event_name }}" != "pull_request" ] || [ "${{ steps.changes.outputs.python }}" == "true" ]; then
             MODE="--exhaustive"
-            echo "::notice title=Test depth::Python changed — running FULL exhaustive suite (~504 combos)"
+            REASON="${{ github.event_name == 'pull_request' && 'Python files changed' || format('{0} event', github.event_name) }}"
+            DEPTH="FULL — exhaustive cross-product"
           else
             MODE=""
-            echo "::notice title=Test depth::No Python changes — running SAMPLED suite (200)"
+            REASON="no Python files changed"
+            DEPTH="SAMPLED — conftest default (--sampled 200)"
           fi
+          # Surface the mode everywhere it's visible: the log, an annotation, and
+          # the run's Summary tab.
+          echo "==================================================================="
+          echo "  Test depth: ${DEPTH}"
+          echo "  Reason:     ${REASON}"
+          echo "==================================================================="
+          echo "::notice title=Test depth::${DEPTH} (${REASON})"
+          {
+            echo "### 🧪 Test depth: ${DEPTH}"
+            echo ""
+            echo "**Reason:** ${REASON}"
+            echo ""
+            echo "\`pytest tests/ ${MODE:-(sampled)}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
           ./run.sh -m pytest tests/ -v --tb=short $MODE --junitxml=test-results.xml 2>&1 | tee test-output.txt
           echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
 
