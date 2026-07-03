@@ -3039,12 +3039,617 @@
       ],
       "steps": [
         {
-          "title": "Light meets metal",
-          "description": "Placeholder — built out in the photoelectric content pass.",
-          "prompt": "Placeholder step.",
-          "add": []
+          "title": "Predict: can bright red light do it?",
+          "description": "A dim red wave washes over a metal plate. Classically, wave energy accumulates: absorb long enough and any electron should eventually gather enough to escape. Predict: must bright red light eventually eject electrons? Does dim blue light stand any chance?",
+          "prompt": "Set up the classical prediction and make the learner commit. A classical wave delivers energy continuously, so brightness times time should eventually free electrons at any color — that is the classical bet. Also define the new units plainly at first use: one electron-volt is the energy an electron gains crossing one volt, about 1.6e-19 joules, and a visible photon carries 2 to 3 eV; the work function phi is the escape fee the metal charges an electron; remind them K equals one half m v squared. Do not reveal the experimental answer yet.",
+          "remove": [
+            {
+              "type": "info"
+            }
+          ],
+          "add": [
+            {
+              "id": "pe_plate",
+              "type": "polygon",
+              "vertices": [
+                [
+                  -1.0,
+                  0.4,
+                  0
+                ],
+                [
+                  -0.4,
+                  0.4,
+                  0
+                ],
+                [
+                  -0.4,
+                  4.6,
+                  0
+                ],
+                [
+                  -1.0,
+                  4.6,
+                  0
+                ]
+              ],
+              "color": "#8a8f98",
+              "opacity": 0.9,
+              "outlineColor": "#b8bec8",
+              "outlineWidth": 1.2,
+              "legendGroup": "metal plate"
+            },
+            {
+              "id": "pe_plate_label",
+              "type": "text",
+              "text": "metal",
+              "position": [
+                -1.0,
+                4.85,
+                0
+              ],
+              "color": "#8a8f98",
+              "size": 12,
+              "label": "metal plate"
+            },
+            {
+              "id": "pe_dim_wave",
+              "type": "animated_curve",
+              "expr": "2.5 + 0.35*sin(2.2*x - 2.5*t)",
+              "range": [
+                -5.9,
+                -1.05
+              ],
+              "samples": 200,
+              "color": "#aa3322",
+              "width": 2.5,
+              "opacity": 0.75,
+              "legendGroup": "dim red light"
+            },
+            {
+              "id": "pe_wave_label",
+              "type": "text",
+              "text": "dim red light",
+              "position": [
+                -5.6,
+                3.2,
+                0
+              ],
+              "color": "#aa3322",
+              "size": 12,
+              "label": "dim red light"
+            }
+          ],
+          "info": [
+            {
+              "id": "pe_predict_info",
+              "position": "top-right",
+              "content": "**Predict first**\n\nClassically, a wave's energy **accumulates**: shine long enough and any electron should eventually gather enough to escape.\n\n1. Must bright **red** light eventually eject electrons?\n2. Does dim **blue** light stand any chance?\n\nCommit to both answers, then advance."
+            },
+            {
+              "id": "pe_units_info",
+              "position": "bottom-right",
+              "content": "**New units, plainly**\n\n- $1\\;\\text{eV}$ = the energy an electron gains crossing 1 volt $\\approx 1.6\\times 10^{-19}$ J. A visible-light photon carries $\\sim$2–3 eV.\n- $\\varphi$ (work function) = the **escape fee** the metal charges an electron.\n- Kinetic energy: $K = \\tfrac{1}{2}mv^2$."
+            }
+          ]
+        },
+        {
+          "title": "All or nothing",
+          "description": "The experiment says no. Light arrives as photons — chunks of energy $E = hf$ — and one electron absorbs one photon, all or nothing. Raise the intensity $I$: more photons arrive, each carrying the same energy. Raise the frequency $f$ past the work function $\\varphi$: electrons suddenly fly out, even at the dimmest setting.",
+          "prompt": "Reveal the all-or-nothing rule and let the learner play. Intensity adds photons (count the gold dots as I rises) but never changes the energy per photon. The electron appears only when f exceeds phi — at any intensity — and its speed grows like the square root of the surplus f minus phi. Contrast with the classical bet from the predict step: red light below threshold never ejects, no matter how bright or how long. Point at the live yes/no readout as they drag f across phi.",
+          "remove": [
+            {
+              "type": "info"
+            },
+            {
+              "id": "pe_dim_wave"
+            },
+            {
+              "id": "pe_wave_label"
+            }
+          ],
+          "sliders": [
+            {
+              "id": "fph",
+              "label": "$f$ (light frequency)",
+              "min": 0.5,
+              "max": 6,
+              "step": 0.1,
+              "default": 1.5
+            },
+            {
+              "id": "Iint",
+              "label": "$I$ (intensity)",
+              "min": 1,
+              "max": 5,
+              "step": 1,
+              "default": 2
+            },
+            {
+              "id": "phi",
+              "label": "$\\varphi$ (work function)",
+              "min": 1,
+              "max": 4,
+              "step": 0.1,
+              "default": 2.5
+            }
+          ],
+          "add": [
+            {
+              "id": "pe_photon_1",
+              "type": "animated_point",
+              "positionExpr": [
+                "-5.8 + mod(2.2*t + 0.0, 4.6)",
+                "1.2",
+                "0"
+              ],
+              "visibleExpr": "Iint >= 1",
+              "color": "#ffd700",
+              "radius": 0.09,
+              "legendGroup": "photons"
+            },
+            {
+              "id": "pe_photon_2",
+              "type": "animated_point",
+              "positionExpr": [
+                "-5.8 + mod(2.2*t + 0.9, 4.6)",
+                "1.9",
+                "0"
+              ],
+              "visibleExpr": "Iint >= 2",
+              "color": "#ffd700",
+              "radius": 0.09,
+              "legendGroup": "photons"
+            },
+            {
+              "id": "pe_photon_3",
+              "type": "animated_point",
+              "positionExpr": [
+                "-5.8 + mod(2.2*t + 1.8, 4.6)",
+                "2.6",
+                "0"
+              ],
+              "visibleExpr": "Iint >= 3",
+              "color": "#ffd700",
+              "radius": 0.09,
+              "legendGroup": "photons"
+            },
+            {
+              "id": "pe_photon_4",
+              "type": "animated_point",
+              "positionExpr": [
+                "-5.8 + mod(2.2*t + 2.7, 4.6)",
+                "3.3",
+                "0"
+              ],
+              "visibleExpr": "Iint >= 4",
+              "color": "#ffd700",
+              "radius": 0.09,
+              "legendGroup": "photons"
+            },
+            {
+              "id": "pe_photon_5",
+              "type": "animated_point",
+              "positionExpr": [
+                "-5.8 + mod(2.2*t + 3.6, 4.6)",
+                "4.0",
+                "0"
+              ],
+              "visibleExpr": "Iint >= 5",
+              "color": "#ffd700",
+              "radius": 0.09,
+              "legendGroup": "photons"
+            },
+            {
+              "id": "pe_photon_label",
+              "type": "text",
+              "text": "photons — $I$ sets the count",
+              "position": [
+                -5.7,
+                4.5,
+                0
+              ],
+              "color": "#ffd700",
+              "size": 11,
+              "label": "photons"
+            },
+            {
+              "id": "pe_electron",
+              "type": "animated_point",
+              "positionExpr": [
+                "-1.15 - 0.9*sqrt(max(0.01, fph - phi))*mod(t, 2.5)",
+                "0.8 + 0.5*sqrt(max(0.01, fph - phi))*mod(t, 2.5)",
+                "0"
+              ],
+              "visibleExpr": "fph > phi",
+              "color": "#6ec6ff",
+              "radius": 0.1,
+              "legendGroup": "ejected electron"
+            },
+            {
+              "id": "pe_electron_label",
+              "type": "text",
+              "text": "ejected electron",
+              "position": [
+                -3.2,
+                0.35,
+                0
+              ],
+              "color": "#6ec6ff",
+              "size": 11,
+              "label": "ejected electron"
+            }
+          ],
+          "info": [
+            {
+              "id": "pe_reveal_info",
+              "position": "top-right",
+              "content": "**All or nothing**\n\nOne photon carries $E = hf$. One electron absorbs **one** photon — or nothing. Energy never accumulates across photons.\n\nElectron ejected? **{{fph > phi ? \"yes — instantly\" : \"no — at ANY intensity\"}}**\n\n- Raise $I$: more photons, same energy each.\n- Raise $f$ past $\\varphi$: electrons fly, even at $I = 1$.\n\nSurplus speed $\\propto \\sqrt{f - \\varphi}$."
+            }
+          ]
+        },
+        {
+          "title": "Millikan's graph: $K_{max}$ vs $f$",
+          "description": "Plot the maximum kinetic energy of the ejected electrons against the light's frequency. Below the threshold $f_0 = \\varphi/h$: a dead zone — no electrons at any intensity. Above it, the data fall on a straight line $K_{max} = hf - \\varphi$. The white dot is the current experiment; drag $f$ to move it along the line.",
+          "prompt": "Introduce the K-max versus f graph as the quantitative face of the experiment Millikan actually ran. Walk the anatomy: dead zone left of the threshold f0 = phi/h where nothing comes out, then a straight line rising from the threshold. The operating point mirrors the apparatus on the left — drag f below phi and the point drops to the axis while the electron vanishes. Read the live K-max value from the info panel; note the axes are in chart units, with K in eV in spirit.",
+          "remove": [
+            {
+              "type": "info"
+            }
+          ],
+          "add": [
+            {
+              "id": "pe_gx_axis",
+              "type": "line",
+              "points": [
+                [
+                  0.3,
+                  0.4,
+                  0
+                ],
+                [
+                  5.9,
+                  0.4,
+                  0
+                ]
+              ],
+              "color": "#9aa4ad",
+              "width": 1.2,
+              "opacity": 0.8,
+              "legendGroup": "graph frame"
+            },
+            {
+              "id": "pe_gy_axis",
+              "type": "line",
+              "points": [
+                [
+                  0.3,
+                  0.4,
+                  0
+                ],
+                [
+                  0.3,
+                  5.3,
+                  0
+                ]
+              ],
+              "color": "#9aa4ad",
+              "width": 1.2,
+              "opacity": 0.8,
+              "legendGroup": "graph frame"
+            },
+            {
+              "id": "pe_gx_label",
+              "type": "text",
+              "text": "$f$ (frequency of the light)",
+              "position": [
+                3.2,
+                0.08,
+                0
+              ],
+              "color": "#9aa4ad",
+              "size": 11,
+              "label": "graph frame"
+            },
+            {
+              "id": "pe_gy_label",
+              "type": "text",
+              "text": "$K_{max}$ (eV)",
+              "position": [
+                0.35,
+                5.5,
+                0
+              ],
+              "color": "#9aa4ad",
+              "size": 11,
+              "legendGroup": "graph frame"
+            },
+            {
+              "id": "pe_kmax_line",
+              "type": "animated_curve",
+              "expr": "0.4 + 0.9*(x - phi)",
+              "rangeExpr": [
+                "phi",
+                "5.9"
+              ],
+              "samples": 60,
+              "color": "#ffd700",
+              "width": 3.5,
+              "legendGroup": "$K_{max} = hf - \\varphi$"
+            },
+            {
+              "id": "pe_graph_title",
+              "type": "text",
+              "text": "$K_{max} = hf - \\varphi$",
+              "position": [
+                3.4,
+                5.5,
+                0
+              ],
+              "color": "#ffd700",
+              "size": 14,
+              "label": "$K_{max} = hf - \\varphi$"
+            },
+            {
+              "id": "pe_deadzone",
+              "type": "animated_curve",
+              "expr": "0.4",
+              "rangeExpr": [
+                "0.3",
+                "phi"
+              ],
+              "samples": 40,
+              "showCurve": false,
+              "color": "#ff4444",
+              "fillRegions": [
+                {
+                  "id": "pe_dead_fill",
+                  "color": "#ff4444",
+                  "opacity": 0.1,
+                  "above": "0.4",
+                  "below": "5.3"
+                }
+              ]
+            },
+            {
+              "id": "pe_dead_label",
+              "type": "text",
+              "text": "no electrons, ever",
+              "position": [
+                0.5,
+                4.9,
+                0
+              ],
+              "color": "#ff6655",
+              "size": 11
+            },
+            {
+              "id": "pe_thresh_point",
+              "type": "animated_point",
+              "positionExpr": [
+                "phi",
+                "0.4",
+                "0"
+              ],
+              "color": "#ff4444",
+              "radius": 0.08,
+              "label": "$f_0 = \\varphi/h$"
+            },
+            {
+              "id": "pe_op_point",
+              "type": "animated_point",
+              "positionExpr": [
+                "fph",
+                "max(0.4, 0.4 + 0.9*(fph - phi))",
+                "0"
+              ],
+              "color": "#ffffff",
+              "radius": 0.11,
+              "label": "operating point"
+            },
+            {
+              "id": "pe_op_drop",
+              "type": "animated_line",
+              "points": [
+                [
+                  "fph",
+                  "0.4",
+                  "0"
+                ],
+                [
+                  "fph",
+                  "max(0.4, 0.4 + 0.9*(fph - phi))",
+                  "0"
+                ]
+              ],
+              "color": "#ffffff",
+              "width": 1,
+              "opacity": 0.35,
+              "legendGroup": "operating point"
+            }
+          ],
+          "info": [
+            {
+              "id": "pe_graph_info",
+              "position": "top-right",
+              "content": "**Millikan's plot**\n\nAbove threshold the data fall on a straight line:\n\n$$K_{max} = hf - \\varphi$$\n\nCurrent experiment: $f = {{toFixed(fph, 1)}}$, $\\varphi = {{toFixed(phi, 1)}}$\n\n$K_{max} = {{toFixed(max(0, 0.9*(fph - phi)), 2)}}$ (chart units)\n\nLeft of the threshold $f_0 = \\varphi/h$: the dead zone — **no** electrons at any intensity, exactly what the classical wave forbids."
+            }
+          ]
+        },
+        {
+          "title": "The slope is $h$",
+          "description": "Predict: swap the metal for one with a different escape fee $\\varphi$ — what moves, the slope or the intercept? Drag $\\varphi$ and watch: the line translates sideways, but its slope never changes. Every metal gives the same slope — Planck's constant itself. That is how Millikan measured $h$.",
+          "prompt": "Predict-then-reveal inside one step. First ask: changing the metal changes phi — does that change the line's slope or just shift it? Then have the learner drag phi against the gray reference line of the first metal: the gold line translates, the slope stays fixed. The slope is h (h over e when plotting stopping voltage) — universal, independent of the metal. Close the arc: Millikan set out to refute Einstein's equation, confirmed it instead, and extracted h from graphs like this one.",
+          "remove": [
+            {
+              "type": "info"
+            }
+          ],
+          "add": [
+            {
+              "id": "pe_ghost_line",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "0.4 + 0.9*(t - 2.5)",
+              "z": "0",
+              "range": [
+                2.5,
+                5.9
+              ],
+              "samples": 40,
+              "color": "#9aa4ad",
+              "width": 2,
+              "opacity": 0.45,
+              "legendGroup": "first metal"
+            },
+            {
+              "id": "pe_ghost_label",
+              "type": "text",
+              "text": "first metal ($\\varphi = 2.5$)",
+              "position": [
+                4.6,
+                2.05,
+                0
+              ],
+              "color": "#9aa4ad",
+              "size": 11,
+              "label": "first metal"
+            }
+          ],
+          "info": [
+            {
+              "id": "pe_slope_info",
+              "position": "top-right",
+              "content": "**Predict, then drag $\\varphi$**\n\nSwap the metal — a different escape fee $\\varphi$. What moves: the **slope** or the **intercept**?\n\nDrag $\\varphi$: the line **translates**; the slope never changes. Every metal gives the same slope\n\n$$\\text{slope} = h \\quad (\\text{as stopping voltage: } h/e)$$\n\nMillikan spent a decade trying to refute this line — and ended up measuring Planck's constant from it.\n\nIntensity sets the electron **count**; frequency sets each electron's **energy**. The classical wave predicted the opposite on both counts."
+            }
+          ]
         }
-      ]
+      ],
+      "proof": {
+        "id": "einstein_photoelectric",
+        "title": "Einstein's photoelectric equation",
+        "technique": "derivation",
+        "goal": "Derive $K_{max} = hf - \\varphi$ from the photon picture, and read off its two testable consequences: a frequency threshold $f_0 = \\varphi/h$ and a universal slope $h$.",
+        "prompt": "Keep the derivation honest about how little it needs: one photon of energy hf, one escape fee phi, one absorption event, and energy bookkeeping. The power is in the consequences — threshold and universal slope — which are exactly what the scene's Millikan graph shows and exactly what a classical wave cannot produce. Define eV and work function plainly if asked.",
+        "steps": [
+          {
+            "id": "photon_energy",
+            "type": "given",
+            "label": "The photon",
+            "math": "\\htmlClass{hl-hf}{E_\\gamma = hf}",
+            "highlights": {
+              "hf": {
+                "color": "gold",
+                "label": "Energy of one light quantum"
+              }
+            },
+            "justification": "Planck's quantum of energy exchange (previous scene), promoted by Einstein (1905) to a property of light itself: the beam is made of chunks.",
+            "explanation": "Light of frequency $f$ arrives in indivisible packets of energy $hf$. Intensity changes how *many* packets arrive per second — never the size of each packet.",
+            "prompt": "Recall E = hf from the ultraviolet-catastrophe scene, and stress Einstein's upgrade: not just exchange in chunks — light itself is chunks.",
+            "sceneStep": 0
+          },
+          {
+            "id": "work_function",
+            "type": "given",
+            "label": "The work function",
+            "math": "\\htmlClass{hl-phi}{\\varphi} = \\text{minimum energy to free one electron from the metal}",
+            "highlights": {
+              "phi": {
+                "color": "red",
+                "label": "The escape fee the metal charges an electron"
+              }
+            },
+            "justification": "Electrons are bound in the metal; each metal has a characteristic minimum binding energy, typically a few eV.",
+            "explanation": "Think of $\\varphi$ as the escape fee: an electron must pay it in full before it can leave. (1 eV $\\approx 1.6\\times10^{-19}$ J — the energy an electron gains crossing 1 volt.)",
+            "prompt": "Define the work function in plain words — the escape fee — and anchor the eV scale: visible photons carry 2 to 3 eV, work functions are a few eV. The drama is that these two numbers are comparable.",
+            "sceneStep": 0
+          },
+          {
+            "id": "all_or_nothing",
+            "type": "step",
+            "label": "One photon, one electron",
+            "math": "\\text{one photon} \\;\\longrightarrow\\; \\text{one electron, all or nothing}",
+            "justification": "Absorption is a single quantum event: an electron absorbs a whole photon or none of it. Energy does not accumulate across photons — arrival rates are far too low for double hits, and the effect is instantaneous even in the dimmest light.",
+            "explanation": "This is the step that breaks the classical picture. A wave's energy could pool up over time; a photon is swallowed whole in one event. Either one chunk is enough to pay the fee, or the electron stays put.",
+            "prompt": "This is the conceptual hinge — tie it to the all-or-nothing scene step: below threshold nothing at any intensity, above threshold instant ejection even at intensity 1.",
+            "sceneStep": 1
+          },
+          {
+            "id": "energy_conservation",
+            "type": "step",
+            "label": "Energy bookkeeping",
+            "math": "\\htmlClass{hl-hf}{hf} = \\htmlClass{hl-phi}{\\varphi} + \\htmlClass{hl-k}{K_{max}}",
+            "highlights": {
+              "hf": {
+                "color": "gold",
+                "label": "Energy delivered by the photon"
+              },
+              "phi": {
+                "color": "red",
+                "label": "Escape fee paid"
+              },
+              "k": {
+                "color": "cyan",
+                "label": "Maximum kinetic energy of the freed electron"
+              }
+            },
+            "justification": "Conservation of energy for the least-bound electron: the photon's energy pays the escape fee, and whatever is left over becomes kinetic energy $K = \\tfrac{1}{2}mv^2$.",
+            "explanation": "Budget of a single absorption: income $hf$, mandatory fee $\\varphi$, take-home pay $K_{max}$. Deeper-bound electrons take home less — $K_{max}$ is the best case.",
+            "prompt": "Frame it as a budget: income hf, fee phi, take-home K-max. Note K-max is for the least-bound electron; others emerge slower.",
+            "sceneStep": 1
+          },
+          {
+            "id": "einstein_eq",
+            "type": "step",
+            "label": "Einstein's equation",
+            "math": "\\htmlClass{hl-k}{K_{max}} = \\htmlClass{hl-hf}{hf} - \\htmlClass{hl-phi}{\\varphi}",
+            "highlights": {
+              "k": {
+                "color": "cyan",
+                "label": "What the experiment measures"
+              },
+              "hf": {
+                "color": "gold",
+                "label": "Photon energy"
+              },
+              "phi": {
+                "color": "red",
+                "label": "Work function"
+              }
+            },
+            "justification": "Rearrange the bookkeeping. As a function of $f$ this is a straight line with slope $h$ and intercept $-\\varphi$.",
+            "explanation": "One rearrangement and the photon hypothesis becomes a testable straight line: plot $K_{max}$ against $f$ and nature must draw a line of slope $h$. This is the gold line on the chart.",
+            "prompt": "Point at the Millikan graph: this equation IS the gold line. Emphasize that a hypothesis about invisible quanta just became a falsifiable straight-line prediction.",
+            "sceneStep": 2
+          },
+          {
+            "id": "threshold_slope",
+            "type": "step",
+            "label": "Threshold and stopping potential",
+            "math": "f_0 = \\frac{\\htmlClass{hl-phi}{\\varphi}}{h}, \\qquad V_s = \\frac{h}{e}\\,f - \\frac{\\htmlClass{hl-phi}{\\varphi}}{e}",
+            "highlights": {
+              "phi": {
+                "color": "red",
+                "label": "Work function — sets the threshold and intercept, never the slope"
+              }
+            },
+            "justification": "Setting $K_{max} = 0$ gives the threshold frequency $f_0 = \\varphi/h$ — below it, no electrons at any intensity. Measuring $K_{max}$ via the stopping voltage ($eV_s = K_{max}$) divides the line by $e$: slope $h/e$, the same for every metal.",
+            "explanation": "Two sharp consequences: a dead zone below $f_0$ (the red region on the chart), and a slope — $h$, or $h/e$ in volts — that no choice of metal can change. Swapping metals only slides the line sideways.",
+            "prompt": "Connect to the slope-is-h step: dragging phi translates the line, slope fixed. The slope being universal is the smoking gun — it is a constant of nature, not a property of the metal.",
+            "sceneStep": 3
+          },
+          {
+            "id": "photon_verdict",
+            "type": "conclusion",
+            "label": "What the graph proves",
+            "math": "\\text{intensity} \\;\\to\\; \\text{electron count}, \\qquad \\text{frequency} \\;\\to\\; \\text{energy per electron}",
+            "justification": "Millikan's data (1916) confirmed the line, the threshold, and the slope — which yielded $h$ itself. A classical wave predicts the opposite pairing: intensity should set electron energy, and any frequency should eventually eject electrons.",
+            "explanation": "Light arrives in chunks. Intensity is the number of chunks; frequency is the size of each chunk. Millikan set out to refute Einstein's equation and instead confirmed it — and measured Planck's constant from the slope. Next: what this count-versus-size distinction means for beams of many photons.",
+            "prompt": "Land the verdict: the photoelectric effect is the experimental proof of photons, with the classical wave wrong in both directions. Bridge forward: the next scene separates energy-per-photon from photon count in a beam.",
+            "sceneStep": 3
+          }
+        ]
+      }
     },
     {
       "title": "One Photon Energy vs Light Intensity",
