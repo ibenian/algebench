@@ -38,6 +38,7 @@ _FUNC_LATEX = {
     "asin": r"\arcsin", "acos": r"\arccos", "atan": r"\arctan",
     "sinh": r"\sinh", "cosh": r"\cosh", "tanh": r"\tanh",
     "log": r"\log", "ln": r"\ln", "exp": r"\exp",
+    "arg": r"\arg",
 }
 _REL_LATEX = {
     "equals": "=", "not_equal": r"\neq",
@@ -171,6 +172,12 @@ def _emit_body(n, ins, nodes, incoming, child, oid, gw) -> tuple[str, int]:
         # id already includes the ``d`` (``dv``/``dx``), so it is the right
         # fallback when ``latex`` is absent.
         return (n.latex or n.id, _ATOM)
+    if t in ("ket", "bra"):
+        # A Dirac ket/bra leaf — the parser stores its full rendered form
+        # (``\left|0\right\rangle``) on the node, like any other symbol leaf.
+        if not n.latex:
+            raise StructuralRenderError(f"{t} without latex")
+        return (n.latex, _ATOM)
     if t == "constant":
         name = n.latex or n.id
         return (_CONSTANT_LATEX.get(name, name), _ATOM)
@@ -213,6 +220,12 @@ def _emit_body(n, ins, nodes, incoming, child, oid, gw) -> tuple[str, int]:
             return (f"\\left|{arg}\\right|", _ATOM)
         fn = _FUNC_LATEX.get(op or "")
         if fn is None:
+            # ``i(\arg\beta - \arg\alpha)`` parses as a function call on ``i``
+            # (implicit multiplication by the imaginary unit); render it back
+            # the way it was written rather than dropping the whole state's
+            # id-annotated LaTeX. Mirrors the grounding-side special case.
+            if op == "i":
+                return (f"i\\left({arg}\\right)", _ATOM)
             raise StructuralRenderError(f"function {op!r}")
         return (f"{fn}\\left({arg}\\right)", _ATOM)
     if t == "relation":
@@ -333,5 +346,16 @@ def _emit_operator(n, op, ins, nodes, incoming, child, oid, gw) -> tuple[str, in
     if op in _LOGIC_LATEX:
         l, r = _binary(ins)
         return (f"{child(l, _LOGIC)} {gw(oid + '__op', _LOGIC_LATEX[op])} {child(r, _LOGIC)}", _LOGIC)
+
+    if op == "tuple":
+        # Component-wise tuple ``(a, b, …)`` — the parens self-delimit, so
+        # components render at the loosest precedence and the node is atomic.
+        if len(ins) < 2:
+            raise StructuralRenderError("tuple arity")
+        parts = [child(c, _LOGIC) for _r, c in ins]
+        joined = parts[0]
+        for i, p in enumerate(parts[1:], start=1):
+            joined += f"{gw(oid + '__sep' + str(i), ',')}\\; {p}"
+        return (f"\\left( {joined} \\right)", _ATOM)
 
     raise StructuralRenderError(f"operator {op!r}")
