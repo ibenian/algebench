@@ -1,7 +1,7 @@
 {
   "title": "Bloch Sphere Parameterization",
   "domain": "quantum",
-  "deeplink": "/?builtin=quantum-states&view=math&panel=chat&pp=1&sc=angles-encode-amplitudes&pf=s2_bloch_parameterization&ps=the-bloch-parameterization&nodes=__equals_1&pa=quantum/bloch-parameterization",
+  "deeplink": "/?builtin=quantum-states&view=math&panel=chat&pp=1&dock=1&sc=angles-encode-amplitudes&pf=s2_bloch_parameterization&ps=the-bloch-parameterization&nodes=__equals_1&pa=quantum/bloch-parameterization",
   "steps": [
     {
       "index": 0,
