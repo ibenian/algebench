@@ -1413,6 +1413,7 @@
             {
               "type": "given",
               "label": "Scalar Equation of Motion (Drag Only)",
+              "id": "equation-of-motion",
               "math": "m\\frac{dV}{dt} = -\\frac{1}{2}\\rho V^2 C_d A",
               "justification": "During peak deceleration, drag overwhelms gravity by an order of magnitude.",
               "explanation": "We drop gravity and lift to isolate the dominant drag force. This is the Allen-Eggers approximation: valid when the deceleration is many G's.",
@@ -1471,6 +1472,7 @@
             {
               "type": "step",
               "label": "Straight-Line Approximation",
+              "id": "straight-line-approximation",
               "math": "\\frac{dh}{dt} = -V\\sin\\gamma, \\quad \\gamma = \\text{const}",
               "justification": "Assume the flight-path angle $\\gamma$ stays approximately constant during the intense deceleration phase.",
               "explanation": "The rate of altitude loss is the vertical component of velocity. For a steep, fast entry, the path curves very little before most of the energy is dissipated. This lets us treat $\\gamma$ as a constant.",
@@ -1531,6 +1533,7 @@
             {
               "type": "step",
               "label": "Change of Independent Variable",
+              "id": "change-of-variable",
               "math": "\\frac{dV}{dt} = \\frac{dV}{dh}\\cdot\\frac{dh}{dt} = -V\\sin\\gamma\\,\\frac{dV}{dh}",
               "justification": "Chain rule: replace time with altitude as the independent variable.",
               "explanation": "The atmosphere varies with altitude, not time, so altitude is the natural variable. The chain rule lets us swap.",
@@ -1587,6 +1590,7 @@
             {
               "type": "step",
               "label": "Separable ODE",
+              "id": "separable-ode",
               "math": "\\frac{dV}{V} = \\frac{\\rho_0\\, e^{-h/H}}{2\\beta\\sin\\gamma}\\,dh",
               "justification": "Substitute $\\rho = \\rho_0 e^{-h/H}$, cancel one $V$, and separate variables.",
               "explanation": "Substituting the chain rule result into the equation of motion and dividing both sides by $V$: $-V\\sin\\gamma\\frac{dV}{dh} = -\\frac{\\rho V^2}{2\\beta}$, which simplifies to $\\frac{dV}{V} = \\frac{\\rho}{2\\beta\\sin\\gamma}dh$.",
@@ -1654,10 +1658,11 @@
                 }
               }
             },
-            {"type": "step", "label": "Integrate Both Sides", "math": "\\int_{V_E}^{V}\\frac{dV'}{V'} = \\int_{h_E}^{h}\\frac{\\rho_0\\,e^{-h'/H}}{2\\beta\\sin\\gamma}\\,dh'", "justification": "Definite integral from the entry interface ($h_E$, $V_E$) down to altitude $h$.", "explanation": "The left side integrates to $\\ln(V/V_E)$. The right side has the integral of an exponential.", "prompt": "Remind the student: $\\int e^{-h/H}dh = -H e^{-h/H}$.", "sceneStep": 0},
+            {"type": "step", "label": "Integrate Both Sides", "id": "integrate", "math": "\\int_{V_E}^{V}\\frac{dV'}{V'} = \\int_{h_E}^{h}\\frac{\\rho_0\\,e^{-h'/H}}{2\\beta\\sin\\gamma}\\,dh'", "justification": "Definite integral from the entry interface ($h_E$, $V_E$) down to altitude $h$.", "explanation": "The left side integrates to $\\ln(V/V_E)$. The right side has the integral of an exponential.", "prompt": "Remind the student: $\\int e^{-h/H}dh = -H e^{-h/H}$.", "sceneStep": 0},
             {
               "type": "step",
               "label": "Evaluate the Integrals",
+              "id": "evaluate-integrals",
               "math": "\\ln\\frac{V}{V_E} = \\frac{\\rho_0 H}{2\\beta\\sin\\gamma}\\left(\\htmlClass{hl-exit}{e^{-h_E/H}} - \\htmlClass{hl-curr}{e^{-h/H}}\\right)",
               "justification": "The integral of $e^{-h/H}$ evaluates to $-He^{-h/H}$. Flip sign from integration limits.",
               "explanation": "We get two terms: one evaluated at the entry altitude $h_E$ and one at the current altitude $h$.",
@@ -1751,6 +1756,7 @@
             {
               "type": "step",
               "label": "Drop the Entry-Altitude Term",
+              "id": "drop-entry-altitude-term",
               "math": "e^{-h_E/H} = e^{-122/7.2} \\approx 4 \\times 10^{-8} \\approx 0",
               "justification": "At $h_E = 122\\,\\text{km}$ with $H = 7.2\\,\\text{km}$, the density is negligible.",
               "explanation": "The atmosphere at the entry interface is essentially vacuum. The exponential term there is so tiny we can set it to zero without meaningful error.",
@@ -1810,6 +1816,7 @@
             {
               "type": "conclusion",
               "label": "Velocity as a Function of Altitude",
+              "id": "velocity-as-a-function-of-altitude",
               "math": "\\htmlClass{hl-result}{V(h) = V_E \\exp\\!\\left(-\\frac{\\rho_0 H}{2\\beta\\sin\\gamma}\\,e^{-h/H}\\right)}",
               "justification": "Exponentiate both sides: $V/V_E = \\exp(\\text{negative quantity})$, so $V < V_E$ always.",
               "explanation": "This is the Allen-Eggers velocity solution. As the capsule descends, $e^{-h/H}$ grows, making the exponent more negative, and $V$ drops. The rate of deceleration depends on $\\beta$ (how heavy and blunt the vehicle is) and $\\sin\\gamma$ (how steeply it enters). Remarkably, this closed-form solution captures the essential physics of atmospheric braking.",

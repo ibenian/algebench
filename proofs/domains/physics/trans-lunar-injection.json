@@ -1,7 +1,7 @@
 {
   "title": "Trans-Lunar Injection Delta-v",
   "domain": "physics",
-  "deeplink": "/?builtin=artemis-ii-mission-simulation&view=math&panel=chat&pp=1&dock=1&sc=earth-orbit-setup-and-departure-burns&pf=trans-lunar-injection&ps=delta-v&pa=physics/trans-lunar-injection",
+  "deeplink": "/?builtin=artemis-ii-mission-simulation&view=math&panel=chat&pp=1&dock=1&sc=earth-orbit-setup-and-departure-burns&st=setup-and-departure&pf=trans-lunar-injection&ps=delta-v&pa=physics/trans-lunar-injection",
   "steps": [
     {
       "index": 0,

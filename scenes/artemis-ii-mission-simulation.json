@@ -2180,6 +2180,7 @@
         },
         {
           "id": "trans-lunar-injection",
+          "sceneStep": 0,
           "title": "Trans-Lunar Injection Δv",
           "technique": "derivation",
           "goal": "This derivation shows how to express the change in velocity $\\Delta v$ required to transition from a circular orbit at radius $r$ to an elliptical orbit with periapsis radius $r$ and apoapsis radius $r_a$.",
@@ -2187,6 +2188,8 @@
             {
               "type": "given",
               "label": "Given",
+              "id": "given",
+              "sceneStep": 0,
               "math": "\\Delta v = - v_{c} + v_{p}",
               "justification": "Substitute expressions for $v_p$ and $v_c$ and simplify.",
               "semanticGraph": {
@@ -2218,6 +2221,8 @@
             {
               "type": "step",
               "label": "Substitute the formula for circular orbital velocity.",
+              "id": "substitute-circular-velocity",
+              "sceneStep": 0,
               "math": "\\Delta v = - \\sqrt{\\frac{G \\cdot M}{r}} + v_{p}",
               "justification": "The circular orbital velocity at radius $r$ is given by $v_c = \\sqrt{\\frac{G \\cdot M}{r}}$, where $G$ is the gravitational constant and $M$ is the mass of the central body. This $r$ is the radius of the circular orbit.",
               "semanticGraph": {
@@ -2261,6 +2266,8 @@
             {
               "type": "step",
               "label": "Substitute the formula for velocity at periapsis.",
+              "id": "substitute-periapsis-velocity",
+              "sceneStep": 0,
               "math": "\\Delta v = - \\sqrt{\\frac{G \\cdot M}{r}} + \\sqrt{\\frac{G \\cdot M}{r}} \\cdot \\sqrt{2} \\cdot \\sqrt{\\frac{r_a}{r + r_a}}",
               "justification": "The velocity at periapsis $r$ of an elliptical orbit with apoapsis $r_a$ is derived from the vis-viva equation $v = \\sqrt{G \\cdot M \\cdot \\left(\\frac{2}{r} - \\frac{1}{a}\\right)}$, where $a = \\frac{r + r_a}{2}$ is the semi-major axis. This leads to $v_p = \\sqrt{\\frac{G \\cdot M}{r}} \\cdot \\sqrt{2} \\cdot \\sqrt{\\frac{r_a}{r + r_a}}$.",
               "semanticGraph": {
@@ -2333,6 +2340,8 @@
             {
               "type": "step",
               "label": "Factor out the common term $\\sqrt{\\frac{G \\cdot M}{r}}$.",
+              "id": "factor-common-term",
+              "sceneStep": 0,
               "math": "\\Delta v = \\sqrt{\\frac{G \\cdot M}{r}} \\cdot \\left(-1 + \\sqrt{2} \\cdot \\sqrt{\\frac{r_a}{r + r_a}}\\right)",
               "justification": "Factor out the common term to simplify the expression.",
               "semanticGraph": {
@@ -2394,6 +2403,7 @@
             {
               "type": "step",
               "label": "Rearrange the terms inside the parenthesis.",
+              "sceneStep": 0,
               "math": "\\Delta v = \\sqrt{\\frac{G \\cdot M}{r}} \\cdot \\left(\\sqrt{2} \\cdot \\sqrt{\\frac{r_a}{r + r_a}} - 1\\right)",
               "justification": "Reorder the terms within the parenthesis for clarity and to match the target form.",
               "semanticGraph": {
