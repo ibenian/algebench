@@ -1,5 +1,14 @@
 name: Tests
 
+# `pytest` is a REQUIRED status check (the "main protection" ruleset), so it must
+# report on every PR — path-filtering the workflow would leave a docs-only PR
+# stuck on "Expected — waiting for status to be reported" forever. So the suite
+# ALWAYS runs (the check always reports); what varies is depth: a PR that touches
+# Python runs the FULL exhaustive semantic-graph cross-product, while a PR with no
+# Python changes runs a faster SAMPLED subset (conftest's default --sampled 200).
+# In practice that's ~5193 collected tests exhaustive vs ~3977 sampled — the delta
+# is the cross-product coverage test; the rest of the suite runs the same either
+# way. push(main) and manual dispatch always run exhaustive — main must stay green.
 on:
   pull_request:
   push:
@@ -18,6 +27,23 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Detect Python changes
+        id: changes
+        if: github.event_name == 'pull_request'
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            python:
+              - '**/*.py'
+              - 'pyproject.toml'
+              - 'pytest.ini'
+              - 'setup.cfg'
+              - 'conftest.py'
+              - 'requirements*.txt'
+              - 'run.sh'
+              - 'algebench'
+              - '.github/workflows/tests.yml'
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -30,11 +56,36 @@ jobs:
       - name: Run tests
         id: tests
         run: |
-          ./run.sh -m pytest tests/ -v --tb=short --exhaustive --junitxml=test-results.xml 2>&1 | tee test-output.txt
+          # Full exhaustive cross-product when Python changed (or on push/dispatch);
+          # otherwise a faster sampled run (conftest defaults to --sampled 200).
+          if [ "${{ github.event_name }}" != "pull_request" ] || [ "${{ steps.changes.outputs.python }}" == "true" ]; then
+            MODE="--exhaustive"
+            REASON="${{ github.event_name == 'pull_request' && 'Python files changed' || format('{0} event', github.event_name) }}"
+            DEPTH="FULL — exhaustive cross-product"
+          else
+            MODE=""
+            REASON="no Python files changed"
+            DEPTH="SAMPLED — conftest default (--sampled 200)"
+          fi
+          # Surface the mode everywhere it's visible: the log, an annotation, and
+          # the run's Summary tab.
+          echo "==================================================================="
+          echo "  Test depth: ${DEPTH}"
+          echo "  Reason:     ${REASON}"
+          echo "==================================================================="
+          echo "::notice title=Test depth::${DEPTH} (${REASON})"
+          {
+            echo "### 🧪 Test depth: ${DEPTH}"
+            echo ""
+            echo "**Reason:** ${REASON}"
+            echo ""
+            echo "\`pytest tests/ ${MODE:-(sampled)}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+          ./run.sh -m pytest tests/ -v --tb=short $MODE --junitxml=test-results.xml 2>&1 | tee test-output.txt
           echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
 
       - name: Post failure report as PR comment
-        if: github.event_name == 'pull_request' && steps.tests.outputs.exit_code != '0'
+        if: github.event_name == 'pull_request' && steps.tests.outputs.exit_code != '' && steps.tests.outputs.exit_code != '0'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
