@@ -887,6 +887,7 @@
         },
         {
           "id": "tsiolkovsky-rocket-equation",
+          "sceneStep": 5,
           "title": "Tsiolkovsky Rocket Equation",
           "technique": "derivation",
           "goal": "Derive the Tsiolkovsky rocket equation, which relates the change in velocity of a rocket to its exhaust velocity and the ratio of its initial to final mass, from its differential form.",
@@ -894,6 +895,8 @@
             {
               "type": "given",
               "label": "Given",
+              "id": "given",
+              "sceneStep": 5,
               "math": "dv \\cdot m = - dm \\cdot v_{e}",
               "justification": "the starting expression",
               "semanticGraph": {
@@ -929,6 +932,8 @@
             {
               "type": "step",
               "label": "Divide both sides by $m$",
+              "id": "divide-by-mass",
+              "sceneStep": 5,
               "math": "dv = - \\frac{v_{e}}{m} dm",
               "justification": "To prepare for integration, divide both sides by $m$ to separate the differentials $dv$ and $dm$.",
               "semanticGraph": {
@@ -964,6 +969,8 @@
             {
               "type": "step",
               "label": "Rewrite the right side to prepare for integration",
+              "id": "separate-differentials",
+              "sceneStep": 5,
               "math": "dv = - v_{e} \\cdot \\frac{1}{m} dm",
               "justification": "Rewrite the right side to explicitly show the term $\\frac{1}{m}$, which is a standard integral form.",
               "semanticGraph": {
@@ -1001,6 +1008,8 @@
             {
               "type": "step",
               "label": "Integrate both sides with definite limits",
+              "id": "integrate",
+              "sceneStep": 5,
               "math": "\\int_{v_{0}}^{v_{f}} dv = \\int_{m_{0}}^{m_{f}} - v_{e} \\cdot \\frac{1}{m} dm",
               "justification": "Integrate both sides of the equation. The left side is integrated from an initial velocity $v_0$ to a final velocity $v_f$, and the right side is integrated from an initial mass $m_0$ to a final mass $m_f$.",
               "semanticGraph": {
@@ -1050,6 +1059,8 @@
             {
               "type": "step",
               "label": "Evaluate the definite integrals",
+              "id": "evaluate-integrals",
+              "sceneStep": 5,
               "math": "v_{f} - v_{0} = - v_{e} \\cdot \\left(\\log{\\left(m_{f} \\right)} - \\log{\\left(m_{0} \\right)}\\right)",
               "justification": "Evaluate each definite integral directly by applying the Fundamental Theorem of Calculus: the antiderivative of $dv$ is $v$ (giving $v_f-v_0$), and of $\\frac{1}{m}dm$ is $\\log m$ (giving $\\log m_f-\\log m_0$).",
               "semanticGraph": {
@@ -1100,6 +1111,8 @@
             {
               "type": "step",
               "label": "Apply the logarithm property $\\log a - \\log b = \\log \\left(\\frac{a}{b}\\right)$",
+              "id": "apply-log-quotient",
+              "sceneStep": 5,
               "math": "v_{f} - v_{0} = - v_{e} \\cdot \\log{\\left(\\frac{m_{f}}{m_{0}} \\right)}",
               "justification": "Use the logarithm property $\\log a - \\log b = \\log \\left(\\frac{a}{b}\\right)$ to combine the logarithmic terms.",
               "semanticGraph": {
@@ -1147,6 +1160,7 @@
             {
               "type": "step",
               "label": "Substitute $\\Delta v = v_f - v_0$ and apply the logarithm property $- \\log x = \\log \\left(x^{-1}\\right)$",
+              "sceneStep": 5,
               "math": "\\Delta v = v_{e} \\cdot \\log{\\left(\\frac{m_{0}}{m_{f}} \\right)}",
               "justification": "Substitute $\\Delta v = v_f - v_0$ to represent the total change in velocity. Then, use the logarithm property $- \\log x = \\log \\left(x^{-1}\\right)$ to remove the negative sign and invert the fraction inside the logarithm, matching the target form of the Tsiolkovsky rocket equation.",
               "semanticGraph": {
