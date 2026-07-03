@@ -4,7 +4,7 @@
     {
       "title": "Light as a Wave: $c=f\\lambda$",
       "description": "Start with the classical wave picture: stretching wavelength lowers frequency when the wave speed is fixed.",
-      "markdown": "# Light as a Wave\n\nClassical electromagnetism treats light as a wave moving at speed $c$ in vacuum. The basic kinematic link is\n\n$$c=f\\lambda.$$\n\nIf $c$ is fixed, wavelength and frequency must trade off:\n\n$$f=\\frac{c}{\\lambda}.$$\n\nA longer wavelength means fewer crests pass a point each second. This part is continuous: in free space, a photon can have any wavelength allowed by the source and propagation conditions.\n\n## What this wave is — and what it is not\n\nThe sine wave shown here represents the **electric field** component of a classical electromagnetic wave: $E_y(x,t)=A\\sin(kx-\\omega t)$, described by Maxwell's equations.\n\nA real EM wave has **two fields** oscillating in phase, perpendicular to each other and to the propagation direction:\n\n- **Electric field** $\\vec{E}$: shown here as the sine wave in the $y$-direction.\n- **Magnetic field** $\\vec{B}$: oscillates in the $z$-direction (perpendicular to the screen), with magnitude $B=E/c$.\n\nWe show only the electric field because it is the component that does most of the work on charged matter — it drives electron oscillations, photoelectric ejection, and detector responses. The magnetic component is always present but $c$ times smaller in SI units.\n\nThis wave does not depict a single photon. In quantum terms it corresponds to a **coherent state** — a huge number of photons all sharing the same frequency, direction, and phase, like a laser beam or a radio signal. The amplitude $A$ is the peak electric field strength. A brighter beam has a larger $A$, which means more photons per second, not more energetic photons.\n\nA single photon is one quantum excitation of the field mode. It has definite energy $E=hf$ and momentum $p=h/\\lambda$, but it does not have a definite classical electric field value. To depict a single photon, you would show a localized **wave packet** — a few oscillations that taper off — not an infinite plane wave.\n\nThe quantum content of this scene is the relation $E=hf$: the wave's energy is not continuous but comes in discrete packets, each carrying energy proportional to frequency. The wave picture gives wavelength and frequency; quantization gives the energy rule.\n\n## The historical pressure\n\nAt the turn of the twentieth century, classical blackbody theory led to the ultraviolet catastrophe: it predicted runaway short-wavelength emission. Planck's resolution was to make exchange of energy discrete, in units proportional to frequency. That idea became the first step toward quantum mechanics.\n\nReferences: https://en.wikipedia.org/wiki/Quantum and https://en.wikipedia.org/wiki/Photon_energy",
+      "markdown": "# Light as a Wave\n\nClassical electromagnetism treats light as a wave moving at speed $c$ in vacuum. The basic kinematic link is\n\n$$c=f\\lambda.$$\n\nIf $c$ is fixed, wavelength and frequency must trade off:\n\n$$f=\\frac{c}{\\lambda}.$$\n\nA longer wavelength means fewer crests pass a point each second. This part is continuous: in free space, a photon can have any wavelength allowed by the source and propagation conditions.\n\n## What this wave is — and what it is not\n\nThe sine wave shown here represents the **electric field** component of a classical electromagnetic wave: $E_y(x,t)=A\\sin(kx-\\omega t)$, described by Maxwell's equations.\n\nA real EM wave has **two fields** oscillating in phase, perpendicular to each other and to the propagation direction:\n\n- **Electric field** $\\vec{E}$: shown here as the sine wave in the $y$-direction.\n- **Magnetic field** $\\vec{B}$: oscillates in the $z$-direction (perpendicular to the screen), with magnitude $B=E/c$.\n\nWe show only the electric field because it is the component that does most of the work on charged matter — it drives electron oscillations, photoelectric ejection, and detector responses. The magnetic component is always present but $c$ times smaller in SI units.\n\nThis wave does not depict a single photon. In quantum terms it corresponds to a **coherent state** — a huge number of photons all sharing the same frequency, direction, and phase, like a laser beam or a radio signal. The amplitude $A$ is the peak electric field strength. A brighter beam has a larger $A$, which means more photons per second, not more energetic photons.\n\nA single photon is one quantum excitation of the field mode. It has definite energy $E=hf$ and momentum $p=h/\\lambda$, but it does not have a definite classical electric field value. To depict a single photon, you would show a localized **wave packet** — a few oscillations that taper off — not an infinite plane wave.\n\nThe quantum content of this scene is the relation $E=hf$: the wave's energy is not continuous but comes in discrete packets, each carrying energy proportional to frequency. The wave picture gives wavelength and frequency; quantization gives the energy rule.\n\nReferences: https://en.wikipedia.org/wiki/Quantum and https://en.wikipedia.org/wiki/Photon_energy",
       "prompt": "Teach the wave kinematics first. Keep the distinction clear: c = f lambda is a wave relation, while E = hf is the quantum energy relation introduced next. Emphasize that stretching wavelength lowers frequency for fixed c.",
       "functions": [
         {
@@ -672,27 +672,9 @@
           ]
         },
         {
-          "title": "The crisis of the infinite",
-          "description": "Classical prediction: short wavelengths run away. Planck's resolution: energy comes in quanta. Blackbody radiation forced a deeper idea \u2014 energy exchange is quantized.",
-          "prompt": "Frame the ultraviolet catastrophe as the reason the energy rule had to change. Avoid overclaiming: Planck quantized exchange of energy, not simply spatial wavelength.",
-          "remove": [
-            {
-              "type": "info"
-            }
-          ],
-          "add": [],
-          "info": [
-            {
-              "id": "s0_planck_info",
-              "position": "top-right",
-              "content": "**Planck's move**\n\nEnergy exchange is not arbitrary:\n\n$$E=hf$$\n\nThis is the bridge from the wave picture to photons."
-            }
-          ]
-        },
-        {
           "title": "Visible light: real wavelengths",
-          "description": "Map the abstract $\\lambda$ to real wavelengths. The vertical spectrum bar shows how frequency maps to color. Note: the wave's amplitude represents the peak electric field strength, not its energy or wavelength\u2014amplitude depends on intensity (how many photons), not on color.",
-          "prompt": "Show how the abstract wavelength maps to visible light. The vertical color bar next to the f-axis shows the direct mapping: higher frequency means shorter wavelength and bluer color. Emphasize that our eyes only see a tiny slice of the full EM spectrum. Point out that the amplitude of the wave is the electric field strength and is independent of wavelength\u2014it depends on the light's intensity, not its color. A dim blue beam and a dim red beam have the same small amplitude; a bright red beam has a large amplitude.",
+          "description": "Map the abstract $\\lambda$ to real wavelengths. The vertical spectrum bar shows how frequency maps to color. Note: the wave's amplitude represents the peak electric field strength, not its energy or wavelength—amplitude depends on intensity (how many photons), not on color.",
+          "prompt": "Show how the abstract wavelength maps to visible light. The vertical color bar next to the f-axis shows the direct mapping: higher frequency means shorter wavelength and bluer color. Emphasize that our eyes only see a tiny slice of the full EM spectrum. Point out that the amplitude of the wave is the electric field strength and is independent of wavelength—it depends on the light's intensity, not its color. A dim blue beam and a dim red beam have the same small amplitude; a bright red beam has a large amplitude.",
           "remove": [
             {
               "type": "info"
@@ -1313,7 +1295,7 @@
             {
               "id": "s0_wavelength_info",
               "position": "top-left",
-              "content": "**Wavelength \u2192 frequency**\n\n$$f=\\frac{c}{\\lambda}$$\n\n| $\\lambda$ (nm) | $f$ (THz) | Color |\n|---|---|---|\n| 380 | 789 | violet |\n| 480 | 625 | cyan |\n| 550 | 545 | green |\n| 600 | 500 | orange |\n| 700 | 428 | red |"
+              "content": "**Wavelength → frequency**\n\n$$f=\\frac{c}{\\lambda}$$\n\n| $\\lambda$ (nm) | $f$ (THz) | Color |\n|---|---|---|\n| 380 | 789 | violet |\n| 480 | 625 | cyan |\n| 550 | 545 | green |\n| 600 | 500 | orange |\n| 700 | 428 | red |"
             }
           ]
         },
@@ -1322,12 +1304,24 @@
           "description": "An electromagnetic wave has two perpendicular oscillating fields. Until now we showed only the electric field $\\vec{E}$ (in $y$). The magnetic field $\\vec{B}$ oscillates in $z$, perpendicular to both $\\vec{E}$ and the propagation direction. Switch to the Iso view to see both components in 3D.",
           "prompt": "Reveal the magnetic field component oscillating in the z-direction. Explain that every EM wave has both E and B perpendicular to each other and to the propagation direction. We showed only E because it dominates interactions with charged matter. Note B = E/c in SI units; we exaggerate B visually for clarity.",
           "camera": {
-            "position": [6, 5, 10],
-            "target": [0, 1, 0]
+            "position": [
+              6,
+              5,
+              10
+            ],
+            "target": [
+              0,
+              1,
+              0
+            ]
           },
           "remove": [
-            { "type": "info" },
-            { "id": "s0_wave_title" }
+            {
+              "type": "info"
+            },
+            {
+              "id": "s0_wave_title"
+            }
           ],
           "add": [
             {
@@ -1336,7 +1330,10 @@
               "x": "t",
               "y": "0",
               "z": "sin(2*pi*t/lambda)",
-              "range": [0, 12],
+              "range": [
+                0,
+                12
+              ],
               "samples": 300,
               "color": "#e85d75",
               "width": 4,
@@ -1345,7 +1342,18 @@
             {
               "id": "s0_z_ref",
               "type": "line",
-              "points": [[0, 0, 0], [0, 0, 2]],
+              "points": [
+                [
+                  0,
+                  0,
+                  0
+                ],
+                [
+                  0,
+                  0,
+                  2
+                ]
+              ],
               "color": "#555e6a",
               "width": 1,
               "opacity": 0.4,
@@ -1355,7 +1363,11 @@
               "id": "s0_E_field_label",
               "type": "text",
               "text": "$\\vec{E}$ (electric)",
-              "position": [1, 1.4, 0],
+              "position": [
+                1,
+                1.4,
+                0
+              ],
               "color": "#2f9e9b",
               "size": 16
             },
@@ -1363,7 +1375,11 @@
               "id": "s0_B_field_label",
               "type": "text",
               "text": "$\\vec{B}$ (magnetic)",
-              "position": [1, 0, 1.4],
+              "position": [
+                1,
+                0,
+                1.4
+              ],
               "color": "#e85d75",
               "size": 16
             },
@@ -1371,7 +1387,11 @@
               "id": "s0_prop_label",
               "type": "text",
               "text": "propagation $\\rightarrow$",
-              "position": [10, -0.5, 0],
+              "position": [
+                10,
+                -0.5,
+                0
+              ],
               "color": "#9aa4ad",
               "size": 14
             }
@@ -1413,7 +1433,7 @@
                 }
               },
               "justification": "The fundamental kinematic relation for constant speed.",
-              "explanation": "Distance equals speed times time \u2014 the starting point for all wave relations.",
+              "explanation": "Distance equals speed times time — the starting point for all wave relations.",
               "prompt": "Start from the most basic formula the learner already knows.",
               "sceneStep": 0
             },
@@ -1490,7 +1510,7 @@
               },
               "justification": "Multiply both sides of $f=c/\\lambda$ by $\\lambda$.",
               "explanation": "This is just $x=vt$ applied to one cycle: speed equals frequency times wavelength.",
-              "prompt": "Emphasize that c = f lambda is not a new law \u2014 it is x = v t for one wave cycle.",
+              "prompt": "Emphasize that c = f lambda is not a new law — it is x = v t for one wave cycle.",
               "sceneStep": 1
             }
           ]
@@ -1529,7 +1549,7 @@
             {
               "id": "maxwell_ampere",
               "type": "given",
-              "label": "Amp\u00e8re\u2013Maxwell law (free space)",
+              "label": "Ampère–Maxwell law (free space)",
               "math": "\\htmlClass{hl-curl}{\\nabla\\times}\\htmlClass{hl-B}{\\vec{B}}=\\htmlClass{hl-mu}{\\mu_0}\\htmlClass{hl-eps}{\\epsilon_0}\\htmlClass{hl-dtE}{\\frac{\\partial\\vec{E}}{\\partial t}}",
               "highlights": {
                 "curl": {
@@ -1553,8 +1573,8 @@
                   "label": "Time rate of change of E"
                 }
               },
-              "justification": "In free space (no currents), Amp\u00e8re's law with Maxwell's displacement current term.",
-              "explanation": "A time-varying electric field creates a curling magnetic field \u2014 Maxwell's crucial addition to Amp\u00e8re's law.",
+              "justification": "In free space (no currents), Ampère's law with Maxwell's displacement current term.",
+              "explanation": "A time-varying electric field creates a curling magnetic field — Maxwell's crucial addition to Ampère's law.",
               "prompt": "Present the second curl equation. Note Maxwell's displacement current term is what makes waves possible.",
               "sceneStep": 0
             },
@@ -1589,9 +1609,9 @@
                   "label": "Second time derivative of E"
                 }
               },
-              "justification": "Apply $\\nabla\\times$ to Faraday's law; on the right side, swap $\\nabla\\times$ with $\\partial/\\partial t$ and substitute Amp\u00e8re\u2013Maxwell.",
-              "explanation": "Taking the curl of both sides of Faraday's law and substituting the Amp\u00e8re\u2013Maxwell law eliminates $\\vec{B}$, leaving an equation in $\\vec{E}$ alone.",
-              "prompt": "This is the key step: curl of curl on the left, and on the right we substitute Amp\u00e8re\u2013Maxwell to eliminate B entirely.",
+              "justification": "Apply $\\nabla\\times$ to Faraday's law; on the right side, swap $\\nabla\\times$ with $\\partial/\\partial t$ and substitute Ampère–Maxwell.",
+              "explanation": "Taking the curl of both sides of Faraday's law and substituting the Ampère–Maxwell law eliminates $\\vec{B}$, leaving an equation in $\\vec{E}$ alone.",
+              "prompt": "This is the key step: curl of curl on the left, and on the right we substitute Ampère–Maxwell to eliminate B entirely.",
               "sceneStep": 0
             },
             {
@@ -1658,7 +1678,7 @@
                 }
               },
               "justification": "Define $c^2=1/(\\mu_0\\epsilon_0)$ and rearrange. This is the standard wave equation.",
-              "explanation": "Maxwell's equations predict that $\\vec{E}$ satisfies a wave equation with speed $c=1/\\sqrt{\\mu_0\\epsilon_0}\\approx 3\\times 10^8$ m/s \u2014 the speed of light.",
+              "explanation": "Maxwell's equations predict that $\\vec{E}$ satisfies a wave equation with speed $c=1/\\sqrt{\\mu_0\\epsilon_0}\\approx 3\\times 10^8$ m/s — the speed of light.",
               "prompt": "This is the historic result: Maxwell's equations predict electromagnetic waves travelling at the speed of light. Light IS an electromagnetic wave.",
               "sceneStep": 0
             },
@@ -1678,15 +1698,15 @@
                 },
                 "k": {
                   "color": "yellow",
-                  "label": "Wave number (k = 2\u03c0/\u03bb)"
+                  "label": "Wave number (k = 2π/λ)"
                 },
                 "omega": {
                   "color": "orange",
-                  "label": "Angular frequency (\u03c9 = 2\u03c0f)"
+                  "label": "Angular frequency (ω = 2πf)"
                 }
               },
               "justification": "Substitute the simplest plane-wave ansatz propagating in the $x$-direction with $\\vec{E}$ polarized in $\\hat{y}$.",
-              "explanation": "We guess a sinusoidal form \u2014 a plane wave moving in the $x$-direction with the electric field oscillating in $y$.",
+              "explanation": "We guess a sinusoidal form — a plane wave moving in the $x$-direction with the electric field oscillating in $y$.",
               "prompt": "Try the simplest wave-like solution. The sine function naturally describes oscillations.",
               "sceneStep": 0
             },
@@ -1710,7 +1730,7 @@
                 }
               },
               "justification": "Substituting the ansatz: $\\partial^2 E_y/\\partial x^2=-k^2 E_y$ and $\\partial^2 E_y/\\partial t^2=-\\omega^2 E_y$. The wave equation gives $k^2=\\omega^2/c^2$.",
-              "explanation": "Plugging the sine into the wave equation forces $\\omega=ck$ \u2014 the frequency and wave number are locked together by the speed of light.",
+              "explanation": "Plugging the sine into the wave equation forces $\\omega=ck$ — the frequency and wave number are locked together by the speed of light.",
               "prompt": "Compute the second derivatives and substitute. The sine cancels, leaving the algebraic constraint omega = ck.",
               "sceneStep": 0
             },
@@ -1730,11 +1750,11 @@
                 },
                 "k": {
                   "color": "yellow",
-                  "label": "k = 2\u03c0/\u03bb"
+                  "label": "k = 2π/λ"
                 },
                 "omega": {
                   "color": "orange",
-                  "label": "\u03c9 = 2\u03c0f = ck"
+                  "label": "ω = 2πf = ck"
                 },
                 "dir": {
                   "color": "pink",
@@ -1742,9 +1762,9 @@
                 }
               },
               "justification": "The sinusoidal ansatz satisfies Maxwell's wave equation provided $\\omega=ck$. This is the wave shown in the 3D view.",
-              "explanation": "A sinusoidal electric field oscillating in $\\hat{y}$ and propagating in $\\hat{x}$ is a valid electromagnetic wave \u2014 exactly what the teal curve shows.",
-              "prompt": "This is the equation behind the visualization. The teal curve is E_0 sin(kx - \u03c9t) in the y-direction.",
-              "sceneStep": 4
+              "explanation": "A sinusoidal electric field oscillating in $\\hat{y}$ and propagating in $\\hat{x}$ is a valid electromagnetic wave — exactly what the teal curve shows.",
+              "prompt": "This is the equation behind the visualization. The teal curve is E_0 sin(kx - ωt) in the y-direction.",
+              "sceneStep": 3
             }
           ]
         },
@@ -1783,9 +1803,9 @@
                 }
               },
               "justification": "From the previous proof: this $\\vec{E}$ solves Maxwell's wave equation.",
-              "explanation": "We start with the electric field we already derived \u2014 now we use it to find the magnetic field.",
+              "explanation": "We start with the electric field we already derived — now we use it to find the magnetic field.",
               "prompt": "Recall the E field solution from the previous proof. Now we will find B.",
-              "sceneStep": 4
+              "sceneStep": 3
             },
             {
               "id": "faraday_applied",
@@ -1809,7 +1829,7 @@
               "justification": "Faraday's law connects the spatial variation of $\\vec{E}$ to the time variation of $\\vec{B}$.",
               "explanation": "If $\\vec{E}$ varies in space, Faraday's law tells us $\\vec{B}$ must be changing in time.",
               "prompt": "Faraday's law is the bridge: given E, it tells us what B must be.",
-              "sceneStep": 4
+              "sceneStep": 3
             },
             {
               "id": "compute_curl",
@@ -1839,9 +1859,9 @@
                 }
               },
               "justification": "Since $\\vec{E}$ has only a $y$-component that depends on $x$, the only nonzero curl component is $\\partial E_y/\\partial x$ in the $\\hat{z}$ direction.",
-              "explanation": "The curl picks out how the $y$-field changes along $x$ \u2014 and points it in the $z$-direction. This is why $\\vec{B}$ will be in $\\hat{z}$.",
+              "explanation": "The curl picks out how the $y$-field changes along $x$ — and points it in the $z$-direction. This is why $\\vec{B}$ will be in $\\hat{z}$.",
               "prompt": "Only one component of the curl survives: dEy/dx gives a z-component. This determines the direction of B.",
-              "sceneStep": 4
+              "sceneStep": 3
             },
             {
               "id": "faraday_z",
@@ -1869,7 +1889,7 @@
               "justification": "Equate the $z$-component of the curl to $-\\partial B_z/\\partial t$.",
               "explanation": "Faraday's law now gives us a simple equation: the time derivative of $B_z$ equals $-E_0 k\\cos(kx-\\omega t)$.",
               "prompt": "Write out the z-component of Faraday's law explicitly.",
-              "sceneStep": 4
+              "sceneStep": 3
             },
             {
               "id": "integrate",
@@ -1895,9 +1915,9 @@
                 }
               },
               "justification": "Integrate $-\\partial B_z/\\partial t$ with respect to $t$. The integral of $\\cos(kx-\\omega t)$ with respect to $t$ is $\\frac{1}{\\omega}\\sin(kx-\\omega t)$.",
-              "explanation": "Integrating the cosine in time gives back a sine \u2014 the magnetic field oscillates in phase with the electric field, with amplitude $E_0 k/\\omega$.",
+              "explanation": "Integrating the cosine in time gives back a sine — the magnetic field oscillates in phase with the electric field, with amplitude $E_0 k/\\omega$.",
               "prompt": "Integrate both sides with respect to time. The cosine integrates to sine, picking up a factor of 1/omega.",
-              "sceneStep": 4
+              "sceneStep": 3
             },
             {
               "id": "use_dispersion",
@@ -1919,9 +1939,9 @@
                 }
               },
               "justification": "The dispersion relation $\\omega=ck$ from the wave equation simplifies $k/\\omega$ to $1/c$.",
-              "explanation": "The ratio $k/\\omega$ collapses to $1/c$ \u2014 the wave number and frequency are locked together by the speed of light.",
+              "explanation": "The ratio $k/\\omega$ collapses to $1/c$ — the wave number and frequency are locked together by the speed of light.",
               "prompt": "This is where the dispersion relation omega=ck pays off. The k cancels beautifully.",
-              "sceneStep": 4
+              "sceneStep": 3
             },
             {
               "id": "B_solution",
@@ -1943,23 +1963,217 @@
                 },
                 "k": {
                   "color": "yellow",
-                  "label": "k = 2\u03c0/\u03bb"
+                  "label": "k = 2π/λ"
                 },
                 "omega": {
                   "color": "orange",
-                  "label": "\u03c9 = 2\u03c0f"
+                  "label": "ω = 2πf"
                 },
                 "zhat": {
                   "color": "pink",
-                  "label": "z-direction (\u22a5 to E and propagation)"
+                  "label": "z-direction (⊥ to E and propagation)"
                 }
               },
               "justification": "Substitute $k/\\omega=1/c$. The magnetic field is perpendicular to $\\vec{E}$ and to the propagation direction, with magnitude $B_0=E_0/c$.",
-              "explanation": "$\\vec{B}$ oscillates in $\\hat{z}$, perpendicular to both $\\vec{E}$ (in $\\hat{y}$) and propagation (in $\\hat{x}$). Its amplitude is $E_0/c$ \u2014 about $3\\times 10^{-9}$ times smaller in SI units, which is why $\\vec{E}$ dominates interactions with matter.",
+              "explanation": "$\\vec{B}$ oscillates in $\\hat{z}$, perpendicular to both $\\vec{E}$ (in $\\hat{y}$) and propagation (in $\\hat{x}$). Its amplitude is $E_0/c$ — about $3\\times 10^{-9}$ times smaller in SI units, which is why $\\vec{E}$ dominates interactions with matter.",
               "prompt": "This is the red curve in the 3D view. B is perpendicular to E, in phase, and c times smaller. That's why we usually only need to think about E.",
-              "sceneStep": 4
+              "sceneStep": 3
             }
           ]
+        }
+      ]
+    },
+    {
+      "title": "The Ultraviolet Catastrophe",
+      "description": "Classical wave theory predicts a hot oven should radiate infinite energy. The fix — energy exchanged in quanta E=hf — is the birth of quantum mechanics.",
+      "markdown": "# The Ultraviolet Catastrophe\n\n## The historical pressure\n\nAt the turn of the twentieth century, classical blackbody theory led to the ultraviolet catastrophe: it predicted runaway short-wavelength emission. Planck's resolution was to make exchange of energy discrete, in units proportional to frequency. That idea became the first step toward quantum mechanics.\n\nThis scene builds the crisis and its resolution visually: the classical Rayleigh–Jeans spectrum diverges at high frequency, while Planck's quantized spectrum stays finite and matches what hot objects actually emit.",
+      "prompt": "Guide the learner through the blackbody crisis: hot things glow, classical theory says every mode gets kT so total energy diverges, Planck's E=hf freezes out expensive quanta. Define 'mode' and 'kT' in plain language before using them.",
+      "range": [
+        [
+          -1,
+          8
+        ],
+        [
+          -1,
+          6
+        ],
+        [
+          -2,
+          2
+        ]
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "camera": {
+        "position": [
+          3.5,
+          2.5,
+          10
+        ],
+        "target": [
+          3.5,
+          2.5,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Chart",
+          "position": [
+            3.5,
+            2.5,
+            10
+          ],
+          "target": [
+            3.5,
+            2.5,
+            0
+          ],
+          "description": "Spectrum chart"
+        }
+      ],
+      "elements": [
+        {
+          "id": "uv_grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            -1,
+            8
+          ],
+          "color": [
+            0.25,
+            0.29,
+            0.34
+          ],
+          "opacity": 0.14,
+          "divisions": 12
+        },
+        {
+          "id": "uv_x_axis",
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            0,
+            7.5
+          ],
+          "color": "#9aa4ad",
+          "width": 1.2,
+          "label": "$f$ (frequency $\\rightarrow$)"
+        },
+        {
+          "id": "uv_y_axis",
+          "type": "axis",
+          "axis": "y",
+          "range": [
+            0,
+            5.5
+          ],
+          "color": "#9aa4ad",
+          "width": 1.2,
+          "label": "$u(f)$ (energy at each frequency)"
+        }
+      ],
+      "steps": [
+        {
+          "title": "The crisis of the infinite",
+          "description": "Classical prediction: short wavelengths run away. Planck's resolution: energy comes in quanta. Blackbody radiation forced a deeper idea — energy exchange is quantized.",
+          "prompt": "Frame the ultraviolet catastrophe as the reason the energy rule had to change. Avoid overclaiming: Planck quantized exchange of energy, not simply spatial wavelength.",
+          "remove": [
+            {
+              "type": "info"
+            }
+          ],
+          "add": [],
+          "info": [
+            {
+              "id": "s0_planck_info",
+              "position": "top-right",
+              "content": "**Planck's move**\n\nEnergy exchange is not arbitrary:\n\n$$E=hf$$\n\nThis is the bridge from the wave picture to photons."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "The Photoelectric Effect: Light Arrives in Chunks",
+      "description": "Einstein's 1905 explanation of photoelectric emission — Kmax = hf − φ — is the experimental proof that light delivers energy one quantum at a time.",
+      "markdown": "# The Photoelectric Effect\n\nShine light on a metal and electrons pop out — but only if the light's *frequency* is high enough. Below the threshold, no intensity is ever enough; above it, even dim light ejects electrons instantly. A classical wave, whose energy accumulates smoothly, predicts exactly the opposite. Einstein's 1905 resolution: light arrives in chunks of energy $E = hf$, and one electron absorbs one chunk, all or nothing:\n\n$$K_{max} = hf - \\varphi.$$\n\nMillikan spent a decade trying to refute this equation and ended up confirming it — and measuring Planck's constant $h$ from the slope.",
+      "prompt": "Walk the learner through the photoelectric effect as the experimental proof of photons. Define the electron-volt and the work function in plain language at first use. Emphasize the all-or-nothing character: intensity sets the count of electrons, frequency sets each electron's maximum energy.",
+      "range": [
+        [
+          -6,
+          6
+        ],
+        [
+          -1,
+          6
+        ],
+        [
+          -2,
+          2
+        ]
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "camera": {
+        "position": [
+          0,
+          2.5,
+          11
+        ],
+        "target": [
+          0,
+          2.5,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Face On",
+          "position": [
+            0,
+            2.5,
+            11
+          ],
+          "target": [
+            0,
+            2.5,
+            0
+          ],
+          "description": "Experiment and graph"
+        }
+      ],
+      "elements": [
+        {
+          "id": "pe_grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            -6,
+            6
+          ],
+          "color": [
+            0.25,
+            0.29,
+            0.34
+          ],
+          "opacity": 0.14,
+          "divisions": 12
+        }
+      ],
+      "steps": [
+        {
+          "title": "Light meets metal",
+          "description": "Placeholder — built out in the photoelectric content pass.",
+          "prompt": "Placeholder step.",
+          "add": []
         }
       ]
     },
@@ -2738,6 +2952,300 @@
       ]
     },
     {
+      "title": "Photon as Wave Packet and Detection Event",
+      "description": "A photon is a quantum excitation: spread out in possibility, localized in interaction.",
+      "markdown": "# What Is a Photon?\n\nA photon is a quantized excitation of the electromagnetic field. It is not a tiny classical ball and not a classical water wave.\n\nThe useful synthesis is a wave packet:\n\n$$\\Psi(x,t)=\\int A(k)e^{i(kx-\\omega t)}\\,dk.$$\n\nBefore detection, the quantum state can be spatially spread out. Detection is localized and all-or-nothing: a detector either records an interaction or it does not.\n\nA careful wording is:\n\n- Before measurement: spread-out quantum state or probability amplitude.\n- At measurement: localized detection event.\n- Measurement updates the quantum state description.\n\nThis avoids the misleading picture of a physical classical wave instantly collapsing across the universe.",
+      "prompt": "Use cautious quantum language. Say the photon is a quantized field excitation, described by a state that can be spatially spread out, with localized detection. Avoid implying a classical physical wave literally collapses.",
+      "range": [
+        [
+          -6,
+          6
+        ],
+        [
+          -6,
+          6
+        ],
+        [
+          -6,
+          6
+        ]
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "camera": {
+        "position": [
+          0,
+          0,
+          9
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Packet",
+          "position": [
+            0,
+            0,
+            9
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Wave-packet view"
+        },
+        {
+          "name": "Iso",
+          "position": [
+            6,
+            4,
+            7
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "description": "Perspective view"
+        }
+      ],
+      "elements": [
+        {
+          "id": "s4_x_axis",
+          "type": "axis",
+          "axis": "x",
+          "range": [
+            -6,
+            6
+          ],
+          "color": "#d04f4f",
+          "width": 1.2,
+          "label": "$x$"
+        },
+        {
+          "id": "s4_grid",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            -6,
+            6
+          ],
+          "color": [
+            0.25,
+            0.29,
+            0.34
+          ],
+          "opacity": 0.14,
+          "divisions": 12
+        }
+      ],
+      "steps": [
+        {
+          "title": "A localized packet is built from many waves",
+          "description": "A packet is made by superposing many wave numbers $k$. Narrower packets require a broader spread of wavelengths.",
+          "prompt": "Introduce superposition qualitatively. This is a conceptual visualization, not a full photon field calculation.",
+          "sliders": [
+            {
+              "id": "sigma",
+              "label": "$\\sigma$",
+              "min": 0.8,
+              "max": 2.6,
+              "step": 0.1,
+              "default": 1.4
+            }
+          ],
+          "add": [
+            {
+              "id": "s4_packet",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "exp(-(t*t)/(2*sigma*sigma))*cos(7*t)",
+              "z": "0",
+              "range": [
+                -6,
+                6
+              ],
+              "samples": 320,
+              "color": "#6ec6ff",
+              "width": 4,
+              "label": "$\\Psi(x)$"
+            },
+            {
+              "id": "s4_envelope_pos",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "exp(-(t*t)/(2*sigma*sigma))",
+              "z": "0",
+              "range": [
+                -6,
+                6
+              ],
+              "samples": 240,
+              "color": "#f0b84b",
+              "width": 2,
+              "opacity": 0.65,
+              "label": "packet envelope"
+            },
+            {
+              "id": "s4_envelope_neg",
+              "type": "parametric_curve",
+              "x": "t",
+              "y": "-exp(-(t*t)/(2*sigma*sigma))",
+              "z": "0",
+              "range": [
+                -6,
+                6
+              ],
+              "samples": 240,
+              "color": "#f0b84b",
+              "width": 2,
+              "opacity": 0.65,
+              "legendGroup": "packet envelope"
+            }
+          ],
+          "info": [
+            {
+              "id": "s4_packet_info",
+              "position": "top-right",
+              "content": "$$\\Psi(x,t)=\\int A(k)e^{i(kx-\\omega t)}\\,dk$$\n\nA packet is spread out, but not infinitely uniform."
+            }
+          ]
+        },
+        {
+          "title": "Detection is localized",
+          "description": "The spread-out state predicts probabilities. The detector records a localized event.",
+          "prompt": "Use the detector point to distinguish state description from detection event.",
+          "add": [
+            {
+              "id": "s4_detector",
+              "type": "line",
+              "points": [
+                [
+                  2.6,
+                  -2.1,
+                  0
+                ],
+                [
+                  2.6,
+                  2.1,
+                  0
+                ]
+              ],
+              "color": "#ff7b72",
+              "width": 5,
+              "label": "detector"
+            },
+            {
+              "id": "s4_click",
+              "type": "point",
+              "position": [
+                2.6,
+                0.25,
+                0
+              ],
+              "color": "#ff7b72",
+              "size": 18,
+              "label": "click"
+            },
+            {
+              "id": "s4_detection_text",
+              "type": "text",
+              "text": "localized interaction",
+              "position": [
+                2.85,
+                1.85,
+                0
+              ],
+              "color": "#ff7b72",
+              "size": 15
+            }
+          ],
+          "info": [
+            {
+              "id": "s4_detection_info",
+              "position": "bottom-right",
+              "content": "**Photon detection**\n\nSpread-out state.\n\nLocalized interaction.\n\nAll-or-nothing detector click."
+            }
+          ]
+        },
+        {
+          "title": "The final mental model",
+          "description": "A photon is spread out in possibility and localized in interaction. Wave and particle are incomplete classical metaphors.",
+          "prompt": "Close the lesson with the core insight. Invite questions about particle in a box, atomic orbitals, or black holes as next topics.",
+          "remove": [
+            {
+              "type": "info"
+            }
+          ],
+          "add": [
+            {
+              "id": "s4_summary_1",
+              "type": "text",
+              "text": "quantized excitation",
+              "position": [
+                -5.2,
+                2.2,
+                0
+              ],
+              "color": "#6ec6ff",
+              "size": 16
+            },
+            {
+              "id": "s4_summary_2",
+              "type": "text",
+              "text": "continuous wavelength in free space",
+              "position": [
+                -5.2,
+                1.75,
+                0
+              ],
+              "color": "#8bd3dd",
+              "size": 16
+            },
+            {
+              "id": "s4_summary_3",
+              "type": "text",
+              "text": "discrete spectra from constraints",
+              "position": [
+                -5.2,
+                1.3,
+                0
+              ],
+              "color": "#7bd389",
+              "size": 16
+            },
+            {
+              "id": "s4_summary_4",
+              "type": "text",
+              "text": "$E=hf=hc/\\lambda$",
+              "position": [
+                -5.2,
+                0.85,
+                0
+              ],
+              "color": "#f0b84b",
+              "size": 18
+            }
+          ],
+          "info": [
+            {
+              "id": "s4_summary_info",
+              "position": "top-right",
+              "content": "**Core insight**\n\nA photon is not a tiny ball flying through space.\n\nIt is a quantum entity: spread out in possibility, localized in interaction."
+            }
+          ]
+        }
+      ]
+    },
+    {
       "title": "Spreading Is Not Stretching",
       "description": "A wave packet can spread through space while each photon's energy stays fixed; redshift changes energy per photon.",
       "markdown": "# Spreading vs Stretching\n\nThis is the most important distinction in the lesson.\n\n## Spreading\n\nA beam or wave packet expands over a larger area. The same photon energy is distributed across a larger cross-section, so intensity drops. Energy per photon stays the same.\n\n## Stretching\n\nThe wavelength itself grows. Since\n\n$$E=\\frac{hc}{\\lambda},$$\n\nstretching the wavelength lowers the energy per photon.\n\nRedshift is a stretching effect. Doppler redshift comes from relative motion. Gravitational redshift comes from climbing out of a gravitational field. Cosmological redshift is described by\n\n$$\\lambda_{obs}=\\lambda_{em}(1+z).$$\n\nIn expanding spacetime, local conservation laws still hold, but a single global total energy for the universe is not generally well-defined.",
@@ -3101,300 +3609,6 @@
           }
         ]
       }
-    },
-    {
-      "title": "Photon as Wave Packet and Detection Event",
-      "description": "A photon is a quantum excitation: spread out in possibility, localized in interaction.",
-      "markdown": "# What Is a Photon?\n\nA photon is a quantized excitation of the electromagnetic field. It is not a tiny classical ball and not a classical water wave.\n\nThe useful synthesis is a wave packet:\n\n$$\\Psi(x,t)=\\int A(k)e^{i(kx-\\omega t)}\\,dk.$$\n\nBefore detection, the quantum state can be spatially spread out. Detection is localized and all-or-nothing: a detector either records an interaction or it does not.\n\nA careful wording is:\n\n- Before measurement: spread-out quantum state or probability amplitude.\n- At measurement: localized detection event.\n- Measurement updates the quantum state description.\n\nThis avoids the misleading picture of a physical classical wave instantly collapsing across the universe.",
-      "prompt": "Use cautious quantum language. Say the photon is a quantized field excitation, described by a state that can be spatially spread out, with localized detection. Avoid implying a classical physical wave literally collapses.",
-      "range": [
-        [
-          -6,
-          6
-        ],
-        [
-          -6,
-          6
-        ],
-        [
-          -6,
-          6
-        ]
-      ],
-      "scale": [
-        1,
-        1,
-        1
-      ],
-      "camera": {
-        "position": [
-          0,
-          0,
-          9
-        ],
-        "target": [
-          0,
-          0,
-          0
-        ]
-      },
-      "views": [
-        {
-          "name": "Packet",
-          "position": [
-            0,
-            0,
-            9
-          ],
-          "target": [
-            0,
-            0,
-            0
-          ],
-          "description": "Wave-packet view"
-        },
-        {
-          "name": "Iso",
-          "position": [
-            6,
-            4,
-            7
-          ],
-          "target": [
-            0,
-            0,
-            0
-          ],
-          "description": "Perspective view"
-        }
-      ],
-      "elements": [
-        {
-          "id": "s4_x_axis",
-          "type": "axis",
-          "axis": "x",
-          "range": [
-            -6,
-            6
-          ],
-          "color": "#d04f4f",
-          "width": 1.2,
-          "label": "$x$"
-        },
-        {
-          "id": "s4_grid",
-          "type": "grid",
-          "plane": "xy",
-          "range": [
-            -6,
-            6
-          ],
-          "color": [
-            0.25,
-            0.29,
-            0.34
-          ],
-          "opacity": 0.14,
-          "divisions": 12
-        }
-      ],
-      "steps": [
-        {
-          "title": "A localized packet is built from many waves",
-          "description": "A packet is made by superposing many wave numbers $k$. Narrower packets require a broader spread of wavelengths.",
-          "prompt": "Introduce superposition qualitatively. This is a conceptual visualization, not a full photon field calculation.",
-          "sliders": [
-            {
-              "id": "sigma",
-              "label": "$\\sigma$",
-              "min": 0.8,
-              "max": 2.6,
-              "step": 0.1,
-              "default": 1.4
-            }
-          ],
-          "add": [
-            {
-              "id": "s4_packet",
-              "type": "parametric_curve",
-              "x": "t",
-              "y": "exp(-(t*t)/(2*sigma*sigma))*cos(7*t)",
-              "z": "0",
-              "range": [
-                -6,
-                6
-              ],
-              "samples": 320,
-              "color": "#6ec6ff",
-              "width": 4,
-              "label": "$\\Psi(x)$"
-            },
-            {
-              "id": "s4_envelope_pos",
-              "type": "parametric_curve",
-              "x": "t",
-              "y": "exp(-(t*t)/(2*sigma*sigma))",
-              "z": "0",
-              "range": [
-                -6,
-                6
-              ],
-              "samples": 240,
-              "color": "#f0b84b",
-              "width": 2,
-              "opacity": 0.65,
-              "label": "packet envelope"
-            },
-            {
-              "id": "s4_envelope_neg",
-              "type": "parametric_curve",
-              "x": "t",
-              "y": "-exp(-(t*t)/(2*sigma*sigma))",
-              "z": "0",
-              "range": [
-                -6,
-                6
-              ],
-              "samples": 240,
-              "color": "#f0b84b",
-              "width": 2,
-              "opacity": 0.65,
-              "legendGroup": "packet envelope"
-            }
-          ],
-          "info": [
-            {
-              "id": "s4_packet_info",
-              "position": "top-right",
-              "content": "$$\\Psi(x,t)=\\int A(k)e^{i(kx-\\omega t)}\\,dk$$\n\nA packet is spread out, but not infinitely uniform."
-            }
-          ]
-        },
-        {
-          "title": "Detection is localized",
-          "description": "The spread-out state predicts probabilities. The detector records a localized event.",
-          "prompt": "Use the detector point to distinguish state description from detection event.",
-          "add": [
-            {
-              "id": "s4_detector",
-              "type": "line",
-              "points": [
-                [
-                  2.6,
-                  -2.1,
-                  0
-                ],
-                [
-                  2.6,
-                  2.1,
-                  0
-                ]
-              ],
-              "color": "#ff7b72",
-              "width": 5,
-              "label": "detector"
-            },
-            {
-              "id": "s4_click",
-              "type": "point",
-              "position": [
-                2.6,
-                0.25,
-                0
-              ],
-              "color": "#ff7b72",
-              "size": 18,
-              "label": "click"
-            },
-            {
-              "id": "s4_detection_text",
-              "type": "text",
-              "text": "localized interaction",
-              "position": [
-                2.85,
-                1.85,
-                0
-              ],
-              "color": "#ff7b72",
-              "size": 15
-            }
-          ],
-          "info": [
-            {
-              "id": "s4_detection_info",
-              "position": "bottom-right",
-              "content": "**Photon detection**\n\nSpread-out state.\n\nLocalized interaction.\n\nAll-or-nothing detector click."
-            }
-          ]
-        },
-        {
-          "title": "The final mental model",
-          "description": "A photon is spread out in possibility and localized in interaction. Wave and particle are incomplete classical metaphors.",
-          "prompt": "Close the lesson with the core insight. Invite questions about particle in a box, atomic orbitals, or black holes as next topics.",
-          "remove": [
-            {
-              "type": "info"
-            }
-          ],
-          "add": [
-            {
-              "id": "s4_summary_1",
-              "type": "text",
-              "text": "quantized excitation",
-              "position": [
-                -5.2,
-                2.2,
-                0
-              ],
-              "color": "#6ec6ff",
-              "size": 16
-            },
-            {
-              "id": "s4_summary_2",
-              "type": "text",
-              "text": "continuous wavelength in free space",
-              "position": [
-                -5.2,
-                1.75,
-                0
-              ],
-              "color": "#8bd3dd",
-              "size": 16
-            },
-            {
-              "id": "s4_summary_3",
-              "type": "text",
-              "text": "discrete spectra from constraints",
-              "position": [
-                -5.2,
-                1.3,
-                0
-              ],
-              "color": "#7bd389",
-              "size": 16
-            },
-            {
-              "id": "s4_summary_4",
-              "type": "text",
-              "text": "$E=hf=hc/\\lambda$",
-              "position": [
-                -5.2,
-                0.85,
-                0
-              ],
-              "color": "#f0b84b",
-              "size": 18
-            }
-          ],
-          "info": [
-            {
-              "id": "s4_summary_info",
-              "position": "top-right",
-              "content": "**Core insight**\n\nA photon is not a tiny ball flying through space.\n\nIt is a quantum entity: spread out in possibility, localized in interaction."
-            }
-          ]
-        }
-      ]
     },
     {
       "title": "Where Intuition Breaks: Black Holes",
