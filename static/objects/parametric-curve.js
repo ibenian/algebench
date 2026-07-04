@@ -24,10 +24,13 @@ export function renderParametricCurve(el, view) {
         const dt = (range[1] - range[0]) / samples;
         for (let i = 0; i <= samples; i++) {
             const t = range[0] + i * dt;
+            // `u` is a documented alias for the curve parameter (the validators
+            // and overlay allowlist accept it), so expose it alongside `t`.
+            const opts = { useVirtualTime: false, extraScope: { u: t } };
             try {
-                const x = evalExpr(fnX, t, { useVirtualTime: false });
-                const y = evalExpr(fnY, t, { useVirtualTime: false });
-                const z = evalExpr(fnZ, t, { useVirtualTime: false });
+                const x = evalExpr(fnX, t, opts);
+                const y = evalExpr(fnY, t, opts);
+                const z = evalExpr(fnZ, t, opts);
                 pts.push([isFinite(x) ? x : 0, isFinite(y) ? y : 0, isFinite(z) ? z : 0]);
             } catch(e) {
                 pts.push([0, 0, 0]);
