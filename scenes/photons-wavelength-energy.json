@@ -3904,14 +3904,14 @@
               "semanticGraph": {
                 "graph": {
                   "nodes": [
-                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "\\lambda_{n} = \\frac{2 \\cdot L}{n}"},
-                    {"id": "lambda_n", "type": "scalar", "latex": "\\lambda_{n}", "subexpr": "\\lambda_{n}"},
-                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "\\frac{1}{n} L 2"},
-                    {"id": "__multiply_3", "type": "operator", "op": "multiply", "subexpr": "L 2"},
-                    {"id": "__num_4", "type": "number", "label": "2", "subexpr": "2"},
-                    {"id": "L", "type": "scalar", "latex": "L", "subexpr": "L"},
-                    {"id": "__power_5", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{n}"},
-                    {"id": "n", "type": "scalar", "latex": "n", "subexpr": "n"}
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "\\lambda_{n} = \\frac{2 \\cdot L}{n}", "description": "The allowed wavelengths, $\\lambda_n$, are equal to twice the box length $L$ divided by the quantum number $n$."},
+                    {"id": "lambda_n", "type": "scalar", "emoji": "🌊", "latex": "\\lambda_{n}", "subexpr": "\\lambda_{n}", "description": "The de Broglie wavelength of the particle, which is quantized to fit within the box.", "quantity": "wavelength", "dimension": "L", "unit": "m"},
+                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "\\frac{1}{n} L 2", "description": "The expression for the quantized wavelength, combining box length and the quantum number.", "dimension": "L", "unit": "m"},
+                    {"id": "__multiply_3", "type": "operator", "op": "multiply", "subexpr": "L 2", "description": "Twice the length of the one-dimensional box.", "dimension": "L", "unit": "m"},
+                    {"id": "__num_4", "type": "number", "label": "2", "emoji": "🔢", "subexpr": "2", "description": "A numeric constant representing a full wavelength fitting into twice the box length.", "dimension": "1", "unit": "", "value": 2},
+                    {"id": "L", "type": "scalar", "emoji": "↔️", "latex": "L", "subexpr": "L", "description": "The length of the one-dimensional potential well, or 'box'.", "quantity": "length", "dimension": "L", "unit": "m"},
+                    {"id": "__power_5", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{n}", "description": "The inverse of the principal quantum number.", "dimension": "1", "unit": ""},
+                    {"id": "n", "type": "scalar", "emoji": "#️⃣", "latex": "n", "subexpr": "n", "description": "The principal quantum number, a positive integer representing the energy level.", "quantity": "quantum_number", "dimension": "1", "unit": "", "role": "index"}
                   ],
                   "edges": [
                     {"from": "lambda_n", "to": "__equals_1"},
@@ -3922,7 +3922,12 @@
                     {"from": "__power_5", "to": "__multiply_2"},
                     {"from": "__multiply_2", "to": "__equals_1"}
                   ],
-                  "classification": {"kind": "algebraic"}
+                  "classification": {"kind": "algebraic"},
+                  "domain": "quantum_mechanics",
+                  "enrichment": {
+                    "reasoning": "The context is the 'particle in a box' problem, so the domain is quantum mechanics. The symbols represent wavelength, box length, and a quantum number.",
+                    "fields": ["domain", "nodes.__equals_1.description", "nodes.lambda_n.description", "nodes.lambda_n.dimension", "nodes.lambda_n.emoji", "nodes.lambda_n.quantity", "nodes.lambda_n.unit", "nodes.__multiply_2.description", "nodes.__multiply_2.dimension", "nodes.__multiply_2.unit", "nodes.__multiply_3.description", "nodes.__multiply_3.dimension", "nodes.__multiply_3.unit", "nodes.__num_4.description", "nodes.__num_4.dimension", "nodes.__num_4.emoji", "nodes.__num_4.unit", "nodes.__num_4.value", "nodes.L.description", "nodes.L.dimension", "nodes.L.emoji", "nodes.L.quantity", "nodes.L.unit", "nodes.__power_5.description", "nodes.__power_5.dimension", "nodes.__power_5.unit", "nodes.n.description", "nodes.n.dimension", "nodes.n.emoji", "nodes.n.quantity", "nodes.n.role", "nodes.n.unit"]
+                  }
                 }
               }
             },
@@ -3936,12 +3941,12 @@
               "semanticGraph": {
                 "graph": {
                   "nodes": [
-                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "p_{n} = \\frac{h}{\\lambda_{n}}"},
-                    {"id": "p_n", "type": "scalar", "latex": "p_{n}", "subexpr": "p_{n}"},
-                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "h \\frac{1}{\\lambda_{n}}"},
-                    {"id": "h", "type": "scalar", "latex": "h", "subexpr": "h"},
-                    {"id": "__power_3", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{\\lambda_{n}}"},
-                    {"id": "lambda_n", "type": "scalar", "latex": "\\lambda_{n}", "subexpr": "\\lambda_{n}"}
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "p_{n} = \\frac{h}{\\lambda_{n}}", "description": "The de Broglie relation, stating that momentum is the ratio of Planck's constant to wavelength."},
+                    {"id": "p_n", "type": "scalar", "emoji": "💨", "latex": "p_{n}", "subexpr": "p_{n}", "description": "The quantized momentum of the particle, corresponding to the n-th energy level.", "quantity": "momentum", "dimension": "M·L·T⁻¹", "unit": "kg·m/s"},
+                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "h \\frac{1}{\\lambda_{n}}", "description": "The product of Planck's constant and the reciprocal wavelength, which defines the particle's momentum.", "quantity": "momentum", "dimension": "M·L·T⁻¹", "unit": "kg·m/s"},
+                    {"id": "h", "type": "scalar", "emoji": "⚙️", "latex": "h", "subexpr": "h", "description": "Planck's constant, a fundamental constant in quantum mechanics relating a particle's energy to its frequency.", "quantity": "action", "dimension": "M·L²·T⁻¹", "unit": "J·s", "role": "constant"},
+                    {"id": "__power_3", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{\\lambda_{n}}", "description": "The reciprocal of the de Broglie wavelength, proportional to the particle's wavenumber.", "quantity": "wavenumber", "dimension": "L⁻¹", "unit": "m⁻¹"},
+                    {"id": "lambda_n", "type": "scalar", "emoji": "🌊", "latex": "\\lambda_{n}", "subexpr": "\\lambda_{n}", "description": "The de Broglie wavelength of the particle, quantized to fit within the boundaries of the potential well.", "quantity": "wavelength", "dimension": "L", "unit": "m"}
                   ],
                   "edges": [
                     {"from": "p_n", "to": "__equals_1"},
@@ -3950,7 +3955,12 @@
                     {"from": "__power_3", "to": "__multiply_2"},
                     {"from": "__multiply_2", "to": "__equals_1"}
                   ],
-                  "classification": {"kind": "algebraic"}
+                  "classification": {"kind": "algebraic"},
+                  "domain": "quantum_mechanics",
+                  "enrichment": {
+                    "reasoning": "The context is about de Broglie's hypothesis and Planck's constant, which are core concepts in quantum mechanics. This sets the domain and disambiguates the symbols `p` (momentum), `λ` (wavelength), and `h` (Planck's constant).",
+                    "fields": ["domain", "nodes.__equals_1.description", "nodes.p_n.description", "nodes.p_n.dimension", "nodes.p_n.emoji", "nodes.p_n.quantity", "nodes.p_n.unit", "nodes.__multiply_2.description", "nodes.__multiply_2.dimension", "nodes.__multiply_2.quantity", "nodes.__multiply_2.unit", "nodes.h.description", "nodes.h.dimension", "nodes.h.emoji", "nodes.h.quantity", "nodes.h.role", "nodes.h.unit", "nodes.__power_3.description", "nodes.__power_3.dimension", "nodes.__power_3.quantity", "nodes.__power_3.unit", "nodes.lambda_n.description", "nodes.lambda_n.dimension", "nodes.lambda_n.emoji", "nodes.lambda_n.quantity", "nodes.lambda_n.unit"]
+                  }
                 }
               }
             },
@@ -3964,17 +3974,17 @@
               "semanticGraph": {
                 "graph": {
                   "nodes": [
-                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "p_{n} = \\frac{h}{\\frac{2 \\cdot L}{n}}"},
-                    {"id": "p_n", "type": "scalar", "latex": "p_{n}", "subexpr": "p_{n}"},
-                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "h \\frac{1}{2 L \\frac{1}{n}}"},
-                    {"id": "h", "type": "scalar", "latex": "h", "subexpr": "h"},
-                    {"id": "__power_3", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2 L \\frac{1}{n}}"},
-                    {"id": "__multiply_4", "type": "operator", "op": "multiply", "subexpr": "\\frac{1}{n} L 2"},
-                    {"id": "__multiply_5", "type": "operator", "op": "multiply", "subexpr": "L 2"},
-                    {"id": "__num_6", "type": "number", "label": "2", "subexpr": "2"},
-                    {"id": "L", "type": "scalar", "latex": "L", "subexpr": "L"},
-                    {"id": "__power_7", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{n}"},
-                    {"id": "n", "type": "scalar", "latex": "n", "subexpr": "n"}
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "p_{n} = \\frac{h}{\\frac{2 \\cdot L}{n}}", "description": "The equation for quantized momentum, $p_n$, derived from the De Broglie relation."},
+                    {"id": "p_n", "type": "scalar", "emoji": "💨", "latex": "p_{n}", "subexpr": "p_{n}", "description": "The quantized momentum of the particle, corresponding to the n-th energy level.", "quantity": "momentum", "dimension": "M·L·T⁻¹", "unit": "kg·m/s", "role": "observable"},
+                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "h \\frac{1}{2 L \\frac{1}{n}}", "description": "The calculation of momentum, expressing the De Broglie relation $p = h/\\\\lambda_n$.", "quantity": "momentum", "dimension": "M·L·T⁻¹", "unit": "kg·m/s"},
+                    {"id": "h", "type": "scalar", "emoji": "🌌", "latex": "h", "subexpr": "h", "description": "Planck's constant, a fundamental constant in quantum mechanics.", "quantity": "planck_constant", "dimension": "M·L²·T⁻¹", "unit": "J·s", "role": "constant"},
+                    {"id": "__power_3", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2 L \\frac{1}{n}}", "description": "The reciprocal of the allowed wavelength, $1/\\\\lambda_n$, used to find momentum.", "quantity": "wavenumber", "dimension": "L⁻¹", "unit": "m⁻¹"},
+                    {"id": "__multiply_4", "type": "operator", "op": "multiply", "subexpr": "\\frac{1}{n} L 2", "description": "The expression for the n-th allowed wavelength, $\\\\lambda_n$, for a particle in a box.", "quantity": "wavelength", "dimension": "L", "unit": "m"},
+                    {"id": "__multiply_5", "type": "operator", "op": "multiply", "subexpr": "L 2", "description": "Twice the length of the box, related to the standing wave condition.", "quantity": "length", "dimension": "L", "unit": "m"},
+                    {"id": "__num_6", "type": "number", "label": "2", "subexpr": "2", "description": "A factor from the boundary condition requiring an integer number of half-wavelengths.", "dimension": "1", "unit": "", "value": 2},
+                    {"id": "L", "type": "scalar", "emoji": "📏", "latex": "L", "subexpr": "L", "description": "The length of the one-dimensional box confining the particle.", "quantity": "length", "dimension": "L", "unit": "m", "role": "parameter"},
+                    {"id": "__power_7", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{n}", "description": "The reciprocal of the principal quantum number, a factor in the wavelength expression.", "quantity": "dimensionless", "dimension": "1", "unit": ""},
+                    {"id": "n", "type": "scalar", "emoji": "🔢", "latex": "n", "subexpr": "n", "description": "The principal quantum number, an integer specifying the quantized energy level.", "quantity": "quantum_number", "dimension": "1", "unit": "", "role": "index"}
                   ],
                   "edges": [
                     {"from": "p_n", "to": "__equals_1"},
@@ -3988,7 +3998,12 @@
                     {"from": "__power_3", "to": "__multiply_2"},
                     {"from": "__multiply_2", "to": "__equals_1"}
                   ],
-                  "classification": {"kind": "algebraic"}
+                  "classification": {"kind": "algebraic"},
+                  "domain": "quantum_mechanics",
+                  "enrichment": {
+                    "reasoning": "The context is the 'Particle in a Box' problem, a classic quantum mechanics scenario. Therefore, `h` is Planck's constant, `p` is momentum, and `L` is length.",
+                    "fields": ["domain", "nodes.__equals_1.description", "nodes.p_n.description", "nodes.p_n.dimension", "nodes.p_n.emoji", "nodes.p_n.quantity", "nodes.p_n.role", "nodes.p_n.unit", "nodes.__multiply_2.description", "nodes.__multiply_2.dimension", "nodes.__multiply_2.quantity", "nodes.__multiply_2.unit", "nodes.h.description", "nodes.h.dimension", "nodes.h.emoji", "nodes.h.quantity", "nodes.h.role", "nodes.h.unit", "nodes.__power_3.description", "nodes.__power_3.dimension", "nodes.__power_3.quantity", "nodes.__power_3.unit", "nodes.__multiply_4.description", "nodes.__multiply_4.dimension", "nodes.__multiply_4.quantity", "nodes.__multiply_4.unit", "nodes.__multiply_5.description", "nodes.__multiply_5.dimension", "nodes.__multiply_5.quantity", "nodes.__multiply_5.unit", "nodes.__num_6.description", "nodes.__num_6.dimension", "nodes.__num_6.unit", "nodes.__num_6.value", "nodes.L.description", "nodes.L.dimension", "nodes.L.emoji", "nodes.L.quantity", "nodes.L.role", "nodes.L.unit", "nodes.__power_7.description", "nodes.__power_7.dimension", "nodes.__power_7.quantity", "nodes.__power_7.unit", "nodes.n.description", "nodes.n.dimension", "nodes.n.emoji", "nodes.n.quantity", "nodes.n.role", "nodes.n.unit"]
+                  }
                 }
               }
             },
@@ -4002,16 +4017,16 @@
               "semanticGraph": {
                 "graph": {
                   "nodes": [
-                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "p_{n} = \\frac{h \\cdot n}{2 \\cdot L}"},
-                    {"id": "p_n", "type": "scalar", "latex": "p_{n}", "subexpr": "p_{n}"},
-                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "n h \\frac{1}{2 L}"},
-                    {"id": "__multiply_3", "type": "operator", "op": "multiply", "subexpr": "n h"},
-                    {"id": "h", "type": "scalar", "latex": "h", "subexpr": "h"},
-                    {"id": "n", "type": "scalar", "latex": "n", "subexpr": "n"},
-                    {"id": "__power_4", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2 L}"},
-                    {"id": "__multiply_5", "type": "operator", "op": "multiply", "subexpr": "L 2"},
-                    {"id": "__num_6", "type": "number", "label": "2", "subexpr": "2"},
-                    {"id": "L", "type": "scalar", "latex": "L", "subexpr": "L"}
+                    {"id": "__equals_1", "type": "relation", "emoji": "↔️", "op": "equals", "subexpr": "p_{n} = \\frac{h \\cdot n}{2 \\cdot L}", "description": "Equation for the quantized momentum of a particle in a box."},
+                    {"id": "p_n", "type": "scalar", "emoji": "💨", "latex": "p_{n}", "subexpr": "p_{n}", "description": "The quantized momentum of the particle, dependent on the quantum number $n$.", "quantity": "momentum", "dimension": "M·L·T⁻¹"},
+                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "n h \\frac{1}{2 L}", "description": "Calculation of the quantized momentum from Planck's constant, the quantum number, and the box length.", "quantity": "momentum", "dimension": "M·L·T⁻¹", "unit": "kg·m/s"},
+                    {"id": "__multiply_3", "type": "operator", "op": "multiply", "subexpr": "n h", "description": "The product of the quantum number and Planck's constant.", "dimension": "M·L²·T⁻¹", "unit": "J·s"},
+                    {"id": "h", "type": "scalar", "emoji": "⚛️", "latex": "h", "subexpr": "h", "description": "Planck's constant, a fundamental constant in quantum mechanics.", "quantity": "planck_constant", "dimension": "M·L²·T⁻¹", "unit": "J·s", "value": 6.62607015e-34, "role": "constant"},
+                    {"id": "n", "type": "scalar", "emoji": "🔢", "latex": "n", "subexpr": "n", "description": "The principal quantum number, an integer that specifies the energy level of the particle.", "quantity": "quantum_number", "dimension": "1", "unit": "", "role": "index"},
+                    {"id": "__power_4", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2 L}", "description": "The reciprocal of twice the length of the box.", "dimension": "L⁻¹", "unit": "m⁻¹"},
+                    {"id": "__multiply_5", "type": "operator", "op": "multiply", "subexpr": "L 2", "description": "Twice the length of the one-dimensional box.", "dimension": "L", "unit": "m"},
+                    {"id": "__num_6", "type": "number", "label": "2", "subexpr": "2", "description": "The number 2, a dimensionless coefficient in the momentum equation.", "dimension": "1", "unit": "", "value": 2},
+                    {"id": "L", "type": "scalar", "emoji": "📏", "latex": "L", "subexpr": "L", "description": "The length of the one-dimensional box in which the particle is confined.", "quantity": "length", "dimension": "L", "unit": "m"}
                   ],
                   "edges": [
                     {"from": "p_n", "to": "__equals_1"},
@@ -4024,7 +4039,12 @@
                     {"from": "__power_4", "to": "__multiply_2"},
                     {"from": "__multiply_2", "to": "__equals_1"}
                   ],
-                  "classification": {"kind": "algebraic"}
+                  "classification": {"kind": "algebraic"},
+                  "domain": "quantum_mechanics",
+                  "enrichment": {
+                    "reasoning": "Context is the 'particle in a box' problem, so the domain is quantum_mechanics. `p` is momentum, `h` is Planck's constant, `n` is the quantum number, and `L` is length.",
+                    "fields": ["domain", "nodes.__equals_1.description", "nodes.__equals_1.emoji", "nodes.p_n.description", "nodes.p_n.dimension", "nodes.p_n.emoji", "nodes.p_n.quantity", "nodes.__multiply_2.description", "nodes.__multiply_2.dimension", "nodes.__multiply_2.quantity", "nodes.__multiply_2.unit", "nodes.__multiply_3.description", "nodes.__multiply_3.dimension", "nodes.__multiply_3.unit", "nodes.h.description", "nodes.h.dimension", "nodes.h.emoji", "nodes.h.quantity", "nodes.h.role", "nodes.h.unit", "nodes.h.value", "nodes.n.description", "nodes.n.dimension", "nodes.n.emoji", "nodes.n.quantity", "nodes.n.role", "nodes.n.unit", "nodes.__power_4.description", "nodes.__power_4.dimension", "nodes.__power_4.unit", "nodes.__multiply_5.description", "nodes.__multiply_5.dimension", "nodes.__multiply_5.unit", "nodes.__num_6.description", "nodes.__num_6.dimension", "nodes.__num_6.unit", "nodes.__num_6.value", "nodes.L.description", "nodes.L.dimension", "nodes.L.emoji", "nodes.L.quantity", "nodes.L.unit"]
+                  }
                 }
               }
             },
@@ -4038,15 +4058,15 @@
               "semanticGraph": {
                 "graph": {
                   "nodes": [
-                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "E_{n} = \\frac{p_{n}^{2}}{2 \\cdot m}"},
-                    {"id": "E_n", "type": "scalar", "latex": "E_{n}", "subexpr": "E_{n}"},
-                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "p_{n}^{2} \\frac{1}{2 m}"},
-                    {"id": "__power_3", "type": "operator", "op": "power", "exponent": "2", "subexpr": "p_{n}^{2}"},
-                    {"id": "p_n", "type": "scalar", "latex": "p_{n}", "subexpr": "p_{n}"},
-                    {"id": "__power_4", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2 m}"},
-                    {"id": "__multiply_5", "type": "operator", "op": "multiply", "subexpr": "m 2"},
-                    {"id": "__num_6", "type": "number", "label": "2", "subexpr": "2"},
-                    {"id": "m", "type": "scalar", "latex": "m", "subexpr": "m"}
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "E_{n} = \\frac{p_{n}^{2}}{2 \\cdot m}", "description": "The kinetic energy $E_n$ is the square of momentum $p_n$ divided by twice the mass $m$."},
+                    {"id": "E_n", "type": "scalar", "emoji": "⚡", "latex": "E_{n}", "subexpr": "E_{n}", "description": "The quantized kinetic energy of the particle.", "quantity": "energy", "dimension": "M·L²·T⁻²", "unit": "J"},
+                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "p_{n}^{2} \\frac{1}{2 m}", "description": "The product of the squared momentum and the reciprocal of twice the mass, which defines the kinetic energy.", "quantity": "energy", "dimension": "M·L²·T⁻²", "unit": "J"},
+                    {"id": "__power_3", "type": "operator", "op": "power", "exponent": "2", "subexpr": "p_{n}^{2}", "description": "The square of the particle's momentum, $p_n^2$.", "quantity": "squared_momentum", "dimension": "M²·L²·T⁻²", "unit": "(kg·m/s)²"},
+                    {"id": "p_n", "type": "scalar", "emoji": "💨", "latex": "p_{n}", "subexpr": "p_{n}", "description": "The quantized momentum of the particle.", "quantity": "momentum", "dimension": "M·L·T⁻¹", "unit": "kg·m/s"},
+                    {"id": "__power_4", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2 m}", "description": "The reciprocal of twice the particle's mass, $1/(2m)$.", "quantity": "inverse_mass_scaled", "dimension": "M⁻¹", "unit": "kg⁻¹"},
+                    {"id": "__multiply_5", "type": "operator", "op": "multiply", "subexpr": "m 2", "description": "Twice the mass of the particle, $2m$.", "quantity": "mass", "dimension": "M", "unit": "kg"},
+                    {"id": "__num_6", "type": "number", "label": "2", "subexpr": "2", "description": "The number 2, a scalar coefficient.", "quantity": "coefficient", "dimension": "1", "unit": "", "value": 2},
+                    {"id": "m", "type": "scalar", "emoji": "⚖️", "latex": "m", "subexpr": "m", "description": "The mass of the particle.", "quantity": "mass", "dimension": "M", "unit": "kg"}
                   ],
                   "edges": [
                     {"from": "E_n", "to": "__equals_1"},
@@ -4058,7 +4078,12 @@
                     {"from": "__power_4", "to": "__multiply_2"},
                     {"from": "__multiply_2", "to": "__equals_1"}
                   ],
-                  "classification": {"kind": "algebraic"}
+                  "classification": {"kind": "algebraic"},
+                  "domain": "quantum_mechanics",
+                  "enrichment": {
+                    "reasoning": "The context describes a 'particle in a box' energy quantization problem, so the domain is `quantum_mechanics`. The variables $E_n$, $p_n$, and $m$ are defined as energy, momentum, and mass.",
+                    "fields": ["domain", "nodes.__equals_1.description", "nodes.E_n.description", "nodes.E_n.dimension", "nodes.E_n.emoji", "nodes.E_n.quantity", "nodes.E_n.unit", "nodes.__multiply_2.description", "nodes.__multiply_2.dimension", "nodes.__multiply_2.quantity", "nodes.__multiply_2.unit", "nodes.__power_3.description", "nodes.__power_3.dimension", "nodes.__power_3.quantity", "nodes.__power_3.unit", "nodes.p_n.description", "nodes.p_n.dimension", "nodes.p_n.emoji", "nodes.p_n.quantity", "nodes.p_n.unit", "nodes.__power_4.description", "nodes.__power_4.dimension", "nodes.__power_4.quantity", "nodes.__power_4.unit", "nodes.__multiply_5.description", "nodes.__multiply_5.dimension", "nodes.__multiply_5.quantity", "nodes.__multiply_5.unit", "nodes.__num_6.description", "nodes.__num_6.dimension", "nodes.__num_6.quantity", "nodes.__num_6.unit", "nodes.__num_6.value", "nodes.m.description", "nodes.m.dimension", "nodes.m.emoji", "nodes.m.quantity", "nodes.m.unit"]
+                  }
                 }
               }
             },
@@ -4072,22 +4097,22 @@
               "semanticGraph": {
                 "graph": {
                   "nodes": [
-                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "E_{n} = \\frac{\\left(\\frac{h \\cdot n}{2 \\cdot L}\\right)^{2}}{2 \\cdot m}"},
-                    {"id": "E_n", "type": "scalar", "latex": "E_{n}", "subexpr": "E_{n}"},
-                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "\\left(\\frac{h n}{2 L}\\right)^{2} \\frac{1}{2 m}"},
-                    {"id": "__power_3", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\left(\\frac{h n}{2 L}\\right)^{2}"},
-                    {"id": "__multiply_4", "type": "operator", "op": "multiply", "subexpr": "n h \\frac{1}{2 L}"},
-                    {"id": "__multiply_5", "type": "operator", "op": "multiply", "subexpr": "n h"},
-                    {"id": "h", "type": "scalar", "latex": "h", "subexpr": "h"},
-                    {"id": "n", "type": "scalar", "latex": "n", "subexpr": "n"},
-                    {"id": "__power_6", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2 L}"},
-                    {"id": "__multiply_7", "type": "operator", "op": "multiply", "subexpr": "L 2"},
-                    {"id": "__num_8", "type": "number", "label": "2", "subexpr": "2"},
-                    {"id": "L", "type": "scalar", "latex": "L", "subexpr": "L"},
-                    {"id": "__power_9", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2 m}"},
-                    {"id": "__multiply_10", "type": "operator", "op": "multiply", "subexpr": "m 2"},
-                    {"id": "__num_11", "type": "number", "label": "2", "subexpr": "2"},
-                    {"id": "m", "type": "scalar", "latex": "m", "subexpr": "m"}
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "E_{n} = \\frac{\\left(\\frac{h \\cdot n}{2 \\cdot L}\\right)^{2}}{2 \\cdot m}", "description": "An equation for the quantized energy $E_n$ of a particle in a box."},
+                    {"id": "E_n", "type": "scalar", "emoji": "⚡", "latex": "E_{n}", "subexpr": "E_{n}", "description": "The quantized energy of the particle in the n-th state.", "quantity": "energy", "dimension": "M·L²·T⁻²", "unit": "J", "role": "dependent"},
+                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "\\left(\\frac{h n}{2 L}\\right)^{2} \\frac{1}{2 m}", "description": "The kinetic energy of the particle, expressed as momentum squared divided by twice the mass.", "quantity": "kinetic energy", "dimension": "M·L²·T⁻²", "unit": "J"},
+                    {"id": "__power_3", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\left(\\frac{h n}{2 L}\\right)^{2}", "description": "The square of the particle's momentum, $p_n^2$.", "quantity": "momentum squared", "dimension": "M²·L²·T⁻²", "unit": "(kg·m/s)²"},
+                    {"id": "__multiply_4", "type": "operator", "op": "multiply", "subexpr": "n h \\frac{1}{2 L}", "description": "The quantized momentum $p_n$ of the particle in the n-th state.", "quantity": "momentum", "dimension": "M·L·T⁻¹", "unit": "kg·m/s"},
+                    {"id": "__multiply_5", "type": "operator", "op": "multiply", "subexpr": "n h", "description": "The product of Planck's constant and the quantum number $n$.", "dimension": "M·L²·T⁻¹", "unit": "J·s"},
+                    {"id": "h", "type": "scalar", "latex": "h", "subexpr": "h", "description": "Planck's constant, a fundamental constant in quantum mechanics.", "quantity": "Planck's constant", "dimension": "M·L²·T⁻¹", "unit": "J·s", "value": 6.626e-34, "role": "constant"},
+                    {"id": "n", "type": "scalar", "emoji": "🔢", "latex": "n", "subexpr": "n", "description": "The principal quantum number, an integer representing the energy level.", "quantity": "quantum number", "dimension": "1", "unit": "", "role": "parameter"},
+                    {"id": "__power_6", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2 L}", "description": "The reciprocal of twice the box length, $1/(2L)$.", "dimension": "L⁻¹", "unit": "m⁻¹"},
+                    {"id": "__multiply_7", "type": "operator", "op": "multiply", "subexpr": "L 2", "description": "Twice the length of the box, appearing in the momentum expression.", "dimension": "L", "unit": "m"},
+                    {"id": "__num_8", "type": "number", "label": "2", "subexpr": "2", "description": "The number 2.", "dimension": "1", "unit": "", "value": 2},
+                    {"id": "L", "type": "scalar", "emoji": "📏", "latex": "L", "subexpr": "L", "description": "The length of the one-dimensional box confining the particle.", "quantity": "length", "dimension": "L", "unit": "m", "role": "parameter"},
+                    {"id": "__power_9", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2 m}", "description": "The reciprocal of twice the particle's mass, $1/(2m)$.", "dimension": "M⁻¹", "unit": "kg⁻¹"},
+                    {"id": "__multiply_10", "type": "operator", "op": "multiply", "subexpr": "m 2", "description": "Twice the mass of the particle, the denominator of the kinetic energy formula.", "dimension": "M", "unit": "kg"},
+                    {"id": "__num_11", "type": "number", "label": "2", "subexpr": "2", "description": "The number 2.", "dimension": "1", "unit": "", "value": 2},
+                    {"id": "m", "type": "scalar", "emoji": "🧱", "latex": "m", "subexpr": "m", "description": "The mass of the particle confined within the box.", "quantity": "mass", "dimension": "M", "unit": "kg", "role": "parameter"}
                   ],
                   "edges": [
                     {"from": "E_n", "to": "__equals_1"},
@@ -4106,7 +4131,12 @@
                     {"from": "__power_9", "to": "__multiply_2"},
                     {"from": "__multiply_2", "to": "__equals_1"}
                   ],
-                  "classification": {"kind": "algebraic"}
+                  "classification": {"kind": "algebraic"},
+                  "domain": "quantum_mechanics",
+                  "enrichment": {
+                    "reasoning": "The context is the 'Particle in a Box' problem, a classic quantum mechanics scenario. Symbols are assigned their standard QM meanings.",
+                    "fields": ["domain", "nodes.__equals_1.description", "nodes.E_n.description", "nodes.E_n.dimension", "nodes.E_n.emoji", "nodes.E_n.quantity", "nodes.E_n.role", "nodes.E_n.unit", "nodes.__multiply_2.description", "nodes.__multiply_2.dimension", "nodes.__multiply_2.quantity", "nodes.__multiply_2.unit", "nodes.__power_3.description", "nodes.__power_3.dimension", "nodes.__power_3.quantity", "nodes.__power_3.unit", "nodes.__multiply_4.description", "nodes.__multiply_4.dimension", "nodes.__multiply_4.quantity", "nodes.__multiply_4.unit", "nodes.__multiply_5.description", "nodes.__multiply_5.dimension", "nodes.__multiply_5.unit", "nodes.h.description", "nodes.h.dimension", "nodes.h.quantity", "nodes.h.role", "nodes.h.unit", "nodes.h.value", "nodes.n.description", "nodes.n.dimension", "nodes.n.emoji", "nodes.n.quantity", "nodes.n.role", "nodes.n.unit", "nodes.__power_6.description", "nodes.__power_6.dimension", "nodes.__power_6.unit", "nodes.__multiply_7.description", "nodes.__multiply_7.dimension", "nodes.__multiply_7.unit", "nodes.__num_8.description", "nodes.__num_8.dimension", "nodes.__num_8.unit", "nodes.__num_8.value", "nodes.L.description", "nodes.L.dimension", "nodes.L.emoji", "nodes.L.quantity", "nodes.L.role", "nodes.L.unit", "nodes.__power_9.description", "nodes.__power_9.dimension", "nodes.__power_9.unit", "nodes.__multiply_10.description", "nodes.__multiply_10.dimension", "nodes.__multiply_10.unit", "nodes.__num_11.description", "nodes.__num_11.dimension", "nodes.__num_11.unit", "nodes.__num_11.value", "nodes.m.description", "nodes.m.dimension", "nodes.m.emoji", "nodes.m.quantity", "nodes.m.role", "nodes.m.unit"]
+                  }
                 }
               }
             },
@@ -4120,24 +4150,24 @@
               "semanticGraph": {
                 "graph": {
                   "nodes": [
-                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "E_{n} = \\frac{\\frac{h^{2} \\cdot n^{2}}{\\left(2 \\cdot L\\right)^{2}}}{2 \\cdot m}"},
-                    {"id": "E_n", "type": "scalar", "latex": "E_{n}", "subexpr": "E_{n}"},
-                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "n^{2} h^{2} \\frac{1}{\\left(2 L\\right)^{2}} \\frac{1}{2 m}"},
-                    {"id": "__multiply_3", "type": "operator", "op": "multiply", "subexpr": "n^{2} h^{2} \\frac{1}{\\left(2 L\\right)^{2}}"},
-                    {"id": "__multiply_4", "type": "operator", "op": "multiply", "subexpr": "n^{2} h^{2}"},
-                    {"id": "__power_5", "type": "operator", "op": "power", "exponent": "2", "subexpr": "h^{2}"},
-                    {"id": "h", "type": "scalar", "latex": "h", "subexpr": "h"},
-                    {"id": "__power_6", "type": "operator", "op": "power", "exponent": "2", "subexpr": "n^{2}"},
-                    {"id": "n", "type": "scalar", "latex": "n", "subexpr": "n"},
-                    {"id": "__power_7", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{\\left(2 L\\right)^{2}}"},
-                    {"id": "__power_8", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\left(2 L\\right)^{2}"},
-                    {"id": "__multiply_9", "type": "operator", "op": "multiply", "subexpr": "L 2"},
-                    {"id": "__num_10", "type": "number", "label": "2", "subexpr": "2"},
-                    {"id": "L", "type": "scalar", "latex": "L", "subexpr": "L"},
-                    {"id": "__power_11", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2 m}"},
-                    {"id": "__multiply_12", "type": "operator", "op": "multiply", "subexpr": "m 2"},
-                    {"id": "__num_13", "type": "number", "label": "2", "subexpr": "2"},
-                    {"id": "m", "type": "scalar", "latex": "m", "subexpr": "m"}
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "E_{n} = \\frac{\\frac{h^{2} \\cdot n^{2}}{\\left(2 \\cdot L\\right)^{2}}}{2 \\cdot m}", "description": "Relates the energy of the n-th state to Planck's constant, the quantum number, the particle's mass, and the box length."},
+                    {"id": "E_n", "type": "scalar", "emoji": "⚡", "latex": "E_{n}", "subexpr": "E_{n}", "description": "Energy of the n-th quantum state of a particle in a box.", "quantity": "energy", "dimension": "M·L²·T⁻²", "unit": "J"},
+                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "n^{2} h^{2} \\frac{1}{\\left(2 L\\right)^{2}} \\frac{1}{2 m}", "description": "Combines momentum and mass terms to give the total energy $E_n$.", "quantity": "energy", "dimension": "M·L²·T⁻²", "unit": "J"},
+                    {"id": "__multiply_3", "type": "operator", "op": "multiply", "subexpr": "n^{2} h^{2} \\frac{1}{\\left(2 L\\right)^{2}}", "description": "Represents the square of the particle's momentum, $p^2$.", "quantity": "momentum_squared", "dimension": "M²·L²·T⁻²", "unit": "(kg·m/s)²"},
+                    {"id": "__multiply_4", "type": "operator", "op": "multiply", "subexpr": "n^{2} h^{2}", "description": "The product of the squared quantum number and the squared Planck's constant, $(nh)^2$.", "quantity": "action_squared", "dimension": "M²·L⁴·T⁻²", "unit": "(J·s)²"},
+                    {"id": "__power_5", "type": "operator", "op": "power", "exponent": "2", "subexpr": "h^{2}", "description": "The square of Planck's constant, $h^2$.", "quantity": "action_squared", "dimension": "M²·L⁴·T⁻²", "unit": "(J·s)²"},
+                    {"id": "h", "type": "scalar", "emoji": "✨", "latex": "h", "subexpr": "h", "description": "Planck's constant, a fundamental constant in quantum mechanics.", "quantity": "action", "dimension": "M·L²·T⁻¹", "unit": "J·s", "role": "constant"},
+                    {"id": "__power_6", "type": "operator", "op": "power", "exponent": "2", "subexpr": "n^{2}", "description": "The square of the principal quantum number, $n^2$.", "quantity": "dimensionless", "dimension": "1", "unit": ""},
+                    {"id": "n", "type": "scalar", "emoji": "#️⃣", "latex": "n", "subexpr": "n", "description": "The principal quantum number, an integer representing the energy level.", "quantity": "quantum_number", "dimension": "1", "unit": "", "role": "index"},
+                    {"id": "__power_7", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{\\left(2 L\\right)^{2}}", "description": "The inverse of the squared term $(2L)^2$.", "quantity": "inverse_area", "dimension": "L⁻²", "unit": "m⁻²"},
+                    {"id": "__power_8", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\left(2 L\\right)^{2}", "description": "The square of twice the box length, $(2L)^2$.", "quantity": "area", "dimension": "L²", "unit": "m²"},
+                    {"id": "__multiply_9", "type": "operator", "op": "multiply", "subexpr": "L 2", "description": "Twice the length of the box, $2L$.", "quantity": "length", "dimension": "L", "unit": "m"},
+                    {"id": "__num_10", "type": "number", "label": "2", "subexpr": "2", "description": "A numeric literal with value 2.", "quantity": "number", "dimension": "1", "unit": ""},
+                    {"id": "L", "type": "scalar", "emoji": "📏", "latex": "L", "subexpr": "L", "description": "The length of the one-dimensional box confining the particle.", "quantity": "length", "dimension": "L", "unit": "m", "role": "parameter"},
+                    {"id": "__power_11", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2 m}", "description": "The inverse of twice the particle's mass, $1/(2m)$.", "quantity": "inverse_mass", "dimension": "M⁻¹", "unit": "kg⁻¹"},
+                    {"id": "__multiply_12", "type": "operator", "op": "multiply", "subexpr": "m 2", "description": "Twice the mass of the particle, $2m$.", "quantity": "mass", "dimension": "M", "unit": "kg"},
+                    {"id": "__num_13", "type": "number", "label": "2", "subexpr": "2", "description": "A numeric literal with value 2.", "quantity": "number", "dimension": "1", "unit": ""},
+                    {"id": "m", "type": "scalar", "emoji": "⚖️", "latex": "m", "subexpr": "m", "description": "The mass of the particle confined within the box.", "quantity": "mass", "dimension": "M", "unit": "kg", "role": "parameter"}
                   ],
                   "edges": [
                     {"from": "E_n", "to": "__equals_1"},
@@ -4158,7 +4188,12 @@
                     {"from": "__power_11", "to": "__multiply_2"},
                     {"from": "__multiply_2", "to": "__equals_1"}
                   ],
-                  "classification": {"kind": "algebraic"}
+                  "classification": {"kind": "algebraic"},
+                  "domain": "quantum_mechanics",
+                  "enrichment": {
+                    "reasoning": "The context is a particle-in-a-box problem, indicating a `quantum_mechanics` domain. `E` is energy, `h` is Planck's constant, `n` is the quantum number, `L` is length, and `m` is mass.",
+                    "fields": ["domain", "nodes.__equals_1.description", "nodes.E_n.description", "nodes.E_n.dimension", "nodes.E_n.emoji", "nodes.E_n.quantity", "nodes.E_n.unit", "nodes.__multiply_2.description", "nodes.__multiply_2.dimension", "nodes.__multiply_2.quantity", "nodes.__multiply_2.unit", "nodes.__multiply_3.description", "nodes.__multiply_3.dimension", "nodes.__multiply_3.quantity", "nodes.__multiply_3.unit", "nodes.__multiply_4.description", "nodes.__multiply_4.dimension", "nodes.__multiply_4.quantity", "nodes.__multiply_4.unit", "nodes.__power_5.description", "nodes.__power_5.dimension", "nodes.__power_5.quantity", "nodes.__power_5.unit", "nodes.h.description", "nodes.h.dimension", "nodes.h.emoji", "nodes.h.quantity", "nodes.h.role", "nodes.h.unit", "nodes.__power_6.description", "nodes.__power_6.dimension", "nodes.__power_6.quantity", "nodes.__power_6.unit", "nodes.n.description", "nodes.n.dimension", "nodes.n.emoji", "nodes.n.quantity", "nodes.n.role", "nodes.n.unit", "nodes.__power_7.description", "nodes.__power_7.dimension", "nodes.__power_7.quantity", "nodes.__power_7.unit", "nodes.__power_8.description", "nodes.__power_8.dimension", "nodes.__power_8.quantity", "nodes.__power_8.unit", "nodes.__multiply_9.description", "nodes.__multiply_9.dimension", "nodes.__multiply_9.quantity", "nodes.__multiply_9.unit", "nodes.__num_10.description", "nodes.__num_10.dimension", "nodes.__num_10.quantity", "nodes.__num_10.unit", "nodes.L.description", "nodes.L.dimension", "nodes.L.emoji", "nodes.L.quantity", "nodes.L.role", "nodes.L.unit", "nodes.__power_11.description", "nodes.__power_11.dimension", "nodes.__power_11.quantity", "nodes.__power_11.unit", "nodes.__multiply_12.description", "nodes.__multiply_12.dimension", "nodes.__multiply_12.quantity", "nodes.__multiply_12.unit", "nodes.__num_13.description", "nodes.__num_13.dimension", "nodes.__num_13.quantity", "nodes.__num_13.unit", "nodes.m.description", "nodes.m.dimension", "nodes.m.emoji", "nodes.m.quantity", "nodes.m.role", "nodes.m.unit"]
+                  }
                 }
               }
             },
@@ -4172,24 +4207,24 @@
               "semanticGraph": {
                 "graph": {
                   "nodes": [
-                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "E_{n} = \\frac{\\frac{h^{2} \\cdot n^{2}}{4 \\cdot L^{2}}}{2 \\cdot m}"},
-                    {"id": "E_n", "type": "scalar", "latex": "E_{n}", "subexpr": "E_{n}"},
-                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "n^{2} h^{2} \\frac{1}{4 L^{2}} \\frac{1}{2 m}"},
-                    {"id": "__multiply_3", "type": "operator", "op": "multiply", "subexpr": "n^{2} h^{2} \\frac{1}{4 L^{2}}"},
-                    {"id": "__multiply_4", "type": "operator", "op": "multiply", "subexpr": "n^{2} h^{2}"},
-                    {"id": "__power_5", "type": "operator", "op": "power", "exponent": "2", "subexpr": "h^{2}"},
-                    {"id": "h", "type": "scalar", "latex": "h", "subexpr": "h"},
-                    {"id": "__power_6", "type": "operator", "op": "power", "exponent": "2", "subexpr": "n^{2}"},
-                    {"id": "n", "type": "scalar", "latex": "n", "subexpr": "n"},
-                    {"id": "__power_7", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{4 L^{2}}"},
-                    {"id": "__multiply_8", "type": "operator", "op": "multiply", "subexpr": "L^{2} 4"},
-                    {"id": "__num_9", "type": "number", "label": "4", "subexpr": "4"},
-                    {"id": "__power_10", "type": "operator", "op": "power", "exponent": "2", "subexpr": "L^{2}"},
-                    {"id": "L", "type": "scalar", "latex": "L", "subexpr": "L"},
-                    {"id": "__power_11", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2 m}"},
-                    {"id": "__multiply_12", "type": "operator", "op": "multiply", "subexpr": "m 2"},
-                    {"id": "__num_13", "type": "number", "label": "2", "subexpr": "2"},
-                    {"id": "m", "type": "scalar", "latex": "m", "subexpr": "m"}
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "E_{n} = \\frac{\\frac{h^{2} \\cdot n^{2}}{4 \\cdot L^{2}}}{2 \\cdot m}", "description": "Equation for the nth energy level $E_n$ of a particle in a box."},
+                    {"id": "E_n", "type": "scalar", "emoji": "⚡", "latex": "E_{n}", "subexpr": "E_{n}", "description": "The energy of the particle at the nth quantum level.", "quantity": "energy", "dimension": "M·L²·T⁻²", "unit": "J", "role": "dependent"},
+                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "n^{2} h^{2} \\frac{1}{4 L^{2}} \\frac{1}{2 m}", "description": "The full expression for the quantized energy level $E_n$.", "quantity": "energy", "dimension": "M·L²·T⁻²", "unit": "J"},
+                    {"id": "__multiply_3", "type": "operator", "op": "multiply", "subexpr": "n^{2} h^{2} \\frac{1}{4 L^{2}}", "description": "The numerator of the main fraction, combining momentum-related terms.", "dimension": "M²·L²·T⁻²", "unit": "kg²·m²·s⁻²"},
+                    {"id": "__multiply_4", "type": "operator", "op": "multiply", "subexpr": "n^{2} h^{2}", "description": "The product of the squared Planck's constant and the squared quantum number.", "dimension": "M²·L⁴·T⁻²", "unit": "(J·s)²"},
+                    {"id": "__power_5", "type": "operator", "op": "power", "exponent": "2", "subexpr": "h^{2}", "description": "The square of Planck's constant.", "quantity": "action_squared", "dimension": "M²·L⁴·T⁻²", "unit": "(J·s)²"},
+                    {"id": "h", "type": "scalar", "emoji": "🌌", "latex": "h", "subexpr": "h", "description": "Planck's constant, a fundamental constant in quantum mechanics relating energy to frequency.", "quantity": "action", "dimension": "M·L²·T⁻¹", "unit": "J·s", "role": "constant"},
+                    {"id": "__power_6", "type": "operator", "op": "power", "exponent": "2", "subexpr": "n^{2}", "description": "The square of the principal quantum number.", "dimension": "1", "unit": ""},
+                    {"id": "n", "type": "scalar", "emoji": "#️⃣", "latex": "n", "subexpr": "n", "description": "The principal quantum number, an integer ($n=1, 2, 3, ...$) that labels the quantized energy levels.", "quantity": "quantum_number", "dimension": "1", "unit": "", "role": "index"},
+                    {"id": "__power_7", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{4 L^{2}}", "description": "The reciprocal of $4L^2$.", "dimension": "L⁻²", "unit": "m⁻²"},
+                    {"id": "__multiply_8", "type": "operator", "op": "multiply", "subexpr": "L^{2} 4", "description": "The term $4L^2$, which is the square of the denominator term $2L$.", "dimension": "L²", "unit": "m²"},
+                    {"id": "__num_9", "type": "number", "label": "4", "emoji": "4️⃣", "subexpr": "4", "description": "The number 4, a numerical coefficient.", "value": 4},
+                    {"id": "__power_10", "type": "operator", "emoji": "📏", "op": "power", "exponent": "2", "subexpr": "L^{2}", "description": "The square of the length of the box.", "quantity": "area", "dimension": "L²", "unit": "m²"},
+                    {"id": "L", "type": "scalar", "emoji": "↔️", "latex": "L", "subexpr": "L", "description": "The length of the one-dimensional box in which the particle is confined.", "quantity": "length", "dimension": "L", "unit": "m", "role": "parameter"},
+                    {"id": "__power_11", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2 m}", "description": "The reciprocal of twice the particle's mass.", "dimension": "M⁻¹", "unit": "kg⁻¹"},
+                    {"id": "__multiply_12", "type": "operator", "op": "multiply", "subexpr": "m 2", "description": "The denominator of the main fraction, twice the particle's mass.", "dimension": "M", "unit": "kg"},
+                    {"id": "__num_13", "type": "number", "label": "2", "emoji": "2️⃣", "subexpr": "2", "description": "The number 2, a numerical coefficient.", "value": 2},
+                    {"id": "m", "type": "scalar", "emoji": "⚖️", "latex": "m", "subexpr": "m", "description": "The mass of the particle confined within the box.", "quantity": "mass", "dimension": "M", "unit": "kg", "role": "parameter"}
                   ],
                   "edges": [
                     {"from": "E_n", "to": "__equals_1"},
@@ -4210,7 +4245,12 @@
                     {"from": "__power_11", "to": "__multiply_2"},
                     {"from": "__multiply_2", "to": "__equals_1"}
                   ],
-                  "classification": {"kind": "algebraic"}
+                  "classification": {"kind": "algebraic"},
+                  "domain": "quantum_mechanics",
+                  "enrichment": {
+                    "reasoning": "The context describes a 'particle in a box' energy quantization problem, so the domain is quantum_mechanics. `h` is Planck's constant and `n` is the quantum number.",
+                    "fields": ["domain", "nodes.__equals_1.description", "nodes.E_n.description", "nodes.E_n.dimension", "nodes.E_n.emoji", "nodes.E_n.quantity", "nodes.E_n.role", "nodes.E_n.unit", "nodes.__multiply_2.description", "nodes.__multiply_2.dimension", "nodes.__multiply_2.quantity", "nodes.__multiply_2.unit", "nodes.__multiply_3.description", "nodes.__multiply_3.dimension", "nodes.__multiply_3.unit", "nodes.__multiply_4.description", "nodes.__multiply_4.dimension", "nodes.__multiply_4.unit", "nodes.__power_5.description", "nodes.__power_5.dimension", "nodes.__power_5.quantity", "nodes.__power_5.unit", "nodes.h.description", "nodes.h.dimension", "nodes.h.emoji", "nodes.h.quantity", "nodes.h.role", "nodes.h.unit", "nodes.__power_6.description", "nodes.__power_6.dimension", "nodes.__power_6.unit", "nodes.n.description", "nodes.n.dimension", "nodes.n.emoji", "nodes.n.quantity", "nodes.n.role", "nodes.n.unit", "nodes.__power_7.description", "nodes.__power_7.dimension", "nodes.__power_7.unit", "nodes.__multiply_8.description", "nodes.__multiply_8.dimension", "nodes.__multiply_8.unit", "nodes.__num_9.description", "nodes.__num_9.emoji", "nodes.__num_9.value", "nodes.__power_10.description", "nodes.__power_10.dimension", "nodes.__power_10.emoji", "nodes.__power_10.quantity", "nodes.__power_10.unit", "nodes.L.description", "nodes.L.dimension", "nodes.L.emoji", "nodes.L.quantity", "nodes.L.role", "nodes.L.unit", "nodes.__power_11.description", "nodes.__power_11.dimension", "nodes.__power_11.unit", "nodes.__multiply_12.description", "nodes.__multiply_12.dimension", "nodes.__multiply_12.unit", "nodes.__num_13.description", "nodes.__num_13.emoji", "nodes.__num_13.value", "nodes.m.description", "nodes.m.dimension", "nodes.m.emoji", "nodes.m.quantity", "nodes.m.role", "nodes.m.unit"]
+                  }
                 }
               }
             },
@@ -4224,23 +4264,23 @@
               "semanticGraph": {
                 "graph": {
                   "nodes": [
-                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "E_{n} = \\frac{h^{2} \\cdot n^{2}}{2 \\cdot m \\cdot 4 \\cdot L^{2}}"},
-                    {"id": "E_n", "type": "scalar", "latex": "E_{n}", "subexpr": "E_{n}"},
-                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "n^{2} h^{2} \\frac{1}{L^{2} \\cdot 2 m 4}"},
-                    {"id": "__multiply_3", "type": "operator", "op": "multiply", "subexpr": "n^{2} h^{2}"},
-                    {"id": "__power_4", "type": "operator", "op": "power", "exponent": "2", "subexpr": "h^{2}"},
-                    {"id": "h", "type": "scalar", "latex": "h", "subexpr": "h"},
-                    {"id": "__power_5", "type": "operator", "op": "power", "exponent": "2", "subexpr": "n^{2}"},
-                    {"id": "n", "type": "scalar", "latex": "n", "subexpr": "n"},
-                    {"id": "__power_6", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{L^{2} \\cdot 2 m 4}"},
-                    {"id": "__multiply_7", "type": "operator", "op": "multiply", "subexpr": "L^{2} m 2 4"},
-                    {"id": "__multiply_8", "type": "operator", "op": "multiply", "subexpr": "m 2 4"},
-                    {"id": "__multiply_9", "type": "operator", "op": "multiply", "subexpr": "m 2"},
-                    {"id": "__num_10", "type": "number", "label": "2", "subexpr": "2"},
-                    {"id": "m", "type": "scalar", "latex": "m", "subexpr": "m"},
-                    {"id": "__num_11", "type": "number", "label": "4", "subexpr": "4"},
-                    {"id": "__power_12", "type": "operator", "op": "power", "exponent": "2", "subexpr": "L^{2}"},
-                    {"id": "L", "type": "scalar", "latex": "L", "subexpr": "L"}
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "E_{n} = \\frac{h^{2} \\cdot n^{2}}{2 \\cdot m \\cdot 4 \\cdot L^{2}}", "description": "The total energy $E_n$ is equal to the product of the squared quantum number and Planck's constant, divided by the particle's mass and the box's squared length."},
+                    {"id": "E_n", "type": "scalar", "emoji": "⚡", "latex": "E_{n}", "subexpr": "E_{n}", "description": "The energy of the particle in the $n$-th quantized state.", "quantity": "energy", "dimension": "M·L²·T⁻²", "unit": "J"},
+                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "n^{2} h^{2} \\frac{1}{L^{2} \\cdot 2 m 4}", "description": "The full expression for the energy $E_n$ of the particle.", "quantity": "energy", "dimension": "M·L²·T⁻²", "unit": "J"},
+                    {"id": "__multiply_3", "type": "operator", "op": "multiply", "subexpr": "n^{2} h^{2}", "description": "The square of Planck's constant multiplied by the square of the principal quantum number $n$.", "quantity": "action_squared", "dimension": "M²·L⁴·T⁻²", "unit": "J²·s²"},
+                    {"id": "__power_4", "type": "operator", "op": "power", "exponent": "2", "subexpr": "h^{2}", "description": "The square of Planck's constant, a fundamental quantity in quantum mechanics.", "quantity": "action_squared", "dimension": "M²·L⁴·T⁻²", "unit": "J²·s²"},
+                    {"id": "h", "type": "scalar", "emoji": "📜", "latex": "h", "subexpr": "h", "description": "Planck's constant, a fundamental constant in quantum mechanics relating a particle's energy to its frequency.", "quantity": "planck_constant", "dimension": "M·L²·T⁻¹", "unit": "J·s", "role": "constant"},
+                    {"id": "__power_5", "type": "operator", "op": "power", "exponent": "2", "subexpr": "n^{2}", "description": "The square of the principal quantum number, which determines the discrete energy level.", "dimension": "1", "unit": ""},
+                    {"id": "n", "type": "scalar", "emoji": "🔢", "latex": "n", "subexpr": "n", "description": "The principal quantum number, an integer that specifies the quantized energy level of the particle.", "quantity": "quantum_number", "dimension": "1", "unit": "", "role": "index"},
+                    {"id": "__power_6", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{L^{2} \\cdot 2 m 4}", "description": "The reciprocal of the denominator, combining mass, length, and numerical factors.", "dimension": "M⁻¹·L⁻²", "unit": "(kg·m²)⁻¹"},
+                    {"id": "__multiply_7", "type": "operator", "op": "multiply", "subexpr": "L^{2} m 2 4", "description": "The product of the squared box length, the particle mass, and numerical factors, forming the denominator.", "dimension": "M·L²", "unit": "kg·m²"},
+                    {"id": "__multiply_8", "type": "operator", "op": "multiply", "subexpr": "m 2 4", "description": "The product of the particle's mass and numerical factors.", "dimension": "M", "unit": "kg"},
+                    {"id": "__multiply_9", "type": "operator", "op": "multiply", "subexpr": "m 2", "description": "The product of the particle's mass and a numerical factor.", "dimension": "M", "unit": "kg"},
+                    {"id": "__num_10", "type": "number", "label": "2", "subexpr": "2", "description": "A numerical factor of 2 in the denominator.", "dimension": "1", "unit": "", "value": 2},
+                    {"id": "m", "type": "scalar", "emoji": "⚖️", "latex": "m", "subexpr": "m", "description": "The mass of the particle confined within the box.", "quantity": "mass", "dimension": "M", "unit": "kg"},
+                    {"id": "__num_11", "type": "number", "label": "4", "subexpr": "4", "description": "A numerical factor of 4 in the denominator.", "dimension": "1", "unit": "", "value": 4},
+                    {"id": "__power_12", "type": "operator", "op": "power", "exponent": "2", "subexpr": "L^{2}", "description": "The square of the length of the box, related to the volume of confinement.", "quantity": "area", "dimension": "L²", "unit": "m²"},
+                    {"id": "L", "type": "scalar", "emoji": "📏", "latex": "L", "subexpr": "L", "description": "The length of the one-dimensional box in which the particle is confined.", "quantity": "length", "dimension": "L", "unit": "m"}
                   ],
                   "edges": [
                     {"from": "E_n", "to": "__equals_1"},
@@ -4260,7 +4300,12 @@
                     {"from": "__power_6", "to": "__multiply_2"},
                     {"from": "__multiply_2", "to": "__equals_1"}
                   ],
-                  "classification": {"kind": "algebraic"}
+                  "classification": {"kind": "algebraic"},
+                  "domain": "quantum_mechanics",
+                  "enrichment": {
+                    "reasoning": "The context is the 'particle in a box' problem, so the domain is quantum mechanics. 'h' is Planck's constant, 'm' is mass, 'L' is length, and 'n' is the quantum number.",
+                    "fields": ["domain", "nodes.__equals_1.description", "nodes.E_n.description", "nodes.E_n.dimension", "nodes.E_n.emoji", "nodes.E_n.quantity", "nodes.E_n.unit", "nodes.__multiply_2.description", "nodes.__multiply_2.dimension", "nodes.__multiply_2.quantity", "nodes.__multiply_2.unit", "nodes.__multiply_3.description", "nodes.__multiply_3.dimension", "nodes.__multiply_3.quantity", "nodes.__multiply_3.unit", "nodes.__power_4.description", "nodes.__power_4.dimension", "nodes.__power_4.quantity", "nodes.__power_4.unit", "nodes.h.description", "nodes.h.dimension", "nodes.h.emoji", "nodes.h.quantity", "nodes.h.role", "nodes.h.unit", "nodes.__power_5.description", "nodes.__power_5.dimension", "nodes.__power_5.unit", "nodes.n.description", "nodes.n.dimension", "nodes.n.emoji", "nodes.n.quantity", "nodes.n.role", "nodes.n.unit", "nodes.__power_6.description", "nodes.__power_6.dimension", "nodes.__power_6.unit", "nodes.__multiply_7.description", "nodes.__multiply_7.dimension", "nodes.__multiply_7.unit", "nodes.__multiply_8.description", "nodes.__multiply_8.dimension", "nodes.__multiply_8.unit", "nodes.__multiply_9.description", "nodes.__multiply_9.dimension", "nodes.__multiply_9.unit", "nodes.__num_10.description", "nodes.__num_10.dimension", "nodes.__num_10.unit", "nodes.__num_10.value", "nodes.m.description", "nodes.m.dimension", "nodes.m.emoji", "nodes.m.quantity", "nodes.m.unit", "nodes.__num_11.description", "nodes.__num_11.dimension", "nodes.__num_11.unit", "nodes.__num_11.value", "nodes.__power_12.description", "nodes.__power_12.dimension", "nodes.__power_12.quantity", "nodes.__power_12.unit", "nodes.L.description", "nodes.L.dimension", "nodes.L.emoji", "nodes.L.quantity", "nodes.L.unit"]
+                  }
                 }
               }
             },
@@ -4274,21 +4319,21 @@
               "semanticGraph": {
                 "graph": {
                   "nodes": [
-                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "E_{n} = \\frac{h^{2} \\cdot n^{2}}{8 \\cdot L^{2} \\cdot m}"},
-                    {"id": "E_n", "type": "scalar", "latex": "E_{n}", "subexpr": "E_{n}"},
-                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "n^{2} h^{2} \\frac{1}{8 L^{2} m}"},
-                    {"id": "__multiply_3", "type": "operator", "op": "multiply", "subexpr": "n^{2} h^{2}"},
-                    {"id": "__power_4", "type": "operator", "op": "power", "exponent": "2", "subexpr": "h^{2}"},
-                    {"id": "h", "type": "scalar", "latex": "h", "subexpr": "h"},
-                    {"id": "__power_5", "type": "operator", "op": "power", "exponent": "2", "subexpr": "n^{2}"},
-                    {"id": "n", "type": "scalar", "latex": "n", "subexpr": "n"},
-                    {"id": "__power_6", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{8 L^{2} m}"},
-                    {"id": "__multiply_7", "type": "operator", "op": "multiply", "subexpr": "m L^{2} 8"},
-                    {"id": "__multiply_8", "type": "operator", "op": "multiply", "subexpr": "L^{2} 8"},
-                    {"id": "__num_9", "type": "number", "label": "8", "subexpr": "8"},
-                    {"id": "__power_10", "type": "operator", "op": "power", "exponent": "2", "subexpr": "L^{2}"},
-                    {"id": "L", "type": "scalar", "latex": "L", "subexpr": "L"},
-                    {"id": "m", "type": "scalar", "latex": "m", "subexpr": "m"}
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "E_{n} = \\frac{h^{2} \\cdot n^{2}}{8 \\cdot L^{2} \\cdot m}", "description": "Equation for the quantized energy levels of a particle in a one-dimensional box."},
+                    {"id": "E_n", "type": "scalar", "emoji": "⚡", "latex": "E_{n}", "subexpr": "E_{n}", "description": "The energy of the particle at the $n$-th quantum level.", "quantity": "energy", "dimension": "M·L²·T⁻²", "unit": "J"},
+                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "n^{2} h^{2} \\frac{1}{8 L^{2} m}", "description": "The full expression for the energy $E_n$, combining the numerator and denominator.", "quantity": "energy", "dimension": "M·L²·T⁻²", "unit": "J"},
+                    {"id": "__multiply_3", "type": "operator", "op": "multiply", "subexpr": "n^{2} h^{2}", "description": "The numerator term, representing the product of the squared quantum number and squared Planck's constant.", "dimension": "M²·L⁴·T⁻²", "unit": "J²·s²"},
+                    {"id": "__power_4", "type": "operator", "op": "power", "exponent": "2", "subexpr": "h^{2}", "description": "The square of Planck's constant, $h^2$.", "quantity": "action_squared", "dimension": "M²·L⁴·T⁻²", "unit": "J²·s²"},
+                    {"id": "h", "type": "scalar", "latex": "h", "subexpr": "h", "description": "Planck's constant, a fundamental constant in quantum mechanics.", "quantity": "action", "dimension": "M·L²·T⁻¹", "unit": "J·s", "role": "constant"},
+                    {"id": "__power_5", "type": "operator", "op": "power", "exponent": "2", "subexpr": "n^{2}", "description": "The square of the principal quantum number, $n^2$.", "quantity": "number", "dimension": "1", "unit": ""},
+                    {"id": "n", "type": "scalar", "emoji": "🔢", "latex": "n", "subexpr": "n", "description": "The principal quantum number, an integer that labels the energy levels.", "quantity": "quantum_number", "dimension": "1", "unit": "", "role": "index"},
+                    {"id": "__power_6", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{8 L^{2} m}", "description": "The reciprocal of the denominator term, $1 / (8 m L^2)$.", "dimension": "M⁻¹·L⁻²", "unit": "kg⁻¹·m⁻²"},
+                    {"id": "__multiply_7", "type": "operator", "op": "multiply", "subexpr": "m L^{2} 8", "description": "The denominator term, representing the product of the particle's mass, the box's squared length, and the constant 8.", "dimension": "M·L²", "unit": "kg·m²"},
+                    {"id": "__multiply_8", "type": "operator", "op": "multiply", "subexpr": "L^{2} 8", "description": "The product of the constant 8 and the squared box length.", "dimension": "L²", "unit": "m²"},
+                    {"id": "__num_9", "type": "number", "label": "8", "subexpr": "8", "description": "The numerical constant 8 in the denominator.", "quantity": "number", "dimension": "1", "unit": ""},
+                    {"id": "__power_10", "type": "operator", "op": "power", "exponent": "2", "subexpr": "L^{2}", "description": "The square of the box length, $L^2$.", "quantity": "area", "dimension": "L²", "unit": "m²"},
+                    {"id": "L", "type": "scalar", "emoji": "📏", "latex": "L", "subexpr": "L", "description": "The length of the one-dimensional box.", "quantity": "length", "dimension": "L", "unit": "m"},
+                    {"id": "m", "type": "scalar", "emoji": "⚖️", "latex": "m", "subexpr": "m", "description": "The mass of the particle confined within the box.", "quantity": "mass", "dimension": "M", "unit": "kg"}
                   ],
                   "edges": [
                     {"from": "E_n", "to": "__equals_1"},
@@ -4306,7 +4351,12 @@
                     {"from": "__power_6", "to": "__multiply_2"},
                     {"from": "__multiply_2", "to": "__equals_1"}
                   ],
-                  "classification": {"kind": "algebraic"}
+                  "classification": {"kind": "algebraic"},
+                  "domain": "quantum_mechanics",
+                  "enrichment": {
+                    "reasoning": "The context is the 'particle in a box' problem, a classic quantum mechanics scenario. Therefore, h is Planck's constant, E_n is energy, m is mass, and L is length.",
+                    "fields": ["domain", "nodes.__equals_1.description", "nodes.E_n.description", "nodes.E_n.dimension", "nodes.E_n.emoji", "nodes.E_n.quantity", "nodes.E_n.unit", "nodes.__multiply_2.description", "nodes.__multiply_2.dimension", "nodes.__multiply_2.quantity", "nodes.__multiply_2.unit", "nodes.__multiply_3.description", "nodes.__multiply_3.dimension", "nodes.__multiply_3.unit", "nodes.__power_4.description", "nodes.__power_4.dimension", "nodes.__power_4.quantity", "nodes.__power_4.unit", "nodes.h.description", "nodes.h.dimension", "nodes.h.quantity", "nodes.h.role", "nodes.h.unit", "nodes.__power_5.description", "nodes.__power_5.dimension", "nodes.__power_5.quantity", "nodes.__power_5.unit", "nodes.n.description", "nodes.n.dimension", "nodes.n.emoji", "nodes.n.quantity", "nodes.n.role", "nodes.n.unit", "nodes.__power_6.description", "nodes.__power_6.dimension", "nodes.__power_6.unit", "nodes.__multiply_7.description", "nodes.__multiply_7.dimension", "nodes.__multiply_7.unit", "nodes.__multiply_8.description", "nodes.__multiply_8.dimension", "nodes.__multiply_8.unit", "nodes.__num_9.description", "nodes.__num_9.dimension", "nodes.__num_9.quantity", "nodes.__num_9.unit", "nodes.__power_10.description", "nodes.__power_10.dimension", "nodes.__power_10.quantity", "nodes.__power_10.unit", "nodes.L.description", "nodes.L.dimension", "nodes.L.emoji", "nodes.L.quantity", "nodes.L.unit", "nodes.m.description", "nodes.m.dimension", "nodes.m.emoji", "nodes.m.quantity", "nodes.m.unit"]
+                  }
                 }
               }
             }
