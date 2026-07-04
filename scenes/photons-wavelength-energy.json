@@ -3885,7 +3885,434 @@
           ]
         }
       ],
-      "id": "discrete-wavelengths"
+      "id": "discrete-wavelengths",
+      "proof": [
+        {
+          "id": "s4_particle_in_a_box",
+          "title": "Particle in a Box: Energy Quantization",
+          "technique": "derivation",
+          "goal": "$$E_n = \\frac{n^2 h^2}{8 m L^2}$$",
+          "prompt": "Walk from the box boundary condition to quantized energy levels: only half-integer wavelengths fit, de Broglie makes a momentum ladder linear in n, kinetic energy squares it into E_n proportional to n^2.",
+          "steps": [
+            {
+              "id": "boundary-condition",
+              "type": "given",
+              "label": "Boundary condition: half-waves fit the box",
+              "math": "\\lambda_{n} = \\frac{2 \\cdot L}{n}",
+              "justification": "the starting expression",
+              "sceneStep": 1,
+              "semanticGraph": {
+                "graph": {
+                  "nodes": [
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "\\lambda_{n} = \\frac{2 \\cdot L}{n}"},
+                    {"id": "lambda_n", "type": "scalar", "latex": "\\lambda_{n}", "subexpr": "\\lambda_{n}"},
+                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "\\frac{1}{n} L 2"},
+                    {"id": "__multiply_3", "type": "operator", "op": "multiply", "subexpr": "L 2"},
+                    {"id": "__num_4", "type": "number", "label": "2", "subexpr": "2"},
+                    {"id": "L", "type": "scalar", "latex": "L", "subexpr": "L"},
+                    {"id": "__power_5", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{n}"},
+                    {"id": "n", "type": "scalar", "latex": "n", "subexpr": "n"}
+                  ],
+                  "edges": [
+                    {"from": "lambda_n", "to": "__equals_1"},
+                    {"from": "__num_4", "to": "__multiply_3", "semantic": "direct", "weight": 1.0},
+                    {"from": "L", "to": "__multiply_3", "semantic": "direct", "weight": 1.0},
+                    {"from": "__multiply_3", "to": "__multiply_2", "semantic": "direct", "weight": 1.0},
+                    {"from": "n", "to": "__power_5"},
+                    {"from": "__power_5", "to": "__multiply_2"},
+                    {"from": "__multiply_2", "to": "__equals_1"}
+                  ],
+                  "classification": {"kind": "algebraic"}
+                }
+              }
+            },
+            {
+              "id": "de-broglie",
+              "type": "step",
+              "label": "de Broglie wavelength relation",
+              "math": "p_{n} = \\frac{h}{\\lambda_{n}}",
+              "justification": "De Broglie's hypothesis states that the momentum $p_n$ of a particle is inversely proportional to its wavelength $\\lambda_n$, with Planck's constant $h$ as the proportionality constant.",
+              "sceneStep": 1,
+              "semanticGraph": {
+                "graph": {
+                  "nodes": [
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "p_{n} = \\frac{h}{\\lambda_{n}}"},
+                    {"id": "p_n", "type": "scalar", "latex": "p_{n}", "subexpr": "p_{n}"},
+                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "h \\frac{1}{\\lambda_{n}}"},
+                    {"id": "h", "type": "scalar", "latex": "h", "subexpr": "h"},
+                    {"id": "__power_3", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{\\lambda_{n}}"},
+                    {"id": "lambda_n", "type": "scalar", "latex": "\\lambda_{n}", "subexpr": "\\lambda_{n}"}
+                  ],
+                  "edges": [
+                    {"from": "p_n", "to": "__equals_1"},
+                    {"from": "h", "to": "__multiply_2", "semantic": "direct", "weight": 1.0},
+                    {"from": "lambda_n", "to": "__power_3"},
+                    {"from": "__power_3", "to": "__multiply_2"},
+                    {"from": "__multiply_2", "to": "__equals_1"}
+                  ],
+                  "classification": {"kind": "algebraic"}
+                }
+              }
+            },
+            {
+              "id": "substitute-lambda",
+              "type": "step",
+              "label": "Substitute $\\lambda_n$",
+              "math": "p_{n} = \\frac{h}{\\frac{2 \\cdot L}{n}}",
+              "justification": "Substitute the given expression for $\\lambda_n$ from the starting equation, $\\lambda_{n} = \\frac{2 \\cdot L}{n}$, into the De Broglie relation.",
+              "sceneStep": 1,
+              "semanticGraph": {
+                "graph": {
+                  "nodes": [
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "p_{n} = \\frac{h}{\\frac{2 \\cdot L}{n}}"},
+                    {"id": "p_n", "type": "scalar", "latex": "p_{n}", "subexpr": "p_{n}"},
+                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "h \\frac{1}{2 L \\frac{1}{n}}"},
+                    {"id": "h", "type": "scalar", "latex": "h", "subexpr": "h"},
+                    {"id": "__power_3", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2 L \\frac{1}{n}}"},
+                    {"id": "__multiply_4", "type": "operator", "op": "multiply", "subexpr": "\\frac{1}{n} L 2"},
+                    {"id": "__multiply_5", "type": "operator", "op": "multiply", "subexpr": "L 2"},
+                    {"id": "__num_6", "type": "number", "label": "2", "subexpr": "2"},
+                    {"id": "L", "type": "scalar", "latex": "L", "subexpr": "L"},
+                    {"id": "__power_7", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{n}"},
+                    {"id": "n", "type": "scalar", "latex": "n", "subexpr": "n"}
+                  ],
+                  "edges": [
+                    {"from": "p_n", "to": "__equals_1"},
+                    {"from": "h", "to": "__multiply_2", "semantic": "direct", "weight": 1.0},
+                    {"from": "__num_6", "to": "__multiply_5", "semantic": "direct", "weight": 1.0},
+                    {"from": "L", "to": "__multiply_5", "semantic": "direct", "weight": 1.0},
+                    {"from": "__multiply_5", "to": "__multiply_4", "semantic": "direct", "weight": 1.0},
+                    {"from": "n", "to": "__power_7"},
+                    {"from": "__power_7", "to": "__multiply_4"},
+                    {"from": "__multiply_4", "to": "__power_3"},
+                    {"from": "__power_3", "to": "__multiply_2"},
+                    {"from": "__multiply_2", "to": "__equals_1"}
+                  ],
+                  "classification": {"kind": "algebraic"}
+                }
+              }
+            },
+            {
+              "id": "simplify-momentum",
+              "type": "step",
+              "label": "Simplify the momentum",
+              "math": "p_{n} = \\frac{h \\cdot n}{2 \\cdot L}",
+              "justification": "To simplify a complex fraction of the form $\\frac{A}{B/C}$, multiply the numerator $A$ by the reciprocal of the denominator $B/C$, resulting in $\\frac{A \\cdot C}{B}$.",
+              "sceneStep": 1,
+              "semanticGraph": {
+                "graph": {
+                  "nodes": [
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "p_{n} = \\frac{h \\cdot n}{2 \\cdot L}"},
+                    {"id": "p_n", "type": "scalar", "latex": "p_{n}", "subexpr": "p_{n}"},
+                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "n h \\frac{1}{2 L}"},
+                    {"id": "__multiply_3", "type": "operator", "op": "multiply", "subexpr": "n h"},
+                    {"id": "h", "type": "scalar", "latex": "h", "subexpr": "h"},
+                    {"id": "n", "type": "scalar", "latex": "n", "subexpr": "n"},
+                    {"id": "__power_4", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2 L}"},
+                    {"id": "__multiply_5", "type": "operator", "op": "multiply", "subexpr": "L 2"},
+                    {"id": "__num_6", "type": "number", "label": "2", "subexpr": "2"},
+                    {"id": "L", "type": "scalar", "latex": "L", "subexpr": "L"}
+                  ],
+                  "edges": [
+                    {"from": "p_n", "to": "__equals_1"},
+                    {"from": "h", "to": "__multiply_3", "semantic": "direct", "weight": 1.0},
+                    {"from": "n", "to": "__multiply_3", "semantic": "direct", "weight": 1.0},
+                    {"from": "__multiply_3", "to": "__multiply_2", "semantic": "direct", "weight": 1.0},
+                    {"from": "__num_6", "to": "__multiply_5", "semantic": "direct", "weight": 1.0},
+                    {"from": "L", "to": "__multiply_5", "semantic": "direct", "weight": 1.0},
+                    {"from": "__multiply_5", "to": "__power_4"},
+                    {"from": "__power_4", "to": "__multiply_2"},
+                    {"from": "__multiply_2", "to": "__equals_1"}
+                  ],
+                  "classification": {"kind": "algebraic"}
+                }
+              }
+            },
+            {
+              "id": "kinetic-energy",
+              "type": "step",
+              "label": "Kinetic energy of the particle",
+              "math": "E_{n} = \\frac{p_{n}^{2}}{2 \\cdot m}",
+              "justification": "The kinetic energy $E_n$ of a particle with momentum $p_n$ and mass $m$ is given by the formula $E_n = \\frac{p_n^2}{2 \\cdot m}$.",
+              "sceneStep": 2,
+              "semanticGraph": {
+                "graph": {
+                  "nodes": [
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "E_{n} = \\frac{p_{n}^{2}}{2 \\cdot m}"},
+                    {"id": "E_n", "type": "scalar", "latex": "E_{n}", "subexpr": "E_{n}"},
+                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "p_{n}^{2} \\frac{1}{2 m}"},
+                    {"id": "__power_3", "type": "operator", "op": "power", "exponent": "2", "subexpr": "p_{n}^{2}"},
+                    {"id": "p_n", "type": "scalar", "latex": "p_{n}", "subexpr": "p_{n}"},
+                    {"id": "__power_4", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2 m}"},
+                    {"id": "__multiply_5", "type": "operator", "op": "multiply", "subexpr": "m 2"},
+                    {"id": "__num_6", "type": "number", "label": "2", "subexpr": "2"},
+                    {"id": "m", "type": "scalar", "latex": "m", "subexpr": "m"}
+                  ],
+                  "edges": [
+                    {"from": "E_n", "to": "__equals_1"},
+                    {"from": "p_n", "to": "__power_3"},
+                    {"from": "__power_3", "to": "__multiply_2", "semantic": "direct", "weight": 1.0},
+                    {"from": "__num_6", "to": "__multiply_5", "semantic": "direct", "weight": 1.0},
+                    {"from": "m", "to": "__multiply_5", "semantic": "direct", "weight": 1.0},
+                    {"from": "__multiply_5", "to": "__power_4"},
+                    {"from": "__power_4", "to": "__multiply_2"},
+                    {"from": "__multiply_2", "to": "__equals_1"}
+                  ],
+                  "classification": {"kind": "algebraic"}
+                }
+              }
+            },
+            {
+              "id": "substitute-momentum",
+              "type": "step",
+              "label": "Substitute the momentum",
+              "math": "E_{n} = \\frac{\\left(\\frac{h \\cdot n}{2 \\cdot L}\\right)^{2}}{2 \\cdot m}",
+              "justification": "Replace $p_n$ in the kinetic energy formula with the derived expression $p_n = \\frac{h \\cdot n}{2 \\cdot L}$.",
+              "sceneStep": 2,
+              "semanticGraph": {
+                "graph": {
+                  "nodes": [
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "E_{n} = \\frac{\\left(\\frac{h \\cdot n}{2 \\cdot L}\\right)^{2}}{2 \\cdot m}"},
+                    {"id": "E_n", "type": "scalar", "latex": "E_{n}", "subexpr": "E_{n}"},
+                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "\\left(\\frac{h n}{2 L}\\right)^{2} \\frac{1}{2 m}"},
+                    {"id": "__power_3", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\left(\\frac{h n}{2 L}\\right)^{2}"},
+                    {"id": "__multiply_4", "type": "operator", "op": "multiply", "subexpr": "n h \\frac{1}{2 L}"},
+                    {"id": "__multiply_5", "type": "operator", "op": "multiply", "subexpr": "n h"},
+                    {"id": "h", "type": "scalar", "latex": "h", "subexpr": "h"},
+                    {"id": "n", "type": "scalar", "latex": "n", "subexpr": "n"},
+                    {"id": "__power_6", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2 L}"},
+                    {"id": "__multiply_7", "type": "operator", "op": "multiply", "subexpr": "L 2"},
+                    {"id": "__num_8", "type": "number", "label": "2", "subexpr": "2"},
+                    {"id": "L", "type": "scalar", "latex": "L", "subexpr": "L"},
+                    {"id": "__power_9", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2 m}"},
+                    {"id": "__multiply_10", "type": "operator", "op": "multiply", "subexpr": "m 2"},
+                    {"id": "__num_11", "type": "number", "label": "2", "subexpr": "2"},
+                    {"id": "m", "type": "scalar", "latex": "m", "subexpr": "m"}
+                  ],
+                  "edges": [
+                    {"from": "E_n", "to": "__equals_1"},
+                    {"from": "h", "to": "__multiply_5", "semantic": "direct", "weight": 1.0},
+                    {"from": "n", "to": "__multiply_5", "semantic": "direct", "weight": 1.0},
+                    {"from": "__multiply_5", "to": "__multiply_4", "semantic": "direct", "weight": 1.0},
+                    {"from": "__num_8", "to": "__multiply_7", "semantic": "direct", "weight": 1.0},
+                    {"from": "L", "to": "__multiply_7", "semantic": "direct", "weight": 1.0},
+                    {"from": "__multiply_7", "to": "__power_6"},
+                    {"from": "__power_6", "to": "__multiply_4"},
+                    {"from": "__multiply_4", "to": "__power_3"},
+                    {"from": "__power_3", "to": "__multiply_2", "semantic": "direct", "weight": 1.0},
+                    {"from": "__num_11", "to": "__multiply_10", "semantic": "direct", "weight": 1.0},
+                    {"from": "m", "to": "__multiply_10", "semantic": "direct", "weight": 1.0},
+                    {"from": "__multiply_10", "to": "__power_9"},
+                    {"from": "__power_9", "to": "__multiply_2"},
+                    {"from": "__multiply_2", "to": "__equals_1"}
+                  ],
+                  "classification": {"kind": "algebraic"}
+                }
+              }
+            },
+            {
+              "id": "expand-square",
+              "type": "step",
+              "label": "Expand the squared term",
+              "math": "E_{n} = \\frac{\\frac{h^{2} \\cdot n^{2}}{\\left(2 \\cdot L\\right)^{2}}}{2 \\cdot m}",
+              "justification": "Apply the power rule for fractions $\\left(\\frac{A}{B}\\right)^2 = \\frac{A^2}{B^2}$ and for products $(A \\cdot B)^2 = A^2 \\cdot B^2$ to the term $\\left(\\frac{h \\cdot n}{2 \\cdot L}\\right)^2$.",
+              "sceneStep": 2,
+              "semanticGraph": {
+                "graph": {
+                  "nodes": [
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "E_{n} = \\frac{\\frac{h^{2} \\cdot n^{2}}{\\left(2 \\cdot L\\right)^{2}}}{2 \\cdot m}"},
+                    {"id": "E_n", "type": "scalar", "latex": "E_{n}", "subexpr": "E_{n}"},
+                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "n^{2} h^{2} \\frac{1}{\\left(2 L\\right)^{2}} \\frac{1}{2 m}"},
+                    {"id": "__multiply_3", "type": "operator", "op": "multiply", "subexpr": "n^{2} h^{2} \\frac{1}{\\left(2 L\\right)^{2}}"},
+                    {"id": "__multiply_4", "type": "operator", "op": "multiply", "subexpr": "n^{2} h^{2}"},
+                    {"id": "__power_5", "type": "operator", "op": "power", "exponent": "2", "subexpr": "h^{2}"},
+                    {"id": "h", "type": "scalar", "latex": "h", "subexpr": "h"},
+                    {"id": "__power_6", "type": "operator", "op": "power", "exponent": "2", "subexpr": "n^{2}"},
+                    {"id": "n", "type": "scalar", "latex": "n", "subexpr": "n"},
+                    {"id": "__power_7", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{\\left(2 L\\right)^{2}}"},
+                    {"id": "__power_8", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\left(2 L\\right)^{2}"},
+                    {"id": "__multiply_9", "type": "operator", "op": "multiply", "subexpr": "L 2"},
+                    {"id": "__num_10", "type": "number", "label": "2", "subexpr": "2"},
+                    {"id": "L", "type": "scalar", "latex": "L", "subexpr": "L"},
+                    {"id": "__power_11", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2 m}"},
+                    {"id": "__multiply_12", "type": "operator", "op": "multiply", "subexpr": "m 2"},
+                    {"id": "__num_13", "type": "number", "label": "2", "subexpr": "2"},
+                    {"id": "m", "type": "scalar", "latex": "m", "subexpr": "m"}
+                  ],
+                  "edges": [
+                    {"from": "E_n", "to": "__equals_1"},
+                    {"from": "h", "to": "__power_5"},
+                    {"from": "__power_5", "to": "__multiply_4", "semantic": "direct", "weight": 1.0},
+                    {"from": "n", "to": "__power_6"},
+                    {"from": "__power_6", "to": "__multiply_4", "semantic": "direct", "weight": 1.0},
+                    {"from": "__multiply_4", "to": "__multiply_3", "semantic": "direct", "weight": 1.0},
+                    {"from": "__num_10", "to": "__multiply_9", "semantic": "direct", "weight": 1.0},
+                    {"from": "L", "to": "__multiply_9", "semantic": "direct", "weight": 1.0},
+                    {"from": "__multiply_9", "to": "__power_8"},
+                    {"from": "__power_8", "to": "__power_7"},
+                    {"from": "__power_7", "to": "__multiply_3"},
+                    {"from": "__multiply_3", "to": "__multiply_2", "semantic": "direct", "weight": 1.0},
+                    {"from": "__num_13", "to": "__multiply_12", "semantic": "direct", "weight": 1.0},
+                    {"from": "m", "to": "__multiply_12", "semantic": "direct", "weight": 1.0},
+                    {"from": "__multiply_12", "to": "__power_11"},
+                    {"from": "__power_11", "to": "__multiply_2"},
+                    {"from": "__multiply_2", "to": "__equals_1"}
+                  ],
+                  "classification": {"kind": "algebraic"}
+                }
+              }
+            },
+            {
+              "id": "square-denominator",
+              "type": "step",
+              "label": "Square the denominator",
+              "math": "E_{n} = \\frac{\\frac{h^{2} \\cdot n^{2}}{4 \\cdot L^{2}}}{2 \\cdot m}",
+              "justification": "Calculate the square of the term in the denominator: $(2 \\cdot L)^2 = 2^2 \\cdot L^2 = 4 \\cdot L^2$.",
+              "sceneStep": 2,
+              "semanticGraph": {
+                "graph": {
+                  "nodes": [
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "E_{n} = \\frac{\\frac{h^{2} \\cdot n^{2}}{4 \\cdot L^{2}}}{2 \\cdot m}"},
+                    {"id": "E_n", "type": "scalar", "latex": "E_{n}", "subexpr": "E_{n}"},
+                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "n^{2} h^{2} \\frac{1}{4 L^{2}} \\frac{1}{2 m}"},
+                    {"id": "__multiply_3", "type": "operator", "op": "multiply", "subexpr": "n^{2} h^{2} \\frac{1}{4 L^{2}}"},
+                    {"id": "__multiply_4", "type": "operator", "op": "multiply", "subexpr": "n^{2} h^{2}"},
+                    {"id": "__power_5", "type": "operator", "op": "power", "exponent": "2", "subexpr": "h^{2}"},
+                    {"id": "h", "type": "scalar", "latex": "h", "subexpr": "h"},
+                    {"id": "__power_6", "type": "operator", "op": "power", "exponent": "2", "subexpr": "n^{2}"},
+                    {"id": "n", "type": "scalar", "latex": "n", "subexpr": "n"},
+                    {"id": "__power_7", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{4 L^{2}}"},
+                    {"id": "__multiply_8", "type": "operator", "op": "multiply", "subexpr": "L^{2} 4"},
+                    {"id": "__num_9", "type": "number", "label": "4", "subexpr": "4"},
+                    {"id": "__power_10", "type": "operator", "op": "power", "exponent": "2", "subexpr": "L^{2}"},
+                    {"id": "L", "type": "scalar", "latex": "L", "subexpr": "L"},
+                    {"id": "__power_11", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2 m}"},
+                    {"id": "__multiply_12", "type": "operator", "op": "multiply", "subexpr": "m 2"},
+                    {"id": "__num_13", "type": "number", "label": "2", "subexpr": "2"},
+                    {"id": "m", "type": "scalar", "latex": "m", "subexpr": "m"}
+                  ],
+                  "edges": [
+                    {"from": "E_n", "to": "__equals_1"},
+                    {"from": "h", "to": "__power_5"},
+                    {"from": "__power_5", "to": "__multiply_4", "semantic": "direct", "weight": 1.0},
+                    {"from": "n", "to": "__power_6"},
+                    {"from": "__power_6", "to": "__multiply_4", "semantic": "direct", "weight": 1.0},
+                    {"from": "__multiply_4", "to": "__multiply_3", "semantic": "direct", "weight": 1.0},
+                    {"from": "__num_9", "to": "__multiply_8", "semantic": "direct", "weight": 1.0},
+                    {"from": "L", "to": "__power_10"},
+                    {"from": "__power_10", "to": "__multiply_8", "semantic": "direct", "weight": 1.0},
+                    {"from": "__multiply_8", "to": "__power_7"},
+                    {"from": "__power_7", "to": "__multiply_3"},
+                    {"from": "__multiply_3", "to": "__multiply_2", "semantic": "direct", "weight": 1.0},
+                    {"from": "__num_13", "to": "__multiply_12", "semantic": "direct", "weight": 1.0},
+                    {"from": "m", "to": "__multiply_12", "semantic": "direct", "weight": 1.0},
+                    {"from": "__multiply_12", "to": "__power_11"},
+                    {"from": "__power_11", "to": "__multiply_2"},
+                    {"from": "__multiply_2", "to": "__equals_1"}
+                  ],
+                  "classification": {"kind": "algebraic"}
+                }
+              }
+            },
+            {
+              "id": "combine-fractions",
+              "type": "step",
+              "label": "Combine the fractions",
+              "math": "E_{n} = \\frac{h^{2} \\cdot n^{2}}{2 \\cdot m \\cdot 4 \\cdot L^{2}}",
+              "justification": "To simplify a fraction with a nested fraction in the numerator, such as $\\frac{A/B}{C}$, multiply the denominator of the main fraction $C$ by the denominator of the nested fraction $B$, yielding $\\frac{A}{B \\cdot C}$.",
+              "sceneStep": 2,
+              "semanticGraph": {
+                "graph": {
+                  "nodes": [
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "E_{n} = \\frac{h^{2} \\cdot n^{2}}{2 \\cdot m \\cdot 4 \\cdot L^{2}}"},
+                    {"id": "E_n", "type": "scalar", "latex": "E_{n}", "subexpr": "E_{n}"},
+                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "n^{2} h^{2} \\frac{1}{L^{2} \\cdot 2 m 4}"},
+                    {"id": "__multiply_3", "type": "operator", "op": "multiply", "subexpr": "n^{2} h^{2}"},
+                    {"id": "__power_4", "type": "operator", "op": "power", "exponent": "2", "subexpr": "h^{2}"},
+                    {"id": "h", "type": "scalar", "latex": "h", "subexpr": "h"},
+                    {"id": "__power_5", "type": "operator", "op": "power", "exponent": "2", "subexpr": "n^{2}"},
+                    {"id": "n", "type": "scalar", "latex": "n", "subexpr": "n"},
+                    {"id": "__power_6", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{L^{2} \\cdot 2 m 4}"},
+                    {"id": "__multiply_7", "type": "operator", "op": "multiply", "subexpr": "L^{2} m 2 4"},
+                    {"id": "__multiply_8", "type": "operator", "op": "multiply", "subexpr": "m 2 4"},
+                    {"id": "__multiply_9", "type": "operator", "op": "multiply", "subexpr": "m 2"},
+                    {"id": "__num_10", "type": "number", "label": "2", "subexpr": "2"},
+                    {"id": "m", "type": "scalar", "latex": "m", "subexpr": "m"},
+                    {"id": "__num_11", "type": "number", "label": "4", "subexpr": "4"},
+                    {"id": "__power_12", "type": "operator", "op": "power", "exponent": "2", "subexpr": "L^{2}"},
+                    {"id": "L", "type": "scalar", "latex": "L", "subexpr": "L"}
+                  ],
+                  "edges": [
+                    {"from": "E_n", "to": "__equals_1"},
+                    {"from": "h", "to": "__power_4"},
+                    {"from": "__power_4", "to": "__multiply_3", "semantic": "direct", "weight": 1.0},
+                    {"from": "n", "to": "__power_5"},
+                    {"from": "__power_5", "to": "__multiply_3", "semantic": "direct", "weight": 1.0},
+                    {"from": "__multiply_3", "to": "__multiply_2", "semantic": "direct", "weight": 1.0},
+                    {"from": "__num_10", "to": "__multiply_9", "semantic": "direct", "weight": 1.0},
+                    {"from": "m", "to": "__multiply_9", "semantic": "direct", "weight": 1.0},
+                    {"from": "__multiply_9", "to": "__multiply_8", "semantic": "direct", "weight": 1.0},
+                    {"from": "__num_11", "to": "__multiply_8", "semantic": "direct", "weight": 1.0},
+                    {"from": "__multiply_8", "to": "__multiply_7", "semantic": "direct", "weight": 1.0},
+                    {"from": "L", "to": "__power_12"},
+                    {"from": "__power_12", "to": "__multiply_7", "semantic": "direct", "weight": 1.0},
+                    {"from": "__multiply_7", "to": "__power_6"},
+                    {"from": "__power_6", "to": "__multiply_2"},
+                    {"from": "__multiply_2", "to": "__equals_1"}
+                  ],
+                  "classification": {"kind": "algebraic"}
+                }
+              }
+            },
+            {
+              "id": "energy-ladder",
+              "type": "conclusion",
+              "label": "Simplify — the $n^2$ energy ladder",
+              "math": "E_{n} = \\frac{h^{2} \\cdot n^{2}}{8 \\cdot L^{2} \\cdot m}",
+              "justification": "Perform the multiplication $2 \\cdot 4 = 8$ in the denominator to simplify the expression.",
+              "sceneStep": 2,
+              "semanticGraph": {
+                "graph": {
+                  "nodes": [
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "E_{n} = \\frac{h^{2} \\cdot n^{2}}{8 \\cdot L^{2} \\cdot m}"},
+                    {"id": "E_n", "type": "scalar", "latex": "E_{n}", "subexpr": "E_{n}"},
+                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "n^{2} h^{2} \\frac{1}{8 L^{2} m}"},
+                    {"id": "__multiply_3", "type": "operator", "op": "multiply", "subexpr": "n^{2} h^{2}"},
+                    {"id": "__power_4", "type": "operator", "op": "power", "exponent": "2", "subexpr": "h^{2}"},
+                    {"id": "h", "type": "scalar", "latex": "h", "subexpr": "h"},
+                    {"id": "__power_5", "type": "operator", "op": "power", "exponent": "2", "subexpr": "n^{2}"},
+                    {"id": "n", "type": "scalar", "latex": "n", "subexpr": "n"},
+                    {"id": "__power_6", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{8 L^{2} m}"},
+                    {"id": "__multiply_7", "type": "operator", "op": "multiply", "subexpr": "m L^{2} 8"},
+                    {"id": "__multiply_8", "type": "operator", "op": "multiply", "subexpr": "L^{2} 8"},
+                    {"id": "__num_9", "type": "number", "label": "8", "subexpr": "8"},
+                    {"id": "__power_10", "type": "operator", "op": "power", "exponent": "2", "subexpr": "L^{2}"},
+                    {"id": "L", "type": "scalar", "latex": "L", "subexpr": "L"},
+                    {"id": "m", "type": "scalar", "latex": "m", "subexpr": "m"}
+                  ],
+                  "edges": [
+                    {"from": "E_n", "to": "__equals_1"},
+                    {"from": "h", "to": "__power_4"},
+                    {"from": "__power_4", "to": "__multiply_3", "semantic": "direct", "weight": 1.0},
+                    {"from": "n", "to": "__power_5"},
+                    {"from": "__power_5", "to": "__multiply_3", "semantic": "direct", "weight": 1.0},
+                    {"from": "__multiply_3", "to": "__multiply_2", "semantic": "direct", "weight": 1.0},
+                    {"from": "__num_9", "to": "__multiply_8", "semantic": "direct", "weight": 1.0},
+                    {"from": "L", "to": "__power_10"},
+                    {"from": "__power_10", "to": "__multiply_8", "semantic": "direct", "weight": 1.0},
+                    {"from": "__multiply_8", "to": "__multiply_7", "semantic": "direct", "weight": 1.0},
+                    {"from": "m", "to": "__multiply_7", "semantic": "direct", "weight": 1.0},
+                    {"from": "__multiply_7", "to": "__power_6"},
+                    {"from": "__power_6", "to": "__multiply_2"},
+                    {"from": "__multiply_2", "to": "__equals_1"}
+                  ],
+                  "classification": {"kind": "algebraic"}
+                }
+              }
+            }
+          ]
+        }
+      ]
     },
     {
       "title": "Photon as Wave Packet and Detection Event",
