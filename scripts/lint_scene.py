@@ -19,6 +19,8 @@ import re
 import sys
 from pathlib import Path
 
+from _json_format import dumps_compact_leaves
+
 
 JS_PATTERNS = [
     (r'Math\.\w+', 'Math.X → use math.js (sin, cos, sqrt, pi, abs)'),
@@ -199,11 +201,15 @@ def main():
 
     errors, warnings, fixes = lint_scene(scene, fix=args.fix)
 
-    # Write back if fixes were applied
+    # Write back if fixes were applied (repo convention: compact-leaves format)
     if fixes and args.fix:
+        text = dumps_compact_leaves(scene) + '\n'
+        # Safety net: the custom writer must round-trip to the exact same data.
+        if json.loads(text) != scene:
+            print('FAIL: compact serialization altered the data — aborting write')
+            sys.exit(1)
         with open(args.file, 'w') as f:
-            json.dump(scene, f, indent=2, ensure_ascii=False)
-            f.write('\n')
+            f.write(text)
 
     # Report
     steps = len(scene.get('steps', []))

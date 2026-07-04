@@ -94,6 +94,7 @@ Authoring, assembling, and validating AlgeBench lesson/scene JSON.
 | `audit_expressions.py` | Audit expression-sandbox coverage across scene JSON. |
 | `validate_content.py` | Deep content validation for scene JSON. |
 | `validate_schema.py` | Validate AlgeBench JSON against a schema. |
+| `_json_format.py` | Shared helper: compact-leaves JSON serializer used by every scene/lesson writer (prebake, enrichment, assemble, lint `--fix`). |
 
 ## Misc
 
