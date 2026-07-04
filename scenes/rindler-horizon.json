@@ -1482,6 +1482,42 @@
             0
           ],
           "description": "Close-up on the boosted point riding the unit hyperbola"
+        },
+        {
+          "name": "Ride: Stay-home Twin",
+          "description": "Ride along with the stay-home twin (use on the twin steps with the trip playing) — watch the traveler swing away and return",
+          "follow": [
+            "s3_tp_rider_home",
+            "s3_g_rider_home"
+          ],
+          "offset": [
+            2.2,
+            0.8,
+            1.7
+          ],
+          "up": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "name": "Ride: Traveler",
+          "description": "Ride along with the traveling twin (use on the twin steps with the trip playing) — watch home recede and rush back",
+          "follow": [
+            "s3_tp_rider_trav",
+            "s3_g_rider_trav"
+          ],
+          "offset": [
+            -2.2,
+            0.8,
+            1.7
+          ],
+          "up": [
+            0,
+            1,
+            0
+          ]
         }
       ],
       "elements": [
@@ -2387,7 +2423,8 @@
               ],
               "color": "#aabbcc",
               "size": 3,
-              "legendGroup": "the twins"
+              "label": "🏠 stay-home twin",
+              "labelExpr": "concat(\"🏠 ticks: \", floor(T2 + 4))"
             },
             {
               "id": "s3_tp_rider_trav",
@@ -2399,7 +2436,8 @@
               ],
               "color": "#4da6ff",
               "size": 3,
-              "label": "the twins"
+              "label": "🚀 traveling twin",
+              "labelExpr": "concat(\"🚀 ticks: \", floor(sqrt(1-w^2)*(T2 + 4)))"
             },
             {
               "id": "s3_tp_tick_in2",
@@ -2546,7 +2584,7 @@
               "id": "a",
               "label": "$a$ (felt thrust)",
               "min": 0.3,
-              "max": 1.5,
+              "max": 3,
               "step": 0.05,
               "default": 1
             },
@@ -2736,8 +2774,14 @@
                 "0"
               ],
               "color": "#ff5566",
-              "size": 3,
-              "label": "flip thrust"
+              "size": 2,
+              "label": "🔄 flip",
+              "sizeExpr": "1.5",
+              "labelOffset": [
+                0.12,
+                0.1,
+                0.05
+              ]
             },
             {
               "id": "s3_g_flip2",
@@ -2748,8 +2792,9 @@
                 "0"
               ],
               "color": "#ff5566",
-              "size": 3,
-              "legendGroup": "flip thrust"
+              "size": 2,
+              "legendGroup": "🔄 flip",
+              "sizeExpr": "1.5"
             },
             {
               "id": "s3_g_turn",
@@ -2773,7 +2818,8 @@
               ],
               "color": "#aabbcc",
               "size": 3,
-              "legendGroup": "the twins"
+              "label": "🏠 stay-home twin",
+              "labelExpr": "concat(\"🏠 ticks: \", floor(T3 + 4))"
             },
             {
               "id": "s3_g_rider_trav",
@@ -2785,7 +2831,8 @@
               ],
               "color": "#4da6ff",
               "size": 3,
-              "label": "the twins"
+              "label": "🚀 traveling twin",
+              "labelExpr": "concat(\"🚀 ticks: \", floor(tw_tau(T3, a)))"
             },
             {
               "color": "#ffaa33",
@@ -3073,13 +3120,31 @@
               "visibleExpr": "7 <= 4*asinh(2*a)/a",
               "sizeExpr": "2 + 7*exp(-16*(T3 - tw_t(7, a))^2)",
               "opacityExpr": "0.3 + 0.7*exp(-16*(T3 - tw_t(7, a))^2)"
+            },
+            {
+              "id": "s3_g_flip2_lbl",
+              "type": "text",
+              "text": "🔄 flip",
+              "positionExpr": [
+                "tw_xt(2, a) + 0.24",
+                "2.1",
+                "0"
+              ],
+              "color": "#ff5566",
+              "size": 12,
+              "legendGroup": "🔄 flip"
             }
           ],
           "info": [
             {
               "id": "s3_g_info",
               "position": "top-right",
-              "content": "**Same trip, honest engines.** The crew *feels* a steady $a$ the whole way — thrust out for the first quarter, flip and thrust homeward through the middle half (momentarily at rest at the turnaround), flip and brake into $B$. Every arc is a hyperbola.\n\n- straight: $\\tau = 8.00$\n- powered twin: $\\tau = \\dfrac{4\\,\\mathrm{asinh}(2a)}{a} = {{toFixed(4*asinh(2*a)/a, 2)}}$\n\nSmooth curve or sharp kink — **any** lean toward the light lines loses time. Crank $a$: harder thrust hugs the lightcone tighter and ages the crew less. This is the 1g starship's geometry, one scene early.\n\n**Now** ($t = {{toFixed(T3, 2)}}$):\nstay-home clock $\\tau = {{toFixed(T3 + 4, 2)}}$ · crew clock $\\tau = {{toFixed(tw_tau(T3, a), 2)}}$\n\n*Note: the reunion is **fixed by construction** — cranking the thrust widens the swing between the same $A$ and $B$; it does not bring the ship home sooner. (Fixing the destination instead is the trip-numbers chart, two scenes ahead.)*"
+              "content": "**Same trip, honest engines.** The crew *feels* a steady $a$ the whole way — thrust out for the first quarter, flip and thrust homeward through the middle half (momentarily at rest at the turnaround), flip and brake into $B$. Every arc is a hyperbola.\n\nFelt thrust: $a = {{toFixed(a, 2)}}$ in $c$/yr $\\;\\approx\\; {{toFixed(0.97*a, 2)}}\\,g$ — at the default setting the crew simply feels Earth gravity, for eight years.\n\n- straight: $\\tau = 8.00$\n- powered twin: $\\tau = \\dfrac{4\\,\\mathrm{asinh}(2a)}{a} = {{toFixed(4*asinh(2*a)/a, 2)}}$\n\nSmooth curve or sharp kink — **any** lean toward the light lines loses time. Crank $a$: harder thrust hugs the lightcone tighter and ages the crew less. This is the 1g starship's geometry, one scene early.\n\n**Now** ($t = {{toFixed(T3, 2)}}$):\nstay-home clock $\\tau = {{toFixed(T3 + 4, 2)}}$ · crew clock $\\tau = {{toFixed(tw_tau(T3, a), 2)}}$\n\n*Note: the reunion is **fixed by construction** — cranking the thrust widens the swing between the same $A$ and $B$; it does not bring the ship home sooner. (Fixing the destination instead is the trip-numbers chart, two scenes ahead.)*\n\n*Notice how stingy the payoff is: $\\tau = 4\\,\\mathrm{asinh}(2a)/a$ shrinks only **logarithmically** with thrust. At high $a$ the worldline looks glued to $45°$ — but the eye is a terrible $\\gamma$-meter: $v=0.95c$ *looks* parallel to the light line yet dilates only $3.2\\times$; almost all dilation hides in the last fraction of a degree of slope. Trust the ticks, not the slope — they are the honest ruler.*"
+            },
+            {
+              "id": "s3_g_dash",
+              "position": "top-left",
+              "content": "### 🚀 Trip dashboard\n⏱ ticks — crew: **{{floor(tw_tau(T3, a))}}** · home: **{{floor(T3 + 4)}}**\n\n🏎 velocity: $|v| = {{toFixed(abs(tw_v(T3, a)), 3)}}\\,c$ $\\;(\\gamma = {{toFixed(1/sqrt(1 - tw_v(T3, a)^2), 2)}})$\n\n📍 distance: **{{toFixed(100 * tw_dist(T3, a) / (4*(sqrt(1 + 4*a^2) - 1)/a), 1)}}%** of the round trip"
             }
           ]
         }
@@ -3198,6 +3263,22 @@
             "a"
           ],
           "expr": "tt < -2 ? asinh(a*(tt+4))/a : (tt < 2 ? (2*asinh(2*a) + asinh(a*tt))/a : (4*asinh(2*a) + asinh(a*(tt-4)))/a)"
+        },
+        {
+          "name": "tw_v",
+          "args": [
+            "tt",
+            "a"
+          ],
+          "expr": "tt < -2 ? a*(tt+4)/sqrt(1 + a^2*(tt+4)^2) : (tt < 2 ? -a*tt/sqrt(1 + a^2*tt^2) : a*(tt-4)/sqrt(1 + a^2*(tt-4)^2))"
+        },
+        {
+          "name": "tw_dist",
+          "args": [
+            "tt",
+            "a"
+          ],
+          "expr": "tt < 0 ? tw_xt(tt, a) : 4*(sqrt(1 + 4*a^2) - 1)/a - tw_xt(tt, a)"
         }
       ]
     },
