@@ -70,6 +70,7 @@ const _EXPR_HELPERS = { ..._MATHJS_EXTENSIONS };
 export const EXTENSION_NAMES = Object.keys(_MATHJS_EXTENSIONS);
 
 const _CORE_MATH_NAMES = ['sin','cos','tan','asin','acos','atan','atan2','sinh','cosh','tanh',
+    'asinh','acosh','atanh',
     'abs','sqrt','cbrt','pow','exp','log','log2','log10','floor','ceil','round','trunc',
     'min','max','sign','hypot','PI','E'];
 

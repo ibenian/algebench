@@ -31,6 +31,14 @@ export function renderText(el, view) {
         }
         let prevTextVal = null;
 
+        let visibleFn = null;
+        if (typeof el.visibleExpr === 'string' && el.visibleExpr.trim()) {
+            try { visibleFn = compileExpr(el.visibleExpr.trim()); } catch (err) {
+                console.warn('text visibleExpr compile error:', err);
+            }
+        }
+        let prevVisible = null;
+
         state.activeAnimUpdaters.push({
             animState: { stopped: false },
             updateFrame(nowMs) {
@@ -41,6 +49,15 @@ export function renderText(el, view) {
                     labelEl.dataPos[1] = p[1];
                     labelEl.dataPos[2] = p[2];
                 } catch (_err) {}
+                if (visibleFn) {
+                    try {
+                        const vis = !!evalExpr(visibleFn, tSec);
+                        if (vis !== prevVisible) {
+                            prevVisible = vis;
+                            labelEl.el.style.visibility = vis ? '' : 'hidden';
+                        }
+                    } catch (_err) {}
+                }
                 if (textExprFn) {
                     try {
                         const raw = evalExpr(textExprFn, tSec);
