@@ -30,7 +30,7 @@
     <h1>Grounded, AI-driven mathematical proof system</h1>
     <p class="by">Every step machine-verified, then animated — built into AlgeBench.</p>
 
-    <p class="lead">Most math on the web is a static wall of symbols. The five figures below are
+    <p class="lead">Most math on the web is a static wall of symbols. The seven figures below are
     different: each is a <b>live, interactive derivation</b> — step through it, hover any term to see
     what it is, and watch the expression morph line by line. Every step also carries a
     <b>confidence badge</b> showing how it was checked. Play with them first — the how and why is
@@ -132,6 +132,23 @@
     <div class="howto">Hover \( \theta \) or \( \phi \) to see what each angle means, then click the
       <b>✦ AI button</b> to land in the quantum-states lesson — the proof and the step you were on
       already loaded next to the live Bloch sphere.</div>
+
+    <h2>7 · Why trapped energy comes in \( n^2 \) steps</h2>
+    <p>Confine a particle — an electron in an atom, light in a cavity — and its energy can no longer
+    take just any value: it climbs in discrete levels. This derivation shows where those levels come
+    from, and why they grow as \( n^2 \) rather than \( n \). Only whole half-wavelengths fit between
+    the walls (\( \lambda_n = 2L/n \)); de Broglie turns that into a momentum ladder
+    \( p_n = nh/2L \) that rises <i>linearly</i> in \( n \); then kinetic energy \( E = p^2/2m \)
+    <b>squares</b> it into \( E_n = n^2 h^2 / 8mL^2 \). The badge mix tells the honest story once
+    more: the squaring-and-simplifying algebra is <b>Grounded</b>, while the two physical inputs —
+    the de Broglie relation and the kinetic-energy formula — carry teal <b>Domain</b> badges.</p>
+    <figure>
+      <iframe data-builtin="quantum/particle-in-a-box" height="560" loading="lazy"
+              style="background:transparent" title="Particle in a box — energy quantization proof" data-algebench-embed></iframe>
+      <figcaption>Figure 7 — deriving the quantized energy levels \( E_n = n^2 h^2 / 8mL^2 \). Interactive.</figcaption>
+    </figure>
+    <div class="howto">Step through it and watch the linear momentum ladder \( p_n \propto n \) get
+      squared into the \( n^2 \) energy spectrum — the reason confinement quantizes energy.</div>
 
     <h2>How it works: written by an AI, checked by a computer</h2>
     <p>Here is the unusual part. Each derivation above is <b>written by a language model</b> — and then
