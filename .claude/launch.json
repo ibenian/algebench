@@ -2,10 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "rindler-horizon",
+      "name": "special-relativity",
       "runtimeExecutable": "./algebench",
       "runtimeArgs": [
-        "scenes/rindler-horizon.json",
+        "scenes/special-relativity.json",
         "--port",
         "5737",
         "--debug",
