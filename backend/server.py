@@ -275,8 +275,20 @@ def _autofill_semantic_graphs(scene: dict) -> dict:
     scenes_list = scene.get('scenes')
     if not isinstance(scenes_list, list):
         return scene
+    # Cap eager (load-time) derivations: each parse costs real CPU, and a
+    # large lesson can carry dozens of proof steps — deriving them all up
+    # front stalls server startup / scene load for tens of seconds. Steps
+    # beyond the cap are left without a ``semanticGraph`` so the Graph tab
+    # derives them on demand via POST /api/graph/from-latex when opened.
+    # Default 10; override with ALGEBENCH_GRAPH_AUTOFILL_LIMIT (0 disables
+    # eager derivation entirely, negative means unlimited).
+    try:
+        limit = int(os.environ.get('ALGEBENCH_GRAPH_AUTOFILL_LIMIT', '10'))
+    except ValueError:
+        limit = 10
     filled = 0
     failed = 0
+    deferred = 0
     for sc in scenes_list:
         if not isinstance(sc, dict):
             continue
@@ -292,6 +304,11 @@ def _autofill_semantic_graphs(scene: dict) -> dict:
                     continue
                 math_src = step.get('math')
                 if not math_src or not isinstance(math_src, str):
+                    continue
+                if limit >= 0 and (filled + failed) >= limit:
+                    # Over the eager budget — leave the step untouched so the
+                    # Graph tab lazily derives it when opened.
+                    deferred += 1
                     continue
                 # Capture highlight bindings (\htmlClass{hl-X}{body}) BEFORE the
                 # wrappers are stripped so we can map the class back to a node.
@@ -333,17 +350,14 @@ def _autofill_semantic_graphs(scene: dict) -> dict:
                         'math': math_src,
                     }}
                     failed += 1
-    if filled or failed:
+    if filled or failed or deferred:
         title = scene.get('title') or '(scene)'
+        parts = [f"auto-derived {filled} semantic graph(s)"]
         if failed:
-            print(
-                f"   ✨ auto-derived {filled} semantic graph(s), "
-                f"{failed} failed for {title}"
-            )
-        else:
-            print(
-                f"   ✨ auto-derived {filled} semantic graph(s) for {title}"
-            )
+            parts.append(f"{failed} failed")
+        if deferred:
+            parts.append(f"{deferred} deferred to on-demand")
+        print(f"   ✨ {', '.join(parts)} for {title}")
     return scene
 
 try:
@@ -1609,19 +1623,29 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
     class LatexToGraphRequest(BaseModel):
         latex: str
         domain: str | None = None
+        highlights: dict | None = None
 
     @fastapp.post("/api/graph/from-latex")
     async def post_graph_from_latex(req: LatexToGraphRequest):
         """Derive a semantic graph from a LaTeX math string.
 
         Used by the Graph tab to auto-populate diagrams for proof steps that
-        do not ship an explicit ``semanticGraph`` field.
+        do not ship an explicit ``semanticGraph`` field (including steps the
+        load-time autofill deferred past ALGEBENCH_GRAPH_AUTOFILL_LIMIT).
+
+        Accepts the RAW proof-step math: ``\\htmlClass{hl-X}{...}`` wrappers
+        are extracted and mapped onto graph nodes exactly like the eager
+        autofill path, so lazily derived graphs keep their highlight colors.
         """
         try:
+            hl_pairs = _extract_htmlclass_pairs(req.latex)
+            cleaned = _strip_html_class(req.latex)
             # Offload the synchronous parse to a worker thread so a burst of
             # graph derivations can't monopolize the event loop and starve
             # /api/health (Render's probe). See also _load_scene callers below.
-            graph = await asyncio.to_thread(_graph_service.latex_to_graph, req.latex, domain=req.domain)
+            graph = await asyncio.to_thread(_graph_service.latex_to_graph, cleaned, domain=req.domain)
+            if graph:
+                _apply_highlights_to_graph(graph, hl_pairs, req.highlights or {})
             return JSONResponse({"graph": graph.model_dump(by_alias=True, exclude_none=True) if graph else None})
         except (ValueError, SyntaxError, KeyError) as e:
             print(f"   ⚠️ /api/graph/from-latex parse error: {e}", flush=True)

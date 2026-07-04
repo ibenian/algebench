@@ -9,6 +9,11 @@ import { resolveLineWidth,
 } from '/camera.js';
 
 export function renderAnimatedVector(el, view) {
+    // Identity token tying every arrow mesh this element ever creates back to
+    // this render. Meshes can be created LAZILY by the anim updater (a vector
+    // that starts at zero length has no mesh at render time), so step trackers
+    // can't rely on their creation-time snapshot — they sweep by owner instead.
+    const ownerToken = {};
     const color = parseColor(el.color || '#ff8844');
     const shader = el.shader || {};
     const emissive = parseColor(shader.emissive || '#000000');
@@ -143,7 +148,7 @@ export function renderAnimatedVector(el, view) {
         cone.setRotationFromQuaternion(new THREE.Quaternion().setFromUnitVectors(up, dir));
 
         state.three.scene.add(cone);
-        state.arrowMeshes.push({ mesh: cone, tipWorld: new THREE.Vector3(...tipWorld), dir: dir.clone(), wLen: wHeadLen });
+        state.arrowMeshes.push({ mesh: cone, tipWorld: new THREE.Vector3(...tipWorld), dir: dir.clone(), wLen: wHeadLen, owner: ownerToken });
         return cone;
     }
 
@@ -181,7 +186,7 @@ export function renderAnimatedVector(el, view) {
         shaft.scale.set(shaftRadiusScaled, shaftLen, shaftRadiusScaled);
 
         state.three.scene.add(shaft);
-        state.arrowMeshes.push({ mesh: shaft, tipWorld: new THREE.Vector3(fromWorld[0] + dir.x*shaftLen, fromWorld[1] + dir.y*shaftLen, fromWorld[2] + dir.z*shaftLen), dir: dir.clone(), wLen: shaftLen, isShaft: true });
+        state.arrowMeshes.push({ mesh: shaft, tipWorld: new THREE.Vector3(fromWorld[0] + dir.x*shaftLen, fromWorld[1] + dir.y*shaftLen, fromWorld[2] + dir.z*shaftLen), dir: dir.clone(), wLen: shaftLen, isShaft: true, owner: ownerToken });
         return shaft;
     }
 
@@ -246,6 +251,7 @@ export function renderAnimatedVector(el, view) {
                     dir: layout.panelNormal.clone(),
                     wLen: layout.panelLength,
                     isShaft: true,
+                    owner: ownerToken,
                 });
                 meshes.push(mesh);
             }
@@ -529,5 +535,5 @@ export function renderAnimatedVector(el, view) {
         },
     });
 
-    return { type: 'animated_vector', color, label, _animState: animState, _animExprEntry: animExprEntry };
+    return { type: 'animated_vector', color, label, _animState: animState, _animExprEntry: animExprEntry, _arrowOwner: ownerToken };
 }

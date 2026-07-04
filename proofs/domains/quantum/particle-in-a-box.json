@@ -1,0 +1,280 @@
+{
+  "title": "Particle in a Box: Energy Quantization",
+  "domain": "quantum",
+  "deeplink": "/?builtin=photons-wavelength-energy&view=math&panel=chat&pp=1&dock=1&sc=discrete-wavelengths&st=energy-n-squared&pf=s4_particle_in_a_box&ps=energy-ladder&nodes=__equals_1&pa=quantum/particle-in-a-box",
+  "steps": [
+    {
+      "index": 0,
+      "operation": "Given $\\lambda_n = \\frac{2L}{n}$",
+      "justification": "the starting expression",
+      "input_latex": "\\lambda_{n} = \\frac{2 \\cdot L}{n}",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=lambda_n}{\\lambda_{n}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_2}{\\frac{\\htmlData{n=__multiply_3}{\\htmlData{n=__num_4}{2} \\htmlData{n=__multiply_3__m1}{\\cdot} \\htmlData{n=L}{L}}}{\\htmlData{n=n}{n}}}}",
+      "plain": "\\lambda_{n} = \\frac{2 \\cdot L}{n}",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": null,
+        "reason": "the given starting expression",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 1,
+      "operation": "Introduce De Broglie's wavelength relation",
+      "justification": "De Broglie's hypothesis states that the momentum $p_n$ of a particle is inversely proportional to its wavelength $\\lambda_n$, with Planck's constant $h$ as the proportionality constant.",
+      "input_latex": "p_{n} = \\frac{h}{\\lambda_{n}}",
+      "latex": "\\htmlData{n=_r1___equals_1}{\\htmlData{n=p_n}{p_{n}} \\htmlData{n=_r1___equals_1__op}{=} \\htmlData{n=_r2___multiply_2}{\\frac{\\htmlData{n=h}{h}}{\\htmlData{n=lambda_n}{\\lambda_{n}}}}}",
+      "plain": "p_{n} = \\frac{h}{\\lambda_{n}}",
+      "confidence": {
+        "tier": "domain",
+        "label": "Domain",
+        "icon": "🎓",
+        "meaning": "valid by domain knowledge, not a symbolic identity the CAS can check",
+        "relation": "unknown",
+        "reason": "valid by domain knowledge — the CAS could not check this symbolically; a domain expert accepts it (confidence 100%): De Broglie's Wavelength Relation: $p = h / \\lambda$",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 2,
+      "operation": "Substitute $\\lambda_n$ into the De Broglie relation",
+      "justification": "Substitute the given expression for $\\lambda_n$ from the starting equation, $\\lambda_{n} = \\frac{2 \\cdot L}{n}$, into the De Broglie relation.",
+      "input_latex": "p_{n} = \\frac{h}{\\frac{2 \\cdot L}{n}}",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=p_n}{p_{n}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_2}{\\frac{\\htmlData{n=h}{h}}{\\htmlData{n=__multiply_4}{\\frac{\\htmlData{n=__multiply_3}{\\htmlData{n=__num_4}{2} \\htmlData{n=__multiply_3__m1}{\\cdot} \\htmlData{n=L}{L}}}{\\htmlData{n=n}{n}}}}}}",
+      "plain": "p_{n} = \\frac{h}{\\frac{2 \\cdot L}{n}}",
+      "confidence": {
+        "tier": "domain",
+        "label": "Domain",
+        "icon": "🎓",
+        "meaning": "valid by domain knowledge, not a symbolic identity the CAS can check",
+        "relation": "unknown",
+        "reason": "valid by domain knowledge — the CAS could not check this symbolically; a domain expert accepts it (confidence 100%): Substitution of the quantized wavelength for a particle in a box ($\\lambda_n = \\frac{2L}{n}$) into the De Broglie relation.",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 3,
+      "operation": "Simplify the complex fraction for $p_n$",
+      "justification": "To simplify a complex fraction of the form $\\frac{A}{B/C}$, multiply the numerator $A$ by the reciprocal of the denominator $B/C$, resulting in $\\frac{A \\cdot C}{B}$.",
+      "input_latex": "p_{n} = \\frac{h \\cdot n}{2 \\cdot L}",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=p_n}{p_{n}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_4}{\\frac{\\htmlData{n=_r1___multiply_3}{\\htmlData{n=h}{h} \\htmlData{n=_r1___multiply_3__m1}{\\cdot} \\htmlData{n=n}{n}}}{\\htmlData{n=__multiply_3}{\\htmlData{n=__num_4}{2} \\htmlData{n=__multiply_3__m1}{\\cdot} \\htmlData{n=L}{L}}}}}",
+      "plain": "p_{n} = \\frac{h \\cdot n}{2 \\cdot L}",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 4,
+      "operation": "Introduce the formula for kinetic energy",
+      "justification": "The kinetic energy $E_n$ of a particle with momentum $p_n$ and mass $m$ is given by the formula $E_n = \\frac{p_n^2}{2 \\cdot m}$.",
+      "input_latex": "E_{n} = \\frac{p_{n}^{2}}{2 \\cdot m}",
+      "latex": "\\htmlData{n=_r1___equals_1}{\\htmlData{n=E_n}{E_{n}} \\htmlData{n=_r1___equals_1__op}{=} \\htmlData{n=__multiply_2}{\\frac{\\htmlData{n=__power_3}{\\htmlData{n=p_n}{p_{n}}^{\\htmlData{n=__power_3__exp}{2}}}}{\\htmlData{n=__multiply_3}{\\htmlData{n=__num_4}{2} \\htmlData{n=__multiply_3__m1}{\\cdot} \\htmlData{n=m}{m}}}}}",
+      "plain": "E_{n} = \\frac{p_{n}^{2}}{2 \\cdot m}",
+      "confidence": {
+        "tier": "domain",
+        "label": "Domain",
+        "icon": "🎓",
+        "meaning": "valid by domain knowledge, not a symbolic identity the CAS can check",
+        "relation": "unknown",
+        "reason": "valid by domain knowledge — the CAS could not check this symbolically; a domain expert accepts it (confidence 100%): Definition of kinetic energy in terms of momentum.",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 5,
+      "operation": "Substitute the expression for $p_n$ into the kinetic energy formula",
+      "justification": "Replace $p_n$ in the kinetic energy formula with the derived expression $p_n = \\frac{h \\cdot n}{2 \\cdot L}$.",
+      "input_latex": "E_{n} = \\frac{\\left(\\frac{h \\cdot n}{2 \\cdot L}\\right)^{2}}{2 \\cdot m}",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=E_n}{E_{n}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=_r1___multiply_2}{\\frac{\\htmlData{n=_r2___power_3}{\\left(\\htmlData{n=__multiply_4}{\\frac{\\htmlData{n=_r1___multiply_3}{\\htmlData{n=h}{h} \\htmlData{n=_r1___multiply_3__m1}{\\cdot} \\htmlData{n=n}{n}}}{\\htmlData{n=__multiply_7}{\\htmlData{n=__num_8}{2} \\htmlData{n=__multiply_7__m1}{\\cdot} \\htmlData{n=L}{L}}}}\\right)^{\\htmlData{n=_r2___power_3__exp}{2}}}}{\\htmlData{n=__multiply_3}{\\htmlData{n=__num_4}{2} \\htmlData{n=__multiply_3__m1}{\\cdot} \\htmlData{n=m}{m}}}}}",
+      "plain": "E_{n} = \\frac{\\left(\\frac{h \\cdot n}{2 \\cdot L}\\right)^{2}}{2 \\cdot m}",
+      "confidence": {
+        "tier": "domain",
+        "label": "Domain",
+        "icon": "🎓",
+        "meaning": "valid by domain knowledge, not a symbolic identity the CAS can check",
+        "relation": "unknown",
+        "reason": "valid by domain knowledge — the CAS could not check this symbolically; a domain expert accepts it (confidence 100%): Algebraic substitution of a known expression for $p_n$.",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 6,
+      "operation": "Expand the squared term in the numerator",
+      "justification": "Apply the power rule for fractions $\\left(\\frac{A}{B}\\right)^2 = \\frac{A^2}{B^2}$ and for products $(A \\cdot B)^2 = A^2 \\cdot B^2$ to the term $\\left(\\frac{h \\cdot n}{2 \\cdot L}\\right)^2$.",
+      "input_latex": "E_{n} = \\frac{\\frac{h^{2} \\cdot n^{2}}{(2 \\cdot L)^{2}}}{2 \\cdot m}",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=E_n}{E_{n}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=_r1___multiply_2}{\\frac{\\htmlData{n=__multiply_4}{\\frac{\\htmlData{n=_r1___multiply_3}{\\htmlData{n=_r1___power_5}{\\htmlData{n=h}{h}^{\\htmlData{n=_r1___power_5__exp}{2}}} \\htmlData{n=_r1___multiply_3__m1}{\\cdot} \\htmlData{n=_r2___power_6}{\\htmlData{n=n}{n}^{\\htmlData{n=_r2___power_6__exp}{2}}}}}{\\htmlData{n=_r2___power_3}{\\left(\\htmlData{n=__multiply_7}{\\htmlData{n=__num_8}{2} \\htmlData{n=__multiply_7__m1}{\\cdot} \\htmlData{n=L}{L}}\\right)^{\\htmlData{n=_r2___power_3__exp}{2}}}}}}{\\htmlData{n=__multiply_3}{\\htmlData{n=__num_4}{2} \\htmlData{n=__multiply_3__m1}{\\cdot} \\htmlData{n=m}{m}}}}}",
+      "plain": "E_{n} = \\frac{\\frac{h^{2} \\cdot n^{2}}{\\left(2 \\cdot L\\right)^{2}}}{2 \\cdot m}",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 7,
+      "operation": "Simplify the squared term in the denominator of the numerator",
+      "justification": "Calculate the square of the term in the denominator: $(2 \\cdot L)^2 = 2^2 \\cdot L^2 = 4 \\cdot L^2$.",
+      "input_latex": "E_{n} = \\frac{\\frac{h^{2} \\cdot n^{2}}{4 \\cdot L^{2}}}{2 \\cdot m}",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=E_n}{E_{n}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=_r1___multiply_2}{\\frac{\\htmlData{n=__multiply_4}{\\frac{\\htmlData{n=_r1___multiply_3}{\\htmlData{n=_r1___power_5}{\\htmlData{n=h}{h}^{\\htmlData{n=_r1___power_5__exp}{2}}} \\htmlData{n=_r1___multiply_3__m1}{\\cdot} \\htmlData{n=_r2___power_6}{\\htmlData{n=n}{n}^{\\htmlData{n=_r2___power_6__exp}{2}}}}}{\\htmlData{n=__multiply_8}{\\htmlData{n=__num_9}{4} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=_r2___power_3}{\\htmlData{n=L}{L}^{\\htmlData{n=_r2___power_3__exp}{2}}}}}}}{\\htmlData{n=__multiply_3}{\\htmlData{n=__num_4}{2} \\htmlData{n=__multiply_3__m1}{\\cdot} \\htmlData{n=m}{m}}}}}",
+      "plain": "E_{n} = \\frac{\\frac{h^{2} \\cdot n^{2}}{4 \\cdot L^{2}}}{2 \\cdot m}",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 8,
+      "operation": "Combine the fractions",
+      "justification": "To simplify a fraction with a nested fraction in the numerator, such as $\\frac{A/B}{C}$, multiply the denominator of the main fraction $C$ by the denominator of the nested fraction $B$, yielding $\\frac{A}{B \\cdot C}$.",
+      "input_latex": "E_{n} = \\frac{h^{2} \\cdot n^{2}}{2 \\cdot m \\cdot 4 \\cdot L^{2}}",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=E_n}{E_{n}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_4}{\\frac{\\htmlData{n=_r1___multiply_3}{\\htmlData{n=_r1___power_5}{\\htmlData{n=h}{h}^{\\htmlData{n=_r1___power_5__exp}{2}}} \\htmlData{n=_r1___multiply_3__m1}{\\cdot} \\htmlData{n=_r2___power_6}{\\htmlData{n=n}{n}^{\\htmlData{n=_r2___power_6__exp}{2}}}}}{\\htmlData{n=__multiply_8}{\\htmlData{n=_r1___multiply_8}{\\htmlData{n=__multiply_3}{\\htmlData{n=__num_4}{2} \\htmlData{n=__multiply_3__m1}{\\cdot} \\htmlData{n=m}{m}} \\htmlData{n=_r1___multiply_8__m1}{\\cdot} \\htmlData{n=__num_9}{4}} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=_r2___power_3}{\\htmlData{n=L}{L}^{\\htmlData{n=_r2___power_3__exp}{2}}}}}}}",
+      "plain": "E_{n} = \\frac{h^{2} \\cdot n^{2}}{2 \\cdot m \\cdot 4 \\cdot L^{2}}",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 9,
+      "operation": "Simplify the denominator",
+      "justification": "Perform the multiplication $2 \\cdot 4 = 8$ in the denominator to simplify the expression.",
+      "input_latex": "E_{n} = \\frac{h^{2} \\cdot n^{2}}{8 \\cdot L^{2} \\cdot m}",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=E_n}{E_{n}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_4}{\\frac{\\htmlData{n=_r1___multiply_3}{\\htmlData{n=_r1___power_5}{\\htmlData{n=h}{h}^{\\htmlData{n=_r1___power_5__exp}{2}}} \\htmlData{n=_r1___multiply_3__m1}{\\cdot} \\htmlData{n=_r2___power_6}{\\htmlData{n=n}{n}^{\\htmlData{n=_r2___power_6__exp}{2}}}}}{\\htmlData{n=__multiply_8}{\\htmlData{n=_r1___multiply_8}{\\htmlData{n=_r1___num_9}{8} \\htmlData{n=_r1___multiply_8__m1}{\\cdot} \\htmlData{n=_r2___power_3}{\\htmlData{n=L}{L}^{\\htmlData{n=_r2___power_3__exp}{2}}}} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=m}{m}}}}}",
+      "plain": "E_{n} = \\frac{h^{2} \\cdot n^{2}}{8 \\cdot L^{2} \\cdot m}",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    }
+  ],
+  "overall_confidence": {
+    "tier": "domain",
+    "label": "Domain",
+    "icon": "🎓",
+    "meaning": "valid by domain knowledge, not a symbolic identity the CAS can check",
+    "relation": null,
+    "reason": "5/9 steps verified · 4 domain-justified · endpoint reached",
+    "type_consistent": true,
+    "counts": {
+      "refuted": 0,
+      "unchecked": 0,
+      "plausible": 0,
+      "domain": 4,
+      "verified": 0,
+      "grounded": 5
+    },
+    "endpoint_reached": true
+  },
+  "terms": {
+    "lambda_n": {
+      "latex": "\\lambda_{n}",
+      "name": "\\lambda_{n}",
+      "description": "The wavelength of the particle in the $n$-th energy state within the box."
+    },
+    "L": {
+      "latex": "L",
+      "name": "L",
+      "description": "The length of the one-dimensional box."
+    },
+    "__power_5": {
+      "latex": "\\frac{1}{n}",
+      "name": "\\frac{1}{n}",
+      "description": "The reciprocal of the principal quantum number $n$."
+    },
+    "n": {
+      "latex": "n",
+      "name": "n",
+      "description": "The principal quantum number, which specifies the quantized energy level of the particle."
+    },
+    "p_n": {
+      "latex": "p_{n}",
+      "name": "p_{n}",
+      "description": "The magnitude of the momentum of the particle in the $n$-th energy state."
+    },
+    "h": {
+      "latex": "h",
+      "name": "h",
+      "description": "Planck's constant, a fundamental constant in quantum mechanics."
+    },
+    "__power_3": {
+      "latex": "\\frac{1}{\\lambda_{n}}",
+      "name": "\\frac{1}{\\lambda_{n}}",
+      "description": "The reciprocal of the wavelength of the particle in the $n$-th energy state."
+    },
+    "_r1___power_3": {
+      "latex": "\\frac{1}{2 L \\frac{1}{n}}",
+      "name": "\\frac{1}{2 L \\frac{1}{n}}",
+      "description": "An intermediate expression representing $n/(2L)$, which is related to the reciprocal of the wavelength of the particle."
+    },
+    "E_n": {
+      "latex": "E_{n}",
+      "name": "E_{n}",
+      "description": "The quantized energy of the particle in the $n$-th energy state."
+    },
+    "m": {
+      "latex": "m",
+      "name": "m",
+      "description": "The mass of the particle confined within the box."
+    },
+    "_r2___power_3": {
+      "latex": "\\left(\\frac{h n}{2 L}\\right)^{2}",
+      "name": "\\left(\\frac{h n}{2 L}\\right)^{2}",
+      "description": "The square of the particle's momentum $p_n$ in the $n$-th energy state, expressed as $(\\frac{h n}{2 L})^{2}$."
+    },
+    "__power_6": {
+      "latex": "\\frac{1}{2 L}",
+      "name": "\\frac{1}{2 L}",
+      "description": "The reciprocal of twice the length of the box $L$."
+    },
+    "_r1___power_5": {
+      "latex": "h^{2}",
+      "name": "h^{2}",
+      "description": "The square of Planck's constant $h$."
+    },
+    "_r2___power_6": {
+      "latex": "n^{2}",
+      "name": "n^{2}",
+      "description": "The square of the principal quantum number $n$."
+    }
+  },
+  "goal": "This derivation establishes the quantized energy levels $E_n$ for a particle confined in a one-dimensional box of length $L$, by combining the de Broglie wavelength condition with the kinetic energy formula.",
+  "followups": [
+    "What do the quantum number $n$ and Planck's constant $h$ represent in this context?",
+    "How would the energy levels change if the box length $L$ were doubled?",
+    "Can we derive the allowed wavelengths $\\lambda_n$ for a particle in a box from the boundary conditions of the wave function?",
+    "How does this result compare to the energy of a free particle?"
+  ],
+  "prerequisites": [
+    "De Broglie wavelength relation ($p = h/\\lambda$)",
+    "Kinetic energy formula ($E = p^2/(2m)$)",
+    "Basic algebraic manipulation (solving equations, simplifying fractions)",
+    "Concept of quantized energy levels"
+  ]
+}

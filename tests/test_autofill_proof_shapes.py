@@ -209,14 +209,20 @@ def test_autofill_overwrites_error_only_record(monkeypatch):
     assert "error" not in sg
 
 
-def test_autofill_atmospheric_entry_physics_fixture():
+def test_autofill_atmospheric_entry_physics_fixture(monkeypatch):
     """Regression: array-typed proof scenes should get auto-filled graphs.
 
     Before the fix, ``proof`` being an array caused the scene to be silently
     skipped and _none_ of its steps would have a ``semanticGraph``. Individual
     steps may still fail SymPy parsing (out of scope); we just require that
     each array-typed scene produces graphs for at least some steps.
+
+    This test asserts on scenes *deep* in the lesson, so it disables the
+    load-time derivation cap (``ALGEBENCH_GRAPH_AUTOFILL_LIMIT``, default 10,
+    which defers later steps to on-demand) — the cap is an orthogonal perf
+    concern; here we verify the derivation itself fills every array-typed scene.
     """
+    monkeypatch.setenv("ALGEBENCH_GRAPH_AUTOFILL_LIMIT", "-1")  # unlimited
     fixture = REPO_ROOT / "scenes" / "draft" / "atmospheric-entry-physics.json"
     with open(fixture) as f:
         spec = json.load(f)
