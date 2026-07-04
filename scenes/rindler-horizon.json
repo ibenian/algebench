@@ -2014,6 +2014,102 @@
               ],
               "color": "#89a7c4",
               "label": "spacelike $x^2-t^2=k$"
+            },
+            {
+              "id": "s3_klbl_t1u",
+              "type": "text",
+              "text": "$k=1$",
+              "position": [
+                0.35,
+                1.25,
+                0
+              ],
+              "color": "#aabbcc",
+              "size": 11
+            },
+            {
+              "id": "s3_klbl_t4u",
+              "type": "text",
+              "text": "$k=4$",
+              "position": [
+                0.35,
+                2.3,
+                0
+              ],
+              "color": "#aabbcc",
+              "size": 11
+            },
+            {
+              "id": "s3_klbl_t1d",
+              "type": "text",
+              "text": "$k=1$",
+              "position": [
+                0.35,
+                -1.45,
+                0
+              ],
+              "color": "#aabbcc",
+              "size": 11
+            },
+            {
+              "id": "s3_klbl_t4d",
+              "type": "text",
+              "text": "$k=4$",
+              "position": [
+                0.35,
+                -2.5,
+                0
+              ],
+              "color": "#aabbcc",
+              "size": 11
+            },
+            {
+              "id": "s3_klbl_s1r",
+              "type": "text",
+              "text": "$k=1$",
+              "position": [
+                1.25,
+                0.4,
+                0
+              ],
+              "color": "#89a7c4",
+              "size": 11
+            },
+            {
+              "id": "s3_klbl_s4r",
+              "type": "text",
+              "text": "$k=4$",
+              "position": [
+                2.3,
+                0.4,
+                0
+              ],
+              "color": "#89a7c4",
+              "size": 11
+            },
+            {
+              "id": "s3_klbl_s1l",
+              "type": "text",
+              "text": "$k=1$",
+              "position": [
+                -1.85,
+                0.4,
+                0
+              ],
+              "color": "#89a7c4",
+              "size": 11
+            },
+            {
+              "id": "s3_klbl_s4l",
+              "type": "text",
+              "text": "$k=4$",
+              "position": [
+                -2.95,
+                0.4,
+                0
+              ],
+              "color": "#89a7c4",
+              "size": 11
             }
           ],
           "info": [
@@ -2056,6 +2152,27 @@
             },
             {
               "id": "s3_space_txt"
+            },
+            {
+              "id": "s3_klbl_t1u"
+            },
+            {
+              "id": "s3_klbl_t4u"
+            },
+            {
+              "id": "s3_klbl_t1d"
+            },
+            {
+              "id": "s3_klbl_t4d"
+            },
+            {
+              "id": "s3_klbl_s4r"
+            },
+            {
+              "id": "s3_klbl_s1l"
+            },
+            {
+              "id": "s3_klbl_s4l"
             }
           ],
           "add": [
@@ -2249,6 +2366,9 @@
             },
             {
               "id": "s3_space_k1_r"
+            },
+            {
+              "id": "s3_klbl_s1r"
             }
           ],
           "add": [
@@ -3840,6 +3960,92 @@
               ],
               "color": "#4da6ff",
               "label": "inset $v(t)=t/\\sqrt{1/a^2+t^2}$"
+            },
+            {
+              "id": "s4_vt_axis_y",
+              "type": "line",
+              "points": [
+                [
+                  -7,
+                  -4.5,
+                  0
+                ],
+                [
+                  -7,
+                  -1.2,
+                  0
+                ]
+              ],
+              "color": "#aabbcc",
+              "width": 1.5,
+              "opacity": 0.6
+            },
+            {
+              "id": "s4_vt_axis_x",
+              "type": "line",
+              "points": [
+                [
+                  -7,
+                  -4.5,
+                  0
+                ],
+                [
+                  -0.8,
+                  -4.5,
+                  0
+                ]
+              ],
+              "color": "#aabbcc",
+              "width": 1.5,
+              "opacity": 0.6
+            },
+            {
+              "id": "s4_vt_lbl_v",
+              "type": "text",
+              "text": "$v$",
+              "position": [
+                -7.3,
+                -1.1,
+                0
+              ],
+              "color": "#aabbcc",
+              "size": 12
+            },
+            {
+              "id": "s4_vt_lbl_t",
+              "type": "text",
+              "text": "$t$",
+              "position": [
+                -0.55,
+                -4.6,
+                0
+              ],
+              "color": "#aabbcc",
+              "size": 12
+            },
+            {
+              "id": "s4_vt_tick1",
+              "type": "text",
+              "text": "$1$",
+              "position": [
+                -7.3,
+                -1.5,
+                0
+              ],
+              "color": "#aabbcc",
+              "size": 11
+            },
+            {
+              "id": "s4_vt_tick0",
+              "type": "text",
+              "text": "$0$",
+              "position": [
+                -7.3,
+                -4.6,
+                0
+              ],
+              "color": "#aabbcc",
+              "size": 11
             }
           ],
           "remove": [
