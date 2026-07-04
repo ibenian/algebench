@@ -107,7 +107,7 @@ function embedSnippet(url) {
   // the iframe to its content — a cross-origin iframe can't resize its own element, so
   // this host-side helper applies the height the embedded page reports.
   const origin = new URL(url).origin;
-  return `<iframe src="${url}" width="100%" height="600" style="border:0" loading="lazy" ` +
+  return `<iframe src="${url}" width="100%" height="600" style="border:0;background:transparent" loading="lazy" ` +
          `title="AlgeBench proof animation" data-algebench-embed></iframe>\n` +
          `<!-- optional: auto-fits the height to the proof; remove to keep a fixed height -->\n` +
          `<script src="${origin}/embed-resizer.js" async></script>`;

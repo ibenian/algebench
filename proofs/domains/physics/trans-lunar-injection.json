@@ -1,0 +1,190 @@
+{
+  "title": "Trans-Lunar Injection Delta-v",
+  "domain": "physics",
+  "deeplink": "/?builtin=artemis-ii-mission-simulation&view=math&panel=chat&pp=1&dock=1&sc=earth-orbit-setup-and-departure-burns&st=setup-and-departure&pf=trans-lunar-injection&ps=delta-v&pa=physics/trans-lunar-injection",
+  "steps": [
+    {
+      "index": 0,
+      "operation": "Given the definition of TLI delta-v",
+      "justification": "Substitute expressions for $v_p$ and $v_c$ and simplify.",
+      "input_latex": "\\Delta v = - v_{c} + v_{p}",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=Delta_v}{\\Delta v} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__add_2}{\\htmlData{n=__negation_3}{\\htmlData{n=__negation_3__op}{-} \\htmlData{n=v_c}{v_{c}}} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=v_p}{v_{p}}}}",
+      "plain": "\\Delta v = - v_{c} + v_{p}",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": null,
+        "reason": "the given starting expression",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 1,
+      "operation": "Substitute the formula for circular orbital velocity.",
+      "justification": "The circular orbital velocity at radius $r$ is given by $v_c = \\sqrt{\\frac{G \\cdot M}{r}}$, where $G$ is the gravitational constant and $M$ is the mass of the central body. This $r$ is the radius of the circular orbit.",
+      "input_latex": "\\Delta v = - \\sqrt{\\frac{G \\cdot M}{r}} + v_{p}",
+      "latex": "\\htmlData{n=_r1___equals_1}{\\htmlData{n=Delta_v}{\\Delta v} \\htmlData{n=_r1___equals_1__op}{=} \\htmlData{n=_r2___add_2}{\\htmlData{n=_r3___negation_3}{\\htmlData{n=_r3___negation_3__op}{-} \\htmlData{n=__power_4}{\\sqrt{\\htmlData{n=__multiply_5}{\\frac{\\htmlData{n=__multiply_6}{\\htmlData{n=G}{G} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=M}{M}}}{\\htmlData{n=r}{r}}}}}} \\htmlData{n=_r2___add_2__op1}{+} \\htmlData{n=v_p}{v_{p}}}}",
+      "plain": "\\Delta v = - \\sqrt{\\frac{G \\cdot M}{r}} + v_{p}",
+      "confidence": {
+        "tier": "domain",
+        "label": "Domain",
+        "icon": "🎓",
+        "meaning": "valid by domain knowledge, not a symbolic identity the CAS can check",
+        "relation": "unknown",
+        "reason": "valid by domain knowledge — the CAS could not check this symbolically; a domain expert accepts it (confidence 100%): Definition of circular orbital velocity in Newtonian gravity.",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 2,
+      "operation": "Substitute the formula for velocity at periapsis.",
+      "justification": "The velocity at periapsis $r$ of an elliptical orbit with apoapsis $r_a$ is derived from the vis-viva equation $v = \\sqrt{G \\cdot M \\cdot \\left(\\frac{2}{r} - \\frac{1}{a}\\right)}$, where $a = \\frac{r + r_a}{2}$ is the semi-major axis. This leads to $v_p = \\sqrt{\\frac{G \\cdot M}{r}} \\cdot \\sqrt{2} \\cdot \\sqrt{\\frac{r_a}{r + r_a}}$.",
+      "input_latex": "\\Delta v = - \\sqrt{\\frac{G \\cdot M}{r}} + \\sqrt{\\frac{G \\cdot M}{r}} \\cdot \\sqrt{2} \\cdot \\sqrt{\\frac{r_a}{r + r_a}}",
+      "latex": "\\htmlData{n=_r1___equals_1}{\\htmlData{n=Delta_v}{\\Delta v} \\htmlData{n=_r1___equals_1__op}{=} \\htmlData{n=_r2___add_2}{\\htmlData{n=_r3___negation_3}{\\htmlData{n=_r3___negation_3__op}{-} \\htmlData{n=__power_4}{\\sqrt{\\htmlData{n=__multiply_5}{\\frac{\\htmlData{n=__multiply_6}{\\htmlData{n=G____multiply_6}{G} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=M____multiply_6}{M}}}{\\htmlData{n=r____multiply_5}{r}}}}}} \\htmlData{n=_r2___add_2__op1}{+} \\htmlData{n=__multiply_8}{\\htmlData{n=__multiply_9}{\\htmlData{n=__power_10}{\\sqrt{\\htmlData{n=__multiply_11}{\\frac{\\htmlData{n=__multiply_12}{\\htmlData{n=G____multiply_12}{G} \\htmlData{n=__multiply_12__m1}{\\cdot} \\htmlData{n=M____multiply_12}{M}}}{\\htmlData{n=r____multiply_11}{r}}}}} \\htmlData{n=__multiply_9__m1}{\\cdot} \\htmlData{n=__power_14}{\\sqrt{\\htmlData{n=__num_15}{2}}}} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=__power_16}{\\sqrt{\\htmlData{n=__multiply_17}{\\frac{\\htmlData{n=r_a____multiply_17}{r_{a}}}{\\htmlData{n=__add_19}{\\htmlData{n=r____add_19}{r} \\htmlData{n=__add_19__op1}{+} \\htmlData{n=r_a____add_19}{r_{a}}}}}}}}}}",
+      "plain": "\\Delta v = - \\sqrt{\\frac{G \\cdot M}{r}} + \\sqrt{\\frac{G \\cdot M}{r}} \\cdot \\sqrt{2} \\cdot \\sqrt{\\frac{r_{a}}{r + r_{a}}}",
+      "confidence": {
+        "tier": "domain",
+        "label": "Domain",
+        "icon": "🎓",
+        "meaning": "valid by domain knowledge, not a symbolic identity the CAS can check",
+        "relation": "unknown",
+        "reason": "valid by domain knowledge — the CAS could not check this symbolically; a domain expert accepts it (confidence 100%): Substitution of velocity at periapsis derived from the Vis-viva equation.",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 3,
+      "operation": "Factor out the common term $\\sqrt{\\frac{G \\cdot M}{r}}$.",
+      "justification": "Factor out the common term to simplify the expression.",
+      "input_latex": "\\Delta v = \\sqrt{\\frac{G \\cdot M}{r}} \\cdot \\left(-1 + \\sqrt{2} \\cdot \\sqrt{\\frac{r_a}{r + r_a}}\\right)",
+      "latex": "\\htmlData{n=_r1___equals_1}{\\htmlData{n=Delta_v}{\\Delta v} \\htmlData{n=_r1___equals_1__op}{=} \\htmlData{n=__multiply_9}{\\htmlData{n=__power_10}{\\sqrt{\\htmlData{n=__multiply_11}{\\frac{\\htmlData{n=__multiply_12}{\\htmlData{n=G}{G} \\htmlData{n=__multiply_12__m1}{\\cdot} \\htmlData{n=M}{M}}}{\\htmlData{n=r____multiply_11}{r}}}}} \\htmlData{n=__multiply_9__m1}{\\cdot} \\left(\\htmlData{n=_r2___add_2}{\\htmlData{n=__num_8}{-1} \\htmlData{n=_r2___add_2__op1}{+} \\htmlData{n=__multiply_8}{\\htmlData{n=__power_14}{\\sqrt{\\htmlData{n=__num_15}{2}}} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=__power_16}{\\sqrt{\\htmlData{n=__multiply_17}{\\frac{\\htmlData{n=r_a____multiply_17}{r_{a}}}{\\htmlData{n=__add_19}{\\htmlData{n=r____add_19}{r} \\htmlData{n=__add_19__op1}{+} \\htmlData{n=r_a____add_19}{r_{a}}}}}}}}}\\right)}}",
+      "plain": "\\Delta v = \\sqrt{\\frac{G \\cdot M}{r}} \\cdot \\left(-1 + \\sqrt{2} \\cdot \\sqrt{\\frac{r_{a}}{r + r_{a}}}\\right)",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 4,
+      "operation": "Rearrange the terms inside the parenthesis.",
+      "justification": "Reorder the terms within the parenthesis for clarity and to match the target form.",
+      "input_latex": "\\Delta v = \\sqrt{\\frac{G \\cdot M}{r}} \\cdot \\left(\\sqrt{2} \\cdot \\sqrt{\\frac{r_a}{r + r_a}} - 1\\right)",
+      "latex": "\\htmlData{n=_r1___equals_1}{\\htmlData{n=Delta_v}{\\Delta v} \\htmlData{n=_r1___equals_1__op}{=} \\htmlData{n=__multiply_9}{\\htmlData{n=__power_10}{\\sqrt{\\htmlData{n=__multiply_11}{\\frac{\\htmlData{n=__multiply_12}{\\htmlData{n=G}{G} \\htmlData{n=__multiply_12__m1}{\\cdot} \\htmlData{n=M}{M}}}{\\htmlData{n=r____multiply_11}{r}}}}} \\htmlData{n=__multiply_9__m1}{\\cdot} \\left(\\htmlData{n=_r2___add_2}{\\htmlData{n=__multiply_8}{\\htmlData{n=__power_14}{\\sqrt{\\htmlData{n=__num_15}{2}}} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=__power_16}{\\sqrt{\\htmlData{n=__multiply_17}{\\frac{\\htmlData{n=r_a____multiply_17}{r_{a}}}{\\htmlData{n=__add_19}{\\htmlData{n=r____add_19}{r} \\htmlData{n=__add_19__op1}{+} \\htmlData{n=r_a____add_19}{r_{a}}}}}}}} \\htmlData{n=__num_8}{-1}}\\right)}}",
+      "plain": "\\Delta v = \\sqrt{\\frac{G \\cdot M}{r}} \\cdot \\left(\\sqrt{2} \\cdot \\sqrt{\\frac{r_{a}}{r + r_{a}}} -1\\right)",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    }
+  ],
+  "overall_confidence": {
+    "tier": "domain",
+    "label": "Domain",
+    "icon": "🎓",
+    "meaning": "valid by domain knowledge, not a symbolic identity the CAS can check",
+    "relation": null,
+    "reason": "2/4 steps verified · 2 domain-justified · endpoint reached",
+    "type_consistent": true,
+    "counts": {
+      "refuted": 0,
+      "unchecked": 0,
+      "plausible": 0,
+      "domain": 2,
+      "verified": 0,
+      "grounded": 2
+    },
+    "endpoint_reached": true
+  },
+  "terms": {
+    "Delta_v": {
+      "latex": "\\Delta v",
+      "name": "\\Delta v",
+      "description": "$\\Delta v$ represents the change in velocity required for a Trans-Lunar Injection maneuver."
+    },
+    "v_c": {
+      "latex": "v_{c}",
+      "name": "v_{c}",
+      "description": "$v_c$ is the circular orbital velocity at a given radius $r$ around the central body."
+    },
+    "v_p": {
+      "latex": "v_{p}",
+      "name": "v_{p}",
+      "description": "$v_p$ is the velocity at periapsis (or perigee) for an elliptical transfer orbit."
+    },
+    "__power_4": {
+      "latex": "\\sqrt{\\frac{G M}{r}}",
+      "name": "\\sqrt{\\frac{G M}{r}}",
+      "description": "$\\sqrt{\\frac{G M}{r}}$ is the formula for the circular orbital velocity at radius $r$ around a central body of mass $M$."
+    },
+    "G": {
+      "latex": "G",
+      "name": "G",
+      "description": "$G$ is the universal gravitational constant."
+    },
+    "M": {
+      "latex": "M",
+      "name": "M",
+      "description": "$M$ is the mass of the central body, typically Earth in the context of Trans-Lunar Injection."
+    },
+    "__power_7": {
+      "latex": "\\frac{1}{r}",
+      "name": "\\frac{1}{r}",
+      "description": "$\\frac{1}{r}$ represents the reciprocal of the current orbital radius."
+    },
+    "r": {
+      "latex": "r",
+      "name": "r",
+      "description": "$r$ is the current orbital radius or distance from the center of the central body."
+    },
+    "__power_10": {
+      "latex": "\\sqrt{\\frac{G M}{r}}",
+      "name": "\\sqrt{\\frac{G M}{r}}",
+      "description": "$\\sqrt{\\frac{G M}{r}}$ is the formula for the circular orbital velocity at radius $r$ around a central body of mass $M$."
+    },
+    "__power_13": {
+      "latex": "\\frac{1}{r}",
+      "name": "\\frac{1}{r}",
+      "description": "$\\frac{1}{r}$ represents the reciprocal of the current orbital radius."
+    },
+    "__power_16": {
+      "latex": "\\sqrt{\\frac{r_{a}}{r + r_{a}}}",
+      "name": "\\sqrt{\\frac{r_{a}}{r + r_{a}}}",
+      "description": "$\\sqrt{\\frac{r_{a}}{r + r_{a}}}$ is a factor relating the apoapsis radius and the current radius, often appearing in calculations for elliptical orbit velocities."
+    },
+    "r_a": {
+      "latex": "r_{a}",
+      "name": "r_{a}",
+      "description": "$r_a$ is the apoapsis radius, the greatest distance from the central body in an elliptical orbit."
+    },
+    "__power_18": {
+      "latex": "\\frac{1}{r + r_{a}}",
+      "name": "\\frac{1}{r + r_{a}}",
+      "description": "$\\frac{1}{r + r_{a}}$ represents the reciprocal of the sum of the current radius and the apoapsis radius."
+    }
+  },
+  "goal": "This derivation shows how to express the change in velocity $\\Delta v$ required to transition from a circular orbit at radius $r$ to an elliptical orbit with periapsis radius $r$ and apoapsis radius $r_a$.",
+  "followups": [
+    "How would this equation change if we wanted to transition from an elliptical orbit to a circular orbit?",
+    "What if the target expression was for the velocity change needed to reach apoapsis instead of periapsis?",
+    "Can you derive the vis-viva equation, which was used for $v_p$?",
+    "How is this related to a Hohmann transfer orbit?"
+  ],
+  "prerequisites": [
+    "Circular orbital velocity formula: $v_c = \\sqrt{\\frac{G \\cdot M}{r}}$",
+    "Vis-viva equation for orbital velocity: $v = \\sqrt{G \\cdot M \\cdot \\left(\\frac{2}{r} - \\frac{1}{a}\\right)}$",
+    "Semi-major axis for an elliptical orbit: $a = \\frac{r_p + r_a}{2}$",
+    "Basic algebraic manipulation (substitution, factoring, rearranging terms)"
+  ]
+}

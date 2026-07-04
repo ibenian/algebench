@@ -30,6 +30,10 @@
       --btn-bg: #ffffff; --btn-fg: #374151; --btn-border: #cbd5e1; --btn-hover: #f1f5f9;
       --err-fg: #b91c1c; --err-bg: #fef2f2; --err-border: #fecaca;
     }
+    /* Embedded: don't paint a page background — let the host page show through, so the
+       embed matches any site/theme automatically (no color syncing). The embed still
+       paints its own card (--panel-bg + border). Standalone /renderproof keeps its slab. */
+    html[data-embedded] { --page-bg: transparent; }
     body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
            margin: 0; padding: 0; background: var(--page-bg); color: var(--text-color);
            transition: background-color .4s ease, color .4s ease; }

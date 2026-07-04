@@ -185,6 +185,137 @@ def _split_top_level(latex: str, commands: tuple[str, ...]) -> list[str]:
     return [p for p in parts if p]
 
 
+def _tuple_components(side: str) -> list[str] | None:
+    r"""If *side* is a parenthesized tuple ``(a, b, …)`` (or the
+    ``\left( … \right)`` form), return its top-level comma-separated
+    components (2+). Otherwise None — a single parenthesized expression is
+    ordinary grouping, not a tuple.
+    """
+    s = side.strip()
+    if s.startswith("\\left("):
+        s = "(" + s[len("\\left("):]
+    if s.endswith("\\right)"):
+        s = s[:-len("\\right)")] + ")"
+    if not s.startswith("(") or not s.endswith(")"):
+        return None
+    # The opening paren must match the FINAL close (one outer group, nothing
+    # after it) — reject e.g. ``(a) + (b)``.
+    depth = 0
+    for i, ch in enumerate(s):
+        if ch in "([{":
+            depth += 1
+        elif ch in ")]}":
+            depth -= 1
+            if depth == 0 and i != len(s) - 1:
+                return None
+    if depth != 0:
+        return None
+    inner = s[1:-1]
+    # \left / \right are typographic — drop the tokens so a component like
+    # ``\left( … \right`` never splits unbalanced (the paren chars themselves
+    # still counted above).
+    parts: list[str] = []
+    buf: list[str] = []
+    d = 0
+    for ch in inner:
+        if ch in "([{":
+            d += 1
+        elif ch in ")]}":
+            d -= 1
+        elif ch == "," and d == 0:
+            parts.append("".join(buf).strip())
+            buf = []
+            continue
+        buf.append(ch)
+    parts.append("".join(buf).strip())
+    if len(parts) < 2 or any(not p for p in parts):
+        return None
+    return parts
+
+
+def _split_tuple_equation(latex: str) -> tuple[list[str], list[str]] | None:
+    r"""Detect a component-wise tuple equation ``(a, b, …) = (c, d, …)``.
+
+    Returns (lhs_components, rhs_components) when BOTH sides are tuples of the
+    SAME arity, else None. Only a single top-level ``=`` qualifies.
+    """
+    sides = _split_equation_chain_sides(latex)
+    if len(sides) != 2:
+        return None
+    lhs = _tuple_components(sides[0])
+    rhs = _tuple_components(sides[1])
+    if lhs is None or rhs is None or len(lhs) != len(rhs):
+        return None
+    return lhs, rhs
+
+
+def _merge_tuple_equation(lhs: list[str], rhs: list[str],
+                          original: str) -> SemanticGraph | None:
+    r"""Build the graph for ``(a, b, …) = (c, d, …)``: one ``equals`` root over
+    two ``tuple`` operator nodes whose operands are the fully-derived component
+    graphs, in order. Synthetic ids are namespaced per component; shared symbols
+    (``\theta`` in several components) intentionally merge.
+    """
+    merged_nodes: dict[str, SemanticGraphNode] = {}
+    merged_edges: list[SemanticGraphEdge] = []
+    tuple_ids = ("__tuple_1", "__tuple_2")
+
+    for ti, (parts, side_tag) in enumerate(((lhs, "tl"), (rhs, "tr"))):
+        component_roots: list[str] = []
+        for ci, part in enumerate(parts):
+            sub = derive_equation_chain_graph(part)   # full pipeline, recursively
+            if sub is None or not sub.nodes:
+                return None
+            prefix = f"{side_tag}{ci}_"
+
+            def _rename(nid: str, p: str = prefix) -> str:
+                return p + nid if nid.startswith("__") else nid
+
+            for n in sub.nodes:
+                new_id = _rename(n.id)
+                cloned = n.model_copy(update={"id": new_id})
+                if new_id not in merged_nodes:
+                    merged_nodes[new_id] = cloned
+                else:
+                    existing = merged_nodes[new_id]
+                    for field_name in type(n).model_fields:
+                        if field_name == "id":
+                            continue
+                        new_val = getattr(cloned, field_name)
+                        if new_val is not None and getattr(existing, field_name) is None:
+                            setattr(existing, field_name, new_val)
+            for e in sub.edges:
+                merged_edges.append(SemanticGraphEdge(
+                    from_=_rename(e.from_), to=_rename(e.to)))
+
+            out_set = {e.from_ for e in sub.edges}
+            root_candidates = [n.id for n in sub.nodes if n.id not in out_set]
+            component_roots.append(_rename(root_candidates[0] if root_candidates
+                                           else sub.nodes[0].id))
+
+        tid = tuple_ids[ti]
+        merged_nodes[tid] = SemanticGraphNode(
+            id=tid, type="operator", op="tuple",
+            subexpr="(" + ", ".join(parts) + ")",
+        )
+        for r in component_roots:
+            merged_edges.append(SemanticGraphEdge(from_=r, to=tid))
+
+    equals_id = "__equals_1"
+    merged_nodes[equals_id] = SemanticGraphNode(
+        id=equals_id, type="relation", op="equals",
+        subexpr=original.strip(),
+    )
+    for tid in tuple_ids:
+        merged_edges.append(SemanticGraphEdge(from_=tid, to=equals_id))
+
+    return SemanticGraph(
+        nodes=list(merged_nodes.values()),
+        edges=merged_edges,
+        classification=Classification(kind="algebraic"),
+    )
+
+
 def _has_top_level_relation(latex: str) -> bool:
     """True if *latex* contains a relation (``=``, ``<``, ``\\leq``, …) at depth 0."""
     depth = 0
@@ -318,6 +449,18 @@ def derive_equation_chain_graph(latex: str) -> SemanticGraph | None:
                 if early_annotations:
                     _postprocessor.inject_annotations(graph, early_annotations)
                 return graph
+
+    # Component-wise tuple equation ``(x, y, z) = (a, b, c)`` — sympy's LaTeX
+    # parser has no tuple syntax, so build it here: one ``equals`` root over two
+    # ordered ``tuple`` operator nodes (common for vector-valued results:
+    # coordinates, vector components, parametric forms).
+    tuple_sides = _split_tuple_equation(latex)
+    if tuple_sides is not None:
+        graph = _merge_tuple_equation(*tuple_sides, original=latex)
+        if graph is not None:
+            if early_annotations:
+                _postprocessor.inject_annotations(graph, early_annotations)
+            return graph
 
     if _has_top_level_statement_comma(latex):
         graph = _derive_single_expression(latex)

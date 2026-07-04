@@ -2029,6 +2029,7 @@
             {
               "type": "given",
               "label": "Start with a general qubit",
+              "id": "start-with-general-qubit",
               "math": "\\htmlClass{hl-gen}{\\lvert\\psi\\rangle = \\alpha\\lvert 0\\rangle + \\beta\\lvert 1\\rangle}, \\quad \\alpha,\\beta\\in\\mathbb{C}, \\quad \\lvert\\alpha\\rvert^2 + \\lvert\\beta\\rvert^2 = 1",
               "highlights": {
                 "gen": {"color": "cyan", "label": "Any normalized two-component complex vector"}
@@ -2102,6 +2103,7 @@
             {
               "type": "step",
               "label": "Write amplitudes in polar form",
+              "id": "write-amplitudes-polar-form",
               "math": "\\alpha = \\htmlClass{hl-ra}{r_\\alpha\\, e^{i\\gamma_\\alpha}}, \\quad \\beta = \\htmlClass{hl-rb}{r_\\beta\\, e^{i\\gamma_\\beta}}, \\quad r_\\alpha^2 + r_\\beta^2 = 1",
               "highlights": {
                 "ra": {"color": "green", "label": "Magnitude and phase of $\\alpha$"},
@@ -2180,6 +2182,7 @@
             {
               "type": "step",
               "label": "Factor out the global phase",
+              "id": "factor-out-global-phase",
               "math": "\\lvert\\psi\\rangle = \\htmlClass{hl-global}{e^{i\\gamma_\\alpha}} \\bigl( r_\\alpha\\lvert 0\\rangle + r_\\beta\\, e^{i(\\gamma_\\beta - \\gamma_\\alpha)}\\lvert 1\\rangle \\bigr)",
               "highlights": {
                 "global": {"color": "gray", "label": "Global phase — physically unobservable"}
@@ -2255,6 +2258,7 @@
             {
               "type": "step",
               "label": "Parameterize the magnitudes",
+              "id": "parameterize-magnitudes",
               "math": "r_\\alpha^2 + r_\\beta^2 = 1 \\;\\Longrightarrow\\; r_\\alpha = \\htmlClass{hl-cosH}{\\cos\\!\\left(\\frac{\\theta}{2}\\right)}, \\; r_\\beta = \\htmlClass{hl-sinH}{\\sin\\!\\left(\\frac{\\theta}{2}\\right)}",
               "highlights": {
                 "cosH": {"color": "green", "label": "$r_\\alpha$ as cosine of half-angle"},
@@ -2324,6 +2328,7 @@
             {
               "type": "conclusion",
               "label": "The Bloch parameterization",
+              "id": "the-bloch-parameterization",
               "math": "\\htmlClass{hl-final}{\\lvert\\psi\\rangle = \\cos\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 0\\rangle + e^{i\\phi}\\sin\\!\\left(\\frac{\\theta}{2}\\right)\\lvert 1\\rangle}",
               "highlights": {
                 "final": {"color": "gold", "label": "Two real angles parameterize all pure qubit states"}

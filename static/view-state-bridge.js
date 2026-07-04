@@ -130,6 +130,18 @@ export function captureViewState({ includeCamera = false } = {}) {
         ? window.__algebenchGraph.getCurrentView() : 'scene';
     if (view === 'math') vs.view = 'math';
 
+    // Dock (split) layout — serialize only when the dock is actually SHOWING:
+    // docked AND on the Math view. The dock preference (`_docked`) persists even
+    // while the user is on the Scenes tab, but the split layout only renders in
+    // graph mode — so gating on `view === 'math'` (mirrors graph-view's
+    // `_docked && dockActive`) keeps a scene-view capture from emitting `dock=1`,
+    // which would otherwise force the recipient into graph view via `wantGraph`.
+    if (view === 'math' && window.__algebenchGraph
+        && typeof window.__algebenchGraph.isDocked === 'function'
+        && window.__algebenchGraph.isDocked()) {
+        vs.dock = true;
+    }
+
     // Right panel tab (Doc/Chat) and proof-panel open state.
     const tab = document.querySelector('.panel-tab.active');
     if (tab && tab.dataset.tab === 'chat') vs.panel = 'chat';
@@ -233,11 +245,20 @@ export async function applyViewState(vs, opts = {}) {
         }
 
         // 5b. View: open the Math (graph) tab when the link targets it — either
-        //     explicitly (view=math) or implicitly because nodes are selected.
-        //     This renders the graph and flushes the pending selection above.
-        const wantGraph = vs.view === 'math' || (Array.isArray(vs.nodes) && vs.nodes.length) || !!vs.pa;
+        //     explicitly (view=math), implicitly because nodes are selected, or
+        //     because the link asks for the docked split (dock=1 shows the graph
+        //     alongside the 3D viewport). This renders the graph and flushes the
+        //     pending selection above.
+        const wantGraph = vs.view === 'math' || vs.dock === true
+            || (Array.isArray(vs.nodes) && vs.nodes.length) || !!vs.pa;
         const g = window.__algebenchGraph;
         if (g) {
+            // Dock (split) layout — set BEFORE showing the graph so it renders
+            // docked in one pass. Explicit-only: absent vs.dock leaves the user's
+            // persisted preference alone (parseViewState omits it when absent).
+            if (vs.dock !== undefined && typeof g.setDocked === 'function') {
+                try { g.setDocked(vs.dock); } catch (_) { /* ignore */ }
+            }
             try {
                 if (wantGraph && g.showGraphView) await g.showGraphView();
                 else if (g.showSceneView) await g.showSceneView();  // restore Scenes on back-nav

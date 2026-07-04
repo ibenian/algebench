@@ -106,6 +106,12 @@ if (typeof window !== 'undefined') {
         showGraphView,
         showSceneView,
         dockProofAnimation,
+        // Dock (split) layout — read for deeplink serialization, set when a
+        // deeplink requests it. `setDocked` forces the requested state but does
+        // NOT persist it (persist=false), so applying a `?dock=1` link changes
+        // the live layout without overwriting the user's saved dock preference.
+        isDocked: () => _docked,
+        setDocked: (on) => toggleDockMode(!!on, false),
     };
 }
 
@@ -506,11 +512,14 @@ function _syncDockButton() {
         : 'Dock graph alongside 3D viewport (D)';
 }
 
-function toggleDockMode(forceDocked) {
+function toggleDockMode(forceDocked, persist = true) {
     const next = typeof forceDocked === 'boolean' ? forceDocked : !_docked;
     if (next === _docked) return;
     _docked = next;
-    _lsSet(LS_KEYS.docked, String(_docked));
+    // A user gesture (D key / dock button) persists the preference; a deeplink
+    // apply (persist=false) only sets the live layout, so a shared `?dock=1`
+    // link never silently overwrites the recipient's saved dock preference.
+    if (persist) _lsSet(LS_KEYS.docked, String(_docked));
 
     if (!isGraphModeActive()) {
         _syncDockButton();
@@ -1236,7 +1245,7 @@ async function dockProofAnimation(proofPath, nodeId, step) {
     // the thing the deeplink landed on, so give it room to read — and on the step
     // the learner was viewing (?pas=), not step 0.
     _currentProofManager.openProof(nodeId || `prebaked::${proofPath}`, anchor, payload, data,
-        { colSpan: 8, rowSpan: 6, step: Number.isFinite(step) ? step : undefined });
+        { colSpan: 8, rowSpan: 6, step: Number.isFinite(step) ? step : undefined, dock: true });
 }
 
 /** Find a graph node whose displayed expression matches ``target`` (loose
@@ -1586,14 +1595,69 @@ async function renderCurrentStepGraph(force = false) {
     const sg = step && step.semanticGraph;
     const graph = sg && sg.graph;
     if (!graph) {
-        // No graph for this step — wipe whatever is there so the user
-        // doesn't see a stale diagram from the previous step and the
-        // empty-state message can surface.
-        clearGraph();
         // If the server attached a parse-failure record (issue #137),
         // surface it in place of the generic empty state.
-        const err = step && step.semanticGraph && step.semanticGraph.error;
-        if (err) showErrorState(err);
+        const err = sg && sg.error;
+        if (err) {
+            clearGraph();
+            showErrorState(err);
+            return;
+        }
+        // On-demand derivation: load-time autofill only derives up to
+        // ALGEBENCH_GRAPH_AUTOFILL_LIMIT graphs eagerly; steps past the
+        // budget ship without a semanticGraph. Derive the first time the
+        // graph view actually shows such a step, and cache the result on
+        // the step so it only happens once. Raw math goes to the server so
+        // \htmlClass highlight bindings survive (same pipeline as eager).
+        if (step && typeof step.math === 'string' && step.math && !step.__sgDeriving) {
+            step.__sgDeriving = true;
+            clearGraph();
+            container.innerHTML = '<div style="color:#9aa4ad; padding:2rem;">Deriving graph…</div>';
+            try {
+                const resp = await fetch('/api/graph/from-latex', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ latex: step.math, highlights: step.highlights || null }),
+                });
+                if (!resp.ok) {
+                    // An HTTP error (500/4xx) is a server/transport failure, NOT a
+                    // parse failure — surface it distinctly so a real backend error
+                    // isn't masked as "the parser couldn't handle this expression".
+                    step.semanticGraph = { error: {
+                        reason: 'derive_request_failed',
+                        message: `On-demand graph derivation failed (HTTP ${resp.status}).`,
+                        math: step.math,
+                    } };
+                } else {
+                    const data = await resp.json();
+                    if (data && data.graph) {
+                        step.semanticGraph = { graph: data.graph };
+                    } else {
+                        step.semanticGraph = { error: {
+                            reason: 'parse_failed',
+                            message: 'Parser could not derive a semantic graph for this expression (on-demand).',
+                            math: step.math,
+                        } };
+                    }
+                }
+            } catch (e) {
+                console.warn('[graph-view] on-demand graph derivation failed:', e);
+                step.semanticGraph = { error: {
+                    reason: 'derive_request_failed',
+                    message: 'On-demand graph derivation request failed: ' + (e && e.message ? e.message : e),
+                    math: step.math,
+                } };
+            } finally {
+                delete step.__sgDeriving;
+            }
+            // Re-render only if the user is still on this step.
+            if (currentProofStep() === step) await renderCurrentStepGraph(true);
+            return;
+        }
+        // No graph and nothing to derive — wipe whatever is there so the
+        // user doesn't see a stale diagram from the previous step and the
+        // empty-state message can surface.
+        clearGraph();
         return;
     }
 

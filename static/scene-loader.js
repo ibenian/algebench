@@ -344,6 +344,25 @@ function removeStepTracker(tracker) {
             if (idx >= 0) state.arrowMeshes.splice(idx, 1);
         }
 
+        // Animated vectors create arrow meshes LAZILY (a vector that starts at
+        // zero length has none at render time), so the creation-time snapshot
+        // above can miss them and leave frozen ghost arrows behind on backward
+        // navigation. Sweep the global registry by owner token to catch every
+        // mesh the element ever created. (Double-dispose of snapshot-captured
+        // meshes is harmless: scene.remove and dispose are idempotent.)
+        for (const r of tracker.renderResults || []) {
+            if (!r || !r._arrowOwner) continue;
+            for (let i = state.arrowMeshes.length - 1; i >= 0; i--) {
+                const entry = state.arrowMeshes[i];
+                if (entry.owner === r._arrowOwner) {
+                    state.three.scene.remove(entry.mesh);
+                    entry.mesh.geometry.dispose();
+                    entry.mesh.material.dispose();
+                    state.arrowMeshes.splice(i, 1);
+                }
+            }
+        }
+
         for (const lbl of tracker.labels) {
             if (lbl.el.parentNode) lbl.el.parentNode.removeChild(lbl.el);
             const idx = state.labels.indexOf(lbl);

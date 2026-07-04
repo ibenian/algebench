@@ -38,6 +38,7 @@ _FUNC_LATEX = {
     "asin": r"\arcsin", "acos": r"\arccos", "atan": r"\arctan",
     "sinh": r"\sinh", "cosh": r"\cosh", "tanh": r"\tanh",
     "log": r"\log", "ln": r"\ln", "exp": r"\exp",
+    "arg": r"\arg",
 }
 _REL_LATEX = {
     "equals": "=", "not_equal": r"\neq",
@@ -171,6 +172,12 @@ def _emit_body(n, ins, nodes, incoming, child, oid, gw) -> tuple[str, int]:
         # id already includes the ``d`` (``dv``/``dx``), so it is the right
         # fallback when ``latex`` is absent.
         return (n.latex or n.id, _ATOM)
+    if t in ("ket", "bra"):
+        # A Dirac ket/bra leaf — the parser stores its full rendered form
+        # (``\left|0\right\rangle``) on the node, like any other symbol leaf.
+        if not n.latex:
+            raise StructuralRenderError(f"{t} without latex")
+        return (n.latex, _ATOM)
     if t == "constant":
         name = n.latex or n.id
         return (_CONSTANT_LATEX.get(name, name), _ATOM)
@@ -178,6 +185,32 @@ def _emit_body(n, ins, nodes, incoming, child, oid, gw) -> tuple[str, int]:
         val = n.label if n.label is not None else n.value
         return (str(val), _ATOM)
     if t == "function":
+        # log/ln carry an optional ``base``-role operand (the parser splits the
+        # base out as its own node — natural log gets base ``e``, ``log_b`` an
+        # explicit base). That makes the node arity-2, so without this branch it
+        # hit the arity gate below and raised — dropping the id-annotated LaTeX
+        # (and thus term highlighting) on every log step. Render base-aware: an
+        # ``e`` base (or ``ln``) stays implicit; any other base becomes a subscript.
+        if op in ("log", "ln"):
+            arg_ins = [c for role, c in ins if role != "base"]
+            base_ins = [c for role, c in ins if role == "base"]
+            if len(arg_ins) == 1 and len(base_ins) <= 1:
+                arg = child(arg_ins[0], _LOGIC)
+                # Preserve the glyph: the parser gives ``\log`` ``latex="\log"``
+                # but ``\ln`` ``latex=None`` (both op ``log``), so a missing latex
+                # uniquely means ``\ln`` — deriving from ``op`` would flip it.
+                fn = getattr(n, "latex", None) or r"\ln"
+                if base_ins:
+                    bnode = nodes.get(base_ins[0])
+                    # Natural base ``e`` stays implicit; any other base (a number
+                    # like 10/2, or a symbol) becomes a subscript rendered via
+                    # child() so numeric bases show their value, not a blank latex.
+                    natural = (bnode is not None and bnode.type == "constant"
+                               and getattr(bnode, "latex", None) == "e")
+                    if not natural:
+                        base = child(base_ins[0], _LOGIC)
+                        return (rf"{fn}_{{{base}}}\left({arg}\right)", _ATOM)
+                return (f"{fn}\\left({arg}\\right)", _ATOM)   # natural / implicit base
         if len(ins) != 1:
             raise StructuralRenderError(f"function {op!r} arity {len(ins)}")
         arg = child(ins[0][1], _LOGIC)
@@ -187,6 +220,12 @@ def _emit_body(n, ins, nodes, incoming, child, oid, gw) -> tuple[str, int]:
             return (f"\\left|{arg}\\right|", _ATOM)
         fn = _FUNC_LATEX.get(op or "")
         if fn is None:
+            # ``i(\arg\beta - \arg\alpha)`` parses as a function call on ``i``
+            # (implicit multiplication by the imaginary unit); render it back
+            # the way it was written rather than dropping the whole state's
+            # id-annotated LaTeX. Mirrors the grounding-side special case.
+            if op == "i":
+                return (f"i\\left({arg}\\right)", _ATOM)
             raise StructuralRenderError(f"function {op!r}")
         return (f"{fn}\\left({arg}\\right)", _ATOM)
     if t == "relation":
@@ -307,5 +346,16 @@ def _emit_operator(n, op, ins, nodes, incoming, child, oid, gw) -> tuple[str, in
     if op in _LOGIC_LATEX:
         l, r = _binary(ins)
         return (f"{child(l, _LOGIC)} {gw(oid + '__op', _LOGIC_LATEX[op])} {child(r, _LOGIC)}", _LOGIC)
+
+    if op == "tuple":
+        # Component-wise tuple ``(a, b, …)`` — the parens self-delimit, so
+        # components render at the loosest precedence and the node is atomic.
+        if len(ins) < 2:
+            raise StructuralRenderError("tuple arity")
+        parts = [child(c, _LOGIC) for _r, c in ins]
+        joined = parts[0]
+        for i, p in enumerate(parts[1:], start=1):
+            joined += f"{gw(oid + '__sep' + str(i), ',')}\\; {p}"
+        return (f"\\left( {joined} \\right)", _ATOM)
 
     raise StructuralRenderError(f"operator {op!r}")

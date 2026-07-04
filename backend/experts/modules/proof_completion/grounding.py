@@ -20,9 +20,11 @@ equations are ``relation``/``equals``.
 
 from __future__ import annotations
 
+import re
 from typing import Optional
 
 import sympy as sp
+from sympy.physics.quantum.state import Ket, Bra
 
 from backend.model.semantic_graph import SemanticGraph
 
@@ -35,7 +37,7 @@ _FUNC = {
     "asin": sp.asin, "acos": sp.acos, "atan": sp.atan,
     "sinh": sp.sinh, "cosh": sp.cosh, "tanh": sp.tanh,
     "log": sp.log, "ln": sp.log, "exp": sp.exp, "sqrt": sp.sqrt,
-    "abs": sp.Abs,
+    "abs": sp.Abs, "arg": sp.arg,
 }
 
 _CONSTANTS = {"pi": sp.pi, "e": sp.E, "E": sp.E, "infty": sp.oo, "oo": sp.oo}
@@ -80,6 +82,33 @@ def _symbol(node) -> sp.Expr:
     return sp.Symbol(name)
 
 
+_KET_LATEX = re.compile(r"^\\left\|\s*(.*?)\s*\\right\\rangle$")
+_BRA_LATEX = re.compile(r"^\\left\\langle\s*(.*?)\s*\\right\|$")
+
+
+def _dirac(node, pattern, ctor, kind):
+    """A Dirac ket/bra leaf as a sympy quantum ``Ket``/``Bra``, keyed by content.
+
+    The key must come from the rendered content (``|0⟩`` → ``Ket('0')``,
+    ``⟨0|`` → ``Bra('0')``), not the node id — ids are graph-local counters, and
+    cross-state equivalence depends on the same ket/bra in two states mapping to
+    the same atom.
+    """
+    latex = node.latex or ""
+    m = pattern.match(latex)
+    if not m or not m.group(1):
+        raise UngroundableGraph(f"{kind} content {latex!r}")
+    return ctor(m.group(1))
+
+
+def _ket(node) -> sp.Expr:
+    return _dirac(node, _KET_LATEX, Ket, "ket")
+
+
+def _bra(node) -> sp.Expr:
+    return _dirac(node, _BRA_LATEX, Bra, "bra")
+
+
 @cas_register_safe_function
 def graph_to_sympy(graph: SemanticGraph) -> sp.Expr:
     """Reconstruct a sympy expression from the graph structure. Raise if unmodeled."""
@@ -115,6 +144,10 @@ def graph_to_sympy(graph: SemanticGraph) -> sp.Expr:
 
         if t in ("scalar", "vector", "constant"):
             res = _symbol(n)
+        elif t == "ket":
+            res = _ket(n)
+        elif t == "bra":
+            res = _bra(n)
         elif t == "number":
             res = sp.sympify(n.label if n.label is not None else n.value)
         elif t == "operator":
@@ -129,7 +162,13 @@ def graph_to_sympy(graph: SemanticGraph) -> sp.Expr:
             args = [ev(c) for c in arg_ins]
             fn = _FUNC.get(op or "")
             if fn is None or len(args) != 1:
-                raise UngroundableGraph(f"function {op!r}")
+                # ``i(\arg\beta - \arg\alpha)`` in an exponent parses as a
+                # function call on ``i`` — it is implicit multiplication by the
+                # imaginary unit, so ground it as ``i * operand`` (the same
+                # ``i`` symbol scalar nodes produce).
+                if op != "i" or len(args) != 1 or base_ins:
+                    raise UngroundableGraph(f"function {op!r}")
+                fn = sp.Symbol("i").__mul__
             if base_ins:
                 # Only logarithms carry a base, and exactly one — anything else is a
                 # malformed graph; fail fast rather than silently mis-grounding.
@@ -217,6 +256,12 @@ def _eval_operator(n, op, ins, ev, nodes) -> sp.Expr:
     if op in _LOGIC:
         left, right = _binary_operands(op, ins, ev)
         return _LOGIC[op](left, right)
+    if op == "tuple":
+        # Ordered component tuple ``(a, b, …)`` — see _eval_relation for how a
+        # tuple = tuple equation grounds component-wise.
+        if len(ins) < 2:
+            raise UngroundableGraph("tuple arity")
+        return sp.Tuple(*[ev(c) for _, c in ins])
     raise UngroundableGraph(f"operator {op!r}")
 
 
@@ -235,6 +280,14 @@ def _eval_relation(op, ins, ev) -> sp.Expr:
     if fn is None:
         raise UngroundableGraph(f"relation {op!r}")
     left, right = _binary_operands(op, ins, ev)
+    # A component-wise tuple equation ``(x, y) = (a, b)`` means exactly the
+    # conjunction of its component equations — sympy relationals don't accept
+    # Tuple operands, so expand it here.
+    if isinstance(left, sp.Tuple) or isinstance(right, sp.Tuple):
+        if (op != "equals" or not isinstance(left, sp.Tuple)
+                or not isinstance(right, sp.Tuple) or len(left) != len(right)):
+            raise UngroundableGraph("tuple relation")
+        return sp.And(*[sp.Eq(l, r) for l, r in zip(left, right)])
     # Chained comparison (``a <= g <= b`` parses as a relation whose operand is
     # itself a relation): read it as the standard conjunction sharing the
     # middle operand — ``And(a <= g, g <= b)``. sympy itself refuses to build

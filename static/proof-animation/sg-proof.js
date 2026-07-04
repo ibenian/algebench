@@ -234,6 +234,9 @@ export class SgProofManager {
                 if (prebaked) this._mountPrebaked(e, payload, prebaked);
                 else this._runDerivation(e, payload);
             }
+            // Honor a dock request even when the box already exists (e.g. a ?pa=
+            // deeplink landing on a node whose proof was already opened floating).
+            if (opts.dock && !e.docked) this._dock(e);
             return;
         }
 
@@ -310,6 +313,9 @@ export class SgProofManager {
 
         if (prebaked) this._mountPrebaked(entry, payload, prebaked);
         else this._runDerivation(entry, payload);
+        // Open already docked when the caller asks (e.g. a ?pa= deeplink landing on
+        // this proof) — otherwise it floats mid-canvas and the reader must pin it.
+        if (opts.dock) this._dock(entry);
         this._updatePositions();
     }
 

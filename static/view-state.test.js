@@ -63,6 +63,21 @@ test('panel + proof-panel flags round-trip and omit defaults', () => {
     assert.deepEqual(parseViewState('sc=s1'), { sc: 's1' });
 });
 
+test('dock (split) flag round-trips only when on, explicit off is not serialized', () => {
+    // Only the docked state is shareable; false/absent leaves it implicit.
+    assert.equal(serializeViewState({ dock: true, sc: 's1' }), 'dock=1&sc=s1');
+    assert.equal(serializeViewState({ dock: false, sc: 's1' }), 'sc=s1');
+    assert.equal(serializeViewState({ sc: 's1' }), 'sc=s1');
+    // Parse: explicit 1/0 → boolean; absent → undefined (key omitted entirely).
+    assert.deepEqual(parseViewState('dock=1&sc=s1'), { dock: true, sc: 's1' });
+    assert.deepEqual(parseViewState('dock=true&sc=s1'), { dock: true, sc: 's1' });
+    assert.deepEqual(parseViewState('dock=0&sc=s1'), { dock: false, sc: 's1' });
+    assert.deepEqual(parseViewState('dock=false&sc=s1'), { dock: false, sc: 's1' });
+    assert.deepEqual(parseViewState('sc=s1'), { sc: 's1' });
+    // A garbage value is ignored (no dock key), not coerced.
+    assert.deepEqual(parseViewState('dock=maybe&sc=s1'), { sc: 's1' });
+});
+
 test('node selection preserves order', () => {
     const vs = { nodes: ['z', 'a', 'm'] };
     const round = parseViewState(serializeViewState(vs));
