@@ -474,7 +474,7 @@
               ],
               "color": "#aabbcc",
               "width": 3,
-              "label": "A"
+              "legendGroup": "A"
             },
             {
               "id": "s1_cand_A_lbl",
@@ -505,7 +505,7 @@
               ],
               "color": "#aabbcc",
               "width": 3,
-              "label": "B"
+              "legendGroup": "B"
             },
             {
               "id": "s1_cand_B_lbl",
@@ -536,7 +536,7 @@
               ],
               "color": "#aabbcc",
               "width": 3,
-              "label": "C"
+              "legendGroup": "C"
             },
             {
               "id": "s1_cand_C_lbl",
@@ -582,7 +582,7 @@
               ],
               "color": "#4da6ff",
               "width": 3,
-              "label": "A: $v=0.5$ (OK)"
+              "legendGroup": "A: $v=0.5$ (OK)"
             },
             {
               "id": "s1_reveal_A_lbl",
@@ -613,7 +613,7 @@
               ],
               "color": "#ffaa33",
               "width": 3,
-              "label": "B: $v=c$ (light)"
+              "legendGroup": "B: $v=c$ (light)"
             },
             {
               "id": "s1_reveal_B_lbl",
@@ -644,7 +644,7 @@
               ],
               "color": "#ff5566",
               "width": 4,
-              "label": "C: $v>c$ (impossible)"
+              "legendGroup": "C: $v>c$ (impossible)"
             },
             {
               "id": "s1_reveal_C_lbl",
@@ -692,7 +692,7 @@
     {
       "title": "The Light Clock",
       "description": "A bouncing photon becomes a clock. Watch a moving clock tick slower — and derive $\\gamma = 1/\\sqrt{1-v^2}$ from nothing but Pythagoras.",
-      "markdown": "# The Light Clock\n\nThis scene is an **ordinary-space animation**, not a spacetime diagram: the horizontal direction $x$ is *position*, and the vertical direction $y$ is *height*. (The scenes on either side of this one are spacetime maps — here we watch things move in real space.)\n\n## One bounce, one tick\n\nA **light clock** is the simplest honest clock imaginable: a photon bouncing straight up and down between two mirrors a height $h$ apart. Because light *always* travels at speed $c$, the time for one round trip is fixed:\n\n$$T_0 = \\frac{2h}{c} = 2h \\quad (c = 1).$$\n\nOne round trip — down and back up — is **one tick**.\n\n## The moving clock must take a longer path\n\nPut an identical clock on a train moving right at speed $v$. From the platform, the photon can no longer go straight up: by the time it reaches the top mirror, the mirror has slid forward. The photon must travel a **diagonal, longer path** — yet at the *same* speed $c$. Same speed over a longer distance means **more time**. The moving clock ticks slower.\n\n## Pythagoras on the half-tick\n\nLook at a single up-going half-tick lasting coordinate time $\\Delta t$. The light travels the hypotenuse of a right triangle:\n\n- vertical leg $= h$ (the mirror gap),\n- horizontal leg $= v\\,\\Delta t$ (how far the clock slid),\n- hypotenuse $= c\\,\\Delta t = \\Delta t$ (distance light covers, $c=1$).\n\nPythagoras gives\n\n$$(\\Delta t)^2 = h^2 + (v\\,\\Delta t)^2 \\;\\Rightarrow\\; \\Delta t = \\frac{h}{\\sqrt{1-v^2}}.$$\n\nDoubling for the full tick and comparing to $T_0 = 2h$:\n\n$$\\boxed{\\,T = \\gamma\\,T_0, \\qquad \\gamma = \\frac{1}{\\sqrt{1-v^2}}\\,}$$\n\nThe **only** assumption was that $c$ is the same in every frame. At $v = 0.6$, $\\gamma = 1.25$; as $v \\to c$, $\\gamma \\to \\infty$.\n\n## This is real, not a light-clock quirk\n\nEvery clock — springs, atoms, *biology* — slows by the same $\\gamma$, because a light clock could sit inside any of them and must agree.\n\n- **Muons.** Cosmic-ray muons are created ~15 km up with a half-life of only $\\tau \\approx 2.2\\,\\mu\\text{s}$ — enough to travel only ~660 m before decaying. Yet they flood the ground: their $\\gamma \\approx 5\\text{–}10$ stretches their clock so they reach us.\n- **GPS.** Satellite clocks are corrected by tens of microseconds per day (special relativity slows them ~7 μs/day; general-relativistic altitude speeds them ~45 μs/day, net ~38 μs/day). Skip the correction and your position drifts kilometers off within a day.\n\n*Sources:* [Time dilation](https://en.wikipedia.org/wiki/Time_dilation).",
+      "markdown": "# The Light Clock\n\nThis scene is an **ordinary-space animation**, not a spacetime diagram: the horizontal direction $x$ is *position*, and the vertical direction $y$ is *height*. (The scenes on either side of this one are spacetime maps — here we watch things move in real space.)\n\n## One bounce, one tick\n\nA **light clock** is the simplest honest clock imaginable: a photon bouncing straight up and down between two mirrors a height $h$ apart. Because light *always* travels at speed $c$, the time between mirror strikes is fixed:\n\n$$T_0 = \\frac{h}{c} = h \\quad (c = 1).$$\n\nEvery strike on a mirror — top *or* bottom — is **one tick**. (The tick counters above each clock count exactly these strikes.)\n\n## The moving clock must take a longer path\n\nPut an identical clock on a train moving right at speed $v$. From the platform, the photon can no longer go straight up: by the time it reaches the top mirror, the mirror has slid forward. The photon must travel a **diagonal, longer path** — yet at the *same* speed $c$. Same speed over a longer distance means **more time**. The moving clock ticks slower.\n\n## Pythagoras on a single tick\n\nLook at a single up-going tick — one mirror-to-mirror flight — lasting coordinate time $\\Delta t$. The light travels the hypotenuse of a right triangle:\n\n- vertical leg $= h$ (the mirror gap),\n- horizontal leg $= v\\,\\Delta t$ (how far the clock slid),\n- hypotenuse $= c\\,\\Delta t = \\Delta t$ (distance light covers, $c=1$).\n\nPythagoras gives\n\n$$(\\Delta t)^2 = h^2 + (v\\,\\Delta t)^2 \\;\\Rightarrow\\; \\Delta t = \\frac{h}{\\sqrt{1-v^2}}.$$\n\nComparing to the rest tick $T_0 = h$:\n\n$$\\boxed{\\,T = \\gamma\\,T_0, \\qquad \\gamma = \\frac{1}{\\sqrt{1-v^2}}\\,}$$\n\nThe **only** assumption was that $c$ is the same in every frame. At $v = 0.6$, $\\gamma = 1.25$; as $v \\to c$, $\\gamma \\to \\infty$.\n\n## This is real, not a light-clock quirk\n\nEvery clock — springs, atoms, *biology* — slows by the same $\\gamma$, because a light clock could sit inside any of them and must agree.\n\n- **Muons.** Cosmic-ray muons are created ~15 km up with a half-life of only $\\tau \\approx 2.2\\,\\mu\\text{s}$ — enough to travel only ~660 m before decaying. Yet they flood the ground: their $\\gamma \\approx 5\\text{–}10$ stretches their clock so they reach us.\n- **GPS.** Satellite clocks are corrected by tens of microseconds per day (special relativity slows them ~7 μs/day; general-relativistic altitude speeds them ~45 μs/day, net ~38 μs/day). Skip the correction and your position drifts kilometers off within a day.\n\n*Sources:* [Time dilation](https://en.wikipedia.org/wiki/Time_dilation).",
       "prompt": "This scene is ORDINARY SPACE (x = horizontal position, y = height), NOT a spacetime diagram like the scenes around it. Make that distinction explicit if the student seems confused. The whole idea is 'same speed c, longer diagonal path, therefore more time.' Color conventions: photons and light paths are #ffaa33, the moving clock body/mirrors are #4da6ff, stationary clock and neutral labels are #aabbcc, the Pythagoras/impossible-warning highlight uses #ff5566. The stationary photon bounces straight up and down; the moving photon zig-zags along a diagonal and — because its time runs at rate sqrt(1-v^2) — visibly ticks slower. In step 3 keep the Pythagoras triangle front and centre: vertical leg h (=2 here), base v*Delta_t, hypotenuse Delta_t. The gamma readout is gamma = 1/sqrt(1-v^2). Good follow-up questions: 'What if v were 0.99c?', 'Does your heartbeat slow too?' (yes), 'Why can't the moving photon just go faster to keep up?' (c is invariant). Reality checks: muons (born ~15 km up, would go only ~660 m without dilation, gamma 5-10 saves them) and GPS (~38 us/day net correction).",
       "range": [
         [
@@ -711,12 +711,12 @@
       "camera": {
         "position": [
           0,
-          3,
-          14
+          -1,
+          16.5
         ],
         "target": [
           0,
-          3,
+          -1,
           0
         ],
         "up": [
@@ -730,12 +730,12 @@
           "name": "Both Clocks",
           "position": [
             0,
-            3,
-            14
+            -1,
+            16.5
           ],
           "target": [
             0,
-            3,
+            -1,
             0
           ],
           "up": [
@@ -743,18 +743,18 @@
             1,
             0
           ],
-          "description": "Face-on view of the stationary and moving light clocks side by side"
+          "description": "Full layout: the race track above, the gamma chart below"
         },
         {
           "name": "Gamma Inset",
           "position": [
-            4.5,
-            4,
+            -4.9,
+            -4.2,
             9
           ],
           "target": [
-            4.5,
-            4,
+            -4.9,
+            -4.2,
             0
           ],
           "up": [
@@ -763,6 +763,55 @@
             0
           ],
           "description": "Close-up of the gamma(v) inset curve on the right"
+        },
+        {
+          "name": "Wide",
+          "description": "Zoomed-out view — keeps the moving clock in frame much longer as it slides right",
+          "position": [
+            3,
+            2.5,
+            26
+          ],
+          "target": [
+            3,
+            2.5,
+            0
+          ],
+          "up": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "name": "Ride With Moving Clock",
+          "description": "Camera rides along with the moving light clock — it never leaves the frame; watch its photon zig-zag while the rest clock falls behind",
+          "follow": "s2_move_body_bottom",
+          "offset": [
+            2.4,
+            1.6,
+            1.75
+          ],
+          "up": [
+            0,
+            1,
+            0
+          ]
+        },
+        {
+          "name": "Chase the Photon",
+          "description": "Tight chase-cam on the moving clock's photon itself — bob along the diagonal light path",
+          "follow": "s2_move_photon",
+          "offset": [
+            0.6,
+            0.4,
+            0.9
+          ],
+          "up": [
+            0,
+            1,
+            0
+          ]
         }
       ],
       "elements": [
@@ -831,7 +880,7 @@
               ],
               "color": "#aabbcc",
               "width": 4,
-              "label": "rest clock"
+              "legendGroup": "rest clock"
             },
             {
               "id": "s2_rest_mirror_top",
@@ -879,7 +928,7 @@
             {
               "id": "s2_rest_tick_counter",
               "type": "text",
-              "textExpr": "floor(t/4)",
+              "textExpr": "floor(t/2)",
               "textFormat": "$\\text{ticks: }%d$",
               "position": [
                 -4,
@@ -914,7 +963,7 @@
               ],
               "color": "#4da6ff",
               "width": 4,
-              "label": "moving clock"
+              "legendGroup": "moving clock"
             },
             {
               "id": "s2_move_mirror_top",
@@ -961,20 +1010,6 @@
             }
           ],
           "remove": [],
-          "sliders": [
-            {
-              "id": "v",
-              "label": "clock speed $v\\;(c=1)$",
-              "min": 0,
-              "max": 0.95,
-              "step": 0.01,
-              "default": 0.6,
-              "animate": true,
-              "animateMode": "loop",
-              "duration": 4000,
-              "autoplay": false
-            }
-          ],
           "info": [
             {
               "id": "s2_predict_info",
@@ -987,19 +1022,19 @@
           "id": "reveal-diagonal-path",
           "title": "Reveal: the diagonal path",
           "description": "Watch: the moving clock's photon can't go straight up — the mirrors have slid forward, so it must travel a **diagonal, longer** path. But light's speed is fixed, so a longer path takes **more time**. The moving clock ticks **slower**. The half-tick is a right triangle: vertical leg $h$, base $v\\,\\Delta t$, hypotenuse $\\Delta t$ — same $c$, longer path, more time.",
-          "prompt": "REVEAL: the moving clock is now sliding right (body x = -1 + v*t) and its photon zig-zags along a diagonal because its clock runs at rate sqrt(1-v^2). It visibly ticks slower than the rest clock — compare the two tick counters. The diagonal path trace (animated_line, #ffaa33) shows the longer hypotenuse. The Pythagoras triangle is the star of this step: vertical leg h=2 (#ff5566 highlight), base v*Delta_t, hypotenuse Delta_t (the light path, #ffaa33). Drive home 'same speed c, longer path, more time.' The invariance of c is the SOLE assumption. Point at the triangle when explaining the algebra. IMPORTANT physics note: on screen, BOTH photons move at the same speed c (1 grid unit per second) — verify by eye. The moving photon covers a LONGER diagonal path per tick at that same speed, which is exactly why its ticks take longer. If asked 'do they travel different distances?': per unit time both cover the same distance (same speed c); per TICK the moving photon's path is longer by gamma.",
+          "prompt": "REVEAL: the moving clock is now sliding right (body x = -1 + v*t) and its photon zig-zags along a diagonal because its clock runs at rate sqrt(1-v^2). It visibly ticks slower than the rest clock — compare the two tick counters. The diagonal path trace (animated_line, #ffaa33) shows the longer hypotenuse. The Pythagoras triangle is the star of this step: vertical leg h=2 (#ff5566 highlight), base v*Delta_t, hypotenuse Delta_t (the light path, #ffaa33). Drive home 'same speed c, longer path, more time.' The invariance of c is the SOLE assumption. Point at the triangle when explaining the algebra. IMPORTANT physics note: on screen, BOTH photons move at the same speed c (1 grid unit per second) — verify by eye. The moving photon covers a LONGER diagonal path per tick at that same speed, which is exactly why its ticks take longer. If asked 'do they travel different distances?': per unit time both cover the same distance (same speed c); per TICK the moving photon's path is longer by gamma. The demo runs as a repeating RACE: the moving clock travels from the start line to the lap-end flag, then the lap restarts and BOTH tick counters reset together. Same journey each lap, and every lap the moving clock banks fewer ticks — the repetition is the point, not a glitch. The lap counter bottom-right shows which lap you're on.",
           "add": [
             {
               "id": "s2_move_body_bottom",
               "type": "animated_line",
               "points": [
                 [
-                  "-2 + v*t",
+                  "-2 + v*mod(t, (2*floor(4*sqrt(1-v^2)/max(v, 0.05))/sqrt(1-v^2)))",
                   "0",
                   "0"
                 ],
                 [
-                  "v*t",
+                  "v*mod(t, (2*floor(4*sqrt(1-v^2)/max(v, 0.05))/sqrt(1-v^2)))",
                   "0",
                   "0"
                 ]
@@ -1013,12 +1048,12 @@
               "type": "animated_line",
               "points": [
                 [
-                  "-2 + v*t",
+                  "-2 + v*mod(t, (2*floor(4*sqrt(1-v^2)/max(v, 0.05))/sqrt(1-v^2)))",
                   "2",
                   "0"
                 ],
                 [
-                  "v*t",
+                  "v*mod(t, (2*floor(4*sqrt(1-v^2)/max(v, 0.05))/sqrt(1-v^2)))",
                   "2",
                   "0"
                 ]
@@ -1031,8 +1066,8 @@
               "id": "s2_move_photon",
               "type": "animated_point",
               "expr": [
-                "-1 + v*t",
-                "2*(1 - abs(mod(t*sqrt(1-v^2)/2,2)-1))",
+                "-1 + v*mod(t, (2*floor(4*sqrt(1-v^2)/max(v, 0.05))/sqrt(1-v^2)))",
+                "2*(1 - abs(mod(mod(t, (2*floor(4*sqrt(1-v^2)/max(v, 0.05))/sqrt(1-v^2)))*sqrt(1-v^2)/2,2)-1))",
                 "0"
               ],
               "color": "#ffaa33",
@@ -1044,13 +1079,13 @@
               "type": "animated_line",
               "points": [
                 [
-                  "-1 + v*(2*floor(t*sqrt(1-v^2)/2)/sqrt(1-v^2))",
-                  "2*mod(floor(t*sqrt(1-v^2)/2),2)",
+                  "-1 + v*(2*floor(mod(t, (2*floor(4*sqrt(1-v^2)/max(v, 0.05))/sqrt(1-v^2)))*sqrt(1-v^2)/2)/sqrt(1-v^2))",
+                  "2*mod(floor(mod(t, (2*floor(4*sqrt(1-v^2)/max(v, 0.05))/sqrt(1-v^2)))*sqrt(1-v^2)/2),2)",
                   "0"
                 ],
                 [
-                  "-1 + v*t",
-                  "2*(1 - abs(mod(t*sqrt(1-v^2)/2,2)-1))",
+                  "-1 + v*mod(t, (2*floor(4*sqrt(1-v^2)/max(v, 0.05))/sqrt(1-v^2)))",
+                  "2*(1 - abs(mod(mod(t, (2*floor(4*sqrt(1-v^2)/max(v, 0.05))/sqrt(1-v^2)))*sqrt(1-v^2)/2,2)-1))",
                   "0"
                 ]
               ],
@@ -1062,10 +1097,10 @@
             {
               "id": "s2_move_label_moved",
               "type": "text",
-              "textExpr": "floor(t*sqrt(1-v^2)/4)",
+              "textExpr": "floor(mod(t, (2*floor(4*sqrt(1-v^2)/max(v, 0.05))/sqrt(1-v^2)))*sqrt(1-v^2)/2)",
               "textFormat": "$\\text{ticks: }%d$",
               "positionExpr": [
-                "-1 + v*t",
+                "-1 + v*mod(t, (2*floor(4*sqrt(1-v^2)/max(v, 0.05))/sqrt(1-v^2)))",
                 "2.9",
                 "0"
               ],
@@ -1157,6 +1192,94 @@
                 0
               ],
               "color": "#aabbcc"
+            },
+            {
+              "id": "s2_rest_tick_lap",
+              "type": "text",
+              "textExpr": "floor(mod(t, (2*floor(4*sqrt(1-v^2)/max(v, 0.05))/sqrt(1-v^2)))/2)",
+              "textFormat": "$\\text{ticks: }%d$",
+              "position": [
+                -4,
+                2.9,
+                0
+              ],
+              "color": "#aabbcc"
+            },
+            {
+              "id": "s2_race_start",
+              "type": "line",
+              "points": [
+                [
+                  -1,
+                  -0.4,
+                  0
+                ],
+                [
+                  -1,
+                  2.4,
+                  0
+                ]
+              ],
+              "color": "#aabbcc",
+              "width": 1.5,
+              "opacity": 0.35,
+              "label": "start"
+            },
+            {
+              "id": "s2_race_finish",
+              "type": "animated_line",
+              "points": [
+                [
+                  "-1 + v*(2*floor(4*sqrt(1-v^2)/max(v, 0.05))/sqrt(1-v^2))",
+                  "-0.4",
+                  "0"
+                ],
+                [
+                  "-1 + v*(2*floor(4*sqrt(1-v^2)/max(v, 0.05))/sqrt(1-v^2))",
+                  "2.4",
+                  "0"
+                ]
+              ],
+              "color": "#aabbcc",
+              "width": 1.5,
+              "opacity": 0.35
+            },
+            {
+              "id": "s2_race_finish_lbl",
+              "type": "text",
+              "text": "🏁 lap end",
+              "positionExpr": [
+                "-1 + v*(2*floor(4*sqrt(1-v^2)/max(v, 0.05))/sqrt(1-v^2))",
+                "2.7",
+                "0"
+              ],
+              "color": "#aabbcc",
+              "size": 12
+            },
+            {
+              "id": "s2_race_lap",
+              "type": "text",
+              "textExpr": "floor(t/((2*floor(4*sqrt(1-v^2)/max(v, 0.05))/sqrt(1-v^2)))) + 1",
+              "textFormat": "$\\text{lap }%d$",
+              "position": [
+                2.5,
+                -1.6,
+                0
+              ],
+              "color": "#aabbcc",
+              "size": 12
+            },
+            {
+              "id": "s2_rest_photon_lap",
+              "type": "animated_point",
+              "expr": [
+                "-4",
+                "2*(1 - abs(mod(mod(t, (2*floor(4*sqrt(1-v^2)/max(v, 0.05))/sqrt(1-v^2)))/2,2)-1))",
+                "0"
+              ],
+              "color": "#ffaa33",
+              "size": 3,
+              "legendGroup": "photon"
             }
           ],
           "remove": [
@@ -1168,6 +1291,12 @@
             },
             {
               "id": "s2_move_photon_still"
+            },
+            {
+              "id": "s2_rest_tick_counter"
+            },
+            {
+              "id": "s2_rest_photon"
             }
           ],
           "info": [
@@ -1176,7 +1305,36 @@
               "content": "### Slower!\nThe moving photon rides a **diagonal**. Same speed $c$, longer path $\\Rightarrow$ **more time per tick**.\n\nHalf-tick right triangle:\n$$(\\Delta t)^2 = h^2 + (v\\,\\Delta t)^2$$\n\nSolve: $\\;\\Delta t = \\dfrac{h}{\\sqrt{1 - v^2}}$",
               "position": "top-right"
             }
-          ]
+          ],
+          "sliders": [
+            {
+              "id": "v",
+              "label": "clock speed $v\\;(c=1)$",
+              "min": 0,
+              "max": 0.95,
+              "step": 0.01,
+              "default": 0.6,
+              "animate": true,
+              "animateMode": "loop",
+              "duration": 4000,
+              "autoplay": false
+            },
+            {
+              "id": "T4",
+              "label": "$t$ (time)",
+              "min": 0,
+              "max": 28,
+              "step": 0.05,
+              "default": 0,
+              "animate": true,
+              "animateMode": "loop",
+              "autoplay": true,
+              "duration": 16000
+            }
+          ],
+          "virtualTime": {
+            "expr": "T4"
+          }
         },
         {
           "id": "gamma-readout-reality-checks",
@@ -1185,28 +1343,17 @@
           "prompt": "Wrap up with the live gamma readout gamma = 1/sqrt(1-v^2) and the inset curve of gamma(v) with a marker at the current v. Drag v: near v=0.95 gamma blows up past 3. Stress universality: springs, atoms, biology all slow by gamma because a light clock could sit inside any of them. Deliver the two reality checks concretely: muons (15 km up, tau ~2.2us, ~660 m naive range, gamma 5-10 saves them) and GPS (~38 us/day net, SR -7 and GR +45). Tie the boxed gamma in the proof panel to this on-screen readout. Good closing question: 'At what v does gamma = 2?' (v = sqrt(3)/2 ~ 0.87).",
           "add": [
             {
-              "id": "s2_gamma_readout_label",
-              "type": "text",
-              "text": "$\\gamma = \\dfrac{1}{\\sqrt{1-v^2}}$",
-              "position": [
-                -4,
-                4.6,
-                0
-              ],
-              "color": "#aabbcc"
-            },
-            {
               "id": "s2_inset_axis_x",
               "type": "line",
               "points": [
                 [
-                  3,
-                  -3,
+                  -7,
+                  -6,
                   0
                 ],
                 [
-                  7,
-                  -3,
+                  -2.8,
+                  -6,
                   0
                 ]
               ],
@@ -1219,13 +1366,13 @@
               "type": "line",
               "points": [
                 [
-                  3,
-                  -3,
+                  -7,
+                  -6,
                   0
                 ],
                 [
-                  3,
-                  2,
+                  -7,
+                  -2.4,
                   0
                 ]
               ],
@@ -1236,8 +1383,8 @@
             {
               "id": "s2_inset_curve",
               "type": "parametric_curve",
-              "x": "3 + 4*t",
-              "y": "-3 + (1/sqrt(1-t^2))",
+              "x": "-7 + 4*t",
+              "y": "-6 + (1/sqrt(1-t^2))",
               "z": "0",
               "range": [
                 0,
@@ -1252,8 +1399,8 @@
               "id": "s2_inset_marker",
               "type": "animated_point",
               "expr": [
-                "3 + 4*v",
-                "-3 + (1/sqrt(1-v^2))",
+                "-7 + 4*v",
+                "-6 + (1/sqrt(1-v^2))",
                 "0"
               ],
               "color": "#ff5566",
@@ -1265,8 +1412,8 @@
               "type": "text",
               "text": "$v$",
               "position": [
-                7.2,
-                -3,
+                -2.5,
+                -6,
                 0
               ],
               "color": "#aabbcc"
@@ -1276,8 +1423,8 @@
               "type": "text",
               "text": "$\\gamma$",
               "position": [
-                3,
-                2.4,
+                -7,
+                -2.1,
                 0
               ],
               "color": "#aabbcc"
@@ -1287,8 +1434,8 @@
               "type": "text",
               "text": "$\\gamma$ grows without bound near $c$",
               "position": [
-                5,
-                -4,
+                -4.9,
+                -6.8,
                 0
               ],
               "color": "#aabbcc"
@@ -1319,8 +1466,8 @@
           {
             "id": "lc_given_rest",
             "type": "given",
-            "label": "Rest clock: one tick is $2h$",
-            "math": "T_0 = \\htmlClass{hl-c}{2h} \\qquad (c = 1)",
+            "label": "Rest clock: one tick is $h$",
+            "math": "T_0 = \\htmlClass{hl-c}{h} \\qquad (c = 1)",
             "highlights": {
               "c": {
                 "color": "orange",
@@ -1375,7 +1522,7 @@
           {
             "id": "lc_step_solve",
             "type": "step",
-            "label": "Solve for the moving half-tick",
+            "label": "Solve for the moving tick",
             "math": "(\\Delta t)^2\\,\\htmlClass{hl-g}{(1 - v^2)} = h^2 \\ \\Rightarrow\\ \\Delta t = \\dfrac{h}{\\htmlClass{hl-g}{\\sqrt{1 - v^2}}}",
             "highlights": {
               "g": {
