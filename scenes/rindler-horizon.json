@@ -1411,7 +1411,7 @@
       "id": "the-interval",
       "title": "The Interval",
       "description": "Rotations preserve $x^2+y^2$; Lorentz boosts preserve $x^2-t^2$. Hyperbolas are the circles of spacetime.",
-      "markdown": "# The Interval\n\nIn ordinary geometry, a **rotation** spins a point around the origin without changing its distance from the origin. The quantity that stays fixed is\n\n$$x^2 + y^2 = R^2.$$\n\nSpin a ruler around its end and its tip sweeps a **circle** of radius $R$.\n\n## Minkowski's version\n\nSpacetime has its own invariant. Instead of the distance-squared $x^2+y^2$, the quantity every inertial observer agrees on is the **invariant interval**\n\n$$s^2 = x^2 - t^2 \\qquad (c = 1).$$\n\nThe minus sign changes everything. Curves of constant $s^2$ are no longer circles — they are **hyperbolas**:\n\n- **Timelike** separations: $t^2 - x^2 = k$ — hyperbolas opening up and down.\n- **Spacelike** separations: $x^2 - t^2 = k$ — hyperbolas opening left and right.\n\nBoth families share the same **45° light rays** $y = \\pm x$ as asymptotes. These hyperbolas are the *circles of Minkowski geometry*: the shapes that stay fixed when observers move.\n\n## Boosts are hyperbolic rotations\n\nA **Lorentz boost** (changing to a frame moving at speed $v$) slides an event along its hyperbola exactly the way a rotation slides a point along a circle. Parametrised by the **rapidity** $\\eta$, a boost sends\n\n$$t' = t\\cosh\\eta - x\\sinh\\eta, \\qquad x' = x\\cosh\\eta - t\\sinh\\eta.$$\n\nBecause of the hyperbolic identity\n\n$$\\cosh^2\\eta - \\sinh^2\\eta = 1,$$\n\nthe combination $x^2 - t^2$ is left unchanged. A point starting on the unit spacelike hyperbola at $(\\cosh\\eta,\\ \\sinh\\eta)$ slides along it forever while $x^2 - t^2$ stays pinned at $1$.\n\n## Proper time and rapidity\n\nAlong a moving worldline, a carried clock measures **proper time** $\\tau$ with\n\n$$d\\tau^2 = dt^2 - dx^2 = dt^2\\,(1 - v^2) \\;\\Rightarrow\\; d\\tau = \\frac{dt}{\\gamma},$$\n\nwhich is exactly the slowdown of the moving light clock. The boost angle is the rapidity $\\eta$:\n\n$$v = \\tanh\\eta, \\qquad \\gamma = \\cosh\\eta, \\qquad \\gamma v = \\sinh\\eta.$$\n\nRapidity is the honest angle of spacetime — and, unlike velocity, rapidities **add linearly** when boosts are combined. That linearity is what will make constant acceleration so clean in the next scene.\n\n**Analogy at a glance:** circle $\\leftrightarrow$ hyperbola, $\\cos/\\sin \\leftrightarrow \\cosh/\\sinh$, and $\\cos^2+\\sin^2=1 \\leftrightarrow \\cosh^2-\\sinh^2=1$.\n\n\n## \"Isn't this all just perspective — a visual illusion?\"\n\nNo — and the interval is exactly why. Observers *disagree* about $\\Delta t$ and $\\Delta x$ the way two people disagree about a tilted ruler's shadow: lawfully, and while agreeing perfectly on the ruler itself. Here the \"ruler\" is the invariant interval $s^2 = \\Delta x^2 - \\Delta t^2$ — every inertial observer computes the *same* number.\n\nAnd the effects leave permanent records that no change of viewpoint can undo: a clock's accumulated proper time $\\tau$ is the number physically on its face, and everyone agrees what it reads when two worldlines meet. Muons really do reach the ground; GPS clocks really do need their daily correction; a travelling twin really returns younger. Perspectives in relativity are like map projections — Mercator and globe disagree about Greenland, but the distances on the actual ground are what they are. **The interval is the ground.**\n\n*Sources: [Time dilation](https://en.wikipedia.org/wiki/Time_dilation), [Hyperbolic motion](https://en.wikipedia.org/wiki/Hyperbolic_motion_(relativity)).*",
+      "markdown": "# The Interval\n\nIn ordinary geometry, a **rotation** spins a point around the origin without changing its distance from the origin. The quantity that stays fixed is\n\n$$x^2 + y^2 = R^2.$$\n\nSpin a ruler around its end and its tip sweeps a **circle** of radius $R$.\n\n## Minkowski's version\n\nSpacetime has its own invariant. Instead of the distance-squared $x^2+y^2$, the quantity every inertial observer agrees on is the **invariant interval**\n\n$$s^2 = x^2 - t^2 \\qquad (c = 1).$$\n\nThe minus sign changes everything. Curves of constant $s^2$ are no longer circles — they are **hyperbolas**:\n\n- **Timelike** separations: $t^2 - x^2 = k$ — hyperbolas opening up and down.\n- **Spacelike** separations: $x^2 - t^2 = k$ — hyperbolas opening left and right.\n\nBoth families share the same **45° light rays** $y = \\pm x$ as asymptotes. These hyperbolas are the *circles of Minkowski geometry*: the shapes that stay fixed when observers move.\n\n## Boosts are hyperbolic rotations\n\nA **Lorentz boost** (changing to a frame moving at speed $v$) slides an event along its hyperbola exactly the way a rotation slides a point along a circle. Parametrised by the **rapidity** $\\eta$, a boost sends\n\n$$t' = t\\cosh\\eta - x\\sinh\\eta, \\qquad x' = x\\cosh\\eta - t\\sinh\\eta.$$\n\nBecause of the hyperbolic identity\n\n$$\\cosh^2\\eta - \\sinh^2\\eta = 1,$$\n\nthe combination $x^2 - t^2$ is left unchanged. A point starting on the unit spacelike hyperbola at $(\\cosh\\eta,\\ \\sinh\\eta)$ slides along it forever while $x^2 - t^2$ stays pinned at $1$.\n\n## Proper time and rapidity\n\nAlong a moving worldline, a carried clock measures **proper time** $\\tau$ with\n\n$$d\\tau^2 = dt^2 - dx^2 = dt^2\\,(1 - v^2) \\;\\Rightarrow\\; d\\tau = \\frac{dt}{\\gamma},$$\n\nwhich is exactly the slowdown of the moving light clock. The boost angle is the rapidity $\\eta$:\n\n$$v = \\tanh\\eta, \\qquad \\gamma = \\cosh\\eta, \\qquad \\gamma v = \\sinh\\eta.$$\n\nRapidity is the honest angle of spacetime — and, unlike velocity, rapidities **add linearly** when boosts are combined. That linearity is what will make constant acceleration so clean in the next scene.\n\n**Analogy at a glance:** circle $\\leftrightarrow$ hyperbola, $\\cos/\\sin \\leftrightarrow \\cosh/\\sinh$, and $\\cos^2+\\sin^2=1 \\leftrightarrow \\cosh^2-\\sinh^2=1$.\n\n\n## \"Isn't this all just perspective — a visual illusion?\"\n\nNo — and the interval is exactly why. Observers *disagree* about $\\Delta t$ and $\\Delta x$ the way two people disagree about a tilted ruler's shadow: lawfully, and while agreeing perfectly on the ruler itself. Here the \"ruler\" is the invariant interval $s^2 = \\Delta x^2 - \\Delta t^2$ — every inertial observer computes the *same* number.\n\nAnd the effects leave permanent records that no change of viewpoint can undo: a clock's accumulated proper time $\\tau$ is the number physically on its face, and everyone agrees what it reads when two worldlines meet. Muons really do reach the ground; GPS clocks really do need their daily correction; a travelling twin really returns younger. Perspectives in relativity are like map projections — Mercator and globe disagree about Greenland, but the distances on the actual ground are what they are. **The interval is the ground.**\n\n*Sources: [Time dilation](https://en.wikipedia.org/wiki/Time_dilation), [Hyperbolic motion](https://en.wikipedia.org/wiki/Hyperbolic_motion_(relativity)).*\n\n## Time is the length of your worldline\n\nBetween two fixed events, a clock's total reading is the **Minkowski arc length** of its worldline: $\\tau = \\int \\sqrt{dt^2 - dx^2}$. Because of the minus sign, the triangle inequality flips: a bent (moving) route between the same two events is **shorter** in proper time than the straight one — the traveling twin returns younger by exactly $\\sqrt{1-w^2}$. Time dilation, the twin paradox, and (next scene) the slow aging of an accelerating ship are all the same statement: *clocks measure worldline length, and straight worldlines are the longest.*",
       "prompt": "This is Scene 3 of the Rindler lesson (\"The Interval\"). It introduces the invariant interval s^2 = x^2 - t^2, hyperbolas as the 'circles' of Minkowski geometry, and Lorentz boosts as hyperbolic rotations parametrised by rapidity eta. This is a 2D spacetime diagram: x = space (horizontal), y = ct (vertical), c = 1. Color conventions: worldlines / the boosted point #4da6ff; light rays / asymptotes #ffaa33; the neutral hyperbola family and the Euclidean warm-up circle #aabbcc; axes/labels neutral. Lean HARD on the rotation-vs-boost analogy: circles/cos/sin become hyperbolas/cosh/sinh, and cos^2+sin^2=1 becomes cosh^2-sinh^2=1. The emotional 'aha' is the live readout showing x^2 - t^2 pinned at 1.00 while the boosted point slides along its hyperbola. Recall gamma = 1/sqrt(1-v^2) from the light-clock scene, and note dtau = dt/gamma is the same slowdown. Foreshadow that rapidity adds linearly (unlike velocity), which makes constant proper acceleration clean in the next scene. Predict-before-reveal: in step 3 ask which quantity refuses to change under a boost before advancing. Suggested follow-ups: 'Why hyperbolas and not ellipses?', 'What is rapidity intuitively?', 'How does dtau = dt/gamma connect to the light clock?'.",
       "range": [
         [
@@ -2015,6 +2015,1073 @@
               "position": "top-left"
             }
           ]
+        },
+        {
+          "title": "Time is length: two paths, two ages",
+          "description": "Proper time is the Minkowski length of a worldline — a clock ticks once per unit of $\\sqrt{dt^2 - dx^2}$. Count the gold ticks along each route.",
+          "prompt": "Twin-paradox-in-one-picture step. Two worldlines join the SAME events A (bottom) and B (top): the straight stay-home line and a bent out-and-back route at speed w. Gold dots are clock ticks, one per unit of proper time — literally the distance measured along each worldline with the Minkowski ruler dtau = sqrt(dt^2 - dx^2). Ask the learner to PREDICT first: the bent path looks longer on paper, so which twin ages more? Then reveal: fewer ticks fit on the bent path — tau = 8*sqrt(1-w^2) < 8. Minus sign in the metric reverses the triangle inequality: straight timelike worldlines MAXIMIZE proper time. Connect back to the light clock (moving clocks tick slower) and forward to the accelerating ship, whose curved worldline also ages less than a straight one. Two rider dots now travel A to B in lockstep coordinate time (slider T2, animatable); each gold tick flashes (pulsating size) exactly when its worldline's rider crosses it — the stay-home clock strikes 8 flashes, the traveler fewer. NOTE: the inbound-leg ticks continue the traveler's proper time seamlessly through the turnaround (tick m sits at coordinate time m/sqrt(1-w^2) - 4) — the clock does NOT restart at the turn, so there is no rapid double-strike near the turnaround; the gap across the turn is exactly one unit of tau like every other gap.",
+          "duration": 4000,
+          "sliders": [
+            {
+              "id": "w",
+              "label": "$w$ (traveler speed)",
+              "min": 0.1,
+              "max": 0.9,
+              "step": 0.05,
+              "default": 0.6
+            },
+            {
+              "id": "T2",
+              "label": "$t$ (watch the trip)",
+              "min": -4,
+              "max": 4,
+              "step": 0.05,
+              "default": -4,
+              "animate": true,
+              "animateMode": "loop",
+              "duration": 9000
+            }
+          ],
+          "remove": [
+            {
+              "id": "s3_unit_hyp"
+            },
+            {
+              "id": "s3_unit_hyp_txt"
+            },
+            {
+              "id": "s3_boost_pt"
+            },
+            {
+              "id": "s3_time_worldline"
+            },
+            {
+              "id": "s3_time_worldline_txt"
+            },
+            {
+              "id": "s3_worldline_pt"
+            },
+            {
+              "type": "slider"
+            },
+            {
+              "id": "s3_space_k1_r"
+            }
+          ],
+          "add": [
+            {
+              "id": "s3_tp_eventA",
+              "type": "point",
+              "position": [
+                0,
+                -4,
+                0
+              ],
+              "color": "#aabbcc",
+              "size": 4,
+              "legendGroup": "events $A$, $B$"
+            },
+            {
+              "id": "s3_tp_eventB",
+              "type": "point",
+              "position": [
+                0,
+                4,
+                0
+              ],
+              "color": "#aabbcc",
+              "size": 4,
+              "legendGroup": "events $A$, $B$"
+            },
+            {
+              "id": "s3_tp_home",
+              "type": "line",
+              "points": [
+                [
+                  0,
+                  -4,
+                  0
+                ],
+                [
+                  0,
+                  4,
+                  0
+                ]
+              ],
+              "color": "#aabbcc",
+              "width": 3,
+              "label": "stay-home: $\\tau = 8$"
+            },
+            {
+              "id": "s3_tp_travel",
+              "type": "animated_line",
+              "points": [
+                [
+                  "0",
+                  "-4",
+                  "0"
+                ],
+                [
+                  "4*w",
+                  "0",
+                  "0"
+                ],
+                [
+                  "0",
+                  "4",
+                  "0"
+                ]
+              ],
+              "color": "#4da6ff",
+              "width": 3,
+              "label": "traveler: $\\tau = 8\\sqrt{1-w^2}$"
+            },
+            {
+              "id": "s3_tp_turn",
+              "type": "animated_point",
+              "expr": [
+                "4*w",
+                "0",
+                "0"
+              ],
+              "color": "#4da6ff",
+              "size": 2,
+              "label": "turnaround"
+            },
+            {
+              "id": "s3_tp_htick-3",
+              "type": "animated_point",
+              "color": "#ffaa33",
+              "size": 2,
+              "legendGroup": "clock ticks ($1$ unit of $\\tau$)",
+              "expr": [
+                "0",
+                "-3",
+                "0"
+              ],
+              "sizeExpr": "2 + 7*exp(-16*(T2 - (-3))^2)",
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "opacity": 0.3,
+              "opacityExpr": "0.3 + 0.7*exp(-16*(T2 - (-3))^2)",
+              "glow": true
+            },
+            {
+              "id": "s3_tp_htick-2",
+              "type": "animated_point",
+              "color": "#ffaa33",
+              "size": 2,
+              "legendGroup": "clock ticks ($1$ unit of $\\tau$)",
+              "expr": [
+                "0",
+                "-2",
+                "0"
+              ],
+              "sizeExpr": "2 + 7*exp(-16*(T2 - (-2))^2)",
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "opacity": 0.3,
+              "opacityExpr": "0.3 + 0.7*exp(-16*(T2 - (-2))^2)",
+              "glow": true
+            },
+            {
+              "id": "s3_tp_htick-1",
+              "type": "animated_point",
+              "color": "#ffaa33",
+              "size": 2,
+              "legendGroup": "clock ticks ($1$ unit of $\\tau$)",
+              "expr": [
+                "0",
+                "-1",
+                "0"
+              ],
+              "sizeExpr": "2 + 7*exp(-16*(T2 - (-1))^2)",
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "opacity": 0.3,
+              "opacityExpr": "0.3 + 0.7*exp(-16*(T2 - (-1))^2)",
+              "glow": true
+            },
+            {
+              "id": "s3_tp_htick0",
+              "type": "animated_point",
+              "color": "#ffaa33",
+              "size": 2,
+              "legendGroup": "clock ticks ($1$ unit of $\\tau$)",
+              "expr": [
+                "0",
+                "0",
+                "0"
+              ],
+              "sizeExpr": "2 + 7*exp(-16*(T2 - (0))^2)",
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "opacity": 0.3,
+              "opacityExpr": "0.3 + 0.7*exp(-16*(T2 - (0))^2)",
+              "glow": true
+            },
+            {
+              "id": "s3_tp_htick1",
+              "type": "animated_point",
+              "color": "#ffaa33",
+              "size": 2,
+              "legendGroup": "clock ticks ($1$ unit of $\\tau$)",
+              "expr": [
+                "0",
+                "1",
+                "0"
+              ],
+              "sizeExpr": "2 + 7*exp(-16*(T2 - (1))^2)",
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "opacity": 0.3,
+              "opacityExpr": "0.3 + 0.7*exp(-16*(T2 - (1))^2)",
+              "glow": true
+            },
+            {
+              "id": "s3_tp_htick2",
+              "type": "animated_point",
+              "color": "#ffaa33",
+              "size": 2,
+              "legendGroup": "clock ticks ($1$ unit of $\\tau$)",
+              "expr": [
+                "0",
+                "2",
+                "0"
+              ],
+              "sizeExpr": "2 + 7*exp(-16*(T2 - (2))^2)",
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "opacity": 0.3,
+              "opacityExpr": "0.3 + 0.7*exp(-16*(T2 - (2))^2)",
+              "glow": true
+            },
+            {
+              "id": "s3_tp_htick3",
+              "type": "animated_point",
+              "color": "#ffaa33",
+              "size": 2,
+              "legendGroup": "clock ticks ($1$ unit of $\\tau$)",
+              "expr": [
+                "0",
+                "3",
+                "0"
+              ],
+              "sizeExpr": "2 + 7*exp(-16*(T2 - (3))^2)",
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "opacity": 0.3,
+              "opacityExpr": "0.3 + 0.7*exp(-16*(T2 - (3))^2)",
+              "glow": true
+            },
+            {
+              "id": "s3_tp_tick_out1",
+              "type": "animated_point",
+              "expr": [
+                "w*1/sqrt(1-w^2)",
+                "-4 + 1/sqrt(1-w^2)",
+                "0"
+              ],
+              "color": "#ffaa33",
+              "size": 2,
+              "visibleExpr": "1 <= 4*sqrt(1-w^2) + 0.001",
+              "legendGroup": "clock ticks ($1$ unit of $\\tau$)",
+              "sizeExpr": "2 + 7*exp(-16*(T2 - (-4 + 1/sqrt(1-w^2)))^2)",
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "opacity": 0.3,
+              "opacityExpr": "0.3 + 0.7*exp(-16*(T2 - (-4 + 1/sqrt(1-w^2)))^2)",
+              "glow": true
+            },
+            {
+              "id": "s3_tp_tick_out2",
+              "type": "animated_point",
+              "expr": [
+                "w*2/sqrt(1-w^2)",
+                "-4 + 2/sqrt(1-w^2)",
+                "0"
+              ],
+              "color": "#ffaa33",
+              "size": 2,
+              "visibleExpr": "2 <= 4*sqrt(1-w^2) + 0.001",
+              "legendGroup": "clock ticks ($1$ unit of $\\tau$)",
+              "sizeExpr": "2 + 7*exp(-16*(T2 - (-4 + 2/sqrt(1-w^2)))^2)",
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "opacity": 0.3,
+              "opacityExpr": "0.3 + 0.7*exp(-16*(T2 - (-4 + 2/sqrt(1-w^2)))^2)",
+              "glow": true
+            },
+            {
+              "id": "s3_tp_tick_out3",
+              "type": "animated_point",
+              "expr": [
+                "w*3/sqrt(1-w^2)",
+                "-4 + 3/sqrt(1-w^2)",
+                "0"
+              ],
+              "color": "#ffaa33",
+              "size": 2,
+              "visibleExpr": "3 <= 4*sqrt(1-w^2) + 0.001",
+              "legendGroup": "clock ticks ($1$ unit of $\\tau$)",
+              "sizeExpr": "2 + 7*exp(-16*(T2 - (-4 + 3/sqrt(1-w^2)))^2)",
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "opacity": 0.3,
+              "opacityExpr": "0.3 + 0.7*exp(-16*(T2 - (-4 + 3/sqrt(1-w^2)))^2)",
+              "glow": true
+            },
+            {
+              "id": "s3_tp_lblA",
+              "type": "text",
+              "text": "$A$",
+              "position": [
+                -0.8,
+                -4.1,
+                0
+              ],
+              "color": "#ffffff",
+              "size": 16,
+              "legendGroup": "events $A$, $B$"
+            },
+            {
+              "id": "s3_tp_lblB",
+              "type": "text",
+              "text": "$B$",
+              "position": [
+                -0.8,
+                4.1,
+                0
+              ],
+              "color": "#ffffff",
+              "size": 16,
+              "legendGroup": "events $A$, $B$"
+            },
+            {
+              "id": "s3_tp_rider_home",
+              "type": "animated_point",
+              "expr": [
+                "0",
+                "T2",
+                "0"
+              ],
+              "color": "#aabbcc",
+              "size": 3,
+              "legendGroup": "the twins"
+            },
+            {
+              "id": "s3_tp_rider_trav",
+              "type": "animated_point",
+              "expr": [
+                "w*(4 - abs(T2))",
+                "T2",
+                "0"
+              ],
+              "color": "#4da6ff",
+              "size": 3,
+              "label": "the twins"
+            },
+            {
+              "id": "s3_tp_tick_in2",
+              "type": "animated_point",
+              "expr": [
+                "w*(4 - (2/sqrt(1-w^2) - 4))",
+                "(2/sqrt(1-w^2) - 4)",
+                "0"
+              ],
+              "color": "#ffaa33",
+              "size": 2,
+              "glow": true,
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "opacity": 0.3,
+              "visibleExpr": "(2 > 4*sqrt(1-w^2)) and (2 <= 8*sqrt(1-w^2))",
+              "sizeExpr": "2 + 7*exp(-16*(T2 - (2/sqrt(1-w^2) - 4))^2)",
+              "opacityExpr": "0.3 + 0.7*exp(-16*(T2 - (2/sqrt(1-w^2) - 4))^2)",
+              "legendGroup": "clock ticks ($1$ unit of $\\tau$)"
+            },
+            {
+              "id": "s3_tp_tick_in3",
+              "type": "animated_point",
+              "expr": [
+                "w*(4 - (3/sqrt(1-w^2) - 4))",
+                "(3/sqrt(1-w^2) - 4)",
+                "0"
+              ],
+              "color": "#ffaa33",
+              "size": 2,
+              "glow": true,
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "opacity": 0.3,
+              "visibleExpr": "(3 > 4*sqrt(1-w^2)) and (3 <= 8*sqrt(1-w^2))",
+              "sizeExpr": "2 + 7*exp(-16*(T2 - (3/sqrt(1-w^2) - 4))^2)",
+              "opacityExpr": "0.3 + 0.7*exp(-16*(T2 - (3/sqrt(1-w^2) - 4))^2)",
+              "legendGroup": "clock ticks ($1$ unit of $\\tau$)"
+            },
+            {
+              "id": "s3_tp_tick_in4",
+              "type": "animated_point",
+              "expr": [
+                "w*(4 - (4/sqrt(1-w^2) - 4))",
+                "(4/sqrt(1-w^2) - 4)",
+                "0"
+              ],
+              "color": "#ffaa33",
+              "size": 2,
+              "glow": true,
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "opacity": 0.3,
+              "visibleExpr": "(4 > 4*sqrt(1-w^2)) and (4 <= 8*sqrt(1-w^2))",
+              "sizeExpr": "2 + 7*exp(-16*(T2 - (4/sqrt(1-w^2) - 4))^2)",
+              "opacityExpr": "0.3 + 0.7*exp(-16*(T2 - (4/sqrt(1-w^2) - 4))^2)",
+              "legendGroup": "clock ticks ($1$ unit of $\\tau$)"
+            },
+            {
+              "id": "s3_tp_tick_in5",
+              "type": "animated_point",
+              "expr": [
+                "w*(4 - (5/sqrt(1-w^2) - 4))",
+                "(5/sqrt(1-w^2) - 4)",
+                "0"
+              ],
+              "color": "#ffaa33",
+              "size": 2,
+              "glow": true,
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "opacity": 0.3,
+              "visibleExpr": "(5 > 4*sqrt(1-w^2)) and (5 <= 8*sqrt(1-w^2))",
+              "sizeExpr": "2 + 7*exp(-16*(T2 - (5/sqrt(1-w^2) - 4))^2)",
+              "opacityExpr": "0.3 + 0.7*exp(-16*(T2 - (5/sqrt(1-w^2) - 4))^2)",
+              "legendGroup": "clock ticks ($1$ unit of $\\tau$)"
+            },
+            {
+              "id": "s3_tp_tick_in6",
+              "type": "animated_point",
+              "expr": [
+                "w*(4 - (6/sqrt(1-w^2) - 4))",
+                "(6/sqrt(1-w^2) - 4)",
+                "0"
+              ],
+              "color": "#ffaa33",
+              "size": 2,
+              "glow": true,
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "opacity": 0.3,
+              "visibleExpr": "(6 > 4*sqrt(1-w^2)) and (6 <= 8*sqrt(1-w^2))",
+              "sizeExpr": "2 + 7*exp(-16*(T2 - (6/sqrt(1-w^2) - 4))^2)",
+              "opacityExpr": "0.3 + 0.7*exp(-16*(T2 - (6/sqrt(1-w^2) - 4))^2)",
+              "legendGroup": "clock ticks ($1$ unit of $\\tau$)"
+            },
+            {
+              "id": "s3_tp_tick_in7",
+              "type": "animated_point",
+              "expr": [
+                "w*(4 - (7/sqrt(1-w^2) - 4))",
+                "(7/sqrt(1-w^2) - 4)",
+                "0"
+              ],
+              "color": "#ffaa33",
+              "size": 2,
+              "glow": true,
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "opacity": 0.3,
+              "visibleExpr": "(7 > 4*sqrt(1-w^2)) and (7 <= 8*sqrt(1-w^2))",
+              "sizeExpr": "2 + 7*exp(-16*(T2 - (7/sqrt(1-w^2) - 4))^2)",
+              "opacityExpr": "0.3 + 0.7*exp(-16*(T2 - (7/sqrt(1-w^2) - 4))^2)",
+              "legendGroup": "clock ticks ($1$ unit of $\\tau$)"
+            }
+          ],
+          "info": [
+            {
+              "id": "s3_tp_info",
+              "position": "top-right",
+              "content": "**Predict first:** the bent route looks *longer* on paper — which twin ages more?\n\n**Proper time = worldline length.** A carried clock ticks once per unit of Minkowski length $d\\tau = \\sqrt{dt^2 - dx^2}$. Count the gold ticks:\n\n- straight: $\\tau = 8.00$\n- bent: $\\tau = 8\\sqrt{1-w^2} = {{toFixed(8*sqrt(1-w^2), 2)}}$\n\nThe minus sign in the metric **reverses the triangle inequality**: the detour is *shorter* in spacetime, so the traveler returns *younger*. Straight worldlines maximize aging — that is the twin \"paradox\", read straight off the geometry.\n\n*Press play on $t$: the two dots travel together from $A$ to $B$, and each tick **flashes** as its twin's clock strikes it. Watch the traveler strike fewer.*\n\n**Now** ($t = {{toFixed(T2, 2)}}$):\nstay-home clock $\\tau = {{toFixed(T2 + 4, 2)}}$ · traveler clock $\\tau = {{toFixed(sqrt(1-w^2)*(T2 + 4), 2)}}$"
+            }
+          ]
+        },
+        {
+          "title": "The honest twin: constant thrust there and back",
+          "description": "No teleporting kinks — the ship feels a steady $a$ the whole way: push, flip, brake. Three hyperbolic arcs, same verdict.",
+          "prompt": "Realistic powered twin. The blue worldline is three hyperbolic arcs of constant FELT acceleration a: thrust outward for the first quarter (t in [-4,-2]), flip and thrust homeward for the whole middle half (t in [-2,2] — one continuous hyperbola through the at-rest turnaround at t=0), flip again and brake into B for the last quarter. Red dots mark the two flips; the ship is momentarily at rest at the turnaround. Proper time is tau = 4*asinh(2a)/a (each quarter contributes asinh(2a)/a), always less than 8 — smooth curves lose time exactly like kinks, because ANY lean toward the light lines shortens the Minkowski length. Gold ticks are the crew's continuous clock; they flash as the riders pass. Cranking a hugs the lightcone tighter: harder thrust, younger crew. Bridge forward: each arc is exactly the hyperbola derived in the next scene.",
+          "duration": 4000,
+          "sliders": [
+            {
+              "id": "a",
+              "label": "$a$ (felt thrust)",
+              "min": 0.3,
+              "max": 1.5,
+              "step": 0.05,
+              "default": 1
+            },
+            {
+              "id": "T3",
+              "label": "$t$ (watch the trip)",
+              "min": -4,
+              "max": 4,
+              "step": 0.05,
+              "default": -4,
+              "animate": true,
+              "animateMode": "loop",
+              "duration": 9000
+            }
+          ],
+          "remove": [
+            {
+              "id": "s3_tp_eventA"
+            },
+            {
+              "id": "s3_tp_eventB"
+            },
+            {
+              "id": "s3_tp_home"
+            },
+            {
+              "id": "s3_tp_travel"
+            },
+            {
+              "id": "s3_tp_turn"
+            },
+            {
+              "id": "s3_tp_htick-3"
+            },
+            {
+              "id": "s3_tp_htick-2"
+            },
+            {
+              "id": "s3_tp_htick-1"
+            },
+            {
+              "id": "s3_tp_htick0"
+            },
+            {
+              "id": "s3_tp_htick1"
+            },
+            {
+              "id": "s3_tp_htick2"
+            },
+            {
+              "id": "s3_tp_htick3"
+            },
+            {
+              "id": "s3_tp_tick_out1"
+            },
+            {
+              "id": "s3_tp_tick_out2"
+            },
+            {
+              "id": "s3_tp_tick_out3"
+            },
+            {
+              "id": "s3_tp_lblA"
+            },
+            {
+              "id": "s3_tp_lblB"
+            },
+            {
+              "id": "s3_tp_rider_home"
+            },
+            {
+              "id": "s3_tp_rider_trav"
+            },
+            {
+              "id": "s3_tp_tick_in2"
+            },
+            {
+              "id": "s3_tp_tick_in3"
+            },
+            {
+              "id": "s3_tp_tick_in4"
+            },
+            {
+              "id": "s3_tp_tick_in5"
+            },
+            {
+              "id": "s3_tp_tick_in6"
+            },
+            {
+              "id": "s3_tp_tick_in7"
+            },
+            {
+              "type": "slider"
+            }
+          ],
+          "add": [
+            {
+              "id": "s3_g_eventA",
+              "type": "point",
+              "position": [
+                0,
+                -4,
+                0
+              ],
+              "color": "#aabbcc",
+              "size": 4,
+              "legendGroup": "events $A$, $B$"
+            },
+            {
+              "id": "s3_g_eventB",
+              "type": "point",
+              "position": [
+                0,
+                4,
+                0
+              ],
+              "color": "#aabbcc",
+              "size": 4,
+              "legendGroup": "events $A$, $B$"
+            },
+            {
+              "id": "s3_g_lblA",
+              "type": "text",
+              "text": "$A$",
+              "position": [
+                -0.8,
+                -4.1,
+                0
+              ],
+              "color": "#ffffff",
+              "size": 16,
+              "legendGroup": "events $A$, $B$"
+            },
+            {
+              "id": "s3_g_lblB",
+              "type": "text",
+              "text": "$B$",
+              "position": [
+                -0.8,
+                4.1,
+                0
+              ],
+              "color": "#ffffff",
+              "size": 16,
+              "legendGroup": "events $A$, $B$"
+            },
+            {
+              "id": "s3_g_home",
+              "type": "line",
+              "points": [
+                [
+                  0,
+                  -4,
+                  0
+                ],
+                [
+                  0,
+                  4,
+                  0
+                ]
+              ],
+              "color": "#aabbcc",
+              "width": 3,
+              "label": "stay-home: $\\tau = 8$"
+            },
+            {
+              "id": "s3_g_worldline",
+              "type": "parametric_curve",
+              "x": "tw_xt(t, a)",
+              "y": "t",
+              "z": "0",
+              "range": [
+                -4,
+                4
+              ],
+              "samples": 240,
+              "color": "#4da6ff",
+              "width": 3,
+              "label": "powered twin: $\\tau = 4\\,\\mathrm{asinh}(2a)/a$"
+            },
+            {
+              "id": "s3_g_flip1",
+              "type": "animated_point",
+              "expr": [
+                "tw_xt(-2, a)",
+                "-2",
+                "0"
+              ],
+              "color": "#ff5566",
+              "size": 3,
+              "label": "flip thrust"
+            },
+            {
+              "id": "s3_g_flip2",
+              "type": "animated_point",
+              "expr": [
+                "tw_xt(2, a)",
+                "2",
+                "0"
+              ],
+              "color": "#ff5566",
+              "size": 3,
+              "legendGroup": "flip thrust"
+            },
+            {
+              "id": "s3_g_turn",
+              "type": "animated_point",
+              "expr": [
+                "2*(sqrt(1 + 4*a^2) - 1)/a",
+                "0",
+                "0"
+              ],
+              "color": "#4da6ff",
+              "size": 2,
+              "label": "turnaround (at rest)"
+            },
+            {
+              "id": "s3_g_rider_home",
+              "type": "animated_point",
+              "expr": [
+                "0",
+                "T3",
+                "0"
+              ],
+              "color": "#aabbcc",
+              "size": 3,
+              "legendGroup": "the twins"
+            },
+            {
+              "id": "s3_g_rider_trav",
+              "type": "animated_point",
+              "expr": [
+                "tw_xt(T3, a)",
+                "T3",
+                "0"
+              ],
+              "color": "#4da6ff",
+              "size": 3,
+              "label": "the twins"
+            },
+            {
+              "color": "#ffaa33",
+              "size": 2,
+              "glow": true,
+              "opacity": 0.3,
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "legendGroup": "clock ticks ($1$ unit of $\\tau$)",
+              "id": "s3_g_htickm3",
+              "type": "animated_point",
+              "expr": [
+                "0",
+                "-3",
+                "0"
+              ],
+              "sizeExpr": "2 + 7*exp(-16*(T3 - (-3))^2)",
+              "opacityExpr": "0.3 + 0.7*exp(-16*(T3 - (-3))^2)"
+            },
+            {
+              "color": "#ffaa33",
+              "size": 2,
+              "glow": true,
+              "opacity": 0.3,
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "legendGroup": "clock ticks ($1$ unit of $\\tau$)",
+              "id": "s3_g_htickm2",
+              "type": "animated_point",
+              "expr": [
+                "0",
+                "-2",
+                "0"
+              ],
+              "sizeExpr": "2 + 7*exp(-16*(T3 - (-2))^2)",
+              "opacityExpr": "0.3 + 0.7*exp(-16*(T3 - (-2))^2)"
+            },
+            {
+              "color": "#ffaa33",
+              "size": 2,
+              "glow": true,
+              "opacity": 0.3,
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "legendGroup": "clock ticks ($1$ unit of $\\tau$)",
+              "id": "s3_g_htickm1",
+              "type": "animated_point",
+              "expr": [
+                "0",
+                "-1",
+                "0"
+              ],
+              "sizeExpr": "2 + 7*exp(-16*(T3 - (-1))^2)",
+              "opacityExpr": "0.3 + 0.7*exp(-16*(T3 - (-1))^2)"
+            },
+            {
+              "color": "#ffaa33",
+              "size": 2,
+              "glow": true,
+              "opacity": 0.3,
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "legendGroup": "clock ticks ($1$ unit of $\\tau$)",
+              "id": "s3_g_htick0",
+              "type": "animated_point",
+              "expr": [
+                "0",
+                "0",
+                "0"
+              ],
+              "sizeExpr": "2 + 7*exp(-16*(T3 - (0))^2)",
+              "opacityExpr": "0.3 + 0.7*exp(-16*(T3 - (0))^2)"
+            },
+            {
+              "color": "#ffaa33",
+              "size": 2,
+              "glow": true,
+              "opacity": 0.3,
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "legendGroup": "clock ticks ($1$ unit of $\\tau$)",
+              "id": "s3_g_htick1",
+              "type": "animated_point",
+              "expr": [
+                "0",
+                "1",
+                "0"
+              ],
+              "sizeExpr": "2 + 7*exp(-16*(T3 - (1))^2)",
+              "opacityExpr": "0.3 + 0.7*exp(-16*(T3 - (1))^2)"
+            },
+            {
+              "color": "#ffaa33",
+              "size": 2,
+              "glow": true,
+              "opacity": 0.3,
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "legendGroup": "clock ticks ($1$ unit of $\\tau$)",
+              "id": "s3_g_htick2",
+              "type": "animated_point",
+              "expr": [
+                "0",
+                "2",
+                "0"
+              ],
+              "sizeExpr": "2 + 7*exp(-16*(T3 - (2))^2)",
+              "opacityExpr": "0.3 + 0.7*exp(-16*(T3 - (2))^2)"
+            },
+            {
+              "color": "#ffaa33",
+              "size": 2,
+              "glow": true,
+              "opacity": 0.3,
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "legendGroup": "clock ticks ($1$ unit of $\\tau$)",
+              "id": "s3_g_htick3",
+              "type": "animated_point",
+              "expr": [
+                "0",
+                "3",
+                "0"
+              ],
+              "sizeExpr": "2 + 7*exp(-16*(T3 - (3))^2)",
+              "opacityExpr": "0.3 + 0.7*exp(-16*(T3 - (3))^2)"
+            },
+            {
+              "color": "#ffaa33",
+              "size": 2,
+              "glow": true,
+              "opacity": 0.3,
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "legendGroup": "clock ticks ($1$ unit of $\\tau$)",
+              "id": "s3_g_ttick1",
+              "type": "animated_point",
+              "expr": [
+                "tw_x(1, a)",
+                "tw_t(1, a)",
+                "0"
+              ],
+              "visibleExpr": "1 <= 4*asinh(2*a)/a",
+              "sizeExpr": "2 + 7*exp(-16*(T3 - tw_t(1, a))^2)",
+              "opacityExpr": "0.3 + 0.7*exp(-16*(T3 - tw_t(1, a))^2)"
+            },
+            {
+              "color": "#ffaa33",
+              "size": 2,
+              "glow": true,
+              "opacity": 0.3,
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "legendGroup": "clock ticks ($1$ unit of $\\tau$)",
+              "id": "s3_g_ttick2",
+              "type": "animated_point",
+              "expr": [
+                "tw_x(2, a)",
+                "tw_t(2, a)",
+                "0"
+              ],
+              "visibleExpr": "2 <= 4*asinh(2*a)/a",
+              "sizeExpr": "2 + 7*exp(-16*(T3 - tw_t(2, a))^2)",
+              "opacityExpr": "0.3 + 0.7*exp(-16*(T3 - tw_t(2, a))^2)"
+            },
+            {
+              "color": "#ffaa33",
+              "size": 2,
+              "glow": true,
+              "opacity": 0.3,
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "legendGroup": "clock ticks ($1$ unit of $\\tau$)",
+              "id": "s3_g_ttick3",
+              "type": "animated_point",
+              "expr": [
+                "tw_x(3, a)",
+                "tw_t(3, a)",
+                "0"
+              ],
+              "visibleExpr": "3 <= 4*asinh(2*a)/a",
+              "sizeExpr": "2 + 7*exp(-16*(T3 - tw_t(3, a))^2)",
+              "opacityExpr": "0.3 + 0.7*exp(-16*(T3 - tw_t(3, a))^2)"
+            },
+            {
+              "color": "#ffaa33",
+              "size": 2,
+              "glow": true,
+              "opacity": 0.3,
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "legendGroup": "clock ticks ($1$ unit of $\\tau$)",
+              "id": "s3_g_ttick4",
+              "type": "animated_point",
+              "expr": [
+                "tw_x(4, a)",
+                "tw_t(4, a)",
+                "0"
+              ],
+              "visibleExpr": "4 <= 4*asinh(2*a)/a",
+              "sizeExpr": "2 + 7*exp(-16*(T3 - tw_t(4, a))^2)",
+              "opacityExpr": "0.3 + 0.7*exp(-16*(T3 - tw_t(4, a))^2)"
+            },
+            {
+              "color": "#ffaa33",
+              "size": 2,
+              "glow": true,
+              "opacity": 0.3,
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "legendGroup": "clock ticks ($1$ unit of $\\tau$)",
+              "id": "s3_g_ttick5",
+              "type": "animated_point",
+              "expr": [
+                "tw_x(5, a)",
+                "tw_t(5, a)",
+                "0"
+              ],
+              "visibleExpr": "5 <= 4*asinh(2*a)/a",
+              "sizeExpr": "2 + 7*exp(-16*(T3 - tw_t(5, a))^2)",
+              "opacityExpr": "0.3 + 0.7*exp(-16*(T3 - tw_t(5, a))^2)"
+            },
+            {
+              "color": "#ffaa33",
+              "size": 2,
+              "glow": true,
+              "opacity": 0.3,
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "legendGroup": "clock ticks ($1$ unit of $\\tau$)",
+              "id": "s3_g_ttick6",
+              "type": "animated_point",
+              "expr": [
+                "tw_x(6, a)",
+                "tw_t(6, a)",
+                "0"
+              ],
+              "visibleExpr": "6 <= 4*asinh(2*a)/a",
+              "sizeExpr": "2 + 7*exp(-16*(T3 - tw_t(6, a))^2)",
+              "opacityExpr": "0.3 + 0.7*exp(-16*(T3 - tw_t(6, a))^2)"
+            },
+            {
+              "color": "#ffaa33",
+              "size": 2,
+              "glow": true,
+              "opacity": 0.3,
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "legendGroup": "clock ticks ($1$ unit of $\\tau$)",
+              "id": "s3_g_ttick7",
+              "type": "animated_point",
+              "expr": [
+                "tw_x(7, a)",
+                "tw_t(7, a)",
+                "0"
+              ],
+              "visibleExpr": "7 <= 4*asinh(2*a)/a",
+              "sizeExpr": "2 + 7*exp(-16*(T3 - tw_t(7, a))^2)",
+              "opacityExpr": "0.3 + 0.7*exp(-16*(T3 - tw_t(7, a))^2)"
+            }
+          ],
+          "info": [
+            {
+              "id": "s3_g_info",
+              "position": "top-right",
+              "content": "**Same trip, honest engines.** The crew *feels* a steady $a$ the whole way — thrust out for the first quarter, flip and thrust homeward through the middle half (momentarily at rest at the turnaround), flip and brake into $B$. Every arc is a hyperbola.\n\n- straight: $\\tau = 8.00$\n- powered twin: $\\tau = \\dfrac{4\\,\\mathrm{asinh}(2a)}{a} = {{toFixed(4*asinh(2*a)/a, 2)}}$\n\nSmooth curve or sharp kink — **any** lean toward the light lines loses time. Crank $a$: harder thrust hugs the lightcone tighter and ages the crew less. This is the 1g starship's geometry, one scene early.\n\n**Now** ($t = {{toFixed(T3, 2)}}$):\nstay-home clock $\\tau = {{toFixed(T3 + 4, 2)}}$ · crew clock $\\tau = {{toFixed(tw_tau(T3, a), 2)}}$"
+            }
+          ]
         }
       ],
       "proof": {
@@ -2098,7 +3165,41 @@
             "sceneStep": 3
           }
         ]
-      }
+      },
+      "functions": [
+        {
+          "name": "tw_xt",
+          "args": [
+            "tt",
+            "a"
+          ],
+          "expr": "tt < -2 ? (sqrt(1 + a^2*(tt+4)^2) - 1)/a : (tt < 2 ? 2*(sqrt(1 + 4*a^2) - 1)/a - (sqrt(1 + a^2*tt^2) - 1)/a : (sqrt(1 + a^2*(tt-4)^2) - 1)/a)"
+        },
+        {
+          "name": "tw_t",
+          "args": [
+            "m",
+            "a"
+          ],
+          "expr": "m < asinh(2*a)/a ? -4 + sinh(a*m)/a : (m < 3*asinh(2*a)/a ? sinh(a*m - 2*asinh(2*a))/a : 4 + sinh(a*m - 4*asinh(2*a))/a)"
+        },
+        {
+          "name": "tw_x",
+          "args": [
+            "m",
+            "a"
+          ],
+          "expr": "m < asinh(2*a)/a ? (cosh(a*m) - 1)/a : (m < 3*asinh(2*a)/a ? 2*(sqrt(1 + 4*a^2) - 1)/a - (cosh(a*m - 2*asinh(2*a)) - 1)/a : (cosh(a*m - 4*asinh(2*a)) - 1)/a)"
+        },
+        {
+          "name": "tw_tau",
+          "args": [
+            "tt",
+            "a"
+          ],
+          "expr": "tt < -2 ? asinh(a*(tt+4))/a : (tt < 2 ? (2*asinh(2*a) + asinh(a*tt))/a : (4*asinh(2*a) + asinh(a*(tt-4)))/a)"
+        }
+      ]
     },
     {
       "id": "flooring-it-forever",
@@ -2533,7 +3634,7 @@
           "id": "riding-by-proper-time",
           "title": "Riding by proper time",
           "description": "Ride along by proper time $\\tau$. The traveler's clock advances steadily while $\\gamma = \\cosh(a\\tau)$ balloons and $v = \\tanh(a\\tau)$ creeps toward 1. And notice the asymptote it forever chases: the line $x = t$. Remember that line.",
-          "prompt": "Add an animated point riding the hyperbola at ((1/a)cosh(a*tau), (1/a)sinh(a*tau)) driven by the tau slider (animate-able). Live readouts: gamma = cosh(a*tau) and v = tanh(a*tau) < 1 always. Equal ticks of tau carry the ship ever further and faster — the engine of the relativistic rocket. CRUCIAL HANDOFF: end by naming the asymptote x = t as a teaser — the next scene turns that line into a genuine event horizon. Draw the asymptote emphatically in #ffaa33 and label it.",
+          "prompt": "Add an animated point riding the hyperbola at ((1/a)cosh(a*tau), (1/a)sinh(a*tau)) driven by the tau slider (animate-able). Live readouts: gamma = cosh(a*tau) and v = tanh(a*tau) < 1 always. Equal ticks of tau carry the ship ever further and faster — the engine of the relativistic rocket. CRUCIAL HANDOFF: end by naming the asymptote x = t as a teaser — the next scene turns that line into a genuine event horizon. Draw the asymptote emphatically in #ffaa33 and label it. Gold dots on the hyperbola are proper-time ticks (Delta tau = 1), the curved-path version of the twin-step ticks: equal clock ticks cost more and more coordinate time as the worldline approaches the light line. Drag a to watch the tick pattern reshape; near the asymptote a single tick spans enormous t.",
           "add": [
             {
               "id": "s4_riding_point",
@@ -2577,6 +3678,237 @@
               ],
               "color": "#ffaa33",
               "label": "asymptote $x=t$"
+            },
+            {
+              "id": "s4_tau_tick_m5",
+              "type": "animated_point",
+              "expr": [
+                "(1/a)*cosh(a*(-5))",
+                "(1/a)*sinh(a*(-5))",
+                "0"
+              ],
+              "color": "#ffaa33",
+              "size": 2,
+              "visibleExpr": "(1/a)*cosh(a*(-5)) < 9.2",
+              "legendGroup": "proper-time ticks ($\\Delta\\tau = 1$)",
+              "sizeExpr": "2 + 7*exp(-16*(tau - (-5))^2)",
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "opacity": 0.3,
+              "opacityExpr": "0.3 + 0.7*exp(-16*(tau - (-5))^2)",
+              "glow": true
+            },
+            {
+              "id": "s4_tau_tick_m4",
+              "type": "animated_point",
+              "expr": [
+                "(1/a)*cosh(a*(-4))",
+                "(1/a)*sinh(a*(-4))",
+                "0"
+              ],
+              "color": "#ffaa33",
+              "size": 2,
+              "visibleExpr": "(1/a)*cosh(a*(-4)) < 9.2",
+              "legendGroup": "proper-time ticks ($\\Delta\\tau = 1$)",
+              "sizeExpr": "2 + 7*exp(-16*(tau - (-4))^2)",
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "opacity": 0.3,
+              "opacityExpr": "0.3 + 0.7*exp(-16*(tau - (-4))^2)",
+              "glow": true
+            },
+            {
+              "id": "s4_tau_tick_m3",
+              "type": "animated_point",
+              "expr": [
+                "(1/a)*cosh(a*(-3))",
+                "(1/a)*sinh(a*(-3))",
+                "0"
+              ],
+              "color": "#ffaa33",
+              "size": 2,
+              "visibleExpr": "(1/a)*cosh(a*(-3)) < 9.2",
+              "legendGroup": "proper-time ticks ($\\Delta\\tau = 1$)",
+              "sizeExpr": "2 + 7*exp(-16*(tau - (-3))^2)",
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "opacity": 0.3,
+              "opacityExpr": "0.3 + 0.7*exp(-16*(tau - (-3))^2)",
+              "glow": true
+            },
+            {
+              "id": "s4_tau_tick_m2",
+              "type": "animated_point",
+              "expr": [
+                "(1/a)*cosh(a*(-2))",
+                "(1/a)*sinh(a*(-2))",
+                "0"
+              ],
+              "color": "#ffaa33",
+              "size": 2,
+              "visibleExpr": "(1/a)*cosh(a*(-2)) < 9.2",
+              "legendGroup": "proper-time ticks ($\\Delta\\tau = 1$)",
+              "sizeExpr": "2 + 7*exp(-16*(tau - (-2))^2)",
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "opacity": 0.3,
+              "opacityExpr": "0.3 + 0.7*exp(-16*(tau - (-2))^2)",
+              "glow": true
+            },
+            {
+              "id": "s4_tau_tick_m1",
+              "type": "animated_point",
+              "expr": [
+                "(1/a)*cosh(a*(-1))",
+                "(1/a)*sinh(a*(-1))",
+                "0"
+              ],
+              "color": "#ffaa33",
+              "size": 2,
+              "visibleExpr": "(1/a)*cosh(a*(-1)) < 9.2",
+              "legendGroup": "proper-time ticks ($\\Delta\\tau = 1$)",
+              "sizeExpr": "2 + 7*exp(-16*(tau - (-1))^2)",
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "opacity": 0.3,
+              "opacityExpr": "0.3 + 0.7*exp(-16*(tau - (-1))^2)",
+              "glow": true
+            },
+            {
+              "id": "s4_tau_tick_0",
+              "type": "animated_point",
+              "expr": [
+                "(1/a)*cosh(a*(0))",
+                "(1/a)*sinh(a*(0))",
+                "0"
+              ],
+              "color": "#ffaa33",
+              "size": 2,
+              "visibleExpr": "(1/a)*cosh(a*(0)) < 9.2",
+              "legendGroup": "proper-time ticks ($\\Delta\\tau = 1$)",
+              "sizeExpr": "2 + 7*exp(-16*(tau - (0))^2)",
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "opacity": 0.3,
+              "opacityExpr": "0.3 + 0.7*exp(-16*(tau - (0))^2)",
+              "glow": true
+            },
+            {
+              "id": "s4_tau_tick_1",
+              "type": "animated_point",
+              "expr": [
+                "(1/a)*cosh(a*(1))",
+                "(1/a)*sinh(a*(1))",
+                "0"
+              ],
+              "color": "#ffaa33",
+              "size": 2,
+              "visibleExpr": "(1/a)*cosh(a*(1)) < 9.2",
+              "legendGroup": "proper-time ticks ($\\Delta\\tau = 1$)",
+              "sizeExpr": "2 + 7*exp(-16*(tau - (1))^2)",
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "opacity": 0.3,
+              "opacityExpr": "0.3 + 0.7*exp(-16*(tau - (1))^2)",
+              "glow": true
+            },
+            {
+              "id": "s4_tau_tick_2",
+              "type": "animated_point",
+              "expr": [
+                "(1/a)*cosh(a*(2))",
+                "(1/a)*sinh(a*(2))",
+                "0"
+              ],
+              "color": "#ffaa33",
+              "size": 2,
+              "visibleExpr": "(1/a)*cosh(a*(2)) < 9.2",
+              "legendGroup": "proper-time ticks ($\\Delta\\tau = 1$)",
+              "sizeExpr": "2 + 7*exp(-16*(tau - (2))^2)",
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "opacity": 0.3,
+              "opacityExpr": "0.3 + 0.7*exp(-16*(tau - (2))^2)",
+              "glow": true
+            },
+            {
+              "id": "s4_tau_tick_3",
+              "type": "animated_point",
+              "expr": [
+                "(1/a)*cosh(a*(3))",
+                "(1/a)*sinh(a*(3))",
+                "0"
+              ],
+              "color": "#ffaa33",
+              "size": 2,
+              "visibleExpr": "(1/a)*cosh(a*(3)) < 9.2",
+              "legendGroup": "proper-time ticks ($\\Delta\\tau = 1$)",
+              "sizeExpr": "2 + 7*exp(-16*(tau - (3))^2)",
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "opacity": 0.3,
+              "opacityExpr": "0.3 + 0.7*exp(-16*(tau - (3))^2)",
+              "glow": true
+            },
+            {
+              "id": "s4_tau_tick_4",
+              "type": "animated_point",
+              "expr": [
+                "(1/a)*cosh(a*(4))",
+                "(1/a)*sinh(a*(4))",
+                "0"
+              ],
+              "color": "#ffaa33",
+              "size": 2,
+              "visibleExpr": "(1/a)*cosh(a*(4)) < 9.2",
+              "legendGroup": "proper-time ticks ($\\Delta\\tau = 1$)",
+              "sizeExpr": "2 + 7*exp(-16*(tau - (4))^2)",
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "opacity": 0.3,
+              "opacityExpr": "0.3 + 0.7*exp(-16*(tau - (4))^2)",
+              "glow": true
+            },
+            {
+              "id": "s4_tau_tick_5",
+              "type": "animated_point",
+              "expr": [
+                "(1/a)*cosh(a*(5))",
+                "(1/a)*sinh(a*(5))",
+                "0"
+              ],
+              "color": "#ffaa33",
+              "size": 2,
+              "visibleExpr": "(1/a)*cosh(a*(5)) < 9.2",
+              "legendGroup": "proper-time ticks ($\\Delta\\tau = 1$)",
+              "sizeExpr": "2 + 7*exp(-16*(tau - (5))^2)",
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "opacity": 0.3,
+              "opacityExpr": "0.3 + 0.7*exp(-16*(tau - (5))^2)",
+              "glow": true
             }
           ],
           "sliders": [
@@ -2595,7 +3927,7 @@
             {
               "id": "s4_ride_info",
               "position": "top-right",
-              "content": "### Riding by proper time\n$$\\gamma = \\cosh(a\\tau) = {{toFixed(cosh(a*tau),2)}}$$\n$$v = \\tanh(a\\tau) = {{toFixed(tanh(a*tau),2)}} < 1$$\nEqual ticks of $\\tau$ carry the ship ever further and faster. It forever chases $x = t$ — **remember that line.**"
+              "content": "### Riding by proper time\n$$\\gamma = \\cosh(a\\tau) = {{toFixed(cosh(a*tau),2)}}$$\n$$v = \\tanh(a\\tau) = {{toFixed(tanh(a*tau),2)}} < 1$$\nEqual ticks of $\\tau$ carry the ship ever further and faster. It forever chases $x = t$ — **remember that line.**\n\n**Geometry of the ticks:** the gold dots mark the crew's clock, one per unit of proper time $\\tau$ — the distance measured *along* the curved worldline with $d\\tau = \\sqrt{dt^2 - dx^2}$. Equal ticks stretch ever farther apart in coordinate time as the hyperbola leans toward the $45°$ light line — the continuous version of the twin picture: the more your path tilts, the more height each tick costs."
             }
           ]
         }
@@ -4907,13 +6239,244 @@
               "color": "#ffaa33",
               "width": 1.5,
               "opacity": 0.45
+            },
+            {
+              "id": "s7_tau_tick_m3",
+              "type": "animated_point",
+              "expr": [
+                "(1/a)*cosh(a*(-3))",
+                "(1/a)*sinh(a*(-3))",
+                "0"
+              ],
+              "color": "#ffaa33",
+              "size": 2,
+              "visibleExpr": "(1/a)*cosh(a*(-3)) < 9.2",
+              "legendGroup": "proper-time ticks ($\\Delta\\tau = 1$)",
+              "sizeExpr": "2 + 7*exp(-16*(asinh(a*T)/a - (-3))^2)",
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "opacity": 0.3,
+              "opacityExpr": "0.3 + 0.7*exp(-16*(asinh(a*T)/a - (-3))^2)",
+              "glow": true
+            },
+            {
+              "id": "s7_tau_tick_m2",
+              "type": "animated_point",
+              "expr": [
+                "(1/a)*cosh(a*(-2))",
+                "(1/a)*sinh(a*(-2))",
+                "0"
+              ],
+              "color": "#ffaa33",
+              "size": 2,
+              "visibleExpr": "(1/a)*cosh(a*(-2)) < 9.2",
+              "legendGroup": "proper-time ticks ($\\Delta\\tau = 1$)",
+              "sizeExpr": "2 + 7*exp(-16*(asinh(a*T)/a - (-2))^2)",
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "opacity": 0.3,
+              "opacityExpr": "0.3 + 0.7*exp(-16*(asinh(a*T)/a - (-2))^2)",
+              "glow": true
+            },
+            {
+              "id": "s7_tau_tick_m1",
+              "type": "animated_point",
+              "expr": [
+                "(1/a)*cosh(a*(-1))",
+                "(1/a)*sinh(a*(-1))",
+                "0"
+              ],
+              "color": "#ffaa33",
+              "size": 2,
+              "visibleExpr": "(1/a)*cosh(a*(-1)) < 9.2",
+              "legendGroup": "proper-time ticks ($\\Delta\\tau = 1$)",
+              "sizeExpr": "2 + 7*exp(-16*(asinh(a*T)/a - (-1))^2)",
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "opacity": 0.3,
+              "opacityExpr": "0.3 + 0.7*exp(-16*(asinh(a*T)/a - (-1))^2)",
+              "glow": true
+            },
+            {
+              "id": "s7_tau_tick_0",
+              "type": "animated_point",
+              "expr": [
+                "(1/a)*cosh(a*(0))",
+                "(1/a)*sinh(a*(0))",
+                "0"
+              ],
+              "color": "#ffaa33",
+              "size": 2,
+              "visibleExpr": "(1/a)*cosh(a*(0)) < 9.2",
+              "legendGroup": "proper-time ticks ($\\Delta\\tau = 1$)",
+              "sizeExpr": "2 + 7*exp(-16*(asinh(a*T)/a - (0))^2)",
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "opacity": 0.3,
+              "opacityExpr": "0.3 + 0.7*exp(-16*(asinh(a*T)/a - (0))^2)",
+              "glow": true
+            },
+            {
+              "id": "s7_tau_tick_1",
+              "type": "animated_point",
+              "expr": [
+                "(1/a)*cosh(a*(1))",
+                "(1/a)*sinh(a*(1))",
+                "0"
+              ],
+              "color": "#ffaa33",
+              "size": 2,
+              "visibleExpr": "(1/a)*cosh(a*(1)) < 9.2",
+              "legendGroup": "proper-time ticks ($\\Delta\\tau = 1$)",
+              "sizeExpr": "2 + 7*exp(-16*(asinh(a*T)/a - (1))^2)",
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "opacity": 0.3,
+              "opacityExpr": "0.3 + 0.7*exp(-16*(asinh(a*T)/a - (1))^2)",
+              "glow": true
+            },
+            {
+              "id": "s7_tau_tick_2",
+              "type": "animated_point",
+              "expr": [
+                "(1/a)*cosh(a*(2))",
+                "(1/a)*sinh(a*(2))",
+                "0"
+              ],
+              "color": "#ffaa33",
+              "size": 2,
+              "visibleExpr": "(1/a)*cosh(a*(2)) < 9.2",
+              "legendGroup": "proper-time ticks ($\\Delta\\tau = 1$)",
+              "sizeExpr": "2 + 7*exp(-16*(asinh(a*T)/a - (2))^2)",
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "opacity": 0.3,
+              "opacityExpr": "0.3 + 0.7*exp(-16*(asinh(a*T)/a - (2))^2)",
+              "glow": true
+            },
+            {
+              "id": "s7_tau_tick_3",
+              "type": "animated_point",
+              "expr": [
+                "(1/a)*cosh(a*(3))",
+                "(1/a)*sinh(a*(3))",
+                "0"
+              ],
+              "color": "#ffaa33",
+              "size": 2,
+              "visibleExpr": "(1/a)*cosh(a*(3)) < 9.2",
+              "legendGroup": "proper-time ticks ($\\Delta\\tau = 1$)",
+              "sizeExpr": "2 + 7*exp(-16*(asinh(a*T)/a - (3))^2)",
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "opacity": 0.3,
+              "opacityExpr": "0.3 + 0.7*exp(-16*(asinh(a*T)/a - (3))^2)",
+              "glow": true
+            },
+            {
+              "id": "s7_tau_tick_4",
+              "type": "animated_point",
+              "expr": [
+                "(1/a)*cosh(a*(4))",
+                "(1/a)*sinh(a*(4))",
+                "0"
+              ],
+              "color": "#ffaa33",
+              "size": 2,
+              "visibleExpr": "(1/a)*cosh(a*(4)) < 9.2",
+              "legendGroup": "proper-time ticks ($\\Delta\\tau = 1$)",
+              "sizeExpr": "2 + 7*exp(-16*(asinh(a*T)/a - (4))^2)",
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "opacity": 0.3,
+              "opacityExpr": "0.3 + 0.7*exp(-16*(asinh(a*T)/a - (4))^2)",
+              "glow": true
+            },
+            {
+              "id": "s7_tau_tick_5",
+              "type": "animated_point",
+              "expr": [
+                "(1/a)*cosh(a*(5))",
+                "(1/a)*sinh(a*(5))",
+                "0"
+              ],
+              "color": "#ffaa33",
+              "size": 2,
+              "visibleExpr": "(1/a)*cosh(a*(5)) < 9.2",
+              "legendGroup": "proper-time ticks ($\\Delta\\tau = 1$)",
+              "sizeExpr": "2 + 7*exp(-16*(asinh(a*T)/a - (5))^2)",
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "opacity": 0.3,
+              "opacityExpr": "0.3 + 0.7*exp(-16*(asinh(a*T)/a - (5))^2)",
+              "glow": true
+            },
+            {
+              "id": "s7_tau_tick_6",
+              "type": "animated_point",
+              "expr": [
+                "(1/a)*cosh(a*(6))",
+                "(1/a)*sinh(a*(6))",
+                "0"
+              ],
+              "color": "#ffaa33",
+              "size": 2,
+              "visibleExpr": "(1/a)*cosh(a*(6)) < 9.2",
+              "legendGroup": "proper-time ticks ($\\Delta\\tau = 1$)",
+              "sizeExpr": "2 + 7*exp(-16*(asinh(a*T)/a - (6))^2)",
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "opacity": 0.3,
+              "opacityExpr": "0.3 + 0.7*exp(-16*(asinh(a*T)/a - (6))^2)",
+              "glow": true
+            },
+            {
+              "id": "s7_tau_tick_7",
+              "type": "animated_point",
+              "expr": [
+                "(1/a)*cosh(a*(7))",
+                "(1/a)*sinh(a*(7))",
+                "0"
+              ],
+              "color": "#ffaa33",
+              "size": 2,
+              "visibleExpr": "(1/a)*cosh(a*(7)) < 9.2",
+              "legendGroup": "proper-time ticks ($\\Delta\\tau = 1$)",
+              "sizeExpr": "2 + 7*exp(-16*(asinh(a*T)/a - (7))^2)",
+              "shader": {
+                "emissive": "#ffaa33",
+                "shininess": 80
+              },
+              "opacity": 0.3,
+              "opacityExpr": "0.3 + 0.7*exp(-16*(asinh(a*T)/a - (7))^2)",
+              "glow": true
             }
           ],
           "info": [
             {
               "id": "s7_ship_info",
               "position": "top-left",
-              "content": "**Live readouts**\n\n$v = {{toFixed(a*T/sqrt(1 + a*a*T*T), 3)}}\\,c$\n\n$\\gamma = {{toFixed(sqrt(1 + a*a*T*T), 2)}}$\n\n$\\tau_{\\text{ship}} = {{toFixed(asinh(a*T)/a, 2)}}$ (proper time)\n\nThe crew *feels* a steady $a = {{toFixed(a, 2)}}$ forever — but $v$ only crawls toward $c$, and the 4-velocity arrow $u^\\mu$ tilts ever closer to the $45°$ light direction without ever reaching it.\n\n*Press play on $t$ and watch it ride.*",
+              "content": "**Live readouts**\n\n$v = {{toFixed(a*T/sqrt(1 + a*a*T*T), 3)}}\\,c$\n\n$\\gamma = {{toFixed(sqrt(1 + a*a*T*T), 2)}}$\n\n$\\tau_{\\text{ship}} = {{toFixed(asinh(a*T)/a, 2)}}$ (proper time)\n\nThe crew *feels* a steady $a = {{toFixed(a, 2)}}$ forever — but $v$ only crawls toward $c$, and the 4-velocity arrow $u^\\mu$ tilts ever closer to the $45°$ light direction without ever reaching it.\n\n*Press play on $t$ and watch it ride.*\n\nGold dots: the crew's clock ticks, $\\Delta\\tau = 1$, measured along the worldline — watch them stretch apart as the path bends toward the light line.",
               "keep": true
             }
           ]
