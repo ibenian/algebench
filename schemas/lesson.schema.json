@@ -807,8 +807,11 @@
           "description": "Camera up vector [x,y,z]. Default: [0,1,0]."
         },
         "follow": {
-          "type": "string",
-          "description": "Element ID to follow with the camera. The camera tracks this element's animated position."
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+          ],
+          "description": "Element ID (or list of candidate IDs — the live one is tracked) to follow with the camera. The camera tracks the element's animated position."
         },
         "offset": {
           "$ref": "#/$defs/vec3Number",

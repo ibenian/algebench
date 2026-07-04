@@ -332,7 +332,10 @@ function _evalInfoExpr(expr) {
     const trimmed = String(expr || '').trim();
     if (!trimmed) return '';
     if (_exprHasUnknownIdentifiers(trimmed)) {
-        return null;
+        // Unknown slider/function (e.g. a tutor-injected overlay referencing a
+        // slider that isn't on the current step): degrade to the same '?'
+        // marker used for eval failures rather than leaking raw template text.
+        return '?';
     }
     const memScope = (window.agentMemoryValues && typeof window.agentMemoryValues === 'object')
         ? window.agentMemoryValues

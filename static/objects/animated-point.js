@@ -174,11 +174,11 @@ export function renderAnimatedPoint(el, view) {
                 // keep previous position
             }
 
+            if (mesh._hiddenByRemove) return;
+
             if (el.id) {
                 state.animatedElementPos[el.id] = { pos: p, startTime, time: nowMs };
             }
-
-            if (mesh._hiddenByRemove) return;
 
             let isVisible = true;
             const curVisibleFn = animExprEntry.visibleFn || visibleFn;
