@@ -79,6 +79,10 @@
       "description": "A single scene within a lesson, containing 3D elements and optional steps.",
       "required": ["title"],
       "properties": {
+        "id": {
+          "type": "string",
+          "description": "Stable scene id for deeplinking (the `sc=` param). Resolution is id → slug(title) → index, so an explicit id keeps a share/AI-jump link valid even when the title changes. Kebab-case recommended."
+        },
         "title": {
           "type": "string",
           "description": "Scene title displayed in the navigation dock. Example: \"$P(A)$ — Prior\"."
@@ -153,6 +157,10 @@
       "description": "An incremental step that adds/removes elements and configures sliders.",
       "required": ["title"],
       "properties": {
+        "id": {
+          "type": "string",
+          "description": "Stable step id for deeplinking (the `st=` param). Resolution is id → slug(title) → index, so an explicit id keeps a share/AI-jump link valid even when the title changes. Kebab-case recommended."
+        },
         "title": {
           "type": "string",
           "description": "Step title shown in the dock and caption bar. Supports KaTeX. Example: \"$P(A)$ — Prior\"."

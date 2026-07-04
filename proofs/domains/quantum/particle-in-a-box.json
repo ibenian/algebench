@@ -1,7 +1,7 @@
 {
   "title": "Particle in a Box: Energy Quantization",
   "domain": "quantum",
-  "deeplink": "/?builtin=photons-wavelength-energy&panel=chat&sc=when-wavelengths-become-discrete&st=energy-scales-as-n-2",
+  "deeplink": "/?builtin=photons-wavelength-energy&panel=chat&sc=discrete-wavelengths&st=energy-n-squared",
   "steps": [
     {
       "index": 0,
