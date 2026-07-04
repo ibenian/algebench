@@ -43,7 +43,12 @@ export function renderAnimatedCurve(el, view) {
     }
 
     // Optional plane selection: 'xy' (default) plots expr along y; 'xz' plots it along z.
-    // fillRegions are only supported in the default 'xy' plane.
+    // fillRegions are only supported in the default 'xy' plane. Any other value
+    // (e.g. the schema-allowed 'yz', which this renderer does not model) falls back
+    // to 'xy' — warn so an author sees the mismatch instead of silent wrong output.
+    if (el.plane !== undefined && el.plane !== 'xy' && el.plane !== 'xz') {
+        console.warn(`animated_curve "${el.id || ''}": plane "${el.plane}" is not supported (use 'xy' or 'xz'); falling back to 'xy'.`);
+    }
     const curvePlane = el.plane === 'xz' ? 'xz' : 'xy';
 
     function buildCurvePoints(tSec) {

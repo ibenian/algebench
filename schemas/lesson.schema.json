@@ -319,7 +319,7 @@
         "plane": {
           "type": "string",
           "enum": ["xy", "xz", "yz"],
-          "description": "Grid plane. Default: 'xy'. Also usable on animated_curve: 'xy' (default) plots expr along y; 'xz' plots it along z (fillRegions unsupported in 'xz').",
+          "description": "Grid plane. Default: 'xy'. Also usable on animated_curve: 'xy' (default) plots expr along y; 'xz' plots it along z (fillRegions unsupported in 'xz'). Any other value (e.g. 'yz') is not modelled for animated_curve and falls back to 'xy'.",
           "default": "xy"
         },
         "radius": {

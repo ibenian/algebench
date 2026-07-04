@@ -1619,15 +1619,26 @@ async function renderCurrentStepGraph(force = false) {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ latex: step.math, highlights: step.highlights || null }),
                 });
-                const data = resp.ok ? await resp.json() : null;
-                if (data && data.graph) {
-                    step.semanticGraph = { graph: data.graph };
-                } else {
+                if (!resp.ok) {
+                    // An HTTP error (500/4xx) is a server/transport failure, NOT a
+                    // parse failure — surface it distinctly so a real backend error
+                    // isn't masked as "the parser couldn't handle this expression".
                     step.semanticGraph = { error: {
-                        reason: 'parse_failed',
-                        message: 'Parser could not derive a semantic graph for this expression (on-demand).',
+                        reason: 'derive_request_failed',
+                        message: `On-demand graph derivation failed (HTTP ${resp.status}).`,
                         math: step.math,
                     } };
+                } else {
+                    const data = await resp.json();
+                    if (data && data.graph) {
+                        step.semanticGraph = { graph: data.graph };
+                    } else {
+                        step.semanticGraph = { error: {
+                            reason: 'parse_failed',
+                            message: 'Parser could not derive a semantic graph for this expression (on-demand).',
+                            math: step.math,
+                        } };
+                    }
                 }
             } catch (e) {
                 console.warn('[graph-view] on-demand graph derivation failed:', e);
