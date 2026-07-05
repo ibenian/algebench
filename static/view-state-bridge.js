@@ -217,15 +217,24 @@ export async function applyViewState(vs, opts = {}) {
         }
 
         // 3. Proof + proof step (proofs reload inside navigateTo).
+        //    Restored under the proof-sync latch: `st` and `ps` are captured
+        //    independently, so restoring the proof position must not let
+        //    proof→scene sync yank the scene to the proof step's `sceneStep`
+        //    binding, overriding the explicit `st` applied in step 2.
         if (vs.pf != null && Array.isArray(state.proofSpec) && state.proofSpec.length) {
             const ids = state.proofSpec.map((e, i) => proofId(e, i));
             const pIdx = resolveIndex(vs.pf, ids);
             if (pIdx >= 0) {
-                setActiveProof(pIdx);
-                const proof = state.proofSpec[pIdx] && state.proofSpec[pIdx].proof;
-                const sIds = proofStepIds(proof);
-                const sIdx = vs.ps != null ? resolveIndex(vs.ps, sIds) : -1;
-                navigateProof(sIdx);
+                state._proofSyncInProgress = true;
+                try {
+                    setActiveProof(pIdx);
+                    const proof = state.proofSpec[pIdx] && state.proofSpec[pIdx].proof;
+                    const sIds = proofStepIds(proof);
+                    const sIdx = vs.ps != null ? resolveIndex(vs.ps, sIds) : -1;
+                    navigateProof(sIdx);
+                } finally {
+                    state._proofSyncInProgress = false;
+                }
             }
         }
 

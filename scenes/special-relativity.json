@@ -1744,6 +1744,7 @@
           ]
         },
         {
+          "id": "time-is-length-two-paths-two-ages",
           "title": "Time is length: two paths, two ages",
           "description": "Proper time is the Minkowski length of a worldline — a clock ticks once per unit of $\\sqrt{dt^2 - dx^2}$. Count the gold ticks along each route.",
           "prompt": "Twin-paradox-in-one-picture step. Two worldlines join the SAME events A (bottom) and B (top): the straight stay-home line and a bent out-and-back route at speed w. Gold dots are clock ticks, one per unit of proper time — literally the distance measured along each worldline with the Minkowski ruler dtau = sqrt(dt^2 - dx^2). Ask the learner to PREDICT first: the bent path looks longer on paper, so which twin ages more? Then reveal: fewer ticks fit on the bent path — tau = 8*sqrt(1-w^2) < 8. Minus sign in the metric reverses the triangle inequality: straight timelike worldlines MAXIMIZE proper time. Connect back to the light clock (moving clocks tick slower) and forward to the accelerating ship, whose curved worldline also ages less than a straight one. Two rider dots now travel A to B in lockstep coordinate time (slider T2, animatable); each gold tick flashes (pulsating size) exactly when its worldline's rider crosses it — the stay-home clock strikes 8 flashes, the traveler fewer. NOTE: the inbound-leg ticks continue the traveler's proper time seamlessly through the turnaround (tick m sits at coordinate time m/sqrt(1-w^2) - 4) — the clock does NOT restart at the turn, so there is no rapid double-strike near the turnaround; the gap across the turn is exactly one unit of tau like every other gap.",
@@ -2070,6 +2071,7 @@
           ]
         },
         {
+          "id": "the-honest-twin-constant-thrust-there-and-back",
           "title": "The honest twin: constant thrust there and back",
           "description": "No teleporting kinks — the ship feels a steady $a$ the whole way: push, flip, brake. Three hyperbolic arcs, same verdict.",
           "prompt": "Realistic powered twin. The blue worldline is three hyperbolic arcs of constant FELT acceleration a: thrust outward for the first quarter (t in [-4,-2]), flip and thrust homeward for the whole middle half (t in [-2,2] — one continuous hyperbola through the at-rest turnaround at t=0), flip again and brake into B for the last quarter. Red dots mark the two flips; the ship is momentarily at rest at the turnaround. Proper time is tau = 4*asinh(2a)/a (each quarter contributes asinh(2a)/a), always less than 8 — smooth curves lose time exactly like kinks, because ANY lean toward the light lines shortens the Minkowski length. Gold ticks are the crew's continuous clock; they flash as the riders pass. Cranking a hugs the lightcone tighter: harder thrust, younger crew. Bridge forward: each arc is exactly the hyperbola derived in the next scene.",
@@ -2851,6 +2853,7 @@
       ],
       "steps": [
         {
+          "id": "two-travelers-one-stationary-frame",
           "title": "Two travelers, one stationary frame",
           "description": "Set each ship's signed speed — same direction, or head-on. The gold photon is the pace car nobody beats.",
           "prompt": "Introduce the lanes: A blue on top lane, B green below, photon on the highest lane always at c. Sliders are SIGNED — negative means leftward, so learners can stage parallel cruising or head-on passes. The counters over each ship are their own clocks, ticking at sqrt(1-v^2) per stationary-frame second. Invite play before any formulas. Each participant flashes a light burst on every tick of their OWN clock — O at full rate, ships slower by sqrt(1-v^2); crank a ship's speed and watch its flashes space out. The photon never flashes: zero proper time along a light path — light does not age.",
@@ -2963,6 +2966,7 @@
           ]
         },
         {
+          "id": "predict-how-fast-does-b-rush-past-a",
           "title": "Predict: how fast does B rush past A?",
           "description": "Head-on at 0.6c each. Newton says 1.2c. Commit to your answer, then advance.",
           "prompt": "Predict step — do NOT reveal the composition law yet. With vA = 0.6 and vB = -0.6, Newton's subtraction gives 1.2c, above light speed. Ask the learner: is that what A actually measures? Options: yes 1.2c; exactly c; something below c. Let them commit before advancing.",
@@ -2972,6 +2976,7 @@
           ]
         },
         {
+          "id": "reveal-how-speeds-really-merge",
           "title": "Reveal: how speeds really merge",
           "description": "Newton's bar smashes through the light line. Einstein's never touches it.",
           "prompt": "The reveal. Two bars race toward the golden c line: gray Newton bar |vB-vA| pierces it, blue Einstein bar |(vB-vA)/(1-vA*vB)| approaches but never reaches. Walk the dashboard: B seen from A, A seen from B (equal magnitudes, opposite signs), Newton's naive number, gamma_rel. Push both sliders to ±0.95 and watch Einstein's bar crush against the line at 0.9987 while Newton claims 1.9. The denominator 1 - vA*vB is the whole magic.",
@@ -3046,6 +3051,7 @@
           ]
         },
         {
+          "id": "rapidity-the-thing-that-really-adds",
           "title": "Rapidity: the thing that really adds",
           "description": "$\\eta = \\operatorname{atanh}(v)$ is the **rapidity**: the speed rewritten as a hyperbolic boost *angle*. Angles are **additive** — chaining boosts simply adds the $\\eta$'s, with no cap — and $\\tanh$ maps the total back below $c$.",
           "prompt": "Two rails. Top: rapidity axis with arrows eta_A (blue), eta_B (green), and their plain difference (gold gap) — subtraction happens here, angle-style. Bottom: velocity axis with gold ±c marks and two RESULT arrows: gray Newton (vB - vA, can pierce past +c or -c) and blue Einstein (tanh of the gap, always strictly inside the marks). The story in one picture: convert to angles, subtract like a Newtonian, convert back — that IS the composition law. Newton subtracted on the wrong rail. Walk the proof panel for the two-line tanh identity if asked.",
@@ -3250,6 +3256,7 @@
           ]
         },
         {
+          "id": "each-other-s-clocks",
           "title": "Each other's clocks",
           "description": "Both slowed — by the same factor, each in the other's eyes. Symmetric, until someone turns around.",
           "prompt": "Close the loop on time. Each ship's counter ticks at its own sqrt(1-v^2) in the STATIONARY frame — but between the ships, dilation is MUTUAL: A judges B slow by gamma_rel and B judges A slow by the SAME gamma_rel. Neither is wrong; they slice spacetime differently. The asymmetry only becomes fact at a reunion, which needs a bent worldline — point back to the twin steps. Also flag the ride-along camera caveat: riding A with the camera is not boosting into A's frame; the stationary frame's clock still runs the animation.",
@@ -6155,6 +6162,7 @@
       ],
       "steps": [
         {
+          "id": "the-stage-light-draws-the-boundaries",
           "title": "The stage: light draws the boundaries",
           "description": "Every event's future and past are fenced in by light at 45°.",
           "prompt": "Orient the learner: x is space, vertical is ct, light rays are 45° lines, and the shaded cones are the origin's future and past. Remind them this recaps scene 1 and that a ship is about to be added.",
@@ -6214,6 +6222,7 @@
           ]
         },
         {
+          "id": "the-ship-a-hyperbola-with-a-heartbeat",
           "title": "The ship: a hyperbola with a heartbeat",
           "description": "Constant felt acceleration $a$ bends the worldline into $x^2 - t^2 = 1/a^2$.",
           "prompt": "Encourage playing the t slider and dragging a. Point out the 4-velocity arrow tilting toward 45° while gamma grows, yet the felt acceleration stays constant. Distinguish proper vs coordinate acceleration if asked.",
@@ -6435,6 +6444,7 @@
           ]
         },
         {
+          "id": "the-horizon-a-line-made-of-geometry",
           "title": "The horizon: a line made of geometry",
           "description": "The asymptote $x = t$ is a one-way causal boundary — and it keeps a fixed distance.",
           "prompt": "Name the asymptote as the Rindler horizon. Stress it is a causal boundary, not a wall — nothing is locally there. Highlight d = 1/a shrinking as a grows, and the 1g ≈ 0.97 light-year fact. Ask the learner to predict where a signal must start to catch the ship before advancing.",
@@ -6489,6 +6499,7 @@
           ]
         },
         {
+          "id": "the-chase-fire-a-signal-at-the-ship",
           "title": "The chase: fire a signal at the ship",
           "description": "Move the emission event across the horizon line and watch the verdict flip.",
           "prompt": "Have the learner slide the emission event (xe, te) across the horizon line and watch the verdict text flip between caught and never. Emphasize the pulse always moves at c; only the starting side of the line x = t matters. If the verdict says 'emitted ahead', explain the photon simply leads the ship forever.",
@@ -6567,6 +6578,7 @@
           ]
         },
         {
+          "id": "the-accelerated-observer-s-map",
           "title": "The accelerated observer's map",
           "description": "Rindler coordinates: hyperbolas are hovering observers, radial lines are moments of now.",
           "prompt": "Explain the green Rindler grid: hyperbolas are hovering observers at constant xi with a = 1/xi, radial lines are shared now-moments. Point out the ship's blue now-line always pivots through the origin — that is why the horizon distance is fixed; walk through the proof panel if the learner is curious.",
@@ -6755,6 +6767,7 @@
           ]
         },
         {
+          "id": "beyond-black-holes-and-the-warm-vacuum",
           "title": "Beyond: black holes and the warm vacuum",
           "description": "The same picture, curved: event horizons, gravitational time dilation, and Unruh's glow.",
           "prompt": "Connect the sandbox to black holes via the equivalence principle: a hovering observer is a Rindler observer. Tease the Unruh temperature and its link to Hawking radiation without heavy math. Invite the learner to keep playing with the sliders.",
