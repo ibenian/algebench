@@ -876,6 +876,9 @@ export function setupSettingsPanel() {
             } else if (param === 'planeOpacity') {
                 for (const m of state.planeMeshes) {
                     if (m._hiddenByRemove) continue;
+                    // Glow-halo sprites manage their own opacity/visibility per
+                    // frame, and additive sprites must never write depth.
+                    if (m.isSprite) continue;
                     if (m.userData && m.userData.ignorePlaneOpacity) {
                         const baseOp = (typeof m.userData.targetOpacity === 'number') ? m.userData.targetOpacity : 1;
                         m.visible = baseOp > 0.001;

@@ -166,8 +166,12 @@ export function renderAnimatedPoint(el, view) {
         animState,
         updateFrame(nowMs) {
             // Step-removed elements aren't rendered and must not publish
-            // positions — skip all per-frame evaluation for them.
-            if (mesh._hiddenByRemove) return;
+            // positions — retract any previously published entry (so the
+            // follow-cam can't latch onto a stale one) and skip evaluation.
+            if (mesh._hiddenByRemove) {
+                if (el.id) delete state.animatedElementPos[el.id];
+                return;
+            }
 
             const tSec = (nowMs - startTime) / 1000;
             const fns = animExprEntry.compiledFns || exprFns;
