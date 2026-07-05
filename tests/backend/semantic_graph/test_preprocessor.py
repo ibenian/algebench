@@ -209,6 +209,19 @@ class TestExtractParentheticalAnnotations:
         assert cleaned == latex
         assert anns == []
 
+    def test_side_condition_after_qquad(self, pp):
+        latex = r"T_0 = h \qquad (c = 1)"
+        cleaned, anns = pp.extract_parenthetical_annotations(latex)
+        assert cleaned == r"T_0 = h"
+        assert len(anns) == 1
+        assert anns[0]["label"] == "c = 1"
+
+    def test_side_condition_without_quad_not_stripped(self, pp):
+        latex = r"a = b (c = 1)"
+        cleaned, anns = pp.extract_parenthetical_annotations(latex)
+        assert cleaned == latex
+        assert anns == []
+
 
 # ------------------------------------------------------------------
 # Full pipeline (preprocess)

@@ -1057,20 +1057,19 @@
             "semanticGraph": {
               "graph": {
                 "nodes": [
-                  {"id": "T_0", "type": "scalar", "emoji": "⏱️", "latex": "T_{0}", "subexpr": "T_0", "description": "Proper time, the time for one 'tick' of the light clock as measured in its own rest frame.", "quantity": "proper_time", "dimension": "T", "unit": "s"},
-                  {"id": "h", "type": "scalar", "emoji": "↕️", "latex": "h", "subexpr": "h \\qquad (c", "description": "The height of the light clock, representing the one-way distance traveled by the photon.", "quantity": "height", "dimension": "L", "unit": "m", "color": "orange", "highlight": "c"},
-                  {"id": "s2___num_1", "type": "number", "label": "1", "subexpr": "1)", "description": "The value 1, to which the speed of light $c$ is set in this derivation using natural units.", "quantity": "speed_of_light", "dimension": "1", "unit": "", "value": 1},
-                  {"id": "__equals_1", "type": "operator", "op": "equals", "subexpr": "T_0 = h \\qquad (c = 1)", "description": "Equates the proper time interval $T_0$ to the clock height $h$, based on the convention that the speed of light $c=1$."}
+                  {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "T_0 = h", "description": "This equation defines the proper time for one tick of the light clock in its rest frame, using natural units where the speed of light $c=1$."},
+                  {"id": "T_0", "type": "scalar", "emoji": "⏰", "latex": "T_{0}", "subexpr": "T_{0}", "description": "The time for one tick of the clock in its rest frame, also known as the proper time interval.", "quantity": "proper_time_interval", "dimension": "T", "unit": "s"},
+                  {"id": "h", "type": "scalar", "emoji": "↕️", "latex": "h", "subexpr": "h", "description": "The one-way travel distance of the photon, equal to the clock's height. In natural units ($c=1$), this distance is numerically equal to the travel time.", "quantity": "distance", "dimension": "L", "unit": "m", "color": "orange", "highlight": "c"},
+                  {"id": "__annotation_0", "type": "annotation", "label": "c = 1", "latex": "c = 1"}
                 ],
                 "edges": [
                   {"from": "T_0", "to": "__equals_1"},
-                  {"from": "h", "to": "__equals_1"},
-                  {"from": "s2___num_1", "to": "__equals_1"}
+                  {"from": "h", "to": "__equals_1"}
                 ],
                 "classification": {"kind": "algebraic"},
                 "enrichment": {
-                  "reasoning": "The context is a lesson on Special Relativity, so the domain is special_relativity. T_0 is proper time and h is the height of the light clock.",
-                  "fields": ["nodes.T_0.description", "nodes.T_0.dimension", "nodes.T_0.emoji", "nodes.T_0.quantity", "nodes.T_0.unit", "nodes.h.description", "nodes.h.dimension", "nodes.h.emoji", "nodes.h.quantity", "nodes.h.unit", "nodes.s2___num_1.description", "nodes.s2___num_1.dimension", "nodes.s2___num_1.quantity", "nodes.s2___num_1.unit", "nodes.s2___num_1.value", "nodes.__equals_1.description"]
+                  "reasoning": "The context is a light clock in special relativity, so the domain is `special_relativity`. Natural units ($c=1$) are used, making time ($T_0$) and distance ($h$) numerically equal.",
+                  "fields": ["nodes.__equals_1.description", "nodes.T_0.description", "nodes.T_0.dimension", "nodes.T_0.emoji", "nodes.T_0.quantity", "nodes.T_0.unit", "nodes.h.description", "nodes.h.dimension", "nodes.h.emoji", "nodes.h.quantity", "nodes.h.unit"]
                 }
               }
             }
@@ -5000,30 +4999,29 @@
             "semanticGraph": {
               "graph": {
                 "nodes": [
-                  {"id": "s0___Xi_0_1", "type": "function", "emoji": "🚀", "op": "Xi_{0}", "subexpr": "x_{\\text{ship}}(t)", "description": "The spatial position $x$ of the accelerating ship as a function of time $t$.", "quantity": "position", "dimension": "L", "unit": "m"},
-                  {"id": "t", "type": "scalar", "emoji": "⏱️", "latex": "t", "subexpr": "t", "description": "Coordinate time $t$ in the stationary inertial reference frame.", "quantity": "time", "dimension": "T", "unit": "s"},
-                  {"id": "s1___power_1", "type": "operator", "op": "power", "exponent": "1/2", "subexpr": "\\sqrt{1 + t^2} \\qquad (a", "description": "Calculates the ship's position from its hyperbolic worldline equation, derived from $x^2 - t^2 = (c/a)^2$ with $c=1, a=1$.", "quantity": "position", "dimension": "L", "unit": "m"},
-                  {"id": "s1___add_2", "type": "operator", "op": "add", "subexpr": "t^{2} + 1", "description": "The sum of squared time (in length units) and a constant, representing the squared position in spacetime.", "dimension": "L²", "unit": "m²"},
-                  {"id": "s1___num_3", "type": "number", "label": "1", "subexpr": "1", "description": "A constant $(c/a)^2$ defining the spacetime hyperbola, with speed of light $c=1$ and proper acceleration $a=1$.", "dimension": "L²", "unit": "m²", "value": 1},
-                  {"id": "s1___power_4", "type": "operator", "op": "power", "exponent": "2", "subexpr": "t^{2}", "description": "The square of the coordinate time $t$, implicitly multiplied by $c^2$ (with $c=1$ in natural units).", "dimension": "L²", "unit": "m²"},
-                  {"id": "s2___num_1", "type": "number", "label": "1", "subexpr": "1)", "description": "The constant proper acceleration $a$ of the ship, set to a value of 1 in natural units.", "quantity": "acceleration", "dimension": "L·T⁻²", "unit": "m/s²", "value": 1},
-                  {"id": "__equals_1", "type": "operator", "op": "equals", "subexpr": "x_{\\text{ship}}(t) = \\sqrt{1 + t^2} \\qquad (a = 1)", "description": "This equation specifies the ship's worldline, giving its position $x$ at any coordinate time $t$."}
+                  {"id": "__equals_1", "type": "relation", "emoji": "↔️", "op": "equals", "subexpr": "x_{\\text{ship}}(t) = \\sqrt{1 + t^2}", "description": "The ship's worldline, an equation relating its spatial position $x_{\\\\text{ship}}$ to coordinate time $t$.", "color": "blue", "highlight": "ship"},
+                  {"id": "__Xi_0_2", "type": "function", "emoji": "🚀", "op": "Xi_{0}", "subexpr": "x_{\\text{ship}}{\\left(t \\right)}", "description": "The spatial position of the ship, $x_{\\\\text{ship}}$, as a function of time.", "quantity": "position", "dimension": "L", "unit": "m"},
+                  {"id": "t", "type": "scalar", "emoji": "⏳", "latex": "t", "subexpr": "t", "description": "Coordinate time $t$ in a stationary frame, in units where the speed of light is 1.", "quantity": "time", "dimension": "L", "unit": "m"},
+                  {"id": "__power_3", "type": "operator", "op": "power", "exponent": "1/2", "subexpr": "\\sqrt{t^{2} + 1}", "description": "The square root that gives the ship's position $x_{\\\\text{ship}}$ from the spacetime interval.", "quantity": "position", "dimension": "L", "unit": "m"},
+                  {"id": "__add_4", "type": "operator", "op": "add", "subexpr": "t^{2} + 1", "description": "The sum of squared time and squared rest position, equal to $x_{\\\\text{ship}}^2$.", "dimension": "L²", "unit": "m²"},
+                  {"id": "__num_5", "type": "number", "label": "1", "subexpr": "1", "description": "The number one, representing the squared invariant spacetime interval for this worldline.", "dimension": "L²", "unit": "m²", "value": 1},
+                  {"id": "__power_6", "type": "operator", "op": "power", "exponent": "2", "subexpr": "t^{2}", "description": "The square of the coordinate time, $t^2$.", "dimension": "L²", "unit": "m²"},
+                  {"id": "__annotation_0", "type": "annotation", "label": "a = 1", "latex": "a = 1"}
                 ],
                 "edges": [
-                  {"from": "t", "to": "s0___Xi_0_1"},
-                  {"from": "s1___num_3", "to": "s1___add_2"},
-                  {"from": "t", "to": "s1___power_4"},
-                  {"from": "s1___power_4", "to": "s1___add_2"},
-                  {"from": "s1___add_2", "to": "s1___power_1"},
-                  {"from": "s0___Xi_0_1", "to": "__equals_1"},
-                  {"from": "s1___power_1", "to": "__equals_1"},
-                  {"from": "s2___num_1", "to": "__equals_1"}
+                  {"from": "t", "to": "__Xi_0_2"},
+                  {"from": "__Xi_0_2", "to": "__equals_1"},
+                  {"from": "__num_5", "to": "__add_4"},
+                  {"from": "t", "to": "__power_6"},
+                  {"from": "__power_6", "to": "__add_4"},
+                  {"from": "__add_4", "to": "__power_3"},
+                  {"from": "__power_3", "to": "__equals_1"}
                 ],
                 "classification": {"kind": "algebraic"},
                 "domain": "special_relativity",
                 "enrichment": {
-                  "reasoning": "The context of spacetime worldlines and accelerating ships points to a `special_relativity` domain. Natural units with $c=1$ are used, making time $t$ and position $x$ have compatible dimensions.",
-                  "fields": ["domain", "nodes.s0___Xi_0_1.description", "nodes.s0___Xi_0_1.dimension", "nodes.s0___Xi_0_1.emoji", "nodes.s0___Xi_0_1.quantity", "nodes.s0___Xi_0_1.unit", "nodes.t.description", "nodes.t.dimension", "nodes.t.emoji", "nodes.t.quantity", "nodes.t.unit", "nodes.s1___power_1.description", "nodes.s1___power_1.dimension", "nodes.s1___power_1.quantity", "nodes.s1___power_1.unit", "nodes.s1___add_2.description", "nodes.s1___add_2.dimension", "nodes.s1___add_2.unit", "nodes.s1___num_3.description", "nodes.s1___num_3.dimension", "nodes.s1___num_3.unit", "nodes.s1___num_3.value", "nodes.s1___power_4.description", "nodes.s1___power_4.dimension", "nodes.s1___power_4.unit", "nodes.s2___num_1.description", "nodes.s2___num_1.dimension", "nodes.s2___num_1.quantity", "nodes.s2___num_1.unit", "nodes.s2___num_1.value", "nodes.__equals_1.description"]
+                  "reasoning": "Context is a lesson on Special Relativity, with a hyperbolic worldline $x^2 - t^2 = 1$. This implies geometric units where $c=1$, so time and space have the same dimension.",
+                  "fields": ["domain", "nodes.__equals_1.description", "nodes.__equals_1.emoji", "nodes.__Xi_0_2.description", "nodes.__Xi_0_2.dimension", "nodes.__Xi_0_2.emoji", "nodes.__Xi_0_2.quantity", "nodes.__Xi_0_2.unit", "nodes.t.description", "nodes.t.dimension", "nodes.t.emoji", "nodes.t.quantity", "nodes.t.unit", "nodes.__power_3.description", "nodes.__power_3.dimension", "nodes.__power_3.quantity", "nodes.__power_3.unit", "nodes.__add_4.description", "nodes.__add_4.dimension", "nodes.__add_4.unit", "nodes.__num_5.description", "nodes.__num_5.dimension", "nodes.__num_5.unit", "nodes.__num_5.value", "nodes.__power_6.description", "nodes.__power_6.dimension", "nodes.__power_6.unit"]
                 }
               }
             }
