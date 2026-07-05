@@ -225,6 +225,9 @@ export async function applyViewState(vs, opts = {}) {
             const ids = state.proofSpec.map((e, i) => proofId(e, i));
             const pIdx = resolveIndex(vs.pf, ids);
             if (pIdx >= 0) {
+                // Save/restore rather than clear: keeps the latch composable
+                // if this ever runs inside another latched sync path.
+                const prevLatch = state._proofSyncInProgress;
                 state._proofSyncInProgress = true;
                 try {
                     setActiveProof(pIdx);
@@ -233,7 +236,7 @@ export async function applyViewState(vs, opts = {}) {
                     const sIdx = vs.ps != null ? resolveIndex(vs.ps, sIds) : -1;
                     navigateProof(sIdx);
                 } finally {
-                    state._proofSyncInProgress = false;
+                    state._proofSyncInProgress = prevLatch;
                 }
             }
         }
