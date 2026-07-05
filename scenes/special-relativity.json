@@ -2264,10 +2264,10 @@
             {
               "id": "s4_newton_v_curve",
               "type": "parametric_curve",
-              "x": "-6 + a*u*1.6",
-              "y": "-7 + u*1.6",
+              "x": "-7 + 1.2*min(u, 1.25/a)",
+              "y": "-4.5 + 3*min(a*u, 1.25)",
               "z": "0",
-              "range": [0, 2.2],
+              "range": [0, 5],
               "samples": 64,
               "color": "#aabbcc",
               "width": 2,
@@ -2277,10 +2277,83 @@
             {
               "id": "s4_newton_v_label",
               "type": "text",
-              "text": "inset: $v=a\\,t$",
+              "text": "Newton: $v = a\\,t$ — no limit",
               "position": [-4.6, -6.4, 0],
               "color": "#aabbcc",
               "label": "inset $v=a t$"
+            },
+            {
+              "id": "s4_nv_lbl_v",
+              "type": "text",
+              "text": "$v$",
+              "position": [-7.3, -0.7, 0],
+              "color": "#aabbcc",
+              "size": 12
+            },
+            {
+              "id": "s4_nv_lbl_t",
+              "type": "text",
+              "text": "$t$",
+              "position": [-0.55, -4.6, 0],
+              "color": "#aabbcc",
+              "size": 12
+            },
+            {
+              "id": "s4_nv_tick1",
+              "type": "text",
+              "text": "$1$",
+              "position": [-7.3, -1.5, 0],
+              "color": "#aabbcc",
+              "size": 11
+            },
+            {
+              "id": "s4_nv_tick0",
+              "type": "text",
+              "text": "$0$",
+              "position": [-7.3, -4.6, 0],
+              "color": "#aabbcc",
+              "size": 11
+            },
+            {
+              "id": "s4_nv_ceiling",
+              "type": "line",
+              "points": [
+                [-7, -1.5, 0],
+                [-1, -1.5, 0]
+              ],
+              "color": "#ffaa33",
+              "width": 1.5,
+              "opacity": 0.7,
+              "label": "$v = 1$ (light)"
+            },
+            {
+              "id": "s4_nv_axis_y",
+              "type": "vector",
+              "from": [-7, -4.5, 0],
+              "to": [-7, -0.7, 0],
+              "color": "#aabbcc",
+              "width": 2,
+              "arrowScale": 0.5,
+              "opacity": 0.7
+            },
+            {
+              "id": "s4_nv_axis_x",
+              "type": "vector",
+              "from": [-7, -4.5, 0],
+              "to": [-0.7, -4.5, 0],
+              "color": "#aabbcc",
+              "width": 2,
+              "arrowScale": 0.5,
+              "opacity": 0.7
+            },
+            {
+              "id": "s4_nv_exit",
+              "type": "text",
+              "text": "$\\uparrow$",
+              "color": "#aabbcc",
+              "size": 13,
+              "positionExpr": ["-7 + 1.2*1.25/a", "-0.65", "0"],
+              "visibleExpr": "a >= 0.26"
             }
           ],
           "sliders": [
@@ -2387,27 +2460,6 @@
           "prompt": "Add a small v(t) inset curve (in the lower-left corner, mapped so v=0..1 spans a short vertical band) showing v(t) = t/sqrt(1/a^2 + t^2) approaching the ceiling v=1 asymptotically, with a dashed v=1 ceiling line. This is the crux of the proper-vs-coordinate acceleration misconception: coordinate acceleration dv/dt -> 0 as v -> c, but proper acceleration (the accelerometer reading, the invariant push in your seat) stays constant at a. Two different 'accelerations', only the proper one is constant.",
           "add": [
             {
-              "id": "s4_vt_ceiling",
-              "type": "line",
-              "points": [
-                [-7, -1.5, 0],
-                [-1, -1.5, 0]
-              ],
-              "color": "#ffaa33",
-              "width": 1.5,
-              "opacity": 0.7,
-              "legendGroup": "inset $v(t)$"
-            },
-            {
-              "id": "s4_vt_ceiling_label",
-              "type": "text",
-              "text": "$v=1$ (ceiling)",
-              "position": [-1.2, -1.5, 0],
-              "color": "#ffaa33",
-              "align": "left",
-              "label": "inset $v(t)$"
-            },
-            {
               "id": "s4_vt_curve",
               "type": "parametric_curve",
               "x": "-7 + u*1.2",
@@ -2423,63 +2475,9 @@
               "id": "s4_vt_curve_label",
               "type": "text",
               "text": "$v(t)=\\dfrac{t}{\\sqrt{1/a^2+t^2}}$",
-              "position": [-4.6, -6.4, 0],
+              "position": [-4.6, -7.05, 0],
               "color": "#4da6ff",
               "label": "inset $v(t)=t/\\sqrt{1/a^2+t^2}$"
-            },
-            {
-              "id": "s4_vt_axis_y",
-              "type": "line",
-              "points": [
-                [-7, -4.5, 0],
-                [-7, -1.2, 0]
-              ],
-              "color": "#aabbcc",
-              "width": 1.5,
-              "opacity": 0.6
-            },
-            {
-              "id": "s4_vt_axis_x",
-              "type": "line",
-              "points": [
-                [-7, -4.5, 0],
-                [-0.8, -4.5, 0]
-              ],
-              "color": "#aabbcc",
-              "width": 1.5,
-              "opacity": 0.6
-            },
-            {
-              "id": "s4_vt_lbl_v",
-              "type": "text",
-              "text": "$v$",
-              "position": [-7.3, -1.1, 0],
-              "color": "#aabbcc",
-              "size": 12
-            },
-            {
-              "id": "s4_vt_lbl_t",
-              "type": "text",
-              "text": "$t$",
-              "position": [-0.55, -4.6, 0],
-              "color": "#aabbcc",
-              "size": 12
-            },
-            {
-              "id": "s4_vt_tick1",
-              "type": "text",
-              "text": "$1$",
-              "position": [-7.3, -1.5, 0],
-              "color": "#aabbcc",
-              "size": 11
-            },
-            {
-              "id": "s4_vt_tick0",
-              "type": "text",
-              "text": "$0$",
-              "position": [-7.3, -4.6, 0],
-              "color": "#aabbcc",
-              "size": 11
             }
           ],
           "remove": [

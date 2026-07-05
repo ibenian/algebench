@@ -54,7 +54,7 @@ export function renderAnimatedPoint(el, view) {
     const labelExprString = (typeof el.labelExpr === 'string' && el.labelExpr.trim()) ? el.labelExpr.trim() : null;
     const labelOffset = (Array.isArray(el.labelOffset) && el.labelOffset.length === 3)
         ? [Number(el.labelOffset[0]) || 0, Number(el.labelOffset[1]) || 0, Number(el.labelOffset[2]) || 0]
-        : [0, 0, 0.3];
+        : [0, 0, 0.15];
 
     if (!Array.isArray(exprStrings) || exprStrings.length !== 3) return null;
 
