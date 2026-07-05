@@ -2192,6 +2192,13 @@
           "position": [0, 0, 16],
           "target": [0, 0, 0],
           "description": "Whole spacetime plane with both light rays."
+        },
+        {
+          "name": "Ride the Ship",
+          "description": "Follow-cam glued to the ship as it rides the hyperbola by proper time (best on the final step with tau playing) — watch the light line loom closer and the tau ticks flash past",
+          "follow": "s4_riding_point",
+          "offset": [-2.0, 0.7, 1.7],
+          "up": [0, 1, 0]
         }
       ],
       "elements": [
@@ -2771,6 +2778,13 @@
           "position": [0, 0, 14],
           "target": [0, 0, 0],
           "description": "The movable emission event and its photon worldline."
+        },
+        {
+          "name": "Ride: Chased Ship",
+          "description": "Follow-cam on the fleeing ship, biased toward the pursuing photon — watch it close the gap forever without ever arriving",
+          "follow": "s5_ship_point",
+          "offset": [-2.0, 0.7, 1.7],
+          "up": [0, 1, 0]
         }
       ],
       "elements": [
