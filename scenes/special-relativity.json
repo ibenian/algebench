@@ -780,10 +780,168 @@
           "virtualTime": {"expr": "T4"}
         },
         {
+          "title": "Where the triangle comes from: the planted wavefront",
+          "description": "Emit a flash. Its circle stays planted at the emission **event** — it refuses to ride along with the clock. That refusal *is* the postulate; the triangle is just its geometry.",
+          "prompt": "The origin story of the Pythagorean starting point. A flash is emitted at each clock's bottom mirror at t=0. KEY IDEA: each gold wavefront is a circle of radius ct centered on the emission EVENT, planted in space — it does NOT move with the sliding clock. That is literally the second postulate. The rest clock's mirror meets its circle straight overhead at radius h (t=2). The moving clock's mirror has slid, so it meets the SAME planted circle later and off-axis — at that strike the radius is the hypotenuse ct, the slide is the base vt, the mirror height is the leg h: Pythagoras is intercepted, not assumed. The faint red circle is Galileo's counter-proposal: a wavefront dragged along with the clock, which would strike on the rest schedule (t=2, no dilation). Note the moving photon rides exactly ON its planted wavefront the whole flight. Scrub t slowly through both strikes. Live readouts show strike times 2 vs 2*gamma.",
+          "duration": 5000,
+          "virtualTime": {"expr": "T5"},
+          "sliders": [
+            {"id": "v", "label": "clock speed $v\\;(c=1)$", "min": 0, "max": 0.95, "step": 0.01, "default": 0.6, "animate": true, "animateMode": "loop", "duration": 4000, "autoplay": false},
+            {"id": "T5", "label": "$t$ (grow the flash)", "min": 0, "max": 8, "step": 0.02, "default": 0, "animate": true, "animateMode": "loop", "autoplay": false, "duration": 14000}
+          ],
+          "remove": [
+            {"id": "s2_tri_hyp"},
+            {"id": "s2_tri_vertical"},
+            {"id": "s2_tri_base"},
+            {"id": "s2_tri_hyp_line"},
+            {"id": "s2_tri_label"},
+            {"type": "slider"}
+          ],
+          "add": [
+            {
+              "id": "s2w_front_rest",
+              "type": "parametric_curve",
+              "x": "-4 + min(T5, 7)*cos(t)",
+              "y": "min(T5, 7)*sin(t)",
+              "z": "0",
+              "range": [0, 6.2832],
+              "samples": 96,
+              "color": "#ffaa33",
+              "width": 1.5,
+              "opacity": 0.45
+            },
+            {
+              "id": "s2w_front_move",
+              "type": "parametric_curve",
+              "x": "-1 + min(T5, 7)*cos(t)",
+              "y": "min(T5, 7)*sin(t)",
+              "z": "0",
+              "range": [0, 6.2832],
+              "samples": 96,
+              "color": "#ffaa33",
+              "width": 2,
+              "opacity": 0.6
+            },
+            {
+              "id": "s2w_ghost",
+              "type": "parametric_curve",
+              "x": "-1 + v*min(T5, 7) + min(T5, 7)*cos(t)",
+              "y": "min(T5, 7)*sin(t)",
+              "z": "0",
+              "range": [0, 6.2832],
+              "samples": 96,
+              "color": "#ff5566",
+              "width": 1,
+              "opacity": 0.22
+            },
+            {
+              "id": "s2w_event_rest",
+              "type": "point",
+              "position": [-4, 0, 0],
+              "color": "#ffaa33",
+              "size": 2,
+              "legendGroup": "emission events"
+            },
+            {
+              "id": "s2w_event_move",
+              "type": "point",
+              "position": [-1, 0, 0],
+              "color": "#ffaa33",
+              "size": 2,
+              "label": "emission events ✳"
+            },
+            {
+              "id": "s2w_hyp",
+              "type": "animated_line",
+              "points": [
+                ["-1", "0", "0"],
+                ["-1 + v*min(T5, 2/sqrt(1-v^2))", "2*(1 - abs(mod(min(T5, 2/sqrt(1-v^2))*sqrt(1-v^2)/2, 2) - 1))", "0"]
+              ],
+              "color": "#ffaa33",
+              "width": 2.5,
+              "label": "$c\\,t$"
+            },
+            {
+              "id": "s2w_leg_h",
+              "type": "animated_line",
+              "points": [
+                ["-1", "0", "0"],
+                ["-1", "min(T5*sqrt(1-v^2), 2)", "0"]
+              ],
+              "color": "#ff5566",
+              "width": 2.5,
+              "label": "$h$"
+            },
+            {
+              "id": "s2w_leg_base",
+              "type": "animated_line",
+              "points": [
+                ["-1", "2", "0"],
+                ["-1 + v*min(T5, 2/sqrt(1-v^2))", "2", "0"]
+              ],
+              "color": "#4da6ff",
+              "width": 2.5,
+              "label": "$v\\,t$"
+            },
+            {
+              "id": "s2w_strike_rest",
+              "type": "animated_point",
+              "expr": ["-4", "2", "0"],
+              "color": "#ffaa33",
+              "size": 2,
+              "glow": true,
+              "opacity": 0,
+              "sizeExpr": "2 + 5*exp(-8*(T5 - 2)^2)",
+              "opacityExpr": "0.95*exp(-8*(T5 - 2)^2)"
+            },
+            {
+              "id": "s2w_strike_move",
+              "type": "animated_point",
+              "expr": ["-1 + v*(2/sqrt(1-v^2))", "2", "0"],
+              "color": "#ffaa33",
+              "size": 2,
+              "glow": true,
+              "opacity": 0,
+              "sizeExpr": "2 + 5*exp(-8*(T5 - 2/sqrt(1-v^2))^2)",
+              "opacityExpr": "0.95*exp(-8*(T5 - 2/sqrt(1-v^2))^2)"
+            },
+            {
+              "id": "s2w_strike_move_mark",
+              "type": "animated_point",
+              "expr": ["-1 + v*(2/sqrt(1-v^2))", "2", "0"],
+              "color": "#4da6ff",
+              "size": 2,
+              "visibleExpr": "T5 >= 2/sqrt(1-v^2)",
+              "labelExpr": "concat(\"strike at t = \", toFixed(2/sqrt(1-v^2), 2), \" = 2γ\")"
+            },
+            {
+              "id": "s2w_key_planted",
+              "type": "text",
+              "align": "left",
+              "size": 11,
+              "color": "#ffaa33",
+              "text": "— planted wavefronts: radius $c\\,t$, centered on the emission events",
+              "position": [2.2, -2.6, 0]
+            },
+            {
+              "id": "s2w_key_ghost",
+              "type": "text",
+              "align": "left",
+              "size": 11,
+              "color": "#ff5566",
+              "text": "— Galileo's ghost: dragged along with the clock (no dilation)",
+              "position": [2.2, -3.3, 0]
+            }
+          ],
+          "info": [
+            {"id": "s2w_info", "position": "top-right", "content": "**The postulate, drawn**\n\nAt $t=0$ each bottom mirror emits a flash. Every wavefront is a circle of radius $c\\,t$ **centered on the emission event** — planted in space, indifferent to the sliding clock. *That* is \"$c$ is $c$ for everyone.\"\n\n- Rest clock: mirror meets its circle straight overhead — strike at $t = 2$ (radius $h$).\n- Moving clock: the mirror slid, so it meets the **same planted circle** later, off-axis — strike at $t = 2\\gamma = {{toFixed(2/sqrt(1 - v^2), 2)}}$.\n\nAt that strike: radius $= c\\,t$ (hypotenuse), slide $= v\\,t$ (base), height $= h$ (leg):\n\n$$(c\\,t)^2 = h^2 + (v\\,t)^2$$\n\nPythagoras is *intercepted*, not assumed. The faint red circle is Galileo's dragged wavefront — it would strike at $t = 2$, no dilation, no speed limit.\n\n*Watch the moving photon: it rides exactly **on** its planted wavefront, all flight long.*"}
+          ]
+        },
+        {
           "id": "gamma-readout-reality-checks",
           "title": "Gamma readout and reality checks",
           "description": "The stretch factor is $\\gamma = 1/\\sqrt{1-v^2}$. At $v=0.6$ that's $1.25$; as $v \\to c$ it rockets toward infinity. This isn't a light-clock quirk — *every* clock, including biology, slows the same way. Muons born 15 km up should decay in ~660 m, yet $\\gamma \\approx 5\\text{–}10$ lets them reach the ground; GPS clocks are corrected ~38 μs/day or your maps drift kilometers off.",
-          "prompt": "Wrap up with the live gamma readout gamma = 1/sqrt(1-v^2) and the inset curve of gamma(v) with a marker at the current v. Drag v: near v=0.95 gamma blows up past 3. Stress universality: springs, atoms, biology all slow by gamma because a light clock could sit inside any of them. Deliver the two reality checks concretely: muons (15 km up, tau ~2.2us, ~660 m naive range, gamma 5-10 saves them) and GPS (~38 us/day net, SR -7 and GR +45). Tie the boxed gamma in the proof panel to this on-screen readout. Good closing question: 'At what v does gamma = 2?' (v = sqrt(3)/2 ~ 0.87).",
+          "prompt": "Wrap up with the live gamma readout gamma = 1/sqrt(1-v^2) and the inset curve of gamma(v) with a marker at the current v. Drag v: near v=0.95 gamma blows up past 3. Stress universality: springs, atoms, biology all slow by gamma because a light clock could sit inside any of them. Deliver the two reality checks concretely: muons (15 km up, tau ~2.2us, ~660 m naive range, gamma 5-10 saves them) and GPS (~38 us/day net, SR -7 and GR +45). Tie the boxed gamma in the proof panel to this on-screen readout. Good closing question: 'At what v does gamma = 2?' (v = sqrt(3)/2 ~ 0.87). THE question to expect: 'this only proves LIGHT clocks slow — why would atoms/biology slow identically?' Three-leg answer: (1) Synchronization: if a co-moving atomic clock dilated differently from the light clock, the two would drift apart on board — an internal experiment detecting absolute motion, forbidden by the principle of relativity; in the ship frame both are at rest and agree, and clock coincidences are frame-independent events, so every co-moving clock must share the same gamma. (2) Mechanism: atoms are charges bound by electromagnetic fields signaling at c — every clock is secretly a baroque light clock; all fundamental interactions are Lorentz-invariant, so no process can opt out. (3) Geometry: proper time is worldline length (next scene); clocks are odometers, and road length doesn't depend on the odometer. Evidence: muons dilate by exactly gamma via the WEAK force — no light bouncing involved — plus GPS, Ives-Stilwell, Hafele-Keating: many mechanisms, one gamma, never a split.",
           "add": [
             {
               "id": "s2_inset_axis_x",
@@ -851,7 +1009,7 @@
           ],
           "remove": [],
           "info": [
-            {"id": "s2_gamma_info", "content": "### $\\gamma = \\dfrac{1}{\\sqrt{1-v^2}}$\nAt $v = {{toFixed(v,2)}}$: $\\;\\gamma = {{toFixed(1/sqrt(1-v^2),2)}}$\n\nMoving clock tick $= \\gamma \\times$ rest tick.", "position": "top-left"},
+            {"id": "s2_gamma_info", "content": "### Where $\\gamma$ comes from\nThe triangle, written in clock readings ($h = c\\,T_0$):\n\n$$(c\\,t)^2 = (c\\,T_0)^2 + (v\\,t)^2 \\;\\Rightarrow\\; t = \\gamma\\,T_0, \\qquad \\gamma = \\dfrac{1}{\\sqrt{1-v^2}}$$\n\nAt $v = {{toFixed(v,2)}}$: $\\;\\gamma = {{toFixed(1/sqrt(1-v^2),2)}}$ — not a postulate, just the Pythagorean sum solved for $t$.\n\nMoving clock tick $= \\gamma \\times$ rest tick.", "position": "top-left"},
             {"id": "s2_reality_info", "content": "### Reality checks\n**Muons:** born ~15 km up, would fall only ~660 m before decaying — yet $\\gamma \\approx 5\\text{–}10$ lets them reach the ground.\n\n**GPS:** satellite clocks corrected by **~38 μs/day** (net), or positions drift **kilometers** off within a day.", "position": "bottom-right"}
           ]
         }
@@ -957,14 +1115,59 @@
             }
           },
           {
+            "type": "step",
+            "label": "The height is the rest tick: $h = c\\,T_0$",
+            "math": "(\\Delta t)^2 = \\htmlClass{hl-leg}{(c\\,T_0)^2} + (v\\,\\Delta t)^2 \\qquad (c = 1:\\ \\ (\\Delta t)^2 = T_0^2 + (v\\,\\Delta t)^2)",
+            "justification": "One rest tick is light crossing the gap, so the mirror separation is $T_0$ read as a distance — the ordinary Pythagorean sum, now entirely in clock readings",
+            "semanticGraph": {
+              "graph": {
+                "nodes": [
+                  {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "(\\Delta t)^2 = (c\\,T_0)^2 + (v\\,\\Delta t)^2 \\qquad (c, 1:\\ \\ (\\Delta t)^2, T_0^2 + (v\\,\\Delta t)^2)", "description": "The Pythagorean theorem applied to the light clock, relating the time intervals in the moving and rest frames."},
+                  {"id": "__power_2", "type": "operator", "op": "power", "exponent": "2", "subexpr": "{\\Delta t}^{2}", "description": "The square of the time interval in the moving frame, representing the squared hypotenuse of the spacetime triangle.", "quantity": "squared_time_interval", "dimension": "T²", "unit": "s²"},
+                  {"id": "Delta_t", "type": "scalar", "emoji": "⏰", "latex": "\\Delta t", "subexpr": "\\Delta t", "description": "The time interval for one clock tick as measured by an observer in a moving frame.", "quantity": "time_interval", "dimension": "T", "unit": "s", "role": "state_variable"},
+                  {"id": "__add_3", "type": "operator", "op": "add", "subexpr": "\\left(T_{0} c\\right)^{2} + \\left({\\Delta t} v\\right)^{2}", "description": "The sum of the squared distances traveled by the light vertically and the clock horizontally.", "quantity": "squared_distance", "dimension": "L²", "unit": "m²"},
+                  {"id": "__power_4", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\left(T_{0} c\\right)^{2}", "description": "The square of the vertical distance the photon travels, which is the height of the light clock.", "quantity": "squared_distance", "dimension": "L²", "unit": "m²"},
+                  {"id": "__multiply_5", "type": "operator", "op": "multiply", "subexpr": "c T_{0}", "description": "The height of the light clock, calculated as the speed of light multiplied by the proper time for one tick.", "quantity": "distance", "dimension": "L", "unit": "m"},
+                  {"id": "c", "type": "scalar", "emoji": "⚡", "latex": "c", "subexpr": "c", "description": "The speed of light in a vacuum, a universal constant.", "quantity": "speed_of_light", "dimension": "L·T⁻¹", "unit": "m/s", "value": 299792458, "role": "constant"},
+                  {"id": "T_0", "type": "scalar", "emoji": "⏱️", "latex": "T_{0}", "subexpr": "T_{0}", "description": "The proper time interval for one tick of the light clock, measured in its own rest frame.", "quantity": "proper_time", "dimension": "T", "unit": "s", "role": "state_variable"},
+                  {"id": "__power_6", "type": "operator", "op": "power", "exponent": "2", "subexpr": "\\left({\\Delta t} v\\right)^{2}", "description": "The square of the horizontal distance the clock travels during one tick.", "quantity": "squared_distance", "dimension": "L²", "unit": "m²"},
+                  {"id": "__multiply_7", "type": "operator", "op": "multiply", "subexpr": "v \\Delta t", "description": "The horizontal distance the clock travels during one tick.", "quantity": "distance", "dimension": "L", "unit": "m"},
+                  {"id": "v", "type": "scalar", "emoji": "💨", "latex": "v", "subexpr": "v", "description": "The relative velocity of the light clock with respect to the observer's frame.", "quantity": "velocity", "dimension": "L·T⁻¹", "unit": "m/s", "role": "parameter"}
+                ],
+                "edges": [
+                  {"from": "Delta_t", "to": "__power_2"},
+                  {"from": "__power_2", "to": "__equals_1"},
+                  {"from": "c", "to": "__multiply_5", "semantic": "direct", "weight": 1.0},
+                  {"from": "T_0", "to": "__multiply_5", "semantic": "direct", "weight": 1.0},
+                  {"from": "__multiply_5", "to": "__power_4"},
+                  {"from": "__power_4", "to": "__add_3"},
+                  {"from": "v", "to": "__multiply_7", "semantic": "direct", "weight": 1.0},
+                  {"from": "Delta_t", "to": "__multiply_7", "semantic": "direct", "weight": 1.0},
+                  {"from": "__multiply_7", "to": "__power_6"},
+                  {"from": "__power_6", "to": "__add_3"},
+                  {"from": "__add_3", "to": "__equals_1"}
+                ],
+                "classification": {"kind": "algebraic"},
+                "domain": "special_relativity",
+                "enrichment": {
+                  "reasoning": "The context is a lesson on Special Relativity's light clock. Symbols are interpreted accordingly: $c$ is light speed, $v$ is velocity, $T_0$ is proper time, and $\\Delta t$ is observed time.",
+                  "fields": ["domain", "nodes.__equals_1.description", "nodes.__power_2.description", "nodes.__power_2.dimension", "nodes.__power_2.quantity", "nodes.__power_2.unit", "nodes.Delta_t.description", "nodes.Delta_t.dimension", "nodes.Delta_t.emoji", "nodes.Delta_t.quantity", "nodes.Delta_t.role", "nodes.Delta_t.unit", "nodes.__add_3.description", "nodes.__add_3.dimension", "nodes.__add_3.quantity", "nodes.__add_3.unit", "nodes.__power_4.description", "nodes.__power_4.dimension", "nodes.__power_4.quantity", "nodes.__power_4.unit", "nodes.__multiply_5.description", "nodes.__multiply_5.dimension", "nodes.__multiply_5.quantity", "nodes.__multiply_5.unit", "nodes.c.description", "nodes.c.dimension", "nodes.c.emoji", "nodes.c.quantity", "nodes.c.role", "nodes.c.unit", "nodes.c.value", "nodes.T_0.description", "nodes.T_0.dimension", "nodes.T_0.emoji", "nodes.T_0.quantity", "nodes.T_0.role", "nodes.T_0.unit", "nodes.__power_6.description", "nodes.__power_6.dimension", "nodes.__power_6.quantity", "nodes.__power_6.unit", "nodes.__multiply_7.description", "nodes.__multiply_7.dimension", "nodes.__multiply_7.quantity", "nodes.__multiply_7.unit", "nodes.v.description", "nodes.v.dimension", "nodes.v.emoji", "nodes.v.quantity", "nodes.v.role", "nodes.v.unit"]
+                }
+              }
+            },
+            "highlights": {
+              "leg": {"color": "red", "label": "The same vertical leg — the mirror gap, now written as the rest tick c*T_0"}
+            }
+          },
+          {
             "id": "lc_step_solve",
             "type": "step",
             "label": "Solve for the moving tick",
-            "math": "(\\Delta t)^2\\,\\htmlClass{hl-g}{(1 - v^2)} = h^2 \\ \\Rightarrow\\ \\Delta t = \\dfrac{h}{\\htmlClass{hl-g}{\\sqrt{1 - v^2}}}",
+            "math": "(\\Delta t)^2\\,\\htmlClass{hl-g}{(1 - v^2)} = T_0^2 \\ \\Rightarrow\\ \\Delta t = \\dfrac{T_0}{\\htmlClass{hl-g}{\\sqrt{1 - v^2}}}",
             "highlights": {
               "g": {"color": "green", "label": "The sqrt(1-v^2) denominator — the seed of gamma"}
             },
-            "justification": "Subtract $(v\\,\\Delta t)^2$ from both sides, factor out $(\\Delta t)^2$, and divide by $1-v^2$.",
+            "justification": "Collect the $\\Delta t$ terms and divide — $\\gamma$ is born here, as the factor the triangle forces",
             "explanation": "The full moving tick is twice this half-tick: $\\Delta t_{\\text{full}} = \\dfrac{2h}{\\sqrt{1-v^2}}$. The rest tick was $2h$, so the moving clock's tick is longer by the factor $1/\\sqrt{1-v^2}$.",
             "prompt": "Show the algebra: move (v*Delta_t)^2 over, factor, divide. The sqrt(1-v^2) denominator emerging (highlight green) is the birth of gamma. Note that doubling gives the full moving tick 2h/sqrt(1-v^2).",
             "sceneStep": 2
