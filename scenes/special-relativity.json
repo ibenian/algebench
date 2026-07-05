@@ -2162,8 +2162,8 @@
     {
       "title": "Two Ships Passing: Adding Speeds",
       "description": "Two travelers, adjustable speeds — and the discovery that velocities refuse to add the way Newton promised.",
-      "markdown": "# Two Ships Passing: Adding Speeds\n\nShip $A$ cruises at $v_A$ and ship $B$ at $v_B$ (signed: positive is rightward), both measured in the road's frame. The obvious question: **how fast does each see the other move?**\n\n## Newton's answer\n\nSubtract: $w = v_A - v_B$. Head-on at $0.6c$ each, that's $1.2c$ — faster than light, which scene 1 already outlawed.\n\n## Einstein's answer\n\n$$w_{A\\,\\text{seen from}\\,B} = \\frac{v_A - v_B}{1 - v_A v_B}$$\n\nHead-on at $0.6c$ each: $1.2/1.36 = 0.882c$. Always below $c$ — even $0.95c$ against $0.95c$ gives only $0.9987c$.\n\n## Why: rapidity is the real adder\n\nDefine $\\eta = \\operatorname{atanh}(v)$ — the hyperbolic angle from The Interval. Boosts compose by **adding rapidities**:\n\n$$\\eta_{rel} = \\eta_A - \\eta_B, \\qquad w = \\tanh(\\eta_A - \\eta_B) = \\frac{v_A - v_B}{1 - v_A v_B}.$$\n\nNewton's rule is simply the small-angle limit ($\\tanh\\eta \\approx \\eta$ when $v \\ll c$). Velocities saturate at $c$ because $\\tanh$ saturates at $1$ — no matter how much rapidity you stack up.\n\n## And their clocks\n\nEach ship's clock ticks at $\\sqrt{1-v^2}$ per road-second (the light clock). Between the ships themselves, each sees the other slowed by the **same** $\\gamma_{rel} = 1/\\sqrt{1-w^2}$ — mutual and symmetric. Who is *really* younger has no answer until they reunite, and that requires bending a worldline (the twins).\n\n---\n*Sources: [Velocity-addition formula](https://en.wikipedia.org/wiki/Velocity-addition_formula) · [Rapidity](https://en.wikipedia.org/wiki/Rapidity).*",
-      "prompt": "Two ships on looping lanes: A (blue rocket) at slider vA, B (green saucer) at slider vB, both signed so learners can set parallel or head-on motion; a gold photon pace-car marks c. Key readouts: B seen from A is (vB-vA)/(1-vA*vB); Newton's naive answer is vB-vA; the bar chart shows Newton's bar piercing the golden c line while Einstein's never reaches it. Rapidity eta = atanh(v) is the quantity that truly adds. Clock counters over each ship tick at their proper rates; dilation between the ships is mutual (same gamma_rel each way) — no asymmetry without a reunion. Encourage extreme-slider experiments: 0.95 against -0.95 still yields under c. Common misconceptions to correct: 'speeds just add', 'one of them is really slower', 'the formula only matters near c'.",
+      "markdown": "# Two Ships Passing: Adding Speeds\n\nShip $A$ cruises at $v_A$ and ship $B$ at $v_B$ (signed: positive is rightward), both measured in the stationary frame. The obvious question: **how fast does each see the other move?**\n\n## Newton's answer\n\nSubtract: $w = v_A - v_B$. Head-on at $0.6c$ each, that's $1.2c$ — faster than light, which scene 1 already outlawed.\n\n## Einstein's answer\n\n$$w_{A\\,\\text{seen from}\\,B} = \\frac{v_A - v_B}{1 - v_A v_B}$$\n\nHead-on at $0.6c$ each: $1.2/1.36 = 0.882c$. Always below $c$ — even $0.95c$ against $0.95c$ gives only $0.9987c$.\n\n## Why: rapidity is the real adder\n\nDefine $\\eta = \\operatorname{atanh}(v)$ — the hyperbolic angle from The Interval. Boosts compose by **adding rapidities**:\n\n$$\\eta_{rel} = \\eta_A - \\eta_B, \\qquad w = \\tanh(\\eta_A - \\eta_B) = \\frac{v_A - v_B}{1 - v_A v_B}.$$\n\nNewton's rule is simply the small-angle limit ($\\tanh\\eta \\approx \\eta$ when $v \\ll c$). Velocities saturate at $c$ because $\\tanh$ saturates at $1$ — no matter how much rapidity you stack up.\n\n## And their clocks\n\nEach ship's clock ticks at $\\sqrt{1-v^2}$ per stationary-frame second (the light clock). Between the ships themselves, each sees the other slowed by the **same** $\\gamma_{rel} = 1/\\sqrt{1-w^2}$ — mutual and symmetric. Who is *really* younger has no answer until they reunite, and that requires bending a worldline (the twins).\n\n---\n*Sources: [Velocity-addition formula](https://en.wikipedia.org/wiki/Velocity-addition_formula) · [Rapidity](https://en.wikipedia.org/wiki/Rapidity).*",
+      "prompt": "Two ships on looping lanes: A (blue rocket) at slider vA, B (green saucer) at slider vB, both signed so learners can set parallel or head-on motion; a gold photon pace-car marks c. Key readouts: B seen from A is (vB-vA)/(1-vA*vB); Newton's naive answer is vB-vA; the bar chart shows Newton's bar piercing the golden c line while Einstein's never reaches it. Rapidity eta = atanh(v) is the quantity that truly adds. Clock counters over each ship tick at their proper rates; dilation between the ships is mutual (same gamma_rel each way) — no asymmetry without a reunion. Encourage extreme-slider experiments: 0.95 against -0.95 still yields under c. Common misconceptions to correct: 'speeds just add', 'one of them is really slower', 'the formula only matters near c'. A third participant O (labeled stationary) stands at x = 0 with a full-rate clock — but stress that 'stationary' is frame convention, not physics: O is at rest in the frame we happen to draw; each ship is equally entitled to call itself at rest and O moving. No experiment distinguishes absolute rest (Michelson-Morley); the closest thing to a cosmically convenient frame is the CMB rest frame, which is special only by contents, not by the laws.",
       "range": [
         [-8, 8],
         [-8, 8],
@@ -2238,13 +2238,24 @@
           "color": "#ffaa33",
           "width": 1,
           "opacity": 0.12
+        },
+        {
+          "id": "srv_laneO",
+          "type": "line",
+          "points": [
+            [-8, -0.5, 0],
+            [8, -0.5, 0]
+          ],
+          "color": "#aabbcc",
+          "width": 1,
+          "opacity": 0.12
         }
       ],
       "steps": [
         {
-          "title": "Two travelers, one road",
+          "title": "Two travelers, one stationary frame",
           "description": "Set each ship's signed speed — same direction, or head-on. The gold photon is the pace car nobody beats.",
-          "prompt": "Introduce the lanes: A blue on top lane, B green below, photon on the highest lane always at c. Sliders are SIGNED — negative means leftward, so learners can stage parallel cruising or head-on passes. The counters over each ship are their own clocks, ticking at sqrt(1-v^2) per road-second. Invite play before any formulas.",
+          "prompt": "Introduce the lanes: A blue on top lane, B green below, photon on the highest lane always at c. Sliders are SIGNED — negative means leftward, so learners can stage parallel cruising or head-on passes. The counters over each ship are their own clocks, ticking at sqrt(1-v^2) per stationary-frame second. Invite play before any formulas.",
           "duration": 4000,
           "sliders": [
             {"id": "vA", "label": "$v_A$", "min": -0.95, "max": 0.95, "step": 0.05, "default": 0.6},
@@ -2278,10 +2289,19 @@
               "size": 3,
               "label": "🛸 B",
               "labelExpr": "concat(\"🛸 B · ⏱ \", floor(t*sqrt(1 - vB^2)/2))"
+            },
+            {
+              "id": "srv_obs",
+              "type": "animated_point",
+              "expr": ["0", "-0.5", "0"],
+              "color": "#aabbcc",
+              "size": 3,
+              "label": "🧍 O",
+              "labelExpr": "concat(\"🧍 O (stationary) · ⏱ \", floor(t/2))"
             }
           ],
           "info": [
-            {"id": "srv_intro_info", "position": "top-right", "content": "**Two travelers, one road**\n\nAll speeds are measured in the *road's* frame ($c = 1$):\n\n$v_A = {{toFixed(vA, 2)}}$ · $v_B = {{toFixed(vB, 2)}}$\n\nDrag them signed — negative is leftward — and stage a head-on pass or a parallel cruise. The ⏱ counters are each ship's *own* clock. The photon up top never loses a race."}
+            {"id": "srv_intro_info", "position": "top-right", "content": "**Two travelers, one stationary frame**\n\nAll speeds are measured in the *stationary* frame ($c = 1$):\n\n$v_A = {{toFixed(vA, 2)}}$ · $v_B = {{toFixed(vB, 2)}}$\n\nDrag them signed — negative is leftward — and stage a head-on pass or a parallel cruise. The ⏱ counters are each ship's *own* clock. The photon up top never loses a race.\n\n🧍 **O** stands still on the stationary frame — but \"still\" is pure convention: O is simply *at rest in the frame this diagram is drawn in*. To A, it's O who moves at $-v_A$. No experiment can crown any of them 'really stationary'."}
           ]
         },
         {
@@ -2369,26 +2389,45 @@
         },
         {
           "title": "Rapidity: the thing that really adds",
-          "description": "Speeds don't add — hyperbolic angles do. $w = \\tanh(\\eta_A - \\eta_B)$.",
-          "prompt": "The payoff from The Interval: rapidity eta = atanh(v) is the hyperbolic boost angle, and boosts compose by ADDING rapidities — eta_rel is literally eta_A minus eta_B on the number line shown. Then w = tanh(eta_rel) can never reach 1 because tanh saturates. Newton's rule is the small-angle limit tanh(eta) ≈ eta. Walk the proof panel if asked: expand tanh(a-b) to derive the composition law in two lines.",
+          "description": "$\\eta = \\operatorname{atanh}(v)$ is the **rapidity**: the speed rewritten as a hyperbolic boost *angle*. Angles are **additive** — chaining boosts simply adds the $\\eta$'s, with no cap — and $\\tanh$ maps the total back below $c$.",
+          "prompt": "Two rails. Top: rapidity axis with arrows eta_A (blue), eta_B (green), and their plain difference (gold gap) — subtraction happens here, angle-style. Bottom: velocity axis with gold ±c marks and two RESULT arrows: gray Newton (vB - vA, can pierce past +c or -c) and blue Einstein (tanh of the gap, always strictly inside the marks). The story in one picture: convert to angles, subtract like a Newtonian, convert back — that IS the composition law. Newton subtracted on the wrong rail. Walk the proof panel for the two-line tanh identity if asked.",
           "duration": 4000,
           "add": [
             {
+              "id": "srv_eta_A",
+              "type": "animated_vector",
+              "from": [-3, -2.7, 0],
+              "expr": ["-3 + 1.8*atanh(vA)", "-2.7", "0"],
+              "color": "#4da6ff",
+              "width": 4,
+              "arrowScale": 0.6,
+              "labelExpr": "concat(\"$\\\\eta_A = \", toFixed(atanh(vA), 2), \"$\")"
+            },
+            {
               "id": "srv_eta_axis",
               "type": "vector",
-              "from": [-7.2, -6.4, 0],
-              "to": [1.2, -6.4, 0],
+              "from": [-7.2, -3.5, 0],
+              "to": [1.2, -3.5, 0],
               "color": "#aabbcc",
               "width": 2,
               "arrowScale": 0.5,
               "opacity": 0.6
             },
             {
+              "id": "srv_eta_axis_lbl",
+              "type": "text",
+              "text": "$\\eta = \\operatorname{atanh}(v)$ — angles: subtract here",
+              "position": [1.5, -3.5, 0],
+              "color": "#aabbcc",
+              "size": 11,
+              "align": "left"
+            },
+            {
               "id": "srv_eta_zero",
               "type": "line",
               "points": [
-                [-3, -6.6, 0],
-                [-3, -6.2, 0]
+                [-3, -3.7, 0],
+                [-3, -3.3, 0]
               ],
               "color": "#aabbcc",
               "width": 1.5,
@@ -2398,61 +2437,127 @@
               "id": "srv_eta_zero_lbl",
               "type": "text",
               "text": "$0$",
-              "position": [-3, -7, 0],
+              "position": [-3.3, -3.15, 0],
               "color": "#aabbcc",
-              "size": 11
-            },
-            {
-              "id": "srv_eta_axis_lbl",
-              "type": "text",
-              "text": "$\\eta = \\operatorname{atanh}(v)$",
-              "position": [1.4, -6.4, 0],
-              "color": "#aabbcc",
-              "size": 12,
-              "align": "left"
-            },
-            {
-              "id": "srv_eta_A",
-              "type": "animated_vector",
-              "from": [-3, -5.9, 0],
-              "expr": ["-3 + 1.8*atanh(vA)", "-5.9", "0"],
-              "color": "#4da6ff",
-              "width": 4,
-              "arrowScale": 0.6,
-              "label": "$\\eta_A$"
+              "size": 10
             },
             {
               "id": "srv_eta_B",
               "type": "animated_vector",
-              "from": [-3, -6.9, 0],
-              "expr": ["-3 + 1.8*atanh(vB)", "-6.9", "0"],
+              "from": [-3, -4.3, 0],
+              "expr": ["-3 + 1.8*atanh(vB)", "-4.3", "0"],
               "color": "#66cc88",
               "width": 4,
               "arrowScale": 0.6,
-              "label": "$\\eta_B$"
+              "labelExpr": "concat(\"$\\\\eta_B = \", toFixed(atanh(vB), 2), \"$\")"
             },
             {
               "id": "srv_eta_rel",
               "type": "animated_vector",
-              "fromExpr": ["-3 + 1.8*atanh(vB)", "-7.6", "0"],
-              "expr": ["-3 + 1.8*atanh(vA)", "-7.6", "0"],
+              "fromExpr": ["-3 + 1.8*atanh(vA)", "-5.2", "0"],
+              "expr": ["-3 + 1.8*atanh(vB)", "-5.2", "0"],
               "color": "#ffaa33",
               "width": 3,
               "arrowScale": 0.6,
-              "label": "$\\eta_{rel}$"
+              "labelExpr": "concat(\"$\\\\eta_B - \\\\eta_A = \", toFixed(atanh(vB) - atanh(vA), 2), \"$\")"
+            },
+            {
+              "id": "srv_v_newton",
+              "type": "animated_vector",
+              "from": [-3, -6.4, 0],
+              "expr": ["-3 + 2.6*(vB - vA)", "-6.4", "0"],
+              "color": "#aabbcc",
+              "width": 3.5,
+              "arrowScale": 0.6,
+              "labelExpr": "concat(\"$\\\\text{Newton: } v_B - v_A = \", toFixed(vB - vA, 2), \"\\\\,c$\")"
+            },
+            {
+              "id": "srv_v_axis",
+              "type": "vector",
+              "from": [-7.2, -7.2, 0],
+              "to": [1.2, -7.2, 0],
+              "color": "#aabbcc",
+              "width": 2,
+              "arrowScale": 0.5,
+              "opacity": 0.6
+            },
+            {
+              "id": "srv_v_axis_lbl",
+              "type": "text",
+              "text": "$v$ — speeds: results land here",
+              "position": [1.5, -7.2, 0],
+              "color": "#aabbcc",
+              "size": 11,
+              "align": "left"
+            },
+            {
+              "id": "srv_v_ctick_p",
+              "type": "line",
+              "points": [
+                [-0.4, -7.4, 0],
+                [-0.4, -7.0, 0]
+              ],
+              "color": "#ffaa33",
+              "width": 2,
+              "opacity": 0.85
+            },
+            {
+              "id": "srv_v_ctick_p_lbl",
+              "type": "text",
+              "text": "$+c$",
+              "position": [-0.4, -6.7, 0],
+              "color": "#ffaa33",
+              "size": 10
+            },
+            {
+              "id": "srv_v_ctick_m",
+              "type": "line",
+              "points": [
+                [-5.6, -7.4, 0],
+                [-5.6, -7.0, 0]
+              ],
+              "color": "#ffaa33",
+              "width": 2,
+              "opacity": 0.85
+            },
+            {
+              "id": "srv_v_ctick_m_lbl",
+              "type": "text",
+              "text": "$-c$",
+              "position": [-5.6, -6.7, 0],
+              "color": "#ffaa33",
+              "size": 10
+            },
+            {
+              "id": "srv_v_einstein",
+              "type": "animated_vector",
+              "from": [-3, -7.9, 0],
+              "expr": ["-3 + 2.6*(vB - vA)/(1 - vA*vB)", "-7.9", "0"],
+              "color": "#4da6ff",
+              "width": 3.5,
+              "arrowScale": 0.6,
+              "labelExpr": "concat(\"$\\\\text{Einstein: } \\\\tanh(\\\\eta_B - \\\\eta_A) = \", toFixed((vB - vA)/(1 - vA*vB), 3), \"\\\\,c$\")"
             }
           ],
           "info": [
-            {"id": "srv_eta_info", "position": "top-right", "content": "**Rapidity adds. Velocity doesn't.**\n\n$\\eta_A = {{toFixed(atanh(vA), 2)}}$ · $\\eta_B = {{toFixed(atanh(vB), 2)}}$\n\n$$\\eta_{rel} = \\eta_A - \\eta_B = {{toFixed(atanh(vA) - atanh(vB), 2)}}$$\n\n$$w = \\tanh(\\eta_{rel}) = {{toFixed(tanh(atanh(vA) - atanh(vB)), 3)}}\\,c$$\n\n…exactly the composition law's value. Stack all the rapidity you like — $\\tanh$ never reaches $1$. Newton's subtraction is just the small-angle shadow of this ($\\tanh\\eta \\approx \\eta$ when $v \\ll c$)."}
+            {"id": "srv_eta_info", "position": "top-right", "content": "**Rapidity** $\\eta = \\operatorname{atanh}(v)$ — velocity re-expressed as the *angle* of the boost (The Interval's hyperbolic rotation). Its superpower: **rapidities are additive**. Compose two boosts and the $\\eta$'s just add or subtract, Newton-style, without limit — all the speed-limit magic lives in the $\\tanh$ that converts back.\n\n**Two rails**\n\n**Top rail (angles):** 🔵 $\\eta_A$ and 🟢 $\\eta_B$ are the ships' rapidities, $\\eta = \\operatorname{atanh}(v)$. The 🟡 gap is their plain difference: $\\eta_B - \\eta_A = {{toFixed(atanh(vB) - atanh(vA), 2)}}$.\n\n**Bottom rail (speeds):** map that gap back with $\\tanh$ —\n\n$$w = \\tanh(\\eta_B - \\eta_A) = {{toFixed((vB - vA)/(1 - vA*vB), 3)}}\\,c$$\n\nThat's the blue **Einstein** arrow: always inside the gold $\\pm c$ marks. The gray **Newton** arrow ($v_B - v_A = {{toFixed(vB - vA, 2)}}\\,c$) subtracts speeds directly — and sails past $c$.\n\nSame subtraction, different rail. Newton's only mistake was subtracting on the wrong one."}
+          ],
+          "remove": [
+            {"id": "srv_bar_axis"},
+            {"id": "srv_bar_cline"},
+            {"id": "srv_bar_newton"},
+            {"id": "srv_bar_newton_lbl"},
+            {"id": "srv_bar_einstein"},
+            {"id": "srv_bar_einstein_lbl"}
           ]
         },
         {
           "title": "Each other's clocks",
           "description": "Both slowed — by the same factor, each in the other's eyes. Symmetric, until someone turns around.",
-          "prompt": "Close the loop on time. Each ship's counter ticks at its own sqrt(1-v^2) in the ROAD's frame — but between the ships, dilation is MUTUAL: A judges B slow by gamma_rel and B judges A slow by the SAME gamma_rel. Neither is wrong; they slice spacetime differently. The asymmetry only becomes fact at a reunion, which needs a bent worldline — point back to the twin steps. Also flag the ride-along camera caveat: riding A with the camera is not boosting into A's frame; the road's clock still runs the animation.",
+          "prompt": "Close the loop on time. Each ship's counter ticks at its own sqrt(1-v^2) in the STATIONARY frame — but between the ships, dilation is MUTUAL: A judges B slow by gamma_rel and B judges A slow by the SAME gamma_rel. Neither is wrong; they slice spacetime differently. The asymmetry only becomes fact at a reunion, which needs a bent worldline — point back to the twin steps. Also flag the ride-along camera caveat: riding A with the camera is not boosting into A's frame; the stationary frame's clock still runs the animation.",
           "duration": 4000,
           "info": [
-            {"id": "srv_clocks_info", "position": "top-right", "content": "**Whose clock is slow?**\n\nIn the road's frame: $A$ ticks at $\\sqrt{1-v_A^2} = {{toFixed(sqrt(1 - vA^2), 3)}}$, $B$ at $\\sqrt{1-v_B^2} = {{toFixed(sqrt(1 - vB^2), 3)}}$ per road-second — watch the ⏱ counters.\n\nBetween *each other*: $A$ sees $B$ slowed by $\\gamma_{rel} = {{toFixed(1/sqrt(1 - ((vB - vA)/(1 - vA*vB))^2), 2)}}$ — and $B$ sees $A$ slowed by **exactly the same factor**. Mutual, symmetric, and both correct.\n\nWho is *really* younger? No fact of the matter — until they meet again, and meeting again means bending a worldline (remember the twins).\n\n*Try the Ride A / Ride B views — but note: the camera follows a ship without boosting; you are still watching in the road's frame.*"}
+            {"id": "srv_clocks_info", "position": "top-right", "content": "**Whose clock is slow?**\n\nIn the stationary frame: $A$ ticks at $\\sqrt{1-v_A^2} = {{toFixed(sqrt(1 - vA^2), 3)}}$, $B$ at $\\sqrt{1-v_B^2} = {{toFixed(sqrt(1 - vB^2), 3)}}$ per stationary-frame second — watch the ⏱ counters.\n\nBetween *each other*: $A$ sees $B$ slowed by $\\gamma_{rel} = {{toFixed(1/sqrt(1 - ((vB - vA)/(1 - vA*vB))^2), 2)}}$ — and $B$ sees $A$ slowed by **exactly the same factor**. Mutual, symmetric, and both correct.\n\nWho is *really* younger? No fact of the matter — until they meet again, and meeting again means bending a worldline (remember the twins).\n\n*Try the Ride A / Ride B views — but note: the camera follows a ship without boosting; you are still watching in the stationary frame.*"}
           ]
         }
       ],
