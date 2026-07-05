@@ -1,6 +1,7 @@
 {
   "title": "Lorentz time dilation",
   "domain": "algebra",
+  "deeplink": "/?builtin=special-relativity&view=math&panel=chat&pp=1&dock=1&sc=the-light-clock&st=gamma-readout-reality-checks&pf=lightclock_gamma&ps=time-dilation&nodes=T&pa=physics/time-dilation",
   "steps": [
     {
       "index": 0,

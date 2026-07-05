@@ -2,7 +2,7 @@
   "title": "Special Relativity: From Spacetime Maps to the Rindler Horizon",
   "scenes": [
     {
-      "id": "maps-of-everything",
+      "id": "spacetime-maps",
       "title": "Maps of Everything That Happens",
       "description": "Learn to read a spacetime diagram: events are points, worldlines are curves, light rides 45 degrees, and the lightcone is causality made visible.",
       "markdown": "# Maps of Everything That Happens\n\nA **spacetime diagram** is a map where every dot is an **event** — a specific *place* **and** *time*. We draw **space** across the bottom ($x$) and **time** up the side, but we plot $ct$ rather than $t$ so the two axes share the same units.\n\n## Why $ct$ on the vertical axis?\n\nWith $c = 1$ (natural units), one second up the page equals one light-second across it. This choice makes light — the fastest thing there is — travel along tidy **45-degree** lines:\n\n$$ x = \\pm\\, ct \\quad\\Longrightarrow\\quad \\text{slope } = \\pm 1. $$\n\n## Worldlines and slope\n\nAn object traces a **worldline** as it moves. Standing still is a *vertical* line (you move through time, not space). Moving at constant velocity $v$ tilts the line, and its slope is\n\n$$ \\frac{d(ct)}{dx} = \\frac{1}{v} \\quad (c=1). $$\n\nThe faster you go, the more the line leans toward the 45-degree light line — but a massive object can never quite reach it.\n\n## The lightcone = causal structure\n\nThe two light rays through an event carve spacetime into a **lightcone**:\n\n- **Inside the upper cone** ($ct \\ge |x|$): the event's **future** — everything it can influence.\n- **Inside the lower cone** ($ct \\le -|x|$): its **past** — everything that could have influenced it.\n- **Outside the cone**: *elsewhere* — unreachable without beating light.\n\nA worldline that stays **steeper than 45 degrees** is **timelike** (a valid massive traveler). One shallower than 45 degrees would need $v > c$ and would break cause-and-effect. **The lightcone is causality made visible** — and it is the foundation for every scene that follows.\n\n*Sources:* [Time dilation (Wikipedia)](https://en.wikipedia.org/wiki/Time_dilation), [Hyperbolic motion (relativity)](https://en.wikipedia.org/wiki/Hyperbolic_motion_(relativity)).",
@@ -415,7 +415,7 @@
     {
       "title": "The Light Clock",
       "description": "A bouncing photon becomes a clock. Watch a moving clock tick slower — and derive $\\gamma = 1/\\sqrt{1-v^2}$ from nothing but Pythagoras.",
-      "markdown": "# The Light Clock\n\nThis scene is an **ordinary-space animation**, not a spacetime diagram: the horizontal direction $x$ is *position*, and the vertical direction $y$ is *height*. (The scenes on either side of this one are spacetime maps — here we watch things move in real space.)\n\n## One bounce, one tick\n\nA **light clock** is the simplest honest clock imaginable: a photon bouncing straight up and down between two mirrors a height $h$ apart. Because light *always* travels at speed $c$, the time between mirror strikes is fixed:\n\n$$T_0 = \\frac{h}{c} = h \\quad (c = 1).$$\n\nEvery strike on a mirror — top *or* bottom — is **one tick**. (The tick counters above each clock count exactly these strikes.)\n\n## The moving clock must take a longer path\n\nPut an identical clock on a train moving right at speed $v$. From the platform, the photon can no longer go straight up: by the time it reaches the top mirror, the mirror has slid forward. The photon must travel a **diagonal, longer path** — yet at the *same* speed $c$. Same speed over a longer distance means **more time**. The moving clock ticks slower.\n\n## Pythagoras on a single tick\n\nLook at a single up-going tick — one mirror-to-mirror flight — lasting coordinate time $\\Delta t$. The light travels the hypotenuse of a right triangle:\n\n- vertical leg $= h$ (the mirror gap),\n- horizontal leg $= v\\,\\Delta t$ (how far the clock slid),\n- hypotenuse $= c\\,\\Delta t = \\Delta t$ (distance light covers, $c=1$).\n\nPythagoras gives\n\n$$(\\Delta t)^2 = h^2 + (v\\,\\Delta t)^2 \\;\\Rightarrow\\; \\Delta t = \\frac{h}{\\sqrt{1-v^2}}.$$\n\nComparing to the rest tick $T_0 = h$:\n\n$$\\boxed{\\,T = \\gamma\\,T_0, \\qquad \\gamma = \\frac{1}{\\sqrt{1-v^2}}\\,}$$\n\nThe **only** assumption was that $c$ is the same in every frame. At $v = 0.6$, $\\gamma = 1.25$; as $v \\to c$, $\\gamma \\to \\infty$.\n\n## This is real, not a light-clock quirk\n\nEvery clock — springs, atoms, *biology* — slows by the same $\\gamma$, because a light clock could sit inside any of them and must agree.\n\n- **Muons.** Cosmic-ray muons are created ~15 km up with a half-life of only $\\tau \\approx 2.2\\,\\mu\\text{s}$ — enough to travel only ~660 m before decaying. Yet they flood the ground: their $\\gamma \\approx 5\\text{–}10$ stretches their clock so they reach us.\n- **GPS.** Satellite clocks are corrected by tens of microseconds per day (special relativity slows them ~7 μs/day; general-relativistic altitude speeds them ~45 μs/day, net ~38 μs/day). Skip the correction and your position drifts kilometers off within a day.\n\n*Sources:* [Time dilation](https://en.wikipedia.org/wiki/Time_dilation).",
+      "markdown": "# The Light Clock\n\nThis scene is an **ordinary-space animation**, not a spacetime diagram: the horizontal direction $x$ is *position*, and the vertical direction $y$ is *height*. (The scenes on either side of this one are spacetime maps — here we watch things move in real space.)\n\n\n▶ [Watch the standalone animated proof of time dilation](/renderproof?builtin=physics/time-dilation)\n## One bounce, one tick\n\nA **light clock** is the simplest honest clock imaginable: a photon bouncing straight up and down between two mirrors a height $h$ apart. Because light *always* travels at speed $c$, the time between mirror strikes is fixed:\n\n$$T_0 = \\frac{h}{c} = h \\quad (c = 1).$$\n\nEvery strike on a mirror — top *or* bottom — is **one tick**. (The tick counters above each clock count exactly these strikes.)\n\n## The moving clock must take a longer path\n\nPut an identical clock on a train moving right at speed $v$. From the platform, the photon can no longer go straight up: by the time it reaches the top mirror, the mirror has slid forward. The photon must travel a **diagonal, longer path** — yet at the *same* speed $c$. Same speed over a longer distance means **more time**. The moving clock ticks slower.\n\n## Pythagoras on a single tick\n\nLook at a single up-going tick — one mirror-to-mirror flight — lasting coordinate time $\\Delta t$. The light travels the hypotenuse of a right triangle:\n\n- vertical leg $= h$ (the mirror gap),\n- horizontal leg $= v\\,\\Delta t$ (how far the clock slid),\n- hypotenuse $= c\\,\\Delta t = \\Delta t$ (distance light covers, $c=1$).\n\nPythagoras gives\n\n$$(\\Delta t)^2 = h^2 + (v\\,\\Delta t)^2 \\;\\Rightarrow\\; \\Delta t = \\frac{h}{\\sqrt{1-v^2}}.$$\n\nComparing to the rest tick $T_0 = h$:\n\n$$\\boxed{\\,T = \\gamma\\,T_0, \\qquad \\gamma = \\frac{1}{\\sqrt{1-v^2}}\\,}$$\n\nThe **only** assumption was that $c$ is the same in every frame. At $v = 0.6$, $\\gamma = 1.25$; as $v \\to c$, $\\gamma \\to \\infty$.\n\n## This is real, not a light-clock quirk\n\nEvery clock — springs, atoms, *biology* — slows by the same $\\gamma$, because a light clock could sit inside any of them and must agree.\n\n- **Muons.** Cosmic-ray muons are created ~15 km up with a half-life of only $\\tau \\approx 2.2\\,\\mu\\text{s}$ — enough to travel only ~660 m before decaying. Yet they flood the ground: their $\\gamma \\approx 5\\text{–}10$ stretches their clock so they reach us.\n- **GPS.** Satellite clocks are corrected by tens of microseconds per day (special relativity slows them ~7 μs/day; general-relativistic altitude speeds them ~45 μs/day, net ~38 μs/day). Skip the correction and your position drifts kilometers off within a day.\n\n*Sources:* [Time dilation](https://en.wikipedia.org/wiki/Time_dilation).",
       "prompt": "This scene is ORDINARY SPACE (x = horizontal position, y = height), NOT a spacetime diagram like the scenes around it. Make that distinction explicit if the student seems confused. The whole idea is 'same speed c, longer diagonal path, therefore more time.' Color conventions: photons and light paths are #ffaa33, the moving clock body/mirrors are #4da6ff, stationary clock and neutral labels are #aabbcc, the Pythagoras/impossible-warning highlight uses #ff5566. The stationary photon bounces straight up and down; the moving photon zig-zags along a diagonal and — because its time runs at rate sqrt(1-v^2) — visibly ticks slower. In step 3 keep the Pythagoras triangle front and centre: vertical leg h (=2 here), base v*Delta_t, hypotenuse Delta_t. The gamma readout is gamma = 1/sqrt(1-v^2). Good follow-up questions: 'What if v were 0.99c?', 'Does your heartbeat slow too?' (yes), 'Why can't the moving photon just go faster to keep up?' (c is invariant). Reality checks: muons (born ~15 km up, would go only ~660 m without dilation, gamma 5-10 saves them) and GPS (~38 us/day net correction).",
       "range": [
         [-8, 8],
@@ -675,7 +675,7 @@
               ],
               "color": "#ff5566",
               "width": 3,
-              "label": "$h$"
+              "label": "$h = c\\,T_0$"
             },
             {
               "id": "s2_tri_base",
@@ -771,7 +771,7 @@
             {"id": "s2_rest_photon"}
           ],
           "info": [
-            {"id": "s2_reveal_info", "content": "### Slower!\nThe moving photon rides a **diagonal**. Same speed $c$, longer path $\\Rightarrow$ **more time per tick**.\n\nHalf-tick right triangle:\n$$(\\Delta t)^2 = h^2 + (v\\,\\Delta t)^2$$\n\nSolve: $\\;\\Delta t = \\dfrac{h}{\\sqrt{1 - v^2}}$", "position": "top-right"}
+            {"id": "s2_reveal_info", "content": "### Slower!\nThe moving photon rides a **diagonal**. Same speed $c$, longer path $\\Rightarrow$ **more time per tick**.\n\nRight triangle for one tick — with $h$ the **mirror gap**, i.e. one rest tick as a distance, $h = c\\,T_0$:\n$$(\\Delta t)^2 = h^2 + (v\\,\\Delta t)^2 = (c\\,T_0)^2 + (v\\,\\Delta t)^2$$\n\nSolve: $\\;\\Delta t = \\dfrac{h}{\\sqrt{1 - v^2}}$", "position": "top-right"}
           ],
           "sliders": [
             {"id": "v", "label": "clock speed $v\\;(c=1)$", "min": 0, "max": 0.95, "step": 0.01, "default": 0.6, "animate": true, "animateMode": "loop", "duration": 4000, "autoplay": false},
@@ -787,7 +787,7 @@
           "virtualTime": {"expr": "T5"},
           "sliders": [
             {"id": "v", "label": "clock speed $v\\;(c=1)$", "min": 0, "max": 0.95, "step": 0.01, "default": 0.6, "animate": true, "animateMode": "loop", "duration": 4000, "autoplay": false},
-            {"id": "T5", "label": "$t$ (grow the flash)", "min": 0, "max": 8, "step": 0.02, "default": 0, "animate": true, "animateMode": "loop", "autoplay": false, "duration": 14000}
+            {"id": "T5", "label": "$t$ (grow the flash)", "min": 0, "max": 8, "step": 0.02, "default": 2.2, "animate": true, "animateMode": "loop", "autoplay": true, "duration": 14000}
           ],
           "remove": [
             {"id": "s2_tri_hyp"},
@@ -870,7 +870,7 @@
               ],
               "color": "#ff5566",
               "width": 2.5,
-              "label": "$h$"
+              "label": "$h = c\\,T_0$"
             },
             {
               "id": "s2w_leg_base",
@@ -934,8 +934,9 @@
             }
           ],
           "info": [
-            {"id": "s2w_info", "position": "top-right", "content": "**The postulate, drawn**\n\nAt $t=0$ each bottom mirror emits a flash. Every wavefront is a circle of radius $c\\,t$ **centered on the emission event** — planted in space, indifferent to the sliding clock. *That* is \"$c$ is $c$ for everyone.\"\n\n- Rest clock: mirror meets its circle straight overhead — strike at $t = 2$ (radius $h$).\n- Moving clock: the mirror slid, so it meets the **same planted circle** later, off-axis — strike at $t = 2\\gamma = {{toFixed(2/sqrt(1 - v^2), 2)}}$.\n\nAt that strike: radius $= c\\,t$ (hypotenuse), slide $= v\\,t$ (base), height $= h$ (leg):\n\n$$(c\\,t)^2 = h^2 + (v\\,t)^2$$\n\nPythagoras is *intercepted*, not assumed. The faint red circle is Galileo's dragged wavefront — it would strike at $t = 2$, no dilation, no speed limit.\n\n*Watch the moving photon: it rides exactly **on** its planted wavefront, all flight long.*"}
-          ]
+            {"id": "s2w_info", "position": "top-right", "content": "**The postulate, drawn**\n\n$h$ is the mirror gap — one rest tick read as a distance: $h = c\\,T_0$ (here $h = 2$, so $T_0 = 2$). Squared, it becomes the $(c\\,T_0)^2$ of the sum below.\n\nAt $t=0$ each bottom mirror emits a flash. Every wavefront is a circle of radius $c\\,t$ **centered on the emission event** — planted in space, indifferent to the sliding clock. *That* is \"$c$ is $c$ for everyone.\"\n\n- Rest clock: mirror meets its circle straight overhead — strike at $t = 2$ (radius $h$).\n- Moving clock: the mirror slid, so it meets the **same planted circle** later, off-axis — strike at $t = 2\\gamma = {{toFixed(2/sqrt(1 - v^2), 2)}}$.\n\nAt that strike: radius $= c\\,t$ (hypotenuse), slide $= v\\,t$ (base), height $= h$ (leg):\n\n$$(c\\,t)^2 = h^2 + (v\\,t)^2$$\n\nPythagoras is *intercepted*, not assumed. The faint red circle is Galileo's dragged wavefront — it would strike at $t = 2$, no dilation, no speed limit.\n\n*Watch the moving photon: it rides exactly **on** its planted wavefront, all flight long.*"}
+          ],
+          "id": "planted-wavefront"
         },
         {
           "id": "gamma-readout-reality-checks",
@@ -1022,7 +1023,7 @@
         "prompt": "This derivation gets gamma from a single bouncing photon using only Pythagoras and the constancy of c. The lone physical assumption is that light travels at the same speed c in every inertial frame (step 2). Keep the invariant-c thread (#ffaa33) visible through every step and match the on-canvas Pythagoras triangle in step 3. End by boxing gamma and tying it to the live gamma readout in scene step 4.",
         "steps": [
           {
-            "id": "lc_given_rest",
+            "id": "rest-tick",
             "type": "given",
             "label": "Rest clock: one tick is $h$",
             "math": "T_0 = \\htmlClass{hl-c}{h} \\qquad (c = 1)",
@@ -1055,7 +1056,7 @@
             }
           },
           {
-            "id": "lc_given_c",
+            "id": "invariant-c",
             "type": "given",
             "label": "Same speed $c$ in every frame",
             "math": "\\htmlClass{hl-c}{c = 1} \\ \\text{ in both the rest and moving frames}",
@@ -1068,14 +1069,14 @@
             "sceneStep": 1
           },
           {
-            "id": "lc_step_pythagoras",
+            "id": "pythagoras",
             "type": "step",
             "label": "Diagonal path (Pythagoras)",
             "math": "\\htmlClass{hl-hyp}{(\\Delta t)^2} = \\htmlClass{hl-leg}{h^2} + \\htmlClass{hl-base}{(v\\,\\Delta t)^2}",
             "highlights": {
-              "hyp": {"color": "orange", "label": "Hypotenuse: light travels Delta_t (c=1) along the diagonal"},
+              "hyp": {"color": "orange", "label": "Hypotenuse: light travels $\\Delta t$ (with $c=1$) along the diagonal"},
               "leg": {"color": "red", "label": "Vertical leg: the mirror gap h"},
-              "base": {"color": "blue", "label": "Horizontal leg: how far the clock slid, v*Delta_t"}
+              "base": {"color": "blue", "label": "Horizontal leg: how far the clock slid, $v\\,\\Delta t$"}
             },
             "justification": "For one up-going half-tick lasting $\\Delta t$: the light covers the hypotenuse $c\\,\\Delta t = \\Delta t$, the vertical leg is $h$, and the clock slides $v\\,\\Delta t$.",
             "explanation": "This is the right triangle drawn on the canvas in step 3: vertical leg $h$, horizontal leg $v\\,\\Delta t$, hypotenuse $\\Delta t$. Same $c$ over a longer path is exactly why $\\Delta t > h$.",
@@ -1156,16 +1157,18 @@
               }
             },
             "highlights": {
-              "leg": {"color": "red", "label": "The same vertical leg — the mirror gap, now written as the rest tick c*T_0"}
-            }
+              "leg": {"color": "red", "label": "The same vertical leg — the mirror gap, now written as the rest tick $c\\,T_0$"}
+            },
+            "id": "height-is-rest-tick",
+            "sceneStep": 3
           },
           {
-            "id": "lc_step_solve",
+            "id": "solve-moving-tick",
             "type": "step",
             "label": "Solve for the moving tick",
             "math": "(\\Delta t)^2\\,\\htmlClass{hl-g}{(1 - v^2)} = T_0^2 \\ \\Rightarrow\\ \\Delta t = \\dfrac{T_0}{\\htmlClass{hl-g}{\\sqrt{1 - v^2}}}",
             "highlights": {
-              "g": {"color": "green", "label": "The sqrt(1-v^2) denominator — the seed of gamma"}
+              "g": {"color": "green", "label": "The $\\sqrt{1-v^2}$ denominator — the seed of $\\gamma$"}
             },
             "justification": "Collect the $\\Delta t$ terms and divide — $\\gamma$ is born here, as the factor the triangle forces",
             "explanation": "The full moving tick is twice this half-tick: $\\Delta t_{\\text{full}} = \\dfrac{2h}{\\sqrt{1-v^2}}$. The rest tick was $2h$, so the moving clock's tick is longer by the factor $1/\\sqrt{1-v^2}$.",
@@ -1173,17 +1176,17 @@
             "sceneStep": 2
           },
           {
-            "id": "lc_conclusion_gamma",
+            "id": "time-dilation",
             "type": "conclusion",
             "label": "Time dilation",
             "math": "T = \\dfrac{T_0}{\\sqrt{1 - v^2}} = \\htmlClass{hl-g}{\\gamma}\\, T_0, \\qquad \\htmlClass{hl-g}{\\gamma = \\dfrac{1}{\\sqrt{1 - v^2}}}",
             "highlights": {
-              "g": {"color": "green", "label": "The Lorentz factor gamma — moving clocks tick gamma times slower"}
+              "g": {"color": "green", "label": "The Lorentz factor $\\gamma$ — moving clocks tick $\\gamma$ times slower"}
             },
             "justification": "Comparing the moving tick $2h/\\sqrt{1-v^2}$ to the rest tick $T_0 = 2h$ gives $T = \\gamma T_0$.",
             "explanation": "This is the boxed result. It matches the live $\\gamma$ readout in scene step 4: at $v=0.6$, $\\gamma = 1.25$; as $v \\to c$, $\\gamma \\to \\infty$. Every clock — atoms, springs, biology — slows by this same factor.",
             "prompt": "Box gamma and connect it visually to the live gamma readout and inset gamma(v) curve in scene step 4. Reinforce universality: this is not a light-clock artifact; every physical process slows by gamma.",
-            "sceneStep": 3,
+            "sceneStep": 4,
             "semanticGraph": {
               "graph": {
                 "nodes": [
@@ -1248,7 +1251,8 @@
             }
           }
         ]
-      }
+      },
+      "id": "the-light-clock"
     },
     {
       "id": "the-interval",
@@ -3769,7 +3773,8 @@
             }
           ]
         }
-      ]
+      ],
+      "id": "two-ships-passing"
     },
     {
       "id": "flooring-it-forever",
@@ -4966,7 +4971,7 @@
             "label": "Ship worldline",
             "math": "\\htmlClass{hl-ship}{x_{\\text{ship}}(t) = \\sqrt{1 + t^2}} \\qquad (a = 1)",
             "highlights": {
-              "ship": {"color": "blue", "label": "The a=1 hyperbola x^2 - t^2 = 1, asymptote x = t"}
+              "ship": {"color": "blue", "label": "The $a=1$ hyperbola $x^2 - t^2 = 1$, asymptote $x = t$"}
             },
             "justification": "From constant proper acceleration $a=1$: $x^2 - t^2 = 1$, so $x_{\\text{ship}} = \\sqrt{1+t^2}$.",
             "explanation": "This is the hyperbolic worldline from the previous scene, evaluated at $a=1$. Its asymptote is the $45^\\circ$ light line $x=t$.",
@@ -5009,7 +5014,7 @@
             "label": "Photon worldline",
             "math": "\\htmlClass{hl-photon}{x_{\\text{ph}}(t) = x_e + (t - t_e)}",
             "highlights": {
-              "photon": {"color": "orange", "label": "A rightward photon from the emission event (x_e, t_e)"}
+              "photon": {"color": "orange", "label": "A rightward photon from the emission event $(x_e, t_e)$"}
             },
             "justification": "A rightward light ray moves at $c=1$: $\\dfrac{dx}{dt} = 1$, passing through $(x_e, t_e)$.",
             "explanation": "The photon travels one unit of space per unit of time, so its position is the emission position plus the elapsed time since emission.",
@@ -5066,7 +5071,7 @@
             "label": "Large-$t$ behavior",
             "math": "\\sqrt{1 + t^2} \\to t \\ \\ (t \\to \\infty), \\qquad \\htmlClass{hl-gap}{x_{\\text{ph}} - x_{\\text{ship}} \\to x_e - t_e}",
             "highlights": {
-              "gap": {"color": "red", "label": "The asymptotic lead tends to the constant x_e - t_e"}
+              "gap": {"color": "red", "label": "The asymptotic lead tends to the constant $x_e - t_e$"}
             },
             "justification": "As $t \\to \\infty$, $\\sqrt{1+t^2} \\to t$, so $x_{\\text{ph}} - x_{\\text{ship}} \\to (x_e + t - t_e) - t = x_e - t_e$.",
             "explanation": "The ship's position approaches the same $45^\\circ$ line the photon rides, so their separation settles to the constant $x_e - t_e$. Its sign decides the race.",
@@ -5088,7 +5093,8 @@
             "sceneStep": 3
           }
         ]
-      }
+      },
+      "id": "light-never-catches-up"
     },
     {
       "title": "The Accelerated Observer's Map",
@@ -5765,7 +5771,7 @@
             "label": "Rindler transformation",
             "math": "T = \\htmlClass{hl-xi}{\\xi}\\sinh\\htmlClass{hl-eta}{\\eta}, \\qquad X = \\htmlClass{hl-xi}{\\xi}\\cosh\\htmlClass{hl-eta}{\\eta}",
             "highlights": {
-              "xi": {"color": "green", "label": "radial coordinate — labels the hyperbola; a = 1/xi"},
+              "xi": {"color": "green", "label": "radial coordinate — labels the hyperbola; $a = 1/\\xi$"},
               "eta": {"color": "green", "label": "Rindler time — the boost angle (rapidity)"}
             },
             "justification": "Region I of Minkowski space in accelerated coordinates.",
@@ -5895,7 +5901,7 @@
             "label": "Insert into $ds^2 = -dT^2 + dX^2$",
             "math": "ds^2 = \\htmlClass{hl-id}{(\\cosh^2\\eta - \\sinh^2\\eta)}\\,d\\xi^2 - \\xi^2\\,\\htmlClass{hl-id}{(\\cosh^2\\eta - \\sinh^2\\eta)}\\,d\\eta^2",
             "highlights": {
-              "id": {"color": "cyan", "label": "cosh^2 - sinh^2 = 1 — the same identity from the interval scenes"}
+              "id": {"color": "cyan", "label": "$\\cosh^2 - \\sinh^2 = 1$ — the same identity from the interval scenes"}
             },
             "justification": "Substitute $dT, dX$; the $d\\xi\\,d\\eta$ cross terms cancel.",
             "explanation": "The cross terms $2\\xi\\sinh\\eta\\cosh\\eta\\,(d\\xi\\,d\\eta)$ from $-dT^2$ and $+dX^2$ are equal and opposite, so they vanish — leaving only $d\\xi^2$ and $d\\eta^2$ terms, each carrying $\\cosh^2\\eta - \\sinh^2\\eta$.",
@@ -5978,7 +5984,7 @@
             "label": "The metric",
             "math": "ds^2 = \\htmlClass{hl-coef}{-\\xi^2}\\, d\\eta^2 + d\\xi^2",
             "highlights": {
-              "coef": {"color": "orange", "label": "the -xi^2 coefficient: source of position-dependent clock rates"}
+              "coef": {"color": "orange", "label": "the $-\\xi^2$ coefficient: source of position-dependent clock rates"}
             },
             "justification": "Using $\\cosh^2\\eta - \\sinh^2\\eta = 1$.",
             "explanation": "The identity collapses both groupings to $1$, leaving the Rindler line element. The metric is static (no $\\eta$ dependence) but **position-dependent** through $\\xi$.",
@@ -6028,7 +6034,7 @@
             "label": "Time runs slower at small $\\xi$",
             "math": "\\frac{d\\tau}{d\\eta} = \\htmlClass{hl-coef}{\\xi} \\;\\Rightarrow\\; \\text{smaller } \\xi \\Rightarrow \\text{slower clock}",
             "highlights": {
-              "coef": {"color": "orange", "label": "proper-time rate is proportional to xi"}
+              "coef": {"color": "orange", "label": "proper-time rate is proportional to $\\xi$"}
             },
             "justification": "For a fixed-$\\xi$ observer, $d\\tau = \\sqrt{-ds^2} = \\xi\\,d\\eta$.",
             "explanation": "A clock deeper in the wedge (smaller $\\xi$, larger $a = 1/\\xi$) ticks slower per unit Rindler time — **gravitational time dilation in flat spacetime**. This is exactly the back-of-rocket clock from step 3, and the equivalence-principle bridge to real gravity.",
@@ -6070,7 +6076,8 @@
             }
           }
         ]
-      }
+      },
+      "id": "accelerated-observers-map"
     },
     {
       "title": "The Sandbox: Ride to the Horizon",
@@ -6738,7 +6745,8 @@
             {"id": "s7_outlook_info", "position": "top-right", "content": "**Where this picture leads**\n\n**Equivalence principle.** An observer hovering just above a black hole's event horizon is *exactly* a Rindler observer: constant felt acceleration, a horizon at fixed distance below, clocks deeper down running slower.\n\n**Unruh effect.** Quantum field theory says the accelerating crew sees empty space *glow* — a thermal bath at\n\n$$T = \\frac{\\hbar a}{2\\pi c k_B} \\approx 4\\times10^{-21}\\,\\text{K at } 1g$$\n\nHopelessly faint — but replace $a$ with a black hole's surface gravity and it becomes **Hawking radiation**.\n\nEverything you just played with — the hyperbola, the chase, the fixed-distance horizon — was flat spacetime. Gravity only bends the stage; the plot stays the same.\n\n*The sandbox stays live — keep exploring.*"}
           ]
         }
-      ]
+      ],
+      "id": "rindler-sandbox"
     }
   ]
 }
