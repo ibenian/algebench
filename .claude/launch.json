@@ -2,6 +2,20 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "special-relativity",
+      "runtimeExecutable": "./algebench",
+      "runtimeArgs": [
+        "scenes/special-relativity.json",
+        "--port",
+        "5737",
+        "--debug",
+        "--server-only",
+        "--skip-tour"
+      ],
+      "port": 5737,
+      "autoPort": true
+    },
+    {
       "name": "coach-empty",
       "runtimeExecutable": "./algebench",
       "runtimeArgs": [

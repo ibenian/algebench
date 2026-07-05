@@ -1247,7 +1247,7 @@ async function speakText(text, { explicit = false } = {}) {
     const clean = text
         .replace(/```[\s\S]*?```/g, '')
         .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-        .replace(/[📍🤖👤]/g, '')
+        .replace(/[📍🤖👤]/gu, '')
         .replace(/\s{2,}/g, ' ')
         .trim();
 

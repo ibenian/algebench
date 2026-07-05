@@ -110,10 +110,27 @@ export function validateProofData(data) {
   };
   // Optional model-produced framing, prerequisites, and agentic follow-up prompts.
   if (data.goal) out.goal = str(data.goal);
-  const strList = (v) => Array.isArray(v)
-    ? v.filter((x) => typeof x === "string" && x.trim()).slice(0, 8).map(str) : undefined;
-  if (strList(data.followups)) out.followups = strList(data.followups);
-  if (strList(data.prerequisites)) out.prerequisites = strList(data.prerequisites);
+  // Each entry is a plain string, or {text, deeplink} to give that chip its own
+  // landing view (sanitized like the proof-level deeplink; dropped if malformed).
+  const chipList = (v) => {
+    if (!Array.isArray(v)) return undefined;
+    const items = [];
+    for (const x of v) {
+      if (items.length >= 8) break;
+      if (typeof x === "string" && x.trim()) { items.push(str(x)); continue; }
+      if (x && typeof x === "object" && typeof x.text === "string" && x.text.trim()) {
+        const chip = { text: str(x.text) };
+        const cdl = cleanDeeplink(x.deeplink);
+        if (cdl) chip.deeplink = cdl;
+        items.push(chip);
+      }
+    }
+    return items.length ? items : undefined;
+  };
+  const followups = chipList(data.followups);
+  if (followups) out.followups = followups;
+  const prerequisites = chipList(data.prerequisites);
+  if (prerequisites) out.prerequisites = prerequisites;
   // Optional proof-level deeplink (where an "Ask AI" lands by default — overridden
   // per-step). Sanitized to a same-origin relative URL; dropped if malformed.
   const dl = cleanDeeplink(data.deeplink);

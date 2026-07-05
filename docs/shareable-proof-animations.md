@@ -112,9 +112,13 @@ consumes. No new schema is invented; we store the engine's existing output verba
   },
   "overall_confidence": { "tier": "…", "label": "…", "counts": { … } },
   "goal": "Isolate $a$ in $a+b-c=0$.",          // optional: model framing, shown above the steps
-  "prerequisites": ["moving a term across $=$"], // optional: assumed concepts (pills)
-  "followups": [                                 // optional: agentic continuation prompts (chips)
-    "What if $b$ were negative?", "Solve $2a+3-c=0$ for $a$"
+  "prerequisites": [                             // optional: assumed concepts (pills)
+    "moving a term across $=$",                  //   plain string → chip asks the AI in place
+    { "text": "Where does this identity come from?",   // {text, deeplink} → chip NAVIGATES to
+      "deeplink": "/?builtin=…&sc=…&st=…" }      //   that view (same-origin relative URL + auto-ask)
+  ],
+  "followups": [                                 // optional: agentic continuation prompts (chips;
+    "What if $b$ were negative?", "Solve $2a+3-c=0$ for $a$"   // same string-or-object form)
   ]
 }
 ```
