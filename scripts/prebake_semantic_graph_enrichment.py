@@ -83,8 +83,8 @@ from pathlib import Path
 # heavy (FastAPI/genai) but this is an offline CLI, so that cost is irrelevant.
 from backend.server import _normalize_proofs  # noqa: E402
 from backend.model import SemanticGraph  # noqa: E402
+from _json_format import dumps_compact_leaves  # noqa: E402
 from scripts.prebake_semantic_graphs import (  # noqa: E402
-    _dumps_compact_leaves,
     _existing_graph,
     _fmt_bytes,
 )
@@ -433,7 +433,7 @@ def main():
     if result["enriched"] > 0:
         # Same compact-leaves writer as prebake: structure stays indented,
         # tiny node/edge objects collapse to one line.
-        new_text = _dumps_compact_leaves(spec) + "\n"
+        new_text = dumps_compact_leaves(spec) + "\n"
         # Safety net: the writer must round-trip to the exact same data — this
         # is also what guarantees we touched nothing but the enriched graphs.
         if json.loads(new_text) != spec:

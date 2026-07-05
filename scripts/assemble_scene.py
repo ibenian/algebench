@@ -20,6 +20,8 @@ import json
 import sys
 from pathlib import Path
 
+from _json_format import dumps_compact_leaves
+
 
 def load_json(path):
     """Load and parse a JSON file."""
@@ -35,17 +37,22 @@ def load_json(path):
 
 
 def save_json(path, data):
-    """Write JSON with 2-space indent and trailing newline."""
-    with open(path, 'w') as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-        f.write('\n')
+    """Write JSON in the repo's compact-leaves format with a trailing newline."""
+    text = dumps_compact_leaves(data) + '\n'
+    # Safety net: the custom writer must round-trip to the exact same data.
+    if json.loads(text) != data:
+        print('Error: compact serialization altered the data — aborting write',
+              file=sys.stderr)
+        sys.exit(1)
+    with open(path, 'w', encoding='utf-8') as f:
+        f.write(text)
 
 
 def print_summary(lesson):
     """Print a summary of the lesson structure."""
     scenes = lesson.get('scenes', [])
     total_steps = sum(len(s.get('steps', [])) for s in scenes)
-    lines = len(json.dumps(lesson, indent=2).split('\n'))
+    lines = len(dumps_compact_leaves(lesson).split('\n'))
     print(f'\n  Title: {lesson.get("title", "(no title)")}')
     print(f'  Scenes: {len(scenes)}, Steps: {total_steps}, Lines: {lines}')
     for i, scene in enumerate(scenes):
