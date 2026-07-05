@@ -27,7 +27,7 @@ from sympy.physics.quantum import InnerProduct, OuterProduct
 from backend.model.semantic_graph import SemanticGraph
 
 from .id_utils import _slug_id
-from .preprocessor import LaTeXPreprocessor, strip_trailing_spacing
+from .preprocessor import LaTeXPreprocessor
 from .constants import (
     KNOWN_VARIABLES,
     OPERATOR_MAP,
@@ -1599,33 +1599,12 @@ def _collapse_compound_symbols(latex: str) -> tuple[str, dict[str, dict[str, str
 
 
 def _extract_parenthetical_annotations(latex: str) -> tuple[str, list[dict[str, str]]]:
-    r"""Strip trailing parenthetical annotations from LaTeX."""
-    annotations: list[dict[str, str]] = []
-    # Match a trailing ``(...)`` with no nested parens using a single
-    # ``[^()]*`` — the old ``[^()]*…[^()]*`` body is a polynomial-ReDoS
-    # shape (CWE-1333) that scanners flag. Whether the parenthetical is an
-    # annotation (must contain ``\text{…}``) is a separate, unambiguous
-    # containment check. Trailing spacing left before the matched paren is
-    # removed in linear time by ``strip_trailing_spacing`` below.
-    trailing_paren = re.compile(r"\(([^()]*)\)\s*$")
-    text_cmd = re.compile(r"\\text\{[^{}]+\}")
-    while True:
-        m = trailing_paren.search(latex)
-        if not m or not text_cmd.search(m.group(1)):
-            break
-        inner = m.group(1).strip()
-        label = re.sub(r"\\text\{([^{}]+)\}", r"\1", inner)
-        label = re.sub(r"\\[A-Za-z]+\s*", "", label)
-        label = re.sub(r"[{}]", "", label)
-        label = re.sub(r"\s+", " ", label).strip()
-        annotations.append({
-            "latex": inner,
-            "label": label,
-            "type": "annotation",
-        })
-        latex = strip_trailing_spacing(latex[:m.start()])
-    annotations.reverse()
-    return latex, annotations
+    r"""Strip trailing parenthetical annotations from LaTeX.
+
+    Delegates to :meth:`LaTeXPreprocessor.extract_parenthetical_annotations`
+    so both entry points share one discriminator.
+    """
+    return LaTeXPreprocessor.extract_parenthetical_annotations(latex)
 
 
 # Accent commands that SymPy's ``parse_latex`` doesn't understand — it
@@ -2814,8 +2793,19 @@ class SemanticGraphBuilder:
                     return node_id
                 # --- Text-command placeholder (e.g. \text{Res} → Xi_{0}) ---
                 op_name = ovr.get("label", op_name)
-            node_id = self._next_id(op_name)
             func_latex = self._latex_commands.get(func_name)
+            if func_latex is None:
+                # Composed placeholder in the function name: ``x_{\text{ph}}``
+                # is collapsed to ``x_{Xi_{0}}`` before parsing, and only the
+                # standalone form is handled above. Without restoration the
+                # node has no latex and the renderer falls back to the raw
+                # ``Xi`` token — resolve it so the display shows real KaTeX
+                # and op/id carry the readable name.
+                resolved = self._resolve_placeholders(op_name)
+                if resolved and resolved != op_name:
+                    func_latex = resolved
+                    op_name = re.sub(r"\\text\{([^{}]+)\}", r"\1", resolved)
+            node_id = self._next_id(op_name)
             func_attrs: dict[str, str] = {"type": "function", "op": op_name}
             if func_latex:
                 func_attrs["latex"] = func_latex
@@ -3834,6 +3824,11 @@ def _latex_to_semantic_graph_dict(
     """Parse a LaTeX string and return a semantic graph dict (internal)."""
     user_overrides = overrides
     latex = _normalize_latex(latex)
+    # Strip trailing parenthetical annotations before any rewrite pass —
+    # otherwise ``_rewrite_assertion_ops`` reads ``h \qquad (c = 1)`` as a
+    # function call ``qquad(c = 1)`` and mangles the side condition to
+    # ``(c, 1)`` before it can be extracted (issue #435).
+    latex, parenthetical_annotations = _extract_parenthetical_annotations(latex)
     latex, infix_overrides = _rewrite_infix_ops(latex)
     latex = _rewrite_prefix_ops(latex)
     # The bracket→paren rewrite only fires on the expectation operator
@@ -3848,7 +3843,6 @@ def _latex_to_semantic_graph_dict(
         latex = _rewrite_bracket_functions(latex)
     latex, conditional_bar_funcs = _rewrite_conditional_bar(latex)
     latex, assertion_funcs = _rewrite_assertion_ops(latex)
-    latex, parenthetical_annotations = _extract_parenthetical_annotations(latex)
 
     # --- Piecewise / cases environment ---
     pw = _extract_piecewise(latex)

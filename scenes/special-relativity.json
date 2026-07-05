@@ -1057,20 +1057,19 @@
             "semanticGraph": {
               "graph": {
                 "nodes": [
-                  {"id": "T_0", "type": "scalar", "emoji": "⏱️", "latex": "T_{0}", "subexpr": "T_0", "description": "Proper time, the time for one 'tick' of the light clock as measured in its own rest frame.", "quantity": "proper_time", "dimension": "T", "unit": "s"},
-                  {"id": "h", "type": "scalar", "emoji": "↕️", "latex": "h", "subexpr": "h \\qquad (c", "description": "The height of the light clock, representing the one-way distance traveled by the photon.", "quantity": "height", "dimension": "L", "unit": "m", "color": "orange", "highlight": "c"},
-                  {"id": "s2___num_1", "type": "number", "label": "1", "subexpr": "1)", "description": "The value 1, to which the speed of light $c$ is set in this derivation using natural units.", "quantity": "speed_of_light", "dimension": "1", "unit": "", "value": 1},
-                  {"id": "__equals_1", "type": "operator", "op": "equals", "subexpr": "T_0 = h \\qquad (c = 1)", "description": "Equates the proper time interval $T_0$ to the clock height $h$, based on the convention that the speed of light $c=1$."}
+                  {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "T_0 = h", "description": "This equation defines the proper time for one tick of the light clock in its rest frame, using natural units where the speed of light $c=1$."},
+                  {"id": "T_0", "type": "scalar", "emoji": "⏰", "latex": "T_{0}", "subexpr": "T_{0}", "description": "The time for one tick of the clock in its rest frame, also known as the proper time interval.", "quantity": "proper_time_interval", "dimension": "T", "unit": "s"},
+                  {"id": "h", "type": "scalar", "emoji": "↕️", "latex": "h", "subexpr": "h", "description": "The one-way travel distance of the photon, equal to the clock's height. In natural units ($c=1$), this distance is numerically equal to the travel time.", "quantity": "distance", "dimension": "L", "unit": "m", "color": "orange", "highlight": "c"},
+                  {"id": "__annotation_0", "type": "annotation", "label": "c = 1", "latex": "c = 1"}
                 ],
                 "edges": [
                   {"from": "T_0", "to": "__equals_1"},
-                  {"from": "h", "to": "__equals_1"},
-                  {"from": "s2___num_1", "to": "__equals_1"}
+                  {"from": "h", "to": "__equals_1"}
                 ],
                 "classification": {"kind": "algebraic"},
                 "enrichment": {
-                  "reasoning": "The context is a lesson on Special Relativity, so the domain is special_relativity. T_0 is proper time and h is the height of the light clock.",
-                  "fields": ["nodes.T_0.description", "nodes.T_0.dimension", "nodes.T_0.emoji", "nodes.T_0.quantity", "nodes.T_0.unit", "nodes.h.description", "nodes.h.dimension", "nodes.h.emoji", "nodes.h.quantity", "nodes.h.unit", "nodes.s2___num_1.description", "nodes.s2___num_1.dimension", "nodes.s2___num_1.quantity", "nodes.s2___num_1.unit", "nodes.s2___num_1.value", "nodes.__equals_1.description"]
+                  "reasoning": "The context is a light clock in special relativity, so the domain is `special_relativity`. Natural units ($c=1$) are used, making time ($T_0$) and distance ($h$) numerically equal.",
+                  "fields": ["nodes.__equals_1.description", "nodes.T_0.description", "nodes.T_0.dimension", "nodes.T_0.emoji", "nodes.T_0.quantity", "nodes.T_0.unit", "nodes.h.description", "nodes.h.dimension", "nodes.h.emoji", "nodes.h.quantity", "nodes.h.unit"]
                 }
               }
             }
@@ -1745,6 +1744,7 @@
           ]
         },
         {
+          "id": "time-is-length-two-paths-two-ages",
           "title": "Time is length: two paths, two ages",
           "description": "Proper time is the Minkowski length of a worldline — a clock ticks once per unit of $\\sqrt{dt^2 - dx^2}$. Count the gold ticks along each route.",
           "prompt": "Twin-paradox-in-one-picture step. Two worldlines join the SAME events A (bottom) and B (top): the straight stay-home line and a bent out-and-back route at speed w. Gold dots are clock ticks, one per unit of proper time — literally the distance measured along each worldline with the Minkowski ruler dtau = sqrt(dt^2 - dx^2). Ask the learner to PREDICT first: the bent path looks longer on paper, so which twin ages more? Then reveal: fewer ticks fit on the bent path — tau = 8*sqrt(1-w^2) < 8. Minus sign in the metric reverses the triangle inequality: straight timelike worldlines MAXIMIZE proper time. Connect back to the light clock (moving clocks tick slower) and forward to the accelerating ship, whose curved worldline also ages less than a straight one. Two rider dots now travel A to B in lockstep coordinate time (slider T2, animatable); each gold tick flashes (pulsating size) exactly when its worldline's rider crosses it — the stay-home clock strikes 8 flashes, the traveler fewer. NOTE: the inbound-leg ticks continue the traveler's proper time seamlessly through the turnaround (tick m sits at coordinate time m/sqrt(1-w^2) - 4) — the clock does NOT restart at the turn, so there is no rapid double-strike near the turnaround; the gap across the turn is exactly one unit of tau like every other gap.",
@@ -2071,6 +2071,7 @@
           ]
         },
         {
+          "id": "the-honest-twin-constant-thrust-there-and-back",
           "title": "The honest twin: constant thrust there and back",
           "description": "No teleporting kinks — the ship feels a steady $a$ the whole way: push, flip, brake. Three hyperbolic arcs, same verdict.",
           "prompt": "Realistic powered twin. The blue worldline is three hyperbolic arcs of constant FELT acceleration a: thrust outward for the first quarter (t in [-4,-2]), flip and thrust homeward for the whole middle half (t in [-2,2] — one continuous hyperbola through the at-rest turnaround at t=0), flip again and brake into B for the last quarter. Red dots mark the two flips; the ship is momentarily at rest at the turnaround. Proper time is tau = 4*asinh(2a)/a (each quarter contributes asinh(2a)/a), always less than 8 — smooth curves lose time exactly like kinks, because ANY lean toward the light lines shortens the Minkowski length. Gold ticks are the crew's continuous clock; they flash as the riders pass. Cranking a hugs the lightcone tighter: harder thrust, younger crew. Bridge forward: each arc is exactly the hyperbola derived in the next scene.",
@@ -2852,6 +2853,7 @@
       ],
       "steps": [
         {
+          "id": "two-travelers-one-stationary-frame",
           "title": "Two travelers, one stationary frame",
           "description": "Set each ship's signed speed — same direction, or head-on. The gold photon is the pace car nobody beats.",
           "prompt": "Introduce the lanes: A blue on top lane, B green below, photon on the highest lane always at c. Sliders are SIGNED — negative means leftward, so learners can stage parallel cruising or head-on passes. The counters over each ship are their own clocks, ticking at sqrt(1-v^2) per stationary-frame second. Invite play before any formulas. Each participant flashes a light burst on every tick of their OWN clock — O at full rate, ships slower by sqrt(1-v^2); crank a ship's speed and watch its flashes space out. The photon never flashes: zero proper time along a light path — light does not age.",
@@ -2964,6 +2966,7 @@
           ]
         },
         {
+          "id": "predict-how-fast-does-b-rush-past-a",
           "title": "Predict: how fast does B rush past A?",
           "description": "Head-on at 0.6c each. Newton says 1.2c. Commit to your answer, then advance.",
           "prompt": "Predict step — do NOT reveal the composition law yet. With vA = 0.6 and vB = -0.6, Newton's subtraction gives 1.2c, above light speed. Ask the learner: is that what A actually measures? Options: yes 1.2c; exactly c; something below c. Let them commit before advancing.",
@@ -2973,6 +2976,7 @@
           ]
         },
         {
+          "id": "reveal-how-speeds-really-merge",
           "title": "Reveal: how speeds really merge",
           "description": "Newton's bar smashes through the light line. Einstein's never touches it.",
           "prompt": "The reveal. Two bars race toward the golden c line: gray Newton bar |vB-vA| pierces it, blue Einstein bar |(vB-vA)/(1-vA*vB)| approaches but never reaches. Walk the dashboard: B seen from A, A seen from B (equal magnitudes, opposite signs), Newton's naive number, gamma_rel. Push both sliders to ±0.95 and watch Einstein's bar crush against the line at 0.9987 while Newton claims 1.9. The denominator 1 - vA*vB is the whole magic.",
@@ -3047,6 +3051,7 @@
           ]
         },
         {
+          "id": "rapidity-the-thing-that-really-adds",
           "title": "Rapidity: the thing that really adds",
           "description": "$\\eta = \\operatorname{atanh}(v)$ is the **rapidity**: the speed rewritten as a hyperbolic boost *angle*. Angles are **additive** — chaining boosts simply adds the $\\eta$'s, with no cap — and $\\tanh$ maps the total back below $c$.",
           "prompt": "Two rails. Top: rapidity axis with arrows eta_A (blue), eta_B (green), and their plain difference (gold gap) — subtraction happens here, angle-style. Bottom: velocity axis with gold ±c marks and two RESULT arrows: gray Newton (vB - vA, can pierce past +c or -c) and blue Einstein (tanh of the gap, always strictly inside the marks). The story in one picture: convert to angles, subtract like a Newtonian, convert back — that IS the composition law. Newton subtracted on the wrong rail. Walk the proof panel for the two-line tanh identity if asked.",
@@ -3251,6 +3256,7 @@
           ]
         },
         {
+          "id": "each-other-s-clocks",
           "title": "Each other's clocks",
           "description": "Both slowed — by the same factor, each in the other's eyes. Symmetric, until someone turns around.",
           "prompt": "Close the loop on time. Each ship's counter ticks at its own sqrt(1-v^2) in the STATIONARY frame — but between the ships, dilation is MUTUAL: A judges B slow by gamma_rel and B judges A slow by the SAME gamma_rel. Neither is wrong; they slice spacetime differently. The asymmetry only becomes fact at a reunion, which needs a bent worldline — point back to the twin steps. Also flag the ride-along camera caveat: riding A with the camera is not boosting into A's frame; the stationary frame's clock still runs the animation.",
@@ -5000,30 +5006,29 @@
             "semanticGraph": {
               "graph": {
                 "nodes": [
-                  {"id": "s0___Xi_0_1", "type": "function", "emoji": "🚀", "op": "Xi_{0}", "subexpr": "x_{\\text{ship}}(t)", "description": "The spatial position $x$ of the accelerating ship as a function of time $t$.", "quantity": "position", "dimension": "L", "unit": "m"},
-                  {"id": "t", "type": "scalar", "emoji": "⏱️", "latex": "t", "subexpr": "t", "description": "Coordinate time $t$ in the stationary inertial reference frame.", "quantity": "time", "dimension": "T", "unit": "s"},
-                  {"id": "s1___power_1", "type": "operator", "op": "power", "exponent": "1/2", "subexpr": "\\sqrt{1 + t^2} \\qquad (a", "description": "Calculates the ship's position from its hyperbolic worldline equation, derived from $x^2 - t^2 = (c/a)^2$ with $c=1, a=1$.", "quantity": "position", "dimension": "L", "unit": "m"},
-                  {"id": "s1___add_2", "type": "operator", "op": "add", "subexpr": "t^{2} + 1", "description": "The sum of squared time (in length units) and a constant, representing the squared position in spacetime.", "dimension": "L²", "unit": "m²"},
-                  {"id": "s1___num_3", "type": "number", "label": "1", "subexpr": "1", "description": "A constant $(c/a)^2$ defining the spacetime hyperbola, with speed of light $c=1$ and proper acceleration $a=1$.", "dimension": "L²", "unit": "m²", "value": 1},
-                  {"id": "s1___power_4", "type": "operator", "op": "power", "exponent": "2", "subexpr": "t^{2}", "description": "The square of the coordinate time $t$, implicitly multiplied by $c^2$ (with $c=1$ in natural units).", "dimension": "L²", "unit": "m²"},
-                  {"id": "s2___num_1", "type": "number", "label": "1", "subexpr": "1)", "description": "The constant proper acceleration $a$ of the ship, set to a value of 1 in natural units.", "quantity": "acceleration", "dimension": "L·T⁻²", "unit": "m/s²", "value": 1},
-                  {"id": "__equals_1", "type": "operator", "op": "equals", "subexpr": "x_{\\text{ship}}(t) = \\sqrt{1 + t^2} \\qquad (a = 1)", "description": "This equation specifies the ship's worldline, giving its position $x$ at any coordinate time $t$."}
+                  {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "x_{\\text{ship}}(t) = \\sqrt{1 + t^2}", "description": "The ship's worldline, relating its spatial position $x_{\\text{ship}}$ to time $t$ for a constant proper acceleration of $a=1$.", "color": "blue", "highlight": "ship"},
+                  {"id": "x_ship_2", "type": "function", "emoji": "🚀", "latex": "x_{\\text{ship}}", "op": "x_{\\alpha}", "subexpr": "x_{\\text{ship}}{\\left(t \\right)}", "description": "The spatial position of the accelerating ship, $x_{\\text{ship}}$, as a function of time.", "quantity": "position", "dimension": "L", "unit": "m"},
+                  {"id": "t", "type": "scalar", "emoji": "⏱️", "latex": "t", "subexpr": "t", "description": "Time, $t$, in the inertial reference frame.", "quantity": "time", "dimension": "T", "unit": "s"},
+                  {"id": "__power_3", "type": "operator", "op": "power", "exponent": "1/2", "subexpr": "\\sqrt{t^{2} + 1}", "description": "The square root of $1 + t^2$, which gives the ship's position $x_{\\text{ship}}$.", "quantity": "position", "dimension": "L", "unit": "m"},
+                  {"id": "__add_4", "type": "operator", "op": "add", "subexpr": "t^{2} + 1", "description": "The sum of the squared time and 1, the argument of the square root for the ship's worldline.", "quantity": "squared_position", "dimension": "L²", "unit": "m²"},
+                  {"id": "__num_5", "type": "number", "label": "1", "subexpr": "1", "description": "A constant value of 1, representing the squared interval $x^2 - t^2 = 1$ from the ship's perspective.", "quantity": "squared_interval", "dimension": "L²", "unit": "m²", "value": 1},
+                  {"id": "__power_6", "type": "operator", "op": "power", "exponent": "2", "subexpr": "t^{2}", "description": "Time squared, $t^2$, a term in the expression for the ship's worldline.", "quantity": "squared_time", "dimension": "T²", "unit": "s²"},
+                  {"id": "__annotation_0", "type": "annotation", "label": "a = 1", "latex": "a = 1"}
                 ],
                 "edges": [
-                  {"from": "t", "to": "s0___Xi_0_1"},
-                  {"from": "s1___num_3", "to": "s1___add_2"},
-                  {"from": "t", "to": "s1___power_4"},
-                  {"from": "s1___power_4", "to": "s1___add_2"},
-                  {"from": "s1___add_2", "to": "s1___power_1"},
-                  {"from": "s0___Xi_0_1", "to": "__equals_1"},
-                  {"from": "s1___power_1", "to": "__equals_1"},
-                  {"from": "s2___num_1", "to": "__equals_1"}
+                  {"from": "t", "to": "x_ship_2"},
+                  {"from": "x_ship_2", "to": "__equals_1"},
+                  {"from": "__num_5", "to": "__add_4"},
+                  {"from": "t", "to": "__power_6"},
+                  {"from": "__power_6", "to": "__add_4"},
+                  {"from": "__add_4", "to": "__power_3"},
+                  {"from": "__power_3", "to": "__equals_1"}
                 ],
                 "classification": {"kind": "algebraic"},
                 "domain": "special_relativity",
                 "enrichment": {
-                  "reasoning": "The context of spacetime worldlines and accelerating ships points to a `special_relativity` domain. Natural units with $c=1$ are used, making time $t$ and position $x$ have compatible dimensions.",
-                  "fields": ["domain", "nodes.s0___Xi_0_1.description", "nodes.s0___Xi_0_1.dimension", "nodes.s0___Xi_0_1.emoji", "nodes.s0___Xi_0_1.quantity", "nodes.s0___Xi_0_1.unit", "nodes.t.description", "nodes.t.dimension", "nodes.t.emoji", "nodes.t.quantity", "nodes.t.unit", "nodes.s1___power_1.description", "nodes.s1___power_1.dimension", "nodes.s1___power_1.quantity", "nodes.s1___power_1.unit", "nodes.s1___add_2.description", "nodes.s1___add_2.dimension", "nodes.s1___add_2.unit", "nodes.s1___num_3.description", "nodes.s1___num_3.dimension", "nodes.s1___num_3.unit", "nodes.s1___num_3.value", "nodes.s1___power_4.description", "nodes.s1___power_4.dimension", "nodes.s1___power_4.unit", "nodes.s2___num_1.description", "nodes.s2___num_1.dimension", "nodes.s2___num_1.quantity", "nodes.s2___num_1.unit", "nodes.s2___num_1.value", "nodes.__equals_1.description"]
+                  "reasoning": "The lesson context is 'Special Relativity', establishing the domain. Symbols $x$ and $t$ are identified as spacetime coordinates.",
+                  "fields": ["domain", "nodes.__equals_1.description", "nodes.x_ship_2.description", "nodes.x_ship_2.dimension", "nodes.x_ship_2.emoji", "nodes.x_ship_2.quantity", "nodes.x_ship_2.unit", "nodes.t.description", "nodes.t.dimension", "nodes.t.emoji", "nodes.t.quantity", "nodes.t.unit", "nodes.__power_3.description", "nodes.__power_3.dimension", "nodes.__power_3.quantity", "nodes.__power_3.unit", "nodes.__add_4.description", "nodes.__add_4.dimension", "nodes.__add_4.quantity", "nodes.__add_4.unit", "nodes.__num_5.description", "nodes.__num_5.dimension", "nodes.__num_5.quantity", "nodes.__num_5.unit", "nodes.__num_5.value", "nodes.__power_6.description", "nodes.__power_6.dimension", "nodes.__power_6.quantity", "nodes.__power_6.unit"]
                 }
               }
             }
@@ -5043,18 +5048,18 @@
             "semanticGraph": {
               "graph": {
                 "nodes": [
-                  {"id": "__equals_1", "type": "relation", "emoji": "✨", "op": "equals", "subexpr": "x_{\\text{ph}}(t) = x_e + (t - t_e)", "description": "Equation for the worldline of a photon emitted at spacetime event $(x_e, t_e)$.", "color": "orange", "highlight": "photon"},
-                  {"id": "__Xi_0_2", "type": "function", "emoji": "💡", "op": "Xi_{0}", "subexpr": "x_{\\text{ph}}{\\left(t \\right)}", "description": "The position of the photon, $x_{\\text{ph}}$, as a function of time $t$.", "quantity": "position", "dimension": "L", "unit": "m"},
-                  {"id": "t", "type": "scalar", "emoji": "⌛", "latex": "t", "subexpr": "t", "description": "Time coordinate in the stationary reference frame.", "quantity": "time", "dimension": "L", "unit": "m"},
-                  {"id": "__add_3", "type": "operator", "op": "add", "subexpr": "x_{e} + t - t_{e}", "description": "Calculates the photon's position at time $t$ based on its emission point and the elapsed time.", "quantity": "position", "dimension": "L", "unit": "m"},
-                  {"id": "x_e", "type": "scalar", "emoji": "📍", "latex": "x_{e}", "subexpr": "x_{e}", "description": "The spatial position $x_e$ where the photon is emitted.", "quantity": "position", "dimension": "L", "unit": "m"},
-                  {"id": "__add_4", "type": "operator", "op": "add", "subexpr": "t - t_{e}", "description": "Elapsed time, $t - t_e$, since the photon was emitted.", "quantity": "duration", "dimension": "L", "unit": "m"},
-                  {"id": "__negation_5", "type": "operator", "op": "negation", "subexpr": "-t_{e}", "description": "Negation of the photon's emission time, used to calculate the elapsed time."},
-                  {"id": "t_e", "type": "scalar", "emoji": "⏱️", "latex": "t_{e}", "subexpr": "t_{e}", "description": "The time coordinate $t_e$ when the photon is emitted.", "quantity": "time", "dimension": "L", "unit": "m"}
+                  {"id": "__equals_1", "type": "relation", "emoji": "↔️", "op": "equals", "subexpr": "x_{\\text{ph}}(t) = x_e + (t - t_e)", "description": "The photon's worldline, giving its position $x_{\\text{ph}}$ at any time $t$.", "color": "orange", "highlight": "photon"},
+                  {"id": "x_ph_2", "type": "function", "emoji": "💡", "latex": "x_{\\text{ph}}", "op": "x_{\\alpha}", "subexpr": "x_{\\text{ph}}{\\left(t \\right)}", "description": "The position of the photon as a function of time.", "quantity": "position", "dimension": "L", "unit": "m"},
+                  {"id": "t", "type": "scalar", "emoji": "⌛", "latex": "t", "subexpr": "t", "description": "The coordinate time in the stationary reference frame.", "quantity": "time", "dimension": "T", "unit": "s"},
+                  {"id": "__add_3", "type": "operator", "op": "add", "subexpr": "x_{e} + t - t_{e}", "description": "The photon's initial position plus the distance it travels in the elapsed time $t - t_e$.", "quantity": "position", "dimension": "L", "unit": "m"},
+                  {"id": "x_e", "type": "scalar", "emoji": "📍", "latex": "x_{e}", "subexpr": "x_{e}", "description": "The emission position of the photon.", "quantity": "position", "dimension": "L", "unit": "m"},
+                  {"id": "__add_4", "type": "operator", "op": "add", "subexpr": "t - t_{e}", "description": "The elapsed time since the photon was emitted.", "quantity": "time_interval", "dimension": "T", "unit": "s"},
+                  {"id": "__negation_5", "type": "operator", "op": "negation", "subexpr": "-t_{e}", "description": "The negative of the photon's emission time.", "quantity": "time", "dimension": "T", "unit": "s"},
+                  {"id": "t_e", "type": "scalar", "emoji": "⏱️", "latex": "t_{e}", "subexpr": "t_{e}", "description": "The emission time of the photon.", "quantity": "time", "dimension": "T", "unit": "s"}
                 ],
                 "edges": [
-                  {"from": "t", "to": "__Xi_0_2"},
-                  {"from": "__Xi_0_2", "to": "__equals_1"},
+                  {"from": "t", "to": "x_ph_2"},
+                  {"from": "x_ph_2", "to": "__equals_1"},
                   {"from": "x_e", "to": "__add_3"},
                   {"from": "t", "to": "__add_4"},
                   {"from": "t_e", "to": "__negation_5"},
@@ -5065,8 +5070,8 @@
                 "classification": {"kind": "algebraic"},
                 "domain": "special_relativity",
                 "enrichment": {
-                  "reasoning": "The lesson is on Special Relativity, setting the domain. With speed of light $c=1$, time and space have the same dimension ($L$), so all position and time variables are given units of meters.",
-                  "fields": ["domain", "nodes.__equals_1.description", "nodes.__equals_1.emoji", "nodes.__Xi_0_2.description", "nodes.__Xi_0_2.dimension", "nodes.__Xi_0_2.emoji", "nodes.__Xi_0_2.quantity", "nodes.__Xi_0_2.unit", "nodes.t.description", "nodes.t.dimension", "nodes.t.emoji", "nodes.t.quantity", "nodes.t.unit", "nodes.__add_3.description", "nodes.__add_3.dimension", "nodes.__add_3.quantity", "nodes.__add_3.unit", "nodes.x_e.description", "nodes.x_e.dimension", "nodes.x_e.emoji", "nodes.x_e.quantity", "nodes.x_e.unit", "nodes.__add_4.description", "nodes.__add_4.dimension", "nodes.__add_4.quantity", "nodes.__add_4.unit", "nodes.__negation_5.description", "nodes.t_e.description", "nodes.t_e.dimension", "nodes.t_e.emoji", "nodes.t_e.quantity", "nodes.t_e.unit"]
+                  "reasoning": "The context is a special relativity problem involving a photon's worldline, so the domain is `special_relativity`. The variables $x$ and $t$ represent position and time.",
+                  "fields": ["domain", "nodes.__equals_1.description", "nodes.__equals_1.emoji", "nodes.x_ph_2.description", "nodes.x_ph_2.dimension", "nodes.x_ph_2.emoji", "nodes.x_ph_2.quantity", "nodes.x_ph_2.unit", "nodes.t.description", "nodes.t.dimension", "nodes.t.emoji", "nodes.t.quantity", "nodes.t.unit", "nodes.__add_3.description", "nodes.__add_3.dimension", "nodes.__add_3.quantity", "nodes.__add_3.unit", "nodes.x_e.description", "nodes.x_e.dimension", "nodes.x_e.emoji", "nodes.x_e.quantity", "nodes.x_e.unit", "nodes.__add_4.description", "nodes.__add_4.dimension", "nodes.__add_4.quantity", "nodes.__add_4.unit", "nodes.__negation_5.description", "nodes.__negation_5.dimension", "nodes.__negation_5.quantity", "nodes.__negation_5.unit", "nodes.t_e.description", "nodes.t_e.dimension", "nodes.t_e.emoji", "nodes.t_e.quantity", "nodes.t_e.unit"]
                 }
               }
             }
@@ -6157,6 +6162,7 @@
       ],
       "steps": [
         {
+          "id": "the-stage-light-draws-the-boundaries",
           "title": "The stage: light draws the boundaries",
           "description": "Every event's future and past are fenced in by light at 45°.",
           "prompt": "Orient the learner: x is space, vertical is ct, light rays are 45° lines, and the shaded cones are the origin's future and past. Remind them this recaps scene 1 and that a ship is about to be added.",
@@ -6216,6 +6222,7 @@
           ]
         },
         {
+          "id": "the-ship-a-hyperbola-with-a-heartbeat",
           "title": "The ship: a hyperbola with a heartbeat",
           "description": "Constant felt acceleration $a$ bends the worldline into $x^2 - t^2 = 1/a^2$.",
           "prompt": "Encourage playing the t slider and dragging a. Point out the 4-velocity arrow tilting toward 45° while gamma grows, yet the felt acceleration stays constant. Distinguish proper vs coordinate acceleration if asked.",
@@ -6437,6 +6444,7 @@
           ]
         },
         {
+          "id": "the-horizon-a-line-made-of-geometry",
           "title": "The horizon: a line made of geometry",
           "description": "The asymptote $x = t$ is a one-way causal boundary — and it keeps a fixed distance.",
           "prompt": "Name the asymptote as the Rindler horizon. Stress it is a causal boundary, not a wall — nothing is locally there. Highlight d = 1/a shrinking as a grows, and the 1g ≈ 0.97 light-year fact. Ask the learner to predict where a signal must start to catch the ship before advancing.",
@@ -6491,6 +6499,7 @@
           ]
         },
         {
+          "id": "the-chase-fire-a-signal-at-the-ship",
           "title": "The chase: fire a signal at the ship",
           "description": "Move the emission event across the horizon line and watch the verdict flip.",
           "prompt": "Have the learner slide the emission event (xe, te) across the horizon line and watch the verdict text flip between caught and never. Emphasize the pulse always moves at c; only the starting side of the line x = t matters. If the verdict says 'emitted ahead', explain the photon simply leads the ship forever.",
@@ -6569,6 +6578,7 @@
           ]
         },
         {
+          "id": "the-accelerated-observer-s-map",
           "title": "The accelerated observer's map",
           "description": "Rindler coordinates: hyperbolas are hovering observers, radial lines are moments of now.",
           "prompt": "Explain the green Rindler grid: hyperbolas are hovering observers at constant xi with a = 1/xi, radial lines are shared now-moments. Point out the ship's blue now-line always pivots through the origin — that is why the horizon distance is fixed; walk through the proof panel if the learner is curious.",
@@ -6757,6 +6767,7 @@
           ]
         },
         {
+          "id": "beyond-black-holes-and-the-warm-vacuum",
           "title": "Beyond: black holes and the warm vacuum",
           "description": "The same picture, curved: event horizons, gravitational time dilation, and Unruh's glow.",
           "prompt": "Connect the sandbox to black holes via the equivalence principle: a hovering observer is a Rindler observer. Tease the Unruh temperature and its link to Hawking radiation without heavy math. Invite the learner to keep playing with the sliders.",

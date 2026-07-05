@@ -59,6 +59,8 @@ import sys
 import time
 from pathlib import Path
 
+from _json_format import dumps_compact_leaves
+
 # Reuse the backend's derivation + highlight pipeline verbatim so baked graphs
 # match server output exactly. Importing backend.server is heavy (pulls in
 # FastAPI/genai) but this is an offline CLI, so that cost is irrelevant.
@@ -332,44 +334,6 @@ def _fmt_bytes(n):
     return f"{n / 1024:.1f} KB" if abs(n) >= 1024 else f"{n} B"
 
 
-def _has_nested_container(obj):
-    """True if ``obj`` (dict/list) holds any value that is itself a non-empty
-    dict or list — i.e. it is NOT a leaf container."""
-    vals = obj.values() if isinstance(obj, dict) else obj
-    return any(isinstance(v, (dict, list)) and v for v in vals)
-
-
-def _dumps_compact_leaves(obj, indent=2, level=0):
-    """Pretty-print JSON, but collapse *leaf* containers — dicts/lists whose
-    values are all scalars (or empty) — onto a single line.
-
-    Keeps the scene hierarchy (scenes → proof → steps → graph) readable while
-    shrinking the dozens of tiny graph node/edge objects from ~5 lines each to
-    one. All scalar/leaf serialization is delegated to ``json.dumps``, so string
-    escaping and number formatting are identical to a normal dump; only
-    container indentation is custom. Round-trips to the same data as
-    ``json.dumps`` (the caller asserts this before writing)."""
-    if isinstance(obj, (dict, list)) and obj and not _has_nested_container(obj):
-        return json.dumps(obj, ensure_ascii=False)  # leaf container → one line
-    pad = " " * (indent * (level + 1))
-    end = " " * (indent * level)
-    if isinstance(obj, dict):
-        if not obj:
-            return "{}"
-        items = [
-            f"{pad}{json.dumps(str(k), ensure_ascii=False)}: "
-            f"{_dumps_compact_leaves(v, indent, level + 1)}"
-            for k, v in obj.items()
-        ]
-        return "{\n" + ",\n".join(items) + "\n" + end + "}"
-    if isinstance(obj, list):
-        if not obj:
-            return "[]"
-        items = [f"{pad}{_dumps_compact_leaves(v, indent, level + 1)}" for v in obj]
-        return "[\n" + ",\n".join(items) + "\n" + end + "]"
-    return json.dumps(obj, ensure_ascii=False)  # scalar
-
-
 def _print_human(report, path):
     icon = {"valid": "✅", "stale": "♻️ ", "missing": "➕",
             "errorBroken": "❌", "errorUnbaked": "⚠️ "}
@@ -462,7 +426,7 @@ def main():
     if result["baked"] > 0:
         # Compact-leaves: structure stays indented; tiny node/edge objects
         # collapse to one line (~3x fewer lines than indent=2).
-        new_text = _dumps_compact_leaves(spec) + "\n"
+        new_text = dumps_compact_leaves(spec) + "\n"
         # Safety net: the custom writer must round-trip to the exact same data.
         if json.loads(new_text) != spec:
             print("error: compact serialization altered the data — aborting write",
