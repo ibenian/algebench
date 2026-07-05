@@ -328,6 +328,22 @@ class TestFunctions:
         assert _find_node(g, type="operator", op="power") or \
                _find_node(g, type="function", op="sqrt")
 
+    def test_text_subscript_function_name_restored(self):
+        # x_{\text{ph}} is collapsed to x_{Xi_{0}} before parsing; the
+        # placeholder must not leak into the function node's op/latex/id.
+        g = latex_to_semantic_graph(r"x_{\text{ph}}(t) = x_e + (t - t_e)")
+        fn = _find_node(g, type="function")
+        assert fn is not None
+        assert fn.latex == r"x_{\text{ph}}"
+        assert fn.op == "x_{ph}"
+        assert "Xi" not in fn.id
+        assert "Xi" not in (fn.op or "")
+
+    def test_standalone_text_function_name_unaffected(self):
+        g = latex_to_semantic_graph(r"\text{Res}(f)")
+        fn = _find_node(g, type="function", op="Res")
+        assert fn is not None
+
 
 # ---------------------------------------------------------------------------
 # Calculus (Integrals, Sums, Derivatives)

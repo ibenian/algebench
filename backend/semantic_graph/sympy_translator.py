@@ -2793,8 +2793,19 @@ class SemanticGraphBuilder:
                     return node_id
                 # --- Text-command placeholder (e.g. \text{Res} → Xi_{0}) ---
                 op_name = ovr.get("label", op_name)
-            node_id = self._next_id(op_name)
             func_latex = self._latex_commands.get(func_name)
+            if func_latex is None:
+                # Composed placeholder in the function name: ``x_{\text{ph}}``
+                # is collapsed to ``x_{Xi_{0}}`` before parsing, and only the
+                # standalone form is handled above. Without restoration the
+                # node has no latex and the renderer falls back to the raw
+                # ``Xi`` token — resolve it so the display shows real KaTeX
+                # and op/id carry the readable name.
+                resolved = self._resolve_placeholders(op_name)
+                if resolved and resolved != op_name:
+                    func_latex = resolved
+                    op_name = re.sub(r"\\text\{([^{}]+)\}", r"\1", resolved)
+            node_id = self._next_id(op_name)
             func_attrs: dict[str, str] = {"type": "function", "op": op_name}
             if func_latex:
                 func_attrs["latex"] = func_latex

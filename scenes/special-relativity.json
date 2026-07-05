@@ -4999,18 +4999,18 @@
             "semanticGraph": {
               "graph": {
                 "nodes": [
-                  {"id": "__equals_1", "type": "relation", "emoji": "↔️", "op": "equals", "subexpr": "x_{\\text{ship}}(t) = \\sqrt{1 + t^2}", "description": "The ship's worldline, an equation relating its spatial position $x_{\\\\text{ship}}$ to coordinate time $t$.", "color": "blue", "highlight": "ship"},
-                  {"id": "__Xi_0_2", "type": "function", "emoji": "🚀", "op": "Xi_{0}", "subexpr": "x_{\\text{ship}}{\\left(t \\right)}", "description": "The spatial position of the ship, $x_{\\\\text{ship}}$, as a function of time.", "quantity": "position", "dimension": "L", "unit": "m"},
-                  {"id": "t", "type": "scalar", "emoji": "⏳", "latex": "t", "subexpr": "t", "description": "Coordinate time $t$ in a stationary frame, in units where the speed of light is 1.", "quantity": "time", "dimension": "L", "unit": "m"},
-                  {"id": "__power_3", "type": "operator", "op": "power", "exponent": "1/2", "subexpr": "\\sqrt{t^{2} + 1}", "description": "The square root that gives the ship's position $x_{\\\\text{ship}}$ from the spacetime interval.", "quantity": "position", "dimension": "L", "unit": "m"},
-                  {"id": "__add_4", "type": "operator", "op": "add", "subexpr": "t^{2} + 1", "description": "The sum of squared time and squared rest position, equal to $x_{\\\\text{ship}}^2$.", "dimension": "L²", "unit": "m²"},
-                  {"id": "__num_5", "type": "number", "label": "1", "subexpr": "1", "description": "The number one, representing the squared invariant spacetime interval for this worldline.", "dimension": "L²", "unit": "m²", "value": 1},
-                  {"id": "__power_6", "type": "operator", "op": "power", "exponent": "2", "subexpr": "t^{2}", "description": "The square of the coordinate time, $t^2$.", "dimension": "L²", "unit": "m²"},
+                  {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "x_{\\text{ship}}(t) = \\sqrt{1 + t^2}", "description": "The ship's worldline, relating its spatial position $x_{\\text{ship}}$ to time $t$ for a constant proper acceleration of $a=1$.", "color": "blue", "highlight": "ship"},
+                  {"id": "x_ship_2", "type": "function", "emoji": "🚀", "latex": "x_{\\text{ship}}", "op": "x_{\\alpha}", "subexpr": "x_{\\text{ship}}{\\left(t \\right)}", "description": "The spatial position of the accelerating ship, $x_{\\text{ship}}$, as a function of time.", "quantity": "position", "dimension": "L", "unit": "m"},
+                  {"id": "t", "type": "scalar", "emoji": "⏱️", "latex": "t", "subexpr": "t", "description": "Time, $t$, in the inertial reference frame.", "quantity": "time", "dimension": "T", "unit": "s"},
+                  {"id": "__power_3", "type": "operator", "op": "power", "exponent": "1/2", "subexpr": "\\sqrt{t^{2} + 1}", "description": "The square root of $1 + t^2$, which gives the ship's position $x_{\\text{ship}}$.", "quantity": "position", "dimension": "L", "unit": "m"},
+                  {"id": "__add_4", "type": "operator", "op": "add", "subexpr": "t^{2} + 1", "description": "The sum of the squared time and 1, the argument of the square root for the ship's worldline.", "quantity": "squared_position", "dimension": "L²", "unit": "m²"},
+                  {"id": "__num_5", "type": "number", "label": "1", "subexpr": "1", "description": "A constant value of 1, representing the squared interval $x^2 - t^2 = 1$ from the ship's perspective.", "quantity": "squared_interval", "dimension": "L²", "unit": "m²", "value": 1},
+                  {"id": "__power_6", "type": "operator", "op": "power", "exponent": "2", "subexpr": "t^{2}", "description": "Time squared, $t^2$, a term in the expression for the ship's worldline.", "quantity": "squared_time", "dimension": "T²", "unit": "s²"},
                   {"id": "__annotation_0", "type": "annotation", "label": "a = 1", "latex": "a = 1"}
                 ],
                 "edges": [
-                  {"from": "t", "to": "__Xi_0_2"},
-                  {"from": "__Xi_0_2", "to": "__equals_1"},
+                  {"from": "t", "to": "x_ship_2"},
+                  {"from": "x_ship_2", "to": "__equals_1"},
                   {"from": "__num_5", "to": "__add_4"},
                   {"from": "t", "to": "__power_6"},
                   {"from": "__power_6", "to": "__add_4"},
@@ -5020,8 +5020,8 @@
                 "classification": {"kind": "algebraic"},
                 "domain": "special_relativity",
                 "enrichment": {
-                  "reasoning": "Context is a lesson on Special Relativity, with a hyperbolic worldline $x^2 - t^2 = 1$. This implies geometric units where $c=1$, so time and space have the same dimension.",
-                  "fields": ["domain", "nodes.__equals_1.description", "nodes.__equals_1.emoji", "nodes.__Xi_0_2.description", "nodes.__Xi_0_2.dimension", "nodes.__Xi_0_2.emoji", "nodes.__Xi_0_2.quantity", "nodes.__Xi_0_2.unit", "nodes.t.description", "nodes.t.dimension", "nodes.t.emoji", "nodes.t.quantity", "nodes.t.unit", "nodes.__power_3.description", "nodes.__power_3.dimension", "nodes.__power_3.quantity", "nodes.__power_3.unit", "nodes.__add_4.description", "nodes.__add_4.dimension", "nodes.__add_4.unit", "nodes.__num_5.description", "nodes.__num_5.dimension", "nodes.__num_5.unit", "nodes.__num_5.value", "nodes.__power_6.description", "nodes.__power_6.dimension", "nodes.__power_6.unit"]
+                  "reasoning": "The lesson context is 'Special Relativity', establishing the domain. Symbols $x$ and $t$ are identified as spacetime coordinates.",
+                  "fields": ["domain", "nodes.__equals_1.description", "nodes.x_ship_2.description", "nodes.x_ship_2.dimension", "nodes.x_ship_2.emoji", "nodes.x_ship_2.quantity", "nodes.x_ship_2.unit", "nodes.t.description", "nodes.t.dimension", "nodes.t.emoji", "nodes.t.quantity", "nodes.t.unit", "nodes.__power_3.description", "nodes.__power_3.dimension", "nodes.__power_3.quantity", "nodes.__power_3.unit", "nodes.__add_4.description", "nodes.__add_4.dimension", "nodes.__add_4.quantity", "nodes.__add_4.unit", "nodes.__num_5.description", "nodes.__num_5.dimension", "nodes.__num_5.quantity", "nodes.__num_5.unit", "nodes.__num_5.value", "nodes.__power_6.description", "nodes.__power_6.dimension", "nodes.__power_6.quantity", "nodes.__power_6.unit"]
                 }
               }
             }
@@ -5041,18 +5041,18 @@
             "semanticGraph": {
               "graph": {
                 "nodes": [
-                  {"id": "__equals_1", "type": "relation", "emoji": "✨", "op": "equals", "subexpr": "x_{\\text{ph}}(t) = x_e + (t - t_e)", "description": "Equation for the worldline of a photon emitted at spacetime event $(x_e, t_e)$.", "color": "orange", "highlight": "photon"},
-                  {"id": "__Xi_0_2", "type": "function", "emoji": "💡", "op": "Xi_{0}", "subexpr": "x_{\\text{ph}}{\\left(t \\right)}", "description": "The position of the photon, $x_{\\text{ph}}$, as a function of time $t$.", "quantity": "position", "dimension": "L", "unit": "m"},
-                  {"id": "t", "type": "scalar", "emoji": "⌛", "latex": "t", "subexpr": "t", "description": "Time coordinate in the stationary reference frame.", "quantity": "time", "dimension": "L", "unit": "m"},
-                  {"id": "__add_3", "type": "operator", "op": "add", "subexpr": "x_{e} + t - t_{e}", "description": "Calculates the photon's position at time $t$ based on its emission point and the elapsed time.", "quantity": "position", "dimension": "L", "unit": "m"},
-                  {"id": "x_e", "type": "scalar", "emoji": "📍", "latex": "x_{e}", "subexpr": "x_{e}", "description": "The spatial position $x_e$ where the photon is emitted.", "quantity": "position", "dimension": "L", "unit": "m"},
-                  {"id": "__add_4", "type": "operator", "op": "add", "subexpr": "t - t_{e}", "description": "Elapsed time, $t - t_e$, since the photon was emitted.", "quantity": "duration", "dimension": "L", "unit": "m"},
-                  {"id": "__negation_5", "type": "operator", "op": "negation", "subexpr": "-t_{e}", "description": "Negation of the photon's emission time, used to calculate the elapsed time."},
-                  {"id": "t_e", "type": "scalar", "emoji": "⏱️", "latex": "t_{e}", "subexpr": "t_{e}", "description": "The time coordinate $t_e$ when the photon is emitted.", "quantity": "time", "dimension": "L", "unit": "m"}
+                  {"id": "__equals_1", "type": "relation", "emoji": "↔️", "op": "equals", "subexpr": "x_{\\text{ph}}(t) = x_e + (t - t_e)", "description": "The photon's worldline, giving its position $x_{\\text{ph}}$ at any time $t$.", "color": "orange", "highlight": "photon"},
+                  {"id": "x_ph_2", "type": "function", "emoji": "💡", "latex": "x_{\\text{ph}}", "op": "x_{\\alpha}", "subexpr": "x_{\\text{ph}}{\\left(t \\right)}", "description": "The position of the photon as a function of time.", "quantity": "position", "dimension": "L", "unit": "m"},
+                  {"id": "t", "type": "scalar", "emoji": "⌛", "latex": "t", "subexpr": "t", "description": "The coordinate time in the stationary reference frame.", "quantity": "time", "dimension": "T", "unit": "s"},
+                  {"id": "__add_3", "type": "operator", "op": "add", "subexpr": "x_{e} + t - t_{e}", "description": "The photon's initial position plus the distance it travels in the elapsed time $t - t_e$.", "quantity": "position", "dimension": "L", "unit": "m"},
+                  {"id": "x_e", "type": "scalar", "emoji": "📍", "latex": "x_{e}", "subexpr": "x_{e}", "description": "The emission position of the photon.", "quantity": "position", "dimension": "L", "unit": "m"},
+                  {"id": "__add_4", "type": "operator", "op": "add", "subexpr": "t - t_{e}", "description": "The elapsed time since the photon was emitted.", "quantity": "time_interval", "dimension": "T", "unit": "s"},
+                  {"id": "__negation_5", "type": "operator", "op": "negation", "subexpr": "-t_{e}", "description": "The negative of the photon's emission time.", "quantity": "time", "dimension": "T", "unit": "s"},
+                  {"id": "t_e", "type": "scalar", "emoji": "⏱️", "latex": "t_{e}", "subexpr": "t_{e}", "description": "The emission time of the photon.", "quantity": "time", "dimension": "T", "unit": "s"}
                 ],
                 "edges": [
-                  {"from": "t", "to": "__Xi_0_2"},
-                  {"from": "__Xi_0_2", "to": "__equals_1"},
+                  {"from": "t", "to": "x_ph_2"},
+                  {"from": "x_ph_2", "to": "__equals_1"},
                   {"from": "x_e", "to": "__add_3"},
                   {"from": "t", "to": "__add_4"},
                   {"from": "t_e", "to": "__negation_5"},
@@ -5063,8 +5063,8 @@
                 "classification": {"kind": "algebraic"},
                 "domain": "special_relativity",
                 "enrichment": {
-                  "reasoning": "The lesson is on Special Relativity, setting the domain. With speed of light $c=1$, time and space have the same dimension ($L$), so all position and time variables are given units of meters.",
-                  "fields": ["domain", "nodes.__equals_1.description", "nodes.__equals_1.emoji", "nodes.__Xi_0_2.description", "nodes.__Xi_0_2.dimension", "nodes.__Xi_0_2.emoji", "nodes.__Xi_0_2.quantity", "nodes.__Xi_0_2.unit", "nodes.t.description", "nodes.t.dimension", "nodes.t.emoji", "nodes.t.quantity", "nodes.t.unit", "nodes.__add_3.description", "nodes.__add_3.dimension", "nodes.__add_3.quantity", "nodes.__add_3.unit", "nodes.x_e.description", "nodes.x_e.dimension", "nodes.x_e.emoji", "nodes.x_e.quantity", "nodes.x_e.unit", "nodes.__add_4.description", "nodes.__add_4.dimension", "nodes.__add_4.quantity", "nodes.__add_4.unit", "nodes.__negation_5.description", "nodes.t_e.description", "nodes.t_e.dimension", "nodes.t_e.emoji", "nodes.t_e.quantity", "nodes.t_e.unit"]
+                  "reasoning": "The context is a special relativity problem involving a photon's worldline, so the domain is `special_relativity`. The variables $x$ and $t$ represent position and time.",
+                  "fields": ["domain", "nodes.__equals_1.description", "nodes.__equals_1.emoji", "nodes.x_ph_2.description", "nodes.x_ph_2.dimension", "nodes.x_ph_2.emoji", "nodes.x_ph_2.quantity", "nodes.x_ph_2.unit", "nodes.t.description", "nodes.t.dimension", "nodes.t.emoji", "nodes.t.quantity", "nodes.t.unit", "nodes.__add_3.description", "nodes.__add_3.dimension", "nodes.__add_3.quantity", "nodes.__add_3.unit", "nodes.x_e.description", "nodes.x_e.dimension", "nodes.x_e.emoji", "nodes.x_e.quantity", "nodes.x_e.unit", "nodes.__add_4.description", "nodes.__add_4.dimension", "nodes.__add_4.quantity", "nodes.__add_4.unit", "nodes.__negation_5.description", "nodes.__negation_5.dimension", "nodes.__negation_5.quantity", "nodes.__negation_5.unit", "nodes.t_e.description", "nodes.t_e.dimension", "nodes.t_e.emoji", "nodes.t_e.quantity", "nodes.t_e.unit"]
                 }
               }
             }
