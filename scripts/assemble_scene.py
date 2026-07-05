@@ -44,7 +44,7 @@ def save_json(path, data):
         print('Error: compact serialization altered the data — aborting write',
               file=sys.stderr)
         sys.exit(1)
-    with open(path, 'w') as f:
+    with open(path, 'w', encoding='utf-8') as f:
         f.write(text)
 
 

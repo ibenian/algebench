@@ -208,7 +208,7 @@ def main():
         if json.loads(text) != scene:
             print('FAIL: compact serialization altered the data — aborting write')
             sys.exit(1)
-        with open(args.file, 'w') as f:
+        with open(args.file, 'w', encoding='utf-8') as f:
             f.write(text)
 
     # Report
