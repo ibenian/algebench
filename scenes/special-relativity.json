@@ -787,7 +787,7 @@
           "virtualTime": {"expr": "T5"},
           "sliders": [
             {"id": "v", "label": "clock speed $v\\;(c=1)$", "min": 0, "max": 0.95, "step": 0.01, "default": 0.6, "animate": true, "animateMode": "loop", "duration": 4000, "autoplay": false},
-            {"id": "T5", "label": "$t$ (grow the flash)", "min": 0, "max": 8, "step": 0.02, "default": 2.2, "animate": true, "animateMode": "loop", "autoplay": true, "duration": 14000}
+            {"id": "T5", "label": "$t$ (grow the flash)", "min": 0, "max": 8, "step": 0.02, "default": 0, "animate": true, "animateMode": "loop", "autoplay": true, "duration": 14000}
           ],
           "remove": [
             {"id": "s2_tri_hyp"},
@@ -1008,11 +1008,31 @@
               "color": "#aabbcc"
             }
           ],
-          "remove": [],
+          "remove": [
+            {"id": "s2w_front_rest"},
+            {"id": "s2w_front_move"},
+            {"id": "s2w_ghost"},
+            {"id": "s2w_event_rest"},
+            {"id": "s2w_event_move"},
+            {"id": "s2w_hyp"},
+            {"id": "s2w_leg_h"},
+            {"id": "s2w_leg_base"},
+            {"id": "s2w_strike_rest"},
+            {"id": "s2w_strike_move"},
+            {"id": "s2w_strike_move_mark"},
+            {"id": "s2w_key_planted"},
+            {"id": "s2w_key_ghost"},
+            {"type": "slider"}
+          ],
           "info": [
             {"id": "s2_gamma_info", "content": "### Where $\\gamma$ comes from\nThe triangle, written in clock readings ($h = c\\,T_0$):\n\n$$(c\\,t)^2 = (c\\,T_0)^2 + (v\\,t)^2 \\;\\Rightarrow\\; t = \\gamma\\,T_0, \\qquad \\gamma = \\dfrac{1}{\\sqrt{1-v^2}}$$\n\nAt $v = {{toFixed(v,2)}}$: $\\;\\gamma = {{toFixed(1/sqrt(1-v^2),2)}}$ — not a postulate, just the Pythagorean sum solved for $t$.\n\nMoving clock tick $= \\gamma \\times$ rest tick.", "position": "top-left"},
             {"id": "s2_reality_info", "content": "### Reality checks\n**Muons:** born ~15 km up, would fall only ~660 m before decaying — yet $\\gamma \\approx 5\\text{–}10$ lets them reach the ground.\n\n**GPS:** satellite clocks corrected by **~38 μs/day** (net), or positions drift **kilometers** off within a day.", "position": "bottom-right"}
-          ]
+          ],
+          "sliders": [
+            {"id": "v", "label": "clock speed $v\\;(c=1)$", "min": 0, "max": 0.95, "step": 0.01, "default": 0.6, "animate": true, "animateMode": "loop", "duration": 4000, "autoplay": false},
+            {"id": "T6", "label": "$t$ (time)", "min": 0, "max": 28, "step": 0.05, "default": 0, "animate": true, "animateMode": "loop", "autoplay": true, "duration": 16000}
+          ],
+          "virtualTime": {"expr": "T6"}
         }
       ],
       "proof": {
