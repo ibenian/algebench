@@ -2951,11 +2951,11 @@
             {
               "id": "s5_catch_marker",
               "type": "animated_point",
-              "expr": ["xe + ((1 - (xe - te)^2) / (2 * (xe - te)) - te)", "(1 - (xe - te)^2) / (2 * (xe - te))", "0"],
+              "expr": ["xe + ((1 - (xe - te)^2) / (2 * (xe - te) + 0.000001) - te)", "(1 - (xe - te)^2) / (2 * (xe - te) + 0.000001)", "0"],
               "color": "#66ff99",
               "size": 3,
               "label": "catch!",
-              "visibleExpr": "(xe - te > 0) * (xe < sqrt(1 + te^2))"
+              "visibleExpr": "(xe - te > 0.02) * (xe < sqrt(1 + te^2)) * ((1 - (xe - te)^2) / (2 * (xe - te) + 0.000001) < 8.5) * ((1 - (xe - te)^2) / (2 * (xe - te) + 0.000001) > -8.5)"
             },
             {
               "id": "s5_verdict_caught",
