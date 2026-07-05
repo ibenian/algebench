@@ -1142,8 +1142,11 @@ export class ProofAnimator {
   _renderExplore() {
     const pill = this.container.querySelector(".pa-info-pill");
     if (!pill) return;
+    // Entries are strings or {text, deeplink} (validate-proof.js) — normalize to
+    // objects so chips can carry their own landing view.
     const clean = (v) => (Array.isArray(v) ? v : [])
-      .filter((s) => typeof s === "string" && s.trim()).slice(0, 8);
+      .map((s) => (typeof s === "string" ? { text: s } : s))
+      .filter((s) => s && typeof s.text === "string" && s.text.trim()).slice(0, 8);
     const tabs = [];
     const prereqs = clean(this.data && this.data.prerequisites);
     const followups = clean(this.data && this.data.followups);
@@ -1194,7 +1197,7 @@ export class ProofAnimator {
         icon.innerHTML = AI_SPARKLE_SVG;
         const text = document.createElement("span");
         text.className = "pa-explore-chip-text";
-        this._caption(text, item);     // inline math, safe (no raw HTML)
+        this._caption(text, item.text);   // inline math, safe (no raw HTML)
         chip.append(icon, text);
         chip.addEventListener("click", () => this._exploreClick(tab.key, item));
         contentEl.appendChild(chip);
@@ -1322,6 +1325,9 @@ export class ProofAnimator {
     const title = this.data && this.data.title ? ` "${this.data.title}"` : "";
     const goal = this.data && this.data.goal ? ` (${this.data.goal})` : "";
     if (kind === "prerequisite") {
+      // Question-form prerequisites are already the ask — don't wrap them in
+      // "explain the prerequisite «…?»".
+      if (/\?\s*$/.test(text)) return `In the derivation${title}${goal}: ${text}`;
       return `In the derivation${title}${goal}, explain the prerequisite "${text}" `
         + `and how it's used here.`;
     }
@@ -1329,15 +1335,16 @@ export class ProofAnimator {
   }
 
   // Route a prerequisite / follow-up chip click — SAME three contexts as _routeAsk
-  // (in-app → chat; embedded → new tab; standalone → this tab). Chips are about the
-  // whole proof, so they use the proof-level deeplink (scene/step + auto-ask) if
-  // present, else the app's main page with chat. (A future PR can give each chip
-  // its own deeplink.)
-  _exploreClick(kind, text) {
+  // (in-app → chat; embedded → new tab; standalone → this tab). A chip is about the
+  // whole proof, so it uses the proof-level deeplink (scene/step + auto-ask) — unless
+  // the chip carries its OWN deeplink, which is a "go see it" action in EVERY
+  // context: navigate to that view (chat + auto-ask) instead of asking in place.
+  _exploreClick(kind, item) {
+    const text = item.text;
     const message = this._exploreMessage(kind, text);
-    if (this._onExplore) { this._onExplore({ kind, text, message }); return; }   // (1) in-app → chat
+    if (!item.deeplink && this._onExplore) { this._onExplore({ kind, text, message }); return; }   // (1) in-app → chat
     this._openAppUrl(                                                            // (2) embedded / (3) standalone
-      this._askTargetUrl((this.data && this.data.deeplink) || "", message),
+      this._askTargetUrl(item.deeplink || (this.data && this.data.deeplink) || "", message),
       () => this._postToParent({ type: "algebench-explore", kind, text, message }),  // embedded fallback
       () => { try { navigator.clipboard.writeText(text); } catch (e) {} });          // standalone fallback
   }
