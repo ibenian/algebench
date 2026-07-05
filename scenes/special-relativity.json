@@ -2163,7 +2163,7 @@
       "title": "Two Ships Passing: Adding Speeds",
       "description": "Two travelers, adjustable speeds — and the discovery that velocities refuse to add the way Newton promised.",
       "markdown": "# Two Ships Passing: Adding Speeds\n\nShip $A$ cruises at $v_A$ and ship $B$ at $v_B$ (signed: positive is rightward), both measured in the stationary frame. The obvious question: **how fast does each see the other move?**\n\n## Newton's answer\n\nSubtract: $w = v_A - v_B$. Head-on at $0.6c$ each, that's $1.2c$ — faster than light, which scene 1 already outlawed.\n\n## Einstein's answer\n\n$$w_{A\\,\\text{seen from}\\,B} = \\frac{v_A - v_B}{1 - v_A v_B}$$\n\nHead-on at $0.6c$ each: $1.2/1.36 = 0.882c$. Always below $c$ — even $0.95c$ against $0.95c$ gives only $0.9987c$.\n\n## Why: rapidity is the real adder\n\nDefine $\\eta = \\operatorname{atanh}(v)$ — the hyperbolic angle from The Interval. Boosts compose by **adding rapidities**:\n\n$$\\eta_{rel} = \\eta_A - \\eta_B, \\qquad w = \\tanh(\\eta_A - \\eta_B) = \\frac{v_A - v_B}{1 - v_A v_B}.$$\n\nNewton's rule is simply the small-angle limit ($\\tanh\\eta \\approx \\eta$ when $v \\ll c$). Velocities saturate at $c$ because $\\tanh$ saturates at $1$ — no matter how much rapidity you stack up.\n\n## And their clocks\n\nEach ship's clock ticks at $\\sqrt{1-v^2}$ per stationary-frame second (the light clock). Between the ships themselves, each sees the other slowed by the **same** $\\gamma_{rel} = 1/\\sqrt{1-w^2}$ — mutual and symmetric. Who is *really* younger has no answer until they reunite, and that requires bending a worldline (the twins).\n\n---\n*Sources: [Velocity-addition formula](https://en.wikipedia.org/wiki/Velocity-addition_formula) · [Rapidity](https://en.wikipedia.org/wiki/Rapidity).*",
-      "prompt": "Two ships on looping lanes: A (blue rocket) at slider vA, B (green saucer) at slider vB, both signed so learners can set parallel or head-on motion; a gold photon pace-car marks c. Key readouts: B seen from A is (vB-vA)/(1-vA*vB); Newton's naive answer is vB-vA; the bar chart shows Newton's bar piercing the golden c line while Einstein's never reaches it. Rapidity eta = atanh(v) is the quantity that truly adds. Clock counters over each ship tick at their proper rates; dilation between the ships is mutual (same gamma_rel each way) — no asymmetry without a reunion. Encourage extreme-slider experiments: 0.95 against -0.95 still yields under c. Common misconceptions to correct: 'speeds just add', 'one of them is really slower', 'the formula only matters near c'. A third participant O (labeled stationary) stands at x = 0 with a full-rate clock — but stress that 'stationary' is frame convention, not physics: O is at rest in the frame we happen to draw; each ship is equally entitled to call itself at rest and O moving. No experiment distinguishes absolute rest (Michelson-Morley); the closest thing to a cosmically convenient frame is the CMB rest frame, which is special only by contents, not by the laws.",
+      "prompt": "Two ships on looping lanes: A (blue rocket) at slider vA, B (green saucer) at slider vB, both signed so learners can set parallel or head-on motion; a gold photon pace-car marks c. Key readouts: B seen from A is (vB-vA)/(1-vA*vB); Newton's naive answer is vB-vA; the bar chart shows Newton's bar piercing the golden c line while Einstein's never reaches it. Rapidity eta = atanh(v) is the quantity that truly adds. Clock counters over each ship tick at their proper rates; dilation between the ships is mutual (same gamma_rel each way) — no asymmetry without a reunion. Encourage extreme-slider experiments: 0.95 against -0.95 still yields under c. Common misconceptions to correct: 'speeds just add', 'one of them is really slower', 'the formula only matters near c'. A third participant O (labeled stationary) stands at x = 0 with a full-rate clock — but stress that 'stationary' is frame convention, not physics: O is at rest in the frame we happen to draw; each ship is equally entitled to call itself at rest and O moving. No experiment distinguishes absolute rest (Michelson-Morley); the closest thing to a cosmically convenient frame is the CMB rest frame, which is special only by contents, not by the laws. Crucial unconfusion when asked: 'c is c for all observers' applies ONLY to light — it does not make sub-light speeds observer-independent. c is the fixed point of the composition law ((1-v)/(1-v) = 1 for any v; infinite rapidity minus finite is still infinite), while every speed below c is a relation that reshuffles between frames — equal speeds cancel to zero relative speed.",
       "range": [
         [-8, 8],
         [-8, 8],
@@ -2255,7 +2255,7 @@
         {
           "title": "Two travelers, one stationary frame",
           "description": "Set each ship's signed speed — same direction, or head-on. The gold photon is the pace car nobody beats.",
-          "prompt": "Introduce the lanes: A blue on top lane, B green below, photon on the highest lane always at c. Sliders are SIGNED — negative means leftward, so learners can stage parallel cruising or head-on passes. The counters over each ship are their own clocks, ticking at sqrt(1-v^2) per stationary-frame second. Invite play before any formulas.",
+          "prompt": "Introduce the lanes: A blue on top lane, B green below, photon on the highest lane always at c. Sliders are SIGNED — negative means leftward, so learners can stage parallel cruising or head-on passes. The counters over each ship are their own clocks, ticking at sqrt(1-v^2) per stationary-frame second. Invite play before any formulas. Each participant flashes a light burst on every tick of their OWN clock — O at full rate, ships slower by sqrt(1-v^2); crank a ship's speed and watch its flashes space out. The photon never flashes: zero proper time along a light path — light does not age.",
           "duration": 4000,
           "sliders": [
             {"id": "vA", "label": "$v_A$", "min": -0.95, "max": 0.95, "step": 0.05, "default": 0.6},
@@ -2298,10 +2298,43 @@
               "size": 3,
               "label": "🧍 O",
               "labelExpr": "concat(\"🧍 O (stationary) · ⏱ \", floor(t/2))"
+            },
+            {
+              "id": "srv_shipA_glow",
+              "type": "animated_point",
+              "expr": ["-8 + mod(8 + vA*t, 16)", "2.5", "0"],
+              "color": "#4da6ff",
+              "size": 2,
+              "glow": true,
+              "opacity": 0,
+              "sizeExpr": "2 + 5*(0.5 + 0.5*cos(pi*t*sqrt(1 - vA^2)))^8",
+              "opacityExpr": "0.95*(0.5 + 0.5*cos(pi*t*sqrt(1 - vA^2)))^8"
+            },
+            {
+              "id": "srv_shipB_glow",
+              "type": "animated_point",
+              "expr": ["-8 + mod(8 + vB*t, 16)", "1", "0"],
+              "color": "#66cc88",
+              "size": 2,
+              "glow": true,
+              "opacity": 0,
+              "sizeExpr": "2 + 5*(0.5 + 0.5*cos(pi*t*sqrt(1 - vB^2)))^8",
+              "opacityExpr": "0.95*(0.5 + 0.5*cos(pi*t*sqrt(1 - vB^2)))^8"
+            },
+            {
+              "id": "srv_obs_glow",
+              "type": "animated_point",
+              "expr": ["0", "-0.5", "0"],
+              "color": "#aabbcc",
+              "size": 2,
+              "glow": true,
+              "opacity": 0,
+              "sizeExpr": "2 + 5*(0.5 + 0.5*cos(pi*t*1))^8",
+              "opacityExpr": "0.95*(0.5 + 0.5*cos(pi*t*1))^8"
             }
           ],
           "info": [
-            {"id": "srv_intro_info", "position": "top-right", "content": "**Two travelers, one stationary frame**\n\nAll speeds are measured in the *stationary* frame ($c = 1$):\n\n$v_A = {{toFixed(vA, 2)}}$ · $v_B = {{toFixed(vB, 2)}}$\n\nDrag them signed — negative is leftward — and stage a head-on pass or a parallel cruise. The ⏱ counters are each ship's *own* clock. The photon up top never loses a race.\n\n🧍 **O** stands still on the stationary frame — but \"still\" is pure convention: O is simply *at rest in the frame this diagram is drawn in*. To A, it's O who moves at $-v_A$. No experiment can crown any of them 'really stationary'."}
+            {"id": "srv_intro_info", "position": "top-right", "content": "**Two travelers, one stationary frame**\n\nAll speeds are measured in the *stationary* frame ($c = 1$):\n\n$v_A = {{toFixed(vA, 2)}}$ · $v_B = {{toFixed(vB, 2)}}$\n\nDrag them signed — negative is leftward — and stage a head-on pass or a parallel cruise. The ⏱ counters are each ship's *own* clock. The photon up top never loses a race.\n\n🧍 **O** stands still on the stationary frame — but \"still\" is pure convention: O is simply *at rest in the frame this diagram is drawn in*. To A, it's O who moves at $-v_A$. No experiment can crown any of them 'really stationary'.\n\nEach traveler **flashes on their own clock tick** — O at the full stationary rate, the ships slower by their $\\sqrt{1-v^2}$. The photon never flashes: light accrues **no proper time at all**."}
           ]
         },
         {
@@ -2384,7 +2417,7 @@
             }
           ],
           "info": [
-            {"id": "srv_reveal_info", "position": "top-right", "content": "**The composition law**\n\n$$w = \\frac{v_B - v_A}{1 - v_A v_B}$$\n\n- $B$ seen from $A$: $\\;{{toFixed((vB - vA)/(1 - vA*vB), 3)}}\\,c$\n- $A$ seen from $B$: $\\;{{toFixed((vA - vB)/(1 - vA*vB), 3)}}\\,c$\n- Newton would say: $\\;{{toFixed(vB - vA, 2)}}\\,c$\n- $\\gamma_{rel} = {{toFixed(1/sqrt(1 - ((vB - vA)/(1 - vA*vB))^2), 2)}}$\n\nThe denominator $1 - v_A v_B$ is the whole trick: it grows exactly fast enough that $|w| < 1$ always. Try $\\pm 0.95$: Newton claims $1.9c$; Einstein delivers $0.9987c$."}
+            {"id": "srv_reveal_info", "position": "top-right", "content": "**The composition law**\n\n$$w = \\frac{v_B - v_A}{1 - v_A v_B}$$\n\n- $B$ seen from $A$: $\\;{{toFixed((vB - vA)/(1 - vA*vB), 3)}}\\,c$\n- $A$ seen from $B$: $\\;{{toFixed((vA - vB)/(1 - vA*vB), 3)}}\\,c$\n- Newton would say: $\\;{{toFixed(vB - vA, 2)}}\\,c$\n- $\\gamma_{rel} = {{toFixed(1/sqrt(1 - ((vB - vA)/(1 - vA*vB))^2), 2)}}$\n\nThe denominator $1 - v_A v_B$ is the whole trick: it grows exactly fast enough that $|w| < 1$ always. Try $\\pm 0.95$: Newton claims $1.9c$; Einstein delivers $0.9987c$.\n\n**And the photon?** Set $v_B = 1$: $\\;w = \\dfrac{1 - v_A}{1 - v_A} = 1$, *for every* $v_A$. $c$ is the **fixed point** of this law — the one speed no change of observer can move. That's how \"$c$ is $c$ for everyone\" and \"equal speeds cancel to zero\" are both true at once."}
           ]
         },
         {
