@@ -2163,7 +2163,7 @@
       "title": "Two Ships Passing: Adding Speeds",
       "description": "Two travelers, adjustable speeds — and the discovery that velocities refuse to add the way Newton promised.",
       "markdown": "# Two Ships Passing: Adding Speeds\n\nShip $A$ cruises at $v_A$ and ship $B$ at $v_B$ (signed: positive is rightward), both measured in the stationary frame. The obvious question: **how fast does each see the other move?**\n\n## Newton's answer\n\nSubtract: $w = v_A - v_B$. Head-on at $0.6c$ each, that's $1.2c$ — faster than light, which scene 1 already outlawed.\n\n## Einstein's answer\n\n$$w_{A\\,\\text{seen from}\\,B} = \\frac{v_A - v_B}{1 - v_A v_B}$$\n\nHead-on at $0.6c$ each: $1.2/1.36 = 0.882c$. Always below $c$ — even $0.95c$ against $0.95c$ gives only $0.9987c$.\n\n## Why: rapidity is the real adder\n\nDefine $\\eta = \\operatorname{atanh}(v)$ — the hyperbolic angle from The Interval. Boosts compose by **adding rapidities**:\n\n$$\\eta_{rel} = \\eta_A - \\eta_B, \\qquad w = \\tanh(\\eta_A - \\eta_B) = \\frac{v_A - v_B}{1 - v_A v_B}.$$\n\nNewton's rule is simply the small-angle limit ($\\tanh\\eta \\approx \\eta$ when $v \\ll c$). Velocities saturate at $c$ because $\\tanh$ saturates at $1$ — no matter how much rapidity you stack up.\n\n## And their clocks\n\nEach ship's clock ticks at $\\sqrt{1-v^2}$ per stationary-frame second (the light clock). Between the ships themselves, each sees the other slowed by the **same** $\\gamma_{rel} = 1/\\sqrt{1-w^2}$ — mutual and symmetric. Who is *really* younger has no answer until they reunite, and that requires bending a worldline (the twins).\n\n---\n*Sources: [Velocity-addition formula](https://en.wikipedia.org/wiki/Velocity-addition_formula) · [Rapidity](https://en.wikipedia.org/wiki/Rapidity).*",
-      "prompt": "Two ships on looping lanes: A (blue rocket) at slider vA, B (green saucer) at slider vB, both signed so learners can set parallel or head-on motion; a gold photon pace-car marks c. Key readouts: B seen from A is (vB-vA)/(1-vA*vB); Newton's naive answer is vB-vA; the bar chart shows Newton's bar piercing the golden c line while Einstein's never reaches it. Rapidity eta = atanh(v) is the quantity that truly adds. Clock counters over each ship tick at their proper rates; dilation between the ships is mutual (same gamma_rel each way) — no asymmetry without a reunion. Encourage extreme-slider experiments: 0.95 against -0.95 still yields under c. Common misconceptions to correct: 'speeds just add', 'one of them is really slower', 'the formula only matters near c'. A third participant O (labeled stationary) stands at x = 0 with a full-rate clock — but stress that 'stationary' is frame convention, not physics: O is at rest in the frame we happen to draw; each ship is equally entitled to call itself at rest and O moving. No experiment distinguishes absolute rest (Michelson-Morley); the closest thing to a cosmically convenient frame is the CMB rest frame, which is special only by contents, not by the laws. Crucial unconfusion when asked: 'c is c for all observers' applies ONLY to light — it does not make sub-light speeds observer-independent. c is the fixed point of the composition law ((1-v)/(1-v) = 1 for any v; infinite rapidity minus finite is still infinite), while every speed below c is a relation that reshuffles between frames — equal speeds cancel to zero relative speed.",
+      "prompt": "Two ships on looping lanes: A (blue rocket) at slider vA, B (green saucer) at slider vB, both signed so learners can set parallel or head-on motion; a gold photon pace-car marks c. Key readouts: B seen from A is (vB-vA)/(1-vA*vB); Newton's naive answer is vB-vA; the bar chart shows Newton's bar piercing the golden c line while Einstein's never reaches it. Rapidity eta = atanh(v) is the quantity that truly adds. Clock counters over each ship tick at their proper rates; dilation between the ships is mutual (same gamma_rel each way) — no asymmetry without a reunion. Encourage extreme-slider experiments: 0.95 against -0.95 still yields under c. Common misconceptions to correct: 'speeds just add', 'one of them is really slower', 'the formula only matters near c'. A third participant O (labeled stationary) stands at x = 0 with a full-rate clock — but stress that 'stationary' is frame convention, not physics: O is at rest in the frame we happen to draw; each ship is equally entitled to call itself at rest and O moving. No experiment distinguishes absolute rest (Michelson-Morley); the closest thing to a cosmically convenient frame is the CMB rest frame, which is special only by contents, not by the laws. Crucial unconfusion when asked: 'c is c for all observers' applies ONLY to light — it does not make sub-light speeds observer-independent. c is the fixed point of the composition law ((1-v)/(1-v) = 1 for any v; infinite rapidity minus finite is still infinite), while every speed below c is a relation that reshuffles between frames — equal speeds cancel to zero relative speed. Sliders now reach ±1 (exactly c). Special-case handling: a ship at |v| = 1 becomes a light ray — label changes, its clock freezes at zero ticks and its tick-flash goes dark (photons accrue no proper time); its rapidity arrow is replaced by an eta = infinity marker. With ONE ship at c the Einstein result lands exactly ON the c tick — the fixed point: (1-v)/(1-v) = 1 for every v. With BOTH at c the composition law returns 0/0, the gap reads infinity minus infinity, and the red banner explains that no rest frame exists at c — the question dissolves rather than answers. Some dashboard numbers may show NaN or Infinity in the both-c case; treat that as the formula honestly reporting indeterminacy, and point to the banner.",
       "range": [
         [-8, 8],
         [-8, 8],
@@ -2258,8 +2258,8 @@
           "prompt": "Introduce the lanes: A blue on top lane, B green below, photon on the highest lane always at c. Sliders are SIGNED — negative means leftward, so learners can stage parallel cruising or head-on passes. The counters over each ship are their own clocks, ticking at sqrt(1-v^2) per stationary-frame second. Invite play before any formulas. Each participant flashes a light burst on every tick of their OWN clock — O at full rate, ships slower by sqrt(1-v^2); crank a ship's speed and watch its flashes space out. The photon never flashes: zero proper time along a light path — light does not age.",
           "duration": 4000,
           "sliders": [
-            {"id": "vA", "label": "$v_A$", "min": -0.95, "max": 0.95, "step": 0.05, "default": 0.6},
-            {"id": "vB", "label": "$v_B$", "min": -0.95, "max": 0.95, "step": 0.05, "default": -0.6}
+            {"id": "vA", "label": "$v_A$", "min": -1, "max": 1, "step": 0.05, "default": 0.6},
+            {"id": "vB", "label": "$v_B$", "min": -1, "max": 1, "step": 0.05, "default": -0.6}
           ],
           "add": [
             {
@@ -2279,7 +2279,7 @@
               "color": "#4da6ff",
               "size": 3,
               "label": "🚀 A",
-              "labelExpr": "concat(\"🚀 A · ⏱ \", floor(t*sqrt(1 - vA^2)/2))"
+              "labelExpr": "(abs(vA) >= 0.999) ? \"⚡ A — light ray: no clock, no frame\" : concat(\"🚀 A · ⏱ \", floor(t*sqrt(1 - vA^2)/2))"
             },
             {
               "id": "srv_shipB",
@@ -2288,7 +2288,7 @@
               "color": "#66cc88",
               "size": 3,
               "label": "🛸 B",
-              "labelExpr": "concat(\"🛸 B · ⏱ \", floor(t*sqrt(1 - vB^2)/2))"
+              "labelExpr": "(abs(vB) >= 0.999) ? \"⚡ B — light ray: no clock, no frame\" : concat(\"🛸 B · ⏱ \", floor(t*sqrt(1 - vB^2)/2))"
             },
             {
               "id": "srv_obs",
@@ -2307,8 +2307,8 @@
               "size": 2,
               "glow": true,
               "opacity": 0,
-              "sizeExpr": "2 + 5*(0.5 + 0.5*cos(pi*t*sqrt(1 - vA^2)))^8",
-              "opacityExpr": "0.95*(0.5 + 0.5*cos(pi*t*sqrt(1 - vA^2)))^8"
+              "sizeExpr": "2 + 5*((abs(vA) < 0.999)*(0.5 + 0.5*cos(pi*t*sqrt(1 - min(abs(vA), 0.999)^2))))^8",
+              "opacityExpr": "0.95*((abs(vA) < 0.999)*(0.5 + 0.5*cos(pi*t*sqrt(1 - min(abs(vA), 0.999)^2))))^8"
             },
             {
               "id": "srv_shipB_glow",
@@ -2318,8 +2318,8 @@
               "size": 2,
               "glow": true,
               "opacity": 0,
-              "sizeExpr": "2 + 5*(0.5 + 0.5*cos(pi*t*sqrt(1 - vB^2)))^8",
-              "opacityExpr": "0.95*(0.5 + 0.5*cos(pi*t*sqrt(1 - vB^2)))^8"
+              "sizeExpr": "2 + 5*((abs(vB) < 0.999)*(0.5 + 0.5*cos(pi*t*sqrt(1 - min(abs(vB), 0.999)^2))))^8",
+              "opacityExpr": "0.95*((abs(vB) < 0.999)*(0.5 + 0.5*cos(pi*t*sqrt(1 - min(abs(vB), 0.999)^2))))^8"
             },
             {
               "id": "srv_obs_glow",
@@ -2331,6 +2331,33 @@
               "opacity": 0,
               "sizeExpr": "2 + 5*(0.5 + 0.5*cos(pi*t*1))^8",
               "opacityExpr": "0.95*(0.5 + 0.5*cos(pi*t*1))^8"
+            },
+            {
+              "id": "srv_banner_A",
+              "type": "text",
+              "size": 13,
+              "color": "#ffaa33",
+              "position": [-3, 6.3, 0],
+              "text": "⚡ $A$ is now light itself: **every** observer measures it at exactly $c$ — and it has no clock, no frame, no point of view.",
+              "visibleExpr": "(abs(vA) >= 0.999) and (abs(vB) < 0.999)"
+            },
+            {
+              "id": "srv_banner_B",
+              "type": "text",
+              "size": 13,
+              "color": "#ffaa33",
+              "position": [-3, 6.3, 0],
+              "text": "⚡ $B$ is now light itself: **every** observer measures it at exactly $c$ — and it has no clock, no frame, no point of view.",
+              "visibleExpr": "(abs(vB) >= 0.999) and (abs(vA) < 0.999)"
+            },
+            {
+              "id": "srv_banner_both",
+              "type": "text",
+              "size": 13,
+              "color": "#ff5566",
+              "position": [-3, 6.3, 0],
+              "text": "$\\tfrac{0}{0}$ — you've asked one photon to measure another. **No rest frame exists at $c$**: the question dissolves. (Einstein's teenage paradox — its resolution was this theory.)",
+              "visibleExpr": "(abs(vA) >= 0.999) and (abs(vB) >= 0.999)"
             }
           ],
           "info": [
@@ -2417,7 +2444,7 @@
             }
           ],
           "info": [
-            {"id": "srv_reveal_info", "position": "top-right", "content": "**The composition law**\n\n$$w = \\frac{v_B - v_A}{1 - v_A v_B}$$\n\n- $B$ seen from $A$: $\\;{{toFixed((vB - vA)/(1 - vA*vB), 3)}}\\,c$\n- $A$ seen from $B$: $\\;{{toFixed((vA - vB)/(1 - vA*vB), 3)}}\\,c$\n- Newton would say: $\\;{{toFixed(vB - vA, 2)}}\\,c$\n- $\\gamma_{rel} = {{toFixed(1/sqrt(1 - ((vB - vA)/(1 - vA*vB))^2), 2)}}$\n\nThe denominator $1 - v_A v_B$ is the whole trick: it grows exactly fast enough that $|w| < 1$ always. Try $\\pm 0.95$: Newton claims $1.9c$; Einstein delivers $0.9987c$.\n\n**And the photon?** Set $v_B = 1$: $\\;w = \\dfrac{1 - v_A}{1 - v_A} = 1$, *for every* $v_A$. $c$ is the **fixed point** of this law — the one speed no change of observer can move. That's how \"$c$ is $c$ for everyone\" and \"equal speeds cancel to zero\" are both true at once."}
+            {"id": "srv_reveal_info", "position": "top-right", "content": "**The composition law**\n\n$$w = \\frac{v_B - v_A}{1 - v_A v_B}$$\n\n- $B$ seen from $A$: $\\;{{toFixed((vB - vA)/(1 - vA*vB), 3)}}\\,c$\n- $A$ seen from $B$: $\\;{{toFixed((vA - vB)/(1 - vA*vB), 3)}}\\,c$\n- Newton would say: $\\;{{toFixed(vB - vA, 2)}}\\,c$\n- $\\gamma_{rel} = {{toFixed(1/sqrt(1 - ((vB - vA)/(1 - vA*vB))^2), 2)}}$\n\nThe denominator $1 - v_A v_B$ is the whole trick: it grows exactly fast enough that $|w| < 1$ always. Try $\\pm 0.95$: Newton claims $1.9c$; Einstein delivers $0.9987c$.\n\n**And the photon?** Set $v_B = 1$: $\\;w = \\dfrac{1 - v_A}{1 - v_A} = 1$, *for every* $v_A$. $c$ is the **fixed point** of this law — the one speed no change of observer can move. That's how \"$c$ is $c$ for everyone\" and \"equal speeds cancel to zero\" are both true at once.\n\n*Push a slider all the way to $\\pm 1$: the scene handles the speed of light as the special case it truly is.*"}
           ]
         },
         {
@@ -2430,11 +2457,12 @@
               "id": "srv_eta_A",
               "type": "animated_vector",
               "from": [-3, -2.7, 0],
-              "expr": ["-3 + 1.8*atanh(vA)", "-2.7", "0"],
+              "expr": ["-3 + 1.8*atanh(max(min(vA, 0.999), -0.999))", "-2.7", "0"],
               "color": "#4da6ff",
               "width": 4,
               "arrowScale": 0.6,
-              "labelExpr": "concat(\"$\\\\eta_A = \", toFixed(atanh(vA), 2), \"$\")"
+              "labelExpr": "concat(\"$\\\\eta_A = \", toFixed(atanh(vA), 2), \"$\")",
+              "visibleExpr": "abs(vA) < 0.999"
             },
             {
               "id": "srv_eta_axis",
@@ -2478,21 +2506,23 @@
               "id": "srv_eta_B",
               "type": "animated_vector",
               "from": [-3, -4.3, 0],
-              "expr": ["-3 + 1.8*atanh(vB)", "-4.3", "0"],
+              "expr": ["-3 + 1.8*atanh(max(min(vB, 0.999), -0.999))", "-4.3", "0"],
               "color": "#66cc88",
               "width": 4,
               "arrowScale": 0.6,
-              "labelExpr": "concat(\"$\\\\eta_B = \", toFixed(atanh(vB), 2), \"$\")"
+              "labelExpr": "concat(\"$\\\\eta_B = \", toFixed(atanh(vB), 2), \"$\")",
+              "visibleExpr": "abs(vB) < 0.999"
             },
             {
               "id": "srv_eta_rel",
               "type": "animated_vector",
-              "fromExpr": ["-3 + 1.8*atanh(vA)", "-5.2", "0"],
-              "expr": ["-3 + 1.8*atanh(vB)", "-5.2", "0"],
+              "fromExpr": ["-3 + 1.8*atanh(max(min(vA, 0.999), -0.999))", "-5.2", "0"],
+              "expr": ["-3 + 1.8*atanh(max(min(vB, 0.999), -0.999))", "-5.2", "0"],
               "color": "#ffaa33",
               "width": 3,
               "arrowScale": 0.6,
-              "labelExpr": "concat(\"$\\\\eta_B - \\\\eta_A = \", toFixed(atanh(vB) - atanh(vA), 2), \"$\")"
+              "labelExpr": "concat(\"$\\\\eta_B - \\\\eta_A = \", toFixed(atanh(vB) - atanh(vA), 2), \"$\")",
+              "visibleExpr": "(abs(vA) < 0.999) and (abs(vB) < 0.999)"
             },
             {
               "id": "srv_v_newton",
@@ -2569,7 +2599,44 @@
               "color": "#4da6ff",
               "width": 3.5,
               "arrowScale": 0.6,
-              "labelExpr": "concat(\"$\\\\text{Einstein: } \\\\tanh(\\\\eta_B - \\\\eta_A) = \", toFixed((vB - vA)/(1 - vA*vB), 3), \"\\\\,c$\")"
+              "labelExpr": "concat(\"$\\\\text{Einstein: } \\\\tanh(\\\\eta_B - \\\\eta_A) = \", toFixed((vB - vA)/(1 - vA*vB), 3), \"\\\\,c$\")",
+              "visibleExpr": "(abs(vA) < 0.999) or (abs(vB) < 0.999)"
+            },
+            {
+              "id": "srv_eta_A_inf",
+              "type": "text",
+              "text": "$\\eta_A = \\infty$",
+              "color": "#4da6ff",
+              "size": 12,
+              "positionExpr": ["-3 + 3.9*sign(vA)", "-2.7", "0"],
+              "visibleExpr": "abs(vA) >= 0.999"
+            },
+            {
+              "id": "srv_eta_B_inf",
+              "type": "text",
+              "text": "$\\eta_B = \\infty$",
+              "color": "#66cc88",
+              "size": 12,
+              "positionExpr": ["-3 + 3.9*sign(vB)", "-4.3", "0"],
+              "visibleExpr": "abs(vB) >= 0.999"
+            },
+            {
+              "id": "srv_gap_one_c",
+              "type": "text",
+              "color": "#ffaa33",
+              "size": 12,
+              "position": [-3, -5.2, 0],
+              "text": "gap $= \\infty - \\text{finite} = \\infty \\;\\Rightarrow\\; \\tanh(\\infty) = $ exactly $c$: light outruns every finite rapidity",
+              "visibleExpr": "((abs(vA) >= 0.999) and (abs(vB) < 0.999)) or ((abs(vB) >= 0.999) and (abs(vA) < 0.999))"
+            },
+            {
+              "id": "srv_gap_both_c",
+              "type": "text",
+              "color": "#ff5566",
+              "size": 12,
+              "position": [-3, -5.2, 0],
+              "text": "gap $= \\infty - \\infty$: **undefined** — there is no frame in which to compare two light rays",
+              "visibleExpr": "(abs(vA) >= 0.999) and (abs(vB) >= 0.999)"
             }
           ],
           "info": [
