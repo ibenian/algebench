@@ -2661,19 +2661,45 @@
           ]
         }
       ],
-      "proof": {
-        "title": "Velocity composition from rapidity addition",
-        "technique": "derivation",
-        "goal": "Derive $w = \\dfrac{v_A - v_B}{1 - v_A v_B}$ from $\\eta_{rel} = \\eta_A - \\eta_B$",
-        "steps": [
-          {"type": "definition", "label": "Rapidity", "math": "v = \\tanh\\eta \\quad\\Longleftrightarrow\\quad \\eta = \\operatorname{atanh}(v)"},
-          {"type": "given", "label": "Boosts add rapidities", "math": "\\eta_{rel} = \\eta_A - \\eta_B", "justification": "Established in The Interval: a boost is a hyperbolic rotation, and successive rotations add their angles"},
-          {"type": "step", "label": "Expand the hyperbolic tangent", "math": "w = \\tanh(\\eta_A - \\eta_B) = \\frac{\\tanh\\eta_A - \\tanh\\eta_B}{1 - \\tanh\\eta_A \\tanh\\eta_B}", "justification": "Hyperbolic angle-difference identity"},
-          {"type": "step", "label": "Substitute the velocities", "math": "w = \\frac{v_A - v_B}{1 - v_A v_B}", "justification": "$\\tanh\\eta_A = v_A$, $\\tanh\\eta_B = v_B$"},
-          {"type": "step", "label": "The speed limit is automatic", "math": "|\\eta_{rel}| < \\infty \\;\\Rightarrow\\; |w| = |\\tanh(\\eta_{rel})| < 1", "justification": "$\\tanh$ saturates at $\\pm 1$: stacking any finite rapidity never reaches light speed"},
-          {"type": "conclusion", "label": "Newton is the small-angle limit", "math": "v \\ll 1 \\;\\Rightarrow\\; \\tanh\\eta \\approx \\eta \\;\\Rightarrow\\; w \\approx v_A - v_B", "justification": "Everyday speeds live in the flat part of tanh — which is why subtraction ever seemed right"}
-        ]
-      }
+      "proof": [
+        {
+          "title": "Velocity composition from rapidity addition",
+          "technique": "derivation",
+          "goal": "Derive $w = \\dfrac{v_A - v_B}{1 - v_A v_B}$ from $\\eta_{rel} = \\eta_A - \\eta_B$",
+          "steps": [
+            {"type": "definition", "label": "Rapidity", "math": "v = \\tanh\\eta \\quad\\Longleftrightarrow\\quad \\eta = \\operatorname{atanh}(v)"},
+            {"type": "given", "label": "Boosts add rapidities", "math": "\\eta_{rel} = \\eta_A - \\eta_B", "justification": "Established in The Interval: a boost is a hyperbolic rotation, and successive rotations add their angles"},
+            {"type": "step", "label": "Expand the hyperbolic tangent", "math": "w = \\tanh(\\eta_A - \\eta_B) = \\frac{\\tanh\\eta_A - \\tanh\\eta_B}{1 - \\tanh\\eta_A \\tanh\\eta_B}", "justification": "Hyperbolic angle-difference identity"},
+            {"type": "step", "label": "Substitute the velocities", "math": "w = \\frac{v_A - v_B}{1 - v_A v_B}", "justification": "$\\tanh\\eta_A = v_A$, $\\tanh\\eta_B = v_B$"},
+            {"type": "step", "label": "The speed limit is automatic", "math": "|\\eta_{rel}| < \\infty \\;\\Rightarrow\\; |w| = |\\tanh(\\eta_{rel})| < 1", "justification": "$\\tanh$ saturates at $\\pm 1$: stacking any finite rapidity never reaches light speed"},
+            {"type": "conclusion", "label": "Newton is the small-angle limit", "math": "v \\ll 1 \\;\\Rightarrow\\; \\tanh\\eta \\approx \\eta \\;\\Rightarrow\\; w \\approx v_A - v_B", "justification": "Everyday speeds live in the flat part of tanh — which is why subtraction ever seemed right"}
+          ]
+        },
+        {
+          "title": "Boosts really do add rapidities",
+          "technique": "derivation",
+          "goal": "Show $\\Lambda(\\eta_1)\\,\\Lambda(\\eta_2) = \\Lambda(\\eta_1 + \\eta_2)$",
+          "steps": [
+            {"type": "definition", "label": "A boost is a hyperbolic rotation", "math": "\\Lambda(\\eta) = \\begin{pmatrix} \\cosh\\eta & \\sinh\\eta \\\\ \\sinh\\eta & \\cosh\\eta \\end{pmatrix}", "justification": "From The Interval: this matrix slides events along hyperbolas, preserving $x^2 - t^2$"},
+            {"type": "step", "label": "Compose two boosts", "math": "\\Lambda(\\eta_1)\\Lambda(\\eta_2) = \\begin{pmatrix} \\cosh\\eta_1\\cosh\\eta_2 + \\sinh\\eta_1\\sinh\\eta_2 & \\cosh\\eta_1\\sinh\\eta_2 + \\sinh\\eta_1\\cosh\\eta_2 \\\\ \\cdot & \\cdot \\end{pmatrix}", "justification": "Matrix multiplication, entry by entry (the matrix is symmetric — the second row mirrors the first)"},
+            {"type": "step", "label": "Angle-sum identities collapse it", "math": "\\cosh\\eta_1\\cosh\\eta_2 + \\sinh\\eta_1\\sinh\\eta_2 = \\cosh(\\eta_1{+}\\eta_2), \\quad \\cosh\\eta_1\\sinh\\eta_2 + \\sinh\\eta_1\\cosh\\eta_2 = \\sinh(\\eta_1{+}\\eta_2)", "justification": "The hyperbolic analogues of the trigonometric angle-sum formulas"},
+            {"type": "conclusion", "label": "Rapidities add", "math": "\\Lambda(\\eta_1)\\,\\Lambda(\\eta_2) = \\Lambda(\\eta_1 + \\eta_2)", "justification": "Chaining boosts adds their hyperbolic angles — the fact the composition proof (and the gold gap arrow) stands on"}
+          ]
+        },
+        {
+          "title": "The speed limit survives composition",
+          "technique": "direct",
+          "goal": "Sub-light in $\\Rightarrow$ sub-light out: $|v_A|, |v_B| < 1 \\Rightarrow |w| < 1$, with $w = 1$ exactly when an input is light",
+          "steps": [
+            {"type": "given", "label": "The composition law", "math": "w = \\frac{v_A + v_B}{1 + v_A v_B} \\qquad (|v_A| \\le 1,\\; |v_B| \\le 1)", "justification": "Composing velocities $v_A$ and $v_B$ (addition form; the relative-velocity form is the same with $v_B \\to -v_B$)"},
+            {"type": "step", "label": "Factor the shortfall from $+c$", "math": "1 - w = \\frac{(1 - v_A)(1 - v_B)}{1 + v_A v_B}", "justification": "One line of algebra — and every factor on the right is $\\ge 0$"},
+            {"type": "step", "label": "Factor the clearance above $-c$", "math": "1 + w = \\frac{(1 + v_A)(1 + v_B)}{1 + v_A v_B}", "justification": "Same algebra, mirrored"},
+            {"type": "step", "label": "Strictly sub-light inputs stay strictly sub-light", "math": "|v_A|, |v_B| < 1 \\;\\Rightarrow\\; 1 - w > 0 \\text{ and } 1 + w > 0 \\;\\Rightarrow\\; |w| < 1", "justification": "All factors strictly positive — no pair of sub-$c$ speeds can compose past $c$, ever"},
+            {"type": "step", "label": "Equality happens only at the speed of light", "math": "w = 1 \\;\\Longleftrightarrow\\; v_A = 1 \\text{ or } v_B = 1", "justification": "$1 - w = 0$ requires a vanishing factor: the only way to compose to $c$ is to already be $c$ — the fixed point"},
+            {"type": "conclusion", "label": "Sub-light speeds form a closed system", "math": "\\text{sub-}c \\circ \\text{sub-}c = \\text{sub-}c, \\qquad c \\circ \\text{anything} = c", "justification": "The slider experiment as a theorem: 0.9 with 0.9, seven nines with seven nines — never $c$; and light composed with anything is still light"}
+          ]
+        }
+      ]
     },
     {
       "id": "flooring-it-forever",
