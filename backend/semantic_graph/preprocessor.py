@@ -427,14 +427,28 @@ class LaTeXPreprocessor:
         # Match a trailing ``(...)`` with no nested parens using a single
         # ``[^()]*`` — the old ``[^()]*…[^()]*`` body is a polynomial-ReDoS
         # shape (CWE-1333) that scanners flag. Whether the parenthetical is an
-        # annotation (must contain ``\text{…}``) is a separate, unambiguous
-        # containment check. Trailing spacing left before the matched paren is
-        # removed in linear time by ``strip_trailing_spacing`` below.
+        # annotation is a separate, unambiguous containment check. Trailing
+        # spacing left before the matched paren is removed in linear time by
+        # ``strip_trailing_spacing`` below.
         trailing_paren = re.compile(r"\(([^()]*)\)\s*$")
         text_cmd = re.compile(r"\\text\{[^{}]+\}")
         while True:
             m = trailing_paren.search(latex)
-            if not m or not text_cmd.search(m.group(1)):
+            if not m:
+                break
+            inner_raw = m.group(1)
+            head = latex[:m.start()].rstrip()
+            # A trailing parenthetical is an annotation when it carries prose
+            # (``\text{…}``) or when it is a side condition — set off from the
+            # main expression by ``\quad``/``\qquad`` and containing its own
+            # ``=`` (e.g. ``T_0 = h \qquad (c = 1)``).  A genuine math factor
+            # can never contain ``=``, so real parens like ``(a+b)^2`` are
+            # never stripped.
+            is_prose = bool(text_cmd.search(inner_raw))
+            is_side_condition = "=" in inner_raw and (
+                head.endswith("\\quad") or head.endswith("\\qquad")
+            )
+            if not (is_prose or is_side_condition):
                 break
             inner = m.group(1).strip()
             label = re.sub(r"\\text\{([^{}]+)\}", r"\1", inner)

@@ -1866,6 +1866,39 @@ class TestParentheticalAnnotations:
         anno = _find_node(g, type="annotation")
         assert anno is not None
 
+    # Side conditions without \text — issue #435
+    def test_side_condition_extracted(self):
+        latex = r"T_0 = h \qquad (c = 1)"
+        cleaned, anns = _extract_parenthetical_annotations(latex)
+        assert cleaned == r"T_0 = h"
+        assert len(anns) == 1
+        assert anns[0]["label"] == "c = 1"
+
+    def test_side_condition_requires_quad_separator(self):
+        latex = r"a = b (c = 1)"
+        cleaned, anns = _extract_parenthetical_annotations(latex)
+        assert cleaned == latex
+        assert anns == []
+
+    def test_trailing_function_call_not_extracted(self):
+        latex = r"y = f \qquad (x)"
+        cleaned, anns = _extract_parenthetical_annotations(latex)
+        assert cleaned == latex
+        assert anns == []
+
+    def test_end_to_end_side_condition_not_chained(self):
+        g = latex_to_semantic_graph(r"T_0 = h \qquad (c = 1)")
+        anno = _find_node(g, type="annotation")
+        assert anno is not None, "side condition should become an annotation node"
+        assert anno.label == "c = 1"
+        eq = _find_node(g, op="equals")
+        assert eq is not None
+        operands = [e.from_ for e in g.edges if e.to == eq.id]
+        assert len(operands) == 2, (
+            f"(c = 1) must not be chained into the main equality: {operands}"
+        )
+        assert _find_node(g, type="number", value=1) is None
+
 
 # ---------------------------------------------------------------------------
 # Dirac bra-ket notation (issue #211)
