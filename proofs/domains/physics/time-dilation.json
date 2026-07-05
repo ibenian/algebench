@@ -1,6 +1,7 @@
 {
   "title": "Lorentz time dilation",
   "domain": "algebra",
+  "deeplink": "/?builtin=special-relativity&view=math&panel=chat&pp=1&dock=1&sc=the-light-clock&st=gamma-readout-reality-checks&pf=lightclock_gamma&ps=time-dilation&nodes=T&pa=physics/time-dilation",
   "steps": [
     {
       "index": 0,
@@ -220,6 +221,10 @@
     "How would you solve the original equation for $t_0$ instead of $t$?"
   ],
   "prerequisites": [
+    {
+      "text": "Where did this Pythagorean relation come from?",
+      "deeplink": "/?builtin=special-relativity&view=math&panel=chat&pp=1&dock=1&sc=the-light-clock&st=planted-wavefront&pf=lightclock_gamma&ps=height-is-rest-tick&nodes=T&cam=-1.3353,-0.1353,16.5,-1.3353,-0.1353,0"
+    },
     "Expanding squares",
     "Factoring algebraic expressions",
     "Solving equations",

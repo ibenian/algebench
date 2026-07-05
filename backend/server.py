@@ -506,6 +506,13 @@ def print(*args, **kwargs):
         return builtins.print(*args, **kwargs)
     except BrokenPipeError:
         return None
+    except UnicodeEncodeError:
+        # e.g. lone UTF-16 surrogates from truncated emoji in client payloads
+        safe = [str(a).encode("utf-8", "replace").decode("utf-8", "replace") for a in args]
+        try:
+            return builtins.print(*safe, **kwargs)
+        except Exception:
+            return None
     except OSError as e:
         if getattr(e, "errno", None) == 32:
             return None
@@ -2158,6 +2165,10 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
         if not TTS_AVAILABLE or not GEMINI_API_KEY:
             return JSONResponse({"error": "TTS not available"}, status_code=503)
         text = req.text.strip()
+        # Strip unpaired UTF-16 surrogates (e.g. an emoji cut in half by a
+        # client-side character-count truncation) — they break UTF-8 encoding
+        # in logging and in the downstream TTS request.
+        text = "".join(ch for ch in text if not 0xD800 <= ord(ch) <= 0xDFFF)
         if not text:
             return JSONResponse({"error": "Empty text"}, status_code=400)
 

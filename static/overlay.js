@@ -332,7 +332,10 @@ function _evalInfoExpr(expr) {
     const trimmed = String(expr || '').trim();
     if (!trimmed) return '';
     if (_exprHasUnknownIdentifiers(trimmed)) {
-        return null;
+        // Unknown slider/function (e.g. a tutor-injected overlay referencing a
+        // slider that isn't on the current step): degrade to the same '?'
+        // marker used for eval failures rather than leaking raw template text.
+        return '?';
     }
     const memScope = (window.agentMemoryValues && typeof window.agentMemoryValues === 'object')
         ? window.agentMemoryValues
@@ -873,6 +876,9 @@ export function setupSettingsPanel() {
             } else if (param === 'planeOpacity') {
                 for (const m of state.planeMeshes) {
                     if (m._hiddenByRemove) continue;
+                    // Glow-halo sprites manage their own opacity/visibility per
+                    // frame, and additive sprites must never write depth.
+                    if (m.isSprite) continue;
                     if (m.userData && m.userData.ignorePlaneOpacity) {
                         const baseOp = (typeof m.userData.targetOpacity === 'number') ? m.userData.targetOpacity : 1;
                         m.visible = baseOp > 0.001;
