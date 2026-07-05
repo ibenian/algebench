@@ -165,6 +165,10 @@ export function renderAnimatedPoint(el, view) {
     state.activeAnimUpdaters.push({
         animState,
         updateFrame(nowMs) {
+            // Step-removed elements aren't rendered and must not publish
+            // positions — skip all per-frame evaluation for them.
+            if (mesh._hiddenByRemove) return;
+
             const tSec = (nowMs - startTime) / 1000;
             const fns = animExprEntry.compiledFns || exprFns;
             let p = initPos;
@@ -173,8 +177,6 @@ export function renderAnimatedPoint(el, view) {
             } catch (err) {
                 // keep previous position
             }
-
-            if (mesh._hiddenByRemove) return;
 
             if (el.id) {
                 state.animatedElementPos[el.id] = { pos: p, startTime, time: nowMs };
