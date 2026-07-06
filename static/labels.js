@@ -475,8 +475,16 @@ function resolveRun(cluster, start, end, gap, maxStack) {
         for (let k = b.k0; k < b.k0 + b.size; k++) sAvg += S[k];
         sAvg /= b.size;
         for (let k = b.k0; k < b.k0 + b.size; k++) {
+            const lbl = cluster[start + k];
             const finalY = mean + sAvg + (S[k] - sAvg) * scale;
-            cluster[start + k].targetOffsetY = finalY - cluster[start + k].screenY;
+            let off = finalY - lbl.screenY;
+            // Yield cap: a static label steps aside for a moving obstacle only up
+            // to about its own height. A larger push means the obstacle is passing
+            // *through* it (e.g. a rider lingering/reversing on its own worldline),
+            // where the minimal-displacement side keeps flipping — so hold still
+            // and let it briefly occlude instead of making a big, jumpy swing.
+            if (b.hasFixed && !lbl.moving && Math.abs(off) > lbl.boxH) off = 0;
+            lbl.targetOffsetY = off;
         }
     }
 }
