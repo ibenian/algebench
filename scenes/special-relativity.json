@@ -2161,8 +2161,14 @@
                 [0, 4, 0]
               ],
               "color": "#aabbcc",
-              "width": 3,
-              "label": "stay-home: $\\tau = 8$"
+              "width": 3
+            },
+            {
+              "id": "s3_g_home_lbl",
+              "type": "text",
+              "text": "stay-home: $\\tau = 8$",
+              "position": [-2.7, 3.2, 0],
+              "color": "#aabbcc"
             },
             {
               "id": "s3_g_worldline",
