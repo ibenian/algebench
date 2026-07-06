@@ -336,12 +336,11 @@ function resolveLabelOffsets() {
     const gap = state.displayParams.labelDeclutterGap;
     const maxStack = state.displayParams.labelDeclutterMaxStack;
 
-    // Horizontal extent of a label's box, honoring its anchor alignment.
-    const leftOf = (l) => l.align === 'right' ? l.screenX - l.boxW
-        : l.align === 'left' ? l.screenX : l.screenX - l.boxW / 2;
-
-    // Cluster labels whose x-spans overlap (padded) — only these can occlude.
-    const clusters = clusterByX(active, leftOf, gap);
+    // Cluster labels whose boxes *actually* overlap in 2D — a label only occludes
+    // another when they intersect on BOTH axes. Clustering on x alone would drag
+    // together labels that merely share a column (bridged by a wide neighbor) and
+    // shove them apart vertically even though they never touch.
+    const clusters = clusterByOverlap(active);
     for (const cluster of clusters) {
         if (cluster.length < 2) continue;
         cluster.sort((a, b) => a.screenY - b.screenY);
@@ -349,19 +348,33 @@ function resolveLabelOffsets() {
     }
 }
 
-function clusterByX(labels, leftOf, gap) {
+// Screen-space box of a label, honoring its anchor alignment (labels are
+// vertically centered on screenY via the CSS translate(-50%)).
+function labelBox(l) {
+    const left = l.align === 'right' ? l.screenX - l.boxW
+        : l.align === 'left' ? l.screenX : l.screenX - l.boxW / 2;
+    return { left, right: left + l.boxW, top: l.screenY - l.boxH / 2, bottom: l.screenY + l.boxH / 2 };
+}
+
+function clusterByOverlap(labels) {
+    const n = labels.length;
+    const boxes = labels.map(labelBox);
     const parent = labels.map((_, i) => i);
     const find = (i) => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
-    const union = (a, b) => { parent[find(a)] = find(b); };
-    for (let i = 0; i < labels.length; i++) {
-        const li = leftOf(labels[i]), ri = li + labels[i].boxW;
-        for (let j = i + 1; j < labels.length; j++) {
-            const lj = leftOf(labels[j]), rj = lj + labels[j].boxW;
-            if (li < rj + gap && lj < ri + gap) union(i, j);
+    for (let i = 0; i < n; i++) {
+        const a = boxes[i];
+        for (let j = i + 1; j < n; j++) {
+            const b = boxes[j];
+            // Real box intersection on both axes — no gap padding, so labels
+            // resting a gap apart are not engaged (that gap is the deadband that
+            // keeps boundary cases from flickering in and out of a cluster).
+            if (a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom) {
+                parent[find(i)] = find(j);
+            }
         }
     }
     const groups = new Map();
-    for (let i = 0; i < labels.length; i++) {
+    for (let i = 0; i < n; i++) {
         const r = find(i);
         if (!groups.has(r)) groups.set(r, []);
         groups.get(r).push(labels[i]);
@@ -369,47 +382,67 @@ function clusterByX(labels, leftOf, gap) {
     return [...groups.values()];
 }
 
-// Pool-Adjacent-Violators (isotonic regression): minimal-displacement 1D
-// separation of label centers. `cluster` is sorted top→bottom by screenY.
+// Split a horizontal cluster (sorted top→bottom) into runs of labels that
+// *actually* overlap vertically, and resolve each run independently. A pair is
+// only "engaged" when its boxes truly overlap (center distance < mean height,
+// gap excluded); resolution then spreads them to mean height + gap. Because the
+// resolved spacing exceeds the engage threshold, resolved labels can't
+// re-trigger, and labels merely sitting a gap apart are never touched — this
+// deadband is what stops boundary jitter.
 function resolveVerticalStack(cluster, gap, maxStack) {
     const n = cluster.length;
-    // S[i] = cumulative minimum separation required from label 0 down to label i.
+    let i = 0;
+    while (i < n) {
+        let j = i; // extend the run while consecutive boxes overlap
+        while (j + 1 < n
+            && cluster[j + 1].screenY - cluster[j].screenY < (cluster[j].boxH + cluster[j + 1].boxH) / 2) {
+            j++;
+        }
+        if (j > i) resolveRun(cluster, i, j, gap, maxStack);
+        i = j + 1;
+    }
+}
+
+// Pool-Adjacent-Violators (isotonic regression) over one engaged run
+// cluster[start..end]: minimal-displacement vertical separation to mean
+// height + gap, with continuous compression past maxStack.
+function resolveRun(cluster, start, end, gap, maxStack) {
+    const n = end - start + 1;
+    // S[k] = cumulative target separation from the run's first label down to k.
     // Subtracting it turns the non-overlap constraints into a monotonicity
     // constraint, so the least-squares fit is plain isotonic regression.
     const S = new Array(n);
     S[0] = 0;
-    for (let i = 1; i < n; i++) {
-        S[i] = S[i - 1] + cluster[i - 1].boxH / 2 + cluster[i].boxH / 2 + gap;
+    for (let k = 1; k < n; k++) {
+        S[k] = S[k - 1] + (cluster[start + k - 1].boxH + cluster[start + k].boxH) / 2 + gap;
     }
-    const desired = cluster.map((l, i) => l.screenY - S[i]);
+    const desired = [];
+    for (let k = 0; k < n; k++) desired[k] = cluster[start + k].screenY - S[k];
 
     // PAVA: pool adjacent blocks whenever the previous block's mean exceeds the
     // next's, producing a non-decreasing sequence of block means.
-    const blocks = []; // { sum, size, start }  (mean = sum / size)
-    for (let i = 0; i < n; i++) {
-        let b = { sum: desired[i], size: 1, start: i };
+    const blocks = []; // { sum, size, k0 }  (mean = sum / size)
+    for (let k = 0; k < n; k++) {
+        let b = { sum: desired[k], size: 1, k0: k };
         while (blocks.length && blocks[blocks.length - 1].sum / blocks[blocks.length - 1].size > b.sum / b.size) {
             const prev = blocks.pop();
-            b = { sum: prev.sum + b.sum, size: prev.size + b.size, start: prev.start };
+            b = { sum: prev.sum + b.sum, size: prev.size + b.size, k0: prev.k0 };
         }
         blocks.push(b);
     }
 
-    // Final center of label i = block mean + S[i]. Singleton blocks resolve back
-    // to their original position (offset 0). To avoid a hard cliff when a stack
-    // grows past `maxStack`, we don't give up — we *compress* the block toward its
-    // centroid by a factor that stays at 1 up to ~maxStack labels and then shrinks
-    // continuously, so a crowded stack degrades to mild overlap instead of
-    // collapsing all at once.
+    // Final center of label k = block mean + S[k]. To avoid a hard cliff when a
+    // stack grows past maxStack, compress the block toward its centroid by a
+    // factor that stays at 1 up to ~maxStack labels then shrinks continuously.
     for (const b of blocks) {
         const mean = b.sum / b.size;
         const scale = Math.min(1, maxStack / Math.max(1, b.size - 1));
         let sAvg = 0;
-        for (let i = b.start; i < b.start + b.size; i++) sAvg += S[i];
+        for (let k = b.k0; k < b.k0 + b.size; k++) sAvg += S[k];
         sAvg /= b.size;
-        for (let i = b.start; i < b.start + b.size; i++) {
-            const finalY = mean + sAvg + (S[i] - sAvg) * scale;
-            cluster[i].targetOffsetY = finalY - cluster[i].screenY;
+        for (let k = b.k0; k < b.k0 + b.size; k++) {
+            const finalY = mean + sAvg + (S[k] - sAvg) * scale;
+            cluster[start + k].targetOffsetY = finalY - cluster[start + k].screenY;
         }
     }
 }
