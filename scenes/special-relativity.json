@@ -741,7 +741,7 @@
               "id": "s2_race_finish_lbl",
               "type": "text",
               "text": "🏁 lap end",
-              "positionExpr": ["-1 + v*(2*floor(4*sqrt(1-v^2)/max(v, 0.05))/sqrt(1-v^2))", "2.7", "0"],
+              "positionExpr": ["-1 + v*(2*floor(4*sqrt(1-v^2)/max(v, 0.05))/sqrt(1-v^2))", "3.8", "0"],
               "color": "#aabbcc",
               "size": 12
             },
