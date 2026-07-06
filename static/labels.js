@@ -345,14 +345,16 @@ export function updateLabels() {
 // Targets are a pure function of the (offset-free) anchor positions, so there is
 // no feedback into detection and therefore no oscillation.
 function resolveLabelOffsets() {
-    const active = [];
+    const items = [];
     for (const lbl of state.labels) {
         lbl.targetOffsetY = 0;
-        // Skip labels that are animating (glued to a moving marker) — declutter
-        // only rearranges labels that are holding still.
-        if (lbl.visible && lbl.boxW != null && !lbl.moving) active.push(lbl);
+        // Animating labels (glued to a moving marker) participate as immovable
+        // *obstacles* — static text slides around them — but are never offset
+        // themselves (moving a glued label off its marker looks wrong and is hard
+        // to track). Static labels are the only ones that actually move.
+        if (lbl.visible && lbl.boxW != null) items.push(lbl);
     }
-    if (!state.displayParams.labelDeclutter || active.length < 2) return;
+    if (!state.displayParams.labelDeclutter || items.length < 2) return;
 
     const gap = state.displayParams.labelDeclutterGap;
     const maxStack = state.displayParams.labelDeclutterMaxStack;
@@ -361,12 +363,16 @@ function resolveLabelOffsets() {
     // another when they intersect on BOTH axes. Clustering on x alone would drag
     // together labels that merely share a column (bridged by a wide neighbor) and
     // shove them apart vertically even though they never touch.
-    const clusters = clusterByOverlap(active);
+    const clusters = clusterByOverlap(items);
     for (const cluster of clusters) {
         if (cluster.length < 2) continue;
+        // Nothing to do if every label in the cluster is a fixed obstacle.
+        if (!cluster.some(l => !l.moving)) continue;
         cluster.sort((a, b) => a.screenY - b.screenY);
         resolveVerticalStack(cluster, gap, maxStack);
     }
+    // Enforce the invariant: obstacle (moving) labels never carry an offset.
+    for (const lbl of state.labels) if (lbl.moving) lbl.targetOffsetY = 0;
 }
 
 // Screen-space box of a label, honoring its anchor alignment (labels are
@@ -440,24 +446,31 @@ function resolveRun(cluster, start, end, gap, maxStack) {
     const desired = [];
     for (let k = 0; k < n; k++) desired[k] = cluster[start + k].screenY - S[k];
 
-    // PAVA: pool adjacent blocks whenever the previous block's mean exceeds the
-    // next's, producing a non-decreasing sequence of block means.
-    const blocks = []; // { sum, size, k0 }  (mean = sum / size)
+    // Fixed obstacles (moving labels) get an overwhelming weight so the weighted
+    // least-squares fit leaves them essentially in place and pushes the static
+    // labels around them instead.
+    const OBSTACLE_W = 1e6;
+    const wOf = (k) => cluster[start + k].moving ? OBSTACLE_W : 1;
+
+    // Weighted PAVA: pool adjacent blocks whenever the previous block's weighted
+    // mean exceeds the next's, producing a non-decreasing sequence of means.
+    const blocks = []; // { wsum, w, size, k0, hasFixed }  (mean = wsum / w)
     for (let k = 0; k < n; k++) {
-        let b = { sum: desired[k], size: 1, k0: k };
-        while (blocks.length && blocks[blocks.length - 1].sum / blocks[blocks.length - 1].size > b.sum / b.size) {
+        const wk = wOf(k);
+        let b = { wsum: wk * desired[k], w: wk, size: 1, k0: k, hasFixed: cluster[start + k].moving };
+        while (blocks.length && blocks[blocks.length - 1].wsum / blocks[blocks.length - 1].w > b.wsum / b.w) {
             const prev = blocks.pop();
-            b = { sum: prev.sum + b.sum, size: prev.size + b.size, k0: prev.k0 };
+            b = { wsum: prev.wsum + b.wsum, w: prev.w + b.w, size: prev.size + b.size, k0: prev.k0, hasFixed: prev.hasFixed || b.hasFixed };
         }
         blocks.push(b);
     }
 
-    // Final center of label k = block mean + S[k]. To avoid a hard cliff when a
-    // stack grows past maxStack, compress the block toward its centroid by a
-    // factor that stays at 1 up to ~maxStack labels then shrinks continuously.
+    // Final center of label k = block mean + S[k]. Compress overcrowded static
+    // stacks past maxStack, but never compress a block pinned by an obstacle
+    // (that would drag static labels back onto it).
     for (const b of blocks) {
-        const mean = b.sum / b.size;
-        const scale = Math.min(1, maxStack / Math.max(1, b.size - 1));
+        const mean = b.wsum / b.w;
+        const scale = b.hasFixed ? 1 : Math.min(1, maxStack / Math.max(1, b.size - 1));
         let sAvg = 0;
         for (let k = b.k0; k < b.k0 + b.size; k++) sAvg += S[k];
         sAvg /= b.size;
