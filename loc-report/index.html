@@ -107,8 +107,8 @@
 | Field | Value |
 |---|---|
 | **Branch** | `main` |
-| **Commit** | `d64ea53` |
-| **Date** | 2026-07-05 18:38:43 -0400 |
+| **Commit** | `5e9a704` |
+| **Date** | 2026-07-05 23:04:34 -0400 |
 
 > [!NOTE]
 > Charts render on GitHub and in Mermaid-compatible viewers.
@@ -117,7 +117,7 @@
 xychart-beta horizontal
   title "Code Lines by Directory"
   x-axis ["scenes", "static", "tests", "backend", "scripts", "(other)", "docs", "schemas", "themes"]
-  bar [64723, 29813, 14300, 14238, 6693, 3955, 3354, 1833, 317]
+  bar [64723, 30367, 14300, 14238, 6693, 3955, 3354, 1837, 317]
 ```
 
 ## By Directory
@@ -125,21 +125,21 @@ xychart-beta horizontal
 | Directory | Code | Comments | Blanks |
 |---|---:|---:|---:|
 | `scenes/` | 64,723 | 0 | 1 |
-| `static/` | 29,813 | 2,813 | 2,331 |
+| `static/` | 30,367 | 2,868 | 2,369 |
 | `tests/` | 14,300 | 1,371 | 3,291 |
 | `backend/` | 14,238 | 2,031 | 2,140 |
 | `scripts/` | 6,693 | 746 | 941 |
 | `(other)/` | 3,955 | 0 | 0 |
 | `docs/` | 3,354 | 7,962 | 2,450 |
-| `schemas/` | 1,833 | 0 | 0 |
+| `schemas/` | 1,837 | 0 | 0 |
 | `themes/` | 317 | 0 | 0 |
-| **Total** | **139,226** | **14,923** | **11,154** |
+| **Total** | **139,784** | **14,978** | **11,192** |
 
 ```mermaid
 xychart-beta horizontal
   title "Lines of Code by Language"
   x-axis ["JSON", "Python", "JavaScript", "CSS", "HTML", "Shell", "BASH", "YAML", "Dockerfile"]
-  bar [70708, 34376, 23512, 5663, 1281, 404, 124, 25, 16]
+  bar [70712, 34376, 23959, 5770, 1281, 404, 124, 25, 16]
 ```
 
 ## Summary by Language
@@ -148,10 +148,10 @@ xychart-beta horizontal
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  Language              Files        Lines         Code     Comments       Blanks
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- JSON                     60        70709        70708            0            1
+ JSON                     60        70713        70712            0            1
  Python                  185        44124        34376         3571         6177
- JavaScript               67        27885        23512         2316         2057
- CSS                       7         6418         5663          470          285
+ JavaScript               68        28403        23959         2361         2083
+ CSS                       7         6547         5770          480          297
  Shell                     5          610          404          136           70
  BASH                      2          171          124           33           14
  YAML                      1           39           25           13            1
@@ -171,7 +171,7 @@ xychart-beta horizontal
  |- Python                 7          455          415            7           33
  (Total)                            16940         2021        11386         3533
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Total                   412       169577       139226        18063        12288
+ Total                   413       170228       139784        18118        12326
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -181,14 +181,14 @@ xychart-beta horizontal
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  Language              Files        Lines         Code     Comments       Blanks
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- JavaScript               66        27740        23402         2293         2045
+ JavaScript               67        28258        23849         2338         2071
 ─────────────────────────────────────────────────────────────────────────────────
  |imation/proof-animation.js         2531         2470           51           10
  |bench/static/graph-view.js         2703         2014          493          196
+ |lgebench/static/overlay.js         1466         1391           33           42
  |panel/d3-semantic-graph.js         1786         1389          217          180
  |nch/static/json-browser.js         1403         1361            5           37
  |h/algebench/static/chat.js         1520         1230          135          155
- |lgebench/static/overlay.js         1240         1169           29           42
  |/algebench/static/proof.js         1227         1121           59           47
  |ic/graph-panel/sg-chart.js         1228         1000           90          138
  |nch/static/scene-loader.js          989          833           58           98
@@ -211,6 +211,7 @@ xychart-beta horizontal
  |/static/objects/polygon.js          328          285           12           31
  |static/coach/steps/core.js          298          285           11            2
  |/objects/animated-point.js          253          226           10           17
+ |h/static/dockable-panel.js          292          225           41           26
  |ins/astrodynamics/index.js          228          198           10           20
  |h/static/objects/skybox.js          225          196            3           26
  |/static/view-state.test.js          198          162           13           23
@@ -250,9 +251,9 @@ xychart-beta horizontal
  |roof-animation/dock-seq.js            6            2            4            0
  |tatic/coach/steps/index.js           10            1            8            1
 ─────────────────────────────────────────────────────────────────────────────────
- CSS                       6         6292         5574          444          274
+ CSS                       6         6421         5681          454          286
 ─────────────────────────────────────────────────────────────────────────────────
- |algebench/static/style.css         4396         4049          173          174
+ |algebench/static/style.css         4525         4156          183          186
  |mation/proof-animation.css          948          689          226           33
  |c/graph-panel/sg-chart.css          364          326           10           28
  |anel/d3-semantic-graph.css          313          269           21           23
@@ -284,7 +285,7 @@ xychart-beta horizontal
  |- BASH                                3            3            0            0
  /home/runner/work/algebench/algebench/static/proof-animation/README.md             46            0           38            8
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Total                    78        34957        29813         2813         2331
+ Total                    79        35604        30367         2868         2369
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -490,9 +491,9 @@ xychart-beta horizontal
 
 | Category | Code Lines | % of JS+Python |
 |---|---|---|
-| JavaScript (frontend) | 23402 | 40% |
+| JavaScript (frontend) | 23849 | 40% |
 | Python (backend) | 34376 | 60% |
-| **Total** | **57778** | **100%** |
+| **Total** | **58225** | **100%** |
 
 </script>
 </body>
