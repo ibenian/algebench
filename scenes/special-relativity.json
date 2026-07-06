@@ -686,20 +686,21 @@
                 [2, 0, 0],
                 [4.4, 0, 0]
               ],
-              "color": "#4da6ff",
-              "width": 3,
-              "label": "$v\\,\\Delta t$"
+              "color": "#aabbcc",
+              "width": 1.5,
+              "opacity": 0.4
             },
             {
               "id": "s2_tri_hyp_line",
               "type": "line",
               "points": [
                 [2, 2, 0],
+                [3.2, 2, 0],
                 [4.4, 2, 0]
               ],
-              "color": "#aabbcc",
-              "width": 1.5,
-              "opacity": 0.4
+              "color": "#4da6ff",
+              "width": 3,
+              "label": "$v\\,\\Delta t$"
             },
             {
               "id": "s2_tri_label",
@@ -725,8 +726,15 @@
               ],
               "color": "#aabbcc",
               "width": 1.5,
-              "opacity": 0.35,
-              "label": "start"
+              "opacity": 0.35
+            },
+            {
+              "id": "s2_race_start_lbl",
+              "type": "text",
+              "text": "start",
+              "position": [-1, 3.8, 0],
+              "color": "#aabbcc",
+              "size": 12
             },
             {
               "id": "s2_race_finish",
