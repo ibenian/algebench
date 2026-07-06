@@ -258,7 +258,12 @@ export function addLabel3D(text, dataPos, color, opts) {
     if (color) el.style.color = colorToCSS(color);
     container.appendChild(el);
     const align = opts.align || 'center';
-    const entry = { el, dataPos: dataPos.slice(), screenX: null, screenY: null, forceHidden: false, align };
+    const entry = {
+        el, dataPos: dataPos.slice(), screenX: null, screenY: null, forceHidden: false, align,
+        offsetY: 0,           // applied vertical de-occlusion offset (px)
+        boxW: null, boxH: null, // cached DOM size (measured lazily)
+        boxScale: null,       // labelScale the cached size was measured at
+    };
     state.labels.push(entry);
     return entry;
 }
@@ -273,14 +278,16 @@ export function updateLabels() {
     if (!state.camera || !state.renderer) return;
     const w = state.renderer.domElement.clientWidth;
     const h = state.renderer.domElement.clientHeight;
+    const s = state.displayParams.labelScale;
 
+    // ----- Pass 1: project + measure (reads only) -----
     for (const lbl of state.labels) {
         const world = dataToWorld(lbl.dataPos);
         const v = new THREE.Vector3(world[0], world[1], world[2]);
         const projected = v.project(state.camera);
         const targetX = (projected.x * 0.5 + 0.5) * w;
         const targetY = (-projected.y * 0.5 + 0.5) * h;
-        const visible = !lbl.forceHidden && projected.z < 1
+        lbl.visible = !lbl.forceHidden && projected.z < 1
             && targetX > -50 && targetX < w + 50
             && targetY > -50 && targetY < h + 50;
 
@@ -292,10 +299,118 @@ export function updateLabels() {
             lbl.screenX += (targetX - lbl.screenX) * alpha;
             lbl.screenY += (targetY - lbl.screenY) * alpha;
         }
-        const s = state.displayParams.labelScale;
+
+        // Cache effective box size; re-measure only when labelScale changes.
+        if (lbl.visible && (lbl.boxW == null || lbl.boxScale !== s)) {
+            lbl.boxW = lbl.el.offsetWidth * s;
+            lbl.boxH = lbl.el.offsetHeight * s;
+            lbl.boxScale = s;
+        }
+    }
+
+    // ----- Pass 2: resolve vertical de-occlusion offsets (pure compute) -----
+    resolveLabelOffsets();
+
+    // ----- Pass 3: smooth applied offset + write transforms -----
+    for (const lbl of state.labels) {
+        const target = lbl.targetOffsetY || 0;
+        lbl.offsetY += (target - lbl.offsetY) * state.displayParams.labelDeclutterAlpha;
         const ax = lbl.align === 'right' ? '-100%' : lbl.align === 'left' ? '0%' : '-50%';
-        lbl.el.style.transform = `translate(${lbl.screenX}px, ${lbl.screenY}px) translate(${ax}, -50%)${s !== 1 ? ' scale(' + s + ')' : ''}`;
-        lbl.el.style.opacity = visible ? state.displayParams.labelOpacity : '0';
+        const y = lbl.screenY + lbl.offsetY;
+        lbl.el.style.transform = `translate(${lbl.screenX}px, ${y}px) translate(${ax}, -50%)${s !== 1 ? ' scale(' + s + ')' : ''}`;
+        lbl.el.style.opacity = lbl.visible ? state.displayParams.labelOpacity : '0';
+    }
+}
+
+// Compute a target vertical offset per label so overlapping labels stack apart.
+// Targets are a pure function of the (offset-free) anchor positions, so there is
+// no feedback into detection and therefore no oscillation.
+function resolveLabelOffsets() {
+    const active = [];
+    for (const lbl of state.labels) {
+        lbl.targetOffsetY = 0;
+        if (lbl.visible && lbl.boxW != null) active.push(lbl);
+    }
+    if (!state.displayParams.labelDeclutter || active.length < 2) return;
+
+    const gap = state.displayParams.labelDeclutterGap;
+    const maxStack = state.displayParams.labelDeclutterMaxStack;
+
+    // Horizontal extent of a label's box, honoring its anchor alignment.
+    const leftOf = (l) => l.align === 'right' ? l.screenX - l.boxW
+        : l.align === 'left' ? l.screenX : l.screenX - l.boxW / 2;
+
+    // Cluster labels whose x-spans overlap (padded) — only these can occlude.
+    const clusters = clusterByX(active, leftOf, gap);
+    for (const cluster of clusters) {
+        if (cluster.length < 2) continue;
+        cluster.sort((a, b) => a.screenY - b.screenY);
+        resolveVerticalStack(cluster, gap, maxStack);
+    }
+}
+
+function clusterByX(labels, leftOf, gap) {
+    const parent = labels.map((_, i) => i);
+    const find = (i) => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+    const union = (a, b) => { parent[find(a)] = find(b); };
+    for (let i = 0; i < labels.length; i++) {
+        const li = leftOf(labels[i]), ri = li + labels[i].boxW;
+        for (let j = i + 1; j < labels.length; j++) {
+            const lj = leftOf(labels[j]), rj = lj + labels[j].boxW;
+            if (li < rj + gap && lj < ri + gap) union(i, j);
+        }
+    }
+    const groups = new Map();
+    for (let i = 0; i < labels.length; i++) {
+        const r = find(i);
+        if (!groups.has(r)) groups.set(r, []);
+        groups.get(r).push(labels[i]);
+    }
+    return [...groups.values()];
+}
+
+// Pool-Adjacent-Violators (isotonic regression): minimal-displacement 1D
+// separation of label centers. `cluster` is sorted top→bottom by screenY.
+function resolveVerticalStack(cluster, gap, maxStack) {
+    const n = cluster.length;
+    // S[i] = cumulative minimum separation required from label 0 down to label i.
+    // Subtracting it turns the non-overlap constraints into a monotonicity
+    // constraint, so the least-squares fit is plain isotonic regression.
+    const S = new Array(n);
+    S[0] = 0;
+    for (let i = 1; i < n; i++) {
+        S[i] = S[i - 1] + cluster[i - 1].boxH / 2 + cluster[i].boxH / 2 + gap;
+    }
+    const desired = cluster.map((l, i) => l.screenY - S[i]);
+
+    // PAVA: pool adjacent blocks whenever the previous block's mean exceeds the
+    // next's, producing a non-decreasing sequence of block means.
+    const blocks = []; // { sum, size, start }  (mean = sum / size)
+    for (let i = 0; i < n; i++) {
+        let b = { sum: desired[i], size: 1, start: i };
+        while (blocks.length && blocks[blocks.length - 1].sum / blocks[blocks.length - 1].size > b.sum / b.size) {
+            const prev = blocks.pop();
+            b = { sum: prev.sum + b.sum, size: prev.size + b.size, start: prev.start };
+        }
+        blocks.push(b);
+    }
+
+    // Final center of label i = block mean + S[i]. Singleton blocks resolve back
+    // to their original position (offset 0). To avoid a hard cliff when a stack
+    // grows past `maxStack`, we don't give up — we *compress* the block toward its
+    // centroid by a factor that stays at 1 up to ~maxStack labels and then shrinks
+    // continuously, so a crowded stack degrades to mild overlap instead of
+    // collapsing all at once.
+    for (const b of blocks) {
+        const mean = b.sum / b.size;
+        const scale = Math.min(1, maxStack / Math.max(1, b.size - 1));
+        let sAvg = 0;
+        for (let i = b.start; i < b.start + b.size; i++) sAvg += S[i];
+        sAvg /= b.size;
+        for (let i = b.start; i < b.start + b.size; i++) {
+            const finalY = mean + sAvg + (S[i] - sAvg) * scale;
+            cluster[i].targetOffsetY = finalY - cluster[i].screenY;
+        }
     }
 }
 

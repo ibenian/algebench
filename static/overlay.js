@@ -1137,6 +1137,14 @@ export function setupSettingsPanel() {
             }
         });
     });
+
+    const declutterToggle = document.getElementById('declutter-toggle');
+    if (declutterToggle) {
+        declutterToggle.checked = state.displayParams.labelDeclutter;
+        declutterToggle.addEventListener('change', () => {
+            state.displayParams.labelDeclutter = declutterToggle.checked;
+        });
+    }
 }
 
 export function initLightControls() {
