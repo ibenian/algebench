@@ -263,6 +263,8 @@ export function addLabel3D(text, dataPos, color, opts) {
         offsetY: 0,           // applied vertical de-occlusion offset (px)
         boxW: null, boxH: null, // cached DOM size (measured lazily)
         boxScale: null,       // labelScale the cached size was measured at
+        lastDataPos: null,    // dataPos from the previous frame (motion detection)
+        moveCooldown: 0,      // frames remaining while treated as "animating"
     };
     state.labels.push(entry);
     return entry;
@@ -282,7 +284,24 @@ export function updateLabels() {
 
     // ----- Pass 1: project + measure (reads only) -----
     for (const lbl of state.labels) {
-        const world = dataToWorld(lbl.dataPos);
+        // A label whose data position is animating is "glued" to a moving marker
+        // (a rider dot, an animated point). Exclude it from declutter so it stays
+        // pinned to its marker instead of being nudged off it as it sweeps past
+        // other labels. Gate on dataPos (not screen position) so camera-only
+        // motion still declutters. The cooldown holds the exclusion through brief
+        // pauses (e.g. a turnaround) so a slow stretch doesn't re-engage and
+        // blip; once motion truly settles the label declutters again.
+        const dp = lbl.dataPos;
+        const dataMoved = lbl.lastDataPos && (
+            Math.abs(dp[0] - lbl.lastDataPos[0]) > 1e-6 ||
+            Math.abs(dp[1] - lbl.lastDataPos[1]) > 1e-6 ||
+            Math.abs(dp[2] - lbl.lastDataPos[2]) > 1e-6);
+        if (dataMoved) lbl.moveCooldown = 20;
+        else if (lbl.moveCooldown > 0) lbl.moveCooldown--;
+        lbl.lastDataPos = [dp[0], dp[1], dp[2]];
+        lbl.moving = lbl.moveCooldown > 0;
+
+        const world = dataToWorld(dp);
         const v = new THREE.Vector3(world[0], world[1], world[2]);
         const projected = v.project(state.camera);
         const targetX = (projected.x * 0.5 + 0.5) * w;
@@ -329,7 +348,9 @@ function resolveLabelOffsets() {
     const active = [];
     for (const lbl of state.labels) {
         lbl.targetOffsetY = 0;
-        if (lbl.visible && lbl.boxW != null) active.push(lbl);
+        // Skip labels that are animating (glued to a moving marker) — declutter
+        // only rearranges labels that are holding still.
+        if (lbl.visible && lbl.boxW != null && !lbl.moving) active.push(lbl);
     }
     if (!state.displayParams.labelDeclutter || active.length < 2) return;
 
