@@ -1357,7 +1357,8 @@ function setupOverlayHoverBoost() {
         t._hoverBoosted = true;
         t._preHoverOp = t.style.opacity;
         const base = parseFloat(getComputedStyle(t).opacity);
-        t.style.opacity = Math.min(1, (isNaN(base) ? 1 : base) * 2);
+        t._boostedOp = String(Math.min(1, (isNaN(base) ? 1 : base) * 2));
+        t.style.opacity = t._boostedOp;
     });
     document.addEventListener('mousedown', (e) => {
         const panel = e.target.closest && e.target.closest('#info-overlays .dockable-panel');
@@ -1368,7 +1369,9 @@ function setupOverlayHoverBoost() {
         if (!t || !t._hoverBoosted) return;
         if (e.relatedTarget && t.contains(e.relatedTarget)) return; // still inside
         t._hoverBoosted = false;
-        t.style.opacity = t._preHoverOp || '';
+        // Only undo our boost if nothing else changed the opacity meanwhile (e.g.
+        // the overlayOpacity setting) — otherwise keep the newer value.
+        if (t.style.opacity === t._boostedOp) t.style.opacity = t._preHoverOp || '';
     });
 }
 

@@ -265,7 +265,7 @@ export function addLabel3D(text, dataPos, color, opts) {
         boxW: null, boxH: null, // cached DOM size (measured lazily)
         boxScale: null,       // labelScale the cached size was measured at
         offsetY: 0, targetOffsetY: 0, // vertical de-occlusion offset (position mode)
-        depth: 0,             // NDC z of the anchor (smaller = nearer the camera)
+        depth: 0,             // world-space distance from the camera (smaller = nearer)
         dim: 1, targetDim: 1, // applied / target brightness (shade mode)
         seq: _labelSeq++,     // paint order; higher = on top (depth tiebreak)
         lastDataPos: null,    // dataPos from the previous frame (motion detection)
@@ -411,8 +411,12 @@ function resolveDepthDimming() {
             let covered = false, nearestDepth = Infinity;
             for (const other of cluster) {
                 if (other === lbl || !overlaps(lbl, other)) continue;
-                if (frontToBack(other, lbl) < 0) covered = true; // other is drawn in front
-                if (other.depth < nearestDepth) nearestDepth = other.depth;
+                // Only labels drawn in front of lbl cover it — measure the gap to
+                // the nearest of *those*, ignoring overlappers that sit behind it.
+                if (frontToBack(other, lbl) < 0) {
+                    covered = true;
+                    if (other.depth < nearestDepth) nearestDepth = other.depth;
+                }
             }
             // A label with anything drawn over it gets a slight baseline dim (so
             // even coplanar overlaps read front-vs-back), then dims further toward
