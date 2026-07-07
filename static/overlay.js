@@ -1337,20 +1337,32 @@ export function setupCaptionDrag() {
 }
 
 // On hover, brighten the caption / overlays to 2x their resting opacity (capped
-// at full). Delegated so dynamically-created info panels are covered too.
+// at full). Hovering or clicking an info panel also raises it above the others.
+// Delegated so dynamically-created info panels are covered too.
 let _overlayHoverWired = false;
+let _overlayZ = 10;
+function bringOverlayToFront(panel) {
+    panel.style.zIndex = String(++_overlayZ); // relative to the #info-overlays stacking context
+}
 function setupOverlayHoverBoost() {
     if (_overlayHoverWired) return;
     _overlayHoverWired = true;
     const SEL = '#step-caption, #scene-description, #slider-overlay, #legend, #info-overlays .dockable-panel';
     document.addEventListener('mouseover', (e) => {
         const t = e.target.closest && e.target.closest(SEL);
-        if (!t || t._hoverBoosted) return;
+        if (!t) return;
+        const panel = e.target.closest('#info-overlays .dockable-panel');
+        if (panel) bringOverlayToFront(panel);
+        if (t._hoverBoosted) return;
         t._hoverBoosted = true;
         t._preHoverOp = t.style.opacity;
         const base = parseFloat(getComputedStyle(t).opacity);
         t.style.opacity = Math.min(1, (isNaN(base) ? 1 : base) * 2);
     });
+    document.addEventListener('mousedown', (e) => {
+        const panel = e.target.closest && e.target.closest('#info-overlays .dockable-panel');
+        if (panel) bringOverlayToFront(panel);
+    }, true);
     document.addEventListener('mouseout', (e) => {
         const t = e.target.closest && e.target.closest(SEL);
         if (!t || !t._hoverBoosted) return;
