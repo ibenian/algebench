@@ -281,11 +281,22 @@ export function clearLabels() {
     state.labels = [];
 }
 
+let _labelsContainer = null;
+let _appliedLabelScale = null;
+
 export function updateLabels() {
     if (!state.camera || !state.renderer) return;
     const w = state.renderer.domElement.clientWidth;
     const h = state.renderer.domElement.clientHeight;
     const s = state.displayParams.labelScale;
+
+    // Drive label size through a CSS variable so the font (and KaTeX) re-render
+    // crisply at the new size, instead of resampling glyphs with transform scale.
+    if (_appliedLabelScale !== s) {
+        if (!_labelsContainer) _labelsContainer = document.getElementById('labels-container');
+        if (_labelsContainer) _labelsContainer.style.setProperty('--label-scale', s);
+        _appliedLabelScale = s;
+    }
 
     // ----- Pass 1: project + measure (reads only) -----
     for (const lbl of state.labels) {
@@ -327,10 +338,11 @@ export function updateLabels() {
             lbl.screenY += (targetY - lbl.screenY) * alpha;
         }
 
-        // Cache effective box size; re-measure only when labelScale changes.
+        // Cache box size; re-measure when labelScale changes (the font-size, and
+        // thus offsetWidth/Height, already reflects the scale — no extra factor).
         if (lbl.visible && (lbl.boxW == null || lbl.boxScale !== s)) {
-            lbl.boxW = lbl.el.offsetWidth * s;
-            lbl.boxH = lbl.el.offsetHeight * s;
+            lbl.boxW = lbl.el.offsetWidth;
+            lbl.boxH = lbl.el.offsetHeight;
             lbl.boxScale = s;
         }
     }
@@ -347,7 +359,7 @@ export function updateLabels() {
         lbl.dim += (lbl.targetDim - lbl.dim) * dimAlpha;
         const ax = lbl.align === 'right' ? '-100%' : lbl.align === 'left' ? '0%' : '-50%';
         const y = lbl.screenY + lbl.offsetY;
-        lbl.el.style.transform = `translate(${lbl.screenX}px, ${y}px) translate(${ax}, -50%)${s !== 1 ? ' scale(' + s + ')' : ''}`;
+        lbl.el.style.transform = `translate(${lbl.screenX}px, ${y}px) translate(${ax}, -50%)`;
         lbl.el.style.opacity = lbl.visible ? state.displayParams.labelOpacity : '0';
         lbl.el.style.filter = lbl.dim < 0.999 ? `brightness(${lbl.dim.toFixed(3)})` : '';
     }

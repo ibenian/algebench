@@ -885,7 +885,9 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     top: 0;
     left: 0;
     color: #ffffff;
-    font-size: 13px;
+    /* Real font-size scaling (crisp re-render) driven by --label-scale, rather
+       than a transform scale() that would resample the rendered glyphs. */
+    font-size: calc(13px * var(--label-scale, 1));
     pointer-events: none;
     /* Crisp dark contour around the glyphs (8-way 1px outline) plus a soft halo,
        for legibility over other text and shapes — without altering the fill. */
@@ -900,7 +902,7 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 }
 
 .label-3d .katex { font-size: 1em; }
-.label-axis { font-size: 18px; font-weight: bold; }
+.label-axis { font-size: calc(18px * var(--label-scale, 1)); font-weight: bold; }
 
 /* Legend */
 #legend {
