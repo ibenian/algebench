@@ -1125,7 +1125,13 @@ export function setupSettingsPanel() {
                 }
             } else if (param === 'captionScale') {
                 const cap = document.getElementById('step-caption');
-                if (cap) cap.style.transform = 'translateX(-50%) scale(' + val + ')';
+                if (cap) {
+                    // Preserve a dragged caption's anchor/origin; only re-center it
+                    // when it hasn't been dragged (still at left:50%).
+                    const dragged = cap.style.left && cap.style.left.endsWith('px');
+                    cap.style.transformOrigin = dragged ? 'left bottom' : '';
+                    cap.style.transform = (dragged ? '' : 'translateX(-50%) ') + 'scale(' + val + ')';
+                }
             } else if (param === 'overlayOpacity') {
                 const cap = document.getElementById('step-caption');
                 if (cap && !cap.classList.contains('hidden')) cap.style.opacity = val;
@@ -1208,7 +1214,15 @@ function _applyBottomPos(el, bottom, left) {
     el.style.right  = 'auto';
     el.style.width  = '';
     const scale = 'scale(' + (state.displayParams.captionScale || 1) + ')';
-    el.style.transform = (left && left.endsWith('px')) ? scale : ('translateX(-50%) ' + scale);
+    if (left && left.endsWith('px')) {
+        // Dragged: anchor the scale to the bottom-left corner so left/bottom and
+        // the scaled box agree (no drift when zoomed).
+        el.style.transform = scale;
+        el.style.transformOrigin = 'left bottom';
+    } else {
+        el.style.transform = 'translateX(-50%) ' + scale;
+        el.style.transformOrigin = '';
+    }
 }
 
 function _defaultCaptionPos(el) {
@@ -1248,14 +1262,29 @@ export function setupCaptionDrag() {
         const parent = el.offsetParent || document.body;
         const parentRect = parent.getBoundingClientRect();
         const elRect = el.getBoundingClientRect();
+        const s = state.displayParams.captionScale || 1;
         startLeft   = elRect.left - parentRect.left;
         startBottom = parentRect.bottom - elRect.bottom;
-        el.style.width     = elRect.width + 'px';
+        // Freeze the width at its current rendered value so the text doesn't
+        // re-wrap when we switch from centered (only 50% available width) to px
+        // positioning. offsetWidth is the unscaled border box (transform-
+        // independent); convert to the value style.width expects for this box-
+        // sizing so the content width is preserved exactly.
+        const cs = getComputedStyle(el);
+        let frozenW = el.offsetWidth;
+        if (cs.boxSizing !== 'border-box') {
+            frozenW -= parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight)
+                     + parseFloat(cs.borderLeftWidth) + parseFloat(cs.borderRightWidth);
+        }
+        // Anchor the scale to the bottom-left corner so left/bottom and the scaled
+        // box agree (no drift when zoomed).
+        el.style.transformOrigin = 'left bottom';
+        el.style.width     = frozenW + 'px';
         el.style.left      = startLeft + 'px';
         el.style.bottom    = startBottom + 'px';
         el.style.top       = 'auto';
         el.style.right     = 'auto';
-        el.style.transform = 'scale(' + state.displayParams.captionScale + ')';
+        el.style.transform = 'scale(' + s + ')';
         e.preventDefault();
     });
 
