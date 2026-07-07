@@ -1125,7 +1125,14 @@ export function setupSettingsPanel() {
                 }
             } else if (param === 'captionScale') {
                 const cap = document.getElementById('step-caption');
-                if (cap) cap.style.transform = 'translateX(-50%) scale(' + val + ')';
+                if (cap) {
+                    // Preserve a dragged caption's anchor/origin; only re-center it
+                    // when it hasn't been dragged (still at left:50%).
+                    const dragged = cap.style.left && cap.style.left.endsWith('px');
+                    cap.style.transformOrigin = dragged ? 'left bottom' : '';
+                    cap.style.transform = (dragged ? '' : 'translateX(-50%) ') + 'scale(' + val + ')';
+                    clampCaptionIntoView(cap); // resizing may push it off-screen
+                }
             } else if (param === 'overlayOpacity') {
                 const cap = document.getElementById('step-caption');
                 if (cap && !cap.classList.contains('hidden')) cap.style.opacity = val;
@@ -1137,6 +1144,14 @@ export function setupSettingsPanel() {
             }
         });
     });
+
+    const declutterMode = document.getElementById('declutter-mode');
+    if (declutterMode) {
+        declutterMode.value = state.displayParams.labelDeclutterMode;
+        declutterMode.addEventListener('change', () => {
+            state.displayParams.labelDeclutterMode = declutterMode.value;
+        });
+    }
 }
 
 export function initLightControls() {
@@ -1200,11 +1215,42 @@ function _applyBottomPos(el, bottom, left) {
     el.style.right  = 'auto';
     el.style.width  = '';
     const scale = 'scale(' + (state.displayParams.captionScale || 1) + ')';
-    el.style.transform = (left && left.endsWith('px')) ? scale : ('translateX(-50%) ' + scale);
+    if (left && left.endsWith('px')) {
+        // Dragged: anchor the scale to the bottom-left corner so left/bottom and
+        // the scaled box agree (no drift when zoomed).
+        el.style.transform = scale;
+        el.style.transformOrigin = 'left bottom';
+    } else {
+        el.style.transform = 'translateX(-50%) ' + scale;
+        el.style.transformOrigin = '';
+    }
 }
 
 function _defaultCaptionPos(el) {
     _applyBottomPos(el, '64px', '50%');
+}
+
+// Nudge a dragged caption back inside the viewport (e.g. after it shrinks and
+// its bottom-left anchor pulls it off-screen). No-op for a centered caption.
+export function clampCaptionIntoView(el) {
+    el = el || document.getElementById('step-caption');
+    if (!el || el.classList.contains('hidden')) return;
+    if (!el.style.left || !el.style.left.endsWith('px')) return; // only dragged (px) mode
+    const parent = el.offsetParent || document.body;
+    const p = parent.getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    const m = 8;
+    let left = parseFloat(el.style.left) || 0;
+    let bottom = parseFloat(el.style.bottom) || 0;
+    // Horizontal — keep the left edge visible first (so text starts on-screen
+    // even if the caption is wider than the viewport).
+    if (r.left < p.left + m) left += (p.left + m) - r.left;
+    else if (r.right > p.right - m) left -= r.right - (p.right - m);
+    // Vertical — bottom is the distance from the parent's bottom edge.
+    if (r.bottom > p.bottom - m) bottom += r.bottom - (p.bottom - m);
+    else if (r.top < p.top + m) bottom -= (p.top + m) - r.top;
+    el.style.left = left + 'px';
+    el.style.bottom = Math.max(0, bottom) + 'px';
 }
 
 export function resetCaptionPosition(el) {
@@ -1240,14 +1286,29 @@ export function setupCaptionDrag() {
         const parent = el.offsetParent || document.body;
         const parentRect = parent.getBoundingClientRect();
         const elRect = el.getBoundingClientRect();
+        const s = state.displayParams.captionScale || 1;
         startLeft   = elRect.left - parentRect.left;
         startBottom = parentRect.bottom - elRect.bottom;
-        el.style.width     = elRect.width + 'px';
+        // Freeze the width at its current rendered value so the text doesn't
+        // re-wrap when we switch from centered (only 50% available width) to px
+        // positioning. offsetWidth is the unscaled border box (transform-
+        // independent); convert to the value style.width expects for this box-
+        // sizing so the content width is preserved exactly.
+        const cs = getComputedStyle(el);
+        let frozenW = el.offsetWidth;
+        if (cs.boxSizing !== 'border-box') {
+            frozenW -= parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight)
+                     + parseFloat(cs.borderLeftWidth) + parseFloat(cs.borderRightWidth);
+        }
+        // Anchor the scale to the bottom-left corner so left/bottom and the scaled
+        // box agree (no drift when zoomed).
+        el.style.transformOrigin = 'left bottom';
+        el.style.width     = frozenW + 'px';
         el.style.left      = startLeft + 'px';
         el.style.bottom    = startBottom + 'px';
         el.style.top       = 'auto';
         el.style.right     = 'auto';
-        el.style.transform = 'scale(' + state.displayParams.captionScale + ')';
+        el.style.transform = 'scale(' + s + ')';
         e.preventDefault();
     });
 
@@ -1260,6 +1321,7 @@ export function setupCaptionDrag() {
     document.addEventListener('mouseup', () => {
         if (!dragging) return;
         dragging = false;
+        clampCaptionIntoView(el);
         try {
             localStorage.setItem('caption-pos', JSON.stringify({
                 bottom: el.style.bottom,
@@ -1269,7 +1331,48 @@ export function setupCaptionDrag() {
         } catch {}
     });
 
+    window.addEventListener('resize', () => clampCaptionIntoView(el));
     resetCaptionPosition(el);
+    setupOverlayHoverBoost();
+}
+
+// On hover, brighten the caption / overlays to 2x their resting opacity (capped
+// at full). Hovering or clicking an info panel also raises it above the others.
+// Delegated so dynamically-created info panels are covered too.
+let _overlayHoverWired = false;
+let _overlayZ = 10;
+function bringOverlayToFront(panel) {
+    panel.style.zIndex = String(++_overlayZ); // relative to the #info-overlays stacking context
+}
+function setupOverlayHoverBoost() {
+    if (_overlayHoverWired) return;
+    _overlayHoverWired = true;
+    const SEL = '#step-caption, #scene-description, #slider-overlay, #legend, #info-overlays .dockable-panel';
+    document.addEventListener('mouseover', (e) => {
+        const t = e.target.closest && e.target.closest(SEL);
+        if (!t) return;
+        const panel = e.target.closest('#info-overlays .dockable-panel');
+        if (panel) bringOverlayToFront(panel);
+        if (t._hoverBoosted) return;
+        t._hoverBoosted = true;
+        t._preHoverOp = t.style.opacity;
+        const base = parseFloat(getComputedStyle(t).opacity);
+        t._boostedOp = String(Math.min(1, (isNaN(base) ? 1 : base) * 2));
+        t.style.opacity = t._boostedOp;
+    });
+    document.addEventListener('mousedown', (e) => {
+        const panel = e.target.closest && e.target.closest('#info-overlays .dockable-panel');
+        if (panel) bringOverlayToFront(panel);
+    }, true);
+    document.addEventListener('mouseout', (e) => {
+        const t = e.target.closest && e.target.closest(SEL);
+        if (!t || !t._hoverBoosted) return;
+        if (e.relatedTarget && t.contains(e.relatedTarget)) return; // still inside
+        t._hoverBoosted = false;
+        // Only undo our boost if nothing else changed the opacity meanwhile (e.g.
+        // the overlayOpacity setting) — otherwise keep the newer value.
+        if (t.style.opacity === t._boostedOp) t.style.opacity = t._preHoverOp || '';
+    });
 }
 
 // ----- Scene Description Drag -----

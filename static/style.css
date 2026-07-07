@@ -85,6 +85,11 @@ html, body {
     border-radius: 10px;
     padding: 8px 40px 8px 16px;
     color: rgba(200, 200, 220, 0.75);
+    /* Dark contour on the text for extra legibility over the panel. */
+    text-shadow:
+        1px 1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, -1px -1px 0 #000,
+        1px 0 0 #000, -1px 0 0 #000, 0 1px 0 #000, 0 -1px 0 #000,
+        0 0 6px rgba(0,0,0,0.9);
     font-size: 0.85em;
     line-height: 1.45;
     text-align: center;
@@ -885,17 +890,27 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     top: 0;
     left: 0;
     color: #ffffff;
-    font-size: 13px;
+    /* Real font-size scaling (crisp re-render) driven by --label-scale, rather
+       than a transform scale() that would resample the rendered glyphs. */
+    font-size: calc(13px * var(--label-scale, 1));
     pointer-events: none;
-    text-shadow: 0 0 6px rgba(0,0,0,0.9), 0 0 12px rgba(0,0,0,0.6);
+    /* Crisp dark contour around the glyphs (8-way 1px outline) plus a soft halo,
+       for legibility over other text and shapes — without altering the fill. */
+    text-shadow:
+        1px 1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, -1px -1px 0 #000,
+        1px 0 0 #000, -1px 0 0 #000, 0 1px 0 #000, 0 -1px 0 #000,
+        0 0 4px rgba(0,0,0,0.85);
     transform: translate(-50%, -50%);
     white-space: nowrap;
     transition: opacity 0.15s;
     will-change: transform, opacity;
 }
 
+/* Smooth the hover opacity boost on overlays (captions already transition). */
+#slider-overlay, #legend, #info-overlays .dockable-panel { transition: opacity 0.2s ease; }
+
 .label-3d .katex { font-size: 1em; }
-.label-axis { font-size: 18px; font-weight: bold; }
+.label-axis { font-size: calc(18px * var(--label-scale, 1)); font-weight: bold; }
 
 /* Legend */
 #legend {
@@ -1712,6 +1727,17 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 .sp-btn:hover { background: rgba(60, 60, 120, 0.8); color: #fff; }
 .sp-btn:active { background: rgba(80, 80, 160, 0.8); }
 
+.sp-toggle-row { justify-content: space-between; }
+.sp-select {
+    background: rgba(40, 40, 80, 0.6);
+    color: #c0c0e0;
+    border: 1px solid rgba(100, 100, 255, 0.25);
+    border-radius: 4px;
+    font-size: 0.8em;
+    padding: 2px 4px;
+    cursor: pointer;
+}
+.sp-select:hover { background: rgba(60, 60, 120, 0.8); color: #fff; }
 .sp-divider { height: 1px; background: rgba(100, 100, 200, 0.2); margin: 6px 0 4px; }
 .sp-section-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(140,150,220,0.7); margin-bottom: 4px; padding-left: 2px; }
 .sp-light-row { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #c0c0e0; margin-bottom: 4px; }
@@ -2601,6 +2627,11 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     border-radius: 10px;
     padding: 10px 46px 10px 18px;
     color: rgba(224, 224, 240, 0.85);
+    /* Dark contour on the text for extra legibility over the panel. */
+    text-shadow:
+        1px 1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, -1px -1px 0 #000,
+        1px 0 0 #000, -1px 0 0 #000, 0 1px 0 #000, 0 -1px 0 #000,
+        0 0 6px rgba(0,0,0,0.9);
     font-size: 0.9em;
     line-height: 1.5;
     z-index: 60;

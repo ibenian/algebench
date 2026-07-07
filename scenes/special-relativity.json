@@ -660,6 +660,7 @@
               "type": "line",
               "points": [
                 [2, 0, 0],
+                [3.2, 1, 0],
                 [4.4, 2, 0]
               ],
               "color": "#ffaa33",
@@ -671,6 +672,7 @@
               "type": "line",
               "points": [
                 [2, 0, 0],
+                [2, 1, 0],
                 [2, 2, 0]
               ],
               "color": "#ff5566",
@@ -684,20 +686,21 @@
                 [2, 0, 0],
                 [4.4, 0, 0]
               ],
-              "color": "#4da6ff",
-              "width": 3,
-              "label": "$v\\,\\Delta t$"
+              "color": "#aabbcc",
+              "width": 1.5,
+              "opacity": 0.4
             },
             {
               "id": "s2_tri_hyp_line",
               "type": "line",
               "points": [
                 [2, 2, 0],
+                [3.2, 2, 0],
                 [4.4, 2, 0]
               ],
-              "color": "#aabbcc",
-              "width": 1.5,
-              "opacity": 0.4
+              "color": "#4da6ff",
+              "width": 3,
+              "label": "$v\\,\\Delta t$"
             },
             {
               "id": "s2_tri_label",
@@ -723,8 +726,15 @@
               ],
               "color": "#aabbcc",
               "width": 1.5,
-              "opacity": 0.35,
-              "label": "start"
+              "opacity": 0.35
+            },
+            {
+              "id": "s2_race_start_lbl",
+              "type": "text",
+              "text": "start",
+              "position": [-1, 3.8, 0],
+              "color": "#aabbcc",
+              "size": 12
             },
             {
               "id": "s2_race_finish",
@@ -741,7 +751,7 @@
               "id": "s2_race_finish_lbl",
               "type": "text",
               "text": "🏁 lap end",
-              "positionExpr": ["-1 + v*(2*floor(4*sqrt(1-v^2)/max(v, 0.05))/sqrt(1-v^2))", "2.7", "0"],
+              "positionExpr": ["-1 + v*(2*floor(4*sqrt(1-v^2)/max(v, 0.05))/sqrt(1-v^2))", "3.8", "0"],
               "color": "#aabbcc",
               "size": 12
             },
@@ -2151,8 +2161,14 @@
                 [0, 4, 0]
               ],
               "color": "#aabbcc",
-              "width": 3,
-              "label": "stay-home: $\\tau = 8$"
+              "width": 3
+            },
+            {
+              "id": "s3_g_home_lbl",
+              "type": "text",
+              "text": "stay-home: $\\tau = 8$",
+              "position": [-2.7, 3.2, 0],
+              "color": "#aabbcc"
             },
             {
               "id": "s3_g_worldline",
