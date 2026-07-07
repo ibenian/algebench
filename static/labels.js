@@ -384,8 +384,9 @@ function resolveDepthDimming() {
     }
     if (state.displayParams.labelDeclutterMode !== 'shade' || active.length < 2) return;
 
+    const dimBase = state.displayParams.labelDimBase;        // slight dim any covered label gets
     const dimFloor = state.displayParams.labelDimFloor;      // darkest a far label goes
-    const relScale = state.displayParams.labelDimDepthScale; // relative gap for full dim
+    const relScale = state.displayParams.labelDimDepthScale; // relative gap to reach the floor
     const boxes = new Map(active.map(l => [l, labelBox(l)]));
     const overlaps = (a, b) => {
         const A = boxes.get(a), B = boxes.get(b);
@@ -395,17 +396,20 @@ function resolveDepthDimming() {
     for (const cluster of clusterByOverlap(active)) {
         if (cluster.length < 2) continue;
         for (const lbl of cluster) {
-            let nearestOverlap = Infinity;
+            let covered = false, nearestDepth = Infinity;
             for (const other of cluster) {
-                if (other !== lbl && overlaps(lbl, other)) nearestOverlap = Math.min(nearestOverlap, other.depth);
+                if (other === lbl || !overlaps(lbl, other)) continue;
+                if (frontToBack(other, lbl) < 0) covered = true; // other is drawn in front
+                if (other.depth < nearestDepth) nearestDepth = other.depth;
             }
-            // How far behind the nearest overlapping label, as a fraction of its
-            // distance (scale-invariant: 50% farther reads clearly "behind"; a few
-            // percent — a coplanar neighbour — barely dims at all).
-            const gap = lbl.depth - nearestOverlap;
-            if (gap > 0) {
-                const f = Math.min(1, (gap / nearestOverlap) / relScale);
-                lbl.targetDim = 1 - f * (1 - dimFloor);
+            // A label with anything drawn over it gets a slight baseline dim (so
+            // even coplanar overlaps read front-vs-back), then dims further toward
+            // the floor in proportion to how much *farther* it is than what covers
+            // it (relative, so it's scale-invariant).
+            if (covered) {
+                const gap = Math.max(0, lbl.depth - nearestDepth);
+                const f = Math.min(1, (gap / nearestDepth) / relScale);
+                lbl.targetDim = dimBase - f * (dimBase - dimFloor);
             }
         }
     }

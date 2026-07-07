@@ -97,7 +97,7 @@ export const state = {
         // or 'off'. 'shade' is the default.
         labelDeclutterMode: 'shade',
         labelDeclutterGap: 4, labelDeclutterMaxStack: 5, labelDeclutterAlpha: 0.25, // position mode
-        labelDimFloor: 0.45, labelDimDepthScale: 0.5, labelDimAlpha: 0.2,          // shade mode
+        labelDimBase: 0.7, labelDimFloor: 0.4, labelDimDepthScale: 0.5, labelDimAlpha: 0.2, // shade mode
     },
 
     // ----- UI -----
