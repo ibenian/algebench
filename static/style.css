@@ -906,6 +906,9 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     will-change: transform, opacity;
 }
 
+/* Smooth the hover opacity boost on overlays (captions already transition). */
+#slider-overlay, #legend, #info-overlays .dockable-panel { transition: opacity 0.2s ease; }
+
 .label-3d .katex { font-size: 1em; }
 .label-axis { font-size: calc(18px * var(--label-scale, 1)); font-weight: bold; }
 

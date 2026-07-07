@@ -1333,6 +1333,31 @@ export function setupCaptionDrag() {
 
     window.addEventListener('resize', () => clampCaptionIntoView(el));
     resetCaptionPosition(el);
+    setupOverlayHoverBoost();
+}
+
+// On hover, brighten the caption / overlays to 2x their resting opacity (capped
+// at full). Delegated so dynamically-created info panels are covered too.
+let _overlayHoverWired = false;
+function setupOverlayHoverBoost() {
+    if (_overlayHoverWired) return;
+    _overlayHoverWired = true;
+    const SEL = '#step-caption, #scene-description, #slider-overlay, #legend, #info-overlays .dockable-panel';
+    document.addEventListener('mouseover', (e) => {
+        const t = e.target.closest && e.target.closest(SEL);
+        if (!t || t._hoverBoosted) return;
+        t._hoverBoosted = true;
+        t._preHoverOp = t.style.opacity;
+        const base = parseFloat(getComputedStyle(t).opacity);
+        t.style.opacity = Math.min(1, (isNaN(base) ? 1 : base) * 2);
+    });
+    document.addEventListener('mouseout', (e) => {
+        const t = e.target.closest && e.target.closest(SEL);
+        if (!t || !t._hoverBoosted) return;
+        if (e.relatedTarget && t.contains(e.relatedTarget)) return; // still inside
+        t._hoverBoosted = false;
+        t.style.opacity = t._preHoverOp || '';
+    });
 }
 
 // ----- Scene Description Drag -----
