@@ -349,6 +349,25 @@ export function updateLabels() {
         lbl.el.style.opacity = lbl.visible ? state.displayParams.labelOpacity : '0';
         lbl.el.style.filter = lbl.dim < 0.999 ? `brightness(${lbl.dim.toFixed(3)})` : '';
     }
+
+    // Paint order: nearest the camera draws on top. Assign z-index by depth rank
+    // using the SAME order the shade dimming uses, so the label drawn on top is
+    // exactly the one kept bright.
+    const ordered = state.labels.filter(l => l.visible).sort(frontToBack);
+    for (let i = 0; i < ordered.length; i++) {
+        const zi = ordered.length - i; // front (index 0) gets the highest z-index
+        if (ordered[i]._zi !== zi) { ordered[i].el.style.zIndex = String(zi); ordered[i]._zi = zi; }
+    }
+}
+
+// Front-to-back order for overlapping labels: nearest the camera first. On a
+// depth tie the moving label wins (it sits on top of what it passes over), then
+// the later-painted label. Used for both paint order (z-index) and shade dimming
+// so the two always agree.
+function frontToBack(a, b) {
+    if (Math.abs(a.depth - b.depth) > 1e-4) return a.depth - b.depth;
+    if (a.moving !== b.moving) return a.moving ? -1 : 1;
+    return b.seq - a.seq;
 }
 
 // Depth-based de-occlusion: labels never move. Where boxes overlap, the one
@@ -367,15 +386,9 @@ function resolveDepthDimming() {
     const dimFloor = state.displayParams.labelDimFloor; // darkest a covered label goes
     const boxes = new Map(active.map(l => [l, labelBox(l)]));
 
-    // Nearer = smaller depth. On a depth tie the moving label wins (it sits on
-    // top of whatever it passes over); failing that the later-painted label (the
-    // one actually drawn on top) is treated as in front, so exactly one label in
-    // any overlapping set stays bright.
-    const nearer = (a, b) => {
-        if (Math.abs(a.depth - b.depth) > 1e-4) return a.depth < b.depth;
-        if (a.moving !== b.moving) return a.moving;
-        return a.seq > b.seq;
-    };
+    // Nearer = drawn in front (same order as the paint-order z-index), so exactly
+    // one label in any overlapping set stays bright.
+    const nearer = (a, b) => frontToBack(a, b) < 0;
     const overlaps = (a, b) => {
         const A = boxes.get(a), B = boxes.get(b);
         return A.left < B.right && B.left < A.right && A.top < B.bottom && B.top < A.bottom;
