@@ -1131,6 +1131,7 @@ export function setupSettingsPanel() {
                     const dragged = cap.style.left && cap.style.left.endsWith('px');
                     cap.style.transformOrigin = dragged ? 'left bottom' : '';
                     cap.style.transform = (dragged ? '' : 'translateX(-50%) ') + 'scale(' + val + ')';
+                    clampCaptionIntoView(cap); // resizing may push it off-screen
                 }
             } else if (param === 'overlayOpacity') {
                 const cap = document.getElementById('step-caption');
@@ -1229,6 +1230,29 @@ function _defaultCaptionPos(el) {
     _applyBottomPos(el, '64px', '50%');
 }
 
+// Nudge a dragged caption back inside the viewport (e.g. after it shrinks and
+// its bottom-left anchor pulls it off-screen). No-op for a centered caption.
+export function clampCaptionIntoView(el) {
+    el = el || document.getElementById('step-caption');
+    if (!el || el.classList.contains('hidden')) return;
+    if (!el.style.left || !el.style.left.endsWith('px')) return; // only dragged (px) mode
+    const parent = el.offsetParent || document.body;
+    const p = parent.getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    const m = 8;
+    let left = parseFloat(el.style.left) || 0;
+    let bottom = parseFloat(el.style.bottom) || 0;
+    // Horizontal — keep the left edge visible first (so text starts on-screen
+    // even if the caption is wider than the viewport).
+    if (r.left < p.left + m) left += (p.left + m) - r.left;
+    else if (r.right > p.right - m) left -= r.right - (p.right - m);
+    // Vertical — bottom is the distance from the parent's bottom edge.
+    if (r.bottom > p.bottom - m) bottom += r.bottom - (p.bottom - m);
+    else if (r.top < p.top + m) bottom -= (p.top + m) - r.top;
+    el.style.left = left + 'px';
+    el.style.bottom = Math.max(0, bottom) + 'px';
+}
+
 export function resetCaptionPosition(el) {
     try {
         const saved = JSON.parse(localStorage.getItem('caption-pos') || 'null');
@@ -1297,6 +1321,7 @@ export function setupCaptionDrag() {
     document.addEventListener('mouseup', () => {
         if (!dragging) return;
         dragging = false;
+        clampCaptionIntoView(el);
         try {
             localStorage.setItem('caption-pos', JSON.stringify({
                 bottom: el.style.bottom,
@@ -1306,6 +1331,7 @@ export function setupCaptionDrag() {
         } catch {}
     });
 
+    window.addEventListener('resize', () => clampCaptionIntoView(el));
     resetCaptionPosition(el);
 }
 
