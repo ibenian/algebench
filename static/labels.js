@@ -248,6 +248,8 @@ export function colorToCSS(c) {
 
 // ----- Label system -----
 
+let _labelSeq = 0; // monotonic; later = appended later = painted on top
+
 export function addLabel3D(text, dataPos, color, opts) {
     if (typeof opts === 'string') opts = { cssClass: opts };
     opts = opts || {};
@@ -260,9 +262,12 @@ export function addLabel3D(text, dataPos, color, opts) {
     const align = opts.align || 'center';
     const entry = {
         el, dataPos: dataPos.slice(), screenX: null, screenY: null, forceHidden: false, align,
-        offsetY: 0,           // applied vertical de-occlusion offset (px)
         boxW: null, boxH: null, // cached DOM size (measured lazily)
         boxScale: null,       // labelScale the cached size was measured at
+        offsetY: 0, targetOffsetY: 0, // vertical de-occlusion offset (position mode)
+        depth: 0,             // NDC z of the anchor (smaller = nearer the camera)
+        dim: 1, targetDim: 1, // applied / target brightness (shade mode)
+        seq: _labelSeq++,     // paint order; higher = on top (depth tiebreak)
         lastDataPos: null,    // dataPos from the previous frame (motion detection)
         moveCooldown: 0,      // frames remaining while treated as "animating"
     };
@@ -306,6 +311,7 @@ export function updateLabels() {
         const projected = v.project(state.camera);
         const targetX = (projected.x * 0.5 + 0.5) * w;
         const targetY = (-projected.y * 0.5 + 0.5) * h;
+        lbl.depth = projected.z; // NDC z: smaller = nearer the camera
         lbl.visible = !lbl.forceHidden && projected.z < 1
             && targetX > -50 && targetX < w + 50
             && targetY > -50 && targetY < h + 50;
@@ -327,51 +333,143 @@ export function updateLabels() {
         }
     }
 
-    // ----- Pass 2: resolve vertical de-occlusion offsets (pure compute) -----
-    resolveLabelOffsets();
+    // ----- Pass 2: resolve declutter (each resolver no-ops unless its mode is on)
+    resolveLabelOffsets();  // position mode → targetOffsetY
+    resolveDepthDimming();  // shade mode    → targetDim
 
-    // ----- Pass 3: smooth applied offset + write transforms -----
+    // ----- Pass 3: smooth offset + dim, then write transforms -----
+    const declutterAlpha = state.displayParams.labelDeclutterAlpha;
+    const dimAlpha = state.displayParams.labelDimAlpha;
     for (const lbl of state.labels) {
-        const target = lbl.targetOffsetY || 0;
-        lbl.offsetY += (target - lbl.offsetY) * state.displayParams.labelDeclutterAlpha;
+        lbl.offsetY += (lbl.targetOffsetY - lbl.offsetY) * declutterAlpha;
+        lbl.dim += (lbl.targetDim - lbl.dim) * dimAlpha;
         const ax = lbl.align === 'right' ? '-100%' : lbl.align === 'left' ? '0%' : '-50%';
         const y = lbl.screenY + lbl.offsetY;
         lbl.el.style.transform = `translate(${lbl.screenX}px, ${y}px) translate(${ax}, -50%)${s !== 1 ? ' scale(' + s + ')' : ''}`;
         lbl.el.style.opacity = lbl.visible ? state.displayParams.labelOpacity : '0';
+        lbl.el.style.filter = lbl.dim < 0.999 ? `brightness(${lbl.dim.toFixed(3)})` : '';
     }
 }
 
-// Compute a target vertical offset per label so overlapping labels stack apart.
+// Depth-based de-occlusion: labels never move. Where boxes overlap, the one
+// nearest the camera stays full brightness and the ones behind it are dimmed by
+// how many nearer labels cover them — a readable front, a receding back. Labels
+// that don't overlap anything are untouched.
+function resolveDepthDimming() {
+    const active = [];
+    for (const lbl of state.labels) {
+        lbl.targetDim = 1;
+        if (lbl.visible && lbl.boxW != null) active.push(lbl);
+    }
+    if (state.displayParams.labelDeclutterMode !== 'shade' || active.length < 2) return;
+
+    const dimStep = state.displayParams.labelDimAmount; // brightness drop per nearer cover
+    const dimFloor = state.displayParams.labelDimFloor; // darkest a covered label goes
+    const boxes = new Map(active.map(l => [l, labelBox(l)]));
+
+    // Nearer = smaller depth. On a depth tie the moving label wins (it sits on
+    // top of whatever it passes over); failing that the later-painted label (the
+    // one actually drawn on top) is treated as in front, so exactly one label in
+    // any overlapping set stays bright.
+    const nearer = (a, b) => {
+        if (Math.abs(a.depth - b.depth) > 1e-4) return a.depth < b.depth;
+        if (a.moving !== b.moving) return a.moving;
+        return a.seq > b.seq;
+    };
+    const overlaps = (a, b) => {
+        const A = boxes.get(a), B = boxes.get(b);
+        return A.left < B.right && B.left < A.right && A.top < B.bottom && B.top < A.bottom;
+    };
+
+    for (const cluster of clusterByOverlap(active)) {
+        if (cluster.length < 2) continue;
+        for (const lbl of cluster) {
+            let covers = 0;
+            for (const other of cluster) {
+                if (other !== lbl && overlaps(lbl, other) && nearer(other, lbl)) covers++;
+            }
+            if (covers > 0) lbl.targetDim = Math.max(dimFloor, 1 - dimStep * covers);
+        }
+    }
+}
+
+// Position-based de-occlusion: nudge overlapping static labels apart vertically.
 // Targets are a pure function of the (offset-free) anchor positions, so there is
 // no feedback into detection and therefore no oscillation.
 function resolveLabelOffsets() {
     const active = [];
     for (const lbl of state.labels) {
         lbl.targetOffsetY = 0;
-        // Only labels that are holding still declutter. A label glued to a moving
-        // marker is left alone — it stays pinned to its marker and simply passes
-        // over static text (a brief, natural occlusion). A purely-vertical offset
-        // can't smoothly dodge a marker that crosses through a label anyway: the
-        // marker's screen-Y sweeps past the label's centre, so there is no stable
-        // up-or-down choice — trying either swings the label or sticks it. When
-        // playback pauses, the marker stops animating and rejoins the declutter,
-        // so everything separates cleanly at rest.
+        // Only labels holding still are moved. A label glued to a moving marker
+        // stays pinned and passes over static text (a purely-vertical offset
+        // can't smoothly dodge a marker crossing through it anyway). When playback
+        // pauses the marker rejoins the declutter so everything separates at rest.
         if (lbl.visible && lbl.boxW != null && !lbl.moving) active.push(lbl);
     }
-    if (!state.displayParams.labelDeclutter || active.length < 2) return;
+    if (state.displayParams.labelDeclutterMode !== 'position' || active.length < 2) return;
 
     const gap = state.displayParams.labelDeclutterGap;
     const maxStack = state.displayParams.labelDeclutterMaxStack;
 
-    // Cluster labels whose boxes *actually* overlap in 2D — a label only occludes
-    // another when they intersect on BOTH axes. Clustering on x alone would drag
-    // together labels that merely share a column (bridged by a wide neighbor) and
-    // shove them apart vertically even though they never touch.
-    const clusters = clusterByOverlap(active);
-    for (const cluster of clusters) {
+    // Cluster labels whose boxes *actually* overlap in 2D, then stack each cluster.
+    for (const cluster of clusterByOverlap(active)) {
         if (cluster.length < 2) continue;
         cluster.sort((a, b) => a.screenY - b.screenY);
         resolveVerticalStack(cluster, gap, maxStack);
+    }
+}
+
+// Split a cluster (sorted top→bottom) into runs of labels that *actually* overlap
+// vertically, and resolve each independently. A pair engages only when its boxes
+// truly overlap (centre distance < mean height, gap excluded); resolution then
+// spreads them to mean height + gap. The gap between engage and resolved spacing
+// is a deadband that stops boundary jitter.
+function resolveVerticalStack(cluster, gap, maxStack) {
+    const n = cluster.length;
+    let i = 0;
+    while (i < n) {
+        let j = i;
+        while (j + 1 < n
+            && cluster[j + 1].screenY - cluster[j].screenY < (cluster[j].boxH + cluster[j + 1].boxH) / 2) {
+            j++;
+        }
+        if (j > i) resolveRun(cluster, i, j, gap, maxStack);
+        i = j + 1;
+    }
+}
+
+// Pool-Adjacent-Violators (isotonic regression) over one engaged run: minimal-
+// displacement separation to mean height + gap, with compression past maxStack.
+function resolveRun(cluster, start, end, gap, maxStack) {
+    const n = end - start + 1;
+    const S = new Array(n);
+    S[0] = 0;
+    for (let k = 1; k < n; k++) {
+        S[k] = S[k - 1] + (cluster[start + k - 1].boxH + cluster[start + k].boxH) / 2 + gap;
+    }
+    const desired = [];
+    for (let k = 0; k < n; k++) desired[k] = cluster[start + k].screenY - S[k];
+
+    const blocks = []; // { sum, size, k0 }  (mean = sum / size)
+    for (let k = 0; k < n; k++) {
+        let b = { sum: desired[k], size: 1, k0: k };
+        while (blocks.length && blocks[blocks.length - 1].sum / blocks[blocks.length - 1].size > b.sum / b.size) {
+            const prev = blocks.pop();
+            b = { sum: prev.sum + b.sum, size: prev.size + b.size, k0: prev.k0 };
+        }
+        blocks.push(b);
+    }
+
+    for (const b of blocks) {
+        const mean = b.sum / b.size;
+        const scale = Math.min(1, maxStack / Math.max(1, b.size - 1));
+        let sAvg = 0;
+        for (let k = b.k0; k < b.k0 + b.size; k++) sAvg += S[k];
+        sAvg /= b.size;
+        for (let k = b.k0; k < b.k0 + b.size; k++) {
+            const finalY = mean + sAvg + (S[k] - sAvg) * scale;
+            cluster[start + k].targetOffsetY = finalY - cluster[start + k].screenY;
+        }
     }
 }
 
@@ -407,70 +505,6 @@ function clusterByOverlap(labels) {
         groups.get(r).push(labels[i]);
     }
     return [...groups.values()];
-}
-
-// Split a horizontal cluster (sorted top→bottom) into runs of labels that
-// *actually* overlap vertically, and resolve each run independently. A pair is
-// only "engaged" when its boxes truly overlap (center distance < mean height,
-// gap excluded); resolution then spreads them to mean height + gap. Because the
-// resolved spacing exceeds the engage threshold, resolved labels can't
-// re-trigger, and labels merely sitting a gap apart are never touched — this
-// deadband is what stops boundary jitter.
-function resolveVerticalStack(cluster, gap, maxStack) {
-    const n = cluster.length;
-    let i = 0;
-    while (i < n) {
-        let j = i; // extend the run while consecutive boxes overlap
-        while (j + 1 < n
-            && cluster[j + 1].screenY - cluster[j].screenY < (cluster[j].boxH + cluster[j + 1].boxH) / 2) {
-            j++;
-        }
-        if (j > i) resolveRun(cluster, i, j, gap, maxStack);
-        i = j + 1;
-    }
-}
-
-// Pool-Adjacent-Violators (isotonic regression) over one engaged run
-// cluster[start..end]: minimal-displacement vertical separation to mean
-// height + gap, with continuous compression past maxStack.
-function resolveRun(cluster, start, end, gap, maxStack) {
-    const n = end - start + 1;
-    // S[k] = cumulative target separation from the run's first label down to k.
-    // Subtracting it turns the non-overlap constraints into a monotonicity
-    // constraint, so the least-squares fit is plain isotonic regression.
-    const S = new Array(n);
-    S[0] = 0;
-    for (let k = 1; k < n; k++) {
-        S[k] = S[k - 1] + (cluster[start + k - 1].boxH + cluster[start + k].boxH) / 2 + gap;
-    }
-    const desired = [];
-    for (let k = 0; k < n; k++) desired[k] = cluster[start + k].screenY - S[k];
-
-    // PAVA: pool adjacent blocks whenever the previous block's mean exceeds the
-    // next's, producing a non-decreasing sequence of block means.
-    const blocks = []; // { sum, size, k0 }  (mean = sum / size)
-    for (let k = 0; k < n; k++) {
-        let b = { sum: desired[k], size: 1, k0: k };
-        while (blocks.length && blocks[blocks.length - 1].sum / blocks[blocks.length - 1].size > b.sum / b.size) {
-            const prev = blocks.pop();
-            b = { sum: prev.sum + b.sum, size: prev.size + b.size, k0: prev.k0 };
-        }
-        blocks.push(b);
-    }
-
-    // Final center of label k = block mean + S[k]. Compress overcrowded stacks
-    // past maxStack by scaling toward the block centroid.
-    for (const b of blocks) {
-        const mean = b.sum / b.size;
-        const scale = Math.min(1, maxStack / Math.max(1, b.size - 1));
-        let sAvg = 0;
-        for (let k = b.k0; k < b.k0 + b.size; k++) sAvg += S[k];
-        sAvg /= b.size;
-        for (let k = b.k0; k < b.k0 + b.size; k++) {
-            const finalY = mean + sAvg + (S[k] - sAvg) * scale;
-            cluster[start + k].targetOffsetY = finalY - cluster[start + k].screenY;
-        }
-    }
 }
 
 // ----- AI ask-button helpers -----

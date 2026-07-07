@@ -92,7 +92,12 @@ export const state = {
         labelOpacity: 1.0, arrowOpacity: 1.0, axisOpacity: 1.0, vectorOpacity: 1.0,
         lineWidth: 1.0, lineOpacity: 1.0, planeScale: 1.0, planeOpacity: 0.2,
         captionScale: 1.0, overlayOpacity: 0.7,
-        labelDeclutter: true, labelDeclutterGap: 4, labelDeclutterMaxStack: 5, labelDeclutterAlpha: 0.25,
+        // Declutter of overlapping 3D labels. Mode: 'shade' (dim the ones behind
+        // by depth — never moves text), 'position' (nudge them apart vertically),
+        // or 'off'. 'shade' is the default.
+        labelDeclutterMode: 'shade',
+        labelDeclutterGap: 4, labelDeclutterMaxStack: 5, labelDeclutterAlpha: 0.25, // position mode
+        labelDimAmount: 0.4, labelDimFloor: 0.4, labelDimAlpha: 0.2,                // shade mode
     },
 
     // ----- UI -----

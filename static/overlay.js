@@ -1138,11 +1138,11 @@ export function setupSettingsPanel() {
         });
     });
 
-    const declutterToggle = document.getElementById('declutter-toggle');
-    if (declutterToggle) {
-        declutterToggle.checked = state.displayParams.labelDeclutter;
-        declutterToggle.addEventListener('change', () => {
-            state.displayParams.labelDeclutter = declutterToggle.checked;
+    const declutterMode = document.getElementById('declutter-mode');
+    if (declutterMode) {
+        declutterMode.value = state.displayParams.labelDeclutterMode;
+        declutterMode.addEventListener('change', () => {
+            state.displayParams.labelDeclutterMode = declutterMode.value;
         });
     }
 }
