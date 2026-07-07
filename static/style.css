@@ -887,7 +887,12 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     color: #ffffff;
     font-size: 13px;
     pointer-events: none;
-    text-shadow: 0 0 6px rgba(0,0,0,0.9), 0 0 12px rgba(0,0,0,0.6);
+    /* Crisp dark contour around the glyphs (8-way 1px outline) plus a soft halo,
+       for legibility over other text and shapes — without altering the fill. */
+    text-shadow:
+        1px 1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, -1px -1px 0 #000,
+        1px 0 0 #000, -1px 0 0 #000, 0 1px 0 #000, 0 -1px 0 #000,
+        0 0 4px rgba(0,0,0,0.85);
     transform: translate(-50%, -50%);
     white-space: nowrap;
     transition: opacity 0.15s;
