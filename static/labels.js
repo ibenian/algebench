@@ -308,10 +308,12 @@ export function updateLabels() {
 
         const world = dataToWorld(dp);
         const v = new THREE.Vector3(world[0], world[1], world[2]);
+        // World-space distance to the camera (linear; smaller = nearer). NDC z is
+        // useless here — a near-planar scene crushes every label to ~the same z.
+        lbl.depth = state.camera.position.distanceTo(v);
         const projected = v.project(state.camera);
         const targetX = (projected.x * 0.5 + 0.5) * w;
         const targetY = (-projected.y * 0.5 + 0.5) * h;
-        lbl.depth = projected.z; // NDC z: smaller = nearer the camera
         lbl.visible = !lbl.forceHidden && projected.z < 1
             && targetX > -50 && targetX < w + 50
             && targetY > -50 && targetY < h + 50;
@@ -360,20 +362,20 @@ export function updateLabels() {
     }
 }
 
-// Front-to-back order for overlapping labels: nearest the camera first. On a
-// depth tie the moving label wins (it sits on top of what it passes over), then
-// the later-painted label. Used for both paint order (z-index) and shade dimming
-// so the two always agree.
+// Front-to-back order for paint (z-index): nearest the camera first. On a near
+// tie the moving label wins (it sits on top of what it passes over), then the
+// later-painted label.
 function frontToBack(a, b) {
-    if (Math.abs(a.depth - b.depth) > 1e-4) return a.depth - b.depth;
+    if (Math.abs(a.depth - b.depth) > 0.01) return a.depth - b.depth;
     if (a.moving !== b.moving) return a.moving ? -1 : 1;
     return b.seq - a.seq;
 }
 
-// Depth-based de-occlusion: labels never move. Where boxes overlap, the one
-// nearest the camera stays full brightness and the ones behind it are dimmed by
-// how many nearer labels cover them — a readable front, a receding back. Labels
-// that don't overlap anything are untouched.
+// Depth-based de-occlusion: labels never move. A label is dimmed only in
+// proportion to how far it sits *behind* the nearest label overlapping it, in
+// real world-space distance. Coplanar labels (no real depth gap) stay bright —
+// so a label that merely shares a plane with its neighbours reads normally; only
+// a label genuinely deeper than what's drawn over it recedes.
 function resolveDepthDimming() {
     const active = [];
     for (const lbl of state.labels) {
@@ -382,13 +384,9 @@ function resolveDepthDimming() {
     }
     if (state.displayParams.labelDeclutterMode !== 'shade' || active.length < 2) return;
 
-    const dimStep = state.displayParams.labelDimAmount; // brightness drop per nearer cover
-    const dimFloor = state.displayParams.labelDimFloor; // darkest a covered label goes
+    const dimFloor = state.displayParams.labelDimFloor;      // darkest a far label goes
+    const relScale = state.displayParams.labelDimDepthScale; // relative gap for full dim
     const boxes = new Map(active.map(l => [l, labelBox(l)]));
-
-    // Nearer = drawn in front (same order as the paint-order z-index), so exactly
-    // one label in any overlapping set stays bright.
-    const nearer = (a, b) => frontToBack(a, b) < 0;
     const overlaps = (a, b) => {
         const A = boxes.get(a), B = boxes.get(b);
         return A.left < B.right && B.left < A.right && A.top < B.bottom && B.top < A.bottom;
@@ -397,11 +395,18 @@ function resolveDepthDimming() {
     for (const cluster of clusterByOverlap(active)) {
         if (cluster.length < 2) continue;
         for (const lbl of cluster) {
-            let covers = 0;
+            let nearestOverlap = Infinity;
             for (const other of cluster) {
-                if (other !== lbl && overlaps(lbl, other) && nearer(other, lbl)) covers++;
+                if (other !== lbl && overlaps(lbl, other)) nearestOverlap = Math.min(nearestOverlap, other.depth);
             }
-            if (covers > 0) lbl.targetDim = Math.max(dimFloor, 1 - dimStep * covers);
+            // How far behind the nearest overlapping label, as a fraction of its
+            // distance (scale-invariant: 50% farther reads clearly "behind"; a few
+            // percent — a coplanar neighbour — barely dims at all).
+            const gap = lbl.depth - nearestOverlap;
+            if (gap > 0) {
+                const f = Math.min(1, (gap / nearestOverlap) / relScale);
+                lbl.targetDim = 1 - f * (1 - dimFloor);
+            }
         }
     }
 }
