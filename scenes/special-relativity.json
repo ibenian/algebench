@@ -2974,7 +2974,7 @@
               "type": "text",
               "size": 13,
               "color": "#ffaa33",
-              "position": [-3, 6.3, 0],
+              "position": [0, 6.3, 0],
               "text": "⚡ $A$ is now light itself: **every** observer measures it at exactly $c$ — and it has no clock, no frame, no point of view.",
               "visibleExpr": "(abs(vA) >= 0.999) and (abs(vB) < 0.999)"
             },
@@ -2983,7 +2983,7 @@
               "type": "text",
               "size": 13,
               "color": "#ffaa33",
-              "position": [-3, 6.3, 0],
+              "position": [0, 6.3, 0],
               "text": "⚡ $B$ is now light itself: **every** observer measures it at exactly $c$ — and it has no clock, no frame, no point of view.",
               "visibleExpr": "(abs(vB) >= 0.999) and (abs(vA) < 0.999)"
             },
@@ -2992,7 +2992,7 @@
               "type": "text",
               "size": 13,
               "color": "#ff5566",
-              "position": [-3, 6.3, 0],
+              "position": [0, 6.3, 0],
               "text": "$\\tfrac{0}{0}$ — you've asked one photon to measure another. **No rest frame exists at $c$**: the question dissolves. (Einstein's teenage paradox — its resolution was this theory.)",
               "visibleExpr": "(abs(vA) >= 0.999) and (abs(vB) >= 0.999)"
             }
