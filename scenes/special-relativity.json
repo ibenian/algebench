@@ -1011,7 +1011,7 @@
             {
               "id": "s2_inset_marker",
               "type": "animated_point",
-              "expr": ["-7 + 4*v", "-6 + (1/max(sqrt(1-v^2), 0.000001))", "0"],
+              "expr": ["-7 + 4*min(v, 0.95)", "-6 + (1/sqrt(1-min(v, 0.95)^2))", "0"],
               "color": "#ff5566",
               "size": 2,
               "legendGroup": "$\\gamma(v)$"
@@ -1055,7 +1055,7 @@
             {"type": "slider"}
           ],
           "info": [
-            {"id": "s2_gamma_info", "content": "### Where $\\gamma$ comes from\nThe triangle, written in clock readings ($h = c\\,T_0$):\n\n$$(c\\,t)^2 = (c\\,T_0)^2 + (v\\,t)^2 \\;\\Rightarrow\\; t = \\gamma\\,T_0, \\qquad \\gamma = \\dfrac{1}{\\sqrt{1-v^2}}$$\n\nAt $v = {{toFixed(v,2)}}$: $\\;\\gamma = {{toFixed(1/max(sqrt(1-v^2), 0.000001),2)}}$ — not a postulate, just the Pythagorean sum solved for $t$.\n\nMoving clock tick $= \\gamma \\times$ rest tick.", "position": "top-left"},
+            {"id": "s2_gamma_info", "content": "### Where $\\gamma$ comes from\nThe triangle, written in clock readings ($h = c\\,T_0$):\n\n$$(c\\,t)^2 = (c\\,T_0)^2 + (v\\,t)^2 \\;\\Rightarrow\\; t = \\gamma\\,T_0, \\qquad \\gamma = \\dfrac{1}{\\sqrt{1-v^2}}$$\n\nAt $v = {{toFixed(v,2)}}$: $\\;\\gamma = {{toFixed(1/max(sqrt(1-v^2), 0.000001),2)}}$ — not a postulate, just the Pythagorean sum solved for $t$.\n\nMoving clock tick $= \\gamma \\times$ rest tick. *(As $v \\to 1$ the readout is capped near lightspeed; truly $\\gamma \\to \\infty$.)*", "position": "top-left"},
             {"id": "s2_reality_info", "content": "### Reality checks\n**Muons:** born ~15 km up, would fall only ~660 m before decaying — yet $\\gamma \\approx 5\\text{–}10$ lets them reach the ground.\n\n**GPS:** satellite clocks corrected by **~38 μs/day** (net), or positions drift **kilometers** off within a day.", "position": "bottom-right"}
           ],
           "sliders": [
