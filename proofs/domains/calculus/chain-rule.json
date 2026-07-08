@@ -72,12 +72,12 @@
     }
   ],
   "overall_confidence": {
-    "tier": "verified",
-    "label": "Verified",
-    "icon": "🥈",
-    "meaning": "strong CAS evidence, short of a symbolic proof",
+    "tier": "grounded",
+    "label": "Grounded",
+    "icon": "🥇",
+    "meaning": "symbolically proven to follow from the previous step",
     "relation": null,
-    "reason": "3/3 steps verified",
+    "reason": "3/3 steps verified · endpoint reached",
     "type_consistent": true,
     "counts": {
       "refuted": 0,
@@ -87,7 +87,7 @@
       "verified": 0,
       "grounded": 3
     },
-    "endpoint_reached": null
+    "endpoint_reached": true
   },
   "terms": {
     "__sin_2": {

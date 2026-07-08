@@ -281,21 +281,20 @@ class TestNormalizeFuncCallBraces:
         assert self.norm(r"\ln{\left(x \right)}") == r"\ln\left(x \right)"
         assert self.norm(r"\log{y}") == r"\log(y)"
 
-    @pytest.mark.parametrize("latex", [
-        r"\frac{a}{b}",
-        r"\sqrt{x}",
-        r"\hat{p}",
-        r"\text{rate}",
-        r"x^{2} + y_{i}",
-        r"\cos(x) \cdot 2",          # already parenthesised — untouched
-        r"2 \cdot \cos{\left(x\right)}",  # function last: still swapped, but no swallow
+    @pytest.mark.parametrize("latex, expected", [
+        # Non-function braces (and already-parenthesised calls) are untouched.
+        (r"\frac{a}{b}", r"\frac{a}{b}"),
+        (r"\sqrt{x}", r"\sqrt{x}"),
+        (r"\hat{p}", r"\hat{p}"),
+        (r"\text{rate}", r"\text{rate}"),
+        (r"x^{2} + y_{i}", r"x^{2} + y_{i}"),
+        (r"\cos(x) \cdot 2", r"\cos(x) \cdot 2"),
+        # A function call as the LAST factor is still normalized (braces dropped),
+        # even though there is nothing after it to swallow.
+        (r"2 \cdot \cos{\left(x\right)}", r"2 \cdot \cos\left(x\right)"),
     ])
-    def test_leaves_non_func_braces_alone(self, latex):
-        # These must be byte-for-byte unchanged EXCEPT the last case, which is a
-        # legitimate swap; assert non-func cases are identical.
-        if "\\cos{" in latex or "\\sin{" in latex:
-            return
-        assert self.norm(latex) == latex
+    def test_only_function_braces_are_normalized(self, latex, expected):
+        assert self.norm(latex) == expected
 
     def test_end_to_end_no_swallow(self):
         # The whole point: after the pass, the parser must NOT fold the product

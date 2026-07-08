@@ -125,11 +125,13 @@ class LaTeXPreprocessor:
         misreads — so re-parsing printed LaTeX corrupts itself (only harmless
         when the function is the last factor, with nothing after to swallow).
 
-        We rewrite the outer brace group to parens for known function names, so
-        the parser takes its bounded branch.  ``\cos{\left(x^2\right)}`` becomes
-        ``\cos(\left(x^2\right))`` — the doubled delimiters parse fine, and this
-        string is parser-internal (display LaTeX is re-rendered from the graph),
-        so the cosmetics never surface.
+        We rewrite the outer brace group for known function names so the parser
+        takes its bounded branch: when ARG is already a single delimiter group the
+        braces are simply dropped (``\cos{\left(x^2\right)}`` → ``\cos\left(x^2\right)``,
+        the common printer case — no doubled delimiters); otherwise ARG is wrapped
+        in parens (``\cos{x^2}`` → ``\cos(x^2)``).  Either way the string is
+        parser-internal (display LaTeX is re-rendered from the graph), so no
+        cosmetic artifact reaches the UI.
 
         Only the whitelisted names in :data:`_LATEX_FUNCS` are touched; braces on
         ``\frac``/``\sqrt``/``\hat``/superscripts/etc. are left alone.  An
