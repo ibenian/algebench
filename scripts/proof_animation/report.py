@@ -13,6 +13,7 @@ import json
 import logging
 import re
 import shutil
+import sys
 from pathlib import Path
 
 log = logging.getLogger(__name__)
@@ -92,12 +93,49 @@ def _animations_from_file(path: Path, domain: str) -> list[dict]:
     already-derived trajectories never calls the LM. The steps are fixed in the
     fixture; only the render (expr_latex → annotated latex) and pure-CAS grounding
     are (re)computed, which is exactly what a visual/render report needs and keeps
-    it reproducible in CI (no GEMINI_API_KEY required). Term descriptions + the
-    DOMAIN tier are LM-authored and belong to the ``--save-builtin`` authoring path,
-    not the render pass."""
+    it reproducible in CI (no GEMINI_API_KEY required).
+
+    Term tooltip descriptions are LM-authored, so instead of regenerating them on
+    every run they are **baked once** into a sibling ``term_descriptions.baked.json``
+    (``{title: {term_id: description}}`` — see ``--bake-descriptions``) and
+    overlaid onto the freshly-rendered terms here. The render stays live (reflects
+    the current parser/renderer); only the prose is reused. A missing/stale id just
+    leaves that term description-less — never an error."""
     data = json.loads(Path(path).read_text(encoding="utf-8"))
-    return [build_animation(ProofAnimation.model_validate(d), judge=None, describe=False)
-            for d in data]
+    baked_path = path.parent / "term_descriptions.baked.json"
+    baked = json.loads(baked_path.read_text(encoding="utf-8")) if baked_path.exists() else {}
+    out = []
+    for d in data:
+        anim = build_animation(ProofAnimation.model_validate(d), judge=None, describe=False)
+        descs = baked.get(anim.get("title", ""), {})
+        for tid, term in anim.get("terms", {}).items():
+            if tid in descs:
+                term["description"] = descs[tid]
+        out.append(anim)
+    return out
+
+
+def _bake_descriptions(path: Path) -> int:
+    """Run the LM tooltip pass over *path*'s fixtures once and write the sibling
+    ``term_descriptions.baked.json`` (``{title: {term_id: description}}``). Manual/
+    local — needs an LM key; the render path then reuses the bake, LM-free."""
+    if not _ensure_lm():
+        print("--bake-descriptions needs an LM key (GEMINI_API_KEY / GOOGLE_API_KEY).",
+              file=sys.stderr)
+        return 1
+    data = json.loads(path.read_text(encoding="utf-8"))
+    judge = _judge()
+    baked: dict[str, dict[str, str]] = {}
+    for d in data:
+        anim = build_animation(ProofAnimation.model_validate(d), judge=judge, describe=True)
+        baked[anim["title"]] = {tid: t["description"]
+                                for tid, t in anim.get("terms", {}).items()
+                                if t.get("description")}
+    out = path.parent / "term_descriptions.baked.json"
+    out.write_text(json.dumps(baked, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    print(f"baked {sum(len(v) for v in baked.values())} descriptions "
+          f"for {len(baked)} proofs → {out}")
+    return 0
 
 _INDEX = """<!DOCTYPE html>
 <html lang="en">
@@ -176,10 +214,17 @@ def main() -> int:
                     help="disable the DOMAIN-tier rescue of CAS-uncheckable steps. By default "
                          "(when an LM is configured) the rescue runs so built-ins match the live "
                          "server; pass this to get pure-CAS confidence instead.")
+    ap.add_argument("--bake-descriptions", action="store_true",
+                    help="(re)generate the sibling term_descriptions.baked.json for --from-file "
+                         "by running the LM tooltip pass once, then exit. Needs GEMINI_API_KEY. "
+                         "The render path reuses this bake so CI never calls the LM.")
     args = ap.parse_args()
 
     global _DOMAIN_RESCUE
     _DOMAIN_RESCUE = not args.no_domain_rescue
+
+    if args.bake_descriptions:
+        return _bake_descriptions(Path(args.from_file) if args.from_file else _FIXTURES)
 
     if args.from_file:
         animations = _animations_from_file(Path(args.from_file), args.domain)
