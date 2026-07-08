@@ -1277,6 +1277,10 @@ export function setupCaptionDrag() {
     const el = document.getElementById('step-caption');
     if (!el) return;
     let dragging = false, startX = 0, startY = 0, startLeft = 0, startBottom = 0;
+    // Captured at mousedown so the move handler can keep the caption fully inside
+    // the parent on every edge (like the dockable info panels), not just off the bottom.
+    let parentW = 0, parentH = 0, dragW = 0, dragH = 0;
+    const EDGE_MARGIN = 8; // matches clampCaptionIntoView so drop doesn't jump
 
     el.addEventListener('mousedown', (e) => {
         if (e.target.closest('.ai-ask-btn')) return;
@@ -1309,13 +1313,28 @@ export function setupCaptionDrag() {
         el.style.top       = 'auto';
         el.style.right     = 'auto';
         el.style.transform = 'scale(' + s + ')';
+        // Freeze the geometry the move handler clamps against. The scaled box grows
+        // up/right from the bottom-left anchor, so its rendered width/height cap how
+        // far left/bottom may travel before an edge escapes the parent.
+        parentW = parentRect.width;
+        parentH = parentRect.height;
+        const box = el.getBoundingClientRect();
+        dragW = box.width;
+        dragH = box.height;
         e.preventDefault();
     });
 
     document.addEventListener('mousemove', (e) => {
         if (!dragging) return;
-        el.style.left   = (startLeft   + (e.clientX - startX)) + 'px';
-        el.style.bottom = Math.max(0, startBottom - (e.clientY - startY)) + 'px';
+        const m = EDGE_MARGIN;
+        let left   = startLeft   + (e.clientX - startX);
+        let bottom = startBottom - (e.clientY - startY);
+        // Clamp to all four edges. hi = max(m, ...) keeps the left/bottom edge
+        // visible even if the caption is larger than the parent in that axis.
+        left   = Math.max(m, Math.min(left,   Math.max(m, parentW - dragW - m)));
+        bottom = Math.max(m, Math.min(bottom, Math.max(m, parentH - dragH - m)));
+        el.style.left   = left + 'px';
+        el.style.bottom = bottom + 'px';
     });
 
     document.addEventListener('mouseup', () => {
