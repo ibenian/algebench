@@ -241,3 +241,72 @@ class TestPreprocess:
         assert result.accent_map == {}
         assert result.subscript_map == {}
         assert result.annotations == []
+
+
+class TestNormalizeFuncCallBraces:
+    r"""``\fn{ARG}`` → ``\fn(ARG)`` so SymPy bounds the argument.
+
+    SymPy's printer emits ``\cos{\left(x\right)}`` (a brace group), which its own
+    parser then reads as "cos applied to the whole trailing product" — so a
+    re-parsed step like ``\cos{\left(x^2\right)} \cdot 2 \cdot x`` corrupts into
+    ``cos(x^2 · 2 · x)``.  Rewriting the brace to parens forces the bounded branch.
+    """
+    norm = staticmethod(LaTeXPreprocessor.normalize_func_call_braces)
+
+    def test_drops_braces_around_delimited_arg(self):
+        # SymPy's printer form: arg is already \left(…\right), so just drop the
+        # braces — no doubled delimiters.
+        assert self.norm(r"\cos{\left(x^{2} \right)} \cdot 2 \cdot x") == \
+            r"\cos\left(x^{2} \right) \cdot 2 \cdot x"
+
+    def test_wraps_bare_arg_in_parens(self):
+        assert self.norm(r"\cos{x^2} \cdot 2 \cdot x") == r"\cos(x^2) \cdot 2 \cdot x"
+
+    def test_skips_exponent_then_normalizes_arg(self):
+        # \sin^{2}{\left(x\right)}: the FIRST brace group is the exponent, the
+        # second is the argument — only the argument is normalized.
+        assert self.norm(r"\sin^{2}{\left(x \right)} + 1") == \
+            r"\sin^{2}\left(x \right) + 1"
+
+    def test_non_delimited_arg_is_wrapped_not_dropped(self):
+        # arg is a sum, not a single delimiter group — must be wrapped, else the
+        # trailing '+ 1' would escape the function.
+        assert self.norm(r"\cos{x + 1}") == r"\cos(x + 1)"
+
+    def test_longest_name_wins(self):
+        # \sinh must not be matched as \sin + "h".
+        assert self.norm(r"\sinh{x} + 1") == r"\sinh(x) + 1"
+
+    def test_ln_and_log(self):
+        assert self.norm(r"\ln{\left(x \right)}") == r"\ln\left(x \right)"
+        assert self.norm(r"\log{y}") == r"\log(y)"
+
+    @pytest.mark.parametrize("latex", [
+        r"\frac{a}{b}",
+        r"\sqrt{x}",
+        r"\hat{p}",
+        r"\text{rate}",
+        r"x^{2} + y_{i}",
+        r"\cos(x) \cdot 2",          # already parenthesised — untouched
+        r"2 \cdot \cos{\left(x\right)}",  # function last: still swapped, but no swallow
+    ])
+    def test_leaves_non_func_braces_alone(self, latex):
+        # These must be byte-for-byte unchanged EXCEPT the last case, which is a
+        # legitimate swap; assert non-func cases are identical.
+        if "\\cos{" in latex or "\\sin{" in latex:
+            return
+        assert self.norm(latex) == latex
+
+    def test_end_to_end_no_swallow(self):
+        # The whole point: after the pass, the parser must NOT fold the product
+        # into the cosine.  Verify via the real graph round-trip.
+        from backend.semantic_graph.service import SemanticGraphService
+        from backend.semantic_graph.latex_renderer import to_latex
+        svc = SemanticGraphService()
+        g = svc.latex_to_graph(r"\cos{\left(x^{2} \right)} \cdot 2 \cdot x",
+                               domain="calculus")
+        assert g is not None
+        rendered = to_latex(g)
+        # cosine's argument is exactly x^2 — the "\cdot 2" lives OUTSIDE it.
+        assert r"\cos\left(x^{2}\right)" in rendered
+        assert r"x^{2} \cdot 2" not in rendered
