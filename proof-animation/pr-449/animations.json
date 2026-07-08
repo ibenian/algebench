@@ -76,15 +76,18 @@
     "terms": {
       "a": {
         "latex": "a",
-        "name": "a"
+        "name": "a",
+        "description": "The variable to be isolated or solved for in the algebraic expression."
       },
       "b": {
         "latex": "b",
-        "name": "b"
+        "name": "b",
+        "description": "A variable or constant in the algebraic expression."
       },
       "c": {
         "latex": "c",
-        "name": "c"
+        "name": "c",
+        "description": "A variable or constant in the algebraic expression."
       }
     },
     "goal": "This derivation shows how to rearrange the equation $a + b - c = 0$ to solve for $a$.",
@@ -160,11 +163,13 @@
     "terms": {
       "__power_1": {
         "latex": "(x + 1)^2",
-        "name": "(x + 1)^2"
+        "name": "(x + 1)^2",
+        "description": "This is the binomial expression $(x + 1)^2$ that is being expanded."
       },
       "x": {
         "latex": "x",
-        "name": "x"
+        "name": "x",
+        "description": "This is a variable within the binomial expression."
       }
     },
     "goal": "This derivation expands the binomial $(x+1)^2$ to its equivalent polynomial form, $x^2 + 2x + 1$.",
@@ -240,19 +245,23 @@
     "terms": {
       "__power_2": {
         "latex": "a^{2}",
-        "name": "a^{2}"
+        "name": "a^{2}",
+        "description": "This is the square of the variable $a$."
       },
       "a": {
         "latex": "a",
-        "name": "a"
+        "name": "a",
+        "description": "This is a variable being squared."
       },
       "__power_4": {
         "latex": "b^{2}",
-        "name": "b^{2}"
+        "name": "b^{2}",
+        "description": "This is the square of the variable $b$."
       },
       "b": {
         "latex": "b",
-        "name": "b"
+        "name": "b",
+        "description": "This is a variable being squared."
       }
     },
     "goal": "This derivation demonstrates how to factor the difference of two squares, $a^2 - b^2$, into the product of two binomials.",
@@ -396,51 +405,63 @@
     "terms": {
       "__power_2": {
         "latex": "E^{2}",
-        "name": "E^{2}"
+        "name": "E^{2}",
+        "description": "This represents the square of the total relativistic energy $E$ of a particle."
       },
       "E": {
         "latex": "E",
-        "name": "E"
+        "name": "E",
+        "description": "This represents the total relativistic energy of a particle."
       },
       "__power_4": {
         "latex": "\\left(c^{2} m\\right)^{2}",
-        "name": "\\left(c^{2} m\\right)^{2}"
+        "name": "\\left(c^{2} m\\right)^{2}",
+        "description": "This represents the square of the rest energy of a particle, $(mc^2)^2$."
       },
       "m": {
         "latex": "m",
-        "name": "m"
+        "name": "m",
+        "description": "This represents the invariant mass (or rest mass) of the particle."
       },
       "__power_6": {
         "latex": "c^{2}",
-        "name": "c^{2}"
+        "name": "c^{2}",
+        "description": "This represents the square of the speed of light in a vacuum."
       },
       "c": {
         "latex": "c",
-        "name": "c"
+        "name": "c",
+        "description": "This represents the speed of light in a vacuum."
       },
       "__power_7": {
         "latex": "\\left(c p\\right)^{2}",
-        "name": "\\left(c p\\right)^{2}"
+        "name": "\\left(c p\\right)^{2}",
+        "description": "This represents the square of the product of the speed of light and the relativistic momentum, $(cp)^2$."
       },
       "p": {
         "latex": "p",
-        "name": "p"
+        "name": "p",
+        "description": "This represents the relativistic momentum of the particle."
       },
       "_r1___power_2": {
         "latex": "\\sqrt{\\left(c p\\right)^{2} + \\left(c^{2} m\\right)^{2}}",
-        "name": "\\sqrt{\\left(c p\\right)^{2} + \\left(c^{2} m\\right)^{2}}"
+        "name": "\\sqrt{\\left(c p\\right)^{2} + \\left(c^{2} m\\right)^{2}}",
+        "description": "This represents the total relativistic energy $E$, derived from the particle's momentum and rest mass."
       },
       "__power_5": {
         "latex": "m^{2}",
-        "name": "m^{2}"
+        "name": "m^{2}",
+        "description": "This represents the square of the invariant mass of the particle."
       },
       "_r1___power_6": {
         "latex": "c^{4}",
-        "name": "c^{4}"
+        "name": "c^{4}",
+        "description": "This represents the speed of light in a vacuum raised to the fourth power, $c^4$."
       },
       "__power_10": {
         "latex": "\\frac{1}{c^{2} m^{2}}",
-        "name": "\\frac{1}{c^{2} m^{2}}"
+        "name": "\\frac{1}{c^{2} m^{2}}",
+        "description": "This represents the inverse of the square of the product of the speed of light and the invariant mass, $\\frac{1}{c^2 m^2}$."
       }
     },
     "goal": "This derivation rearranges the relativistic energy-momentum relation $E^2 = (m c^2)^2 + (p c)^2$ to express the total energy $E$ in a factored form $E = m c^2 \\sqrt{1 + \\frac{p^2}{m^2 c^2}}$.",
@@ -602,59 +623,73 @@
     "terms": {
       "__power_2": {
         "latex": "\\left(c t\\right)^{2}",
-        "name": "\\left(c t\\right)^{2}"
+        "name": "\\left(c t\\right)^{2}",
+        "description": "The square of the distance traveled by light in the stationary frame over time $t$."
       },
       "c": {
         "latex": "c",
-        "name": "c"
+        "name": "c",
+        "description": "The constant speed of light in a vacuum."
       },
       "t": {
         "latex": "t",
-        "name": "t"
+        "name": "t",
+        "description": "The time interval measured by an observer in the stationary frame."
       },
       "__power_5": {
         "latex": "\\left(c t_{0}\\right)^{2}",
-        "name": "\\left(c t_{0}\\right)^{2}"
+        "name": "\\left(c t_{0}\\right)^{2}",
+        "description": "The square of the distance traveled by light in the moving frame over proper time $t_0$."
       },
       "t_0": {
         "latex": "t_{0}",
-        "name": "t_{0}"
+        "name": "t_{0}",
+        "description": "The proper time interval measured by an observer in the moving frame, at rest relative to the event."
       },
       "__power_7": {
         "latex": "\\left(t v\\right)^{2}",
-        "name": "\\left(t v\\right)^{2}"
+        "name": "\\left(t v\\right)^{2}",
+        "description": "The square of the distance traveled by the moving object in the stationary frame over time $t$."
       },
       "v": {
         "latex": "v",
-        "name": "v"
+        "name": "v",
+        "description": "The constant relative velocity between the two inertial frames."
       },
       "__power_3": {
         "latex": "c^{2}",
-        "name": "c^{2}"
+        "name": "c^{2}",
+        "description": "The square of the speed of light, $c$."
       },
       "__power_4": {
         "latex": "t^{2}",
-        "name": "t^{2}"
+        "name": "t^{2}",
+        "description": "The square of the time interval $t$ measured in the stationary frame."
       },
       "_r1___power_7": {
         "latex": "c^{2}",
-        "name": "c^{2}"
+        "name": "c^{2}",
+        "description": "The square of the speed of light, $c$."
       },
       "__power_8": {
         "latex": "t_{0}^{2}",
-        "name": "t_{0}^{2}"
+        "name": "t_{0}^{2}",
+        "description": "The square of the proper time interval $t_0$."
       },
       "__power_10": {
         "latex": "v^{2}",
-        "name": "v^{2}"
+        "name": "v^{2}",
+        "description": "The square of the relative velocity $v$."
       },
       "__power_11": {
         "latex": "t^{2}",
-        "name": "t^{2}"
+        "name": "t^{2}",
+        "description": "The square of the time interval $t$ measured in the stationary frame."
       },
       "_r1___power_11": {
         "latex": "\\frac{1}{c^{2}}",
-        "name": "\\frac{1}{c^{2}}"
+        "name": "\\frac{1}{c^{2}}",
+        "description": "The reciprocal of the square of the speed of light, $c^2$."
       }
     },
     "goal": "This derivation shows how to rearrange the equation $(c t)^2 = (c t_0)^2 + (v t)^2$ to solve for $t$, which is fundamental in understanding time dilation in special relativity.",
@@ -850,75 +885,93 @@
     "terms": {
       "a": {
         "latex": "a",
-        "name": "a"
+        "name": "a",
+        "description": "The coefficient of the $x^2$ term in the standard form of a quadratic equation, $ax^2 + bx + c = 0$."
       },
       "__power_5": {
         "latex": "x^{2}",
-        "name": "x^{2}"
+        "name": "x^{2}",
+        "description": "The squared variable term in the quadratic equation."
       },
       "x": {
         "latex": "x",
-        "name": "x"
+        "name": "x",
+        "description": "The variable in the quadratic equation."
       },
       "b": {
         "latex": "b",
-        "name": "b"
+        "name": "b",
+        "description": "The coefficient of the $x$ term in the standard form of a quadratic equation, $ax^2 + bx + c = 0$."
       },
       "c": {
         "latex": "c",
-        "name": "c"
+        "name": "c",
+        "description": "The constant term in the standard form of a quadratic equation, $ax^2 + bx + c = 0$."
       },
       "__power_7": {
         "latex": "\\frac{1}{a}",
-        "name": "\\frac{1}{a}"
+        "name": "\\frac{1}{a}",
+        "description": "The reciprocal of the coefficient $a$, used to normalize the quadratic equation during derivation."
       },
       "__power_9": {
         "latex": "\\frac{1}{a}",
-        "name": "\\frac{1}{a}"
+        "name": "\\frac{1}{a}",
+        "description": "The reciprocal of the coefficient $a$, used to normalize the quadratic equation during derivation."
       },
       "__power_8": {
         "latex": "\\left(\\frac{b}{2 a}\\right)^{2}",
-        "name": "\\left(\\frac{b}{2 a}\\right)^{2}"
+        "name": "\\left(\\frac{b}{2 a}\\right)^{2}",
+        "description": "A term derived from completing the square, representing the square of half the coefficient of $x$ after dividing by $a$."
       },
       "__power_10": {
         "latex": "\\frac{1}{2 a}",
-        "name": "\\frac{1}{2 a}"
+        "name": "\\frac{1}{2 a}",
+        "description": "A factor that emerges in the denominator of the quadratic formula."
       },
       "__power_17": {
         "latex": "\\left(\\frac{b}{2 a}\\right)^{2}",
-        "name": "\\left(\\frac{b}{2 a}\\right)^{2}"
+        "name": "\\left(\\frac{b}{2 a}\\right)^{2}",
+        "description": "A term derived from completing the square, representing the square of half the coefficient of $x$ after dividing by $a$."
       },
       "__power_19": {
         "latex": "\\frac{1}{2 a}",
-        "name": "\\frac{1}{2 a}"
+        "name": "\\frac{1}{2 a}",
+        "description": "A factor that emerges in the denominator of the quadratic formula."
       },
       "__power_13": {
         "latex": "b^{2}",
-        "name": "b^{2}"
+        "name": "b^{2}",
+        "description": "The square of the coefficient $b$, appearing as part of the discriminant."
       },
       "__power_14": {
         "latex": "\\frac{1}{4 a^{2}}",
-        "name": "\\frac{1}{4 a^{2}}"
+        "name": "\\frac{1}{4 a^{2}}",
+        "description": "A term resulting from squaring $1/(2a)$, used in the process of completing the square."
       },
       "_r1___power_17": {
         "latex": "a^{2}",
-        "name": "a^{2}"
+        "name": "a^{2}",
+        "description": "The square of the coefficient $a$."
       },
       "d0___power_8": {
         "latex": "\\sqrt{- 4 a c + b^{2}}",
-        "name": "\\sqrt{- 4 a c + b^{2}}"
+        "name": "\\sqrt{- 4 a c + b^{2}}",
+        "description": "The square root of the discriminant, which determines the nature of the roots of the quadratic equation."
       },
       "d1___power_4": {
         "latex": "\\frac{1}{2 a}",
-        "name": "\\frac{1}{2 a}"
+        "name": "\\frac{1}{2 a}",
+        "description": "A factor that appears in the denominator of the quadratic formula."
       },
       "d1___power_9": {
         "latex": "\\sqrt{- 4 a c + b^{2}}",
-        "name": "\\sqrt{- 4 a c + b^{2}}"
+        "name": "\\sqrt{- 4 a c + b^{2}}",
+        "description": "The square root of the discriminant, which determines the nature of the roots of the quadratic equation."
       },
       "d1___power_14": {
         "latex": "b^{2}",
-        "name": "b^{2}"
+        "name": "b^{2}",
+        "description": "The square of the coefficient $b$, appearing as part of the discriminant."
       }
     },
     "goal": "This derivation shows how to solve a general quadratic equation $ax^2 + bx + c = 0$ for $x$ by deriving the quadratic formula using the method of completing the square.",
@@ -1199,111 +1252,138 @@
     "terms": {
       "v": {
         "latex": "v",
-        "name": "v"
+        "name": "v",
+        "description": "The instantaneous velocity of the object undergoing atmospheric entry."
       },
       "t": {
         "latex": "t",
-        "name": "t"
+        "name": "t",
+        "description": "Time elapsed during the atmospheric entry process."
       },
       "__deriv_2": {
         "latex": "\\frac{d}{d t} v",
-        "name": "\\frac{d}{d t} v"
+        "name": "\\frac{d}{d t} v",
+        "description": "The time rate of change of the object's velocity, representing its acceleration."
       },
       "rho": {
         "latex": "\\rho",
-        "name": "\\rho"
+        "name": "\\rho",
+        "description": "The atmospheric density at a given altitude."
       },
       "__power_5": {
         "latex": "v^{2}",
-        "name": "v^{2}"
+        "name": "v^{2}",
+        "description": "The square of the object's velocity, often related to drag forces."
       },
       "__power_8": {
         "latex": "\\frac{1}{\\beta}",
-        "name": "\\frac{1}{\\beta}"
+        "name": "\\frac{1}{\\beta}",
+        "description": "The reciprocal of the ballistic coefficient, a property of the entering object."
       },
       "beta": {
         "latex": "\\beta",
-        "name": "\\beta"
+        "name": "\\beta",
+        "description": "The ballistic coefficient of the entering object, which combines mass, drag coefficient, and reference area."
       },
       "h": {
         "latex": "h",
-        "name": "h"
+        "name": "h",
+        "description": "The altitude or height of the object above a reference surface."
       },
       "__deriv_3": {
         "latex": "\\frac{d}{d h} v",
-        "name": "\\frac{d}{d h} v"
+        "name": "\\frac{d}{d h} v",
+        "description": "The rate of change of the object's velocity with respect to its altitude."
       },
       "__sin_6": {
         "latex": "\\sin{\\left(\\gamma \\right)}",
-        "name": "\\sin{\\left(\\gamma \\right)}"
+        "name": "\\sin{\\left(\\gamma \\right)}",
+        "description": "The sine of the flight path angle, indicating the steepness of the trajectory."
       },
       "gamma": {
         "latex": "\\gamma",
-        "name": "\\gamma"
+        "name": "\\gamma",
+        "description": "The flight path angle, representing the angle between the velocity vector and the local horizontal."
       },
       "__power_3": {
         "latex": "\\frac{1}{v}",
-        "name": "\\frac{1}{v}"
+        "name": "\\frac{1}{v}",
+        "description": "The reciprocal of the object's velocity."
       },
       "dv": {
         "latex": "dv",
-        "name": "dv"
+        "name": "dv",
+        "description": "An infinitesimal change in the object's velocity."
       },
       "dh": {
         "latex": "dh",
-        "name": "dh"
+        "name": "dh",
+        "description": "An infinitesimal change in the object's altitude."
       },
       "__integral_2": {
         "latex": "\\int \\frac{1}{v}\\, dv",
-        "name": "\\int \\frac{1}{v}\\, dv"
+        "name": "\\int \\frac{1}{v}\\, dv",
+        "description": "The indefinite integral of the reciprocal of velocity with respect to velocity, which evaluates to $\\ln(v)$."
       },
       "__integral_4": {
         "latex": "\\int \\frac{\\rho}{2 \\beta \\sin{\\left(\\gamma \\right)}}\\, dh",
-        "name": "\\int \\frac{\\rho}{2 \\beta \\sin{\\left(\\gamma \\right)}}\\, dh"
+        "name": "\\int \\frac{\\rho}{2 \\beta \\sin{\\left(\\gamma \\right)}}\\, dh",
+        "description": "The indefinite integral of a term related to atmospheric density, ballistic coefficient, and flight path angle with respect to height."
       },
       "__log_2": {
         "latex": "\\ln{\\left(v \\right)}",
-        "name": "\\ln{\\left(v \\right)}"
+        "name": "\\ln{\\left(v \\right)}",
+        "description": "The natural logarithm of the object's velocity."
       },
       "__const_3": {
         "latex": "e",
-        "name": "e (Euler's number)"
+        "name": "e (Euler's number)",
+        "description": "Euler's number, the base of the natural logarithm."
       },
       "C_1": {
         "latex": "C_{1}",
-        "name": "C_{1}"
+        "name": "C_{1}",
+        "description": "An arbitrary constant of integration arising from the indefinite integral."
       },
       "rho_0": {
         "latex": "\\rho_{0}",
-        "name": "\\rho_{0}"
+        "name": "\\rho_{0}",
+        "description": "The atmospheric density at a reference altitude, typically at sea level."
       },
       "_r2___power_8": {
         "latex": "e^{- \\frac{h}{H}}",
-        "name": "e^{- \\frac{h}{H}}"
+        "name": "e^{- \\frac{h}{H}}",
+        "description": "An exponential term describing the decay of atmospheric density with increasing altitude."
       },
       "e": {
         "latex": "e",
-        "name": "e"
+        "name": "e",
+        "description": "Euler's number, the base of the natural logarithm."
       },
       "__power_11": {
         "latex": "\\frac{1}{H}",
-        "name": "\\frac{1}{H}"
+        "name": "\\frac{1}{H}",
+        "description": "The reciprocal of the atmospheric scale height."
       },
       "H": {
         "latex": "H",
-        "name": "H"
+        "name": "H",
+        "description": "The atmospheric scale height, characterizing how rapidly atmospheric density decreases with altitude."
       },
       "__power_13": {
         "latex": "\\frac{1}{\\beta}",
-        "name": "\\frac{1}{\\beta}"
+        "name": "\\frac{1}{\\beta}",
+        "description": "The reciprocal of the ballistic coefficient, a property of the entering object."
       },
       "__power_2": {
         "latex": "e^{C_{1} - \\frac{e^{- \\frac{h}{H}} H \\rho_{0}}{2 \\beta \\sin{\\left(\\gamma \\right)}}}",
-        "name": "e^{C_{1} - \\frac{e^{- \\frac{h}{H}} H \\rho_{0}}{2 \\beta \\sin{\\left(\\gamma \\right)}}}"
+        "name": "e^{C_{1} - \\frac{e^{- \\frac{h}{H}} H \\rho_{0}}{2 \\beta \\sin{\\left(\\gamma \\right)}}}",
+        "description": "The complete expression for the velocity of the object as a function of altitude, derived from the integration."
       },
       "v_E": {
         "latex": "v_{E}",
-        "name": "v_{E}"
+        "name": "v_{E}",
+        "description": "The entry velocity, specifically referring to the velocity at which the object enters the atmosphere."
       }
     },
     "goal": "This derivation solves a differential equation for vehicle velocity $v$ with respect to time $t$ to obtain an expression for $v$ as a function of altitude $h$, considering atmospheric density and flight-path angle.",
@@ -1397,51 +1477,63 @@
     "terms": {
       "__power_3": {
         "latex": "\\frac{1}{v}",
-        "name": "\\frac{1}{v}"
+        "name": "\\frac{1}{v}",
+        "description": "This term represents the reciprocal of the variable $v$ that is being integrated."
       },
       "v": {
         "latex": "v",
-        "name": "v"
+        "name": "v",
+        "description": "This is one of the dependent variables being separated for integration."
       },
       "dv": {
         "latex": "dv",
-        "name": "dv"
+        "name": "dv",
+        "description": "This is the differential of the variable $v$, indicating integration with respect to $v$."
       },
       "dh": {
         "latex": "dh",
-        "name": "dh"
+        "name": "dh",
+        "description": "This is the differential of the variable $h$, indicating integration with respect to $h$."
       },
       "k": {
         "latex": "k",
-        "name": "k"
+        "name": "k",
+        "description": "This is a constant coefficient in the expression being integrated with respect to $h$."
       },
       "__power_6": {
         "latex": "e^{\\frac{\\left(-1\\right) h}{H}}",
-        "name": "e^{\\frac{\\left(-1\\right) h}{H}}"
+        "name": "e^{\\frac{\\left(-1\\right) h}{H}}",
+        "description": "This is an exponential term involving the variable $h$ and the constant $H$."
       },
       "e": {
         "latex": "e",
-        "name": "e"
+        "name": "e",
+        "description": "This represents Euler's number, the base of the natural logarithm."
       },
       "h": {
         "latex": "h",
-        "name": "h"
+        "name": "h",
+        "description": "This is the other dependent variable being separated for integration."
       },
       "__power_9": {
         "latex": "\\frac{1}{H}",
-        "name": "\\frac{1}{H}"
+        "name": "\\frac{1}{H}",
+        "description": "This term represents the reciprocal of the constant $H$ within the exponent."
       },
       "H": {
         "latex": "H",
-        "name": "H"
+        "name": "H",
+        "description": "This is a constant parameter found in the exponent of the exponential term."
       },
       "__integral_2": {
         "latex": "\\int \\frac{1}{v}\\, dv",
-        "name": "\\int \\frac{1}{v}\\, dv"
+        "name": "\\int \\frac{1}{v}\\, dv",
+        "description": "This represents the integral of $\\frac{1}{v}$ with respect to $v$."
       },
       "__integral_4": {
         "latex": "\\int \\left(- e^{\\frac{\\left(-1\\right) h}{H}} k\\right)\\, dh",
-        "name": "\\int \\left(- e^{\\frac{\\left(-1\\right) h}{H}} k\\right)\\, dh"
+        "name": "\\int \\left(- e^{\\frac{\\left(-1\\right) h}{H}} k\\right)\\, dh",
+        "description": "This represents the integral of the expression $\\left(- e^{\\frac{\\left(-1\\right) h}{H}} k\\right)$ with respect to $h$"
       }
     },
     "goal": "This derivation shows how to prepare a separated differential equation for integration by applying the integral operator to both sides and factoring out constants.",
