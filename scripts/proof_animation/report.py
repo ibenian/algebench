@@ -85,9 +85,18 @@ _FIXTURES = _ROOT / "tests" / "proof_animation" / "proof_animations.json"
 
 
 def _animations_from_file(path: Path, domain: str) -> list[dict]:
-    """Load a proofs JSON (list of ProofAnimation) and build each into animation data."""
+    """Load a proofs JSON (list of ProofAnimation) and build each into animation data.
+
+    Rendered DETERMINISTICALLY — ``judge=None`` (no domain-rescue) and
+    ``describe=False`` (no per-term tooltip pass), so building a report from
+    already-derived trajectories never calls the LM. The steps are fixed in the
+    fixture; only the render (expr_latex → annotated latex) and pure-CAS grounding
+    are (re)computed, which is exactly what a visual/render report needs and keeps
+    it reproducible in CI (no GEMINI_API_KEY required). Term descriptions + the
+    DOMAIN tier are LM-authored and belong to the ``--save-builtin`` authoring path,
+    not the render pass."""
     data = json.loads(Path(path).read_text(encoding="utf-8"))
-    return [build_animation(ProofAnimation.model_validate(d), judge=_judge())
+    return [build_animation(ProofAnimation.model_validate(d), judge=None, describe=False)
             for d in data]
 
 _INDEX = """<!DOCTYPE html>
