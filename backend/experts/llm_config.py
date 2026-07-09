@@ -66,11 +66,14 @@ def _has_credentials() -> bool:
 
 
 def is_configured() -> bool:
-    """True only when DSPy is installed AND the LM is actually callable.
+    """True when DSPy is installed AND credentials for the model are present.
 
-    Gating on credentials (not just ``dspy.configure`` having run) lets callers —
-    domain rescue, ``describe_terms``, ``report.py`` — cleanly *skip* LM enrichment
-    when no key is present (e.g. in CI) instead of attempting calls that fail with
-    noisy ``Missing Gemini API key`` tracebacks.
+    For the default ``gemini/*`` model that means a ``GEMINI_API_KEY`` /
+    ``GOOGLE_API_KEY`` (see :func:`_has_credentials`); a custom non-Gemini
+    ``ALGEBENCH_LM_MODEL`` is trusted to carry its own provider auth and is not
+    validated here. Gating on the key (not just ``dspy.configure`` having run) lets
+    callers — domain rescue, ``describe_terms``, ``report.py`` — cleanly *skip* LM
+    enrichment when no key is present (e.g. in CI) instead of attempting calls that
+    fail with noisy ``Missing Gemini API key`` tracebacks.
     """
     return _configured and _has_credentials()
