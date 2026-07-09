@@ -39,6 +39,20 @@ _DOT_ACCENT_ORDERS: dict[str, int] = {
 
 _ORDER_TO_ACCENT: dict[int, str] = {1: "dot", 2: "ddot", 3: "dddot", 4: "ddddot"}
 
+# Named functions whose argument SymPy's ``parse_latex`` only bounds when it is
+# wrapped in round parens.  SymPy's *printer* emits ``\cos{\left(x\right)}`` (a
+# brace group), which the *parser* does NOT treat as a delimited argument — so a
+# function written ``\fn{…}`` grabs the WHOLE trailing product (``\cos{x^2}·2·x``
+# → ``cos(x²·2·x)``).  The preprocessor rewrites ``\fn{…}`` → ``\fn(…)`` for these
+# names so the parser takes its bounded branch.  Longest-first so a prefix like
+# ``sin`` cannot shadow ``sinh``/``arcsin`` during matching.
+_LATEX_FUNCS: tuple[str, ...] = tuple(sorted((
+    "arcsin", "arccos", "arctan", "arccsc", "arcsec", "arccot",
+    "sinh", "cosh", "tanh", "coth", "sech", "csch",
+    "sin", "cos", "tan", "cot", "sec", "csc",
+    "log", "ln", "exp", "det", "gcd", "deg", "arg",
+), key=len, reverse=True))
+
 # ---------------------------------------------------------------------------
 # Equation-chain / statement-splitting constants (from server.py)
 # ---------------------------------------------------------------------------

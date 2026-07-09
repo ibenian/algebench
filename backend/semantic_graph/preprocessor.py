@@ -8,6 +8,7 @@ from .constants import (
     _ACCENT_COMMANDS,
     _DOT_ACCENT_ORDERS,
     _GREEK_POOL,
+    _LATEX_FUNCS,
 )
 from .preprocess_result import PreprocessResult
 
@@ -90,6 +91,7 @@ class LaTeXPreprocessor:
 
     def preprocess(self, latex: str) -> PreprocessResult:
         src = latex
+        src = self.normalize_func_call_braces(src)
         src, annotations = self.extract_parenthetical_annotations(src)
         dotted_vars: dict[str, int] = {}
         src = self.rewrite_dot_derivatives(src, dotted_vars)
@@ -109,6 +111,133 @@ class LaTeXPreprocessor:
     # ------------------------------------------------------------------
     # Individual passes
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def normalize_func_call_braces(latex: str) -> str:
+        r"""Rewrite ``\fn{ARG}`` → ``\fn(ARG)`` for named functions.
+
+        SymPy's ``parse_latex`` only bounds a function's argument when it is in
+        round parens: ``\cos(x^2)·2·x`` parses correctly, but ``\cos{x^2}·2·x``
+        (or the bare ``\cos x^2·2·x``) makes ``\cos`` greedily swallow the whole
+        trailing product → ``cos(x²·2·x)``.  A ``{…}`` brace group is NOT the
+        parser's delimited-argument form.  The cruel part: SymPy's own *printer*
+        emits ``\cos{\left(x^{2}\right)}`` — exactly the shape its parser
+        misreads — so re-parsing printed LaTeX corrupts itself (only harmless
+        when the function is the last factor, with nothing after to swallow).
+
+        We rewrite the outer brace group for known function names so the parser
+        takes its bounded branch: when ARG is already a single delimiter group the
+        braces are simply dropped (``\cos{\left(x^2\right)}`` → ``\cos\left(x^2\right)``,
+        the common printer case — no doubled delimiters); otherwise ARG is wrapped
+        in parens (``\cos{x^2}`` → ``\cos(x^2)``).  Either way the string is
+        parser-internal (display LaTeX is re-rendered from the graph), so no
+        cosmetic artifact reaches the UI.
+
+        Only the whitelisted names in :data:`_LATEX_FUNCS` are touched; braces on
+        ``\frac``/``\sqrt``/``\hat``/superscripts/etc. are left alone.  An
+        optional ``^{…}``/``_{…}`` between the name and the argument (SymPy prints
+        powers of trig as ``\sin^{2}{\left(x\right)}``) is skipped so the brace
+        that gets rewritten is the *argument* group, not the exponent.
+        """
+        if not isinstance(latex, str) or "{" not in latex or "\\" not in latex:
+            return latex
+
+        def find_matching_brace(s: str, open_idx: int) -> int | None:
+            depth = 0
+            j = open_idx
+            while j < len(s):
+                c = s[j]
+                if c == "{":
+                    depth += 1
+                elif c == "}":
+                    depth -= 1
+                    if depth == 0:
+                        return j
+                j += 1
+            return None
+
+        def whole_is_delimited(a: str) -> bool:
+            r"""True if *a* is a single ``\left(…\right)`` or ``(…)`` group that
+            spans all of *a* — then the braces can simply be dropped (no added
+            parens), keeping ``\cos{\left(x\right)}`` → ``\cos\left(x\right)``."""
+            a = a.strip()
+            if a.startswith(r"\left(") and a.endswith(r"\right)"):
+                depth, k, L = 0, 0, len(a)
+                while k < L:
+                    if a.startswith(r"\left(", k):
+                        depth += 1
+                        k += 6
+                    elif a.startswith(r"\right)", k):
+                        depth -= 1
+                        k += 7
+                        if depth == 0:
+                            return k == L
+                    else:
+                        k += 1
+                return False
+            if (a.startswith("(") and a.endswith(")")
+                    and r"\left" not in a and r"\right" not in a):
+                depth = 0
+                for k, c in enumerate(a):
+                    if c == "(":
+                        depth += 1
+                    elif c == ")":
+                        depth -= 1
+                        if depth == 0:
+                            return k == len(a) - 1
+                return False
+            return False
+
+        out: list[str] = []
+        i = 0
+        n = len(latex)
+        while i < n:
+            if latex[i] != "\\":
+                out.append(latex[i])
+                i += 1
+                continue
+            name = None
+            for fn in _LATEX_FUNCS:      # longest-first: \sinh before \sin
+                end = i + 1 + len(fn)
+                # require a word boundary so \sin doesn't match \sine / \singular
+                if latex.startswith(fn, i + 1) and (end >= n or not latex[end].isalpha()):
+                    name = fn
+                    break
+            if name is None:
+                out.append(latex[i])
+                i += 1
+                continue
+            j = i + 1 + len(name)
+            # copy the function token, then skip any run of ^{…}/_{…} exponents
+            prefix = latex[i:j]
+            while j < n and latex[j] in "_^":
+                op_end = j + 1
+                if op_end < n and latex[op_end] == "{":
+                    close = find_matching_brace(latex, op_end)
+                    if close is None:
+                        break
+                    prefix += latex[j:close + 1]
+                    j = close + 1
+                else:                     # single-token sup/sub, e.g. \sin^2
+                    prefix += latex[j:op_end + 1]
+                    j = op_end + 1
+            # now: is the argument a brace group?  If so, swap it to parens.
+            if j < n and latex[j] == "{":
+                close = find_matching_brace(latex, j)
+                if close is not None:
+                    arg = latex[j + 1:close]
+                    # If the argument is already one delimiter group, just drop
+                    # the braces; otherwise wrap it in parens so the parser bounds
+                    # exactly this argument and not the trailing product.
+                    if whole_is_delimited(arg):
+                        out.append(prefix + arg)
+                    else:
+                        out.append(prefix + "(" + arg + ")")
+                    i = close + 1
+                    continue
+            out.append(prefix)
+            i = j
+        return "".join(out)
 
     @staticmethod
     def rewrite_dot_derivatives(

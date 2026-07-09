@@ -1,0 +1,274 @@
+{
+  "title": "Finite geometric series",
+  "domain": "algebra",
+  "steps": [
+    {
+      "index": 0,
+      "operation": "Given $\\sum_{k=0}^{n-1} a r^k$",
+      "justification": "the starting expression",
+      "input_latex": "\\sum_{k=0}^{n-1} a r^k",
+      "latex": "\\sum_{k=0}^{n-1} a r^k",
+      "plain": "\\sum_{k=0}^{n-1} a r^k",
+      "confidence": {
+        "tier": "unchecked",
+        "label": "Unchecked",
+        "icon": "○",
+        "meaning": "this state is not a single convertible expression",
+        "relation": null,
+        "reason": "the starting state is not a single convertible expression",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 1,
+      "operation": "Let the given sum be denoted by $S$",
+      "justification": "We introduce the variable $S$ to represent the sum of the geometric series for easier algebraic manipulation.",
+      "input_latex": "S = \\sum_{k=0}^{n-1} a r^k",
+      "latex": "S = \\sum_{k=0}^{n-1} a r^k",
+      "plain": "S = \\sum_{k=0}^{n-1} a r^k",
+      "confidence": {
+        "tier": "unchecked",
+        "label": "Unchecked",
+        "icon": "○",
+        "meaning": "this state is not a single convertible expression",
+        "relation": "unknown",
+        "reason": "previous state is not a single convertible expression",
+        "type_consistent": false
+      }
+    },
+    {
+      "index": 2,
+      "operation": "Expand the summation into its individual terms",
+      "justification": "The summation symbol indicates summing terms $a \\cdot r^k$ for integer values of $k$ from $0$ to $n-1$.",
+      "input_latex": "S = a \\cdot r^0 + a \\cdot r^1 + a \\cdot r^2 + \\dots + a \\cdot r^{n-1}",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=S}{S} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__add_2}{\\htmlData{n=__add_3}{\\htmlData{n=__add_4}{\\htmlData{n=__add_5}{\\htmlData{n=__multiply_6}{\\htmlData{n=a____multiply_6}{a} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=__power_7}{\\htmlData{n=r____power_7}{r}^{\\htmlData{n=__power_7__exp}{0}}}} \\htmlData{n=__add_5__op1}{+} \\htmlData{n=__multiply_8}{\\htmlData{n=a____multiply_8}{a} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=__power_9}{\\htmlData{n=r____power_9}{r}^{\\htmlData{n=__power_9__exp}{1}}}}} \\htmlData{n=__add_4__op1}{+} \\htmlData{n=__multiply_10}{\\htmlData{n=a____multiply_10}{a} \\htmlData{n=__multiply_10__m1}{\\cdot} \\htmlData{n=__power_11}{\\htmlData{n=r____power_11}{r}^{\\htmlData{n=__power_11__exp}{2}}}}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=dots}{\\dots}} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=__multiply_12}{\\htmlData{n=a____multiply_12}{a} \\htmlData{n=__multiply_12__m1}{\\cdot} \\htmlData{n=__power_13}{\\htmlData{n=r____power_13}{r}^{\\htmlData{n=__add_14}{\\htmlData{n=n}{n} \\htmlData{n=__num_15}{-1}}}}}}}",
+      "plain": "S = a \\cdot r^{0} + a \\cdot r^{1} + a \\cdot r^{2} + \\dots + a \\cdot r^{n -1}",
+      "confidence": {
+        "tier": "unchecked",
+        "label": "Unchecked",
+        "icon": "○",
+        "meaning": "this state is not a single convertible expression",
+        "relation": "unknown",
+        "reason": "previous state is not a single convertible expression",
+        "type_consistent": false
+      }
+    },
+    {
+      "index": 3,
+      "operation": "Simplify the first term, $a \\cdot r^0$, to $a$",
+      "justification": "Any non-zero number raised to the power of zero is $1$, so $r^0 = 1$ (assuming $r \\neq 0$). Thus $a \\cdot r^0 = a$.",
+      "input_latex": "S = a + a \\cdot r + a \\cdot r^2 + \\dots + a \\cdot r^{n-1}",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=S}{S} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__add_2}{\\htmlData{n=__add_3}{\\htmlData{n=__add_4}{\\htmlData{n=__add_5}{\\htmlData{n=a____add_5}{a} \\htmlData{n=__add_5__op1}{+} \\htmlData{n=__multiply_6}{\\htmlData{n=a____multiply_6}{a} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=r____multiply_6}{r}}} \\htmlData{n=__add_4__op1}{+} \\htmlData{n=__multiply_10}{\\htmlData{n=a____multiply_10}{a} \\htmlData{n=__multiply_10__m1}{\\cdot} \\htmlData{n=__power_11}{\\htmlData{n=r____power_11}{r}^{\\htmlData{n=__power_11__exp}{2}}}}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=dots}{\\dots}} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=__multiply_12}{\\htmlData{n=a____multiply_12}{a} \\htmlData{n=__multiply_12__m1}{\\cdot} \\htmlData{n=__power_13}{\\htmlData{n=r____power_13}{r}^{\\htmlData{n=__add_14}{\\htmlData{n=n}{n} \\htmlData{n=__num_15}{-1}}}}}}}",
+      "plain": "S = a + a \\cdot r + a \\cdot r^{2} + \\dots + a \\cdot r^{n -1}",
+      "confidence": {
+        "tier": "unchecked",
+        "label": "Unchecked",
+        "icon": "○",
+        "meaning": "this state is not a single convertible expression",
+        "relation": "unknown",
+        "reason": "previous state is not a single convertible expression",
+        "type_consistent": false
+      }
+    },
+    {
+      "index": 4,
+      "operation": "Multiply both sides of the equation by the common ratio $r$",
+      "justification": "This prepares the series for subtraction, aligning terms for cancellation.",
+      "input_latex": "r \\cdot S = r \\cdot (a + a \\cdot r + a \\cdot r^2 + \\dots + a \\cdot r^{n-1})",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__multiply_2}{\\htmlData{n=r____multiply_2}{r} \\htmlData{n=__multiply_2__m1}{\\cdot} \\htmlData{n=S}{S}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_3}{\\htmlData{n=r____multiply_3}{r} \\htmlData{n=__multiply_3__m1}{\\cdot} \\left(\\htmlData{n=__add_2}{\\htmlData{n=__add_3}{\\htmlData{n=__add_4}{\\htmlData{n=__add_5}{\\htmlData{n=a____add_5}{a} \\htmlData{n=__add_5__op1}{+} \\htmlData{n=__multiply_6}{\\htmlData{n=a____multiply_6}{a} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=r____multiply_6}{r}}} \\htmlData{n=__add_4__op1}{+} \\htmlData{n=__multiply_10}{\\htmlData{n=a____multiply_10}{a} \\htmlData{n=__multiply_10__m1}{\\cdot} \\htmlData{n=__power_11}{\\htmlData{n=r____power_11}{r}^{\\htmlData{n=__power_11__exp}{2}}}}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=dots}{\\dots}} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=__multiply_12}{\\htmlData{n=a____multiply_12}{a} \\htmlData{n=__multiply_12__m1}{\\cdot} \\htmlData{n=__power_13}{\\htmlData{n=r____power_13}{r}^{\\htmlData{n=__add_14}{\\htmlData{n=n}{n} \\htmlData{n=__num_15}{-1}}}}}}\\right)}}",
+      "plain": "r \\cdot S = r \\cdot \\left(a + a \\cdot r + a \\cdot r^{2} + \\dots + a \\cdot r^{n -1}\\right)",
+      "confidence": {
+        "tier": "unchecked",
+        "label": "Unchecked",
+        "icon": "○",
+        "meaning": "this state is not a single convertible expression",
+        "relation": "unknown",
+        "reason": "previous state is not a single convertible expression",
+        "type_consistent": false
+      }
+    },
+    {
+      "index": 5,
+      "operation": "Distribute $r$ on the right side of the equation",
+      "justification": "Each term inside the parenthesis is multiplied by $r$, increasing its exponent by one.",
+      "input_latex": "r \\cdot S = a \\cdot r + a \\cdot r^2 + a \\cdot r^3 + \\dots + a \\cdot r^n",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__multiply_2}{\\htmlData{n=r____multiply_2}{r} \\htmlData{n=__multiply_2__m1}{\\cdot} \\htmlData{n=S}{S}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__add_2}{\\htmlData{n=__add_3}{\\htmlData{n=__add_4}{\\htmlData{n=__add_5}{\\htmlData{n=__multiply_6}{\\htmlData{n=a____multiply_6}{a} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=r____multiply_6}{r}} \\htmlData{n=__add_5__op1}{+} \\htmlData{n=__multiply_10}{\\htmlData{n=a____multiply_10}{a} \\htmlData{n=__multiply_10__m1}{\\cdot} \\htmlData{n=__power_11}{\\htmlData{n=r____power_11}{r}^{\\htmlData{n=__power_11__exp}{2}}}}} \\htmlData{n=__add_4__op1}{+} \\htmlData{n=_r1___multiply_10}{\\htmlData{n=a___r1___multiply_10}{a} \\htmlData{n=_r1___multiply_10__m1}{\\cdot} \\htmlData{n=_r2___power_11}{\\htmlData{n=r___r2___power_11}{r}^{\\htmlData{n=_r2___power_11__exp}{3}}}}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=dots}{\\dots}} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=__multiply_12}{\\htmlData{n=a____multiply_12}{a} \\htmlData{n=__multiply_12__m1}{\\cdot} \\htmlData{n=__power_13}{\\htmlData{n=r____power_13}{r}^{\\htmlData{n=n}{n}}}}}}",
+      "plain": "r \\cdot S = a \\cdot r + a \\cdot r^{2} + a \\cdot r^{3} + \\dots + a \\cdot r^{n}",
+      "confidence": {
+        "tier": "unchecked",
+        "label": "Unchecked",
+        "icon": "○",
+        "meaning": "this state is not a single convertible expression",
+        "relation": "unknown",
+        "reason": "previous state is not a single convertible expression",
+        "type_consistent": false
+      }
+    },
+    {
+      "index": 6,
+      "operation": "Subtract the equation for $rS$ from the equation for $S$",
+      "justification": "This subtraction is a standard technique (often called the 'telescoping sum' method) for deriving the formula, as it causes most terms to cancel.",
+      "input_latex": "S - r \\cdot S = (a + a \\cdot r + a \\cdot r^2 + \\dots + a \\cdot r^{n-1}) - (a \\cdot r + a \\cdot r^2 + a \\cdot r^3 + \\dots + a \\cdot r^n)",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=_r1___add_2}{\\htmlData{n=S___r1___add_2}{S} \\htmlData{n=__negation_3}{\\htmlData{n=__negation_3__op}{-} \\htmlData{n=__multiply_2}{\\htmlData{n=r____multiply_2}{r} \\htmlData{n=__multiply_2__m1}{\\cdot} \\htmlData{n=S____multiply_2}{S}}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=_r2___add_5}{\\htmlData{n=__add_6}{\\htmlData{n=__add_7}{\\htmlData{n=__add_8}{\\htmlData{n=__add_9}{\\htmlData{n=a____add_9}{a} \\htmlData{n=__add_9__op1}{+} \\htmlData{n=_r3___multiply_10}{\\htmlData{n=a___r3___multiply_10}{a} \\htmlData{n=_r3___multiply_10__m1}{\\cdot} \\htmlData{n=r___r3___multiply_10}{r}}} \\htmlData{n=__add_8__op1}{+} \\htmlData{n=__multiply_11}{\\htmlData{n=a____multiply_11}{a} \\htmlData{n=__multiply_11__m1}{\\cdot} \\htmlData{n=__power_12}{\\htmlData{n=r____power_12}{r}^{\\htmlData{n=__power_12__exp}{2}}}}} \\htmlData{n=__add_7__op1}{+} \\htmlData{n=dots____add_7}{\\dots}} \\htmlData{n=__add_6__op1}{+} \\htmlData{n=__multiply_13}{\\htmlData{n=a____multiply_13}{a} \\htmlData{n=__multiply_13__m1}{\\cdot} \\htmlData{n=__power_14}{\\htmlData{n=r____power_14}{r}^{\\htmlData{n=__add_14}{\\htmlData{n=n____add_14}{n} \\htmlData{n=__num_15}{-1}}}}}} \\htmlData{n=__negation_17}{\\htmlData{n=__negation_17__op}{-} \\left(\\htmlData{n=__add_2}{\\htmlData{n=__add_3}{\\htmlData{n=__add_4}{\\htmlData{n=__add_5}{\\htmlData{n=__multiply_6}{\\htmlData{n=a____multiply_6}{a} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=r____multiply_6}{r}} \\htmlData{n=__add_5__op1}{+} \\htmlData{n=__multiply_10}{\\htmlData{n=a____multiply_10}{a} \\htmlData{n=__multiply_10__m1}{\\cdot} \\htmlData{n=__power_11}{\\htmlData{n=r____power_11}{r}^{\\htmlData{n=__power_11__exp}{2}}}}} \\htmlData{n=__add_4__op1}{+} \\htmlData{n=_r1___multiply_10}{\\htmlData{n=a___r1___multiply_10}{a} \\htmlData{n=_r1___multiply_10__m1}{\\cdot} \\htmlData{n=_r2___power_11}{\\htmlData{n=r___r2___power_11}{r}^{\\htmlData{n=_r2___power_11__exp}{3}}}}} \\htmlData{n=__add_3__op1}{+} \\htmlData{n=dots____add_3}{\\dots}} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=__multiply_12}{\\htmlData{n=a____multiply_12}{a} \\htmlData{n=__multiply_12__m1}{\\cdot} \\htmlData{n=__power_13}{\\htmlData{n=r____power_13}{r}^{\\htmlData{n=n____power_13}{n}}}}}\\right)}}}",
+      "plain": "S - r \\cdot S = a + a \\cdot r + a \\cdot r^{2} + \\dots + a \\cdot r^{n -1} - \\left(a \\cdot r + a \\cdot r^{2} + a \\cdot r^{3} + \\dots + a \\cdot r^{n}\\right)",
+      "confidence": {
+        "tier": "unchecked",
+        "label": "Unchecked",
+        "icon": "○",
+        "meaning": "this state is not a single convertible expression",
+        "relation": "unknown",
+        "reason": "previous state is not a single convertible expression",
+        "type_consistent": false
+      }
+    },
+    {
+      "index": 7,
+      "operation": "Cancel out the common terms on the right side",
+      "justification": "All intermediate terms, from $a \\cdot r$ up to $a \\cdot r^{n-1}$, appear in both series with opposite signs and thus cancel out.",
+      "input_latex": "S - r \\cdot S = a - a \\cdot r^n",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=_r1___add_2}{\\htmlData{n=S___r1___add_2}{S} \\htmlData{n=__negation_3}{\\htmlData{n=__negation_3__op}{-} \\htmlData{n=__multiply_2}{\\htmlData{n=r____multiply_2}{r} \\htmlData{n=__multiply_2__m1}{\\cdot} \\htmlData{n=S____multiply_2}{S}}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__add_2}{\\htmlData{n=a____add_2}{a} \\htmlData{n=__negation_17}{\\htmlData{n=__negation_17__op}{-} \\htmlData{n=__multiply_12}{\\htmlData{n=a____multiply_12}{a} \\htmlData{n=__multiply_12__m1}{\\cdot} \\htmlData{n=__power_13}{\\htmlData{n=r____power_13}{r}^{\\htmlData{n=n}{n}}}}}}}",
+      "plain": "S - r \\cdot S = a - a \\cdot r^{n}",
+      "confidence": {
+        "tier": "domain",
+        "label": "Domain",
+        "icon": "🎓",
+        "meaning": "valid by domain knowledge, not a symbolic identity the CAS can check",
+        "relation": "unknown",
+        "reason": "valid by domain knowledge — the CAS could not check this symbolically; a domain expert accepts it (confidence 100%): Algebraic simplification by cancellation of terms in a telescoping sum.",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 8,
+      "operation": "Factor out $S$ from the left side and $a$ from the right side",
+      "justification": "Factoring allows us to isolate $S$ and solve for it in terms of $a$, $r$, and $n$.",
+      "input_latex": "S \\cdot (1 - r) = a \\cdot (1 - r^n)",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__multiply_2}{\\htmlData{n=S}{S} \\htmlData{n=__multiply_2__m1}{\\cdot} \\left(\\htmlData{n=_r1___add_2}{\\htmlData{n=__num_4}{1} \\htmlData{n=__negation_3}{\\htmlData{n=__negation_3__op}{-} \\htmlData{n=r____negation_3}{r}}}\\right)} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_12}{\\htmlData{n=a}{a} \\htmlData{n=__multiply_12__m1}{\\cdot} \\left(\\htmlData{n=__add_2}{\\htmlData{n=__num_8}{1} \\htmlData{n=__negation_17}{\\htmlData{n=__negation_17__op}{-} \\htmlData{n=__power_13}{\\htmlData{n=r____power_13}{r}^{\\htmlData{n=n}{n}}}}}\\right)}}",
+      "plain": "S \\cdot \\left(1 - r\\right) = a \\cdot \\left(1 - r^{n}\\right)",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 9,
+      "operation": "Divide both sides by $(1 - r)$ to solve for $S$",
+      "justification": "To isolate $S$, we divide by its coefficient $(1 - r)$. This step is valid provided that $r \\neq 1$.",
+      "input_latex": "S = \\frac{a \\cdot (1 - r^n)}{1 - r}",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=S}{S} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_2}{\\frac{\\htmlData{n=__multiply_12}{\\htmlData{n=a}{a} \\htmlData{n=__multiply_12__m1}{\\cdot} \\left(\\htmlData{n=__add_2}{\\htmlData{n=__num_8}{1} \\htmlData{n=__negation_17}{\\htmlData{n=__negation_17__op}{-} \\htmlData{n=__power_13}{\\htmlData{n=r____power_13}{r}^{\\htmlData{n=n}{n}}}}}\\right)}}{\\htmlData{n=_r1___add_2}{\\htmlData{n=__num_4}{1} \\htmlData{n=__negation_3}{\\htmlData{n=__negation_3__op}{-} \\htmlData{n=r____negation_3}{r}}}}}}",
+      "plain": "S = \\frac{a \\cdot \\left(1 - r^{n}\\right)}{1 - r}",
+      "confidence": {
+        "tier": "verified",
+        "label": "Verified",
+        "icon": "🥈",
+        "meaning": "strong CAS evidence, short of a symbolic proof",
+        "relation": "equivalent",
+        "reason": "both sides scaled by $1 - r$ — equivalent wherever that factor ≠ 0",
+        "type_consistent": true
+      }
+    }
+  ],
+  "overall_confidence": {
+    "tier": "unchecked",
+    "label": "Unchecked",
+    "icon": "○",
+    "meaning": "this state is not a single convertible expression",
+    "relation": null,
+    "reason": "2/9 steps verified · 6 unchecked · 1 domain-justified",
+    "type_consistent": true,
+    "counts": {
+      "refuted": 0,
+      "unchecked": 6,
+      "plausible": 0,
+      "domain": 1,
+      "verified": 1,
+      "grounded": 1
+    },
+    "endpoint_reached": null
+  },
+  "terms": {
+    "S": {
+      "latex": "S",
+      "name": "S",
+      "description": "The sum of the finite geometric series."
+    },
+    "a": {
+      "latex": "a",
+      "name": "a",
+      "description": "The first term of the geometric series."
+    },
+    "__power_7": {
+      "latex": "r^{0}",
+      "name": "r^{0}",
+      "description": "The common ratio raised to the power of zero, representing the multiplier for the first term."
+    },
+    "r": {
+      "latex": "r",
+      "name": "r",
+      "description": "The common ratio between consecutive terms in the geometric series."
+    },
+    "__power_9": {
+      "latex": "r^{1}",
+      "name": "r^{1}",
+      "description": "The common ratio raised to the power of one, representing the multiplier for the second term."
+    },
+    "__power_11": {
+      "latex": "r^{2}",
+      "name": "r^{2}",
+      "description": "The common ratio raised to the power of two, representing the multiplier for the third term."
+    },
+    "dots": {
+      "latex": "\\dots",
+      "name": "\\dots",
+      "description": "An ellipsis indicating that there are additional terms in the series that are not explicitly shown."
+    },
+    "__power_13": {
+      "latex": "r^{n - 1}",
+      "name": "r^{n - 1}",
+      "description": "The common ratio raised to the power of $n-1$, corresponding to the multiplier for the $n$-th term of the series."
+    },
+    "n": {
+      "latex": "n",
+      "name": "n",
+      "description": "The total number of terms in the finite geometric series."
+    },
+    "_r2___power_11": {
+      "latex": "r^{3}",
+      "name": "r^{3}",
+      "description": "The common ratio raised to the power of three, representing the multiplier for the fourth term."
+    },
+    "__power_12": {
+      "latex": "r^{2}",
+      "name": "r^{2}",
+      "description": "The common ratio raised to the power of two, representing the multiplier for the third term."
+    },
+    "__power_14": {
+      "latex": "r^{n - 1}",
+      "name": "r^{n - 1}",
+      "description": "The common ratio raised to the power of $n-1$, corresponding to the multiplier for the $n$-th term of the series."
+    },
+    "__power_8": {
+      "latex": "\\frac{1}{1 - r}",
+      "name": "\\frac{1}{1 - r}",
+      "description": "A factor related to the common ratio, often appearing in the formula for the sum of an infinite geometric series or in the derivation of the finite sum."
+    }
+  },
+  "goal": "This derivation establishes the closed-form formula for the sum of a finite geometric series, $S = \\sum_{k=0}^{n-1} a r^k$, by using a method of subtracting a scaled version of the series from itself to simplify the expression.",
+  "followups": [
+    "What happens to the formula if the common ratio $r$ is equal to $1$?",
+    "How is the sum of an infinite geometric series derived from this finite sum?",
+    "Can you show me an example of how to apply this formula to a specific series, like $3 + 6 + 12 + \\dots + 3 \\cdot 2^{9}$?",
+    "Derive the formula for the sum of an arithmetic series."
+  ],
+  "prerequisites": [
+    "Understanding of summation (Sigma) notation",
+    "Basic algebraic manipulation, including factoring and combining like terms",
+    "Properties of exponents, especially $r^0 = 1$",
+    "Concept of a geometric series and common ratio"
+  ]
+}
