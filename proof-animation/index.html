@@ -6,7 +6,7 @@
   <title>Proof Animation</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
-  <link rel="stylesheet" href="./proof-animation.css?v=1783276101">
+  <link rel="stylesheet" href="./proof-animation.css?v=1783558497">
   <style>
     body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
            margin: 0; padding: 40px 20px; background: #f6f7fb; color: #1a1a2e; }
@@ -32,12 +32,23 @@
     <div id="root"></div>
   </div>
   <script type="module">
-    import { ProofAnimator } from "./proof-animation.js?v=1783276101";
+    import { ProofAnimator } from "./proof-animation.js?v=1783558497";
     (async () => {
       for (let i = 0; i < 100 && !window.katex; i++)
         await new Promise(r => setTimeout(r, 30));
       const list = await (await fetch("./animations.json")).json();
       const root = document.getElementById("root");
+      // Where Explore/AI asks should open. This report is NOT the app — locally
+      // it's an http.server on a different port than AlgeBench; anywhere else it's
+      // a static host (GitHub Pages). So resolve the app explicitly: run LOCAL →
+      // the local app on its canonical port 8785 (server.py DEFAULT_PORT); else →
+      // STAGING. Never prod, and never the report's own origin.
+      const host = location.hostname;   // IPv6 comes back bracket-less, e.g. "::1"
+      const isLocal = host === "localhost" || host === "127.0.0.1" || host === "::1";
+      const localHost = host.includes(":") ? "[" + host + "]" : host;   // bracket IPv6 for a valid origin
+      const askOrigin = isLocal
+        ? location.protocol + "//" + localHost + ":8785"
+        : "https://algebench-staging.onrender.com";
       window.animators = list.map((data) => {
         const h = document.createElement("h2");
         h.className = "pa-title";
@@ -47,7 +58,11 @@
         root.appendChild(div);
         // liveTerms (no graph host here): each term gets the hover backlight + a
         // description tooltip. The app layers graph sync on top via SgProofManager.
-        return new ProofAnimator(div, data, { katex: window.katex, liveTerms: true, enableExplore: true });
+        // enableTermAsk: show the per-term "Ask AI" button; with no aiAskButton
+        // factory (standalone report) it routes via _routeAsk → askOrigin, so the
+        // ask opens in the resolved app (staging on Pages, local :8785 in dev).
+        return new ProofAnimator(div, data, { katex: window.katex, liveTerms: true,
+          enableExplore: true, enableTermAsk: true, askOrigin });
       });
     })();
   </script>
