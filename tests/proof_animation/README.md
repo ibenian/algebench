@@ -93,3 +93,13 @@ GitHub Pages (mirroring the semantic-graph report):
 
 The deploy job has no API key and never needs one: it renders the committed built
 animations verbatim — same output everyone sees locally.
+
+## Explore / Ask-AI
+
+The gallery enables the per-term **Ask AI** button and the **Explore** pill
+(Prerequisites / Explore-further followups). Because the report is served from a
+static host — not the app — those asks are pointed at a real AlgeBench: a **local**
+run opens the app on its canonical port (`localhost:8785`), any other host (e.g.
+GitHub Pages) opens **staging** (`algebench-staging.onrender.com`) — never prod.
+The engine takes this as an `askOrigin` option; the app/`renderproof` pass nothing
+and keep their own origin.

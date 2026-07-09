@@ -23,3 +23,6 @@ backend/experts/modules/*/artifacts/
 !CLAUDE.md
 # CocoIndex Code (ccc)
 /.cocoindex_code/
+
+# proof-animation report build output (report.py --outdir _site; regenerated in CI)
+/_site/
