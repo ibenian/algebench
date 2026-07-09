@@ -145,6 +145,13 @@ export class ProofAnimator {
     // Gate the bottom "Explore" panel (Prerequisites / Explore-further tabs) — off
     // unless the host opts in (the app sets it; the standalone page via ?explore=).
     this._enableExplore = !!opts.enableExplore;
+    // Origin an AI ask should open against. Defaults to the page's own origin
+    // (correct for the app / renderproof — env-specific automatically). A static
+    // host that ISN'T the app — the proof-animation report on GitHub Pages / a
+    // local http.server — sets this so its asks land in the real app (e.g. staging)
+    // rather than the Pages/file host.
+    this._askOrigin = typeof opts.askOrigin === "string" && opts.askOrigin
+      ? opts.askOrigin.replace(/\/+$/, "") : null;
     this._deriveBtnEl = null;
     // Optional host hook fired after every internal relayout (resize / fonts), so
     // a host that scales this widget to fit a box (SgProofManager) can re-fit AFTER
@@ -913,7 +920,7 @@ export class ProofAnimator {
   //   • without        → the app's MAIN PAGE + ?panel=chat&aa=<question>.
   _askTargetUrl(deeplink, message) {
     try {
-      const origin = window.location.origin;
+      const origin = this._askOrigin || window.location.origin;
       const u = new URL(deeplink || "/", origin);
       if (u.origin !== origin) return null;   // off-origin deeplink → reject
       u.searchParams.set("panel", "chat");

@@ -194,6 +194,15 @@ _INDEX = """<!DOCTYPE html>
         await new Promise(r => setTimeout(r, 30));
       const list = await (await fetch("./animations.json")).json();
       const root = document.getElementById("root");
+      // Where Explore/AI asks should open. This report is NOT the app — locally
+      // it's an http.server on a different port than AlgeBench; anywhere else it's
+      // a static host (GitHub Pages). So resolve the app explicitly: run LOCAL →
+      // the local app on its canonical port 8785 (server.py DEFAULT_PORT); else →
+      // STAGING. Never prod, and never the report's own origin.
+      const isLocal = ["localhost", "127.0.0.1", "::1", "[::1]"].includes(location.hostname);
+      const askOrigin = isLocal
+        ? location.protocol + "//" + location.hostname + ":8785"
+        : "https://algebench-staging.onrender.com";
       window.animators = list.map((data) => {
         const h = document.createElement("h2");
         h.className = "pa-title";
@@ -203,7 +212,11 @@ _INDEX = """<!DOCTYPE html>
         root.appendChild(div);
         // liveTerms (no graph host here): each term gets the hover backlight + a
         // description tooltip. The app layers graph sync on top via SgProofManager.
-        return new ProofAnimator(div, data, { katex: window.katex, liveTerms: true, enableExplore: true });
+        // enableTermAsk: show the per-term "Ask AI" button; with no aiAskButton
+        // factory (standalone report) it routes via _routeAsk → askOrigin, so the
+        // ask opens in the resolved app (staging on Pages, local :8785 in dev).
+        return new ProofAnimator(div, data, { katex: window.katex, liveTerms: true,
+          enableExplore: true, enableTermAsk: true, askOrigin });
       });
     })();
   </script>
