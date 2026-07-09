@@ -22,15 +22,18 @@ Lives in `scripts/proof_animation/`. Three jobs: **convert**, **render**, **deri
 | Script | What it does |
 | --- | --- |
 | `proof_animation/build.py` | **Conversion library** (no CLI). Turns a typed `ProofTrajectory` (the expert's output) into animation data: parses each state, threads stable per-glyph ids across states (`_rebase`), emits `\htmlData`-annotated LaTeX. Defines `build()` / `build_animation()` and the `ProofAnimation` model. |
-| `proof_animation/report.py` | **Render.** Generates a self-contained HTML page (engine + data). `--from-file proof_animations.json` (default: the suite) renders many; `--from-json` animates one `ProofTrajectory`; bare LaTeX states render a one-off chain. No model. |
-| `proof_animation/derive.py` | **Derive (local / needs `GEMINI_API_KEY`).** Runs the `ProofCompletionExpert` and prints (or `--out`s) a `ProofAnimation` for review; `--render` previews it. Endpoints from explicit `START TARGET` or `--prompt "…"`. To add to the suite, paste the JSON into `proof_animations.json` by hand. |
+| `proof_animation/report.py` | **Render.** Generates a self-contained HTML page (engine + data). `--from-file proof_animations.json` (default: the suite) renders its entries — which are **final built animations**, served verbatim, no model. `--rebuild-suite` regenerates that file (render + LM descriptions; needs a key). `--from-json` builds/animates one `ProofTrajectory`; bare LaTeX states render a one-off chain. |
+| `proof_animation/derive.py` | **Derive (local / needs `GEMINI_API_KEY`).** Runs the `ProofCompletionExpert` and prints (or `--out`s) a `ProofAnimation` for review; `--render` previews it. Endpoints from explicit `START TARGET` or `--prompt "…"`. To add to the suite: paste the entry into `proof_animations.json`, then `report.py --rebuild-suite` to bake it into final built form. |
 | `proof_animation/serve.sh` | Generate the page and serve it on `:5750` (defaults to the suite). |
 
 ```bash
 # derive a proof for review (prompt, or explicit endpoints)
 ./run.sh scripts/proof_animation/derive.py --prompt "derive Lorentz time dilation"
 ./run.sh scripts/proof_animation/derive.py "x^2 - 4 = 0" "x = 2" --title "Solve x^2 = 4"
-#   → review the printed JSON, then paste it into tests/proof_animation/proof_animations.json
+#   → review the printed JSON, paste it into tests/proof_animation/proof_animations.json,
+#     then bake it into final built form:
+./run.sh scripts/proof_animation/report.py \
+    --from-file tests/proof_animation/proof_animations.json --rebuild-suite   # needs a key
 
 # derive + preview in the browser (refresh a running serve to see it)
 ./run.sh scripts/proof_animation/derive.py --prompt "expand (x+1)^2" --render
@@ -43,9 +46,10 @@ Lives in `scripts/proof_animation/`. Three jobs: **convert**, **render**, **deri
     --from-file tests/proof_animation/proof_animations.json --outdir _site
 ```
 
-The suite lives in `tests/proof_animation/proof_animations.json` (see its README) and is
-hand-maintained. CI (`.github/workflows/proof-animation.yml`) renders the
-committed suite to Pages; it never derives.
+The suite lives in `tests/proof_animation/proof_animations.json` (see its README): a list of
+**final built animations** (same shape as `proofs/domains/**/*.json`), regenerated with
+`--rebuild-suite`. CI (`.github/workflows/proof-animation.yml`) renders the committed suite
+to Pages verbatim — no model, no key.
 
 ## Proof completion (the expert)
 

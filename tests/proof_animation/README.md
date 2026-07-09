@@ -1,82 +1,83 @@
 # Proof Animation — test suite
 
-`proof_animations.json` is the curated suite of proof animations. It's a plain list of
-authored derivations that the proof-animation report renders into an interactive
-page — locally and on GitHub Pages — so the morph engine can be eyeballed on a
-real, growing set of proofs for every PR and on `main`.
+`proof_animations.json` is the curated suite of proof animations rendered into an
+interactive page — locally and on GitHub Pages — so the morph engine can be
+eyeballed on a real, growing set of proofs for every PR and on `main`.
 
-The render path is **deterministic and LM-free**: a proof is parsed with the
-sympy-backed `SemanticGraphService`, threaded for stable per-glyph ids, and
-emitted as `\htmlData`-annotated LaTeX the engine FLIP-morphs. Deriving a *new*
-proof needs the model; **rendering the committed suite does not**.
+It is a JSON array of **final, built animations** — the exact same self-contained
+shape as the shareable built-ins under `proofs/domains/**/*.json`. Everything the
+engine needs is already in the file: each step's `\htmlData`-annotated `latex`,
+the per-term descriptions, and the confidence tiers. So the report **renders it
+directly — no parse, no build, no model call** (identical output locally and in
+keyless CI). Producing a new/updated entry needs the model; *rendering the
+committed suite does not*.
 
 ## Schema
 
-`proof_animations.json` is a JSON array of `ProofAnimation` objects (the typed model in
-`scripts/proof_animation/build.py`). The `trajectory` is the
-`ProofCompletionExpert`'s own output type (`ProofTrajectory`) verbatim:
+Each array element is one built animation (see a built-in like
+`proofs/domains/algebra/quadratic-formula.json` for a full example):
 
 ```jsonc
 [
   {
-    "title": "Isolate a",          // display heading
-    "domain": "algebra",           // parser domain: algebra | calculus | rational | …
-    "start_operation": "Given",        // caption for the initial state (step 0)
-    "start_justification": "solve for $a$",
-    "trajectory": {
-      "kind": "proof_trajectory",
-      "start_latex": "a + b - c = 0",     // the initial state (animation step 0)
-      "target_latex": "a = c - b",        // the final expression (informational)
-      "steps": [                          // each step = a complete reached state
-        {
-          "operation": "add $c$ to both sides",   // short label (inline $…$ LaTeX ok)
-          "expr_latex": "a + b = c",              // COMPLETE LaTeX after this move
-          "justification": "$c$ crosses the $=$ and flips sign"
-        }
-      ]
-    }
+    "title": "Isolate a",
+    "domain": "algebra",
+    "steps": [
+      {
+        "index": 0,
+        "operation": "Given the equation",          // step caption
+        "justification": "solve for $a$",            // inline $…$ LaTeX ok
+        "input_latex": "a + b - c = 0",              // source LaTeX (the model's)
+        "latex": "\\htmlData{n=…}{…}",               // annotated, per-glyph ids → FLIP morph
+        "plain": "a + b - c = 0",                    // label/fallback
+        "confidence": { "tier": "grounded", … }      // per-step CAS/domain verdict
+      }
+    ],
+    "overall_confidence": { "tier": "grounded", "endpoint_reached": true, … },
+    "terms": {
+      "a": { "latex": "a", "name": "a", "description": "The variable to isolate." }
+    },
+    "goal": "…", "followups": ["…"], "prerequisites": ["…"]   // optional
   }
 ]
 ```
 
-- `operation` and `justification` may contain inline `$…$` LaTeX — the engine
-  renders it.
-- Every `expr_latex` (and `start_latex`) must be a single, complete,
-  sympy-parseable expression; the renderer fails loudly on anything it can't parse.
+The only field a built-in carries that the suite doesn't is `deeplink` (a
+share-URL for the full app) — irrelevant to the render gallery.
 
-## Adding a proof
+## Adding / refreshing a proof
 
-Derivation runs the model, so it happens **locally** (needs `GEMINI_API_KEY` in
-`.env.local`). The derive script *prints* a `ProofAnimation` for review — you
-then paste it into this file by hand (deliberately manual, so nothing unreviewed
-lands in the suite):
+Deriving and enriching run the model, so this happens **locally** (needs
+`GEMINI_API_KEY` in `.env.local`). Two steps:
 
-```bash
-# explicit endpoints (precise — you control exactly what's proven)
-./run.sh scripts/proof_animation/derive.py "x^2 - 4 = 0" "x = 2" --title "Solve x^2 = 4"
+1. **Author a trajectory.** Derive one (the script prints a `ProofAnimation` with a
+   raw `trajectory` — no `steps` yet), or hand-write one:
 
-# …or a single prompt (the model also picks the start/target/domain/title)
-./run.sh scripts/proof_animation/derive.py --prompt "derive Lorentz time dilation"
+   ```bash
+   ./run.sh scripts/proof_animation/derive.py "x^2 - 4 = 0" "x = 2" --title "Solve x^2 = 4"
+   ./run.sh scripts/proof_animation/derive.py --prompt "derive Lorentz time dilation"
+   ```
 
-# preview before pasting: derive + render, then refresh a running serve
-./run.sh scripts/proof_animation/derive.py --prompt "expand (x+1)^2" --render
-```
+   Paste that raw entry into `proof_animations.json` (a trajectory entry still
+   *previews* — the render auto-builds it when a key is present).
 
-Review the output (start/target sane? steps valid?), paste the object into
-`proof_animations.json`, and **commit** it. You can also hand-author an entry directly
-(same schema). CI renders the committed file and never derives.
+2. **Bake the suite into final form** and commit the result:
+
+   ```bash
+   ./run.sh scripts/proof_animation/report.py \
+       --from-file tests/proof_animation/proof_animations.json --rebuild-suite
+   ```
+
+   `--rebuild-suite` rebuilds every entry (fresh render + descriptions) and writes
+   the built animations back in place. Run it after a proof edit or a
+   parser/renderer change you want the suite to pick up. `input_latex` is preserved
+   on every step, so the suite is always its own source — no separate trajectory file.
 
 ## Rendering / checking
 
-Local preview (regenerates from this file, serves on :5750):
-
 ```bash
-./scripts/proof_animation/serve.sh            # → http://localhost:5750
-```
-
-Or generate the static site without serving:
-
-```bash
+./scripts/proof_animation/serve.sh            # local preview on http://localhost:5750
+# or the static site:
 ./run.sh scripts/proof_animation/report.py \
     --from-file tests/proof_animation/proof_animations.json --outdir _site
 ```
@@ -87,8 +88,18 @@ Or generate the static site without serving:
 GitHub Pages (mirroring the semantic-graph report):
 
 - **main:** `https://ibenian.github.io/algebench/proof-animation/`
-- **PRs:** `https://ibenian.github.io/algebench/proof-animation/pr-<N>/` (the
-  workflow also posts the preview link as a PR comment)
+- **PRs:** `https://ibenian.github.io/algebench/proof-animation/pr-<N>/` (also
+  posted as a PR comment)
 
-The deploy job has no API key and uses `--from-file`, so it only parses and
-renders the committed proofs — same output everyone sees locally.
+The deploy job has no API key and never needs one: it renders the committed built
+animations verbatim — same output everyone sees locally.
+
+## Explore / Ask-AI
+
+The gallery enables the per-term **Ask AI** button and the **Explore** pill
+(Prerequisites / Explore-further followups). Because the report is served from a
+static host — not the app — those asks are pointed at a real AlgeBench: a **local**
+run opens the app on its canonical port (`localhost:8785`), any other host (e.g.
+GitHub Pages) opens **staging** (`algebench-staging.onrender.com`) — never prod.
+The engine takes this as an `askOrigin` option; the app/`renderproof` pass nothing
+and keep their own origin.
