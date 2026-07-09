@@ -6,7 +6,7 @@
   <title>Proof Animation</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
-  <link rel="stylesheet" href="./proof-animation.css?v=1783557784">
+  <link rel="stylesheet" href="./proof-animation.css?v=1783558157">
   <style>
     body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
            margin: 0; padding: 40px 20px; background: #f6f7fb; color: #1a1a2e; }
@@ -32,7 +32,7 @@
     <div id="root"></div>
   </div>
   <script type="module">
-    import { ProofAnimator } from "./proof-animation.js?v=1783557784";
+    import { ProofAnimator } from "./proof-animation.js?v=1783558157";
     (async () => {
       for (let i = 0; i < 100 && !window.katex; i++)
         await new Promise(r => setTimeout(r, 30));
@@ -43,9 +43,11 @@
       // a static host (GitHub Pages). So resolve the app explicitly: run LOCAL →
       // the local app on its canonical port 8785 (server.py DEFAULT_PORT); else →
       // STAGING. Never prod, and never the report's own origin.
-      const isLocal = ["localhost", "127.0.0.1", "::1", "[::1]"].includes(location.hostname);
+      const host = location.hostname;   // IPv6 comes back bracket-less, e.g. "::1"
+      const isLocal = host === "localhost" || host === "127.0.0.1" || host === "::1";
+      const localHost = host.includes(":") ? "[" + host + "]" : host;   // bracket IPv6 for a valid origin
       const askOrigin = isLocal
-        ? location.protocol + "//" + location.hostname + ":8785"
+        ? location.protocol + "//" + localHost + ":8785"
         : "https://algebench-staging.onrender.com";
       window.animators = list.map((data) => {
         const h = document.createElement("h2");

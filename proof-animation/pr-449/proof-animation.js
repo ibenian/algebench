@@ -150,8 +150,12 @@ export class ProofAnimator {
     // host that ISN'T the app — the proof-animation report on GitHub Pages / a
     // local http.server — sets this so its asks land in the real app (e.g. staging)
     // rather than the Pages/file host.
-    this._askOrigin = typeof opts.askOrigin === "string" && opts.askOrigin
-      ? opts.askOrigin.replace(/\/+$/, "") : null;
+    // Normalize to a bare origin — _askTargetUrl compares it against `URL.origin`,
+    // so a value carrying a path/trailing slash would never match and reject asks.
+    this._askOrigin = null;
+    if (typeof opts.askOrigin === "string" && opts.askOrigin) {
+      try { this._askOrigin = new URL(opts.askOrigin).origin; } catch (e) { /* invalid → keep default */ }
+    }
     this._deriveBtnEl = null;
     // Optional host hook fired after every internal relayout (resize / fonts), so
     // a host that scales this widget to fit a box (SgProofManager) can re-fit AFTER
