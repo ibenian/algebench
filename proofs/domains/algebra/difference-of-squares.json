@@ -1,0 +1,91 @@
+{
+  "title": "Difference of squares",
+  "domain": "algebra",
+  "steps": [
+    {
+      "index": 0,
+      "operation": "Given $a^2 - b^2$",
+      "justification": "the starting expression",
+      "input_latex": "a^{2} - b^{2}",
+      "latex": "\\htmlData{n=__add_1}{\\htmlData{n=__power_2}{\\htmlData{n=a}{a}^{\\htmlData{n=__power_2__exp}{2}}} \\htmlData{n=__negation_3}{\\htmlData{n=__negation_3__op}{-} \\htmlData{n=__power_4}{\\htmlData{n=b}{b}^{\\htmlData{n=__power_4__exp}{2}}}}}",
+      "plain": "a^{2} - b^{2}",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": null,
+        "reason": "the given starting expression",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 1,
+      "operation": "Factor the expression using the difference of squares formula",
+      "justification": "The difference of squares formula states that for any two terms $x$ and $y$, $x^2 - y^2 = (x - y) \\cdot (x + y)$.",
+      "input_latex": "\\left(a - b\\right) \\cdot \\left(a + b\\right)",
+      "latex": "\\htmlData{n=__multiply_1}{\\left(\\htmlData{n=__add_1}{\\htmlData{n=a____add_1}{a} \\htmlData{n=__negation_3}{\\htmlData{n=__negation_3__op}{-} \\htmlData{n=b____negation_3}{b}}}\\right) \\htmlData{n=__multiply_1__m1}{\\cdot} \\left(\\htmlData{n=__add_4}{\\htmlData{n=a____add_4}{a} \\htmlData{n=__add_4__op1}{+} \\htmlData{n=b____add_4}{b}}\\right)}",
+      "plain": "\\left(a - b\\right) \\cdot \\left(a + b\\right)",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    }
+  ],
+  "overall_confidence": {
+    "tier": "grounded",
+    "label": "Grounded",
+    "icon": "🥇",
+    "meaning": "symbolically proven to follow from the previous step",
+    "relation": null,
+    "reason": "1/1 steps verified · endpoint reached",
+    "type_consistent": true,
+    "counts": {
+      "refuted": 0,
+      "unchecked": 0,
+      "plausible": 0,
+      "domain": 0,
+      "verified": 0,
+      "grounded": 1
+    },
+    "endpoint_reached": true
+  },
+  "terms": {
+    "__power_2": {
+      "latex": "a^{2}",
+      "name": "a^{2}",
+      "description": "$a^{2}$ represents the square of the variable $a$."
+    },
+    "a": {
+      "latex": "a",
+      "name": "a",
+      "description": "$a$ is the first variable or term being squared in the difference of squares expression."
+    },
+    "__power_4": {
+      "latex": "b^{2}",
+      "name": "b^{2}",
+      "description": "$b^{2}$ represents the square of the variable $b$."
+    },
+    "b": {
+      "latex": "b",
+      "name": "b",
+      "description": "$b$ is the second variable or term being squared in the difference of squares expression."
+    }
+  },
+  "goal": "This derivation demonstrates how to factor the difference of two squares, $a^2 - b^2$, into the product of two binomials, $(a-b)(a+b)$.",
+  "followups": [
+    "Can you show how to derive the difference of squares formula?",
+    "How would I factor $x^4 - y^4$?",
+    "What are some other common algebraic factorization formulas?",
+    "How is the difference of squares used in solving equations?"
+  ],
+  "prerequisites": [
+    "Factoring binomials",
+    "Understanding of algebraic identities"
+  ]
+}

@@ -8,6 +8,7 @@ import { renderMarkdown, renderKaTeX, parseColor, colorToCSS, injectAskButtons, 
 import { compileExpr, evalExpr, _getMathNamesAndValues, EXTENSION_NAMES } from '/expr.js';
 import { getSliderIds, syncSliderState } from '/sliders.js';
 import { worldCameraToData } from '/coords.js';
+import { createDockablePanel } from '/dockable-panel.js';
 
 // Forward reference for buildSceneTree — assigned by context-browser.js via
 // setBuildSceneTreeFn() to avoid a circular import.
@@ -296,7 +297,19 @@ export function buildLegend(elements) {
 
 // ----- Info Overlays -----
 
-const activeInfoOverlays = {};  // id -> { content, el, contentEl, collapsed, stepDefined, pos }
+// Info-overlay state. Each item is rendered either as a free-floating dockable
+// panel or as a section inside the shared info drawer; `placement` (persisted
+// per id) is the authoritative location so manual dock/pop-out survives step
+// navigation and reloads.
+const infoState = {
+    forcedMode: null,               // null = auto ( >3 items => drawer ), else 'free' | 'drawer'
+    mode: 'free',                   // resolved this route
+    items: {},                      // id -> item record
+    drawerPanel: null,              // dockable-panel handle for the drawer, or null
+    drawerBodyEl: null,             // accordion container inside the drawer
+    _routeScheduled: false,
+    _pendingDrawerCorner: null,     // corner to inherit on lazy drawer creation
+};
 
 function _fmtNum(val) {
     if (typeof val === 'string') return val;
@@ -454,203 +467,416 @@ export function resolveInfoContent(template) {
 }
 
 export function updateInfoOverlays() {
-    for (const ov of Object.values(activeInfoOverlays)) {
-        const resolved = resolveInfoContent(ov.content);
-        // Use renderKaTeX (not renderMarkdown) — markdown rendering breaks
-        // the info overlay layout; KaTeX-only keeps it clean and compact.
-        ov.contentEl.innerHTML = renderKaTeX(resolved, false);
+    for (const item of Object.values(infoState.items)) {
+        if (!item.contentEl) continue;
+        const resolved = resolveInfoContent(item.content);
+        // KaTeX-only (not full markdown) keeps overlay/section layout clean.
+        item.contentEl.innerHTML = renderKaTeX(resolved, false);
+        const titleHtml = _titleHtml(item);
+        if (item.panel) item.panel.setTitle(titleHtml);
+        if (item.sectionTitleEl) item.sectionTitleEl.innerHTML = titleHtml;
     }
+    _updateDrawerHeader();
 }
 
 // Register the info overlay updater as a window shim so sliders.js can call it
 // without a circular import.
 window._algebenchUpdateInfoOverlays = updateInfoOverlays;
 
-export function removeStepInfoOverlays() {
-    for (const id of Object.keys(activeInfoOverlays)) {
-        const ov = activeInfoOverlays[id];
-        if (ov.stepDefined && !ov.keep) removeInfoOverlay(id);
+// ----- helpers -----
+
+function _infoContainer() { return document.getElementById('info-overlays'); }
+
+function _deriveTitle(content) {
+    const lines = String(content || '').split('\n');
+    for (let ln of lines) {
+        ln = ln.trim();
+        if (!ln) continue;
+        ln = ln.replace(/^#{1,6}\s*/, '').replace(/^[*_>\s-]+/, '').replace(/[*_]+$/, '').trim();
+        if (ln) return ln;
     }
+    return 'Info';
+}
+
+function _titleHtml(item) {
+    const raw = item.explicitTitle ? item.title : _deriveTitle(item.content);
+    return renderKaTeX(resolveInfoContent(raw), false);
+}
+
+function _loadPlacement(id) {
+    try { const v = localStorage.getItem('info-item-placement-' + id); return (v === 'free' || v === 'drawer') ? v : null; } catch { return null; }
+}
+function _savePlacement(id, placement) {
+    try { localStorage.setItem('info-item-placement-' + id, placement); } catch {}
+}
+
+function _loadSectionCollapsed() {
+    try { return JSON.parse(localStorage.getItem('info-drawer-sections') || '{}') || {}; } catch { return {}; }
+}
+function _saveSectionCollapsed(map) {
+    try { localStorage.setItem('info-drawer-sections', JSON.stringify(map)); } catch {}
+}
+
+// Translate the pre-refactor persistence keys into a dockable-panel geometry blob.
+function _migrateOldOverlayKeys(id) {
+    let geom = null;
+    try {
+        const raw = localStorage.getItem('info-overlay-pos-' + id);
+        const saved = raw ? JSON.parse(raw) : null;
+        if (saved && saved.pos && saved.h != null && saved.v != null) {
+            geom = { corner: saved.pos, h: saved.h, v: saved.v };
+        } else if (saved && saved.left && saved.top) {
+            // Legacy absolute {left,top} -> approximate as a top-left offset.
+            geom = { corner: 'top-left', h: parseFloat(saved.left) || 0, v: parseFloat(saved.top) || 0 };
+        }
+    } catch {}
+    try {
+        if (localStorage.getItem('info-overlay-collapsed-' + id) === '1') {
+            geom = geom || { corner: 'top-left' };
+            geom.collapsed = true;
+        }
+    } catch {}
+    return geom;
+}
+
+function _makeItemAiBtn(item) {
+    return makeAiAskButton('info-overlay-ai-btn', 'Ask AI about this',
+        () => 'Can you explain this:\n' + resolveInfoContent(item.content).trim());
+}
+
+function _makeDockBtn(item) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'info-dock-btn';
+    b.title = 'Move into drawer';
+    b.textContent = '⤵';
+    b.addEventListener('mousedown', e => e.stopPropagation());
+    b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const corner = item.panel ? item.panel.getCorner() : item.position;
+        _setItemPlacement(item.id, 'drawer', corner);
+    });
+    return b;
+}
+
+function _makePopBtn(item) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'info-dock-btn';
+    b.title = 'Pop out of drawer';
+    b.textContent = '⤴';
+    b.addEventListener('mousedown', e => e.stopPropagation());
+    b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        _setItemPlacement(item.id, 'free', null);
+    });
+    return b;
+}
+
+function _setItemPlacement(id, placement, inheritCorner) {
+    const item = infoState.items[id];
+    if (!item) return;
+    _savePlacement(id, placement);
+    if (placement === 'drawer' && inheritCorner) infoState._pendingDrawerCorner = inheritCorner;
+    _route();
+}
+
+// ----- free-floating overlay -----
+
+function _mountFree(item) {
+    if (item.panel) {
+        if (item.contentEl.parentElement !== item.freeInner) item.freeInner.appendChild(item.contentEl);
+        return;
+    }
+    const inner = document.createElement('div');
+    inner.className = 'info-overlay';
+    inner.appendChild(item.contentEl);
+    item.freeInner = inner;
+    item.panel = createDockablePanel({
+        persistKey: 'info-' + item.id,
+        corner: item.position,
+        title: _titleHtml(item),
+        bodyEl: inner,
+        container: _infoContainer(),
+        headerButtons: [_makeItemAiBtn(item), _makeDockBtn(item)],
+        titleAlwaysVisible: !!item.explicitTitle,
+        opacity: state.displayParams.overlayOpacity,
+        legacyMigrate: () => _migrateOldOverlayKeys(item.id),
+    });
+}
+
+function _unmountFree(item) {
+    if (!item.panel) return;
+    if (item.contentEl.parentElement) item.contentEl.parentElement.removeChild(item.contentEl);
+    item.panel.destroy();
+    item.panel = null;
+    item.freeInner = null;
+}
+
+// ----- drawer -----
+
+function _chooseDrawerCorner(items) {
+    if (infoState._pendingDrawerCorner) return infoState._pendingDrawerCorner;
+    const counts = {};
+    let best = 'top-right', bestN = 0;
+    for (const it of items) {
+        if (it.placement !== 'drawer') continue;
+        const c = it.position || 'top-right';
+        counts[c] = (counts[c] || 0) + 1;
+        if (counts[c] > bestN) { bestN = counts[c]; best = c; }
+    }
+    return best;
+}
+
+// Thin double-chevron icons (VS Code style) for collapse/expand all.
+const _CHEVRON_UP = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 12 12 7 7 12"/><polyline points="17 18 12 13 7 18"/></svg>';
+const _CHEVRON_DOWN = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 12 12 17 17 12"/><polyline points="7 6 12 11 17 6"/></svg>';
+
+function _makeDrawerIconBtn(glyph, title, onClick) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'info-dock-btn';
+    b.title = title;
+    if (glyph.trimStart().startsWith('<')) b.innerHTML = glyph; else b.textContent = glyph;
+    b.addEventListener('mousedown', e => e.stopPropagation());
+    b.addEventListener('click', (e) => { e.stopPropagation(); onClick(); });
+    return b;
+}
+
+function _setAllSectionsCollapsed(collapsed) {
+    const map = _loadSectionCollapsed();
+    for (const item of Object.values(infoState.items)) {
+        if (item.placement === 'drawer' && item.sectionEl) {
+            item.sectionEl.classList.toggle('collapsed', collapsed);
+            map[item.id] = collapsed;
+        }
+    }
+    _saveSectionCollapsed(map);
+}
+
+function _ensureDrawer(corner) {
+    if (infoState.drawerPanel) return;
+    const body = document.createElement('div');
+    body.className = 'info-drawer';
+    infoState.drawerBodyEl = body;
+    const collapseAllBtn = _makeDrawerIconBtn(_CHEVRON_UP, 'Collapse all sections', () => _setAllSectionsCollapsed(true));
+    const expandAllBtn = _makeDrawerIconBtn(_CHEVRON_DOWN, 'Expand all sections', () => _setAllSectionsCollapsed(false));
+    const dissolveBtn = _makeDrawerIconBtn('⤴', 'Pop all overlays out of the drawer', () => _dissolveDrawer());
+    infoState.drawerPanel = createDockablePanel({
+        persistKey: 'info-drawer',
+        corner: corner || 'top-right',
+        title: 'Info',
+        bodyEl: body,
+        container: _infoContainer(),
+        headerButtons: [collapseAllBtn, expandAllBtn, dissolveBtn],
+        titleAlwaysVisible: true,
+        opacity: state.displayParams.overlayOpacity,
+    });
+    infoState.drawerPanel.el.classList.add('dp-drawer');
+}
+
+function _destroyDrawerIfEmpty() {
+    if (!infoState.drawerPanel) return;
+    const hasSection = Object.values(infoState.items).some(it => it.placement === 'drawer');
+    if (hasSection) return;
+    infoState.drawerPanel.destroy();
+    infoState.drawerPanel = null;
+    infoState.drawerBodyEl = null;
+}
+
+function _dissolveDrawer() {
+    for (const item of Object.values(infoState.items)) {
+        if (item.placement === 'drawer') _savePlacement(item.id, 'free');
+    }
+    _route();
+}
+
+function _mountSection(item) {
+    if (item.sectionEl) {
+        if (item.contentEl.parentElement !== item.sectionBodyEl) item.sectionBodyEl.appendChild(item.contentEl);
+        if (item.sectionEl.parentElement !== infoState.drawerBodyEl) infoState.drawerBodyEl.appendChild(item.sectionEl);
+        return;
+    }
+    const section = document.createElement('div');
+    section.className = 'info-drawer-section';
+    // Derived titles duplicate the content's own heading, so show them only
+    // when the section is collapsed; explicit titles stay visible always.
+    if (item.explicitTitle) section.classList.add('title-always');
+
+    const header = document.createElement('div');
+    header.className = 'info-drawer-section-header';
+
+    const caret = document.createElement('button');
+    caret.type = 'button';
+    caret.className = 'dp-collapse';
+    caret.title = 'Expand / collapse';
+
+    const titleEl = document.createElement('span');
+    titleEl.className = 'info-drawer-section-title';
+    titleEl.innerHTML = _titleHtml(item);
+
+    const btns = document.createElement('span');
+    btns.className = 'info-drawer-section-buttons';
+    btns.appendChild(_makeItemAiBtn(item));
+    btns.appendChild(_makePopBtn(item));
+
+    header.appendChild(caret);
+    header.appendChild(titleEl);
+    header.appendChild(btns);
+
+    const sBody = document.createElement('div');
+    sBody.className = 'info-drawer-section-body';
+    sBody.appendChild(item.contentEl);
+
+    const collapsedMap = _loadSectionCollapsed();
+    const collapsed = !!collapsedMap[item.id];
+    section.classList.toggle('collapsed', collapsed);
+
+    // Clicking anywhere on the header (not the action buttons) toggles the section.
+    header.addEventListener('click', (e) => {
+        if (e.target.closest('.info-dock-btn, .info-overlay-ai-btn')) return;
+        const nowCollapsed = !section.classList.contains('collapsed');
+        section.classList.toggle('collapsed', nowCollapsed);
+        const map = _loadSectionCollapsed();
+        map[item.id] = nowCollapsed;
+        _saveSectionCollapsed(map);
+    });
+
+    section.appendChild(header);
+    section.appendChild(sBody);
+    infoState.drawerBodyEl.appendChild(section);
+
+    item.sectionEl = section;
+    item.sectionBodyEl = sBody;
+    item.sectionTitleEl = titleEl;
+}
+
+function _unmountSection(item) {
+    if (!item.sectionEl) return;
+    if (item.contentEl.parentElement) item.contentEl.parentElement.removeChild(item.contentEl);
+    item.sectionEl.remove();
+    item.sectionEl = null;
+    item.sectionBodyEl = null;
+    item.sectionTitleEl = null;
+}
+
+function _updateDrawerHeader() {
+    if (!infoState.drawerPanel) return;
+    const n = Object.values(infoState.items).filter(it => it.placement === 'drawer').length;
+    infoState.drawerPanel.setTitle('Info <span class="info-drawer-count">' + n + '</span>');
+}
+
+// ----- routing -----
+
+function _scheduleRoute() {
+    if (infoState._routeScheduled) return;
+    infoState._routeScheduled = true;
+    Promise.resolve().then(() => {
+        infoState._routeScheduled = false;
+        _route();
+    });
+}
+
+function _route() {
+    const items = Object.values(infoState.items);
+    const count = items.length;
+    const mode = infoState.forcedMode || (count > 3 ? 'drawer' : 'free');
+    infoState.mode = mode;
+
+    let anyDrawer = false;
+    for (const item of items) {
+        const persisted = _loadPlacement(item.id);
+        item.placement = persisted || (mode === 'drawer' ? 'drawer' : 'free');
+        if (item.placement === 'drawer') anyDrawer = true;
+    }
+
+    if (anyDrawer) _ensureDrawer(_chooseDrawerCorner(items));
+    infoState._pendingDrawerCorner = null;
+
+    for (const item of items) {
+        if (item.placement === 'drawer') { _unmountFree(item); _mountSection(item); }
+        else { _unmountSection(item); _mountFree(item); }
+    }
+
+    _destroyDrawerIfEmpty();
+    updateInfoOverlays();
+}
+
+// ----- public API -----
+
+export function removeStepInfoOverlays() {
+    let changed = false;
+    for (const id of Object.keys(infoState.items)) {
+        const item = infoState.items[id];
+        if (item.stepDefined && !item.keep) { _disposeItem(item); changed = true; }
+    }
+    if (changed) _scheduleRoute();
 }
 
 export function applyStepInfoOverlays(infoDefs) {
     removeStepInfoOverlays();
-    if (!infoDefs || !infoDefs.length) return;
-    for (const def of infoDefs) {
-        addInfoOverlay(def.id, def.content, def.position || 'top-left', true, def.keep || false);
+    if (infoDefs && infoDefs.length) {
+        for (const def of infoDefs) {
+            addInfoOverlay(def.id, def.content, def.position || def.pos || 'top-left', true, def.keep || false, def.title);
+        }
+    } else {
+        _scheduleRoute();
     }
 }
 
-export function addInfoOverlay(id, content, position, stepDefined = false, keep = false) {
-    const container = document.getElementById('info-overlays');
-    if (!container) return;
-    const pos = position || 'top-left';
+export function addInfoOverlay(id, content, position, stepDefined = false, keep = false, title = null) {
+    if (!_infoContainer()) return;
     if (!id) {
         const preview = typeof content === 'string'
-            ? (content.length > 80 ? content.slice(0, 80) + '…' : content)
-            : undefined;
-        console.warn('addInfoOverlay: id is required; ignoring overlay', {
-            position: pos,
-            contentLength: typeof content === 'string' ? content.length : undefined,
-            contentPreview: preview,
-        });
+            ? (content.length > 80 ? content.slice(0, 80) + '…' : content) : undefined;
+        console.warn('addInfoOverlay: id is required; ignoring overlay', { position, contentPreview: preview });
         return;
     }
-    let existing = activeInfoOverlays[id];
-    let el = existing && existing.el;
-    let contentEl = existing && existing.contentEl;
-    const isNew = !el;
-
-    if (isNew) {
-        el = document.createElement('div');
-        el.id = 'info-overlay-' + id;
-
-        // Toggle button (ⓘ) — always visible
-        const toggle = document.createElement('button');
-        toggle.className = 'info-overlay-toggle';
-        toggle.type = 'button';
-        toggle.title = 'Expand / collapse';
-        toggle.textContent = 'ⓘ';
-        toggle.addEventListener('mousedown', e => e.stopPropagation());
-        toggle.addEventListener('click', (e) => {
-            e.stopPropagation();
-            el.classList.toggle('collapsed');
-            const collapsed = el.classList.contains('collapsed');
-            const ov = activeInfoOverlays[id];
-            if (ov) ov.collapsed = collapsed;
-            try { localStorage.setItem('info-overlay-collapsed-' + id, collapsed ? '1' : '0'); } catch {}
-        });
-        el.appendChild(toggle);
-
-        // AI ask button
-        const aiBtn = makeAiAskButton('info-overlay-ai-btn', 'Ask AI about this',
-            () => { const ov = activeInfoOverlays[id]; return 'Can you explain this:\n' + (ov ? resolveInfoContent(ov.content) : '').trim(); });
-        aiBtn.addEventListener('mousedown', e => e.stopPropagation());
-        el.appendChild(aiBtn);
-
-        // Content area
-        contentEl = document.createElement('div');
+    let item = infoState.items[id];
+    if (!item) {
+        const contentEl = document.createElement('div');
         contentEl.className = 'info-overlay-content';
-        el.appendChild(contentEl);
-
-        container.appendChild(el);
-
-        // Drag-to-reposition
-        el.addEventListener('mousedown', (e) => {
-            if (e.button !== 0) return;
-            e.preventDefault();
-            const currentPos = (activeInfoOverlays[id] && activeInfoOverlays[id].pos) || 'top-left';
-            const isRight  = currentPos.includes('right');
-            const isBottom = currentPos.includes('bottom');
-            const rect = el.getBoundingClientRect();
-            const parentRect = container.getBoundingClientRect();
-
-            let startH = isRight  ? parentRect.right  - rect.right  : rect.left - parentRect.left;
-            let startV = isBottom ? parentRect.bottom - rect.bottom : rect.top  - parentRect.top;
-            if (isRight)  { el.style.right  = startH + 'px'; el.style.left   = ''; }
-            else          { el.style.left   = startH + 'px'; el.style.right  = ''; }
-            if (isBottom) { el.style.bottom = startV + 'px'; el.style.top    = ''; }
-            else          { el.style.top    = startV + 'px'; el.style.bottom = ''; }
-            el.style.transform = '';
-            el.classList.remove(...[...el.classList].filter(c => c.startsWith('pos-')));
-
-            const startX = e.clientX;
-            const startY = e.clientY;
-            el.classList.add('dragging');
-
-            const onMove = (me) => {
-                const dx = me.clientX - startX;
-                const dy = me.clientY - startY;
-                let newH = isRight  ? startH - dx : startH + dx;
-                let newV = isBottom ? startV - dy : startV + dy;
-                newH = Math.max(0, Math.min(newH, parentRect.width  - el.offsetWidth));
-                newV = Math.max(0, Math.min(newV, parentRect.height - el.offsetHeight));
-                if (isRight)  el.style.right  = newH + 'px';
-                else          el.style.left   = newH + 'px';
-                if (isBottom) el.style.bottom = newV + 'px';
-                else          el.style.top    = newV + 'px';
-            };
-            const onUp = () => {
-                el.classList.remove('dragging');
-                document.removeEventListener('mousemove', onMove);
-                document.removeEventListener('mouseup', onUp);
-                const h = parseFloat(isRight  ? el.style.right  : el.style.left)  || 0;
-                const v = parseFloat(isBottom ? el.style.bottom : el.style.top)   || 0;
-                try { localStorage.setItem('info-overlay-pos-' + id, JSON.stringify({ pos: currentPos, h, v })); } catch {}
-            };
-            document.addEventListener('mousemove', onMove);
-            document.addEventListener('mouseup', onUp);
-        });
+        item = infoState.items[id] = {
+            id, contentEl,
+            panel: null, freeInner: null,
+            sectionEl: null, sectionBodyEl: null, sectionTitleEl: null,
+            placement: 'free',
+        };
     }
+    item.content = content;
+    item.title = title || null;
+    item.explicitTitle = !!title;
+    item.position = position || 'top-left';
+    item.stepDefined = stepDefined;
+    item.keep = keep;
+    _scheduleRoute();
+}
 
-    // Determine collapsed state
-    let collapsed = false;
-    if (isNew) {
-        try { collapsed = localStorage.getItem('info-overlay-collapsed-' + id) === '1'; } catch {}
-    } else {
-        collapsed = !!(existing && existing.collapsed);
-    }
-
-    const wasDragged = !isNew && (el.style.left || el.style.right || el.style.bottom);
-    el.className = 'info-overlay pos-' + pos + (collapsed ? ' collapsed' : '');
-
-    if (isNew) {
-        try {
-            const savedPos = JSON.parse(localStorage.getItem('info-overlay-pos-' + id) || 'null');
-            if (savedPos && savedPos.pos != null && savedPos.h != null && savedPos.v != null) {
-                const sr = savedPos.pos.includes('right');
-                const sb = savedPos.pos.includes('bottom');
-                el.style.left   = sr ? '' : savedPos.h + 'px';
-                el.style.right  = sr ? savedPos.h + 'px' : '';
-                el.style.top    = sb ? '' : savedPos.v + 'px';
-                el.style.bottom = sb ? savedPos.v + 'px' : '';
-                el.style.transform = '';
-                el.classList.remove(...[...el.classList].filter(c => c.startsWith('pos-')));
-            } else if (savedPos && savedPos.left && savedPos.top) {
-                el.style.left = savedPos.left;
-                el.style.top  = savedPos.top;
-                el.style.right = '';
-                el.style.bottom = '';
-                el.style.transform = '';
-                el.classList.remove(...[...el.classList].filter(c => c.startsWith('pos-')));
-                requestAnimationFrame(() => {
-                    const parent = el.offsetParent || document.body;
-                    const pw = parent.clientWidth;
-                    const ph = parent.clientHeight;
-                    const ew = el.offsetWidth  || 40;
-                    const eh = el.offsetHeight || 40;
-                    let left = parseFloat(el.style.left) || 0;
-                    let top  = parseFloat(el.style.top)  || 0;
-                    left = Math.max(40 - ew, Math.min(left, pw - 40));
-                    top  = Math.max(0,       Math.min(top,  ph - 40));
-                    el.style.left = left + 'px';
-                    el.style.top  = top  + 'px';
-                });
-            } else if (pos.includes('bottom')) {
-                const sliderOv = document.getElementById('slider-overlay');
-                if (sliderOv && !sliderOv.classList.contains('hidden')) {
-                    const sliderBottom = parseFloat(sliderOv.style.bottom) || 56;
-                    el.style.bottom = (sliderBottom + sliderOv.offsetHeight + 8) + 'px';
-                    el.style.top = '';
-                }
-            }
-        } catch {}
-    }
-    if (wasDragged) el.classList.remove(...[...el.classList].filter(c => c.startsWith('pos-')));
-
-    el.style.opacity = state.displayParams.overlayOpacity;
-    activeInfoOverlays[id] = { content, el, contentEl, collapsed, stepDefined, keep, pos };
-    updateInfoOverlays();
+function _disposeItem(item) {
+    _unmountFree(item);
+    _unmountSection(item);
+    delete infoState.items[item.id];
 }
 
 export function removeInfoOverlay(id) {
-    const ov = activeInfoOverlays[id];
-    if (ov && ov.el) ov.el.remove();
-    delete activeInfoOverlays[id];
+    const item = infoState.items[id];
+    if (!item) return;
+    _disposeItem(item);
+    _scheduleRoute();
 }
 
 export function removeAllInfoOverlays() {
-    for (const id of Object.keys(activeInfoOverlays)) removeInfoOverlay(id);
+    for (const id of Object.keys(infoState.items)) _disposeItem(infoState.items[id]);
+    if (infoState.drawerPanel) { infoState.drawerPanel.destroy(); infoState.drawerPanel = null; infoState.drawerBodyEl = null; }
+}
+
+/** Master toggle: 'free' | 'drawer' | null (auto). Clears per-item overrides. */
+export function setInfoDrawerMode(mode) {
+    infoState.forcedMode = (mode === 'free' || mode === 'drawer') ? mode : null;
+    for (const id of Object.keys(infoState.items)) {
+        try { localStorage.removeItem('info-item-placement-' + id); } catch {}
+    }
+    _route();
 }
 
 export function getAllElements(scene, stepIdx) {
@@ -899,7 +1125,14 @@ export function setupSettingsPanel() {
                 }
             } else if (param === 'captionScale') {
                 const cap = document.getElementById('step-caption');
-                if (cap) cap.style.transform = 'translateX(-50%) scale(' + val + ')';
+                if (cap) {
+                    // Preserve a dragged caption's anchor/origin; only re-center it
+                    // when it hasn't been dragged (still at left:50%).
+                    const dragged = cap.style.left && cap.style.left.endsWith('px');
+                    cap.style.transformOrigin = dragged ? 'left bottom' : '';
+                    cap.style.transform = (dragged ? '' : 'translateX(-50%) ') + 'scale(' + val + ')';
+                    clampCaptionIntoView(cap); // resizing may push it off-screen
+                }
             } else if (param === 'overlayOpacity') {
                 const cap = document.getElementById('step-caption');
                 if (cap && !cap.classList.contains('hidden')) cap.style.opacity = val;
@@ -907,10 +1140,18 @@ export function setupSettingsPanel() {
                 if (sliderOv) sliderOv.style.opacity = val;
                 const legend = document.getElementById('legend');
                 if (legend) legend.style.opacity = val;
-                document.querySelectorAll('.info-overlay').forEach(el => { el.style.opacity = val; });
+                document.querySelectorAll('#info-overlays .dockable-panel').forEach(el => { el.style.opacity = val; });
             }
         });
     });
+
+    const declutterMode = document.getElementById('declutter-mode');
+    if (declutterMode) {
+        declutterMode.value = state.displayParams.labelDeclutterMode;
+        declutterMode.addEventListener('change', () => {
+            state.displayParams.labelDeclutterMode = declutterMode.value;
+        });
+    }
 }
 
 export function initLightControls() {
@@ -974,11 +1215,42 @@ function _applyBottomPos(el, bottom, left) {
     el.style.right  = 'auto';
     el.style.width  = '';
     const scale = 'scale(' + (state.displayParams.captionScale || 1) + ')';
-    el.style.transform = (left && left.endsWith('px')) ? scale : ('translateX(-50%) ' + scale);
+    if (left && left.endsWith('px')) {
+        // Dragged: anchor the scale to the bottom-left corner so left/bottom and
+        // the scaled box agree (no drift when zoomed).
+        el.style.transform = scale;
+        el.style.transformOrigin = 'left bottom';
+    } else {
+        el.style.transform = 'translateX(-50%) ' + scale;
+        el.style.transformOrigin = '';
+    }
 }
 
 function _defaultCaptionPos(el) {
     _applyBottomPos(el, '64px', '50%');
+}
+
+// Nudge a dragged caption back inside the viewport (e.g. after it shrinks and
+// its bottom-left anchor pulls it off-screen). No-op for a centered caption.
+export function clampCaptionIntoView(el) {
+    el = el || document.getElementById('step-caption');
+    if (!el || el.classList.contains('hidden')) return;
+    if (!el.style.left || !el.style.left.endsWith('px')) return; // only dragged (px) mode
+    const parent = el.offsetParent || document.body;
+    const p = parent.getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    const m = 8;
+    let left = parseFloat(el.style.left) || 0;
+    let bottom = parseFloat(el.style.bottom) || 0;
+    // Horizontal — keep the left edge visible first (so text starts on-screen
+    // even if the caption is wider than the viewport).
+    if (r.left < p.left + m) left += (p.left + m) - r.left;
+    else if (r.right > p.right - m) left -= r.right - (p.right - m);
+    // Vertical — bottom is the distance from the parent's bottom edge.
+    if (r.bottom > p.bottom - m) bottom += r.bottom - (p.bottom - m);
+    else if (r.top < p.top + m) bottom -= (p.top + m) - r.top;
+    el.style.left = left + 'px';
+    el.style.bottom = Math.max(0, bottom) + 'px';
 }
 
 export function resetCaptionPosition(el) {
@@ -1005,6 +1277,10 @@ export function setupCaptionDrag() {
     const el = document.getElementById('step-caption');
     if (!el) return;
     let dragging = false, startX = 0, startY = 0, startLeft = 0, startBottom = 0;
+    // Captured at mousedown so the move handler can keep the caption fully inside
+    // the parent on every edge (like the dockable info panels), not just off the bottom.
+    let parentW = 0, parentH = 0, dragW = 0, dragH = 0;
+    const EDGE_MARGIN = 8; // matches clampCaptionIntoView so drop doesn't jump
 
     el.addEventListener('mousedown', (e) => {
         if (e.target.closest('.ai-ask-btn')) return;
@@ -1014,26 +1290,57 @@ export function setupCaptionDrag() {
         const parent = el.offsetParent || document.body;
         const parentRect = parent.getBoundingClientRect();
         const elRect = el.getBoundingClientRect();
+        const s = state.displayParams.captionScale || 1;
         startLeft   = elRect.left - parentRect.left;
         startBottom = parentRect.bottom - elRect.bottom;
-        el.style.width     = elRect.width + 'px';
+        // Freeze the width at its current rendered value so the text doesn't
+        // re-wrap when we switch from centered (only 50% available width) to px
+        // positioning. offsetWidth is the unscaled border box (transform-
+        // independent); convert to the value style.width expects for this box-
+        // sizing so the content width is preserved exactly.
+        const cs = getComputedStyle(el);
+        let frozenW = el.offsetWidth;
+        if (cs.boxSizing !== 'border-box') {
+            frozenW -= parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight)
+                     + parseFloat(cs.borderLeftWidth) + parseFloat(cs.borderRightWidth);
+        }
+        // Anchor the scale to the bottom-left corner so left/bottom and the scaled
+        // box agree (no drift when zoomed).
+        el.style.transformOrigin = 'left bottom';
+        el.style.width     = frozenW + 'px';
         el.style.left      = startLeft + 'px';
         el.style.bottom    = startBottom + 'px';
         el.style.top       = 'auto';
         el.style.right     = 'auto';
-        el.style.transform = 'scale(' + state.displayParams.captionScale + ')';
+        el.style.transform = 'scale(' + s + ')';
+        // Freeze the geometry the move handler clamps against. The scaled box grows
+        // up/right from the bottom-left anchor, so its rendered width/height cap how
+        // far left/bottom may travel before an edge escapes the parent.
+        parentW = parentRect.width;
+        parentH = parentRect.height;
+        const box = el.getBoundingClientRect();
+        dragW = box.width;
+        dragH = box.height;
         e.preventDefault();
     });
 
     document.addEventListener('mousemove', (e) => {
         if (!dragging) return;
-        el.style.left   = (startLeft   + (e.clientX - startX)) + 'px';
-        el.style.bottom = Math.max(0, startBottom - (e.clientY - startY)) + 'px';
+        const m = EDGE_MARGIN;
+        let left   = startLeft   + (e.clientX - startX);
+        let bottom = startBottom - (e.clientY - startY);
+        // Clamp to all four edges. hi = max(m, ...) keeps the left/bottom edge
+        // visible even if the caption is larger than the parent in that axis.
+        left   = Math.max(m, Math.min(left,   Math.max(m, parentW - dragW - m)));
+        bottom = Math.max(m, Math.min(bottom, Math.max(m, parentH - dragH - m)));
+        el.style.left   = left + 'px';
+        el.style.bottom = bottom + 'px';
     });
 
     document.addEventListener('mouseup', () => {
         if (!dragging) return;
         dragging = false;
+        clampCaptionIntoView(el);
         try {
             localStorage.setItem('caption-pos', JSON.stringify({
                 bottom: el.style.bottom,
@@ -1043,7 +1350,48 @@ export function setupCaptionDrag() {
         } catch {}
     });
 
+    window.addEventListener('resize', () => clampCaptionIntoView(el));
     resetCaptionPosition(el);
+    setupOverlayHoverBoost();
+}
+
+// On hover, brighten the caption / overlays to 2x their resting opacity (capped
+// at full). Hovering or clicking an info panel also raises it above the others.
+// Delegated so dynamically-created info panels are covered too.
+let _overlayHoverWired = false;
+let _overlayZ = 10;
+function bringOverlayToFront(panel) {
+    panel.style.zIndex = String(++_overlayZ); // relative to the #info-overlays stacking context
+}
+function setupOverlayHoverBoost() {
+    if (_overlayHoverWired) return;
+    _overlayHoverWired = true;
+    const SEL = '#step-caption, #scene-description, #slider-overlay, #legend, #info-overlays .dockable-panel';
+    document.addEventListener('mouseover', (e) => {
+        const t = e.target.closest && e.target.closest(SEL);
+        if (!t) return;
+        const panel = e.target.closest('#info-overlays .dockable-panel');
+        if (panel) bringOverlayToFront(panel);
+        if (t._hoverBoosted) return;
+        t._hoverBoosted = true;
+        t._preHoverOp = t.style.opacity;
+        const base = parseFloat(getComputedStyle(t).opacity);
+        t._boostedOp = String(Math.min(1, (isNaN(base) ? 1 : base) * 2));
+        t.style.opacity = t._boostedOp;
+    });
+    document.addEventListener('mousedown', (e) => {
+        const panel = e.target.closest && e.target.closest('#info-overlays .dockable-panel');
+        if (panel) bringOverlayToFront(panel);
+    }, true);
+    document.addEventListener('mouseout', (e) => {
+        const t = e.target.closest && e.target.closest(SEL);
+        if (!t || !t._hoverBoosted) return;
+        if (e.relatedTarget && t.contains(e.relatedTarget)) return; // still inside
+        t._hoverBoosted = false;
+        // Only undo our boost if nothing else changed the opacity meanwhile (e.g.
+        // the overlayOpacity setting) — otherwise keep the newer value.
+        if (t.style.opacity === t._boostedOp) t.style.opacity = t._preHoverOp || '';
+    });
 }
 
 // ----- Scene Description Drag -----

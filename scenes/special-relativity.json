@@ -609,8 +609,8 @@
               "id": "s2_move_body_bottom",
               "type": "animated_line",
               "points": [
-                ["-2 + v*mod(t, (2*floor(4*sqrt(1-v^2)/max(v, 0.05))/sqrt(1-v^2)))", "0", "0"],
-                ["v*mod(t, (2*floor(4*sqrt(1-v^2)/max(v, 0.05))/sqrt(1-v^2)))", "0", "0"]
+                ["-2 + v*mod(t, (2*max(1, floor(4*sqrt(1-v^2)/max(v, 0.05)))/max(sqrt(1-v^2), 0.000001)))", "0", "0"],
+                ["v*mod(t, (2*max(1, floor(4*sqrt(1-v^2)/max(v, 0.05)))/max(sqrt(1-v^2), 0.000001)))", "0", "0"]
               ],
               "color": "#4da6ff",
               "width": 4,
@@ -620,8 +620,8 @@
               "id": "s2_move_body_top",
               "type": "animated_line",
               "points": [
-                ["-2 + v*mod(t, (2*floor(4*sqrt(1-v^2)/max(v, 0.05))/sqrt(1-v^2)))", "2", "0"],
-                ["v*mod(t, (2*floor(4*sqrt(1-v^2)/max(v, 0.05))/sqrt(1-v^2)))", "2", "0"]
+                ["-2 + v*mod(t, (2*max(1, floor(4*sqrt(1-v^2)/max(v, 0.05)))/max(sqrt(1-v^2), 0.000001)))", "2", "0"],
+                ["v*mod(t, (2*max(1, floor(4*sqrt(1-v^2)/max(v, 0.05)))/max(sqrt(1-v^2), 0.000001)))", "2", "0"]
               ],
               "color": "#4da6ff",
               "width": 4,
@@ -630,7 +630,7 @@
             {
               "id": "s2_move_photon",
               "type": "animated_point",
-              "expr": ["-1 + v*mod(t, (2*floor(4*sqrt(1-v^2)/max(v, 0.05))/sqrt(1-v^2)))", "2*(1 - abs(mod(mod(t, (2*floor(4*sqrt(1-v^2)/max(v, 0.05))/sqrt(1-v^2)))*sqrt(1-v^2)/2,2)-1))", "0"],
+              "expr": ["-1 + v*mod(t, (2*max(1, floor(4*sqrt(1-v^2)/max(v, 0.05)))/max(sqrt(1-v^2), 0.000001)))", "2*(1 - abs(mod(mod(t, (2*max(1, floor(4*sqrt(1-v^2)/max(v, 0.05)))/max(sqrt(1-v^2), 0.000001)))*sqrt(1-v^2)/2,2)-1))", "0"],
               "color": "#ffaa33",
               "size": 3,
               "legendGroup": "photon"
@@ -639,8 +639,8 @@
               "id": "s2_move_diag_path",
               "type": "animated_line",
               "points": [
-                ["-1 + v*(2*floor(mod(t, (2*floor(4*sqrt(1-v^2)/max(v, 0.05))/sqrt(1-v^2)))*sqrt(1-v^2)/2)/sqrt(1-v^2))", "2*mod(floor(mod(t, (2*floor(4*sqrt(1-v^2)/max(v, 0.05))/sqrt(1-v^2)))*sqrt(1-v^2)/2),2)", "0"],
-                ["-1 + v*mod(t, (2*floor(4*sqrt(1-v^2)/max(v, 0.05))/sqrt(1-v^2)))", "2*(1 - abs(mod(mod(t, (2*floor(4*sqrt(1-v^2)/max(v, 0.05))/sqrt(1-v^2)))*sqrt(1-v^2)/2,2)-1))", "0"]
+                ["-1 + v*(2*floor(mod(t, (2*max(1, floor(4*sqrt(1-v^2)/max(v, 0.05)))/max(sqrt(1-v^2), 0.000001)))*sqrt(1-v^2)/2)/max(sqrt(1-v^2), 0.000001))", "2*mod(floor(mod(t, (2*max(1, floor(4*sqrt(1-v^2)/max(v, 0.05)))/max(sqrt(1-v^2), 0.000001)))*sqrt(1-v^2)/2),2)", "0"],
+                ["-1 + v*mod(t, (2*max(1, floor(4*sqrt(1-v^2)/max(v, 0.05)))/max(sqrt(1-v^2), 0.000001)))", "2*(1 - abs(mod(mod(t, (2*max(1, floor(4*sqrt(1-v^2)/max(v, 0.05)))/max(sqrt(1-v^2), 0.000001)))*sqrt(1-v^2)/2,2)-1))", "0"]
               ],
               "color": "#ffaa33",
               "width": 2,
@@ -650,9 +650,9 @@
             {
               "id": "s2_move_label_moved",
               "type": "text",
-              "textExpr": "floor(mod(t, (2*floor(4*sqrt(1-v^2)/max(v, 0.05))/sqrt(1-v^2)))*sqrt(1-v^2)/2)",
+              "textExpr": "floor(mod(t, (2*max(1, floor(4*sqrt(1-v^2)/max(v, 0.05)))/max(sqrt(1-v^2), 0.000001)))*sqrt(1-v^2)/2)",
               "textFormat": "$\\text{ticks: }%d$",
-              "positionExpr": ["-1 + v*mod(t, (2*floor(4*sqrt(1-v^2)/max(v, 0.05))/sqrt(1-v^2)))", "2.9", "0"],
+              "positionExpr": ["-1 + v*mod(t, (2*max(1, floor(4*sqrt(1-v^2)/max(v, 0.05)))/max(sqrt(1-v^2), 0.000001)))", "2.9", "0"],
               "color": "#4da6ff"
             },
             {
@@ -660,6 +660,7 @@
               "type": "line",
               "points": [
                 [2, 0, 0],
+                [3.2, 1, 0],
                 [4.4, 2, 0]
               ],
               "color": "#ffaa33",
@@ -671,6 +672,7 @@
               "type": "line",
               "points": [
                 [2, 0, 0],
+                [2, 1, 0],
                 [2, 2, 0]
               ],
               "color": "#ff5566",
@@ -684,20 +686,21 @@
                 [2, 0, 0],
                 [4.4, 0, 0]
               ],
-              "color": "#4da6ff",
-              "width": 3,
-              "label": "$v\\,\\Delta t$"
+              "color": "#aabbcc",
+              "width": 1.5,
+              "opacity": 0.4
             },
             {
               "id": "s2_tri_hyp_line",
               "type": "line",
               "points": [
                 [2, 2, 0],
+                [3.2, 2, 0],
                 [4.4, 2, 0]
               ],
-              "color": "#aabbcc",
-              "width": 1.5,
-              "opacity": 0.4
+              "color": "#4da6ff",
+              "width": 3,
+              "label": "$v\\,\\Delta t$"
             },
             {
               "id": "s2_tri_label",
@@ -709,7 +712,7 @@
             {
               "id": "s2_rest_tick_lap",
               "type": "text",
-              "textExpr": "floor(mod(t, (2*floor(4*sqrt(1-v^2)/max(v, 0.05))/sqrt(1-v^2)))/2)",
+              "textExpr": "floor(mod(t, (2*max(1, floor(4*sqrt(1-v^2)/max(v, 0.05)))/max(sqrt(1-v^2), 0.000001)))/2)",
               "textFormat": "$\\text{ticks: }%d$",
               "position": [-4, 2.9, 0],
               "color": "#aabbcc"
@@ -723,15 +726,22 @@
               ],
               "color": "#aabbcc",
               "width": 1.5,
-              "opacity": 0.35,
-              "label": "start"
+              "opacity": 0.35
+            },
+            {
+              "id": "s2_race_start_lbl",
+              "type": "text",
+              "text": "start",
+              "position": [-1, 3.8, 0],
+              "color": "#aabbcc",
+              "size": 12
             },
             {
               "id": "s2_race_finish",
               "type": "animated_line",
               "points": [
-                ["-1 + v*(2*floor(4*sqrt(1-v^2)/max(v, 0.05))/sqrt(1-v^2))", "-0.4", "0"],
-                ["-1 + v*(2*floor(4*sqrt(1-v^2)/max(v, 0.05))/sqrt(1-v^2))", "2.4", "0"]
+                ["-1 + v*(2*max(1, floor(4*sqrt(1-v^2)/max(v, 0.05)))/max(sqrt(1-v^2), 0.000001))", "-0.4", "0"],
+                ["-1 + v*(2*max(1, floor(4*sqrt(1-v^2)/max(v, 0.05)))/max(sqrt(1-v^2), 0.000001))", "2.4", "0"]
               ],
               "color": "#aabbcc",
               "width": 1.5,
@@ -741,14 +751,14 @@
               "id": "s2_race_finish_lbl",
               "type": "text",
               "text": "🏁 lap end",
-              "positionExpr": ["-1 + v*(2*floor(4*sqrt(1-v^2)/max(v, 0.05))/sqrt(1-v^2))", "2.7", "0"],
+              "positionExpr": ["-1 + v*(2*max(1, floor(4*sqrt(1-v^2)/max(v, 0.05)))/max(sqrt(1-v^2), 0.000001))", "3.8", "0"],
               "color": "#aabbcc",
               "size": 12
             },
             {
               "id": "s2_race_lap",
               "type": "text",
-              "textExpr": "floor(t/((2*floor(4*sqrt(1-v^2)/max(v, 0.05))/sqrt(1-v^2)))) + 1",
+              "textExpr": "floor(t/((2*max(1, floor(4*sqrt(1-v^2)/max(v, 0.05)))/max(sqrt(1-v^2), 0.000001)))) + 1",
               "textFormat": "$\\text{lap }%d$",
               "position": [2.5, -1.6, 0],
               "color": "#aabbcc",
@@ -757,10 +767,30 @@
             {
               "id": "s2_rest_photon_lap",
               "type": "animated_point",
-              "expr": ["-4", "2*(1 - abs(mod(mod(t, (2*floor(4*sqrt(1-v^2)/max(v, 0.05))/sqrt(1-v^2)))/2,2)-1))", "0"],
+              "expr": ["-4", "2*(1 - abs(mod(mod(t, (2*max(1, floor(4*sqrt(1-v^2)/max(v, 0.05)))/max(sqrt(1-v^2), 0.000001)))/2,2)-1))", "0"],
               "color": "#ffaa33",
               "size": 3,
               "legendGroup": "photon"
+            },
+            {
+              "id": "s2_lightspeed_note",
+              "type": "text",
+              "text": "⚡ At $v=c$: all the photon's speed is horizontal — none left to climb.",
+              "position": [0, 6.4, 0],
+              "color": "#ffaa33",
+              "size": 13,
+              "align": "center",
+              "visibleExpr": "v >= 0.995"
+            },
+            {
+              "id": "s2_lightspeed_note2",
+              "type": "text",
+              "text": "It never reaches the top mirror, so the moving clock freezes: $\\gamma=\\dfrac{1}{\\sqrt{1-1^2}}=\\infty$. Time stops.",
+              "position": [0, 5.6, 0],
+              "color": "#ffaa33",
+              "size": 13,
+              "align": "center",
+              "visibleExpr": "v >= 0.995"
             }
           ],
           "remove": [
@@ -774,7 +804,7 @@
             {"id": "s2_reveal_info", "content": "### Slower!\nThe moving photon rides a **diagonal**. Same speed $c$, longer path $\\Rightarrow$ **more time per tick**.\n\nRight triangle for one tick — with $h$ the **mirror gap**, i.e. one rest tick as a distance, $h = c\\,T_0$:\n$$(\\Delta t)^2 = h^2 + (v\\,\\Delta t)^2 = (c\\,T_0)^2 + (v\\,\\Delta t)^2$$\n\nSolve: $\\;\\Delta t = \\dfrac{h}{\\sqrt{1 - v^2}}$", "position": "top-right"}
           ],
           "sliders": [
-            {"id": "v", "label": "clock speed $v\\;(c=1)$", "min": 0, "max": 0.95, "step": 0.01, "default": 0.6, "animate": true, "animateMode": "loop", "duration": 4000, "autoplay": false},
+            {"id": "v", "label": "clock speed $v\\;(c=1)$", "min": 0, "max": 1.0, "step": 0.01, "default": 0.6, "animate": true, "animateMode": "loop", "duration": 4000, "autoplay": false},
             {"id": "T4", "label": "$t$ (time)", "min": 0, "max": 28, "step": 0.05, "default": 0, "animate": true, "animateMode": "loop", "autoplay": true, "duration": 16000}
           ],
           "virtualTime": {"expr": "T4"}
@@ -786,7 +816,7 @@
           "duration": 5000,
           "virtualTime": {"expr": "T5"},
           "sliders": [
-            {"id": "v", "label": "clock speed $v\\;(c=1)$", "min": 0, "max": 0.95, "step": 0.01, "default": 0.6, "animate": true, "animateMode": "loop", "duration": 4000, "autoplay": false},
+            {"id": "v", "label": "clock speed $v\\;(c=1)$", "min": 0, "max": 1.0, "step": 0.01, "default": 0.6, "animate": true, "animateMode": "loop", "duration": 4000, "autoplay": false},
             {"id": "T5", "label": "$t$ (grow the flash)", "min": 0, "max": 8, "step": 0.02, "default": 0, "animate": true, "animateMode": "loop", "autoplay": true, "duration": 14000}
           ],
           "remove": [
@@ -855,7 +885,7 @@
               "type": "animated_line",
               "points": [
                 ["-1", "0", "0"],
-                ["-1 + v*min(T5, 2/sqrt(1-v^2))", "2*(1 - abs(mod(min(T5, 2/sqrt(1-v^2))*sqrt(1-v^2)/2, 2) - 1))", "0"]
+                ["-1 + v*min(T5, 2/max(sqrt(1-v^2), 0.000001))", "2*(1 - abs(mod(min(T5, 2/max(sqrt(1-v^2), 0.000001))*sqrt(1-v^2)/2, 2) - 1))", "0"]
               ],
               "color": "#ffaa33",
               "width": 2.5,
@@ -877,7 +907,7 @@
               "type": "animated_line",
               "points": [
                 ["-1", "2", "0"],
-                ["-1 + v*min(T5, 2/sqrt(1-v^2))", "2", "0"]
+                ["-1 + v*min(T5, 2/max(sqrt(1-v^2), 0.000001))", "2", "0"]
               ],
               "color": "#4da6ff",
               "width": 2.5,
@@ -897,22 +927,22 @@
             {
               "id": "s2w_strike_move",
               "type": "animated_point",
-              "expr": ["-1 + v*(2/sqrt(1-v^2))", "2", "0"],
+              "expr": ["-1 + v*(2/max(sqrt(1-v^2), 0.000001))", "2", "0"],
               "color": "#ffaa33",
               "size": 2,
               "glow": true,
               "opacity": 0,
-              "sizeExpr": "2 + 5*exp(-8*(T5 - 2/sqrt(1-v^2))^2)",
-              "opacityExpr": "0.95*exp(-8*(T5 - 2/sqrt(1-v^2))^2)"
+              "sizeExpr": "2 + 5*exp(-8*(T5 - 2/max(sqrt(1-v^2), 0.000001))^2)",
+              "opacityExpr": "0.95*exp(-8*(T5 - 2/max(sqrt(1-v^2), 0.000001))^2)"
             },
             {
               "id": "s2w_strike_move_mark",
               "type": "animated_point",
-              "expr": ["-1 + v*(2/sqrt(1-v^2))", "2", "0"],
+              "expr": ["-1 + v*(2/max(sqrt(1-v^2), 0.000001))", "2", "0"],
               "color": "#4da6ff",
               "size": 2,
-              "visibleExpr": "T5 >= 2/sqrt(1-v^2)",
-              "labelExpr": "concat(\"strike at t = \", toFixed(2/sqrt(1-v^2), 2), \" = 2γ\")"
+              "visibleExpr": "T5 >= 2/max(sqrt(1-v^2), 0.000001)",
+              "labelExpr": "concat(\"strike at t = \", toFixed(2/max(sqrt(1-v^2), 0.000001), 2), \" = 2γ\")"
             },
             {
               "id": "s2w_key_planted",
@@ -981,7 +1011,7 @@
             {
               "id": "s2_inset_marker",
               "type": "animated_point",
-              "expr": ["-7 + 4*v", "-6 + (1/sqrt(1-v^2))", "0"],
+              "expr": ["-7 + 4*min(v, 0.95)", "-6 + (1/sqrt(1-min(v, 0.95)^2))", "0"],
               "color": "#ff5566",
               "size": 2,
               "legendGroup": "$\\gamma(v)$"
@@ -1025,11 +1055,11 @@
             {"type": "slider"}
           ],
           "info": [
-            {"id": "s2_gamma_info", "content": "### Where $\\gamma$ comes from\nThe triangle, written in clock readings ($h = c\\,T_0$):\n\n$$(c\\,t)^2 = (c\\,T_0)^2 + (v\\,t)^2 \\;\\Rightarrow\\; t = \\gamma\\,T_0, \\qquad \\gamma = \\dfrac{1}{\\sqrt{1-v^2}}$$\n\nAt $v = {{toFixed(v,2)}}$: $\\;\\gamma = {{toFixed(1/sqrt(1-v^2),2)}}$ — not a postulate, just the Pythagorean sum solved for $t$.\n\nMoving clock tick $= \\gamma \\times$ rest tick.", "position": "top-left"},
+            {"id": "s2_gamma_info", "content": "### Where $\\gamma$ comes from\nThe triangle, written in clock readings ($h = c\\,T_0$):\n\n$$(c\\,t)^2 = (c\\,T_0)^2 + (v\\,t)^2 \\;\\Rightarrow\\; t = \\gamma\\,T_0, \\qquad \\gamma = \\dfrac{1}{\\sqrt{1-v^2}}$$\n\nAt $v = {{toFixed(v,2)}}$: $\\;\\gamma = {{toFixed(1/max(sqrt(1-v^2), 0.000001),2)}}$ — not a postulate, just the Pythagorean sum solved for $t$.\n\nMoving clock tick $= \\gamma \\times$ rest tick. *(As $v \\to 1$ the readout is capped near lightspeed; truly $\\gamma \\to \\infty$.)*", "position": "top-left"},
             {"id": "s2_reality_info", "content": "### Reality checks\n**Muons:** born ~15 km up, would fall only ~660 m before decaying — yet $\\gamma \\approx 5\\text{–}10$ lets them reach the ground.\n\n**GPS:** satellite clocks corrected by **~38 μs/day** (net), or positions drift **kilometers** off within a day.", "position": "bottom-right"}
           ],
           "sliders": [
-            {"id": "v", "label": "clock speed $v\\;(c=1)$", "min": 0, "max": 0.95, "step": 0.01, "default": 0.6, "animate": true, "animateMode": "loop", "duration": 4000, "autoplay": false},
+            {"id": "v", "label": "clock speed $v\\;(c=1)$", "min": 0, "max": 1.0, "step": 0.01, "default": 0.6, "animate": true, "animateMode": "loop", "duration": 4000, "autoplay": false},
             {"id": "T6", "label": "$t$ (time)", "min": 0, "max": 28, "step": 0.05, "default": 0, "animate": true, "animateMode": "loop", "autoplay": true, "duration": 16000}
           ],
           "virtualTime": {"expr": "T6"}
@@ -2151,8 +2181,14 @@
                 [0, 4, 0]
               ],
               "color": "#aabbcc",
-              "width": 3,
-              "label": "stay-home: $\\tau = 8$"
+              "width": 3
+            },
+            {
+              "id": "s3_g_home_lbl",
+              "type": "text",
+              "text": "stay-home: $\\tau = 8$",
+              "position": [-2.7, 3.2, 0],
+              "color": "#aabbcc"
             },
             {
               "id": "s3_g_worldline",
@@ -2938,7 +2974,7 @@
               "type": "text",
               "size": 13,
               "color": "#ffaa33",
-              "position": [-3, 6.3, 0],
+              "position": [0, 6.3, 0],
               "text": "⚡ $A$ is now light itself: **every** observer measures it at exactly $c$ — and it has no clock, no frame, no point of view.",
               "visibleExpr": "(abs(vA) >= 0.999) and (abs(vB) < 0.999)"
             },
@@ -2947,7 +2983,7 @@
               "type": "text",
               "size": 13,
               "color": "#ffaa33",
-              "position": [-3, 6.3, 0],
+              "position": [0, 6.3, 0],
               "text": "⚡ $B$ is now light itself: **every** observer measures it at exactly $c$ — and it has no clock, no frame, no point of view.",
               "visibleExpr": "(abs(vB) >= 0.999) and (abs(vA) < 0.999)"
             },
@@ -2956,7 +2992,7 @@
               "type": "text",
               "size": 13,
               "color": "#ff5566",
-              "position": [-3, 6.3, 0],
+              "position": [0, 6.3, 0],
               "text": "$\\tfrac{0}{0}$ — you've asked one photon to measure another. **No rest frame exists at $c$**: the question dissolves. (Einstein's teenage paradox — its resolution was this theory.)",
               "visibleExpr": "(abs(vA) >= 0.999) and (abs(vB) >= 0.999)"
             }

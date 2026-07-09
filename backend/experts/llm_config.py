@@ -52,5 +52,28 @@ def configure_dspy(force: bool = False, **kwargs) -> dspy.LM:
     return lm
 
 
+def _has_credentials() -> bool:
+    """Whether a usable API key exists for the configured model.
+
+    A ``gemini/*`` model (the default) needs ``GEMINI_API_KEY`` / ``GOOGLE_API_KEY``;
+    without it every litellm call raises ``Missing Gemini API key`` mid-request.
+    A custom ``ALGEBENCH_LM_MODEL`` (e.g. ``openai/*``) is trusted to carry its own
+    provider auth, so it is not gated here.
+    """
+    if LM_MODEL.startswith("gemini/"):
+        return bool(os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY"))
+    return True
+
+
 def is_configured() -> bool:
-    return _configured
+    """True when DSPy is installed AND credentials for the model are present.
+
+    For the default ``gemini/*`` model that means a ``GEMINI_API_KEY`` /
+    ``GOOGLE_API_KEY`` (see :func:`_has_credentials`); a custom non-Gemini
+    ``ALGEBENCH_LM_MODEL`` is trusted to carry its own provider auth and is not
+    validated here. Gating on the key (not just ``dspy.configure`` having run) lets
+    callers — domain rescue, ``describe_terms``, ``report.py`` — cleanly *skip* LM
+    enrichment when no key is present (e.g. in CI) instead of attempting calls that
+    fail with noisy ``Missing Gemini API key`` tracebacks.
+    """
+    return _configured and _has_credentials()

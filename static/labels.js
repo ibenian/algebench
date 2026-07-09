@@ -248,6 +248,8 @@ export function colorToCSS(c) {
 
 // ----- Label system -----
 
+let _labelSeq = 0; // monotonic; later = appended later = painted on top
+
 export function addLabel3D(text, dataPos, color, opts) {
     if (typeof opts === 'string') opts = { cssClass: opts };
     opts = opts || {};
@@ -258,7 +260,17 @@ export function addLabel3D(text, dataPos, color, opts) {
     if (color) el.style.color = colorToCSS(color);
     container.appendChild(el);
     const align = opts.align || 'center';
-    const entry = { el, dataPos: dataPos.slice(), screenX: null, screenY: null, forceHidden: false, align };
+    const entry = {
+        el, dataPos: dataPos.slice(), screenX: null, screenY: null, forceHidden: false, align,
+        boxW: null, boxH: null, // cached DOM size (measured lazily)
+        boxScale: null,       // labelScale the cached size was measured at
+        offsetY: 0, targetOffsetY: 0, // vertical de-occlusion offset (position mode)
+        depth: 0,             // world-space distance from the camera (smaller = nearer)
+        dim: 1, targetDim: 1, // applied / target brightness (shade mode)
+        seq: _labelSeq++,     // paint order; higher = on top (depth tiebreak)
+        lastDataPos: null,    // dataPos from the previous frame (motion detection)
+        moveCooldown: 0,      // frames remaining while treated as "animating"
+    };
     state.labels.push(entry);
     return entry;
 }
@@ -269,18 +281,51 @@ export function clearLabels() {
     state.labels = [];
 }
 
+let _labelsContainer = null;
+let _appliedLabelScale = null;
+
 export function updateLabels() {
     if (!state.camera || !state.renderer) return;
     const w = state.renderer.domElement.clientWidth;
     const h = state.renderer.domElement.clientHeight;
+    const s = state.displayParams.labelScale;
 
+    // Drive label size through a CSS variable so the font (and KaTeX) re-render
+    // crisply at the new size, instead of resampling glyphs with transform scale.
+    if (_appliedLabelScale !== s) {
+        if (!_labelsContainer) _labelsContainer = document.getElementById('labels-container');
+        if (_labelsContainer) _labelsContainer.style.setProperty('--label-scale', s);
+        _appliedLabelScale = s;
+    }
+
+    // ----- Pass 1: project + measure (reads only) -----
     for (const lbl of state.labels) {
-        const world = dataToWorld(lbl.dataPos);
+        // A label whose data position is animating is "glued" to a moving marker
+        // (a rider dot, an animated point). Exclude it from declutter so it stays
+        // pinned to its marker instead of being nudged off it as it sweeps past
+        // other labels. Gate on dataPos (not screen position) so camera-only
+        // motion still declutters. The cooldown holds the exclusion through brief
+        // pauses (e.g. a turnaround) so a slow stretch doesn't re-engage and
+        // blip; once motion truly settles the label declutters again.
+        const dp = lbl.dataPos;
+        const dataMoved = lbl.lastDataPos && (
+            Math.abs(dp[0] - lbl.lastDataPos[0]) > 1e-6 ||
+            Math.abs(dp[1] - lbl.lastDataPos[1]) > 1e-6 ||
+            Math.abs(dp[2] - lbl.lastDataPos[2]) > 1e-6);
+        if (dataMoved) lbl.moveCooldown = 20;
+        else if (lbl.moveCooldown > 0) lbl.moveCooldown--;
+        lbl.lastDataPos = [dp[0], dp[1], dp[2]];
+        lbl.moving = lbl.moveCooldown > 0;
+
+        const world = dataToWorld(dp);
         const v = new THREE.Vector3(world[0], world[1], world[2]);
+        // World-space distance to the camera (linear; smaller = nearer). NDC z is
+        // useless here — a near-planar scene crushes every label to ~the same z.
+        lbl.depth = state.camera.position.distanceTo(v);
         const projected = v.project(state.camera);
         const targetX = (projected.x * 0.5 + 0.5) * w;
         const targetY = (-projected.y * 0.5 + 0.5) * h;
-        const visible = !lbl.forceHidden && projected.z < 1
+        lbl.visible = !lbl.forceHidden && projected.z < 1
             && targetX > -50 && targetX < w + 50
             && targetY > -50 && targetY < h + 50;
 
@@ -292,11 +337,212 @@ export function updateLabels() {
             lbl.screenX += (targetX - lbl.screenX) * alpha;
             lbl.screenY += (targetY - lbl.screenY) * alpha;
         }
-        const s = state.displayParams.labelScale;
-        const ax = lbl.align === 'right' ? '-100%' : lbl.align === 'left' ? '0%' : '-50%';
-        lbl.el.style.transform = `translate(${lbl.screenX}px, ${lbl.screenY}px) translate(${ax}, -50%)${s !== 1 ? ' scale(' + s + ')' : ''}`;
-        lbl.el.style.opacity = visible ? state.displayParams.labelOpacity : '0';
+
+        // Cache box size; re-measure when labelScale changes (the font-size, and
+        // thus offsetWidth/Height, already reflects the scale — no extra factor).
+        if (lbl.visible && (lbl.boxW == null || lbl.boxScale !== s)) {
+            lbl.boxW = lbl.el.offsetWidth;
+            lbl.boxH = lbl.el.offsetHeight;
+            lbl.boxScale = s;
+        }
     }
+
+    // ----- Pass 2: resolve declutter (each resolver no-ops unless its mode is on)
+    resolveLabelOffsets();  // position mode → targetOffsetY
+    resolveDepthDimming();  // shade mode    → targetDim
+
+    // ----- Pass 3: smooth offset + dim, then write transforms -----
+    const declutterAlpha = state.displayParams.labelDeclutterAlpha;
+    const dimAlpha = state.displayParams.labelDimAlpha;
+    for (const lbl of state.labels) {
+        lbl.offsetY += (lbl.targetOffsetY - lbl.offsetY) * declutterAlpha;
+        lbl.dim += (lbl.targetDim - lbl.dim) * dimAlpha;
+        const ax = lbl.align === 'right' ? '-100%' : lbl.align === 'left' ? '0%' : '-50%';
+        const y = lbl.screenY + lbl.offsetY;
+        lbl.el.style.transform = `translate(${lbl.screenX}px, ${y}px) translate(${ax}, -50%)`;
+        lbl.el.style.opacity = lbl.visible ? state.displayParams.labelOpacity : '0';
+        lbl.el.style.filter = lbl.dim < 0.999 ? `brightness(${lbl.dim.toFixed(3)})` : '';
+    }
+
+    // Paint order: nearest the camera draws on top. Assign z-index by depth rank
+    // using the SAME order the shade dimming uses, so the label drawn on top is
+    // exactly the one kept bright.
+    const ordered = state.labels.filter(l => l.visible).sort(frontToBack);
+    for (let i = 0; i < ordered.length; i++) {
+        const zi = ordered.length - i; // front (index 0) gets the highest z-index
+        if (ordered[i]._zi !== zi) { ordered[i].el.style.zIndex = String(zi); ordered[i]._zi = zi; }
+    }
+}
+
+// Front-to-back order for paint (z-index): nearest the camera first. On a near
+// tie the moving label wins (it sits on top of what it passes over), then the
+// later-painted label.
+function frontToBack(a, b) {
+    if (Math.abs(a.depth - b.depth) > 0.01) return a.depth - b.depth;
+    if (a.moving !== b.moving) return a.moving ? -1 : 1;
+    return b.seq - a.seq;
+}
+
+// Depth-based de-occlusion: labels never move. A label is dimmed only in
+// proportion to how far it sits *behind* the nearest label overlapping it, in
+// real world-space distance. Coplanar labels (no real depth gap) stay bright —
+// so a label that merely shares a plane with its neighbours reads normally; only
+// a label genuinely deeper than what's drawn over it recedes.
+function resolveDepthDimming() {
+    const active = [];
+    for (const lbl of state.labels) {
+        lbl.targetDim = 1;
+        if (lbl.visible && lbl.boxW != null) active.push(lbl);
+    }
+    if (state.displayParams.labelDeclutterMode !== 'shade' || active.length < 2) return;
+
+    const dimBase = state.displayParams.labelDimBase;        // slight dim any covered label gets
+    const dimFloor = state.displayParams.labelDimFloor;      // darkest a far label goes
+    const relScale = state.displayParams.labelDimDepthScale; // relative gap to reach the floor
+    const boxes = new Map(active.map(l => [l, labelBox(l)]));
+    const overlaps = (a, b) => {
+        const A = boxes.get(a), B = boxes.get(b);
+        return A.left < B.right && B.left < A.right && A.top < B.bottom && B.top < A.bottom;
+    };
+
+    for (const cluster of clusterByOverlap(active)) {
+        if (cluster.length < 2) continue;
+        for (const lbl of cluster) {
+            let covered = false, nearestDepth = Infinity;
+            for (const other of cluster) {
+                if (other === lbl || !overlaps(lbl, other)) continue;
+                // Only labels drawn in front of lbl cover it — measure the gap to
+                // the nearest of *those*, ignoring overlappers that sit behind it.
+                if (frontToBack(other, lbl) < 0) {
+                    covered = true;
+                    if (other.depth < nearestDepth) nearestDepth = other.depth;
+                }
+            }
+            // A label with anything drawn over it gets a slight baseline dim (so
+            // even coplanar overlaps read front-vs-back), then dims further toward
+            // the floor in proportion to how much *farther* it is than what covers
+            // it (relative, so it's scale-invariant).
+            if (covered) {
+                const gap = Math.max(0, lbl.depth - nearestDepth);
+                const f = Math.min(1, (gap / nearestDepth) / relScale);
+                lbl.targetDim = dimBase - f * (dimBase - dimFloor);
+            }
+        }
+    }
+}
+
+// Position-based de-occlusion: nudge overlapping static labels apart vertically.
+// Targets are a pure function of the (offset-free) anchor positions, so there is
+// no feedback into detection and therefore no oscillation.
+function resolveLabelOffsets() {
+    const active = [];
+    for (const lbl of state.labels) {
+        lbl.targetOffsetY = 0;
+        // Only labels holding still are moved. A label glued to a moving marker
+        // stays pinned and passes over static text (a purely-vertical offset
+        // can't smoothly dodge a marker crossing through it anyway). When playback
+        // pauses the marker rejoins the declutter so everything separates at rest.
+        if (lbl.visible && lbl.boxW != null && !lbl.moving) active.push(lbl);
+    }
+    if (state.displayParams.labelDeclutterMode !== 'position' || active.length < 2) return;
+
+    const gap = state.displayParams.labelDeclutterGap;
+    const maxStack = state.displayParams.labelDeclutterMaxStack;
+
+    // Cluster labels whose boxes *actually* overlap in 2D, then stack each cluster.
+    for (const cluster of clusterByOverlap(active)) {
+        if (cluster.length < 2) continue;
+        cluster.sort((a, b) => a.screenY - b.screenY);
+        resolveVerticalStack(cluster, gap, maxStack);
+    }
+}
+
+// Split a cluster (sorted top→bottom) into runs of labels that *actually* overlap
+// vertically, and resolve each independently. A pair engages only when its boxes
+// truly overlap (centre distance < mean height, gap excluded); resolution then
+// spreads them to mean height + gap. The gap between engage and resolved spacing
+// is a deadband that stops boundary jitter.
+function resolveVerticalStack(cluster, gap, maxStack) {
+    const n = cluster.length;
+    let i = 0;
+    while (i < n) {
+        let j = i;
+        while (j + 1 < n
+            && cluster[j + 1].screenY - cluster[j].screenY < (cluster[j].boxH + cluster[j + 1].boxH) / 2) {
+            j++;
+        }
+        if (j > i) resolveRun(cluster, i, j, gap, maxStack);
+        i = j + 1;
+    }
+}
+
+// Pool-Adjacent-Violators (isotonic regression) over one engaged run: minimal-
+// displacement separation to mean height + gap, with compression past maxStack.
+function resolveRun(cluster, start, end, gap, maxStack) {
+    const n = end - start + 1;
+    const S = new Array(n);
+    S[0] = 0;
+    for (let k = 1; k < n; k++) {
+        S[k] = S[k - 1] + (cluster[start + k - 1].boxH + cluster[start + k].boxH) / 2 + gap;
+    }
+    const desired = [];
+    for (let k = 0; k < n; k++) desired[k] = cluster[start + k].screenY - S[k];
+
+    const blocks = []; // { sum, size, k0 }  (mean = sum / size)
+    for (let k = 0; k < n; k++) {
+        let b = { sum: desired[k], size: 1, k0: k };
+        while (blocks.length && blocks[blocks.length - 1].sum / blocks[blocks.length - 1].size > b.sum / b.size) {
+            const prev = blocks.pop();
+            b = { sum: prev.sum + b.sum, size: prev.size + b.size, k0: prev.k0 };
+        }
+        blocks.push(b);
+    }
+
+    for (const b of blocks) {
+        const mean = b.sum / b.size;
+        const scale = Math.min(1, maxStack / Math.max(1, b.size - 1));
+        let sAvg = 0;
+        for (let k = b.k0; k < b.k0 + b.size; k++) sAvg += S[k];
+        sAvg /= b.size;
+        for (let k = b.k0; k < b.k0 + b.size; k++) {
+            const finalY = mean + sAvg + (S[k] - sAvg) * scale;
+            cluster[start + k].targetOffsetY = finalY - cluster[start + k].screenY;
+        }
+    }
+}
+
+// Screen-space box of a label, honoring its anchor alignment (labels are
+// vertically centered on screenY via the CSS translate(-50%)).
+function labelBox(l) {
+    const left = l.align === 'right' ? l.screenX - l.boxW
+        : l.align === 'left' ? l.screenX : l.screenX - l.boxW / 2;
+    return { left, right: left + l.boxW, top: l.screenY - l.boxH / 2, bottom: l.screenY + l.boxH / 2 };
+}
+
+function clusterByOverlap(labels) {
+    const n = labels.length;
+    const boxes = labels.map(labelBox);
+    const parent = labels.map((_, i) => i);
+    const find = (i) => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+    for (let i = 0; i < n; i++) {
+        const a = boxes[i];
+        for (let j = i + 1; j < n; j++) {
+            const b = boxes[j];
+            // Real box intersection on both axes — no gap padding, so labels
+            // resting a gap apart are not engaged (that gap is the deadband that
+            // keeps boundary cases from flickering in and out of a cluster).
+            if (a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom) {
+                parent[find(i)] = find(j);
+            }
+        }
+    }
+    const groups = new Map();
+    for (let i = 0; i < n; i++) {
+        const r = find(i);
+        if (!groups.has(r)) groups.set(r, []);
+        groups.get(r).push(labels[i]);
+    }
+    return [...groups.values()];
 }
 
 // ----- AI ask-button helpers -----

@@ -85,6 +85,11 @@ html, body {
     border-radius: 10px;
     padding: 8px 40px 8px 16px;
     color: rgba(200, 200, 220, 0.75);
+    /* Dark contour on the text for extra legibility over the panel. */
+    text-shadow:
+        1px 1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, -1px -1px 0 #000,
+        1px 0 0 #000, -1px 0 0 #000, 0 1px 0 #000, 0 -1px 0 #000,
+        0 0 6px rgba(0,0,0,0.9);
     font-size: 0.85em;
     line-height: 1.45;
     text-align: center;
@@ -885,17 +890,27 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     top: 0;
     left: 0;
     color: #ffffff;
-    font-size: 13px;
+    /* Real font-size scaling (crisp re-render) driven by --label-scale, rather
+       than a transform scale() that would resample the rendered glyphs. */
+    font-size: calc(13px * var(--label-scale, 1));
     pointer-events: none;
-    text-shadow: 0 0 6px rgba(0,0,0,0.9), 0 0 12px rgba(0,0,0,0.6);
+    /* Crisp dark contour around the glyphs (8-way 1px outline) plus a soft halo,
+       for legibility over other text and shapes — without altering the fill. */
+    text-shadow:
+        1px 1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, -1px -1px 0 #000,
+        1px 0 0 #000, -1px 0 0 #000, 0 1px 0 #000, 0 -1px 0 #000,
+        0 0 4px rgba(0,0,0,0.85);
     transform: translate(-50%, -50%);
     white-space: nowrap;
     transition: opacity 0.15s;
     will-change: transform, opacity;
 }
 
+/* Smooth the hover opacity boost on overlays (captions already transition). */
+#slider-overlay, #legend, #info-overlays .dockable-panel { transition: opacity 0.2s ease; }
+
 .label-3d .katex { font-size: 1em; }
-.label-axis { font-size: 18px; font-weight: bold; }
+.label-axis { font-size: calc(18px * var(--label-scale, 1)); font-weight: bold; }
 
 /* Legend */
 #legend {
@@ -1712,6 +1727,17 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 .sp-btn:hover { background: rgba(60, 60, 120, 0.8); color: #fff; }
 .sp-btn:active { background: rgba(80, 80, 160, 0.8); }
 
+.sp-toggle-row { justify-content: space-between; }
+.sp-select {
+    background: rgba(40, 40, 80, 0.6);
+    color: #c0c0e0;
+    border: 1px solid rgba(100, 100, 255, 0.25);
+    border-radius: 4px;
+    font-size: 0.8em;
+    padding: 2px 4px;
+    cursor: pointer;
+}
+.sp-select:hover { background: rgba(60, 60, 120, 0.8); color: #fff; }
 .sp-divider { height: 1px; background: rgba(100, 100, 200, 0.2); margin: 6px 0 4px; }
 .sp-section-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(140,150,220,0.7); margin-bottom: 4px; padding-left: 2px; }
 .sp-light-row { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #c0c0e0; margin-bottom: 4px; }
@@ -2601,6 +2627,11 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     border-radius: 10px;
     padding: 10px 46px 10px 18px;
     color: rgba(224, 224, 240, 0.85);
+    /* Dark contour on the text for extra legibility over the panel. */
+    text-shadow:
+        1px 1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, -1px -1px 0 #000,
+        1px 0 0 #000, -1px 0 0 #000, 0 1px 0 #000, 0 -1px 0 #000,
+        0 0 6px rgba(0,0,0,0.9);
     font-size: 0.9em;
     line-height: 1.5;
     z-index: 60;
@@ -2725,60 +2756,150 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 
 /* Info Overlays */
 #info-overlays { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 55; }
-.info-overlay {
+
+/* ---- Dockable panel (backs both free info overlays and the info drawer) ---- */
+.dockable-panel {
     position: absolute;
     display: flex;
-    align-items: flex-start;
-    gap: 8px;
+    flex-direction: column;
     background: rgba(8, 8, 28, 0.65);
     backdrop-filter: blur(12px);
     border: 1px solid rgba(100, 110, 255, 0.2);
     border-radius: 10px;
-    padding: 7px 36px 7px 8px;
     color: rgba(224, 224, 240, 0.92);
     font-size: 0.88em;
     line-height: 1.6;
     width: auto;
     max-width: min(70vw, 900px);
+    max-height: 90vh;
     pointer-events: all;
-    cursor: grab;
     user-select: none;
     overflow: hidden;
     transition: border-color 0.15s, background 0.15s;
 }
-.info-overlay:hover { border-color: rgba(130, 150, 255, 0.5); background: rgba(14, 14, 40, 0.8); }
-.info-overlay.dragging { cursor: grabbing; opacity: 0.85; }
-.info-overlay.collapsed { padding: 5px 6px; }
-.info-overlay.collapsed .info-overlay-content { display: none; }
-.info-overlay-toggle {
+/* The drawer stays a compact panel by default (an explicit resize width overrides). */
+.dockable-panel.dp-drawer { width: min(400px, 46vw); }
+.dockable-panel:hover { border-color: rgba(130, 150, 255, 0.5); background: rgba(14, 14, 40, 0.8); }
+.dockable-panel.dragging { opacity: 0.85 !important; }
+.dockable-panel.resizing { user-select: none; }
+
+.dockable-panel-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px;
+    cursor: grab;
     flex-shrink: 0;
-    width: 22px;
-    height: 22px;
+}
+.dockable-panel.dragging .dockable-panel-header { cursor: grabbing; }
+
+.dp-collapse {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
     border: none;
     background: transparent;
     color: rgba(140, 170, 255, 0.7);
-    font-size: 14px;
     cursor: pointer;
+    padding: 0;
     display: flex;
     align-items: center;
     justify-content: center;
     line-height: 1;
-    padding: 0;
-    transition: color 0.15s;
-    margin-top: 1px;
 }
-.info-overlay-toggle:hover { color: rgba(200, 220, 255, 1); }
-.info-overlay-ai-btn {
+.dp-collapse::before { content: '▾'; display: inline-block; transition: transform 0.15s; font-size: 11px; }
+.dockable-panel.collapsed .dp-collapse::before { transform: rotate(-90deg); }
+.dp-collapse:hover { color: rgba(200, 220, 255, 1); }
+
+.dp-title {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: rgba(200, 214, 255, 0.95);
+    font-size: 0.92em;
+}
+.dp-title .katex { font-size: 0.95em; color: rgba(210, 220, 255, 0.95); }
+/* Derived (implicit) titles only show when collapsed; explicit titles always show. */
+.dockable-panel:not(.collapsed):not(.title-always) .dp-title { display: none; }
+
+.dp-buttons { flex-shrink: 0; display: flex; align-items: center; gap: 4px; margin-left: auto; }
+
+.dockable-panel-body {
+    padding: 2px 10px 9px 10px;
+    overflow: auto;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+.dockable-panel.collapsed .dockable-panel-body { display: none; }
+
+/* Default corner anchors */
+.dockable-panel.pos-top-left     { top: 58px; left: 14px; }
+.dockable-panel.pos-top-right    { top: 86px; right: 14px; }
+.dockable-panel.pos-bottom-left  { bottom: 80px; left: 14px; }
+.dockable-panel.pos-bottom-right { bottom: 80px; right: 14px; }
+.dockable-panel.pos-top-center    { top: 58px; left: 50%; transform: translateX(-50%); }
+.dockable-panel.pos-bottom-center { bottom: 80px; left: 50%; transform: translateX(-50%); }
+
+/* Resize grip sits on the corner opposite the anchor */
+.dp-resize { position: absolute; width: 14px; height: 14px; z-index: 2; }
+.dp-resize::after {
+    content: '';
     position: absolute;
-    top: 50%;
-    right: 8px;
-    transform: translateY(-50%);
+    inset: 3px;
+    border-color: rgba(150, 170, 255, 0.45);
+    border-style: solid;
+    border-width: 0;
+}
+.anchor-top-left .dp-resize     { right: 0; bottom: 0; cursor: nwse-resize; }
+.anchor-top-left .dp-resize::after     { border-right-width: 2px; border-bottom-width: 2px; }
+.anchor-top-right .dp-resize    { left: 0; bottom: 0; cursor: nesw-resize; }
+.anchor-top-right .dp-resize::after    { border-left-width: 2px; border-bottom-width: 2px; }
+.anchor-bottom-left .dp-resize  { right: 0; top: 0; cursor: nesw-resize; }
+.anchor-bottom-left .dp-resize::after  { border-right-width: 2px; border-top-width: 2px; }
+.anchor-bottom-right .dp-resize { left: 0; top: 0; cursor: nwse-resize; }
+.anchor-bottom-right .dp-resize::after { border-left-width: 2px; border-top-width: 2px; }
+.anchor-top-center .dp-resize, .anchor-bottom-center .dp-resize { right: 0; bottom: 0; cursor: nwse-resize; }
+.anchor-top-center .dp-resize::after, .anchor-bottom-center .dp-resize::after { border-right-width: 2px; border-bottom-width: 2px; }
+.dockable-panel.collapsed .dp-resize { display: none; }
+
+/* Small header buttons shared by overlay + drawer (dock / pop / dissolve) */
+.info-dock-btn {
+    flex-shrink: 0;
     width: 20px;
     height: 20px;
     border: 1px solid rgba(120, 120, 255, 0.25);
     background: rgba(80, 80, 200, 0.12);
     border-radius: 50%;
-    color: rgba(140, 160, 240, 0.55);
+    color: rgba(160, 180, 240, 0.7);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    font-size: 12px;
+    line-height: 1;
+    transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+.info-dock-btn:hover {
+    background: rgba(100, 110, 240, 0.3);
+    color: #c8d4ff;
+    border-color: rgba(160, 180, 255, 0.6);
+}
+.info-dock-btn svg { pointer-events: none; display: block; }
+
+/* AI-ask button (now inline in the panel/section header) */
+.info-overlay-ai-btn {
+    position: static;
+    transform: none;
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    border: 1px solid rgba(120, 120, 255, 0.25);
+    background: rgba(80, 80, 200, 0.12);
+    border-radius: 50%;
+    color: rgba(140, 160, 240, 0.6);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -2787,7 +2908,8 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     opacity: 0;
     transition: color 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s, opacity 0.12s;
 }
-.info-overlay:hover .info-overlay-ai-btn { opacity: 1; }
+.dockable-panel:hover .info-overlay-ai-btn,
+.info-drawer-section:hover .info-overlay-ai-btn { opacity: 1; }
 .info-overlay-ai-btn:hover {
     background: rgba(100, 110, 240, 0.3);
     color: #c8d4ff;
@@ -2795,30 +2917,68 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     box-shadow: 0 0 6px rgba(120, 140, 255, 0.35);
 }
 .info-overlay-ai-btn svg { pointer-events: none; }
-.info-overlay.collapsed .info-overlay-ai-btn { display: none; }
+
+/* Info-overlay body content */
+.info-overlay { width: 100%; }
 .info-overlay-content {
-    flex: 1;
     min-width: 0;
     white-space: normal;
     overflow-wrap: anywhere;
     text-wrap: pretty;
 }
-/* Default positions — top offsets account for viewport buttons */
-.info-overlay.pos-top-left     { top: 58px; left: 14px; }
-.info-overlay.pos-top-right    { top: 86px; right: 14px; }
-.info-overlay.pos-bottom-left  { bottom: 80px; left: 14px; }
-.info-overlay.pos-bottom-right { bottom: 80px; right: 14px; }
-.info-overlay.pos-top-center   { top: 58px; left: 50%; transform: translateX(-50%); }
-.info-overlay .katex { color: rgba(210, 220, 255, 0.95); }
-.info-overlay .katex-display {
-    margin: 4px 0;
-    max-width: 100%;
+.dockable-panel .katex { color: rgba(210, 220, 255, 0.95); }
+/* Wide display math scrolls horizontally within its box instead of being clipped. */
+.dockable-panel .katex-display { margin: 4px 0; max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+.dockable-panel .katex-display > .katex { white-space: normal; max-width: 100%; }
+
+/* ---- Info drawer accordion ---- */
+.info-drawer {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    min-width: 200px;
+}
+.info-drawer-count {
+    display: inline-block;
+    min-width: 16px;
+    padding: 0 5px;
+    margin-left: 4px;
+    border-radius: 8px;
+    background: rgba(100, 110, 255, 0.25);
+    color: #d6ddff;
+    font-size: 0.82em;
+    text-align: center;
+}
+.info-drawer-section {
+    border: 1px solid rgba(100, 110, 255, 0.16);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03);
     overflow: hidden;
 }
-.info-overlay .katex-display > .katex {
-    white-space: normal;
-    max-width: 100%;
+.info-drawer-section-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 7px;
+    cursor: pointer;
 }
+.info-drawer-section-header:hover { background: rgba(120, 140, 255, 0.08); }
+.info-drawer-section-header .dp-collapse::before { content: '▾'; display: inline-block; transition: transform 0.15s; font-size: 11px; }
+.info-drawer-section.collapsed .dp-collapse::before { transform: rotate(-90deg); }
+.info-drawer-section-title {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: rgba(206, 218, 255, 0.95);
+}
+/* Derived titles duplicate the content heading — show them only when collapsed. */
+.info-drawer-section:not(.collapsed):not(.title-always) .info-drawer-section-title { display: none; }
+.info-drawer-section-buttons { flex-shrink: 0; display: flex; align-items: center; gap: 4px; margin-left: auto; }
+.info-drawer-section-body { padding: 2px 9px 8px 9px; }
+.info-drawer-section.collapsed .info-drawer-section-body { display: none; }
 
 #empty-state h2 {
     font-size: 1.6em;

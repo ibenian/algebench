@@ -946,6 +946,10 @@
           "type": "boolean",
           "description": "If true, overlay persists across steps until explicitly removed. Default: false.",
           "default": false
+        },
+        "title": {
+          "type": "string",
+          "description": "Optional short title shown in the overlay/drawer header (KaTeX supported). Falls back to the first line of `content`, ellipsized. Example: \"Bayes' rule\"."
         }
       },
       "additionalProperties": false

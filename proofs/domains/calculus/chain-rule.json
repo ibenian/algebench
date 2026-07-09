@@ -1,0 +1,140 @@
+{
+  "title": "Chain rule: d/dx sin(x²)",
+  "domain": "calculus",
+  "steps": [
+    {
+      "index": 0,
+      "operation": "Start",
+      "justification": "the starting expression",
+      "input_latex": "\\frac{d}{d x} \\sin{\\left(x^{2} \\right)}",
+      "latex": "\\htmlData{n=__deriv_1}{\\frac{d}{d x} \\htmlData{n=__sin_2}{\\sin\\left(\\htmlData{n=__power_3}{\\htmlData{n=x}{x}^{\\htmlData{n=__power_3__exp}{2}}}\\right)}}",
+      "plain": "\\frac{d}{d x} \\sin\\left(x^{2}\\right)",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": null,
+        "reason": "the given starting expression",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 1,
+      "operation": "Apply the chain rule",
+      "justification": "Apply the chain rule for differentiation, which states that $\\frac{d}{dx} f(g(x)) = f'(g(x)) \\cdot g'(x)$. Here, $f(u) = \\sin(u)$ and $g(x) = x^2$, so $f'(u) = \\cos(u)$.",
+      "input_latex": "\\cos{\\left(x^{2} \\right)} \\cdot \\frac{d}{d x} x^{2}",
+      "latex": "\\htmlData{n=__multiply_1}{\\htmlData{n=__cos_2}{\\cos\\left(\\htmlData{n=__power_3}{\\htmlData{n=x____power_3}{x}^{\\htmlData{n=__power_3__exp}{2}}}\\right)} \\htmlData{n=__multiply_1__m1}{\\cdot} \\htmlData{n=__deriv_4}{\\frac{d}{d x} \\htmlData{n=__power_5}{\\htmlData{n=x____power_5}{x}^{\\htmlData{n=__power_5__exp}{2}}}}}",
+      "plain": "\\cos\\left(x^{2}\\right) \\cdot \\frac{d}{d x} x^{2}",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 2,
+      "operation": "Differentiate $x^2$",
+      "justification": "Differentiate the inner function $x^2$ with respect to $x$ using the power rule, which states that $\\frac{d}{dx} x^n = n \\cdot x^{n-1}$. Thus, $\\frac{d}{dx} x^2 = 2 \\cdot x^{2-1} = 2x$.",
+      "input_latex": "\\cos{\\left(x^{2} \\right)} \\cdot 2 \\cdot x",
+      "latex": "\\htmlData{n=_r1___multiply_1}{\\htmlData{n=__multiply_1}{\\htmlData{n=__cos_2}{\\cos\\left(\\htmlData{n=__power_3}{\\htmlData{n=x____power_3}{x}^{\\htmlData{n=__power_3__exp}{2}}}\\right)} \\htmlData{n=__multiply_1__m1}{\\cdot} \\htmlData{n=__num_5}{2}} \\htmlData{n=_r1___multiply_1__m1}{\\cdot} \\htmlData{n=x___r1___multiply_1}{x}}",
+      "plain": "\\cos\\left(x^{2}\\right) \\cdot 2 \\cdot x",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 3,
+      "operation": "Rearrange the terms",
+      "justification": "Rearrange the terms using the commutative property of multiplication for a more conventional order.",
+      "input_latex": "2 \\cdot x \\cdot \\cos{\\left(x^{2} \\right)}",
+      "latex": "\\htmlData{n=__multiply_1}{\\htmlData{n=_r1___multiply_1}{\\htmlData{n=__num_5}{2} \\htmlData{n=_r1___multiply_1__m1}{\\cdot} \\htmlData{n=x___r1___multiply_1}{x}} \\htmlData{n=__multiply_1__m1}{\\cdot} \\htmlData{n=__cos_2}{\\cos\\left(\\htmlData{n=__power_3}{\\htmlData{n=x____power_3}{x}^{\\htmlData{n=__power_3__exp}{2}}}\\right)}}",
+      "plain": "2 \\cdot x \\cdot \\cos\\left(x^{2}\\right)",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    }
+  ],
+  "overall_confidence": {
+    "tier": "grounded",
+    "label": "Grounded",
+    "icon": "🥇",
+    "meaning": "symbolically proven to follow from the previous step",
+    "relation": null,
+    "reason": "3/3 steps verified · endpoint reached",
+    "type_consistent": true,
+    "counts": {
+      "refuted": 0,
+      "unchecked": 0,
+      "plausible": 0,
+      "domain": 0,
+      "verified": 0,
+      "grounded": 3
+    },
+    "endpoint_reached": true
+  },
+  "terms": {
+    "__sin_2": {
+      "latex": "\\sin{\\left(x^{2} \\right)}",
+      "name": "\\sin{\\left(x^{2} \\right)}",
+      "description": "This is the composite function $\\sin(x^2)$ that is being differentiated with respect to $x$ using the chain rule."
+    },
+    "__power_3": {
+      "latex": "x^{2}",
+      "name": "x^{2}",
+      "description": "This is the inner function $x^2$, which is the argument of the sine function."
+    },
+    "x": {
+      "latex": "x",
+      "name": "x",
+      "description": "This is the independent variable with respect to which the differentiation is performed."
+    },
+    "__deriv_1": {
+      "latex": "\\frac{d}{d x} \\sin\\left(x^{2} \\right)",
+      "name": "\\frac{d}{d x} \\sin\\left(x^{2} \\right)",
+      "description": "This represents the derivative of the composite function $\\sin(x^2)$ with respect to $x$."
+    },
+    "__cos_2": {
+      "latex": "\\cos{\\left(x^{2} \\right)}",
+      "name": "\\cos{\\left(x^{2} \\right)}",
+      "description": "This is the derivative of the outer function, $\\sin(u)$, with respect to $u$, evaluated at $u=x^2$."
+    },
+    "__power_5": {
+      "latex": "x^{2}",
+      "name": "x^{2}",
+      "description": "This is the inner function $x^2$, whose derivative is taken as part of the chain rule."
+    },
+    "__deriv_4": {
+      "latex": "\\frac{d}{d x} x^{2}",
+      "name": "\\frac{d}{d x} x^{2}",
+      "description": "This represents the derivative of the inner function $x^2$ with respect to $x$."
+    }
+  },
+  "goal": "This derivation demonstrates how to apply the chain rule to find the derivative of a composite trigonometric function, specifically $\\sin(x^2)$.",
+  "followups": [
+    "What if the inner function was $x^3 + 2x$ instead of $x^2$?",
+    "How would I differentiate $\\cos(x^2)$?",
+    "Can you show an example of the product rule?"
+  ],
+  "prerequisites": [
+    "Chain rule",
+    "Derivative of $\\sin(x)$",
+    "Power rule for differentiation"
+  ]
+}
