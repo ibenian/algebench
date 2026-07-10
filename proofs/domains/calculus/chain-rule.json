@@ -7,7 +7,7 @@
       "operation": "Start",
       "justification": "the starting expression",
       "input_latex": "\\frac{d}{d x} \\sin{\\left(x^{2} \\right)}",
-      "latex": "\\htmlData{n=__deriv_1}{\\frac{\\htmlData{n=__deriv_1__d}{d}}{\\htmlData{n=__deriv_1__dd}{d} \\htmlData{n=x____deriv_1}{x}} \\htmlData{n=__sin_2}{\\sin\\left(\\htmlData{n=__power_3}{\\htmlData{n=x}{x}^{\\htmlData{n=__power_3__exp}{2}}}\\right)}}",
+      "latex": "\\htmlData{n=__deriv_1}{\\frac{\\htmlData{n=__deriv_1__d}{d}}{\\htmlData{n=__deriv_1__dd}{d} \\htmlData{n=x____deriv_1}{x}} \\htmlData{n=__sin_2}{\\htmlData{n=__sin_2__name}{\\sin}\\left(\\htmlData{n=__power_3}{\\htmlData{n=x}{x}^{\\htmlData{n=__power_3__exp}{2}}}\\right)}}",
       "plain": "\\frac{d}{d x} \\sin\\left(x^{2}\\right)",
       "confidence": {
         "tier": "grounded",
@@ -24,7 +24,7 @@
       "operation": "Apply the chain rule",
       "justification": "Apply the chain rule for differentiation, which states that $\\frac{d}{dx} f(g(x)) = f'(g(x)) \\cdot g'(x)$. Here, $f(u) = \\sin(u)$ and $g(x) = x^2$, so $f'(u) = \\cos(u)$.",
       "input_latex": "\\cos{\\left(x^{2} \\right)} \\cdot \\frac{d}{d x} x^{2}",
-      "latex": "\\htmlData{n=__multiply_1}{\\htmlData{n=__cos_2}{\\cos\\left(\\htmlData{n=__power_3}{\\htmlData{n=x____power_3}{x}^{\\htmlData{n=__power_3__exp}{2}}}\\right)} \\htmlData{n=__multiply_1__m1}{\\cdot} \\htmlData{n=__deriv_4}{\\frac{\\htmlData{n=__deriv_4__d}{d}}{\\htmlData{n=__deriv_4__dd}{d} \\htmlData{n=x____deriv_4}{x}} \\htmlData{n=__power_5}{\\htmlData{n=x____power_5}{x}^{\\htmlData{n=__power_5__exp}{2}}}}}",
+      "latex": "\\htmlData{n=__multiply_1}{\\htmlData{n=__cos_2}{\\htmlData{n=__cos_2__name}{\\cos}\\left(\\htmlData{n=__power_3}{\\htmlData{n=x____power_3}{x}^{\\htmlData{n=__power_3__exp}{2}}}\\right)} \\htmlData{n=__multiply_1__m1}{\\cdot} \\htmlData{n=__deriv_4}{\\frac{\\htmlData{n=__deriv_4__d}{d}}{\\htmlData{n=__deriv_4__dd}{d} \\htmlData{n=x____deriv_4}{x}} \\htmlData{n=__power_5}{\\htmlData{n=x____power_5}{x}^{\\htmlData{n=__power_5__exp}{2}}}}}",
       "plain": "\\cos\\left(x^{2}\\right) \\cdot \\frac{d}{d x} x^{2}",
       "confidence": {
         "tier": "grounded",
@@ -41,7 +41,7 @@
       "operation": "Differentiate $x^2$",
       "justification": "Differentiate the inner function $x^2$ with respect to $x$ using the power rule, which states that $\\frac{d}{dx} x^n = n \\cdot x^{n-1}$. Thus, $\\frac{d}{dx} x^2 = 2 \\cdot x^{2-1} = 2x$.",
       "input_latex": "\\cos{\\left(x^{2} \\right)} \\cdot 2 \\cdot x",
-      "latex": "\\htmlData{n=_r1___multiply_1}{\\htmlData{n=__multiply_1}{\\htmlData{n=__cos_2}{\\cos\\left(\\htmlData{n=__power_3}{\\htmlData{n=x____power_3}{x}^{\\htmlData{n=__power_3__exp}{2}}}\\right)} \\htmlData{n=__multiply_1__m1}{\\cdot} \\htmlData{n=__num_5}{2}} \\htmlData{n=_r1___multiply_1__m1}{\\cdot} \\htmlData{n=x___r1___multiply_1}{x}}",
+      "latex": "\\htmlData{n=_r1___multiply_1}{\\htmlData{n=__multiply_1}{\\htmlData{n=__cos_2}{\\htmlData{n=__cos_2__name}{\\cos}\\left(\\htmlData{n=__power_3}{\\htmlData{n=x____power_3}{x}^{\\htmlData{n=__power_3__exp}{2}}}\\right)} \\htmlData{n=__multiply_1__m1}{\\cdot} \\htmlData{n=__num_5}{2}} \\htmlData{n=_r1___multiply_1__m1}{\\cdot} \\htmlData{n=x___r1___multiply_1}{x}}",
       "plain": "\\cos\\left(x^{2}\\right) \\cdot 2 \\cdot x",
       "confidence": {
         "tier": "grounded",
@@ -58,7 +58,7 @@
       "operation": "Rearrange the terms",
       "justification": "Rearrange the terms using the commutative property of multiplication for a more conventional order.",
       "input_latex": "2 \\cdot x \\cdot \\cos{\\left(x^{2} \\right)}",
-      "latex": "\\htmlData{n=__multiply_1}{\\htmlData{n=_r1___multiply_1}{\\htmlData{n=__num_5}{2} \\htmlData{n=_r1___multiply_1__m1}{\\cdot} \\htmlData{n=x___r1___multiply_1}{x}} \\htmlData{n=__multiply_1__m1}{\\cdot} \\htmlData{n=__cos_2}{\\cos\\left(\\htmlData{n=__power_3}{\\htmlData{n=x____power_3}{x}^{\\htmlData{n=__power_3__exp}{2}}}\\right)}}",
+      "latex": "\\htmlData{n=__multiply_1}{\\htmlData{n=_r1___multiply_1}{\\htmlData{n=__num_5}{2} \\htmlData{n=_r1___multiply_1__m1}{\\cdot} \\htmlData{n=x___r1___multiply_1}{x}} \\htmlData{n=__multiply_1__m1}{\\cdot} \\htmlData{n=__cos_2}{\\htmlData{n=__cos_2__name}{\\cos}\\left(\\htmlData{n=__power_3}{\\htmlData{n=x____power_3}{x}^{\\htmlData{n=__power_3__exp}{2}}}\\right)}}",
       "plain": "2 \\cdot x \\cdot \\cos\\left(x^{2}\\right)",
       "confidence": {
         "tier": "grounded",

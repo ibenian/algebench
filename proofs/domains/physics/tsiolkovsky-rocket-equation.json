@@ -76,7 +76,7 @@
       "operation": "Evaluate the definite integrals",
       "justification": "Evaluate each definite integral directly by applying the Fundamental Theorem of Calculus: the antiderivative of $dv$ is $v$ (giving $v_f-v_0$), and of $\\frac{1}{m}dm$ is $\\log m$ (giving $\\log m_f-\\log m_0$).",
       "input_latex": "v_{f} - v_{0} = - v_{e} \\cdot \\left(\\log{\\left(m_{f} \\right)} - \\log{\\left(m_{0} \\right)}\\right)",
-      "latex": "\\htmlData{n=_r1___equals_1}{\\htmlData{n=__add_2}{\\htmlData{n=v_f}{v_{f}} \\htmlData{n=_r2___negation_3}{\\htmlData{n=_r2___negation_3__op}{-} \\htmlData{n=v_0}{v_{0}}}} \\htmlData{n=_r1___equals_1__op}{=} \\htmlData{n=__multiply_4}{\\left(\\htmlData{n=__negation_3}{\\htmlData{n=__negation_3__op}{-} \\htmlData{n=v_e}{v_{e}}}\\right) \\htmlData{n=__multiply_4__m1}{\\cdot} \\left(\\htmlData{n=__add_6}{\\htmlData{n=__log_7}{\\log\\left(\\htmlData{n=m_f}{m_{f}}\\right)} \\htmlData{n=__negation_9}{\\htmlData{n=__negation_9__op}{-} \\htmlData{n=__log_10}{\\log\\left(\\htmlData{n=m_0}{m_{0}}\\right)}}}\\right)}}",
+      "latex": "\\htmlData{n=_r1___equals_1}{\\htmlData{n=__add_2}{\\htmlData{n=v_f}{v_{f}} \\htmlData{n=_r2___negation_3}{\\htmlData{n=_r2___negation_3__op}{-} \\htmlData{n=v_0}{v_{0}}}} \\htmlData{n=_r1___equals_1__op}{=} \\htmlData{n=__multiply_4}{\\left(\\htmlData{n=__negation_3}{\\htmlData{n=__negation_3__op}{-} \\htmlData{n=v_e}{v_{e}}}\\right) \\htmlData{n=__multiply_4__m1}{\\cdot} \\left(\\htmlData{n=__add_6}{\\htmlData{n=__log_7}{\\htmlData{n=__log_7__name}{\\log}\\left(\\htmlData{n=m_f}{m_{f}}\\right)} \\htmlData{n=__negation_9}{\\htmlData{n=__negation_9__op}{-} \\htmlData{n=__log_10}{\\htmlData{n=__log_10__name}{\\log}\\left(\\htmlData{n=m_0}{m_{0}}\\right)}}}\\right)}}",
       "plain": "v_{f} - v_{0} = \\left(- v_{e}\\right) \\cdot \\left(\\log\\left(m_{f}\\right) - \\log\\left(m_{0}\\right)\\right)",
       "confidence": {
         "tier": "domain",
@@ -93,7 +93,7 @@
       "operation": "Apply the logarithm property $\\log a - \\log b = \\log \\left(\\frac{a}{b}\\right)$",
       "justification": "Use the logarithm property $\\log a - \\log b = \\log \\left(\\frac{a}{b}\\right)$ to combine the logarithmic terms.",
       "input_latex": "v_{f} - v_{0} = - v_{e} \\cdot \\log{\\left(\\frac{m_{f}}{m_{0}} \\right)}",
-      "latex": "\\htmlData{n=_r1___equals_1}{\\htmlData{n=__add_2}{\\htmlData{n=v_f}{v_{f}} \\htmlData{n=_r2___negation_3}{\\htmlData{n=_r2___negation_3__op}{-} \\htmlData{n=v_0}{v_{0}}}} \\htmlData{n=_r1___equals_1__op}{=} \\htmlData{n=_r1___multiply_4}{\\left(\\htmlData{n=__negation_3}{\\htmlData{n=__negation_3__op}{-} \\htmlData{n=v_e}{v_{e}}}\\right) \\htmlData{n=_r1___multiply_4__m1}{\\cdot} \\htmlData{n=__log_6}{\\log\\left(\\htmlData{n=__multiply_7}{\\frac{\\htmlData{n=m_f}{m_{f}}}{\\htmlData{n=m_0}{m_{0}}}}\\right)}}}",
+      "latex": "\\htmlData{n=_r1___equals_1}{\\htmlData{n=__add_2}{\\htmlData{n=v_f}{v_{f}} \\htmlData{n=_r2___negation_3}{\\htmlData{n=_r2___negation_3__op}{-} \\htmlData{n=v_0}{v_{0}}}} \\htmlData{n=_r1___equals_1__op}{=} \\htmlData{n=_r1___multiply_4}{\\left(\\htmlData{n=__negation_3}{\\htmlData{n=__negation_3__op}{-} \\htmlData{n=v_e}{v_{e}}}\\right) \\htmlData{n=_r1___multiply_4__m1}{\\cdot} \\htmlData{n=__log_6}{\\htmlData{n=__log_6__name}{\\log}\\left(\\htmlData{n=__multiply_7}{\\frac{\\htmlData{n=m_f}{m_{f}}}{\\htmlData{n=m_0}{m_{0}}}}\\right)}}}",
       "plain": "v_{f} - v_{0} = \\left(- v_{e}\\right) \\cdot \\log\\left(\\frac{m_{f}}{m_{0}}\\right)",
       "confidence": {
         "tier": "domain",
@@ -110,7 +110,7 @@
       "operation": "Substitute $\\Delta v = v_f - v_0$ and apply the logarithm property $- \\log x = \\log \\left(x^{-1}\\right)$",
       "justification": "Substitute $\\Delta v = v_f - v_0$ to represent the total change in velocity. Then, use the logarithm property $- \\log x = \\log \\left(x^{-1}\\right)$ to remove the negative sign and invert the fraction inside the logarithm, matching the target form of the Tsiolkovsky rocket equation.",
       "input_latex": "\\Delta v = v_{e} \\cdot \\log{\\left(\\frac{m_{0}}{m_{f}} \\right)}",
-      "latex": "\\htmlData{n=_r1___equals_1}{\\htmlData{n=Delta_v}{\\Delta v} \\htmlData{n=_r1___equals_1__op}{=} \\htmlData{n=_r1___multiply_4}{\\htmlData{n=v_e}{v_{e}} \\htmlData{n=_r1___multiply_4__m1}{\\cdot} \\htmlData{n=__log_6}{\\log\\left(\\htmlData{n=__multiply_7}{\\frac{\\htmlData{n=m_0}{m_{0}}}{\\htmlData{n=m_f}{m_{f}}}}\\right)}}}",
+      "latex": "\\htmlData{n=_r1___equals_1}{\\htmlData{n=Delta_v}{\\Delta v} \\htmlData{n=_r1___equals_1__op}{=} \\htmlData{n=_r1___multiply_4}{\\htmlData{n=v_e}{v_{e}} \\htmlData{n=_r1___multiply_4__m1}{\\cdot} \\htmlData{n=__log_6}{\\htmlData{n=__log_6__name}{\\log}\\left(\\htmlData{n=__multiply_7}{\\frac{\\htmlData{n=m_0}{m_{0}}}{\\htmlData{n=m_f}{m_{f}}}}\\right)}}}",
       "plain": "\\Delta v = v_{e} \\cdot \\log\\left(\\frac{m_{0}}{m_{f}}\\right)",
       "confidence": {
         "tier": "domain",
