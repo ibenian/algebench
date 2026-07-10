@@ -31,6 +31,21 @@ def test_indefinite_integral_renders_with_ids():
     assert "\\int" in out and "htmlData{n=" in out
 
 
+def test_integral_sign_glyph_carries_its_own_stable_id():
+    """The ∫ sign is wrapped in its OWN ``data-n`` (``<oid>__int``), not left as a
+    bare glyph. Without it the FLIP morph can't key off the sign, so a persisting
+    integral SNAPS to its new position while the id'd content around it glides —
+    the "sudden jump" on integration steps. This is the regression guard for that
+    fix; ∫∫ gets one id per sign (``__int``, ``__int2``, …)."""
+    import re
+    out = to_latex(_g(r"\int \frac{1}{v} dv"), with_ids=True)
+    assert re.search(r"htmlData\{n=[^}]*__int\}\{\\int\}", out), out
+    out2 = to_latex(_g(r"\int\int (x+y)\,dx\,dy"), with_ids=True)
+    assert re.search(r"__int\}\{\\int\}", out2) and re.search(r"__int2\}\{\\int\}", out2), out2
+    out3 = to_latex(_g(r"\oint \vec{F} \cdot d\vec{r}"), with_ids=True)
+    assert re.search(r"htmlData\{n=[^}]*__int\}\{\\oint\}", out3), out3
+
+
 def test_integral_round_trips_structurally():
     for ltx in [r"\int \frac{1}{v} dv",
                 r"\int_0^1 x \, dx",

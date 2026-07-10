@@ -337,9 +337,20 @@ def _emit_operator(n, op, ins, nodes, incoming, child, oid, gw) -> tuple[str, in
         # Definite bounds attach to the first sign (the model carries a single
         # lower/upper bound per node — multi-variable definite integrals aren't
         # modeled, and fail the single-root check earlier rather than here).
-        first = base + (f"_{{{child(lb[0], _LOGIC)}}}^{{{child(ub[0], _LOGIC)}}}"
-                        if lb and ub else "")
-        sign = first + base * (len(diffs) - 1)
+        #
+        # Each ∫ glyph carries its OWN stable id (``<oid>__int``, ``__int2``, …).
+        # Without it the sign is an untagged decoration: the FLIP morph can't key
+        # off it, so a persisting ∫ snaps to its new spot while the id'd content
+        # around it glides — the "sudden jump" on integration steps. Tagging it
+        # makes the sign a first-class glyph that slides / fades / ghosts like any
+        # other. The bounds stay tagged children (bare ``\int`` in the no-id path,
+        # so definite-integral rendering and round-trips are unchanged).
+        first = gw(oid + "__int", base) + (
+            f"_{{{child(lb[0], _LOGIC)}}}^{{{child(ub[0], _LOGIC)}}}"
+            if lb and ub else "")
+        extra = "".join(gw(oid + f"__int{k}", base)
+                        for k in range(2, len(diffs) + 1))
+        sign = first + extra
         diff = "".join(f"\\,{child(c, _MUL)}" for c in diffs)
         return (f"{sign} {child(operands[0], _MUL)}{diff}", _MUL)
 
