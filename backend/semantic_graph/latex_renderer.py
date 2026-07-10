@@ -310,13 +310,41 @@ def _emit_operator(n, op, ins, nodes, incoming, child, oid, gw) -> tuple[str, in
         operands = [c for role, c in ins if role != "wrt"]
         if len(operands) != 1:
             raise StructuralRenderError("derivative operand")
-        if n.with_respect_to:
-            wrt = ",".join(s.strip() for s in n.with_respect_to.split(",") if s.strip())
+        # Tag the ``\frac{d}{d<var>}`` glyphs so the FLIP morph can key off them —
+        # without ids a persisting derivative SNAPS while the operand around it
+        # glides (e.g. the chain-rule step where ``d/dt`` splits into
+        # ``d/dh · dh/dt``). Two kinds of glyph, two id sources:
+        #
+        #   • the two ``d`` operator glyphs are pure NOTATION (no graph node), so
+        #     they get a synthetic id scoped to this derivative — ``__d``
+        #     (numerator) and ``__dd`` (differential denominator).
+        #   • the wrt VARIABLE ``t`` IS a real graph node (a ``wrt`` edge), so its
+        #     glyph links to that node's id. But the same node can also be the
+        #     operand's variable (``d/dx x²`` — one ``x`` node, two roles) or the
+        #     wrt of another derivative (chain rule), so a bare ``n=x`` would DUP.
+        #     We occurrence-scope it to THIS derivative (``<var>__<deriv_oid>``,
+        #     e.g. ``t____deriv_2``) — the same convention the operand uses
+        #     (``v____deriv_2``): unique per occurrence, still resolves back to the
+        #     variable term (id splits on ``__``), and threads across states so the
+        #     derivative's own ``d/d<var>`` morphs. wrt edges stay OUT of
+        #     ``dag_deg`` (see top) so this scoping never perturbs the operand id.
+        num = gw(oid + "__d", "d")
+        dd = gw(oid + "__dd", "d")
+        wrt_nodes = [c for role, c in ins if role == "wrt"]
+        if wrt_nodes:
+            wrt = ",".join(
+                gw(f"{c}__{oid}",
+                   _emit_body(nodes[c], incoming[c], nodes, incoming, child, c, gw)[0])
+                for c in wrt_nodes)
+        elif n.with_respect_to:                              # no node — bare string fallback
+            parts = [s.strip() for s in n.with_respect_to.split(",") if s.strip()]
+            if not parts:
+                raise StructuralRenderError("derivative wrt")
+            wrt = ",".join(gw(oid + "__wrt" + (str(k) if k else ""), p)
+                           for k, p in enumerate(parts))
         else:
-            wrt = ",".join(child(c, _LOGIC) for role, c in ins if role == "wrt")
-        if not wrt:
             raise StructuralRenderError("derivative wrt")
-        return (f"\\frac{{d}}{{d {wrt}}} {child(operands[0], _MUL)}", _MUL)
+        return (f"\\frac{{{num}}}{{{dd} {wrt}}} {child(operands[0], _MUL)}", _MUL)
 
     if op in ("integral", "closed_integral"):
         # ``\int integrand d<var>``. The integrand is the unroled operand; each
