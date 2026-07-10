@@ -162,22 +162,21 @@ def _rebuild_suite(path: Path) -> int:
     return 0
 
 
-def _rerender_builtin(path: Path) -> bool:
-    """Re-render one built-in proof JSON in place with the CURRENT parser/renderer.
+def _rerender_one(old: dict, label: str = "") -> dict:
+    """Surgically re-render one built-animation dict IN PLACE, returning it.
 
-    Unlike ``--rebuild-suite`` (a full re-derivation) this is a surgical *render*
-    refresh: it re-threads the registry over each step's ``input_latex`` so a stale
-    bake — an integral step that couldn't parse when it was first baked, or the
-    newly id-tagged ``\\int`` sign — gets fresh annotated ``latex``/``plain`` and
-    cleaner stable ids. Everything the render doesn't own is preserved verbatim:
-    every extra top-level field (e.g. ``deeplink``), each step's graded
-    ``confidence`` (so no LM/judge is needed and no tier regresses), and existing
-    per-term ``description``s. Terms that newly surface get prose from a TARGETED
-    LM pass over ONLY those ids (needs a key; left blank otherwise — the hover
-    highlight still works), keeping the diff focused on the render fix."""
-    old = json.loads(path.read_text(encoding="utf-8"))
+    Re-threads the registry over each step's ``input_latex`` with the current
+    parser/renderer so a stale bake — an integral step that couldn't parse when it
+    was first baked, or the newly id-tagged ``\\int`` sign — gets fresh annotated
+    ``latex``/``plain`` and cleaner stable ids. Everything the render doesn't own is
+    preserved verbatim: every extra top-level field (e.g. ``deeplink``), each step's
+    graded ``confidence`` (so no LM/judge is needed and no tier regresses), and
+    existing per-term ``description``s. Newly-surfaced terms get prose from a
+    TARGETED LM pass over ONLY those ids (needs a key; left blank otherwise — the
+    hover highlight still works). Raises ``KeyError`` if ``old`` isn't built (no
+    ``steps``)."""
     if "steps" not in old:
-        return False
+        raise KeyError("not a built animation (no 'steps')")
     anim = _reanimate_from_built(old)
     built = build(anim.trajectory, anim.domain, anim.title,
                   start_operation=anim.start_operation,
@@ -213,29 +212,50 @@ def _rerender_builtin(path: Path) -> bool:
     # Mutate the ORIGINAL dict so every unowned top-level field is preserved.
     old["steps"], old["terms"] = built["steps"], new_terms
     old.setdefault("overall_confidence", built.get("overall_confidence"))
-    path.write_text(json.dumps(old, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     n = len(missing) - len(still)
-    print(f"re-rendered {path}"
+    print(f"  · re-rendered {label or anim.title}"
           + (f"  (+{n} new term(s) described)" if n else "")
           + (f"  ⚠ undescribed: {still}" if still else ""))
+    return old
+
+
+def _rerender_builtin(path: Path) -> bool:
+    """Re-render a proof JSON in place — either a single built-in (a dict with
+    ``steps``) or the suite fixture (a LIST of built animations). Returns False if
+    the file is neither. See ``_rerender_one`` for the surgical semantics."""
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if isinstance(data, list):                               # the suite fixture
+        built = [e for e in data if isinstance(e, dict) and "steps" in e]
+        if not built:
+            return False
+        print(f"re-rendering {len(built)} animation(s) in {path}")
+        for e in built:
+            _rerender_one(e, e.get("title", ""))
+    elif isinstance(data, dict) and "steps" in data:         # a single built-in
+        print(f"re-rendering {path}")
+        _rerender_one(data)
+    else:
+        return False
+    path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     return True
 
 
 def _rerender_builtins(paths: list[str]) -> int:
-    """Re-render each given built-in proof JSON in place (see ``_rerender_builtin``).
+    """Re-render each given proof JSON in place (see ``_rerender_builtin``).
 
     Returns non-zero if ANY path failed — a missing/unreadable file, or a JSON
-    that isn't a built animation (no ``steps``) — so CI and scripts see failure as
-    failure rather than a silent success."""
+    that is neither a built animation nor a suite list — so CI and scripts see
+    failure as failure rather than a silent success."""
     if not paths:
-        print("--rerender-builtins needs one or more proofs/domains/<domain>/<name>.json paths",
+        print("--rerender-builtins needs one or more proof JSON paths "
+              "(a proofs/domains/<domain>/<name>.json built-in, or the suite fixture)",
               file=sys.stderr)
         return 1
     rc = 0
     for p in paths:
         try:
             if not _rerender_builtin(Path(p)):
-                print(f"⚠ not a built animation (no 'steps'), skipped: {p}", file=sys.stderr)
+                print(f"⚠ not a built animation or suite (no 'steps'), skipped: {p}", file=sys.stderr)
                 rc = 1
         except Exception as e:                               # unreadable / bad JSON / build error
             print(f"✗ {p}: {type(e).__name__}: {e}", file=sys.stderr)
@@ -340,9 +360,10 @@ def main() -> int:
                          "(render + LM descriptions), then exit. Needs GEMINI_API_KEY. Run after "
                          "a proof/renderer change so CI can render the file directly, without the model.")
     ap.add_argument("--rerender-builtins", nargs="*", metavar="PROOF.json", default=None,
-                    help="re-render the given built-in proof JSON file(s) in place with the current "
-                         "parser/renderer, then exit. Surgical: refreshes annotated latex + stable ids "
-                         "while preserving confidence, descriptions, and metadata (e.g. deeplink). "
+                    help="re-render the given proof JSON file(s) in place with the current "
+                         "parser/renderer, then exit — a single built-in (proofs/domains/<d>/<n>.json) "
+                         "OR the suite fixture (a list). Surgical: refreshes annotated latex + stable "
+                         "ids while preserving confidence, descriptions, and metadata (e.g. deeplink). "
                          "Run after a renderer change (an LM key fills any newly-surfaced term prose).")
     args = ap.parse_args()
 
