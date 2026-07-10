@@ -310,13 +310,29 @@ def _emit_operator(n, op, ins, nodes, incoming, child, oid, gw) -> tuple[str, in
         operands = [c for role, c in ins if role != "wrt"]
         if len(operands) != 1:
             raise StructuralRenderError("derivative operand")
+        # Tag the ``\frac{d}{d<var>}`` glyphs with their OWN stable ids, derived
+        # from the derivative node's id — same reasoning as the ∫ sign: a bare
+        # ``d`` / ``d`` / variable can't be keyed by the FLIP morph, so a
+        # persisting derivative SNAPS while the operand around it glides (e.g. the
+        # chain-rule step where ``d/dt`` splits into ``d/dh · dh/dt``). Ids stay
+        # scoped to this operator (``__d`` numerator, ``__dd`` differential, and
+        # ``__wrt`` per variable) and thread across states via the registry, so
+        # the same derivative morphs its d/d-var smoothly. The no-id path (gw =
+        # identity) rebuilds the identical string, so round-trips are unchanged.
+        num = gw(oid + "__d", "d")
+        dd = gw(oid + "__dd", "d")
         if n.with_respect_to:
-            wrt = ",".join(s.strip() for s in n.with_respect_to.split(",") if s.strip())
+            parts = [s.strip() for s in n.with_respect_to.split(",") if s.strip()]
+            if not parts:
+                raise StructuralRenderError("derivative wrt")
+            wrt = ",".join(gw(oid + "__wrt" + (str(k) if k else ""), p)
+                           for k, p in enumerate(parts))
         else:
-            wrt = ",".join(child(c, _LOGIC) for role, c in ins if role == "wrt")
-        if not wrt:
-            raise StructuralRenderError("derivative wrt")
-        return (f"\\frac{{d}}{{d {wrt}}} {child(operands[0], _MUL)}", _MUL)
+            kids = [c for role, c in ins if role == "wrt"]
+            if not kids:
+                raise StructuralRenderError("derivative wrt")
+            wrt = ",".join(child(c, _LOGIC) for c in kids)
+        return (f"\\frac{{{num}}}{{{dd} {wrt}}} {child(operands[0], _MUL)}", _MUL)
 
     if op in ("integral", "closed_integral"):
         # ``\int integrand d<var>``. The integrand is the unroled operand; each
