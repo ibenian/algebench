@@ -24,7 +24,7 @@
       "operation": "Integrate both sides",
       "justification": "apply $\\int$ to each side",
       "input_latex": "\\int \\frac{1}{v} \\, dv = \\int -k \\, e^{-h/H} \\, dh",
-      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__integral_2}{\\int \\htmlData{n=__power_3}{\\frac{\\htmlData{n=__power_3__one}{1}}{\\htmlData{n=v}{v}}}\\,\\htmlData{n=dv}{dv}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__integral_4}{\\int \\left(\\htmlData{n=__negation_4}{\\htmlData{n=__negation_4__op}{-} \\htmlData{n=__multiply_5}{\\htmlData{n=k}{k} \\htmlData{n=__multiply_5__m1}{\\cdot} \\htmlData{n=__power_6}{\\htmlData{n=e}{e}^{\\htmlData{n=__multiply_7}{\\frac{\\left(\\htmlData{n=__negation_8}{\\htmlData{n=__negation_8__op}{-} \\htmlData{n=h}{h}}\\right)}{\\htmlData{n=H}{H}}}}}}}\\right)\\,\\htmlData{n=dh}{dh}}}",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__integral_2}{\\htmlData{n=__integral_2__int}{\\int} \\htmlData{n=__power_3}{\\frac{\\htmlData{n=__power_3__one}{1}}{\\htmlData{n=v}{v}}}\\,\\htmlData{n=dv}{dv}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__integral_4}{\\htmlData{n=__integral_4__int}{\\int} \\left(\\htmlData{n=__negation_4}{\\htmlData{n=__negation_4__op}{-} \\htmlData{n=__multiply_5}{\\htmlData{n=k}{k} \\htmlData{n=__multiply_5__m1}{\\cdot} \\htmlData{n=__power_6}{\\htmlData{n=e}{e}^{\\htmlData{n=__multiply_7}{\\frac{\\left(\\htmlData{n=__negation_8}{\\htmlData{n=__negation_8__op}{-} \\htmlData{n=h}{h}}\\right)}{\\htmlData{n=H}{H}}}}}}}\\right)\\,\\htmlData{n=dh}{dh}}}",
       "plain": "\\int \\frac{1}{v}\\,dv = \\int \\left(- k \\cdot e^{\\frac{\\left(- h\\right)}{H}}\\right)\\,dh",
       "confidence": {
         "tier": "domain",
@@ -41,7 +41,7 @@
       "operation": "Factor the constant out",
       "justification": "constants pull out of the integral",
       "input_latex": "\\int \\frac{1}{v} \\, dv = -k \\int e^{-h/H} \\, dh",
-      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__integral_2}{\\int \\htmlData{n=__power_3}{\\frac{\\htmlData{n=__power_3__one}{1}}{\\htmlData{n=v}{v}}}\\,\\htmlData{n=dv}{dv}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__negation_4}{\\htmlData{n=__negation_4__op}{-} \\htmlData{n=__multiply_5}{\\htmlData{n=k}{k} \\htmlData{n=__multiply_5__m1}{\\cdot} \\htmlData{n=__integral_4}{\\int \\htmlData{n=__power_6}{\\htmlData{n=e}{e}^{\\htmlData{n=__multiply_7}{\\frac{\\left(\\htmlData{n=__negation_8}{\\htmlData{n=__negation_8__op}{-} \\htmlData{n=h}{h}}\\right)}{\\htmlData{n=H}{H}}}}}\\,\\htmlData{n=dh}{dh}}}}}",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__integral_2}{\\htmlData{n=__integral_2__int}{\\int} \\htmlData{n=__power_3}{\\frac{\\htmlData{n=__power_3__one}{1}}{\\htmlData{n=v}{v}}}\\,\\htmlData{n=dv}{dv}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__negation_4}{\\htmlData{n=__negation_4__op}{-} \\htmlData{n=__multiply_5}{\\htmlData{n=k}{k} \\htmlData{n=__multiply_5__m1}{\\cdot} \\htmlData{n=__integral_4}{\\htmlData{n=__integral_4__int}{\\int} \\htmlData{n=__power_6}{\\htmlData{n=e}{e}^{\\htmlData{n=__multiply_7}{\\frac{\\left(\\htmlData{n=__negation_8}{\\htmlData{n=__negation_8__op}{-} \\htmlData{n=h}{h}}\\right)}{\\htmlData{n=H}{H}}}}}\\,\\htmlData{n=dh}{dh}}}}}",
       "plain": "\\int \\frac{1}{v}\\,dv = - k \\cdot \\int e^{\\frac{\\left(- h\\right)}{H}}\\,dh",
       "confidence": {
         "tier": "grounded",
