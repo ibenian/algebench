@@ -33,6 +33,23 @@ def test_log_renders_with_ids():
         assert "htmlData{n=" in out, f"no ids emitted for {ltx!r}: {out!r}"
 
 
+def test_function_name_is_one_tagged_unit():
+    """The function NAME (``\\log``/``\\ln``/``\\sin``…) is wrapped in its own id
+    (``<node>__name``) so the morph treats it as a single glyph. KaTeX otherwise
+    splits e.g. ``\\log`` into a bare "lo" text node + a separate "g" span, and the
+    FLIP engine caught only the "g" — the name flashed "lo"→"log" on appearance.
+    The wrapper must hold the WHOLE command and leave the plain render untouched."""
+    import re
+    for ltx, name in [(r"\log{\left(x \right)}", r"\\log"),
+                      (r"\ln{\left(x \right)}", r"\\ln"),
+                      (r"\sin{\left(x \right)}", r"\\sin"),
+                      (r"\log_{2}{\left(x \right)}", r"\\log")]:
+        out = to_latex(_g(ltx), with_ids=True)
+        assert re.search(rf"htmlData\{{n=[^}}]*__name\}}\{{{name}\}}", out), out
+        # plain render carries no name wrapper (round-trip / no-id path unchanged)
+        assert "__name" not in to_latex(_g(ltx))
+
+
 def test_log_round_trips_structurally():
     for ltx in [
         r"\log{\left(x \right)}",

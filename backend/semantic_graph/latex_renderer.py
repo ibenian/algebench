@@ -200,6 +200,7 @@ def _emit_body(n, ins, nodes, incoming, child, oid, gw) -> tuple[str, int]:
                 # but ``\ln`` ``latex=None`` (both op ``log``), so a missing latex
                 # uniquely means ``\ln`` — deriving from ``op`` would flip it.
                 fn = getattr(n, "latex", None) or r"\ln"
+                nm = gw(oid + "__name", fn)   # tag the NAME as one unit (see _fn_name note)
                 if base_ins:
                     bnode = nodes.get(base_ins[0])
                     # Natural base ``e`` stays implicit; any other base (a number
@@ -209,8 +210,8 @@ def _emit_body(n, ins, nodes, incoming, child, oid, gw) -> tuple[str, int]:
                                and getattr(bnode, "latex", None) == "e")
                     if not natural:
                         base = child(base_ins[0], _LOGIC)
-                        return (rf"{fn}_{{{base}}}\left({arg}\right)", _ATOM)
-                return (f"{fn}\\left({arg}\\right)", _ATOM)   # natural / implicit base
+                        return (rf"{nm}_{{{base}}}\left({arg}\right)", _ATOM)
+                return (f"{nm}\\left({arg}\\right)", _ATOM)   # natural / implicit base
         if len(ins) != 1:
             raise StructuralRenderError(f"function {op!r} arity {len(ins)}")
         arg = child(ins[0][1], _LOGIC)
@@ -227,7 +228,14 @@ def _emit_body(n, ins, nodes, incoming, child, oid, gw) -> tuple[str, int]:
             if op == "i":
                 return (f"i\\left({arg}\\right)", _ATOM)
             raise StructuralRenderError(f"function {op!r}")
-        return (f"{fn}\\left({arg}\\right)", _ATOM)
+        # Tag the function NAME (``\sin``/``\log``/…) as ONE unit. KaTeX draws the
+        # name as a `.mop` that splits into a bare "lo" text node plus a separate
+        # "g" glyph span, so the FLIP morph caught only the "g" (an untagged insert
+        # that faded in last) while "lo" appeared instantly — the name flashed
+        # "lo"→"log". Wrapping it in its own id makes the whole name a single leaf
+        # glyph that morphs/fades as a unit. (gw = identity without ids, so the
+        # plain render and round-trips are unchanged.)
+        return (f"{gw(oid + '__name', fn)}\\left({arg}\\right)", _ATOM)
     if t == "relation":
         sym = _REL_LATEX.get(op)
         if sym is None:
