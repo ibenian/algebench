@@ -188,9 +188,20 @@ def _rerender_builtin(path: Path) -> bool:
             s["confidence"] = old_steps[i]["confidence"]     # keep graded tier
     old_terms = old.get("terms") or {}
     new_terms = built.get("terms") or {}
+    # Re-threading can RENAME a term's id (that's partly the point of this flag),
+    # which would orphan its description under the old id. So carry prose forward
+    # by id first, then fall back to the term's latex — a stable identity that
+    # survives an id rename — so a renamed term keeps its prose instead of eating
+    # an avoidable LM re-description (and a needless diff).
+    by_latex = {}
+    for ot in old_terms.values():
+        d = (ot.get("description") or "").strip()
+        if d:
+            by_latex.setdefault((ot.get("latex") or "").strip(), d)
     missing = []
     for tid, t in new_terms.items():
-        desc = (old_terms.get(tid) or {}).get("description")
+        desc = ((old_terms.get(tid) or {}).get("description")
+                or by_latex.get((t.get("latex") or "").strip()))
         if desc:
             t["description"] = desc                           # keep existing prose
         else:
@@ -211,14 +222,25 @@ def _rerender_builtin(path: Path) -> bool:
 
 
 def _rerender_builtins(paths: list[str]) -> int:
-    """Re-render each given built-in proof JSON in place (see ``_rerender_builtin``)."""
+    """Re-render each given built-in proof JSON in place (see ``_rerender_builtin``).
+
+    Returns non-zero if ANY path failed — a missing/unreadable file, or a JSON
+    that isn't a built animation (no ``steps``) — so CI and scripts see failure as
+    failure rather than a silent success."""
     if not paths:
         print("--rerender-builtins needs one or more proofs/domains/<domain>/<name>.json paths",
               file=sys.stderr)
         return 1
+    rc = 0
     for p in paths:
-        _rerender_builtin(Path(p))
-    return 0
+        try:
+            if not _rerender_builtin(Path(p)):
+                print(f"⚠ not a built animation (no 'steps'), skipped: {p}", file=sys.stderr)
+                rc = 1
+        except Exception as e:                               # unreadable / bad JSON / build error
+            print(f"✗ {p}: {type(e).__name__}: {e}", file=sys.stderr)
+            rc = 1
+    return rc
 
 
 _INDEX = """<!DOCTYPE html>
