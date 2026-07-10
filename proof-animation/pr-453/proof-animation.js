@@ -1430,18 +1430,33 @@ export class ProofAnimator {
         const p = el.closest("[data-n]");
         if (p && !p.querySelector("[data-n]")) return;    // inside a tagged leaf glyph
       }
-      // The OWNER — a paren belongs to the construct that drew it: a function
-      // (its `\sin`/`\ln` node) or a precedence group (its operator node). Carried
-      // so the morph only ever matches a paren to another of the SAME owner and
-      // never trades one for an unrelated one — e.g. `\sin`'s `(` flying to a
-      // newly-appeared `\ln`'s `(` just because `\ln` sorts first in document
-      // order (Allen–Eggers step 5→6). The rebase prefix is stripped so the id is
-      // the canonical cross-state key.
-      const ownerEl = el.closest("[data-n]");
-      const owner = ownerEl ? ownerEl.getAttribute("data-n").replace(/^_r\d+_/, "") : "";
-      out.push({ char: ch, el: unit, delim: !!delim, owner });
+      // The CONTENT — the id of the node this paren wraps. A paren is identified
+      // by WHAT IT ENCLOSES, not by its glyph or its position: `\sin`'s `(` wraps
+      // `gamma`, `\ln`'s wraps `v`, a `(-v_e)` group wraps its negation node. The
+      // morph matches parens on (char, content), so a paren only ever morphs to
+      // one wrapping the SAME node — a function paren can't fly to an unrelated
+      // one that merely sorts first (Allen–Eggers `\sin`→`\ln`, step 5→6), and a
+      // grouping paren still glides when its OWNER operator changes but the thing
+      // it wraps is the same (Tsiolkovsky `(-v_e)` moving from a fraction
+      // numerator to a factor, step 3→4). Content is the wrapped node's stable id
+      // (rebase prefix stripped for the canonical cross-state key).
+      out.push({ char: ch, el: unit, delim: !!delim, content: this._parenContent(el, ch) });
     });
     return out;
+  }
+
+  // The stable id of the node a paren wraps — its match key (see _parens). KaTeX
+  // draws `\left(X\right)` as a `.minner` row of `[mopen "(", X, mclose ")"]`, so
+  // the wrapped content is the paren cell's adjacent sibling: the next sibling for
+  // an open paren, the previous for a close. Returns "" when the content carries
+  // no id (e.g. a bare number) — those parens fall back to order-based matching.
+  _parenContent(el, ch) {
+    const cell = el.closest(".mopen, .mclose") || el;
+    const sib = ch === "(" ? cell.nextElementSibling : cell.previousElementSibling;
+    if (!sib) return "";
+    let id = sib.getAttribute && sib.getAttribute("data-n");
+    if (!id) { const inner = sib.querySelector && sib.querySelector("[data-n]"); id = inner ? inner.getAttribute("data-n") : ""; }
+    return (id || "").replace(/^_r\d+_/, "");
   }
 
   // Like _lcsMatch but returns the actual aligned index PAIRS [srcIdx, tgtIdx],
@@ -1626,7 +1641,7 @@ export class ProofAnimator {
     // re-render so a preserved paren can morph from its old pose and a removed
     // one can ghost out.
     const fromParens = this._parens(this.stage).map((p) => ({
-      char: p.char, delim: p.delim, owner: p.owner,
+      char: p.char, delim: p.delim, content: p.content,
       clone: p.el.cloneNode(true),
       rect: p.el.getBoundingClientRect(),
       fontSize: getComputedStyle(p.el).fontSize,
@@ -1764,10 +1779,11 @@ export class ProofAnimator {
     // that flips plain↔stretchy, or grows with its content, glides as one unit
     // instead of duplicating). Genuinely new parens fade in; removed ones ghost out.
     const toParens = this._parens(this.stage);
-    // Match on (char, owner) — a paren only aligns with one of the SAME owner, so
-    // a preserved function/group paren morphs while an unrelated paren that merely
-    // shares the same `(`/`)` glyph can't hijack its slot (see _parens' owner note).
-    const _pTok = (p) => p.char + " " + p.owner;
+    // Match on (char, content) — a paren only aligns with one wrapping the SAME
+    // node, so a preserved function/group paren morphs while an unrelated paren that
+    // merely shares the same `(`/`)` glyph can't hijack its slot (see the content
+    // note in _parens).
+    const _pTok = (p) => p.char + " " + p.content;
     const parenPairs = this._lcsPairs(fromParens.map(_pTok), toParens.map(_pTok));
     const _pFromKeep = new Set(parenPairs.map((pr) => pr[0]));
     const _pToKeep = new Set(parenPairs.map((pr) => pr[1]));
