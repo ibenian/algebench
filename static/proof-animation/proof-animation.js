@@ -1448,11 +1448,15 @@ export class ProofAnimator {
   // The stable id of the node a paren wraps — its match key (see _parens). KaTeX
   // draws `\left(X\right)` as a `.minner` row of `[mopen "(", X, mclose ")"]`, so
   // the wrapped content is the paren cell's adjacent sibling: the next sibling for
-  // an open paren, the previous for a close. Returns "" when the content carries
-  // no id (e.g. a bare number) — those parens fall back to order-based matching.
+  // an OPEN delimiter, the previous for a CLOSE. Open vs close comes from KaTeX's
+  // `.mopen`/`.mclose` role, NOT the glyph — `_parenChar` also admits `[`/`]`/`|`,
+  // so keying off `( ` would misread an opening `[` or `|` as a close and grab the
+  // wrong sibling. Returns "" when the content carries no id (e.g. a bare number)
+  // — those parens fall back to order-based matching.
   _parenContent(el, ch) {
     const cell = el.closest(".mopen, .mclose") || el;
-    const sib = ch === "(" ? cell.nextElementSibling : cell.previousElementSibling;
+    const isOpen = cell.classList ? cell.classList.contains("mopen") : ch !== ")";
+    const sib = isOpen ? cell.nextElementSibling : cell.previousElementSibling;
     if (!sib) return "";
     let id = sib.getAttribute && sib.getAttribute("data-n");
     if (!id) { const inner = sib.querySelector && sib.querySelector("[data-n]"); id = inner ? inner.getAttribute("data-n") : ""; }
