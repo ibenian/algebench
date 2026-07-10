@@ -208,7 +208,15 @@ def _index(graph) -> _Index:
 # --------------------------------------------------------------------------- #
 
 def _match_tree(pi, ni, pid, nid, new_to_prev, used_prev, matched_new):
-    """Anchor two isomorphic subtrees, aligning descendants by (role, sig)."""
+    """Anchor two isomorphic subtrees, aligning descendants by (role, sig).
+
+    The recursion re-checks ``_branch_compat`` on every pairing, not just the root
+    the caller filtered: an isomorphic subtree that straddles a ∨/∧ (or an untagged
+    parent above tagged branch nodes) could otherwise map a branch-0 descendant onto
+    a branch-1 one by (role, sig) order alone. An incompatible pair is skipped —
+    left for the bottom-up / recovery phases (which also gate) or to fade."""
+    if not _branch_compat(pi, ni, pid, nid):
+        return
     new_to_prev[nid] = pid
     used_prev.add(pid)
     matched_new.add(nid)

@@ -153,6 +153,29 @@ def test_disjunction_branches_do_not_steal_vanishing_terms():
     assert not leaked, f"prev ids leaked into the second disjunct (fly): {leaked}"
 
 
+def test_disjunction_to_disjunction_keeps_each_branch_in_its_lane():
+    """Rebasing one ``∨`` onto another (quadratic step 7→8) anchors the disjunction
+    top-down, so ``_match_tree`` recurses through both branches. No node exclusive
+    to one branch may inherit an id from the OTHER branch of the prior state — the
+    two roots stay in their own lanes even under isomorphic anchoring."""
+    from backend.experts.modules.proof_completion.tree_match import _index
+    prev = _g(r"x = - \frac{b}{2 \cdot a} + \frac{\sqrt{b^{2} - 4 \cdot a \cdot c}}{2 \cdot a}"
+              r" \lor "
+              r"x = - \frac{b}{2 \cdot a} - \frac{\sqrt{b^{2} - 4 \cdot a \cdot c}}{2 \cdot a}")
+    new = _g(r"x = \frac{- b + \sqrt{b^{2} - 4 \cdot a \cdot c}}{2 \cdot a}"
+             r" \lor "
+             r"x = \frac{- b - \sqrt{b^{2} - 4 \cdot a \cdot c}}{2 \cdot a}")
+    pb = _index(prev).branch
+    prev_b0 = {nid for nid, b in pb.items() if b == 0}
+    prev_b1 = {nid for nid, b in pb.items() if b == 1}
+    ob = _index(rebase(prev, new)).branch
+    for nid, b in ob.items():
+        if b == 1:
+            assert nid not in prev_b0, f"branch-1 node inherited a prev branch-0 id: {nid}"
+        if b == 0:
+            assert nid not in prev_b1, f"branch-0 node inherited a prev branch-1 id: {nid}"
+
+
 def test_non_connective_states_are_unaffected_by_branch_gate():
     """The branch gate is a no-op without a single connective: an ordinary rewrite
     still preserves ids (guards against the gate over-firing)."""
