@@ -310,28 +310,40 @@ def _emit_operator(n, op, ins, nodes, incoming, child, oid, gw) -> tuple[str, in
         operands = [c for role, c in ins if role != "wrt"]
         if len(operands) != 1:
             raise StructuralRenderError("derivative operand")
-        # Tag the ``\frac{d}{d<var>}`` glyphs with their OWN stable ids, derived
-        # from the derivative node's id — same reasoning as the ∫ sign: a bare
-        # ``d`` / ``d`` / variable can't be keyed by the FLIP morph, so a
-        # persisting derivative SNAPS while the operand around it glides (e.g. the
-        # chain-rule step where ``d/dt`` splits into ``d/dh · dh/dt``). Ids stay
-        # scoped to this operator (``__d`` numerator, ``__dd`` differential, and
-        # ``__wrt`` per variable) and thread across states via the registry, so
-        # the same derivative morphs its d/d-var smoothly. The no-id path (gw =
-        # identity) rebuilds the identical string, so round-trips are unchanged.
+        # Tag the ``\frac{d}{d<var>}`` glyphs so the FLIP morph can key off them —
+        # without ids a persisting derivative SNAPS while the operand around it
+        # glides (e.g. the chain-rule step where ``d/dt`` splits into
+        # ``d/dh · dh/dt``). Two kinds of glyph, two id sources:
+        #
+        #   • the two ``d`` operator glyphs are pure NOTATION (no graph node), so
+        #     they get a synthetic id scoped to this derivative — ``__d``
+        #     (numerator) and ``__dd`` (differential denominator).
+        #   • the wrt VARIABLE ``t`` IS a real graph node (a ``wrt`` edge), so its
+        #     glyph links to that node's id. But the same node can also be the
+        #     operand's variable (``d/dx x²`` — one ``x`` node, two roles) or the
+        #     wrt of another derivative (chain rule), so a bare ``n=x`` would DUP.
+        #     We occurrence-scope it to THIS derivative (``<var>__<deriv_oid>``,
+        #     e.g. ``t____deriv_2``) — the same convention the operand uses
+        #     (``v____deriv_2``): unique per occurrence, still resolves back to the
+        #     variable term (id splits on ``__``), and threads across states so the
+        #     derivative's own ``d/d<var>`` morphs. wrt edges stay OUT of
+        #     ``dag_deg`` (see top) so this scoping never perturbs the operand id.
         num = gw(oid + "__d", "d")
         dd = gw(oid + "__dd", "d")
-        if n.with_respect_to:
+        wrt_nodes = [c for role, c in ins if role == "wrt"]
+        if wrt_nodes:
+            wrt = ",".join(
+                gw(f"{c}__{oid}",
+                   _emit_body(nodes[c], incoming[c], nodes, incoming, child, c, gw)[0])
+                for c in wrt_nodes)
+        elif n.with_respect_to:                              # no node — bare string fallback
             parts = [s.strip() for s in n.with_respect_to.split(",") if s.strip()]
             if not parts:
                 raise StructuralRenderError("derivative wrt")
             wrt = ",".join(gw(oid + "__wrt" + (str(k) if k else ""), p)
                            for k, p in enumerate(parts))
         else:
-            kids = [c for role, c in ins if role == "wrt"]
-            if not kids:
-                raise StructuralRenderError("derivative wrt")
-            wrt = ",".join(child(c, _LOGIC) for c in kids)
+            raise StructuralRenderError("derivative wrt")
         return (f"\\frac{{{num}}}{{{dd} {wrt}}} {child(operands[0], _MUL)}", _MUL)
 
     if op in ("integral", "closed_integral"):

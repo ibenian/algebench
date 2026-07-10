@@ -7,7 +7,7 @@
       "operation": "Start",
       "justification": "the starting expression",
       "input_latex": "\\frac{d}{d x} \\sin{\\left(x^{2} \\right)}",
-      "latex": "\\htmlData{n=__deriv_1}{\\frac{\\htmlData{n=__deriv_1__d}{d}}{\\htmlData{n=__deriv_1__dd}{d} \\htmlData{n=__deriv_1__wrt}{x}} \\htmlData{n=__sin_2}{\\sin\\left(\\htmlData{n=__power_3}{\\htmlData{n=x}{x}^{\\htmlData{n=__power_3__exp}{2}}}\\right)}}",
+      "latex": "\\htmlData{n=__deriv_1}{\\frac{\\htmlData{n=__deriv_1__d}{d}}{\\htmlData{n=__deriv_1__dd}{d} \\htmlData{n=x____deriv_1}{x}} \\htmlData{n=__sin_2}{\\sin\\left(\\htmlData{n=__power_3}{\\htmlData{n=x}{x}^{\\htmlData{n=__power_3__exp}{2}}}\\right)}}",
       "plain": "\\frac{d}{d x} \\sin\\left(x^{2}\\right)",
       "confidence": {
         "tier": "grounded",
@@ -24,7 +24,7 @@
       "operation": "Apply the chain rule",
       "justification": "Apply the chain rule for differentiation, which states that $\\frac{d}{dx} f(g(x)) = f'(g(x)) \\cdot g'(x)$. Here, $f(u) = \\sin(u)$ and $g(x) = x^2$, so $f'(u) = \\cos(u)$.",
       "input_latex": "\\cos{\\left(x^{2} \\right)} \\cdot \\frac{d}{d x} x^{2}",
-      "latex": "\\htmlData{n=__multiply_1}{\\htmlData{n=__cos_2}{\\cos\\left(\\htmlData{n=__power_3}{\\htmlData{n=x____power_3}{x}^{\\htmlData{n=__power_3__exp}{2}}}\\right)} \\htmlData{n=__multiply_1__m1}{\\cdot} \\htmlData{n=__deriv_4}{\\frac{\\htmlData{n=__deriv_4__d}{d}}{\\htmlData{n=__deriv_4__dd}{d} \\htmlData{n=__deriv_4__wrt}{x}} \\htmlData{n=__power_5}{\\htmlData{n=x____power_5}{x}^{\\htmlData{n=__power_5__exp}{2}}}}}",
+      "latex": "\\htmlData{n=__multiply_1}{\\htmlData{n=__cos_2}{\\cos\\left(\\htmlData{n=__power_3}{\\htmlData{n=x____power_3}{x}^{\\htmlData{n=__power_3__exp}{2}}}\\right)} \\htmlData{n=__multiply_1__m1}{\\cdot} \\htmlData{n=__deriv_4}{\\frac{\\htmlData{n=__deriv_4__d}{d}}{\\htmlData{n=__deriv_4__dd}{d} \\htmlData{n=x____deriv_4}{x}} \\htmlData{n=__power_5}{\\htmlData{n=x____power_5}{x}^{\\htmlData{n=__power_5__exp}{2}}}}}",
       "plain": "\\cos\\left(x^{2}\\right) \\cdot \\frac{d}{d x} x^{2}",
       "confidence": {
         "tier": "grounded",

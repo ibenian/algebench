@@ -26,13 +26,28 @@ def _g(latex: str):
 
 
 def test_derivative_glyphs_carry_their_own_stable_ids():
-    """The numerator ``d``, the differential ``d``, and the wrt variable each get a
-    stable id derived from the derivative node id (``__d`` / ``__dd`` / ``__wrt``),
-    so a persisting derivative morphs its ``d/d<var>`` instead of snapping."""
+    """The two ``d`` glyphs are pure notation (no graph node) → a synthetic id
+    scoped to the derivative (``__d`` numerator, ``__dd`` differential). The wrt
+    VARIABLE is a real node, so its glyph links to that node's id, occurrence-
+    scoped to the derivative (``<var>____deriv_N``, like the operand ``v____…``).
+    Without these a persisting derivative morphs its ``d/d<var>`` instead of
+    snapping."""
     out = to_latex(_g(r"\frac{d}{d t} v = -k v^2"), with_ids=True)
-    assert re.search(r"htmlData\{n=[^}]*__d\}\{d\}", out), out        # numerator d
-    assert re.search(r"htmlData\{n=[^}]*__dd\}\{d\}", out), out       # differential d
-    assert re.search(r"htmlData\{n=[^}]*__wrt\}\{t\}", out), out      # wrt variable
+    assert re.search(r"htmlData\{n=[^}]*__d\}\{d\}", out), out         # numerator d (notation)
+    assert re.search(r"htmlData\{n=[^}]*__dd\}\{d\}", out), out        # differential d (notation)
+    # wrt variable → the node id `t`, occurrence-scoped to the derivative, so it
+    # resolves back to the `t` term (id splits on `__`) and never bare-collides.
+    assert re.search(r"htmlData\{n=t__[^}]*deriv[^}]*\}\{t\}", out), out
+
+
+def test_wrt_variable_never_duplicates_operand_occurrence():
+    """``d/dx x²`` — the ONE ``x`` node is both the operand's base and the wrt. The
+    wrt glyph links to the node yet must not emit a second ``n=x`` (a duplicate
+    data-n breaks the FLIP morph). It's occurrence-scoped, so it doesn't."""
+    out = to_latex(_g(r"\frac{d}{dx} x^2"), with_ids=True)
+    ids = re.findall(r"n=([^}]*)\}", out)
+    assert len(ids) == len(set(ids)), f"duplicate data-n: {ids}"
+    assert re.search(r"htmlData\{n=x__[^}]*deriv[^}]*\}\{x\}", out), out  # wrt x, scoped
 
 
 def test_derivative_no_id_render_is_unchanged():
@@ -54,11 +69,16 @@ def test_derivative_round_trips_structurally():
 
 def test_chain_rule_derivatives_get_distinct_scoped_ids():
     """``d/dt v = d/dh v · dh/dt`` has three derivatives; each one's d/d-var glyphs
-    are scoped to that derivative's node id, so they don't collide (and each morphs
-    on its own)."""
+    (both ``d`` notation ids and the wrt-variable node id) are scoped to that
+    derivative, so nothing collides and each morphs on its own. The wrt ``t``
+    appears in TWO derivatives — it stays distinct (``t____deriv_2`` vs
+    ``t____deriv_5``) rather than a single ambiguous ``n=t``."""
     out = to_latex(_g(r"\frac{d}{d t} v = \frac{d}{d h} v \cdot \frac{d}{d t} h"),
                    with_ids=True)
-    ids = re.findall(r"n=([^}]*__(?:d|dd|wrt))\}", out)
-    assert len(ids) == len(set(ids)), f"derivative glyph ids collided: {ids}"
+    all_ids = re.findall(r"n=([^}]*)\}", out)
+    assert len(all_ids) == len(set(all_ids)), f"data-n collided: {all_ids}"
     # three derivatives → three numerator-d ids
-    assert len([i for i in ids if i.endswith("__d")]) == 3, ids
+    assert len([i for i in all_ids if i.endswith("__d")]) == 3, all_ids
+    # the shared wrt variable t stays per-derivative distinct
+    t_wrt = sorted(i for i in all_ids if re.fullmatch(r"t__+deriv_\d+", i))
+    assert len(t_wrt) == 2 and len(set(t_wrt)) == 2, t_wrt
