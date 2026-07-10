@@ -1430,7 +1430,16 @@ export class ProofAnimator {
         const p = el.closest("[data-n]");
         if (p && !p.querySelector("[data-n]")) return;    // inside a tagged leaf glyph
       }
-      out.push({ char: ch, el: unit, delim: !!delim });
+      // The OWNER — a paren belongs to the construct that drew it: a function
+      // (its `\sin`/`\ln` node) or a precedence group (its operator node). Carried
+      // so the morph only ever matches a paren to another of the SAME owner and
+      // never trades one for an unrelated one — e.g. `\sin`'s `(` flying to a
+      // newly-appeared `\ln`'s `(` just because `\ln` sorts first in document
+      // order (Allen–Eggers step 5→6). The rebase prefix is stripped so the id is
+      // the canonical cross-state key.
+      const ownerEl = el.closest("[data-n]");
+      const owner = ownerEl ? ownerEl.getAttribute("data-n").replace(/^_r\d+_/, "") : "";
+      out.push({ char: ch, el: unit, delim: !!delim, owner });
     });
     return out;
   }
@@ -1617,7 +1626,7 @@ export class ProofAnimator {
     // re-render so a preserved paren can morph from its old pose and a removed
     // one can ghost out.
     const fromParens = this._parens(this.stage).map((p) => ({
-      char: p.char, delim: p.delim,
+      char: p.char, delim: p.delim, owner: p.owner,
       clone: p.el.cloneNode(true),
       rect: p.el.getBoundingClientRect(),
       fontSize: getComputedStyle(p.el).fontSize,
@@ -1755,7 +1764,11 @@ export class ProofAnimator {
     // that flips plain↔stretchy, or grows with its content, glides as one unit
     // instead of duplicating). Genuinely new parens fade in; removed ones ghost out.
     const toParens = this._parens(this.stage);
-    const parenPairs = this._lcsPairs(fromParens.map((p) => p.char), toParens.map((p) => p.char));
+    // Match on (char, owner) — a paren only aligns with one of the SAME owner, so
+    // a preserved function/group paren morphs while an unrelated paren that merely
+    // shares the same `(`/`)` glyph can't hijack its slot (see _parens' owner note).
+    const _pTok = (p) => p.char + " " + p.owner;
+    const parenPairs = this._lcsPairs(fromParens.map(_pTok), toParens.map(_pTok));
     const _pFromKeep = new Set(parenPairs.map((pr) => pr[0]));
     const _pToKeep = new Set(parenPairs.map((pr) => pr[1]));
     const parenMovers = [];
