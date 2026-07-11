@@ -579,7 +579,13 @@ def _rewrite_prefix_ops(latex: str) -> str:
 
 # Each entry: (latex_cmd, graph_op, emoji, node_type, original_latex)
 _INFIX_OP_CATALOG: list[tuple[str, str, str, str]] = [
-    # --- Precedence 1 (tightest): intersection / conjunction ---
+    # --- Precedence 0 (tightest): function composition ---
+    # SymPy has no ``Compose`` for arbitrary symbols, so ``f \circ g``
+    # would otherwise parse as ``f · circ · g`` (a stray ``circ`` symbol
+    # multiplied in).  Rewriting it as an infix call gives a proper
+    # ``compose`` operator node with two operands (issue #443).
+    (r"\circ",     "compose",        "∘", "operator"),
+    # --- Precedence 1: intersection / conjunction ---
     (r"\cap",      "intersection",   "∩", "operator"),
     (r"\land",     "conjunction",    "∧", "operator"),
     (r"\wedge",    "conjunction",    "∧", "operator"),
@@ -593,6 +599,7 @@ _INFIX_OP_CATALOG: list[tuple[str, str, str, str]] = [
 # Ordered precedence groups (tightest first).
 # Each group is a list of LaTeX commands at that precedence level.
 _INFIX_PRECEDENCE: list[list[str]] = [
+    [r"\circ"],
     [r"\cap", r"\land", r"\wedge"],
     [r"\cup", r"\lor", r"\vee", r"\setminus"],
 ]
@@ -622,6 +629,12 @@ _INFIX_RELATION_FENCES: list[str] = [
     r"\ge", r"\le", r"\ne", r"\gt", r"\lt", r"\in",
     r"\to", r"\mid",
     "=", ">", "<",
+    # A bare depth-0 comma separates statements / list items — an infix
+    # operator's operands are never split across it, so it must fence the
+    # rewrite (otherwise ``A = B, C \circ D = E`` glues ``B`` and ``C \circ D``
+    # into one ``\Xi(B, C, D)`` call, destroying the statement boundary).
+    # The escaped thin-space ``\,`` is guarded against in the matcher below.
+    ",",
 ]
 
 
@@ -684,12 +697,18 @@ def _rewrite_infix_ops(
             # No relation fences — process the whole string.
             return _process_segment(s)
         processed = [_process_segment(seg) for seg in segments]
-        # Reassemble with original separators, preserving spacing.
-        out: list[str] = [processed[0]]
+        # Reassemble with exactly one space around each separator. Segments
+        # keep the leading/trailing whitespace from their split points, so
+        # strip those boundaries — otherwise ``= `` + `` \text{x}`` reassembles
+        # to ``=  \text{x}`` (a double space that leaks into the subexpr).
+        out: list[str] = [processed[0].rstrip()]
         for sep, seg in zip(separators, processed[1:]):
-            out.append(f" {sep} " if not sep.startswith("\\") else f" {sep} ")
-            out.append(seg)
-        return "".join(out)
+            # A comma is list/statement punctuation — no space *before* it
+            # (``B, C``, not ``B , C``). Relation operators get a space each
+            # side (``B = C``).
+            out.append(f"{sep} " if sep == "," else f" {sep} ")
+            out.append(seg.strip())
+        return "".join(out).strip()
 
     def _recurse_into_groups(s: str) -> str:
         """Find parenthesized/braced/pipe groups and recursively process."""
@@ -780,6 +799,16 @@ def _split_on_relation_fences(
                 # Word-boundary for LaTeX commands.
                 if fence.startswith("\\") and end < n and latex[end].isalpha():
                     continue
+                # A comma preceded by an odd run of backslashes is the escaped
+                # thin-space ``\,`` — a spacing command, not a separator.
+                if fence == ",":
+                    bs = 0
+                    k = i - 1
+                    while k >= 0 and latex[k] == "\\":
+                        bs += 1
+                        k -= 1
+                    if bs % 2 == 1:
+                        continue
                 segments.append(latex[seg_start:i])
                 separators.append(fence)
                 seg_start = end
@@ -2207,10 +2236,40 @@ class SemanticGraphBuilder:
             subexpr = self._fix_bar_subexpr(original_latex.strip())
             for node in self.nodes:
                 if node["id"] == root_id:
-                    node["subexpr"] = subexpr
+                    # Skip infix-operator root nodes (``f \circ g``, ``A \cap B``):
+                    # the walker already built their subexpr from the original
+                    # ``\circ``/``\cap`` notation, whereas ``original_latex`` here
+                    # is the placeholder-rewritten form (``\Xi_{900}(f, g)``) that
+                    # would leak into the tooltip.
+                    if node.get("_xi_idx") is None:
+                        node["subexpr"] = subexpr
                     break
         self._cleanup_infix_subexprs()
-        return {"nodes": self.nodes, "edges": self.edges}
+        return {"nodes": self.nodes, "edges": self._dedupe_edges()}
+
+    def _dedupe_edges(self) -> list[dict[str, Any]]:
+        """Drop exact-duplicate edges, preserving order.
+
+        A binary operator whose two operands are the *same* node — e.g.
+        ``\\text{sub-}c \\circ \\text{sub-}c`` (both operands collapse to one
+        node) — emits the same ``from→to`` edge twice. The renderer keys edges
+        by ``from→to`` so the duplicate is pure redundancy (and can double up
+        adjacency entries in some consumers). Dedupe on the full attribute
+        tuple so genuinely distinct edges (different ``role``/``semantic``)
+        between the same pair are kept.
+        """
+        seen: set[tuple] = set()
+        deduped: list[dict[str, Any]] = []
+        for edge in self.edges:
+            key = (
+                edge.get("from"), edge.get("to"),
+                edge.get("role"), edge.get("semantic"),
+            )
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(edge)
+        return deduped
 
     # ------------------------------------------------------------------
     # Xi placeholder cleanup
@@ -3850,7 +3909,7 @@ def _latex_to_semantic_graph_dict(
         lhs_latex, branches = pw
         return _build_piecewise_graph(
             lhs_latex, branches, latex,
-            overrides=user_overrides,
+            overrides={**infix_overrides, **(user_overrides or {})},
             parenthetical_annotations=parenthetical_annotations,
             domain=domain,
         )
@@ -3858,8 +3917,13 @@ def _latex_to_semantic_graph_dict(
     # --- Strong statement separators ---
     strong_clauses = _split_on_statement_separators(latex)
     if len(strong_clauses) > 1:
+        # Infix operators (``\circ``, ``\cap``, …) are rewritten to ``\Xi_{N}``
+        # placeholders above; the per-clause re-parse needs their overrides to
+        # resolve those placeholders back to operator nodes (else a clause like
+        # ``\Xi_{900}(f, g) = h`` yields a raw ``Xi_{900}`` function node).
+        clause_overrides = {**infix_overrides, **(user_overrides or {})}
         graph = _build_comma_separated_graph(
-            strong_clauses, overrides=user_overrides, domain=domain,
+            strong_clauses, overrides=clause_overrides, domain=domain,
         )
         _inject_annotations(graph, parenthetical_annotations)
         return graph
@@ -3966,8 +4030,11 @@ def _latex_to_semantic_graph_dict(
     if len(clauses) > 1:
         clauses = _rejoin_subject_group_commas(clauses)
     if len(clauses) > 1:
+        # Pass infix overrides (``\circ``/``\cap`` → ``\Xi_{N}``) so each clause
+        # re-parse can resolve its placeholders back to operator nodes.
+        clause_overrides = {**infix_overrides, **(user_overrides or {})}
         graph = _build_comma_separated_graph(
-            clauses, overrides=user_overrides, domain=domain,
+            clauses, overrides=clause_overrides, domain=domain,
         )
         _inject_annotations(graph, parenthetical_annotations)
         return graph
