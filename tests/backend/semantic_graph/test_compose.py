@@ -63,6 +63,33 @@ def test_compose_operator_glyph_and_kind():
     assert _OPERATOR_KINDS["compose"] == "function"
 
 
+def test_compose_across_comma_separated_statements():
+    r"""Two ``\circ`` statements split by ``,\qquad`` stay independent (#443).
+
+    Regression: the infix rewriter used to wrap ``\circ`` across the top-level
+    comma (``\Xi(sub-c, c, anything)``), merging the two equations into one
+    bogus chain. Each statement must keep its own compose + equals nodes.
+    """
+    g = _graph(
+        r"\text{sub-}c \circ \text{sub-}c = \text{sub-}c, "
+        r"\qquad c \circ \text{anything} = c"
+    )
+    assert g is not None
+    assert_universal_invariants(g)
+    compose_nodes = [n for n in g.nodes if n.op == "compose"]
+    equals_nodes = [n for n in g.nodes if n.op == "equals"]
+    assert len(compose_nodes) == 2, (
+        f"expected 2 independent compose nodes, got {len(compose_nodes)}"
+    )
+    assert len(equals_nodes) == 2, (
+        f"expected 2 independent equals nodes, got {len(equals_nodes)}"
+    )
+    # No placeholder leaked and no stray Xi function node survived.
+    assert not any((n.op or "").startswith("Xi_") for n in g.nodes), (
+        "an unresolved Xi placeholder node leaked into the graph"
+    )
+
+
 def test_compose_root_subexpr_has_no_placeholder_leak():
     r"""A whole-expression ``f \circ g`` must not leak ``\Xi_{N}`` into subexpr."""
     g = _graph(r"f \circ g")

@@ -629,6 +629,12 @@ _INFIX_RELATION_FENCES: list[str] = [
     r"\ge", r"\le", r"\ne", r"\gt", r"\lt", r"\in",
     r"\to", r"\mid",
     "=", ">", "<",
+    # A bare depth-0 comma separates statements / list items — an infix
+    # operator's operands are never split across it, so it must fence the
+    # rewrite (otherwise ``A = B, C \circ D = E`` glues ``B`` and ``C \circ D``
+    # into one ``\Xi(B, C, D)`` call, destroying the statement boundary).
+    # The escaped thin-space ``\,`` is guarded against in the matcher below.
+    ",",
 ]
 
 
@@ -787,6 +793,16 @@ def _split_on_relation_fences(
                 # Word-boundary for LaTeX commands.
                 if fence.startswith("\\") and end < n and latex[end].isalpha():
                     continue
+                # A comma preceded by an odd run of backslashes is the escaped
+                # thin-space ``\,`` — a spacing command, not a separator.
+                if fence == ",":
+                    bs = 0
+                    k = i - 1
+                    while k >= 0 and latex[k] == "\\":
+                        bs += 1
+                        k -= 1
+                    if bs % 2 == 1:
+                        continue
                 segments.append(latex[seg_start:i])
                 separators.append(fence)
                 seg_start = end
@@ -3863,7 +3879,7 @@ def _latex_to_semantic_graph_dict(
         lhs_latex, branches = pw
         return _build_piecewise_graph(
             lhs_latex, branches, latex,
-            overrides=user_overrides,
+            overrides={**infix_overrides, **(user_overrides or {})},
             parenthetical_annotations=parenthetical_annotations,
             domain=domain,
         )
@@ -3871,8 +3887,13 @@ def _latex_to_semantic_graph_dict(
     # --- Strong statement separators ---
     strong_clauses = _split_on_statement_separators(latex)
     if len(strong_clauses) > 1:
+        # Infix operators (``\circ``, ``\cap``, …) are rewritten to ``\Xi_{N}``
+        # placeholders above; the per-clause re-parse needs their overrides to
+        # resolve those placeholders back to operator nodes (else a clause like
+        # ``\Xi_{900}(f, g) = h`` yields a raw ``Xi_{900}`` function node).
+        clause_overrides = {**infix_overrides, **(user_overrides or {})}
         graph = _build_comma_separated_graph(
-            strong_clauses, overrides=user_overrides, domain=domain,
+            strong_clauses, overrides=clause_overrides, domain=domain,
         )
         _inject_annotations(graph, parenthetical_annotations)
         return graph
@@ -3979,8 +4000,11 @@ def _latex_to_semantic_graph_dict(
     if len(clauses) > 1:
         clauses = _rejoin_subject_group_commas(clauses)
     if len(clauses) > 1:
+        # Pass infix overrides (``\circ``/``\cap`` → ``\Xi_{N}``) so each clause
+        # re-parse can resolve its placeholders back to operator nodes.
+        clause_overrides = {**infix_overrides, **(user_overrides or {})}
         graph = _build_comma_separated_graph(
-            clauses, overrides=user_overrides, domain=domain,
+            clauses, overrides=clause_overrides, domain=domain,
         )
         _inject_annotations(graph, parenthetical_annotations)
         return graph

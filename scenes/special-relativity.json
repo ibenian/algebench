@@ -3792,29 +3792,22 @@
               "semanticGraph": {
                 "graph": {
                   "nodes": [
-                    {"id": "c0___equals_1", "type": "relation", "op": "equals", "subexpr": "\\text{sub-}c \\circ \\text{sub-}c = \\text{sub-}c", "description": "The composition of two sub-light speeds results in another sub-light speed."},
-                    {"id": "c0___multiply_2", "type": "operator", "op": "multiply", "subexpr": "\\text{sub-}c \\text{sub-}c \\circ", "description": "The relativistic composition of two speeds that are less than the speed of light.", "quantity": "velocity", "dimension": "L·T⁻¹", "unit": "m/s"},
-                    {"id": "alphac", "type": "scalar", "emoji": "🚄", "latex": "\\text{sub-}c", "subexpr": "\\text{sub-}c", "description": "A speed less than the speed of light, $c$.", "quantity": "velocity", "dimension": "L·T⁻¹", "unit": "m/s"},
-                    {"id": "c0___multiply_3", "type": "operator", "op": "multiply", "subexpr": "\\text{sub-}c \\circ", "description": "A sub-light speed composed with another speed."},
-                    {"id": "circ", "type": "scalar", "emoji": "➕", "latex": "\\circ", "subexpr": "\\circ", "description": "The operator for relativistic velocity composition, often called velocity addition."},
-                    {"id": "c1___equals_1", "type": "relation", "op": "equals", "subexpr": "c \\circ \\text{anything} = c", "description": "The composition of the speed of light with any other speed results in the speed of light."},
-                    {"id": "c1___multiply_2", "type": "operator", "op": "multiply", "subexpr": "c \\circ \\text{anything}", "description": "The relativistic composition of the speed of light with any other speed.", "quantity": "velocity", "dimension": "L·T⁻¹", "unit": "m/s"},
-                    {"id": "c", "type": "scalar", "emoji": "💡", "latex": "c", "subexpr": "c", "description": "The speed of light in a vacuum, a universal constant.", "quantity": "speed_of_light", "dimension": "L·T⁻¹", "unit": "m/s", "value": 299792458, "role": "constant"},
-                    {"id": "c1___multiply_3", "type": "operator", "op": "multiply", "subexpr": "\\circ \\text{anything}", "description": "Composition with an arbitrary speed."},
-                    {"id": "anything", "type": "text", "label": "anything", "emoji": "❓", "latex": "\\text{anything}", "subexpr": "\\text{anything}", "description": "A placeholder for any speed, whether sub-light, light, or superluminal.", "quantity": "velocity", "dimension": "L·T⁻¹", "unit": "m/s"}
+                    {"id": "c0___equals_1", "type": "relation", "op": "equals", "subexpr": "\\text{sub-}c \\circ \\text{sub-}c =  \\text{sub-}c"},
+                    {"id": "alphac", "type": "scalar", "latex": "\\text{sub-}c", "subexpr": "\\text{sub-}c"},
+                    {"id": "c0___compose_2", "type": "operator", "emoji": "∘", "op": "compose", "subexpr": "\\text{sub-}c \\circ \\text{sub-}c"},
+                    {"id": "c1___equals_1", "type": "relation", "op": "equals", "subexpr": "c \\circ \\text{anything} =  c"},
+                    {"id": "c", "type": "scalar", "latex": "c", "subexpr": "c"},
+                    {"id": "anything", "type": "text", "label": "anything", "latex": "\\text{anything}", "subexpr": "\\text{anything}"},
+                    {"id": "c1___compose_2", "type": "operator", "emoji": "∘", "op": "compose", "subexpr": "c \\circ \\text{anything}"}
                   ],
                   "edges": [
-                    {"from": "alphac", "to": "c0___multiply_2", "semantic": "direct", "weight": 1.0},
-                    {"from": "circ", "to": "c0___multiply_3", "semantic": "direct", "weight": 1.0},
-                    {"from": "alphac", "to": "c0___multiply_3", "semantic": "direct", "weight": 1.0},
-                    {"from": "c0___multiply_3", "to": "c0___multiply_2", "semantic": "direct", "weight": 1.0},
-                    {"from": "c0___multiply_2", "to": "c0___equals_1"},
+                    {"from": "alphac", "to": "c0___compose_2"},
+                    {"from": "alphac", "to": "c0___compose_2"},
+                    {"from": "c0___compose_2", "to": "c0___equals_1"},
                     {"from": "alphac", "to": "c0___equals_1"},
-                    {"from": "c", "to": "c1___multiply_2", "semantic": "direct", "weight": 1.0},
-                    {"from": "circ", "to": "c1___multiply_3", "semantic": "direct", "weight": 1.0},
-                    {"from": "anything", "to": "c1___multiply_3", "semantic": "direct", "weight": 1.0},
-                    {"from": "c1___multiply_3", "to": "c1___multiply_2", "semantic": "direct", "weight": 1.0},
-                    {"from": "c1___multiply_2", "to": "c1___equals_1"},
+                    {"from": "c", "to": "c1___compose_2"},
+                    {"from": "anything", "to": "c1___compose_2"},
+                    {"from": "c1___compose_2", "to": "c1___equals_1"},
                     {"from": "c", "to": "c1___equals_1"}
                   ],
                   "classification": {
@@ -3824,11 +3817,6 @@
                       {"kind": "algebraic"},
                       {"kind": "algebraic"}
                     ]
-                  },
-                  "domain": "special_relativity",
-                  "enrichment": {
-                    "reasoning": "The context is special relativity, so 'c' is the speed of light and 'circ' is relativistic velocity composition. 'sub-c' and 'anything' represent velocities.",
-                    "fields": ["domain", "nodes.c0___equals_1.description", "nodes.c0___multiply_2.description", "nodes.c0___multiply_2.dimension", "nodes.c0___multiply_2.quantity", "nodes.c0___multiply_2.unit", "nodes.alphac.description", "nodes.alphac.dimension", "nodes.alphac.emoji", "nodes.alphac.quantity", "nodes.alphac.unit", "nodes.c0___multiply_3.description", "nodes.circ.description", "nodes.circ.emoji", "nodes.c1___equals_1.description", "nodes.c1___multiply_2.description", "nodes.c1___multiply_2.dimension", "nodes.c1___multiply_2.quantity", "nodes.c1___multiply_2.unit", "nodes.c.description", "nodes.c.dimension", "nodes.c.emoji", "nodes.c.quantity", "nodes.c.role", "nodes.c.unit", "nodes.c.value", "nodes.c1___multiply_3.description", "nodes.anything.description", "nodes.anything.dimension", "nodes.anything.emoji", "nodes.anything.quantity", "nodes.anything.unit"]
                   }
                 }
               }
