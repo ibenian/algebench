@@ -72,7 +72,7 @@ export function renderStepAdd(elements, sliderDefs) {
     const addedElementIds = [];
     let replacedElements = null;
     for (const el of elements) {
-        if (!el.id && el.label) {
+        if (!el.id && (el.label || el.prompt)) {
             el.id = '__auto_' + (autoIdCounter++) + '_' + Date.now();
         }
         // If this step reuses an element id, hide any previously visible instance first.
@@ -92,7 +92,7 @@ export function renderStepAdd(elements, sliderDefs) {
         if (el.id) {
             addedElementIds.push(el.id);
             const subTracker = buildSubTracker(elGroup, elBefore);
-            state.elementRegistry[el.id] = { tracker: subTracker, hidden: false, type: el.type };
+            state.elementRegistry[el.id] = { tracker: subTracker, hidden: false, type: el.type, prompt: el.prompt || null, label: el.label || null };
         }
     }
 
@@ -587,14 +587,18 @@ export async function loadScene(spec) {
     });
     state.sceneView = view;
 
+    let baseAutoIdCounter = 0;
     for (const el of spec.elements) {
+        // An element with an author "prompt" gets a per-object Ask-AI button, so it
+        // must be registered (and thus id'd) even if it carries no explicit id.
+        if (!el.id && el.prompt) el.id = '__auto_' + (baseAutoIdCounter++) + '_' + Date.now();
         const elBefore = el.id ? snapshotBefore() : null;
         const elGroup = el.id ? view.group() : view;
         try {
             renderElement(el, elGroup);
             if (el.id) {
                 const subTracker = buildSubTracker(elGroup, elBefore);
-                state.elementRegistry[el.id] = { tracker: subTracker, hidden: false, type: el.type };
+                state.elementRegistry[el.id] = { tracker: subTracker, hidden: false, type: el.type, prompt: el.prompt || null, label: el.label || null };
             }
         } catch (e) {
             console.error('Error rendering element:', el, e);
