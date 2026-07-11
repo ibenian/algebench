@@ -331,6 +331,19 @@ function removeStepTracker(tracker) {
         }
     }
 
+    // Deregister the elements this step ADDED so nothing can reference them after
+    // backward navigation — otherwise a popped element's registry entry lingers
+    // (hidden:false, with a stale label/mesh anchor) and the per-object Ask-AI
+    // picker still finds it. Ids this step REPLACED are restored just above and
+    // must be kept.
+    if (tracker.elementIds) {
+        for (const id of tracker.elementIds) {
+            if (tracker.replacedElements && tracker.replacedElements[id]) continue;
+            delete state.elementRegistry[id];
+            state.legendToggledOff.delete(id);
+        }
+    }
+
     fadeOutTracker(tracker, 200, () => {
         if (tracker.group) {
             try { tracker.group.remove(); } catch(e) {}
