@@ -579,7 +579,13 @@ def _rewrite_prefix_ops(latex: str) -> str:
 
 # Each entry: (latex_cmd, graph_op, emoji, node_type, original_latex)
 _INFIX_OP_CATALOG: list[tuple[str, str, str, str]] = [
-    # --- Precedence 1 (tightest): intersection / conjunction ---
+    # --- Precedence 0 (tightest): function composition ---
+    # SymPy has no ``Compose`` for arbitrary symbols, so ``f \circ g``
+    # would otherwise parse as ``f · circ · g`` (a stray ``circ`` symbol
+    # multiplied in).  Rewriting it as an infix call gives a proper
+    # ``compose`` operator node with two operands (issue #443).
+    (r"\circ",     "compose",        "∘", "operator"),
+    # --- Precedence 1: intersection / conjunction ---
     (r"\cap",      "intersection",   "∩", "operator"),
     (r"\land",     "conjunction",    "∧", "operator"),
     (r"\wedge",    "conjunction",    "∧", "operator"),
@@ -593,6 +599,7 @@ _INFIX_OP_CATALOG: list[tuple[str, str, str, str]] = [
 # Ordered precedence groups (tightest first).
 # Each group is a list of LaTeX commands at that precedence level.
 _INFIX_PRECEDENCE: list[list[str]] = [
+    [r"\circ"],
     [r"\cap", r"\land", r"\wedge"],
     [r"\cup", r"\lor", r"\vee", r"\setminus"],
 ]
@@ -2207,7 +2214,13 @@ class SemanticGraphBuilder:
             subexpr = self._fix_bar_subexpr(original_latex.strip())
             for node in self.nodes:
                 if node["id"] == root_id:
-                    node["subexpr"] = subexpr
+                    # Skip infix-operator root nodes (``f \circ g``, ``A \cap B``):
+                    # the walker already built their subexpr from the original
+                    # ``\circ``/``\cap`` notation, whereas ``original_latex`` here
+                    # is the placeholder-rewritten form (``\Xi_{900}(f, g)``) that
+                    # would leak into the tooltip.
+                    if node.get("_xi_idx") is None:
+                        node["subexpr"] = subexpr
                     break
         self._cleanup_infix_subexprs()
         return {"nodes": self.nodes, "edges": self.edges}

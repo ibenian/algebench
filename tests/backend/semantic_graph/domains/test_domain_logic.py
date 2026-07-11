@@ -39,6 +39,7 @@ ALLOWED_OPS = {
     "function", "Abs", "abs",
     "neg",
     "intersection", "union", "conjunction", "disjunction",
+    "compose",
 }
 
 
@@ -120,6 +121,22 @@ LOGIC_EXPRESSIONS: list[CatalogEntry] = [
          "__union_3,c -> __power_2; "
          "__intersection_4,__power_2 -> __equals_1",
      None),
+
+    ("logic_compose",
+     r"h = g \circ f",
+     PASS,
+         "f,g -> compose; compose,h -> rel:equals",
+         "f,g -> __compose_2; __compose_2,h -> __equals_1",
+     [{"op": "compose", "type": "operator"}]),
+
+    ("logic_compose_identity",
+     r"(f \circ g)(x) = f(g(x))",
+     PASS,
+         "f,g -> compose; x -> fn:g; fn:g -> fn:f; "
+         "compose,x -> multiply; fn:f,multiply -> rel:equals",
+         "f,g -> __compose_3; x -> __g_5; __g_5 -> __f_4; "
+         "__compose_3,x -> __multiply_2; __f_4,__multiply_2 -> __equals_1",
+     [{"op": "compose", "type": "operator"}]),
 
     ("logic_forall",
      r"\forall x \in \mathbb{R}, \quad x^2 \geq 0",
