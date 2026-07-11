@@ -697,12 +697,15 @@ def _rewrite_infix_ops(
             # No relation fences — process the whole string.
             return _process_segment(s)
         processed = [_process_segment(seg) for seg in segments]
-        # Reassemble with original separators, preserving spacing.
-        out: list[str] = [processed[0]]
+        # Reassemble with exactly one space around each separator. Segments
+        # keep the leading/trailing whitespace from their split points, so
+        # strip those boundaries — otherwise ``= `` + `` \text{x}`` reassembles
+        # to ``=  \text{x}`` (a double space that leaks into the subexpr).
+        out: list[str] = [processed[0].rstrip()]
         for sep, seg in zip(separators, processed[1:]):
-            out.append(f" {sep} " if not sep.startswith("\\") else f" {sep} ")
-            out.append(seg)
-        return "".join(out)
+            out.append(f" {sep} ")
+            out.append(seg.strip())
+        return "".join(out).strip()
 
     def _recurse_into_groups(s: str) -> str:
         """Find parenthesized/braced/pipe groups and recursively process."""
