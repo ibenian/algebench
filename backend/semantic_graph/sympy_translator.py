@@ -703,7 +703,10 @@ def _rewrite_infix_ops(
         # to ``=  \text{x}`` (a double space that leaks into the subexpr).
         out: list[str] = [processed[0].rstrip()]
         for sep, seg in zip(separators, processed[1:]):
-            out.append(f" {sep} ")
+            # A comma is list/statement punctuation — no space *before* it
+            # (``B, C``, not ``B , C``). Relation operators get a space each
+            # side (``B = C``).
+            out.append(f"{sep} " if sep == "," else f" {sep} ")
             out.append(seg.strip())
         return "".join(out).strip()
 
@@ -2242,7 +2245,31 @@ class SemanticGraphBuilder:
                         node["subexpr"] = subexpr
                     break
         self._cleanup_infix_subexprs()
-        return {"nodes": self.nodes, "edges": self.edges}
+        return {"nodes": self.nodes, "edges": self._dedupe_edges()}
+
+    def _dedupe_edges(self) -> list[dict[str, Any]]:
+        """Drop exact-duplicate edges, preserving order.
+
+        A binary operator whose two operands are the *same* node — e.g.
+        ``\\text{sub-}c \\circ \\text{sub-}c`` (both operands collapse to one
+        node) — emits the same ``from→to`` edge twice. The renderer keys edges
+        by ``from→to`` so the duplicate is pure redundancy (and can double up
+        adjacency entries in some consumers). Dedupe on the full attribute
+        tuple so genuinely distinct edges (different ``role``/``semantic``)
+        between the same pair are kept.
+        """
+        seen: set[tuple] = set()
+        deduped: list[dict[str, Any]] = []
+        for edge in self.edges:
+            key = (
+                edge.get("from"), edge.get("to"),
+                edge.get("role"), edge.get("semantic"),
+            )
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(edge)
+        return deduped
 
     # ------------------------------------------------------------------
     # Xi placeholder cleanup
