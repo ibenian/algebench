@@ -891,8 +891,9 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     left: 0;
     color: #ffffff;
     /* Real font-size scaling (crisp re-render) driven by --label-scale, rather
-       than a transform scale() that would resample the rendered glyphs. */
-    font-size: calc(13px * var(--label-scale, 1));
+       than a transform scale() that would resample the rendered glyphs.
+       Base is 13px × 1.6 = 20.8px so labelScale 1.0 renders at the enlarged size. */
+    font-size: calc(20.8px * var(--label-scale, 1));
     pointer-events: none;
     /* Crisp dark contour around the glyphs (8-way 1px outline) plus a soft halo,
        for legibility over other text and shapes — without altering the fill. */
@@ -910,7 +911,7 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 #slider-overlay, #legend, #info-overlays .dockable-panel { transition: opacity 0.2s ease; }
 
 .label-3d .katex { font-size: 1em; }
-.label-axis { font-size: calc(18px * var(--label-scale, 1)); font-weight: bold; }
+.label-axis { font-size: calc(28.8px * var(--label-scale, 1)); font-weight: bold; }
 
 /* Legend */
 #legend {
