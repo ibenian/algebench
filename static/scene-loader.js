@@ -58,6 +58,10 @@ function buildSubTracker(group, before) {
 // for elements whose label is dynamic (labelExpr/textExpr) — those are named from
 // the live rendered label at click time instead.
 function elementDisplayName(el) {
+    // A dynamic label (labelExpr/textExpr) is named from the live rendered label
+    // at click time, so return null here even when a static label also exists —
+    // otherwise the stale static value would win.
+    if (el.labelExpr || el.textExpr) return null;
     return el.label || (el.type === 'text' ? (el.text || el.value) : null) || null;
 }
 
