@@ -87,7 +87,7 @@ export function renderStepAdd(elements, sliderDefs) {
     const addedElementIds = [];
     let replacedElements = null;
     for (const el of elements) {
-        if (!el.id && (el.prompt || elementHasLabelSource(el))) {
+        if (!el.id && (el.prompt || (elementHasLabelSource(el) && el.type !== 'axis' && el.type !== 'grid'))) {
             el.id = '__auto_' + (autoIdCounter++) + '_' + Date.now();
         }
         // If this step reuses an element id, hide any previously visible instance first.

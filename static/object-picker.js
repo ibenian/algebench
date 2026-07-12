@@ -247,6 +247,16 @@ function hideBtn() {
     }, HIDE_DELAY);
 }
 
+/** Hide the button right away (no grace delay) — used while dragging/orbiting so
+ *  it never lingers over the scene mid-gesture. */
+function hideBtnNow() {
+    if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
+    if (!_btn) return;
+    _btn.style.opacity = '0';
+    _btn.style.pointerEvents = 'none';
+    _hoveredId = null;
+}
+
 // ----- camera-relative view description (Option B) -----
 
 function viewportLabel(ndc) {
@@ -319,20 +329,23 @@ function sizeWord(extent, rect) {
     return 'small in the view';
 }
 
-/** Which other element (if any) occludes `anchor` along the camera ray. */
+/** What (if anything) occludes `anchor` along the camera ray. Returns null (not
+ *  occluded), `{ name }` for a resolved element, or `{ generic: true }` when a
+ *  closer mesh can't be mapped back to an element id (still a real occluder). */
 function occluderOf(id, anchor) {
     const origin = state.camera.position;
     const dir = anchor.clone().sub(origin).normalize();
     _raycaster.set(origin, dir);
-    const hits = _raycaster.intersectObjects(pickableMeshes(), false);
+    const hits = _raycaster.intersectObjects(pickableMeshes(), false);  // sorted nearest-first
     if (!hits.length) return null;
     const map = buildMeshIdMap();
     const distToAnchor = origin.distanceTo(anchor);
     for (const h of hits) {
+        if (h.distance >= distToAnchor - 0.05) break;      // reached the object's depth, nothing closer
         const hid = map.get(h.object);
-        if (!hid || isHidden(hid)) continue;
-        if (hid === id) return null;                       // self reached first → not occluded
-        if (h.distance < distToAnchor - 0.05) return hid;  // a different object is in front
+        if (hid === id) return null;                       // our own geometry is hit first → visible
+        if (hid && isHidden(hid)) continue;                // ignore hidden elements
+        return hid ? { name: elementName(hid, state.elementRegistry[hid]) } : { generic: true };
     }
     return null;
 }
@@ -394,7 +407,7 @@ function buildViewContext(id, reg) {
     if (sw) facts.push(sw);
     if (me) {
         const occ = occluderOf(id, me.anchor);
-        if (occ) facts.push(`partially behind "${elementName(occ, state.elementRegistry[occ])}"`);
+        if (occ) facts.push(occ.generic ? 'partially behind another object' : `partially behind "${occ.name}"`);
     }
     lines.push('- ' + facts.join(', ') + '.');
 
@@ -434,8 +447,9 @@ function buildObjectAskMessage(id) {
 // ----- setup -----
 
 function onPointerMove(e) {
-    // Ignore moves while the user is orbiting/panning (a button is held).
-    if (e.buttons !== 0) { hideBtn(); return; }
+    // Ignore moves while the user is orbiting/panning (a button is held) — hide
+    // immediately so the button never lingers over the scene mid-drag.
+    if (e.buttons !== 0) { hideBtnNow(); return; }
     _lastEvt = e;
     if (_rafPending) return;
     _rafPending = true;
@@ -455,6 +469,6 @@ export function setupObjectPicker() {
     _raycaster = new THREE.Raycaster();
     _canvas.addEventListener('pointermove', onPointerMove, { passive: true });
     _canvas.addEventListener('pointerleave', () => hideBtn(), { passive: true });
-    // Hide the button while dragging (orbit) so it doesn't linger over the scene.
-    _canvas.addEventListener('pointerdown', () => hideBtn(), { passive: true });
+    // Hide the button immediately while dragging (orbit) so it doesn't linger.
+    _canvas.addEventListener('pointerdown', () => hideBtnNow(), { passive: true });
 }
