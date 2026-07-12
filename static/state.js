@@ -98,6 +98,10 @@ export const state = {
         labelDeclutterMode: 'shade',
         labelDeclutterGap: 4, labelDeclutterMaxStack: 5, labelDeclutterAlpha: 0.25, // position mode
         labelDimBase: 0.7, labelDimFloor: 0.4, labelDimDepthScale: 0.5, labelDimAlpha: 0.2, // shade mode
+        // In shade mode, once a cluster stacks this many overlapping labels, the
+        // farthest ones (rank >= threshold by depth) fade to labelDimHideLevel
+        // *opacity* (transparent, not darkened) so the front labels read cleanly.
+        labelDimHideThreshold: 4, labelDimHideLevel: 0.1,
     },
 
     // ----- UI -----
