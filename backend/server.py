@@ -428,9 +428,7 @@ style_css_path  = static_dir / "style.css"
 
 # ---------------------------------------------------------------------------
 from backend.util import sanitize_path, limiter_from_env, rate_limit_dependency  # noqa: E402
-from backend.proof_store import (  # noqa: E402
-    get_proof_store, LocalProofStore, normalize_id, canonical_bytes, verify_secret,
-)
+from backend.proof_routes import build_proof_router  # noqa: E402
 
 # Per-IP rate limits for billable (Gemini-backed) endpoints. Override via env
 # as "count/seconds", e.g. ALGEBENCH_RATELIMIT_CHAT="10/60". Limits protect the
@@ -1520,158 +1518,12 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
         return Response(content=data, media_type="application/json",
                         headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
 
-    # ── /prove page: user-derived proof storage (see backend/proof_store.py) ──
-    # Writable store: GCS when ALGEBENCH_PROOFS_BUCKET is set, else the local
-    # filesystem. `_proof_seed` always reads the shipped built-in corpus
-    # (proofs/domains) so the catalog + reference resolution include the 18
-    # built-ins even when the writable store is a (user-only) GCS bucket.
-    # Writable local store defaults to a gitignored dir (NOT the committed
-    # proofs/domains seed), overridable via env for tests/dev. GCS (when a
-    # bucket is set) ignores these paths. The seed always reads the shipped
-    # built-ins from proofs/domains.
-    _proof_domains_dir = Path(os.environ.get(
-        "ALGEBENCH_PROOFS_DIR", str(script_dir / ".proof-store" / "domains")))
-    _proof_source_dir = Path(os.environ.get(
-        "ALGEBENCH_PROOF_SOURCE_DIR", str(script_dir / ".proof-store" / "source-material")))
-    _proof_store = get_proof_store(_proof_domains_dir, _proof_source_dir)
-    _proof_seed = LocalProofStore(proofs_dir / "domains", _proof_source_dir)
-    _proof_catalog_cache = {"list": None}
-
-    def _invalidate_proof_catalog():
-        _proof_catalog_cache["list"] = None
-
-    def _proof_catalog():
-        # Merge seed + store (store wins on id clash), dedup by id. Cached; a
-        # single GCS list_blobs (metadata only) rebuilds it, invalidated on write.
-        if _proof_catalog_cache["list"] is None:
-            merged = {}
-            for entry in _proof_seed.list() + _proof_store.list():
-                merged[entry["id"]] = entry
-            _proof_catalog_cache["list"] = sorted(merged.values(), key=lambda e: e["id"])
-        return _proof_catalog_cache["list"]
-
-    # Top-level keys allowed on a stored proof — everything else (any injected
-    # field) is dropped server-side. Deep per-field validation is the client
-    # validator + engine's job; this bounds what the public write path persists.
-    _PROOF_TOP_KEYS = {
-        "title", "domain", "goal", "summary", "steps", "terms",
-        "overall_confidence", "followups", "prerequisites", "deeplink", "proof_refs",
-    }
-
-    def _sanitize_stored_proof(data):
-        """Whitelist top-level keys + require a non-empty steps list, else None."""
-        if not isinstance(data, dict):
-            return None
-        if not isinstance(data.get("steps"), list) or not data["steps"]:
-            return None
-        out = {k: data[k] for k in _PROOF_TOP_KEYS if k in data}
-        out["title"] = str(out.get("title") or "")
-        out["domain"] = str(out.get("domain") or "")
-        return out
-
-    @fastapp.get("/api/proofs")
-    async def api_proofs_catalog():
-        """Merged {id,title,domain,goal} catalog for the /prove typeahead+browse."""
-        return JSONResponse({"proofs": _proof_catalog()})
-
-    @fastapp.get("/api/proofs/name-available")
-    async def api_proof_name_available(name: str = ""):
-        nid = normalize_id(name)
-        if not nid:
-            return JSONResponse({"available": False, "reason": "invalid"})
-        taken = (_proof_seed.name_taken(nid) or _proof_store.name_taken(nid)
-                 or any(e["id"] == nid for e in _proof_catalog()))
-        return JSONResponse({"id": nid, "available": not taken})
-
-    @fastapp.get("/api/proofs/item")
-    async def api_proof_item(id: str = ""):
-        """Full proof JSON by id — built-in seed first, then the writable store."""
-        nid = normalize_id(id)
-        if not nid:
-            return JSONResponse({"error": "invalid id"}, status_code=400)
-        data = _proof_seed.get(nid) or _proof_store.get(nid)
-        if data is None:
-            return Response(status_code=404)
-        return JSONResponse(data)
-
-    @fastapp.get("/api/proofs/source")
-    async def api_proof_source(id: str = "", secret: str = ""):
-        """Author-only source material (Documentation + References), secret-gated."""
-        nid = normalize_id(id)
-        if not nid:
-            return JSONResponse({"error": "invalid id"}, status_code=400)
-        data = _proof_store.get(nid)
-        if data is None:
-            return Response(status_code=404)
-        if not verify_secret(nid, canonical_bytes(data), secret):
-            return JSONResponse({"error": "forbidden"}, status_code=403)
-        src = _proof_store.get_source(nid)
-        if src is None:
-            return Response(status_code=404)
-        return JSONResponse(src)
-
-    @fastapp.post("/api/proofs")
-    async def api_proof_claim(request: Request, _rl: None = Depends(_agentic_rate_limit)):
-        """Claim a unique name + save a derived proof (+ optional source material)."""
-        body = await request.json()
-        body = body if isinstance(body, dict) else {}
-        nid = normalize_id(body.get("id", ""))
-        data = _sanitize_stored_proof(body.get("data"))
-        if not nid or data is None:
-            return JSONResponse({"error": "invalid id or proof"}, status_code=400)
-        if _proof_seed.name_taken(nid):
-            return JSONResponse({"error": "name taken"}, status_code=409)
-        source = body.get("source")
-        secret = _proof_store.claim(nid, data, source if isinstance(source, dict) else None)
-        if secret is None:
-            return JSONResponse({"error": "name taken"}, status_code=409)
-        _invalidate_proof_catalog()
-        return JSONResponse({"id": nid, "secret": secret})
-
-    @fastapp.put("/api/proofs")
-    async def api_proof_update(request: Request, secret: str = "",
-                               _rl: None = Depends(_agentic_rate_limit)):
-        """CAS update: the secret must match the current stored content. Rotates."""
-        body = await request.json()
-        body = body if isinstance(body, dict) else {}
-        nid = normalize_id(body.get("id", ""))
-        data = _sanitize_stored_proof(body.get("data"))
-        if not nid or data is None:
-            return JSONResponse({"error": "invalid id or proof"}, status_code=400)
-        source = body.get("source")
-        new_secret = _proof_store.update(nid, data, secret,
-                                         source if isinstance(source, dict) else None)
-        if new_secret is None:
-            return JSONResponse({"error": "forbidden or stale — reload"}, status_code=403)
-        _invalidate_proof_catalog()
-        return JSONResponse({"id": nid, "secret": new_secret})
-
-    @fastapp.delete("/api/proofs")
-    async def api_proof_delete(id: str = "", secret: str = "",
-                               _rl: None = Depends(_agentic_rate_limit)):
-        nid = normalize_id(id)
-        if not nid:
-            return JSONResponse({"error": "invalid id"}, status_code=400)
-        if not _proof_store.delete(nid, secret):
-            return JSONResponse({"error": "forbidden"}, status_code=403)
-        _invalidate_proof_catalog()
-        return JSONResponse({"ok": True})
-
-    @fastapp.get("/api/proof-ref")
-    async def api_proof_ref(ref: str = "", gcsBucket: str = "",
-                            _rl: None = Depends(_agentic_rate_limit)):
-        """Resolve a source-qualified cross-reference (allowlist-gated bucket)."""
-        nid = normalize_id(ref)
-        if not nid:
-            return JSONResponse({"error": "invalid ref"}, status_code=400)
-        if not gcsBucket:                       # own store / built-in seed
-            data = _proof_seed.get(nid) or _proof_store.get_ref(nid, None)
-        else:                                   # foreign bucket → allowlist enforced in get_ref
-            data = _proof_store.get_ref(nid, gcsBucket)
-        if data is None:
-            return JSONResponse({"error": "not found or not allowed"}, status_code=404)
-        return JSONResponse({"id": nid, "title": data.get("title"),
-                             "domain": data.get("domain"), "proof": data})
+    # /prove page proof storage API (catalog, claim, CAS update/delete,
+    # source material, cross-refs) — see backend/proof_routes.py.
+    fastapp.include_router(build_proof_router(
+        proofs_dir=proofs_dir, script_dir=script_dir,
+        agentic_rate_limit=_agentic_rate_limit,
+    ))
 
     @fastapp.get("/chat.js")
     async def get_chat_js():
