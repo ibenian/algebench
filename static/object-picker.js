@@ -178,12 +178,26 @@ function ensureBtn() {
     return btn;
 }
 
-/** Place the button at an element's projected anchor (nudged up-and-right so it
- *  sits beside the object, not under the cursor). Returns false if the object is
- *  hidden or off-view, in which case the button should not be shown. */
+/** Place the button on the object's name tag. Preferred anchor is the object's
+ *  **label** — that's the identifier the user sees — pinned to its top-right
+ *  corner, so the sparkle is always snug to "v"/"Capsule"/etc. rather than at a
+ *  vector's far tip. Objects with no visible label fall back to the projected
+ *  geometry anchor. Returns false if the object isn't visible. */
 function positionBtn(id, rect) {
     const reg = state.elementRegistry[id];
     if (!reg || isHidden(id)) return false;
+    const t = reg.tracker;
+    const lbl = t && t.labels && t.labels[0];
+    if (lbl && lbl.el && lbl.visible !== false && !lbl.forceHidden) {
+        const br = lbl.el.getBoundingClientRect();
+        if (br.width || br.height) {
+            const btn = ensureBtn();
+            btn.style.left = (br.right - 6) + 'px';   // top-right corner of the label
+            btn.style.top = (br.top - 16) + 'px';
+            return true;
+        }
+    }
+    // No visible label — pin to the projected geometry anchor instead.
     const anchor = worldAnchor(id, reg);
     const p = anchor && projectToScreen(anchor, rect);
     if (!p) return false;
