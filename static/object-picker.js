@@ -69,13 +69,17 @@ function isHidden(id) {
 // (an author can still opt one in explicitly with a `prompt`).
 const STRUCTURAL_TYPES = new Set(['axis', 'grid', 'skybox']);
 
-/** Pickable if the author opted in with a `prompt`, or it's a labeled content
- *  object (auto-generated prompt). */
+/** Pickable if the author opted in with a `prompt`, or it's a content object that
+ *  renders a label — static (`reg.label`) or dynamic (a live label entry on its
+ *  tracker, e.g. an animated point's `labelExpr` "6.3 km/s"). */
 function isPickable(id) {
     const reg = state.elementRegistry[id];
     if (!reg || isHidden(id)) return false;
     if (reg.prompt) return true;
-    return !!reg.label && !STRUCTURAL_TYPES.has(reg.type);
+    if (STRUCTURAL_TYPES.has(reg.type)) return false;
+    if (reg.label) return true;
+    const t = reg.tracker;
+    return !!(t && t.labels && t.labels.length);
 }
 
 // ----- anchors & projection -----
@@ -240,10 +244,30 @@ function viewportLabel(ndc) {
     return `the ${row}-${col}`;
 }
 
+/** Clean text for a live label entry: the raw dynamic string if the renderer kept
+ *  one (`_lastDynamicText`), else the DOM text with each KaTeX span collapsed back
+ *  to its `$…$` source (plain textContent triples the math and reads as garbage). */
+function liveLabelText(lbl) {
+    if (!lbl) return null;
+    if (lbl._lastDynamicText) return String(lbl._lastDynamicText).trim() || null;
+    if (!lbl.el) return null;
+    const clone = lbl.el.cloneNode(true);
+    clone.querySelectorAll('.katex').forEach(k => {
+        const ann = k.querySelector('annotation[encoding="application/x-tex"]');
+        k.replaceWith(ann ? `$${ann.textContent.trim()}$` : (k.textContent || ''));
+    });
+    return (clone.textContent || '').trim().replace(/\s+/g, ' ') || null;
+}
+
 function elementName(id, reg) {
-    // Prefer the author's raw label (may be KaTeX TeX, which the AI reads fine) —
-    // the rendered label's DOM textContent triples the math and reads as garbage.
+    // Prefer the author's raw static label (may be KaTeX TeX, which the AI reads
+    // fine). Otherwise resolve the live rendered label (covers labelExpr/textExpr).
     if (reg && reg.label) return reg.label;
+    const t = reg && reg.tracker;
+    if (t && t.labels && t.labels.length) {
+        const name = liveLabelText(t.labels[0]);
+        if (name) return name;
+    }
     if (id && !id.startsWith('__auto_')) return id;
     return (reg && reg.type) || id;
 }
@@ -360,12 +384,15 @@ function buildViewContext(id, reg) {
     }
     lines.push('- ' + facts.join(', ') + '.');
 
-    const others = visible.filter(v => v.id !== id).slice(0, MAX_NEIGHBORS);
+    // Only objects actually within the current viewport — not behind the camera or
+    // off-frame — so the list reflects what the user can really see right now.
+    const others = visible
+        .filter(v => v.id !== id && v.screen && v.screen.onScreen)
+        .slice(0, MAX_NEIGHBORS);
     if (others.length) {
         lines.push('Other objects currently in view (nearest first):');
         for (const o of others) {
-            const where = o.screen ? viewportLabel(o.screen.ndc) : 'behind the camera';
-            lines.push(`- "${o.name}" (${o.type}) — ${where}`);
+            lines.push(`- "${o.name}" (${o.type}) — ${viewportLabel(o.screen.ndc)}`);
         }
     }
     lines.push('Ground your answer in what I am actually looking at from this viewpoint.');

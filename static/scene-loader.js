@@ -53,6 +53,21 @@ function buildSubTracker(group, before) {
     };
 }
 
+// Static display name for the per-object Ask-AI affordance: the author `label`,
+// or a `text` element's own text content (text objects carry no `label`). Null
+// for elements whose label is dynamic (labelExpr/textExpr) — those are named from
+// the live rendered label at click time instead.
+function elementDisplayName(el) {
+    return el.label || (el.type === 'text' ? (el.text || el.value) : null) || null;
+}
+
+// Does the element render a label at all — static (`label`/`text`) or dynamic
+// (`labelExpr`/`textExpr`, e.g. an animated point's live "6.3 km/s")? Such objects
+// are eligible for the Ask-AI button and so must be registered.
+function elementHasLabelSource(el) {
+    return !!(elementDisplayName(el) || el.labelExpr || el.textExpr);
+}
+
 export function renderStepAdd(elements, sliderDefs) {
     // Register sliders first (so expressions can reference them during render)
     const { ids: sliderIds, prevStates: prevSliderStates } = registerSliders(sliderDefs);
@@ -72,7 +87,7 @@ export function renderStepAdd(elements, sliderDefs) {
     const addedElementIds = [];
     let replacedElements = null;
     for (const el of elements) {
-        if (!el.id && (el.label || el.prompt)) {
+        if (!el.id && (el.prompt || elementHasLabelSource(el))) {
             el.id = '__auto_' + (autoIdCounter++) + '_' + Date.now();
         }
         // If this step reuses an element id, hide any previously visible instance first.
@@ -92,7 +107,7 @@ export function renderStepAdd(elements, sliderDefs) {
         if (el.id) {
             addedElementIds.push(el.id);
             const subTracker = buildSubTracker(elGroup, elBefore);
-            state.elementRegistry[el.id] = { tracker: subTracker, hidden: false, type: el.type, prompt: el.prompt || null, label: el.label || null };
+            state.elementRegistry[el.id] = { tracker: subTracker, hidden: false, type: el.type, prompt: el.prompt || null, label: elementDisplayName(el) };
         }
     }
 
@@ -603,9 +618,10 @@ export async function loadScene(spec) {
     let baseAutoIdCounter = 0;
     for (const el of spec.elements) {
         // Objects eligible for the per-object Ask-AI button — those with an author
-        // `prompt`, or any labeled content object (auto-generated prompt; axes/grid
-        // excluded as scaffolding) — must be registered, so id them if they aren't.
-        if (!el.id && (el.prompt || (el.label && el.type !== 'axis' && el.type !== 'grid'))) {
+        // `prompt`, or any labeled/text content object (auto-generated prompt;
+        // axes/grid excluded as scaffolding) — must be registered, so id them.
+        const dn = elementDisplayName(el);
+        if (!el.id && (el.prompt || (elementHasLabelSource(el) && el.type !== 'axis' && el.type !== 'grid'))) {
             el.id = '__auto_' + (baseAutoIdCounter++) + '_' + Date.now();
         }
         const elBefore = el.id ? snapshotBefore() : null;
@@ -614,7 +630,7 @@ export async function loadScene(spec) {
             renderElement(el, elGroup);
             if (el.id) {
                 const subTracker = buildSubTracker(elGroup, elBefore);
-                state.elementRegistry[el.id] = { tracker: subTracker, hidden: false, type: el.type, prompt: el.prompt || null, label: el.label || null };
+                state.elementRegistry[el.id] = { tracker: subTracker, hidden: false, type: el.type, prompt: el.prompt || null, label: dn };
             }
         } catch (e) {
             console.error('Error rendering element:', el, e);
