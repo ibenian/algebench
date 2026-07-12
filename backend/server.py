@@ -1567,7 +1567,7 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
         'sliders', 'overlay', 'dockable-panel', 'context-browser', 'scene-loader', 'ui',
         'json-browser', 'main', 'proof', 'graph-view', 'expert-client',
         'view-state', 'view-state-bridge', 'nav-history', 'nav-history-core',
-        'renderproof', 'embed-resizer',
+        'renderproof', 'embed-resizer', 'object-picker',
     }
 
     @fastapp.get("/api/version")

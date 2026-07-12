@@ -23,6 +23,7 @@ import { renderMarkdown, renderKaTeX } from '/labels.js';
 import { setupProofPanel, navigateProof, loadProof, getProofContext, refreshProofPanel } from '/proof.js';
 import { captureViewState, applyViewState, setupViewSync, setupShareButton } from '/view-state-bridge.js';
 import { setupPopstateListener } from '/nav-history.js';
+import { setupObjectPicker } from '/object-picker.js';
 
 // Domain library registry — scripts under static/domains/<name>/index.js self-register here.
 window.AlgeBenchDomains = window.AlgeBenchDomains || {
@@ -38,6 +39,7 @@ setBuildSceneTreeFn(buildSceneTree);
 
 document.addEventListener('DOMContentLoaded', async () => {
     initMathBox();
+    setupObjectPicker();
     setupRollDrag(document.getElementById('mathbox-container'));
     setupTrackpadPan();
     setupDragDrop();

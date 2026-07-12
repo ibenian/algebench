@@ -53,6 +53,25 @@ function buildSubTracker(group, before) {
     };
 }
 
+// Static display name for the per-object Ask-AI affordance: the author `label`,
+// or a `text` element's own text content (text objects carry no `label`). Null
+// for elements whose label is dynamic (labelExpr/textExpr) — those are named from
+// the live rendered label at click time instead.
+function elementDisplayName(el) {
+    // A dynamic label (labelExpr/textExpr) is named from the live rendered label
+    // at click time, so return null here even when a static label also exists —
+    // otherwise the stale static value would win.
+    if (el.labelExpr || el.textExpr) return null;
+    return el.label || (el.type === 'text' ? (el.text || el.value) : null) || null;
+}
+
+// Does the element render a label at all — static (`label`/`text`) or dynamic
+// (`labelExpr`/`textExpr`, e.g. an animated point's live "6.3 km/s")? Such objects
+// are eligible for the Ask-AI button and so must be registered.
+function elementHasLabelSource(el) {
+    return !!(elementDisplayName(el) || el.labelExpr || el.textExpr);
+}
+
 export function renderStepAdd(elements, sliderDefs) {
     // Register sliders first (so expressions can reference them during render)
     const { ids: sliderIds, prevStates: prevSliderStates } = registerSliders(sliderDefs);
@@ -72,7 +91,7 @@ export function renderStepAdd(elements, sliderDefs) {
     const addedElementIds = [];
     let replacedElements = null;
     for (const el of elements) {
-        if (!el.id && el.label) {
+        if (!el.id && (el.prompt || (elementHasLabelSource(el) && el.type !== 'axis' && el.type !== 'grid'))) {
             el.id = '__auto_' + (autoIdCounter++) + '_' + Date.now();
         }
         // If this step reuses an element id, hide any previously visible instance first.
@@ -92,7 +111,7 @@ export function renderStepAdd(elements, sliderDefs) {
         if (el.id) {
             addedElementIds.push(el.id);
             const subTracker = buildSubTracker(elGroup, elBefore);
-            state.elementRegistry[el.id] = { tracker: subTracker, hidden: false, type: el.type };
+            state.elementRegistry[el.id] = { tracker: subTracker, hidden: false, type: el.type, prompt: el.prompt || null, label: elementDisplayName(el) };
         }
     }
 
@@ -328,6 +347,19 @@ function removeStepTracker(tracker) {
         for (const [id, savedReg] of Object.entries(tracker.replacedElements)) {
             state.elementRegistry[id] = savedReg;
             if (!stillRemoved.has(id)) showElementById(id);
+        }
+    }
+
+    // Deregister the elements this step ADDED so nothing can reference them after
+    // backward navigation — otherwise a popped element's registry entry lingers
+    // (hidden:false, with a stale label/mesh anchor) and the per-object Ask-AI
+    // picker still finds it. Ids this step REPLACED are restored just above and
+    // must be kept.
+    if (tracker.elementIds) {
+        for (const id of tracker.elementIds) {
+            if (tracker.replacedElements && tracker.replacedElements[id]) continue;
+            delete state.elementRegistry[id];
+            state.legendToggledOff.delete(id);
         }
     }
 
@@ -587,14 +619,22 @@ export async function loadScene(spec) {
     });
     state.sceneView = view;
 
+    let baseAutoIdCounter = 0;
     for (const el of spec.elements) {
+        // Objects eligible for the per-object Ask-AI button — those with an author
+        // `prompt`, or any labeled/text content object (auto-generated prompt;
+        // axes/grid excluded as scaffolding) — must be registered, so id them.
+        const dn = elementDisplayName(el);
+        if (!el.id && (el.prompt || (elementHasLabelSource(el) && el.type !== 'axis' && el.type !== 'grid'))) {
+            el.id = '__auto_' + (baseAutoIdCounter++) + '_' + Date.now();
+        }
         const elBefore = el.id ? snapshotBefore() : null;
         const elGroup = el.id ? view.group() : view;
         try {
             renderElement(el, elGroup);
             if (el.id) {
                 const subTracker = buildSubTracker(elGroup, elBefore);
-                state.elementRegistry[el.id] = { tracker: subTracker, hidden: false, type: el.type };
+                state.elementRegistry[el.id] = { tracker: subTracker, hidden: false, type: el.type, prompt: el.prompt || null, label: dn };
             }
         } catch (e) {
             console.error('Error rendering element:', el, e);
