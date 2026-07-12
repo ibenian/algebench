@@ -35,6 +35,8 @@ let _hoveredId = null;
 let _rafPending = false;
 let _lastEvt = null;
 let _trackRaf = null;
+let _hoverPoint = null;   // world point the cursor last hit on the object (or null)
+let _hoverLabelEl = null;  // label DOM element the cursor is over (anchor the button on it)
 
 // ----- reverse mesh → element-id map -----
 
@@ -120,8 +122,32 @@ function projectToScreen(world, rect) {
 
 // ----- picking -----
 
-/** Resolve the element under a client-space point: raycast first, then fall
- *  back to the nearest projected anchor within PICK_PX. Returns an id or null. */
+/** Is the cursor over a pickable object's label element? Labels are
+ *  `pointer-events:none`, so the canvas still gets the move and we test their
+ *  bounding boxes directly — this catches hovering the text/name tag itself
+ *  (e.g. anywhere along "Orion"), which a point-anchor proximity test misses. */
+function labelHitTest(clientX, clientY) {
+    for (const [id, reg] of Object.entries(state.elementRegistry)) {
+        if (!isPickable(id)) continue;
+        const t = reg.tracker;
+        if (!t || !t.labels) continue;
+        for (const lbl of t.labels) {
+            if (!lbl.el || lbl.visible === false || lbl.forceHidden) continue;
+            const br = lbl.el.getBoundingClientRect();
+            if (!br.width && !br.height) continue;
+            if (clientX >= br.left && clientX <= br.right && clientY >= br.top && clientY <= br.bottom) {
+                return { id, el: lbl.el };
+            }
+        }
+    }
+    return null;
+}
+
+/** Resolve the element under a client-space point: raycast first, then fall back
+ *  to the nearest projected anchor within PICK_PX. Returns `{ id, point }` (point
+ *  = the world hit location for a raycast hit, so the button can appear right
+ *  where the user hovered rather than at a possibly-distant label; null for a
+ *  screen-anchor fallback) or null if nothing is under the cursor. */
 function pickAt(clientX, clientY) {
     if (!state.camera || !_canvas) return null;
     const rect = _canvas.getBoundingClientRect();
@@ -129,7 +155,12 @@ function pickAt(clientX, clientY) {
     const localX = clientX - rect.left;
     const localY = clientY - rect.top;
 
-    // 1) Raycast the real meshes (true geometry + occlusion ordering).
+    // 1) Hovering the label/text itself (labels sit visually on top) → anchor the
+    //    button on that label.
+    const lh = labelHitTest(clientX, clientY);
+    if (lh) return { id: lh.id, point: null, labelEl: lh.el };
+
+    // 2) Raycast the real meshes (true geometry + occlusion ordering).
     const ndc = { x: (localX / rect.width) * 2 - 1, y: -((localY / rect.height) * 2 - 1) };
     _raycaster.setFromCamera(ndc, state.camera);
     const hits = _raycaster.intersectObjects(pickableMeshes(), false);
@@ -137,11 +168,11 @@ function pickAt(clientX, clientY) {
         const map = buildMeshIdMap();
         for (const h of hits) {
             const id = map.get(h.object);
-            if (id && isPickable(id)) return id;
+            if (id && isPickable(id)) return { id, point: h.point.clone(), labelEl: null };
         }
     }
 
-    // 2) Fallback: nearest projected anchor (covers points, lines, curves, axes).
+    // 3) Fallback: nearest projected anchor (covers points, lines, curves, axes).
     let best = null, bestD = PICK_PX;
     for (const [id, reg] of Object.entries(state.elementRegistry)) {
         if (!isPickable(id)) continue;
@@ -152,7 +183,7 @@ function pickAt(clientX, clientY) {
         const d = Math.hypot(p.x - localX, p.y - localY);
         if (d < bestD) { bestD = d; best = id; }
     }
-    return best;
+    return best ? { id: best, point: null, labelEl: null } : null;
 }
 
 // ----- the floating button -----
@@ -178,37 +209,44 @@ function ensureBtn() {
     return btn;
 }
 
-/** Place the button on the object's name tag. Preferred anchor is the object's
- *  **label** — that's the identifier the user sees — pinned to its top-right
- *  corner, so the sparkle is always snug to "v"/"Capsule"/etc. rather than at a
- *  vector's far tip. Objects with no visible label fall back to the projected
- *  geometry anchor. Returns false if the object isn't visible. */
+/** Place the button next to where the user actually hovered on the object — the
+ *  raycast hit point (`_hoverPoint`) — so it stays snug to the geometry even when
+ *  the object's label is offset far away (e.g. a vector whose "Orion" tag sits
+ *  across the view). Falls back to the object's own anchor (label/point) for
+ *  screen-anchor picks that have no hit point. Returns false if not visible. */
 function positionBtn(id, rect) {
     const reg = state.elementRegistry[id];
     if (!reg || isHidden(id)) return false;
-    const t = reg.tracker;
-    const lbl = t && t.labels && t.labels[0];
-    if (lbl && lbl.el && lbl.visible !== false && !lbl.forceHidden) {
-        const br = lbl.el.getBoundingClientRect();
+    // Hovering the label → pin to its top-right corner.
+    if (_hoverLabelEl) {
+        const br = _hoverLabelEl.getBoundingClientRect();
         if (br.width || br.height) {
             const btn = ensureBtn();
-            btn.style.left = (br.right - 6) + 'px';   // top-right corner of the label
+            btn.style.left = (br.right - 6) + 'px';
             btn.style.top = (br.top - 16) + 'px';
             return true;
         }
     }
-    // No visible label — pin to the projected geometry anchor instead.
-    const anchor = worldAnchor(id, reg);
-    const p = anchor && projectToScreen(anchor, rect);
+    const world = _hoverPoint || worldAnchor(id, reg);
+    const p = world && projectToScreen(world, rect);
     if (!p) return false;
     const btn = ensureBtn();
-    btn.style.left = (rect.left + p.x + 10) + 'px';
+    btn.style.left = (rect.left + p.x + 10) + 'px';   // just up-and-right of the hover point
     btn.style.top = (rect.top + p.y - 26) + 'px';
     return true;
 }
 
-function showBtnFor(id) {
+function showBtnFor(hit) {
     if (!_canvas) return;
+    const id = hit.id;
+    // Anchor the button ONCE, when the hovered object first changes — then hold it
+    // still while the cursor keeps moving within the same object, so the user can
+    // travel to the button and click it instead of chasing a moving target.
+    // (retrack still re-projects this fixed anchor for camera/animation motion.)
+    if (id !== _hoveredId) {
+        _hoverPoint = hit.point || null;
+        _hoverLabelEl = hit.labelEl || null;
+    }
     const rect = _canvas.getBoundingClientRect();
     if (!positionBtn(id, rect)) { hideBtn(); return; }
     const btn = ensureBtn();
@@ -244,6 +282,8 @@ function hideBtn() {
         btn.style.opacity = '0';
         btn.style.pointerEvents = 'none';
         _hoveredId = null;
+        _hoverPoint = null;
+        _hoverLabelEl = null;
     }, HIDE_DELAY);
 }
 
@@ -255,6 +295,8 @@ function hideBtnNow() {
     _btn.style.opacity = '0';
     _btn.style.pointerEvents = 'none';
     _hoveredId = null;
+    _hoverPoint = null;
+    _hoverLabelEl = null;
 }
 
 // ----- camera-relative view description (Option B) -----
@@ -457,8 +499,8 @@ function onPointerMove(e) {
         _rafPending = false;
         const ev = _lastEvt;
         if (!ev) return;
-        const id = pickAt(ev.clientX, ev.clientY);
-        if (id) showBtnFor(id);
+        const hit = pickAt(ev.clientX, ev.clientY);
+        if (hit) showBtnFor(hit);
         else hideBtn();
     });
 }
