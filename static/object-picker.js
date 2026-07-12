@@ -33,6 +33,7 @@ let _hideTimer = null;
 let _hoveredId = null;
 let _rafPending = false;
 let _lastEvt = null;
+let _trackRaf = null;
 
 // ----- reverse mesh → element-id map -----
 
@@ -165,23 +166,48 @@ function ensureBtn() {
     return btn;
 }
 
+/** Place the button at an element's projected anchor (nudged up-and-right so it
+ *  sits beside the object, not under the cursor). Returns false if the object is
+ *  hidden or off-view, in which case the button should not be shown. */
+function positionBtn(id, rect) {
+    const reg = state.elementRegistry[id];
+    if (!reg || isHidden(id)) return false;
+    const anchor = worldAnchor(id, reg);
+    const p = anchor && projectToScreen(anchor, rect);
+    if (!p) return false;
+    const btn = ensureBtn();
+    btn.style.left = (rect.left + p.x + 10) + 'px';
+    btn.style.top = (rect.top + p.y - 26) + 'px';
+    return true;
+}
+
 function showBtnFor(id) {
     if (!_canvas) return;
     const rect = _canvas.getBoundingClientRect();
-    const reg = state.elementRegistry[id];
-    const anchor = reg && worldAnchor(id, reg);
-    if (!anchor) { hideBtn(); return; }
-    const p = projectToScreen(anchor, rect);
-    if (!p) { hideBtn(); return; }
+    if (!positionBtn(id, rect)) { hideBtn(); return; }
     const btn = ensureBtn();
     if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
     _hoveredId = id;
-    // Anchor the button to the object's projected point, nudged up-and-right so it
-    // sits beside the object rather than under the cursor.
-    btn.style.left = (rect.left + p.x + 10) + 'px';
-    btn.style.top = (rect.top + p.y - 26) + 'px';
     btn.style.opacity = '1';
     btn.style.pointerEvents = 'auto';
+    startTrack();
+}
+
+// Keep the shown button glued to its object as the camera or objects move under a
+// STATIONARY cursor (follow-cam, expr-driven camera, autoplay, animations) — a
+// pointermove-only update would leave it at a stale screen position pointing at
+// the wrong place. Cheap: one projection per frame, no re-pick; self-stops when
+// the button hides or the object leaves the view.
+function retrack() {
+    _trackRaf = null;
+    if (!_btn || _btn.style.opacity === '0' || !_hoveredId) return;
+    const rect = _canvas.getBoundingClientRect();
+    if (!positionBtn(_hoveredId, rect)) { hideBtn(); return; }  // object gone → let it fade out
+    _trackRaf = requestAnimationFrame(retrack);
+}
+
+function startTrack() {
+    if (_trackRaf == null) _trackRaf = requestAnimationFrame(retrack);
 }
 
 function hideBtn() {
