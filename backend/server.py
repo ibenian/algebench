@@ -428,7 +428,7 @@ style_css_path  = static_dir / "style.css"
 
 # ---------------------------------------------------------------------------
 from backend.util import sanitize_path, limiter_from_env, rate_limit_dependency  # noqa: E402
-from backend.proof_routes import build_proof_router  # noqa: E402
+from backend.proof_api import build_proof_router  # noqa: E402
 
 # Per-IP rate limits for billable (Gemini-backed) endpoints. Override via env
 # as "count/seconds", e.g. ALGEBENCH_RATELIMIT_CHAT="10/60". Limits protect the
@@ -1519,7 +1519,7 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
                         headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
 
     # /prove page proof storage API (catalog, claim, CAS update/delete,
-    # source material, cross-refs) — see backend/proof_routes.py.
+    # source material, cross-refs) — see backend/proof_api/routes.py.
     fastapp.include_router(build_proof_router(
         proofs_dir=proofs_dir, script_dir=script_dir,
         agentic_rate_limit=_agentic_rate_limit,

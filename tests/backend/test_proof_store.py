@@ -9,7 +9,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from backend.proof_store import (  # noqa: E402
+from backend.proof_api import (  # noqa: E402
     LocalProofStore,
     canonical_bytes,
     compute_secret,

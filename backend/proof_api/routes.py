@@ -4,7 +4,7 @@ Extracted from ``server.py`` so the proof-store endpoints live on their own
 ``APIRouter``. ``create_app`` mounts it with
 ``fastapp.include_router(build_proof_router(...))``.
 
-Backed by the pluggable :class:`~backend.proof_store.ProofStore`: GCS when
+Backed by the pluggable :class:`~backend.proof_api.store.ProofStore`: GCS when
 ``ALGEBENCH_PROOFS_BUCKET`` is set, else the local filesystem. The built-in seed
 (``proofs/domains``) is always read so the catalog + cross-ref resolution
 include the shipped proofs even when the writable store is a user-only bucket.
@@ -19,7 +19,7 @@ from typing import Callable, Optional
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse, Response
 
-from backend.proof_store import (
+from backend.proof_api.store import (
     get_proof_store, LocalProofStore, normalize_id, canonical_bytes, verify_secret,
 )
 
