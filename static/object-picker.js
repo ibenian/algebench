@@ -2,13 +2,14 @@
 // object-picker.js — per-object "Ask AI" affordance for the 3D scene.
 //
 // Mirrors the semantic-graph per-node Ask-AI button (graph-view.js): hovering a
-// 3D object that the scene author opted in — by giving it a `prompt` string —
-// reveals a floating sparkle button. Clicking it sends that authored prompt to
-// the AI, with a deterministic, camera-relative description of the object *as it
+// pickable 3D object reveals a floating sparkle button. An object is pickable if
+// the author gave it a `prompt`, or if it's a labeled content object (axes/grid
+// excluded) — in which case the ask is auto-generated from the label at click
+// time and never written back to the scene JSON. Clicking sends that ask to the
+// AI, with a deterministic, camera-relative description of the object *as it
 // appears in the current viewport* (screen position, depth ordering, occlusion,
 // apparent size, layout vs. the other visible objects) attached as context —
 // the grounding an LLM can't reliably derive from raw data-space coordinates.
-// Objects without a `prompt` are never pickable.
 //
 // Picking is a hybrid: three.js raycasting against the real meshes (vectors,
 // polygons, spheres, cylinders, ellipsoids, parametric surfaces, animated-point
@@ -64,10 +65,17 @@ function isHidden(id) {
     return !reg || reg.hidden || state.legendToggledOff.has(id);
 }
 
-/** Only objects the author opted in — those carrying a `prompt` — are pickable. */
+// Scaffolding types never get an Ask-AI button on the strength of a label alone
+// (an author can still opt one in explicitly with a `prompt`).
+const STRUCTURAL_TYPES = new Set(['axis', 'grid', 'skybox']);
+
+/** Pickable if the author opted in with a `prompt`, or it's a labeled content
+ *  object (auto-generated prompt). */
 function isPickable(id) {
     const reg = state.elementRegistry[id];
-    return !!reg && !isHidden(id) && !!reg.prompt;
+    if (!reg || isHidden(id)) return false;
+    if (reg.prompt) return true;
+    return !!reg.label && !STRUCTURAL_TYPES.has(reg.type);
 }
 
 // ----- anchors & projection -----
@@ -364,15 +372,22 @@ function buildViewContext(id, reg) {
     return lines.join('\n');
 }
 
-/** The message sent on click: the author's per-object `prompt` (the actual ask),
- *  with the camera-relative view context appended. */
+/** Default ask for a labeled object with no author `prompt` — generated at click
+ *  time from the label, never written back to the scene JSON. */
+function autoPromptFor(id, reg) {
+    const name = elementName(id, reg);
+    return `Explain what ${name} represents here and how it relates to the other objects in this scene.`;
+}
+
+/** The message sent on click: the author's per-object `prompt` if set, otherwise
+ *  an auto-generated ask from the label — with the camera-relative view context
+ *  appended. */
 function buildObjectAskMessage(id) {
     const reg = id && state.elementRegistry[id];
     if (!reg) return 'Explain this object in the 3D scene.';
-    const authorPrompt = (reg.prompt || '').trim();
+    const ask = (reg.prompt || '').trim() || autoPromptFor(id, reg);
     const ctx = buildViewContext(id, reg);
-    if (authorPrompt && ctx) return `${authorPrompt}\n\n${ctx}`;
-    return authorPrompt || ctx || 'Explain this object in the 3D scene.';
+    return ctx ? `${ask}\n\n${ctx}` : ask;
 }
 
 // ----- setup -----

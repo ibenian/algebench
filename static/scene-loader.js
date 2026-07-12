@@ -602,9 +602,12 @@ export async function loadScene(spec) {
 
     let baseAutoIdCounter = 0;
     for (const el of spec.elements) {
-        // An element with an author "prompt" gets a per-object Ask-AI button, so it
-        // must be registered (and thus id'd) even if it carries no explicit id.
-        if (!el.id && el.prompt) el.id = '__auto_' + (baseAutoIdCounter++) + '_' + Date.now();
+        // Objects eligible for the per-object Ask-AI button — those with an author
+        // `prompt`, or any labeled content object (auto-generated prompt; axes/grid
+        // excluded as scaffolding) — must be registered, so id them if they aren't.
+        if (!el.id && (el.prompt || (el.label && el.type !== 'axis' && el.type !== 'grid'))) {
+            el.id = '__auto_' + (baseAutoIdCounter++) + '_' + Date.now();
+        }
         const elBefore = el.id ? snapshotBefore() : null;
         const elGroup = el.id ? view.group() : view;
         try {
