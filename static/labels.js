@@ -403,8 +403,11 @@ function resolveDepthDimming() {
     const dimBase = state.displayParams.labelDimBase;        // slight dim any covered label gets
     const dimFloor = state.displayParams.labelDimFloor;      // darkest a far label goes
     const relScale = state.displayParams.labelDimDepthScale; // relative gap to reach the floor
-    const hideThreshold = state.displayParams.labelDimHideThreshold; // cluster size that triggers near-hiding
-    const hideLevel = state.displayParams.labelDimHideLevel; // dim applied to the farthest in a big stack
+    // Coerce/clamp: hideThreshold indexes into a sorted array below, so it must be
+    // an integer; hideLevel is used as an opacity, so keep it in [0,1]. Guards the
+    // params against out-of-range values set via the console or a future UI.
+    const hideThreshold = Math.round(state.displayParams.labelDimHideThreshold); // cluster size that triggers near-hiding
+    const hideLevel = Math.min(1, Math.max(0, state.displayParams.labelDimHideLevel)); // opacity the farthest fade to
     const boxes = new Map(active.map(l => [l, labelBox(l)]));
     const overlaps = (a, b) => {
         const A = boxes.get(a), B = boxes.get(b);
