@@ -120,6 +120,34 @@ class TestSourceMaterial:
         assert client.get("/api/proofs/source", params={"id": NEWID, "secret": secret}).status_code == 404
 
 
+class TestSeedStoreCollision:
+    """If an id exists in BOTH the built-in seed and the writable store, the
+    built-in seed is canonical everywhere (catalog + read), matching the claim
+    guard that blocks claiming a built-in name."""
+
+    def _plant_store_collision(self):
+        # Write a store-side file under a built-in's id, bypassing claim (which
+        # would 409). The built-in `algebra/binomial-square` must stay canonical.
+        import json, os
+        store_dir = Path(os.environ["ALGEBENCH_PROOFS_DIR"])
+        p = store_dir / "algebra" / "binomial-square.json"
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(json.dumps({"title": "STORE OVERRIDE", "domain": "algebra",
+                                 "goal": "hijack", "steps": [{"index": 0, "latex": "x"}]}))
+
+    def test_seed_wins_in_catalog(self, client):
+        self._plant_store_collision()
+        entry = next(p for p in client.get("/api/proofs").json()["proofs"]
+                     if p["id"] == "algebra/binomial-square")
+        assert entry["title"] == "Square of a binomial"   # seed, not "STORE OVERRIDE"
+
+    def test_seed_wins_on_read(self, client):
+        self._plant_store_collision()
+        got = client.get("/api/proofs/item", params={"id": "algebra/binomial-square"}).json()
+        assert got["title"] == "Square of a binomial"
+        assert got["goal"] != "hijack"
+
+
 class TestCrossRef:
     def test_ref_resolves_builtin(self, client):
         r = client.get("/api/proof-ref", params={"ref": "algebra/binomial-square"})

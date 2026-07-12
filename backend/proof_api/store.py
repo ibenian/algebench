@@ -5,7 +5,7 @@ Two backends behind one interface (:class:`ProofStore`):
 * :class:`LocalProofStore` — plain files on disk. The dev/CI default; needs no
   cloud. Also holds the built-in seed corpus (``proofs/domains``).
 * :class:`GcsProofStore` — Google Cloud Storage, same key layout
-  (``proofs/domains/<domain>/<name>.json`` + ``source-material/<domain>/<name>/``),
+  (``proofs/domains/<domain>/<name>.json`` + ``source-material/domains/<domain>/<name>/``),
   with the ``{title,domain,goal}`` catalog fields on each object's **custom
   metadata** so ``list()`` builds from a single ``list_blobs`` (no body reads).
 
@@ -157,7 +157,9 @@ class LocalProofStore:
         nid = normalize_id(id)
         if not nid:
             return None
-        p = (self.source_dir / nid).resolve()
+        # Mirror the proofs layout (proofs/domains/<domain>/<name>) — source
+        # material lives under a `domains/` subdir too: source-material/domains/…
+        p = (self.source_dir / "domains" / nid).resolve()
         root = self.source_dir.resolve()
         return p if p.is_relative_to(root) else None
 
@@ -327,7 +329,8 @@ class GcsProofStore:
     """
 
     _PROOF_PREFIX = "proofs/domains"
-    _SOURCE_PREFIX = "source-material"
+    # Mirror the proofs layout — source material also nests under `domains/`.
+    _SOURCE_PREFIX = "source-material/domains"
 
     def __init__(self, bucket: str):
         self.bucket_name = bucket

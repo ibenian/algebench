@@ -73,11 +73,15 @@ def build_proof_router(
         catalog_cache["list"] = None
 
     def catalog():
-        # Merge seed + store (store wins on id clash), dedup by id. Cached; a
-        # single GCS list_blobs (metadata only) rebuilds it, cleared on write.
+        # Merge store + seed, dedup by id. The built-in SEED is canonical and
+        # WINS on an id clash (seed applied last), consistent with reads
+        # (`seed.get or store.get`) and the claim guard (a built-in name can't
+        # be claimed in the store). So a stray store proof sharing a built-in's
+        # id is fully shadowed — never half-shown. Cached; a single GCS
+        # list_blobs (metadata only) rebuilds it, cleared on write.
         if catalog_cache["list"] is None:
             merged = {}
-            for entry in seed.list() + store.list():
+            for entry in store.list() + seed.list():
                 merged[entry["id"]] = entry
             catalog_cache["list"] = sorted(merged.values(), key=lambda e: e["id"])
         return catalog_cache["list"]
