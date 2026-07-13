@@ -243,6 +243,27 @@ def test_proof_from_prompt_empty_target_errors(monkeypatch):
     assert "error" in out and "derive" in out["error"].lower()
 
 
+def test_proof_from_prompt_parse_error_reframed_as_meaningless(monkeypatch):
+    # A meaningless prompt makes the namer hallucinate junk that fails to parse;
+    # the low-level parse error is reframed into plain "that's not a derivation".
+    monkeypatch.setattr(H, "endpoints_from_prompt", lambda p: ("asdff", "qwer", "", "", "", ""))
+    monkeypatch.setattr(H, "derive_proof_animation",
+                        lambda req: {"error": "Couldn't parse the start expression."})
+    out = H.derive_proof_from_prompt(H.PromptDeriveRequest(prompt="asdff"))
+    assert "error" in out
+    assert "doesn't look like a math derivation" in out["error"]
+    assert "parse" not in out["error"].lower()   # the low-level text is gone
+
+
+def test_proof_from_prompt_no_path_error_passes_through(monkeypatch):
+    # Valid endpoints but no derivation path keeps its own clearer message.
+    monkeypatch.setattr(H, "endpoints_from_prompt", lambda p: ("x=1", "y=2", "", "", "", ""))
+    msg = "No derivation found — couldn't get from $x=1$ to $y=2$."
+    monkeypatch.setattr(H, "derive_proof_animation", lambda req: {"error": msg})
+    out = H.derive_proof_from_prompt(H.PromptDeriveRequest(prompt="x"))
+    assert out["error"] == msg
+
+
 def test_prompt_derive_request_validation():
     with pytest.raises(ValidationError):
         H.PromptDeriveRequest(prompt="")            # min_length=1

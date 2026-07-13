@@ -422,7 +422,7 @@ def derive_proof_from_prompt(req: PromptDeriveRequest) -> dict:
     context = {"lessonDescription": doc} if doc else None    # → expert lesson_context
     log.debug("proof_from_prompt: prompt=%r -> start=%r target=%r domain=%s doc=%dch",
               req.prompt, start, target, domain, len(doc))
-    return derive_proof_animation(DeriveProofRequest(
+    data = derive_proof_animation(DeriveProofRequest(
         target_latex=target,
         start_latex=start or None,
         domain=domain,
@@ -430,6 +430,20 @@ def derive_proof_from_prompt(req: PromptDeriveRequest) -> dict:
         intent=f"Derive {target}",
         context=context,
     ))
+    # A meaningless prompt ("asdff") makes the endpoint namer hallucinate junk
+    # LaTeX that then fails to parse/infer downstream — surfacing a low-level
+    # "Couldn't parse the start expression" that reads like a system bug. Reframe
+    # those into a plain "that's not a derivation" message with guidance. A genuine
+    # "no derivation found" (valid endpoints, no path) keeps its own clearer text.
+    err = data.get("error") if isinstance(data, dict) else None
+    if err:
+        low = err.lower()
+        if "parse" in low or "infer a starting" in low:
+            log.info("proof_from_prompt: unusable prompt=%r (%s)", req.prompt, err)
+            return {"error": "That doesn't look like a math derivation I can build. Try "
+                             "naming a specific result — e.g. “derive the quadratic "
+                             "formula”, “expand (x+1)^2”, or “factor a^2 - b^2”."}
+    return data
 
 
 class ProofQARequest(BaseModel):
