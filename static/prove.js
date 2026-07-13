@@ -307,6 +307,10 @@ async function runDerive() {
     if (data && data.error) { setStatus(data.error, "err"); return; }
     const proof = validateProofData(data);
     deriveProof = proof;
+    // A fresh derivation replaces the proof — reset the chat so the thread stays
+    // scoped to the derivation on screen.
+    chatHistory = [];
+    if (els.dLog) els.dLog.textContent = "";
     if (deriveAnimator) { try { deriveAnimator.destroy(); } catch (e) { /* noop */ } deriveAnimator = null; }
     els.dRoot.textContent = "";
     els.dEmpty.hidden = true;
@@ -324,25 +328,70 @@ async function runDerive() {
 }
 
 /** Chat (right panel) — a Send-only, PROOF-SCOPED conversation about the current
- *  derivation, via the proof_qa handler (NOT the app's lesson/scene-framed
- *  /api/chat). The whole derivation is passed as grounding context. */
+ *  derivation, via POST /api/proof-chat: the Gemini chat agent run with a
+ *  proof-only system prompt (NOT the app's lesson/scene-framed /api/chat). The
+ *  whole thread + the proof + the step in view ride along, so it's conversational
+ *  and step-aware. */
+/** The payload the proof chat sends: the thread + the proof + the step in view. */
+function chatBody() {
+  return {
+    messages: chatHistory,
+    proof: deriveProof || null,
+    currentStep: (deriveAnimator && typeof deriveAnimator.current === "number")
+      ? deriveAnimator.current : null,
+  };
+}
+
+/** Debug-only (CTX button): fetch and show the EXACT context — system prompt +
+ *  thread — the proof chat would send right now. Mirrors the main app's CTX. */
+async function showCtx() {
+  els.ctxBody.innerHTML = '<div class="ctx-meta">Loading…</div>';
+  els.ctxPanel.hidden = false;
+  try {
+    const resp = await fetch("/api/proof-chat/debug", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(chatBody()),
+    });
+    if (!resp.ok) throw new Error(`ctx error ${resp.status}`);
+    const d = await resp.json();
+    const meta = `model: ${d.model} · system prompt: ${d.charCount} chars · currentStep: ${d.currentStep ?? "—"}`;
+    const contents = (d.contents || []).map((m) => `${m.role}: ${m.text}`).join("\n\n") || "(no turns yet)";
+    els.ctxBody.innerHTML =
+      `<div class="ctx-meta">${_escapeHtml(meta)}</div>` +
+      `<h4>System prompt</h4><pre>${_escapeHtml(d.systemPrompt || "")}</pre>` +
+      `<h4>Contents (thread)</h4><pre>${_escapeHtml(contents)}</pre>`;
+  } catch (e) {
+    els.ctxBody.innerHTML =
+      `<div class="ctx-meta">Couldn't load context (${_escapeHtml(String((e && e.message) || e))}).</div>`;
+  }
+}
+
 async function sendChat() {
   const msg = els.dChatInput.value.trim();
   if (!msg || els.dSend.disabled) return;
   addBubble("user", msg);
+  chatHistory.push({ role: "user", text: msg });
   els.dChatInput.value = "";
   els.dSend.disabled = true;
   const pending = addBubble("bot", "…", "pending");
   try {
-    const body = { question: msg };
-    if (deriveProof) body.proof = deriveProof;
-    const data = await invokeExpert("proof_qa", body, { timeoutMs: 60000 });
+    // Send the whole thread + the proof + which step is in view, so the chat is
+    // conversational and step-aware (resolves "why this step").
+    const resp = await fetch("/api/proof-chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(chatBody()),
+    });
+    if (!resp.ok) throw new Error(`chat error ${resp.status}`);
+    const data = await resp.json();
     pending.remove();
     const reply = (data && data.answer) || "(no response)";
     addBubble("bot", reply);
+    chatHistory.push({ role: "bot", text: reply });
   } catch (e) {
     pending.remove();
-    addBubble("bot", (e instanceof ExpertError ? e.message : "Chat is unavailable right now."), "err");
+    addBubble("bot", "Chat is unavailable right now.", "err");
   } finally {
     els.dSend.disabled = false;
   }
@@ -394,6 +443,17 @@ async function main() {
   els.dSend.addEventListener("click", sendChat);
   els.dChatInput.addEventListener("keydown",
     (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat(); } });
+
+  // Debug-only CTX inspector — shows the exact context sent to the proof chat.
+  els.ctxBtn = document.getElementById("ctx-btn");
+  els.ctxPanel = document.getElementById("ctx-panel");
+  els.ctxBody = document.getElementById("ctx-panel-body");
+  if (document.body.dataset.debug === "true" && els.ctxBtn) {
+    els.ctxBtn.hidden = false;
+    els.ctxBtn.addEventListener("click", showCtx);
+    document.getElementById("ctx-close")
+      .addEventListener("click", () => { els.ctxPanel.hidden = true; });
+  }
 
   const katex = await awaitKatex();
   if (!katex) { showError(els.panelBrowse, "Math renderer failed to load."); return; }

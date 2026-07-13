@@ -742,6 +742,127 @@ def _extract_inline_preset_prompts(text, tool_calls):
     return cleaned
 
 
+# How many steps of a proof to fold into the proof-chat system prompt.
+_PROOF_CHAT_MAX_STEPS = 60
+
+
+def _format_proof_for_chat(proof):
+    """Flatten a proof (title / goal / numbered steps) for the chat system prompt."""
+    if not isinstance(proof, dict):
+        return "(no derivation loaded)"
+    lines = []
+    title = str(proof.get("title") or "").strip()
+    goal = str(proof.get("goal") or "").strip()
+    if title:
+        lines.append(f"Title: {title}")
+    if goal:
+        lines.append(f"Goal: {goal}")
+    steps = proof.get("steps")
+    if isinstance(steps, list) and steps:
+        lines.append("Steps:")
+        for i, s in enumerate(steps[:_PROOF_CHAT_MAX_STEPS]):
+            if not isinstance(s, dict):
+                continue
+            # Prefer readable `plain`/`input_latex` over the \htmlData-annotated `latex`.
+            expr = str(s.get("plain") or s.get("input_latex") or "").strip()
+            op = str(s.get("operation") or "").strip()
+            just = str(s.get("justification") or "").strip()
+            idx = s.get("index", i)
+            head = f"  {idx}. " + (f"${expr}$" if expr else "(step)")
+            if op:
+                head += f" — {op}"
+            lines.append(head)
+            if just:
+                lines.append(f"       ({just})")
+        if len(steps) > _PROOF_CHAT_MAX_STEPS:
+            lines.append(f"  … (+{len(steps) - _PROOF_CHAT_MAX_STEPS} more steps)")
+    return "\n".join(lines) if lines else "(empty derivation)"
+
+
+def _proof_chat_system_prompt(proof, current_step=None):
+    """The specialized, proof-only system prompt for the proof chat.
+
+    Deliberately NOT ``build_system_prompt`` (which frames the app around
+    lessons/scenes/tools). This keeps the chat scoped to the one derivation and
+    injects which step the reader is currently viewing, so "this step" resolves.
+    """
+    derivation = _format_proof_for_chat(proof)
+    cur = ""
+    steps = proof.get("steps") if isinstance(proof, dict) else None
+    if current_step is not None and isinstance(steps, list) and 0 <= current_step < len(steps):
+        s = steps[current_step] or {}
+        expr = str(s.get("plain") or s.get("input_latex") or "").strip()
+        idx = s.get("index", current_step)
+        cur = (f"\n\nThe reader is CURRENTLY viewing step {idx}"
+               + (f": ${expr}$" if expr else "")
+               + '. When they say "this step", "here", or "why", they mean that step '
+                 "unless they clearly mean another.")
+    return (
+        "You are a concise, rigorous math tutor helping someone understand ONE "
+        "specific, self-contained math derivation. Ground every answer ONLY in the "
+        "derivation below and standard mathematics. This is a STANDALONE proof — do "
+        "NOT mention lessons, scenes, courses, an app, or any UI, and do not offer to "
+        "navigate, open, or animate anything. Use inline LaTeX ($…$) for all math. Keep "
+        "answers short unless asked to expand. If a question is unrelated to this "
+        "derivation or to math, say so briefly.\n\nDERIVATION\n" + derivation + cur
+    )
+
+
+def call_proof_chat(messages, proof, current_step=None):
+    """Proof-scoped chat: the SAME Gemini client/model as ``call_gemini_chat``, but
+    with a proof-only system prompt, the full conversation history, and NO app
+    tools. ``messages`` = ``[{role:'user'|'bot', text}, …]`` (latest turn last).
+    Returns the answer text."""
+    client = get_gemini_client()
+    if not client:
+        return "AI chat is not available (no API key configured)."
+    contents = []
+    for msg in (messages or []):
+        text = (msg.get("text") or "").strip()
+        if not text:
+            continue
+        role = "user" if msg.get("role") == "user" else "model"
+        contents.append(types.Content(role=role, parts=[types.Part.from_text(text=text)]))
+    if not contents:
+        return "Ask a question about this derivation."
+    config = types.GenerateContentConfig(
+        system_instruction=_proof_chat_system_prompt(proof, current_step),
+        temperature=0.4,   # tutoring — favour precision over flourish
+    )
+    try:
+        response = client.models.generate_content(
+            model=GEMINI_MODEL, contents=contents, config=config)
+        text = ""
+        if response.candidates and response.candidates[0].content.parts:
+            text = "".join(p.text for p in response.candidates[0].content.parts if p.text)
+        return text.strip() or "I couldn't answer that about this derivation."
+    except Exception as e:
+        if DEBUG_MODE:
+            print(f"   ❌ call_proof_chat error: {e}")
+        return "Chat is unavailable right now."
+
+
+def build_proof_chat_debug(messages, proof, current_step=None):
+    """The EXACT payload ``call_proof_chat`` would send to Gemini — system prompt
+    + the thread as plain (role, text) turns — for the /prove CTX inspector.
+    Built the same way, minus the network call. Debug-only."""
+    contents = []
+    for msg in (messages or []):
+        text = (msg.get("text") or "").strip()
+        if not text:
+            continue
+        role = "user" if msg.get("role") == "user" else "model"
+        contents.append({"role": role, "text": text})
+    system_prompt = _proof_chat_system_prompt(proof, current_step)
+    return {
+        "model": GEMINI_MODEL,
+        "systemPrompt": system_prompt,
+        "charCount": len(system_prompt),
+        "currentStep": current_step,
+        "contents": contents,
+    }
+
+
 def call_gemini_chat(message, history, context):
     """Call Gemini API using google-genai SDK. Returns (response_text, tool_calls_list, debug_info)."""
     client = get_gemini_client()
@@ -1413,6 +1534,12 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
         history: list = []
         context: dict = {}
 
+    class ProofChatRequest(BaseModel):
+        # Full thread incl. the latest user turn: [{role:'user'|'bot', text}, …]
+        messages: list = []
+        proof: dict | None = None       # the derivation the chat is about
+        currentStep: int | None = None  # 0-based index of the step in view
+
     class ContextRequest(BaseModel):
         context: dict = {}
 
@@ -1509,7 +1636,9 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
         if not path.is_file():
             return Response(status_code=404)
         with open(path, 'r') as f:
-            html = f.read().replace('__APP_VERSION__', get_app_version())
+            html = (f.read()
+                    .replace('__APP_VERSION__', get_app_version())
+                    .replace('__DEBUG_MODE__', 'true' if DEBUG_MODE else 'false'))
         if theme in ("light", "dark"):
             html = html.replace('<html lang="en">',
                                 f'<html lang="en" data-theme="{theme}">', 1)
@@ -2200,6 +2329,29 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
             import traceback
             print(f"   ❌ /api/chat error: {e}\n{traceback.format_exc()}")
             return JSONResponse({"error": "internal error processing chat request"}, status_code=500)
+
+    @fastapp.post("/api/proof-chat")
+    async def api_proof_chat(req: ProofChatRequest, _rl: None = Depends(_chat_rate_limit)):
+        """Proof-scoped chat — the Gemini chat agent with a proof-only system prompt,
+        the conversation history, and the step in view (no app tools/framing)."""
+        try:
+            loop = asyncio.get_running_loop()
+            answer = await loop.run_in_executor(
+                None, lambda: call_proof_chat(req.messages, req.proof, req.currentStep)
+            )
+            return JSONResponse({"answer": answer})
+        except Exception as e:
+            import traceback
+            print(f"   ❌ /api/proof-chat error: {e}\n{traceback.format_exc()}")
+            return JSONResponse({"error": "internal error processing chat request"}, status_code=500)
+
+    @fastapp.post("/api/proof-chat/debug")
+    async def api_proof_chat_debug(req: ProofChatRequest):
+        """Debug-only: the exact context (system prompt + thread) the proof chat
+        would send right now. Backs the /prove CTX inspector; 404 unless --debug."""
+        if not DEBUG_MODE:
+            return JSONResponse({"error": "Debug mode is disabled."}, status_code=404)
+        return JSONResponse(build_proof_chat_debug(req.messages, req.proof, req.currentStep))
 
     @fastapp.post("/api/tts/stream")
     async def api_tts_stream(req: TtsRequest, request: Request, _rl: None = Depends(_tts_rate_limit)):

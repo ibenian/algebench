@@ -114,6 +114,34 @@
     .derive-chat { display: flex; flex-direction: column; height: 560px; border: 1px solid var(--border-color);
                    border-radius: 12px; background: var(--panel-bg); overflow: hidden; }
     @media (max-width: 720px) { .derive-chat { height: 420px; } }
+    .chat-head { display: flex; align-items: center; justify-content: space-between;
+                 padding: 6px 10px; border-bottom: 1px solid var(--border-color); }
+    .chat-head-title { font-size: .72rem; letter-spacing: .06em; text-transform: uppercase;
+                       color: var(--muted-color); }
+    .ctx-btn { font: 600 .68rem/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .08em;
+               color: var(--muted-color); background: var(--chip-bg); border: 1px solid var(--border-color);
+               border-radius: 6px; padding: 3px 8px; cursor: pointer; }
+    .ctx-btn:hover { color: var(--text-color); border-color: var(--accent); }
+    .ctx-panel { position: fixed; inset: auto 16px 16px auto; width: min(680px, 92vw); max-height: 78vh;
+                 display: flex; flex-direction: column; background: var(--panel-bg);
+                 border: 1px solid var(--border-color); border-radius: 12px; z-index: 50;
+                 box-shadow: 0 12px 40px rgba(0,0,0,.45); }
+    .ctx-panel[hidden] { display: none; }   /* author display:flex would else beat [hidden] */
+    .ctx-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 8px;
+                      padding: 10px 14px; border-bottom: 1px solid var(--border-color);
+                      font-size: .8rem; font-weight: 600; }
+    .ctx-close { background: none; border: 0; color: var(--muted-color); font-size: 1.3rem; line-height: 1;
+                 cursor: pointer; padding: 0 4px; }
+    .ctx-close:hover { color: var(--text-color); }
+    .ctx-panel-body { overflow-y: auto; padding: 12px 14px; }
+    .ctx-panel-body h4 { margin: 12px 0 4px; font-size: .68rem; letter-spacing: .06em; text-transform: uppercase;
+                         color: var(--accent); }
+    .ctx-panel-body h4:first-child { margin-top: 0; }
+    .ctx-panel-body pre { margin: 0; white-space: pre-wrap; word-break: break-word;
+                          font: .78rem/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+                          color: var(--text-color); background: var(--chip-bg);
+                          border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; }
+    .ctx-meta { color: var(--muted-color); font-size: .74rem; margin-bottom: 8px; }
     .chat-log { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
     .bubble { max-width: 92%; font-size: .88rem; line-height: 1.5; padding: 8px 11px; border-radius: 12px;
               white-space: pre-wrap; word-break: break-word; }
@@ -170,7 +198,7 @@
     .footer a:hover { text-decoration: underline; }
   </style>
 </head>
-<body>
+<body data-debug="__DEBUG_MODE__">
   <div class="wrap">
     <a class="brand" href="/" aria-label="AlgeBench home">
       <span class="brand-name">AlgeBench</span>
@@ -234,6 +262,11 @@
             <div id="d-root"></div>
           </div>
           <div class="derive-chat">
+            <div class="chat-head">
+              <span class="chat-head-title">Chat</span>
+              <button id="ctx-btn" class="ctx-btn" type="button" hidden
+                      title="Show the exact context sent to the model">CTX</button>
+            </div>
             <div id="d-log" class="chat-log" aria-live="polite"></div>
             <div class="chat-input-row">
               <textarea id="d-chat-input" class="chat-input" rows="2"
@@ -260,6 +293,15 @@
       <strong>AlgeBench</strong> — AI-guided, interactive math. Proofs are just
       one surface. <a href="/">Explore the app →</a>
     </div>
+  </div>
+
+  <!-- Debug-only: the EXACT context sent to the proof chat (system prompt + thread) -->
+  <div id="ctx-panel" class="ctx-panel" hidden role="dialog" aria-label="Model context">
+    <div class="ctx-panel-head">
+      <span id="ctx-panel-title">Context sent to the model</span>
+      <button id="ctx-close" class="ctx-close" type="button" title="Close">&times;</button>
+    </div>
+    <div id="ctx-panel-body" class="ctx-panel-body"></div>
   </div>
   <script type="module" src="/prove.js?v=__APP_VERSION__"></script>
 </body>
