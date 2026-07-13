@@ -172,11 +172,35 @@ async function openProof(id) {
   closeBtn.type = "button"; closeBtn.className = "viewer-close"; closeBtn.textContent = "✕ Close proof";
   closeBtn.addEventListener("click", () => closeProof(id));
   bar.append(idEl, closeBtn);
+
+  // Two columns like the Derive workspace: animation (+ app hand-off) on the
+  // left, a proof-scoped chat on the right. `loadedProof` is filled after fetch;
+  // the chat's getters read it (and the animator) lazily.
+  let loadedProof = null;
+  const entry = { tab, panel, animator: null };
+  const chat = buildProofChat(() => loadedProof, () => entry.animator);
+  const box = document.createElement("div");
+  box.className = "derive-box";
   const root = document.createElement("div");
-  panel.append(bar, root);
+  box.append(root);
+  const continueBtn = document.createElement("button");
+  continueBtn.type = "button"; continueBtn.className = "continue-app"; continueBtn.hidden = true;
+  const contLabel = document.createElement("span");
+  contLabel.className = "continue-app-label";
+  contLabel.textContent = "Continue this chat in the main app →";
+  const contDeep = document.createElement("span");
+  contDeep.className = "continue-app-deep"; contDeep.hidden = true;
+  continueBtn.append(contLabel, contDeep);
+  continueBtn.addEventListener("click", () => continueInAppWith(loadedProof, chat.history, id));
+  const left = document.createElement("div");
+  left.className = "derive-left";
+  left.append(box, continueBtn);
+  const cols = document.createElement("div");
+  cols.className = "derive-cols";
+  cols.append(left, chat.wrap);
+  panel.append(bar, cols);
   els.panels.appendChild(panel);
 
-  const entry = { tab, panel, animator: null };
   openTabs.set(id, entry);
   switchTo(id);
 
@@ -186,14 +210,16 @@ async function openProof(id) {
     if (!resp.ok) throw new Error(resp.status === 404 ? "not found" : `error ${resp.status}`);
     const data = validateProofData(await resp.json());
     if (!openTabs.has(id)) return;                  // closed while loading
+    loadedProof = data;
     label.textContent = data.title || id.split("/")[1];
     tab.title = data.title || id;
     entry.animator = new ProofAnimator(root, data, {
       katex: window.katex, liveTerms: true, enableTermAsk: true, enableExplore: true,
-      // Ask-AI on a proof term → open the FULL app in a new tab, in chat, with
-      // the question. Use the proof's deeplink (built-ins) else ?pa=<id>.
-      onTermAsk: ({ message }) => openInApp(message, data.deeplink, id),
+      // This proof now has its own chat — a term "Ask AI" flows into it (step-
+      // aware), not the app. The app hand-off is the explicit button below.
+      onTermAsk: ({ message }) => chat.ask(message),
     });
+    setContinue(continueBtn, contDeep, data);       // reveal the app hand-off
   } catch (e) {
     showError(root, `Could not load "${id}": ${e.message}`);
   }
@@ -280,9 +306,11 @@ function setStatus(text, cls) {
   }
 }
 
-/** Append a chat bubble; returns it (so a "pending" one can be removed).
- *  User text is escaped + math-rendered; assistant text is markdown + math. */
-function addBubble(role, text, cls) {
+/** Append a chat bubble to a log (defaults to the Derive workspace log); returns
+ *  it (so a "pending" one can be removed). User text is escaped + math-rendered;
+ *  assistant text is markdown + math. */
+function addBubble(role, text, cls, logEl) {
+  const log = logEl || els.dLog;
   const b = document.createElement("div");
   b.className = `bubble ${role === "user" ? "user" : "bot"}${cls ? " " + cls : ""}`;
   const html = !_hasRender() ? null
@@ -290,9 +318,102 @@ function addBubble(role, text, cls) {
     : (cls && cls.includes("pending")) ? null      // "…" placeholder — plain
     : renderReply(text);
   if (html != null) b.innerHTML = html; else b.textContent = text;   // safe fallback
-  els.dLog.appendChild(b);
-  els.dLog.scrollTop = els.dLog.scrollHeight;
+  log.appendChild(b);
+  log.scrollTop = log.scrollHeight;
   return b;
+}
+
+/** A self-contained proof-scoped chat column (head + log + input + Send), bound
+ *  to a proof and its animator via getters. Used by OPENED proofs (the Derive
+ *  workspace keeps its own inline chat). Returns { wrap, ask, history }. */
+function buildProofChat(getProof, getAnimator) {
+  const history = [];
+  const wrap = document.createElement("div");
+  wrap.className = "derive-chat";
+  const head = document.createElement("div");
+  head.className = "chat-head";
+  head.innerHTML = '<span class="chat-head-title">Chat</span>';
+  const log = document.createElement("div");
+  log.className = "chat-log"; log.setAttribute("aria-live", "polite");
+  const row = document.createElement("div");
+  row.className = "chat-input-row";
+  const input = document.createElement("textarea");
+  input.className = "chat-input"; input.rows = 2;
+  input.placeholder = "Ask about this proof…";
+  const send = document.createElement("button");
+  send.type = "button"; send.className = "chat-send"; send.textContent = "Send";
+  row.append(input, send);
+  wrap.append(head, log, row);
+
+  async function doSend() {
+    const msg = input.value.trim();
+    if (!msg || send.disabled) return;
+    addBubble("user", msg, "", log);
+    history.push({ role: "user", text: msg });
+    input.value = "";
+    send.disabled = true;
+    const pending = addBubble("bot", "…", "pending", log);
+    try {
+      const anim = getAnimator();
+      const resp = await fetch("/api/proof-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: history,
+          proof: getProof() || null,
+          currentStep: (anim && typeof anim.current === "number") ? anim.current : null,
+        }),
+      });
+      if (!resp.ok) throw new Error(`chat error ${resp.status}`);
+      const data = await resp.json();
+      pending.remove();
+      const reply = (data && data.answer) || "(no response)";
+      addBubble("bot", reply, "", log);
+      history.push({ role: "bot", text: reply });
+    } catch (e) {
+      pending.remove();
+      addBubble("bot", "Chat is unavailable right now.", "err", log);
+    } finally {
+      send.disabled = false;
+    }
+  }
+  send.addEventListener("click", doSend);
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); doSend(); }
+  });
+  /** Drop a message into the input and send it (used by a term's "Ask AI"). */
+  function ask(message) {
+    const m = String(message || "").trim();
+    if (!m) return;
+    input.value = m;
+    doSend();
+  }
+  return { wrap, ask, history };
+}
+
+/** Reveal an app hand-off button and surface the proof's deep link if it has one. */
+function setContinue(btnEl, deepEl, proof) {
+  btnEl.hidden = false;
+  const deep = proof && proof.deeplink;
+  if (deep) {
+    let abs = deep;
+    try { abs = new URL(deep, location.origin).toString(); } catch (e) { /* keep raw */ }
+    deepEl.textContent = `Deep link: ${abs}`;
+    deepEl.hidden = false;
+  } else {
+    deepEl.textContent = "";
+    deepEl.hidden = true;
+  }
+}
+
+/** Open the main app to continue: carry the proof (deep link or ?pa=<id>) and
+ *  seed the app chat with the last thing the user asked here. */
+function continueInAppWith(proof, history, id) {
+  if (!proof) return;
+  const lastUser = [...history].reverse().find((m) => m.role === "user");
+  const seed = (lastUser && lastUser.text)
+    || `Let's keep exploring: ${proof.title || "this derivation"}`;
+  openInApp(seed, proof.deeplink, id || null);
 }
 
 /** The special Derive/Rederive action (top): prompt (+ domain + docs) →
@@ -334,7 +455,10 @@ async function runDerive() {
     });
     els.dGo.textContent = "Rederive";            // a derivation now exists
     showContinue(proof);                          // reveal the explicit app hand-off
-    setStatus(`Derived “${proof.title || "proof"}” — ${proof.steps.length} steps.`, "ok");
+    // The title is "Deriving <target> from <start>"; strip the leading verb so
+    // the status reads "Derived <target> from <start>", not "Derived Deriving …".
+    const shown = (proof.title || "proof").replace(/^Deriving\s+/i, "");
+    setStatus(`Derived ${shown} — ${proof.steps.length} steps.`, "ok");
   } catch (e) {
     setStatus((e instanceof ExpertError ? e.message : (e && e.message)) || "Derivation failed.", "err");
   } finally {
@@ -365,27 +489,12 @@ function askInChat(message) {
  *  proof's deep link when it has one (built-ins / saved proofs do; a fresh,
  *  unsaved derivation does not — then only the chat context carries over). */
 function showContinue(proof) {
-  els.dContinue.hidden = false;
-  const deep = proof && proof.deeplink;
-  if (deep) {
-    let abs = deep;
-    try { abs = new URL(deep, location.origin).toString(); } catch (e) { /* keep raw */ }
-    els.dContinueDeep.textContent = `Deep link: ${abs}`;
-    els.dContinueDeep.hidden = false;
-  } else {
-    els.dContinueDeep.textContent = "";
-    els.dContinueDeep.hidden = true;
-  }
+  setContinue(els.dContinue, els.dContinueDeep, proof);
 }
 
-/** Open the main app to continue — carries the proof (via its deep link, if any)
- *  and seeds the app chat with the last thing the user asked here. */
+/** Derive-workspace app hand-off — carries the derived proof + this thread. */
 function continueInApp() {
-  if (!deriveProof) return;
-  const lastUser = [...chatHistory].reverse().find((m) => m.role === "user");
-  const seed = (lastUser && lastUser.text)
-    || `Let's keep exploring: ${deriveProof.title || "this derivation"}`;
-  openInApp(seed, deriveProof.deeplink, null);
+  continueInAppWith(deriveProof, chatHistory, null);
 }
 
 /** Debug-only (CTX button): fetch and show the EXACT context — system prompt +
