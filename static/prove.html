@@ -115,7 +115,16 @@
 
     .derive-cols { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start; }
     @media (max-width: 720px) { .derive-cols { grid-template-columns: 1fr; } }
+    .derive-left { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
     .derive-box { min-height: 200px; min-width: 0; }   /* min-width:0 lets the 1fr column shrink */
+    .continue-app { display: block; width: 100%; text-align: left; cursor: pointer;
+                    background: var(--panel-bg); border: 1px solid var(--accent); border-radius: 12px;
+                    padding: 14px 16px; color: var(--accent); font: inherit; }
+    .continue-app[hidden] { display: none; }   /* author display:block would else beat [hidden] */
+    .continue-app:hover { background: var(--chip-bg); }
+    .continue-app-label { display: block; font-size: .98rem; font-weight: 600; }
+    .continue-app-deep { display: block; margin-top: 6px; font-size: .72rem; font-weight: 400;
+                         color: var(--muted-color); word-break: break-all; }
     .derive-empty { color: var(--muted-color); font-size: .9rem; border: 1px dashed var(--border-color);
                     border-radius: 12px; padding: 40px 16px; text-align: center; }
     .derive-chat { display: flex; flex-direction: column; height: 560px; border: 1px solid var(--border-color);
@@ -264,9 +273,16 @@
         </div>
         <div id="d-status" class="derive-status" hidden></div>
         <div class="derive-cols">
-          <div class="derive-box">
-            <div id="d-empty" class="derive-empty">Your derivation will appear here.</div>
-            <div id="d-root"></div>
+          <div class="derive-left">
+            <div class="derive-box">
+              <div id="d-empty" class="derive-empty">Your derivation will appear here.</div>
+              <div id="d-root"></div>
+            </div>
+            <!-- Explicit hand-off to the full app (only if the user wants it). -->
+            <button id="d-continue" class="continue-app" type="button" hidden>
+              <span class="continue-app-label">Continue this chat in the main app →</span>
+              <span id="d-continue-deep" class="continue-app-deep" hidden></span>
+            </button>
           </div>
           <div class="derive-chat">
             <div class="chat-head">

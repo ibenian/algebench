@@ -303,6 +303,7 @@ async function runDerive() {
   if (!prompt || els.dGo.disabled) return;
   els.dGo.disabled = true;
   setStatus("Deriving… (CAS-verifying each step)", "pending");
+  els.dContinue.hidden = true;          // hide the app hand-off until this derive lands
 
   const body = { prompt };
   const domain = effectiveDomain();
@@ -323,9 +324,13 @@ async function runDerive() {
     els.dEmpty.hidden = true;
     deriveAnimator = new ProofAnimator(els.dRoot, proof, {
       katex: window.katex, liveTerms: true, enableTermAsk: true, enableExplore: true,
-      onTermAsk: ({ message }) => openInApp(message, proof.deeplink, null),
+      // We have a chat here now — a term "Ask AI" goes to the LOCAL chat (which is
+      // step-aware), not straight to the app. The app hand-off is the explicit
+      // "Continue in the main app" button below the box.
+      onTermAsk: ({ message }) => askInChat(message),
     });
     els.dGo.textContent = "Rederive";            // a derivation now exists
+    showContinue(proof);                          // reveal the explicit app hand-off
     setStatus(`Derived “${proof.title || "proof"}” — ${proof.steps.length} steps.`, "ok");
   } catch (e) {
     setStatus((e instanceof ExpertError ? e.message : (e && e.message)) || "Derivation failed.", "err");
@@ -334,11 +339,6 @@ async function runDerive() {
   }
 }
 
-/** Chat (right panel) — a Send-only, PROOF-SCOPED conversation about the current
- *  derivation, via POST /api/proof-chat: the Gemini chat agent run with a
- *  proof-only system prompt (NOT the app's lesson/scene-framed /api/chat). The
- *  whole thread + the proof + the step in view ride along, so it's conversational
- *  and step-aware. */
 /** The payload the proof chat sends: the thread + the proof + the step in view. */
 function chatBody() {
   return {
@@ -347,6 +347,42 @@ function chatBody() {
     currentStep: (deriveAnimator && typeof deriveAnimator.current === "number")
       ? deriveAnimator.current : null,
   };
+}
+
+/** A term's "Ask AI" now flows into the LOCAL step-aware chat (we have one here),
+ *  not the app. Drops the question in the input and sends it. */
+function askInChat(message) {
+  const m = String(message || "").trim();
+  if (!m) return;
+  els.dChatInput.value = m;
+  sendChat();
+}
+
+/** Reveal the explicit "Continue in the main app" hand-off, and surface the
+ *  proof's deep link when it has one (built-ins / saved proofs do; a fresh,
+ *  unsaved derivation does not — then only the chat context carries over). */
+function showContinue(proof) {
+  els.dContinue.hidden = false;
+  const deep = proof && proof.deeplink;
+  if (deep) {
+    let abs = deep;
+    try { abs = new URL(deep, location.origin).toString(); } catch (e) { /* keep raw */ }
+    els.dContinueDeep.textContent = `Deep link: ${abs}`;
+    els.dContinueDeep.hidden = false;
+  } else {
+    els.dContinueDeep.textContent = "";
+    els.dContinueDeep.hidden = true;
+  }
+}
+
+/** Open the main app to continue — carries the proof (via its deep link, if any)
+ *  and seeds the app chat with the last thing the user asked here. */
+function continueInApp() {
+  if (!deriveProof) return;
+  const lastUser = [...chatHistory].reverse().find((m) => m.role === "user");
+  const seed = (lastUser && lastUser.text)
+    || `Let's keep exploring: ${deriveProof.title || "this derivation"}`;
+  openInApp(seed, deriveProof.deeplink, null);
 }
 
 /** Debug-only (CTX button): fetch and show the EXACT context — system prompt +
@@ -374,6 +410,10 @@ async function showCtx() {
   }
 }
 
+/** Chat (right panel) — a PROOF-SCOPED conversation about the current derivation,
+ *  via POST /api/proof-chat: the Gemini chat agent run with a proof-only system
+ *  prompt (NOT the app's lesson/scene-framed /api/chat). The whole thread + the
+ *  proof + the step in view ride along, so it's conversational and step-aware. */
 async function sendChat() {
   const msg = els.dChatInput.value.trim();
   if (!msg || els.dSend.disabled) return;
@@ -435,6 +475,9 @@ async function main() {
   els.dGo = document.getElementById("d-go");
   els.dChatInput = document.getElementById("d-chat-input");
   els.dSend = document.getElementById("d-send");
+  els.dContinue = document.getElementById("d-continue");
+  els.dContinueDeep = document.getElementById("d-continue-deep");
+  els.dContinue.addEventListener("click", continueInApp);
   els.tabDerive.addEventListener("click", () => switchTo("derive"));
   els.dDocBtn.addEventListener("click", openDocEditor);
   els.dDocHint.addEventListener("click", openDocEditor);
