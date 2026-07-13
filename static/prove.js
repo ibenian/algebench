@@ -37,8 +37,10 @@ async function awaitKatex() {
 
 const els = {};
 let catalog = [];        // [{id, title, domain, goal}]
-let animator = null;
-let currentId = null;
+// Multi-tab: Browse (always present) + one tab per open proof. Each entry holds
+// its tab button, panel, and animator. `activeId` = null means the Browse tab.
+const openTabs = new Map();   // id -> { tab, panel, animator }
+let activeId = null;
 
 function showError(container, msg) {
   const div = document.createElement("div");
@@ -71,7 +73,8 @@ function renderBrowse(list) {
     btn.className = "pitem";
     btn.type = "button";
     btn.setAttribute("role", "listitem");
-    if (p.id === currentId) btn.setAttribute("aria-current", "true");
+    if (p.id === activeId) btn.setAttribute("aria-current", "true");
+    if (openTabs.has(p.id)) btn.classList.add("is-open");
 
     const title = document.createElement("span");
     title.className = "pitem-title";
@@ -87,60 +90,108 @@ function renderBrowse(list) {
 
     btn.appendChild(title);
     btn.appendChild(meta);
-    btn.addEventListener("click", () => openProof(p.id, true));
+    btn.addEventListener("click", () => openProof(p.id));
     els.browse.appendChild(btn);
   }
 }
 
-/** Show the Browse or Proof tab. */
-function switchTab(name) {
-  const proof = name === "proof";
-  els.tabBrowse.setAttribute("aria-selected", String(!proof));
-  els.tabProof.setAttribute("aria-selected", String(proof));
-  els.panelBrowse.hidden = proof;
-  els.panelProof.hidden = !proof;
-  window.scrollTo({ top: 0, behavior: "smooth" });
-}
-
-/** Back to browse (keeps the open proof loaded in its tab). */
-function backToBrowse() {
-  switchTab("browse");
-  const u = new URL(location.href);
-  u.searchParams.delete("id");
-  history.replaceState(null, "", u);
-}
-
-/** Fetch a proof by id, render it in the Proof tab, and switch to it. */
-async function openProof(id, pushUrl) {
-  if (!ID_RE.test(id)) return;
-  currentId = id;
-  if (pushUrl) {
-    const u = new URL(location.href);
-    u.searchParams.set("id", id);
-    history.replaceState(null, "", u);
+/** Focus a tab: null = Browse, else an open proof id. */
+function switchTo(id) {
+  activeId = id;
+  els.tabBrowse.setAttribute("aria-selected", String(id === null));
+  els.panelBrowse.hidden = id !== null;
+  for (const [tid, t] of openTabs) {
+    const on = tid === id;
+    t.tab.setAttribute("aria-selected", String(on));
+    t.panel.hidden = !on;
   }
-  renderBrowse(filterCatalog(els.search.value));   // refresh aria-current
+  const u = new URL(location.href);
+  if (id) u.searchParams.set("id", id); else u.searchParams.delete("id");
+  history.replaceState(null, "", u);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  if (id === null) renderBrowse(filterCatalog(els.search.value));   // refresh highlights
+}
 
-  els.tabProof.disabled = false;
-  els.viewerId.textContent = id;
-  switchTab("proof");
-  els.root.textContent = "";
-  const katex = window.katex;
+/** Close a proof tab: destroy its animator, remove tab+panel, focus a neighbour. */
+function closeProof(id) {
+  const t = openTabs.get(id);
+  if (!t) return;
+  try { t.animator && t.animator.destroy(); } catch (e) { /* best effort */ }
+  const wasActive = activeId === id;
+  const order = [...openTabs.keys()];
+  const idx = order.indexOf(id);
+  t.tab.remove();
+  t.panel.remove();
+  openTabs.delete(id);
+  if (wasActive) {
+    const rest = [...openTabs.keys()];
+    switchTo(rest.length ? (rest[idx] || rest[rest.length - 1]) : null);
+  } else {
+    renderBrowse(filterCatalog(els.search.value));
+  }
+}
+
+/** Open a proof in its own tab (or focus the existing tab if already open). */
+async function openProof(id) {
+  if (!ID_RE.test(id)) return;
+  if (openTabs.has(id)) { switchTo(id); return; }   // already open → focus it
+
+  // -- tab button (title + ✕) --
+  const tab = document.createElement("div");
+  tab.className = "tab proof-tab";
+  tab.setAttribute("role", "tab");
+  tab.setAttribute("aria-selected", "false");
+  tab.tabIndex = 0;
+  const label = document.createElement("span");
+  label.className = "tab-label";
+  label.textContent = id.split("/")[1];             // placeholder until title arrives
+  const x = document.createElement("button");
+  x.type = "button"; x.className = "tab-x"; x.textContent = "✕";
+  x.setAttribute("aria-label", `Close ${id}`);
+  x.addEventListener("click", (e) => { e.stopPropagation(); closeProof(id); });
+  tab.append(label, x);
+  tab.addEventListener("click", () => switchTo(id));
+  tab.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); switchTo(id); }
+  });
+  els.tabbar.appendChild(tab);
+
+  // -- panel (bar + render root) --
+  const panel = document.createElement("section");
+  panel.className = "panel proof-panel";
+  panel.setAttribute("role", "tabpanel");
+  const bar = document.createElement("div");
+  bar.className = "viewer-bar";
+  const idEl = document.createElement("span");
+  idEl.className = "viewer-id"; idEl.textContent = id;
+  const closeBtn = document.createElement("button");
+  closeBtn.type = "button"; closeBtn.className = "viewer-close"; closeBtn.textContent = "✕ Close proof";
+  closeBtn.addEventListener("click", () => closeProof(id));
+  bar.append(idEl, closeBtn);
+  const root = document.createElement("div");
+  panel.append(bar, root);
+  els.panels.appendChild(panel);
+
+  const entry = { tab, panel, animator: null };
+  openTabs.set(id, entry);
+  switchTo(id);
+
+  // -- fetch + render --
   try {
     const resp = await fetch(`/api/proofs/item?id=${encodeURIComponent(id)}`, { cache: "no-store" });
     if (!resp.ok) throw new Error(resp.status === 404 ? "not found" : `error ${resp.status}`);
     const data = validateProofData(await resp.json());
-    els.tabProof.textContent = data.title ? data.title : "Proof";
-    animator = new ProofAnimator(els.root, data, {
-      katex, liveTerms: true, enableTermAsk: true, enableExplore: true,
-      // Ask-AI on a proof term → open the FULL app in a new tab (keep the
-      // browser open here), landing in chat with the question. Use the proof's
-      // own deeplink when it has one (built-ins deep-link to their lesson +
-      // pre-baked animation); otherwise open the app on this proof (?pa=<id>).
+    if (!openTabs.has(id)) return;                  // closed while loading
+    label.textContent = data.title || id.split("/")[1];
+    tab.title = data.title || id;
+    entry.animator = new ProofAnimator(root, data, {
+      katex: window.katex, liveTerms: true, enableTermAsk: true, enableExplore: true,
+      // Ask-AI on a proof term → open the FULL app in a new tab, in chat, with
+      // the question. Use the proof's deeplink (built-ins) else ?pa=<id>.
       onTermAsk: ({ message }) => openInApp(message, data.deeplink, id),
     });
   } catch (e) {
-    showError(els.root, `Could not load "${id}": ${e.message}`);
+    showError(root, `Could not load "${id}": ${e.message}`);
   }
 }
 
@@ -164,18 +215,14 @@ async function main() {
   els.browse = document.getElementById("browse");
   els.count = document.getElementById("count");
   els.empty = document.getElementById("empty");
-  els.root = document.getElementById("root");
-  els.viewerId = document.getElementById("viewer-id");
+  els.tabbar = document.getElementById("tabbar");
+  els.panels = document.getElementById("panels");
   els.tabBrowse = document.getElementById("tab-browse");
-  els.tabProof = document.getElementById("tab-proof");
   els.panelBrowse = document.getElementById("panel-browse");
-  els.panelProof = document.getElementById("panel-proof");
-  els.tabBrowse.addEventListener("click", () => switchTab("browse"));
-  els.tabProof.addEventListener("click", () => { if (!els.tabProof.disabled) switchTab("proof"); });
-  document.getElementById("viewer-close").addEventListener("click", backToBrowse);
+  els.tabBrowse.addEventListener("click", () => switchTo(null));
 
   const katex = await awaitKatex();
-  if (!katex) { showError(els.root, "Math renderer failed to load."); return; }
+  if (!katex) { showError(els.panelBrowse, "Math renderer failed to load."); return; }
 
   try {
     const resp = await fetch("/api/proofs", { cache: "no-store" });
@@ -183,7 +230,7 @@ async function main() {
     catalog = (await resp.json()).proofs || [];
     catalog.sort((a, b) => (a.title || a.id).localeCompare(b.title || b.id));
   } catch (e) {
-    showError(els.root, `Could not load the proof catalog: ${e.message}`);
+    showError(els.panelBrowse, `Could not load the proof catalog: ${e.message}`);
     return;
   }
 
@@ -192,7 +239,7 @@ async function main() {
 
   // Deep-link: ?id=<domain>/<name> opens that proof on load.
   const deep = params().get("id");
-  if (deep && ID_RE.test(deep)) openProof(deep, false);
+  if (deep && ID_RE.test(deep)) openProof(deep);
 }
 
 main();

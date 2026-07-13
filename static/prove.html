@@ -55,6 +55,13 @@
     .tab[aria-selected="true"] { color: var(--text-color); border-bottom-color: var(--accent); }
     .tab[disabled] { opacity: .45; cursor: default; }
     .panel[hidden] { display: none; }
+    /* Per-proof tab: title (switch) + ✕ (close). */
+    .proof-tab { display: inline-flex; align-items: center; gap: 6px; max-width: 220px; }
+    .proof-tab .tab-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tab-x { font: inherit; font-size: .95rem; line-height: 1; cursor: pointer; color: var(--muted-color);
+             background: none; border: 0; border-radius: 5px; padding: 2px 4px; margin-right: -4px; }
+    .tab-x:hover { color: var(--text-color); background: var(--btn-hover); }
+    .tabs { flex-wrap: wrap; }
 
     .search { position: relative; margin: 0 0 14px; }
     #search { width: 100%; font: inherit; font-size: 1rem; padding: 11px 14px;
@@ -70,6 +77,7 @@
              border-radius: 10px; background: var(--panel-bg); color: var(--text-color); }
     .pitem:hover { border-color: var(--accent); }
     .pitem[aria-current="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+    .pitem.is-open .pitem-title::after { content: " ● open"; color: var(--accent); font-size: .7rem; font-weight: 700; }
     .pitem-title { font-weight: 600; font-size: .95rem; }
     .pitem-meta { font-size: .75rem; color: var(--muted-color); }
     .pitem-dom { display: inline-block; font-size: .68rem; text-transform: uppercase;
@@ -105,30 +113,24 @@
       understanding math. Ask the AI about any term, or
       <a href="/">open the full app →</a></p>
 
-    <div class="tabs" role="tablist" aria-label="Prove sections">
+    <!-- Tab bar: Browse (static) + one tab per open proof (injected). -->
+    <div class="tabs" id="tabbar" role="tablist" aria-label="Prove sections">
       <button class="tab" id="tab-browse" role="tab" type="button"
               aria-selected="true" aria-controls="panel-browse">Browse proofs</button>
-      <button class="tab" id="tab-proof" role="tab" type="button"
-              aria-selected="false" aria-controls="panel-proof" disabled>Proof</button>
     </div>
 
-    <section id="panel-browse" class="panel" role="tabpanel" aria-labelledby="tab-browse">
-      <div class="search">
-        <input id="search" type="search" autocomplete="off" spellcheck="false"
-               placeholder="Search proofs by title, domain, or goal…" aria-label="Search proofs">
-      </div>
-      <div class="count" id="count" aria-live="polite"></div>
-      <div id="browse" role="list"></div>
-      <div class="empty" id="empty" hidden>No proofs match.</div>
-    </section>
-
-    <section id="panel-proof" class="panel" role="tabpanel" aria-labelledby="tab-proof" hidden>
-      <div class="viewer-bar">
-        <span class="viewer-id" id="viewer-id"></span>
-        <button id="viewer-close" class="viewer-close" type="button">← Back to browse</button>
-      </div>
-      <div id="root"></div>
-    </section>
+    <div id="panels">
+      <section id="panel-browse" class="panel" role="tabpanel" aria-labelledby="tab-browse">
+        <div class="search">
+          <input id="search" type="search" autocomplete="off" spellcheck="false"
+                 placeholder="Search proofs by title, domain, or goal…" aria-label="Search proofs">
+        </div>
+        <div class="count" id="count" aria-live="polite"></div>
+        <div id="browse" role="list"></div>
+        <div class="empty" id="empty" hidden>No proofs match.</div>
+      </section>
+      <!-- one <section class="panel proof-panel"> per open proof, injected -->
+    </div>
 
     <div class="footer">
       <strong>AlgeBench</strong> — AI-guided, interactive math. Proofs are just
