@@ -237,17 +237,52 @@ function refreshDocHint() {
 function openDocEditor() { els.dDocEditor.hidden = false; refreshDocHint(); updateDocCount(); els.dDoc.focus(); }
 function closeDocEditor() { els.dDocEditor.hidden = true; refreshDocHint(); }
 
+// ── rendering (markdown + KaTeX), self-contained (no app-module deps) ─────────
+const _hasRender = () => typeof window.katex !== "undefined";
+const _escapeHtml = (s) => String(s).replace(/[&<>"']/g,
+  (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+function _katex(tex, display) {
+  try { return window.katex.renderToString(tex, { throwOnError: false, strict: false, displayMode: display }); }
+  catch (e) { return _escapeHtml(tex); }
+}
+/** Pull $…$/$$…$$ out to placeholders (so they survive escaping/markdown),
+ *  run `body` on the rest, then render the math back with KaTeX. */
+function _withMath(text, body) {
+  const blocks = [];
+  const stash = (tex, display) => { blocks.push([String(tex).trim(), display]); return '%%M' + (blocks.length - 1) + '%%'; };
+  let s = String(text)
+    .replace(/\$\$([\s\S]+?)\$\$/g, (m, tex) => stash(tex, true))
+    .replace(/\$([^$\n]+)\$/g, (m, tex) => stash(tex, false));
+  s = body(s);
+  return s.replace(/%%M(\d+)%%/g, (m, i) => _katex(blocks[+i][0], blocks[+i][1]));
+}
+/** Untrusted text (user input / status): escape HTML, keep newlines, render math. */
+function renderSafe(text) {
+  return _withMath(text, (s) => _escapeHtml(s).replace(/\n/g, '<br>'));
+}
+/** Assistant markdown (our own agent's reply): markdown + math. */
+function renderReply(text) {
+  if (typeof window.marked === 'undefined') return null;   // fall back to plain text
+  return _withMath(text, (s) => window.marked.parse(s));
+}
+
 function setStatus(text, cls) {
   els.dStatus.hidden = !text;
-  els.dStatus.textContent = text || "";
+  if (text && _hasRender()) els.dStatus.innerHTML = renderSafe(text);
+  else els.dStatus.textContent = text || "";
   els.dStatus.className = `derive-status ${cls || ""}`;
 }
 
-/** Append a chat bubble; returns it (so a "pending" one can be removed). */
+/** Append a chat bubble; returns it (so a "pending" one can be removed).
+ *  User text is escaped + math-rendered; assistant text is markdown + math. */
 function addBubble(role, text, cls) {
   const b = document.createElement("div");
   b.className = `bubble ${role === "user" ? "user" : "bot"}${cls ? " " + cls : ""}`;
-  b.textContent = text;                          // textContent — never innerHTML
+  const html = !_hasRender() ? null
+    : role === "user" ? renderSafe(text)
+    : (cls && cls.includes("pending")) ? null      // "…" placeholder — plain
+    : renderReply(text);
+  if (html != null) b.innerHTML = html; else b.textContent = text;   // safe fallback
   els.dLog.appendChild(b);
   els.dLog.scrollTop = els.dLog.scrollHeight;
   return b;
