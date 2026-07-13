@@ -1498,6 +1498,39 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
             }
         )
 
+    @fastapp.get("/prove")
+    async def get_prove(theme: str = ""):
+        """Serve the public /prove page — an isolated proof browser (and, later,
+        an AI-driven derivation chat). Reuses the proof-animation widget like
+        /renderproof, but this page also calls the same-origin proof-store API
+        (/api/proofs*), hence `connect-src 'self'`. Not embeddable (interactive),
+        so `frame-ancestors 'self'`."""
+        path = static_dir / "prove.html"
+        if not path.is_file():
+            return Response(status_code=404)
+        with open(path, 'r') as f:
+            html = f.read().replace('__APP_VERSION__', get_app_version())
+        if theme in ("light", "dark"):
+            html = html.replace('<html lang="en">',
+                                f'<html lang="en" data-theme="{theme}">', 1)
+        return HTMLResponse(
+            content=html,
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Content-Security-Policy": (
+                    "default-src 'self'; "
+                    "script-src 'self' https://cdn.jsdelivr.net; "
+                    "style-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; "
+                    "font-src 'self' https://cdn.jsdelivr.net data:; "
+                    "img-src 'self' data:; "
+                    "connect-src 'self'; "
+                    "frame-ancestors 'self'; "
+                    "object-src 'none'; "
+                    "base-uri 'none'"
+                ),
+            }
+        )
+
     @fastapp.get("/proofs/{path:path}")
     async def get_proof_file(path: str):
         """Serve a built-in proof JSON from proofs/, confined and .json-only.
@@ -1575,7 +1608,7 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
         'sliders', 'overlay', 'dockable-panel', 'context-browser', 'scene-loader', 'ui',
         'json-browser', 'main', 'proof', 'graph-view', 'expert-client',
         'view-state', 'view-state-bridge', 'nav-history', 'nav-history-core',
-        'renderproof', 'embed-resizer', 'object-picker',
+        'renderproof', 'embed-resizer', 'object-picker', 'prove',
     }
 
     @fastapp.get("/api/version")

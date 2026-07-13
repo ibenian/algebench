@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AlgeBench — Prove</title>
+  <!-- KaTeX from the same CDN the rest of AlgeBench uses. The /prove CSP forbids
+       inline script, so page logic loads as an external module (/prove.js). -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <link rel="stylesheet" href="/proof-animation/proof-animation.css?v=__APP_VERSION__">
+  <style>
+    :root {
+      color-scheme: dark;
+      --panel-bg: #1a1a2e; --text-color: #e5e7eb; --muted-color: #9ca3af; --border-color: #2a2f45;
+      --page-bg: #12121c; --title-fg: #cbd5e1; --accent: #818cf8;
+      --btn-bg: #1f2937; --btn-fg: #e5e7eb; --btn-border: #374151; --btn-hover: #273449;
+      --err-fg: #fca5a5; --err-bg: #2a1414; --err-border: #7f1d1d;
+      --chip-bg: #1b2133;
+    }
+    html[data-theme="light"] {
+      color-scheme: light;
+      --panel-bg: #ffffff; --text-color: #1a1a2e; --muted-color: #6b7280; --border-color: #e5e7eb;
+      --page-bg: #f6f7fb; --title-fg: #4b5563; --accent: #4f46e5;
+      --btn-bg: #ffffff; --btn-fg: #374151; --btn-border: #cbd5e1; --btn-hover: #f1f5f9;
+      --err-fg: #b91c1c; --err-bg: #fef2f2; --err-border: #fecaca;
+      --chip-bg: #eef1f8;
+    }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+           margin: 0; padding: 0; background: var(--page-bg); color: var(--text-color);
+           transition: background-color .4s ease, color .4s ease; }
+    html { scrollbar-width: thin; scrollbar-color: var(--border-color) transparent; }
+    ::-webkit-scrollbar { width: 12px; height: 12px; }
+    ::-webkit-scrollbar-thumb { background-color: var(--border-color); border-radius: 8px;
+           border: 3px solid transparent; background-clip: content-box; }
+    .wrap { max-width: 880px; margin: 0 auto; padding: 24px 20px 64px; }
+    @media (max-width: 480px) { .wrap { padding: 14px 12px 40px; } }
+
+    .brand { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+             margin: 0 0 4px; text-decoration: none; }
+    .brand-name { font-weight: 800; font-size: 1.5rem; letter-spacing: -.01em; color: var(--title-fg); }
+    .brand-tag { font-size: .82rem; color: var(--accent); font-weight: 700;
+                 text-transform: uppercase; letter-spacing: .08em; }
+    .lede { color: var(--muted-color); font-size: .95rem; margin: 6px 0 20px;
+            padding: 0 0 18px; border-bottom: 1px solid var(--border-color); line-height: 1.5; }
+    .lede a { color: var(--accent); text-decoration: none; }
+    .lede a:hover { text-decoration: underline; }
+
+    .search { position: relative; margin: 0 0 14px; }
+    #search { width: 100%; font: inherit; font-size: 1rem; padding: 11px 14px;
+              border: 1px solid var(--btn-border); border-radius: 10px;
+              background: var(--panel-bg); color: var(--text-color); }
+    #search:focus { outline: none; border-color: var(--accent); }
+    .count { font-size: .8rem; color: var(--muted-color); margin: 0 2px 10px; }
+
+    #browse { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 0 8px; }
+    @media (max-width: 560px) { #browse { grid-template-columns: 1fr; } }
+    .pitem { text-align: left; font: inherit; cursor: pointer; display: flex; flex-direction: column;
+             gap: 3px; padding: 10px 12px; border: 1px solid var(--border-color);
+             border-radius: 10px; background: var(--panel-bg); color: var(--text-color); }
+    .pitem:hover { border-color: var(--accent); }
+    .pitem[aria-current="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+    .pitem-title { font-weight: 600; font-size: .95rem; }
+    .pitem-meta { font-size: .75rem; color: var(--muted-color); }
+    .pitem-dom { display: inline-block; font-size: .68rem; text-transform: uppercase;
+                 letter-spacing: .06em; color: var(--accent); background: var(--chip-bg);
+                 border-radius: 5px; padding: 1px 6px; }
+    .empty { color: var(--muted-color); font-size: .9rem; padding: 18px 2px; }
+
+    .divider { margin: 22px 0 6px; border: 0; border-top: 1px solid var(--border-color); }
+    #viewer { margin: 4px 0 6px; }
+    .viewer-bar { display: flex; align-items: center; justify-content: space-between;
+                  gap: 10px; margin: 0 0 8px; }
+    .viewer-id { font: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .78rem;
+                 color: var(--muted-color); }
+    .viewer-close { font: inherit; font-size: .82rem; cursor: pointer; color: var(--btn-fg);
+                    background: var(--btn-bg); border: 1px solid var(--btn-border);
+                    border-radius: 7px; padding: 5px 11px; }
+    .viewer-close:hover { background: var(--btn-hover); }
+    #root { margin-top: 4px; }
+    .pa-error { color: var(--err-fg); background: var(--err-bg); border: 1px solid var(--err-border);
+                border-radius: 8px; padding: 12px 14px; margin: 12px 0; font-size: .9rem; }
+    .footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--border-color);
+              font-size: .85rem; color: var(--muted-color); }
+    .footer a { color: var(--accent); text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <a class="brand" href="/" aria-label="AlgeBench home">
+      <span class="brand-name">AlgeBench</span>
+      <span class="brand-tag">Prove</span>
+    </a>
+    <p class="lede">Browse grounded, step-by-step proofs — each derivation is
+      CAS-verified and animated. <a href="/">Open the full app →</a></p>
+
+    <div class="search">
+      <input id="search" type="search" autocomplete="off" spellcheck="false"
+             placeholder="Search proofs by title, domain, or goal…" aria-label="Search proofs">
+    </div>
+    <!-- Rendered proof shows here, above the list, so a click doesn't send you
+         scrolling. Hidden until a proof is opened. -->
+    <div id="viewer" hidden>
+      <div class="viewer-bar">
+        <span class="viewer-id" id="viewer-id"></span>
+        <button id="viewer-close" class="viewer-close" type="button" aria-label="Close proof">✕ Close</button>
+      </div>
+      <div id="root"></div>
+      <hr class="divider">
+    </div>
+
+    <div class="count" id="count" aria-live="polite"></div>
+    <div id="browse" role="list"></div>
+    <div class="empty" id="empty" hidden>No proofs match.</div>
+
+    <div class="footer">
+      Powered by <a href="/">AlgeBench</a> — animated, CAS-verified proofs.
+    </div>
+  </div>
+  <script type="module" src="/prove.js?v=__APP_VERSION__"></script>
+</body>
+</html>
