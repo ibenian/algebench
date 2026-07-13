@@ -390,10 +390,12 @@ class PromptDeriveRequest(BaseModel):
     prompt: str = Field(min_length=1, max_length=4000)
     # Optional domain hint; otherwise inferred from the prompt.
     domain: Optional[str] = None
-    # Optional free-text / markdown documentation the user attached as context.
-    # Fed to the derivation expert (not the endpoint namer); bounded well above
-    # the client's 5k cap so a slightly-over payload is truncated, not rejected.
-    context: Optional[str] = Field(default=None, max_length=6000)
+    # Optional free-text / markdown documentation the user attached. Named
+    # `documentation` (not `context`) since `context` is a structured dict
+    # elsewhere. Fed to the derivation expert's lesson_context (not the endpoint
+    # namer); bounded above the client's 5k cap so a slightly-over payload is
+    # truncated, not rejected.
+    documentation: Optional[str] = Field(default=None, max_length=6000)
 
 
 @register_handler("proof_from_prompt", request_model=PromptDeriveRequest)
@@ -416,7 +418,7 @@ def derive_proof_from_prompt(req: PromptDeriveRequest) -> dict:
     start = (start or "").strip()
     domain = (req.domain or lm_domain or "").strip() or None
     title = (lm_title or "").strip() or None
-    doc = (req.context or "").strip()
+    doc = (req.documentation or "").strip()
     context = {"lessonDescription": doc} if doc else None    # → expert lesson_context
     log.debug("proof_from_prompt: prompt=%r -> start=%r target=%r domain=%s doc=%dch",
               req.prompt, start, target, domain, len(doc))

@@ -214,6 +214,8 @@ function openInApp(message, deeplink, id) {
 
 // ── Derive workspace ────────────────────────────────────────────────────────
 let deriveAnimator = null;
+let deriveProof = null;        // the current derived proof (chat context)
+let chatHistory = [];
 
 /** Domain: the custom free-text field wins over the dropdown; "" = Auto/infer. */
 function effectiveDomain() {
@@ -235,6 +237,12 @@ function refreshDocHint() {
 function openDocEditor() { els.dDocEditor.hidden = false; refreshDocHint(); updateDocCount(); els.dDoc.focus(); }
 function closeDocEditor() { els.dDocEditor.hidden = true; refreshDocHint(); }
 
+function setStatus(text, cls) {
+  els.dStatus.hidden = !text;
+  els.dStatus.textContent = text || "";
+  els.dStatus.className = `derive-status ${cls || ""}`;
+}
+
 /** Append a chat bubble; returns it (so a "pending" one can be removed). */
 function addBubble(role, text, cls) {
   const b = document.createElement("div");
@@ -245,27 +253,25 @@ function addBubble(role, text, cls) {
   return b;
 }
 
-/** Run a derivation: prompt (+ domain + attached docs) → proof_from_prompt →
- *  render in the derivation box + log to the chat. */
+/** The special Derive/Rederive action (top): prompt (+ domain + docs) →
+ *  proof_from_prompt → render in the derivation box. Once a proof exists the
+ *  button reads "Rederive". */
 async function runDerive() {
   const prompt = els.dPrompt.value.trim();
   if (!prompt || els.dGo.disabled) return;
-  const domain = effectiveDomain();
-  const context = els.dDoc.value.trim();
-
-  addBubble("user", prompt);
-  els.dPrompt.value = "";
   els.dGo.disabled = true;
-  const pending = addBubble("bot", "Deriving… (CAS-verifying each step)", "pending");
+  setStatus("Deriving… (CAS-verifying each step)", "pending");
 
   const body = { prompt };
+  const domain = effectiveDomain();
+  const documentation = els.dDoc.value.trim();
   if (domain) body.domain = domain;
-  if (context) body.context = context;
+  if (documentation) body.documentation = documentation;
   try {
     const data = await invokeExpert("proof_from_prompt", body, { timeoutMs: 150000 });
-    pending.remove();
-    if (data && data.error) { addBubble("bot", data.error, "err"); return; }
+    if (data && data.error) { setStatus(data.error, "err"); return; }
     const proof = validateProofData(data);
+    deriveProof = proof;
     if (deriveAnimator) { try { deriveAnimator.destroy(); } catch (e) { /* noop */ } deriveAnimator = null; }
     els.dRoot.textContent = "";
     els.dEmpty.hidden = true;
@@ -273,12 +279,49 @@ async function runDerive() {
       katex: window.katex, liveTerms: true, enableTermAsk: true, enableExplore: true,
       onTermAsk: ({ message }) => openInApp(message, proof.deeplink, null),
     });
-    addBubble("bot", `Derived “${proof.title || "proof"}” — ${proof.steps.length} steps. It’s on the left.`);
+    els.dGo.textContent = "Rederive";            // a derivation now exists
+    setStatus(`Derived “${proof.title || "proof"}” — ${proof.steps.length} steps.`, "ok");
   } catch (e) {
-    pending.remove();
-    addBubble("bot", (e instanceof ExpertError ? e.message : (e && e.message)) || "Derivation failed.", "err");
+    setStatus((e instanceof ExpertError ? e.message : (e && e.message)) || "Derivation failed.", "err");
   } finally {
     els.dGo.disabled = false;
+  }
+}
+
+/** Chat (right panel) — a Send-only conversation about the current derivation,
+ *  via the app's /api/chat. The proof context rides inside the message (with an
+ *  empty context dict) so the general chat agent can answer without the main
+ *  app's scene assumptions. */
+async function sendChat() {
+  const msg = els.dChatInput.value.trim();
+  if (!msg || els.dSend.disabled) return;
+  addBubble("user", msg);
+  els.dChatInput.value = "";
+  els.dSend.disabled = true;
+  const pending = addBubble("bot", "…", "pending");
+  let enriched = msg;
+  if (deriveProof) {
+    const t = deriveProof.title || "the derivation";
+    const g = deriveProof.goal ? ` Its goal: ${deriveProof.goal}.` : "";
+    enriched = `I'm looking at a math derivation titled “${t}”.${g}\n\nQuestion: ${msg}`;
+  }
+  try {
+    const resp = await fetch("/api/chat", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: enriched, history: chatHistory, context: {} }),
+    });
+    const data = await resp.json().catch(() => ({}));
+    pending.remove();
+    if (!resp.ok) { addBubble("bot", data.error || `Chat error (${resp.status}).`, "err"); return; }
+    const reply = (data && data.response) || "(no response)";
+    addBubble("bot", reply);
+    chatHistory.push({ role: "user", text: msg }, { role: "assistant", text: reply });
+    if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
+  } catch (e) {
+    pending.remove();
+    addBubble("bot", "Chat is unavailable right now.", "err");
+  } finally {
+    els.dSend.disabled = false;
   }
 }
 
@@ -307,9 +350,12 @@ async function main() {
   els.dDocCount = document.getElementById("d-doc-count");
   els.dRoot = document.getElementById("d-root");
   els.dEmpty = document.getElementById("d-empty");
+  els.dStatus = document.getElementById("d-status");
   els.dLog = document.getElementById("d-log");
   els.dPrompt = document.getElementById("d-prompt");
   els.dGo = document.getElementById("d-go");
+  els.dChatInput = document.getElementById("d-chat-input");
+  els.dSend = document.getElementById("d-send");
   els.tabDerive.addEventListener("click", () => switchTo("derive"));
   els.dDocBtn.addEventListener("click", openDocEditor);
   els.dDocHint.addEventListener("click", openDocEditor);
@@ -317,9 +363,14 @@ async function main() {
   document.getElementById("d-doc-clear").addEventListener("click",
     () => { els.dDoc.value = ""; updateDocCount(); refreshDocHint(); });
   els.dDoc.addEventListener("input", updateDocCount);
+  // Top: the special Derive/Rederive action.
   els.dGo.addEventListener("click", runDerive);
   els.dPrompt.addEventListener("keydown",
     (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); runDerive(); } });
+  // Right: the chat (Send only, like the main app chat).
+  els.dSend.addEventListener("click", sendChat);
+  els.dChatInput.addEventListener("keydown",
+    (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat(); } });
 
   const katex = await awaitKatex();
   if (!katex) { showError(els.panelBrowse, "Math renderer failed to load."); return; }

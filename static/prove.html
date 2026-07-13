@@ -86,6 +86,20 @@
     .doc-editor-foot .spacer { flex: 1; }
     .doc-count { font-size: .78rem; color: var(--muted-color); }
 
+    .derive-bar { display: flex; gap: 10px; align-items: stretch; margin: 0 0 16px; }
+    .derive-prompt { flex: 1; font: inherit; font-size: .95rem; resize: vertical; min-height: 46px;
+                     padding: 10px 12px; border-radius: 10px; border: 1px solid var(--btn-border);
+                     background: var(--panel-bg); color: var(--text-color); }
+    .derive-prompt:focus { outline: none; border-color: var(--accent); }
+    .derive-btn { font: inherit; font-weight: 700; cursor: pointer; padding: 0 22px; border-radius: 10px;
+                  border: 0; background: var(--accent); color: #fff; white-space: nowrap; }
+    .derive-btn:disabled { opacity: .55; cursor: default; }
+
+    .derive-status { font-size: .85rem; margin: -6px 0 14px; }
+    .derive-status.pending { color: var(--muted-color); font-style: italic; }
+    .derive-status.ok { color: var(--accent); }
+    .derive-status.err { color: var(--err-fg); }
+
     .derive-cols { display: grid; grid-template-columns: 1fr 360px; gap: 16px; align-items: start; }
     @media (max-width: 720px) { .derive-cols { grid-template-columns: 1fr; } }
     .derive-box { min-height: 200px; min-width: 0; }   /* min-width:0 lets the 1fr column shrink */
@@ -106,9 +120,11 @@
     .chat-input { flex: 1; font: inherit; font-size: .9rem; resize: none; padding: 8px 10px; border-radius: 9px;
                   border: 1px solid var(--btn-border); background: var(--page-bg); color: var(--text-color); }
     .chat-input:focus { outline: none; border-color: var(--accent); }
-    .derive-btn { font: inherit; font-weight: 600; cursor: pointer; padding: 0 16px; border-radius: 9px;
-                  border: 0; background: var(--accent); color: #fff; align-self: stretch; }
-    .derive-btn:disabled { opacity: .55; cursor: default; }
+    .chat-send { font: inherit; font-weight: 600; cursor: pointer; padding: 0 16px; border-radius: 9px;
+                 border: 1px solid var(--btn-border); background: var(--btn-bg); color: var(--btn-fg);
+                 align-self: stretch; }
+    .chat-send:hover { background: var(--btn-hover); }
+    .chat-send:disabled { opacity: .55; cursor: default; }
 
     .search { position: relative; margin: 0 0 14px; }
     #search { width: 100%; font: inherit; font-size: 1rem; padding: 11px 14px;
@@ -199,6 +215,13 @@
             <button id="d-doc-done" class="ctl-btn primary" type="button">Done</button>
           </div>
         </div>
+        <!-- The special Derive action lives at the top. -->
+        <div class="derive-bar">
+          <textarea id="d-prompt" class="derive-prompt" rows="2"
+                    placeholder="Describe what to derive — e.g. “derive the quadratic formula”"></textarea>
+          <button id="d-go" class="derive-btn" type="button">Derive</button>
+        </div>
+        <div id="d-status" class="derive-status" hidden></div>
         <div class="derive-cols">
           <div class="derive-box">
             <div id="d-empty" class="derive-empty">Your derivation will appear here.</div>
@@ -207,9 +230,9 @@
           <div class="derive-chat">
             <div id="d-log" class="chat-log" aria-live="polite"></div>
             <div class="chat-input-row">
-              <textarea id="d-prompt" class="chat-input" rows="2"
-                        placeholder="Describe what to derive — e.g. “derive the quadratic formula”"></textarea>
-              <button id="d-go" class="derive-btn" type="button">Derive</button>
+              <textarea id="d-chat-input" class="chat-input" rows="2"
+                        placeholder="Ask about this derivation…"></textarea>
+              <button id="d-send" class="chat-send" type="button">Send</button>
             </div>
           </div>
         </div>

@@ -254,7 +254,7 @@ def test_proof_from_prompt_threads_documentation_context(monkeypatch):
     monkeypatch.setattr(H, "endpoints_from_prompt", lambda p: ("x", "y", "algebra", "T", "", ""))
     captured = {}
     monkeypatch.setattr(H, "derive_proof_animation", lambda req: captured.update(req=req) or {})
-    H.derive_proof_from_prompt(H.PromptDeriveRequest(prompt="q", context="  some **markdown** notes  "))
+    H.derive_proof_from_prompt(H.PromptDeriveRequest(prompt="q", documentation="  some **markdown** notes  "))
     assert captured["req"].context == {"lessonDescription": "some **markdown** notes"}
 
 
@@ -268,4 +268,4 @@ def test_proof_from_prompt_no_context_is_none(monkeypatch):
 
 def test_prompt_derive_request_context_length_capped():
     with pytest.raises(ValidationError):
-        H.PromptDeriveRequest(prompt="x", context="z" * 6001)   # max_length=6000
+        H.PromptDeriveRequest(prompt="x", documentation="z" * 6001)   # max_length=6000
