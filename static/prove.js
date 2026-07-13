@@ -268,9 +268,16 @@ function renderReply(text) {
 
 function setStatus(text, cls) {
   els.dStatus.hidden = !text;
-  if (text && _hasRender()) els.dStatus.innerHTML = renderSafe(text);
-  else els.dStatus.textContent = text || "";
   els.dStatus.className = `derive-status ${cls || ""}`;
+  if (text && cls === "pending") {
+    // Animated pulsing dots (like the main app) in place of the literal "…".
+    const dots = '<span class="dots" aria-hidden="true"><span></span><span></span><span></span></span>';
+    els.dStatus.innerHTML = String(text).split("…").map(_escapeHtml).join(dots);
+  } else if (text && _hasRender()) {
+    els.dStatus.innerHTML = renderSafe(text);
+  } else {
+    els.dStatus.textContent = text || "";
+  }
 }
 
 /** Append a chat bubble; returns it (so a "pending" one can be removed).
