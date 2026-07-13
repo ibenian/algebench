@@ -35,7 +35,7 @@ from backend.semantic_graph.preprocessor import strip_math_delimiters
 from backend.semantic_graph.service import SemanticGraphService
 
 from .finalize import build_described
-from .prompt_endpoints import start_given_target
+from .prompt_endpoints import endpoints_from_prompt, start_given_target
 
 log = logging.getLogger(__name__)
 
@@ -379,3 +379,43 @@ def derive_proof_animation(req: DeriveProofRequest) -> dict:
     log.debug("proof_animation: output=%s",
               json.dumps(data, default=str, ensure_ascii=False, separators=(",", ":")))
     return data
+
+
+class PromptDeriveRequest(BaseModel):
+    """Request for ``POST /api/expert/proof_from_prompt`` — a plain-language ask
+    (e.g. "derive the quadratic formula", "factor a^2 - b^2")."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    prompt: str = Field(min_length=1, max_length=4000)
+    # Optional domain hint; otherwise inferred from the prompt.
+    domain: Optional[str] = None
+
+
+@register_handler("proof_from_prompt", request_model=PromptDeriveRequest)
+def derive_proof_from_prompt(req: PromptDeriveRequest) -> dict:
+    """Turn a plain-language prompt into a CAS-verified proof animation.
+
+    Names the canonical START and TARGET endpoints from the prompt
+    (:func:`endpoints_from_prompt`), then runs the exact ``proof_animation``
+    pipeline (:func:`derive_proof_animation`) — so the output is identical in
+    shape to a docked derivation. Reachable at ``POST /api/expert/proof_from_prompt``.
+    """
+    start, target, lm_domain, lm_title, _given_label, _start_note = \
+        endpoints_from_prompt(req.prompt)
+    target = (target or "").strip()
+    if not target:
+        return {"error": "Couldn't tell what to derive from that prompt — try naming a "
+                         "result, e.g. “derive the quadratic formula”."}
+    start = (start or "").strip()
+    domain = (req.domain or lm_domain or "").strip() or None
+    title = (lm_title or "").strip() or None
+    log.debug("proof_from_prompt: prompt=%r -> start=%r target=%r domain=%s",
+              req.prompt, start, target, domain)
+    return derive_proof_animation(DeriveProofRequest(
+        target_latex=target,
+        start_latex=start or None,
+        domain=domain,
+        title=title,
+        intent=f"Derive {target}",
+    ))

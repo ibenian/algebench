@@ -203,3 +203,48 @@ def test_start_given_target_does_not_infer_a_target(monkeypatch):
     assert "target_latex" in PE.StartGivenTargetSig.input_fields
     assert set(PE.StartGivenTargetSig.output_fields) == {
         "start_latex", "domain", "title", "given_label", "start_note"}
+
+
+# ── proof_from_prompt handler (prompt → endpoints → derive) ──────────────────
+def test_proof_from_prompt_registered():
+    from backend.experts.registry import HANDLER_REGISTRY
+    assert "proof_from_prompt" in HANDLER_REGISTRY
+    assert HANDLER_REGISTRY["proof_from_prompt"].request_model is H.PromptDeriveRequest
+
+
+def test_proof_from_prompt_wires_endpoints_and_derive(monkeypatch):
+    monkeypatch.setattr(H, "endpoints_from_prompt",
+                        lambda p: ("a^2 - b^2", "(a-b)(a+b)", "algebra", "Diff of squares", "g", "n"))
+    captured = {}
+    monkeypatch.setattr(H, "derive_proof_animation",
+                        lambda req: captured.update(req=req) or {"title": "Diff of squares",
+                                                                 "steps": [{"index": 0, "latex": "x"}]})
+    out = H.derive_proof_from_prompt(H.PromptDeriveRequest(prompt="factor a^2 - b^2"))
+    assert out["title"] == "Diff of squares"
+    req = captured["req"]
+    assert req.target_latex == "(a-b)(a+b)"
+    assert req.start_latex == "a^2 - b^2"
+    assert req.domain == "algebra"
+    assert req.title == "Diff of squares"
+    assert req.intent == "Derive (a-b)(a+b)"
+
+
+def test_proof_from_prompt_domain_hint_wins(monkeypatch):
+    monkeypatch.setattr(H, "endpoints_from_prompt", lambda p: ("x=1", "y=2", "algebra", "T", "", ""))
+    captured = {}
+    monkeypatch.setattr(H, "derive_proof_animation", lambda req: captured.update(req=req) or {})
+    H.derive_proof_from_prompt(H.PromptDeriveRequest(prompt="q", domain="calculus"))
+    assert captured["req"].domain == "calculus"   # explicit hint overrides the LM domain
+
+
+def test_proof_from_prompt_empty_target_errors(monkeypatch):
+    monkeypatch.setattr(H, "endpoints_from_prompt", lambda p: ("", "  ", "", "", "", ""))
+    out = H.derive_proof_from_prompt(H.PromptDeriveRequest(prompt="???"))
+    assert "error" in out and "derive" in out["error"].lower()
+
+
+def test_prompt_derive_request_validation():
+    with pytest.raises(ValidationError):
+        H.PromptDeriveRequest(prompt="")            # min_length=1
+    with pytest.raises(ValidationError):
+        H.PromptDeriveRequest(prompt="x", bogus=1)  # extra="forbid"
