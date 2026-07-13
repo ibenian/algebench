@@ -92,18 +92,25 @@ function renderBrowse(list) {
   }
 }
 
-/** Close the viewer and drop the ?id from the URL. */
-function closeProof() {
-  currentId = null;
-  els.viewer.hidden = true;
-  els.root.textContent = "";
+/** Show the Browse or Proof tab. */
+function switchTab(name) {
+  const proof = name === "proof";
+  els.tabBrowse.setAttribute("aria-selected", String(!proof));
+  els.tabProof.setAttribute("aria-selected", String(proof));
+  els.panelBrowse.hidden = proof;
+  els.panelProof.hidden = !proof;
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+/** Back to browse (keeps the open proof loaded in its tab). */
+function backToBrowse() {
+  switchTab("browse");
   const u = new URL(location.href);
   u.searchParams.delete("id");
   history.replaceState(null, "", u);
-  renderBrowse(filterCatalog(els.search.value));
 }
 
-/** Fetch a proof by id and render it into the viewer (above the list). */
+/** Fetch a proof by id, render it in the Proof tab, and switch to it. */
 async function openProof(id, pushUrl) {
   if (!ID_RE.test(id)) return;
   currentId = id;
@@ -114,15 +121,16 @@ async function openProof(id, pushUrl) {
   }
   renderBrowse(filterCatalog(els.search.value));   // refresh aria-current
 
-  els.viewer.hidden = false;
+  els.tabProof.disabled = false;
   els.viewerId.textContent = id;
+  switchTab("proof");
   els.root.textContent = "";
-  window.scrollTo({ top: 0, behavior: "smooth" });
   const katex = window.katex;
   try {
     const resp = await fetch(`/api/proofs/item?id=${encodeURIComponent(id)}`, { cache: "no-store" });
     if (!resp.ok) throw new Error(resp.status === 404 ? "not found" : `error ${resp.status}`);
     const data = validateProofData(await resp.json());
+    els.tabProof.textContent = data.title ? data.title : "Proof";
     animator = new ProofAnimator(els.root, data, {
       katex, liveTerms: true, enableTermAsk: true, enableExplore: true,
       // Ask-AI on a proof term → open the FULL app in a new tab (keep the
@@ -157,9 +165,14 @@ async function main() {
   els.count = document.getElementById("count");
   els.empty = document.getElementById("empty");
   els.root = document.getElementById("root");
-  els.viewer = document.getElementById("viewer");
   els.viewerId = document.getElementById("viewer-id");
-  document.getElementById("viewer-close").addEventListener("click", closeProof);
+  els.tabBrowse = document.getElementById("tab-browse");
+  els.tabProof = document.getElementById("tab-proof");
+  els.panelBrowse = document.getElementById("panel-browse");
+  els.panelProof = document.getElementById("panel-proof");
+  els.tabBrowse.addEventListener("click", () => switchTab("browse"));
+  els.tabProof.addEventListener("click", () => { if (!els.tabProof.disabled) switchTab("proof"); });
+  document.getElementById("viewer-close").addEventListener("click", backToBrowse);
 
   const katex = await awaitKatex();
   if (!katex) { showError(els.root, "Math renderer failed to load."); return; }

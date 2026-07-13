@@ -47,6 +47,15 @@
     .lede a { color: var(--accent); text-decoration: none; }
     .lede a:hover { text-decoration: underline; }
 
+    .tabs { display: flex; gap: 4px; margin: 0 0 18px; border-bottom: 1px solid var(--border-color); }
+    .tab { font: inherit; font-size: .92rem; font-weight: 600; cursor: pointer;
+           background: none; border: 0; border-bottom: 2px solid transparent;
+           color: var(--muted-color); padding: 9px 14px; margin-bottom: -1px; }
+    .tab:hover:not([disabled]) { color: var(--text-color); }
+    .tab[aria-selected="true"] { color: var(--text-color); border-bottom-color: var(--accent); }
+    .tab[disabled] { opacity: .45; cursor: default; }
+    .panel[hidden] { display: none; }
+
     .search { position: relative; margin: 0 0 14px; }
     #search { width: 100%; font: inherit; font-size: 1rem; padding: 11px 14px;
               border: 1px solid var(--btn-border); border-radius: 10px;
@@ -68,8 +77,6 @@
                  border-radius: 5px; padding: 1px 6px; }
     .empty { color: var(--muted-color); font-size: .9rem; padding: 18px 2px; }
 
-    .divider { margin: 22px 0 6px; border: 0; border-top: 1px solid var(--border-color); }
-    #viewer { margin: 4px 0 6px; }
     .viewer-bar { display: flex; align-items: center; justify-content: space-between;
                   gap: 10px; margin: 0 0 8px; }
     .viewer-id { font: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .78rem;
@@ -98,24 +105,30 @@
       understanding math. Ask the AI about any term, or
       <a href="/">open the full app →</a></p>
 
-    <div class="search">
-      <input id="search" type="search" autocomplete="off" spellcheck="false"
-             placeholder="Search proofs by title, domain, or goal…" aria-label="Search proofs">
-    </div>
-    <!-- Rendered proof shows here, above the list, so a click doesn't send you
-         scrolling. Hidden until a proof is opened. -->
-    <div id="viewer" hidden>
-      <div class="viewer-bar">
-        <span class="viewer-id" id="viewer-id"></span>
-        <button id="viewer-close" class="viewer-close" type="button" aria-label="Close proof">✕ Close</button>
-      </div>
-      <div id="root"></div>
-      <hr class="divider">
+    <div class="tabs" role="tablist" aria-label="Prove sections">
+      <button class="tab" id="tab-browse" role="tab" type="button"
+              aria-selected="true" aria-controls="panel-browse">Browse proofs</button>
+      <button class="tab" id="tab-proof" role="tab" type="button"
+              aria-selected="false" aria-controls="panel-proof" disabled>Proof</button>
     </div>
 
-    <div class="count" id="count" aria-live="polite"></div>
-    <div id="browse" role="list"></div>
-    <div class="empty" id="empty" hidden>No proofs match.</div>
+    <section id="panel-browse" class="panel" role="tabpanel" aria-labelledby="tab-browse">
+      <div class="search">
+        <input id="search" type="search" autocomplete="off" spellcheck="false"
+               placeholder="Search proofs by title, domain, or goal…" aria-label="Search proofs">
+      </div>
+      <div class="count" id="count" aria-live="polite"></div>
+      <div id="browse" role="list"></div>
+      <div class="empty" id="empty" hidden>No proofs match.</div>
+    </section>
+
+    <section id="panel-proof" class="panel" role="tabpanel" aria-labelledby="tab-proof" hidden>
+      <div class="viewer-bar">
+        <span class="viewer-id" id="viewer-id"></span>
+        <button id="viewer-close" class="viewer-close" type="button">← Back to browse</button>
+      </div>
+      <div id="root"></div>
+    </section>
 
     <div class="footer">
       <strong>AlgeBench</strong> — AI-guided, interactive math. Proofs are just
