@@ -67,6 +67,10 @@
     .tabs { flex-wrap: wrap; }
 
     /* ── Derive workspace ── */
+    /* Break out of the 880px .wrap so the derivation box gets most of the
+       window width (the chat stays a fixed side column). */
+    .derive-panel { width: min(1500px, 94vw); position: relative; left: 50%;
+                    transform: translateX(-50%); }
     .derive-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; }
     .derive-controls .ctl { display: inline-flex; align-items: center; gap: 6px;
                             font-size: .85rem; color: var(--muted-color); }
