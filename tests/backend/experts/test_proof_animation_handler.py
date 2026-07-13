@@ -269,3 +269,48 @@ def test_proof_from_prompt_no_context_is_none(monkeypatch):
 def test_prompt_derive_request_context_length_capped():
     with pytest.raises(ValidationError):
         H.PromptDeriveRequest(prompt="x", documentation="z" * 6001)   # max_length=6000
+
+
+# ── proof_qa handler (proof-scoped chat, no lesson framing) ──────────────────
+def test_proof_qa_registered():
+    from backend.experts.registry import HANDLER_REGISTRY
+    assert "proof_qa" in HANDLER_REGISTRY
+    assert HANDLER_REGISTRY["proof_qa"].request_model is H.ProofQARequest
+
+
+def test_format_proof_for_qa_includes_title_goal_steps():
+    proof = {"title": "Diff of squares", "goal": "factor $a^2-b^2$",
+             "steps": [{"index": 0, "plain": "a^2 - b^2", "operation": "start"},
+                       {"index": 1, "plain": "(a-b)(a+b)", "operation": "factor"}]}
+    ctx = H._format_proof_for_qa(proof)
+    assert "Diff of squares" in ctx and "factor $a^2-b^2$" in ctx
+    assert "(a-b)(a+b)" in ctx and "factor" in ctx
+
+
+def test_format_proof_for_qa_handles_missing():
+    assert "no derivation" in H._format_proof_for_qa(None).lower()
+
+
+def test_proof_qa_calls_answer(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(H, "answer_proof_question",
+                        lambda derivation, question: seen.update(derivation=derivation, q=question) or "Because FOIL.")
+    out = H.proof_qa(H.ProofQARequest(question="why 2x?", proof={"title": "T", "steps": [{"index": 0, "plain": "x"}]}))
+    assert out["answer"] == "Because FOIL."
+    assert seen["q"] == "why 2x?"
+    assert "T" in seen["derivation"]
+
+
+def test_proof_qa_request_validation():
+    with pytest.raises(ValidationError):
+        H.ProofQARequest(question="")                 # min_length=1
+    with pytest.raises(ValidationError):
+        H.ProofQARequest(question="x", bogus=1)        # extra="forbid"
+
+
+def test_answer_proof_question_strips_dspy_markers(monkeypatch):
+    class FakePred:
+        def __call__(self, **kw):
+            return types.SimpleNamespace(answer="The middle term is $2x$.[[ ## completed ## ]]")
+    monkeypatch.setattr(PE, "_predictor", lambda sig: FakePred())
+    assert PE.answer_proof_question("deriv", "why?") == "The middle term is $2x$."

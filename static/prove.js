@@ -323,10 +323,9 @@ async function runDerive() {
   }
 }
 
-/** Chat (right panel) — a Send-only conversation about the current derivation,
- *  via the app's /api/chat. The proof context rides inside the message (with an
- *  empty context dict) so the general chat agent can answer without the main
- *  app's scene assumptions. */
+/** Chat (right panel) — a Send-only, PROOF-SCOPED conversation about the current
+ *  derivation, via the proof_qa handler (NOT the app's lesson/scene-framed
+ *  /api/chat). The whole derivation is passed as grounding context. */
 async function sendChat() {
   const msg = els.dChatInput.value.trim();
   if (!msg || els.dSend.disabled) return;
@@ -334,27 +333,16 @@ async function sendChat() {
   els.dChatInput.value = "";
   els.dSend.disabled = true;
   const pending = addBubble("bot", "…", "pending");
-  let enriched = msg;
-  if (deriveProof) {
-    const t = deriveProof.title || "the derivation";
-    const g = deriveProof.goal ? ` Its goal: ${deriveProof.goal}.` : "";
-    enriched = `I'm looking at a math derivation titled “${t}”.${g}\n\nQuestion: ${msg}`;
-  }
   try {
-    const resp = await fetch("/api/chat", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: enriched, history: chatHistory, context: {} }),
-    });
-    const data = await resp.json().catch(() => ({}));
+    const body = { question: msg };
+    if (deriveProof) body.proof = deriveProof;
+    const data = await invokeExpert("proof_qa", body, { timeoutMs: 60000 });
     pending.remove();
-    if (!resp.ok) { addBubble("bot", data.error || `Chat error (${resp.status}).`, "err"); return; }
-    const reply = (data && data.response) || "(no response)";
+    const reply = (data && data.answer) || "(no response)";
     addBubble("bot", reply);
-    chatHistory.push({ role: "user", text: msg }, { role: "assistant", text: reply });
-    if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
   } catch (e) {
     pending.remove();
-    addBubble("bot", "Chat is unavailable right now.", "err");
+    addBubble("bot", (e instanceof ExpertError ? e.message : "Chat is unavailable right now."), "err");
   } finally {
     els.dSend.disabled = false;
   }

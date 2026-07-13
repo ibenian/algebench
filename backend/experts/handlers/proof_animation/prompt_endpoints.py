@@ -15,11 +15,16 @@ Requires DSPy to be configured first (``init_experts()`` / ``configure_dspy()``)
 
 from __future__ import annotations
 
+import re
 from functools import cache
 
 import dspy
 
 from backend.semantic_graph.preprocessor import strip_math_delimiters
+
+# DSPy's ChatAdapter frames fields with `[[ ## name ## ]]` markers; some models
+# echo a trailing `[[ ## completed ## ]]` into a free-text output. Strip them.
+_DSPY_MARKER = re.compile(r"\[\[\s*##.*?##\s*\]\]")
 
 
 # Each signature's predictor is built once, LAZILY on first use. This module is
@@ -111,3 +116,24 @@ def start_given_target(target_latex: str, context: str) -> tuple[str, str, str, 
     return (strip_math_delimiters(ep.start_latex),
             (ep.domain or "").strip(), (ep.title or "").strip(),
             (ep.given_label or "").strip(), (ep.start_note or "").strip())
+
+
+class ProofQuestionSig(dspy.Signature):
+    r"""Answer a question about ONE specific, self-contained math derivation.
+
+    You are a concise, rigorous math tutor. Ground every answer ONLY in the given
+    derivation and standard mathematics. This is a STANDALONE proof — do NOT
+    mention lessons, scenes, courses, an app, or any UI; do not offer to
+    navigate, open, or animate anything. If the question is unrelated to the
+    derivation or to math, say so briefly. Use inline LaTeX ($…$) for all math.
+    """
+
+    derivation: str = dspy.InputField(desc="the derivation: title, goal, and its steps")
+    question: str = dspy.InputField(desc="the user's question about that derivation")
+    answer: str = dspy.OutputField(desc="a concise, correct answer; use $…$ LaTeX for math")
+
+
+def answer_proof_question(derivation: str, question: str) -> str:
+    """Answer a question grounded ONLY in the given derivation (proof-scoped chat)."""
+    ans = _predictor(ProofQuestionSig)(derivation=derivation, question=question).answer or ""
+    return _DSPY_MARKER.sub("", ans).strip()

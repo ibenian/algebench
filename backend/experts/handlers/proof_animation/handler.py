@@ -35,7 +35,7 @@ from backend.semantic_graph.preprocessor import strip_math_delimiters
 from backend.semantic_graph.service import SemanticGraphService
 
 from .finalize import build_described
-from .prompt_endpoints import endpoints_from_prompt, start_given_target
+from .prompt_endpoints import answer_proof_question, endpoints_from_prompt, start_given_target
 
 log = logging.getLogger(__name__)
 
@@ -430,3 +430,66 @@ def derive_proof_from_prompt(req: PromptDeriveRequest) -> dict:
         intent=f"Derive {target}",
         context=context,
     ))
+
+
+class ProofQARequest(BaseModel):
+    """Request for ``POST /api/expert/proof_qa`` — a proof-scoped chat question."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    question: str = Field(min_length=1, max_length=2000)
+    # The current derivation the question is about (the animation JSON, or a
+    # subset). Optional so a bare question still answers (generic math).
+    proof: Optional[dict] = None
+
+
+# How many steps of the proof to include in the QA context (bounds the prompt).
+_QA_MAX_STEPS = 40
+
+
+def _format_proof_for_qa(proof: Optional[dict]) -> str:
+    """Flatten a proof (title/goal/steps) into the QA `derivation` context."""
+    if not isinstance(proof, dict):
+        return "(no derivation loaded)"
+    lines = []
+    title = str(proof.get("title") or "").strip()
+    goal = str(proof.get("goal") or "").strip()
+    if title:
+        lines.append(f"Title: {title}")
+    if goal:
+        lines.append(f"Goal: {goal}")
+    steps = proof.get("steps")
+    if isinstance(steps, list) and steps:
+        lines.append("Steps:")
+        for i, s in enumerate(steps[:_QA_MAX_STEPS]):
+            if not isinstance(s, dict):
+                continue
+            # Prefer human-readable `plain`/`input_latex` over the annotated
+            # `latex` (which carries \htmlData tooling noise).
+            expr = str(s.get("plain") or s.get("input_latex") or "").strip()
+            op = str(s.get("operation") or "").strip()
+            just = str(s.get("justification") or "").strip()
+            idx = s.get("index", i)
+            head = f"  {idx}. "
+            head += f"${expr}$" if expr else "(step)"
+            if op:
+                head += f" — {op}"
+            lines.append(head)
+            if just:
+                lines.append(f"       ({just})")
+        if len(steps) > _QA_MAX_STEPS:
+            lines.append(f"  … (+{len(steps) - _QA_MAX_STEPS} more steps)")
+    return "\n".join(lines) if lines else "(empty derivation)"
+
+
+@register_handler("proof_qa", request_model=ProofQARequest)
+def proof_qa(req: ProofQARequest) -> dict:
+    """Answer a question grounded ONLY in the current derivation (proof-scoped chat).
+
+    Unlike the app's ``/api/chat`` agent (framed around lessons/scenes/tools),
+    this is a bare, proof-only Q&A — no lesson framing, no tools. Reachable at
+    ``POST /api/expert/proof_qa``.
+    """
+    derivation = _format_proof_for_qa(req.proof)
+    answer = answer_proof_question(derivation, req.question)
+    return {"answer": answer or "I couldn't answer that about this derivation."}
