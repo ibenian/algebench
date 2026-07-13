@@ -123,10 +123,30 @@ async function openProof(id, pushUrl) {
     const resp = await fetch(`/api/proofs/item?id=${encodeURIComponent(id)}`, { cache: "no-store" });
     if (!resp.ok) throw new Error(resp.status === 404 ? "not found" : `error ${resp.status}`);
     const data = validateProofData(await resp.json());
-    animator = new ProofAnimator(els.root, data, { katex, liveTerms: true, enableExplore: true });
+    animator = new ProofAnimator(els.root, data, {
+      katex, liveTerms: true, enableTermAsk: true, enableExplore: true,
+      // Ask-AI on a proof term → open the FULL app in a new tab (keep the
+      // browser open here), landing in chat with the question. Use the proof's
+      // own deeplink when it has one (built-ins deep-link to their lesson +
+      // pre-baked animation); otherwise open the app on this proof (?pa=<id>).
+      onTermAsk: ({ message }) => openInApp(message, data.deeplink, id),
+    });
   } catch (e) {
     showError(els.root, `Could not load "${id}": ${e.message}`);
   }
+}
+
+/** Open the main AlgeBench app in a new tab, in chat, with the question. */
+function openInApp(message, deeplink, id) {
+  let u;
+  try {
+    u = new URL(deeplink || "/", location.origin);
+    if (u.origin !== location.origin) u = new URL("/", location.origin);
+  } catch (e) { u = new URL("/", location.origin); }
+  u.searchParams.set("panel", "chat");
+  u.searchParams.set("aa", String(message || "").slice(0, 1500));   // app opens chat + sends once
+  if (!deeplink && id) u.searchParams.set("pa", id);                // load this proof's animation
+  window.open(u.toString(), "_blank", "noopener");
 }
 
 async function main() {
