@@ -303,7 +303,10 @@ async function runDerive() {
   if (!prompt || els.dGo.disabled) return;
   els.dGo.disabled = true;
   setStatus("Deriving… (CAS-verifying each step)", "pending");
-  els.dContinue.hidden = true;          // hide the app hand-off until this derive lands
+  // NB: don't hide the hand-off here — on a rederive the current proof stays in
+  // the box while this runs (and if it errors), so the button must stay too. It's
+  // shown strictly when a proof box exists: revealed on the first success below,
+  // and never cleared (there's no path that empties the box).
 
   const body = { prompt };
   const domain = effectiveDomain();
