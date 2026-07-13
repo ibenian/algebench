@@ -21,6 +21,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -398,6 +399,27 @@ class PromptDeriveRequest(BaseModel):
     documentation: Optional[str] = Field(default=None, max_length=6000)
 
 
+# Plain-English "that's not a derivation" reply, reused wherever a prompt turns
+# out to be non-mathematical (empty/invalid endpoints, junk that won't parse).
+_NOT_A_DERIVATION_MSG = (
+    "That doesn't look like a math derivation I can build. Try naming a specific "
+    "result — e.g. “derive the quadratic formula”, “expand (x+1)^2”, or "
+    "“factor a^2 - b^2”."
+)
+
+# The endpoint namer is instructed to emit this exact token as start/target when
+# the prompt isn't a derivable math request (see BothEndpointsSig). It's the
+# model's own "invalid" signal — and it must be caught here, because "INVALID
+# PROMPT" otherwise PARSES as a product of single-letter variables and yields a
+# bogus "already in target form" proof instead of an error.
+_INVALID_SENTINEL = "INVALIDPROMPT"
+
+
+def _is_invalid_sentinel(s: str) -> bool:
+    """True if ``s`` is the namer's INVALID_PROMPT marker (any spacing/case)."""
+    return re.sub(r"[^a-z0-9]", "", (s or "").lower()) == _INVALID_SENTINEL.lower()
+
+
 @register_handler("proof_from_prompt", request_model=PromptDeriveRequest)
 def derive_proof_from_prompt(req: PromptDeriveRequest) -> dict:
     """Turn a plain-language prompt into a CAS-verified proof animation.
@@ -412,10 +434,16 @@ def derive_proof_from_prompt(req: PromptDeriveRequest) -> dict:
     start, target, lm_domain, lm_title, _given_label, _start_note = \
         endpoints_from_prompt(req.prompt)
     target = (target or "").strip()
+    start = (start or "").strip()
+    # The namer flags a non-math request by returning INVALID_PROMPT for the
+    # endpoints — short-circuit before deriving (else it parses as a variable
+    # product and fabricates a trivial proof).
+    if _is_invalid_sentinel(target) or _is_invalid_sentinel(start):
+        log.info("proof_from_prompt: namer rejected prompt=%r as non-math", req.prompt)
+        return {"error": _NOT_A_DERIVATION_MSG}
     if not target:
         return {"error": "Couldn't tell what to derive from that prompt — try naming a "
                          "result, e.g. “derive the quadratic formula”."}
-    start = (start or "").strip()
     domain = (req.domain or lm_domain or "").strip() or None
     title = (lm_title or "").strip() or None
     doc = (req.documentation or "").strip()
@@ -440,9 +468,7 @@ def derive_proof_from_prompt(req: PromptDeriveRequest) -> dict:
         low = err.lower()
         if "parse" in low or "infer a starting" in low:
             log.info("proof_from_prompt: unusable prompt=%r (%s)", req.prompt, err)
-            return {"error": "That doesn't look like a math derivation I can build. Try "
-                             "naming a specific result — e.g. “derive the quadratic "
-                             "formula”, “expand (x+1)^2”, or “factor a^2 - b^2”."}
+            return {"error": _NOT_A_DERIVATION_MSG}
     return data
 
 

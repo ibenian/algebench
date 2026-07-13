@@ -48,6 +48,11 @@ class BothEndpointsSig(dspy.Signature):
     Emit the math as BARE LaTeX only: do NOT wrap ``start_latex`` / ``target_latex``
     in math-mode delimiters (no ``$…$``, ``$$…$$``, ``\(…\)`` or ``\[…\]``). The
     expressions are parsed directly, so a stray delimiter makes them unparseable.
+
+    If the request is NOT a derivable mathematical statement (gibberish, a bare
+    number, an off-topic or empty ask), output the exact token ``INVALID_PROMPT``
+    for BOTH ``start_latex`` and ``target_latex`` (and leave the rest empty). Do
+    NOT invent a plausible-looking derivation for a request that isn't one.
     """
 
     prompt: str = dspy.InputField(desc="the request, e.g. 'derive Lorentz time dilation'")
