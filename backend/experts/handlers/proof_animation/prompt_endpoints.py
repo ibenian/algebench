@@ -26,6 +26,27 @@ from backend.semantic_graph.preprocessor import strip_math_delimiters
 # echo a trailing `[[ ## completed ## ]]` into a free-text output. Strip them.
 _DSPY_MARKER = re.compile(r"\[\[\s*##.*?##\s*\]\]")
 
+# The endpoint namer emits this exact token for BOTH endpoints when a request
+# isn't a derivable math statement (see BothEndpointsSig). Normalized form —
+# `is_invalid_sentinel` strips spacing/case so "INVALID PROMPT" also matches.
+_INVALID_SENTINEL = "INVALIDPROMPT"
+
+
+class InvalidPromptError(ValueError):
+    """Raised by :func:`endpoints_from_prompt` when the namer flags a request as
+    not a derivable math statement.
+
+    Raising here — rather than returning the ``INVALID_PROMPT`` token — protects
+    EVERY caller (the web handler and the offline CLI) by construction, and keeps
+    the token from ever reaching the parser, where "INVALID PROMPT" would parse as
+    a product of single-letter variables and fabricate a bogus proof.
+    """
+
+
+def is_invalid_sentinel(s: str) -> bool:
+    """True if ``s`` is the namer's INVALID_PROMPT marker (any spacing/case)."""
+    return re.sub(r"[^a-z0-9]", "", (s or "").lower()) == _INVALID_SENTINEL.lower()
+
 
 # Each signature's predictor is built once, LAZILY on first use. This module is
 # imported (e.g. by scripts/proof_animation/derive.py) before configure_dspy()
@@ -71,12 +92,21 @@ class BothEndpointsSig(dspy.Signature):
 
 
 def endpoints_from_prompt(prompt: str) -> tuple[str, str, str, str, str, str]:
-    """LM-propose (start, target, domain, title, given_label, start_note) for a request."""
+    """LM-propose (start, target, domain, title, given_label, start_note) for a request.
+
+    Raises :class:`InvalidPromptError` if the namer flags the request as non-math
+    (emits the ``INVALID_PROMPT`` sentinel for the endpoints), so no caller ever
+    derives from a request that isn't one.
+    """
     ep = _predictor(BothEndpointsSig)(prompt=prompt)
     # The LM frequently wraps its endpoint LaTeX in $…$ math delimiters; strip
     # them so the start/target both PARSE and render cleanly (titles re-wrap in
     # $…$, so a leftover $ would yield a doubled $$…$$).
-    return (strip_math_delimiters(ep.start_latex), strip_math_delimiters(ep.target_latex),
+    start = strip_math_delimiters(ep.start_latex)
+    target = strip_math_delimiters(ep.target_latex)
+    if is_invalid_sentinel(start) or is_invalid_sentinel(target):
+        raise InvalidPromptError(prompt)
+    return (start, target,
             (ep.domain or "").strip(), (ep.title or "").strip(),
             (ep.given_label or "").strip(), (ep.start_note or "").strip())
 

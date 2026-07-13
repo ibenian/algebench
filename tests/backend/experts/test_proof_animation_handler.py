@@ -244,10 +244,11 @@ def test_proof_from_prompt_empty_target_errors(monkeypatch):
 
 
 def test_proof_from_prompt_invalid_sentinel_short_circuits(monkeypatch):
-    # The namer flags a non-math request by returning INVALID_PROMPT; the handler
-    # must reject it BEFORE deriving (it would otherwise parse as a var product).
-    monkeypatch.setattr(H, "endpoints_from_prompt",
-                        lambda p: ("INVALID PROMPT", "INVALID_PROMPT", "", "", "", ""))
+    # The namer raises InvalidPromptError for a non-math request; the handler must
+    # reject it BEFORE deriving (it would otherwise parse as a var product).
+    def _raise(p):
+        raise PE.InvalidPromptError(p)
+    monkeypatch.setattr(H, "endpoints_from_prompt", _raise)
     called = {"derive": False}
     monkeypatch.setattr(H, "derive_proof_animation",
                         lambda req: called.update(derive=True) or {})
@@ -257,11 +258,31 @@ def test_proof_from_prompt_invalid_sentinel_short_circuits(monkeypatch):
 
 
 def test_is_invalid_sentinel_normalizes_spacing_and_case():
-    assert H._is_invalid_sentinel("INVALID_PROMPT")
-    assert H._is_invalid_sentinel("invalid prompt")
-    assert H._is_invalid_sentinel("Invalid-Prompt")
-    assert not H._is_invalid_sentinel("x^2 - 1")
-    assert not H._is_invalid_sentinel("")
+    assert PE.is_invalid_sentinel("INVALID_PROMPT")
+    assert PE.is_invalid_sentinel("invalid prompt")
+    assert PE.is_invalid_sentinel("Invalid-Prompt")
+    assert not PE.is_invalid_sentinel("x^2 - 1")
+    assert not PE.is_invalid_sentinel("")
+
+
+def test_endpoints_from_prompt_raises_on_sentinel(monkeypatch):
+    # The guard now lives in the namer itself, so BOTH callers (handler + CLI)
+    # are covered by construction.
+    ns = types.SimpleNamespace(
+        start_latex="INVALID PROMPT", target_latex="INVALID_PROMPT",
+        domain="", title="", given_label="", start_note="")
+    monkeypatch.setattr(PE, "_predictor", lambda sig: (lambda **kw: ns))
+    with pytest.raises(PE.InvalidPromptError):
+        PE.endpoints_from_prompt("123")
+
+
+def test_endpoints_from_prompt_ok_for_valid(monkeypatch):
+    ns = types.SimpleNamespace(
+        start_latex="$(x+1)^2$", target_latex="$x^2+2x+1$",
+        domain=" algebra ", title=" Expand ", given_label="", start_note="")
+    monkeypatch.setattr(PE, "_predictor", lambda sig: (lambda **kw: ns))
+    start, target, domain, title, _g, _n = PE.endpoints_from_prompt("expand (x+1)^2")
+    assert start == "(x+1)^2" and target == "x^2+2x+1" and domain == "algebra"
 
 
 def test_proof_from_prompt_parse_error_reframed_as_meaningless(monkeypatch):

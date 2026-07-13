@@ -30,6 +30,7 @@ load_env_local()
 
 from backend.experts import init_experts  # noqa: E402
 from backend.experts.handlers.proof_animation.prompt_endpoints import (  # noqa: E402
+    InvalidPromptError,
     endpoints_from_prompt as _endpoints_from_prompt,
 )
 from proof_completion_derive import derive_trajectory  # noqa: E402  (top-level sibling)
@@ -62,7 +63,12 @@ def main() -> int:
 
     # Resolve the endpoints: from a prompt (LM picks them) or explicit START/TARGET.
     if args.prompt:
-        start, target, lm_domain, lm_title, lm_given, lm_note = _endpoints_from_prompt(args.prompt)
+        try:
+            start, target, lm_domain, lm_title, lm_given, lm_note = _endpoints_from_prompt(args.prompt)
+        except InvalidPromptError:
+            print("that prompt isn't a derivable math request — try naming a result, "
+                  "e.g. 'derive the quadratic formula'.")
+            return 1
         if not (start and target):
             print("the model did not return both a start and a target expression.")
             return 1

@@ -21,7 +21,6 @@ from __future__ import annotations
 import json
 import logging
 import os
-import re
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -36,7 +35,12 @@ from backend.semantic_graph.preprocessor import strip_math_delimiters
 from backend.semantic_graph.service import SemanticGraphService
 
 from .finalize import build_described
-from .prompt_endpoints import answer_proof_question, endpoints_from_prompt, start_given_target
+from .prompt_endpoints import (
+    InvalidPromptError,
+    answer_proof_question,
+    endpoints_from_prompt,
+    start_given_target,
+)
 
 log = logging.getLogger(__name__)
 
@@ -407,19 +411,6 @@ _NOT_A_DERIVATION_MSG = (
     "“factor a^2 - b^2”."
 )
 
-# The endpoint namer is instructed to emit this exact token as start/target when
-# the prompt isn't a derivable math request (see BothEndpointsSig). It's the
-# model's own "invalid" signal — and it must be caught here, because "INVALID
-# PROMPT" otherwise PARSES as a product of single-letter variables and yields a
-# bogus "already in target form" proof instead of an error.
-_INVALID_SENTINEL = "INVALIDPROMPT"
-
-
-def _is_invalid_sentinel(s: str) -> bool:
-    """True if ``s`` is the namer's INVALID_PROMPT marker (any spacing/case)."""
-    return re.sub(r"[^a-z0-9]", "", (s or "").lower()) == _INVALID_SENTINEL.lower()
-
-
 @register_handler("proof_from_prompt", request_model=PromptDeriveRequest)
 def derive_proof_from_prompt(req: PromptDeriveRequest) -> dict:
     """Turn a plain-language prompt into a CAS-verified proof animation.
@@ -431,16 +422,17 @@ def derive_proof_from_prompt(req: PromptDeriveRequest) -> dict:
     threaded into the expert's ``lesson_context`` so it informs the derivation.
     Reachable at ``POST /api/expert/proof_from_prompt``.
     """
-    start, target, lm_domain, lm_title, _given_label, _start_note = \
-        endpoints_from_prompt(req.prompt)
-    target = (target or "").strip()
-    start = (start or "").strip()
-    # The namer flags a non-math request by returning INVALID_PROMPT for the
-    # endpoints — short-circuit before deriving (else it parses as a variable
-    # product and fabricates a trivial proof).
-    if _is_invalid_sentinel(target) or _is_invalid_sentinel(start):
+    # The namer raises InvalidPromptError when the request isn't derivable math
+    # (it would otherwise emit INVALID_PROMPT, which parses as a variable product
+    # and fabricates a trivial proof). Same guard now covers the CLI too.
+    try:
+        start, target, lm_domain, lm_title, _given_label, _start_note = \
+            endpoints_from_prompt(req.prompt)
+    except InvalidPromptError:
         log.info("proof_from_prompt: namer rejected prompt=%r as non-math", req.prompt)
         return {"error": _NOT_A_DERIVATION_MSG}
+    target = (target or "").strip()
+    start = (start or "").strip()
     if not target:
         return {"error": "Couldn't tell what to derive from that prompt — try naming a "
                          "result, e.g. “derive the quadratic formula”."}
