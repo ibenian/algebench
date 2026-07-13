@@ -11,6 +11,7 @@
 // render against the storage layer.)
 import { ProofAnimator } from "/proof-animation/proof-animation.js";
 import { validateProofData } from "/proof-animation/validate-proof.js";
+import { invokeExpert, ExpertError } from "/expert-client.js";
 
 const THEMES = new Set(["dark", "light", "auto"]);
 const ID_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?\/[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
@@ -95,21 +96,24 @@ function renderBrowse(list) {
   }
 }
 
-/** Focus a tab: null = Browse, else an open proof id. */
-function switchTo(id) {
-  activeId = id;
-  els.tabBrowse.setAttribute("aria-selected", String(id === null));
-  els.panelBrowse.hidden = id !== null;
+/** Focus a tab: null = Browse, "derive" = Derive workspace, else an open proof id. */
+function switchTo(target) {
+  activeId = target;
+  els.tabBrowse.setAttribute("aria-selected", String(target === null));
+  els.tabDerive.setAttribute("aria-selected", String(target === "derive"));
+  els.panelBrowse.hidden = target !== null;
+  els.panelDerive.hidden = target !== "derive";
   for (const [tid, t] of openTabs) {
-    const on = tid === id;
+    const on = tid === target;
     t.tab.setAttribute("aria-selected", String(on));
     t.panel.hidden = !on;
   }
   const u = new URL(location.href);
-  if (id) u.searchParams.set("id", id); else u.searchParams.delete("id");
+  if (target && target !== "derive") u.searchParams.set("id", target);
+  else u.searchParams.delete("id");
   history.replaceState(null, "", u);
   window.scrollTo({ top: 0, behavior: "smooth" });
-  if (id === null) renderBrowse(filterCatalog(els.search.value));   // refresh highlights
+  if (target === null) renderBrowse(filterCatalog(els.search.value));   // refresh highlights
 }
 
 /** Close a proof tab: destroy its animator, remove tab+panel, focus a neighbour. */
@@ -208,6 +212,76 @@ function openInApp(message, deeplink, id) {
   window.open(u.toString(), "_blank", "noopener");
 }
 
+// ── Derive workspace ────────────────────────────────────────────────────────
+let deriveAnimator = null;
+
+/** Domain: the custom free-text field wins over the dropdown; "" = Auto/infer. */
+function effectiveDomain() {
+  return els.dDomainCustom.value.trim() || els.dDomain.value || "";
+}
+
+function updateDocCount() { els.dDocCount.textContent = `${els.dDoc.value.length} / 5000`; }
+
+/** The attached-docs affordance: a "📎 Attach" button when empty+closed, a
+ *  "📎 attached (N)" chip when there's text+closed, nothing while the editor's open. */
+function refreshDocHint() {
+  const text = els.dDoc.value.trim();
+  const editorOpen = !els.dDocEditor.hidden;
+  els.dDocBtn.hidden = editorOpen || !!text;
+  els.dDocHint.hidden = editorOpen || !text;
+  if (!els.dDocHint.hidden) els.dDocHint.textContent = `📎 Documentation attached (${text.length} chars) · edit`;
+}
+
+function openDocEditor() { els.dDocEditor.hidden = false; refreshDocHint(); updateDocCount(); els.dDoc.focus(); }
+function closeDocEditor() { els.dDocEditor.hidden = true; refreshDocHint(); }
+
+/** Append a chat bubble; returns it (so a "pending" one can be removed). */
+function addBubble(role, text, cls) {
+  const b = document.createElement("div");
+  b.className = `bubble ${role === "user" ? "user" : "bot"}${cls ? " " + cls : ""}`;
+  b.textContent = text;                          // textContent — never innerHTML
+  els.dLog.appendChild(b);
+  els.dLog.scrollTop = els.dLog.scrollHeight;
+  return b;
+}
+
+/** Run a derivation: prompt (+ domain + attached docs) → proof_from_prompt →
+ *  render in the derivation box + log to the chat. */
+async function runDerive() {
+  const prompt = els.dPrompt.value.trim();
+  if (!prompt || els.dGo.disabled) return;
+  const domain = effectiveDomain();
+  const context = els.dDoc.value.trim();
+
+  addBubble("user", prompt);
+  els.dPrompt.value = "";
+  els.dGo.disabled = true;
+  const pending = addBubble("bot", "Deriving… (CAS-verifying each step)", "pending");
+
+  const body = { prompt };
+  if (domain) body.domain = domain;
+  if (context) body.context = context;
+  try {
+    const data = await invokeExpert("proof_from_prompt", body, { timeoutMs: 150000 });
+    pending.remove();
+    if (data && data.error) { addBubble("bot", data.error, "err"); return; }
+    const proof = validateProofData(data);
+    if (deriveAnimator) { try { deriveAnimator.destroy(); } catch (e) { /* noop */ } deriveAnimator = null; }
+    els.dRoot.textContent = "";
+    els.dEmpty.hidden = true;
+    deriveAnimator = new ProofAnimator(els.dRoot, proof, {
+      katex: window.katex, liveTerms: true, enableTermAsk: true, enableExplore: true,
+      onTermAsk: ({ message }) => openInApp(message, proof.deeplink, null),
+    });
+    addBubble("bot", `Derived “${proof.title || "proof"}” — ${proof.steps.length} steps. It’s on the left.`);
+  } catch (e) {
+    pending.remove();
+    addBubble("bot", (e instanceof ExpertError ? e.message : (e && e.message)) || "Derivation failed.", "err");
+  } finally {
+    els.dGo.disabled = false;
+  }
+}
+
 async function main() {
   applyTheme();
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
@@ -220,6 +294,32 @@ async function main() {
   els.tabBrowse = document.getElementById("tab-browse");
   els.panelBrowse = document.getElementById("panel-browse");
   els.tabBrowse.addEventListener("click", () => switchTo(null));
+
+  // Derive workspace
+  els.tabDerive = document.getElementById("tab-derive");
+  els.panelDerive = document.getElementById("panel-derive");
+  els.dDomain = document.getElementById("d-domain");
+  els.dDomainCustom = document.getElementById("d-domain-custom");
+  els.dDocBtn = document.getElementById("d-doc-btn");
+  els.dDocHint = document.getElementById("d-doc-hint");
+  els.dDocEditor = document.getElementById("d-doc-editor");
+  els.dDoc = document.getElementById("d-doc");
+  els.dDocCount = document.getElementById("d-doc-count");
+  els.dRoot = document.getElementById("d-root");
+  els.dEmpty = document.getElementById("d-empty");
+  els.dLog = document.getElementById("d-log");
+  els.dPrompt = document.getElementById("d-prompt");
+  els.dGo = document.getElementById("d-go");
+  els.tabDerive.addEventListener("click", () => switchTo("derive"));
+  els.dDocBtn.addEventListener("click", openDocEditor);
+  els.dDocHint.addEventListener("click", openDocEditor);
+  document.getElementById("d-doc-done").addEventListener("click", closeDocEditor);
+  document.getElementById("d-doc-clear").addEventListener("click",
+    () => { els.dDoc.value = ""; updateDocCount(); refreshDocHint(); });
+  els.dDoc.addEventListener("input", updateDocCount);
+  els.dGo.addEventListener("click", runDerive);
+  els.dPrompt.addEventListener("keydown",
+    (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); runDerive(); } });
 
   const katex = await awaitKatex();
   if (!katex) { showError(els.panelBrowse, "Math renderer failed to load."); return; }

@@ -248,3 +248,24 @@ def test_prompt_derive_request_validation():
         H.PromptDeriveRequest(prompt="")            # min_length=1
     with pytest.raises(ValidationError):
         H.PromptDeriveRequest(prompt="x", bogus=1)  # extra="forbid"
+
+
+def test_proof_from_prompt_threads_documentation_context(monkeypatch):
+    monkeypatch.setattr(H, "endpoints_from_prompt", lambda p: ("x", "y", "algebra", "T", "", ""))
+    captured = {}
+    monkeypatch.setattr(H, "derive_proof_animation", lambda req: captured.update(req=req) or {})
+    H.derive_proof_from_prompt(H.PromptDeriveRequest(prompt="q", context="  some **markdown** notes  "))
+    assert captured["req"].context == {"lessonDescription": "some **markdown** notes"}
+
+
+def test_proof_from_prompt_no_context_is_none(monkeypatch):
+    monkeypatch.setattr(H, "endpoints_from_prompt", lambda p: ("x", "y", "algebra", "T", "", ""))
+    captured = {}
+    monkeypatch.setattr(H, "derive_proof_animation", lambda req: captured.update(req=req) or {})
+    H.derive_proof_from_prompt(H.PromptDeriveRequest(prompt="q"))
+    assert captured["req"].context is None
+
+
+def test_prompt_derive_request_context_length_capped():
+    with pytest.raises(ValidationError):
+        H.PromptDeriveRequest(prompt="x", context="z" * 6001)   # max_length=6000

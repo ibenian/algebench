@@ -63,6 +63,53 @@
     .tab-x:hover { color: var(--text-color); background: var(--btn-hover); }
     .tabs { flex-wrap: wrap; }
 
+    /* ── Derive workspace ── */
+    .derive-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; }
+    .derive-controls .ctl { display: inline-flex; align-items: center; gap: 6px;
+                            font-size: .85rem; color: var(--muted-color); }
+    #d-domain, .ctl-input { font: inherit; font-size: .88rem; padding: 6px 9px; border-radius: 7px;
+                            border: 1px solid var(--btn-border); background: var(--panel-bg); color: var(--text-color); }
+    .ctl-input { width: 150px; }
+    .ctl-btn { font: inherit; font-size: .85rem; cursor: pointer; padding: 6px 11px; border-radius: 7px;
+               border: 1px solid var(--btn-border); background: var(--btn-bg); color: var(--btn-fg); }
+    .ctl-btn:hover { background: var(--btn-hover); }
+    .ctl-btn.primary { border-color: var(--accent); color: var(--accent); }
+    .doc-hint { font: inherit; font-size: .8rem; cursor: pointer; color: var(--accent);
+                background: var(--chip-bg); border: 1px solid var(--border-color);
+                border-radius: 999px; padding: 4px 11px; }
+    .doc-editor { margin: 0 0 14px; }
+    #d-doc { width: 100%; box-sizing: border-box; min-height: 140px; resize: vertical; font: inherit;
+             font-size: .9rem; line-height: 1.5; padding: 10px 12px; border-radius: 10px;
+             border: 1px solid var(--btn-border); background: var(--panel-bg); color: var(--text-color); }
+    #d-doc:focus { outline: none; border-color: var(--accent); }
+    .doc-editor-foot { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+    .doc-editor-foot .spacer { flex: 1; }
+    .doc-count { font-size: .78rem; color: var(--muted-color); }
+
+    .derive-cols { display: grid; grid-template-columns: 1fr 360px; gap: 16px; align-items: start; }
+    @media (max-width: 720px) { .derive-cols { grid-template-columns: 1fr; } }
+    .derive-box { min-height: 200px; min-width: 0; }   /* min-width:0 lets the 1fr column shrink */
+    .derive-empty { color: var(--muted-color); font-size: .9rem; border: 1px dashed var(--border-color);
+                    border-radius: 12px; padding: 40px 16px; text-align: center; }
+    .derive-chat { display: flex; flex-direction: column; height: 560px; border: 1px solid var(--border-color);
+                   border-radius: 12px; background: var(--panel-bg); overflow: hidden; }
+    @media (max-width: 720px) { .derive-chat { height: 420px; } }
+    .chat-log { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+    .bubble { max-width: 92%; font-size: .88rem; line-height: 1.5; padding: 8px 11px; border-radius: 12px;
+              white-space: pre-wrap; word-break: break-word; }
+    .bubble.user { align-self: flex-end; background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
+    .bubble.bot { align-self: flex-start; background: var(--chip-bg); color: var(--text-color);
+                  border: 1px solid var(--border-color); border-bottom-left-radius: 4px; }
+    .bubble.bot.err { color: var(--err-fg); background: var(--err-bg); border-color: var(--err-border); }
+    .bubble.pending { opacity: .7; font-style: italic; }
+    .chat-input-row { display: flex; gap: 8px; padding: 10px; border-top: 1px solid var(--border-color); }
+    .chat-input { flex: 1; font: inherit; font-size: .9rem; resize: none; padding: 8px 10px; border-radius: 9px;
+                  border: 1px solid var(--btn-border); background: var(--page-bg); color: var(--text-color); }
+    .chat-input:focus { outline: none; border-color: var(--accent); }
+    .derive-btn { font: inherit; font-weight: 600; cursor: pointer; padding: 0 16px; border-radius: 9px;
+                  border: 0; background: var(--accent); color: #fff; align-self: stretch; }
+    .derive-btn:disabled { opacity: .55; cursor: default; }
+
     .search { position: relative; margin: 0 0 14px; }
     #search { width: 100%; font: inherit; font-size: 1rem; padding: 11px 14px;
               border: 1px solid var(--btn-border); border-radius: 10px;
@@ -117,9 +164,57 @@
     <div class="tabs" id="tabbar" role="tablist" aria-label="Prove sections">
       <button class="tab" id="tab-browse" role="tab" type="button"
               aria-selected="true" aria-controls="panel-browse">Browse proofs</button>
+      <button class="tab" id="tab-derive" role="tab" type="button"
+              aria-selected="false" aria-controls="panel-derive">✦ Derive</button>
     </div>
 
     <div id="panels">
+      <!-- Derive workspace: domain + attached-docs controls, then a derivation
+           box (left) and a chat (right). -->
+      <section id="panel-derive" class="panel derive-panel" role="tabpanel"
+               aria-labelledby="tab-derive" hidden>
+        <div class="derive-controls">
+          <label class="ctl">Domain
+            <select id="d-domain">
+              <option value="">Auto</option>
+              <option value="algebra">algebra</option>
+              <option value="calculus">calculus</option>
+              <option value="physics">physics</option>
+              <option value="quantum">quantum</option>
+              <option value="series">series</option>
+            </select>
+          </label>
+          <input id="d-domain-custom" class="ctl-input" autocomplete="off"
+                 placeholder="or custom domain…" aria-label="Custom domain">
+          <button id="d-doc-btn" class="ctl-btn" type="button">📎 Attach documentation</button>
+          <button id="d-doc-hint" class="doc-hint" type="button" hidden></button>
+        </div>
+        <div id="d-doc-editor" class="doc-editor" hidden>
+          <textarea id="d-doc" maxlength="5000" spellcheck="false"
+                    placeholder="Paste documentation or markdown context (up to 5,000 chars) to ground the derivation…"></textarea>
+          <div class="doc-editor-foot">
+            <span id="d-doc-count" class="doc-count"></span>
+            <span class="spacer"></span>
+            <button id="d-doc-clear" class="ctl-btn" type="button">Clear</button>
+            <button id="d-doc-done" class="ctl-btn primary" type="button">Done</button>
+          </div>
+        </div>
+        <div class="derive-cols">
+          <div class="derive-box">
+            <div id="d-empty" class="derive-empty">Your derivation will appear here.</div>
+            <div id="d-root"></div>
+          </div>
+          <div class="derive-chat">
+            <div id="d-log" class="chat-log" aria-live="polite"></div>
+            <div class="chat-input-row">
+              <textarea id="d-prompt" class="chat-input" rows="2"
+                        placeholder="Describe what to derive — e.g. “derive the quadratic formula”"></textarea>
+              <button id="d-go" class="derive-btn" type="button">Derive</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section id="panel-browse" class="panel" role="tabpanel" aria-labelledby="tab-browse">
         <div class="search">
           <input id="search" type="search" autocomplete="off" spellcheck="false"

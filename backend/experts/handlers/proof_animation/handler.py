@@ -390,6 +390,10 @@ class PromptDeriveRequest(BaseModel):
     prompt: str = Field(min_length=1, max_length=4000)
     # Optional domain hint; otherwise inferred from the prompt.
     domain: Optional[str] = None
+    # Optional free-text / markdown documentation the user attached as context.
+    # Fed to the derivation expert (not the endpoint namer); bounded well above
+    # the client's 5k cap so a slightly-over payload is truncated, not rejected.
+    context: Optional[str] = Field(default=None, max_length=6000)
 
 
 @register_handler("proof_from_prompt", request_model=PromptDeriveRequest)
@@ -399,7 +403,9 @@ def derive_proof_from_prompt(req: PromptDeriveRequest) -> dict:
     Names the canonical START and TARGET endpoints from the prompt
     (:func:`endpoints_from_prompt`), then runs the exact ``proof_animation``
     pipeline (:func:`derive_proof_animation`) — so the output is identical in
-    shape to a docked derivation. Reachable at ``POST /api/expert/proof_from_prompt``.
+    shape to a docked derivation. Any attached ``context`` (documentation) is
+    threaded into the expert's ``lesson_context`` so it informs the derivation.
+    Reachable at ``POST /api/expert/proof_from_prompt``.
     """
     start, target, lm_domain, lm_title, _given_label, _start_note = \
         endpoints_from_prompt(req.prompt)
@@ -410,12 +416,15 @@ def derive_proof_from_prompt(req: PromptDeriveRequest) -> dict:
     start = (start or "").strip()
     domain = (req.domain or lm_domain or "").strip() or None
     title = (lm_title or "").strip() or None
-    log.debug("proof_from_prompt: prompt=%r -> start=%r target=%r domain=%s",
-              req.prompt, start, target, domain)
+    doc = (req.context or "").strip()
+    context = {"lessonDescription": doc} if doc else None    # → expert lesson_context
+    log.debug("proof_from_prompt: prompt=%r -> start=%r target=%r domain=%s doc=%dch",
+              req.prompt, start, target, domain, len(doc))
     return derive_proof_animation(DeriveProofRequest(
         target_latex=target,
         start_latex=start or None,
         domain=domain,
         title=title,
         intent=f"Derive {target}",
+        context=context,
     ))
