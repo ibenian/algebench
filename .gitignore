@@ -26,3 +26,7 @@ backend/experts/modules/*/artifacts/
 
 # proof-animation report build output (report.py --outdir _site; regenerated in CI)
 /_site/
+
+# /prove page local proof store (user-derived proofs; never committed)
+.proof-store/
+.proof-source-material/

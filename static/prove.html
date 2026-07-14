@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AlgeBench — Prove</title>
+  <!-- KaTeX from the same CDN the rest of AlgeBench uses. The /prove CSP forbids
+       inline script, so page logic loads as an external module (/prove.js). -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <!-- marked: markdown for chat replies (rendered with KaTeX for math). Same
+       version the main app uses. -->
+  <script defer src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
+  <link rel="stylesheet" href="/proof-animation/proof-animation.css?v=__APP_VERSION__">
+  <style>
+    :root {
+      color-scheme: dark;
+      --panel-bg: #1a1a2e; --text-color: #e5e7eb; --muted-color: #9ca3af; --border-color: #2a2f45;
+      --page-bg: #12121c; --title-fg: #cbd5e1; --accent: #818cf8;
+      --btn-bg: #1f2937; --btn-fg: #e5e7eb; --btn-border: #374151; --btn-hover: #273449;
+      --err-fg: #fca5a5; --err-bg: #2a1414; --err-border: #7f1d1d;
+      --chip-bg: #1b2133;
+    }
+    html[data-theme="light"] {
+      color-scheme: light;
+      --panel-bg: #ffffff; --text-color: #1a1a2e; --muted-color: #6b7280; --border-color: #e5e7eb;
+      --page-bg: #f6f7fb; --title-fg: #4b5563; --accent: #4f46e5;
+      --btn-bg: #ffffff; --btn-fg: #374151; --btn-border: #cbd5e1; --btn-hover: #f1f5f9;
+      --err-fg: #b91c1c; --err-bg: #fef2f2; --err-border: #fecaca;
+      --chip-bg: #eef1f8;
+    }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+           margin: 0; padding: 0; background: var(--page-bg); color: var(--text-color);
+           transition: background-color .4s ease, color .4s ease; }
+    html { scrollbar-width: thin; scrollbar-color: var(--border-color) transparent; }
+    ::-webkit-scrollbar { width: 12px; height: 12px; }
+    ::-webkit-scrollbar-thumb { background-color: var(--border-color); border-radius: 8px;
+           border: 3px solid transparent; background-clip: content-box; }
+    /* One consistent width for the whole page (header, tabs, and every panel
+       line up). Wide enough for the derivation box; the chat is a side column. */
+    .wrap { max-width: min(1280px, 94vw); margin: 0 auto; padding: 24px 20px 64px; }
+    @media (max-width: 480px) { .wrap { padding: 14px 12px 40px; } }
+
+    .brand { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+             margin: 0 0 4px; text-decoration: none; }
+    .brand-name { font-weight: 800; font-size: 1.5rem; letter-spacing: -.01em; color: var(--title-fg); }
+    .brand-tag { font-size: .82rem; color: var(--accent); font-weight: 700;
+                 text-transform: uppercase; letter-spacing: .08em; }
+    .lede { color: var(--muted-color); font-size: .95rem; margin: 6px 0 20px; max-width: 760px;
+            padding: 0 0 18px; line-height: 1.5; }   /* readable line length */
+    .lede-rule { border: 0; border-top: 1px solid var(--border-color); margin: 0 0 16px; }
+    .lede a { color: var(--accent); text-decoration: none; }
+    .lede a:hover { text-decoration: underline; }
+
+    .tabs { display: flex; gap: 4px; margin: 0 0 18px; border-bottom: 1px solid var(--border-color); }
+    .tab { font: inherit; font-size: .92rem; font-weight: 600; cursor: pointer;
+           background: none; border: 0; border-bottom: 2px solid transparent;
+           color: var(--muted-color); padding: 9px 14px; margin-bottom: -1px; }
+    .tab:hover:not([disabled]) { color: var(--text-color); }
+    .tab[aria-selected="true"] { color: var(--text-color); border-bottom-color: var(--accent); }
+    .tab[disabled] { opacity: .45; cursor: default; }
+    .panel[hidden] { display: none; }
+    /* Per-proof tab: title (switch) + ✕ (close). */
+    .proof-tab { display: inline-flex; align-items: center; gap: 6px; max-width: 220px; }
+    .proof-tab .tab-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tab-x { font: inherit; font-size: .95rem; line-height: 1; cursor: pointer; color: var(--muted-color);
+             background: none; border: 0; border-radius: 5px; padding: 2px 4px; margin-right: -4px; }
+    .tab-x:hover { color: var(--text-color); background: var(--btn-hover); }
+    .tabs { flex-wrap: wrap; }
+
+    /* ── Derive workspace ── */
+    .derive-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; }
+    .derive-controls .ctl { display: inline-flex; align-items: center; gap: 6px;
+                            font-size: .85rem; color: var(--muted-color); }
+    #d-domain, .ctl-input { font: inherit; font-size: .88rem; padding: 6px 9px; border-radius: 7px;
+                            border: 1px solid var(--btn-border); background: var(--panel-bg); color: var(--text-color); }
+    .ctl-input { width: 150px; }
+    .ctl-btn { font: inherit; font-size: .85rem; cursor: pointer; padding: 6px 11px; border-radius: 7px;
+               border: 1px solid var(--btn-border); background: var(--btn-bg); color: var(--btn-fg); }
+    .ctl-btn:hover { background: var(--btn-hover); }
+    .ctl-btn.primary { border-color: var(--accent); color: var(--accent); }
+    .doc-hint { font: inherit; font-size: .8rem; cursor: pointer; color: var(--accent);
+                background: var(--chip-bg); border: 1px solid var(--border-color);
+                border-radius: 999px; padding: 4px 11px; }
+    .doc-editor { margin: 0 0 14px; }
+    #d-doc { width: 100%; box-sizing: border-box; min-height: 140px; resize: vertical; font: inherit;
+             font-size: .9rem; line-height: 1.5; padding: 10px 12px; border-radius: 10px;
+             border: 1px solid var(--btn-border); background: var(--panel-bg); color: var(--text-color); }
+    #d-doc:focus { outline: none; border-color: var(--accent); }
+    .doc-editor-foot { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+    .doc-editor-foot .spacer { flex: 1; }
+    .doc-count { font-size: .78rem; color: var(--muted-color); }
+
+    .derive-bar { display: flex; gap: 10px; align-items: stretch; margin: 0 0 16px; }
+    .derive-prompt { flex: 1; font: inherit; font-size: .95rem; resize: vertical; min-height: 46px;
+                     padding: 10px 12px; border-radius: 10px; border: 1px solid var(--btn-border);
+                     background: var(--panel-bg); color: var(--text-color); }
+    .derive-prompt:focus { outline: none; border-color: var(--accent); }
+    .derive-btn { font: inherit; font-weight: 700; cursor: pointer; padding: 0 22px; border-radius: 10px;
+                  border: 0; background: var(--accent); color: #fff; white-space: nowrap; }
+    .derive-btn:disabled { opacity: .55; cursor: default; }
+
+    .derive-status { font-size: .85rem; margin: -6px 0 14px; }
+    .derive-status.pending { color: var(--muted-color); font-style: italic; }
+    .derive-status .dots { display: inline-flex; gap: 3px; margin: 0 3px; vertical-align: middle; }
+    .derive-status .dots span { width: 4px; height: 4px; border-radius: 50%; background: currentColor;
+                                display: inline-block; animation: proveDot 1.1s ease-in-out infinite; }
+    .derive-status .dots span:nth-child(2) { animation-delay: .18s; }
+    .derive-status .dots span:nth-child(3) { animation-delay: .36s; }
+    @keyframes proveDot { 0%,80%,100% { opacity: .3; transform: scale(.8); }
+                          40%          { opacity: 1;  transform: scale(1.15); } }
+    .derive-status.ok { color: var(--accent); }
+    .derive-status.err { color: var(--err-fg); }
+
+    .derive-cols { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start; }
+    @media (max-width: 720px) { .derive-cols { grid-template-columns: 1fr; } }
+    .derive-left { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+    .derive-box { min-height: 200px; min-width: 0; }   /* min-width:0 lets the 1fr column shrink */
+    .continue-app { display: block; width: 100%; text-align: left; cursor: pointer;
+                    background: var(--panel-bg); border: 1px solid var(--accent); border-radius: 12px;
+                    padding: 14px 16px; color: var(--accent); font: inherit; }
+    .continue-app[hidden] { display: none; }   /* author display:block would else beat [hidden] */
+    .continue-app:hover { background: var(--chip-bg); }
+    .continue-app-label { display: block; font-size: .98rem; font-weight: 600; }
+    .continue-app-deep { display: block; margin-top: 6px; font-size: .72rem; font-weight: 400;
+                         color: var(--muted-color); word-break: break-all; }
+    .derive-empty { color: var(--muted-color); font-size: .9rem; border: 1px dashed var(--border-color);
+                    border-radius: 12px; padding: 40px 16px; text-align: center; }
+    .derive-chat { display: flex; flex-direction: column; height: 560px; border: 1px solid var(--border-color);
+                   border-radius: 12px; background: var(--panel-bg); overflow: hidden; }
+    @media (max-width: 720px) { .derive-chat { height: 420px; } }
+    .chat-head { display: flex; align-items: center; justify-content: space-between;
+                 padding: 6px 10px; border-bottom: 1px solid var(--border-color); }
+    .chat-head-title { font-size: .72rem; letter-spacing: .06em; text-transform: uppercase;
+                       color: var(--muted-color); }
+    .ctx-btn { font: 600 .68rem/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .08em;
+               color: var(--muted-color); background: var(--chip-bg); border: 1px solid var(--border-color);
+               border-radius: 6px; padding: 3px 8px; cursor: pointer; }
+    .ctx-btn:hover { color: var(--text-color); border-color: var(--accent); }
+    .ctx-panel { position: fixed; inset: auto 16px 16px auto; width: min(680px, 92vw); max-height: 78vh;
+                 display: flex; flex-direction: column; background: var(--panel-bg);
+                 border: 1px solid var(--border-color); border-radius: 12px; z-index: 50;
+                 box-shadow: 0 12px 40px rgba(0,0,0,.45); }
+    .ctx-panel[hidden] { display: none; }   /* author display:flex would else beat [hidden] */
+    .ctx-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 8px;
+                      padding: 10px 14px; border-bottom: 1px solid var(--border-color);
+                      font-size: .8rem; font-weight: 600; }
+    .ctx-close { background: none; border: 0; color: var(--muted-color); font-size: 1.3rem; line-height: 1;
+                 cursor: pointer; padding: 0 4px; }
+    .ctx-close:hover { color: var(--text-color); }
+    .ctx-panel-body { overflow-y: auto; padding: 12px 14px; }
+    .ctx-panel-body h4 { margin: 12px 0 4px; font-size: .68rem; letter-spacing: .06em; text-transform: uppercase;
+                         color: var(--accent); }
+    .ctx-panel-body h4:first-child { margin-top: 0; }
+    .ctx-panel-body pre { margin: 0; white-space: pre-wrap; word-break: break-word;
+                          font: .78rem/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+                          color: var(--text-color); background: var(--chip-bg);
+                          border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; }
+    .ctx-meta { color: var(--muted-color); font-size: .74rem; margin-bottom: 8px; }
+    .chat-log { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+    .bubble { max-width: 92%; font-size: .88rem; line-height: 1.5; padding: 8px 11px; border-radius: 12px;
+              white-space: pre-wrap; word-break: break-word; }
+    .bubble.user { align-self: flex-end; background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
+    .bubble.bot { align-self: flex-start; background: var(--chip-bg); color: var(--text-color);
+                  border: 1px solid var(--border-color); border-bottom-left-radius: 4px; }
+    .bubble.bot.err { color: var(--err-fg); background: var(--err-bg); border-color: var(--err-border); }
+    .bubble.pending { opacity: .7; font-style: italic; }
+    .chat-input-row { display: flex; gap: 8px; padding: 10px; border-top: 1px solid var(--border-color); }
+    .chat-input { flex: 1; font: inherit; font-size: .9rem; resize: none; padding: 8px 10px; border-radius: 9px;
+                  border: 1px solid var(--btn-border); background: var(--page-bg); color: var(--text-color); }
+    .chat-input:focus { outline: none; border-color: var(--accent); }
+    .chat-send { font: inherit; font-weight: 600; cursor: pointer; padding: 0 16px; border-radius: 9px;
+                 border: 1px solid var(--btn-border); background: var(--btn-bg); color: var(--btn-fg);
+                 align-self: stretch; }
+    .chat-send:hover { background: var(--btn-hover); }
+    .chat-send:disabled { opacity: .55; cursor: default; }
+
+    .search { position: relative; margin: 0 0 14px; }
+    #search { width: 100%; font: inherit; font-size: 1rem; padding: 11px 14px;
+              border: 1px solid var(--btn-border); border-radius: 10px;
+              background: var(--panel-bg); color: var(--text-color); }
+    #search:focus { outline: none; border-color: var(--accent); }
+    .count { font-size: .8rem; color: var(--muted-color); margin: 0 2px 10px; }
+
+    #browse { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 8px; margin: 0 0 8px; }
+    .pitem { text-align: left; font: inherit; cursor: pointer; display: flex; flex-direction: column;
+             gap: 3px; padding: 10px 12px; border: 1px solid var(--border-color);
+             border-radius: 10px; background: var(--panel-bg); color: var(--text-color); }
+    .pitem:hover { border-color: var(--accent); }
+    .pitem[aria-current="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+    .pitem.is-open .pitem-title::after { content: " ● open"; color: var(--accent); font-size: .7rem; font-weight: 700; }
+    .pitem-title { font-weight: 600; font-size: .95rem; }
+    .pitem-meta { font-size: .75rem; color: var(--muted-color); }
+    .pitem-dom { display: inline-block; font-size: .68rem; text-transform: uppercase;
+                 letter-spacing: .06em; color: var(--accent); background: var(--chip-bg);
+                 border-radius: 5px; padding: 1px 6px; }
+    .empty { color: var(--muted-color); font-size: .9rem; padding: 18px 2px; }
+
+    .viewer-bar { display: flex; align-items: center; justify-content: space-between;
+                  gap: 10px; margin: 0 0 8px; }
+    .viewer-id { font: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .78rem;
+                 color: var(--muted-color); }
+    .viewer-actions { display: flex; align-items: center; gap: 8px; }
+    .viewer-btn { font: inherit; font-size: .82rem; cursor: pointer; color: var(--btn-fg);
+                  background: var(--btn-bg); border: 1px solid var(--btn-border);
+                  border-radius: 7px; padding: 5px 11px; }
+    .viewer-btn:hover:not(:disabled) { background: var(--btn-hover); }
+    .viewer-btn:disabled { opacity: .5; cursor: default; }
+    #root { margin-top: 4px; }
+    .pa-error { color: var(--err-fg); background: var(--err-bg); border: 1px solid var(--err-border);
+                border-radius: 8px; padding: 12px 14px; margin: 12px 0; font-size: .9rem; }
+    .footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--border-color);
+              font-size: .85rem; color: var(--muted-color); }
+    .footer a { color: var(--accent); text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body data-debug="__DEBUG_MODE__">
+  <div class="wrap">
+    <a class="brand" href="/" aria-label="AlgeBench home">
+      <span class="brand-name">AlgeBench</span>
+      <span class="brand-tag">Prove</span>
+    </a>
+    <p class="lede">Step-through, CAS-verified derivations — one corner of
+      <strong>AlgeBench</strong>, an AI-guided playground for doing and
+      understanding math. Ask the AI about any term, or
+      <a href="/">open the full app →</a></p>
+    <hr class="lede-rule">
+
+    <!-- Tab bar: Browse (static) + one tab per open proof (injected). -->
+    <div class="tabs" id="tabbar" role="tablist" aria-label="Prove sections">
+      <button class="tab" id="tab-browse" role="tab" type="button"
+              aria-selected="true" aria-controls="panel-browse">Browse proofs</button>
+      <button class="tab" id="tab-derive" role="tab" type="button"
+              aria-selected="false" aria-controls="panel-derive">✦ Derive</button>
+    </div>
+
+    <div id="panels">
+      <!-- Derive workspace: domain + attached-docs controls, then a derivation
+           box (left) and a chat (right). -->
+      <section id="panel-derive" class="panel derive-panel" role="tabpanel"
+               aria-labelledby="tab-derive" hidden>
+        <div class="derive-controls">
+          <label class="ctl">Domain
+            <select id="d-domain">
+              <option value="">Auto</option>
+              <option value="algebra">algebra</option>
+              <option value="calculus">calculus</option>
+              <option value="physics">physics</option>
+              <option value="quantum">quantum</option>
+              <option value="series">series</option>
+            </select>
+          </label>
+          <input id="d-domain-custom" class="ctl-input" autocomplete="off"
+                 placeholder="or custom domain…" aria-label="Custom domain">
+          <button id="d-doc-btn" class="ctl-btn" type="button">📎 Attach documentation</button>
+          <button id="d-doc-hint" class="doc-hint" type="button" hidden></button>
+        </div>
+        <div id="d-doc-editor" class="doc-editor" hidden>
+          <textarea id="d-doc" maxlength="5000" spellcheck="false"
+                    placeholder="Paste documentation or markdown context (up to 5,000 chars) to ground the derivation…"></textarea>
+          <div class="doc-editor-foot">
+            <span id="d-doc-count" class="doc-count"></span>
+            <span class="spacer"></span>
+            <button id="d-doc-clear" class="ctl-btn" type="button">Clear</button>
+            <button id="d-doc-done" class="ctl-btn primary" type="button">Done</button>
+          </div>
+        </div>
+        <!-- The special Derive action lives at the top. -->
+        <div class="derive-bar">
+          <textarea id="d-prompt" class="derive-prompt" rows="2"
+                    placeholder="Describe what to derive — e.g. “derive the quadratic formula”"></textarea>
+          <button id="d-go" class="derive-btn" type="button">Derive</button>
+        </div>
+        <div id="d-status" class="derive-status" hidden></div>
+        <div class="derive-cols">
+          <div class="derive-left">
+            <div class="derive-box">
+              <div id="d-empty" class="derive-empty">Your derivation will appear here.</div>
+              <div id="d-root"></div>
+            </div>
+            <!-- Explicit hand-off to the full app (only if the user wants it). -->
+            <button id="d-continue" class="continue-app" type="button" hidden>
+              <span class="continue-app-label">Continue this chat in the main app →</span>
+              <span id="d-continue-deep" class="continue-app-deep" hidden></span>
+            </button>
+          </div>
+          <div class="derive-chat">
+            <div class="chat-head">
+              <span class="chat-head-title">Chat</span>
+              <button id="ctx-btn" class="ctx-btn" type="button" hidden
+                      title="Show the exact context sent to the model">CTX</button>
+            </div>
+            <div id="d-log" class="chat-log" aria-live="polite"></div>
+            <div class="chat-input-row">
+              <textarea id="d-chat-input" class="chat-input" rows="2"
+                        placeholder="Ask about this derivation…"></textarea>
+              <button id="d-send" class="chat-send" type="button">Send</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="panel-browse" class="panel" role="tabpanel" aria-labelledby="tab-browse">
+        <div class="search">
+          <input id="search" type="search" autocomplete="off" spellcheck="false"
+                 placeholder="Search proofs by title, domain, or goal…" aria-label="Search proofs">
+        </div>
+        <div class="count" id="count" aria-live="polite"></div>
+        <div id="browse" role="list"></div>
+        <div class="empty" id="empty" hidden>No proofs match.</div>
+      </section>
+      <!-- one <section class="panel proof-panel"> per open proof, injected -->
+    </div>
+
+    <div class="footer">
+      <strong>AlgeBench</strong> — AI-guided, interactive math. Proofs are just
+      one surface. <a href="/">Explore the app →</a>
+    </div>
+  </div>
+
+  <!-- Debug-only: the EXACT context sent to the proof chat (system prompt + thread) -->
+  <div id="ctx-panel" class="ctx-panel" hidden role="dialog" aria-label="Model context">
+    <div class="ctx-panel-head">
+      <span id="ctx-panel-title">Context sent to the model</span>
+      <button id="ctx-close" class="ctx-close" type="button" title="Close">&times;</button>
+    </div>
+    <div id="ctx-panel-body" class="ctx-panel-body"></div>
+  </div>
+  <script type="module" src="/prove.js?v=__APP_VERSION__"></script>
+</body>
+</html>

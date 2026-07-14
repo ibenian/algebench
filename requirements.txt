@@ -16,3 +16,7 @@ litellm>=1.82.9
 # 3.14 (CI) — no cp314 wheel, source build fails. Floor at 3.11.9, which ships a
 # prebuilt cp314 wheel (and a 3.14-capable PyO3). Keep in range of litellm's <4.0.0.
 orjson>=3.11.9
+# Storage backend for user-derived proofs on the /prove page (GcsProofStore).
+# Optional at runtime — with no ALGEBENCH_PROOFS_BUCKET the app uses the
+# filesystem LocalProofStore and never imports this.
+google-cloud-storage>=2.18.0

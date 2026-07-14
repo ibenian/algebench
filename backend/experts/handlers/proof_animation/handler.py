@@ -35,7 +35,12 @@ from backend.semantic_graph.preprocessor import strip_math_delimiters
 from backend.semantic_graph.service import SemanticGraphService
 
 from .finalize import build_described
-from .prompt_endpoints import start_given_target
+from .prompt_endpoints import (
+    InvalidPromptError,
+    answer_proof_question,
+    endpoints_from_prompt,
+    start_given_target,
+)
 
 log = logging.getLogger(__name__)
 
@@ -379,3 +384,144 @@ def derive_proof_animation(req: DeriveProofRequest) -> dict:
     log.debug("proof_animation: output=%s",
               json.dumps(data, default=str, ensure_ascii=False, separators=(",", ":")))
     return data
+
+
+class PromptDeriveRequest(BaseModel):
+    """Request for ``POST /api/expert/proof_from_prompt`` — a plain-language ask
+    (e.g. "derive the quadratic formula", "factor a^2 - b^2")."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    prompt: str = Field(min_length=1, max_length=4000)
+    # Optional domain hint; otherwise inferred from the prompt.
+    domain: Optional[str] = None
+    # Optional free-text / markdown documentation the user attached. Named
+    # `documentation` (not `context`) since `context` is a structured dict
+    # elsewhere. Fed to the derivation expert's lesson_context (not the endpoint
+    # namer); bounded above the client's 5k cap so a slightly-over payload is
+    # truncated, not rejected.
+    documentation: Optional[str] = Field(default=None, max_length=6000)
+
+
+# Plain-English "that's not a derivation" reply, reused wherever a prompt turns
+# out to be non-mathematical (empty/invalid endpoints, junk that won't parse).
+_NOT_A_DERIVATION_MSG = (
+    "That doesn't look like a math derivation I can build. Try naming a specific "
+    "result — e.g. “derive the quadratic formula”, “expand (x+1)^2”, or "
+    "“factor a^2 - b^2”."
+)
+
+@register_handler("proof_from_prompt", request_model=PromptDeriveRequest)
+def derive_proof_from_prompt(req: PromptDeriveRequest) -> dict:
+    """Turn a plain-language prompt into a CAS-verified proof animation.
+
+    Names the canonical START and TARGET endpoints from the prompt
+    (:func:`endpoints_from_prompt`), then runs the exact ``proof_animation``
+    pipeline (:func:`derive_proof_animation`) — so the output is identical in
+    shape to a docked derivation. Any attached ``context`` (documentation) is
+    threaded into the expert's ``lesson_context`` so it informs the derivation.
+    Reachable at ``POST /api/expert/proof_from_prompt``.
+    """
+    # The namer raises InvalidPromptError when the request isn't derivable math
+    # (it would otherwise emit INVALID_PROMPT, which parses as a variable product
+    # and fabricates a trivial proof). Same guard now covers the CLI too.
+    try:
+        start, target, lm_domain, lm_title, _given_label, _start_note = \
+            endpoints_from_prompt(req.prompt)
+    except InvalidPromptError:
+        log.info("proof_from_prompt: namer rejected prompt=%r as non-math", req.prompt)
+        return {"error": _NOT_A_DERIVATION_MSG}
+    target = (target or "").strip()
+    start = (start or "").strip()
+    if not target:
+        return {"error": "Couldn't tell what to derive from that prompt — try naming a "
+                         "result, e.g. “derive the quadratic formula”."}
+    domain = (req.domain or lm_domain or "").strip() or None
+    title = (lm_title or "").strip() or None
+    doc = (req.documentation or "").strip()
+    context = {"lessonDescription": doc} if doc else None    # → expert lesson_context
+    log.debug("proof_from_prompt: prompt=%r -> start=%r target=%r domain=%s doc=%dch",
+              req.prompt, start, target, domain, len(doc))
+    data = derive_proof_animation(DeriveProofRequest(
+        target_latex=target,
+        start_latex=start or None,
+        domain=domain,
+        title=title,
+        intent=f"Derive {target}",
+        context=context,
+    ))
+    # A meaningless prompt ("asdff") makes the endpoint namer hallucinate junk
+    # LaTeX that then fails to parse/infer downstream — surfacing a low-level
+    # "Couldn't parse the start expression" that reads like a system bug. Reframe
+    # those into a plain "that's not a derivation" message with guidance. A genuine
+    # "no derivation found" (valid endpoints, no path) keeps its own clearer text.
+    err = data.get("error") if isinstance(data, dict) else None
+    if err:
+        low = err.lower()
+        if "parse" in low or "infer a starting" in low:
+            log.info("proof_from_prompt: unusable prompt=%r (%s)", req.prompt, err)
+            return {"error": _NOT_A_DERIVATION_MSG}
+    return data
+
+
+class ProofQARequest(BaseModel):
+    """Request for ``POST /api/expert/proof_qa`` — a proof-scoped chat question."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    question: str = Field(min_length=1, max_length=2000)
+    # The current derivation the question is about (the animation JSON, or a
+    # subset). Optional so a bare question still answers (generic math).
+    proof: Optional[dict] = None
+
+
+# How many steps of the proof to include in the QA context (bounds the prompt).
+_QA_MAX_STEPS = 40
+
+
+def _format_proof_for_qa(proof: Optional[dict]) -> str:
+    """Flatten a proof (title/goal/steps) into the QA `derivation` context."""
+    if not isinstance(proof, dict):
+        return "(no derivation loaded)"
+    lines = []
+    title = str(proof.get("title") or "").strip()
+    goal = str(proof.get("goal") or "").strip()
+    if title:
+        lines.append(f"Title: {title}")
+    if goal:
+        lines.append(f"Goal: {goal}")
+    steps = proof.get("steps")
+    if isinstance(steps, list) and steps:
+        lines.append("Steps:")
+        for i, s in enumerate(steps[:_QA_MAX_STEPS]):
+            if not isinstance(s, dict):
+                continue
+            # Prefer human-readable `plain`/`input_latex` over the annotated
+            # `latex` (which carries \htmlData tooling noise).
+            expr = str(s.get("plain") or s.get("input_latex") or "").strip()
+            op = str(s.get("operation") or "").strip()
+            just = str(s.get("justification") or "").strip()
+            idx = s.get("index", i)
+            head = f"  {idx}. "
+            head += f"${expr}$" if expr else "(step)"
+            if op:
+                head += f" — {op}"
+            lines.append(head)
+            if just:
+                lines.append(f"       ({just})")
+        if len(steps) > _QA_MAX_STEPS:
+            lines.append(f"  … (+{len(steps) - _QA_MAX_STEPS} more steps)")
+    return "\n".join(lines) if lines else "(empty derivation)"
+
+
+@register_handler("proof_qa", request_model=ProofQARequest)
+def proof_qa(req: ProofQARequest) -> dict:
+    """Answer a question grounded ONLY in the current derivation (proof-scoped chat).
+
+    Unlike the app's ``/api/chat`` agent (framed around lessons/scenes/tools),
+    this is a bare, proof-only Q&A — no lesson framing, no tools. Reachable at
+    ``POST /api/expert/proof_qa``.
+    """
+    derivation = _format_proof_for_qa(req.proof)
+    answer = answer_proof_question(derivation, req.question)
+    return {"answer": answer or "I couldn't answer that about this derivation."}

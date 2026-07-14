@@ -203,3 +203,177 @@ def test_start_given_target_does_not_infer_a_target(monkeypatch):
     assert "target_latex" in PE.StartGivenTargetSig.input_fields
     assert set(PE.StartGivenTargetSig.output_fields) == {
         "start_latex", "domain", "title", "given_label", "start_note"}
+
+
+# ── proof_from_prompt handler (prompt → endpoints → derive) ──────────────────
+def test_proof_from_prompt_registered():
+    from backend.experts.registry import HANDLER_REGISTRY
+    assert "proof_from_prompt" in HANDLER_REGISTRY
+    assert HANDLER_REGISTRY["proof_from_prompt"].request_model is H.PromptDeriveRequest
+
+
+def test_proof_from_prompt_wires_endpoints_and_derive(monkeypatch):
+    monkeypatch.setattr(H, "endpoints_from_prompt",
+                        lambda p: ("a^2 - b^2", "(a-b)(a+b)", "algebra", "Diff of squares", "g", "n"))
+    captured = {}
+    monkeypatch.setattr(H, "derive_proof_animation",
+                        lambda req: captured.update(req=req) or {"title": "Diff of squares",
+                                                                 "steps": [{"index": 0, "latex": "x"}]})
+    out = H.derive_proof_from_prompt(H.PromptDeriveRequest(prompt="factor a^2 - b^2"))
+    assert out["title"] == "Diff of squares"
+    req = captured["req"]
+    assert req.target_latex == "(a-b)(a+b)"
+    assert req.start_latex == "a^2 - b^2"
+    assert req.domain == "algebra"
+    assert req.title == "Diff of squares"
+    assert req.intent == "Derive (a-b)(a+b)"
+
+
+def test_proof_from_prompt_domain_hint_wins(monkeypatch):
+    monkeypatch.setattr(H, "endpoints_from_prompt", lambda p: ("x=1", "y=2", "algebra", "T", "", ""))
+    captured = {}
+    monkeypatch.setattr(H, "derive_proof_animation", lambda req: captured.update(req=req) or {})
+    H.derive_proof_from_prompt(H.PromptDeriveRequest(prompt="q", domain="calculus"))
+    assert captured["req"].domain == "calculus"   # explicit hint overrides the LM domain
+
+
+def test_proof_from_prompt_empty_target_errors(monkeypatch):
+    monkeypatch.setattr(H, "endpoints_from_prompt", lambda p: ("", "  ", "", "", "", ""))
+    out = H.derive_proof_from_prompt(H.PromptDeriveRequest(prompt="???"))
+    assert "error" in out and "derive" in out["error"].lower()
+
+
+def test_proof_from_prompt_invalid_sentinel_short_circuits(monkeypatch):
+    # The namer raises InvalidPromptError for a non-math request; the handler must
+    # reject it BEFORE deriving (it would otherwise parse as a var product).
+    def _raise(p):
+        raise PE.InvalidPromptError(p)
+    monkeypatch.setattr(H, "endpoints_from_prompt", _raise)
+    called = {"derive": False}
+    monkeypatch.setattr(H, "derive_proof_animation",
+                        lambda req: called.update(derive=True) or {})
+    out = H.derive_proof_from_prompt(H.PromptDeriveRequest(prompt="123"))
+    assert "error" in out and "doesn't look like a math derivation" in out["error"]
+    assert called["derive"] is False   # never reached the expensive derive
+
+
+def test_is_invalid_sentinel_normalizes_spacing_and_case():
+    assert PE.is_invalid_sentinel("INVALID_PROMPT")
+    assert PE.is_invalid_sentinel("invalid prompt")
+    assert PE.is_invalid_sentinel("Invalid-Prompt")
+    assert not PE.is_invalid_sentinel("x^2 - 1")
+    assert not PE.is_invalid_sentinel("")
+
+
+def test_endpoints_from_prompt_raises_on_sentinel(monkeypatch):
+    # The guard now lives in the namer itself, so BOTH callers (handler + CLI)
+    # are covered by construction.
+    ns = types.SimpleNamespace(
+        start_latex="INVALID PROMPT", target_latex="INVALID_PROMPT",
+        domain="", title="", given_label="", start_note="")
+    monkeypatch.setattr(PE, "_predictor", lambda sig: (lambda **kw: ns))
+    with pytest.raises(PE.InvalidPromptError):
+        PE.endpoints_from_prompt("123")
+
+
+def test_endpoints_from_prompt_ok_for_valid(monkeypatch):
+    ns = types.SimpleNamespace(
+        start_latex="$(x+1)^2$", target_latex="$x^2+2x+1$",
+        domain=" algebra ", title=" Expand ", given_label="", start_note="")
+    monkeypatch.setattr(PE, "_predictor", lambda sig: (lambda **kw: ns))
+    start, target, domain, title, _g, _n = PE.endpoints_from_prompt("expand (x+1)^2")
+    assert start == "(x+1)^2" and target == "x^2+2x+1" and domain == "algebra"
+
+
+def test_proof_from_prompt_parse_error_reframed_as_meaningless(monkeypatch):
+    # A meaningless prompt makes the namer hallucinate junk that fails to parse;
+    # the low-level parse error is reframed into plain "that's not a derivation".
+    monkeypatch.setattr(H, "endpoints_from_prompt", lambda p: ("asdff", "qwer", "", "", "", ""))
+    monkeypatch.setattr(H, "derive_proof_animation",
+                        lambda req: {"error": "Couldn't parse the start expression."})
+    out = H.derive_proof_from_prompt(H.PromptDeriveRequest(prompt="asdff"))
+    assert "error" in out
+    assert "doesn't look like a math derivation" in out["error"]
+    assert "parse" not in out["error"].lower()   # the low-level text is gone
+
+
+def test_proof_from_prompt_no_path_error_passes_through(monkeypatch):
+    # Valid endpoints but no derivation path keeps its own clearer message.
+    monkeypatch.setattr(H, "endpoints_from_prompt", lambda p: ("x=1", "y=2", "", "", "", ""))
+    msg = "No derivation found — couldn't get from $x=1$ to $y=2$."
+    monkeypatch.setattr(H, "derive_proof_animation", lambda req: {"error": msg})
+    out = H.derive_proof_from_prompt(H.PromptDeriveRequest(prompt="x"))
+    assert out["error"] == msg
+
+
+def test_prompt_derive_request_validation():
+    with pytest.raises(ValidationError):
+        H.PromptDeriveRequest(prompt="")            # min_length=1
+    with pytest.raises(ValidationError):
+        H.PromptDeriveRequest(prompt="x", bogus=1)  # extra="forbid"
+
+
+def test_proof_from_prompt_threads_documentation_context(monkeypatch):
+    monkeypatch.setattr(H, "endpoints_from_prompt", lambda p: ("x", "y", "algebra", "T", "", ""))
+    captured = {}
+    monkeypatch.setattr(H, "derive_proof_animation", lambda req: captured.update(req=req) or {})
+    H.derive_proof_from_prompt(H.PromptDeriveRequest(prompt="q", documentation="  some **markdown** notes  "))
+    assert captured["req"].context == {"lessonDescription": "some **markdown** notes"}
+
+
+def test_proof_from_prompt_no_context_is_none(monkeypatch):
+    monkeypatch.setattr(H, "endpoints_from_prompt", lambda p: ("x", "y", "algebra", "T", "", ""))
+    captured = {}
+    monkeypatch.setattr(H, "derive_proof_animation", lambda req: captured.update(req=req) or {})
+    H.derive_proof_from_prompt(H.PromptDeriveRequest(prompt="q"))
+    assert captured["req"].context is None
+
+
+def test_prompt_derive_request_context_length_capped():
+    with pytest.raises(ValidationError):
+        H.PromptDeriveRequest(prompt="x", documentation="z" * 6001)   # max_length=6000
+
+
+# ── proof_qa handler (proof-scoped chat, no lesson framing) ──────────────────
+def test_proof_qa_registered():
+    from backend.experts.registry import HANDLER_REGISTRY
+    assert "proof_qa" in HANDLER_REGISTRY
+    assert HANDLER_REGISTRY["proof_qa"].request_model is H.ProofQARequest
+
+
+def test_format_proof_for_qa_includes_title_goal_steps():
+    proof = {"title": "Diff of squares", "goal": "factor $a^2-b^2$",
+             "steps": [{"index": 0, "plain": "a^2 - b^2", "operation": "start"},
+                       {"index": 1, "plain": "(a-b)(a+b)", "operation": "factor"}]}
+    ctx = H._format_proof_for_qa(proof)
+    assert "Diff of squares" in ctx and "factor $a^2-b^2$" in ctx
+    assert "(a-b)(a+b)" in ctx and "factor" in ctx
+
+
+def test_format_proof_for_qa_handles_missing():
+    assert "no derivation" in H._format_proof_for_qa(None).lower()
+
+
+def test_proof_qa_calls_answer(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(H, "answer_proof_question",
+                        lambda derivation, question: seen.update(derivation=derivation, q=question) or "Because FOIL.")
+    out = H.proof_qa(H.ProofQARequest(question="why 2x?", proof={"title": "T", "steps": [{"index": 0, "plain": "x"}]}))
+    assert out["answer"] == "Because FOIL."
+    assert seen["q"] == "why 2x?"
+    assert "T" in seen["derivation"]
+
+
+def test_proof_qa_request_validation():
+    with pytest.raises(ValidationError):
+        H.ProofQARequest(question="")                 # min_length=1
+    with pytest.raises(ValidationError):
+        H.ProofQARequest(question="x", bogus=1)        # extra="forbid"
+
+
+def test_answer_proof_question_strips_dspy_markers(monkeypatch):
+    class FakePred:
+        def __call__(self, **kw):
+            return types.SimpleNamespace(answer="The middle term is $2x$.[[ ## completed ## ]]")
+    monkeypatch.setattr(PE, "_predictor", lambda sig: FakePred())
+    assert PE.answer_proof_question("deriv", "why?") == "The middle term is $2x$."
