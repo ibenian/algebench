@@ -169,13 +169,17 @@ async function openProof(id) {
   const idEl = document.createElement("span");
   idEl.className = "viewer-id"; idEl.textContent = id;
   const editBtn = document.createElement("button");
-  editBtn.type = "button"; editBtn.className = "viewer-edit"; editBtn.textContent = "✎ Edit";
+  editBtn.type = "button"; editBtn.className = "viewer-btn"; editBtn.textContent = "✎ Edit";
   editBtn.disabled = true;                         // enabled once the proof loads
   editBtn.title = "Clone into the Derive workspace to tweak (nothing is saved)";
   const closeBtn = document.createElement("button");
-  closeBtn.type = "button"; closeBtn.className = "viewer-close"; closeBtn.textContent = "✕ Close proof";
+  closeBtn.type = "button"; closeBtn.className = "viewer-btn"; closeBtn.textContent = "✕ Close proof";
   closeBtn.addEventListener("click", () => closeProof(id));
-  bar.append(idEl, editBtn, closeBtn);
+  // A right-aligned action group — room for more proof-manipulation ops later.
+  const actions = document.createElement("div");
+  actions.className = "viewer-actions";
+  actions.append(editBtn, closeBtn);
+  bar.append(idEl, actions);
 
   // Two columns like the Derive workspace: animation (+ app hand-off) on the
   // left, a proof-scoped chat on the right. `loadedProof` is filled after fetch;
