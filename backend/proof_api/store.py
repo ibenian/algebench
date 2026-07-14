@@ -446,6 +446,7 @@ class GcsProofStore:
         return compute_secret(nid, new_bytes)
 
     def delete(self, id: str, secret: str) -> bool:
+        from google.api_core.exceptions import PreconditionFailed
         nid = normalize_id(id)
         if not nid:
             return False
@@ -453,10 +454,17 @@ class GcsProofStore:
         blob = bkt.blob(self._proof_key(nid))
         if not blob.exists():
             return False
+        blob.reload()
+        gen = blob.generation
         current = blob.download_as_bytes(end=MAX_PROOF_BYTES)
         if not verify_secret(nid, current, secret):
             return False
-        blob.delete()
+        try:
+            # CAS on the verified generation — a concurrent write in the gap
+            # rotated the secret, so we must NOT delete that newer version.
+            blob.delete(if_generation_match=gen)
+        except PreconditionFailed:
+            return False
         self._delete_source(bkt, nid)
         return True
 

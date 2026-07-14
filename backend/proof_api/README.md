@@ -105,7 +105,7 @@ Install the client into the venv once: `uv pip install --python .venv/bin/python
 ## `ALGEBENCH_PROOFS_SALT` — how it's generated and why it matters
 
 ```bash
-python3 -c "import secrets; print(secrets.token_urlsafe(32))"
+echo 'import secrets; print(secrets.token_urlsafe(32))' | ./run.sh -
 ```
 
 `secrets.token_urlsafe(32)` returns 32 cryptographically-secure random bytes

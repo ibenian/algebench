@@ -296,10 +296,13 @@ function _withMath(text, body) {
 function renderSafe(text) {
   return _withMath(text, (s) => _escapeHtml(s).replace(/\n/g, '<br>'));
 }
-/** Assistant markdown (our own agent's reply): markdown + math. */
+/** Assistant markdown (the proof-chat reply): markdown + math. The reply is LM
+ *  output — untrusted — so escape raw HTML BEFORE markdown so embedded tags
+ *  (`<img onerror=…>`, etc.) render as inert text; markdown syntax has no
+ *  `<>&`, so formatting still works, and math is already stashed by _withMath. */
 function renderReply(text) {
   if (typeof window.marked === 'undefined') return null;   // fall back to plain text
-  return _withMath(text, (s) => window.marked.parse(s));
+  return _withMath(text, (s) => window.marked.parse(_escapeHtml(s)));
 }
 
 function setStatus(text, cls) {
