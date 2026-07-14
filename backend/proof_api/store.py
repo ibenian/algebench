@@ -35,6 +35,8 @@ import re
 from pathlib import Path
 from typing import Optional, Protocol, runtime_checkable
 
+from backend.util import sanitize_path
+
 # Size cap for a stored/served proof JSON — mirrors the client and server
 # (`_MAX_PROOF_BYTES` in server.py). A bounded read keeps a hostile/oversized
 # object from exhausting memory.
@@ -145,13 +147,15 @@ class LocalProofStore:
         self.source_dir = Path(source_dir)
 
     # -- path helpers (confined to the roots) --
+    # Two independent barriers: normalize_id() is a strict slug allowlist (two
+    # `[a-z0-9-]` segments, no `.`/`/`/`..`), then sanitize_path() applies the
+    # codebase's canonical charset gate + resolve() + is_relative_to() confinement
+    # — the same helper every static-file route uses.
     def _proof_path(self, id: str) -> Optional[Path]:
         nid = normalize_id(id)
         if not nid:
             return None
-        p = (self.proofs_dir / f"{nid}.json").resolve()
-        root = self.proofs_dir.resolve()
-        return p if p.is_relative_to(root) else None
+        return sanitize_path(self.proofs_dir, f"{nid}.json")
 
     def _source_dir_for(self, id: str) -> Optional[Path]:
         nid = normalize_id(id)
@@ -159,9 +163,7 @@ class LocalProofStore:
             return None
         # Mirror the proofs layout (proofs/domains/<domain>/<name>) — source
         # material lives under a `domains/` subdir too: source-material/domains/…
-        p = (self.source_dir / "domains" / nid).resolve()
-        root = self.source_dir.resolve()
-        return p if p.is_relative_to(root) else None
+        return sanitize_path(self.source_dir, f"domains/{nid}")
 
     def _read_bytes(self, path: Path) -> Optional[bytes]:
         try:
