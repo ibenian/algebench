@@ -176,3 +176,9 @@ def test_proof_chat_limits_rejects_malformed():
     assert server._proof_chat_limits([42], None)[0] == 400
     assert server._proof_chat_limits([{"text": 5}], None)[0] == 400
     assert server._proof_chat_limits([], "notadict")[0] == 400
+
+
+def test_system_prompt_forbids_html():
+    sp = server._proof_chat_system_prompt(_PROOF).lower()
+    assert "do not output html" in sp
+    assert "markdown" in sp
