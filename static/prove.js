@@ -168,10 +168,14 @@ async function openProof(id) {
   bar.className = "viewer-bar";
   const idEl = document.createElement("span");
   idEl.className = "viewer-id"; idEl.textContent = id;
+  const editBtn = document.createElement("button");
+  editBtn.type = "button"; editBtn.className = "viewer-edit"; editBtn.textContent = "✎ Edit";
+  editBtn.disabled = true;                         // enabled once the proof loads
+  editBtn.title = "Clone into the Derive workspace to tweak (nothing is saved)";
   const closeBtn = document.createElement("button");
   closeBtn.type = "button"; closeBtn.className = "viewer-close"; closeBtn.textContent = "✕ Close proof";
   closeBtn.addEventListener("click", () => closeProof(id));
-  bar.append(idEl, closeBtn);
+  bar.append(idEl, editBtn, closeBtn);
 
   // Two columns like the Derive workspace: animation (+ app hand-off) on the
   // left, a proof-scoped chat on the right. `loadedProof` is filled after fetch;
@@ -192,6 +196,7 @@ async function openProof(id) {
   contDeep.className = "continue-app-deep"; contDeep.hidden = true;
   continueBtn.append(contLabel, contDeep);
   continueBtn.addEventListener("click", () => continueInAppWith(loadedProof, chat.history, id));
+  editBtn.addEventListener("click", () => editInDerive(loadedProof));   // clone → Derive
   const left = document.createElement("div");
   left.className = "derive-left";
   left.append(box, continueBtn);
@@ -211,6 +216,7 @@ async function openProof(id) {
     const data = validateProofData(await resp.json());
     if (!openTabs.has(id)) return;                  // closed while loading
     loadedProof = data;
+    editBtn.disabled = false;                        // proof is loaded → editable
     label.textContent = data.title || id.split("/")[1];
     tab.title = data.title || id;
     entry.animator = new ProofAnimator(root, data, {
@@ -416,6 +422,39 @@ function continueInAppWith(proof, history, id) {
   openInApp(seed, proof.deeplink, id || null);
 }
 
+/** Render a proof into the Derive workspace: fresh chat, live animator (term
+ *  Ask-AI → local chat), Rederive button, app hand-off. Shared by runDerive
+ *  (after deriving) and Edit (cloning an opened proof in to tweak). */
+function showInDerive(proof) {
+  deriveProof = proof;
+  chatHistory = [];                              // fresh thread, scoped to this proof
+  if (els.dLog) els.dLog.textContent = "";
+  if (deriveAnimator) { try { deriveAnimator.destroy(); } catch (e) { /* noop */ } deriveAnimator = null; }
+  els.dRoot.textContent = "";
+  els.dEmpty.hidden = true;
+  deriveAnimator = new ProofAnimator(els.dRoot, proof, {
+    katex: window.katex, liveTerms: true, enableTermAsk: true, enableExplore: true,
+    // A term "Ask AI" goes to the LOCAL step-aware chat, not the app.
+    onTermAsk: ({ message }) => askInChat(message),
+  });
+  els.dGo.textContent = "Rederive";              // a derivation now exists
+  showContinue(proof);                            // reveal the explicit app hand-off
+}
+
+/** "Edit" an opened proof: clone it into the Derive workspace as a fresh, unsaved
+ *  working copy (nothing is written). The user can chat to refine, or edit the
+ *  prompt and Rederive. The original tab is untouched. */
+function editInDerive(proof) {
+  if (!proof) return;
+  const clone = JSON.parse(JSON.stringify(proof));   // never mutate the opened proof
+  switchTo("derive");
+  showInDerive(clone);
+  // Seed the prompt from the goal so Rederive is immediately actionable (editable).
+  els.dPrompt.value = (clone.goal || "").replace(/\$/g, "").trim();
+  const shown = (clone.title || "proof").replace(/^Deriving\s+/i, "");
+  setStatus(`Editing ${shown} — ${clone.steps.length} steps. Chat to refine, or edit the prompt and Rederive.`, "ok");
+}
+
 /** The special Derive/Rederive action (top): prompt (+ domain + docs) →
  *  proof_from_prompt → render in the derivation box. Once a proof exists the
  *  button reads "Rederive". */
@@ -438,23 +477,7 @@ async function runDerive() {
     const data = await invokeExpert("proof_from_prompt", body, { timeoutMs: 150000 });
     if (data && data.error) { setStatus(data.error, "err"); return; }
     const proof = validateProofData(data);
-    deriveProof = proof;
-    // A fresh derivation replaces the proof — reset the chat so the thread stays
-    // scoped to the derivation on screen.
-    chatHistory = [];
-    if (els.dLog) els.dLog.textContent = "";
-    if (deriveAnimator) { try { deriveAnimator.destroy(); } catch (e) { /* noop */ } deriveAnimator = null; }
-    els.dRoot.textContent = "";
-    els.dEmpty.hidden = true;
-    deriveAnimator = new ProofAnimator(els.dRoot, proof, {
-      katex: window.katex, liveTerms: true, enableTermAsk: true, enableExplore: true,
-      // We have a chat here now — a term "Ask AI" goes to the LOCAL chat (which is
-      // step-aware), not straight to the app. The app hand-off is the explicit
-      // "Continue in the main app" button below the box.
-      onTermAsk: ({ message }) => askInChat(message),
-    });
-    els.dGo.textContent = "Rederive";            // a derivation now exists
-    showContinue(proof);                          // reveal the explicit app hand-off
+    showInDerive(proof);                           // render + fresh chat + hand-off
     // The title is "Deriving <target> from <start>"; strip the leading verb so
     // the status reads "Derived <target> from <start>", not "Derived Deriving …".
     const shown = (proof.title || "proof").replace(/^Deriving\s+/i, "");

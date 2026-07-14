@@ -205,6 +205,11 @@
                     background: var(--btn-bg); border: 1px solid var(--btn-border);
                     border-radius: 7px; padding: 5px 11px; }
     .viewer-close:hover { background: var(--btn-hover); }
+    .viewer-edit { font: inherit; font-size: .82rem; cursor: pointer; color: var(--accent);
+                   background: var(--btn-bg); border: 1px solid var(--accent);
+                   border-radius: 7px; padding: 5px 11px; margin-left: auto; }
+    .viewer-edit:hover:not(:disabled) { background: var(--btn-hover); }
+    .viewer-edit:disabled { opacity: .45; cursor: default; }
     #root { margin-top: 4px; }
     .pa-error { color: var(--err-fg); background: var(--err-bg); border: 1px solid var(--err-border);
                 border-radius: 8px; padding: 12px 14px; margin: 12px 0; font-size: .9rem; }
