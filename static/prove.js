@@ -206,7 +206,14 @@ async function openProof(id) {
   left.append(box, continueBtn);
   const cols = document.createElement("div");
   cols.className = "derive-cols";
-  cols.append(left, chat.wrap);
+  const resizer = document.createElement("div");
+  resizer.className = "col-resizer";
+  resizer.setAttribute("role", "separator");
+  resizer.setAttribute("aria-orientation", "vertical");
+  resizer.title = "Drag to resize the chat";
+  cols.append(left, resizer, chat.wrap);
+  applyStoredChatW(cols);
+  wireColResizer(resizer, cols);
   panel.append(bar, cols);
   els.panels.appendChild(panel);
 
@@ -334,6 +341,44 @@ function addBubble(role, text, cls, logEl) {
   log.appendChild(b);
   log.scrollTop = log.scrollHeight;
   return b;
+}
+
+// ── chat column resizing (draggable splitter, remembered across chats) ───────
+const CHAT_W_KEY = "proveChatW";
+const _clampChatW = (px) => Math.max(300, Math.min(680, px));
+
+/** Apply the remembered chat width to a `.derive-cols` element (the --chat-w var). */
+function applyStoredChatW(colsEl) {
+  if (!colsEl) return;
+  const v = parseInt(localStorage.getItem(CHAT_W_KEY) || "", 10);
+  if (v) colsEl.style.setProperty("--chat-w", _clampChatW(v) + "px");
+}
+
+/** Wire a `.col-resizer` to drag-resize the chat column of its `.derive-cols`.
+ *  Dragging left widens the chat; width is clamped [300,680] and persisted so all
+ *  chats (Derive + every opened proof) share the preference. */
+function wireColResizer(resizer, colsEl) {
+  if (!resizer || !colsEl) return;
+  const curW = () => parseInt(getComputedStyle(colsEl).getPropertyValue("--chat-w"), 10) || 360;
+  let startX = 0, startW = 0, dragging = false;
+  const onMove = (e) => {
+    if (!dragging) return;
+    colsEl.style.setProperty("--chat-w", _clampChatW(startW - (e.clientX - startX)) + "px");
+  };
+  const onUp = () => {
+    if (!dragging) return;
+    dragging = false; resizer.classList.remove("dragging");
+    document.removeEventListener("pointermove", onMove);
+    document.removeEventListener("pointerup", onUp);
+    try { localStorage.setItem(CHAT_W_KEY, String(curW())); } catch (e) { /* ignore */ }
+  };
+  resizer.addEventListener("pointerdown", (e) => {
+    dragging = true; resizer.classList.add("dragging");
+    startX = e.clientX; startW = curW();
+    e.preventDefault();
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+  });
 }
 
 /** A self-contained proof-scoped chat column (head + log + input + Send), bound
@@ -620,6 +665,10 @@ async function main() {
   els.dContinue = document.getElementById("d-continue");
   els.dContinueDeep = document.getElementById("d-continue-deep");
   els.dContinue.addEventListener("click", continueInApp);
+  // Draggable chat splitter (Derive workspace).
+  const dCols = els.panelDerive.querySelector(".derive-cols");
+  applyStoredChatW(dCols);
+  wireColResizer(dCols && dCols.querySelector(".col-resizer"), dCols);
   els.tabDerive.addEventListener("click", () => switchTo("derive"));
   els.dDocBtn.addEventListener("click", openDocEditor);
   els.dDocHint.addEventListener("click", openDocEditor);
