@@ -42,6 +42,13 @@
     .wrap { max-width: min(1280px, 94vw); margin: 0 auto; padding: 24px 20px 64px; }
     @media (max-width: 480px) { .wrap { padding: 14px 12px 40px; } }
 
+    .prove-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .theme-btn { font: inherit; font-size: 1rem; line-height: 1; cursor: pointer;
+                 width: 32px; height: 32px; padding: 0; flex-shrink: 0;
+                 display: inline-flex; align-items: center; justify-content: center;
+                 background: var(--btn-bg); color: var(--text-color);
+                 border: 1px solid var(--btn-border); border-radius: 8px; }
+    .theme-btn:hover { border-color: var(--accent); }
     .brand { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
              margin: 0 0 4px; text-decoration: none; }
     .brand-name { font-weight: 800; font-size: 1.5rem; letter-spacing: -.01em; color: var(--title-fg); }
@@ -171,6 +178,17 @@
                   border: 1px solid var(--border-color); border-bottom-left-radius: 4px; }
     .bubble.bot.err { color: var(--err-fg); background: var(--err-bg); border-color: var(--err-border); }
     .bubble.pending { opacity: .7; font-style: italic; }
+    /* Avatar + bubble row (person for the user, bot for the assistant). The row
+       owns left/right placement; the bubble inside it just fills. */
+    .msg-row { display: flex; align-items: flex-start; gap: 7px; max-width: 90%; }
+    .msg-row.user { align-self: flex-end; flex-direction: row-reverse; }
+    .msg-row.bot { align-self: flex-start; }
+    .msg-row .bubble { align-self: auto; max-width: 100%; }
+    .msg-avatar { flex-shrink: 0; width: 26px; height: 26px; display: flex;
+                  align-items: center; justify-content: center; border-radius: 50%;
+                  color: var(--text-color); background: var(--chip-bg);
+                  border: 1px solid var(--border-color); }
+    .msg-avatar svg { width: 15px; height: 15px; }
     .chat-input-row { display: flex; gap: 8px; padding: 10px; border-top: 1px solid var(--border-color); }
     .chat-input { flex: 1; font: inherit; font-size: .9rem; resize: none; padding: 8px 10px; border-radius: 9px;
                   border: 1px solid var(--btn-border); background: var(--page-bg); color: var(--text-color); }
@@ -212,6 +230,9 @@
                   border-radius: 7px; padding: 5px 11px; }
     .viewer-btn:hover:not(:disabled) { background: var(--btn-hover); }
     .viewer-btn:disabled { opacity: .5; cursor: default; }
+    /* Icon-only variant ({ } JSON, < > embed) — square, tight padding, matching
+       the /renderproof + blog embed toolbar. */
+    .viewer-btn.icon-btn { padding: 5px 7px; line-height: 0; display: inline-flex; align-items: center; }
     #root { margin-top: 4px; }
     .pa-error { color: var(--err-fg); background: var(--err-bg); border: 1px solid var(--err-border);
                 border-radius: 8px; padding: 12px 14px; margin: 12px 0; font-size: .9rem; }
@@ -219,14 +240,47 @@
               font-size: .85rem; color: var(--muted-color); }
     .footer a { color: var(--accent); text-decoration: none; }
     .footer a:hover { text-decoration: underline; }
+
+    /* Themed modal overlay — shared by the { } JSON viewer and the < > embed
+       dialog (a single instance of each, re-populated for whichever proof's
+       button was clicked). Ported from /renderproof for a consistent look. */
+    .pa-modal { position: fixed; inset: 0; z-index: 60; display: none;
+                align-items: center; justify-content: center; padding: 16px;
+                background: rgba(0, 0, 0, .5); }
+    .pa-modal.open { display: flex; }
+    .pa-modal-box { background: var(--panel-bg); color: var(--text-color);
+                border: 1px solid var(--border-color); border-radius: 10px;
+                width: 100%; max-width: 760px; max-height: 90%; display: flex; flex-direction: column;
+                box-shadow: 0 10px 40px rgba(0, 0, 0, .5); }
+    .pa-modal-head { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+                padding: 10px 14px; border-bottom: 1px solid var(--border-color);
+                font-weight: 600; font-size: .9rem; }
+    .pa-modal-body { overflow: auto; padding: 10px 14px 14px; }
+    .pa-modal-body h3 { font: 600 .78rem system-ui, sans-serif; color: var(--muted-color); margin: 14px 0 4px; }
+    .pa-modal-body pre { margin: 6px 0 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                font-size: 12px; line-height: 1.5; white-space: pre; overflow-x: auto; }
+    .pa-embed-row { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; flex-wrap: wrap; }
+    .pa-embed-row label { font-size: .85rem; color: var(--muted-color);
+                display: flex; align-items: center; gap: 6px; }
+    .pa-embed-row select { font: inherit; font-size: .85rem; padding: 5px 8px; border-radius: 7px;
+                border: 1px solid var(--btn-border); background: var(--panel-bg); color: var(--text-color); }
+    .pa-copied { font-size: .8rem; color: var(--muted-color); }
+    #pa-embed-code { width: 100%; box-sizing: border-box; height: 80px; resize: vertical;
+                font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .8rem;
+                border: 1px solid var(--btn-border); border-radius: 7px; padding: 8px;
+                background: var(--panel-bg); color: var(--text-color); }
   </style>
 </head>
 <body data-debug="__DEBUG_MODE__">
   <div class="wrap">
-    <a class="brand" href="/" aria-label="AlgeBench home">
-      <span class="brand-name">AlgeBench</span>
-      <span class="brand-tag">Prove</span>
-    </a>
+    <div class="prove-head">
+      <a class="brand" href="/" aria-label="AlgeBench home">
+        <span class="brand-name">AlgeBench</span>
+        <span class="brand-tag">Prove</span>
+      </a>
+      <button class="theme-btn" id="theme-toggle" type="button"
+              aria-label="Toggle dark / light theme"></button>
+    </div>
     <p class="lede">Step-through, CAS-verified derivations — one corner of
       <strong>AlgeBench</strong>, an AI-guided playground for doing and
       understanding math. Ask the AI about any term, or
@@ -281,6 +335,16 @@
         <div id="d-status" class="derive-status" hidden></div>
         <div class="derive-cols">
           <div class="derive-left">
+            <!-- Toolbar for the derived proof: { } JSON viewer, revealed once a
+                 derivation exists. (< > embed needs a saved id — comes with the
+                 save-and-share flow.) -->
+            <div class="viewer-bar" id="d-viewer-bar" hidden>
+              <span class="viewer-id">Derived proof</span>
+              <div class="viewer-actions">
+                <button id="d-json" class="viewer-btn icon-btn" type="button"
+                        title="View proof JSON" aria-label="View proof JSON"></button>
+              </div>
+            </div>
             <div class="derive-box">
               <div id="d-empty" class="derive-empty">Your derivation will appear here.</div>
               <div id="d-root"></div>
@@ -334,6 +398,40 @@
       <button id="ctx-close" class="ctx-close" type="button" title="Close">&times;</button>
     </div>
     <div id="ctx-panel-body" class="ctx-panel-body"></div>
+  </div>
+  <!-- Shared { } JSON viewer — populated with the clicked proof's raw JSON. -->
+  <div id="pa-json-modal" class="pa-modal">
+    <div class="pa-modal-box">
+      <div class="pa-modal-head">
+        <span id="pa-json-title">Proof JSON</span>
+        <button id="pa-json-close" class="viewer-btn" type="button" aria-label="Close">✕</button>
+      </div>
+      <div id="pa-json-body" class="pa-modal-body"></div>
+    </div>
+  </div>
+  <!-- Shared < > embed dialog — theme picker + copyable iframe snippet. -->
+  <div id="pa-embed-modal" class="pa-modal">
+    <div class="pa-modal-box">
+      <div class="pa-modal-head">
+        <span id="pa-embed-title">Embed this proof</span>
+        <button id="pa-embed-close" class="viewer-btn" type="button" aria-label="Close">✕</button>
+      </div>
+      <div class="pa-modal-body">
+        <div class="pa-embed-row">
+          <label>Theme
+            <select id="pa-theme">
+              <option value="dark">Dark</option>
+              <option value="light">Light</option>
+              <option value="auto">Auto</option>
+            </select>
+          </label>
+          <button id="pa-preview" class="viewer-btn" type="button">Preview</button>
+          <button id="pa-copy" class="viewer-btn" type="button">Copy</button>
+          <span id="pa-copied" class="pa-copied" hidden>Copied!</span>
+        </div>
+        <textarea id="pa-embed-code" readonly aria-label="Embed script"></textarea>
+      </div>
+    </div>
   </div>
   <script type="module" src="/prove.js?v=__APP_VERSION__"></script>
 </body>

@@ -16,6 +16,7 @@
 // ============================================================
 
 import { state } from '/state.js';
+import { SHARE_VIEW_ICON } from '/icons.js';
 import { serializeViewState, parseViewState, slugify, fmtNum } from '/view-state.js';
 import { pushView, replaceView, isApplyingFromHistory } from '/nav-history.js';
 import { navigateTo } from '/scene-loader.js';
@@ -473,6 +474,7 @@ export function setupViewSync() {
 export function setupShareButton() {
     const btn = document.getElementById('nav-share');
     if (!btn) return;
+    btn.innerHTML = SHARE_VIEW_ICON;
     // Lazily-created floating confirmation pill, anchored next to the button.
     let toast = null;
     let toastTimer = null;

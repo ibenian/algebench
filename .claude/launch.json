@@ -204,6 +204,20 @@
       ],
       "port": 5751,
       "autoPort": false
+    },
+    {
+      "name": "prove",
+      "runtimeExecutable": "./algebench",
+      "runtimeArgs": [
+        "--prove",
+        "--port",
+        "5753",
+        "--server-only",
+        "--debug",
+        "--skip-tour"
+      ],
+      "port": 5753,
+      "autoPort": false
     }
   ]
 }

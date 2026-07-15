@@ -4,6 +4,7 @@
 // ============================================================
 
 import { state } from '/state.js';
+import { ANGLE_LOCK_ICON } from '/icons.js';
 import { dataToWorld } from '/coords.js';
 import { compileExpr, evalExpr } from '/expr.js';
 
@@ -438,6 +439,7 @@ export function updateFollowAngleLockButtonState() {
 export function setupFollowAngleLockToggle() {
     const btn = document.getElementById('follow-angle-lock-toggle');
     if (!btn) return;
+    btn.innerHTML = ANGLE_LOCK_ICON;
     btn.style.display = 'flex';
     btn.addEventListener('click', () => {
         state.followCamAngleLock = !state.followCamAngleLock;

@@ -17,6 +17,7 @@
 // ============================================================
 
 import { state } from '/state.js';
+import { BRACES_ICON, MOON_GLYPH, SUN_GLYPH } from '/icons.js';
 import { SemanticGraphPanel } from '/graph-panel/graph-panel.js';
 import { D3SemanticGraphRenderer, nodeLongLabel } from '/graph-panel/d3-semantic-graph.js';
 import { SgChartManager } from '/graph-panel/sg-chart.js';
@@ -2225,6 +2226,10 @@ function updateShowJsonButtonState() {
 function setupShowJsonButton() {
     const btn = document.getElementById('graph-show-json');
     if (!btn) return;
+    // Render the { } as the shared SVG braces icon (matches the toolbar JSON
+    // button + /prove + /renderproof), replacing the literal text glyph.
+    btn.innerHTML = BRACES_ICON;
+    btn.classList.add('icon-only');
     btn.addEventListener('click', () => {
         const path = currentSemanticGraphJsonPath();
         if (!path || typeof window.algebenchOpenJsonBrowserAtPath !== 'function') {
@@ -2298,7 +2303,7 @@ function _resetGraphSession() {
 // Monochrome unicode glyphs (LAST QUARTER MOON / BLACK SUN WITH RAYS).
 // The ``\uFE0E`` variation selector forces text-style rendering so platforms
 // don't substitute in a full-color emoji for the sun.
-const MODE_ICON = { dark: '\u263E\uFE0E', light: '\u2600\uFE0E' };
+const MODE_ICON = { dark: MOON_GLYPH, light: SUN_GLYPH };
 
 // Try to find the ``targetMode`` counterpart of a theme by suffix-swap.
 // E.g. ``power-direction-light`` ↔ ``power-direction-dark``. Returns null

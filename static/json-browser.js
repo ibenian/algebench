@@ -4,6 +4,7 @@
 // ============================================================
 
 import { state } from '/state.js';
+import { BRACES_ICON } from '/icons.js';
 
 // ----- Scene Summary Helpers -----
 
@@ -470,6 +471,12 @@ export function setupJsonViewer() {
     const issuesPanel = document.getElementById('json-viewer-issues');
 
     if (!btn || !overlay) return;
+
+    // Render the { } as the shared SVG braces icon (matches /prove, /renderproof,
+    // and the semantic-graph JSON button), replacing the literal text glyph.
+    btn.innerHTML = BRACES_ICON;
+    btn.classList.add('icon-only');
+    btn.setAttribute('aria-label', 'Show current scene JSON');
 
     let _pathLineMap = {};
     let _jsonScrollAnimFrame = null;
