@@ -391,6 +391,8 @@ function setupModals() {
     if (!embedId) return;
     const w = window.open("", "_blank");
     if (!w) return;                 // popup blocked
+    w.opener = null;                // sever opener (reverse-tabnabbing); can't use the
+                                    // "noopener" feature here — we need the handle to write
     w.document.open();
     w.document.write(previewPageHtml(buildEmbedUrl(embedId, sel.value), sel.value));
     w.document.close();

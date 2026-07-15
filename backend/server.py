@@ -2730,10 +2730,14 @@ Examples:
         '''
     )
     parser.add_argument('scene', nargs='?', help='Path to scene JSON file')
-    parser.add_argument('--proof', default=None, metavar='DOMAIN/NAME',
+    # --proof (one built-in proof via /renderproof) and --prove (the /prove
+    # browser) are distinct launch targets — reject passing both rather than
+    # silently prioritizing one.
+    proof_target = parser.add_mutually_exclusive_group()
+    proof_target.add_argument('--proof', default=None, metavar='DOMAIN/NAME',
                         help='Open the shareable proof page on a built-in proof '
                              '(proofs/domains/<domain>/<name>.json) instead of the main app')
-    parser.add_argument('--prove', action='store_true', default=False,
+    proof_target.add_argument('--prove', action='store_true', default=False,
                         help='Open the public proof browser (/prove) instead of the main app')
     parser.add_argument('--json', action='store_true', help='Output JSON (for MCP integration)')
     parser.add_argument('--port', type=int, default=DEFAULT_PORT, help=f'Port (default: {DEFAULT_PORT})')

@@ -2300,9 +2300,10 @@ function _resetGraphSession() {
     clearDeriveCache();   // derivation results are lesson-specific
 }
 
-// Monochrome unicode glyphs (LAST QUARTER MOON / BLACK SUN WITH RAYS).
-// The ``\uFE0E`` variation selector forces text-style rendering so platforms
-// don't substitute in a full-color emoji for the sun.
+// Shared monochrome moon/sun glyphs from /icons.js (LAST QUARTER MOON / BLACK
+// SUN WITH RAYS), matching the blog + /prove toggles. They carry no U+FE0E
+// variation selector; #graph-mode-toggle pins font-family: system-ui so they
+// render as clean text glyphs rather than a full-color emoji.
 const MODE_ICON = { dark: MOON_GLYPH, light: SUN_GLYPH };
 
 // Try to find the ``targetMode`` counterpart of a theme by suffix-swap.
