@@ -206,7 +206,14 @@ async function openProof(id) {
   left.append(box, continueBtn);
   const cols = document.createElement("div");
   cols.className = "derive-cols";
-  cols.append(left, chat.wrap);
+  const resizer = document.createElement("div");
+  resizer.className = "col-resizer";
+  resizer.setAttribute("role", "separator");
+  resizer.setAttribute("aria-orientation", "vertical");
+  resizer.title = "Drag to resize the chat";
+  cols.append(left, resizer, chat.wrap);
+  applyStoredChatW(cols);
+  wireColResizer(resizer, cols);
   panel.append(bar, cols);
   els.panels.appendChild(panel);
 
@@ -334,6 +341,78 @@ function addBubble(role, text, cls, logEl) {
   log.appendChild(b);
   log.scrollTop = log.scrollHeight;
   return b;
+}
+
+// ── chat column resizing (draggable splitter, remembered across chats) ───────
+const CHAT_W_KEY = "proveChatW";
+const CHAT_W_MIN = 300, CHAT_W_MAX = 680, CHAT_W_STEP = 24;
+const _clampChatW = (px) => Math.max(CHAT_W_MIN, Math.min(CHAT_W_MAX, px));
+
+/** Persist the chat width — localStorage can throw (blocked storage / privacy). */
+function _storeChatW(px) {
+  try { localStorage.setItem(CHAT_W_KEY, String(px)); } catch (e) { /* blocked storage */ }
+}
+
+/** Apply the remembered chat width to a `.derive-cols` element (the --chat-w var).
+ *  Guarded: `localStorage.getItem` can throw a SecurityError in blocked-storage /
+ *  privacy modes, which would otherwise abort page init. */
+function applyStoredChatW(colsEl) {
+  if (!colsEl) return;
+  let raw = "";
+  try { raw = localStorage.getItem(CHAT_W_KEY) || ""; } catch (e) { return; }
+  const v = parseInt(raw, 10);
+  if (v) colsEl.style.setProperty("--chat-w", _clampChatW(v) + "px");
+}
+
+/** Wire a `.col-resizer` to drag- OR keyboard-resize the chat column of its
+ *  `.derive-cols`. Width is clamped [300,680] and persisted so all chats (Derive
+ *  + every opened proof) share the preference. */
+function wireColResizer(resizer, colsEl) {
+  if (!resizer || !colsEl) return;
+  const curW = () => parseInt(getComputedStyle(colsEl).getPropertyValue("--chat-w"), 10) || 360;
+  // Keyboard-accessible slider semantics (focusable + arrow-adjustable).
+  resizer.tabIndex = 0;
+  resizer.setAttribute("aria-label", "Resize chat width");
+  resizer.setAttribute("aria-valuemin", String(CHAT_W_MIN));
+  resizer.setAttribute("aria-valuemax", String(CHAT_W_MAX));
+  const setW = (px, persist) => {
+    const w = _clampChatW(px);
+    colsEl.style.setProperty("--chat-w", w + "px");
+    resizer.setAttribute("aria-valuenow", String(w));
+    if (persist) _storeChatW(w);
+    return w;
+  };
+  setW(curW(), false);   // seed aria-valuenow
+
+  let startX = 0, startW = 0, dragging = false;
+  const onMove = (e) => { if (dragging) setW(startW - (e.clientX - startX), false); };
+  const onUp = () => {
+    if (!dragging) return;
+    dragging = false; resizer.classList.remove("dragging");
+    document.removeEventListener("pointermove", onMove);
+    document.removeEventListener("pointerup", onUp);
+    document.removeEventListener("pointercancel", onUp);
+    _storeChatW(curW());
+  };
+  resizer.addEventListener("pointerdown", (e) => {
+    dragging = true; resizer.classList.add("dragging");
+    startX = e.clientX; startW = curW();
+    e.preventDefault();
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+    document.addEventListener("pointercancel", onUp);   // gesture cancel / interrupted drag
+  });
+  // Keyboard: ←/↑ widen the chat, →/↓ narrow it; Home/End to the limits.
+  resizer.addEventListener("keydown", (e) => {
+    let w;
+    if (e.key === "ArrowLeft" || e.key === "ArrowUp") w = curW() + CHAT_W_STEP;
+    else if (e.key === "ArrowRight" || e.key === "ArrowDown") w = curW() - CHAT_W_STEP;
+    else if (e.key === "End") w = CHAT_W_MAX;
+    else if (e.key === "Home") w = CHAT_W_MIN;
+    else return;
+    e.preventDefault();
+    setW(w, true);
+  });
 }
 
 /** A self-contained proof-scoped chat column (head + log + input + Send), bound
@@ -620,6 +699,10 @@ async function main() {
   els.dContinue = document.getElementById("d-continue");
   els.dContinueDeep = document.getElementById("d-continue-deep");
   els.dContinue.addEventListener("click", continueInApp);
+  // Draggable chat splitter (Derive workspace).
+  const dCols = els.panelDerive.querySelector(".derive-cols");
+  applyStoredChatW(dCols);
+  wireColResizer(dCols && dCols.querySelector(".col-resizer"), dCols);
   els.tabDerive.addEventListener("click", () => switchTo("derive"));
   els.dDocBtn.addEventListener("click", openDocEditor);
   els.dDocHint.addEventListener("click", openDocEditor);
