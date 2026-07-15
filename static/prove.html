@@ -117,7 +117,8 @@
                    gap: 10px; align-items: start; }
     .col-resizer { height: 560px; cursor: col-resize; border-radius: 4px; touch-action: none;
                    background: var(--border-color); opacity: .55; transition: opacity .12s, background .12s; }
-    .col-resizer:hover, .col-resizer.dragging { background: var(--accent); opacity: 1; }
+    .col-resizer:hover, .col-resizer.dragging, .col-resizer:focus-visible { background: var(--accent); opacity: 1; }
+    .col-resizer:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     @media (max-width: 720px) { .derive-cols { grid-template-columns: 1fr; } .col-resizer { display: none; } }
     .derive-left { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
     .derive-box { min-height: 200px; min-width: 0; }   /* min-width:0 lets the 1fr column shrink */
