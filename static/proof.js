@@ -4,6 +4,7 @@
 // ============================================================
 
 import { state } from '/state.js';
+import { FIRST_ICON, PREV_ICON, NEXT_ICON, LAST_ICON } from '/icons.js';
 import { renderKaTeX, renderMarkdown, makeAiAskButton, makeDeriveButton, openChatPanel, stripHtmlMacros } from '/labels.js';
 import { SgProofManager } from '/proof-animation/sg-proof.js';
 import { buildProofStepDerivePayload, describeDeriveStart } from '/proof-animation/derive-payload.js';
@@ -1108,13 +1109,16 @@ export function setupProofPanel() {
     const prevBtn = document.getElementById('proof-prev');
     const nextBtn = document.getElementById('proof-next');
     const lastBtn = document.getElementById('proof-last');
-    if (firstBtn) firstBtn.addEventListener('click', () => navigateProof(-1));
-    if (prevBtn) prevBtn.addEventListener('click', () => navigateProof(state.proofStepIndex - 1));
-    if (nextBtn) nextBtn.addEventListener('click', () => navigateProof(state.proofStepIndex + 1));
-    if (lastBtn) lastBtn.addEventListener('click', () => {
-        const proof = _activeProof();
-        if (proof && proof.steps) navigateProof(proof.steps.length - 1);
-    });
+    if (firstBtn) { firstBtn.innerHTML = FIRST_ICON; firstBtn.addEventListener('click', () => navigateProof(-1)); }
+    if (prevBtn) { prevBtn.innerHTML = PREV_ICON; prevBtn.addEventListener('click', () => navigateProof(state.proofStepIndex - 1)); }
+    if (nextBtn) { nextBtn.innerHTML = NEXT_ICON; nextBtn.addEventListener('click', () => navigateProof(state.proofStepIndex + 1)); }
+    if (lastBtn) {
+        lastBtn.innerHTML = LAST_ICON;
+        lastBtn.addEventListener('click', () => {
+            const proof = _activeProof();
+            if (proof && proof.steps) navigateProof(proof.steps.length - 1);
+        });
+    }
 
     // Mode toggle (slide / list) — restore saved preference
     const savedViewMode = localStorage.getItem('algebench-proof-view-mode');

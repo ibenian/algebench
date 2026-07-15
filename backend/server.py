@@ -1790,7 +1790,7 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
         'sliders', 'overlay', 'dockable-panel', 'context-browser', 'scene-loader', 'ui',
         'json-browser', 'main', 'proof', 'graph-view', 'expert-client',
         'view-state', 'view-state-bridge', 'nav-history', 'nav-history-core',
-        'renderproof', 'embed-resizer', 'object-picker', 'prove',
+        'renderproof', 'embed-resizer', 'object-picker', 'prove', 'theme', 'icons',
     }
 
     @fastapp.get("/api/version")
@@ -2591,7 +2591,7 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
                    tts_min_sentence_chars_growth=None, tts_chunk_timeout=None,
                    tts_max_retries=None, tts_retry_delay=None, tts_style=None,
                    tts_live=True, tts_output_file=None, tts_realtime=None,
-                   server_only=False):
+                   server_only=False, open_prove=False):
     """Serve the AlgeBench viewer and optionally open in browser.
 
     ``tts_realtime=None`` defers to ``create_app``'s env-var resolution
@@ -2627,7 +2627,10 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
     time.sleep(0.5)
 
     url = f"http://localhost:{port}/"
-    if initial_proof:
+    if open_prove:
+        # Jump straight to the public proof browser (/prove).
+        url = f"http://localhost:{port}/prove"
+    elif initial_proof:
         # Jump straight to the shareable proof page. ``initial_proof`` is already
         # validated as <domain>/<name> in main(); quote() is belt-and-suspenders.
         url = f"http://localhost:{port}/renderproof?builtin={quote(initial_proof)}"
@@ -2727,9 +2730,15 @@ Examples:
         '''
     )
     parser.add_argument('scene', nargs='?', help='Path to scene JSON file')
-    parser.add_argument('--proof', default=None, metavar='DOMAIN/NAME',
+    # --proof (one built-in proof via /renderproof) and --prove (the /prove
+    # browser) are distinct launch targets — reject passing both rather than
+    # silently prioritizing one.
+    proof_target = parser.add_mutually_exclusive_group()
+    proof_target.add_argument('--proof', default=None, metavar='DOMAIN/NAME',
                         help='Open the shareable proof page on a built-in proof '
                              '(proofs/domains/<domain>/<name>.json) instead of the main app')
+    proof_target.add_argument('--prove', action='store_true', default=False,
+                        help='Open the public proof browser (/prove) instead of the main app')
     parser.add_argument('--json', action='store_true', help='Output JSON (for MCP integration)')
     parser.add_argument('--port', type=int, default=DEFAULT_PORT, help=f'Port (default: {DEFAULT_PORT})')
     parser.add_argument('--debug', action='store_true', help='Dump full Gemini API requests to console')
@@ -2845,6 +2854,7 @@ Examples:
         tts_output_file=args.tts_output_file,
         tts_realtime=not args.tts_buffered,
         server_only=args.server_only,
+        open_prove=args.prove,
     )
 
 

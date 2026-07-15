@@ -4,6 +4,7 @@
 // ============================================================
 
 import { state } from '/state.js';
+import { PREV_ICON, NEXT_ICON, PLAY_ICON, PAUSE_ICON } from '/icons.js';
 import { renderElement } from '/objects/index.js';
 import { buildSliderOverlay, registerSliders, stopAllSliderLoops, stopSliderLoop,
          removeSliderIds, recompileActiveExprs, unregisterAnimExpr, unregisterAnimUpdater,
@@ -932,7 +933,7 @@ function startAutoPlay() {
     const playBtn = document.getElementById('nav-play');
     if (playBtn) {
         playBtn.classList.add('playing');
-        playBtn.innerHTML = '&#9646;&#9646;';
+        playBtn.innerHTML = PAUSE_ICON;
     }
 }
 
@@ -944,7 +945,7 @@ export function stopAutoPlay() {
     const playBtn = document.getElementById('nav-play');
     if (playBtn) {
         playBtn.classList.remove('playing');
-        playBtn.innerHTML = '&#9654;';
+        playBtn.innerHTML = PLAY_ICON;
     }
 }
 
@@ -990,6 +991,9 @@ export function setupSceneDock() {
     const prevBtn = document.getElementById('nav-prev');
     const playBtn = document.getElementById('nav-play');
     const nextBtn = document.getElementById('nav-next');
+    if (prevBtn) prevBtn.innerHTML = PREV_ICON;
+    if (playBtn) playBtn.innerHTML = PLAY_ICON;
+    if (nextBtn) nextBtn.innerHTML = NEXT_ICON;
 
     // Default to expanded: open unless the user has explicitly collapsed it.
     const savedOpen = localStorage.getItem('algebench-dock-open');

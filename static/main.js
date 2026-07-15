@@ -24,6 +24,12 @@ import { setupProofPanel, navigateProof, loadProof, getProofContext, refreshProo
 import { captureViewState, applyViewState, setupViewSync, setupShareButton } from '/view-state-bridge.js';
 import { setupPopstateListener } from '/nav-history.js';
 import { setupObjectPicker } from '/object-picker.js';
+import { AI_ICON, USER_ICON } from '/icons.js';
+
+// chat.js is a classic script (no ES imports), so expose the shared chat-avatar
+// icons on window for it to read. Set at module-eval, well before any message
+// renders; chat.js falls back to emoji if this is somehow absent.
+window.algebenchIcons = { ai: AI_ICON, user: USER_ICON };
 
 // Domain library registry — scripts under static/domains/<name>/index.js self-register here.
 window.AlgeBenchDomains = window.AlgeBenchDomains || {

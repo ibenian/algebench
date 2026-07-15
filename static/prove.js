@@ -12,21 +12,16 @@
 import { ProofAnimator } from "/proof-animation/proof-animation.js";
 import { validateProofData } from "/proof-animation/validate-proof.js";
 import { invokeExpert, ExpertError } from "/expert-client.js";
+import { applyTheme, initialTheme, wireThemeToggle } from "/theme.js";
+import { BRACES_ICON, CODE_ICON, AI_ICON, USER_ICON } from "/icons.js";
 
-const THEMES = new Set(["dark", "light", "auto"]);
 const ID_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?\/[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
 
 const params = () => new URLSearchParams(location.search);
 
-/** Dark by default; ?theme=light|dark|auto. */
-function applyTheme() {
-  let t = params().get("theme");
-  if (!THEMES.has(t)) t = "dark";
-  const resolved = t === "auto"
-    ? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
-    : t;
-  document.documentElement.dataset.theme = resolved;
-}
+/** Paint the on-load theme (?theme= > saved preference > dark). Theme helpers
+ *  (resolve/persist/toggle) live in /theme.js, shared with /renderproof. */
+function paintTheme() { applyTheme(initialTheme()); }
 
 /** Wait for the deferred KaTeX classic script to define window.katex. */
 async function awaitKatex() {
@@ -175,10 +170,23 @@ async function openProof(id) {
   const closeBtn = document.createElement("button");
   closeBtn.type = "button"; closeBtn.className = "viewer-btn"; closeBtn.textContent = "✕ Close proof";
   closeBtn.addEventListener("click", () => closeProof(id));
+  // { } — view this proof's raw JSON (enabled once the proof has loaded).
+  const jsonBtn = document.createElement("button");
+  jsonBtn.type = "button"; jsonBtn.className = "viewer-btn icon-btn";
+  jsonBtn.innerHTML = BRACES_ICON;
+  jsonBtn.title = "View proof JSON"; jsonBtn.setAttribute("aria-label", "View proof JSON");
+  jsonBtn.disabled = true;
+  jsonBtn.addEventListener("click", () => openJsonModal(loadedProof, id));
+  // < > — copy an embed snippet (points at the shareable /renderproof renderer).
+  const embedBtn = document.createElement("button");
+  embedBtn.type = "button"; embedBtn.className = "viewer-btn icon-btn";
+  embedBtn.innerHTML = CODE_ICON;
+  embedBtn.title = "Get embed script"; embedBtn.setAttribute("aria-label", "Get embed script");
+  embedBtn.addEventListener("click", () => openEmbedModal(id));
   // A right-aligned action group — room for more proof-manipulation ops later.
   const actions = document.createElement("div");
   actions.className = "viewer-actions";
-  actions.append(editBtn, closeBtn);
+  actions.append(jsonBtn, embedBtn, editBtn, closeBtn);
   bar.append(idEl, actions);
 
   // Two columns like the Derive workspace: animation (+ app hand-off) on the
@@ -228,6 +236,7 @@ async function openProof(id) {
     if (!openTabs.has(id)) return;                  // closed while loading
     loadedProof = data;
     editBtn.disabled = false;                        // proof is loaded → editable
+    jsonBtn.disabled = false;                         // JSON is available → viewable
     label.textContent = data.title || id.split("/")[1];
     tab.title = data.title || id;
     entry.animator = new ProofAnimator(root, data, {
@@ -253,6 +262,157 @@ function openInApp(message, deeplink, id) {
   u.searchParams.set("aa", String(message || "").slice(0, 1500));   // app opens chat + sends once
   if (!deeplink && id) u.searchParams.set("pa", id);                // load this proof's animation
   window.open(u.toString(), "_blank", "noopener");
+}
+
+// ── { } JSON viewer + < > embed dialog (shared modals) ──────────────────────
+// One instance of each modal is re-populated for whichever open proof's toolbar
+// button was clicked. The embed points at /renderproof?builtin=<id> — the same
+// shareable renderer the blog embeds use (works for the shipped seed proofs).
+
+/** The embeddable /renderproof URL for a proof id, in the chosen theme. The
+ *  origin is wherever this page is served, so the snippet is environment-correct
+ *  (localhost in dev, the real host in prod). */
+function buildEmbedUrl(id, theme) {
+  const u = new URL("/renderproof", location.origin);
+  u.searchParams.set("builtin", id);
+  u.searchParams.set("theme", theme);          // explicit → deterministic embed
+  return u.toString();
+}
+
+/** The copy-paste iframe snippet (+ optional auto-resize companion script). */
+function embedSnippet(url) {
+  const origin = new URL(url).origin;
+  return `<iframe src="${url}" width="100%" height="600" style="border:0;background:transparent" loading="lazy" ` +
+         `title="AlgeBench proof animation" data-algebench-embed></iframe>\n` +
+         `<!-- optional: auto-fits the height to the proof; remove to keep a fixed height -->\n` +
+         `<script src="${origin}/embed-resizer.js" async></script>`;
+}
+
+/** A throwaway in-browser mock host page, so the user can see the embed dropped
+ *  into a real article. `url`/`theme` come from a validated id + allowlisted
+ *  theme, so they're safe to interpolate. Ported from /renderproof. */
+function previewPageHtml(url, theme) {
+  const iframe = embedSnippet(url);
+  const dark = "--bg:#12121c;--ink:#e5e7eb;--muted:#9ca3af;--rule:#2a2f45;--accent:#818cf8;--bar:#1a1a2e;";
+  const light = "--bg:#fbfbfd;--ink:#1f2430;--muted:#5b6472;--rule:#e6e8ee;--accent:#4f46e5;--bar:#ffffff;";
+  let rootCss;
+  if (theme === "dark") rootCss = `:root{color-scheme:dark;${dark}}`;
+  else if (theme === "light") rootCss = `:root{color-scheme:light;${light}}`;
+  else rootCss = `:root{color-scheme:light dark;${light}}@media(prefers-color-scheme:dark){:root{${dark}}}`;
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Embed preview — Example Blog</title>
+<style>
+  ${rootCss}
+  body { margin:0; background:var(--bg); color:var(--ink);
+         font-family:Georgia,"Times New Roman",serif; line-height:1.7; }
+  .bar { border-bottom:1px solid var(--rule); background:var(--bar); }
+  .bar .in { max-width:760px; margin:0 auto; padding:14px 22px;
+         font-family:system-ui,sans-serif; font-weight:700; }
+  main { max-width:760px; margin:0 auto; padding:32px 22px 70px; }
+  .kick { font-family:system-ui,sans-serif; text-transform:uppercase; letter-spacing:.12em;
+          font-size:.72rem; color:var(--accent); font-weight:700; }
+  h1 { font-size:2rem; line-height:1.2; margin:8px 0 6px; }
+  .by { font-family:system-ui,sans-serif; color:var(--muted); font-size:.9rem; margin:0 0 26px; }
+  p { margin:0 0 18px; }
+  figure { margin:26px 0; }
+  figure iframe { display:block; width:100%; border:0; border-radius:12px;
+          box-shadow:0 0 0 1px var(--rule), 0 12px 30px rgba(0,0,0,.18); }
+  figcaption { font-family:system-ui,sans-serif; color:var(--muted); font-size:.85rem;
+          margin-top:10px; text-align:center; }
+  .note { font-family:system-ui,sans-serif; font-size:.8rem; color:var(--muted);
+          border-top:1px solid var(--rule); margin-top:40px; padding-top:14px; }
+</style></head>
+<body>
+  <header class="bar"><div class="in">Example Blog</div></header>
+  <main>
+    <p class="kick">Mathematics · Worked Example</p>
+    <h1>A derivation, embedded in a post</h1>
+    <p class="by">By Jane Author · 5 min read</p>
+    <p>This is a placeholder article showing how an AlgeBench proof animation looks
+    when it is dropped into an ordinary web page. The figure below is the live embed
+    you are about to copy — readers can step through the derivation right here, with
+    no account and no backend calls after it loads.</p>
+    <figure>
+      ${iframe}
+      <figcaption>Figure 1 — an embedded, interactive proof animation.</figcaption>
+    </figure>
+    <p>The surrounding prose, fonts, and layout all belong to the host page; only the
+    framed figure comes from AlgeBench. Resize the window to see it reflow.</p>
+    <p class="note">Preview only — this page is generated in your browser and is not saved.</p>
+  </main>
+</body></html>`;
+}
+
+// Module-level openers, wired once by setupModals() in main().
+let openJsonModal = () => {};    // (proof, id) → show the { } viewer
+let openEmbedModal = () => {};   // (id)        → show the < > embed dialog
+
+/** Wire the two shared modals once: close (button / backdrop / Escape) and, for
+ *  the embed dialog, the theme picker + Preview + Copy. Exposes the openers. */
+function setupModals() {
+  // { } JSON viewer.
+  const jModal = document.getElementById("pa-json-modal");
+  const jTitle = document.getElementById("pa-json-title");
+  const jBody = document.getElementById("pa-json-body");
+  openJsonModal = (proof, id) => {
+    jTitle.textContent = proof && proof.title ? proof.title : (id || "Proof JSON");
+    jBody.textContent = "";
+    const pre = document.createElement("pre");
+    // textContent — never innerHTML: the JSON is untrusted proof data.
+    pre.textContent = proof ? JSON.stringify(proof, null, 2) : "(no proof loaded)";
+    jBody.appendChild(pre);
+    jModal.classList.add("open");
+  };
+  const jHide = () => jModal.classList.remove("open");
+  document.getElementById("pa-json-close").addEventListener("click", jHide);
+  jModal.addEventListener("click", (e) => { if (e.target === jModal) jHide(); });
+
+  // < > embed dialog.
+  const eModal = document.getElementById("pa-embed-modal");
+  const eTitle = document.getElementById("pa-embed-title");
+  const code = document.getElementById("pa-embed-code");
+  const sel = document.getElementById("pa-theme");
+  const copied = document.getElementById("pa-copied");
+  let embedId = null;
+  const refresh = () => { if (embedId) code.value = embedSnippet(buildEmbedUrl(embedId, sel.value)); };
+  openEmbedModal = (id) => {
+    embedId = id;
+    eTitle.textContent = "Embed this proof";
+    refresh();
+    eModal.classList.add("open");
+    code.focus(); code.select();
+  };
+  const eHide = () => eModal.classList.remove("open");
+  document.getElementById("pa-embed-close").addEventListener("click", eHide);
+  eModal.addEventListener("click", (e) => { if (e.target === eModal) eHide(); });
+  sel.addEventListener("change", () => { refresh(); code.focus(); code.select(); });
+  document.getElementById("pa-preview").addEventListener("click", () => {
+    if (!embedId) return;
+    const w = window.open("", "_blank");
+    if (!w) return;                 // popup blocked
+    w.opener = null;                // sever opener (reverse-tabnabbing); can't use the
+                                    // "noopener" feature here — we need the handle to write
+    w.document.open();
+    w.document.write(previewPageHtml(buildEmbedUrl(embedId, sel.value), sel.value));
+    w.document.close();
+  });
+  document.getElementById("pa-copy").addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(code.value);
+    } catch {
+      code.focus(); code.select();
+      try { document.execCommand("copy"); } catch (e) { /* clipboard unavailable */ }
+    }
+    copied.hidden = false;
+    setTimeout(() => { copied.hidden = true; }, 1500);
+  });
+
+  // One Escape handler closes whichever modal is open.
+  window.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    jHide(); eHide();
+  });
 }
 
 // ── Derive workspace ────────────────────────────────────────────────────────
@@ -326,21 +486,30 @@ function setStatus(text, cls) {
   }
 }
 
-/** Append a chat bubble to a log (defaults to the Derive workspace log); returns
- *  it (so a "pending" one can be removed). User text is escaped + math-rendered;
- *  assistant text is markdown + math. */
+/** Append a chat bubble (wrapped with a person/bot avatar) to a log (defaults to
+ *  the Derive workspace log); returns the ROW so a "pending" one can be removed.
+ *  User text is escaped + math-rendered; assistant text is markdown + math. */
 function addBubble(role, text, cls, logEl) {
   const log = logEl || els.dLog;
+  const isUser = role === "user";
   const b = document.createElement("div");
-  b.className = `bubble ${role === "user" ? "user" : "bot"}${cls ? " " + cls : ""}`;
+  b.className = `bubble ${isUser ? "user" : "bot"}${cls ? " " + cls : ""}`;
   const html = !_hasRender() ? null
-    : role === "user" ? renderSafe(text)
+    : isUser ? renderSafe(text)
     : (cls && cls.includes("pending")) ? null      // "…" placeholder — plain
     : renderReply(text);
   if (html != null) b.innerHTML = html; else b.textContent = text;   // safe fallback
-  log.appendChild(b);
+  // Avatar (USER_ICON for the user, AI_ICON for the assistant), shared with the
+  // main app chat via /icons.js. The row handles left/right placement.
+  const avatar = document.createElement("div");
+  avatar.className = "msg-avatar";
+  avatar.innerHTML = isUser ? USER_ICON : AI_ICON;
+  const row = document.createElement("div");
+  row.className = `msg-row ${isUser ? "user" : "bot"}`;
+  row.append(avatar, b);
+  log.appendChild(row);
   log.scrollTop = log.scrollHeight;
-  return b;
+  return row;
 }
 
 // ── chat column resizing (draggable splitter, remembered across chats) ───────
@@ -524,6 +693,7 @@ function showInDerive(proof) {
     onTermAsk: ({ message }) => askInChat(message),
   });
   els.dGo.textContent = "Rederive";              // a derivation now exists
+  if (els.dViewerBar) els.dViewerBar.hidden = false;   // reveal the { } JSON viewer
   showContinue(proof);                            // reveal the explicit app hand-off
 }
 
@@ -666,8 +836,10 @@ async function sendChat() {
 }
 
 async function main() {
-  applyTheme();
-  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
+  paintTheme();
+  const repaintToggle = wireThemeToggle(document.getElementById("theme-toggle"));
+  matchMedia("(prefers-color-scheme: dark)")
+    .addEventListener("change", () => { paintTheme(); repaintToggle(); });
   els.search = document.getElementById("search");
   els.browse = document.getElementById("browse");
   els.count = document.getElementById("count");
@@ -677,6 +849,7 @@ async function main() {
   els.tabBrowse = document.getElementById("tab-browse");
   els.panelBrowse = document.getElementById("panel-browse");
   els.tabBrowse.addEventListener("click", () => switchTo(null));
+  setupModals();                    // shared { } JSON + < > embed dialogs
 
   // Derive workspace
   els.tabDerive = document.getElementById("tab-derive");
@@ -690,6 +863,12 @@ async function main() {
   els.dDocCount = document.getElementById("d-doc-count");
   els.dRoot = document.getElementById("d-root");
   els.dEmpty = document.getElementById("d-empty");
+  // { } JSON viewer for the derived proof (revealed once a derivation exists).
+  els.dViewerBar = document.getElementById("d-viewer-bar");
+  els.dJson = document.getElementById("d-json");
+  els.dJson.innerHTML = BRACES_ICON;
+  els.dJson.addEventListener("click",
+    () => openJsonModal(deriveProof, deriveProof && deriveProof.title));
   els.dStatus = document.getElementById("d-status");
   els.dLog = document.getElementById("d-log");
   els.dPrompt = document.getElementById("d-prompt");

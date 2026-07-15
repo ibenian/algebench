@@ -78,7 +78,7 @@
             <div id="mathbox-container"></div>
             <div id="camera-buttons"></div>
             <div id="viewport-top-left">
-                <div id="settings-toggle" title="Display settings">&#9881;</div>
+                <div id="settings-toggle" title="Display settings" aria-label="Display settings"></div>
                 <div id="projection-toggle">
                     <button class="proj-btn active" data-proj="perspective" title="Perspective projection">Perspective</button>
                     <button class="proj-btn" data-proj="orthographic" title="Orthographic projection">Orthographic</button>
@@ -86,8 +86,8 @@
             </div>
             <div id="labels-container"></div>
             <div id="legend" class="hidden"></div>
-            <button id="follow-angle-lock-toggle" type="button" title="Toggle angle-lock for follow camera" aria-label="Toggle angle-lock for follow camera"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.22 5.89A6.5 6.5 0 1 1 9.78 5.89"/><path d="M6.98 5.89 9.78 5.89 8.56 8.41"/></svg></button>
-            <button id="nav-share" class="nav-btn" title="Copy a shareable link to this exact view (incl. camera)" aria-label="Copy a shareable link to this view"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12C5 6.5 19 6.5 22 12C19 17.5 5 17.5 2 12Z"/><circle cx="12" cy="12" r="3.6"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg></button>
+            <button id="follow-angle-lock-toggle" type="button" title="Toggle angle-lock for follow camera" aria-label="Toggle angle-lock for follow camera"></button>
+            <button id="nav-share" class="nav-btn" title="Copy a shareable link to this exact view (incl. camera)" aria-label="Copy a shareable link to this view"></button>
             <div id="settings-panel" class="hidden">
                 <div class="sp-header"><span></span><span class="sp-col-label">Size</span><span class="sp-col-label">Opacity</span></div>
                 <div class="sp-row"><span>Labels</span><span class="sp-ctrl"><button class="sp-btn" data-param="labelScale" data-dir="-">&minus;</button><span class="sp-val" id="val-labelScale">1.0</span><button class="sp-btn" data-param="labelScale" data-dir="+">+</button></span><span class="sp-ctrl"><button class="sp-btn" data-param="labelOpacity" data-dir="-">&minus;</button><span class="sp-val" id="val-labelOpacity">1.0</span><button class="sp-btn" data-param="labelOpacity" data-dir="+">+</button></span></div>
@@ -128,9 +128,9 @@
             <div id="info-overlays"></div>
             <div id="slider-overlay" class="hidden"></div>
             <div id="scene-nav">
-                <button id="nav-prev" class="nav-btn" title="Previous (&#8593;)">&lsaquo;</button>
-                <button id="nav-play" class="nav-btn" title="Play (Space)">&#9654;</button>
-                <button id="nav-next" class="nav-btn" title="Next (&#8595;)">&rsaquo;</button>
+                <button id="nav-prev" class="nav-btn" title="Previous (&#8593;)" aria-label="Previous"></button>
+                <button id="nav-play" class="nav-btn" title="Play (Space)" aria-label="Play"></button>
+                <button id="nav-next" class="nav-btn" title="Next (&#8595;)" aria-label="Next"></button>
             </div>
             </div><!-- /mathbox-wrapper -->
             <div id="graph-dock-resize-handle"></div>
@@ -227,11 +227,11 @@
                         <div id="proof-context-content"></div>
                     </div>
                     <div id="proof-nav">
-                        <button id="proof-first" class="nav-btn" title="First step">|&lsaquo;</button>
-                        <button id="proof-prev" class="nav-btn" title="Previous step">&lsaquo;</button>
+                        <button id="proof-first" class="nav-btn" title="First step" aria-label="First step"></button>
+                        <button id="proof-prev" class="nav-btn" title="Previous step" aria-label="Previous step"></button>
                         <span id="proof-counter"></span>
-                        <button id="proof-next" class="nav-btn" title="Next step">&rsaquo;</button>
-                        <button id="proof-last" class="nav-btn" title="Last step">&rsaquo;|</button>
+                        <button id="proof-next" class="nav-btn" title="Next step" aria-label="Next step"></button>
+                        <button id="proof-last" class="nav-btn" title="Last step" aria-label="Last step"></button>
                     </div>
                 </div>
                 <div id="proof-resize-handle" class="hidden"></div>

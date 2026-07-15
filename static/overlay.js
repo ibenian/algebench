@@ -4,6 +4,7 @@
 // ============================================================
 
 import { state } from '/state.js';
+import { GEAR_ICON } from '/icons.js';
 import { renderMarkdown, renderKaTeX, parseColor, colorToCSS, injectAskButtons, makeAiAskButton } from '/labels.js';
 import { compileExpr, evalExpr, _getMathNamesAndValues, EXTENSION_NAMES } from '/expr.js';
 import { getSliderIds, syncSliderState } from '/sliders.js';
@@ -989,6 +990,7 @@ window._algebenchUpdateStatusBar = updateStatusBar;
 export function setupSettingsPanel() {
     const toggle = document.getElementById('settings-toggle');
     const panel = document.getElementById('settings-panel');
+    toggle.innerHTML = GEAR_ICON;
     toggle.addEventListener('click', () => {
         panel.classList.toggle('hidden');
         toggle.classList.toggle('active');
