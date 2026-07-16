@@ -156,6 +156,11 @@ export class ProofAnimator {
     if (typeof opts.askOrigin === "string" && opts.askOrigin) {
       try { this._askOrigin = new URL(opts.askOrigin).origin; } catch (e) { /* invalid → keep default */ }
     }
+    // This proof's pre-baked-animation id (``<domain>/<name>``), when the host knows
+    // it (e.g. /prove opened a saved proof by id). Lets an explore/ask navigation to
+    // a same-app view carry ``?pa=`` so the docked animation travels along — even
+    // when neither the target deeplink nor this proof's own deeplink pinned it.
+    this._paId = (typeof opts.paId === "string" && opts.paId) ? opts.paId : null;
     this._deriveBtnEl = null;
     // Optional host hook fired after every internal relayout (resize / fonts), so
     // a host that scales this widget to fit a box (SgProofManager) can re-fit AFTER
@@ -922,15 +927,40 @@ export class ProofAnimator {
   // it on boot, opens chat, and sends it once (then strips it from the URL).
   //   • with a deeplink → that scene/step view + ?panel=chat&aa=<question>;
   //   • without        → the app's MAIN PAGE + ?panel=chat&aa=<question>.
+  // This proof's own pre-baked-animation id (the ?pa= on its proof-level deeplink),
+  // or null. Used to carry the docked animation onto explore/ask navigations whose
+  // target deeplink (a per-chip / per-step link) didn't pin one.
+  // This proof's own pre-baked-animation id: the host-supplied ``paId`` if any,
+  // else the ``?pa=`` on its proof-level deeplink. Null when neither is known.
+  _ownPaId() {
+    if (this._paId) return this._paId;
+    try {
+      const d = this.data && this.data.deeplink;
+      if (!d) return null;
+      const u = new URL(d, this._askOrigin || window.location.origin);
+      return u.searchParams.get("pa");
+    } catch (e) { return null; }
+  }
+
   _askTargetUrl(deeplink, message) {
     try {
       const origin = this._askOrigin || window.location.origin;
-      const u = new URL(deeplink || "/", origin);
+      const raw = deeplink || "/";
+      const u = new URL(raw, origin);
       if (u.origin !== origin) return null;   // off-origin deeplink → reject
       u.searchParams.set("panel", "chat");
       u.searchParams.set("aa", String(message).slice(0, 1500));
-      // If the deeplink loads a pre-baked proof animation (?pa=), carry the step the
-      // learner is currently on so the docked animation opens there, not at step 0.
+      // Carry THIS proof's pre-baked animation (?pa=) onto the target so the docked
+      // derivation travels with the navigation — even when the target didn't pin it.
+      // Only for a same-APP navigation: a relative deeplink (starts with "/", incl.
+      // the "/" default when there's no deeplink). A full http(s) address is treated
+      // as an external "go see it" cross-reference and left untouched. Never clobber
+      // a pa the target already chose.
+      const sameApp = raw.startsWith("/");
+      const ownPa = this._ownPaId();
+      if (sameApp && ownPa && !u.searchParams.has("pa")) u.searchParams.set("pa", ownPa);
+      // With a pa present, carry the step the learner is currently on so the docked
+      // animation opens there, not at step 0.
       if (u.searchParams.has("pa")) u.searchParams.set("pas", String(this.current));
       return u.href;
     } catch (e) { return null; }

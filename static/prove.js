@@ -241,6 +241,7 @@ async function openProof(id) {
     tab.title = data.title || id;
     entry.animator = new ProofAnimator(root, data, {
       katex: window.katex, liveTerms: true, enableTermAsk: true, enableExplore: true,
+      paId: id,   // same-app explore/ask navigations carry ?pa=<id> so the animation travels
       // This proof now has its own chat — a term "Ask AI" flows into it (step-
       // aware), not the app. The app hand-off is the explicit button below.
       onTermAsk: ({ message }) => chat.ask(message),
