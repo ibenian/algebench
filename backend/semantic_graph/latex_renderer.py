@@ -183,7 +183,15 @@ def _emit_body(n, ins, nodes, incoming, child, oid, gw) -> tuple[str, int]:
         return (_CONSTANT_LATEX.get(name, name), _ATOM)
     if t == "number":
         val = n.label if n.label is not None else n.value
-        return (str(val), _ATOM)
+        s = str(val)
+        # A SymPy infinity can land on a number node — notably ``-oo`` as an
+        # integral's lower bound, which the parser classifies as a number while
+        # ``+oo`` becomes a ``constant`` (rendered via _CONSTANT_LATEX). Without
+        # this, ``str(-oo)`` leaks the ASCII ``-oo`` into the LaTeX instead of
+        # ``-\infty``. Render the sign-carrying infinity the same way here.
+        if s.lstrip("+-") == "oo":
+            return (("-" if s.startswith("-") else "") + r"\infty", _ATOM)
+        return (s, _ATOM)
     if t == "function":
         # log/ln carry an optional ``base``-role operand (the parser splits the
         # base out as its own node — natural log gets base ``e``, ``log_b`` an

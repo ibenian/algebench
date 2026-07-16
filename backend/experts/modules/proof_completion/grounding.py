@@ -191,6 +191,27 @@ def graph_to_sympy(graph: SemanticGraph) -> sp.Expr:
     return ev(roots[0])
 
 
+def _sympify_exponent(raw) -> sp.Expr:
+    """Ground a power node's stored ``exponent``.
+
+    The exponent is stored in one of two formats: a plain number string from
+    ``_fmt_number`` (e.g. ``"2"``, ``"-1"``, ``"1/2"``) or a LaTeX subexpr from
+    ``_subexpr_ordered`` for the symbolic-negative case (e.g. ``-z^{2}`` for an
+    ``e^{-z^2}`` term). Plain ``sp.sympify`` handles the former but chokes on the
+    latter — the LaTeX braces ``{2}`` parse as a Python set, giving
+    ``Symbol ** set``. Try sympify first (fast, covers the numeric case) and fall
+    back to the LaTeX parser for the symbolic form.
+    """
+    try:
+        return sp.sympify(raw)
+    except Exception:
+        from sympy.parsing.latex import parse_latex
+        parsed = parse_latex(str(raw))
+        if parsed is None:
+            raise UngroundableGraph("power exponent")
+        return parsed
+
+
 def _eval_operator(n, op, ins, ev, nodes) -> sp.Expr:
     if op == "add":
         return sp.Add(*[ev(c) for _, c in ins])
@@ -207,7 +228,7 @@ def _eval_operator(n, op, ins, ev, nodes) -> sp.Expr:
             raise UngroundableGraph("power base")
         base = ev(bases[0])
         if n.exponent is not None:
-            exp = sp.sympify(n.exponent)
+            exp = _sympify_exponent(n.exponent)
         elif exps:
             exp = ev(exps[0])
         else:
