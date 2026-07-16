@@ -59,11 +59,18 @@ def _load_derive_draft(docid: str):
     ``{"prompt", "doc", "domain"}`` dict, or ``None`` for any failure (bad token,
     missing/oversize file, decode error). The token is the only caller input; the
     path is server-constructed, and the ``^[A-Za-z0-9_-]{6,64}$`` shape forbids
-    slashes and dots so traversal is structurally impossible.
+    slashes and dots so traversal is structurally impossible. sanitize_path adds
+    symlink-escape confinement (see below).
     """
     if not docid or not _DERIVE_DOCID_RE.match(docid):
         return None
-    path = _DERIVE_DRAFTS_DIR / f"{docid}.md"
+    # We build the filename ourselves (the regex already forbids slashes/dots), but
+    # route it through sanitize_path so its resolve()+is_relative_to also rejects a
+    # symlinked <docid>.md that a co-tenant on a shared /tmp planted to point outside
+    # the drafts dir (e.g. at /etc/passwd) — belt-and-braces for the DEBUG path.
+    path = sanitize_path(_DERIVE_DRAFTS_DIR, f"{docid}.md")
+    if not path:
+        return None
     try:
         if not path.is_file():
             return None

@@ -205,8 +205,15 @@ def _sympify_exponent(raw) -> sp.Expr:
     try:
         return sp.sympify(raw)
     except Exception:
+        # parse_latex can itself raise on malformed/unsupported LaTeX — funnel that
+        # into UngroundableGraph like every other grounding failure, so one bad
+        # exponent string is a clean "can't ground this" signal the caller already
+        # handles, not an unhandled exception that aborts the whole grounding.
         from sympy.parsing.latex import parse_latex
-        parsed = parse_latex(str(raw))
+        try:
+            parsed = parse_latex(str(raw))
+        except Exception as e:
+            raise UngroundableGraph("power exponent") from e
         if parsed is None:
             raise UngroundableGraph("power exponent")
         return parsed
