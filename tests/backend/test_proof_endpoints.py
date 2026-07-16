@@ -231,6 +231,20 @@ class TestDeriveDraftPrefill:
         client, drafts = debug_drafts
         assert _draft_attr(client.get("/prove", params={"draft": "../../etc/passwd"}).text) is None
 
+    def test_symlink_escape_ignored(self, debug_drafts, tmp_path):
+        # MALICIOUS CASE: on a shared /tmp a co-tenant plants <docid>.md as a symlink
+        # OUT of the drafts dir (e.g. -> /etc/passwd). The token passes the regex, so
+        # the defense is sanitize_path's resolve()+is_relative_to, which must reject
+        # the escape — otherwise the foreign file's contents would be read into the
+        # draft. If the guard regressed, _load_derive_draft would return that content
+        # (any readable text → a non-None dict), so `is None` is the meaningful check.
+        import os
+        client, drafts = debug_drafts
+        secret = tmp_path / "sekrit-outside-drafts.txt"
+        secret.write_text("TOP SECRET — would be a valid draft body if read")
+        os.symlink(secret, drafts / "evilxyz.md")     # /prove?draft=evilxyz
+        assert _draft_attr(client.get("/prove", params={"draft": "evilxyz"}).text) is None
+
     def test_bad_token_too_short_ignored(self, debug_drafts):
         client, _ = debug_drafts
         assert _draft_attr(client.get("/prove", params={"draft": "abc"}).text) is None

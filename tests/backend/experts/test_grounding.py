@@ -50,6 +50,22 @@ def test_graph_grounds_to_source_expression(latex, expected):
     assert is_grounded(g, expected) is True
 
 
+def test_sympify_exponent_handles_all_stored_forms_and_bad_input():
+    # A power node's exponent is stored as a plain number ("2"), a LaTeX subexpr
+    # ("-z^{2}" for e^{-z^2}), or — if the model emits junk — malformed LaTeX. The
+    # first two must ground; the third must raise UngroundableGraph (the clean
+    # "can't ground this" signal callers handle), NOT bubble up a raw parse_latex
+    # exception that aborts the whole grounding.
+    from backend.experts.modules.proof_completion.grounding import (
+        _sympify_exponent, UngroundableGraph,
+    )
+    z = sp.Symbol("z")
+    assert _sympify_exponent("2") == 2                 # numeric fast path (sympify)
+    assert _sympify_exponent("-z^{2}") == -z ** 2      # LaTeX fallback (parse_latex)
+    with pytest.raises(UngroundableGraph):
+        _sympify_exponent(r"\frac{")                   # malformed → clean raise
+
+
 def test_legacy_integral_without_differential_node_still_grounds():
     """Back-compat: an older graph that carries the integration variable on the
     integral's ``with_respect_to`` (with a ``wrt`` edge from the bare variable,
