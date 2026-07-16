@@ -86,7 +86,10 @@
     .ctl-btn { font: inherit; font-size: .85rem; cursor: pointer; padding: 6px 11px; border-radius: 7px;
                border: 1px solid var(--btn-border); background: var(--btn-bg); color: var(--btn-fg); }
     .ctl-btn:hover { background: var(--btn-hover); }
-    .ctl-btn.primary { border-color: var(--accent); color: var(--accent); }
+    /* Filled accent (matches the Derive button) so the primary action reads as
+       active, not as a low-emphasis outline that's confusable with disabled. */
+    .ctl-btn.primary { border-color: var(--accent); background: var(--accent); color: #fff; font-weight: 600; }
+    .ctl-btn.primary:hover { background: var(--accent); filter: brightness(1.08); }
     .doc-hint { font: inherit; font-size: .8rem; cursor: pointer; color: var(--accent);
                 background: var(--chip-bg); border: 1px solid var(--border-color);
                 border-radius: 999px; padding: 4px 11px; }
@@ -271,7 +274,7 @@
                 background: var(--panel-bg); color: var(--text-color); }
   </style>
 </head>
-<body data-debug="__DEBUG_MODE__">
+<body data-debug="__DEBUG_MODE__" data-derive-draft="__DERIVE_DRAFT__">
   <div class="wrap">
     <div class="prove-head">
       <a class="brand" href="/" aria-label="AlgeBench home">

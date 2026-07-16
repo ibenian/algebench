@@ -21,6 +21,7 @@ import { updateTitle, updateExplanationPanel, buildLegend, addInfoOverlay,
          getAllElements, updateStatusBar, updateStepCaption } from '/overlay.js';
 import { buildSceneTree, updateTreeHighlight, setNavigateFn } from '/context-browser.js';
 import { loadProof, syncProofFromSceneStep } from '/proof.js';
+import { validateProofData } from '/proof-animation/validate-proof.js';
 
 const AUTO_PLAY_DEFAULT_DURATION = 3000;
 
@@ -733,6 +734,73 @@ export async function loadLesson(spec) {
     buildSceneTree(spec);
     updateDockVisibility();
     navigateTo(0, -1);
+}
+
+// Path guard mirrors the one in graph-view.js dockProofAnimation.
+const _PROOF_ID_RE = /^[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+$/;
+const _PROOF_MAX_BYTES = 512 * 1024;
+
+/** Convert a pre-baked proof-animation file (proofs/domains/<id>.json) into a
+ *  minimal in-memory LESSON: one empty scene (no 3D elements) whose `proof` is the
+ *  reconstructed derivation. Feeding this through the normal lesson loader gives a
+ *  scene-less /prove proof the full app experience — real proof panel, per-step
+ *  semantic-graph derivation, and proof↔scene step sync — instead of a bespoke
+ *  standalone dock. The proof-file step shape (operation / input_latex /
+ *  justification) maps onto the lesson proofStep shape (label / math /
+ *  justification); per-step graphs are derived on demand from `math`. */
+export function proofFileToLesson(proof, id) {
+    const rawSteps = Array.isArray(proof.steps) ? proof.steps : [];
+    const steps = rawSteps.map((s, i) => ({
+        id: s.id || `step-${i}`,
+        type: i === 0 ? 'given' : (s.type || 'step'),
+        // operation carries the step title (may contain inline $…$ — renderKaTeX
+        // handles that); fall back to a generic label.
+        label: s.operation || s.label || `Step ${i + 1}`,
+        // `plain` is the CAS-normalized (un-annotated) form the proof animation
+        // renders from its `latex` field — use it so the panel matches the embedded
+        // animation exactly (e.g. e^{-z^2} shown as a fraction, not a raw negative
+        // exponent). `input_latex` (the raw expert form) is only a fallback.
+        math: s.plain || s.input_latex || s.math || '',
+        justification: s.justification || '',
+        sceneStep: 0,
+    }));
+    const title = proof.title || (id ? id.split('/')[1] : 'Proof');
+    return {
+        title,
+        scenes: [{
+            title,
+            // An empty scene: no 3D elements. The proof is the whole content.
+            markdown: typeof proof.goal === 'string' ? proof.goal : '',
+            proof: {
+                id: id || 'proof',
+                title,
+                goal: proof.goal || '',
+                technique: 'derivation',
+                steps,
+            },
+        }],
+    };
+}
+
+/** Fetch a pre-baked proof by id (<domain>/<name>), reconstruct an in-memory
+ *  lesson from it (see proofFileToLesson), and load it through the normal lesson
+ *  pipeline. Returns true on success. Best-effort/validated: a bad id or malformed
+ *  proof is a no-op returning false, so a deeplink never breaks. */
+export async function loadProofAsLesson(id) {
+    if (typeof id !== 'string' || id.includes('..') || !_PROOF_ID_RE.test(id)) return false;
+    let proof;
+    try {
+        const resp = await fetch(`/proofs/domains/${id}.json`, { cache: 'no-store' });
+        if (!resp.ok) return false;
+        const len = Number(resp.headers.get('content-length') || 0);
+        if (len && len > _PROOF_MAX_BYTES) return false;
+        const text = await resp.text();
+        if (text.length > _PROOF_MAX_BYTES) return false;
+        proof = validateProofData(JSON.parse(text));
+    } catch (e) { return false; }
+    if (!proof || !Array.isArray(proof.steps) || !proof.steps.length) return false;
+    await loadLesson(proofFileToLesson(proof, id));
+    return true;
 }
 
 export function navigateTo(sceneIdx, stepIdx) {
