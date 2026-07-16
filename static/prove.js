@@ -207,7 +207,7 @@ async function openProof(id) {
   const contDeep = document.createElement("span");
   contDeep.className = "continue-app-deep"; contDeep.hidden = true;
   continueBtn.append(contLabel, contDeep);
-  continueBtn.addEventListener("click", () => continueInAppWith(loadedProof, chat.history, id));
+  continueBtn.addEventListener("click", () => continueInAppWith(loadedProof, chat.history, id, animStep(entry.animator)));
   editBtn.addEventListener("click", () => editInDerive(loadedProof));   // clone → Derive
   const left = document.createElement("div");
   left.className = "derive-left";
@@ -241,6 +241,7 @@ async function openProof(id) {
     tab.title = data.title || id;
     entry.animator = new ProofAnimator(root, data, {
       katex: window.katex, liveTerms: true, enableTermAsk: true, enableExplore: true,
+      paId: id,   // same-app explore/ask navigations carry ?pa=<id> so the animation travels
       // This proof now has its own chat — a term "Ask AI" flows into it (step-
       // aware), not the app. The app hand-off is the explicit button below.
       onTermAsk: ({ message }) => chat.ask(message),
@@ -251,8 +252,16 @@ async function openProof(id) {
   }
 }
 
-/** Open the main AlgeBench app in a new tab, in chat, with the question. */
-function openInApp(message, deeplink, id) {
+/** The animator's current step index (0 = goal), or null if unavailable. */
+function animStep(anim) {
+  return anim && typeof anim.current === "number" ? anim.current : null;
+}
+
+/** Open the main AlgeBench app in a new tab, in chat, with the question.
+ *  Carries the proof animation (`pa`) and the step the user is on (`pas`) so the
+ *  app docks the same derivation at the same step. A proof's own `deeplink` may
+ *  already pin these — if so we respect them and only fill what's missing. */
+function openInApp(message, deeplink, id, step) {
   let u;
   try {
     u = new URL(deeplink || "/", location.origin);
@@ -260,7 +269,12 @@ function openInApp(message, deeplink, id) {
   } catch (e) { u = new URL("/", location.origin); }
   u.searchParams.set("panel", "chat");
   u.searchParams.set("aa", String(message || "").slice(0, 1500));   // app opens chat + sends once
-  if (!deeplink && id) u.searchParams.set("pa", id);                // load this proof's animation
+  if (id && !u.searchParams.has("pa")) u.searchParams.set("pa", id);   // load this proof's animation
+  // `pas` (step) only makes sense with a `pa` — either pinned in the deeplink or
+  // just added above. Don't clobber a step the deeplink already chose.
+  if ((u.searchParams.has("pa")) && step != null && !u.searchParams.has("pas")) {
+    u.searchParams.set("pas", String(step));
+  }
   window.open(u.toString(), "_blank", "noopener");
 }
 
@@ -669,12 +683,12 @@ function setContinue(btnEl, deepEl, proof) {
 
 /** Open the main app to continue: carry the proof (deep link or ?pa=<id>) and
  *  seed the app chat with the last thing the user asked here. */
-function continueInAppWith(proof, history, id) {
+function continueInAppWith(proof, history, id, step) {
   if (!proof) return;
   const lastUser = [...history].reverse().find((m) => m.role === "user");
   const seed = (lastUser && lastUser.text)
     || `Let's keep exploring: ${proof.title || "this derivation"}`;
-  openInApp(seed, proof.deeplink, id || null);
+  openInApp(seed, proof.deeplink, id || null, step);
 }
 
 /** Render a proof into the Derive workspace: fresh chat, live animator (term
@@ -709,6 +723,38 @@ function editInDerive(proof) {
   els.dPrompt.value = (clone.goal || "").replace(/\$/g, "").trim();
   const shown = (clone.title || "proof").replace(/^Deriving\s+/i, "");
   setStatus(`Editing ${shown} — ${clone.steps.length} steps. Chat to refine, or edit the prompt and Rederive.`, "ok");
+}
+
+/** Prefill the Derive tab from a local draft written by the `algebench-prove`
+ *  skill: /prove?draft=<docid> → the server (DEBUG only) resolves the token and
+ *  stamps {prompt, doc, domain} onto `data-derive-draft` (CSP forbids inline
+ *  scripts, so it rides a data-* attribute like data-debug). We fill the fields
+ *  and switch to the tab, but NEVER auto-run — the user reviews and clicks Derive. */
+function applyDeriveDraft() {
+  const raw = document.body.dataset.deriveDraft;
+  if (!raw) return;
+  let draft;
+  try { draft = JSON.parse(raw); } catch (e) { return; }
+  if (!draft || typeof draft !== "object") return;
+
+  switchTo("derive");
+  els.dPrompt.value = typeof draft.prompt === "string" ? draft.prompt : "";
+
+  const domain = typeof draft.domain === "string" ? draft.domain.trim() : "";
+  if (domain) {
+    // A known option → the dropdown; anything else → the custom-domain field
+    // (effectiveDomain() prefers the custom field, so clear the other).
+    const known = Array.from(els.dDomain.options).some((o) => o.value === domain);
+    if (known) { els.dDomain.value = domain; els.dDomainCustom.value = ""; }
+    else { els.dDomainCustom.value = domain; els.dDomain.value = ""; }
+  }
+
+  const doc = typeof draft.doc === "string" ? draft.doc : "";
+  els.dDoc.value = doc;
+  if (doc.trim()) openDocEditor(); else { updateDocCount(); refreshDocHint(); }
+
+  setStatus("Prefilled by algebench-prove — review the prompt and documentation, then click Derive.", "ok");
+  els.dPrompt.focus();
 }
 
 /** The special Derive/Rederive action (top): prompt (+ domain + docs) →
@@ -773,7 +819,7 @@ function showContinue(proof) {
 
 /** Derive-workspace app hand-off — carries the derived proof + this thread. */
 function continueInApp() {
-  continueInAppWith(deriveProof, chatHistory, null);
+  continueInAppWith(deriveProof, chatHistory, null, animStep(deriveAnimator));
 }
 
 /** Debug-only (CTX button): fetch and show the EXACT context — system prompt +
@@ -928,6 +974,10 @@ async function main() {
   // Deep-link: ?id=<domain>/<name> opens that proof on load.
   const deep = params().get("id");
   if (deep && ID_RE.test(deep)) openProof(deep);
+
+  // Prefill: /prove?draft=<docid> (DEBUG only) seeds the Derive tab from a local
+  // draft. Runs after the deep-link so an explicit ?draft wins the active tab.
+  applyDeriveDraft();
 }
 
 main();

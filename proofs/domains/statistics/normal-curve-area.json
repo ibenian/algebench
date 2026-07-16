@@ -1,0 +1,246 @@
+{
+  "title": "Area under the normal curve is 1",
+  "domain": "calculus",
+  "steps": [
+    {
+      "index": 0,
+      "operation": "Given $\\int_{-\\infty}^{\\infty} \\frac{1}{\\sigma \\sqrt{2\\pi}} e^{-\\frac{(x-\\mu)^2}{2\\sigma^2}} \\, dx$",
+      "justification": "Prove the normal distribution is a valid probability distribution. We START by integrating its density over the real line BECAUSE a valid density must integrate to 1 (total probability=1); the constant 1/(sigma*sqrt(2pi)) exists to enforce this. Then substitute z=(x-mu)/(sigma*sqrt2), reduce to the Gaussian integral, evaluate it as sqrt(pi) via polar coordinates, and conclude the total is 1.",
+      "input_latex": "\\int\\limits_{-\\infty}^{\\infty} \\frac{\\sqrt{2} \\cdot e^{- \\frac{\\left(- \\mu + x\\right)^{2}}{2 \\cdot \\sigma^{2}}}}{2 \\cdot \\sqrt{\\pi} \\cdot \\sigma}\\, dx",
+      "latex": "\\htmlData{n=__integral_1}{\\htmlData{n=__integral_1__int}{\\int}_{\\htmlData{n=__num_2}{-\\infty}}^{\\htmlData{n=__const_3}{\\infty}} \\htmlData{n=__multiply_4}{\\frac{\\htmlData{n=__multiply_5}{\\htmlData{n=__power_6}{\\sqrt{\\htmlData{n=__num_7}{2}}} \\htmlData{n=__multiply_5__m1}{\\cdot} \\htmlData{n=__power_8}{\\htmlData{n=e}{e}^{\\htmlData{n=__negation_9}{\\htmlData{n=__negation_9__op}{-} \\htmlData{n=__multiply_10}{\\htmlData{n=__power_11}{\\left(\\htmlData{n=__add_12}{\\htmlData{n=__negation_13}{\\htmlData{n=__negation_13__op}{-} \\htmlData{n=mu}{\\mu}} \\htmlData{n=__add_12__op1}{+} \\htmlData{n=x}{x}}\\right)^{\\htmlData{n=__power_11__exp}{2}}} \\htmlData{n=__multiply_10__m1}{\\cdot} \\htmlData{n=__multiply_14}{\\frac{\\htmlData{n=__num_15}{1/2}}{\\htmlData{n=sigma____multiply_14}{\\sigma}^{2}}}}}}}}}{\\htmlData{n=__multiply_18}{\\htmlData{n=__multiply_19}{\\htmlData{n=__num_20}{2} \\htmlData{n=__multiply_19__m1}{\\cdot} \\htmlData{n=__power_21}{\\sqrt{\\htmlData{n=pi}{\\pi}}}} \\htmlData{n=__multiply_18__m1}{\\cdot} \\htmlData{n=sigma____multiply_18}{\\sigma}}}}\\,\\htmlData{n=dx}{dx}}",
+      "plain": "\\int_{-\\infty}^{\\infty} \\frac{\\sqrt{2} \\cdot \\frac{1}{e^{ \\left(- \\mu + x\\right)^{2} \\cdot \\frac{1/2}{\\sigma^{2}}}}}{2 \\cdot \\sqrt{\\pi} \\cdot \\sigma}\\,dx",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": null,
+        "reason": "the given starting expression",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 1,
+      "operation": "Factor out the constant term from the integral",
+      "justification": "The constant term $\\frac{\\sqrt{2}}{2 \\cdot \\sqrt{\\pi} \\cdot \\sigma}$ can be factored out of the integral.",
+      "input_latex": "\\frac{\\sqrt{2}}{2 \\cdot \\sqrt{\\pi} \\cdot \\sigma} \\int\\limits_{-\\infty}^{\\infty} e^{- \\frac{\\left(x - \\mu\\right)^{2}}{2 \\cdot \\sigma^{2}}}\\, dx",
+      "latex": "\\htmlData{n=__multiply_5}{\\htmlData{n=__multiply_4}{\\frac{\\htmlData{n=__power_6}{\\sqrt{\\htmlData{n=__num_7}{2}}}}{\\htmlData{n=__multiply_18}{\\htmlData{n=__multiply_19}{\\htmlData{n=__num_20}{2} \\htmlData{n=__multiply_19__m1}{\\cdot} \\htmlData{n=__power_21}{\\sqrt{\\htmlData{n=pi}{\\pi}}}} \\htmlData{n=__multiply_18__m1}{\\cdot} \\htmlData{n=sigma____multiply_18}{\\sigma}}}} \\htmlData{n=__multiply_5__m1}{\\cdot} \\htmlData{n=__integral_10}{\\htmlData{n=__integral_10__int}{\\int}_{\\htmlData{n=__num_2}{-\\infty}}^{\\htmlData{n=__const_12}{\\infty}} \\htmlData{n=__power_8}{\\htmlData{n=e}{e}^{\\htmlData{n=__negation_9}{\\htmlData{n=__negation_9__op}{-} \\htmlData{n=__multiply_10}{\\htmlData{n=__power_11}{\\left(\\htmlData{n=__add_12}{\\htmlData{n=x}{x} \\htmlData{n=__negation_13}{\\htmlData{n=__negation_13__op}{-} \\htmlData{n=mu}{\\mu}}}\\right)^{\\htmlData{n=__power_11__exp}{2}}} \\htmlData{n=__multiply_10__m1}{\\cdot} \\htmlData{n=__multiply_14}{\\frac{\\htmlData{n=__num_15}{1/2}}{\\htmlData{n=sigma____multiply_14}{\\sigma}^{2}}}}}}}\\,\\htmlData{n=dx}{dx}}}",
+      "plain": "\\frac{\\sqrt{2}}{2 \\cdot \\sqrt{\\pi} \\cdot \\sigma} \\cdot \\int_{-\\infty}^{\\infty} \\frac{1}{e^{ \\left(x - \\mu\\right)^{2} \\cdot \\frac{1/2}{\\sigma^{2}}}}\\,dx",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 2,
+      "operation": "Apply the substitution $z = \\frac{x - \\mu}{\\sigma \\sqrt{2}}$",
+      "justification": "Substitute $z = \\frac{x - \\mu}{\\sigma \\sqrt{2}}$. This implies $dz = \\frac{1}{\\sigma \\sqrt{2}} dx$, so $dx = \\sigma \\sqrt{2} dz$. The exponent becomes $-z^2$. The limits of integration remain from $-\\infty$ to $\\infty$.",
+      "input_latex": "\\frac{\\sqrt{2}}{2 \\cdot \\sqrt{\\pi} \\cdot \\sigma} \\int\\limits_{-\\infty}^{\\infty} e^{-z^2} \\cdot \\sigma \\sqrt{2}\\, dz",
+      "latex": "\\htmlData{n=__multiply_5}{\\htmlData{n=__multiply_4}{\\frac{\\htmlData{n=__power_6}{\\sqrt{\\htmlData{n=__num_7}{2}}}}{\\htmlData{n=__multiply_18}{\\htmlData{n=__multiply_19}{\\htmlData{n=__num_20}{2} \\htmlData{n=__multiply_19__m1}{\\cdot} \\htmlData{n=__power_21}{\\sqrt{\\htmlData{n=pi}{\\pi}}}} \\htmlData{n=__multiply_18__m1}{\\cdot} \\htmlData{n=sigma____multiply_18}{\\sigma}}}} \\htmlData{n=__multiply_5__m1}{\\cdot} \\htmlData{n=_r1___integral_10}{\\htmlData{n=_r1___integral_10__int}{\\int}_{\\htmlData{n=__num_2}{-\\infty}}^{\\htmlData{n=__const_12}{\\infty}} \\htmlData{n=__multiply_13}{\\frac{\\htmlData{n=__multiply_15}{\\htmlData{n=sigma____multiply_15}{\\sigma} \\htmlData{n=__multiply_15__m1}{\\cdot} \\htmlData{n=_r2___power_16}{\\sqrt{\\htmlData{n=__num_17}{2}}}}}{\\htmlData{n=e}{e}^{z^{2}}}}\\,\\htmlData{n=dz}{dz}}}",
+      "plain": "\\frac{\\sqrt{2}}{2 \\cdot \\sqrt{\\pi} \\cdot \\sigma} \\cdot \\int_{-\\infty}^{\\infty} \\frac{\\sigma \\cdot \\sqrt{2}}{e^{z^{2}}}\\,dz",
+      "confidence": {
+        "tier": "domain",
+        "label": "Domain",
+        "icon": "🎓",
+        "meaning": "valid by domain knowledge, not a symbolic identity the CAS can check",
+        "relation": "unknown",
+        "reason": "valid by domain knowledge — the CAS could not check this symbolically; a domain expert accepts it (confidence 100%): Calculus: Change of Variables (Substitution Rule) for Definite Integrals",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 3,
+      "operation": "Simplify the constant coefficients",
+      "justification": "Simplify the constant terms outside the integral: $\\frac{\\sqrt{2}}{2 \\cdot \\sqrt{\\pi} \\cdot \\sigma} \\cdot \\sigma \\sqrt{2} = \\frac{2 \\cdot \\sigma}{2 \\cdot \\sqrt{\\pi} \\cdot \\sigma} = \\frac{1}{\\sqrt{\\pi}}$.",
+      "input_latex": "\\frac{1}{\\sqrt{\\pi}} \\int\\limits_{-\\infty}^{\\infty} e^{-z^2}\\, dz",
+      "latex": "\\htmlData{n=__multiply_1}{\\frac{\\htmlData{n=__integral_4}{\\htmlData{n=__integral_4__int}{\\int}_{\\htmlData{n=__num_2}{-\\infty}}^{\\htmlData{n=__const_6}{\\infty}} \\htmlData{n=__power_14}{\\frac{\\htmlData{n=__power_14__one}{1}}{\\htmlData{n=e}{e}^{z^{2}}}}\\,\\htmlData{n=dz}{dz}}}{\\htmlData{n=__power_21}{\\sqrt{\\htmlData{n=pi}{\\pi}}}}}",
+      "plain": "\\frac{\\int_{-\\infty}^{\\infty} \\frac{1}{e^{z^{2}}}\\,dz}{\\sqrt{\\pi}}",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 4,
+      "operation": "Evaluate the Gaussian integral",
+      "justification": "The integral $\\int\\limits_{-\\infty}^{\\infty} e^{-z^2}\\, dz$ is the Gaussian integral, which is known to evaluate to $\\sqrt{\\pi}$.",
+      "input_latex": "\\frac{1}{\\sqrt{\\pi}} \\cdot \\sqrt{\\pi}",
+      "latex": "\\htmlData{n=_r1___multiply_1}{\\frac{\\htmlData{n=__power_4}{\\sqrt{\\htmlData{n=pi____power_4}{\\pi}}}}{\\htmlData{n=__power_21}{\\sqrt{\\htmlData{n=pi____power_21}{\\pi}}}}}",
+      "plain": "\\frac{\\sqrt{\\pi}}{\\sqrt{\\pi}}",
+      "confidence": {
+        "tier": "domain",
+        "label": "Domain",
+        "icon": "🎓",
+        "meaning": "valid by domain knowledge, not a symbolic identity the CAS can check",
+        "relation": "unknown",
+        "reason": "valid by domain knowledge — the CAS could not check this symbolically; a domain expert accepts it (confidence 100%): Known value of the Gaussian integral: $\\int_{-\\infty}^{\\infty} e^{-x^2}\\, dx = \\sqrt{\\pi}$",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 5,
+      "operation": "Simplify the expression",
+      "justification": "Multiply the remaining terms.",
+      "input_latex": "1",
+      "latex": "\\htmlData{n=__num_1}{1}",
+      "plain": "1",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    }
+  ],
+  "overall_confidence": {
+    "tier": "domain",
+    "label": "Domain",
+    "icon": "🎓",
+    "meaning": "valid by domain knowledge, not a symbolic identity the CAS can check",
+    "relation": null,
+    "reason": "3/5 steps verified · 2 domain-justified · endpoint reached",
+    "type_consistent": true,
+    "counts": {
+      "refuted": 0,
+      "unchecked": 0,
+      "plausible": 0,
+      "domain": 2,
+      "verified": 0,
+      "grounded": 3
+    },
+    "endpoint_reached": true
+  },
+  "terms": {
+    "__const_3": {
+      "latex": "\\infty",
+      "name": "infinity",
+      "description": "The upper limit of integration, representing positive infinity."
+    },
+    "__integral_1": {
+      "latex": "\\int\\limits_{-\\infty}^{\\infty} \\frac{\\sqrt{2} \\cdot e^{- \\frac{\\left(- \\mu + x\\right)^{2}}{2 \\cdot \\sigma^{2}}}}{2 \\cdot \\sqrt{\\pi} \\cdot \\sigma}\\, dx",
+      "name": "\\int\\limits_{-\\infty}^{\\infty} \\frac{\\sqrt{2} \\cdot e^{- \\frac{\\left(- \\mu + x\\right)^{2}}{2 \\cdot \\sigma^{2}}}}{2 \\cdot \\sqrt{\\pi} \\cdot \\sigma}\\, dx",
+      "description": "The definite integral of the normal probability density function over its entire domain, which is being evaluated to demonstrate it equals 1."
+    },
+    "dx": {
+      "latex": "dx",
+      "name": "dx",
+      "description": "The differential element indicating integration with respect to the variable $x$."
+    },
+    "__power_8": {
+      "latex": "e^{- \\frac{\\left(- \\mu + x\\right)^{2}}{2 \\sigma^{2}}}",
+      "name": "e^{- \\frac{\\left(- \\mu + x\\right)^{2}}{2 \\sigma^{2}}}",
+      "description": "The exponential component of the normal probability density function, which dictates the shape of the bell curve."
+    },
+    "e": {
+      "latex": "e",
+      "name": "e",
+      "description": "Euler's number, the base of the natural logarithm, used in the exponential function."
+    },
+    "__power_11": {
+      "latex": "\\left(- \\mu + x\\right)^{2}",
+      "name": "\\left(- \\mu + x\\right)^{2}",
+      "description": "The squared difference between the random variable $x$ and the mean $\\mu$, appearing in the exponent of the normal distribution."
+    },
+    "mu": {
+      "latex": "\\mu",
+      "name": "\\mu",
+      "description": "The mean (or expected value) of the normal distribution."
+    },
+    "x": {
+      "latex": "x",
+      "name": "x",
+      "description": "The random variable over which the normal probability density function is defined."
+    },
+    "__power_16": {
+      "latex": "\\frac{1}{\\sigma^{2}}",
+      "name": "\\frac{1}{\\sigma^{2}}",
+      "description": "The inverse of the variance $\\sigma^2$, which scales the squared difference in the exponent of the normal distribution."
+    },
+    "sigma": {
+      "latex": "\\sigma",
+      "name": "\\sigma",
+      "description": "The standard deviation of the normal distribution, a measure of the spread of the data."
+    },
+    "__power_17": {
+      "latex": "\\frac{1}{2 \\sqrt{\\pi} \\sigma}",
+      "name": "\\frac{1}{2 \\sqrt{\\pi} \\sigma}",
+      "description": "A constant factor in the normal probability density function, ensuring that the total area under the curve is 1."
+    },
+    "__power_21": {
+      "latex": "\\sqrt{\\pi}",
+      "name": "\\sqrt{\\pi}",
+      "description": "The square root of pi, appearing as part of the normalization constant of the normal distribution."
+    },
+    "pi": {
+      "latex": "\\pi",
+      "name": "\\pi",
+      "description": "The mathematical constant pi, approximately 3.14159."
+    },
+    "__const_12": {
+      "latex": "\\infty",
+      "name": "infinity",
+      "description": "The upper limit of integration, representing positive infinity."
+    },
+    "__integral_10": {
+      "latex": "\\int\\limits_{-\\infty}^{\\infty} e^{- \\frac{\\left(- \\mu + x\\right)^{2}}{2 \\sigma^{2}}}\\, dx",
+      "name": "\\int\\limits_{-\\infty}^{\\infty} e^{- \\frac{\\left(- \\mu + x\\right)^{2}}{2 \\sigma^{2}}}\\, dx",
+      "description": "The integral of the exponential part of the normal probability density function, before applying the full normalization constant."
+    },
+    "_r1___integral_10": {
+      "latex": "\\int\\limits_{-\\infty}^{\\infty} e^{- z^{2}} \\sqrt{2} \\sigma\\, dz",
+      "name": "\\int\\limits_{-\\infty}^{\\infty} e^{- z^{2}} \\sqrt{2} \\sigma\\, dz",
+      "description": "The integral after a substitution, transforming the original exponential term into $e^{-z^2}$ for simplification."
+    },
+    "dz": {
+      "latex": "dz",
+      "name": "dz",
+      "description": "The differential element indicating integration with respect to the variable $z$ after a substitution."
+    },
+    "__power_14": {
+      "latex": "e^{- z^{2}}",
+      "name": "e^{- z^{2}}",
+      "description": "The simplified exponential term $e^{-z^2}$ after a substitution, representing the integrand of the Gaussian integral."
+    },
+    "__const_6": {
+      "latex": "\\infty",
+      "name": "infinity",
+      "description": "The upper limit of integration, representing positive infinity."
+    },
+    "__integral_4": {
+      "latex": "\\int\\limits_{-\\infty}^{\\infty} e^{- z^{2}}\\, dz",
+      "name": "\\int\\limits_{-\\infty}^{\\infty} e^{- z^{2}}\\, dz",
+      "description": "The standard Gaussian integral $\\int_{-\\infty}^{\\infty} e^{-z^2}\\, dz$, which evaluates to $\\sqrt{\\pi}$."
+    },
+    "__power_4": {
+      "latex": "\\sqrt{\\pi}",
+      "name": "\\sqrt{\\pi}",
+      "description": "The value of the standard Gaussian integral $\\int_{-\\infty}^{\\infty} e^{-z^2}\\, dz$, which is $\\sqrt{\\pi}$."
+    }
+  },
+  "goal": "This derivation proves that the integral of the normal probability density function over the entire real line is $1$, confirming its validity as a probability distribution.",
+  "followups": [
+    "How is the Gaussian integral $\\int\\limits_{-\\infty}^{\\infty} e^{-x^2} dx = \\sqrt{\\pi}$ derived using polar coordinates?",
+    "What is the significance of the parameters $\\mu$ and $\\sigma$ in the normal distribution?",
+    "Can we derive the mean and variance of the normal distribution from its PDF?",
+    "How does the cumulative distribution function (CDF) relate to this integral?"
+  ],
+  "prerequisites": [
+    "Integration by substitution",
+    "Properties of definite integrals",
+    "The Gaussian integral $\\int\\limits_{-\\infty}^{\\infty} e^{-x^2} dx = \\sqrt{\\pi}$",
+    "Basic properties of probability density functions"
+  ]
+}

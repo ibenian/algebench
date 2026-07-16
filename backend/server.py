@@ -39,7 +39,9 @@ scenes_dir = script_dir / "scenes"
 # Treat every file here as untrusted input — the render path makes no trust
 # assumptions about its contents. See docs/shareable-proof-animations.md.
 proofs_dir = script_dir / "proofs"
-_MAX_PROOF_BYTES = 2_000_000   # size cap for a served proof JSON (matches the client)
+
+# The /prove page + /proofs file-serving routes (and their Derive-tab prefill
+# draft loader) live in backend/proof_api/pages.py — mounted in create_app.
 
 # ---------------------------------------------------------------------------
 # Semantic-graph auto-derivation for proof steps missing explicit graphs.
@@ -428,7 +430,7 @@ style_css_path  = static_dir / "style.css"
 
 # ---------------------------------------------------------------------------
 from backend.util import sanitize_path, limiter_from_env, rate_limit_dependency  # noqa: E402
-from backend.proof_api import build_proof_router  # noqa: E402
+from backend.proof_api import build_proof_router, build_proof_pages_router  # noqa: E402
 
 # Per-IP rate limits for billable (Gemini-backed) endpoints. Override via env
 # as "count/seconds", e.g. ALGEBENCH_RATELIMIT_CHAT="10/60". Limits protect the
@@ -1678,60 +1680,12 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
             }
         )
 
-    @fastapp.get("/prove")
-    async def get_prove(theme: str = ""):
-        """Serve the public /prove page — an isolated proof browser (and, later,
-        an AI-driven derivation chat). Reuses the proof-animation widget like
-        /renderproof, but this page also calls the same-origin proof-store API
-        (/api/proofs*), hence `connect-src 'self'`. Not embeddable (interactive),
-        so `frame-ancestors 'self'`."""
-        path = static_dir / "prove.html"
-        if not path.is_file():
-            return Response(status_code=404)
-        with open(path, 'r') as f:
-            html = (f.read()
-                    .replace('__APP_VERSION__', get_app_version())
-                    .replace('__DEBUG_MODE__', 'true' if DEBUG_MODE else 'false'))
-        if theme in ("light", "dark"):
-            html = html.replace('<html lang="en">',
-                                f'<html lang="en" data-theme="{theme}">', 1)
-        return HTMLResponse(
-            content=html,
-            headers={
-                "Cache-Control": "no-cache, no-store, must-revalidate",
-                "Content-Security-Policy": (
-                    "default-src 'self'; "
-                    "script-src 'self' https://cdn.jsdelivr.net; "
-                    "style-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; "
-                    "font-src 'self' https://cdn.jsdelivr.net data:; "
-                    "img-src 'self' data:; "
-                    "connect-src 'self'; "
-                    "frame-ancestors 'self'; "
-                    "object-src 'none'; "
-                    "base-uri 'none'"
-                ),
-            }
-        )
-
-    @fastapp.get("/proofs/{path:path}")
-    async def get_proof_file(path: str):
-        """Serve a built-in proof JSON from proofs/, confined and .json-only.
-
-        Double-gated against traversal: sanitize_path keeps the result inside
-        proofs/ (rejecting .., absolute paths and symlink escapes) and the suffix
-        allowlist rejects anything that isn't .json."""
-        proof_path = sanitize_path(proofs_dir, path)
-        if not proof_path or not proof_path.is_file() or proof_path.suffix != '.json':
-            return Response(status_code=404)
-        # Treat proofs as untrusted: bound the read so a huge file can't exhaust
-        # memory/bandwidth (mirrors the client's MAX_BYTES; see the security model).
-        # A bounded read (not stat()) keeps this to the single, already-vetted open().
-        with open(proof_path, 'rb') as f:
-            data = f.read(_MAX_PROOF_BYTES + 1)
-        if len(data) > _MAX_PROOF_BYTES:
-            return Response(status_code=413)
-        return Response(content=data, media_type="application/json",
-                        headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+    # /prove page + /proofs file serving (and the DEBUG-only Derive-tab prefill)
+    # — see backend/proof_api/pages.py.
+    fastapp.include_router(build_proof_pages_router(
+        proofs_dir=proofs_dir, static_dir=static_dir,
+        debug_mode=DEBUG_MODE, get_app_version=get_app_version,
+    ))
 
     # /prove page proof storage API (catalog, claim, CAS update/delete,
     # source material, cross-refs) — see backend/proof_api/routes.py.

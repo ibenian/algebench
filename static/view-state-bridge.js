@@ -19,7 +19,7 @@ import { state } from '/state.js';
 import { SHARE_VIEW_ICON } from '/icons.js';
 import { serializeViewState, parseViewState, slugify, fmtNum } from '/view-state.js';
 import { pushView, replaceView, isApplyingFromHistory } from '/nav-history.js';
-import { navigateTo } from '/scene-loader.js';
+import { navigateTo, loadProofAsLesson } from '/scene-loader.js';
 import { loadBuiltinScene, loadSceneFromPath } from '/ui.js';
 import { setActiveProof, navigateProof, setProofPanelOpen } from '/proof.js';
 import { setSliderValue } from '/sliders.js';
@@ -198,10 +198,17 @@ export async function applyViewState(vs, opts = {}) {
     _applying = true;
     try {
         // 1. Ensure the right lesson source is loaded.
+        let paLesson = false;
         if (vs.builtin && vs.builtin !== currentBuiltin()) {
             await loadBuiltinScene(vs.builtin);
         } else if (vs.scene && vs.scene !== state.currentSceneSourcePath) {
             await loadSceneFromPath(vs.scene);
+        } else if (vs.pa && !vs.builtin && !vs.scene && !opts.fromHistory) {
+            // A scene-less pre-baked proof (the /prove "Continue in main app" hand-off):
+            // reconstruct an in-memory lesson from the proof and load it, so it opens
+            // with the real proof panel + graph step-sync rather than a bare dock. On
+            // success we DON'T also dock it (step 5b′) — it's now a lesson scene proof.
+            paLesson = await loadProofAsLesson(vs.pa);
         }
 
         // 2. Scene / step.
@@ -242,6 +249,23 @@ export async function applyViewState(vs, opts = {}) {
             }
         }
 
+        // 3′. Reconstructed proof lesson (?pa= with no scene, step 1): open its
+        //     proof panel and jump to the step the learner was viewing (?pas=). The
+        //     lesson has exactly one scene proof — select it and navigate. Force the
+        //     proof panel open via vs.pp so step 5c (setProofPanelOpen(!!vs.pp))
+        //     keeps it open instead of closing it (the hand-off URL has no pp).
+        if (paLesson && Array.isArray(state.proofSpec) && state.proofSpec.length) {
+            vs.pp = true;
+            const prevLatch = state._proofSyncInProgress;
+            state._proofSyncInProgress = true;
+            try {
+                setActiveProof(0);
+                navigateProof(Number.isFinite(vs.pas) ? vs.pas : 0);
+            } finally {
+                state._proofSyncInProgress = prevLatch;
+            }
+        }
+
         // 4. Slider overrides (apply instantly — no rAF dependency).
         if (vs.sliders) {
             for (const [id, val] of Object.entries(vs.sliders)) {
@@ -279,9 +303,11 @@ export async function applyViewState(vs, opts = {}) {
         }
 
         // 5b′. Pre-baked proof animation (?pa=): fetch + dock it on the selected
-        //      node, so a deeplink SHOWS the proof animation without an LM re-derive.
-        //      Runs after the graph rendered (5b); load-once (not serialized), so it
-        //      doesn't re-fire on back/forward. Best-effort — never blocks the rest.
+        //      node, so a deeplink SHOWS the morphing proof animation without an LM
+        //      re-derive. Runs after the graph rendered (5b); load-once (not
+        //      serialized), so it doesn't re-fire on back/forward. This also embeds
+        //      the animation over a reconstructed proof-lesson (3′) — its graph now
+        //      exists, so the manager docks it there. Best-effort — never blocks.
         if (vs.pa && !opts.fromHistory && g && typeof g.dockProofAnimation === 'function') {
             const anchorNode = (Array.isArray(vs.nodes) && vs.nodes.length)
                 ? vs.nodes[vs.nodes.length - 1] : null;
