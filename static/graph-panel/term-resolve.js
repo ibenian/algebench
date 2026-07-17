@@ -60,9 +60,16 @@ export function apprSkeleton(s) {
         if (!NOISE_COMMANDS.has(name)) tokens.push(name);
     }
     // Everything outside commands: letters/digits one token each, mapped glyphs
-    // by name; punctuation/operators/whitespace are layout noise.
+    // by name, and MINUS signs. Order-insensitivity must not erase sign
+    // structure — `x+y` and `x−y` are different content, so dropping signs
+    // would let a counter-collision between them "verify". Minus count is the
+    // reorder-proof invariant: sympy prints `x - μ` as `- \mu + x`, so a `+`
+    // appears/disappears with term order while the `-` glyph count doesn't —
+    // keep `-`, ignore `+` (implied by absence). Remaining punctuation /
+    // multiplication dots / whitespace are layout noise.
     for (const ch of str.replace(/\\[a-zA-Z]+/g, '')) {
         if (/[a-zA-Z0-9]/.test(ch)) tokens.push(ch.toLowerCase());
+        else if (ch === '-' || ch === '−') tokens.push('-');
         else if (GLYPH_TOKENS[ch]) tokens.push(GLYPH_TOKENS[ch]);
     }
     return tokens.sort().join(' ');

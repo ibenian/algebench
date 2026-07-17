@@ -43,3 +43,21 @@ def test_known_functions_still_render_normally():
     """The undefined-function branch must not swallow modeled names."""
     out = to_latex(_g(r"\sin(x) + \sqrt{x}", domain="physics"), with_ids=True)
     assert r"\sin" in out and r"\sqrt" in out
+
+
+def test_command_named_function_keeps_its_latex_form():
+    """A function whose node carries a LaTeX command (``\\psi``) must render
+    that command, not ``\\operatorname{psi}`` re-derived from the bare op
+    (Copilot review, PR #477)."""
+    out = to_latex(_g(r"\psi(x) = x^2", domain="quantum"))
+    assert r"\psi\left(x\right)" in out, out
+    assert "operatorname" not in out, out
+
+
+def test_indexed_function_name_keeps_math_subscript():
+    """``f_{1}(x)`` is an indexed single-letter name — it must keep its normal
+    math-italic subscript, not be uprighted just because the op string is
+    multi-character (Copilot review, PR #477)."""
+    out = to_latex(_g(r"f_{1}(x) = x^2"))
+    assert "f_{1}\\left(x\\right)" in out, out
+    assert "operatorname" not in out, out

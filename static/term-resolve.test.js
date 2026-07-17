@@ -78,3 +78,16 @@ test('empty term text cannot verify a structural id', () => {
     assert.equal(resolveTermId(APP_GRAPH, '__power_7', ''), null);
     assert.equal(contentAgrees({ subexpr: '\\sqrt{\\pi}' }, ''), false);
 });
+
+test('sign structure survives the skeleton (Copilot review, PR #477)', () => {
+    // x+y and x−y must NOT reduce to the same skeleton…
+    assert.notEqual(apprSkeleton('x+y'), apprSkeleton('x−y'));
+    // …so a counter-collision between sign-differing nodes cannot "verify".
+    assert.equal(contentAgrees({ subexpr: 'x + y' }, 'x−y'), false);
+    assert.equal(contentAgrees({ subexpr: 'x - y' }, 'x−y'), true);
+    // minus count (not `+`) is the reorder-proof invariant: sympy prints
+    // `x - μ` as `- \mu + x` — the `+` migrates with term order, the `-` stays.
+    assert.equal(apprSkeleton('x − μ'), apprSkeleton('- \\mu + x'));
+    // unicode minus ≡ ascii minus; sympy reordering still tolerated
+    assert.equal(apprSkeleton('\\left(- \\mu + x\\right)^{2}'), apprSkeleton('(−μ+x)2'));
+});
