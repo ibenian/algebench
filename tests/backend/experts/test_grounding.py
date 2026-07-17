@@ -208,3 +208,41 @@ def test_chained_inequality_grounds_as_conjunction():
     assert is_grounded(g, expected) is True
     # and a WRONG corridor is rejected, not blessed
     assert is_grounded(g, sp.And(a <= x, x <= a)) is False
+
+
+def test_undefined_function_application_grounds_opaquely():
+    # ``f(x) = ...`` — a function name the grounder doesn't model — used to raise
+    # UngroundableGraph("function 'f'"), dropping the state to "unchecked" in the
+    # step checker. It must ground as an *undefined* sympy function application:
+    # opaque (nothing evaluates) but structurally comparable across states.
+    f = sp.Function("f")
+    got = graph_to_sympy(SVC.latex_to_graph(r"f(x) = x^2"))
+    assert got == sp.Eq(f(x), x ** 2)
+    # the real regression: the normal-distribution PDF finale (substitute the
+    # derived constant back into the density's general form)
+    pdf = graph_to_sympy(SVC.latex_to_graph(
+        r"f(x) = \frac{1}{\sigma\sqrt{2\pi}} e^{-\frac{(x-\mu)^2}{2\sigma^2}}",
+        domain="statistics"))
+    assert isinstance(pdf, sp.Equality)
+    assert pdf.lhs.func == f
+    # opaque soundness: same function+args equal, different functions are not
+    assert graph_to_sympy(SVC.latex_to_graph(r"f(x)")) == f(x)
+    assert graph_to_sympy(SVC.latex_to_graph(r"g(x)")) != f(x)
+
+
+def test_substitution_into_definition_grades_plausible_not_unchecked():
+    # The transition "C = 1/(σ√(2π))  →  f(x) = C·e^{...} with C substituted"
+    # introduces a definition rather than transforming the previous equation, so
+    # the CAS cannot decide it — but with f(x) grounding as an undefined function
+    # the state is convertible, and the pair must rank BLUE (plausible, eligible
+    # for the domain-judge rescue) instead of GRAY (unchecked).
+    from backend.experts.modules.proof_completion.step_grounding import (
+        Tier, classify_pair,
+    )
+    prev = graph_to_sympy(SVC.latex_to_graph(
+        r"C = \frac{1}{\sigma \sqrt{2 \cdot \pi}}", domain="statistics"))
+    curr = graph_to_sympy(SVC.latex_to_graph(
+        r"f(x) = \frac{1}{\sigma\sqrt{2\pi}} e^{-\frac{(x-\mu)^2}{2\sigma^2}}",
+        domain="statistics"))
+    verdict = classify_pair(prev, curr, change_type="substitute", index=9)
+    assert verdict.tier == Tier.BLUE

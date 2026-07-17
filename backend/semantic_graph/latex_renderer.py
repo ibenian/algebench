@@ -220,6 +220,23 @@ def _emit_body(n, ins, nodes, incoming, child, oid, gw) -> tuple[str, int]:
                         base = child(base_ins[0], _LOGIC)
                         return (rf"{nm}_{{{base}}}\left({arg}\right)", _ATOM)
                 return (f"{nm}\\left({arg}\\right)", _ATOM)   # natural / implicit base
+        if (op and ins and op not in ("sqrt", "abs", "i")
+                and _FUNC_LATEX.get(op) is None
+                and all(role != "base" for role, _ in ins)):
+            # Unmodeled name applied to arguments (``f(x)``, ``g(u, v)``): render
+            # as a plain application so the state keeps its id-annotated LaTeX
+            # (and FLIP morphing) instead of falling back to the raw string.
+            # Mirrors the grounding-side undefined-function case. Prefer the
+            # node's own ``latex`` (``\psi`` for op ``psi`` — re-deriving from
+            # ``op`` would lose the command form), and wrap ONLY plain
+            # multi-letter ASCII identifiers (``erf``) in ``\operatorname`` so
+            # they draw upright instead of as a product of italic letters —
+            # indexed names (``f_{1}``) keep normal math subscripts.
+            name = getattr(n, "latex", None) or op
+            if len(name) > 1 and name.isascii() and name.isalpha():
+                name = rf"\operatorname{{{name}}}"
+            args = ", ".join(child(c, _LOGIC) for _, c in ins)
+            return (f"{gw(oid + '__name', name)}\\left({args}\\right)", _ATOM)
         if len(ins) != 1:
             raise StructuralRenderError(f"function {op!r} arity {len(ins)}")
         arg = child(ins[0][1], _LOGIC)

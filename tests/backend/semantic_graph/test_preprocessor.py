@@ -309,3 +309,48 @@ class TestNormalizeFuncCallBraces:
         # cosine's argument is exactly x^2 — the "\cdot 2" lives OUTSIDE it.
         assert r"\cos\left(x^{2}\right)" in rendered
         assert r"x^{2} \cdot 2" not in rendered
+
+
+class TestNormalizeAppliedSymbolBraces:
+    """``f{\\left(x\\right)}`` — sympy's printer spelling for an UNDEFINED
+    function application — used to parse as implicit multiplication (``f·x``),
+    so a derivation finale like ``f{\\left(x\\right)} = …`` displayed and
+    grounded as ``f \\cdot x = …``. The pass drops the brace group for a bare
+    applied symbol so both spellings parse as a ``function`` node."""
+
+    def norm(self, s: str) -> str:
+        return LaTeXPreprocessor.normalize_applied_symbol_braces(s)
+
+    @pytest.mark.parametrize("latex,expected", [
+        # the printer's exact output for Function('f')(x)
+        (r"f{\left(x \right)} = x^2", r"f\left(x \right) = x^2"),
+        # indexed function: printer spelling f_{1}(x)
+        (r"f_{1}{\left(x \right)}", r"f_{1}\left(x \right)"),
+        (r"g_c{\left(u \right)}", r"g_c\left(u \right)"),
+        # plain-paren group in braces
+        (r"f{(x)}", r"f(x)"),
+        # NOT touched: structural commands, ordinary brace groups, \-functions
+        (r"\frac{1}{2}", r"\frac{1}{2}"),
+        (r"\sqrt{x}", r"\sqrt{x}"),
+        (r"x^{2}", r"x^{2}"),
+        (r"e^{-x^{2}}", r"e^{-x^{2}}"),
+        # brace group that is NOT one delimited group stays (implicit mult)
+        (r"f{x}", r"f{x}"),
+        # letter inside an identifier run / after a command is not a candidate
+        (r"\cos{\left(x \right)}", r"\cos{\left(x \right)}"),
+    ])
+    def test_applied_symbol_braces(self, latex, expected):
+        assert self.norm(latex) == expected
+
+    def test_end_to_end_function_node(self):
+        # The whole point: the printer spelling must parse as an APPLICATION,
+        # not implicit multiplication (regression: "f · x =" in the /prove UI).
+        from backend.semantic_graph.service import SemanticGraphService
+        svc = SemanticGraphService()
+        g = svc.latex_to_graph(
+            r"f{\left(x \right)} = \frac{1}{\sigma \cdot \sqrt{2 \cdot \pi}}"
+            r" \cdot e^{- \frac{\left(x - \mu\right)^{2}}{2 \cdot \sigma^{2}}}",
+            domain="statistics")
+        assert g is not None
+        kinds = {(n.type, n.op) for n in g.nodes}
+        assert ("function", "f") in kinds

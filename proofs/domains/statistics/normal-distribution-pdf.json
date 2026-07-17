@@ -1,0 +1,297 @@
+{
+  "title": "Deriving $f(x) = \\frac{1}{\\sigma\\sqrt{2\\pi}} e^{-\\frac{(x-\\mu)^2}{2\\sigma^2}}$ from $C \\cdot \\int\\limits_{-\\infty}^{\\infty} e^{- \\frac{\\left(- \\mu + x\\right)^{2}}{2 \\cdot \\sigma^{2}}}\\, dx = 1$",
+  "domain": "statistics",
+  "steps": [
+    {
+      "index": 0,
+      "operation": "Given $C \\int_{-\\infty}^{\\infty} e^{-\\frac{(x-\\mu)^2}{2\\sigma^2}} dx = 1$",
+      "justification": "the starting expression",
+      "input_latex": "C \\cdot \\int\\limits_{-\\infty}^{\\infty} e^{- \\frac{\\left(- \\mu + x\\right)^{2}}{2 \\cdot \\sigma^{2}}}\\, dx = 1",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__multiply_2}{\\htmlData{n=C}{C} \\htmlData{n=__multiply_2__m1}{\\cdot} \\htmlData{n=__integral_3}{\\htmlData{n=__integral_3__int}{\\int}_{\\htmlData{n=__num_4}{-\\infty}}^{\\htmlData{n=__const_5}{\\infty}} \\htmlData{n=__power_6}{\\htmlData{n=e}{e}^{\\htmlData{n=__negation_7}{\\htmlData{n=__negation_7__op}{-} \\htmlData{n=__multiply_8}{\\htmlData{n=__power_9}{\\left(\\htmlData{n=__add_10}{\\htmlData{n=__negation_11}{\\htmlData{n=__negation_11__op}{-} \\htmlData{n=mu}{\\mu}} \\htmlData{n=__add_10__op1}{+} \\htmlData{n=x}{x}}\\right)^{\\htmlData{n=__power_9__exp}{2}}} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=__multiply_12}{\\frac{\\htmlData{n=__num_13}{1/2}}{\\htmlData{n=sigma}{\\sigma}^{2}}}}}}}\\,\\htmlData{n=dx}{dx}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__num_15}{1}}",
+      "plain": "C \\cdot \\int_{-\\infty}^{\\infty} \\frac{1}{e^{ \\left(- \\mu + x\\right)^{2} \\cdot \\frac{1/2}{\\sigma^{2}}}}\\,dx = 1",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": null,
+        "reason": "the given starting expression",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 1,
+      "operation": "rewrite the term $\\left(- \\mu + x\\right)^{2}$ as $\\left(x - \\mu\\right)^{2}$",
+      "justification": "The square of a quantity is the same regardless of the sign of its terms, so $\\left(- \\mu + x\\right)^{2} = \\left(x - \\mu\\right)^{2}$.",
+      "input_latex": "C \\cdot \\int\\limits_{-\\infty}^{\\infty} e^{- \\frac{\\left(x - \\mu\\right)^{2}}{2 \\cdot \\sigma^{2}}}\\, dx = 1",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__multiply_2}{\\htmlData{n=C}{C} \\htmlData{n=__multiply_2__m1}{\\cdot} \\htmlData{n=__integral_3}{\\htmlData{n=__integral_3__int}{\\int}_{\\htmlData{n=__num_4}{-\\infty}}^{\\htmlData{n=__const_5}{\\infty}} \\htmlData{n=__power_6}{\\htmlData{n=e}{e}^{\\htmlData{n=__negation_7}{\\htmlData{n=__negation_7__op}{-} \\htmlData{n=__multiply_8}{\\htmlData{n=__power_9}{\\left(\\htmlData{n=__add_10}{\\htmlData{n=x}{x} \\htmlData{n=__negation_11}{\\htmlData{n=__negation_11__op}{-} \\htmlData{n=mu}{\\mu}}}\\right)^{\\htmlData{n=__power_9__exp}{2}}} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=__multiply_12}{\\frac{\\htmlData{n=__num_13}{1/2}}{\\htmlData{n=sigma}{\\sigma}^{2}}}}}}}\\,\\htmlData{n=dx}{dx}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__num_15}{1}}",
+      "plain": "C \\cdot \\int_{-\\infty}^{\\infty} \\frac{1}{e^{ \\left(x - \\mu\\right)^{2} \\cdot \\frac{1/2}{\\sigma^{2}}}}\\,dx = 1",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 2,
+      "operation": "apply the substitution $u = \\frac{x - \\mu}{\\sqrt{2}\\sigma}$",
+      "justification": "By letting $u = \\frac{x - \\mu}{\\sqrt{2}\\sigma}$, we have $u^2 = \\frac{(x - \\mu)^2}{2\\sigma^2}$. Differentiating $u$ with respect to $x$ gives $du = \\frac{1}{\\sqrt{2}\\sigma} dx$, so $dx = \\sqrt{2}\\sigma \\, du$. The limits of integration remain unchanged as $x \\to \\pm\\infty$ implies $u \\to \\pm\\infty$.",
+      "input_latex": "C \\cdot \\int\\limits_{-\\infty}^{\\infty} e^{- u^{2}} \\cdot \\sqrt{2} \\cdot \\sigma \\, du = 1",
+      "latex": "\\htmlData{n=_r1___equals_1}{\\htmlData{n=_r2___multiply_2}{\\htmlData{n=C}{C} \\htmlData{n=_r2___multiply_2__m1}{\\cdot} \\htmlData{n=_r3___integral_3}{\\htmlData{n=_r3___integral_3__int}{\\int}_{\\htmlData{n=__num_4}{-\\infty}}^{\\htmlData{n=__const_5}{\\infty}} \\htmlData{n=__multiply_6}{\\htmlData{n=__multiply_7}{\\frac{\\htmlData{n=_r4___power_9}{\\sqrt{\\htmlData{n=__num_10}{2}}}}{\\htmlData{n=e}{e}^{u^{2}}}} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=sigma}{\\sigma}}\\,\\htmlData{n=du}{du}}} \\htmlData{n=_r1___equals_1__op}{=} \\htmlData{n=__num_15}{1}}",
+      "plain": "C \\cdot \\int_{-\\infty}^{\\infty} \\frac{\\sqrt{2}}{e^{u^{2}}} \\cdot \\sigma\\,du = 1",
+      "confidence": {
+        "tier": "verified",
+        "label": "Verified",
+        "icon": "🥈",
+        "meaning": "strong CAS evidence, short of a symbolic proof",
+        "relation": "narrows",
+        "reason": "treating $C$ as the unknown, every solution of this step solves the previous one (other symbols as generic parameters)",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 3,
+      "operation": "factor out the constant $\\sqrt{2}\\sigma$ from the integral",
+      "justification": "Constants can be factored out from an integral.",
+      "input_latex": "C \\cdot \\sqrt{2} \\cdot \\sigma \\cdot \\int\\limits_{-\\infty}^{\\infty} e^{- u^{2}}\\, du = 1",
+      "latex": "\\htmlData{n=_r1___equals_1}{\\htmlData{n=_r2___multiply_2}{\\htmlData{n=__multiply_6}{\\htmlData{n=__multiply_7}{\\htmlData{n=C}{C} \\htmlData{n=__multiply_7__m1}{\\cdot} \\htmlData{n=_r4___power_9}{\\sqrt{\\htmlData{n=__num_10}{2}}}} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=sigma}{\\sigma}} \\htmlData{n=_r2___multiply_2__m1}{\\cdot} \\htmlData{n=__integral_7}{\\htmlData{n=__integral_7__int}{\\int}_{\\htmlData{n=__num_4}{-\\infty}}^{\\htmlData{n=__const_9}{\\infty}} \\htmlData{n=__power_8}{\\frac{\\htmlData{n=__power_8__one}{1}}{\\htmlData{n=e}{e}^{u^{2}}}}\\,\\htmlData{n=du}{du}}} \\htmlData{n=_r1___equals_1__op}{=} \\htmlData{n=__num_15}{1}}",
+      "plain": "C \\cdot \\sqrt{2} \\cdot \\sigma \\cdot \\int_{-\\infty}^{\\infty} \\frac{1}{e^{u^{2}}}\\,du = 1",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 4,
+      "operation": "evaluate the Gaussian integral $\\int\\limits_{-\\infty}^{\\infty} e^{- u^{2}}\\, du$",
+      "justification": "The definite integral $\\int\\limits_{-\\infty}^{\\infty} e^{- u^{2}}\\, du$ is a fundamental result known as the Gaussian integral, which evaluates to $\\sqrt{\\pi}$.",
+      "input_latex": "C \\cdot \\sqrt{2} \\cdot \\sigma \\cdot \\sqrt{\\pi} = 1",
+      "latex": "\\htmlData{n=_r1___equals_1}{\\htmlData{n=_r2___multiply_2}{\\htmlData{n=__multiply_6}{\\htmlData{n=__multiply_7}{\\htmlData{n=C}{C} \\htmlData{n=__multiply_7__m1}{\\cdot} \\htmlData{n=_r4___power_9}{\\sqrt{\\htmlData{n=__num_10}{2}}}} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=sigma}{\\sigma}} \\htmlData{n=_r2___multiply_2__m1}{\\cdot} \\htmlData{n=__power_7}{\\sqrt{\\htmlData{n=pi}{\\pi}}}} \\htmlData{n=_r1___equals_1__op}{=} \\htmlData{n=__num_15}{1}}",
+      "plain": "C \\cdot \\sqrt{2} \\cdot \\sigma \\cdot \\sqrt{\\pi} = 1",
+      "confidence": {
+        "tier": "domain",
+        "label": "Domain",
+        "icon": "🎓",
+        "meaning": "valid by domain knowledge, not a symbolic identity the CAS can check",
+        "relation": "unknown",
+        "reason": "valid by domain knowledge — the CAS could not check this symbolically; a domain expert accepts it (confidence 100%): Evaluation of the Gaussian integral $\\int_{-\\infty}^{\\infty} e^{-u^2}\\,du = \\sqrt{\\pi}$.",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 5,
+      "operation": "isolate $C$",
+      "justification": "To solve for $C$, divide both sides of the equation by $\\sqrt{2} \\cdot \\sigma \\cdot \\sqrt{\\pi}$.",
+      "input_latex": "C = \\frac{1}{\\sqrt{2} \\cdot \\sigma \\cdot \\sqrt{\\pi}}",
+      "latex": "\\htmlData{n=_r1___equals_1}{\\htmlData{n=C}{C} \\htmlData{n=_r1___equals_1__op}{=} \\htmlData{n=__power_2}{\\frac{\\htmlData{n=__power_2__one}{1}}{\\htmlData{n=__multiply_6}{\\htmlData{n=__multiply_7}{\\htmlData{n=_r4___power_9}{\\sqrt{\\htmlData{n=__num_10}{2}}} \\htmlData{n=__multiply_7__m1}{\\cdot} \\htmlData{n=sigma}{\\sigma}} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=__power_7}{\\sqrt{\\htmlData{n=pi}{\\pi}}}}}}}",
+      "plain": "C = \\frac{1}{\\sqrt{2} \\cdot \\sigma \\cdot \\sqrt{\\pi}}",
+      "confidence": {
+        "tier": "verified",
+        "label": "Verified",
+        "icon": "🥈",
+        "meaning": "strong CAS evidence, short of a symbolic proof",
+        "relation": "narrows",
+        "reason": "treating $C$ as the unknown, every solution of this step solves the previous one (other symbols as generic parameters)",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 6,
+      "operation": "combine the square root terms in the denominator",
+      "justification": "The property of square roots $\\sqrt{a} \\cdot \\sqrt{b} = \\sqrt{a \\cdot b}$ allows us to combine $\\sqrt{2}$ and $\\sqrt{\\pi}$ into $\\sqrt{2\\pi}$.",
+      "input_latex": "C = \\frac{1}{\\sigma \\cdot \\sqrt{2 \\cdot \\pi}}",
+      "latex": "\\htmlData{n=_r1___equals_1}{\\htmlData{n=C}{C} \\htmlData{n=_r1___equals_1__op}{=} \\htmlData{n=__power_2}{\\frac{\\htmlData{n=__power_2__one}{1}}{\\htmlData{n=__multiply_7}{\\htmlData{n=sigma}{\\sigma} \\htmlData{n=__multiply_7__m1}{\\cdot} \\htmlData{n=_r4___power_9}{\\sqrt{\\htmlData{n=__multiply_6}{\\htmlData{n=__num_10}{2} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=pi}{\\pi}}}}}}}}",
+      "plain": "C = \\frac{1}{\\sigma \\cdot \\sqrt{2 \\cdot \\pi}}",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 7,
+      "operation": "substitute the value of $C$ into the probability density function",
+      "justification": "The constant $C$ is the normalization constant that ensures the total probability over the entire domain is $1$. We substitute the derived value of $C$ into the general form of the probability density function $f{\\left(x \\right)} = C \\cdot e^{- \\frac{\\left(x - \\mu\\right)^{2}}{2 \\cdot \\sigma^{2}}}$.",
+      "input_latex": "f{\\left(x \\right)} = \\frac{1}{\\sigma \\cdot \\sqrt{2 \\cdot \\pi}} \\cdot e^{- \\frac{\\left(x - \\mu\\right)^{2}}{2 \\cdot \\sigma^{2}}}",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__f_2}{\\htmlData{n=__f_2__name}{f}\\left(\\htmlData{n=x____f_2}{x}\\right)} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_3}{\\frac{\\htmlData{n=__power_6}{\\htmlData{n=e}{e}^{\\htmlData{n=__negation_7}{\\htmlData{n=__negation_7__op}{-} \\htmlData{n=__multiply_8}{\\htmlData{n=__power_9}{\\left(\\htmlData{n=__add_10}{\\htmlData{n=x____add_10}{x} \\htmlData{n=__negation_11}{\\htmlData{n=__negation_11__op}{-} \\htmlData{n=mu}{\\mu}}}\\right)^{\\htmlData{n=__power_9__exp}{2}}} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=__multiply_12}{\\frac{\\htmlData{n=__num_13}{1/2}}{\\htmlData{n=sigma____multiply_12}{\\sigma}^{2}}}}}}}}{\\htmlData{n=__multiply_7}{\\htmlData{n=sigma____multiply_7}{\\sigma} \\htmlData{n=__multiply_7__m1}{\\cdot} \\htmlData{n=_r4___power_9}{\\sqrt{\\htmlData{n=__multiply_6}{\\htmlData{n=__num_10}{2} \\htmlData{n=__multiply_6__m1}{\\cdot} \\htmlData{n=pi}{\\pi}}}}}}}}",
+      "plain": "f\\left(x\\right) = \\frac{\\frac{1}{e^{ \\left(x - \\mu\\right)^{2} \\cdot \\frac{1/2}{\\sigma^{2}}}}}{\\sigma \\cdot \\sqrt{2 \\cdot \\pi}}",
+      "confidence": {
+        "tier": "domain",
+        "label": "Domain",
+        "icon": "🎓",
+        "meaning": "valid by domain knowledge, not a symbolic identity the CAS can check",
+        "relation": "unknown",
+        "reason": "valid by domain knowledge — the CAS could not check this symbolically; a domain expert accepts it (confidence 100%): Definition of probability density function and substitution of normalization constant.",
+        "type_consistent": true
+      }
+    },
+    {
+      "index": 8,
+      "operation": "rewrite the constant factor and the exponent term to match the target expression",
+      "justification": "The constant $\\frac{1}{\\sigma \\cdot \\sqrt{2 \\cdot \\pi}}$ can be rewritten as $\\frac{1}{\\sigma \\cdot \\sqrt{2} \\cdot \\sqrt{\\pi}}$. Multiplying the numerator and denominator by $\\sqrt{2}$ gives $\\frac{\\sqrt{2}}{\\sigma \\cdot 2 \\cdot \\sqrt{\\pi}}$, which matches the target form. Additionally, $\\left(x - \\mu\\right)^{2}$ is equivalent to $\\left(- \\mu + x\\right)^{2}$.",
+      "input_latex": "f{\\left(x \\right)} = \\frac{\\sqrt{2} \\cdot e^{- \\frac{\\left(- \\mu + x\\right)^{2}}{2 \\cdot \\sigma^{2}}}}{2 \\cdot \\sqrt{\\pi} \\cdot \\sigma}",
+      "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__f_2}{\\htmlData{n=__f_2__name}{f}\\left(\\htmlData{n=x____f_2}{x}\\right)} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_3}{\\frac{\\htmlData{n=__multiply_4}{\\htmlData{n=__power_5}{\\sqrt{\\htmlData{n=__num_6}{2}}} \\htmlData{n=__multiply_4__m1}{\\cdot} \\htmlData{n=__power_6}{\\htmlData{n=e}{e}^{\\htmlData{n=__negation_7}{\\htmlData{n=__negation_7__op}{-} \\htmlData{n=__multiply_8}{\\htmlData{n=__power_9}{\\left(\\htmlData{n=__add_10}{\\htmlData{n=__negation_11}{\\htmlData{n=__negation_11__op}{-} \\htmlData{n=mu}{\\mu}} \\htmlData{n=__add_10__op1}{+} \\htmlData{n=x____add_10}{x}}\\right)^{\\htmlData{n=__power_9__exp}{2}}} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=__multiply_12}{\\frac{\\htmlData{n=__num_13}{1/2}}{\\htmlData{n=sigma____multiply_12}{\\sigma}^{2}}}}}}}}}{\\htmlData{n=__multiply_7}{\\htmlData{n=__multiply_18}{\\htmlData{n=__num_19}{2} \\htmlData{n=__multiply_18__m1}{\\cdot} \\htmlData{n=_r4___power_9}{\\sqrt{\\htmlData{n=pi}{\\pi}}}} \\htmlData{n=__multiply_7__m1}{\\cdot} \\htmlData{n=sigma____multiply_7}{\\sigma}}}}}",
+      "plain": "f\\left(x\\right) = \\frac{\\sqrt{2} \\cdot \\frac{1}{e^{ \\left(- \\mu + x\\right)^{2} \\cdot \\frac{1/2}{\\sigma^{2}}}}}{2 \\cdot \\sqrt{\\pi} \\cdot \\sigma}",
+      "confidence": {
+        "tier": "grounded",
+        "label": "Grounded",
+        "icon": "🥇",
+        "meaning": "symbolically proven to follow from the previous step",
+        "relation": "equivalent",
+        "reason": "symbolically equivalent to the previous step",
+        "type_consistent": true
+      }
+    }
+  ],
+  "overall_confidence": {
+    "tier": "domain",
+    "label": "Domain",
+    "icon": "🎓",
+    "meaning": "valid by domain knowledge, not a symbolic identity the CAS can check",
+    "relation": null,
+    "reason": "6/8 steps verified · 2 domain-justified · endpoint reached",
+    "type_consistent": true,
+    "counts": {
+      "refuted": 0,
+      "unchecked": 0,
+      "plausible": 0,
+      "domain": 2,
+      "verified": 2,
+      "grounded": 4
+    },
+    "endpoint_reached": true
+  },
+  "terms": {
+    "C": {
+      "latex": "C",
+      "name": "C",
+      "description": "The normalization constant being determined for the probability density function."
+    },
+    "__const_5": {
+      "latex": "\\infty",
+      "name": "infinity",
+      "description": "The upper limit of integration, representing positive infinity."
+    },
+    "__integral_3": {
+      "latex": "\\int\\limits_{-\\infty}^{\\infty} e^{- \\frac{\\left(- \\mu + x\\right)^{2}}{2 \\sigma^{2}}}\\, dx",
+      "name": "\\int\\limits_{-\\infty}^{\\infty} e^{- \\frac{\\left(- \\mu + x\\right)^{2}}{2 \\sigma^{2}}}\\, dx",
+      "description": "The integral of the unnormalized probability density function over all possible values of $x$, which must equal 1."
+    },
+    "dx": {
+      "latex": "dx",
+      "name": "dx",
+      "description": "The differential element indicating integration with respect to the random variable $x$."
+    },
+    "__power_6": {
+      "latex": "e^{- \\frac{\\left(- \\mu + x\\right)^{2}}{2 \\sigma^{2}}}",
+      "name": "e^{- \\frac{\\left(- \\mu + x\\right)^{2}}{2 \\sigma^{2}}}",
+      "description": "The exponential term of the Gaussian probability density function, representing the unnormalized likelihood."
+    },
+    "e": {
+      "latex": "e",
+      "name": "e",
+      "description": "Euler's number, the base of the natural logarithm."
+    },
+    "__power_9": {
+      "latex": "\\left(- \\mu + x\\right)^{2}",
+      "name": "\\left(- \\mu + x\\right)^{2}",
+      "description": "The squared difference between the random variable $x$ and the mean $\\mu$, indicating deviation from the center."
+    },
+    "mu": {
+      "latex": "\\mu",
+      "name": "\\mu",
+      "description": "The mean (or expected value) of the normal distribution."
+    },
+    "x": {
+      "latex": "x",
+      "name": "x",
+      "description": "The random variable for which the probability density is being evaluated."
+    },
+    "__power_14": {
+      "latex": "\\frac{1}{\\sigma^{2}}",
+      "name": "\\frac{1}{\\sigma^{2}}",
+      "description": "The reciprocal of the variance $\\sigma^2$, which determines the spread of the distribution."
+    },
+    "sigma": {
+      "latex": "\\sigma",
+      "name": "\\sigma",
+      "description": "The standard deviation of the normal distribution, a measure of its spread."
+    },
+    "_r3___integral_3": {
+      "latex": "\\int\\limits_{-\\infty}^{\\infty} \\sigma \\sqrt{2} e^{- u^{2}}\\, du",
+      "name": "\\int\\limits_{-\\infty}^{\\infty} \\sigma \\sqrt{2} e^{- u^{2}}\\, du",
+      "description": "The integral after a variable substitution, simplifying the calculation of the normalization constant."
+    },
+    "du": {
+      "latex": "du",
+      "name": "du",
+      "description": "The differential element indicating integration with respect to the substituted variable $u$."
+    },
+    "__power_8": {
+      "latex": "e^{- u^{2}}",
+      "name": "e^{- u^{2}}",
+      "description": "The simplified exponential term $e^{-u^2}$ after variable substitution."
+    },
+    "__const_9": {
+      "latex": "\\infty",
+      "name": "infinity",
+      "description": "The upper limit of integration for the transformed integral, representing positive infinity."
+    },
+    "__integral_7": {
+      "latex": "\\int\\limits_{-\\infty}^{\\infty} e^{- u^{2}}\\, du",
+      "name": "\\int\\limits_{-\\infty}^{\\infty} e^{- u^{2}}\\, du",
+      "description": "The standard Gaussian integral $\\int_{-\\infty}^{\\infty} e^{-u^2}\\, du$, which evaluates to $\\sqrt{\\pi}$."
+    },
+    "__power_7": {
+      "latex": "\\sqrt{\\pi}",
+      "name": "\\sqrt{\\pi}",
+      "description": "The mathematical constant $\\sqrt{\\pi}$, which is the value of the standard Gaussian integral."
+    },
+    "pi": {
+      "latex": "\\pi",
+      "name": "\\pi",
+      "description": "The mathematical constant pi, approximately 3.14159."
+    },
+    "__power_2": {
+      "latex": "\\frac{1}{\\sqrt{\\pi} \\sqrt{2} \\sigma}",
+      "name": "\\frac{1}{\\sqrt{\\pi} \\sqrt{2} \\sigma}",
+      "description": "The expression for the normalization constant $C$ after solving the integral, which ensures the total probability is 1."
+    },
+    "_r4___power_9": {
+      "latex": "\\sqrt{2 \\pi}",
+      "name": "\\sqrt{2 \\pi}",
+      "description": "The term $\\sqrt{2\\pi}$ that appears in the denominator of the normalized Gaussian probability density function."
+    },
+    "__f_2": {
+      "latex": "f{\\left(x \\right)}",
+      "name": "f{\\left(x \\right)}",
+      "description": "The probability density function $f(x)$ for the normal distribution."
+    }
+  },
+  "goal": "This derivation shows how to find the normalization constant $C$ for the Gaussian function $C \\cdot e^{- \\frac{(x - \\mu)^2}{2\\sigma^2}}$ such that its integral over the real line is $1$, thereby establishing the probability density function for the normal distribution.",
+  "followups": [
+    "Can you show the full proof of the Gaussian integral $\\int_{-\\infty}^{\\infty} e^{-x^2} dx = \\sqrt{\\pi}$ using polar coordinates?",
+    "How does changing $\\mu$ or $\\sigma$ affect the shape of the normal distribution curve?",
+    "What are some other common probability distributions and how are their PDFs derived?",
+    "Derive the mean and variance of this normal distribution using its PDF."
+  ],
+  "prerequisites": [
+    "Integration by substitution",
+    "Properties of exponents",
+    "The Gaussian integral identity $\\int_{-\\infty}^{\\infty} e^{-x^2} dx = \\sqrt{\\pi}$",
+    "Basic algebraic manipulation"
+  ]
+}

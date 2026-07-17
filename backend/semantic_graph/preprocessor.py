@@ -92,6 +92,7 @@ class LaTeXPreprocessor:
     def preprocess(self, latex: str) -> PreprocessResult:
         src = latex
         src = self.normalize_func_call_braces(src)
+        src = self.normalize_applied_symbol_braces(src)
         src, annotations = self.extract_parenthetical_annotations(src)
         dotted_vars: dict[str, int] = {}
         src = self.rewrite_dot_derivatives(src, dotted_vars)
@@ -236,6 +237,109 @@ class LaTeXPreprocessor:
                     i = close + 1
                     continue
             out.append(prefix)
+            i = j
+        return "".join(out)
+
+    @staticmethod
+    def normalize_applied_symbol_braces(latex: str) -> str:
+        r"""Rewrite ``f{\left(ARG\right)}`` → ``f\left(ARG\right)`` for bare symbols.
+
+        Companion to :meth:`normalize_func_call_braces`, which fixes the SymPy
+        printer's brace-wrapped argument for *whitelisted* ``\``-functions. The
+        printer emits the very same shape for an **undefined** function
+        application — ``sympy.latex(Function('f')(x))`` is ``f{\left(x \right)}``
+        — and there the brace group makes the parser read *implicit
+        multiplication*: the derivation finale ``f{\left(x\right)} = …`` came
+        back as ``f·x = …``. Dropping the braces restores the application parse
+        (``f\left(x\right)`` and ``f(x)`` both yield a ``function`` node).
+
+        Deliberately narrow: only a single bare ASCII letter (optionally with a
+        subscript, ``f_{1}``/``f_c`` — the printer's spelling for indexed
+        functions), not preceded by ``\``, a letter, or ``}``, and only when the
+        brace group is exactly one ``\left(…\right)``/``(…)`` group. Structural
+        commands (``\frac{…}``, ``\sqrt{…}``) and ordinary brace groups are
+        untouched.
+        """
+        if not isinstance(latex, str) or r"{\left(" not in latex and "{(" not in latex:
+            return latex
+
+        def find_matching_brace(s: str, open_idx: int) -> int | None:
+            depth = 0
+            j = open_idx
+            while j < len(s):
+                c = s[j]
+                if c == "{":
+                    depth += 1
+                elif c == "}":
+                    depth -= 1
+                    if depth == 0:
+                        return j
+                j += 1
+            return None
+
+        def whole_is_delimited(a: str) -> bool:
+            a = a.strip()
+            if a.startswith(r"\left(") and a.endswith(r"\right)"):
+                depth, k, L = 0, 0, len(a)
+                while k < L:
+                    if a.startswith(r"\left(", k):
+                        depth += 1
+                        k += 6
+                    elif a.startswith(r"\right)", k):
+                        depth -= 1
+                        k += 7
+                        if depth == 0:
+                            return k == L
+                    else:
+                        k += 1
+                return False
+            if (a.startswith("(") and a.endswith(")")
+                    and r"\left" not in a and r"\right" not in a):
+                depth = 0
+                for k, c in enumerate(a):
+                    if c == "(":
+                        depth += 1
+                    elif c == ")":
+                        depth -= 1
+                        if depth == 0:
+                            return k == len(a) - 1
+                return False
+            return False
+
+        out: list[str] = []
+        i = 0
+        n = len(latex)
+        while i < n:
+            c = latex[i]
+            # candidate: bare letter at a token boundary (not part of a \command,
+            # an identifier run, or a just-closed brace group)
+            if not c.isascii() or not c.isalpha() or (
+                    i > 0 and (latex[i - 1] == "\\" or latex[i - 1].isalpha()
+                               or latex[i - 1] == "}")):
+                out.append(c)
+                i += 1
+                continue
+            j = i + 1
+            token = c
+            # optional subscript: f_{1} / f_c (printer spelling for indexed fns)
+            if j < n and latex[j] == "_":
+                if j + 1 < n and latex[j + 1] == "{":
+                    close = find_matching_brace(latex, j + 1)
+                    if close is not None:
+                        token += latex[j:close + 1]
+                        j = close + 1
+                elif j + 1 < n:
+                    token += latex[j:j + 2]
+                    j += 2
+            if j < n and latex[j] == "{":
+                close = find_matching_brace(latex, j)
+                if close is not None:
+                    arg = latex[j + 1:close]
+                    if whole_is_delimited(arg):
+                        out.append(token + arg)
+                        i = close + 1
+                        continue
+            out.append(token)
             i = j
         return "".join(out)
 
