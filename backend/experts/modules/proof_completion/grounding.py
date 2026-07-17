@@ -161,14 +161,24 @@ def graph_to_sympy(graph: SemanticGraph) -> sp.Expr:
             arg_ins = [c for r, c in ins if r != "base"]
             args = [ev(c) for c in arg_ins]
             fn = _FUNC.get(op or "")
+            undefined = False
             if fn is None or len(args) != 1:
                 # ``i(\arg\beta - \arg\alpha)`` in an exponent parses as a
                 # function call on ``i`` — it is implicit multiplication by the
                 # imaginary unit, so ground it as ``i * operand`` (the same
                 # ``i`` symbol scalar nodes produce).
-                if op != "i" or len(args) != 1 or base_ins:
+                if op == "i" and len(args) == 1 and not base_ins:
+                    fn = sp.Symbol("i").__mul__
+                elif fn is None and op and args and not base_ins:
+                    # An unmodeled name applied to arguments (``f(x)``,
+                    # ``g(u, v)``): ground as an *undefined* sympy function
+                    # application. It stays opaque — nothing evaluates — but the
+                    # state becomes convertible, so the step checker can compare
+                    # it structurally (same function, equal args) instead of
+                    # dropping the whole state to "unchecked".
+                    undefined = True
+                else:
                     raise UngroundableGraph(f"function {op!r}")
-                fn = sp.Symbol("i").__mul__
             if base_ins:
                 # Only logarithms carry a base, and exactly one — anything else is a
                 # malformed graph; fail fast rather than silently mis-grounding.
@@ -177,6 +187,8 @@ def graph_to_sympy(graph: SemanticGraph) -> sp.Expr:
                         f"unexpected base operand(s) on function {op!r}")
                 # sp.log(x, e) auto-simplifies to log(x); sp.log(x, 2) → log base 2
                 res = sp.log(args[0], ev(base_ins[0]))
+            elif undefined:
+                res = sp.Function(op)(*args)
             else:
                 res = fn(args[0])
         elif t == "relation":
