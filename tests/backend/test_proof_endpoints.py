@@ -16,6 +16,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 def client(tmp_path, monkeypatch):
     monkeypatch.setenv("ALGEBENCH_PROOFS_DIR", str(tmp_path / "domains"))
     monkeypatch.setenv("ALGEBENCH_PROOF_SOURCE_DIR", str(tmp_path / "source"))
+    monkeypatch.setenv("ALGEBENCH_PROOF_SUBMISSIONS_DIR", str(tmp_path / "subs" / "domains"))
+    monkeypatch.setenv("ALGEBENCH_PROOF_SUBMISSIONS_SOURCE_DIR", str(tmp_path / "subs" / "source"))
     monkeypatch.delenv("ALGEBENCH_PROOFS_BUCKET", raising=False)
     monkeypatch.setenv("ALGEBENCH_PROOFS_SALT", "test-salt")
     import backend.server as server
@@ -148,6 +150,88 @@ class TestSeedStoreCollision:
         assert got["goal"] != "hijack"
 
 
+SUBID = "algebra/my-submitted-proof"
+SUB_SOURCE = {"prompt": "derive the difference of squares", "documentation": "from the identity",
+              "references": [{"id": "algebra/isolate-a", "title": "Isolate a"}]}
+
+
+class TestSubmissions:
+    """POST /api/proof-submissions — the review queue (issue #464)."""
+
+    def _submit(self, client, id=SUBID, data=PROOF, source=SUB_SOURCE):
+        return client.post("/api/proof-submissions", json={"id": id, "data": data, "source": source})
+
+    def test_submit_returns_secret_and_status(self, client):
+        r = self._submit(client)
+        assert r.status_code == 200
+        body = r.json()
+        assert body["id"] == SUBID and body["secret"] and body["status"] == "under-review"
+
+    def test_submission_hidden_from_default_catalog(self, client):
+        self._submit(client)
+        ids = {p["id"] for p in client.get("/api/proofs").json()["proofs"]}
+        assert SUBID not in ids
+
+    def test_submission_listed_on_optin_with_tag(self, client):
+        self._submit(client)
+        proofs = client.get("/api/proofs", params={"includeSubmissions": "1"}).json()["proofs"]
+        entry = next(p for p in proofs if p["id"] == SUBID)
+        assert entry["status"] == "under-review"
+        # published entries carry no status tag
+        pub = next(p for p in proofs if p["id"] == "algebra/binomial-square")
+        assert "status" not in pub
+
+    def test_submission_readable_by_full_id(self, client):
+        self._submit(client)
+        r = client.get("/api/proofs/item", params={"id": SUBID})
+        assert r.status_code == 200
+        assert r.json()["title"] == "My difference of squares"
+        assert "evil_injected_field" not in r.json()          # sanitized like claims
+        assert r.headers.get("X-Proof-Status") == "under-review"
+
+    def test_published_item_has_no_review_header(self, client):
+        r = client.get("/api/proofs/item", params={"id": "algebra/binomial-square"})
+        assert r.status_code == 200 and "X-Proof-Status" not in r.headers
+
+    def test_uniqueness_union_both_directions(self, client):
+        # submission can't take a built-in or store-claimed name …
+        assert self._submit(client, id="algebra/binomial-square").status_code == 409
+        client.post("/api/proofs", json={"id": NEWID, "data": PROOF})
+        assert self._submit(client, id=NEWID).status_code == 409
+        # … and a claim can't take a submitted name
+        self._submit(client)
+        assert client.post("/api/proofs", json={"id": SUBID, "data": PROOF}).status_code == 409
+
+    def test_duplicate_submission_409(self, client):
+        assert self._submit(client).status_code == 200
+        assert self._submit(client).status_code == 409
+
+    def test_name_available_sees_submissions(self, client):
+        assert client.get("/api/proofs/name-available", params={"name": SUBID}).json()["available"] is True
+        self._submit(client)
+        assert client.get("/api/proofs/name-available", params={"name": SUBID}).json()["available"] is False
+
+    def test_invalid_submission_400(self, client):
+        assert self._submit(client, id="bad id").status_code == 400
+        assert self._submit(client, data={"no": "steps"}).status_code == 400
+
+    def test_package_written_with_prompt(self, client):
+        # The submission is a package: proof + prompt + documentation + references,
+        # under the submissions location (never proofs/).
+        import json, os
+        self._submit(client)
+        subs_dir = Path(os.environ["ALGEBENCH_PROOF_SUBMISSIONS_DIR"])
+        src_dir = Path(os.environ["ALGEBENCH_PROOF_SUBMISSIONS_SOURCE_DIR"]) / "domains" / SUBID
+        proof_file = subs_dir / "algebra" / "my-submitted-proof.json"
+        assert proof_file.is_file()
+        assert json.loads(proof_file.read_text())["title"] == "My difference of squares"
+        assert (src_dir / "prompt.txt").read_text() == "derive the difference of squares"
+        assert (src_dir / "documentation.md").read_text() == "from the identity"
+        assert json.loads((src_dir / "references.json").read_text())[0]["id"] == "algebra/isolate-a"
+        # nothing leaked into the published store
+        assert not (Path(os.environ["ALGEBENCH_PROOFS_DIR"]) / "algebra" / "my-submitted-proof.json").exists()
+
+
 class TestCrossRef:
     def test_ref_resolves_builtin(self, client):
         r = client.get("/api/proof-ref", params={"ref": "algebra/binomial-square"})
@@ -194,6 +278,8 @@ def debug_drafts(tmp_path, monkeypatch):
     drafts.mkdir()
     monkeypatch.setenv("ALGEBENCH_PROOFS_DIR", str(tmp_path / "domains"))
     monkeypatch.setenv("ALGEBENCH_PROOF_SOURCE_DIR", str(tmp_path / "source"))
+    monkeypatch.setenv("ALGEBENCH_PROOF_SUBMISSIONS_DIR", str(tmp_path / "subs" / "domains"))
+    monkeypatch.setenv("ALGEBENCH_PROOF_SUBMISSIONS_SOURCE_DIR", str(tmp_path / "subs" / "source"))
     monkeypatch.delenv("ALGEBENCH_PROOFS_BUCKET", raising=False)
     monkeypatch.setenv("ALGEBENCH_PROOFS_SALT", "test-salt")
     import backend.server as server

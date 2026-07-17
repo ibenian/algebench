@@ -14,6 +14,16 @@ store (`store.py`) exposed as an HTTP API (`routes.py`, mounted by
 
 The factory `get_proof_store()` picks GCS when a bucket is configured, else local.
 
+**Review queue (submissions).** `get_submission_store()` builds a *second*
+store instance keyed under `proof-submissions/` (same backend selection):
+`proof-submissions/domains/<domain>/<name>.json` plus the submission package
+(`prompt.txt` + `documentation.md` + `references.json`) under
+`proof-submissions/source-material/domains/<domain>/<name>/`. Submissions share
+the id namespace with published proofs (uniqueness is enforced across both),
+are readable by full id (`GET /api/proofs/item` adds `X-Proof-Status:
+under-review`), and are excluded from the catalog unless
+`GET /api/proofs?includeSubmissions=1` opts in.
+
 ---
 
 ## Environment variables
@@ -26,6 +36,7 @@ The factory `get_proof_store()` picks GCS when a bucket is configured, else loca
 | `ALGEBENCH_PROOFS_SALT` | HMAC key for content-derived edit secrets. **Keep stable.** | per env |
 | `ALGEBENCH_PROOFS_REF_BUCKETS` | Comma-separated allowlist of buckets a `proof_refs` cross-ref may resolve from (own bucket always allowed). SSRF guard. | optional |
 | `ALGEBENCH_PROOFS_DIR` / `ALGEBENCH_PROOF_SOURCE_DIR` | Override the local store dirs (defaults: gitignored `.proof-store/…`). | dev/tests |
+| `ALGEBENCH_PROOF_SUBMISSIONS_DIR` / `ALGEBENCH_PROOF_SUBMISSIONS_SOURCE_DIR` | Override the local **review-queue** dirs (defaults: gitignored `.proof-store/proof-submissions/…`). GCS ignores these (fixed `proof-submissions/` prefixes). | dev/tests |
 
 Notes:
 - `GOOGLE_APPLICATION_CREDENTIALS` is a **path only** — it cannot hold the JSON

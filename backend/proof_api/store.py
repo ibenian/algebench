@@ -274,6 +274,11 @@ class LocalProofStore:
             json.dumps(refs if isinstance(refs, list) else [], ensure_ascii=False),
             encoding="utf-8",
         )
+        # The derive prompt — part of the submission package (proof + prompt +
+        # documentation). Only written when present so plain saves stay 2-file.
+        prompt = source.get("prompt")
+        if isinstance(prompt, str) and prompt:
+            (d / "prompt.txt").write_text(prompt, encoding="utf-8")
 
     def _delete_source(self, nid: str) -> None:
         d = self._source_dir_for(nid)
@@ -302,7 +307,9 @@ class LocalProofStore:
                 references = json.loads(ref_path.read_text(encoding="utf-8")) or []
             except (ValueError, TypeError):
                 references = []
-        return {"documentation": documentation, "references": references}
+        prompt_path = d / "prompt.txt"
+        prompt = prompt_path.read_text(encoding="utf-8") if prompt_path.is_file() else ""
+        return {"documentation": documentation, "references": references, "prompt": prompt}
 
     def get_ref(self, ref: str, gcs_bucket: Optional[str]) -> Optional[dict]:
         # Local store has no cross-bucket concept; a ref just resolves locally.
@@ -330,12 +337,20 @@ class GcsProofStore:
     ``google-cloud-storage`` import is deferred so this module loads with no dep.
     """
 
+    # Defaults target the published corpus; a second instance pointed at the
+    # submissions prefixes (see get_submission_store) reuses everything —
+    # layout, CAS claims, capability secrets — against its own key space.
     _PROOF_PREFIX = "proofs/domains"
     # Mirror the proofs layout — source material also nests under `domains/`.
     _SOURCE_PREFIX = "source-material/domains"
 
-    def __init__(self, bucket: str):
+    def __init__(self, bucket: str, proof_prefix: Optional[str] = None,
+                 source_prefix: Optional[str] = None):
         self.bucket_name = bucket
+        if proof_prefix:
+            self._PROOF_PREFIX = proof_prefix
+        if source_prefix:
+            self._SOURCE_PREFIX = source_prefix
         self._bucket = None  # lazy
 
     # -- client / bucket (lazy) --
@@ -481,6 +496,12 @@ class GcsProofStore:
             json.dumps(refs if isinstance(refs, list) else [], ensure_ascii=False),
             content_type="application/json",
         )
+        # Derive prompt (submission package) — only written when present.
+        prompt = source.get("prompt")
+        if isinstance(prompt, str) and prompt:
+            bkt.blob(f"{self._SOURCE_PREFIX}/{nid}/prompt.txt").upload_from_string(
+                prompt, content_type="text/plain"
+            )
 
     def _delete_source(self, bkt, nid: str) -> None:
         for blob in bkt.list_blobs(prefix=f"{self._SOURCE_PREFIX}/{nid}/"):
@@ -505,7 +526,9 @@ class GcsProofStore:
                 references = json.loads(ref_blob.download_as_text()) or []
             except (ValueError, TypeError):
                 references = []
-        return {"documentation": documentation, "references": references}
+        prompt_blob = bkt.blob(f"{self._SOURCE_PREFIX}/{nid}/prompt.txt")
+        prompt = prompt_blob.download_as_text() if prompt_blob.exists() else ""
+        return {"documentation": documentation, "references": references, "prompt": prompt}
 
     def get_ref(self, ref: str, gcs_bucket: Optional[str]) -> Optional[dict]:
         nid = normalize_id(ref)
@@ -530,3 +553,19 @@ def get_proof_store(proofs_dir: Path, source_dir: Path) -> ProofStore:
     if bucket:
         return GcsProofStore(bucket)
     return LocalProofStore(proofs_dir, source_dir)
+
+
+def get_submission_store(subs_dir: Path, subs_source_dir: Path) -> ProofStore:
+    """The review-queue store — same backend selection as :func:`get_proof_store`
+    but keyed under ``proof-submissions/`` so pending submissions never mix with
+    the published corpus. Shares the id namespace (uniqueness is enforced across
+    both by the routes), and every submission gets the same content-HMAC
+    capability secret as a published proof."""
+    bucket = os.environ.get("ALGEBENCH_PROOFS_BUCKET", "").strip()
+    if bucket:
+        return GcsProofStore(
+            bucket,
+            proof_prefix="proof-submissions/domains",
+            source_prefix="proof-submissions/source-material/domains",
+        )
+    return LocalProofStore(subs_dir, subs_source_dir)

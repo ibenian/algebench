@@ -20,7 +20,8 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse, Response
 
 from backend.proof_api.store import (
-    get_proof_store, LocalProofStore, normalize_id, canonical_bytes, verify_secret,
+    get_proof_store, get_submission_store, LocalProofStore, normalize_id,
+    canonical_bytes, verify_secret,
 )
 
 # Top-level keys allowed on a stored proof — everything else (any injected
@@ -67,10 +68,20 @@ def build_proof_router(
         "ALGEBENCH_PROOF_SOURCE_DIR", str(script_dir / ".proof-store" / "source-material")))
     store = get_proof_store(domains_dir, source_dir)
     seed = LocalProofStore(proofs_dir / "domains", source_dir)
-    catalog_cache = {"list": None}
+    # Review queue — pending submissions. Separate key space (proof-submissions/),
+    # same id namespace: uniqueness checks below union seed + store + subs.
+    subs_dir = Path(os.environ.get(
+        "ALGEBENCH_PROOF_SUBMISSIONS_DIR",
+        str(script_dir / ".proof-store" / "proof-submissions" / "domains")))
+    subs_source_dir = Path(os.environ.get(
+        "ALGEBENCH_PROOF_SUBMISSIONS_SOURCE_DIR",
+        str(script_dir / ".proof-store" / "proof-submissions" / "source-material")))
+    subs = get_submission_store(subs_dir, subs_source_dir)
+    catalog_cache = {"list": None, "subs": None}
 
     def invalidate():
         catalog_cache["list"] = None
+        catalog_cache["subs"] = None
 
     def catalog():
         # Merge store + seed, dedup by id. The built-in SEED is canonical and
@@ -86,30 +97,55 @@ def build_proof_router(
             catalog_cache["list"] = sorted(merged.values(), key=lambda e: e["id"])
         return catalog_cache["list"]
 
+    def subs_catalog():
+        # Pending submissions, each tagged so the client can badge them. NOT
+        # part of the default catalog — only served on explicit opt-in.
+        if catalog_cache["subs"] is None:
+            catalog_cache["subs"] = sorted(
+                (dict(e, status="under-review") for e in subs.list()),
+                key=lambda e: e["id"])
+        return catalog_cache["subs"]
+
     @router.get("/api/proofs")
-    async def catalog_endpoint():
-        """Merged {id,title,domain,goal} catalog for the /prove typeahead+browse."""
-        return JSONResponse({"proofs": catalog()})
+    async def catalog_endpoint(includeSubmissions: bool = False):
+        """Merged {id,title,domain,goal} catalog for the /prove typeahead+browse.
+
+        ``includeSubmissions=1`` (a deliberate Browse-tab opt-in) additionally
+        returns pending submissions, each tagged ``status: "under-review"``.
+        The default response never lists them."""
+        proofs = catalog()
+        if includeSubmissions:
+            proofs = proofs + subs_catalog()
+        return JSONResponse({"proofs": proofs})
 
     @router.get("/api/proofs/name-available")
     async def name_available(name: str = ""):
         nid = normalize_id(name)
         if not nid:
             return JSONResponse({"available": False, "reason": "invalid"})
-        taken = (seed.name_taken(nid) or store.name_taken(nid)
+        # Union across published AND pending — a submission can never collide
+        # with (or shadow) a published proof, and vice versa.
+        taken = (seed.name_taken(nid) or store.name_taken(nid) or subs.name_taken(nid)
                  or any(e["id"] == nid for e in catalog()))
         return JSONResponse({"id": nid, "available": not taken})
 
     @router.get("/api/proofs/item")
     async def item(id: str = ""):
-        """Full proof JSON by id — built-in seed first, then the writable store."""
+        """Full proof JSON by id — seed, then the store, then pending submissions.
+
+        Submissions are readable by their full id (shareable link) even though
+        the default catalog hides them; those responses carry an
+        ``X-Proof-Status: under-review`` header so the client can badge them."""
         nid = normalize_id(id)
         if not nid:
             return JSONResponse({"error": "invalid id"}, status_code=400)
         data = seed.get(nid) or store.get(nid)
+        if data is not None:
+            return JSONResponse(data)
+        data = subs.get(nid)
         if data is None:
             return Response(status_code=404)
-        return JSONResponse(data)
+        return JSONResponse(data, headers={"X-Proof-Status": "under-review"})
 
     @router.get("/api/proofs/source")
     async def source(id: str = "", secret: str = ""):
@@ -139,11 +175,36 @@ def build_proof_router(
         if seed.name_taken(nid):
             return JSONResponse({"error": "name taken"}, status_code=409)
         src = body.get("source")
+        if seed.name_taken(nid) or subs.name_taken(nid):
+            return JSONResponse({"error": "name taken"}, status_code=409)
         secret = store.claim(nid, data, src if isinstance(src, dict) else None)
         if secret is None:
             return JSONResponse({"error": "name taken"}, status_code=409)
         invalidate()
         return JSONResponse({"id": nid, "secret": secret})
+
+    @router.post("/api/proof-submissions")
+    async def submit(request: Request, _rl: None = Depends(agentic_rate_limit)):
+        """Submit a derivation for review under a NEW unique name.
+
+        The submission is a package: the proof JSON plus its context (the derive
+        prompt + documentation + references) written to the review-queue store.
+        The claimed id is unique across published proofs AND pending submissions;
+        the response secret is the standard content-HMAC capability."""
+        body = await request.json()
+        body = body if isinstance(body, dict) else {}
+        nid = normalize_id(body.get("id", ""))
+        data = _sanitize_stored_proof(body.get("data"))
+        if not nid or data is None:
+            return JSONResponse({"error": "invalid id or proof"}, status_code=400)
+        if seed.name_taken(nid) or store.name_taken(nid):
+            return JSONResponse({"error": "name taken"}, status_code=409)
+        src = body.get("source")
+        secret = subs.claim(nid, data, src if isinstance(src, dict) else None)
+        if secret is None:
+            return JSONResponse({"error": "name taken"}, status_code=409)
+        invalidate()
+        return JSONResponse({"id": nid, "secret": secret, "status": "under-review"})
 
     @router.put("/api/proofs")
     async def update(request: Request, secret: str = "",
