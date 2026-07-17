@@ -10,6 +10,7 @@
  */
 
 import { makeAiAskButton } from '/labels.js';
+import { resolveTermId } from '/graph-panel/term-resolve.js';
 
 const D3_CDN_URL = 'https://cdn.jsdelivr.net/npm/d3@7/+esm';
 const DAGRE_CDN_URL = 'https://cdn.jsdelivr.net/npm/@dagrejs/dagre@1.1.4/dist/dagre.min.js';
@@ -480,43 +481,13 @@ export class D3SemanticGraphRenderer {
      * a loose label/latex match on the rendered glyph text.
      */
     resolveTermNodeId(termId, termText) {
-        if (!termId || !this._graph || !Array.isArray(this._graph.nodes)) return null;
-        const nodes = this._graph.nodes;
-        const has = id => (id && nodes.some(n => n.id === id)) ? id : null;
-        // The animation's ids carry affixes the graph node ids don't: a glyph
-        // suffix on operator/structural glyphs (`__op`/`__op<n>`, `__exp`,
-        // `__one`, `__m<n>`), and a rebase prefix on the threaded spine
-        // (`_r<n>_`). Strip each (and the data-occurrence suffix `__<parent>`) to
-        // recover candidate node ids, then take the first that exists here.
-        const noGlyph = termId.replace(/__(?:op\d*|exp|one|m\d+)$/, '');
-        const cands = [termId, noGlyph, noGlyph.replace(/^_r\d+_/, '')];
-        for (const c of cands) { const h = has(c); if (h) return h; }
-        const base = termId.split('__')[0];                        // canonical symbol
-        if (base) {
-            if (has(base)) return base;
-            const m = nodes.find(n => n.id.split('__')[0] === base);
-            if (m) return m.id;
-        }
-        // Loose match on the rendered text — the safety net for nodes whose
-        // positional id (operators, powers like a square) differs between the
-        // independently-derived animation and this graph. Compare against label /
-        // latex / subexpr (a power node carries only `subexpr`, e.g. "V^{2}"), with
-        // superscripts and multiplication dots normalised away so "V²" ≡ "V^{2}".
-        const t = (termText || '').trim();
-        if (t) {
-            const norm = s => (s || '').replace(/\\cdot|\\[a-zA-Z]+|[{}\\$\s^*·]/g, '').trim();
-            // Skip a purely NUMERIC appearance ("2", "1/2"): a bare number is
-            // ambiguous (an exponent, a denominator, a coefficient all render the
-            // same), so matching it by text mis-links — e.g. a square's "2" to the
-            // "2" in a denominator. Named symbols carry a letter.
-            const nt = norm(t);
-            if (nt && !/^[\d.,/]+$/.test(nt)) {
-                const m = nodes.find(n =>
-                    norm(n.subexpr) === nt || norm(n.latex) === nt || norm(n.label) === nt);
-                if (m) return m.id;
-            }
-        }
-        return null;
+        // Pure ladder in term-resolve.js (unit-tested): exact/affix-stripped id
+        // — named ids trusted as-is, structural ids only when the node's content
+        // agrees with the term's rendered text (positional `__<type>_<n>` ids
+        // are allocation-order artifacts, so a raw id hit across two
+        // independently-derived parses is routinely a counter collision) — then
+        // canonical symbol, then a loose rendered-text match.
+        return resolveTermId(this._graph, termId, termText);
     }
 
     /** The node datum for an id (label, description, latex, …), or null. */
