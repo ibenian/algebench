@@ -19,6 +19,8 @@ from pathlib import Path
 log = logging.getLogger(__name__)
 
 from proof_animation.build import build_animation, build_described, ProofAnimation
+from backend.experts.handlers.proof_animation.animation import build
+from backend.experts.handlers.proof_animation.finalize import apply_term_descriptions
 from backend.experts.modules.proof_completion.outputs import ProofTrajectory, DerivationStep
 from backend.experts.modules.proof_completion.wellformed import assert_well_formed
 from backend.experts.llm_config import configure_dspy, is_configured
@@ -160,6 +162,107 @@ def _rebuild_suite(path: Path) -> int:
     return 0
 
 
+def _rerender_one(old: dict, label: str = "") -> dict:
+    """Surgically re-render one built-animation dict IN PLACE, returning it.
+
+    Re-threads the registry over each step's ``input_latex`` with the current
+    parser/renderer so a stale bake — an integral step that couldn't parse when it
+    was first baked, or the newly id-tagged ``\\int`` sign — gets fresh annotated
+    ``latex``/``plain`` and cleaner stable ids. Everything the render doesn't own is
+    preserved verbatim: every extra top-level field (e.g. ``deeplink``), each step's
+    graded ``confidence`` (so no LM/judge is needed and no tier regresses), and
+    existing per-term ``description``s. Newly-surfaced terms get prose from a
+    TARGETED LM pass over ONLY those ids (needs a key; left blank otherwise — the
+    hover highlight still works). Raises ``KeyError`` if ``old`` isn't built (no
+    ``steps``)."""
+    if "steps" not in old:
+        raise KeyError("not a built animation (no 'steps')")
+    anim = _reanimate_from_built(old)
+    built = build(anim.trajectory, anim.domain, anim.title,
+                  start_operation=anim.start_operation,
+                  start_justification=anim.start_justification)
+    old_steps = old["steps"]
+    for i, s in enumerate(built["steps"]):
+        if i < len(old_steps) and "confidence" in old_steps[i]:
+            s["confidence"] = old_steps[i]["confidence"]     # keep graded tier
+    old_terms = old.get("terms") or {}
+    new_terms = built.get("terms") or {}
+    # Re-threading can RENAME a term's id (that's partly the point of this flag),
+    # which would orphan its description under the old id. So carry prose forward
+    # by id first, then fall back to the term's latex — a stable identity that
+    # survives an id rename — so a renamed term keeps its prose instead of eating
+    # an avoidable LM re-description (and a needless diff).
+    by_latex = {}
+    for ot in old_terms.values():
+        d = (ot.get("description") or "").strip()
+        if d:
+            by_latex.setdefault((ot.get("latex") or "").strip(), d)
+    missing = []
+    for tid, t in new_terms.items():
+        desc = ((old_terms.get(tid) or {}).get("description")
+                or by_latex.get((t.get("latex") or "").strip()))
+        if desc:
+            t["description"] = desc                           # keep existing prose
+        else:
+            missing.append(tid)
+    if missing and _ensure_lm():
+        apply_term_descriptions({"terms": {t: new_terms[t] for t in missing}},
+                                anim.domain, f"{anim.title} (domain: {anim.domain})")
+    still = [t for t in missing if not (new_terms[t].get("description") or "").strip()]
+    # Mutate the ORIGINAL dict so every unowned top-level field is preserved.
+    old["steps"], old["terms"] = built["steps"], new_terms
+    old.setdefault("overall_confidence", built.get("overall_confidence"))
+    n = len(missing) - len(still)
+    print(f"  · re-rendered {label or anim.title}"
+          + (f"  (+{n} new term(s) described)" if n else "")
+          + (f"  ⚠ undescribed: {still}" if still else ""))
+    return old
+
+
+def _rerender_builtin(path: Path) -> bool:
+    """Re-render a proof JSON in place — either a single built-in (a dict with
+    ``steps``) or the suite fixture (a LIST of built animations). Returns False if
+    the file is neither. See ``_rerender_one`` for the surgical semantics."""
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if isinstance(data, list):                               # the suite fixture
+        built = [e for e in data if isinstance(e, dict) and "steps" in e]
+        if not built:
+            return False
+        print(f"re-rendering {len(built)} animation(s) in {path}")
+        for e in built:
+            _rerender_one(e, e.get("title", ""))
+    elif isinstance(data, dict) and "steps" in data:         # a single built-in
+        print(f"re-rendering {path}")
+        _rerender_one(data)
+    else:
+        return False
+    path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    return True
+
+
+def _rerender_builtins(paths: list[str]) -> int:
+    """Re-render each given proof JSON in place (see ``_rerender_builtin``).
+
+    Returns non-zero if ANY path failed — a missing/unreadable file, or a JSON
+    that is neither a built animation nor a suite list — so CI and scripts see
+    failure as failure rather than a silent success."""
+    if not paths:
+        print("--rerender-builtins needs one or more proof JSON paths "
+              "(a proofs/domains/<domain>/<name>.json built-in, or the suite fixture)",
+              file=sys.stderr)
+        return 1
+    rc = 0
+    for p in paths:
+        try:
+            if not _rerender_builtin(Path(p)):
+                print(f"⚠ not a built animation or suite (no 'steps'), skipped: {p}", file=sys.stderr)
+                rc = 1
+        except Exception as e:                               # unreadable / bad JSON / build error
+            print(f"✗ {p}: {type(e).__name__}: {e}", file=sys.stderr)
+            rc = 1
+    return rc
+
+
 _INDEX = """<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -256,10 +359,19 @@ def main() -> int:
                     help="regenerate the --from-file suite in place as final built animations "
                          "(render + LM descriptions), then exit. Needs GEMINI_API_KEY. Run after "
                          "a proof/renderer change so CI can render the file directly, without the model.")
+    ap.add_argument("--rerender-builtins", nargs="*", metavar="PROOF.json", default=None,
+                    help="re-render the given proof JSON file(s) in place with the current "
+                         "parser/renderer, then exit — a single built-in (proofs/domains/<d>/<n>.json) "
+                         "OR the suite fixture (a list). Surgical: refreshes annotated latex + stable "
+                         "ids while preserving confidence, descriptions, and metadata (e.g. deeplink). "
+                         "Run after a renderer change (an LM key fills any newly-surfaced term prose).")
     args = ap.parse_args()
 
     global _DOMAIN_RESCUE
     _DOMAIN_RESCUE = not args.no_domain_rescue
+
+    if args.rerender_builtins is not None:
+        return _rerender_builtins(args.rerender_builtins)
 
     if args.rebuild_suite:
         return _rebuild_suite(Path(args.from_file) if args.from_file else _FIXTURES)

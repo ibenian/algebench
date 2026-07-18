@@ -131,6 +131,14 @@ html, body {
     color: #fff;
 }
 
+/* Icon-only variant of a text button — centers the shared { } SVG braces icon
+   (scene-JSON toolbar button + semantic-graph JSON button). The SVG strokes with
+   currentColor, so it inherits each button's text color / theme. */
+.tb-btn.icon-only, .graph-ctrl-btn.icon-only {
+    display: inline-flex; align-items: center; justify-content: center; line-height: 0;
+}
+.tb-btn.icon-only { padding: 6px 10px; }
+
 .tb-btn.active {
     background: rgba(45, 125, 85, 0.45);
     border-color: rgba(90, 220, 160, 0.6);
@@ -891,8 +899,9 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     left: 0;
     color: #ffffff;
     /* Real font-size scaling (crisp re-render) driven by --label-scale, rather
-       than a transform scale() that would resample the rendered glyphs. */
-    font-size: calc(13px * var(--label-scale, 1));
+       than a transform scale() that would resample the rendered glyphs.
+       Base is 13px × 1.6 = 20.8px so labelScale 1.0 renders at the enlarged size. */
+    font-size: calc(20.8px * var(--label-scale, 1));
     pointer-events: none;
     /* Crisp dark contour around the glyphs (8-way 1px outline) plus a soft halo,
        for legibility over other text and shapes — without altering the fill. */
@@ -910,7 +919,7 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 #slider-overlay, #legend, #info-overlays .dockable-panel { transition: opacity 0.2s ease; }
 
 .label-3d .katex { font-size: 1em; }
-.label-axis { font-size: calc(18px * var(--label-scale, 1)); font-weight: bold; }
+.label-axis { font-size: calc(28.8px * var(--label-scale, 1)); font-weight: bold; }
 
 /* Legend */
 #legend {
@@ -1649,7 +1658,10 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     background: rgba(10, 10, 25, 0.6);
     border-radius: 6px;
     padding: 4px 7px;
-    line-height: 1;
+    line-height: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 #settings-toggle:hover { color: rgba(200, 200, 255, 1); background: rgba(30, 30, 60, 0.8); }
 #settings-toggle.active { color: rgba(140, 160, 255, 1); background: rgba(30, 30, 60, 0.8); }
@@ -3043,11 +3055,14 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     align-items: center;
     justify-content: center;
     font-size: 15px;
+    color: #cdd3f5;                 /* SVG avatar icons stroke/fill via currentColor */
     border-radius: 50%;
     background: linear-gradient(180deg, rgba(65, 71, 116, 0.95), rgba(38, 42, 75, 0.92));
     border: 1px solid rgba(129, 141, 235, 0.14);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
+/* The shared AI/User SVGs are authored at 14px; scale up to fill the avatar. */
+.msg-avatar svg { width: 18px; height: 18px; }
 .chat-msg.user .msg-avatar {
     background: linear-gradient(180deg, rgba(74, 88, 158, 0.95), rgba(49, 58, 112, 0.92));
 }
@@ -4180,7 +4195,9 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 
 /* The mode toggle swaps between ☾ and ☀ glyphs which have different
    intrinsic widths. Pin the button so the whole control row doesn't
-   shift every time the user flips modes. */
+   shift every time the user flips modes. font-family: system-ui matches the
+   blog + /prove theme toggles (the app body font is Arial, which renders the
+   moon/sun glyphs with a heavier, different shape). */
 #graph-mode-toggle {
     width: 32px;
     min-width: 32px;
@@ -4188,6 +4205,7 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     padding-right: 0;
     text-align: center;
     flex-shrink: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 #graph-show-json {
     width: 36px;

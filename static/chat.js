@@ -768,7 +768,9 @@ function addChatMessage(role, content, toolCalls) {
 
     const avatar = document.createElement('div');
     avatar.className = 'msg-avatar';
-    avatar.textContent = role === 'user' ? '👤' : '🤖';
+    const _icons = window.algebenchIcons;
+    if (_icons) avatar.innerHTML = role === 'user' ? _icons.user : _icons.ai;
+    else avatar.textContent = role === 'user' ? '👤' : '🤖';   // fallback
     msgDiv.appendChild(avatar);
 
     const body = document.createElement('div');
@@ -913,7 +915,8 @@ function addChatLoading() {
 
     const avatar = document.createElement('div');
     avatar.className = 'msg-avatar';
-    avatar.textContent = '🤖';
+    if (window.algebenchIcons) avatar.innerHTML = window.algebenchIcons.ai;
+    else avatar.textContent = '🤖';   // fallback
     loadingDiv.appendChild(avatar);
 
     const body = document.createElement('div');

@@ -14,23 +14,10 @@
 // See docs/shareable-proof-animations.md §7.
 import { ProofAnimator } from "/proof-animation/proof-animation.js";
 import { validateProofData } from "/proof-animation/validate-proof.js";
+import { THEMES, resolveTheme } from "/theme.js";
+import { FULLSCREEN_ICON, BRACES_ICON, CODE_ICON } from "/icons.js";
 
 const SLUG_RE = /^[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+$/;
-const THEMES = new Set(["dark", "light", "auto"]);
-// Static, author-controlled markup (no user data) — safe to set as innerHTML.
-const FULLSCREEN_ICON =
-  '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" ' +
-  'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-  '<path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>';
-const BRACES_ICON =
-  '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" ' +
-  'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-  '<path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5a2 2 0 0 0 2 2h1"/>' +
-  '<path d="M16 3h1a2 2 0 0 1 2 2v5a2 2 0 0 0 2 2 2 2 0 0 0-2 2v5a2 2 0 0 1-2 2h-1"/></svg>';
-const CODE_ICON =
-  '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" ' +
-  'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-  '<path d="M8 6l-6 6 6 6"/><path d="M16 6l6 6-6 6"/></svg>';
 
 // Raw JSON text of each loaded proof, for the { } viewer. Filled during load.
 const loadedProofs = [];
@@ -62,12 +49,6 @@ function parseBuiltins() {
 function parseTheme() {
   const t = new URLSearchParams(location.search).get("theme");
   return THEMES.has(t) ? t : "dark";
-}
-
-/** Resolve "auto" to a concrete theme via the OS preference. */
-function resolveTheme(t) {
-  if (t === "auto") return matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-  return t === "light" ? "light" : "dark";
 }
 
 let _currentTheme = "dark";

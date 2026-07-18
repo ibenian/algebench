@@ -75,13 +75,55 @@ def _children(graph):
     return ch
 
 
+_CONNECTIVES = {"disjunction", "conjunction"}
+
+
+def _branch_tags(nodes, ch, desc):
+    """id -> the connective branch (0, 1, …) a node lives in EXCLUSIVELY, else None.
+
+    A symmetric ``A ∨ B`` — the quadratic's two roots differ only by a sign — makes
+    the two branches structurally identical, so the plain matcher happily pairs a
+    VANISHING term on one side (e.g. a factored-away ``4a²``) with its twin on the
+    OTHER branch: the glyph flies across the ∨. Tagging each node with the branch it
+    belongs to lets the matcher refuse cross-branch pairings (see ``_branch_compat``)
+    so the two sides morph independently.
+
+    Only the single-connective case is tagged (nested/multiple connectives → all
+    ``None`` = unrestricted). A node shared by ≥2 branches (the common ``x``/``a``/…)
+    or sitting outside the connective is ``None`` too, so it still threads freely."""
+    conns = [nid for nid, n in nodes.items()
+             if getattr(n, "op", None) in _CONNECTIVES]
+    if len(conns) != 1:
+        return {}
+    tags: dict = {}
+    for i, (_r, br) in enumerate(ch.get(conns[0], [])):     # branches in authored order
+        for nid in (br, *desc.get(br, ())):
+            tags[nid] = None if nid in tags else i           # seen twice → shared
+    return tags
+
+
+def _branch_compat(pi, ni, pid, nid) -> bool:
+    """False when matching ``pid`` → ``nid`` would cross a connective branch.
+
+    A node in new branch ``j`` accepts a prev node only from the SAME branch ``j``;
+    the FIRST branch additionally seeds from a prev with no branch (a non-connective
+    prior state morphing into ``A ∨ B`` — its terms glide into the first solution,
+    the others fade in). ``None``-tagged (shared / outside) nodes are unrestricted."""
+    nt = ni.branch.get(nid)
+    if nt is None:
+        return True
+    pt = pi.branch.get(pid)
+    return pt == nt or (pt is None and nt == 0)
+
+
 class _Index:
     """Precomputed per-node structure for one graph (see :func:`_index`)."""
 
     __slots__ = ("nodes", "ch", "par", "content", "sig", "size", "height",
-                 "desc", "postorder")
+                 "desc", "postorder", "branch")
 
-    def __init__(self, nodes, ch, par, content, sig, size, height, desc, postorder):
+    def __init__(self, nodes, ch, par, content, sig, size, height, desc, postorder,
+                 branch):
         self.nodes = nodes          # id -> SemanticGraphNode
         self.ch = ch                # parent id -> [(role, child id)]
         self.par = par              # child id -> [(role, parent id)]
@@ -91,6 +133,7 @@ class _Index:
         self.height = height        # id -> subtree height (leaf = 1)
         self.desc = desc            # id -> set of proper descendant ids
         self.postorder = postorder  # ids, children before parents
+        self.branch = branch        # id -> exclusive connective branch idx, or None
 
 
 def _index(graph) -> _Index:
@@ -156,7 +199,8 @@ def _index(graph) -> _Index:
     for nid in nodes:                # defensive: include anything unreached
         post(nid)
 
-    return _Index(nodes, ch, par, content, sig, size, height, desc, postorder)
+    branch = _branch_tags(nodes, ch, desc)
+    return _Index(nodes, ch, par, content, sig, size, height, desc, postorder, branch)
 
 
 # --------------------------------------------------------------------------- #
@@ -164,7 +208,15 @@ def _index(graph) -> _Index:
 # --------------------------------------------------------------------------- #
 
 def _match_tree(pi, ni, pid, nid, new_to_prev, used_prev, matched_new):
-    """Anchor two isomorphic subtrees, aligning descendants by (role, sig)."""
+    """Anchor two isomorphic subtrees, aligning descendants by (role, sig).
+
+    The recursion re-checks ``_branch_compat`` on every pairing, not just the root
+    the caller filtered: an isomorphic subtree that straddles a ∨/∧ (or an untagged
+    parent above tagged branch nodes) could otherwise map a branch-0 descendant onto
+    a branch-1 one by (role, sig) order alone. An incompatible pair is skipped —
+    left for the bottom-up / recovery phases (which also gate) or to fade."""
+    if not _branch_compat(pi, ni, pid, nid):
+        return
     new_to_prev[nid] = pid
     used_prev.add(pid)
     matched_new.add(nid)
@@ -205,7 +257,8 @@ def _top_down(pi, ni, new_to_prev, used_prev, matched_new):
     for pid in order:
         if pid in used_prev:
             continue
-        cands = [c for c in new_by_sig.get(pi.sig[pid], []) if c not in matched_new]
+        cands = [c for c in new_by_sig.get(pi.sig[pid], [])
+                 if c not in matched_new and _branch_compat(pi, ni, pid, c)]
         if not cands:
             continue
         if len(cands) == 1:
@@ -235,6 +288,8 @@ def _bottom_up(pi, ni, new_to_prev, used_prev, matched_new):
             if nid in matched_new or not ni.ch[nid]:
                 continue
             if ni.content[nid] != pi.content[pid]:
+                continue
+            if not _branch_compat(pi, ni, pid, nid):
                 continue
             ndesc = ni.desc[nid]
             common = sum(1 for nd in ndesc if new_to_prev.get(nd) in pdesc)
@@ -275,7 +330,9 @@ def _ordered_align(a, b, pi, ni, new_to_prev, used_prev, matched_new):
         pa, nb = a[i], b[j]
         if new_to_prev.get(nb) == pa:
             return 2
-        if pa not in used_prev and nb not in matched_new and pi.content[pa] == ni.content[nb]:
+        if (pa not in used_prev and nb not in matched_new
+                and pi.content[pa] == ni.content[nb]
+                and _branch_compat(pi, ni, pa, nb)):
             return 1
         return -1
 
@@ -308,7 +365,8 @@ def _recover(pi, ni, pid, nid, new_to_prev, used_prev, matched_new):
     b = [c for _r, c in sorted(ni.ch[nid], key=lambda rc: (rc[0] or "", ni.sig[rc[1]]))]
     for pa, nb in _ordered_align(a, b, pi, ni, new_to_prev, used_prev, matched_new):
         if (pa not in used_prev and nb not in matched_new
-                and pi.content[pa] == ni.content[nb]):
+                and pi.content[pa] == ni.content[nb]
+                and _branch_compat(pi, ni, pa, nb)):
             new_to_prev[nb] = pa
             used_prev.add(pa)
             matched_new.add(nb)

@@ -267,6 +267,7 @@ export function addLabel3D(text, dataPos, color, opts) {
         offsetY: 0, targetOffsetY: 0, // vertical de-occlusion offset (position mode)
         depth: 0,             // world-space distance from the camera (smaller = nearer)
         dim: 1, targetDim: 1, // applied / target brightness (shade mode)
+        fade: 1, targetFade: 1, // applied / target opacity for near-hiding a big stack's farthest labels
         seq: _labelSeq++,     // paint order; higher = on top (depth tiebreak)
         lastDataPos: null,    // dataPos from the previous frame (motion detection)
         moveCooldown: 0,      // frames remaining while treated as "animating"
@@ -357,10 +358,12 @@ export function updateLabels() {
     for (const lbl of state.labels) {
         lbl.offsetY += (lbl.targetOffsetY - lbl.offsetY) * declutterAlpha;
         lbl.dim += (lbl.targetDim - lbl.dim) * dimAlpha;
+        lbl.fade += (lbl.targetFade - lbl.fade) * dimAlpha;
         const ax = lbl.align === 'right' ? '-100%' : lbl.align === 'left' ? '0%' : '-50%';
         const y = lbl.screenY + lbl.offsetY;
         lbl.el.style.transform = `translate(${lbl.screenX}px, ${y}px) translate(${ax}, -50%)`;
-        lbl.el.style.opacity = lbl.visible ? state.displayParams.labelOpacity : '0';
+        // Near-hidden far labels fade via opacity (fade); gentle recede uses brightness (dim).
+        lbl.el.style.opacity = lbl.visible ? (state.displayParams.labelOpacity * lbl.fade).toFixed(3) : '0';
         lbl.el.style.filter = lbl.dim < 0.999 ? `brightness(${lbl.dim.toFixed(3)})` : '';
     }
 
@@ -392,6 +395,7 @@ function resolveDepthDimming() {
     const active = [];
     for (const lbl of state.labels) {
         lbl.targetDim = 1;
+        lbl.targetFade = 1;
         if (lbl.visible && lbl.boxW != null) active.push(lbl);
     }
     if (state.displayParams.labelDeclutterMode !== 'shade' || active.length < 2) return;
@@ -399,6 +403,11 @@ function resolveDepthDimming() {
     const dimBase = state.displayParams.labelDimBase;        // slight dim any covered label gets
     const dimFloor = state.displayParams.labelDimFloor;      // darkest a far label goes
     const relScale = state.displayParams.labelDimDepthScale; // relative gap to reach the floor
+    // Coerce/clamp: hideThreshold indexes into a sorted array below, so it must be
+    // an integer; hideLevel is used as an opacity, so keep it in [0,1]. Guards the
+    // params against out-of-range values set via the console or a future UI.
+    const hideThreshold = Math.round(state.displayParams.labelDimHideThreshold); // cluster size that triggers near-hiding
+    const hideLevel = Math.min(1, Math.max(0, state.displayParams.labelDimHideLevel)); // opacity the farthest fade to
     const boxes = new Map(active.map(l => [l, labelBox(l)]));
     const overlaps = (a, b) => {
         const A = boxes.get(a), B = boxes.get(b);
@@ -407,7 +416,21 @@ function resolveDepthDimming() {
 
     for (const cluster of clusterByOverlap(active)) {
         if (cluster.length < 2) continue;
+        // Big stack: keep the (threshold-1) nearest, near-hide everything farther.
+        // The front labels still get the gentle proportional dim below; the tail is
+        // faded out via opacity (not brightness) so a deep pile-up doesn't smear
+        // into an unreadable blur — transparent reads far better than dark text.
+        const hidden = new Set();
+        if (hideThreshold >= 2 && cluster.length >= hideThreshold) {
+            const byDepth = cluster.slice().sort(frontToBack);
+            for (let r = hideThreshold - 1; r < byDepth.length; r++) {
+                byDepth[r].targetFade = hideLevel;   // opacity, not brightness — no dark text
+                hidden.add(byDepth[r]);
+            }
+        }
         for (const lbl of cluster) {
+            if (hidden.has(lbl)) continue; // already near-hidden as a far label in this stack
+
             let covered = false, nearestDepth = Infinity;
             for (const other of cluster) {
                 if (other === lbl || !overlaps(lbl, other)) continue;
@@ -562,8 +585,10 @@ export function openChatPanel() {
 
 export function makeAiAskButton(className, title, getMessage) {
     const btn = document.createElement('button');
+    btn.type = 'button';   // never submit an enclosing form
     btn.className = className;
     btn.title = title + '\n\nClick to send · ⌘-click (Ctrl on Windows) to edit';
+    btn.setAttribute('aria-label', title);
     btn.innerHTML = AI_SPARKLE_SVG;
     btn.addEventListener('click', (e) => {
         e.stopPropagation();

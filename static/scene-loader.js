@@ -4,6 +4,7 @@
 // ============================================================
 
 import { state } from '/state.js';
+import { PREV_ICON, NEXT_ICON, PLAY_ICON, PAUSE_ICON } from '/icons.js';
 import { renderElement } from '/objects/index.js';
 import { buildSliderOverlay, registerSliders, stopAllSliderLoops, stopSliderLoop,
          removeSliderIds, recompileActiveExprs, unregisterAnimExpr, unregisterAnimUpdater,
@@ -20,6 +21,7 @@ import { updateTitle, updateExplanationPanel, buildLegend, addInfoOverlay,
          getAllElements, updateStatusBar, updateStepCaption } from '/overlay.js';
 import { buildSceneTree, updateTreeHighlight, setNavigateFn } from '/context-browser.js';
 import { loadProof, syncProofFromSceneStep } from '/proof.js';
+import { validateProofData } from '/proof-animation/validate-proof.js';
 
 const AUTO_PLAY_DEFAULT_DURATION = 3000;
 
@@ -53,6 +55,25 @@ function buildSubTracker(group, before) {
     };
 }
 
+// Static display name for the per-object Ask-AI affordance: the author `label`,
+// or a `text` element's own text content (text objects carry no `label`). Null
+// for elements whose label is dynamic (labelExpr/textExpr) — those are named from
+// the live rendered label at click time instead.
+function elementDisplayName(el) {
+    // A dynamic label (labelExpr/textExpr) is named from the live rendered label
+    // at click time, so return null here even when a static label also exists —
+    // otherwise the stale static value would win.
+    if (el.labelExpr || el.textExpr) return null;
+    return el.label || (el.type === 'text' ? (el.text || el.value) : null) || null;
+}
+
+// Does the element render a label at all — static (`label`/`text`) or dynamic
+// (`labelExpr`/`textExpr`, e.g. an animated point's live "6.3 km/s")? Such objects
+// are eligible for the Ask-AI button and so must be registered.
+function elementHasLabelSource(el) {
+    return !!(elementDisplayName(el) || el.labelExpr || el.textExpr);
+}
+
 export function renderStepAdd(elements, sliderDefs) {
     // Register sliders first (so expressions can reference them during render)
     const { ids: sliderIds, prevStates: prevSliderStates } = registerSliders(sliderDefs);
@@ -72,7 +93,7 @@ export function renderStepAdd(elements, sliderDefs) {
     const addedElementIds = [];
     let replacedElements = null;
     for (const el of elements) {
-        if (!el.id && el.label) {
+        if (!el.id && (el.prompt || (elementHasLabelSource(el) && el.type !== 'axis' && el.type !== 'grid'))) {
             el.id = '__auto_' + (autoIdCounter++) + '_' + Date.now();
         }
         // If this step reuses an element id, hide any previously visible instance first.
@@ -92,7 +113,7 @@ export function renderStepAdd(elements, sliderDefs) {
         if (el.id) {
             addedElementIds.push(el.id);
             const subTracker = buildSubTracker(elGroup, elBefore);
-            state.elementRegistry[el.id] = { tracker: subTracker, hidden: false, type: el.type };
+            state.elementRegistry[el.id] = { tracker: subTracker, hidden: false, type: el.type, prompt: el.prompt || null, label: elementDisplayName(el) };
         }
     }
 
@@ -328,6 +349,19 @@ function removeStepTracker(tracker) {
         for (const [id, savedReg] of Object.entries(tracker.replacedElements)) {
             state.elementRegistry[id] = savedReg;
             if (!stillRemoved.has(id)) showElementById(id);
+        }
+    }
+
+    // Deregister the elements this step ADDED so nothing can reference them after
+    // backward navigation — otherwise a popped element's registry entry lingers
+    // (hidden:false, with a stale label/mesh anchor) and the per-object Ask-AI
+    // picker still finds it. Ids this step REPLACED are restored just above and
+    // must be kept.
+    if (tracker.elementIds) {
+        for (const id of tracker.elementIds) {
+            if (tracker.replacedElements && tracker.replacedElements[id]) continue;
+            delete state.elementRegistry[id];
+            state.legendToggledOff.delete(id);
         }
     }
 
@@ -587,14 +621,22 @@ export async function loadScene(spec) {
     });
     state.sceneView = view;
 
+    let baseAutoIdCounter = 0;
     for (const el of spec.elements) {
+        // Objects eligible for the per-object Ask-AI button — those with an author
+        // `prompt`, or any labeled/text content object (auto-generated prompt;
+        // axes/grid excluded as scaffolding) — must be registered, so id them.
+        const dn = elementDisplayName(el);
+        if (!el.id && (el.prompt || (elementHasLabelSource(el) && el.type !== 'axis' && el.type !== 'grid'))) {
+            el.id = '__auto_' + (baseAutoIdCounter++) + '_' + Date.now();
+        }
         const elBefore = el.id ? snapshotBefore() : null;
         const elGroup = el.id ? view.group() : view;
         try {
             renderElement(el, elGroup);
             if (el.id) {
                 const subTracker = buildSubTracker(elGroup, elBefore);
-                state.elementRegistry[el.id] = { tracker: subTracker, hidden: false, type: el.type };
+                state.elementRegistry[el.id] = { tracker: subTracker, hidden: false, type: el.type, prompt: el.prompt || null, label: dn };
             }
         } catch (e) {
             console.error('Error rendering element:', el, e);
@@ -692,6 +734,73 @@ export async function loadLesson(spec) {
     buildSceneTree(spec);
     updateDockVisibility();
     navigateTo(0, -1);
+}
+
+// Path guard mirrors the one in graph-view.js dockProofAnimation.
+const _PROOF_ID_RE = /^[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+$/;
+const _PROOF_MAX_BYTES = 512 * 1024;
+
+/** Convert a pre-baked proof-animation file (proofs/domains/<id>.json) into a
+ *  minimal in-memory LESSON: one empty scene (no 3D elements) whose `proof` is the
+ *  reconstructed derivation. Feeding this through the normal lesson loader gives a
+ *  scene-less /prove proof the full app experience — real proof panel, per-step
+ *  semantic-graph derivation, and proof↔scene step sync — instead of a bespoke
+ *  standalone dock. The proof-file step shape (operation / input_latex /
+ *  justification) maps onto the lesson proofStep shape (label / math /
+ *  justification); per-step graphs are derived on demand from `math`. */
+export function proofFileToLesson(proof, id) {
+    const rawSteps = Array.isArray(proof.steps) ? proof.steps : [];
+    const steps = rawSteps.map((s, i) => ({
+        id: s.id || `step-${i}`,
+        type: i === 0 ? 'given' : (s.type || 'step'),
+        // operation carries the step title (may contain inline $…$ — renderKaTeX
+        // handles that); fall back to a generic label.
+        label: s.operation || s.label || `Step ${i + 1}`,
+        // `plain` is the CAS-normalized (un-annotated) form the proof animation
+        // renders from its `latex` field — use it so the panel matches the embedded
+        // animation exactly (e.g. e^{-z^2} shown as a fraction, not a raw negative
+        // exponent). `input_latex` (the raw expert form) is only a fallback.
+        math: s.plain || s.input_latex || s.math || '',
+        justification: s.justification || '',
+        sceneStep: 0,
+    }));
+    const title = proof.title || (id ? id.split('/')[1] : 'Proof');
+    return {
+        title,
+        scenes: [{
+            title,
+            // An empty scene: no 3D elements. The proof is the whole content.
+            markdown: typeof proof.goal === 'string' ? proof.goal : '',
+            proof: {
+                id: id || 'proof',
+                title,
+                goal: proof.goal || '',
+                technique: 'derivation',
+                steps,
+            },
+        }],
+    };
+}
+
+/** Fetch a pre-baked proof by id (<domain>/<name>), reconstruct an in-memory
+ *  lesson from it (see proofFileToLesson), and load it through the normal lesson
+ *  pipeline. Returns true on success. Best-effort/validated: a bad id or malformed
+ *  proof is a no-op returning false, so a deeplink never breaks. */
+export async function loadProofAsLesson(id) {
+    if (typeof id !== 'string' || id.includes('..') || !_PROOF_ID_RE.test(id)) return false;
+    let proof;
+    try {
+        const resp = await fetch(`/proofs/domains/${id}.json`, { cache: 'no-store' });
+        if (!resp.ok) return false;
+        const len = Number(resp.headers.get('content-length') || 0);
+        if (len && len > _PROOF_MAX_BYTES) return false;
+        const text = await resp.text();
+        if (text.length > _PROOF_MAX_BYTES) return false;
+        proof = validateProofData(JSON.parse(text));
+    } catch (e) { return false; }
+    if (!proof || !Array.isArray(proof.steps) || !proof.steps.length) return false;
+    await loadLesson(proofFileToLesson(proof, id));
+    return true;
 }
 
 export function navigateTo(sceneIdx, stepIdx) {
@@ -892,7 +1001,7 @@ function startAutoPlay() {
     const playBtn = document.getElementById('nav-play');
     if (playBtn) {
         playBtn.classList.add('playing');
-        playBtn.innerHTML = '&#9646;&#9646;';
+        playBtn.innerHTML = PAUSE_ICON;
     }
 }
 
@@ -904,7 +1013,7 @@ export function stopAutoPlay() {
     const playBtn = document.getElementById('nav-play');
     if (playBtn) {
         playBtn.classList.remove('playing');
-        playBtn.innerHTML = '&#9654;';
+        playBtn.innerHTML = PLAY_ICON;
     }
 }
 
@@ -950,6 +1059,9 @@ export function setupSceneDock() {
     const prevBtn = document.getElementById('nav-prev');
     const playBtn = document.getElementById('nav-play');
     const nextBtn = document.getElementById('nav-next');
+    if (prevBtn) prevBtn.innerHTML = PREV_ICON;
+    if (playBtn) playBtn.innerHTML = PLAY_ICON;
+    if (nextBtn) nextBtn.innerHTML = NEXT_ICON;
 
     // Default to expanded: open unless the user has explicitly collapsed it.
     const savedOpen = localStorage.getItem('algebench-dock-open');

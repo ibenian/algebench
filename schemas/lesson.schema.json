@@ -246,6 +246,10 @@
           "type": "string",
           "description": "Display label rendered near the element. Supports KaTeX via $...$. Example: \"$\\mathbf{v} = (1,0)$\"."
         },
+        "prompt": {
+          "type": "string",
+          "description": "Optional author prompt that opts this object into the per-object 'Ask AI' button in the 3D view. When set, hovering the object shows a sparkle button; clicking it sends this prompt to the AI chat, with a camera-relative description of the object (viewport position, depth, occlusion, neighbors) attached as context."
+        },
         "color": {
           "$ref": "#/$defs/color",
           "description": "Element color as hex string '#rrggbb' or RGB array [r,g,b] with values 0-1. Default varies by type."

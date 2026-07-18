@@ -156,6 +156,11 @@ export class ProofAnimator {
     if (typeof opts.askOrigin === "string" && opts.askOrigin) {
       try { this._askOrigin = new URL(opts.askOrigin).origin; } catch (e) { /* invalid → keep default */ }
     }
+    // This proof's pre-baked-animation id (``<domain>/<name>``), when the host knows
+    // it (e.g. /prove opened a saved proof by id). Lets an explore/ask navigation to
+    // a same-app view carry ``?pa=`` so the docked animation travels along — even
+    // when neither the target deeplink nor this proof's own deeplink pinned it.
+    this._paId = (typeof opts.paId === "string" && opts.paId) ? opts.paId : null;
     this._deriveBtnEl = null;
     // Optional host hook fired after every internal relayout (resize / fonts), so
     // a host that scales this widget to fit a box (SgProofManager) can re-fit AFTER
@@ -922,15 +927,40 @@ export class ProofAnimator {
   // it on boot, opens chat, and sends it once (then strips it from the URL).
   //   • with a deeplink → that scene/step view + ?panel=chat&aa=<question>;
   //   • without        → the app's MAIN PAGE + ?panel=chat&aa=<question>.
+  // This proof's own pre-baked-animation id (the ?pa= on its proof-level deeplink),
+  // or null. Used to carry the docked animation onto explore/ask navigations whose
+  // target deeplink (a per-chip / per-step link) didn't pin one.
+  // This proof's own pre-baked-animation id: the host-supplied ``paId`` if any,
+  // else the ``?pa=`` on its proof-level deeplink. Null when neither is known.
+  _ownPaId() {
+    if (this._paId) return this._paId;
+    try {
+      const d = this.data && this.data.deeplink;
+      if (!d) return null;
+      const u = new URL(d, this._askOrigin || window.location.origin);
+      return u.searchParams.get("pa");
+    } catch (e) { return null; }
+  }
+
   _askTargetUrl(deeplink, message) {
     try {
       const origin = this._askOrigin || window.location.origin;
-      const u = new URL(deeplink || "/", origin);
+      const raw = deeplink || "/";
+      const u = new URL(raw, origin);
       if (u.origin !== origin) return null;   // off-origin deeplink → reject
       u.searchParams.set("panel", "chat");
       u.searchParams.set("aa", String(message).slice(0, 1500));
-      // If the deeplink loads a pre-baked proof animation (?pa=), carry the step the
-      // learner is currently on so the docked animation opens there, not at step 0.
+      // Carry THIS proof's pre-baked animation (?pa=) onto the target so the docked
+      // derivation travels with the navigation — even when the target didn't pin it.
+      // Only for a same-APP navigation: a relative deeplink (starts with "/", incl.
+      // the "/" default when there's no deeplink). A full http(s) address is treated
+      // as an external "go see it" cross-reference and left untouched. Never clobber
+      // a pa the target already chose.
+      const sameApp = raw.startsWith("/");
+      const ownPa = this._ownPaId();
+      if (sameApp && ownPa && !u.searchParams.has("pa")) u.searchParams.set("pa", ownPa);
+      // With a pa present, carry the step the learner is currently on so the docked
+      // animation opens there, not at step 0.
       if (u.searchParams.has("pa")) u.searchParams.set("pas", String(this.current));
       return u.href;
     } catch (e) { return null; }
@@ -1430,9 +1460,37 @@ export class ProofAnimator {
         const p = el.closest("[data-n]");
         if (p && !p.querySelector("[data-n]")) return;    // inside a tagged leaf glyph
       }
-      out.push({ char: ch, el: unit, delim: !!delim });
+      // The CONTENT — the id of the node this paren wraps. A paren is identified
+      // by WHAT IT ENCLOSES, not by its glyph or its position: `\sin`'s `(` wraps
+      // `gamma`, `\ln`'s wraps `v`, a `(-v_e)` group wraps its negation node. The
+      // morph matches parens on (char, content), so a paren only ever morphs to
+      // one wrapping the SAME node — a function paren can't fly to an unrelated
+      // one that merely sorts first (Allen–Eggers `\sin`→`\ln`, step 5→6), and a
+      // grouping paren still glides when its OWNER operator changes but the thing
+      // it wraps is the same (Tsiolkovsky `(-v_e)` moving from a fraction
+      // numerator to a factor, step 3→4). Content is the wrapped node's stable id
+      // (rebase prefix stripped for the canonical cross-state key).
+      out.push({ char: ch, el: unit, delim: !!delim, content: this._parenContent(el, ch) });
     });
     return out;
+  }
+
+  // The stable id of the node a paren wraps — its match key (see _parens). KaTeX
+  // draws `\left(X\right)` as a `.minner` row of `[mopen "(", X, mclose ")"]`, so
+  // the wrapped content is the paren cell's adjacent sibling: the next sibling for
+  // an OPEN delimiter, the previous for a CLOSE. Open vs close comes from KaTeX's
+  // `.mopen`/`.mclose` role, NOT the glyph — `_parenChar` also admits `[`/`]`/`|`,
+  // so keying off `( ` would misread an opening `[` or `|` as a close and grab the
+  // wrong sibling. Returns "" when the content carries no id (e.g. a bare number)
+  // — those parens fall back to order-based matching.
+  _parenContent(el, ch) {
+    const cell = el.closest(".mopen, .mclose") || el;
+    const isOpen = cell.classList ? cell.classList.contains("mopen") : ch !== ")";
+    const sib = isOpen ? cell.nextElementSibling : cell.previousElementSibling;
+    if (!sib) return "";
+    let id = sib.getAttribute && sib.getAttribute("data-n");
+    if (!id) { const inner = sib.querySelector && sib.querySelector("[data-n]"); id = inner ? inner.getAttribute("data-n") : ""; }
+    return (id || "").replace(/^_r\d+_/, "");
   }
 
   // Like _lcsMatch but returns the actual aligned index PAIRS [srcIdx, tgtIdx],
@@ -1617,7 +1675,7 @@ export class ProofAnimator {
     // re-render so a preserved paren can morph from its old pose and a removed
     // one can ghost out.
     const fromParens = this._parens(this.stage).map((p) => ({
-      char: p.char, delim: p.delim,
+      char: p.char, delim: p.delim, content: p.content,
       clone: p.el.cloneNode(true),
       rect: p.el.getBoundingClientRect(),
       fontSize: getComputedStyle(p.el).fontSize,
@@ -1755,7 +1813,12 @@ export class ProofAnimator {
     // that flips plain↔stretchy, or grows with its content, glides as one unit
     // instead of duplicating). Genuinely new parens fade in; removed ones ghost out.
     const toParens = this._parens(this.stage);
-    const parenPairs = this._lcsPairs(fromParens.map((p) => p.char), toParens.map((p) => p.char));
+    // Match on (char, content) — a paren only aligns with one wrapping the SAME
+    // node, so a preserved function/group paren morphs while an unrelated paren that
+    // merely shares the same `(`/`)` glyph can't hijack its slot (see the content
+    // note in _parens).
+    const _pTok = (p) => p.char + " " + p.content;
+    const parenPairs = this._lcsPairs(fromParens.map(_pTok), toParens.map(_pTok));
     const _pFromKeep = new Set(parenPairs.map((pr) => pr[0]));
     const _pToKeep = new Set(parenPairs.map((pr) => pr[1]));
     const parenMovers = [];

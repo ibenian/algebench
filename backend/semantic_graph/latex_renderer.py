@@ -183,7 +183,15 @@ def _emit_body(n, ins, nodes, incoming, child, oid, gw) -> tuple[str, int]:
         return (_CONSTANT_LATEX.get(name, name), _ATOM)
     if t == "number":
         val = n.label if n.label is not None else n.value
-        return (str(val), _ATOM)
+        s = str(val)
+        # A SymPy infinity can land on a number node — notably ``-oo`` as an
+        # integral's lower bound, which the parser classifies as a number while
+        # ``+oo`` becomes a ``constant`` (rendered via _CONSTANT_LATEX). Without
+        # this, ``str(-oo)`` leaks the ASCII ``-oo`` into the LaTeX instead of
+        # ``-\infty``. Render the sign-carrying infinity the same way here.
+        if s.lstrip("+-") == "oo":
+            return (("-" if s.startswith("-") else "") + r"\infty", _ATOM)
+        return (s, _ATOM)
     if t == "function":
         # log/ln carry an optional ``base``-role operand (the parser splits the
         # base out as its own node — natural log gets base ``e``, ``log_b`` an
@@ -200,6 +208,7 @@ def _emit_body(n, ins, nodes, incoming, child, oid, gw) -> tuple[str, int]:
                 # but ``\ln`` ``latex=None`` (both op ``log``), so a missing latex
                 # uniquely means ``\ln`` — deriving from ``op`` would flip it.
                 fn = getattr(n, "latex", None) or r"\ln"
+                nm = gw(oid + "__name", fn)   # tag the NAME as one unit (see _fn_name note)
                 if base_ins:
                     bnode = nodes.get(base_ins[0])
                     # Natural base ``e`` stays implicit; any other base (a number
@@ -209,8 +218,25 @@ def _emit_body(n, ins, nodes, incoming, child, oid, gw) -> tuple[str, int]:
                                and getattr(bnode, "latex", None) == "e")
                     if not natural:
                         base = child(base_ins[0], _LOGIC)
-                        return (rf"{fn}_{{{base}}}\left({arg}\right)", _ATOM)
-                return (f"{fn}\\left({arg}\\right)", _ATOM)   # natural / implicit base
+                        return (rf"{nm}_{{{base}}}\left({arg}\right)", _ATOM)
+                return (f"{nm}\\left({arg}\\right)", _ATOM)   # natural / implicit base
+        if (op and ins and op not in ("sqrt", "abs", "i")
+                and _FUNC_LATEX.get(op) is None
+                and all(role != "base" for role, _ in ins)):
+            # Unmodeled name applied to arguments (``f(x)``, ``g(u, v)``): render
+            # as a plain application so the state keeps its id-annotated LaTeX
+            # (and FLIP morphing) instead of falling back to the raw string.
+            # Mirrors the grounding-side undefined-function case. Prefer the
+            # node's own ``latex`` (``\psi`` for op ``psi`` — re-deriving from
+            # ``op`` would lose the command form), and wrap ONLY plain
+            # multi-letter ASCII identifiers (``erf``) in ``\operatorname`` so
+            # they draw upright instead of as a product of italic letters —
+            # indexed names (``f_{1}``) keep normal math subscripts.
+            name = getattr(n, "latex", None) or op
+            if len(name) > 1 and name.isascii() and name.isalpha():
+                name = rf"\operatorname{{{name}}}"
+            args = ", ".join(child(c, _LOGIC) for _, c in ins)
+            return (f"{gw(oid + '__name', name)}\\left({args}\\right)", _ATOM)
         if len(ins) != 1:
             raise StructuralRenderError(f"function {op!r} arity {len(ins)}")
         arg = child(ins[0][1], _LOGIC)
@@ -227,7 +253,14 @@ def _emit_body(n, ins, nodes, incoming, child, oid, gw) -> tuple[str, int]:
             if op == "i":
                 return (f"i\\left({arg}\\right)", _ATOM)
             raise StructuralRenderError(f"function {op!r}")
-        return (f"{fn}\\left({arg}\\right)", _ATOM)
+        # Tag the function NAME (``\sin``/``\log``/…) as ONE unit. KaTeX draws the
+        # name as a `.mop` that splits into a bare "lo" text node plus a separate
+        # "g" glyph span, so the FLIP morph caught only the "g" (an untagged insert
+        # that faded in last) while "lo" appeared instantly — the name flashed
+        # "lo"→"log". Wrapping it in its own id makes the whole name a single leaf
+        # glyph that morphs/fades as a unit. (gw = identity without ids, so the
+        # plain render and round-trips are unchanged.)
+        return (f"{gw(oid + '__name', fn)}\\left({arg}\\right)", _ATOM)
     if t == "relation":
         sym = _REL_LATEX.get(op)
         if sym is None:
@@ -310,13 +343,41 @@ def _emit_operator(n, op, ins, nodes, incoming, child, oid, gw) -> tuple[str, in
         operands = [c for role, c in ins if role != "wrt"]
         if len(operands) != 1:
             raise StructuralRenderError("derivative operand")
-        if n.with_respect_to:
-            wrt = ",".join(s.strip() for s in n.with_respect_to.split(",") if s.strip())
+        # Tag the ``\frac{d}{d<var>}`` glyphs so the FLIP morph can key off them —
+        # without ids a persisting derivative SNAPS while the operand around it
+        # glides (e.g. the chain-rule step where ``d/dt`` splits into
+        # ``d/dh · dh/dt``). Two kinds of glyph, two id sources:
+        #
+        #   • the two ``d`` operator glyphs are pure NOTATION (no graph node), so
+        #     they get a synthetic id scoped to this derivative — ``__d``
+        #     (numerator) and ``__dd`` (differential denominator).
+        #   • the wrt VARIABLE ``t`` IS a real graph node (a ``wrt`` edge), so its
+        #     glyph links to that node's id. But the same node can also be the
+        #     operand's variable (``d/dx x²`` — one ``x`` node, two roles) or the
+        #     wrt of another derivative (chain rule), so a bare ``n=x`` would DUP.
+        #     We occurrence-scope it to THIS derivative (``<var>__<deriv_oid>``,
+        #     e.g. ``t____deriv_2``) — the same convention the operand uses
+        #     (``v____deriv_2``): unique per occurrence, still resolves back to the
+        #     variable term (id splits on ``__``), and threads across states so the
+        #     derivative's own ``d/d<var>`` morphs. wrt edges stay OUT of
+        #     ``dag_deg`` (see top) so this scoping never perturbs the operand id.
+        num = gw(oid + "__d", "d")
+        dd = gw(oid + "__dd", "d")
+        wrt_nodes = [c for role, c in ins if role == "wrt"]
+        if wrt_nodes:
+            wrt = ",".join(
+                gw(f"{c}__{oid}",
+                   _emit_body(nodes[c], incoming[c], nodes, incoming, child, c, gw)[0])
+                for c in wrt_nodes)
+        elif n.with_respect_to:                              # no node — bare string fallback
+            parts = [s.strip() for s in n.with_respect_to.split(",") if s.strip()]
+            if not parts:
+                raise StructuralRenderError("derivative wrt")
+            wrt = ",".join(gw(oid + "__wrt" + (str(k) if k else ""), p)
+                           for k, p in enumerate(parts))
         else:
-            wrt = ",".join(child(c, _LOGIC) for role, c in ins if role == "wrt")
-        if not wrt:
             raise StructuralRenderError("derivative wrt")
-        return (f"\\frac{{d}}{{d {wrt}}} {child(operands[0], _MUL)}", _MUL)
+        return (f"\\frac{{{num}}}{{{dd} {wrt}}} {child(operands[0], _MUL)}", _MUL)
 
     if op in ("integral", "closed_integral"):
         # ``\int integrand d<var>``. The integrand is the unroled operand; each
@@ -337,9 +398,20 @@ def _emit_operator(n, op, ins, nodes, incoming, child, oid, gw) -> tuple[str, in
         # Definite bounds attach to the first sign (the model carries a single
         # lower/upper bound per node — multi-variable definite integrals aren't
         # modeled, and fail the single-root check earlier rather than here).
-        first = base + (f"_{{{child(lb[0], _LOGIC)}}}^{{{child(ub[0], _LOGIC)}}}"
-                        if lb and ub else "")
-        sign = first + base * (len(diffs) - 1)
+        #
+        # Each ∫ glyph carries its OWN stable id (``<oid>__int``, ``__int2``, …).
+        # Without it the sign is an untagged decoration: the FLIP morph can't key
+        # off it, so a persisting ∫ snaps to its new spot while the id'd content
+        # around it glides — the "sudden jump" on integration steps. Tagging it
+        # makes the sign a first-class glyph that slides / fades / ghosts like any
+        # other. The bounds stay tagged children (bare ``\int`` in the no-id path,
+        # so definite-integral rendering and round-trips are unchanged).
+        first = gw(oid + "__int", base) + (
+            f"_{{{child(lb[0], _LOGIC)}}}^{{{child(ub[0], _LOGIC)}}}"
+            if lb and ub else "")
+        extra = "".join(gw(oid + f"__int{k}", base)
+                        for k in range(2, len(diffs) + 1))
+        sign = first + extra
         diff = "".join(f"\\,{child(c, _MUL)}" for c in diffs)
         return (f"{sign} {child(operands[0], _MUL)}{diff}", _MUL)
 
