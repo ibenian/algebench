@@ -16,6 +16,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 def client(tmp_path, monkeypatch):
     monkeypatch.setenv("ALGEBENCH_PROOFS_DIR", str(tmp_path / "domains"))
     monkeypatch.setenv("ALGEBENCH_PROOF_SOURCE_DIR", str(tmp_path / "source"))
+    monkeypatch.setenv("ALGEBENCH_PROOF_SUBMISSIONS_DIR", str(tmp_path / "subs" / "domains"))
+    monkeypatch.setenv("ALGEBENCH_PROOF_SUBMISSIONS_SOURCE_DIR", str(tmp_path / "subs" / "source"))
     monkeypatch.delenv("ALGEBENCH_PROOFS_BUCKET", raising=False)
     monkeypatch.setenv("ALGEBENCH_PROOFS_SALT", "test-salt")
     import backend.server as server
@@ -55,58 +57,55 @@ class TestCatalogAndRead:
         assert client.get("/api/proofs/item", params={"id": "algebra/nope-nope"}).status_code == 404
 
 
-class TestClaimUpdateDelete:
-    def test_claim_returns_secret_and_strips_fields(self, client):
-        r = client.post("/api/proofs", json={"id": NEWID, "data": PROOF, "source": SOURCE})
-        assert r.status_code == 200
-        secret = r.json()["secret"]
-        assert secret
-        # injected field stripped server-side
-        got = client.get("/api/proofs/item", params={"id": NEWID}).json()
-        assert "evil_injected_field" not in got
-        assert got["title"] == "My difference of squares"
-        # now in the catalog
+def _plant_published(id, data, source=None):
+    """Simulate promotion: write a proof (+ optional source package) directly
+    into the published store on disk, bypassing HTTP. Returns the content-HMAC
+    secret for that stored object (as promotion would need to rotate/break).
+
+    There is intentionally no public write endpoint for `proofs/`, so tests that
+    need a published proof plant it server-side like the promotion step will."""
+    import json, os
+    from backend.proof_api.store import canonical_bytes, compute_secret
+    nid = id
+    blob = canonical_bytes(data)
+    p = Path(os.environ["ALGEBENCH_PROOFS_DIR"]) / f"{nid}.json"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_bytes(blob)
+    if source is not None:
+        d = Path(os.environ["ALGEBENCH_PROOF_SOURCE_DIR"]) / "domains" / nid
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "documentation.md").write_text(source.get("documentation", ""), encoding="utf-8")
+        (d / "references.json").write_text(
+            json.dumps(source.get("references", [])), encoding="utf-8")
+    return compute_secret(nid, blob)
+
+
+class TestNoPublicWriteToProofs:
+    """The published `proofs/` space has NO public write path — only the review
+    queue is publicly writable; `proofs/` is reached solely via promotion."""
+
+    def test_post_put_delete_proofs_absent(self, client):
+        # Route removed → FastAPI answers 405 (path exists for GET) not 200.
+        assert client.post("/api/proofs", json={"id": NEWID, "data": PROOF}).status_code == 405
+        assert client.put("/api/proofs", params={"secret": "x"},
+                          json={"id": NEWID, "data": PROOF}).status_code == 405
+        assert client.delete("/api/proofs", params={"id": NEWID, "secret": "x"}).status_code == 405
+
+    def test_planted_published_proof_is_readable(self, client):
+        # A promoted (planted) proof reads + lists like any published proof.
+        _plant_published(NEWID, dict(PROOF))
+        got = client.get("/api/proofs/item", params={"id": NEWID})
+        assert got.status_code == 200 and got.json()["title"] == "My difference of squares"
+        assert got.headers.get("X-Proof-Status") is None            # not "under review"
         ids = {p["id"] for p in client.get("/api/proofs").json()["proofs"]}
         assert NEWID in ids
 
-    def test_claim_duplicate_409(self, client):
-        client.post("/api/proofs", json={"id": NEWID, "data": PROOF})
-        r = client.post("/api/proofs", json={"id": NEWID, "data": PROOF})
-        assert r.status_code == 409
-
-    def test_claim_over_builtin_409(self, client):
-        r = client.post("/api/proofs", json={"id": "algebra/binomial-square", "data": PROOF})
-        assert r.status_code == 409
-
-    def test_claim_invalid_400(self, client):
-        assert client.post("/api/proofs", json={"id": "bad id", "data": PROOF}).status_code == 400
-        assert client.post("/api/proofs", json={"id": NEWID, "data": {"no": "steps"}}).status_code == 400
-
-    def test_update_cas_and_rotation(self, client):
-        secret = client.post("/api/proofs", json={"id": NEWID, "data": PROOF}).json()["secret"]
-        updated = dict(PROOF, title="Updated title")
-        # wrong secret → 403, no change
-        assert client.put("/api/proofs", params={"secret": "wrong"}, json={"id": NEWID, "data": updated}).status_code == 403
-        assert client.get("/api/proofs/item", params={"id": NEWID}).json()["title"] == "My difference of squares"
-        # right secret → 200 + rotated secret
-        r = client.put("/api/proofs", params={"secret": secret}, json={"id": NEWID, "data": updated})
-        assert r.status_code == 200
-        new_secret = r.json()["secret"]
-        assert new_secret and new_secret != secret
-        assert client.get("/api/proofs/item", params={"id": NEWID}).json()["title"] == "Updated title"
-        # old secret now stale → 403
-        assert client.put("/api/proofs", params={"secret": secret}, json={"id": NEWID, "data": dict(PROOF, title="x")}).status_code == 403
-
-    def test_delete_requires_secret(self, client):
-        secret = client.post("/api/proofs", json={"id": NEWID, "data": PROOF}).json()["secret"]
-        assert client.delete("/api/proofs", params={"id": NEWID, "secret": "wrong"}).status_code == 403
-        assert client.delete("/api/proofs", params={"id": NEWID, "secret": secret}).status_code == 200
-        assert client.get("/api/proofs/item", params={"id": NEWID}).status_code == 404
-
 
 class TestSourceMaterial:
+    """Source endpoint's published branch (owner=store), fed by a planted proof."""
+
     def test_source_gated_by_secret(self, client):
-        secret = client.post("/api/proofs", json={"id": NEWID, "data": PROOF, "source": SOURCE}).json()["secret"]
+        secret = _plant_published(NEWID, dict(PROOF), SOURCE)
         # without secret → 403
         assert client.get("/api/proofs/source", params={"id": NEWID}).status_code == 403
         # with secret → 200 + repopulation payload
@@ -116,7 +115,7 @@ class TestSourceMaterial:
         assert r.json()["references"] == [{"id": "algebra/isolate-a", "title": "Isolate a"}]
 
     def test_source_absent_404(self, client):
-        secret = client.post("/api/proofs", json={"id": NEWID, "data": PROOF}).json()["secret"]
+        secret = _plant_published(NEWID, dict(PROOF))    # no source package written
         assert client.get("/api/proofs/source", params={"id": NEWID, "secret": secret}).status_code == 404
 
 
@@ -146,6 +145,138 @@ class TestSeedStoreCollision:
         got = client.get("/api/proofs/item", params={"id": "algebra/binomial-square"}).json()
         assert got["title"] == "Square of a binomial"
         assert got["goal"] != "hijack"
+
+
+SUBID = "algebra/my-submitted-proof"
+SUB_SOURCE = {"prompt": "derive the difference of squares", "documentation": "from the identity",
+              "references": [{"id": "algebra/isolate-a", "title": "Isolate a"}]}
+
+
+class TestSubmissions:
+    """POST /api/proof-submissions — the review queue (issue #464)."""
+
+    def _submit(self, client, id=SUBID, data=PROOF, source=SUB_SOURCE):
+        return client.post("/api/proof-submissions", json={"id": id, "data": data, "source": source})
+
+    def test_submit_returns_secret_and_status(self, client):
+        r = self._submit(client)
+        assert r.status_code == 200
+        body = r.json()
+        assert body["id"] == SUBID and body["secret"] and body["status"] == "under-review"
+
+    def test_submission_hidden_from_default_catalog(self, client):
+        self._submit(client)
+        ids = {p["id"] for p in client.get("/api/proofs").json()["proofs"]}
+        assert SUBID not in ids
+
+    def test_submission_listed_on_optin_with_tag(self, client):
+        self._submit(client)
+        proofs = client.get("/api/proofs", params={"includeSubmissions": "1"}).json()["proofs"]
+        entry = next(p for p in proofs if p["id"] == SUBID)
+        assert entry["status"] == "under-review"
+        # published entries carry no status tag
+        pub = next(p for p in proofs if p["id"] == "algebra/binomial-square")
+        assert "status" not in pub
+
+    def test_submission_readable_by_full_id(self, client):
+        self._submit(client)
+        r = client.get("/api/proofs/item", params={"id": SUBID})
+        assert r.status_code == 200
+        assert r.json()["title"] == "My difference of squares"
+        assert "evil_injected_field" not in r.json()          # sanitized like claims
+        assert r.headers.get("X-Proof-Status") == "under-review"
+
+    def test_published_item_has_no_review_header(self, client):
+        r = client.get("/api/proofs/item", params={"id": "algebra/binomial-square"})
+        assert r.status_code == 200 and "X-Proof-Status" not in r.headers
+
+    def test_uniqueness_union_both_directions(self, client):
+        # a submission can't take a built-in name …
+        assert self._submit(client, id="algebra/binomial-square").status_code == 409
+        # … nor a published (promoted) name …
+        _plant_published(NEWID, dict(PROOF))
+        assert self._submit(client, id=NEWID).status_code == 409
+        # … and name-availability reports a pending submission as taken (the
+        # reverse guard the removed claim path used to enforce).
+        self._submit(client)
+        assert client.get("/api/proofs/name-available",
+                          params={"name": SUBID}).json()["available"] is False
+
+    def test_duplicate_submission_409(self, client):
+        assert self._submit(client).status_code == 200
+        assert self._submit(client).status_code == 409
+
+    def test_name_available_sees_submissions(self, client):
+        assert client.get("/api/proofs/name-available", params={"name": SUBID}).json()["available"] is True
+        self._submit(client)
+        assert client.get("/api/proofs/name-available", params={"name": SUBID}).json()["available"] is False
+
+    def test_invalid_submission_400(self, client):
+        assert self._submit(client, id="bad id").status_code == 400
+        assert self._submit(client, data={"no": "steps"}).status_code == 400
+
+    def test_update_by_secret_rotates(self, client):
+        secret = self._submit(client).json()["secret"]
+        updated = dict(PROOF, title="Edited while in review")
+        # wrong key → 403, unchanged
+        r = client.put("/api/proof-submissions", params={"secret": "wrong"},
+                       json={"id": SUBID, "data": updated})
+        assert r.status_code == 403
+        assert client.get("/api/proofs/item", params={"id": SUBID}).json()["title"] == "My difference of squares"
+        # right key → 200, content replaced, key rotated
+        r = client.put("/api/proof-submissions", params={"secret": secret},
+                       json={"id": SUBID, "data": updated,
+                             "source": {"prompt": "new prompt", "documentation": "new doc"}})
+        assert r.status_code == 200
+        new_secret = r.json()["secret"]
+        assert new_secret and new_secret != secret and r.json()["status"] == "under-review"
+        got = client.get("/api/proofs/item", params={"id": SUBID})
+        assert got.json()["title"] == "Edited while in review"
+        assert got.headers.get("X-Proof-Status") == "under-review"   # still pending
+        # old key is now stale
+        assert client.put("/api/proof-submissions", params={"secret": secret},
+                          json={"id": SUBID, "data": PROOF}).status_code == 403
+
+    def test_update_gone_after_promotion_403(self, client):
+        # Simulate approval: the submission leaves the queue (promoted to proofs/).
+        import os
+        secret = self._submit(client).json()["secret"]
+        (Path(os.environ["ALGEBENCH_PROOF_SUBMISSIONS_DIR"]) / "algebra" / "my-submitted-proof.json").unlink()
+        r = client.put("/api/proof-submissions", params={"secret": secret},
+                       json={"id": SUBID, "data": PROOF})
+        assert r.status_code == 403          # can only clone now
+
+    def test_no_public_write_to_published_via_promoted_key(self, client):
+        # Even holding the (still-valid) edit key, there's no public write into
+        # proofs/ — the published write verbs don't exist (405).
+        secret = self._submit(client).json()["secret"]
+        assert client.put("/api/proofs", params={"secret": secret},
+                          json={"id": SUBID, "data": PROOF}).status_code == 405
+
+    def test_source_readable_with_key(self, client):
+        secret = self._submit(client).json()["secret"]
+        # the edit-by-key restore path: source falls back to the review queue
+        assert client.get("/api/proofs/source", params={"id": SUBID}).status_code == 403
+        r = client.get("/api/proofs/source", params={"id": SUBID, "secret": secret})
+        assert r.status_code == 200
+        assert r.json()["prompt"] == "derive the difference of squares"
+        assert r.json()["documentation"] == "from the identity"
+
+    def test_package_written_with_prompt(self, client):
+        # The submission is a package: proof + prompt + documentation + references,
+        # under the submissions location (never proofs/).
+        import json, os
+        self._submit(client)
+        subs_dir = Path(os.environ["ALGEBENCH_PROOF_SUBMISSIONS_DIR"])
+        src_dir = Path(os.environ["ALGEBENCH_PROOF_SUBMISSIONS_SOURCE_DIR"]) / "domains" / SUBID
+        proof_file = subs_dir / "algebra" / "my-submitted-proof.json"
+        assert proof_file.is_file()
+        assert json.loads(proof_file.read_text())["title"] == "My difference of squares"
+        assert (src_dir / "prompt.txt").read_text() == "derive the difference of squares"
+        assert (src_dir / "documentation.md").read_text() == "from the identity"
+        assert json.loads((src_dir / "references.json").read_text())[0]["id"] == "algebra/isolate-a"
+        # nothing leaked into the published store
+        assert not (Path(os.environ["ALGEBENCH_PROOFS_DIR"]) / "algebra" / "my-submitted-proof.json").exists()
 
 
 class TestCrossRef:
@@ -194,6 +325,8 @@ def debug_drafts(tmp_path, monkeypatch):
     drafts.mkdir()
     monkeypatch.setenv("ALGEBENCH_PROOFS_DIR", str(tmp_path / "domains"))
     monkeypatch.setenv("ALGEBENCH_PROOF_SOURCE_DIR", str(tmp_path / "source"))
+    monkeypatch.setenv("ALGEBENCH_PROOF_SUBMISSIONS_DIR", str(tmp_path / "subs" / "domains"))
+    monkeypatch.setenv("ALGEBENCH_PROOF_SUBMISSIONS_SOURCE_DIR", str(tmp_path / "subs" / "source"))
     monkeypatch.delenv("ALGEBENCH_PROOFS_BUCKET", raising=False)
     monkeypatch.setenv("ALGEBENCH_PROOFS_SALT", "test-salt")
     import backend.server as server

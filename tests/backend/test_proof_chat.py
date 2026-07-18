@@ -52,6 +52,19 @@ def test_system_prompt_is_proof_scoped_not_lesson_framed():
     assert "Quadratic formula" in sp   # derivation embedded
 
 
+def test_system_prompt_carries_submission_lifecycle():
+    # The chat can answer "how do I submit / use my edit key?" from a bounded
+    # PLATFORM block (issue #464). Facts the reader may ask about must be present.
+    sp = server._proof_chat_system_prompt(_PROOF)
+    low = sp.lower()
+    assert "platform" in low
+    assert "review queue" in low          # not public until promoted
+    assert "edit key" in low              # the one-time capability
+    assert "show proofs under review" in low   # how to find a pending submission
+    assert "clone-only" in low            # once approved
+    assert "↑ Submit" in sp and "✎ Edit" in sp   # the actions the user takes
+
+
 def test_system_prompt_injects_current_step():
     sp = server._proof_chat_system_prompt(_PROOF, current_step=2)
     assert "CURRENTLY viewing step 2" in sp

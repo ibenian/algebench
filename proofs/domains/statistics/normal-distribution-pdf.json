@@ -1,5 +1,5 @@
 {
-  "title": "Deriving $f(x) = \\frac{1}{\\sigma\\sqrt{2\\pi}} e^{-\\frac{(x-\\mu)^2}{2\\sigma^2}}$ from $C \\cdot \\int\\limits_{-\\infty}^{\\infty} e^{- \\frac{\\left(- \\mu + x\\right)^{2}}{2 \\cdot \\sigma^{2}}}\\, dx = 1$",
+  "title": "Deriving the normal distribution PDF",
   "domain": "statistics",
   "steps": [
     {

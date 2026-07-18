@@ -207,7 +207,13 @@
               border: 1px solid var(--btn-border); border-radius: 10px;
               background: var(--panel-bg); color: var(--text-color); }
     #search:focus { outline: none; border-color: var(--accent); }
-    .count { font-size: .8rem; color: var(--muted-color); margin: 0 2px 10px; }
+    .count { font-size: .8rem; color: var(--muted-color); }
+    /* Count (left) + the deliberate "show under review" opt-in (right). */
+    .browse-meta { display: flex; align-items: center; justify-content: space-between;
+                   gap: 10px; margin: 0 2px 10px; }
+    .review-toggle { display: inline-flex; align-items: center; gap: 6px;
+                     font-size: .8rem; color: var(--muted-color); cursor: pointer; }
+    .review-toggle input { accent-color: var(--accent); }
 
     #browse { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 8px; margin: 0 0 8px; }
     .pitem { text-align: left; font: inherit; cursor: pointer; display: flex; flex-direction: column;
@@ -225,8 +231,21 @@
 
     .viewer-bar { display: flex; align-items: center; justify-content: space-between;
                   gap: 10px; margin: 0 0 8px; }
+    .viewer-left { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
     .viewer-id { font: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .78rem;
                  color: var(--muted-color); }
+    /* Provenance chip: "based on <id>" for a proof cloned in via Edit. */
+    .based-chip { font: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .7rem;
+                  color: var(--accent); background: var(--chip-bg);
+                  border: 1px solid var(--border-color); border-radius: 999px;
+                  padding: 2px 9px; white-space: nowrap; overflow: hidden;
+                  text-overflow: ellipsis; max-width: 340px; }
+    /* "under review" badge — on browse items and opened-submission viewer bars. */
+    .review-badge { font-size: .66rem; font-weight: 700; text-transform: uppercase;
+                    letter-spacing: .06em; color: #b45309; background: rgba(245, 158, 11, .12);
+                    border: 1px solid rgba(245, 158, 11, .45); border-radius: 5px;
+                    padding: 1px 6px; white-space: nowrap; }
+    html:not([data-theme="light"]) .review-badge { color: #fbbf24; }
     .viewer-actions { display: flex; align-items: center; gap: 8px; }
     .viewer-btn { font: inherit; font-size: .82rem; cursor: pointer; color: var(--btn-fg);
                   background: var(--btn-bg); border: 1px solid var(--btn-border);
@@ -272,6 +291,28 @@
                 font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .8rem;
                 border: 1px solid var(--btn-border); border-radius: 7px; padding: 8px;
                 background: var(--panel-bg); color: var(--text-color); }
+
+    /* ── Submit-for-review dialog ── */
+    .sub-explain { font-size: .88rem; line-height: 1.55; color: var(--text-color); margin: 4px 0 12px; }
+    .sub-based { font: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .76rem;
+                 color: var(--muted-color); background: var(--chip-bg);
+                 border: 1px solid var(--border-color); border-radius: 8px;
+                 padding: 7px 10px; margin: 0 0 12px; word-break: break-all; }
+    .sub-row { display: flex; align-items: center; gap: 10px; margin: 0 0 6px; }
+    .sub-row label { font-size: .85rem; color: var(--muted-color); }
+    .sub-name-input { flex: 1; width: auto; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .sub-avail { min-height: 20px; font-size: .8rem; margin: 0 0 10px; }
+    .sub-avail.ok { color: var(--accent); }
+    .sub-avail.err { color: var(--err-fg); }
+    .sub-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+    .sub-thanks { font-size: 1rem; margin: 4px 0 10px; }
+    .sub-link { font: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .82rem;
+                color: var(--accent); word-break: break-all; }
+    .sub-key-row { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; }
+    .sub-key { flex: 1; font: .78rem ui-monospace, SFMono-Regular, Menlo, monospace;
+               color: var(--text-color); background: var(--chip-bg);
+               border: 1px solid var(--border-color); border-radius: 7px;
+               padding: 7px 10px; word-break: break-all; user-select: all; }
   </style>
 </head>
 <body data-debug="__DEBUG_MODE__" data-derive-draft="__DERIVE_DRAFT__">
@@ -342,10 +383,20 @@
                  derivation exists. (< > embed needs a saved id — comes with the
                  save-and-share flow.) -->
             <div class="viewer-bar" id="d-viewer-bar" hidden>
-              <span class="viewer-id">Derived proof</span>
+              <span class="viewer-left">
+                <span class="viewer-id">Derived proof</span>
+                <!-- Provenance of a Clone-d proof. Its id is an existing
+                     proof's — submitting requires a NEW unique name. -->
+                <span id="d-based-on" class="based-chip" hidden></span>
+                <!-- Edit-by-key mode: this Derive session updates a pending
+                     submission in place (Submit becomes Update). -->
+                <span id="d-editing" class="based-chip" hidden></span>
+              </span>
               <div class="viewer-actions">
                 <button id="d-json" class="viewer-btn icon-btn" type="button"
                         title="View proof JSON" aria-label="View proof JSON"></button>
+                <button id="d-submit" class="viewer-btn" type="button"
+                        title="Submit this derivation for review">↑ Submit</button>
               </div>
             </div>
             <div class="derive-box">
@@ -381,7 +432,12 @@
           <input id="search" type="search" autocomplete="off" spellcheck="false"
                  placeholder="Search proofs by title, domain, or goal…" aria-label="Search proofs">
         </div>
-        <div class="count" id="count" aria-live="polite"></div>
+        <div class="browse-meta">
+          <div class="count" id="count" aria-live="polite"></div>
+          <label class="review-toggle" title="Also list pending submissions awaiting review">
+            <input type="checkbox" id="show-review"> Show proofs under review
+          </label>
+        </div>
         <div id="browse" role="list"></div>
         <div class="empty" id="empty" hidden>No proofs match.</div>
       </section>
@@ -410,6 +466,54 @@
         <button id="pa-json-close" class="viewer-btn" type="button" aria-label="Close">✕</button>
       </div>
       <div id="pa-json-body" class="pa-modal-body"></div>
+    </div>
+  </div>
+  <!-- Submit-for-review dialog: explanation + new-unique-name picker, then a
+       thank-you state. The package (proof + prompt + documentation) goes to
+       POST /api/proof-submissions. -->
+  <div id="pa-submit-modal" class="pa-modal">
+    <div class="pa-modal-box">
+      <div class="pa-modal-head">
+        <span>Submit for review</span>
+        <button id="sub-close" class="viewer-btn" type="button" aria-label="Close">✕</button>
+      </div>
+      <div class="pa-modal-body">
+        <div id="sub-form">
+          <p class="sub-explain"><strong>Submit your derivation under a new unique
+          name.</strong> It's saved as a package — the proof, your prompt, and any
+          attached documentation — and will be added to Browse after the review
+          process is complete. Until then it's viewable only via its direct link.</p>
+          <div id="sub-based" class="sub-based" hidden></div>
+          <div class="sub-row">
+            <label for="sub-name">Name</label>
+            <input id="sub-name" class="ctl-input sub-name-input" autocomplete="off"
+                   spellcheck="false" placeholder="domain/my-derivation-name">
+          </div>
+          <div id="sub-avail" class="sub-avail" aria-live="polite"></div>
+          <div class="sub-actions">
+            <button id="sub-cancel" class="ctl-btn" type="button">Cancel</button>
+            <button id="sub-go" class="ctl-btn primary" type="button" disabled>Submit</button>
+          </div>
+        </div>
+        <div id="sub-done" hidden>
+          <p class="sub-thanks">🎉 <strong>Thank you!</strong>
+            <span id="sub-done-msg">Your derivation was submitted for review.</span></p>
+          <p class="sub-explain">It will appear publicly in Browse once approved —
+          nothing is public yet. In the meantime you can view and share it via its
+          direct link:</p>
+          <p><a id="sub-done-link" class="sub-link" href="#" target="_blank" rel="noopener"></a></p>
+          <p class="sub-explain">Save this <strong>edit key</strong> — it's the only
+          way to edit your submission while it's in review, it's shown only now, and
+          it rotates on every update:</p>
+          <div class="sub-key-row">
+            <code id="sub-key" class="sub-key"></code>
+            <button id="sub-key-copy" class="ctl-btn" type="button">Copy</button>
+          </div>
+          <div class="sub-actions">
+            <button id="sub-done-close" class="ctl-btn primary" type="button">Done</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
   <!-- Shared < > embed dialog — theme picker + copyable iframe snippet. -->

@@ -14,6 +14,21 @@ store (`store.py`) exposed as an HTTP API (`routes.py`, mounted by
 
 The factory `get_proof_store()` picks GCS when a bucket is configured, else local.
 
+**Review queue (submissions).** `get_submission_store()` builds a *second*
+store instance keyed under `proof-submissions/` (same backend selection):
+`proof-submissions/domains/<domain>/<name>.json` plus the submission package
+(`prompt.txt` + `documentation.md` + `references.json`) under
+`proof-submissions/source-material/domains/<domain>/<name>/`. Submissions share
+the id namespace with published proofs (uniqueness is enforced across both),
+are readable by full id (`GET /api/proofs/item` adds `X-Proof-Status:
+under-review`), and are excluded from the catalog unless
+`GET /api/proofs?includeSubmissions=1` opts in. A submission is editable **only
+while pending** via its content-HMAC edit key (`PUT /api/proof-submissions` —
+the key rotates on each update); once promoted it leaves the queue and can only
+be cloned. There is deliberately no public write into the published `proofs/`
+space (no `POST`/`PUT`/`DELETE /api/proofs`) — `proofs/` is reached only by
+promotion, an admin/offline step that breaks the submitter's edit capability.
+
 ---
 
 ## Environment variables
@@ -26,6 +41,7 @@ The factory `get_proof_store()` picks GCS when a bucket is configured, else loca
 | `ALGEBENCH_PROOFS_SALT` | HMAC key for content-derived edit secrets. **Keep stable.** | per env |
 | `ALGEBENCH_PROOFS_REF_BUCKETS` | Comma-separated allowlist of buckets a `proof_refs` cross-ref may resolve from (own bucket always allowed). SSRF guard. | optional |
 | `ALGEBENCH_PROOFS_DIR` / `ALGEBENCH_PROOF_SOURCE_DIR` | Override the local store dirs (defaults: gitignored `.proof-store/…`). | dev/tests |
+| `ALGEBENCH_PROOF_SUBMISSIONS_DIR` / `ALGEBENCH_PROOF_SUBMISSIONS_SOURCE_DIR` | Override the local **review-queue** dirs (defaults: gitignored `.proof-store/proof-submissions/…`). GCS ignores these (fixed `proof-submissions/` prefixes). | dev/tests |
 
 Notes:
 - `GOOGLE_APPLICATION_CREDENTIALS` is a **path only** — it cannot hold the JSON
@@ -162,40 +178,49 @@ B=http://localhost:8790
 # Catalog (built-in seed merged with the store) — {id,title,domain,goal}
 curl -s "$B/api/proofs" | python3 -m json.tool
 
-# Is a name free?
+# Is a name free? (checks seed + published + pending submissions)
 curl -s "$B/api/proofs/name-available?name=algebra/my-proof"
 
-# Save (claim a name) — returns {"id", "secret"}. KEEP the secret: it's the
-# only handle to edit/delete, and it's never stored server-side.
-curl -s -X POST "$B/api/proofs" -H 'Content-Type: application/json' -d '{
+# Submit a derivation for review — returns {"id","secret","status"}. KEEP the
+# secret: it's the edit key for the pending submission (rotates on every update,
+# never stored). There is NO public write into the published proofs/ space —
+# only the review queue is publicly writable.
+SECRET=$(curl -s -X POST "$B/api/proof-submissions" -H 'Content-Type: application/json' -d '{
   "id": "algebra/my-proof",
   "data": {"title":"My proof","domain":"algebra","goal":"factor a^2-b^2",
            "summary":"demo","steps":[{"index":0,"latex":"a^2-b^2"},
                                       {"index":1,"latex":"(a-b)(a+b)"}]},
-  "source": {"documentation":"my notes","references":[]}
-}'
+  "source": {"prompt":"factor a^2-b^2","documentation":"my notes","references":[]}
+}' | python3 -c 'import json,sys;print(json.load(sys.stdin)["secret"])')
 
-# Read it back
+# Read it back (submissions carry an X-Proof-Status: under-review response header)
 curl -s "$B/api/proofs/item?id=algebra/my-proof" | python3 -m json.tool
 
-# Author-only source material (needs the secret)
+# Author-only source package — proof + prompt + documentation (needs the key)
 curl -s "$B/api/proofs/source?id=algebra/my-proof&secret=$SECRET"
 
-# Update in place — CAS: the secret must match the CURRENT content; returns a
-# NEW rotated secret (the old one stops working).
-curl -s -X PUT "$B/api/proofs?secret=$SECRET" -H 'Content-Type: application/json' -d '{
+# Update the pending submission in place — CAS: the key must match the CURRENT
+# content; returns a NEW rotated key (the old one stops working). 403 once the
+# submission has been promoted out of the review queue.
+curl -s -X PUT "$B/api/proof-submissions?secret=$SECRET" -H 'Content-Type: application/json' -d '{
   "id": "algebra/my-proof",
   "data": {"title":"My proof v2","domain":"algebra","steps":[{"index":0,"latex":"a^2-b^2"}]}
 }'
 
+# Browse the review queue (opt-in) — pending submissions, each status-tagged
+curl -s "$B/api/proofs?includeSubmissions=1" | python3 -m json.tool
+
 # Resolve a cross-reference (own bucket / built-in; allowlist-gated for others)
 curl -s "$B/api/proof-ref?ref=algebra/binomial-square"
-
-# Delete (needs the current secret)
-curl -s -X DELETE "$B/api/proofs?id=algebra/my-proof&secret=$SECRET"
 ```
 
-With a GCS bucket configured, a saved proof lands at
-`gs://<bucket>/proofs/domains/<domain>/<name>.json` (with `{title,domain,goal}`
-custom metadata) + `gs://<bucket>/source-material/domains/<domain>/<name>/…` — verify with
+`proofs/` is populated only by **promotion** — an admin/offline step that moves an
+approved submission out of the queue (and is where the submitter's content-HMAC
+capability must be broken, so a promoted proof can only be cloned, never edited by
+the old key). There is deliberately no `POST`/`PUT`/`DELETE /api/proofs`.
+
+With a GCS bucket configured, a submission lands at
+`gs://<bucket>/proof-submissions/domains/<domain>/<name>.json` (+ its
+`proof-submissions/source-material/domains/<domain>/<name>/{prompt.txt,documentation.md,references.json}`
+package). Verify with
 `gcloud storage objects list "gs://<bucket>/**" --format="table(name, custom_fields)"`.

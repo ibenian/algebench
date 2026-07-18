@@ -25,6 +25,7 @@ from backend.proof_api.store import (
     canonical_bytes,
     compute_secret,
     get_proof_store,
+    get_submission_store,
     normalize_id,
     verify_secret,
 )
@@ -38,6 +39,7 @@ __all__ = [
     "canonical_bytes",
     "compute_secret",
     "get_proof_store",
+    "get_submission_store",
     "normalize_id",
     "verify_secret",
 ]
