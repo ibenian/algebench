@@ -118,6 +118,45 @@ Install the client into the venv once: `uv pip install --python .venv/bin/python
 
 ---
 
+## Environment inventory
+
+The concrete resources behind the placeholders above. These are **identifiers,
+not secrets** — the SA private keys and the salts live outside the repo (key
+files under `~/.config/algebench/`, salts in the host's secret store).
+
+Each environment is its own GCP project, so a leaked or rotated credential is
+blast-radius-limited to one env.
+
+| Env | GCP project | Bucket | Local key file |
+|---|---|---|---|
+| Local dev | `gen-lang-client-0823706811` ("Local Use") | `algebench-proofs-local` | `~/.config/algebench/algebench-proofs-local-sa.json` |
+| Staging | `gen-lang-client-0908300255` ("AlgeBench on Render Staging") | `algebench-proofs-staging` | `~/.config/algebench/algebench-proofs-staging-sa.json` |
+| Prod | `gen-lang-client-0664371404` ("AlgeBench on Render Prod") | `algebench-proofs-prod` | `~/.config/algebench/algebench-proofs-prod-sa.json` |
+
+Every project uses the same SA name — `algebench-proofs@<project>.iam.gserviceaccount.com`
+— granted bucket-scoped `roles/storage.objectAdmin`. All three buckets are
+`us-central1`, uniform bucket-level access, public-access-prevention **enforced**
+(a public object read returns `403`).
+
+### Where each host reads credentials
+
+| Host | Env | Credential mechanism |
+|---|---|---|
+| Local (`./algebench`) | local | `.env.local` → `GOOGLE_APPLICATION_CREDENTIALS` (path) |
+| Render `algebench-staging` | staging | Secret File → `GOOGLE_APPLICATION_CREDENTIALS=/etc/secrets/<file>` |
+| Render `algebench-prod` | prod | Secret File → `GOOGLE_APPLICATION_CREDENTIALS=/etc/secrets/<file>` |
+| 🤗 HF Space `ibenian/algebench` | prod | `GCP_SA_JSON` (inline JSON — HF has no file mounts) |
+
+Set `ALGEBENCH_PROOFS_BUCKET` on every host; without it the factory silently
+falls back to `LocalProofStore` on **ephemeral** container disk, where
+submissions are lost on the next rebuild.
+
+> **Render prod and the HF Space share the prod bucket**, so they must also share
+> the *same* `ALGEBENCH_PROOFS_SALT`. Edit capabilities are `HMAC(salt, …)`; with
+> mismatched salts an edit link minted on one host fails to verify on the other.
+
+---
+
 ## `ALGEBENCH_PROOFS_SALT` — how it's generated and why it matters
 
 ```bash
