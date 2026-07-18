@@ -208,6 +208,59 @@ don't hand-edit. On "rename", re-run the collision check (Step 7) and re-save.
 
 ---
 
+## Submission & review lifecycle (what to tell users)
+
+There are **two ways** a proof reaches the public `/prove` catalog. Know both, and
+explain the second to any user who builds a derivation in the Derive tab and wants it
+published:
+
+1. **Authored + committed** (this skill): you write
+   `proofs/domains/<domain>/<name>.json`, it's merged via PR (the user merges), and it
+   ships as a **built-in** — canonical, always in Browse.
+2. **Public submit-for-review** (no accounts, the `/prove` Derive tab): a user derives a
+   proof and clicks **↑ Submit**. It lands in a **review queue**, *not* in Browse, until a
+   maintainer promotes it. This is the path to describe below.
+
+**The submission lifecycle:**
+
+- **Submit.** In Derive, **↑ Submit** → a dialog asks for a **new unique name**
+  (`<domain>/<name>`, checked live against built-ins + published + other pending
+  submissions, so it can never collide). On success the proof + its package (the derive
+  **prompt**, **documentation**, references) is written to the review queue
+  (`proof-submissions/…`), never to `proofs/`.
+- **Pending (under review).** The submission is **hidden from Browse by default**. It's
+  reachable two ways: the **direct link** `/prove?id=<domain>/<name>`, or Browse → tick
+  **"Show proofs under review"** (it shows with an *under review* badge). Nothing is public
+  yet.
+- **Promotion.** A maintainer reviews and promotes it into `proofs/` (an admin/offline
+  step). Only then does it appear in Browse for everyone. Once promoted it's a normal
+  published proof — **clone-only** (see the key rules below).
+
+**The edit key — tell users to save it.** On submit (and after every update) the thank-you
+dialog shows a **one-time edit key** (with a Copy button). It's the *only* handle to edit a
+pending submission and is **never stored server-side / never shown again**. It's a hash of
+the proof content, so it **rotates whenever the proof changes**.
+
+To **use** the key: open the pending submission (direct link, or Browse with the toggle) →
+click **✎ Edit** → paste the key → it loads into Derive in edit mode (prompt + docs
+restored, Submit becomes **↑ Update**). Adjust / Rederive → **↑ Update** saves in place and
+shows the new rotated key.
+
+**Two rules to state plainly:**
+
+- **Edit only while pending.** The ✎ Edit button exists *only* while the submission is in
+  the review queue. Once **approved/promoted**, the key no longer edits anything — the proof
+  is **clone-only** (⧉ Clone → tweak → submit under a new name). Lose the key while it's
+  still pending and you're also down to cloning.
+- **Versioning.** In the submit dialog, keeping the **same name** updates your pending
+  submission; typing a **new name** files a **separate** version for review. One Derive
+  session can spawn several named versions, each with its own key.
+
+If a user "can't find" their submission, it's almost always the default-hidden queue — point
+them at the direct link or the *Show proofs under review* toggle; the proof is safe.
+
+---
+
 ## Notes
 
 - **Correct path** is `proofs/domains/<domain>/<name>.json` — a single `domains/<domain>`
