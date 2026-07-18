@@ -74,8 +74,9 @@ def _plant_published(id, data, source=None):
     if source is not None:
         d = Path(os.environ["ALGEBENCH_PROOF_SOURCE_DIR"]) / "domains" / nid
         d.mkdir(parents=True, exist_ok=True)
-        (d / "documentation.md").write_text(source.get("documentation", ""))
-        (d / "references.json").write_text(json.dumps(source.get("references", [])))
+        (d / "documentation.md").write_text(source.get("documentation", ""), encoding="utf-8")
+        (d / "references.json").write_text(
+            json.dumps(source.get("references", [])), encoding="utf-8")
     return compute_secret(nid, blob)
 
 

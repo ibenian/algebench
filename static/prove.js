@@ -798,10 +798,19 @@ async function editSubmissionWithKey(proof, id) {
       `/api/proofs/source?id=${encodeURIComponent(id)}&secret=${encodeURIComponent(key)}`,
       { cache: "no-store" });
     if (resp.status === 403) {
-      window.alert("That key doesn't match this submission — it may have rotated on a previous update.");
+      window.alert("That key doesn't unlock this submission — it may have rotated on a "
+        + "previous update, or the submission was already reviewed and is now published "
+        + "(published proofs can only be cloned).");
       return;
     }
-    src = resp.ok ? await resp.json() : {};
+    // Enter edit mode ONLY on a verified 2xx. Any other status (404 gone from the
+    // queue, 5xx, …) is a failure — never fall through into edit mode with an
+    // empty package (that would strand the user in a confusing Update→403).
+    if (!resp.ok) {
+      window.alert("Couldn't load this submission to edit — please try again.");
+      return;
+    }
+    src = await resp.json();
   } catch (e) {
     window.alert("Couldn't verify the key — please try again.");
     return;
