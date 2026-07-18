@@ -149,39 +149,32 @@ def build_proof_router(
 
     @router.get("/api/proofs/source")
     async def source(id: str = "", secret: str = ""):
-        """Author-only source material (Documentation + References), secret-gated."""
+        """Author-only source material (documentation + references + prompt),
+        secret-gated. Falls back to the review queue so a submission's author
+        can restore their package (the edit-by-key flow)."""
         nid = normalize_id(id)
         if not nid:
             return JSONResponse({"error": "invalid id"}, status_code=400)
+        owner = store
         data = store.get(nid)
+        if data is None:
+            owner, data = subs, subs.get(nid)
         if data is None:
             return Response(status_code=404)
         if not verify_secret(nid, canonical_bytes(data), secret):
             return JSONResponse({"error": "forbidden"}, status_code=403)
-        src = store.get_source(nid)
+        src = owner.get_source(nid)
         if src is None:
             return Response(status_code=404)
         return JSONResponse(src)
 
-    @router.post("/api/proofs")
-    async def claim(request: Request, _rl: None = Depends(agentic_rate_limit)):
-        """Claim a unique name + save a derived proof (+ optional source material)."""
-        body = await request.json()
-        body = body if isinstance(body, dict) else {}
-        nid = normalize_id(body.get("id", ""))
-        data = _sanitize_stored_proof(body.get("data"))
-        if not nid or data is None:
-            return JSONResponse({"error": "invalid id or proof"}, status_code=400)
-        if seed.name_taken(nid):
-            return JSONResponse({"error": "name taken"}, status_code=409)
-        src = body.get("source")
-        if seed.name_taken(nid) or subs.name_taken(nid):
-            return JSONResponse({"error": "name taken"}, status_code=409)
-        secret = store.claim(nid, data, src if isinstance(src, dict) else None)
-        if secret is None:
-            return JSONResponse({"error": "name taken"}, status_code=409)
-        invalidate()
-        return JSONResponse({"id": nid, "secret": secret})
+    # NOTE: there is intentionally NO public write path into the published
+    # `proofs/` space — no POST/PUT/DELETE /api/proofs. The only public write is
+    # the review queue below (`/api/proof-submissions`); a submission reaches
+    # `proofs/` solely through promotion (an admin/offline step, not an HTTP
+    # endpoint), which is where the submitter's content-HMAC capability is
+    # meant to be broken. `store.claim/update/delete` still exist for that
+    # server-side promotion path.
 
     @router.post("/api/proof-submissions")
     async def submit(request: Request, _rl: None = Depends(agentic_rate_limit)):
@@ -190,7 +183,8 @@ def build_proof_router(
         The submission is a package: the proof JSON plus its context (the derive
         prompt + documentation + references) written to the review-queue store.
         The claimed id is unique across published proofs AND pending submissions;
-        the response secret is the standard content-HMAC capability."""
+        the response secret is the content-HMAC edit key — the only handle to
+        edit the pending submission (it rotates on every update, never stored)."""
         body = await request.json()
         body = body if isinstance(body, dict) else {}
         nid = normalize_id(body.get("id", ""))
@@ -206,10 +200,16 @@ def build_proof_router(
         invalidate()
         return JSONResponse({"id": nid, "secret": secret, "status": "under-review"})
 
-    @router.put("/api/proofs")
-    async def update(request: Request, secret: str = "",
-                     _rl: None = Depends(agentic_rate_limit)):
-        """CAS update: the secret must match the current stored content. Rotates."""
+    @router.put("/api/proof-submissions")
+    async def update_submission(request: Request, secret: str = "",
+                                _rl: None = Depends(agentic_rate_limit)):
+        """Edit a PENDING submission by its edit key (CAS; the key rotates).
+
+        Works only while the id is still in the review queue — once a submission
+        is approved (promoted into ``proofs/``) it's gone from here and the author
+        can only clone. 403 covers a wrong/stale key and an already-promoted id
+        alike (no oracle distinguishing them). There is deliberately no public
+        edit path into the published ``proofs/`` space."""
         body = await request.json()
         body = body if isinstance(body, dict) else {}
         nid = normalize_id(body.get("id", ""))
@@ -217,22 +217,12 @@ def build_proof_router(
         if not nid or data is None:
             return JSONResponse({"error": "invalid id or proof"}, status_code=400)
         src = body.get("source")
-        new_secret = store.update(nid, data, secret, src if isinstance(src, dict) else None)
+        new_secret = subs.update(nid, data, secret, src if isinstance(src, dict) else None)
         if new_secret is None:
-            return JSONResponse({"error": "forbidden or stale — reload"}, status_code=403)
+            return JSONResponse({"error": "forbidden, stale, or no longer in review"},
+                                status_code=403)
         invalidate()
-        return JSONResponse({"id": nid, "secret": new_secret})
-
-    @router.delete("/api/proofs")
-    async def delete(id: str = "", secret: str = "",
-                     _rl: None = Depends(agentic_rate_limit)):
-        nid = normalize_id(id)
-        if not nid:
-            return JSONResponse({"error": "invalid id"}, status_code=400)
-        if not store.delete(nid, secret):
-            return JSONResponse({"error": "forbidden"}, status_code=403)
-        invalidate()
-        return JSONResponse({"ok": True})
+        return JSONResponse({"id": nid, "secret": new_secret, "status": "under-review"})
 
     @router.get("/api/proof-ref")
     async def proof_ref(ref: str = "", gcsBucket: str = "",

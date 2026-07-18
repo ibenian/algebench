@@ -180,9 +180,15 @@ async function openProof(id) {
   reviewBadge.hidden = true;
   barLeft.append(idEl, reviewBadge);
   const editBtn = document.createElement("button");
-  editBtn.type = "button"; editBtn.className = "viewer-btn"; editBtn.textContent = "✎ Edit";
+  editBtn.type = "button"; editBtn.className = "viewer-btn"; editBtn.textContent = "⧉ Clone";
   editBtn.disabled = true;                         // enabled once the proof loads
   editBtn.title = "Clone into the Derive workspace to tweak (nothing is saved)";
+  // ✎ Edit — only for pending submissions: the author's edit key unlocks
+  // updating the submission in place (published proofs can only be cloned).
+  const keyEditBtn = document.createElement("button");
+  keyEditBtn.type = "button"; keyEditBtn.className = "viewer-btn"; keyEditBtn.textContent = "✎ Edit";
+  keyEditBtn.title = "Edit this pending submission with your edit key";
+  keyEditBtn.hidden = true;                        // revealed if under review
   const closeBtn = document.createElement("button");
   closeBtn.type = "button"; closeBtn.className = "viewer-btn"; closeBtn.textContent = "✕ Close proof";
   closeBtn.addEventListener("click", () => closeProof(id));
@@ -202,7 +208,7 @@ async function openProof(id) {
   // A right-aligned action group — room for more proof-manipulation ops later.
   const actions = document.createElement("div");
   actions.className = "viewer-actions";
-  actions.append(jsonBtn, embedBtn, editBtn, closeBtn);
+  actions.append(jsonBtn, embedBtn, keyEditBtn, editBtn, closeBtn);
   bar.append(barLeft, actions);
 
   // Two columns like the Derive workspace: animation (+ app hand-off) on the
@@ -225,6 +231,7 @@ async function openProof(id) {
   continueBtn.append(contLabel, contDeep);
   continueBtn.addEventListener("click", () => continueInAppWith(loadedProof, chat.history, id, animStep(entry.animator)));
   editBtn.addEventListener("click", () => editInDerive(loadedProof, id));   // clone → Derive
+  keyEditBtn.addEventListener("click", () => editSubmissionWithKey(loadedProof, id));
   const left = document.createElement("div");
   left.className = "derive-left";
   left.append(box, continueBtn);
@@ -253,6 +260,7 @@ async function openProof(id) {
     if (!openTabs.has(id)) return;                  // closed while loading
     loadedProof = data;
     reviewBadge.hidden = !underReview;
+    keyEditBtn.hidden = !underReview;              // edit-by-key only while in review
     editBtn.disabled = false;                        // proof is loaded → editable
     jsonBtn.disabled = false;                         // JSON is available → viewable
     label.textContent = data.title || id.split("/")[1];
@@ -452,6 +460,22 @@ let deriveAnimator = null;
 let deriveProof = null;        // the current derived proof (chat context)
 let deriveSourceId = null;     // published id an Edit-cloned proof came from
 let chatHistory = [];
+
+// Edit-by-key: when set, this Derive session updates the pending submission in
+// place ({id, secret}); Submit becomes Update and the secret rotates on save.
+let editingSubmission = null;
+
+/** Enter/leave submission-edit mode: chip + Submit→Update relabel. */
+function setEditingSubmission(id, secret) {
+  editingSubmission = id ? { id, secret } : null;
+  if (els.dEditing) {
+    els.dEditing.hidden = !editingSubmission;
+    els.dEditing.textContent = editingSubmission ? `editing ${editingSubmission.id}` : "";
+    els.dEditing.title = editingSubmission
+      ? `This session updates the pending submission ${editingSubmission.id} in place` : "";
+  }
+  if (els.dSubmit) els.dSubmit.textContent = editingSubmission ? "↑ Update" : "↑ Submit";
+}
 
 /** Show/clear the "based on <id>" provenance chip. The inherited id belongs to
  *  a published proof, so it can never be submitted under — the chip makes that
@@ -752,10 +776,47 @@ function editInDerive(proof, id) {
   switchTo("derive");
   showInDerive(clone);
   setDeriveSource(id);                               // provenance chip (inherited id)
+  setEditingSubmission(null);                        // a clone is NOT an in-place edit
   // Seed the prompt from the goal so Rederive is immediately actionable (editable).
   els.dPrompt.value = (clone.goal || "").replace(/\$/g, "").trim();
   const shown = (clone.title || "proof").replace(/^Deriving\s+/i, "");
-  setStatus(`Editing ${shown} — ${clone.steps.length} steps. Chat to refine, or edit the prompt and Rederive.`, "ok");
+  setStatus(`Cloned ${shown} — ${clone.steps.length} steps. Chat to refine, or edit the prompt and Rederive.`, "ok");
+}
+
+/** Edit a PENDING submission in place: ask for the author's edit key, verify it
+ *  by fetching the source package (prompt + documentation), then load the proof
+ *  into Derive in edit mode — Submit becomes Update (PUT, key rotates). Only
+ *  offered while the proof is under review; approved proofs can only be cloned. */
+async function editSubmissionWithKey(proof, id) {
+  if (!proof) return;
+  const key = (window.prompt(
+    `Paste the edit key for ${id}\n(shown once when it was submitted or last updated):`) || "").trim();
+  if (!key) return;
+  let src;
+  try {
+    const resp = await fetch(
+      `/api/proofs/source?id=${encodeURIComponent(id)}&secret=${encodeURIComponent(key)}`,
+      { cache: "no-store" });
+    if (resp.status === 403) {
+      window.alert("That key doesn't match this submission — it may have rotated on a previous update.");
+      return;
+    }
+    src = resp.ok ? await resp.json() : {};
+  } catch (e) {
+    window.alert("Couldn't verify the key — please try again.");
+    return;
+  }
+  const clone = JSON.parse(JSON.stringify(proof));
+  switchTo("derive");
+  showInDerive(clone);
+  setDeriveSource(null);
+  setEditingSubmission(id, key);
+  // Restore the submission package so a Rederive starts from the same context.
+  els.dPrompt.value = (src && src.prompt) || (clone.goal || "").replace(/\$/g, "").trim();
+  els.dDoc.value = (src && src.documentation) || "";
+  updateDocCount();
+  if (els.dDoc.value.trim()) openDocEditor(); else { closeDocEditor(); }
+  setStatus(`Editing submission ${id} — chat or Rederive, then ↑ Update to save.`, "ok");
 }
 
 /** Prefill the Derive tab from a local draft written by the `algebench-prove`
@@ -935,6 +996,21 @@ function openSubmitModal() {
   els.subDone.hidden = true;
   els.subGo.disabled = true;
   submitAvailable = false; submitCheckedId = null;
+  if (editingSubmission) {
+    // Editing a pending submission: the name decides the action — keep it to
+    // UPDATE in place (key rotates), or type a new one to submit a SEPARATE
+    // version for review (same Derive tab, different name).
+    els.subName.value = editingSubmission.id;
+    els.subBased.hidden = false;
+    els.subBased.textContent =
+      `Editing ${editingSubmission.id} — keep this name to update it in place ` +
+      `(your edit key rotates), or enter a new name to submit a separate version.`;
+    els.subModal.classList.add("open");
+    els.subName.focus();
+    checkSubmitName();               // sets Update vs Submit from the name
+    return;
+  }
+  els.subGo.textContent = "Submit";
   if (deriveSourceId) {
     els.subBased.hidden = false;
     els.subBased.textContent =
@@ -963,6 +1039,14 @@ async function doCheckSubmitName() {
   const raw = els.subName.value.trim().toLowerCase();
   submitAvailable = false; els.subGo.disabled = true;
   if (!raw) { setAvail("", ""); return; }
+  if (editingSubmission && raw === editingSubmission.id) {
+    // Same name → update the pending submission in place.
+    setAvail("↻ Same name — updates your pending submission (edit key rotates).", "ok");
+    els.subGo.textContent = "Update";
+    els.subGo.disabled = false;
+    return;
+  }
+  els.subGo.textContent = "Submit";    // different name → a separate new version
   if (!ID_RE.test(raw)) {
     setAvail("Use <domain>/<name> — lowercase letters, digits, hyphens.", "err");
     return;
@@ -986,9 +1070,13 @@ async function doCheckSubmitName() {
 }
 
 async function doSubmit() {
-  if (!submitAvailable || !deriveProof || els.subGo.disabled) return;
+  // The typed name decides: the editing id → UPDATE in place; anything else →
+  // a fresh submission (so one Derive tab can submit several named versions).
+  const raw = els.subName.value.trim().toLowerCase();
+  const updating = !!(editingSubmission && raw === editingSubmission.id);
+  if ((!updating && !submitAvailable) || !deriveProof || els.subGo.disabled) return;
   els.subGo.disabled = true;
-  setAvail("Submitting…", "");
+  setAvail(updating ? "Updating…" : "Submitting…", "");
   // The package: proof + its context (the derive prompt + attached documentation).
   const source = {
     prompt: els.dPrompt.value.trim(),
@@ -996,27 +1084,47 @@ async function doSubmit() {
     references: [],
   };
   try {
-    const resp = await fetch("/api/proof-submissions", {
-      method: "POST",
+    const url = updating
+      ? `/api/proof-submissions?secret=${encodeURIComponent(editingSubmission.secret)}`
+      : "/api/proof-submissions";
+    const resp = await fetch(url, {
+      method: updating ? "PUT" : "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: submitCheckedId, data: deriveProof, source }),
+      body: JSON.stringify({
+        id: updating ? editingSubmission.id : submitCheckedId,
+        data: deriveProof,
+        source,
+      }),
     });
     if (resp.status === 409) {           // lost a claim race — pick another name
       submitAvailable = false;
       setAvail("✗ that name was just taken — pick another.", "err");
       return;
     }
+    if (resp.status === 403 && updating) {   // rotated key / promoted out of review
+      setAvail("✗ key no longer valid — the submission was updated elsewhere or already reviewed.", "err");
+      els.subGo.disabled = false;
+      return;
+    }
     if (!resp.ok) throw new Error(`error ${resp.status}`);
     const d = await resp.json();
+    // Hold the (new) key so this session can keep editing without re-entering it.
+    setEditingSubmission(d.id, d.secret);
     els.subForm.hidden = true;
     els.subDone.hidden = false;
+    els.subDoneMsg.textContent = updating
+      ? "Your submission was updated."
+      : "Your derivation was submitted for review.";
     const link = new URL("/prove", location.origin);
     link.searchParams.set("id", d.id);
     els.subDoneLink.href = link.toString();
     els.subDoneLink.textContent = link.toString();
-    setStatus(`Submitted ${d.id} for review — it appears in Browse once approved.`, "ok");
+    els.subKey.textContent = d.secret;
+    setStatus(updating
+      ? `Updated ${d.id} — still under review; your edit key rotated.`
+      : `Submitted ${d.id} for review — it appears in Browse once approved.`, "ok");
   } catch (e) {
-    setAvail("Submission failed — please try again.", "err");
+    setAvail(updating ? "Update failed — please try again." : "Submission failed — please try again.", "err");
     els.subGo.disabled = false;
   }
 }
@@ -1031,6 +1139,13 @@ function setupSubmitModal() {
   els.subAvail = document.getElementById("sub-avail");
   els.subGo = document.getElementById("sub-go");
   els.subDoneLink = document.getElementById("sub-done-link");
+  els.subDoneMsg = document.getElementById("sub-done-msg");
+  els.subKey = document.getElementById("sub-key");
+  document.getElementById("sub-key-copy").addEventListener("click", async () => {
+    const key = els.subKey.textContent;
+    if (!key) return;
+    try { await navigator.clipboard.writeText(key); } catch (e) { /* blocked clipboard */ }
+  });
   const hide = () => els.subModal.classList.remove("open");
   document.getElementById("sub-close").addEventListener("click", hide);
   document.getElementById("sub-cancel").addEventListener("click", hide);
@@ -1039,7 +1154,7 @@ function setupSubmitModal() {
   window.addEventListener("keydown", (e) => { if (e.key === "Escape") hide(); });
   els.subName.addEventListener("input", checkSubmitName);
   els.subName.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") { e.preventDefault(); if (submitAvailable) doSubmit(); }
+    if (e.key === "Enter") { e.preventDefault(); if (submitAvailable || editingSubmission) doSubmit(); }
   });
   els.subGo.addEventListener("click", doSubmit);
 }
@@ -1089,8 +1204,9 @@ async function main() {
   els.dJson.innerHTML = BRACES_ICON;
   els.dJson.addEventListener("click",
     () => openJsonModal(deriveProof, deriveProof && deriveProof.title));
-  // Provenance chip + Submit-for-review (both live on the same toolbar).
+  // Provenance + editing chips + Submit-for-review (same toolbar).
   els.dBasedOn = document.getElementById("d-based-on");
+  els.dEditing = document.getElementById("d-editing");
   els.dSubmit = document.getElementById("d-submit");
   els.dSubmit.addEventListener("click", openSubmitModal);
   els.dStatus = document.getElementById("d-status");
