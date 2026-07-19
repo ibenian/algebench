@@ -106,18 +106,25 @@ class ProofEditSig(dspy.Signature):
     listed operations, set `op` and the operand/variable fields and the computer
     algebra system will perform it for you — that is more reliable than writing
     the result yourself, and it is the only way operations like differentiation
-    are accepted. Fill `steps` as well; it is used when `op` does not apply.
+    are accepted.
 
-    `steps` is ordered and starts with THE USER'S OWN STEP: the complete LaTeX of
-    the expression after applying exactly what they asked, no more. Do not
-    silently simplify, rearrange, or take extra moves — if they said "multiply
-    both sides by 2", the result must visibly be the previous expression times 2
-    on each side.
+    `steps` has TWO parts and you fill BOTH, whether or not you set `op`:
 
-    After that, and ONLY if the derivation continues past the current step, you
-    may add up to three GLUE steps: the shortest chain that makes the ORIGINAL
-    next step read as a logical consequence again. If no bridge is needed, or you
-    cannot build one in three steps, add none.
+    * `steps[0]` — THE USER'S OWN STEP: the complete LaTeX of the expression
+      after applying exactly what they asked, no more. Do not silently simplify,
+      rearrange, or take extra moves — if they said "multiply both sides by 2",
+      the result must visibly be the previous expression times 2 on each side.
+      (When `op` is set the CAS computes this and your version is discarded, but
+      write it anyway — it is the fallback if the operation cannot be applied.)
+
+    * `steps[1:]` — up to three GLUE steps, whenever the derivation continues
+      past the current step. These are the shortest chain that makes the ORIGINAL
+      next step read as a logical consequence again. **`op` does NOT replace
+      these.** The CAS can perform one operation; it cannot invent the bridge
+      back into the rest of the proof, so glue is always yours to write. Omitting
+      it costs the reader the "my step + bridge" option entirely. Add none only
+      when no bridge is needed, or when you genuinely cannot build one in three
+      steps.
 
     Set `supersede_count` to the number of steps IMMEDIATELY AFTER the current one
     that your steps make redundant — the ones a reader would now skip. Use 0
@@ -159,8 +166,10 @@ class ProofEditSig(dspy.Signature):
         desc="ONE short question if a math-changing choice is missing; else empty")
     steps: list[dict] = dspy.OutputField(
         desc="ordered [{operation, expr_latex, justification}]: the user's step "
-             "first, then up to 3 glue steps; empty if is_edit is false or a "
-             "question is being asked")
+             "first, THEN up to 3 glue steps bridging back to the original next "
+             "step. Fill the glue even when `op` is set — the CAS performs the "
+             "operation but cannot write the bridge. Empty only if is_edit is "
+             "false or a question is being asked")
     op: str = dspy.OutputField(
         desc="if the request maps onto one of these, name it EXACTLY, else leave "
              "empty: add_both_sides, subtract_both_sides, multiply_both_sides, "

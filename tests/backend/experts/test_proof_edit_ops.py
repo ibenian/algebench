@@ -176,6 +176,33 @@ def test_an_invalid_mapped_op_refuses_rather_than_falling_back():
                 derivation="", current_step="", request="divide by c")
 
 
+def test_computed_path_still_carries_glue_steps():
+    """`op` replaces steps[0], NOT the glue that follows it.
+
+    Regression: when the compute path landed, the signature said `steps` was
+    "used when `op` does not apply", so the model stopped writing glue whenever
+    it set `op` — and the "my step + bridge" variant silently disappeared from
+    the picker. The CAS can perform one operation; it cannot invent the bridge
+    back into the rest of the proof.
+    """
+    prop = ProofEditProposal(
+        is_edit=True, summary="s", op=ops.OP_MUL, operand_latex="3",
+        steps=[
+            ProposedStep(operation="multiply by 3", expr_latex=r"x = x",
+                         justification="model's version, discarded"),
+            ProposedStep(operation="bridge", expr_latex=r"x^{2} = 4",
+                         justification="back to the original next step"),
+        ])
+    payload = resolve(PROOF, "algebra", 0, prop, derivation="", current_step="",
+                      request="multiply both sides by 3")
+
+    kinds = {v.kind for v in payload.variants}
+    assert "glue" in kinds, f"bridge variant missing; got {kinds}"
+    # steps[0] came from the CAS, steps[1] straight from the proposal.
+    assert payload.new_steps[0].input_latex == r"3 \cdot x^{2} = 12"
+    assert payload.new_steps[1].input_latex == r"x^{2} = 4"
+
+
 def test_computed_steps_are_registered_with_the_cas_guard():
     """``guard`` refuses unregistered callables, so an unregistered op would
     silently return the default and be reported as a CAS failure."""
