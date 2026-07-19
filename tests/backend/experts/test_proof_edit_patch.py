@@ -64,8 +64,7 @@ def _step(latex: str, op: str = "test op") -> dict:
     return {"operation": op, "justification": "because", "input_latex": latex}
 
 
-@pytest.mark.parametrize("supersede", [0, 2])
-def test_assembled_variant_matches_server_rebuild(proof, supersede):
+def test_assembled_variant_matches_server_rebuild(proof):
     """Every variant the client can assemble equals what the server built.
 
     Deliberately driven off ``model_dump()`` rather than the model: that is
@@ -75,7 +74,7 @@ def test_assembled_variant_matches_server_rebuild(proof, supersede):
     at = 2
     base = proof["steps"][at]["input_latex"]
     new = [_step(base), _step(base)]
-    built_payload = to_payload(proof, proof["domain"], at, new, supersede_count=supersede)
+    built_payload = to_payload(proof, proof["domain"], at, new)
     assert built_payload is not None
     payload = built_payload.model_dump()
 

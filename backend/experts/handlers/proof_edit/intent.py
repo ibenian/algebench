@@ -1,10 +1,14 @@
 r"""Natural-language step operation → a structured, proposed edit.
 
 The LM's job here is to *propose*: name the operation, write the resulting
-expression, optionally write glue steps that reconnect to the step that followed,
-and say how many following steps the move makes redundant. It does NOT get the
-last word — every proposal is graded by the CAS in ``validate.py``, and anything
-refuted is retried or dropped.
+expression, and optionally write glue steps that reconnect to the step that
+followed. It does NOT get the last word — every proposal is graded by the CAS in
+``validate.py``, and anything refuted is retried or dropped.
+
+It is deliberately NOT asked how many following steps its edit makes redundant.
+That was an unverifiable judgment — nothing could check it, and a wrong count
+silently shortened someone's proof by an arbitrary amount. Truncating is now the
+reader's decision, offered as a variant whenever anything follows.
 
 The signature also routes. ``is_edit`` decides whether the message was an
 operation at all (a question falls through to the tutor chat), and ``question``
@@ -64,7 +68,6 @@ class ProofEditProposal(BaseModel):
     is_edit: bool = False
     question: str = ""
     steps: list[ProposedStep] = Field(default_factory=list)
-    supersede_count: int = 0
     summary: str = ""
     # A rewritten caption for the step that FOLLOWS the insertion, for the
     # insert-only case. Inserting a step changes what the next step's move
@@ -126,10 +129,6 @@ class ProofEditSig(dspy.Signature):
       when no bridge is needed, or when you genuinely cannot build one in three
       steps.
 
-    Set `supersede_count` to the number of steps IMMEDIATELY AFTER the current one
-    that your steps make redundant — the ones a reader would now skip. Use 0
-    unless you are confident; a wrong count silently shortens someone's proof.
-
     Finally — and do NOT skip this whenever the derivation continues past the
     current step — set `next_operation` and `next_justification`.
 
@@ -183,8 +182,6 @@ class ProofEditSig(dspy.Signature):
              "(for 'let $u = x^2$' operand is $x^2$ and replacement is $u$)")
     variable: str = dspy.OutputField(
         desc="for differentiate/integrate: the variable, e.g. 'x'; empty otherwise")
-    supersede_count: int = dspy.OutputField(
-        desc="how many steps right after the current one become redundant; 0 if unsure")
     next_operation: str = dspy.OutputField(
         desc="REQUIRED whenever a step follows: its caption rewritten to describe "
              "the move now that your first step precedes it. Empty only if there "
@@ -246,16 +243,11 @@ def propose_edit(derivation: str, current_step: str, request: str,
         if step.expr_latex:            # an expressionless step cannot be built
             steps.append(step)
 
-    try:
-        supersede = max(0, int(out.supersede_count or 0))
-    except (TypeError, ValueError):
-        supersede = 0
 
     return ProofEditProposal(
         is_edit=bool(out.is_edit),
         question=_clean(out.question),
         steps=steps,
-        supersede_count=supersede,
         summary=_clean(out.summary),
         next_operation=_clean(getattr(out, "next_operation", "")),
         next_justification=_clean(getattr(out, "next_justification", "")),

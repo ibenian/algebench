@@ -31,7 +31,9 @@ const VARIANT_LABELS = {
     // rest of the derivation, so it stays consistent instead of reverting to
     // the old form on the next line.
     propagate: 'My step, applied to the rest',
-    supersede: 'My step, replacing what follows',
+    // Truncation. Offered whenever anything follows, so "end the proof here" is
+    // always on the menu rather than depending on a model judging redundancy.
+    supersede: 'My step, ending the proof here',
 };
 
 /** Deep clone via JSON — proofs are plain data by construction. */

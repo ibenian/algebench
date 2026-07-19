@@ -261,7 +261,6 @@ def resolve(proof: dict, domain: str, at: int, proposal: ProofEditProposal,
         steps = [computed] + _as_step_dicts(proposal)[1:]
         payload = to_payload(
             proof, domain, at, steps,
-            supersede_count=proposal.supersede_count,
             next_caption=(proposal.next_operation, proposal.next_justification),
             computed=computed_confidence(
                 f"the CAS applied “{proposal.op.replace('_', ' ')}” to the "
@@ -320,8 +319,7 @@ def resolve(proof: dict, domain: str, at: int, proposal: ProofEditProposal,
         steps = steps[:1]
 
     payload = to_payload(proof, domain, at, steps,
-                         supersede_count=proposal.supersede_count,
-                         next_caption=(proposal.next_operation,
+                                      next_caption=(proposal.next_operation,
                                        proposal.next_justification))
     if payload is None:
         raise EditRefused("I couldn't build a consistent proof from that step.")

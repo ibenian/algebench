@@ -1,8 +1,7 @@
 """Proof-edit VARIANT construction — deterministic, no LM.
 
-Given a stored proof and a proposed edit (one new step, optional glue steps,
-optional supersede count), this builds the candidate proofs and reduces them to a
-compact wire payload.
+Given a stored proof and a proposed edit (one new step, optional glue steps),
+this builds the candidate proofs and reduces them to a compact wire payload.
 
 The load-bearing idea: a stored proof round-trips through
 ``animation.build`` — each step's ``input_latex`` *is* the ``expr_latex`` that
@@ -303,7 +302,6 @@ def _badge_delta(rebuilt: dict, original: dict, at: int, take: int,
 
 
 def to_payload(proof: dict, domain: str, at: int, new_steps: list[dict],
-               supersede_count: int = 0,
                next_caption: Optional[tuple[str, str]] = None,
                computed: Optional[dict] = None,
                propagated: Optional[list[dict]] = None) -> Optional[EditPayload]:
@@ -333,8 +331,17 @@ def to_payload(proof: dict, domain: str, at: int, new_steps: list[dict],
     elif len(new_steps) > 1:
         kinds.append((VARIANT_GLUE, len(new_steps), 0))
 
-    if supersede_count > 0 and at + 1 + supersede_count <= n_steps:
-        kinds.append((VARIANT_SUPERSEDE, len(new_steps), supersede_count))
+    if tail_len:
+        # "End the proof here." Unconditional whenever anything follows, and
+        # deterministic: it used to depend on the model guessing how many steps
+        # its edit made redundant, which nothing could verify — a wrong count
+        # silently shortened someone's proof by an arbitrary amount. Dropping
+        # ALL of them is at least exactly what it says.
+        #
+        # ``take=1`` on purpose: only the user's own step survives. Glue bridges
+        # to steps that are being deleted, and the propagated tail IS the tail
+        # being deleted — including either here would contradict the variant.
+        kinds.append((VARIANT_SUPERSEDE, 1, tail_len))
 
     rendered: list[NewStep] = []
     variants: list[Variant] = []

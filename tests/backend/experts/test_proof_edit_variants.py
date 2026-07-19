@@ -187,8 +187,7 @@ def test_payload_shares_new_steps_across_variants(proof):
     at = 2
     base = proof["steps"][at]["input_latex"]
     payload = to_payload(proof, proof["domain"], at,
-                         [_insert_step(base), _insert_step(base)],
-                         supersede_count=1)
+                         [_insert_step(base), _insert_step(base)])
     assert payload is not None
 
     kinds = {v.kind for v in payload.variants}
@@ -208,23 +207,31 @@ def test_payload_shares_new_steps_across_variants(proof):
             assert shared.plain == actual["plain"]
 
 
-def test_supersede_drops_following_steps(proof):
-    """Supersede removes the steps the edit makes redundant."""
+def test_supersede_ends_the_proof_and_is_always_offered(proof):
+    """"End the proof here" drops EVERYTHING after the inserted step.
+
+    It used to depend on the model guessing how many steps its edit made
+    redundant — a judgment nothing could verify, where a wrong count silently
+    shortened the proof by an arbitrary amount. Now it is unconditional whenever
+    anything follows, and takes only the user's own step: glue would bridge to
+    steps being deleted.
+    """
     at = 2
+    n = len(proof["steps"])
     payload = to_payload(proof, proof["domain"], at,
-                         [_insert_step(proof["steps"][at]["input_latex"])],
-                         supersede_count=2)
+                         [_insert_step(proof["steps"][at]["input_latex"])] * 2)
     assert payload is not None
     sup = [v for v in payload.variants if v.kind == VARIANT_SUPERSEDE]
-    assert sup and sup[0].delete_count == 2
+    assert sup, "truncation must be offered whenever steps follow"
+    assert sup[0].delete_count == n - (at + 1)
+    assert sup[0].take == 1, "only the user's step survives a truncation"
 
 
-def test_supersede_not_offered_past_the_end(proof):
-    """A subsume count that would run off the end is dropped, not clamped."""
+def test_supersede_not_offered_at_the_final_step(proof):
+    """Nothing follows, so there is nothing to end."""
     at = len(proof["steps"]) - 1
     payload = to_payload(proof, proof["domain"], at,
-                         [_insert_step(proof["steps"][at]["input_latex"])],
-                         supersede_count=5)
+                         [_insert_step(proof["steps"][at]["input_latex"])])
     assert payload is not None
     assert all(v.kind != VARIANT_SUPERSEDE for v in payload.variants)
 
