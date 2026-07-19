@@ -93,6 +93,7 @@ export function createProofEditTool(deps) {
     let unlocked = false;          // locked is the default; see reset()
     let session = null;            // { original, newSteps, variants, cache, selected }
     let bar = null;                // the picker element, while open
+    let onKeydown = null;          // Esc-to-cancel handler, live only while open
     const undoStack = [];
 
     // ---- lock ------------------------------------------------------------- //
@@ -261,6 +262,12 @@ export function createProofEditTool(deps) {
         bar.appendChild(actions);
         deps.mountBar(bar);
 
+        // Esc cancels, like dismissing a modal. Bound on the document because the
+        // chat input is disabled while the picker is open, so nothing inside the
+        // card holds focus to receive the key.
+        onKeydown = (e) => { if (e.key === 'Escape') { e.preventDefault(); cancelEdit(); } };
+        (deps.doc || document).addEventListener('keydown', onKeydown);
+
         // While the bar is open the view shows a candidate but the committed
         // proof is still the original. Submitting now would ship the version the
         // user is NOT looking at, so those actions are gated until Done/Cancel.
@@ -269,6 +276,10 @@ export function createProofEditTool(deps) {
     }
 
     function closeBar() {
+        if (onKeydown) {
+            (deps.doc || document).removeEventListener('keydown', onKeydown);
+            onKeydown = null;
+        }
         // Remove the whole chat row the picker lives in, not just the bar inside
         // it — otherwise its avatar/message wrapper is left orphaned in the log.
         if (bar) {

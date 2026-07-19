@@ -161,7 +161,7 @@ class ProofEditSig(dspy.Signature):
         desc="one short sentence describing the move, for the chat; use $…$ for math")
 
 
-class ProofEditModule(dspy.Module):
+class EditIntentParser(dspy.Module):
     """The intent parser: request → structured :class:`ProofEditProposal`.
 
     A single ``Predict`` today, wrapped as a ``Module`` so it has a first-class
@@ -196,8 +196,8 @@ class ProofEditModule(dspy.Module):
 # deferred to first call. Matches the lazy-predictor timing in
 # prompt_endpoints.py / term_descriptions.py, now behind a Module.
 @cache
-def _module() -> ProofEditModule:
-    return ProofEditModule()
+def _parser() -> EditIntentParser:
+    return EditIntentParser()
 
 
 def _clean(s) -> str:
@@ -228,7 +228,7 @@ def propose_edit(derivation: str, current_step: str, request: str,
         f"{request}\n\nYour previous attempt was rejected by the computer algebra "
         f"system:\n{feedback}\nFix the math and try again.")
     try:
-        out = _module()(
+        out = _parser()(
             derivation=derivation,
             current_step=current_step,
             request=ask,
@@ -315,7 +315,7 @@ def last_turns(messages, limit: int = 6) -> str:
 
 
 __all__ = [
-    "MAX_CLARIFICATIONS", "MAX_GLUE_STEPS", "ProofEditModule", "ProofEditProposal",
+    "EditIntentParser", "MAX_CLARIFICATIONS", "MAX_GLUE_STEPS", "ProofEditProposal",
     "ProofEditSig", "ProposedStep", "format_clarifications", "format_current_step",
     "last_turns", "propose_edit",
 ]

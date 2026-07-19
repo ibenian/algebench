@@ -22,7 +22,7 @@ import pytest
 import sympy as sp
 
 from backend.experts.handlers.proof_edit import ops
-from backend.experts.handlers.proof_edit.intent import (
+from backend.experts.modules.proof_edit.intent import (
     ProofEditProposal, ProposedStep,
 )
 from backend.experts.handlers.proof_edit.validate import (

@@ -27,12 +27,12 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from backend.experts.registry import register_handler
-
-from .intent import (
+from backend.experts.modules.proof_edit.intent import (
     MAX_CLARIFICATIONS, format_clarifications, format_current_step, last_turns,
     propose_edit,
 )
+from backend.experts.registry import register_handler
+
 from .models import LOG_TAG
 from .validate import EditRefused, resolve
 

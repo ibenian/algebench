@@ -35,8 +35,9 @@ from typing import Optional
 
 import sympy as sp
 
+from backend.experts.modules.proof_edit.intent import ProofEditProposal, propose_edit
+
 from . import ops
-from .intent import ProofEditProposal, propose_edit
 from .models import LOG_TAG, EditPayload
 from .variants import build_variant, computed_confidence, to_payload
 

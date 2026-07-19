@@ -91,11 +91,20 @@ function stubDom() {
         dataset: {}, children: [],
         setAttribute() {}, getAttribute() { return null; },
         addEventListener() {}, remove() {}, classList: { toggle() {} },
+        closest() { return null; },
         append(...kids) { this.children.push(...kids); },
         appendChild(kid) { this.children.push(kid); return kid; },
         querySelectorAll() { return []; },
     });
-    globalThis.document = { createElement: el };
+    // A document whose keydown listeners we can fire, so the Esc-to-cancel
+    // binding is exercised rather than stubbed to a no-op.
+    const listeners = {};
+    globalThis.document = {
+        createElement: el,
+        addEventListener(type, fn) { (listeners[type] ||= new Set()).add(fn); },
+        removeEventListener(type, fn) { listeners[type]?.delete(fn); },
+        dispatchKey(key) { for (const fn of listeners.keydown || []) fn({ key, preventDefault() {} }); },
+    };
     globalThis.location = { origin: 'http://localhost' };
 }
 stubDom();
@@ -133,6 +142,19 @@ test('locked: an edit result is ignored even if the server sent one', () => {
     const { tool } = makeTool();
     assert.equal(tool.isUnlocked(), false, 'locked is the default');
     assert.equal(tool.applyEditResult(VARIANTS_RESULT), false);
+});
+
+test('Esc cancels an open picker and restores the original', () => {
+    const { tool, mounted } = makeTool();
+    tool.setUnlocked(true);
+    tool.applyEditResult(VARIANTS_RESULT);
+    const before = mounted.length;
+    globalThis.document.dispatchKey('Escape');
+    // Cancel remounts the original at the return step — one more mount, and the
+    // picker is gone so a second Esc does nothing.
+    assert.equal(mounted.length, before + 1, 'Esc should cancel and remount');
+    globalThis.document.dispatchKey('Escape');
+    assert.equal(mounted.length, before + 1, 'Esc after close is a no-op');
 });
 
 test('unlocked: variants are presented and the summary is spoken', () => {

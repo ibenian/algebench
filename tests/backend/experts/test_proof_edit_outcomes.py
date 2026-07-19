@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from backend.experts.handlers.proof_edit import handler as H
-from backend.experts.handlers.proof_edit.intent import (
+from backend.experts.modules.proof_edit.intent import (
     MAX_CLARIFICATIONS, ProofEditProposal, ProposedStep, format_clarifications,
 )
 from backend.experts.handlers.proof_edit.validate import EditRefused
@@ -192,11 +192,11 @@ def test_intent_parser_is_a_compilable_module():
     would fail, and the optimization path would quietly vanish.
     """
     import dspy
-    from backend.experts.handlers.proof_edit.intent import ProofEditModule
+    from backend.experts.modules.proof_edit.intent import EditIntentParser
 
-    module = ProofEditModule()
-    assert isinstance(module, dspy.Module)
-    assert [n for n, _ in module.named_predictors()], "no predictor to compile"
+    parser = EditIntentParser()
+    assert isinstance(parser, dspy.Module)
+    assert [n for n, _ in parser.named_predictors()], "no predictor to compile"
 
 
 def test_clean_repairs_json_mangled_latex():
@@ -207,7 +207,7 @@ def test_clean_repairs_json_mangled_latex():
     rendered as garbage. ``DerivationStep`` repairs this via a field validator;
     these fields bypass that model, so ``_clean`` has to do it.
     """
-    from backend.experts.handlers.proof_edit.intent import _clean
+    from backend.experts.modules.proof_edit.intent import _clean
 
     mangled = "rewrite \x0crac{c}{\\sin(w)} over a common denominator"
     assert "\\frac{c}" in _clean(mangled)
