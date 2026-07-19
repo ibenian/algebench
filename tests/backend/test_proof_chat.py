@@ -10,6 +10,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
+import pytest
+
 import backend.server as server
 
 
@@ -85,15 +87,81 @@ def test_system_prompt_ignores_out_of_range_step():
 
 def test_call_proof_chat_without_client_is_graceful(monkeypatch):
     monkeypatch.setattr(server, "get_gemini_client", lambda: None)
-    out = server.call_proof_chat([{"role": "user", "text": "hi"}], _PROOF, 0)
+    out, edit = server.call_proof_chat([{"role": "user", "text": "hi"}], _PROOF, 0)
     assert "not available" in out.lower()
+    assert edit is None
 
 
 def test_call_proof_chat_empty_thread_short_circuits(monkeypatch):
     # Should not even need a client if there's nothing to answer.
     monkeypatch.setattr(server, "get_gemini_client", lambda: object())
-    out = server.call_proof_chat([], _PROOF, 0)
+    out, edit = server.call_proof_chat([], _PROOF, 0)
     assert "ask a question" in out.lower()
+    assert edit is None
+
+
+# ── the editing lock is enforced by tool ABSENCE ─────────────────────────────
+# Not by asking the model to behave: when editing is locked the ``edit_step``
+# function is never declared, so there is no call for the model to make.
+
+def _capture_config(monkeypatch):
+    """Run call_proof_chat against a fake client and return the config it built."""
+    seen = {}
+
+    class _Models:
+        def generate_content(self, *, model, contents, config):
+            seen["config"] = config
+            raise RuntimeError("stop here — we only want the config")
+
+    monkeypatch.setattr(server, "get_gemini_client",
+                        lambda: type("C", (), {"models": _Models()})())
+    return seen
+
+
+def test_locked_chat_declares_no_edit_tool(monkeypatch):
+    seen = _capture_config(monkeypatch)
+    server.call_proof_chat([{"role": "user", "text": "move c to the right"}],
+                           _PROOF, 0, allow_edits=False)
+    assert not getattr(seen["config"], "tools", None)
+
+
+def test_unlocked_chat_declares_the_edit_tool(monkeypatch):
+    seen = _capture_config(monkeypatch)
+    server.call_proof_chat([{"role": "user", "text": "move c to the right"}],
+                           _PROOF, 0, allow_edits=True)
+    names = [f.name for t in seen["config"].tools for f in t.function_declarations]
+    assert names == ["edit_step"]
+
+
+def test_locked_prompt_points_at_the_lock():
+    """Locked, the model must explain how to unlock rather than describe a tool
+    it cannot reach."""
+    sp = server._proof_chat_system_prompt(_PROOF, 0, allow_edits=False)
+    assert "LOCKED" in sp and "edit_step" not in sp
+
+
+def test_unlocked_prompt_separates_instructions_from_questions():
+    """The distinction a keyword match cannot make, stated explicitly."""
+    sp = server._proof_chat_system_prompt(_PROOF, 0, allow_edits=True)
+    assert "edit_step" in sp
+    assert "why did they move" in sp.lower()
+
+
+@pytest.mark.parametrize("allow_edits", [False, True])
+def test_ctx_inspector_matches_what_the_chat_would_send(allow_edits):
+    """The CTX inspector must not diverge from the live call.
+
+    It promises "the EXACT payload call_proof_chat would send". ``allow_edits``
+    changes both the system prompt and whether the tool is declared, so failing
+    to thread it made the inspector show the locked prompt during an unlocked
+    session — the precise divergence the endpoint exists to rule out.
+    """
+    dbg = server.build_proof_chat_debug(
+        [{"role": "user", "text": "hi"}], _PROOF, 0, allow_edits)
+    assert dbg["systemPrompt"] == server._proof_chat_system_prompt(
+        _PROOF, 0, allow_edits=allow_edits)
+    assert dbg["allowEdits"] is allow_edits
+    assert dbg["tools"] == (["edit_step"] if allow_edits else [])
 
 
 # ── CTX debug inspector ──────────────────────────────────────────────────────

@@ -255,6 +255,32 @@
     /* Icon-only variant ({ } JSON, < > embed) — square, tight padding, matching
        the /renderproof + blog embed toolbar. */
     .viewer-btn.icon-btn { padding: 5px 7px; line-height: 0; display: inline-flex; align-items: center; }
+    /* Unlocked editing is a live, consequential mode — make it visibly distinct
+       from the default locked state rather than a subtle pressed look. */
+    #d-lock[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
+
+    /* Variant picker. Selecting an option re-renders the proof below it, so this
+       bar sits directly above the animation — what you see IS the candidate. */
+    .edit-variants { display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+                     margin: 8px 0; padding: 9px 11px; border-radius: 9px;
+                     background: var(--chip-bg); border: 1px solid var(--accent); }
+    .edit-variants-title { font-size: .8rem; font-weight: 600; margin-right: 2px; }
+    .edit-variant { font: inherit; font-size: .8rem; cursor: pointer; text-align: left;
+                    display: flex; flex-direction: column; gap: 1px;
+                    color: var(--btn-fg); background: var(--btn-bg);
+                    border: 1px solid var(--btn-border); border-radius: 7px;
+                    padding: 5px 11px; }
+    .edit-variant:hover { background: var(--btn-hover); }
+    .edit-variant.is-selected { border-color: var(--accent); color: var(--accent); }
+    .edit-variant-note { font-size: .68rem; color: var(--muted-color); }
+    .edit-variant.is-selected .edit-variant-note { color: inherit; opacity: .85; }
+    .edit-done, .edit-cancel { font: inherit; font-size: .8rem; cursor: pointer;
+                               border-radius: 7px; padding: 5px 13px;
+                               border: 1px solid var(--btn-border); }
+    .edit-done { margin-left: auto; color: #fff; background: var(--accent);
+                 border-color: var(--accent); font-weight: 600; }
+    .edit-cancel { color: var(--btn-fg); background: var(--btn-bg); }
+    .edit-cancel:hover { background: var(--btn-hover); }
     #root { margin-top: 4px; }
     .pa-error { color: var(--err-fg); background: var(--err-bg); border: 1px solid var(--err-border);
                 border-radius: 8px; padding: 12px 14px; margin: 12px 0; font-size: .9rem; }
@@ -393,12 +419,22 @@
                 <span id="d-editing" class="based-chip" hidden></span>
               </span>
               <div class="viewer-actions">
+                <!-- Editing lock. Locked by default and re-locked on every proof
+                     load: the chat answers questions only, and no edit request
+                     is ever sent, until the user explicitly unlocks. -->
+                <button id="d-lock" class="viewer-btn" type="button"
+                        aria-pressed="false"
+                        title="Unlock step editing">🔒 Locked</button>
                 <button id="d-json" class="viewer-btn icon-btn" type="button"
                         title="View proof JSON" aria-label="View proof JSON"></button>
                 <button id="d-submit" class="viewer-btn" type="button"
                         title="Submit this derivation for review">↑ Submit</button>
               </div>
             </div>
+            <!-- Variant picker, while an edit is being chosen. Selecting an
+                 option re-renders the proof below, so what you see IS the
+                 candidate — there is no separate preview. -->
+            <div id="d-variants" class="edit-variants-slot"></div>
             <div class="derive-box">
               <div id="d-empty" class="derive-empty">Your derivation will appear here.</div>
               <div id="d-root"></div>

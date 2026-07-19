@@ -831,14 +831,37 @@ def _format_proof_for_chat(proof):
     return "\n".join(lines) if lines else "(empty derivation)"
 
 
-def _proof_chat_system_prompt(proof, current_step=None):
+def _proof_chat_system_prompt(proof, current_step=None, allow_edits=False):
     """The specialized, proof-only system prompt for the proof chat.
 
     Deliberately NOT ``build_system_prompt`` (which frames the app around
     lessons/scenes/tools). This keeps the chat scoped to the one derivation and
     injects which step the reader is currently viewing, so "this step" resolves.
+
+    ``allow_edits`` mirrors the editing lock: when it is off, the ``edit_step``
+    tool is not declared and this prompt says so, rather than describing a
+    capability the model cannot reach.
     """
     derivation = _format_proof_for_chat(proof)
+    # The distinction the tool description cannot make on its own: an operation
+    # named inside a QUESTION is still a question. This is the whole reason
+    # routing lives in the model instead of a keyword match.
+    edits = (
+        "\n\nEDITING\n"
+        "The reader can change this derivation, and you have an `edit_step` tool for it. "
+        "Call it when they INSTRUCT you to change the math (\"move $c$ to the right\", "
+        "\"multiply both sides by 2\", \"substitute $u = x^2$\"). Do NOT call it when they "
+        "ASK ABOUT the math, even if they name an operation — \"why did they move $c$ to the "
+        "right?\" and \"what does dividing by $a$ accomplish?\" are questions: answer them in "
+        "text. If an instruction is ambiguous in a way that changes the RESULT, ask a short "
+        "question first instead of calling the tool. You never compute the new expression "
+        "yourself — the editor does that and has a computer algebra system check it."
+    ) if allow_edits else (
+        "\n\nEDITING\n"
+        "Editing is currently LOCKED, so you cannot change this derivation. If the reader "
+        "asks you to apply an operation, explain briefly what it would do and tell them to "
+        "click the 🔒 Locked button above the derivation to unlock editing first."
+    )
     cur = ""
     steps = proof.get("steps") if isinstance(proof, dict) else None
     if current_step is not None and isinstance(steps, list) and 0 <= current_step < len(steps):
@@ -883,18 +906,61 @@ def _proof_chat_system_prompt(proof, current_step=None):
         "it is clone-only (⧉ Clone → tweak → submit under a new name). If a user can't find a "
         "submission, it's the default-hidden queue — point them to the direct link or the "
         "'Show proofs under review' toggle."
-        "\n\nDERIVATION\n" + derivation + cur
+        + edits
+        + "\n\nDERIVATION\n" + derivation + cur
     )
 
 
-def call_proof_chat(messages, proof, current_step=None):
+EDIT_STEP_TOOL_DECL = types.FunctionDeclaration(
+    name="edit_step",
+    description=(
+        "Apply a math operation to a step of the derivation the reader is viewing "
+        "— e.g. 'add $3x$ to both sides', 'move $c$ to the right', 'substitute "
+        "$u = x^2$', 'differentiate both sides', 'solve for $x$'. Call this ONLY "
+        "when the reader is asking you to CHANGE the derivation. Do NOT call it "
+        "for questions ABOUT the derivation, even when they mention an operation "
+        "— 'why did they move c to the right?' and 'what does dividing by a do?' "
+        "are questions, so answer them in text instead. You do not perform the "
+        "math yourself: a verified editor computes the result, checks it with a "
+        "computer algebra system, and shows the reader the options."
+    ),
+    parameters=types.Schema(
+        type="OBJECT",
+        properties={
+            "operation": types.Schema(
+                type="STRING",
+                description=("the operation to apply, in the reader's own terms, "
+                             "e.g. 'move c to the right side'")),
+            "step": types.Schema(
+                type="INTEGER",
+                description=("which step to apply it to (0-based). Default to the "
+                             "step the reader is currently viewing.")),
+        },
+        required=["operation"],
+    ),
+)
+
+
+def call_proof_chat(messages, proof, current_step=None, allow_edits=False):
     """Proof-scoped chat: the SAME Gemini client/model as ``call_gemini_chat``, but
-    with a proof-only system prompt, the full conversation history, and NO app
-    tools. ``messages`` = ``[{role:'user'|'bot', text}, …]`` (latest turn last).
-    Returns the answer text."""
+    with a proof-only system prompt and the full conversation history.
+
+    ``messages`` = ``[{role:'user'|'bot', text}, …]`` (latest turn last). Returns
+    ``(answer_text, edit_request | None)`` — the edit request is present when the
+    model decided the turn was an instruction to CHANGE the derivation.
+
+    Routing lives here, in the model, rather than in a keyword match on the
+    client: only something reading the whole conversation can tell "move c to the
+    right" (an instruction) from "why did they move c to the right?" (a question),
+    and no word list ever separates those.
+
+    ``allow_edits`` is the editing lock. When false the tool is not declared at
+    all, so the model *cannot* request an edit — the lock is enforced by absence
+    rather than by asking the model to behave.
+    """
     client = get_gemini_client()
     if not client:
-        return "AI chat is not available (no API key configured)."
+        return "AI chat is not available (no API key configured).", None
     contents = []
     for msg in (messages or []):
         text = (msg.get("text") or "").strip()
@@ -903,28 +969,83 @@ def call_proof_chat(messages, proof, current_step=None):
         role = "user" if msg.get("role") == "user" else "model"
         contents.append(types.Content(role=role, parts=[types.Part.from_text(text=text)]))
     if not contents:
-        return "Ask a question about this derivation."
+        return "Ask a question about this derivation.", None
     config = types.GenerateContentConfig(
-        system_instruction=_proof_chat_system_prompt(proof, current_step),
+        system_instruction=_proof_chat_system_prompt(proof, current_step,
+                                                     allow_edits=allow_edits),
         temperature=0.4,   # tutoring — favour precision over flourish
     )
+    if allow_edits:
+        config.tools = [types.Tool(function_declarations=[EDIT_STEP_TOOL_DECL])]
     try:
         response = client.models.generate_content(
             model=GEMINI_MODEL, contents=contents, config=config)
         text = ""
+        edit = None
         if response.candidates and response.candidates[0].content.parts:
-            text = "".join(p.text for p in response.candidates[0].content.parts if p.text)
-        return text.strip() or "I couldn't answer that about this derivation."
+            for part in response.candidates[0].content.parts:
+                if part.text:
+                    text += part.text
+                fc = getattr(part, "function_call", None)
+                if fc and fc.name == "edit_step":
+                    args = fc.args or {}
+                    if hasattr(args, "model_dump"):
+                        args = args.model_dump()
+                    elif not isinstance(args, dict):
+                        args = dict(args)
+                    step = args.get("step")
+                    edit = {
+                        "operation": str(args.get("operation") or "").strip(),
+                        "step": int(step) if isinstance(step, (int, float)) else current_step,
+                    }
+        if edit and not edit["operation"]:
+            edit = None                      # a tool call with nothing to apply
+        if edit:
+            # The model asked for an edit; any text it emitted alongside is
+            # preamble the variant picker will supersede.
+            return text.strip(), edit
+        return (text.strip() or "I couldn't answer that about this derivation."), None
     except Exception as e:
         if DEBUG_MODE:
             print(f"   ❌ call_proof_chat error: {e}")
-        return "Chat is unavailable right now."
+        return "Chat is unavailable right now.", None
 
 
-def build_proof_chat_debug(messages, proof, current_step=None):
+def _run_step_edit(proof, edit):
+    """Run the ``edit_step`` tool call through the proof-edit expert.
+
+    Returns the expert's payload verbatim — one of the four outcomes documented
+    on the handler (``variants`` / ``question`` / ``reason`` /
+    ``fallback_to_chat``). Isolated: an expert failure degrades to a spoken
+    refusal rather than failing the whole chat turn, since the model's text
+    answer is already worth showing.
+    """
+    try:
+        _ensure_experts()
+        from backend.experts.handlers.proof_edit.handler import (
+            ProofEditRequest, proof_edit,
+        )
+        return proof_edit(ProofEditRequest(
+            message=edit["operation"],
+            proof=proof or {},
+            current_step=edit.get("step") or 0,
+        ))
+    except Exception as e:
+        if DEBUG_MODE:
+            print(f"   ❌ _run_step_edit error: {e}")
+        return {"reason": "I couldn't apply that edit right now."}
+
+
+def build_proof_chat_debug(messages, proof, current_step=None, allow_edits=False):
     """The EXACT payload ``call_proof_chat`` would send to Gemini — system prompt
     + the thread as plain (role, text) turns — for the /prove CTX inspector.
-    Built the same way, minus the network call. Debug-only."""
+    Built the same way, minus the network call. Debug-only.
+
+    ``allow_edits`` must be threaded through: it changes the system prompt AND
+    whether the ``edit_step`` tool is declared, so omitting it would make the
+    inspector show the locked prompt while the live call sends the unlocked one —
+    exactly the divergence this endpoint exists to rule out.
+    """
     contents = []
     for msg in (messages or []):
         text = (msg.get("text") or "").strip()
@@ -932,12 +1053,15 @@ def build_proof_chat_debug(messages, proof, current_step=None):
             continue
         role = "user" if msg.get("role") == "user" else "model"
         contents.append({"role": role, "text": text})
-    system_prompt = _proof_chat_system_prompt(proof, current_step)
+    system_prompt = _proof_chat_system_prompt(proof, current_step,
+                                              allow_edits=allow_edits)
     return {
         "model": GEMINI_MODEL,
         "systemPrompt": system_prompt,
         "charCount": len(system_prompt),
         "currentStep": current_step,
+        "allowEdits": allow_edits,
+        "tools": [EDIT_STEP_TOOL_DECL.name] if allow_edits else [],
         "contents": contents,
     }
 
@@ -1618,6 +1742,10 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
         messages: list = []
         proof: dict | None = None       # the derivation the chat is about
         currentStep: int | None = None  # 0-based index of the step in view
+        # The editing lock. False (the default) means the ``edit_step`` tool is
+        # not declared at all, so the model cannot request a change — the lock is
+        # enforced by the tool's absence, not by instructing the model.
+        allowEdits: bool = False
 
     class ContextRequest(BaseModel):
         context: dict = {}
@@ -1769,6 +1897,7 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
         'json-browser', 'main', 'proof', 'graph-view', 'expert-client',
         'view-state', 'view-state-bridge', 'nav-history', 'nav-history-core',
         'renderproof', 'embed-resizer', 'object-picker', 'prove', 'theme', 'icons',
+        'proof-edit-tool',
     }
 
     @fastapp.get("/api/version")
@@ -2364,16 +2493,27 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
     @fastapp.post("/api/proof-chat")
     async def api_proof_chat(req: ProofChatRequest, _rl: None = Depends(_chat_rate_limit)):
         """Proof-scoped chat — the Gemini chat agent with a proof-only system prompt,
-        the conversation history, and the step in view (no app tools/framing)."""
+        the conversation history, and the step in view (no app framing).
+
+        Carries ONE tool, ``edit_step``, and only when ``allowEdits`` is set. If
+        the model calls it, the step edit runs here and its variants ride back in
+        the same response, so an instruction to change the derivation costs the
+        user a single turn.
+        """
         lim = _proof_chat_limits(req.messages, req.proof)
         if lim:
             return JSONResponse({"error": lim[1]}, status_code=lim[0])
         try:
             loop = asyncio.get_running_loop()
-            answer = await loop.run_in_executor(
-                None, lambda: call_proof_chat(req.messages, req.proof, req.currentStep)
+            answer, edit = await loop.run_in_executor(
+                None, lambda: call_proof_chat(req.messages, req.proof,
+                                              req.currentStep, req.allowEdits)
             )
-            return JSONResponse({"answer": answer})
+            if not edit:
+                return JSONResponse({"answer": answer})
+            payload = await loop.run_in_executor(
+                None, lambda: _run_step_edit(req.proof, edit))
+            return JSONResponse({"answer": answer, "edit": payload})
         except Exception as e:
             import traceback
             print(f"   ❌ /api/proof-chat error: {e}\n{traceback.format_exc()}")
@@ -2388,7 +2528,8 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
         lim = _proof_chat_limits(req.messages, req.proof)
         if lim:
             return JSONResponse({"error": lim[1]}, status_code=lim[0])
-        return JSONResponse(build_proof_chat_debug(req.messages, req.proof, req.currentStep))
+        return JSONResponse(build_proof_chat_debug(req.messages, req.proof,
+                                                   req.currentStep, req.allowEdits))
 
     @fastapp.post("/api/tts/stream")
     async def api_tts_stream(req: TtsRequest, request: Request, _rl: None = Depends(_tts_rate_limit)):
