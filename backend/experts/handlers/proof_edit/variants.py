@@ -31,8 +31,8 @@ from backend.experts.modules.proof_completion.step_grounding import (
 )
 
 from .models import (
-    LOG_TAG, VARIANT_GLUE, VARIANT_INSERT, VARIANT_SUPERSEDE, EditPayload,
-    NewStep, Variant,
+    LOG_TAG, VARIANT_GLUE, VARIANT_INSERT, VARIANT_PROPAGATE, VARIANT_SUPERSEDE,
+    EditPayload, NewStep, Variant,
 )
 
 log = logging.getLogger(__name__)
@@ -305,7 +305,8 @@ def _badge_delta(rebuilt: dict, original: dict, at: int, take: int,
 def to_payload(proof: dict, domain: str, at: int, new_steps: list[dict],
                supersede_count: int = 0,
                next_caption: Optional[tuple[str, str]] = None,
-               computed: Optional[dict] = None) -> Optional[EditPayload]:
+               computed: Optional[dict] = None,
+               propagated: Optional[list[dict]] = None) -> Optional[EditPayload]:
     """Build every applicable variant and reduce them to the compact wire form.
 
     ``new_steps`` is the full ordered list: the user's step first, then any glue.
@@ -315,9 +316,23 @@ def to_payload(proof: dict, domain: str, at: int, new_steps: list[dict],
     Returns None when nothing could be built.
     """
     n_steps = len(proof.get("steps") or [])
+    tail_len = max(0, n_steps - (at + 1))
+
+    # `(kind, take, delete_count)` — `take` is a PREFIX of new_steps, which is
+    # what lets every variant share one rendered list.
     kinds: list[tuple[str, int, int]] = [(VARIANT_INSERT, 1, 0)]
-    if len(new_steps) > 1:
+
+    if propagated is not None and tail_len:
+        # Propagation and glue are alternatives, never both: when the operation
+        # is global, bridging back to a step that itself needs rewriting is not
+        # a repair. Appending the rewritten tail keeps `take` a prefix, so no
+        # new wire shape is needed — the variant simply takes all of new_steps
+        # and drops the originals it replaces.
+        new_steps = list(new_steps[:1]) + list(propagated)
+        kinds.append((VARIANT_PROPAGATE, len(new_steps), tail_len))
+    elif len(new_steps) > 1:
         kinds.append((VARIANT_GLUE, len(new_steps), 0))
+
     if supersede_count > 0 and at + 1 + supersede_count <= n_steps:
         kinds.append((VARIANT_SUPERSEDE, len(new_steps), supersede_count))
 

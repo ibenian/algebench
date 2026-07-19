@@ -27,6 +27,10 @@ const UNDO_MAX = 20;
 const VARIANT_LABELS = {
     insert: 'Just my step',
     glue: 'My step + bridge',
+    // The repair for a global operation: the same change carried through the
+    // rest of the derivation, so it stays consistent instead of reverting to
+    // the old form on the next line.
+    propagate: 'My step, applied to the rest',
     supersede: 'My step, replacing what follows',
 };
 

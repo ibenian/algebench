@@ -203,6 +203,51 @@ def test_computed_path_still_carries_glue_steps():
     assert payload.new_steps[1].input_latex == r"x^{2} = 4"
 
 
+def test_substitution_offers_a_propagate_variant():
+    """A substitution must come with a way to make the rest consistent.
+
+    Applied to one step only, "substitute all $a$ with $\\sin(w)$" leaves every
+    following step still written in $a$ and the CAS downgrades the next one. The
+    chain really is worse, and neither glue (bridge back to the step that itself
+    needs rewriting) nor supersede (delete what follows) repairs it — so the
+    repair has to be its own option.
+    """
+    prop = _proposal(ops.OP_SUBSTITUTE, operand_latex="x^{2}",
+                     replacement_latex="u")
+    payload = resolve(PROOF, "algebra", 0, prop, derivation="", current_step="",
+                      request="substitute all x^2 with u")
+
+    by_kind = {v.kind: v for v in payload.variants}
+    assert "propagate" in by_kind, f"no repair offered; got {list(by_kind)}"
+
+    prop_v = by_kind["propagate"]
+    # Takes every new step and drops the originals it replaces.
+    assert prop_v.delete_count == len(PROOF["steps"]) - 1
+    assert prop_v.take == len(payload.new_steps)
+    # The rewritten tail really carries the substitution: `x = 2` has no x^2 to
+    # replace, so it survives unchanged — what matters is that it was rebuilt
+    # through the CAS rather than left behind.
+    assert payload.new_steps[0].input_latex == "u = 4"
+
+
+def test_propagate_is_not_offered_for_local_operations():
+    """Multiplying every subsequent step by 3 is not a coherent edit."""
+    payload = resolve(PROOF, "algebra", 0,
+                      _proposal(ops.OP_MUL, operand_latex="3"),
+                      derivation="", current_step="", request="multiply by 3")
+    assert all(v.kind != "propagate" for v in payload.variants)
+
+
+def test_propagate_is_not_offered_at_the_end_of_a_proof():
+    """Nothing follows, so there is nothing to make consistent."""
+    last = len(PROOF["steps"]) - 1
+    payload = resolve(PROOF, "algebra", last,
+                      _proposal(ops.OP_SUBSTITUTE, operand_latex="x",
+                                replacement_latex="u"),
+                      derivation="", current_step="", request="substitute")
+    assert all(v.kind != "propagate" for v in payload.variants)
+
+
 def test_computed_steps_are_registered_with_the_cas_guard():
     """``guard`` refuses unregistered callables, so an unregistered op would
     silently return the default and be reported as a CAS failure."""

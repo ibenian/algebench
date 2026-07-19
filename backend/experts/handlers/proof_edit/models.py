@@ -18,10 +18,16 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-VariantKind = Literal["insert", "glue", "supersede"]
+VariantKind = Literal["insert", "glue", "propagate", "supersede"]
 
 VARIANT_INSERT: VariantKind = "insert"
 VARIANT_GLUE: VariantKind = "glue"
+# Rewrites every following step through the same operation. A substitution is
+# global by nature — "substitute all a with sin(w)" means everywhere, not once —
+# so inserting it at one step leaves the rest of the proof still saying `a` and
+# the chain measurably worse. Neither `glue` (bridge back to the unchanged next
+# step) nor `supersede` (delete what follows) can express the repair.
+VARIANT_PROPAGATE: VariantKind = "propagate"
 VARIANT_SUPERSEDE: VariantKind = "supersede"
 
 
@@ -85,7 +91,7 @@ class EditPayload(BaseModel):
 
 __all__ = [
     "EditPayload", "NewStep", "VARIANT_GLUE", "VARIANT_INSERT",
-    "VARIANT_SUPERSEDE", "Variant", "VariantKind",
+    "VARIANT_PROPAGATE", "VARIANT_SUPERSEDE", "Variant", "VariantKind",
 ]
 
 

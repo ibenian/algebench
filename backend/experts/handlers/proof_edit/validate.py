@@ -191,6 +191,56 @@ def compute_step(proof: dict, domain: str, at: int,
     }
 
 
+def propagate_substitution(proof: dict, domain: str, at: int,
+                           proposal: ProofEditProposal) -> Optional[list[dict]]:
+    """Rewrite every following step through the same substitution.
+
+    A substitution is global by nature: "substitute all $a$ with $\\sin(w)$"
+    means everywhere, not once. Applying it to a single step leaves the rest of
+    the derivation still written in the old symbol, and the CAS duly downgrades
+    the step that follows — the chain really did get worse.
+
+    Neither existing repair fits. Glue bridges back to the ORIGINAL next step,
+    but that step is precisely what now needs rewriting; supersede deletes what
+    follows rather than fixing it. So this produces the third option: the same
+    ``subs`` applied down the chain, entirely by the CAS.
+
+    Returns None if the request is not a substitution, there is nothing after
+    ``at``, or any following step fails to convert — a partial rewrite would be
+    worse than none.
+    """
+    if proposal.op != ops.OP_SUBSTITUTE:
+        return None
+    steps = proof.get("steps") or []
+    tail = steps[at + 1:]
+    if not tail:
+        return None
+
+    old = _to_sympy(proposal.operand_latex, domain)
+    new = _to_sympy(proposal.replacement_latex, domain)
+    if old is None or new is None:
+        return None
+
+    out: list[dict] = []
+    for step in tail:
+        expr = _to_sympy(step.get("input_latex") or "", domain)
+        if expr is None:
+            return None
+        try:
+            rewritten = ops.apply_op(expr, ops.OP_SUBSTITUTE,
+                                     operand=old, replacement=new)
+        except ops.OpRefused:
+            return None
+        out.append({
+            "operation": step.get("operation") or "Step",
+            "justification": step.get("justification") or "—",
+            "input_latex": sp.latex(rewritten, mul_symbol="dot"),
+        })
+    log.info("%s propagated the substitution through %d following step(s)",
+             LOG_TAG, len(out))
+    return out
+
+
 def resolve(proof: dict, domain: str, at: int, proposal: ProofEditProposal,
             *, derivation: str, current_step: str, request: str,
             recent_thread: str = "", clarifications: str = "") -> EditPayload:
@@ -216,6 +266,10 @@ def resolve(proof: dict, domain: str, at: int, proposal: ProofEditProposal,
             computed=computed_confidence(
                 f"the CAS applied “{proposal.op.replace('_', ' ')}” to the "
                 f"previous step directly"),
+            # For a global operation, offer the repair as well as the one-step
+            # insert — otherwise the only option on the menu is the one that
+            # leaves the chain worse.
+            propagated=propagate_substitution(proof, domain, at, proposal),
         )
         if payload is None:
             raise EditRefused("I couldn't build a consistent proof from that step.")
