@@ -767,15 +767,23 @@ function syncLockButton() {
     : "Unlock step editing — describe an operation in the chat";
 }
 
-/** Gate the actions that act on "the proof" while a variant is being chosen.
+/** Gate everything while a variant is being chosen.
  *
- *  Submitting or rederiving mid-selection would use deriveProof — the version
- *  the user is NOT looking at. Rather than silently pick one, both are disabled
- *  until Done or Cancel resolves which proof is real. */
+ *  The picker is a modal question, like AskUserQuestion: until it is resolved
+ *  the chat input is locked so the user can't fire another request mid-choice,
+ *  and Submit/Rederive are disabled because they'd act on deriveProof — the
+ *  version the user is NOT looking at while previewing a candidate. */
 function setEditPending(pending) {
   editPending = !!pending;
   if (els.dSubmit) els.dSubmit.disabled = editPending;
   if (els.dGo) els.dGo.disabled = editPending;
+  if (els.dSend) els.dSend.disabled = editPending;
+  if (els.dChatInput) {
+    els.dChatInput.disabled = editPending;
+    els.dChatInput.placeholder = editPending
+      ? "Choose an option below to continue…"
+      : "Ask about this derivation…";
+  }
 }
 
 /** Build the edit tool once the DOM refs exist. */
@@ -788,7 +796,19 @@ function initEditTool() {
     onCommit: (proof) => { deriveProof = proof; },
     setEditPending,
     addBubble: (role, text) => { addBubble(role, text); chatHistory.push({ role, text }); },
-    mountBar: (bar) => { els.dVariants.textContent = ""; els.dVariants.appendChild(bar); },
+    // The picker is part of the conversation, not a floating toolbar. Mount it as
+    // a bot message in the chat thread so the question sits where the user is
+    // looking and reading; selecting still previews in the animator below.
+    mountBar: (bar) => {
+      const avatar = document.createElement("div");
+      avatar.className = "msg-avatar";
+      avatar.innerHTML = AI_ICON;
+      const row = document.createElement("div");
+      row.className = "msg-row bot edit-variants-row";
+      row.append(avatar, bar);
+      els.dLog.appendChild(row);
+      els.dLog.scrollTop = els.dLog.scrollHeight;
+    },
   });
   syncLockButton();
 }
@@ -1075,7 +1095,9 @@ async function sendChat() {
       ? "That took too long and was stopped — try again, or a simpler operation."
       : "Chat is unavailable right now.", "err");
   } finally {
-    els.dSend.disabled = false;
+    // Don't re-enable while a variant picker is open — it is a modal question,
+    // and setEditPending owns the input/Send state until it's resolved.
+    if (!editPending) els.dSend.disabled = false;
   }
 }
 
@@ -1314,7 +1336,6 @@ async function main() {
   els.dSubmit.addEventListener("click", openSubmitModal);
   // Editing lock + the variant picker slot (interactive step editing).
   els.dLock = document.getElementById("d-lock");
-  els.dVariants = document.getElementById("d-variants");
   initEditTool();
   els.dLock.addEventListener("click", () => {
     editTool.setUnlocked(!editTool.isUnlocked());

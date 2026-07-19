@@ -259,23 +259,28 @@
        from the default locked state rather than a subtle pressed look. */
     #d-lock[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
 
-    /* Variant picker. Selecting an option re-renders the proof below it, so this
-       bar sits directly above the animation — what you see IS the candidate. */
-    .edit-variants { display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
-                     margin: 8px 0; padding: 9px 11px; border-radius: 9px;
+    /* Variant picker — a chat message with choices, like AskUserQuestion.
+       Selecting an option re-renders the proof in the animator; the chat input
+       is locked until Done/Cancel resolves the choice. */
+    .msg-row.edit-variants-row { align-items: flex-start; }
+    .edit-variants { display: flex; flex-direction: column; align-items: stretch; gap: 6px;
+                     padding: 10px 12px; border-radius: 10px; width: 100%;
                      background: var(--chip-bg); border: 1px solid var(--accent); }
-    .edit-variants-title { font-size: .8rem; font-weight: 600; margin-right: 2px; }
-    .edit-variant { font: inherit; font-size: .8rem; cursor: pointer; text-align: left;
-                    display: flex; flex-direction: column; gap: 1px;
+    .edit-variants-title { font-size: .82rem; font-weight: 600; margin-bottom: 2px; }
+    .edit-variant { font: inherit; font-size: .82rem; cursor: pointer; text-align: left;
+                    display: flex; flex-direction: column; gap: 2px;
                     color: var(--btn-fg); background: var(--btn-bg);
-                    border: 1px solid var(--btn-border); border-radius: 7px;
-                    padding: 5px 11px; }
+                    border: 1px solid var(--btn-border); border-radius: 8px;
+                    padding: 8px 11px; }
     .edit-variant:hover { background: var(--btn-hover); }
-    .edit-variant.is-selected { border-color: var(--accent); color: var(--accent); }
-    .edit-variant-note { font-size: .68rem; color: var(--muted-color); }
+    .edit-variant.is-selected { border-color: var(--accent); color: var(--accent);
+                                box-shadow: inset 0 0 0 1px var(--accent); }
+    .edit-variant-note { font-size: .7rem; color: var(--muted-color); }
     .edit-variant.is-selected .edit-variant-note { color: inherit; opacity: .85; }
-    .edit-done, .edit-cancel { font: inherit; font-size: .8rem; cursor: pointer;
-                               border-radius: 7px; padding: 5px 13px;
+    /* Done / Cancel share a row at the bottom of the card. */
+    .edit-actions-sep { display: flex; gap: 8px; margin-top: 4px; }
+    .edit-done, .edit-cancel { font: inherit; font-size: .82rem; cursor: pointer;
+                               border-radius: 8px; padding: 6px 15px;
                                border: 1px solid var(--btn-border); }
     .edit-done { margin-left: auto; color: #fff; background: var(--accent);
                  border-color: var(--accent); font-weight: 600; }
@@ -431,10 +436,6 @@
                         title="Submit this derivation for review">↑ Submit</button>
               </div>
             </div>
-            <!-- Variant picker, while an edit is being chosen. Selecting an
-                 option re-renders the proof below, so what you see IS the
-                 candidate — there is no separate preview. -->
-            <div id="d-variants" class="edit-variants-slot"></div>
             <div class="derive-box">
               <div id="d-empty" class="derive-empty">Your derivation will appear here.</div>
               <div id="d-root"></div>

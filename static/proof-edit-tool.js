@@ -155,13 +155,15 @@ export function createProofEditTool(deps) {
             return true;
         }
 
-        openBar(proof, edit);
+        // Say what the edit is, THEN show the picker beneath it — the summary is
+        // the question, the picker is the answer choices, so they read top-down.
         if (edit.summary) addBubble('bot', edit.summary);
         // The CAS neither confirmed nor disproved this. Say it in words: the
         // "Plausible" badge reads as mild approval, and the CAS returns exactly
         // that tier for an outright nonsense step, so the badge alone is not a
         // strong enough signal to rely on.
         if (edit.caveat) addBubble('bot', `⚠️ ${edit.caveat}`);
+        openBar(proof, edit);
         return true;
     }
 
@@ -253,7 +255,10 @@ export function createProofEditTool(deps) {
         cancel.textContent = 'Cancel';
         cancel.addEventListener('click', cancelEdit);
 
-        bar.append(done, cancel);
+        const actions = document.createElement('div');
+        actions.className = 'edit-actions-sep';
+        actions.append(cancel, done);
+        bar.appendChild(actions);
         deps.mountBar(bar);
 
         // While the bar is open the view shows a candidate but the committed
@@ -264,7 +269,13 @@ export function createProofEditTool(deps) {
     }
 
     function closeBar() {
-        if (bar) { bar.remove(); bar = null; }
+        // Remove the whole chat row the picker lives in, not just the bar inside
+        // it — otherwise its avatar/message wrapper is left orphaned in the log.
+        if (bar) {
+            const row = bar.closest ? bar.closest('.msg-row') : null;
+            (row || bar).remove();
+            bar = null;
+        }
         session = null;
         setEditPending(false);
     }
@@ -278,10 +289,16 @@ export function createProofEditTool(deps) {
         if (!session) return;
         const chosen = variantProof(session.selected);
         const landing = insertedStep(session.selected);
+        const label = VARIANT_LABELS[session.variants[session.selected].kind]
+            || 'that option';
         pushUndo(session.original, session.returnStep);
         closeBar();
         onCommit(chosen);
         onMount(chosen, landing);
+        // Leave a record in the thread of which choice was applied — the picker
+        // itself is gone, so without this the conversation shows a question with
+        // no visible answer.
+        addBubble('bot', `Applied: ${label.toLowerCase()}.`);
     }
 
     function cancelEdit() {
@@ -289,6 +306,7 @@ export function createProofEditTool(deps) {
         const { original, returnStep } = session;
         closeBar();
         onMount(original, returnStep);
+        addBubble('bot', 'Discarded — the proof is unchanged.');
     }
 
     // ---- undo ------------------------------------------------------------- //
