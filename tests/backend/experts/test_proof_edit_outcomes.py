@@ -183,6 +183,22 @@ def test_formatted_proof_hides_htmldata(proof):
     assert "htmlData" not in H._format_proof(proof)
 
 
+def test_intent_parser_is_a_compilable_module():
+    """The parser is a ``dspy.Module`` with a discoverable sub-predictor.
+
+    Structuring it this way (rather than a bare ``Predict``) gives it a compile
+    target: a DSPy optimizer walks ``named_predictors`` to tune it against a
+    labelled dataset later. If it silently reverted to a plain function this
+    would fail, and the optimization path would quietly vanish.
+    """
+    import dspy
+    from backend.experts.handlers.proof_edit.intent import ProofEditModule
+
+    module = ProofEditModule()
+    assert isinstance(module, dspy.Module)
+    assert [n for n, _ in module.named_predictors()], "no predictor to compile"
+
+
 def test_clean_repairs_json_mangled_latex():
     """A JSON parser eats the first letter of a single-backslash LaTeX command.
 

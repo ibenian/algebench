@@ -43,11 +43,6 @@ MAX_GLUE_STEPS = 3
 MAX_CLARIFICATIONS = 2
 
 
-# Built once, LAZILY on first use — this module is imported before
-# ``configure_dspy()`` runs, matching prompt_endpoints.py / term_descriptions.py.
-@cache
-def _predictor(signature):
-    return dspy.Predict(signature)
 
 
 class ProposedStep(BaseModel):
@@ -166,6 +161,45 @@ class ProofEditSig(dspy.Signature):
         desc="one short sentence describing the move, for the chat; use $…$ for math")
 
 
+class ProofEditModule(dspy.Module):
+    """The intent parser: request → structured :class:`ProofEditProposal`.
+
+    A single ``Predict`` today, wrapped as a ``Module`` so it has a first-class
+    home in the expert package and — like ``ProofCompletionExpert`` — a compile
+    target if we later optimize it against a labelled dataset. Its ``forward``
+    returns the RAW DSPy prediction; field cleaning + shaping into the pydantic
+    proposal stays in :func:`propose_edit`, so the Module is a thin, optimizable
+    unit and the messy post-processing lives outside it.
+
+    ``ChainOfThought`` (not bare ``Predict``): the routing decision — instruction
+    vs question vs clarify, and which ``op`` a request maps to — benefits from an
+    explicit reasoning step, and it matches ``ProofCompletionExpert``.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.predict = dspy.ChainOfThought(ProofEditSig)
+
+    def forward(self, *, derivation: str, current_step: str, request: str,
+                recent_thread: str = "", clarifications: str = ""):
+        return self.predict(
+            derivation=derivation,
+            current_step=current_step,
+            request=request,
+            recent_thread=recent_thread,
+            clarifications=clarifications,
+        )
+
+
+# Built once, LAZILY on first use — this file is imported before
+# ``configure_dspy()`` runs, so constructing the Module (which binds an LM) is
+# deferred to first call. Matches the lazy-predictor timing in
+# prompt_endpoints.py / term_descriptions.py, now behind a Module.
+@cache
+def _module() -> ProofEditModule:
+    return ProofEditModule()
+
+
 def _clean(s) -> str:
     """Strip DSPy framing, then repair JSON-mangled LaTeX.
 
@@ -194,7 +228,7 @@ def propose_edit(derivation: str, current_step: str, request: str,
         f"{request}\n\nYour previous attempt was rejected by the computer algebra "
         f"system:\n{feedback}\nFix the math and try again.")
     try:
-        out = _predictor(ProofEditSig)(
+        out = _module()(
             derivation=derivation,
             current_step=current_step,
             request=ask,
@@ -281,7 +315,7 @@ def last_turns(messages, limit: int = 6) -> str:
 
 
 __all__ = [
-    "MAX_CLARIFICATIONS", "MAX_GLUE_STEPS", "ProofEditProposal", "ProofEditSig",
-    "ProposedStep", "format_clarifications", "format_current_step", "last_turns",
-    "propose_edit",
+    "MAX_CLARIFICATIONS", "MAX_GLUE_STEPS", "ProofEditModule", "ProofEditProposal",
+    "ProofEditSig", "ProposedStep", "format_clarifications", "format_current_step",
+    "last_turns", "propose_edit",
 ]
