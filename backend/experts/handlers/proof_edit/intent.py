@@ -23,6 +23,8 @@ from typing import Optional
 import dspy
 from pydantic import BaseModel, ConfigDict, Field
 
+from backend.experts.modules.proof_completion.outputs import _unmangle_json_escapes
+
 # DSPy's ChatAdapter frames fields with `[[ ## name ## ]]` markers; some models
 # echo a trailing `[[ ## completed ## ]]` into a free-text output. Strip them.
 _DSPY_MARKER = re.compile(r"\[\[\s*##.*?##\s*\]\]")
@@ -186,7 +188,15 @@ class ProofEditSig(dspy.Signature):
 
 
 def _clean(s) -> str:
-    return _DSPY_MARKER.sub("", str(s or "")).strip()
+    """Strip DSPy framing, then repair JSON-mangled LaTeX.
+
+    ``_unmangle_json_escapes`` is not optional here. A JSON parser eats the first
+    letter of a single-backslash LaTeX command, so ``\\frac{c}{\\sin(w)}`` arrives
+    as ``fraccsin(w)`` — which renders as garbage in a caption and fails to parse
+    as an operand. ``DerivationStep`` applies the same repair via a field
+    validator; these fields bypass that model, so they need it explicitly.
+    """
+    return _unmangle_json_escapes(_DSPY_MARKER.sub("", str(s or "")).strip())
 
 
 def propose_edit(derivation: str, current_step: str, request: str,

@@ -181,3 +181,21 @@ def test_request_model_rejects_unknown_fields(proof):
 def test_formatted_proof_hides_htmldata(proof):
     """The model must never see — or learn to imitate — the id annotations."""
     assert "htmlData" not in H._format_proof(proof)
+
+
+def test_clean_repairs_json_mangled_latex():
+    """A JSON parser eats the first letter of a single-backslash LaTeX command.
+
+    ``\\frac`` starts with ``\\f`` — a form feed — so a caption written as
+    ``rewrite $\\frac{c}{\\sin(w)}$`` arrived as ``rewrite $rac{c}{sin(w)}$`` and
+    rendered as garbage. ``DerivationStep`` repairs this via a field validator;
+    these fields bypass that model, so ``_clean`` has to do it.
+    """
+    from backend.experts.handlers.proof_edit.intent import _clean
+
+    mangled = "rewrite \x0crac{c}{\\sin(w)} over a common denominator"
+    assert "\\frac{c}" in _clean(mangled)
+    assert "\x0c" not in _clean(mangled)
+    # Idempotent, and a no-op on text that was never mangled.
+    assert _clean(_clean(mangled)) == _clean(mangled)
+    assert _clean("plain prose, no math") == "plain prose, no math"
