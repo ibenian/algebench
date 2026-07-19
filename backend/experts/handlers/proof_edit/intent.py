@@ -70,6 +70,13 @@ class ProofEditProposal(BaseModel):
     # the transition it now labels. Prose only — the math is untouched.
     next_operation: str = ""
     next_justification: str = ""
+    # When the request maps onto an operation sympy can perform, these say WHICH
+    # and with WHAT, and the CAS computes the result instead of trusting the
+    # model's ``steps[0]``. See ops.py for why that matters.
+    op: str = ""
+    operand_latex: str = ""
+    replacement_latex: str = ""
+    variable: str = ""
 
 
 class ProofEditSig(dspy.Signature):
@@ -93,11 +100,17 @@ class ProofEditSig(dspy.Signature):
     3. AN OPERATION YOU CAN APPLY — set `is_edit` true, leave `question` empty,
        and fill `steps`.
 
-    For case 3, `steps` is ordered and starts with THE USER'S OWN STEP: the
-    complete LaTeX of the expression after applying exactly what they asked, no
-    more. Do not silently simplify, rearrange, or take extra moves — if they said
-    "multiply both sides by 2", the result must visibly be the previous
-    expression times 2 on each side.
+    For case 3, ALWAYS try to name the move in `op` first. If it is one of the
+    listed operations, set `op` and the operand/variable fields and the computer
+    algebra system will perform it for you — that is more reliable than writing
+    the result yourself, and it is the only way operations like differentiation
+    are accepted. Fill `steps` as well; it is used when `op` does not apply.
+
+    `steps` is ordered and starts with THE USER'S OWN STEP: the complete LaTeX of
+    the expression after applying exactly what they asked, no more. Do not
+    silently simplify, rearrange, or take extra moves — if they said "multiply
+    both sides by 2", the result must visibly be the previous expression times 2
+    on each side.
 
     After that, and ONLY if the derivation continues past the current step, you
     may add up to three GLUE steps: the shortest chain that makes the ORIGINAL
@@ -146,6 +159,19 @@ class ProofEditSig(dspy.Signature):
         desc="ordered [{operation, expr_latex, justification}]: the user's step "
              "first, then up to 3 glue steps; empty if is_edit is false or a "
              "question is being asked")
+    op: str = dspy.OutputField(
+        desc="if the request maps onto one of these, name it EXACTLY, else leave "
+             "empty: add_both_sides, subtract_both_sides, multiply_both_sides, "
+             "divide_both_sides, differentiate_both_sides, integrate_both_sides, "
+             "substitute, simplify, expand, factor")
+    operand_latex: str = dspy.OutputField(
+        desc="LaTeX of what the op is applied WITH — the amount added/multiplied, "
+             "or for `substitute` the sub-expression being replaced; empty if n/a")
+    replacement_latex: str = dspy.OutputField(
+        desc="for `substitute` only: LaTeX of what replaces operand_latex "
+             "(for 'let $u = x^2$' operand is $x^2$ and replacement is $u$)")
+    variable: str = dspy.OutputField(
+        desc="for differentiate/integrate: the variable, e.g. 'x'; empty otherwise")
     supersede_count: int = dspy.OutputField(
         desc="how many steps right after the current one become redundant; 0 if unsure")
     next_operation: str = dspy.OutputField(
@@ -214,6 +240,10 @@ def propose_edit(derivation: str, current_step: str, request: str,
         summary=_clean(out.summary),
         next_operation=_clean(getattr(out, "next_operation", "")),
         next_justification=_clean(getattr(out, "next_justification", "")),
+        op=_clean(getattr(out, "op", "")),
+        operand_latex=_clean(getattr(out, "operand_latex", "")),
+        replacement_latex=_clean(getattr(out, "replacement_latex", "")),
+        variable=_clean(getattr(out, "variable", "")),
     )
 
 

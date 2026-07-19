@@ -33,9 +33,12 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
+import sympy as sp
+
+from . import ops
 from .intent import ProofEditProposal, propose_edit
 from .models import LOG_TAG, EditPayload
-from .variants import build_variant, to_payload
+from .variants import build_variant, computed_confidence, to_payload
 
 log = logging.getLogger(__name__)
 
@@ -115,6 +118,79 @@ def _as_step_dicts(proposal: ProofEditProposal) -> list[dict]:
             for s in proposal.steps]
 
 
+def _to_sympy(latex: str, domain: str):
+    """Parse reader-facing LaTeX into sympy, via the same path everything uses."""
+    if not latex:
+        return None
+    from backend.experts.modules.proof_completion.grounding import graph_to_sympy
+    from backend.semantic_graph.service import SemanticGraphService
+
+    try:
+        graph = SemanticGraphService().latex_to_graph(latex, domain=domain)
+    except Exception:
+        return None
+    return graph_to_sympy(graph) if graph is not None else None
+
+
+def compute_step(proof: dict, domain: str, at: int,
+                 proposal: ProofEditProposal) -> Optional[dict]:
+    """Have the CAS PERFORM the operation, when the request maps onto one.
+
+    Returns a step dict whose ``input_latex`` the CAS produced — correct by
+    construction rather than by a grading pass that, for anything changing the
+    solution set, cannot say yes. Returns None when the request does not map, or
+    when anything needed could not be parsed; the caller then falls back to the
+    model-authored + graded path.
+
+    Raises :class:`EditRefused` when the operation maps but is INVALID on this
+    step (dividing by something that may be zero, "both sides" of a non-equation)
+    — that is a real answer, not a reason to fall back and try it a worse way.
+    """
+    if proposal.op not in ops.SUPPORTED_OPS:
+        return None
+
+    steps = proof.get("steps") or []
+    if not 0 <= at < len(steps):
+        return None
+    expr = _to_sympy(steps[at].get("input_latex") or "", domain)
+    if expr is None:
+        return None
+
+    kwargs: dict = {}
+    if proposal.op in ops.NEEDS_OPERAND:
+        operand = _to_sympy(proposal.operand_latex, domain)
+        if operand is None:
+            return None
+        kwargs["operand"] = operand
+        if proposal.op == ops.OP_SUBSTITUTE:
+            replacement = _to_sympy(proposal.replacement_latex, domain)
+            if replacement is None:
+                return None
+            kwargs["replacement"] = replacement
+    if proposal.op in ops.NEEDS_VARIABLE:
+        name = (proposal.variable or "").strip()
+        if not name:
+            return None
+        kwargs["variable"] = sp.Symbol(name)
+
+    try:
+        result = ops.apply_op(expr, proposal.op, **kwargs)
+    except ops.OpRefused as e:
+        raise EditRefused(str(e)) from e
+
+    # ``mul_symbol="dot"`` matches graph_to_latex: a symbol directly before "("
+    # would otherwise re-parse as a function call.
+    latex = sp.latex(result, mul_symbol="dot")
+    authored = proposal.steps[0] if proposal.steps else None
+    log.info("%s computed %s via CAS: %s", LOG_TAG, proposal.op, latex)
+    return {
+        "operation": (authored.operation if authored else proposal.op.replace("_", " ")),
+        "justification": (authored.justification if authored else
+                          "applied by the computer algebra system"),
+        "input_latex": latex,
+    }
+
+
 def resolve(proof: dict, domain: str, at: int, proposal: ProofEditProposal,
             *, derivation: str, current_step: str, request: str,
             recent_thread: str = "", clarifications: str = "") -> EditPayload:
@@ -126,6 +202,26 @@ def resolve(proof: dict, domain: str, at: int, proposal: ProofEditProposal,
 
     Raises :class:`EditRefused` if the user's step cannot be made to survive.
     """
+    # Preferred path: the CAS performs the operation itself. Correct by
+    # construction, so there is nothing to retry and nothing for the grader to
+    # be inconclusive about — this is what makes "differentiate both sides"
+    # possible at all (grading it returns `refuted` for correct math).
+    computed = compute_step(proof, domain, at, proposal)
+    if computed is not None:
+        steps = [computed] + _as_step_dicts(proposal)[1:]
+        payload = to_payload(
+            proof, domain, at, steps,
+            supersede_count=proposal.supersede_count,
+            next_caption=(proposal.next_operation, proposal.next_justification),
+            computed=computed_confidence(
+                f"the CAS applied “{proposal.op.replace('_', ' ')}” to the "
+                f"previous step directly"),
+        )
+        if payload is None:
+            raise EditRefused("I couldn't build a consistent proof from that step.")
+        payload.summary = proposal.summary
+        return payload
+
     steps = _as_step_dicts(proposal)
     if not steps:
         raise EditRefused("I couldn't turn that into a concrete step.")

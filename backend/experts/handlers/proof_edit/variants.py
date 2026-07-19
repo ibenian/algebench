@@ -26,6 +26,9 @@ from backend.experts.handlers.proof_animation.animation import build
 from backend.experts.modules.proof_completion.outputs import (
     DerivationStep, ProofTrajectory,
 )
+from backend.experts.modules.proof_completion.step_grounding import (
+    TIER_ICON, TIER_LABEL, TIER_MEANING, Tier,
+)
 
 from .models import (
     LOG_TAG, VARIANT_GLUE, VARIANT_INSERT, VARIANT_SUPERSEDE, EditPayload,
@@ -167,10 +170,38 @@ def _restore_term_descriptions(rebuilt: dict, original: dict) -> None:
             term["description"] = desc
 
 
+def computed_confidence(reason: str) -> dict:
+    """The verdict for a step sympy COMPUTED rather than merely checked.
+
+    ``ground_steps`` asks whether the solution set is preserved. For a computed
+    step that is the wrong question — differentiating both sides is supposed to
+    change the solution set, and grading it returns ``refuted`` for perfectly
+    correct math. What we can state instead is stronger than any grading: the CAS
+    performed this operation on the previous step, so the result is right by
+    construction. GOLD is the honest tier for that — symbolically established,
+    label consistent.
+    """
+    return {
+        "tier": Tier.GOLD.value,
+        "label": TIER_LABEL[Tier.GOLD],
+        "icon": TIER_ICON[Tier.GOLD],
+        "meaning": TIER_MEANING[Tier.GOLD],
+        "relation": "computed",
+        "reason": reason,
+        "type_consistent": True,
+    }
+
+
 def build_variant(proof: dict, domain: str, at: int, new_steps: list[dict],
                   delete_count: int = 0,
-                  next_caption: Optional[tuple[str, str]] = None) -> dict:
-    """Splice + rebuild + merge back. Returns a complete, badged proof."""
+                  next_caption: Optional[tuple[str, str]] = None,
+                  computed: Optional[dict] = None) -> dict:
+    """Splice + rebuild + merge back. Returns a complete, badged proof.
+
+    ``computed`` is the confidence payload for the FIRST new step when the CAS
+    computed it (see :func:`computed_confidence`); the grader's verdict for that
+    step is replaced, since it answers a question that does not apply.
+    """
     spliced = _spliced(proof, at, new_steps, delete_count, next_caption)
     rebuilt = build(
         proof_to_trajectory(spliced),
@@ -185,6 +216,10 @@ def build_variant(proof: dict, domain: str, at: int, new_steps: list[dict],
             rebuilt[field] = deepcopy(proof[field])
     _restore_term_descriptions(rebuilt, proof)
     _restore_untouched_steps(rebuilt, proof)
+    if computed and new_steps:
+        steps = rebuilt.get("steps") or []
+        if at + 1 < len(steps):
+            steps[at + 1]["confidence"] = deepcopy(computed)
     return rebuilt
 
 
@@ -269,7 +304,8 @@ def _badge_delta(rebuilt: dict, original: dict, at: int, take: int,
 
 def to_payload(proof: dict, domain: str, at: int, new_steps: list[dict],
                supersede_count: int = 0,
-               next_caption: Optional[tuple[str, str]] = None) -> Optional[EditPayload]:
+               next_caption: Optional[tuple[str, str]] = None,
+               computed: Optional[dict] = None) -> Optional[EditPayload]:
     """Build every applicable variant and reduce them to the compact wire form.
 
     ``new_steps`` is the full ordered list: the user's step first, then any glue.
@@ -298,7 +334,7 @@ def to_payload(proof: dict, domain: str, at: int, new_steps: list[dict],
     for kind, take, delete_count in kinds:
         caption = recaption if kind == VARIANT_INSERT else None
         rebuilt = build_variant(proof, domain, at, new_steps[:take], delete_count,
-                                next_caption=caption)
+                                next_caption=caption, computed=computed)
         built = (rebuilt.get("steps") or [])[at + 1: at + 1 + take]
         if len(built) != take:
             log.warning("%s variant %s dropped: rebuild produced %d of %d steps",
