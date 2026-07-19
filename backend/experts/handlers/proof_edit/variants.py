@@ -30,8 +30,8 @@ from backend.experts.modules.proof_completion.step_grounding import (
 )
 
 from .models import (
-    LOG_TAG, VARIANT_GLUE, VARIANT_INSERT, VARIANT_PROPAGATE, VARIANT_SUPERSEDE,
-    EditPayload, NewStep, Variant,
+    LOG_TAG, VARIANT_GLUE, VARIANT_INSERT, VARIANT_PROPAGATE, VARIANT_RECOVERY,
+    VARIANT_SUPERSEDE, EditPayload, NewStep, Variant,
 )
 
 log = logging.getLogger(__name__)
@@ -290,7 +290,8 @@ def _badge_delta(rebuilt: dict, original: dict, at: int, take: int,
 
 def to_payload(proof: dict, domain: str, at: int, new_steps: list[dict],
                computed: Optional[dict] = None,
-               propagated: Optional[list[dict]] = None) -> Optional[EditPayload]:
+               propagated: Optional[list[dict]] = None,
+               is_recovery: bool = False) -> Optional[EditPayload]:
     """Build every applicable variant and reduce them to the compact wire form.
 
     ``new_steps`` is the full ordered list: the user's step first, then any glue.
@@ -315,7 +316,10 @@ def to_payload(proof: dict, domain: str, at: int, new_steps: list[dict],
         new_steps = list(new_steps[:1]) + list(propagated)
         kinds.append((VARIANT_PROPAGATE, len(new_steps), tail_len))
     elif len(new_steps) > 1:
-        kinds.append((VARIANT_GLUE, len(new_steps), 0))
+        # `recovery` when the bridge is the deterministic undo, `glue` when it is
+        # model-authored — same shape, different (stronger) promise to the reader.
+        kinds.append((VARIANT_RECOVERY if is_recovery else VARIANT_GLUE,
+                      len(new_steps), 0))
 
     if tail_len:
         # "End the proof here." Unconditional whenever anything follows, and

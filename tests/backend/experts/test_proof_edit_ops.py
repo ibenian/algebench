@@ -222,6 +222,7 @@ def test_recovery_bridge_supersedes_model_glue_when_available():
     assert payload.new_steps[0].input_latex == r"3 \cdot x^{2} = 12"
     # The recovery (back to step 0), not the model's "9 = 9".
     assert payload.new_steps[1].input_latex == PROOF["steps"][0]["input_latex"]
+    assert "recovery" in {v.kind for v in payload.variants}
 
 
 def test_substitution_offers_a_propagate_variant():
@@ -287,8 +288,11 @@ def test_recovery_is_offered_as_the_bridge_variant():
                       _proposal(ops.OP_MUL, operand_latex="3"),
                       derivation="", current_step="", request="multiply by 3")
     by_kind = {v.kind for v in payload.variants}
-    assert "glue" in by_kind, f"no recovery offered; got {by_kind}"
+    assert "recovery" in by_kind, f"no recovery offered; got {by_kind}"
+    assert "glue" not in by_kind, "an invertible op should not be labelled generic glue"
     assert payload.new_steps[1].input_latex == PROOF["steps"][0]["input_latex"]
+    # The recovery caption says HOW it recovers, and that it undoes the step.
+    assert "undo" in payload.new_steps[1].operation.lower()
 
 
 @pytest.mark.parametrize("op", [ops.OP_DIFF, ops.OP_INTEGRATE, ops.OP_SIMPLIFY,

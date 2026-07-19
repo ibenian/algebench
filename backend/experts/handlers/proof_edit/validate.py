@@ -299,7 +299,8 @@ def resolve(proof: dict, domain: str, at: int, proposal: ProofEditProposal,
         # Prefer the deterministic undo over model-written glue: it lands on an
         # expression the proof already contains, so the following step's verdict
         # is restored rather than re-earned.
-        bridge = recovery_bridge(proof, at, proposal) or _as_step_dicts(proposal)[1:]
+        recovery = recovery_bridge(proof, at, proposal)
+        bridge = recovery if recovery is not None else _as_step_dicts(proposal)[1:]
         steps = [computed] + bridge
         payload = to_payload(
             proof, domain, at, steps,
@@ -310,6 +311,7 @@ def resolve(proof: dict, domain: str, at: int, proposal: ProofEditProposal,
             # insert — otherwise the only option on the menu is the one that
             # leaves the chain worse.
             propagated=propagate_substitution(proof, domain, at, proposal),
+            is_recovery=recovery is not None,
         )
         if payload is None:
             raise EditRefused("I couldn't build a consistent proof from that step.")

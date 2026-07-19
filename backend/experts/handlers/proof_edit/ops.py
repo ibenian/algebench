@@ -163,21 +163,30 @@ INVERSE_OPS = {
     OP_SUBSTITUTE: OP_SUBSTITUTE,   # invertible by swapping the two sides
 }
 
+# How the inverse reads, and WHY — the caption must make clear this step exists
+# to undo the one before it, not to do the same thing twice. "…by 4 again" would
+# read as a second division that never happened; "…to undo the multiplication"
+# says what the step is actually for.
 _UNDO_PHRASE = {
-    OP_ADD: "add {operand} to both sides again",
-    OP_SUB: "subtract {operand} from both sides again",
-    OP_MUL: "multiply both sides by {operand} again",
-    OP_DIV: "divide both sides by {operand} again",
+    OP_ADD: "subtract {operand} from both sides, undoing the addition",
+    OP_SUB: "add {operand} back to both sides, undoing the subtraction",
+    OP_MUL: "divide both sides by {operand}, undoing the multiplication",
+    OP_DIV: "multiply both sides by {operand}, undoing the division",
 }
 
 
 def describe_undo(op: str, operand_latex: str = "", replacement_latex: str = "") -> str:
-    """A reader-facing caption for the step that undoes ``op``."""
+    """A reader-facing caption for the step that undoes ``op``.
+
+    Note the phrasing describes the RECOVERY: the operation applied *and* that it
+    reverses the inserted step, since the whole point of this step is to get back
+    to the expression the rest of the proof was built on.
+    """
     if op == OP_SUBSTITUTE:
-        return (f"substitute ${replacement_latex}$ back for ${operand_latex}$"
+        return (f"substitute ${operand_latex}$ back for ${replacement_latex}$, "
+                f"undoing the substitution"
                 if operand_latex and replacement_latex else "undo the substitution")
-    inverse = INVERSE_OPS.get(op)
-    phrase = _UNDO_PHRASE.get(inverse)
+    phrase = _UNDO_PHRASE.get(op)
     if not phrase:
         return "undo that step"
     return phrase.format(operand=f"${operand_latex}$" if operand_latex else "it")
