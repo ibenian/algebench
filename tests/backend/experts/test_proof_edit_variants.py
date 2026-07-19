@@ -236,54 +236,6 @@ def test_supersede_not_offered_at_the_final_step(proof):
     assert all(v.kind != VARIANT_SUPERSEDE for v in payload.variants)
 
 
-def test_insert_recaptions_the_following_step(proof):
-    """Inserting a step changes what the NEXT step's move is — say so.
-
-    The caption is prose, not math: it plays no part in CAS grading, but leaving
-    the stored one in place displays a description that no longer matches the
-    transition it labels ("expand $(b/2a)^2$" after an inserted "multiply by 2").
-    """
-    at = 2
-    payload = to_payload(
-        proof, proof["domain"], at,
-        [_insert_step(proof["steps"][at]["input_latex"])],
-        next_caption=("divide by 2 and expand", "because it was doubled"))
-    assert payload is not None
-    insert = next(v for v in payload.variants if v.kind == VARIANT_INSERT)
-
-    follower = insert.step_updates.get(str(at + 1)) or {}
-    assert follower.get("operation") == "divide by 2 and expand"
-    assert follower.get("justification") == "because it was doubled"
-    # The warning is redundant once the caption is actually correct.
-    assert not insert.readability_note
-
-
-def test_recaption_leaves_the_math_alone(proof):
-    """A caption rewrite must not disturb the expression or its verdict."""
-    at = 2
-    plain = build_variant(proof, proof["domain"], at,
-                          [_insert_step(proof["steps"][at]["input_latex"])])
-    captioned = build_variant(proof, proof["domain"], at,
-                              [_insert_step(proof["steps"][at]["input_latex"])],
-                              next_caption=("something else entirely", ""))
-    a, b = plain["steps"][at + 2], captioned["steps"][at + 2]
-    assert a["input_latex"] == b["input_latex"]
-    assert a["latex"] == b["latex"]
-    assert a["confidence"] == b["confidence"]
-    assert b["operation"] == "something else entirely"
-
-
-def test_recaption_is_skipped_at_the_end_of_a_proof(proof):
-    """No following step means nothing to re-caption — and no crash."""
-    at = len(proof["steps"]) - 1
-    payload = to_payload(proof, proof["domain"], at,
-                         [_insert_step(proof["steps"][at]["input_latex"])],
-                         next_caption=("nonsense", "nonsense"))
-    assert payload is not None
-    insert = next(v for v in payload.variants if v.kind == VARIANT_INSERT)
-    assert not insert.step_updates
-
-
 def test_readability_note_only_on_insert_only(proof):
     """The note flags a caption the CAS cannot flag — and only where it applies.
 

@@ -191,6 +191,44 @@ def compute_step(proof: dict, domain: str, at: int,
     }
 
 
+def recovery_bridge(proof: dict, at: int,
+                    proposal: ProofEditProposal) -> Optional[list[dict]]:
+    """A step that undoes the edit, so the original next step follows again.
+
+    Inserting X after step *n* breaks the chain because the step that followed
+    was derived from *n*, not from X. The shortest honest repair is to undo X:
+    the chain becomes ``n → X → n → n+1``, and that last transition is literally
+    the one the proof always had, so its verdict is restored exactly rather than
+    re-earned.
+
+    No CAS work is needed to build it — the recovered expression IS step *n*'s,
+    which we already have. That also makes it exact: applying an inverse
+    numerically could drift, but reusing the stored LaTeX cannot.
+
+    Only for operations that genuinely invert (see ``ops.INVERSE_OPS``). There is
+    no "unsimplify", and differentiating then integrating is not the identity —
+    offering either as a recovery would put a false claim in a caption.
+    """
+    if proposal.op not in ops.INVERSE_OPS:
+        return None
+    steps = proof.get("steps") or []
+    if not 0 <= at < len(steps) or at + 1 >= len(steps):
+        return None      # nothing follows, so there is nothing to get back to
+
+    original = steps[at].get("input_latex")
+    if not original:
+        return None
+    undo = ops.describe_undo(proposal.op, proposal.operand_latex,
+                             proposal.replacement_latex)
+    log.info("%s recovery bridge available: %s", LOG_TAG, undo)
+    return [{
+        "operation": undo.capitalize(),
+        "justification": "returns to the previous form, so the step that "
+                         "followed still applies",
+        "input_latex": original,
+    }]
+
+
 def propagate_substitution(proof: dict, domain: str, at: int,
                            proposal: ProofEditProposal) -> Optional[list[dict]]:
     """Rewrite every following step through the same substitution.
@@ -258,10 +296,13 @@ def resolve(proof: dict, domain: str, at: int, proposal: ProofEditProposal,
     # possible at all (grading it returns `refuted` for correct math).
     computed = compute_step(proof, domain, at, proposal)
     if computed is not None:
-        steps = [computed] + _as_step_dicts(proposal)[1:]
+        # Prefer the deterministic undo over model-written glue: it lands on an
+        # expression the proof already contains, so the following step's verdict
+        # is restored rather than re-earned.
+        bridge = recovery_bridge(proof, at, proposal) or _as_step_dicts(proposal)[1:]
+        steps = [computed] + bridge
         payload = to_payload(
             proof, domain, at, steps,
-            next_caption=(proposal.next_operation, proposal.next_justification),
             computed=computed_confidence(
                 f"the CAS applied “{proposal.op.replace('_', ' ')}” to the "
                 f"previous step directly"),
@@ -319,8 +360,7 @@ def resolve(proof: dict, domain: str, at: int, proposal: ProofEditProposal,
         steps = steps[:1]
 
     payload = to_payload(proof, domain, at, steps,
-                                      next_caption=(proposal.next_operation,
-                                       proposal.next_justification))
+                                      )
     if payload is None:
         raise EditRefused("I couldn't build a consistent proof from that step.")
     payload.summary = proposal.summary

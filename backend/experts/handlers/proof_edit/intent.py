@@ -69,12 +69,6 @@ class ProofEditProposal(BaseModel):
     question: str = ""
     steps: list[ProposedStep] = Field(default_factory=list)
     summary: str = ""
-    # A rewritten caption for the step that FOLLOWS the insertion, for the
-    # insert-only case. Inserting a step changes what the next step's move
-    # actually is, so its stored caption ("expand $(b/2a)^2$") stops describing
-    # the transition it now labels. Prose only — the math is untouched.
-    next_operation: str = ""
-    next_justification: str = ""
     # When the request maps onto an operation sympy can perform, these say WHICH
     # and with WHAT, and the CAS computes the result instead of trusting the
     # model's ``steps[0]``. See ops.py for why that matters.
@@ -129,20 +123,6 @@ class ProofEditSig(dspy.Signature):
       when no bridge is needed, or when you genuinely cannot build one in three
       steps.
 
-    Finally — and do NOT skip this whenever the derivation continues past the
-    current step — set `next_operation` and `next_justification`.
-
-    These re-describe the step that CURRENTLY follows, as it reads with your
-    first step (and no glue) inserted in front of it. Inserting a step changes
-    what the next step's move IS. After "multiply both sides by 2", a step
-    captioned "expand $(b/2a)^2$" is really "divide by 2, then expand" — the
-    stored caption now labels a transition that no longer happens. Read the
-    expression BEFORE your step and the one AFTER the follower, and describe the
-    move that actually connects them now.
-
-    Fill these in by default. Leave them empty ONLY when there is no following
-    step, or when your step is a pure restatement that changes nothing about how
-    the next move reads. Never alter that step's MATH — only its description.
 
     Every expression must be complete, self-contained LaTeX for the whole state
     (both sides of an equation), consistent with the derivation's existing
@@ -182,13 +162,6 @@ class ProofEditSig(dspy.Signature):
              "(for 'let $u = x^2$' operand is $x^2$ and replacement is $u$)")
     variable: str = dspy.OutputField(
         desc="for differentiate/integrate: the variable, e.g. 'x'; empty otherwise")
-    next_operation: str = dspy.OutputField(
-        desc="REQUIRED whenever a step follows: its caption rewritten to describe "
-             "the move now that your first step precedes it. Empty only if there "
-             "is no following step, or your step changes nothing about how it reads")
-    next_justification: str = dspy.OutputField(
-        desc="that following step's justification, rewritten to match; empty only "
-             "when next_operation is empty")
     summary: str = dspy.OutputField(
         desc="one short sentence describing the move, for the chat; use $…$ for math")
 
@@ -249,8 +222,6 @@ def propose_edit(derivation: str, current_step: str, request: str,
         question=_clean(out.question),
         steps=steps,
         summary=_clean(out.summary),
-        next_operation=_clean(getattr(out, "next_operation", "")),
-        next_justification=_clean(getattr(out, "next_justification", "")),
         op=_clean(getattr(out, "op", "")),
         operand_latex=_clean(getattr(out, "operand_latex", "")),
         replacement_latex=_clean(getattr(out, "replacement_latex", "")),

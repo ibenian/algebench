@@ -147,6 +147,41 @@ _DISPATCH = {
 
 SUPPORTED_OPS = tuple(_DISPATCH)
 
+# Operations that can be undone, and by what. Used to build a RECOVERY step:
+# applying the inverse restores the expression the edit started from, so the
+# step that originally followed it follows again — exactly as it always did.
+#
+# Deliberately partial. `simplify`/`expand`/`factor` have no inverse (there is no
+# "unsimplify"), and differentiating then integrating is not the identity — it
+# loses the constant. Claiming otherwise in a caption would be a lie in the one
+# place a reader is most likely to trust it.
+INVERSE_OPS = {
+    OP_ADD: OP_SUB,
+    OP_SUB: OP_ADD,
+    OP_MUL: OP_DIV,
+    OP_DIV: OP_MUL,
+    OP_SUBSTITUTE: OP_SUBSTITUTE,   # invertible by swapping the two sides
+}
+
+_UNDO_PHRASE = {
+    OP_ADD: "add {operand} to both sides again",
+    OP_SUB: "subtract {operand} from both sides again",
+    OP_MUL: "multiply both sides by {operand} again",
+    OP_DIV: "divide both sides by {operand} again",
+}
+
+
+def describe_undo(op: str, operand_latex: str = "", replacement_latex: str = "") -> str:
+    """A reader-facing caption for the step that undoes ``op``."""
+    if op == OP_SUBSTITUTE:
+        return (f"substitute ${replacement_latex}$ back for ${operand_latex}$"
+                if operand_latex and replacement_latex else "undo the substitution")
+    inverse = INVERSE_OPS.get(op)
+    phrase = _UNDO_PHRASE.get(inverse)
+    if not phrase:
+        return "undo that step"
+    return phrase.format(operand=f"${operand_latex}$" if operand_latex else "it")
+
 
 class OpRefused(Exception):
     """The operation is not valid on this step; carries a reader-facing reason."""
@@ -208,7 +243,8 @@ def apply_op(expr, op: str, *, operand=None, variable=None, replacement=None):
 
 
 __all__ = [
-    "NEEDS_OPERAND", "NEEDS_VARIABLE", "OP_ADD", "OP_DIFF", "OP_DIV",
-    "OP_EXPAND", "OP_FACTOR", "OP_INTEGRATE", "OP_MUL", "OP_SIMPLIFY",
+    "INVERSE_OPS", "NEEDS_OPERAND", "NEEDS_VARIABLE", "OP_ADD", "OP_DIFF",
+    "OP_DIV", "OP_EXPAND", "OP_FACTOR", "OP_INTEGRATE", "OP_MUL", "OP_SIMPLIFY",
     "OP_SUB", "OP_SUBSTITUTE", "OpRefused", "SUPPORTED_OPS", "apply_op",
+    "describe_undo",
 ]

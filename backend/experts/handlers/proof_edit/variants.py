@@ -84,29 +84,23 @@ def proof_to_trajectory(proof: dict) -> ProofTrajectory:
     return ProofTrajectory(steps=steps, title=proof.get("title"))
 
 
-def _spliced(proof: dict, at: int, new_steps: list[dict], delete_count: int,
-             next_caption: Optional[tuple[str, str]] = None) -> dict:
+def _spliced(proof: dict, at: int, new_steps: list[dict],
+             delete_count: int) -> dict:
     """A copy of ``proof`` with ``new_steps`` inserted after index ``at``.
 
-    ``next_caption`` re-labels the step that now follows the insertion. Inserting
-    a step changes what the next step's move IS — after "multiply both sides by
-    2", a step captioned "expand $(b/2a)^2$" is really "divide by 2 and expand" —
-    so leaving the stored caption in place displays a description that no longer
-    matches the transition it labels. Prose only; the math is untouched, and the
-    caption plays no part in CAS grading.
+    Following steps are carried across verbatim. An earlier version rewrote the
+    next step's CAPTION to describe its move under the new predecessor, which
+    went wrong in the worst way: asked to substitute `a` with `sin(w)`, the model
+    re-captioned the following step "…replacing $a$ with $\\sin(w)$" while its
+    math still said `a`. A caption that contradicts the expression beneath it is
+    worse than a stale one. The recovery bridge repairs the chain for real
+    instead — see ``validate.recovery_bridge``.
     """
     out = deepcopy(proof)
     steps = out.get("steps") or []
     head = steps[:at + 1]
     tail = steps[at + 1 + delete_count:]
     out["steps"] = head + list(new_steps) + tail
-    if next_caption and tail:
-        operation, justification = next_caption
-        follower = out["steps"][at + 1 + len(new_steps)]
-        if operation:
-            follower["operation"] = operation
-        if justification:
-            follower["justification"] = justification
     return out
 
 
@@ -193,7 +187,6 @@ def computed_confidence(reason: str) -> dict:
 
 def build_variant(proof: dict, domain: str, at: int, new_steps: list[dict],
                   delete_count: int = 0,
-                  next_caption: Optional[tuple[str, str]] = None,
                   computed: Optional[dict] = None) -> dict:
     """Splice + rebuild + merge back. Returns a complete, badged proof.
 
@@ -201,7 +194,7 @@ def build_variant(proof: dict, domain: str, at: int, new_steps: list[dict],
     computed it (see :func:`computed_confidence`); the grader's verdict for that
     step is replaced, since it answers a question that does not apply.
     """
-    spliced = _spliced(proof, at, new_steps, delete_count, next_caption)
+    spliced = _spliced(proof, at, new_steps, delete_count)
     rebuilt = build(
         proof_to_trajectory(spliced),
         domain,
@@ -258,8 +251,7 @@ def _step_updates(rebuilt: dict, original: dict, at: int,
     return updates
 
 
-def _readability_note(proof: dict, at: int, delete_count: int,
-                      recaptioned: bool) -> str:
+def _readability_note(proof: dict, at: int, delete_count: int) -> str:
     """Warn when a following step's caption no longer describes its move.
 
     Badges alone will not surface this: when two states are genuinely equivalent
@@ -267,12 +259,7 @@ def _readability_note(proof: dict, at: int, delete_count: int,
     typically stays all-green even though the next caption ("complete the
     square") now describes a move that no longer happens there.
 
-    Silent once the caption has actually been rewritten — at that point there is
-    nothing left to warn about, and a warning next to corrected text would just
-    undermine it.
     """
-    if recaptioned:
-        return ""
     steps = proof.get("steps") or []
     nxt = at + 1 + delete_count
     if nxt >= len(steps):
@@ -302,7 +289,6 @@ def _badge_delta(rebuilt: dict, original: dict, at: int, take: int,
 
 
 def to_payload(proof: dict, domain: str, at: int, new_steps: list[dict],
-               next_caption: Optional[tuple[str, str]] = None,
                computed: Optional[dict] = None,
                propagated: Optional[list[dict]] = None) -> Optional[EditPayload]:
     """Build every applicable variant and reduce them to the compact wire form.
@@ -346,17 +332,9 @@ def to_payload(proof: dict, domain: str, at: int, new_steps: list[dict],
     rendered: list[NewStep] = []
     variants: list[Variant] = []
 
-    # Only the insert-only variant needs a re-caption. The glue variant exists
-    # precisely to reconnect the original next step, so its caption is valid
-    # again; supersede drops the steps the edit displaced.
-    has_follower = at + 1 < n_steps
-    recaption = next_caption if (next_caption and any(next_caption)
-                                 and has_follower) else None
-
     for kind, take, delete_count in kinds:
-        caption = recaption if kind == VARIANT_INSERT else None
-        rebuilt = build_variant(proof, domain, at, new_steps[:take], delete_count,
-                                next_caption=caption, computed=computed)
+        rebuilt = build_variant(proof, domain, at, new_steps[:take],
+                                delete_count, computed=computed)
         built = (rebuilt.get("steps") or [])[at + 1: at + 1 + take]
         if len(built) != take:
             log.warning("%s variant %s dropped: rebuild produced %d of %d steps",
@@ -381,8 +359,7 @@ def to_payload(proof: dict, domain: str, at: int, new_steps: list[dict],
                          if k not in (proof.get("terms") or {})},
             overall_confidence=rebuilt.get("overall_confidence"),
             badge_delta=_badge_delta(rebuilt, proof, at, take, delete_count),
-            readability_note=(_readability_note(proof, at, delete_count,
-                                                recaptioned=bool(caption))
+            readability_note=(_readability_note(proof, at, delete_count)
                               if kind == VARIANT_INSERT else ""),
         ))
         # `step_updates` should stay tiny — it is the one part that scales with

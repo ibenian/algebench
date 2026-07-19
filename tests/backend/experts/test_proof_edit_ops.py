@@ -26,7 +26,7 @@ from backend.experts.handlers.proof_edit.intent import (
     ProofEditProposal, ProposedStep,
 )
 from backend.experts.handlers.proof_edit.validate import (
-    EditRefused, compute_step, resolve,
+    EditRefused, compute_step, recovery_bridge, resolve,
 )
 
 x, u, a, b, c = sp.symbols("x u a b c")
@@ -176,31 +176,52 @@ def test_an_invalid_mapped_op_refuses_rather_than_falling_back():
                 derivation="", current_step="", request="divide by c")
 
 
-def test_computed_path_still_carries_glue_steps():
-    """`op` replaces steps[0], NOT the glue that follows it.
+def test_non_invertible_op_still_uses_model_glue_for_the_bridge():
+    """When there is no deterministic recovery, the model's glue is the bridge.
 
-    Regression: when the compute path landed, the signature said `steps` was
-    "used when `op` does not apply", so the model stopped writing glue whenever
-    it set `op` — and the "my step + bridge" variant silently disappeared from
-    the picker. The CAS can perform one operation; it cannot invent the bridge
-    back into the rest of the proof.
+    `factor` has no inverse, so the exact-undo bridge is unavailable — but the
+    "my step + bridge" option must still exist, built from the glue the model
+    wrote. (Regression: the compute path once told the model glue was pointless
+    whenever `op` was set, and the bridge variant vanished for every operation.)
+    """
+    prop = ProofEditProposal(
+        is_edit=True, summary="s", op=ops.OP_FACTOR,
+        steps=[
+            ProposedStep(operation="factor", expr_latex=r"x = x",
+                         justification="model's version, discarded"),
+            ProposedStep(operation="bridge", expr_latex=r"x = 2",
+                         justification="back to the original next step"),
+        ])
+    payload = resolve(PROOF, "algebra", 0, prop, derivation="", current_step="",
+                      request="factor the left side")
+
+    assert "glue" in {v.kind for v in payload.variants}
+    # The bridge is the model's, since factor has no inverse to recover from —
+    # and it is NOT step 0's expression, which is what a recovery would have used.
+    assert payload.new_steps[1].input_latex == r"x = 2"
+    assert payload.new_steps[1].input_latex != PROOF["steps"][0]["input_latex"]
+
+
+def test_recovery_bridge_supersedes_model_glue_when_available():
+    """For an invertible op, the deterministic undo is preferred over model glue.
+
+    The undo lands on an expression the proof already contains, so the following
+    step's verdict is restored exactly rather than re-earned — strictly better
+    than anything the model can author.
     """
     prop = ProofEditProposal(
         is_edit=True, summary="s", op=ops.OP_MUL, operand_latex="3",
         steps=[
             ProposedStep(operation="multiply by 3", expr_latex=r"x = x",
-                         justification="model's version, discarded"),
-            ProposedStep(operation="bridge", expr_latex=r"x^{2} = 4",
-                         justification="back to the original next step"),
+                         justification="discarded"),
+            ProposedStep(operation="model bridge", expr_latex=r"9 = 9",
+                         justification="should NOT be used"),
         ])
     payload = resolve(PROOF, "algebra", 0, prop, derivation="", current_step="",
                       request="multiply both sides by 3")
-
-    kinds = {v.kind for v in payload.variants}
-    assert "glue" in kinds, f"bridge variant missing; got {kinds}"
-    # steps[0] came from the CAS, steps[1] straight from the proposal.
     assert payload.new_steps[0].input_latex == r"3 \cdot x^{2} = 12"
-    assert payload.new_steps[1].input_latex == r"x^{2} = 4"
+    # The recovery (back to step 0), not the model's "9 = 9".
+    assert payload.new_steps[1].input_latex == PROOF["steps"][0]["input_latex"]
 
 
 def test_substitution_offers_a_propagate_variant():
@@ -246,6 +267,47 @@ def test_propagate_is_not_offered_at_the_end_of_a_proof():
                                 replacement_latex="u"),
                       derivation="", current_step="", request="substitute")
     assert all(v.kind != "propagate" for v in payload.variants)
+
+
+def test_recovery_bridge_returns_to_the_previous_expression():
+    """The bridge undoes the edit, so the original next step follows again.
+
+    ``n → X → n → n+1``: that last transition is literally the one the proof
+    always had, so its verdict is restored exactly rather than re-earned. Built
+    from the stored LaTeX, not by applying an inverse, so it cannot drift.
+    """
+    bridge = recovery_bridge(PROOF, 0, _proposal(ops.OP_MUL, operand_latex="3"))
+    assert bridge is not None
+    assert bridge[0]["input_latex"] == PROOF["steps"][0]["input_latex"]
+    assert "divide" in bridge[0]["operation"].lower()
+
+
+def test_recovery_is_offered_as_the_bridge_variant():
+    payload = resolve(PROOF, "algebra", 0,
+                      _proposal(ops.OP_MUL, operand_latex="3"),
+                      derivation="", current_step="", request="multiply by 3")
+    by_kind = {v.kind for v in payload.variants}
+    assert "glue" in by_kind, f"no recovery offered; got {by_kind}"
+    assert payload.new_steps[1].input_latex == PROOF["steps"][0]["input_latex"]
+
+
+@pytest.mark.parametrize("op", [ops.OP_DIFF, ops.OP_INTEGRATE, ops.OP_SIMPLIFY,
+                                ops.OP_EXPAND, ops.OP_FACTOR])
+def test_no_recovery_for_operations_that_do_not_invert(op):
+    """There is no "unsimplify", and integrating a derivative loses the constant.
+
+    Offering either as a recovery would put a false claim in a caption, in the
+    one place a reader is most likely to trust it.
+    """
+    assert op not in ops.INVERSE_OPS
+    assert recovery_bridge(PROOF, 0, _proposal(op, variable="x")) is None
+
+
+def test_no_recovery_at_the_final_step():
+    """Nothing follows, so there is nothing to get back to."""
+    last = len(PROOF["steps"]) - 1
+    assert recovery_bridge(PROOF, last,
+                           _proposal(ops.OP_MUL, operand_latex="3")) is None
 
 
 def test_computed_steps_are_registered_with_the_cas_guard():
