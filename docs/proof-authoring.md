@@ -118,7 +118,7 @@ There are two ways to author a proof. Pick based on how you like to work:
 
 | | **Path 1 — Prove UI** | **Path 2 — `algebench-prove` skill** |
 | --- | --- | --- |
-| Best if… | you want to do it by hand, in the browser | you use a coding agent (Claude Code) |
+| Best if… | you want to do it by hand, in the browser | you work with a coding agent |
 | You provide | your own research + micro-edits | a topic; the agent does the research |
 | The math is built by | you, guided by the app | the CAS-verified `derive.py` pipeline |
 | Ends at | a submission in the review queue | a proof rendered on `/prove`, ready to submit |
@@ -204,13 +204,13 @@ key. Two rules worth repeating:
 
 ### Path 2 — The `algebench-prove` skill (with a coding agent)
 
-If you work with a coding agent (Claude Code), the **`algebench-prove`** skill takes
-you from *"I want to derive X"* all the way to a **CAS-verified proof rendered on
-`/prove`**, doing the research and the math-building for you. It's **interactive** —
-at every decision point it stops and asks, so you stay in control of the topic, the
-route, and the name.
+If you work with a coding agent, the **`algebench-prove`** skill takes you from
+*"I want to derive X"* all the way to a **CAS-verified proof rendered on `/prove`**,
+doing the research and the math-building for you. It's **interactive** — at every
+decision point it stops and asks, so you stay in control of the topic, the route,
+and the name.
 
-**How to start.** Just ask, in the agent:
+**How to start.** Just ask your agent:
 
 ```
 /algebench-prove the quadratic formula
