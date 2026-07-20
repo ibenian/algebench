@@ -158,7 +158,11 @@ class ProofEditSig(dspy.Signature):
     variable: str = dspy.OutputField(
         desc="for differentiate/integrate: the variable, e.g. 'x'; empty otherwise")
     summary: str = dspy.OutputField(
-        desc="one short sentence describing the move, for the chat; use $…$ for math")
+        desc="one short PLAIN-LANGUAGE sentence naming the move, for the chat — "
+             "e.g. 'Simplified the right-hand side.' or 'Multiplied both sides by "
+             "2.'. Do NOT restate the resulting expression; it is already shown in "
+             "the animation. You may wrap a SMALL quantity (an operand like $3x$) "
+             "in $…$, but never a full equation.")
 
 
 class EditIntentParser(dspy.Module):

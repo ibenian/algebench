@@ -795,6 +795,9 @@ function initEditTool() {
     onMount: (proof, startStep) => mountAnimator(proof, startStep),
     onCommit: (proof) => { deriveProof = proof; },
     setEditPending,
+    // Variant notes quote step captions that may contain $…$ math. renderSafe
+    // escapes HTML and renders the math with KaTeX (null if KaTeX isn't ready).
+    renderMath: (text) => (_hasRender() ? renderSafe(text) : null),
     addBubble: (role, text) => { addBubble(role, text); chatHistory.push({ role, text }); },
     // The picker is part of the conversation, not a floating toolbar. Mount it as
     // a bot message in the chat thread so the question sits where the user is

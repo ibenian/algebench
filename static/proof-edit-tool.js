@@ -237,7 +237,11 @@ export function createProofEditTool(deps) {
             if (note) {
                 const sub = document.createElement('span');
                 sub.className = 'edit-variant-note';
-                sub.textContent = note;
+                // The note quotes a step's caption, which may contain $…$ math.
+                // Render it via the host's math-aware renderer when supplied
+                // (escapes HTML, renders $…$); fall back to plain text otherwise.
+                const html = deps.renderMath ? deps.renderMath(note) : null;
+                if (html != null) sub.innerHTML = html; else sub.textContent = note;
                 btn.appendChild(sub);
             }
             btn.addEventListener('click', () => select(i));
