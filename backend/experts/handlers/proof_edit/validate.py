@@ -31,6 +31,7 @@ to a badge the user may not read.
 from __future__ import annotations
 
 import logging
+import re
 from typing import Optional
 
 import sympy as sp
@@ -117,6 +118,19 @@ def _as_step_dicts(proposal: ProofEditProposal) -> list[dict]:
              "justification": s.justification or "—",
              "input_latex": s.expr_latex}
             for s in proposal.steps]
+
+
+# A run of ≥2 latin letters, optionally subscripted — a WORD the parser will
+# mangle into a product ("Energy" -> E·n·e·r·g·y). A real single symbol (``E``,
+# ``x_1``), a LaTeX command (``\alpha``), or anything with an operator/brace does
+# not match, so legitimate substitutions like ``a \cdot b`` are untouched.
+_BARE_WORD = re.compile(r"^[A-Za-z]{2,}(?:_\{?[A-Za-z0-9]+\}?)?$")
+
+
+def _bare_word(latex: str) -> Optional[str]:
+    """The bare multi-letter word in ``latex``, or None if it is a real symbol."""
+    s = (latex or "").strip().strip("$").strip()
+    return s if _BARE_WORD.match(s) else None
 
 
 def _to_sympy(latex: str, domain: str):
@@ -213,6 +227,20 @@ def compute_step(proof: dict, domain: str, at: int,
     expr = _to_sympy(original_latex, domain)
     if expr is None:
         return None
+
+    if proposal.op == ops.OP_SUBSTITUTE:
+        # "replace E with Energy": a multi-letter WORD is not a symbol. The parser
+        # reads it as a product of single letters (Energy -> g·n·r·y·e^2), so the
+        # substitution silently produces garbage. Refuse with a real reason rather
+        # than compute nonsense (or fall through to the graded path, which mangles
+        # it the same way).
+        for latex in (proposal.operand_latex, proposal.replacement_latex):
+            word = _bare_word(latex)
+            if word:
+                raise EditRefused(
+                    f"I can only substitute a mathematical symbol or expression, "
+                    f"not a word like “{word}” — the algebra system reads it as a "
+                    f"product of separate letters. Try a single symbol.")
 
     kwargs: dict = {}
     if proposal.op in ops.NEEDS_OPERAND:

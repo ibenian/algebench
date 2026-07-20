@@ -26,7 +26,7 @@ from backend.experts.modules.proof_edit.intent import (
     ProofEditProposal, ProposedStep,
 )
 from backend.experts.handlers.proof_edit.validate import (
-    EditRefused, compute_step, recovery_bridge, resolve,
+    EditRefused, _bare_word, compute_step, recovery_bridge, resolve,
 )
 
 x, u, a, b, c = sp.symbols("x u a b c")
@@ -154,6 +154,41 @@ def test_expand_both_is_the_default():
 def test_side_is_ignored_on_a_bare_expression():
     """A bare expression has no sides — side applies to the whole thing."""
     assert ops.apply_op((x + 1)**2, ops.OP_EXPAND, side="left") == x**2 + 2 * x + 1
+
+
+@pytest.mark.parametrize("latex,word", [
+    ("Energy", "Energy"), ("Energy_n", "Energy_n"), ("$Energy$", "Energy"),
+    ("xy", "xy"),
+])
+def test_bare_word_is_detected(latex, word):
+    assert _bare_word(latex) == word
+
+
+@pytest.mark.parametrize("latex", ["E", "E_n", "x_1", r"\alpha", r"a \cdot b", "2"])
+def test_real_symbols_are_not_words(latex):
+    assert _bare_word(latex) is None
+
+
+def test_substitute_with_a_word_is_refused_not_garbled():
+    """"replace E with Energy": the parser reads 'Energy' as E·n·e·r·g·y, so the
+    substitution silently produces garbage marked grounded. Refuse instead."""
+    proof = {
+        "title": "p", "domain": "algebra",
+        "steps": [
+            {"index": 0, "operation": "g", "justification": "s",
+             "input_latex": r"E_{n} = \frac{p_{n}^{2}}{2 \cdot m}",
+             "plain": "E_n = ...", "latex": "E_n = ...",
+             "confidence": {"tier": "grounded", "relation": None}},
+            {"index": 1, "operation": "n", "justification": "n",
+             "input_latex": r"E_{n} = 1", "plain": "E_n=1", "latex": "E_n=1",
+             "confidence": {"tier": "verified", "relation": "narrows"}},
+        ],
+    }
+    prop = ProofEditProposal(is_edit=True, summary="s", op=ops.OP_SUBSTITUTE,
+                             operand_latex="E_{n}", replacement_latex="Energy_n",
+        steps=[ProposedStep(operation="sub", justification="b", expr_latex="x")])
+    with pytest.raises(EditRefused, match="word"):
+        compute_step(proof, "algebra", 0, prop)
 
 
 def test_side_scoped_expand_does_not_collapse_the_other_side():

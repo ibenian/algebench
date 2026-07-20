@@ -2513,6 +2513,15 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
                 return JSONResponse({"answer": answer})
             payload = await loop.run_in_executor(
                 None, lambda: _run_step_edit(req.proof, edit))
+            # The two routers disagreed: the chat agent called edit_step, but the
+            # expert decided it is not an operation it can apply. Rather than hand
+            # the reader a dead-end ("I couldn't turn that into a step operation"),
+            # answer the message as an ordinary tutor turn.
+            if payload.get("fallback_to_chat"):
+                answer, _ = await loop.run_in_executor(
+                    None, lambda: call_proof_chat(req.messages, req.proof,
+                                                  req.currentStep, allow_edits=False))
+                return JSONResponse({"answer": answer})
             return JSONResponse({"answer": answer, "edit": payload})
         except Exception as e:
             import traceback
