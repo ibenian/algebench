@@ -8,7 +8,7 @@
 
 - [shareable-proof-animations.md](shareable-proof-animations.md) — the technical design of the render/embed surface
 - [proofs-model.md](proofs-model.md) — the step-by-step proof & derivation data model
-- [show-and-tell/grounded-proof-completion.md](show-and-tell/grounded-proof-completion.md) — how a derivation is generated and CAS-verified
+- [Grounded Proof Completion & Animation](https://github.com/ibenian/algebench/discussions/378) — Show & Tell: how a derivation is generated and CAS-verified
 
 ---
 
