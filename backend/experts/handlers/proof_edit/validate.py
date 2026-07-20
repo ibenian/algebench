@@ -203,12 +203,13 @@ def recovery_bridge(proof: dict, at: int,
     re-earned.
 
     No CAS work is needed to build it — the recovered expression IS step *n*'s,
-    which we already have. That also makes it exact: applying an inverse
-    numerically could drift, but reusing the stored LaTeX cannot.
+    which we already have. That also makes the RETURN exact: reusing the stored
+    LaTeX cannot drift. The undo TRANSITION (X → n) is then graded normally when
+    the chain is rebuilt: grounded for algebraic undos, plausible for calculus
+    ones (the CAS can't verify differentiation) — see ``ops.INVERSE_OPS``.
 
-    Only for operations that genuinely invert (see ``ops.INVERSE_OPS``). There is
-    no "unsimplify", and differentiating then integrating is not the identity —
-    offering either as a recovery would put a false claim in a caption.
+    Only for operations in ``ops.INVERSE_OPS``. ``simplify``/``expand``/``factor``
+    have no undo to caption at all.
     """
     if proposal.op not in ops.INVERSE_OPS:
         return None
@@ -220,7 +221,7 @@ def recovery_bridge(proof: dict, at: int,
     if not original:
         return None
     undo = ops.describe_undo(proposal.op, proposal.operand_latex,
-                             proposal.replacement_latex)
+                             proposal.replacement_latex, proposal.variable)
     log.info("%s recovery bridge available: %s", LOG_TAG, undo)
     return [{
         "operation": undo.capitalize(),

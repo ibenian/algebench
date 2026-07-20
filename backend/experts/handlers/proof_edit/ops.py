@@ -149,18 +149,31 @@ SUPPORTED_OPS = tuple(_DISPATCH)
 
 # Operations that can be undone, and by what. Used to build a RECOVERY step:
 # applying the inverse restores the expression the edit started from, so the
-# step that originally followed it follows again — exactly as it always did.
+# step that originally followed it follows again.
 #
-# Deliberately partial. `simplify`/`expand`/`factor` have no inverse (there is no
-# "unsimplify"), and differentiating then integrating is not the identity — it
-# loses the constant. Claiming otherwise in a caption would be a lie in the one
-# place a reader is most likely to trust it.
+# Two tiers, because the undos differ in what the CAS can prove:
+#
+# * add/sub, mul/div, substitute — the undo is EQUIVALENCE-PRESERVING, so the CAS
+#   grounds it. Recovery here is a strict win: the undo step is grounded and the
+#   following step's verdict is fully restored.
+# * differentiate/integrate — the undo (integrate / differentiate) is NOT
+#   equivalence-preserving in the CAS's eyes: it has no FTC/derivative method and
+#   ``∫f dx`` is not equal to ``f`` as an expression, so it grades the undo
+#   ``plausible``, not grounded (measured, not assumed). Recovery still returns
+#   to the exact original expression — keeping the REST of the proof grounded —
+#   but the undo step itself carries a plausible badge. Offered by explicit
+#   product choice for that value; the badge tells the truth about it.
+#
+# `simplify`/`expand`/`factor` stay out: there is no "unsimplify", so no undo to
+# caption at all.
 INVERSE_OPS = {
     OP_ADD: OP_SUB,
     OP_SUB: OP_ADD,
     OP_MUL: OP_DIV,
     OP_DIV: OP_MUL,
     OP_SUBSTITUTE: OP_SUBSTITUTE,   # invertible by swapping the two sides
+    OP_DIFF: OP_INTEGRATE,          # undo a derivative by integrating (plausible)
+    OP_INTEGRATE: OP_DIFF,          # undo an integral by differentiating (plausible)
 }
 
 # How the inverse reads, and WHY — the caption must make clear this step exists
@@ -175,7 +188,8 @@ _UNDO_PHRASE = {
 }
 
 
-def describe_undo(op: str, operand_latex: str = "", replacement_latex: str = "") -> str:
+def describe_undo(op: str, operand_latex: str = "", replacement_latex: str = "",
+                  variable: str = "") -> str:
     """A reader-facing caption for the step that undoes ``op``.
 
     Note the phrasing describes the RECOVERY: the operation applied *and* that it
@@ -186,6 +200,15 @@ def describe_undo(op: str, operand_latex: str = "", replacement_latex: str = "")
         return (f"substitute ${operand_latex}$ back for ${replacement_latex}$, "
                 f"undoing the substitution"
                 if operand_latex and replacement_latex else "undo the substitution")
+    # Calculus undos read "differentiate/integrate with respect to x" — NOT "both
+    # sides", since these apply to bare expressions too (the integrand in the
+    # screenshot was `d/dx sin(x^2)`, not an equation).
+    if op == OP_INTEGRATE:
+        v = f"${variable}$" if variable else "the variable"
+        return f"differentiate with respect to {v}, undoing the integration"
+    if op == OP_DIFF:
+        v = f"${variable}$" if variable else "the variable"
+        return f"integrate with respect to {v}, undoing the differentiation"
     phrase = _UNDO_PHRASE.get(op)
     if not phrase:
         return "undo that step"

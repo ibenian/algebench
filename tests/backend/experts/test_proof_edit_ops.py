@@ -295,16 +295,46 @@ def test_recovery_is_offered_as_the_bridge_variant():
     assert "undo" in payload.new_steps[1].operation.lower()
 
 
-@pytest.mark.parametrize("op", [ops.OP_DIFF, ops.OP_INTEGRATE, ops.OP_SIMPLIFY,
-                                ops.OP_EXPAND, ops.OP_FACTOR])
-def test_no_recovery_for_operations_that_do_not_invert(op):
-    """There is no "unsimplify", and integrating a derivative loses the constant.
-
-    Offering either as a recovery would put a false claim in a caption, in the
-    one place a reader is most likely to trust it.
-    """
+@pytest.mark.parametrize("op", [ops.OP_SIMPLIFY, ops.OP_EXPAND, ops.OP_FACTOR])
+def test_no_recovery_for_operations_with_no_undo(op):
+    """`simplify`/`expand`/`factor` have no inverse — there is no "unsimplify",
+    so there is nothing to caption as a recovery."""
     assert op not in ops.INVERSE_OPS
-    assert recovery_bridge(PROOF, 0, _proposal(op, variable="x")) is None
+    assert recovery_bridge(PROOF, 0, _proposal(op)) is None
+
+
+@pytest.mark.parametrize("op,inverse_word", [
+    (ops.OP_INTEGRATE, "differentiate"),
+    (ops.OP_DIFF, "integrate"),
+])
+def test_calculus_recovery_is_offered_with_an_honest_caption(op, inverse_word):
+    """Calculus undos ARE offered — they return to the original expression so the
+    rest of the proof stays grounded — even though the CAS can only grade the undo
+    ``plausible``. The caption names the inverse operation and the variable, and
+    does not claim "both sides" (these apply to bare expressions too).
+    """
+    assert op in ops.INVERSE_OPS
+    bridge = recovery_bridge(PROOF, 0, _proposal(op, variable="x"))
+    assert bridge is not None
+    assert bridge[0]["input_latex"] == PROOF["steps"][0]["input_latex"]  # exact return
+    caption = bridge[0]["operation"].lower()
+    assert inverse_word in caption and "undoing" in caption
+    assert "both sides" not in caption
+
+
+def test_calculus_recovery_undo_is_offerable_not_refuted():
+    """The undo step must never come back REFUTED — we never offer refuted steps.
+
+    The CAS can't verify differentiation, so it grades the undo ``plausible``
+    (measured), which is offerable. This pins that: a refuted undo would mean a
+    known-wrong step in an offered variant.
+    """
+    payload = resolve(PROOF, "algebra", 0, _proposal(ops.OP_INTEGRATE, variable="x"),
+                      derivation="", current_step="", request="integrate")
+    assert "recovery" in {v.kind for v in payload.variants}
+    undo = payload.new_steps[1]
+    assert undo.input_latex == PROOF["steps"][0]["input_latex"]     # exact return
+    assert (undo.confidence or {}).get("tier") != "refuted"
 
 
 def test_no_recovery_at_the_final_step():
