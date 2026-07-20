@@ -138,15 +138,16 @@ FUNDAMENTAL_EXPRESSIONS: list[CatalogEntry] = [
     ("free_particle",
      r"\psi(x) = A e^{ikx} + B e^{-ikx}",
      PASS,
-     "x -> fn:psi; i,k,x -> multiply; k,x -> multiply; "
-     "i,multiply -> multiply; multiply -> negation; "
-     "e,multiply -> power; e,negation -> power; "
-     "A,power -> multiply; B,power -> multiply; "
+     "x -> fn:psi; k,x -> multiply; k,x -> multiply; "
+     "i,multiply -> multiply; i,multiply -> multiply; multiply -> negation; "
+     "e,multiply -> power; A,power -> multiply; "
+     "e,negation -> power; B,power -> multiply; "
      "multiply,multiply -> add; add,fn:psi -> rel:equals",
-     "i,k,x -> __multiply_11; k,x -> __multiply_7; x -> __psi_2; "
-     "__multiply_7,i -> __multiply_6; __multiply_11 -> __negation_10; "
-     "__multiply_6,e -> __power_5; __negation_10,e -> __power_9; "
-     "A,__power_5 -> __multiply_4; B,__power_9 -> __multiply_8; "
+     "k,x -> __multiply_12; k,x -> __multiply_7; x -> __psi_2; "
+     "__multiply_12,i -> __multiply_11; __multiply_7,i -> __multiply_6; "
+     "__multiply_11 -> __negation_10; "
+     "__multiply_6,e -> __power_5; A,__power_5 -> __multiply_4; "
+     "__negation_10,e -> __power_9; B,__power_9 -> __multiply_8; "
      "__multiply_4,__multiply_8 -> __add_3; __add_3,__psi_2 -> __equals_1",
      None),
 ]

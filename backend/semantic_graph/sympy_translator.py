@@ -3203,7 +3203,16 @@ class SemanticGraphBuilder:
             if len(rest) == 1:
                 child_id = self._walk(rest[0])
             else:
-                child_id = self._walk(Mul(*rest))
+                # Rebuild the negated body WITHOUT re-evaluation. A plain
+                # ``Mul(*rest)`` lets SymPy re-multiply the factors, which
+                # distributes a fraction's denominator constant into a
+                # ``Rational`` coefficient — e.g. ``-\frac{4ac}{4a^2}`` turns
+                # ``1/(4a^2)`` into ``(1/4)·a^{-2}`` and reforms as
+                # ``-4ac·\frac{1/4}{a^2}``. ``evaluate=False`` preserves the
+                # original numerator/denominator structure so the term
+                # round-trips as ``-\frac{4ac}{4a^2}`` (issue: negated fraction
+                # reforming).
+                child_id = self._walk(Mul(*rest, evaluate=False))
             self._add_edge(child_id, node_id)
             return node_id
 
