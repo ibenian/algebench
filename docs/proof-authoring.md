@@ -53,14 +53,6 @@ proof's contents to check you're allowed to edit. The key **rotates every time t
 proof changes**, which conveniently also stops one stale edit from clobbering a
 newer one.
 
-**Everything is treated as untrusted.** Because proofs are public, hand-editable
-data, the renderer assumes every proof might have been written by a hostile
-stranger. Math is rendered through KaTeX with a strict trust filter; human text
-goes in via `textContent`, never `innerHTML`; a strict Content-Security-Policy
-backstops the whole page. A malicious proof JSON can't run scripts, inject HTML, or
-phone home. (The gory details live in
-[shareable-proof-animations.md §7](shareable-proof-animations.md#7-security-model).)
-
 **Stable names over hidden revision history.** There's no version-control system
 buried inside `/prove`. If you want a "v2" of a proof, you clone it and submit under
 a new name (`algebra/foo-v2`). Each version is fully independent — its own id, its
@@ -299,7 +291,21 @@ touching the codebase.
 
 ---
 
-## 5. In short
+## 5. A note on safety
+
+Because proofs are **public, hand-editable data**, the renderer assumes every proof
+might have been written by a hostile stranger — and renders it inertly regardless.
+Math goes through KaTeX with a strict trust filter; human text is inserted via
+`textContent`, never `innerHTML`; and a strict Content-Security-Policy backstops the
+whole page. The practical upshot for you as an author: a proof JSON can't run
+scripts, inject HTML, or phone home, so you never have to worry that opening or
+cloning someone else's derivation could harm you. The full threat model and the
+layered defenses are documented in
+[shareable-proof-animations.md §7](shareable-proof-animations.md#7-security-model).
+
+---
+
+## 6. In short
 
 - **`/prove` is a keepable, citeable, embeddable library of CAS-verified
   derivations** — not throwaway AI output.
