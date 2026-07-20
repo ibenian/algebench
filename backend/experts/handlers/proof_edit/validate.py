@@ -133,6 +133,44 @@ def _to_sympy(latex: str, domain: str):
     return graph_to_sympy(graph) if graph is not None else None
 
 
+def _split_equation_latex(latex: str) -> Optional[tuple[str, str]]:
+    """Split ``lhs = rhs`` at the top-level ``=`` (brace-depth 0). None if there
+    is no bare equals (a bare expression or an inequality like ``\\leq``)."""
+    depth = 0
+    for i, ch in enumerate(latex):
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+        elif ch == "=" and depth == 0:
+            return latex[:i].strip(), latex[i + 1:].strip()
+    return None
+
+
+def _side_scoped_latex(latex: str, op: str, side: str, domain: str) -> Optional[str]:
+    """Apply a structural rewrite to ONE side, keeping the other's LaTeX verbatim.
+
+    Parsing the whole equation to sympy would auto-normalise the untouched side
+    (``\\frac{4ac}{4a^2}`` collapses to ``\\frac{c}{a}``) — silently "touching"
+    the side the reader said to leave alone. So only the target side is parsed
+    and transformed; the other side's original LaTeX is spliced back unchanged.
+    """
+    parts = _split_equation_latex(latex)
+    if not parts:
+        return None                      # not an equation — no sides to scope
+    left, right = parts
+    target = left if side == "left" else right
+    expr = _to_sympy(target, domain)
+    if expr is None:
+        return None
+    try:
+        rewritten = ops.apply_op(expr, op)   # whole-expression op on the one side
+    except ops.OpRefused:
+        return None
+    new = sp.latex(rewritten, mul_symbol="dot")
+    return f"{new} = {right}" if side == "left" else f"{left} = {new}"
+
+
 def compute_step(proof: dict, domain: str, at: int,
                  proposal: ProofEditProposal) -> Optional[dict]:
     """Have the CAS PERFORM the operation, when the request maps onto one.
@@ -153,7 +191,26 @@ def compute_step(proof: dict, domain: str, at: int,
     steps = proof.get("steps") or []
     if not 0 <= at < len(steps):
         return None
-    expr = _to_sympy(steps[at].get("input_latex") or "", domain)
+    original_latex = steps[at].get("input_latex") or ""
+
+    # Side-scoped structural rewrite ("expand the left, leave the right"): keep
+    # the untouched side's LaTeX exactly, transforming only the target side.
+    if proposal.op in ops.STRUCTURAL_OPS and (proposal.side or "both") in ("left", "right"):
+        scoped = _side_scoped_latex(original_latex, proposal.op, proposal.side, domain)
+        if scoped is not None:
+            authored = proposal.steps[0] if proposal.steps else None
+            log.info("%s computed %s (%s side) via CAS: %s",
+                     LOG_TAG, proposal.op, proposal.side, scoped)
+            return {
+                "operation": (authored.operation if authored
+                              else proposal.op.replace("_", " ")),
+                "justification": (authored.justification if authored else
+                                  "applied by the computer algebra system"),
+                "input_latex": scoped,
+            }
+        # No bare equals (bare expression / inequality) — fall through to whole.
+
+    expr = _to_sympy(original_latex, domain)
     if expr is None:
         return None
 
@@ -173,6 +230,8 @@ def compute_step(proof: dict, domain: str, at: int,
         if not name:
             return None
         kwargs["variable"] = sp.Symbol(name)
+    if proposal.op in ops.STRUCTURAL_OPS:
+        kwargs["side"] = proposal.side or "both"
 
     try:
         result = ops.apply_op(expr, proposal.op, **kwargs)

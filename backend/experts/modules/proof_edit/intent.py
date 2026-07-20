@@ -71,6 +71,9 @@ class ProofEditProposal(BaseModel):
     operand_latex: str = ""
     replacement_latex: str = ""
     variable: str = ""
+    # Which side of an equation a structural rewrite (simplify/expand/factor)
+    # applies to: "left", "right", or "both" (default).
+    side: str = "both"
 
 
 class ProofEditSig(dspy.Signature):
@@ -157,6 +160,10 @@ class ProofEditSig(dspy.Signature):
              "(for 'let $u = x^2$' operand is $x^2$ and replacement is $u$)")
     variable: str = dspy.OutputField(
         desc="for differentiate/integrate: the variable, e.g. 'x'; empty otherwise")
+    side: str = dspy.OutputField(
+        desc="for simplify/expand/factor ONLY: which side of an equation to "
+             "rewrite — 'left', 'right', or 'both'. Honour phrases like 'expand "
+             "the left side, leave the right' → 'left'. Default 'both'.")
     summary: str = dspy.OutputField(
         desc="one short PLAIN-LANGUAGE sentence naming the move, for the chat — "
              "e.g. 'Simplified the right-hand side.' or 'Multiplied both sides by "
@@ -264,6 +271,7 @@ def propose_edit(derivation: str, current_step: str, request: str,
         operand_latex=_clean(getattr(out, "operand_latex", "")),
         replacement_latex=_clean(getattr(out, "replacement_latex", "")),
         variable=_clean(getattr(out, "variable", "")),
+        side=(_clean(getattr(out, "side", "")).lower() or "both"),
     )
 
 

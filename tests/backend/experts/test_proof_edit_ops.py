@@ -126,6 +126,88 @@ def test_scaling_an_inequality_by_a_positive_is_allowed():
 
 
 # --------------------------------------------------------------------------- #
+# side-scoped structural rewrites — "expand the left, leave the right"
+# --------------------------------------------------------------------------- #
+
+_SQ = sp.Eq((x + 1)**2, (u + 3)**2)
+
+
+def test_expand_left_leaves_the_right_side_verbatim():
+    got = ops.apply_op(_SQ, ops.OP_EXPAND, side="left")
+    assert got.lhs == x**2 + 2 * x + 1
+    assert got.rhs == (u + 3)**2          # untouched, exactly as written
+
+
+def test_expand_right_leaves_the_left_side_verbatim():
+    got = ops.apply_op(_SQ, ops.OP_EXPAND, side="right")
+    assert got.lhs == (x + 1)**2
+    assert got.rhs == u**2 + 6 * u + 9
+
+
+def test_expand_both_is_the_default():
+    both = ops.apply_op(_SQ, ops.OP_EXPAND, side="both")
+    default = ops.apply_op(_SQ, ops.OP_EXPAND)
+    assert both == default
+    assert both.lhs == x**2 + 2 * x + 1 and both.rhs == u**2 + 6 * u + 9
+
+
+def test_side_is_ignored_on_a_bare_expression():
+    """A bare expression has no sides — side applies to the whole thing."""
+    assert ops.apply_op((x + 1)**2, ops.OP_EXPAND, side="left") == x**2 + 2 * x + 1
+
+
+def test_side_scoped_expand_does_not_collapse_the_other_side():
+    """The exact bug: expanding the left collapsed 4ac/4a^2 -> c/a on the right.
+
+    Parsing the whole equation to sympy auto-normalises the untouched side. The
+    side-scoped path keeps that side's LaTeX verbatim, so the fraction survives.
+    """
+    step = r"\left(x + 1\right)^{2} = \frac{4 \cdot a \cdot c}{4 \cdot a^{2}}"
+    proof = {
+        "title": "p", "domain": "algebra",
+        "steps": [
+            {"index": 0, "operation": "g", "justification": "s",
+             "input_latex": step, "plain": step, "latex": step,
+             "confidence": {"tier": "grounded", "relation": None}},
+            {"index": 1, "operation": "n", "justification": "n",
+             "input_latex": r"x = 1", "plain": "x=1", "latex": "x=1",
+             "confidence": {"tier": "verified", "relation": "narrows"}},
+        ],
+    }
+    prop = ProofEditProposal(is_edit=True, summary="s", op=ops.OP_EXPAND, side="left",
+        steps=[ProposedStep(operation="expand left", justification="b", expr_latex="x")])
+    out = compute_step(proof, "algebra", 0, prop)
+    assert out is not None
+    rhs = out["input_latex"].split("=", 1)[1]
+    assert "4 \\cdot a \\cdot c" in rhs      # kept verbatim
+    assert "\\frac{c}{a}" not in rhs         # NOT collapsed
+
+
+def test_compute_step_honours_the_requested_side():
+    """The user's "expand the left, don't touch the right" reaches the CAS."""
+    proof = {
+        "title": "p", "domain": "algebra",
+        "steps": [
+            {"index": 0, "operation": "g", "justification": "s",
+             "input_latex": r"\left(x + 1\right)^{2} = \left(u + 3\right)^{2}",
+             "plain": r"(x+1)^2 = (u+3)^2",
+             "latex": r"(x+1)^2 = (u+3)^2",
+             "confidence": {"tier": "grounded", "relation": None}},
+            {"index": 1, "operation": "n", "justification": "n",
+             "input_latex": r"x = u + 2", "plain": r"x = u + 2", "latex": r"x = u + 2",
+             "confidence": {"tier": "verified", "relation": "narrows"}},
+        ],
+    }
+    prop = ProofEditProposal(is_edit=True, summary="s", op=ops.OP_EXPAND, side="left",
+        steps=[ProposedStep(operation="expand left", justification="b", expr_latex="x")])
+    step = compute_step(proof, "algebra", 0, prop)
+    assert step is not None
+    # left expanded, right still the unexpanded square
+    assert "x^{2} + 2" in step["input_latex"]
+    assert r"\left(u + 3\right)^{2}" in step["input_latex"]
+
+
+# --------------------------------------------------------------------------- #
 # wiring: compute_step / resolve
 # --------------------------------------------------------------------------- #
 

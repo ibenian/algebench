@@ -117,19 +117,35 @@ def _op_substitute(expr, old, new):
     return expr.subs(old, new)
 
 
-@cas_register_safe_function
-def _op_simplify(expr):
-    return sp.simplify(expr)
+def _side_apply(expr, fn, side):
+    """Apply a rewrite to ONE side of an equation, or the whole expression.
+
+    ``simplify``/``expand``/``factor`` rewrite a side without changing its value,
+    so applying to a single side is valid and preserves the equation. ``side`` is
+    ``"left"``/``"right"``/``"both"``; on a bare expression (no sides) it always
+    applies to the whole thing. ``evaluate=False`` keeps the untouched side
+    exactly as written.
+    """
+    if side in ("left", "right") and isinstance(expr, sp.Equality):
+        if side == "left":
+            return sp.Eq(fn(expr.lhs), expr.rhs, evaluate=False)
+        return sp.Eq(expr.lhs, fn(expr.rhs), evaluate=False)
+    return fn(expr)
 
 
 @cas_register_safe_function
-def _op_expand(expr):
-    return sp.expand(expr)
+def _op_simplify(expr, side="both"):
+    return _side_apply(expr, sp.simplify, side)
 
 
 @cas_register_safe_function
-def _op_factor(expr):
-    return sp.factor(expr)
+def _op_expand(expr, side="both"):
+    return _side_apply(expr, sp.expand, side)
+
+
+@cas_register_safe_function
+def _op_factor(expr, side="both"):
+    return _side_apply(expr, sp.factor, side)
 
 
 _DISPATCH = {
@@ -251,12 +267,20 @@ def _check_operand(op: str, expr, operand):
         raise OpRefused("that divisor could be zero")
 
 
-def apply_op(expr, op: str, *, operand=None, variable=None, replacement=None):
+STRUCTURAL_OPS = (OP_SIMPLIFY, OP_EXPAND, OP_FACTOR)
+
+
+def apply_op(expr, op: str, *, operand=None, variable=None, replacement=None,
+             side="both"):
     """Perform ``op`` on ``expr`` with sympy. Raises :class:`OpRefused` if invalid.
 
     Both-sides arithmetic on a BARE expression is refused: "add 3 to both sides"
     of something that is not an equation silently changes its value rather than
     rearranging it.
+
+    ``side`` (``"left"``/``"right"``/``"both"``) applies ONLY to the structural
+    rewrites (simplify/expand/factor) — "expand the left side, leave the right".
+    Arithmetic ops ignore it: adding to one side only would break the equation.
     """
     fn = _DISPATCH.get(op)
     if fn is None:
@@ -282,7 +306,8 @@ def apply_op(expr, op: str, *, operand=None, variable=None, replacement=None):
             raise OpRefused("that operation needs a variable to work with respect to")
         return _guarded(fn, expr, variable)
 
-    return _guarded(fn, expr)
+    # Structural rewrites: honour the requested side.
+    return _guarded(fn, expr, side if side in ("left", "right") else "both")
 
 
 __all__ = [
