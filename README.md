@@ -210,6 +210,7 @@ See [docs/feature-ideas.md](docs/feature-ideas.md) for technical directions and 
 - [docs/sandboxing-plan.md](docs/sandboxing-plan.md) — Implementation status and backend sandboxing roadmap
 - [docs/feature-ideas.md](docs/feature-ideas.md) — Roadmap ideas and creative directions
 - [docs/lesson-ideas.md](docs/lesson-ideas.md) — Lesson concepts across probability, ML, calculus, physics, and more
+- [docs/proof-authoring.md](docs/proof-authoring.md) — Authoring proofs for the `/prove` page: vision, review process, and the two contribution paths
 - [tests/proof_animation/](tests/proof_animation/README.md) — Proof-animation test suite (how to add/derive/render proofs)
 - [Codebase Statistics](https://ibenian.github.io/algebench/loc-report/) — Lines of code (LOC) by language, per-file breakdowns (auto-updated)
 - [Semantic Graph Report](https://ibenian.github.io/algebench/semantic-graph/) — Visual examination of the LaTeX → semantic graph pipeline (auto-deployed)
