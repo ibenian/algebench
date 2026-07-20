@@ -176,30 +176,30 @@ def test_an_invalid_mapped_op_refuses_rather_than_falling_back():
                 derivation="", current_step="", request="divide by c")
 
 
-def test_non_invertible_op_still_uses_model_glue_for_the_bridge():
-    """When there is no deterministic recovery, the model's glue is the bridge.
+def test_unmapped_op_uses_model_glue_for_the_bridge():
+    """When the request maps to NO computed op, the model's glue is the bridge.
 
-    `factor` has no inverse, so the exact-undo bridge is unavailable — but the
-    "my step + bridge" option must still exist, built from the glue the model
-    wrote. (Regression: the compute path once told the model glue was pointless
-    whenever `op` was set, and the bridge variant vanished for every operation.)
+    The compute/recovery path only runs for mapped operations. An unmapped
+    request (empty ``op``) goes through the graded path, where the "my step +
+    bridge" option is built from the glue the model wrote — not a deterministic
+    undo. (Regression: the compute path once told the model glue was pointless,
+    and the bridge variant vanished.)
     """
     prop = ProofEditProposal(
-        is_edit=True, summary="s", op=ops.OP_FACTOR,
+        is_edit=True, summary="s", op="",   # unmapped → model-authored path
         steps=[
-            ProposedStep(operation="factor", expr_latex=r"x = x",
-                         justification="model's version, discarded"),
+            ProposedStep(operation="rotate the frame", expr_latex=r"x^{2} = 4",
+                         justification="the user's own step"),
             ProposedStep(operation="bridge", expr_latex=r"x = 2",
                          justification="back to the original next step"),
         ])
     payload = resolve(PROOF, "algebra", 0, prop, derivation="", current_step="",
-                      request="factor the left side")
+                      request="rotate the frame")
 
     assert "glue" in {v.kind for v in payload.variants}
-    # The bridge is the model's, since factor has no inverse to recover from —
-    # and it is NOT step 0's expression, which is what a recovery would have used.
+    assert "recovery" not in {v.kind for v in payload.variants}
+    # The bridge is the model's second step, not a return to the original.
     assert payload.new_steps[1].input_latex == r"x = 2"
-    assert payload.new_steps[1].input_latex != PROOF["steps"][0]["input_latex"]
 
 
 def test_recovery_bridge_supersedes_model_glue_when_available():
@@ -295,28 +295,37 @@ def test_recovery_is_offered_as_the_bridge_variant():
     assert "undo" in payload.new_steps[1].operation.lower()
 
 
-@pytest.mark.parametrize("op", [ops.OP_SIMPLIFY, ops.OP_EXPAND, ops.OP_FACTOR])
-def test_no_recovery_for_operations_with_no_undo(op):
-    """`simplify`/`expand`/`factor` have no inverse — there is no "unsimplify",
-    so there is nothing to caption as a recovery."""
-    assert op not in ops.INVERSE_OPS
-    assert recovery_bridge(PROOF, 0, _proposal(op)) is None
+@pytest.mark.parametrize("op,kw", [
+    (ops.OP_ADD, dict(operand_latex="3")),
+    (ops.OP_MUL, dict(operand_latex="3")),
+    (ops.OP_SUBSTITUTE, dict(operand_latex="x", replacement_latex="u")),
+    (ops.OP_DIFF, dict(variable="x")),
+    (ops.OP_INTEGRATE, dict(variable="x")),
+    (ops.OP_SIMPLIFY, {}),
+    (ops.OP_EXPAND, {}),
+    (ops.OP_FACTOR, {}),
+])
+def test_every_computed_op_offers_a_recovery(op, kw):
+    """Recovery is universal — the recovered expression is always the original,
+    so it can always be built. Whether the undo grounds is the badge's job, not a
+    gate on offering it.
+    """
+    bridge = recovery_bridge(PROOF, 0, _proposal(op, **kw))
+    assert bridge is not None, f"no recovery offered for {op}"
+    assert bridge[0]["input_latex"] == PROOF["steps"][0]["input_latex"]  # exact return
+    assert bridge[0]["operation"], "recovery step must have a caption"
+    assert "both sides" not in bridge[0]["operation"].lower() or op in (
+        ops.OP_ADD, ops.OP_SUB, ops.OP_MUL, ops.OP_DIV)  # only equation ops say it
 
 
 @pytest.mark.parametrize("op,inverse_word", [
     (ops.OP_INTEGRATE, "differentiate"),
     (ops.OP_DIFF, "integrate"),
 ])
-def test_calculus_recovery_is_offered_with_an_honest_caption(op, inverse_word):
-    """Calculus undos ARE offered — they return to the original expression so the
-    rest of the proof stays grounded — even though the CAS can only grade the undo
-    ``plausible``. The caption names the inverse operation and the variable, and
-    does not claim "both sides" (these apply to bare expressions too).
-    """
-    assert op in ops.INVERSE_OPS
+def test_calculus_recovery_caption_names_the_inverse(op, inverse_word):
+    """The calculus undo caption names the inverse op + variable, no "both sides"
+    (these apply to bare expressions too)."""
     bridge = recovery_bridge(PROOF, 0, _proposal(op, variable="x"))
-    assert bridge is not None
-    assert bridge[0]["input_latex"] == PROOF["steps"][0]["input_latex"]  # exact return
     caption = bridge[0]["operation"].lower()
     assert inverse_word in caption and "undoing" in caption
     assert "both sides" not in caption

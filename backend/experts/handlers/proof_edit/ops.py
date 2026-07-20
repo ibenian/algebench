@@ -147,25 +147,27 @@ _DISPATCH = {
 
 SUPPORTED_OPS = tuple(_DISPATCH)
 
-# Operations that can be undone, and by what. Used to build a RECOVERY step:
-# applying the inverse restores the expression the edit started from, so the
-# step that originally followed it follows again.
+# A RECOVERY step returns to the expression the edit started from, so the step
+# that originally followed it follows again. It is ALWAYS constructible — the
+# recovered expression IS the original, which we already have — so it is offered
+# for every operation, and the badge tells the truth about how well it holds up:
 #
-# Two tiers, because the undos differ in what the CAS can prove:
-#
-# * add/sub, mul/div, substitute — the undo is EQUIVALENCE-PRESERVING, so the CAS
-#   grounds it. Recovery here is a strict win: the undo step is grounded and the
-#   following step's verdict is fully restored.
+# * add/sub, mul/div, substitute, simplify/expand/factor — the undo is
+#   EQUIVALENCE-PRESERVING, so the CAS grounds it. Recovery is a strict win: the
+#   undo step is grounded and the following step's verdict is fully restored.
 # * differentiate/integrate — the undo (integrate / differentiate) is NOT
 #   equivalence-preserving in the CAS's eyes: it has no FTC/derivative method and
 #   ``∫f dx`` is not equal to ``f`` as an expression, so it grades the undo
-#   ``plausible``, not grounded (measured, not assumed). Recovery still returns
-#   to the exact original expression — keeping the REST of the proof grounded —
-#   but the undo step itself carries a plausible badge. Offered by explicit
-#   product choice for that value; the badge tells the truth about it.
+#   ``plausible``, not grounded (measured, not assumed). Recovery still returns to
+#   the exact original expression — keeping the REST of the proof grounded — with
+#   only the undo step itself carrying a plausible badge.
 #
-# `simplify`/`expand`/`factor` stay out: there is no "unsimplify", so no undo to
-# caption at all.
+# Whether the undo grounds is not a gate; it is only what the badge reports. The
+# reader decides if the recovery is worth taking.
+
+# Named inverse used in the undo CAPTION, where one exists. ``simplify`` has no
+# named inverse — its recovery is captioned generically ("return to the previous
+# form") — so it is absent here but still recovery-eligible.
 INVERSE_OPS = {
     OP_ADD: OP_SUB,
     OP_SUB: OP_ADD,
@@ -174,6 +176,8 @@ INVERSE_OPS = {
     OP_SUBSTITUTE: OP_SUBSTITUTE,   # invertible by swapping the two sides
     OP_DIFF: OP_INTEGRATE,          # undo a derivative by integrating (plausible)
     OP_INTEGRATE: OP_DIFF,          # undo an integral by differentiating (plausible)
+    OP_FACTOR: OP_EXPAND,           # undo factoring by expanding
+    OP_EXPAND: OP_FACTOR,           # undo expanding by factoring
 }
 
 # How the inverse reads, and WHY — the caption must make clear this step exists
@@ -209,10 +213,17 @@ def describe_undo(op: str, operand_latex: str = "", replacement_latex: str = "",
     if op == OP_DIFF:
         v = f"${variable}$" if variable else "the variable"
         return f"integrate with respect to {v}, undoing the differentiation"
+    # Structural inverses that take no operand.
+    if op == OP_FACTOR:
+        return "expand, undoing the factoring"
+    if op == OP_EXPAND:
+        return "factor, undoing the expansion"
     phrase = _UNDO_PHRASE.get(op)
-    if not phrase:
-        return "undo that step"
-    return phrase.format(operand=f"${operand_latex}$" if operand_latex else "it")
+    if phrase:
+        return phrase.format(operand=f"${operand_latex}$" if operand_latex else "it")
+    # No named inverse (e.g. simplify) — the recovery still returns to the exact
+    # previous expression; caption it for what it is.
+    return "return to the previous form"
 
 
 class OpRefused(Exception):

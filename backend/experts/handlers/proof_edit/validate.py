@@ -208,10 +208,11 @@ def recovery_bridge(proof: dict, at: int,
     the chain is rebuilt: grounded for algebraic undos, plausible for calculus
     ones (the CAS can't verify differentiation) — see ``ops.INVERSE_OPS``.
 
-    Only for operations in ``ops.INVERSE_OPS``. ``simplify``/``expand``/``factor``
-    have no undo to caption at all.
+    Offered for EVERY computed operation — the recovered expression is always the
+    original, so a recovery can always be built. Whether the undo grounds is not
+    a gate, only what its badge reports (``ops.INVERSE_OPS`` documents the tiers).
     """
-    if proposal.op not in ops.INVERSE_OPS:
+    if proposal.op not in ops.SUPPORTED_OPS:
         return None
     steps = proof.get("steps") or []
     if not 0 <= at < len(steps) or at + 1 >= len(steps):
