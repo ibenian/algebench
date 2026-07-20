@@ -181,6 +181,20 @@
                   border: 1px solid var(--border-color); border-bottom-left-radius: 4px; }
     .bubble.bot.err { color: var(--err-fg); background: var(--err-bg); border-color: var(--err-border); }
     .bubble.pending { opacity: .7; font-style: italic; }
+    /* Markdown (marked) wraps each paragraph in <p>, whose default browser
+       margins add empty space at the top, bottom, and between paragraphs. Trim
+       to a tight rhythm and zero the outer edges so the bubble hugs its text. */
+    .bubble > :first-child { margin-top: 0; }
+    .bubble > :last-child { margin-bottom: 0; }
+    .bubble p { margin: .4em 0; }
+    .bubble ul, .bubble ol { margin: .4em 0; padding-left: 1.3em; }
+    .bubble li { margin: .1em 0; }
+    .bubble pre { margin: .4em 0; }
+    /* A markdown-rendered bubble has block children (<p>). `pre-wrap` would then
+       ALSO preserve the literal newlines between those blocks, stacking blank
+       lines on top of the paragraph margins — so let those bubbles wrap normally.
+       Plain-text bubbles (user echo, pending, error) keep pre-wrap for newlines. */
+    .bubble:has(p) { white-space: normal; }
     /* Avatar + bubble row (person for the user, bot for the assistant). The row
        owns left/right placement; the bubble inside it just fills. */
     .msg-row { display: flex; align-items: flex-start; gap: 7px; max-width: 90%; }

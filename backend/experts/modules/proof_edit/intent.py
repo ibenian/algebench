@@ -122,6 +122,20 @@ class ProofEditSig(dspy.Signature):
       steps.
 
 
+    SCOPE — change ONLY what the reader asked to change. This matters a lot:
+
+    * If they name a SIDE ("expand the left", "simplify the right, leave the
+      left"), set `side` to "left"/"right" so the rewrite touches only that side.
+    * If they name SPECIFIC TERMS ("expand only the $(b/2a)^2$ term", "factor
+      just the numerator"), that is FINER than a whole side — do NOT set a
+      structural `op` (simplify/expand/factor rewrite the entire side). Instead
+      leave `op` empty and author `steps[0]` yourself: copy the previous
+      expression EXACTLY and change only the named terms, character for
+      character everywhere else. Reproduce every other term as it was written —
+      do not re-order, re-bracket, or re-simplify anything the reader did not
+      ask about.
+    * When no scope is named, "both" / the whole expression is fine.
+
     Every expression must be complete, self-contained LaTeX for the whole state
     (both sides of an equation), consistent with the derivation's existing
     notation. Wrap math in `$…$` inside `operation` and `justification` prose.
