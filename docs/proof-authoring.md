@@ -42,27 +42,32 @@ the public catalog.
 
 ## 2. The vision
 
-A few design choices flow directly from "a derivation is an artifact":
+`/prove` exists to build **a shared, growing library of mathematical derivations
+that help people *understand* math** — not just confirm that a result is true, but
+see *why* and *how* it follows, step by legible step.
 
-**No accounts, no database, no sessions.** You don't sign up to contribute. There
-are no user records to leak and no login wall to clear. When you submit a proof,
-the server hands you back a **secret edit key** — a hash (an HMAC) computed over
-your proof's own bytes. That key is the *only* handle to edit your pending
-submission. The server stores nothing about you; it re-derives the key from the
-proof's contents to check you're allowed to edit. The key **rotates every time the
-proof changes**, which conveniently also stops one stale edit from clobbering a
-newer one.
+**Derivations meant for understanding.** A textbook proof often compresses the
+insight out of a result: three lines, half the steps left "to the reader." A proof
+on `/prove` does the opposite. It *animates* — each step morphs into the next, so you
+watch a term move across the `=` or a product expand rather than having to
+reconstruct it. Hover any symbol and it lights up across the step with a plain-words
+tooltip. Every step is CAS-verified and carries an honest confidence badge. The goal
+is a derivation you can actually *learn from*, whether you're revisiting the
+quadratic formula or meeting the Tsiolkovsky rocket equation for the first time.
 
-**Stable names over hidden revision history.** There's no version-control system
-buried inside `/prove`. If you want a "v2" of a proof, you clone it and submit under
-a new name (`algebra/foo-v2`). Each version is fully independent — its own id, its
-own edit key. Lineage shows up as a small provenance chip in the UI, not as a stored
-graph of relationships. Simple, legible, and nothing to corrupt.
+**Worth keeping, naming, and citing.** Because these derivations are meant to be
+useful again and again, each one is a durable artifact: it has a stable
+`<domain>/<name>` address, so you can link to it, drop it into a blog post or lesson
+as an embedded `<iframe>`, or cite it — instead of it vanishing the moment a chat
+tab closes.
 
-**The corpus is the goal.** The invitation is open: the initial catalog is meant to
-grow to a solid set of high-quality, verified derivations across algebra, calculus,
-physics, quantum, series, statistics, and beyond. Your contribution is welcome —
-this guide exists to make it easy.
+**A library anyone can add to.** The value of the collection is in its *breadth and
+quality*, so contributing is deliberately low-friction — no accounts, no sign-up
+wall (you get a secret edit key instead; see §4). The catalog is meant to grow into
+a solid, high-quality set of verified derivations across algebra, calculus, physics,
+quantum, series, statistics, and beyond. That growth depends on contributors — and a
+light review step (§3) keeps the shared library trustworthy as it grows. Your
+derivation is welcome; this guide exists to make adding it easy.
 
 ---
 
