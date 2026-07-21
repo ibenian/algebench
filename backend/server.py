@@ -972,6 +972,39 @@ EDIT_STEP_TOOL_DECL = types.FunctionDeclaration(
 )
 
 
+def _fc_args_to_dict(raw) -> dict:
+    """A Gemini ``function_call.args`` value as a plain dict, robust to the proto
+    Struct / MapComposite shapes the SDK can hand back.
+
+    ``dict(raw)`` alone can raise on some proto objects, so try the SDK's own
+    converters first (``model_dump`` / ``to_json_dict``) and JSON round-trip the
+    result to flatten any remaining proto leaves — the same strategy the main
+    tool-calling path uses. Returns ``{}`` for empty or unconvertible args.
+    """
+    if not raw:
+        return {}
+    try:
+        if hasattr(raw, "model_dump"):
+            d = raw.model_dump()
+        elif hasattr(raw, "to_json_dict"):
+            d = raw.to_json_dict()
+        else:
+            d = dict(raw)
+        return json.loads(json.dumps(d, default=str))
+    except Exception:
+        return {}
+
+
+def _coerce_step(value, default):
+    """A tool-call ``step`` as an int, accepting int/float or a numeric string
+    (model/tooling variance sends ``2`` or ``"2"``). Falls back to ``default``
+    when it is missing or not a whole number."""
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
 def call_proof_chat(messages, proof, current_step=None, allow_edits=False,
                     in_derive=False):
     """Proof-scoped chat: the SAME Gemini client/model as ``call_gemini_chat``, but
@@ -1023,15 +1056,10 @@ def call_proof_chat(messages, proof, current_step=None, allow_edits=False,
                     text += part.text
                 fc = getattr(part, "function_call", None)
                 if fc and fc.name == "edit_step":
-                    args = fc.args or {}
-                    if hasattr(args, "model_dump"):
-                        args = args.model_dump()
-                    elif not isinstance(args, dict):
-                        args = dict(args)
-                    step = args.get("step")
+                    args = _fc_args_to_dict(fc.args)
                     edit = {
                         "operation": str(args.get("operation") or "").strip(),
-                        "step": int(step) if isinstance(step, (int, float)) else current_step,
+                        "step": _coerce_step(args.get("step"), current_step),
                     }
         if edit and not edit["operation"]:
             edit = None                      # a tool call with nothing to apply

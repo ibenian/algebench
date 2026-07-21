@@ -301,6 +301,37 @@ def test_proof_chat_limits_rejects_malformed():
     assert server._proof_chat_limits([], "notadict")[0] == 400
 
 
+# ── tool-call arg parsing hardening (Copilot review, PR #490) ────────────────
+class _FakeStruct:
+    """Stand-in for a proto Struct/MapComposite: dict-like via items(), and
+    dict() over it raises (as some proto objects do)."""
+    def __init__(self, data):
+        self._data = data
+    def to_json_dict(self):
+        return dict(self._data)
+    def keys(self):
+        raise TypeError("proto object is not directly dict()-able")
+
+
+def test_fc_args_handles_proto_like_objects():
+    got = server._fc_args_to_dict(_FakeStruct({"operation": "move c", "step": 2}))
+    assert got == {"operation": "move c", "step": 2}
+
+
+def test_fc_args_handles_plain_dict_and_empty():
+    assert server._fc_args_to_dict({"operation": "x"}) == {"operation": "x"}
+    assert server._fc_args_to_dict(None) == {}
+    assert server._fc_args_to_dict({}) == {}
+
+
+def test_coerce_step_accepts_int_float_and_numeric_string():
+    assert server._coerce_step(2, 0) == 2
+    assert server._coerce_step(2.0, 0) == 2
+    assert server._coerce_step("2", 0) == 2          # the bug: string step was ignored
+    assert server._coerce_step(None, 7) == 7         # missing → current step
+    assert server._coerce_step("nope", 7) == 7       # non-numeric → current step
+
+
 def test_system_prompt_forbids_html():
     sp = server._proof_chat_system_prompt(_PROOF).lower()
     assert "do not output html" in sp
