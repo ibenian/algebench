@@ -573,11 +573,16 @@ function addBubble(role, text, cls, logEl) {
   const isUser = role === "user";
   const b = document.createElement("div");
   b.className = `bubble ${isUser ? "user" : "bot"}${cls ? " " + cls : ""}`;
+  const isPending = !isUser && cls && cls.includes("pending");
   const html = !_hasRender() ? null
     : isUser ? renderSafe(text)
-    : (cls && cls.includes("pending")) ? null      // "…" placeholder — plain
+    : isPending ? null                             // dots, not the literal "…"
     : renderReply(text);
-  if (html != null) b.innerHTML = html; else b.textContent = text;   // safe fallback
+  if (isPending) {
+    // Same pulsing "typing" dots as the status line, so the chat's loading state
+    // matches the rest of the app instead of showing a static "…".
+    b.innerHTML = '<span class="dots" aria-hidden="true"><span></span><span></span><span></span></span>';
+  } else if (html != null) { b.innerHTML = html; } else { b.textContent = text; }   // safe fallback
   // Avatar (USER_ICON for the user, AI_ICON for the assistant), shared with the
   // main app chat via /icons.js. The row handles left/right placement.
   const avatar = document.createElement("div");
