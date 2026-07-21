@@ -94,6 +94,9 @@ class ProofEditSig(dspy.Signature):
        answer changes the result — never about notation or style, and never when
        a sensible reading is obvious. If earlier clarifications are supplied, they
        have already been answered: use them and do NOT ask again.
+       In particular, "solve for $x$" on a BARE expression (no equals sign) is NOT
+       under-determined — the standard reading is ``expression = 0``. Do NOT ask
+       what it equals; set `op` to `solve_for` and let the CAS solve it as ``= 0``.
     3. AN OPERATION YOU CAN APPLY — set `is_edit` true, leave `question` empty,
        and fill `steps`.
 
@@ -165,7 +168,11 @@ class ProofEditSig(dspy.Signature):
         desc="if the request maps onto one of these, name it EXACTLY, else leave "
              "empty: add_both_sides, subtract_both_sides, multiply_both_sides, "
              "divide_both_sides, differentiate_both_sides, integrate_both_sides, "
-             "substitute, simplify, expand, factor")
+             "substitute, simplify, expand, factor, solve_for, evaluate. For 'solve "
+             "for x' use solve_for and put the variable in `variable` — the CAS "
+             "solves it; do not write the solved expression yourself. For 'evaluate "
+             "numerically', 'compute the value', or 'add the final numeric result' "
+             "use evaluate — the CAS produces the decimal; do not write it yourself.")
     operand_latex: str = dspy.OutputField(
         desc="LaTeX of what the op is applied WITH — the amount added/multiplied, "
              "or for `substitute` the sub-expression being replaced; empty if n/a")
@@ -173,7 +180,8 @@ class ProofEditSig(dspy.Signature):
         desc="for `substitute` only: LaTeX of what replaces operand_latex "
              "(for 'let $u = x^2$' operand is $x^2$ and replacement is $u$)")
     variable: str = dspy.OutputField(
-        desc="for differentiate/integrate: the variable, e.g. 'x'; empty otherwise")
+        desc="for differentiate/integrate/solve_for: the variable, e.g. 'x'; "
+             "empty otherwise")
     side: str = dspy.OutputField(
         desc="for simplify/expand/factor ONLY: which side of an equation to "
              "rewrite — 'left', 'right', or 'both'. Honour phrases like 'expand "
@@ -340,8 +348,36 @@ def last_turns(messages, limit: int = 6) -> str:
     return "\n".join(out)
 
 
+_ASSISTANT_ROLES = {"bot", "assistant", "model"}
+
+
+def clarifications_from_thread(messages, limit: int = 6):
+    """Recover answered clarification rounds from the chat thread.
+
+    In the proof-chat flow the expert is stateless — each ``edit_step`` call is
+    fresh — so a clarifying question it returned, and the user's answer to it,
+    live only in the conversation. Without recovering them the expert re-parses
+    the same instruction and asks the SAME question again, forever (observed:
+    "Should 'a' be a constant or a function of 'b'?" repeating after the user
+    answered). Here each assistant turn that ENDS IN A QUESTION is paired with the
+    user's next turn as its answer, yielding the ``[{question, answer}]`` the
+    handler already knows how to honour — which also engages ``MAX_CLARIFICATIONS``
+    so a stubborn re-ask cannot loop.
+    """
+    msgs = list(messages or [])[-limit:]
+    pairs = []
+    for i in range(len(msgs) - 1):
+        cur, nxt = msgs[i] or {}, msgs[i + 1] or {}
+        q = _clean(cur.get("text"))
+        a = _clean(nxt.get("text"))
+        if (str(cur.get("role")) in _ASSISTANT_ROLES and q.rstrip().endswith("?")
+                and str(nxt.get("role") or "user") == "user" and a):
+            pairs.append({"question": q, "answer": a})
+    return pairs
+
+
 __all__ = [
     "EditIntentParser", "MAX_CLARIFICATIONS", "MAX_GLUE_STEPS", "ProofEditProposal",
-    "ProofEditSig", "ProposedStep", "format_clarifications", "format_current_step",
-    "last_turns", "propose_edit",
+    "ProofEditSig", "ProposedStep", "clarifications_from_thread",
+    "format_clarifications", "format_current_step", "last_turns", "propose_edit",
 ]

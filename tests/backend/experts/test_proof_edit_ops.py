@@ -88,6 +88,58 @@ def test_op_computes_the_expected_result(op, kwargs, expected):
     assert sp.simplify(got.rhs - expected.rhs) == 0
 
 
+def test_solve_computes_the_root_not_a_model_echo():
+    """"solve for a" on ``(a+b)^2 = 0`` must produce ``a = -b`` — the exact bug the
+    op fixes: with no computed op the model was left to author it and echoed the
+    equation unchanged."""
+    got = ops.apply_op(sp.Eq((a + b)**2, 0), ops.OP_SOLVE, variable="a")
+    assert got == sp.Eq(a, -b)
+
+
+def test_solve_with_several_roots_is_an_or_not_a_collapsing_set():
+    """Multiple roots come back as ``x = r1 ∨ x = r2``. An ``Eq(x, {r1,r2})`` would
+    re-evaluate to ``False`` when the isolation guard unpickles it — this asserts
+    the stable form survives and states both roots."""
+    got = ops.apply_op(sp.Eq(a * x**2 + b * x + c, 0), ops.OP_SOLVE, variable="x")
+    assert isinstance(got, sp.Or)
+    assert got is not sp.false and got != False   # did not collapse
+    roots = {eq.rhs for eq in got.args}
+    assert roots == set(sp.solve(sp.Eq(a * x**2 + b * x + c, 0), x))
+
+
+def test_solve_a_bare_expression_solves_it_equal_to_zero():
+    """"solve $(a+b)^2$ for $a$" needs no separate "set = 0" step — a bare
+    expression is solved as ``expr = 0`` (sympy's convention). The screenshot bug
+    was refusing this outright and looping on "set it equal to something first"."""
+    got = ops.apply_op((a + b)**2, ops.OP_SOLVE, variable="a")
+    assert got == sp.Eq(a, -b)
+
+
+def test_solve_an_inequality_is_refused():
+    with pytest.raises(ops.OpRefused, match="inequality"):
+        ops.apply_op(sp.Lt(a + b, 0), ops.OP_SOLVE, variable="a")
+
+
+def test_solve_without_a_variable_is_refused():
+    with pytest.raises(ops.OpRefused, match="variable"):
+        ops.apply_op(sp.Eq((a + b)**2, 0), ops.OP_SOLVE)
+
+
+def test_evaluate_turns_a_symbolic_value_into_a_decimal():
+    """"evaluate numerically" / "add the final result" had no op, so the model
+    echoed the exact form (``\\sin(1)`` captioned "evaluated" but unchanged). The
+    op produces the decimal."""
+    got = ops.apply_op(sp.sin(1), ops.OP_EVALUATE)
+    assert abs(float(got) - 0.841471) < 1e-6
+    assert not got.free_symbols            # fully numeric now
+
+
+def test_evaluate_leaves_free_symbols_and_hits_both_sides():
+    got = ops.apply_op(sp.Eq(x, sp.sin(1)), ops.OP_EVALUATE)
+    assert got.lhs == x                    # symbol untouched
+    assert abs(float(got.rhs) - 0.841471) < 1e-6
+
+
 def test_integration_stays_unevaluated():
     """Evaluating would silently drop the constant of integration.
 
@@ -421,6 +473,8 @@ def test_recovery_is_offered_as_the_bridge_variant():
     (ops.OP_SIMPLIFY, {}),
     (ops.OP_EXPAND, {}),
     (ops.OP_FACTOR, {}),
+    (ops.OP_SOLVE, dict(variable="x")),
+    (ops.OP_EVALUATE, {}),
 ])
 def test_every_computed_op_offers_a_recovery(op, kw):
     """Recovery is universal — the recovered expression is always the original,

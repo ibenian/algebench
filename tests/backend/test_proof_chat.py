@@ -160,6 +160,35 @@ def test_unlocked_prompt_separates_instructions_from_questions():
     assert "why did they move" in sp.lower()
 
 
+def test_unlocked_prompt_does_not_let_the_agent_adjudicate_feasibility():
+    """The agent must ROUTE operations to the tool, not decide for itself that the
+    math can't be done. "solve for b" on a bare expression got answered in text
+    ("there is no equation, nothing to solve") instead of calling edit_step — the
+    CAS never ran. The prompt tells it that call is the editor's to make."""
+    sp = server._proof_chat_system_prompt(_PROOF, 0, allow_edits=True)
+    low = sp.lower()
+    assert "nothing to solve" in low          # named as the wrong reply
+    assert "no equals sign" in low            # the exact bare-expression case
+    # The decision belongs to the CAS, not the chat agent.
+    assert "computer algebra system decide" in low or "editor and its" in low
+
+
+@pytest.mark.parametrize("allow_edits,in_derive",
+                         [(False, False), (False, True), (True, False)])
+def test_system_prompt_is_authoritative_over_stale_history(allow_edits, in_derive):
+    """The staleness cuts across every state: after the reader unlocks (or navigates
+    to another step), the thread still carries the model's own earlier turns —
+    "editing is LOCKED", "you're on step 2". Rather than patch each case, the base
+    prompt states the general rule: this prompt reflects the CURRENT state and
+    outranks anything the assistant said earlier, so it stops parroting stale claims."""
+    sp = server._proof_chat_system_prompt(
+        _PROOF, 0, allow_edits=allow_edits, in_derive=in_derive)
+    low = sp.lower()
+    assert "authoritative" in low
+    assert "earlier in this conversation" in low
+    assert "current state" in low
+
+
 @pytest.mark.parametrize("allow_edits", [False, True])
 def test_ctx_inspector_matches_what_the_chat_would_send(allow_edits):
     """The CTX inspector must not diverge from the live call.

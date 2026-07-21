@@ -48,11 +48,18 @@ OP_SUBSTITUTE = "substitute"
 OP_SIMPLIFY = "simplify"
 OP_EXPAND = "expand"
 OP_FACTOR = "factor"
+OP_SOLVE = "solve_for"
+OP_EVALUATE = "evaluate"
+
+# Digits kept when evaluating numerically. Enough that grading still sees the
+# result as equal to the exact form, while staying readable (``0.841471`` not
+# ``0.841470984807897``).
+_EVAL_DIGITS = 6
 
 # Ops that take an operand expression ("add 3x" needs the 3x).
 NEEDS_OPERAND = {OP_ADD, OP_SUB, OP_MUL, OP_DIV, OP_SUBSTITUTE}
-# Ops that take a variable ("differentiate with respect to x").
-NEEDS_VARIABLE = {OP_DIFF, OP_INTEGRATE}
+# Ops that take a variable ("differentiate with respect to x", "solve for x").
+NEEDS_VARIABLE = {OP_DIFF, OP_INTEGRATE, OP_SOLVE}
 
 
 def _both(expr, fn):
@@ -148,6 +155,48 @@ def _op_factor(expr, side="both"):
     return _side_apply(expr, sp.factor, side)
 
 
+@cas_register_safe_function
+def _op_evaluate(expr, side="both"):
+    """Evaluate to a decimal number — ``\\sin(1)`` becomes ``0.841471``.
+
+    Its own op because "evaluate this numerically" / "add the final result" has no
+    other mapping, so without it the model authors the step and just echoes the
+    exact form unchanged (observed: ``\\sin(1)`` captioned "evaluated numerically"
+    but still ``\\sin(1)``). Any free symbols are left as-is (``x + \\sin(1)`` →
+    ``x + 0.841471``); on an equation each side is evaluated.
+    """
+    return _side_apply(expr, lambda e: e.evalf(_EVAL_DIGITS), side)
+
+
+@cas_register_safe_function
+def _op_solve_for(expr, var):
+    """Solve for a variable, returning ``var = solution(s)``.
+
+    This is the one op whose whole point is to change the FORM of the answer to
+    ``variable = …``, so it is computed by sympy rather than hand-authored by the
+    model (which is unreliable — it tends to echo the equation unchanged). A
+    double root collapses to one entry; several distinct roots become an ``Or`` so
+    the single step still states the complete answer. Returns ``None`` when there
+    is no closed-form solution, which the guard turns into a reader-facing refusal.
+
+    A BARE expression is solved as ``expr = 0`` — sympy's own convention, and what
+    "solve $(a+b)^2$ for $a$" means. So no separate "set equal to zero" step is
+    needed before solving.
+    """
+    sym = sp.Symbol(var) if isinstance(var, str) else var
+    sols = sp.solve(expr, sym)     # a non-equation expr is solved as ``expr == 0``
+    if not sols:
+        return None
+    uniq = list(dict.fromkeys(sols))        # de-dupe a repeated root, keep order
+    if len(uniq) == 1:
+        return sp.Eq(sym, uniq[0])
+    # Several roots: an "or" of equalities (``x = r1 ∨ x = r2``). NOT
+    # ``Eq(x, FiniteSet(...))`` — that collapses to ``False`` the moment it is
+    # re-evaluated (which the process-isolation guard does when it unpickles the
+    # result), whereas the ``Or`` form is evaluation-stable.
+    return sp.Or(*[sp.Eq(sym, r) for r in uniq])
+
+
 _DISPATCH = {
     OP_ADD: _op_add_both_sides,
     OP_SUB: _op_sub_both_sides,
@@ -159,6 +208,8 @@ _DISPATCH = {
     OP_SIMPLIFY: _op_simplify,
     OP_EXPAND: _op_expand,
     OP_FACTOR: _op_factor,
+    OP_SOLVE: _op_solve_for,
+    OP_EVALUATE: _op_evaluate,
 }
 
 SUPPORTED_OPS = tuple(_DISPATCH)
@@ -267,7 +318,7 @@ def _check_operand(op: str, expr, operand):
         raise OpRefused("that divisor could be zero")
 
 
-STRUCTURAL_OPS = (OP_SIMPLIFY, OP_EXPAND, OP_FACTOR)
+STRUCTURAL_OPS = (OP_SIMPLIFY, OP_EXPAND, OP_FACTOR, OP_EVALUATE)
 
 
 def apply_op(expr, op: str, *, operand=None, variable=None, replacement=None,
@@ -301,6 +352,19 @@ def apply_op(expr, op: str, *, operand=None, variable=None, replacement=None,
             raise OpRefused("a substitution needs both what to replace and what to put in its place")
         return _guarded(fn, expr, operand, replacement)
 
+    if op == OP_SOLVE:
+        if variable is None:
+            raise OpRefused("solving needs a variable to solve for")
+        # A bare expression is solved as ``expr = 0`` (sympy's convention), so no
+        # "set equal to zero" step is required first. An inequality, though, has
+        # no single "solve for x =" form — decline rather than guess.
+        if (isinstance(expr, sp.core.relational.Relational)
+                and not isinstance(expr, sp.Equality)):
+            raise OpRefused(
+                "solving an inequality for a single value isn't something I can do "
+                "here — try an equation.")
+        return _guarded(fn, expr, variable)
+
     if op in NEEDS_VARIABLE:
         if variable is None:
             raise OpRefused("that operation needs a variable to work with respect to")
@@ -312,7 +376,7 @@ def apply_op(expr, op: str, *, operand=None, variable=None, replacement=None,
 
 __all__ = [
     "INVERSE_OPS", "NEEDS_OPERAND", "NEEDS_VARIABLE", "OP_ADD", "OP_DIFF",
-    "OP_DIV", "OP_EXPAND", "OP_FACTOR", "OP_INTEGRATE", "OP_MUL", "OP_SIMPLIFY",
-    "OP_SUB", "OP_SUBSTITUTE", "OpRefused", "SUPPORTED_OPS", "apply_op",
-    "describe_undo",
+    "OP_DIV", "OP_EVALUATE", "OP_EXPAND", "OP_FACTOR", "OP_INTEGRATE", "OP_MUL",
+    "OP_SIMPLIFY", "OP_SOLVE", "OP_SUB", "OP_SUBSTITUTE", "OpRefused",
+    "SUPPORTED_OPS", "apply_op", "describe_undo",
 ]

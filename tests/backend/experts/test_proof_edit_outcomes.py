@@ -97,6 +97,34 @@ def test_unanswered_clarifications_are_dropped():
     assert format_clarifications([H.Clarification(question="q", answer="")]) == ""
 
 
+def test_clarifications_recovered_from_the_chat_thread():
+    """The proof-chat expert is stateless per ``edit_step`` call, so a question it
+    asked and the user's answer survive only in the thread. Recovering them stops
+    the "same question, forever" loop (observed with 'derive a wrt b')."""
+    from backend.experts.modules.proof_edit.intent import clarifications_from_thread
+    thread = [
+        {"role": "user", "text": "derive a wrt b"},
+        {"role": "bot", "text": "Should 'a' be a constant or a function of 'b'?"},
+        {"role": "user", "text": "a function of b"},
+    ]
+    pairs = clarifications_from_thread(thread)
+    assert pairs == [{"question": "Should 'a' be a constant or a function of 'b'?",
+                      "answer": "a function of b"}]
+
+
+def test_thread_recovery_ignores_non_question_bot_turns():
+    """Only an assistant turn that ENDS in a question is a clarification; ordinary
+    replies (and a trailing unanswered question) are not paired."""
+    from backend.experts.modules.proof_edit.intent import clarifications_from_thread
+    thread = [
+        {"role": "user", "text": "multiply by 2"},
+        {"role": "bot", "text": "Done — multiplied both sides by 2."},   # not a question
+        {"role": "user", "text": "now divide by a"},
+        {"role": "bot", "text": "Could a be zero?"},                     # unanswered (last)
+    ]
+    assert clarifications_from_thread(thread) == []
+
+
 # --------------------------------------------------------------------------- #
 # 3. variants
 # --------------------------------------------------------------------------- #
