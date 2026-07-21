@@ -298,13 +298,13 @@ function setupEmbedButton(builtins, theme) {
   });
 }
 
-/** Where the full-screen button opens, per the host-supplied ?full= option:
- *  • ?full=prove → the editable /prove page for the FIRST proof (?id=<slug>);
- *  • otherwise    → this standalone renderproof page (the default).
+/** Where the full-screen button opens, per the host-supplied ?fullscreenTarget= option:
+ *  • ?fullscreenTarget=prove → the editable /prove page for the FIRST proof (?id=<slug>);
+ *  • otherwise               → this standalone renderproof page (the default).
  *  The destination is the host page's call — it's not part of the embedded
  *  widget — so it's chosen here from the URL the host framed the iframe with. */
 function fullscreenTarget(builtins, theme) {
-  const mode = (new URLSearchParams(location.search).get("full") || "")
+  const mode = (new URLSearchParams(location.search).get("fullscreenTarget") || "")
     .trim().toLowerCase();
   if (mode === "prove" && builtins.length) {
     const u = new URL("/prove", location.origin);
