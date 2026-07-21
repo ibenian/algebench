@@ -1,0 +1,4358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Semantic Graph Visual Report</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}]});"></script>
+<script src="https://cdn.jsdelivr.net/npm/mathjs@13.0.0/lib/browser/math.js"></script>
+<script type="importmap">{
+  "imports": {
+    "/labels.js": "data:text/javascript,export function makeAiAskButton(){return document.createElement('span')}",
+    "/expr.js": "data:text/javascript,const m=math.create(math.all);m.import({binomial:(n,k)=>m.combinations(n,k),erfc:x=>1-m.erf(x),beta:(a,b)=>m.gamma(a)*m.gamma(b)/m.gamma(a%2Bb),conjugate:x=>m.conj(x)});export function compileExpr(s){return m.compile(s)}export function evalExpr(c,t,opts){const scope=opts%26%26opts.extraScope?{...opts.extraScope}:{};return c.evaluate(scope)}",
+    "/proof-animation/dock-seq.js": "data:text/javascript,let n=0;export const nextDockSeq=()=>%2B%2Bn"
+  }
+}</script>
+<script>
+  window.__SG_REPORT_THEME__ = {"name": "default-dark", "mode": "dark", "direction": "RL", "labelMode": "emoji", "nodeStyles": {"scalar": {"shape": "rect", "fill": "#1b3a1e", "stroke": "#66bb6a", "color": "#c8e6c9"}, "vector": {"shape": "rect", "fill": "#1b3a1e", "stroke": "#66bb6a", "color": "#c8e6c9"}, "constant": {"shape": "rect", "fill": "#1b3a1e", "stroke": "#66bb6a", "color": "#c8e6c9"}, "number": {"shape": "rect", "fill": "#1b3a1e", "stroke": "#66bb6a", "color": "#c8e6c9"}, "expression": {"shape": "rect", "fill": "#1b3a1e", "stroke": "#66bb6a", "color": "#c8e6c9"}, "text": {"shape": "rect", "fill": "#1b3a1e", "stroke": "#66bb6a", "color": "#c8e6c9"}, "operator": {"shape": "circle", "fill": "#1a2740", "stroke": "#42a5f5", "color": "#bbdefb"}, "function": {"shape": "hexagon", "fill": "#1a2740", "stroke": "#42a5f5", "color": "#bbdefb"}, "relation": {"shape": "diamond", "fill": "#332a0b", "stroke": "#ffa726", "color": "#ffe0b2"}, "result": {"shape": "stadium", "fill": "#332a0b", "stroke": "#ffa726", "color": "#ffe0b2"}, "annotation": {"shape": "circle", "fill": "#131a2c", "stroke": "#4a5580", "color": "#b0bcd0"}}, "edgeStyles": {"direct": {"stroke": "#ef5350", "strokeWidth": 3}, "inverse": {"stroke": "#42a5f5", "strokeWidth": 1, "arrow": "-.->"}, "neutral": {"stroke": "#aaa", "strokeWidth": 2}}, "paintBySemantic": true, "fontSize": 15};
+</script>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: false, theme: 'dark',
+    flowchart: { htmlLabels: true, curve: 'basis' } });
+  try { await mermaid.run(); } catch (_) {}
+  // KaTeX is loaded via a defer script which may not have executed yet
+  // when this module runs.  Poll briefly (defer + module ordering is
+  // not guaranteed across browsers).
+  for (let i = 0; i < 50 && !window.katex; i++)
+    await new Promise(r => setTimeout(r, 50));
+  if (window.katex) {
+    const INLINE_MATH = /\$([^$\n]+)\$/g;
+    document.querySelectorAll(
+      'foreignObject span, foreignObject div, foreignObject p, .nodeLabel'
+    ).forEach((host) => {
+      if (!host.textContent || host.textContent.indexOf('$') === -1) return;
+      const walker = document.createTreeWalker(host, NodeFilter.SHOW_TEXT, null);
+      const textNodes = [];
+      while (walker.nextNode()) textNodes.push(walker.currentNode);
+      textNodes.forEach((tn) => {
+        const src = tn.nodeValue;
+        if (!src || src.indexOf('$') === -1) return;
+        INLINE_MATH.lastIndex = 0;
+        if (!INLINE_MATH.test(src)) return;
+        INLINE_MATH.lastIndex = 0;
+        const frag = document.createDocumentFragment();
+        let last = 0, m;
+        while ((m = INLINE_MATH.exec(src)) !== null) {
+          if (m.index > last)
+            frag.appendChild(document.createTextNode(src.slice(last, m.index)));
+          const span = document.createElement('span');
+          try { katex.render(m[1], span, { throwOnError: false, displayMode: false }); }
+          catch (_) { span.textContent = m[0]; }
+          frag.appendChild(span);
+          last = m.index + m[0].length;
+        }
+        if (last < src.length)
+          frag.appendChild(document.createTextNode(src.slice(last)));
+        tn.parentNode.replaceChild(frag, tn);
+      });
+    });
+    document.querySelectorAll('svg g.node foreignObject').forEach((fo) => {
+      const outer = fo.firstElementChild;
+      if (!outer || outer.dataset?.gvCentered === 'wrapper') return;
+      const NS = 'http://www.w3.org/1999/xhtml';
+      const wrapper = document.createElementNS(NS, 'div');
+      wrapper.dataset.gvCentered = 'wrapper';
+      Object.assign(wrapper.style, {
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        width: '100%', height: '100%',
+      });
+      fo.replaceChild(wrapper, outer);
+      wrapper.appendChild(outer);
+    });
+    // Resize foreignObject + parent node rect after KaTeX renders accents
+    document.querySelectorAll('svg g.node foreignObject').forEach((fo) => {
+      const content = fo.querySelector('[data-gv-centered="wrapper"]') || fo.firstElementChild;
+      if (!content) return;
+      const bbox = content.getBoundingClientRect();
+      const foRect = fo.getBoundingClientRect();
+      // Only expand if content is taller/wider than current foreignObject
+      const PAD = 8;
+      const neededH = bbox.height + PAD;
+      const neededW = bbox.width + PAD;
+      const curH = parseFloat(fo.getAttribute('height')) || foRect.height;
+      const curW = parseFloat(fo.getAttribute('width')) || foRect.width;
+      if (neededH > curH) {
+        const dh = neededH - curH;
+        fo.setAttribute('height', neededH);
+        // Shift foreignObject up by half the delta to keep node centered
+        const curY = parseFloat(fo.getAttribute('y')) || 0;
+        fo.setAttribute('y', curY - dh / 2);
+        // Also expand parent rect/polygon
+        const nodeG = fo.closest('g.node');
+        if (nodeG) {
+          const rect = nodeG.querySelector('rect, .basic');
+          if (rect) {
+            const rh = parseFloat(rect.getAttribute('height')) || 0;
+            if (rh && rh < neededH) {
+              rect.setAttribute('height', neededH);
+              const ry = parseFloat(rect.getAttribute('y')) || 0;
+              rect.setAttribute('y', ry - dh / 2);
+            }
+          }
+        }
+      }
+      if (neededW > curW) {
+        const dw = neededW - curW;
+        fo.setAttribute('width', neededW);
+        const curX = parseFloat(fo.getAttribute('x')) || 0;
+        fo.setAttribute('x', curX - dw / 2);
+        const nodeG = fo.closest('g.node');
+        if (nodeG) {
+          const rect = nodeG.querySelector('rect, .basic');
+          if (rect) {
+            const rw = parseFloat(rect.getAttribute('width')) || 0;
+            if (rw && rw < neededW) {
+              rect.setAttribute('width', neededW);
+              const rx = parseFloat(rect.getAttribute('x')) || 0;
+              rect.setAttribute('x', rx - dw / 2);
+            }
+          }
+        }
+      }
+    });
+    // Fix KaTeX accent arrow colors: SVG paths inside foreignObject
+    // default to fill:black which is invisible on dark backgrounds.
+    // Use inline style (not attribute) to override any CSS rules.
+    document.querySelectorAll('svg g.node foreignObject .katex svg path').forEach((p) => {
+      const textColor = window.getComputedStyle(p.closest('.katex')).color;
+      p.style.fill = textColor;
+    });
+  }
+</script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: #30363d;
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: #8b949e; }
+  ::-webkit-scrollbar-corner { background: transparent; }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #30363d transparent;
+  }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0d1117;
+    color: #e6edf3;
+    padding: 2rem;
+  }
+  h1 {
+    font-size: 1.4rem;
+    margin-bottom: 0.5rem;
+  }
+  .report-meta {
+    font-size: 0.8rem;
+    color: #8b949e;
+    margin-bottom: 2rem;
+  }
+  .section-title {
+    font-size: 1.1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #8b949e;
+    margin: 2rem 0 1rem 0;
+    border-bottom: 1px solid #30363d;
+    padding-bottom: 0.5rem;
+  }
+  .row {
+    display: grid;
+    grid-template-columns: 1fr 2fr auto;
+    gap: 1rem;
+    align-items: start;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 1rem 1.2rem;
+    margin-bottom: 0.75rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  }
+  .row-id {
+    font-family: monospace;
+    font-size: 0.7rem;
+    color: #8b949e;
+    margin-bottom: 0.3rem;
+  }
+  .row-latex {
+    font-size: 1.2rem;
+    padding: 0.5rem 0;
+  }
+  .row-graph {
+    min-width: 0;
+    overflow-x: auto;
+  }
+  .row-graph .mermaid {
+    font-size: 0.85rem;
+  }
+  .row-graph .mermaid svg g.node foreignObject {
+    overflow: visible !important;
+  }
+  /* KaTeX accent arrows (e.g. ec) render as SVG paths that default
+     to fill:black — invisible on dark backgrounds. Inherit text color. */
+  .katex .accent-body svg path,
+  .katex .overlay svg path {
+    fill: currentColor;
+  }
+  .row-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    align-self: center;
+  }
+  .row-toggle,
+  .row-toggle-d3 {
+    background: none;
+    border: 1px solid #30363d;
+    border-radius: 4px;
+    color: #8b949e;
+    font-family: monospace;
+    font-size: 0.75rem;
+    padding: 0.2rem 0.5rem;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .row-toggle:hover,
+  .row-toggle-d3:hover {
+    color: #e6edf3;
+    border-color: #e6edf3;
+  }
+  .row-panel {
+    display: none;
+    grid-column: 1 / -1;
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    padding: 0.8rem;
+    font-family: monospace;
+    font-size: 0.7rem;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 400px;
+    overflow: auto;
+  }
+  .row-panel.open {
+    display: block;
+  }
+  .row-error {
+    grid-column: 2 / 3;
+    background: #2d1b1b;
+    border: 1px solid #6b2020;
+    border-radius: 6px;
+    padding: 0.5rem 0.8rem;
+    font-family: monospace;
+    font-size: 0.75rem;
+    color: #f87171;
+    white-space: pre-wrap;
+  }
+  .summary {
+    margin-top: 2rem;
+    padding: 1rem;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    font-size: 0.85rem;
+  }
+  .summary .count {
+    font-weight: 600;
+  }
+  .row-panel.row-latex-src {
+    position: relative;
+  }
+  .row-copy-latex {
+    position: absolute;
+    top: 0.4rem;
+    right: 0.4rem;
+  }
+  .row-panel.row-json,
+  .row-panel.row-sympy,
+  .row-panel.row-js {
+    display: none;
+    padding: 0;
+  }
+  .row-panel.row-json.open,
+  .row-panel.row-sympy.open,
+  .row-panel.row-js.open {
+    display: flex;
+    gap: 1px;
+  }
+  .row-json-pane {
+    flex: 1;
+    min-width: 0;
+    max-height: 400px;
+    overflow: auto;
+    padding: 0.5rem 0.8rem;
+    position: relative;
+  }
+  .row-json-pane pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 0.7rem;
+    line-height: 1.4;
+  }
+  .row-json-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    background: #161b22;
+    padding: 0.2rem 0;
+    z-index: 1;
+    margin-bottom: 0.3rem;
+  }
+  .row-json-label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #8b949e;
+  }
+  .row-copy-btn {
+    background: none;
+    border: 1px solid #30363d;
+    border-radius: 3px;
+    color: #8b949e;
+    font-size: 0.6rem;
+    padding: 1px 5px;
+    cursor: pointer;
+    line-height: 1.3;
+  }
+  .row-copy-btn:hover {
+    color: #e6edf3;
+    border-color: #e6edf3;
+  }
+  .row-copy-btn.copied {
+    color: #66bb6a;
+    border-color: #66bb6a;
+  }
+  .row-toggle.active {
+    color: #e6edf3;
+    border-color: #e6edf3;
+    background: #0d1117;
+  }
+  .row-panel.row-d3 {
+    position: relative;
+    height: 400px;
+    padding: 0;
+    overflow: hidden;
+    font-family: inherit;
+    white-space: normal;
+    word-break: normal;
+  }
+  .row-panel.row-d3.open {
+    display: block;
+  }
+  .row-d3-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #8b949e;
+    font-size: 0.85rem;
+  }
+  /* D3 Semantic Graph Renderer — dark theme styles */
+
+.d3-graph-card {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+svg.d3-semantic-graph {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+/* Nodes are clickable — show the hand cursor over the whole node (cursor is
+   inherited, so the bg shapes / labels / hit target all pick it up). */
+.d3sg-node { cursor: pointer; }
+
+/* Variable nodes — fill/stroke set by theme via inline attributes */
+.d3sg-var-bg {
+    stroke-width: 1.5px;
+    transition: filter 0.12s ease-out;
+}
+.d3sg-node:hover .d3sg-var-bg {
+    filter: brightness(1.3);
+}
+
+/* Operator nodes — fill/stroke set by theme via inline attributes */
+.d3sg-op-bg {
+    stroke-width: 1.5px;
+    transition: filter 0.12s ease-out;
+}
+.d3sg-node:hover .d3sg-op-bg {
+    filter: brightness(1.3);
+}
+
+/* Live-terms hover halo — driven by highlightNodeById() when a learner hovers
+   the LINKED term in a docked proof animation. Mirrors a real mouse hover (the
+   same brightness lift) plus a coloured glow so the cross-highlight reads as a
+   halo, matching the term's own halo in the proof box. Green for data nodes,
+   blue for operators — same hues as the .selected glow. */
+.d3sg-node.d3sg-live-hover .d3sg-var-bg {
+    filter: brightness(1.25) drop-shadow(0 0 6px rgba(109, 240, 142, 0.65));
+}
+.d3sg-node.d3sg-live-hover .d3sg-op-bg {
+    filter: brightness(1.25) drop-shadow(0 0 6px rgba(126, 168, 255, 0.65));
+}
+.d3sg-node.d3sg-live-hover .d3sg-tile-bg {
+    filter: brightness(1.2) drop-shadow(0 0 6px rgba(126, 168, 255, 0.6));
+}
+
+/* Collapsed tile — fill/stroke set by theme via inline attributes */
+.d3sg-tile-bg {
+    stroke-width: 2px;
+    transition: filter 0.12s ease-out;
+}
+.d3sg-node:hover .d3sg-tile-bg {
+    filter: brightness(1.25);
+}
+
+/* Node labels */
+.d3sg-label {
+    fill: #dde6ff;
+    pointer-events: none;
+    user-select: none;
+}
+
+.d3sg-katex-host {
+    color: #dde6ff;
+    font-size: 17px;
+    pointer-events: none;
+    user-select: none;
+}
+
+.d3sg-katex-host .katex {
+    font-size: 0.9em;
+}
+
+/* Edge labels */
+.d3sg-edge-label {
+    fill: #aebbd1;
+    font-size: 11px;
+    paint-order: stroke;
+    stroke: #131a2c;
+    stroke-width: 4px;
+    pointer-events: auto;   /* so the hand cursor shows over edge text */
+    cursor: pointer;
+}
+.d3sg-role-label {
+    fill: #8fa8c8;
+    font-size: 10px;
+    font-style: italic;
+}
+.d3sg-role-lhs,
+.d3sg-role-rhs {
+    stroke-dasharray: none;
+}
+
+/* Chevron (collapse/expand button) */
+.d3sg-chevron {
+    opacity: 0;
+    cursor: pointer;
+    pointer-events: all;
+    transition: opacity 0.12s ease-out;
+}
+.d3sg-node:hover .d3sg-chevron {
+    opacity: 0.7;
+}
+.d3sg-chevron:hover {
+    opacity: 1 !important;
+}
+
+/* Invisible hit target for flat themes */
+.d3sg-hit-target {
+    transition: stroke 0.12s ease-out, stroke-opacity 0.12s ease-out;
+}
+.d3sg-node:hover .d3sg-hit-target {
+    stroke: #7ea8ff !important;
+    stroke-width: 1.5px !important;
+    stroke-opacity: 0.4;
+}
+
+/* Active node ring */
+.d3sg-node.active .d3sg-var-bg {
+    stroke: #6df08e;
+    stroke-width: 2.5px;
+}
+.d3sg-node.active .d3sg-op-bg {
+    stroke: #7ea8ff;
+    stroke-width: 2.5px;
+}
+.d3sg-node.active .d3sg-tile-bg {
+    stroke: #7ea8ff;
+    stroke-width: 2.5px;
+}
+
+/* Multi-selected node ring */
+.d3sg-node.selected .d3sg-var-bg {
+    stroke: #6df08e;
+    stroke-width: 2.5px;
+    filter: drop-shadow(0 0 6px rgba(109, 240, 142, 0.5));
+}
+.d3sg-node.selected .d3sg-op-bg {
+    stroke: #7ea8ff;
+    stroke-width: 2.5px;
+    filter: drop-shadow(0 0 6px rgba(126, 168, 255, 0.5));
+}
+.d3sg-node.selected .d3sg-tile-bg {
+    stroke: #7ea8ff;
+    stroke-width: 2.5px;
+    filter: drop-shadow(0 0 6px rgba(126, 168, 255, 0.5));
+}
+.d3sg-node.selected .d3sg-hit-target {
+    stroke: #7ea8ff !important;
+    stroke-width: 2px !important;
+    stroke-opacity: 0.6;
+}
+
+/* Annotation overlay — stacked at bottom of graph viewport */
+.d3sg-annotation-overlay {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    pointer-events: none;
+    z-index: 10;
+    max-width: min(90%, 420px);
+}
+
+.d3sg-anno-card {
+    position: relative;
+    pointer-events: all;
+    border: 1px dashed;
+    border-radius: 8px;
+    padding: 10px 36px 10px 18px;
+    font-size: 0.78rem;
+    font-style: italic;
+    line-height: 1.45;
+    backdrop-filter: blur(8px);
+    opacity: 0.92;
+    text-align: center;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.d3sg-anno-content {
+    display: block;
+    text-align: center;
+}
+
+.d3sg-anno-card .katex {
+    font-size: 1.1em;
+}
+
+.d3sg-anno-ai-btn {
+    position: absolute;
+    top: 50%;
+    right: 6px;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(100, 110, 255, 0.15);
+    color: rgba(160, 170, 255, 0.8);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    opacity: 0;
+    transition: opacity 0.15s, background 0.15s, color 0.15s;
+}
+
+.d3sg-anno-card:hover .d3sg-anno-ai-btn,
+.d3sg-anno-card:focus-within .d3sg-anno-ai-btn {
+    opacity: 1;
+}
+
+.d3sg-anno-ai-btn:hover {
+    background: rgba(100, 110, 255, 0.35);
+    color: #c0c8ff;
+}
+
+/* Edge semantics legend — bottom-right corner of graph viewport.
+   The chart legend panel docks to its left and the enrichment-progress
+   indicator stacks on top (see sg-chart.css / graph-view.js). */
+.d3sg-edge-legend {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 10px;
+    background: rgba(10, 12, 26, 0.75);
+    border: 1px solid rgba(110, 124, 180, 0.35);
+    border-radius: 6px;
+    font-size: 0.72rem;
+    color: rgba(210, 218, 245, 0.92);
+    letter-spacing: 0.02em;
+    z-index: 2;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    pointer-events: none;
+    user-select: none;
+}
+.d3sg-edge-legend.hidden { display: none; }
+.d3sg-edge-legend-title {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    opacity: 0.65;
+    margin-bottom: 2px;
+}
+.d3sg-edge-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.d3sg-edge-legend-swatch {
+    --legend-stroke: currentColor;
+    --legend-stroke-width: 2px;
+    position: relative;
+    display: inline-block;
+    width: 30px;
+    height: 12px;
+    flex-shrink: 0;
+}
+.d3sg-edge-legend-swatch::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 22px;
+    height: var(--legend-stroke-width);
+    background: var(--legend-stroke);
+    transform: translateY(-50%);
+}
+.d3sg-edge-legend-swatch[data-arrow="-.->"]::before,
+.d3sg-edge-legend-swatch[data-arrow="-.-"]::before {
+    background: none;
+    border-top: var(--legend-stroke-width) dotted var(--legend-stroke);
+    height: 0;
+}
+.d3sg-edge-legend-swatch[data-arrow="==>"]::before,
+.d3sg-edge-legend-swatch[data-arrow="==="]::before {
+    box-shadow: 0 -2px 0 var(--legend-stroke), 0 2px 0 var(--legend-stroke);
+}
+.d3sg-edge-legend-swatch::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    top: 50%;
+    width: 0;
+    height: 0;
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    border-left: 8px solid var(--legend-stroke);
+    transform: translateY(-50%);
+}
+.d3sg-edge-legend-swatch[data-arrow="---"]::after,
+.d3sg-edge-legend-swatch[data-arrow="==="]::after,
+.d3sg-edge-legend-swatch[data-arrow="-.-"]::after {
+    display: none;
+}
+
+  /* SgChartManager — chart plotting overlay for semantic graph nodes */
+
+/* ── Chart button on nodes ──────────────────────────────────────────── */
+.d3sg-chart-btn {
+    opacity: 0;
+    cursor: pointer;
+    pointer-events: all;
+    transition: opacity 0.12s ease-out;
+}
+.d3sg-node:hover .d3sg-chart-btn {
+    opacity: 0.7;
+}
+.d3sg-chart-btn:hover {
+    opacity: 1 !important;
+}
+
+/* ── Chart box (inline or pinned) ───────────────────────────────────── */
+.sgc-chart-box {
+    width: 340px;
+    background: rgba(10, 12, 26, 0.92);
+    border: 1px solid rgba(110, 124, 180, 0.35);
+    border-radius: 8px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    transition: box-shadow 0.2s ease;
+}
+.sgc-chart-box:hover {
+    box-shadow: 0 6px 28px rgba(0, 0, 0, 0.55);
+}
+
+.sgc-chart-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    border-bottom: 1px solid rgba(110, 124, 180, 0.2);
+    gap: 8px;
+    min-height: 36px;
+}
+.sgc-chart-box:not(.sgc-pinned) .sgc-chart-header {
+    cursor: grab;
+}
+.sgc-chart-box:not(.sgc-pinned) .sgc-chart-header:active {
+    cursor: grabbing;
+}
+
+.sgc-chart-title {
+    font-size: 0.78rem;
+    color: #dde6ff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
+}
+.sgc-chart-title .katex {
+    font-size: 0.85em;
+}
+
+.sgc-chart-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.sgc-x-select {
+    background: rgba(30, 40, 70, 0.8);
+    border: 1px solid rgba(110, 124, 180, 0.3);
+    border-radius: 4px;
+    color: #aebbd1;
+    font-size: 0.7rem;
+    padding: 2px 4px;
+    cursor: pointer;
+    outline: none;
+    max-width: 70px;
+}
+.sgc-x-select:hover {
+    border-color: rgba(110, 124, 180, 0.6);
+    color: #dde6ff;
+}
+.sgc-x-select:focus {
+    border-color: #42a5f5;
+}
+
+.sgc-btn {
+    background: none;
+    border: 1px solid rgba(110, 124, 180, 0.25);
+    border-radius: 4px;
+    color: #7e8aa3;
+    cursor: pointer;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    padding: 0;
+    transition: all 0.12s ease;
+}
+.sgc-btn:hover {
+    background: rgba(110, 124, 180, 0.15);
+    border-color: rgba(110, 124, 180, 0.5);
+    color: #dde6ff;
+}
+
+.sgc-pin-btn {
+    font-size: 0.65rem;
+}
+.sgc-pin-btn.sgc-pin-active {
+    background: rgba(66, 165, 245, 0.25);
+    border-color: rgba(66, 165, 245, 0.5);
+    color: #42a5f5;
+}
+
+.sgc-close-btn {
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.sgc-canvas-wrap {
+    position: relative;
+    height: 200px;
+    padding: 6px 8px 8px 4px;
+}
+.sgc-canvas-wrap canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* ── Pinned charts panel — top of viewport, stacks left→right ─────── */
+.sgc-pinned-panel {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    z-index: 30;
+    pointer-events: none;
+}
+.sgc-pinned-panel:empty {
+    display: none;
+}
+
+.sgc-chart-box.sgc-pinned {
+    pointer-events: all;
+    flex-shrink: 0;
+    position: relative;
+}
+
+/* ── Resize handle for pinned charts ───────────────────────────────── */
+.sgc-resize-handle {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 18px;
+    height: 18px;
+    cursor: nwse-resize;
+    z-index: 5;
+}
+.sgc-resize-handle::after {
+    content: '';
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid rgba(110, 124, 180, 0.4);
+    border-bottom: 2px solid rgba(110, 124, 180, 0.4);
+}
+.sgc-resize-handle:hover::after {
+    border-color: rgba(140, 160, 220, 0.7);
+}
+
+/* ── Slider panel — bottom-left ───────────────────────────────────── */
+.sgc-slider-panel {
+    position: absolute;
+    left: 8px;
+    bottom: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 12px;
+    background: rgba(10, 12, 26, 0.82);
+    border: 1px solid rgba(110, 124, 180, 0.35);
+    border-radius: 6px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 25;
+    min-width: 200px;
+    max-width: 300px;
+    pointer-events: all;
+}
+.sgc-slider-panel.hidden {
+    display: none;
+}
+
+.sgc-slider-title {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(210, 218, 245, 0.55);
+    margin-bottom: 2px;
+}
+
+.sgc-slider-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sgc-slider-label {
+    font-size: 0.78rem;
+    color: #aebbd1;
+    min-width: 28px;
+    text-align: right;
+    flex-shrink: 0;
+}
+.sgc-slider-label .katex {
+    font-size: 0.85em;
+}
+
+.sgc-slider {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    background: rgba(110, 124, 180, 0.25);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+}
+.sgc-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #42a5f5;
+    border: 2px solid rgba(10, 12, 26, 0.8);
+    cursor: pointer;
+    transition: background 0.12s;
+}
+.sgc-slider::-webkit-slider-thumb:hover {
+    background: #64b5f6;
+}
+.sgc-slider::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #42a5f5;
+    border: 2px solid rgba(10, 12, 26, 0.8);
+    cursor: pointer;
+}
+
+.sgc-slider-value {
+    font-size: 0.7rem;
+    color: #7e8aa3;
+    min-width: 42px;
+    text-align: left;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── Legend panel — bottom-right ──────────────────────────────────── */
+.sgc-legend-panel {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 10px;
+    background: rgba(10, 12, 26, 0.82);
+    border: 1px solid rgba(110, 124, 180, 0.35);
+    border-radius: 6px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 25;
+    pointer-events: none;
+}
+.sgc-legend-panel.hidden {
+    display: none;
+}
+
+.sgc-legend-title {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(210, 218, 245, 0.55);
+    margin-bottom: 2px;
+}
+
+.sgc-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.sgc-legend-swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+.sgc-legend-name {
+    font-size: 0.72rem;
+    color: rgba(210, 218, 245, 0.9);
+}
+.sgc-legend-name .katex {
+    font-size: 0.85em;
+}
+
+/* ── Code button (show mathjs script) ────────────────────────────── */
+.sgc-code-btn {
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.65rem;
+    letter-spacing: -0.03em;
+}
+
+/* ── Script tooltip popover ──────────────────────────────────────── */
+.sgc-script-tooltip {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 4px;
+    padding: 8px 10px;
+    background: rgba(18, 22, 40, 0.96);
+    border: 1px solid rgba(110, 124, 180, 0.4);
+    border-radius: 6px;
+    color: #b8c8e8;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.72rem;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-width: 320px;
+    min-width: 140px;
+    z-index: 50;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+    pointer-events: auto;
+}
+
+/* ── Error state in canvas area ──────────────────────────────────── */
+.sgc-canvas-wrap.sgc-chart-error {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(239, 83, 80, 0.06);
+    border-top: 1px solid rgba(239, 83, 80, 0.15);
+}
+
+.sgc-error-message {
+    padding: 16px 20px;
+    color: rgba(239, 130, 128, 0.85);
+    font-size: 0.75rem;
+    line-height: 1.5;
+    text-align: center;
+    max-width: 90%;
+}
+
+</style>
+</head>
+<body>
+<h1>Semantic Graph &mdash; Visual Examination Report</h1>
+<div class="report-meta">Generated 2026-07-21 02:32 UTC &middot; theme: default-dark &middot; 10 expressions</div>
+<div class="section-title">ODE (10 expressions)</div>
+<div class="row">
+  <div>
+    <div class="row-id">first_order</div>
+    <div class="row-latex">$$\frac{dy}{dx} = ky$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  y["$y$"]:::scalar
+  x["$x$"]:::scalar
+  __deriv_2(("$\dfrac{d}{d x}$")):::operator
+  __multiply_3(("$\times$")):::operator
+  k["$k$"]:::scalar
+  y --&gt; __deriv_2
+  x --&gt;|wrt| __deriv_2
+  __deriv_2 --&gt; __equals_1
+  k --&gt; __multiply_3
+  y --&gt; __multiply_3
+  __multiply_3 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  linkStyle 4 stroke:#ef5350,stroke-width:3px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle" data-target="row-sympy" title="Toggle SymPy expression">SymPy</button>
+    <button class="row-toggle" data-target="row-js" title="Toggle math.js (JS) expression">JS</button>
+    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
+  </div>
+  <div class="row-panel row-latex-src" data-latex="\frac{dy}{dx} = ky"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>\frac{dy}{dx} = ky</div>
+  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
+  "nodes": [
+    {
+      "id": "__equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "\\frac{dy}{dx} = ky",
+      "chartScript": {
+        "script": "-k*y",
+        "variables": [
+          "k",
+          "y"
+        ]
+      }
+    },
+    {
+      "id": "y",
+      "type": "scalar",
+      "latex": "y",
+      "subexpr": "y",
+      "chartScript": {
+        "script": "y",
+        "variables": [
+          "y"
+        ]
+      }
+    },
+    {
+      "id": "x",
+      "type": "scalar",
+      "latex": "x",
+      "subexpr": "x",
+      "chartScript": {
+        "script": "x",
+        "variables": [
+          "x"
+        ]
+      }
+    },
+    {
+      "id": "__deriv_2",
+      "type": "operator",
+      "op": "derivative",
+      "with_respect_to": "x",
+      "subexpr": "\\frac{d}{d x} y",
+      "chartScript": {
+        "script": "0",
+        "variables": []
+      }
+    },
+    {
+      "id": "__multiply_3",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "y k",
+      "chartScript": {
+        "script": "k*y",
+        "variables": [
+          "k",
+          "y"
+        ]
+      }
+    },
+    {
+      "id": "k",
+      "type": "scalar",
+      "latex": "k",
+      "subexpr": "k",
+      "chartScript": {
+        "script": "k",
+        "variables": [
+          "k"
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "y",
+      "to": "__deriv_2"
+    },
+    {
+      "from": "x",
+      "to": "__deriv_2",
+      "role": "wrt"
+    },
+    {
+      "from": "__deriv_2",
+      "to": "__equals_1"
+    },
+    {
+      "from": "k",
+      "to": "__multiply_3",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "y",
+      "to": "__multiply_3",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_3",
+      "to": "__equals_1"
+    }
+  ],
+  "classification": {
+    "kind": "ODE",
+    "order": 1,
+    "dependent_variables": [
+      "y"
+    ],
+    "independent_variables": [
+      "x"
+    ],
+    "sympy_hints": [
+      "separable",
+      "1st_exact",
+      "1st_linear",
+      "Bernoulli",
+      "almost_linear",
+      "1st_power_series",
+      "lie_group",
+      "nth_linear_constant_coeff_homogeneous"
+    ],
+    "linear": true,
+    "homogeneous": true,
+    "constant_coefficients": true
+  }
+}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  y["$y$"]:::scalar
+  x["$x$"]:::scalar
+  __deriv_2(("$\dfrac{d}{d x}$")):::operator
+  __multiply_3(("$\times$")):::operator
+  k["$k$"]:::scalar
+  y --&gt; __deriv_2
+  x --&gt;|wrt| __deriv_2
+  __deriv_2 --&gt; __equals_1
+  k --&gt; __multiply_3
+  y --&gt; __multiply_3
+  __multiply_3 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  linkStyle 4 stroke:#ef5350,stroke-width:3px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+</pre></div></div>
+  <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(Derivative(y, x), k*y)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(Derivative(Symbol('y'), Tuple(Symbol('x'), Integer(1))), Mul(Symbol('k'), Symbol('y')))</pre></div></div>
+  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>-k*y</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>k, y</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\frac{dy}{dx} = ky&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-k*y&quot;,&quot;variables&quot;:[&quot;k&quot;,&quot;y&quot;]}},{&quot;id&quot;:&quot;y&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;y&quot;,&quot;subexpr&quot;:&quot;y&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;y&quot;,&quot;variables&quot;:[&quot;y&quot;]}},{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;__deriv_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;derivative&quot;,&quot;with_respect_to&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;\\frac{d}{d x} y&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__multiply_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;y k&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;k*y&quot;,&quot;variables&quot;:[&quot;k&quot;,&quot;y&quot;]}},{&quot;id&quot;:&quot;k&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;k&quot;,&quot;subexpr&quot;:&quot;k&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;k&quot;,&quot;variables&quot;:[&quot;k&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;y&quot;,&quot;to&quot;:&quot;__deriv_2&quot;},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__deriv_2&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;__deriv_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;k&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;y&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_3&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;ODE&quot;,&quot;order&quot;:1,&quot;dependent_variables&quot;:[&quot;y&quot;],&quot;independent_variables&quot;:[&quot;x&quot;],&quot;sympy_hints&quot;:[&quot;separable&quot;,&quot;1st_exact&quot;,&quot;1st_linear&quot;,&quot;Bernoulli&quot;,&quot;almost_linear&quot;,&quot;1st_power_series&quot;,&quot;lie_group&quot;,&quot;nth_linear_constant_coeff_homogeneous&quot;],&quot;linear&quot;:true,&quot;homogeneous&quot;:true,&quot;constant_coefficients&quot;:true}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+</div>
+<div class="row">
+  <div>
+    <div class="row-id">separable</div>
+    <div class="row-latex">$$\frac{dy}{dx} = \frac{x}{y}$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  y["$y$"]:::scalar
+  x["$x$"]:::scalar
+  __deriv_2(("$\dfrac{d}{d x}$")):::operator
+  __multiply_3(("$\times$")):::operator
+  __power_4(("$\dfrac{1}{(\cdot)}$")):::operator
+  y --&gt; __deriv_2
+  x --&gt;|wrt| __deriv_2
+  __deriv_2 --&gt; __equals_1
+  x --&gt; __multiply_3
+  y --&gt; __power_4
+  __power_4 -.-&gt; __multiply_3
+  __multiply_3 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#42a5f5,stroke-width:1px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle" data-target="row-sympy" title="Toggle SymPy expression">SymPy</button>
+    <button class="row-toggle" data-target="row-js" title="Toggle math.js (JS) expression">JS</button>
+    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
+  </div>
+  <div class="row-panel row-latex-src" data-latex="\frac{dy}{dx} = \frac{x}{y}"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>\frac{dy}{dx} = \frac{x}{y}</div>
+  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
+  "nodes": [
+    {
+      "id": "__equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "\\frac{dy}{dx} = \\frac{x}{y}",
+      "chartScript": {
+        "script": "-x/y",
+        "variables": [
+          "x",
+          "y"
+        ]
+      }
+    },
+    {
+      "id": "y",
+      "type": "scalar",
+      "latex": "y",
+      "subexpr": "y",
+      "chartScript": {
+        "script": "y",
+        "variables": [
+          "y"
+        ]
+      }
+    },
+    {
+      "id": "x",
+      "type": "scalar",
+      "latex": "x",
+      "subexpr": "x",
+      "chartScript": {
+        "script": "x",
+        "variables": [
+          "x"
+        ]
+      }
+    },
+    {
+      "id": "__deriv_2",
+      "type": "operator",
+      "op": "derivative",
+      "with_respect_to": "x",
+      "subexpr": "\\frac{d}{d x} y",
+      "chartScript": {
+        "script": "0",
+        "variables": []
+      }
+    },
+    {
+      "id": "__multiply_3",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "\\frac{1}{y} x",
+      "chartScript": {
+        "script": "x/y",
+        "variables": [
+          "x",
+          "y"
+        ]
+      }
+    },
+    {
+      "id": "__power_4",
+      "type": "operator",
+      "latex": "\\dfrac{1}{(\\cdot)}",
+      "op": "power",
+      "exponent": "-1",
+      "subexpr": "\\frac{1}{y}",
+      "chartScript": {
+        "script": "1/y",
+        "variables": [
+          "y"
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "y",
+      "to": "__deriv_2"
+    },
+    {
+      "from": "x",
+      "to": "__deriv_2",
+      "role": "wrt"
+    },
+    {
+      "from": "__deriv_2",
+      "to": "__equals_1"
+    },
+    {
+      "from": "x",
+      "to": "__multiply_3",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "y",
+      "to": "__power_4"
+    },
+    {
+      "from": "__power_4",
+      "to": "__multiply_3"
+    },
+    {
+      "from": "__multiply_3",
+      "to": "__equals_1"
+    }
+  ],
+  "classification": {
+    "kind": "ODE",
+    "order": 1,
+    "dependent_variables": [
+      "y"
+    ],
+    "independent_variables": [
+      "x"
+    ],
+    "sympy_hints": [
+      "separable",
+      "1st_exact",
+      "Bernoulli",
+      "1st_homogeneous_coeff_best",
+      "1st_homogeneous_coeff_subs_indep_div_dep",
+      "1st_homogeneous_coeff_subs_dep_div_indep",
+      "1st_power_series",
+      "lie_group"
+    ],
+    "linear": false,
+    "homogeneous": true,
+    "constant_coefficients": false
+  }
+}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  y["$y$"]:::scalar
+  x["$x$"]:::scalar
+  __deriv_2(("$\dfrac{d}{d x}$")):::operator
+  __multiply_3(("$\times$")):::operator
+  __power_4(("$\dfrac{1}{(\cdot)}$")):::operator
+  y --&gt; __deriv_2
+  x --&gt;|wrt| __deriv_2
+  __deriv_2 --&gt; __equals_1
+  x --&gt; __multiply_3
+  y --&gt; __power_4
+  __power_4 -.-&gt; __multiply_3
+  __multiply_3 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#42a5f5,stroke-width:1px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+</pre></div></div>
+  <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(Derivative(y, x), x/y)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(Derivative(Symbol('y'), Tuple(Symbol('x'), Integer(1))), Mul(Symbol('x'), Pow(Symbol('y'), Integer(-1))))</pre></div></div>
+  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>-x/y</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>x, y</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\frac{dy}{dx} = \\frac{x}{y}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-x/y&quot;,&quot;variables&quot;:[&quot;x&quot;,&quot;y&quot;]}},{&quot;id&quot;:&quot;y&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;y&quot;,&quot;subexpr&quot;:&quot;y&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;y&quot;,&quot;variables&quot;:[&quot;y&quot;]}},{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;__deriv_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;derivative&quot;,&quot;with_respect_to&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;\\frac{d}{d x} y&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__multiply_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{y} x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x/y&quot;,&quot;variables&quot;:[&quot;x&quot;,&quot;y&quot;]}},{&quot;id&quot;:&quot;__power_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{y}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1/y&quot;,&quot;variables&quot;:[&quot;y&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;y&quot;,&quot;to&quot;:&quot;__deriv_2&quot;},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__deriv_2&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;__deriv_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;y&quot;,&quot;to&quot;:&quot;__power_4&quot;},{&quot;from&quot;:&quot;__power_4&quot;,&quot;to&quot;:&quot;__multiply_3&quot;},{&quot;from&quot;:&quot;__multiply_3&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;ODE&quot;,&quot;order&quot;:1,&quot;dependent_variables&quot;:[&quot;y&quot;],&quot;independent_variables&quot;:[&quot;x&quot;],&quot;sympy_hints&quot;:[&quot;separable&quot;,&quot;1st_exact&quot;,&quot;Bernoulli&quot;,&quot;1st_homogeneous_coeff_best&quot;,&quot;1st_homogeneous_coeff_subs_indep_div_dep&quot;,&quot;1st_homogeneous_coeff_subs_dep_div_indep&quot;,&quot;1st_power_series&quot;,&quot;lie_group&quot;],&quot;linear&quot;:false,&quot;homogeneous&quot;:true,&quot;constant_coefficients&quot;:false}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+</div>
+<div class="row">
+  <div>
+    <div class="row-id">bernoulli</div>
+    <div class="row-latex">$$\frac{dy}{dx} + P(x) y = Q(x) y^n$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  __add_2(("$+$")):::operator
+  y["$y$"]:::scalar
+  x["$x$"]:::scalar
+  __deriv_3(("$\dfrac{d}{d x}$")):::operator
+  __multiply_4(("$\times$")):::operator
+  __P_5{{"$P(\cdot)$"}}:::function
+  __multiply_6(("$\times$")):::operator
+  __Q_7{{"$Q(\cdot)$"}}:::function
+  __power_8(("$(\cdot)^{\cdot}$")):::operator
+  n["$n$"]:::scalar
+  y --&gt; __deriv_3
+  x --&gt;|wrt| __deriv_3
+  __deriv_3 --&gt; __add_2
+  x --&gt; __P_5
+  __P_5 --&gt; __multiply_4
+  y --&gt; __multiply_4
+  __multiply_4 --&gt; __add_2
+  __add_2 --&gt; __equals_1
+  x --&gt; __Q_7
+  __Q_7 --&gt; __multiply_6
+  y --&gt; __power_8
+  n --&gt;|exp| __power_8
+  __power_8 --&gt; __multiply_6
+  __multiply_6 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#ef5350,stroke-width:3px
+  linkStyle 5 stroke:#ef5350,stroke-width:3px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#ef5350,stroke-width:3px
+  linkStyle 10 stroke:#aaa,stroke-width:2px
+  linkStyle 11 stroke:#aaa,stroke-width:2px
+  linkStyle 12 stroke:#ef5350,stroke-width:3px
+  linkStyle 13 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle" data-target="row-sympy" title="Toggle SymPy expression">SymPy</button>
+    <button class="row-toggle" data-target="row-js" title="Toggle math.js (JS) expression">JS</button>
+    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
+  </div>
+  <div class="row-panel row-latex-src" data-latex="\frac{dy}{dx} + P(x) y = Q(x) y^n"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>\frac{dy}{dx} + P(x) y = Q(x) y^n</div>
+  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
+  "nodes": [
+    {
+      "id": "__equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "\\frac{dy}{dx} + P(x) y = Q(x) y^n",
+      "chartScript": {
+        "script": "y*P(x) - pow(y, n)*Q(x)",
+        "variables": [
+          "n",
+          "x",
+          "y"
+        ]
+      }
+    },
+    {
+      "id": "__add_2",
+      "type": "operator",
+      "op": "add",
+      "subexpr": "y P{\\left(x \\right)} + \\frac{d}{d x} y",
+      "chartScript": {
+        "script": "P*x*y",
+        "variables": [
+          "P",
+          "x",
+          "y"
+        ]
+      }
+    },
+    {
+      "id": "y",
+      "type": "scalar",
+      "latex": "y",
+      "subexpr": "y",
+      "chartScript": {
+        "script": "y",
+        "variables": [
+          "y"
+        ]
+      }
+    },
+    {
+      "id": "x",
+      "type": "scalar",
+      "latex": "x",
+      "subexpr": "x",
+      "chartScript": {
+        "script": "x",
+        "variables": [
+          "x"
+        ]
+      }
+    },
+    {
+      "id": "__deriv_3",
+      "type": "operator",
+      "op": "derivative",
+      "with_respect_to": "x",
+      "subexpr": "\\frac{d}{d x} y",
+      "chartScript": {
+        "script": "0",
+        "variables": []
+      }
+    },
+    {
+      "id": "__multiply_4",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "y P{\\left(x \\right)}",
+      "chartScript": {
+        "script": "P*x*y",
+        "variables": [
+          "P",
+          "x",
+          "y"
+        ]
+      }
+    },
+    {
+      "id": "__P_5",
+      "type": "function",
+      "op": "P",
+      "subexpr": "P{\\left(x \\right)}",
+      "chartScript": {
+        "script": "P*x",
+        "variables": [
+          "P",
+          "x"
+        ]
+      }
+    },
+    {
+      "id": "__multiply_6",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "y^{n} Q{\\left(x \\right)}",
+      "chartScript": {
+        "script": "Q*x*pow(y, n)",
+        "variables": [
+          "Q",
+          "n",
+          "x",
+          "y"
+        ]
+      }
+    },
+    {
+      "id": "__Q_7",
+      "type": "function",
+      "op": "Q",
+      "subexpr": "Q{\\left(x \\right)}",
+      "chartScript": {
+        "script": "Q*x",
+        "variables": [
+          "Q",
+          "x"
+        ]
+      }
+    },
+    {
+      "id": "__power_8",
+      "type": "operator",
+      "op": "power",
+      "subexpr": "y^{n}",
+      "chartScript": {
+        "script": "pow(y, n)",
+        "variables": [
+          "n",
+          "y"
+        ]
+      }
+    },
+    {
+      "id": "n",
+      "type": "scalar",
+      "latex": "n",
+      "subexpr": "n",
+      "chartScript": {
+        "script": "n",
+        "variables": [
+          "n"
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "y",
+      "to": "__deriv_3"
+    },
+    {
+      "from": "x",
+      "to": "__deriv_3",
+      "role": "wrt"
+    },
+    {
+      "from": "__deriv_3",
+      "to": "__add_2"
+    },
+    {
+      "from": "x",
+      "to": "__P_5"
+    },
+    {
+      "from": "__P_5",
+      "to": "__multiply_4",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "y",
+      "to": "__multiply_4",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_4",
+      "to": "__add_2"
+    },
+    {
+      "from": "__add_2",
+      "to": "__equals_1"
+    },
+    {
+      "from": "x",
+      "to": "__Q_7"
+    },
+    {
+      "from": "__Q_7",
+      "to": "__multiply_6",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "y",
+      "to": "__power_8"
+    },
+    {
+      "from": "n",
+      "to": "__power_8",
+      "role": "exp"
+    },
+    {
+      "from": "__power_8",
+      "to": "__multiply_6",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_6",
+      "to": "__equals_1"
+    }
+  ],
+  "classification": {
+    "kind": "ODE",
+    "order": 1,
+    "dependent_variables": [
+      "y"
+    ],
+    "independent_variables": [
+      "x"
+    ],
+    "sympy_hints": [
+      "Bernoulli",
+      "1st_power_series",
+      "lie_group"
+    ],
+    "linear": false,
+    "homogeneous": false,
+    "constant_coefficients": false
+  }
+}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  __add_2(("$+$")):::operator
+  y["$y$"]:::scalar
+  x["$x$"]:::scalar
+  __deriv_3(("$\dfrac{d}{d x}$")):::operator
+  __multiply_4(("$\times$")):::operator
+  __P_5{{"$P(\cdot)$"}}:::function
+  __multiply_6(("$\times$")):::operator
+  __Q_7{{"$Q(\cdot)$"}}:::function
+  __power_8(("$(\cdot)^{\cdot}$")):::operator
+  n["$n$"]:::scalar
+  y --&gt; __deriv_3
+  x --&gt;|wrt| __deriv_3
+  __deriv_3 --&gt; __add_2
+  x --&gt; __P_5
+  __P_5 --&gt; __multiply_4
+  y --&gt; __multiply_4
+  __multiply_4 --&gt; __add_2
+  __add_2 --&gt; __equals_1
+  x --&gt; __Q_7
+  __Q_7 --&gt; __multiply_6
+  y --&gt; __power_8
+  n --&gt;|exp| __power_8
+  __power_8 --&gt; __multiply_6
+  __multiply_6 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#ef5350,stroke-width:3px
+  linkStyle 5 stroke:#ef5350,stroke-width:3px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#ef5350,stroke-width:3px
+  linkStyle 10 stroke:#aaa,stroke-width:2px
+  linkStyle 11 stroke:#aaa,stroke-width:2px
+  linkStyle 12 stroke:#ef5350,stroke-width:3px
+  linkStyle 13 stroke:#aaa,stroke-width:2px
+</pre></div></div>
+  <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(y*P(x) + Derivative(y, x), y**n*Q(x))</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(Add(Mul(Symbol('y'), Function('P')(Symbol('x'))), Derivative(Symbol('y'), Tuple(Symbol('x'), Integer(1)))), Mul(Pow(Symbol('y'), Symbol('n')), Function('Q')(Symbol('x'))))</pre></div></div>
+  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>y*P(x) - pow(y, n)*Q(x)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>n, x, y</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\frac{dy}{dx} + P(x) y = Q(x) y^n&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;y*P(x) - pow(y, n)*Q(x)&quot;,&quot;variables&quot;:[&quot;n&quot;,&quot;x&quot;,&quot;y&quot;]}},{&quot;id&quot;:&quot;__add_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;y P{\\left(x \\right)} + \\frac{d}{d x} y&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;P*x*y&quot;,&quot;variables&quot;:[&quot;P&quot;,&quot;x&quot;,&quot;y&quot;]}},{&quot;id&quot;:&quot;y&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;y&quot;,&quot;subexpr&quot;:&quot;y&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;y&quot;,&quot;variables&quot;:[&quot;y&quot;]}},{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;__deriv_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;derivative&quot;,&quot;with_respect_to&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;\\frac{d}{d x} y&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;y P{\\left(x \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;P*x*y&quot;,&quot;variables&quot;:[&quot;P&quot;,&quot;x&quot;,&quot;y&quot;]}},{&quot;id&quot;:&quot;__P_5&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;P&quot;,&quot;subexpr&quot;:&quot;P{\\left(x \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;P*x&quot;,&quot;variables&quot;:[&quot;P&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;__multiply_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;y^{n} Q{\\left(x \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Q*x*pow(y, n)&quot;,&quot;variables&quot;:[&quot;Q&quot;,&quot;n&quot;,&quot;x&quot;,&quot;y&quot;]}},{&quot;id&quot;:&quot;__Q_7&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;Q&quot;,&quot;subexpr&quot;:&quot;Q{\\left(x \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Q*x&quot;,&quot;variables&quot;:[&quot;Q&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;__power_8&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;y^{n}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(y, n)&quot;,&quot;variables&quot;:[&quot;n&quot;,&quot;y&quot;]}},{&quot;id&quot;:&quot;n&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;n&quot;,&quot;subexpr&quot;:&quot;n&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;n&quot;,&quot;variables&quot;:[&quot;n&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;y&quot;,&quot;to&quot;:&quot;__deriv_3&quot;},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__deriv_3&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;__deriv_3&quot;,&quot;to&quot;:&quot;__add_2&quot;},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__P_5&quot;},{&quot;from&quot;:&quot;__P_5&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;y&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__add_2&quot;},{&quot;from&quot;:&quot;__add_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__Q_7&quot;},{&quot;from&quot;:&quot;__Q_7&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;y&quot;,&quot;to&quot;:&quot;__power_8&quot;},{&quot;from&quot;:&quot;n&quot;,&quot;to&quot;:&quot;__power_8&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_8&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_6&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;ODE&quot;,&quot;order&quot;:1,&quot;dependent_variables&quot;:[&quot;y&quot;],&quot;independent_variables&quot;:[&quot;x&quot;],&quot;sympy_hints&quot;:[&quot;Bernoulli&quot;,&quot;1st_power_series&quot;,&quot;lie_group&quot;],&quot;linear&quot;:false,&quot;homogeneous&quot;:false,&quot;constant_coefficients&quot;:false}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+</div>
+<div class="row">
+  <div>
+    <div class="row-id">exact</div>
+    <div class="row-latex">$$M(x,y) dx + N(x,y) dy = 0$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  __add_2(("$+$")):::operator
+  __multiply_3(("$\times$")):::operator
+  __M_4{{"$M(\cdot, \cdot)$"}}:::function
+  x["$x$"]:::scalar
+  y["$y$"]:::scalar
+  dx["$dx$"]:::scalar
+  __multiply_5(("$\times$")):::operator
+  __N_6{{"$N(\cdot, \cdot)$"}}:::function
+  dy["$dy$"]:::scalar
+  __num_7["$0$"]:::number
+  x --&gt; __M_4
+  y --&gt; __M_4
+  __M_4 --&gt; __multiply_3
+  dx --&gt; __multiply_3
+  __multiply_3 --&gt; __add_2
+  x --&gt; __N_6
+  y --&gt; __N_6
+  __N_6 --&gt; __multiply_5
+  dy --&gt; __multiply_5
+  __multiply_5 --&gt; __add_2
+  __add_2 --&gt; __equals_1
+  __num_7 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#ef5350,stroke-width:3px
+  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#ef5350,stroke-width:3px
+  linkStyle 8 stroke:#ef5350,stroke-width:3px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 10 stroke:#aaa,stroke-width:2px
+  linkStyle 11 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle" data-target="row-sympy" title="Toggle SymPy expression">SymPy</button>
+    <button class="row-toggle" data-target="row-js" title="Toggle math.js (JS) expression">JS</button>
+    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
+  </div>
+  <div class="row-panel row-latex-src" data-latex="M(x,y) dx + N(x,y) dy = 0"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>M(x,y) dx + N(x,y) dy = 0</div>
+  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
+  "nodes": [
+    {
+      "id": "__equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "M(x,y) dx + N(x,y) dy = 0",
+      "chartScript": {
+        "script": "dx*M(x, y) + dy*N(x, y)",
+        "variables": [
+          "dx",
+          "dy",
+          "x",
+          "y"
+        ]
+      }
+    },
+    {
+      "id": "__add_2",
+      "type": "operator",
+      "op": "add",
+      "subexpr": "M{\\left(x,y \\right)} dx + N{\\left(x,y \\right)} dy",
+      "chartScript": {
+        "script": "M",
+        "variables": [
+          "M"
+        ]
+      }
+    },
+    {
+      "id": "__multiply_3",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "M{\\left(x,y \\right)} dx",
+      "chartScript": {
+        "script": "M",
+        "variables": [
+          "M"
+        ]
+      }
+    },
+    {
+      "id": "__M_4",
+      "type": "function",
+      "op": "M",
+      "subexpr": "M{\\left(x,y \\right)}",
+      "chartScript": {
+        "script": "M",
+        "variables": [
+          "M"
+        ]
+      }
+    },
+    {
+      "id": "x",
+      "type": "scalar",
+      "latex": "x",
+      "subexpr": "x",
+      "chartScript": {
+        "script": "x",
+        "variables": [
+          "x"
+        ]
+      }
+    },
+    {
+      "id": "y",
+      "type": "scalar",
+      "latex": "y",
+      "subexpr": "y",
+      "chartScript": {
+        "script": "y",
+        "variables": [
+          "y"
+        ]
+      }
+    },
+    {
+      "id": "dx",
+      "type": "scalar",
+      "latex": "dx",
+      "subexpr": "dx",
+      "chartScript": {
+        "script": "dx",
+        "variables": [
+          "dx"
+        ]
+      }
+    },
+    {
+      "id": "__multiply_5",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "N{\\left(x,y \\right)} dy",
+      "chartScript": {
+        "script": "N",
+        "variables": [
+          "N"
+        ]
+      }
+    },
+    {
+      "id": "__N_6",
+      "type": "function",
+      "op": "N",
+      "subexpr": "N{\\left(x,y \\right)}",
+      "chartScript": {
+        "script": "N",
+        "variables": [
+          "N"
+        ]
+      }
+    },
+    {
+      "id": "dy",
+      "type": "scalar",
+      "latex": "dy",
+      "subexpr": "dy",
+      "chartScript": {
+        "script": "dy",
+        "variables": [
+          "dy"
+        ]
+      }
+    },
+    {
+      "id": "__num_7",
+      "type": "number",
+      "label": "0",
+      "subexpr": "0",
+      "chartScript": {
+        "script": "0",
+        "variables": []
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "x",
+      "to": "__M_4"
+    },
+    {
+      "from": "y",
+      "to": "__M_4"
+    },
+    {
+      "from": "__M_4",
+      "to": "__multiply_3",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "dx",
+      "to": "__multiply_3",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_3",
+      "to": "__add_2"
+    },
+    {
+      "from": "x",
+      "to": "__N_6"
+    },
+    {
+      "from": "y",
+      "to": "__N_6"
+    },
+    {
+      "from": "__N_6",
+      "to": "__multiply_5",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "dy",
+      "to": "__multiply_5",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_5",
+      "to": "__add_2"
+    },
+    {
+      "from": "__add_2",
+      "to": "__equals_1"
+    },
+    {
+      "from": "__num_7",
+      "to": "__equals_1"
+    }
+  ],
+  "classification": {
+    "kind": "algebraic"
+  }
+}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  __add_2(("$+$")):::operator
+  __multiply_3(("$\times$")):::operator
+  __M_4{{"$M(\cdot, \cdot)$"}}:::function
+  x["$x$"]:::scalar
+  y["$y$"]:::scalar
+  dx["$dx$"]:::scalar
+  __multiply_5(("$\times$")):::operator
+  __N_6{{"$N(\cdot, \cdot)$"}}:::function
+  dy["$dy$"]:::scalar
+  __num_7["$0$"]:::number
+  x --&gt; __M_4
+  y --&gt; __M_4
+  __M_4 --&gt; __multiply_3
+  dx --&gt; __multiply_3
+  __multiply_3 --&gt; __add_2
+  x --&gt; __N_6
+  y --&gt; __N_6
+  __N_6 --&gt; __multiply_5
+  dy --&gt; __multiply_5
+  __multiply_5 --&gt; __add_2
+  __add_2 --&gt; __equals_1
+  __num_7 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#ef5350,stroke-width:3px
+  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#ef5350,stroke-width:3px
+  linkStyle 8 stroke:#ef5350,stroke-width:3px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 10 stroke:#aaa,stroke-width:2px
+  linkStyle 11 stroke:#aaa,stroke-width:2px
+</pre></div></div>
+  <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(dx*M(x, y) + dy*N(x, y), 0)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(Add(Mul(Symbol('dx'), Function('M')(Symbol('x'), Symbol('y'))), Mul(Symbol('dy'), Function('N')(Symbol('x'), Symbol('y')))), Integer(0))</pre></div></div>
+  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>dx*M(x, y) + dy*N(x, y)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>dx, dy, x, y</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;M(x,y) dx + N(x,y) dy = 0&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;dx*M(x, y) + dy*N(x, y)&quot;,&quot;variables&quot;:[&quot;dx&quot;,&quot;dy&quot;,&quot;x&quot;,&quot;y&quot;]}},{&quot;id&quot;:&quot;__add_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;M{\\left(x,y \\right)} dx + N{\\left(x,y \\right)} dy&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;M&quot;,&quot;variables&quot;:[&quot;M&quot;]}},{&quot;id&quot;:&quot;__multiply_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;M{\\left(x,y \\right)} dx&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;M&quot;,&quot;variables&quot;:[&quot;M&quot;]}},{&quot;id&quot;:&quot;__M_4&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;M&quot;,&quot;subexpr&quot;:&quot;M{\\left(x,y \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;M&quot;,&quot;variables&quot;:[&quot;M&quot;]}},{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;y&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;y&quot;,&quot;subexpr&quot;:&quot;y&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;y&quot;,&quot;variables&quot;:[&quot;y&quot;]}},{&quot;id&quot;:&quot;dx&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;dx&quot;,&quot;subexpr&quot;:&quot;dx&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;dx&quot;,&quot;variables&quot;:[&quot;dx&quot;]}},{&quot;id&quot;:&quot;__multiply_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;N{\\left(x,y \\right)} dy&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;N&quot;,&quot;variables&quot;:[&quot;N&quot;]}},{&quot;id&quot;:&quot;__N_6&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;N&quot;,&quot;subexpr&quot;:&quot;N{\\left(x,y \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;N&quot;,&quot;variables&quot;:[&quot;N&quot;]}},{&quot;id&quot;:&quot;dy&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;dy&quot;,&quot;subexpr&quot;:&quot;dy&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;dy&quot;,&quot;variables&quot;:[&quot;dy&quot;]}},{&quot;id&quot;:&quot;__num_7&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;0&quot;,&quot;subexpr&quot;:&quot;0&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__M_4&quot;},{&quot;from&quot;:&quot;y&quot;,&quot;to&quot;:&quot;__M_4&quot;},{&quot;from&quot;:&quot;__M_4&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;dx&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_3&quot;,&quot;to&quot;:&quot;__add_2&quot;},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__N_6&quot;},{&quot;from&quot;:&quot;y&quot;,&quot;to&quot;:&quot;__N_6&quot;},{&quot;from&quot;:&quot;__N_6&quot;,&quot;to&quot;:&quot;__multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;dy&quot;,&quot;to&quot;:&quot;__multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_5&quot;,&quot;to&quot;:&quot;__add_2&quot;},{&quot;from&quot;:&quot;__add_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;__num_7&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+</div>
+<div class="row">
+  <div>
+    <div class="row-id">second_order</div>
+    <div class="row-latex">$$\frac{d^2 y}{dx^2} + \omega^2 y = 0$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  __add_2(("$+$")):::operator
+  y["$y$"]:::scalar
+  x["$x$"]:::scalar
+  __deriv_3(("$\dfrac{d^{2}}{d x^{2}}$")):::operator
+  __multiply_4(("$\times$")):::operator
+  __power_5(("${(\cdot)}^{2}$")):::operator
+  omega["$\omega$"]:::scalar
+  __num_6["$0$"]:::number
+  y --&gt; __deriv_3
+  x --&gt;|wrt| __deriv_3
+  __deriv_3 --&gt; __add_2
+  omega --&gt; __power_5
+  __power_5 --&gt; __multiply_4
+  y --&gt; __multiply_4
+  __multiply_4 --&gt; __add_2
+  __add_2 --&gt; __equals_1
+  __num_6 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#ef5350,stroke-width:3px
+  linkStyle 5 stroke:#ef5350,stroke-width:3px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle" data-target="row-sympy" title="Toggle SymPy expression">SymPy</button>
+    <button class="row-toggle" data-target="row-js" title="Toggle math.js (JS) expression">JS</button>
+    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
+  </div>
+  <div class="row-panel row-latex-src" data-latex="\frac{d^2 y}{dx^2} + \omega^2 y = 0"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>\frac{d^2 y}{dx^2} + \omega^2 y = 0</div>
+  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
+  "nodes": [
+    {
+      "id": "__equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "\\frac{d^2 y}{dx^2} + \\omega^2 y = 0",
+      "chartScript": {
+        "script": "pow(d, 2)*y/pow(dx, 2) + pow(omega, 2)*y",
+        "variables": [
+          "d",
+          "dx",
+          "omega",
+          "y"
+        ]
+      }
+    },
+    {
+      "id": "__add_2",
+      "type": "operator",
+      "op": "add",
+      "subexpr": "y \\omega^{2} + \\frac{d^{2}}{d x^{2}} y",
+      "chartScript": {
+        "script": "pow(d, 2)*y/pow(dx, 2) + pow(omega, 2)*y",
+        "variables": [
+          "d",
+          "dx",
+          "omega",
+          "y"
+        ]
+      }
+    },
+    {
+      "id": "y",
+      "type": "scalar",
+      "latex": "y",
+      "subexpr": "y",
+      "chartScript": {
+        "script": "y",
+        "variables": [
+          "y"
+        ]
+      }
+    },
+    {
+      "id": "x",
+      "type": "scalar",
+      "latex": "x",
+      "subexpr": "x",
+      "chartScript": {
+        "script": "x",
+        "variables": [
+          "x"
+        ]
+      }
+    },
+    {
+      "id": "__deriv_3",
+      "type": "operator",
+      "op": "derivative",
+      "with_respect_to": "x",
+      "subexpr": "\\frac{d^{2}}{d x^{2}} y",
+      "chartScript": {
+        "script": "pow(d, 2)*y/pow(dx, 2)",
+        "variables": [
+          "d",
+          "dx",
+          "y"
+        ]
+      }
+    },
+    {
+      "id": "__multiply_4",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "y \\omega^{2}",
+      "chartScript": {
+        "script": "pow(omega, 2)*y",
+        "variables": [
+          "omega",
+          "y"
+        ]
+      }
+    },
+    {
+      "id": "__power_5",
+      "type": "operator",
+      "op": "power",
+      "exponent": "2",
+      "subexpr": "\\omega^{2}",
+      "chartScript": {
+        "script": "pow(omega, 2)",
+        "variables": [
+          "omega"
+        ]
+      }
+    },
+    {
+      "id": "omega",
+      "type": "scalar",
+      "latex": "\\omega",
+      "subexpr": "\\omega",
+      "chartScript": {
+        "script": "omega",
+        "variables": [
+          "omega"
+        ]
+      }
+    },
+    {
+      "id": "__num_6",
+      "type": "number",
+      "label": "0",
+      "subexpr": "0",
+      "chartScript": {
+        "script": "0",
+        "variables": []
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "y",
+      "to": "__deriv_3"
+    },
+    {
+      "from": "x",
+      "to": "__deriv_3",
+      "role": "wrt"
+    },
+    {
+      "from": "__deriv_3",
+      "to": "__add_2"
+    },
+    {
+      "from": "omega",
+      "to": "__power_5"
+    },
+    {
+      "from": "__power_5",
+      "to": "__multiply_4",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "y",
+      "to": "__multiply_4",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_4",
+      "to": "__add_2"
+    },
+    {
+      "from": "__add_2",
+      "to": "__equals_1"
+    },
+    {
+      "from": "__num_6",
+      "to": "__equals_1"
+    }
+  ],
+  "classification": {
+    "kind": "ODE",
+    "order": 2,
+    "dependent_variables": [
+      "y"
+    ],
+    "independent_variables": [
+      "x"
+    ],
+    "sympy_hints": [
+      "nth_linear_constant_coeff_homogeneous",
+      "2nd_power_series_ordinary",
+      "2nd_nonlinear_autonomous_conserved"
+    ],
+    "linear": true,
+    "homogeneous": true,
+    "constant_coefficients": true
+  }
+}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  __add_2(("$+$")):::operator
+  y["$y$"]:::scalar
+  x["$x$"]:::scalar
+  __deriv_3(("$\dfrac{d^{2}}{d x^{2}}$")):::operator
+  __multiply_4(("$\times$")):::operator
+  __power_5(("${(\cdot)}^{2}$")):::operator
+  omega["$\omega$"]:::scalar
+  __num_6["$0$"]:::number
+  y --&gt; __deriv_3
+  x --&gt;|wrt| __deriv_3
+  __deriv_3 --&gt; __add_2
+  omega --&gt; __power_5
+  __power_5 --&gt; __multiply_4
+  y --&gt; __multiply_4
+  __multiply_4 --&gt; __add_2
+  __add_2 --&gt; __equals_1
+  __num_6 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#ef5350,stroke-width:3px
+  linkStyle 5 stroke:#ef5350,stroke-width:3px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+</pre></div></div>
+  <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(\omega**2*y + Derivative(y, x), 0)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(Add(Mul(Pow(Symbol('\\omega'), Integer(2)), Symbol('y')), Derivative(Symbol('y'), Tuple(Symbol('x'), Integer(1)))), Integer(0))</pre></div></div>
+  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>pow(d, 2)*y/pow(dx, 2) + pow(omega, 2)*y</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>d, dx, omega, y</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\frac{d^2 y}{dx^2} + \\omega^2 y = 0&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(d, 2)*y/pow(dx, 2) + pow(omega, 2)*y&quot;,&quot;variables&quot;:[&quot;d&quot;,&quot;dx&quot;,&quot;omega&quot;,&quot;y&quot;]}},{&quot;id&quot;:&quot;__add_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;y \\omega^{2} + \\frac{d^{2}}{d x^{2}} y&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(d, 2)*y/pow(dx, 2) + pow(omega, 2)*y&quot;,&quot;variables&quot;:[&quot;d&quot;,&quot;dx&quot;,&quot;omega&quot;,&quot;y&quot;]}},{&quot;id&quot;:&quot;y&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;y&quot;,&quot;subexpr&quot;:&quot;y&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;y&quot;,&quot;variables&quot;:[&quot;y&quot;]}},{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;__deriv_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;derivative&quot;,&quot;with_respect_to&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;\\frac{d^{2}}{d x^{2}} y&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(d, 2)*y/pow(dx, 2)&quot;,&quot;variables&quot;:[&quot;d&quot;,&quot;dx&quot;,&quot;y&quot;]}},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;y \\omega^{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(omega, 2)*y&quot;,&quot;variables&quot;:[&quot;omega&quot;,&quot;y&quot;]}},{&quot;id&quot;:&quot;__power_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;\\omega^{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(omega, 2)&quot;,&quot;variables&quot;:[&quot;omega&quot;]}},{&quot;id&quot;:&quot;omega&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\omega&quot;,&quot;subexpr&quot;:&quot;\\omega&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;omega&quot;,&quot;variables&quot;:[&quot;omega&quot;]}},{&quot;id&quot;:&quot;__num_6&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;0&quot;,&quot;subexpr&quot;:&quot;0&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;y&quot;,&quot;to&quot;:&quot;__deriv_3&quot;},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__deriv_3&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;__deriv_3&quot;,&quot;to&quot;:&quot;__add_2&quot;},{&quot;from&quot;:&quot;omega&quot;,&quot;to&quot;:&quot;__power_5&quot;},{&quot;from&quot;:&quot;__power_5&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;y&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__add_2&quot;},{&quot;from&quot;:&quot;__add_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;__num_6&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;ODE&quot;,&quot;order&quot;:2,&quot;dependent_variables&quot;:[&quot;y&quot;],&quot;independent_variables&quot;:[&quot;x&quot;],&quot;sympy_hints&quot;:[&quot;nth_linear_constant_coeff_homogeneous&quot;,&quot;2nd_power_series_ordinary&quot;,&quot;2nd_nonlinear_autonomous_conserved&quot;],&quot;linear&quot;:true,&quot;homogeneous&quot;:true,&quot;constant_coefficients&quot;:true}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+</div>
+<div class="row">
+  <div>
+    <div class="row-id">damped_oscillator</div>
+    <div class="row-latex">$$m \ddot{x} + c \dot{x} + k x = 0$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  __add_2(("$+$")):::operator
+  __add_3(("$+$")):::operator
+  __multiply_4(("$\times$")):::operator
+  m["$m$"]:::scalar
+  x["$x$"]:::scalar
+  t["$t$"]:::scalar
+  __deriv_5(("$\dfrac{d}{d t}$")):::operator
+  __multiply_6(("$\times$")):::operator
+  c["$c$"]:::scalar
+  __deriv_7(("$\dfrac{d}{d t}$")):::operator
+  __multiply_8(("$\times$")):::operator
+  k["$k$"]:::scalar
+  __num_9["$0$"]:::number
+  m --&gt; __multiply_4
+  x --&gt; __deriv_5
+  t --&gt;|wrt| __deriv_5
+  __deriv_5 --&gt; __multiply_4
+  __multiply_4 --&gt; __add_3
+  c --&gt; __multiply_6
+  x --&gt; __deriv_7
+  t --&gt;|wrt| __deriv_7
+  __deriv_7 --&gt; __multiply_6
+  __multiply_6 --&gt; __add_3
+  __add_3 --&gt; __add_2
+  k --&gt; __multiply_8
+  x --&gt; __multiply_8
+  __multiply_8 --&gt; __add_2
+  __add_2 --&gt; __equals_1
+  __num_9 --&gt; __equals_1
+  linkStyle 0 stroke:#ef5350,stroke-width:3px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#ef5350,stroke-width:3px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#ef5350,stroke-width:3px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 10 stroke:#aaa,stroke-width:2px
+  linkStyle 11 stroke:#ef5350,stroke-width:3px
+  linkStyle 12 stroke:#ef5350,stroke-width:3px
+  linkStyle 13 stroke:#aaa,stroke-width:2px
+  linkStyle 14 stroke:#aaa,stroke-width:2px
+  linkStyle 15 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle" data-target="row-sympy" title="Toggle SymPy expression">SymPy</button>
+    <button class="row-toggle" data-target="row-js" title="Toggle math.js (JS) expression">JS</button>
+    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
+  </div>
+  <div class="row-panel row-latex-src" data-latex="m \ddot{x} + c \dot{x} + k x = 0"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>m \ddot{x} + c \dot{x} + k x = 0</div>
+  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
+  "nodes": [
+    {
+      "id": "__equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "m \\frac{d}{d t} \\frac{d}{d t} x + c \\frac{d}{d t} x + k x = 0",
+      "chartScript": {
+        "script": "k*x",
+        "variables": [
+          "k",
+          "x"
+        ]
+      }
+    },
+    {
+      "id": "__add_2",
+      "type": "operator",
+      "op": "add",
+      "subexpr": "x k + m \\ddot{x} + c \\frac{d}{d t} x",
+      "chartScript": {
+        "script": "ddot*m*x + k*x",
+        "variables": [
+          "ddot",
+          "k",
+          "m",
+          "x"
+        ]
+      }
+    },
+    {
+      "id": "__add_3",
+      "type": "operator",
+      "op": "add",
+      "subexpr": "m \\ddot{x} + c \\frac{d}{d t} x",
+      "chartScript": {
+        "script": "ddot*m*x",
+        "variables": [
+          "ddot",
+          "m",
+          "x"
+        ]
+      }
+    },
+    {
+      "id": "__multiply_4",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "m \\ddot{x}",
+      "chartScript": {
+        "script": "ddot*m*x",
+        "variables": [
+          "ddot",
+          "m",
+          "x"
+        ]
+      }
+    },
+    {
+      "id": "m",
+      "type": "scalar",
+      "latex": "m",
+      "subexpr": "m",
+      "chartScript": {
+        "script": "m",
+        "variables": [
+          "m"
+        ]
+      }
+    },
+    {
+      "id": "x",
+      "type": "scalar",
+      "latex": "x",
+      "subexpr": "x",
+      "chartScript": {
+        "script": "x",
+        "variables": [
+          "x"
+        ]
+      }
+    },
+    {
+      "id": "t",
+      "type": "scalar",
+      "latex": "t",
+      "subexpr": "t",
+      "chartScript": {
+        "script": "t",
+        "variables": [
+          "t"
+        ]
+      }
+    },
+    {
+      "id": "__deriv_5",
+      "type": "operator",
+      "op": "derivative",
+      "with_respect_to": "t",
+      "subexpr": "\\ddot{x}",
+      "chartScript": {
+        "script": "ddot*x",
+        "variables": [
+          "ddot",
+          "x"
+        ]
+      }
+    },
+    {
+      "id": "__multiply_6",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "c \\frac{d}{d t} x",
+      "chartScript": {
+        "script": "0",
+        "variables": []
+      }
+    },
+    {
+      "id": "c",
+      "type": "scalar",
+      "latex": "c",
+      "subexpr": "c",
+      "chartScript": {
+        "script": "c",
+        "variables": [
+          "c"
+        ]
+      }
+    },
+    {
+      "id": "__deriv_7",
+      "type": "operator",
+      "op": "derivative",
+      "with_respect_to": "t",
+      "subexpr": "\\frac{d}{d t} x",
+      "chartScript": {
+        "script": "0",
+        "variables": []
+      }
+    },
+    {
+      "id": "__multiply_8",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "x k",
+      "chartScript": {
+        "script": "k*x",
+        "variables": [
+          "k",
+          "x"
+        ]
+      }
+    },
+    {
+      "id": "k",
+      "type": "scalar",
+      "latex": "k",
+      "subexpr": "k",
+      "chartScript": {
+        "script": "k",
+        "variables": [
+          "k"
+        ]
+      }
+    },
+    {
+      "id": "__num_9",
+      "type": "number",
+      "label": "0",
+      "subexpr": "0",
+      "chartScript": {
+        "script": "0",
+        "variables": []
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "m",
+      "to": "__multiply_4",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "x",
+      "to": "__deriv_5"
+    },
+    {
+      "from": "t",
+      "to": "__deriv_5",
+      "role": "wrt"
+    },
+    {
+      "from": "__deriv_5",
+      "to": "__multiply_4",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_4",
+      "to": "__add_3"
+    },
+    {
+      "from": "c",
+      "to": "__multiply_6",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "x",
+      "to": "__deriv_7"
+    },
+    {
+      "from": "t",
+      "to": "__deriv_7",
+      "role": "wrt"
+    },
+    {
+      "from": "__deriv_7",
+      "to": "__multiply_6",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_6",
+      "to": "__add_3"
+    },
+    {
+      "from": "__add_3",
+      "to": "__add_2"
+    },
+    {
+      "from": "k",
+      "to": "__multiply_8",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "x",
+      "to": "__multiply_8",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_8",
+      "to": "__add_2"
+    },
+    {
+      "from": "__add_2",
+      "to": "__equals_1"
+    },
+    {
+      "from": "__num_9",
+      "to": "__equals_1"
+    }
+  ],
+  "classification": {
+    "kind": "ODE",
+    "order": 2,
+    "dependent_variables": [
+      "x"
+    ],
+    "independent_variables": [
+      "t"
+    ],
+    "sympy_hints": [
+      "factorable",
+      "nth_linear_constant_coeff_homogeneous",
+      "2nd_power_series_ordinary"
+    ],
+    "linear": true,
+    "homogeneous": true,
+    "constant_coefficients": true
+  }
+}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  __add_2(("$+$")):::operator
+  __add_3(("$+$")):::operator
+  __multiply_4(("$\times$")):::operator
+  m["$m$"]:::scalar
+  x["$x$"]:::scalar
+  t["$t$"]:::scalar
+  __deriv_5(("$\dfrac{d}{d t}$")):::operator
+  __multiply_6(("$\times$")):::operator
+  c["$c$"]:::scalar
+  __deriv_7(("$\dfrac{d}{d t}$")):::operator
+  __multiply_8(("$\times$")):::operator
+  k["$k$"]:::scalar
+  __num_9["$0$"]:::number
+  m --&gt; __multiply_4
+  x --&gt; __deriv_5
+  t --&gt;|wrt| __deriv_5
+  __deriv_5 --&gt; __multiply_4
+  __multiply_4 --&gt; __add_3
+  c --&gt; __multiply_6
+  x --&gt; __deriv_7
+  t --&gt;|wrt| __deriv_7
+  __deriv_7 --&gt; __multiply_6
+  __multiply_6 --&gt; __add_3
+  __add_3 --&gt; __add_2
+  k --&gt; __multiply_8
+  x --&gt; __multiply_8
+  __multiply_8 --&gt; __add_2
+  __add_2 --&gt; __equals_1
+  __num_9 --&gt; __equals_1
+  linkStyle 0 stroke:#ef5350,stroke-width:3px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#ef5350,stroke-width:3px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#ef5350,stroke-width:3px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 10 stroke:#aaa,stroke-width:2px
+  linkStyle 11 stroke:#ef5350,stroke-width:3px
+  linkStyle 12 stroke:#ef5350,stroke-width:3px
+  linkStyle 13 stroke:#aaa,stroke-width:2px
+  linkStyle 14 stroke:#aaa,stroke-width:2px
+  linkStyle 15 stroke:#aaa,stroke-width:2px
+</pre></div></div>
+  <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(c*Derivative(x, t) + k*x + m*Derivative(x, t), 0)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(Add(Mul(Symbol('c'), Derivative(Symbol('x'), Tuple(Symbol('t'), Integer(1)))), Mul(Symbol('k'), Symbol('x')), Mul(Symbol('m'), Derivative(Symbol('x'), Tuple(Symbol('t'), Integer(1))))), Integer(0))</pre></div></div>
+  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>c*dot*x + ddot*m*x + k*x</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>c, ddot, dot, k, m, x</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;m \\frac{d}{d t} \\frac{d}{d t} x + c \\frac{d}{d t} x + k x = 0&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;k*x&quot;,&quot;variables&quot;:[&quot;k&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;__add_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;x k + m \\ddot{x} + c \\frac{d}{d t} x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;ddot*m*x + k*x&quot;,&quot;variables&quot;:[&quot;ddot&quot;,&quot;k&quot;,&quot;m&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;__add_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;m \\ddot{x} + c \\frac{d}{d t} x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;ddot*m*x&quot;,&quot;variables&quot;:[&quot;ddot&quot;,&quot;m&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;m \\ddot{x}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;ddot*m*x&quot;,&quot;variables&quot;:[&quot;ddot&quot;,&quot;m&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;m&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;m&quot;,&quot;subexpr&quot;:&quot;m&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;m&quot;,&quot;variables&quot;:[&quot;m&quot;]}},{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;t&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;t&quot;,&quot;subexpr&quot;:&quot;t&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;t&quot;,&quot;variables&quot;:[&quot;t&quot;]}},{&quot;id&quot;:&quot;__deriv_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;derivative&quot;,&quot;with_respect_to&quot;:&quot;t&quot;,&quot;subexpr&quot;:&quot;\\ddot{x}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;ddot*x&quot;,&quot;variables&quot;:[&quot;ddot&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;__multiply_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;c \\frac{d}{d t} x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;c&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;c&quot;,&quot;subexpr&quot;:&quot;c&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;c&quot;,&quot;variables&quot;:[&quot;c&quot;]}},{&quot;id&quot;:&quot;__deriv_7&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;derivative&quot;,&quot;with_respect_to&quot;:&quot;t&quot;,&quot;subexpr&quot;:&quot;\\frac{d}{d t} x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__multiply_8&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;x k&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;k*x&quot;,&quot;variables&quot;:[&quot;k&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;k&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;k&quot;,&quot;subexpr&quot;:&quot;k&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;k&quot;,&quot;variables&quot;:[&quot;k&quot;]}},{&quot;id&quot;:&quot;__num_9&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;0&quot;,&quot;subexpr&quot;:&quot;0&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;m&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__deriv_5&quot;},{&quot;from&quot;:&quot;t&quot;,&quot;to&quot;:&quot;__deriv_5&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;__deriv_5&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__add_3&quot;},{&quot;from&quot;:&quot;c&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__deriv_7&quot;},{&quot;from&quot;:&quot;t&quot;,&quot;to&quot;:&quot;__deriv_7&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;__deriv_7&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_6&quot;,&quot;to&quot;:&quot;__add_3&quot;},{&quot;from&quot;:&quot;__add_3&quot;,&quot;to&quot;:&quot;__add_2&quot;},{&quot;from&quot;:&quot;k&quot;,&quot;to&quot;:&quot;__multiply_8&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__multiply_8&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_8&quot;,&quot;to&quot;:&quot;__add_2&quot;},{&quot;from&quot;:&quot;__add_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;__num_9&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;ODE&quot;,&quot;order&quot;:2,&quot;dependent_variables&quot;:[&quot;x&quot;],&quot;independent_variables&quot;:[&quot;t&quot;],&quot;sympy_hints&quot;:[&quot;factorable&quot;,&quot;nth_linear_constant_coeff_homogeneous&quot;,&quot;2nd_power_series_ordinary&quot;],&quot;linear&quot;:true,&quot;homogeneous&quot;:true,&quot;constant_coefficients&quot;:true}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+</div>
+<div class="row">
+  <div>
+    <div class="row-id">system</div>
+    <div class="row-latex">$$\dot{x} = ax + by, \quad \dot{y} = cx + dy$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  c0___equals_1{"="}:::relation
+  x["$x$"]:::scalar
+  t["$t$"]:::scalar
+  c0___deriv_2(("$\dfrac{d}{d t}$")):::operator
+  c0___add_3(("$+$")):::operator
+  c0___multiply_4(("$\times$")):::operator
+  a["$a$"]:::scalar
+  c0___multiply_5(("$\times$")):::operator
+  b["$b$"]:::scalar
+  y["$y$"]:::scalar
+  c1___equals_1{"="}:::relation
+  c1___deriv_2(("$\dfrac{d}{d t}$")):::operator
+  c1___add_3(("$+$")):::operator
+  c1___multiply_4(("$\times$")):::operator
+  c["$c$"]:::scalar
+  dy["$dy$"]:::scalar
+  x --&gt; c0___deriv_2
+  t --&gt;|wrt| c0___deriv_2
+  c0___deriv_2 --&gt; c0___equals_1
+  a --&gt; c0___multiply_4
+  x --&gt; c0___multiply_4
+  c0___multiply_4 --&gt; c0___add_3
+  b --&gt; c0___multiply_5
+  y --&gt; c0___multiply_5
+  c0___multiply_5 --&gt; c0___add_3
+  c0___add_3 --&gt; c0___equals_1
+  y --&gt; c1___deriv_2
+  t --&gt;|wrt| c1___deriv_2
+  c1___deriv_2 --&gt; c1___equals_1
+  c --&gt; c1___multiply_4
+  x --&gt; c1___multiply_4
+  c1___multiply_4 --&gt; c1___add_3
+  dy --&gt; c1___add_3
+  c1___add_3 --&gt; c1___equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  linkStyle 4 stroke:#ef5350,stroke-width:3px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#ef5350,stroke-width:3px
+  linkStyle 7 stroke:#ef5350,stroke-width:3px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 10 stroke:#aaa,stroke-width:2px
+  linkStyle 11 stroke:#aaa,stroke-width:2px
+  linkStyle 12 stroke:#aaa,stroke-width:2px
+  linkStyle 13 stroke:#ef5350,stroke-width:3px
+  linkStyle 14 stroke:#ef5350,stroke-width:3px
+  linkStyle 15 stroke:#aaa,stroke-width:2px
+  linkStyle 16 stroke:#aaa,stroke-width:2px
+  linkStyle 17 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle" data-target="row-sympy" title="Toggle SymPy expression">SymPy</button>
+    <button class="row-toggle" data-target="row-js" title="Toggle math.js (JS) expression">JS</button>
+    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
+  </div>
+  <div class="row-panel row-latex-src" data-latex="\dot{x} = ax + by, \quad \dot{y} = cx + dy"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>\dot{x} = ax + by, \quad \dot{y} = cx + dy</div>
+  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
+  "nodes": [
+    {
+      "id": "c0___equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "\\dot{x} = ax + by",
+      "chartScript": {
+        "script": "-a*x - b*y + dot*x",
+        "variables": [
+          "a",
+          "b",
+          "dot",
+          "x",
+          "y"
+        ]
+      }
+    },
+    {
+      "id": "x",
+      "type": "scalar",
+      "latex": "x",
+      "subexpr": "x",
+      "chartScript": {
+        "script": "x",
+        "variables": [
+          "x"
+        ]
+      }
+    },
+    {
+      "id": "t",
+      "type": "scalar",
+      "latex": "t",
+      "subexpr": "t",
+      "chartScript": {
+        "script": "t",
+        "variables": [
+          "t"
+        ]
+      }
+    },
+    {
+      "id": "c0___deriv_2",
+      "type": "operator",
+      "op": "derivative",
+      "with_respect_to": "t",
+      "subexpr": "\\dot{x}",
+      "chartScript": {
+        "script": "dot*x",
+        "variables": [
+          "dot",
+          "x"
+        ]
+      }
+    },
+    {
+      "id": "c0___add_3",
+      "type": "operator",
+      "op": "add",
+      "subexpr": "a x + b y",
+      "chartScript": {
+        "script": "a*x + b*y",
+        "variables": [
+          "a",
+          "b",
+          "x",
+          "y"
+        ]
+      }
+    },
+    {
+      "id": "c0___multiply_4",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "a x",
+      "chartScript": {
+        "script": "a*x",
+        "variables": [
+          "a",
+          "x"
+        ]
+      }
+    },
+    {
+      "id": "a",
+      "type": "scalar",
+      "latex": "a",
+      "subexpr": "a",
+      "chartScript": {
+        "script": "a",
+        "variables": [
+          "a"
+        ]
+      }
+    },
+    {
+      "id": "c0___multiply_5",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "b y",
+      "chartScript": {
+        "script": "b*y",
+        "variables": [
+          "b",
+          "y"
+        ]
+      }
+    },
+    {
+      "id": "b",
+      "type": "scalar",
+      "latex": "b",
+      "subexpr": "b",
+      "chartScript": {
+        "script": "b",
+        "variables": [
+          "b"
+        ]
+      }
+    },
+    {
+      "id": "y",
+      "type": "scalar",
+      "latex": "y",
+      "subexpr": "y",
+      "chartScript": {
+        "script": "y",
+        "variables": [
+          "y"
+        ]
+      }
+    },
+    {
+      "id": "c1___equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "\\dot{y} = cx + dy",
+      "chartScript": {
+        "script": "-c*x + dot*y - dy",
+        "variables": [
+          "c",
+          "dot",
+          "dy",
+          "x",
+          "y"
+        ]
+      }
+    },
+    {
+      "id": "c1___deriv_2",
+      "type": "operator",
+      "op": "derivative",
+      "with_respect_to": "t",
+      "subexpr": "\\dot{y}",
+      "chartScript": {
+        "script": "dot*y",
+        "variables": [
+          "dot",
+          "y"
+        ]
+      }
+    },
+    {
+      "id": "c1___add_3",
+      "type": "operator",
+      "op": "add",
+      "subexpr": "c x + dy",
+      "chartScript": {
+        "script": "c*x + dy",
+        "variables": [
+          "c",
+          "dy",
+          "x"
+        ]
+      }
+    },
+    {
+      "id": "c1___multiply_4",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "c x",
+      "chartScript": {
+        "script": "c*x",
+        "variables": [
+          "c",
+          "x"
+        ]
+      }
+    },
+    {
+      "id": "c",
+      "type": "scalar",
+      "latex": "c",
+      "subexpr": "c",
+      "chartScript": {
+        "script": "c",
+        "variables": [
+          "c"
+        ]
+      }
+    },
+    {
+      "id": "dy",
+      "type": "scalar",
+      "latex": "dy",
+      "subexpr": "dy",
+      "chartScript": {
+        "script": "dy",
+        "variables": [
+          "dy"
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "x",
+      "to": "c0___deriv_2"
+    },
+    {
+      "from": "t",
+      "to": "c0___deriv_2",
+      "role": "wrt"
+    },
+    {
+      "from": "c0___deriv_2",
+      "to": "c0___equals_1"
+    },
+    {
+      "from": "a",
+      "to": "c0___multiply_4",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "x",
+      "to": "c0___multiply_4",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "c0___multiply_4",
+      "to": "c0___add_3"
+    },
+    {
+      "from": "b",
+      "to": "c0___multiply_5",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "y",
+      "to": "c0___multiply_5",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "c0___multiply_5",
+      "to": "c0___add_3"
+    },
+    {
+      "from": "c0___add_3",
+      "to": "c0___equals_1"
+    },
+    {
+      "from": "y",
+      "to": "c1___deriv_2"
+    },
+    {
+      "from": "t",
+      "to": "c1___deriv_2",
+      "role": "wrt"
+    },
+    {
+      "from": "c1___deriv_2",
+      "to": "c1___equals_1"
+    },
+    {
+      "from": "c",
+      "to": "c1___multiply_4",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "x",
+      "to": "c1___multiply_4",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "c1___multiply_4",
+      "to": "c1___add_3"
+    },
+    {
+      "from": "dy",
+      "to": "c1___add_3"
+    },
+    {
+      "from": "c1___add_3",
+      "to": "c1___equals_1"
+    }
+  ],
+  "classification": {
+    "kind": "statements",
+    "count": 2,
+    "clauses": [
+      {
+        "kind": "ODE",
+        "order": 1,
+        "dependent_variables": [
+          "x"
+        ],
+        "independent_variables": [
+          "t"
+        ],
+        "sympy_hints": [
+          "separable",
+          "1st_exact",
+          "1st_linear",
+          "Bernoulli",
+          "almost_linear",
+          "1st_power_series",
+          "lie_group",
+          "nth_linear_constant_coeff_undetermined_coefficients",
+          "nth_linear_constant_coeff_variation_of_parameters"
+        ],
+        "linear": true,
+        "homogeneous": false,
+        "constant_coefficients": true
+      },
+      {
+        "kind": "ODE",
+        "order": 1,
+        "dependent_variables": [
+          "y"
+        ],
+        "independent_variables": [
+          "t"
+        ],
+        "sympy_hints": [
+          "nth_algebraic",
+          "separable",
+          "1st_exact",
+          "1st_linear",
+          "Bernoulli",
+          "1st_power_series",
+          "lie_group",
+          "nth_linear_constant_coeff_undetermined_coefficients",
+          "nth_linear_euler_eq_nonhomogeneous_undetermined_coefficients",
+          "nth_linear_constant_coeff_variation_of_parameters",
+          "nth_linear_euler_eq_nonhomogeneous_variation_of_parameters"
+        ],
+        "linear": true,
+        "homogeneous": true,
+        "constant_coefficients": true
+      }
+    ]
+  }
+}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  c0___equals_1{"="}:::relation
+  x["$x$"]:::scalar
+  t["$t$"]:::scalar
+  c0___deriv_2(("$\dfrac{d}{d t}$")):::operator
+  c0___add_3(("$+$")):::operator
+  c0___multiply_4(("$\times$")):::operator
+  a["$a$"]:::scalar
+  c0___multiply_5(("$\times$")):::operator
+  b["$b$"]:::scalar
+  y["$y$"]:::scalar
+  c1___equals_1{"="}:::relation
+  c1___deriv_2(("$\dfrac{d}{d t}$")):::operator
+  c1___add_3(("$+$")):::operator
+  c1___multiply_4(("$\times$")):::operator
+  c["$c$"]:::scalar
+  dy["$dy$"]:::scalar
+  x --&gt; c0___deriv_2
+  t --&gt;|wrt| c0___deriv_2
+  c0___deriv_2 --&gt; c0___equals_1
+  a --&gt; c0___multiply_4
+  x --&gt; c0___multiply_4
+  c0___multiply_4 --&gt; c0___add_3
+  b --&gt; c0___multiply_5
+  y --&gt; c0___multiply_5
+  c0___multiply_5 --&gt; c0___add_3
+  c0___add_3 --&gt; c0___equals_1
+  y --&gt; c1___deriv_2
+  t --&gt;|wrt| c1___deriv_2
+  c1___deriv_2 --&gt; c1___equals_1
+  c --&gt; c1___multiply_4
+  x --&gt; c1___multiply_4
+  c1___multiply_4 --&gt; c1___add_3
+  dy --&gt; c1___add_3
+  c1___add_3 --&gt; c1___equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#ef5350,stroke-width:3px
+  linkStyle 4 stroke:#ef5350,stroke-width:3px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#ef5350,stroke-width:3px
+  linkStyle 7 stroke:#ef5350,stroke-width:3px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 10 stroke:#aaa,stroke-width:2px
+  linkStyle 11 stroke:#aaa,stroke-width:2px
+  linkStyle 12 stroke:#aaa,stroke-width:2px
+  linkStyle 13 stroke:#ef5350,stroke-width:3px
+  linkStyle 14 stroke:#ef5350,stroke-width:3px
+  linkStyle 15 stroke:#aaa,stroke-width:2px
+  linkStyle 16 stroke:#aaa,stroke-width:2px
+  linkStyle 17 stroke:#aaa,stroke-width:2px
+</pre></div></div>
+  <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy — ungroundable</span></div><pre>UngroundableGraph: expected one root, found 2</pre></div></div>
+  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>-a*x - b*y + dot*x</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>a, b, dot, x, y</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;c0___equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\dot{x} = ax + by&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-a*x - b*y + dot*x&quot;,&quot;variables&quot;:[&quot;a&quot;,&quot;b&quot;,&quot;dot&quot;,&quot;x&quot;,&quot;y&quot;]}},{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;t&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;t&quot;,&quot;subexpr&quot;:&quot;t&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;t&quot;,&quot;variables&quot;:[&quot;t&quot;]}},{&quot;id&quot;:&quot;c0___deriv_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;derivative&quot;,&quot;with_respect_to&quot;:&quot;t&quot;,&quot;subexpr&quot;:&quot;\\dot{x}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;dot*x&quot;,&quot;variables&quot;:[&quot;dot&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;c0___add_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;a x + b y&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;a*x + b*y&quot;,&quot;variables&quot;:[&quot;a&quot;,&quot;b&quot;,&quot;x&quot;,&quot;y&quot;]}},{&quot;id&quot;:&quot;c0___multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;a x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;a*x&quot;,&quot;variables&quot;:[&quot;a&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;a&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;a&quot;,&quot;subexpr&quot;:&quot;a&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;a&quot;,&quot;variables&quot;:[&quot;a&quot;]}},{&quot;id&quot;:&quot;c0___multiply_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;b y&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;b*y&quot;,&quot;variables&quot;:[&quot;b&quot;,&quot;y&quot;]}},{&quot;id&quot;:&quot;b&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;b&quot;,&quot;subexpr&quot;:&quot;b&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;b&quot;,&quot;variables&quot;:[&quot;b&quot;]}},{&quot;id&quot;:&quot;y&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;y&quot;,&quot;subexpr&quot;:&quot;y&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;y&quot;,&quot;variables&quot;:[&quot;y&quot;]}},{&quot;id&quot;:&quot;c1___equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\dot{y} = cx + dy&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-c*x + dot*y - dy&quot;,&quot;variables&quot;:[&quot;c&quot;,&quot;dot&quot;,&quot;dy&quot;,&quot;x&quot;,&quot;y&quot;]}},{&quot;id&quot;:&quot;c1___deriv_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;derivative&quot;,&quot;with_respect_to&quot;:&quot;t&quot;,&quot;subexpr&quot;:&quot;\\dot{y}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;dot*y&quot;,&quot;variables&quot;:[&quot;dot&quot;,&quot;y&quot;]}},{&quot;id&quot;:&quot;c1___add_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;c x + dy&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;c*x + dy&quot;,&quot;variables&quot;:[&quot;c&quot;,&quot;dy&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;c1___multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;c x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;c*x&quot;,&quot;variables&quot;:[&quot;c&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;c&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;c&quot;,&quot;subexpr&quot;:&quot;c&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;c&quot;,&quot;variables&quot;:[&quot;c&quot;]}},{&quot;id&quot;:&quot;dy&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;dy&quot;,&quot;subexpr&quot;:&quot;dy&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;dy&quot;,&quot;variables&quot;:[&quot;dy&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;c0___deriv_2&quot;},{&quot;from&quot;:&quot;t&quot;,&quot;to&quot;:&quot;c0___deriv_2&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;c0___deriv_2&quot;,&quot;to&quot;:&quot;c0___equals_1&quot;},{&quot;from&quot;:&quot;a&quot;,&quot;to&quot;:&quot;c0___multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;c0___multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;c0___multiply_4&quot;,&quot;to&quot;:&quot;c0___add_3&quot;},{&quot;from&quot;:&quot;b&quot;,&quot;to&quot;:&quot;c0___multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;y&quot;,&quot;to&quot;:&quot;c0___multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;c0___multiply_5&quot;,&quot;to&quot;:&quot;c0___add_3&quot;},{&quot;from&quot;:&quot;c0___add_3&quot;,&quot;to&quot;:&quot;c0___equals_1&quot;},{&quot;from&quot;:&quot;y&quot;,&quot;to&quot;:&quot;c1___deriv_2&quot;},{&quot;from&quot;:&quot;t&quot;,&quot;to&quot;:&quot;c1___deriv_2&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;c1___deriv_2&quot;,&quot;to&quot;:&quot;c1___equals_1&quot;},{&quot;from&quot;:&quot;c&quot;,&quot;to&quot;:&quot;c1___multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;c1___multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;c1___multiply_4&quot;,&quot;to&quot;:&quot;c1___add_3&quot;},{&quot;from&quot;:&quot;dy&quot;,&quot;to&quot;:&quot;c1___add_3&quot;},{&quot;from&quot;:&quot;c1___add_3&quot;,&quot;to&quot;:&quot;c1___equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;statements&quot;,&quot;count&quot;:2,&quot;clauses&quot;:[{&quot;kind&quot;:&quot;ODE&quot;,&quot;order&quot;:1,&quot;dependent_variables&quot;:[&quot;x&quot;],&quot;independent_variables&quot;:[&quot;t&quot;],&quot;sympy_hints&quot;:[&quot;separable&quot;,&quot;1st_exact&quot;,&quot;1st_linear&quot;,&quot;Bernoulli&quot;,&quot;almost_linear&quot;,&quot;1st_power_series&quot;,&quot;lie_group&quot;,&quot;nth_linear_constant_coeff_undetermined_coefficients&quot;,&quot;nth_linear_constant_coeff_variation_of_parameters&quot;],&quot;linear&quot;:true,&quot;homogeneous&quot;:false,&quot;constant_coefficients&quot;:true},{&quot;kind&quot;:&quot;ODE&quot;,&quot;order&quot;:1,&quot;dependent_variables&quot;:[&quot;y&quot;],&quot;independent_variables&quot;:[&quot;t&quot;],&quot;sympy_hints&quot;:[&quot;nth_algebraic&quot;,&quot;separable&quot;,&quot;1st_exact&quot;,&quot;1st_linear&quot;,&quot;Bernoulli&quot;,&quot;1st_power_series&quot;,&quot;lie_group&quot;,&quot;nth_linear_constant_coeff_undetermined_coefficients&quot;,&quot;nth_linear_euler_eq_nonhomogeneous_undetermined_coefficients&quot;,&quot;nth_linear_constant_coeff_variation_of_parameters&quot;,&quot;nth_linear_euler_eq_nonhomogeneous_variation_of_parameters&quot;],&quot;linear&quot;:true,&quot;homogeneous&quot;:true,&quot;constant_coefficients&quot;:true}]}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+</div>
+<div class="row">
+  <div>
+    <div class="row-id">initial_condition</div>
+    <div class="row-latex">$$y'' + y = 0, \quad y(0) = 1, \quad y'(0) = 0$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  c0___equals_1{"="}:::relation
+  c0___add_2(("$+$")):::operator
+  y["$y''$"]:::scalar
+  y_2["$y$"]:::scalar
+  c0___num_3["$0$"]:::number
+  c1___equals_1{"="}:::relation
+  c1___y_2{{"$y(\cdot)$"}}:::function
+  c1___num_3["$0$"]:::number
+  c1___num_4["$1$"]:::number
+  c2___equals_1{"="}:::relation
+  c2___y_2{{"$y'(\cdot)$"}}:::function
+  c2___num_3["$0$"]:::number
+  c2___num_4["$0$"]:::number
+  y --&gt; c0___add_2
+  y_2 --&gt; c0___add_2
+  c0___add_2 --&gt; c0___equals_1
+  c0___num_3 --&gt; c0___equals_1
+  c1___num_3 --&gt; c1___y_2
+  c1___y_2 --&gt; c1___equals_1
+  c1___num_4 --&gt; c1___equals_1
+  c2___num_3 --&gt; c2___y_2
+  c2___y_2 --&gt; c2___equals_1
+  c2___num_4 --&gt; c2___equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle" data-target="row-sympy" title="Toggle SymPy expression">SymPy</button>
+    <button class="row-toggle" data-target="row-js" title="Toggle math.js (JS) expression">JS</button>
+    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
+  </div>
+  <div class="row-panel row-latex-src" data-latex="y'' + y = 0, \quad y(0) = 1, \quad y'(0) = 0"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>y'' + y = 0, \quad y(0) = 1, \quad y'(0) = 0</div>
+  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
+  "nodes": [
+    {
+      "id": "c0___equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "y'' + y = 0",
+      "chartScript": {
+        "script": "y + y_dprime",
+        "variables": [
+          "y",
+          "y_dprime"
+        ]
+      }
+    },
+    {
+      "id": "c0___add_2",
+      "type": "operator",
+      "op": "add",
+      "subexpr": "y + y''",
+      "chartScript": {
+        "script": "y + y_dprime",
+        "variables": [
+          "y",
+          "y_dprime"
+        ]
+      }
+    },
+    {
+      "id": "y",
+      "type": "scalar",
+      "latex": "y''",
+      "subexpr": "y''",
+      "chartScript": {
+        "script": "y_dprime",
+        "variables": [
+          "y_dprime"
+        ]
+      }
+    },
+    {
+      "id": "y_2",
+      "type": "scalar",
+      "latex": "y",
+      "subexpr": "y",
+      "chartScript": {
+        "script": "y",
+        "variables": [
+          "y"
+        ]
+      }
+    },
+    {
+      "id": "c0___num_3",
+      "type": "number",
+      "label": "0",
+      "subexpr": "0",
+      "chartScript": {
+        "script": "0",
+        "variables": []
+      }
+    },
+    {
+      "id": "c1___equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "y(0) = 1",
+      "chartScript": {
+        "script": "y(0) - 1",
+        "variables": []
+      }
+    },
+    {
+      "id": "c1___y_2",
+      "type": "function",
+      "op": "y",
+      "subexpr": "y{\\left(0 \\right)}",
+      "chartScript": {
+        "script": "0",
+        "variables": []
+      }
+    },
+    {
+      "id": "c1___num_3",
+      "type": "number",
+      "label": "0",
+      "subexpr": "0",
+      "chartScript": {
+        "script": "0",
+        "variables": []
+      }
+    },
+    {
+      "id": "c1___num_4",
+      "type": "number",
+      "label": "1",
+      "subexpr": "1",
+      "chartScript": {
+        "script": "1",
+        "variables": []
+      }
+    },
+    {
+      "id": "c2___equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "y'(0) = 0",
+      "chartScript": {
+        "script": "y_prime(0)",
+        "variables": []
+      }
+    },
+    {
+      "id": "c2___y_2",
+      "type": "function",
+      "op": "y'",
+      "subexpr": "\\operatorname{y'}{\\left(0 \\right)}",
+      "chartScript": {
+        "script": "0",
+        "variables": []
+      }
+    },
+    {
+      "id": "c2___num_3",
+      "type": "number",
+      "label": "0",
+      "subexpr": "0",
+      "chartScript": {
+        "script": "0",
+        "variables": []
+      }
+    },
+    {
+      "id": "c2___num_4",
+      "type": "number",
+      "label": "0",
+      "subexpr": "0",
+      "chartScript": {
+        "script": "0",
+        "variables": []
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "y",
+      "to": "c0___add_2"
+    },
+    {
+      "from": "y_2",
+      "to": "c0___add_2"
+    },
+    {
+      "from": "c0___add_2",
+      "to": "c0___equals_1"
+    },
+    {
+      "from": "c0___num_3",
+      "to": "c0___equals_1"
+    },
+    {
+      "from": "c1___num_3",
+      "to": "c1___y_2"
+    },
+    {
+      "from": "c1___y_2",
+      "to": "c1___equals_1"
+    },
+    {
+      "from": "c1___num_4",
+      "to": "c1___equals_1"
+    },
+    {
+      "from": "c2___num_3",
+      "to": "c2___y_2"
+    },
+    {
+      "from": "c2___y_2",
+      "to": "c2___equals_1"
+    },
+    {
+      "from": "c2___num_4",
+      "to": "c2___equals_1"
+    }
+  ],
+  "classification": {
+    "kind": "statements",
+    "count": 3,
+    "clauses": [
+      {
+        "kind": "algebraic"
+      },
+      {
+        "kind": "algebraic"
+      },
+      {
+        "kind": "algebraic"
+      }
+    ]
+  }
+}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  c0___equals_1{"="}:::relation
+  c0___add_2(("$+$")):::operator
+  y["$y''$"]:::scalar
+  y_2["$y$"]:::scalar
+  c0___num_3["$0$"]:::number
+  c1___equals_1{"="}:::relation
+  c1___y_2{{"$y(\cdot)$"}}:::function
+  c1___num_3["$0$"]:::number
+  c1___num_4["$1$"]:::number
+  c2___equals_1{"="}:::relation
+  c2___y_2{{"$y'(\cdot)$"}}:::function
+  c2___num_3["$0$"]:::number
+  c2___num_4["$0$"]:::number
+  y --&gt; c0___add_2
+  y_2 --&gt; c0___add_2
+  c0___add_2 --&gt; c0___equals_1
+  c0___num_3 --&gt; c0___equals_1
+  c1___num_3 --&gt; c1___y_2
+  c1___y_2 --&gt; c1___equals_1
+  c1___num_4 --&gt; c1___equals_1
+  c2___num_3 --&gt; c2___y_2
+  c2___y_2 --&gt; c2___equals_1
+  c2___num_4 --&gt; c2___equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#aaa,stroke-width:2px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#aaa,stroke-width:2px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+</pre></div></div>
+  <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy — ungroundable</span></div><pre>UngroundableGraph: expected one root, found 3</pre></div></div>
+  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>y + y_dprime</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>y, y_dprime</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;c0___equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;y'' + y = 0&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;y + y_dprime&quot;,&quot;variables&quot;:[&quot;y&quot;,&quot;y_dprime&quot;]}},{&quot;id&quot;:&quot;c0___add_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;y + y''&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;y + y_dprime&quot;,&quot;variables&quot;:[&quot;y&quot;,&quot;y_dprime&quot;]}},{&quot;id&quot;:&quot;y&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;y''&quot;,&quot;subexpr&quot;:&quot;y''&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;y_dprime&quot;,&quot;variables&quot;:[&quot;y_dprime&quot;]}},{&quot;id&quot;:&quot;y_2&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;y&quot;,&quot;subexpr&quot;:&quot;y&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;y&quot;,&quot;variables&quot;:[&quot;y&quot;]}},{&quot;id&quot;:&quot;c0___num_3&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;0&quot;,&quot;subexpr&quot;:&quot;0&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;c1___equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;y(0) = 1&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;y(0) - 1&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;c1___y_2&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;y&quot;,&quot;subexpr&quot;:&quot;y{\\left(0 \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;c1___num_3&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;0&quot;,&quot;subexpr&quot;:&quot;0&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;c1___num_4&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;1&quot;,&quot;subexpr&quot;:&quot;1&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;c2___equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;y'(0) = 0&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;y_prime(0)&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;c2___y_2&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;y'&quot;,&quot;subexpr&quot;:&quot;\\operatorname{y'}{\\left(0 \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;c2___num_3&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;0&quot;,&quot;subexpr&quot;:&quot;0&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;c2___num_4&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;0&quot;,&quot;subexpr&quot;:&quot;0&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;y&quot;,&quot;to&quot;:&quot;c0___add_2&quot;},{&quot;from&quot;:&quot;y_2&quot;,&quot;to&quot;:&quot;c0___add_2&quot;},{&quot;from&quot;:&quot;c0___add_2&quot;,&quot;to&quot;:&quot;c0___equals_1&quot;},{&quot;from&quot;:&quot;c0___num_3&quot;,&quot;to&quot;:&quot;c0___equals_1&quot;},{&quot;from&quot;:&quot;c1___num_3&quot;,&quot;to&quot;:&quot;c1___y_2&quot;},{&quot;from&quot;:&quot;c1___y_2&quot;,&quot;to&quot;:&quot;c1___equals_1&quot;},{&quot;from&quot;:&quot;c1___num_4&quot;,&quot;to&quot;:&quot;c1___equals_1&quot;},{&quot;from&quot;:&quot;c2___num_3&quot;,&quot;to&quot;:&quot;c2___y_2&quot;},{&quot;from&quot;:&quot;c2___y_2&quot;,&quot;to&quot;:&quot;c2___equals_1&quot;},{&quot;from&quot;:&quot;c2___num_4&quot;,&quot;to&quot;:&quot;c2___equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;statements&quot;,&quot;count&quot;:3,&quot;clauses&quot;:[{&quot;kind&quot;:&quot;algebraic&quot;},{&quot;kind&quot;:&quot;algebraic&quot;},{&quot;kind&quot;:&quot;algebraic&quot;}]}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+</div>
+<div class="row">
+  <div>
+    <div class="row-id">laplace_transform</div>
+    <div class="row-latex">$$s Y(s) - y(0) = \mathcal{L}\{f(t)\}$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  __add_2(("$+$")):::operator
+  __multiply_3(("$\times$")):::operator
+  s["$s$"]:::scalar
+  __Y_4{{"$Y(\cdot)$"}}:::function
+  __negation_5@{ shape: "flip-tri", label: "$-$" }
+  __y_6{{"$y(\cdot)$"}}:::function
+  __num_7["$0$"]:::number
+  __multiply_8(("$\times$")):::operator
+  L["$L$"]:::scalar
+  __f_9{{"$f(\cdot)$"}}:::function
+  t["$t$"]:::scalar
+  class __negation_5 operator
+  s --&gt; __multiply_3
+  s --&gt; __Y_4
+  __Y_4 --&gt; __multiply_3
+  __multiply_3 --&gt; __add_2
+  __num_7 --&gt; __y_6
+  __y_6 --&gt; __negation_5
+  __negation_5 --&gt; __add_2
+  __add_2 --&gt; __equals_1
+  L --&gt; __multiply_8
+  t --&gt; __f_9
+  __f_9 --&gt; __multiply_8
+  __multiply_8 --&gt; __equals_1
+  linkStyle 0 stroke:#ef5350,stroke-width:3px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#ef5350,stroke-width:3px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#ef5350,stroke-width:3px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 10 stroke:#ef5350,stroke-width:3px
+  linkStyle 11 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle" data-target="row-sympy" title="Toggle SymPy expression">SymPy</button>
+    <button class="row-toggle" data-target="row-js" title="Toggle math.js (JS) expression">JS</button>
+    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
+  </div>
+  <div class="row-panel row-latex-src" data-latex="s Y(s) - y(0) = \mathcal{L}\{f(t)\}"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>s Y(s) - y(0) = \mathcal{L}\{f(t)\}</div>
+  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
+  "nodes": [
+    {
+      "id": "__equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "s Y(s) - y(0) = L\\{f(t)\\}",
+      "chartScript": {
+        "script": "-L*f(t) + s*Y(s) - y(0)",
+        "variables": [
+          "L",
+          "s",
+          "t"
+        ]
+      }
+    },
+    {
+      "id": "__add_2",
+      "type": "operator",
+      "op": "add",
+      "subexpr": "s Y{\\left(s \\right)} - y{\\left(0 \\right)}",
+      "chartScript": {
+        "script": "Y*pow(s, 2)",
+        "variables": [
+          "Y",
+          "s"
+        ]
+      }
+    },
+    {
+      "id": "__multiply_3",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "s Y{\\left(s \\right)}",
+      "chartScript": {
+        "script": "Y*pow(s, 2)",
+        "variables": [
+          "Y",
+          "s"
+        ]
+      }
+    },
+    {
+      "id": "s",
+      "type": "scalar",
+      "latex": "s",
+      "subexpr": "s",
+      "chartScript": {
+        "script": "s",
+        "variables": [
+          "s"
+        ]
+      }
+    },
+    {
+      "id": "__Y_4",
+      "type": "function",
+      "op": "Y",
+      "subexpr": "Y{\\left(s \\right)}",
+      "chartScript": {
+        "script": "Y*s",
+        "variables": [
+          "Y",
+          "s"
+        ]
+      }
+    },
+    {
+      "id": "__negation_5",
+      "type": "operator",
+      "op": "negation",
+      "subexpr": "-y{\\left(0 \\right)}",
+      "chartScript": {
+        "script": "0",
+        "variables": []
+      }
+    },
+    {
+      "id": "__y_6",
+      "type": "function",
+      "op": "y",
+      "subexpr": "y{\\left(0 \\right)}",
+      "chartScript": {
+        "script": "0",
+        "variables": []
+      }
+    },
+    {
+      "id": "__num_7",
+      "type": "number",
+      "label": "0",
+      "subexpr": "0",
+      "chartScript": {
+        "script": "0",
+        "variables": []
+      }
+    },
+    {
+      "id": "__multiply_8",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "L f{\\left(t \\right)}",
+      "chartScript": {
+        "script": "L*f*t",
+        "variables": [
+          "L",
+          "f",
+          "t"
+        ]
+      }
+    },
+    {
+      "id": "L",
+      "type": "scalar",
+      "latex": "L",
+      "subexpr": "L",
+      "chartScript": {
+        "script": "L",
+        "variables": [
+          "L"
+        ]
+      }
+    },
+    {
+      "id": "__f_9",
+      "type": "function",
+      "op": "f",
+      "subexpr": "f{\\left(t \\right)}",
+      "chartScript": {
+        "script": "f*t",
+        "variables": [
+          "f",
+          "t"
+        ]
+      }
+    },
+    {
+      "id": "t",
+      "type": "scalar",
+      "latex": "t",
+      "subexpr": "t",
+      "chartScript": {
+        "script": "t",
+        "variables": [
+          "t"
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "s",
+      "to": "__multiply_3",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "s",
+      "to": "__Y_4"
+    },
+    {
+      "from": "__Y_4",
+      "to": "__multiply_3",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_3",
+      "to": "__add_2"
+    },
+    {
+      "from": "__num_7",
+      "to": "__y_6"
+    },
+    {
+      "from": "__y_6",
+      "to": "__negation_5"
+    },
+    {
+      "from": "__negation_5",
+      "to": "__add_2"
+    },
+    {
+      "from": "__add_2",
+      "to": "__equals_1"
+    },
+    {
+      "from": "L",
+      "to": "__multiply_8",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "t",
+      "to": "__f_9"
+    },
+    {
+      "from": "__f_9",
+      "to": "__multiply_8",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_8",
+      "to": "__equals_1"
+    }
+  ],
+  "classification": {
+    "kind": "algebraic"
+  }
+}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  __add_2(("$+$")):::operator
+  __multiply_3(("$\times$")):::operator
+  s["$s$"]:::scalar
+  __Y_4{{"$Y(\cdot)$"}}:::function
+  __negation_5@{ shape: "flip-tri", label: "$-$" }
+  __y_6{{"$y(\cdot)$"}}:::function
+  __num_7["$0$"]:::number
+  __multiply_8(("$\times$")):::operator
+  L["$L$"]:::scalar
+  __f_9{{"$f(\cdot)$"}}:::function
+  t["$t$"]:::scalar
+  class __negation_5 operator
+  s --&gt; __multiply_3
+  s --&gt; __Y_4
+  __Y_4 --&gt; __multiply_3
+  __multiply_3 --&gt; __add_2
+  __num_7 --&gt; __y_6
+  __y_6 --&gt; __negation_5
+  __negation_5 --&gt; __add_2
+  __add_2 --&gt; __equals_1
+  L --&gt; __multiply_8
+  t --&gt; __f_9
+  __f_9 --&gt; __multiply_8
+  __multiply_8 --&gt; __equals_1
+  linkStyle 0 stroke:#ef5350,stroke-width:3px
+  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 2 stroke:#ef5350,stroke-width:3px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#ef5350,stroke-width:3px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 10 stroke:#ef5350,stroke-width:3px
+  linkStyle 11 stroke:#aaa,stroke-width:2px
+</pre></div></div>
+  <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(s*Y(s) - y(0), L*f(t))</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(Add(Mul(Symbol('s'), Function('Y')(Symbol('s'))), Mul(Integer(-1), Function('y')(Integer(0)))), Mul(Symbol('L'), Function('f')(Symbol('t'))))</pre></div></div>
+  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>-L*mathcal*f(t) + s*Y(s) - y(0)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>L, mathcal, s, t</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;s Y(s) - y(0) = L\\{f(t)\\}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-L*f(t) + s*Y(s) - y(0)&quot;,&quot;variables&quot;:[&quot;L&quot;,&quot;s&quot;,&quot;t&quot;]}},{&quot;id&quot;:&quot;__add_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;s Y{\\left(s \\right)} - y{\\left(0 \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Y*pow(s, 2)&quot;,&quot;variables&quot;:[&quot;Y&quot;,&quot;s&quot;]}},{&quot;id&quot;:&quot;__multiply_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;s Y{\\left(s \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Y*pow(s, 2)&quot;,&quot;variables&quot;:[&quot;Y&quot;,&quot;s&quot;]}},{&quot;id&quot;:&quot;s&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;s&quot;,&quot;subexpr&quot;:&quot;s&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;s&quot;,&quot;variables&quot;:[&quot;s&quot;]}},{&quot;id&quot;:&quot;__Y_4&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;Y&quot;,&quot;subexpr&quot;:&quot;Y{\\left(s \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Y*s&quot;,&quot;variables&quot;:[&quot;Y&quot;,&quot;s&quot;]}},{&quot;id&quot;:&quot;__negation_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-y{\\left(0 \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__y_6&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;y&quot;,&quot;subexpr&quot;:&quot;y{\\left(0 \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__num_7&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;0&quot;,&quot;subexpr&quot;:&quot;0&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__multiply_8&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;L f{\\left(t \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;L*f*t&quot;,&quot;variables&quot;:[&quot;L&quot;,&quot;f&quot;,&quot;t&quot;]}},{&quot;id&quot;:&quot;L&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;L&quot;,&quot;subexpr&quot;:&quot;L&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;L&quot;,&quot;variables&quot;:[&quot;L&quot;]}},{&quot;id&quot;:&quot;__f_9&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;f&quot;,&quot;subexpr&quot;:&quot;f{\\left(t \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;f*t&quot;,&quot;variables&quot;:[&quot;f&quot;,&quot;t&quot;]}},{&quot;id&quot;:&quot;t&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;t&quot;,&quot;subexpr&quot;:&quot;t&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;t&quot;,&quot;variables&quot;:[&quot;t&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;s&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;s&quot;,&quot;to&quot;:&quot;__Y_4&quot;},{&quot;from&quot;:&quot;__Y_4&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_3&quot;,&quot;to&quot;:&quot;__add_2&quot;},{&quot;from&quot;:&quot;__num_7&quot;,&quot;to&quot;:&quot;__y_6&quot;},{&quot;from&quot;:&quot;__y_6&quot;,&quot;to&quot;:&quot;__negation_5&quot;},{&quot;from&quot;:&quot;__negation_5&quot;,&quot;to&quot;:&quot;__add_2&quot;},{&quot;from&quot;:&quot;__add_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;L&quot;,&quot;to&quot;:&quot;__multiply_8&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;t&quot;,&quot;to&quot;:&quot;__f_9&quot;},{&quot;from&quot;:&quot;__f_9&quot;,&quot;to&quot;:&quot;__multiply_8&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_8&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+</div>
+<div class="row">
+  <div>
+    <div class="row-id">variation_params</div>
+    <div class="row-latex">$$y_p = u_1 y_1 + u_2 y_2$$</div>
+  </div>
+  <div class="row-graph">
+    <pre class="mermaid">flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  y_p["$y_{p}$"]:::scalar
+  __add_2(("$+$")):::operator
+  __multiply_3(("$\times$")):::operator
+  u_1["$u_{1}$"]:::scalar
+  y_1["$y_{1}$"]:::scalar
+  __multiply_4(("$\times$")):::operator
+  u_2["$u_{2}$"]:::scalar
+  y_2["$y_{2}$"]:::scalar
+  y_p --&gt; __equals_1
+  u_1 --&gt; __multiply_3
+  y_1 --&gt; __multiply_3
+  __multiply_3 --&gt; __add_2
+  u_2 --&gt; __multiply_4
+  y_2 --&gt; __multiply_4
+  __multiply_4 --&gt; __add_2
+  __add_2 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#ef5350,stroke-width:3px
+  linkStyle 2 stroke:#ef5350,stroke-width:3px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#ef5350,stroke-width:3px
+  linkStyle 5 stroke:#ef5350,stroke-width:3px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+</pre>
+  </div>
+  <div class="row-actions">
+    <button class="row-toggle" data-target="row-latex-src" title="Toggle LaTeX source">LaTeX</button>
+    <button class="row-toggle" data-target="row-json" title="Toggle JSON">{}</button>
+    <button class="row-toggle" data-target="row-sympy" title="Toggle SymPy expression">SymPy</button>
+    <button class="row-toggle" data-target="row-js" title="Toggle math.js (JS) expression">JS</button>
+    <button class="row-toggle-d3" title="Toggle D3 graph">D3</button>
+  </div>
+  <div class="row-panel row-latex-src" data-latex="y_p = u_1 y_1 + u_2 y_2"><button class="row-copy-btn row-copy-latex" title="Copy LaTeX">copy</button>y_p = u_1 y_1 + u_2 y_2</div>
+  <div class="row-panel row-json"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Semantic Graph JSON</span><button class="row-copy-btn" title="Copy JSON">copy</button></div><pre>{
+  "nodes": [
+    {
+      "id": "__equals_1",
+      "type": "relation",
+      "op": "equals",
+      "subexpr": "y_p = u_1 y_1 + u_2 y_2",
+      "chartScript": {
+        "script": "-u_1*y_1 - u_2*y_2 + y_p",
+        "variables": [
+          "u_1",
+          "u_2",
+          "y_1",
+          "y_2",
+          "y_p"
+        ]
+      }
+    },
+    {
+      "id": "y_p",
+      "type": "scalar",
+      "latex": "y_{p}",
+      "subexpr": "y_{p}",
+      "chartScript": {
+        "script": "y_p",
+        "variables": [
+          "y_p"
+        ]
+      }
+    },
+    {
+      "id": "__add_2",
+      "type": "operator",
+      "op": "add",
+      "subexpr": "u_{1} y_{1} + u_{2} y_{2}",
+      "chartScript": {
+        "script": "u_1*y_1 + u_2*y_2",
+        "variables": [
+          "u_1",
+          "u_2",
+          "y_1",
+          "y_2"
+        ]
+      }
+    },
+    {
+      "id": "__multiply_3",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "u_{1} y_{1}",
+      "chartScript": {
+        "script": "u_1*y_1",
+        "variables": [
+          "u_1",
+          "y_1"
+        ]
+      }
+    },
+    {
+      "id": "u_1",
+      "type": "scalar",
+      "latex": "u_{1}",
+      "subexpr": "u_{1}",
+      "chartScript": {
+        "script": "u_1",
+        "variables": [
+          "u_1"
+        ]
+      }
+    },
+    {
+      "id": "y_1",
+      "type": "scalar",
+      "latex": "y_{1}",
+      "subexpr": "y_{1}",
+      "chartScript": {
+        "script": "y_1",
+        "variables": [
+          "y_1"
+        ]
+      }
+    },
+    {
+      "id": "__multiply_4",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "u_{2} y_{2}",
+      "chartScript": {
+        "script": "u_2*y_2",
+        "variables": [
+          "u_2",
+          "y_2"
+        ]
+      }
+    },
+    {
+      "id": "u_2",
+      "type": "scalar",
+      "latex": "u_{2}",
+      "subexpr": "u_{2}",
+      "chartScript": {
+        "script": "u_2",
+        "variables": [
+          "u_2"
+        ]
+      }
+    },
+    {
+      "id": "y_2",
+      "type": "scalar",
+      "latex": "y_{2}",
+      "subexpr": "y_{2}",
+      "chartScript": {
+        "script": "y_2",
+        "variables": [
+          "y_2"
+        ]
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "y_p",
+      "to": "__equals_1"
+    },
+    {
+      "from": "u_1",
+      "to": "__multiply_3",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "y_1",
+      "to": "__multiply_3",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_3",
+      "to": "__add_2"
+    },
+    {
+      "from": "u_2",
+      "to": "__multiply_4",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "y_2",
+      "to": "__multiply_4",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_4",
+      "to": "__add_2"
+    },
+    {
+      "from": "__add_2",
+      "to": "__equals_1"
+    }
+  ],
+  "classification": {
+    "kind": "algebraic"
+  }
+}</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
+  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
+  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
+  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
+  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  __equals_1{"="}:::relation
+  y_p["$y_{p}$"]:::scalar
+  __add_2(("$+$")):::operator
+  __multiply_3(("$\times$")):::operator
+  u_1["$u_{1}$"]:::scalar
+  y_1["$y_{1}$"]:::scalar
+  __multiply_4(("$\times$")):::operator
+  u_2["$u_{2}$"]:::scalar
+  y_2["$y_{2}$"]:::scalar
+  y_p --&gt; __equals_1
+  u_1 --&gt; __multiply_3
+  y_1 --&gt; __multiply_3
+  __multiply_3 --&gt; __add_2
+  u_2 --&gt; __multiply_4
+  y_2 --&gt; __multiply_4
+  __multiply_4 --&gt; __add_2
+  __add_2 --&gt; __equals_1
+  linkStyle 0 stroke:#aaa,stroke-width:2px
+  linkStyle 1 stroke:#ef5350,stroke-width:3px
+  linkStyle 2 stroke:#ef5350,stroke-width:3px
+  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 4 stroke:#ef5350,stroke-width:3px
+  linkStyle 5 stroke:#ef5350,stroke-width:3px
+  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+</pre></div></div>
+  <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(y_{p}, u_{1}*y_{1} + u_{2}*y_{2})</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(Symbol('y_{p}'), Add(Mul(Symbol('u_{1}'), Symbol('y_{1}')), Mul(Symbol('u_{2}'), Symbol('y_{2}'))))</pre></div></div>
+  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>-u_1*y_1 - u_2*y_2 + y_p</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>u_1, u_2, y_1, y_2, y_p</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;y_p = u_1 y_1 + u_2 y_2&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-u_1*y_1 - u_2*y_2 + y_p&quot;,&quot;variables&quot;:[&quot;u_1&quot;,&quot;u_2&quot;,&quot;y_1&quot;,&quot;y_2&quot;,&quot;y_p&quot;]}},{&quot;id&quot;:&quot;y_p&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;y_{p}&quot;,&quot;subexpr&quot;:&quot;y_{p}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;y_p&quot;,&quot;variables&quot;:[&quot;y_p&quot;]}},{&quot;id&quot;:&quot;__add_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;u_{1} y_{1} + u_{2} y_{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;u_1*y_1 + u_2*y_2&quot;,&quot;variables&quot;:[&quot;u_1&quot;,&quot;u_2&quot;,&quot;y_1&quot;,&quot;y_2&quot;]}},{&quot;id&quot;:&quot;__multiply_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;u_{1} y_{1}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;u_1*y_1&quot;,&quot;variables&quot;:[&quot;u_1&quot;,&quot;y_1&quot;]}},{&quot;id&quot;:&quot;u_1&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;u_{1}&quot;,&quot;subexpr&quot;:&quot;u_{1}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;u_1&quot;,&quot;variables&quot;:[&quot;u_1&quot;]}},{&quot;id&quot;:&quot;y_1&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;y_{1}&quot;,&quot;subexpr&quot;:&quot;y_{1}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;y_1&quot;,&quot;variables&quot;:[&quot;y_1&quot;]}},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;u_{2} y_{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;u_2*y_2&quot;,&quot;variables&quot;:[&quot;u_2&quot;,&quot;y_2&quot;]}},{&quot;id&quot;:&quot;u_2&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;u_{2}&quot;,&quot;subexpr&quot;:&quot;u_{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;u_2&quot;,&quot;variables&quot;:[&quot;u_2&quot;]}},{&quot;id&quot;:&quot;y_2&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;y_{2}&quot;,&quot;subexpr&quot;:&quot;y_{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;y_2&quot;,&quot;variables&quot;:[&quot;y_2&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;y_p&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;u_1&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;y_1&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_3&quot;,&quot;to&quot;:&quot;__add_2&quot;},{&quot;from&quot;:&quot;u_2&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;y_2&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__add_2&quot;},{&quot;from&quot;:&quot;__add_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+</div>
+<div class="summary">✅ <span class="count">10</span> rendered, <span class="count">0</span> errors out of <span class="count">10</span> expressions</div>
+<script>
+document.querySelectorAll('.row-toggle').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const target = btn.dataset.target;
+    const panel = btn.closest('.row').querySelector('.' + target);
+    if (panel) panel.classList.toggle('open');
+  });
+});
+function copyText(text, btn) {
+  function onSuccess() {
+    btn.textContent = 'copied';
+    btn.classList.add('copied');
+    setTimeout(function() { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 1500);
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(onSuccess, function() { fallbackCopy(text, btn, onSuccess); });
+  } else {
+    fallbackCopy(text, btn, onSuccess);
+  }
+}
+function fallbackCopy(text, btn, onSuccess) {
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;left:-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  var ok = false;
+  try { ok = document.execCommand('copy'); } catch(e) {}
+  document.body.removeChild(ta);
+  if (ok) onSuccess();
+}
+document.querySelectorAll('.row-copy-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const pane = btn.closest('.row-json-pane');
+    var text;
+    if (pane) {
+      text = pane.querySelector('pre').textContent;
+    } else {
+      text = btn.parentElement.dataset.latex || '';
+    }
+    copyText(text, btn);
+  });
+});
+</script>
+<script>
+// Patch fetchTheme to use inlined theme data
+(function() {
+  var _origFetch = window.fetch;
+  window.fetch = function(url, opts) {
+    if (typeof url === 'string' && url.startsWith('/api/graph/theme/')) {
+      var theme = window.__SG_REPORT_THEME__;
+      return Promise.resolve(new Response(JSON.stringify(theme), {
+        status: 200, headers: { 'Content-Type': 'application/json' }
+      }));
+    }
+    return _origFetch.call(this, url, opts);
+  };
+})();
+
+Promise.all([
+  import('./d3-semantic-graph.js?v=1784601087'),
+  import('./sg-chart.js?v=1784601087'),
+]).then(function(mods) {
+  var D3SemanticGraphRenderer = mods[0].D3SemanticGraphRenderer;
+  var SgChartManager = mods[1].SgChartManager;
+  document.querySelectorAll('.row-toggle-d3').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var row = btn.closest('.row');
+      var panel = row.querySelector('.row-d3');
+      if (!panel) return;
+      panel.classList.toggle('open');
+      if (!panel.classList.contains('open')) return;
+      if (panel.dataset.rendered) return;
+      panel.dataset.rendered = '1';
+      var graphJson = panel.dataset.graph;
+      if (!graphJson) return;
+      panel.innerHTML = '';
+      try {
+        var graph = JSON.parse(graphJson);
+        var chartMgr = new SgChartManager(panel, graph, {
+          katex: window.katex || null,
+        });
+        var renderer = new D3SemanticGraphRenderer(panel, {
+          direction: 'left-right',
+          labels: 'description',
+          theme: 'default-dark',
+          katex: window.katex || null,
+          onTransformChange: function(t) { chartMgr.setTransform(t); },
+          onChartClick: function(nodeId, nodeData, btnEl) {
+            // Always open — never toggle.  Only the × button closes.
+            chartMgr.openChart(nodeId, btnEl);
+          },
+        });
+        if (chartMgr.setRenderer) chartMgr.setRenderer(renderer);
+        renderer.render(graph);
+      } catch (err) {
+        panel.dataset.rendered = '';
+        panel.innerHTML = '<div style="padding:1em;color:#e57373">Render error: ' + err.message + '</div>';
+        console.error('D3 panel render error:', err);
+      }
+    });
+  });
+});
+</script>
+</body>
+</html>
