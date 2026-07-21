@@ -10,6 +10,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
+import pytest
+
 import backend.server as server
 
 
@@ -85,15 +87,123 @@ def test_system_prompt_ignores_out_of_range_step():
 
 def test_call_proof_chat_without_client_is_graceful(monkeypatch):
     monkeypatch.setattr(server, "get_gemini_client", lambda: None)
-    out = server.call_proof_chat([{"role": "user", "text": "hi"}], _PROOF, 0)
+    out, edit = server.call_proof_chat([{"role": "user", "text": "hi"}], _PROOF, 0)
     assert "not available" in out.lower()
+    assert edit is None
 
 
 def test_call_proof_chat_empty_thread_short_circuits(monkeypatch):
     # Should not even need a client if there's nothing to answer.
     monkeypatch.setattr(server, "get_gemini_client", lambda: object())
-    out = server.call_proof_chat([], _PROOF, 0)
+    out, edit = server.call_proof_chat([], _PROOF, 0)
     assert "ask a question" in out.lower()
+    assert edit is None
+
+
+# ── the editing lock is enforced by tool ABSENCE ─────────────────────────────
+# Not by asking the model to behave: when editing is locked the ``edit_step``
+# function is never declared, so there is no call for the model to make.
+
+def _capture_config(monkeypatch):
+    """Run call_proof_chat against a fake client and return the config it built."""
+    seen = {}
+
+    class _Models:
+        def generate_content(self, *, model, contents, config):
+            seen["config"] = config
+            raise RuntimeError("stop here — we only want the config")
+
+    monkeypatch.setattr(server, "get_gemini_client",
+                        lambda: type("C", (), {"models": _Models()})())
+    return seen
+
+
+def test_locked_chat_declares_no_edit_tool(monkeypatch):
+    seen = _capture_config(monkeypatch)
+    server.call_proof_chat([{"role": "user", "text": "move c to the right"}],
+                           _PROOF, 0, allow_edits=False)
+    assert not getattr(seen["config"], "tools", None)
+
+
+def test_unlocked_chat_declares_the_edit_tool(monkeypatch):
+    seen = _capture_config(monkeypatch)
+    server.call_proof_chat([{"role": "user", "text": "move c to the right"}],
+                           _PROOF, 0, allow_edits=True)
+    names = [f.name for t in seen["config"].tools for f in t.function_declarations]
+    assert names == ["edit_step"]
+
+
+def test_locked_derive_prompt_points_at_the_lock():
+    """In the Derive workspace but locked, guide the reader to the lock toggle —
+    not to the edit tool (which isn't declared) and not to Clone (they're already
+    on an editable copy)."""
+    sp = server._proof_chat_system_prompt(_PROOF, 0, allow_edits=False, in_derive=True)
+    assert "LOCKED" in sp and "Locked button" in sp
+    assert "edit_step" not in sp
+
+
+def test_readonly_prompt_points_at_clone_not_unlock():
+    """A read-only opened proof has no lock button — guide to Clone, and do NOT
+    mention unlocking (the exact wrong instruction on this view)."""
+    sp = server._proof_chat_system_prompt(_PROOF, 0, allow_edits=False, in_derive=False)
+    low = sp.lower()
+    assert "read-only" in low and "clone" in low
+    # The actionable CTA is Clone, never the (nonexistent here) lock button.
+    assert "Locked button" not in sp
+    assert "edit_step" not in sp
+
+
+def test_unlocked_prompt_separates_instructions_from_questions():
+    """The distinction a keyword match cannot make, stated explicitly."""
+    sp = server._proof_chat_system_prompt(_PROOF, 0, allow_edits=True)
+    assert "edit_step" in sp
+    assert "why did they move" in sp.lower()
+
+
+def test_unlocked_prompt_does_not_let_the_agent_adjudicate_feasibility():
+    """The agent must ROUTE operations to the tool, not decide for itself that the
+    math can't be done. "solve for b" on a bare expression got answered in text
+    ("there is no equation, nothing to solve") instead of calling edit_step — the
+    CAS never ran. The prompt tells it that call is the editor's to make."""
+    sp = server._proof_chat_system_prompt(_PROOF, 0, allow_edits=True)
+    low = sp.lower()
+    assert "nothing to solve" in low          # named as the wrong reply
+    assert "no equals sign" in low            # the exact bare-expression case
+    # The decision belongs to the CAS, not the chat agent.
+    assert "computer algebra system decide" in low or "editor and its" in low
+
+
+@pytest.mark.parametrize("allow_edits,in_derive",
+                         [(False, False), (False, True), (True, False)])
+def test_system_prompt_is_authoritative_over_stale_history(allow_edits, in_derive):
+    """The staleness cuts across every state: after the reader unlocks (or navigates
+    to another step), the thread still carries the model's own earlier turns —
+    "editing is LOCKED", "you're on step 2". Rather than patch each case, the base
+    prompt states the general rule: this prompt reflects the CURRENT state and
+    outranks anything the assistant said earlier, so it stops parroting stale claims."""
+    sp = server._proof_chat_system_prompt(
+        _PROOF, 0, allow_edits=allow_edits, in_derive=in_derive)
+    low = sp.lower()
+    assert "authoritative" in low
+    assert "earlier in this conversation" in low
+    assert "current state" in low
+
+
+@pytest.mark.parametrize("allow_edits", [False, True])
+def test_ctx_inspector_matches_what_the_chat_would_send(allow_edits):
+    """The CTX inspector must not diverge from the live call.
+
+    It promises "the EXACT payload call_proof_chat would send". ``allow_edits``
+    changes both the system prompt and whether the tool is declared, so failing
+    to thread it made the inspector show the locked prompt during an unlocked
+    session — the precise divergence the endpoint exists to rule out.
+    """
+    dbg = server.build_proof_chat_debug(
+        [{"role": "user", "text": "hi"}], _PROOF, 0, allow_edits)
+    assert dbg["systemPrompt"] == server._proof_chat_system_prompt(
+        _PROOF, 0, allow_edits=allow_edits)
+    assert dbg["allowEdits"] is allow_edits
+    assert dbg["tools"] == (["edit_step"] if allow_edits else [])
 
 
 # ── CTX debug inspector ──────────────────────────────────────────────────────
@@ -189,6 +299,37 @@ def test_proof_chat_limits_rejects_malformed():
     assert server._proof_chat_limits([42], None)[0] == 400
     assert server._proof_chat_limits([{"text": 5}], None)[0] == 400
     assert server._proof_chat_limits([], "notadict")[0] == 400
+
+
+# ── tool-call arg parsing hardening (Copilot review, PR #490) ────────────────
+class _FakeStruct:
+    """Stand-in for a proto Struct/MapComposite: dict-like via items(), and
+    dict() over it raises (as some proto objects do)."""
+    def __init__(self, data):
+        self._data = data
+    def to_json_dict(self):
+        return dict(self._data)
+    def keys(self):
+        raise TypeError("proto object is not directly dict()-able")
+
+
+def test_fc_args_handles_proto_like_objects():
+    got = server._fc_args_to_dict(_FakeStruct({"operation": "move c", "step": 2}))
+    assert got == {"operation": "move c", "step": 2}
+
+
+def test_fc_args_handles_plain_dict_and_empty():
+    assert server._fc_args_to_dict({"operation": "x"}) == {"operation": "x"}
+    assert server._fc_args_to_dict(None) == {}
+    assert server._fc_args_to_dict({}) == {}
+
+
+def test_coerce_step_accepts_int_float_and_numeric_string():
+    assert server._coerce_step(2, 0) == 2
+    assert server._coerce_step(2.0, 0) == 2
+    assert server._coerce_step("2", 0) == 2          # the bug: string step was ignored
+    assert server._coerce_step(None, 7) == 7         # missing → current step
+    assert server._coerce_step("nope", 7) == 7       # non-numeric → current step
 
 
 def test_system_prompt_forbids_html():

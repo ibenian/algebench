@@ -2248,15 +2248,26 @@ class SemanticGraphBuilder:
         return {"nodes": self.nodes, "edges": self._dedupe_edges()}
 
     def _dedupe_edges(self) -> list[dict[str, Any]]:
-        """Drop exact-duplicate edges, preserving order.
+        """Drop duplicate METADATA edges, preserving order and operand arity.
 
-        A binary operator whose two operands are the *same* node — e.g.
-        ``\\text{sub-}c \\circ \\text{sub-}c`` (both operands collapse to one
-        node) — emits the same ``from→to`` edge twice. The renderer keys edges
-        by ``from→to`` so the duplicate is pure redundancy (and can double up
-        adjacency entries in some consumers). Dedupe on the full attribute
-        tuple so genuinely distinct edges (different ``role``/``semantic``)
-        between the same pair are kept.
+        A repeated ``from→to`` pair means two different things depending on the
+        edge, and conflating them loses math:
+
+        * **Metadata edges** (those carrying a ``role`` — ``wrt`` and friends):
+          a repeat is pure redundancy, and can double up adjacency entries in
+          some consumers. Dropped.
+        * **Operand edges** (role-less): multiplicity IS the arity. ``a \\cdot
+          a`` has two operand edges from ``a``, and collapsing them to one makes
+          the node render — and convert to sympy — as plain ``a``.
+
+        That second case was a silent, arity-losing bug: a step written ``a
+        \\cdot a`` re-rendered as ``a``, and because ``graph_to_sympy`` reads the
+        same graph, its confidence badge graded the wrong expression. Hence the
+        ``role`` guard below — dedupe only where duplication is genuinely
+        redundant. See ``tests/backend/semantic_graph/test_repeated_operands.py``.
+
+        The key stays the full attribute tuple so genuinely distinct edges
+        (different ``role``/``semantic``) between the same pair are always kept.
         """
         seen: set[tuple] = set()
         deduped: list[dict[str, Any]] = []
@@ -2265,7 +2276,7 @@ class SemanticGraphBuilder:
                 edge.get("from"), edge.get("to"),
                 edge.get("role"), edge.get("semantic"),
             )
-            if key in seen:
+            if key in seen and edge.get("role"):
                 continue
             seen.add(key)
             deduped.append(edge)

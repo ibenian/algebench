@@ -14,6 +14,7 @@ import { validateProofData } from "/proof-animation/validate-proof.js";
 import { invokeExpert, ExpertError } from "/expert-client.js";
 import { applyTheme, initialTheme, wireThemeToggle } from "/theme.js";
 import { BRACES_ICON, CODE_ICON, AI_ICON, USER_ICON } from "/icons.js";
+import { createProofEditTool } from "/proof-edit-tool.js";
 
 const ID_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?\/[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
 
@@ -461,6 +462,14 @@ let deriveProof = null;        // the current derived proof (chat context)
 let deriveSourceId = null;     // published id an Edit-cloned proof came from
 let chatHistory = [];
 
+// Interactive step editing (proof-edit-tool.js). Owns the editing lock, the
+// variant picker and undo; this module only supplies the wiring.
+let editTool = null;
+// True while a variant is being chosen: the animator shows a CANDIDATE but
+// deriveProof is still the original, so actions that act on "the proof" are
+// gated to stop the user shipping the version they are not looking at.
+let editPending = false;
+
 // Edit-by-key: when set, this Derive session updates the pending submission in
 // place ({id, secret}); Submit becomes Update and the secret rotates on save.
 let editingSubmission = null;
@@ -564,11 +573,16 @@ function addBubble(role, text, cls, logEl) {
   const isUser = role === "user";
   const b = document.createElement("div");
   b.className = `bubble ${isUser ? "user" : "bot"}${cls ? " " + cls : ""}`;
+  const isPending = !isUser && cls && cls.includes("pending");
   const html = !_hasRender() ? null
     : isUser ? renderSafe(text)
-    : (cls && cls.includes("pending")) ? null      // "…" placeholder — plain
+    : isPending ? null                             // dots, not the literal "…"
     : renderReply(text);
-  if (html != null) b.innerHTML = html; else b.textContent = text;   // safe fallback
+  if (isPending) {
+    // Same pulsing "typing" dots as the status line, so the chat's loading state
+    // matches the rest of the app instead of showing a static "…".
+    b.innerHTML = '<span class="dots" aria-hidden="true"><span></span><span></span><span></span></span>';
+  } else if (html != null) { b.innerHTML = html; } else { b.textContent = text; }   // safe fallback
   // Avatar (USER_ICON for the user, AI_ICON for the assistant), shared with the
   // main app chat via /icons.js. The row handles left/right placement.
   const avatar = document.createElement("div");
@@ -747,6 +761,87 @@ function continueInAppWith(proof, history, id, step) {
   openInApp(seed, proof.deeplink, id || null, step);
 }
 
+/** Reflect the lock's state on its button (label, pressed state, tooltip). */
+function syncLockButton() {
+  if (!els.dLock) return;
+  const on = !!(editTool && editTool.isUnlocked());
+  els.dLock.textContent = on ? "🔓 Editing" : "🔒 Locked";
+  els.dLock.setAttribute("aria-pressed", on ? "true" : "false");
+  els.dLock.title = on
+    ? "Lock editing — the chat will only answer questions"
+    : "Unlock step editing — describe an operation in the chat";
+}
+
+/** Gate everything while a variant is being chosen.
+ *
+ *  The picker is a modal question, like AskUserQuestion: until it is resolved
+ *  the chat input is locked so the user can't fire another request mid-choice,
+ *  and Submit/Rederive are disabled because they'd act on deriveProof — the
+ *  version the user is NOT looking at while previewing a candidate. */
+function setEditPending(pending) {
+  editPending = !!pending;
+  if (els.dSubmit) els.dSubmit.disabled = editPending;
+  if (els.dGo) els.dGo.disabled = editPending;
+  if (els.dSend) els.dSend.disabled = editPending;
+  if (els.dChatInput) {
+    els.dChatInput.disabled = editPending;
+    els.dChatInput.placeholder = editPending
+      ? "Choose an option below to continue…"
+      : "Ask about this derivation…";
+  }
+}
+
+/** Build the edit tool once the DOM refs exist. */
+function initEditTool() {
+  editTool = createProofEditTool({
+    getProof: () => deriveProof,
+    getCurrentStep: () => (deriveAnimator && typeof deriveAnimator.current === "number")
+      ? deriveAnimator.current : 0,
+    onMount: (proof, startStep) => mountAnimator(proof, startStep),
+    onCommit: (proof) => { deriveProof = proof; },
+    setEditPending,
+    // Variant notes quote step captions that may contain $…$ math. renderSafe
+    // escapes HTML and renders the math with KaTeX (null if KaTeX isn't ready).
+    renderMath: (text) => (_hasRender() ? renderSafe(text) : null),
+    addBubble: (role, text) => { addBubble(role, text); chatHistory.push({ role, text }); },
+    // The picker is part of the conversation, not a floating toolbar. Mount it as
+    // a bot message in the chat thread so the question sits where the user is
+    // looking and reading; selecting still previews in the animator below.
+    mountBar: (bar) => {
+      const avatar = document.createElement("div");
+      avatar.className = "msg-avatar";
+      avatar.innerHTML = AI_ICON;
+      const row = document.createElement("div");
+      row.className = "msg-row bot edit-variants-row";
+      row.append(avatar, bar);
+      els.dLog.appendChild(row);
+      els.dLog.scrollTop = els.dLog.scrollHeight;
+    },
+  });
+  syncLockButton();
+}
+
+/** (Re)mount the animator on a proof, WITHOUT touching the chat thread.
+ *
+ *  ProofAnimator has no setData, so swapping proofs means destroy + reconstruct;
+ *  `startStep` keeps the user where they were. Used both for a fresh derivation
+ *  and to flip between edit variants, which is why the chat reset lives in
+ *  showInDerive rather than here. */
+function mountAnimator(proof, startStep) {
+  if (deriveAnimator) { try { deriveAnimator.destroy(); } catch (e) { /* noop */ } deriveAnimator = null; }
+  els.dRoot.textContent = "";
+  els.dEmpty.hidden = true;
+  deriveAnimator = new ProofAnimator(els.dRoot, proof, {
+    katex: window.katex, liveTerms: true, enableTermAsk: true, enableExplore: true,
+    startStep: typeof startStep === "number" ? startStep : 0,
+    // A term "Ask AI" goes to the LOCAL step-aware chat, not the app.
+    onTermAsk: ({ message }) => askInChat(message),
+  });
+  els.dGo.textContent = "Rederive";              // a derivation now exists
+  if (els.dViewerBar) els.dViewerBar.hidden = false;   // reveal the { } JSON viewer
+  showContinue(proof);                            // reveal the explicit app hand-off
+}
+
 /** Render a proof into the Derive workspace: fresh chat, live animator (term
  *  Ask-AI → local chat), Rederive button, app hand-off. Shared by runDerive
  *  (after deriving) and Edit (cloning an opened proof in to tweak). */
@@ -754,17 +849,12 @@ function showInDerive(proof) {
   deriveProof = proof;
   chatHistory = [];                              // fresh thread, scoped to this proof
   if (els.dLog) els.dLog.textContent = "";
-  if (deriveAnimator) { try { deriveAnimator.destroy(); } catch (e) { /* noop */ } deriveAnimator = null; }
-  els.dRoot.textContent = "";
-  els.dEmpty.hidden = true;
-  deriveAnimator = new ProofAnimator(els.dRoot, proof, {
-    katex: window.katex, liveTerms: true, enableTermAsk: true, enableExplore: true,
-    // A term "Ask AI" goes to the LOCAL step-aware chat, not the app.
-    onTermAsk: ({ message }) => askInChat(message),
-  });
-  els.dGo.textContent = "Rederive";              // a derivation now exists
-  if (els.dViewerBar) els.dViewerBar.hidden = false;   // reveal the { } JSON viewer
-  showContinue(proof);                            // reveal the explicit app hand-off
+  // A newly loaded proof is never born editable — the lock re-arms, and any
+  // in-flight variant selection or undo history from the previous proof is
+  // dropped rather than silently carried over.
+  if (editTool) editTool.reset();
+  syncLockButton();
+  mountAnimator(proof, 0);
 }
 
 /** "Edit" an opened proof: clone it into the Derive workspace as a fresh, unsaved
@@ -902,6 +992,14 @@ function chatBody() {
     proof: deriveProof || null,
     currentStep: (deriveAnimator && typeof deriveAnimator.current === "number")
       ? deriveAnimator.current : null,
+    // The editing lock. When false the server does not declare the edit_step
+    // tool at all, so the agent CANNOT change the derivation — the lock is
+    // enforced by the tool's absence rather than by asking it to behave.
+    allowEdits: !!(editTool && editTool.isUnlocked()),
+    // This is the Derive workspace (a lock toggle exists). Tells the server that
+    // "unlock the 🔒 Locked button" is the right guidance when locked — vs a
+    // read-only opened proof, where the guidance is to Clone first.
+    inDerive: true,
   };
 }
 
@@ -951,6 +1049,10 @@ async function showCtx() {
   }
 }
 
+// A chat turn that calls edit_step rebuilds and CAS-verifies up to three proof
+// variants inline, so the ceiling is generous — but finite.
+const CHAT_TIMEOUT_MS = 120000;
+
 /** Chat (right panel) — a PROOF-SCOPED conversation about the current derivation,
  *  via POST /api/proof-chat: the Gemini chat agent run with a proof-only system
  *  prompt (NOT the app's lesson/scene-framed /api/chat). The whole thread + the
@@ -962,26 +1064,52 @@ async function sendChat() {
   chatHistory.push({ role: "user", text: msg });
   els.dChatInput.value = "";
   els.dSend.disabled = true;
+  // "undo" is the one thing that never needs the server. Everything else — including
+  // whether a message is an edit at all — is the chat agent's call, made with the
+  // whole conversation in view. No keyword matching happens on this side.
+  if (editTool && editTool.interceptLocal(msg)) { els.dSend.disabled = false; return; }
   const pending = addBubble("bot", "…", "pending");
   try {
     // Send the whole thread + the proof + which step is in view, so the chat is
     // conversational and step-aware (resolves "why this step").
-    const resp = await fetch("/api/proof-chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(chatBody()),
-    });
+    //
+    // Bounded: a turn that calls edit_step runs a CAS-verified rebuild inline, so
+    // this request can legitimately take the better part of a minute — but a
+    // wedged one must not leave the reader watching a spinner forever.
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), CHAT_TIMEOUT_MS);
+    let resp;
+    try {
+      resp = await fetch("/api/proof-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(chatBody()),
+        signal: ctrl.signal,
+      });
+    } finally {
+      clearTimeout(timer);
+    }
     if (!resp.ok) throw new Error(`chat error ${resp.status}`);
     const data = await resp.json();
     pending.remove();
-    const reply = (data && data.answer) || "(no response)";
-    addBubble("bot", reply);
-    chatHistory.push({ role: "bot", text: reply });
+    const reply = ((data && data.answer) || "").trim();
+    if (reply) {
+      addBubble("bot", reply);
+      chatHistory.push({ role: "bot", text: reply });
+    }
+    // The agent called its edit_step tool: the operation has already been applied
+    // and CAS-checked server-side, and the variants rode back on this reply.
+    const edited = editTool && editTool.applyEditResult(data);
+    if (!reply && !edited) addBubble("bot", "(no response)");
   } catch (e) {
     pending.remove();
-    addBubble("bot", "Chat is unavailable right now.", "err");
+    addBubble("bot", e && e.name === "AbortError"
+      ? "That took too long and was stopped — try again, or a simpler operation."
+      : "Chat is unavailable right now.", "err");
   } finally {
-    els.dSend.disabled = false;
+    // Don't re-enable while a variant picker is open — it is a modal question,
+    // and setEditPending owns the input/Send state until it's resolved.
+    if (!editPending) els.dSend.disabled = false;
   }
 }
 
@@ -1218,6 +1346,16 @@ async function main() {
   els.dEditing = document.getElementById("d-editing");
   els.dSubmit = document.getElementById("d-submit");
   els.dSubmit.addEventListener("click", openSubmitModal);
+  // Editing lock + the variant picker slot (interactive step editing).
+  els.dLock = document.getElementById("d-lock");
+  initEditTool();
+  els.dLock.addEventListener("click", () => {
+    editTool.setUnlocked(!editTool.isUnlocked());
+    syncLockButton();
+    setStatus(editTool.isUnlocked()
+      ? "Editing unlocked — describe an operation in the chat, e.g. “multiply both sides by 2”."
+      : "Editing locked — the chat only answers questions. Click 🔒 Locked to unlock and make edits.", "ok");
+  });
   els.dStatus = document.getElementById("d-status");
   els.dLog = document.getElementById("d-log");
   els.dPrompt = document.getElementById("d-prompt");
