@@ -1349,7 +1349,7 @@ async function main() {
     syncLockButton();
     setStatus(editTool.isUnlocked()
       ? "Editing unlocked — describe an operation in the chat, e.g. “multiply both sides by 2”."
-      : "Editing locked — the chat will only answer questions.", "ok");
+      : "Editing locked — the chat only answers questions. Click 🔒 Locked to unlock and make edits.", "ok");
   });
   els.dStatus = document.getElementById("d-status");
   els.dLog = document.getElementById("d-log");
