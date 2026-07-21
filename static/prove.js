@@ -991,6 +991,10 @@ function chatBody() {
     // tool at all, so the agent CANNOT change the derivation — the lock is
     // enforced by the tool's absence rather than by asking it to behave.
     allowEdits: !!(editTool && editTool.isUnlocked()),
+    // This is the Derive workspace (a lock toggle exists). Tells the server that
+    // "unlock the 🔒 Locked button" is the right guidance when locked — vs a
+    // read-only opened proof, where the guidance is to Clone first.
+    inDerive: true,
   };
 }
 

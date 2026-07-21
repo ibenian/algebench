@@ -133,11 +133,24 @@ def test_unlocked_chat_declares_the_edit_tool(monkeypatch):
     assert names == ["edit_step"]
 
 
-def test_locked_prompt_points_at_the_lock():
-    """Locked, the model must explain how to unlock rather than describe a tool
-    it cannot reach."""
-    sp = server._proof_chat_system_prompt(_PROOF, 0, allow_edits=False)
-    assert "LOCKED" in sp and "edit_step" not in sp
+def test_locked_derive_prompt_points_at_the_lock():
+    """In the Derive workspace but locked, guide the reader to the lock toggle —
+    not to the edit tool (which isn't declared) and not to Clone (they're already
+    on an editable copy)."""
+    sp = server._proof_chat_system_prompt(_PROOF, 0, allow_edits=False, in_derive=True)
+    assert "LOCKED" in sp and "Locked button" in sp
+    assert "edit_step" not in sp
+
+
+def test_readonly_prompt_points_at_clone_not_unlock():
+    """A read-only opened proof has no lock button — guide to Clone, and do NOT
+    mention unlocking (the exact wrong instruction on this view)."""
+    sp = server._proof_chat_system_prompt(_PROOF, 0, allow_edits=False, in_derive=False)
+    low = sp.lower()
+    assert "read-only" in low and "clone" in low
+    # The actionable CTA is Clone, never the (nonexistent here) lock button.
+    assert "Locked button" not in sp
+    assert "edit_step" not in sp
 
 
 def test_unlocked_prompt_separates_instructions_from_questions():
