@@ -274,9 +274,12 @@
     // Initial load: point each figure's iframe at its built-in proof in the current
     // theme. The server stamps data-theme before first paint, so there's no flash;
     // the iframe starts hidden (CSS) and fades in once painted (load listener below).
+    // fullscreenTarget=prove: the embed's full-screen button opens the editable /prove page
+    // for that proof, not the standalone renderproof view — this post invites
+    // readers to open a proof and tinker with it.
     function loadFrames(theme){
       document.querySelectorAll("iframe[data-builtin]").forEach(function (f) {
-        if (!f.src) f.src = HOST + "/renderproof?builtin=" + f.dataset.builtin + "&theme=" + theme + "&explore=1&ai=1";
+        if (!f.src) f.src = HOST + "/renderproof?builtin=" + f.dataset.builtin + "&theme=" + theme + "&explore=1&ai=1&fullscreenTarget=prove";
       });
     }
     // Theme toggle: recolor the embeds live via postMessage — no reload, no flash.

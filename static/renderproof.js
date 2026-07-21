@@ -298,19 +298,37 @@ function setupEmbedButton(builtins, theme) {
   });
 }
 
+/** Where the full-screen button opens, per the host-supplied ?fullscreenTarget= option:
+ *  • ?fullscreenTarget=prove → the editable /prove page for the FIRST proof (?id=<slug>);
+ *  • otherwise               → this standalone renderproof page (the default).
+ *  The destination is the host page's call — it's not part of the embedded
+ *  widget — so it's chosen here from the URL the host framed the iframe with. */
+function fullscreenTarget(builtins, theme) {
+  const mode = (new URLSearchParams(location.search).get("fullscreenTarget") || "")
+    .trim().toLowerCase();
+  if (mode === "prove" && builtins.length) {
+    const u = new URL("/prove", location.origin);
+    u.searchParams.set("id", builtins[0]);   // /prove opens a single proof
+    u.searchParams.set("theme", theme);       // carry the embed's theme through
+    return { url: u.toString(), label: "Open on the Prove page" };
+  }
+  return { url: location.href, label: "Open full screen" };
+}
+
 /** Wire the control bar: { } JSON viewer and < > embed dialog (both views), plus a
  *  full-screen icon only when embedded (top-level is already full screen). */
 function setupControlBar(builtins, theme) {
   setupJsonButton();
   setupEmbedButton(builtins, theme);
   if (window.self !== window.top) {
+    const { url, label } = fullscreenTarget(builtins, theme);
     const btn = document.getElementById("pa-action");
     btn.classList.add("pa-icon-btn");
-    btn.title = "Open full screen";
-    btn.setAttribute("aria-label", "Open full screen");
+    btn.title = label;
+    btn.setAttribute("aria-label", label);
     btn.innerHTML = FULLSCREEN_ICON;
     btn.hidden = false;
-    btn.addEventListener("click", () => window.open(location.href, "_blank", "noopener"));
+    btn.addEventListener("click", () => window.open(url, "_blank", "noopener"));
   }
 }
 
