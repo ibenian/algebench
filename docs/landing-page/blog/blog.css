@@ -1,8 +1,9 @@
 /* blog.css — shared styling for every AlgeBench blog page (index + posts).
  * Professional math-blog look: Georgia serif body, system-ui for meta/UI, a thin
  * centered reading column, and a light/dark theme driven by a data-theme attribute
- * (persisted in localStorage) with an OS-preference fallback. Keep all cross-page
- * styling here so the index and the posts stay visually identical. */
+ * (persisted in localStorage, else dark — stamped pre-paint by each page's inline
+ * snippet, matching theme.js precedence). Keep all cross-page styling here so the
+ * index and the posts stay visually identical. */
 
 /* ── Theme tokens ─────────────────────────────────────────────────────────── */
 :root{
@@ -20,12 +21,6 @@
   --bg:#12121c; --ink:#e7e9ee; --muted:#9aa3b2; --rule:#262b3d;
   --accent:#8b93f8; --bar:#15151f; --card:#171821; --soft:#1a1c27;
   --cta-bg:#5c66b8; --callout-bg:#181b29; --callout-edge:#39406e;
-}
-/* Auto-dark only when the reader hasn't made an explicit choice. */
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme]){ --bg:#12121c; --ink:#e7e9ee; --muted:#9aa3b2; --rule:#262b3d;
-         --accent:#8b93f8; --bar:#15151f; --card:#171821; --soft:#1a1c27;
-         --cta-bg:#5c66b8; --callout-bg:#181b29; --callout-edge:#39406e; }
 }
 
 /* Readable text selection — a soft accent tint behind the normal ink color

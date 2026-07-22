@@ -14,7 +14,7 @@
 // See docs/shareable-proof-animations.md §7.
 import { ProofAnimator } from "/proof-animation/proof-animation.js";
 import { validateProofData } from "/proof-animation/validate-proof.js";
-import { THEMES, resolveTheme } from "/theme.js";
+import { THEMES, applyTheme as paintTheme, initialTheme, persistTheme } from "/theme.js";
 import { FULLSCREEN_ICON, BRACES_ICON, CODE_ICON } from "/icons.js";
 
 const SLUG_RE = /^[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+$/;
@@ -23,6 +23,7 @@ const SLUG_RE = /^[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+$/;
 const loadedProofs = [];
 const MAX_PROOFS = 12;
 const MAX_BYTES = 2_000_000;    // per-proof response cap
+const PERSISTABLE_THEMES = new Set([...THEMES].filter((t) => t !== "auto"));
 
 const root = document.getElementById("root");
 
@@ -45,10 +46,13 @@ function parseBuiltins() {
   return { valid: valid.slice(0, MAX_PROOFS), bad, overflow: valid.length > MAX_PROOFS };
 }
 
-/** The theme requested in the URL (?theme=), defaulting to dark. */
-function parseTheme() {
+/** Canonical precedence with one caveat: keep an explicit ?theme=auto raw so
+ *  the page can continue tracking OS changes live while open; collapsing auto
+ *  to dark/light on load would freeze that mode for the rest of the session. */
+function loadTheme() {
   const t = new URLSearchParams(location.search).get("theme");
-  return THEMES.has(t) ? t : "dark";
+  if (THEMES.has(t)) return t;           // URL wins (incl. explicit auto for embeds)
+  return initialTheme({ param: null });  // else saved preference → shared dark default
 }
 
 let _currentTheme = "dark";
@@ -56,7 +60,7 @@ let _currentTheme = "dark";
 /** Apply a theme to the live page (the engine + chrome read it off CSS vars). */
 function applyTheme(t) {
   _currentTheme = t;
-  document.documentElement.dataset.theme = resolveTheme(t);
+  paintTheme(t);
 }
 
 // Keep "auto" honest: track OS theme changes live while the page is open.
@@ -244,7 +248,7 @@ function setupJsonButton() {
 /** The < > button: opens the embed modal — a theme picker (updates the live page
  *  and the snippet), Preview, Copy, and the copyable iframe snippet. Shown in both
  *  views so a reader of an embed can grab the script to re-share it. */
-function setupEmbedButton(builtins, theme) {
+function setupEmbedButton(builtins, theme, { persist = false } = {}) {
   const btn = document.getElementById("pa-embed");
   const modal = document.getElementById("pa-embed-modal");
   const close = document.getElementById("pa-embed-close");
@@ -271,8 +275,10 @@ function setupEmbedButton(builtins, theme) {
   window.addEventListener("keydown", (e) => { if (e.key === "Escape") hide(); });
 
   sel.addEventListener("change", () => {
-    refresh();
+    // "auto" is intentionally transient here: we only persist concrete choices.
+    if (persist && PERSISTABLE_THEMES.has(sel.value)) persistTheme(sel.value);
     applyTheme(sel.value);          // preview the chosen theme live
+    refresh();
     code.focus(); code.select();
   });
 
@@ -319,8 +325,9 @@ function fullscreenTarget(builtins, theme) {
  *  full-screen icon only when embedded (top-level is already full screen). */
 function setupControlBar(builtins, theme) {
   setupJsonButton();
-  setupEmbedButton(builtins, theme);
-  if (window.self !== window.top) {
+  const embedded = window.self !== window.top;
+  setupEmbedButton(builtins, theme, { persist: !embedded });
+  if (embedded) {
     const { url, label } = fullscreenTarget(builtins, theme);
     const btn = document.getElementById("pa-action");
     btn.classList.add("pa-icon-btn");
@@ -338,7 +345,7 @@ async function main() {
 
   // NOTE: the /renderproof page query params (theme/explore/ai/autoplay/builtin)
   // are documented in docs/deeplink-params.md — keep it in sync when changing them.
-  const theme = parseTheme();
+  const theme = loadTheme();
   applyTheme(theme);
   // Explore chips (Prerequisites / "Explore further" follow-ups) show by DEFAULT
   // on the shareable page — they enrich the proof, and the engine auto-hides the
