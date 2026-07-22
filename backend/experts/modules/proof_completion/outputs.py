@@ -12,7 +12,7 @@ from typing import Annotated, List, Literal, Optional, Union
 
 from pydantic import (
     BaseModel, ConfigDict, Discriminator, Field, Tag, TypeAdapter,
-    field_validator,
+    ValidationError, field_validator,
 )
 
 from backend.model.semantic_graph import SemanticGraphEdge, SemanticGraphNode
@@ -146,14 +146,84 @@ GRAPH_OP_ADAPTER: TypeAdapter = TypeAdapter(GraphOp)
 ChangeType = Literal["rewrite", "solve", "substitute", "approximate", "given"]
 
 
-# Length caps for the model's PROSE fields. These are sent to the LM (via the
-# JSON schema) AND enforced — but the enforcement CLAMPS rather than rejects (see
-# ``_clamp_prose``): a single over-long justification must never fail the whole
-# derivation. `justification` is generous because real derivation/physics
-# rationales legitimately run long. `expr_latex` is NOT clamped — truncating
-# LaTeX would corrupt the actual math, so it stays strict.
+# Length caps for a step's fields. All are sent to the LM (via the JSON schema)
+# AND enforced. The PROSE fields (``operation`` / ``justification``) CLAMP rather
+# than reject (see ``_clamp_prose``): a single over-long justification must never
+# fail the whole derivation. `justification` is generous because real derivation/
+# physics rationales legitimately run long.
+#
+# ``expr_latex`` is different: it is NEVER truncated (that would corrupt the math)
+# and the cap stays deliberately TIGHT. It is a pedagogical guardrail, not a
+# storage limit — an expression past ~600 chars means the model inlined a
+# substitution it should have NAMED (``let u = …``) and split into atomic steps.
+# So rather than accommodate monsters by raising the cap, an over-long
+# ``expr_latex`` becomes a SPECIFIC, recoverable retry that nudges the model to
+# shorten (``is_expr_latex_too_long`` below flags the failure; the refine loop
+# turns it into targeted feedback). Issue #445.
 _OPERATION_MAX = 200
 _JUSTIFICATION_MAX = 600
+_EXPR_LATEX_MAX = 600
+
+
+# Human-readable reason surfaced (on ``ProofTrajectory.error`` and in the
+# handler's ``{"error": …}`` response) when a derivation fails because a step's
+# expr_latex blew the cap. Shared so the eval/single-pass path (module.py) and the
+# live UI path (proof_animation handler) can't drift. See #445.
+EXPR_TOO_LONG_ERROR = (
+    "Couldn't produce a clear step-by-step derivation for this — the steps kept "
+    "coming out too long to follow. Try a simpler target, or break it into "
+    "smaller derivations."
+)
+
+
+def is_expr_latex_too_long(exc: BaseException) -> bool:
+    """True if ``exc`` is (or wraps) a length-limit failure on a step's ``expr_latex``.
+
+    A ``ProofTrajectory`` with an over-long ``expr_latex`` fails Pydantic with a
+    ``string_too_long`` error on that field; DSPy then re-raises it as a
+    ``RuntimeError`` whose text still carries the field name + marker. We match on
+    both forms so the refine loop can tell this recoverable case apart from a
+    generic parse slip — falling back to a substring check keeps it robust when the
+    original ``ValidationError`` has been wrapped away.
+    """
+    if isinstance(exc, ValidationError):
+        return any(e.get("type") == "string_too_long"
+                   and "expr_latex" in e.get("loc", ())
+                   for e in exc.errors())
+    text = str(exc)
+    return "expr_latex" in text and "string_too_long" in text
+
+
+def describe_overlong_exprs(exc: BaseException, *, preview: int = 240) -> str:
+    """A log-friendly summary of the over-long ``expr_latex`` value(s) in ``exc``.
+
+    So an operator can SEE what the model actually emitted (and confirm it's a
+    real "should have been split" case). A raw ``ValidationError`` gives the FULL
+    value + exact length; a DSPy-wrapped ``RuntimeError`` only carries pydantic's
+    already-truncated ``input_value`` repr, so we surface that as-is. Each value is
+    previewed to ``preview`` chars to keep the line readable. Best-effort — returns
+    a clear marker rather than raising if nothing can be extracted.
+    """
+    def _fmt(loc: str, val: str) -> str:
+        body = val if len(val) <= preview else val[:preview] + "…"
+        return f"{loc} (len={len(val)}): {body!r}"
+
+    items: list[str] = []
+    if isinstance(exc, ValidationError):
+        for e in exc.errors():
+            if e.get("type") == "string_too_long" and "expr_latex" in e.get("loc", ()):
+                loc = ".".join(str(p) for p in e["loc"])
+                val = e.get("input")
+                items.append(_fmt(loc, val) if isinstance(val, str) else loc)
+    else:
+        # Wrapped form: parse `steps.N.expr_latex … input_value='…'` out of the text.
+        # The loc and its ``input_value`` sit on separate lines, so span newlines
+        # ([\s\S]); non-greedy binds each loc to its OWN (nearest) input_value.
+        for m in re.finditer(
+                r"(steps\.\d+\.expr_latex)\b[\s\S]*?input_value=('(?:[^'\\]|\\.)*'"
+                r'|"(?:[^"\\]|\\.)*")', str(exc)):
+            items.append(f"{m.group(1)}: {m.group(2)}")
+    return " | ".join(items) if items else "(could not extract expr_latex from error)"
 
 
 def _clamp(text: str, cap: int) -> str:
@@ -251,7 +321,7 @@ class DerivationStep(BaseModel):
 
     operation: str = Field(min_length=1, max_length=_OPERATION_MAX,
                            description="the math move; wrap any math in $…$, e.g. 'add $\\frac{c}{a}$ to both sides'")
-    expr_latex: str = Field(min_length=1, max_length=600,
+    expr_latex: str = Field(min_length=1, max_length=_EXPR_LATEX_MAX,
                             description="the COMPLETE LaTeX of the resulting expression")
     justification: str = Field(min_length=1, max_length=_JUSTIFICATION_MAX,
                                description="why this step is valid; wrap any math in $…$")
@@ -302,6 +372,12 @@ class ProofTrajectory(Output):
     start_latex: Optional[str] = None
     target_latex: Optional[str] = None
     title: Optional[str] = None
+    # Human-readable reason the trajectory is unusable — set only when generation
+    # degraded instead of producing steps (e.g. the single-pass path caught a
+    # validation failure, #445). None on every normal trajectory; consumers that
+    # don't read it are unaffected (Optional default → backward-compatible). A
+    # trajectory carrying an ``error`` always has ``steps == []``.
+    error: Optional[str] = None
     # ``goal`` (one-line framing shown before the steps) and ``followups`` (suggested
     # next prompts for agentic continuation) are model-produced and bound onto the
     # trajectory by the expert, like ``title`` — they travel with it into the
