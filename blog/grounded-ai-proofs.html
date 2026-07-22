@@ -10,8 +10,9 @@
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
 <link rel="stylesheet" href="blog.css">
-<!-- Apply the saved theme before first paint (shared across all blog pages) — no flash. -->
-<script>try{var t=localStorage.getItem("algebench-theme");if(t==="dark"||t==="light")document.documentElement.dataset.theme=t;}catch(e){}</script>
+<!-- Pre-paint theme: matches theme.js precedence without URL step on the blog host
+     (saved localStorage preference, else shared dark default). -->
+<script>try{var t=localStorage.getItem("algebench-theme");document.documentElement.dataset.theme=(t==="dark"||t==="light")?t:"dark";}catch(e){document.documentElement.dataset.theme="dark";}</script>
 <!-- Left-edge up/down section navigator (smooth-scrolls between headings). -->
 <script defer src="../section-nav.js"></script>
 </head>
@@ -267,16 +268,18 @@
       ? "http://localhost:5751" : "https://algebench.org";
 
     var KEY = "algebench-theme";
-    function resolvedTheme(){ var t; try{ t = localStorage.getItem(KEY); }catch(e){}
-      return (t==="dark"||t==="light") ? t
-        : (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"); }
+    function resolvedTheme(){ var t=null; try{ t = localStorage.getItem(KEY); }catch(e){}
+      return (t==="dark"||t==="light") ? t : "dark"; }
 
     // Initial load: point each figure's iframe at its built-in proof in the current
     // theme. The server stamps data-theme before first paint, so there's no flash;
     // the iframe starts hidden (CSS) and fades in once painted (load listener below).
+    // fullscreenTarget=prove: the embed's full-screen button opens the editable /prove page
+    // for that proof, not the standalone renderproof view — this post invites
+    // readers to open a proof and tinker with it.
     function loadFrames(theme){
       document.querySelectorAll("iframe[data-builtin]").forEach(function (f) {
-        if (!f.src) f.src = HOST + "/renderproof?builtin=" + f.dataset.builtin + "&theme=" + theme + "&explore=1&ai=1";
+        if (!f.src) f.src = HOST + "/renderproof?builtin=" + f.dataset.builtin + "&theme=" + theme + "&explore=1&ai=1&fullscreenTarget=prove";
       });
     }
     // Theme toggle: recolor the embeds live via postMessage — no reload, no flash.
