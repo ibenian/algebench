@@ -23,7 +23,7 @@ const SLUG_RE = /^[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+$/;
 const loadedProofs = [];
 const MAX_PROOFS = 12;
 const MAX_BYTES = 2_000_000;    // per-proof response cap
-const PERSISTABLE_THEMES = new Set(["dark", "light"]);
+const PERSISTABLE_THEMES = new Set([...THEMES].filter((t) => t !== "auto"));
 
 const root = document.getElementById("root");
 
@@ -275,10 +275,10 @@ function setupEmbedButton(builtins, theme, { persist = false } = {}) {
   window.addEventListener("keydown", (e) => { if (e.key === "Escape") hide(); });
 
   sel.addEventListener("change", () => {
-    refresh();
     applyTheme(sel.value);          // preview the chosen theme live
     // "auto" is intentionally transient here: we only persist concrete choices.
     if (persist && PERSISTABLE_THEMES.has(sel.value)) persistTheme(sel.value);
+    refresh();
     code.focus(); code.select();
   });
 
