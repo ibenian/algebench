@@ -870,7 +870,16 @@ def _proof_chat_system_prompt(proof, current_step=None, allow_edits=False,
             "for $b$\" on an expression with no equals sign is a valid instruction — it means "
             "solve $\\text{expression} = 0$; call the tool.) Only ask a question yourself when the "
             "reader's WORDS are genuinely ambiguous about WHAT they want done — not about whether "
-            "the math works out. You never compute the new expression yourself."
+            "the math works out. Ambiguity about WHAT includes an operation with an UNSPECIFIED "
+            "TARGET or placement: \"add $M$\" or \"+ M\" does not say WHERE $M$ goes — to both "
+            "sides of an equation, to one named side, or appended to the current expression. When "
+            "the step in view has NO equals sign, an \"add/subtract/multiply by …\" request cannot "
+            "mean \"both sides\", so a terse \"add $M$\" is genuinely ambiguous — ask ONE short "
+            "question naming the most likely reading (e.g. for step $a^2-b^2$: \"Do you mean "
+            "$a^2-b^2+M$?\") and call the tool only once they confirm, passing the resolved, "
+            "explicit instruction. Do NOT ask when the target is already clear — \"add $3x$ to "
+            "both sides\", \"expand the left\", \"substitute $u=x^2$\" are unambiguous; call the "
+            "tool. You never compute the new expression yourself."
         )
     elif in_derive:
         edits = (
