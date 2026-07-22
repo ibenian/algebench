@@ -37,8 +37,9 @@ export function persistTheme(t, key = THEME_KEY) {
   try { localStorage.setItem(key, t); } catch (e) { /* blocked storage */ }
 }
 
-/** The concrete theme to paint on load: an explicit ?<param>= wins, else the
- *  saved preference, else `fallback`. */
+/** Canonical load precedence across app surfaces:
+ *  URL param override (allowlisted) → saved localStorage preference → fallback.
+ *  If the chosen value is "auto", resolve it against the OS as the final step. */
 export function initialTheme({ key = THEME_KEY, param = "theme", fallback = "dark", useStored = true } = {}) {
   let t = param ? new URLSearchParams(location.search).get(param) : null;
   if (!THEMES.has(t)) t = (useStored && storedTheme(key)) || fallback;

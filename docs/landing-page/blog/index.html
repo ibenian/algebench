@@ -6,7 +6,8 @@
 <title>Blog — AlgeBench</title>
 <meta name="description" content="Writing from AlgeBench — interactive, AI-written, CAS-verified mathematics.">
 <link rel="stylesheet" href="blog.css">
-<!-- Apply the saved theme before first paint (shared across all blog pages) — no flash. -->
+<!-- Pre-paint theme: matches theme.js precedence without URL step on the blog host
+     (saved localStorage preference, else shared dark default). -->
 <script>try{var t=localStorage.getItem("algebench-theme");if(t==="dark"||t==="light")document.documentElement.dataset.theme=t;}catch(e){}</script>
 </head>
 <body>
@@ -53,9 +54,8 @@
     // Shared light/dark toggle — persisted to one localStorage key for all blog pages.
     (function(){
       var KEY="algebench-theme", root=document.documentElement, btn=document.getElementById("theme-toggle");
-      function resolved(){ var t=localStorage.getItem(KEY);
-        return (t==="dark"||t==="light") ? t
-          : (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"); }
+      function resolved(){ var t; try{ t=localStorage.getItem(KEY); }catch(e){}
+        return (t==="dark"||t==="light") ? t : "dark"; }
       function paint(){ var r=resolved();
         btn.textContent = r==="dark" ? "☾" : "☀";   // show the current theme (sun = light)
         btn.title = "Switch to " + (r==="dark" ? "light" : "dark") + " theme"; }
