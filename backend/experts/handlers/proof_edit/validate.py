@@ -402,6 +402,7 @@ def resolve(proof: dict, domain: str, at: int, proposal: ProofEditProposal,
             # leaves the chain worse.
             propagated=propagate_substitution(proof, domain, at, proposal),
             is_recovery=recovery is not None,
+            context=derivation,
         )
         if payload is None:
             raise EditRefused("I couldn't build a consistent proof from that step.")
@@ -451,8 +452,7 @@ def resolve(proof: dict, domain: str, at: int, proposal: ProofEditProposal,
                  LOG_TAG, len(steps) - 1)
         steps = steps[:1]
 
-    payload = to_payload(proof, domain, at, steps,
-                                      )
+    payload = to_payload(proof, domain, at, steps, context=derivation)
     if payload is None:
         raise EditRefused("I couldn't build a consistent proof from that step.")
     payload.summary = proposal.summary

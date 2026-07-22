@@ -13,9 +13,12 @@ from pathlib import Path
 
 import pytest
 
+from backend.experts.handlers.proof_edit import variants as V
+from backend.experts.handlers.proof_edit.models import Variant
 from backend.experts.handlers.proof_edit.variants import (
-    VARIANT_GLUE, VARIANT_INSERT, VARIANT_SUPERSEDE, _infer_change_type,
-    build_variant, proof_to_trajectory, to_payload,
+    VARIANT_GLUE, VARIANT_INSERT, VARIANT_SUPERSEDE, _describe_new_terms,
+    _infer_change_type, _with_step_source, build_variant, proof_to_trajectory,
+    to_payload,
 )
 
 PROOFS = Path(__file__).resolve().parents[3] / "proofs" / "domains"
@@ -250,3 +253,164 @@ def test_readability_note_only_on_insert_only(proof):
     by_kind = {v.kind: v for v in payload.variants}
     assert by_kind[VARIANT_INSERT].readability_note
     assert not by_kind[VARIANT_GLUE].readability_note
+
+
+# --------------------------------------------------------------------------- #
+# seed proofs without input_latex (api-demo fixture)
+# --------------------------------------------------------------------------- #
+
+# A minimal HAND-AUTHORED proof: steps carry only display `latex`, exactly like
+# the served `algebra/api-demo` fixture. The edit path rebuilds from
+# `input_latex`, which these steps lack.
+_SEED_NO_INPUT_LATEX = {
+    "domain": "algebra",
+    "title": "Difference of squares (API demo)",
+    "goal": "factor $a^2 - b^2$ into $(a-b)(a+b)$",
+    "steps": [
+        {"index": 0, "latex": "a^2-b^2", "operation": "start"},
+        {"index": 1, "latex": "(a-b)(a+b)", "operation": "factor"},
+    ],
+}
+
+
+def test_with_step_source_backfills_input_latex_without_mutating():
+    """Missing ``input_latex`` is filled from ``latex`` — on a copy, not in place."""
+    proof = json.loads(json.dumps(_SEED_NO_INPUT_LATEX))
+    out = _with_step_source(proof)
+
+    assert out is not proof                                   # copied, not mutated
+    assert "input_latex" not in proof["steps"][0]             # original untouched
+    assert out["steps"][0]["input_latex"] == "a^2-b^2"
+    assert out["steps"][1]["input_latex"] == "(a-b)(a+b)"
+
+
+def test_with_step_source_is_noop_when_present(proof):
+    """A fully built proof already has ``input_latex`` — returned unchanged."""
+    assert _with_step_source(proof) is proof
+
+
+def test_edit_seed_proof_without_input_latex_does_not_crash():
+    """A no-op rebuild of the api-demo seed must not KeyError (regression).
+
+    The served ``api-demo`` proof carries only ``latex``; ``proof_to_trajectory``
+    and ``_restore_untouched_steps`` reconstruct from ``input_latex``. Before the
+    fix this raised ``KeyError: 'input_latex'``, which the handler swallowed into
+    the generic "I couldn't apply that edit right now" message.
+    """
+    proof = json.loads(json.dumps(_SEED_NO_INPUT_LATEX))
+    out = build_variant(proof, proof["domain"], at=0, new_steps=[], delete_count=0)
+    assert len(out["steps"]) == len(proof["steps"])
+    assert out["steps"][0]["input_latex"] == "a^2-b^2"
+
+
+def test_to_payload_on_seed_proof_without_input_latex():
+    """End-to-end: an insert on the seed proof builds variants, no crash."""
+    proof = json.loads(json.dumps(_SEED_NO_INPUT_LATEX))
+    payload = to_payload(proof, proof["domain"], 0, [_insert_step("a^2-b^2")])
+    assert payload is not None
+    assert payload.variants
+
+
+# --------------------------------------------------------------------------- #
+# new-term descriptions (issue #493 — the PR-2 gap)
+# --------------------------------------------------------------------------- #
+
+def _new_symbol_step(proof: dict, at: int) -> dict:
+    """An equivalent restatement that drags in a genuinely NEW symbol ``k``."""
+    base = proof["steps"][at]["input_latex"]
+    return {"operation": "introduce k", "justification": "let k stand in",
+            "input_latex": base + " + k - k"}
+
+
+def test_describe_new_terms_fills_only_the_new_set(monkeypatch):
+    """A scoped LM pass fills descriptions for new terms, keyed by id."""
+    seen = {}
+
+    def fake_describe(terms, domain, context):
+        seen["ids"] = set(terms)
+        seen["context"] = context
+        return {tid: f"desc of {tid}" for tid in terms}
+
+    monkeypatch.setattr(V, "is_configured", lambda: True)
+    monkeypatch.setattr(V, "describe_terms", fake_describe)
+
+    variants = [
+        Variant(kind=VARIANT_INSERT, at=1, take=1,
+                terms_added={"k": {"latex": "k", "name": "k"}}),
+        Variant(kind=VARIANT_SUPERSEDE, at=1, take=1, delete_count=2,
+                terms_added={"k": {"latex": "k", "name": "k"}}),
+    ]
+    _describe_new_terms(variants, "algebra", "the derivation prose")
+
+    # Only the new term was sent, and the context was forwarded for grounding.
+    assert seen["ids"] == {"k"}
+    assert seen["context"] == "the derivation prose"
+    # Every variant that surfaces the id gets the same description.
+    for v in variants:
+        assert v.terms_added["k"]["description"] == "desc of k"
+
+
+def test_describe_new_terms_no_op_without_lm(monkeypatch):
+    """Graceful degradation: no LM configured → no predict, empty description."""
+    called = {"n": 0}
+
+    def fake_describe(terms, domain, context):
+        called["n"] += 1
+        return {}
+
+    monkeypatch.setattr(V, "is_configured", lambda: False)
+    monkeypatch.setattr(V, "describe_terms", fake_describe)
+
+    v = Variant(kind=VARIANT_INSERT, at=1, take=1,
+                terms_added={"k": {"latex": "k", "name": "k"}})
+    _describe_new_terms([v], "algebra", "ctx")
+
+    assert called["n"] == 0                       # skipped cleanly, no wasted call
+    assert "description" not in v.terms_added["k"]
+
+
+def test_describe_new_terms_preserves_restored_descriptions(monkeypatch):
+    """A term that already has prose (restored from the original) is left alone."""
+    monkeypatch.setattr(V, "is_configured", lambda: True)
+    monkeypatch.setattr(V, "describe_terms",
+                        lambda terms, domain, context: {"a": "SHOULD NOT WIN"})
+
+    v = Variant(kind=VARIANT_INSERT, at=1, take=1,
+                terms_added={"a": {"latex": "a", "description": "the leading coefficient"}})
+    _describe_new_terms([v], "algebra", "ctx")
+
+    # Already-described terms are never sent to the LM, and never overwritten.
+    assert v.terms_added["a"]["description"] == "the leading coefficient"
+
+
+def test_to_payload_populates_new_term_descriptions(proof, monkeypatch):
+    """End-to-end: an edit that introduces a new symbol comes back described."""
+    monkeypatch.setattr(V, "is_configured", lambda: True)
+    monkeypatch.setattr(
+        V, "describe_terms",
+        lambda terms, domain, context: {tid: f"{tid} is a stand-in" for tid in terms})
+
+    at = 1
+    payload = to_payload(proof, proof["domain"], at,
+                         [_new_symbol_step(proof, at)], context="quadratic derivation")
+    assert payload is not None
+
+    described = [v for v in payload.variants if "k" in v.terms_added]
+    assert described, "the new symbol k should surface as an added term"
+    for v in described:
+        assert v.terms_added["k"].get("description") == "k is a stand-in"
+
+
+def test_to_payload_new_term_blank_without_lm(proof, monkeypatch):
+    """Same edit, no LM: the term still comes back, description simply empty."""
+    monkeypatch.setattr(V, "is_configured", lambda: False)
+
+    at = 1
+    payload = to_payload(proof, proof["domain"], at,
+                         [_new_symbol_step(proof, at)], context="quadratic derivation")
+    assert payload is not None
+
+    described = [v for v in payload.variants if "k" in v.terms_added]
+    assert described
+    for v in described:
+        assert not v.terms_added["k"].get("description")
