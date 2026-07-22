@@ -124,6 +124,41 @@
 .pa-ghost { pointer-events: none; z-index: 4; }
 .pa-move.pa-insert { z-index: -1; }
 
+/* ── Stacked (accordion) mode ────────────────────────────────────────────────
+   The stage holds a .pa-lines column of static per-step lines; only the newest
+   (current) line animates and is interactive. Top-anchored so earlier lines
+   never move as the accordion grows below them. */
+.pa-stage.pa-stacked { align-items: flex-start; }
+.pa-lines {
+  position: relative;      /* line offsetTop is column-relative (scroll math) */
+  display: flex;
+  flex-direction: column;
+  align-items: center;     /* lines share the stage's horizontal centring */
+  gap: var(--pa-line-gap, 22px);
+  width: 100%;
+}
+/* fitHeight boxes never grow — the line column scrolls internally instead. */
+.pa-lines-scroll { overflow-y: auto; max-height: 100%; }
+.pa-line { position: relative; }
+/* History lines shrink and dim so the CURRENT step stands out. These are the
+   RESTING styles — the demote (advance) / promote (retreat) glide is animated
+   by the transition code via WAAPI, which reads these values. Tunable. */
+.pa-root { --pa-hist-scale: 0.8; --pa-hist-dim: 0.6; --pa-line-gap: 22px; }
+.pa-stacked .pa-line {
+  font-size: calc(1em * var(--pa-hist-scale));
+  opacity: var(--pa-hist-dim);
+}
+.pa-stacked .pa-line.pa-line-current { font-size: 1em; opacity: 1; }
+/* Mirror the single-mode expression-block rules (.pa-stage > .pa-expr above):
+   fixed scaled width, content left-aligned for a stable left anchor. */
+.pa-line > .pa-expr {
+  display: block;
+  width: var(--pa-expr-w, auto);
+  max-width: 100%;
+}
+.pa-line > .pa-expr .katex-display { margin: 0; text-align: left; }
+.pa-line > .pa-expr .katex-display > .katex { text-align: left; }
+
 /* ── Live terms (optional) ───────────────────────────────────────────────────
    Set by ProofAnimator when opts.liveTerms is on. Each rendered term becomes
    hoverable/clickable; the hovered term gets a "backlight" — a glow that traces
@@ -131,7 +166,8 @@
    hugs the letter shapes rather than drawing a box around them). Stacked shadows
    give a soft inner + wider outer halo; `filter` doesn't reflow layout. Scoped
    under .pa-live-terms so non-live animators are untouched. */
-.pa-live-terms .pa-stage > .pa-expr [data-n] {
+.pa-live-terms .pa-stage > .pa-expr [data-n],
+.pa-live-terms .pa-line-current > .pa-expr [data-n] {
   cursor: pointer;
   transition: filter 130ms ease;
 }
@@ -159,7 +195,8 @@
 /* Scoped to the live expression subtree (like the cursor rule above), NOT all of
    .pa-stage — so it never re-enables hit-testing on data-n clones inside morph
    ghosts (.pa-ghost lives directly under .pa-stage and stays pointer-events:none). */
-.pa-live-terms .pa-stage > .pa-expr [data-n] { pointer-events: auto; }
+.pa-live-terms .pa-stage > .pa-expr [data-n],
+.pa-live-terms .pa-line-current > .pa-expr [data-n] { pointer-events: auto; }
 /* Hovered locally (mouse on the glyph) OR linked (the graph node is hovered) —
    same indigo backlight, so hover reads identically in both sync directions. */
 .pa-live-terms .pa-term-hot,
@@ -613,14 +650,16 @@
 }
 .pa-play { margin-left: auto; width: 6em; box-sizing: border-box; text-align: center; }
 
-/* sequential toggle — icon button (label moved to the title/tooltip) */
-.pa-mode {
+/* sequential + stacked toggles — icon buttons (labels in the title/tooltip) */
+.pa-mode,
+.pa-stack {
   min-width: 2.4em;
   text-align: center;
   font-size: 1.05em;
   line-height: 1;
 }
-.pa-mode.pa-active {
+.pa-mode.pa-active,
+.pa-stack.pa-active {
   background: var(--pa-accent);
   color: var(--pa-active-fg);
   border-color: var(--pa-accent);
