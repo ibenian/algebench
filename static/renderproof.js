@@ -275,9 +275,9 @@ function setupEmbedButton(builtins, theme, { persist = false } = {}) {
   window.addEventListener("keydown", (e) => { if (e.key === "Escape") hide(); });
 
   sel.addEventListener("change", () => {
-    applyTheme(sel.value);          // preview the chosen theme live
     // "auto" is intentionally transient here: we only persist concrete choices.
     if (persist && PERSISTABLE_THEMES.has(sel.value)) persistTheme(sel.value);
+    applyTheme(sel.value);          // preview the chosen theme live
     refresh();
     code.focus(); code.select();
   });

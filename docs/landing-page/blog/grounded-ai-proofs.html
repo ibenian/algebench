@@ -268,7 +268,7 @@
       ? "http://localhost:5751" : "https://algebench.org";
 
     var KEY = "algebench-theme";
-    function resolvedTheme(){ var t; try{ t = localStorage.getItem(KEY); }catch(e){}
+    function resolvedTheme(){ var t=null; try{ t = localStorage.getItem(KEY); }catch(e){}
       return (t==="dark"||t==="light") ? t : "dark"; }
 
     // Initial load: point each figure's iframe at its built-in proof in the current

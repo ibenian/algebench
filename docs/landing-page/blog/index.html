@@ -54,7 +54,7 @@
     // Shared light/dark toggle — persisted to one localStorage key for all blog pages.
     (function(){
       var KEY="algebench-theme", root=document.documentElement, btn=document.getElementById("theme-toggle");
-      function resolved(){ var t; try{ t=localStorage.getItem(KEY); }catch(e){}
+      function resolved(){ var t=null; try{ t=localStorage.getItem(KEY); }catch(e){}
         return (t==="dark"||t==="light") ? t : "dark"; }
       function paint(){ var r=resolved();
         btn.textContent = r==="dark" ? "☾" : "☀";   // show the current theme (sun = light)
