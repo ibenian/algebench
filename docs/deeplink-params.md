@@ -73,6 +73,7 @@ question out of the address bar.
 | `explore` | `explore=0` | **on** | Prerequisite / "Explore further" chips. Opt **out** with `0`/`false`/`no`. |
 | `ai` | `ai=1` | **off** | Term-level AI: hovering a term shows an "Ask AI" button. Opt **in** with `1`/`true`/`yes`. |
 | `autoplay` | `autoplay=true` or `autoplay=1` | off | `true`/`all`/`yes` plays every proof; a bare integer plays only that 1-indexed proof. |
+| `stacked` | `stacked=1` | **off** | Stacked (accordion) mode: every step up to the current one stays visible as a static line. Seeds the initial state only — each proof's ☰ button still toggles it at runtime. Opt **in** with `1`/`true`/`yes`. |
 | `fullscreenTarget` | `fullscreenTarget=prove` | renderproof | Where the **full-screen button** opens (embedded only). `prove` → the editable `/prove?id=<first builtin>&theme=<theme>` page (the embed's theme is carried through); anything else → this standalone renderproof view. |
 
 When embedded in an iframe the page detects it (`window.self !== window.top`) and

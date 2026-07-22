@@ -1858,7 +1858,7 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
         # hosts that always open "/" (preview panes, plain localhost visits)
         # land on the right page. /index.html below stays the main-app escape
         # hatch. 307 (not 301) so browsers don't cache the redirect across a
-        # later non---prove launch on the same port.
+        # later launch without --prove on the same port.
         if prove_home:
             return RedirectResponse("/prove", status_code=307)
         return await get_index()

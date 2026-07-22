@@ -1821,7 +1821,6 @@ export class ProofAnimator {
   _morphSnapshot(root) {
     const leaves = this._leaves(root);
     const rects = this._nodeRects(root);    // all nodes, not just leaves
-    const rootRect = root.getBoundingClientRect();
     const cloneOf = new Map();
     const fontSize = new Map();   // exact rendered size (encodes scriptstyle etc.)
     leaves.forEach((el, id) => {
@@ -1857,7 +1856,7 @@ export class ProofAnimator {
         decos.push({ key, clone: el.cloneNode(true), rect: el.getBoundingClientRect(), fontSize: getComputedStyle(el).fontSize });
       });
     }
-    return { leaves, rects, rootRect, cloneOf, fontSize, untagged, parens, decos };
+    return { leaves, rects, cloneOf, fontSize, untagged, parens, decos };
   }
 
   async goTo(target) {
@@ -1924,7 +1923,11 @@ export class ProofAnimator {
   async _morphFlight(from, toRoot, { token, seq, ghostHost = toRoot, deleteGhosts = true, onSetup = null } = {}) {
     const fromLeaves = from.leaves;   // NB: may be detached if the root re-rendered
     const fromRects = from.rects;
-    const stageRect = from.rootRect;
+    // Delete-ghosts are absolutely positioned INSIDE ghostHost, so their offsets
+    // must be relative to ghostHost's own rect — not the snapshot root's (the two
+    // differ whenever a caller ghosts into a different container). Measured live,
+    // in the same synchronous turn as the from-rects, so the frames agree.
+    const stageRect = ghostHost.getBoundingClientRect();
     const cloneOf = from.cloneOf;
     const fromFontSize = from.fontSize;
     const fromUntagged = from.untagged;
