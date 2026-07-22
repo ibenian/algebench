@@ -45,6 +45,10 @@ window.AlgeBenchDomains = window.AlgeBenchDomains || {
 setBuildSceneTreeFn(buildSceneTree);
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // Unified precedence (?theme= → saved preference → dark) onto <html
+    // data-theme>. The app chrome is fixed dark; today only the embedded
+    // proof-animation surfaces respond, via the html[data-theme="light"]
+    // var block in style.css.
     applyTheme(initialTheme());
     initMathBox();
     setupObjectPicker();

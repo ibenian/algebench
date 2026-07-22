@@ -24,6 +24,21 @@ html, body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
+/* Light-theme override, painted by main.js (applyTheme(initialTheme()) sets
+   <html data-theme> from ?theme= / the saved cross-page preference — see
+   theme.js). The main app's chrome is fixed dark, so unlike /prove and
+   /renderproof there is deliberately NO :root dark block here: with
+   data-theme="dark" (the default) nothing matches and every proof-animation
+   surface keeps its per-rule fallback exactly as before. Only the embedded
+   proof-animation surfaces (proof panel / graph-panel derivation cards,
+   tooltips, explore panels) read these vars; with a light preference they get
+   the same light values /prove and /renderproof use, instead of the mixed
+   dark/light fallbacks. */
+html[data-theme="light"] {
+    --panel-bg: #ffffff; --text-color: #1a1a2e;
+    --muted-color: #6b7280; --border-color: #e5e7eb;
+}
+
 #app {
     display: flex;
     flex-direction: column;
