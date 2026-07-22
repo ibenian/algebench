@@ -9,9 +9,6 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-import pytest
-from pydantic import ValidationError
-
 from backend.experts.modules.proof_completion.module import ProofCompletionExpert
 from backend.experts.modules.proof_completion.model import GraphTransition
 from backend.experts.modules.proof_completion.outputs import (
