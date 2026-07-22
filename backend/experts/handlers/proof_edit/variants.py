@@ -22,6 +22,8 @@ from copy import deepcopy
 from typing import Optional
 
 from backend.experts.handlers.proof_animation.animation import build
+from backend.experts.handlers.proof_animation.term_descriptions import describe_terms
+from backend.experts.llm_config import is_configured
 from backend.experts.modules.proof_completion.outputs import (
     DerivationStep, ProofTrajectory,
 )
@@ -82,6 +84,38 @@ def proof_to_trajectory(proof: dict) -> ProofTrajectory:
     # ``{text, deeplink}`` chip, which ``ProofTrajectory``'s ``List[str]`` would
     # reject outright, and none of them affect the rebuild anyway.
     return ProofTrajectory(steps=steps, title=proof.get("title"))
+
+
+def _with_step_source(proof: dict) -> dict:
+    """Ensure every step carries ``input_latex`` — the source expr edits rebuild from.
+
+    The whole edit path treats ``input_latex`` as load-bearing: it *is* the
+    ``expr_latex`` that produced a step, so a rebuild re-splices the source chain
+    (see the module docstring). Proofs built by the derive/animation pipeline
+    always set it. But a minimal HAND-AUTHORED seed — e.g. the ``api-demo``
+    fixture, whose steps are just ``{index, latex, operation}`` — carries only the
+    display ``latex``. Without this, ``proof_to_trajectory`` and
+    ``_restore_untouched_steps`` would ``KeyError`` on ``s["input_latex"]``, and
+    the handler swallows any non-``EditRefused`` error into a generic "I couldn't
+    apply that edit right now" — so a data gap read as a broken feature.
+
+    Falls back to ``plain`` then ``latex``. On such seeds ``latex`` is the clean
+    source (they predate the ``\\htmlData`` annotation pass); a fully built proof
+    never reaches the fallback because its ``input_latex`` is already present.
+    Returns the proof untouched when nothing is missing; otherwise a shallow copy
+    with patched step dicts, so the caller's proof is never mutated.
+    """
+    steps = proof.get("steps") or []
+    if all(isinstance(s, dict) and s.get("input_latex") for s in steps):
+        return proof
+    patched = []
+    for s in steps:
+        if isinstance(s, dict) and not s.get("input_latex"):
+            s = {**s, "input_latex": s.get("plain") or s.get("latex") or ""}
+        patched.append(s)
+    out = dict(proof)
+    out["steps"] = patched
+    return out
 
 
 def _spliced(proof: dict, at: int, new_steps: list[dict],
@@ -150,11 +184,13 @@ def _restore_untouched_steps(rebuilt: dict, original: dict) -> None:
 
 
 def _restore_term_descriptions(rebuilt: dict, original: dict) -> None:
-    """Re-attach per-term prose.
+    """Re-attach per-term prose for terms that already existed in the proof.
 
     ``build`` emits ``terms`` as ``{id: {latex, name}}`` only — descriptions come
-    from ``finalize.build_described``, an LM pass we deliberately do NOT run per
-    edit. Descriptions for genuinely new symbols are left empty (PR-2).
+    from ``finalize.build_described``, an LM pass we deliberately do NOT run over
+    the whole proof per edit. This restores prose for pre-existing terms for
+    free (no LM). Genuinely new symbols are described separately and scoped to
+    just the new set — see :func:`_describe_new_terms`.
     """
     orig_terms = original.get("terms") or {}
     for tid, term in (rebuilt.get("terms") or {}).items():
@@ -194,6 +230,10 @@ def build_variant(proof: dict, domain: str, at: int, new_steps: list[dict],
     computed it (see :func:`computed_confidence`); the grader's verdict for that
     step is replaced, since it answers a question that does not apply.
     """
+    # Normalize once: minimal seed proofs (api-demo) carry only display ``latex``,
+    # and everything below reconstructs from ``input_latex``. Both the splice and
+    # the untouched-step restore read the ORIGINAL proof, so patch it here.
+    proof = _with_step_source(proof)
     spliced = _spliced(proof, at, new_steps, delete_count)
     rebuilt = build(
         proof_to_trajectory(spliced),
@@ -288,18 +328,62 @@ def _badge_delta(rebuilt: dict, original: dict, at: int, take: int,
     return " · ".join(parts)
 
 
+def _describe_new_terms(variants: list[Variant], domain: str,
+                        context: str) -> None:
+    """Fill descriptions for genuinely NEW terms an edit introduces (issue #493).
+
+    ``_restore_term_descriptions`` only re-attaches prose for terms that already
+    existed in the original proof; a symbol the edit brings in for the first time
+    comes back description-less, because the per-edit path deliberately skips the
+    full ``build_described`` LM pass over the whole proof. Here we run a SCOPED
+    description pass over ONLY the union of new terms across the variants — never
+    the whole proof — so the interactive edit stays cheap (one predict, and only
+    when new symbols actually appear).
+
+    Best-effort by construction: with no LM (``is_configured()`` false, e.g. CI)
+    or on any failure, ``describe_terms`` returns ``{}`` and the terms keep their
+    empty description — the edit still succeeds. The nested variants share the
+    same new steps, so a term id describes the same symbol in every variant it
+    appears in; one lookup fills them all.
+    """
+    # Union the new terms across variants — nested variants surface different
+    # new-term subsets, and describe_terms costs one predict regardless of size.
+    union: dict[str, dict] = {}
+    for v in variants:
+        for tid, term in v.terms_added.items():
+            if not term.get("description"):
+                union.setdefault(tid, term)
+    if not union or not is_configured():
+        return
+    described = describe_terms(union, domain, context)
+    for v in variants:
+        for tid, term in v.terms_added.items():
+            desc = described.get(tid)
+            if desc and not term.get("description"):
+                term["description"] = desc
+
+
 def to_payload(proof: dict, domain: str, at: int, new_steps: list[dict],
                computed: Optional[dict] = None,
                propagated: Optional[list[dict]] = None,
-               is_recovery: bool = False) -> Optional[EditPayload]:
+               is_recovery: bool = False,
+               context: str = "") -> Optional[EditPayload]:
     """Build every applicable variant and reduce them to the compact wire form.
 
     ``new_steps`` is the full ordered list: the user's step first, then any glue.
     The variants are nested selections over it, so the rendered steps are emitted
     once and each variant is a descriptor.
 
+    ``context`` is free-form prose (the derivation / request) used to ground the
+    scoped description pass for genuinely new terms — see
+    :func:`_describe_new_terms`.
+
     Returns None when nothing could be built.
     """
+    # Normalize once so the diff helpers below compare against the same source
+    # ``build_variant`` rebuilds from — otherwise a seed step's missing
+    # ``input_latex`` would show up as a spurious change on a step nobody touched.
+    proof = _with_step_source(proof)
     n_steps = len(proof.get("steps") or [])
     tail_len = max(0, n_steps - (at + 1))
 
@@ -376,6 +460,10 @@ def to_payload(proof: dict, domain: str, at: int, new_steps: list[dict],
     if not variants:
         log.warning("%s no variant survived construction at step %d", LOG_TAG, at)
         return None
+    # Scoped, best-effort description pass for genuinely new terms (issue #493).
+    # Pre-existing terms already carry restored prose; this only touches the new
+    # set, and degrades to empty descriptions with no LM.
+    _describe_new_terms(variants, domain, context)
     log.info("%s %d variant(s) at step %d: %s", LOG_TAG, len(variants), at,
              ", ".join(v.kind for v in variants))
     return EditPayload(new_steps=rendered, variants=variants)
