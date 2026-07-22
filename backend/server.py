@@ -27,7 +27,7 @@ import termios
 import select
 from urllib.parse import quote
 from fastapi import Depends, FastAPI, Request
-from fastapi.responses import StreamingResponse, Response, JSONResponse, HTMLResponse, FileResponse
+from fastapi.responses import StreamingResponse, Response, JSONResponse, HTMLResponse, FileResponse, RedirectResponse
 from pydantic import BaseModel
 import uvicorn
 from google import genai
@@ -1739,8 +1739,14 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
                tts_parallelism=None, tts_min_buffer=None, tts_min_sentence_chars=None,
                tts_min_sentence_chars_growth=None, tts_chunk_timeout=None,
                tts_max_retries=None, tts_retry_delay=None, tts_style=None,
-               tts_live=True, tts_output_file=None, tts_realtime=None):
+               tts_live=True, tts_output_file=None, tts_realtime=None,
+               prove_home=False):
     """Build and return the AlgeBench FastAPI (ASGI) application.
+
+    ``prove_home=True`` (the ``--prove`` launch flag) makes ``/`` redirect to
+    the ``/prove`` proof browser — that launch mode exists to browse proofs, and
+    hosts that always open the root (e.g. the IDE preview pane) would otherwise
+    land on the main app. ``/index.html`` still serves the main app either way.
 
     All routes are registered here so the app can be served either by an
     external ASGI server (``uvicorn backend.asgi:app``) or by
@@ -1857,6 +1863,16 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
     # -- GET routes --
 
     @fastapp.get("/")
+    async def get_root():
+        # --prove launches exist to browse proofs: send the root to /prove so
+        # hosts that always open "/" (preview panes, plain localhost visits)
+        # land on the right page. /index.html below stays the main-app escape
+        # hatch. 307 (not 301) so browsers don't cache the redirect across a
+        # later launch without --prove on the same port.
+        if prove_home:
+            return RedirectResponse("/prove", status_code=307)
+        return await get_index()
+
     @fastapp.get("/index.html")
     async def get_index():
         # Note: --proof does NOT redirect "/" here. The launcher opens (or prints)
@@ -2832,6 +2848,7 @@ def serve_and_open(initial_scene_path=None, port=DEFAULT_PORT, json_output=False
         tts_live=tts_live,
         tts_output_file=tts_output_file,
         tts_realtime=tts_realtime,
+        prove_home=open_prove,
     )
 
     # ---- Start uvicorn in a background thread ----

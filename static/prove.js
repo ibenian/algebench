@@ -828,6 +828,11 @@ function initEditTool() {
  *  and to flip between edit variants, which is why the chat reset lives in
  *  showInDerive rather than here. */
 function mountAnimator(proof, startStep) {
+  // Carry the user's runtime toggles (stacked / sequential / speed) across the
+  // destroy+reconstruct — previewing an edit variant must not reset them.
+  const keep = deriveAnimator
+    ? { stacked: deriveAnimator.stacked, mode: deriveAnimator.mode, speed: deriveAnimator.speed }
+    : {};
   if (deriveAnimator) { try { deriveAnimator.destroy(); } catch (e) { /* noop */ } deriveAnimator = null; }
   els.dRoot.textContent = "";
   els.dEmpty.hidden = true;
@@ -836,6 +841,7 @@ function mountAnimator(proof, startStep) {
     startStep: typeof startStep === "number" ? startStep : 0,
     // A term "Ask AI" goes to the LOCAL step-aware chat, not the app.
     onTermAsk: ({ message }) => askInChat(message),
+    ...keep,
   });
   els.dGo.textContent = "Rederive";              // a derivation now exists
   if (els.dViewerBar) els.dViewerBar.hidden = false;   // reveal the { } JSON viewer

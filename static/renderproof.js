@@ -349,6 +349,11 @@ async function main() {
   // and a floating "Ask AI" opens the linked full-app view + auto-asks the agent.
   const termAsk = ["1", "true", "yes"].includes(
     (new URLSearchParams(location.search).get("ai") || "").trim().toLowerCase());
+  // Opt-in stacked (accordion) mode via ?stacked=1 — every step up to the
+  // current one stays visible as a static line. Also runtime-toggleable via the
+  // ☰ button on each card; the param just seeds the initial state.
+  const stacked = ["1", "true", "yes"].includes(
+    (new URLSearchParams(location.search).get("stacked") || "").trim().toLowerCase());
   // Optional autoplay (?autoplay=true → every proof on the page; ?autoplay=<n> →
   // only the nth, 1-indexed: 1 = first, 2 = second …). Lets a share/embed link
   // open already morphing, no click needed.
@@ -413,7 +418,7 @@ async function main() {
       if (data.title) titleText.textContent = data.title;
       window.__animators.push(new ProofAnimator(card, data, {
         katex, liveTerms: true, enableExplore: exploreFollowups,
-        enableTermAsk: termAsk,
+        enableTermAsk: termAsk, stacked,
         // No onTermAsk/onExplore host hooks: standalone the engine routes asks
         // itself (embedded → open the proof's deeplink in a new tab + auto-ask;
         // else copy/postMessage). The deeplink lives on the proof JSON.

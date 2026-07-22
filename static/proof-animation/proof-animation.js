@@ -195,6 +195,12 @@ export class ProofAnimator {
     // step and the page scrolls.
     this._fitHeight = !!opts.fitHeight;
     this.mode = opts.mode || "parallel";    // 'parallel' | 'sequential'
+    // Stacked (accordion) mode: render ALL steps up to the current one as
+    // static lines and fly terms from the previous line into the new one,
+    // expanding/collapsing the vertical space like an accordion. Runtime-
+    // toggled by the .pa-stack button; hosts may seed it via opts.stacked.
+    this.stacked = !!opts.stacked;
+    this._linesEl = null;   // the .pa-lines column (stacked mode only)
     // Base timings; the speed multiplier scales them live via animation.playbackRate.
     this._baseDuration = opts.duration ?? 650;
     this._baseStagger = opts.staggerMs ?? 200;
@@ -219,7 +225,7 @@ export class ProofAnimator {
     this._baseFontPx = parseFloat(getComputedStyle(this.stage).fontSize) || 30;
     this._fixMetaSize();    // pin the caption area first so the stage's flex height is known
     this._fit();            // scale the expression to fit the stage (width; +height in container mode)
-    this._renderInto(this.stage, this.data.steps[this.current].latex);
+    this._renderStage();
     this._syncUI();
     this._capOverflow();    // never let the expression spill past the stage
     this._fitControls();    // hide step enumerations if the controls don't fit
@@ -330,6 +336,11 @@ export class ProofAnimator {
       // size across all steps and the expression never overflows it.
       const availH = Math.max(20, this.stage.clientHeight - 2 * PAD);
       scale = Math.min(scale, availH / h);
+    } else if (this.stacked) {
+      // Stacked mode: the stage's height is the line COLUMN's natural height —
+      // it grows/shrinks with the accordion, so never pin it. (Deliberate
+      // divergence from the single-step "pin to max, never shrink" invariant.)
+      this.stage.style.height = "";
     } else {
       // Report mode: the stage GROWS to the tallest step (pinned, scaled) so it
       // never jumps between steps; the page scrolls if the card is short.
@@ -359,6 +370,7 @@ export class ProofAnimator {
   }
 
   _capOverflowImpl() {
+    if (this.stacked) return this._capOverflowStacked();
     const expr = this.stage.querySelector(".pa-expr");
     if (!expr) return;
     const k = expr.querySelector(".katex-display") || expr.querySelector(".katex");
@@ -377,6 +389,28 @@ export class ProofAnimator {
       const cur = parseFloat(getComputedStyle(this.stage).fontSize) || this._baseFontPx;
       this.stage.style.fontSize = `${cur * ratio}px`;
       this.stage.style.setProperty("--pa-expr-w", `${Math.ceil(r.width * ratio)}px`);
+    }
+  }
+
+  // Stacked variant of the overflow cap: check EVERY visible line and shrink
+  // the shared stage font so the widest one fits. Height never needs capping —
+  // report mode grows, fitHeight mode scrolls.
+  _capOverflowStacked() {
+    if (!this._linesEl) return;
+    const PAD = 8;
+    const availW = Math.max(40, this.stage.clientWidth - 2 * PAD);
+    let ratio = 1, maxW = 0;
+    for (const line of this._linesEl.children) {
+      const k = line.querySelector(".katex-display") || line.querySelector(".katex");
+      if (!k) continue;
+      const w = k.getBoundingClientRect().width;
+      maxW = Math.max(maxW, w);
+      if (w > availW + 0.5) ratio = Math.min(ratio, availW / w);
+    }
+    if (ratio < 1) {
+      const cur = parseFloat(getComputedStyle(this.stage).fontSize) || this._baseFontPx;
+      this.stage.style.fontSize = `${cur * ratio}px`;
+      this.stage.style.setProperty("--pa-expr-w", `${Math.ceil(maxW * ratio)}px`);
     }
   }
 
@@ -422,7 +456,7 @@ export class ProofAnimator {
       this._onVisibility = () => {
         if (document.hidden && this._running.length) {
           this._cancel();
-          this._renderInto(this.stage, this.data.steps[this.current].latex);
+          this._renderStage();
           this._capOverflow();   // webfonts may have loaded while hidden → re-cap width
           this._syncUI();
         }
@@ -438,7 +472,7 @@ export class ProofAnimator {
     this._cancel();
     this._fixMetaSize();   // text bar height first → fixes the stage's flex height
     this._fit();           // then scale the expression to fit the stage (w + h in container mode)
-    this._renderInto(this.stage, this.data.steps[this.current].latex);
+    this._renderStage();
     this._capOverflow();
     this._fitControls();
     this._updateNextTip();   // truncation depends on width → re-check on resize
@@ -497,7 +531,9 @@ export class ProofAnimator {
     // still resolve the fraction/power/√ from the chain when it wants to.
     const tagOf = (t, x, y) => {
       const el = t && t.closest ? t.closest("[data-n]") : null;
-      if (!el || !this.stage.contains(el)) return null;
+      // Scoped to _liveRoot(): the current line in stacked mode (older static
+      // lines are inert), the whole stage otherwise.
+      if (!el || !this._liveRoot().contains(el)) return null;
       if (el.querySelector("[data-n]")) {
         if (x == null) return null;
         // Prefer the nearest inner leaf. Only when the pointer is on NO term at all
@@ -700,7 +736,7 @@ export class ProofAnimator {
   // pa-term-selected so the in-app host keeps sole ownership of that one. Keyed by
   // appearance, so a re-render (morph) re-applies it from _capOverflow.
   _applyAskClasses() {
-    const expr = this.stage && this.stage.querySelector(".pa-expr");
+    const expr = this._exprEl();
     if (!expr) return;
     const keys = new Set(this._askSel.map((s) => s.key));
     for (const node of expr.querySelectorAll("[data-n]")) {
@@ -1017,6 +1053,7 @@ export class ProofAnimator {
         <button type="button" class="pa-btn pa-play" data-tip="Play through" aria-label="Play through">▶ Play</button>
         <button type="button" class="pa-btn pa-speed" data-tip="Animation speed (click to cycle)" aria-label="Animation speed">${_speedLabel(this.speed)}</button>
         <button class="pa-btn pa-mode" type="button" data-tip="Sequential — stagger the moves" aria-label="Sequential — stagger the moves" aria-pressed="false">⇉</button>
+        <button class="pa-btn pa-stack" type="button" data-tip="Stacked — keep previous steps visible" aria-label="Stacked — keep previous steps visible" aria-pressed="false">☰</button>
         <button class="pa-btn pa-info-pill" type="button" hidden aria-label="Prerequisites & follow-ups"></button>
       </div>`;
     this.stage = this.container.querySelector(".pa-stage");
@@ -1082,12 +1119,19 @@ export class ProofAnimator {
       this._applySpeed();
     };
     const modeBtn = this.container.querySelector(".pa-mode");
+    // Reflect a host-seeded mode (e.g. carried across a variant-preview remount).
+    modeBtn.classList.toggle("pa-active", this.mode === "sequential");
+    modeBtn.setAttribute("aria-pressed", String(this.mode === "sequential"));
     modeBtn.onclick = () => {
       this.mode = this.mode === "sequential" ? "parallel" : "sequential";
       const on = this.mode === "sequential";
       modeBtn.classList.toggle("pa-active", on);
       modeBtn.setAttribute("aria-pressed", String(on));
     };
+    const stackBtn = this.container.querySelector(".pa-stack");
+    stackBtn.classList.toggle("pa-active", this.stacked);
+    stackBtn.setAttribute("aria-pressed", String(this.stacked));
+    stackBtn.onclick = () => this._setStacked(!this.stacked);
     this._renderGoal();
     this._renderExplore();
     this._buildTermAskButton();
@@ -1404,6 +1448,140 @@ export class ProofAnimator {
     return host;
   }
 
+  // ── Stacked (accordion) mode ────────────────────────────────────────────────
+  // The stage holds a .pa-lines column with one static .pa-line per step
+  // 0..current; only the boundary transition animates. Outside a transition the
+  // invariant is: lines exist for EXACTLY [0, current], each a pristine render.
+  // _syncLines() restores it (cheaply — untouched lines are left alone), which
+  // also self-heals after an interrupted transition.
+
+  _ensureLinesEl() {
+    let el = this._linesEl;
+    if (!el || el.parentElement !== this.stage) {
+      this.stage.innerHTML = "";
+      el = document.createElement("div");
+      el.className = "pa-lines" + (this._fitHeight ? " pa-lines-scroll" : "");
+      this.stage.appendChild(el);
+      this._linesEl = el;
+    }
+    return el;
+  }
+
+  _renderLine(line, i) {
+    line.dataset.step = String(i);
+    delete line.dataset.dirty;
+    line.style.visibility = "";
+    line.style.opacity = "";
+    line.style.display = "";
+    line.style.fontSize = "";   // promote/demote overrides — resting size is CSS-owned
+    this._renderInto(line, this.data.steps[i].latex);
+  }
+
+  // Reconcile the line set to steps [0, count): remove extras, add missing,
+  // re-render only the lines a transition dirtied. Clears transient accordion
+  // styles (held heights, hidden lines) so the resting state is always clean.
+  _syncLines(count) {
+    const linesEl = this._ensureLinesEl();
+    linesEl.style.height = "";
+    linesEl.style.overflow = "";
+    while (linesEl.children.length > count) linesEl.lastElementChild.remove();
+    for (let i = 0; i < count; i++) {
+      let line = linesEl.children[i];
+      if (!line) {
+        line = document.createElement("div");
+        line.className = "pa-line";
+        linesEl.appendChild(line);
+        this._renderLine(line, i);
+      } else if (line.dataset.step !== String(i) || line.dataset.dirty) {
+        this._renderLine(line, i);
+      } else {
+        line.style.visibility = "";
+        line.style.opacity = "";
+        line.style.display = "";
+        line.style.fontSize = "";
+      }
+    }
+    this._markCurrentLine();
+    return linesEl;
+  }
+
+  _lineAt(i) {
+    return this._linesEl ? this._linesEl.children[i] || null : null;
+  }
+
+  // Term interactivity is scoped to the CURRENT line in stacked mode (older
+  // lines are inert — duplicate data-n ids across lines would make hover/ask
+  // ambiguous). CSS keys the pointer affordances off .pa-line-current too.
+  _markCurrentLine() {
+    if (!this._linesEl) return;
+    [...this._linesEl.children].forEach((el, i) =>
+      el.classList.toggle("pa-line-current", i === this.current));
+  }
+
+  // The root live-terms events/classes operate on: the current line in stacked
+  // mode, the whole stage otherwise.
+  _liveRoot() {
+    return (this.stacked && this._lineAt(this.current)) || this.stage;
+  }
+
+  _exprEl() {
+    const root = this._liveRoot();
+    return root ? root.querySelector(".pa-expr") : null;
+  }
+
+  // Mode-aware render of the RESTING state at this.current (no animation).
+  _renderStage() {
+    this.stage.classList.toggle("pa-stacked", this.stacked);
+    if (this.stacked) {
+      this._syncLines(this.current + 1);
+      this._scrollToCurrent(false);
+    } else {
+      this._linesEl = null;
+      this._renderInto(this.stage, this.data.steps[this.current].latex);
+    }
+  }
+
+  // fitHeight boxes never grow — the line column scrolls instead. Keep the
+  // newest (current) line in view.
+  _scrollToCurrent(smooth) {
+    if (!this._fitHeight || !this._linesEl) return;
+    const el = this._linesEl;
+    if (el.scrollHeight <= el.clientHeight + 1) return;
+    const line = this._lineAt(this.current);
+    const top = line
+      ? Math.max(0, line.offsetTop + line.offsetHeight - el.clientHeight + 8)
+      : el.scrollHeight;
+    try { el.scrollTo({ top, behavior: smooth ? "smooth" : "auto" }); }
+    catch (e) { el.scrollTop = top; }
+  }
+
+  // Toggle stacked mode at runtime: cancel anything in flight, rebuild the
+  // stage scaffold for the new mode, and re-render the current step (a
+  // relayout, not a step change — mirrors _relayout()).
+  _setStacked(on) {
+    on = !!on;
+    if (this.stacked === on) return;
+    this._playId = null;
+    this._paused = false;
+    this._setPlayLabel(false);
+    // Invalidate any in-flight transition BEFORE cancelling: _cancel() stops the
+    // animations, but the async goTo runner survives its awaits and would
+    // otherwise settle by re-rendering its lines into the rebuilt stage (a
+    // stacked column spilling out of a single-mode stage, or vice versa). A
+    // fresh token makes every pending token check fail so the runner exits.
+    this._token = {};
+    this._cancel();
+    this.stacked = on;
+    const btn = this.container.querySelector(".pa-stack");
+    if (btn) { btn.classList.toggle("pa-active", on); btn.setAttribute("aria-pressed", String(on)); }
+    this.stage.innerHTML = "";
+    this._linesEl = null;
+    this._fit();
+    this._renderStage();
+    this._capOverflow();
+    if (this._onRelayout) { try { this._onRelayout(); } catch (e) {} }
+  }
+
   // Leaf glyph spans that carry NO id — e.g. parentheses, which the renderer
   // emits as `\left(\right)` without an \htmlData wrapper (and `\left…\right`
   // can't be split to tag each glyph). The morph keys off data-n, so these are
@@ -1630,9 +1808,55 @@ export class ProofAnimator {
   _snapTo(target) {
     this._cancel();
     this.current = target;
-    this._renderInto(this.stage, this.data.steps[target].latex);
+    this._renderStage();
     this._capOverflow();
     this._syncUI();
+  }
+
+  // Snapshot everything the morph needs about the CURRENT rendered state of
+  // `root`: glyph rects for every tagged node (incl. in-flight transforms →
+  // retarget), leaf clones (the DOM may be destroyed on re-render — needed for
+  // delete ghosts), untagged glyphs, parens, and structural decorations.
+  // Threaded into _morphFlight as its `from` state.
+  _morphSnapshot(root) {
+    const leaves = this._leaves(root);
+    const rects = this._nodeRects(root);    // all nodes, not just leaves
+    const cloneOf = new Map();
+    const fontSize = new Map();   // exact rendered size (encodes scriptstyle etc.)
+    leaves.forEach((el, id) => {
+      cloneOf.set(id, el.cloneNode(true));
+      fontSize.set(id, getComputedStyle(el).fontSize);
+    });
+    // Source untagged glyphs (parens etc.) — snapshot so we can ghost them out
+    // if they disappear (they have no id to thread).
+    const untagged = this._untaggedGlyphs(root).map((el) => ({
+      text: el.textContent,
+      clone: el.cloneNode(true),
+      rect: el.getBoundingClientRect(),
+      fontSize: getComputedStyle(el).fontSize,
+    }));
+    // Source parentheses (plain + stretchy), in document order — so a preserved
+    // paren can morph from its old pose and a removed one can ghost out.
+    const parens = this._parens(root).map((p) => ({
+      char: p.char, delim: p.delim, content: p.content,
+      clone: p.el.cloneNode(true),
+      rect: p.el.getBoundingClientRect(),
+      fontSize: getComputedStyle(p.el).fontSize,
+    }));
+    // Source decorations (fraction bar, radical, stretchy delimiter), keyed by
+    // their owning node (nearest [data-n]) + type — the target ones are matched
+    // against these to MORPH a preserved decoration that resized/moved, FADE OUT
+    // removed ones, FADE IN new ones.
+    const decos = [];
+    for (const sel of DECORATIONS) {
+      root.querySelectorAll(sel).forEach((el) => {
+        const o = el.closest("[data-n]");
+        if (!o) return;
+        const key = o.getAttribute("data-n") + "|" + sel;
+        decos.push({ key, clone: el.cloneNode(true), rect: el.getBoundingClientRect(), fontSize: getComputedStyle(el).fontSize });
+      });
+    }
+    return { leaves, rects, cloneOf, fontSize, untagged, parens, decos };
   }
 
   async goTo(target) {
@@ -1648,51 +1872,13 @@ export class ProofAnimator {
       this._snapTo(target);
       return;
     }
+    if (this.stacked) return this._stackedGoTo(target, prev);
     const token = (this._token = {});
     const seq = this.mode === "sequential";
 
-    // FIRST: measure current glyphs + every tagged subtree (for rigid grouping),
-    // incl. in-flight transforms → retarget; clone leaves now (DOM is destroyed
-    // on re-render, needed for delete ghosts).
-    const fromLeaves = this._leaves(this.stage);
-    const fromRects = this._nodeRects(this.stage);    // all nodes, not just leaves
-    const stageRect = this.stage.getBoundingClientRect();
-    const cloneOf = new Map();
-    const fromFontSize = new Map();   // exact rendered size (encodes scriptstyle etc.)
-    fromLeaves.forEach((el, id) => {
-      cloneOf.set(id, el.cloneNode(true));
-      fromFontSize.set(id, getComputedStyle(el).fontSize);
-    });
-    // Source untagged glyphs (parens etc.) — snapshot before re-render so we can
-    // ghost them out if they disappear (they have no id to thread).
-    const fromUntagged = this._untaggedGlyphs(this.stage).map((el) => ({
-      text: el.textContent,
-      clone: el.cloneNode(true),
-      rect: el.getBoundingClientRect(),
-      fontSize: getComputedStyle(el).fontSize,
-    }));
-    // Source parentheses (plain + stretchy), in document order — snapshot before
-    // re-render so a preserved paren can morph from its old pose and a removed
-    // one can ghost out.
-    const fromParens = this._parens(this.stage).map((p) => ({
-      char: p.char, delim: p.delim, content: p.content,
-      clone: p.el.cloneNode(true),
-      rect: p.el.getBoundingClientRect(),
-      fontSize: getComputedStyle(p.el).fontSize,
-    }));
-    // Source decorations (fraction bar, radical, stretchy delimiter), keyed by
-    // their owning node (nearest [data-n]) + type. Snapshotted before re-render
-    // so the target ones can be matched against them — to MORPH a preserved
-    // decoration that resized/moved, FADE OUT removed ones, FADE IN new ones.
-    const fromDecos = [];
-    for (const sel of DECORATIONS) {
-      this.stage.querySelectorAll(sel).forEach((el) => {
-        const o = el.closest("[data-n]");
-        if (!o) return;
-        const key = o.getAttribute("data-n") + "|" + sel;
-        fromDecos.push({ key, clone: el.cloneNode(true), rect: el.getBoundingClientRect(), fontSize: getComputedStyle(el).fontSize });
-      });
-    }
+    // FIRST: snapshot the current state (before _cancel, so in-flight transforms
+    // are captured and an interrupting click retargets from the live positions).
+    const from = this._morphSnapshot(this.stage);
 
     this._cancel();
     this.current = target;
@@ -1708,10 +1894,47 @@ export class ProofAnimator {
       this._syncUI();
     }
 
-    // LAST: render target, measure
+    // LAST: render target, then fly from the snapshot to the fresh render
     this._renderInto(this.stage, this.data.steps[target].latex);
-    const toLeaves = this._leaves(this.stage);
-    const toRects = this._nodeRects(this.stage);
+    const done = await this._morphFlight(from, this.stage, { token, seq });
+    if (done) {
+      this._running = [];
+      // Settle to a PRISTINE final render. The animated DOM carries leftover morph
+      // styles — pa-move (display:inline-block), pa-insert (z-index:-1), held
+      // transforms, inline opacity — any of which can leave a glyph mis-layered or
+      // invisible in some browsers/themes. Re-rendering the clean step drops ALL of
+      // it, so the resting expression is guaranteed correct and identical to a fresh
+      // render. It's visually identical to the just-finished frame, so no flicker.
+      this._renderInto(this.stage, this.data.steps[target].latex);
+      this._capOverflow();
+      // Step animation done → now fade in the new justification + "Next" pill.
+      if (metaFinish) metaFinish();
+    }
+  }
+
+  // The id-keyed FLIP flight from a `_morphSnapshot` state to the freshly
+  // rendered contents of `toRoot`. Runs the three phases (fade-out deleted →
+  // move matched → fade-in inserted) and resolves to true iff it ran to
+  // completion (false = interrupted by a newer goTo). `ghostHost` is the
+  // position-relative element delete-ghost clones are appended to (defaults to
+  // toRoot); `deleteGhosts:false` skips ghosting removed items entirely —
+  // stacked mode uses that for a forward step, where the disappearing glyphs
+  // stay visible in the frozen line above.
+  async _morphFlight(from, toRoot, { token, seq, ghostHost = toRoot, deleteGhosts = true, onSetup = null } = {}) {
+    const fromLeaves = from.leaves;   // NB: may be detached if the root re-rendered
+    const fromRects = from.rects;
+    // Delete-ghosts are absolutely positioned INSIDE ghostHost, so their offsets
+    // must be relative to ghostHost's own rect — not the snapshot root's (the two
+    // differ whenever a caller ghosts into a different container). Measured live,
+    // in the same synchronous turn as the from-rects, so the frames agree.
+    const stageRect = ghostHost.getBoundingClientRect();
+    const cloneOf = from.cloneOf;
+    const fromFontSize = from.fontSize;
+    const fromUntagged = from.untagged;
+    const fromParens = from.parens;
+    const fromDecos = from.decos;
+    const toLeaves = this._leaves(toRoot);
+    const toRects = this._nodeRects(toRoot);
 
     // Matched ids whose GLYPH CHANGED — the diff reused a node id for a different
     // symbol (e.g. + → −, or a coefficient 2 → 3). Without this, such a node is
@@ -1731,7 +1954,7 @@ export class ProofAnimator {
     // stage still looks like the source state while dropped items fade out ──
     // matched → MOVE the LARGEST rigid groups together (translate + uniform scale,
     // about each block's top-left, so a sub-expression glides/shrinks as one unit)
-    const { blocks } = this._rigidBlocks(this.stage, fromRects, toRects, fromFontSize, changedIds);
+    const { blocks } = this._rigidBlocks(toRoot, fromRects, toRects, fromFontSize, changedIds);
     const movers = [];
     for (const blk of blocks) {
       const moved = Math.abs(blk.dx) > 0.5 || Math.abs(blk.dy) > 0.5;
@@ -1755,7 +1978,7 @@ export class ProofAnimator {
     // fade in; genuinely REMOVED ones ghost out. They are kept SEPARATE from the
     // id'd glyphs so they can animate in their own sub-phase — AFTER all id'd
     // fades — with a PLAIN opacity tween (no scale/move, so they never shift).
-    const toUntagged = this._untaggedGlyphs(this.stage);
+    const toUntagged = this._untaggedGlyphs(toRoot);
     const _uMatch = this._lcsMatch(fromUntagged.map((u) => u.text), toUntagged.map((el) => el.textContent));
     const _uFromKeep = _uMatch.aKeep;
     const untagInserts = [];
@@ -1777,7 +2000,7 @@ export class ProofAnimator {
     }
     const matchedSrcDeco = new Set();
     for (const sel of DECORATIONS) {
-      this.stage.querySelectorAll(sel).forEach((el) => {
+      toRoot.querySelectorAll(sel).forEach((el) => {
         const owner = el.closest("[data-n]");
         const key = (owner ? owner.getAttribute("data-n") : "") + "|" + sel;
         const pool = srcDecoByKey.get(key);
@@ -1812,7 +2035,7 @@ export class ProofAnimator {
     // A preserved paren MORPHS from its source pose to its target pose (so a paren
     // that flips plain↔stretchy, or grows with its content, glides as one unit
     // instead of duplicating). Genuinely new parens fade in; removed ones ghost out.
-    const toParens = this._parens(this.stage);
+    const toParens = this._parens(toRoot);
     // Match on (char, content) — a paren only aligns with one wrapping the SAME
     // node, so a preserved function/group paren morphs while an unrelated paren that
     // merely shares the same `(`/`)` glyph can't hijack its slot (see the content
@@ -1851,7 +2074,7 @@ export class ProofAnimator {
     // `.katex …`) still applies — otherwise the glyph reverts to the default
     // font for a frame before fading.
     const ghosts = [];
-    fromLeaves.forEach((el, id) => {
+    if (deleteGhosts) fromLeaves.forEach((el, id) => {
       if (toRects.has(id) && !changedIds.has(id)) return;   // still present, same glyph
       const f = fromRects.get(id);
       const host = document.createElement("span");
@@ -1866,14 +2089,14 @@ export class ProofAnimator {
         fontSize: fromFontSize.get(id),
       });
       host.appendChild(cloneOf.get(id));
-      this.stage.appendChild(host);
+      ghostHost.appendChild(host);
       this._ghosts.push(host);
       ghosts.push(host);
     });
     // Untagged source glyphs (parens etc.) that were REMOVED (not LCS-matched)
     // → ghost them out (in their own array, so they fade AFTER the id'd ghosts).
     const untagGhosts = [];
-    fromUntagged.forEach((u, ui) => {
+    if (deleteGhosts) fromUntagged.forEach((u, ui) => {
       if (!_uFromKeep.has(ui)) {
         const host = document.createElement("span");
         host.className = "katex pa-ghost";
@@ -1884,7 +2107,7 @@ export class ProofAnimator {
           fontSize: u.fontSize,
         });
         host.appendChild(u.clone);
-        this.stage.appendChild(host);
+        ghostHost.appendChild(host);
         this._ghosts.push(host);
         untagGhosts.push(host);
       }
@@ -1892,7 +2115,7 @@ export class ProofAnimator {
     // Decorations (fraction bar, radical, stretchy delimiter) that DISAPPEARED →
     // ghost the cloned decoration (which keeps its stretched size) at its old spot
     // and fade it out with the other id-less items, instead of letting it vanish.
-    for (const d of removedDecos) {
+    if (deleteGhosts) for (const d of removedDecos) {
       const host = document.createElement("span");
       host.className = "katex pa-ghost";
       let left = d.rect.left - stageRect.left, top = d.rect.top - stageRect.top;
@@ -1901,13 +2124,13 @@ export class ProofAnimator {
         left: left + "px", top: top + "px", fontSize: d.fontSize,
       });
       host.appendChild(d.clone);
-      this.stage.appendChild(host);
+      ghostHost.appendChild(host);
       // A delimiter clone sits at a vertical-align offset inside its host, so its
       // visual box lands above/below the source spot (looks like it "jumps up").
       // Nudge the host to cancel that offset — comparing in STAGE-RELATIVE coords
       // (re-measuring the stage now) so page scroll/reflow between the source
       // snapshot and here can't skew the alignment.
-      const sr = this.stage.getBoundingClientRect();
+      const sr = ghostHost.getBoundingClientRect();
       const cr = d.clone.getBoundingClientRect();
       const dx = (d.rect.left - stageRect.left) - (cr.left - sr.left);
       const dy = (d.rect.top - stageRect.top) - (cr.top - sr.top);
@@ -1921,7 +2144,7 @@ export class ProofAnimator {
     // Parentheses (plain or stretchy) that DISAPPEARED → ghost the clone at its
     // old spot. A stretchy delimiter clone carries a vertical-align offset, so
     // apply the same stage-relative nudge used for decorations above.
-    for (const p of removedParens) {
+    if (deleteGhosts) for (const p of removedParens) {
       const host = document.createElement("span");
       host.className = "katex pa-ghost";
       let left = p.rect.left - stageRect.left, top = p.rect.top - stageRect.top;
@@ -1930,8 +2153,8 @@ export class ProofAnimator {
         left: left + "px", top: top + "px", fontSize: p.fontSize,
       });
       host.appendChild(p.clone);
-      this.stage.appendChild(host);
-      const sr = this.stage.getBoundingClientRect();
+      ghostHost.appendChild(host);
+      const sr = ghostHost.getBoundingClientRect();
       const cr = p.clone.getBoundingClientRect();
       const dx = (p.rect.left - stageRect.left) - (cr.left - sr.left);
       const dy = (p.rect.top - stageRect.top) - (cr.top - sr.top);
@@ -1939,6 +2162,11 @@ export class ProofAnimator {
       this._ghosts.push(host);
       untagGhosts.push(host);
     }
+
+    // All holds/opacity-0 are applied — the to-root now poses as the source
+    // state. Stacked mode unhides the freshly-added line here (it rendered
+    // hidden so its final state never flashes before the flight).
+    if (onSetup) onSetup();
 
     // ── PHASE 0: dropped items fade OUT first, before any motion ──
     const D_OUT = this._baseDuration * 0.6;
@@ -1966,7 +2194,7 @@ export class ProofAnimator {
     }
     this._running = delAnims;
     await await_(delAnims);
-    if (this._token !== token) return;   // interrupted by a newer goTo
+    if (this._token !== token) return false;   // interrupted by a newer goTo
 
     // ── PHASE 1: matched groups MOVE into place (from held pose → identity) ──
     const moveAnims = [];
@@ -2013,7 +2241,7 @@ export class ProofAnimator {
     }
     this._running = moveAnims;
     await await_(moveAnims);
-    if (this._token !== token) return;
+    if (this._token !== token) return false;
 
     // ── PHASE 2: new items fade IN last (glyphs + structural decorations) ──
     const D_IN = this._baseDuration * 0.7;
@@ -2046,19 +2274,232 @@ export class ProofAnimator {
     }
     this._running = insAnims;
     await await_(insAnims);
-    if (this._token === token) {
+    return this._token === token;
+  }
+
+  // ── Stacked-mode goTo: the accordion ──────────────────────────────────────
+  // Forward: expand space for the new line(s), then fly the previous line's
+  // terms down into the new current line. The old line keeps its static render
+  // (departing terms visually leave their copy behind — that's why the flight
+  // runs with deleteGhosts:false). Backward: fly CLONES of the outgoing line's
+  // terms up into the (untouched) target line, then collapse the abandoned
+  // space. Any-to-any jumps reconcile the line set first and animate only the
+  // boundary transition — the same id-keyed generality single-step mode has.
+  async _stackedGoTo(target, prev) {
+    const token = (this._token = {});
+    const seq = this.mode === "sequential";
+    this._cancel();
+    // Reconcile to the resting invariant [0, prev] (self-heals an interrupted run).
+    this._syncLines(prev + 1);
+    this.current = target;
+    let metaFinish = null;
+    if (target === prev + 1) {
+      this._updateStepButtons();
+      metaFinish = this._beginMetaPromote(target);
+    } else {
+      this._syncUI();
+    }
+    const done = target > prev
+      ? await this._stackedAdvance(prev, target, token, seq)
+      : await this._stackedRetreat(prev, target, token, seq);
+    if (done && this.stacked) {   // mode may have flipped mid-run (belt & braces)
       this._running = [];
-      // Settle to a PRISTINE final render. The animated DOM carries leftover morph
-      // styles — pa-move (display:inline-block), pa-insert (z-index:-1), held
-      // transforms, inline opacity — any of which can leave a glyph mis-layered or
-      // invisible in some browsers/themes. Re-rendering the clean step drops ALL of
-      // it, so the resting expression is guaranteed correct and identical to a fresh
-      // render. It's visually identical to the just-finished frame, so no flicker.
-      this._renderInto(this.stage, this.data.steps[target].latex);
+      this._syncLines(target + 1);   // pristine settle (drops leftover morph styles)
+      this._scrollToCurrent(false);
       this._capOverflow();
-      // Step animation done → now fade in the new justification + "Next" pill.
       if (metaFinish) metaFinish();
     }
+  }
+
+  async _stackedAdvance(prev, target, token, seq) {
+    const linesEl = this._linesEl;
+    const h0 = linesEl.getBoundingClientRect().height;
+    // Add lines (prev, target]: intermediates (multi-step jump) render at once
+    // and fade in with the expansion; the target line renders HIDDEN — its
+    // glyphs get posed by the flight (matched ones held exactly over the
+    // previous line's copies), so its final state never flashes early.
+    const faders = [];
+    for (let i = prev + 1; i <= target; i++) {
+      const line = document.createElement("div");
+      line.className = "pa-line";
+      linesEl.appendChild(line);
+      this._renderLine(line, i);
+      line.dataset.dirty = "1";   // re-rendered clean at settle (or after interrupt)
+      if (i < target) { line.style.opacity = "0"; faders.push(line); }
+      else line.style.visibility = "hidden";
+    }
+    const targetLine = this._lineAt(target);
+    const prevLine = this._lineAt(prev);
+    // Full-size font BEFORE the class toggle demotes the outgoing line (its
+    // resting style shrinks to the history scale — see .pa-stacked .pa-line).
+    const fullFs = prevLine ? parseFloat(getComputedStyle(prevLine).fontSize) : 0;
+    this._markCurrentLine();
+    const h1 = linesEl.getBoundingClientRect().height;
+    // Resting opacity of a history line (the --pa-hist-dim var on .pa-root).
+    const dimOp = getComputedStyle(this.container).getPropertyValue("--pa-hist-dim").trim() || "1";
+
+    // ── expand: open the vertical space FIRST, so nothing flies into a
+    // clipped area. Real `height` (not a transform) so the page/embed
+    // ResizeObservers see the accordion grow. fitHeight boxes never grow —
+    // the column scrolls instead. The outgoing line DEMOTES in the same
+    // breath — it shrinks/dims to its history style while the space opens.
+    const D_EXP = this._baseDuration * 0.6;
+    const expAnims = [];
+    if (!this._fitHeight && h1 - h0 > 1) {
+      linesEl.style.overflow = "hidden";
+      expAnims.push(this._tween(linesEl,
+        [{ height: `${h0}px` }, { height: `${h1}px` }],
+        { duration: D_EXP, easing: EASE, fill: "both" }));
+    }
+    if (prevLine) {
+      const smallFs = parseFloat(getComputedStyle(prevLine).fontSize);   // post-toggle
+      if (Math.abs(fullFs - smallFs) > 0.5 || Number(dimOp) < 1) {
+        expAnims.push(this._tween(prevLine,
+          [{ fontSize: `${fullFs}px`, opacity: 1 },
+           { fontSize: `${smallFs}px`, opacity: dimOp }],
+          { duration: D_EXP, easing: EASE, fill: "both" }));
+      }
+    }
+    for (const line of faders) {
+      const a = this._tween(line, [{ opacity: 0 }, { opacity: dimOp }],
+        { duration: D_EXP, easing: EASE, fill: "both" });
+      a.onfinish = () => (line.style.opacity = "");
+      expAnims.push(a);
+    }
+    if (expAnims.length) {
+      this._running = expAnims;
+      await Promise.all(expAnims.map((a) => a.finished.catch(() => {})));
+      if (this._token !== token) return false;
+      expAnims.forEach((a) => { try { a.cancel(); } catch (e) {} });   // release fills
+      for (const line of faders) line.style.opacity = "";
+      linesEl.style.height = "";
+      linesEl.style.overflow = "";
+    }
+    this._scrollToCurrent(false);   // fitHeight: newest line into view pre-flight
+
+    // ── flight: snapshot the (still static, untouched) from-line and run the
+    // standard FLIP phases into the new line. No delete-ghosts — disappearing
+    // terms stay visible in the frozen line above.
+    const from = this._morphSnapshot(this._lineAt(prev));
+    return this._morphFlight(from, targetLine, {
+      token, seq, ghostHost: this.stage, deleteGhosts: false,
+      onSetup: () => { targetLine.style.visibility = ""; },
+    });
+  }
+
+  async _stackedRetreat(prev, target, token, seq) {
+    const linesEl = this._linesEl;
+    const fromLine = this._lineAt(prev);
+    const toLine = this._lineAt(target);
+    if (!fromLine || !toLine) return this._token === token;   // degenerate → settle snaps
+
+    // ── promote: the target line grows back to full prominence FIRST, so the
+    // flight measures (and lands on) its final full-size pose. The outgoing
+    // line keeps its full size via inline overrides (the class toggle would
+    // otherwise snap it to history style mid-dissolve); the dissolve tween
+    // below owns its opacity.
+    const smallFs = parseFloat(getComputedStyle(toLine).fontSize);
+    const smallOp = getComputedStyle(toLine).opacity;
+    fromLine.style.fontSize = getComputedStyle(fromLine).fontSize;
+    fromLine.style.opacity = "1";
+    this._markCurrentLine();
+    const fullFs = parseFloat(getComputedStyle(toLine).fontSize);   // post-toggle
+    if (Math.abs(fullFs - smallFs) > 0.5 || Number(smallOp) < 1) {
+      const a = this._tween(toLine,
+        [{ fontSize: `${smallFs}px`, opacity: smallOp },
+         { fontSize: `${fullFs}px`, opacity: 1 }],
+        { duration: this._baseDuration * 0.5, easing: EASE, fill: "both" });
+      this._running = [a];
+      await a.finished.catch(() => {});
+      if (this._token !== token) return false;
+      try { a.cancel(); } catch (e) {}
+    }
+    this._scrollToCurrent(false);   // target line into view before measuring
+
+    // The target line is already pristine and visible — it is NEVER mutated.
+    // Matched terms fly as CLONES from the outgoing line to their spot in the
+    // target line (the clone lands exactly on top of the already-visible glyph
+    // and is removed); everything else dissolves with the outgoing line(s).
+    const stageRect = this.stage.getBoundingClientRect();
+    const fromLeaves = this._leaves(fromLine);
+    const fromRects = this._nodeRects(fromLine);
+    const toLeaves = this._leaves(toLine);
+    const toRects = this._nodeRects(toLine);
+    const toFontSize = new Map();
+    toLeaves.forEach((el, id) => toFontSize.set(id, getComputedStyle(el).fontSize));
+    // ids matched but with a DIFFERENT glyph — they don't fly (they'd land on
+    // another symbol); they just dissolve with the outgoing line.
+    const changedIds = new Set();
+    fromLeaves.forEach((el, id) => {
+      const t = toLeaves.get(id);
+      if (t && t.textContent !== el.textContent) changedIds.add(id);
+    });
+
+    const D = this._baseDuration;
+    const flyAnims = [];
+    let fi = 0;
+    fromLeaves.forEach((el, id) => {
+      const t = toRects.get(id);
+      if (!t || changedIds.has(id)) return;
+      const f = fromRects.get(id);
+      const sfs = parseFloat(getComputedStyle(el).fontSize);
+      const tfs = parseFloat(toFontSize.get(id));
+      let s = sfs > 0 && tfs > 0 ? tfs / sfs : 1;
+      if (Math.abs(s - 1) < 0.02) s = 1;
+      const host = document.createElement("span");
+      host.className = "katex pa-ghost";
+      Object.assign(host.style, {
+        position: "absolute", margin: "0",
+        left: f.left - stageRect.left + "px",
+        top: f.top - stageRect.top + "px",
+        fontSize: getComputedStyle(el).fontSize,
+        transformOrigin: "0 0",
+      });
+      host.appendChild(el.cloneNode(true));
+      this.stage.appendChild(host);
+      this._ghosts.push(host);
+      const a = this._tween(host,
+        [{ transform: "translate(0px, 0px) scale(1)" },
+         { transform: `translate(${t.left - f.left}px, ${t.top - f.top}px) scale(${s})` }],
+        { duration: D, delay: seq ? fi++ * this._baseStagger : 0, easing: EASE, fill: "both" });
+      a.onfinish = () => host.remove();
+      flyAnims.push(a);
+    });
+    // The outgoing line(s) dissolve as their terms fly home.
+    const drop = [];
+    for (let i = target + 1; i <= prev; i++) {
+      const l = this._lineAt(i);
+      if (l) drop.push(l);
+    }
+    for (const line of drop) {
+      // Start from the line's ACTUAL opacity — the outgoing current line is at
+      // 1, intermediate history lines rest at the dim value.
+      flyAnims.push(this._tween(line,
+        [{ opacity: getComputedStyle(line).opacity }, { opacity: 0 }],
+        { duration: D * 0.6, easing: EASE, fill: "both" }));
+    }
+    this._running = flyAnims;
+    await Promise.all(flyAnims.map((a) => a.finished.catch(() => {})));
+    if (this._token !== token) return false;
+
+    // ── collapse: drop the abandoned lines' space (real height, see advance),
+    // then the settle in _stackedGoTo removes the elements for good.
+    const h1 = linesEl.getBoundingClientRect().height;
+    for (const line of drop) line.style.display = "none";
+    const h0 = linesEl.getBoundingClientRect().height;
+    if (!this._fitHeight && h1 - h0 > 1) {
+      linesEl.style.overflow = "hidden";
+      const a = this._tween(linesEl,
+        [{ height: `${h1}px` }, { height: `${h0}px` }],
+        { duration: this._baseDuration * 0.6, easing: EASE, fill: "both" });
+      this._running = [a];
+      await a.finished.catch(() => {});
+      if (this._token !== token) return false;
+      try { a.cancel(); } catch (e) {}
+      linesEl.style.overflow = "";
+      linesEl.style.height = "";
+    }
+    return this._token === token;
   }
 
   // the one Play/Pause button — toggles its icon+label and starts/stops autoplay
