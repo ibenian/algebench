@@ -57,7 +57,7 @@ is the heart of this document.
 | `/renderproof?builtin=<domain>/<name>` | Render one built-in proof from `proofs/domains/<domain>/<name>.json` |
 | `/renderproof?builtin=a/x&builtin=b/y` | Render multiple proofs, each in its own card, stacked vertically |
 | `/renderproof?builtin=a/x,b/y` | Comma-separated convenience form (equivalent to repeated params) |
-| `&theme=<dark\|light\|auto>` | Optional. Page + card theme. Defaults to `dark`; `auto` follows the viewer's OS preference. |
+| `&theme=<dark\|light\|auto>` | Optional. Page + card theme. Without it: the viewer's saved preference, else `dark`. `auto` follows the viewer's OS preference. |
 | `&explore=1` | Optional. Enables the ⓘ info pill (Prerequisites / Explore-further popup), off by default. |
 
 The `builtin` value must match `^[A-Za-z0-9_-]+/[A-Za-z0-9_-]+$` — exactly one `domain/name`

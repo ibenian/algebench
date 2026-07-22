@@ -69,7 +69,7 @@ question out of the address bar.
 | Param | Example | Default | Meaning |
 |---|---|---|---|
 | `builtin` | `builtin=algebra/quadratic-formula` | — | Proof slug `<domain>/<name>` under `proofs/domains/`. **Repeatable** (or comma-separated) to show several proofs on one page. |
-| `theme` | `theme=light` | `dark` | `dark` \| `light` \| `auto` (follows OS). |
+| `theme` | `theme=light` | saved pref, else `dark` | `dark` \| `light` \| `auto` (follows OS). Without the param, the viewer's saved `algebench-theme` preference wins, then dark. |
 | `explore` | `explore=0` | **on** | Prerequisite / "Explore further" chips. Opt **out** with `0`/`false`/`no`. |
 | `ai` | `ai=1` | **off** | Term-level AI: hovering a term shows an "Ask AI" button. Opt **in** with `1`/`true`/`yes`. |
 | `autoplay` | `autoplay=true` or `autoplay=1` | off | `true`/`all`/`yes` plays every proof; a bare integer plays only that 1-indexed proof. |

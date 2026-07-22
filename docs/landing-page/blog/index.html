@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="blog.css">
 <!-- Pre-paint theme: matches theme.js precedence without URL step on the blog host
      (saved localStorage preference, else shared dark default). -->
-<script>try{var t=localStorage.getItem("algebench-theme");if(t==="dark"||t==="light")document.documentElement.dataset.theme=t;}catch(e){}</script>
+<script>try{var t=localStorage.getItem("algebench-theme");document.documentElement.dataset.theme=(t==="dark"||t==="light")?t:"dark";}catch(e){document.documentElement.dataset.theme="dark";}</script>
 </head>
 <body>
   <header class="bar"><div class="in">
