@@ -128,7 +128,10 @@
    The stage holds a .pa-lines column of static per-step lines; only the newest
    (current) line animates and is interactive. Top-anchored so earlier lines
    never move as the accordion grows below them. */
-.pa-stage.pa-stacked { align-items: flex-start; }
+/* In stacked mode the stage hugs its content (no pinned height), so without a
+   margin the operation caption sits right under the current line — give the
+   animation room to breathe before the text zone. */
+.pa-stage.pa-stacked { align-items: flex-start; margin-bottom: 18px; }
 .pa-lines {
   position: relative;      /* line offsetTop is column-relative (scroll math) */
   display: flex;
