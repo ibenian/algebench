@@ -377,3 +377,88 @@ def test_answer_proof_question_strips_dspy_markers(monkeypatch):
             return types.SimpleNamespace(answer="The middle term is $2x$.[[ ## completed ## ]]")
     monkeypatch.setattr(PE, "_predictor", lambda sig: FakePred())
     assert PE.answer_proof_question("deriv", "why?") == "The middle term is $2x$."
+
+
+# ── derive loop: over-long expr_latex surfaces the specific reason (#445) ─────
+from backend.experts.modules.proof_completion.outputs import (  # noqa: E402
+    EXPR_TOO_LONG_ERROR, DerivationStep, ProofTrajectory,
+)
+
+
+class _Result:
+    """Stand-in for the ExpertResult that ``invoke(...)`` returns."""
+
+    def __init__(self, traj):
+        self._traj = traj
+
+    def single(self):
+        return self._traj
+
+
+def _stub_graph_svc(monkeypatch):
+    # Skip real latex→graph parsing: return a non-None graph so the derive loop
+    # is reached, and monkeypatch invoke to control what the expert "returns".
+    class _FakeSvc:
+        def latex_to_graph(self, latex, domain=None):
+            return object()
+    monkeypatch.setattr(H, "SemanticGraphService", lambda: _FakeSvc())
+
+
+def _derive_req():
+    # start supplied → the start-inference branch is skipped.
+    return H.DeriveProofRequest(target_latex="x = 4", start_latex="x = 2")
+
+
+def test_derive_returns_specific_error_on_length_failure(monkeypatch):
+    _stub_graph_svc(monkeypatch)
+
+    def _raise(*_a, **_k):
+        # emulate the refine path re-raising an over-long-expr ValidationError
+        DerivationStep(operation="o", expr_latex="x" * 700, justification="j",
+                       change_type="rewrite")
+
+    monkeypatch.setattr(H, "invoke", _raise)
+    out = H.derive_proof_animation(_derive_req())
+    assert out == {"error": EXPR_TOO_LONG_ERROR}      # specific, not a 500
+
+
+def test_derive_reraises_unrelated_exception(monkeypatch):
+    _stub_graph_svc(monkeypatch)
+
+    def _raise(*_a, **_k):
+        raise RuntimeError("some unrelated failure")
+
+    monkeypatch.setattr(H, "invoke", _raise)
+    with pytest.raises(RuntimeError, match="some unrelated failure"):
+        H.derive_proof_animation(_derive_req())       # not swallowed
+
+
+def test_derive_prefers_traj_error_when_empty(monkeypatch):
+    _stub_graph_svc(monkeypatch)
+    traj = ProofTrajectory(steps=[], error="a specific degraded reason")
+    monkeypatch.setattr(H, "invoke", lambda *_a, **_k: _Result(traj))
+    out = H.derive_proof_animation(_derive_req())
+    assert out == {"error": "a specific degraded reason"}
+
+
+def test_derive_generic_error_when_empty_without_reason(monkeypatch):
+    _stub_graph_svc(monkeypatch)
+    traj = ProofTrajectory(steps=[])                  # empty, no .error
+    monkeypatch.setattr(H, "invoke", lambda *_a, **_k: _Result(traj))
+    out = H.derive_proof_animation(_derive_req())
+    assert "No derivation found" in out["error"]      # falls back to generic
+
+
+def test_derive_success_is_unaffected(monkeypatch):
+    _stub_graph_svc(monkeypatch)
+    good = ProofTrajectory(
+        steps=[DerivationStep(operation="add 2", expr_latex="x = 4",
+                              justification="j", change_type="rewrite")],
+        start_latex="x = 2")
+    monkeypatch.setattr(H, "invoke", lambda *_a, **_k: _Result(good))
+    monkeypatch.setattr(H, "_domain_judge", lambda: None)
+    monkeypatch.setattr(H, "build_described",
+                        lambda *_a, **_k: {"title": "T", "steps": [{"index": 0}]})
+    out = H.derive_proof_animation(_derive_req())
+    assert "error" not in out                         # success path untouched
+    assert out["title"] == "T"

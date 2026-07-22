@@ -21,9 +21,14 @@ would replace only this loop — the checkers and reward are identical (#372 §C
 
 from __future__ import annotations
 
+import logging
 import time
 from dataclasses import dataclass
 from typing import Callable, Optional
+
+from .outputs import describe_overlong_exprs, is_expr_latex_too_long
+
+log = logging.getLogger(__name__)
 
 # Prepended to the failure issues when re-asking, so the model reads them as a
 # correction directive rather than as part of the original task.
@@ -40,6 +45,16 @@ FEEDBACK_PREAMBLE = (
 _PARSE_FAILURE_FEEDBACK = (
     "Your previous response could not be parsed. Return one valid trajectory "
     "compliant with the schema."
+)
+
+# Re-ask text for the specific case of an over-long ``expr_latex`` (issue #445):
+# the expression itself was valid math but too long to be pedagogically useful.
+# Truncating it would corrupt the math, so we nudge the model to shorten it the
+# right way — by naming a substitution and splitting the move into atomic steps.
+_EXPR_TOO_LONG_FEEDBACK = (
+    "A derivation step's expression was too long to be pedagogically useful. "
+    "Introduce an intermediate substitution (e.g. `let u = …`) and break that "
+    "move into smaller, atomic steps — never emit one giant expression."
 )
 
 
@@ -111,8 +126,25 @@ def refine(
             if best_pred is not None:
                 break
             if k == n - 1:
+                # Out of attempts. Log the offending expression(s) so the failure
+                # is diagnosable — not just "it raised".
+                if is_expr_latex_too_long(exc):
+                    log.warning("refine: attempt %d/%d failed — expr_latex too long, "
+                                "no retries left. Offending: %s",
+                                k + 1, n, describe_overlong_exprs(exc))
                 raise
-            feedback = _PARSE_FAILURE_FEEDBACK
+            # An over-long expr_latex is a specific, correctable failure (#445):
+            # tell the model to substitute + split rather than the generic
+            # "could not be parsed"; fall back to the generic text otherwise.
+            if is_expr_latex_too_long(exc):
+                # Surface WHAT was too long and that we're retrying with the
+                # substitute+split nudge — so the retry is visible, not silent.
+                log.warning("refine: attempt %d/%d — expr_latex too long, retrying "
+                            "with substitute+split feedback. Offending: %s",
+                            k + 1, n, describe_overlong_exprs(exc))
+                feedback = _EXPR_TOO_LONG_FEEDBACK
+            else:
+                feedback = _PARSE_FAILURE_FEEDBACK
             continue
         made += 1
         if on_attempt is not None:

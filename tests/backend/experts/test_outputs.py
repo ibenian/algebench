@@ -12,8 +12,11 @@ from backend.experts.modules.proof_completion.outputs import (
     ProofTrajectory,
     RemoveEdge,
     RemoveNode,
+    _EXPR_LATEX_MAX,
     _JUSTIFICATION_MAX,
     _OPERATION_MAX,
+    describe_overlong_exprs,
+    is_expr_latex_too_long,
 )
 from backend.model.semantic_graph import SemanticGraphNode
 
@@ -102,10 +105,77 @@ def test_normal_length_prose_is_unchanged():
 
 
 def test_overlong_expr_latex_still_rejected():
-    # expr_latex is NOT clamped — truncating LaTeX would corrupt the math.
+    # expr_latex is NOT clamped — truncating LaTeX would corrupt the math, so it
+    # stays strict: an over-long expression is rejected (never silently trimmed).
+    # The refine loop turns this rejection into a recoverable, specific retry
+    # (see test_overlong_expr_latex_is_flagged_as_length_failure and the refine
+    # tests) rather than a fatal crash — but validation itself still fails. #445.
     with pytest.raises(ValidationError):
-        DerivationStep(operation="o", expr_latex="x" * 700,
+        DerivationStep(operation="o", expr_latex="x" * (_EXPR_LATEX_MAX + 100),
                        justification="j", change_type="rewrite")
+
+
+def test_expr_latex_cap_is_600_and_at_boundary_is_accepted():
+    # The cap stays deliberately tight at 600 (a pedagogical guardrail, not a
+    # storage limit). Exactly at the cap is fine; one over fails.
+    assert _EXPR_LATEX_MAX == 600
+    ok = DerivationStep(operation="o", expr_latex="x" * _EXPR_LATEX_MAX,
+                        justification="j", change_type="rewrite")
+    assert ok.expr_latex == "x" * _EXPR_LATEX_MAX      # never rewritten/trimmed
+    with pytest.raises(ValidationError):
+        DerivationStep(operation="o", expr_latex="x" * (_EXPR_LATEX_MAX + 1),
+                       justification="j", change_type="rewrite")
+
+
+def test_overlong_expr_latex_is_flagged_as_length_failure():
+    # The over-long-expr failure is distinguishable from a generic parse failure,
+    # so the refine loop can give the model a specific "substitute + split" nudge.
+    try:
+        DerivationStep(operation="o", expr_latex="x" * (_EXPR_LATEX_MAX + 100),
+                       justification="j", change_type="rewrite")
+    except ValidationError as exc:
+        assert is_expr_latex_too_long(exc)
+    else:                                              # pragma: no cover
+        pytest.fail("expected ValidationError")
+    # a wrapped (stringified) form is still recognised — DSPy re-raises as RuntimeError
+    assert is_expr_latex_too_long(RuntimeError(
+        "1 validation error for ProofTrajectory\nsteps.2.expr_latex\n  String "
+        "should have at most 600 characters [type=string_too_long, ...]"))
+    # an unrelated failure is NOT misclassified as the length case
+    assert not is_expr_latex_too_long(ValueError("some other parse error"))
+    try:
+        DerivationStep.model_validate(
+            {"operation": "rewrite", "expr_latex": "x^2 = 4", "justification": "valid"})
+    except ValidationError as exc:                     # missing change_type, not a length issue
+        assert not is_expr_latex_too_long(exc)
+
+
+def test_describe_overlong_exprs_shows_the_offending_expression():
+    long_expr = r"x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}" + " + 0" * 200
+    # (a) raw ValidationError → FULL value + exact length, keyed by step location.
+    # Validate at the TRAJECTORY level (as DSPy does) so the loc is nested.
+    try:
+        ProofTrajectory.model_validate({"steps": [{
+            "operation": "o", "expr_latex": long_expr, "justification": "j",
+            "change_type": "rewrite"}]})
+    except ValidationError as exc:
+        desc = describe_overlong_exprs(exc)
+    else:                                              # pragma: no cover
+        pytest.fail("expected ValidationError")
+    assert "steps.0.expr_latex" in desc
+    assert f"len={len(long_expr)}" in desc             # the true length is reported
+    assert "frac{-b" in desc and "sqrt{b^2 - 4ac}" in desc   # recognisable math (repr-escaped)
+
+    # (b) DSPy-wrapped RuntimeError → surfaces pydantic's truncated input_value repr
+    wrapped = RuntimeError(
+        "12 validation errors for ProofTrajectory\nsteps.11.expr_latex\n  String "
+        "should have at most 10 characters [type=string_too_long, "
+        r"input_value='x = \\frac{-b \\pm ...cdot c}}{2 \\cdot a}', input_type=str]")
+    desc2 = describe_overlong_exprs(wrapped)
+    assert "steps.11.expr_latex" in desc2 and "frac{-b" in desc2
+
+    # (c) nothing extractable → a clear marker, never a crash
+    assert "could not extract" in describe_overlong_exprs(RuntimeError("opaque"))
 
 
 # --- JSON-escape mangling repair (the \frac→"rac", \rho→"ho" bug) -------------

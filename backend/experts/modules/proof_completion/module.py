@@ -22,6 +22,10 @@ from .signature import ProofCompletionSig
 from .model import GraphTransition
 from .grounding import graph_to_latex
 from .judge import ProofJudge
+from .outputs import (
+    EXPR_TOO_LONG_ERROR, ProofTrajectory, describe_overlong_exprs,
+    is_expr_latex_too_long,
+)
 from .refine import refine
 from .reward import reward
 
@@ -228,7 +232,29 @@ class ProofCompletionExpert(dspy.Module):
         # prediction. optimize.py / evaluate.py set refine_attempts=1 precisely to
         # compile/measure the raw predictor — this keeps that path free of it.
         if self.refine_attempts <= 1:
-            pred = attempt(0, "")
+            try:
+                pred = attempt(0, "")
+            except Exception as exc:
+                # A single pass can't retry, so a parse/validation failure (e.g. an
+                # over-long expr_latex, #445) would otherwise escape as a fatal
+                # RuntimeError and abort the caller / eval batch. Degrade to an
+                # empty trajectory that CARRIES the reason (its ``error`` field) so
+                # a caller sees WHY it got zero steps. The reward still scores it as
+                # a failed derivation (nothing reads ``error``) — an honest
+                # measurement of an unusable prediction — instead of crashing.
+                if is_expr_latex_too_long(exc):
+                    err = EXPR_TOO_LONG_ERROR
+                    log.warning("refine single pass failed — expr_latex too long "
+                                "(no retry on the single-pass path). Offending: %s",
+                                describe_overlong_exprs(exc))
+                else:
+                    err = ("proof generation failed to produce a valid "
+                           f"derivation: {exc}")
+                    log.warning("refine single pass failed, degrading to empty "
+                                "trajectory: %s", exc)
+                return [ProofTrajectory(start_latex=start_latex or None,
+                                        target_latex=target_latex or None,
+                                        error=err)]
             log.debug("refine skipped: single pass (refine_attempts<=1)")
             return [pred.trajectory]
 

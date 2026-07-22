@@ -29,6 +29,9 @@ from backend.experts.context_id import build as build_context_id
 from backend.experts.llm_config import is_configured
 from backend.experts.modules.proof_completion.domain_rescue import RESCUE_ENABLED
 from backend.experts.modules.proof_completion.judge import DomainStepJudge
+from backend.experts.modules.proof_completion.outputs import (
+    EXPR_TOO_LONG_ERROR, describe_overlong_exprs, is_expr_latex_too_long,
+)
 from backend.experts.registry import register_handler
 from backend.experts.service import invoke
 from backend.semantic_graph.preprocessor import strip_math_delimiters
@@ -344,14 +347,30 @@ def derive_proof_animation(req: DeriveProofRequest) -> dict:
     # back empty — retry a couple of times before giving up. (A genuinely
     # underivable pair, e.g. start == target, just costs the extra attempt.)
     traj = None
-    for _attempt in range(_DERIVE_ATTEMPTS):
-        traj = invoke(
-            "proof_completion", context_id, payload,
-            instruction=intent, lesson_context=lesson_context,
-        ).single()
-        if traj.steps:
-            break
+    try:
+        for _attempt in range(_DERIVE_ATTEMPTS):
+            traj = invoke(
+                "proof_completion", context_id, payload,
+                instruction=intent, lesson_context=lesson_context,
+            ).single()
+            if traj.steps:
+                break
+    except Exception as exc:
+        # On the refine path a persistent over-long expr_latex re-raises out of
+        # invoke() (#445); surface the specific "substitute + split" reason as a
+        # clean error instead of a 500. Any OTHER exception is unrelated — let it
+        # propagate as before.
+        if is_expr_latex_too_long(exc):
+            log.warning("proof_animation: derivation failed — expr_latex too long "
+                        "(all retries exhausted). Offending: %s",
+                        describe_overlong_exprs(exc))
+            return {"error": EXPR_TOO_LONG_ERROR}
+        raise
     if not traj or not traj.steps:
+        # An errored-but-empty trajectory (e.g. the single-pass degraded path)
+        # carries its own reason — prefer it over the generic message.
+        if traj is not None and traj.error:
+            return {"error": traj.error}
         return {"error": f"No derivation found — couldn't get from ${start}$ to ${req.target_latex}$."}
 
     # --- post: render the trajectory into FLIP animation data -------------------
