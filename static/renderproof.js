@@ -23,6 +23,7 @@ const SLUG_RE = /^[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+$/;
 const loadedProofs = [];
 const MAX_PROOFS = 12;
 const MAX_BYTES = 2_000_000;    // per-proof response cap
+const PERSISTABLE_THEMES = new Set(["dark", "light"]);
 
 const root = document.getElementById("root");
 
@@ -46,7 +47,8 @@ function parseBuiltins() {
 }
 
 /** Canonical precedence with one caveat: keep an explicit ?theme=auto raw so
- *  the page can continue tracking OS changes live while open. */
+ *  the page can continue tracking OS changes live while open; collapsing auto
+ *  to dark/light on load would freeze that mode for the rest of the session. */
 function loadTheme() {
   const t = new URLSearchParams(location.search).get("theme");
   if (THEMES.has(t)) return t;           // URL wins (incl. explicit auto for embeds)
@@ -275,7 +277,7 @@ function setupEmbedButton(builtins, theme, { persist = false } = {}) {
   sel.addEventListener("change", () => {
     refresh();
     applyTheme(sel.value);          // preview the chosen theme live
-    if (persist && (sel.value === "dark" || sel.value === "light")) persistTheme(sel.value);
+    if (persist && PERSISTABLE_THEMES.has(sel.value)) persistTheme(sel.value);
     code.focus(); code.select();
   });
 
