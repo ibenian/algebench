@@ -277,6 +277,7 @@ function setupEmbedButton(builtins, theme, { persist = false } = {}) {
   sel.addEventListener("change", () => {
     refresh();
     applyTheme(sel.value);          // preview the chosen theme live
+    // "auto" is intentionally transient here: we only persist concrete choices.
     if (persist && PERSISTABLE_THEMES.has(sel.value)) persistTheme(sel.value);
     code.focus(); code.select();
   });
