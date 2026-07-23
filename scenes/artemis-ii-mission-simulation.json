@@ -946,15 +946,15 @@
               "semanticGraph": {
                 "graph": {
                   "nodes": [
-                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "dv = - \\frac{v_{e}}{m} dm"},
-                    {"id": "dv", "type": "scalar", "latex": "dv", "subexpr": "dv"},
-                    {"id": "__negation_2", "type": "operator", "op": "negation", "subexpr": "-\\frac{1}{m} dm v_{e}"},
-                    {"id": "__multiply_3", "type": "operator", "op": "multiply", "subexpr": "\\frac{1}{m} v_{e} dm"},
-                    {"id": "__multiply_4", "type": "operator", "op": "multiply", "subexpr": "\\frac{1}{m} v_{e}"},
-                    {"id": "v_e", "type": "scalar", "latex": "v_{e}", "subexpr": "v_{e}"},
-                    {"id": "__power_5", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{m}"},
-                    {"id": "m", "type": "scalar", "latex": "m", "subexpr": "m"},
-                    {"id": "dm", "type": "scalar", "latex": "dm", "subexpr": "dm"}
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "dv = - \\frac{v_{e}}{m} dm", "description": "The differential form of the rocket equation, relating the change in velocity to the change in mass."},
+                    {"id": "dv", "type": "scalar", "emoji": "🚀", "latex": "dv", "subexpr": "dv", "description": "A differential change in the rocket's velocity, $dv$.", "quantity": "velocity_change", "dimension": "L·T⁻¹", "unit": "m/s"},
+                    {"id": "__negation_2", "type": "operator", "op": "negation", "subexpr": "-\\frac{1}{m} v_{e} dm", "description": "The negation indicates that as mass is expelled ($dm \\\\lt 0$), the rocket's velocity increases."},
+                    {"id": "__multiply_3", "type": "operator", "op": "multiply", "subexpr": "\\frac{1}{m} v_{e} dm", "description": "The product of exhaust velocity, inverse mass, and change in mass, representing the change in velocity.", "dimension": "L·T⁻¹", "unit": "m/s"},
+                    {"id": "__multiply_4", "type": "operator", "op": "multiply", "subexpr": "\\frac{1}{m} v_{e}", "description": "Exhaust velocity $v_{e}$ scaled by the inverse of the rocket's current mass $m$.", "dimension": "M⁻¹·L·T⁻¹", "unit": "m/(s·kg)"},
+                    {"id": "v_e", "type": "scalar", "emoji": "💨", "latex": "v_{e}", "subexpr": "v_{e}", "description": "The effective exhaust velocity, $v_{e}$, of the rocket engine.", "quantity": "exhaust_velocity", "dimension": "L·T⁻¹", "unit": "m/s", "role": "parameter"},
+                    {"id": "__power_5", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{m}", "description": "The inverse of the rocket's instantaneous mass $m$.", "dimension": "M⁻¹", "unit": "1/kg"},
+                    {"id": "m", "type": "scalar", "emoji": "⚖️", "latex": "m", "subexpr": "m", "description": "The instantaneous mass $m$ of the rocket.", "quantity": "mass", "dimension": "M", "unit": "kg", "role": "state_variable"},
+                    {"id": "dm", "type": "scalar", "emoji": "⚖️", "latex": "dm", "subexpr": "dm", "description": "A differential change in the rocket's mass, $dm$, due to fuel consumption.", "quantity": "mass_change", "dimension": "M", "unit": "kg"}
                   ],
                   "edges": [
                     {"from": "dv", "to": "__equals_1"},
@@ -966,7 +966,12 @@
                     {"from": "__multiply_3", "to": "__negation_2"},
                     {"from": "__negation_2", "to": "__equals_1"}
                   ],
-                  "classification": {"kind": "algebraic"}
+                  "classification": {"kind": "algebraic"},
+                  "domain": "classical_mechanics",
+                  "enrichment": {
+                    "reasoning": "The context is the Tsiolkovsky rocket equation, so the domain is `classical_mechanics`. Symbols are identified as velocity ($dv$), exhaust velocity ($v_e$), and mass ($m$, $dm$).",
+                    "fields": ["domain", "nodes.__equals_1.description", "nodes.dv.description", "nodes.dv.dimension", "nodes.dv.emoji", "nodes.dv.quantity", "nodes.dv.unit", "nodes.__negation_2.description", "nodes.__multiply_3.description", "nodes.__multiply_3.dimension", "nodes.__multiply_3.unit", "nodes.__multiply_4.description", "nodes.__multiply_4.dimension", "nodes.__multiply_4.unit", "nodes.v_e.description", "nodes.v_e.dimension", "nodes.v_e.emoji", "nodes.v_e.quantity", "nodes.v_e.role", "nodes.v_e.unit", "nodes.__power_5.description", "nodes.__power_5.dimension", "nodes.__power_5.unit", "nodes.m.description", "nodes.m.dimension", "nodes.m.emoji", "nodes.m.quantity", "nodes.m.role", "nodes.m.unit", "nodes.dm.description", "nodes.dm.dimension", "nodes.dm.emoji", "nodes.dm.quantity", "nodes.dm.unit"]
+                  }
                 }
               }
             },
@@ -1828,27 +1833,27 @@
               "semanticGraph": {
                 "graph": {
                   "nodes": [
-                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "- \\frac{G \\cdot M}{r} + \\frac{v^{2}}{2} = - \\frac{G \\cdot M}{2 \\cdot a}"},
-                    {"id": "__add_2", "type": "operator", "op": "add", "subexpr": "v^{2} \\frac{1}{2} - \\frac{1}{r} G M"},
-                    {"id": "__negation_3", "type": "operator", "op": "negation", "subexpr": "-\\frac{1}{r} G M"},
-                    {"id": "__multiply_4", "type": "operator", "op": "multiply", "subexpr": "\\frac{1}{r} G M"},
-                    {"id": "__multiply_5", "type": "operator", "op": "multiply", "subexpr": "G M"},
-                    {"id": "G", "type": "scalar", "latex": "G", "subexpr": "G"},
-                    {"id": "M", "type": "scalar", "latex": "M", "subexpr": "M"},
-                    {"id": "__power_6", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{r}"},
-                    {"id": "r", "type": "scalar", "latex": "r", "subexpr": "r"},
-                    {"id": "__multiply_7", "type": "operator", "op": "multiply", "subexpr": "v^{2} \\frac{1}{2}"},
-                    {"id": "__power_8", "type": "operator", "op": "power", "exponent": "2", "subexpr": "v^{2}"},
-                    {"id": "v", "type": "scalar", "latex": "v", "subexpr": "v"},
-                    {"id": "__power_9", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2}"},
-                    {"id": "__num_10", "type": "number", "label": "2", "subexpr": "2"},
-                    {"id": "__negation_11", "type": "operator", "op": "negation", "subexpr": "-G M \\frac{1}{a} \\frac{1}{2}"},
-                    {"id": "__multiply_12", "type": "operator", "op": "multiply", "subexpr": "G M \\frac{1}{2 a}"},
-                    {"id": "__multiply_13", "type": "operator", "op": "multiply", "subexpr": "G M"},
-                    {"id": "__power_14", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2 a}"},
-                    {"id": "__multiply_15", "type": "operator", "op": "multiply", "subexpr": "a 2"},
-                    {"id": "__num_16", "type": "number", "label": "2", "subexpr": "2"},
-                    {"id": "a", "type": "scalar", "latex": "a", "subexpr": "a"}
+                    {"id": "__equals_1", "type": "relation", "emoji": "↔️", "op": "equals", "subexpr": "- \\frac{G \\cdot M}{r} + \\frac{v^{2}}{2} = - \\frac{G \\cdot M}{2 \\cdot a}", "description": "The Vis-viva equation, stating the conservation of energy for an orbiting body."},
+                    {"id": "__add_2", "type": "operator", "op": "add", "subexpr": "v^{2} \\frac{1}{2} - \\frac{1}{r} G M", "description": "The specific orbital energy, representing the sum of kinetic and gravitational potential energy per unit mass.", "quantity": "specific_orbital_energy", "dimension": "L²·T⁻²", "unit": "m²/s²"},
+                    {"id": "__negation_3", "type": "operator", "op": "negation", "subexpr": "-\\frac{1}{r} G M", "description": "The specific gravitational potential energy, representing the potential energy per unit mass of the orbiting body.", "quantity": "specific_gravitational_potential_energy", "dimension": "L²·T⁻²", "unit": "m²/s²"},
+                    {"id": "__multiply_4", "type": "operator", "op": "multiply", "subexpr": "\\frac{1}{r} G M", "description": "The magnitude of the specific gravitational potential energy, calculated as the product of the gravitational constant and the central mass, divided by the radius.", "quantity": "specific_gravitational_potential_energy", "dimension": "L²·T⁻²", "unit": "m²/s²"},
+                    {"id": "__multiply_5", "type": "operator", "op": "multiply", "subexpr": "G M", "description": "The standard gravitational parameter, $\\mu = GM$, for the central body.", "quantity": "standard_gravitational_parameter", "dimension": "L³·T⁻²", "unit": "m³/s²"},
+                    {"id": "G", "type": "scalar", "emoji": "🌌", "latex": "G", "subexpr": "G", "description": "The universal gravitational constant, which quantifies the fundamental force of gravity.", "quantity": "gravitational_constant", "dimension": "L³·M⁻¹·T⁻²", "unit": "m³·kg⁻¹·s⁻²"},
+                    {"id": "M", "type": "scalar", "emoji": "🌍", "latex": "M", "subexpr": "M", "description": "The mass of the central body, such as a planet or a star.", "quantity": "mass", "dimension": "M", "unit": "kg"},
+                    {"id": "__power_6", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{r}", "description": "The reciprocal of the orbital radius.", "quantity": "inverse_length", "dimension": "L⁻¹", "unit": "m⁻¹"},
+                    {"id": "r", "type": "scalar", "emoji": "📏", "latex": "r", "subexpr": "r", "description": "The orbital radius, the distance from the orbiting body to the center of the central mass.", "quantity": "radius", "dimension": "L", "unit": "m"},
+                    {"id": "__multiply_7", "type": "operator", "op": "multiply", "subexpr": "v^{2} \\frac{1}{2}", "description": "The specific kinetic energy of the orbiting body, equal to one-half its velocity squared.", "quantity": "specific_kinetic_energy", "dimension": "L²·T⁻²", "unit": "m²/s²"},
+                    {"id": "__power_8", "type": "operator", "op": "power", "exponent": "2", "subexpr": "v^{2}", "description": "The square of the orbital velocity.", "quantity": "velocity_squared", "dimension": "L²·T⁻²", "unit": "m²/s²"},
+                    {"id": "v", "type": "scalar", "emoji": "🛰️", "latex": "v", "subexpr": "v", "description": "The orbital velocity of the satellite or spacecraft.", "quantity": "velocity", "dimension": "L·T⁻¹", "unit": "m/s"},
+                    {"id": "__power_9", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2}", "description": "The reciprocal of the number 2.", "quantity": "dimensionless", "dimension": "1", "unit": ""},
+                    {"id": "__num_10", "type": "number", "label": "2", "subexpr": "2", "description": "The number 2.", "quantity": "dimensionless", "dimension": "1", "unit": ""},
+                    {"id": "__negation_11", "type": "operator", "op": "negation", "subexpr": "-G M \\frac{1}{2 a}", "description": "The total specific orbital energy, which is constant for a given orbit.", "quantity": "specific_orbital_energy", "dimension": "L²·T⁻²", "unit": "m²/s²"},
+                    {"id": "__multiply_12", "type": "operator", "op": "multiply", "subexpr": "G M \\frac{1}{2 a}", "description": "The magnitude of the total specific orbital energy, calculated from the central mass and the semi-major axis.", "quantity": "specific_orbital_energy", "dimension": "L²·T⁻²", "unit": "m²/s²"},
+                    {"id": "__multiply_13", "type": "operator", "op": "multiply", "subexpr": "G M", "description": "The standard gravitational parameter, $\\mu = GM$, for the central body.", "quantity": "standard_gravitational_parameter", "dimension": "L³·T⁻²", "unit": "m³/s²"},
+                    {"id": "__power_14", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2 a}", "description": "The reciprocal of twice the semi-major axis.", "quantity": "inverse_length", "dimension": "L⁻¹", "unit": "m⁻¹"},
+                    {"id": "__multiply_15", "type": "operator", "op": "multiply", "subexpr": "a 2", "description": "Twice the semi-major axis, representing the length of the major axis of the orbit.", "quantity": "length", "dimension": "L", "unit": "m"},
+                    {"id": "__num_16", "type": "number", "label": "2", "subexpr": "2", "description": "The number 2.", "quantity": "dimensionless", "dimension": "1", "unit": ""},
+                    {"id": "a", "type": "scalar", "emoji": "📐", "latex": "a", "subexpr": "a", "description": "The semi-major axis of the orbit, which defines its size.", "quantity": "semi_major_axis", "dimension": "L", "unit": "m"}
                   ],
                   "edges": [
                     {"from": "G", "to": "__multiply_5", "semantic": "direct", "weight": 1.0},
@@ -1874,7 +1879,12 @@
                     {"from": "__multiply_12", "to": "__negation_11"},
                     {"from": "__negation_11", "to": "__equals_1"}
                   ],
-                  "classification": {"kind": "algebraic"}
+                  "classification": {"kind": "algebraic"},
+                  "domain": "classical_mechanics",
+                  "enrichment": {
+                    "reasoning": "The context is an orbital mechanics derivation (vis-viva), so the domain is `classical_mechanics`. `G` is the gravitational constant, `M` is mass, `v` is velocity, and `r` and `a` are orbital radii.",
+                    "fields": ["domain", "nodes.__equals_1.description", "nodes.__equals_1.emoji", "nodes.__add_2.description", "nodes.__add_2.dimension", "nodes.__add_2.quantity", "nodes.__add_2.unit", "nodes.__negation_3.description", "nodes.__negation_3.dimension", "nodes.__negation_3.quantity", "nodes.__negation_3.unit", "nodes.__multiply_4.description", "nodes.__multiply_4.dimension", "nodes.__multiply_4.quantity", "nodes.__multiply_4.unit", "nodes.__multiply_5.description", "nodes.__multiply_5.dimension", "nodes.__multiply_5.quantity", "nodes.__multiply_5.unit", "nodes.G.description", "nodes.G.dimension", "nodes.G.emoji", "nodes.G.quantity", "nodes.G.unit", "nodes.M.description", "nodes.M.dimension", "nodes.M.emoji", "nodes.M.quantity", "nodes.M.unit", "nodes.__power_6.description", "nodes.__power_6.dimension", "nodes.__power_6.quantity", "nodes.__power_6.unit", "nodes.r.description", "nodes.r.dimension", "nodes.r.emoji", "nodes.r.quantity", "nodes.r.unit", "nodes.__multiply_7.description", "nodes.__multiply_7.dimension", "nodes.__multiply_7.quantity", "nodes.__multiply_7.unit", "nodes.__power_8.description", "nodes.__power_8.dimension", "nodes.__power_8.quantity", "nodes.__power_8.unit", "nodes.v.description", "nodes.v.dimension", "nodes.v.emoji", "nodes.v.quantity", "nodes.v.unit", "nodes.__power_9.description", "nodes.__power_9.dimension", "nodes.__power_9.quantity", "nodes.__power_9.unit", "nodes.__num_10.description", "nodes.__num_10.dimension", "nodes.__num_10.quantity", "nodes.__num_10.unit", "nodes.__negation_11.description", "nodes.__negation_11.dimension", "nodes.__negation_11.quantity", "nodes.__negation_11.unit", "nodes.__multiply_12.description", "nodes.__multiply_12.dimension", "nodes.__multiply_12.quantity", "nodes.__multiply_12.unit", "nodes.__multiply_13.description", "nodes.__multiply_13.dimension", "nodes.__multiply_13.quantity", "nodes.__multiply_13.unit", "nodes.__power_14.description", "nodes.__power_14.dimension", "nodes.__power_14.quantity", "nodes.__power_14.unit", "nodes.__multiply_15.description", "nodes.__multiply_15.dimension", "nodes.__multiply_15.quantity", "nodes.__multiply_15.unit", "nodes.__num_16.description", "nodes.__num_16.dimension", "nodes.__num_16.quantity", "nodes.__num_16.unit", "nodes.a.description", "nodes.a.dimension", "nodes.a.emoji", "nodes.a.quantity", "nodes.a.unit"]
+                  }
                 }
               }
             },
@@ -1888,26 +1898,26 @@
               "semanticGraph": {
                 "graph": {
                   "nodes": [
-                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "\\frac{v^{2}}{2} = - \\frac{G \\cdot M}{2 \\cdot a} + \\frac{G \\cdot M}{r}"},
-                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "v^{2} \\frac{1}{2}"},
-                    {"id": "__power_3", "type": "operator", "op": "power", "exponent": "2", "subexpr": "v^{2}"},
-                    {"id": "v", "type": "scalar", "latex": "v", "subexpr": "v"},
-                    {"id": "__power_4", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2}"},
-                    {"id": "__num_5", "type": "number", "label": "2", "subexpr": "2"},
-                    {"id": "__add_6", "type": "operator", "op": "add", "subexpr": "\\frac{1}{r} G M - G M \\frac{1}{a} \\frac{1}{2}"},
-                    {"id": "__negation_7", "type": "operator", "op": "negation", "subexpr": "-G M \\frac{1}{a} \\frac{1}{2}"},
-                    {"id": "__multiply_8", "type": "operator", "op": "multiply", "subexpr": "G M \\frac{1}{2 a}"},
-                    {"id": "__multiply_9", "type": "operator", "op": "multiply", "subexpr": "G M"},
-                    {"id": "G", "type": "scalar", "latex": "G", "subexpr": "G"},
-                    {"id": "M", "type": "scalar", "latex": "M", "subexpr": "M"},
-                    {"id": "__power_10", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2 a}"},
-                    {"id": "__multiply_11", "type": "operator", "op": "multiply", "subexpr": "a 2"},
-                    {"id": "__num_12", "type": "number", "label": "2", "subexpr": "2"},
-                    {"id": "a", "type": "scalar", "latex": "a", "subexpr": "a"},
-                    {"id": "__multiply_13", "type": "operator", "op": "multiply", "subexpr": "\\frac{1}{r} G M"},
-                    {"id": "__multiply_14", "type": "operator", "op": "multiply", "subexpr": "G M"},
-                    {"id": "__power_15", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{r}"},
-                    {"id": "r", "type": "scalar", "latex": "r", "subexpr": "r"}
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "\\frac{v^{2}}{2} = - \\frac{G \\cdot M}{2 \\cdot a} + \\frac{G \\cdot M}{r}", "description": "The Vis-viva equation, relating orbital velocity to position for a body in a two-body system."},
+                    {"id": "__multiply_2", "type": "operator", "op": "multiply", "subexpr": "v^{2} \\frac{1}{2}", "description": "The specific kinetic energy of the orbiting body, equal to one-half its velocity squared.", "quantity": "specific_kinetic_energy", "dimension": "L²·T⁻²", "unit": "m²/s²"},
+                    {"id": "__power_3", "type": "operator", "op": "power", "exponent": "2", "subexpr": "v^{2}", "description": "The square of the orbital velocity, $v^{2}$.", "dimension": "L²·T⁻²", "unit": "m²/s²"},
+                    {"id": "v", "type": "scalar", "emoji": "🛰️", "latex": "v", "subexpr": "v", "description": "The speed of the orbiting body.", "quantity": "velocity", "dimension": "L·T⁻¹", "unit": "m/s"},
+                    {"id": "__power_4", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2}", "description": "The reciprocal of 2, representing division by 2."},
+                    {"id": "__num_5", "type": "number", "label": "2", "subexpr": "2", "description": "The number 2.", "value": 2},
+                    {"id": "__add_6", "type": "operator", "op": "add", "subexpr": "\\frac{1}{r} G M - G M \\frac{1}{2 a}", "description": "The sum of the specific total energy and the specific potential energy of the orbiting body.", "dimension": "L²·T⁻²", "unit": "m²/s²"},
+                    {"id": "__negation_7", "type": "operator", "op": "negation", "subexpr": "-G M \\frac{1}{2 a}", "description": "The negation of the total orbital energy per unit mass.", "dimension": "L²·T⁻²", "unit": "m²/s²"},
+                    {"id": "__multiply_8", "type": "operator", "op": "multiply", "subexpr": "G M \\frac{1}{2 a}", "description": "The total specific orbital energy, $E = -GM/(2a)$.", "quantity": "specific_orbital_energy", "dimension": "L²·T⁻²", "unit": "m²/s²"},
+                    {"id": "__multiply_9", "type": "operator", "op": "multiply", "subexpr": "G M", "description": "The standard gravitational parameter, $\\mu = GM$.", "quantity": "standard_gravitational_parameter", "dimension": "L³·T⁻²", "unit": "m³/s²"},
+                    {"id": "G", "type": "scalar", "emoji": "🌌", "latex": "G", "subexpr": "G", "description": "The universal gravitational constant.", "quantity": "gravitational_constant", "dimension": "M⁻¹·L³·T⁻²", "unit": "m³·kg⁻¹·s⁻²", "value": 6.6743e-11},
+                    {"id": "M", "type": "scalar", "emoji": "🌎", "latex": "M", "subexpr": "M", "description": "The mass of the central body (e.g., Earth).", "quantity": "mass", "dimension": "M", "unit": "kg"},
+                    {"id": "__power_10", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2 a}", "description": "The reciprocal of twice the semi-major axis, $1/(2a)$.", "dimension": "L⁻¹", "unit": "m⁻¹"},
+                    {"id": "__multiply_11", "type": "operator", "op": "multiply", "subexpr": "a 2", "description": "Twice the semi-major axis, representing the major axis of the orbit.", "dimension": "L", "unit": "m"},
+                    {"id": "__num_12", "type": "number", "label": "2", "subexpr": "2", "description": "The number 2.", "value": 2},
+                    {"id": "a", "type": "scalar", "emoji": "📐", "latex": "a", "subexpr": "a", "description": "The semi-major axis of the orbit.", "quantity": "semi-major_axis", "dimension": "L", "unit": "m"},
+                    {"id": "__multiply_13", "type": "operator", "op": "multiply", "subexpr": "\\frac{1}{r} G M", "description": "The specific gravitational potential energy (without the conventional negative sign).", "quantity": "specific_potential_energy", "dimension": "L²·T⁻²", "unit": "m²/s²"},
+                    {"id": "__multiply_14", "type": "operator", "op": "multiply", "subexpr": "G M", "description": "The standard gravitational parameter, $\\mu = GM$.", "quantity": "standard_gravitational_parameter", "dimension": "L³·T⁻²", "unit": "m³/s²"},
+                    {"id": "__power_15", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{r}", "description": "The reciprocal of the orbital radius, $1/r$.", "dimension": "L⁻¹", "unit": "m⁻¹"},
+                    {"id": "r", "type": "scalar", "emoji": "📏", "latex": "r", "subexpr": "r", "description": "The distance between the orbiting body and the central body.", "quantity": "radius", "dimension": "L", "unit": "m"}
                   ],
                   "edges": [
                     {"from": "v", "to": "__power_3"},
@@ -1932,7 +1942,12 @@
                     {"from": "__multiply_13", "to": "__add_6"},
                     {"from": "__add_6", "to": "__equals_1"}
                   ],
-                  "classification": {"kind": "algebraic"}
+                  "classification": {"kind": "algebraic"},
+                  "domain": "classical_mechanics",
+                  "enrichment": {
+                    "reasoning": "Context is orbital mechanics (Vis-viva equation), so domain is `classical_mechanics`. G is the gravitational constant, M is the central mass, v is velocity, r is radius, and a is semi-major axis.",
+                    "fields": ["domain", "nodes.__equals_1.description", "nodes.__multiply_2.description", "nodes.__multiply_2.dimension", "nodes.__multiply_2.quantity", "nodes.__multiply_2.unit", "nodes.__power_3.description", "nodes.__power_3.dimension", "nodes.__power_3.unit", "nodes.v.description", "nodes.v.dimension", "nodes.v.emoji", "nodes.v.quantity", "nodes.v.unit", "nodes.__power_4.description", "nodes.__num_5.description", "nodes.__num_5.value", "nodes.__add_6.description", "nodes.__add_6.dimension", "nodes.__add_6.unit", "nodes.__negation_7.description", "nodes.__negation_7.dimension", "nodes.__negation_7.unit", "nodes.__multiply_8.description", "nodes.__multiply_8.dimension", "nodes.__multiply_8.quantity", "nodes.__multiply_8.unit", "nodes.__multiply_9.description", "nodes.__multiply_9.dimension", "nodes.__multiply_9.quantity", "nodes.__multiply_9.unit", "nodes.G.description", "nodes.G.dimension", "nodes.G.emoji", "nodes.G.quantity", "nodes.G.unit", "nodes.G.value", "nodes.M.description", "nodes.M.dimension", "nodes.M.emoji", "nodes.M.quantity", "nodes.M.unit", "nodes.__power_10.description", "nodes.__power_10.dimension", "nodes.__power_10.unit", "nodes.__multiply_11.description", "nodes.__multiply_11.dimension", "nodes.__multiply_11.unit", "nodes.__num_12.description", "nodes.__num_12.value", "nodes.a.description", "nodes.a.dimension", "nodes.a.emoji", "nodes.a.quantity", "nodes.a.unit", "nodes.__multiply_13.description", "nodes.__multiply_13.dimension", "nodes.__multiply_13.quantity", "nodes.__multiply_13.unit", "nodes.__multiply_14.description", "nodes.__multiply_14.dimension", "nodes.__multiply_14.quantity", "nodes.__multiply_14.unit", "nodes.__power_15.description", "nodes.__power_15.dimension", "nodes.__power_15.unit", "nodes.r.description", "nodes.r.dimension", "nodes.r.emoji", "nodes.r.quantity", "nodes.r.unit"]
+                  }
                 }
               }
             },
@@ -1946,25 +1961,25 @@
               "semanticGraph": {
                 "graph": {
                   "nodes": [
-                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "v^{2} = 2 \\cdot \\left( - \\frac{G \\cdot M}{2 \\cdot a} + \\frac{G \\cdot M}{r} \\right)"},
-                    {"id": "__power_2", "type": "operator", "op": "power", "exponent": "2", "subexpr": "v^{2}"},
-                    {"id": "v", "type": "scalar", "latex": "v", "subexpr": "v"},
-                    {"id": "__multiply_3", "type": "operator", "op": "multiply", "subexpr": "2 \\left(\\frac{1}{r} G M - G M \\frac{1}{a} \\frac{1}{2}\\right)"},
-                    {"id": "__num_4", "type": "number", "label": "2", "subexpr": "2"},
-                    {"id": "__add_5", "type": "operator", "op": "add", "subexpr": "\\frac{1}{r} G M - G M \\frac{1}{a} \\frac{1}{2}"},
-                    {"id": "__negation_6", "type": "operator", "op": "negation", "subexpr": "-G M \\frac{1}{a} \\frac{1}{2}"},
-                    {"id": "__multiply_7", "type": "operator", "op": "multiply", "subexpr": "G M \\frac{1}{2 a}"},
-                    {"id": "__multiply_8", "type": "operator", "op": "multiply", "subexpr": "G M"},
-                    {"id": "G", "type": "scalar", "latex": "G", "subexpr": "G"},
-                    {"id": "M", "type": "scalar", "latex": "M", "subexpr": "M"},
-                    {"id": "__power_9", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2 a}"},
-                    {"id": "__multiply_10", "type": "operator", "op": "multiply", "subexpr": "a 2"},
-                    {"id": "__num_11", "type": "number", "label": "2", "subexpr": "2"},
-                    {"id": "a", "type": "scalar", "latex": "a", "subexpr": "a"},
-                    {"id": "__multiply_12", "type": "operator", "op": "multiply", "subexpr": "\\frac{1}{r} G M"},
-                    {"id": "__multiply_13", "type": "operator", "op": "multiply", "subexpr": "G M"},
-                    {"id": "__power_14", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{r}"},
-                    {"id": "r", "type": "scalar", "latex": "r", "subexpr": "r"}
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "v^{2} = 2 \\cdot \\left( - \\frac{G \\cdot M}{2 \\cdot a} + \\frac{G \\cdot M}{r} \\right)", "description": "The Vis-viva equation, stating that orbital velocity depends on the orbital radius and semi-major axis."},
+                    {"id": "__power_2", "type": "operator", "emoji": "💨", "op": "power", "exponent": "2", "subexpr": "v^{2}", "description": "The square of the orbital velocity, which is twice the specific kinetic energy.", "quantity": "specific_kinetic_energy", "dimension": "L²·T⁻²", "unit": "m²/s²"},
+                    {"id": "v", "type": "scalar", "emoji": "💨", "latex": "v", "subexpr": "v", "description": "The orbital velocity of the spacecraft.", "quantity": "velocity", "dimension": "L·T⁻¹", "unit": "m/s", "role": "state_variable"},
+                    {"id": "__multiply_3", "type": "operator", "op": "multiply", "subexpr": "2 \\left(\\frac{1}{r} G M - G M \\frac{1}{2 a}\\right)", "description": "The right-hand side of the Vis-viva equation, defining the squared orbital velocity.", "quantity": "squared_velocity", "dimension": "L²·T⁻²", "unit": "m²/s²"},
+                    {"id": "__num_4", "type": "number", "label": "2", "subexpr": "2", "description": "A numeric constant, 2.", "quantity": "number", "dimension": "1", "unit": "", "value": 2},
+                    {"id": "__add_5", "type": "operator", "op": "add", "subexpr": "\\frac{1}{r} G M - G M \\frac{1}{2 a}", "description": "The specific kinetic energy of the orbiting body, derived from gravitational potential and total energy terms.", "quantity": "specific_kinetic_energy", "dimension": "L²·T⁻²", "unit": "m²/s²"},
+                    {"id": "__negation_6", "type": "operator", "op": "negation", "subexpr": "-G M \\frac{1}{2 a}", "description": "The specific orbital energy, which is constant for a given orbit.", "quantity": "specific_orbital_energy", "dimension": "L²·T⁻²", "unit": "m²/s²"},
+                    {"id": "__multiply_7", "type": "operator", "op": "multiply", "subexpr": "G M \\frac{1}{2 a}", "description": "A term representing the negative of the specific orbital energy.", "quantity": "specific_orbital_energy", "dimension": "L²·T⁻²", "unit": "m²/s²"},
+                    {"id": "__multiply_8", "type": "operator", "emoji": "🌍", "op": "multiply", "subexpr": "G M", "description": "The standard gravitational parameter, $\\mu$, for the central body.", "quantity": "standard_gravitational_parameter", "dimension": "L³·T⁻²", "unit": "m³/s²"},
+                    {"id": "G", "type": "scalar", "emoji": "🌌", "latex": "G", "subexpr": "G", "description": "The universal gravitational constant.", "quantity": "gravitational_constant", "dimension": "M⁻¹·L³·T⁻²", "unit": "m³·kg⁻¹·s⁻²", "role": "constant"},
+                    {"id": "M", "type": "scalar", "emoji": "🌍", "latex": "M", "subexpr": "M", "description": "The mass of the central body, Earth.", "quantity": "mass", "dimension": "M", "unit": "kg", "role": "parameter"},
+                    {"id": "__power_9", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2 a}", "description": "The reciprocal of twice the semi-major axis.", "dimension": "L⁻¹", "unit": "m⁻¹"},
+                    {"id": "__multiply_10", "type": "operator", "op": "multiply", "subexpr": "a 2", "description": "Twice the semi-major axis of the orbit.", "quantity": "length", "dimension": "L", "unit": "m"},
+                    {"id": "__num_11", "type": "number", "label": "2", "subexpr": "2", "description": "A numeric constant, 2.", "quantity": "number", "dimension": "1", "unit": "", "value": 2},
+                    {"id": "a", "type": "scalar", "emoji": "📏", "latex": "a", "subexpr": "a", "description": "The semi-major axis of the orbit.", "quantity": "length", "dimension": "L", "unit": "m", "role": "parameter"},
+                    {"id": "__multiply_12", "type": "operator", "op": "multiply", "subexpr": "\\frac{1}{r} G M", "description": "The negative of the specific gravitational potential energy at a given orbital radius.", "quantity": "specific_potential_energy", "dimension": "L²·T⁻²", "unit": "m²/s²"},
+                    {"id": "__multiply_13", "type": "operator", "emoji": "🌍", "op": "multiply", "subexpr": "G M", "description": "The standard gravitational parameter, $\\mu$, for the central body.", "quantity": "standard_gravitational_parameter", "dimension": "L³·T⁻²", "unit": "m³/s²"},
+                    {"id": "__power_14", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{r}", "description": "The reciprocal of the orbital radius.", "dimension": "L⁻¹", "unit": "m⁻¹"},
+                    {"id": "r", "type": "scalar", "emoji": "↔️", "latex": "r", "subexpr": "r", "description": "The orbital radius, the distance from the spacecraft to the central body.", "quantity": "radius", "dimension": "L", "unit": "m", "role": "state_variable"}
                   ],
                   "edges": [
                     {"from": "v", "to": "__power_2"},
@@ -1988,7 +2003,12 @@
                     {"from": "__add_5", "to": "__multiply_3", "semantic": "direct", "weight": 1.0},
                     {"from": "__multiply_3", "to": "__equals_1"}
                   ],
-                  "classification": {"kind": "algebraic"}
+                  "classification": {"kind": "algebraic"},
+                  "domain": "classical_mechanics",
+                  "enrichment": {
+                    "reasoning": "The context is a derivation of the Vis-viva equation for orbital mechanics, so the domain is `classical_mechanics` and symbols are interpreted accordingly.",
+                    "fields": ["domain", "nodes.__equals_1.description", "nodes.__power_2.description", "nodes.__power_2.dimension", "nodes.__power_2.emoji", "nodes.__power_2.quantity", "nodes.__power_2.unit", "nodes.v.description", "nodes.v.dimension", "nodes.v.emoji", "nodes.v.quantity", "nodes.v.role", "nodes.v.unit", "nodes.__multiply_3.description", "nodes.__multiply_3.dimension", "nodes.__multiply_3.quantity", "nodes.__multiply_3.unit", "nodes.__num_4.description", "nodes.__num_4.dimension", "nodes.__num_4.quantity", "nodes.__num_4.unit", "nodes.__num_4.value", "nodes.__add_5.description", "nodes.__add_5.dimension", "nodes.__add_5.quantity", "nodes.__add_5.unit", "nodes.__negation_6.description", "nodes.__negation_6.dimension", "nodes.__negation_6.quantity", "nodes.__negation_6.unit", "nodes.__multiply_7.description", "nodes.__multiply_7.dimension", "nodes.__multiply_7.quantity", "nodes.__multiply_7.unit", "nodes.__multiply_8.description", "nodes.__multiply_8.dimension", "nodes.__multiply_8.emoji", "nodes.__multiply_8.quantity", "nodes.__multiply_8.unit", "nodes.G.description", "nodes.G.dimension", "nodes.G.emoji", "nodes.G.quantity", "nodes.G.role", "nodes.G.unit", "nodes.M.description", "nodes.M.dimension", "nodes.M.emoji", "nodes.M.quantity", "nodes.M.role", "nodes.M.unit", "nodes.__power_9.description", "nodes.__power_9.dimension", "nodes.__power_9.unit", "nodes.__multiply_10.description", "nodes.__multiply_10.dimension", "nodes.__multiply_10.quantity", "nodes.__multiply_10.unit", "nodes.__num_11.description", "nodes.__num_11.dimension", "nodes.__num_11.quantity", "nodes.__num_11.unit", "nodes.__num_11.value", "nodes.a.description", "nodes.a.dimension", "nodes.a.emoji", "nodes.a.quantity", "nodes.a.role", "nodes.a.unit", "nodes.__multiply_12.description", "nodes.__multiply_12.dimension", "nodes.__multiply_12.quantity", "nodes.__multiply_12.unit", "nodes.__multiply_13.description", "nodes.__multiply_13.dimension", "nodes.__multiply_13.emoji", "nodes.__multiply_13.quantity", "nodes.__multiply_13.unit", "nodes.__power_14.description", "nodes.__power_14.dimension", "nodes.__power_14.unit", "nodes.r.description", "nodes.r.dimension", "nodes.r.emoji", "nodes.r.quantity", "nodes.r.role", "nodes.r.unit"]
+                  }
                 }
               }
             },
@@ -2002,27 +2022,27 @@
               "semanticGraph": {
                 "graph": {
                   "nodes": [
-                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "v^{2} = - \\frac{2 \\cdot G \\cdot M}{2 \\cdot a} + \\frac{2 \\cdot G \\cdot M}{r}"},
-                    {"id": "__power_2", "type": "operator", "op": "power", "exponent": "2", "subexpr": "v^{2}"},
-                    {"id": "v", "type": "scalar", "latex": "v", "subexpr": "v"},
-                    {"id": "__add_3", "type": "operator", "op": "add", "subexpr": "\\frac{1}{r} M G 2 - G M 2 \\frac{1}{a} \\frac{1}{2}"},
-                    {"id": "__negation_4", "type": "operator", "op": "negation", "subexpr": "-G M 2 \\frac{1}{a} \\frac{1}{2}"},
-                    {"id": "__multiply_5", "type": "operator", "op": "multiply", "subexpr": "M G 2 \\frac{1}{2 a}"},
-                    {"id": "__multiply_6", "type": "operator", "op": "multiply", "subexpr": "M G 2"},
-                    {"id": "__multiply_7", "type": "operator", "op": "multiply", "subexpr": "G 2"},
-                    {"id": "__num_8", "type": "number", "label": "2", "subexpr": "2"},
-                    {"id": "G", "type": "scalar", "latex": "G", "subexpr": "G"},
-                    {"id": "M", "type": "scalar", "latex": "M", "subexpr": "M"},
-                    {"id": "__power_9", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2 a}"},
-                    {"id": "__multiply_10", "type": "operator", "op": "multiply", "subexpr": "a 2"},
-                    {"id": "__num_11", "type": "number", "label": "2", "subexpr": "2"},
-                    {"id": "a", "type": "scalar", "latex": "a", "subexpr": "a"},
-                    {"id": "__multiply_12", "type": "operator", "op": "multiply", "subexpr": "\\frac{1}{r} M G 2"},
-                    {"id": "__multiply_13", "type": "operator", "op": "multiply", "subexpr": "M G 2"},
-                    {"id": "__multiply_14", "type": "operator", "op": "multiply", "subexpr": "G 2"},
-                    {"id": "__num_15", "type": "number", "label": "2", "subexpr": "2"},
-                    {"id": "__power_16", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{r}"},
-                    {"id": "r", "type": "scalar", "latex": "r", "subexpr": "r"}
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "v^{2} = - \\frac{2 \\cdot G \\cdot M}{2 \\cdot a} + \\frac{2 \\cdot G \\cdot M}{r}", "description": "This equation states that the square of the orbital velocity equals the difference between two terms related to gravitational potential and total orbital energy."},
+                    {"id": "__power_2", "type": "operator", "op": "power", "exponent": "2", "subexpr": "v^{2}", "description": "The square of the orbital velocity, $v^{2}$.", "quantity": "squared_velocity", "dimension": "L²·T⁻²", "unit": "m²/s²"},
+                    {"id": "v", "type": "scalar", "emoji": "🛰️", "latex": "v", "subexpr": "v", "description": "The velocity of the orbiting body.", "quantity": "velocity", "dimension": "L·T⁻¹", "unit": "m/s", "role": "dependent"},
+                    {"id": "__add_3", "type": "operator", "op": "add", "subexpr": "\\frac{1}{r} M G 2 - M G 2 \\frac{1}{2 a}", "description": "The sum of terms related to the specific potential energy and the total specific orbital energy.", "quantity": "squared_velocity", "dimension": "L²·T⁻²", "unit": "m²/s²"},
+                    {"id": "__negation_4", "type": "operator", "op": "negation", "subexpr": "-M G 2 \\frac{1}{2 a}", "description": "The negation of the term representing twice the specific orbital energy."},
+                    {"id": "__multiply_5", "type": "operator", "op": "multiply", "subexpr": "M G 2 \\frac{1}{2 a}", "description": "This term simplifies to the standard gravitational parameter divided by the semi-major axis, $\\mu/a$, representing twice the negative specific orbital energy.", "quantity": "squared_velocity", "dimension": "L²·T⁻²", "unit": "m²/s²"},
+                    {"id": "__multiply_6", "type": "operator", "op": "multiply", "subexpr": "M G 2", "description": "The product of the central mass $M$, the gravitational constant $G$, and the number 2.", "quantity": "twice_standard_gravitational_parameter", "dimension": "L³·T⁻²", "unit": "m³/s²"},
+                    {"id": "__multiply_7", "type": "operator", "op": "multiply", "subexpr": "G 2", "description": "The gravitational constant $G$ multiplied by 2.", "dimension": "M⁻¹·L³·T⁻²", "unit": "m³/(kg·s²)"},
+                    {"id": "__num_8", "type": "number", "label": "2", "emoji": "🔢", "subexpr": "2", "description": "The number 2, a numerical factor.", "dimension": "1", "unit": ""},
+                    {"id": "G", "type": "scalar", "emoji": "🌌", "latex": "G", "subexpr": "G", "description": "The universal gravitational constant, which quantifies the strength of gravitational force.", "quantity": "gravitational_constant", "dimension": "M⁻¹·L³·T⁻²", "unit": "m³/(kg·s²)", "role": "constant"},
+                    {"id": "M", "type": "scalar", "emoji": "🌍", "latex": "M", "subexpr": "M", "description": "The mass of the central body, such as the Earth.", "quantity": "mass", "dimension": "M", "unit": "kg", "role": "parameter"},
+                    {"id": "__power_9", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{2 a}", "description": "The reciprocal of twice the semi-major axis, $1/(2a)$."},
+                    {"id": "__multiply_10", "type": "operator", "op": "multiply", "subexpr": "a 2", "description": "Twice the semi-major axis, $2a$.", "quantity": "length", "dimension": "L", "unit": "m"},
+                    {"id": "__num_11", "type": "number", "label": "2", "emoji": "🔢", "subexpr": "2", "description": "The number 2, a numerical factor.", "dimension": "1", "unit": ""},
+                    {"id": "a", "type": "scalar", "emoji": "📏", "latex": "a", "subexpr": "a", "description": "The semi-major axis of the orbit, a measure of the orbit's size.", "quantity": "length", "dimension": "L", "unit": "m", "role": "parameter"},
+                    {"id": "__multiply_12", "type": "operator", "op": "multiply", "subexpr": "\\frac{1}{r} M G 2", "description": "This term simplifies to twice the standard gravitational parameter divided by the orbital radius, $2\\mu/r$, related to the specific potential energy.", "quantity": "squared_velocity", "dimension": "L²·T⁻²", "unit": "m²/s²"},
+                    {"id": "__multiply_13", "type": "operator", "op": "multiply", "subexpr": "M G 2", "description": "The product of the central mass $M$, the gravitational constant $G$, and the number 2.", "quantity": "twice_standard_gravitational_parameter", "dimension": "L³·T⁻²", "unit": "m³/s²"},
+                    {"id": "__multiply_14", "type": "operator", "op": "multiply", "subexpr": "G 2", "description": "The gravitational constant $G$ multiplied by 2.", "dimension": "M⁻¹·L³·T⁻²", "unit": "m³/(kg·s²)"},
+                    {"id": "__num_15", "type": "number", "label": "2", "emoji": "🔢", "subexpr": "2", "description": "The number 2, a numerical factor.", "dimension": "1", "unit": ""},
+                    {"id": "__power_16", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{r}", "description": "The reciprocal of the orbital radius, $1/r$."},
+                    {"id": "r", "type": "scalar", "emoji": "↔️", "latex": "r", "subexpr": "r", "description": "The orbital radius, the distance from the orbiting body to the central body.", "quantity": "length", "dimension": "L", "unit": "m", "role": "independent"}
                   ],
                   "edges": [
                     {"from": "v", "to": "__power_2"},
@@ -2048,7 +2068,12 @@
                     {"from": "__multiply_12", "to": "__add_3"},
                     {"from": "__add_3", "to": "__equals_1"}
                   ],
-                  "classification": {"kind": "algebraic"}
+                  "classification": {"kind": "algebraic"},
+                  "domain": "classical_mechanics",
+                  "enrichment": {
+                    "reasoning": "Context is a derivation of the Vis-viva equation for orbital mechanics, establishing the domain as classical mechanics. Symbols are identified from the context.",
+                    "fields": ["domain", "nodes.__equals_1.description", "nodes.__power_2.description", "nodes.__power_2.dimension", "nodes.__power_2.quantity", "nodes.__power_2.unit", "nodes.v.description", "nodes.v.dimension", "nodes.v.emoji", "nodes.v.quantity", "nodes.v.role", "nodes.v.unit", "nodes.__add_3.description", "nodes.__add_3.dimension", "nodes.__add_3.quantity", "nodes.__add_3.unit", "nodes.__negation_4.description", "nodes.__multiply_5.description", "nodes.__multiply_5.dimension", "nodes.__multiply_5.quantity", "nodes.__multiply_5.unit", "nodes.__multiply_6.description", "nodes.__multiply_6.dimension", "nodes.__multiply_6.quantity", "nodes.__multiply_6.unit", "nodes.__multiply_7.description", "nodes.__multiply_7.dimension", "nodes.__multiply_7.unit", "nodes.__num_8.description", "nodes.__num_8.dimension", "nodes.__num_8.emoji", "nodes.__num_8.unit", "nodes.G.description", "nodes.G.dimension", "nodes.G.emoji", "nodes.G.quantity", "nodes.G.role", "nodes.G.unit", "nodes.M.description", "nodes.M.dimension", "nodes.M.emoji", "nodes.M.quantity", "nodes.M.role", "nodes.M.unit", "nodes.__power_9.description", "nodes.__multiply_10.description", "nodes.__multiply_10.dimension", "nodes.__multiply_10.quantity", "nodes.__multiply_10.unit", "nodes.__num_11.description", "nodes.__num_11.dimension", "nodes.__num_11.emoji", "nodes.__num_11.unit", "nodes.a.description", "nodes.a.dimension", "nodes.a.emoji", "nodes.a.quantity", "nodes.a.role", "nodes.a.unit", "nodes.__multiply_12.description", "nodes.__multiply_12.dimension", "nodes.__multiply_12.quantity", "nodes.__multiply_12.unit", "nodes.__multiply_13.description", "nodes.__multiply_13.dimension", "nodes.__multiply_13.quantity", "nodes.__multiply_13.unit", "nodes.__multiply_14.description", "nodes.__multiply_14.dimension", "nodes.__multiply_14.unit", "nodes.__num_15.description", "nodes.__num_15.dimension", "nodes.__num_15.emoji", "nodes.__num_15.unit", "nodes.__power_16.description", "nodes.r.description", "nodes.r.dimension", "nodes.r.emoji", "nodes.r.quantity", "nodes.r.role", "nodes.r.unit"]
+                  }
                 }
               }
             },
@@ -2062,23 +2087,23 @@
               "semanticGraph": {
                 "graph": {
                   "nodes": [
-                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "v^{2} = - \\frac{G \\cdot M}{a} + \\frac{2 \\cdot G \\cdot M}{r}"},
-                    {"id": "__power_2", "type": "operator", "op": "power", "exponent": "2", "subexpr": "v^{2}"},
-                    {"id": "v", "type": "scalar", "latex": "v", "subexpr": "v"},
-                    {"id": "__add_3", "type": "operator", "op": "add", "subexpr": "\\frac{1}{r} M G 2 - \\frac{1}{a} G M"},
-                    {"id": "__negation_4", "type": "operator", "op": "negation", "subexpr": "-\\frac{1}{a} G M"},
-                    {"id": "__multiply_5", "type": "operator", "op": "multiply", "subexpr": "\\frac{1}{a} G M"},
-                    {"id": "__multiply_6", "type": "operator", "op": "multiply", "subexpr": "G M"},
-                    {"id": "G", "type": "scalar", "latex": "G", "subexpr": "G"},
-                    {"id": "M", "type": "scalar", "latex": "M", "subexpr": "M"},
-                    {"id": "__power_7", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{a}"},
-                    {"id": "a", "type": "scalar", "latex": "a", "subexpr": "a"},
-                    {"id": "__multiply_8", "type": "operator", "op": "multiply", "subexpr": "\\frac{1}{r} M G 2"},
-                    {"id": "__multiply_9", "type": "operator", "op": "multiply", "subexpr": "M G 2"},
-                    {"id": "__multiply_10", "type": "operator", "op": "multiply", "subexpr": "G 2"},
-                    {"id": "__num_11", "type": "number", "label": "2", "subexpr": "2"},
-                    {"id": "__power_12", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{r}"},
-                    {"id": "r", "type": "scalar", "latex": "r", "subexpr": "r"}
+                    {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "v^{2} = - \\frac{G \\cdot M}{a} + \\frac{2 \\cdot G \\cdot M}{r}", "description": "The Vis-viva equation, relating orbital velocity to position for a body in an elliptical orbit."},
+                    {"id": "__power_2", "type": "operator", "emoji": "💨", "op": "power", "exponent": "2", "subexpr": "v^{2}", "description": "The square of the orbital velocity, which is proportional to the specific kinetic energy of the orbiting body.", "quantity": "velocity_squared", "dimension": "L²·T⁻²", "unit": "m²/s²"},
+                    {"id": "v", "type": "scalar", "emoji": "🛰️", "latex": "v", "subexpr": "v", "description": "Velocity of the orbiting body, such as the spacecraft.", "quantity": "velocity", "dimension": "L·T⁻¹", "unit": "m/s"},
+                    {"id": "__add_3", "type": "operator", "op": "add", "subexpr": "\\frac{1}{r} M G 2 - \\frac{1}{a} G M", "description": "The sum of the specific orbital energy and twice the specific potential energy, which equals the specific kinetic energy.", "dimension": "L²·T⁻²", "unit": "m²/s²"},
+                    {"id": "__negation_4", "type": "operator", "op": "negation", "subexpr": "-\\frac{1}{a} G M", "description": "The negative of the gravitational parameter divided by the semi-major axis, representing the specific orbital energy.", "quantity": "specific_orbital_energy", "dimension": "L²·T⁻²", "unit": "m²/s²"},
+                    {"id": "__multiply_5", "type": "operator", "op": "multiply", "subexpr": "\\frac{1}{a} G M", "description": "The standard gravitational parameter $\\mu = GM$ divided by the semi-major axis $a$.", "dimension": "L²·T⁻²", "unit": "m²/s²"},
+                    {"id": "__multiply_6", "type": "operator", "op": "multiply", "subexpr": "G M", "description": "The product of the gravitational constant $G$ and the central mass $M$, known as the standard gravitational parameter $\\mu$.", "quantity": "standard_gravitational_parameter", "dimension": "L³·T⁻²", "unit": "m³/s²"},
+                    {"id": "G", "type": "scalar", "emoji": "🌌", "latex": "G", "subexpr": "G", "description": "The universal gravitational constant, $G$.", "quantity": "gravitational_constant", "dimension": "M⁻¹·L³·T⁻²", "unit": "m³·kg⁻¹·s⁻²", "role": "constant"},
+                    {"id": "M", "type": "scalar", "emoji": "🌍", "latex": "M", "subexpr": "M", "description": "Mass of the central body, in this case, the Earth.", "quantity": "mass", "dimension": "M", "unit": "kg"},
+                    {"id": "__power_7", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{a}", "description": "The reciprocal of the semi-major axis.", "dimension": "L⁻¹", "unit": "m⁻¹"},
+                    {"id": "a", "type": "scalar", "emoji": "↔️", "latex": "a", "subexpr": "a", "description": "The semi-major axis of the elliptical orbit.", "quantity": "semi_major_axis", "dimension": "L", "unit": "m"},
+                    {"id": "__multiply_8", "type": "operator", "op": "multiply", "subexpr": "\\frac{1}{r} M G 2", "description": "Twice the gravitational parameter $\\mu=GM$ divided by the orbital radius $r$, related to the specific potential energy.", "dimension": "L²·T⁻²", "unit": "m²/s²"},
+                    {"id": "__multiply_9", "type": "operator", "op": "multiply", "subexpr": "M G 2", "description": "Twice the standard gravitational parameter $\\mu=GM$.", "dimension": "L³·T⁻²", "unit": "m³/s²"},
+                    {"id": "__multiply_10", "type": "operator", "op": "multiply", "subexpr": "G 2", "description": "The number 2 times the gravitational constant $G$.", "dimension": "M⁻¹·L³·T⁻²", "unit": "m³·kg⁻¹·s⁻²"},
+                    {"id": "__num_11", "type": "number", "label": "2", "emoji": "🔢", "subexpr": "2", "description": "The number 2, a dimensionless constant.", "quantity": "number", "dimension": "1", "unit": "", "value": 2},
+                    {"id": "__power_12", "type": "operator", "latex": "\\dfrac{1}{(\\cdot)}", "op": "power", "exponent": "-1", "subexpr": "\\frac{1}{r}", "description": "The reciprocal of the orbital radius.", "dimension": "L⁻¹", "unit": "m⁻¹"},
+                    {"id": "r", "type": "scalar", "emoji": "📏", "latex": "r", "subexpr": "r", "description": "The orbital radius, the distance from the central body to the orbiting body.", "quantity": "radius", "dimension": "L", "unit": "m"}
                   ],
                   "edges": [
                     {"from": "v", "to": "__power_2"},
@@ -2100,7 +2125,12 @@
                     {"from": "__multiply_8", "to": "__add_3"},
                     {"from": "__add_3", "to": "__equals_1"}
                   ],
-                  "classification": {"kind": "algebraic"}
+                  "classification": {"kind": "algebraic"},
+                  "domain": "classical_mechanics",
+                  "enrichment": {
+                    "reasoning": "Context is orbital mechanics (Vis-viva equation), so domain is classical_mechanics. Symbols are standard: v is velocity, G is gravitational constant, M is mass, r is radius, and a is semi-major axis.",
+                    "fields": ["domain", "nodes.__equals_1.description", "nodes.__power_2.description", "nodes.__power_2.dimension", "nodes.__power_2.emoji", "nodes.__power_2.quantity", "nodes.__power_2.unit", "nodes.v.description", "nodes.v.dimension", "nodes.v.emoji", "nodes.v.quantity", "nodes.v.unit", "nodes.__add_3.description", "nodes.__add_3.dimension", "nodes.__add_3.unit", "nodes.__negation_4.description", "nodes.__negation_4.dimension", "nodes.__negation_4.quantity", "nodes.__negation_4.unit", "nodes.__multiply_5.description", "nodes.__multiply_5.dimension", "nodes.__multiply_5.unit", "nodes.__multiply_6.description", "nodes.__multiply_6.dimension", "nodes.__multiply_6.quantity", "nodes.__multiply_6.unit", "nodes.G.description", "nodes.G.dimension", "nodes.G.emoji", "nodes.G.quantity", "nodes.G.role", "nodes.G.unit", "nodes.M.description", "nodes.M.dimension", "nodes.M.emoji", "nodes.M.quantity", "nodes.M.unit", "nodes.__power_7.description", "nodes.__power_7.dimension", "nodes.__power_7.unit", "nodes.a.description", "nodes.a.dimension", "nodes.a.emoji", "nodes.a.quantity", "nodes.a.unit", "nodes.__multiply_8.description", "nodes.__multiply_8.dimension", "nodes.__multiply_8.unit", "nodes.__multiply_9.description", "nodes.__multiply_9.dimension", "nodes.__multiply_9.unit", "nodes.__multiply_10.description", "nodes.__multiply_10.dimension", "nodes.__multiply_10.unit", "nodes.__num_11.description", "nodes.__num_11.dimension", "nodes.__num_11.emoji", "nodes.__num_11.quantity", "nodes.__num_11.unit", "nodes.__num_11.value", "nodes.__power_12.description", "nodes.__power_12.dimension", "nodes.__power_12.unit", "nodes.r.description", "nodes.r.dimension", "nodes.r.emoji", "nodes.r.quantity", "nodes.r.unit"]
+                  }
                 }
               }
             },

@@ -2476,7 +2476,11 @@ class SemanticGraphBuilder:
                     if isinstance(sub, Add):
                         s = rf"\left({s}\right)"
                     return "-" + s
-                inner = Mul(*rest)
+                # Same evaluate=False as the negation walker: a plain
+                # ``Mul(*rest)`` re-multiplies the factors and tears fraction
+                # structure apart (``1/(4a^2)`` → ``(1/4)·a^{-2}``), so the
+                # displayed subexpr would not match the preserved graph shape.
+                inner = Mul(*rest, evaluate=False)
                 return "-" + self._subexpr_ordered(inner)
             factors = list(expr.args)
             factors.sort(key=lambda f: self._original_position(

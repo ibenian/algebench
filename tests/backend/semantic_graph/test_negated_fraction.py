@@ -90,3 +90,20 @@ def test_unnegated_fraction_unaffected():
     """The un-negated fraction already round-tripped — keep it that way."""
     ltx = r"\frac{4 \cdot a \cdot c}{4 \cdot a^{2}}"
     assert to_latex(_g(ltx)) == ltx
+
+
+def test_negation_subexpr_does_not_split_constants():
+    """The negation node's ``subexpr`` must not tear fractions apart either.
+
+    The walker fix preserved graph *structure*, but ``_subexpr_ordered``'s
+    negation branch still rebuilt the inner product with a plain ``Mul(*rest)``,
+    so the displayed subexpr for quadratic-formula step 5 re-evaluated the two
+    ``1/(2a)`` denominators into ``\\frac{1}{a^{2}} \\frac{1}{4}``. The UI
+    (graph panel labels / derive payloads) renders ``subexpr`` directly.
+    """
+    g = _g(r"x = -\frac{b}{2a} \pm \frac{\sqrt{b^2 - 4ac}}{2a}")
+    subexprs = [n.subexpr for n in g.nodes if n.op == "negation" and n.subexpr]
+    assert subexprs, "expected a negation node with a subexpr"
+    for s in subexprs:
+        assert r"\frac{1}{4}" not in s, f"denominator constant split out: {s!r}"
+        assert "a^{2}" not in s, f"denominators were re-multiplied: {s!r}"
