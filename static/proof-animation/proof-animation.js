@@ -217,6 +217,8 @@ export class ProofAnimator {
     this._token = null;
     this._playId = null;  // identifies the active play() loop; user nav clears it
     this._paused = false; // freeze in-flight animations (works mid-interpolation)
+    this._pauseGate = null;  // pending promise the play() loop awaits while paused
+    this._pauseOpen = null;  // resolver that releases _pauseGate on resume/cancel
     this._destroyed = false;
     this._ro = null;      // ResizeObserver → re-fit when the container resizes
     this._applySpeed();   // sets this.speed (needs _running to exist)
@@ -1563,7 +1565,8 @@ export class ProofAnimator {
     if (this.stacked === on) return;
     this._playId = null;
     this._paused = false;
-    this._setPlayLabel(false);
+    this._openPauseGate();   // unpark a gated play() loop so it can exit
+    this._syncPlayUI();
     // Invalidate any in-flight transition BEFORE cancelling: _cancel() stops the
     // animations, but the async goTo runner survives its awaits and would
     // otherwise settle by re-rendering its lines into the rebuilt stage (a
@@ -2502,8 +2505,11 @@ export class ProofAnimator {
     return this._token === token;
   }
 
-  // the one Play/Pause button — toggles its icon+label and starts/stops autoplay
-  _setPlayLabel(playing) {
+  // the one Play/Pause button — its icon+label are DERIVED from the actual
+  // playback state (autoplay loop active and not frozen), never set to a
+  // hardcoded value, so the button can't drift out of sync with reality.
+  _syncPlayUI() {
+    const playing = !!this._playId && !this._paused;
     const b = this.container.querySelector(".pa-play");
     if (!b) return;
     b.textContent = playing ? "⏸ Pause" : "▶ Play";
@@ -2512,22 +2518,32 @@ export class ProofAnimator {
     b.setAttribute("aria-label", tip);
   }
   _togglePlay() {
-    if (this._paused) return this._resume();                          // frozen → resume
-    if (this._playId || this._running.length) return this._pause();   // animating/autoplaying → freeze
-    return this.play();                                               // idle → start autoplay
+    if (this._paused) return this._resume();   // frozen → resume
+    if (this._playId) return this._pause();    // autoplaying → freeze
+    return this.play();                        // idle → start autoplay
   }
 
-  // Freeze whatever is mid-interpolation: pause the in-flight WAAPI animations
-  // (their `finished` stays pending, so goTo/play stall here until resumed).
+  // Release the gate the play() loop parks on while paused (no-op when open).
+  _openPauseGate() {
+    if (this._pauseOpen) { this._pauseOpen(); this._pauseOpen = null; }
+    this._pauseGate = null;
+  }
+
+  // Freeze autoplay wherever it is: pause the in-flight WAAPI animations
+  // (their `finished` stays pending, so a mid-morph goTo stalls until resumed)
+  // AND close the gate the play() loop checks between steps — so a pause taken
+  // during the reading gap holds there instead of advancing one more step.
   _pause() {
     this._paused = true;
+    this._pauseGate = new Promise((r) => (this._pauseOpen = r));
     for (const a of this._running) { try { a.pause(); } catch (e) {} }
-    this._setPlayLabel(false);
+    this._syncPlayUI();
   }
   _resume() {
     this._paused = false;
+    this._openPauseGate();
     for (const a of this._running) { try { a.play(); } catch (e) {} }
-    this._setPlayLabel(true);
+    this._syncPlayUI();
   }
 
   // a user-initiated jump: cancels any running play()/pause so autoplay never
@@ -2535,26 +2551,33 @@ export class ProofAnimator {
   _userGoTo(target) {
     this._playId = null;
     this._paused = false;
-    this._setPlayLabel(false);
+    this._openPauseGate();   // unpark a gated play() loop so it can exit
+    this._syncPlayUI();
     return this.goTo(target);
   }
 
   async play() {
-    const playId = (this._playId = {});   // user nav / pause clears _playId, ending this loop
-    this._setPlayLabel(true);
+    const playId = (this._playId = {});   // user nav clears _playId, ending this loop
+    this._paused = false;
+    this._openPauseGate();
+    this._syncPlayUI();
     try {
       // if we're already at the end, restart from the beginning
       if (this.current >= this.data.steps.length - 1) await this.goTo(0);
       for (let t = this.current + 1; t < this.data.steps.length; t++) {
-        if (this._playId !== playId) return;          // interrupted (user nav or pause)
+        // paused (mid-morph OR during the reading gap) → park until resumed
+        while (this._paused && this._playId === playId) await this._pauseGate;
+        if (this._playId !== playId) return;          // interrupted (user nav)
         await this.goTo(t);
         if (this._playId !== playId) return;
         // reading pause between steps (≈1s at 1×), scaled by the speed multiplier
         await new Promise((r) => setTimeout(r, this._baseStepPause / this.speed));
       }
+      // pause taken during the LAST reading gap: hold before declaring done
+      while (this._paused && this._playId === playId) await this._pauseGate;
     } finally {
       // only reset if we're still the active loop (not superseded by a newer play)
-      if (this._playId === playId) { this._playId = null; this._setPlayLabel(false); }
+      if (this._playId === playId) { this._playId = null; this._paused = false; this._syncPlayUI(); }
     }
   }
 
