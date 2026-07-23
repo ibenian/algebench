@@ -121,7 +121,12 @@ _NON_EXPR_KEYS = frozenset({
     # LaTeX display strings on semantic-graph nodes. Rendered via KaTeX,
     # never handed to compileExpr. Can contain math-looking values like
     # ``a = 1 + 2`` that would otherwise trip the discovery heuristic.
-    'subexpr',
+    'subexpr', 'latex',
+    # Semantic-graph edge endpoint (node id). The expression-bearing
+    # variant is ``fromExpr``, registered in _UNSCANNED_EXPR_KEYS.
+    'from',
+    # Prose fields on proofs and graph enrichment metadata.
+    'reasoning', 'techniqueHint',
 })
 
 # Regex that extracts {{...}} template expressions from content strings.
