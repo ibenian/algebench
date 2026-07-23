@@ -13,7 +13,8 @@
   "imports": {
     "/labels.js": "data:text/javascript,export function makeAiAskButton(){return document.createElement('span')}",
     "/expr.js": "data:text/javascript,const m=math.create(math.all);m.import({binomial:(n,k)=>m.combinations(n,k),erfc:x=>1-m.erf(x),beta:(a,b)=>m.gamma(a)*m.gamma(b)/m.gamma(a%2Bb),conjugate:x=>m.conj(x)});export function compileExpr(s){return m.compile(s)}export function evalExpr(c,t,opts){const scope=opts%26%26opts.extraScope?{...opts.extraScope}:{};return c.evaluate(scope)}",
-    "/proof-animation/dock-seq.js": "data:text/javascript,let n=0;export const nextDockSeq=()=>%2B%2Bn"
+    "/proof-animation/dock-seq.js": "data:text/javascript,let n=0;export const nextDockSeq=()=>%2B%2Bn",
+    "/graph-panel/term-resolve.js": "./term-resolve.js?v=1784774789"
   }
 }</script>
 <script>
@@ -1050,7 +1051,7 @@ svg.d3-semantic-graph {
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-07-23 02:20 UTC &middot; theme: default-dark &middot; 16 expressions</div>
+<div class="report-meta">Generated 2026-07-23 02:48 UTC &middot; theme: default-dark &middot; 16 expressions</div>
 <div class="section-title">Chemistry (16 expressions)</div>
 <div class="row">
   <div>
@@ -5189,8 +5190,8 @@ document.querySelectorAll('.row-copy-btn').forEach(btn => {
 })();
 
 Promise.all([
-  import('./d3-semantic-graph.js?v=1784773136'),
-  import('./sg-chart.js?v=1784773136'),
+  import('./d3-semantic-graph.js?v=1784774789'),
+  import('./sg-chart.js?v=1784774789'),
 ]).then(function(mods) {
   var D3SemanticGraphRenderer = mods[0].D3SemanticGraphRenderer;
   var SgChartManager = mods[1].SgChartManager;
@@ -5230,6 +5231,12 @@ Promise.all([
         console.error('D3 panel render error:', err);
       }
     });
+  });
+}).catch(function(err) {
+  console.error('D3/chart module load error — D3 buttons disabled:', err);
+  document.querySelectorAll('.row-toggle-d3').forEach(function(btn) {
+    btn.disabled = true;
+    btn.title = 'D3 module failed to load: ' + err.message;
   });
 });
 </script>
