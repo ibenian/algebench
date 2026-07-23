@@ -77,13 +77,15 @@ POLYNOMIAL_EXPRESSIONS: list[CatalogEntry] = [
      PASS,
      "a,c -> multiply; a,num -> multiply; b -> power; "
      "multiply,num -> multiply; multiply -> power; multiply -> negation; "
-     "negation,power -> add; add -> power; b,pm,power -> multiply; "
+     "negation,power -> add; add -> power; pm,power -> multiply; "
+     "b,multiply -> multiply; "
      "multiply -> negation; negation,power -> multiply; multiply,x -> rel:equals",
-     "a,c -> __multiply_11; __num_14,a -> __multiply_13; b -> __power_7; "
-     "__multiply_11,__num_10 -> __multiply_9; __multiply_13 -> __power_12; "
-     "__multiply_9 -> __negation_8; __negation_8,__power_7 -> __add_6; "
-     "__add_6 -> __power_5; __power_5,b,pm -> __multiply_4; "
-     "__multiply_4 -> __negation_3; __negation_3,__power_12 -> __multiply_2; "
+     "a,c -> __multiply_12; __num_15,a -> __multiply_14; b -> __power_8; "
+     "__multiply_12,__num_11 -> __multiply_10; __multiply_14 -> __power_13; "
+     "__multiply_10 -> __negation_9; __negation_9,__power_8 -> __add_7; "
+     "__add_7 -> __power_6; __power_6,pm -> __multiply_5; "
+     "__multiply_5,b -> __multiply_4; "
+     "__multiply_4 -> __negation_3; __negation_3,__power_13 -> __multiply_2; "
      "__multiply_2,x -> __equals_1",
      [{"op": "power", "exponent": "1/2"}, {"op": "power", "exponent": "-1"}]),
 
