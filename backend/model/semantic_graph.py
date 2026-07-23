@@ -67,7 +67,11 @@ class SemanticGraphNode(BaseModel):
 
     id: str = Field(min_length=1, max_length=80, pattern=_NO_HTML)
     type: NodeType
-    label: Optional[str] = Field(default=None, max_length=40, pattern=_NO_HTML)
+    # ``text`` nodes carry whole ``\text{…}`` sentences as their display
+    # label (the parser restores them post-parse), so the cap must fit a
+    # short sentence — 120 matches the spirit of ``latex``'s 200 while
+    # still bounding the field. ``_NO_HTML`` remains the injection guard.
+    label: Optional[str] = Field(default=None, max_length=120, pattern=_NO_HTML)
     # Cap is generous (not 1-2 chars) because Gemini occasionally returns a
     # word in this field by mistake (e.g. ``"ускорение"``). Better to accept
     # the value and strip it post-hoc than to fail the whole enrichment via

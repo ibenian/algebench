@@ -1159,21 +1159,22 @@
               "semanticGraph": {
                 "graph": {
                   "nodes": [
-                    {"id": "s0___multiply_1", "type": "operator", "op": "multiply", "subexpr": "\\nabla\\times(\\nabla\\times \\vec{E})", "description": "The curl of the curl of the electric field, $\\nabla\\times(\\nabla\\times \\vec{E})$, a key term in the electromagnetic wave equation."},
-                    {"id": "nabla", "type": "scalar", "emoji": "📐", "latex": "\\nabla", "subexpr": "\\nabla", "description": "The del operator, $\\nabla$, representing the gradient or curl in vector calculus.", "quantity": "del_operator", "dimension": "L⁻¹", "unit": "1/m"},
-                    {"id": "s0___multiply_2", "type": "operator", "op": "multiply", "subexpr": "\\nabla \\times \\vec{E}", "description": "The curl of the electric field, $\\nabla \\times \\vec{E}$, which by Faraday's law of induction relates to the changing magnetic field."},
-                    {"id": "E", "type": "vector", "emoji": "⚡", "latex": "\\vec{E}", "subexpr": "\\vec{E}", "description": "The electric field vector, $\\vec{E}$, a fundamental field that exerts a force on charged particles.", "quantity": "electric_field", "dimension": "M·L·T⁻³·I⁻¹", "unit": "V/m", "color": "cyan", "highlight": "E"},
-                    {"id": "s1___negation_1", "type": "operator", "op": "negation", "subexpr": "-\\frac{\\partial}{\\partial t}(\\nabla\\times \\vec{B})", "description": "The negative time derivative of the curl of the magnetic field."},
-                    {"id": "s1___multiply_3", "type": "operator", "op": "multiply", "subexpr": "\\nabla \\times \\vec{B}", "description": "The curl of the magnetic field, $\\nabla \\times \\vec{B}$, related to current and the changing electric field by the Ampère-Maxwell law."},
-                    {"id": "B", "type": "vector", "emoji": "🧲", "latex": "\\vec{B}", "subexpr": "\\vec{B}", "description": "The magnetic field vector, $\\vec{B}$, a fundamental field that exerts a force on moving charges.", "quantity": "magnetic_field", "dimension": "M·T⁻²·I⁻¹", "unit": "T", "color": "pink", "highlight": "B"},
-                    {"id": "t", "type": "scalar", "emoji": "⏳", "latex": "t", "subexpr": "t", "description": "Time, the independent variable with respect to which the fields change.", "quantity": "time", "dimension": "T", "unit": "s"},
-                    {"id": "s1___deriv_2", "type": "operator", "op": "partial_derivative", "with_respect_to": "t", "subexpr": "\\frac{\\partial \\nabla \\times \\vec{B}}{\\partial t}", "description": "The partial derivative with respect to time of the curl of the magnetic field."},
-                    {"id": "s2___negation_1", "type": "operator", "op": "negation", "subexpr": "-\\mu_0\\epsilon_0\\frac{\\partial^2\\vec{E}}{\\partial t^2}", "description": "The source term of the electromagnetic wave equation, involving the second time derivative of the electric field."},
-                    {"id": "s2___multiply_2", "type": "operator", "op": "multiply", "subexpr": "\\mu_{0} \\epsilon_{0} \\frac{\\partial^{2} \\vec{E}}{\\partial t^{2}}", "description": "The product of the permeability and permittivity of free space and the second time derivative of the electric field."},
-                    {"id": "mu_0", "type": "scalar", "emoji": "💨", "latex": "\\mu_{0}", "subexpr": "\\mu_{0}", "description": "The permeability of free space, $\\mu_{0}$, a universal constant relating magnetic fields to electric currents.", "quantity": "vacuum_permeability", "dimension": "M·L·T⁻²·I⁻²", "unit": "H/m", "role": "constant", "color": "orange", "highlight": "mu"},
-                    {"id": "epsilon_0", "type": "scalar", "emoji": "🌌", "latex": "\\epsilon_{0}", "subexpr": "\\epsilon_{0}", "description": "The permittivity of free space, $\\epsilon_{0}$, a universal constant representing the capability of a vacuum to permit electric field lines.", "quantity": "vacuum_permittivity", "dimension": "M⁻¹·L⁻³·T⁴·I²", "unit": "F/m", "role": "constant", "color": "yellow", "highlight": "eps"},
-                    {"id": "s2___deriv_3", "type": "operator", "op": "partial_derivative", "with_respect_to": "t", "subexpr": "\\frac{\\partial^{2} \\vec{E}}{\\partial t^{2}}", "description": "The second partial derivative of the electric field with respect to time, representing its acceleration."},
-                    {"id": "__equals_1", "type": "operator", "op": "equals", "subexpr": "\\nabla\\times(\\nabla\\times\\vec{E}) = -\\frac{\\partial}{\\partial t}(\\nabla\\times\\vec{B}) = -\\mu_0\\epsilon_0\\frac{\\partial^2\\vec{E}}{\\partial t^2}", "description": "An equation stating the relationship that forms the wave equation for the electric field $\\vec{E}$."}
+                    {"id": "s0___multiply_1", "type": "operator", "op": "multiply", "subexpr": "\\nabla\\times(\\nabla\\times \\vec{E})"},
+                    {"id": "nabla", "type": "scalar", "latex": "\\nabla", "subexpr": "\\nabla"},
+                    {"id": "s0___multiply_2", "type": "operator", "op": "multiply", "subexpr": "\\nabla \\times \\vec{E}"},
+                    {"id": "E", "type": "vector", "latex": "\\vec{E}", "subexpr": "\\vec{E}", "description": "Electric field", "color": "cyan", "highlight": "E"},
+                    {"id": "s1___negation_1", "type": "operator", "op": "negation", "subexpr": "-\\frac{\\partial}{\\partial t}(\\nabla\\times \\vec{B})"},
+                    {"id": "s1___multiply_3", "type": "operator", "op": "multiply", "subexpr": "\\nabla \\times \\vec{B}"},
+                    {"id": "B", "type": "vector", "latex": "\\vec{B}", "subexpr": "\\vec{B}", "description": "Magnetic field", "color": "pink", "highlight": "B"},
+                    {"id": "t", "type": "scalar", "latex": "t", "subexpr": "t"},
+                    {"id": "s1___deriv_2", "type": "operator", "op": "partial_derivative", "with_respect_to": "t", "subexpr": "\\frac{\\partial \\nabla \\times \\vec{B}}{\\partial t}"},
+                    {"id": "s2___negation_1", "type": "operator", "op": "negation", "subexpr": "-\\mu_0\\epsilon_0\\frac{\\partial^2\\vec{E}}{\\partial t^2}"},
+                    {"id": "s2___multiply_2", "type": "operator", "op": "multiply", "subexpr": "\\mu_{0} \\epsilon_{0} \\frac{\\partial^{2} \\vec{E}}{\\partial t^{2}}"},
+                    {"id": "mu_0", "type": "scalar", "latex": "\\mu_{0}", "subexpr": "\\mu_{0}", "description": "Permeability of free space", "color": "orange", "highlight": "mu"},
+                    {"id": "s2___multiply_3", "type": "operator", "op": "multiply", "subexpr": "\\epsilon_{0} \\frac{\\partial^{2} \\vec{E}}{\\partial t^{2}}"},
+                    {"id": "epsilon_0", "type": "scalar", "latex": "\\epsilon_{0}", "subexpr": "\\epsilon_{0}", "description": "Permittivity of free space", "color": "yellow", "highlight": "eps"},
+                    {"id": "s2___deriv_4", "type": "operator", "op": "partial_derivative", "with_respect_to": "t", "subexpr": "\\frac{\\partial^{2} \\vec{E}}{\\partial t^{2}}"},
+                    {"id": "__equals_1", "type": "operator", "op": "equals", "subexpr": "\\nabla\\times(\\nabla\\times\\vec{E}) = -\\frac{\\partial}{\\partial t}(\\nabla\\times\\vec{B}) = -\\mu_0\\epsilon_0\\frac{\\partial^2\\vec{E}}{\\partial t^2}"}
                   ],
                   "edges": [
                     {"from": "nabla", "to": "s0___multiply_1"},
@@ -1186,21 +1187,17 @@
                     {"from": "t", "to": "s1___deriv_2"},
                     {"from": "s1___deriv_2", "to": "s1___negation_1"},
                     {"from": "mu_0", "to": "s2___multiply_2"},
-                    {"from": "epsilon_0", "to": "s2___multiply_2"},
-                    {"from": "E", "to": "s2___deriv_3"},
-                    {"from": "t", "to": "s2___deriv_3"},
-                    {"from": "s2___deriv_3", "to": "s2___multiply_2"},
+                    {"from": "epsilon_0", "to": "s2___multiply_3"},
+                    {"from": "E", "to": "s2___deriv_4"},
+                    {"from": "t", "to": "s2___deriv_4"},
+                    {"from": "s2___deriv_4", "to": "s2___multiply_3"},
+                    {"from": "s2___multiply_3", "to": "s2___multiply_2"},
                     {"from": "s2___multiply_2", "to": "s2___negation_1"},
                     {"from": "s0___multiply_1", "to": "__equals_1"},
                     {"from": "s1___negation_1", "to": "__equals_1"},
                     {"from": "s2___negation_1", "to": "__equals_1"}
                   ],
-                  "classification": {"kind": "algebraic"},
-                  "domain": "electromagnetism",
-                  "enrichment": {
-                    "reasoning": "The context concerns Maxwell's equations and electromagnetic waves, so the domain is electromagnetism. Symbols like E, B, μ₀, and ε₀ are standard constants and fields in this domain.",
-                    "fields": ["domain", "nodes.s0___multiply_1.description", "nodes.nabla.description", "nodes.nabla.dimension", "nodes.nabla.emoji", "nodes.nabla.quantity", "nodes.nabla.unit", "nodes.s0___multiply_2.description", "nodes.E.description", "nodes.E.dimension", "nodes.E.emoji", "nodes.E.quantity", "nodes.E.unit", "nodes.s1___negation_1.description", "nodes.s1___multiply_3.description", "nodes.B.description", "nodes.B.dimension", "nodes.B.emoji", "nodes.B.quantity", "nodes.B.unit", "nodes.t.description", "nodes.t.dimension", "nodes.t.emoji", "nodes.t.quantity", "nodes.t.unit", "nodes.s1___deriv_2.description", "nodes.s2___negation_1.description", "nodes.s2___multiply_2.description", "nodes.mu_0.description", "nodes.mu_0.dimension", "nodes.mu_0.emoji", "nodes.mu_0.quantity", "nodes.mu_0.role", "nodes.mu_0.unit", "nodes.epsilon_0.description", "nodes.epsilon_0.dimension", "nodes.epsilon_0.emoji", "nodes.epsilon_0.quantity", "nodes.epsilon_0.role", "nodes.epsilon_0.unit", "nodes.s2___deriv_3.description", "nodes.__equals_1.description"]
-                  }
+                  "classification": {"kind": "algebraic"}
                 }
               }
             },
@@ -3124,7 +3121,21 @@
             "justification": "Electrons are bound in the metal; each metal has a characteristic minimum binding energy, typically a few eV.",
             "explanation": "Think of $\\varphi$ as the escape fee: an electron must pay it in full before it can leave. (1 eV $\\approx 1.6\\times10^{-19}$ J — the energy an electron gains crossing 1 volt.)",
             "prompt": "Define the work function in plain words — the escape fee — and anchor the eV scale: visible photons carry 2 to 3 eV, work functions are a few eV. The drama is that these two numbers are comparable.",
-            "sceneStep": 0
+            "sceneStep": 0,
+            "semanticGraph": {
+              "graph": {
+                "nodes": [
+                  {"id": "__equals_1", "type": "relation", "op": "equals", "subexpr": "\\varphi = \\text{minimum energy to free one electron from the metal}"},
+                  {"id": "varphi", "type": "scalar", "latex": "\\varphi", "subexpr": "\\varphi", "description": "The escape fee the metal charges an electron", "color": "red", "highlight": "phi"},
+                  {"id": "minimum_energy_to_free_one_electron_from_the_metal", "type": "text", "label": "minimum energy to free one electron from the metal", "latex": "\\text{minimum energy to free one electron from the metal}", "subexpr": "\\text{minimum energy to free one electron from the metal}"}
+                ],
+                "edges": [
+                  {"from": "varphi", "to": "__equals_1"},
+                  {"from": "minimum_energy_to_free_one_electron_from_the_metal", "to": "__equals_1"}
+                ],
+                "classification": {"kind": "algebraic"}
+              }
+            }
           },
           {
             "id": "all_or_nothing",
