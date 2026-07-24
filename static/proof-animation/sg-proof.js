@@ -543,7 +543,12 @@ export class SgProofManager {
 
     /** The expression element of a box, or null. */
     _termExpr(entry) {
-        return entry && entry.box ? entry.box.querySelector('.pa-stage > .pa-expr') : null;
+        if (!entry || !entry.box) return null;
+        // Stacked mode nests the expression per line — only the CURRENT line is
+        // live (history lines are frozen snapshots, and their duplicate data-n
+        // ids would make the term map ambiguous). Single mode: direct child.
+        return entry.box.querySelector('.pa-stage .pa-line-current > .pa-expr')
+            || entry.box.querySelector('.pa-stage > .pa-expr');
     }
 
     /** Resolve ONE term element's data-n to a scene-graph node id (cached by
