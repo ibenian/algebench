@@ -138,6 +138,45 @@ def jscode_to_mathjs(js_code: str) -> str:
 
 # ── LaTeX → mathjs full pipeline ──────────────────────────────────────
 
+def latex_to_sympy(latex: str) -> sympy.Basic:
+    """Parse LaTeX into a normalized SymPy expression.
+
+    The shared front half of :func:`latex_to_mathjs` — parse, relation →
+    LHS − RHS, constant substitution, ``doit()``, identifier sanitizing —
+    exposed so other CAS consumers (e.g. the expression-analysis expert)
+    see exactly the expression the chart pipeline would evaluate.
+
+    Raises
+    ------
+    ValueError:
+        If ``parse_latex`` cannot parse the input.
+    """
+    try:
+        expr = parse_latex(latex)
+    except Exception as exc:
+        raise ValueError(f"parse_latex failed: {exc}") from exc
+
+    # Auto-detect relations and build LHS − RHS.
+    if isinstance(expr, Rel):
+        expr = expr.lhs - expr.rhs
+
+    # Replace Symbol('e') → E, Symbol('pi') → π, etc.
+    expr = expr.subs(_SYMBOL_TO_CONSTANT)
+
+    # Normalize sub-expressions that ``parse_latex`` leaves in
+    # un-evaluated form (e.g. ``log(x, E)`` with two args instead of
+    # the canonical single-arg ``log(x)``).
+    expr = expr.doit()
+
+    # Sanitize primed symbols (u' → u_prime) so jscode emits valid
+    # JavaScript identifiers.
+    expr = _sanitize_primed_symbols(expr)
+
+    # Strip LaTeX subscript braces (x_{i} → x_i) so jscode emits
+    # valid JavaScript/mathjs identifiers.
+    return _sanitize_subscript_braces(expr)
+
+
 def latex_to_mathjs(latex: str) -> tuple[str, list[str]]:
     """Convert a LaTeX expression to a mathjs script string.
 
@@ -167,30 +206,7 @@ def latex_to_mathjs(latex: str) -> tuple[str, list[str]]:
       numeric constants ``E`` and ``pi`` before code generation so they
       don't appear as free variables.
     """
-    try:
-        expr = parse_latex(latex)
-    except Exception as exc:
-        raise ValueError(f"parse_latex failed: {exc}") from exc
-
-    # Auto-detect relations and build LHS − RHS.
-    if isinstance(expr, Rel):
-        expr = expr.lhs - expr.rhs
-
-    # Replace Symbol('e') → E, Symbol('pi') → π, etc.
-    expr = expr.subs(_SYMBOL_TO_CONSTANT)
-
-    # Normalize sub-expressions that ``parse_latex`` leaves in
-    # un-evaluated form (e.g. ``log(x, E)`` with two args instead of
-    # the canonical single-arg ``log(x)``).
-    expr = expr.doit()
-
-    # Sanitize primed symbols (u' → u_prime) so jscode emits valid
-    # JavaScript identifiers.
-    expr = _sanitize_primed_symbols(expr)
-
-    # Strip LaTeX subscript braces (x_{i} → x_i) so jscode emits
-    # valid JavaScript/mathjs identifiers.
-    expr = _sanitize_subscript_braces(expr)
+    expr = latex_to_sympy(latex)
 
     # Extract free variables (after substitution).
     variables = sorted(str(s) for s in expr.free_symbols)
