@@ -169,8 +169,12 @@
 }
 .pa-root .pa-line-pill:hover { border-color: var(--pa-accent); color: var(--pa-fg); }
 .pa-root .pa-line-pill:focus-visible { outline: 2px solid var(--pa-accent); outline-offset: 2px; }
-/* The current line's pill echoes the active step button in the control bar. */
-.pa-stacked .pa-line-current > .pa-line-pill {
+/* The current line's pill echoes the active step button in the control bar.
+   Keyed off its OWN class (pa-pill-active, toggled by _syncLines at each
+   settle) rather than .pa-line-current — that class must flip at transition
+   START (the accordion's layout math depends on it), but the pill's active
+   look should only move to the new line AFTER the morph completes. */
+.pa-stacked .pa-line-pill.pa-pill-active {
   background: var(--pa-active-bg, #7b82dd);
   color: var(--pa-active-fg);
   border-color: var(--pa-active-bg, #7b82dd);

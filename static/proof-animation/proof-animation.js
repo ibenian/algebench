@@ -122,12 +122,19 @@ export class ProofAnimator {
     this._askBtnFadeTimer = null;
     this._askBtnRelocateTimer = null;   // intent-delay before moving the button to a new term
     this._askBtnRelocateEl = null;
+    // Step-ask chip (stacked mode): hovering a line's step pill fades in the same
+    // sparkle chip as the term ask, but asking about that STEP (any line, not
+    // just the current one). Built only when an ask factory exists (see _build).
+    this._stepAskBtnEl = null;
+    this._stepAskIdx = null;        // the step the visible chip would ask about
+    this._stepAskHideTimer = null;
+    this._stepAskFadeTimer = null;
     // Standalone/embedded term-ask has no host chat factory, but we still want the
     // per-step ask buttons — render engine-native ones that route via _routeAsk
     // (embedded → new tab + auto-ask; standalone → clipboard). The app path keeps
     // its own factory (opts.aiAskButton), which asks chat directly.
     if (!this._aiAsk && this._enableTermAsk) {
-      this._aiAsk = (cls, title, getMessage) => this._makeRoutedAskButton(cls, title, getMessage);
+      this._aiAsk = (cls, title, getMessage, getIdx) => this._makeRoutedAskButton(cls, title, getMessage, getIdx);
     }
     // Optional "Derive this step" integration: a button factory (className,
     // title, onClick) → <button> plus an onDerive(payload, anchorEl) handler the
@@ -521,7 +528,9 @@ export class ProofAnimator {
     if (this._askBtnRelocateTimer) { clearTimeout(this._askBtnRelocateTimer); this._askBtnRelocateTimer = null; }
     // Remove the body-appended popups/buttons this widget created (else they leak
     // when a proof box is torn down and recreated in the app).
-    for (const k of ["_termTip", "_mathTip", "_goalPop", "_explorePop", "_termAskBtnEl"]) {
+    if (this._stepAskHideTimer) { clearTimeout(this._stepAskHideTimer); this._stepAskHideTimer = null; }
+    if (this._stepAskFadeTimer) { clearTimeout(this._stepAskFadeTimer); this._stepAskFadeTimer = null; }
+    for (const k of ["_termTip", "_mathTip", "_goalPop", "_explorePop", "_termAskBtnEl", "_stepAskBtnEl"]) {
       const el = this[k];
       if (el && el.parentNode) el.parentNode.removeChild(el);
       this[k] = null;
@@ -895,6 +904,77 @@ export class ProofAnimator {
     }, 200);
   }
 
+  // ── Step-ask chip (stacked pills) ──────────────────────────────────────────
+  // Hovering a step pill fades in the same sparkle chip as the term ask, asking
+  // about THAT step (any line — not just the current one). One reusable button
+  // on document.body (fixed), created through the ask factory so the click
+  // routes exactly like the meta "Ask AI about this step" button: in-app → chat,
+  // embedded → new tab + auto-ask, standalone → clipboard.
+  _buildStepAskButton() {
+    if (!this._aiAsk || this._stepAskBtnEl) return;
+    const btn = this._aiAsk("pa-term-ask-btn pa-step-ask-btn", "Ask AI about this step",
+      () => (this._stepAskIdx == null ? null : this._askStepMessage(this._stepAskIdx)),
+      () => (this._stepAskIdx == null ? this.current : this._stepAskIdx));
+    btn.style.position = "fixed";
+    btn.style.opacity = "0";
+    btn.style.pointerEvents = "none";
+    btn.tabIndex = -1;                       // invisible → out of the tab order
+    btn.setAttribute("aria-hidden", "true");
+    btn.addEventListener("mouseenter", () => {
+      if (this._stepAskHideTimer) { clearTimeout(this._stepAskHideTimer); this._stepAskHideTimer = null; }
+    });
+    btn.addEventListener("mouseleave", () => this._scheduleHideStepAskBtn());
+    btn.addEventListener("click", () => this._hideStepAskBtn());   // after the factory's ask fires
+    document.body.appendChild(btn);
+    this._stepAskBtnEl = btn;
+  }
+
+  // Fade the chip in at the pill's top-right corner (superscript-badge pose,
+  // mirroring the term chip) — the short up-right move to reach it never crosses
+  // another pill, so the chip doesn't relocate out from under the cursor.
+  _showStepAskBtn(pill, idx) {
+    const btn = this._stepAskBtnEl;
+    if (!btn) return;
+    if (this._stepAskHideTimer) { clearTimeout(this._stepAskHideTimer); this._stepAskHideTimer = null; }
+    this._stepAskIdx = idx;
+    const r = pill.getBoundingClientRect();
+    const bw = btn.offsetWidth || 22;
+    const bh = btn.offsetHeight || 22;
+    let left = r.right - bw / 3;
+    let top = r.top - bh * (2 / 3);
+    if (top < 4) top = r.bottom - bh / 3;    // flip below when no room above
+    left = Math.max(4, Math.min(left, window.innerWidth - bw - 4));
+    top = Math.max(4, Math.min(top, window.innerHeight - bh - 4));
+    btn.style.left = `${Math.round(left)}px`;
+    btn.style.top = `${Math.round(top)}px`;
+    btn.style.opacity = "1";
+    btn.style.pointerEvents = "auto";
+    btn.tabIndex = 0;
+    btn.removeAttribute("aria-hidden");
+  }
+
+  // Grace period long enough to travel from the pill onto the chip (its
+  // mouseenter cancels the timer) — same rhythm as the term chip.
+  _scheduleHideStepAskBtn() {
+    if (!this._stepAskBtnEl) return;
+    if (this._stepAskHideTimer) clearTimeout(this._stepAskHideTimer);
+    this._stepAskHideTimer = setTimeout(() => this._hideStepAskBtn(), 600);
+  }
+
+  _hideStepAskBtn() {
+    if (this._stepAskHideTimer) { clearTimeout(this._stepAskHideTimer); this._stepAskHideTimer = null; }
+    const btn = this._stepAskBtnEl;
+    if (!btn) return;
+    btn.style.opacity = "0";
+    btn.tabIndex = -1;
+    btn.setAttribute("aria-hidden", "true");
+    // Stay clickable through the fade; disable only once actually invisible.
+    if (this._stepAskFadeTimer) clearTimeout(this._stepAskFadeTimer);
+    this._stepAskFadeTimer = setTimeout(() => {
+      if (btn.style.opacity === "0") btn.style.pointerEvents = "none";
+    }, 200);
+  }
+
   // Resolve the deeplink for an ask: a step's own override, else the proof-level
   // one. Empty when neither is present (the route then falls back).
   _stepDeeplink(idx) {
@@ -1028,7 +1108,7 @@ export class ProofAnimator {
 
   // Engine-native ask button (used only when the app supplies no aiAskButton
   // factory but term-ask is on). Routes via _routeAsk instead of asking chat.
-  _makeRoutedAskButton(className, title, getMessage) {
+  _makeRoutedAskButton(className, title, getMessage, getIdx) {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = className;
@@ -1038,7 +1118,9 @@ export class ProofAnimator {
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
       const message = getMessage();
-      if (message) this._routeAsk(message, this._stepDeeplink(this.current));
+      // getIdx lets a caller pin the deeplink to a specific step (the step-ask
+      // chip on a history pill); default is the current step.
+      if (message) this._routeAsk(message, this._stepDeeplink(getIdx ? getIdx() : this.current));
     });
     return btn;
   }
@@ -1159,6 +1241,7 @@ export class ProofAnimator {
     this._renderGoal();
     this._renderExplore();
     this._buildTermAskButton();
+    this._buildStepAskButton();
   }
 
   // Model-produced framing, shown top-left (mirrors the grounding-rank pill
@@ -1373,6 +1456,7 @@ export class ProofAnimator {
     if (this._termTip) this._termTip.style.display = "none";
     if (this._mathTip) this._mathTip.style.opacity = "0";
     this._hideTermAskBtn();
+    this._hideStepAskBtn();
     if (this._explorePop) {
       this._explorePop.style.display = "none";
       this._explorePinned = false;
@@ -1512,6 +1596,12 @@ export class ProofAnimator {
     pill.textContent = String(i);
     this._attachMathTip(pill, this._opText(i));
     pill.addEventListener("click", () => this._userGoTo(i));
+    // Step-ask chip: fades in beside the hovered pill (no-ops when no ask
+    // factory — _stepAskBtnEl stays null).
+    pill.addEventListener("mouseenter", () => this._showStepAskBtn(pill, i));
+    pill.addEventListener("mouseleave", () => this._scheduleHideStepAskBtn());
+    pill.addEventListener("focus", () => this._showStepAskBtn(pill, i));
+    pill.addEventListener("blur", () => this._scheduleHideStepAskBtn());
     line.insertBefore(pill, line.firstChild);
   }
 
@@ -1540,6 +1630,12 @@ export class ProofAnimator {
       }
     }
     this._markCurrentLine();
+    // Pill ACTIVE styling moves only at settle (here) — _markCurrentLine runs at
+    // transition START for layout, but the pill's highlight follows the anim.
+    [...linesEl.children].forEach((el, i) => {
+      const pill = el.querySelector(".pa-line-pill");
+      if (pill) pill.classList.toggle("pa-pill-active", i === this.current);
+    });
     // A rebuilt line discards the pill the math tooltip was anchored to — its
     // mouseleave can never fire, so the tip would stick open. Hide it here.
     if (this._mathTipFor && !this._mathTipFor.isConnected) this._hideMathTip();
@@ -2331,6 +2427,7 @@ export class ProofAnimator {
     const token = (this._token = {});
     const seq = this.mode === "sequential";
     this._cancel();
+    this._hideStepAskBtn();   // lines are about to reflow under the chip
     // Reconcile to the resting invariant [0, prev] (self-heals an interrupted run).
     this._syncLines(prev + 1);
     this.current = target;
@@ -2347,6 +2444,16 @@ export class ProofAnimator {
     if (done && this.stacked) {   // mode may have flipped mid-run (belt & braces)
       this._running = [];
       this._syncLines(target + 1);   // pristine settle (drops leftover morph styles)
+      // The new current line's pill arrives AFTER the morph: hidden through the
+      // flight (see _stackedAdvance's onSetup), it fades in here — in the same
+      // synchronous turn as the settle re-render, so no visible pop between.
+      // fill:backwards self-releases (no held style). Advance only — on retreat
+      // the target pill already existed and was visible; fading it would blink.
+      if (target > prev) {
+        const pill = this._lineAt(target) && this._lineAt(target).querySelector(".pa-line-pill");
+        if (pill) this._tween(pill, [{ opacity: 0 }, { opacity: 1 }],
+          { duration: this._baseDuration * 0.5, easing: EASE, fill: "backwards" });
+      }
       this._scrollToCurrent(false);
       this._capOverflow();
       if (metaFinish) metaFinish();
@@ -2428,12 +2535,11 @@ export class ProofAnimator {
       onSetup: () => {
         targetLine.style.visibility = "";
         // The line is revealed by a visibility flip (its glyphs are posed by the
-        // flight), which would POP the step pill in — fade it in with the flight
-        // instead. fill:backwards self-releases (no held style to clean up); an
-        // interrupt just leaves it finishing toward its natural opacity.
+        // flight) — keep the step pill HIDDEN through the flight; it fades in at
+        // the settle, after the morph completes (see _stackedGoTo). An interrupt
+        // marks the line dirty, so the reconcile re-renders a visible pill.
         const pill = targetLine.querySelector(".pa-line-pill");
-        if (pill) this._tween(pill, [{ opacity: 0 }, { opacity: 1 }],
-          { duration: this._baseDuration, easing: EASE, fill: "backwards" });
+        if (pill) pill.style.opacity = "0";
       },
     });
   }
@@ -2887,7 +2993,12 @@ export class ProofAnimator {
 
   // Chat message for the "ask about the current step" button.
   _askCurrentMessage() {
-    const i = this.current;
+    return this._askStepMessage(this.current);
+  }
+
+  // Chat message asking about step `i` — the meta "Ask AI about this step"
+  // button (i = current) and the stacked step-pill chip (any line) share it.
+  _askStepMessage(i) {
     const s = this.data.steps[i];
     let msg = `I'm looking at step ${i} of the derivation`
       + (this.data.title ? ` "${this.data.title}"` : "") + `:\n$$${this._stepExpr(i)}$$`;
