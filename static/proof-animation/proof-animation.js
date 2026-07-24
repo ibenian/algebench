@@ -329,7 +329,11 @@ export class ProofAnimator {
     // scale applies to every step (computed from the widest/tallest), so there is
     // no per-step zoom jump.
     const PAD = 8;
-    const availW = Math.max(40, this.stage.clientWidth - 2 * PAD);
+    // Stacked lines carry a step pill in a left gutter — reserve it, or the
+    // widest line (pill + gap + expression, centred) overflows the column and
+    // the expand tween's overflow:hidden clips the pill's left edge.
+    const gutter = this.stacked ? this._lineGutterW() : 0;
+    const availW = Math.max(40, this.stage.clientWidth - 2 * PAD - gutter);
     let scale = Math.min(1, availW / w);
     if (this._fitHeight) {
       // Container mode: the stage fills a FIXED height (flex remaining after the
@@ -394,13 +398,23 @@ export class ProofAnimator {
     }
   }
 
+  // Width of the stacked line's left gutter (step pill + pill↔expression gap),
+  // read from the CSS vars so the reserve always matches what CSS lays out.
+  _lineGutterW() {
+    const cs = getComputedStyle(this.container);
+    const pill = parseFloat(cs.getPropertyValue("--pa-pill-w")) || 26;
+    const gap = parseFloat(cs.getPropertyValue("--pa-pill-gap")) || 16;
+    return pill + gap;
+  }
+
   // Stacked variant of the overflow cap: check EVERY visible line and shrink
   // the shared stage font so the widest one fits. Height never needs capping —
   // report mode grows, fitHeight mode scrolls.
   _capOverflowStacked() {
     if (!this._linesEl) return;
     const PAD = 8;
-    const availW = Math.max(40, this.stage.clientWidth - 2 * PAD);
+    // Same gutter reserve as _fit() — the line is pill + gap + expression.
+    const availW = Math.max(40, this.stage.clientWidth - 2 * PAD - this._lineGutterW());
     let ratio = 1, maxW = 0;
     for (const line of this._linesEl.children) {
       const k = line.querySelector(".katex-display") || line.querySelector(".katex");
@@ -1149,6 +1163,9 @@ export class ProofAnimator {
     const dock = this.container.querySelector(".pa-goal-dock");
     if (!pill) return;
     const goal = (this.data && this.data.goal || "").trim();
+    // Stacked mode is top-anchored, so the first line would slide under the
+    // corner pill — pa-has-goal lets CSS reserve headroom only when it exists.
+    this.container.classList.toggle("pa-has-goal", !!goal);
     if (!goal) { pill.hidden = true; if (dock) dock.hidden = true; return; }
     this._goalText = goal;
     this._goalDocked = false;
@@ -1477,6 +1494,17 @@ export class ProofAnimator {
     line.style.display = "";
     line.style.fontSize = "";   // promote/demote overrides — resting size is CSS-owned
     this._renderInto(line, this.data.steps[i].latex);
+    // Step pill in the line's left gutter: click jumps to that step, hover shows
+    // the KaTeX-rendered operation (same tip as the control-bar step buttons).
+    // Lives OUTSIDE .pa-expr, so the morph collectors (scoped to .katex-html)
+    // never sweep it into a flight.
+    const pill = document.createElement("button");
+    pill.type = "button";
+    pill.className = "pa-line-pill";
+    pill.textContent = String(i);
+    this._attachMathTip(pill, this._opText(i));
+    pill.addEventListener("click", () => this._userGoTo(i));
+    line.insertBefore(pill, line.firstChild);
   }
 
   // Reconcile the line set to steps [0, count): remove extras, add missing,
@@ -1504,6 +1532,9 @@ export class ProofAnimator {
       }
     }
     this._markCurrentLine();
+    // A rebuilt line discards the pill the math tooltip was anchored to — its
+    // mouseleave can never fire, so the tip would stick open. Hide it here.
+    if (this._mathTipFor && !this._mathTipFor.isConnected) this._hideMathTip();
     return linesEl;
   }
 
@@ -2669,6 +2700,7 @@ export class ProofAnimator {
   _showMathTip(el) {
     const text = el && el._mathTipText;
     if (!text) return;
+    this._mathTipFor = el;   // anchor — so a re-render that discards it can hide the tip
     let tip = this._mathTip;
     if (!tip) {
       tip = document.createElement("div");
@@ -2692,6 +2724,7 @@ export class ProofAnimator {
   }
 
   _hideMathTip() {
+    this._mathTipFor = null;
     if (this._mathTip) this._mathTip.style.opacity = "0";   // fade out
   }
 
