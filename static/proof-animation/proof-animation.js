@@ -920,6 +920,10 @@ export class ProofAnimator {
     btn.style.pointerEvents = "none";
     btn.tabIndex = -1;                       // invisible → out of the tab order
     btn.setAttribute("aria-hidden", "true");
+    // Above the tooltips (term tip z 10000, same as the term chip) — hovering a
+    // pill raises its math tooltip at the same time, so without this the chip
+    // could paint underneath it.
+    btn.style.zIndex = "10001";
     btn.addEventListener("mouseenter", () => {
       if (this._stepAskHideTimer) { clearTimeout(this._stepAskHideTimer); this._stepAskHideTimer = null; }
     });
