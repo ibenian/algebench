@@ -754,6 +754,14 @@ export class ProofAnimator {
   _applyAskClasses() {
     const expr = this._exprEl();
     if (!expr) return;
+    // Stacked history lines are frozen snapshots — the outgoing current line
+    // keeps whatever pa-term-ask classes it carried. Sweep them off every line
+    // but the current one, so the selection only ever shows on the active step.
+    if (this.stacked && this._linesEl) {
+      for (const node of this._linesEl.querySelectorAll(".pa-term-ask")) {
+        if (!expr.contains(node)) node.classList.remove("pa-term-ask");
+      }
+    }
     const keys = new Set(this._askSel.map((s) => s.key));
     for (const node of expr.querySelectorAll("[data-n]")) {
       const k = this._apprKey(node.textContent || "");
@@ -2417,7 +2425,16 @@ export class ProofAnimator {
     const from = this._morphSnapshot(this._lineAt(prev));
     return this._morphFlight(from, targetLine, {
       token, seq, ghostHost: this.stage, deleteGhosts: false,
-      onSetup: () => { targetLine.style.visibility = ""; },
+      onSetup: () => {
+        targetLine.style.visibility = "";
+        // The line is revealed by a visibility flip (its glyphs are posed by the
+        // flight), which would POP the step pill in — fade it in with the flight
+        // instead. fill:backwards self-releases (no held style to clean up); an
+        // interrupt just leaves it finishing toward its natural opacity.
+        const pill = targetLine.querySelector(".pa-line-pill");
+        if (pill) this._tween(pill, [{ opacity: 0 }, { opacity: 1 }],
+          { duration: this._baseDuration, easing: EASE, fill: "backwards" });
+      },
     });
   }
 

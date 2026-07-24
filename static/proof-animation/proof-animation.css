@@ -183,7 +183,7 @@
   /* Left-gutter geometry (pill width + pill↔expression padding). _fit() and
      _capOverflowStacked() read these to reserve the gutter when sizing the
      expression — keep them vars so JS and CSS agree on one number. */
-  --pa-pill-w: 26px; --pa-pill-gap: 16px;
+  --pa-pill-w: 30px; --pa-pill-gap: 16px;   /* wide enough for 2-digit steps without resizing */
 }
 .pa-stacked .pa-line {
   font-size: calc(1em * var(--pa-hist-scale));
@@ -267,6 +267,16 @@
     drop-shadow(0 0 6px var(--pa-term-gold, rgba(255, 200, 70, 0.95)))
     drop-shadow(0 0 13px var(--pa-term-gold-soft, rgba(255, 185, 40, 0.75)));
 }
+/* Stacked history lines are frozen snapshots — an advance leaves the outgoing
+   line's DOM (and whatever glow classes it carried as the current line) intact.
+   Selection/hover glow belongs to the CURRENT line only, so suppress the paint
+   on every other line regardless of which owner (engine ask / in-app host) set
+   the class. The classes themselves are reconciled on the current line at each
+   settle (_applyAskClasses / the host's _refreshTermClasses). */
+.pa-live-terms .pa-stacked .pa-line:not(.pa-line-current) .pa-term-ask,
+.pa-live-terms .pa-stacked .pa-line:not(.pa-line-current) .pa-term-selected,
+.pa-live-terms .pa-stacked .pa-line:not(.pa-line-current) .pa-term-hot,
+.pa-live-terms .pa-stacked .pa-line:not(.pa-line-current) .pa-term-linked { filter: none; }
 /* The AI "Ask" button that FADES IN next to the hovered term — mirrors the
    semantic-graph node ask button. Lives on document.body (position:fixed, set
    inline), so a docked box's overflow never clips it; visibility is driven by the
