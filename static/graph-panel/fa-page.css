@@ -68,6 +68,12 @@
 .fa-back { font-size: 15px; padding: 2px 12px; }
 .fa-json-btn { margin-left: auto; display: inline-flex; align-items: center; padding: 3px 8px; }
 .fa-json-btn svg { display: block; }
+.fa-delete-btn { display: inline-flex; align-items: center; padding: 3px 8px; }
+.fa-delete-btn svg { display: block; }
+.fa-delete-btn:hover { color: #ef9a9a; border-color: #ef5350; background: rgba(239, 83, 80, 0.1); }
+/* When the JSON button is absent (loading/error), the delete button is the
+   one that must push to the right edge. */
+.fa-header > .fa-delete-btn:nth-child(4) { margin-left: auto; }
 .fa-json-btn.open { background: rgba(66, 165, 245, 0.15); color: #dde6ff; }
 
 /* ── status / error ── */
@@ -102,11 +108,55 @@
     margin: 2px 0 8px;
     min-height: 16px;
 }
+.fa-expr-btn { margin-left: auto; font-family: Georgia, serif; font-style: italic; }
+.fa-expr-btn.open { background: rgba(66, 165, 245, 0.15); color: #dde6ff; border-color: #42a5f5; }
+
+/* what each curve plots: colour swatch, label, LaTeX, evaluated script */
+.fa-expr-panel { display: none; margin-top: 10px; }
+.fa-expr-panel.open { display: block; }
+.fa-expr-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 0;
+    border-top: 1px solid rgba(110, 124, 180, 0.12);
+    font-size: 12.5px;
+}
+.fa-expr-row:first-child { border-top: none; }
+.fa-expr-swatch { width: 10px; height: 3px; border-radius: 2px; flex-shrink: 0; }
+.fa-expr-swatch-ann { background: rgba(239, 83, 80, 0.75); height: 0; border-top: 2px dashed rgba(239, 83, 80, 0.75); }
+.fa-expr-label { color: #8fa8c8; min-width: 92px; }
+.fa-expr-math { color: #dde6ff; }
+.fa-expr-code {
+    margin-left: auto;
+    font: 11.5px ui-monospace, Menlo, monospace;
+    color: #7e8aa3;
+    background: rgba(110, 124, 180, 0.1);
+    border-radius: 4px;
+    padding: 1px 7px;
+    max-width: 48%;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+
 .fa-ann-legend { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
 .fa-ann-chip { font-size: 11px; border-style: dashed; }
 .fa-ann-chip.off { opacity: 0.4; text-decoration: line-through; }
 .fa-canvas-wrap { position: relative; height: 320px; }
 .fa-canvas-wrap canvas { width: 100% !important; height: 100% !important; }
+
+/* KaTeX layer for annotation labels (canvas text can't render math) */
+.fa-chart-labels { position: absolute; inset: 0; pointer-events: none; }
+.fa-chart-label {
+    position: absolute;
+    font-size: 11px;
+    line-height: 1.2;
+    color: #ef9a9a;
+    white-space: nowrap;
+    text-shadow: 0 0 4px #0a0c1a, 0 0 4px #0a0c1a;
+}
+.fa-chart-label.band { color: #8fa8c8; }
+.fa-chart-label .katex { font-size: 1em; }
 
 /* ── sliders ── */
 .fa-sliders { display: flex; gap: 22px; flex-wrap: wrap; margin-top: 10px; }

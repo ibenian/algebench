@@ -104,7 +104,7 @@ function _getMathNamesAndValues() {
     return { names, vals };
 }
 
-function _buildScope(extras) {
+function _buildScope(extras, overrides) {
     const scope = {
         ..._MATH_SCOPE, ..._EXPR_HELPERS,
         ...state._activeDomainFunctions,
@@ -112,7 +112,12 @@ function _buildScope(extras) {
         ...extras,
     };
     for (const [id, s] of Object.entries(state.sceneSliders)) scope[id] = s ? s.value : 0;
-    return scope;
+    // ``overrides`` beat the scene sliders. Needed whenever the caller owns
+    // the binding outright — e.g. a Function Analysis chart sweeping ``R``
+    // over its own range in a scene that also has a slider named ``R`` (11
+    // scenes do). ``extras`` deliberately still lose to sliders, preserving
+    // the long-standing behaviour of scenes with a ``t`` slider.
+    return overrides ? { ...scope, ...overrides } : scope;
 }
 
 function _loadDomainScript(name) {
@@ -318,13 +323,17 @@ export function evalExpr(compiled, t, opts = {}) {
     const useVirtualTime = opts.useVirtualTime !== false;
     const evalT = useVirtualTime ? resolveVirtualAnimTime(t) : t;
     const extraScope = (opts && typeof opts.extraScope === 'object' && opts.extraScope) ? opts.extraScope : null;
+    // Bindings the caller owns outright — these beat scene sliders of the
+    // same name (see _buildScope).
+    const overrideScope = (opts && typeof opts.overrideScope === 'object' && opts.overrideScope)
+        ? opts.overrideScope : null;
     const prevFrame = state._activeExprEvalFrame;
     state._activeExprEvalFrame = { t: evalT, extraScope };
     try {
         if (compiled && compiled._isFallback) {
-            return compiled(_buildScope({ t: evalT, ...(extraScope || {}) }));
+            return compiled(_buildScope({ t: evalT, ...(extraScope || {}) }, overrideScope));
         }
-        return compiled.evaluate(_buildScope({ t: evalT, ...(extraScope || {}) }));
+        return compiled.evaluate(_buildScope({ t: evalT, ...(extraScope || {}) }, overrideScope));
     } finally {
         state._activeExprEvalFrame = prevFrame;
     }

@@ -1417,6 +1417,7 @@ export class D3SemanticGraphRenderer {
                 event.stopPropagation();
                 if (self.onChartClick) self.onChartClick(d.data.id, d.data, this);
             });
+        g.append('title').text('Plot this expression');
         g.append('rect')
             .attr('x', 0).attr('y', 0)
             .attr('width', sz).attr('height', sz)
@@ -1457,17 +1458,21 @@ export class D3SemanticGraphRenderer {
             .attr('fill', '#1a2440')
             .attr('stroke', '#ffa726')
             .attr('stroke-width', 1);
-        // Mirrors icons.js FUNCTION_ANALYSIS_ICON (curve + peak dot), scaled
-        // to the 14px button box.
-        g.append('path')
-            .attr('d', 'M2,11.7 C4,3.2 6,3.2 7.3,7 C8.7,10.8 10.2,10.2 12.2,4.7')
+        // Axes + a curve settling toward the horizontal — the same idea as
+        // icons.js FUNCTION_ANALYSIS_ICON, but the dashed asymptote is
+        // dropped: at 14px it reads as specks rather than a line.
+        g.append('path')                                   // axes (L)
+            .attr('d', 'M3.5,2.8 V10.5 H11.5')
             .attr('fill', 'none')
             .attr('stroke', '#ffa726')
-            .attr('stroke-width', 1.3)
-            .attr('stroke-linecap', 'round');
-        g.append('circle')
-            .attr('cx', 4.7).attr('cy', 5).attr('r', 1.2)
-            .attr('fill', '#ffa726');
+            .attr('stroke-width', 1.2)
+            .attr('stroke-linecap', 'square');
+        g.append('path')                                   // decaying curve
+            .attr('d', 'M5.2,4 C5.9,8 7.2,9 10.6,9.2')
+            .attr('fill', 'none')
+            .attr('stroke', '#ffa726')
+            .attr('stroke-width', 1.2)
+            .attr('stroke-linecap', 'butt');
         return g;
     }
 

@@ -18,7 +18,7 @@
 
 import { invokeExpert } from '/expert-client.js';
 import { compileExpr, evalExpr } from '/expr.js';
-import { AI_ICON, BRACES_ICON } from '/icons.js';
+import { AI_ICON, BRACES_ICON, TRASH_ICON } from '/icons.js';
 import { makeAiAskButton, renderKaTeX } from '/labels.js';
 import { loadChartJs } from '/graph-panel/sg-chart.js';
 
@@ -127,6 +127,7 @@ export class FunctionAnalysisManager {
             context: String(this.buildContext(artifact.step) || '').slice(0, 2000),
         };
         const key = _cacheKey(payload);
+        artifact.cacheKey = key;      // so delete can evict it (see remove)
         try {
             let data = _FA_CACHE.get(key);
             if (!data) {
@@ -160,13 +161,16 @@ export class FunctionAnalysisManager {
         this._run(artifact);
     }
 
-    /** Remove an artifact from its step (and close the page if it's showing). */
+    /** Delete an artifact: drop it from its step, evict its cached response
+     *  (so re-triggering the same node genuinely re-analyzes), and close
+     *  the page if it is the one showing. */
     remove(artifact) {
         const list = this._byStep.get(artifact.step);
         if (Array.isArray(list)) {
             const i = list.indexOf(artifact);
             if (i >= 0) list.splice(i, 1);
         }
+        if (artifact.cacheKey) _FA_CACHE.delete(artifact.cacheKey);
         if (this.activeArtifact === artifact) this.close();
         this.onArtifactsChanged(artifact.step);
     }
@@ -303,6 +307,15 @@ export class FunctionAnalysisManager {
             });
             head.appendChild(jsonBtn);
         }
+
+        // Discard: drops the artifact from the step + tree and evicts its
+        // cached response, so re-running the node is a genuine re-analysis.
+        const del = document.createElement('button');
+        del.className = 'fa-btn fa-delete-btn';
+        del.title = 'Delete this analysis';
+        del.innerHTML = TRASH_ICON;
+        del.addEventListener('click', () => this.remove(artifact));
+        head.appendChild(del);
         return head;
     }
 
@@ -370,10 +383,24 @@ export class FunctionAnalysisManager {
         legend.className = 'fa-ann-legend';
         const canvasWrap = document.createElement('div');
         canvasWrap.className = 'fa-canvas-wrap';
+        const exprPanel = document.createElement('div');
+        exprPanel.className = 'fa-expr-panel';
         const sliders = document.createElement('div');
         sliders.className = 'fa-sliders';
 
-        card.append(tabs, rationale, legend, canvasWrap, sliders);
+        // Toggle revealing exactly what each curve plots — the LaTeX and the
+        // CAS-generated script actually evaluated (LM proposes expressions;
+        // SymPy writes the code).
+        const exprBtn = document.createElement('button');
+        exprBtn.className = 'fa-btn fa-expr-btn';
+        exprBtn.title = 'Show the expressions plotted in this chart';
+        exprBtn.textContent = 'ƒ(x)';
+        exprBtn.addEventListener('click', () => {
+            exprPanel.classList.toggle('open');
+            exprBtn.classList.toggle('open');
+        });
+
+        card.append(tabs, rationale, legend, canvasWrap, exprPanel, sliders);
 
         const state = { viewIdx: 0, pins: {} };
 
@@ -382,8 +409,9 @@ export class FunctionAnalysisManager {
             const view = views[idx];
             state.pins = { ...(view.pinned || {}) };
             this._hiddenGroups = new Set();
-            [...tabs.children].forEach((b, i) =>
+            [...tabs.querySelectorAll('.fa-view-tab')].forEach((b, i) =>
                 b.classList.toggle('active', i === idx));
+            this._renderExprPanel(exprPanel, chars, view);
             if (view.rationale) {
                 rationale.innerHTML = '';
                 const badge = document.createElement('span');
@@ -414,11 +442,62 @@ export class FunctionAnalysisManager {
             b.addEventListener('click', () => activate(i));
             tabs.appendChild(b);
         });
+        tabs.appendChild(exprBtn);      // after the view tabs, right-aligned
 
         loadChartJs().then(() => activate(0)).catch(() => {
             canvasWrap.textContent = 'Chart library failed to load.';
         });
         return card;
+    }
+
+    /** What this chart actually plots: each curve's expression (LaTeX) and
+     *  the mathjs script evaluated for it, plus any annotation positions.
+     *  Every script here is SymPy-generated server-side. */
+    _renderExprPanel(host, chars, view) {
+        host.innerHTML = '';
+        const row = (color, label, latex, script) => {
+            const r = document.createElement('div');
+            r.className = 'fa-expr-row';
+            const swatch = document.createElement('span');
+            swatch.className = 'fa-expr-swatch';
+            if (color) swatch.style.background = color;
+            else swatch.classList.add('fa-expr-swatch-ann');
+            const name = document.createElement('span');
+            name.className = 'fa-expr-label';
+            // Labels are AI-written prose that may carry inline $…$ math.
+            this._inlineMath(name, label);
+            const math = document.createElement('span');
+            math.className = 'fa-expr-math';
+            // Positions/expressions are bare LaTeX, but an LM-written plot
+            // label can arrive $-wrapped — route those through _inlineMath.
+            if (/\$/.test(latex)) this._inlineMath(math, latex);
+            else this._katex(math, latex);
+            const code = document.createElement('code');
+            code.className = 'fa-expr-code';
+            code.textContent = script;
+            r.append(swatch, name, math, code);
+            host.appendChild(r);
+        };
+
+        const main = chars.chartScript;
+        if (main && main.script) {
+            row(SERIES_COLORS[0], 'curve', chars.expression || '', main.script);
+        }
+        (view.plots || []).forEach((p, i) => {
+            if (!p.script) return;
+            row(SERIES_COLORS[(i + 1) % SERIES_COLORS.length],
+                p.label || 'companion', p.latex || '', p.script);
+        });
+        for (const a of view.annotations || []) {
+            const at = a.at && a.at.latex ? a.at.latex : '';
+            const to = a.to && a.to.latex ? ` … ${a.to.latex}` : '';
+            row(null, a.label || a.kind, at + to,
+                (a.at && a.at.script ? a.at.script : '') +
+                (a.to && a.to.script ? `  …  ${a.to.script}` : ''));
+        }
+        if (!host.children.length) {
+            host.textContent = 'No evaluable expression for this view.';
+        }
     }
 
     /** All evaluable series for a view: main curve + companion plots. */
@@ -447,6 +526,11 @@ export class FunctionAnalysisManager {
         canvasWrap.innerHTML = '';
         const canvas = document.createElement('canvas');
         canvasWrap.appendChild(canvas);
+        // Annotation labels live in an HTML layer over the canvas so they
+        // render as KaTeX — canvas fillText can only draw raw LaTeX source.
+        const labelLayer = document.createElement('div');
+        labelLayer.className = 'fa-chart-labels';
+        canvasWrap.appendChild(labelLayer);
 
         const [xa, xb] = (view.x_range && view.x_range.length === 2)
             ? view.x_range : [-5, 5];
@@ -465,7 +549,7 @@ export class FunctionAnalysisManager {
                 if (!compiled[si]) return null;
                 try {
                     const y = evalExpr(compiled[si], 0,
-                        { extraScope: this._scopeFor(chars, view, state.pins, x) });
+                        { overrideScope: this._scopeFor(chars, view, state.pins, x) });
                     return Number.isFinite(y) ? y : null;
                 } catch (_e) { return null; }
             }),
@@ -575,7 +659,7 @@ export class FunctionAnalysisManager {
                 if (!fa.compiled[si]) return null;
                 try {
                     const y = evalExpr(fa.compiled[si], 0,
-                        { extraScope: this._scopeFor(chars, view, state.pins, x) });
+                        { overrideScope: this._scopeFor(chars, view, state.pins, x) });
                     return Number.isFinite(y) ? y : null;
                 } catch (_e) { return null; }
             });
@@ -591,6 +675,24 @@ export class FunctionAnalysisManager {
             chart.options.scales.y.max = fa.yb.max;
         }
         chart.update('none');
+    }
+
+    /** Place annotation labels as KaTeX-rendered HTML over the canvas.
+     *  Called from the draw plugin, so positions follow every slider move
+     *  and resize. Canvas text can't render math; this layer can. */
+    _syncLabels(chart, labels) {
+        const layer = chart.canvas.parentNode &&
+            chart.canvas.parentNode.querySelector('.fa-chart-labels');
+        if (!layer) return;
+        layer.innerHTML = '';
+        for (const l of labels) {
+            const el = document.createElement('span');
+            el.className = 'fa-chart-label' + (l.band ? ' band' : '');
+            el.style.left = `${l.left}px`;
+            el.style.top = `${l.top}px`;
+            this._inlineMath(el, l.text);
+            layer.appendChild(el);
+        }
     }
 
     /** Padded finite y-extent across all datasets. */
@@ -627,7 +729,7 @@ export class FunctionAnalysisManager {
         try {
             const compiled = compileExpr(pos.script);
             const scope = this._scopeFor(chars, view, pins, 1);
-            const v = evalExpr(compiled, 0, { extraScope: scope });
+            const v = evalExpr(compiled, 0, { overrideScope: scope });
             return Number.isFinite(v) ? v : null;
         } catch (_e) { return null; }
     }
@@ -686,7 +788,9 @@ export class FunctionAnalysisManager {
         ctx.lineWidth = 1;
 
         // ── AI annotations: vline / hline / band ─────────────────────
-        ctx.font = '10px ui-monospace, Menlo, monospace';
+        // Lines are drawn on the canvas; their labels are collected and
+        // rendered as KaTeX in the HTML layer above it (see _syncLabels).
+        const labels = [];
         for (const a of annotations) {
             if (a.kind === 'vline') {
                 const px = scales.x.getPixelForValue(a.atValue);
@@ -698,8 +802,7 @@ export class FunctionAnalysisManager {
                 ctx.stroke();
                 ctx.setLineDash([]);
                 if (a.label) {
-                    ctx.fillStyle = '#ef9a9a';
-                    ctx.fillText(detex(a.label), px + 4, chartArea.top + 12);
+                    labels.push({ text: a.label, left: px + 5, top: chartArea.top + 3 });
                 }
             } else if (a.kind === 'hline') {
                 const py = scales.y.getPixelForValue(a.atValue);
@@ -711,8 +814,7 @@ export class FunctionAnalysisManager {
                 ctx.stroke();
                 ctx.setLineDash([]);
                 if (a.label) {
-                    ctx.fillStyle = '#ef9a9a';
-                    ctx.fillText(detex(a.label), chartArea.left + 6, py - 4);
+                    labels.push({ text: a.label, left: chartArea.left + 6, top: py - 17 });
                 }
             } else if (a.kind === 'band') {
                 const p0 = scales.x.getPixelForValue(Math.min(a.atValue, a.toValue));
@@ -721,11 +823,12 @@ export class FunctionAnalysisManager {
                 ctx.fillRect(p0, chartArea.top, p1 - p0,
                              chartArea.bottom - chartArea.top);
                 if (a.label) {
-                    ctx.fillStyle = '#8fa8c8';
-                    ctx.fillText(detex(a.label), p0 + 4, chartArea.bottom - 6);
+                    labels.push({ text: a.label, left: p0 + 5,
+                                  top: chartArea.bottom - 20, band: true });
                 }
             }
         }
+        this._syncLabels(chart, labels);
 
         // ── numeric feature markers on the main curve ────────────────
         if (mainDataset) {
