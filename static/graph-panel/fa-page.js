@@ -271,8 +271,15 @@ export class FunctionAnalysisManager {
             }
             const card = document.createElement('div');
             card.className = 'fa-card fa-abstain';
-            card.textContent = 'The expert found nothing behaviorally ' +
-                'interesting to visualize for this expression.';
+            const badge = document.createElement('span');
+            badge.className = 'fa-ai-badge';
+            badge.title = 'AI-generated';
+            badge.innerHTML = AI_ICON;
+            const text = document.createElement('span');
+            // Prefer the AI's own reason; the generic line is the fallback.
+            this._inlineMath(text, ' ' + (proposal.abstain_reason ||
+                'Nothing behaviorally interesting to visualize here.'));
+            card.append(badge, text);
             page.appendChild(card);
             return;
         }

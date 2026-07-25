@@ -112,6 +112,9 @@ class VizProposal(BaseModel):
     # and telling a learner "nothing interesting here" because a request
     # errored is a lie the UI must be able to avoid.
     failed: bool = False
+    # Why the AI declined, in the learner's language. An abstention with
+    # no reason is a shrug; this is what the page shows instead.
+    abstain_reason: str = Field(default="", max_length=300)
     title: str = Field(default="", max_length=120)
     story: str = Field(default="", max_length=500)
     ranked: list[RankedFeature] = Field(default_factory=list)
@@ -182,7 +185,11 @@ class VizProposalSig(dspy.Signature):
        must be the report's variable names verbatim.
     6. ABSTAIN (set `abstain` true, everything else empty) when there is
        nothing behaviorally interesting to visualize — e.g. a bare
-       constant or a purely notational identity.
+       constant or a purely notational identity. Always say WHY in
+       `abstain_reason`: one plain sentence naming what this expression
+       is and why plotting it teaches nothing ("This is a definition of
+       notation — it has no independent variable to vary"). The learner
+       asked a reasonable question and deserves an answer, not silence.
 
     Ground rules: reference ONLY features present in the CAS report —
     never invent locations or values. Keep prose in the learner's
@@ -202,6 +209,10 @@ class VizProposalSig(dspy.Signature):
 
     abstain: bool = dspy.OutputField(
         desc="true only if nothing here is worth visualizing")
+    abstain_reason: str = dspy.OutputField(
+        desc="when abstaining, ONE plain sentence saying what this "
+             "expression is and why a plot would teach nothing; empty "
+             "otherwise")
     title: str = dspy.OutputField(
         desc="short human title for this analysis page, e.g. 'Projectile "
              "Height vs Time'; plain text, no LaTeX")
@@ -325,6 +336,7 @@ def propose_views(expression: str, characteristics: str,
 
     return VizProposal(
         abstain=bool(out.abstain),
+        abstain_reason=str(getattr(out, "abstain_reason", "") or "").strip(),
         title=str(getattr(out, "title", "") or "").strip(),
         story=str(out.story or "").strip(),
         ranked=shape(RankedFeature, out.ranked, MAX_RANKED),
