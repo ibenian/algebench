@@ -30,6 +30,10 @@ from backend.experts.llm_config import LM_MODEL
 MAX_VIEWS = 3
 MAX_PROBES = 4
 MAX_RANKED = 10
+# Per-view ceilings for companion curves and significance markers — a chart
+# with more than this is crowded past the point of teaching anything.
+MAX_PLOTS = 3
+MAX_ANNOTATIONS = 4
 
 
 class RankedFeature(BaseModel):
@@ -40,6 +44,35 @@ class RankedFeature(BaseModel):
     feature: str = Field(default="", max_length=200)
     usefulness: int = Field(default=0, ge=0, le=5)
     why: str = Field(default="", max_length=400)
+
+
+class ProposedPlot(BaseModel):
+    """A companion curve on a view (envelope, limiting form, …).
+
+    ``latex`` is the AI's proposed expression; the HANDLER converts it to an
+    evaluable mathjs ``script`` via SymPy — LM-written code never runs.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    latex: str = Field(default="", max_length=400)
+    label: str = Field(default="", max_length=120)
+
+
+class ProposedAnnotation(BaseModel):
+    """A significance marker on a view: limit, threshold, critical value.
+
+    ``at`` (and ``to`` for bands) are LaTeX expressions — the handler
+    converts them to evaluable scripts so markers stay slider-reactive.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    kind: str = Field(default="vline", max_length=10)   # vline | hline | band
+    at: str = Field(default="", max_length=200)
+    to: str = Field(default="", max_length=200)         # band upper bound only
+    label: str = Field(default="", max_length=120)
+    group: str = Field(default="", max_length=60)
 
 
 class ProposedView(BaseModel):
@@ -53,6 +86,8 @@ class ProposedView(BaseModel):
     pinned: dict[str, float] = Field(default_factory=dict)
     mark: list[str] = Field(default_factory=list)
     rationale: str = Field(default="", max_length=500)
+    plots: list[ProposedPlot] = Field(default_factory=list)
+    annotations: list[ProposedAnnotation] = Field(default_factory=list)
 
 
 class ProposedProbe(BaseModel):
@@ -73,6 +108,7 @@ class VizProposal(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     abstain: bool = False
+    title: str = Field(default="", max_length=120)
     story: str = Field(default="", max_length=500)
     ranked: list[RankedFeature] = Field(default_factory=list)
     views: list[ProposedView] = Field(default_factory=list)
@@ -93,34 +129,65 @@ class VizProposalSig(dspy.Signature):
     singularities, asymptotes, end behavior, periodicity, parity). Your
     job is judgment, not computation:
 
-    1. RANK the detected features by pedagogical usefulness (5 = the one
+    1. TITLE the analysis (`title`): a short human name for this page,
+       e.g. "Projectile Height vs Time".
+    2. RANK the detected features by pedagogical usefulness (5 = the one
        insight a learner must not miss; 1 = true but unremarkable). A
        singularity where a real quantity blows up usually outranks a
        generic zero; a symbolic location like $t = v_0/g$ that *explains
        itself* outranks an anonymous numeric root.
-    2. PROPOSE 1–3 viewports (`views`). Pick x-ranges so the interesting
+    3. PROPOSE 1–3 viewports (`views`). Pick x-ranges so the interesting
        features sit INSIDE the default sweep — the learner should stumble
-       into them (implicit scaffolding), not hunt. Pin non-swept symbols
+       into them (implicit scaffolding), not hunt. RESPECT the physical
+       domain the context implies: a variable that cannot meaningfully be
+       negative there (time since launch, mass, volume, a distance)
+       starts its range at that physical bound (usually 0) — include the
+       negative side only when it genuinely means something (a symmetric
+       mathematical function, a signed velocity). Pin non-swept symbols
        to representative values. `mark` lists which detected features the
-       viewport should annotate.
-    3. WRITE 1–4 predict-before-reveal probes (`probes`): short questions
+       viewport should annotate. EACH ADDITIONAL VIEW MUST REVEAL A
+       DIFFERENT marked feature or qualitative regime than the previous
+       ones — a rescaled duplicate of view 1 (same shape, different axis
+       numbers) is worse than proposing no second view at all.
+       Per view you may also add:
+       - `plots`: 0–3 companion curves as LaTeX expressions with labels
+         (an envelope $e^{-bt}$, a limiting form, a linear approximation).
+         The analyzed expression itself is ALWAYS drawn — never restate
+         it. Add a companion only when seeing both curves together
+         teaches something a single curve cannot.
+       - `annotations`: 0–4 significance markers — {kind: vline|hline|
+         band, at: <LaTeX position>, to: <LaTeX, band upper bound only>,
+         label, group}. Use them SPARINGLY, only where a limit,
+         threshold, or critical value carries real pedagogical weight;
+         give related markers the same `group` label so the UI can
+         toggle them together; never duplicate what `mark` already
+         annotates (detected zeros/extrema/asymptotes draw themselves).
+    4. WRITE 1–4 predict-before-reveal probes (`probes`): short questions
        a learner answers BEFORE seeing the curve, each grounded in one
        detected feature, with 2–4 options, the correct index, and a one-
-       line explanation tied to the expression's structure.
-    4. GLOSS every variable (`variable_glossary`): for EACH name in the
+       line explanation tied to the expression's structure. VERIFY each
+       `correct_index` against the CAS report before returning: the
+       explanation must follow from the expression EXACTLY as given —
+       watch signs and coefficients; never reason about a term the
+       expression does not contain. A quiz that marks a right answer
+       wrong is worse than no quiz.
+    5. GLOSS every variable (`variable_glossary`): for EACH name in the
        report's `variables` list, one plain-language line saying what the
        quantity is in this context, with typical units when meaningful —
        e.g. "g": "gravitational acceleration (~9.8 m/s² on Earth)". Keys
        must be the report's variable names verbatim.
-    5. ABSTAIN (set `abstain` true, everything else empty) when there is
+    6. ABSTAIN (set `abstain` true, everything else empty) when there is
        nothing behaviorally interesting to visualize — e.g. a bare
        constant or a purely notational identity.
 
     Ground rules: reference ONLY features present in the CAS report —
     never invent locations or values. Keep prose in the learner's
-    language; wrap math in $…$. If lesson context is given, prefer the
-    features that matter for THAT step (a re-entry lesson cares about the
-    blow-up, not the inflection).
+    language; write EVERY mathematical symbol, variable, and expression
+    in $…$ delimiters ($v_0$, $t^2$, $a$) — never in quotes ('a') or
+    bare — in stories, rationales, probe questions, options, and
+    explanations alike, so the UI can render them. If lesson context is
+    given, prefer the features that matter for THAT step (a re-entry
+    lesson cares about the blow-up, not the inflection).
     """
 
     expression: str = dspy.InputField(desc="the expression, LaTeX")
@@ -131,6 +198,9 @@ class VizProposalSig(dspy.Signature):
 
     abstain: bool = dspy.OutputField(
         desc="true only if nothing here is worth visualizing")
+    title: str = dspy.OutputField(
+        desc="short human title for this analysis page, e.g. 'Projectile "
+             "Height vs Time'; plain text, no LaTeX")
     story: str = dspy.OutputField(
         desc="ONE sentence telling the expression's behavioral story in "
              "plain language, e.g. 'A steady rise fighting an accelerating "
@@ -140,8 +210,12 @@ class VizProposalSig(dspy.Signature):
              "most pedagogically useful first; usefulness is 1-5")
     views: list[dict] = dspy.OutputField(
         desc="[{kind, x_var, x_range:[min,max], pinned:{symbol:value}, "
-             "mark:[feature names], rationale}] 1-3 proposed viewports; "
-             "kind is one of plane-2d | surface-3d | limiting-behavior. "
+             "mark:[feature names], rationale, "
+             "plots:[{latex, label}] (0-3 companion curves), "
+             "annotations:[{kind: vline|hline|band, at, to, label, group}] "
+             "(0-4 significance markers, positions as LaTeX)}] "
+             "1-3 proposed viewports, each revealing something the others "
+             "don't; kind is one of plane-2d | surface-3d | limiting-behavior. "
              "x_var and every pinned key MUST be names from the report's "
              "`variables` list, verbatim — no LaTeX, no renaming")
     probes: list[dict] = dspy.OutputField(
@@ -240,18 +314,104 @@ def propose_views(expression: str, characteristics: str,
             if isinstance(k, str) and isinstance(v, str) and v.strip():
                 glossary[k] = v.strip()[:300]
 
+    views = shape(ProposedView, out.views, MAX_VIEWS)
+    for v in views:                       # per-view crowding ceilings
+        v.plots = v.plots[:MAX_PLOTS]
+        v.annotations = v.annotations[:MAX_ANNOTATIONS]
+
     return VizProposal(
         abstain=bool(out.abstain),
+        title=str(getattr(out, "title", "") or "").strip(),
         story=str(out.story or "").strip(),
         ranked=shape(RankedFeature, out.ranked, MAX_RANKED),
-        views=shape(ProposedView, out.views, MAX_VIEWS),
+        views=views,
         probes=shape(ProposedProbe, out.probes, MAX_PROBES),
         variable_glossary=glossary,
     )
 
 
+class MoreProbesSig(dspy.Signature):
+    r"""Write FRESH predict-before-reveal quiz questions for an expression
+    whose behavior features a computer algebra system has already detected.
+
+    The learner has answered the questions listed in `asked` and wants
+    more. Write 1–4 NEW probes grounded in the detected characteristics —
+    each with 2–4 options, the correct index, and a one-line explanation
+    tied to the expression's structure. Ground rules: reference ONLY
+    features present in the CAS report — never invent locations or
+    values; VERIFY each `correct_index` against the report before
+    returning (watch signs and coefficients — never reason about a term
+    the expression does not contain); do NOT repeat or trivially
+    rephrase anything in `asked` (approach untested features, or the
+    same feature from a genuinely different angle, e.g. scaling behavior
+    instead of location); keep prose in the learner's language and write
+    EVERY mathematical symbol and expression in $…$ delimiters ($v_0$,
+    $t^2$) — never in quotes or bare.
+    """
+
+    expression: str = dspy.InputField(desc="the expression, LaTeX")
+    characteristics: str = dspy.InputField(
+        desc="JSON report of CAS-detected behavior features")
+    context: str = dspy.InputField(
+        desc="lesson/step context the expression appears in; may be empty")
+    asked: str = dspy.InputField(
+        desc="questions the learner has already been asked, one per line")
+
+    probes: list[dict] = dspy.OutputField(
+        desc="[{question, options, correct_index, explanation, feature}] "
+             "1-4 NEW predict-before-reveal questions; none may repeat or "
+             "rephrase an `asked` question")
+
+
+class MoreProbesGenerator(dspy.Module):
+    """Single ``Predict`` over :class:`MoreProbesSig` (same no-thinking LM)."""
+
+    def __init__(self):
+        super().__init__()
+        self.predict = dspy.Predict(MoreProbesSig)
+
+    def forward(self, *, expression: str, characteristics: str,
+                context: str = "", asked: str = ""):
+        return self.predict(expression=expression,
+                            characteristics=characteristics,
+                            context=context, asked=asked)
+
+
+@cache
+def _more_probes() -> MoreProbesGenerator:
+    return MoreProbesGenerator()
+
+
+def propose_more_probes(expression: str, characteristics: str,
+                        context: str = "",
+                        asked: Optional[list[str]] = None) -> list[ProposedProbe]:
+    """Ask the LM for fresh probes; empty list on any failure."""
+    try:
+        lm = _proposer_lm()
+        kwargs = dict(expression=expression, characteristics=characteristics,
+                      context=context, asked="\n".join(asked or []))
+        if lm is not None:
+            with dspy.context(lm=lm):
+                out = _more_probes()(**kwargs)
+        else:
+            out = _more_probes()(**kwargs)
+    except Exception:
+        return []
+
+    shaped = []
+    for raw in (out.probes or [])[:MAX_PROBES]:
+        if isinstance(raw, dict):
+            try:
+                shaped.append(ProposedProbe(**raw))
+            except Exception:
+                continue
+    return shaped
+
+
 __all__ = [
-    "MAX_PROBES", "MAX_RANKED", "MAX_VIEWS", "ProposedProbe", "ProposedView",
-    "RankedFeature", "VizProposal", "VizProposalSig", "VizProposer",
+    "MAX_ANNOTATIONS", "MAX_PLOTS", "MAX_PROBES", "MAX_RANKED", "MAX_VIEWS",
+    "MoreProbesGenerator", "MoreProbesSig", "ProposedAnnotation",
+    "ProposedPlot", "ProposedProbe", "ProposedView", "RankedFeature",
+    "VizProposal", "VizProposalSig", "VizProposer", "propose_more_probes",
     "propose_views",
 ]

@@ -368,6 +368,7 @@ export class D3SemanticGraphRenderer {
         this.onZoomChange = opts.onZoomChange || null;
         this.onTransformChange = opts.onTransformChange || null;
         this.onChartClick = opts.onChartClick || null;
+        this.onFaClick = opts.onFaClick || null;
 
         this._graph = null;
         this._theme = null;
@@ -1433,6 +1434,43 @@ export class D3SemanticGraphRenderer {
         return g;
     }
 
+    /** Function-Analysis button (ƒ) — sits beside the chart button; opens
+     *  the full-page expert analysis for this node's subexpr. */
+    _appendFaBtn(group, d) {
+        const shape = this._nodeShape(d);
+        const pos = this._chartBtnPos(shape);
+        const self = this;
+        const sz = 14;
+        // Stack under the chart button so both stay clickable at any zoom.
+        const g = group.append('g')
+            .attr('class', 'd3sg-fa-btn')
+            .attr('transform', `translate(${pos.x},${pos.y + sz + 3})`)
+            .on('click', function (event) {
+                event.stopPropagation();
+                if (self.onFaClick) self.onFaClick(d.data.id, d.data, this);
+            });
+        g.append('title').text('Function analysis');
+        g.append('rect')
+            .attr('x', 0).attr('y', 0)
+            .attr('width', sz).attr('height', sz)
+            .attr('rx', 2)
+            .attr('fill', '#1a2440')
+            .attr('stroke', '#ffa726')
+            .attr('stroke-width', 1);
+        // Mirrors icons.js FUNCTION_ANALYSIS_ICON (curve + peak dot), scaled
+        // to the 14px button box.
+        g.append('path')
+            .attr('d', 'M2,11.7 C4,3.2 6,3.2 7.3,7 C8.7,10.8 10.2,10.2 12.2,4.7')
+            .attr('fill', 'none')
+            .attr('stroke', '#ffa726')
+            .attr('stroke-width', 1.3)
+            .attr('stroke-linecap', 'round');
+        g.append('circle')
+            .attr('cx', 4.7).attr('cy', 5).attr('r', 1.2)
+            .attr('fill', '#ffa726');
+        return g;
+    }
+
     _drawNode(group, d) {
         group.selectAll('*').remove();
         const data = d.data;
@@ -1472,7 +1510,10 @@ export class D3SemanticGraphRenderer {
             }
 
             this._appendChevron(group, d, true);
-            if (data.subexpr || data.chartScript) this._appendChartBtn(group, d);
+            if (data.subexpr || data.chartScript) {
+                this._appendChartBtn(group, d);
+                if (data.subexpr) this._appendFaBtn(group, d);
+            }
             return;
         }
 
@@ -1505,6 +1546,7 @@ export class D3SemanticGraphRenderer {
         }
         if (data.subexpr || data.chartScript) {
             this._appendChartBtn(group, d);
+            if (data.subexpr) this._appendFaBtn(group, d);
         }
     }
 

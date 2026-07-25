@@ -1,0 +1,246 @@
+/* fa-page.css — Function Analysis page (shown in place of the semantic
+   graph inside #graph-viewport). Palette matches the graph panel / charts. */
+
+.fa-hidden { display: none !important; }
+
+/* ── ƒ button on graph nodes — hover-revealed, matching the chart button
+      (see .d3sg-chart-btn in sg-chart.css) ── */
+.d3sg-fa-btn {
+    opacity: 0;
+    cursor: pointer;
+    pointer-events: all;
+    transition: opacity 0.12s ease-out;
+}
+.d3sg-node:hover .d3sg-fa-btn {
+    opacity: 0.7;
+}
+.d3sg-fa-btn:hover {
+    opacity: 1 !important;
+}
+
+#fa-page-container {
+    display: none;
+    position: absolute;
+    inset: 0;
+    overflow-y: auto;
+    padding: 0 20px 24px;
+    background: #0a0c1a;
+    z-index: 15;
+}
+#fa-page-container.open { display: block; }
+
+.fa-card {
+    background: #10142a;
+    border: 1px solid rgba(110, 124, 180, 0.35);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 12px;
+    color: #dde6ff;
+    font-size: 13.5px;
+}
+
+/* ── header — sticky so the title stays visible while scrolling ── */
+.fa-header {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 0 10px;
+    margin-bottom: 12px;
+    background: #0a0c1a;
+    border-bottom: 1px solid rgba(110, 124, 180, 0.18);
+    flex-wrap: wrap;
+}
+.fa-title { font-size: 16px; font-weight: 600; color: #dde6ff; }
+.fa-expr { font-size: 15px; color: #aebbd1; }
+.fa-btn {
+    background: none;
+    border: 1px solid rgba(110, 124, 180, 0.35);
+    color: #8fa8c8;
+    border-radius: 6px;
+    padding: 2px 10px;
+    font-size: 12.5px;
+    cursor: pointer;
+}
+.fa-btn:hover { color: #dde6ff; border-color: #42a5f5; background: rgba(66, 165, 245, 0.1); }
+.fa-back { font-size: 15px; padding: 2px 12px; }
+.fa-json-btn { margin-left: auto; display: inline-flex; align-items: center; padding: 3px 8px; }
+.fa-json-btn svg { display: block; }
+.fa-json-btn.open { background: rgba(66, 165, 245, 0.15); color: #dde6ff; }
+
+/* ── status / error ── */
+.fa-status { display: flex; align-items: center; gap: 10px; color: #8fa8c8; }
+.fa-status-label { display: inline-flex; align-items: center; gap: 5px; }
+.fa-error { color: #ef9a9a; display: flex; align-items: center; gap: 14px; }
+.fa-retry { color: #dde6ff; }
+.fa-abstain { color: #8fa8c8; font-style: italic; }
+
+/* ── story ── */
+.fa-story { color: #aebbd1; }
+/* AI-authorship marker — the shared robot icon in the chat-avatar tint. */
+.fa-ai-badge {
+    display: inline-block;
+    color: #cdd3f5;             /* same tint as the chat's .msg-avatar */
+    opacity: 0.9;
+    margin-right: 2px;
+}
+.fa-ai-badge svg { vertical-align: -2px; }
+
+/* ── views ── */
+.fa-view-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+.fa-view-tab.active {
+    background: rgba(66, 165, 245, 0.15);
+    color: #dde6ff;
+    border-color: #42a5f5;
+}
+.fa-view-rationale {
+    color: #7e8aa3;
+    font-size: 12px;
+    font-style: italic;
+    margin: 2px 0 8px;
+    min-height: 16px;
+}
+.fa-ann-legend { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+.fa-ann-chip { font-size: 11px; border-style: dashed; }
+.fa-ann-chip.off { opacity: 0.4; text-decoration: line-through; }
+.fa-canvas-wrap { position: relative; height: 320px; }
+.fa-canvas-wrap canvas { width: 100% !important; height: 100% !important; }
+
+/* ── sliders ── */
+.fa-sliders { display: flex; gap: 22px; flex-wrap: wrap; margin-top: 10px; }
+.fa-slider-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.fa-var { color: #ffa726; min-width: 18px; text-align: center; position: relative; }
+.fa-var .fa-var-ask {
+    position: absolute;
+    top: -13px;
+    right: -15px;
+    margin-left: 0;
+}
+.fa-slider-row input[type="range"] { width: 130px; accent-color: #42a5f5; cursor: pointer; }
+.fa-slider-row input[type="range"]:active { cursor: grabbing; }
+.fa-slider-val {
+    font: 11.5px ui-monospace, Menlo, monospace;
+    color: #8fa8c8;
+    min-width: 48px;
+}
+
+/* ── quiz ── */
+.fa-sect-label {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: #7e8aa3;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+.fa-probe { border-top: 1px solid rgba(110, 124, 180, 0.12); padding: 10px 0; }
+.fa-probe:first-child { border-top: none; }
+.fa-probe-q { margin-bottom: 8px; }
+.fa-probe-opts { display: flex; gap: 8px; flex-wrap: wrap; }
+.fa-probe-chip {
+    background: rgba(66, 165, 245, 0.1);
+    border: 1px solid rgba(66, 165, 245, 0.45);
+    color: #dde6ff;
+    border-radius: 16px;
+    padding: 3px 14px;
+    font-size: 13px;
+}
+.fa-probe-chip:disabled { opacity: 0.55; cursor: default; }
+.fa-probe-chip.right { background: rgba(102, 187, 106, 0.25); border-color: #66bb6a; opacity: 1; }
+.fa-probe-chip.wrong { background: rgba(239, 83, 80, 0.25); border-color: #ef5350; opacity: 1; }
+.fa-probe-exp { display: none; margin-top: 8px; font-size: 12.5px; color: #8fa8c8; }
+.fa-probe-exp.show { display: block; }
+.fa-more { margin-top: 10px; border-style: dashed; border-radius: 16px; }
+.fa-more-status { margin-left: 10px; color: #7e8aa3; font-size: 12px; }
+
+/* ── raw JSON popup ── */
+.fa-json-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(4, 6, 14, 0.6);
+    z-index: 60;
+    align-items: center;
+    justify-content: center;
+}
+.fa-json-overlay.open { display: flex; }
+.fa-json-modal {
+    background: #10142a;
+    border: 1px solid rgba(110, 124, 180, 0.45);
+    border-radius: 10px;
+    width: min(720px, 86vw);
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+.fa-json-modal-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-bottom: 1px solid rgba(110, 124, 180, 0.25);
+    color: #aebbd1;
+    font-size: 12.5px;
+}
+.fa-json-modal-head span { flex: 1; }
+.fa-json-close { font-size: 15px; line-height: 1; padding: 1px 8px; }
+.fa-json-modal pre {
+    margin: 0;
+    padding: 12px 14px;
+    overflow: auto;
+    font: 11.5px/1.45 ui-monospace, Menlo, monospace;
+    color: #8fa8c8;
+    white-space: pre;
+}
+
+/* ── variable description tooltip (instant, styled, KaTeX-capable) ── */
+.fa-tooltip {
+    display: none;
+    position: absolute;
+    z-index: 40;
+    max-width: 320px;
+    background: #060814;
+    border: 1px solid rgba(110, 124, 180, 0.45);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    color: #aebbd1;
+    transform: translateY(-100%);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+    pointer-events: none;
+}
+.fa-tooltip.show { display: block; }
+
+/* ── hover-revealed AI ask button (app-wide sparkle pattern) ── */
+.fa-askable { position: relative; }
+.fa-askable .fa-hover-ask {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.12s ease;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+.fa-askable:hover .fa-hover-ask { opacity: 1; pointer-events: auto; }
+
+/* ── Math tab tree: artifact rows under steps ── */
+.gp-tree-fa {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 8px 2px 34px;
+    font-size: 12px;
+    color: #8fa8c8;
+    cursor: pointer;
+    border-left: 3px solid transparent;
+}
+.gp-tree-fa:hover { background: rgba(66, 165, 245, 0.08); color: #dde6ff; }
+.gp-tree-fa.active {
+    background: rgba(66, 165, 245, 0.12);
+    border-left-color: #42a5f5;
+    color: #dde6ff;
+}
+.gp-tree-fa .fa-glyph { color: #ffa726; font-style: italic; font-family: Georgia, serif; }
+.gp-tree-fa .fa-loading { color: #7e8aa3; font-style: italic; }
+.gp-tree-fa .fa-err { color: #ef9a9a; }
