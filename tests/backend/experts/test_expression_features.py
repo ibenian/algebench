@@ -174,3 +174,18 @@ def test_definition_needs_a_bare_symbol_side():
     # Both sides carry x — not a definition, so LHS − RHS as before.
     rep = analyze("x + y = 1", variable="x")
     assert rep["dependent"] is None
+
+
+def test_function_definition_sweeps_its_argument():
+    """``\\rho(h) = \\rho_0 e^{-h/H}`` is y = f(x) in its most literal form.
+
+    Before, the unapplied ``rho(h)`` term survived into the chart script
+    (unevaluable client-side) and the sweep variable fell to ``H`` by
+    alphabetical order, so the page had nothing sensible to draw.
+    """
+    rep = analyze(r"\rho(h) = \rho_0 e^{-h/H}")
+    assert rep["dependent"] == "rho"
+    assert rep["dependentLatex"] == r"\rho(h)"
+    assert rep["variable"] == "h"                  # the function's argument
+    assert "rho(" not in rep["chartScript"]["script"]
+    assert rep["chartScript"]["script"] == "rho_0*exp(-h/H)"

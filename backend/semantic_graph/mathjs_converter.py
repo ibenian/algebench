@@ -19,6 +19,7 @@ import re
 import sympy
 from sympy import E, Rel, Symbol
 from sympy import pi as sympy_pi
+from sympy.core.function import AppliedUndef
 from sympy.parsing.latex import parse_latex
 from sympy.printing.jscode import jscode
 
@@ -229,26 +230,39 @@ def latex_to_sympy(latex: str) -> sympy.Basic:
     return expr
 
 
-def latex_to_sympy_defined(latex: str) -> tuple[sympy.Basic, sympy.Symbol | None]:
+def latex_to_sympy_defined(
+    latex: str,
+) -> tuple[sympy.Basic, sympy.Symbol | None, sympy.Symbol | None]:
     """Parse LaTeX, reading a definition as the quantity it defines.
 
-    An equation whose one side is a bare symbol that does not occur on the
-    other — ``g_{feet} = \\omega^2 R`` — is a *definition*: the natural
-    reading is "plot the formula, call the vertical axis ``g_feet``", not
-    "plot ``g_feet - \\omega^2 R`` and hunt for its zero". Returns
-    ``(formula, defined_symbol)`` for those, and ``(LHS - RHS, None)`` for
-    every other relation (an equation to be solved, an inequality) as
-    well as for a plain expression.
+    An equation whose one side names a quantity that does not occur on the
+    other is a *definition*: the natural reading is "plot the formula, call
+    the vertical axis by that name", not "plot the difference and hunt for
+    its zero". Two forms qualify:
+
+    * a bare symbol — ``g_{feet} = \\omega^2 R``
+    * a function application — ``\\rho(h) = \\rho_0 e^{-h/H}``, whose
+      argument is also the obvious variable to sweep (and whose unapplied
+      ``rho(h)`` term would otherwise poison the generated script)
+
+    Returns ``(formula, defined_symbol, argument)`` — ``argument`` only for
+    the function form. Every other relation (an equation to be solved, an
+    inequality) still gives ``(LHS - RHS, None, None)``, as does a plain
+    expression.
     """
     expr = _parse_normalized(latex)
     if isinstance(expr, sympy.Eq):
         lhs, rhs = expr.lhs, expr.rhs
         for side, other in ((lhs, rhs), (rhs, lhs)):
             if isinstance(side, Symbol) and side not in other.free_symbols:
-                return other, side
+                return other, side, None
+            if isinstance(side, AppliedUndef) and not other.has(side.func):
+                args = [a for a in side.args if isinstance(a, Symbol)]
+                return (other, Symbol(side.func.__name__),
+                        args[0] if len(args) == 1 else None)
     if isinstance(expr, Rel):
-        return expr.lhs - expr.rhs, None
-    return expr, None
+        return expr.lhs - expr.rhs, None, None
+    return expr, None, None
 
 
 def latex_to_mathjs(latex: str) -> tuple[str, list[str]]:

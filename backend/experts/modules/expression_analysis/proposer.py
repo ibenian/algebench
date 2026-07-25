@@ -108,6 +108,10 @@ class VizProposal(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     abstain: bool = False
+    # True when the LM call itself failed. `abstain` alone cannot say so,
+    # and telling a learner "nothing interesting here" because a request
+    # errored is a lie the UI must be able to avoid.
+    failed: bool = False
     title: str = Field(default="", max_length=120)
     story: str = Field(default="", max_length=500)
     ranked: list[RankedFeature] = Field(default_factory=list)

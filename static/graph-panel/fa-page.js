@@ -262,6 +262,13 @@ export class FunctionAnalysisManager {
         const chars = (artifact.data && artifact.data.characteristics) || {};
 
         if (proposal.abstain) {
+            // A failed LM call must not masquerade as "nothing to see here".
+            if (proposal.failed) {
+                artifact.error = 'The analysis request failed before a ' +
+                    'proposal could be made.';
+                page.appendChild(this._renderErrorCard(artifact));
+                return;
+            }
             const card = document.createElement('div');
             card.className = 'fa-card fa-abstain';
             card.textContent = 'The expert found nothing behaviorally ' +

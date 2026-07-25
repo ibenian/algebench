@@ -115,9 +115,11 @@ def _op_parse(latex_src: str):
     """Parse + normalize; returns ``(expression, defined_symbol)``.
 
     ``defined_symbol`` is set when the input is a definition such as
-    ``g_{feet} = \\omega^2 R``: the expression analyzed is then the
-    formula alone, and the symbol names what it produces (the y axis),
-    instead of collapsing to ``LHS - RHS`` and hunting for a zero.
+    ``g_{feet} = \\omega^2 R`` or ``\\rho(h) = \\rho_0 e^{-h/H}``: the
+    expression analyzed is then the formula alone, and the symbol names
+    what it produces (the y axis), instead of collapsing to ``LHS - RHS``
+    and hunting for a zero. For the function form the third element is
+    the argument — the variable to sweep by default.
     """
     return latex_to_sympy_defined(latex_src)
 
@@ -275,6 +277,14 @@ def _symbol_latex(name: str) -> str:
         return name + primes
 
 
+def _dependent_latex(defined, arg) -> Optional[str]:
+    """Display form of what a definition defines: ``g_{feet}``, ``\\rho(h)``."""
+    if defined is None:
+        return None
+    name = _symbol_latex(str(defined))
+    return f"{name}({_symbol_latex(str(arg))})" if arg is not None else name
+
+
 # ── public API ─────────────────────────────────────────────────────────
 
 def pick_variable(expr, requested: Optional[str] = None) -> Optional[Symbol]:
@@ -317,16 +327,18 @@ def analyze(latex_src: str, variable: Optional[str] = None,
     parsed = guard(_op_parse, latex_src, default=None, timeout=timeout)
     if parsed is None:
         return {"error": f"could not parse expression: {latex_src[:200]}"}
-    expr, defined = parsed
+    expr, defined, defined_arg = parsed
 
-    var = pick_variable(expr, variable)
+    # A definition names its own independent variable: ρ(h) sweeps h.
+    var = pick_variable(expr, variable or
+                        (str(defined_arg) if defined_arg is not None else None))
     chart_script = guard(_op_chart_script, expr, default=None, timeout=timeout)
 
     if var is None:
         return {
             "expression": latex(expr),
             "dependent": str(defined) if defined is not None else None,
-            "dependentLatex": _symbol_latex(str(defined)) if defined is not None else None,
+            "dependentLatex": _dependent_latex(defined, defined_arg),
             "variable": None,
             "variables": [],
             "variables_latex": {},
@@ -355,7 +367,7 @@ def analyze(latex_src: str, variable: Optional[str] = None,
         # produces — the quantity belonging on the vertical axis. None for
         # a plain expression or an equation to be solved (LHS − RHS).
         "dependent": str(defined) if defined is not None else None,
-        "dependentLatex": _symbol_latex(str(defined)) if defined is not None else None,
+        "dependentLatex": _dependent_latex(defined, defined_arg),
         "variable": str(var),
         "variables": names,
         "variables_latex": {n: _symbol_latex(n) for n in names},
