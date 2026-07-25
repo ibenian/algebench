@@ -138,6 +138,44 @@ def jscode_to_mathjs(js_code: str) -> str:
 
 # ── LaTeX → mathjs full pipeline ──────────────────────────────────────
 
+def _protect_subscripts(latex: str) -> tuple[str, dict]:
+    """Keep multi-character subscripts whole through ``parse_latex``.
+
+    ``parse_latex`` reads ``g_{feet}`` as ``g`` times an implicit product
+    ``f·e·e·t``, so the symbol arrives named ``g_f*(e*(e*t))`` — a name
+    that then leaks into chart scripts, variable lists and feature LaTeX.
+
+    The graph translator already solved this for its own pipeline, so
+    reuse its collapser (which also handles Greek indices like
+    ``g_{\\mu\\nu}`` and refuses to touch large-operator subscripts such
+    as ``\\sum_{...}``) and map the ``\\Xi_{N}`` placeholders back onto
+    clean identifier symbols here.
+
+    Returns the rewritten LaTeX and the ``{placeholder: real}`` symbol map.
+    """
+    # Imported lazily: sympy_translator imports heavy graph machinery, and
+    # this module is also used from lightweight contexts.
+    from backend.semantic_graph.sympy_translator import (
+        _collapse_multichar_subscripts,
+    )
+
+    # ``\text``/``\mathrm`` wrappers *inside a subscript* are display-only
+    # (``g_{\text{feet}}``); unwrap them so the collapser sees plain letters.
+    # The graph pipeline handles free-standing \text via its own pass.
+    latex = re.sub(r"_\{\\(?:text|mathrm|mathit)\{([^{}]*)\}\}", r"_{\1}", latex)
+    rewritten, overrides = _collapse_multichar_subscripts(latex)
+    mapping: dict[sympy.Symbol, sympy.Symbol] = {}
+    for placeholder, meta in overrides.items():
+        # meta["latex"] is the original token, e.g. ``v_{\text{rms}}``.
+        clean = re.sub(r"\\(?:text|mathrm|mathit)\{([^{}]*)\}", r"\1",
+                       meta.get("latex", ""))
+        clean = clean.replace("\\", "").replace("{", "").replace("}", "")
+        clean = re.sub(r"[^A-Za-z0-9_]", "_", clean).strip("_")
+        if clean:
+            mapping[sympy.Symbol(placeholder)] = sympy.Symbol(clean)
+    return rewritten, mapping
+
+
 def latex_to_sympy(latex: str) -> sympy.Basic:
     """Parse LaTeX into a normalized SymPy expression.
 
@@ -151,10 +189,15 @@ def latex_to_sympy(latex: str) -> sympy.Basic:
     ValueError:
         If ``parse_latex`` cannot parse the input.
     """
+    protected, subscript_map = _protect_subscripts(latex)
     try:
-        expr = parse_latex(latex)
+        expr = parse_latex(protected)
     except Exception as exc:
         raise ValueError(f"parse_latex failed: {exc}") from exc
+
+    # Restore multi-character subscripts (g_{900000} → g_feet).
+    if subscript_map:
+        expr = expr.subs(subscript_map)
 
     # Auto-detect relations and build LHS − RHS.
     if isinstance(expr, Rel):

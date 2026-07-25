@@ -642,6 +642,8 @@ export class FunctionAnalysisManager {
             marks,
             compiled,
             yb,
+            xLatex: this._varLatex(chars, view.x_var),
+            exprLatex: chars.expression || 'f',
             anns: annotations.filter(a => !this._hiddenGroups.has(a.group || '')),
         };
         this._renderAnnLegend(legend, view, annotations,
@@ -764,6 +766,75 @@ export class FunctionAnalysisManager {
         };
     }
 
+    /** Hovering an annotation reports the values AT that marker — the same
+     *  readout the plot hover gives, but pinned to the point of interest. */
+    _showAnnotationTip(chart, l) {
+        const wrap = chart.canvas.parentNode;
+        if (!wrap) return;
+        let el = wrap.querySelector('.fa-chart-tip');
+        if (!el) {
+            el = document.createElement('div');
+            el.className = 'fa-chart-tip';
+            wrap.appendChild(el);
+        }
+        el.innerHTML = '';
+        const a = l.ann;
+        const fa = chart.$fa || {};
+        const num = (v) => Number.isFinite(v) ? +(+v).toPrecision(5) : '—';
+
+        const head = document.createElement('div');
+        head.className = 'fa-tip-head';
+        if (a.kind === 'vline') {
+            const sym = document.createElement('span');
+            this._katex(sym, fa.xLatex || 'x');
+            head.append(sym, document.createTextNode(' = ' + num(a.atValue)));
+        } else {
+            this._inlineMath(head, a.label || a.kind);
+        }
+        el.appendChild(head);
+
+        const row = (name, value, color) => {
+            const r = document.createElement('div');
+            r.className = 'fa-tip-row';
+            const sw = document.createElement('span');
+            sw.className = 'fa-tip-swatch';
+            sw.style.background = color || ANNOTATION_COLOR;
+            const n = document.createElement('span');
+            n.className = 'fa-tip-name';
+            if (typeof name === 'string') this._katex(n, name);
+            else n.appendChild(name);
+            const v = document.createElement('span');
+            v.className = 'fa-tip-val';
+            v.textContent = value;
+            r.append(sw, n, v);
+            el.appendChild(r);
+        };
+
+        if (a.kind === 'vline') {
+            // Nearest sampled x, so the readout matches the drawn curve.
+            const xs = fa.xs || [];
+            let idx = 0, best = Infinity;
+            xs.forEach((x, i) => {
+                const d = Math.abs(x - a.atValue);
+                if (d < best) { best = d; idx = i; }
+            });
+            for (const ds of chart.data.datasets) {
+                row(ds.label === 'f' ? (fa.exprLatex || 'f') : ds.label,
+                    num(ds.data[idx]), ds.borderColor);
+            }
+        } else if (a.kind === 'hline') {
+            row('y', num(a.atValue));
+        } else if (a.kind === 'band') {
+            const sym = fa.xLatex || 'x';
+            row(sym, `${num(Math.min(a.atValue, a.toValue))} … ` +
+                     `${num(Math.max(a.atValue, a.toValue))}`);
+        }
+
+        el.style.left = `${l.left}px`;
+        el.style.top = `${l.top}px`;
+        el.classList.add('show');
+    }
+
     /** Place annotation labels as KaTeX-rendered HTML over the canvas.
      *  Called from the draw plugin, so positions follow every slider move
      *  and resize. Canvas text can't render math; this layer can. */
@@ -779,6 +850,18 @@ export class FunctionAnalysisManager {
             el.style.left = `${l.left}px`;
             el.style.top = `${l.top}px`;
             this._inlineMath(el, l.text);
+            // An annotation marks a point of interest — hovering it reports
+            // the curve values there, the same way hovering the plot does.
+            if (l.ann) {
+                el.classList.add('probe');
+                el.addEventListener('mouseenter',
+                    () => this._showAnnotationTip(chart, l));
+                el.addEventListener('mouseleave', () => {
+                    const tip = chart.canvas.parentNode
+                        .querySelector('.fa-chart-tip');
+                    if (tip) tip.classList.remove('show');
+                });
+            }
             layer.appendChild(el);
             placed.push({ el, l });
         }
@@ -909,7 +992,7 @@ export class FunctionAnalysisManager {
                 ctx.stroke();
                 ctx.setLineDash([]);
                 if (a.label) {
-                    labels.push({ text: a.label, left: px + 5, top: chartArea.top + 3 });
+                    labels.push({ text: a.label, left: px + 5, top: chartArea.top + 3, ann: a });
                 }
             } else if (a.kind === 'hline') {
                 const py = scales.y.getPixelForValue(a.atValue);
@@ -921,7 +1004,7 @@ export class FunctionAnalysisManager {
                 ctx.stroke();
                 ctx.setLineDash([]);
                 if (a.label) {
-                    labels.push({ text: a.label, left: chartArea.left + 6, top: py - 17 });
+                    labels.push({ text: a.label, left: chartArea.left + 6, top: py - 17, ann: a });
                 }
             } else if (a.kind === 'band') {
                 const p0 = scales.x.getPixelForValue(Math.min(a.atValue, a.toValue));
@@ -931,7 +1014,7 @@ export class FunctionAnalysisManager {
                              chartArea.bottom - chartArea.top);
                 if (a.label) {
                     labels.push({ text: a.label, left: p0 + 5,
-                                  top: chartArea.bottom - 20, band: true });
+                                  top: chartArea.bottom - 20, band: true, ann: a });
                 }
             }
         }

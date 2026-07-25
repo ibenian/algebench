@@ -205,6 +205,9 @@
     text-shadow: 0 0 4px #0a0c1a, 0 0 4px #0a0c1a;
 }
 .fa-chart-label.band { color: #8fa8c8; }
+/* Annotations are hoverable: they report the values at their marker. */
+.fa-chart-label.probe { pointer-events: auto; cursor: help; }
+.fa-chart-label.probe:hover { color: #dde6ff; }
 .fa-chart-label .katex { font-size: 1em; }
 
 /* ── sliders ── */
