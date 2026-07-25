@@ -73,6 +73,7 @@ export class FunctionAnalysisManager {
         this._charts = [];             // live Chart.js instances (destroyed per render)
         this._hiddenEls = [];          // graph elements hidden while page shows
         this._hiddenGroups = new Set();// annotation groups toggled off (per render)
+        this._hiddenMarks = new Set(); // CAS feature kinds toggled off
         // Artifacts are kept OFF the step objects on purpose: steps are
         // serialized wholesale into chat context and proof saves, and an
         // artifact both back-references its step (a JSON cycle) and carries
@@ -245,6 +246,7 @@ export class FunctionAnalysisManager {
         const page = this.pageEl;
         this._destroyCharts();
         this._hiddenGroups = new Set();
+        this._hiddenMarks = new Set();
         page.innerHTML = '';
 
         page.appendChild(this._renderHeader(artifact));
@@ -423,6 +425,7 @@ export class FunctionAnalysisManager {
             const view = views[idx];
             state.pins = { ...(view.pinned || {}) };
             this._hiddenGroups = new Set();
+            this._hiddenMarks = new Set();
             [...tabs.querySelectorAll('.fa-view-tab')].forEach((b, i) =>
                 b.classList.toggle('active', i === idx));
             this._renderExprPanel(exprPanel, chars, view);
@@ -585,7 +588,15 @@ export class FunctionAnalysisManager {
 
         // Evaluate annotation positions under the current pins (slider-reactive).
         const annotations = this._evalAnnotations(chars, view, state.pins);
+        // Roots, extrema and singularities are CAS facts, not AI opinions:
+        // draw them whenever the report found any. `view.mark` stays as an
+        // additive hint (the LM regularly forgets to list them, and a
+        // learner asking "where are the roots" deserves an answer).
         const marks = new Set(view.mark || []);
+        for (const kind of ['zeros', 'extrema', 'singularities']) {
+            const f = (chars.features || {})[kind];
+            if (f && (f.points || []).length) marks.add(kind);
+        }
         // The plugin reads LIVE state off chart.$fa so in-place updates
         // (sliders, group toggles) re-draw overlays without a rebuild.
         const featurePlugin = {
@@ -593,8 +604,10 @@ export class FunctionAnalysisManager {
             afterDraw: (chart) => {
                 const fa = chart.$fa;
                 if (!fa) return;
+                const visible = new Set(
+                    [...fa.marks].filter(k => !this._hiddenMarks.has(k)));
                 this._drawOverlays(chart, chart.data.datasets[0], fa.xs,
-                                   fa.marks, fa.anns);
+                                   visible, fa.anns);
             },
         };
 
@@ -655,6 +668,7 @@ export class FunctionAnalysisManager {
         const yb = this._yBounds(datasets);
         chart.options.scales.y.min = yb.min;
         chart.options.scales.y.max = yb.max;
+        this._renderMarkerLegend(legend, marks, chart);
         chart.$fa = {
             xs,
             marks,
@@ -964,8 +978,37 @@ export class FunctionAnalysisManager {
         } catch (_e) { return null; }
     }
 
+    /** Legend for the drawn markers — and the switch that hides them.
+     *  Lists only the kinds this chart actually has. */
+    _renderMarkerLegend(legend, marks, chart) {
+        for (const el of legend.querySelectorAll('.fa-mark-key')) el.remove();
+        const keys = [
+            ['zeros', 'fa-key-zero', 'roots'],
+            ['extrema', 'fa-key-extremum', 'max / min'],
+            ['singularities', 'fa-key-sing', 'singularity'],
+        ];
+        for (const [kind, cls, label] of keys) {
+            if (!marks.has(kind)) continue;
+            const chip = document.createElement('button');
+            chip.className = 'fa-btn fa-mark-key' +
+                (this._hiddenMarks.has(kind) ? ' off' : '');
+            chip.title = `Show or hide the ${label} markers`;
+            const glyph = document.createElement('span');
+            glyph.className = `fa-key-glyph ${cls}`;
+            chip.append(glyph, document.createTextNode(label));
+            chip.addEventListener('click', () => {
+                if (this._hiddenMarks.has(kind)) this._hiddenMarks.delete(kind);
+                else this._hiddenMarks.add(kind);
+                chip.classList.toggle('off', this._hiddenMarks.has(kind));
+                chart.update('none');      // afterDraw re-reads the hidden set
+            });
+            legend.appendChild(chip);
+        }
+    }
+
     _renderAnnLegend(legend, view, annotations, redraw) {
-        legend.innerHTML = '';
+        // Keep the marker keys; only the annotation chips are rebuilt.
+        for (const el of legend.querySelectorAll('.fa-ann-chip')) el.remove();
         const groups = new Map();   // group label -> count
         for (const a of annotations) {
             const g = a.group || '';
@@ -1078,19 +1121,24 @@ export class FunctionAnalysisManager {
                 }
             }
             if (marks.has('extrema')) {
-                ctx.fillStyle = '#ffa726';
                 for (let i = 2; i < ys.length - 2; i++) {
                     const w = ys.slice(i - 2, i + 3);
                     if (w.some(y => y == null)) continue;
                     const c = ys[i];
                     const isMax = w.every(y => y <= c) && ys[i - 2] < c && ys[i + 2] < c;
                     const isMin = w.every(y => y >= c) && ys[i - 2] > c && ys[i + 2] > c;
-                    if (isMax || isMin) {
-                        ctx.beginPath();
-                        ctx.arc(scales.x.getPixelForValue(xs[i]),
-                                scales.y.getPixelForValue(c), 4, 0, 7);
-                        ctx.fill();
-                    }
+                    if (!isMax && !isMin) continue;
+                    const px = scales.x.getPixelForValue(xs[i]);
+                    const py = scales.y.getPixelForValue(c);
+                    ctx.fillStyle = '#ffa726';
+                    ctx.beginPath();
+                    ctx.arc(px, py, 4, 0, 7);
+                    ctx.fill();
+                    // Name it: an unlabelled dot is a puzzle, not a lesson.
+                    ctx.fillStyle = '#ffcc80';
+                    ctx.font = '10px ui-monospace, Menlo, monospace';
+                    ctx.fillText(isMax ? 'max' : 'min', px + 6,
+                                 isMax ? py - 6 : py + 14);
                 }
             }
             if (marks.has('singularities')) {
