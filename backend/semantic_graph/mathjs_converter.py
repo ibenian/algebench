@@ -157,8 +157,15 @@ def _protect_subscripts(latex: str) -> tuple[str, dict]:
     # Imported lazily: sympy_translator imports heavy graph machinery, and
     # this module is also used from lightweight contexts.
     from backend.semantic_graph.sympy_translator import (
-        _collapse_multichar_subscripts,
+        _collapse_multichar_subscripts, _strip_tracked_accents,
     )
+
+    # ``parse_latex`` reads an accent command as a factor: ``\hat{n}``
+    # becomes ``Symbol('hat') * Symbol('n')``, so a phantom ``hat``
+    # variable turns up with its own slider. The graph translator already
+    # strips these; the accent is display-only, so dropping it here is
+    # exactly right for evaluation.
+    latex = _strip_tracked_accents(latex, {})
 
     # ``\text``/``\mathrm`` wrappers *inside a subscript* are display-only
     # (``g_{\text{feet}}``); unwrap them so the collapser sees plain letters.
@@ -177,6 +184,37 @@ def _protect_subscripts(latex: str) -> tuple[str, dict]:
     return rewritten, mapping
 
 
+# Functions whose argument ``parse_latex`` grabs greedily (see below).
+_FN_NAMES = (
+    "sin|cos|tan|sec|csc|cot|sinh|cosh|tanh|coth|sech|csch|"
+    "arcsin|arccos|arctan|ln|log|exp"
+)
+# ``\cos\phi`` or ``\cos{\phi}`` followed by more factors. Not matched
+# when a power follows the name (``\cos^2\phi``) or when the argument is
+# already parenthesised.
+_BARE_FN_ARG_RE = re.compile(
+    rf"\\({_FN_NAMES})(?!\^)\s*"
+    rf"(?:\{{([^{{}}]*)\}}|(\\[A-Za-z]+|[A-Za-z]))"
+    rf"((?:_\{{[^{{}}]*\}}|_[A-Za-z0-9])?)"
+)
+
+
+def _parenthesize_function_args(latex: str) -> str:
+    r"""Bracket a function's argument so it cannot swallow the product.
+
+    ``parse_latex`` reads ``\cos\phi \cdot a`` as ``cos(a \phi)`` and
+    ``\sin\theta \cdot b \cdot c`` as ``sin(c(b\theta))`` — the whole
+    trailing product is absorbed into the argument, silently plotting a
+    different function. Only the parenthesised form parses correctly, so
+    make the argument explicit before handing the string over.
+    """
+    def repl(m: re.Match) -> str:
+        fn, braced, bare, sub = m.groups()
+        return f"\\{fn}({(braced if braced is not None else bare)}{sub})"
+
+    return _BARE_FN_ARG_RE.sub(repl, latex)
+
+
 def _parse_normalized(latex: str) -> sympy.Basic:
     """Parse + normalize, leaving any relation intact.
 
@@ -189,7 +227,8 @@ def _parse_normalized(latex: str) -> sympy.Basic:
     ValueError:
         If ``parse_latex`` cannot parse the input.
     """
-    protected, subscript_map = _protect_subscripts(latex)
+    protected, subscript_map = _protect_subscripts(
+        _parenthesize_function_args(latex))
     try:
         expr = parse_latex(protected)
     except Exception as exc:
