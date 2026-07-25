@@ -176,13 +176,12 @@ def _protect_subscripts(latex: str) -> tuple[str, dict]:
     return rewritten, mapping
 
 
-def latex_to_sympy(latex: str) -> sympy.Basic:
-    """Parse LaTeX into a normalized SymPy expression.
+def _parse_normalized(latex: str) -> sympy.Basic:
+    """Parse + normalize, leaving any relation intact.
 
-    The shared front half of :func:`latex_to_mathjs` — parse, relation →
-    LHS − RHS, constant substitution, ``doit()``, identifier sanitizing —
-    exposed so other CAS consumers (e.g. the expression-analysis expert)
-    see exactly the expression the chart pipeline would evaluate.
+    Shared front half of :func:`latex_to_sympy`: subscript protection,
+    constant substitution, ``doit()`` and identifier sanitizing, but no
+    relation collapsing — callers decide what an equation means.
 
     Raises
     ------
@@ -199,10 +198,6 @@ def latex_to_sympy(latex: str) -> sympy.Basic:
     if subscript_map:
         expr = expr.subs(subscript_map)
 
-    # Auto-detect relations and build LHS − RHS.
-    if isinstance(expr, Rel):
-        expr = expr.lhs - expr.rhs
-
     # Replace Symbol('e') → E, Symbol('pi') → π, etc.
     expr = expr.subs(_SYMBOL_TO_CONSTANT)
 
@@ -218,6 +213,42 @@ def latex_to_sympy(latex: str) -> sympy.Basic:
     # Strip LaTeX subscript braces (x_{i} → x_i) so jscode emits
     # valid JavaScript/mathjs identifiers.
     return _sanitize_subscript_braces(expr)
+
+
+def latex_to_sympy(latex: str) -> sympy.Basic:
+    """Parse LaTeX into a normalized SymPy expression.
+
+    Relations collapse to ``LHS - RHS`` so a chart can plot the
+    zero-crossing — the long-standing behaviour the chart pipeline
+    depends on. Use :func:`latex_to_sympy_defined` when an equation that
+    *defines* a quantity should be read as that quantity instead.
+    """
+    expr = _parse_normalized(latex)
+    if isinstance(expr, Rel):
+        expr = expr.lhs - expr.rhs
+    return expr
+
+
+def latex_to_sympy_defined(latex: str) -> tuple[sympy.Basic, sympy.Symbol | None]:
+    """Parse LaTeX, reading a definition as the quantity it defines.
+
+    An equation whose one side is a bare symbol that does not occur on the
+    other — ``g_{feet} = \\omega^2 R`` — is a *definition*: the natural
+    reading is "plot the formula, call the vertical axis ``g_feet``", not
+    "plot ``g_feet - \\omega^2 R`` and hunt for its zero". Returns
+    ``(formula, defined_symbol)`` for those, and ``(LHS - RHS, None)`` for
+    every other relation (an equation to be solved, an inequality) as
+    well as for a plain expression.
+    """
+    expr = _parse_normalized(latex)
+    if isinstance(expr, sympy.Eq):
+        lhs, rhs = expr.lhs, expr.rhs
+        for side, other in ((lhs, rhs), (rhs, lhs)):
+            if isinstance(side, Symbol) and side not in other.free_symbols:
+                return other, side
+    if isinstance(expr, Rel):
+        return expr.lhs - expr.rhs, None
+    return expr, None
 
 
 def latex_to_mathjs(latex: str) -> tuple[str, list[str]]:

@@ -34,7 +34,9 @@ from sympy.calculus.util import continuous_domain
 from backend.experts.modules.proof_completion.cas_guard import (
     cas_register_safe_function, guard,
 )
-from backend.semantic_graph.mathjs_converter import latex_to_sympy, sympy_to_mathjs
+from backend.semantic_graph.mathjs_converter import (
+    latex_to_sympy_defined, sympy_to_mathjs,
+)
 
 # Bounds keeping the report reviewable and the JSON small: an expression
 # with more than this many of one feature kind is summarized, not listed.
@@ -110,8 +112,14 @@ def _pin_others(expr, var) -> dict:
 # ── guarded ops (module-level; picklable; one per feature) ─────────────
 
 def _op_parse(latex_src: str):
-    """Parse + normalize; returns the SymPy expression (picklable)."""
-    return latex_to_sympy(latex_src)
+    """Parse + normalize; returns ``(expression, defined_symbol)``.
+
+    ``defined_symbol`` is set when the input is a definition such as
+    ``g_{feet} = \\omega^2 R``: the expression analyzed is then the
+    formula alone, and the symbol names what it produces (the y axis),
+    instead of collapsing to ``LHS - RHS`` and hunting for a zero.
+    """
+    return latex_to_sympy_defined(latex_src)
 
 
 def _op_zeros(expr, var) -> dict:
@@ -306,9 +314,10 @@ def analyze(latex_src: str, variable: Optional[str] = None,
     guarded op timed out reports ``{"status": "unresolved"}`` — degraded,
     never absent, so the proposer can still reason about the rest.
     """
-    expr = guard(_op_parse, latex_src, default=None, timeout=timeout)
-    if expr is None:
+    parsed = guard(_op_parse, latex_src, default=None, timeout=timeout)
+    if parsed is None:
         return {"error": f"could not parse expression: {latex_src[:200]}"}
+    expr, defined = parsed
 
     var = pick_variable(expr, variable)
     chart_script = guard(_op_chart_script, expr, default=None, timeout=timeout)
@@ -316,6 +325,8 @@ def analyze(latex_src: str, variable: Optional[str] = None,
     if var is None:
         return {
             "expression": latex(expr),
+            "dependent": str(defined) if defined is not None else None,
+            "dependentLatex": _symbol_latex(str(defined)) if defined is not None else None,
             "variable": None,
             "variables": [],
             "variables_latex": {},
@@ -339,6 +350,12 @@ def analyze(latex_src: str, variable: Optional[str] = None,
     names = sorted(str(s) for s in expr.free_symbols)
     return {
         "expression": latex(expr),
+        # For a definition (``g_{feet} = \\omega^2 R``) the analyzed
+        # expression is the formula and ``dependent`` names what it
+        # produces — the quantity belonging on the vertical axis. None for
+        # a plain expression or an equation to be solved (LHS − RHS).
+        "dependent": str(defined) if defined is not None else None,
+        "dependentLatex": _symbol_latex(str(defined)) if defined is not None else None,
         "variable": str(var),
         "variables": names,
         "variables_latex": {n: _symbol_latex(n) for n in names},

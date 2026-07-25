@@ -482,7 +482,11 @@ export class FunctionAnalysisManager {
 
         const main = chars.chartScript;
         if (main && main.script) {
-            row(SERIES_COLORS[0], 'curve', chars.expression || '', main.script);
+            // For a definition, show it as it was written: name = formula.
+            const shown = chars.dependentLatex
+                ? `${chars.dependentLatex} = ${chars.expression}`
+                : (chars.expression || '');
+            row(SERIES_COLORS[0], 'curve', shown, main.script);
         }
         (view.plots || []).forEach((p, i) => {
             if (!p.script) return;
@@ -643,7 +647,7 @@ export class FunctionAnalysisManager {
             compiled,
             yb,
             xLatex: this._varLatex(chars, view.x_var),
-            exprLatex: chars.expression || 'f',
+            exprLatex: chars.dependentLatex || chars.expression || 'f',
             anns: annotations.filter(a => !this._hiddenGroups.has(a.group || '')),
         };
         this._renderAnnLegend(legend, view, annotations,
@@ -701,7 +705,9 @@ export class FunctionAnalysisManager {
 
         const yTitle = document.createElement('div');
         yTitle.className = 'fa-axis-title fa-axis-y';
-        this._katex(yTitle, expr || 'f');
+        // A definition names its output (g_{feet} = ω²R) — label the axis
+        // with that name; otherwise the plotted expression itself.
+        this._katex(yTitle, chars.dependentLatex || expr || 'f');
         // Hover shows the analysis' own AI-written title — no invented prose.
         if (proposal.title) this._attachVarTooltip(yTitle, proposal.title);
         this._attachHoverAsk(yTitle, () =>
@@ -753,7 +759,8 @@ export class FunctionAnalysisManager {
                 // Series labels are LaTeX for companion plots, 'f' for the
                 // analyzed expression itself.
                 this._katex(name, dp.dataset.label === 'f'
-                    ? (chars.expression || 'f') : dp.dataset.label);
+                    ? (chars.dependentLatex || chars.expression || 'f')
+                    : dp.dataset.label);
                 const val = document.createElement('span');
                 val.className = 'fa-tip-val';
                 val.textContent = Number.isFinite(dp.parsed?.y)

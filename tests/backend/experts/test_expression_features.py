@@ -137,12 +137,40 @@ def test_unparseable_reports_error():
     assert "error" in rep
 
 
-def test_relation_becomes_lhs_minus_rhs():
-    # Same normalization as the chart pipeline: y = x² analyzes y − x².
+def test_definition_reads_as_the_function_it_defines():
+    # ``y = x²`` defines y, so it analyzes x² with y as the output — not
+    # ``y − x²``, whose "maximum along x" told the learner nothing.
     rep = analyze("y = x^2", variable="x")
     assert "error" not in rep
-    assert set(rep["variables"]) == {"x", "y"}
+    assert rep["dependent"] == "y"
+    assert rep["variables"] == ["x"]
     extrema = rep["features"]["extrema"]["points"]
     assert len(extrema) == 1
     assert extrema[0]["location"]["approx"] == 0.0
-    assert extrema[0]["kind"] == "maximum"  # of y − x² along x
+    assert extrema[0]["kind"] == "minimum"   # the parabola's vertex
+
+
+# ── definitions: y = f(x) rather than LHS − RHS ────────────────────────
+
+def test_definition_analyzes_the_formula_and_names_the_output():
+    """``g = \\omega^2 R`` should plot the formula, not hunt its zero."""
+    rep = analyze(r"g_{feet} = \omega^2 (R - h)")
+    assert rep["expression"] == r"\omega^{2} \left(R - h\right)"
+    assert rep["dependent"] == "g_feet"
+    assert rep["dependentLatex"] == "g_{feet}"
+    # The defined symbol is the OUTPUT — never offered as an input slider.
+    assert rep["variables"] == ["R", "h", "omega"]
+    assert rep["chartScript"]["script"] == "pow(omega, 2)*(R - h)"
+
+
+def test_equation_to_solve_still_collapses_to_lhs_minus_rhs():
+    rep = analyze("x^2 = 4", variable="x")
+    assert rep["dependent"] is None
+    assert rep["expression"] == "x^{2} - 4"
+    assert _approxes(rep["features"]["zeros"]["points"]) == [-2.0, 2.0]
+
+
+def test_definition_needs_a_bare_symbol_side():
+    # Both sides carry x — not a definition, so LHS − RHS as before.
+    rep = analyze("x + y = 1", variable="x")
+    assert rep["dependent"] is None
