@@ -95,6 +95,14 @@
   .pchip.wrong { background: rgba(239,83,80,0.25); border-color: var(--red); opacity: 1; }
   .pexp { display: none; margin-top: 8px; font-size: 12.5px; color: var(--dim); }
   .pexp.show { display: block; }
+  #probe-more { margin-top: 12px; background: none; color: var(--dim);
+    border: 1px dashed var(--edge); border-radius: 16px; padding: 4px 16px;
+    font-size: 12.5px; cursor: pointer; }
+  #probe-more:hover { color: var(--text); border-color: var(--blue);
+    background: rgba(66,165,245,0.08); }
+  #probe-more-note { display: none; margin-top: 8px; font-size: 11.5px;
+    color: var(--faint); font-style: italic; }
+  #probe-more-note.show { display: block; }
 
   .sect-label { font-size: 11px; letter-spacing: .08em; color: var(--faint);
     text-transform: uppercase; margin-bottom: 8px; }
@@ -159,6 +167,8 @@
   <div class="card">
     <div class="sect-label">Predict before reveal</div>
     <div id="probes"></div>
+    <button id="probe-more" title="Ask the expert for more probes">More…</button>
+    <div id="probe-more-note"></div>
   </div>
 
   <div id="foot">
@@ -499,6 +509,7 @@ function detex(s) {
 function renderProbes() {
   const wrap = document.getElementById("probes");
   wrap.innerHTML = "";
+  document.getElementById("probe-more-note")?.classList.remove("show");
   const probes = DATA[state.caseId].probes || [];
   if (!probes.length) { wrap.innerHTML = `<span style="color:var(--faint)">No probes proposed.</span>`; return; }
   probes.forEach(p => {
@@ -523,6 +534,20 @@ function renderProbes() {
     wrap.appendChild(div);
   });
 }
+
+// "More…" — placeholder for a future expert verb that generates additional
+// probes for the current expression (e.g. POST /api/expert/expression_analysis
+// with {verb: "more_probes", exclude: [asked...]}). Not implemented; the
+// mockup just states what the click would do.
+document.getElementById("probe-more").addEventListener("click", () => {
+  const note = document.getElementById("probe-more-note");
+  // Plain mockup chrome — NOT AI-generated text, so no AI icon here: the
+  // icon is reserved for text the LM actually wrote.
+  note.textContent = "Would request additional probes from the expert " +
+    "(a dedicated more_probes verb, passing the probes already asked so it " +
+    "generates fresh ones) — not implemented in this mockup.";
+  note.classList.add("show");
+});
 
 // ── { } raw-JSON panel ──────────────────────────────────────────────────
 const jsonBtn = document.getElementById("json-btn");
