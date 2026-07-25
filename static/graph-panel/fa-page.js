@@ -430,7 +430,7 @@ export class FunctionAnalysisManager {
             // Build the chart ONCE per view; slider moves update data in
             // place (no destroy/recreate, no animation — no flicker).
             const chart = this._renderChart(artifact, chars, view, canvasWrap, legend, state);
-            this._renderAxisTitles(canvasWrap, chars, proposal, view);
+            this._renderAxisTitles(canvasWrap, chars, proposal, view, state);
             const update = () => this._updateChartData(chart, chars, view, state);
             this._renderSliders(artifact, chars, proposal, view, sliders, state, update);
         };
@@ -682,7 +682,7 @@ export class FunctionAnalysisManager {
     /** Axis titles as KaTeX: the swept variable under the x-axis, the
      *  analyzed expression rotated along the y-axis. Both carry the AI's
      *  glossary description on hover where one exists. */
-    _renderAxisTitles(canvasWrap, chars, proposal, view) {
+    _renderAxisTitles(canvasWrap, chars, proposal, view, state) {
         for (const el of canvasWrap.querySelectorAll('.fa-axis-title')) el.remove();
         const expr = chars.expression || '';
         const xLatex = this._varLatex(chars, view.x_var);
@@ -696,7 +696,8 @@ export class FunctionAnalysisManager {
         this._attachHoverAsk(xTitle, () =>
             `In $${expr}$, the chart sweeps $${xLatex}$ across ${range}` +
             (xDesc ? ` (${xDesc})` : '') +
-            '. What should I notice about how the expression responds to it?');
+            '. What should I notice about how the expression responds to it?\n' +
+            this._configSummary(chars, view, state));
 
         const yTitle = document.createElement('div');
         yTitle.className = 'fa-axis-title fa-axis-y';
@@ -707,7 +708,8 @@ export class FunctionAnalysisManager {
             `The vertical axis of this chart plots $${expr}$` +
             (proposal.title ? ` ("${proposal.title}")` : '') +
             `. What does this quantity mean physically, and what is the ` +
-            `most important thing its shape reveals?`);
+            `most important thing its shape reveals?\n` +
+            this._configSummary(chars, view, state));
 
         canvasWrap.append(xTitle, yTitle);
     }
@@ -764,6 +766,23 @@ export class FunctionAnalysisManager {
             el.style.top = `${tooltip.caretY}px`;
             el.classList.add('show');
         };
+    }
+
+    _fmt(v) {
+        return Number.isFinite(+v) ? String(+(+v).toPrecision(4)) : '?';
+    }
+
+    /** The chart's current state in words, appended to every ask so the
+     *  tutor answers about what the learner is actually looking at rather
+     *  than the expression in the abstract. */
+    _configSummary(chars, view, state) {
+        const pins = Object.entries(state.pins || {})
+            .map(([k, v]) => `$${this._varLatex(chars, k)}$ = ${this._fmt(v)}`);
+        const range = (view.x_range || []).map(v => this._fmt(v)).join(' to ');
+        const parts = [`the chart sweeps $${this._varLatex(chars, view.x_var)}$` +
+                       (range ? ` from ${range}` : '')];
+        if (pins.length) parts.push(`with ${pins.join(', ')}`);
+        return `(Current chart settings: ${parts.join(', ')}.)`;
     }
 
     /** Hovering an annotation reports the values AT that marker — the same
@@ -1091,12 +1110,16 @@ export class FunctionAnalysisManager {
             if (desc) this._attachVarTooltip(sym, desc);
             // Ask button anchored at the variable's top-right corner,
             // revealed while hovering anywhere on the slider row.
+            // Built at CLICK time, so the values quoted are wherever the
+            // learner has actually dragged the sliders.
             const ask = makeAiAskButton('ai-ask-btn fa-hover-ask fa-var-ask',
                 'Ask the AI about this variable', () =>
                 `In $${artifact.latex}$, what does the variable ` +
                 `$${this._varLatex(chars, name)}$ represent` +
                 (desc ? ` — the analysis says "${desc}"` : '') +
-                '? Why does it matter here?');
+                `? I currently have it set to ${this._fmt(state.pins[name])}. ` +
+                `Why does it matter here, and what changes as I move it?\n` +
+                this._configSummary(chars, view, state));
             sym.appendChild(ask);
             row.classList.add('fa-askable');
 
