@@ -430,6 +430,7 @@ export class FunctionAnalysisManager {
             // Build the chart ONCE per view; slider moves update data in
             // place (no destroy/recreate, no animation — no flicker).
             const chart = this._renderChart(artifact, chars, view, canvasWrap, legend, state);
+            this._renderAxisTitles(canvasWrap, chars, proposal, view);
             const update = () => this._updateChartData(chart, chars, view, state);
             this._renderSliders(artifact, chars, proposal, view, sliders, state, update);
         };
@@ -593,20 +594,19 @@ export class FunctionAnalysisManager {
                         display: datasets.length > 1,
                         labels: { color: '#aebbd1', boxWidth: 18 },
                     },
+                    // Canvas tooltips can't render math — use an HTML one.
                     tooltip: {
-                        backgroundColor: 'rgba(10, 12, 26, 0.9)',
-                        titleColor: '#dde6ff',
-                        bodyColor: '#aebbd1',
-                        callbacks: {
-                            title: (items) =>
-                                `${xv} = ${items[0] ? (+items[0].label).toFixed(4) : ''}`,
-                        },
+                        enabled: false,
+                        external: this._makeTooltipHandler(chars, view),
                     },
                 },
+                // Left reserves the rotated y-title's band; right is just
+                // enough that the last x tick isn't clipped.
+                layout: { padding: { left: 20, right: 6, top: 4, bottom: 14 } },
                 scales: {
                     x: {
                         type: 'linear',
-                        title: { display: true, text: xv, color: '#8fa8c8' },
+                        // Axis titles are HTML (KaTeX) in the label layer.
                         ticks: { color: '#7e8aa3', maxTicksLimit: 9,
                                  callback: v => +Number(v).toFixed(3) },
                         // The zero axis draws clearly stronger than the grid.
@@ -677,6 +677,93 @@ export class FunctionAnalysisManager {
         chart.update('none');
     }
 
+    /** Axis titles as KaTeX: the swept variable under the x-axis, the
+     *  analyzed expression rotated along the y-axis. Both carry the AI's
+     *  glossary description on hover where one exists. */
+    _renderAxisTitles(canvasWrap, chars, proposal, view) {
+        for (const el of canvasWrap.querySelectorAll('.fa-axis-title')) el.remove();
+        const expr = chars.expression || '';
+        const xLatex = this._varLatex(chars, view.x_var);
+        const range = (view.x_range || []).join(' to ');
+
+        const xTitle = document.createElement('div');
+        xTitle.className = 'fa-axis-title fa-axis-x';
+        this._katex(xTitle, xLatex);
+        const xDesc = (proposal.variable_glossary || {})[view.x_var];
+        if (xDesc) this._attachVarTooltip(xTitle, xDesc);
+        this._attachHoverAsk(xTitle, () =>
+            `In $${expr}$, the chart sweeps $${xLatex}$ across ${range}` +
+            (xDesc ? ` (${xDesc})` : '') +
+            '. What should I notice about how the expression responds to it?');
+
+        const yTitle = document.createElement('div');
+        yTitle.className = 'fa-axis-title fa-axis-y';
+        this._katex(yTitle, expr || 'f');
+        // Hover shows the analysis' own AI-written title — no invented prose.
+        if (proposal.title) this._attachVarTooltip(yTitle, proposal.title);
+        this._attachHoverAsk(yTitle, () =>
+            `The vertical axis of this chart plots $${expr}$` +
+            (proposal.title ? ` ("${proposal.title}")` : '') +
+            `. What does this quantity mean physically, and what is the ` +
+            `most important thing its shape reveals?`);
+
+        canvasWrap.append(xTitle, yTitle);
+    }
+
+    /** HTML hover tooltip (Chart.js `external`) so the hovered x-value and
+     *  every series label render as KaTeX rather than canvas text. */
+    _makeTooltipHandler(chars, view) {
+        const xLatex = this._varLatex(chars, view.x_var);
+        return (ctx) => {
+            const { chart, tooltip } = ctx;
+            const wrap = chart.canvas.parentNode;
+            if (!wrap) return;
+            let el = wrap.querySelector('.fa-chart-tip');
+            if (!el) {
+                el = document.createElement('div');
+                el.className = 'fa-chart-tip';
+                wrap.appendChild(el);
+            }
+            if (!tooltip || tooltip.opacity === 0) {
+                el.classList.remove('show');
+                return;
+            }
+            el.innerHTML = '';
+
+            const head = document.createElement('div');
+            head.className = 'fa-tip-head';
+            const xv = document.createElement('span');
+            this._katex(xv, xLatex);
+            head.append(xv, document.createTextNode(
+                ' = ' + (+(tooltip.dataPoints?.[0]?.parsed?.x ?? 0)).toPrecision(4)));
+            el.appendChild(head);
+
+            for (const dp of tooltip.dataPoints || []) {
+                const row = document.createElement('div');
+                row.className = 'fa-tip-row';
+                const sw = document.createElement('span');
+                sw.className = 'fa-tip-swatch';
+                sw.style.background = dp.dataset.borderColor;
+                const name = document.createElement('span');
+                name.className = 'fa-tip-name';
+                // Series labels are LaTeX for companion plots, 'f' for the
+                // analyzed expression itself.
+                this._katex(name, dp.dataset.label === 'f'
+                    ? (chars.expression || 'f') : dp.dataset.label);
+                const val = document.createElement('span');
+                val.className = 'fa-tip-val';
+                val.textContent = Number.isFinite(dp.parsed?.y)
+                    ? (+dp.parsed.y).toPrecision(5) : '—';
+                row.append(sw, name, val);
+                el.appendChild(row);
+            }
+
+            el.style.left = `${tooltip.caretX}px`;
+            el.style.top = `${tooltip.caretY}px`;
+            el.classList.add('show');
+        };
+    }
+
     /** Place annotation labels as KaTeX-rendered HTML over the canvas.
      *  Called from the draw plugin, so positions follow every slider move
      *  and resize. Canvas text can't render math; this layer can. */
@@ -685,6 +772,7 @@ export class FunctionAnalysisManager {
             chart.canvas.parentNode.querySelector('.fa-chart-labels');
         if (!layer) return;
         layer.innerHTML = '';
+        const placed = [];
         for (const l of labels) {
             const el = document.createElement('span');
             el.className = 'fa-chart-label' + (l.band ? ' band' : '');
@@ -692,6 +780,25 @@ export class FunctionAnalysisManager {
             el.style.top = `${l.top}px`;
             this._inlineMath(el, l.text);
             layer.appendChild(el);
+            placed.push({ el, l });
+        }
+        // Keep labels inside the canvas: a marker near the right edge flips
+        // to the left of its line, and stacked labels step down so they
+        // don't overprint each other.
+        const wide = layer.clientWidth;
+        const rows = [];
+        for (const { el, l } of placed) {
+            const w = el.offsetWidth, h = el.offsetHeight || 14;
+            let left = l.left;
+            if (left + w > wide - 3) left = Math.max(3, l.left - w - 8);
+            let top = l.top;
+            while (rows.some(r => Math.abs(r.top - top) < h &&
+                                  left < r.right && left + w > r.left)) {
+                top += h + 2;
+            }
+            el.style.left = `${left}px`;
+            el.style.top = `${top}px`;
+            rows.push({ top, left, right: left + w });
         }
     }
 
