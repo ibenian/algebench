@@ -1,0 +1,190 @@
+{
+  "characteristics": {
+    "expression": "\\frac{1}{\\sqrt{1 - \\frac{v^{2}}{c^{2}}}}",
+    "variable": "v",
+    "variables": [
+      "c",
+      "v"
+    ],
+    "variables_latex": {
+      "c": "c",
+      "v": "v"
+    },
+    "chartScript": {
+      "script": "pow(1 - pow(v, 2)/pow(c, 2), -1/2)",
+      "variables": [
+        "c",
+        "v"
+      ]
+    },
+    "features": {
+      "zeros": {
+        "points": [],
+        "family": null
+      },
+      "extrema": {
+        "points": [],
+        "family": "\\left\\{0\\right\\} \\setminus \\left(\\mathbb{R} \\cap \\left\\{- c, c\\right\\}\\right)"
+      },
+      "singularities": {
+        "points": [
+          {
+            "location": {
+              "latex": "\\sqrt{c^{2}}",
+              "approx": 1.0
+            },
+            "left_limit": {
+              "latex": "\\infty \\operatorname{sign}{\\left(\\frac{1}{\\sqrt{\\frac{1}{c}}} \\right)}"
+            },
+            "right_limit": {
+              "latex": "\\infty \\operatorname{sign}{\\left(\\frac{1}{\\sqrt{- \\frac{1}{c}}} \\right)}"
+            },
+            "vertical_asymptote": true
+          },
+          {
+            "location": {
+              "latex": "- \\sqrt{c^{2}}",
+              "approx": -1.0
+            },
+            "left_limit": {
+              "latex": "\\infty \\operatorname{sign}{\\left(\\frac{1}{\\sqrt{- \\frac{1}{c}}} \\right)}"
+            },
+            "right_limit": {
+              "latex": "\\infty \\operatorname{sign}{\\left(\\frac{1}{\\sqrt{\\frac{1}{c}}} \\right)}"
+            },
+            "vertical_asymptote": true
+          }
+        ],
+        "family": null
+      },
+      "inflections": {
+        "points": [],
+        "family": "\\left(\\mathbb{R} \\cap \\left\\{- c, c, - \\frac{\\sqrt{2} i c}{2}, \\frac{\\sqrt{2} i c}{2}\\right\\}\\right) \\setminus \\left(\\mathbb{R} \\cap \\left\\{- c, c\\right\\}\\right)"
+      },
+      "limits_at_infinity": {
+        "directions": [
+          {
+            "direction": "+inf",
+            "limit": {
+              "latex": "0",
+              "approx": 0.0
+            },
+            "horizontal_asymptote": true
+          },
+          {
+            "direction": "-inf",
+            "limit": {
+              "latex": "0",
+              "approx": 0.0
+            },
+            "horizontal_asymptote": true
+          }
+        ]
+      },
+      "periodicity": null,
+      "parity": "even",
+      "domain": null
+    }
+  },
+  "proposal": {
+    "abstain": false,
+    "story": "As speed approaches the speed of light, the relativistic gamma factor approaches infinity, illustrating why objects cannot reach or exceed light speed.",
+    "ranked": [
+      {
+        "feature": "singularities",
+        "usefulness": 5,
+        "why": "This feature directly demonstrates the physical impossibility of reaching the speed of light, which is the core concept of the lesson."
+      },
+      {
+        "feature": "extrema",
+        "usefulness": 4,
+        "why": "The minimum value of the gamma factor (1) occurs at rest, providing a crucial baseline for understanding relativistic effects."
+      },
+      {
+        "feature": "domain",
+        "usefulness": 3,
+        "why": "The implicit domain constraint that $v$ cannot exceed $c$ is fundamental to special relativity and is revealed by the singularities."
+      }
+    ],
+    "views": [
+      {
+        "kind": "plane-2d",
+        "x_var": "v",
+        "x_range": [
+          -1.5,
+          1.5
+        ],
+        "pinned": {
+          "c": 1.0
+        },
+        "mark": [
+          "singularities",
+          "extrema"
+        ],
+        "rationale": "This range clearly shows the behavior of the gamma factor as $v$ approaches $c$ (and $-c$), highlighting the singularities and the minimum at $v=0$. We pin $c=1$ for simplicity, as the behavior is proportional."
+      },
+      {
+        "kind": "plane-2d",
+        "x_var": "v",
+        "x_range": [
+          -0.999,
+          0.999
+        ],
+        "pinned": {
+          "c": 1.0
+        },
+        "mark": [
+          "extrema"
+        ],
+        "rationale": "This range focuses on the physically relevant region where $v < c$, allowing learners to observe the increase in gamma as speed approaches light speed without the curve blowing up off the chart."
+      }
+    ],
+    "probes": [
+      {
+        "question": "What is the value of the gamma factor when the velocity $v$ is zero?",
+        "options": [
+          "0",
+          "1",
+          "Infinity",
+          "Undefined"
+        ],
+        "correct_index": 1,
+        "explanation": "When $v=0$, the expression simplifies to $1/\\sqrt{1-0} = 1$, meaning there are no relativistic effects at rest.",
+        "feature": ""
+      },
+      {
+        "question": "What happens to the gamma factor as the velocity $v$ approaches the speed of light $c$?",
+        "options": [
+          "It approaches zero",
+          "It approaches one",
+          "It approaches infinity",
+          "It becomes negative"
+        ],
+        "correct_index": 2,
+        "explanation": "As $v \\to c$, the term $v^2/c^2$ approaches 1, making the denominator approach $\\sqrt{0}$, so the fraction approaches infinity.",
+        "feature": ""
+      },
+      {
+        "question": "What happens if $v$ were to exceed $c$?",
+        "options": [
+          "The gamma factor would become larger than infinity",
+          "The gamma factor would become an imaginary number",
+          "The gamma factor would become zero",
+          "The gamma factor would remain at infinity"
+        ],
+        "correct_index": 1,
+        "explanation": "If $v > c$, then $v^2/c^2 > 1$, making $1 - v^2/c^2$ a negative number, so its square root would be imaginary, which is physically meaningless in this context.",
+        "feature": ""
+      }
+    ],
+    "variable_glossary": {
+      "c": "The speed of light in a vacuum, approximately $3 \\times 10^8$ meters per second (m/s).",
+      "v": "The velocity of an object, in meters per second (m/s)."
+    }
+  },
+  "_request": {
+    "latex": "\\frac{1}{\\sqrt{1 - \\frac{v^2}{c^2}}}",
+    "context": "Relativistic gamma factor: why nothing reaches light speed.",
+    "variable": "v"
+  }
+}

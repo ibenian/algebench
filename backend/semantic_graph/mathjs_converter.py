@@ -206,8 +206,16 @@ def latex_to_mathjs(latex: str) -> tuple[str, list[str]]:
       numeric constants ``E`` and ``pi`` before code generation so they
       don't appear as free variables.
     """
-    expr = latex_to_sympy(latex)
+    return sympy_to_mathjs(latex_to_sympy(latex))
 
+
+def sympy_to_mathjs(expr: sympy.Basic) -> tuple[str, list[str]]:
+    """Code-generate a mathjs script from an already-normalized SymPy expression.
+
+    The back half of :func:`latex_to_mathjs`, exposed for callers that
+    already hold the parsed expression (e.g. the expression-analysis
+    expert, which parses once and derives many artifacts from it).
+    """
     # Extract free variables (after substitution).
     variables = sorted(str(s) for s in expr.free_symbols)
 

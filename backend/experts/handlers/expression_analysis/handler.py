@@ -68,7 +68,14 @@ def expression_analysis(req: ExpressionAnalysisRequest) -> dict:
         context=req.context,
     )
     out = proposal.model_dump()
-    _flag_unknown_symbols(out, characteristics.get("variables") or [])
+    known = characteristics.get("variables") or []
+    _flag_unknown_symbols(out, known)
+    # Glossary entries for names the CAS report doesn't know are dropped
+    # outright — a tooltip on a nonexistent symbol can never render.
+    out["variable_glossary"] = {
+        k: v for k, v in (out.get("variable_glossary") or {}).items()
+        if k in set(known)
+    }
     return {"characteristics": characteristics, "proposal": out}
 
 

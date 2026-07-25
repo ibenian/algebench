@@ -77,6 +77,10 @@ class VizProposal(BaseModel):
     ranked: list[RankedFeature] = Field(default_factory=list)
     views: list[ProposedView] = Field(default_factory=list)
     probes: list[ProposedProbe] = Field(default_factory=list)
+    # Variable name → one-line contextual description, for hover tooltips
+    # wherever the symbol appears (sliders, axes, pins). AI-written; the
+    # mechanical LaTeX forms live in characteristics.variables_latex.
+    variable_glossary: dict[str, str] = Field(default_factory=dict)
 
 
 class VizProposalSig(dspy.Signature):
@@ -103,7 +107,12 @@ class VizProposalSig(dspy.Signature):
        a learner answers BEFORE seeing the curve, each grounded in one
        detected feature, with 2–4 options, the correct index, and a one-
        line explanation tied to the expression's structure.
-    4. ABSTAIN (set `abstain` true, everything else empty) when there is
+    4. GLOSS every variable (`variable_glossary`): for EACH name in the
+       report's `variables` list, one plain-language line saying what the
+       quantity is in this context, with typical units when meaningful —
+       e.g. "g": "gravitational acceleration (~9.8 m/s² on Earth)". Keys
+       must be the report's variable names verbatim.
+    5. ABSTAIN (set `abstain` true, everything else empty) when there is
        nothing behaviorally interesting to visualize — e.g. a bare
        constant or a purely notational identity.
 
@@ -139,6 +148,10 @@ class VizProposalSig(dspy.Signature):
         desc="[{question, options, correct_index, explanation, feature}] "
              "1-4 predict-before-reveal questions grounded in detected "
              "features; empty if abstaining")
+    variable_glossary: dict = dspy.OutputField(
+        desc="{variable name: one-line contextual description with typical "
+             "units}. One entry for EVERY name in the report's `variables` "
+             "list, keys verbatim; empty if abstaining")
 
 
 class VizProposer(dspy.Module):
@@ -221,12 +234,19 @@ def propose_views(expression: str, characteristics: str,
                     continue
         return shaped
 
+    glossary = {}
+    if isinstance(getattr(out, "variable_glossary", None), dict):
+        for k, v in out.variable_glossary.items():
+            if isinstance(k, str) and isinstance(v, str) and v.strip():
+                glossary[k] = v.strip()[:300]
+
     return VizProposal(
         abstain=bool(out.abstain),
         story=str(out.story or "").strip(),
         ranked=shape(RankedFeature, out.ranked, MAX_RANKED),
         views=shape(ProposedView, out.views, MAX_VIEWS),
         probes=shape(ProposedProbe, out.probes, MAX_PROBES),
+        variable_glossary=glossary,
     )
 
 

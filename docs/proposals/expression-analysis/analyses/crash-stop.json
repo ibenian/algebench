@@ -1,0 +1,184 @@
+{
+  "characteristics": {
+    "expression": "\\frac{V_{f} - V_{i}}{\\Delta t}",
+    "variable": "t",
+    "variables": [
+      "Delta",
+      "V_f",
+      "V_i",
+      "t"
+    ],
+    "variables_latex": {
+      "Delta": "\\Delta",
+      "V_f": "V_{f}",
+      "V_i": "V_{i}",
+      "t": "t"
+    },
+    "chartScript": {
+      "script": "(V_f - V_i)/(Delta*t)",
+      "variables": [
+        "Delta",
+        "V_f",
+        "V_i",
+        "t"
+      ]
+    },
+    "features": {
+      "zeros": {
+        "points": [],
+        "family": null
+      },
+      "extrema": {
+        "points": [],
+        "family": null
+      },
+      "singularities": {
+        "points": [
+          {
+            "location": {
+              "latex": "0",
+              "approx": 0.0
+            },
+            "left_limit": {
+              "latex": "- \\infty \\operatorname{sign}{\\left(\\frac{V_{f} - V_{i}}{\\Delta} \\right)}"
+            },
+            "right_limit": {
+              "latex": "\\infty \\operatorname{sign}{\\left(\\frac{V_{f} - V_{i}}{\\Delta} \\right)}"
+            },
+            "vertical_asymptote": true
+          }
+        ],
+        "family": null
+      },
+      "inflections": {
+        "points": [],
+        "family": null
+      },
+      "limits_at_infinity": {
+        "directions": [
+          {
+            "direction": "+inf",
+            "limit": {
+              "latex": "0",
+              "approx": 0.0
+            },
+            "horizontal_asymptote": true
+          },
+          {
+            "direction": "-inf",
+            "limit": {
+              "latex": "0",
+              "approx": 0.0
+            },
+            "horizontal_asymptote": true
+          }
+        ]
+      },
+      "periodicity": null,
+      "parity": "odd",
+      "domain": "\\left(-\\infty, 0\\right) \\cup \\left(0, \\infty\\right)"
+    }
+  },
+  "proposal": {
+    "abstain": false,
+    "story": "This expression represents a quantity that grows infinitely large as time approaches zero, but quickly diminishes to zero as time goes on.",
+    "ranked": [
+      {
+        "feature": "singularities",
+        "usefulness": 5,
+        "why": "The singularity at $\\Delta t = 0$ is crucial for understanding the physical meaning of average acceleration, especially in a crash stop where $\\Delta t$ is a very small, non-zero duration. It highlights that instantaneous acceleration is not defined by this formula."
+      },
+      {
+        "feature": "limits_at_infinity",
+        "usefulness": 3,
+        "why": "The limits at infinity show that for very long durations, the average acceleration approaches zero, which is expected as the change in velocity is divided by an ever-increasing time interval. This contrasts with the behavior at small $\\Delta t$."
+      }
+    ],
+    "views": [
+      {
+        "kind": "plane-2d",
+        "x_var": "t",
+        "x_range": [
+          0.01,
+          10.0
+        ],
+        "pinned": {
+          "Delta": 1.0,
+          "V_f": 0.0,
+          "V_i": 10.0
+        },
+        "mark": [
+          "singularities",
+          "limits_at_infinity"
+        ],
+        "rationale": "Focus on positive time durations, showing the rapid decrease from a large value towards zero. The singularity at t=0 is implied by the very large value for small positive t."
+      },
+      {
+        "kind": "plane-2d",
+        "x_var": "t",
+        "x_range": [
+          -10.0,
+          -0.01
+        ],
+        "pinned": {
+          "Delta": 1.0,
+          "V_f": 0.0,
+          "V_i": 10.0
+        },
+        "mark": [
+          "singularities",
+          "limits_at_infinity"
+        ],
+        "rationale": "Show the behavior for negative time durations, mirroring the positive side due to odd parity. This also emphasizes the singularity at t=0."
+      }
+    ],
+    "probes": [
+      {
+        "question": "What happens to the average acceleration as the time interval $\\Delta t$ approaches zero?",
+        "options": [
+          "It approaches zero.",
+          "It becomes infinitely large.",
+          "It becomes undefined.",
+          "It stays constant."
+        ],
+        "correct_index": 1,
+        "explanation": "As the denominator $\\Delta t$ approaches zero, the fraction's value (average acceleration) approaches infinity, representing an instantaneous change in velocity.",
+        "feature": ""
+      },
+      {
+        "question": "If the time interval $\\Delta t$ becomes very, very large, what does the average acceleration approach?",
+        "options": [
+          "A very large positive number.",
+          "A very large negative number.",
+          "Zero.",
+          "An undefined value."
+        ],
+        "correct_index": 2,
+        "explanation": "As $\\Delta t$ grows infinitely large, the denominator dominates, causing the entire expression to approach zero, meaning the average acceleration over a vast time is negligible.",
+        "feature": ""
+      },
+      {
+        "question": "Consider a crash stop where $V_f - V_i$ is a negative value (e.g., braking from a positive initial speed to zero). If $\\Delta t$ is positive, what is the sign of the average acceleration?",
+        "options": [
+          "Positive.",
+          "Negative.",
+          "Zero.",
+          "Undefined."
+        ],
+        "correct_index": 1,
+        "explanation": "If $V_f - V_i$ is negative and $\\Delta t$ is positive, then their quotient, the average acceleration, must be negative.",
+        "feature": ""
+      }
+    ],
+    "variable_glossary": {
+      "Delta": "a scaling factor, often representing a small change or a constant value, without specific units in this context.",
+      "V_f": "the final velocity of an object, typically in meters per second (m/s) or miles per hour (mph).",
+      "V_i": "the initial velocity of an object, typically in meters per second (m/s) or miles per hour (mph).",
+      "t": "the time variable, representing the duration of the event (here, $\\Delta t$), typically in seconds (s)."
+    }
+  },
+  "_request": {
+    "latex": "\\frac{V_f - V_i}{\\Delta t}",
+    "context": "Average acceleration during a crash stop."
+  }
+}

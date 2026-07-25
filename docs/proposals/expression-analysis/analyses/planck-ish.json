@@ -1,0 +1,168 @@
+{
+  "characteristics": {
+    "expression": "\\frac{x^{3}}{e^{x} - 1}",
+    "variable": "x",
+    "variables": [
+      "x"
+    ],
+    "variables_latex": {
+      "x": "x"
+    },
+    "chartScript": {
+      "script": "pow(x, 3)/(exp(x) - 1)",
+      "variables": [
+        "x"
+      ]
+    },
+    "features": {
+      "zeros": {
+        "points": [],
+        "family": null
+      },
+      "extrema": {
+        "points": [],
+        "family": "\\left\\{x\\; \\middle|\\; x \\in \\mathbb{R} \\wedge x e^{x} - 3 e^{x} + 3 = 0 \\right\\} \\setminus \\left\\{0\\right\\}"
+      },
+      "singularities": {
+        "points": [
+          {
+            "location": {
+              "latex": "0",
+              "approx": 0.0
+            },
+            "left_limit": {
+              "latex": "0",
+              "approx": 0.0
+            },
+            "right_limit": {
+              "latex": "0",
+              "approx": 0.0
+            },
+            "vertical_asymptote": false
+          }
+        ],
+        "family": null
+      },
+      "inflections": {
+        "points": [],
+        "family": "\\left\\{x\\; \\middle|\\; x \\in \\mathbb{R} \\wedge x^{2} e^{2 x} + x^{2} e^{x} - 6 x e^{2 x} + 6 x e^{x} + 6 e^{2 x} - 12 e^{x} + 6 = 0 \\right\\} \\setminus \\left\\{0\\right\\}"
+      },
+      "limits_at_infinity": {
+        "directions": [
+          {
+            "direction": "+inf",
+            "limit": {
+              "latex": "0",
+              "approx": 0.0
+            },
+            "horizontal_asymptote": true
+          },
+          {
+            "direction": "-inf",
+            "limit": "\\infty"
+          }
+        ]
+      },
+      "periodicity": null,
+      "parity": null,
+      "domain": "\\left(-\\infty, 0\\right) \\cup \\left(0, \\infty\\right)"
+    }
+  },
+  "proposal": {
+    "abstain": false,
+    "story": "This function rises from negative infinity, approaches zero as $x$ approaches zero, then rises to a peak before decaying back to zero as $x$ goes to positive infinity, creating a blackbody-like spectrum shape.",
+    "ranked": [
+      {
+        "feature": "extrema",
+        "usefulness": 5,
+        "why": "The existence of a peak is central to the concept of a blackbody spectrum, which is the context for this expression."
+      },
+      {
+        "feature": "limits_at_infinity",
+        "usefulness": 4,
+        "why": "The behavior as $x \\to \\infty$ and $x \\to -\\infty$ defines the overall shape of the spectrum, showing it starts high, drops, and then rises to a peak before falling again."
+      },
+      {
+        "feature": "singularities",
+        "usefulness": 3,
+        "why": "Although $x=0$ is a singularity in the denominator, the limit of the function as $x \\to 0$ is 0, which is an important but less immediately obvious feature than the peak for the blackbody context."
+      }
+    ],
+    "views": [
+      {
+        "kind": "plane-2d",
+        "x_var": "x",
+        "x_range": [
+          -5.0,
+          10.0
+        ],
+        "pinned": {},
+        "mark": [
+          "extrema",
+          "limits_at_infinity"
+        ],
+        "rationale": "This range shows the rise from negative infinity, the approach to zero, the peak, and the decay to zero, encompassing the key features relevant to a blackbody spectrum."
+      },
+      {
+        "kind": "limiting-behavior",
+        "x_var": "x",
+        "x_range": [
+          -10.0,
+          10.0
+        ],
+        "pinned": {},
+        "mark": [
+          "limits_at_infinity",
+          "singularities"
+        ],
+        "rationale": "This view highlights the behavior at the extremes and near the singularity at $x=0$, showing the function's overall asymptotic trends."
+      }
+    ],
+    "probes": [
+      {
+        "question": "What happens to the value of the function as $x$ becomes a very large positive number?",
+        "options": [
+          "It approaches positive infinity.",
+          "It approaches zero.",
+          "It approaches a constant non-zero value.",
+          "It oscillates between positive and negative values."
+        ],
+        "correct_index": 1,
+        "explanation": "As $x \\to \\infty$, the exponential $e^x$ grows much faster than $x^3$, so the denominator dominates, forcing the fraction to zero.",
+        "feature": ""
+      },
+      {
+        "question": "What happens to the value of the function as $x$ becomes a very large negative number?",
+        "options": [
+          "It approaches zero.",
+          "It approaches positive infinity.",
+          "It approaches negative infinity.",
+          "It approaches a constant non-zero value."
+        ],
+        "correct_index": 2,
+        "explanation": "As $x \\to -\\infty$, $e^x \\to 0$, so the denominator approaches $-1$. The numerator $x^3$ approaches negative infinity, making the entire function approach negative infinity.",
+        "feature": ""
+      },
+      {
+        "question": "Based on the shape of a blackbody spectrum, what can we expect about the function's behavior between very large negative and very large positive values of $x$?",
+        "options": [
+          "It will continuously increase.",
+          "It will continuously decrease.",
+          "It will have at least one peak (maximum).",
+          "It will have a vertical asymptote."
+        ],
+        "correct_index": 2,
+        "explanation": "For a blackbody-like spectrum, the intensity rises, reaches a maximum at a specific wavelength (or $x$ value in this context), and then falls, indicating at least one peak.",
+        "feature": ""
+      }
+    ],
+    "variable_glossary": {
+      "x": "A variable representing a quantity akin to wavelength or frequency in a blackbody spectrum, typically positive, but here covering a broader range for mathematical exploration."
+    }
+  },
+  "_request": {
+    "latex": "\\frac{x^3}{e^x - 1}",
+    "context": "Blackbody-like spectrum shape: why there is a peak wavelength.",
+    "variable": "x"
+  }
+}

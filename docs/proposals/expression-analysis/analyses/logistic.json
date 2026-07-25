@@ -1,0 +1,158 @@
+{
+  "characteristics": {
+    "expression": "\\frac{L}{1 + e^{- k x}}",
+    "variable": "x",
+    "variables": [
+      "L",
+      "k",
+      "x"
+    ],
+    "variables_latex": {
+      "L": "L",
+      "k": "k",
+      "x": "x"
+    },
+    "chartScript": {
+      "script": "L/(1 + exp(-k*x))",
+      "variables": [
+        "L",
+        "k",
+        "x"
+      ]
+    },
+    "features": {
+      "zeros": {
+        "points": [],
+        "family": null
+      },
+      "extrema": {
+        "points": [],
+        "family": null
+      },
+      "singularities": {
+        "points": [
+          {
+            "location": {
+              "latex": "- \\frac{i \\pi}{k}"
+            },
+            "left_limit": {
+              "latex": "- \\infty \\operatorname{sign}{\\left(\\frac{L}{k} \\right)}"
+            },
+            "right_limit": {
+              "latex": "\\infty \\operatorname{sign}{\\left(\\frac{L}{k} \\right)}"
+            },
+            "vertical_asymptote": true
+          }
+        ],
+        "family": null
+      },
+      "inflections": {
+        "points": [],
+        "family": "\\left\\{0\\right\\} \\setminus \\left(\\mathbb{R} \\cap \\left\\{\\frac{i \\pi}{k}\\right\\}\\right)"
+      },
+      "limits_at_infinity": {
+        "directions": [
+          {
+            "direction": "+inf",
+            "limit": null
+          },
+          {
+            "direction": "-inf",
+            "limit": null
+          }
+        ]
+      },
+      "periodicity": null,
+      "parity": null,
+      "domain": "\\mathbb{R} \\setminus \\left(\\mathbb{R} \\cap \\left\\{- \\frac{i \\pi}{k}\\right\\}\\right)"
+    }
+  },
+  "proposal": {
+    "abstain": false,
+    "story": "This expression describes a population that grows from near zero, accelerating its growth until it reaches a maximum rate, then decelerating as it approaches a carrying capacity.",
+    "ranked": [
+      {
+        "feature": "limits_at_infinity",
+        "usefulness": 5,
+        "why": "The horizontal asymptotes represent the initial population (near zero) and the carrying capacity, which are crucial for understanding logistic growth."
+      },
+      {
+        "feature": "inflections",
+        "usefulness": 4,
+        "why": "The inflection point signifies where the population growth rate is maximized, a key concept in population dynamics."
+      },
+      {
+        "feature": "singularities",
+        "usefulness": 2,
+        "why": "The complex singularity is not relevant to real-world population growth and can be ignored for this context."
+      }
+    ],
+    "views": [
+      {
+        "kind": "plane-2d",
+        "x_var": "x",
+        "x_range": [
+          -10.0,
+          10.0
+        ],
+        "pinned": {
+          "L": 100.0,
+          "k": 0.5
+        },
+        "mark": [
+          "limits_at_infinity",
+          "inflections"
+        ],
+        "rationale": "Shows the full S-curve, highlighting the initial value, carrying capacity, and the point of maximum growth."
+      }
+    ],
+    "probes": [
+      {
+        "question": "What is the population's carrying capacity, the maximum population the environment can sustain?",
+        "options": [
+          "0",
+          "$L$",
+          "$L/2$",
+          "infinity"
+        ],
+        "correct_index": 1,
+        "explanation": "As $x \\to \\infty$, $e^{-kx} \\to 0$, so the population approaches $L/(1+0) = L$. This is the carrying capacity.",
+        "feature": ""
+      },
+      {
+        "question": "What is the approximate population when $x$ is a very small (large negative) number?",
+        "options": [
+          "0",
+          "$L$",
+          "$L/2$",
+          "undefined"
+        ],
+        "correct_index": 0,
+        "explanation": "As $x \\to -\\infty$, $e^{-kx} \\to \\infty$, so the denominator $1+e^{-kx}$ becomes very large, making the fraction approach zero.",
+        "feature": ""
+      },
+      {
+        "question": "At what point is the population growing the fastest?",
+        "options": [
+          "When the population is near zero",
+          "When the population is near its carrying capacity",
+          "When the population is half the carrying capacity ($L/2$)",
+          "The growth rate is constant"
+        ],
+        "correct_index": 2,
+        "explanation": "The inflection point of a logistic curve occurs when the population is half the carrying capacity, which is also when the growth rate is maximal.",
+        "feature": ""
+      }
+    ],
+    "variable_glossary": {
+      "L": "The carrying capacity of the environment, representing the maximum population that can be sustained.",
+      "k": "The growth rate constant, which determines how quickly the population approaches the carrying capacity.",
+      "x": "Time, or some other independent variable representing conditions that affect population growth."
+    }
+  },
+  "_request": {
+    "latex": "\\frac{L}{1 + e^{-k x}}",
+    "context": "Population growth with a carrying capacity.",
+    "variable": "x"
+  }
+}

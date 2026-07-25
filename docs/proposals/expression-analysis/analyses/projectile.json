@@ -1,0 +1,170 @@
+{
+  "characteristics": {
+    "expression": "- \\frac{g t^{2}}{2} + t v_{0}",
+    "variable": "t",
+    "variables": [
+      "g",
+      "t",
+      "v_0"
+    ],
+    "variables_latex": {
+      "g": "g",
+      "t": "t",
+      "v_0": "v_{0}"
+    },
+    "chartScript": {
+      "script": "-1/2*g*pow(t, 2) + t*v_0",
+      "variables": [
+        "g",
+        "t",
+        "v_0"
+      ]
+    },
+    "features": {
+      "zeros": {
+        "points": [
+          {
+            "latex": "0",
+            "approx": 0.0
+          },
+          {
+            "latex": "\\frac{2 v_{0}}{g}",
+            "approx": 2.0
+          }
+        ],
+        "family": null
+      },
+      "extrema": {
+        "points": [
+          {
+            "location": {
+              "latex": "\\frac{v_{0}}{g}",
+              "approx": 1.0
+            },
+            "value": {
+              "latex": "\\frac{v_{0}^{2}}{2 g}",
+              "approx": 0.5
+            },
+            "kind": "maximum",
+            "assumed": {
+              "v_0": 1,
+              "g": 1
+            }
+          }
+        ],
+        "family": null
+      },
+      "singularities": {
+        "points": [],
+        "family": null
+      },
+      "inflections": {
+        "points": [],
+        "family": null
+      },
+      "limits_at_infinity": {
+        "directions": [
+          {
+            "direction": "+inf",
+            "limit": "- \\infty \\operatorname{sign}{\\left(g \\right)}"
+          },
+          {
+            "direction": "-inf",
+            "limit": "- \\infty \\operatorname{sign}{\\left(g \\right)}"
+          }
+        ]
+      },
+      "periodicity": null,
+      "parity": null,
+      "domain": "\\mathbb{R}"
+    }
+  },
+  "proposal": {
+    "abstain": false,
+    "story": "This expression describes the height of a projectile over time, showing it starts at zero height, rises to a maximum, and then falls back to zero height at twice the time it took to reach its peak.",
+    "ranked": [
+      {
+        "feature": "extrema",
+        "usefulness": 5,
+        "why": "The maximum height is a key physical characteristic of projectile motion, representing the peak of its trajectory."
+      },
+      {
+        "feature": "zeros",
+        "usefulness": 4,
+        "why": "The zeros represent when the projectile is at launch height, which is physically significant for understanding its flight duration."
+      },
+      {
+        "feature": "limits_at_infinity",
+        "usefulness": 2,
+        "why": "The projectile eventually falls infinitely far, but this is less relevant for typical projectile motion problems where the object hits the ground."
+      }
+    ],
+    "views": [
+      {
+        "kind": "plane-2d",
+        "x_var": "t",
+        "x_range": [
+          0.0,
+          4.0
+        ],
+        "pinned": {
+          "g": 9.8,
+          "v_0": 19.6
+        },
+        "mark": [
+          "zeros",
+          "extrema"
+        ],
+        "rationale": "This range shows the full flight from launch to landing, clearly highlighting the maximum height and the return to initial height."
+      }
+    ],
+    "probes": [
+      {
+        "question": "At what time does the projectile reach its maximum height?",
+        "options": [
+          "When $t = 0$",
+          "When $t = \\frac{v_0}{g}$",
+          "When $t = \\frac{2v_0}{g}$",
+          "When the height is zero"
+        ],
+        "correct_index": 1,
+        "explanation": "The maximum height occurs at $t = \\frac{v_0}{g}$, which is the vertex of the parabolic path.",
+        "feature": ""
+      },
+      {
+        "question": "When does the projectile return to its initial height (zero height)?",
+        "options": [
+          "Only at $t=0$",
+          "At $t = \\frac{v_0}{g}$",
+          "At $t = \\frac{2v_0}{g}$",
+          "It never returns to zero height after launch"
+        ],
+        "correct_index": 2,
+        "explanation": "The projectile returns to its initial height at $t = \\frac{2v_0}{g}$, which is twice the time it took to reach the peak.",
+        "feature": ""
+      },
+      {
+        "question": "What is the maximum height achieved by the projectile?",
+        "options": [
+          "$0$",
+          "$\\frac{v_0}{g}$",
+          "$\\frac{v_0^2}{2g}$",
+          "$\\frac{2v_0}{g}$"
+        ],
+        "correct_index": 2,
+        "explanation": "Substituting $t = \\frac{v_0}{g}$ into the expression gives the maximum height of $\\frac{v_0^2}{2g}$.",
+        "feature": ""
+      }
+    ],
+    "variable_glossary": {
+      "g": "gravitational acceleration (~9.8 m/s² on Earth)",
+      "t": "time elapsed since launch (seconds)",
+      "v_0": "initial upward velocity of the projectile (m/s)"
+    }
+  },
+  "_request": {
+    "latex": "v_0 t - \\frac{1}{2} g t^2",
+    "context": "Projectile motion: height above launch vs time.",
+    "variable": "t"
+  }
+}

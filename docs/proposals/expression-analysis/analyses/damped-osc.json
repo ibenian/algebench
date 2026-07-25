@@ -1,0 +1,161 @@
+{
+  "characteristics": {
+    "expression": "e^{- b t} \\cos{\\left(\\omega t \\right)}",
+    "variable": "t",
+    "variables": [
+      "b",
+      "omega",
+      "t"
+    ],
+    "variables_latex": {
+      "b": "b",
+      "omega": "\\omega",
+      "t": "t"
+    },
+    "chartScript": {
+      "script": "exp(-b*t)*cos(omega*t)",
+      "variables": [
+        "b",
+        "omega",
+        "t"
+      ]
+    },
+    "features": {
+      "zeros": {
+        "points": [],
+        "family": "\\left\\{t\\; \\middle|\\; t \\in \\left\\{\\frac{2 n \\pi + \\frac{\\pi}{2}}{\\omega}\\; \\middle|\\; n \\in \\mathbb{Z}\\right\\} \\cup \\left\\{\\frac{2 n \\pi + \\frac{3 \\pi}{2}}{\\omega}\\; \\middle|\\; n \\in \\mathbb{Z}\\right\\} \\wedge \\omega \\neq 0 \\right\\}"
+      },
+      "extrema": {
+        "points": [],
+        "family": "\\left\\{t\\; \\middle|\\; t \\in \\mathbb{R} \\wedge b \\cos{\\left(\\omega t \\right)} + \\omega \\sin{\\left(\\omega t \\right)} = 0 \\right\\}"
+      },
+      "singularities": {
+        "points": [],
+        "family": null
+      },
+      "inflections": {
+        "points": [],
+        "family": "\\left\\{t\\; \\middle|\\; t \\in \\mathbb{R} \\wedge b^{2} \\cos{\\left(\\omega t \\right)} + 2 b \\omega \\sin{\\left(\\omega t \\right)} - \\omega^{2} \\cos{\\left(\\omega t \\right)} = 0 \\right\\}"
+      },
+      "limits_at_infinity": {
+        "directions": [
+          {
+            "direction": "+inf",
+            "limit": null
+          },
+          {
+            "direction": "-inf",
+            "limit": null
+          }
+        ]
+      },
+      "periodicity": null,
+      "parity": null,
+      "domain": "\\mathbb{R}"
+    }
+  },
+  "proposal": {
+    "abstain": false,
+    "story": "This expression describes an oscillation that gradually fades out over time, like the sound of a tuning fork.",
+    "ranked": [
+      {
+        "feature": "zeros",
+        "usefulness": 5,
+        "why": "The zeros represent the moments when the oscillating system momentarily comes to rest, which is a key characteristic of an oscillation."
+      },
+      {
+        "feature": "extrema",
+        "usefulness": 4,
+        "why": "The extrema represent the peak displacements of the oscillation, which decrease over time due to the damping factor, illustrating the 'dying away' behavior."
+      },
+      {
+        "feature": "limits_at_infinity",
+        "usefulness": 3,
+        "why": "The limit as $t \\to \\infty$ shows the ultimate fate of the damped oscillation, approaching zero as the damping takes full effect."
+      }
+    ],
+    "views": [
+      {
+        "kind": "plane-2d",
+        "x_var": "t",
+        "x_range": [
+          0.0,
+          10.0
+        ],
+        "pinned": {
+          "b": 0.5,
+          "omega": 2.0
+        },
+        "mark": [
+          "zeros",
+          "extrema"
+        ],
+        "rationale": "This range shows several cycles of oscillation and clearly demonstrates the damping effect as the amplitude decreases."
+      },
+      {
+        "kind": "plane-2d",
+        "x_var": "t",
+        "x_range": [
+          0.0,
+          20.0
+        ],
+        "pinned": {
+          "b": 0.2,
+          "omega": 1.0
+        },
+        "mark": [
+          "limits_at_infinity"
+        ],
+        "rationale": "A longer time range with weaker damping better illustrates the approach to zero as $t \\to \\infty$."
+      }
+    ],
+    "probes": [
+      {
+        "question": "What happens to the oscillation's amplitude as time $t$ increases?",
+        "options": [
+          "It stays constant.",
+          "It increases.",
+          "It decreases.",
+          "It oscillates between increasing and decreasing."
+        ],
+        "correct_index": 2,
+        "explanation": "The $e^{-bt}$ term causes the amplitude of the cosine wave to decay, meaning it decreases over time.",
+        "feature": ""
+      },
+      {
+        "question": "At what points in time does the oscillating system momentarily come to rest (i.e., its displacement is zero)?",
+        "options": [
+          "Only at $t=0$.",
+          "When $\\cos(\\omega t) = 0$.",
+          "When $e^{-bt} = 0$.",
+          "When both $e^{-bt} = 0$ and $\\cos(\\omega t) = 0$."
+        ],
+        "correct_index": 1,
+        "explanation": "The expression is zero when the cosine term is zero, as the exponential term $e^{-bt}$ is never zero.",
+        "feature": ""
+      },
+      {
+        "question": "What is the long-term behavior of the displacement as $t$ becomes very large?",
+        "options": [
+          "It oscillates with increasing amplitude.",
+          "It oscillates with constant amplitude.",
+          "It approaches zero.",
+          "It approaches a constant non-zero value."
+        ],
+        "correct_index": 2,
+        "explanation": "As $t \\to \\infty$, the exponential term $e^{-bt}$ approaches zero, causing the entire expression to approach zero.",
+        "feature": ""
+      }
+    ],
+    "variable_glossary": {
+      "b": "The damping coefficient, a positive constant that determines how quickly the oscillation fades away (units: 1/time).",
+      "omega": "The angular frequency of the oscillation, determining how rapidly it cycles (units: radians/time).",
+      "t": "Time, the independent variable (units: seconds)."
+    }
+  },
+  "_request": {
+    "latex": "e^{-b t} \\cos{\\omega t}",
+    "context": "Damped oscillation: a struck tuning fork dying away.",
+    "variable": "t"
+  }
+}

@@ -12,12 +12,12 @@ mathematics).
 
 | File | What it is |
 |---|---|
-| [`expert-ui-mockup.html`](expert-ui-mockup.html) | Self-contained hypothetical UI consuming the expert's real outputs for 10 scenarios — story badge, ranked-feature chips, proposed viewports with live charts and numeric feature re-detection, sliders at the proposer's pins, predict-before-reveal probes. Open directly in a browser. |
+| [`analyses/`](analyses/) | **The finalized function-analysis files** — one per expression, each the complete endpoint response: `characteristics` (CAS features, `variables_latex`, `chartScript`), `proposal` (story, ranked features, views, probes, `variable_glossary`), and `_request` provenance. These are the canonical artifacts; everything below derives from or consumes them. |
+| [`expert-ui-mockup.html`](expert-ui-mockup.html) | Hypothetical UI consuming the analysis files (fetched from `analyses/` when served; embedded fallback for `file://` opens) — story badge, ranked-feature chips, proposed viewports with live charts and numeric feature re-detection, sliders at the proposer's pins with glossary hover tooltips, predict-before-reveal probes, `{ }` raw-JSON toggle. |
 | [`predict-nothink-report.md`](predict-nothink-report.md) | Performance/quality report for the adopted LM configuration (bare `Predict`, Gemini thinking disabled): the 30-call benchmark, mechanical quality checks, all 10 scenario outputs, hard-case findings, verdict and caveats. |
 | [`batch_ab_results.json`](batch_ab_results.json) | Full data for the 10-scenario × 3-thinking-config benchmark (30 LM calls): latency, token usage, mechanical checks, complete outputs per call. |
 | [`proposer_ab_results.json`](proposer_ab_results.json) | The earlier 5-config × 2-scenario experiment (Predict/CoT × default/low/disabled thinking) that motivated the batch — includes the CoT `reasoning_field` texts. |
-| [`ui_data.json`](ui_data.json) | The adopted config's outputs for the 10 scenarios, extracted for the mockup. |
-| `sample-*.json` | Raw end-to-end HTTP responses (`{characteristics, proposal}`) from the live endpoint at various stages: with lesson context, after the Predict swap, and after the symbol-contract fix. |
+| `sample-*.json` | Historical raw endpoint responses from earlier verification stages (pre-`chartScript`/glossary); superseded by `analyses/` but kept for the report's traceability. |
 
 ## Reproducing
 

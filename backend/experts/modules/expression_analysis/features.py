@@ -34,7 +34,7 @@ from sympy.calculus.util import continuous_domain
 from backend.experts.modules.proof_completion.cas_guard import (
     cas_register_safe_function, guard,
 )
-from backend.semantic_graph.mathjs_converter import latex_to_sympy
+from backend.semantic_graph.mathjs_converter import latex_to_sympy, sympy_to_mathjs
 
 # Bounds keeping the report reviewable and the JSON small: an expression
 # with more than this many of one feature kind is summarized, not listed.
@@ -232,10 +232,39 @@ def _op_domain(expr, var) -> Optional[str]:
         return None
 
 
+def _op_chart_script(expr) -> dict:
+    """Evaluable mathjs script — same shape as a graph node's ``chartScript``.
+
+    Included so consumers can plot the expression through the existing
+    ``expr.js`` evaluation path instead of hand-writing evaluators.
+    """
+    script, variables = sympy_to_mathjs(expr)
+    return {"script": script, "variables": variables}
+
+
 for _fn in (_op_parse, _op_zeros, _op_singularities, _op_extrema,
             _op_inflections, _op_limits_at_infinity, _op_periodicity,
-            _op_parity, _op_domain):
+            _op_parity, _op_domain, _op_chart_script):
     cas_register_safe_function(_fn)
+
+
+def _symbol_latex(name: str) -> str:
+    """LaTeX display form of a sanitized variable name.
+
+    Names arrive identifier-sanitized for mathjs (``omega``, ``v_0``,
+    ``u_prime``); UIs need renderable LaTeX (``\\omega``, ``v_{0}``,
+    ``u'``). SymPy handles greek/subscripts; prime suffixes are reversed
+    here (mirror of mathjs_converter's ``_sanitize_primed_symbols``).
+    """
+    primes = ""
+    for suffix, marks in (("_tprime", "'''"), ("_dprime", "''"), ("_prime", "'")):
+        if name.endswith(suffix):
+            name, primes = name[: -len(suffix)], marks
+            break
+    try:
+        return latex(Symbol(name)) + primes
+    except Exception:
+        return name + primes
 
 
 # ── public API ─────────────────────────────────────────────────────────
@@ -266,6 +295,8 @@ def analyze(latex_src: str, variable: Optional[str] = None,
           "expression": "<normalized latex>",
           "variable": "t",
           "variables": ["g", "t", "v_0"],
+          "variables_latex": {"g": "g", "t": "t", "v_0": "v_{0}"},
+          "chartScript": {"script": "<mathjs>", "variables": [...]},
           "features": { "zeros": …, "extrema": …, "singularities": …,
                         "inflections": …, "limits_at_infinity": …,
                         "periodicity": …, "parity": …, "domain": … }
@@ -280,11 +311,15 @@ def analyze(latex_src: str, variable: Optional[str] = None,
         return {"error": f"could not parse expression: {latex_src[:200]}"}
 
     var = pick_variable(expr, variable)
+    chart_script = guard(_op_chart_script, expr, default=None, timeout=timeout)
+
     if var is None:
         return {
             "expression": latex(expr),
             "variable": None,
             "variables": [],
+            "variables_latex": {},
+            "chartScript": chart_script,
             "features": {"constant": _point(expr)},
         }
 
@@ -301,10 +336,13 @@ def analyze(latex_src: str, variable: Optional[str] = None,
         "parity": run(_op_parity, default=None),
         "domain": run(_op_domain, default=None),
     }
+    names = sorted(str(s) for s in expr.free_symbols)
     return {
         "expression": latex(expr),
         "variable": str(var),
-        "variables": sorted(str(s) for s in expr.free_symbols),
+        "variables": names,
+        "variables_latex": {n: _symbol_latex(n) for n in names},
+        "chartScript": chart_script,
         "features": features,
     }
 

@@ -45,6 +45,29 @@ def test_variable_inference_prefers_t_over_alphabetical():
     assert rep["variable"] == "t"
 
 
+def test_chart_script_is_evaluable_shape():
+    rep = analyze(r"v_0 t - \frac{1}{2} g t^2", variable="t")
+    cs = rep["chartScript"]
+    assert cs["variables"] == ["g", "t", "v_0"]
+    assert "v_0" in cs["script"] and "g" in cs["script"]
+
+    # constants get one too (trivially)
+    rep = analyze("42")
+    assert rep["chartScript"]["variables"] == []
+
+
+def test_variables_carry_latex_forms():
+    rep = analyze(r"v_0 t - \frac{1}{2} g t^2", variable="t")
+    assert rep["variables_latex"] == {"g": "g", "t": "t", "v_0": "v_{0}"}
+
+    rep = analyze(r"e^{-b t} \cos{\omega t}", variable="t")
+    assert rep["variables_latex"]["omega"] == r"\omega"
+
+    # prime sanitization reverses back to prime marks
+    rep = analyze(r"u' x", variable="x")
+    assert rep["variables_latex"]["u_prime"] == "u'"
+
+
 # ── 1/x: singularity, vertical + horizontal asymptotes ─────────────────
 
 def test_reciprocal_singularity_and_asymptotes():
