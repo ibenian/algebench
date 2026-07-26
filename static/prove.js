@@ -761,6 +761,43 @@ function continueInAppWith(proof, history, id, step) {
   openInApp(seed, proof.deeplink, id || null, step);
 }
 
+/** Reveal the Derive toolbar, showing only what the current state supports.
+ *
+ *  The bar used to appear only once a derivation existed, which made the lock —
+ *  its only always-meaningful control — unreachable before deriving. It is
+ *  reachable from the start now, because unlocking with nothing derived is a
+ *  legitimate way to BEGIN one: the chat writes step 0 (see
+ *  `startEmptyDerivation`). `{ }` and Submit still need a proof with steps, so
+ *  they stay hidden until there is one rather than opening on an empty shell. */
+function syncViewerBar() {
+  if (!els.dViewerBar) return;
+  els.dViewerBar.hidden = false;
+  const hasSteps = !!(deriveProof && (deriveProof.steps || []).length);
+  if (els.dJson) els.dJson.hidden = !hasSteps;
+  if (els.dSubmit) els.dSubmit.hidden = !hasSteps;
+  if (els.dViewerId) {
+    els.dViewerId.textContent = hasSteps ? "Derived proof" : "New derivation";
+  }
+}
+
+/** Start an EMPTY derivation so edit prompts have something to write into.
+ *
+ *  `deriveProof` is null until something is derived, and both the chat payload
+ *  and the edit tool need a proof object. This is that object: a real, valid
+ *  proof with zero steps. The expert treats an empty derivation as `at = -1`
+ *  ("insert before everything") and authors step 0 from the reader's
+ *  description, so "start with $E = mc^2$" works with nothing on screen. */
+function startEmptyDerivation() {
+  deriveProof = {
+    title: "Untitled derivation",
+    domain: effectiveDomain() || "algebra",
+    goal: "",
+    steps: [],
+    terms: {},
+  };
+  syncViewerBar();
+}
+
 /** Reflect the lock's state on its button (label, pressed state, tooltip). */
 function syncLockButton() {
   if (!els.dLock) return;
@@ -798,7 +835,10 @@ function initEditTool() {
     getCurrentStep: () => (deriveAnimator && typeof deriveAnimator.current === "number")
       ? deriveAnimator.current : 0,
     onMount: (proof, startStep) => mountAnimator(proof, startStep),
-    onCommit: (proof) => { deriveProof = proof; },
+    // syncViewerBar AFTER the assignment, not before: the preview mount ran
+    // while `deriveProof` was still the empty shell, so { } and Submit are
+    // hidden. Committing the first step is what earns them.
+    onCommit: (proof) => { deriveProof = proof; syncViewerBar(); },
     setEditPending,
     // Variant notes quote step captions that may contain $…$ math. renderSafe
     // escapes HTML and renders the math with KaTeX (null if KaTeX isn't ready).
@@ -844,7 +884,7 @@ function mountAnimator(proof, startStep) {
     ...keep,
   });
   els.dGo.textContent = "Rederive";              // a derivation now exists
-  if (els.dViewerBar) els.dViewerBar.hidden = false;   // reveal the { } JSON viewer
+  syncViewerBar();                                // now with { } and Submit
   showContinue(proof);                            // reveal the explicit app hand-off
 }
 
@@ -1343,6 +1383,7 @@ async function main() {
   els.dEmpty = document.getElementById("d-empty");
   // { } JSON viewer for the derived proof (revealed once a derivation exists).
   els.dViewerBar = document.getElementById("d-viewer-bar");
+  els.dViewerId = document.getElementById("d-viewer-id");
   els.dJson = document.getElementById("d-json");
   els.dJson.innerHTML = BRACES_ICON;
   els.dJson.addEventListener("click",
@@ -1356,11 +1397,18 @@ async function main() {
   els.dLock = document.getElementById("d-lock");
   initEditTool();
   els.dLock.addEventListener("click", () => {
-    editTool.setUnlocked(!editTool.isUnlocked());
+    const unlocking = !editTool.isUnlocked();
+    // Unlocking with nothing derived starts an empty derivation rather than
+    // refusing: the reader can then simply state the first line in the chat.
+    const starting = unlocking && !deriveProof;
+    if (starting) startEmptyDerivation();
+    editTool.setUnlocked(unlocking);
     syncLockButton();
-    setStatus(editTool.isUnlocked()
-      ? "Editing unlocked — describe an operation in the chat, e.g. “multiply both sides by 2”."
-      : "Editing locked — the chat only answers questions. Click 🔒 Locked to unlock and make edits.", "ok");
+    setStatus(starting
+      ? "Editing unlocked on a new, empty derivation — describe the first step in the chat, e.g. “start with $E = mc^2$”."
+      : unlocking
+        ? "Editing unlocked — describe an operation in the chat, e.g. “multiply both sides by 2”."
+        : "Editing locked — the chat only answers questions. Click 🔒 Locked to unlock and make edits.", "ok");
   });
   els.dStatus = document.getElementById("d-status");
   els.dLog = document.getElementById("d-log");
@@ -1371,6 +1419,9 @@ async function main() {
   els.dContinue = document.getElementById("d-continue");
   els.dContinueDeep = document.getElementById("d-continue-deep");
   els.dContinue.addEventListener("click", continueInApp);
+  // Reveal the toolbar up front so the lock is reachable before anything is
+  // derived — { } and Submit stay hidden until there are steps.
+  syncViewerBar();
   // Draggable chat splitter (Derive workspace).
   const dCols = els.panelDerive.querySelector(".derive-cols");
   applyStoredChatW(dCols);

@@ -881,7 +881,29 @@ def _proof_chat_system_prompt(proof, current_step=None, allow_edits=False,
             "already clear — \"add $3x$ to both sides\", \"expand the left\", \"substitute "
             "$u = x^2$\" are unambiguous; call the tool. You never compute the new expression "
             "yourself."
+            "\n\nA BARE EXPRESSION is its own case. When the reader's whole message is just a "
+            "mathematical expression or equation with no instruction and no question wrapped "
+            "around it — \"$E = mc^2$\", \"x^2 - 4 = 0\", \"v = \\frac{d}{t}\" — they have most "
+            "likely written the line they want NEXT, but they might instead be asking about it. "
+            "Do not guess, and do not silently explain it. Ask ONE short question offering that "
+            "reading, quoting the expression back: \"Add $x^2 - 4 = 0$ as the next step?\" (or "
+            "\"…as the first step?\" when the derivation is empty). If they confirm, CALL "
+            "`edit_step` with an explicit instruction naming it, e.g. \"add $x^2 - 4 = 0$ as the "
+            "next step\". If they say they were asking about it instead, answer in text."
         )
+        if not ((proof or {}).get("steps") or []):
+            # An EMPTY derivation reads to the model like there is nothing to act
+            # on, so without this it answers "there's no derivation yet" instead
+            # of calling the tool — and the reader can never get their first step
+            # in. The expert handles this case explicitly (it authors step 0).
+            edits += (
+                "\n\nThis derivation is EMPTY — it has no steps yet, and the reader is here to "
+                "START one. A message naming what to begin from (\"start with $E = mc^2$\", "
+                "\"let $f(x) = x^2 + 1$\", \"begin from the ideal gas law\") is an INSTRUCTION: "
+                "call `edit_step` with it and the editor will write the first step. Do NOT reply "
+                "that there is no derivation to edit, and do NOT ask them to use the Derive box "
+                "first — starting from the chat is a supported way to build one."
+            )
     elif in_derive:
         edits = (
             "\n\nEDITING\n"

@@ -98,18 +98,30 @@ def _format_proof(proof: dict) -> str:
 
 
 def _clamp_step(proof: dict, index: int) -> int:
+    """Which step the edit is inserted AFTER.
+
+    ``-1`` for an EMPTY derivation, and that is not a sentinel bolted on — it is
+    what the existing arithmetic already means. ``_spliced`` takes
+    ``steps[:at + 1]`` as the head, so ``at = -1`` is exactly "insert before
+    everything", and ``_changed_slice``/``to_payload``/``assembleVariant`` all
+    fall out correctly from it. See :func:`proof_edit`.
+    """
     n = len(proof.get("steps") or [])
-    return max(0, min(index, n - 1)) if n else 0
+    return max(0, min(index, n - 1)) if n else -1
 
 
 @register_handler("proof_edit", request_model=ProofEditRequest)
 def proof_edit(req: ProofEditRequest) -> dict:
-    """Propose CAS-verified step operations for one step of an open derivation."""
-    proof = req.proof or {}
-    if not (proof.get("steps") or []):
-        log.debug("%s no steps to edit → chat", LOG_TAG)
-        return {"fallback_to_chat": True}
+    """Propose CAS-verified step operations for one step of an open derivation.
 
+    An EMPTY derivation is a legitimate starting point, not a reason to bail. In
+    the Derive workspace the reader can unlock editing before deriving anything
+    and simply state the first line ("start with $E = mc^2$"), so this must be
+    able to author step 0 from nothing. ``at`` is ``-1`` there; the CAS cannot
+    perform an ``op`` (there is no previous expression to operate ON), so the
+    model authors the step and it is graded as a start state.
+    """
+    proof = req.proof or {}
     at = _clamp_step(proof, req.current_step)
     domain = str(proof.get("domain") or "algebra")
     derivation = _format_proof(proof)

@@ -66,10 +66,55 @@ def test_question_falls_through_to_chat(monkeypatch, proof):
     assert _assert_single_outcome(res) == "fallback_to_chat"
 
 
-def test_empty_proof_falls_through(monkeypatch, proof):
-    """Nothing to edit means nothing to propose."""
-    res = H.proof_edit(H.ProofEditRequest(message="add 1", proof={"steps": []}))
-    assert res == {"fallback_to_chat": True}
+def test_empty_proof_still_falls_through_when_not_an_edit(monkeypatch):
+    """An empty derivation does not turn questions into edits."""
+    _stub_proposal(monkeypatch, ProofEditProposal(is_edit=False))
+    res = H.proof_edit(H.ProofEditRequest(
+        message="what is a derivation?", proof={"steps": []}))
+    assert _assert_single_outcome(res) == "fallback_to_chat"
+
+
+# --------------------------------------------------------------------------- #
+# 1b. the FIRST step of an empty derivation
+# --------------------------------------------------------------------------- #
+
+def test_empty_proof_can_be_given_its_first_step(monkeypatch):
+    """An empty derivation is a starting point, not a dead end.
+
+    The Derive workspace lets a reader unlock editing before deriving anything
+    and simply state the opening line, so this path must author step 0 from
+    nothing. It used to return ``fallback_to_chat`` unconditionally, which made
+    that impossible — the reader's first instruction went to the tutor chat and
+    the derivation stayed empty forever.
+    """
+    _stub_proposal(monkeypatch, ProofEditProposal(
+        is_edit=True,
+        steps=[ProposedStep(operation="Given", expr_latex="E = m \\cdot c^{2}",
+                            justification="the mass-energy relation")],
+        summary="Started from $E = mc^2$."))
+    res = H.proof_edit(H.ProofEditRequest(
+        message="start with E = mc^2",
+        proof={"title": "Untitled", "domain": "algebra", "steps": []}))
+
+    assert _assert_single_outcome(res) == "variants"
+    # -1 is "insert before everything" — the anchor that makes step 0 expressible.
+    assert [v["at"] for v in res["variants"]] == [-1]
+    assert res["focus_step"] == 0
+    assert res["new_steps"][0]["input_latex"] == "E = m \\cdot c^{2}"
+    # Step 0 is a START STATE, not a transition. There is no previous step for it
+    # to follow from, so the CAS must not attach "couldn't connect this" to it.
+    assert not res.get("caveat")
+
+
+def test_first_step_of_empty_proof_is_not_graded_as_a_transition(monkeypatch):
+    """The CAS is asked nothing about a step with no predecessor."""
+    from backend.experts.handlers.proof_edit.validate import verify_candidate
+    verdict = verify_candidate(
+        {"title": "Untitled", "domain": "algebra", "steps": []}, "algebra", -1,
+        [{"operation": "Given", "justification": "—", "input_latex": "1 = 2"}])
+    # Even blatant nonsense: with nothing before it, there is no transition to
+    # judge, so there is no objection to raise and nothing to retry.
+    assert verdict.clean
 
 
 # --------------------------------------------------------------------------- #
