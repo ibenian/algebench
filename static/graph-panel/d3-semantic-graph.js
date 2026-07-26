@@ -368,6 +368,7 @@ export class D3SemanticGraphRenderer {
         this.onZoomChange = opts.onZoomChange || null;
         this.onTransformChange = opts.onTransformChange || null;
         this.onChartClick = opts.onChartClick || null;
+        this.onFaClick = opts.onFaClick || null;
 
         this._graph = null;
         this._theme = null;
@@ -1416,6 +1417,7 @@ export class D3SemanticGraphRenderer {
                 event.stopPropagation();
                 if (self.onChartClick) self.onChartClick(d.data.id, d.data, this);
             });
+        g.append('title').text('Plot this expression');
         g.append('rect')
             .attr('x', 0).attr('y', 0)
             .attr('width', sz).attr('height', sz)
@@ -1430,6 +1432,47 @@ export class D3SemanticGraphRenderer {
             .attr('stroke-width', 1.5)
             .attr('stroke-linecap', 'round')
             .attr('stroke-linejoin', 'round');
+        return g;
+    }
+
+    /** Function-Analysis button (ƒ) — sits beside the chart button; opens
+     *  the full-page expert analysis for this node's subexpr. */
+    _appendFaBtn(group, d) {
+        const shape = this._nodeShape(d);
+        const pos = this._chartBtnPos(shape);
+        const self = this;
+        const sz = 14;
+        // Stack under the chart button so both stay clickable at any zoom.
+        const g = group.append('g')
+            .attr('class', 'd3sg-fa-btn')
+            .attr('transform', `translate(${pos.x},${pos.y + sz + 3})`)
+            .on('click', function (event) {
+                event.stopPropagation();
+                if (self.onFaClick) self.onFaClick(d.data.id, d.data, this);
+            });
+        g.append('title').text('Function analysis');
+        g.append('rect')
+            .attr('x', 0).attr('y', 0)
+            .attr('width', sz).attr('height', sz)
+            .attr('rx', 2)
+            .attr('fill', '#1a2440')
+            .attr('stroke', '#ffa726')
+            .attr('stroke-width', 1);
+        // Axes + a curve settling toward the horizontal — the same idea as
+        // icons.js FUNCTION_ANALYSIS_ICON, but the dashed asymptote is
+        // dropped: at 14px it reads as specks rather than a line.
+        g.append('path')                                   // axes (L)
+            .attr('d', 'M3.5,2.8 V10.5 H11.5')
+            .attr('fill', 'none')
+            .attr('stroke', '#ffa726')
+            .attr('stroke-width', 1.2)
+            .attr('stroke-linecap', 'square');
+        g.append('path')                                   // decaying curve
+            .attr('d', 'M5.2,4 C5.9,8 7.2,9 10.6,9.2')
+            .attr('fill', 'none')
+            .attr('stroke', '#ffa726')
+            .attr('stroke-width', 1.2)
+            .attr('stroke-linecap', 'butt');
         return g;
     }
 
@@ -1472,7 +1515,10 @@ export class D3SemanticGraphRenderer {
             }
 
             this._appendChevron(group, d, true);
-            if (data.subexpr || data.chartScript) this._appendChartBtn(group, d);
+            if (data.subexpr || data.chartScript) {
+                this._appendChartBtn(group, d);
+                if (data.subexpr) this._appendFaBtn(group, d);
+            }
             return;
         }
 
@@ -1505,6 +1551,7 @@ export class D3SemanticGraphRenderer {
         }
         if (data.subexpr || data.chartScript) {
             this._appendChartBtn(group, d);
+            if (data.subexpr) this._appendFaBtn(group, d);
         }
     }
 

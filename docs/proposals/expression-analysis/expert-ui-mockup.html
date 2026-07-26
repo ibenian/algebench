@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Expression Instrument — Expert-Driven UI Mockup</title>
+<style>
+  :root {
+    --bg: #0a0c1a; --panel: #10142a; --edge: rgba(110,124,180,0.35);
+    --text: #dde6ff; --dim: #8fa8c8; --faint: #7e8aa3;
+    --blue: #42a5f5; --orange: #ffa726; --red: #ef5350; --green: #66bb6a;
+    --grid: rgba(110,124,180,0.12);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.5 -apple-system, "Segoe UI", Roboto, sans-serif;
+    height: 100vh; overflow: hidden; }
+
+  /* ── main ── */
+  #main { height: 100vh; overflow-y: auto; padding: 20px 26px;
+    max-width: 900px; margin: 0 auto; }
+  .card { background: var(--panel); border: 1px solid var(--edge);
+    border-radius: 10px; padding: 14px 18px; margin-bottom: 12px; }
+
+  #expr-head { display: flex; align-items: baseline; gap: 18px; flex-wrap: wrap; }
+  #expr { font-family: "STIX Two Math", "Cambria Math", Georgia, serif;
+    font-size: 26px; }
+  #case-title { color: var(--dim); font-size: 14px; }
+  .fr { display: inline-flex; flex-direction: column; text-align: center;
+    vertical-align: middle; margin: 0 2px; }
+  .fr .nu { border-bottom: 1.5px solid var(--text); padding: 0 4px; line-height: 1.2; }
+  .fr .de { padding: 0 4px; line-height: 1.2; }
+  sup { font-size: 62%; }
+  sub { font-size: 62%; }
+
+  .badge { background: rgba(66,165,245,0.14); color: var(--blue);
+    border: 1px solid rgba(66,165,245,0.4); border-radius: 20px;
+    padding: 1px 10px; font-size: 11.5px; font-weight: 600;
+    letter-spacing: .04em; white-space: nowrap; }
+  #story { color: var(--dim); font-size: 13.5px; margin-top: 6px; }
+
+  /* ranked chips */
+  #ranked { display: flex; gap: 8px; flex-wrap: wrap; }
+  .rchip { position: relative; background: rgba(110,124,180,0.12);
+    border: 1px solid var(--edge); border-radius: 16px; padding: 3px 12px;
+    font-size: 12.5px; cursor: default; }
+  .rchip .stars { color: var(--orange); letter-spacing: -1px; }
+  .rchip:hover .why { display: block; }
+  .why { display: none; position: absolute; z-index: 30; top: 110%; left: 0;
+    width: 300px; background: #060814; border: 1px solid var(--edge);
+    border-radius: 8px; padding: 8px 10px; font-size: 12px; color: var(--dim); }
+
+  /* views */
+  #view-tabs { display: flex; gap: 6px; margin-bottom: 8px; }
+  .vtab { background: none; border: 1px solid var(--edge); color: var(--dim);
+    border-radius: 14px; padding: 2px 12px; font-size: 12px; cursor: pointer; }
+  .vtab.active { background: rgba(66,165,245,0.15); color: var(--text);
+    border-color: var(--blue); }
+  .vtab .rationale-dot { color: var(--orange); }
+  #view-rationale { color: var(--faint); font-size: 12px; margin: 4px 0 8px;
+    font-style: italic; }
+  canvas { display: block; width: 100%; }
+
+  /* sliders */
+  #sliders { display: flex; gap: 22px; flex-wrap: wrap; margin-top: 10px; }
+  .srow { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .srow .sym { font-family: "STIX Two Math", Georgia, serif; color: var(--orange);
+    position: relative; }
+  .srow .sym:hover .why { display: block; }
+  .srow input { width: 130px; accent-color: var(--blue); }
+  .srow .val { font: 11.5px ui-monospace, Menlo, monospace; color: var(--dim);
+    min-width: 48px; }
+  .prop-note { color: var(--faint); font-size: 11px; margin-top: 6px; }
+
+  /* probes */
+  .probe { border-top: 1px solid var(--grid); padding: 10px 0; }
+  .probe:first-child { border-top: none; }
+  .probe .q { font-size: 13.5px; margin-bottom: 8px; }
+  .popts { display: flex; gap: 8px; flex-wrap: wrap; }
+  .pchip { background: rgba(66,165,245,0.1); border: 1px solid rgba(66,165,245,0.45);
+    color: var(--text); border-radius: 16px; padding: 3px 14px; font-size: 13px;
+    cursor: pointer; }
+  .pchip:hover { background: rgba(66,165,245,0.22); }
+  .pchip:disabled { opacity: .55; cursor: default; }
+  .pchip.right { background: rgba(102,187,106,0.25); border-color: var(--green); opacity: 1; }
+  .pchip.wrong { background: rgba(239,83,80,0.25); border-color: var(--red); opacity: 1; }
+  .pexp { display: none; margin-top: 8px; font-size: 12.5px; color: var(--dim); }
+  .pexp.show { display: block; }
+  #probe-more { margin-top: 12px; background: none; color: var(--dim);
+    border: 1px dashed var(--edge); border-radius: 16px; padding: 4px 16px;
+    font-size: 12.5px; cursor: pointer; }
+  #probe-more:hover { color: var(--text); border-color: var(--blue);
+    background: rgba(66,165,245,0.08); }
+  #probe-more-note { display: none; margin-top: 8px; font-size: 11.5px;
+    color: var(--faint); font-style: italic; }
+  #probe-more-note.show { display: block; }
+
+  .sect-label { font-size: 11px; letter-spacing: .08em; color: var(--faint);
+    text-transform: uppercase; margin-bottom: 8px; }
+
+  /* AI-authorship marker: prefixes every piece of LM-written text so the
+     learner always sees what the AI wrote vs what the CAS verified. */
+  .ai-ico { display: inline-block; margin-right: 5px; color: #cdd3f5;
+    opacity: 0.9; }             /* same tint as the app chat's .msg-avatar */
+  .ai-ico svg { vertical-align: -2px; }
+
+  /* { } raw-JSON toggle (same convention as the sg-chart code button) */
+  #json-btn { margin-left: auto; background: none; border: 1px solid var(--edge);
+    color: var(--dim); border-radius: 6px; padding: 2px 9px;
+    font: 12px ui-monospace, Menlo, monospace; cursor: pointer; }
+  #json-btn:hover, #json-btn.open { background: rgba(66,165,245,0.15);
+    color: var(--text); border-color: var(--blue); }
+  #json-panel { display: none; }
+  #json-panel.open { display: block; }
+  #json-panel pre { margin: 0; max-height: 420px; overflow: auto;
+    font: 11.5px/1.45 ui-monospace, Menlo, monospace; color: var(--dim);
+    white-space: pre; }
+  #json-panel .jk { color: var(--blue); }
+  #json-panel .js { color: #a5d6a7; }
+  #json-panel .jn { color: var(--orange); }
+  #foot { color: var(--faint); font-size: 11.5px; padding: 4px 2px 20px; }
+  #foot code { color: var(--dim); }
+</style>
+</head>
+<body>
+<main id="main">
+  <div class="card">
+    <div id="expr-head">
+      <span id="expr"></span>
+      <span id="case-title"></span>
+      <button id="json-btn" title="Show the expert's raw JSON output">{ }</button>
+    </div>
+    <div style="margin-top:10px"><span class="badge">AI STORY</span></div>
+    <div id="story"></div>
+  </div>
+
+  <div class="card" id="json-panel">
+    <div class="sect-label">Expert output — the full endpoint response (characteristics + proposal)</div>
+    <pre id="json-pre"></pre>
+  </div>
+
+  <div class="card">
+    <div class="sect-label">Ranked behavior features <span style="text-transform:none">(hover for the AI's why — locations are CAS-verified)</span></div>
+    <div id="ranked"></div>
+  </div>
+
+  <div class="card">
+    <div class="sect-label">Proposed viewport</div>
+    <div id="view-tabs"></div>
+    <div id="view-rationale"></div>
+    <canvas id="chart" height="290"></canvas>
+    <div id="sliders"></div>
+    <div class="prop-note">Slider defaults = the proposer's pinned values. Marked features re-detect live as you drag.</div>
+  </div>
+
+  <div class="card">
+    <div class="sect-label">Quiz</div>
+    <div id="probes"></div>
+    <button id="probe-more" title="Ask the expert for more probes">More…</button>
+    <div id="probe-more-note"></div>
+  </div>
+
+  <div id="foot">
+    Mockup: every element on this page is driven by the <code>expression_analysis</code> expert's
+    actual output (Predict, thinking disabled) — story, ranked features, view ranges,
+    pinned defaults, marks, and probes. Feature markers are re-detected numerically
+    client-side, mirroring the instrument's zero-AI runtime.
+    <span class="ai-ico" id="foot-ico"></span> marks AI-written text; everything
+    unmarked is CAS-computed or mechanical.
+  </div>
+</main>
+
+<script>
+// Expert outputs embedded below: per expression, the COMPLETE endpoint
+// response {characteristics, proposal, _request} exactly as
+// POST /api/expert/expression_analysis returned it. Self-contained so the
+// file opens straight from disk; an optional analyses/<id>.json alongside
+// the page overrides an entry when you want to re-run one scenario.
+const EMBEDDED = {"projectile": {"characteristics": {"expression": "- \\frac{g t^{2}}{2} + t v_{0}", "variable": "t", "variables": ["g", "t", "v_0"], "variables_latex": {"g": "g", "t": "t", "v_0": "v_{0}"}, "chartScript": {"script": "-1/2*g*pow(t, 2) + t*v_0", "variables": ["g", "t", "v_0"]}, "features": {"zeros": {"points": [{"latex": "0", "approx": 0.0}, {"latex": "\\frac{2 v_{0}}{g}", "approx": 2.0}], "family": null}, "extrema": {"points": [{"location": {"latex": "\\frac{v_{0}}{g}", "approx": 1.0}, "value": {"latex": "\\frac{v_{0}^{2}}{2 g}", "approx": 0.5}, "kind": "maximum", "assumed": {"v_0": 1, "g": 1}}], "family": null}, "singularities": {"points": [], "family": null}, "inflections": {"points": [], "family": null}, "limits_at_infinity": {"directions": [{"direction": "+inf", "limit": "- \\infty \\operatorname{sign}{\\left(g \\right)}"}, {"direction": "-inf", "limit": "- \\infty \\operatorname{sign}{\\left(g \\right)}"}]}, "periodicity": null, "parity": null, "domain": "\\mathbb{R}"}}, "proposal": {"abstain": false, "story": "This expression describes the height of a projectile over time, showing it starts at zero height, rises to a maximum, and then falls back to zero height at twice the time it took to reach its peak.", "ranked": [{"feature": "extrema", "usefulness": 5, "why": "The maximum height is a key physical characteristic of projectile motion, representing the peak of its trajectory."}, {"feature": "zeros", "usefulness": 4, "why": "The zeros represent when the projectile is at launch height, which is physically significant for understanding its flight duration."}, {"feature": "limits_at_infinity", "usefulness": 2, "why": "The projectile eventually falls infinitely far, but this is less relevant for typical projectile motion problems where the object hits the ground."}], "views": [{"kind": "plane-2d", "x_var": "t", "x_range": [0.0, 4.0], "pinned": {"g": 9.8, "v_0": 19.6}, "mark": ["zeros", "extrema"], "rationale": "This range shows the full flight from launch to landing, clearly highlighting the maximum height and the return to initial height."}], "probes": [{"question": "At what time does the projectile reach its maximum height?", "options": ["When $t = 0$", "When $t = \\frac{v_0}{g}$", "When $t = \\frac{2v_0}{g}$", "When the height is zero"], "correct_index": 1, "explanation": "The maximum height occurs at $t = \\frac{v_0}{g}$, which is the vertex of the parabolic path.", "feature": ""}, {"question": "When does the projectile return to its initial height (zero height)?", "options": ["Only at $t=0$", "At $t = \\frac{v_0}{g}$", "At $t = \\frac{2v_0}{g}$", "It never returns to zero height after launch"], "correct_index": 2, "explanation": "The projectile returns to its initial height at $t = \\frac{2v_0}{g}$, which is twice the time it took to reach the peak.", "feature": ""}, {"question": "What is the maximum height achieved by the projectile?", "options": ["$0$", "$\\frac{v_0}{g}$", "$\\frac{v_0^2}{2g}$", "$\\frac{2v_0}{g}$"], "correct_index": 2, "explanation": "Substituting $t = \\frac{v_0}{g}$ into the expression gives the maximum height of $\\frac{v_0^2}{2g}$.", "feature": ""}], "variable_glossary": {"g": "gravitational acceleration (~9.8 m/s² on Earth)", "t": "time elapsed since launch (seconds)", "v_0": "initial upward velocity of the projectile (m/s)"}}, "_request": {"latex": "v_0 t - \\frac{1}{2} g t^2", "context": "Projectile motion: height above launch vs time.", "variable": "t"}}};
+const CACHE = {};
+
+async function loadCase(id) {
+  if (CACHE[id]) return CACHE[id];
+  try {
+    const r = await fetch(`analyses/${id}.json`);
+    if (r.ok) return (CACHE[id] = await r.json());
+  } catch (_) { /* file:// open */ }
+  return (CACHE[id] = EMBEDDED[id] || null);
+}
+
+// Accessors for the current scenario's two halves.
+function cur() { return CACHE[state.caseId] || {}; }
+function prop() { return cur().proposal || {}; }
+function chars() { return cur().characteristics || {}; }
+
+// ── expressions: display HTML + evaluable fn over a named scope ─────────
+const F = (nu, de) => `<span class="fr"><span class="nu">${nu}</span><span class="de">${de}</span></span>`;
+const MODEL = {
+  "projectile": { title: "Projectile height",
+    html: `h(t) = v<sub>0</sub>t − ½gt<sup>2</sup>`,
+    fn: s => s.v_0*s.t - 0.5*s.g*s.t*s.t },
+};
+
+const state = { caseId: "projectile", viewIdx: 0, pins: {} };
+
+// Display form of a variable name via the expert's variables_latex map
+// (mechanical, SymPy-generated): omega → ω, v_0 → v<sub>0</sub>.
+function varLatex(name) {
+  return (chars().variables_latex || {})[name] || name;
+}
+function varHtml(name) {
+  return detex(varLatex(name)).replace(/_(\w+)/, "<sub>$1</sub>");
+}
+function varText(name) {
+  return detex(varLatex(name));
+}
+// AI-written contextual description for hover tooltips (may be missing).
+function varDesc(name) {
+  return (prop().variable_glossary || {})[name] || "";
+}
+
+async function selectCase(id) {
+  await loadCase(id);
+  state.caseId = id; state.viewIdx = 0;
+  const view = ((CACHE[id] || {}).proposal?.views || [])[0] || {};
+  state.pins = { ...(view.pinned || {}) };
+  renderAll();
+}
+
+// ── header / story / ranked ─────────────────────────────────────────────
+function stars(n) { return "★".repeat(n) + "☆".repeat(Math.max(0, 5-n)); }
+
+function renderHeader() {
+  const o = prop();
+  document.getElementById("expr").innerHTML = MODEL[state.caseId].html;
+  document.getElementById("case-title").textContent = MODEL[state.caseId].title;
+  document.getElementById("story").innerHTML = aiText(o.story);
+  const rk = document.getElementById("ranked");
+  rk.innerHTML = "";
+  for (const r of (o.ranked || [])) {
+    const c = document.createElement("span");
+    c.className = "rchip";
+    c.innerHTML = `${r.feature} <span class="stars">${stars(r.usefulness||0)}</span>` +
+                  `<span class="why">${aiText(r.why)}</span>`;
+    rk.appendChild(c);
+  }
+}
+
+// ── views + chart ───────────────────────────────────────────────────────
+function renderViewTabs() {
+  const o = prop();
+  const tabs = document.getElementById("view-tabs");
+  tabs.innerHTML = "";
+  (o.views || []).forEach((v, i) => {
+    const b = document.createElement("button");
+    b.className = "vtab" + (i === state.viewIdx ? " active" : "");
+    b.innerHTML = `View ${i+1}: ${varHtml(v.x_var)} ∈ [${esc(String(v.x_range))}]`;
+    const d = varDesc(v.x_var);
+    if (d) b.title = detex(d) + "  (AI-generated)";
+    b.addEventListener("click", () => {
+      state.viewIdx = i;
+      state.pins = { ...(v.pinned || {}) };
+      renderViewTabs(); renderSliders(); drawChart(); showRationale();
+    });
+    tabs.appendChild(b);
+  });
+}
+
+function showRationale() {
+  const v = currentView();
+  document.getElementById("view-rationale").innerHTML =
+    v.rationale ? aiText(v.rationale) : "";
+}
+
+function currentView() {
+  return (prop().views || [])[state.viewIdx] || {};
+}
+
+function scopeFor(x) {
+  const v = currentView();
+  const s = {};
+  // every symbol defaults to 1, proposer pins overlay, x drives the sweep var
+  for (const k of Object.keys(state.pins)) s[k] = state.pins[k];
+  s.t = s.t ?? 1; s.x = s.x ?? 1;  // unpinned leftovers
+  s[v.x_var] = x;
+  return s;
+}
+
+function samples() {
+  const v = currentView();
+  const [a, b] = v.x_range || [-5, 5];
+  const fn = MODEL[state.caseId].fn;
+  const N = 400, pts = [];
+  for (let i = 0; i <= N; i++) {
+    const x = a + (b - a) * i / N;
+    let y = null;
+    try { y = fn(scopeFor(x)); } catch (_) {}
+    if (y != null && (!isFinite(y))) y = null;
+    pts.push({ x, y });
+  }
+  return pts;
+}
+
+// numeric feature re-detection over the sampled sweep (instrument-style)
+function detect(pts) {
+  const zeros = [], extrema = [], gaps = [];
+  for (let i = 1; i < pts.length; i++) {
+    const p0 = pts[i-1], p1 = pts[i];
+    if (p0.y != null && p1.y != null && Math.sign(p0.y) !== Math.sign(p1.y) &&
+        Math.abs(p0.y) < 1e6 && Math.abs(p1.y) < 1e6)
+      zeros.push((p0.x + p1.x) / 2);
+    if ((p0.y == null) !== (p1.y == null)) gaps.push((p0.x + p1.x) / 2);
+  }
+  for (let i = 2; i < pts.length - 2; i++) {
+    const w = pts.slice(i-2, i+3);
+    if (w.some(p => p.y == null)) continue;
+    const c = pts[i].y;
+    if (w.every(p => p.y <= c) && (pts[i-2].y < c && pts[i+2].y < c))
+      extrema.push({ x: pts[i].x, y: c, kind: "max" });
+    if (w.every(p => p.y >= c) && (pts[i-2].y > c && pts[i+2].y > c))
+      extrema.push({ x: pts[i].x, y: c, kind: "min" });
+  }
+  // collapse adjacent gap edges into singularity centers
+  const sing = [];
+  for (let i = 0; i < gaps.length; i += 2)
+    sing.push(gaps[i+1] != null ? (gaps[i] + gaps[i+1]) / 2 : gaps[i]);
+  return { zeros, extrema, sing };
+}
+
+const canvas = document.getElementById("chart");
+const ctx = canvas.getContext("2d");
+
+function drawChart() {
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.clientWidth, H = 290;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const PAD = { l: 52, r: 14, t: 14, b: 30 };
+  const pw = W - PAD.l - PAD.r, ph = H - PAD.t - PAD.b;
+
+  const v = currentView();
+  const marks = new Set(v.mark || []);
+  const pts = samples();
+  const ys = pts.filter(p => p.y != null).map(p => p.y);
+  if (!ys.length) return;
+  let yMin = Math.min(...ys), yMax = Math.max(...ys);
+  // clamp blow-ups so the interesting mid-range stays readable
+  const spread = yMax - yMin || 1;
+  const med = ys.slice().sort((a,b)=>a-b)[Math.floor(ys.length/2)];
+  yMin = Math.max(yMin, med - spread * 0.6);
+  yMax = Math.min(yMax, med + spread * 0.6);
+  if (yMin === yMax) { yMin -= 1; yMax += 1; }
+  const pad = (yMax - yMin) * 0.08;
+  yMin -= pad; yMax += pad;
+
+  const [xa, xb] = v.x_range;
+  const X = x => PAD.l + pw * (x - xa) / (xb - xa);
+  const Y = y => PAD.t + ph * (1 - (y - yMin) / (yMax - yMin));
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.font = "10px ui-monospace, Menlo, monospace";
+  ctx.strokeStyle = "rgba(110,124,180,0.12)"; ctx.fillStyle = "#7e8aa3";
+  for (let i = 0; i <= 5; i++) {
+    const yv = yMin + (yMax - yMin) * i / 5, py = Y(yv);
+    ctx.beginPath(); ctx.moveTo(PAD.l, py); ctx.lineTo(W - PAD.r, py); ctx.stroke();
+    ctx.fillText((+yv.toPrecision(3)), 6, py + 3);
+  }
+  for (let i = 0; i <= 6; i++) {
+    const xv = xa + (xb - xa) * i / 6, px = X(xv);
+    ctx.beginPath(); ctx.moveTo(px, PAD.t); ctx.lineTo(px, PAD.t + ph); ctx.stroke();
+    ctx.fillText((+xv.toPrecision(3)), px - 10, H - PAD.b + 14);
+  }
+  if (yMin < 0 && yMax > 0) {
+    ctx.strokeStyle = "rgba(110,124,180,0.4)";
+    ctx.beginPath(); ctx.moveTo(PAD.l, Y(0)); ctx.lineTo(W - PAD.r, Y(0)); ctx.stroke();
+  }
+  ctx.fillStyle = "#8fa8c8"; ctx.font = "11px -apple-system, sans-serif";
+  ctx.fillText(varText(v.x_var), W - PAD.r - 20, H - 6);
+
+  const feats = detect(pts);
+
+  ctx.save();
+  ctx.beginPath(); ctx.rect(PAD.l, PAD.t, pw, ph); ctx.clip();
+
+  // singularity verticals (only when the proposer marked singularities)
+  if (marks.has("singularities")) {
+    ctx.strokeStyle = "rgba(239,83,80,0.7)"; ctx.setLineDash([5,4]);
+    for (const sx of feats.sing) {
+      ctx.beginPath(); ctx.moveTo(X(sx), PAD.t); ctx.lineTo(X(sx), PAD.t + ph); ctx.stroke();
+    }
+    ctx.setLineDash([]);
+  }
+  // tail asymptote when limits_at_infinity marked and the tail is flat
+  if (marks.has("limits_at_infinity")) {
+    const tail = pts.slice(-30).filter(p => p.y != null);
+    if (tail.length > 10) {
+      const y0 = tail[0].y, y1 = tail[tail.length-1].y;
+      if (Math.abs(y1 - y0) < 0.02 * (yMax - yMin)) {
+        ctx.strokeStyle = "rgba(126,138,163,0.8)"; ctx.setLineDash([2,4]);
+        ctx.beginPath(); ctx.moveTo(PAD.l, Y(y1)); ctx.lineTo(W - PAD.r, Y(y1)); ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+  }
+
+  // the curve
+  ctx.strokeStyle = "#42a5f5"; ctx.lineWidth = 2; ctx.beginPath();
+  let pen = false;
+  for (const p of pts) {
+    if (p.y == null) { pen = false; continue; }
+    const px = X(p.x), py = Y(p.y);
+    pen ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+    pen = true;
+  }
+  ctx.stroke();
+
+  // zeros + extrema markers
+  if (marks.has("zeros")) {
+    ctx.fillStyle = "#dde6ff";
+    for (const zx of feats.zeros) {
+      ctx.beginPath(); ctx.arc(X(zx), Y(0), 4, 0, 7); ctx.fill();
+    }
+  }
+  if (marks.has("extrema")) {
+    ctx.fillStyle = "#ffa726";
+    for (const e of feats.extrema) {
+      ctx.beginPath(); ctx.arc(X(e.x), Y(e.y), 4.5, 0, 7); ctx.fill();
+      ctx.fillStyle = "#8fa8c8"; ctx.font = "10px ui-monospace, Menlo, monospace";
+      ctx.fillText(e.kind, X(e.x) + 7, Y(e.y) - 5);
+      ctx.fillStyle = "#ffa726";
+    }
+  }
+  ctx.restore();
+}
+
+// ── sliders from the proposer's pins ────────────────────────────────────
+function renderSliders() {
+  const wrap = document.getElementById("sliders");
+  wrap.innerHTML = "";
+  const pins = currentView().pinned || {};
+  if (!Object.keys(pins).length) {
+    wrap.innerHTML = `<span style="color:var(--faint);font-size:12px">No pinned parameters — single-variable expression.</span>`;
+    return;
+  }
+  for (const [k, v0] of Object.entries(pins)) {
+    const row = document.createElement("div"); row.className = "srow";
+    const lo = v0 === 0 ? -10 : Math.min(0, v0 * 3);
+    const hi = v0 === 0 ? 10 : Math.max(v0 * 3, 0.001);
+    // Hover tooltip = the AI's contextual description of the quantity
+    // (variable_glossary), marked as AI-written.
+    const desc = varDesc(k);
+    const tip = desc ? `<span class="why">${aiText(desc)}</span>` : "";
+    row.innerHTML = `<span class="sym">${varHtml(k)}${tip}</span>
+      <input type="range" min="${lo}" max="${hi}" step="${(hi-lo)/200}" value="${state.pins[k]}">
+      <span class="val">${(+state.pins[k]).toFixed(2)}</span>`;
+    const inp = row.querySelector("input"), val = row.querySelector(".val");
+    inp.addEventListener("input", () => {
+      state.pins[k] = parseFloat(inp.value);
+      val.textContent = (+inp.value).toFixed(2);
+      drawChart();
+    });
+    wrap.appendChild(row);
+  }
+}
+
+// ── probes ──────────────────────────────────────────────────────────────
+// AI-authorship marker + HTML escaping for LM-written text.
+// SVG inlined from the app's static/icons.js AI_ICON (robot head) so the
+// mockup stays self-contained; the real UI imports it from icons.js.
+const AI_SVG =
+  '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" ' +
+  'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<rect x="4.5" y="7" width="15" height="12" rx="3"/><path d="M12 3v4"/>' +
+  '<circle cx="12" cy="3" r="1.1" fill="currentColor" stroke="none"/>' +
+  '<circle cx="9.5" cy="13" r="1.2" fill="currentColor" stroke="none"/>' +
+  '<circle cx="14.5" cy="13" r="1.2" fill="currentColor" stroke="none"/></svg>';
+const AI_ICO = `<span class="ai-ico" title="AI-generated text">${AI_SVG}</span>`;
+function esc(s) {
+  return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+function aiText(s) { return AI_ICO + esc(detex(s)); }
+
+// LM text arrives with inline LaTeX; flatten the common commands to Unicode
+// for this mockup (the real UI renders KaTeX).
+function detex(s) {
+  return String(s || "")
+    .replace(/\\Delta/g, "Δ").replace(/\\omega/g, "ω").replace(/\\sigma/g, "σ")
+    .replace(/\\gamma/g, "γ").replace(/\\infty/g, "∞").replace(/\\pi/g, "π")
+    .replace(/\\frac\{([^{}]*)\}\{([^{}]*)\}/g, "($1)/($2)")
+    .replace(/\\text\{([^{}]*)\}/g, "$1")
+    .replace(/[{}$]/g, "");
+}
+
+function renderProbes() {
+  const wrap = document.getElementById("probes");
+  wrap.innerHTML = "";
+  document.getElementById("probe-more-note")?.classList.remove("show");
+  const probes = prop().probes || [];
+  if (!probes.length) { wrap.innerHTML = `<span style="color:var(--faint)">No probes proposed.</span>`; return; }
+  probes.forEach((p, qi) => {
+    const div = document.createElement("div"); div.className = "probe";
+    const q = document.createElement("div"); q.className = "q";
+    q.innerHTML = `${qi + 1}. ` + aiText(p.question);
+    const opts = document.createElement("div"); opts.className = "popts";
+    const exp = document.createElement("div"); exp.className = "pexp";
+    exp.innerHTML = aiText(p.explanation);
+    (p.options || []).forEach((o, i) => {
+      const b = document.createElement("button"); b.className = "pchip";
+      b.textContent = detex(o);
+      b.addEventListener("click", () => {
+        for (const c of opts.children) c.disabled = true;
+        b.classList.add(i === p.correct_index ? "right" : "wrong");
+        if (i !== p.correct_index)
+          opts.children[p.correct_index]?.classList.add("right");
+        exp.classList.add("show");
+      });
+      opts.appendChild(b);
+    });
+    div.append(q, opts, exp);
+    wrap.appendChild(div);
+  });
+}
+
+// "More…" — placeholder for a future expert verb that generates additional
+// probes for the current expression (e.g. POST /api/expert/expression_analysis
+// with {verb: "more_probes", exclude: [asked...]}). Not implemented; the
+// mockup just states what the click would do.
+document.getElementById("probe-more").addEventListener("click", () => {
+  const note = document.getElementById("probe-more-note");
+  // Plain mockup chrome — NOT AI-generated text, so no AI icon here: the
+  // icon is reserved for text the LM actually wrote.
+  note.textContent = "Would request additional probes from the expert " +
+    "(a dedicated more_probes verb, passing the probes already asked so it " +
+    "generates fresh ones) — not implemented in this mockup.";
+  note.classList.add("show");
+});
+
+// ── { } raw-JSON panel ──────────────────────────────────────────────────
+const jsonBtn = document.getElementById("json-btn");
+const jsonPanel = document.getElementById("json-panel");
+
+function renderJson() {
+  if (!jsonPanel.classList.contains("open")) return;
+  const raw = JSON.stringify(cur(), null, 2);
+  document.getElementById("json-pre").innerHTML = esc(raw)
+    .replace(/^(\s*)("(?:[^"\\]|\\.)*")(\s*:)/gm, '$1<span class="jk">$2</span>$3')
+    .replace(/: ("(?:[^"\\]|\\.)*")/g, ': <span class="js">$1</span>')
+    .replace(/: (-?\d[\d.eE+-]*)/g, ': <span class="jn">$1</span>');
+}
+
+jsonBtn.addEventListener("click", () => {
+  jsonPanel.classList.toggle("open");
+  jsonBtn.classList.toggle("open");
+  renderJson();
+});
+
+function renderAll() {
+  renderHeader(); renderViewTabs(); showRationale();
+  renderSliders(); renderProbes(); drawChart(); renderJson();
+}
+
+window.addEventListener("resize", drawChart);
+
+(function boot() {
+  document.getElementById("foot-ico").innerHTML = AI_SVG;
+  selectCase("projectile");
+})();
+</script>
+</body>
+</html>

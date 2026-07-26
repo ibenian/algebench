@@ -304,3 +304,35 @@ class TestLatexToMathjs:
         assert "{" not in script
         assert "}" not in script
         assert "b" in variables
+
+
+# ── accents and greedy function arguments ──────────────────────────────
+
+def test_accent_commands_do_not_become_variables():
+    """``\\hat{n}`` must not yield a phantom ``hat`` variable (and slider)."""
+    from backend.semantic_graph.mathjs_converter import latex_to_sympy
+    got = {str(s) for s in latex_to_sympy(r"a \cdot \hat{n}").free_symbols}
+    assert got == {"a", "n"}
+    got = {str(s) for s in latex_to_sympy(r"\vec{F} = m \vec{a}").free_symbols}
+    assert got == {"F", "a", "m"}
+
+
+def test_function_argument_does_not_swallow_the_product():
+    """``\\cos\\phi \\cdot a`` is ``a·cos(φ)``, not ``cos(a·φ)``.
+
+    parse_latex absorbs the whole trailing product into the argument for
+    both the bare and braced forms — a silently different function.
+    """
+    from backend.semantic_graph.mathjs_converter import latex_to_sympy
+    import sympy
+    a, phi, b, c, theta = sympy.symbols("a phi b c theta")
+    assert latex_to_sympy(r"\cos\phi \cdot a") == a * sympy.cos(phi)
+    assert latex_to_sympy(r"\cos{\phi} \cdot a") == a * sympy.cos(phi)
+    assert latex_to_sympy(r"\sin\theta \cdot b \cdot c") == b * c * sympy.sin(theta)
+    # already-correct forms are left alone
+    assert latex_to_sympy(r"\cos(\phi) \cdot a") == a * sympy.cos(phi)
+    assert latex_to_sympy(r"\cos^2\phi") == sympy.cos(phi) ** 2
+    # a genuine multi-factor argument stays intact
+    b_, t, omega = sympy.symbols("b t omega")
+    assert latex_to_sympy(r"e^{-b t} \cos{\omega t}") == (
+        sympy.exp(-b_ * t) * sympy.cos(omega * t))
