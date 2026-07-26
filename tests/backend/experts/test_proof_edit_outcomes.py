@@ -12,6 +12,7 @@ from pathlib import Path
 import pytest
 
 from backend.experts.handlers.proof_edit import handler as H
+from backend.experts.handlers.proof_edit import validate as V
 from backend.experts.modules.proof_edit.intent import (
     MAX_CLARIFICATIONS, ProofEditProposal, ProposedStep, format_clarifications,
 )
@@ -35,7 +36,17 @@ def _req(proof, message="multiply both sides by 2", step=2, clarifications=()):
 
 
 def _stub_proposal(monkeypatch, proposal):
+    """Stub BOTH the first proposal and the CAS retry's re-proposal.
+
+    ``validate.resolve`` re-asks the model when the CAS objects, via its OWN
+    module-level ``propose_edit`` — patching only the handler's name leaves that
+    one live. It used to fail harmlessly because nothing configures DSPy under
+    pytest, but the module now carries its own LM, so an unstubbed retry becomes
+    a real network call from a unit test. Patch both; the docstring's promise
+    that the LM is stubbed throughout is then actually true.
+    """
     monkeypatch.setattr(H, "propose_edit", lambda *a, **k: proposal)
+    monkeypatch.setattr(V, "propose_edit", lambda *a, **k: proposal)
 
 
 def _assert_single_outcome(res):

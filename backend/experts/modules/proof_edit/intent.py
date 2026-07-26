@@ -20,6 +20,7 @@ Requires DSPy to be configured first (``init_experts()`` / ``configure_dspy()``)
 """
 from __future__ import annotations
 
+import os
 import re
 from functools import cache
 from typing import Optional
@@ -27,6 +28,7 @@ from typing import Optional
 import dspy
 from pydantic import BaseModel, ConfigDict, Field
 
+from backend.experts.llm_config import LM_MODEL
 from backend.experts.modules.proof_completion.outputs import _unmangle_json_escapes
 
 # DSPy's ChatAdapter frames fields with `[[ ## name ## ]]` markers; some models
@@ -197,21 +199,19 @@ class ProofEditSig(dspy.Signature):
 class EditIntentParser(dspy.Module):
     """The intent parser: request → structured :class:`ProofEditProposal`.
 
-    A single ``Predict`` today, wrapped as a ``Module`` so it has a first-class
-    home in the expert package and — like ``ProofCompletionExpert`` — a compile
-    target if we later optimize it against a labelled dataset. Its ``forward``
-    returns the RAW DSPy prediction; field cleaning + shaping into the pydantic
-    proposal stays in :func:`propose_edit`, so the Module is a thin, optimizable
-    unit and the messy post-processing lives outside it.
+    A single ``Predict``, wrapped as a ``Module`` so it has a first-class home in
+    the expert package and — like ``ProofCompletionExpert`` — a compile target if
+    we later optimize it against a labelled dataset. Its ``forward`` returns the
+    RAW DSPy prediction; field cleaning + shaping into the pydantic proposal stays
+    in :func:`propose_edit`, so the Module is a thin, optimizable unit and the
+    messy post-processing lives outside it.
 
-    ``ChainOfThought`` (not bare ``Predict``): the routing decision — instruction
-    vs question vs clarify, and which ``op`` a request maps to — benefits from an
-    explicit reasoning step, and it matches ``ProofCompletionExpert``.
+    Bare ``Predict``, not ``ChainOfThought`` — measured, see ``_parser_lm``.
     """
 
     def __init__(self):
         super().__init__()
-        self.predict = dspy.ChainOfThought(ProofEditSig)
+        self.predict = dspy.Predict(ProofEditSig)
 
     def forward(self, *, derivation: str, current_step: str, request: str,
                 recent_thread: str = "", clarifications: str = ""):
@@ -231,6 +231,48 @@ class EditIntentParser(dspy.Module):
 @cache
 def _parser() -> EditIntentParser:
     return EditIntentParser()
+
+
+# Measured A/B (2026-07-25, gemini-2.5-flash, 10 scenarios x 5 configurations,
+# cache off, then 3 repeat passes over the finalists — see
+# docs/proposals/proof-edit/predict-nothink-report.md).
+#
+# The shipped configuration paid for deliberation TWICE: a ``ChainOfThought``
+# reasoning field on top of Gemini's own internal thinking. Dropping both runs
+# ~4.2 s/call against ~12.5 s, and — the number that actually matters to someone
+# watching a spinner — collapses the spread from sd 15.1 s (worst case 56 s) to
+# sd 2.5 s (worst case 11 s).
+#
+# Accuracy did not pay for it. Over 3 passes this configuration scored 123/123
+# mechanical checks, matching the old one; on the single scenario where the model
+# must author the LaTeX unaided rather than name an op for the CAS, all five
+# configurations emitted byte-identical, correct LaTeX. Most of this call is
+# ROUTING (edit vs question vs clarify) and NAMING an op — the CAS performs the
+# mathematics in ops.py and refutes anything it cannot verify, so extra
+# deliberation had nothing to buy.
+#
+# ``ChainOfThought`` + thinking-disabled was the other finalist and is
+# DELIBERATELY NOT ADOPTED: same speed, but it scored 115/123, repeatably
+# mis-routing "simplify the right-hand side" as not-an-edit and bouncing a plain
+# operation to the tutor chat.
+#
+# Scoped to THIS call, not llm_config, so every other expert keeps full
+# reasoning — the global ALGEBENCH_LM_REASONING knob would also silence the
+# proof-completion expert and domain rescue, which were not measured here.
+#
+# ``reasoning_effort="disable"`` is litellm's Gemini mapping for thinkingBudget
+# 0 with includeThoughts off (see its vertex_and_google_ai_studio_gemini.py).
+
+
+@cache
+def _parser_lm() -> Optional[dspy.LM]:
+    """The thinking-disabled LM for this call, or None if it cannot be built."""
+    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    try:
+        return dspy.LM(LM_MODEL, api_key=api_key, temperature=0.7,
+                       max_tokens=32768, reasoning_effort="disable")
+    except Exception:
+        return None
 
 
 def _clean(s) -> str:
@@ -260,14 +302,20 @@ def propose_edit(derivation: str, current_step: str, request: str,
     ask = request if not feedback else (
         f"{request}\n\nYour previous attempt was rejected by the computer algebra "
         f"system:\n{feedback}\nFix the math and try again.")
+    kwargs = dict(
+        derivation=derivation,
+        current_step=current_step,
+        request=ask,
+        recent_thread=recent_thread,
+        clarifications=clarifications,
+    )
     try:
-        out = _parser()(
-            derivation=derivation,
-            current_step=current_step,
-            request=ask,
-            recent_thread=recent_thread,
-            clarifications=clarifications,
-        )
+        lm = _parser_lm()
+        if lm is not None:
+            with dspy.context(lm=lm):
+                out = _parser()(**kwargs)
+        else:
+            out = _parser()(**kwargs)
     except Exception:
         return ProofEditProposal()
 

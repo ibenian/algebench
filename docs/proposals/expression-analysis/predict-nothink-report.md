@@ -6,7 +6,7 @@
 
 The visualization-proposer LM call was benchmarked across **10 scenarios × 3 thinking configurations** (30 calls, temperature 0.7, cache off). The adopted configuration — **bare `dspy.Predict` with Gemini internal thinking disabled** — ran at **mean 3.7 s/call (2.6–4.7 s)** versus 11.2 s for a low thinking budget and 14.7 s (5.9–27.4 s!) for default thinking, **with output quality equal or better**. Full thinking showed *worse* contract adherence (duplicate rank entries; top-ranked features left unmarked in 4/10 cases) and wildly unpredictable latency. The CAS fingerprint carries the hard mathematics, so the LM call is structured *selection*, not derivation — thinking buys nothing here.
 
-**Configuration adopted:** `dspy.Predict(VizProposalSig)` + `reasoning_effort="disable"`, scoped to this expert only (`ALGEBENCH_PROPOSER_REASONING` to override).
+**Configuration adopted:** `dspy.Predict(VizProposalSig)` + `reasoning_effort="disable"`, scoped to this expert's LM only so the rest of the stack keeps full reasoning.
 
 ## 2. How the expert works
 
@@ -440,6 +440,6 @@ One time, Two times, **Three times** ✓, Zero times
 
 **Adopted: `Predict` + thinking disabled.** ~3× faster than a low thinking budget, ~4× faster than default, tight latency band, best-or-equal outputs on all 10 scenarios including the traps.
 
-Caveats, held honestly: one run per cell (temperature 0.7, so single samples carry variance); quality judged by mechanical checks + human read, not a formal eval metric; all 10 expressions have ≤ 4 meaningful features — a 10-feature monster with subtle context trade-offs remains untested; and if the proposer's job ever grows real derivation (Phase E limiting expressions), thinking must return for that call. The config is one env var away from revisiting: `ALGEBENCH_PROPOSER_REASONING`.
+Caveats, held honestly: one run per cell (temperature 0.7, so single samples carry variance); quality judged by mechanical checks + human read, not a formal eval metric; all 10 expressions have ≤ 4 meaningful features — a 10-feature monster with subtle context trade-offs remains untested; and if the proposer's job ever grows real derivation (Phase E limiting expressions), thinking must return for that call — a one-line change to the `reasoning_effort` in `_proposer_lm()`.
 
 **Known open issues:** `\Delta t` parses as the product `Delta·t` (upstream `parse_latex` quirk — the handler flags affected views via `unknown_symbols`); probe `feature` attribution field often left empty.
