@@ -140,6 +140,28 @@ def test_evaluate_leaves_free_symbols_and_hits_both_sides():
     assert abs(float(got.rhs) - 0.841471) < 1e-6
 
 
+def test_evaluate_composes_with_solve_on_a_multi_root_solution_set():
+    """``solve_for`` → ``evaluate`` is the most natural pair of asks, and it used
+    to fail every time.
+
+    ``_op_solve_for`` returns several roots as ``Or(Eq, Eq)``. ``Or`` is a
+    ``BooleanFunction``, not an ``Expr``, so it has no ``evalf``; the
+    ``AttributeError`` became ``None`` inside the killable guard and reached the
+    reader as "the computer algebra system could not complete that operation".
+    Observed live: "solve for $x$" then "add the decimal approximations as the
+    next step" — the model gave up on the op and hand-wrote ``x \\approx 0.414``,
+    which the parser cannot even ground.
+    """
+    solved = ops.apply_op(sp.Eq(x**2 + 2 * x - 1, 0), ops.OP_SOLVE, variable="x")
+    got = ops.apply_op(solved, ops.OP_EVALUATE)
+
+    assert isinstance(got, sp.Or)                    # still the stable form
+    roots = sorted(float(eq.rhs) for eq in got.args)
+    assert abs(roots[0] - (-2.414214)) < 1e-5
+    assert abs(roots[1] - 0.414214) < 1e-5
+    assert all(eq.lhs == x for eq in got.args)       # each stays ``x = …``
+
+
 def test_integration_stays_unevaluated():
     """Evaluating would silently drop the constant of integration.
 

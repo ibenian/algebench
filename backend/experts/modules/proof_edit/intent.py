@@ -117,6 +117,17 @@ class ProofEditSig(dspy.Signature):
     giveaway is "as a/the … step" or "next"; contrast "add $3x$ to both sides",
     which names a TARGET to add to and IS `add_both_sides`.
 
+    BUT NOT WHEN THE LINE IS THE CURRENT STEP EVALUATED. If what they want added
+    is the DECIMAL/NUMERIC form of the step in view — "add the decimal
+    approximations as the next step", "add $x \approx 0.414$ and
+    $x \approx -2.414$", "now give me the numbers" — set `op` to `evaluate`
+    instead and let the CAS produce the decimals. Do NOT copy their numbers in.
+    Two reasons, both fatal to the verbatim route: a rounded decimal does not
+    exactly satisfy the previous step, so the CAS REFUTES it as introducing values
+    that do not solve it; and `\approx` is not a relation the parser accepts, so
+    the step cannot be checked at all. `evaluate` is computed by the CAS, so it is
+    correct by construction and states `=` with evaluated roots.
+
     EMPTY DERIVATION — a special case of 3. When `current_step` says the
     derivation is EMPTY, there is no previous expression, so there is nothing to
     apply an operation TO. The reader is stating the FIRST line ("start with
