@@ -14,7 +14,7 @@
     "/labels.js": "data:text/javascript,export function makeAiAskButton(){return document.createElement('span')}",
     "/expr.js": "data:text/javascript,const m=math.create(math.all);m.import({binomial:(n,k)=>m.combinations(n,k),erfc:x=>1-m.erf(x),beta:(a,b)=>m.gamma(a)*m.gamma(b)/m.gamma(a%2Bb),conjugate:x=>m.conj(x)});export function compileExpr(s){return m.compile(s)}export function evalExpr(c,t,opts){const scope=opts%26%26opts.extraScope?{...opts.extraScope}:{};return c.evaluate(scope)}",
     "/proof-animation/dock-seq.js": "data:text/javascript,let n=0;export const nextDockSeq=()=>%2B%2Bn",
-    "/graph-panel/term-resolve.js": "./term-resolve.js?v=1785023936"
+    "/graph-panel/term-resolve.js": "./term-resolve.js?v=1785031431"
   }
 }</script>
 <script>
@@ -1051,7 +1051,7 @@ svg.d3-semantic-graph {
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-07-26 00:00 UTC &middot; theme: default-dark &middot; 15 expressions</div>
+<div class="report-meta">Generated 2026-07-26 02:05 UTC &middot; theme: default-dark &middot; 15 expressions</div>
 <div class="section-title">Mechanics (15 expressions)</div>
 <div class="row">
   <div>
@@ -3469,11 +3469,10 @@ svg.d3-semantic-graph {
       "op": "multiply",
       "subexpr": "\\partial L \\frac{1}{\\partial \\dot{q}}",
       "chartScript": {
-        "script": "L/(dot*q)",
+        "script": "zoo*L*partial",
         "variables": [
           "L",
-          "dot",
-          "q"
+          "partial"
         ]
       }
     },
@@ -3522,12 +3521,8 @@ svg.d3-semantic-graph {
       "exponent": "-1",
       "subexpr": "\\frac{1}{\\partial \\dot{q}}",
       "chartScript": {
-        "script": "1/(dot*partial*q)",
-        "variables": [
-          "dot",
-          "partial",
-          "q"
-        ]
+        "script": "zoo",
+        "variables": []
       }
     },
     {
@@ -3536,12 +3531,8 @@ svg.d3-semantic-graph {
       "op": "multiply",
       "subexpr": "\\partial \\dot{q}",
       "chartScript": {
-        "script": "dot*partial*q",
-        "variables": [
-          "dot",
-          "partial",
-          "q"
-        ]
+        "script": "0",
+        "variables": []
       }
     },
     {
@@ -3575,11 +3566,8 @@ svg.d3-semantic-graph {
       "with_respect_to": "t",
       "subexpr": "\\dot{q}",
       "chartScript": {
-        "script": "dot*q",
-        "variables": [
-          "dot",
-          "q"
-        ]
+        "script": "0",
+        "variables": []
       }
     },
     {
@@ -3791,7 +3779,7 @@ svg.d3-semantic-graph {
 </pre></div></div>
   <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy — ungroundable</span></div><pre>UngroundableGraph: operator 'partial_derivative'</pre></div></div>
   <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>True</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre></pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\frac{d}{dt} \\frac{\\partial L}{\\partial \\dot{q}} - \\frac{\\partial L}{\\partial q} = 0&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;True&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__add_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;-\\frac{\\partial L}{\\partial q} + \\frac{\\partial}{\\partial t} \\frac{L \\partial}{\\partial \\dot{q}}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\partial L \\frac{1}{\\partial \\dot{q}}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;L/(dot*q)&quot;,&quot;variables&quot;:[&quot;L&quot;,&quot;dot&quot;,&quot;q&quot;]}},{&quot;id&quot;:&quot;__multiply_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\partial L&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;L*partial&quot;,&quot;variables&quot;:[&quot;L&quot;,&quot;partial&quot;]}},{&quot;id&quot;:&quot;partial&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\partial&quot;,&quot;subexpr&quot;:&quot;\\partial&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;partial&quot;,&quot;variables&quot;:[&quot;partial&quot;]}},{&quot;id&quot;:&quot;L&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;L&quot;,&quot;subexpr&quot;:&quot;L&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;L&quot;,&quot;variables&quot;:[&quot;L&quot;]}},{&quot;id&quot;:&quot;__power_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{\\partial \\dot{q}}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1/(dot*partial*q)&quot;,&quot;variables&quot;:[&quot;dot&quot;,&quot;partial&quot;,&quot;q&quot;]}},{&quot;id&quot;:&quot;__multiply_7&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\partial \\dot{q}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;dot*partial*q&quot;,&quot;variables&quot;:[&quot;dot&quot;,&quot;partial&quot;,&quot;q&quot;]}},{&quot;id&quot;:&quot;q&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;q&quot;,&quot;subexpr&quot;:&quot;q&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;q&quot;,&quot;variables&quot;:[&quot;q&quot;]}},{&quot;id&quot;:&quot;t&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;t&quot;,&quot;subexpr&quot;:&quot;t&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;t&quot;,&quot;variables&quot;:[&quot;t&quot;]}},{&quot;id&quot;:&quot;__deriv_8&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;derivative&quot;,&quot;with_respect_to&quot;:&quot;t&quot;,&quot;subexpr&quot;:&quot;\\dot{q}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;dot*q&quot;,&quot;variables&quot;:[&quot;dot&quot;,&quot;q&quot;]}},{&quot;id&quot;:&quot;__deriv_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;derivative&quot;,&quot;with_respect_to&quot;:&quot;t&quot;,&quot;subexpr&quot;:&quot;\\frac{\\partial}{\\partial t} \\frac{L \\partial}{\\partial \\dot{q}}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__negation_9&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-\\frac{\\partial L}{\\partial q}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__deriv_10&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;partial_derivative&quot;,&quot;with_respect_to&quot;:&quot;q&quot;,&quot;subexpr&quot;:&quot;\\frac{\\partial L}{\\partial q}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__num_11&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;0&quot;,&quot;subexpr&quot;:&quot;0&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;partial&quot;,&quot;to&quot;:&quot;__multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;L&quot;,&quot;to&quot;:&quot;__multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_5&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;partial&quot;,&quot;to&quot;:&quot;__multiply_7&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;q&quot;,&quot;to&quot;:&quot;__deriv_8&quot;},{&quot;from&quot;:&quot;t&quot;,&quot;to&quot;:&quot;__deriv_8&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;__deriv_8&quot;,&quot;to&quot;:&quot;__multiply_7&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_7&quot;,&quot;to&quot;:&quot;__power_6&quot;},{&quot;from&quot;:&quot;__power_6&quot;,&quot;to&quot;:&quot;__multiply_4&quot;},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__deriv_3&quot;},{&quot;from&quot;:&quot;t&quot;,&quot;to&quot;:&quot;__deriv_3&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;__deriv_3&quot;,&quot;to&quot;:&quot;__add_2&quot;},{&quot;from&quot;:&quot;L&quot;,&quot;to&quot;:&quot;__deriv_10&quot;},{&quot;from&quot;:&quot;q&quot;,&quot;to&quot;:&quot;__deriv_10&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;__deriv_10&quot;,&quot;to&quot;:&quot;__negation_9&quot;},{&quot;from&quot;:&quot;__negation_9&quot;,&quot;to&quot;:&quot;__add_2&quot;},{&quot;from&quot;:&quot;__add_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;__num_11&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;PDE&quot;,&quot;order&quot;:1,&quot;dependent_variables&quot;:[&quot;L&quot;,&quot;q&quot;],&quot;independent_variables&quot;:[&quot;q&quot;,&quot;t&quot;]}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\frac{d}{dt} \\frac{\\partial L}{\\partial \\dot{q}} - \\frac{\\partial L}{\\partial q} = 0&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;True&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__add_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;-\\frac{\\partial L}{\\partial q} + \\frac{\\partial}{\\partial t} \\frac{L \\partial}{\\partial \\dot{q}}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\partial L \\frac{1}{\\partial \\dot{q}}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;zoo*L*partial&quot;,&quot;variables&quot;:[&quot;L&quot;,&quot;partial&quot;]}},{&quot;id&quot;:&quot;__multiply_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\partial L&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;L*partial&quot;,&quot;variables&quot;:[&quot;L&quot;,&quot;partial&quot;]}},{&quot;id&quot;:&quot;partial&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\partial&quot;,&quot;subexpr&quot;:&quot;\\partial&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;partial&quot;,&quot;variables&quot;:[&quot;partial&quot;]}},{&quot;id&quot;:&quot;L&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;L&quot;,&quot;subexpr&quot;:&quot;L&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;L&quot;,&quot;variables&quot;:[&quot;L&quot;]}},{&quot;id&quot;:&quot;__power_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{\\partial \\dot{q}}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;zoo&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__multiply_7&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\partial \\dot{q}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;q&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;q&quot;,&quot;subexpr&quot;:&quot;q&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;q&quot;,&quot;variables&quot;:[&quot;q&quot;]}},{&quot;id&quot;:&quot;t&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;t&quot;,&quot;subexpr&quot;:&quot;t&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;t&quot;,&quot;variables&quot;:[&quot;t&quot;]}},{&quot;id&quot;:&quot;__deriv_8&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;derivative&quot;,&quot;with_respect_to&quot;:&quot;t&quot;,&quot;subexpr&quot;:&quot;\\dot{q}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__deriv_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;derivative&quot;,&quot;with_respect_to&quot;:&quot;t&quot;,&quot;subexpr&quot;:&quot;\\frac{\\partial}{\\partial t} \\frac{L \\partial}{\\partial \\dot{q}}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__negation_9&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-\\frac{\\partial L}{\\partial q}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__deriv_10&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;partial_derivative&quot;,&quot;with_respect_to&quot;:&quot;q&quot;,&quot;subexpr&quot;:&quot;\\frac{\\partial L}{\\partial q}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__num_11&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;0&quot;,&quot;subexpr&quot;:&quot;0&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;partial&quot;,&quot;to&quot;:&quot;__multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;L&quot;,&quot;to&quot;:&quot;__multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_5&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;partial&quot;,&quot;to&quot;:&quot;__multiply_7&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;q&quot;,&quot;to&quot;:&quot;__deriv_8&quot;},{&quot;from&quot;:&quot;t&quot;,&quot;to&quot;:&quot;__deriv_8&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;__deriv_8&quot;,&quot;to&quot;:&quot;__multiply_7&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_7&quot;,&quot;to&quot;:&quot;__power_6&quot;},{&quot;from&quot;:&quot;__power_6&quot;,&quot;to&quot;:&quot;__multiply_4&quot;},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__deriv_3&quot;},{&quot;from&quot;:&quot;t&quot;,&quot;to&quot;:&quot;__deriv_3&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;__deriv_3&quot;,&quot;to&quot;:&quot;__add_2&quot;},{&quot;from&quot;:&quot;L&quot;,&quot;to&quot;:&quot;__deriv_10&quot;},{&quot;from&quot;:&quot;q&quot;,&quot;to&quot;:&quot;__deriv_10&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;__deriv_10&quot;,&quot;to&quot;:&quot;__negation_9&quot;},{&quot;from&quot;:&quot;__negation_9&quot;,&quot;to&quot;:&quot;__add_2&quot;},{&quot;from&quot;:&quot;__add_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;__num_11&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;PDE&quot;,&quot;order&quot;:1,&quot;dependent_variables&quot;:[&quot;L&quot;,&quot;q&quot;],&quot;independent_variables&quot;:[&quot;q&quot;,&quot;t&quot;]}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -4410,8 +4398,8 @@ document.querySelectorAll('.row-copy-btn').forEach(btn => {
 })();
 
 Promise.all([
-  import('./d3-semantic-graph.js?v=1785023936'),
-  import('./sg-chart.js?v=1785023936'),
+  import('./d3-semantic-graph.js?v=1785031431'),
+  import('./sg-chart.js?v=1785031431'),
 ]).then(function(mods) {
   var D3SemanticGraphRenderer = mods[0].D3SemanticGraphRenderer;
   var SgChartManager = mods[1].SgChartManager;
