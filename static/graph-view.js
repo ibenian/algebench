@@ -22,7 +22,7 @@ import { SemanticGraphPanel } from '/graph-panel/graph-panel.js';
 import { D3SemanticGraphRenderer, nodeLongLabel } from '/graph-panel/d3-semantic-graph.js';
 import { SgChartManager } from '/graph-panel/sg-chart.js';
 import { SgProofManager, clearDeriveCache } from '/proof-animation/sg-proof.js';
-import { FunctionAnalysisManager } from '/graph-panel/fa-page.js';
+import { FunctionAnalysisManager, clearAnalysisCache } from '/graph-panel/fa-page.js';
 import { validateProofData } from '/proof-animation/validate-proof.js';
 import { buildEnrichContext } from '/proof-animation/derive-payload.js';
 import {
@@ -2366,6 +2366,8 @@ function _resetGraphSession() {
     _currentChartManager = null;
     if (_currentProofManager) { try { _currentProofManager.destroy(); } catch {} _currentProofManager = null; }
     clearDeriveCache();   // derivation results are lesson-specific
+    clearAnalysisCache(); // so are function analyses
+    if (_faManager) { try { _faManager.destroy(); } catch {} _faManager = null; }
 }
 
 // Shared monochrome moon/sun glyphs from /icons.js (LAST QUARTER MOON / BLACK

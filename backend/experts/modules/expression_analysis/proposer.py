@@ -102,6 +102,23 @@ class ProposedProbe(BaseModel):
     feature: str = Field(default="", max_length=200)
 
 
+def _usable_probes(probes: list["ProposedProbe"]) -> list["ProposedProbe"]:
+    """Keep only probes a learner can actually answer.
+
+    The signature *asks* the model to verify ``correct_index`` against the
+    CAS report, but asking is not enforcing: an out-of-range index marks
+    no option correct and makes the post-answer message tell the tutor
+    "the correct answer is ''", and a probe with fewer than two options is
+    not a question. Drop those rather than render broken quizzes.
+    """
+    out = []
+    for p in probes:
+        n = len(p.options)
+        if 2 <= n <= 4 and 0 <= p.correct_index < n:
+            out.append(p)
+    return out
+
+
 class VizProposal(BaseModel):
     """The AI's full pedagogical proposal for one analyzed expression."""
 
@@ -341,7 +358,7 @@ def propose_views(expression: str, characteristics: str,
         story=str(out.story or "").strip(),
         ranked=shape(RankedFeature, out.ranked, MAX_RANKED),
         views=views,
-        probes=shape(ProposedProbe, out.probes, MAX_PROBES),
+        probes=_usable_probes(shape(ProposedProbe, out.probes, MAX_PROBES)),
         variable_glossary=glossary,
     )
 
@@ -421,7 +438,7 @@ def propose_more_probes(expression: str, characteristics: str,
                 shaped.append(ProposedProbe(**raw))
             except Exception:
                 continue
-    return shaped
+    return _usable_probes(shaped)
 
 
 __all__ = [

@@ -31,8 +31,25 @@ const BAND_FILL = 'rgba(66, 165, 245, 0.10)';
 
 // Session cache: request shape -> response, so re-analyzing the same node
 // with the same context never re-bills the LM (mirrors sg-proof's cache).
+// Bounded and lesson-scoped: a long session opening many analyses would
+// otherwise accumulate response payloads that can never be hit again.
 const _FA_CACHE = new Map();
+const _FA_CACHE_MAX = 32;
 const _cacheKey = (p) => JSON.stringify({ l: p.latex, v: p.variable || '', c: p.context || '' });
+
+/** Insert with oldest-first eviction (Map preserves insertion order). */
+function _cacheSet(key, data) {
+    _FA_CACHE.set(key, data);
+    while (_FA_CACHE.size > _FA_CACHE_MAX) {
+        _FA_CACHE.delete(_FA_CACHE.keys().next().value);
+    }
+}
+
+/** Drop every cached analysis — call on a new lesson, whose steps and
+ *  context no longer match anything stored (see clearDeriveCache). */
+export function clearAnalysisCache() {
+    _FA_CACHE.clear();
+}
 
 let _idCounter = 0;
 
@@ -135,7 +152,7 @@ export class FunctionAnalysisManager {
                 data = await invokeExpert('expression_analysis', payload,
                                           { timeoutMs: REQUEST_TIMEOUT_MS });
                 if (data && data.characteristics && !data.characteristics.error) {
-                    _FA_CACHE.set(key, data);
+                    _cacheSet(key, data);
                 }
             }
             if (data && data.characteristics && data.characteristics.error) {

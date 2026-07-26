@@ -121,3 +121,29 @@ def test_proposed_view_coerces_nested_plots_and_annotations():
     )
     assert isinstance(v.plots[0], ProposedPlot)
     assert isinstance(v.annotations[0], ProposedAnnotation)
+
+
+# ── probe validation (structurally unusable probes are dropped) ─────────
+
+def test_only_answerable_probes_survive():
+    """A probe needs 2-4 options and an in-range ``correct_index``.
+
+    The signature asks the model to verify the index, but asking is not
+    enforcing: out of range marks no option correct and tells the tutor
+    the correct answer is the empty string.
+    """
+    from backend.experts.modules.expression_analysis.proposer import (
+        ProposedProbe, _usable_probes,
+    )
+    probes = [
+        ProposedProbe(question="ok", options=["a", "b"], correct_index=1),
+        ProposedProbe(question="index past the end", options=["a", "b"],
+                      correct_index=2),
+        ProposedProbe(question="no options", options=[], correct_index=0),
+        ProposedProbe(question="single option", options=["a"], correct_index=0),
+        ProposedProbe(question="too many", options=list("abcde"), correct_index=0),
+        ProposedProbe(question="also ok", options=["a", "b", "c", "d"],
+                      correct_index=3),
+    ]
+    kept = [p.question for p in _usable_probes(probes)]
+    assert kept == ["ok", "also ok"]
