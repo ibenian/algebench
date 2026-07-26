@@ -189,3 +189,23 @@ def test_function_definition_sweeps_its_argument():
     assert rep["variable"] == "h"                  # the function's argument
     assert "rho(" not in rep["chartScript"]["script"]
     assert rep["chartScript"]["script"] == "rho_0*exp(-h/H)"
+
+
+def test_derivative_definition_keeps_its_sign_and_names_the_rate():
+    """``dh/dt = -V sin γ`` must analyze -V sin γ, not +V sin γ.
+
+    ``doit()`` evaluates d/dt of the plain symbol h to ZERO, so LHS - RHS
+    collapsed to ``0 - (-V sin γ)`` — the equation's subject vanished and
+    the sign flipped, plotting the negation of the stated quantity with
+    nothing to signal it.
+    """
+    for src in (r"\frac{d}{dt} h = -V \sin\gamma",
+                r"\frac{dh}{dt} = -V \sin\gamma",
+                r"\dot{h} = -V \sin\gamma"):
+        rep = analyze(src, variable="gamma")
+        assert rep["expression"] == r"- V \sin{\left(\gamma \right)}", src
+        assert rep["dependent"] == "dh_dt", src
+        assert rep["dependentLatex"] == r"\frac{d}{d t} h", src
+        assert rep["chartScript"]["script"] == "-V*sin(gamma)", src
+        # h and t are the rate's own names — never inputs to slide
+        assert rep["variables"] == ["V", "gamma"], src

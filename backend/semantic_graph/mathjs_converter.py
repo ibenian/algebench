@@ -167,6 +167,12 @@ def _protect_subscripts(latex: str) -> tuple[str, dict]:
     # exactly right for evaluation.
     latex = _strip_tracked_accents(latex, {})
 
+    # ``\dot{h}`` is a derivative, not an accent — parse_latex would read
+    # it as ``Symbol('dot') * h``. The preprocessor rewrites it to
+    # ``\frac{dh}{dt}``, which parses as a real Derivative.
+    from backend.semantic_graph.preprocessor import LaTeXPreprocessor
+    latex = LaTeXPreprocessor.rewrite_dot_derivatives(latex)
+
     # ``\text``/``\mathrm`` wrappers *inside a subscript* are display-only
     # (``g_{\text{feet}}``); unwrap them so the collapser sees plain letters.
     # The graph pipeline handles free-standing \text via its own pass.
@@ -215,7 +221,7 @@ def _parenthesize_function_args(latex: str) -> str:
     return _BARE_FN_ARG_RE.sub(repl, latex)
 
 
-def _parse_normalized(latex: str) -> sympy.Basic:
+def _parse_normalized(latex: str, keep_derivatives: bool = False) -> sympy.Basic:
     """Parse + normalize, leaving any relation intact.
 
     Shared front half of :func:`latex_to_sympy`: subscript protection,
@@ -244,7 +250,13 @@ def _parse_normalized(latex: str) -> sympy.Basic:
     # Normalize sub-expressions that ``parse_latex`` leaves in
     # un-evaluated form (e.g. ``log(x, E)`` with two args instead of
     # the canonical single-arg ``log(x)``).
-    expr = expr.doit()
+    #
+    # ``doit()`` also EVALUATES derivatives, and ``d/dt h`` where ``h`` is
+    # a plain symbol (not a function of t) evaluates to ZERO — silently
+    # deleting the subject of an equation like ``dh/dt = -V sin γ``.
+    # Callers that read such an equation as a definition ask to keep it.
+    if not (keep_derivatives and expr.has(sympy.Derivative)):
+        expr = expr.doit()
 
     # Sanitize primed symbols (u' → u_prime) so jscode emits valid
     # JavaScript identifiers.
@@ -283,25 +295,33 @@ def latex_to_sympy_defined(
     * a function application — ``\\rho(h) = \\rho_0 e^{-h/H}``, whose
       argument is also the obvious variable to sweep (and whose unapplied
       ``rho(h)`` term would otherwise poison the generated script)
+    * a derivative — ``\\frac{d}{dt} h = -V \\sin\\gamma``, the rate of
+      change being what the equation is *about*
 
-    Returns ``(formula, defined_symbol, argument)`` — ``argument`` only for
-    the function form. Every other relation (an equation to be solved, an
-    inequality) still gives ``(LHS - RHS, None, None)``, as does a plain
-    expression.
+    Returns ``(formula, defined_symbol, argument, display_latex)``.
+    ``argument`` is set only for the function form, ``display_latex`` only
+    when the defined quantity does not render as a plain symbol. Every
+    other relation (an equation to be solved, an inequality) still gives
+    ``(LHS - RHS, None, None, None)``, as does a plain expression.
     """
-    expr = _parse_normalized(latex)
+    expr = _parse_normalized(latex, keep_derivatives=True)
     if isinstance(expr, sympy.Eq):
         lhs, rhs = expr.lhs, expr.rhs
         for side, other in ((lhs, rhs), (rhs, lhs)):
             if isinstance(side, Symbol) and side not in other.free_symbols:
-                return other, side, None
+                return other, side, None, None
             if isinstance(side, AppliedUndef) and not other.has(side.func):
                 args = [a for a in side.args if isinstance(a, Symbol)]
                 return (other, Symbol(side.func.__name__),
-                        args[0] if len(args) == 1 else None)
+                        args[0] if len(args) == 1 else None, None)
+            if isinstance(side, sympy.Derivative) and not other.has(sympy.Derivative):
+                target = side.expr
+                wrt = "_".join(str(v) for v, _ in side.variable_count)
+                name = f"d{target}_d{wrt}"
+                return other.doit(), Symbol(name), None, sympy.latex(side)
     if isinstance(expr, Rel):
-        return expr.lhs - expr.rhs, None, None
-    return expr, None, None
+        return (expr.lhs - expr.rhs).doit(), None, None, None
+    return expr.doit(), None, None, None
 
 
 def latex_to_mathjs(latex: str) -> tuple[str, list[str]]:

@@ -277,10 +277,16 @@ def _symbol_latex(name: str) -> str:
         return name + primes
 
 
-def _dependent_latex(defined, arg) -> Optional[str]:
-    """Display form of what a definition defines: ``g_{feet}``, ``\\rho(h)``."""
+def _dependent_latex(defined, arg, explicit=None) -> Optional[str]:
+    """Display form of what a definition defines.
+
+    ``g_{feet}``, ``\\rho(h)``, or an explicit form supplied by the parser
+    for quantities that are not plain symbols (``\\frac{d}{dt} h``).
+    """
     if defined is None:
         return None
+    if explicit:
+        return explicit
     name = _symbol_latex(str(defined))
     return f"{name}({_symbol_latex(str(arg))})" if arg is not None else name
 
@@ -327,7 +333,7 @@ def analyze(latex_src: str, variable: Optional[str] = None,
     parsed = guard(_op_parse, latex_src, default=None, timeout=timeout)
     if parsed is None:
         return {"error": f"could not parse expression: {latex_src[:200]}"}
-    expr, defined, defined_arg = parsed
+    expr, defined, defined_arg, defined_latex = parsed
 
     # A definition names its own independent variable: ρ(h) sweeps h.
     var = pick_variable(expr, variable or
@@ -338,7 +344,7 @@ def analyze(latex_src: str, variable: Optional[str] = None,
         return {
             "expression": latex(expr),
             "dependent": str(defined) if defined is not None else None,
-            "dependentLatex": _dependent_latex(defined, defined_arg),
+            "dependentLatex": _dependent_latex(defined, defined_arg, defined_latex),
             "variable": None,
             "variables": [],
             "variables_latex": {},
@@ -367,7 +373,7 @@ def analyze(latex_src: str, variable: Optional[str] = None,
         # produces — the quantity belonging on the vertical axis. None for
         # a plain expression or an equation to be solved (LHS − RHS).
         "dependent": str(defined) if defined is not None else None,
-        "dependentLatex": _dependent_latex(defined, defined_arg),
+        "dependentLatex": _dependent_latex(defined, defined_arg, defined_latex),
         "variable": str(var),
         "variables": names,
         "variables_latex": {n: _symbol_latex(n) for n in names},
