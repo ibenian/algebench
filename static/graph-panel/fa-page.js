@@ -597,6 +597,12 @@ export class FunctionAnalysisManager {
             const f = (chars.features || {})[kind];
             if (f && (f.points || []).length) marks.add(kind);
         }
+        // Markers start OFF: the curve reads clearly on its own, and the
+        // legend keys are the switch. (They are also drawn by numeric
+        // re-detection over the plotted window, so a feature the CAS found
+        // outside the current range legitimately draws nothing — showing
+        // them on by default made that look like a bug.)
+        this._hiddenMarks = new Set(marks);
         // The plugin reads LIVE state off chart.$fa so in-place updates
         // (sliders, group toggles) re-draw overlays without a rebuild.
         const featurePlugin = {
