@@ -96,6 +96,7 @@ export class FunctionAnalysisManager {
         // artifact both back-references its step (a JSON cycle) and carries
         // kilobytes of analysis data. Session-only side storage instead.
         this._byStep = new WeakMap();  // step -> artifact[]
+        this._jsonKeyHandlers = [];    // Esc listeners for JSON popups
     }
 
     /** Artifacts attached to a step (render order). */
@@ -264,6 +265,7 @@ export class FunctionAnalysisManager {
         this._destroyCharts();
         this._hiddenGroups = new Set();
         this._hiddenMarks = new Set();
+        this._clearJsonKeyHandlers();   // the old overlay is about to go
         page.innerHTML = '';
 
         page.appendChild(this._renderHeader(artifact));
@@ -1380,12 +1382,24 @@ export class FunctionAnalysisManager {
     /* ---------------- raw JSON ---------------------------------------- */
 
     _renderJsonPanel(artifact) {
-        // Popup over the view (backdrop click or × closes it).
+        // Popup over the view (Esc, backdrop click, or × closes it).
         const overlay = document.createElement('div');
         overlay.className = 'fa-json-overlay';
         overlay.addEventListener('click', (e) => {
             if (e.target === overlay) overlay.classList.remove('open');
         });
+        // Esc is the expected way out of a modal. Listen on the document,
+        // since focus stays wherever it was when the popup opened, and only
+        // act while this overlay is actually showing. The listener is
+        // removed on destroy() so pages don't leak handlers.
+        const onKey = (e) => {
+            if (e.key !== 'Escape') return;
+            if (!overlay.classList.contains('open')) return;
+            overlay.classList.remove('open');
+            e.stopPropagation();     // don't also close the page behind it
+        };
+        document.addEventListener('keydown', onKey, true);
+        this._jsonKeyHandlers.push(onKey);
 
         const modal = document.createElement('div');
         modal.className = 'fa-json-modal';
@@ -1478,8 +1492,17 @@ export class FunctionAnalysisManager {
         el.appendChild(btn);
     }
 
+    /** Drop the Esc listeners of overlays that are no longer in the DOM. */
+    _clearJsonKeyHandlers() {
+        for (const fn of this._jsonKeyHandlers) {
+            document.removeEventListener('keydown', fn, true);
+        }
+        this._jsonKeyHandlers = [];
+    }
+
     destroy() {
         this._destroyCharts();
+        this._clearJsonKeyHandlers();
         if (this.pageEl && this.pageEl.parentNode) {
             this.pageEl.parentNode.removeChild(this.pageEl);
         }
