@@ -14,7 +14,7 @@
     "/labels.js": "data:text/javascript,export function makeAiAskButton(){return document.createElement('span')}",
     "/expr.js": "data:text/javascript,const m=math.create(math.all);m.import({binomial:(n,k)=>m.combinations(n,k),erfc:x=>1-m.erf(x),beta:(a,b)=>m.gamma(a)*m.gamma(b)/m.gamma(a%2Bb),conjugate:x=>m.conj(x)});export function compileExpr(s){return m.compile(s)}export function evalExpr(c,t,opts){const scope=opts%26%26opts.extraScope?{...opts.extraScope}:{};return c.evaluate(scope)}",
     "/proof-animation/dock-seq.js": "data:text/javascript,let n=0;export const nextDockSeq=()=>%2B%2Bn",
-    "/graph-panel/term-resolve.js": "./term-resolve.js?v=1785022526"
+    "/graph-panel/term-resolve.js": "./term-resolve.js?v=1785023936"
   }
 }</script>
 <script>
@@ -1051,7 +1051,7 @@ svg.d3-semantic-graph {
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-07-25 23:36 UTC &middot; theme: default-dark &middot; 15 expressions</div>
+<div class="report-meta">Generated 2026-07-26 00:00 UTC &middot; theme: default-dark &middot; 15 expressions</div>
 <div class="section-title">Electromagnetism (15 expressions)</div>
 <div class="row">
   <div>
@@ -3316,15 +3316,13 @@ svg.d3-semantic-graph {
       "op": "equals",
       "subexpr": "\\oint \\vec{E} \\cdot d \\vec{A} = \\frac{Q}{\\epsilon_0}",
       "chartScript": {
-        "script": "A*E*dvec*oint*vec - Q/epsilon_0",
+        "script": "E*dA*oint - Q/epsilon_0",
         "variables": [
-          "A",
           "E",
           "Q",
-          "dvec",
+          "dA",
           "epsilon_0",
-          "oint",
-          "vec"
+          "oint"
         ]
       }
     },
@@ -3335,11 +3333,10 @@ svg.d3-semantic-graph {
       "with_respect_to": "A",
       "subexpr": "\\int \\vec{E}\\, dA",
       "chartScript": {
-        "script": "A*E*vec",
+        "script": "A*E",
         "variables": [
           "A",
-          "E",
-          "vec"
+          "E"
         ]
       }
     },
@@ -3355,10 +3352,9 @@ svg.d3-semantic-graph {
       "latex": "\\vec{E}",
       "subexpr": "\\vec{E}",
       "chartScript": {
-        "script": "E*vec",
+        "script": "E",
         "variables": [
-          "E",
-          "vec"
+          "E"
         ]
       }
     },
@@ -3486,8 +3482,8 @@ svg.d3-semantic-graph {
   linkStyle 6 stroke:#aaa,stroke-width:2px
 </pre></div></div>
   <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy — ungroundable</span></div><pre>UngroundableGraph: operator 'closed_integral'</pre></div></div>
-  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>A*E*dvec*oint*vec - Q/epsilon_0</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>A, E, Q, dvec, epsilon_0, oint, vec</pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\oint \\vec{E} \\cdot d \\vec{A} = \\frac{Q}{\\epsilon_0}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;A*E*dvec*oint*vec - Q/epsilon_0&quot;,&quot;variables&quot;:[&quot;A&quot;,&quot;E&quot;,&quot;Q&quot;,&quot;dvec&quot;,&quot;epsilon_0&quot;,&quot;oint&quot;,&quot;vec&quot;]}},{&quot;id&quot;:&quot;__closed_integral_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;closed_integral&quot;,&quot;with_respect_to&quot;:&quot;A&quot;,&quot;subexpr&quot;:&quot;\\int \\vec{E}\\, dA&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;A*E*vec&quot;,&quot;variables&quot;:[&quot;A&quot;,&quot;E&quot;,&quot;vec&quot;]}},{&quot;id&quot;:&quot;dA&quot;,&quot;type&quot;:&quot;differential&quot;,&quot;latex&quot;:&quot;dA&quot;,&quot;with_respect_to&quot;:&quot;A&quot;},{&quot;id&quot;:&quot;E&quot;,&quot;type&quot;:&quot;vector&quot;,&quot;latex&quot;:&quot;\\vec{E}&quot;,&quot;subexpr&quot;:&quot;\\vec{E}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;E*vec&quot;,&quot;variables&quot;:[&quot;E&quot;,&quot;vec&quot;]}},{&quot;id&quot;:&quot;__multiply_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;Q \\frac{1}{\\epsilon_{0}}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Q/epsilon_0&quot;,&quot;variables&quot;:[&quot;Q&quot;,&quot;epsilon_0&quot;]}},{&quot;id&quot;:&quot;Q&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;Q&quot;,&quot;subexpr&quot;:&quot;Q&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Q&quot;,&quot;variables&quot;:[&quot;Q&quot;]}},{&quot;id&quot;:&quot;__power_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{\\epsilon_{0}}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1/epsilon_0&quot;,&quot;variables&quot;:[&quot;epsilon_0&quot;]}},{&quot;id&quot;:&quot;epsilon_0&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\epsilon_{0}&quot;,&quot;subexpr&quot;:&quot;\\epsilon_{0}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;epsilon_0&quot;,&quot;variables&quot;:[&quot;epsilon_0&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;dA&quot;,&quot;to&quot;:&quot;__closed_integral_2&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;E&quot;,&quot;to&quot;:&quot;__closed_integral_2&quot;},{&quot;from&quot;:&quot;__closed_integral_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;Q&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;epsilon_0&quot;,&quot;to&quot;:&quot;__power_4&quot;},{&quot;from&quot;:&quot;__power_4&quot;,&quot;to&quot;:&quot;__multiply_3&quot;},{&quot;from&quot;:&quot;__multiply_3&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>E*dA*oint - Q/epsilon_0</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>E, Q, dA, epsilon_0, oint</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\oint \\vec{E} \\cdot d \\vec{A} = \\frac{Q}{\\epsilon_0}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;E*dA*oint - Q/epsilon_0&quot;,&quot;variables&quot;:[&quot;E&quot;,&quot;Q&quot;,&quot;dA&quot;,&quot;epsilon_0&quot;,&quot;oint&quot;]}},{&quot;id&quot;:&quot;__closed_integral_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;closed_integral&quot;,&quot;with_respect_to&quot;:&quot;A&quot;,&quot;subexpr&quot;:&quot;\\int \\vec{E}\\, dA&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;A*E&quot;,&quot;variables&quot;:[&quot;A&quot;,&quot;E&quot;]}},{&quot;id&quot;:&quot;dA&quot;,&quot;type&quot;:&quot;differential&quot;,&quot;latex&quot;:&quot;dA&quot;,&quot;with_respect_to&quot;:&quot;A&quot;},{&quot;id&quot;:&quot;E&quot;,&quot;type&quot;:&quot;vector&quot;,&quot;latex&quot;:&quot;\\vec{E}&quot;,&quot;subexpr&quot;:&quot;\\vec{E}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;E&quot;,&quot;variables&quot;:[&quot;E&quot;]}},{&quot;id&quot;:&quot;__multiply_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;Q \\frac{1}{\\epsilon_{0}}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Q/epsilon_0&quot;,&quot;variables&quot;:[&quot;Q&quot;,&quot;epsilon_0&quot;]}},{&quot;id&quot;:&quot;Q&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;Q&quot;,&quot;subexpr&quot;:&quot;Q&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Q&quot;,&quot;variables&quot;:[&quot;Q&quot;]}},{&quot;id&quot;:&quot;__power_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{\\epsilon_{0}}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1/epsilon_0&quot;,&quot;variables&quot;:[&quot;epsilon_0&quot;]}},{&quot;id&quot;:&quot;epsilon_0&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\epsilon_{0}&quot;,&quot;subexpr&quot;:&quot;\\epsilon_{0}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;epsilon_0&quot;,&quot;variables&quot;:[&quot;epsilon_0&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;dA&quot;,&quot;to&quot;:&quot;__closed_integral_2&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;E&quot;,&quot;to&quot;:&quot;__closed_integral_2&quot;},{&quot;from&quot;:&quot;__closed_integral_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;Q&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;epsilon_0&quot;,&quot;to&quot;:&quot;__power_4&quot;},{&quot;from&quot;:&quot;__power_4&quot;,&quot;to&quot;:&quot;__multiply_3&quot;},{&quot;from&quot;:&quot;__multiply_3&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -3548,11 +3544,10 @@ svg.d3-semantic-graph {
       "op": "equals",
       "subexpr": "\\nabla \\times \\vec{E} = -\\frac{\\partial \\vec{B}}{\\partial t}",
       "chartScript": {
-        "script": "E*nabla*vec",
+        "script": "E*nabla",
         "variables": [
           "E",
-          "nabla",
-          "vec"
+          "nabla"
         ]
       }
     },
@@ -3562,11 +3557,10 @@ svg.d3-semantic-graph {
       "op": "multiply",
       "subexpr": "\\nabla \\times \\vec{E}",
       "chartScript": {
-        "script": "E*nabla*vec",
+        "script": "E*nabla",
         "variables": [
           "E",
-          "nabla",
-          "vec"
+          "nabla"
         ]
       }
     },
@@ -3588,10 +3582,9 @@ svg.d3-semantic-graph {
       "latex": "\\vec{E}",
       "subexpr": "\\vec{E}",
       "chartScript": {
-        "script": "E*vec",
+        "script": "E",
         "variables": [
-          "E",
-          "vec"
+          "E"
         ]
       }
     },
@@ -3611,10 +3604,9 @@ svg.d3-semantic-graph {
       "latex": "\\vec{B}",
       "subexpr": "\\vec{B}",
       "chartScript": {
-        "script": "B*vec",
+        "script": "B",
         "variables": [
-          "B",
-          "vec"
+          "B"
         ]
       }
     },
@@ -3741,8 +3733,8 @@ svg.d3-semantic-graph {
   linkStyle 6 stroke:#aaa,stroke-width:2px
 </pre></div></div>
   <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy — ungroundable</span></div><pre>UngroundableGraph: operator 'partial_derivative'</pre></div></div>
-  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>E*nabla*vec</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>E, nabla, vec</pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\nabla \\times \\vec{E} = -\\frac{\\partial \\vec{B}}{\\partial t}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;E*nabla*vec&quot;,&quot;variables&quot;:[&quot;E&quot;,&quot;nabla&quot;,&quot;vec&quot;]}},{&quot;id&quot;:&quot;__multiply_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\nabla \\times \\vec{E}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;E*nabla*vec&quot;,&quot;variables&quot;:[&quot;E&quot;,&quot;nabla&quot;,&quot;vec&quot;]}},{&quot;id&quot;:&quot;nabla&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\nabla&quot;,&quot;subexpr&quot;:&quot;\\nabla&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;nabla&quot;,&quot;variables&quot;:[&quot;nabla&quot;]}},{&quot;id&quot;:&quot;E&quot;,&quot;type&quot;:&quot;vector&quot;,&quot;latex&quot;:&quot;\\vec{E}&quot;,&quot;subexpr&quot;:&quot;\\vec{E}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;E*vec&quot;,&quot;variables&quot;:[&quot;E&quot;,&quot;vec&quot;]}},{&quot;id&quot;:&quot;__negation_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-\\frac{\\partial \\vec{B}}{\\partial t}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;B&quot;,&quot;type&quot;:&quot;vector&quot;,&quot;latex&quot;:&quot;\\vec{B}&quot;,&quot;subexpr&quot;:&quot;\\vec{B}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;B*vec&quot;,&quot;variables&quot;:[&quot;B&quot;,&quot;vec&quot;]}},{&quot;id&quot;:&quot;t&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;t&quot;,&quot;subexpr&quot;:&quot;t&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;t&quot;,&quot;variables&quot;:[&quot;t&quot;]}},{&quot;id&quot;:&quot;__deriv_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;partial_derivative&quot;,&quot;with_respect_to&quot;:&quot;t&quot;,&quot;subexpr&quot;:&quot;\\frac{\\partial \\vec{B}}{\\partial t}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;nabla&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;E&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;B&quot;,&quot;to&quot;:&quot;__deriv_4&quot;},{&quot;from&quot;:&quot;t&quot;,&quot;to&quot;:&quot;__deriv_4&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;__deriv_4&quot;,&quot;to&quot;:&quot;__negation_3&quot;},{&quot;from&quot;:&quot;__negation_3&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;ODE&quot;,&quot;order&quot;:1,&quot;dependent_variables&quot;:[&quot;B&quot;],&quot;independent_variables&quot;:[&quot;t&quot;],&quot;sympy_hints&quot;:[&quot;factorable&quot;,&quot;nth_algebraic&quot;,&quot;separable&quot;,&quot;1st_exact&quot;,&quot;1st_linear&quot;,&quot;Bernoulli&quot;,&quot;1st_power_series&quot;,&quot;lie_group&quot;,&quot;nth_linear_constant_coeff_undetermined_coefficients&quot;,&quot;nth_linear_euler_eq_nonhomogeneous_undetermined_coefficients&quot;,&quot;nth_linear_constant_coeff_variation_of_parameters&quot;,&quot;nth_linear_euler_eq_nonhomogeneous_variation_of_parameters&quot;],&quot;linear&quot;:true,&quot;homogeneous&quot;:true,&quot;constant_coefficients&quot;:true}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>E*nabla</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>E, nabla</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\nabla \\times \\vec{E} = -\\frac{\\partial \\vec{B}}{\\partial t}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;E*nabla&quot;,&quot;variables&quot;:[&quot;E&quot;,&quot;nabla&quot;]}},{&quot;id&quot;:&quot;__multiply_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\nabla \\times \\vec{E}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;E*nabla&quot;,&quot;variables&quot;:[&quot;E&quot;,&quot;nabla&quot;]}},{&quot;id&quot;:&quot;nabla&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\nabla&quot;,&quot;subexpr&quot;:&quot;\\nabla&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;nabla&quot;,&quot;variables&quot;:[&quot;nabla&quot;]}},{&quot;id&quot;:&quot;E&quot;,&quot;type&quot;:&quot;vector&quot;,&quot;latex&quot;:&quot;\\vec{E}&quot;,&quot;subexpr&quot;:&quot;\\vec{E}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;E&quot;,&quot;variables&quot;:[&quot;E&quot;]}},{&quot;id&quot;:&quot;__negation_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-\\frac{\\partial \\vec{B}}{\\partial t}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;B&quot;,&quot;type&quot;:&quot;vector&quot;,&quot;latex&quot;:&quot;\\vec{B}&quot;,&quot;subexpr&quot;:&quot;\\vec{B}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;B&quot;,&quot;variables&quot;:[&quot;B&quot;]}},{&quot;id&quot;:&quot;t&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;t&quot;,&quot;subexpr&quot;:&quot;t&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;t&quot;,&quot;variables&quot;:[&quot;t&quot;]}},{&quot;id&quot;:&quot;__deriv_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;partial_derivative&quot;,&quot;with_respect_to&quot;:&quot;t&quot;,&quot;subexpr&quot;:&quot;\\frac{\\partial \\vec{B}}{\\partial t}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;nabla&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;E&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;B&quot;,&quot;to&quot;:&quot;__deriv_4&quot;},{&quot;from&quot;:&quot;t&quot;,&quot;to&quot;:&quot;__deriv_4&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;__deriv_4&quot;,&quot;to&quot;:&quot;__negation_3&quot;},{&quot;from&quot;:&quot;__negation_3&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;ODE&quot;,&quot;order&quot;:1,&quot;dependent_variables&quot;:[&quot;B&quot;],&quot;independent_variables&quot;:[&quot;t&quot;],&quot;sympy_hints&quot;:[&quot;factorable&quot;,&quot;nth_algebraic&quot;,&quot;separable&quot;,&quot;1st_exact&quot;,&quot;1st_linear&quot;,&quot;Bernoulli&quot;,&quot;1st_power_series&quot;,&quot;lie_group&quot;,&quot;nth_linear_constant_coeff_undetermined_coefficients&quot;,&quot;nth_linear_euler_eq_nonhomogeneous_undetermined_coefficients&quot;,&quot;nth_linear_constant_coeff_variation_of_parameters&quot;,&quot;nth_linear_euler_eq_nonhomogeneous_variation_of_parameters&quot;],&quot;linear&quot;:true,&quot;homogeneous&quot;:true,&quot;constant_coefficients&quot;:true}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -3805,14 +3797,13 @@ svg.d3-semantic-graph {
       "op": "equals",
       "subexpr": "\\vec{F} = q \\cdot (\\vec{E} + \\vec{v} \\times \\vec{B})",
       "chartScript": {
-        "script": "F*vec - q*(B*v*pow(vec, 2) + E*vec)",
+        "script": "F - q*(B*v + E)",
         "variables": [
           "B",
           "E",
           "F",
           "q",
-          "v",
-          "vec"
+          "v"
         ]
       }
     },
@@ -3822,10 +3813,9 @@ svg.d3-semantic-graph {
       "latex": "\\vec{F}",
       "subexpr": "\\vec{F}",
       "chartScript": {
-        "script": "F*vec",
+        "script": "F",
         "variables": [
-          "F",
-          "vec"
+          "F"
         ]
       }
     },
@@ -3835,12 +3825,11 @@ svg.d3-semantic-graph {
       "op": "multiply",
       "subexpr": "q \\left(\\vec{E} + \\vec{v} \\vec{B}\\right)",
       "chartScript": {
-        "script": "q(B*v*vec**2 + E*vec)",
+        "script": "q(B*v + E)",
         "variables": [
           "B",
           "E",
-          "v",
-          "vec"
+          "v"
         ]
       }
     },
@@ -3862,12 +3851,11 @@ svg.d3-semantic-graph {
       "op": "add",
       "subexpr": "\\vec{E} + \\vec{v} \\vec{B}",
       "chartScript": {
-        "script": "B*v*pow(vec, 2) + E*vec",
+        "script": "B*v + E",
         "variables": [
           "B",
           "E",
-          "v",
-          "vec"
+          "v"
         ]
       }
     },
@@ -3877,10 +3865,9 @@ svg.d3-semantic-graph {
       "latex": "\\vec{E}",
       "subexpr": "\\vec{E}",
       "chartScript": {
-        "script": "E*vec",
+        "script": "E",
         "variables": [
-          "E",
-          "vec"
+          "E"
         ]
       }
     },
@@ -3890,11 +3877,10 @@ svg.d3-semantic-graph {
       "op": "multiply",
       "subexpr": "\\vec{v} \\vec{B}",
       "chartScript": {
-        "script": "B*v*pow(vec, 2)",
+        "script": "B*v",
         "variables": [
           "B",
-          "v",
-          "vec"
+          "v"
         ]
       }
     },
@@ -3904,10 +3890,9 @@ svg.d3-semantic-graph {
       "latex": "\\vec{v}",
       "subexpr": "\\vec{v}",
       "chartScript": {
-        "script": "v*vec",
+        "script": "v",
         "variables": [
-          "v",
-          "vec"
+          "v"
         ]
       }
     },
@@ -3917,10 +3902,9 @@ svg.d3-semantic-graph {
       "latex": "\\vec{B}",
       "subexpr": "\\vec{B}",
       "chartScript": {
-        "script": "B*vec",
+        "script": "B",
         "variables": [
-          "B",
-          "vec"
+          "B"
         ]
       }
     }
@@ -4009,8 +3993,8 @@ svg.d3-semantic-graph {
   linkStyle 7 stroke:#aaa,stroke-width:2px
 </pre></div></div>
   <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(\vec{F}, q*(\vec{B}*\vec{v} + \vec{E}))</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(Symbol('\\vec{F}'), Mul(Symbol('q'), Add(Mul(Symbol('\\vec{B}'), Symbol('\\vec{v}')), Symbol('\\vec{E}'))))</pre></div></div>
-  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>F*vec - q*(B*v*pow(vec, 2) + E*vec)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>B, E, F, q, v, vec</pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\vec{F} = q \\cdot (\\vec{E} + \\vec{v} \\times \\vec{B})&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;F*vec - q*(B*v*pow(vec, 2) + E*vec)&quot;,&quot;variables&quot;:[&quot;B&quot;,&quot;E&quot;,&quot;F&quot;,&quot;q&quot;,&quot;v&quot;,&quot;vec&quot;]}},{&quot;id&quot;:&quot;F&quot;,&quot;type&quot;:&quot;vector&quot;,&quot;latex&quot;:&quot;\\vec{F}&quot;,&quot;subexpr&quot;:&quot;\\vec{F}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;F*vec&quot;,&quot;variables&quot;:[&quot;F&quot;,&quot;vec&quot;]}},{&quot;id&quot;:&quot;__multiply_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;q \\left(\\vec{E} + \\vec{v} \\vec{B}\\right)&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;q(B*v*vec**2 + E*vec)&quot;,&quot;variables&quot;:[&quot;B&quot;,&quot;E&quot;,&quot;v&quot;,&quot;vec&quot;]}},{&quot;id&quot;:&quot;q&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;q&quot;,&quot;subexpr&quot;:&quot;q&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;q&quot;,&quot;variables&quot;:[&quot;q&quot;]}},{&quot;id&quot;:&quot;__add_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;\\vec{E} + \\vec{v} \\vec{B}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;B*v*pow(vec, 2) + E*vec&quot;,&quot;variables&quot;:[&quot;B&quot;,&quot;E&quot;,&quot;v&quot;,&quot;vec&quot;]}},{&quot;id&quot;:&quot;E&quot;,&quot;type&quot;:&quot;vector&quot;,&quot;latex&quot;:&quot;\\vec{E}&quot;,&quot;subexpr&quot;:&quot;\\vec{E}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;E*vec&quot;,&quot;variables&quot;:[&quot;E&quot;,&quot;vec&quot;]}},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\vec{v} \\vec{B}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;B*v*pow(vec, 2)&quot;,&quot;variables&quot;:[&quot;B&quot;,&quot;v&quot;,&quot;vec&quot;]}},{&quot;id&quot;:&quot;v&quot;,&quot;type&quot;:&quot;vector&quot;,&quot;latex&quot;:&quot;\\vec{v}&quot;,&quot;subexpr&quot;:&quot;\\vec{v}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;v*vec&quot;,&quot;variables&quot;:[&quot;v&quot;,&quot;vec&quot;]}},{&quot;id&quot;:&quot;B&quot;,&quot;type&quot;:&quot;vector&quot;,&quot;latex&quot;:&quot;\\vec{B}&quot;,&quot;subexpr&quot;:&quot;\\vec{B}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;B*vec&quot;,&quot;variables&quot;:[&quot;B&quot;,&quot;vec&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;F&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;q&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;E&quot;,&quot;to&quot;:&quot;__add_3&quot;},{&quot;from&quot;:&quot;v&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;B&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__add_3&quot;},{&quot;from&quot;:&quot;__add_3&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>F - q*(B*v + E)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>B, E, F, q, v</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\vec{F} = q \\cdot (\\vec{E} + \\vec{v} \\times \\vec{B})&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;F - q*(B*v + E)&quot;,&quot;variables&quot;:[&quot;B&quot;,&quot;E&quot;,&quot;F&quot;,&quot;q&quot;,&quot;v&quot;]}},{&quot;id&quot;:&quot;F&quot;,&quot;type&quot;:&quot;vector&quot;,&quot;latex&quot;:&quot;\\vec{F}&quot;,&quot;subexpr&quot;:&quot;\\vec{F}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;F&quot;,&quot;variables&quot;:[&quot;F&quot;]}},{&quot;id&quot;:&quot;__multiply_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;q \\left(\\vec{E} + \\vec{v} \\vec{B}\\right)&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;q(B*v + E)&quot;,&quot;variables&quot;:[&quot;B&quot;,&quot;E&quot;,&quot;v&quot;]}},{&quot;id&quot;:&quot;q&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;q&quot;,&quot;subexpr&quot;:&quot;q&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;q&quot;,&quot;variables&quot;:[&quot;q&quot;]}},{&quot;id&quot;:&quot;__add_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;\\vec{E} + \\vec{v} \\vec{B}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;B*v + E&quot;,&quot;variables&quot;:[&quot;B&quot;,&quot;E&quot;,&quot;v&quot;]}},{&quot;id&quot;:&quot;E&quot;,&quot;type&quot;:&quot;vector&quot;,&quot;latex&quot;:&quot;\\vec{E}&quot;,&quot;subexpr&quot;:&quot;\\vec{E}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;E&quot;,&quot;variables&quot;:[&quot;E&quot;]}},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\vec{v} \\vec{B}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;B*v&quot;,&quot;variables&quot;:[&quot;B&quot;,&quot;v&quot;]}},{&quot;id&quot;:&quot;v&quot;,&quot;type&quot;:&quot;vector&quot;,&quot;latex&quot;:&quot;\\vec{v}&quot;,&quot;subexpr&quot;:&quot;\\vec{v}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;v&quot;,&quot;variables&quot;:[&quot;v&quot;]}},{&quot;id&quot;:&quot;B&quot;,&quot;type&quot;:&quot;vector&quot;,&quot;latex&quot;:&quot;\\vec{B}&quot;,&quot;subexpr&quot;:&quot;\\vec{B}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;B&quot;,&quot;variables&quot;:[&quot;B&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;F&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;q&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;E&quot;,&quot;to&quot;:&quot;__add_3&quot;},{&quot;from&quot;:&quot;v&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;B&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__add_3&quot;},{&quot;from&quot;:&quot;__add_3&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -4070,13 +4054,12 @@ svg.d3-semantic-graph {
       "op": "equals",
       "subexpr": "\\vec{S} = \\frac{1}{\\mu_0} \\vec{E} \\times \\vec{B}",
       "chartScript": {
-        "script": "-B*E*pow(vec, 2)/mu_0 + S*vec",
+        "script": "-B*E/mu_0 + S",
         "variables": [
           "B",
           "E",
           "S",
-          "mu_0",
-          "vec"
+          "mu_0"
         ]
       }
     },
@@ -4086,10 +4069,9 @@ svg.d3-semantic-graph {
       "latex": "\\vec{S}",
       "subexpr": "\\vec{S}",
       "chartScript": {
-        "script": "S*vec",
+        "script": "S",
         "variables": [
-          "S",
-          "vec"
+          "S"
         ]
       }
     },
@@ -4099,12 +4081,11 @@ svg.d3-semantic-graph {
       "op": "multiply",
       "subexpr": "\\vec{B} \\vec{E} \\frac{1}{\\mu_{0}}",
       "chartScript": {
-        "script": "B*E*pow(vec, 2)/mu_0",
+        "script": "B*E/mu_0",
         "variables": [
           "B",
           "E",
-          "mu_0",
-          "vec"
+          "mu_0"
         ]
       }
     },
@@ -4114,11 +4095,10 @@ svg.d3-semantic-graph {
       "op": "multiply",
       "subexpr": "\\vec{E} \\frac{1}{\\mu_{0}}",
       "chartScript": {
-        "script": "E*vec/mu_0",
+        "script": "E/mu_0",
         "variables": [
           "E",
-          "mu_0",
-          "vec"
+          "mu_0"
         ]
       }
     },
@@ -4154,10 +4134,9 @@ svg.d3-semantic-graph {
       "latex": "\\vec{E}",
       "subexpr": "\\vec{E}",
       "chartScript": {
-        "script": "E*vec",
+        "script": "E",
         "variables": [
-          "E",
-          "vec"
+          "E"
         ]
       }
     },
@@ -4167,10 +4146,9 @@ svg.d3-semantic-graph {
       "latex": "\\vec{B}",
       "subexpr": "\\vec{B}",
       "chartScript": {
-        "script": "B*vec",
+        "script": "B",
         "variables": [
-          "B",
-          "vec"
+          "B"
         ]
       }
     }
@@ -4250,8 +4228,8 @@ svg.d3-semantic-graph {
   linkStyle 6 stroke:#aaa,stroke-width:2px
 </pre></div></div>
   <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(\vec{S}, \vec{B}*\vec{E}/\mu_{0})</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(Symbol('\\vec{S}'), Mul(Pow(Symbol('\\mu_{0}'), Integer(-1)), Symbol('\\vec{B}'), Symbol('\\vec{E}')))</pre></div></div>
-  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>-B*E*pow(vec, 2)/mu_0 + S*vec</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>B, E, S, mu_0, vec</pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\vec{S} = \\frac{1}{\\mu_0} \\vec{E} \\times \\vec{B}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-B*E*pow(vec, 2)/mu_0 + S*vec&quot;,&quot;variables&quot;:[&quot;B&quot;,&quot;E&quot;,&quot;S&quot;,&quot;mu_0&quot;,&quot;vec&quot;]}},{&quot;id&quot;:&quot;S&quot;,&quot;type&quot;:&quot;vector&quot;,&quot;latex&quot;:&quot;\\vec{S}&quot;,&quot;subexpr&quot;:&quot;\\vec{S}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;S*vec&quot;,&quot;variables&quot;:[&quot;S&quot;,&quot;vec&quot;]}},{&quot;id&quot;:&quot;__multiply_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\vec{B} \\vec{E} \\frac{1}{\\mu_{0}}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;B*E*pow(vec, 2)/mu_0&quot;,&quot;variables&quot;:[&quot;B&quot;,&quot;E&quot;,&quot;mu_0&quot;,&quot;vec&quot;]}},{&quot;id&quot;:&quot;__multiply_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\vec{E} \\frac{1}{\\mu_{0}}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;E*vec/mu_0&quot;,&quot;variables&quot;:[&quot;E&quot;,&quot;mu_0&quot;,&quot;vec&quot;]}},{&quot;id&quot;:&quot;__power_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{\\mu_{0}}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1/mu_0&quot;,&quot;variables&quot;:[&quot;mu_0&quot;]}},{&quot;id&quot;:&quot;mu_0&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\mu_{0}&quot;,&quot;subexpr&quot;:&quot;\\mu_{0}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;mu_0&quot;,&quot;variables&quot;:[&quot;mu_0&quot;]}},{&quot;id&quot;:&quot;E&quot;,&quot;type&quot;:&quot;vector&quot;,&quot;latex&quot;:&quot;\\vec{E}&quot;,&quot;subexpr&quot;:&quot;\\vec{E}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;E*vec&quot;,&quot;variables&quot;:[&quot;E&quot;,&quot;vec&quot;]}},{&quot;id&quot;:&quot;B&quot;,&quot;type&quot;:&quot;vector&quot;,&quot;latex&quot;:&quot;\\vec{B}&quot;,&quot;subexpr&quot;:&quot;\\vec{B}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;B*vec&quot;,&quot;variables&quot;:[&quot;B&quot;,&quot;vec&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;S&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;mu_0&quot;,&quot;to&quot;:&quot;__power_4&quot;},{&quot;from&quot;:&quot;__power_4&quot;,&quot;to&quot;:&quot;__multiply_3&quot;},{&quot;from&quot;:&quot;E&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_3&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;B&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>-B*E/mu_0 + S</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>B, E, S, mu_0</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\vec{S} = \\frac{1}{\\mu_0} \\vec{E} \\times \\vec{B}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-B*E/mu_0 + S&quot;,&quot;variables&quot;:[&quot;B&quot;,&quot;E&quot;,&quot;S&quot;,&quot;mu_0&quot;]}},{&quot;id&quot;:&quot;S&quot;,&quot;type&quot;:&quot;vector&quot;,&quot;latex&quot;:&quot;\\vec{S}&quot;,&quot;subexpr&quot;:&quot;\\vec{S}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;S&quot;,&quot;variables&quot;:[&quot;S&quot;]}},{&quot;id&quot;:&quot;__multiply_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\vec{B} \\vec{E} \\frac{1}{\\mu_{0}}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;B*E/mu_0&quot;,&quot;variables&quot;:[&quot;B&quot;,&quot;E&quot;,&quot;mu_0&quot;]}},{&quot;id&quot;:&quot;__multiply_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\vec{E} \\frac{1}{\\mu_{0}}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;E/mu_0&quot;,&quot;variables&quot;:[&quot;E&quot;,&quot;mu_0&quot;]}},{&quot;id&quot;:&quot;__power_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{\\mu_{0}}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1/mu_0&quot;,&quot;variables&quot;:[&quot;mu_0&quot;]}},{&quot;id&quot;:&quot;mu_0&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\mu_{0}&quot;,&quot;subexpr&quot;:&quot;\\mu_{0}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;mu_0&quot;,&quot;variables&quot;:[&quot;mu_0&quot;]}},{&quot;id&quot;:&quot;E&quot;,&quot;type&quot;:&quot;vector&quot;,&quot;latex&quot;:&quot;\\vec{E}&quot;,&quot;subexpr&quot;:&quot;\\vec{E}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;E&quot;,&quot;variables&quot;:[&quot;E&quot;]}},{&quot;id&quot;:&quot;B&quot;,&quot;type&quot;:&quot;vector&quot;,&quot;latex&quot;:&quot;\\vec{B}&quot;,&quot;subexpr&quot;:&quot;\\vec{B}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;B&quot;,&quot;variables&quot;:[&quot;B&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;S&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;mu_0&quot;,&quot;to&quot;:&quot;__power_4&quot;},{&quot;from&quot;:&quot;__power_4&quot;,&quot;to&quot;:&quot;__multiply_3&quot;},{&quot;from&quot;:&quot;E&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_3&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;B&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -4331,13 +4309,12 @@ svg.d3-semantic-graph {
       "op": "equals",
       "subexpr": "\\nabla \\times \\vec{B} = \\mu_0 \\vec{J} + \\mu_0 \\epsilon_0 \\frac{\\partial \\vec{E}}{\\partial t}",
       "chartScript": {
-        "script": "B*nabla*vec - J*mu_0*vec",
+        "script": "B*nabla - J*mu_0",
         "variables": [
           "B",
           "J",
           "mu_0",
-          "nabla",
-          "vec"
+          "nabla"
         ]
       }
     },
@@ -4347,11 +4324,10 @@ svg.d3-semantic-graph {
       "op": "multiply",
       "subexpr": "\\nabla \\times \\vec{B}",
       "chartScript": {
-        "script": "B*nabla*vec",
+        "script": "B*nabla",
         "variables": [
           "B",
-          "nabla",
-          "vec"
+          "nabla"
         ]
       }
     },
@@ -4373,10 +4349,9 @@ svg.d3-semantic-graph {
       "latex": "\\vec{B}",
       "subexpr": "\\vec{B}",
       "chartScript": {
-        "script": "B*vec",
+        "script": "B",
         "variables": [
-          "B",
-          "vec"
+          "B"
         ]
       }
     },
@@ -4386,11 +4361,10 @@ svg.d3-semantic-graph {
       "op": "add",
       "subexpr": "\\vec{J} \\mu_{0} + \\mu_{0} \\epsilon_{0} \\frac{\\partial \\vec{E}}{\\partial t}",
       "chartScript": {
-        "script": "J*mu_0*vec",
+        "script": "J*mu_0",
         "variables": [
           "J",
-          "mu_0",
-          "vec"
+          "mu_0"
         ]
       }
     },
@@ -4400,11 +4374,10 @@ svg.d3-semantic-graph {
       "op": "multiply",
       "subexpr": "\\vec{J} \\mu_{0}",
       "chartScript": {
-        "script": "J*mu_0*vec",
+        "script": "J*mu_0",
         "variables": [
           "J",
-          "mu_0",
-          "vec"
+          "mu_0"
         ]
       }
     },
@@ -4426,10 +4399,9 @@ svg.d3-semantic-graph {
       "latex": "\\vec{J}",
       "subexpr": "\\vec{J}",
       "chartScript": {
-        "script": "J*vec",
+        "script": "J",
         "variables": [
-          "J",
-          "vec"
+          "J"
         ]
       }
     },
@@ -4471,10 +4443,9 @@ svg.d3-semantic-graph {
       "latex": "\\vec{E}",
       "subexpr": "\\vec{E}",
       "chartScript": {
-        "script": "E*vec",
+        "script": "E",
         "variables": [
-          "E",
-          "vec"
+          "E"
         ]
       }
     },
@@ -4660,8 +4631,8 @@ svg.d3-semantic-graph {
   linkStyle 13 stroke:#aaa,stroke-width:2px
 </pre></div></div>
   <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy — ungroundable</span></div><pre>UngroundableGraph: operator 'partial_derivative'</pre></div></div>
-  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>B*nabla*vec - J*mu_0*vec</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>B, J, mu_0, nabla, vec</pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\nabla \\times \\vec{B} = \\mu_0 \\vec{J} + \\mu_0 \\epsilon_0 \\frac{\\partial \\vec{E}}{\\partial t}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;B*nabla*vec - J*mu_0*vec&quot;,&quot;variables&quot;:[&quot;B&quot;,&quot;J&quot;,&quot;mu_0&quot;,&quot;nabla&quot;,&quot;vec&quot;]}},{&quot;id&quot;:&quot;__multiply_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\nabla \\times \\vec{B}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;B*nabla*vec&quot;,&quot;variables&quot;:[&quot;B&quot;,&quot;nabla&quot;,&quot;vec&quot;]}},{&quot;id&quot;:&quot;nabla&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\nabla&quot;,&quot;subexpr&quot;:&quot;\\nabla&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;nabla&quot;,&quot;variables&quot;:[&quot;nabla&quot;]}},{&quot;id&quot;:&quot;B&quot;,&quot;type&quot;:&quot;vector&quot;,&quot;latex&quot;:&quot;\\vec{B}&quot;,&quot;subexpr&quot;:&quot;\\vec{B}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;B*vec&quot;,&quot;variables&quot;:[&quot;B&quot;,&quot;vec&quot;]}},{&quot;id&quot;:&quot;__add_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;\\vec{J} \\mu_{0} + \\mu_{0} \\epsilon_{0} \\frac{\\partial \\vec{E}}{\\partial t}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;J*mu_0*vec&quot;,&quot;variables&quot;:[&quot;J&quot;,&quot;mu_0&quot;,&quot;vec&quot;]}},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\vec{J} \\mu_{0}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;J*mu_0*vec&quot;,&quot;variables&quot;:[&quot;J&quot;,&quot;mu_0&quot;,&quot;vec&quot;]}},{&quot;id&quot;:&quot;mu_0&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\mu_{0}&quot;,&quot;subexpr&quot;:&quot;\\mu_{0}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;mu_0&quot;,&quot;variables&quot;:[&quot;mu_0&quot;]}},{&quot;id&quot;:&quot;J&quot;,&quot;type&quot;:&quot;vector&quot;,&quot;latex&quot;:&quot;\\vec{J}&quot;,&quot;subexpr&quot;:&quot;\\vec{J}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;J*vec&quot;,&quot;variables&quot;:[&quot;J&quot;,&quot;vec&quot;]}},{&quot;id&quot;:&quot;__multiply_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\mu_{0} \\epsilon_{0} \\frac{\\partial \\vec{E}}{\\partial t}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__multiply_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\epsilon_{0} \\frac{\\partial \\vec{E}}{\\partial t}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;epsilon_0&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\epsilon_{0}&quot;,&quot;subexpr&quot;:&quot;\\epsilon_{0}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;epsilon_0&quot;,&quot;variables&quot;:[&quot;epsilon_0&quot;]}},{&quot;id&quot;:&quot;E&quot;,&quot;type&quot;:&quot;vector&quot;,&quot;latex&quot;:&quot;\\vec{E}&quot;,&quot;subexpr&quot;:&quot;\\vec{E}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;E*vec&quot;,&quot;variables&quot;:[&quot;E&quot;,&quot;vec&quot;]}},{&quot;id&quot;:&quot;t&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;t&quot;,&quot;subexpr&quot;:&quot;t&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;t&quot;,&quot;variables&quot;:[&quot;t&quot;]}},{&quot;id&quot;:&quot;__deriv_7&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;partial_derivative&quot;,&quot;with_respect_to&quot;:&quot;t&quot;,&quot;subexpr&quot;:&quot;\\frac{\\partial \\vec{E}}{\\partial t}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;nabla&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;B&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;mu_0&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;J&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__add_3&quot;},{&quot;from&quot;:&quot;mu_0&quot;,&quot;to&quot;:&quot;__multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;epsilon_0&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;E&quot;,&quot;to&quot;:&quot;__deriv_7&quot;},{&quot;from&quot;:&quot;t&quot;,&quot;to&quot;:&quot;__deriv_7&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;__deriv_7&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_6&quot;,&quot;to&quot;:&quot;__multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_5&quot;,&quot;to&quot;:&quot;__add_3&quot;},{&quot;from&quot;:&quot;__add_3&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;ODE&quot;,&quot;order&quot;:1,&quot;dependent_variables&quot;:[&quot;E&quot;],&quot;independent_variables&quot;:[&quot;t&quot;],&quot;sympy_hints&quot;:[&quot;factorable&quot;,&quot;nth_algebraic&quot;,&quot;separable&quot;,&quot;1st_exact&quot;,&quot;1st_linear&quot;,&quot;Bernoulli&quot;,&quot;1st_power_series&quot;,&quot;lie_group&quot;,&quot;nth_linear_constant_coeff_undetermined_coefficients&quot;,&quot;nth_linear_euler_eq_nonhomogeneous_undetermined_coefficients&quot;,&quot;nth_linear_constant_coeff_variation_of_parameters&quot;,&quot;nth_linear_euler_eq_nonhomogeneous_variation_of_parameters&quot;],&quot;linear&quot;:true,&quot;homogeneous&quot;:true,&quot;constant_coefficients&quot;:true}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>B*nabla - J*mu_0</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>B, J, mu_0, nabla</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\nabla \\times \\vec{B} = \\mu_0 \\vec{J} + \\mu_0 \\epsilon_0 \\frac{\\partial \\vec{E}}{\\partial t}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;B*nabla - J*mu_0&quot;,&quot;variables&quot;:[&quot;B&quot;,&quot;J&quot;,&quot;mu_0&quot;,&quot;nabla&quot;]}},{&quot;id&quot;:&quot;__multiply_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\nabla \\times \\vec{B}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;B*nabla&quot;,&quot;variables&quot;:[&quot;B&quot;,&quot;nabla&quot;]}},{&quot;id&quot;:&quot;nabla&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\nabla&quot;,&quot;subexpr&quot;:&quot;\\nabla&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;nabla&quot;,&quot;variables&quot;:[&quot;nabla&quot;]}},{&quot;id&quot;:&quot;B&quot;,&quot;type&quot;:&quot;vector&quot;,&quot;latex&quot;:&quot;\\vec{B}&quot;,&quot;subexpr&quot;:&quot;\\vec{B}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;B&quot;,&quot;variables&quot;:[&quot;B&quot;]}},{&quot;id&quot;:&quot;__add_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;\\vec{J} \\mu_{0} + \\mu_{0} \\epsilon_{0} \\frac{\\partial \\vec{E}}{\\partial t}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;J*mu_0&quot;,&quot;variables&quot;:[&quot;J&quot;,&quot;mu_0&quot;]}},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\vec{J} \\mu_{0}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;J*mu_0&quot;,&quot;variables&quot;:[&quot;J&quot;,&quot;mu_0&quot;]}},{&quot;id&quot;:&quot;mu_0&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\mu_{0}&quot;,&quot;subexpr&quot;:&quot;\\mu_{0}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;mu_0&quot;,&quot;variables&quot;:[&quot;mu_0&quot;]}},{&quot;id&quot;:&quot;J&quot;,&quot;type&quot;:&quot;vector&quot;,&quot;latex&quot;:&quot;\\vec{J}&quot;,&quot;subexpr&quot;:&quot;\\vec{J}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;J&quot;,&quot;variables&quot;:[&quot;J&quot;]}},{&quot;id&quot;:&quot;__multiply_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\mu_{0} \\epsilon_{0} \\frac{\\partial \\vec{E}}{\\partial t}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__multiply_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\epsilon_{0} \\frac{\\partial \\vec{E}}{\\partial t}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;epsilon_0&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\epsilon_{0}&quot;,&quot;subexpr&quot;:&quot;\\epsilon_{0}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;epsilon_0&quot;,&quot;variables&quot;:[&quot;epsilon_0&quot;]}},{&quot;id&quot;:&quot;E&quot;,&quot;type&quot;:&quot;vector&quot;,&quot;latex&quot;:&quot;\\vec{E}&quot;,&quot;subexpr&quot;:&quot;\\vec{E}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;E&quot;,&quot;variables&quot;:[&quot;E&quot;]}},{&quot;id&quot;:&quot;t&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;t&quot;,&quot;subexpr&quot;:&quot;t&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;t&quot;,&quot;variables&quot;:[&quot;t&quot;]}},{&quot;id&quot;:&quot;__deriv_7&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;partial_derivative&quot;,&quot;with_respect_to&quot;:&quot;t&quot;,&quot;subexpr&quot;:&quot;\\frac{\\partial \\vec{E}}{\\partial t}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;0&quot;,&quot;variables&quot;:[]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;nabla&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;B&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;mu_0&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;J&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__add_3&quot;},{&quot;from&quot;:&quot;mu_0&quot;,&quot;to&quot;:&quot;__multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;epsilon_0&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;E&quot;,&quot;to&quot;:&quot;__deriv_7&quot;},{&quot;from&quot;:&quot;t&quot;,&quot;to&quot;:&quot;__deriv_7&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;__deriv_7&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_6&quot;,&quot;to&quot;:&quot;__multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_5&quot;,&quot;to&quot;:&quot;__add_3&quot;},{&quot;from&quot;:&quot;__add_3&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;ODE&quot;,&quot;order&quot;:1,&quot;dependent_variables&quot;:[&quot;E&quot;],&quot;independent_variables&quot;:[&quot;t&quot;],&quot;sympy_hints&quot;:[&quot;factorable&quot;,&quot;nth_algebraic&quot;,&quot;separable&quot;,&quot;1st_exact&quot;,&quot;1st_linear&quot;,&quot;Bernoulli&quot;,&quot;1st_power_series&quot;,&quot;lie_group&quot;,&quot;nth_linear_constant_coeff_undetermined_coefficients&quot;,&quot;nth_linear_euler_eq_nonhomogeneous_undetermined_coefficients&quot;,&quot;nth_linear_constant_coeff_variation_of_parameters&quot;,&quot;nth_linear_euler_eq_nonhomogeneous_variation_of_parameters&quot;],&quot;linear&quot;:true,&quot;homogeneous&quot;:true,&quot;constant_coefficients&quot;:true}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="summary">✅ <span class="count">15</span> rendered, <span class="count">0</span> errors out of <span class="count">15</span> expressions</div>
 <script>
@@ -4724,8 +4695,8 @@ document.querySelectorAll('.row-copy-btn').forEach(btn => {
 })();
 
 Promise.all([
-  import('./d3-semantic-graph.js?v=1785022526'),
-  import('./sg-chart.js?v=1785022526'),
+  import('./d3-semantic-graph.js?v=1785023936'),
+  import('./sg-chart.js?v=1785023936'),
 ]).then(function(mods) {
   var D3SemanticGraphRenderer = mods[0].D3SemanticGraphRenderer;
   var SgChartManager = mods[1].SgChartManager;
