@@ -1199,6 +1199,17 @@ def call_proof_chat(messages, proof, current_step=None, allow_edits=False,
                                         proof=proof, current_step=current_step)
                 if payload is not None:
                     calls[tool["name"]] = payload
+        # Trace the ROUTING decision with the reader's own words beside it. The
+        # tool args are the agent's paraphrase, so without the typed message
+        # there is no record of what was actually asked — and "why did it do
+        # that?" is unanswerable after the fact.
+        if calls:
+            _typed = next((str((m or {}).get("text") or "").strip()
+                           for m in reversed(list(messages or []))
+                           if str((m or {}).get("role") or "user") == "user"), "")
+            for _name, _args in calls.items():
+                print(f"   🔧 proof-chat tool {_name}({_args}) ← user typed: "
+                      f"{_typed[:200]!r}", flush=True)
         edit, derive = calls.get(TOOL_EDIT_STEP), calls.get(TOOL_DERIVE)
         if edit or derive:
             # The model asked for a change; any text alongside is preamble that

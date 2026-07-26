@@ -97,6 +97,21 @@ def _format_proof(proof: dict) -> str:
     return "\n".join(lines) if lines else "(empty derivation)"
 
 
+def _last_user_text(messages) -> str:
+    """The reader's own last words, or "" if the thread carries none.
+
+    ``message`` is NOT what the reader typed when the expert is reached through
+    the proof chat's ``edit_step`` tool: it is the agent's paraphrase of the turn
+    ("factor the whole expression" for a typed "factor it"). Logging only that
+    hides the input, and the gap between the two is exactly what you need when an
+    edit does something the reader did not ask for.
+    """
+    for m in reversed(list(messages or [])):
+        if str((m or {}).get("role") or "user") == "user":
+            return str((m or {}).get("text") or "").strip()
+    return ""
+
+
 def _clamp_step(proof: dict, index: int) -> int:
     """Which step the edit is inserted AFTER.
 
@@ -128,9 +143,14 @@ def proof_edit(req: ProofEditRequest) -> dict:
     current_step = format_current_step(proof, at)
     thread = last_turns(req.messages)
     clarifications = format_clarifications(req.clarifications)
-    log.info("%s request at step %d/%d (%s, %d clarification(s)): %r",
+    # Log BOTH the instruction acted on and the reader's own words. Via the chat
+    # tool the first is the agent's paraphrase, so logging it alone leaves no
+    # record of what was actually typed — see :func:`_last_user_text`.
+    asked = _last_user_text(req.messages)
+    log.info("%s request at step %d/%d (%s, %d clarification(s)): %r%s",
              LOG_TAG, at, len(proof.get("steps") or []), domain,
-             len(req.clarifications), req.message[:120])
+             len(req.clarifications), req.message[:120],
+             f"  ← user typed: {asked[:200]!r}" if asked and asked != req.message else "")
 
     proposal = propose_edit(derivation, current_step, req.message,
                             recent_thread=thread, clarifications=clarifications)
