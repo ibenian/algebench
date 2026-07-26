@@ -92,7 +92,9 @@ def _analyze(req: ExpressionAnalysisRequest) -> dict:
     characteristics = analyze(req.latex, req.variable)
     if characteristics.get("error"):
         log.info("%s parse failed for %r", LOG_TAG, req.latex[:120])
-        return {"id": req.id, "title": "",
+        # Still carries an id: the response root shape is a contract, and a
+        # client attaching the failure to a step needs to address it.
+        return {"id": req.id or _make_id(""), "title": "",
                 "characteristics": characteristics, "proposal": None}
 
     log.info("%s analyzed %r (var=%s)%s", LOG_TAG, req.latex[:120],

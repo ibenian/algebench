@@ -283,7 +283,7 @@ def latex_to_sympy(latex: str) -> sympy.Basic:
 
 def latex_to_sympy_defined(
     latex: str,
-) -> tuple[sympy.Basic, sympy.Symbol | None, sympy.Symbol | None]:
+) -> tuple[sympy.Basic, sympy.Symbol | None, sympy.Symbol | None, str | None]:
     """Parse LaTeX, reading a definition as the quantity it defines.
 
     An equation whose one side names a quantity that does not occur on the

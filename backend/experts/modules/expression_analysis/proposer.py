@@ -328,7 +328,11 @@ def propose_views(expression: str, characteristics: str,
                               characteristics=characteristics,
                               context=context)
     except Exception:
-        return VizProposal(abstain=True)
+        # `failed` is what stops the page saying "nothing interesting here"
+        # about a request that simply errored. Covered by a test, because
+        # this assignment was once lost and the UI's failure branch quietly
+        # became unreachable.
+        return VizProposal(abstain=True, failed=True)
 
     def shape(model, raws, limit):
         shaped = []

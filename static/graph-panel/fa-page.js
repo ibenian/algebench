@@ -703,6 +703,11 @@ export class FunctionAnalysisManager {
         };
         this._renderAnnLegend(legend, view, annotations,
             () => this._updateChartData(chart, chars, view, state));
+        // The constructor already painted once, before `$fa` and the sticky
+        // y-bounds existed — the plugin bailed out and the markers were
+        // missing until some unrelated redraw (a resize, a slider) happened
+        // to run. Paint again now that the state is in place.
+        chart.update('none');
         this._charts.push(chart);
         return chart;
     }

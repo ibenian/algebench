@@ -147,3 +147,33 @@ def test_only_answerable_probes_survive():
     ]
     kept = [p.question for p in _usable_probes(probes)]
     assert kept == ["ok", "also ok"]
+
+
+# ── failure is not abstention ───────────────────────────────────────────
+
+def test_lm_failure_sets_failed_not_a_bare_abstain(monkeypatch):
+    """A failed proposal must be distinguishable from "nothing to show".
+
+    The UI only renders the retry path when ``failed`` is set; without it a
+    request that errored is reported to the learner as a fact about their
+    mathematics. This assignment was lost once already — the field shipped
+    while nothing set it, leaving the UI branch unreachable.
+    """
+    from backend.experts.modules.expression_analysis import proposer
+
+    def boom(**_kwargs):
+        raise RuntimeError("no LM configured")
+
+    monkeypatch.setattr(proposer, "_proposer", lambda: boom)
+    out = proposer.propose_views(expression="x^2", characteristics="{}")
+    assert out.abstain is True
+    assert out.failed is True
+
+
+def test_parse_failure_still_returns_an_id():
+    """The response root shape is a contract; clients attach by id."""
+    req = ExpressionAnalysisRequest(latex=r"\frac{1}{")
+    out = expression_analysis(req)
+    assert out["characteristics"].get("error")
+    assert out["id"]                       # generated, not None
+    assert set(out) == {"id", "title", "characteristics", "proposal"}
