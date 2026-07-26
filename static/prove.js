@@ -1003,6 +1003,82 @@ function applyDeriveDraft() {
 /** The special Derive/Rederive action (top): prompt (+ domain + docs) →
  *  proof_from_prompt → render in the derivation box. Once a proof exists the
  *  button reads "Rederive". */
+/** Run a derivation the CHAT asked for (the `derive` tool), then add or replace.
+ *
+ *  Deliberately the same expert call as the Derive box — the chat is a second
+ *  door onto one derivation path, not a parallel implementation. The server
+ *  hands the request over rather than running it: a derivation routinely takes
+ *  longer than the chat's own timeout allows.
+ *
+ *  `continue` derives ONWARD from the current last step by pinning `start_latex`
+ *  to it. That is what makes appending sound: the new chain's step 0 IS our last
+ *  step, so every step after it was CAS-verified against the predecessor it
+ *  actually lands on, and splicing needs no re-grading — only renumbering. */
+async function runChatDerive(req) {
+  const prompt = String((req && req.prompt) || "").trim();
+  if (!prompt) return false;
+  const steps = (deriveProof && deriveProof.steps) || [];
+  const appending = req.mode === "continue" && steps.length > 0;
+  // Into the THREAD, not just the log — the agent must see what happened on the
+  // next turn, or "add another step" arrives with no idea a derivation just ran.
+  const say = (text, cls) => { addBubble("bot", text, cls); chatHistory.push({ role: "bot", text }); };
+
+  els.dGo.disabled = true;
+  setStatus(appending
+    ? "Continuing the derivation… (CAS-verifying each step)"
+    : "Deriving… (CAS-verifying each step)", "pending");
+
+  const body = { prompt };
+  const domain = effectiveDomain();
+  const documentation = els.dDoc.value.trim();
+  if (domain) body.domain = domain;
+  if (documentation) body.documentation = documentation;
+  if (appending) body.start_latex = steps[steps.length - 1].input_latex || "";
+
+  try {
+    const data = await invokeExpert("proof_from_prompt", body, { timeoutMs: 150000 });
+    if (data && data.error) { setStatus(data.error, "err"); say(data.error, "err"); return true; }
+    const derived = validateProofData(data);
+
+    if (!appending) {
+      showInDerive(derived);                       // same as the Derive box
+      setDeriveSource(null);
+      const shown = (derived.title || "proof").replace(/^Deriving\s+/i, "");
+      setStatus(`Derived ${shown} — ${derived.steps.length} steps.`, "ok");
+      say(`Replaced the derivation — ${derived.steps.length} steps.`);
+      return true;
+    }
+
+    // Drop the derived step 0: it is our own last step restated, and keeping it
+    // would show the reader the same line twice.
+    const added = (derived.steps || []).slice(1);
+    if (!added.length) {
+      setStatus("That derivation added no new steps.", "err");
+      say("That didn't add any steps beyond where the derivation already is.");
+      return true;
+    }
+    const merged = {
+      ...deriveProof,
+      steps: [...steps, ...added].map((s, i) => ({ ...s, index: i })),
+      terms: { ...(deriveProof.terms || {}), ...(derived.terms || {}) },
+    };
+    deriveProof = validateProofData(merged);       // same trust gate as a fresh derive
+    if (editTool) editTool.reset();                // stale undo history / preview
+    syncLockButton();
+    mountAnimator(deriveProof, steps.length);      // land on the first NEW step
+    setStatus(`Continued the derivation — ${added.length} step(s) added.`, "ok");
+    say(`Added ${added.length} step(s) to the derivation.`);
+    return true;
+  } catch (e) {
+    const msg = (e instanceof ExpertError ? e.message : (e && e.message)) || "Derivation failed.";
+    setStatus(msg, "err");
+    say(msg, "err");
+    return true;
+  } finally {
+    els.dGo.disabled = false;
+  }
+}
+
 async function runDerive() {
   const prompt = els.dPrompt.value.trim();
   if (!prompt || els.dGo.disabled) return;
@@ -1150,7 +1226,19 @@ async function sendChat() {
     // The agent called its edit_step tool: the operation has already been applied
     // and CAS-checked server-side, and the variants rode back on this reply.
     const edited = editTool && editTool.applyEditResult(data);
-    if (!reply && !edited) addBubble("bot", "(no response)");
+    // The agent called `derive`. Unlike an edit, the work has NOT been done yet —
+    // a derivation outlives a chat turn, so the server handed the request over
+    // and it runs here, on the same path as the Derive box.
+    let derived = false;
+    if (data && data.derive) {
+      els.dSend.disabled = true;               // one long job at a time
+      try {
+        derived = await runChatDerive(data.derive);
+      } finally {
+        if (!editPending) els.dSend.disabled = false;
+      }
+    }
+    if (!reply && !edited && !derived) addBubble("bot", "(no response)");
   } catch (e) {
     pending.remove();
     addBubble("bot", e && e.name === "AbortError"

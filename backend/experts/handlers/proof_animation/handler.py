@@ -414,6 +414,11 @@ class PromptDeriveRequest(BaseModel):
     prompt: str = Field(min_length=1, max_length=4000)
     # Optional domain hint; otherwise inferred from the prompt.
     domain: Optional[str] = None
+    # Force the START state instead of letting the namer infer it. Set when
+    # CONTINUING an open derivation from the chat: the new chain must begin at
+    # the step the reader is already on, or the two halves don't join up and the
+    # appended steps are verified against the wrong predecessor.
+    start_latex: Optional[str] = Field(default=None, max_length=600)
     # Optional free-text / markdown documentation the user attached. Named
     # `documentation` (not `context`) since `context` is a structured dict
     # elsewhere. Fed to the derivation expert's lesson_context (not the endpoint
@@ -451,7 +456,8 @@ def derive_proof_from_prompt(req: PromptDeriveRequest) -> dict:
         log.info("proof_from_prompt: namer rejected prompt=%r as non-math", req.prompt)
         return {"error": _NOT_A_DERIVATION_MSG}
     target = (target or "").strip()
-    start = (start or "").strip()
+    # An explicit start wins over the namer's guess — see `start_latex`.
+    start = (req.start_latex or start or "").strip()
     if not target:
         return {"error": "Couldn't tell what to derive from that prompt — try naming a "
                          "result, e.g. “derive the quadratic formula”."}

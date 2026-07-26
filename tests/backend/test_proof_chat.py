@@ -87,17 +87,17 @@ def test_system_prompt_ignores_out_of_range_step():
 
 def test_call_proof_chat_without_client_is_graceful(monkeypatch):
     monkeypatch.setattr(server, "get_gemini_client", lambda: None)
-    out, edit = server.call_proof_chat([{"role": "user", "text": "hi"}], _PROOF, 0)
+    out, edit, derive = server.call_proof_chat([{"role": "user", "text": "hi"}], _PROOF, 0)
     assert "not available" in out.lower()
-    assert edit is None
+    assert edit is None and derive is None
 
 
 def test_call_proof_chat_empty_thread_short_circuits(monkeypatch):
     # Should not even need a client if there's nothing to answer.
     monkeypatch.setattr(server, "get_gemini_client", lambda: object())
-    out, edit = server.call_proof_chat([], _PROOF, 0)
+    out, edit, derive = server.call_proof_chat([], _PROOF, 0)
     assert "ask a question" in out.lower()
-    assert edit is None
+    assert edit is None and derive is None
 
 
 # ── the editing lock is enforced by tool ABSENCE ─────────────────────────────
@@ -130,7 +130,9 @@ def test_unlocked_chat_declares_the_edit_tool(monkeypatch):
     server.call_proof_chat([{"role": "user", "text": "move c to the right"}],
                            _PROOF, 0, allow_edits=True)
     names = [f.name for t in seen["config"].tools for f in t.function_declarations]
-    assert names == ["edit_step"]
+    # `derive` rides the SAME lock: replacing or extending the derivation is as
+    # much a change as an edit, so it must not be reachable while locked either.
+    assert names == ["edit_step", "derive"]
 
 
 def test_locked_derive_prompt_points_at_the_lock():
@@ -336,3 +338,77 @@ def test_system_prompt_forbids_html():
     sp = server._proof_chat_system_prompt(_PROOF).lower()
     assert "do not output html" in sp
     assert "markdown" in sp
+
+
+# ── the `derive` tool ────────────────────────────────────────────────────────
+# `edit_step` applies one operation to one step; `derive` builds a whole result.
+# It is NOT run server-side — a derivation outlives a chat turn — so the request
+# is handed to the client, which runs it on the Derive box's own path.
+
+def _fake_derive_call(monkeypatch, args):
+    """Run call_proof_chat against a client that returns one `derive` tool call."""
+    class _FC:
+        name = "derive"
+        def __init__(self, a): self.args = a
+
+    class _Part:
+        def __init__(self, fc): self.text = ""; self.function_call = fc
+
+    class _Models:
+        def generate_content(self, *, model, contents, config):
+            part = _Part(_FC(args))
+            content = type("C", (), {"parts": [part]})()
+            cand = type("Cand", (), {"content": content})()
+            return type("R", (), {"candidates": [cand]})()
+
+    monkeypatch.setattr(server, "get_gemini_client",
+                        lambda: type("C", (), {"models": _Models()})())
+
+
+def test_derive_tool_call_rides_back_without_running(monkeypatch):
+    _fake_derive_call(monkeypatch, {"prompt": "derive the quadratic formula",
+                                    "mode": "replace"})
+    text, edit, derive = server.call_proof_chat(
+        [{"role": "user", "text": "derive the quadratic formula"}],
+        _PROOF, 0, allow_edits=True)
+    assert edit is None
+    assert derive == {"prompt": "derive the quadratic formula", "mode": "replace"}
+
+
+def test_continue_on_an_empty_derivation_falls_back_to_replace(monkeypatch):
+    """There is nothing to continue FROM, so 'continue' would be unrunnable."""
+    _fake_derive_call(monkeypatch, {"prompt": "derive it", "mode": "continue"})
+    _, _, derive = server.call_proof_chat(
+        [{"role": "user", "text": "derive it"}], {"steps": []}, 0, allow_edits=True)
+    assert derive["mode"] == "replace"
+
+
+def test_continue_is_kept_when_there_is_something_to_continue(monkeypatch):
+    _fake_derive_call(monkeypatch, {"prompt": "derive it", "mode": "continue"})
+    _, _, derive = server.call_proof_chat(
+        [{"role": "user", "text": "derive it"}], _PROOF, 0, allow_edits=True)
+    assert derive["mode"] == "continue"
+
+
+def test_an_unknown_mode_defaults_to_replace(monkeypatch):
+    """Guessing 'continue' wrong silently appends to a chain it doesn't belong
+    to; guessing 'replace' wrong is visible and undoable."""
+    _fake_derive_call(monkeypatch, {"prompt": "derive it", "mode": "append"})
+    _, _, derive = server.call_proof_chat(
+        [{"role": "user", "text": "derive it"}], _PROOF, 0, allow_edits=True)
+    assert derive["mode"] == "replace"
+
+
+def test_a_derive_call_with_no_prompt_is_dropped(monkeypatch):
+    _fake_derive_call(monkeypatch, {"prompt": "  ", "mode": "replace"})
+    _, _, derive = server.call_proof_chat(
+        [{"role": "user", "text": "derive"}], _PROOF, 0, allow_edits=True)
+    assert derive is None
+
+
+def test_system_prompt_explains_derive_only_when_unlocked():
+    unlocked = server._proof_chat_system_prompt(_PROOF, allow_edits=True)
+    assert "`derive`" in unlocked
+    assert "Continue this derivation, or replace it?" in unlocked
+    locked = server._proof_chat_system_prompt(_PROOF, allow_edits=False, in_derive=True)
+    assert "`derive`" not in locked

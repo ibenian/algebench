@@ -881,6 +881,18 @@ def _proof_chat_system_prompt(proof, current_step=None, allow_edits=False,
             "already clear — \"add $3x$ to both sides\", \"expand the left\", \"substitute "
             "$u = x^2$\" are unambiguous; call the tool. You never compute the new expression "
             "yourself."
+            "\n\nBUILDING A WHOLE DERIVATION is the OTHER tool, `derive`. `edit_step` applies "
+            "ONE named operation to one step; `derive` works out an entire result from a "
+            "plain-language ask (\"derive the quadratic formula\", \"show how to get from here "
+            "to the vertex form\", \"prove the sum of a geometric series\"). Use `derive` when "
+            "the reader names a RESULT rather than a move. It needs a `mode`, and you must not "
+            "guess it: when a derivation is already open, ask ONE short question — \"Continue "
+            "this derivation, or replace it?\" — and call the tool only once they answer, "
+            "passing 'continue' or 'replace'. 'continue' derives ONWARD from the last step and "
+            "appends; 'replace' discards what is there and starts fresh. When NO derivation is "
+            "open yet there is nothing to replace, so do not ask — call it with 'replace'. "
+            "Resolve \"it\"/\"that\" against the conversation before passing `prompt`, so the "
+            "prompt stands alone."
             "\n\nA BARE EXPRESSION is its own case. When the reader's whole message is just a "
             "mathematical expression or equation with no instruction and no question wrapped "
             "around it — \"$E = mc^2$\", \"x^2 - 4 = 0\", \"v = \\frac{d}{t}\" — they have most "
@@ -1004,6 +1016,41 @@ EDIT_STEP_TOOL_DECL = types.FunctionDeclaration(
 )
 
 
+DERIVE_TOOL_DECL = types.FunctionDeclaration(
+    name="derive",
+    description=(
+        "Build a whole derivation from a plain-language ask — the same thing the "
+        "Derive box above the proof does, e.g. 'derive the quadratic formula', "
+        "'show how to get from here to the vertex form', 'factor a^2 - b^2'. Use "
+        "this for a WHOLE RESULT the reader wants worked out, as opposed to "
+        "`edit_step`, which applies ONE named operation to one step. You must know "
+        "`mode` before calling: when a derivation is already open, ASK the reader "
+        "whether to CONTINUE it or REPLACE it, and call this only once they say. "
+        "When nothing is open yet there is nothing to replace — use 'replace' and "
+        "do not ask. The derivation runs in the app and is CAS-verified; you do "
+        "not produce any of the steps yourself."
+    ),
+    parameters=types.Schema(
+        type="OBJECT",
+        properties={
+            "prompt": types.Schema(
+                type="STRING",
+                description=("what to derive, as a self-contained instruction — "
+                             "e.g. 'derive the quadratic formula'. Resolve "
+                             "references like 'it' or 'that' against the "
+                             "conversation before passing it.")),
+            "mode": types.Schema(
+                type="STRING",
+                description=("'continue' to derive onward FROM the last step of "
+                             "the open derivation and append the new steps, or "
+                             "'replace' to discard it and start fresh."),
+                enum=["continue", "replace"]),
+        },
+        required=["prompt", "mode"],
+    ),
+)
+
+
 def _fc_args_to_dict(raw) -> dict:
     """A Gemini ``function_call.args`` value as a plain dict, robust to the proto
     Struct / MapComposite shapes the SDK can hand back.
@@ -1043,8 +1090,10 @@ def call_proof_chat(messages, proof, current_step=None, allow_edits=False,
     with a proof-only system prompt and the full conversation history.
 
     ``messages`` = ``[{role:'user'|'bot', text}, …]`` (latest turn last). Returns
-    ``(answer_text, edit_request | None)`` — the edit request is present when the
-    model decided the turn was an instruction to CHANGE the derivation.
+    ``(answer_text, edit_request | None, derive_request | None)`` — at most one of
+    the two is set. ``edit_request`` means the turn was an instruction to CHANGE
+    one step; ``derive_request`` means it asked for a WHOLE derivation, which the
+    CLIENT runs (it takes far longer than a chat turn may).
 
     Routing lives here, in the model, rather than in a keyword match on the
     client: only something reading the whole conversation can tell "move c to the
@@ -1059,7 +1108,7 @@ def call_proof_chat(messages, proof, current_step=None, allow_edits=False,
     """
     client = get_gemini_client()
     if not client:
-        return "AI chat is not available (no API key configured).", None
+        return "AI chat is not available (no API key configured).", None, None
     contents = []
     for msg in (messages or []):
         text = (msg.get("text") or "").strip()
@@ -1068,7 +1117,7 @@ def call_proof_chat(messages, proof, current_step=None, allow_edits=False,
         role = "user" if msg.get("role") == "user" else "model"
         contents.append(types.Content(role=role, parts=[types.Part.from_text(text=text)]))
     if not contents:
-        return "Ask a question about this derivation.", None
+        return "Ask a question about this derivation.", None, None
     config = types.GenerateContentConfig(
         system_instruction=_proof_chat_system_prompt(proof, current_step,
                                                      allow_edits=allow_edits,
@@ -1076,12 +1125,16 @@ def call_proof_chat(messages, proof, current_step=None, allow_edits=False,
         temperature=0.4,   # tutoring — favour precision over flourish
     )
     if allow_edits:
-        config.tools = [types.Tool(function_declarations=[EDIT_STEP_TOOL_DECL])]
+        # Both tools ride the same lock: `derive` replaces or extends the
+        # derivation, which is every bit as much a change as an `edit_step`.
+        config.tools = [types.Tool(function_declarations=[EDIT_STEP_TOOL_DECL,
+                                                          DERIVE_TOOL_DECL])]
     try:
         response = client.models.generate_content(
             model=GEMINI_MODEL, contents=contents, config=config)
         text = ""
         edit = None
+        derive = None
         if response.candidates and response.candidates[0].content.parts:
             for part in response.candidates[0].content.parts:
                 if part.text:
@@ -1093,17 +1146,33 @@ def call_proof_chat(messages, proof, current_step=None, allow_edits=False,
                         "operation": str(args.get("operation") or "").strip(),
                         "step": _coerce_step(args.get("step"), current_step),
                     }
+                elif fc and fc.name == "derive":
+                    args = _fc_args_to_dict(fc.args)
+                    mode = str(args.get("mode") or "").strip().lower()
+                    derive = {
+                        "prompt": str(args.get("prompt") or "").strip(),
+                        # Anything but an explicit "continue" replaces. Guessing
+                        # "continue" wrong silently appends to a chain it does not
+                        # belong to; guessing "replace" wrong is visible and undoable.
+                        "mode": "continue" if mode == "continue" else "replace",
+                    }
         if edit and not edit["operation"]:
             edit = None                      # a tool call with nothing to apply
-        if edit:
-            # The model asked for an edit; any text it emitted alongside is
-            # preamble the variant picker will supersede.
-            return text.strip(), edit
-        return (text.strip() or "I couldn't answer that about this derivation."), None
+        if derive and not derive["prompt"]:
+            derive = None
+        # Nothing to derive FROM means there is nothing to continue — fall back to
+        # replacing rather than handing the client an impossible request.
+        if derive and derive["mode"] == "continue" and not ((proof or {}).get("steps") or []):
+            derive["mode"] = "replace"
+        if edit or derive:
+            # The model asked for a change; any text alongside is preamble that
+            # the picker / derivation status supersedes.
+            return text.strip(), edit, (None if edit else derive)
+        return (text.strip() or "I couldn't answer that about this derivation."), None, None
     except Exception as e:
         if DEBUG_MODE:
             print(f"   ❌ call_proof_chat error: {e}")
-        return "Chat is unavailable right now.", None
+        return "Chat is unavailable right now.", None, None
 
 
 def _run_step_edit(proof, edit, messages=None):
@@ -2622,21 +2691,25 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
         """Proof-scoped chat — the Gemini chat agent with a proof-only system prompt,
         the conversation history, and the step in view (no app framing).
 
-        Carries ONE tool, ``edit_step``, and only when ``allowEdits`` is set. If
-        the model calls it, the step edit runs here and its variants ride back in
-        the same response, so an instruction to change the derivation costs the
-        user a single turn.
+        Carries two tools, ``edit_step`` and ``derive``, and only when
+        ``allowEdits`` is set. An ``edit_step`` call runs HERE and its variants
+        ride back in the same response, so changing a step costs one turn. A
+        ``derive`` call does NOT run here — a full derivation takes longer than a
+        chat turn may, so the request is handed to the client, which runs it on
+        the same path as the Derive box and reports progress in its status line.
         """
         lim = _proof_chat_limits(req.messages, req.proof)
         if lim:
             return JSONResponse({"error": lim[1]}, status_code=lim[0])
         try:
             loop = asyncio.get_running_loop()
-            answer, edit = await loop.run_in_executor(
+            answer, edit, derive = await loop.run_in_executor(
                 None, lambda: call_proof_chat(req.messages, req.proof,
                                               req.currentStep, req.allowEdits,
                                               req.inDerive)
             )
+            if derive:
+                return JSONResponse({"answer": answer, "derive": derive})
             if not edit:
                 return JSONResponse({"answer": answer})
             payload = await loop.run_in_executor(
@@ -2646,7 +2719,7 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
             # the reader a dead-end ("I couldn't turn that into a step operation"),
             # answer the message as an ordinary tutor turn.
             if payload.get("fallback_to_chat"):
-                answer, _ = await loop.run_in_executor(
+                answer, _, _ = await loop.run_in_executor(
                     None, lambda: call_proof_chat(req.messages, req.proof,
                                                   req.currentStep, allow_edits=False,
                                                   in_derive=req.inDerive))
