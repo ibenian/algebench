@@ -131,7 +131,9 @@ export function createProofEditTool(deps) {
      * CAS-checked server-side. Returns true if an edit was presented.
      */
     function applyEditResult(res) {
-        const edit = res && res.edit;
+        // Keyed by the TOOL NAME the server declared — see PROOF_CHAT_TOOLS
+        // in backend/server.py. One concept, one name.
+        const edit = res && res.edit_step;
         if (!edit || !unlocked) return false;
 
         // A clarifying question, or a refusal: both are just things to say. The

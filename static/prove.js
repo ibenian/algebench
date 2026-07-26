@@ -1179,6 +1179,61 @@ async function showCtx() {
 // variants inline, so the ceiling is generous — but finite.
 const CHAT_TIMEOUT_MS = 120000;
 
+// ── chat tool results ───────────────────────────────────────────────────────
+// EVERY tool the proof chat can call is listed here, and nowhere else — the
+// client half of `PROOF_CHAT_TOOLS` in backend/server.py. Adding a tool means
+// adding a row on each side, rather than hiding an `if (data.someKey)` inside
+// `sendChat`.
+//
+// `tool` is the ONE identifier: it is the name the server declared to Gemini,
+// AND the key the payload arrives under. Dispatch is an exact property lookup —
+// no substring or prefix matching anywhere.
+//
+// `run(payload, data)` returns truthy when it produced something the reader can
+// see; that is what stops the turn falling through to "(no response)".
+//
+// `blocking` marks work that outlives the request: Send stays disabled for its
+// duration so a second long job cannot be queued behind it.
+const CHAT_ACTIONS = [
+  {
+    tool: "edit_step",
+    // Already done and CAS-checked server-side — the variants rode back on this
+    // reply, so this only renders the picker.
+    blocking: false,
+    run: (payload, data) => !!(editTool && editTool.applyEditResult(data)),
+  },
+  {
+    tool: "derive",
+    // NOT done yet: a derivation outlives a chat turn, so the server handed the
+    // request over and it runs here on the Derive box's own path.
+    blocking: true,
+    run: (payload) => runChatDerive(payload),
+  },
+];
+
+/** Dispatch whatever tool results came back on a chat reply.
+ *
+ *  The server sends at most one, but this does not assume it — each action whose
+ *  key is present runs, in table order. */
+async function runChatActions(data) {
+  if (!data) return false;
+  let acted = false;
+  for (const action of CHAT_ACTIONS) {
+    const payload = data[action.tool];
+    if (!payload) continue;
+    if (action.blocking) els.dSend.disabled = true;
+    try {
+      acted = (await action.run(payload, data)) || acted;
+    } catch (e) {
+      addBubble("bot", `Couldn't complete “${action.tool}”.`, "err");
+      acted = true;
+    } finally {
+      if (action.blocking && !editPending) els.dSend.disabled = false;
+    }
+  }
+  return acted;
+}
+
 /** Chat (right panel) — a PROOF-SCOPED conversation about the current derivation,
  *  via POST /api/proof-chat: the Gemini chat agent run with a proof-only system
  *  prompt (NOT the app's lesson/scene-framed /api/chat). The whole thread + the
@@ -1223,22 +1278,8 @@ async function sendChat() {
       addBubble("bot", reply);
       chatHistory.push({ role: "bot", text: reply });
     }
-    // The agent called its edit_step tool: the operation has already been applied
-    // and CAS-checked server-side, and the variants rode back on this reply.
-    const edited = editTool && editTool.applyEditResult(data);
-    // The agent called `derive`. Unlike an edit, the work has NOT been done yet —
-    // a derivation outlives a chat turn, so the server handed the request over
-    // and it runs here, on the same path as the Derive box.
-    let derived = false;
-    if (data && data.derive) {
-      els.dSend.disabled = true;               // one long job at a time
-      try {
-        derived = await runChatDerive(data.derive);
-      } finally {
-        if (!editPending) els.dSend.disabled = false;
-      }
-    }
-    if (!reply && !edited && !derived) addBubble("bot", "(no response)");
+    const acted = await runChatActions(data);
+    if (!reply && !acted) addBubble("bot", "(no response)");
   } catch (e) {
     pending.remove();
     addBubble("bot", e && e.name === "AbortError"

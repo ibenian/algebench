@@ -412,3 +412,75 @@ def test_system_prompt_explains_derive_only_when_unlocked():
     assert "Continue this derivation, or replace it?" in unlocked
     locked = server._proof_chat_system_prompt(_PROOF, allow_edits=False, in_derive=True)
     assert "`derive`" not in locked
+
+
+# ── the tool registry ────────────────────────────────────────────────────────
+# One table names every chat tool: what Gemini is shown, how a call becomes the
+# wire payload, and which response key carries it. The client mirrors it in
+# CHAT_ACTIONS (static/prove.js). These guard the shape both sides rely on.
+
+def test_every_declared_tool_has_a_parser_and_matches_its_declaration():
+    for tool in server.PROOF_CHAT_TOOLS:
+        assert tool["name"] and callable(tool["parse"])
+        # The name IS the identifier: what Gemini is told, and the key the
+        # payload comes back under. Drift here would silently drop tool calls.
+        assert tool["decl"].name == tool["name"]
+
+
+def test_tool_names_are_unique():
+    names = [t["name"] for t in server.PROOF_CHAT_TOOLS]
+    assert len(names) == len(set(names))
+
+
+def test_a_tool_call_comes_back_under_its_own_name(monkeypatch):
+    """The response key IS the tool name — there is no second wire vocabulary."""
+    _fake_derive_call(monkeypatch, {"prompt": "derive it", "mode": "replace"})
+    _, _, derive = server.call_proof_chat(
+        [{"role": "user", "text": "derive it"}], _PROOF, 0, allow_edits=True)
+    assert derive is not None
+    assert "derive" in {t["name"] for t in server.PROOF_CHAT_TOOLS}
+
+
+def test_an_undeclared_tool_call_is_ignored(monkeypatch):
+    """Dispatch is an exact name lookup, not a substring match: a call to
+    `derive_everything` must NOT be routed to `derive`."""
+    _fake_derive_call(monkeypatch, {"prompt": "x", "mode": "replace"})
+
+    class _FC:
+        name = "derive_everything"
+        args = {"prompt": "x", "mode": "replace"}
+
+    class _Part:
+        text = "hello"
+        function_call = _FC()
+
+    class _Models:
+        def generate_content(self, *, model, contents, config):
+            content = type("C", (), {"parts": [_Part()]})()
+            cand = type("Cand", (), {"content": content})()
+            return type("R", (), {"candidates": [cand]})()
+
+    monkeypatch.setattr(server, "get_gemini_client",
+                        lambda: type("C", (), {"models": _Models()})())
+    text, edit, derive = server.call_proof_chat(
+        [{"role": "user", "text": "hi"}], _PROOF, 0, allow_edits=True)
+    assert edit is None and derive is None
+    assert text == "hello"
+
+
+def test_the_response_key_is_the_tool_name():
+    """The endpoint answers under the TOOL NAME, not a separate wire vocabulary.
+
+    Regression guard with teeth: a hardcoded key here that drifted from the
+    declaration would leave the client waiting on a key the server never sends,
+    and BOTH sides' unit tests would still pass. Caught live once already —
+    the server was answering `edit` while the client had moved to `edit_step`.
+    """
+    src = (Path(server.__file__)).read_text()
+    assert '"answer": answer, TOOL_EDIT_STEP: payload' in src, \
+        "the /api/proof-chat response must key the edit payload by TOOL_EDIT_STEP"
+    assert server.TOOL_EDIT_STEP == "edit_step"
+    assert server.TOOL_DERIVE == "derive"
+    # ...and the declarations must agree with the constants.
+    assert server.EDIT_STEP_TOOL_DECL.name == server.TOOL_EDIT_STEP
+    assert server.DERIVE_TOOL_DECL.name == server.TOOL_DERIVE
