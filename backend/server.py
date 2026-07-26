@@ -2024,7 +2024,7 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
         'json-browser', 'main', 'proof', 'graph-view', 'expert-client',
         'view-state', 'view-state-bridge', 'nav-history', 'nav-history-core',
         'renderproof', 'embed-resizer', 'object-picker', 'prove', 'theme', 'icons',
-        'proof-edit-tool',
+        'proof-edit-tool', 'proof-id',
     }
 
     @fastapp.get("/api/version")

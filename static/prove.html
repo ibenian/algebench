@@ -353,6 +353,10 @@
     .sub-row { display: flex; align-items: center; gap: 10px; margin: 0 0 6px; }
     .sub-row label { font-size: .85rem; color: var(--muted-color); }
     .sub-name-input { flex: 1; width: auto; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .sub-hint { font-size: .78rem; color: var(--muted-color); margin: 6px 0 4px; line-height: 1.5; }
+    .sub-hint code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                     background: var(--chip-bg); padding: 0 4px; border-radius: 4px; }
+    .sub-hint .sub-over { color: var(--err-fg); font-weight: 600; }
     .sub-avail { min-height: 20px; font-size: .8rem; margin: 0 0 10px; }
     .sub-avail.ok { color: var(--accent); }
     .sub-avail.err { color: var(--err-fg); }
@@ -547,6 +551,9 @@
             <input id="sub-name" class="ctl-input sub-name-input" autocomplete="off"
                    spellcheck="false" placeholder="domain/my-derivation-name">
           </div>
+          <!-- The naming rules, stated UP FRONT. They used to appear only as an
+               error after typing something invalid, which is a guessing game. -->
+          <p id="sub-hint" class="sub-hint"></p>
           <div id="sub-avail" class="sub-avail" aria-live="polite"></div>
           <div class="sub-actions">
             <button id="sub-cancel" class="ctl-btn" type="button">Cancel</button>

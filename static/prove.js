@@ -15,6 +15,10 @@ import { invokeExpert, ExpertError } from "/expert-client.js";
 import { applyTheme, initialTheme, wireThemeToggle } from "/theme.js";
 import { BRACES_ICON, CODE_ICON, AI_ICON, USER_ICON } from "/icons.js";
 import { createProofEditTool } from "/proof-edit-tool.js";
+import {
+  ID_DOMAIN_MAX, ID_DOMAIN_MIN, ID_NAME_MAX, ID_NAME_MIN, ID_RESERVED,
+  MAX_PROOF_BYTES, formatBytes, idProblem, proofBytes,
+} from "/proof-id.js";
 
 const ID_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?\/[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
 
@@ -1173,8 +1177,29 @@ function setAvail(text, cls) {
   els.subAvail.className = `sub-avail ${cls || ""}`;
 }
 
+/** State the naming rules and the size budget before the user types.
+ *
+ *  Both were previously discoverable only by failing: the character rules showed
+ *  up as an error after an invalid name, and the 2 MB cap not at all until the
+ *  POST came back. Shows the proof's ACTUAL size against the cap so "is mine too
+ *  big?" is answered rather than left to be guessed at. */
+function syncSubmitHint() {
+  if (!els.subHint) return;
+  const bytes = proofBytes(deriveProof);
+  const over = bytes > MAX_PROOF_BYTES;
+  els.subHint.innerHTML =
+    `Format <code>domain/name</code> — lowercase letters, digits and hyphens only `
+    + `(e.g. <code>algebra/quadratic-roots</code>). Each part must start and end `
+    + `with a letter or digit. Domain ${ID_DOMAIN_MIN}–${ID_DOMAIN_MAX} characters, `
+    + `name ${ID_NAME_MIN}–${ID_NAME_MAX}. Reserved names: `
+    + `<code>${ID_RESERVED.join("</code>, <code>")}</code>.<br>`
+    + `Proof size <strong${over ? ' class="sub-over"' : ""}>${formatBytes(bytes)}</strong>`
+    + ` of ${formatBytes(MAX_PROOF_BYTES)}${over ? " — too large to submit." : ""}`;
+}
+
 function openSubmitModal() {
   if (!deriveProof) return;
+  syncSubmitHint();
   els.subForm.hidden = false;
   els.subDone.hidden = true;
   els.subGo.disabled = true;
@@ -1214,6 +1239,12 @@ function openSubmitModal() {
 }
 
 function checkSubmitName() {
+  // Invalidate SYNCHRONOUSLY, before the debounce. `doCheckSubmitName` runs
+  // 300 ms later, and until it does the button still reflects the PREVIOUS
+  // name — so typing one bad character after a valid name left Submit live and
+  // showing an error underneath it. Any edit now disables until re-validated.
+  submitAvailable = false;
+  if (els.subGo) els.subGo.disabled = true;
   clearTimeout(subCheckTimer);
   subCheckTimer = setTimeout(doCheckSubmitName, 300);   // debounce keystrokes
 }
@@ -1230,8 +1261,13 @@ async function doCheckSubmitName() {
     return;
   }
   els.subGo.textContent = "Submit";    // different name → a separate new version
-  if (!ID_RE.test(raw)) {
-    setAvail("Use <domain>/<name> — lowercase letters, digits, hyphens.", "err");
+  const problem = idProblem(raw);
+  if (problem) { setAvail(problem, "err"); return; }
+  // Size is a hard server limit, so say so here rather than after a failed POST.
+  const bytes = proofBytes(deriveProof);
+  if (bytes > MAX_PROOF_BYTES) {
+    setAvail(`This proof is ${formatBytes(bytes)} — over the `
+      + `${formatBytes(MAX_PROOF_BYTES)} limit. Shorten it before submitting.`, "err");
     return;
   }
   setAvail("Checking…", "");
@@ -1244,8 +1280,12 @@ async function doCheckSubmitName() {
       submitAvailable = true; submitCheckedId = d.id || raw;
       setAvail(`✓ ${submitCheckedId} is available`, "ok");
       els.subGo.disabled = false;
+    } else if (d.reason === "invalid") {
+      // The local checks above passed but the server still refused it — they have
+      // drifted apart. Say that honestly instead of blaming a collision.
+      setAvail("The server rejected that name as invalid — check the rules above.", "err");
     } else {
-      setAvail(`✗ taken or reserved — try ${raw}-v2`, "err");
+      setAvail(`✗ ${raw} is already taken — try ${raw}-v2`, "err");
     }
   } catch (e) {
     setAvail("Couldn't check availability — try again.", "err");
@@ -1319,6 +1359,7 @@ function setupSubmitModal() {
   els.subDone = document.getElementById("sub-done");
   els.subBased = document.getElementById("sub-based");
   els.subName = document.getElementById("sub-name");
+  els.subHint = document.getElementById("sub-hint");
   els.subAvail = document.getElementById("sub-avail");
   els.subGo = document.getElementById("sub-go");
   els.subDoneLink = document.getElementById("sub-done-link");
