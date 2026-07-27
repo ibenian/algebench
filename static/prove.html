@@ -529,7 +529,10 @@
       <div class="pa-modal-head">
         <span id="pa-json-title">Proof JSON</span>
         <span class="pa-json-actions">
-          <span id="pa-json-copied" class="pa-copied" hidden>Copied!</span>
+          <!-- role/aria-live so the copy result is ANNOUNCED, not just shown:
+               a purely visual confirmation tells a screen-reader user nothing. -->
+          <span id="pa-json-copied" class="pa-copied" role="status"
+                aria-live="polite" hidden>Copied!</span>
           <button id="pa-json-copy" class="viewer-btn" type="button"
                   title="Copy the whole proof JSON">Copy</button>
           <button id="pa-json-close" class="viewer-btn" type="button" aria-label="Close">✕</button>
@@ -607,7 +610,8 @@
           </label>
           <button id="pa-preview" class="viewer-btn" type="button">Preview</button>
           <button id="pa-copy" class="viewer-btn" type="button">Copy</button>
-          <span id="pa-copied" class="pa-copied" hidden>Copied!</span>
+          <span id="pa-copied" class="pa-copied" role="status"
+                aria-live="polite" hidden>Copied!</span>
         </div>
         <textarea id="pa-embed-code" readonly aria-label="Embed script"></textarea>
       </div>

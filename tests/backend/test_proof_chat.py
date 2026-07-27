@@ -468,19 +468,46 @@ def test_an_undeclared_tool_call_is_ignored(monkeypatch):
     assert text == "hello"
 
 
-def test_the_response_key_is_the_tool_name():
+def test_the_response_key_is_the_tool_name(monkeypatch, tmp_path):
     """The endpoint answers under the TOOL NAME, not a separate wire vocabulary.
 
-    Regression guard with teeth: a hardcoded key here that drifted from the
-    declaration would leave the client waiting on a key the server never sends,
-    and BOTH sides' unit tests would still pass. Caught live once already —
-    the server was answering `edit` while the client had moved to `edit_step`.
+    Exercised through the real route rather than by matching the source text: a
+    substring assertion breaks on harmless reformatting while still not proving
+    what actually goes over the wire. This drives /api/proof-chat and reads the
+    key off the response.
+
+    Regression guard with teeth. A key here that drifted from the declaration
+    would leave the client waiting on one the server never sends, and BOTH sides'
+    unit tests would still pass — observed live, with the server answering `edit`
+    after the client had moved to `edit_step`.
     """
-    src = (Path(server.__file__)).read_text()
-    assert '"answer": answer, TOOL_EDIT_STEP: payload' in src, \
-        "the /api/proof-chat response must key the edit payload by TOOL_EDIT_STEP"
+    monkeypatch.setenv("ALGEBENCH_PROOFS_DIR", str(tmp_path / "domains"))
+    monkeypatch.setenv("ALGEBENCH_PROOFS_SALT", "test-salt")
+    monkeypatch.delenv("ALGEBENCH_PROOFS_BUCKET", raising=False)
+
+    # The model asked for an edit; the expert produced variants. Neither the LM
+    # nor the CAS is involved — this is about the envelope, not the edit.
+    monkeypatch.setattr(server, "call_proof_chat",
+                        lambda *a, **k: ("ok", {"operation": "factor", "step": 1}, None))
+    monkeypatch.setattr(server, "_run_step_edit",
+                        lambda *a, **k: {"variants": [{"kind": "insert"}]})
+
+    from fastapi.testclient import TestClient
+    client = TestClient(server.create_app())
+    r = client.post("/api/proof-chat",
+                    json={"messages": [{"role": "user", "text": "factor it"}],
+                          "proof": _PROOF, "currentStep": 1, "allowEdits": True})
+    assert r.status_code == 200
+    body = r.json()
+    assert server.TOOL_EDIT_STEP in body, \
+        f"payload must be keyed by the tool name; got {sorted(body)}"
+    assert "edit" not in body, "the pre-rename wire key must be gone"
+    assert body[server.TOOL_EDIT_STEP]["variants"]
+
+
+def test_tool_names_match_their_declarations():
+    """One identifier per tool: what Gemini is told IS the response key."""
     assert server.TOOL_EDIT_STEP == "edit_step"
     assert server.TOOL_DERIVE == "derive"
-    # ...and the declarations must agree with the constants.
     assert server.EDIT_STEP_TOOL_DECL.name == server.TOOL_EDIT_STEP
     assert server.DERIVE_TOOL_DECL.name == server.TOOL_DERIVE
