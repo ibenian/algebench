@@ -1875,59 +1875,97 @@ export class ProofAnimator {
   }
 
   /**
-   * Every destination a source glyph flies to.
+   * Pair SOURCE leaves to TARGET leaves, bridging occurrence-scoped ids.
+   * Returns `Map<sourceId, targetId[]>`.
    *
-   * Normally one — its own id. A term that DIVIDES flies to each copy: `a` in
-   * `(a-b)^2` gains a second parent in `(a-b)·(a-b)` and is re-tagged
-   * `a____add_2` / `a____add_4`, so its own id is nowhere in the target. Both
-   * descend from it, so both get a copy. (The converse, several occurrences
-   * MERGING back to one bare id, falls out of the same rule.)
+   * `latex_renderer` gives a node a bare id when it has ONE parent and a
+   * `<id>__<parent>` id when it is shared, deciding per state. So the id of a
+   * symbol is not stable across a step whose multiplicity changes:
+   *
+   *     (a-b)^2          -> a                            (one parent, bare)
+   *     (a-b)·(a-b)      -> a____add_2, a____add_4       (two parents, scoped)
+   *     a^2 - 2ab + b^2  -> a____power_3, a____multiply_6
+   *
+   * Keyed on raw ids, NONE of those pair — the last transition scores zero
+   * matches even though both sides plainly hold two `a`s and two `b`s. So we
+   * compare the CANONICAL name on BOTH sides. (An earlier version only looked
+   * the canonical name up as a literal source id, which fixed the first
+   * transition — where the source happens to be bare — and left the rest broken.)
+   *
+   * Exact ids win first and are never disturbed, so anything that already
+   * animates keeps the identical pairing. What is left is grouped by canonical
+   * name and paired IN OCCURRENCE ORDER: first `a` to first `a`, second to
+   * second. When the target holds more copies than the source, the surplus all
+   * splits from the LAST source — a term dividing should fly out of where it was,
+   * not pop into existence.
    */
-  _flightTargets(id, toRects, toLeaves) {
-    if (toRects.has(id)) return [id];       // ordinary 1:1 flight
-    const canon = this._canonicalTermId(id);
-    if (!canon) return [];                  // structural wrapper, not a symbol
-    const out = [];
-    toLeaves.forEach((_el, tid) => {
-      if (toRects.has(tid) && this._canonicalTermId(tid) === canon) out.push(tid);
-    });
-    return out;
+  _pairLeaves(fromIds, toIds) {
+    const pairs = new Map();
+    const claimedFrom = new Set();
+    const claimedTo = new Set();
+    const toSet = new Set(toIds);
+
+    // 1. Exact matches — unambiguous, and the behaviour that already worked.
+    for (const id of fromIds) {
+      if (toSet.has(id)) {
+        pairs.set(id, [id]);
+        claimedFrom.add(id);
+        claimedTo.add(id);
+      }
+    }
+
+    // 2. Whatever is left, grouped by canonical name in document order. An empty
+    //    canon means a structural wrapper (`__add_2`), not a symbol — pairing
+    //    those would collapse unrelated subexpressions onto each other.
+    const group = (ids, skip) => {
+      const m = new Map();
+      for (const id of ids) {
+        if (skip.has(id)) continue;
+        const c = this._canonicalTermId(id);
+        if (!c) continue;
+        if (!m.has(c)) m.set(c, []);
+        m.get(c).push(id);
+      }
+      return m;
+    };
+    const srcByCanon = group(fromIds, claimedFrom);
+    const tgtByCanon = group(toIds, claimedTo);
+
+    for (const [canon, targets] of tgtByCanon) {
+      const sources = srcByCanon.get(canon);
+      if (!sources || !sources.length) continue;
+      targets.forEach((t, i) => {
+        const src = sources[Math.min(i, sources.length - 1)];
+        if (!pairs.has(src)) pairs.set(src, []);
+        pairs.get(src).push(t);
+      });
+    }
+    return pairs;
   }
 
   /**
-   * Bridge occurrence-scoped ids back to the COMMON ORIGIN they came from.
+   * Bridge occurrence-scoped ids so a persistent term animates across the step.
    *
-   * `latex_renderer` gives a node a bare id when it has ONE parent and a
-   * `<id>__<parent>` id when it is shared, deciding per state. So a symbol whose
-   * multiplicity changes between steps — `a` in `(a-b)^2`, then twice in
-   * `(a-b)·(a-b)` — has no id in common across the pair and never pairs, even
-   * though it is visibly the same letter.
+   * Gives every target that paired to a DIFFERENT source id that source's pose,
+   * via :meth:`_pairLeaves`. Returns the set of source ids that were adopted by
+   * some other id — the caller must not ghost those: they did not disappear,
+   * they moved or divided.
    *
-   * Both copies descend from that one `a`, so both fly OUT OF IT: every
-   * unmatched target that canonicalises to a source id inherits that source's
-   * pose. The origin is NOT consumed by the first taker — picking one occurrence
-   * to glide and leaving the other to pop in would be arbitrary, and reads as a
-   * term teleporting rather than splitting.
-   *
-   * Returns the set of source ids adopted as an origin. The caller must not
-   * ghost those: they did not disappear, they divided.
-   *
-   * Only ever ADDS matches — a target that already pairs exactly is untouched —
-   * so nothing that animates today changes.
+   * Only ever ADDS matches; a target that pairs exactly is untouched.
    */
   _aliasOccurrences(fromRects, cloneOf, fromFontSize, toLeaves) {
     const origins = new Set();
-    toLeaves.forEach((_el, id) => {
-      if (fromRects.has(id)) return;      // already pairs exactly
-      const src = this._canonicalTermId(id);
-      // Empty canon = a structural wrapper (`__add_2`), not a symbol; aliasing
-      // those would collapse unrelated subexpressions onto one another.
-      if (!src || !fromRects.has(src)) return;
-      fromRects.set(id, fromRects.get(src));
-      if (cloneOf.has(src)) cloneOf.set(id, cloneOf.get(src));
-      if (fromFontSize.has(src)) fromFontSize.set(id, fromFontSize.get(src));
-      origins.add(src);
-    });
+    const pairs = this._pairLeaves([...cloneOf.keys()], [...toLeaves.keys()]);
+    for (const [src, targets] of pairs) {
+      if (!fromRects.has(src)) continue;
+      for (const t of targets) {
+        if (t === src) continue;                  // exact match, already paired
+        fromRects.set(t, fromRects.get(src));
+        if (cloneOf.has(src)) cloneOf.set(t, cloneOf.get(src));
+        if (fromFontSize.has(src)) fromFontSize.set(t, fromFontSize.get(src));
+        origins.add(src);
+      }
+    }
     return origins;
   }
 
@@ -2666,6 +2704,9 @@ export class ProofAnimator {
     const toRects = this._nodeRects(toLine);
     const toFontSize = new Map();
     toLeaves.forEach((el, id) => toFontSize.set(id, getComputedStyle(el).fontSize));
+    // Same pairing the id-keyed morph uses, so the two paths never disagree about
+    // which glyph is which across a step.
+    const pairs = this._pairLeaves([...fromLeaves.keys()], [...toLeaves.keys()]);
     // ids matched but with a DIFFERENT glyph — they don't fly (they'd land on
     // another symbol); they just dissolve with the outgoing line.
     const changedIds = new Set();
@@ -2684,7 +2725,7 @@ export class ProofAnimator {
       // `a____add_2` and `a____add_4` when it gains a second parent — flies a
       // copy to EACH, so the split reads as one glyph becoming two rather than
       // one gliding while the other pops in.
-      for (const tid of this._flightTargets(id, toRects, toLeaves)) {
+      for (const tid of (pairs.get(id) || [])) {
         const t = toRects.get(tid);
         if (!t) continue;
         const sfs = parseFloat(getComputedStyle(el).fontSize);
