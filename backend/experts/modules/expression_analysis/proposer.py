@@ -299,7 +299,14 @@ def _proposer() -> VizProposer:
 
 @cache
 def _proposer_lm() -> Optional[dspy.LM]:
-    """The thinking-disabled LM for this call, or None if it cannot be built."""
+    """The thinking-disabled LM for this call, or None to use the global one.
+
+    None for a NON-Gemini ``ALGEBENCH_LM_MODEL`` — ``reasoning_effort="disable"``
+    is litellm's Gemini mapping and other providers may reject it, so forcing
+    this scoped LM on them would break a call the global LM handles.
+    """
+    if not LM_MODEL.startswith("gemini/"):
+        return None
     api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
     try:
         return dspy.LM(LM_MODEL, api_key=api_key, temperature=0.7,

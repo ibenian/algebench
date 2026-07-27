@@ -238,13 +238,16 @@ def _parser() -> EditIntentParser:
 # docs/proposals/proof-edit/predict-nothink-report.md).
 #
 # The shipped configuration paid for deliberation TWICE: a ``ChainOfThought``
-# reasoning field on top of Gemini's own internal thinking. Dropping both runs
-# ~4.2 s/call against ~12.5 s, and — the number that actually matters to someone
-# watching a spinner — collapses the spread from sd 15.1 s (worst case 56 s) to
-# sd 2.5 s (worst case 11 s).
+# reasoning field on top of Gemini's own internal thinking. Every figure below is
+# from the report's combined table (n = 40 calls per configuration) — do not mix
+# in the single-pass or 3-pass-only numbers, which differ.
 #
-# Accuracy did not pay for it. Over 3 passes this configuration scored 123/123
-# mechanical checks, matching the old one; on the single scenario where the model
+# Dropping both runs 4.14 s/call against 11.65 s, and — the number that actually
+# matters to someone watching a spinner — collapses the spread from sd 12.31 s
+# (worst case 60.4 s) to sd 2.58 s (worst case 11.3 s).
+#
+# Accuracy did not pay for it: this configuration scored 164/164 mechanical
+# checks against the old one's 160/164; on the single scenario where the model
 # must author the LaTeX unaided rather than name an op for the CAS, all five
 # configurations emitted byte-identical, correct LaTeX. Most of this call is
 # ROUTING (edit vs question vs clarify) and NAMING an op — the CAS performs the
@@ -252,9 +255,9 @@ def _parser() -> EditIntentParser:
 # deliberation had nothing to buy.
 #
 # ``ChainOfThought`` + thinking-disabled was the other finalist and is
-# DELIBERATELY NOT ADOPTED: same speed, but it scored 115/123, repeatably
-# mis-routing "simplify the right-hand side" as not-an-edit and bouncing a plain
-# operation to the tutor chat.
+# DELIBERATELY NOT ADOPTED: same speed (3.95 s), but it scored 156/164,
+# repeatably mis-routing "simplify the right-hand side" as not-an-edit and
+# bouncing a plain operation to the tutor chat.
 #
 # Scoped to THIS call, not llm_config, so every other expert keeps full
 # reasoning — the global ALGEBENCH_LM_REASONING knob would also silence the
@@ -266,7 +269,16 @@ def _parser() -> EditIntentParser:
 
 @cache
 def _parser_lm() -> Optional[dspy.LM]:
-    """The thinking-disabled LM for this call, or None if it cannot be built."""
+    """The thinking-disabled LM for this call, or None to use the global one.
+
+    None for a NON-Gemini ``ALGEBENCH_LM_MODEL``: ``reasoning_effort="disable"``
+    is litellm's Gemini mapping, and other providers may reject the parameter
+    outright — so forcing this scoped LM on them would break a call that the
+    globally configured LM handles fine. The measurement behind it is a Gemini
+    one anyway (see above), so it has nothing to say about another provider.
+    """
+    if not LM_MODEL.startswith("gemini/"):
+        return None
     api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
     try:
         return dspy.LM(LM_MODEL, api_key=api_key, temperature=0.7,
