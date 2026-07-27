@@ -69,9 +69,16 @@ def _changed_slice(candidate: dict, at: int, take: int) -> list[dict]:
     That is the inserted steps themselves, plus the one immediately after them —
     its predecessor moved, so its verdict is newly earned even though its own
     expression did not change.
+
+    Step 0 is never included: it is the START STATE, not a transition, so there is
+    no incoming edge for the CAS to have an opinion about. This matters when an
+    edit AUTHORS step 0 on an empty derivation (``at = -1``) — judging it would
+    read its unavoidable ``unknown`` as an objection and attach "could not be
+    connected to the previous step" to a step that has no previous step, plus
+    burn the retry budget trying to fix it.
     """
     steps = candidate.get("steps") or []
-    return steps[at + 1: at + take + 2]
+    return steps[max(at + 1, 1): at + take + 2]
 
 
 class Verdict:

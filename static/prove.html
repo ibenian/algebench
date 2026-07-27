@@ -273,6 +273,9 @@
     /* Icon-only variant ({ } JSON, < > embed) — square, tight padding, matching
        the /renderproof + blog embed toolbar. */
     .viewer-btn.icon-btn { padding: 5px 7px; line-height: 0; display: inline-flex; align-items: center; }
+    /* An explicit `display` outranks the UA's `[hidden] { display: none }`, so
+       hiding an icon button by attribute silently does nothing without this. */
+    .viewer-btn[hidden] { display: none; }
     /* Unlocked editing is a live, consequential mode — make it visibly distinct
        from the default locked state rather than a subtle pressed look. */
     #d-lock[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
@@ -336,6 +339,9 @@
     .pa-embed-row select { font: inherit; font-size: .85rem; padding: 5px 8px; border-radius: 7px;
                 border: 1px solid var(--btn-border); background: var(--panel-bg); color: var(--text-color); }
     .pa-copied { font-size: .8rem; color: var(--muted-color); }
+    /* Copy + close sit together on the right of the JSON viewer's head, so the
+       title keeps the whole left side however long it is. */
+    .pa-json-actions { display: flex; align-items: center; gap: 8px; flex: none; }
     #pa-embed-code { width: 100%; box-sizing: border-box; height: 80px; resize: vertical;
                 font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .8rem;
                 border: 1px solid var(--btn-border); border-radius: 7px; padding: 8px;
@@ -350,6 +356,10 @@
     .sub-row { display: flex; align-items: center; gap: 10px; margin: 0 0 6px; }
     .sub-row label { font-size: .85rem; color: var(--muted-color); }
     .sub-name-input { flex: 1; width: auto; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .sub-hint { font-size: .78rem; color: var(--muted-color); margin: 6px 0 4px; line-height: 1.5; }
+    .sub-hint code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                     background: var(--chip-bg); padding: 0 4px; border-radius: 4px; }
+    .sub-hint .sub-over { color: var(--err-fg); font-weight: 600; }
     .sub-avail { min-height: 20px; font-size: .8rem; margin: 0 0 10px; }
     .sub-avail.ok { color: var(--accent); }
     .sub-avail.err { color: var(--err-fg); }
@@ -433,7 +443,7 @@
                  save-and-share flow.) -->
             <div class="viewer-bar" id="d-viewer-bar" hidden>
               <span class="viewer-left">
-                <span class="viewer-id">Derived proof</span>
+                <span class="viewer-id" id="d-viewer-id">Derived proof</span>
                 <!-- Provenance of a Clone-d proof. Its id is an existing
                      proof's — submitting requires a NEW unique name. -->
                 <span id="d-based-on" class="based-chip" hidden></span>
@@ -518,7 +528,15 @@
     <div class="pa-modal-box">
       <div class="pa-modal-head">
         <span id="pa-json-title">Proof JSON</span>
-        <button id="pa-json-close" class="viewer-btn" type="button" aria-label="Close">✕</button>
+        <span class="pa-json-actions">
+          <!-- role/aria-live so the copy result is ANNOUNCED, not just shown:
+               a purely visual confirmation tells a screen-reader user nothing. -->
+          <span id="pa-json-copied" class="pa-copied" role="status"
+                aria-live="polite" hidden>Copied!</span>
+          <button id="pa-json-copy" class="viewer-btn" type="button"
+                  title="Copy the whole proof JSON">Copy</button>
+          <button id="pa-json-close" class="viewer-btn" type="button" aria-label="Close">✕</button>
+        </span>
       </div>
       <div id="pa-json-body" class="pa-modal-body"></div>
     </div>
@@ -544,6 +562,9 @@
             <input id="sub-name" class="ctl-input sub-name-input" autocomplete="off"
                    spellcheck="false" placeholder="domain/my-derivation-name">
           </div>
+          <!-- The naming rules, stated UP FRONT. They used to appear only as an
+               error after typing something invalid, which is a guessing game. -->
+          <p id="sub-hint" class="sub-hint"></p>
           <div id="sub-avail" class="sub-avail" aria-live="polite"></div>
           <div class="sub-actions">
             <button id="sub-cancel" class="ctl-btn" type="button">Cancel</button>
@@ -589,7 +610,8 @@
           </label>
           <button id="pa-preview" class="viewer-btn" type="button">Preview</button>
           <button id="pa-copy" class="viewer-btn" type="button">Copy</button>
-          <span id="pa-copied" class="pa-copied" hidden>Copied!</span>
+          <span id="pa-copied" class="pa-copied" role="status"
+                aria-live="polite" hidden>Copied!</span>
         </div>
         <textarea id="pa-embed-code" readonly aria-label="Embed script"></textarea>
       </div>

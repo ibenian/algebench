@@ -462,3 +462,70 @@ def test_derive_success_is_unaffected(monkeypatch):
     out = H.derive_proof_animation(_derive_req())
     assert "error" not in out                         # success path untouched
     assert out["title"] == "T"
+
+
+# ── step 0's captions survive the prompt path ────────────────────────────────
+# `endpoints_from_prompt` names `given_label` and `start_note` for step 0, but
+# `derive_proof_animation` only PRODUCES them inside its `if not start:` start-
+# inference branch. `proof_from_prompt` supplies the start, so that branch is
+# skipped — and it used to discard the namer's captions into `_given_label` /
+# `_start_note`, leaving step 0 with the generic "the starting expression".
+
+def test_request_carries_step0_captions():
+    req = DeriveProofRequest(target_latex="x = 1", given_label="Given the equation",
+                             start_note="solve for $x$")
+    assert req.given_label == "Given the equation"
+    assert req.start_note == "solve for $x$"
+
+
+def test_request_defaults_step0_captions_to_none():
+    req = DeriveProofRequest(target_latex="x = 1")
+    assert req.given_label is None and req.start_note is None
+
+
+def test_prompt_path_threads_the_namers_captions_through(monkeypatch):
+    """The captions the namer wrote must reach the inner request, not the floor."""
+    monkeypatch.setattr(
+        H, "endpoints_from_prompt",
+        lambda prompt: ("a x^2 + b x + c = 0",
+                        r"x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}",
+                        "algebra", "Quadratic formula",
+                        "Given the quadratic equation", "solve for $x$"))
+
+    seen = {}
+
+    def _fake_derive(req):
+        seen["req"] = req
+        return {"steps": [{"index": 0, "input_latex": "a x^2 + b x + c = 0"}]}
+
+    monkeypatch.setattr(H, "derive_proof_animation", _fake_derive)
+    H.derive_proof_from_prompt(H.PromptDeriveRequest(prompt="derive the quadratic formula"))
+
+    assert seen["req"].given_label == "Given the quadratic equation"
+    assert seen["req"].start_note == "solve for $x$"
+
+
+def test_supplied_captions_survive_when_the_start_is_given(monkeypatch):
+    """With a start supplied, the inference branch never runs — so the captions
+    must come from the REQUEST or step 0 falls back to boilerplate."""
+    captured = {}
+
+    def _fake_build_described(traj, domain, title, **kw):
+        captured.update(kw)
+        return {"steps": []}
+
+    monkeypatch.setattr(H, "build_described", _fake_build_described)
+    traj = types.SimpleNamespace(
+        steps=[types.SimpleNamespace(expr_latex="x = 1", operation="op",
+                                     justification="j", change_type="rewrite")],
+        start_latex="x + 0 = 1", title=None, goal=None,
+        prerequisites=[], followups=[])
+    monkeypatch.setattr(H, "invoke",
+                        lambda *a, **k: types.SimpleNamespace(single=lambda: traj))
+
+    H.derive_proof_animation(DeriveProofRequest(
+        target_latex="x = 1", start_latex="x + 0 = 1", domain="algebra",
+        given_label="Given the equation", start_note="solve for $x$"))
+
+    assert captured.get("start_operation") == "Given the equation"
+    assert captured.get("start_justification") == "solve for $x$"

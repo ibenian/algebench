@@ -131,7 +131,9 @@ export function createProofEditTool(deps) {
      * CAS-checked server-side. Returns true if an edit was presented.
      */
     function applyEditResult(res) {
-        const edit = res && res.edit;
+        // Keyed by the TOOL NAME the server declared — see PROOF_CHAT_TOOLS
+        // in backend/server.py. One concept, one name.
+        const edit = res && res.edit_step;
         if (!edit || !unlocked) return false;
 
         // A clarifying question, or a refusal: both are just things to say. The
@@ -150,8 +152,13 @@ export function createProofEditTool(deps) {
             return true;
         }
 
+        // No proof object at all is still a dead end. A proof with ZERO STEPS is
+        // NOT: that is a derivation the reader started by unlocking before
+        // deriving anything, and this edit is the one authoring its first step
+        // (the expert anchors it at `at = -1`). Requiring a non-empty step list
+        // here used to reject exactly the edit that would have filled it.
         const proof = getProof();
-        if (!proof || !(proof.steps || []).length) {
+        if (!proof) {
             addBubble('bot', 'There is no derivation open to edit.');
             return true;
         }

@@ -108,6 +108,45 @@ class ProofEditSig(dspy.Signature):
     the result yourself, and it is the only way operations like differentiation
     are accepted.
 
+    STATING A LINE VERBATIM — also a case of 3, and easy to get badly wrong.
+    "add $x^2 - 4 = 0$ as the next step", "add this as a new step", "put
+    $v = d/t$ next" mean: make that expression, EXACTLY as written, the new step.
+    It is NOT `add_both_sides` — that would add the expression TO both sides of
+    the previous one and produce something the reader never asked for. Leave `op`
+    EMPTY and copy their expression into `steps[0].expr_latex` unchanged. The
+    giveaway is "as a/the … step" or "next"; contrast "add $3x$ to both sides",
+    which names a TARGET to add to and IS `add_both_sides`.
+
+    BUT NOT WHEN THE LINE IS THE CURRENT STEP EVALUATED. If what they want added
+    is the DECIMAL/NUMERIC form of the step in view — "add the decimal
+    approximations as the next step", "add $x \approx 0.414$ and
+    $x \approx -2.414$", "now give me the numbers" — set `op` to `evaluate`
+    instead and let the CAS produce the decimals. Do NOT copy their numbers in.
+    Two reasons, both fatal to the verbatim route: a rounded decimal does not
+    exactly satisfy the previous step, so the CAS REFUTES it as introducing values
+    that do not solve it; and `\approx` is not a relation the parser accepts, so
+    the step cannot be checked at all. `evaluate` is computed by the CAS, so it is
+    correct by construction and states `=` with evaluated roots.
+
+    EMPTY DERIVATION — a special case of 3. When `current_step` says the
+    derivation is EMPTY, there is no previous expression, so there is nothing to
+    apply an operation TO. The reader is stating the FIRST line ("start with
+    $E = mc^2$", "let $f(x) = x^2 + 1$", "begin from the ideal gas law"):
+
+    * Set `is_edit` true and leave `op` EMPTY — every listed op transforms a
+      previous expression, and there isn't one. The CAS cannot help here.
+    * Write the opening expression in full as `steps[0].expr_latex`, and add NO
+      glue (there is nothing after it to bridge back to).
+    * If they name a known law or relation by name rather than writing it, write
+      the standard form of it yourself.
+    * Only ask a `question` if you cannot tell WHAT relation they mean — not
+      because the derivation is empty. "Start with the quadratic equation" is
+      clear enough to write down; treat it as an instruction, not a puzzle.
+    * `steps[0].operation` is the CAPTION shown above the step, so write it in
+      the reader's language — "Given", "Start from the mass-energy relation",
+      "Let $f(x) = x^2 + 1$". Never a tool or function name, and never
+      `add_step`: those are internal and read as a bug on the page.
+
     `steps` has TWO parts and you fill BOTH, whether or not you set `op`:
 
     * `steps[0]` — THE USER'S OWN STEP: the complete LaTeX of the expression
@@ -386,8 +425,18 @@ def format_clarifications(pairs) -> str:
 
 
 def format_current_step(proof: dict, index: int) -> str:
-    """Render the step under the cursor for the prompt."""
+    """Render the step under the cursor for the prompt.
+
+    An empty derivation says so explicitly rather than "(no step selected)".
+    The two are different situations and the model must tell them apart: nothing
+    exists yet, so the request describes the FIRST line rather than an operation
+    on a previous one.
+    """
     steps = (proof or {}).get("steps") or []
+    if not steps:
+        return ("(the derivation is EMPTY — there are no steps yet. The reader's "
+                "request describes the FIRST step, which you must write out in "
+                "full as `steps[0]`.)")
     if not 0 <= index < len(steps):
         return "(no step selected)"
     s = steps[index] or {}

@@ -87,17 +87,17 @@ def test_system_prompt_ignores_out_of_range_step():
 
 def test_call_proof_chat_without_client_is_graceful(monkeypatch):
     monkeypatch.setattr(server, "get_gemini_client", lambda: None)
-    out, edit = server.call_proof_chat([{"role": "user", "text": "hi"}], _PROOF, 0)
+    out, edit, derive = server.call_proof_chat([{"role": "user", "text": "hi"}], _PROOF, 0)
     assert "not available" in out.lower()
-    assert edit is None
+    assert edit is None and derive is None
 
 
 def test_call_proof_chat_empty_thread_short_circuits(monkeypatch):
     # Should not even need a client if there's nothing to answer.
     monkeypatch.setattr(server, "get_gemini_client", lambda: object())
-    out, edit = server.call_proof_chat([], _PROOF, 0)
+    out, edit, derive = server.call_proof_chat([], _PROOF, 0)
     assert "ask a question" in out.lower()
-    assert edit is None
+    assert edit is None and derive is None
 
 
 # ── the editing lock is enforced by tool ABSENCE ─────────────────────────────
@@ -130,7 +130,9 @@ def test_unlocked_chat_declares_the_edit_tool(monkeypatch):
     server.call_proof_chat([{"role": "user", "text": "move c to the right"}],
                            _PROOF, 0, allow_edits=True)
     names = [f.name for t in seen["config"].tools for f in t.function_declarations]
-    assert names == ["edit_step"]
+    # `derive` rides the SAME lock: replacing or extending the derivation is as
+    # much a change as an edit, so it must not be reachable while locked either.
+    assert names == ["edit_step", "derive"]
 
 
 def test_locked_derive_prompt_points_at_the_lock():
@@ -336,3 +338,176 @@ def test_system_prompt_forbids_html():
     sp = server._proof_chat_system_prompt(_PROOF).lower()
     assert "do not output html" in sp
     assert "markdown" in sp
+
+
+# ── the `derive` tool ────────────────────────────────────────────────────────
+# `edit_step` applies one operation to one step; `derive` builds a whole result.
+# It is NOT run server-side — a derivation outlives a chat turn — so the request
+# is handed to the client, which runs it on the Derive box's own path.
+
+def _fake_derive_call(monkeypatch, args):
+    """Run call_proof_chat against a client that returns one `derive` tool call."""
+    class _FC:
+        name = "derive"
+        def __init__(self, a): self.args = a
+
+    class _Part:
+        def __init__(self, fc): self.text = ""; self.function_call = fc
+
+    class _Models:
+        def generate_content(self, *, model, contents, config):
+            part = _Part(_FC(args))
+            content = type("C", (), {"parts": [part]})()
+            cand = type("Cand", (), {"content": content})()
+            return type("R", (), {"candidates": [cand]})()
+
+    monkeypatch.setattr(server, "get_gemini_client",
+                        lambda: type("C", (), {"models": _Models()})())
+
+
+def test_derive_tool_call_rides_back_without_running(monkeypatch):
+    _fake_derive_call(monkeypatch, {"prompt": "derive the quadratic formula",
+                                    "mode": "replace"})
+    text, edit, derive = server.call_proof_chat(
+        [{"role": "user", "text": "derive the quadratic formula"}],
+        _PROOF, 0, allow_edits=True)
+    assert edit is None
+    assert derive == {"prompt": "derive the quadratic formula", "mode": "replace"}
+
+
+def test_continue_on_an_empty_derivation_falls_back_to_replace(monkeypatch):
+    """There is nothing to continue FROM, so 'continue' would be unrunnable."""
+    _fake_derive_call(monkeypatch, {"prompt": "derive it", "mode": "continue"})
+    _, _, derive = server.call_proof_chat(
+        [{"role": "user", "text": "derive it"}], {"steps": []}, 0, allow_edits=True)
+    assert derive["mode"] == "replace"
+
+
+def test_continue_is_kept_when_there_is_something_to_continue(monkeypatch):
+    _fake_derive_call(monkeypatch, {"prompt": "derive it", "mode": "continue"})
+    _, _, derive = server.call_proof_chat(
+        [{"role": "user", "text": "derive it"}], _PROOF, 0, allow_edits=True)
+    assert derive["mode"] == "continue"
+
+
+def test_an_unknown_mode_defaults_to_replace(monkeypatch):
+    """Guessing 'continue' wrong silently appends to a chain it doesn't belong
+    to; guessing 'replace' wrong is visible and undoable."""
+    _fake_derive_call(monkeypatch, {"prompt": "derive it", "mode": "append"})
+    _, _, derive = server.call_proof_chat(
+        [{"role": "user", "text": "derive it"}], _PROOF, 0, allow_edits=True)
+    assert derive["mode"] == "replace"
+
+
+def test_a_derive_call_with_no_prompt_is_dropped(monkeypatch):
+    _fake_derive_call(monkeypatch, {"prompt": "  ", "mode": "replace"})
+    _, _, derive = server.call_proof_chat(
+        [{"role": "user", "text": "derive"}], _PROOF, 0, allow_edits=True)
+    assert derive is None
+
+
+def test_system_prompt_explains_derive_only_when_unlocked():
+    unlocked = server._proof_chat_system_prompt(_PROOF, allow_edits=True)
+    assert "`derive`" in unlocked
+    assert "Continue this derivation, or replace it?" in unlocked
+    locked = server._proof_chat_system_prompt(_PROOF, allow_edits=False, in_derive=True)
+    assert "`derive`" not in locked
+
+
+# ── the tool registry ────────────────────────────────────────────────────────
+# One table names every chat tool: what Gemini is shown, how a call becomes the
+# wire payload, and which response key carries it. The client mirrors it in
+# CHAT_ACTIONS (static/prove.js). These guard the shape both sides rely on.
+
+def test_every_declared_tool_has_a_parser_and_matches_its_declaration():
+    for tool in server.PROOF_CHAT_TOOLS:
+        assert tool["name"] and callable(tool["parse"])
+        # The name IS the identifier: what Gemini is told, and the key the
+        # payload comes back under. Drift here would silently drop tool calls.
+        assert tool["decl"].name == tool["name"]
+
+
+def test_tool_names_are_unique():
+    names = [t["name"] for t in server.PROOF_CHAT_TOOLS]
+    assert len(names) == len(set(names))
+
+
+def test_a_tool_call_comes_back_under_its_own_name(monkeypatch):
+    """The response key IS the tool name — there is no second wire vocabulary."""
+    _fake_derive_call(monkeypatch, {"prompt": "derive it", "mode": "replace"})
+    _, _, derive = server.call_proof_chat(
+        [{"role": "user", "text": "derive it"}], _PROOF, 0, allow_edits=True)
+    assert derive is not None
+    assert "derive" in {t["name"] for t in server.PROOF_CHAT_TOOLS}
+
+
+def test_an_undeclared_tool_call_is_ignored(monkeypatch):
+    """Dispatch is an exact name lookup, not a substring match: a call to
+    `derive_everything` must NOT be routed to `derive`."""
+    _fake_derive_call(monkeypatch, {"prompt": "x", "mode": "replace"})
+
+    class _FC:
+        name = "derive_everything"
+        args = {"prompt": "x", "mode": "replace"}
+
+    class _Part:
+        text = "hello"
+        function_call = _FC()
+
+    class _Models:
+        def generate_content(self, *, model, contents, config):
+            content = type("C", (), {"parts": [_Part()]})()
+            cand = type("Cand", (), {"content": content})()
+            return type("R", (), {"candidates": [cand]})()
+
+    monkeypatch.setattr(server, "get_gemini_client",
+                        lambda: type("C", (), {"models": _Models()})())
+    text, edit, derive = server.call_proof_chat(
+        [{"role": "user", "text": "hi"}], _PROOF, 0, allow_edits=True)
+    assert edit is None and derive is None
+    assert text == "hello"
+
+
+def test_the_response_key_is_the_tool_name(monkeypatch, tmp_path):
+    """The endpoint answers under the TOOL NAME, not a separate wire vocabulary.
+
+    Exercised through the real route rather than by matching the source text: a
+    substring assertion breaks on harmless reformatting while still not proving
+    what actually goes over the wire. This drives /api/proof-chat and reads the
+    key off the response.
+
+    Regression guard with teeth. A key here that drifted from the declaration
+    would leave the client waiting on one the server never sends, and BOTH sides'
+    unit tests would still pass — observed live, with the server answering `edit`
+    after the client had moved to `edit_step`.
+    """
+    monkeypatch.setenv("ALGEBENCH_PROOFS_DIR", str(tmp_path / "domains"))
+    monkeypatch.setenv("ALGEBENCH_PROOFS_SALT", "test-salt")
+    monkeypatch.delenv("ALGEBENCH_PROOFS_BUCKET", raising=False)
+
+    # The model asked for an edit; the expert produced variants. Neither the LM
+    # nor the CAS is involved — this is about the envelope, not the edit.
+    monkeypatch.setattr(server, "call_proof_chat",
+                        lambda *a, **k: ("ok", {"operation": "factor", "step": 1}, None))
+    monkeypatch.setattr(server, "_run_step_edit",
+                        lambda *a, **k: {"variants": [{"kind": "insert"}]})
+
+    from fastapi.testclient import TestClient
+    client = TestClient(server.create_app())
+    r = client.post("/api/proof-chat",
+                    json={"messages": [{"role": "user", "text": "factor it"}],
+                          "proof": _PROOF, "currentStep": 1, "allowEdits": True})
+    assert r.status_code == 200
+    body = r.json()
+    assert server.TOOL_EDIT_STEP in body, \
+        f"payload must be keyed by the tool name; got {sorted(body)}"
+    assert "edit" not in body, "the pre-rename wire key must be gone"
+    assert body[server.TOOL_EDIT_STEP]["variants"]
+
+
+def test_tool_names_match_their_declarations():
+    """One identifier per tool: what Gemini is told IS the response key."""
+    assert server.TOOL_EDIT_STEP == "edit_step"
+    assert server.TOOL_DERIVE == "derive"
+    assert server.EDIT_STEP_TOOL_DECL.name == server.TOOL_EDIT_STEP
+    assert server.DERIVE_TOOL_DECL.name == server.TOOL_DERIVE

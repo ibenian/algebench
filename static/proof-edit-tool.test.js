@@ -128,7 +128,7 @@ function makeTool(overrides = {}) {
 }
 
 const VARIANTS_RESULT = {
-    edit: {
+    edit_step: {
         new_steps: [{ input_latex: 'n0', operation: 'op' }],
         variants: [{ kind: 'insert', at: 1, take: 1, delete_count: 0 }],
         summary: 'Did the thing.',
@@ -208,14 +208,14 @@ test('an unconfirmed step is called out in words, not left to a badge', () => {
     // nonsense comes back "plausible" — a badge that reads as mild approval.
     const { tool, calls } = makeTool();
     tool.setUnlocked(true);
-    tool.applyEditResult({ edit: { ...VARIANTS_RESULT.edit, caveat: 'could not confirm' } });
+    tool.applyEditResult({ edit_step: { ...VARIANTS_RESULT.edit_step, caveat: 'could not confirm' } });
     assert.match(calls.at(-1)[1], /could not confirm/);
 });
 
 test('a refusal is spoken and offers nothing', () => {
     const { tool, calls, mounted } = makeTool();
     tool.setUnlocked(true);
-    assert.equal(tool.applyEditResult({ edit: { reason: 'nope' } }), true);
+    assert.equal(tool.applyEditResult({ edit_step: { reason: 'nope' } }), true);
     assert.deepEqual(calls.at(-1), ['bot', 'nope']);
     assert.equal(mounted.length, 0, 'a refuted edit must never be pickable');
 });
@@ -227,7 +227,7 @@ test('router disagreement is explained, never silent', () => {
     // reader having asked for an edit and received nothing at all.
     const { tool, calls, mounted } = makeTool();
     tool.setUnlocked(true);
-    assert.equal(tool.applyEditResult({ edit: { fallback_to_chat: true } }), true);
+    assert.equal(tool.applyEditResult({ edit_step: { fallback_to_chat: true } }), true);
     assert.match(calls.at(-1)[1], /couldn't turn that into a step operation/i);
     assert.equal(mounted.length, 0);
 });
@@ -244,7 +244,7 @@ test('a clarifying question is relayed as an ordinary chat turn', () => {
     // comes back through the next normal turn.
     const { tool, calls } = makeTool();
     tool.setUnlocked(true);
-    assert.equal(tool.applyEditResult({ edit: { question: 'Definite or indefinite?' } }), true);
+    assert.equal(tool.applyEditResult({ edit_step: { question: 'Definite or indefinite?' } }), true);
     assert.deepEqual(calls.at(-1), ['bot', 'Definite or indefinite?']);
 });
 

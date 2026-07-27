@@ -17,6 +17,21 @@ export class ExpertError extends Error {
     }
 }
 
+// How long a caller should wait for a DERIVATION before giving up.
+//
+// This is a CONTRACT WITH THE BACKEND, not a free choice. The proof-completion
+// refine loop budgets itself against it (`_TIME_BUDGET`, default 240s, in
+// backend/experts/modules/proof_completion/module.py): it declines to START a
+// retry past that mark, but never interrupts an attempt already running, and the
+// animation build still has to happen afterwards. So the client must allow the
+// budget PLUS a full in-flight attempt PLUS the build — hence the wide margin.
+//
+// Every derivation caller must use this. /prove used to abort at 150s, BELOW the
+// backend's own budget, so a derivation that the server was still legitimately
+// working on was killed and reported as "took too long" — the work was thrown
+// away at the moment it was most likely to finish.
+export const DERIVE_TIMEOUT_MS = 360_000;
+
 // ``opts.timeoutMs`` (>0) aborts the request after that many ms so a hung or
 // pathologically slow handler (e.g. an LM derivation that never returns) fails
 // with a clear, retryable error instead of spinning forever. 0 = no timeout.
