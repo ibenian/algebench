@@ -400,18 +400,46 @@ function setupModals() {
   const jModal = document.getElementById("pa-json-modal");
   const jTitle = document.getElementById("pa-json-title");
   const jBody = document.getElementById("pa-json-body");
+  // Held so Copy hands over exactly what is on screen — re-serializing could
+  // drift from the rendered text, and reading it back out of the <pre> would
+  // depend on the DOM staying a single text node.
+  let jText = "";
   openJsonModal = (proof, id) => {
     jTitle.textContent = proof && proof.title ? proof.title : (id || "Proof JSON");
     jBody.textContent = "";
     const pre = document.createElement("pre");
     // textContent — never innerHTML: the JSON is untrusted proof data.
-    pre.textContent = proof ? JSON.stringify(proof, null, 2) : "(no proof loaded)";
+    jText = proof ? JSON.stringify(proof, null, 2) : "(no proof loaded)";
+    pre.textContent = jText;
     jBody.appendChild(pre);
     jModal.classList.add("open");
   };
   const jHide = () => jModal.classList.remove("open");
   document.getElementById("pa-json-close").addEventListener("click", jHide);
   jModal.addEventListener("click", (e) => { if (e.target === jModal) jHide(); });
+
+  // Copy the whole proof JSON. Same two-step as the embed dialog: the async
+  // clipboard API, falling back to a selection + execCommand where it is blocked
+  // (insecure origin, or permission denied). The fallback needs a real focusable
+  // node, so it selects the <pre> rather than an off-screen textarea.
+  const jCopied = document.getElementById("pa-json-copied");
+  document.getElementById("pa-json-copy").addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(jText);
+    } catch {
+      const pre = jBody.querySelector("pre");
+      if (pre && window.getSelection) {
+        const range = document.createRange();
+        range.selectNodeContents(pre);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        try { document.execCommand("copy"); } catch (e) { /* clipboard unavailable */ }
+      }
+    }
+    jCopied.hidden = false;
+    setTimeout(() => { jCopied.hidden = true; }, 1500);
+  });
 
   // < > embed dialog.
   const eModal = document.getElementById("pa-embed-modal");
