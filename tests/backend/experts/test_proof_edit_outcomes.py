@@ -12,6 +12,7 @@ from pathlib import Path
 import pytest
 
 from backend.experts.handlers.proof_edit import handler as H
+from backend.experts.handlers.proof_edit import validate as V
 from backend.experts.modules.proof_edit.intent import (
     MAX_CLARIFICATIONS, ProofEditProposal, ProposedStep, format_clarifications,
 )
@@ -35,7 +36,17 @@ def _req(proof, message="multiply both sides by 2", step=2, clarifications=()):
 
 
 def _stub_proposal(monkeypatch, proposal):
+    """Stub BOTH the first proposal and the CAS retry's re-proposal.
+
+    ``validate.resolve`` re-asks the model when the CAS objects, via its OWN
+    module-level ``propose_edit`` — patching only the handler's name leaves that
+    one live. It used to fail harmlessly because nothing configures DSPy under
+    pytest, but the module now carries its own LM, so an unstubbed retry becomes
+    a real network call from a unit test. Patch both; the docstring's promise
+    that the LM is stubbed throughout is then actually true.
+    """
     monkeypatch.setattr(H, "propose_edit", lambda *a, **k: proposal)
+    monkeypatch.setattr(V, "propose_edit", lambda *a, **k: proposal)
 
 
 def _assert_single_outcome(res):
@@ -243,3 +254,31 @@ def test_clean_repairs_json_mangled_latex():
     # Idempotent, and a no-op on text that was never mangled.
     assert _clean(_clean(mangled)) == _clean(mangled)
     assert _clean("plain prose, no math") == "plain prose, no math"
+
+
+# ── the scoped LM is Gemini-specific (Copilot review, PR #509) ────────────────
+
+def test_scoped_lm_is_skipped_for_a_non_gemini_model(monkeypatch):
+    """`reasoning_effort="disable"` is litellm's GEMINI mapping.
+
+    Forcing the scoped LM onto another provider would hand it a parameter it may
+    reject, breaking a call the globally configured LM handles fine. None here
+    means "use the global LM", which is exactly the right fallback.
+    """
+    from backend.experts.modules.proof_edit import intent as I
+
+    monkeypatch.setattr(I, "LM_MODEL", "openai/gpt-4o")
+    I._parser_lm.cache_clear()
+    assert I._parser_lm() is None
+    I._parser_lm.cache_clear()
+
+
+def test_scoped_lm_is_built_for_a_gemini_model(monkeypatch):
+    from backend.experts.modules.proof_edit import intent as I
+
+    monkeypatch.setattr(I, "LM_MODEL", "gemini/gemini-2.5-flash")
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    I._parser_lm.cache_clear()
+    lm = I._parser_lm()
+    assert lm is not None
+    I._parser_lm.cache_clear()

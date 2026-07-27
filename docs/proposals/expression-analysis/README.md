@@ -39,6 +39,6 @@ curl -s -X POST http://localhost:8785/api/expert/expression_analysis \
   -d '{"latex": "v_0 t - \\frac{1}{2} g t^2", "variable": "t", "context": "Projectile motion lesson."}'
 ```
 
-LM configuration is overridable per-expert via `ALGEBENCH_PROPOSER_REASONING`
-(`disable` — the measured default — `low`, `high`, or `default` for the
-globally configured LM).
+The proposer call runs with `reasoning_effort="disable"`, scoped to that call so
+the rest of the expert stack keeps full reasoning. It is not configurable — see
+[predict-nothink-report.md](predict-nothink-report.md) for the measurements.

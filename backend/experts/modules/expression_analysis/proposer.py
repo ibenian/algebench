@@ -294,21 +294,23 @@ def _proposer() -> VizProposer:
 # unmarked) while no-thinking correctly demoted the removable singularity
 # and produced dual-scale views. The CAS report carries the hard reasoning,
 # so the proposal is mostly structured selection. Scoped HERE (not in
-# llm_config) so every other expert keeps full reasoning. Override with
-# ALGEBENCH_PROPOSER_REASONING; set it to "default" to fall back to the
-# globally configured LM untouched.
-_REASONING_ENV = "ALGEBENCH_PROPOSER_REASONING"
+# llm_config) so every other expert keeps full reasoning.
 
 
 @cache
 def _proposer_lm() -> Optional[dspy.LM]:
-    effort = os.environ.get(_REASONING_ENV, "disable")
-    if effort == "default":
-        return None                    # use the globally configured LM
+    """The thinking-disabled LM for this call, or None to use the global one.
+
+    None for a NON-Gemini ``ALGEBENCH_LM_MODEL`` — ``reasoning_effort="disable"``
+    is litellm's Gemini mapping and other providers may reject it, so forcing
+    this scoped LM on them would break a call the global LM handles.
+    """
+    if not LM_MODEL.startswith("gemini/"):
+        return None
     api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
     try:
         return dspy.LM(LM_MODEL, api_key=api_key, temperature=0.7,
-                       max_tokens=32768, reasoning_effort=effort)
+                       max_tokens=32768, reasoning_effort="disable")
     except Exception:
         return None
 
