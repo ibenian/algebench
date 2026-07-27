@@ -11,7 +11,7 @@
 // render against the storage layer.)
 import { ProofAnimator } from "/proof-animation/proof-animation.js";
 import { validateProofData } from "/proof-animation/validate-proof.js";
-import { invokeExpert, ExpertError } from "/expert-client.js";
+import { DERIVE_TIMEOUT_MS, invokeExpert, ExpertError } from "/expert-client.js";
 import { applyTheme, initialTheme, wireThemeToggle } from "/theme.js";
 import { BRACES_ICON, CODE_ICON, AI_ICON, USER_ICON } from "/icons.js";
 import { createProofEditTool } from "/proof-edit-tool.js";
@@ -1036,7 +1036,7 @@ async function runChatDerive(req) {
   if (appending) body.start_latex = steps[steps.length - 1].input_latex || "";
 
   try {
-    const data = await invokeExpert("proof_from_prompt", body, { timeoutMs: 150000 });
+    const data = await invokeExpert("proof_from_prompt", body, { timeoutMs: DERIVE_TIMEOUT_MS });
     if (data && data.error) { setStatus(data.error, "err"); say(data.error, "err"); return true; }
     const derived = validateProofData(data);
 
@@ -1095,7 +1095,7 @@ async function runDerive() {
   if (domain) body.domain = domain;
   if (documentation) body.documentation = documentation;
   try {
-    const data = await invokeExpert("proof_from_prompt", body, { timeoutMs: 150000 });
+    const data = await invokeExpert("proof_from_prompt", body, { timeoutMs: DERIVE_TIMEOUT_MS });
     if (data && data.error) { setStatus(data.error, "err"); return; }
     const proof = validateProofData(data);
     showInDerive(proof);                           // render + fresh chat + hand-off

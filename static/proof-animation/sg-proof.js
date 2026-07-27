@@ -8,7 +8,7 @@
 // the charts exactly; only the body hosts a ProofAnimator instead of a canvas.
 
 import { ProofAnimator } from '/proof-animation/proof-animation.js';
-import { invokeExpert } from '/expert-client.js';
+import { DERIVE_TIMEOUT_MS, invokeExpert } from '/expert-client.js';
 import { nextDockSeq } from '/proof-animation/dock-seq.js';
 import { makeAiAskButton, makeDeriveButton, openChatPanel } from '/labels.js';
 
@@ -33,7 +33,8 @@ export function clearDeriveCache() {
 // while. Past this it's almost certainly stuck — fail with a retryable error
 // rather than spin the "Deriving proof…" pill forever. Keep this comfortably
 // above the server-side refinement time budget (ALGEBENCH_PC_TIME_BUDGET).
-const DERIVE_TIMEOUT_MS = 360_000;
+// Shared with every other derivation caller — see expert-client.js for why
+// this number is a contract with the backend's refine budget.
 
 const GRID_COLS = 8;          // same grid as SgChartManager
 const GRID_ROWS = 8;
