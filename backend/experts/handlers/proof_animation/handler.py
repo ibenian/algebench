@@ -106,6 +106,13 @@ class DeriveProofRequest(BaseModel):
     context: Optional[dict] = None
     # The proof's `given` step when available — skips start inference.
     start_latex: Optional[str] = None
+    # Step 0's caption and sub-caption, when the CALLER already had them named.
+    # Start inference produces both, but it only runs when `start_latex` is
+    # absent — so a caller that names the start itself (proof_from_prompt, which
+    # gets them from the SAME namer) must pass them through, or step 0 falls back
+    # to the generic "the starting expression".
+    given_label: Optional[str] = Field(default=None, max_length=200)
+    start_note: Optional[str] = Field(default=None, max_length=300)
     intent: Optional[str] = None
     # The proof steps leading up to the target (a proof-card "Derive" sends the
     # full lead-up: `proof.steps[:index]`). Threaded into `lesson_context` so the
@@ -264,8 +271,11 @@ def derive_proof_animation(req: DeriveProofRequest) -> dict:
     givens = _givens_clause(req)
 
     # --- pre: resolve the START (and display captions) --------------------------
-    given_label = ""
-    start_note = ""
+    # Seeded from the request: when the caller resolved the start itself it also
+    # has the captions, and the inference block below (which produces them) is
+    # skipped precisely because the start is already known.
+    given_label = (req.given_label or "").strip()
+    start_note = (req.start_note or "").strip()
     lm_domain = lm_title = ""
     start = (req.start_latex or "").strip()
     if not start:
@@ -450,7 +460,7 @@ def derive_proof_from_prompt(req: PromptDeriveRequest) -> dict:
     # (it would otherwise emit INVALID_PROMPT, which parses as a variable product
     # and fabricates a trivial proof). Same guard now covers the CLI too.
     try:
-        start, target, lm_domain, lm_title, _given_label, _start_note = \
+        start, target, lm_domain, lm_title, given_label, start_note = \
             endpoints_from_prompt(req.prompt)
     except InvalidPromptError:
         log.info("proof_from_prompt: namer rejected prompt=%r as non-math", req.prompt)
@@ -472,6 +482,11 @@ def derive_proof_from_prompt(req: PromptDeriveRequest) -> dict:
         start_latex=start or None,
         domain=domain,
         title=title,
+        # The namer already wrote step 0's captions; without threading them the
+        # inner handler cannot re-derive them (it only names captions when it has
+        # to infer the start) and step 0 reads "the starting expression".
+        given_label=given_label or None,
+        start_note=start_note or None,
         intent=f"Derive {target}",
         context=context,
     ))
