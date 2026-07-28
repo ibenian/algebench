@@ -196,3 +196,20 @@ test('pas (pre-baked proof step) parses a small int, never serialized', () => {
     assert.equal(parseViewState('pas=99999').pas, undefined); // >4 digits ignored
     assert.equal(serializeViewState({ pas: 3, sc: 's1' }), 'sc=s1');
 });
+
+test('fa (function-analysis artifact id) round-trips', () => {
+    assert.equal(parseViewState('fa=fa-7c1e').fa, 'fa-7c1e');
+    assert.equal(serializeViewState({ fa: 'fa-7c1e', sc: 's1' }), 'sc=s1&fa=fa-7c1e');
+    // Capped so a hand-built link can't push an unbounded id.
+    assert.equal(parseViewState(`fa=${'x'.repeat(500)}`).fa.length, 200);
+    assert.equal(parseViewState('').fa, undefined);
+});
+
+test('fax (function-analysis expression) parses, never serialized', () => {
+    // LaTeX survives round-tripping through the query string intact.
+    const q = new URLSearchParams({ fax: 'v_0 t - \\frac{1}{2} g t^2' }).toString();
+    assert.equal(parseViewState(q).fax, 'v_0 t - \\frac{1}{2} g t^2');
+    assert.equal(parseViewState(`fax=${'x'.repeat(2000)}`).fax.length, 1000);
+    // Create-once directive: the resulting artifact's `fa` id is what persists.
+    assert.equal(serializeViewState({ fax: 'x^2', sc: 's1' }), 'sc=s1');
+});

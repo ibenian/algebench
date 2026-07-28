@@ -420,6 +420,15 @@ export class SgProofManager {
                     }
                 },
                 onBuildTermAskMessage: (focus) => this._buildTermAskMessage(entry, focus),
+                // Function Analysis: in-app there's nowhere to navigate TO — the
+                // analysis page is right here, in place of the graph. Same entry
+                // point the ?fax= deeplink uses, so both paths dedup together.
+                onFunctionAnalysis: ({ latex }) => {
+                    const g = typeof window !== "undefined" && window.__algebenchGraph;
+                    if (g && typeof g.openFunctionAnalysis === "function") {
+                        g.openFunctionAnalysis({ latex });
+                    }
+                },
                 // Reverse sync: re-apply selection/linked classes after every
                 // (re)render (a morph wipes them); a background click deselects all.
                 onAfterRender: () => this._refreshTermClasses(entry),

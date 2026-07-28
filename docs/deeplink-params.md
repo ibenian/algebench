@@ -35,16 +35,18 @@ AlgeBench has **two** URL surfaces that take query parameters:
 | `proj` | `proj=orthographic` | `perspective` | Camera projection. | ✅ |
 | `oz` | `oz=3.2` | — | Orthographic visible half-height (world units). | ✅ |
 | `cam` | `cam=px,py,pz,tx,ty,tz[,ux,uy,uz]` | — | Exact camera (data-space): position + target, optional up. | ✅ |
+| `fa` | `fa=fa-7c1e` | — | **Function Analysis** page open on this artifact id (session-scoped). | ✅ |
 | `aa` | `aa=<question>` | — | **Auto-ask** — a chat message fired ONCE on boot. | ❌ (boot-only) |
 | `pa` | `pa=physics/allen-eggers-entry` | — | **Pre-baked proof animation** to load ONCE on boot. | ❌ (boot-only) |
 | `pas` | `pas=3` | step 0 | **Pre-baked animation step** (with `pa`) — the derivation step the learner was viewing. | ❌ (boot-only) |
+| `fax` | `fax=v_0 t - \frac{1}{2} g t^2` | — | **Function Analysis expression** — analyze this LaTeX (creates the artifact `fa` then names). | ❌ (boot-only) |
 
 **Serialized** params round-trip into share links and nav history (they describe the
-restorable view). The two **boot-only** directives below do not.
+restorable view). The **boot-only** directives below do not.
 
-### Boot-only directives (`aa`, `pa`)
+### Boot-only directives (`aa`, `pa`, `fax`)
 
-`aa` and `pa` are **fire-once** instructions, not part of the shareable view. They
+`aa`, `pa` and `fax` are **fire-once** instructions, not part of the shareable view. They
 are parsed on boot, acted on, and then **stripped from the URL** by the post-apply
 `replaceView()` (because `serializeViewState` deliberately omits them). This is what
 prevents them from re-firing on reload or back/forward, and keeps a long encoded
@@ -61,6 +63,46 @@ question out of the address bar.
 - **`pas=<n>`** — with `pa`, opens that docked animation on step `<n>` (the derivation
   step the learner was on when they clicked), rather than step 0. The engine appends
   it to the deeplink at click time from the proof animation's current step.
+- **`fax=<latex>`** — opens the **Function Analysis** page on that expression. Capped
+  at 1000 chars. See below.
+
+### Function Analysis (`fa`, `fax`)
+
+The Function Analysis page (`static/graph-panel/fa-page.js`) shows a CAS-grounded
+analysis of one expression *in place of* the semantic graph. Two ways to deeplink it,
+resolved in this order by `applyViewState` (step 5b″ → `graph-view.js`
+`openFunctionAnalysis`):
+
+1. **`fa=<id>`** — re-focus an analysis that already exists **in this session**.
+   Artifacts are session-only (they live in a `WeakMap` keyed by proof step, never in
+   the lesson JSON), so an `fa` id resolves only for in-app navigation and
+   back/forward — never in a link opened in a fresh tab.
+2. **`fax=<latex>`** — analyze that expression, attaching the result to the proof step
+   the rest of the link selected (`pf`/`ps`, or the step a `pa`/`pas` animation opened
+   on). That step is what supplies the lesson/scene/proof/domain context the expert
+   grounds on — which is why the producer sends the whole view, not just the
+   expression. Arriving twice with the same expression **re-focuses** the first
+   analysis rather than re-billing the LM.
+
+`fa` is serialized (Back closes the page, Forward reopens it); `fax` is stripped after
+it fires, so a reload doesn't re-analyze. A link carrying both resolves `fa` first,
+which is why the producers below delete any inherited `fa` before setting `fax`.
+
+**Producers.** The proof-animation widget renders a **ƒ button** on the current step's
+meta row wherever the AI affordances are on — in-app, and standalone/embedded with
+`?ai=1`. It routes the same three ways an "Ask AI" does:
+
+| Context | Behaviour |
+|---|---|
+| In-app (docked proof boxes, `sg-proof.js`) | Opens the page in place — no navigation, no URL. |
+| `/prove` (viewer + Derive workspace) | Opens the app in a **new tab** (`openFaInApp`), so the derivation and its chat survive. |
+| Embedded `/renderproof?ai=1` | New tab. |
+| Standalone `/renderproof?ai=1` | Navigates this tab. |
+
+The URL is built by `_faTargetUrl`: the step's deeplink (else the proof's, else `/`)
+plus `view=math`, `fax=<expression>`, and this proof's `pa`/`pas` so the derivation
+travels along. The expression sent is the step's id-free `plain` LaTeX — exactly what
+the `expression_analysis` expert parses.
 
 ---
 

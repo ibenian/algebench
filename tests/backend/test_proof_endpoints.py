@@ -414,3 +414,31 @@ class TestDeriveDraftPrefill:
         monkeypatch.setattr(proof_pages, "_DERIVE_DRAFTS_DIR", drafts)
         (drafts / "abc123.md").write_text(_draft_md("P", "algebra", "D"))
         assert _draft_attr(client.get("/prove", params={"draft": "abc123"}).text) is None
+
+
+class TestProveHomeRedirect:
+    """``--prove`` (prove_home=True) sends a BARE ``/`` to the proof browser, but
+    must leave app deeplinks alone — every /prove hand-off (Continue in main app,
+    a term ask, the ƒ Function Analysis button) points at ``/?…`` and redirecting
+    those dropped the whole link and landed on the proof browser instead."""
+
+    @pytest.fixture
+    def prove_client(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("ALGEBENCH_PROOFS_DIR", str(tmp_path / "domains"))
+        monkeypatch.setenv("ALGEBENCH_PROOFS_SALT", "test-salt")
+        import backend.server as server
+        from fastapi.testclient import TestClient
+        return TestClient(server.create_app(prove_home=True), follow_redirects=False)
+
+    def test_bare_root_redirects_to_prove(self, prove_client):
+        r = prove_client.get("/")
+        assert r.status_code == 307 and r.headers["location"] == "/prove"
+
+    def test_deeplink_root_serves_the_app(self, prove_client):
+        r = prove_client.get("/", params={"builtin": "rotating-habitat",
+                                          "view": "math", "fax": "a = v^2/R"})
+        assert r.status_code == 200 and "<html" in r.text.lower()
+
+    def test_without_prove_home_bare_root_serves_the_app(self, client):
+        r = client.get("/")
+        assert r.status_code == 200 and "<html" in r.text.lower()

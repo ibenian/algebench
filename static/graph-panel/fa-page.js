@@ -76,6 +76,7 @@ export class FunctionAnalysisManager {
      *   katex            window.katex
      *   onArtifactsChanged (step) => void   — rebuild the Math tab tree
      *   onPageClosed     () => void         — restore the graph view
+     *   onActiveChanged  () => void         — the shown artifact (or its id) changed
      *   buildContext     (step) => string   — lesson/step context for the expert
      */
     constructor(opts = {}) {
@@ -84,6 +85,10 @@ export class FunctionAnalysisManager {
             (() => document.getElementById('graph-viewport'));
         this.onArtifactsChanged = opts.onArtifactsChanged || (() => {});
         this.onPageClosed = opts.onPageClosed || (() => {});
+        // Fires whenever the page opens on a different artifact, closes, or the
+        // active artifact's id settles (pending -> expert-assigned). The host uses
+        // it to keep the `?fa=` deeplink in sync.
+        this.onActiveChanged = opts.onActiveChanged || (() => {});
         this.buildContext = opts.buildContext || (() => '');
         this.pageEl = null;            // lazily created #fa-page-container
         this.activeArtifact = null;
@@ -101,6 +106,15 @@ export class FunctionAnalysisManager {
     /** Artifacts attached to a step (render order). */
     listFor(step) {
         return (step && this._byStep.get(step)) || [];
+    }
+
+    /** The artifact with `id` on `step`, or null. Ids are session-scoped: the
+     *  expert assigns one on success, before which the artifact carries its
+     *  `fa-pending-N` placeholder — both are matchable, so a deeplink captured
+     *  mid-analysis still resolves. */
+    findById(step, id) {
+        if (!id) return null;
+        return this.listFor(step).find((a) => a.id === id) || null;
     }
 
     /* ------------------------------------------------------------------ */
@@ -217,6 +231,7 @@ export class FunctionAnalysisManager {
         page.classList.add('open');
         this._render(artifact);
         this.onArtifactsChanged(artifact.step);   // tree highlight follows
+        this.onActiveChanged();                   // ?fa= deeplink follows
     }
 
     /** Close the page and restore the graph view. */
@@ -226,6 +241,7 @@ export class FunctionAnalysisManager {
         if (this.pageEl) this.pageEl.classList.remove('open');
         this._restoreGraphChrome();
         this.onPageClosed();
+        this.onActiveChanged();
     }
 
     isOpen() {
