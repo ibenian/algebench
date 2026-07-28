@@ -338,3 +338,76 @@ def test_pm_state_is_unchecked_in_animation_build():
     assert tiers[1] == "unchecked"            # the \pm state
     assert data["steps"][1]["latex"]          # but it still renders
     assert tiers[0] == "grounded"               # the start is untouched
+
+
+# ── a decided falsehood is refuted wherever it sits ──────────────────────────
+
+def test_a_false_statement_is_refuted_at_any_index():
+    """Reported from the app: `2 + 2 = 3` sat in a proof badged "Plausible".
+
+    The pairwise checks can only ask whether a step FOLLOWS from the previous
+    one, and two unrelated statements come back `unknown`. But a statement sympy
+    has already decided to be False is wrong on its own terms — it needs no
+    predecessor to be wrong against.
+    """
+    import sympy as sp
+    from backend.experts.modules.proof_completion.step_grounding import (
+        Tier, ground_steps,
+    )
+    x = sp.Symbol("x")
+
+    # as step 0 (the start state) …
+    assert ground_steps([sp.false]).steps[0].tier is Tier.RED
+    # … and as any later step
+    later = ground_steps([sp.Eq(x, 5), sp.false]).steps[1]
+    assert later.tier is Tier.RED
+    assert "false" in later.reason
+
+
+def test_an_undecidable_statement_is_still_only_unknown():
+    """The converse — refusing these would reject legitimate mathematics.
+
+    `x^2 = -1` has complex solutions; it stays an Equality rather than collapsing
+    to a truth value, so it must NOT be swept up by the falsehood check.
+    """
+    import sympy as sp
+    from backend.experts.modules.proof_completion.step_grounding import (
+        Tier, ground_steps,
+    )
+    x = sp.Symbol("x")
+    step = ground_steps([sp.Eq(x, 5), sp.Eq(x**2, -1)]).steps[1]
+    assert step.tier is not Tier.RED
+
+
+def test_a_refuted_step_makes_the_whole_chain_refuted():
+    """The roll-up is computed from TRANSITIONS, so a refuted step 0 was invisible.
+
+    Reported from the app: a proof whose only line was `2 + 2 = 3` showed the step
+    correctly badged Refuted and the proof as "Plausible — no steps to verify".
+    A one-step proof has no transitions at all, so the pair-derived overall fell
+    through to its default.
+    """
+    import sympy as sp
+    from backend.experts.modules.proof_completion.step_grounding import (
+        Tier, ground_steps,
+    )
+    x = sp.Symbol("x")
+
+    only = ground_steps([sp.false])
+    assert only.overall is Tier.RED
+    assert "no steps to verify" not in only.reason
+
+    # and where there ARE transitions, the refuted step still counts in the tally
+    later = ground_steps([sp.false, sp.Eq(x, 5)])
+    assert later.overall is Tier.RED
+    assert "1 refuted" in later.reason
+
+
+def test_an_ordinary_chain_is_unaffected():
+    """The guard is narrow: only a REFUTED step forces the overall down."""
+    import sympy as sp
+    from backend.experts.modules.proof_completion.step_grounding import (
+        Tier, ground_steps,
+    )
+    x = sp.Symbol("x")
+    assert ground_steps([sp.Eq(x, 5), sp.Eq(x + 0, 5)]).overall is not Tier.RED

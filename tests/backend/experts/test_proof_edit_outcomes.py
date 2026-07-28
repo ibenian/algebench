@@ -106,15 +106,36 @@ def test_empty_proof_can_be_given_its_first_step(monkeypatch):
     assert not res.get("caveat")
 
 
-def test_first_step_of_empty_proof_is_not_graded_as_a_transition(monkeypatch):
-    """The CAS is asked nothing about a step with no predecessor."""
+def test_a_decidably_false_first_step_is_refused(monkeypatch):
+    """Step 0 has no predecessor, but it still has CONTENT that can be wrong.
+
+    `1 = 2` parses straight to sympy's BooleanFalse — the CAS has already decided
+    it. Skipping step 0 entirely (because there is no transition to grade) let a
+    statement the CAS KNOWS is false through as an accepted edit, and `2 + 2 = 3`
+    then showed up badged "Grounded". Being unable to check that a step FOLLOWS
+    from something is not a reason to skip checking whether it is TRUE.
+    """
     from backend.experts.handlers.proof_edit.validate import verify_candidate
     verdict = verify_candidate(
         {"title": "Untitled", "domain": "algebra", "steps": []}, "algebra", -1,
         [{"operation": "Given", "justification": "—", "input_latex": "1 = 2"}])
-    # Even blatant nonsense: with nothing before it, there is no transition to
-    # judge, so there is no objection to raise and nothing to retry.
-    assert verdict.clean
+    assert verdict.refuted, "a decided falsehood must not be offered"
+    assert not verdict.clean
+
+
+def test_an_ordinary_first_step_is_still_clean(monkeypatch):
+    """The converse — why step 0 cannot just be graded like any other step.
+
+    A premise with free symbols is not decidable, and is not meant to be: it is
+    GIVEN. Counting its unavoidable `unknown` would attach "could not be connected
+    to the previous step" to a step that has none, and burn the retry budget.
+    """
+    from backend.experts.handlers.proof_edit.validate import verify_candidate
+    verdict = verify_candidate(
+        {"title": "Untitled", "domain": "algebra", "steps": []}, "algebra", -1,
+        [{"operation": "Given", "justification": "—",
+          "input_latex": "E = m \\cdot c^{2}"}])
+    assert verdict.clean, "a premise with free symbols has nothing to confirm"
 
 
 # --------------------------------------------------------------------------- #

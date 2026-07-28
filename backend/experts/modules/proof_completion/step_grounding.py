@@ -470,6 +470,19 @@ def classify_pair(prev, curr, change_type: Optional[str] = None,
         return PairVerdict(index, Tier.GRAY, "unknown", "none", change_type, False,
                            f"{which} state is not a single convertible expression")
 
+    # A state sympy has already decided to be FALSE is wrong on its own terms —
+    # it needs no predecessor to be wrong against. `2 + 2 = 3` parses straight to
+    # BooleanFalse, and the pairwise checks below can only ask whether it FOLLOWS
+    # from the previous step; two unrelated statements come back "unknown", so a
+    # decided falsehood was reaching the reader badged "Plausible — valid math".
+    # It is not valid math. Refute it wherever it appears.
+    #
+    # Only a DECIDED falsehood qualifies: anything with a free symbol
+    # (`x = 5`, `a x^2 + b x + c = 0`) stays a Relational and never lands here.
+    if curr is sp.false:
+        return PairVerdict(index, Tier.RED, "refuted", "symbolic", change_type, True,
+                           "this step is false")
+
     # Complexity pre-gate: an expression large enough to risk a CAS blow-up is
     # not handed to the heavy routines at all — degrade to plausible up front.
     if _too_complex(prev, curr):
@@ -736,15 +749,24 @@ def ground_steps(states: Sequence, *, change_types: Optional[Sequence] = None,
     steps: list[StepConfidence] = []
     pairs: list[PairVerdict] = []
     if exprs:
-        start_ok = exprs[0] is not None
-        steps.append(StepConfidence(
-            0,
-            Tier.GOLD if start_ok else Tier.GRAY,
-            None,
-            "the given starting expression" if start_ok
-            else "the starting state is not a single convertible expression",
-            True,
-        ))
+        start = exprs[0]
+        if start is None:
+            start_tier = Tier.GRAY
+            start_reason = "the starting state is not a single convertible expression"
+        elif start is sp.false:
+            # A start state is a PREMISE, so it is normally taken as given — but a
+            # premise sympy has already evaluated to False is not a premise, it is
+            # a wrong statement. `2 + 2 = 3` parses straight to BooleanFalse, and
+            # checking only "did it parse?" badged it GOLD, i.e. "symbolically
+            # proven". Refuting a decided falsehood costs nothing: anything with a
+            # free symbol (`a x^2 + b x + c = 0`) never reaches here, because it
+            # stays an Equality rather than collapsing to a truth value.
+            start_tier = Tier.RED
+            start_reason = "the starting expression is false"
+        else:
+            start_tier = Tier.GOLD
+            start_reason = "the given starting expression"
+        steps.append(StepConfidence(0, start_tier, None, start_reason, True))
     for i in range(1, len(exprs)):
         pv = classify_pair(exprs[i - 1], exprs[i], declared[i - 1], index=i)
         pairs.append(pv)
@@ -760,10 +782,18 @@ def ground_steps(states: Sequence, *, change_types: Optional[Sequence] = None,
 
     counts = _count_tiers(pairs)
     overall = finalize_overall(pairs, endpoint)
+    # A STEP can be refuted on its own terms — a decided falsehood needs no
+    # transition to be wrong. The roll-up is computed from PAIRS, so step 0 is
+    # invisible to it, and a one-step proof has no pairs at all: a proof whose
+    # only line was `2 + 2 = 3` reported "Plausible — no steps to verify".
+    # Any refuted step makes the chain refuted. Nothing else here changes.
+    if any(sc.tier is Tier.RED for sc in steps):
+        overall = Tier.RED
 
     return StepGroundingReport(
         steps=steps, pairs=pairs, overall=overall, counts=counts,
-        endpoint_reached=endpoint, reason=_overall_reason(pairs, counts, endpoint),
+        endpoint_reached=endpoint,
+        reason=_overall_reason(pairs, counts, endpoint, steps),
     )
 
 
@@ -808,12 +838,18 @@ def _safe_coerce(s):
 _TALLY_PHRASE = {Tier.DOMAIN: "domain-justified"}
 
 
-def _overall_reason(pairs, counts, endpoint) -> str:
+def _overall_reason(pairs, counts, endpoint, steps=None) -> str:
+    # Step 0 is the one step with no incoming pair, so a refutation there is
+    # absent from `counts` (built from pairs) and has to be added by hand.
+    start_refuted = bool(steps and steps[0].tier is Tier.RED)
     n = len(pairs)
     if n == 0:
-        return "no steps to verify"
+        return "the only step is refuted" if start_refuted else "no steps to verify"
     best = counts[Tier.GOLD.value] + counts[Tier.SILVER.value]
     parts = [f"{best}/{n} steps verified"]
+    counts = dict(counts)
+    if start_refuted:
+        counts[Tier.RED.value] = counts.get(Tier.RED.value, 0) + 1
     for tier in (Tier.RED, Tier.GRAY, Tier.BLUE, Tier.DOMAIN):
         if counts[tier.value]:
             phrase = _TALLY_PHRASE.get(tier, TIER_LABEL[tier].lower())
