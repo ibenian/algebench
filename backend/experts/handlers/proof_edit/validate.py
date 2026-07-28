@@ -13,12 +13,22 @@ Two verdicts matter here, and conflating them would be a serious bug:
   proof, the exact state this feature exists to prevent.
 * ``unknown`` — the CAS could not establish equivalence OR a valid narrowing.
 
-``unknown`` is NOT harmless, and it is much more common than ``refuted``.
-Measured against a real proof, inserting ``x = x + 1``, ``1 = 2``, ``x^2 = -1``
-or ``\\sin(x) = 5`` all return ``unknown``/``plausible`` — never ``refuted``,
-because the CAS will not positively disprove two unrelated equations. So a gate
-that only rejects ``refuted`` never fires, and nonsense reaches the user wearing
-a reassuring "Plausible" badge.
+``unknown`` is NOT harmless, and it is much more common than ``refuted``. The
+pairwise checks can only ask whether a step FOLLOWS from the one before it, and
+two unrelated equations come back ``unknown`` rather than refuted. So a gate that
+only rejects ``refuted`` fires rarely, and nonsense can reach the user wearing a
+reassuring "Plausible" badge.
+
+That gap is now narrower than it was. A statement sympy has already DECIDED to be
+false is refuted wherever it appears (``classify_pair``), because it is wrong on
+its own terms and needs no predecessor to be wrong against: ``2 + 2 = 3``,
+``1 = 2`` and ``x = x + 1`` all parse straight to ``BooleanFalse``. Reported from
+the app, where ``2 + 2 = 3`` sat in a proof badged "Plausible — valid math". It is
+not valid math.
+
+Anything still UNDECIDED stays ``unknown`` and must: ``x^2 = -1`` has complex
+solutions and ``\\sin(x) = 5`` keeps free symbols, so neither is decidable, and
+refusing them would reject legitimate mathematics.
 
 Hence: ``unknown`` is treated as an objection *for retry purposes* — the model
 gets told the CAS could not connect its step and is given another go at
@@ -70,15 +80,15 @@ def _changed_slice(candidate: dict, at: int, take: int) -> list[dict]:
     its predecessor moved, so its verdict is newly earned even though its own
     expression did not change.
 
-    Step 0 is never included: it is the START STATE, not a transition, so there is
-    no incoming edge for the CAS to have an opinion about. This matters when an
-    edit AUTHORS step 0 on an empty derivation (``at = -1``) — judging it would
-    read its unavoidable ``unknown`` as an objection and attach "could not be
-    connected to the previous step" to a step that has no previous step, plus
-    burn the retry budget trying to fix it.
+    Step 0 IS included when an edit authors it on an empty derivation
+    (``at = -1``). It has no incoming transition, but it still has CONTENT, and
+    that content can be decidably wrong — ``2 + 2 = 3`` parses straight to
+    ``BooleanFalse``. Excluding it entirely let exactly that through as an
+    accepted edit. :func:`_judge` draws the distinction the slice cannot: step 0
+    can be REFUTED, but is never UNCONFIRMED.
     """
     steps = candidate.get("steps") or []
-    return steps[max(at + 1, 1): at + take + 2]
+    return steps[at + 1: at + take + 2]
 
 
 class Verdict:
@@ -99,7 +109,15 @@ class Verdict:
 
 
 def _judge(candidate: dict, at: int, take: int) -> Verdict:
-    """Split the CAS's verdicts on the changed transitions, in its own words."""
+    """Split the CAS's verdicts on the changed steps, in its own words.
+
+    A REFUTED verdict counts wherever it appears, step 0 included: the CAS
+    computed the statement and found it wrong, which is disqualifying no matter
+    where it sits. An UNCONFIRMED one is about a TRANSITION, so it cannot apply to
+    step 0 — there is no previous step for it to follow from, and counting its
+    unavoidable ``unknown`` would attach "could not be connected to the previous
+    step" to a step that has none, and burn the retry budget on it.
+    """
     refuted, unconfirmed = [], []
     for s in _changed_slice(candidate, at, take):
         conf = s.get("confidence") or {}
@@ -108,6 +126,8 @@ def _judge(candidate: dict, at: int, take: int) -> Verdict:
         line = f"${expr}$ — {reason}"
         if conf.get("tier") == _REFUTED:
             refuted.append(line)
+        elif s.get("index") == 0:
+            continue                      # start state: nothing to confirm against
         elif conf.get("relation") in _UNCONFIRMED_RELATIONS:
             unconfirmed.append(line)
     return Verdict(refuted, unconfirmed)
@@ -376,6 +396,41 @@ def propagate_substitution(proof: dict, domain: str, at: int,
     return out
 
 
+def _drop_restating_steps(proof: dict, domain: str, at: int,
+                         steps: list[dict]) -> list[dict]:
+    """Drop bridge steps that merely restate the line before them.
+
+    A glue step identical to its predecessor is a bridge to nowhere, and the
+    "did it verify?" filter cannot catch it: a thing is trivially equivalent to
+    itself, so it verifies perfectly and survives. The reader just sees the same
+    expression twice. Observed after substituting $f(x)$ for $x$ — the bridge
+    repeated ``y = 2 \\cdot f(x)`` under it.
+
+    Compares PARSED expressions rather than text, so ``2 f(x)`` and
+    ``2 \\cdot f(x)`` count as the same restatement.
+
+    ``steps[0]`` is never dropped: it is the reader's OWN step, the thing they
+    asked for. If it restates the previous line that is a different problem —
+    and dropping it would leave the edit with nothing at all.
+    """
+    if len(steps) < 2:
+        return steps
+    prior = proof.get("steps") or []
+    prev = (_to_sympy(prior[at].get("input_latex") or "", domain)
+            if 0 <= at < len(prior) else None)
+    out: list[dict] = []
+    for i, step in enumerate(steps):
+        cur = _to_sympy(step.get("input_latex") or "", domain)
+        if i and cur is not None and prev is not None and cur == prev:
+            log.info("%s dropping a bridge step that restates its predecessor: %s",
+                     LOG_TAG, step.get("input_latex"))
+            continue
+        out.append(step)
+        if cur is not None:
+            prev = cur
+    return out
+
+
 def resolve(proof: dict, domain: str, at: int, proposal: ProofEditProposal,
             *, derivation: str, current_step: str, request: str,
             recent_thread: str = "", clarifications: str = "") -> EditPayload:
@@ -398,7 +453,7 @@ def resolve(proof: dict, domain: str, at: int, proposal: ProofEditProposal,
         # is restored rather than re-earned.
         recovery = recovery_bridge(proof, at, proposal)
         bridge = recovery if recovery is not None else _as_step_dicts(proposal)[1:]
-        steps = [computed] + bridge
+        steps = _drop_restating_steps(proof, domain, at, [computed] + bridge)
         payload = to_payload(
             proof, domain, at, steps,
             computed=computed_confidence(
@@ -416,7 +471,7 @@ def resolve(proof: dict, domain: str, at: int, proposal: ProofEditProposal,
         payload.summary = proposal.summary
         return payload
 
-    steps = _as_step_dicts(proposal)
+    steps = _drop_restating_steps(proof, domain, at, _as_step_dicts(proposal))
     if not steps:
         raise EditRefused("I couldn't turn that into a concrete step.")
 
@@ -445,12 +500,17 @@ def resolve(proof: dict, domain: str, at: int, proposal: ProofEditProposal,
         steps, proposal, verdict = retry_steps, retry, candidate
         attempts += 1
 
-    if verdict.refuted:
-        log.info("%s REFUSED at step %d after %d attempt(s): %s",
-                 LOG_TAG, at, attempts, "; ".join(verdict.refuted))
-        raise EditRefused(
-            "The computer algebra system rejected that step: "
-            + "; ".join(verdict.refuted))
+    # A refuted step is OFFERED, not refused — badged for what it is. Refusing
+    # outright replaced the thing the reader asked to see with a sentence about
+    # it, and they could not inspect the step, keep it deliberately (a wrong line
+    # is a legitimate thing to write down), or judge the objection for themselves.
+    # The badge carries the verdict instead: `ground_steps` marks a decided
+    # falsehood RED, so the step renders as "Refuted" in the animation, and the
+    # caveat below says it in words too.
+    #
+    # This is the ONE place the module docstring's "never offered" rule is
+    # relaxed, and only because the verdict travels WITH the step. Nothing here
+    # weakens the verdict itself.
 
     # The user's step stands. Glue is a convenience — if the bridge does not hold
     # up, keep the verified step and drop the bridge rather than refusing.
@@ -466,7 +526,14 @@ def resolve(proof: dict, domain: str, at: int, proposal: ProofEditProposal,
     # Survived without being disproved, but the CAS could not confirm it either.
     # Say so in words — a "Plausible" badge alone reads as mild approval, and the
     # CAS returns exactly that for an outright nonsense step.
-    if verdict.unconfirmed:
+    if verdict.refuted:
+        log.info("%s REFUTED at step %d after %d attempt(s) — offering it badged: %s",
+                 LOG_TAG, at, attempts, "; ".join(verdict.refuted))
+        payload.caveat = (
+            "The CAS says this step is wrong: "
+            + "; ".join(verdict.refuted)
+            + ". It is badged Refuted — say “undo” to take it back.")
+    elif verdict.unconfirmed:
         log.info("%s UNCONFIRMED at step %d after %d attempt(s) — offering with a caveat",
                  LOG_TAG, at, attempts)
         payload.caveat = (

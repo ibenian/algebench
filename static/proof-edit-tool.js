@@ -163,6 +163,18 @@ export function createProofEditTool(deps) {
             return true;
         }
 
+        // A SINGLE option is not a choice. Rendering a picker for it asks the
+        // reader to pick from a list of one, and stalls an edit they already
+        // asked for behind an extra click. Apply it and say so; `undo` is the way
+        // back, and it is named in the confirmation.
+        if (edit.variants.length === 1) {
+            if (edit.summary) addBubble('bot', edit.summary);
+            if (edit.caveat) addBubble('bot', `⚠️ ${edit.caveat}`);
+            startSession(proof, edit);
+            commit(true);
+            return true;
+        }
+
         // Say what the edit is, THEN show the picker beneath it — the summary is
         // the question, the picker is the answer choices, so they read top-down.
         if (edit.summary) addBubble('bot', edit.summary);
@@ -205,7 +217,8 @@ export function createProofEditTool(deps) {
         return (session.variants[index].at || 0) + 1;
     }
 
-    function openBar(original, res) {
+    /** Adopt an edit result as the live session, without rendering anything. */
+    function startSession(original, res) {
         const returnStep = getCurrentStep();
         closeBar();
         session = {
@@ -213,6 +226,10 @@ export function createProofEditTool(deps) {
             cache: {}, selected: 0,
             returnStep,          // where to put the reader back if they cancel
         };
+    }
+
+    function openBar(original, res) {
+        startSession(original, res);
 
         bar = document.createElement('div');
         bar.className = 'edit-variants';
@@ -307,7 +324,7 @@ export function createProofEditTool(deps) {
     // interesting step is the one just inserted — the thing they asked for — and
     // after a cancel or undo it is wherever they were before.
 
-    function commit() {
+    function commit(auto = false) {
         if (!session) return;
         const chosen = variantProof(session.selected);
         const landing = insertedStep(session.selected);
@@ -317,10 +334,14 @@ export function createProofEditTool(deps) {
         closeBar();
         onCommit(chosen);
         onMount(chosen, landing);
-        // Leave a record in the thread of which choice was applied — the picker
-        // itself is gone, so without this the conversation shows a question with
-        // no visible answer.
-        addBubble('bot', `Applied: ${label.toLowerCase()}.`);
+        // Leave a record in the thread of what was applied — the picker is gone
+        // (or was never shown), so without this the conversation shows a question
+        // with no visible answer. When it was applied WITHOUT asking, point at
+        // undo in the same breath: that is the only way back, and the reader
+        // never got a Cancel button to notice.
+        addBubble('bot', auto
+            ? `Applied: ${label.toLowerCase()}. Say “undo” to take it back.`
+            : `Applied: ${label.toLowerCase()}.`);
     }
 
     function cancelEdit() {

@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 import pytest
 
 import backend.server as server
+import backend.proof_chat as proof_chat
 
 
 _PROOF = {
@@ -205,7 +206,11 @@ def test_ctx_inspector_matches_what_the_chat_would_send(allow_edits):
     assert dbg["systemPrompt"] == server._proof_chat_system_prompt(
         _PROOF, 0, allow_edits=allow_edits)
     assert dbg["allowEdits"] is allow_edits
-    assert dbg["tools"] == (["edit_step"] if allow_edits else [])
+    # From the REGISTRY, not a literal: the previous hardcoded ["edit_step"]
+    # silently kept passing after `derive` was declared, so the inspector was
+    # under-reporting what the model is actually given.
+    expected = [t["name"] for t in server.PROOF_CHAT_TOOLS] if allow_edits else []
+    assert dbg["tools"] == expected
 
 
 # ── CTX debug inspector ──────────────────────────────────────────────────────
@@ -251,9 +256,9 @@ def test_proof_chat_debug_route_returns_context_in_debug(monkeypatch, tmp_path):
 
 # ── input hardening (Copilot review, PR #465) ────────────────────────────────
 def test_cap_truncates_long_fields():
-    assert server._cap("x" * 10, 4) == "xxxx…"
-    assert server._cap("short", 100) == "short"
-    assert server._cap(None) == ""
+    assert proof_chat._cap("x" * 10, 4) == "xxxx…"
+    assert proof_chat._cap("short", 100) == "short"
+    assert proof_chat._cap(None) == ""
 
 
 def test_format_proof_truncates_oversized_fields():
@@ -261,7 +266,7 @@ def test_format_proof_truncates_oversized_fields():
            "steps": [{"index": 0, "plain": "p" * 5000, "operation": "o" * 5000}]}
     out = server._format_proof_for_chat(big)
     # each field is capped; a step line holds at most two capped fields (expr + op)
-    assert all(len(line) <= 2 * server._PROOF_CHAT_FIELD_CAP + 40 for line in out.splitlines())
+    assert all(len(line) <= 2 * proof_chat._PROOF_CHAT_FIELD_CAP + 40 for line in out.splitlines())
     assert "…" in out            # truncation marker present
     assert "T" * 5000 not in out and "p" * 5000 not in out   # raw field truncated
 
@@ -279,19 +284,19 @@ def test_proof_chat_limits_accepts_normal_payload():
 
 
 def test_proof_chat_limits_rejects_too_many_messages():
-    msgs = [{"role": "user", "text": "x"}] * (server._PROOF_CHAT_MAX_MESSAGES + 1)
+    msgs = [{"role": "user", "text": "x"}] * (proof_chat._PROOF_CHAT_MAX_MESSAGES + 1)
     code, _ = server._proof_chat_limits(msgs, None)
     assert code == 413
 
 
 def test_proof_chat_limits_rejects_oversized_message():
-    msgs = [{"role": "user", "text": "x" * (server._PROOF_CHAT_MAX_MSG_CHARS + 1)}]
+    msgs = [{"role": "user", "text": "x" * (proof_chat._PROOF_CHAT_MAX_MSG_CHARS + 1)}]
     code, _ = server._proof_chat_limits(msgs, None)
     assert code == 413
 
 
 def test_proof_chat_limits_rejects_oversized_proof():
-    big = {"steps": [{"plain": "x" * (server._PROOF_CHAT_MAX_PROOF_BYTES)}]}
+    big = {"steps": [{"plain": "x" * (proof_chat._PROOF_CHAT_MAX_PROOF_BYTES)}]}
     code, _ = server._proof_chat_limits([], big)
     assert code == 413
 

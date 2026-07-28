@@ -117,6 +117,20 @@ class ProofEditSig(dspy.Signature):
     giveaway is "as a/the … step" or "next"; contrast "add $3x$ to both sides",
     which names a TARGET to add to and IS `add_both_sides`.
 
+    NEVER SILENTLY CORRECT WHAT THEY WROTE. If the reader states an expression —
+    as a first step or a next step — transcribe it EXACTLY, even when it is
+    mathematically wrong. Asked to add $2 + 2 = 3$, write $2 + 2 = 3$. Do NOT
+    write $2 + 2 = 4$, and above all do not then justify it as "the correct sum":
+    that silently replaces the reader's own statement with a different one and
+    tells them it is what they asked for.
+
+    You are not the last line of defence and must not act like it. A false
+    statement is REFUTED by the computer algebra system, which says so plainly and
+    refuses the edit — so transcribing it faithfully costs nothing and the reader
+    finds out. Substituting your own version costs them the truth about what their
+    proof now says. If you believe an expression is wrong, write it as given and
+    say so in `summary`; never fix it in `expr_latex`.
+
     BUT NOT WHEN THE LINE IS THE CURRENT STEP EVALUATED. If what they want added
     is the DECIMAL/NUMERIC form of the step in view — "add the decimal
     approximations as the next step", "add $x \approx 0.414$ and

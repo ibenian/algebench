@@ -135,6 +135,19 @@ const VARIANTS_RESULT = {
     },
 };
 
+// TWO options — the only shape that renders a picker. With one option the tool
+// applies it directly (a list of one is not a choice), so any test about
+// choosing, cancelling or Esc has to offer a real alternative.
+const MULTI_RESULT = {
+    edit_step: {
+        new_steps: [{ input_latex: 'n0', operation: 'op' },
+                    { input_latex: 'n1', operation: 'op1' }],
+        variants: [{ kind: 'insert', at: 1, take: 1, delete_count: 0 },
+                   { kind: 'glue', at: 1, take: 2, delete_count: 0 }],
+        summary: 'Did the thing.',
+    },
+};
+
 test('locked: an edit result is ignored even if the server sent one', () => {
     // Belt and braces. The server should never produce an edit while locked
     // (the tool is not declared), so this guards against the lock being turned
@@ -147,7 +160,7 @@ test('locked: an edit result is ignored even if the server sent one', () => {
 test('Esc cancels an open picker and restores the original', () => {
     const { tool, mounted } = makeTool();
     tool.setUnlocked(true);
-    tool.applyEditResult(VARIANTS_RESULT);
+    tool.applyEditResult(MULTI_RESULT);
     const before = mounted.length;
     globalThis.document.dispatchKey('Escape');
     // Cancel remounts the original at the return step — one more mount, and the
@@ -160,7 +173,7 @@ test('Esc cancels an open picker and restores the original', () => {
 test('unlocked: variants are presented and the summary is spoken', () => {
     const { tool, calls, mounted } = makeTool();
     tool.setUnlocked(true);
-    assert.equal(tool.applyEditResult(VARIANTS_RESULT), true);
+    assert.equal(tool.applyEditResult(MULTI_RESULT), true);
     assert.equal(mounted.length, 1, 'the selected variant is rendered immediately');
     assert.deepEqual(calls.at(-1), ['bot', 'Did the thing.']);
 });
@@ -188,7 +201,7 @@ test('Done keeps the reader on the inserted step', () => {
 test('Cancel puts the reader back where they were', () => {
     const { tool, mounted } = makeTool();       // getCurrentStep() === 1
     tool.setUnlocked(true);
-    tool.applyEditResult(VARIANTS_RESULT);
+    tool.applyEditResult(MULTI_RESULT);
     tool.cancelSelected();
     assert.equal(mounted.at(-1)[1], 1, 'back to the step in view before the edit');
 });
@@ -208,7 +221,7 @@ test('an unconfirmed step is called out in words, not left to a badge', () => {
     // nonsense comes back "plausible" — a badge that reads as mild approval.
     const { tool, calls } = makeTool();
     tool.setUnlocked(true);
-    tool.applyEditResult({ edit_step: { ...VARIANTS_RESULT.edit_step, caveat: 'could not confirm' } });
+    tool.applyEditResult({ edit_step: { ...MULTI_RESULT.edit_step, caveat: 'could not confirm' } });
     assert.match(calls.at(-1)[1], /could not confirm/);
 });
 
@@ -274,4 +287,40 @@ test('reset re-locks — a freshly loaded proof is never born editable', () => {
     tool.setUnlocked(true);
     tool.reset();
     assert.equal(tool.isUnlocked(), false);
+});
+
+// ---- a single option is applied, not offered ----------------------------- //
+
+test('one variant is applied directly, with no picker', () => {
+    // A list of one is not a choice. Rendering a picker for it asks the reader to
+    // pick from a single option and stalls an edit they already asked for behind
+    // an extra click.
+    const { tool, calls, mounted, getCommitted } = makeTool();
+    tool.setUnlocked(true);
+    assert.equal(tool.applyEditResult(VARIANTS_RESULT), true);
+
+    assert.equal(getCommitted().steps.length, 4, 'applied without waiting');
+    assert.equal(mounted.at(-1)[1], 2, 'lands on the inserted step');
+    // …and undo is named, because there was no Cancel button to notice.
+    assert.match(calls.at(-1)[1], /undo/i);
+});
+
+test('an auto-applied edit is still undoable', () => {
+    // Undo is the ONLY way back from an auto-applied edit — there was no Cancel
+    // button — so it has to work, and the confirmation names it for that reason.
+    const { tool, getCommitted } = makeTool();   // starts on a 3-step proof
+    tool.setUnlocked(true);
+    tool.applyEditResult(VARIANTS_RESULT);
+    assert.equal(getCommitted().steps.length, 4, 'applied');
+    tool.interceptLocal('undo');
+    assert.equal(getCommitted().steps.length, 3,
+                 'undo restores the proof the edit replaced');
+});
+
+test('two variants still open the picker', () => {
+    const { tool, getCommitted } = makeTool();
+    tool.setUnlocked(true);
+    const before = getCommitted();
+    tool.applyEditResult(MULTI_RESULT);
+    assert.equal(getCommitted(), before, 'nothing is committed until Done');
 });

@@ -805,6 +805,11 @@ function syncViewerBar() {
   if (!els.dViewerBar) return;
   els.dViewerBar.hidden = false;
   const hasSteps = !!(deriveProof && (deriveProof.steps || []).length);
+  // "Describe what to derive" + Derive are for STARTING one. Once there is a
+  // derivation on screen they are the wrong affordance: the chat owns changing
+  // it from here, and asking there is what gets the continue-or-replace choice
+  // rather than silently discarding the proof the way Rederive did.
+  if (els.dBar) els.dBar.hidden = hasSteps;
   if (els.dJson) els.dJson.hidden = !hasSteps;
   if (els.dSubmit) els.dSubmit.hidden = !hasSteps;
   if (els.dViewerId) {
@@ -1610,6 +1615,7 @@ async function main() {
   });
   els.dStatus = document.getElementById("d-status");
   els.dLog = document.getElementById("d-log");
+  els.dBar = document.getElementById("d-bar");
   els.dPrompt = document.getElementById("d-prompt");
   els.dGo = document.getElementById("d-go");
   els.dChatInput = document.getElementById("d-chat-input");

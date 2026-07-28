@@ -43,6 +43,7 @@ from .prompt_endpoints import (
     answer_proof_question,
     endpoints_from_prompt,
     start_given_target,
+    target_given_start,
 )
 
 log = logging.getLogger(__name__)
@@ -459,15 +460,37 @@ def derive_proof_from_prompt(req: PromptDeriveRequest) -> dict:
     # The namer raises InvalidPromptError when the request isn't derivable math
     # (it would otherwise emit INVALID_PROMPT, which parses as a variable product
     # and fabricates a trivial proof). Same guard now covers the CLI too.
+    supplied_start = (req.start_latex or "").strip()
     try:
-        start, target, lm_domain, lm_title, given_label, start_note = \
-            endpoints_from_prompt(req.prompt)
+        if supplied_start:
+            # CONTINUING an open derivation: the start is known, so only the
+            # target is missing. The both-endpoints namer cannot do this — handed
+            # "solve for y" with no expression attached it has nothing to solve
+            # and rejects the request as non-math, even though the pair is
+            # perfectly derivable. Mirror of the `start_given_target` path (#396).
+            start = supplied_start
+            target, lm_domain, lm_title, given_label, start_note = \
+                target_given_start(supplied_start, req.prompt)
+        else:
+            start, target, lm_domain, lm_title, given_label, start_note = \
+                endpoints_from_prompt(req.prompt)
     except InvalidPromptError:
-        log.info("proof_from_prompt: namer rejected prompt=%r as non-math", req.prompt)
+        log.info("proof_from_prompt: namer rejected prompt=%r as non-math (start=%r)",
+                 req.prompt, supplied_start or None)
+        if supplied_start:
+            # CONTINUING: the prompt may be a perfectly good derivation that
+            # simply does not follow from where this proof currently is (asking
+            # for the quadratic formula from `x = y/2`). Saying "that doesn't
+            # look like a math derivation" blames the request for what is really
+            # a mismatch, and the reader has just chosen "continue" — tell them
+            # what actually failed so replacing is an obvious next move.
+            return {"error": "I couldn't continue this derivation from "
+                             f"${supplied_start}$ toward that. It may not follow "
+                             "from where the proof is now — try replacing the "
+                             "derivation instead, or name a step that does follow."}
         return {"error": _NOT_A_DERIVATION_MSG}
     target = (target or "").strip()
-    # An explicit start wins over the namer's guess — see `start_latex`.
-    start = (req.start_latex or start or "").strip()
+    start = (start or "").strip()
     if not target:
         return {"error": "Couldn't tell what to derive from that prompt — try naming a "
                          "result, e.g. “derive the quadratic formula”."}
