@@ -396,6 +396,41 @@ def propagate_substitution(proof: dict, domain: str, at: int,
     return out
 
 
+def _drop_restating_steps(proof: dict, domain: str, at: int,
+                         steps: list[dict]) -> list[dict]:
+    """Drop bridge steps that merely restate the line before them.
+
+    A glue step identical to its predecessor is a bridge to nowhere, and the
+    "did it verify?" filter cannot catch it: a thing is trivially equivalent to
+    itself, so it verifies perfectly and survives. The reader just sees the same
+    expression twice. Observed after substituting $f(x)$ for $x$ — the bridge
+    repeated ``y = 2 \\cdot f(x)`` under it.
+
+    Compares PARSED expressions rather than text, so ``2 f(x)`` and
+    ``2 \\cdot f(x)`` count as the same restatement.
+
+    ``steps[0]`` is never dropped: it is the reader's OWN step, the thing they
+    asked for. If it restates the previous line that is a different problem —
+    and dropping it would leave the edit with nothing at all.
+    """
+    if len(steps) < 2:
+        return steps
+    prior = proof.get("steps") or []
+    prev = (_to_sympy(prior[at].get("input_latex") or "", domain)
+            if 0 <= at < len(prior) else None)
+    out: list[dict] = []
+    for i, step in enumerate(steps):
+        cur = _to_sympy(step.get("input_latex") or "", domain)
+        if i and cur is not None and prev is not None and cur == prev:
+            log.info("%s dropping a bridge step that restates its predecessor: %s",
+                     LOG_TAG, step.get("input_latex"))
+            continue
+        out.append(step)
+        if cur is not None:
+            prev = cur
+    return out
+
+
 def resolve(proof: dict, domain: str, at: int, proposal: ProofEditProposal,
             *, derivation: str, current_step: str, request: str,
             recent_thread: str = "", clarifications: str = "") -> EditPayload:
@@ -418,7 +453,7 @@ def resolve(proof: dict, domain: str, at: int, proposal: ProofEditProposal,
         # is restored rather than re-earned.
         recovery = recovery_bridge(proof, at, proposal)
         bridge = recovery if recovery is not None else _as_step_dicts(proposal)[1:]
-        steps = [computed] + bridge
+        steps = _drop_restating_steps(proof, domain, at, [computed] + bridge)
         payload = to_payload(
             proof, domain, at, steps,
             computed=computed_confidence(
@@ -436,7 +471,7 @@ def resolve(proof: dict, domain: str, at: int, proposal: ProofEditProposal,
         payload.summary = proposal.summary
         return payload
 
-    steps = _as_step_dicts(proposal)
+    steps = _drop_restating_steps(proof, domain, at, _as_step_dicts(proposal))
     if not steps:
         raise EditRefused("I couldn't turn that into a concrete step.")
 

@@ -348,3 +348,63 @@ def test_scoped_lm_is_built_for_a_gemini_model(monkeypatch):
     lm = I._parser_lm()
     assert lm is not None
     I._parser_lm.cache_clear()
+
+
+# ── a bridge must say something ──────────────────────────────────────────────
+
+def test_a_bridge_that_restates_its_predecessor_is_dropped():
+    """Reported: substituting $f(x)$ for $x$ offered "my step + bridge", and the
+    bridge was the SAME expression again — the reader saw one line twice.
+
+    Glue was only filtered by "does it verify?", which cannot catch this: a thing
+    is trivially equivalent to itself, so the duplicate verified perfectly and
+    survived. The question had to change from "is it valid?" to "does it say
+    anything?".
+    """
+    from backend.experts.handlers.proof_edit.validate import _drop_restating_steps
+    proof = {"title": "t", "domain": "algebra", "steps": [
+        {"index": 0, "input_latex": "y = 2 \\cdot x", "operation": "Given",
+         "justification": "-"}]}
+    steps = [{"input_latex": "y = 2 \\cdot f(x)", "operation": "Substitute",
+              "justification": "-"},
+             {"input_latex": "y = 2 \\cdot f(x)", "operation": "Bridge",
+              "justification": "-"}]
+    assert len(_drop_restating_steps(proof, "algebra", 0, steps)) == 1
+
+
+def test_a_restatement_in_different_notation_is_also_dropped():
+    """Parsed expressions are compared, not text — `2 f(x)` restates `2 \\cdot f(x)`."""
+    from backend.experts.handlers.proof_edit.validate import _drop_restating_steps
+    proof = {"title": "t", "domain": "algebra", "steps": [
+        {"index": 0, "input_latex": "y = 2 \\cdot x", "operation": "Given",
+         "justification": "-"}]}
+    steps = [{"input_latex": "y = 2 \\cdot f(x)", "operation": "Substitute",
+              "justification": "-"},
+             {"input_latex": "y = 2 f(x)", "operation": "Bridge", "justification": "-"}]
+    assert len(_drop_restating_steps(proof, "algebra", 0, steps)) == 1
+
+
+def test_a_genuine_bridge_is_kept():
+    """The filter is narrow: only a RESTATEMENT goes."""
+    from backend.experts.handlers.proof_edit.validate import _drop_restating_steps
+    proof = {"title": "t", "domain": "algebra", "steps": [
+        {"index": 0, "input_latex": "y = 2 \\cdot x", "operation": "Given",
+         "justification": "-"}]}
+    steps = [{"input_latex": "y = 2 \\cdot f(x)", "operation": "Substitute",
+              "justification": "-"},
+             {"input_latex": "\\frac{y}{2} = f(x)", "operation": "Bridge",
+              "justification": "-"}]
+    assert len(_drop_restating_steps(proof, "algebra", 0, steps)) == 2
+
+
+def test_the_readers_own_step_is_never_dropped():
+    """Even if it restates: dropping it would leave the edit with nothing."""
+    from backend.experts.handlers.proof_edit.validate import _drop_restating_steps
+    proof = {"title": "t", "domain": "algebra", "steps": [
+        {"index": 0, "input_latex": "y = 2 \\cdot x", "operation": "Given",
+         "justification": "-"}]}
+    steps = [{"input_latex": "y = 2 \\cdot x", "operation": "Restate",
+              "justification": "-"},
+             {"input_latex": "y = 2 \\cdot x", "operation": "Bridge",
+              "justification": "-"}]
+    assert len(_drop_restating_steps(proof, "algebra", 0, steps)) == 1
