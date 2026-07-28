@@ -504,7 +504,14 @@ export function setupViewSync() {
     //   Doc↔Chat panel, proof-panel open/close, and the Function Analysis page
     //   opening/closing (so Back leaves the analysis the way it leaves a view).
     window.addEventListener('algebench:navchange', schedulePush);
-    window.addEventListener('algebench:fachange', schedulePush);
+    // Function Analysis: opening/closing the page is a navigation, but the id
+    // settling (fa-pending-N -> the expert's) is the SAME view renaming itself —
+    // pushing there would cost an extra Back press and leave the first entry on
+    // a superseded id. `detail.replace` marks that case.
+    window.addEventListener('algebench:fachange', (e) => {
+        if (e && e.detail && e.detail.replace) replace();
+        else schedulePush();
+    });
     window.addEventListener('algebench:proofchange', schedulePush);
     window.addEventListener('algebench:selectionchange', schedulePush);
     window.addEventListener('algebench:viewchange', schedulePush);

@@ -61,10 +61,13 @@ function getFaManager() {
         },
         onArtifactsChanged: () => rebuildProofTree(),
         onPageClosed: () => {},
-        onActiveChanged: () => {
+        onActiveChanged: ({ replace = false } = {}) => {
             // Keep `?fa=` in step with the page (view-state-bridge listens).
+            // `replace` rides along so an id settling rewrites the current
+            // history entry rather than pushing a second one.
             try {
-                window.dispatchEvent(new CustomEvent('algebench:fachange'));
+                window.dispatchEvent(new CustomEvent('algebench:fachange',
+                    { detail: { replace: !!replace } }));
             } catch (_) { /* no CustomEvent — the URL just lags */ }
         },
     });
