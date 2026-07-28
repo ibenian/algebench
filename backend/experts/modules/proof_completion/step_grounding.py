@@ -781,14 +781,7 @@ def ground_steps(states: Sequence, *, change_types: Optional[Sequence] = None,
             endpoint = bool(_guard(sympy_equiv, final, target_expr, default=False))
 
     counts = _count_tiers(pairs)
-    overall = finalize_overall(pairs, endpoint)
-    # A STEP can be refuted on its own terms — a decided falsehood needs no
-    # transition to be wrong. The roll-up is computed from PAIRS, so step 0 is
-    # invisible to it, and a one-step proof has no pairs at all: a proof whose
-    # only line was `2 + 2 = 3` reported "Plausible — no steps to verify".
-    # Any refuted step makes the chain refuted. Nothing else here changes.
-    if any(sc.tier is Tier.RED for sc in steps):
-        overall = Tier.RED
+    overall = finalize_overall(pairs, endpoint, steps)
 
     return StepGroundingReport(
         steps=steps, pairs=pairs, overall=overall, counts=counts,
@@ -804,7 +797,7 @@ def _count_tiers(pairs) -> dict:
     return counts
 
 
-def finalize_overall(pairs, endpoint) -> Tier:
+def finalize_overall(pairs, endpoint, steps=None) -> Tier:
     """The chain's overall tier: weakest link, then the endpoint gate.
 
     Shared by ``ground_steps`` and the inference-time rescue
@@ -812,12 +805,27 @@ def finalize_overall(pairs, endpoint) -> Tier:
     way. Endpoint gate: GOLD additionally requires *reaching the goal*; an
     unverified endpoint caps at SILVER, a missed endpoint at BLUE (locally fine,
     off-goal).
+
+    ``steps`` matters because a STEP can be refuted on its own terms — a decided
+    falsehood needs no transition to be wrong against, and step 0 has no
+    transition at all. Pairs alone cannot see it, and a one-step proof has no
+    pairs whatsoever: `2 + 2 = 3` reported "Plausible — no steps to verify"
+    beside its own Refuted badge.
+
+    The guard lives HERE, not in the callers, deliberately. It was originally in
+    ``ground_steps`` only, and ``rescue_uncheckable`` — which re-rolls the overall
+    from pairs after a domain override, and is ON by default — silently undid it,
+    reinstating the bug it was added for (Copilot review, #511). One rule, one
+    home, so the two cannot drift apart again. Pass the POST-override steps: a
+    rescue that legitimately lifts a refutation should lift the overall with it.
     """
     overall = min((pv.tier for pv in pairs), key=TIER_RANK.get, default=Tier.BLUE)
     if endpoint is False:
         overall = min(overall, Tier.BLUE, key=TIER_RANK.get)
     elif endpoint is None and overall is Tier.GOLD:
         overall = Tier.SILVER
+    if any(sc.tier is Tier.RED for sc in (steps or [])):
+        overall = Tier.RED
     return overall
 
 

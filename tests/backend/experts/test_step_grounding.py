@@ -411,3 +411,41 @@ def test_an_ordinary_chain_is_unaffected():
     )
     x = sp.Symbol("x")
     assert ground_steps([sp.Eq(x, 5), sp.Eq(x + 0, 5)]).overall is not Tier.RED
+
+
+def test_a_domain_rescue_cannot_undo_a_refuted_step():
+    """The guard belongs to finalize_overall, not to its callers.
+
+    It started life inside `ground_steps`, and `rescue_uncheckable` — which
+    re-rolls the overall from PAIRS after a domain override, and is enabled by
+    default — silently undid it, reinstating the very bug it was added for
+    (Copilot review, #511). This drives `finalize_overall` directly, which is the
+    single place the rule now lives.
+    """
+    import sympy as sp
+    from backend.experts.modules.proof_completion.step_grounding import (
+        Tier, classify_pair, finalize_overall, ground_steps,
+    )
+    x = sp.Symbol("x")
+
+    # Pairs alone say "plausible"; a refuted STEP must still dominate.
+    pairs = [classify_pair(sp.Eq(x, 5), sp.Eq(x**2, -1), index=1)]
+    steps = ground_steps([sp.false, sp.Eq(x, 5)]).steps
+    assert finalize_overall(pairs, None) is not Tier.RED, "pairs alone are not red"
+    assert finalize_overall(pairs, None, steps) is Tier.RED, \
+        "a refuted step must dominate the roll-up"
+
+
+def test_a_rescue_that_lifts_the_refutation_lifts_the_overall():
+    """Post-override steps are passed, so a legitimate rescue is honoured."""
+    from dataclasses import replace
+    import sympy as sp
+    from backend.experts.modules.proof_completion.step_grounding import (
+        Tier, classify_pair, finalize_overall, ground_steps,
+    )
+    x = sp.Symbol("x")
+    pairs = [classify_pair(sp.Eq(x, 5), sp.Eq(x + 0, 5), index=1)]
+    steps = ground_steps([sp.false, sp.Eq(x, 5)]).steps
+    lifted = [replace(sc, tier=Tier.DOMAIN) if sc.tier is Tier.RED else sc
+              for sc in steps]
+    assert finalize_overall(pairs, None, lifted) is not Tier.RED
