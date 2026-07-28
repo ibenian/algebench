@@ -103,6 +103,8 @@
     .doc-count { font-size: .78rem; color: var(--muted-color); }
 
     .derive-bar { display: flex; gap: 10px; align-items: stretch; margin: 0 0 16px; }
+    /* An explicit `display` outranks the UA's `[hidden] { display: none }`. */
+    .derive-bar[hidden] { display: none; }
     .derive-prompt { flex: 1; font: inherit; font-size: .95rem; resize: vertical; min-height: 46px;
                      padding: 10px 12px; border-radius: 10px; border: 1px solid var(--btn-border);
                      background: var(--panel-bg); color: var(--text-color); }
@@ -430,7 +432,7 @@
           </div>
         </div>
         <!-- The special Derive action lives at the top. -->
-        <div class="derive-bar">
+        <div class="derive-bar" id="d-bar">
           <textarea id="d-prompt" class="derive-prompt" rows="2"
                     placeholder="Describe what to derive — e.g. “derive the quadratic formula”"></textarea>
           <button id="d-go" class="derive-btn" type="button">Derive</button>
