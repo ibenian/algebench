@@ -998,7 +998,9 @@ export class FunctionAnalysisManager {
         points('zeros', 'roots', (p) => ({
             label: 'root', math: `${xL} = ${p.latex}`, off: isOff(p) }));
         points('extrema', 'critical points', (p) => ({
-            label: p.kind || 'critical point',
+            // The CAS labels a point it could not classify `critical`, which
+            // is an adjective — taking it verbatim reads "a critical at".
+            label: (!p.kind || p.kind === 'critical') ? 'critical point' : p.kind,
             math: `${xL} = ${p.location.latex}`,
             detail: (p.value && p.value.latex) || '',
             off: isOff(p.location) }));
@@ -1042,15 +1044,45 @@ export class FunctionAnalysisManager {
         return rows;
     }
 
+    /** Feature kinds the CAS ran out of time on. The guard returns
+     *  `{status: 'unresolved'}` per kind rather than failing the whole
+     *  report, and those carry no points — so without this they are
+     *  indistinguishable from "the curve has none", which is a different
+     *  and much stronger claim. */
+    _unresolvedKinds(chars) {
+        const feats = chars.features || {};
+        const NAMES = {
+            zeros: 'roots', extrema: 'critical points',
+            singularities: 'singularities', inflections: 'inflection points',
+            limits_at_infinity: 'limits at infinity',
+            periodicity: 'periodicity', parity: 'symmetry', domain: 'domain',
+        };
+        return Object.keys(NAMES)
+            .filter(k => feats[k] && feats[k].status === 'unresolved')
+            .map(k => NAMES[k]);
+    }
+
     /** The CAS report opened up: every detected feature as its own row, with
      *  a hover-revealed ask button on each so any single finding can be taken
      *  to chat on its own. Returns the row count for the toggle's caption. */
     _renderFeaturePanel(host, artifact, chars, view, state) {
         host.innerHTML = '';
         const rows = this._featureRows(chars, view);
+        const stalled = this._unresolvedKinds(chars);
         if (!rows.length) {
-            host.textContent = 'The analysis detected no features for this expression.';
+            host.textContent = stalled.length
+                ? `The CAS ran out of time on ${stalled.join(', ')}, so this ` +
+                  'expression has no resolved features to show.'
+                : 'The analysis detected no features for this expression.';
             return 0;
+        }
+        if (stalled.length) {
+            const note = document.createElement('div');
+            note.className = 'fa-feat-row fa-feat-stalled';
+            note.textContent =
+                `The CAS ran out of time on ${stalled.join(', ')} — those are ` +
+                'unknown here, not absent.';
+            host.appendChild(note);
         }
         for (const r of rows) {
             const row = document.createElement('div');
@@ -1141,8 +1173,18 @@ export class FunctionAnalysisManager {
         // A kind the view asked to mark that the report found nothing for
         // says so rather than silently vanishing.
         const found = new Set(rows.map(r => r.kind));
-        const empty = [...this._marksFor(chars, view)].filter(k => !found.has(k));
+        const feats = chars.features || {};
+        const empty = [...this._marksFor(chars, view)].filter(k =>
+            // A kind the CAS timed out on is unknown, not empty — it belongs
+            // in the `stalled` clause below, not in a "none were found" claim.
+            !found.has(k) && (feats[k] || {}).status !== 'unresolved');
         if (empty.length) out.push(`No ${empty.join(' or ')} were found.`);
+        // Never let the tutor read a CAS timeout as "the curve has none".
+        const stalled = this._unresolvedKinds(chars);
+        if (stalled.length) {
+            out.push(`The CAS ran out of time on ${stalled.join(', ')}, so ` +
+                     'those are unknown here rather than absent.');
+        }
         return out.join(' ');
     }
 
@@ -1156,8 +1198,12 @@ export class FunctionAnalysisManager {
         // and `_hiddenSeries` use.
         const offset = (chars.chartScript && chars.chartScript.script) ? 1 : 0;
         const plots = (view.plots || []).filter(p => p.script).map((p, i) =>
+            // Same fallback chain as `_seriesFor`: a plot with neither a
+            // label nor an expression is still a curve on the chart, and
+            // `$$` in the tutor's context is worse than naming it.
             ((p.label && p.latex) ? `${p.label} — $${p.latex}$`
-                                  : (p.label || `$${p.latex}$`)) +
+                                  : (p.label || (p.latex ? `$${p.latex}$`
+                                                         : 'companion'))) +
             (this._hiddenSeries.has(i + offset) ? ' (hidden)' : ''));
         if (plots.length) parts.push(`companion curves: ${plots.join('; ')}`);
         const anns = (view.annotations || []).map(a =>

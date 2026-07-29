@@ -158,6 +158,8 @@
 .fa-feat-math { color: #dde6ff; }
 .fa-feat-detail { color: #aebbd1; }
 .fa-feat-note { color: #7e8aa3; font-style: italic; font-size: 11.5px; }
+/* a CAS timeout, said plainly — unknown is not the same as absent */
+.fa-feat-stalled { color: #ffcc80; font-style: italic; font-size: 11.5px; }
 /* why a detected point has no dot on the curve */
 .fa-feat-off {
     margin-left: auto;
