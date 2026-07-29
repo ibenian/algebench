@@ -462,6 +462,8 @@ export class FunctionAnalysisManager {
         canvasWrap.className = 'fa-canvas-wrap';
         const exprPanel = document.createElement('div');
         exprPanel.className = 'fa-expr-panel';
+        const featPanel = document.createElement('div');
+        featPanel.className = 'fa-feat-panel';
         const sliders = document.createElement('div');
         sliders.className = 'fa-sliders';
 
@@ -477,7 +479,20 @@ export class FunctionAnalysisManager {
             exprBtn.classList.toggle('open');
         });
 
-        card.append(tabs, rationale, legend, canvasWrap, exprPanel, sliders);
+        // The CAS report itself, one row per finding. The chart draws only
+        // roots, extrema and singularities — everything else the analysis
+        // found (asymptotes, period, parity, domain) has nowhere else to go.
+        const featBtn = document.createElement('button');
+        featBtn.className = 'fa-btn fa-feat-btn';
+        featBtn.title = 'Show every feature the analysis detected';
+        featBtn.textContent = 'features';
+        featBtn.addEventListener('click', () => {
+            featPanel.classList.toggle('open');
+            featBtn.classList.toggle('open');
+        });
+
+        card.append(tabs, rationale, legend, canvasWrap, exprPanel, featPanel,
+                    sliders);
 
         const state = { viewIdx: 0, pins: {} };
 
@@ -491,6 +506,9 @@ export class FunctionAnalysisManager {
             [...tabs.querySelectorAll('.fa-view-tab')].forEach((b, i) =>
                 b.classList.toggle('active', i === idx));
             this._renderExprPanel(exprPanel, chars, view);
+            const nFeat = this._renderFeaturePanel(featPanel, artifact, chars,
+                                                   view, state);
+            featBtn.textContent = nFeat ? `features (${nFeat})` : 'features';
             if (view.rationale) {
                 rationale.innerHTML = '';
                 const badge = document.createElement('span');
@@ -526,7 +544,12 @@ export class FunctionAnalysisManager {
             b.addEventListener('click', () => activate(i));
             tabs.appendChild(b);
         });
-        tabs.appendChild(exprBtn);      // after the view tabs, right-aligned
+        // Kept together in one right-aligned group, so a narrow panel wraps
+        // them as a pair instead of stranding one below the tabs.
+        const actions = document.createElement('div');
+        actions.className = 'fa-view-actions';
+        actions.append(exprBtn, featBtn);
+        tabs.appendChild(actions);
 
         loadChartJs().then(() => activate(0)).catch(() => {
             canvasWrap.textContent = 'Chart library failed to load.';
@@ -908,97 +931,217 @@ export class FunctionAnalysisManager {
         return marks;
     }
 
-    /** The CAS features currently ON SCREEN, in words: only the kinds whose
-     *  legend key is switched on, and only the locations inside the plotted
-     *  window.
+    /** Every finding in the CAS report, flattened to one row each, in the
+     *  order the chart reads. One walk of the report shape feeds BOTH the
+     *  ask messages (`_featureSummary`) and the expandable panel
+     *  (`_renderFeaturePanel`), so the two can never drift apart.
      *
-     *  Nothing is dropped: the tutor needs the WHOLE report to explain the
-     *  chart, so every finding is listed and the ones the learner cannot
-     *  currently see are flagged instead — `(hidden)` for a legend key
-     *  switched off, `(off-chart)` for a point outside the swept range.
+     *  Each row: `{kind, group, label, math, detail, off, family, prose}`
+     *    kind    report key — 'zeros' … 'domain'
+     *    group   plural name of the kind ('roots', 'critical points')
+     *    label   what THIS row is ('root', 'maximum', 'vertical asymptote')
+     *    math    LaTeX for the location/value, without `$`
+     *    detail  secondary LaTeX — an extremum's value, a limit's direction
+     *    off     the point lies outside the swept range, so nothing is drawn
+     *    family  `math` is a solution SET, not a single point
+     *    prose   the row as a sentence fragment, for prompts
      *  Point lists are bounded server-side (features.MAX_POINTS). */
-    _featureSummary(chars, view) {
+    _featureRows(chars, view) {
         const feats = chars.features || {};
-        const marks = this._marksFor(chars, view);
-        const xL = this._varLatex(chars, view.x_var);
+        // The report is in terms of the ANALYZED variable, which is not
+        // always the one a view sweeps (this expression is analyzed in $R$;
+        // its second view sweeps $\omega$). Label locations with the variable
+        // they actually belong to.
+        const fv = chars.variable || view.x_var;
+        const xL = this._varLatex(chars, fv);
         const [xa, xb] = (view.x_range || []).length === 2
             ? view.x_range : [-Infinity, Infinity];
         const lo = Math.min(xa, xb), hi = Math.max(xa, xb);
         // Markers are re-detected numerically over the plotted window, so a
         // CAS point outside it draws nothing however the legend key is set.
-        const at = (p) => `$${xL} = ${p.latex}$`;
-        const off = (p) =>
-            (p && Number.isFinite(p.approx) && p.approx >= lo && p.approx <= hi)
-                ? '' : ' (off-chart)';
-
-        // ── the three kinds the chart draws ──────────────────────────
-        const drawn = [];
-        // `family` is what the CAS returns when the solution set is not a
-        // finite list ($\pi n$, $\mathbb{R}$) — say so, rather than phrase a
-        // whole set as if it were a handful of marker dots.
-        const familyText = (label, f) => `${label} form the set $${f.family}$`;
-        const add = (kind, label, describe, lead) => {
+        // The window only means anything when the view sweeps that variable.
+        const sameAxis = fv === view.x_var;
+        const isOff = (p) => sameAxis && !(p && Number.isFinite(p.approx) &&
+                                           p.approx >= lo && p.approx <= hi);
+        const rows = [];
+        const push = (r) => {
+            // "a maximum at $x = 1$ (value $2$) (off-chart)" / "period $2\pi$"
+            // `at` marks a located point; `article` names a thing that reads
+            // with one ("a horizontal asymptote", but plain "period").
+            const head = (r.at || r.article)
+                ? `${/^[aeiou]/i.test(r.label) ? 'an' : 'a'} ${r.label}`
+                : r.label;
+            if (r.family) {
+                r.prose = `${r.group} form the set $${r.math}$`;
+            } else if (!r.math) {
+                r.prose = r.label;                       // "odd symmetry"
+            } else if (r.at) {
+                r.prose = `${head} at $${r.math}$` +
+                    (r.detail ? ` (value $${r.detail}$)` : '') +
+                    (r.off ? ' (off-chart)' : '');
+            } else {
+                r.prose = `${head} $${r.math}$` +
+                    (r.detail ? ` as $${r.detail}$` : '');
+            }
+            rows.push(r);
+        };
+        const points = (kind, group, describe) => {
             const f = feats[kind] || {};
-            const pts = f.points || [];
-            const hidden = this._hiddenMarks.has(kind);
-            if (pts.length) {
-                const body = pts.map(describe).join(', ');
-                // A hidden group is qualified UP FRONT — trailing it would
-                // read as if it belonged to the last point alone.
-                // `lead` groups points that all read the same ("roots at A,
-                // B"); it is dropped where the wording differs per point.
-                drawn.push(hidden ? `${label} (hidden): ${body}`
-                                  : (lead ? `${lead} ${body}` : body));
-            } else if (f.family) {
-                drawn.push(familyText(label, f) + (hidden ? ' (hidden)' : ''));
+            for (const p of f.points || []) push({ kind, group, at: true, ...describe(p) });
+            // `family` is what the CAS returns when the solution set is not a
+            // finite list ($\pi n$, $\mathbb{R}$) — say so, rather than phrase
+            // a whole set as if it were a handful of marker dots.
+            if (!(f.points || []).length && f.family) {
+                push({ kind, group, label: group, math: f.family, family: true });
             }
         };
-        add('zeros', 'roots', (p) => at(p) + off(p), 'roots at');
-        add('extrema', 'critical points', (p) =>
-            `a ${p.kind || 'critical point'} at ${at(p.location)}` +
-            (p.value && p.value.latex ? ` (value $${p.value.latex}$)` : '') +
-            off(p.location));
-        add('singularities', 'singularities', (p) =>
-            (p.vertical_asymptote ? 'a vertical asymptote' : 'a singularity') +
-            ` at ${at(p.location)}` + off(p.location));
+        points('zeros', 'roots', (p) => ({
+            label: 'root', math: `${xL} = ${p.latex}`, off: isOff(p) }));
+        points('extrema', 'critical points', (p) => ({
+            label: p.kind || 'critical point',
+            math: `${xL} = ${p.location.latex}`,
+            detail: (p.value && p.value.latex) || '',
+            off: isOff(p.location) }));
+        points('singularities', 'singularities', (p) => ({
+            label: p.vertical_asymptote ? 'vertical asymptote' : 'singularity',
+            math: `${xL} = ${p.location.latex}`,
+            off: isOff(p.location) }));
+        points('inflections', 'inflection points', (p) => ({
+            label: 'inflection point', math: `${xL} = ${p.latex}`, off: isOff(p) }));
 
-        // ── findings the chart never draws, but that explain its shape ──
-        const extra = [];
-        const infl = feats.inflections || {};
-        if ((infl.points || []).length) {
-            extra.push('inflection points at ' +
-                       infl.points.map(p => at(p) + off(p)).join(', '));
-        } else if (infl.family) {
-            extra.push(familyText('inflection points', infl));
-        }
         for (const d of (feats.limits_at_infinity || {}).directions || []) {
-            const to = `as $${xL} \\to ${d.direction === '-inf' ? '-' : '+'}\\infty$`;
+            const to = `${xL} \\to ${d.direction === '-inf' ? '-' : '+'}\\infty`;
+            const kind = 'limits_at_infinity', group = 'limits at infinity';
             const o = d.oblique_asymptote;
             if (o && o.slope && o.intercept) {
                 const b = String(o.intercept.latex || '').trim();
                 const term = b.startsWith('-') ? `- ${b.slice(1)}` : `+ ${b}`;
-                extra.push(`an oblique asymptote $y = ${o.slope.latex} ${xL} ${term}$ ${to}`);
+                push({ kind, group, label: 'oblique asymptote', article: true,
+                       math: `y = ${o.slope.latex} ${xL} ${term}`, detail: to });
             } else if (d.horizontal_asymptote && d.limit) {
-                extra.push(`a horizontal asymptote $y = ${d.limit.latex}$ ${to}`);
+                push({ kind, group, label: 'horizontal asymptote', article: true,
+                       math: `y = ${d.limit.latex}`, detail: to });
             } else if (d.limit) {
                 // Infinite limits arrive as bare LaTeX, finite ones as points.
                 const lim = typeof d.limit === 'string' ? d.limit : d.limit.latex;
-                extra.push(`limit $${lim}$ ${to}`);
+                push({ kind, group, label: 'limit', math: lim, detail: to });
             }
         }
         if (feats.periodicity && feats.periodicity.latex) {
-            extra.push(`period $${feats.periodicity.latex}$`);
+            push({ kind: 'periodicity', group: 'period', label: 'period',
+                   math: feats.periodicity.latex });
         }
-        if (typeof feats.parity === 'string') extra.push(`${feats.parity} symmetry`);
-        if (typeof feats.domain === 'string') extra.push(`domain $${feats.domain}$`);
+        if (typeof feats.parity === 'string') {
+            push({ kind: 'parity', group: 'symmetry',
+                   label: `${feats.parity} symmetry` });
+        }
+        if (typeof feats.domain === 'string') {
+            push({ kind: 'domain', group: 'domain', label: 'domain',
+                   math: feats.domain });
+        }
+        return rows;
+    }
+
+    /** The CAS report opened up: every detected feature as its own row, with
+     *  a hover-revealed ask button on each so any single finding can be taken
+     *  to chat on its own. Returns the row count for the toggle's caption. */
+    _renderFeaturePanel(host, artifact, chars, view, state) {
+        host.innerHTML = '';
+        const rows = this._featureRows(chars, view);
+        if (!rows.length) {
+            host.textContent = 'The analysis detected no features for this expression.';
+            return 0;
+        }
+        for (const r of rows) {
+            const row = document.createElement('div');
+            row.className = 'fa-feat-row';
+            const label = document.createElement('span');
+            label.className = 'fa-feat-label';
+            label.textContent = r.label;
+            row.append(label);
+            if (r.family) {
+                // A solution SET, not a point — say so beside the math.
+                const note = document.createElement('span');
+                note.className = 'fa-feat-note';
+                note.textContent = 'solution set';
+                row.append(note);
+            }
+            if (r.math) {
+                const math = document.createElement('span');
+                math.className = 'fa-feat-math';
+                this._katex(math, r.math);
+                row.append(math);
+            }
+            if (r.detail) {
+                const detail = document.createElement('span');
+                detail.className = 'fa-feat-detail';
+                // An extremum's value reads as "= y"; a limit's is a direction.
+                this._katex(detail, r.at ? `= ${r.detail}` : r.detail);
+                row.append(detail);
+            }
+            if (r.off) {
+                // Honest about why this one has no dot on the curve.
+                const tag = document.createElement('span');
+                tag.className = 'fa-feat-off';
+                tag.textContent = 'outside this view';
+                tag.title = 'This point lies outside the plotted range, so ' +
+                            'nothing is drawn for it here.';
+                row.append(tag);
+            }
+            this._attachHoverAsk(row, () =>
+                // "reports:" so a set ("roots form the set …") reads as
+                // naturally as a point ("a root at …") after the lead-in.
+                `In $${artifact.latex}$, the analysis reports: ${r.prose}. ` +
+                `What does this feature mean here, and how would I find it ` +
+                `myself?\n` + this._configSummary(chars, view, state));
+            host.appendChild(row);
+        }
+        return rows.length;
+    }
+
+    /** The CAS report in words, for the ask messages.
+     *
+     *  Nothing is dropped: the tutor needs the WHOLE report to explain the
+     *  chart, so every finding is listed and the ones the learner cannot
+     *  currently see are flagged instead — `(hidden)` for a legend key
+     *  switched off, `(off-chart)` for a point outside the swept range. */
+    _featureSummary(chars, view) {
+        const rows = this._featureRows(chars, view);
+        const marked = ['zeros', 'extrema', 'singularities'];
+        const drawn = [], extra = [];
+
+        // Rows arrive grouped by kind; fold each run into one clause.
+        for (let i = 0; i < rows.length;) {
+            const kind = rows[i].kind;
+            const run = [];
+            while (i < rows.length && rows[i].kind === kind) run.push(rows[i++]);
+            const { group } = run[0];
+            // Rows whose label is just the group's singular collapse to
+            // "roots at A, B". Where the wording carries more than the group
+            // name does (a maximum vs a minimum, a value) each stands alone.
+            const uniform = !run[0].family && !run.some(r => r.detail) &&
+                run.every(r => r.group === r.label + 's');
+            const body = uniform
+                ? run.map(r => `$${r.math}$` + (r.off ? ' (off-chart)' : '')).join(', ')
+                : run.map(r => r.prose).join(', ');
+            if (!marked.includes(kind)) {
+                extra.push(uniform ? `${group} at ${body}` : body);
+            } else if (this._hiddenMarks.has(kind)) {
+                // A hidden group is qualified UP FRONT — trailing it would
+                // read as if it belonged to the last row alone.
+                drawn.push(`${group} (hidden): ${body}`);
+            } else {
+                drawn.push(uniform ? `${group} at ${body}` : body);
+            }
+        }
 
         const out = [];
         if (drawn.length) out.push(`Marked on the chart: ${drawn.join('; ')}.`);
         if (extra.length) out.push(`Also detected (not drawn): ${extra.join('; ')}.`);
         // A kind the view asked to mark that the report found nothing for
         // says so rather than silently vanishing.
-        const empty = [...marks].filter(k => !(feats[k] || {}).points?.length &&
-                                             !(feats[k] || {}).family);
+        const found = new Set(rows.map(r => r.kind));
+        const empty = [...this._marksFor(chars, view)].filter(k => !found.has(k));
         if (empty.length) out.push(`No ${empty.join(' or ')} were found.`);
         return out.join(' ');
     }

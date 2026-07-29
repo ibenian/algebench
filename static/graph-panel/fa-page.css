@@ -108,7 +108,8 @@
     margin: 2px 0 8px;
     min-height: 16px;
 }
-.fa-expr-btn { margin-left: auto; font-family: Georgia, serif; font-style: italic; }
+.fa-view-actions { margin-left: auto; display: flex; gap: 6px; }
+.fa-expr-btn { font-family: Georgia, serif; font-style: italic; }
 .fa-expr-btn.open { background: rgba(66, 165, 245, 0.15); color: #dde6ff; border-color: #42a5f5; }
 
 /* what each curve plots: colour swatch, label, LaTeX, evaluated script */
@@ -137,6 +138,34 @@
     max-width: 48%;
     overflow-x: auto;
     white-space: nowrap;
+}
+
+/* the CAS report, one row per detected feature */
+.fa-feat-btn { font-size: 12px; }
+.fa-feat-btn.open { background: rgba(66, 165, 245, 0.15); color: #dde6ff; border-color: #42a5f5; }
+.fa-feat-panel { display: none; margin-top: 10px; }
+.fa-feat-panel.open { display: block; }
+.fa-feat-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 0;
+    border-top: 1px solid rgba(110, 124, 180, 0.12);
+    font-size: 12.5px;
+}
+.fa-feat-row:first-child { border-top: none; }
+.fa-feat-label { color: #8fa8c8; min-width: 118px; }
+.fa-feat-math { color: #dde6ff; }
+.fa-feat-detail { color: #aebbd1; }
+.fa-feat-note { color: #7e8aa3; font-style: italic; font-size: 11.5px; }
+/* why a detected point has no dot on the curve */
+.fa-feat-off {
+    margin-left: auto;
+    color: #7e8aa3;
+    font-size: 11px;
+    border: 1px solid rgba(110, 124, 180, 0.25);
+    border-radius: 4px;
+    padding: 0 6px;
 }
 
 .fa-ann-legend { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 6px; }
