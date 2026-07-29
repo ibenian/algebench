@@ -789,12 +789,20 @@ export class FunctionAnalysisManager {
         // Click the chart to pin the hover readout as a sticky note; click it
         // again — anywhere but the note itself, which swallows its own clicks
         // — to put the note away.
-        canvas.addEventListener('click', () => {
+        canvas.addEventListener('click', (e) => {
+            // An axis tick is a jump-to, not a pin/unpin — it answers first.
+            if (this._snapFromAxisClick(e, chart, artifact, chars, view, state)) {
+                return;
+            }
             if (this._pinnedTip) { this._unpinTip(); return; }
             const tip = canvasWrap.querySelector('.fa-chart-tip');
             if (tip && tip.classList.contains('show')) {
                 this._pinTip(tip, chart, artifact, chars, view, state);
             }
+        });
+        // Clickable tick labels are an invisible affordance without this.
+        canvas.addEventListener('mousemove', (e) => {
+            canvas.style.cursor = this._overAxisTick(e, chart) ? 'pointer' : '';
         });
         this._renderSeriesLegend(legend, chart);
         this._renderMarkerLegend(legend, marks, chart);
@@ -905,54 +913,59 @@ export class FunctionAnalysisManager {
                 el.classList.remove('show');
                 return;
             }
-            el.innerHTML = '';
-            // What this readout is showing, for the pinned note's ask button.
-            const values = [], points = [];
-
-            const head = document.createElement('div');
-            head.className = 'fa-tip-head';
-            // The readout is one span so the head can be a flex row with the
-            // pinned note's ask button pushed to the far right.
-            const xv = document.createElement('span');
-            xv.className = 'fa-tip-x';
-            this._katex(xv, xLatex);
-            const xValue = (+(tooltip.dataPoints?.[0]?.parsed?.x ?? 0)).toPrecision(4);
-            xv.appendChild(document.createTextNode(' = ' + xValue));
-            head.appendChild(xv);
-            el.appendChild(head);
-
-            for (const dp of tooltip.dataPoints || []) {
-                const row = document.createElement('div');
-                row.className = 'fa-tip-row';
-                const sw = document.createElement('span');
-                sw.className = 'fa-tip-swatch';
-                sw.style.background = dp.dataset.borderColor;
-                const name = document.createElement('span');
-                name.className = 'fa-tip-name';
-                // Same display source as the HTML legend: LM prose with
-                // inline math, or a $-wrapped expression (see _seriesFor).
-                name.innerHTML = renderKaTeX(
-                    dp.dataset.$faLabel || dp.dataset.label || '', false);
-                const val = document.createElement('span');
-                val.className = 'fa-tip-val';
-                val.textContent = Number.isFinite(dp.parsed?.y)
-                    ? (+dp.parsed.y).toPrecision(5) : '—';
-                row.append(sw, name, val);
-                el.appendChild(row);
-                values.push({
-                    label: dp.dataset.$faLabel || dp.dataset.label || '',
-                    value: val.textContent,
-                });
-                // Where this row sits on the chart, so a pinned note can keep
-                // its markers drawn and its numbers honest across a slider move.
-                points.push({ datasetIndex: dp.datasetIndex, index: dp.dataIndex });
-            }
-
-            el.$fa = { xLatex, xValue, values, points };
+            this._fillTip(el, chart, xLatex, tooltip.dataPoints?.[0]?.dataIndex);
             el.style.left = `${tooltip.caretX}px`;
             el.style.top = `${tooltip.caretY}px`;
             el.classList.add('show');
         };
+    }
+
+    /** The readout's contents at one sample index: every visible series with
+     *  its value there. Shared by the pointer (hover) and by an axis-label
+     *  snap, so the two can never build a different-looking note. */
+    _fillTip(el, chart, xLatex, index) {
+        el.innerHTML = '';
+        // What this readout is showing, for the pinned note's ask button.
+        const values = [], points = [];
+
+        const head = document.createElement('div');
+        head.className = 'fa-tip-head';
+        // The readout is one span so the head can be a flex row with the
+        // pinned note's ask button pushed to the far right.
+        const xv = document.createElement('span');
+        xv.className = 'fa-tip-x';
+        this._katex(xv, xLatex);
+        const xValue = (+(chart.data.labels[index] ?? 0)).toPrecision(4);
+        xv.appendChild(document.createTextNode(' = ' + xValue));
+        head.appendChild(xv);
+        el.appendChild(head);
+
+        chart.data.datasets.forEach((ds, di) => {
+            if (!chart.isDatasetVisible(di)) return;
+            const row = document.createElement('div');
+            row.className = 'fa-tip-row';
+            const sw = document.createElement('span');
+            sw.className = 'fa-tip-swatch';
+            sw.style.background = ds.borderColor;
+            const name = document.createElement('span');
+            name.className = 'fa-tip-name';
+            // Same display source as the HTML legend: LM prose with inline
+            // math, or a $-wrapped expression (see _seriesFor).
+            const label = ds.$faLabel || ds.label || '';
+            name.innerHTML = renderKaTeX(label, false);
+            const val = document.createElement('span');
+            val.className = 'fa-tip-val';
+            const y = ds.data[index];
+            val.textContent = Number.isFinite(y) ? (+y).toPrecision(5) : '—';
+            row.append(sw, name, val);
+            el.appendChild(row);
+            values.push({ label, value: val.textContent });
+            // Where this row sits on the chart, so a pinned note can keep its
+            // markers drawn and its numbers honest across a slider move.
+            points.push({ datasetIndex: di, index });
+        });
+
+        el.$fa = { xLatex, xValue, values, points, index };
     }
 
     /** Drag, wired once per tip element. Pinning itself is a click on the
@@ -980,6 +993,128 @@ export class FunctionAnalysisManager {
             document.addEventListener('mousemove', move);
             document.addEventListener('mouseup', up);
         });
+    }
+
+    /* ---------------- axis-label snapping ------------------------------ */
+
+    /** The tick value nearest `pixel` along `scale`, or null if the click
+     *  landed between ticks. `TICK_TOL` is generous: tick labels are wider
+     *  than the tick itself, and the learner is aiming at the number. */
+    _nearestTick(scale, pixel, tol = 18) {
+        let best = null, bestD = Infinity;
+        (scale.ticks || []).forEach((t, i) => {
+            const d = Math.abs(scale.getPixelForTick(i) - pixel);
+            if (d < bestD) { bestD = d; best = t.value; }
+        });
+        return bestD <= tol ? best : null;
+    }
+
+    /** The main curve: dataset 0 when it is showing, else the first that is.
+     *  A y-axis snap solves against whatever curve the learner can see. */
+    _mainDatasetIndex(chart) {
+        if (chart.isDatasetVisible(0)) return 0;
+        return chart.data.datasets.findIndex((_d, i) => chart.isDatasetVisible(i));
+    }
+
+    /** Sample index whose x is nearest `value`. */
+    _indexNearestX(chart, value) {
+        let best = 0, bestD = Infinity;
+        chart.data.labels.forEach((x, i) => {
+            const d = Math.abs(x - value);
+            if (d < bestD) { bestD = d; best = i; }
+        });
+        return best;
+    }
+
+    /** Sample index where the main curve crosses `value` — the inverse
+     *  question the y axis asks ("where is $a = 3$?"). Found by scanning for
+     *  a sign change in `y - value`; a curve can cross more than once, so
+     *  prefer the crossing nearest whatever is already pinned. Null when the
+     *  curve never reaches that value in this window. */
+    _indexAtY(chart, value) {
+        const di = this._mainDatasetIndex(chart);
+        if (di < 0) return null;
+        const data = chart.data.datasets[di].data;
+        const hits = [];
+        for (let i = 0; i < data.length; i++) {
+            const y = data[i];
+            if (!Number.isFinite(y)) continue;
+            // An exact hit counts wherever it lands, including the last
+            // sample — a curve that only reaches the value at the very end
+            // of the window still reaches it.
+            if (y === value) { hits.push(i); continue; }
+            const next = data[i + 1];
+            if (Number.isFinite(next) && (y - value) * (next - value) < 0) {
+                // Take whichever end lands closer to the target.
+                hits.push(Math.abs(y - value) <= Math.abs(next - value) ? i : i + 1);
+            }
+        }
+        if (!hits.length) return null;
+        const from = this._pinnedTip && this._pinnedTip.$fa
+            ? this._pinnedTip.$fa.index : null;
+        if (from == null) return hits[0];
+        return hits.reduce((p, c) =>
+            Math.abs(c - from) < Math.abs(p - from) ? c : p);
+    }
+
+    /** Is the pointer over a tick label? Drives the cursor only. */
+    _overAxisTick(e, chart) {
+        const area = chart.chartArea;
+        if (!area || !chart.scales.x || !chart.scales.y) return false;
+        const r = chart.canvas.getBoundingClientRect();
+        const px = e.clientX - r.left, py = e.clientY - r.top;
+        if (py > area.bottom) return this._nearestTick(chart.scales.x, px) != null;
+        if (px < area.left) return this._nearestTick(chart.scales.y, py) != null;
+        return false;
+    }
+
+    /** A click in an axis's tick band snaps the note to that value: the x
+     *  axis reads forwards ("put me at $R = 40$"), the y axis backwards
+     *  ("put me where $a = 3$"). Returns whether it handled the click. */
+    _snapFromAxisClick(e, chart, artifact, chars, view, state) {
+        const area = chart.chartArea;
+        if (!area || !chart.scales.x || !chart.scales.y) return false;
+        const r = chart.canvas.getBoundingClientRect();
+        const px = e.clientX - r.left, py = e.clientY - r.top;
+        let index = null;
+        if (py > area.bottom) {                       // under the plot: x ticks
+            const v = this._nearestTick(chart.scales.x, px);
+            if (v == null) return false;
+            index = this._indexNearestX(chart, v);
+        } else if (px < area.left) {                  // left of it: y ticks
+            const v = this._nearestTick(chart.scales.y, py);
+            if (v == null) return false;
+            index = this._indexAtY(chart, v);
+            // The curve never reaches that value here — snapping anywhere
+            // would be a lie, so leave the chart alone.
+            if (index == null) return true;
+        } else {
+            return false;
+        }
+        const el = chart.canvas.parentNode.querySelector('.fa-chart-tip');
+        if (!el) return false;
+        this._unpinTip();
+        this._fillTip(el, chart, this._varLatex(chars, view.x_var), index);
+        // Park it over the point, the same way the pointer would have.
+        const di = this._mainDatasetIndex(chart);
+        const y = di < 0 ? null : chart.data.datasets[di].data[index];
+        el.style.left = `${chart.scales.x.getPixelForValue(chart.data.labels[index])}px`;
+        el.style.top = `${Number.isFinite(y)
+            ? chart.scales.y.getPixelForValue(y) : area.top + 20}px`;
+        el.classList.add('show');
+        // A tick at either end of an axis parks the note half outside the
+        // chart — nudge it back in before pinning freezes the position.
+        const wrapR = el.parentNode.getBoundingClientRect();
+        const b = el.getBoundingClientRect();
+        const dx = b.left < wrapR.left ? wrapR.left - b.left
+                 : b.right > wrapR.right ? wrapR.right - b.right : 0;
+        const dy = b.top < wrapR.top ? wrapR.top - b.top : 0;
+        if (dx || dy) {
+            el.style.left = `${parseFloat(el.style.left) + dx}px`;
+            el.style.top = `${parseFloat(el.style.top) + dy}px`;
+        }
+        this._pinTip(el, chart, artifact, chars, view, state);
+        return true;
     }
 
     /** Pin the hover readout as a sticky note: it stops following the
