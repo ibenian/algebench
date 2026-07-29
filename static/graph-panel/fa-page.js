@@ -923,20 +923,45 @@ export class FunctionAnalysisManager {
                 el.classList.remove('show');
                 return;
             }
-            this._fillTip(el, chart, xLatex, tooltip.dataPoints?.[0]?.dataIndex);
+            this._fillTip(el, chart, chars, view, state,
+                          +(tooltip.dataPoints?.[0]?.parsed?.x ?? 0));
             el.style.left = `${tooltip.caretX}px`;
             el.style.top = `${tooltip.caretY}px`;
             el.classList.add('show');
         };
     }
 
-    /** The readout's contents at one sample index: every visible series with
-     *  its value there. Shared by the pointer (hover) and by an axis-label
-     *  snap, so the two can never build a different-looking note. */
-    _fillTip(el, chart, xLatex, index) {
+    /** One series' value at an arbitrary x, off the same compiled script the
+     *  curve itself was plotted from — so a readout is not limited to the
+     *  NUM_POINTS samples. Falls back to the plotted array before the chart's
+     *  `$fa` state exists. */
+    _seriesValueAt(chart, chars, view, state, di, x) {
+        const compiled = (chart.$fa || {}).compiled;
+        if (compiled && compiled[di]) {
+            try {
+                const y = evalExpr(compiled[di], 0, {
+                    overrideScope: this._scopeFor(chars, view, state.pins, x) });
+                if (Number.isFinite(y)) return y;
+            } catch (_e) { /* fall through to the plotted samples */ }
+            return null;
+        }
+        const i = this._indexNearestX(chart, x);
+        const y = chart.data.datasets[di].data[i];
+        return Number.isFinite(y) ? y : null;
+    }
+
+    /** The readout's contents at an exact x: every visible series with its
+     *  value there. Shared by the pointer (hover) and by an axis-label snap,
+     *  so the two can never build a different-looking note.
+     *
+     *  Keyed by the x VALUE, not a sample index: a y-axis snap solves for a
+     *  crossing that almost never falls on a sample, and rounding it to the
+     *  nearest one would quietly answer a slightly different question. */
+    _fillTip(el, chart, chars, view, state, x) {
         el.innerHTML = '';
+        const xLatex = this._varLatex(chars, view.x_var);
         // What this readout is showing, for the pinned note's ask button.
-        const values = [], points = [];
+        const values = [], datasets = [];
 
         const head = document.createElement('div');
         head.className = 'fa-tip-head';
@@ -945,7 +970,7 @@ export class FunctionAnalysisManager {
         const xv = document.createElement('span');
         xv.className = 'fa-tip-x';
         this._katex(xv, xLatex);
-        const xValue = (+(chart.data.labels[index] ?? 0)).toPrecision(4);
+        const xValue = (+x).toPrecision(4);
         xv.appendChild(document.createTextNode(' = ' + xValue));
         head.appendChild(xv);
         el.appendChild(head);
@@ -965,17 +990,16 @@ export class FunctionAnalysisManager {
             name.innerHTML = renderKaTeX(label, false);
             const val = document.createElement('span');
             val.className = 'fa-tip-val';
-            const y = ds.data[index];
+            const y = this._seriesValueAt(chart, chars, view, state, di, x);
             val.textContent = Number.isFinite(y) ? (+y).toPrecision(5) : '—';
             row.append(sw, name, val);
             el.appendChild(row);
             values.push({ label, value: val.textContent });
-            // Where this row sits on the chart, so a pinned note can keep its
-            // markers drawn and its numbers honest across a slider move.
-            points.push({ datasetIndex: di, index });
+            // Which rows to keep drawn on the curves for a pinned note.
+            datasets.push(di);
         });
 
-        el.$fa = { xLatex, xValue, values, points, index };
+        el.$fa = { xLatex, xValue, values, datasets, x, chars, view, state };
     }
 
     /** Drag, wired once per tip element. Pinning itself is a click on the
@@ -1039,45 +1063,71 @@ export class FunctionAnalysisManager {
         return best;
     }
 
-    /** Sample index where the ANALYZED curve reaches `value` — the inverse
-     *  question the y axis asks ("where is $a = 3$?").
+    /** The x where the ANALYZED curve reaches `value` — the inverse question
+     *  the y axis asks ("where is $a = 3$?").
      *
      *  Only the main curve answers. The axis is shared with the companions,
      *  but the learner clicking `3` means "put $a$ at 3"; solving against a
      *  companion instead would land on a point where the note reads
      *  `a = 0.75` next to a companion reading 3, which looks like a bug.
-     *  Null when the curve does not reach that value in this window — see
-     *  `_saySnapFailed` for what the chart says instead. */
-    _indexAtY(chart, value) {
+     *  Everything else in the note is then read FORWARD at the x this
+     *  returns — x is the shared coordinate, so a y-axis click is inverted
+     *  once and every other series follows from it.
+     *
+     *  The plotted samples only bracket the crossing; the answer is refined
+     *  against the compiled expression so the note reads `1.0000` rather
+     *  than whichever nearby sample happened to be closest. Null when the
+     *  curve does not reach that value in this window — see `_saySnapFailed`
+     *  for what the chart says instead. */
+    _solveForY(chart, chars, view, state, value) {
         const di = this._mainDatasetIndex(chart);
         if (di < 0) return null;
-        return this._crossingIndex(chart.data.datasets[di].data, value);
-    }
-
-    /** Sample index where `data` crosses `value`, by sign change in
-     *  `y - value`. A curve can cross more than once, so prefer the crossing
-     *  nearest whatever is already pinned. */
-    _crossingIndex(data, value) {
-        const hits = [];
+        const data = chart.data.datasets[di].data;
+        const xs = chart.data.labels;
+        const brackets = [];
         for (let i = 0; i < data.length; i++) {
             const y = data[i];
             if (!Number.isFinite(y)) continue;
             // An exact hit counts wherever it lands, including the last
             // sample — a curve that only reaches the value at the very end
             // of the window still reaches it.
-            if (y === value) { hits.push(i); continue; }
+            if (y === value) { brackets.push([xs[i], xs[i]]); continue; }
             const next = data[i + 1];
             if (Number.isFinite(next) && (y - value) * (next - value) < 0) {
-                // Take whichever end lands closer to the target.
-                hits.push(Math.abs(y - value) <= Math.abs(next - value) ? i : i + 1);
+                brackets.push([xs[i], xs[i + 1]]);
             }
         }
-        if (!hits.length) return null;
+        if (!brackets.length) return null;
+        // A curve can cross more than once; prefer the crossing nearest
+        // whatever is already pinned, so repeated clicks stay local.
         const from = this._pinnedTip && this._pinnedTip.$fa
-            ? this._pinnedTip.$fa.index : null;
-        if (from == null) return hits[0];
-        return hits.reduce((p, c) =>
-            Math.abs(c - from) < Math.abs(p - from) ? c : p);
+            ? this._pinnedTip.$fa.x : null;
+        const [lo, hi] = from == null ? brackets[0] : brackets.reduce((p, c) =>
+            Math.abs(c[0] - from) < Math.abs(p[0] - from) ? c : p);
+        return this._refineCrossing(chart, chars, view, state, di, lo, hi, value);
+    }
+
+    /** Bisect `[lo, hi]` — one plotted sample apart, straddling the crossing
+     *  — down to float precision on the compiled expression. Fifty steps is
+     *  nothing next to the redraw it precedes, and it is what turns "works
+     *  approximately" into an exact answer. */
+    _refineCrossing(chart, chars, view, state, di, lo, hi, value) {
+        if (lo === hi) return lo;
+        const f = (x) => {
+            const y = this._seriesValueAt(chart, chars, view, state, di, x);
+            return Number.isFinite(y) ? y - value : null;
+        };
+        let a = lo, b = hi;
+        const fa = f(a);
+        if (fa == null) return (lo + hi) / 2;
+        if (fa === 0) return a;
+        for (let i = 0; i < 50 && b - a > Math.abs(hi - lo) * 1e-12; i++) {
+            const m = (a + b) / 2, fm = f(m);
+            if (fm == null) break;
+            if (fm === 0) return m;
+            if ((fa < 0) === (fm < 0)) a = m; else b = m;
+        }
+        return (a + b) / 2;
     }
 
     /** A y-axis click the curve cannot answer, said out loud and briefly.
@@ -1124,16 +1174,16 @@ export class FunctionAnalysisManager {
         if (!area || !chart.scales.x || !chart.scales.y) return false;
         const r = chart.canvas.getBoundingClientRect();
         const px = e.clientX - r.left, py = e.clientY - r.top;
-        let index = null;
+        let x = null;
         if (py > area.bottom) {                       // under the plot: x ticks
-            const v = this._nearestTick(chart.scales.x, px);
-            if (v == null) return false;
-            index = this._indexNearestX(chart, v);
+            // The tick value IS the answer — no need to round it to a sample.
+            x = this._nearestTick(chart.scales.x, px);
+            if (x == null) return false;
         } else if (px < area.left) {                  // left of it: y ticks
             const v = this._nearestTick(chart.scales.y, py);
             if (v == null) return false;
-            index = this._indexAtY(chart, v);
-            if (index == null) {
+            x = this._solveForY(chart, chars, view, state, v);
+            if (x == null) {
                 // The curve never reaches that value here. Snapping anywhere
                 // would put a number in the note the curve never takes — but
                 // silence reads as a broken control, so say why.
@@ -1146,11 +1196,12 @@ export class FunctionAnalysisManager {
         const el = chart.canvas.parentNode.querySelector('.fa-chart-tip');
         if (!el) return false;
         this._unpinTip();
-        this._fillTip(el, chart, this._varLatex(chars, view.x_var), index);
+        this._fillTip(el, chart, chars, view, state, x);
         // Park it over the point, the same way the pointer would have.
         const di = this._mainDatasetIndex(chart);
-        const y = di < 0 ? null : chart.data.datasets[di].data[index];
-        el.style.left = `${chart.scales.x.getPixelForValue(chart.data.labels[index])}px`;
+        const y = di < 0 ? null
+            : this._seriesValueAt(chart, chars, view, state, di, x);
+        el.style.left = `${chart.scales.x.getPixelForValue(x)}px`;
         el.style.top = `${Number.isFinite(y)
             ? chart.scales.y.getPixelForValue(y) : area.top + 20}px`;
         el.classList.add('show');
@@ -1176,7 +1227,7 @@ export class FunctionAnalysisManager {
         el.classList.add('pinned');
         this._pinnedTip = el;
         this._pinnedChart = chart;
-        this._pinnedPoints = (el.$fa || {}).points || null;
+        this._pinnedPoints = el.$fa && el.$fa.datasets ? el.$fa : null;
         chart.update('none');           // paint the markers we now own
 
         const head = el.querySelector('.fa-tip-head');
@@ -1215,16 +1266,17 @@ export class FunctionAnalysisManager {
     /** The hovered points, kept on screen for a pinned note. Positions are
      *  recomputed from the LIVE data each draw, so a slider move slides the
      *  markers along with the curves instead of stranding them. */
-    _drawPinnedPoints(chart, points) {
+    _drawPinnedPoints(chart, pinned) {
         const { ctx, scales, chartArea } = chart;
         if (!chartArea || !scales.x || !scales.y) return;
+        const { x, datasets, chars, view, state } = pinned;
         ctx.save();
-        for (const p of points) {
-            if (!chart.isDatasetVisible(p.datasetIndex)) continue;
-            const ds = chart.data.datasets[p.datasetIndex];
-            const y = ds && ds.data[p.index];
+        for (const di of datasets) {
+            if (!chart.isDatasetVisible(di)) continue;
+            const ds = chart.data.datasets[di];
+            const y = this._seriesValueAt(chart, chars, view, state, di, x);
             if (!Number.isFinite(y)) continue;
-            const px = scales.x.getPixelForValue(chart.data.labels[p.index]);
+            const px = scales.x.getPixelForValue(x);
             const py = scales.y.getPixelForValue(y);
             if (px < chartArea.left || px > chartArea.right) continue;
             ctx.beginPath();
@@ -1244,11 +1296,10 @@ export class FunctionAnalysisManager {
     _refreshPinnedValues(chart) {
         const el = this._pinnedTip;
         const d = el && el.$fa;
-        if (!d || !d.points) return;
+        if (!d || !d.datasets) return;
         const cells = el.querySelectorAll('.fa-tip-row .fa-tip-val');
-        d.points.forEach((p, i) => {
-            const ds = chart.data.datasets[p.datasetIndex];
-            const y = ds && ds.data[p.index];
+        d.datasets.forEach((di, i) => {
+            const y = this._seriesValueAt(chart, d.chars, d.view, d.state, di, d.x);
             const text = Number.isFinite(y) ? (+y).toPrecision(5) : '—';
             if (cells[i]) cells[i].textContent = text;
             if (d.values[i]) d.values[i].value = text;
