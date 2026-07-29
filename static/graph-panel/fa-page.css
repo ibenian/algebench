@@ -289,19 +289,38 @@
 }
 /* Top-right corner of a pinned note. This is the shared .ai-ask-btn circle,
    untouched — no size, padding or geometry of its own, or it stops matching
-   every other ask button in the app. The only differences it needs: it is
-   always on rather than hover-revealed (a pinned note is a deliberate
-   selection), and its resting glyph is lifted just enough to read as a
-   control, leaving the shared :hover rule room to light it up. */
+   every other ask button in the app. It is revealed by hovering the note,
+   the same as every other hover-revealed ask; only the corner placement is
+   its own. */
 .fa-tip-ask {
-    opacity: 1;
     margin-left: auto;
-    color: rgba(170, 180, 250, 0.85);
+    pointer-events: none;       /* same as .fa-askable's hidden state */
+    transition: opacity 0.12s ease;
 }
+.fa-chart-tip.pinned:hover .fa-tip-ask { opacity: 1; pointer-events: auto; }
 .fa-tip-row { display: flex; align-items: center; gap: 6px; }
 .fa-tip-swatch { width: 9px; height: 3px; border-radius: 2px; flex-shrink: 0; }
 .fa-tip-name { max-width: 210px; overflow: hidden; text-overflow: ellipsis; }
 .fa-tip-val { margin-left: auto; color: #dde6ff; font: 11.5px ui-monospace, Menlo, monospace; }
+
+/* Why a y-axis click could not be answered — brief, and out of the way. */
+.fa-snap-miss {
+    position: absolute;
+    left: 50%;
+    bottom: 8px;
+    transform: translateX(-50%);
+    max-width: 92%;
+    padding: 4px 11px;
+    border-radius: 6px;
+    background: rgba(10, 12, 26, 0.92);
+    border: 1px solid rgba(239, 83, 80, 0.45);
+    color: #dde6ff;
+    font-size: 11.5px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+.fa-snap-miss.show { opacity: 1; }
 
 /* KaTeX layer for annotation labels (canvas text can't render math) */
 .fa-chart-labels { position: absolute; inset: 0; pointer-events: none; }

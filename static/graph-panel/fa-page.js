@@ -768,7 +768,17 @@ export class FunctionAnalysisManager {
                     },
                     y: {
                         ticks: { color: '#7e8aa3', maxTicksLimit: 7,
-                                 callback: v => +Number(v).toFixed(3) },
+                                 // The y bounds are the data extent plus 6%
+                                 // breathing room (_yBounds), and Chart.js
+                                 // labels an explicit min/max. Those two
+                                 // ticks are padding, not data: they read as
+                                 // noise (`4.24`?) and, sitting outside every
+                                 // curve's range by construction, a y-axis
+                                 // snap can never land on them. Unlabelled.
+                                 callback: function (v) {
+                                     if (v === this.min || v === this.max) return null;
+                                     return +Number(v).toFixed(3);
+                                 } },
                         grid: {
                             color: (c) => c.tick && c.tick.value === 0
                                 ? 'rgba(174, 187, 209, 0.85)'
@@ -1003,6 +1013,9 @@ export class FunctionAnalysisManager {
     _nearestTick(scale, pixel, tol = 18) {
         let best = null, bestD = Infinity;
         (scale.ticks || []).forEach((t, i) => {
+            // Skip ticks the axis draws no label for — there is nothing there
+            // to aim at, so a click near one belongs to its labelled neighbour.
+            if (t.label == null || t.label === '') return;
             const d = Math.abs(scale.getPixelForTick(i) - pixel);
             if (d < bestD) { bestD = d; best = t.value; }
         });
@@ -1026,15 +1039,25 @@ export class FunctionAnalysisManager {
         return best;
     }
 
-    /** Sample index where the main curve crosses `value` — the inverse
-     *  question the y axis asks ("where is $a = 3$?"). Found by scanning for
-     *  a sign change in `y - value`; a curve can cross more than once, so
-     *  prefer the crossing nearest whatever is already pinned. Null when the
-     *  curve never reaches that value in this window. */
+    /** Sample index where the ANALYZED curve reaches `value` — the inverse
+     *  question the y axis asks ("where is $a = 3$?").
+     *
+     *  Only the main curve answers. The axis is shared with the companions,
+     *  but the learner clicking `3` means "put $a$ at 3"; solving against a
+     *  companion instead would land on a point where the note reads
+     *  `a = 0.75` next to a companion reading 3, which looks like a bug.
+     *  Null when the curve does not reach that value in this window — see
+     *  `_saySnapFailed` for what the chart says instead. */
     _indexAtY(chart, value) {
         const di = this._mainDatasetIndex(chart);
         if (di < 0) return null;
-        const data = chart.data.datasets[di].data;
+        return this._crossingIndex(chart.data.datasets[di].data, value);
+    }
+
+    /** Sample index where `data` crosses `value`, by sign change in
+     *  `y - value`. A curve can cross more than once, so prefer the crossing
+     *  nearest whatever is already pinned. */
+    _crossingIndex(data, value) {
         const hits = [];
         for (let i = 0; i < data.length; i++) {
             const y = data[i];
@@ -1055,6 +1078,31 @@ export class FunctionAnalysisManager {
         if (from == null) return hits[0];
         return hits.reduce((p, c) =>
             Math.abs(c - from) < Math.abs(p - from) ? c : p);
+    }
+
+    /** A y-axis click the curve cannot answer, said out loud and briefly.
+     *  Reports the range the curve actually covers, so the learner can see
+     *  how far off the ask was — and, since the pins are live, that moving a
+     *  slider may well bring the value into reach. */
+    _saySnapFailed(chart, chars, view, value) {
+        const wrap = chart.canvas.parentNode;
+        let el = wrap.querySelector('.fa-snap-miss');
+        if (!el) {
+            el = document.createElement('div');
+            el.className = 'fa-snap-miss';
+            wrap.appendChild(el);
+        }
+        const di = this._mainDatasetIndex(chart);
+        const ys = di < 0 ? [] : chart.data.datasets[di].data.filter(Number.isFinite);
+        const y = chars.dependentLatex || chars.expression || 'f';
+        el.innerHTML = renderKaTeX(
+            `$${y}$ does not reach ${this._fmt(value)} here` +
+            (ys.length ? ` — it runs from ${this._fmt(Math.min(...ys))} to ` +
+                         `${this._fmt(Math.max(...ys))} over this range.` : '.'),
+            false);
+        el.classList.add('show');
+        clearTimeout(this._snapMissTimer);
+        this._snapMissTimer = setTimeout(() => el.classList.remove('show'), 2600);
     }
 
     /** Is the pointer over a tick label? Drives the cursor only. */
@@ -1085,9 +1133,13 @@ export class FunctionAnalysisManager {
             const v = this._nearestTick(chart.scales.y, py);
             if (v == null) return false;
             index = this._indexAtY(chart, v);
-            // The curve never reaches that value here — snapping anywhere
-            // would be a lie, so leave the chart alone.
-            if (index == null) return true;
+            if (index == null) {
+                // The curve never reaches that value here. Snapping anywhere
+                // would put a number in the note the curve never takes — but
+                // silence reads as a broken control, so say why.
+                this._saySnapFailed(chart, chars, view, v);
+                return true;
+            }
         } else {
             return false;
         }
@@ -1102,17 +1154,6 @@ export class FunctionAnalysisManager {
         el.style.top = `${Number.isFinite(y)
             ? chart.scales.y.getPixelForValue(y) : area.top + 20}px`;
         el.classList.add('show');
-        // A tick at either end of an axis parks the note half outside the
-        // chart — nudge it back in before pinning freezes the position.
-        const wrapR = el.parentNode.getBoundingClientRect();
-        const b = el.getBoundingClientRect();
-        const dx = b.left < wrapR.left ? wrapR.left - b.left
-                 : b.right > wrapR.right ? wrapR.right - b.right : 0;
-        const dy = b.top < wrapR.top ? wrapR.top - b.top : 0;
-        if (dx || dy) {
-            el.style.left = `${parseFloat(el.style.left) + dx}px`;
-            el.style.top = `${parseFloat(el.style.top) + dy}px`;
-        }
         this._pinTip(el, chart, artifact, chars, view, state);
         return true;
     }
@@ -1126,8 +1167,12 @@ export class FunctionAnalysisManager {
         const r = el.getBoundingClientRect();
         // Freeze it where it already sits, THEN drop the hover transform, so
         // left/top become plain coordinates a drag can update directly.
-        el.style.left = `${r.left - wrapR.left}px`;
-        el.style.top = `${r.top - wrapR.top}px`;
+        // A point near an edge — or an end-of-axis tick — would park it half
+        // outside the chart, where the card clips it, so it lands clamped
+        // inside. The learner can drag it back out if they want to.
+        el.style.left = `${Math.max(0, Math.min(r.left - wrapR.left,
+                                                wrapR.width - r.width))}px`;
+        el.style.top = `${Math.max(0, r.top - wrapR.top)}px`;
         el.classList.add('pinned');
         this._pinnedTip = el;
         this._pinnedChart = chart;
