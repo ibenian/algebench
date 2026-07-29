@@ -246,7 +246,14 @@
     z-index: 25;
     display: none;
     transform: translate(-50%, calc(-100% - 12px));
-    background: rgba(10, 12, 26, 0.95);
+    /* 70% transparent, so the curve the learner is reading stays visible
+       underneath. The PANEL is see-through, not its contents — fading the
+       text along with it would cost more legibility than the glimpse of
+       chart is worth. The blur keeps grid lines from running through the
+       numbers. */
+    background: rgba(10, 12, 26, 0.3);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
     border: 1px solid rgba(110, 124, 180, 0.45);
     border-radius: 7px;
     padding: 6px 9px;
