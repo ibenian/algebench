@@ -261,12 +261,48 @@
     padding: 6px 9px;
     font-size: 12px;
     color: #aebbd1;
+    /* Transparent to the pointer while it is just a hover readout, so the
+       click that pins it reaches the canvas underneath rather than being
+       swallowed by the very box it is meant to pin. */
     pointer-events: none;
     white-space: nowrap;
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
 }
 .fa-chart-tip.show { display: block; }
-.fa-tip-head { color: #dde6ff; margin-bottom: 3px; }
+/* Pinned: parked where the learner dropped it, no longer following the
+   pointer. `transform: none` is what makes left/top plain drag coordinates. */
+.fa-chart-tip.pinned {
+    transform: none;
+    /* Now it IS interactive: it can be dragged, and it swallows its own
+       clicks so clicking the note never counts as clicking the chart. */
+    pointer-events: auto;
+    cursor: move;
+    border-color: rgba(66, 165, 245, 0.75);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.55);
+}
+.fa-tip-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;                  /* keeps the ask button off the readout */
+    color: #dde6ff;
+    margin-bottom: 3px;
+}
+/* Top-right corner of a pinned note. Unlike the hover-revealed asks
+   elsewhere, this one is always on — so it carries the shared button's HOVER
+   look as its resting state, or a permanently dimmed sparkle just reads as
+   decoration. No padding: the base rule sizes a fixed circle, and padding
+   stretches it into an oval. */
+.fa-tip-ask {
+    opacity: 1;
+    margin-left: auto;
+    width: 22px;
+    height: 22px;
+    top: 0;
+    background: rgba(100, 110, 240, 0.3);
+    border-color: rgba(160, 180, 255, 0.6);
+    color: #c8d4ff;
+}
+.fa-tip-ask:hover { box-shadow: 0 0 8px rgba(120, 140, 255, 0.5); }
 .fa-tip-row { display: flex; align-items: center; gap: 6px; }
 .fa-tip-swatch { width: 9px; height: 3px; border-radius: 2px; flex-shrink: 0; }
 .fa-tip-name { max-width: 210px; overflow: hidden; text-overflow: ellipsis; }

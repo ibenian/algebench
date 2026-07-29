@@ -109,6 +109,9 @@ export class FunctionAnalysisManager {
         this._hiddenGroups = new Set();// annotation groups toggled off (per render)
         this._hiddenMarks = new Set(); // CAS feature kinds toggled off
         this._hiddenSeries = new Set();// dataset indices toggled off in the legend
+        this._pinnedTip = null;        // hover readout pinned as a sticky note
+        this._pinnedChart = null;      // the chart it was pinned on
+        this._pinnedPoints = null;     // its markers, drawn by the plugin
         // Artifacts are kept OFF the step objects on purpose: steps are
         // serialized wholesale into chat context and proof saves, and an
         // artifact both back-references its step (a JSON cycle) and carries
@@ -294,6 +297,9 @@ export class FunctionAnalysisManager {
     }
 
     _destroyCharts() {
+        // The pinned note lives in the chart's wrapper and holds a document
+        // listener — drop both before the wrapper goes.
+        this._unpinTip();
         for (const c of this._charts) { try { c.destroy(); } catch (_e) {} }
         this._charts = [];
     }
@@ -713,6 +719,12 @@ export class FunctionAnalysisManager {
                     : new Set();
                 this._drawOverlays(chart, chart.data.datasets[0], fa.xs,
                                    visible, fa.anns);
+                // Chart.js drops its own hover points the moment the pointer
+                // leaves, which is exactly when a note gets pinned — draw
+                // them ourselves so the note keeps pointing at something.
+                if (this._pinnedPoints) {
+                    this._drawPinnedPoints(chart, this._pinnedPoints);
+                }
             },
         };
 
@@ -733,7 +745,8 @@ export class FunctionAnalysisManager {
                     // Canvas tooltips can't render math — use an HTML one.
                     tooltip: {
                         enabled: false,
-                        external: this._makeTooltipHandler(chars, view),
+                        external: this._makeTooltipHandler(artifact, chars,
+                                                           view, state),
                     },
                 },
                 // Left reserves the rotated y-title's band; right is just
@@ -773,6 +786,16 @@ export class FunctionAnalysisManager {
         const yb = this._yBounds(datasets);
         chart.options.scales.y.min = yb.min;
         chart.options.scales.y.max = yb.max;
+        // Click the chart to pin the hover readout as a sticky note; click it
+        // again — anywhere but the note itself, which swallows its own clicks
+        // — to put the note away.
+        canvas.addEventListener('click', () => {
+            if (this._pinnedTip) { this._unpinTip(); return; }
+            const tip = canvasWrap.querySelector('.fa-chart-tip');
+            if (tip && tip.classList.contains('show')) {
+                this._pinTip(tip, chart, artifact, chars, view, state);
+            }
+        });
         this._renderSeriesLegend(legend, chart);
         this._renderMarkerLegend(legend, marks, chart);
         chart.$fa = {
@@ -819,6 +842,7 @@ export class FunctionAnalysisManager {
             chart.options.scales.y.min = fa.yb.min;
             chart.options.scales.y.max = fa.yb.max;
         }
+        if (this._pinnedTip) this._refreshPinnedValues(chart);
         chart.update('none');
     }
 
@@ -860,8 +884,9 @@ export class FunctionAnalysisManager {
     }
 
     /** HTML hover tooltip (Chart.js `external`) so the hovered x-value and
-     *  every series label render as KaTeX rather than canvas text. */
-    _makeTooltipHandler(chars, view) {
+     *  every series label render as KaTeX rather than canvas text. Clicking
+     *  it pins it — see `_pinTip`. */
+    _makeTooltipHandler(artifact, chars, view, state) {
         const xLatex = this._varLatex(chars, view.x_var);
         return (ctx) => {
             const { chart, tooltip } = ctx;
@@ -871,20 +896,29 @@ export class FunctionAnalysisManager {
             if (!el) {
                 el = document.createElement('div');
                 el.className = 'fa-chart-tip';
+                this._wireTip(el);
                 wrap.appendChild(el);
             }
+            // A pinned note belongs to the learner, not to the pointer.
+            if (el.classList.contains('pinned')) return;
             if (!tooltip || tooltip.opacity === 0) {
                 el.classList.remove('show');
                 return;
             }
             el.innerHTML = '';
+            // What this readout is showing, for the pinned note's ask button.
+            const values = [], points = [];
 
             const head = document.createElement('div');
             head.className = 'fa-tip-head';
+            // The readout is one span so the head can be a flex row with the
+            // pinned note's ask button pushed to the far right.
             const xv = document.createElement('span');
+            xv.className = 'fa-tip-x';
             this._katex(xv, xLatex);
-            head.append(xv, document.createTextNode(
-                ' = ' + (+(tooltip.dataPoints?.[0]?.parsed?.x ?? 0)).toPrecision(4)));
+            const xValue = (+(tooltip.dataPoints?.[0]?.parsed?.x ?? 0)).toPrecision(4);
+            xv.appendChild(document.createTextNode(' = ' + xValue));
+            head.appendChild(xv);
             el.appendChild(head);
 
             for (const dp of tooltip.dataPoints || []) {
@@ -905,12 +939,140 @@ export class FunctionAnalysisManager {
                     ? (+dp.parsed.y).toPrecision(5) : '—';
                 row.append(sw, name, val);
                 el.appendChild(row);
+                values.push({
+                    label: dp.dataset.$faLabel || dp.dataset.label || '',
+                    value: val.textContent,
+                });
+                // Where this row sits on the chart, so a pinned note can keep
+                // its markers drawn and its numbers honest across a slider move.
+                points.push({ datasetIndex: dp.datasetIndex, index: dp.dataIndex });
             }
 
+            el.$fa = { xLatex, xValue, values, points };
             el.style.left = `${tooltip.caretX}px`;
             el.style.top = `${tooltip.caretY}px`;
             el.classList.add('show');
         };
+    }
+
+    /** Drag, wired once per tip element. Pinning itself is a click on the
+     *  CHART (see `_renderChart`); an unpinned tip is pointer-transparent, so
+     *  that click reaches the canvas even though the tip is sitting over it.
+     *  Once pinned the tip takes pointer events, which is both what makes it
+     *  draggable and what stops a click on the note counting as a click on
+     *  the chart — so the note is never its own dismiss target. */
+    _wireTip(el) {
+        el.addEventListener('mousedown', (e) => {
+            if (!el.classList.contains('pinned')) return;
+            if (e.target.closest('.ai-ask-btn')) return;   // let the ask fire
+            e.preventDefault();                            // no text selection
+            const wrapR = el.parentNode.getBoundingClientRect();
+            const r = el.getBoundingClientRect();
+            const dx = e.clientX - r.left, dy = e.clientY - r.top;
+            const move = (ev) => {
+                el.style.left = `${ev.clientX - wrapR.left - dx}px`;
+                el.style.top = `${ev.clientY - wrapR.top - dy}px`;
+            };
+            const up = () => {
+                document.removeEventListener('mousemove', move);
+                document.removeEventListener('mouseup', up);
+            };
+            document.addEventListener('mousemove', move);
+            document.addEventListener('mouseup', up);
+        });
+    }
+
+    /** Pin the hover readout as a sticky note: it stops following the
+     *  pointer, can be dragged anywhere, and grows an ask button for the
+     *  exact set of values it froze. Clicking off it puts it away. */
+    _pinTip(el, chart, artifact, chars, view, state) {
+        this._unpinTip();
+        const wrapR = el.parentNode.getBoundingClientRect();
+        const r = el.getBoundingClientRect();
+        // Freeze it where it already sits, THEN drop the hover transform, so
+        // left/top become plain coordinates a drag can update directly.
+        el.style.left = `${r.left - wrapR.left}px`;
+        el.style.top = `${r.top - wrapR.top}px`;
+        el.classList.add('pinned');
+        this._pinnedTip = el;
+        this._pinnedChart = chart;
+        this._pinnedPoints = (el.$fa || {}).points || null;
+        chart.update('none');           // paint the markers we now own
+
+        const head = el.querySelector('.fa-tip-head');
+        if (head) {
+            head.appendChild(makeAiAskButton('ai-ask-btn fa-tip-ask',
+                'Ask the AI about these values', () => {
+                    const d = el.$fa || { values: [] };
+                    const vals = d.values
+                        .map(v => `${v.label} = ${v.value}`).join(', ');
+                    return `On the chart of $${artifact.latex}$ I have ` +
+                        `pinned the point where $${d.xLatex} = ${d.xValue}$` +
+                        (vals ? `, where the curves read ${vals}` : '') +
+                        `. What do these values tell me, and how do they ` +
+                        `relate to each other here?\n` +
+                        this._configSummary(chars, view, state);
+                }));
+        }
+    }
+
+    /** Put the sticky note away and hand the tip back to the pointer. */
+    _unpinTip() {
+        const el = this._pinnedTip;
+        const chart = this._pinnedChart;
+        this._pinnedTip = null;
+        this._pinnedChart = null;
+        this._pinnedPoints = null;
+        if (chart) { try { chart.update('none'); } catch (_e) {} }
+        if (!el) return;
+        el.classList.remove('pinned', 'show');
+        el.style.left = '';
+        el.style.top = '';
+        const ask = el.querySelector('.fa-tip-ask');
+        if (ask) ask.remove();
+    }
+
+    /** The hovered points, kept on screen for a pinned note. Positions are
+     *  recomputed from the LIVE data each draw, so a slider move slides the
+     *  markers along with the curves instead of stranding them. */
+    _drawPinnedPoints(chart, points) {
+        const { ctx, scales, chartArea } = chart;
+        if (!chartArea || !scales.x || !scales.y) return;
+        ctx.save();
+        for (const p of points) {
+            if (!chart.isDatasetVisible(p.datasetIndex)) continue;
+            const ds = chart.data.datasets[p.datasetIndex];
+            const y = ds && ds.data[p.index];
+            if (!Number.isFinite(y)) continue;
+            const px = scales.x.getPixelForValue(chart.data.labels[p.index]);
+            const py = scales.y.getPixelForValue(y);
+            if (px < chartArea.left || px > chartArea.right) continue;
+            ctx.beginPath();
+            ctx.arc(px, py, 4, 0, 7);
+            ctx.fillStyle = '#0a0c1a';
+            ctx.fill();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = ds.borderColor;
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
+
+    /** A pinned note is pinned in x, not frozen in time: when a slider moves
+     *  the curves, its numbers follow, or it would sit there quoting values
+     *  that no longer match the curve underneath it. */
+    _refreshPinnedValues(chart) {
+        const el = this._pinnedTip;
+        const d = el && el.$fa;
+        if (!d || !d.points) return;
+        const cells = el.querySelectorAll('.fa-tip-row .fa-tip-val');
+        d.points.forEach((p, i) => {
+            const ds = chart.data.datasets[p.datasetIndex];
+            const y = ds && ds.data[p.index];
+            const text = Number.isFinite(y) ? (+y).toPrecision(5) : '—';
+            if (cells[i]) cells[i].textContent = text;
+            if (d.values[i]) d.values[i].value = text;
+        });
     }
 
     _fmt(v) {
