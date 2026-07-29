@@ -61,9 +61,62 @@ function getFaManager() {
         },
         onArtifactsChanged: () => rebuildProofTree(),
         onPageClosed: () => {},
+        onActiveChanged: ({ replace = false } = {}) => {
+            // Keep `?fa=` in step with the page (view-state-bridge listens).
+            // `replace` rides along so an id settling rewrites the current
+            // history entry rather than pushing a second one.
+            try {
+                window.dispatchEvent(new CustomEvent('algebench:fachange',
+                    { detail: { replace: !!replace } }));
+            } catch (_) { /* no CustomEvent — the URL just lags */ }
+        },
     });
     return _faManager;
 }
+
+// ----- Function Analysis deeplink bridge (consumed by view-state-bridge.js) -----
+
+// Stand-in step for analyses that arrive with no proof step to attach to (see
+// openFunctionAnalysis). One per session, so repeat links still dedup together.
+const _faOrphanStep = {};
+
+/** The id of the artifact whose Function Analysis page is showing, else null. */
+function getFunctionAnalysisId() {
+    if (!_faManager || !_faManager.isOpen()) return null;
+    const a = _faManager.activeArtifact;
+    return (a && a.id) || null;
+}
+
+/**
+ * Open the Function Analysis page from a deeplink.
+ *   `id`    — an artifact already attached to the current proof step (this
+ *             session): re-focus it, no expert call.
+ *   `latex` — an expression to analyze. `open()` dedups on (node, expression),
+ *             so arriving twice with the same expression re-focuses the first
+ *             analysis instead of stacking duplicates or re-billing the LM.
+ * Node-less by construction: the producer is a proof step (or an agent), not a
+ * semantic-graph node, so the artifact carries `nodeId: null`.
+ */
+function openFunctionAnalysis({ id = null, latex = null } = {}) {
+    // No proof step to hang it on — a `?fax=` link from an UNSAVED /prove
+    // derivation, which lands on whatever the app was showing. Attach to a
+    // stand-in so the page still opens (it just won't appear in the Math tree,
+    // which lists the real proof's steps). The expert then works from the
+    // expression alone, with no lesson/domain context to add.
+    const step = currentProofStep() || _faOrphanStep;
+    const mgr = getFaManager();
+    const existing = mgr.findById(step, id);
+    if (existing) { mgr.show(existing); return true; }
+    if (!latex) return false;
+    mgr.open({ id: null, subexpr: String(latex) }, step);
+    return true;
+}
+
+/** Close the Function Analysis page if it is showing (no-op otherwise). */
+function closeFunctionAnalysis() {
+    if (_faManager && _faManager.isOpen()) _faManager.close();
+}
+
 let _d3NodeAskBtn = null;
 let _d3NodeAskHideTimer = null;
 let _d3HoveredNodeId = null;
@@ -134,6 +187,11 @@ if (typeof window !== 'undefined') {
         showGraphView,
         showSceneView,
         dockProofAnimation,
+        // Function Analysis page (?fa= / ?fax=) — read for serialization, driven
+        // by a deeplink. See openFunctionAnalysis above.
+        getFunctionAnalysisId,
+        openFunctionAnalysis,
+        closeFunctionAnalysis,
         // Dock (split) layout — read for deeplink serialization, set when a
         // deeplink requests it. `setDocked` forces the requested state but does
         // NOT persist it (persist=false), so applying a `?dock=1` link changes

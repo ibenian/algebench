@@ -75,6 +75,15 @@ const AI_SPARKLE_SVG =
   '<svg viewBox="0 0 16 16" fill="currentColor" width="11" height="11" aria-hidden="true">' +
   '<path d="M8 1c0 4-3 6.5-7 7 4 .5 7 3 7 7 0-4 3-6.5 7-7-4-.5-7-3-7-7z"/></svg>';
 
+// Function Analysis icon (axes + a curve) for the per-step ƒ button. Mirrors
+// icons.js FUNCTION_ANALYSIS_ICON, inlined so the engine stays dependency-free.
+const FUNCTION_ANALYSIS_SVG =
+  '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" ' +
+  'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<path d="M4 3v17h17"/>' +
+  '<path d="M4 17.5h17" stroke-dasharray="2 2.5" opacity="0.75"/>' +
+  '<path d="M7.5 5.5c0 7.5 3.5 11 12.5 11.7" stroke-width="1.9"/></svg>';
+
 // Synthetic operator-node ids (from the backend structural renderer) for n-ary /
 // relational nodes that SPAN many terms — a product/fraction, a sum, an equation.
 // Hovering the bare chrome of one (a fraction bar, the space between factors)
@@ -144,6 +153,13 @@ export class ProofAnimator {
     // animation step into finer sub-steps on demand.
     this._deriveBtnFactory = typeof opts.deriveButton === "function" ? opts.deriveButton : null;
     this._onDerive = typeof opts.onDerive === "function" ? opts.onDerive : null;
+    // Function Analysis (ƒ) for the CURRENT step's expression. Shown wherever the
+    // ask buttons are (the app's factory, or ?ai=1 standalone/embedded), because it
+    // is the same kind of affordance: an AI-backed side quest off this step.
+    // In-app the host hook opens the analysis page in place; without one the button
+    // deeplinks into the app (?fax=<expression>) — see _faTargetUrl.
+    this._onFunctionAnalysis = typeof opts.onFunctionAnalysis === "function" ? opts.onFunctionAnalysis : null;
+    this._faBtnEl = null;
     // Host hook for clicking a prerequisite / follow-up chip. Receives
     // {kind:'prerequisite'|'followup', text, message} — the app asks its agent with
     // the context-rich `message`. Absent + embedded → posted to the parent page;
@@ -286,6 +302,12 @@ export class ProofAnimator {
       probe.classList.add("pa-has-ask");
       const der = document.createElement("span"); der.className = "pa-ask-btn pa-derive-btn";
       opHost.append(der);
+    }
+    // Function Analysis is a third inline button, on the same condition as the
+    // live one (_build) — same reason as Derive above: probe must equal live.
+    if (this._aiAsk) {
+      const fa = document.createElement("span"); fa.className = "pa-ask-btn pa-fa-btn";
+      opHost.append(fa);
     }
     // (The overall-confidence pill is an absolute OVERLAY on the widget — out
     // of flow, so it does not participate in the meta height reservation.)
@@ -1110,6 +1132,61 @@ export class ProofAnimator {
     } catch (e) { return null; }
   }
 
+  // ── Function Analysis (ƒ) ─────────────────────────────────────────────────
+  // Engine-native button (never the host's ask factory — this doesn't ask chat).
+  _makeFaButton() {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "pa-ask-btn pa-fa-btn";
+    btn.title = "Function analysis — plot and characterize this step's expression";
+    btn.innerHTML = FUNCTION_ANALYSIS_SVG;
+    btn.setAttribute("aria-label", "Function analysis for this step");
+    btn.addEventListener("click", (e) => { e.stopPropagation(); this._faClick(); });
+    return btn;
+  }
+
+  // Route a Function Analysis request the same three ways an ask routes:
+  //   1. IN-APP    — a host hook is wired → open the analysis page in place.
+  //   2. EMBEDDED  — open the app in a NEW TAB at ?fax=<expression>.
+  //   3. STANDALONE — navigate THIS tab to the same url.
+  // The expression is this step's id-free `plain` LaTeX — exactly what the
+  // expression-analysis expert parses, not the annotated render.
+  _faClick() {
+    const i = this.current;
+    const latex = this._stepExpr(i);
+    if (!latex) return;
+    if (this._onFunctionAnalysis) { this._onFunctionAnalysis({ latex, step: i }); return; }
+    this._openAppUrl(
+      this._faTargetUrl(this._stepDeeplink(i), latex),
+      () => this._postToParent({ type: "algebench-function-analysis", latex, step: i }),
+      () => { try { navigator.clipboard.writeText(latex); } catch (e) {} });
+  }
+
+  // Where a Function Analysis click lands: the step's view (its own deeplink, else
+  // the proof's, else the app root) plus `?fax=<expression>` and the Math view the
+  // analysis page lives in. Deliberately NOT `panel=chat` — this opens an
+  // apparatus, not a conversation. Like an ask, it carries this proof's `pa`/`pas`
+  // so the derivation travels along and the analysis attaches to the right step —
+  // which is what supplies the lesson/domain context for the expert.
+  _faTargetUrl(deeplink, latex) {
+    try {
+      const origin = this._askOrigin || window.location.origin;
+      const raw = deeplink || "/";
+      const u = new URL(raw, origin);
+      if (u.origin !== origin) return null;   // off-origin deeplink → reject
+      u.searchParams.set("view", "math");
+      u.searchParams.set("fax", String(latex).slice(0, 1000));
+      // A stale `fa` on the deeplink would win over our expression (the id is
+      // resolved first) and open somebody else's analysis — drop it.
+      u.searchParams.delete("fa");
+      const sameApp = raw.startsWith("/");
+      const ownPa = this._ownPaId();
+      if (sameApp && ownPa && !u.searchParams.has("pa")) u.searchParams.set("pa", ownPa);
+      if (u.searchParams.has("pa")) u.searchParams.set("pas", String(this.current));
+      return u.href;
+    } catch (e) { return null; }
+  }
+
   // Engine-native ask button (used only when the app supplies no aiAskButton
   // factory but term-ask is on). Routes via _routeAsk instead of asking chat.
   _makeRoutedAskButton(className, title, getMessage, getIdx) {
@@ -1222,6 +1299,14 @@ export class ProofAnimator {
         "pa-ask-btn pa-derive-btn", "Derive this step — break it into finer sub-steps",
         () => this._deriveCurrent(this._deriveBtnEl));
       meta.querySelector(".pa-op-row").appendChild(this._deriveBtnEl);
+    }
+    // Function Analysis button — sits after the derive button, same op-row, and
+    // acts on the step the learner is looking at.
+    if (this._aiAsk) {
+      const meta = this.container.querySelector(".pa-meta");
+      meta.classList.add("pa-has-ask");
+      this._faBtnEl = this._makeFaButton();
+      meta.querySelector(".pa-op-row").appendChild(this._faBtnEl);
     }
     this.container.querySelector(".pa-play").onclick = () => this._togglePlay();
     this.container.querySelector(".pa-speed").onclick = () => {

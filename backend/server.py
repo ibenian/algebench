@@ -1481,13 +1481,18 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
     # -- GET routes --
 
     @fastapp.get("/")
-    async def get_root():
+    async def get_root(request: Request):
         # --prove launches exist to browse proofs: send the root to /prove so
         # hosts that always open "/" (preview panes, plain localhost visits)
         # land on the right page. /index.html below stays the main-app escape
         # hatch. 307 (not 301) so browsers don't cache the redirect across a
         # later launch without --prove on the same port.
-        if prove_home:
+        #
+        # Only a BARE "/" redirects. "/?builtin=…&fax=…" is a deliberate deeplink
+        # into the app — every /prove hand-off builds one (Continue in main app,
+        # a term ask, the ƒ Function Analysis button). Redirecting those dropped
+        # the whole link and dumped the user on the proof browser.
+        if prove_home and not request.url.query:
             return RedirectResponse("/prove", status_code=307)
         return await get_index()
 

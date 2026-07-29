@@ -76,6 +76,7 @@ export class FunctionAnalysisManager {
      *   katex            window.katex
      *   onArtifactsChanged (step) => void   — rebuild the Math tab tree
      *   onPageClosed     () => void         — restore the graph view
+     *   onActiveChanged  () => void         — the shown artifact (or its id) changed
      *   buildContext     (step) => string   — lesson/step context for the expert
      */
     constructor(opts = {}) {
@@ -84,6 +85,12 @@ export class FunctionAnalysisManager {
             (() => document.getElementById('graph-viewport'));
         this.onArtifactsChanged = opts.onArtifactsChanged || (() => {});
         this.onPageClosed = opts.onPageClosed || (() => {});
+        // Fires whenever the page opens on a different artifact, closes, or the
+        // active artifact's id settles (pending -> expert-assigned). The host uses
+        // it to keep the `?fa=` deeplink in sync. Receives `{replace}` — true when
+        // the visible artifact did not change (an id settling, a retry), so the
+        // host rewrites the current history entry instead of pushing a new one.
+        this.onActiveChanged = opts.onActiveChanged || (() => {});
         this.buildContext = opts.buildContext || (() => '');
         this.pageEl = null;            // lazily created #fa-page-container
         this.activeArtifact = null;
@@ -101,6 +108,17 @@ export class FunctionAnalysisManager {
     /** Artifacts attached to a step (render order). */
     listFor(step) {
         return (step && this._byStep.get(step)) || [];
+    }
+
+    /** The artifact with `id` on `step`, or null. Ids are session-scoped: the
+     *  expert assigns one on success, replacing the `fa-pending-N` placeholder
+     *  the artifact was born with. BOTH stay matchable (the placeholder is kept
+     *  as `pendingId`) so a URL captured mid-analysis still resolves after the
+     *  id settles. */
+    findById(step, id) {
+        if (!id) return null;
+        return this.listFor(step).find(
+            (a) => a.id === id || a.pendingId === id) || null;
     }
 
     /* ------------------------------------------------------------------ */
@@ -121,8 +139,13 @@ export class FunctionAnalysisManager {
             this.show(existing);
             return;
         }
+        const pendingId = `fa-pending-${++_idCounter}`;
         const artifact = {
-            id: `fa-pending-${++_idCounter}`,
+            id: pendingId,
+            // Kept after `_run` overwrites `id` with the expert's, so a URL
+            // captured while the analysis was still running keeps resolving
+            // (see findById). Counter-derived, so it never collides.
+            pendingId,
             title: '',
             status: 'loading',
             latex,
@@ -168,14 +191,19 @@ export class FunctionAnalysisManager {
             artifact.error = (e && e.message) || 'Analysis failed.';
         }
         this.onArtifactsChanged(artifact.step);
-        if (this.activeArtifact === artifact) this.show(artifact);
+        // `replace`: the page was already showing this artifact — only its id
+        // settled (pending -> expert-assigned). That is the SAME view, so the
+        // host must rewrite the current URL, not push a second history entry
+        // (which would cost an extra Back press and strand the first one on the
+        // superseded pending id).
+        if (this.activeArtifact === artifact) this.show(artifact, { replace: true });
     }
 
     retry(artifact) {
         artifact.status = 'loading';
         artifact.error = null;
         this.onArtifactsChanged(artifact.step);
-        this.show(artifact);
+        this.show(artifact, { replace: true });   // same artifact, same view
         this._run(artifact);
     }
 
@@ -208,8 +236,10 @@ export class FunctionAnalysisManager {
         return el;
     }
 
-    /** Show the page for an artifact (loading, error, or ready). */
-    show(artifact) {
+    /** Show the page for an artifact (loading, error, or ready).
+     *  `opts.replace` marks this as a re-show of the artifact already on screen
+     *  (an id settling, a retry) rather than a new view — see onActiveChanged. */
+    show(artifact, opts = {}) {
         const page = this._ensurePage();
         if (!page) return;
         this.activeArtifact = artifact;
@@ -217,6 +247,7 @@ export class FunctionAnalysisManager {
         page.classList.add('open');
         this._render(artifact);
         this.onArtifactsChanged(artifact.step);   // tree highlight follows
+        this.onActiveChanged({ replace: !!opts.replace });   // ?fa= deeplink follows
     }
 
     /** Close the page and restore the graph view. */
@@ -226,6 +257,7 @@ export class FunctionAnalysisManager {
         if (this.pageEl) this.pageEl.classList.remove('open');
         this._restoreGraphChrome();
         this.onPageClosed();
+        this.onActiveChanged({ replace: false });   // closing IS a new view
     }
 
     isOpen() {

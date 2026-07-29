@@ -276,6 +276,8 @@ async function openProof(id) {
       // This proof now has its own chat — a term "Ask AI" flows into it (step-
       // aware), not the app. The app hand-off is the explicit button below.
       onTermAsk: ({ message }) => chat.ask(message),
+      // Function Analysis has no local equivalent — hand off to the app, new tab.
+      onFunctionAnalysis: ({ latex, step }) => openFaInApp(data.deeplink, id, step, latex),
     });
     setContinue(continueBtn, contDeep, data);       // reveal the app hand-off
   } catch (e) {
@@ -306,7 +308,46 @@ function openInApp(message, deeplink, id, step) {
   if ((u.searchParams.has("pa")) && step != null && !u.searchParams.has("pas")) {
     u.searchParams.set("pas", String(step));
   }
-  window.open(u.toString(), "_blank", "noopener");
+  openAppTab(u.toString());
+}
+
+/** Open an app URL in a new tab, falling back to THIS tab when the popup is
+ *  blocked. Without the fallback a blocked popup is a dead click — nothing
+ *  happens and nothing says why (which is exactly what an embedded preview pane
+ *  or a strict popup blocker produces). `noopener` is deliberately omitted: it
+ *  forces `window.open` to return null even on success, so there'd be no way to
+ *  tell "blocked" from "opened". The target is our own origin, so the opener
+ *  reference it leaves behind is not a cross-origin concern. */
+function openAppTab(url) {
+  let w = null;
+  try { w = window.open(url, "_blank"); } catch (e) { w = null; }
+  if (!w) location.assign(url);
+}
+
+/** Open the main app's Function Analysis page for a step's expression, preferring
+ *  a NEW tab. The engine would navigate this tab (it's a top-level page, not an
+ *  embed), which would throw away the derivation and chat sitting here — so /prove
+ *  routes the click itself. Carries `pa`/`pas` like the ask hand-off, so the
+ *  analysis attaches to the right proof step and the expert gets its context; an
+ *  unsaved derivation has no `pa` and lands on the expression alone.
+ *  A blocked popup falls back to this tab (openAppTab) — going somewhere the user
+ *  didn't want beats a button that silently does nothing. */
+function openFaInApp(deeplink, id, step, latex) {
+  const tex = String(latex || "").trim();
+  if (!tex) return;
+  let u;
+  try {
+    u = new URL(deeplink || "/", location.origin);
+    if (u.origin !== location.origin) u = new URL("/", location.origin);
+  } catch (e) { u = new URL("/", location.origin); }
+  u.searchParams.set("view", "math");
+  u.searchParams.set("fax", tex.slice(0, 1000));
+  u.searchParams.delete("fa");                      // never resolve a stale id first
+  if (id && !u.searchParams.has("pa")) u.searchParams.set("pa", id);
+  if (u.searchParams.has("pa") && step != null && !u.searchParams.has("pas")) {
+    u.searchParams.set("pas", String(step));
+  }
+  openAppTab(u.toString());
 }
 
 // ── { } JSON viewer + < > embed dialog (shared modals) ──────────────────────
@@ -918,6 +959,9 @@ function mountAnimator(proof, startStep) {
     startStep: typeof startStep === "number" ? startStep : 0,
     // A term "Ask AI" goes to the LOCAL step-aware chat, not the app.
     onTermAsk: ({ message }) => askInChat(message),
+    // An in-progress derivation isn't saved, so there's no `pa` to carry — the
+    // app gets the expression and analyzes it without proof context.
+    onFunctionAnalysis: ({ latex, step }) => openFaInApp(proof && proof.deeplink, null, step, latex),
     ...keep,
   });
   els.dGo.textContent = "Rederive";              // a derivation now exists
