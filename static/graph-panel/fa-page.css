@@ -287,22 +287,17 @@
     color: #dde6ff;
     margin-bottom: 3px;
 }
-/* Top-right corner of a pinned note. Unlike the hover-revealed asks
-   elsewhere, this one is always on — so it carries the shared button's HOVER
-   look as its resting state, or a permanently dimmed sparkle just reads as
-   decoration. No padding: the base rule sizes a fixed circle, and padding
-   stretches it into an oval. */
+/* Top-right corner of a pinned note. This is the shared .ai-ask-btn circle,
+   untouched — no size, padding or geometry of its own, or it stops matching
+   every other ask button in the app. The only differences it needs: it is
+   always on rather than hover-revealed (a pinned note is a deliberate
+   selection), and its resting glyph is lifted just enough to read as a
+   control, leaving the shared :hover rule room to light it up. */
 .fa-tip-ask {
     opacity: 1;
     margin-left: auto;
-    width: 22px;
-    height: 22px;
-    top: 0;
-    background: rgba(100, 110, 240, 0.3);
-    border-color: rgba(160, 180, 255, 0.6);
-    color: #c8d4ff;
+    color: rgba(170, 180, 250, 0.85);
 }
-.fa-tip-ask:hover { box-shadow: 0 0 8px rgba(120, 140, 255, 0.5); }
 .fa-tip-row { display: flex; align-items: center; gap: 6px; }
 .fa-tip-swatch { width: 9px; height: 3px; border-radius: 2px; flex-shrink: 0; }
 .fa-tip-name { max-width: 210px; overflow: hidden; text-overflow: ellipsis; }
