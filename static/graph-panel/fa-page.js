@@ -24,6 +24,7 @@ import { loadChartJs } from '/graph-panel/sg-chart.js';
 
 const REQUEST_TIMEOUT_MS = 180_000;   // LM proposal is ~5-10s; generous ceiling
 const NUM_POINTS = 220;
+const TAU = Math.PI * 2;              // full circle, for the marker dots
 
 const SERIES_COLORS = ['#42a5f5', '#ffa726', '#66bb6a', '#ab47bc'];
 const ANNOTATION_COLOR = 'rgba(239, 83, 80, 0.75)';
@@ -109,6 +110,9 @@ export class FunctionAnalysisManager {
         this._hiddenGroups = new Set();// annotation groups toggled off (per render)
         this._hiddenMarks = new Set(); // CAS feature kinds toggled off
         this._hiddenSeries = new Set();// dataset indices toggled off in the legend
+        this._pinnedTip = null;        // hover readout pinned as a sticky note
+        this._pinnedChart = null;      // the chart it was pinned on
+        this._pinnedPoints = null;     // its markers, drawn by the plugin
         // Artifacts are kept OFF the step objects on purpose: steps are
         // serialized wholesale into chat context and proof saves, and an
         // artifact both back-references its step (a JSON cycle) and carries
@@ -294,6 +298,9 @@ export class FunctionAnalysisManager {
     }
 
     _destroyCharts() {
+        // The pinned note lives in the chart's wrapper and holds a document
+        // listener — drop both before the wrapper goes.
+        this._unpinTip();
         for (const c of this._charts) { try { c.destroy(); } catch (_e) {} }
         this._charts = [];
     }
@@ -713,6 +720,12 @@ export class FunctionAnalysisManager {
                     : new Set();
                 this._drawOverlays(chart, chart.data.datasets[0], fa.xs,
                                    visible, fa.anns);
+                // Chart.js drops its own hover points the moment the pointer
+                // leaves, which is exactly when a note gets pinned — draw
+                // them ourselves so the note keeps pointing at something.
+                if (this._pinnedPoints) {
+                    this._drawPinnedPoints(chart, this._pinnedPoints);
+                }
             },
         };
 
@@ -733,7 +746,8 @@ export class FunctionAnalysisManager {
                     // Canvas tooltips can't render math — use an HTML one.
                     tooltip: {
                         enabled: false,
-                        external: this._makeTooltipHandler(chars, view),
+                        external: this._makeTooltipHandler(artifact, chars,
+                                                           view, state),
                     },
                 },
                 // Left reserves the rotated y-title's band; right is just
@@ -755,7 +769,17 @@ export class FunctionAnalysisManager {
                     },
                     y: {
                         ticks: { color: '#7e8aa3', maxTicksLimit: 7,
-                                 callback: v => +Number(v).toFixed(3) },
+                                 // The y bounds are the data extent plus 6%
+                                 // breathing room (_yBounds), and Chart.js
+                                 // labels an explicit min/max. Those two
+                                 // ticks are padding, not data: they read as
+                                 // noise (`4.24`?) and, sitting outside every
+                                 // curve's range by construction, a y-axis
+                                 // snap can never land on them. Unlabelled.
+                                 callback: function (v) {
+                                     if (v === this.min || v === this.max) return null;
+                                     return +Number(v).toFixed(3);
+                                 } },
                         grid: {
                             color: (c) => c.tick && c.tick.value === 0
                                 ? 'rgba(174, 187, 209, 0.85)'
@@ -773,6 +797,24 @@ export class FunctionAnalysisManager {
         const yb = this._yBounds(datasets);
         chart.options.scales.y.min = yb.min;
         chart.options.scales.y.max = yb.max;
+        // Click the chart to pin the hover readout as a sticky note; click it
+        // again — anywhere but the note itself, which swallows its own clicks
+        // — to put the note away.
+        canvas.addEventListener('click', (e) => {
+            // An axis tick is a jump-to, not a pin/unpin — it answers first.
+            if (this._snapFromAxisClick(e, chart, artifact, chars, view, state)) {
+                return;
+            }
+            if (this._pinnedTip) { this._unpinTip(); return; }
+            const tip = canvasWrap.querySelector('.fa-chart-tip');
+            if (tip && tip.classList.contains('show')) {
+                this._pinTip(tip, chart, artifact, chars, view, state);
+            }
+        });
+        // Clickable tick labels are an invisible affordance without this.
+        canvas.addEventListener('mousemove', (e) => {
+            canvas.style.cursor = this._overAxisTick(e, chart) ? 'pointer' : '';
+        });
         this._renderSeriesLegend(legend, chart);
         this._renderMarkerLegend(legend, marks, chart);
         chart.$fa = {
@@ -819,6 +861,7 @@ export class FunctionAnalysisManager {
             chart.options.scales.y.min = fa.yb.min;
             chart.options.scales.y.max = fa.yb.max;
         }
+        if (this._pinnedTip) this._refreshPinnedValues(chart);
         chart.update('none');
     }
 
@@ -860,8 +903,9 @@ export class FunctionAnalysisManager {
     }
 
     /** HTML hover tooltip (Chart.js `external`) so the hovered x-value and
-     *  every series label render as KaTeX rather than canvas text. */
-    _makeTooltipHandler(chars, view) {
+     *  every series label render as KaTeX rather than canvas text. Clicking
+     *  it pins it — see `_pinTip`. */
+    _makeTooltipHandler(artifact, chars, view, state) {
         const xLatex = this._varLatex(chars, view.x_var);
         return (ctx) => {
             const { chart, tooltip } = ctx;
@@ -871,46 +915,396 @@ export class FunctionAnalysisManager {
             if (!el) {
                 el = document.createElement('div');
                 el.className = 'fa-chart-tip';
+                this._wireTip(el);
                 wrap.appendChild(el);
             }
+            // A pinned note belongs to the learner, not to the pointer.
+            if (el.classList.contains('pinned')) return;
             if (!tooltip || tooltip.opacity === 0) {
                 el.classList.remove('show');
                 return;
             }
-            el.innerHTML = '';
-
-            const head = document.createElement('div');
-            head.className = 'fa-tip-head';
-            const xv = document.createElement('span');
-            this._katex(xv, xLatex);
-            head.append(xv, document.createTextNode(
-                ' = ' + (+(tooltip.dataPoints?.[0]?.parsed?.x ?? 0)).toPrecision(4)));
-            el.appendChild(head);
-
-            for (const dp of tooltip.dataPoints || []) {
-                const row = document.createElement('div');
-                row.className = 'fa-tip-row';
-                const sw = document.createElement('span');
-                sw.className = 'fa-tip-swatch';
-                sw.style.background = dp.dataset.borderColor;
-                const name = document.createElement('span');
-                name.className = 'fa-tip-name';
-                // Same display source as the HTML legend: LM prose with
-                // inline math, or a $-wrapped expression (see _seriesFor).
-                name.innerHTML = renderKaTeX(
-                    dp.dataset.$faLabel || dp.dataset.label || '', false);
-                const val = document.createElement('span');
-                val.className = 'fa-tip-val';
-                val.textContent = Number.isFinite(dp.parsed?.y)
-                    ? (+dp.parsed.y).toPrecision(5) : '—';
-                row.append(sw, name, val);
-                el.appendChild(row);
-            }
-
+            this._fillTip(el, chart, chars, view, state,
+                          +(tooltip.dataPoints?.[0]?.parsed?.x ?? 0));
             el.style.left = `${tooltip.caretX}px`;
             el.style.top = `${tooltip.caretY}px`;
             el.classList.add('show');
         };
+    }
+
+    /** One series' value at an arbitrary x, off the same compiled script the
+     *  curve itself was plotted from — so a readout is not limited to the
+     *  NUM_POINTS samples. Falls back to the plotted array before the chart's
+     *  `$fa` state exists. */
+    _seriesValueAt(chart, chars, view, state, di, x) {
+        const compiled = (chart.$fa || {}).compiled;
+        if (compiled && compiled[di]) {
+            try {
+                const y = evalExpr(compiled[di], 0, {
+                    overrideScope: this._scopeFor(chars, view, state.pins, x) });
+                if (Number.isFinite(y)) return y;
+            } catch (_e) { /* fall through to the plotted samples */ }
+            return null;
+        }
+        const i = this._indexNearestX(chart, x);
+        const y = chart.data.datasets[di].data[i];
+        return Number.isFinite(y) ? y : null;
+    }
+
+    /** The readout's contents at an exact x: every visible series with its
+     *  value there. Shared by the pointer (hover) and by an axis-label snap,
+     *  so the two can never build a different-looking note.
+     *
+     *  Keyed by the x VALUE, not a sample index: a y-axis snap solves for a
+     *  crossing that almost never falls on a sample, and rounding it to the
+     *  nearest one would quietly answer a slightly different question. */
+    _fillTip(el, chart, chars, view, state, x) {
+        el.innerHTML = '';
+        const xLatex = this._varLatex(chars, view.x_var);
+        // What this readout is showing, for the pinned note's ask button.
+        const values = [], datasets = [];
+
+        const head = document.createElement('div');
+        head.className = 'fa-tip-head';
+        // The readout is one span so the head can be a flex row with the
+        // pinned note's ask button pushed to the far right.
+        const xv = document.createElement('span');
+        xv.className = 'fa-tip-x';
+        this._katex(xv, xLatex);
+        const xValue = (+x).toPrecision(4);
+        xv.appendChild(document.createTextNode(' = ' + xValue));
+        head.appendChild(xv);
+        el.appendChild(head);
+
+        chart.data.datasets.forEach((ds, di) => {
+            if (!chart.isDatasetVisible(di)) return;
+            const row = document.createElement('div');
+            row.className = 'fa-tip-row';
+            const sw = document.createElement('span');
+            sw.className = 'fa-tip-swatch';
+            sw.style.background = ds.borderColor;
+            const name = document.createElement('span');
+            name.className = 'fa-tip-name';
+            // Same display source as the HTML legend: LM prose with inline
+            // math, or a $-wrapped expression (see _seriesFor).
+            const label = ds.$faLabel || ds.label || '';
+            name.innerHTML = renderKaTeX(label, false);
+            const val = document.createElement('span');
+            val.className = 'fa-tip-val';
+            const y = this._seriesValueAt(chart, chars, view, state, di, x);
+            val.textContent = Number.isFinite(y) ? (+y).toPrecision(5) : '—';
+            row.append(sw, name, val);
+            el.appendChild(row);
+            values.push({ label, value: val.textContent });
+            // Which rows to keep drawn on the curves for a pinned note.
+            datasets.push(di);
+        });
+
+        el.$fa = { xLatex, xValue, values, datasets, x, chars, view, state };
+    }
+
+    /** Drag, wired once per tip element. Pinning itself is a click on the
+     *  CHART (see `_renderChart`); an unpinned tip is pointer-transparent, so
+     *  that click reaches the canvas even though the tip is sitting over it.
+     *  Once pinned the tip takes pointer events, which is both what makes it
+     *  draggable and what stops a click on the note counting as a click on
+     *  the chart — so the note is never its own dismiss target. */
+    _wireTip(el) {
+        el.addEventListener('mousedown', (e) => {
+            if (!el.classList.contains('pinned')) return;
+            if (e.target.closest('.ai-ask-btn')) return;   // let the ask fire
+            e.preventDefault();                            // no text selection
+            const wrapR = el.parentNode.getBoundingClientRect();
+            const r = el.getBoundingClientRect();
+            const dx = e.clientX - r.left, dy = e.clientY - r.top;
+            const move = (ev) => {
+                el.style.left = `${ev.clientX - wrapR.left - dx}px`;
+                el.style.top = `${ev.clientY - wrapR.top - dy}px`;
+            };
+            const up = () => {
+                document.removeEventListener('mousemove', move);
+                document.removeEventListener('mouseup', up);
+            };
+            document.addEventListener('mousemove', move);
+            document.addEventListener('mouseup', up);
+        });
+    }
+
+    /* ---------------- axis-label snapping ------------------------------ */
+
+    /** The tick value nearest `pixel` along `scale`, or null if the click
+     *  landed between ticks. `TICK_TOL` is generous: tick labels are wider
+     *  than the tick itself, and the learner is aiming at the number. */
+    _nearestTick(scale, pixel, tol = 18) {
+        let best = null, bestD = Infinity;
+        (scale.ticks || []).forEach((t, i) => {
+            // Skip ticks the axis draws no label for — there is nothing there
+            // to aim at, so a click near one belongs to its labelled neighbour.
+            if (t.label == null || t.label === '') return;
+            const d = Math.abs(scale.getPixelForTick(i) - pixel);
+            if (d < bestD) { bestD = d; best = t.value; }
+        });
+        return bestD <= tol ? best : null;
+    }
+
+    /** The main curve: dataset 0 when it is showing, else the first that is.
+     *  A y-axis snap solves against whatever curve the learner can see. */
+    _mainDatasetIndex(chart) {
+        if (chart.isDatasetVisible(0)) return 0;
+        return chart.data.datasets.findIndex((_d, i) => chart.isDatasetVisible(i));
+    }
+
+    /** Sample index whose x is nearest `value`. */
+    _indexNearestX(chart, value) {
+        let best = 0, bestD = Infinity;
+        chart.data.labels.forEach((x, i) => {
+            const d = Math.abs(x - value);
+            if (d < bestD) { bestD = d; best = i; }
+        });
+        return best;
+    }
+
+    /** The x where the ANALYZED curve reaches `value` — the inverse question
+     *  the y axis asks ("where is $a = 3$?").
+     *
+     *  Only the main curve answers. The axis is shared with the companions,
+     *  but the learner clicking `3` means "put $a$ at 3"; solving against a
+     *  companion instead would land on a point where the note reads
+     *  `a = 0.75` next to a companion reading 3, which looks like a bug.
+     *  Everything else in the note is then read FORWARD at the x this
+     *  returns — x is the shared coordinate, so a y-axis click is inverted
+     *  once and every other series follows from it.
+     *
+     *  The plotted samples only bracket the crossing; the answer is refined
+     *  against the compiled expression so the note reads `1.0000` rather
+     *  than whichever nearby sample happened to be closest. Null when the
+     *  curve does not reach that value in this window — see `_saySnapFailed`
+     *  for what the chart says instead. */
+    _solveForY(chart, chars, view, state, value) {
+        const di = this._mainDatasetIndex(chart);
+        if (di < 0) return null;
+        const data = chart.data.datasets[di].data;
+        const xs = chart.data.labels;
+        const brackets = [];
+        for (let i = 0; i < data.length; i++) {
+            const y = data[i];
+            if (!Number.isFinite(y)) continue;
+            // An exact hit counts wherever it lands, including the last
+            // sample — a curve that only reaches the value at the very end
+            // of the window still reaches it.
+            if (y === value) { brackets.push([xs[i], xs[i]]); continue; }
+            const next = data[i + 1];
+            if (Number.isFinite(next) && (y - value) * (next - value) < 0) {
+                brackets.push([xs[i], xs[i + 1]]);
+            }
+        }
+        if (!brackets.length) return null;
+        // A curve can cross more than once; prefer the crossing nearest
+        // whatever is already pinned, so repeated clicks stay local.
+        const from = this._pinnedTip && this._pinnedTip.$fa
+            ? this._pinnedTip.$fa.x : null;
+        const [lo, hi] = from == null ? brackets[0] : brackets.reduce((p, c) =>
+            Math.abs(c[0] - from) < Math.abs(p[0] - from) ? c : p);
+        return this._refineCrossing(chart, chars, view, state, di, lo, hi, value);
+    }
+
+    /** Bisect `[lo, hi]` — one plotted sample apart, straddling the crossing
+     *  — down to float precision on the compiled expression. Fifty steps is
+     *  nothing next to the redraw it precedes, and it is what turns "works
+     *  approximately" into an exact answer. */
+    _refineCrossing(chart, chars, view, state, di, lo, hi, value) {
+        if (lo === hi) return lo;
+        const f = (x) => {
+            const y = this._seriesValueAt(chart, chars, view, state, di, x);
+            return Number.isFinite(y) ? y - value : null;
+        };
+        let a = lo, b = hi;
+        const fa = f(a);
+        if (fa == null) return (lo + hi) / 2;
+        if (fa === 0) return a;
+        for (let i = 0; i < 50 && b - a > Math.abs(hi - lo) * 1e-12; i++) {
+            const m = (a + b) / 2, fm = f(m);
+            if (fm == null) break;
+            if (fm === 0) return m;
+            if ((fa < 0) === (fm < 0)) a = m; else b = m;
+        }
+        return (a + b) / 2;
+    }
+
+    /** A y-axis click the curve cannot answer, said out loud and briefly.
+     *  Reports the range the curve actually covers, so the learner can see
+     *  how far off the ask was — and, since the pins are live, that moving a
+     *  slider may well bring the value into reach. */
+    _saySnapFailed(chart, chars, view, value) {
+        const wrap = chart.canvas.parentNode;
+        let el = wrap.querySelector('.fa-snap-miss');
+        if (!el) {
+            el = document.createElement('div');
+            el.className = 'fa-snap-miss';
+            wrap.appendChild(el);
+        }
+        const di = this._mainDatasetIndex(chart);
+        const ys = di < 0 ? [] : chart.data.datasets[di].data.filter(Number.isFinite);
+        const y = chars.dependentLatex || chars.expression || 'f';
+        el.innerHTML = renderKaTeX(
+            `$${y}$ does not reach ${this._fmt(value)} here` +
+            (ys.length ? ` — it runs from ${this._fmt(Math.min(...ys))} to ` +
+                         `${this._fmt(Math.max(...ys))} over this range.` : '.'),
+            false);
+        el.classList.add('show');
+        clearTimeout(this._snapMissTimer);
+        this._snapMissTimer = setTimeout(() => el.classList.remove('show'), 2600);
+    }
+
+    /** Is the pointer over a tick label? Drives the cursor only. */
+    _overAxisTick(e, chart) {
+        const area = chart.chartArea;
+        if (!area || !chart.scales.x || !chart.scales.y) return false;
+        const r = chart.canvas.getBoundingClientRect();
+        const px = e.clientX - r.left, py = e.clientY - r.top;
+        if (py > area.bottom) return this._nearestTick(chart.scales.x, px) != null;
+        if (px < area.left) return this._nearestTick(chart.scales.y, py) != null;
+        return false;
+    }
+
+    /** A click in an axis's tick band snaps the note to that value: the x
+     *  axis reads forwards ("put me at $R = 40$"), the y axis backwards
+     *  ("put me where $a = 3$"). Returns whether it handled the click. */
+    _snapFromAxisClick(e, chart, artifact, chars, view, state) {
+        const area = chart.chartArea;
+        if (!area || !chart.scales.x || !chart.scales.y) return false;
+        const r = chart.canvas.getBoundingClientRect();
+        const px = e.clientX - r.left, py = e.clientY - r.top;
+        let x = null;
+        if (py > area.bottom) {                       // under the plot: x ticks
+            // The tick value IS the answer — no need to round it to a sample.
+            x = this._nearestTick(chart.scales.x, px);
+            if (x == null) return false;
+        } else if (px < area.left) {                  // left of it: y ticks
+            const v = this._nearestTick(chart.scales.y, py);
+            if (v == null) return false;
+            x = this._solveForY(chart, chars, view, state, v);
+            if (x == null) {
+                // The curve never reaches that value here. Snapping anywhere
+                // would put a number in the note the curve never takes — but
+                // silence reads as a broken control, so say why.
+                this._saySnapFailed(chart, chars, view, v);
+                return true;
+            }
+        } else {
+            return false;
+        }
+        const el = chart.canvas.parentNode.querySelector('.fa-chart-tip');
+        if (!el) return false;
+        this._unpinTip();
+        this._fillTip(el, chart, chars, view, state, x);
+        // Park it over the point, the same way the pointer would have.
+        const di = this._mainDatasetIndex(chart);
+        const y = di < 0 ? null
+            : this._seriesValueAt(chart, chars, view, state, di, x);
+        el.style.left = `${chart.scales.x.getPixelForValue(x)}px`;
+        el.style.top = `${Number.isFinite(y)
+            ? chart.scales.y.getPixelForValue(y) : area.top + 20}px`;
+        el.classList.add('show');
+        this._pinTip(el, chart, artifact, chars, view, state);
+        return true;
+    }
+
+    /** Pin the hover readout as a sticky note: it stops following the
+     *  pointer, can be dragged anywhere, and grows an ask button for the
+     *  exact set of values it froze. Clicking off it puts it away. */
+    _pinTip(el, chart, artifact, chars, view, state) {
+        this._unpinTip();
+        const wrapR = el.parentNode.getBoundingClientRect();
+        const r = el.getBoundingClientRect();
+        // Freeze it where it already sits, THEN drop the hover transform, so
+        // left/top become plain coordinates a drag can update directly.
+        // A point near an edge — or an end-of-axis tick — would park it half
+        // outside the chart, where the card clips it, so it lands clamped
+        // inside. The learner can drag it back out if they want to.
+        el.style.left = `${Math.max(0, Math.min(r.left - wrapR.left,
+                                                wrapR.width - r.width))}px`;
+        el.style.top = `${Math.max(0, r.top - wrapR.top)}px`;
+        el.classList.add('pinned');
+        this._pinnedTip = el;
+        this._pinnedChart = chart;
+        this._pinnedPoints = el.$fa && el.$fa.datasets ? el.$fa : null;
+        chart.update('none');           // paint the markers we now own
+
+        const head = el.querySelector('.fa-tip-head');
+        if (head) {
+            head.appendChild(makeAiAskButton('ai-ask-btn fa-tip-ask',
+                'Ask the AI about these values', () => {
+                    const d = el.$fa || { values: [] };
+                    const vals = d.values
+                        .map(v => `${v.label} = ${v.value}`).join(', ');
+                    return `On the chart of $${artifact.latex}$ I have ` +
+                        `pinned the point where $${d.xLatex} = ${d.xValue}$` +
+                        (vals ? `, where the curves read ${vals}` : '') +
+                        `. What do these values tell me, and how do they ` +
+                        `relate to each other here?\n` +
+                        this._configSummary(chars, view, state);
+                }));
+        }
+    }
+
+    /** Put the sticky note away and hand the tip back to the pointer. */
+    _unpinTip() {
+        const el = this._pinnedTip;
+        const chart = this._pinnedChart;
+        this._pinnedTip = null;
+        this._pinnedChart = null;
+        this._pinnedPoints = null;
+        if (chart) { try { chart.update('none'); } catch (_e) {} }
+        if (!el) return;
+        el.classList.remove('pinned', 'show');
+        el.style.left = '';
+        el.style.top = '';
+        const ask = el.querySelector('.fa-tip-ask');
+        if (ask) ask.remove();
+    }
+
+    /** The hovered points, kept on screen for a pinned note. Positions are
+     *  recomputed from the LIVE data each draw, so a slider move slides the
+     *  markers along with the curves instead of stranding them. */
+    _drawPinnedPoints(chart, pinned) {
+        const { ctx, scales, chartArea } = chart;
+        if (!chartArea || !scales.x || !scales.y) return;
+        const { x, datasets, chars, view, state } = pinned;
+        ctx.save();
+        for (const di of datasets) {
+            if (!chart.isDatasetVisible(di)) continue;
+            const ds = chart.data.datasets[di];
+            const y = this._seriesValueAt(chart, chars, view, state, di, x);
+            if (!Number.isFinite(y)) continue;
+            const px = scales.x.getPixelForValue(x);
+            const py = scales.y.getPixelForValue(y);
+            if (px < chartArea.left || px > chartArea.right) continue;
+            ctx.beginPath();
+            ctx.arc(px, py, 4, 0, TAU);
+            ctx.fillStyle = '#0a0c1a';
+            ctx.fill();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = ds.borderColor;
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
+
+    /** A pinned note is pinned in x, not frozen in time: when a slider moves
+     *  the curves, its numbers follow, or it would sit there quoting values
+     *  that no longer match the curve underneath it. */
+    _refreshPinnedValues(chart) {
+        const el = this._pinnedTip;
+        const d = el && el.$fa;
+        if (!d || !d.datasets) return;
+        const cells = el.querySelectorAll('.fa-tip-row .fa-tip-val');
+        d.datasets.forEach((di, i) => {
+            const y = this._seriesValueAt(chart, d.chars, d.view, d.state, di, d.x);
+            const text = Number.isFinite(y) ? (+y).toPrecision(5) : '—';
+            if (cells[i]) cells[i].textContent = text;
+            if (d.values[i]) d.values[i].value = text;
+        });
     }
 
     _fmt(v) {
@@ -1565,7 +1959,7 @@ export class FunctionAnalysisManager {
                         const x = (xs[i - 1] + xs[i]) / 2;
                         ctx.beginPath();
                         ctx.arc(scales.x.getPixelForValue(x),
-                                scales.y.getPixelForValue(0), 3.5, 0, 7);
+                                scales.y.getPixelForValue(0), 3.5, 0, TAU);
                         ctx.fill();
                     }
                 }
@@ -1582,7 +1976,7 @@ export class FunctionAnalysisManager {
                     const py = scales.y.getPixelForValue(c);
                     ctx.fillStyle = '#ffa726';
                     ctx.beginPath();
-                    ctx.arc(px, py, 4, 0, 7);
+                    ctx.arc(px, py, 4, 0, TAU);
                     ctx.fill();
                     // Name it: an unlabelled dot is a puzzle, not a lesson.
                     ctx.fillStyle = '#ffcc80';

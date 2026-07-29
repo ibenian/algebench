@@ -261,16 +261,66 @@
     padding: 6px 9px;
     font-size: 12px;
     color: #aebbd1;
+    /* Transparent to the pointer while it is just a hover readout, so the
+       click that pins it reaches the canvas underneath rather than being
+       swallowed by the very box it is meant to pin. */
     pointer-events: none;
     white-space: nowrap;
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
 }
 .fa-chart-tip.show { display: block; }
-.fa-tip-head { color: #dde6ff; margin-bottom: 3px; }
+/* Pinned: parked where the learner dropped it, no longer following the
+   pointer. `transform: none` is what makes left/top plain drag coordinates. */
+.fa-chart-tip.pinned {
+    transform: none;
+    /* Now it IS interactive: it can be dragged, and it swallows its own
+       clicks so clicking the note never counts as clicking the chart. */
+    pointer-events: auto;
+    cursor: move;
+    border-color: rgba(66, 165, 245, 0.75);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.55);
+}
+.fa-tip-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;                  /* keeps the ask button off the readout */
+    color: #dde6ff;
+    margin-bottom: 3px;
+}
+/* Top-right corner of a pinned note. This is the shared .ai-ask-btn circle,
+   untouched — no size, padding or geometry of its own, or it stops matching
+   every other ask button in the app. It is revealed by hovering the note,
+   the same as every other hover-revealed ask; only the corner placement is
+   its own. */
+.fa-tip-ask {
+    margin-left: auto;
+    pointer-events: none;       /* same as .fa-askable's hidden state */
+    transition: opacity 0.12s ease;
+}
+.fa-chart-tip.pinned:hover .fa-tip-ask { opacity: 1; pointer-events: auto; }
 .fa-tip-row { display: flex; align-items: center; gap: 6px; }
 .fa-tip-swatch { width: 9px; height: 3px; border-radius: 2px; flex-shrink: 0; }
 .fa-tip-name { max-width: 210px; overflow: hidden; text-overflow: ellipsis; }
 .fa-tip-val { margin-left: auto; color: #dde6ff; font: 11.5px ui-monospace, Menlo, monospace; }
+
+/* Why a y-axis click could not be answered — brief, and out of the way. */
+.fa-snap-miss {
+    position: absolute;
+    left: 50%;
+    bottom: 8px;
+    transform: translateX(-50%);
+    max-width: 92%;
+    padding: 4px 11px;
+    border-radius: 6px;
+    background: rgba(10, 12, 26, 0.92);
+    border: 1px solid rgba(239, 83, 80, 0.45);
+    color: #dde6ff;
+    font-size: 11.5px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+.fa-snap-miss.show { opacity: 1; }
 
 /* KaTeX layer for annotation labels (canvas text can't render math) */
 .fa-chart-labels { position: absolute; inset: 0; pointer-events: none; }
