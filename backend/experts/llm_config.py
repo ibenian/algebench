@@ -8,7 +8,9 @@ independent stack from the pydantic-ai enricher; both can coexist.
 
 from __future__ import annotations
 
+import contextlib
 import os
+from typing import Callable, ContextManager, Optional
 
 import dspy
 
@@ -77,3 +79,75 @@ def is_configured() -> bool:
     fail with noisy ``Missing Gemini API key`` tracebacks.
     """
     return _configured and _has_credentials()
+
+
+# --------------------------------------------------------------------------- #
+# per-call-site LM overrides
+# --------------------------------------------------------------------------- #
+
+# Overrides that are provider-specific and must NOT be forced onto a provider
+# that may reject them. ``reasoning_effort`` is litellm's GEMINI mapping for a
+# thinkingBudget (minimal->128, low->1024, medium->2048, high->4096,
+# disable/none->0 with includeThoughts off); another provider may reject the
+# parameter outright, so a call site asking for one silently falls back to the
+# globally configured LM rather than breaking a call the global LM handles fine.
+_GEMINI_ONLY = ("reasoning_effort",)
+
+
+def _build_scoped(overrides: dict) -> Optional[dspy.LM]:
+    """The overridden LM, or None meaning "use the globally configured one"."""
+    if not overrides:
+        return None                      # no config → the default, by definition
+    if (any(k in overrides for k in _GEMINI_ONLY)
+            and not LM_MODEL.startswith("gemini/")):
+        return None
+    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    kwargs = dict(api_key=api_key, temperature=0.7, max_tokens=32768)
+    kwargs.update(overrides)
+    try:
+        return dspy.LM(LM_MODEL, **kwargs)
+    except Exception:
+        return None
+
+
+def scoped_lm(**overrides) -> Callable[[], ContextManager]:
+    """An LM override for ONE call site, as a lazy context-manager factory.
+
+    Several experts have been measured into a configuration that differs from the
+    global LM — usually Gemini thinking disabled (issues #504, #509, #510). Doing
+    that per module used to mean ~20 lines of identical boilerplate each: a
+    cached builder with a Gemini guard and a swallowed exception, plus an
+    ``if lm is not None: with dspy.context(...) else: ...`` fork at every call
+    site. This collapses both to one line apiece::
+
+        _LM = scoped_lm(reasoning_effort="disable")   # module-specific config
+        ...
+        with _LM():                                   # no-op when inapplicable
+            pred = self.predict(**kwargs)
+
+    ``overrides`` are ``dspy.LM`` kwargs layered over the project defaults
+    (``temperature=0.7``, ``max_tokens=32768``, resolved Gemini key). **With no
+    overrides the factory is a no-op** and the globally configured LM is used —
+    so "no config" and "default" are the same thing, and a module opts in only to
+    what it has actually measured.
+
+    Scoping is the point: it confines a measured configuration to the one call it
+    was measured on. The global ``ALGEBENCH_LM_REASONING`` knob would silence
+    every expert at once, including ones never benchmarked.
+
+    Construction is deferred to first use (these modules are imported before
+    ``configure_dspy()`` runs) and then cached for the process. The returned
+    factory is called fresh at each call site because a ``dspy.context`` manager
+    is single-use.
+    """
+    built: list = []      # one-slot lazy cache; holds None for "use the global LM"
+
+    def enter() -> ContextManager:
+        if not built:
+            built.append(_build_scoped(overrides))
+        lm = built[0]
+        return dspy.context(lm=lm) if lm is not None else contextlib.nullcontext()
+
+    enter.reset = built.clear       # tests re-resolve after patching LM_MODEL
+    enter.overrides = dict(overrides)
+    return enter

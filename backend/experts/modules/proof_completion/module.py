@@ -7,20 +7,18 @@ the threshold, re-asked with the failure issues as targeted feedback. The
 optimizer (MIPROv2/GEPA) compiles *this* module; the compiled state is saved to
 an artifact and loaded back here.
 
-Bare ``Predict`` with Gemini thinking disabled — measured, see ``_pc_lm``.
+Bare ``Predict`` with Gemini thinking disabled — measured, see ``_LM``.
 """
 
 from __future__ import annotations
 
 import logging
 import os
-from functools import cache
 from pathlib import Path
-from typing import Optional
 
 import dspy
 
-from backend.experts.llm_config import LM_MODEL
+from backend.experts.llm_config import scoped_lm
 from backend.experts.registry import register_expert
 from backend.util.pathutil import sanitize_path
 from .signature import ProofCompletionSig
@@ -101,8 +99,10 @@ def _configured_artifact() -> str | None:
     return str(safe) if safe is not None else None
 
 
-# Measured A/B (2026-07-28, gemini-2.5-flash — issue #510; see
-# docs/proposals/proof-completion/predict-nothink-report.md). Two tiers were run:
+# Measured A/B (2026-07-28, gemini-2.5-flash — issue #510, which carries the full
+# report; the sweep harness is on the unmerged branch
+# ``perf/510-proof-completion-thinking-benchmark`` — deliberately not in the repo,
+# since it is a one-off measurement, not something to maintain). Two tiers were run:
 # the machine-generated ``eval.jsonl`` rewrites AND eight real saved derivations
 # (quadratic formula, time dilation, particle-in-a-box, …). Only the second tier
 # makes this expert do what it is for — SEARCH for a multi-step path — so every
@@ -134,27 +134,7 @@ def _configured_artifact() -> str | None:
 # artifact carries its predictor's signature, so any program compiled against the
 # old ``ChainOfThought`` must be recompiled (the artifacts dir was empty at the
 # time of this change, so nothing needed migrating).
-
-
-@cache
-def _pc_lm() -> Optional[dspy.LM]:
-    """The thinking-disabled LM for this call, or None to use the global one.
-
-    None for a NON-Gemini ``ALGEBENCH_LM_MODEL``: ``reasoning_effort="disable"``
-    is litellm's Gemini mapping (thinkingBudget 0, includeThoughts off), and
-    another provider may reject the parameter outright — so forcing this scoped
-    LM on them would break a call the globally configured LM handles fine. The
-    measurement above is a Gemini one anyway, so it has nothing to say about
-    another provider.
-    """
-    if not LM_MODEL.startswith("gemini/"):
-        return None
-    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-    try:
-        return dspy.LM(LM_MODEL, api_key=api_key, temperature=0.7,
-                       max_tokens=32768, reasoning_effort="disable")
-    except Exception:
-        return None
+_LM = scoped_lm(reasoning_effort="disable")
 
 
 def _log_attempt(k: int, n: int, pred, res) -> None:
@@ -283,11 +263,7 @@ class ProofCompletionExpert(dspy.Module):
             # Only the generation is scoped to the thinking-disabled LM — the
             # judge runs inside ``evaluate``, was not measured, and keeps the
             # globally configured one.
-            lm = _pc_lm()
-            if lm is not None:
-                with dspy.context(lm=lm):
-                    pred = self.predict(**kwargs)
-            else:
+            with _LM():
                 pred = self.predict(**kwargs)
             self._finalize(pred, start_latex, target_latex)
             return pred

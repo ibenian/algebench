@@ -322,34 +322,6 @@ def test_clean_repairs_json_mangled_latex():
     assert _clean("plain prose, no math") == "plain prose, no math"
 
 
-# ── the scoped LM is Gemini-specific (Copilot review, PR #509) ────────────────
-
-def test_scoped_lm_is_skipped_for_a_non_gemini_model(monkeypatch):
-    """`reasoning_effort="disable"` is litellm's GEMINI mapping.
-
-    Forcing the scoped LM onto another provider would hand it a parameter it may
-    reject, breaking a call the globally configured LM handles fine. None here
-    means "use the global LM", which is exactly the right fallback.
-    """
-    from backend.experts.modules.proof_edit import intent as I
-
-    monkeypatch.setattr(I, "LM_MODEL", "openai/gpt-4o")
-    I._parser_lm.cache_clear()
-    assert I._parser_lm() is None
-    I._parser_lm.cache_clear()
-
-
-def test_scoped_lm_is_built_for_a_gemini_model(monkeypatch):
-    from backend.experts.modules.proof_edit import intent as I
-
-    monkeypatch.setattr(I, "LM_MODEL", "gemini/gemini-2.5-flash")
-    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
-    I._parser_lm.cache_clear()
-    lm = I._parser_lm()
-    assert lm is not None
-    I._parser_lm.cache_clear()
-
-
 # ── a bridge must say something ──────────────────────────────────────────────
 
 def test_a_bridge_that_restates_its_predecessor_is_dropped():

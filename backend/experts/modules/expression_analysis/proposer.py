@@ -16,14 +16,13 @@ CAS characteristics still reach the client.
 """
 from __future__ import annotations
 
-import os
 from functools import cache
 from typing import Optional
 
 import dspy
 from pydantic import BaseModel, ConfigDict, Field
 
-from backend.experts.llm_config import LM_MODEL
+from backend.experts.llm_config import scoped_lm
 
 # Ceilings mirroring MAX_GLUE_STEPS's philosophy: a proposal that needs
 # more than this isn't a proposal, it's an unreviewable dump.
@@ -295,37 +294,14 @@ def _proposer() -> VizProposer:
 # and produced dual-scale views. The CAS report carries the hard reasoning,
 # so the proposal is mostly structured selection. Scoped HERE (not in
 # llm_config) so every other expert keeps full reasoning.
-
-
-@cache
-def _proposer_lm() -> Optional[dspy.LM]:
-    """The thinking-disabled LM for this call, or None to use the global one.
-
-    None for a NON-Gemini ``ALGEBENCH_LM_MODEL`` — ``reasoning_effort="disable"``
-    is litellm's Gemini mapping and other providers may reject it, so forcing
-    this scoped LM on them would break a call the global LM handles.
-    """
-    if not LM_MODEL.startswith("gemini/"):
-        return None
-    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-    try:
-        return dspy.LM(LM_MODEL, api_key=api_key, temperature=0.7,
-                       max_tokens=32768, reasoning_effort="disable")
-    except Exception:
-        return None
+_LM = scoped_lm(reasoning_effort="disable")
 
 
 def propose_views(expression: str, characteristics: str,
                   context: str = "") -> VizProposal:
     """Ask the LM for a pedagogical proposal; abstain on any failure."""
     try:
-        lm = _proposer_lm()
-        if lm is not None:
-            with dspy.context(lm=lm):
-                out = _proposer()(expression=expression,
-                                  characteristics=characteristics,
-                                  context=context)
-        else:
+        with _LM():
             out = _proposer()(expression=expression,
                               characteristics=characteristics,
                               context=context)
@@ -426,13 +402,9 @@ def propose_more_probes(expression: str, characteristics: str,
                         asked: Optional[list[str]] = None) -> list[ProposedProbe]:
     """Ask the LM for fresh probes; empty list on any failure."""
     try:
-        lm = _proposer_lm()
         kwargs = dict(expression=expression, characteristics=characteristics,
                       context=context, asked="\n".join(asked or []))
-        if lm is not None:
-            with dspy.context(lm=lm):
-                out = _more_probes()(**kwargs)
-        else:
+        with _LM():
             out = _more_probes()(**kwargs)
     except Exception:
         return []
