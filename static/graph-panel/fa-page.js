@@ -24,6 +24,7 @@ import { loadChartJs } from '/graph-panel/sg-chart.js';
 
 const REQUEST_TIMEOUT_MS = 180_000;   // LM proposal is ~5-10s; generous ceiling
 const NUM_POINTS = 220;
+const TAU = Math.PI * 2;              // full circle, for the marker dots
 
 const SERIES_COLORS = ['#42a5f5', '#ffa726', '#66bb6a', '#ab47bc'];
 const ANNOTATION_COLOR = 'rgba(239, 83, 80, 0.75)';
@@ -1280,7 +1281,7 @@ export class FunctionAnalysisManager {
             const py = scales.y.getPixelForValue(y);
             if (px < chartArea.left || px > chartArea.right) continue;
             ctx.beginPath();
-            ctx.arc(px, py, 4, 0, 7);
+            ctx.arc(px, py, 4, 0, TAU);
             ctx.fillStyle = '#0a0c1a';
             ctx.fill();
             ctx.lineWidth = 2;
@@ -1958,7 +1959,7 @@ export class FunctionAnalysisManager {
                         const x = (xs[i - 1] + xs[i]) / 2;
                         ctx.beginPath();
                         ctx.arc(scales.x.getPixelForValue(x),
-                                scales.y.getPixelForValue(0), 3.5, 0, 7);
+                                scales.y.getPixelForValue(0), 3.5, 0, TAU);
                         ctx.fill();
                     }
                 }
@@ -1975,7 +1976,7 @@ export class FunctionAnalysisManager {
                     const py = scales.y.getPixelForValue(c);
                     ctx.fillStyle = '#ffa726';
                     ctx.beginPath();
-                    ctx.arc(px, py, 4, 0, 7);
+                    ctx.arc(px, py, 4, 0, TAU);
                     ctx.fill();
                     // Name it: an unlabelled dot is a puzzle, not a lesson.
                     ctx.fillStyle = '#ffcc80';
