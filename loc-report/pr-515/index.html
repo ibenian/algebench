@@ -107,8 +107,8 @@
 | Field | Value |
 |---|---|
 | **Branch** | `feat/fa-chart-sticky-tooltip` |
-| **Commit** | `bbbdc10` |
-| **Date** | 2026-07-29 02:24:39 +0000 |
+| **Commit** | `28ab2dc` |
+| **Date** | 2026-07-29 02:30:38 +0000 |
 
 > [!NOTE]
 > Charts render on GitHub and in Mermaid-compatible viewers.
@@ -117,7 +117,7 @@
 xychart-beta horizontal
   title "Code Lines by Directory"
   x-axis ["scenes", "static", "backend", "tests", "scripts", "(other)", "docs", "schemas", "themes"]
-  bar [63509, 37422, 19195, 18725, 6911, 5245, 4026, 1841, 317]
+  bar [63509, 37455, 19195, 18725, 6911, 5245, 4026, 1841, 317]
 ```
 
 ## By Directory
@@ -125,7 +125,7 @@ xychart-beta horizontal
 | Directory | Code | Comments | Blanks |
 |---|---:|---:|---:|
 | `scenes/` | 63,509 | 0 | 1 |
-| `static/` | 37,422 | 4,171 | 2,812 |
+| `static/` | 37,455 | 4,188 | 2,813 |
 | `backend/` | 19,195 | 2,931 | 2,842 |
 | `tests/` | 18,725 | 1,664 | 4,164 |
 | `scripts/` | 6,911 | 760 | 957 |
@@ -133,13 +133,13 @@ xychart-beta horizontal
 | `docs/` | 4,026 | 9,104 | 2,813 |
 | `schemas/` | 1,841 | 0 | 0 |
 | `themes/` | 317 | 0 | 0 |
-| **Total** | **157,191** | **18,630** | **13,589** |
+| **Total** | **157,224** | **18,647** | **13,590** |
 
 ```mermaid
 xychart-beta horizontal
   title "Lines of Code by Language"
   x-axis ["JSON", "Python", "JavaScript", "CSS", "HTML", "Shell", "BASH", "YAML", "Dockerfile"]
-  bar [71889, 42810, 29979, 6258, 1577, 404, 124, 25, 16]
+  bar [71889, 42810, 30012, 6258, 1577, 404, 124, 25, 16]
 ```
 
 ## Summary by Language
@@ -150,7 +150,7 @@ xychart-beta horizontal
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  JSON                     66        71890        71889            0            1
  Python                  219        55124        42810         4605         7709
- JavaScript               79        35961        29979         3497         2485
+ JavaScript               79        36012        30012         3514         2486
  CSS                       8         7159         6258          580          321
  Shell                     5          610          404          136           70
  BASH                      2          171          124           33           14
@@ -172,7 +172,7 @@ xychart-beta horizontal
  |- XML                    1          228          185           43            0
  (Total)                            19104         2281        12855         3968
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Total                   474       193953       157191        21974        14788
+ Total                   474       194004       157224        21991        14789
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -182,11 +182,11 @@ xychart-beta horizontal
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  Language              Files        Lines         Code     Comments       Blanks
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- JavaScript               78        35816        29869         3474         2473
+ JavaScript               78        35867        29902         3491         2474
 ─────────────────────────────────────────────────────────────────────────────────
  |imation/proof-animation.js         3445         3381           53           11
  |bench/static/graph-view.js         2837         2100          532          205
- |tic/graph-panel/fa-page.js         2208         1705          364          139
+ |tic/graph-panel/fa-page.js         2259         1738          381          140
  |/algebench/static/prove.js         1733         1590          101           42
  |lgebench/static/overlay.js         1590         1515           33           42
  |panel/d3-semantic-graph.js         1804         1408          215          181
@@ -302,7 +302,7 @@ xychart-beta horizontal
  |- BASH                                3            3            0            0
  /home/runner/work/algebench/algebench/static/proof-animation/README.md             46            0           38            8
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Total                    92        44405        37422         4171         2812
+ Total                    92        44456        37455         4188         2813
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -365,10 +365,10 @@ xychart-beta horizontal
  |/test_domain_structural.py          311          250           14           47
  |ompletion/domain_rescue.py          300          238           33           29
  |graph/test_preprocessor.py          356          238           46           72
- |domains/test_domain_pde.py          286          234            7           45
  |ns/test_domain_calculus.py          289          234           14           41
- |raph/test_postprocessor.py          318          233           24           61
+ |domains/test_domain_pde.py          286          234            7           45
  |ins/test_domain_quantum.py          294          233           17           44
+ |raph/test_postprocessor.py          318          233           24           61
  |proof_completion_derive.py          283          232           20           31
  |t_autofill_proof_shapes.py          268          230            6           32
  |s/test_domain_chemistry.py          291          229           20           42
@@ -385,15 +385,15 @@ xychart-beta horizontal
  |oof_animation/animation.py          254          194           43           17
  |proof_completion/module.py          270          193           50           27
  |ench/scripts/lint_scene.py          242          189           15           38
- |mains/test_domain_logic.py          236          186           13           37
  |est_domain_trigonometry.py          238          186           13           39
+ |mains/test_domain_logic.py          236          186           13           37
  |ession_analysis/handler.py          225          184           12           29
  |ains/test_domain_fluids.py          238          184           15           39
  |emantic_graph/constants.py          231          182           19           30
  |mation/prompt_endpoints.py          224          180           12           32
  |/domains/test_domain_em.py          228          180            6           42
- |ains/test_domain_thermo.py          226          179            6           41
  |mains/test_domain_waves.py          227          179            6           42
+ |ains/test_domain_thermo.py          226          179            6           41
  |of_completion/graph_ops.py          233          178           19           36
  |domains/test_domain_ode.py          226          176           14           36
  |nd/experts/test_outputs.py          267          175           37           55
@@ -542,9 +542,9 @@ xychart-beta horizontal
 
 | Category | Code Lines | % of JS+Python |
 |---|---|---|
-| JavaScript (frontend) | 29869 | 41% |
+| JavaScript (frontend) | 29902 | 41% |
 | Python (backend) | 42810 | 59% |
-| **Total** | **72679** | **100%** |
+| **Total** | **72712** | **100%** |
 
 </script>
 </body>
