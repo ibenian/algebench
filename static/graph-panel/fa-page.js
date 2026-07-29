@@ -53,9 +53,17 @@ export function clearAnalysisCache() {
 
 let _idCounter = 0;
 
-/** Greek-ish LaTeX → readable text for plain contexts (axis labels, chips). */
+/** Greek-ish LaTeX → readable text for the PLAIN contexts only: view-tab
+ *  captions, `title` tooltips, and the Chart.js `dataset.label` fallback.
+ *  Anything that must LOOK like math goes through KaTeX instead (the HTML
+ *  legend, tooltip, axis titles) — this is a degradation, not a renderer.
+ *  Text-ish wrappers are unwrapped BEFORE braces are stripped, or
+ *  `\text{rad/s}` degrades into the literal `\text rad/s`. */
 function detex(s) {
     return String(s || '')
+        .replace(/\\(?:text|textrm|mathrm|mathbf|mathit|operatorname)\s*\{([^{}]*)\}/g, '$1')
+        .replace(/\\(?:quad|qquad)|\\[,;:! ]/g, ' ')
+        .replace(/\\cdot(?![a-zA-Z])/g, '·')
         .replace(/\\(alpha|beta|gamma|delta|epsilon|zeta|eta|theta|iota|kappa|lambda|mu|nu|xi|pi|rho|sigma|tau|upsilon|phi|chi|psi|omega|Gamma|Delta|Theta|Lambda|Pi|Sigma|Phi|Psi|Omega)/g,
             (_, name) => ({
                 alpha: 'α', beta: 'β', gamma: 'γ', delta: 'δ', epsilon: 'ε',
@@ -66,7 +74,9 @@ function detex(s) {
                 Lambda: 'Λ', Pi: 'Π', Sigma: 'Σ', Phi: 'Φ', Psi: 'Ψ',
                 Omega: 'Ω',
             }[name] || name))
-        .replace(/[{}$]/g, '');
+        .replace(/[{}$]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
 }
 
 export class FunctionAnalysisManager {
@@ -98,6 +108,7 @@ export class FunctionAnalysisManager {
         this._hiddenEls = [];          // graph elements hidden while page shows
         this._hiddenGroups = new Set();// annotation groups toggled off (per render)
         this._hiddenMarks = new Set(); // CAS feature kinds toggled off
+        this._hiddenSeries = new Set();// dataset indices toggled off in the legend
         // Artifacts are kept OFF the step objects on purpose: steps are
         // serialized wholesale into chat context and proof saves, and an
         // artifact both back-references its step (a JSON cycle) and carries
@@ -296,6 +307,7 @@ export class FunctionAnalysisManager {
         this._destroyCharts();
         this._hiddenGroups = new Set();
         this._hiddenMarks = new Set();
+        this._hiddenSeries = new Set();
         page.innerHTML = '';
 
         page.appendChild(this._renderHeader(artifact));
@@ -475,6 +487,7 @@ export class FunctionAnalysisManager {
             state.pins = { ...(view.pinned || {}) };
             this._hiddenGroups = new Set();
             this._hiddenMarks = new Set();
+            this._hiddenSeries = new Set();
             [...tabs.querySelectorAll('.fa-view-tab')].forEach((b, i) =>
                 b.classList.toggle('active', i === idx));
             this._renderExprPanel(exprPanel, chars, view);
@@ -487,9 +500,13 @@ export class FunctionAnalysisManager {
                 const rtext = document.createElement('span');
                 this._inlineMath(rtext, ' ' + view.rationale);
                 rationale.append(badge, rtext);
+                // Built at CLICK time so the features and curves quoted are
+                // the ones currently switched on in the legend.
                 this._attachHoverAsk(rationale, () =>
                     `For $${artifact.latex}$, the analysis chose this view: ` +
-                    `"${view.rationale}". Why is this range interesting?`);
+                    `"${view.rationale}". Walk me through the whole chart: why ` +
+                    `this range is interesting, and what its features mean.\n` +
+                    this._configSummary(chars, view, state));
             } else {
                 rationale.textContent = '';
             }
@@ -571,15 +588,26 @@ export class FunctionAnalysisManager {
         }
     }
 
-    /** All evaluable series for a view: main curve + companion plots. */
+    /** All evaluable series for a view: main curve + companion plots.
+     *
+     *  `label` is a DISPLAY SOURCE in the app's inline-math convention —
+     *  prose with `$…$` spans, which is how the LM writes plot labels
+     *  ("Faster spin ($\omega = 0.2\ \text{rad/s}$)"). A bare LaTeX
+     *  expression is `$`-wrapped here so one renderer (labels.js
+     *  renderKaTeX) covers both the LM's prose and the CAS's expressions. */
     _seriesFor(chars, view) {
         const out = [];
         const main = chars.chartScript;
         if (main && main.script) {
-            out.push({ label: 'f', script: main.script, main: true });
+            const f = chars.dependentLatex || chars.expression || 'f';
+            out.push({ label: `$${f}$`, script: main.script, main: true });
         }
         for (const p of view.plots || []) {
-            if (p.script) out.push({ label: p.label || p.latex, script: p.script });
+            if (!p.script) continue;
+            out.push({
+                label: p.label || (p.latex ? `$${p.latex}$` : 'companion'),
+                script: p.script,
+            });
         }
         return out;
     }
@@ -615,7 +643,11 @@ export class FunctionAnalysisManager {
             xs.push(xa + (xb - xa) * i / NUM_POINTS);
         }
         const datasets = series.map((s, si) => ({
+            // Plain-text fallback only — the canvas legend is off (see below).
             label: detex(s.label),
+            // Display source for the HTML legend and tooltip, both of which
+            // run it through KaTeX.
+            $faLabel: s.label,
             data: xs.map(x => {
                 if (!compiled[si]) return null;
                 try {
@@ -637,15 +669,7 @@ export class FunctionAnalysisManager {
 
         // Evaluate annotation positions under the current pins (slider-reactive).
         const annotations = this._evalAnnotations(chars, view, state.pins);
-        // Roots, extrema and singularities are CAS facts, not AI opinions:
-        // draw them whenever the report found any. `view.mark` stays as an
-        // additive hint (the LM regularly forgets to list them, and a
-        // learner asking "where are the roots" deserves an answer).
-        const marks = new Set(view.mark || []);
-        for (const kind of ['zeros', 'extrema', 'singularities']) {
-            const f = (chars.features || {})[kind];
-            if (f && (f.points || []).length) marks.add(kind);
-        }
+        const marks = this._marksFor(chars, view);
         // Markers start OFF: the curve reads clearly on its own, and the
         // legend keys are the switch. (They are also drawn by numeric
         // re-detection over the plotted window, so a feature the CAS found
@@ -659,14 +683,16 @@ export class FunctionAnalysisManager {
             afterDraw: (chart) => {
                 const fa = chart.$fa;
                 if (!fa) return;
-                const visible = new Set(
-                    [...fa.marks].filter(k => !this._hiddenMarks.has(k)));
+                // Feature markers are read off the main curve — hiding that
+                // curve from the legend must take its markers with it.
+                const visible = chart.isDatasetVisible(0)
+                    ? new Set([...fa.marks].filter(k => !this._hiddenMarks.has(k)))
+                    : new Set();
                 this._drawOverlays(chart, chart.data.datasets[0], fa.xs,
                                    visible, fa.anns);
             },
         };
 
-        const xv = this._varText(chars, view.x_var);
         const chart = new Chart(canvas, {
             type: 'line',
             plugins: [featurePlugin],
@@ -676,10 +702,11 @@ export class FunctionAnalysisManager {
                 maintainAspectRatio: false,
                 animation: false,      // slider-driven updates must not flicker
                 plugins: {
-                    legend: {
-                        display: datasets.length > 1,
-                        labels: { color: '#aebbd1', boxWidth: 18 },
-                    },
+                    // Canvas fillText can't render KaTeX, so series labels
+                    // painted here leak raw LaTeX — see _renderSeriesLegend
+                    // for the HTML replacement (same reason as the
+                    // annotation labels and the external tooltip below).
+                    legend: { display: false },
                     // Canvas tooltips can't render math — use an HTML one.
                     tooltip: {
                         enabled: false,
@@ -723,6 +750,7 @@ export class FunctionAnalysisManager {
         const yb = this._yBounds(datasets);
         chart.options.scales.y.min = yb.min;
         chart.options.scales.y.max = yb.max;
+        this._renderSeriesLegend(legend, chart);
         this._renderMarkerLegend(legend, marks, chart);
         chart.$fa = {
             xs,
@@ -844,11 +872,10 @@ export class FunctionAnalysisManager {
                 sw.style.background = dp.dataset.borderColor;
                 const name = document.createElement('span');
                 name.className = 'fa-tip-name';
-                // Series labels are LaTeX for companion plots, 'f' for the
-                // analyzed expression itself.
-                this._katex(name, dp.dataset.label === 'f'
-                    ? (chars.dependentLatex || chars.expression || 'f')
-                    : dp.dataset.label);
+                // Same display source as the HTML legend: LM prose with
+                // inline math, or a $-wrapped expression (see _seriesFor).
+                name.innerHTML = renderKaTeX(
+                    dp.dataset.$faLabel || dp.dataset.label || '', false);
                 const val = document.createElement('span');
                 val.className = 'fa-tip-val';
                 val.textContent = Number.isFinite(dp.parsed?.y)
@@ -867,9 +894,143 @@ export class FunctionAnalysisManager {
         return Number.isFinite(+v) ? String(+(+v).toPrecision(4)) : '?';
     }
 
+    /** Which CAS feature kinds this view draws. Roots, extrema and
+     *  singularities are CAS facts, not AI opinions: draw them whenever the
+     *  report found any. `view.mark` stays as an additive hint (the LM
+     *  regularly forgets to list them, and a learner asking "where are the
+     *  roots" deserves an answer). */
+    _marksFor(chars, view) {
+        const marks = new Set(view.mark || []);
+        for (const kind of ['zeros', 'extrema', 'singularities']) {
+            const f = (chars.features || {})[kind];
+            if (f && (f.points || []).length) marks.add(kind);
+        }
+        return marks;
+    }
+
+    /** The CAS features currently ON SCREEN, in words: only the kinds whose
+     *  legend key is switched on, and only the locations inside the plotted
+     *  window.
+     *
+     *  Nothing is dropped: the tutor needs the WHOLE report to explain the
+     *  chart, so every finding is listed and the ones the learner cannot
+     *  currently see are flagged instead — `(hidden)` for a legend key
+     *  switched off, `(off-chart)` for a point outside the swept range.
+     *  Point lists are bounded server-side (features.MAX_POINTS). */
+    _featureSummary(chars, view) {
+        const feats = chars.features || {};
+        const marks = this._marksFor(chars, view);
+        const xL = this._varLatex(chars, view.x_var);
+        const [xa, xb] = (view.x_range || []).length === 2
+            ? view.x_range : [-Infinity, Infinity];
+        const lo = Math.min(xa, xb), hi = Math.max(xa, xb);
+        // Markers are re-detected numerically over the plotted window, so a
+        // CAS point outside it draws nothing however the legend key is set.
+        const at = (p) => `$${xL} = ${p.latex}$`;
+        const off = (p) =>
+            (p && Number.isFinite(p.approx) && p.approx >= lo && p.approx <= hi)
+                ? '' : ' (off-chart)';
+
+        // ── the three kinds the chart draws ──────────────────────────
+        const drawn = [];
+        // `family` is what the CAS returns when the solution set is not a
+        // finite list ($\pi n$, $\mathbb{R}$) — say so, rather than phrase a
+        // whole set as if it were a handful of marker dots.
+        const familyText = (label, f) => `${label} form the set $${f.family}$`;
+        const add = (kind, label, describe, lead) => {
+            const f = feats[kind] || {};
+            const pts = f.points || [];
+            const hidden = this._hiddenMarks.has(kind);
+            if (pts.length) {
+                const body = pts.map(describe).join(', ');
+                // A hidden group is qualified UP FRONT — trailing it would
+                // read as if it belonged to the last point alone.
+                // `lead` groups points that all read the same ("roots at A,
+                // B"); it is dropped where the wording differs per point.
+                drawn.push(hidden ? `${label} (hidden): ${body}`
+                                  : (lead ? `${lead} ${body}` : body));
+            } else if (f.family) {
+                drawn.push(familyText(label, f) + (hidden ? ' (hidden)' : ''));
+            }
+        };
+        add('zeros', 'roots', (p) => at(p) + off(p), 'roots at');
+        add('extrema', 'critical points', (p) =>
+            `a ${p.kind || 'critical point'} at ${at(p.location)}` +
+            (p.value && p.value.latex ? ` (value $${p.value.latex}$)` : '') +
+            off(p.location));
+        add('singularities', 'singularities', (p) =>
+            (p.vertical_asymptote ? 'a vertical asymptote' : 'a singularity') +
+            ` at ${at(p.location)}` + off(p.location));
+
+        // ── findings the chart never draws, but that explain its shape ──
+        const extra = [];
+        const infl = feats.inflections || {};
+        if ((infl.points || []).length) {
+            extra.push('inflection points at ' +
+                       infl.points.map(p => at(p) + off(p)).join(', '));
+        } else if (infl.family) {
+            extra.push(familyText('inflection points', infl));
+        }
+        for (const d of (feats.limits_at_infinity || {}).directions || []) {
+            const to = `as $${xL} \\to ${d.direction === '-inf' ? '-' : '+'}\\infty$`;
+            const o = d.oblique_asymptote;
+            if (o && o.slope && o.intercept) {
+                const b = String(o.intercept.latex || '').trim();
+                const term = b.startsWith('-') ? `- ${b.slice(1)}` : `+ ${b}`;
+                extra.push(`an oblique asymptote $y = ${o.slope.latex} ${xL} ${term}$ ${to}`);
+            } else if (d.horizontal_asymptote && d.limit) {
+                extra.push(`a horizontal asymptote $y = ${d.limit.latex}$ ${to}`);
+            } else if (d.limit) {
+                // Infinite limits arrive as bare LaTeX, finite ones as points.
+                const lim = typeof d.limit === 'string' ? d.limit : d.limit.latex;
+                extra.push(`limit $${lim}$ ${to}`);
+            }
+        }
+        if (feats.periodicity && feats.periodicity.latex) {
+            extra.push(`period $${feats.periodicity.latex}$`);
+        }
+        if (typeof feats.parity === 'string') extra.push(`${feats.parity} symmetry`);
+        if (typeof feats.domain === 'string') extra.push(`domain $${feats.domain}$`);
+
+        const out = [];
+        if (drawn.length) out.push(`Marked on the chart: ${drawn.join('; ')}.`);
+        if (extra.length) out.push(`Also detected (not drawn): ${extra.join('; ')}.`);
+        // A kind the view asked to mark that the report found nothing for
+        // says so rather than silently vanishing.
+        const empty = [...marks].filter(k => !(feats[k] || {}).points?.length &&
+                                             !(feats[k] || {}).family);
+        if (empty.length) out.push(`No ${empty.join(' or ')} were found.`);
+        return out.join(' ');
+    }
+
+    /** Everything else drawn beside the main curve — companion plots and the
+     *  annotation lines, by the labels the learner reads in the legend. All
+     *  of them, with the ones switched off flagged `(hidden)`. */
+    _overlaySummary(chars, view) {
+        const parts = [];
+        // Dataset order is `_seriesFor`'s: the main curve (when there is one)
+        // then each plot that has a script — the same index the legend chips
+        // and `_hiddenSeries` use.
+        const offset = (chars.chartScript && chars.chartScript.script) ? 1 : 0;
+        const plots = (view.plots || []).filter(p => p.script).map((p, i) =>
+            ((p.label && p.latex) ? `${p.label} — $${p.latex}$`
+                                  : (p.label || `$${p.latex}$`)) +
+            (this._hiddenSeries.has(i + offset) ? ' (hidden)' : ''));
+        if (plots.length) parts.push(`companion curves: ${plots.join('; ')}`);
+        const anns = (view.annotations || []).map(a =>
+            (a.label || a.kind) +
+            (a.at && a.at.latex ? ` at $${a.at.latex}$` : '') +
+            (this._hiddenGroups.has(a.group || '') ? ' (hidden)' : ''));
+        if (anns.length) parts.push(`marker lines: ${anns.join('; ')}`);
+        return parts.length
+            ? `Other curves and markers on this view — ${parts.join(', and ')}.`
+            : '';
+    }
+
     /** The chart's current state in words, appended to every ask so the
      *  tutor answers about what the learner is actually looking at rather
-     *  than the expression in the abstract. */
+     *  than the expression in the abstract — the full CAS report and every
+     *  extra curve, with whatever is currently off-screen flagged. */
     _configSummary(chars, view, state) {
         const pins = Object.entries(state.pins || {})
             .map(([k, v]) => `$${this._varLatex(chars, k)}$ = ${this._fmt(v)}`);
@@ -877,7 +1038,9 @@ export class FunctionAnalysisManager {
         const parts = [`the chart sweeps $${this._varLatex(chars, view.x_var)}$` +
                        (range ? ` from ${range}` : '')];
         if (pins.length) parts.push(`with ${pins.join(', ')}`);
-        return `(Current chart settings: ${parts.join(', ')}.)`;
+        return [`(Current chart settings: ${parts.join(', ')}.`,
+                this._featureSummary(chars, view),
+                this._overlaySummary(chars, view)].filter(Boolean).join(' ') + ')';
     }
 
     /** Hovering an annotation reports the values AT that marker — the same
@@ -1036,6 +1199,44 @@ export class FunctionAnalysisManager {
             const v = evalExpr(compiled, 0, { overrideScope: scope });
             return Number.isFinite(v) ? v : null;
         } catch (_e) { return null; }
+    }
+
+    /** Which curve is which, as HTML so the labels render as KaTeX —
+     *  Chart.js paints its own legend with canvas fillText, which leaves
+     *  `\text{rad/s}` on screen as source (same constraint that put the
+     *  annotation labels and the tooltip in HTML layers).
+     *
+     *  Behaviour matches the built-in legend it replaces: one chip per
+     *  dataset, clicking toggles that dataset, an off chip is struck
+     *  through, and the swatch carries the curve's real stroke — solid for
+     *  the analyzed expression, dashed for a companion plot. */
+    _renderSeriesLegend(legend, chart) {
+        for (const el of legend.querySelectorAll('.fa-series-key')) el.remove();
+        this._hiddenSeries.clear();         // a fresh chart shows everything
+        const datasets = chart.data.datasets;
+        if (datasets.length < 2) return;    // a lone curve is the y-axis title
+        datasets.forEach((ds, i) => {
+            const source = ds.$faLabel || ds.label || '';
+            const chip = document.createElement('button');
+            chip.className = 'fa-btn fa-series-key';
+            chip.title = `Show or hide ${detex(source)}`;
+            const swatch = document.createElement('span');
+            swatch.className = 'fa-series-swatch' +
+                ((ds.borderDash || []).length ? ' dashed' : '');
+            swatch.style.borderTopColor = ds.borderColor;
+            const text = document.createElement('span');
+            text.innerHTML = renderKaTeX(source, false);
+            chip.append(swatch, text);
+            chip.addEventListener('click', () => {
+                const wasVisible = chart.isDatasetVisible(i);
+                if (wasVisible) chart.hide(i); else chart.show(i);
+                chip.classList.toggle('off', wasVisible);
+                // Mirrored so the ask messages describe what is on screen.
+                if (wasVisible) this._hiddenSeries.add(i);
+                else this._hiddenSeries.delete(i);
+            });
+            legend.appendChild(chip);
+        });
     }
 
     /** Legend for the drawn markers — and the switch that hides them.

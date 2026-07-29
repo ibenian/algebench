@@ -139,8 +139,29 @@
     white-space: nowrap;
 }
 
-.fa-ann-legend { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+.fa-ann-legend { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 6px; }
 .fa-ann-chip { font-size: 11px; border-style: dashed; }
+/* which curve is which — HTML (not the Chart.js canvas legend) so the
+   labels can render as KaTeX; see _renderSeriesLegend */
+.fa-series-key {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: #aebbd1;
+    padding: 2px 9px;
+}
+.fa-series-key.off { opacity: 0.45; text-decoration: line-through; }
+.fa-series-key .katex { font-size: 1.05em; }
+/* the curve's own stroke: solid for the analyzed expression, dashed for a
+   companion plot (colour is set inline from the dataset) */
+.fa-series-swatch {
+    width: 15px;
+    height: 0;
+    border-top: 2px solid currentColor;
+    flex-shrink: 0;
+}
+.fa-series-swatch.dashed { border-top-style: dashed; }
 /* what the drawn markers mean */
 .fa-mark-key {
     display: inline-flex;
