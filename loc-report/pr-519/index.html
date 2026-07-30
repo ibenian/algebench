@@ -107,8 +107,8 @@
 | Field | Value |
 |---|---|
 | **Branch** | `perf/510-proof-completion-predict-nothink` |
-| **Commit** | `95725fe` |
-| **Date** | 2026-07-29 22:12:13 -0400 |
+| **Commit** | `2462645` |
+| **Date** | 2026-07-30 02:15:27 +0000 |
 
 > [!NOTE]
 > Charts render on GitHub and in Mermaid-compatible viewers.
@@ -116,8 +116,8 @@
 ```mermaid
 xychart-beta horizontal
   title "Code Lines by Directory"
-  x-axis ["scenes", "static", "backend", "tests", "scripts", "(other)", "docs", "schemas", "themes"]
-  bar [63509, 37489, 19208, 18783, 6911, 5245, 4026, 1841, 317]
+  x-axis ["scenes", "static", "backend", "tests", "docs", "scripts", "(other)", "schemas", "themes"]
+  bar [63509, 37489, 19208, 18783, 8824, 7253, 5245, 1841, 317]
 ```
 
 ## By Directory
@@ -128,18 +128,18 @@ xychart-beta horizontal
 | `static/` | 37,489 | 4,202 | 2,814 |
 | `backend/` | 19,208 | 2,976 | 2,849 |
 | `tests/` | 18,783 | 1,669 | 4,175 |
-| `scripts/` | 6,911 | 760 | 957 |
+| `docs/` | 8,824 | 9,225 | 2,870 |
+| `scripts/` | 7,253 | 774 | 1,004 |
 | `(other)/` | 5,245 | 0 | 0 |
-| `docs/` | 4,026 | 9,104 | 2,813 |
 | `schemas/` | 1,841 | 0 | 0 |
 | `themes/` | 317 | 0 | 0 |
-| **Total** | **157,329** | **18,711** | **13,609** |
+| **Total** | **162,469** | **18,846** | **13,713** |
 
 ```mermaid
 xychart-beta horizontal
   title "Lines of Code by Language"
   x-axis ["JSON", "Python", "JavaScript", "CSS", "HTML", "Shell", "BASH", "YAML", "Dockerfile"]
-  bar [71889, 42881, 30045, 6259, 1577, 404, 124, 25, 16]
+  bar [76675, 43223, 30045, 6259, 1577, 404, 124, 25, 16]
 ```
 
 ## Summary by Language
@@ -148,8 +148,8 @@ xychart-beta horizontal
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  Language              Files        Lines         Code     Comments       Blanks
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- JSON                     66        71890        71889            0            1
- Python                  219        55263        42881         4655         7727
+ JSON                     69        76676        76675            0            1
+ Python                  220        55666        43223         4669         7774
  JavaScript               79        36059        30045         3527         2487
  CSS                       8         7161         6259          581          321
  Shell                     5          610          404          136           70
@@ -163,16 +163,16 @@ xychart-beta horizontal
  |- JavaScript             6         1017          877           48           92
  (Total)                             3822         3405          206          211
 ─────────────────────────────────────────────────────────────────────────────────
- Markdown                 81        16614            0        12719         3895
- |- BASH                  25          478          357           82           39
+ Markdown                 82        16787            0        12837         3950
+ |- BASH                  26          495          369           85           41
  |- JavaScript             1           10            6            3            1
  |- JSON                  33         1318         1318            0            0
  |- Markdown               1            1            0            1            0
  |- Python                 7          455          415            7           33
  |- XML                    1          228          185           43            0
- (Total)                            19104         2281        12855         3968
+ (Total)                            19294         2293        12976         4025
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Total                   474       194192       157329        22055        14808
+ Total                   479       199571       162469        22190        14912
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -312,7 +312,7 @@ xychart-beta horizontal
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  Language              Files        Lines         Code     Comments       Blanks
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Python                  219        55263        42881         4655         7727
+ Python                  220        55666        43223         4669         7774
 ─────────────────────────────────────────────────────────────────────────────────
  |_graph/sympy_translator.py         4252         3384          493          375
  |lgebench/backend/server.py         2728         2221          268          239
@@ -344,6 +344,7 @@ xychart-beta horizontal
  |of_completion/grounding.py          489          364           61           64
  |ers/proof_edit/variants.py          469          363           59           47
  |f_completion/tree_match.py          443          363           24           56
+ |mpletion/thinking_sweep.py          403          342           14           47
  |ssion_analysis/proposer.py          428          339           26           63
  |nd/test_proof_endpoints.py          444          332           34           78
  |rts/test_step_grounding.py          451          328           40           83
@@ -534,7 +535,7 @@ xychart-beta horizontal
  |semantic_graph/__init__.py            0            0            0            0
  |lgebench/tests/__init__.py            0            0            0            0
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Total                   219        55263        42881         4655         7727
+ Total                   220        55666        43223         4669         7774
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -542,9 +543,9 @@ xychart-beta horizontal
 
 | Category | Code Lines | % of JS+Python |
 |---|---|---|
-| JavaScript (frontend) | 29935 | 41% |
-| Python (backend) | 42881 | 59% |
-| **Total** | **72816** | **100%** |
+| JavaScript (frontend) | 29935 | 40% |
+| Python (backend) | 43223 | 60% |
+| **Total** | **73158** | **100%** |
 
 </script>
 </body>
