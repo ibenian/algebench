@@ -1238,6 +1238,133 @@ def _rewrite_bracket_functions(latex: str) -> str:
 # overline — all start near 0) so the merged-override dict never clashes.
 _CONCENTRATION_XI_BASE = 600
 
+# Base index for plus-minus placeholders (issue #369).  Above concentration's.
+_PLUS_MINUS_XI_BASE = 700
+
+# Where the term governed by a ``\pm`` ENDS.  ``\pm`` binds to the
+# multiplicative term that follows it, so the operand runs up to the next
+# additive/relational boundary at the same nesting depth.  ``\cdot`` is
+# deliberately absent — it joins factors *within* the term.
+_PM_BOUNDARY_CHARS = "+-=<>,;"
+_PM_BOUNDARY_COMMANDS = frozenset({
+    r"\pm", r"\mp", r"\lor", r"\vee", r"\land", r"\wedge",
+    r"\implies", r"\impliedby", r"\iff", r"\to", r"\rightarrow",
+    r"\leq", r"\geq", r"\neq", r"\le", r"\ge", r"\ne", r"\lt", r"\gt",
+    r"\approx", r"\equiv", r"\simeq", r"\in", r"\quad", r"\qquad",
+})
+# A ``\pm`` with no left operand at this level is a SIGN, not an addition —
+# ``x = \pm 3`` must not become ``x = + Xi(3)``.
+_PM_NO_LEFT_OPERAND = "=<>,;({[+-"
+
+
+def _plus_minus_operand(latex: str, i: int) -> tuple[str, int]:
+    r"""Consume the multiplicative term a ``\pm`` / ``\mp`` governs.
+
+    Returns ``(operand, end_index)``.  Scanning respects nesting, so the ``-``
+    inside ``\sqrt{b^2-4ac}`` does not end the term, and a ``\pm`` written
+    inside a group (``e^{\pm i\theta}``) stops at that group's closing brace
+    rather than escaping it.
+    """
+    n = len(latex)
+    while i < n and latex[i] in " \t":
+        i += 1
+    depth = 0
+    j = i
+    while j < n:
+        ch = latex[j]
+        if ch in "{([":
+            depth += 1
+            j += 1
+            continue
+        if ch in "})]":
+            if depth == 0:
+                break                       # the enclosing group ended
+            depth -= 1
+            j += 1
+            continue
+        if depth == 0:
+            if j > i and ch in _PM_BOUNDARY_CHARS:
+                break
+            if ch == "\\":
+                m = re.match(r"\\[A-Za-z]+", latex[j:])
+                if m:
+                    if j > i and m.group(0) in _PM_BOUNDARY_COMMANDS:
+                        break
+                    j += len(m.group(0))    # consume the whole command name
+                    continue
+        j += 1
+    return latex[i:j].strip(), j
+
+
+def _collapse_plus_minus(
+    latex: str,
+    start_idx: int = _PLUS_MINUS_XI_BASE,
+) -> tuple[str, dict[str, dict[str, str]]]:
+    r"""Rewrite ``\pm`` / ``\mp`` into placeholder functions (issue #369).
+
+    ``±`` is a unary *operator* over the term it governs — ``x = ±√Δ`` means
+    ``x = √Δ ∨ x = −√Δ`` — but SymPy has no such object and its LaTeX parser
+    silently degrades ``\pm`` to a free symbol.  That is worse than failing:
+    because the bogus symbol becomes a *multiplicand*, implicit multiplication
+    then glues the surrounding terms together, and
+
+        x = \frac{-b \pm \sqrt{b^2-4ac}}{2a}   parsed as   -\pm·b·√(b²-4ac)/(2a)
+
+    — the sum ``-b + (±√Δ)`` collapses into one product.  The additive
+    structure is destroyed *during parsing*, which is why this cannot be fixed
+    downstream in the walk (contrast ``negation``, which is recovered from the
+    SymPy tree): by then the terms have already merged.
+
+    So each ``\pm B`` becomes ``+ \Xi_{N}(B)`` (or just ``\Xi_{N}(B)`` where
+    there is no left operand) and is recorded in *overrides*.  The walker turns
+    the placeholder into a unary ``plus_minus`` / ``minus_plus`` operator node,
+    and ``original_latex`` restores the ``\pm`` form for display — exactly the
+    pattern ``_collapse_concentration_brackets`` uses for chemistry's ``[A]``.
+    """
+    if "\\pm" not in latex and "\\mp" not in latex:
+        return latex, {}
+
+    overrides: dict[str, dict[str, str]] = {}
+    out: list[str] = []
+    i = 0
+    n = len(latex)
+    counter = start_idx
+    while i < n:
+        m = re.match(r"\\(pm|mp)(?![A-Za-z])", latex[i:])
+        if not m:
+            out.append(latex[i])
+            i += 1
+            continue
+        kind = m.group(1)
+        operand, end = _plus_minus_operand(latex, i + len(m.group(0)))
+        if not operand:
+            out.append(latex[i])            # nothing to govern — leave it be
+            i += 1
+            continue
+        prev = "".join(out).rstrip()
+        # A leading ``\pm`` is a sign, not an addition, so it gets no ``+``.
+        # "Leading" means nothing precedes it at this level: start of string, an
+        # opening/operator CHARACTER, or a relational COMMAND — the last of
+        # which ends in a letter, so a bare last-character test would miss it
+        # and emit ``x \to +\Xi(\infty)``.
+        trailing_cmd = re.search(r"\\[A-Za-z]+$", prev)
+        no_left = (not prev
+                   or prev[-1] in _PM_NO_LEFT_OPERAND
+                   or (trailing_cmd is not None
+                       and trailing_cmd.group(0) in _PM_BOUNDARY_COMMANDS))
+        joiner = "" if no_left else "+"
+        name = f"Xi_{{{counter}}}"
+        overrides[name] = {
+            f"{'plus_minus' if kind == 'pm' else 'minus_plus'}": True,
+            "label": "plus_minus" if kind == "pm" else "minus_plus",
+            "original_latex": rf"\{kind} {operand}",
+            "latex": "±" if kind == "pm" else "∓",
+        }
+        out.append(rf"{joiner}\Xi_{{{counter}}}({operand})")
+        counter += 1
+        i = end
+    return "".join(out), overrides
+
 
 def _collapse_concentration_brackets(
     latex: str,
@@ -2808,6 +2935,32 @@ class SemanticGraphBuilder:
             # becomes a dedicated unary ``concentration`` operator node fed by
             # the species.  The subexpr is the original ``[…]`` form so the
             # placeholder never leaks into display.
+            # --- Plus-minus / minus-plus (issue #369) ---
+            # ``\Xi_{N}(term)`` injected by _collapse_plus_minus becomes a unary
+            # operator node over the term it governs — the same shape as
+            # ``negation``, which is what makes it a first-class operator rather
+            # than a bogus variable. ``subexpr`` carries the original ``\pm …``
+            # so the placeholder never leaks into display and the renderer can
+            # put the ``±`` back.
+            if (
+                _PLACEHOLDER_NAME_RE.fullmatch(func_name)
+                and func_name in self._overrides
+                and (self._overrides[func_name].get("plus_minus")
+                     or self._overrides[func_name].get("minus_plus"))
+            ):
+                ovr = self._overrides[func_name]
+                op = "plus_minus" if ovr.get("plus_minus") else "minus_plus"
+                node_id = self._next_id(op)
+                self._add_node(
+                    node_id, type="operator", op=op,
+                    latex=ovr.get("latex", "±"),
+                    subexpr=ovr.get("original_latex", ""),
+                )
+                if expr.args:
+                    child_id = self._walk(expr.args[0])
+                    self._add_edge(child_id, node_id)
+                return node_id
+
             if (
                 _PLACEHOLDER_NAME_RE.fullmatch(func_name)
                 and func_name in self._overrides
@@ -3962,6 +4115,10 @@ def _latex_to_semantic_graph_dict(
         )
     else:
         concentration_overrides = {}
+    # ``\pm`` / ``\mp`` → placeholder functions BEFORE anything else touches the
+    # term structure: left alone they degrade to a free symbol and the implicit
+    # multiplication that follows merges the surrounding sum (issue #369).
+    script_normalized, plus_minus_overrides = _collapse_plus_minus(script_normalized)
     braket_collapsed, braket_overrides = _collapse_braket_notation(script_normalized)
     compound_collapsed, compound_overrides = _collapse_compound_symbols(braket_collapsed)
     subscript_collapsed, subscript_overrides = _collapse_multichar_subscripts(compound_collapsed)
@@ -3988,6 +4145,7 @@ def _latex_to_semantic_graph_dict(
     latex_commands = _extract_latex_commands(latex)
     merged_overrides: dict[str, dict[str, str]] = {
         **concentration_overrides,
+        **plus_minus_overrides,
         **braket_overrides,
         **compound_overrides,
         **subscript_overrides,

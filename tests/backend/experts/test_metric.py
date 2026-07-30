@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+import sympy as sp
 
 from backend.experts.modules.proof_completion.outputs import ProofTrajectory
 from backend.experts.modules.proof_completion import dataset as D
@@ -57,12 +58,28 @@ def test_bootstrap_mode_returns_pass_fail():
     assert proof_completion_metric(ex, bad, trace=[]) == 0.0
 
 
-def test_pm_pseudo_symbol_is_not_convertible():
-    # "x = \pm 3" parses to a graph where ± is an opaque scalar symbol
-    # ("x = 3·±") — not real math. It must not count as a convertible state.
-    from backend.experts.modules.proof_completion.metric import _state_graph
+def test_pm_states_are_convertible_and_multivalued():
+    r"""``±`` is a real operator now, so its states are convertible (issue #369).
 
-    assert _state_graph(r"x = \pm 3", "algebra") is None
-    assert _state_graph(r"x = \mp 2", "algebra") is None
-    assert _state_graph(r"x = \pm\sqrt{9}", "algebra") is None
-    assert _state_graph(r"x = 3", "algebra") is not None   # control
+    This test previously asserted the OPPOSITE — that ``x = \pm 3`` must NOT
+    convert. That was right at the time: ``±`` degraded to an opaque scalar
+    symbol, so the state parsed to ``x = 3·±``, which is not math, and gating it
+    was the only way to keep the step honestly UNCHECKED. Now the state carries
+    a ``plus_minus`` operator and grounds to BOTH sign readings, so gating it
+    would suppress a state the CAS can fully verify.
+    """
+    from backend.experts.modules.proof_completion.metric import _state_graph
+    from backend.experts.modules.proof_completion.grounding import graph_to_sympy
+
+    for latex in (r"x = \pm 3", r"x = \mp 2", r"x = \pm\sqrt{9}"):
+        g = _state_graph(latex, "algebra")
+        assert g is not None, f"{latex} should convert"
+        # multivalued: a disjunction over the two sign choices, and crucially no
+        # stray ``\pm`` symbol left behind anywhere in it
+        grounded = graph_to_sympy(g)
+        assert isinstance(grounded, sp.Or), f"{latex} -> {grounded}"
+        assert not any(str(s).lstrip("\\") in ("pm", "mp")
+                       for s in grounded.free_symbols), grounded
+
+    assert _state_graph(r"x = 3", "algebra") is not None            # control
+    assert _state_graph(r"1 + 2 + \dots + n", "algebra") is None    # gate still on

@@ -181,6 +181,7 @@ _OPERATOR_GLYPHS: dict[str, str] = {
     "divide": "÷", "integral": "∫", "closed_integral": "∮",
     "implies": "⇒", "iff": "⇔", "piecewise": "pw", "branch": "⇒",
     "negation": "−", "not": "¬", "logical_not": "¬",
+    "plus_minus": "±", "minus_plus": "∓",
     "conjunction": "∧", "disjunction": "∨",
     "intersection": "∩", "union": "∪", "set_difference": "∖",
     "sum": "∑", "product": "∏", "limit": "lim",
@@ -204,6 +205,7 @@ _OP_KINDS: frozenset[str] = frozenset({"operator", "relation", "function"})
 _OPERATOR_KINDS: dict[str, str] = {
     "add": "arithmetic", "subtract": "arithmetic", "multiply": "arithmetic",
     "divide": "arithmetic", "power": "arithmetic", "negation": "arithmetic",
+    "plus_minus": "arithmetic", "minus_plus": "arithmetic",
     "Abs": "function", "abs": "function", "sqrt": "function",
     "factorial": "arithmetic",
     "sin": "function", "cos": "function", "tan": "function",
