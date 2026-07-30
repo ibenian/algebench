@@ -1299,7 +1299,7 @@ def _plus_minus_operand(latex: str, i: int) -> tuple[str, int]:
 def _collapse_plus_minus(
     latex: str,
     start_idx: int = _PLUS_MINUS_XI_BASE,
-) -> tuple[str, dict[str, dict[str, str]]]:
+) -> tuple[str, dict[str, dict[str, object]]]:   # values are str | bool
     r"""Rewrite ``\pm`` / ``\mp`` into placeholder functions (issue #369).
 
     ``±`` is a unary *operator* over the term it governs — ``x = ±√Δ`` means
@@ -1324,7 +1324,7 @@ def _collapse_plus_minus(
     if "\\pm" not in latex and "\\mp" not in latex:
         return latex, {}
 
-    overrides: dict[str, dict[str, str]] = {}
+    overrides: dict[str, dict[str, object]] = {}
     out: list[str] = []
     i = 0
     n = len(latex)

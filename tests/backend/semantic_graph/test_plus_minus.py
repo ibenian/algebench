@@ -69,13 +69,15 @@ def test_the_governed_term_does_not_swallow_the_sum():
     silently makes the expression a different one.
     """
     g = _graph(r"x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}")
-    parents = {e.to: e.from_ for e in g.edges}
+    nodes = {n.id: n for n in g.nodes}
     pm = next(n for n in g.nodes if n.op == "plus_minus")
-    numerator = next(n for n in g.nodes
-                     if n.id == parents.get(pm.id) or
-                     any(e.from_ == pm.id and e.to == n.id for e in g.edges))
-    assert numerator.op == "add", (
-        f"± should sit inside an add, not {numerator.op!r} — the sum was eaten")
+    # Edges run CHILD -> PARENT (``from_`` is the operand, ``to`` the operator),
+    # so the ± node's parent is the ``to`` of the edge it is the ``from_`` of.
+    parent_ids = [e.to for e in g.edges if e.from_ == pm.id]
+    assert len(parent_ids) == 1, f"± should feed exactly one parent, got {parent_ids}"
+    parent = nodes[parent_ids[0]]
+    assert parent.op == "add", (
+        f"± should sit inside an add, not {parent.op!r} — the sum was eaten")
 
 
 # ── ground: both readings, and the coupling rule ─────────────────────────────

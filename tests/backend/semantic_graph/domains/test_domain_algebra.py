@@ -34,7 +34,10 @@ from tests.backend.semantic_graph.generators.invariants import (
 
 ALLOWED_OPS = {
     "add", "multiply", "power", "equals", "negation",
-    "sum", "function", "plus_minus",
+    # ``minus_plus`` (\mp) ships with ``plus_minus`` (#369) — no algebra case
+    # uses it yet, but the allow-list should match the supported operator set,
+    # or the first case that does will fail for the wrong reason.
+    "sum", "function", "plus_minus", "minus_plus",
 }
 
 

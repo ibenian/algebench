@@ -405,12 +405,24 @@ def graph_to_latex(graph: SemanticGraph) -> Optional[str]:
     # would turn every ``x = ±√Δ`` a reader wrote into ``x = √Δ ∨ x = −√Δ``. The
     # structural renderer walks the graph node-by-node, so it puts the ``±``
     # back (issue #369).
-    if has_plus_minus(graph):
+    #
+    # If the structural renderer fails, this must NOT fall through to the sympy
+    # path below — that would emit the very disjunction the branch exists to
+    # avoid. Skip to the subexpr fallback instead, which returns the author's own
+    # LaTeX (``±`` intact) or None. Latent today, since the constructs the
+    # structural renderer rejects are largely ones ``graph_to_sympy`` rejects too,
+    # but the guard is what makes the contract above true rather than merely
+    # usually-true (Copilot, #520).
+    pm_graph = has_plus_minus(graph)
+    if pm_graph:
         try:
             from backend.semantic_graph.latex_renderer import to_latex
             return to_latex(graph)
         except Exception:
             pass
+
+    if pm_graph:
+        return _root_subexpr(graph)
 
     try:
         # mul_symbol="dot": explicit \cdot so start_latex/target_latex round-trip
@@ -420,6 +432,16 @@ def graph_to_latex(graph: SemanticGraph) -> Optional[str]:
     except Exception:
         pass
 
+    return _root_subexpr(graph)
+
+
+def _root_subexpr(graph: SemanticGraph) -> Optional[str]:
+    """The single root's own ``subexpr``, or None.
+
+    The last-resort rendering path: the author's LaTeX as written. Shared with
+    the ``±`` branch above, which must reach it *without* passing through the
+    sympy path in between.
+    """
     outdeg = {n.id: 0 for n in graph.nodes}
     for e in graph.edges:
         outdeg[e.from_] = outdeg.get(e.from_, 0) + 1
