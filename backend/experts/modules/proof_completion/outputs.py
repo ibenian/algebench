@@ -273,12 +273,37 @@ _WS_CTRL = {"\r": r"\r", "\n": r"\n", "\t": r"\t"}
 _WS_CTRL_RE = re.compile(r"[\r\n\t](?=[a-z])")
 
 
+def unmangle_math(text: str) -> str:
+    r"""``_unmangle_json_escapes`` for a field that is ENTIRELY LaTeX.
+
+    The prose version below only repairs ``\r`` / ``\n`` / ``\t`` **inside**
+    ``$…$``, because in prose those are genuine whitespace. A pure-math field has
+    no prose to protect, and skipping the repair there is not conservative — it
+    is silently destructive:
+
+        "\\left(x + \\frac{b}{2a}\right)^{2}"   ← one backslash on \right
+
+    JSON decodes ``\r`` to a carriage return, leaving ``ight)``, which parses as
+    the implicit product ``i·g·h·t``. The step still renders and still grounds,
+    as a DIFFERENT and wrong expression — observed in a real derivation, where
+    ``(x + b/2a)^2`` silently became ``(x + b/2a · i · g · h · t)^2``.
+
+    Whitespace is never meaningful in these fields, so repair globally.
+    """
+    if not text:
+        return text
+    for ctrl, latex in _CTRL_TO_LATEX.items():
+        text = text.replace(ctrl, latex)
+    return _WS_CTRL_RE.sub(lambda m: _WS_CTRL[m.group()], text)
+
+
 def _unmangle_json_escapes(text: str) -> str:
     """Losslessly restore single-escaped LaTeX commands mangled by JSON parsing.
 
     A no-op for clean text (no control chars) and idempotent. Whitespace-
     ambiguous control chars are repaired only inside ``$…$`` math, so real line
-    breaks in the surrounding prose are preserved.
+    breaks in the surrounding prose are preserved. For a field that is entirely
+    LaTeX use :func:`unmangle_math` instead — this one would leave it mangled.
     """
     if not text:
         return text
@@ -330,6 +355,19 @@ class DerivationStep(BaseModel):
                     "rearrangement), 'solve' (narrows toward a solution / picks a "
                     "branch), 'substitute' (introduce a new variable, let $u=…$), "
                     "'approximate' (≈, not exact), 'given' (a premise, not derived)")
+
+    @field_validator("expr_latex", mode="before")
+    @classmethod
+    def _unmangle_expr(cls, v):
+        r"""Repair JSON-mangled LaTeX in the one field that is pure math.
+
+        Must run BEFORE ``min_length``/``max_length``, hence ``mode="before"``.
+        The prose fields use ``_unmangle_json_escapes``; this field cannot,
+        because that variant only repairs whitespace control chars inside
+        ``$…$`` and ``expr_latex`` carries no delimiters — a mangled ``\right``
+        would pass straight through as ``ight`` and be parsed as ``i·g·h·t``.
+        """
+        return unmangle_math(v) if isinstance(v, str) else v
 
     @field_validator("operation", "justification", mode="before")
     @classmethod

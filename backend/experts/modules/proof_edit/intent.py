@@ -27,7 +27,8 @@ import dspy
 from pydantic import BaseModel, ConfigDict, Field
 
 from backend.experts.llm_config import scoped_lm
-from backend.experts.modules.proof_completion.outputs import _unmangle_json_escapes
+from backend.experts.modules.proof_completion.outputs import (
+    _unmangle_json_escapes, unmangle_math)
 
 # DSPy's ChatAdapter frames fields with `[[ ## name ## ]]` markers; some models
 # echo a trailing `[[ ## completed ## ]]` into a free-text output. Strip them.
@@ -320,15 +321,30 @@ _LM = scoped_lm(reasoning_effort="disable")
 
 
 def _clean(s) -> str:
-    """Strip DSPy framing, then repair JSON-mangled LaTeX.
+    """Strip DSPy framing, then repair JSON-mangled LaTeX in a PROSE field.
 
     ``_unmangle_json_escapes`` is not optional here. A JSON parser eats the first
     letter of a single-backslash LaTeX command, so ``\\frac{c}{\\sin(w)}`` arrives
     as ``fraccsin(w)`` — which renders as garbage in a caption and fails to parse
     as an operand. ``DerivationStep`` applies the same repair via a field
     validator; these fields bypass that model, so they need it explicitly.
+
+    Use :func:`_clean_math` for a field that is ENTIRELY LaTeX — this variant
+    leaves ``\\r``/``\\n``/``\\t`` mangling in place outside ``$…$``.
     """
     return _unmangle_json_escapes(_DSPY_MARKER.sub("", str(s or "")).strip())
+
+
+def _clean_math(s) -> str:
+    r"""``_clean`` for a field that is entirely LaTeX (no prose to protect).
+
+    ``\right`` written with one backslash decodes to a carriage return plus
+    ``ight``, which parses as the product ``i·g·h·t`` rather than failing — so
+    the edit is applied to a silently different expression. The prose variant
+    cannot repair it because it only touches whitespace control chars inside
+    ``$…$``, and these fields carry no delimiters.
+    """
+    return unmangle_math(_DSPY_MARKER.sub("", str(s or "")).strip())
 
 
 def propose_edit(derivation: str, current_step: str, request: str,
@@ -365,7 +381,7 @@ def propose_edit(derivation: str, current_step: str, request: str,
             continue
         step = ProposedStep(
             operation=_clean(raw.get("operation")),
-            expr_latex=_clean(raw.get("expr_latex")),
+            expr_latex=_clean_math(raw.get("expr_latex")),
             justification=_clean(raw.get("justification")),
         )
         if step.expr_latex:            # an expressionless step cannot be built
@@ -378,8 +394,8 @@ def propose_edit(derivation: str, current_step: str, request: str,
         steps=steps,
         summary=_clean(out.summary),
         op=_clean(getattr(out, "op", "")),
-        operand_latex=_clean(getattr(out, "operand_latex", "")),
-        replacement_latex=_clean(getattr(out, "replacement_latex", "")),
+        operand_latex=_clean_math(getattr(out, "operand_latex", "")),
+        replacement_latex=_clean_math(getattr(out, "replacement_latex", "")),
         variable=_clean(getattr(out, "variable", "")),
         side=(_clean(getattr(out, "side", "")).lower() or "both"),
     )
