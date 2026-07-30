@@ -311,10 +311,16 @@ def test_wrong_branch_swap_is_still_refuted():
     assert pv.tier is Tier.RED
 
 
-def test_pm_state_is_unchecked_in_animation_build():
-    # End-to-end: a derivation step written with \pm still renders/morphs, but
-    # its confidence tier must be "unchecked" (GRAY) — never a fake verdict
-    # computed from the ± pseudo-symbol.
+def test_pm_state_is_grounded_in_animation_build():
+    r"""End-to-end: a ``\pm`` step is now CHECKED, not waved through (issue #369).
+
+    This asserted ``unchecked`` before, and that was the honest answer then:
+    ``±`` degraded to a pseudo-symbol, so any verdict computed from it would
+    have been fake. Now ``x = \pm 3`` grounds to ``x = 3 ∨ x = -3`` — the same
+    solution set as ``x^2 = 9`` — so the CAS can and must actually rule on it.
+    The step still renders with its ``±`` intact; expansion is for grounding
+    only, never for display.
+    """
     from backend.experts.handlers.proof_animation.animation import build
     from backend.experts.modules.proof_completion.outputs import (
         DerivationStep, ProofTrajectory)
@@ -335,9 +341,13 @@ def test_pm_state_is_unchecked_in_animation_build():
     )
     data = build(traj, "algebra", "pm demo")
     tiers = [s["confidence"]["tier"] for s in data["steps"]]
-    assert tiers[1] == "unchecked"            # the \pm state
-    assert data["steps"][1]["latex"]          # but it still renders
-    assert tiers[0] == "grounded"               # the start is untouched
+    assert tiers[0] == "grounded"              # the start is untouched
+    assert tiers[1] == "grounded"              # the \pm state — CHECKED now
+    assert data["steps"][1]["latex"]           # and it still renders
+    # display keeps the compact form the author wrote; the two-branch expansion
+    # must never reach the page
+    assert r"\pm" in data["steps"][1]["latex"]
+    assert r"\lor" not in data["steps"][1]["latex"]
 
 
 # ── a decided falsehood is refuted wherever it sits ──────────────────────────

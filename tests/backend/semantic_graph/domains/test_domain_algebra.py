@@ -34,7 +34,10 @@ from tests.backend.semantic_graph.generators.invariants import (
 
 ALLOWED_OPS = {
     "add", "multiply", "power", "equals", "negation",
-    "sum", "function",
+    # ``minus_plus`` (\mp) ships with ``plus_minus`` (#369) — no algebra case
+    # uses it yet, but the allow-list should match the supported operator set,
+    # or the first case that does will fail for the wrong reason.
+    "sum", "function", "plus_minus", "minus_plus",
 }
 
 
@@ -72,21 +75,26 @@ POLYNOMIAL_EXPRESSIONS: list[CatalogEntry] = [
      "__add_2,__num_7 -> __equals_1",
      [{"op": "power", "exponent": "2"}]),
 
+    # ``\pm`` is a first-class unary operator (issue #369). Before that it fell
+    # through to a bogus free symbol ``pm``, and — because the symbol became a
+    # MULTIPLICAND — implicit multiplication swallowed the numerator's sum: this
+    # signature used to read ``pm,power -> multiply; b,multiply -> multiply``,
+    # with no ``add`` at all. The ``negation,plus_minus -> add`` below is the
+    # numerator ``-b ± √Δ`` finally being a sum.
     ("quadratic_formula",
      r"x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}",
      PASS,
-     "a,c -> multiply; a,num -> multiply; b -> power; "
+     "a,c -> multiply; a,num -> multiply; b -> negation; b -> power; "
      "multiply,num -> multiply; multiply -> power; multiply -> negation; "
-     "negation,power -> add; add -> power; pm,power -> multiply; "
-     "b,multiply -> multiply; "
-     "multiply -> negation; negation,power -> multiply; multiply,x -> rel:equals",
-     "a,c -> __multiply_12; __num_15,a -> __multiply_14; b -> __power_8; "
-     "__multiply_12,__num_11 -> __multiply_10; __multiply_14 -> __power_13; "
-     "__multiply_10 -> __negation_9; __negation_9,__power_8 -> __add_7; "
-     "__add_7 -> __power_6; __power_6,pm -> __multiply_5; "
-     "__multiply_5,b -> __multiply_4; "
-     "__multiply_4 -> __negation_3; __negation_3,__power_13 -> __multiply_2; "
-     "__multiply_2,x -> __equals_1",
+     "negation,power -> add; add -> power; power -> plus_minus; "
+     "negation,plus_minus -> add; add,power -> multiply; "
+     "multiply,x -> rel:equals",
+     "a,c -> __multiply_12; __num_15,a -> __multiply_14; b -> __negation_4; "
+     "b -> __power_8; __multiply_12,__num_11 -> __multiply_10; "
+     "__multiply_14 -> __power_13; __multiply_10 -> __negation_9; "
+     "__negation_9,__power_8 -> __add_7; __add_7 -> __power_6; "
+     "__power_6 -> __plus_minus_5; __negation_4,__plus_minus_5 -> __add_3; "
+     "__add_3,__power_13 -> __multiply_2; __multiply_2,x -> __equals_1",
      [{"op": "power", "exponent": "1/2"}, {"op": "power", "exponent": "-1"}]),
 
     ("cubic_depressed",

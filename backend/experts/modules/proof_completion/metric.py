@@ -63,13 +63,16 @@ def extract_steps(pred: Any) -> list:
 
 # Placeholder/ellipsis tokens that are NOT valid math — a state containing one
 # (e.g. "1 + 2 + \dots + n") is not a real sympy expression even if the latex
-# parser tolerates the token, so it must not count as convertible. \pm / \mp
-# belong here too: the parser renders them as an opaque scalar SYMBOL ("x =
-# 3·±"), which silently converts; a multivalued state must be written as a
-# disjunction ("x = 3 or x = -3") or as a branch step instead. Shared by the
+# parser tolerates the token, so it must not count as convertible. Shared by the
 # derive CLI and the animation builder (single source of truth).
+#
+# ``\pm`` / ``\mp`` used to be listed here: the parser degraded them to an opaque
+# scalar SYMBOL ("x = 3·±") which converted silently, so gating them was the only
+# way to keep such states honestly UNCHECKED. Issue #369 made ``±`` a real unary
+# operator that grounds to its two sign readings, so the gate is no longer needed
+# — and keeping it would now SUPPRESS a state the CAS can fully verify.
 PLACEHOLDER_TOKENS = ("\\dots", "\\ldots", "\\cdots", "\\dotsb", "\\ddots",
-                      "\\vdots", "\\dotsc", "...", "\\pm", "\\mp")
+                      "\\vdots", "\\dotsc", "...")
 _PLACEHOLDER = PLACEHOLDER_TOKENS
 
 
