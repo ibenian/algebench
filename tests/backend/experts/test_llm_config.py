@@ -54,7 +54,7 @@ def test_non_gemini_model_is_trusted(monkeypatch, clear_keys):
 # than once per module.
 
 def test_no_config_falls_back_to_the_global_lm():
-    """"No config" and "the default" are the same thing.
+    """No config and the default are the same thing.
 
     A module that has measured nothing must not get a second LM object built for
     it — it should use whatever ``configure_dspy()`` installed.
@@ -89,6 +89,26 @@ def test_a_provider_agnostic_override_is_not_gated(monkeypatch):
     """
     monkeypatch.setattr(C, "LM_MODEL", "openai/gpt-4o")
     assert C._build_scoped({"temperature": 0.0}) is not None
+
+
+def test_the_gemini_key_is_not_handed_to_another_provider(monkeypatch, clear_keys):
+    """A non-Gemini model must resolve its OWN auth (Copilot, #519).
+
+    This is reachable precisely because the test above leaves provider-agnostic
+    overrides ungated: an `openai/*` model with a `temperature` override does
+    build a scoped LM, and passing it `GEMINI_API_KEY` would override the
+    credential litellm would otherwise resolve for that provider.
+    """
+    monkeypatch.setenv("GEMINI_API_KEY", "gemini-only-key")
+
+    monkeypatch.setattr(C, "LM_MODEL", "openai/gpt-4o")
+    other = C._build_scoped({"temperature": 0.0})
+    assert other is not None
+    assert other.kwargs.get("api_key") is None      # left to the provider
+
+    monkeypatch.setattr(C, "LM_MODEL", "gemini/gemini-2.5-flash")
+    gemini = C._build_scoped({"temperature": 0.0})
+    assert gemini.kwargs.get("api_key") == "gemini-only-key"
 
 
 def test_the_context_is_a_noop_when_inapplicable(monkeypatch):

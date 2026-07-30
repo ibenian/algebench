@@ -101,8 +101,16 @@ def _build_scoped(overrides: dict) -> Optional[dspy.LM]:
     if (any(k in overrides for k in _GEMINI_ONLY)
             and not LM_MODEL.startswith("gemini/")):
         return None
-    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-    kwargs = dict(api_key=api_key, temperature=0.7, max_tokens=32768)
+    # The Gemini key is attached ONLY for a Gemini model. A provider-agnostic
+    # override (``temperature``) is deliberately not gated above, so this is
+    # reachable with ``ALGEBENCH_LM_MODEL=openai/…`` — and handing that provider
+    # a ``GEMINI_API_KEY`` would override the auth it resolves for itself.
+    # ``None`` means "resolve from the environment", which is what a non-Gemini
+    # provider should be trusted to do (Copilot, #519).
+    kwargs: dict = dict(temperature=0.7, max_tokens=32768)
+    if LM_MODEL.startswith("gemini/"):
+        kwargs["api_key"] = (os.environ.get("GEMINI_API_KEY")
+                             or os.environ.get("GOOGLE_API_KEY"))
     kwargs.update(overrides)
     try:
         return dspy.LM(LM_MODEL, **kwargs)
