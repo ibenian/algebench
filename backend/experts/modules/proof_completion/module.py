@@ -1,11 +1,13 @@
 """ProofCompletionExpert — start graph + target graph → edit trajectory.
 
-A thin ``dspy.Module`` wrapping ``ChainOfThought(ProofCompletionSig)``, wrapped
-in turn by a **refinement loop** (issue #372): each prediction is scored by the
-graded ``reward`` (well-formedness · grounding · optional judge) and, if it falls
-below the threshold, re-asked with the failure issues as targeted feedback. The
+A thin ``dspy.Module`` wrapping ``Predict(ProofCompletionSig)``, wrapped in turn
+by a **refinement loop** (issue #372): each prediction is scored by the graded
+``reward`` (well-formedness · grounding · optional judge) and, if it falls below
+the threshold, re-asked with the failure issues as targeted feedback. The
 optimizer (MIPROv2/GEPA) compiles *this* module; the compiled state is saved to
 an artifact and loaded back here.
+
+Bare ``Predict`` with Gemini thinking disabled — measured, see ``_LM``.
 """
 
 from __future__ import annotations
@@ -16,6 +18,7 @@ from pathlib import Path
 
 import dspy
 
+from backend.experts.llm_config import scoped_lm
 from backend.experts.registry import register_expert
 from backend.util.pathutil import sanitize_path
 from .signature import ProofCompletionSig
@@ -96,6 +99,44 @@ def _configured_artifact() -> str | None:
     return str(safe) if safe is not None else None
 
 
+# Measured A/B (2026-07-28, gemini-2.5-flash — issue #510, which carries the full
+# report; the sweep harness is on the unmerged branch
+# ``perf/510-proof-completion-thinking-benchmark`` — deliberately not in the repo,
+# since it is a one-off measurement, not something to maintain). Two tiers were run:
+# the machine-generated ``eval.jsonl`` rewrites AND eight real saved derivations
+# (quadratic formula, time dilation, particle-in-a-box, …). Only the second tier
+# makes this expert do what it is for — SEARCH for a multi-step path — so every
+# figure below is from it: 8 scenarios x 4 passes = 32 calls per configuration,
+# ``cache=False``, timed around the whole handler (refinement loop + CAS inside).
+#
+# The shipped configuration paid for deliberation TWICE — a ``ChainOfThought``
+# reasoning field on top of Gemini's own internal thinking:
+#
+#   cot_default (was)   20.58 s mean · sd 17.77 · max 71.1 s · 2887 thinking tok
+#   predict_disable     7.81 s mean  · sd  4.16 · max 16.2 s ·    0 thinking tok
+#
+# 2.6x faster on the slowest path in the app, with the tail — what someone
+# watching the Derive spinner actually experiences — cut 4.4x.
+#
+# ACCURACY DID NOT PAY FOR IT, and #509's reasoning is explicitly NOT what
+# carries here. There the CAS performed the mathematics and the LM merely routed;
+# here the model genuinely searches for the path, which is where deliberation
+# should have earned its keep. It did not: endpoint match 0.594 vs 0.562,
+# step-convertibility 0.929 vs 0.935, grounding 0.769 vs 0.785 — differences of
+# one or two calls in 32, in both directions. Per scenario the two are IDENTICAL
+# on 7 of 8 (three of those fail under BOTH configurations for endpoint-
+# construction reasons, not model ones); the entire measured gap is the quadratic
+# formula, which thinking-disabled won 3/4 to 2/4. It also needed FEWER refine
+# retries (5 vs 7), so the speed is not bought by handing worse work to the loop.
+#
+# Scoped to THIS call, not llm_config: the optional judge and domain rescue were
+# not measured and keep full reasoning. NOTE for the optimizer — a compiled
+# artifact carries its predictor's signature, so any program compiled against the
+# old ``ChainOfThought`` must be recompiled (the artifacts dir was empty at the
+# time of this change, so nothing needed migrating).
+_LM = scoped_lm(reasoning_effort="disable")
+
+
 def _log_attempt(k: int, n: int, pred, res) -> None:
     """Per-attempt dump for the refinement loop (fires at DEBUG; see ``--debug``).
 
@@ -135,7 +176,7 @@ class ProofCompletionExpert(dspy.Module):
                  *, refine_attempts: int | None = None,
                  use_judge: bool | None = None):
         super().__init__()
-        self.predict = dspy.ChainOfThought(ProofCompletionSig)
+        self.predict = dspy.Predict(ProofCompletionSig)
         # explicit artifact wins; else the blessed default if present and allowed;
         # else uncompiled (baseline). load_default=False forces baseline.
         # An explicit ``artifact`` wins; otherwise the env-configured path is used
@@ -211,7 +252,7 @@ class ProofCompletionExpert(dspy.Module):
             # an extra instruction — targeted retry, not a blind re-roll.
             instr = instruction if not feedback else (
                 f"{instruction}\n\n{feedback}" if instruction else feedback)
-            pred = self.predict(
+            kwargs = dict(
                 start_latex=start_latex,
                 target_latex=target_latex,
                 domain=context.domain or "",
@@ -219,6 +260,11 @@ class ProofCompletionExpert(dspy.Module):
                 lesson_context=lesson_context,
                 instruction=instr,
             )
+            # Only the generation is scoped to the thinking-disabled LM — the
+            # judge runs inside ``evaluate``, was not measured, and keeps the
+            # globally configured one.
+            with _LM():
+                pred = self.predict(**kwargs)
             self._finalize(pred, start_latex, target_latex)
             return pred
 

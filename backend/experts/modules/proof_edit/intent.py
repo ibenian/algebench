@@ -20,15 +20,13 @@ Requires DSPy to be configured first (``init_experts()`` / ``configure_dspy()``)
 """
 from __future__ import annotations
 
-import os
 import re
 from functools import cache
-from typing import Optional
 
 import dspy
 from pydantic import BaseModel, ConfigDict, Field
 
-from backend.experts.llm_config import LM_MODEL
+from backend.experts.llm_config import scoped_lm
 from backend.experts.modules.proof_completion.outputs import _unmangle_json_escapes
 
 # DSPy's ChatAdapter frames fields with `[[ ## name ## ]]` markers; some models
@@ -259,7 +257,7 @@ class EditIntentParser(dspy.Module):
     in :func:`propose_edit`, so the Module is a thin, optimizable unit and the
     messy post-processing lives outside it.
 
-    Bare ``Predict``, not ``ChainOfThought`` — measured, see ``_parser_lm``.
+    Bare ``Predict``, not ``ChainOfThought`` — measured, see ``_LM``.
     """
 
     def __init__(self):
@@ -318,26 +316,7 @@ def _parser() -> EditIntentParser:
 #
 # ``reasoning_effort="disable"`` is litellm's Gemini mapping for thinkingBudget
 # 0 with includeThoughts off (see its vertex_and_google_ai_studio_gemini.py).
-
-
-@cache
-def _parser_lm() -> Optional[dspy.LM]:
-    """The thinking-disabled LM for this call, or None to use the global one.
-
-    None for a NON-Gemini ``ALGEBENCH_LM_MODEL``: ``reasoning_effort="disable"``
-    is litellm's Gemini mapping, and other providers may reject the parameter
-    outright — so forcing this scoped LM on them would break a call that the
-    globally configured LM handles fine. The measurement behind it is a Gemini
-    one anyway (see above), so it has nothing to say about another provider.
-    """
-    if not LM_MODEL.startswith("gemini/"):
-        return None
-    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-    try:
-        return dspy.LM(LM_MODEL, api_key=api_key, temperature=0.7,
-                       max_tokens=32768, reasoning_effort="disable")
-    except Exception:
-        return None
+_LM = scoped_lm(reasoning_effort="disable")
 
 
 def _clean(s) -> str:
@@ -375,11 +354,7 @@ def propose_edit(derivation: str, current_step: str, request: str,
         clarifications=clarifications,
     )
     try:
-        lm = _parser_lm()
-        if lm is not None:
-            with dspy.context(lm=lm):
-                out = _parser()(**kwargs)
-        else:
+        with _LM():
             out = _parser()(**kwargs)
     except Exception:
         return ProofEditProposal()
