@@ -280,3 +280,33 @@ def test_a_very_long_reason_is_clipped_not_dumped(caplog):
         refine(lambda k, fb: object(), lambda p: next(scores), max_attempts=2)
     assert "truncated" in caplog.text
     assert len(caplog.text) < 3000
+
+
+def test_a_sub_second_budget_is_not_rounded_to_zero(caplog):
+    """``%.1f`` rendered a 0.01s budget as ``0.0s of 0.0s`` — the two numbers a
+    reader most needs in a timeout report (Copilot, #523)."""
+    def slow(k, fb):
+        time.sleep(0.05)          # so the budget is actually exceeded
+        return object()
+
+    with caplog.at_level(logging.DEBUG, logger=R.__name__):
+        refine(slow, lambda p: _res(0.5, False),
+               max_attempts=5, time_budget_s=0.01)
+    assert "out of time" in caplog.text
+    assert "0.0s of 0.0s" not in caplog.text
+    assert "of 0.01s budget" in caplog.text
+
+
+def test_a_huge_exception_message_is_clipped(caplog):
+    """Pydantic ValidationError embeds the offending value, which for an
+    over-long ``expr_latex`` is thousands of characters. Reasons were clipped;
+    exception text was not (Copilot, #523)."""
+    def attempt(k, fb):
+        if k == 0:
+            raise ValueError("y" * 5000)
+        return object()
+
+    with caplog.at_level(logging.DEBUG, logger=R.__name__):
+        refine(attempt, lambda p: _res(0.9, True), max_attempts=2)
+    assert "truncated" in caplog.text
+    assert len(caplog.text) < 3000

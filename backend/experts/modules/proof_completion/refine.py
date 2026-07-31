@@ -122,7 +122,9 @@ def refine(
             # never hand back an outcome with a None prediction the caller derefs.
             if best_pred is None:
                 raise last_exc
-            log.debug("refine: out of time after %d attempt(s) (%.1fs of %.1fs "
+            # %g, not %.1f: a sub-second budget rendered as "0.0s of 0.0s",
+            # which is exactly the number a reader needs in a timeout report.
+            log.debug("refine: out of time after %d attempt(s) (%gs of %gs "
                       "budget) — keeping best (score %.3f)",
                       made, time.monotonic() - started, time_budget_s,
                       getattr(best_res, "score", float("nan")))
@@ -141,7 +143,7 @@ def refine(
                 log.debug("refine: attempt %d/%d raised %s — stopping and keeping "
                           "the earlier attempt (score %.3f) rather than retrying. %s",
                           k + 1, n, type(exc).__name__,
-                          getattr(best_res, "score", float("nan")), exc)
+                          getattr(best_res, "score", float("nan")), _clip(str(exc)))
                 break
             if k == n - 1:
                 # Out of attempts. Log the offending expression(s) so the failure
@@ -167,7 +169,7 @@ def refine(
                 # caller saw one slow success and no reason for it.
                 log.debug("refine: attempt %d/%d raised %s — retrying with "
                           "parse-failure feedback. %s",
-                          k + 1, n, type(exc).__name__, exc)
+                          k + 1, n, type(exc).__name__, _clip(str(exc)))
                 feedback = _PARSE_FAILURE_FEEDBACK
             continue
         made += 1
