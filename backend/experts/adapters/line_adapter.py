@@ -135,6 +135,19 @@ def _list_item_type(a: Any) -> Any | None:
     return None
 
 
+def _is_special(a: Any) -> bool:
+    """True for DSPy's ``BaseType`` subclasses (Image, Audio, History, …).
+
+    They serialise into multimodal message content blocks, not text, so the line
+    format cannot carry them as OUTPUT fields.
+    """
+    try:
+        from dspy.adapters.types import BaseType
+    except Exception:                       # older/newer DSPy without BaseType
+        return False
+    return isinstance(a, type) and issubclass(a, BaseType)
+
+
 def _is_leaf(a: Any) -> bool:
     """True if ``a`` renders as a single line (not a model, not a collection)."""
     a = _unwrap_optional(a)
@@ -204,6 +217,17 @@ class LineAdapter(ChatAdapter):
         class this adapter exists to remove. Flatten the nesting into the
         signature, or use ``JSONAdapter`` for that signature.
         """
+        if _is_special(model):
+            # DSPy's BaseType subclasses (Image, Audio, …) serialise into
+            # multimodal message CONTENT BLOCKS, not text. ``Image`` in
+            # particular has a single ``url: str`` field, so it passes the leaf
+            # test and would render as ``url: …`` — text where the provider
+            # expects an image part. Refuse rather than quietly break it.
+            raise LineFormatError(
+                f"{field}: {model.__name__} is a DSPy media/tool type that "
+                f"serialises to message content, not text. It is supported as an "
+                f"INPUT (this adapter does not touch inputs) but cannot be a "
+                f"line-format output field.")
         bad = [n for n, f in model.model_fields.items() if not _is_leaf(f.annotation)]
         if bad:
             raise LineFormatError(

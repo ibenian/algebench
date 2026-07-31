@@ -306,3 +306,17 @@ def test_a_long_description_is_not_truncated():
 
     spec = LineAdapter().describe_field("f", list[Wordy])
     assert long in spec
+
+
+@pytest.mark.parametrize("name", ["Image", "ToolCalls"])
+def test_dspy_media_and_tool_types_are_refused_as_outputs(name):
+    """``BaseType`` subclasses serialise to message CONTENT, not text.
+
+    ``Image`` is the trap: its only field is ``url: str``, so it passes a naive
+    leaf test and would render as ``url: …`` — text where the provider expects
+    an image part. They stay fine as INPUTS; this adapter does not touch those.
+    """
+    import dspy.adapters.types as T
+
+    with pytest.raises(LineFormatError, match="serialises to message content"):
+        LineAdapter().describe_field("f", getattr(T, name))
