@@ -90,6 +90,7 @@ from __future__ import annotations
 
 import enum
 import re
+import types
 from typing import Any, Literal, Type, Union, get_args, get_origin
 
 from pydantic import BaseModel
@@ -118,8 +119,15 @@ def _is_model(a: Any) -> bool:
 
 
 def _unwrap_optional(a: Any) -> Any:
-    """``Optional[T]`` / ``T | None`` -> ``T``; anything else unchanged."""
-    if get_origin(a) is Union:
+    """``Optional[T]`` / ``T | None`` -> ``T``; anything else unchanged.
+
+    BOTH spellings, deliberately. ``Optional[T]`` has ``get_origin`` of
+    ``typing.Union``, but PEP 604's ``T | None`` has ``types.UnionType`` — a
+    different object. Checking only the former left ``M | None`` unwrapped, so
+    ``_is_leaf`` called it a scalar and it would have been ``str()``-ed into the
+    line as garbage (Copilot, #522).
+    """
+    if get_origin(a) in (Union, types.UnionType):
         rest = [x for x in get_args(a) if x is not type(None)]
         if len(rest) == 1:
             return rest[0]
@@ -439,7 +447,19 @@ class LineAdapter(ChatAdapter):
 
         fields: dict[str, Any] = {}
         for name, lines in sections:
-            if name in signature.output_fields and name not in fields:
+            if name in signature.output_fields and name in fields:
+                # ChatAdapter keeps the FIRST and drops the rest silently. That
+                # is truncation, and this adapter's whole contract is to raise
+                # rather than truncate: a second ``[[ ## steps ## ]]`` block
+                # means the model produced more than we would return, and
+                # dropping it loses derivation steps without a trace
+                # (Copilot, #522).
+                raise AdapterParseError(
+                    adapter_name=type(self).__name__, signature=signature,
+                    lm_response=completion,
+                    message=f"output field {name!r} appears more than once; "
+                            f"refusing to drop the later block(s)")
+            if name in signature.output_fields:
                 try:
                     fields[name] = self.parse_field(
                         name, "\n".join(lines).strip(),

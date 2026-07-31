@@ -320,3 +320,37 @@ def test_dspy_media_and_tool_types_are_refused_as_outputs(name):
 
     with pytest.raises(LineFormatError, match="serialises to message content"):
         LineAdapter().describe_field("f", getattr(T, name))
+
+
+# ── Copilot review, #522 ─────────────────────────────────────────────────────
+
+@pytest.mark.parametrize("annotation,expect_leaf", [
+    (Optional[str], True),
+    (str | None, True),                    # PEP 604 — was NOT unwrapped
+    (Optional[Step], False),
+    (Step | None, False),                  # PEP 604 — was treated as a SCALAR
+])
+def test_both_optional_spellings_unwrap(annotation, expect_leaf):
+    r"""``Optional[T]`` and ``T | None`` must behave identically.
+
+    ``get_origin(Optional[T])`` is ``typing.Union``; ``get_origin(T | None)`` is
+    ``types.UnionType`` — a different object. Checking only the former left
+    ``Step | None`` unwrapped, so it was classed a leaf and would have been
+    ``str()``-ed into the line as garbage.
+    """
+    from backend.experts.adapters.line_adapter import _is_leaf, _unwrap_optional
+
+    assert _unwrap_optional(annotation) in (str, Step)
+    assert _is_leaf(annotation) is expect_leaf
+
+
+def test_a_duplicate_output_section_raises_rather_than_dropping():
+    """``ChatAdapter`` keeps the first block and drops the rest silently.
+
+    That is truncation, and this adapter's contract is to raise rather than
+    truncate — a second ``[[ ## steps ## ]]`` means the model produced more than
+    we would return, and losing it costs derivation steps without a trace.
+    """
+    dup = COMPLETION + "\n[[ ## tags ## ]]\nan extra block\n"
+    with pytest.raises(AdapterParseError, match="more than once"):
+        LineAdapter().parse(Sig, dup)

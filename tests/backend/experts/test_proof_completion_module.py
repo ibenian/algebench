@@ -87,3 +87,32 @@ def test_single_pass_returns_trajectory_on_success():
     assert [s.expr_latex for s in out[0].steps] == ["x^2 = 4"]
     assert out[0].title == "T"
     assert out[0].goal == "g"
+
+
+def test_a_prediction_without_steps_does_not_silently_empty_the_trajectory():
+    """A prediction with no ``steps`` is a signature mismatch, not zero steps.
+
+    Building an empty ``ProofTrajectory`` from it would report "0 steps" as
+    though that were the model's answer. A program compiled before ``steps`` was
+    flattened out of ``ProofTrajectory`` still carries a ``trajectory``, so that
+    is honoured; anything else fails loudly and the refine loop retries.
+    (Copilot, #522.)
+    """
+    expert = _expert()
+    old = ProofTrajectory(steps=[DerivationStep(
+        operation="add 4", expr_latex="x^2 = 4", justification="j",
+        change_type="rewrite")])
+
+    # a program compiled against the OLD nested signature
+    expert.predict = lambda **_kw: SimpleNamespace(  # type: ignore[assignment]
+        trajectory=old, title="T", goal="g", followups=[], prerequisites=[])
+    out = expert.forward(context=_ctx(), context_id="semanticGraph")
+    assert [s.expr_latex for s in out[0].steps] == ["x^2 = 4"]   # NOT discarded
+
+    # neither field: a real mismatch, and the single-pass path degrades with the
+    # reason attached rather than returning a confident empty derivation
+    expert.predict = lambda **_kw: SimpleNamespace(  # type: ignore[assignment]
+        title="T", goal="g", followups=[], prerequisites=[])
+    out = expert.forward(context=_ctx(), context_id="semanticGraph")
+    assert out[0].steps == []
+    assert "recompile the artifact" in (out[0].error or "")
