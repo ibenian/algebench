@@ -58,6 +58,16 @@ _EXPR_TOO_LONG_FEEDBACK = (
 )
 
 
+# How much of a reason string reaches the log. The issues text enumerates every
+# unverified step, so it can run long; the head carries the summary line and the
+# first few offending steps, which is what makes a retry diagnosable.
+_REASON_MAX = 400
+
+
+def _clip(text: str) -> str:
+    return text if len(text) <= _REASON_MAX else text[:_REASON_MAX] + "… (truncated)"
+
+
 @dataclass
 class RefineOutcome:
     prediction: object        # the best prediction seen (may still fall short)
@@ -112,6 +122,10 @@ def refine(
             # never hand back an outcome with a None prediction the caller derefs.
             if best_pred is None:
                 raise last_exc
+            log.debug("refine: out of time after %d attempt(s) (%.1fs of %.1fs "
+                      "budget) — keeping best (score %.3f)",
+                      made, time.monotonic() - started, time_budget_s,
+                      getattr(best_res, "score", float("nan")))
             return RefineOutcome(best_pred, best_res, made, False, out_of_time=True)
         try:
             pred = attempt(k, feedback)
@@ -124,6 +138,10 @@ def refine(
             # original traceback (where parsing/scoring actually failed) is kept.
             last_exc = exc
             if best_pred is not None:
+                log.debug("refine: attempt %d/%d raised %s — stopping and keeping "
+                          "the earlier attempt (score %.3f) rather than retrying. %s",
+                          k + 1, n, type(exc).__name__,
+                          getattr(best_res, "score", float("nan")), exc)
                 break
             if k == n - 1:
                 # Out of attempts. Log the offending expression(s) so the failure
@@ -144,6 +162,12 @@ def refine(
                             k + 1, n, describe_overlong_exprs(exc))
                 feedback = _EXPR_TOO_LONG_FEEDBACK
             else:
+                # Every retry says WHY. This one used to be silent, so an
+                # unparseable response doubled the LM cost invisibly — the
+                # caller saw one slow success and no reason for it.
+                log.debug("refine: attempt %d/%d raised %s — retrying with "
+                          "parse-failure feedback. %s",
+                          k + 1, n, type(exc).__name__, exc)
                 feedback = _PARSE_FAILURE_FEEDBACK
             continue
         made += 1
@@ -153,6 +177,20 @@ def refine(
             best_pred, best_res = pred, res
         if res.passed:
             return RefineOutcome(best_pred, best_res, made, True)
+        # Below threshold. Log the REASON here rather than leaving it to the
+        # optional ``on_attempt`` hook: a caller that passes no hook (the
+        # evaluator, the optimizer, any future one) would otherwise see a retry
+        # with no explanation at all.
+        reason = (res.issues or "no issues reported").strip()
+        if k < n - 1:
+            log.debug("refine: attempt %d/%d scored %.3f (below threshold) — "
+                      "retrying. Reason: %s", k + 1, n, res.score,
+                      _clip(reason))
+        else:
+            log.debug("refine: attempt %d/%d scored %.3f (below threshold) and no "
+                      "retries remain — keeping best (score %.3f). Reason: %s",
+                      k + 1, n, res.score,
+                      getattr(best_res, "score", float("nan")), _clip(reason))
         feedback = FEEDBACK_PREAMBLE + (res.issues or "the derivation scored low")
 
     # The loop only reaches here with a usable best_pred: every path that ends

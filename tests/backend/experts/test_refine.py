@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+import time
+import logging
+from types import SimpleNamespace
+
 from dataclasses import dataclass
 
 import pytest
 
 from backend.experts.modules.proof_completion.outputs import DerivationStep
+from backend.experts.modules.proof_completion import refine as R
 from backend.experts.modules.proof_completion.refine import (
     FEEDBACK_PREAMBLE,
     _EXPR_TOO_LONG_FEEDBACK,
@@ -200,3 +205,78 @@ def test_time_budget_skips_retry():
     assert out.attempts == 1
     assert out.out_of_time is True
     assert out.prediction == "p0"   # best-so-far returned
+
+
+# ── every retry and early exit must say WHY ──────────────────────────────────
+#
+# Three of the loop's five exits used to be silent: a generic parse-failure
+# retry, abandoning on an exception when an earlier attempt was good, and
+# running out of time. A silent retry doubles the LM cost invisibly — the caller
+# sees one slow success and no reason for it. The below-threshold case logged
+# only via the OPTIONAL ``on_attempt`` hook, so a caller that passes none (the
+# evaluator, the optimizer) saw nothing either.
+
+def _res(score, passed, issues=""):
+    return SimpleNamespace(score=score, passed=passed, issues=issues)
+
+
+def test_below_threshold_retry_logs_the_reason(caplog):
+    scores = iter([_res(0.4, False, "3 steps unchecked · endpoint NOT reached"),
+                   _res(0.9, True)])
+    with caplog.at_level(logging.DEBUG, logger=R.__name__):
+        refine(lambda k, fb: object(), lambda p: next(scores), max_attempts=2)
+    assert "retrying" in caplog.text
+    assert "0.400" in caplog.text
+    assert "endpoint NOT reached" in caplog.text          # the actual reason
+
+
+def test_parse_failure_retry_logs_the_reason(caplog):
+    calls = {"n": 0}
+
+    def attempt(k, fb):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise ValueError("unparseable trajectory")
+        return object()
+
+    with caplog.at_level(logging.DEBUG, logger=R.__name__):
+        refine(attempt, lambda p: _res(0.9, True), max_attempts=2)
+    assert "retrying with parse-failure feedback" in caplog.text
+    assert "unparseable trajectory" in caplog.text
+
+
+def test_abandoning_after_a_good_attempt_logs_why(caplog):
+    calls = {"n": 0}
+
+    def attempt(k, fb):
+        calls["n"] += 1
+        if calls["n"] == 2:
+            raise ValueError("second attempt blew up")
+        return object()
+
+    with caplog.at_level(logging.DEBUG, logger=R.__name__):
+        out = refine(attempt, lambda p: _res(0.5, False), max_attempts=3)
+    assert out.attempts == 1
+    assert "keeping the earlier attempt" in caplog.text
+    assert "second attempt blew up" in caplog.text
+
+
+def test_running_out_of_time_logs_why(caplog):
+    def attempt(k, fb):
+        time.sleep(0.05)
+        return object()
+
+    with caplog.at_level(logging.DEBUG, logger=R.__name__):
+        out = refine(attempt, lambda p: _res(0.5, False),
+                     max_attempts=5, time_budget_s=0.01)
+    assert out.out_of_time is True
+    assert "out of time" in caplog.text
+    assert "budget" in caplog.text
+
+
+def test_a_very_long_reason_is_clipped_not_dumped(caplog):
+    scores = iter([_res(0.4, False, "x" * 5000), _res(0.9, True)])
+    with caplog.at_level(logging.DEBUG, logger=R.__name__):
+        refine(lambda k, fb: object(), lambda p: next(scores), max_attempts=2)
+    assert "truncated" in caplog.text
+    assert len(caplog.text) < 3000
