@@ -66,15 +66,24 @@ def test_single_pass_generic_error_for_non_length_failure():
 
 
 def test_single_pass_returns_trajectory_on_success():
+    """The signature emits FLAT ``steps``; the expert assembles the trajectory.
+
+    ``steps`` used to be nested inside a ``ProofTrajectory`` output field, which
+    is what forced every ``expr_latex`` through a JSON string value (and its
+    escaping). It is now a top-level output and ``_finalize`` reassembles the
+    trajectory, so consumers see exactly what they did before — which is what
+    the assertions below check.
+    """
     expert = _expert()
-    good = ProofTrajectory(steps=[DerivationStep(
-        operation="add 4", expr_latex="x^2 = 4", justification="j",
-        change_type="rewrite")])
-    pred = SimpleNamespace(trajectory=good, title="T", goal="g",
+    steps = [DerivationStep(operation="add 4", expr_latex="x^2 = 4",
+                            justification="j", change_type="rewrite")]
+    pred = SimpleNamespace(steps=steps, title="T", goal="g",
                            followups=[], prerequisites=[])
 
     expert.predict = lambda **_kw: pred  # type: ignore[assignment]
 
     out = expert.forward(context=_ctx(), context_id="semanticGraph")
-    assert out == [good]
+    assert isinstance(out[0], ProofTrajectory)
     assert [s.expr_latex for s in out[0].steps] == ["x^2 = 4"]
+    assert out[0].title == "T"
+    assert out[0].goal == "g"

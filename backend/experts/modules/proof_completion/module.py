@@ -18,6 +18,7 @@ from pathlib import Path
 
 import dspy
 
+from backend.experts.adapters import LineAdapter
 from backend.experts.llm_config import scoped_lm
 from backend.experts.registry import register_expert
 from backend.util.pathutil import sanitize_path
@@ -219,13 +220,20 @@ class ProofCompletionExpert(dspy.Module):
                   self.refine_attempts, bool(self.judge))
 
     def _finalize(self, pred, start_latex: str, target_latex: str):
-        """Bind the (code-side) endpoints + model title onto the trajectory.
+        """Assemble the ``ProofTrajectory`` from the signature's FLAT fields.
+
+        The signature emits ``steps`` as a top-level output rather than nesting
+        it inside a ``ProofTrajectory`` — that nesting was the only thing making
+        the payload two levels deep, which forced every ``expr_latex`` through a
+        JSON string value and its escaping. Reassembling here keeps the trajectory
+        exactly what every consumer already expects.
 
         The trajectory must carry its endpoints for it to be self-contained and
         for the reward's judge to see the start/target — so finalize *before*
         scoring, not just before returning.
         """
-        traj = pred.trajectory
+        traj = ProofTrajectory(steps=list(getattr(pred, "steps", None) or []))
+        pred.trajectory = traj          # callers (and the refine loop) read this
         traj.start_latex = start_latex or None
         traj.target_latex = target_latex or None
         # normalise an empty/whitespace title to None so callers can fall back
@@ -260,10 +268,15 @@ class ProofCompletionExpert(dspy.Module):
                 lesson_context=lesson_context,
                 instruction=instr,
             )
-            # Only the generation is scoped to the thinking-disabled LM — the
-            # judge runs inside ``evaluate``, was not measured, and keeps the
-            # globally configured one.
-            with _LM():
+            # Two scopes, both confined to THIS call:
+            #
+            # ``_LM()``  — thinking disabled (#510). The judge runs inside
+            #   ``evaluate``, was never measured, and keeps the global LM.
+            # ``LineAdapter`` — a wire format with no escape layer, so a model
+            #   writing ``\right`` (one backslash, as in any document) cannot
+            #   have it silently decoded into a control character. Every other
+            #   expert keeps whatever adapter is globally configured.
+            with _LM(), dspy.context(adapter=LineAdapter()):
                 pred = self.predict(**kwargs)
             self._finalize(pred, start_latex, target_latex)
             return pred
