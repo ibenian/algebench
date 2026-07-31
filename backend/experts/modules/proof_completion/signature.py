@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import dspy
 
-from .outputs import ProofTrajectory
+from .outputs import DerivationStep
 
 
 class ProofCompletionSig(dspy.Signature):
@@ -78,7 +78,14 @@ class ProofCompletionSig(dspy.Signature):
     intent: str = dspy.InputField(desc="what the derivation should accomplish, may be empty")
     lesson_context: str = dspy.InputField(desc="surrounding lesson summary, may be empty")
     instruction: str = dspy.InputField(desc="the user's request, may be empty")
-    trajectory: ProofTrajectory = dspy.OutputField(
+    # FLAT, not a nested ``ProofTrajectory``. The trajectory's other fields
+    # (title/goal/followups/prerequisites) are already siblings here, and
+    # ``steps`` was the only thing that made the payload two levels deep — which
+    # forced every LaTeX string through a JSON string value. Lifting it lets a
+    # line-oriented adapter carry the LaTeX with no escape layer at all; the
+    # expert reassembles the ``ProofTrajectory`` in ``_finalize``, so consumers
+    # see exactly what they saw before.
+    steps: list[DerivationStep] = dspy.OutputField(
         desc="the ordered derivation steps, each a complete expression, from start to target"
     )
     title: str = dspy.OutputField(

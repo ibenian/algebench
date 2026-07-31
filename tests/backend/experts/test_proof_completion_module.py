@@ -66,15 +66,53 @@ def test_single_pass_generic_error_for_non_length_failure():
 
 
 def test_single_pass_returns_trajectory_on_success():
+    """The signature emits FLAT ``steps``; the expert assembles the trajectory.
+
+    ``steps`` used to be nested inside a ``ProofTrajectory`` output field, which
+    is what forced every ``expr_latex`` through a JSON string value (and its
+    escaping). It is now a top-level output and ``_finalize`` reassembles the
+    trajectory, so consumers see exactly what they did before — which is what
+    the assertions below check.
+    """
     expert = _expert()
-    good = ProofTrajectory(steps=[DerivationStep(
-        operation="add 4", expr_latex="x^2 = 4", justification="j",
-        change_type="rewrite")])
-    pred = SimpleNamespace(trajectory=good, title="T", goal="g",
+    steps = [DerivationStep(operation="add 4", expr_latex="x^2 = 4",
+                            justification="j", change_type="rewrite")]
+    pred = SimpleNamespace(steps=steps, title="T", goal="g",
                            followups=[], prerequisites=[])
 
     expert.predict = lambda **_kw: pred  # type: ignore[assignment]
 
     out = expert.forward(context=_ctx(), context_id="semanticGraph")
-    assert out == [good]
+    assert isinstance(out[0], ProofTrajectory)
     assert [s.expr_latex for s in out[0].steps] == ["x^2 = 4"]
+    assert out[0].title == "T"
+    assert out[0].goal == "g"
+
+
+def test_a_prediction_without_steps_does_not_silently_empty_the_trajectory():
+    """A prediction with no ``steps`` is a signature mismatch, not zero steps.
+
+    Building an empty ``ProofTrajectory`` from it would report "0 steps" as
+    though that were the model's answer. A program compiled before ``steps`` was
+    flattened out of ``ProofTrajectory`` still carries a ``trajectory``, so that
+    is honoured; anything else fails loudly and the refine loop retries.
+    (Copilot, #522.)
+    """
+    expert = _expert()
+    old = ProofTrajectory(steps=[DerivationStep(
+        operation="add 4", expr_latex="x^2 = 4", justification="j",
+        change_type="rewrite")])
+
+    # a program compiled against the OLD nested signature
+    expert.predict = lambda **_kw: SimpleNamespace(  # type: ignore[assignment]
+        trajectory=old, title="T", goal="g", followups=[], prerequisites=[])
+    out = expert.forward(context=_ctx(), context_id="semanticGraph")
+    assert [s.expr_latex for s in out[0].steps] == ["x^2 = 4"]   # NOT discarded
+
+    # neither field: a real mismatch, and the single-pass path degrades with the
+    # reason attached rather than returning a confident empty derivation
+    expert.predict = lambda **_kw: SimpleNamespace(  # type: ignore[assignment]
+        title="T", goal="g", followups=[], prerequisites=[])
+    out = expert.forward(context=_ctx(), context_id="semanticGraph")
+    assert out[0].steps == []
+    assert "recompile the artifact" in (out[0].error or "")
