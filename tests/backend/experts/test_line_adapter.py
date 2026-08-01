@@ -310,7 +310,7 @@ def test_a_long_description_is_not_truncated():
 
 @pytest.mark.parametrize("name", ["Image", "ToolCalls"])
 def test_dspy_media_and_tool_types_are_refused_as_outputs(name):
-    """DSPy's media base class subclasses serialise to message CONTENT, not text.
+    """Subclasses of DSPy's media base class serialise to message CONTENT, not text.
 
     ``Image`` is the trap: its only field is ``url: str``, so it passes a naive
     leaf test and would render as ``url: …`` — text where the provider expects
@@ -350,7 +350,10 @@ def test_parse_failure_raises_instead_of_re_asking_as_json():
 
         def __call__(self, prompt=None, messages=None, **kwargs):
             calls.append(kwargs)
-            # A value spilling onto a second line: unparseable by construction.
+            # A line with no ``key: value`` shape at all — no colon, so it
+            # fails KEY_PATTERN and `steps` can never be built. Unparseable by
+            # construction, and by a different route than a value that spills
+            # onto a second line (which the same check also catches).
             return ["[[ ## steps ## ]]\nnot a key value line at all\n"
                     "[[ ## completed ## ]]\n"]
 
