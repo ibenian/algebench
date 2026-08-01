@@ -25,6 +25,7 @@ import { captureViewState, applyViewState, setupViewSync, setupShareButton } fro
 import { setupPopstateListener } from '/nav-history.js';
 import { setupObjectPicker } from '/object-picker.js';
 import { AI_ICON, USER_ICON } from '/icons.js';
+import { applyTheme, initialTheme } from '/theme.js';
 
 // chat.js is a classic script (no ES imports), so expose the shared chat-avatar
 // icons on window for it to read. Set at module-eval, well before any message
@@ -44,6 +45,7 @@ window.AlgeBenchDomains = window.AlgeBenchDomains || {
 setBuildSceneTreeFn(buildSceneTree);
 
 document.addEventListener('DOMContentLoaded', async () => {
+    applyTheme(initialTheme());
     initMathBox();
     setupObjectPicker();
     setupRollDrag(document.getElementById('mathbox-container'));

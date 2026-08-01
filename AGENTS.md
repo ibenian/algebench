@@ -110,6 +110,14 @@ The semantic graph exhaustive test suite supports two modes via pytest flags:
 - **`--sampled N`** (default, N=200) — random sample from the full cross-product. Use `--sampled 100` for quick local checks.
 - **`--exhaustive`** — full structure × relation × var_style × nesting cross-product (~504 combos). **CI always runs exhaustive.** Only use locally if the user explicitly asks for it.
 
+`--exhaustive` also widens the **proof-edit corpus sweep**
+(`tests/backend/experts/test_proof_edit_variants.py`), which rebuilds committed
+proofs through the CAS to prove a no-op edit is byte-identical. Every proof costs
+a full chain re-grounding — seconds each on the long physics derivations — so the
+default run samples four structurally varied proofs and `--exhaustive` takes all
+of them. Anything that CAS-grades a whole proof per case belongs behind this flag
+for the same reason.
+
 Run the full suite before committing any change that touches `scripts/`, `server.py`, or theme JSON.
 
 ### Browser Testing

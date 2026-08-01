@@ -212,6 +212,14 @@ _D3_MODULE_URL = (
     "/static/graph-panel/d3-semantic-graph.js"
 )
 
+# d3-semantic-graph.js imports this via the absolute path
+# ``/graph-panel/term-resolve.js``, which only resolves inside the real app.
+# The report maps it through the importmap (see _page_template).
+_TERM_RESOLVE_MODULE_URL = (
+    "https://cdn.jsdelivr.net/gh/ibenian/algebench@main"
+    "/static/graph-panel/term-resolve.js"
+)
+
 
 def _load_d3_css() -> str:
     """Read the D3 semantic graph CSS and return it for inline embedding."""
@@ -242,7 +250,8 @@ def _page_template() -> str:
       "imports": {{
         "/labels.js": "data:text/javascript,export function makeAiAskButton(){{return document.createElement('span')}}",
         "/expr.js": "data:text/javascript,const m=math.create(math.all);m.import({{binomial:(n,k)=>m.combinations(n,k),erfc:x=>1-m.erf(x),beta:(a,b)=>m.gamma(a)*m.gamma(b)/m.gamma(a%2Bb),conjugate:x=>m.conj(x)}});export function compileExpr(s){{return m.compile(s)}}export function evalExpr(c,t,opts){{const scope=opts%26%26opts.extraScope?{{...opts.extraScope}}:{{}};return c.evaluate(scope)}}",
-        "/proof-animation/dock-seq.js": "data:text/javascript,let n=0;export const nextDockSeq=()=>%2B%2Bn"
+        "/proof-animation/dock-seq.js": "data:text/javascript,let n=0;export const nextDockSeq=()=>%2B%2Bn",
+        "/graph-panel/term-resolve.js": "{term_resolve_url}"
       }}
     }}</script>
     <script>
@@ -706,6 +715,12 @@ def _page_template() -> str:
           }}
         }});
       }});
+    }}).catch(function(err) {{
+      console.error('D3/chart module load error — D3 buttons disabled:', err);
+      document.querySelectorAll('.row-toggle-d3').forEach(function(btn) {{
+        btn.disabled = true;
+        btn.title = 'D3 module failed to load: ' + err.message;
+      }});
     }});
     </script>
     </body>
@@ -909,6 +924,7 @@ def _build_report_html(
     colors: dict[str, str],
     d3_module_url: str | None = None,
     chart_module_url: str | None = None,
+    term_resolve_url: str | None = None,
 ) -> tuple[str, int, int]:
     """Build report HTML body and return (html, ok_count, err_count)."""
     import datetime
@@ -957,6 +973,7 @@ def _build_report_html(
     d3_direction_full = dir_map.get(d3_direction, "right-left")
     effective_d3_url = d3_module_url or _D3_MODULE_URL
     effective_chart_url = chart_module_url or "./sg-chart.js"
+    effective_term_resolve_url = term_resolve_url or _TERM_RESOLVE_MODULE_URL
 
     html = _page_template().format(
         body="\n".join(body_parts),
@@ -966,6 +983,7 @@ def _build_report_html(
         chart_css=chart_css,
         d3_module_url=effective_d3_url,
         chart_module_url=effective_chart_url,
+        term_resolve_url=effective_term_resolve_url,
         d3_direction=d3_direction_full,
         d3_theme=graph_theme,
         **colors,
@@ -1004,10 +1022,15 @@ def generate_report(
     chart_script_dst = output.parent / "sg-chart-script.js"
     shutil.copy2(chart_script_src, chart_script_dst)
 
+    term_resolve_src = _PROJECT_ROOT / "static" / "graph-panel" / "term-resolve.js"
+    term_resolve_dst = output.parent / "term-resolve.js"
+    shutil.copy2(term_resolve_src, term_resolve_dst)
+
     html, _, _ = _build_report_html(
         sections, graph_theme=graph_theme, theme=theme, colors=colors,
         d3_module_url="./d3-semantic-graph.js",
         chart_module_url="./sg-chart.js",
+        term_resolve_url="./term-resolve.js",
     )
 
     output.write_text(html, encoding="utf-8")
@@ -1078,11 +1101,16 @@ def generate_site(
     chart_script_dst = outdir / "sg-chart-script.js"
     shutil.copy2(chart_script_src, chart_script_dst)
 
+    term_resolve_src = _PROJECT_ROOT / "static" / "graph-panel" / "term-resolve.js"
+    term_resolve_dst = outdir / "term-resolve.js"
+    shutil.copy2(term_resolve_src, term_resolve_dst)
+
     # Cache-bust the ES modules on every (re)generation — browsers cache module
     # imports aggressively, so without this a regenerated report keeps running the
     # stale JS (won't reflect renderer changes).
     _d3_ver = int(d3_js_dst.stat().st_mtime)
     _chart_ver = int(chart_js_dst.stat().st_mtime)
+    _term_resolve_ver = int(term_resolve_dst.stat().st_mtime)
 
     theme = load_theme(graph_theme)
     color_mode = theme.get("mode", "dark")
@@ -1102,6 +1130,7 @@ def generate_site(
             graph_theme=graph_theme, theme=theme, colors=colors,
             d3_module_url=f"./d3-semantic-graph.js?v={_d3_ver}",
             chart_module_url=f"./sg-chart.js?v={_chart_ver}",
+            term_resolve_url=f"./term-resolve.js?v={_term_resolve_ver}",
         )
         (outdir / filename).write_text(html, encoding="utf-8")
         total_ok += ok
