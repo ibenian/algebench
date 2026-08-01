@@ -1,11 +1,6 @@
 """The refinement engine (issue #372 §C, option B2 — hand-rolled loop).
 
-The pinned DSPy (2.6.5) ships **no** retry primitive (``dspy.Refine`` /
-``BestOfN`` were added later; ``dspy.Assert`` / ``Suggest`` were removed), and a
-validation failure there is *reject → one blind re-roll → raise* with the
-``ValidationError`` text discarded. So the model is never told what was wrong.
-
-This module supplies the missing engine, version-proof and dependency-free: ask,
+This module supplies the engine, version-proof and dependency-free: ask,
 evaluate, and — crucially — **thread the failure feedback back into the next
 attempt** so retries are targeted, not blind. It early-exits the moment an
 attempt passes; after ``N`` attempts it keeps the **best** one (honestly tiered
@@ -15,8 +10,24 @@ badges keep the floor honest).
 The harness is deliberately decoupled from *how* an attempt is produced and
 scored: it takes an ``attempt`` callable ``(k, feedback) -> prediction`` and an
 ``evaluate`` callable ``prediction -> RewardResult`` (anything with ``.score``,
-``.passed``, ``.issues``). Swapping in ``dspy.Refine`` after a dependency bump
-would replace only this loop — the checkers and reward are identical (#372 §C).
+``.passed``, ``.issues``).
+
+WHY NOT ``dspy.Refine`` (issue #527)
+------------------------------------
+It was written when the pin (``dspy<3.0``) shipped no retry primitive at all.
+The bump to 3.x makes ``dspy.Refine`` / ``BestOfN`` available — but they are
+still not this loop, for three reasons that are the whole point of #372:
+
+* ``Refine`` re-rolls at a **forced** ``temperature=1.0`` with a fresh
+  ``rollout_id``. This loop keeps the module's measured configuration (#510).
+* Its feedback is **LM-generated advice** derived from source code it reads via
+  ``inspect.getsource``; ours is the CAS's own structured objections, which is
+  the signal the reward already computed.
+* It has no wall-clock budget, so a slow never-passing derivation would blow the
+  UI's 360 s abort (``_TIME_BUDGET`` exists for exactly that).
+
+``BestOfN`` is ``Refine`` without even the advice. Keep this loop; revisit only
+if upstream grows feedback injection and a time budget.
 """
 
 from __future__ import annotations
