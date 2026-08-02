@@ -18,8 +18,7 @@ from pathlib import Path
 
 import dspy
 
-from backend.experts.adapters import LineAdapter
-from backend.experts.llm_config import scoped_lm
+from backend.experts.llm_config import make_adapter, scoped_lm
 from backend.experts.registry import register_expert
 from backend.util.pathutil import sanitize_path
 from .signature import ProofCompletionSig
@@ -290,11 +289,12 @@ class ProofCompletionExpert(dspy.Module):
             #
             # ``_LM()``  — thinking disabled (#510). The judge runs inside
             #   ``evaluate``, was never measured, and keeps the global LM.
-            # ``LineAdapter`` — a wire format with no escape layer, so a model
+            # ``line_oriented`` — a wire format with no escape layer, so a model
             #   writing ``\right`` (one backslash, as in any document) cannot
             #   have it silently decoded into a control character. Every other
-            #   expert keeps whatever adapter is globally configured.
-            with _LM(), dspy.context(adapter=LineAdapter()):
+            #   expert keeps the globally configured adapter — which comes from
+            #   this same factory, so neither can fall back to JSON (#528).
+            with _LM(), dspy.context(adapter=make_adapter(line_oriented=True)):
                 pred = self.predict(**kwargs)
             self._finalize(pred, start_latex, target_latex)
             return pred

@@ -167,3 +167,117 @@ def test_measured_modules_still_request_thinking_disabled(module_path):
 
     mod = importlib.import_module(module_path)
     assert mod._LM.overrides == {"reasoning_effort": "disable"}
+
+
+# ── the silent JSONAdapter fallback must be refused globally (#517, #528) ─────
+
+@pytest.mark.parametrize("line_oriented,expect", [(False, "ChatAdapter"),
+                                                  (True, "LineAdapter")])
+def test_make_adapter_picks_the_wire_format(line_oriented, expect):
+    """One factory, both wire formats — so the policy is stated in one place."""
+    a = C.make_adapter(line_oriented=line_oriented)
+    assert type(a).__name__ == expect
+
+
+@pytest.mark.parametrize("line_oriented", [False, True])
+def test_neither_wire_format_falls_back_by_default(line_oriented):
+    """The safe setting is the DEFAULT on both arms, not something to remember.
+
+    A factory whose safe behaviour needs an argument is a factory that will be
+    called without it.
+    """
+    assert C.make_adapter(line_oriented=line_oriented).use_json_adapter_fallback is False
+
+
+def test_global_adapter_refuses_the_silent_json_fallback():
+    r"""Every non-derive expert shares ONE implicitly-default adapter.
+
+    Left unconfigured, ``dspy.settings.adapter`` is None and DSPy falls back to
+    an implicit ``ChatAdapter()`` with ``use_json_adapter_fallback=True`` — so a
+    parse failure silently re-runs the whole prediction through ``JSONAdapter``,
+    unlogged, at three extra LM calls, with every field re-decoded through JSON
+    escaping. That is the only path by which a flat ``str`` LaTeX field can be
+    corrupted (``ChatAdapter`` returns ``str`` verbatim), which is what made
+    ``start_latex`` / ``target_latex`` reachable in #517.
+    """
+    adapter = C.make_adapter()
+    assert adapter.use_json_adapter_fallback is False
+
+
+def test_configure_dspy_installs_that_adapter(monkeypatch):
+    """The flag is worthless if ``configure_dspy`` never installs the adapter.
+
+    This is the regression that matters: ``dspy.configure(lm=lm)`` with no
+    ``adapter=`` silently leaves the implicit, fallback-enabled default in place.
+    """
+    import dspy
+
+    monkeypatch.setattr(C, "_configured", False)
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    C.configure_dspy(force=True)
+    installed = dspy.settings.adapter
+    assert installed is not None, "no adapter installed — DSPy will use its own default"
+    assert installed.use_json_adapter_fallback is False
+
+
+# ── the shared parse-retry helper (replaces the silent fallback) ──────────────
+
+class _Boom(Exception):
+    """A non-parse failure — must NOT be retried here."""
+
+
+def _parse_error():
+    import backend.experts.handlers.proof_animation.prompt_endpoints as PE
+    from dspy.utils.exceptions import AdapterParseError
+    return AdapterParseError(adapter_name="ChatAdapter", signature=PE.BothEndpointsSig,
+                             lm_response="junk", message="unparseable")
+
+
+def test_retry_helper_reasks_then_succeeds():
+    calls = []
+
+    def call():
+        calls.append(1)
+        if len(calls) == 1:
+            raise _parse_error()
+        return "ok"
+
+    assert C.retry_on_parse_error(call, attempts=2) == "ok"
+    assert len(calls) == 2
+
+
+def test_retry_helper_happy_path_costs_one_call():
+    """Nothing is paid unless a parse actually fails."""
+    calls = []
+    C.retry_on_parse_error(lambda: calls.append(1), attempts=3)
+    assert len(calls) == 1
+
+
+def test_retry_helper_does_not_retry_non_parse_errors():
+    """A transient network failure is litellm's job (``num_retries=3``).
+
+    Retrying it here would multiply attempts rather than add one. A domain
+    exception (``InvalidPromptError``) is a real answer and must propagate too.
+    """
+    calls = []
+
+    def call():
+        calls.append(1)
+        raise _Boom("network")
+
+    with pytest.raises(_Boom):
+        C.retry_on_parse_error(call, attempts=3)
+    assert len(calls) == 1, "a non-parse error must propagate on the first raise"
+
+
+def test_retry_helper_raises_after_exhausting_attempts():
+    calls = []
+
+    def call():
+        calls.append(1)
+        raise _parse_error()
+
+    from dspy.utils.exceptions import AdapterParseError
+    with pytest.raises(AdapterParseError):
+        C.retry_on_parse_error(call, attempts=3)
+    assert len(calls) == 3
