@@ -16,6 +16,8 @@ CAS characteristics still reach the client.
 """
 from __future__ import annotations
 
+import json
+import logging
 from functools import cache
 from typing import Optional
 
@@ -23,6 +25,8 @@ import dspy
 from pydantic import BaseModel, ConfigDict, Field
 
 from backend.experts.llm_config import scoped_lm
+
+log = logging.getLogger(__name__)
 
 # Ceilings mirroring MAX_GLUE_STEPS's philosophy: a proposal that needs
 # more than this isn't a proposal, it's an unreviewable dump.
@@ -297,9 +301,70 @@ def _proposer() -> VizProposer:
 _LM = scoped_lm(reasoning_effort="disable")
 
 
+def _report_gave_nothing(characteristics: str) -> bool:
+    r"""True when the CAS report holds NO findings and at least one failure.
+
+    An empty report has two very different causes and the LM cannot tell them
+    apart: the expression really is featureless (a bare constant), or the CAS
+    could not resolve anything. Handed the second, the model abstains — and
+    then has to invent a reason, because it has nothing else to say. That is
+    how ``v_E e^{-H\rho_0/(2\beta\sin\gamma)}`` came back as "a single variable
+    representing a constant value … it has no independent variable to vary"
+    against a five-entry ``variables`` list (#532).
+
+    So the two cases must be told apart HERE, structurally, rather than by
+    checking the model's prose for contradictions — which would be guessing at
+    English to catch a fact we already hold.
+    """
+    try:
+        report = json.loads(characteristics)
+    except Exception:
+        return False
+    feats = report.get("features")
+    if not isinstance(feats, dict):
+        return False
+
+    def has_finding(v) -> bool:
+        """A value that says something — ignoring 'unresolved' markers."""
+        if isinstance(v, dict):
+            if v.get("status") == "unresolved":
+                return False
+            return any(has_finding(x) for k, x in v.items() if k != "direction")
+        if isinstance(v, list):
+            return any(has_finding(x) for x in v)
+        return v not in (None, "", False)
+
+    def has_failure(v) -> bool:
+        """A guarded op that gave up, found STRUCTURALLY.
+
+        Counting ``'"unresolved"'`` in a re-serialised report was both wasteful
+        and wrong: a key of that name, or a ``direction`` whose value happened
+        to be the word, each declared the whole analysis a failure (Copilot,
+        #534). Only ``{"status": "unresolved"}`` means what we mean.
+        """
+        if isinstance(v, dict):
+            return (v.get("status") == "unresolved"
+                    or any(has_failure(x) for x in v.values()))
+        if isinstance(v, list):
+            return any(has_failure(x) for x in v)
+        return False
+
+    return (any(has_failure(v) for v in feats.values())
+            and not any(has_finding(v) for v in feats.values()))
+
+
 def propose_views(expression: str, characteristics: str,
                   context: str = "") -> VizProposal:
     """Ask the LM for a pedagogical proposal; abstain on any failure."""
+    if _report_gave_nothing(characteristics):
+        # Don't even ask: with nothing in the report the answer can only be an
+        # abstention with a confabulated reason. `failed` is the honest signal
+        # and the UI already renders it as "the analysis failed", not as
+        # "nothing interesting here" — which is exactly the distinction being
+        # preserved (see the `failed` field's own docstring).
+        log.info("CAS report resolved no features; reporting failure rather "
+                 "than letting the proposer narrate an empty report")
+        return VizProposal(abstain=True, failed=True)
     try:
         with _LM():
             out = _proposer()(expression=expression,
