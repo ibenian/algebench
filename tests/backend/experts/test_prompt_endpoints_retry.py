@@ -15,6 +15,9 @@ fallback actually provided, minus the escape layer.
 
 from __future__ import annotations
 
+import ast
+import inspect
+
 import pytest
 from dspy.utils.exceptions import AdapterParseError
 
@@ -74,20 +77,47 @@ def test_clean_response_costs_exactly_one_call(patched):
     assert pred.calls == 1
 
 
+def _module_ast() -> ast.Module:
+    return ast.parse(inspect.getsource(PE))
+
+
+def test_ask_holds_the_only_predictor_call_in_the_module():
+    """``_ask`` must be the ONLY way a predictor is invoked here.
+
+    This module has no other exception handling, so a raw ``_predictor(...)(...)``
+    anywhere else is an unguarded hole — and the realistic way that happens is a
+    FIFTH signature added months from now, not one of today's four being
+    rewritten. Structure, not source text: an earlier version of this test
+    matched substrings from ``inspect.getsource``, which both fired on a harmless
+    reformat (an argument moved to the next line) and — the part that mattered —
+    passed a brand-new signature calling ``_predictor`` directly (Copilot, #533).
+    """
+    tree = _module_ast()
+    ask = next((n for n in ast.walk(tree)
+                if isinstance(n, ast.FunctionDef) and n.name == "_ask"), None)
+    assert ask is not None, "_ask has been renamed or removed"
+
+    inside_ask = {id(n) for n in ast.walk(ask)}
+    calls = [n for n in ast.walk(tree)
+             if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+             and n.func.id == "_predictor"]
+    assert len(calls) == 1, (
+        f"expected exactly one _predictor(...) call (inside _ask), found "
+        f"{len(calls)} at lines {[c.lineno for c in calls]} — one of them "
+        f"bypasses the retry guard")
+    assert id(calls[0]) in inside_ask, (
+        f"the _predictor(...) call at line {calls[0].lineno} is outside _ask, "
+        f"so it never retries on a parse failure")
+
+
 @pytest.mark.parametrize("sig", ["BothEndpointsSig", "StartGivenTargetSig",
                                  "TargetGivenStartSig", "ProofQuestionSig"])
-def test_every_predictor_in_this_module_goes_through_ask(sig):
-    """A new call site added straight onto ``_predictor`` would be unguarded.
-
-    The whole point is that this module has no other exception handling, so a
-    raw ``_predictor(...)(...)`` call is a hole. Assert the source routes all
-    four through ``_ask``.
-    """
-    import inspect
-    src = inspect.getsource(PE)
-    assert f"_ask({sig}" in src, f"{sig} is not called through _ask"
-    # `_ask` itself is the one legitimate `_predictor(...)` call; any other is a
-    # call site that skipped the guard.
-    assert src.count("_predictor(signature)(**kwargs)") == 1
-    assert f"_predictor({sig})" not in src, \
-        f"{sig} is invoked directly, bypassing the retry guard"
+def test_each_signature_is_passed_to_ask(sig):
+    """Each signature reaches a predictor via ``_ask``, as its first argument."""
+    passed = {
+        n.args[0].id
+        for n in ast.walk(_module_ast())
+        if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+        and n.func.id == "_ask" and n.args and isinstance(n.args[0], ast.Name)
+    }
+    assert sig in passed, f"{sig} is not passed to _ask (found: {sorted(passed)})"
