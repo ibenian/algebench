@@ -197,20 +197,24 @@ live run) but a plausible way to erode the property.
 
 Harmless today for `ProofCompletionSig`, whose inputs are all `str`.
 
-## 6. The inherited fallback is silent — and it hides bugs here
+## 6. ~~The inherited fallback is silent~~ — RESOLVED in #527
 
 `ChatAdapter.__call__` catches **any** exception and re-runs the entire call
-through `JSONAdapter`, logging nothing. `LineAdapter` inherits that.
+through `JSONAdapter`, logging nothing. `LineAdapter` used to inherit that.
 
-- A parse bug here is **invisible**: the call succeeds, costing a second LM call
-  and reinstating JSON escaping for that response.
+- A parse bug here was **invisible**: the call succeeded, costing extra LM calls
+  (measured: **three**, since `JSONAdapter` retries internally) and reinstating
+  JSON escaping for that response.
 - **It already fooled the author.** During development the parser rejected
   indentation, the model indented (mirroring the generated prompt example), and
   the fallback quietly rescued the call — so a broken parse looked like a clean
   success until per-call history was inspected.
 
-**Mitigation**: pair with a check that rejects control characters in LaTeX fields.
-Overriding `__call__` to log or disable the fallback is the fuller fix.
+**Now off.** DSPy 3.x added `use_json_adapter_fallback`; `LineAdapter` sets it
+`False` (`SILENT_JSON_FALLBACK`). A parse failure raises `AdapterParseError`,
+which `refine.py` turns into a targeted retry. Give a signature this format
+cannot express `JSONAdapter` explicitly rather than discovering it by silent
+degradation at runtime.
 
 ## 7. Run-together blocks can merge if a model is all-optional
 
@@ -235,6 +239,13 @@ Three methods are overridden (`format_field_structure`,
 `field_header_pattern` and `parse_value`. That surface is not stable across DSPy
 versions — the same fragility that left structured outputs broken in 2.6.27 via an
 unrelated `__config__` signature change.
+
+The 3.x bump (#527) priced this: those five contact points all survived, and the
+full assembled message list is **byte-identical** across 2.6.27 and 3.2.1. One
+thing did break — `dspy.adapters.types.BaseType` was renamed to `Type`, which
+silently disarmed the media-type guard (`Image` would have rendered as `url: …`
+text). `_media_base()` now resolves either spelling and a test asserts it
+resolves at all, so a third rename fails loudly.
 
 ## 10. Model compliance is measured at n=1
 

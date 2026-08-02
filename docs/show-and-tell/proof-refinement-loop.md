@@ -97,10 +97,15 @@ The model writes math as LaTeX captions. Two failure modes recur:
 - **Ungrounded step** — a step that *parses* fine but doesn't follow from the
   previous one (`x^2 = 4 → x = 7`). It looks plausible and means the wrong thing.
 
-The pinned DSPy (2.6.5) has **no retry primitive** and its default path is
-*reject → one blind re‑roll → raise*: a validation failure re‑calls the model
-with the **same** inputs and **throws away** the error text. The model is never
-told what was wrong. So we built the engine that DSPy didn't give us.
+The DSPy pinned at the time (2.6.5) had **no retry primitive** and its default
+path was *reject → one blind re‑roll → raise*: a validation failure re‑called the
+model with the **same** inputs and **threw away** the error text. The model is
+never told what was wrong. So we built the engine that DSPy didn't give us.
+
+_(Since the 3.x bump — issue #527 — `dspy.Refine` and `BestOfN` do exist. They
+still re‑roll at a forced `temperature=1.0` and derive their feedback from an
+extra LM call over the module's own source code, with no wall‑clock budget. The
+loop below stays.)_
 
 > _[screenshot placeholder: a caption rendering with a trailing raw `$…` artifact]_
 

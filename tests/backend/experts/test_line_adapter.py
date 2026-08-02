@@ -310,7 +310,7 @@ def test_a_long_description_is_not_truncated():
 
 @pytest.mark.parametrize("name", ["Image", "ToolCalls"])
 def test_dspy_media_and_tool_types_are_refused_as_outputs(name):
-    """``BaseType`` subclasses serialise to message CONTENT, not text.
+    """Subclasses of DSPy's media base class serialise to message CONTENT, not text.
 
     ``Image`` is the trap: its only field is ``url: str``, so it passes a naive
     leaf test and would render as ``url: …`` — text where the provider expects
@@ -320,6 +320,79 @@ def test_dspy_media_and_tool_types_are_refused_as_outputs(name):
 
     with pytest.raises(LineFormatError, match="serialises to message content"):
         LineAdapter().describe_field("f", getattr(T, name))
+
+
+def test_silent_json_fallback_is_refused():
+    """The unlogged ``ChatAdapter`` -> ``JSONAdapter`` retry must be OFF (#527).
+
+    Left on, a parse bug in this adapter is invisible: DSPy catches it, silently
+    re-asks as JSON — a second, unlogged LM call — and the field values go back
+    through the escape layer this class exists to remove. The corruption being
+    prevented returns by the back door with no trace.
+    """
+    assert LineAdapter().use_json_adapter_fallback is False
+
+
+def test_parse_failure_raises_instead_of_re_asking_as_json():
+    """End-to-end: an unparseable response RAISES; no second LM call is made.
+
+    The unit tests above prove ``parse`` raises. This proves the raise actually
+    escapes ``__call__`` — which it did not before the fallback was refused, and
+    that gap is exactly what made the trapdoor invisible.
+    """
+    calls: list[dict] = []
+
+    class OneShotLM(dspy.LM):
+        """Returns a response no line parser can accept, and counts calls."""
+
+        def __init__(self):
+            super().__init__("openai/gpt-4o-mini", api_key="x", cache=False)
+
+        def __call__(self, prompt=None, messages=None, **kwargs):
+            calls.append(kwargs)
+            # A line with no ``key: value`` shape at all — no colon, so it
+            # fails KEY_PATTERN and `steps` can never be built. Unparseable by
+            # construction, and by a different route than a value that spills
+            # onto a second line (which the same check also catches).
+            return ["[[ ## steps ## ]]\nnot a key value line at all\n"
+                    "[[ ## completed ## ]]\n"]
+
+    lm = OneShotLM()
+    with dspy.context(lm=lm, adapter=LineAdapter()):
+        with pytest.raises(AdapterParseError):
+            dspy.Predict(Sig)(goal="solve it")
+
+    assert len(calls) == 1, (
+        f"expected exactly one LM call, got {len(calls)} — the JSONAdapter "
+        f"fallback fired and silently re-asked")
+
+
+def test_media_base_class_resolves(monkeypatch):
+    """The media base class must RESOLVE, whatever DSPy currently calls it.
+
+    It is ``BaseType`` in 2.6 and ``Type`` in 3.x (issue #527). ``_media_base``
+    returning ``None`` is the dangerous outcome, because it is silent: every
+    check above would then pass and an ``Image`` output field would render as
+    ``url: …`` text. The test above catches the rename only for the two types it
+    names; this catches the resolution itself, so a THIRD rename fails here with
+    an obvious message instead of quietly disarming the guard.
+    """
+    from backend.experts.adapters.line_adapter import _media_base
+
+    _media_base.cache_clear()
+    base = _media_base()
+    assert base is not None, (
+        "DSPy's media base class resolved to None — it has been renamed again; "
+        "add the new spelling to _media_base()")
+    import dspy.adapters.types as T
+    assert issubclass(T.Image, base)
+
+    # and the guard must not be silently disarmed if it ever DOESN'T resolve
+    monkeypatch.setattr("backend.experts.adapters.line_adapter._media_base",
+                        lambda: None)
+    from backend.experts.adapters.line_adapter import _is_special
+    assert _is_special(T.Image) is False   # documents the fail-open behaviour
+    _media_base.cache_clear()
 
 
 # ── Copilot review, #522 ─────────────────────────────────────────────────────

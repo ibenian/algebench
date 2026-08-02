@@ -132,7 +132,7 @@ call and runs only after the hard prerequisite passes.
 ./run.sh scripts/proof_completion/evaluate.py --data data/proof_completion/eval.jsonl
 
 # 3. optimize (bootstrap demos is fast; --optimizer mipro for instruction search;
-#    gepa requires dspy>=3.0 — this project pins dspy>=2.6,<3.0)
+#    --optimizer gepa is available since the dspy>=3.2 bump, issue #527)
 ./run.sh scripts/proof_completion/optimize.py --train data/proof_completion/train.jsonl \
     --optimizer bootstrap --out backend/experts/modules/proof_completion/artifacts/proof_completion.json
 

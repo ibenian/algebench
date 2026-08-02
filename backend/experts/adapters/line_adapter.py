@@ -91,6 +91,7 @@ from __future__ import annotations
 import enum
 import re
 import types
+from functools import lru_cache
 from typing import Any, Literal, Type, Union, get_args, get_origin
 
 from pydantic import BaseModel
@@ -143,17 +144,32 @@ def _list_item_type(a: Any) -> Any | None:
     return None
 
 
+@lru_cache(maxsize=1)
+def _media_base() -> type | None:
+    """DSPy's media/tool base class — ``Type`` in 3.x, ``BaseType`` in 2.6.
+
+    Renamed in DSPy 3.0 (``dspy.adapters.types.BaseType`` -> ``.Type``). Probing
+    only ONE spelling is not a cosmetic miss: :func:`_is_special` would return
+    False for every media type on the other version, ``Image`` would then pass
+    the leaf test, and an image output field would render as ``url: …`` — text
+    where the provider expects an image part. That is the silent-corruption
+    class this whole adapter exists to remove, so both names are tried.
+    """
+    from dspy.adapters import types as t
+    return getattr(t, "Type", None) or getattr(t, "BaseType", None)
+
+
 def _is_special(a: Any) -> bool:
-    """True for DSPy's ``BaseType`` subclasses (Image, Audio, History, …).
+    """True for DSPy's media/tool types (Image, Audio, History, ToolCalls, …).
 
     They serialise into multimodal message content blocks, not text, so the line
     format cannot carry them as OUTPUT fields.
     """
     try:
-        from dspy.adapters.types import BaseType
-    except Exception:                       # older/newer DSPy without BaseType
+        base = _media_base()
+    except Exception:                       # a DSPy without the types package
         return False
-    return isinstance(a, type) and issubclass(a, BaseType)
+    return base is not None and isinstance(a, type) and issubclass(a, base)
 
 
 def _is_leaf(a: Any) -> bool:
@@ -177,15 +193,28 @@ class LineAdapter(ChatAdapter):
     than module functions so a subclass can retune the dialect — change
     :attr:`KEY_SEP`, or override a single hook — without reimplementing the walk.
 
-    .. warning::
-       The inherited ``ChatAdapter.__call__`` falls back to ``JSONAdapter`` on
-       any exception, **and logs nothing**. That is left intact so a signature
-       this format cannot express degrades rather than failing outright — but it
-       means a parse bug here is invisible, costing a silent second LM call and
-       reinstating the escaping exposure. It fooled the author once during
-       development. Pair this adapter with a check that rejects control
-       characters if the fields carry LaTeX.
+    THE SILENT FALLBACK IS OFF (issue #527)
+    ---------------------------------------
+    ``ChatAdapter.__call__`` catches *any* exception and silently re-runs the
+    whole prediction through ``JSONAdapter``, logging nothing. For this adapter
+    that fallback is not a safety net but a trapdoor: it costs a second,
+    unlogged LM call and — the part that matters — hands the field values back
+    to the JSON escape layer this class exists to remove, so the very corruption
+    being prevented returns by the back door with no trace. It fooled the author
+    once during development.
+
+    DSPy 3.x added ``use_json_adapter_fallback``, so it can simply be refused;
+    :attr:`SILENT_JSON_FALLBACK` is that switch. A parse failure now RAISES —
+    consistent with every other refusal here, and the honest signal for a
+    refinement loop to retry with feedback (``refine.py``). A signature this
+    format genuinely cannot express should be given ``JSONAdapter`` explicitly
+    rather than discovered by silent degradation at runtime.
     """
+
+    #: Whether to allow ``ChatAdapter``'s unlogged JSONAdapter retry. OFF: see
+    #: the class docstring. Requires DSPy >= 3.0 (2.6 has no such parameter, and
+    #: constructing this class against it raises — loudly, which is the point).
+    SILENT_JSON_FALLBACK: bool = False
 
     #: Separator between a key and its value. Also what ``parse`` splits on.
     KEY_SEP: str = ": "
@@ -196,6 +225,10 @@ class LineAdapter(ChatAdapter):
     KEY_PATTERN: re.Pattern = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*): ?(.*)$")
     #: Splits repeated ``list[BaseModel]`` blocks.
     BLOCK_SPLIT: re.Pattern = re.compile(r"\n\s*\n")
+
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("use_json_adapter_fallback", self.SILENT_JSON_FALLBACK)
+        super().__init__(*args, **kwargs)
 
     # ---------------------------------------------------------------- scalars
 
