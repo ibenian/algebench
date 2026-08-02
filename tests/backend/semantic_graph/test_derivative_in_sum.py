@@ -72,10 +72,23 @@ def test_bare_derivative_spellings_are_unchanged(latex):
     assert str(dep) == "dv_dt"
 
 
-def test_a_genuinely_evaluable_derivative_is_still_evaluated():
-    r"""``\frac{d}{dx} x^2 = 2x`` is real calculus — ``.doit()`` SHOULD run."""
-    expr, _ = _plots(r"\frac{d}{dx} x^{2} = 2 x")
-    assert sympy.simplify(expr - 2 * x) == 0
+@pytest.mark.parametrize("latex,want", [
+    (r"\frac{d}{dx} x^{2} = 2 x", 2 * x),      # equation form (definition path)
+    (r"\frac{d}{dx} x^{2}", 2 * x),            # STANDALONE — no equals sign
+    (r"\frac{d}{dx}\sin(x)", sympy.cos(x)),    # STANDALONE
+])
+def test_a_genuinely_evaluable_derivative_is_still_evaluated(latex, want):
+    r"""Real calculus must still be performed — ``.doit()`` SHOULD run here.
+
+    The standalone rows matter more than the equation one. An earlier version
+    flattened EVERY derivative before ``.doit()``, so a bare ``\frac{d}{dx}x^2``
+    became the symbol ``dx**2_dx`` instead of ``2x`` — a regression against main,
+    and one whose name is not even a valid identifier, so the chart script broke
+    too. The original test used only the equation form, which takes the
+    definition path and never exercised the bug (Copilot, #536).
+    """
+    expr, _ = _plots(latex)
+    assert sympy.simplify(expr - want) == 0
 
 
 @pytest.mark.parametrize("latex,want", [
@@ -137,4 +150,19 @@ def test_a_flattened_derivative_renders_as_a_fraction(name, want):
     ("d", "d"),
 ])
 def test_ordinary_names_are_not_mistaken_for_derivatives(name, want):
+    assert _symbol_latex(name) == want
+
+
+@pytest.mark.parametrize("name,want", [
+    ("dv_drag_dt", r"\frac{d v_{drag}}{d t}"),
+    ("drho_grid_dt", r"\frac{d \rho_{grid}}{d t}"),
+])
+def test_a_compound_target_name_splits_on_the_LAST_underscore_d(name, want):
+    r"""A non-greedy capture split on the FIRST ``_d`` and mangled the label.
+
+    ``v_{drag}`` is an ordinary physics variable, and ``dv_drag_dt`` came out as
+    ``\frac{d v}{d rag_{dt}}`` (Copilot, #536). The quantity differentiated may
+    be a compound name; the variable differentiated against is nearly always a
+    single symbol, so the split belongs at the last ``_d``.
+    """
     assert _symbol_latex(name) == want

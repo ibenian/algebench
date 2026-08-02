@@ -309,7 +309,15 @@ for _fn in (_op_parse, _op_zeros, _op_singularities, _op_extrema,
 # ``_derivative_symbol`` there — the name is a CONVENTION shared with that
 # module, so it is undone here rather than rendered as the subscript
 # ``dv_{dt}``, which is what a slider would otherwise be labelled.
-_FLAT_DERIVATIVE = re.compile(r"^d([A-Za-z]\w*?)_d([A-Za-z]\w*)$")
+#
+# The first capture is GREEDY, so the split lands on the LAST ``_d``. Non-greedy
+# split on the first, which mangles any target containing ``_d`` — and
+# ``v_{drag}`` is an ordinary physics variable, not a contrived one:
+# ``dv_drag_dt`` came out as ``\frac{d v}{d rag_{dt}}`` (Copilot, #536). Greedy
+# is also the right bias on principle: the differentiated quantity may be a
+# compound name, while the variable differentiated against is nearly always a
+# single symbol.
+_FLAT_DERIVATIVE = re.compile(r"^d([A-Za-z]\w*)_d([A-Za-z]\w*)$")
 
 
 def _symbol_latex(name: str) -> str:

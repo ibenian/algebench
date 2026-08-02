@@ -338,7 +338,7 @@ def latex_to_sympy_defined(
             return solved
 
     collapsed = (expr.lhs - expr.rhs) if isinstance(expr, Rel) else expr
-    return _flatten_derivatives(collapsed).doit(), None, None, None
+    return _resolve_derivatives(collapsed), None, None, None
 
 
 def _derivative_symbol(d: sympy.Derivative) -> Symbol:
@@ -368,24 +368,43 @@ def _solve_for_derivative(lhs, rhs):
     return sols[0], _derivative_symbol(d), None, sympy.latex(d)
 
 
-def _flatten_derivatives(expr):
-    """Replace every ``Derivative`` with a plain symbol (``dv_dt``).
+def _is_opaque_derivative(d: sympy.Derivative) -> bool:
+    """True when ``.doit()`` would evaluate ``d`` to zero rather than compute it.
 
-    The last line of defence, for an expression no branch above could resolve
-    (a derivative appearing nonlinearly, or several of them). Two things must
-    not happen to it, and flattening prevents both:
-
-    * ``.doit()`` would evaluate it to **zero** and drop the term silently;
-    * left intact it reaches ``sympy_to_mathjs`` as ``Derivative(v, t)``,
-      which is not an expression the browser can evaluate.
-
-    A symbol is the honest representation: the chart samples scalars, so there
-    is no trajectory to differentiate and nothing to *compute* — the rate is an
-    INPUT. It gets its own slider, and ``m·(dv/dt) + bv = F`` then reads as
-    "what force does this acceleration require at this speed?".
+    The distinction the whole fix turns on. ``Derivative(x**2, x)`` is real
+    calculus and ``.doit()`` gives ``2x``; ``Derivative(v, t)`` — a bare symbol
+    against a variable it does not contain — evaluates to **0**, because SymPy
+    is correctly told ``v`` has no ``t``-dependence while the reader meant an
+    unknown function of ``t``.
     """
-    subs = {d: _derivative_symbol(d) for d in expr.atoms(sympy.Derivative)}
-    return expr.subs(subs) if subs else expr
+    wrt = {var for var, _ in d.variable_count}
+    return not (d.expr.free_symbols & wrt)
+
+
+def _resolve_derivatives(expr):
+    """Evaluate what is genuinely computable; flatten only what is not.
+
+    Order matters, and getting it wrong is a regression rather than a nuance
+    (Copilot, #536). Flattening *everything* before ``.doit()`` would turn a
+    standalone ``\\frac{d}{dx} x^2`` into a symbol instead of ``2x`` — and one
+    named ``dx**2_dx`` at that, which is not even a valid identifier. So:
+
+    1. flatten only the OPAQUE derivatives, which ``.doit()`` would zero;
+    2. ``.doit()``, so real calculus is still performed;
+    3. flatten anything left, so no ``Derivative`` can reach ``sympy_to_mathjs``
+       — the browser has no such function.
+
+    A symbol is the honest representation for step 1 and 3: the chart samples
+    scalars, so there is no trajectory to differentiate and nothing to
+    *compute*. The rate is an INPUT, and gets its own slider —
+    ``m·(dv/dt) + bv = F`` then reads as "what force does this acceleration
+    require at this speed?".
+    """
+    opaque = {d: _derivative_symbol(d) for d in expr.atoms(sympy.Derivative)
+              if _is_opaque_derivative(d)}
+    expr = expr.subs(opaque).doit() if opaque else expr.doit()
+    leftover = {d: _derivative_symbol(d) for d in expr.atoms(sympy.Derivative)}
+    return expr.subs(leftover) if leftover else expr
 
 
 def latex_to_mathjs(latex: str) -> tuple[str, list[str]]:
