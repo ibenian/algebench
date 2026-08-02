@@ -23,6 +23,7 @@ the feature is marked ``assumed`` so the UI stays honest about it.
 """
 from __future__ import annotations
 
+import logging
 from typing import Any, Optional
 
 import sympy
@@ -37,6 +38,13 @@ from backend.experts.modules.proof_completion.cas_guard import (
 from backend.semantic_graph.mathjs_converter import (
     latex_to_sympy_defined, sympy_to_mathjs,
 )
+
+# A guarded op that fails must SAY SO rather than write a plausible value into
+# the report — a computation failure recorded as a result is indistinguishable
+# from a finding, and the proposer then reasons from it (#532). These log at
+# DEBUG: a sympy op giving up is expected on hard symbolic input, but it should
+# never be invisible.
+log = logging.getLogger(__name__)
 
 # Bounds keeping the report reviewable and the JSON small: an expression
 # with more than this many of one feature kind is summarized, not listed.
@@ -147,8 +155,13 @@ def _op_singularities(expr, var) -> dict:
             entry["right_limit"] = _point(right, subs)
             entry["vertical_asymptote"] = bool(
                 left.has(oo, -oo) or right.has(oo, -oo))
-        except Exception:
-            entry["vertical_asymptote"] = None
+        except Exception as exc:
+            # Same conflation as the limits op (#532): the UI renders a falsy
+            # ``vertical_asymptote`` as a plain "singularity", so writing None
+            # here silently ASSERTS it is not an asymptote when we simply could
+            # not tell. Leave the key absent and mark the entry unresolved.
+            log.debug("singularity one-sided limits at %s unresolved: %s", p, exc)
+            entry["status"] = "unresolved"
         out.append(entry)
     return {"points": out, "family": family}
 
@@ -195,27 +208,59 @@ def _op_inflections(expr, var) -> dict:
 
 
 def _op_limits_at_infinity(expr, var) -> dict:
-    """Limits at ±∞; horizontal or oblique asymptotes when they exist."""
+    r"""Limits at ±∞; horizontal or oblique asymptotes when they exist.
+
+    SymPy raises ``NotImplementedError`` when a limit's value depends on the
+    sign of a free parameter it cannot determine — very common in physics
+    written symbolically (``v_E e^{-H \rho_0 / (2\beta\sin\gamma)}``). Falling
+    back to the representative-constant substitution resolves it, because the
+    parameters then have concrete signs.
+
+    Order matters: symbolic FIRST (it is the general answer, and can be
+    parametric), pinned only as a fallback, ``unresolved`` if neither works.
+    A pinned result is *labelled* — it holds for those representative values,
+    and flipping a parameter's sign can turn decay into growth, so presenting
+    it as the general limit would swap one silently-wrong report for another.
+    """
     subs = _pin_others(expr, var)
     out = []
     for direction, point in (("+inf", oo), ("-inf", -oo)):
         entry: dict[str, Any] = {"direction": direction}
+        lim, pinned = None, False
         try:
             lim = limit(expr, var, point)
-            if lim.has(oo, -oo):
-                entry["limit"] = latex(lim)
-                # Oblique asymptote: f ~ m·x + b with finite nonzero m.
-                m = limit(expr / var, var, point)
+        except Exception as exc_sym:
+            try:
+                lim, pinned = limit(expr.subs(subs), var, point), True
+            except Exception as exc_pin:
+                # NOT ``limit: None`` — that is the same value a real "no limit"
+                # would carry, so a failure would read as a finding (#532).
+                log.debug("limits_at_infinity(%s -> %s) unresolved: %s / %s",
+                          var, direction, exc_sym, exc_pin)
+                entry["status"] = "unresolved"
+                out.append(entry)
+                continue
+        if lim.has(oo, -oo):
+            entry["limit"] = latex(lim)
+            # Oblique asymptote: f ~ m·x + b with finite nonzero m. Its own
+            # ``try`` — it is supplementary, and a failure here must not discard
+            # the limit we already have (one shared block used to do exactly that).
+            try:
+                src = expr.subs(subs) if pinned else expr
+                m = limit(src / var, var, point)
                 if m.is_finite and not m.is_zero:
-                    b = limit(expr - m * var, var, point)
+                    b = limit(src - m * var, var, point)
                     if b.is_finite:
                         entry["oblique_asymptote"] = {
                             "slope": _point(m, subs), "intercept": _point(b, subs)}
-            else:
-                entry["limit"] = _point(lim, subs)
-                entry["horizontal_asymptote"] = True
-        except Exception:
-            entry["limit"] = None
+            except Exception as exc:
+                log.debug("oblique asymptote(%s -> %s) skipped: %s",
+                          var, direction, exc)
+        else:
+            entry["limit"] = _point(lim, subs)
+            entry["horizontal_asymptote"] = True
+        if pinned:
+            entry["pinned"] = True
         out.append(entry)
     return {"directions": out}
 
