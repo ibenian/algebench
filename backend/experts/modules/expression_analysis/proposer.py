@@ -334,8 +334,23 @@ def _report_gave_nothing(characteristics: str) -> bool:
             return any(has_finding(x) for x in v)
         return v not in (None, "", False)
 
-    unresolved = json.dumps(feats).count('"unresolved"')
-    return unresolved > 0 and not any(has_finding(v) for v in feats.values())
+    def has_failure(v) -> bool:
+        """A guarded op that gave up, found STRUCTURALLY.
+
+        Counting ``'"unresolved"'`` in a re-serialised report was both wasteful
+        and wrong: a key of that name, or a ``direction`` whose value happened
+        to be the word, each declared the whole analysis a failure (Copilot,
+        #534). Only ``{"status": "unresolved"}`` means what we mean.
+        """
+        if isinstance(v, dict):
+            return (v.get("status") == "unresolved"
+                    or any(has_failure(x) for x in v.values()))
+        if isinstance(v, list):
+            return any(has_failure(x) for x in v)
+        return False
+
+    return (any(has_failure(v) for v in feats.values())
+            and not any(has_finding(v) for v in feats.values()))
 
 
 def propose_views(expression: str, characteristics: str,

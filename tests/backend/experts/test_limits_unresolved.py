@@ -121,7 +121,7 @@ def test_ordinary_limits_are_unchanged(expr_fn, var, expect):
     assert got["+inf"]["limit"] == expect
 
 
-def test_oblique_asymptote_survives(  ):
+def test_oblique_asymptote_survives():
     """The asymptote probe has its own ``try`` now — but must still work."""
     x = sympy.Symbol("x")
     got = _dirs(_op_limits_at_infinity((x**2 + 1) / x, x))
@@ -186,3 +186,22 @@ def test_malformed_characteristics_do_not_hijack_the_call():
     """A parse failure here must fall through, not fabricate a verdict."""
     assert _report_gave_nothing("not json") is False
     assert _report_gave_nothing("{}") is False
+
+
+@pytest.mark.parametrize("features,why", [
+    ({"zeros": {"unresolved": None}},
+     "a KEY named 'unresolved'"),
+    ({"limits_at_infinity": {"direction": "unresolved"}},
+     "a 'direction' whose VALUE is the word"),
+    ({"domain": "unresolved"},
+     "a plain string value equal to the word"),
+])
+def test_only_a_real_status_marker_counts_as_a_failure(features, why):
+    """Detection must be STRUCTURAL, not a substring of the re-serialised report.
+
+    Counting ``'"unresolved"'`` in ``json.dumps(feats)`` was both wasteful and
+    wrong — the first two cases below each declared the whole analysis a failure
+    and suppressed the LM call entirely (Copilot, #534). Only
+    ``{"status": "unresolved"}`` means what we mean.
+    """
+    assert _report_gave_nothing(_report(features)) is False, why
