@@ -296,7 +296,9 @@ def latex_to_sympy_defined(
       argument is also the obvious variable to sweep (and whose unapplied
       ``rho(h)`` term would otherwise poison the generated script)
     * a derivative — ``\\frac{d}{dt} h = -V \\sin\\gamma``, the rate of
-      change being what the equation is *about*
+      change being what the equation is *about*. It need NOT sit alone on
+      its side: ``m \\frac{dv}{dt} + bv = F`` is still a statement about
+      ``dv/dt``, so the equation is solved for it (issue #535).
 
     Returns ``(formula, defined_symbol, argument, display_latex)``.
     ``argument`` is set only for the function form, ``display_latex`` only
@@ -308,20 +310,101 @@ def latex_to_sympy_defined(
     if isinstance(expr, sympy.Eq):
         lhs, rhs = expr.lhs, expr.rhs
         for side, other in ((lhs, rhs), (rhs, lhs)):
-            if isinstance(side, Symbol) and side not in other.free_symbols:
+            # ``not other.has(Derivative)`` on the next two: a side carrying an
+            # unevaluatable derivative can never become the plotted expression,
+            # because ``Derivative(v, t)`` is SymPy repr, not mathjs. Without
+            # this, ``m dv/dt + bv = F`` matched "F is defined by the left" and
+            # shipped that string to the browser to evaluate (#535).
+            if (isinstance(side, Symbol) and side not in other.free_symbols
+                    and not other.has(sympy.Derivative)):
                 return other, side, None, None
-            if isinstance(side, AppliedUndef) and not other.has(side.func):
+            if (isinstance(side, AppliedUndef) and not other.has(side.func)
+                    and not other.has(sympy.Derivative)):
                 args = [a for a in side.args if isinstance(a, Symbol)]
                 return (other, Symbol(side.func.__name__),
                         args[0] if len(args) == 1 else None, None)
             if isinstance(side, sympy.Derivative) and not other.has(sympy.Derivative):
-                target = side.expr
-                wrt = "_".join(str(v) for v, _ in side.variable_count)
-                name = f"d{target}_d{wrt}"
-                return other.doit(), Symbol(name), None, sympy.latex(side)
-    if isinstance(expr, Rel):
-        return (expr.lhs - expr.rhs).doit(), None, None, None
-    return expr.doit(), None, None, None
+                return other.doit(), _derivative_symbol(side), None, sympy.latex(side)
+
+        # A derivative buried in a sum or product is STILL what the equation is
+        # about, so isolate it rather than collapsing. Falling through to
+        # ``.doit()`` below would evaluate ``Derivative(Symbol('v'), t)`` to
+        # ZERO — SymPy is right that a plain Symbol has no t-dependence, but the
+        # reader meant an unknown function of t. The term simply vanished, and
+        # ``dv/dt + kv = 0`` plotted ``k·v``: the sign of a physics curve,
+        # silently flipped, with nothing failing anywhere (#535).
+        solved = _solve_for_derivative(lhs, rhs)
+        if solved is not None:
+            return solved
+
+    collapsed = (expr.lhs - expr.rhs) if isinstance(expr, Rel) else expr
+    return _resolve_derivatives(collapsed), None, None, None
+
+
+def _derivative_symbol(d: sympy.Derivative) -> Symbol:
+    """A flat identifier for a derivative — ``Derivative(v, t)`` -> ``dv_dt``."""
+    wrt = "_".join(str(v) for v, _ in d.variable_count)
+    return Symbol(f"d{d.expr}_d{wrt}")
+
+
+def _solve_for_derivative(lhs, rhs):
+    """``(formula, dv_dt, None, latex)`` when the equation resolves to one
+    derivative, else None.
+
+    Only attempted for a SINGLE derivative with a SINGLE solution: more than
+    one of either is not a rate this expression is "about", and guessing which
+    would be exactly the kind of silent choice #535 is about.
+    """
+    derivs = (lhs - rhs).atoms(sympy.Derivative)
+    if len(derivs) != 1:
+        return None
+    d = next(iter(derivs))
+    try:
+        sols = sympy.solve(sympy.Eq(lhs - rhs, 0), d)
+    except Exception:
+        return None
+    if len(sols) != 1:
+        return None
+    return sols[0], _derivative_symbol(d), None, sympy.latex(d)
+
+
+def _is_opaque_derivative(d: sympy.Derivative) -> bool:
+    """True when ``.doit()`` would evaluate ``d`` to zero rather than compute it.
+
+    The distinction the whole fix turns on. ``Derivative(x**2, x)`` is real
+    calculus and ``.doit()`` gives ``2x``; ``Derivative(v, t)`` — a bare symbol
+    against a variable it does not contain — evaluates to **0**, because SymPy
+    is correctly told ``v`` has no ``t``-dependence while the reader meant an
+    unknown function of ``t``.
+    """
+    wrt = {var for var, _ in d.variable_count}
+    return not (d.expr.free_symbols & wrt)
+
+
+def _resolve_derivatives(expr):
+    """Evaluate what is genuinely computable; flatten only what is not.
+
+    Order matters, and getting it wrong is a regression rather than a nuance
+    (Copilot, #536). Flattening *everything* before ``.doit()`` would turn a
+    standalone ``\\frac{d}{dx} x^2`` into a symbol instead of ``2x`` — and one
+    named ``dx**2_dx`` at that, which is not even a valid identifier. So:
+
+    1. flatten only the OPAQUE derivatives, which ``.doit()`` would zero;
+    2. ``.doit()``, so real calculus is still performed;
+    3. flatten anything left, so no ``Derivative`` can reach ``sympy_to_mathjs``
+       — the browser has no such function.
+
+    A symbol is the honest representation for step 1 and 3: the chart samples
+    scalars, so there is no trajectory to differentiate and nothing to
+    *compute*. The rate is an INPUT, and gets its own slider —
+    ``m·(dv/dt) + bv = F`` then reads as "what force does this acceleration
+    require at this speed?".
+    """
+    opaque = {d: _derivative_symbol(d) for d in expr.atoms(sympy.Derivative)
+              if _is_opaque_derivative(d)}
+    expr = expr.subs(opaque).doit() if opaque else expr.doit()
+    leftover = {d: _derivative_symbol(d) for d in expr.atoms(sympy.Derivative)}
+    return expr.subs(leftover) if leftover else expr
 
 
 def latex_to_mathjs(latex: str) -> tuple[str, list[str]]:
