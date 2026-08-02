@@ -1,14 +1,22 @@
-"""LM inference of derivation endpoints (reusable DSPy predicts).
+r"""LM inference of derivation ENDPOINTS — the start and target a proof runs between.
 
-Two distinct situations, one per signature:
+"Endpoint" here is the end of a *derivation*, not an HTTP route. Before the
+proof-completion expert can derive anything, something must name what it is
+deriving *from* and *to*; that is this module. Which signature applies is decided
+by which end is already known:
 
-* :class:`BothEndpointsSig` / :func:`endpoints_from_prompt` — NEITHER endpoint is
-  known: name BOTH the start and the target from a topic ("derive Lorentz time
-  dilation"). Used only by the offline ``scripts/proof_animation/derive.py`` CLI
-  in ``--prompt`` mode.
+* :class:`BothEndpointsSig` / :func:`endpoints_from_prompt` — NEITHER end known:
+  name both from a topic ("derive Lorentz time dilation"). Used by the offline
+  ``scripts/proof_animation/derive.py --prompt`` CLI *and* by the live
+  ``POST /api/expert/proof_from_prompt`` route when no start is supplied.
 * :class:`StartGivenTargetSig` / :func:`start_given_target` — the TARGET is known:
-  name only the start, with the givens/goal as context. Used by the
-  proof-animation handler (the live app always sends the target).
+  name only the start, with the givens/goal as context.
+* :class:`TargetGivenStartSig` / :func:`target_given_start` — the START is known:
+  the reader is CONTINUING an open derivation, so name where the instruction
+  lands.
+
+:class:`ProofQuestionSig` / :func:`answer_proof_question` also lives here but is
+not an endpoint namer — it is the proof-scoped Q&A predict.
 
 Requires DSPy to be configured first (``init_experts()`` / ``configure_dspy()``).
 """
@@ -20,6 +28,7 @@ from functools import cache
 
 import dspy
 
+from backend.experts.llm_config import retry_on_parse_error
 from backend.semantic_graph.preprocessor import strip_math_delimiters
 
 # DSPy's ChatAdapter frames fields with `[[ ## name ## ]]` markers; some models
@@ -55,6 +64,28 @@ def is_invalid_sentinel(s: str) -> bool:
 @cache
 def _predictor(signature):
     return dspy.Predict(signature)
+
+
+#: Re-asks allowed when a response cannot be parsed. See
+#: :func:`~backend.experts.llm_config.retry_on_parse_error` for why this exists
+#: at all — it replaces ``ChatAdapter``'s silent JSONAdapter fallback, which is
+#: refused globally because it re-decoded every field through JSON escaping.
+_PARSE_ATTEMPTS = 2
+
+
+def _ask(signature, **kwargs):
+    """Run one of this module's predictors, re-asking on an unparseable response.
+
+    This module is the only DSPy caller with no exception handling of its own —
+    every other expert wraps its predict in a ``try`` that degrades to an
+    abstention — so without the retry a transient formatting slip would become a
+    failed request. Anything still unparseable propagates: the endpoint logs it
+    server-side and returns a generic error, which is the honest outcome. We
+    could not read what the model named, so there is no derivation to run.
+    """
+    return retry_on_parse_error(lambda: _predictor(signature)(**kwargs),
+                                attempts=_PARSE_ATTEMPTS,
+                                label=signature.__name__)
 
 
 class BothEndpointsSig(dspy.Signature):
@@ -98,7 +129,7 @@ def endpoints_from_prompt(prompt: str) -> tuple[str, str, str, str, str, str]:
     (emits the ``INVALID_PROMPT`` sentinel for the endpoints), so no caller ever
     derives from a request that isn't one.
     """
-    ep = _predictor(BothEndpointsSig)(prompt=prompt)
+    ep = _ask(BothEndpointsSig, prompt=prompt)
     # The LM frequently wraps its endpoint LaTeX in $…$ math delimiters; strip
     # them so the start/target both PARSE and render cleanly (titles re-wrap in
     # $…$, so a leftover $ would yield a doubled $$…$$).
@@ -147,7 +178,7 @@ def start_given_target(target_latex: str, context: str) -> tuple[str, str, str, 
     both-endpoints namer (which wasted an inferred target and nudged the LM to
     echo a multi-relation goal as an unparseable compound start; see #396).
     """
-    ep = _predictor(StartGivenTargetSig)(target_latex=target_latex, context=context)
+    ep = _ask(StartGivenTargetSig, target_latex=target_latex, context=context)
     return (strip_math_delimiters(ep.start_latex),
             (ep.domain or "").strip(), (ep.title or "").strip(),
             (ep.given_label or "").strip(), (ep.start_note or "").strip())
@@ -194,8 +225,8 @@ def target_given_start(start_latex: str, instruction: str) -> tuple[str, str, st
     Raises :class:`InvalidPromptError` when the instruction is not math, matching
     :func:`endpoints_from_prompt` so the caller's guard is unchanged.
     """
-    ep = _predictor(TargetGivenStartSig)(start_latex=start_latex,
-                                         instruction=instruction)
+    ep = _ask(TargetGivenStartSig, start_latex=start_latex,
+              instruction=instruction)
     target = strip_math_delimiters(ep.target_latex)
     if is_invalid_sentinel(target):
         raise InvalidPromptError(instruction)
@@ -220,5 +251,5 @@ class ProofQuestionSig(dspy.Signature):
 
 def answer_proof_question(derivation: str, question: str) -> str:
     """Answer a question grounded ONLY in the given derivation (proof-scoped chat)."""
-    ans = _predictor(ProofQuestionSig)(derivation=derivation, question=question).answer or ""
+    ans = _ask(ProofQuestionSig, derivation=derivation, question=question).answer or ""
     return _DSPY_MARKER.sub("", ans).strip()
