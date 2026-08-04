@@ -24,12 +24,12 @@ Requires DSPy to be configured first (``init_experts()`` / ``configure_dspy()``)
 from __future__ import annotations
 
 import re
-from functools import cache
 
 import dspy
 
-from backend.experts.llm_config import retry_on_parse_error
+from backend.experts.llm_config import make_adapter, retry_on_parse_error
 from backend.semantic_graph.preprocessor import strip_math_delimiters
+from backend.util.latex import unmangle_latex
 
 # DSPy's ChatAdapter frames fields with `[[ ## name ## ]]` markers; some models
 # echo a trailing `[[ ## completed ## ]]` into a free-text output. Strip them.
@@ -57,15 +57,6 @@ def is_invalid_sentinel(s: str) -> bool:
     return re.sub(r"[^a-z0-9]", "", (s or "").lower()) == _INVALID_SENTINEL.lower()
 
 
-# Each signature's predictor is built once, LAZILY on first use. This module is
-# imported (e.g. by scripts/proof_animation/derive.py) before configure_dspy()
-# runs, so deferring construction keeps import independent of DSPy config — and
-# matches module.py / judge.py, which build their predictors after configuration.
-@cache
-def _predictor(signature):
-    return dspy.Predict(signature)
-
-
 #: Re-asks allowed when a response cannot be parsed. See
 #: :func:`~backend.experts.llm_config.retry_on_parse_error` for why this exists
 #: at all — it replaces ``ChatAdapter``'s silent JSONAdapter fallback, which is
@@ -76,16 +67,13 @@ _PARSE_ATTEMPTS = 2
 def _ask(signature, **kwargs):
     """Run one of this module's predictors, re-asking on an unparseable response.
 
-    This module is the only DSPy caller with no exception handling of its own —
-    every other expert wraps its predict in a ``try`` that degrades to an
-    abstention — so without the retry a transient formatting slip would become a
-    failed request. Anything still unparseable propagates: the endpoint logs it
-    server-side and returns a generic error, which is the honest outcome. We
-    could not read what the model named, so there is no derivation to run.
+    Uses :class:`~backend.experts.adapters.LineAdapter` so the wire format has no
+    JSON escape layer — backslashes in LaTeX survive verbatim (#517, #522).
     """
-    return retry_on_parse_error(lambda: _predictor(signature)(**kwargs),
-                                attempts=_PARSE_ATTEMPTS,
-                                label=signature.__name__)
+    return retry_on_parse_error(
+        lambda: dspy.Predict(signature, adapter=make_adapter(line_oriented=True))(**kwargs),
+        attempts=_PARSE_ATTEMPTS,
+        label=signature.__name__)
 
 
 class BothEndpointsSig(dspy.Signature):
@@ -133,8 +121,8 @@ def endpoints_from_prompt(prompt: str) -> tuple[str, str, str, str, str, str]:
     # The LM frequently wraps its endpoint LaTeX in $…$ math delimiters; strip
     # them so the start/target both PARSE and render cleanly (titles re-wrap in
     # $…$, so a leftover $ would yield a doubled $$…$$).
-    start = strip_math_delimiters(ep.start_latex)
-    target = strip_math_delimiters(ep.target_latex)
+    start = unmangle_latex(strip_math_delimiters(ep.start_latex))
+    target = unmangle_latex(strip_math_delimiters(ep.target_latex))
     if is_invalid_sentinel(start) or is_invalid_sentinel(target):
         raise InvalidPromptError(prompt)
     return (start, target,
@@ -179,7 +167,7 @@ def start_given_target(target_latex: str, context: str) -> tuple[str, str, str, 
     echo a multi-relation goal as an unparseable compound start; see #396).
     """
     ep = _ask(StartGivenTargetSig, target_latex=target_latex, context=context)
-    return (strip_math_delimiters(ep.start_latex),
+    return (unmangle_latex(strip_math_delimiters(ep.start_latex)),
             (ep.domain or "").strip(), (ep.title or "").strip(),
             (ep.given_label or "").strip(), (ep.start_note or "").strip())
 
@@ -227,7 +215,7 @@ def target_given_start(start_latex: str, instruction: str) -> tuple[str, str, st
     """
     ep = _ask(TargetGivenStartSig, start_latex=start_latex,
               instruction=instruction)
-    target = strip_math_delimiters(ep.target_latex)
+    target = unmangle_latex(strip_math_delimiters(ep.target_latex))
     if is_invalid_sentinel(target):
         raise InvalidPromptError(instruction)
     return (target, (ep.domain or "").strip(), (ep.title or "").strip(),

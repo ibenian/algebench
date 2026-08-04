@@ -20,8 +20,12 @@ dollars, or a delimiter that is opened but never closed, is *unbalanced*.
 
 from __future__ import annotations
 
+import logging
+import re
 from dataclasses import dataclass
 from typing import List, Tuple
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -157,3 +161,47 @@ def strip_math_delimiters(text: str) -> str:
         cursor = seg.end
     out.append(text[cursor:])
     return "".join(out)
+
+
+# ---------------------------------------------------------------------------
+# JSON-mangle repair for PURE-LaTeX fields (no $…$ scoping needed)
+# ---------------------------------------------------------------------------
+# When a model emits LaTeX with a single backslash and the output passes through
+# a JSON decoder, ``\f``/``\b``/``\n``/``\r``/``\t`` are consumed as control-char
+# escapes — eating the command's first letter.  In a pure-math field the ENTIRE
+# string is LaTeX, so the whitespace-ambiguous chars (\r \n \t) are repaired
+# unconditionally (no prose line breaks to protect).
+
+_CTRL_TO_LATEX: dict[str, str] = {"\x08": r"\b", "\x0c": r"\f"}
+_WS_CTRL_MATH_RE = re.compile(r"[\r\n\t](?=[a-z])")
+_WS_CTRL_MAP: dict[str, str] = {"\r": r"\r", "\n": r"\n", "\t": r"\t"}
+_RESIDUAL_CTRL_RE = re.compile(r"[\x00-\x08\x0b-\x0c\x0e-\x1f]")
+
+
+def unmangle_latex(text: str) -> str:
+    r"""Repair JSON-mangled LaTeX in a PURE-math field and detect residuals.
+
+    Unlike ``_unmangle_json_escapes`` in the proof-completion outputs module
+    (which scopes ``\r``/``\n``/``\t`` repair to ``$…$`` segments for prose
+    safety), this function treats the entire string as LaTeX — appropriate for
+    fields like ``start_latex`` / ``target_latex`` that contain nothing but math.
+
+    After repair, any residual control character is by definition a bug (nothing
+    legitimate puts one in a math expression).  The function logs a warning so
+    the corruption is surfaced rather than silently passed downstream.
+    """
+    if not text:
+        return text
+    # Hard control chars (never legitimate anywhere) → restore globally
+    for ctrl, latex in _CTRL_TO_LATEX.items():
+        if ctrl in text:
+            text = text.replace(ctrl, latex)
+    # Whitespace-ambiguous control chars → restore when they begin a command
+    text = _WS_CTRL_MATH_RE.sub(lambda m: _WS_CTRL_MAP[m.group()], text)
+    # Detect residual control chars — indicates unrecoverable corruption
+    if _RESIDUAL_CTRL_RE.search(text):
+        logger.warning(
+            "Residual control character in pure-LaTeX field after unmangle: %r",
+            text,
+        )
+    return text
