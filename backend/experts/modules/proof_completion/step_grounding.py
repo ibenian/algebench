@@ -626,6 +626,13 @@ def _narrows_check(prev, curr, relation, method, reason):
         if _guard(_op_is_subset, prev_sols, curr_sols):
             return ("equivalent", "symbolic",
                     "same solution set as the previous step")
+        # compute discarded solutions for the reason string
+        dropped = _guard(_op_set_diff, prev_sols, curr_sols)
+        if isinstance(dropped, sp.FiniteSet) and len(dropped) > 0:
+            lost = ", ".join(sorted(f"${sp.latex(v)}$" for v in dropped))
+            return ("narrows", "symbolic",
+                    f"selects {sp.latex(x)} from the previous step's solution set; "
+                    f"discards {lost}")
         return ("narrows", "symbolic",
                 "every solution of this step solves the previous one (valid narrowing)")
     # provably introduces non-solutions? (only claim it when the gap is concrete)
@@ -718,7 +725,11 @@ def _tier_for(relation: Relation, method: Method, type_consistent: bool) -> Tier
         return Tier.RED                       # a mislabel can't make it worse
     if relation == "unknown":
         return Tier.BLUE
-    base = Tier.GOLD if method == "symbolic" else Tier.SILVER
+    # narrows is proven but weaker than equivalence — cap at SILVER
+    if relation == "narrows":
+        base = Tier.SILVER
+    else:
+        base = Tier.GOLD if method == "symbolic" else Tier.SILVER
     if not type_consistent:                   # one-notch downgrade for mislabels
         return Tier.SILVER if base is Tier.GOLD else Tier.BLUE
     return base

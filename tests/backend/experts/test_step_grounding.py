@@ -37,7 +37,7 @@ def test_solving_chain_narrows_is_valid():
     assert rep.pairs[0].relation == "equivalent"
     assert rep.pairs[1].relation == "narrows"
     assert rep.pairs[1].method == "symbolic"
-    assert rep.pairs[1].tier is Tier.GOLD
+    assert rep.pairs[1].tier is Tier.SILVER
 
 
 def test_wrong_middle_step_is_refuted():
@@ -80,7 +80,7 @@ def test_change_type_mislabel_downgrades_one_notch():
     pv = classify_pair(sp.Eq(x ** 2, 4), sp.Eq(x, 2), change_type="rewrite")
     assert pv.relation == "narrows"
     assert pv.type_consistent is False
-    assert pv.tier is Tier.SILVER
+    assert pv.tier is Tier.BLUE
 
 
 def test_timeout_degrades_to_plausible(monkeypatch):
@@ -174,7 +174,8 @@ def test_or_branches_count_as_full_solution_set():
     pv = classify_pair(sp.Eq(x ** 2, 4), sp.Or(sp.Eq(x, 2), sp.Eq(x, -2)),
                        change_type="solve")
     assert pv.relation in ("equivalent", "narrows")
-    assert pv.tier is Tier.GOLD
+    expected_tier = Tier.GOLD if pv.relation == "equivalent" else Tier.SILVER
+    assert pv.tier is expected_tier
 
 
 def test_divide_both_sides_by_symbol_is_verified():
@@ -252,7 +253,7 @@ def test_parametric_sqrt_solve_is_verified():
                        change_type="solve")
     assert pv.relation == "narrows"
     assert pv.method == "symbolic"
-    assert pv.tier is Tier.GOLD
+    assert pv.tier is Tier.SILVER
     assert pv.type_consistent is True
 
 
@@ -283,7 +284,7 @@ def test_multivariate_square_root_is_proven_narrows():
     )
     assert pv.relation == "narrows"
     assert pv.method == "symbolic"
-    assert pv.tier is Tier.GOLD
+    assert pv.tier is Tier.SILVER
 
 
 def test_principal_root_simplification_is_verified():
