@@ -361,13 +361,21 @@ class TestCompoundDeltaSymbols:
         assert variables == ["Delta_v_e", "a", "t"]
         assert "Delta" not in script.replace("Delta_v_e", "")
 
-    def test_name_matches_semantic_graph_node_id(self):
+    @pytest.mark.parametrize("latex", [
+        r"\Delta v = v_e \log(m_0/m_f)",
+        # Runs of non-identifier characters: a per-character substitution
+        # yields ``Delta_v_a__b`` here where the graph says ``Delta_v_a_b``,
+        # and a name that disagrees is dropped by _compile_view_extras.
+        r"\Delta v_{a, b} = c",
+        r"\Delta v_{(n)} = c",
+        r"\Delta v_e = a t",
+    ])
+    def test_name_matches_semantic_graph_node_id(self, latex):
         """The two LaTeX→SymPy paths must agree on the identifier."""
         from backend.semantic_graph.service import SemanticGraphService
-        graph = SemanticGraphService().latex_to_graph(
-            r"\Delta v = v_e \log(m_0/m_f)")
+        graph = SemanticGraphService().latex_to_graph(latex)
         node_ids = {n.id for n in graph.nodes}
-        _, variables = latex_to_mathjs(r"\Delta v - v_e \log(m_0/m_f)")
+        _, variables = latex_to_mathjs(latex)
         assert set(variables) <= node_ids
 
     def test_literal_theta_placeholder_does_not_collide(self):

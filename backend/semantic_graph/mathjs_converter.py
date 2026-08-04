@@ -23,6 +23,9 @@ from sympy.core.function import AppliedUndef
 from sympy.parsing.latex import parse_latex
 from sympy.printing.jscode import jscode
 
+# Tiny standalone module — no cross-import of the heavy translator.
+from backend.semantic_graph.id_utils import _slug_id
+
 # ── Constants ──────────────────────────────────────────────────────────
 
 # Symbols that ``parse_latex`` emits as plain ``Symbol`` instances but
@@ -142,12 +145,21 @@ def jscode_to_mathjs(js_code: str) -> str:
 def _clean_placeholder_name(latex: str) -> str:
     """Turn an override's original LaTeX into a bare mathjs identifier.
 
-    ``v_{\\text{rms}}`` → ``v_rms``, ``\\Delta v`` → ``Delta_v`` — the
-    same names the semantic-graph pipeline gives its nodes.
+    ``v_{\\text{rms}}`` → ``v_rms``, ``\\Delta v`` → ``Delta_v``.
+
+    Delegates to :func:`_slug_id`, the same function that mints semantic
+    graph node ids, so "the two paths agree on the name" holds by
+    construction rather than by two implementations resembling each
+    other. They did not: a hand-rolled per-character substitution turns
+    ``\\Delta v_{a, b}`` into ``Delta_v_a__b`` where the graph says
+    ``Delta_v_a_b``, and a name that disagrees is silently dropped
+    downstream by ``_compile_view_extras``.
+
+    Only the font-command unwrap is done here — ``_slug_id`` handles
+    ``\\text`` but not ``\\mathrm``/``\\mathit``.
     """
-    clean = re.sub(r"\\(?:text|mathrm|mathit)\{([^{}]*)\}", r"\1", latex)
-    clean = clean.replace("\\", "").replace("{", "").replace("}", "")
-    return re.sub(r"[^A-Za-z0-9_]", "_", clean).strip("_")
+    return _slug_id(
+        re.sub(r"\\(?:mathrm|mathit)\{([^{}]*)\}", r"\1", latex))
 
 
 def _protect_subscripts(latex: str) -> tuple[str, dict]:
