@@ -336,3 +336,60 @@ def test_function_argument_does_not_swallow_the_product():
     b_, t, omega = sympy.symbols("b t omega")
     assert latex_to_sympy(r"e^{-b t} \cos{\omega t}") == (
         sympy.exp(-b_ * t) * sympy.cos(omega * t))
+
+
+# ── compound Δ-symbols (issue #531) ────────────────────────────────────
+
+class TestCompoundDeltaSymbols:
+    r"""``\Delta v`` is one symbol, not the product ``Delta * v``.
+
+    Left split, the phantom ``Delta`` gets its own slider and the chart
+    sweeps ``v`` — a different expression than the one on screen.
+    """
+
+    def test_tsiolkovsky_residual_has_no_phantom_delta(self):
+        script, variables = latex_to_mathjs(r"\Delta v - v_e \log(m_0/m_f)")
+        assert variables == ["Delta_v", "m_0", "m_f", "v_e"]
+        assert "Delta*v" not in script
+
+    def test_upper_and_lowercase_delta(self):
+        _, variables = latex_to_mathjs(r"\Delta t + \delta x")
+        assert variables == ["Delta_t", "delta_x"]
+
+    def test_subscripted_operand_stays_whole(self):
+        script, variables = latex_to_mathjs(r"\Delta v_e = a t")
+        assert variables == ["Delta_v_e", "a", "t"]
+        assert "Delta" not in script.replace("Delta_v_e", "")
+
+    def test_name_matches_semantic_graph_node_id(self):
+        """The two LaTeX→SymPy paths must agree on the identifier."""
+        from backend.semantic_graph.service import SemanticGraphService
+        graph = SemanticGraphService().latex_to_graph(
+            r"\Delta v = v_e \log(m_0/m_f)")
+        node_ids = {n.id for n in graph.nodes}
+        _, variables = latex_to_mathjs(r"\Delta v - v_e \log(m_0/m_f)")
+        assert set(variables) <= node_ids
+
+    def test_literal_theta_placeholder_does_not_collide(self):
+        r"""A source ``\Theta_{0}`` must not be absorbed by the collapser."""
+        _, variables = latex_to_mathjs(r"\Theta_{0} + \Delta v")
+        assert variables == ["Delta_v", "Theta_0"]
+
+
+def test_sizing_command_is_not_read_as_a_function_argument():
+    r"""``\log\left(...\right)`` must not become ``\log(\left)(...)``.
+
+    The bare-argument branch of ``_parenthesize_function_args`` used to
+    match any ``\cmd``, so it grabbed the sizing command and produced
+    LaTeX that does not parse — dropping an expression the reader can
+    see on screen. Found while fixing #531.
+    """
+    script, variables = latex_to_mathjs(
+        r"\Delta v = v_e \cdot \log\left(\frac{m_0}{m_f}\right)")
+    assert variables == ["Delta_v", "m_0", "m_f", "v_e"]
+    assert "log(m_0 / m_f)" in script.replace("m_0/m_f", "m_0 / m_f")
+    # the genuine bare-argument case still works
+    from backend.semantic_graph.mathjs_converter import latex_to_sympy
+    import sympy
+    a, phi = sympy.symbols("a phi")
+    assert latex_to_sympy(r"\cos\phi \cdot a") == a * sympy.cos(phi)
