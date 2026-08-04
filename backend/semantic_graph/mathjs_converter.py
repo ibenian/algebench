@@ -23,6 +23,9 @@ from sympy.core.function import AppliedUndef
 from sympy.parsing.latex import parse_latex
 from sympy.printing.jscode import jscode
 
+# Tiny standalone module — no cross-import of the heavy translator.
+from backend.semantic_graph.id_utils import _slug_id
+
 # ── Constants ──────────────────────────────────────────────────────────
 
 # Symbols that ``parse_latex`` emits as plain ``Symbol`` instances but
@@ -139,25 +142,49 @@ def jscode_to_mathjs(js_code: str) -> str:
 
 # ── LaTeX → mathjs full pipeline ──────────────────────────────────────
 
+def _clean_placeholder_name(latex: str) -> str:
+    """Turn an override's original LaTeX into a bare mathjs identifier.
+
+    ``v_{\\text{rms}}`` → ``v_rms``, ``\\Delta v`` → ``Delta_v``.
+
+    Delegates to :func:`_slug_id`, the same function that mints semantic
+    graph node ids, so "the two paths agree on the name" holds by
+    construction rather than by two implementations resembling each
+    other. They did not: a hand-rolled per-character substitution turns
+    ``\\Delta v_{a, b}`` into ``Delta_v_a__b`` where the graph says
+    ``Delta_v_a_b``, and a name that disagrees is silently dropped
+    downstream by ``_compile_view_extras``.
+
+    Only the font-command unwrap is done here — ``_slug_id`` handles
+    ``\\text`` but not ``\\mathrm``/``\\mathit``.
+    """
+    return _slug_id(
+        re.sub(r"\\(?:mathrm|mathit)\{([^{}]*)\}", r"\1", latex))
+
+
 def _protect_subscripts(latex: str) -> tuple[str, dict]:
-    """Keep multi-character subscripts whole through ``parse_latex``.
+    """Keep compound symbols and multi-char subscripts whole through parsing.
 
     ``parse_latex`` reads ``g_{feet}`` as ``g`` times an implicit product
     ``f·e·e·t``, so the symbol arrives named ``g_f*(e*(e*t))`` — a name
     that then leaks into chart scripts, variable lists and feature LaTeX.
+    ``\\Delta v`` fares no better: it becomes ``Symbol('Delta') * v``, so
+    a phantom ``Delta`` gets its own slider and the plotted residual is a
+    different expression entirely (issue #531).
 
-    The graph translator already solved this for its own pipeline, so
-    reuse its collapser (which also handles Greek indices like
-    ``g_{\\mu\\nu}`` and refuses to touch large-operator subscripts such
-    as ``\\sum_{...}``) and map the ``\\Xi_{N}`` placeholders back onto
-    clean identifier symbols here.
+    The graph translator already solved both for its own pipeline, so
+    reuse its collapsers (which also handle Greek indices like
+    ``g_{\\mu\\nu}`` and refuse to touch large-operator subscripts such
+    as ``\\sum_{...}``) and map the ``\\Theta_{N}`` / ``\\Xi_{N}``
+    placeholders back onto clean identifier symbols here.
 
     Returns the rewritten LaTeX and the ``{placeholder: real}`` symbol map.
     """
     # Imported lazily: sympy_translator imports heavy graph machinery, and
     # this module is also used from lightweight contexts.
     from backend.semantic_graph.sympy_translator import (
-        _collapse_multichar_subscripts, _strip_tracked_accents,
+        _collapse_compound_symbols, _collapse_multichar_subscripts,
+        _strip_tracked_accents,
     )
 
     # ``parse_latex`` reads an accent command as a factor: ``\hat{n}``
@@ -177,14 +204,18 @@ def _protect_subscripts(latex: str) -> tuple[str, dict]:
     # (``g_{\text{feet}}``); unwrap them so the collapser sees plain letters.
     # The graph pipeline handles free-standing \text via its own pass.
     latex = re.sub(r"_\{\\(?:text|mathrm|mathit)\{([^{}]*)\}\}", r"_{\1}", latex)
-    rewritten, overrides = _collapse_multichar_subscripts(latex)
+
+    # Compound identifiers first, matching the graph pipeline's order, so
+    # ``\Delta v_{e}`` is taken whole rather than split at the subscript.
+    rewritten, overrides = _collapse_compound_symbols(latex)
+    rewritten, subscript_overrides = _collapse_multichar_subscripts(rewritten)
+    overrides.update(subscript_overrides)
+
     mapping: dict[sympy.Symbol, sympy.Symbol] = {}
     for placeholder, meta in overrides.items():
-        # meta["latex"] is the original token, e.g. ``v_{\text{rms}}``.
-        clean = re.sub(r"\\(?:text|mathrm|mathit)\{([^{}]*)\}", r"\1",
-                       meta.get("latex", ""))
-        clean = clean.replace("\\", "").replace("{", "").replace("}", "")
-        clean = re.sub(r"[^A-Za-z0-9_]", "_", clean).strip("_")
+        # meta["latex"] is the original token, e.g. ``v_{\text{rms}}``
+        # or ``\Delta v``.
+        clean = _clean_placeholder_name(meta.get("latex", ""))
         if clean:
             mapping[sympy.Symbol(placeholder)] = sympy.Symbol(clean)
     return rewritten, mapping
@@ -195,12 +226,23 @@ _FN_NAMES = (
     "sin|cos|tan|sec|csc|cot|sinh|cosh|tanh|coth|sech|csch|"
     "arcsin|arccos|arctan|ln|log|exp"
 )
+# A bare argument is a single letter or a Greek-letter command — and
+# nothing else. The whitelist matters: matching any ``\cmd`` swallows the
+# sizing command in ``\log\left(\frac{m_0}{m_f}\right)``, rewriting it to
+# ``\log(\left)(...)`` — which does not parse at all, so an expression the
+# reader can see on screen is dropped entirely (found via #531).
+_GREEK_ARG = (
+    "alpha|beta|gamma|delta|epsilon|varepsilon|zeta|eta|theta|vartheta|"
+    "iota|kappa|lambda|mu|nu|xi|omicron|pi|varpi|rho|varrho|sigma|"
+    "varsigma|tau|upsilon|phi|varphi|chi|psi|omega|"
+    "Gamma|Delta|Theta|Lambda|Xi|Pi|Sigma|Upsilon|Phi|Psi|Omega|ell|hbar"
+)
 # ``\cos\phi`` or ``\cos{\phi}`` followed by more factors. Not matched
 # when a power follows the name (``\cos^2\phi``) or when the argument is
 # already parenthesised.
 _BARE_FN_ARG_RE = re.compile(
     rf"\\({_FN_NAMES})(?!\^)\s*"
-    rf"(?:\{{([^{{}}]*)\}}|(\\[A-Za-z]+|[A-Za-z]))"
+    rf"(?:\{{([^{{}}]*)\}}|(\\(?:{_GREEK_ARG})(?![A-Za-z])|[A-Za-z]))"
     rf"((?:_\{{[^{{}}]*\}}|_[A-Za-z0-9])?)"
 )
 

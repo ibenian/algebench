@@ -1683,13 +1683,20 @@ def _collapse_compound_symbols(latex: str) -> tuple[str, dict[str, dict[str, str
     overrides: dict[str, dict[str, str]] = {}
     seen: dict[str, int] = {}
 
+    # A source expression may legitimately contain ``\Theta_{0}`` (an
+    # initial angle, say).  Start numbering above any such literal so a
+    # generated placeholder never lands on it — ``\Theta_{0} + \Delta v``
+    # must not collapse into ``2 \Delta v``.
+    _literals = [int(n) for n in re.findall(r"\\Theta_\{(\d+)\}", latex)]
+    base = max(_literals) + 1 if _literals else 0
+
     def repl(m: re.Match) -> str:
         prefix_cmd = m.group(1)
         operand = m.group(2)
         suffix = m.group(3) or ""
         compound = f"{prefix_cmd} {operand}{suffix}"
         if compound not in seen:
-            idx = len(seen)
+            idx = base + len(seen)
             seen[compound] = idx
             overrides[f"Theta_{{{idx}}}"] = {
                 "latex": compound,
@@ -1741,7 +1748,7 @@ def _collapse_compound_symbols(latex: str) -> tuple[str, dict[str, dict[str, str
             sub = "_{" + sub[1:] + "}"
         canonical = cmd + sub
         if full not in seen:
-            idx = len(seen)
+            idx = base + len(seen)
             seen[full] = idx
             overrides[f"Theta_{{{idx}}}"] = {
                 "latex": canonical,
