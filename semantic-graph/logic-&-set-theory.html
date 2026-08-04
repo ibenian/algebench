@@ -13,7 +13,8 @@
   "imports": {
     "/labels.js": "data:text/javascript,export function makeAiAskButton(){return document.createElement('span')}",
     "/expr.js": "data:text/javascript,const m=math.create(math.all);m.import({binomial:(n,k)=>m.combinations(n,k),erfc:x=>1-m.erf(x),beta:(a,b)=>m.gamma(a)*m.gamma(b)/m.gamma(a%2Bb),conjugate:x=>m.conj(x)});export function compileExpr(s){return m.compile(s)}export function evalExpr(c,t,opts){const scope=opts%26%26opts.extraScope?{...opts.extraScope}:{};return c.evaluate(scope)}",
-    "/proof-animation/dock-seq.js": "data:text/javascript,let n=0;export const nextDockSeq=()=>%2B%2Bn"
+    "/proof-animation/dock-seq.js": "data:text/javascript,let n=0;export const nextDockSeq=()=>%2B%2Bn",
+    "/graph-panel/term-resolve.js": "./term-resolve.js?v=1785816320"
   }
 }</script>
 <script>
@@ -1050,7 +1051,7 @@ svg.d3-semantic-graph {
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-07-16 04:24 UTC &middot; theme: default-dark &middot; 14 expressions</div>
+<div class="report-meta">Generated 2026-08-04 04:06 UTC &middot; theme: default-dark &middot; 14 expressions</div>
 <div class="section-title">Logic & Set Theory (14 expressions)</div>
 <div class="row">
   <div>
@@ -3428,7 +3429,7 @@ svg.d3-semantic-graph {
   linkStyle 7 stroke:#aaa,stroke-width:2px
   linkStyle 8 stroke:#aaa,stroke-width:2px
 </pre></div></div>
-  <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy — ungroundable</span></div><pre>UngroundableGraph: function 'neg'</pre></div></div>
+  <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy — ungroundable</span></div><pre>TypeError: expecting bool or Boolean, not `neg(P)`.</pre></div></div>
   <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>iff(P*neg)*lor(Q*neg)*neg(P*Q*land)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>P, Q, land, neg</pre></div></div>
   <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__neg_1&quot;,&quot;type&quot;:&quot;function&quot;,&quot;latex&quot;:&quot;\\neg&quot;,&quot;op&quot;:&quot;neg&quot;,&quot;subexpr&quot;:&quot;\\neg (P \\land Q)&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;neg(P*Q*land)&quot;,&quot;variables&quot;:[&quot;P&quot;,&quot;Q&quot;,&quot;land&quot;]}},{&quot;id&quot;:&quot;P&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;P&quot;,&quot;subexpr&quot;:&quot;P&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;P&quot;,&quot;variables&quot;:[&quot;P&quot;]}},{&quot;id&quot;:&quot;Q&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;Q&quot;,&quot;subexpr&quot;:&quot;Q&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Q&quot;,&quot;variables&quot;:[&quot;Q&quot;]}},{&quot;id&quot;:&quot;__conjunction_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;emoji&quot;:&quot;∧&quot;,&quot;op&quot;:&quot;conjunction&quot;,&quot;subexpr&quot;:&quot;P \\land Q&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;P*Q*land&quot;,&quot;variables&quot;:[&quot;P&quot;,&quot;Q&quot;,&quot;land&quot;]}},{&quot;id&quot;:&quot;__neg_4&quot;,&quot;type&quot;:&quot;function&quot;,&quot;latex&quot;:&quot;\\neg&quot;,&quot;op&quot;:&quot;neg&quot;,&quot;subexpr&quot;:&quot;\\neg P &quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;P*neg&quot;,&quot;variables&quot;:[&quot;P&quot;,&quot;neg&quot;]}},{&quot;id&quot;:&quot;__neg_5&quot;,&quot;type&quot;:&quot;function&quot;,&quot;latex&quot;:&quot;\\neg&quot;,&quot;op&quot;:&quot;neg&quot;,&quot;subexpr&quot;:&quot;\\neg Q &quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Q*neg&quot;,&quot;variables&quot;:[&quot;Q&quot;,&quot;neg&quot;]}},{&quot;id&quot;:&quot;__disjunction_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;emoji&quot;:&quot;∨&quot;,&quot;op&quot;:&quot;disjunction&quot;,&quot;subexpr&quot;:&quot;\\neg P  \\lor \\neg Q &quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;P*Q*lor*pow(neg, 2)&quot;,&quot;variables&quot;:[&quot;P&quot;,&quot;Q&quot;,&quot;lor&quot;,&quot;neg&quot;]}},{&quot;id&quot;:&quot;__iff_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;label&quot;:&quot;if and only if&quot;,&quot;emoji&quot;:&quot;⇔&quot;,&quot;op&quot;:&quot;iff&quot;,&quot;subexpr&quot;:&quot;\\neg (P \\land Q) \\iff \\neg P  \\lor \\neg Q &quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;P*Q*iff*lor*pow(neg, 2)*neg(P*Q*land)&quot;,&quot;variables&quot;:[&quot;P&quot;,&quot;Q&quot;,&quot;iff&quot;,&quot;land&quot;,&quot;lor&quot;,&quot;neg&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;P&quot;,&quot;to&quot;:&quot;__conjunction_2&quot;},{&quot;from&quot;:&quot;Q&quot;,&quot;to&quot;:&quot;__conjunction_2&quot;},{&quot;from&quot;:&quot;__conjunction_2&quot;,&quot;to&quot;:&quot;__neg_1&quot;},{&quot;from&quot;:&quot;P&quot;,&quot;to&quot;:&quot;__neg_4&quot;},{&quot;from&quot;:&quot;__neg_4&quot;,&quot;to&quot;:&quot;__disjunction_3&quot;},{&quot;from&quot;:&quot;Q&quot;,&quot;to&quot;:&quot;__neg_5&quot;},{&quot;from&quot;:&quot;__neg_5&quot;,&quot;to&quot;:&quot;__disjunction_3&quot;},{&quot;from&quot;:&quot;__neg_1&quot;,&quot;to&quot;:&quot;__iff_6&quot;},{&quot;from&quot;:&quot;__disjunction_3&quot;,&quot;to&quot;:&quot;__iff_6&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
@@ -3803,8 +3804,8 @@ document.querySelectorAll('.row-copy-btn').forEach(btn => {
 })();
 
 Promise.all([
-  import('./d3-semantic-graph.js?v=1784175818'),
-  import('./sg-chart.js?v=1784175818'),
+  import('./d3-semantic-graph.js?v=1785816320'),
+  import('./sg-chart.js?v=1785816320'),
 ]).then(function(mods) {
   var D3SemanticGraphRenderer = mods[0].D3SemanticGraphRenderer;
   var SgChartManager = mods[1].SgChartManager;
@@ -3844,6 +3845,12 @@ Promise.all([
         console.error('D3 panel render error:', err);
       }
     });
+  });
+}).catch(function(err) {
+  console.error('D3/chart module load error — D3 buttons disabled:', err);
+  document.querySelectorAll('.row-toggle-d3').forEach(function(btn) {
+    btn.disabled = true;
+    btn.title = 'D3 module failed to load: ' + err.message;
   });
 });
 </script>

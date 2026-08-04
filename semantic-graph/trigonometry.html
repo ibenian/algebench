@@ -13,7 +13,8 @@
   "imports": {
     "/labels.js": "data:text/javascript,export function makeAiAskButton(){return document.createElement('span')}",
     "/expr.js": "data:text/javascript,const m=math.create(math.all);m.import({binomial:(n,k)=>m.combinations(n,k),erfc:x=>1-m.erf(x),beta:(a,b)=>m.gamma(a)*m.gamma(b)/m.gamma(a%2Bb),conjugate:x=>m.conj(x)});export function compileExpr(s){return m.compile(s)}export function evalExpr(c,t,opts){const scope=opts%26%26opts.extraScope?{...opts.extraScope}:{};return c.evaluate(scope)}",
-    "/proof-animation/dock-seq.js": "data:text/javascript,let n=0;export const nextDockSeq=()=>%2B%2Bn"
+    "/proof-animation/dock-seq.js": "data:text/javascript,let n=0;export const nextDockSeq=()=>%2B%2Bn",
+    "/graph-panel/term-resolve.js": "./term-resolve.js?v=1785816320"
   }
 }</script>
 <script>
@@ -1050,7 +1051,7 @@ svg.d3-semantic-graph {
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-07-16 04:24 UTC &middot; theme: default-dark &middot; 16 expressions</div>
+<div class="report-meta">Generated 2026-08-04 04:06 UTC &middot; theme: default-dark &middot; 16 expressions</div>
 <div class="section-title">Trigonometry (16 expressions)</div>
 <div class="row">
   <div>
@@ -2802,8 +2803,9 @@ svg.d3-semantic-graph {
       "op": "equals",
       "subexpr": "\\sinh(x) = y",
       "chartScript": {
-        "script": "-y + sinh(x)",
+        "script": "x*sin(h) - y",
         "variables": [
+          "h",
           "x",
           "y"
         ]
@@ -2816,8 +2818,9 @@ svg.d3-semantic-graph {
       "op": "sinh",
       "subexpr": "\\sinh{\\left(x \\right)}",
       "chartScript": {
-        "script": "sinh(x)",
+        "script": "x*sin(h)",
         "variables": [
+          "h",
           "x"
         ]
       }
@@ -2888,8 +2891,8 @@ svg.d3-semantic-graph {
   linkStyle 2 stroke:#aaa,stroke-width:2px
 </pre></div></div>
   <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(sinh(x), y)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(sinh(Symbol('x')), Symbol('y'))</pre></div></div>
-  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>-y + sinh(x)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>x, y</pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\sinh(x) = y&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-y + sinh(x)&quot;,&quot;variables&quot;:[&quot;x&quot;,&quot;y&quot;]}},{&quot;id&quot;:&quot;__sinh_2&quot;,&quot;type&quot;:&quot;function&quot;,&quot;latex&quot;:&quot;\\sinh&quot;,&quot;op&quot;:&quot;sinh&quot;,&quot;subexpr&quot;:&quot;\\sinh{\\left(x \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;sinh(x)&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;y&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;y&quot;,&quot;subexpr&quot;:&quot;y&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;y&quot;,&quot;variables&quot;:[&quot;y&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__sinh_2&quot;},{&quot;from&quot;:&quot;__sinh_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;y&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>x*sin(h) - y</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>h, x, y</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\sinh(x) = y&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x*sin(h) - y&quot;,&quot;variables&quot;:[&quot;h&quot;,&quot;x&quot;,&quot;y&quot;]}},{&quot;id&quot;:&quot;__sinh_2&quot;,&quot;type&quot;:&quot;function&quot;,&quot;latex&quot;:&quot;\\sinh&quot;,&quot;op&quot;:&quot;sinh&quot;,&quot;subexpr&quot;:&quot;\\sinh{\\left(x \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x*sin(h)&quot;,&quot;variables&quot;:[&quot;h&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;y&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;y&quot;,&quot;subexpr&quot;:&quot;y&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;y&quot;,&quot;variables&quot;:[&quot;y&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__sinh_2&quot;},{&quot;from&quot;:&quot;__sinh_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;y&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -2937,8 +2940,9 @@ svg.d3-semantic-graph {
       "op": "equals",
       "subexpr": "\\cosh(x) = y",
       "chartScript": {
-        "script": "-y + cosh(x)",
+        "script": "x*cos(h) - y",
         "variables": [
+          "h",
           "x",
           "y"
         ]
@@ -2951,8 +2955,9 @@ svg.d3-semantic-graph {
       "op": "cosh",
       "subexpr": "\\cosh{\\left(x \\right)}",
       "chartScript": {
-        "script": "cosh(x)",
+        "script": "x*cos(h)",
         "variables": [
+          "h",
           "x"
         ]
       }
@@ -3023,8 +3028,8 @@ svg.d3-semantic-graph {
   linkStyle 2 stroke:#aaa,stroke-width:2px
 </pre></div></div>
   <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(cosh(x), y)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(cosh(Symbol('x')), Symbol('y'))</pre></div></div>
-  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>-y + cosh(x)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>x, y</pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\cosh(x) = y&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-y + cosh(x)&quot;,&quot;variables&quot;:[&quot;x&quot;,&quot;y&quot;]}},{&quot;id&quot;:&quot;__cosh_2&quot;,&quot;type&quot;:&quot;function&quot;,&quot;latex&quot;:&quot;\\cosh&quot;,&quot;op&quot;:&quot;cosh&quot;,&quot;subexpr&quot;:&quot;\\cosh{\\left(x \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;cosh(x)&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;y&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;y&quot;,&quot;subexpr&quot;:&quot;y&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;y&quot;,&quot;variables&quot;:[&quot;y&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__cosh_2&quot;},{&quot;from&quot;:&quot;__cosh_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;y&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>x*cos(h) - y</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>h, x, y</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\cosh(x) = y&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x*cos(h) - y&quot;,&quot;variables&quot;:[&quot;h&quot;,&quot;x&quot;,&quot;y&quot;]}},{&quot;id&quot;:&quot;__cosh_2&quot;,&quot;type&quot;:&quot;function&quot;,&quot;latex&quot;:&quot;\\cosh&quot;,&quot;op&quot;:&quot;cosh&quot;,&quot;subexpr&quot;:&quot;\\cosh{\\left(x \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x*cos(h)&quot;,&quot;variables&quot;:[&quot;h&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;y&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;y&quot;,&quot;subexpr&quot;:&quot;y&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;y&quot;,&quot;variables&quot;:[&quot;y&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__cosh_2&quot;},{&quot;from&quot;:&quot;__cosh_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;y&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -3072,8 +3077,9 @@ svg.d3-semantic-graph {
       "op": "equals",
       "subexpr": "\\tanh(x) = y",
       "chartScript": {
-        "script": "-y + tanh(x)",
+        "script": "x*tan(h) - y",
         "variables": [
+          "h",
           "x",
           "y"
         ]
@@ -3086,8 +3092,9 @@ svg.d3-semantic-graph {
       "op": "tanh",
       "subexpr": "\\tanh{\\left(x \\right)}",
       "chartScript": {
-        "script": "tanh(x)",
+        "script": "x*tan(h)",
         "variables": [
+          "h",
           "x"
         ]
       }
@@ -3158,8 +3165,8 @@ svg.d3-semantic-graph {
   linkStyle 2 stroke:#aaa,stroke-width:2px
 </pre></div></div>
   <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(tanh(x), y)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(tanh(Symbol('x')), Symbol('y'))</pre></div></div>
-  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>-y + tanh(x)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>x, y</pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\tanh(x) = y&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-y + tanh(x)&quot;,&quot;variables&quot;:[&quot;x&quot;,&quot;y&quot;]}},{&quot;id&quot;:&quot;__tanh_2&quot;,&quot;type&quot;:&quot;function&quot;,&quot;latex&quot;:&quot;\\tanh&quot;,&quot;op&quot;:&quot;tanh&quot;,&quot;subexpr&quot;:&quot;\\tanh{\\left(x \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;tanh(x)&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;y&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;y&quot;,&quot;subexpr&quot;:&quot;y&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;y&quot;,&quot;variables&quot;:[&quot;y&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__tanh_2&quot;},{&quot;from&quot;:&quot;__tanh_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;y&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>x*tan(h) - y</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>h, x, y</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\tanh(x) = y&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x*tan(h) - y&quot;,&quot;variables&quot;:[&quot;h&quot;,&quot;x&quot;,&quot;y&quot;]}},{&quot;id&quot;:&quot;__tanh_2&quot;,&quot;type&quot;:&quot;function&quot;,&quot;latex&quot;:&quot;\\tanh&quot;,&quot;op&quot;:&quot;tanh&quot;,&quot;subexpr&quot;:&quot;\\tanh{\\left(x \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x*tan(h)&quot;,&quot;variables&quot;:[&quot;h&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;y&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;y&quot;,&quot;subexpr&quot;:&quot;y&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;y&quot;,&quot;variables&quot;:[&quot;y&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__tanh_2&quot;},{&quot;from&quot;:&quot;__tanh_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;y&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -3627,7 +3634,7 @@ svg.d3-semantic-graph {
   linkStyle 3 stroke:#aaa,stroke-width:2px
   linkStyle 4 stroke:#42a5f5,stroke-width:1px
 </pre></div></div>
-  <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy — ungroundable</span></div><pre>UngroundableGraph: function 'csc'</pre></div></div>
+  <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(csc(x), 1/sin(x))</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(Function('csc')(Symbol('x')), Pow(sin(Symbol('x')), Integer(-1)))</pre></div></div>
   <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>(1/sin(x)) - 1/sin(x)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>x</pre></div></div>
   <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\csc(x) = \\frac{1}{\\sin(x)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;(1/sin(x)) - 1/sin(x)&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;__csc_2&quot;,&quot;type&quot;:&quot;function&quot;,&quot;latex&quot;:&quot;\\csc&quot;,&quot;op&quot;:&quot;csc&quot;,&quot;subexpr&quot;:&quot;\\csc{\\left(x \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;(1/sin(x))&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;__power_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{\\sin{\\left(x \\right)}}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1/sin(x)&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;__sin_4&quot;,&quot;type&quot;:&quot;function&quot;,&quot;latex&quot;:&quot;\\sin&quot;,&quot;op&quot;:&quot;sin&quot;,&quot;subexpr&quot;:&quot;\\sin{\\left(x \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;sin(x)&quot;,&quot;variables&quot;:[&quot;x&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__csc_2&quot;},{&quot;from&quot;:&quot;__csc_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__sin_4&quot;},{&quot;from&quot;:&quot;__sin_4&quot;,&quot;to&quot;:&quot;__power_3&quot;},{&quot;from&quot;:&quot;__power_3&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
@@ -3794,7 +3801,7 @@ svg.d3-semantic-graph {
   linkStyle 3 stroke:#aaa,stroke-width:2px
   linkStyle 4 stroke:#42a5f5,stroke-width:1px
 </pre></div></div>
-  <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy — ungroundable</span></div><pre>UngroundableGraph: function 'sec'</pre></div></div>
+  <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(sec(x), 1/cos(x))</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(Function('sec')(Symbol('x')), Pow(cos(Symbol('x')), Integer(-1)))</pre></div></div>
   <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>(1/cos(x)) - 1/cos(x)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>x</pre></div></div>
   <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\sec(x) = \\frac{1}{\\cos(x)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;(1/cos(x)) - 1/cos(x)&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;__sec_2&quot;,&quot;type&quot;:&quot;function&quot;,&quot;latex&quot;:&quot;\\sec&quot;,&quot;op&quot;:&quot;sec&quot;,&quot;subexpr&quot;:&quot;\\sec{\\left(x \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;(1/cos(x))&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;__power_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{\\cos{\\left(x \\right)}}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1/cos(x)&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;__cos_4&quot;,&quot;type&quot;:&quot;function&quot;,&quot;latex&quot;:&quot;\\cos&quot;,&quot;op&quot;:&quot;cos&quot;,&quot;subexpr&quot;:&quot;\\cos{\\left(x \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;cos(x)&quot;,&quot;variables&quot;:[&quot;x&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__sec_2&quot;},{&quot;from&quot;:&quot;__sec_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__cos_4&quot;},{&quot;from&quot;:&quot;__cos_4&quot;,&quot;to&quot;:&quot;__power_3&quot;},{&quot;from&quot;:&quot;__power_3&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
@@ -3961,7 +3968,7 @@ svg.d3-semantic-graph {
   linkStyle 3 stroke:#aaa,stroke-width:2px
   linkStyle 4 stroke:#42a5f5,stroke-width:1px
 </pre></div></div>
-  <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy — ungroundable</span></div><pre>UngroundableGraph: function 'cot'</pre></div></div>
+  <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(cot(x), 1/tan(x))</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(Function('cot')(Symbol('x')), Pow(tan(Symbol('x')), Integer(-1)))</pre></div></div>
   <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>(1/tan(x)) - 1/tan(x)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>x</pre></div></div>
   <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\cot(x) = \\frac{1}{\\tan(x)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;(1/tan(x)) - 1/tan(x)&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;__cot_2&quot;,&quot;type&quot;:&quot;function&quot;,&quot;latex&quot;:&quot;\\cot&quot;,&quot;op&quot;:&quot;cot&quot;,&quot;subexpr&quot;:&quot;\\cot{\\left(x \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;(1/tan(x))&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;__power_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{\\tan{\\left(x \\right)}}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1/tan(x)&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;__tan_4&quot;,&quot;type&quot;:&quot;function&quot;,&quot;latex&quot;:&quot;\\tan&quot;,&quot;op&quot;:&quot;tan&quot;,&quot;subexpr&quot;:&quot;\\tan{\\left(x \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;tan(x)&quot;,&quot;variables&quot;:[&quot;x&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__cot_2&quot;},{&quot;from&quot;:&quot;__cot_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__tan_4&quot;},{&quot;from&quot;:&quot;__tan_4&quot;,&quot;to&quot;:&quot;__power_3&quot;},{&quot;from&quot;:&quot;__power_3&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;}}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
@@ -4026,8 +4033,8 @@ document.querySelectorAll('.row-copy-btn').forEach(btn => {
 })();
 
 Promise.all([
-  import('./d3-semantic-graph.js?v=1784175818'),
-  import('./sg-chart.js?v=1784175818'),
+  import('./d3-semantic-graph.js?v=1785816320'),
+  import('./sg-chart.js?v=1785816320'),
 ]).then(function(mods) {
   var D3SemanticGraphRenderer = mods[0].D3SemanticGraphRenderer;
   var SgChartManager = mods[1].SgChartManager;
@@ -4067,6 +4074,12 @@ Promise.all([
         console.error('D3 panel render error:', err);
       }
     });
+  });
+}).catch(function(err) {
+  console.error('D3/chart module load error — D3 buttons disabled:', err);
+  document.querySelectorAll('.row-toggle-d3').forEach(function(btn) {
+    btn.disabled = true;
+    btn.title = 'D3 module failed to load: ' + err.message;
   });
 });
 </script>

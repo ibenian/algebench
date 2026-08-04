@@ -13,7 +13,8 @@
   "imports": {
     "/labels.js": "data:text/javascript,export function makeAiAskButton(){return document.createElement('span')}",
     "/expr.js": "data:text/javascript,const m=math.create(math.all);m.import({binomial:(n,k)=>m.combinations(n,k),erfc:x=>1-m.erf(x),beta:(a,b)=>m.gamma(a)*m.gamma(b)/m.gamma(a%2Bb),conjugate:x=>m.conj(x)});export function compileExpr(s){return m.compile(s)}export function evalExpr(c,t,opts){const scope=opts%26%26opts.extraScope?{...opts.extraScope}:{};return c.evaluate(scope)}",
-    "/proof-animation/dock-seq.js": "data:text/javascript,let n=0;export const nextDockSeq=()=>%2B%2Bn"
+    "/proof-animation/dock-seq.js": "data:text/javascript,let n=0;export const nextDockSeq=()=>%2B%2Bn",
+    "/graph-panel/term-resolve.js": "./term-resolve.js?v=1785816320"
   }
 }</script>
 <script>
@@ -1050,7 +1051,7 @@ svg.d3-semantic-graph {
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-07-16 04:24 UTC &middot; theme: default-dark &middot; 16 expressions</div>
+<div class="report-meta">Generated 2026-08-04 04:06 UTC &middot; theme: default-dark &middot; 16 expressions</div>
 <div class="section-title">Quantum Mechanics (16 expressions)</div>
 <div class="row">
   <div>
@@ -1101,10 +1102,9 @@ svg.d3-semantic-graph {
       "op": "multiply",
       "subexpr": "\\langle \\phi | \\hat{A} | \\psi \\rangle",
       "chartScript": {
-        "script": "A*hat*&lt;phi|psi&gt;",
+        "script": "A*&lt;phi|psi&gt;",
         "variables": [
           "A",
-          "hat",
           "phi",
           "psi"
         ]
@@ -1128,10 +1128,9 @@ svg.d3-semantic-graph {
       "op": "multiply",
       "subexpr": "\\hat{A} {\\left|\\psi\\right\\rangle }",
       "chartScript": {
-        "script": "A*hat*|psi&gt;",
+        "script": "A*|psi&gt;",
         "variables": [
           "A",
-          "hat",
           "psi"
         ]
       }
@@ -1142,10 +1141,9 @@ svg.d3-semantic-graph {
       "latex": "\\hat{A}",
       "subexpr": "\\hat{A}",
       "chartScript": {
-        "script": "A*hat",
+        "script": "A",
         "variables": [
-          "A",
-          "hat"
+          "A"
         ]
       }
     },
@@ -1219,8 +1217,8 @@ svg.d3-semantic-graph {
   linkStyle 3 stroke:#ef5350,stroke-width:3px
 </pre></div></div>
   <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>\hat{A}*&lt;\phi|\psi&gt;</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Mul(Symbol('\\hat{A}'), InnerProduct(Bra(Symbol('\\phi')),Ket(Symbol('\\psi'))))</pre></div></div>
-  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>A*hat*&lt;phi|psi&gt;</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>A, hat, phi, psi</pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__multiply_1&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\langle \\phi | \\hat{A} | \\psi \\rangle&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;A*hat*&lt;phi|psi&gt;&quot;,&quot;variables&quot;:[&quot;A&quot;,&quot;hat&quot;,&quot;phi&quot;,&quot;psi&quot;]}},{&quot;id&quot;:&quot;__bra_2&quot;,&quot;type&quot;:&quot;bra&quot;,&quot;latex&quot;:&quot;\\left\\langle \\phi\\right|&quot;,&quot;subexpr&quot;:&quot;\\left\\langle \\phi\\right|&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;&lt;phi|&quot;,&quot;variables&quot;:[&quot;phi&quot;]}},{&quot;id&quot;:&quot;__multiply_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\hat{A} {\\left|\\psi\\right\\rangle }&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;A*hat*|psi&gt;&quot;,&quot;variables&quot;:[&quot;A&quot;,&quot;hat&quot;,&quot;psi&quot;]}},{&quot;id&quot;:&quot;A&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\hat{A}&quot;,&quot;subexpr&quot;:&quot;\\hat{A}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;A*hat&quot;,&quot;variables&quot;:[&quot;A&quot;,&quot;hat&quot;]}},{&quot;id&quot;:&quot;__ket_4&quot;,&quot;type&quot;:&quot;ket&quot;,&quot;latex&quot;:&quot;\\left|\\psi\\right\\rangle&quot;,&quot;subexpr&quot;:&quot;\\left|\\psi\\right\\rangle&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;|psi&gt;&quot;,&quot;variables&quot;:[&quot;psi&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;__bra_2&quot;,&quot;to&quot;:&quot;__multiply_1&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;A&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__ket_4&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_3&quot;,&quot;to&quot;:&quot;__multiply_1&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;},&quot;domain&quot;:&quot;quantum_mechanics&quot;}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>A*&lt;phi|psi&gt;</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>A, phi, psi</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__multiply_1&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\langle \\phi | \\hat{A} | \\psi \\rangle&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;A*&lt;phi|psi&gt;&quot;,&quot;variables&quot;:[&quot;A&quot;,&quot;phi&quot;,&quot;psi&quot;]}},{&quot;id&quot;:&quot;__bra_2&quot;,&quot;type&quot;:&quot;bra&quot;,&quot;latex&quot;:&quot;\\left\\langle \\phi\\right|&quot;,&quot;subexpr&quot;:&quot;\\left\\langle \\phi\\right|&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;&lt;phi|&quot;,&quot;variables&quot;:[&quot;phi&quot;]}},{&quot;id&quot;:&quot;__multiply_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\hat{A} {\\left|\\psi\\right\\rangle }&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;A*|psi&gt;&quot;,&quot;variables&quot;:[&quot;A&quot;,&quot;psi&quot;]}},{&quot;id&quot;:&quot;A&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\hat{A}&quot;,&quot;subexpr&quot;:&quot;\\hat{A}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;A&quot;,&quot;variables&quot;:[&quot;A&quot;]}},{&quot;id&quot;:&quot;__ket_4&quot;,&quot;type&quot;:&quot;ket&quot;,&quot;latex&quot;:&quot;\\left|\\psi\\right\\rangle&quot;,&quot;subexpr&quot;:&quot;\\left|\\psi\\right\\rangle&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;|psi&gt;&quot;,&quot;variables&quot;:[&quot;psi&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;__bra_2&quot;,&quot;to&quot;:&quot;__multiply_1&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;A&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__ket_4&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_3&quot;,&quot;to&quot;:&quot;__multiply_1&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;},&quot;domain&quot;:&quot;quantum_mechanics&quot;}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -1277,11 +1275,10 @@ svg.d3-semantic-graph {
       "op": "equals",
       "subexpr": "\\hat{A} | a \\rangle = a | a \\rangle",
       "chartScript": {
-        "script": "A*hat*|a&gt; - a*|a&gt;",
+        "script": "A*|a&gt; - a*|a&gt;",
         "variables": [
           "A",
-          "a",
-          "hat"
+          "a"
         ]
       }
     },
@@ -1291,11 +1288,10 @@ svg.d3-semantic-graph {
       "op": "multiply",
       "subexpr": "\\hat{A} {\\left|a\\right\\rangle }",
       "chartScript": {
-        "script": "A*hat*|a&gt;",
+        "script": "A*|a&gt;",
         "variables": [
           "A",
-          "a",
-          "hat"
+          "a"
         ]
       }
     },
@@ -1305,10 +1301,9 @@ svg.d3-semantic-graph {
       "latex": "\\hat{A}",
       "subexpr": "\\hat{A}",
       "chartScript": {
-        "script": "A*hat",
+        "script": "A",
         "variables": [
-          "A",
-          "hat"
+          "A"
         ]
       }
     },
@@ -1432,8 +1427,8 @@ svg.d3-semantic-graph {
   linkStyle 5 stroke:#aaa,stroke-width:2px
 </pre></div></div>
   <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(\hat{A}*|a&gt;, a*|a&gt;)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(Mul(Symbol('\\hat{A}'), Ket(Symbol('a'))), Mul(Symbol('a'), Ket(Symbol('a'))))</pre></div></div>
-  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>A*hat*|a&gt; - a*|a&gt;</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>A, a, hat</pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\hat{A} | a \\rangle = a | a \\rangle&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;A*hat*|a&gt; - a*|a&gt;&quot;,&quot;variables&quot;:[&quot;A&quot;,&quot;a&quot;,&quot;hat&quot;]}},{&quot;id&quot;:&quot;__multiply_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\hat{A} {\\left|a\\right\\rangle }&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;A*hat*|a&gt;&quot;,&quot;variables&quot;:[&quot;A&quot;,&quot;a&quot;,&quot;hat&quot;]}},{&quot;id&quot;:&quot;A&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\hat{A}&quot;,&quot;subexpr&quot;:&quot;\\hat{A}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;A*hat&quot;,&quot;variables&quot;:[&quot;A&quot;,&quot;hat&quot;]}},{&quot;id&quot;:&quot;__ket_3&quot;,&quot;type&quot;:&quot;ket&quot;,&quot;latex&quot;:&quot;\\left|a\\right\\rangle&quot;,&quot;subexpr&quot;:&quot;\\left|a\\right\\rangle&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;|a&gt;&quot;,&quot;variables&quot;:[&quot;a&quot;]}},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;a {\\left|a\\right\\rangle }&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;a*|a&gt;&quot;,&quot;variables&quot;:[&quot;a&quot;]}},{&quot;id&quot;:&quot;a&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;a&quot;,&quot;subexpr&quot;:&quot;a&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;a&quot;,&quot;variables&quot;:[&quot;a&quot;]}},{&quot;id&quot;:&quot;__ket_5&quot;,&quot;type&quot;:&quot;ket&quot;,&quot;latex&quot;:&quot;\\left|a\\right\\rangle&quot;,&quot;subexpr&quot;:&quot;\\left|a\\right\\rangle&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;|a&gt;&quot;,&quot;variables&quot;:[&quot;a&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;A&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__ket_3&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;a&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__ket_5&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;},&quot;domain&quot;:&quot;quantum_mechanics&quot;}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>A*|a&gt; - a*|a&gt;</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>A, a</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\hat{A} | a \\rangle = a | a \\rangle&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;A*|a&gt; - a*|a&gt;&quot;,&quot;variables&quot;:[&quot;A&quot;,&quot;a&quot;]}},{&quot;id&quot;:&quot;__multiply_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\hat{A} {\\left|a\\right\\rangle }&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;A*|a&gt;&quot;,&quot;variables&quot;:[&quot;A&quot;,&quot;a&quot;]}},{&quot;id&quot;:&quot;A&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\hat{A}&quot;,&quot;subexpr&quot;:&quot;\\hat{A}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;A&quot;,&quot;variables&quot;:[&quot;A&quot;]}},{&quot;id&quot;:&quot;__ket_3&quot;,&quot;type&quot;:&quot;ket&quot;,&quot;latex&quot;:&quot;\\left|a\\right\\rangle&quot;,&quot;subexpr&quot;:&quot;\\left|a\\right\\rangle&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;|a&gt;&quot;,&quot;variables&quot;:[&quot;a&quot;]}},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;a {\\left|a\\right\\rangle }&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;a*|a&gt;&quot;,&quot;variables&quot;:[&quot;a&quot;]}},{&quot;id&quot;:&quot;a&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;a&quot;,&quot;subexpr&quot;:&quot;a&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;a&quot;,&quot;variables&quot;:[&quot;a&quot;]}},{&quot;id&quot;:&quot;__ket_5&quot;,&quot;type&quot;:&quot;ket&quot;,&quot;latex&quot;:&quot;\\left|a\\right\\rangle&quot;,&quot;subexpr&quot;:&quot;\\left|a\\right\\rangle&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;|a&gt;&quot;,&quot;variables&quot;:[&quot;a&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;A&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__ket_3&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;a&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__ket_5&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;},&quot;domain&quot;:&quot;quantum_mechanics&quot;}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -1740,11 +1735,10 @@ svg.d3-semantic-graph {
       "op": "equals",
       "subexpr": "\\hat{H} \\psi = E \\psi",
       "chartScript": {
-        "script": "-E*psi + H*hat*psi",
+        "script": "-E*psi + H*psi",
         "variables": [
           "E",
           "H",
-          "hat",
           "psi"
         ]
       }
@@ -1755,10 +1749,9 @@ svg.d3-semantic-graph {
       "op": "multiply",
       "subexpr": "\\hat{H} \\psi",
       "chartScript": {
-        "script": "H*hat*psi",
+        "script": "H*psi",
         "variables": [
           "H",
-          "hat",
           "psi"
         ]
       }
@@ -1769,10 +1762,9 @@ svg.d3-semantic-graph {
       "latex": "\\hat{H}",
       "subexpr": "\\hat{H}",
       "chartScript": {
-        "script": "H*hat",
+        "script": "H",
         "variables": [
-          "H",
-          "hat"
+          "H"
         ]
       }
     },
@@ -1884,8 +1876,8 @@ svg.d3-semantic-graph {
   linkStyle 5 stroke:#aaa,stroke-width:2px
 </pre></div></div>
   <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(\hat{H}*\psi, E*\psi)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(Mul(Symbol('\\hat{H}'), Symbol('\\psi')), Mul(E, Symbol('\\psi')))</pre></div></div>
-  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>-E*psi + H*hat*psi</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>E, H, hat, psi</pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\hat{H} \\psi = E \\psi&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-E*psi + H*hat*psi&quot;,&quot;variables&quot;:[&quot;E&quot;,&quot;H&quot;,&quot;hat&quot;,&quot;psi&quot;]}},{&quot;id&quot;:&quot;__multiply_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\hat{H} \\psi&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;H*hat*psi&quot;,&quot;variables&quot;:[&quot;H&quot;,&quot;hat&quot;,&quot;psi&quot;]}},{&quot;id&quot;:&quot;H&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\hat{H}&quot;,&quot;subexpr&quot;:&quot;\\hat{H}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;H*hat&quot;,&quot;variables&quot;:[&quot;H&quot;,&quot;hat&quot;]}},{&quot;id&quot;:&quot;psi&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\psi&quot;,&quot;subexpr&quot;:&quot;\\psi&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;psi&quot;,&quot;variables&quot;:[&quot;psi&quot;]}},{&quot;id&quot;:&quot;__multiply_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\psi E&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;E*psi&quot;,&quot;variables&quot;:[&quot;E&quot;,&quot;psi&quot;]}},{&quot;id&quot;:&quot;E&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;E&quot;,&quot;subexpr&quot;:&quot;E&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;E&quot;,&quot;variables&quot;:[&quot;E&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;H&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;psi&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;E&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;psi&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_3&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;},&quot;domain&quot;:&quot;quantum_mechanics&quot;}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>-E*psi + H*psi</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>E, H, psi</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\hat{H} \\psi = E \\psi&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-E*psi + H*psi&quot;,&quot;variables&quot;:[&quot;E&quot;,&quot;H&quot;,&quot;psi&quot;]}},{&quot;id&quot;:&quot;__multiply_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\hat{H} \\psi&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;H*psi&quot;,&quot;variables&quot;:[&quot;H&quot;,&quot;psi&quot;]}},{&quot;id&quot;:&quot;H&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\hat{H}&quot;,&quot;subexpr&quot;:&quot;\\hat{H}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;H&quot;,&quot;variables&quot;:[&quot;H&quot;]}},{&quot;id&quot;:&quot;psi&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\psi&quot;,&quot;subexpr&quot;:&quot;\\psi&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;psi&quot;,&quot;variables&quot;:[&quot;psi&quot;]}},{&quot;id&quot;:&quot;__multiply_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\psi E&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;E*psi&quot;,&quot;variables&quot;:[&quot;E&quot;,&quot;psi&quot;]}},{&quot;id&quot;:&quot;E&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;E&quot;,&quot;subexpr&quot;:&quot;E&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;E&quot;,&quot;variables&quot;:[&quot;E&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;H&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;psi&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;E&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;psi&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_3&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;},&quot;domain&quot;:&quot;quantum_mechanics&quot;}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -2306,10 +2298,9 @@ svg.d3-semantic-graph {
       "op": "equals",
       "subexpr": "\\hat{H} = \\frac{\\hat{p}^2}{2m} + V(x)",
       "chartScript": {
-        "script": "H*hat - 1/2*hat*pow(p, 2)/m - V(x)",
+        "script": "H - V(x) - 1/2*pow(p, 2)/m",
         "variables": [
           "H",
-          "hat",
           "m",
           "p",
           "x"
@@ -2322,10 +2313,9 @@ svg.d3-semantic-graph {
       "latex": "\\hat{H}",
       "subexpr": "\\hat{H}",
       "chartScript": {
-        "script": "H*hat",
+        "script": "H",
         "variables": [
-          "H",
-          "hat"
+          "H"
         ]
       }
     },
@@ -2335,10 +2325,9 @@ svg.d3-semantic-graph {
       "op": "add",
       "subexpr": "V{\\left(x \\right)} + \\hat{p}^{2} \\frac{1}{2 m}",
       "chartScript": {
-        "script": "V*x + (1/2)*hat*pow(p, 2)/m",
+        "script": "V*x + (1/2)*pow(p, 2)/m",
         "variables": [
           "V",
-          "hat",
           "m",
           "p",
           "x"
@@ -2351,9 +2340,8 @@ svg.d3-semantic-graph {
       "op": "multiply",
       "subexpr": "\\hat{p}^{2} \\frac{1}{2 m}",
       "chartScript": {
-        "script": "(1/2)*hat*pow(p, 2)/m",
+        "script": "(1/2)*pow(p, 2)/m",
         "variables": [
-          "hat",
           "m",
           "p"
         ]
@@ -2366,9 +2354,8 @@ svg.d3-semantic-graph {
       "exponent": "2",
       "subexpr": "\\hat{p}^{2}",
       "chartScript": {
-        "script": "hat*pow(p, 2)",
+        "script": "pow(p, 2)",
         "variables": [
-          "hat",
           "p"
         ]
       }
@@ -2379,9 +2366,8 @@ svg.d3-semantic-graph {
       "latex": "\\hat{p}",
       "subexpr": "\\hat{p}",
       "chartScript": {
-        "script": "hat*p",
+        "script": "p",
         "variables": [
-          "hat",
           "p"
         ]
       }
@@ -2563,9 +2549,9 @@ svg.d3-semantic-graph {
   linkStyle 9 stroke:#aaa,stroke-width:2px
   linkStyle 10 stroke:#aaa,stroke-width:2px
 </pre></div></div>
-  <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy — ungroundable</span></div><pre>UngroundableGraph: function 'V'</pre></div></div>
-  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>H*hat - 1/2*hat*pow(p, 2)/m - V(x)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>H, hat, m, p, x</pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\hat{H} = \\frac{\\hat{p}^2}{2m} + V(x)&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;H*hat - 1/2*hat*pow(p, 2)/m - V(x)&quot;,&quot;variables&quot;:[&quot;H&quot;,&quot;hat&quot;,&quot;m&quot;,&quot;p&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;H&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\hat{H}&quot;,&quot;subexpr&quot;:&quot;\\hat{H}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;H*hat&quot;,&quot;variables&quot;:[&quot;H&quot;,&quot;hat&quot;]}},{&quot;id&quot;:&quot;__add_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;V{\\left(x \\right)} + \\hat{p}^{2} \\frac{1}{2 m}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;V*x + (1/2)*hat*pow(p, 2)/m&quot;,&quot;variables&quot;:[&quot;V&quot;,&quot;hat&quot;,&quot;m&quot;,&quot;p&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;__multiply_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\hat{p}^{2} \\frac{1}{2 m}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;(1/2)*hat*pow(p, 2)/m&quot;,&quot;variables&quot;:[&quot;hat&quot;,&quot;m&quot;,&quot;p&quot;]}},{&quot;id&quot;:&quot;__power_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;\\hat{p}^{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;hat*pow(p, 2)&quot;,&quot;variables&quot;:[&quot;hat&quot;,&quot;p&quot;]}},{&quot;id&quot;:&quot;p&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\hat{p}&quot;,&quot;subexpr&quot;:&quot;\\hat{p}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;hat*p&quot;,&quot;variables&quot;:[&quot;hat&quot;,&quot;p&quot;]}},{&quot;id&quot;:&quot;__power_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{2 m}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;(1/2)/m&quot;,&quot;variables&quot;:[&quot;m&quot;]}},{&quot;id&quot;:&quot;__multiply_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;m 2&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;2*m&quot;,&quot;variables&quot;:[&quot;m&quot;]}},{&quot;id&quot;:&quot;__num_7&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;2&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;2&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;m&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;m&quot;,&quot;subexpr&quot;:&quot;m&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;m&quot;,&quot;variables&quot;:[&quot;m&quot;]}},{&quot;id&quot;:&quot;__V_8&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;V&quot;,&quot;subexpr&quot;:&quot;V{\\left(x \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;V*x&quot;,&quot;variables&quot;:[&quot;V&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x&quot;,&quot;variables&quot;:[&quot;x&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;H&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;p&quot;,&quot;to&quot;:&quot;__power_4&quot;},{&quot;from&quot;:&quot;__power_4&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__num_7&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;m&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_6&quot;,&quot;to&quot;:&quot;__power_5&quot;},{&quot;from&quot;:&quot;__power_5&quot;,&quot;to&quot;:&quot;__multiply_3&quot;},{&quot;from&quot;:&quot;__multiply_3&quot;,&quot;to&quot;:&quot;__add_2&quot;},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__V_8&quot;},{&quot;from&quot;:&quot;__V_8&quot;,&quot;to&quot;:&quot;__add_2&quot;},{&quot;from&quot;:&quot;__add_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;},&quot;domain&quot;:&quot;quantum_mechanics&quot;}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(\hat{H}, \hat{p}**2/(2*m) + V(x))</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(Symbol('\\hat{H}'), Add(Mul(Rational(1, 2), Pow(Symbol('\\hat{p}'), Integer(2)), Pow(Symbol('m'), Integer(-1))), Function('V')(Symbol('x'))))</pre></div></div>
+  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>H - V(x) - 1/2*pow(p, 2)/m</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>H, m, p, x</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\hat{H} = \\frac{\\hat{p}^2}{2m} + V(x)&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;H - V(x) - 1/2*pow(p, 2)/m&quot;,&quot;variables&quot;:[&quot;H&quot;,&quot;m&quot;,&quot;p&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;H&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\hat{H}&quot;,&quot;subexpr&quot;:&quot;\\hat{H}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;H&quot;,&quot;variables&quot;:[&quot;H&quot;]}},{&quot;id&quot;:&quot;__add_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;V{\\left(x \\right)} + \\hat{p}^{2} \\frac{1}{2 m}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;V*x + (1/2)*pow(p, 2)/m&quot;,&quot;variables&quot;:[&quot;V&quot;,&quot;m&quot;,&quot;p&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;__multiply_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\hat{p}^{2} \\frac{1}{2 m}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;(1/2)*pow(p, 2)/m&quot;,&quot;variables&quot;:[&quot;m&quot;,&quot;p&quot;]}},{&quot;id&quot;:&quot;__power_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;\\hat{p}^{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(p, 2)&quot;,&quot;variables&quot;:[&quot;p&quot;]}},{&quot;id&quot;:&quot;p&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\hat{p}&quot;,&quot;subexpr&quot;:&quot;\\hat{p}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;p&quot;,&quot;variables&quot;:[&quot;p&quot;]}},{&quot;id&quot;:&quot;__power_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{2 m}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;(1/2)/m&quot;,&quot;variables&quot;:[&quot;m&quot;]}},{&quot;id&quot;:&quot;__multiply_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;m 2&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;2*m&quot;,&quot;variables&quot;:[&quot;m&quot;]}},{&quot;id&quot;:&quot;__num_7&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;2&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;2&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;m&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;m&quot;,&quot;subexpr&quot;:&quot;m&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;m&quot;,&quot;variables&quot;:[&quot;m&quot;]}},{&quot;id&quot;:&quot;__V_8&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;V&quot;,&quot;subexpr&quot;:&quot;V{\\left(x \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;V*x&quot;,&quot;variables&quot;:[&quot;V&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x&quot;,&quot;variables&quot;:[&quot;x&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;H&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;p&quot;,&quot;to&quot;:&quot;__power_4&quot;},{&quot;from&quot;:&quot;__power_4&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__num_7&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;m&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_6&quot;,&quot;to&quot;:&quot;__power_5&quot;},{&quot;from&quot;:&quot;__power_5&quot;,&quot;to&quot;:&quot;__multiply_3&quot;},{&quot;from&quot;:&quot;__multiply_3&quot;,&quot;to&quot;:&quot;__add_2&quot;},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__V_8&quot;},{&quot;from&quot;:&quot;__V_8&quot;,&quot;to&quot;:&quot;__add_2&quot;},{&quot;from&quot;:&quot;__add_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;},&quot;domain&quot;:&quot;quantum_mechanics&quot;}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -2950,6 +2936,7 @@ svg.d3-semantic-graph {
   __power_9(("$(\cdot)^{\cdot}$")):::operator
   __negation_10@{ shape: "flip-tri", label: "$-$" }
   __multiply_11(("$\times$")):::operator
+  __multiply_12(("$\times$")):::operator
   class __negation_10 operator
   x --&gt; __psi_2
   __psi_2 --&gt; __equals_1
@@ -2965,8 +2952,9 @@ svg.d3-semantic-graph {
   B --&gt; __multiply_8
   e --&gt; __power_9
   i --&gt; __multiply_11
-  k --&gt; __multiply_11
-  x --&gt; __multiply_11
+  k --&gt; __multiply_12
+  x --&gt; __multiply_12
+  __multiply_12 --&gt; __multiply_11
   __multiply_11 --&gt; __negation_10
   __negation_10 --&gt;|exp| __power_9
   __power_9 --&gt; __multiply_8
@@ -2988,11 +2976,12 @@ svg.d3-semantic-graph {
   linkStyle 13 stroke:#ef5350,stroke-width:3px
   linkStyle 14 stroke:#ef5350,stroke-width:3px
   linkStyle 15 stroke:#ef5350,stroke-width:3px
-  linkStyle 16 stroke:#aaa,stroke-width:2px
+  linkStyle 16 stroke:#ef5350,stroke-width:3px
   linkStyle 17 stroke:#aaa,stroke-width:2px
-  linkStyle 18 stroke:#ef5350,stroke-width:3px
-  linkStyle 19 stroke:#aaa,stroke-width:2px
+  linkStyle 18 stroke:#aaa,stroke-width:2px
+  linkStyle 19 stroke:#ef5350,stroke-width:3px
   linkStyle 20 stroke:#aaa,stroke-width:2px
+  linkStyle 21 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -3233,6 +3222,19 @@ svg.d3-semantic-graph {
           "x"
         ]
       }
+    },
+    {
+      "id": "__multiply_12",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "x k",
+      "chartScript": {
+        "script": "k*x",
+        "variables": [
+          "k",
+          "x"
+        ]
+      }
     }
   ],
   "edges": [
@@ -3311,12 +3313,18 @@ svg.d3-semantic-graph {
     },
     {
       "from": "k",
-      "to": "__multiply_11",
+      "to": "__multiply_12",
       "semantic": "direct",
       "weight": 1.0
     },
     {
       "from": "x",
+      "to": "__multiply_12",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "__multiply_12",
       "to": "__multiply_11",
       "semantic": "direct",
       "weight": 1.0
@@ -3376,6 +3384,7 @@ svg.d3-semantic-graph {
   __power_9(("$(\cdot)^{\cdot}$")):::operator
   __negation_10@{ shape: "flip-tri", label: "$-$" }
   __multiply_11(("$\times$")):::operator
+  __multiply_12(("$\times$")):::operator
   class __negation_10 operator
   x --&gt; __psi_2
   __psi_2 --&gt; __equals_1
@@ -3391,8 +3400,9 @@ svg.d3-semantic-graph {
   B --&gt; __multiply_8
   e --&gt; __power_9
   i --&gt; __multiply_11
-  k --&gt; __multiply_11
-  x --&gt; __multiply_11
+  k --&gt; __multiply_12
+  x --&gt; __multiply_12
+  __multiply_12 --&gt; __multiply_11
   __multiply_11 --&gt; __negation_10
   __negation_10 --&gt;|exp| __power_9
   __power_9 --&gt; __multiply_8
@@ -3414,15 +3424,16 @@ svg.d3-semantic-graph {
   linkStyle 13 stroke:#ef5350,stroke-width:3px
   linkStyle 14 stroke:#ef5350,stroke-width:3px
   linkStyle 15 stroke:#ef5350,stroke-width:3px
-  linkStyle 16 stroke:#aaa,stroke-width:2px
+  linkStyle 16 stroke:#ef5350,stroke-width:3px
   linkStyle 17 stroke:#aaa,stroke-width:2px
-  linkStyle 18 stroke:#ef5350,stroke-width:3px
-  linkStyle 19 stroke:#aaa,stroke-width:2px
+  linkStyle 18 stroke:#aaa,stroke-width:2px
+  linkStyle 19 stroke:#ef5350,stroke-width:3px
   linkStyle 20 stroke:#aaa,stroke-width:2px
+  linkStyle 21 stroke:#aaa,stroke-width:2px
 </pre></div></div>
-  <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy — ungroundable</span></div><pre>UngroundableGraph: function 'psi'</pre></div></div>
+  <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(psi(x), A*exp(i*k*x) + B*exp(-i*k*x))</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(Function('psi')(Symbol('x')), Add(Mul(Symbol('A'), exp(Mul(Symbol('i'), Symbol('k'), Symbol('x')))), Mul(Symbol('B'), exp(Mul(Integer(-1), Symbol('i'), Symbol('k'), Symbol('x'))))))</pre></div></div>
   <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>-A*exp(i*k*x) - B*exp(-i*k*x) + psi(x)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>A, B, i, k, x</pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\psi(x) = A e^{ikx} + B e^{-ikx}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-A*exp(i*k*x) - B*exp(-i*k*x) + psi(x)&quot;,&quot;variables&quot;:[&quot;A&quot;,&quot;B&quot;,&quot;i&quot;,&quot;k&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;__psi_2&quot;,&quot;type&quot;:&quot;function&quot;,&quot;latex&quot;:&quot;\\psi&quot;,&quot;op&quot;:&quot;psi&quot;,&quot;subexpr&quot;:&quot;\\psi{\\left(x \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;psi*x&quot;,&quot;variables&quot;:[&quot;psi&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;__add_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;A e^{i k x} + e^{- i k x} B&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;A*exp(i*k*x) + B*exp(-i*k*x)&quot;,&quot;variables&quot;:[&quot;A&quot;,&quot;B&quot;,&quot;i&quot;,&quot;k&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;A e^{i k x}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;A*exp(i*k*x)&quot;,&quot;variables&quot;:[&quot;A&quot;,&quot;i&quot;,&quot;k&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;A&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;A&quot;,&quot;subexpr&quot;:&quot;A&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;A&quot;,&quot;variables&quot;:[&quot;A&quot;]}},{&quot;id&quot;:&quot;__power_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;e^{i k x}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;exp(i*k*x)&quot;,&quot;variables&quot;:[&quot;i&quot;,&quot;k&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;e&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;e&quot;,&quot;subexpr&quot;:&quot;e&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;e&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__multiply_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;i x k&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;i*k*x&quot;,&quot;variables&quot;:[&quot;i&quot;,&quot;k&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;i&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;i&quot;,&quot;subexpr&quot;:&quot;i&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;i&quot;,&quot;variables&quot;:[&quot;i&quot;]}},{&quot;id&quot;:&quot;__multiply_7&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;x k&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;k*x&quot;,&quot;variables&quot;:[&quot;k&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;k&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;k&quot;,&quot;subexpr&quot;:&quot;k&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;k&quot;,&quot;variables&quot;:[&quot;k&quot;]}},{&quot;id&quot;:&quot;__multiply_8&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;e^{- i k x} B&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;B*exp(-i*k*x)&quot;,&quot;variables&quot;:[&quot;B&quot;,&quot;i&quot;,&quot;k&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;B&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;B&quot;,&quot;subexpr&quot;:&quot;B&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;B&quot;,&quot;variables&quot;:[&quot;B&quot;]}},{&quot;id&quot;:&quot;__power_9&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;e^{- i k x}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;exp(-i*k*x)&quot;,&quot;variables&quot;:[&quot;i&quot;,&quot;k&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;__negation_10&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-i x k&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-i*k*x&quot;,&quot;variables&quot;:[&quot;i&quot;,&quot;k&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;__multiply_11&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;i x k&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;i*k*x&quot;,&quot;variables&quot;:[&quot;i&quot;,&quot;k&quot;,&quot;x&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__psi_2&quot;},{&quot;from&quot;:&quot;__psi_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;A&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;e&quot;,&quot;to&quot;:&quot;__power_5&quot;},{&quot;from&quot;:&quot;i&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;k&quot;,&quot;to&quot;:&quot;__multiply_7&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__multiply_7&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_7&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_6&quot;,&quot;to&quot;:&quot;__power_5&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_5&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__add_3&quot;},{&quot;from&quot;:&quot;B&quot;,&quot;to&quot;:&quot;__multiply_8&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;e&quot;,&quot;to&quot;:&quot;__power_9&quot;},{&quot;from&quot;:&quot;i&quot;,&quot;to&quot;:&quot;__multiply_11&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;k&quot;,&quot;to&quot;:&quot;__multiply_11&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__multiply_11&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_11&quot;,&quot;to&quot;:&quot;__negation_10&quot;},{&quot;from&quot;:&quot;__negation_10&quot;,&quot;to&quot;:&quot;__power_9&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_9&quot;,&quot;to&quot;:&quot;__multiply_8&quot;},{&quot;from&quot;:&quot;__multiply_8&quot;,&quot;to&quot;:&quot;__add_3&quot;},{&quot;from&quot;:&quot;__add_3&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;},&quot;domain&quot;:&quot;quantum_mechanics&quot;}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\psi(x) = A e^{ikx} + B e^{-ikx}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-A*exp(i*k*x) - B*exp(-i*k*x) + psi(x)&quot;,&quot;variables&quot;:[&quot;A&quot;,&quot;B&quot;,&quot;i&quot;,&quot;k&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;__psi_2&quot;,&quot;type&quot;:&quot;function&quot;,&quot;latex&quot;:&quot;\\psi&quot;,&quot;op&quot;:&quot;psi&quot;,&quot;subexpr&quot;:&quot;\\psi{\\left(x \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;psi*x&quot;,&quot;variables&quot;:[&quot;psi&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x&quot;,&quot;variables&quot;:[&quot;x&quot;]}},{&quot;id&quot;:&quot;__add_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;A e^{i k x} + e^{- i k x} B&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;A*exp(i*k*x) + B*exp(-i*k*x)&quot;,&quot;variables&quot;:[&quot;A&quot;,&quot;B&quot;,&quot;i&quot;,&quot;k&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;A e^{i k x}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;A*exp(i*k*x)&quot;,&quot;variables&quot;:[&quot;A&quot;,&quot;i&quot;,&quot;k&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;A&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;A&quot;,&quot;subexpr&quot;:&quot;A&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;A&quot;,&quot;variables&quot;:[&quot;A&quot;]}},{&quot;id&quot;:&quot;__power_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;e^{i k x}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;exp(i*k*x)&quot;,&quot;variables&quot;:[&quot;i&quot;,&quot;k&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;e&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;e&quot;,&quot;subexpr&quot;:&quot;e&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;e&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__multiply_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;i x k&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;i*k*x&quot;,&quot;variables&quot;:[&quot;i&quot;,&quot;k&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;i&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;i&quot;,&quot;subexpr&quot;:&quot;i&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;i&quot;,&quot;variables&quot;:[&quot;i&quot;]}},{&quot;id&quot;:&quot;__multiply_7&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;x k&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;k*x&quot;,&quot;variables&quot;:[&quot;k&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;k&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;k&quot;,&quot;subexpr&quot;:&quot;k&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;k&quot;,&quot;variables&quot;:[&quot;k&quot;]}},{&quot;id&quot;:&quot;__multiply_8&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;e^{- i k x} B&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;B*exp(-i*k*x)&quot;,&quot;variables&quot;:[&quot;B&quot;,&quot;i&quot;,&quot;k&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;B&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;B&quot;,&quot;subexpr&quot;:&quot;B&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;B&quot;,&quot;variables&quot;:[&quot;B&quot;]}},{&quot;id&quot;:&quot;__power_9&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;e^{- i k x}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;exp(-i*k*x)&quot;,&quot;variables&quot;:[&quot;i&quot;,&quot;k&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;__negation_10&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-i x k&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-i*k*x&quot;,&quot;variables&quot;:[&quot;i&quot;,&quot;k&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;__multiply_11&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;i x k&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;i*k*x&quot;,&quot;variables&quot;:[&quot;i&quot;,&quot;k&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;__multiply_12&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;x k&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;k*x&quot;,&quot;variables&quot;:[&quot;k&quot;,&quot;x&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__psi_2&quot;},{&quot;from&quot;:&quot;__psi_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;A&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;e&quot;,&quot;to&quot;:&quot;__power_5&quot;},{&quot;from&quot;:&quot;i&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;k&quot;,&quot;to&quot;:&quot;__multiply_7&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__multiply_7&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_7&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_6&quot;,&quot;to&quot;:&quot;__power_5&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_5&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__add_3&quot;},{&quot;from&quot;:&quot;B&quot;,&quot;to&quot;:&quot;__multiply_8&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;e&quot;,&quot;to&quot;:&quot;__power_9&quot;},{&quot;from&quot;:&quot;i&quot;,&quot;to&quot;:&quot;__multiply_11&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;k&quot;,&quot;to&quot;:&quot;__multiply_12&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;x&quot;,&quot;to&quot;:&quot;__multiply_12&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_12&quot;,&quot;to&quot;:&quot;__multiply_11&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_11&quot;,&quot;to&quot;:&quot;__negation_10&quot;},{&quot;from&quot;:&quot;__negation_10&quot;,&quot;to&quot;:&quot;__power_9&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_9&quot;,&quot;to&quot;:&quot;__multiply_8&quot;},{&quot;from&quot;:&quot;__multiply_8&quot;,&quot;to&quot;:&quot;__add_3&quot;},{&quot;from&quot;:&quot;__add_3&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;},&quot;domain&quot;:&quot;quantum_mechanics&quot;}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -3482,11 +3493,10 @@ svg.d3-semantic-graph {
       "op": "multiply",
       "subexpr": "{\\Delta x} {\\Delta p}",
       "chartScript": {
-        "script": "pow(Delta, 2)*p*x",
+        "script": "Delta_p*Delta_x",
         "variables": [
-          "Delta",
-          "p",
-          "x"
+          "Delta_p",
+          "Delta_x"
         ]
       }
     },
@@ -3496,10 +3506,9 @@ svg.d3-semantic-graph {
       "latex": "\\Delta x",
       "subexpr": "\\Delta x",
       "chartScript": {
-        "script": "Delta*x",
+        "script": "Delta_x",
         "variables": [
-          "Delta",
-          "x"
+          "Delta_x"
         ]
       }
     },
@@ -3509,10 +3518,9 @@ svg.d3-semantic-graph {
       "latex": "\\Delta p",
       "subexpr": "\\Delta p",
       "chartScript": {
-        "script": "Delta*p",
+        "script": "Delta_p",
         "variables": [
-          "Delta",
-          "p"
+          "Delta_p"
         ]
       }
     },
@@ -3570,12 +3578,11 @@ svg.d3-semantic-graph {
       "op": "greater_equal",
       "subexpr": "\\Delta x \\Delta p \\geq \\frac{\\hbar}{2}",
       "chartScript": {
-        "script": "pow(Delta, 2)*p*x - 1/2*hbar",
+        "script": "Delta_p*Delta_x - 1/2*hbar",
         "variables": [
-          "Delta",
-          "hbar",
-          "p",
-          "x"
+          "Delta_p",
+          "Delta_x",
+          "hbar"
         ]
       }
     }
@@ -3658,8 +3665,8 @@ svg.d3-semantic-graph {
   linkStyle 6 stroke:#aaa,stroke-width:2px
 </pre></div></div>
   <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>\Delta p*\Delta x &gt;= \hbar/2</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>GreaterThan(Mul(Symbol('\\Delta p'), Symbol('\\Delta x')), Mul(Rational(1, 2), Symbol('\\hbar')))</pre></div></div>
-  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>pow(Delta, 2)*p*x - 1/2*hbar</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>Delta, hbar, p, x</pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__multiply_1&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;{\\Delta x} {\\Delta p}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(Delta, 2)*p*x&quot;,&quot;variables&quot;:[&quot;Delta&quot;,&quot;p&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;Delta_x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\Delta x&quot;,&quot;subexpr&quot;:&quot;\\Delta x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Delta*x&quot;,&quot;variables&quot;:[&quot;Delta&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;Delta_p&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\Delta p&quot;,&quot;subexpr&quot;:&quot;\\Delta p&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Delta*p&quot;,&quot;variables&quot;:[&quot;Delta&quot;,&quot;p&quot;]}},{&quot;id&quot;:&quot;__multiply_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\frac{\\hbar}{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;(1/2)*hbar&quot;,&quot;variables&quot;:[&quot;hbar&quot;]}},{&quot;id&quot;:&quot;hbar&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\hbar&quot;,&quot;subexpr&quot;:&quot;\\hbar&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;hbar&quot;,&quot;variables&quot;:[&quot;hbar&quot;]}},{&quot;id&quot;:&quot;__power_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1/2&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__num_4&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;2&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;2&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__greater_equal_5&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;label&quot;:&quot;greater than or equal to&quot;,&quot;emoji&quot;:&quot;≥&quot;,&quot;op&quot;:&quot;greater_equal&quot;,&quot;subexpr&quot;:&quot;\\Delta x \\Delta p \\geq \\frac{\\hbar}{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(Delta, 2)*p*x - 1/2*hbar&quot;,&quot;variables&quot;:[&quot;Delta&quot;,&quot;hbar&quot;,&quot;p&quot;,&quot;x&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;Delta_x&quot;,&quot;to&quot;:&quot;__multiply_1&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;Delta_p&quot;,&quot;to&quot;:&quot;__multiply_1&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;hbar&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__num_4&quot;,&quot;to&quot;:&quot;__power_3&quot;},{&quot;from&quot;:&quot;__power_3&quot;,&quot;to&quot;:&quot;__multiply_2&quot;},{&quot;from&quot;:&quot;__multiply_1&quot;,&quot;to&quot;:&quot;__greater_equal_5&quot;,&quot;role&quot;:&quot;lhs&quot;},{&quot;from&quot;:&quot;__multiply_2&quot;,&quot;to&quot;:&quot;__greater_equal_5&quot;,&quot;role&quot;:&quot;rhs&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;},&quot;domain&quot;:&quot;quantum_mechanics&quot;}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>Delta_p*Delta_x - 1/2*hbar</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>Delta_p, Delta_x, hbar</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__multiply_1&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;{\\Delta x} {\\Delta p}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Delta_p*Delta_x&quot;,&quot;variables&quot;:[&quot;Delta_p&quot;,&quot;Delta_x&quot;]}},{&quot;id&quot;:&quot;Delta_x&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\Delta x&quot;,&quot;subexpr&quot;:&quot;\\Delta x&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Delta_x&quot;,&quot;variables&quot;:[&quot;Delta_x&quot;]}},{&quot;id&quot;:&quot;Delta_p&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\Delta p&quot;,&quot;subexpr&quot;:&quot;\\Delta p&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Delta_p&quot;,&quot;variables&quot;:[&quot;Delta_p&quot;]}},{&quot;id&quot;:&quot;__multiply_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\frac{\\hbar}{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;(1/2)*hbar&quot;,&quot;variables&quot;:[&quot;hbar&quot;]}},{&quot;id&quot;:&quot;hbar&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\hbar&quot;,&quot;subexpr&quot;:&quot;\\hbar&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;hbar&quot;,&quot;variables&quot;:[&quot;hbar&quot;]}},{&quot;id&quot;:&quot;__power_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1/2&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__num_4&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;2&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;2&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__greater_equal_5&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;label&quot;:&quot;greater than or equal to&quot;,&quot;emoji&quot;:&quot;≥&quot;,&quot;op&quot;:&quot;greater_equal&quot;,&quot;subexpr&quot;:&quot;\\Delta x \\Delta p \\geq \\frac{\\hbar}{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Delta_p*Delta_x - 1/2*hbar&quot;,&quot;variables&quot;:[&quot;Delta_p&quot;,&quot;Delta_x&quot;,&quot;hbar&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;Delta_x&quot;,&quot;to&quot;:&quot;__multiply_1&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;Delta_p&quot;,&quot;to&quot;:&quot;__multiply_1&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;hbar&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__num_4&quot;,&quot;to&quot;:&quot;__power_3&quot;},{&quot;from&quot;:&quot;__power_3&quot;,&quot;to&quot;:&quot;__multiply_2&quot;},{&quot;from&quot;:&quot;__multiply_1&quot;,&quot;to&quot;:&quot;__greater_equal_5&quot;,&quot;role&quot;:&quot;lhs&quot;},{&quot;from&quot;:&quot;__multiply_2&quot;,&quot;to&quot;:&quot;__greater_equal_5&quot;,&quot;role&quot;:&quot;rhs&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;},&quot;domain&quot;:&quot;quantum_mechanics&quot;}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -5119,8 +5126,8 @@ document.querySelectorAll('.row-copy-btn').forEach(btn => {
 })();
 
 Promise.all([
-  import('./d3-semantic-graph.js?v=1784175818'),
-  import('./sg-chart.js?v=1784175818'),
+  import('./d3-semantic-graph.js?v=1785816320'),
+  import('./sg-chart.js?v=1785816320'),
 ]).then(function(mods) {
   var D3SemanticGraphRenderer = mods[0].D3SemanticGraphRenderer;
   var SgChartManager = mods[1].SgChartManager;
@@ -5160,6 +5167,12 @@ Promise.all([
         console.error('D3 panel render error:', err);
       }
     });
+  });
+}).catch(function(err) {
+  console.error('D3/chart module load error — D3 buttons disabled:', err);
+  document.querySelectorAll('.row-toggle-d3').forEach(function(btn) {
+    btn.disabled = true;
+    btn.title = 'D3 module failed to load: ' + err.message;
   });
 });
 </script>

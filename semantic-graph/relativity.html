@@ -13,7 +13,8 @@
   "imports": {
     "/labels.js": "data:text/javascript,export function makeAiAskButton(){return document.createElement('span')}",
     "/expr.js": "data:text/javascript,const m=math.create(math.all);m.import({binomial:(n,k)=>m.combinations(n,k),erfc:x=>1-m.erf(x),beta:(a,b)=>m.gamma(a)*m.gamma(b)/m.gamma(a%2Bb),conjugate:x=>m.conj(x)});export function compileExpr(s){return m.compile(s)}export function evalExpr(c,t,opts){const scope=opts%26%26opts.extraScope?{...opts.extraScope}:{};return c.evaluate(scope)}",
-    "/proof-animation/dock-seq.js": "data:text/javascript,let n=0;export const nextDockSeq=()=>%2B%2Bn"
+    "/proof-animation/dock-seq.js": "data:text/javascript,let n=0;export const nextDockSeq=()=>%2B%2Bn",
+    "/graph-panel/term-resolve.js": "./term-resolve.js?v=1785816320"
   }
 }</script>
 <script>
@@ -1050,7 +1051,7 @@ svg.d3-semantic-graph {
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-07-16 04:25 UTC &middot; theme: default-dark &middot; 18 expressions</div>
+<div class="report-meta">Generated 2026-08-04 04:06 UTC &middot; theme: default-dark &middot; 18 expressions</div>
 <div class="section-title">Relativity (18 expressions)</div>
 <div class="row">
   <div>
@@ -2649,11 +2650,11 @@ svg.d3-semantic-graph {
       "op": "equals",
       "subexpr": "ds^2 = g_{\\mu\\nu} dx^\\mu dx^\\nu",
       "chartScript": {
-        "script": "pow(ds, 2) - pow(dx, mu)*pow(dx, nu)*g_mu*nu",
+        "script": "pow(ds, 2) - pow(dx, mu)*pow(dx, nu)*g_munu",
         "variables": [
           "ds",
           "dx",
-          "g_mu*nu",
+          "g_munu",
           "mu",
           "nu"
         ]
@@ -2690,10 +2691,10 @@ svg.d3-semantic-graph {
       "op": "multiply",
       "subexpr": "g_{\\mu\\nu} dx^{\\mu} dx^{\\nu}",
       "chartScript": {
-        "script": "pow(dx, mu)*pow(dx, nu)*g_mu*nu",
+        "script": "pow(dx, mu)*pow(dx, nu)*g_munu",
         "variables": [
           "dx",
-          "g_mu*nu",
+          "g_munu",
           "mu",
           "nu"
         ]
@@ -2705,9 +2706,9 @@ svg.d3-semantic-graph {
       "latex": "g_{\\mu\\nu}",
       "subexpr": "g_{\\mu\\nu}",
       "chartScript": {
-        "script": "g_mu*nu",
+        "script": "g_munu",
         "variables": [
-          "g_mu*nu"
+          "g_munu"
         ]
       }
     },
@@ -2895,8 +2896,8 @@ svg.d3-semantic-graph {
   linkStyle 10 stroke:#aaa,stroke-width:2px
 </pre></div></div>
   <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(ds**2, dx**\mu*dx**\nu*g_{\mu\nu})</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(Pow(Symbol('ds'), Integer(2)), Mul(Pow(Symbol('dx'), Symbol('\\mu')), Pow(Symbol('dx'), Symbol('\\nu')), Symbol('g_{\\mu\\nu}')))</pre></div></div>
-  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>pow(ds, 2) - pow(dx, mu)*pow(dx, nu)*g_mu*nu</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>ds, dx, g_mu*nu, mu, nu</pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;ds^2 = g_{\\mu\\nu} dx^\\mu dx^\\nu&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(ds, 2) - pow(dx, mu)*pow(dx, nu)*g_mu*nu&quot;,&quot;variables&quot;:[&quot;ds&quot;,&quot;dx&quot;,&quot;g_mu*nu&quot;,&quot;mu&quot;,&quot;nu&quot;]}},{&quot;id&quot;:&quot;__power_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;ds^{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(ds, 2)&quot;,&quot;variables&quot;:[&quot;ds&quot;]}},{&quot;id&quot;:&quot;ds&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;ds&quot;,&quot;subexpr&quot;:&quot;ds&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;ds&quot;,&quot;variables&quot;:[&quot;ds&quot;]}},{&quot;id&quot;:&quot;__multiply_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;g_{\\mu\\nu} dx^{\\mu} dx^{\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(dx, mu)*pow(dx, nu)*g_mu*nu&quot;,&quot;variables&quot;:[&quot;dx&quot;,&quot;g_mu*nu&quot;,&quot;mu&quot;,&quot;nu&quot;]}},{&quot;id&quot;:&quot;g_munu&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;g_{\\mu\\nu}&quot;,&quot;subexpr&quot;:&quot;g_{\\mu\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;g_mu*nu&quot;,&quot;variables&quot;:[&quot;g_mu*nu&quot;]}},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;dx^{\\mu} dx^{\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(dx, mu)*pow(dx, nu)&quot;,&quot;variables&quot;:[&quot;dx&quot;,&quot;mu&quot;,&quot;nu&quot;]}},{&quot;id&quot;:&quot;__power_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;dx^{\\mu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(dx, mu)&quot;,&quot;variables&quot;:[&quot;dx&quot;,&quot;mu&quot;]}},{&quot;id&quot;:&quot;dx&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;dx&quot;,&quot;subexpr&quot;:&quot;dx&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;dx&quot;,&quot;variables&quot;:[&quot;dx&quot;]}},{&quot;id&quot;:&quot;mu&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\mu&quot;,&quot;subexpr&quot;:&quot;\\mu&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;mu&quot;,&quot;variables&quot;:[&quot;mu&quot;]}},{&quot;id&quot;:&quot;__power_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;dx^{\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(dx, nu)&quot;,&quot;variables&quot;:[&quot;dx&quot;,&quot;nu&quot;]}},{&quot;id&quot;:&quot;nu&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\nu&quot;,&quot;subexpr&quot;:&quot;\\nu&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;nu&quot;,&quot;variables&quot;:[&quot;nu&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;ds&quot;,&quot;to&quot;:&quot;__power_2&quot;},{&quot;from&quot;:&quot;__power_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;g_munu&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;dx&quot;,&quot;to&quot;:&quot;__power_5&quot;},{&quot;from&quot;:&quot;mu&quot;,&quot;to&quot;:&quot;__power_5&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_5&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;dx&quot;,&quot;to&quot;:&quot;__power_6&quot;},{&quot;from&quot;:&quot;nu&quot;,&quot;to&quot;:&quot;__power_6&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_6&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_3&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;},&quot;domain&quot;:&quot;mechanics&quot;}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>pow(ds, 2) - pow(dx, mu)*pow(dx, nu)*g_munu</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>ds, dx, g_munu, mu, nu</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;ds^2 = g_{\\mu\\nu} dx^\\mu dx^\\nu&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(ds, 2) - pow(dx, mu)*pow(dx, nu)*g_munu&quot;,&quot;variables&quot;:[&quot;ds&quot;,&quot;dx&quot;,&quot;g_munu&quot;,&quot;mu&quot;,&quot;nu&quot;]}},{&quot;id&quot;:&quot;__power_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;ds^{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(ds, 2)&quot;,&quot;variables&quot;:[&quot;ds&quot;]}},{&quot;id&quot;:&quot;ds&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;ds&quot;,&quot;subexpr&quot;:&quot;ds&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;ds&quot;,&quot;variables&quot;:[&quot;ds&quot;]}},{&quot;id&quot;:&quot;__multiply_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;g_{\\mu\\nu} dx^{\\mu} dx^{\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(dx, mu)*pow(dx, nu)*g_munu&quot;,&quot;variables&quot;:[&quot;dx&quot;,&quot;g_munu&quot;,&quot;mu&quot;,&quot;nu&quot;]}},{&quot;id&quot;:&quot;g_munu&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;g_{\\mu\\nu}&quot;,&quot;subexpr&quot;:&quot;g_{\\mu\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;g_munu&quot;,&quot;variables&quot;:[&quot;g_munu&quot;]}},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;dx^{\\mu} dx^{\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(dx, mu)*pow(dx, nu)&quot;,&quot;variables&quot;:[&quot;dx&quot;,&quot;mu&quot;,&quot;nu&quot;]}},{&quot;id&quot;:&quot;__power_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;dx^{\\mu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(dx, mu)&quot;,&quot;variables&quot;:[&quot;dx&quot;,&quot;mu&quot;]}},{&quot;id&quot;:&quot;dx&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;dx&quot;,&quot;subexpr&quot;:&quot;dx&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;dx&quot;,&quot;variables&quot;:[&quot;dx&quot;]}},{&quot;id&quot;:&quot;mu&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\mu&quot;,&quot;subexpr&quot;:&quot;\\mu&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;mu&quot;,&quot;variables&quot;:[&quot;mu&quot;]}},{&quot;id&quot;:&quot;__power_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;dx^{\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(dx, nu)&quot;,&quot;variables&quot;:[&quot;dx&quot;,&quot;nu&quot;]}},{&quot;id&quot;:&quot;nu&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\nu&quot;,&quot;subexpr&quot;:&quot;\\nu&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;nu&quot;,&quot;variables&quot;:[&quot;nu&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;ds&quot;,&quot;to&quot;:&quot;__power_2&quot;},{&quot;from&quot;:&quot;__power_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;g_munu&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;dx&quot;,&quot;to&quot;:&quot;__power_5&quot;},{&quot;from&quot;:&quot;mu&quot;,&quot;to&quot;:&quot;__power_5&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_5&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;dx&quot;,&quot;to&quot;:&quot;__power_6&quot;},{&quot;from&quot;:&quot;nu&quot;,&quot;to&quot;:&quot;__power_6&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_6&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__multiply_3&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_3&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;},&quot;domain&quot;:&quot;mechanics&quot;}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -3007,15 +3008,15 @@ svg.d3-semantic-graph {
       "op": "equals",
       "subexpr": "R_{\\mu\\nu} - \\frac{1}{2} R g_{\\mu\\nu} + \\Lambda g_{\\mu\\nu} = \\frac{8\\pi G}{c^4} T_{\\mu\\nu}",
       "chartScript": {
-        "script": "-8*pi*G*T_mu*nu/pow(c, 4) + Lambda*g_mu*nu - 1/2*R*g_mu*nu + R_mu*nu",
+        "script": "-8*pi*G*T_munu/pow(c, 4) + Lambda*g_munu - 1/2*R*g_munu + R_munu",
         "variables": [
           "G",
           "Lambda",
           "R",
-          "R_mu*nu",
-          "T_mu*nu",
+          "R_munu",
+          "T_munu",
           "c",
-          "g_mu*nu"
+          "g_munu"
         ]
       }
     },
@@ -3025,12 +3026,12 @@ svg.d3-semantic-graph {
       "op": "add",
       "subexpr": "\\Lambda g_{\\mu\\nu} + R_{\\mu\\nu} - \\frac{1}{2} R g_{\\mu\\nu}",
       "chartScript": {
-        "script": "Lambda*g_mu*nu - 1/2*R*g_mu*nu + R_mu*nu",
+        "script": "Lambda*g_munu - 1/2*R*g_munu + R_munu",
         "variables": [
           "Lambda",
           "R",
-          "R_mu*nu",
-          "g_mu*nu"
+          "R_munu",
+          "g_munu"
         ]
       }
     },
@@ -3040,11 +3041,11 @@ svg.d3-semantic-graph {
       "op": "add",
       "subexpr": "R_{\\mu\\nu} - \\frac{1}{2} R g_{\\mu\\nu}",
       "chartScript": {
-        "script": "-1/2*R*g_mu*nu + R_mu*nu",
+        "script": "-1/2*R*g_munu + R_munu",
         "variables": [
           "R",
-          "R_mu*nu",
-          "g_mu*nu"
+          "R_munu",
+          "g_munu"
         ]
       }
     },
@@ -3054,9 +3055,9 @@ svg.d3-semantic-graph {
       "latex": "R_{\\mu\\nu}",
       "subexpr": "R_{\\mu\\nu}",
       "chartScript": {
-        "script": "R_mu*nu",
+        "script": "R_munu",
         "variables": [
-          "R_mu*nu"
+          "R_munu"
         ]
       }
     },
@@ -3066,10 +3067,10 @@ svg.d3-semantic-graph {
       "op": "negation",
       "subexpr": "-\\frac{1}{2} R g_{\\mu\\nu}",
       "chartScript": {
-        "script": "-1/2*R*g_mu*nu",
+        "script": "-1/2*R*g_munu",
         "variables": [
           "R",
-          "g_mu*nu"
+          "g_munu"
         ]
       }
     },
@@ -3079,10 +3080,10 @@ svg.d3-semantic-graph {
       "op": "multiply",
       "subexpr": "\\frac{1}{2} R g_{\\mu\\nu}",
       "chartScript": {
-        "script": "(1/2)*R*g_mu*nu",
+        "script": "(1/2)*R*g_munu",
         "variables": [
           "R",
-          "g_mu*nu"
+          "g_munu"
         ]
       }
     },
@@ -3114,10 +3115,10 @@ svg.d3-semantic-graph {
       "op": "multiply",
       "subexpr": "R g_{\\mu\\nu}",
       "chartScript": {
-        "script": "R*g_mu*nu",
+        "script": "R*g_munu",
         "variables": [
           "R",
-          "g_mu*nu"
+          "g_munu"
         ]
       }
     },
@@ -3139,9 +3140,9 @@ svg.d3-semantic-graph {
       "latex": "g_{\\mu\\nu}",
       "subexpr": "g_{\\mu\\nu}",
       "chartScript": {
-        "script": "g_mu*nu",
+        "script": "g_munu",
         "variables": [
-          "g_mu*nu"
+          "g_munu"
         ]
       }
     },
@@ -3151,10 +3152,10 @@ svg.d3-semantic-graph {
       "op": "multiply",
       "subexpr": "\\Lambda g_{\\mu\\nu}",
       "chartScript": {
-        "script": "Lambda*g_mu*nu",
+        "script": "Lambda*g_munu",
         "variables": [
           "Lambda",
-          "g_mu*nu"
+          "g_munu"
         ]
       }
     },
@@ -3176,10 +3177,10 @@ svg.d3-semantic-graph {
       "op": "multiply",
       "subexpr": "8 \\pi G \\frac{1}{c^{4}} T_{\\mu\\nu}",
       "chartScript": {
-        "script": "8*pi*G*T_mu*nu/pow(c, 4)",
+        "script": "8*pi*G*T_munu/pow(c, 4)",
         "variables": [
           "G",
-          "T_mu*nu",
+          "T_munu",
           "c"
         ]
       }
@@ -3298,9 +3299,9 @@ svg.d3-semantic-graph {
       "latex": "T_{\\mu\\nu}",
       "subexpr": "T_{\\mu\\nu}",
       "chartScript": {
-        "script": "T_mu*nu",
+        "script": "T_munu",
         "variables": [
-          "T_mu*nu"
+          "T_munu"
         ]
       }
     }
@@ -3518,8 +3519,8 @@ svg.d3-semantic-graph {
   linkStyle 23 stroke:#aaa,stroke-width:2px
 </pre></div></div>
   <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(-R*g_{\mu\nu}/2 + R_{\mu\nu} + \Lambda*g_{\mu\nu}, 8*G*T_{\mu\nu}*\pi/c**4)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(Add(Mul(Integer(-1), Rational(1, 2), Symbol('R'), Symbol('g_{\\mu\\nu}')), Symbol('R_{\\mu\\nu}'), Mul(Symbol('\\Lambda'), Symbol('g_{\\mu\\nu}'))), Mul(Integer(8), Symbol('G'), Symbol('T_{\\mu\\nu}'), Symbol('\\pi'), Pow(Symbol('c'), Integer(-4))))</pre></div></div>
-  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>-8*pi*G*T_mu*nu/pow(c, 4) + Lambda*g_mu*nu - 1/2*R*g_mu*nu + R_mu*nu</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>G, Lambda, R, R_mu*nu, T_mu*nu, c, g_mu*nu</pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;R_{\\mu\\nu} - \\frac{1}{2} R g_{\\mu\\nu} + \\Lambda g_{\\mu\\nu} = \\frac{8\\pi G}{c^4} T_{\\mu\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-8*pi*G*T_mu*nu/pow(c, 4) + Lambda*g_mu*nu - 1/2*R*g_mu*nu + R_mu*nu&quot;,&quot;variables&quot;:[&quot;G&quot;,&quot;Lambda&quot;,&quot;R&quot;,&quot;R_mu*nu&quot;,&quot;T_mu*nu&quot;,&quot;c&quot;,&quot;g_mu*nu&quot;]}},{&quot;id&quot;:&quot;__add_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;\\Lambda g_{\\mu\\nu} + R_{\\mu\\nu} - \\frac{1}{2} R g_{\\mu\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Lambda*g_mu*nu - 1/2*R*g_mu*nu + R_mu*nu&quot;,&quot;variables&quot;:[&quot;Lambda&quot;,&quot;R&quot;,&quot;R_mu*nu&quot;,&quot;g_mu*nu&quot;]}},{&quot;id&quot;:&quot;__add_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;R_{\\mu\\nu} - \\frac{1}{2} R g_{\\mu\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-1/2*R*g_mu*nu + R_mu*nu&quot;,&quot;variables&quot;:[&quot;R&quot;,&quot;R_mu*nu&quot;,&quot;g_mu*nu&quot;]}},{&quot;id&quot;:&quot;R_munu&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;R_{\\mu\\nu}&quot;,&quot;subexpr&quot;:&quot;R_{\\mu\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;R_mu*nu&quot;,&quot;variables&quot;:[&quot;R_mu*nu&quot;]}},{&quot;id&quot;:&quot;__negation_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-\\frac{1}{2} R g_{\\mu\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-1/2*R*g_mu*nu&quot;,&quot;variables&quot;:[&quot;R&quot;,&quot;g_mu*nu&quot;]}},{&quot;id&quot;:&quot;__multiply_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{2} R g_{\\mu\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;(1/2)*R*g_mu*nu&quot;,&quot;variables&quot;:[&quot;R&quot;,&quot;g_mu*nu&quot;]}},{&quot;id&quot;:&quot;__power_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1/2&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__num_7&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;2&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;2&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__multiply_8&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;R g_{\\mu\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;R*g_mu*nu&quot;,&quot;variables&quot;:[&quot;R&quot;,&quot;g_mu*nu&quot;]}},{&quot;id&quot;:&quot;R&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;R&quot;,&quot;subexpr&quot;:&quot;R&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;R&quot;,&quot;variables&quot;:[&quot;R&quot;]}},{&quot;id&quot;:&quot;g_munu&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;g_{\\mu\\nu}&quot;,&quot;subexpr&quot;:&quot;g_{\\mu\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;g_mu*nu&quot;,&quot;variables&quot;:[&quot;g_mu*nu&quot;]}},{&quot;id&quot;:&quot;__multiply_9&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\Lambda g_{\\mu\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Lambda*g_mu*nu&quot;,&quot;variables&quot;:[&quot;Lambda&quot;,&quot;g_mu*nu&quot;]}},{&quot;id&quot;:&quot;Lambda&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\Lambda&quot;,&quot;subexpr&quot;:&quot;\\Lambda&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Lambda&quot;,&quot;variables&quot;:[&quot;Lambda&quot;]}},{&quot;id&quot;:&quot;__multiply_10&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;8 \\pi G \\frac{1}{c^{4}} T_{\\mu\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;8*pi*G*T_mu*nu/pow(c, 4)&quot;,&quot;variables&quot;:[&quot;G&quot;,&quot;T_mu*nu&quot;,&quot;c&quot;]}},{&quot;id&quot;:&quot;__multiply_11&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;8 \\pi G \\frac{1}{c^{4}}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;8*pi*G/pow(c, 4)&quot;,&quot;variables&quot;:[&quot;G&quot;,&quot;c&quot;]}},{&quot;id&quot;:&quot;__multiply_12&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;8 \\pi G&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;8*pi*G&quot;,&quot;variables&quot;:[&quot;G&quot;]}},{&quot;id&quot;:&quot;__num_13&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;8&quot;,&quot;subexpr&quot;:&quot;8&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;8&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__multiply_14&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\pi G&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pi*G&quot;,&quot;variables&quot;:[&quot;G&quot;]}},{&quot;id&quot;:&quot;pi&quot;,&quot;type&quot;:&quot;constant&quot;,&quot;latex&quot;:&quot;\\pi&quot;,&quot;subexpr&quot;:&quot;\\pi&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pi&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;G&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;G&quot;,&quot;subexpr&quot;:&quot;G&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;G&quot;,&quot;variables&quot;:[&quot;G&quot;]}},{&quot;id&quot;:&quot;__power_15&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{c^{4}}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(c, -4)&quot;,&quot;variables&quot;:[&quot;c&quot;]}},{&quot;id&quot;:&quot;__power_16&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;4&quot;,&quot;subexpr&quot;:&quot;c^{4}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(c, 4)&quot;,&quot;variables&quot;:[&quot;c&quot;]}},{&quot;id&quot;:&quot;c&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;c&quot;,&quot;subexpr&quot;:&quot;c&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;c&quot;,&quot;variables&quot;:[&quot;c&quot;]}},{&quot;id&quot;:&quot;T_munu&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;T_{\\mu\\nu}&quot;,&quot;subexpr&quot;:&quot;T_{\\mu\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;T_mu*nu&quot;,&quot;variables&quot;:[&quot;T_mu*nu&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;R_munu&quot;,&quot;to&quot;:&quot;__add_3&quot;},{&quot;from&quot;:&quot;__num_7&quot;,&quot;to&quot;:&quot;__power_6&quot;},{&quot;from&quot;:&quot;__power_6&quot;,&quot;to&quot;:&quot;__multiply_5&quot;},{&quot;from&quot;:&quot;R&quot;,&quot;to&quot;:&quot;__multiply_8&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;g_munu&quot;,&quot;to&quot;:&quot;__multiply_8&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_8&quot;,&quot;to&quot;:&quot;__multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_5&quot;,&quot;to&quot;:&quot;__negation_4&quot;},{&quot;from&quot;:&quot;__negation_4&quot;,&quot;to&quot;:&quot;__add_3&quot;},{&quot;from&quot;:&quot;__add_3&quot;,&quot;to&quot;:&quot;__add_2&quot;},{&quot;from&quot;:&quot;Lambda&quot;,&quot;to&quot;:&quot;__multiply_9&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;g_munu&quot;,&quot;to&quot;:&quot;__multiply_9&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_9&quot;,&quot;to&quot;:&quot;__add_2&quot;},{&quot;from&quot;:&quot;__add_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;__num_13&quot;,&quot;to&quot;:&quot;__multiply_12&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;pi&quot;,&quot;to&quot;:&quot;__multiply_14&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;G&quot;,&quot;to&quot;:&quot;__multiply_14&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_14&quot;,&quot;to&quot;:&quot;__multiply_12&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_12&quot;,&quot;to&quot;:&quot;__multiply_11&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;c&quot;,&quot;to&quot;:&quot;__power_16&quot;},{&quot;from&quot;:&quot;__power_16&quot;,&quot;to&quot;:&quot;__power_15&quot;},{&quot;from&quot;:&quot;__power_15&quot;,&quot;to&quot;:&quot;__multiply_11&quot;},{&quot;from&quot;:&quot;__multiply_11&quot;,&quot;to&quot;:&quot;__multiply_10&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;T_munu&quot;,&quot;to&quot;:&quot;__multiply_10&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_10&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;},&quot;domain&quot;:&quot;mechanics&quot;}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>-8*pi*G*T_munu/pow(c, 4) + Lambda*g_munu - 1/2*R*g_munu + R_munu</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>G, Lambda, R, R_munu, T_munu, c, g_munu</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;R_{\\mu\\nu} - \\frac{1}{2} R g_{\\mu\\nu} + \\Lambda g_{\\mu\\nu} = \\frac{8\\pi G}{c^4} T_{\\mu\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-8*pi*G*T_munu/pow(c, 4) + Lambda*g_munu - 1/2*R*g_munu + R_munu&quot;,&quot;variables&quot;:[&quot;G&quot;,&quot;Lambda&quot;,&quot;R&quot;,&quot;R_munu&quot;,&quot;T_munu&quot;,&quot;c&quot;,&quot;g_munu&quot;]}},{&quot;id&quot;:&quot;__add_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;\\Lambda g_{\\mu\\nu} + R_{\\mu\\nu} - \\frac{1}{2} R g_{\\mu\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Lambda*g_munu - 1/2*R*g_munu + R_munu&quot;,&quot;variables&quot;:[&quot;Lambda&quot;,&quot;R&quot;,&quot;R_munu&quot;,&quot;g_munu&quot;]}},{&quot;id&quot;:&quot;__add_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;R_{\\mu\\nu} - \\frac{1}{2} R g_{\\mu\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-1/2*R*g_munu + R_munu&quot;,&quot;variables&quot;:[&quot;R&quot;,&quot;R_munu&quot;,&quot;g_munu&quot;]}},{&quot;id&quot;:&quot;R_munu&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;R_{\\mu\\nu}&quot;,&quot;subexpr&quot;:&quot;R_{\\mu\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;R_munu&quot;,&quot;variables&quot;:[&quot;R_munu&quot;]}},{&quot;id&quot;:&quot;__negation_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-\\frac{1}{2} R g_{\\mu\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-1/2*R*g_munu&quot;,&quot;variables&quot;:[&quot;R&quot;,&quot;g_munu&quot;]}},{&quot;id&quot;:&quot;__multiply_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{2} R g_{\\mu\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;(1/2)*R*g_munu&quot;,&quot;variables&quot;:[&quot;R&quot;,&quot;g_munu&quot;]}},{&quot;id&quot;:&quot;__power_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1/2&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__num_7&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;2&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;2&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__multiply_8&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;R g_{\\mu\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;R*g_munu&quot;,&quot;variables&quot;:[&quot;R&quot;,&quot;g_munu&quot;]}},{&quot;id&quot;:&quot;R&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;R&quot;,&quot;subexpr&quot;:&quot;R&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;R&quot;,&quot;variables&quot;:[&quot;R&quot;]}},{&quot;id&quot;:&quot;g_munu&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;g_{\\mu\\nu}&quot;,&quot;subexpr&quot;:&quot;g_{\\mu\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;g_munu&quot;,&quot;variables&quot;:[&quot;g_munu&quot;]}},{&quot;id&quot;:&quot;__multiply_9&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\Lambda g_{\\mu\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Lambda*g_munu&quot;,&quot;variables&quot;:[&quot;Lambda&quot;,&quot;g_munu&quot;]}},{&quot;id&quot;:&quot;Lambda&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\Lambda&quot;,&quot;subexpr&quot;:&quot;\\Lambda&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Lambda&quot;,&quot;variables&quot;:[&quot;Lambda&quot;]}},{&quot;id&quot;:&quot;__multiply_10&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;8 \\pi G \\frac{1}{c^{4}} T_{\\mu\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;8*pi*G*T_munu/pow(c, 4)&quot;,&quot;variables&quot;:[&quot;G&quot;,&quot;T_munu&quot;,&quot;c&quot;]}},{&quot;id&quot;:&quot;__multiply_11&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;8 \\pi G \\frac{1}{c^{4}}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;8*pi*G/pow(c, 4)&quot;,&quot;variables&quot;:[&quot;G&quot;,&quot;c&quot;]}},{&quot;id&quot;:&quot;__multiply_12&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;8 \\pi G&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;8*pi*G&quot;,&quot;variables&quot;:[&quot;G&quot;]}},{&quot;id&quot;:&quot;__num_13&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;8&quot;,&quot;subexpr&quot;:&quot;8&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;8&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__multiply_14&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\pi G&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pi*G&quot;,&quot;variables&quot;:[&quot;G&quot;]}},{&quot;id&quot;:&quot;pi&quot;,&quot;type&quot;:&quot;constant&quot;,&quot;latex&quot;:&quot;\\pi&quot;,&quot;subexpr&quot;:&quot;\\pi&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pi&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;G&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;G&quot;,&quot;subexpr&quot;:&quot;G&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;G&quot;,&quot;variables&quot;:[&quot;G&quot;]}},{&quot;id&quot;:&quot;__power_15&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{c^{4}}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(c, -4)&quot;,&quot;variables&quot;:[&quot;c&quot;]}},{&quot;id&quot;:&quot;__power_16&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;4&quot;,&quot;subexpr&quot;:&quot;c^{4}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(c, 4)&quot;,&quot;variables&quot;:[&quot;c&quot;]}},{&quot;id&quot;:&quot;c&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;c&quot;,&quot;subexpr&quot;:&quot;c&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;c&quot;,&quot;variables&quot;:[&quot;c&quot;]}},{&quot;id&quot;:&quot;T_munu&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;T_{\\mu\\nu}&quot;,&quot;subexpr&quot;:&quot;T_{\\mu\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;T_munu&quot;,&quot;variables&quot;:[&quot;T_munu&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;R_munu&quot;,&quot;to&quot;:&quot;__add_3&quot;},{&quot;from&quot;:&quot;__num_7&quot;,&quot;to&quot;:&quot;__power_6&quot;},{&quot;from&quot;:&quot;__power_6&quot;,&quot;to&quot;:&quot;__multiply_5&quot;},{&quot;from&quot;:&quot;R&quot;,&quot;to&quot;:&quot;__multiply_8&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;g_munu&quot;,&quot;to&quot;:&quot;__multiply_8&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_8&quot;,&quot;to&quot;:&quot;__multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_5&quot;,&quot;to&quot;:&quot;__negation_4&quot;},{&quot;from&quot;:&quot;__negation_4&quot;,&quot;to&quot;:&quot;__add_3&quot;},{&quot;from&quot;:&quot;__add_3&quot;,&quot;to&quot;:&quot;__add_2&quot;},{&quot;from&quot;:&quot;Lambda&quot;,&quot;to&quot;:&quot;__multiply_9&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;g_munu&quot;,&quot;to&quot;:&quot;__multiply_9&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_9&quot;,&quot;to&quot;:&quot;__add_2&quot;},{&quot;from&quot;:&quot;__add_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;__num_13&quot;,&quot;to&quot;:&quot;__multiply_12&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;pi&quot;,&quot;to&quot;:&quot;__multiply_14&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;G&quot;,&quot;to&quot;:&quot;__multiply_14&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_14&quot;,&quot;to&quot;:&quot;__multiply_12&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_12&quot;,&quot;to&quot;:&quot;__multiply_11&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;c&quot;,&quot;to&quot;:&quot;__power_16&quot;},{&quot;from&quot;:&quot;__power_16&quot;,&quot;to&quot;:&quot;__power_15&quot;},{&quot;from&quot;:&quot;__power_15&quot;,&quot;to&quot;:&quot;__multiply_11&quot;},{&quot;from&quot;:&quot;__multiply_11&quot;,&quot;to&quot;:&quot;__multiply_10&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;T_munu&quot;,&quot;to&quot;:&quot;__multiply_10&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_10&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;},&quot;domain&quot;:&quot;mechanics&quot;}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -3577,9 +3578,9 @@ svg.d3-semantic-graph {
       "op": "equals",
       "subexpr": "\\tau = \\int \\sqrt{-g_{\\mu\\nu} dx^\\mu dx^\\nu}",
       "chartScript": {
-        "script": "tau - x*sqrt(-g_mu*nu)",
+        "script": "tau - x*sqrt(-g_munu)",
         "variables": [
-          "g_mu*nu",
+          "g_munu",
           "tau",
           "x"
         ]
@@ -3604,9 +3605,9 @@ svg.d3-semantic-graph {
       "with_respect_to": "x",
       "subexpr": "\\int \\sqrt{- g_{\\mu\\nu}}\\, dx",
       "chartScript": {
-        "script": "x*sqrt(-g_mu*nu)",
+        "script": "x*sqrt(-g_munu)",
         "variables": [
-          "g_mu*nu",
+          "g_munu",
           "x"
         ]
       }
@@ -3624,9 +3625,9 @@ svg.d3-semantic-graph {
       "exponent": "1/2",
       "subexpr": "\\sqrt{- g_{\\mu\\nu}}",
       "chartScript": {
-        "script": "sqrt(-g_mu*nu)",
+        "script": "sqrt(-g_munu)",
         "variables": [
-          "g_mu*nu"
+          "g_munu"
         ]
       }
     },
@@ -3636,9 +3637,9 @@ svg.d3-semantic-graph {
       "op": "negation",
       "subexpr": "-g_{\\mu\\nu}",
       "chartScript": {
-        "script": "-g_mu*nu",
+        "script": "-g_munu",
         "variables": [
-          "g_mu*nu"
+          "g_munu"
         ]
       }
     },
@@ -3648,9 +3649,9 @@ svg.d3-semantic-graph {
       "latex": "g_{\\mu\\nu}",
       "subexpr": "g_{\\mu\\nu}",
       "chartScript": {
-        "script": "g_mu*nu",
+        "script": "g_munu",
         "variables": [
-          "g_mu*nu"
+          "g_munu"
         ]
       }
     }
@@ -3720,8 +3721,8 @@ svg.d3-semantic-graph {
   linkStyle 5 stroke:#aaa,stroke-width:2px
 </pre></div></div>
   <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(\tau, Integral(sqrt(-g_{\mu\nu}), x))</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(Symbol('\\tau'), Integral(Pow(Mul(Integer(-1), Symbol('g_{\\mu\\nu}')), Rational(1, 2)), Tuple(Symbol('x'))))</pre></div></div>
-  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>tau - x*sqrt(-g_mu*nu)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>g_mu*nu, tau, x</pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\tau = \\int \\sqrt{-g_{\\mu\\nu} dx^\\mu dx^\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;tau - x*sqrt(-g_mu*nu)&quot;,&quot;variables&quot;:[&quot;g_mu*nu&quot;,&quot;tau&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;tau&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\tau&quot;,&quot;subexpr&quot;:&quot;\\tau&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;tau&quot;,&quot;variables&quot;:[&quot;tau&quot;]}},{&quot;id&quot;:&quot;__integral_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;integral&quot;,&quot;with_respect_to&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;\\int \\sqrt{- g_{\\mu\\nu}}\\, dx&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x*sqrt(-g_mu*nu)&quot;,&quot;variables&quot;:[&quot;g_mu*nu&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;dx&quot;,&quot;type&quot;:&quot;differential&quot;,&quot;latex&quot;:&quot;dx&quot;,&quot;with_respect_to&quot;:&quot;x&quot;},{&quot;id&quot;:&quot;__power_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;1/2&quot;,&quot;subexpr&quot;:&quot;\\sqrt{- g_{\\mu\\nu}}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;sqrt(-g_mu*nu)&quot;,&quot;variables&quot;:[&quot;g_mu*nu&quot;]}},{&quot;id&quot;:&quot;__negation_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-g_{\\mu\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-g_mu*nu&quot;,&quot;variables&quot;:[&quot;g_mu*nu&quot;]}},{&quot;id&quot;:&quot;g_munu&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;g_{\\mu\\nu}&quot;,&quot;subexpr&quot;:&quot;g_{\\mu\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;g_mu*nu&quot;,&quot;variables&quot;:[&quot;g_mu*nu&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;tau&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;dx&quot;,&quot;to&quot;:&quot;__integral_2&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;g_munu&quot;,&quot;to&quot;:&quot;__negation_4&quot;},{&quot;from&quot;:&quot;__negation_4&quot;,&quot;to&quot;:&quot;__power_3&quot;},{&quot;from&quot;:&quot;__power_3&quot;,&quot;to&quot;:&quot;__integral_2&quot;},{&quot;from&quot;:&quot;__integral_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;},&quot;domain&quot;:&quot;mechanics&quot;}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>tau - x*sqrt(-g_munu)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>g_munu, tau, x</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\tau = \\int \\sqrt{-g_{\\mu\\nu} dx^\\mu dx^\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;tau - x*sqrt(-g_munu)&quot;,&quot;variables&quot;:[&quot;g_munu&quot;,&quot;tau&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;tau&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\tau&quot;,&quot;subexpr&quot;:&quot;\\tau&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;tau&quot;,&quot;variables&quot;:[&quot;tau&quot;]}},{&quot;id&quot;:&quot;__integral_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;integral&quot;,&quot;with_respect_to&quot;:&quot;x&quot;,&quot;subexpr&quot;:&quot;\\int \\sqrt{- g_{\\mu\\nu}}\\, dx&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;x*sqrt(-g_munu)&quot;,&quot;variables&quot;:[&quot;g_munu&quot;,&quot;x&quot;]}},{&quot;id&quot;:&quot;dx&quot;,&quot;type&quot;:&quot;differential&quot;,&quot;latex&quot;:&quot;dx&quot;,&quot;with_respect_to&quot;:&quot;x&quot;},{&quot;id&quot;:&quot;__power_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;1/2&quot;,&quot;subexpr&quot;:&quot;\\sqrt{- g_{\\mu\\nu}}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;sqrt(-g_munu)&quot;,&quot;variables&quot;:[&quot;g_munu&quot;]}},{&quot;id&quot;:&quot;__negation_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-g_{\\mu\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-g_munu&quot;,&quot;variables&quot;:[&quot;g_munu&quot;]}},{&quot;id&quot;:&quot;g_munu&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;g_{\\mu\\nu}&quot;,&quot;subexpr&quot;:&quot;g_{\\mu\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;g_munu&quot;,&quot;variables&quot;:[&quot;g_munu&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;tau&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;dx&quot;,&quot;to&quot;:&quot;__integral_2&quot;,&quot;role&quot;:&quot;wrt&quot;},{&quot;from&quot;:&quot;g_munu&quot;,&quot;to&quot;:&quot;__negation_4&quot;},{&quot;from&quot;:&quot;__negation_4&quot;,&quot;to&quot;:&quot;__power_3&quot;},{&quot;from&quot;:&quot;__power_3&quot;,&quot;to&quot;:&quot;__integral_2&quot;},{&quot;from&quot;:&quot;__integral_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;},&quot;domain&quot;:&quot;mechanics&quot;}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -4614,11 +4615,11 @@ svg.d3-semantic-graph {
       "op": "equals",
       "subexpr": "g_{\\mu\\nu} g^{\\nu\\rho} = \\delta^\\rho_\\mu",
       "chartScript": {
-        "script": "-pow(delta, rho_mu) + pow(g, nu*rho)*g_mu*nu",
+        "script": "-pow(delta, rho_mu) + pow(g, nu*rho)*g_munu",
         "variables": [
           "delta",
           "g",
-          "g_mu*nu",
+          "g_munu",
           "nu",
           "rho",
           "rho_mu"
@@ -4631,10 +4632,10 @@ svg.d3-semantic-graph {
       "op": "multiply",
       "subexpr": "g^{\\nu \\rho} g_{\\mu\\nu}",
       "chartScript": {
-        "script": "pow(g, nu*rho)*g_mu*nu",
+        "script": "pow(g, nu*rho)*g_munu",
         "variables": [
           "g",
-          "g_mu*nu",
+          "g_munu",
           "nu",
           "rho"
         ]
@@ -4646,9 +4647,9 @@ svg.d3-semantic-graph {
       "latex": "g_{\\mu\\nu}",
       "subexpr": "g_{\\mu\\nu}",
       "chartScript": {
-        "script": "g_mu*nu",
+        "script": "g_munu",
         "variables": [
-          "g_mu*nu"
+          "g_munu"
         ]
       }
     },
@@ -4841,8 +4842,8 @@ svg.d3-semantic-graph {
   linkStyle 9 stroke:#aaa,stroke-width:2px
 </pre></div></div>
   <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(g**(\nu*\rho)*g_{\mu\nu}, \delta_{\mu}**\rho)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(Mul(Pow(Symbol('g'), Mul(Symbol('\\nu'), Symbol('\\rho'))), Symbol('g_{\\mu\\nu}')), Pow(Symbol('\\delta_{\\mu}'), Symbol('\\rho')))</pre></div></div>
-  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>-pow(delta, rho_mu) + pow(g, nu*rho)*g_mu*nu</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>delta, g, g_mu*nu, nu, rho, rho_mu</pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;g_{\\mu\\nu} g^{\\nu\\rho} = \\delta^\\rho_\\mu&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-pow(delta, rho_mu) + pow(g, nu*rho)*g_mu*nu&quot;,&quot;variables&quot;:[&quot;delta&quot;,&quot;g&quot;,&quot;g_mu*nu&quot;,&quot;nu&quot;,&quot;rho&quot;,&quot;rho_mu&quot;]}},{&quot;id&quot;:&quot;__multiply_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;g^{\\nu \\rho} g_{\\mu\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(g, nu*rho)*g_mu*nu&quot;,&quot;variables&quot;:[&quot;g&quot;,&quot;g_mu*nu&quot;,&quot;nu&quot;,&quot;rho&quot;]}},{&quot;id&quot;:&quot;g_munu&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;g_{\\mu\\nu}&quot;,&quot;subexpr&quot;:&quot;g_{\\mu\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;g_mu*nu&quot;,&quot;variables&quot;:[&quot;g_mu*nu&quot;]}},{&quot;id&quot;:&quot;__power_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;g^{\\nu \\rho}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(g, nu*rho)&quot;,&quot;variables&quot;:[&quot;g&quot;,&quot;nu&quot;,&quot;rho&quot;]}},{&quot;id&quot;:&quot;g&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;g&quot;,&quot;subexpr&quot;:&quot;g&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;g&quot;,&quot;variables&quot;:[&quot;g&quot;]}},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\nu \\rho&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;nu*rho&quot;,&quot;variables&quot;:[&quot;nu&quot;,&quot;rho&quot;]}},{&quot;id&quot;:&quot;nu&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\nu&quot;,&quot;subexpr&quot;:&quot;\\nu&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;nu&quot;,&quot;variables&quot;:[&quot;nu&quot;]}},{&quot;id&quot;:&quot;rho&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\rho&quot;,&quot;subexpr&quot;:&quot;\\rho&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;rho&quot;,&quot;variables&quot;:[&quot;rho&quot;]}},{&quot;id&quot;:&quot;__power_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;\\delta_{\\mu}^{\\rho}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(delta_mu, rho)&quot;,&quot;variables&quot;:[&quot;delta_mu&quot;,&quot;rho&quot;]}},{&quot;id&quot;:&quot;delta_mu&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\delta_{\\mu}&quot;,&quot;subexpr&quot;:&quot;\\delta_{\\mu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;delta_mu&quot;,&quot;variables&quot;:[&quot;delta_mu&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;g_munu&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;g&quot;,&quot;to&quot;:&quot;__power_3&quot;},{&quot;from&quot;:&quot;nu&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;rho&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__power_3&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_3&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;delta_mu&quot;,&quot;to&quot;:&quot;__power_5&quot;},{&quot;from&quot;:&quot;rho&quot;,&quot;to&quot;:&quot;__power_5&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_5&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;},&quot;domain&quot;:&quot;mechanics&quot;}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>-pow(delta, rho_mu) + pow(g, nu*rho)*g_munu</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>delta, g, g_munu, nu, rho, rho_mu</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;g_{\\mu\\nu} g^{\\nu\\rho} = \\delta^\\rho_\\mu&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-pow(delta, rho_mu) + pow(g, nu*rho)*g_munu&quot;,&quot;variables&quot;:[&quot;delta&quot;,&quot;g&quot;,&quot;g_munu&quot;,&quot;nu&quot;,&quot;rho&quot;,&quot;rho_mu&quot;]}},{&quot;id&quot;:&quot;__multiply_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;g^{\\nu \\rho} g_{\\mu\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(g, nu*rho)*g_munu&quot;,&quot;variables&quot;:[&quot;g&quot;,&quot;g_munu&quot;,&quot;nu&quot;,&quot;rho&quot;]}},{&quot;id&quot;:&quot;g_munu&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;g_{\\mu\\nu}&quot;,&quot;subexpr&quot;:&quot;g_{\\mu\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;g_munu&quot;,&quot;variables&quot;:[&quot;g_munu&quot;]}},{&quot;id&quot;:&quot;__power_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;g^{\\nu \\rho}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(g, nu*rho)&quot;,&quot;variables&quot;:[&quot;g&quot;,&quot;nu&quot;,&quot;rho&quot;]}},{&quot;id&quot;:&quot;g&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;g&quot;,&quot;subexpr&quot;:&quot;g&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;g&quot;,&quot;variables&quot;:[&quot;g&quot;]}},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\nu \\rho&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;nu*rho&quot;,&quot;variables&quot;:[&quot;nu&quot;,&quot;rho&quot;]}},{&quot;id&quot;:&quot;nu&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\nu&quot;,&quot;subexpr&quot;:&quot;\\nu&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;nu&quot;,&quot;variables&quot;:[&quot;nu&quot;]}},{&quot;id&quot;:&quot;rho&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\rho&quot;,&quot;subexpr&quot;:&quot;\\rho&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;rho&quot;,&quot;variables&quot;:[&quot;rho&quot;]}},{&quot;id&quot;:&quot;__power_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;\\delta_{\\mu}^{\\rho}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(delta_mu, rho)&quot;,&quot;variables&quot;:[&quot;delta_mu&quot;,&quot;rho&quot;]}},{&quot;id&quot;:&quot;delta_mu&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\delta_{\\mu}&quot;,&quot;subexpr&quot;:&quot;\\delta_{\\mu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;delta_mu&quot;,&quot;variables&quot;:[&quot;delta_mu&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;g_munu&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;g&quot;,&quot;to&quot;:&quot;__power_3&quot;},{&quot;from&quot;:&quot;nu&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;rho&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__power_3&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_3&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;delta_mu&quot;,&quot;to&quot;:&quot;__power_5&quot;},{&quot;from&quot;:&quot;rho&quot;,&quot;to&quot;:&quot;__power_5&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_5&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;},&quot;domain&quot;:&quot;mechanics&quot;}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -4925,15 +4926,15 @@ svg.d3-semantic-graph {
       "op": "equals",
       "subexpr": "R^\\rho_{\\sigma\\mu\\nu} = \\partial_\\mu \\Gamma^\\rho_{\\nu\\sigma} - \\partial_\\nu \\Gamma^\\rho_{\\mu\\sigma}",
       "chartScript": {
-        "script": "pow(Gamma, rho_mu*sigma)*partial_nu - pow(Gamma, rho_nu*sigma)*partial_mu + pow(R, rho_sigma*(mu*nu))",
+        "script": "pow(Gamma, rho_musigma)*partial_nu - pow(Gamma, rho_nusigma)*partial_mu + pow(R, rho_sigmamunu)",
         "variables": [
           "Gamma",
           "R",
           "partial_mu",
           "partial_nu",
-          "rho_mu*sigma",
-          "rho_nu*sigma",
-          "rho_sigma*(mu*nu)"
+          "rho_musigma",
+          "rho_nusigma",
+          "rho_sigmamunu"
         ]
       }
     },
@@ -4943,9 +4944,9 @@ svg.d3-semantic-graph {
       "op": "power",
       "subexpr": "R_{\\sigma\\mu\\nu}^{\\rho}",
       "chartScript": {
-        "script": "pow(R_sigma*(mu*nu), rho)",
+        "script": "pow(R_sigmamunu, rho)",
         "variables": [
-          "R_sigma*(mu*nu)",
+          "R_sigmamunu",
           "rho"
         ]
       }
@@ -4956,9 +4957,9 @@ svg.d3-semantic-graph {
       "latex": "R_{\\sigma\\mu\\nu}",
       "subexpr": "R_{\\sigma\\mu\\nu}",
       "chartScript": {
-        "script": "R_sigma*(mu*nu)",
+        "script": "R_sigmamunu",
         "variables": [
-          "R_sigma*(mu*nu)"
+          "R_sigmamunu"
         ]
       }
     },
@@ -4980,10 +4981,10 @@ svg.d3-semantic-graph {
       "op": "add",
       "subexpr": "\\partial_{\\mu} \\Gamma_{\\nu\\sigma}^{\\rho} - \\partial_{\\nu} \\Gamma_{\\mu\\sigma}^{\\rho}",
       "chartScript": {
-        "script": "-pow(Gamma_mu*sigma, rho)*partial_nu + pow(Gamma_nu*sigma, rho)*partial_mu",
+        "script": "-pow(Gamma_musigma, rho)*partial_nu + pow(Gamma_nusigma, rho)*partial_mu",
         "variables": [
-          "Gamma_mu*sigma",
-          "Gamma_nu*sigma",
+          "Gamma_musigma",
+          "Gamma_nusigma",
           "partial_mu",
           "partial_nu",
           "rho"
@@ -4996,9 +4997,9 @@ svg.d3-semantic-graph {
       "op": "multiply",
       "subexpr": "\\partial_{\\mu} \\Gamma_{\\nu\\sigma}^{\\rho}",
       "chartScript": {
-        "script": "pow(Gamma_nu*sigma, rho)*partial_mu",
+        "script": "pow(Gamma_nusigma, rho)*partial_mu",
         "variables": [
-          "Gamma_nu*sigma",
+          "Gamma_nusigma",
           "partial_mu",
           "rho"
         ]
@@ -5022,9 +5023,9 @@ svg.d3-semantic-graph {
       "op": "power",
       "subexpr": "\\Gamma_{\\nu\\sigma}^{\\rho}",
       "chartScript": {
-        "script": "pow(Gamma_nu*sigma, rho)",
+        "script": "pow(Gamma_nusigma, rho)",
         "variables": [
-          "Gamma_nu*sigma",
+          "Gamma_nusigma",
           "rho"
         ]
       }
@@ -5035,9 +5036,9 @@ svg.d3-semantic-graph {
       "latex": "\\Gamma_{\\nu\\sigma}",
       "subexpr": "\\Gamma_{\\nu\\sigma}",
       "chartScript": {
-        "script": "Gamma_nu*sigma",
+        "script": "Gamma_nusigma",
         "variables": [
-          "Gamma_nu*sigma"
+          "Gamma_nusigma"
         ]
       }
     },
@@ -5047,9 +5048,9 @@ svg.d3-semantic-graph {
       "op": "negation",
       "subexpr": "-\\partial_{\\nu} \\Gamma_{\\mu\\sigma}^{\\rho}",
       "chartScript": {
-        "script": "-pow(Gamma_mu*sigma, rho)*partial_nu",
+        "script": "-pow(Gamma_musigma, rho)*partial_nu",
         "variables": [
-          "Gamma_mu*sigma",
+          "Gamma_musigma",
           "partial_nu",
           "rho"
         ]
@@ -5061,9 +5062,9 @@ svg.d3-semantic-graph {
       "op": "multiply",
       "subexpr": "\\partial_{\\nu} \\Gamma_{\\mu\\sigma}^{\\rho}",
       "chartScript": {
-        "script": "pow(Gamma_mu*sigma, rho)*partial_nu",
+        "script": "pow(Gamma_musigma, rho)*partial_nu",
         "variables": [
-          "Gamma_mu*sigma",
+          "Gamma_musigma",
           "partial_nu",
           "rho"
         ]
@@ -5087,9 +5088,9 @@ svg.d3-semantic-graph {
       "op": "power",
       "subexpr": "\\Gamma_{\\mu\\sigma}^{\\rho}",
       "chartScript": {
-        "script": "pow(Gamma_mu*sigma, rho)",
+        "script": "pow(Gamma_musigma, rho)",
         "variables": [
-          "Gamma_mu*sigma",
+          "Gamma_musigma",
           "rho"
         ]
       }
@@ -5100,9 +5101,9 @@ svg.d3-semantic-graph {
       "latex": "\\Gamma_{\\mu\\sigma}",
       "subexpr": "\\Gamma_{\\mu\\sigma}",
       "chartScript": {
-        "script": "Gamma_mu*sigma",
+        "script": "Gamma_musigma",
         "variables": [
-          "Gamma_mu*sigma"
+          "Gamma_musigma"
         ]
       }
     }
@@ -5243,8 +5244,8 @@ svg.d3-semantic-graph {
   linkStyle 14 stroke:#aaa,stroke-width:2px
 </pre></div></div>
   <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(R_{\sigma\mu\nu}**\rho, -\Gamma_{\mu\sigma}**\rho*\partial_{\nu} + \Gamma_{\nu\sigma}**\rho*\partial_{\mu})</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(Pow(Symbol('R_{\\sigma\\mu\\nu}'), Symbol('\\rho')), Add(Mul(Integer(-1), Pow(Symbol('\\Gamma_{\\mu\\sigma}'), Symbol('\\rho')), Symbol('\\partial_{\\nu}')), Mul(Pow(Symbol('\\Gamma_{\\nu\\sigma}'), Symbol('\\rho')), Symbol('\\partial_{\\mu}'))))</pre></div></div>
-  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>pow(Gamma, rho_mu*sigma)*partial_nu - pow(Gamma, rho_nu*sigma)*partial_mu + pow(R, rho_sigma*(mu*nu))</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>Gamma, R, partial_mu, partial_nu, rho_mu*sigma, rho_nu*sigma, rho_sigma*(mu*nu)</pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;R^\\rho_{\\sigma\\mu\\nu} = \\partial_\\mu \\Gamma^\\rho_{\\nu\\sigma} - \\partial_\\nu \\Gamma^\\rho_{\\mu\\sigma}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(Gamma, rho_mu*sigma)*partial_nu - pow(Gamma, rho_nu*sigma)*partial_mu + pow(R, rho_sigma*(mu*nu))&quot;,&quot;variables&quot;:[&quot;Gamma&quot;,&quot;R&quot;,&quot;partial_mu&quot;,&quot;partial_nu&quot;,&quot;rho_mu*sigma&quot;,&quot;rho_nu*sigma&quot;,&quot;rho_sigma*(mu*nu)&quot;]}},{&quot;id&quot;:&quot;__power_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;R_{\\sigma\\mu\\nu}^{\\rho}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(R_sigma*(mu*nu), rho)&quot;,&quot;variables&quot;:[&quot;R_sigma*(mu*nu)&quot;,&quot;rho&quot;]}},{&quot;id&quot;:&quot;R_sigmamunu&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;R_{\\sigma\\mu\\nu}&quot;,&quot;subexpr&quot;:&quot;R_{\\sigma\\mu\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;R_sigma*(mu*nu)&quot;,&quot;variables&quot;:[&quot;R_sigma*(mu*nu)&quot;]}},{&quot;id&quot;:&quot;rho&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\rho&quot;,&quot;subexpr&quot;:&quot;\\rho&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;rho&quot;,&quot;variables&quot;:[&quot;rho&quot;]}},{&quot;id&quot;:&quot;__add_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;\\partial_{\\mu} \\Gamma_{\\nu\\sigma}^{\\rho} - \\partial_{\\nu} \\Gamma_{\\mu\\sigma}^{\\rho}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-pow(Gamma_mu*sigma, rho)*partial_nu + pow(Gamma_nu*sigma, rho)*partial_mu&quot;,&quot;variables&quot;:[&quot;Gamma_mu*sigma&quot;,&quot;Gamma_nu*sigma&quot;,&quot;partial_mu&quot;,&quot;partial_nu&quot;,&quot;rho&quot;]}},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\partial_{\\mu} \\Gamma_{\\nu\\sigma}^{\\rho}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(Gamma_nu*sigma, rho)*partial_mu&quot;,&quot;variables&quot;:[&quot;Gamma_nu*sigma&quot;,&quot;partial_mu&quot;,&quot;rho&quot;]}},{&quot;id&quot;:&quot;partial_mu&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\partial_{\\mu}&quot;,&quot;subexpr&quot;:&quot;\\partial_{\\mu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;partial_mu&quot;,&quot;variables&quot;:[&quot;partial_mu&quot;]}},{&quot;id&quot;:&quot;__power_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;\\Gamma_{\\nu\\sigma}^{\\rho}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(Gamma_nu*sigma, rho)&quot;,&quot;variables&quot;:[&quot;Gamma_nu*sigma&quot;,&quot;rho&quot;]}},{&quot;id&quot;:&quot;Gamma_nusigma&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\Gamma_{\\nu\\sigma}&quot;,&quot;subexpr&quot;:&quot;\\Gamma_{\\nu\\sigma}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Gamma_nu*sigma&quot;,&quot;variables&quot;:[&quot;Gamma_nu*sigma&quot;]}},{&quot;id&quot;:&quot;__negation_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-\\partial_{\\nu} \\Gamma_{\\mu\\sigma}^{\\rho}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-pow(Gamma_mu*sigma, rho)*partial_nu&quot;,&quot;variables&quot;:[&quot;Gamma_mu*sigma&quot;,&quot;partial_nu&quot;,&quot;rho&quot;]}},{&quot;id&quot;:&quot;__multiply_7&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\partial_{\\nu} \\Gamma_{\\mu\\sigma}^{\\rho}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(Gamma_mu*sigma, rho)*partial_nu&quot;,&quot;variables&quot;:[&quot;Gamma_mu*sigma&quot;,&quot;partial_nu&quot;,&quot;rho&quot;]}},{&quot;id&quot;:&quot;partial_nu&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\partial_{\\nu}&quot;,&quot;subexpr&quot;:&quot;\\partial_{\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;partial_nu&quot;,&quot;variables&quot;:[&quot;partial_nu&quot;]}},{&quot;id&quot;:&quot;__power_8&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;\\Gamma_{\\mu\\sigma}^{\\rho}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(Gamma_mu*sigma, rho)&quot;,&quot;variables&quot;:[&quot;Gamma_mu*sigma&quot;,&quot;rho&quot;]}},{&quot;id&quot;:&quot;Gamma_musigma&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\Gamma_{\\mu\\sigma}&quot;,&quot;subexpr&quot;:&quot;\\Gamma_{\\mu\\sigma}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Gamma_mu*sigma&quot;,&quot;variables&quot;:[&quot;Gamma_mu*sigma&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;R_sigmamunu&quot;,&quot;to&quot;:&quot;__power_2&quot;},{&quot;from&quot;:&quot;rho&quot;,&quot;to&quot;:&quot;__power_2&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;partial_mu&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;Gamma_nusigma&quot;,&quot;to&quot;:&quot;__power_5&quot;},{&quot;from&quot;:&quot;rho&quot;,&quot;to&quot;:&quot;__power_5&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_5&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__add_3&quot;},{&quot;from&quot;:&quot;partial_nu&quot;,&quot;to&quot;:&quot;__multiply_7&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;Gamma_musigma&quot;,&quot;to&quot;:&quot;__power_8&quot;},{&quot;from&quot;:&quot;rho&quot;,&quot;to&quot;:&quot;__power_8&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_8&quot;,&quot;to&quot;:&quot;__multiply_7&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_7&quot;,&quot;to&quot;:&quot;__negation_6&quot;},{&quot;from&quot;:&quot;__negation_6&quot;,&quot;to&quot;:&quot;__add_3&quot;},{&quot;from&quot;:&quot;__add_3&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;},&quot;domain&quot;:&quot;mechanics&quot;}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>pow(Gamma, rho_musigma)*partial_nu - pow(Gamma, rho_nusigma)*partial_mu + pow(R, rho_sigmamunu)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>Gamma, R, partial_mu, partial_nu, rho_musigma, rho_nusigma, rho_sigmamunu</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;R^\\rho_{\\sigma\\mu\\nu} = \\partial_\\mu \\Gamma^\\rho_{\\nu\\sigma} - \\partial_\\nu \\Gamma^\\rho_{\\mu\\sigma}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(Gamma, rho_musigma)*partial_nu - pow(Gamma, rho_nusigma)*partial_mu + pow(R, rho_sigmamunu)&quot;,&quot;variables&quot;:[&quot;Gamma&quot;,&quot;R&quot;,&quot;partial_mu&quot;,&quot;partial_nu&quot;,&quot;rho_musigma&quot;,&quot;rho_nusigma&quot;,&quot;rho_sigmamunu&quot;]}},{&quot;id&quot;:&quot;__power_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;R_{\\sigma\\mu\\nu}^{\\rho}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(R_sigmamunu, rho)&quot;,&quot;variables&quot;:[&quot;R_sigmamunu&quot;,&quot;rho&quot;]}},{&quot;id&quot;:&quot;R_sigmamunu&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;R_{\\sigma\\mu\\nu}&quot;,&quot;subexpr&quot;:&quot;R_{\\sigma\\mu\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;R_sigmamunu&quot;,&quot;variables&quot;:[&quot;R_sigmamunu&quot;]}},{&quot;id&quot;:&quot;rho&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\rho&quot;,&quot;subexpr&quot;:&quot;\\rho&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;rho&quot;,&quot;variables&quot;:[&quot;rho&quot;]}},{&quot;id&quot;:&quot;__add_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;\\partial_{\\mu} \\Gamma_{\\nu\\sigma}^{\\rho} - \\partial_{\\nu} \\Gamma_{\\mu\\sigma}^{\\rho}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-pow(Gamma_musigma, rho)*partial_nu + pow(Gamma_nusigma, rho)*partial_mu&quot;,&quot;variables&quot;:[&quot;Gamma_musigma&quot;,&quot;Gamma_nusigma&quot;,&quot;partial_mu&quot;,&quot;partial_nu&quot;,&quot;rho&quot;]}},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\partial_{\\mu} \\Gamma_{\\nu\\sigma}^{\\rho}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(Gamma_nusigma, rho)*partial_mu&quot;,&quot;variables&quot;:[&quot;Gamma_nusigma&quot;,&quot;partial_mu&quot;,&quot;rho&quot;]}},{&quot;id&quot;:&quot;partial_mu&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\partial_{\\mu}&quot;,&quot;subexpr&quot;:&quot;\\partial_{\\mu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;partial_mu&quot;,&quot;variables&quot;:[&quot;partial_mu&quot;]}},{&quot;id&quot;:&quot;__power_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;\\Gamma_{\\nu\\sigma}^{\\rho}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(Gamma_nusigma, rho)&quot;,&quot;variables&quot;:[&quot;Gamma_nusigma&quot;,&quot;rho&quot;]}},{&quot;id&quot;:&quot;Gamma_nusigma&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\Gamma_{\\nu\\sigma}&quot;,&quot;subexpr&quot;:&quot;\\Gamma_{\\nu\\sigma}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Gamma_nusigma&quot;,&quot;variables&quot;:[&quot;Gamma_nusigma&quot;]}},{&quot;id&quot;:&quot;__negation_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-\\partial_{\\nu} \\Gamma_{\\mu\\sigma}^{\\rho}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-pow(Gamma_musigma, rho)*partial_nu&quot;,&quot;variables&quot;:[&quot;Gamma_musigma&quot;,&quot;partial_nu&quot;,&quot;rho&quot;]}},{&quot;id&quot;:&quot;__multiply_7&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\partial_{\\nu} \\Gamma_{\\mu\\sigma}^{\\rho}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(Gamma_musigma, rho)*partial_nu&quot;,&quot;variables&quot;:[&quot;Gamma_musigma&quot;,&quot;partial_nu&quot;,&quot;rho&quot;]}},{&quot;id&quot;:&quot;partial_nu&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\partial_{\\nu}&quot;,&quot;subexpr&quot;:&quot;\\partial_{\\nu}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;partial_nu&quot;,&quot;variables&quot;:[&quot;partial_nu&quot;]}},{&quot;id&quot;:&quot;__power_8&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;subexpr&quot;:&quot;\\Gamma_{\\mu\\sigma}^{\\rho}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(Gamma_musigma, rho)&quot;,&quot;variables&quot;:[&quot;Gamma_musigma&quot;,&quot;rho&quot;]}},{&quot;id&quot;:&quot;Gamma_musigma&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\Gamma_{\\mu\\sigma}&quot;,&quot;subexpr&quot;:&quot;\\Gamma_{\\mu\\sigma}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Gamma_musigma&quot;,&quot;variables&quot;:[&quot;Gamma_musigma&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;R_sigmamunu&quot;,&quot;to&quot;:&quot;__power_2&quot;},{&quot;from&quot;:&quot;rho&quot;,&quot;to&quot;:&quot;__power_2&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;partial_mu&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;Gamma_nusigma&quot;,&quot;to&quot;:&quot;__power_5&quot;},{&quot;from&quot;:&quot;rho&quot;,&quot;to&quot;:&quot;__power_5&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_5&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__add_3&quot;},{&quot;from&quot;:&quot;partial_nu&quot;,&quot;to&quot;:&quot;__multiply_7&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;Gamma_musigma&quot;,&quot;to&quot;:&quot;__power_8&quot;},{&quot;from&quot;:&quot;rho&quot;,&quot;to&quot;:&quot;__power_8&quot;,&quot;role&quot;:&quot;exp&quot;},{&quot;from&quot;:&quot;__power_8&quot;,&quot;to&quot;:&quot;__multiply_7&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_7&quot;,&quot;to&quot;:&quot;__negation_6&quot;},{&quot;from&quot;:&quot;__negation_6&quot;,&quot;to&quot;:&quot;__add_3&quot;},{&quot;from&quot;:&quot;__add_3&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;},&quot;domain&quot;:&quot;mechanics&quot;}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -5295,12 +5296,11 @@ svg.d3-semantic-graph {
       "op": "equals",
       "subexpr": "\\Delta t = \\gamma \\Delta t_0",
       "chartScript": {
-        "script": "-Delta*gamma*t_0 + Delta*t",
+        "script": "Delta_t - Delta_t_0*gamma",
         "variables": [
-          "Delta",
-          "gamma",
-          "t",
-          "t_0"
+          "Delta_t",
+          "Delta_t_0",
+          "gamma"
         ]
       }
     },
@@ -5310,10 +5310,9 @@ svg.d3-semantic-graph {
       "latex": "\\Delta t",
       "subexpr": "\\Delta t",
       "chartScript": {
-        "script": "Delta*t",
+        "script": "Delta_t",
         "variables": [
-          "Delta",
-          "t"
+          "Delta_t"
         ]
       }
     },
@@ -5323,11 +5322,10 @@ svg.d3-semantic-graph {
       "op": "multiply",
       "subexpr": "\\gamma \\Delta t_0",
       "chartScript": {
-        "script": "Delta*gamma*t_0",
+        "script": "Delta_t_0*gamma",
         "variables": [
-          "Delta",
-          "gamma",
-          "t_0"
+          "Delta_t_0",
+          "gamma"
         ]
       }
     },
@@ -5349,10 +5347,9 @@ svg.d3-semantic-graph {
       "latex": "\\Delta t_0",
       "subexpr": "\\Delta t_0",
       "chartScript": {
-        "script": "Delta*t_0",
+        "script": "Delta_t_0",
         "variables": [
-          "Delta",
-          "t_0"
+          "Delta_t_0"
         ]
       }
     }
@@ -5410,8 +5407,8 @@ svg.d3-semantic-graph {
   linkStyle 3 stroke:#aaa,stroke-width:2px
 </pre></div></div>
   <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(\Delta t, \Delta t_0*\gamma)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(Symbol('\\Delta t'), Mul(Symbol('\\Delta t_0'), Symbol('\\gamma')))</pre></div></div>
-  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>-Delta*gamma*t_0 + Delta*t</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>Delta, gamma, t, t_0</pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\Delta t = \\gamma \\Delta t_0&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-Delta*gamma*t_0 + Delta*t&quot;,&quot;variables&quot;:[&quot;Delta&quot;,&quot;gamma&quot;,&quot;t&quot;,&quot;t_0&quot;]}},{&quot;id&quot;:&quot;Delta_t&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\Delta t&quot;,&quot;subexpr&quot;:&quot;\\Delta t&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Delta*t&quot;,&quot;variables&quot;:[&quot;Delta&quot;,&quot;t&quot;]}},{&quot;id&quot;:&quot;__multiply_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\gamma \\Delta t_0&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Delta*gamma*t_0&quot;,&quot;variables&quot;:[&quot;Delta&quot;,&quot;gamma&quot;,&quot;t_0&quot;]}},{&quot;id&quot;:&quot;gamma&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\gamma&quot;,&quot;subexpr&quot;:&quot;\\gamma&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;gamma&quot;,&quot;variables&quot;:[&quot;gamma&quot;]}},{&quot;id&quot;:&quot;Delta_t_0&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\Delta t_0&quot;,&quot;subexpr&quot;:&quot;\\Delta t_0&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Delta*t_0&quot;,&quot;variables&quot;:[&quot;Delta&quot;,&quot;t_0&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;Delta_t&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;gamma&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;Delta_t_0&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;},&quot;domain&quot;:&quot;mechanics&quot;}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>Delta_t - Delta_t_0*gamma</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>Delta_t, Delta_t_0, gamma</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\Delta t = \\gamma \\Delta t_0&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Delta_t - Delta_t_0*gamma&quot;,&quot;variables&quot;:[&quot;Delta_t&quot;,&quot;Delta_t_0&quot;,&quot;gamma&quot;]}},{&quot;id&quot;:&quot;Delta_t&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\Delta t&quot;,&quot;subexpr&quot;:&quot;\\Delta t&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Delta_t&quot;,&quot;variables&quot;:[&quot;Delta_t&quot;]}},{&quot;id&quot;:&quot;__multiply_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\gamma \\Delta t_0&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Delta_t_0*gamma&quot;,&quot;variables&quot;:[&quot;Delta_t_0&quot;,&quot;gamma&quot;]}},{&quot;id&quot;:&quot;gamma&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\gamma&quot;,&quot;subexpr&quot;:&quot;\\gamma&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;gamma&quot;,&quot;variables&quot;:[&quot;gamma&quot;]}},{&quot;id&quot;:&quot;Delta_t_0&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\Delta t_0&quot;,&quot;subexpr&quot;:&quot;\\Delta t_0&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Delta_t_0&quot;,&quot;variables&quot;:[&quot;Delta_t_0&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;Delta_t&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;gamma&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;Delta_t_0&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;},&quot;domain&quot;:&quot;mechanics&quot;}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="row">
   <div>
@@ -6589,99 +6586,102 @@ svg.d3-semantic-graph {
   __add_4(("$+$")):::operator
   __negation_5@{ shape: "flip-tri", label: "$-$" }
   __multiply_6(("$\times$")):::operator
-  __power_7(("${(\cdot)}^{2}$")):::operator
-  c["$c$"]:::scalar
-  __power_8(("${(\cdot)}^{2}$")):::operator
-  dt["$dt$"]:::scalar
-  __add_9(("$+$")):::operator
-  __num_10["$1$"]:::number
-  __negation_11@{ shape: "flip-tri", label: "$-$" }
-  __multiply_12(("$\times$")):::operator
+  __add_7(("$+$")):::operator
+  __num_8["$1$"]:::number
+  __negation_9@{ shape: "flip-tri", label: "$-$" }
+  __multiply_10(("$\times$")):::operator
   r_s["$r_{s}$"]:::scalar
-  __power_13(("$\dfrac{1}{(\cdot)}$")):::operator
+  __power_11(("$\dfrac{1}{(\cdot)}$")):::operator
   r["$r$"]:::scalar
-  __multiply_14(("$\times$")):::operator
-  __power_15(("${(\cdot)}^{2}$")):::operator
+  __multiply_12(("$\times$")):::operator
+  __power_13(("${(\cdot)}^{2}$")):::operator
+  c["$c$"]:::scalar
+  __power_14(("${(\cdot)}^{2}$")):::operator
+  dt["$dt$"]:::scalar
+  __multiply_15(("$\times$")):::operator
+  __power_16(("${(\cdot)}^{2}$")):::operator
   dr["$dr$"]:::scalar
-  __power_16(("$\dfrac{1}{(\cdot)}$")):::operator
-  __add_17(("$+$")):::operator
-  __num_18["$1$"]:::number
-  __negation_19@{ shape: "flip-tri", label: "$-$" }
-  __multiply_20(("$\times$")):::operator
-  __power_21(("$\dfrac{1}{(\cdot)}$")):::operator
-  __multiply_22(("$\times$")):::operator
-  __power_23(("${(\cdot)}^{2}$")):::operator
+  __power_17(("$\dfrac{1}{(\cdot)}$")):::operator
+  __add_18(("$+$")):::operator
+  __num_19["$1$"]:::number
+  __negation_20@{ shape: "flip-tri", label: "$-$" }
+  __multiply_21(("$\times$")):::operator
+  __power_22(("$\dfrac{1}{(\cdot)}$")):::operator
+  __multiply_23(("$\times$")):::operator
   __power_24(("${(\cdot)}^{2}$")):::operator
+  __power_25(("${(\cdot)}^{2}$")):::operator
   dOmega["$\mathrm{d}\Omega$"]:::scalar
   class __negation_5 operator
-  class __negation_11 operator
-  class __negation_19 operator
+  class __negation_9 operator
+  class __negation_20 operator
   ds --&gt; __power_2
   __power_2 --&gt; __equals_1
-  c --&gt; __power_7
-  __power_7 --&gt; __multiply_6
-  dt --&gt; __power_8
-  __power_8 --&gt; __multiply_6
-  __num_10 --&gt; __add_9
-  r_s --&gt; __multiply_12
-  r --&gt; __power_13
-  __power_13 -.-&gt; __multiply_12
-  __multiply_12 --&gt; __negation_11
-  __negation_11 --&gt; __add_9
-  __add_9 --&gt; __multiply_6
+  __num_8 --&gt; __add_7
+  r_s --&gt; __multiply_10
+  r --&gt; __power_11
+  __power_11 -.-&gt; __multiply_10
+  __multiply_10 --&gt; __negation_9
+  __negation_9 --&gt; __add_7
+  __add_7 --&gt; __multiply_6
+  c --&gt; __power_13
+  __power_13 --&gt; __multiply_12
+  dt --&gt; __power_14
+  __power_14 --&gt; __multiply_12
+  __multiply_12 --&gt; __multiply_6
   __multiply_6 --&gt; __negation_5
   __negation_5 --&gt; __add_4
-  dr --&gt; __power_15
-  __power_15 --&gt; __multiply_14
-  __num_18 --&gt; __add_17
-  r_s --&gt; __multiply_20
-  r --&gt; __power_21
-  __power_21 -.-&gt; __multiply_20
-  __multiply_20 --&gt; __negation_19
-  __negation_19 --&gt; __add_17
-  __add_17 --&gt; __power_16
-  __power_16 -.-&gt; __multiply_14
-  __multiply_14 --&gt; __add_4
+  dr --&gt; __power_16
+  __power_16 --&gt; __multiply_15
+  __num_19 --&gt; __add_18
+  r_s --&gt; __multiply_21
+  r --&gt; __power_22
+  __power_22 -.-&gt; __multiply_21
+  __multiply_21 --&gt; __negation_20
+  __negation_20 --&gt; __add_18
+  __add_18 --&gt; __power_17
+  __power_17 -.-&gt; __multiply_15
+  __multiply_15 --&gt; __add_4
   __add_4 --&gt; __add_3
-  r --&gt; __power_23
-  __power_23 --&gt; __multiply_22
-  dOmega --&gt; __power_24
-  __power_24 --&gt; __multiply_22
-  __multiply_22 --&gt; __add_3
+  r --&gt; __power_24
+  __power_24 --&gt; __multiply_23
+  dOmega --&gt; __power_25
+  __power_25 --&gt; __multiply_23
+  __multiply_23 --&gt; __add_3
   __add_3 --&gt; __equals_1
   linkStyle 0 stroke:#aaa,stroke-width:2px
   linkStyle 1 stroke:#ef5350,stroke-width:6px
   linkStyle 2 stroke:#aaa,stroke-width:2px
   linkStyle 3 stroke:#ef5350,stroke-width:3px
   linkStyle 4 stroke:#aaa,stroke-width:2px
-  linkStyle 5 stroke:#ef5350,stroke-width:3px
+  linkStyle 5 stroke:#42a5f5,stroke-width:1px
   linkStyle 6 stroke:#aaa,stroke-width:2px
-  linkStyle 7 stroke:#ef5350,stroke-width:3px
-  linkStyle 8 stroke:#aaa,stroke-width:2px
-  linkStyle 9 stroke:#42a5f5,stroke-width:1px
-  linkStyle 10 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#ef5350,stroke-width:3px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 10 stroke:#ef5350,stroke-width:3px
   linkStyle 11 stroke:#aaa,stroke-width:2px
   linkStyle 12 stroke:#ef5350,stroke-width:3px
-  linkStyle 13 stroke:#aaa,stroke-width:2px
+  linkStyle 13 stroke:#ef5350,stroke-width:3px
   linkStyle 14 stroke:#aaa,stroke-width:2px
   linkStyle 15 stroke:#aaa,stroke-width:2px
-  linkStyle 16 stroke:#ef5350,stroke-width:3px
-  linkStyle 17 stroke:#aaa,stroke-width:2px
-  linkStyle 18 stroke:#ef5350,stroke-width:3px
-  linkStyle 19 stroke:#aaa,stroke-width:2px
-  linkStyle 20 stroke:#42a5f5,stroke-width:1px
-  linkStyle 21 stroke:#aaa,stroke-width:2px
+  linkStyle 16 stroke:#aaa,stroke-width:2px
+  linkStyle 17 stroke:#ef5350,stroke-width:3px
+  linkStyle 18 stroke:#aaa,stroke-width:2px
+  linkStyle 19 stroke:#ef5350,stroke-width:3px
+  linkStyle 20 stroke:#aaa,stroke-width:2px
+  linkStyle 21 stroke:#42a5f5,stroke-width:1px
   linkStyle 22 stroke:#aaa,stroke-width:2px
   linkStyle 23 stroke:#aaa,stroke-width:2px
-  linkStyle 24 stroke:#42a5f5,stroke-width:1px
-  linkStyle 25 stroke:#aaa,stroke-width:2px
+  linkStyle 24 stroke:#aaa,stroke-width:2px
+  linkStyle 25 stroke:#42a5f5,stroke-width:1px
   linkStyle 26 stroke:#aaa,stroke-width:2px
   linkStyle 27 stroke:#aaa,stroke-width:2px
-  linkStyle 28 stroke:#ef5350,stroke-width:3px
-  linkStyle 29 stroke:#aaa,stroke-width:2px
-  linkStyle 30 stroke:#ef5350,stroke-width:3px
-  linkStyle 31 stroke:#aaa,stroke-width:2px
+  linkStyle 28 stroke:#aaa,stroke-width:2px
+  linkStyle 29 stroke:#ef5350,stroke-width:3px
+  linkStyle 30 stroke:#aaa,stroke-width:2px
+  linkStyle 31 stroke:#ef5350,stroke-width:3px
   linkStyle 32 stroke:#aaa,stroke-width:2px
+  linkStyle 33 stroke:#aaa,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -6741,7 +6741,7 @@ svg.d3-semantic-graph {
       "id": "__add_3",
       "type": "operator",
       "op": "add",
-      "subexpr": "r^{2} \\mathrm{d}\\Omega^{2} + dr^{2} \\frac{1}{1 - \\frac{r_{s}}{r}} - c^{2} dt^{2} \\left(1 - \\frac{1}{r} r_{s}\\right)",
+      "subexpr": "r^{2} \\mathrm{d}\\Omega^{2} + dr^{2} \\frac{1}{1 - \\frac{r_{s}}{r}} - \\left(1 - \\frac{1}{r} r_{s}\\right) c^{2} dt^{2}",
       "chartScript": {
         "script": "pow(Omega, 2)*d*mathrm*pow(r, 2) - pow(c, 2)*pow(dt, 2)*(1 - r_s/r) + pow(dr, 2)/(1 - r_s/r)",
         "variables": [
@@ -6760,7 +6760,7 @@ svg.d3-semantic-graph {
       "id": "__add_4",
       "type": "operator",
       "op": "add",
-      "subexpr": "dr^{2} \\frac{1}{1 - \\frac{r_{s}}{r}} - c^{2} dt^{2} \\left(1 - \\frac{1}{r} r_{s}\\right)",
+      "subexpr": "dr^{2} \\frac{1}{1 - \\frac{r_{s}}{r}} - \\left(1 - \\frac{1}{r} r_{s}\\right) c^{2} dt^{2}",
       "chartScript": {
         "script": "-pow(c, 2)*pow(dt, 2)*(1 - r_s/r) + pow(dr, 2)/(1 - r_s/r)",
         "variables": [
@@ -6776,7 +6776,7 @@ svg.d3-semantic-graph {
       "id": "__negation_5",
       "type": "operator",
       "op": "negation",
-      "subexpr": "-c^{2} dt^{2} \\left(1 - \\frac{1}{r} r_{s}\\right)",
+      "subexpr": "-\\left(1 - \\frac{1}{r} r_{s}\\right) c^{2} dt^{2}",
       "chartScript": {
         "script": "-pow(c, 2)*pow(dt, 2)*(1 - r_s/r)",
         "variables": [
@@ -6791,7 +6791,7 @@ svg.d3-semantic-graph {
       "id": "__multiply_6",
       "type": "operator",
       "op": "multiply",
-      "subexpr": "c^{2} dt^{2} \\left(1 - \\frac{1}{r} r_{s}\\right)",
+      "subexpr": "\\left(1 - \\frac{1}{r} r_{s}\\right) c^{2} dt^{2}",
       "chartScript": {
         "script": "pow(c, 2)*pow(dt, 2)*(1 - r_s/r)",
         "variables": [
@@ -6803,57 +6803,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__power_7",
-      "type": "operator",
-      "op": "power",
-      "exponent": "2",
-      "subexpr": "c^{2}",
-      "chartScript": {
-        "script": "pow(c, 2)",
-        "variables": [
-          "c"
-        ]
-      }
-    },
-    {
-      "id": "c",
-      "type": "scalar",
-      "latex": "c",
-      "subexpr": "c",
-      "chartScript": {
-        "script": "c",
-        "variables": [
-          "c"
-        ]
-      }
-    },
-    {
-      "id": "__power_8",
-      "type": "operator",
-      "op": "power",
-      "exponent": "2",
-      "subexpr": "dt^{2}",
-      "chartScript": {
-        "script": "pow(dt, 2)",
-        "variables": [
-          "dt"
-        ]
-      }
-    },
-    {
-      "id": "dt",
-      "type": "scalar",
-      "latex": "dt",
-      "subexpr": "dt",
-      "chartScript": {
-        "script": "dt",
-        "variables": [
-          "dt"
-        ]
-      }
-    },
-    {
-      "id": "__add_9",
+      "id": "__add_7",
       "type": "operator",
       "op": "add",
       "subexpr": "1 - \\frac{1}{r} r_{s}",
@@ -6866,7 +6816,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__num_10",
+      "id": "__num_8",
       "type": "number",
       "label": "1",
       "subexpr": "1",
@@ -6876,7 +6826,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__negation_11",
+      "id": "__negation_9",
       "type": "operator",
       "op": "negation",
       "subexpr": "-\\frac{1}{r} r_{s}",
@@ -6889,7 +6839,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__multiply_12",
+      "id": "__multiply_10",
       "type": "operator",
       "op": "multiply",
       "subexpr": "\\frac{1}{r} r_{s}",
@@ -6914,7 +6864,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__power_13",
+      "id": "__power_11",
       "type": "operator",
       "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
@@ -6940,7 +6890,70 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__multiply_14",
+      "id": "__multiply_12",
+      "type": "operator",
+      "op": "multiply",
+      "subexpr": "c^{2} dt^{2}",
+      "chartScript": {
+        "script": "pow(c, 2)*pow(dt, 2)",
+        "variables": [
+          "c",
+          "dt"
+        ]
+      }
+    },
+    {
+      "id": "__power_13",
+      "type": "operator",
+      "op": "power",
+      "exponent": "2",
+      "subexpr": "c^{2}",
+      "chartScript": {
+        "script": "pow(c, 2)",
+        "variables": [
+          "c"
+        ]
+      }
+    },
+    {
+      "id": "c",
+      "type": "scalar",
+      "latex": "c",
+      "subexpr": "c",
+      "chartScript": {
+        "script": "c",
+        "variables": [
+          "c"
+        ]
+      }
+    },
+    {
+      "id": "__power_14",
+      "type": "operator",
+      "op": "power",
+      "exponent": "2",
+      "subexpr": "dt^{2}",
+      "chartScript": {
+        "script": "pow(dt, 2)",
+        "variables": [
+          "dt"
+        ]
+      }
+    },
+    {
+      "id": "dt",
+      "type": "scalar",
+      "latex": "dt",
+      "subexpr": "dt",
+      "chartScript": {
+        "script": "dt",
+        "variables": [
+          "dt"
+        ]
+      }
+    },
+    {
+      "id": "__multiply_15",
       "type": "operator",
       "op": "multiply",
       "subexpr": "dr^{2} \\frac{1}{1 - \\frac{r_{s}}{r}}",
@@ -6954,7 +6967,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__power_15",
+      "id": "__power_16",
       "type": "operator",
       "op": "power",
       "exponent": "2",
@@ -6979,7 +6992,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__power_16",
+      "id": "__power_17",
       "type": "operator",
       "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
@@ -6994,7 +7007,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__add_17",
+      "id": "__add_18",
       "type": "operator",
       "op": "add",
       "subexpr": "1 - \\frac{1}{r} r_{s}",
@@ -7007,7 +7020,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__num_18",
+      "id": "__num_19",
       "type": "number",
       "label": "1",
       "subexpr": "1",
@@ -7017,7 +7030,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__negation_19",
+      "id": "__negation_20",
       "type": "operator",
       "op": "negation",
       "subexpr": "-\\frac{1}{r} r_{s}",
@@ -7030,7 +7043,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__multiply_20",
+      "id": "__multiply_21",
       "type": "operator",
       "op": "multiply",
       "subexpr": "\\frac{1}{r} r_{s}",
@@ -7043,7 +7056,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__power_21",
+      "id": "__power_22",
       "type": "operator",
       "latex": "\\dfrac{1}{(\\cdot)}",
       "op": "power",
@@ -7057,7 +7070,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__multiply_22",
+      "id": "__multiply_23",
       "type": "operator",
       "op": "multiply",
       "subexpr": "r^{2} \\mathrm{d}\\Omega^{2}",
@@ -7072,7 +7085,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__power_23",
+      "id": "__power_24",
       "type": "operator",
       "op": "power",
       "exponent": "2",
@@ -7085,7 +7098,7 @@ svg.d3-semantic-graph {
       }
     },
     {
-      "id": "__power_24",
+      "id": "__power_25",
       "type": "operator",
       "op": "power",
       "exponent": "2",
@@ -7124,53 +7137,59 @@ svg.d3-semantic-graph {
       "to": "__equals_1"
     },
     {
-      "from": "c",
-      "to": "__power_7"
-    },
-    {
-      "from": "__power_7",
-      "to": "__multiply_6",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "dt",
-      "to": "__power_8"
-    },
-    {
-      "from": "__power_8",
-      "to": "__multiply_6",
-      "semantic": "direct",
-      "weight": 1.0
-    },
-    {
-      "from": "__num_10",
-      "to": "__add_9"
+      "from": "__num_8",
+      "to": "__add_7"
     },
     {
       "from": "r_s",
-      "to": "__multiply_12",
+      "to": "__multiply_10",
       "semantic": "direct",
       "weight": 1.0
     },
     {
       "from": "r",
+      "to": "__power_11"
+    },
+    {
+      "from": "__power_11",
+      "to": "__multiply_10"
+    },
+    {
+      "from": "__multiply_10",
+      "to": "__negation_9"
+    },
+    {
+      "from": "__negation_9",
+      "to": "__add_7"
+    },
+    {
+      "from": "__add_7",
+      "to": "__multiply_6",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "c",
       "to": "__power_13"
     },
     {
       "from": "__power_13",
-      "to": "__multiply_12"
+      "to": "__multiply_12",
+      "semantic": "direct",
+      "weight": 1.0
+    },
+    {
+      "from": "dt",
+      "to": "__power_14"
+    },
+    {
+      "from": "__power_14",
+      "to": "__multiply_12",
+      "semantic": "direct",
+      "weight": 1.0
     },
     {
       "from": "__multiply_12",
-      "to": "__negation_11"
-    },
-    {
-      "from": "__negation_11",
-      "to": "__add_9"
-    },
-    {
-      "from": "__add_9",
       "to": "__multiply_6",
       "semantic": "direct",
       "weight": 1.0
@@ -7185,50 +7204,50 @@ svg.d3-semantic-graph {
     },
     {
       "from": "dr",
-      "to": "__power_15"
+      "to": "__power_16"
     },
     {
-      "from": "__power_15",
-      "to": "__multiply_14",
+      "from": "__power_16",
+      "to": "__multiply_15",
       "semantic": "direct",
       "weight": 1.0
     },
     {
-      "from": "__num_18",
-      "to": "__add_17"
+      "from": "__num_19",
+      "to": "__add_18"
     },
     {
       "from": "r_s",
-      "to": "__multiply_20",
+      "to": "__multiply_21",
       "semantic": "direct",
       "weight": 1.0
     },
     {
       "from": "r",
-      "to": "__power_21"
+      "to": "__power_22"
     },
     {
-      "from": "__power_21",
-      "to": "__multiply_20"
+      "from": "__power_22",
+      "to": "__multiply_21"
     },
     {
-      "from": "__multiply_20",
-      "to": "__negation_19"
+      "from": "__multiply_21",
+      "to": "__negation_20"
     },
     {
-      "from": "__negation_19",
-      "to": "__add_17"
+      "from": "__negation_20",
+      "to": "__add_18"
     },
     {
-      "from": "__add_17",
-      "to": "__power_16"
+      "from": "__add_18",
+      "to": "__power_17"
     },
     {
-      "from": "__power_16",
-      "to": "__multiply_14"
+      "from": "__power_17",
+      "to": "__multiply_15"
     },
     {
-      "from": "__multiply_14",
+      "from": "__multiply_15",
       "to": "__add_4"
     },
     {
@@ -7237,26 +7256,26 @@ svg.d3-semantic-graph {
     },
     {
       "from": "r",
-      "to": "__power_23"
+      "to": "__power_24"
     },
     {
-      "from": "__power_23",
-      "to": "__multiply_22",
+      "from": "__power_24",
+      "to": "__multiply_23",
       "semantic": "direct",
       "weight": 1.0
     },
     {
       "from": "dOmega",
-      "to": "__power_24"
+      "to": "__power_25"
     },
     {
-      "from": "__power_24",
-      "to": "__multiply_22",
+      "from": "__power_25",
+      "to": "__multiply_23",
       "semantic": "direct",
       "weight": 1.0
     },
     {
-      "from": "__multiply_22",
+      "from": "__multiply_23",
       "to": "__add_3"
     },
     {
@@ -7287,103 +7306,106 @@ svg.d3-semantic-graph {
   __add_4(("$+$")):::operator
   __negation_5@{ shape: "flip-tri", label: "$-$" }
   __multiply_6(("$\times$")):::operator
-  __power_7(("${(\cdot)}^{2}$")):::operator
-  c["$c$"]:::scalar
-  __power_8(("${(\cdot)}^{2}$")):::operator
-  dt["$dt$"]:::scalar
-  __add_9(("$+$")):::operator
-  __num_10["$1$"]:::number
-  __negation_11@{ shape: "flip-tri", label: "$-$" }
-  __multiply_12(("$\times$")):::operator
+  __add_7(("$+$")):::operator
+  __num_8["$1$"]:::number
+  __negation_9@{ shape: "flip-tri", label: "$-$" }
+  __multiply_10(("$\times$")):::operator
   r_s["$r_{s}$"]:::scalar
-  __power_13(("$\dfrac{1}{(\cdot)}$")):::operator
+  __power_11(("$\dfrac{1}{(\cdot)}$")):::operator
   r["$r$"]:::scalar
-  __multiply_14(("$\times$")):::operator
-  __power_15(("${(\cdot)}^{2}$")):::operator
+  __multiply_12(("$\times$")):::operator
+  __power_13(("${(\cdot)}^{2}$")):::operator
+  c["$c$"]:::scalar
+  __power_14(("${(\cdot)}^{2}$")):::operator
+  dt["$dt$"]:::scalar
+  __multiply_15(("$\times$")):::operator
+  __power_16(("${(\cdot)}^{2}$")):::operator
   dr["$dr$"]:::scalar
-  __power_16(("$\dfrac{1}{(\cdot)}$")):::operator
-  __add_17(("$+$")):::operator
-  __num_18["$1$"]:::number
-  __negation_19@{ shape: "flip-tri", label: "$-$" }
-  __multiply_20(("$\times$")):::operator
-  __power_21(("$\dfrac{1}{(\cdot)}$")):::operator
-  __multiply_22(("$\times$")):::operator
-  __power_23(("${(\cdot)}^{2}$")):::operator
+  __power_17(("$\dfrac{1}{(\cdot)}$")):::operator
+  __add_18(("$+$")):::operator
+  __num_19["$1$"]:::number
+  __negation_20@{ shape: "flip-tri", label: "$-$" }
+  __multiply_21(("$\times$")):::operator
+  __power_22(("$\dfrac{1}{(\cdot)}$")):::operator
+  __multiply_23(("$\times$")):::operator
   __power_24(("${(\cdot)}^{2}$")):::operator
+  __power_25(("${(\cdot)}^{2}$")):::operator
   dOmega["$\mathrm{d}\Omega$"]:::scalar
   class __negation_5 operator
-  class __negation_11 operator
-  class __negation_19 operator
+  class __negation_9 operator
+  class __negation_20 operator
   ds --&gt; __power_2
   __power_2 --&gt; __equals_1
-  c --&gt; __power_7
-  __power_7 --&gt; __multiply_6
-  dt --&gt; __power_8
-  __power_8 --&gt; __multiply_6
-  __num_10 --&gt; __add_9
-  r_s --&gt; __multiply_12
-  r --&gt; __power_13
-  __power_13 -.-&gt; __multiply_12
-  __multiply_12 --&gt; __negation_11
-  __negation_11 --&gt; __add_9
-  __add_9 --&gt; __multiply_6
+  __num_8 --&gt; __add_7
+  r_s --&gt; __multiply_10
+  r --&gt; __power_11
+  __power_11 -.-&gt; __multiply_10
+  __multiply_10 --&gt; __negation_9
+  __negation_9 --&gt; __add_7
+  __add_7 --&gt; __multiply_6
+  c --&gt; __power_13
+  __power_13 --&gt; __multiply_12
+  dt --&gt; __power_14
+  __power_14 --&gt; __multiply_12
+  __multiply_12 --&gt; __multiply_6
   __multiply_6 --&gt; __negation_5
   __negation_5 --&gt; __add_4
-  dr --&gt; __power_15
-  __power_15 --&gt; __multiply_14
-  __num_18 --&gt; __add_17
-  r_s --&gt; __multiply_20
-  r --&gt; __power_21
-  __power_21 -.-&gt; __multiply_20
-  __multiply_20 --&gt; __negation_19
-  __negation_19 --&gt; __add_17
-  __add_17 --&gt; __power_16
-  __power_16 -.-&gt; __multiply_14
-  __multiply_14 --&gt; __add_4
+  dr --&gt; __power_16
+  __power_16 --&gt; __multiply_15
+  __num_19 --&gt; __add_18
+  r_s --&gt; __multiply_21
+  r --&gt; __power_22
+  __power_22 -.-&gt; __multiply_21
+  __multiply_21 --&gt; __negation_20
+  __negation_20 --&gt; __add_18
+  __add_18 --&gt; __power_17
+  __power_17 -.-&gt; __multiply_15
+  __multiply_15 --&gt; __add_4
   __add_4 --&gt; __add_3
-  r --&gt; __power_23
-  __power_23 --&gt; __multiply_22
-  dOmega --&gt; __power_24
-  __power_24 --&gt; __multiply_22
-  __multiply_22 --&gt; __add_3
+  r --&gt; __power_24
+  __power_24 --&gt; __multiply_23
+  dOmega --&gt; __power_25
+  __power_25 --&gt; __multiply_23
+  __multiply_23 --&gt; __add_3
   __add_3 --&gt; __equals_1
   linkStyle 0 stroke:#aaa,stroke-width:2px
   linkStyle 1 stroke:#ef5350,stroke-width:6px
   linkStyle 2 stroke:#aaa,stroke-width:2px
   linkStyle 3 stroke:#ef5350,stroke-width:3px
   linkStyle 4 stroke:#aaa,stroke-width:2px
-  linkStyle 5 stroke:#ef5350,stroke-width:3px
+  linkStyle 5 stroke:#42a5f5,stroke-width:1px
   linkStyle 6 stroke:#aaa,stroke-width:2px
-  linkStyle 7 stroke:#ef5350,stroke-width:3px
-  linkStyle 8 stroke:#aaa,stroke-width:2px
-  linkStyle 9 stroke:#42a5f5,stroke-width:1px
-  linkStyle 10 stroke:#aaa,stroke-width:2px
+  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 8 stroke:#ef5350,stroke-width:3px
+  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 10 stroke:#ef5350,stroke-width:3px
   linkStyle 11 stroke:#aaa,stroke-width:2px
   linkStyle 12 stroke:#ef5350,stroke-width:3px
-  linkStyle 13 stroke:#aaa,stroke-width:2px
+  linkStyle 13 stroke:#ef5350,stroke-width:3px
   linkStyle 14 stroke:#aaa,stroke-width:2px
   linkStyle 15 stroke:#aaa,stroke-width:2px
-  linkStyle 16 stroke:#ef5350,stroke-width:3px
-  linkStyle 17 stroke:#aaa,stroke-width:2px
-  linkStyle 18 stroke:#ef5350,stroke-width:3px
-  linkStyle 19 stroke:#aaa,stroke-width:2px
-  linkStyle 20 stroke:#42a5f5,stroke-width:1px
-  linkStyle 21 stroke:#aaa,stroke-width:2px
+  linkStyle 16 stroke:#aaa,stroke-width:2px
+  linkStyle 17 stroke:#ef5350,stroke-width:3px
+  linkStyle 18 stroke:#aaa,stroke-width:2px
+  linkStyle 19 stroke:#ef5350,stroke-width:3px
+  linkStyle 20 stroke:#aaa,stroke-width:2px
+  linkStyle 21 stroke:#42a5f5,stroke-width:1px
   linkStyle 22 stroke:#aaa,stroke-width:2px
   linkStyle 23 stroke:#aaa,stroke-width:2px
-  linkStyle 24 stroke:#42a5f5,stroke-width:1px
-  linkStyle 25 stroke:#aaa,stroke-width:2px
+  linkStyle 24 stroke:#aaa,stroke-width:2px
+  linkStyle 25 stroke:#42a5f5,stroke-width:1px
   linkStyle 26 stroke:#aaa,stroke-width:2px
   linkStyle 27 stroke:#aaa,stroke-width:2px
-  linkStyle 28 stroke:#ef5350,stroke-width:3px
-  linkStyle 29 stroke:#aaa,stroke-width:2px
-  linkStyle 30 stroke:#ef5350,stroke-width:3px
-  linkStyle 31 stroke:#aaa,stroke-width:2px
+  linkStyle 28 stroke:#aaa,stroke-width:2px
+  linkStyle 29 stroke:#ef5350,stroke-width:3px
+  linkStyle 30 stroke:#aaa,stroke-width:2px
+  linkStyle 31 stroke:#ef5350,stroke-width:3px
   linkStyle 32 stroke:#aaa,stroke-width:2px
+  linkStyle 33 stroke:#aaa,stroke-width:2px
 </pre></div></div>
   <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(ds**2, \mathrm{d}\Omega**2*r**2 - c**2*dt**2*(1 - r_{s}/r) + dr**2/(1 - r_{s}/r))</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(Pow(Symbol('ds'), Integer(2)), Add(Mul(Pow(Symbol('\\mathrm{d}\\Omega'), Integer(2)), Pow(Symbol('r'), Integer(2))), Mul(Integer(-1), Pow(Symbol('c'), Integer(2)), Pow(Symbol('dt'), Integer(2)), Add(Integer(1), Mul(Integer(-1), Pow(Symbol('r'), Integer(-1)), Symbol('r_{s}')))), Mul(Pow(Symbol('dr'), Integer(2)), Pow(Add(Integer(1), Mul(Integer(-1), Pow(Symbol('r'), Integer(-1)), Symbol('r_{s}'))), Integer(-1)))))</pre></div></div>
   <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>pow(c, 2)*pow(dt, 2)*(1 - r_s/r) - pow(dOmega, 2)*pow(r, 2) - pow(dr, 2)/(1 - r_s/r) + pow(ds, 2)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>c, dOmega, dr, ds, dt, r, r_s</pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;ds^2 = -\\left(1 - \\frac{r_s}{r}\\right) c^2 dt^2 + \\frac{dr^2}{1 - \\frac{r_s}{r}} + r^2 d\\Omega^2&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(c, 2)*pow(dt, 2)*(1 - r_s/r) - pow(dOmega, 2)*pow(r, 2) - pow(dr, 2)/(1 - r_s/r) + pow(ds, 2)&quot;,&quot;variables&quot;:[&quot;c&quot;,&quot;dOmega&quot;,&quot;dr&quot;,&quot;ds&quot;,&quot;dt&quot;,&quot;r&quot;,&quot;r_s&quot;]}},{&quot;id&quot;:&quot;__power_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;ds^{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(ds, 2)&quot;,&quot;variables&quot;:[&quot;ds&quot;]}},{&quot;id&quot;:&quot;ds&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;ds&quot;,&quot;subexpr&quot;:&quot;ds&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;ds&quot;,&quot;variables&quot;:[&quot;ds&quot;]}},{&quot;id&quot;:&quot;__add_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;r^{2} \\mathrm{d}\\Omega^{2} + dr^{2} \\frac{1}{1 - \\frac{r_{s}}{r}} - c^{2} dt^{2} \\left(1 - \\frac{1}{r} r_{s}\\right)&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(Omega, 2)*d*mathrm*pow(r, 2) - pow(c, 2)*pow(dt, 2)*(1 - r_s/r) + pow(dr, 2)/(1 - r_s/r)&quot;,&quot;variables&quot;:[&quot;Omega&quot;,&quot;c&quot;,&quot;d&quot;,&quot;dr&quot;,&quot;dt&quot;,&quot;mathrm&quot;,&quot;r&quot;,&quot;r_s&quot;]}},{&quot;id&quot;:&quot;__add_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;dr^{2} \\frac{1}{1 - \\frac{r_{s}}{r}} - c^{2} dt^{2} \\left(1 - \\frac{1}{r} r_{s}\\right)&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-pow(c, 2)*pow(dt, 2)*(1 - r_s/r) + pow(dr, 2)/(1 - r_s/r)&quot;,&quot;variables&quot;:[&quot;c&quot;,&quot;dr&quot;,&quot;dt&quot;,&quot;r&quot;,&quot;r_s&quot;]}},{&quot;id&quot;:&quot;__negation_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-c^{2} dt^{2} \\left(1 - \\frac{1}{r} r_{s}\\right)&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-pow(c, 2)*pow(dt, 2)*(1 - r_s/r)&quot;,&quot;variables&quot;:[&quot;c&quot;,&quot;dt&quot;,&quot;r&quot;,&quot;r_s&quot;]}},{&quot;id&quot;:&quot;__multiply_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;c^{2} dt^{2} \\left(1 - \\frac{1}{r} r_{s}\\right)&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(c, 2)*pow(dt, 2)*(1 - r_s/r)&quot;,&quot;variables&quot;:[&quot;c&quot;,&quot;dt&quot;,&quot;r&quot;,&quot;r_s&quot;]}},{&quot;id&quot;:&quot;__power_7&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;c^{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(c, 2)&quot;,&quot;variables&quot;:[&quot;c&quot;]}},{&quot;id&quot;:&quot;c&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;c&quot;,&quot;subexpr&quot;:&quot;c&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;c&quot;,&quot;variables&quot;:[&quot;c&quot;]}},{&quot;id&quot;:&quot;__power_8&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;dt^{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(dt, 2)&quot;,&quot;variables&quot;:[&quot;dt&quot;]}},{&quot;id&quot;:&quot;dt&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;dt&quot;,&quot;subexpr&quot;:&quot;dt&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;dt&quot;,&quot;variables&quot;:[&quot;dt&quot;]}},{&quot;id&quot;:&quot;__add_9&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;1 - \\frac{1}{r} r_{s}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1 - r_s/r&quot;,&quot;variables&quot;:[&quot;r&quot;,&quot;r_s&quot;]}},{&quot;id&quot;:&quot;__num_10&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;1&quot;,&quot;subexpr&quot;:&quot;1&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__negation_11&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-\\frac{1}{r} r_{s}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-r_s/r&quot;,&quot;variables&quot;:[&quot;r&quot;,&quot;r_s&quot;]}},{&quot;id&quot;:&quot;__multiply_12&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{r} r_{s}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;r_s/r&quot;,&quot;variables&quot;:[&quot;r&quot;,&quot;r_s&quot;]}},{&quot;id&quot;:&quot;r_s&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;r_{s}&quot;,&quot;subexpr&quot;:&quot;r_{s}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;r_s&quot;,&quot;variables&quot;:[&quot;r_s&quot;]}},{&quot;id&quot;:&quot;__power_13&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{r}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1/r&quot;,&quot;variables&quot;:[&quot;r&quot;]}},{&quot;id&quot;:&quot;r&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;r&quot;,&quot;subexpr&quot;:&quot;r&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;r&quot;,&quot;variables&quot;:[&quot;r&quot;]}},{&quot;id&quot;:&quot;__multiply_14&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;dr^{2} \\frac{1}{1 - \\frac{r_{s}}{r}}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(dr, 2)/(1 - r_s/r)&quot;,&quot;variables&quot;:[&quot;dr&quot;,&quot;r&quot;,&quot;r_s&quot;]}},{&quot;id&quot;:&quot;__power_15&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;dr^{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(dr, 2)&quot;,&quot;variables&quot;:[&quot;dr&quot;]}},{&quot;id&quot;:&quot;dr&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;dr&quot;,&quot;subexpr&quot;:&quot;dr&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;dr&quot;,&quot;variables&quot;:[&quot;dr&quot;]}},{&quot;id&quot;:&quot;__power_16&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{1 - \\frac{r_{s}}{r}}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1/(1 - r_s/r)&quot;,&quot;variables&quot;:[&quot;r&quot;,&quot;r_s&quot;]}},{&quot;id&quot;:&quot;__add_17&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;1 - \\frac{1}{r} r_{s}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1 - r_s/r&quot;,&quot;variables&quot;:[&quot;r&quot;,&quot;r_s&quot;]}},{&quot;id&quot;:&quot;__num_18&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;1&quot;,&quot;subexpr&quot;:&quot;1&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__negation_19&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-\\frac{1}{r} r_{s}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-r_s/r&quot;,&quot;variables&quot;:[&quot;r&quot;,&quot;r_s&quot;]}},{&quot;id&quot;:&quot;__multiply_20&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{r} r_{s}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;r_s/r&quot;,&quot;variables&quot;:[&quot;r&quot;,&quot;r_s&quot;]}},{&quot;id&quot;:&quot;__power_21&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{r}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1/r&quot;,&quot;variables&quot;:[&quot;r&quot;]}},{&quot;id&quot;:&quot;__multiply_22&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;r^{2} \\mathrm{d}\\Omega^{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(Omega, 2)*d*mathrm*pow(r, 2)&quot;,&quot;variables&quot;:[&quot;Omega&quot;,&quot;d&quot;,&quot;mathrm&quot;,&quot;r&quot;]}},{&quot;id&quot;:&quot;__power_23&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;r^{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(r, 2)&quot;,&quot;variables&quot;:[&quot;r&quot;]}},{&quot;id&quot;:&quot;__power_24&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;\\mathrm{d}\\Omega^{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(Omega, 2)*d*mathrm&quot;,&quot;variables&quot;:[&quot;Omega&quot;,&quot;d&quot;,&quot;mathrm&quot;]}},{&quot;id&quot;:&quot;dOmega&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\mathrm{d}\\Omega&quot;,&quot;subexpr&quot;:&quot;\\mathrm{d}\\Omega&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Omega*d*mathrm&quot;,&quot;variables&quot;:[&quot;Omega&quot;,&quot;d&quot;,&quot;mathrm&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;ds&quot;,&quot;to&quot;:&quot;__power_2&quot;},{&quot;from&quot;:&quot;__power_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;c&quot;,&quot;to&quot;:&quot;__power_7&quot;},{&quot;from&quot;:&quot;__power_7&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;dt&quot;,&quot;to&quot;:&quot;__power_8&quot;},{&quot;from&quot;:&quot;__power_8&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__num_10&quot;,&quot;to&quot;:&quot;__add_9&quot;},{&quot;from&quot;:&quot;r_s&quot;,&quot;to&quot;:&quot;__multiply_12&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;r&quot;,&quot;to&quot;:&quot;__power_13&quot;},{&quot;from&quot;:&quot;__power_13&quot;,&quot;to&quot;:&quot;__multiply_12&quot;},{&quot;from&quot;:&quot;__multiply_12&quot;,&quot;to&quot;:&quot;__negation_11&quot;},{&quot;from&quot;:&quot;__negation_11&quot;,&quot;to&quot;:&quot;__add_9&quot;},{&quot;from&quot;:&quot;__add_9&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_6&quot;,&quot;to&quot;:&quot;__negation_5&quot;},{&quot;from&quot;:&quot;__negation_5&quot;,&quot;to&quot;:&quot;__add_4&quot;},{&quot;from&quot;:&quot;dr&quot;,&quot;to&quot;:&quot;__power_15&quot;},{&quot;from&quot;:&quot;__power_15&quot;,&quot;to&quot;:&quot;__multiply_14&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__num_18&quot;,&quot;to&quot;:&quot;__add_17&quot;},{&quot;from&quot;:&quot;r_s&quot;,&quot;to&quot;:&quot;__multiply_20&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;r&quot;,&quot;to&quot;:&quot;__power_21&quot;},{&quot;from&quot;:&quot;__power_21&quot;,&quot;to&quot;:&quot;__multiply_20&quot;},{&quot;from&quot;:&quot;__multiply_20&quot;,&quot;to&quot;:&quot;__negation_19&quot;},{&quot;from&quot;:&quot;__negation_19&quot;,&quot;to&quot;:&quot;__add_17&quot;},{&quot;from&quot;:&quot;__add_17&quot;,&quot;to&quot;:&quot;__power_16&quot;},{&quot;from&quot;:&quot;__power_16&quot;,&quot;to&quot;:&quot;__multiply_14&quot;},{&quot;from&quot;:&quot;__multiply_14&quot;,&quot;to&quot;:&quot;__add_4&quot;},{&quot;from&quot;:&quot;__add_4&quot;,&quot;to&quot;:&quot;__add_3&quot;},{&quot;from&quot;:&quot;r&quot;,&quot;to&quot;:&quot;__power_23&quot;},{&quot;from&quot;:&quot;__power_23&quot;,&quot;to&quot;:&quot;__multiply_22&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;dOmega&quot;,&quot;to&quot;:&quot;__power_24&quot;},{&quot;from&quot;:&quot;__power_24&quot;,&quot;to&quot;:&quot;__multiply_22&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_22&quot;,&quot;to&quot;:&quot;__add_3&quot;},{&quot;from&quot;:&quot;__add_3&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;},&quot;domain&quot;:&quot;mechanics&quot;}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;ds^2 = -\\left(1 - \\frac{r_s}{r}\\right) c^2 dt^2 + \\frac{dr^2}{1 - \\frac{r_s}{r}} + r^2 d\\Omega^2&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(c, 2)*pow(dt, 2)*(1 - r_s/r) - pow(dOmega, 2)*pow(r, 2) - pow(dr, 2)/(1 - r_s/r) + pow(ds, 2)&quot;,&quot;variables&quot;:[&quot;c&quot;,&quot;dOmega&quot;,&quot;dr&quot;,&quot;ds&quot;,&quot;dt&quot;,&quot;r&quot;,&quot;r_s&quot;]}},{&quot;id&quot;:&quot;__power_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;ds^{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(ds, 2)&quot;,&quot;variables&quot;:[&quot;ds&quot;]}},{&quot;id&quot;:&quot;ds&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;ds&quot;,&quot;subexpr&quot;:&quot;ds&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;ds&quot;,&quot;variables&quot;:[&quot;ds&quot;]}},{&quot;id&quot;:&quot;__add_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;r^{2} \\mathrm{d}\\Omega^{2} + dr^{2} \\frac{1}{1 - \\frac{r_{s}}{r}} - \\left(1 - \\frac{1}{r} r_{s}\\right) c^{2} dt^{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(Omega, 2)*d*mathrm*pow(r, 2) - pow(c, 2)*pow(dt, 2)*(1 - r_s/r) + pow(dr, 2)/(1 - r_s/r)&quot;,&quot;variables&quot;:[&quot;Omega&quot;,&quot;c&quot;,&quot;d&quot;,&quot;dr&quot;,&quot;dt&quot;,&quot;mathrm&quot;,&quot;r&quot;,&quot;r_s&quot;]}},{&quot;id&quot;:&quot;__add_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;dr^{2} \\frac{1}{1 - \\frac{r_{s}}{r}} - \\left(1 - \\frac{1}{r} r_{s}\\right) c^{2} dt^{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-pow(c, 2)*pow(dt, 2)*(1 - r_s/r) + pow(dr, 2)/(1 - r_s/r)&quot;,&quot;variables&quot;:[&quot;c&quot;,&quot;dr&quot;,&quot;dt&quot;,&quot;r&quot;,&quot;r_s&quot;]}},{&quot;id&quot;:&quot;__negation_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-\\left(1 - \\frac{1}{r} r_{s}\\right) c^{2} dt^{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-pow(c, 2)*pow(dt, 2)*(1 - r_s/r)&quot;,&quot;variables&quot;:[&quot;c&quot;,&quot;dt&quot;,&quot;r&quot;,&quot;r_s&quot;]}},{&quot;id&quot;:&quot;__multiply_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\left(1 - \\frac{1}{r} r_{s}\\right) c^{2} dt^{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(c, 2)*pow(dt, 2)*(1 - r_s/r)&quot;,&quot;variables&quot;:[&quot;c&quot;,&quot;dt&quot;,&quot;r&quot;,&quot;r_s&quot;]}},{&quot;id&quot;:&quot;__add_7&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;1 - \\frac{1}{r} r_{s}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1 - r_s/r&quot;,&quot;variables&quot;:[&quot;r&quot;,&quot;r_s&quot;]}},{&quot;id&quot;:&quot;__num_8&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;1&quot;,&quot;subexpr&quot;:&quot;1&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__negation_9&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-\\frac{1}{r} r_{s}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-r_s/r&quot;,&quot;variables&quot;:[&quot;r&quot;,&quot;r_s&quot;]}},{&quot;id&quot;:&quot;__multiply_10&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{r} r_{s}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;r_s/r&quot;,&quot;variables&quot;:[&quot;r&quot;,&quot;r_s&quot;]}},{&quot;id&quot;:&quot;r_s&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;r_{s}&quot;,&quot;subexpr&quot;:&quot;r_{s}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;r_s&quot;,&quot;variables&quot;:[&quot;r_s&quot;]}},{&quot;id&quot;:&quot;__power_11&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{r}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1/r&quot;,&quot;variables&quot;:[&quot;r&quot;]}},{&quot;id&quot;:&quot;r&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;r&quot;,&quot;subexpr&quot;:&quot;r&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;r&quot;,&quot;variables&quot;:[&quot;r&quot;]}},{&quot;id&quot;:&quot;__multiply_12&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;c^{2} dt^{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(c, 2)*pow(dt, 2)&quot;,&quot;variables&quot;:[&quot;c&quot;,&quot;dt&quot;]}},{&quot;id&quot;:&quot;__power_13&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;c^{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(c, 2)&quot;,&quot;variables&quot;:[&quot;c&quot;]}},{&quot;id&quot;:&quot;c&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;c&quot;,&quot;subexpr&quot;:&quot;c&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;c&quot;,&quot;variables&quot;:[&quot;c&quot;]}},{&quot;id&quot;:&quot;__power_14&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;dt^{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(dt, 2)&quot;,&quot;variables&quot;:[&quot;dt&quot;]}},{&quot;id&quot;:&quot;dt&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;dt&quot;,&quot;subexpr&quot;:&quot;dt&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;dt&quot;,&quot;variables&quot;:[&quot;dt&quot;]}},{&quot;id&quot;:&quot;__multiply_15&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;dr^{2} \\frac{1}{1 - \\frac{r_{s}}{r}}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(dr, 2)/(1 - r_s/r)&quot;,&quot;variables&quot;:[&quot;dr&quot;,&quot;r&quot;,&quot;r_s&quot;]}},{&quot;id&quot;:&quot;__power_16&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;dr^{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(dr, 2)&quot;,&quot;variables&quot;:[&quot;dr&quot;]}},{&quot;id&quot;:&quot;dr&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;dr&quot;,&quot;subexpr&quot;:&quot;dr&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;dr&quot;,&quot;variables&quot;:[&quot;dr&quot;]}},{&quot;id&quot;:&quot;__power_17&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{1 - \\frac{r_{s}}{r}}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1/(1 - r_s/r)&quot;,&quot;variables&quot;:[&quot;r&quot;,&quot;r_s&quot;]}},{&quot;id&quot;:&quot;__add_18&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;1 - \\frac{1}{r} r_{s}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1 - r_s/r&quot;,&quot;variables&quot;:[&quot;r&quot;,&quot;r_s&quot;]}},{&quot;id&quot;:&quot;__num_19&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;1&quot;,&quot;subexpr&quot;:&quot;1&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__negation_20&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-\\frac{1}{r} r_{s}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-r_s/r&quot;,&quot;variables&quot;:[&quot;r&quot;,&quot;r_s&quot;]}},{&quot;id&quot;:&quot;__multiply_21&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{r} r_{s}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;r_s/r&quot;,&quot;variables&quot;:[&quot;r&quot;,&quot;r_s&quot;]}},{&quot;id&quot;:&quot;__power_22&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{r}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1/r&quot;,&quot;variables&quot;:[&quot;r&quot;]}},{&quot;id&quot;:&quot;__multiply_23&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;r^{2} \\mathrm{d}\\Omega^{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(Omega, 2)*d*mathrm*pow(r, 2)&quot;,&quot;variables&quot;:[&quot;Omega&quot;,&quot;d&quot;,&quot;mathrm&quot;,&quot;r&quot;]}},{&quot;id&quot;:&quot;__power_24&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;r^{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(r, 2)&quot;,&quot;variables&quot;:[&quot;r&quot;]}},{&quot;id&quot;:&quot;__power_25&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;\\mathrm{d}\\Omega^{2}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pow(Omega, 2)*d*mathrm&quot;,&quot;variables&quot;:[&quot;Omega&quot;,&quot;d&quot;,&quot;mathrm&quot;]}},{&quot;id&quot;:&quot;dOmega&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\mathrm{d}\\Omega&quot;,&quot;subexpr&quot;:&quot;\\mathrm{d}\\Omega&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Omega*d*mathrm&quot;,&quot;variables&quot;:[&quot;Omega&quot;,&quot;d&quot;,&quot;mathrm&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;ds&quot;,&quot;to&quot;:&quot;__power_2&quot;},{&quot;from&quot;:&quot;__power_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;__num_8&quot;,&quot;to&quot;:&quot;__add_7&quot;},{&quot;from&quot;:&quot;r_s&quot;,&quot;to&quot;:&quot;__multiply_10&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;r&quot;,&quot;to&quot;:&quot;__power_11&quot;},{&quot;from&quot;:&quot;__power_11&quot;,&quot;to&quot;:&quot;__multiply_10&quot;},{&quot;from&quot;:&quot;__multiply_10&quot;,&quot;to&quot;:&quot;__negation_9&quot;},{&quot;from&quot;:&quot;__negation_9&quot;,&quot;to&quot;:&quot;__add_7&quot;},{&quot;from&quot;:&quot;__add_7&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;c&quot;,&quot;to&quot;:&quot;__power_13&quot;},{&quot;from&quot;:&quot;__power_13&quot;,&quot;to&quot;:&quot;__multiply_12&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;dt&quot;,&quot;to&quot;:&quot;__power_14&quot;},{&quot;from&quot;:&quot;__power_14&quot;,&quot;to&quot;:&quot;__multiply_12&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_12&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_6&quot;,&quot;to&quot;:&quot;__negation_5&quot;},{&quot;from&quot;:&quot;__negation_5&quot;,&quot;to&quot;:&quot;__add_4&quot;},{&quot;from&quot;:&quot;dr&quot;,&quot;to&quot;:&quot;__power_16&quot;},{&quot;from&quot;:&quot;__power_16&quot;,&quot;to&quot;:&quot;__multiply_15&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__num_19&quot;,&quot;to&quot;:&quot;__add_18&quot;},{&quot;from&quot;:&quot;r_s&quot;,&quot;to&quot;:&quot;__multiply_21&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;r&quot;,&quot;to&quot;:&quot;__power_22&quot;},{&quot;from&quot;:&quot;__power_22&quot;,&quot;to&quot;:&quot;__multiply_21&quot;},{&quot;from&quot;:&quot;__multiply_21&quot;,&quot;to&quot;:&quot;__negation_20&quot;},{&quot;from&quot;:&quot;__negation_20&quot;,&quot;to&quot;:&quot;__add_18&quot;},{&quot;from&quot;:&quot;__add_18&quot;,&quot;to&quot;:&quot;__power_17&quot;},{&quot;from&quot;:&quot;__power_17&quot;,&quot;to&quot;:&quot;__multiply_15&quot;},{&quot;from&quot;:&quot;__multiply_15&quot;,&quot;to&quot;:&quot;__add_4&quot;},{&quot;from&quot;:&quot;__add_4&quot;,&quot;to&quot;:&quot;__add_3&quot;},{&quot;from&quot;:&quot;r&quot;,&quot;to&quot;:&quot;__power_24&quot;},{&quot;from&quot;:&quot;__power_24&quot;,&quot;to&quot;:&quot;__multiply_23&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;dOmega&quot;,&quot;to&quot;:&quot;__power_25&quot;},{&quot;from&quot;:&quot;__power_25&quot;,&quot;to&quot;:&quot;__multiply_23&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_23&quot;,&quot;to&quot;:&quot;__add_3&quot;},{&quot;from&quot;:&quot;__add_3&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;},&quot;domain&quot;:&quot;mechanics&quot;}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="summary">✅ <span class="count">18</span> rendered, <span class="count">0</span> errors out of <span class="count">18</span> expressions</div>
 <script>
@@ -7446,8 +7468,8 @@ document.querySelectorAll('.row-copy-btn').forEach(btn => {
 })();
 
 Promise.all([
-  import('./d3-semantic-graph.js?v=1784175818'),
-  import('./sg-chart.js?v=1784175818'),
+  import('./d3-semantic-graph.js?v=1785816320'),
+  import('./sg-chart.js?v=1785816320'),
 ]).then(function(mods) {
   var D3SemanticGraphRenderer = mods[0].D3SemanticGraphRenderer;
   var SgChartManager = mods[1].SgChartManager;
@@ -7487,6 +7509,12 @@ Promise.all([
         console.error('D3 panel render error:', err);
       }
     });
+  });
+}).catch(function(err) {
+  console.error('D3/chart module load error — D3 buttons disabled:', err);
+  document.querySelectorAll('.row-toggle-d3').forEach(function(btn) {
+    btn.disabled = true;
+    btn.title = 'D3 module failed to load: ' + err.message;
   });
 });
 </script>

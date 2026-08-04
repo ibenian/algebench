@@ -13,7 +13,8 @@
   "imports": {
     "/labels.js": "data:text/javascript,export function makeAiAskButton(){return document.createElement('span')}",
     "/expr.js": "data:text/javascript,const m=math.create(math.all);m.import({binomial:(n,k)=>m.combinations(n,k),erfc:x=>1-m.erf(x),beta:(a,b)=>m.gamma(a)*m.gamma(b)/m.gamma(a%2Bb),conjugate:x=>m.conj(x)});export function compileExpr(s){return m.compile(s)}export function evalExpr(c,t,opts){const scope=opts%26%26opts.extraScope?{...opts.extraScope}:{};return c.evaluate(scope)}",
-    "/proof-animation/dock-seq.js": "data:text/javascript,let n=0;export const nextDockSeq=()=>%2B%2Bn"
+    "/proof-animation/dock-seq.js": "data:text/javascript,let n=0;export const nextDockSeq=()=>%2B%2Bn",
+    "/graph-panel/term-resolve.js": "./term-resolve.js?v=1785816320"
   }
 }</script>
 <script>
@@ -1050,7 +1051,7 @@ svg.d3-semantic-graph {
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-07-16 04:25 UTC &middot; theme: default-dark &middot; 16 expressions</div>
+<div class="report-meta">Generated 2026-08-04 04:06 UTC &middot; theme: default-dark &middot; 16 expressions</div>
 <div class="section-title">Chemistry (16 expressions)</div>
 <div class="row">
   <div>
@@ -4945,12 +4946,11 @@ svg.d3-semantic-graph {
       "op": "equals",
       "subexpr": "\\Delta G = \\Delta H - T \\Delta S",
       "chartScript": {
-        "script": "Delta*G - Delta*H + Delta*S*T",
+        "script": "Delta_G - Delta_H + Delta_S*T",
         "variables": [
-          "Delta",
-          "G",
-          "H",
-          "S",
+          "Delta_G",
+          "Delta_H",
+          "Delta_S",
           "T"
         ]
       }
@@ -4961,10 +4961,9 @@ svg.d3-semantic-graph {
       "latex": "\\Delta G",
       "subexpr": "\\Delta G",
       "chartScript": {
-        "script": "Delta*G",
+        "script": "Delta_G",
         "variables": [
-          "Delta",
-          "G"
+          "Delta_G"
         ]
       }
     },
@@ -4974,11 +4973,10 @@ svg.d3-semantic-graph {
       "op": "add",
       "subexpr": "-T \\Delta S + \\Delta H",
       "chartScript": {
-        "script": "Delta*H - Delta*S*T",
+        "script": "Delta_H - Delta_S*T",
         "variables": [
-          "Delta",
-          "H",
-          "S",
+          "Delta_H",
+          "Delta_S",
           "T"
         ]
       }
@@ -4989,10 +4987,9 @@ svg.d3-semantic-graph {
       "latex": "\\Delta H",
       "subexpr": "\\Delta H",
       "chartScript": {
-        "script": "Delta*H",
+        "script": "Delta_H",
         "variables": [
-          "Delta",
-          "H"
+          "Delta_H"
         ]
       }
     },
@@ -5002,10 +4999,9 @@ svg.d3-semantic-graph {
       "op": "negation",
       "subexpr": "-T \\Delta S",
       "chartScript": {
-        "script": "-Delta*S*T",
+        "script": "-Delta_S*T",
         "variables": [
-          "Delta",
-          "S",
+          "Delta_S",
           "T"
         ]
       }
@@ -5016,10 +5012,9 @@ svg.d3-semantic-graph {
       "op": "multiply",
       "subexpr": "T \\Delta S",
       "chartScript": {
-        "script": "Delta*S*T",
+        "script": "Delta_S*T",
         "variables": [
-          "Delta",
-          "S",
+          "Delta_S",
           "T"
         ]
       }
@@ -5042,10 +5037,9 @@ svg.d3-semantic-graph {
       "latex": "\\Delta S",
       "subexpr": "\\Delta S",
       "chartScript": {
-        "script": "Delta*S",
+        "script": "Delta_S",
         "variables": [
-          "Delta",
-          "S"
+          "Delta_S"
         ]
       }
     }
@@ -5125,8 +5119,8 @@ svg.d3-semantic-graph {
   linkStyle 6 stroke:#aaa,stroke-width:2px
 </pre></div></div>
   <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(\Delta G, -T*\Delta S + \Delta H)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(Symbol('\\Delta G'), Add(Mul(Integer(-1), Symbol('T'), Symbol('\\Delta S')), Symbol('\\Delta H')))</pre></div></div>
-  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>Delta*G - Delta*H + Delta*S*T</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>Delta, G, H, S, T</pre></div></div>
-  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\Delta G = \\Delta H - T \\Delta S&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Delta*G - Delta*H + Delta*S*T&quot;,&quot;variables&quot;:[&quot;Delta&quot;,&quot;G&quot;,&quot;H&quot;,&quot;S&quot;,&quot;T&quot;]}},{&quot;id&quot;:&quot;Delta_G&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\Delta G&quot;,&quot;subexpr&quot;:&quot;\\Delta G&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Delta*G&quot;,&quot;variables&quot;:[&quot;Delta&quot;,&quot;G&quot;]}},{&quot;id&quot;:&quot;__add_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;-T \\Delta S + \\Delta H&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Delta*H - Delta*S*T&quot;,&quot;variables&quot;:[&quot;Delta&quot;,&quot;H&quot;,&quot;S&quot;,&quot;T&quot;]}},{&quot;id&quot;:&quot;Delta_H&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\Delta H&quot;,&quot;subexpr&quot;:&quot;\\Delta H&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Delta*H&quot;,&quot;variables&quot;:[&quot;Delta&quot;,&quot;H&quot;]}},{&quot;id&quot;:&quot;__negation_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-T \\Delta S&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-Delta*S*T&quot;,&quot;variables&quot;:[&quot;Delta&quot;,&quot;S&quot;,&quot;T&quot;]}},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;T \\Delta S&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Delta*S*T&quot;,&quot;variables&quot;:[&quot;Delta&quot;,&quot;S&quot;,&quot;T&quot;]}},{&quot;id&quot;:&quot;T&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;T&quot;,&quot;subexpr&quot;:&quot;T&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;T&quot;,&quot;variables&quot;:[&quot;T&quot;]}},{&quot;id&quot;:&quot;Delta_S&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\Delta S&quot;,&quot;subexpr&quot;:&quot;\\Delta S&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Delta*S&quot;,&quot;variables&quot;:[&quot;Delta&quot;,&quot;S&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;Delta_G&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;Delta_H&quot;,&quot;to&quot;:&quot;__add_2&quot;},{&quot;from&quot;:&quot;T&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;Delta_S&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__negation_3&quot;},{&quot;from&quot;:&quot;__negation_3&quot;,&quot;to&quot;:&quot;__add_2&quot;},{&quot;from&quot;:&quot;__add_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;},&quot;domain&quot;:&quot;chemistry&quot;}"><div class="row-d3-placeholder">Click D3 to render</div></div>
+  <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>Delta_G - Delta_H + Delta_S*T</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>Delta_G, Delta_H, Delta_S, T</pre></div></div>
+  <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\Delta G = \\Delta H - T \\Delta S&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Delta_G - Delta_H + Delta_S*T&quot;,&quot;variables&quot;:[&quot;Delta_G&quot;,&quot;Delta_H&quot;,&quot;Delta_S&quot;,&quot;T&quot;]}},{&quot;id&quot;:&quot;Delta_G&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\Delta G&quot;,&quot;subexpr&quot;:&quot;\\Delta G&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Delta_G&quot;,&quot;variables&quot;:[&quot;Delta_G&quot;]}},{&quot;id&quot;:&quot;__add_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;-T \\Delta S + \\Delta H&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Delta_H - Delta_S*T&quot;,&quot;variables&quot;:[&quot;Delta_H&quot;,&quot;Delta_S&quot;,&quot;T&quot;]}},{&quot;id&quot;:&quot;Delta_H&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\Delta H&quot;,&quot;subexpr&quot;:&quot;\\Delta H&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Delta_H&quot;,&quot;variables&quot;:[&quot;Delta_H&quot;]}},{&quot;id&quot;:&quot;__negation_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-T \\Delta S&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-Delta_S*T&quot;,&quot;variables&quot;:[&quot;Delta_S&quot;,&quot;T&quot;]}},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;T \\Delta S&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Delta_S*T&quot;,&quot;variables&quot;:[&quot;Delta_S&quot;,&quot;T&quot;]}},{&quot;id&quot;:&quot;T&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;T&quot;,&quot;subexpr&quot;:&quot;T&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;T&quot;,&quot;variables&quot;:[&quot;T&quot;]}},{&quot;id&quot;:&quot;Delta_S&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\Delta S&quot;,&quot;subexpr&quot;:&quot;\\Delta S&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Delta_S&quot;,&quot;variables&quot;:[&quot;Delta_S&quot;]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;Delta_G&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;Delta_H&quot;,&quot;to&quot;:&quot;__add_2&quot;},{&quot;from&quot;:&quot;T&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;Delta_S&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__negation_3&quot;},{&quot;from&quot;:&quot;__negation_3&quot;,&quot;to&quot;:&quot;__add_2&quot;},{&quot;from&quot;:&quot;__add_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;},&quot;domain&quot;:&quot;chemistry&quot;}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
 <div class="summary">✅ <span class="count">16</span> rendered, <span class="count">0</span> errors out of <span class="count">16</span> expressions</div>
 <script>
@@ -5189,8 +5183,8 @@ document.querySelectorAll('.row-copy-btn').forEach(btn => {
 })();
 
 Promise.all([
-  import('./d3-semantic-graph.js?v=1784175818'),
-  import('./sg-chart.js?v=1784175818'),
+  import('./d3-semantic-graph.js?v=1785816320'),
+  import('./sg-chart.js?v=1785816320'),
 ]).then(function(mods) {
   var D3SemanticGraphRenderer = mods[0].D3SemanticGraphRenderer;
   var SgChartManager = mods[1].SgChartManager;
@@ -5230,6 +5224,12 @@ Promise.all([
         console.error('D3 panel render error:', err);
       }
     });
+  });
+}).catch(function(err) {
+  console.error('D3/chart module load error — D3 buttons disabled:', err);
+  document.querySelectorAll('.row-toggle-d3').forEach(function(btn) {
+    btn.disabled = true;
+    btn.title = 'D3 module failed to load: ' + err.message;
   });
 });
 </script>
