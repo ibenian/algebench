@@ -246,3 +246,14 @@ def test_substitution_into_definition_grades_plausible_not_unchecked():
         domain="statistics"))
     verdict = classify_pair(prev, curr, change_type="substitute", index=9)
     assert verdict.tier == Tier.BLUE
+
+
+def test_capital_E_is_free_symbol():
+    """Capital E must ground as a free symbol, not Euler's number (issue #526)."""
+    E = sp.Symbol("E")
+    m, c = sp.symbols("m c")
+    # E^2 should be E**2, not exp(2)
+    assert graph_to_sympy(SVC.latex_to_graph(r"E^2")) == E**2
+    # E = mc^2 should have E as a free symbol
+    result = graph_to_sympy(SVC.latex_to_graph(r"E = m c^2"))
+    assert result == sp.Eq(E, m * c**2)

@@ -40,7 +40,7 @@ _FUNC = {
     "abs": sp.Abs, "arg": sp.arg,
 }
 
-_CONSTANTS = {"pi": sp.pi, "e": sp.E, "E": sp.E, "infty": sp.oo, "oo": sp.oo}
+_CONSTANTS = {"pi": sp.pi, "e": sp.E, "infty": sp.oo, "oo": sp.oo}
 
 # relation op -> sympy relational constructor
 _RELATIONS = {
