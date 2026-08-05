@@ -161,9 +161,16 @@ def test_an_unknown_key_raises():
         LineAdapter().parse_field("s", "change_type: rewrite\nnope: x", list[Step])
 
 
-def test_a_duplicate_key_raises():
+def test_a_duplicate_key_raises_in_a_SINGLE_model_field():
+    """One model, one value per key — a repeat there is genuinely ambiguous.
+
+    In a ``list[Model]`` field a repeat means the next item began (see
+    ``test_run_together_blocks_are_split_not_merged``); with only ONE model
+    expected there is no next item, so it stays an error.
+    """
     with pytest.raises(LineFormatError, match="duplicate"):
-        LineAdapter().parse_field("s", "change_type: rewrite\nchange_type: solve", list[Step])
+        LineAdapter().parse_field(
+            "s", "change_type: rewrite\nchange_type: solve", Optional[Step])
 
 
 def test_a_missing_output_field_raises():
@@ -229,17 +236,46 @@ def test_the_number_of_blank_lines_between_blocks_does_not_matter(blanks):
     assert len(LineAdapter().parse_field("steps", text, list[Step])) == 2
 
 
-def test_a_MISSING_blank_line_fails_loudly():
-    """Run-together blocks must not silently merge.
+def test_run_together_blocks_are_split_not_merged():
+    """Run-together blocks must not silently merge — they are RECOVERED.
 
-    Caught by the duplicate-key rule rather than a dedicated check — two blocks
-    jammed together necessarily repeat a key. That holds for any model whose
-    fields are required (pydantic catches the rest); it would NOT hold for an
-    all-optional model whose run-together blocks set disjoint fields.
+    This previously raised on the duplicate key, which honoured the invariant
+    (no silent merge) but threw the data away with it. Models omit the blank
+    line often enough that raising was not viable: for a caller that swallows
+    parse failures — ``propose_edit`` returns "not an edit" — the symptom was not
+    an error but silence, a valid request dropping to chat with nothing to show
+    (#543). A repeated key is unambiguous evidence the next item began, so the
+    split recovers every block instead.
+
+    The invariant this test has always protected is unchanged: the two blocks
+    must not end up as one item.
     """
     text = ("change_type: rewrite\nexpr_latex: a\njustification: j\n"
             "change_type: solve\nexpr_latex: b\njustification: k")
-    with pytest.raises(LineFormatError, match="duplicate"):
+    steps = LineAdapter().parse_field("steps", text, list[Step])
+    assert [s.change_type for s in steps] == ["rewrite", "solve"]
+    assert [s.expr_latex for s in steps] == ["a", "b"]
+    assert [s.justification for s in steps] == ["j", "k"]
+
+
+def test_blank_line_separated_blocks_still_parse():
+    """The documented separator keeps working — the fallback is additive."""
+    text = ("change_type: rewrite\nexpr_latex: a\njustification: j\n\n"
+            "change_type: solve\nexpr_latex: b\njustification: k")
+    steps = LineAdapter().parse_field("steps", text, list[Step])
+    assert [s.expr_latex for s in steps] == ["a", "b"]
+
+
+def test_a_value_spilling_onto_a_second_line_still_raises():
+    """The split must not soften the real error it was masking.
+
+    A continuation line is not ``key: value``, so it is passed through to
+    ``parse_block`` untouched and still fails — honouring it would silently
+    truncate the author's text.
+    """
+    text = ("change_type: rewrite\nexpr_latex: a\njustification: first line\n"
+            "and the rest of the sentence spilled here")
+    with pytest.raises(LineFormatError, match="must not span lines"):
         LineAdapter().parse_field("steps", text, list[Step])
 
 

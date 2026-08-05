@@ -325,6 +325,47 @@ class LineAdapter(ChatAdapter):
 
     # ----------------------------------------------------------------- parse
 
+    def split_blocks(self, text: str, model: Type[BaseModel]) -> list[str]:
+        """A repeated-model field's text -> one block of lines per item.
+
+        A blank line is the documented separator and the one the prompt shows,
+        but models run blocks together often enough that treating it as the ONLY
+        separator is not viable. A key that REPEATS is unambiguous evidence the
+        next item has begun — ``parse_block`` already rejects a key appearing
+        twice within one block — so the split falls back to that.
+
+        Without this, a run-together response raised ``duplicate key`` and every
+        item was lost. For a caller that swallows parse failures (``propose_edit``
+        returns "not an edit") the symptom is not an error but SILENCE: a valid
+        request drops through to chat with nothing to show for it (#543).
+
+        Lines that are not ``key: value`` at all are passed through untouched, so
+        ``parse_block`` still raises on a value that spilled onto a second line.
+        """
+        blocks: list[str] = []
+        current: list[str] = []
+        seen: set[str] = set()
+
+        def flush() -> None:
+            if current:
+                blocks.append("\n".join(current))
+            current.clear()
+            seen.clear()
+
+        for chunk in self.BLOCK_SPLIT.split(text.strip()):
+            for line in chunk.splitlines():
+                if not line.strip():
+                    continue
+                m = self.KEY_PATTERN.match(line.strip())
+                key = m.group(1) if m else None
+                if key is not None and key in seen:
+                    flush()                       # a repeat starts the next item
+                if key is not None and key in model.model_fields:
+                    seen.add(key)
+                current.append(line)
+            flush()                               # a blank line also ends an item
+        return [b for b in blocks if b.strip()]
+
     def parse_block(self, block: str, model: Type[BaseModel], field: str) -> BaseModel:
         """One ``key: value`` block -> a model instance. Pydantic still validates."""
         self.check_model(model, field)
@@ -388,8 +429,8 @@ class LineAdapter(ChatAdapter):
         item = _list_item_type(annotation)
         if item is not None:
             if _is_model(item):
-                blocks = [b for b in self.BLOCK_SPLIT.split(text.strip()) if b.strip()]
-                return [self.parse_block(b, item, field) for b in blocks]
+                return [self.parse_block(b, item, field)
+                        for b in self.split_blocks(text, item)]
             # Coerce each item to the declared type. Returning raw strings for a
             # ``list[int]`` would be a SILENT type error — the caller gets
             # ``['1', '2']`` where it declared ints, and pydantic never sees it
