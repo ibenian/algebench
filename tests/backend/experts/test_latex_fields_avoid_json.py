@@ -58,6 +58,47 @@ def test_proof_edit_steps_is_a_model_not_a_dict():
     assert ann == list[ProposedStep], f"steps regressed to {ann}"
 
 
+def test_edit_intent_uses_line_adapter():
+    """``EditIntentParser.forward`` must install LineAdapter, via ``dspy.context``.
+
+    Structure, not source text — an ``adapter=`` kwarg on ``Predict`` LOOKS like
+    it selects an adapter and does not: ``Predict.forward`` reads
+    ``settings.adapter``, so the kwarg sits inertly in ``self.config`` and is
+    forwarded to the LM as a generation parameter. That mistake shipped in #539
+    and passed review, so it is worth a test that can tell the two apart.
+
+    Losing this silently reinstates the JSON escape layer on ``steps``, and
+    ``propose_edit`` swallows the resulting parse failure into a "not an edit" —
+    so the symptom would be edits quietly falling through to tutor chat.
+    """
+    import ast
+    import inspect
+    from backend.experts.modules.proof_edit import intent
+
+    tree = ast.parse(inspect.getsource(intent))
+    forward = next(
+        (n for n in ast.walk(tree)
+         if isinstance(n, ast.FunctionDef) and n.name == "forward"), None)
+    assert forward is not None, "EditIntentParser.forward has been renamed"
+
+    contexts = [n for n in ast.walk(forward)
+                if isinstance(n, ast.Call)
+                and getattr(n.func, "attr", "") == "context"]
+    assert contexts, (
+        "forward() no longer opens a dspy.context — the adapter is whatever is "
+        "globally configured, which means ChatAdapter and a JSON-decoded `steps`")
+    assert any(kw.arg == "adapter" for c in contexts for kw in c.keywords), (
+        "dspy.context is opened without an adapter= keyword")
+
+    # And the predictor itself must NOT carry the inert kwarg.
+    predicts = [n for n in ast.walk(tree)
+                if isinstance(n, ast.Call)
+                and getattr(n.func, "attr", "") == "Predict"]
+    assert not any(kw.arg == "adapter" for p in predicts for kw in p.keywords), (
+        "adapter= passed to dspy.Predict does nothing but reach the LM as a "
+        "generation kwarg; install it with dspy.context instead")
+
+
 @pytest.mark.parametrize("annotation", [dict, set, tuple, frozenset])
 def test_bare_dict_is_not_a_leaf(annotation):
     """A BARE collection must not pass as a scalar.
