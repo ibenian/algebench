@@ -37,7 +37,41 @@ def test_solving_chain_narrows_is_valid():
     assert rep.pairs[0].relation == "equivalent"
     assert rep.pairs[1].relation == "narrows"
     assert rep.pairs[1].method == "symbolic"
-    assert rep.pairs[1].tier is Tier.GOLD
+    assert rep.pairs[1].tier is Tier.SILVER
+
+
+def test_narrowing_reason_names_the_discarded_solution():
+    """A narrowing badge must say WHAT was dropped, not just that it narrowed (#516).
+
+    Both branches of ``_narrows_check`` have to carry the detail: the solution-set
+    path below, and the ``_squared_pair`` short-circuit — which is the one every
+    take-the-root step in ``proofs/domains`` actually hits.
+    """
+    # solution-set path (no squared pair): a factored quadratic picking one root
+    pv = classify_pair(sp.Eq((x - 1) * (x - 2), 0), sp.Eq(x, 1), change_type="solve")
+    assert pv.relation == "narrows"
+    assert "selects $x = 1$" in pv.reason
+    assert "discards $x = 2$" in pv.reason
+
+    # squared-pair path: the take-the-root shape from the issue
+    pv = classify_pair(sp.Eq(x ** 2, 9), sp.Eq(x, 3), change_type="solve")
+    assert pv.relation == "narrows"
+    assert "discards $x = -3$" in pv.reason
+
+
+def test_narrowing_reason_orders_values_numerically():
+    """Sorting must run on the values, not their rendering (``$10$`` < ``$2$``)."""
+    pv = classify_pair(sp.Eq((x - 2) * (x - 10), 0), sp.Eq(x, 2), change_type="solve")
+    assert pv.relation == "narrows"
+    assert "discards $x = 10$" in pv.reason
+
+
+def test_narrowing_reason_survives_an_unnameable_drop():
+    """Non-finite solution sets keep the generic wording (and skip the CAS diff)."""
+    pv = classify_pair(sp.Eq(sp.sin(x), 0), sp.Eq(x, 0), change_type="solve")
+    assert pv.relation == "narrows"
+    assert pv.tier is Tier.SILVER
+    assert "discards" not in pv.reason
 
 
 def test_wrong_middle_step_is_refuted():
@@ -80,7 +114,7 @@ def test_change_type_mislabel_downgrades_one_notch():
     pv = classify_pair(sp.Eq(x ** 2, 4), sp.Eq(x, 2), change_type="rewrite")
     assert pv.relation == "narrows"
     assert pv.type_consistent is False
-    assert pv.tier is Tier.SILVER
+    assert pv.tier is Tier.BLUE
 
 
 def test_timeout_degrades_to_plausible(monkeypatch):
@@ -173,7 +207,10 @@ def test_or_branches_count_as_full_solution_set():
     # x^2 = 4  ->  (x = 2) or (x = -2): equivalent, not narrowing.
     pv = classify_pair(sp.Eq(x ** 2, 4), sp.Or(sp.Eq(x, 2), sp.Eq(x, -2)),
                        change_type="solve")
-    assert pv.relation in ("equivalent", "narrows")
+    # Pin BOTH: deriving the expected tier from the observed relation would let a
+    # silent regression to `narrows` pass, and full-solution-set `±` branches
+    # grading as an equivalence is exactly what #369 delivered.
+    assert pv.relation == "equivalent"
     assert pv.tier is Tier.GOLD
 
 
@@ -252,7 +289,7 @@ def test_parametric_sqrt_solve_is_verified():
                        change_type="solve")
     assert pv.relation == "narrows"
     assert pv.method == "symbolic"
-    assert pv.tier is Tier.GOLD
+    assert pv.tier is Tier.SILVER
     assert pv.type_consistent is True
 
 
@@ -283,7 +320,7 @@ def test_multivariate_square_root_is_proven_narrows():
     )
     assert pv.relation == "narrows"
     assert pv.method == "symbolic"
-    assert pv.tier is Tier.GOLD
+    assert pv.tier is Tier.SILVER
 
 
 def test_principal_root_simplification_is_verified():

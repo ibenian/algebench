@@ -600,23 +600,76 @@ def _branch_pair(prev, curr) -> bool:
     return bool(_guard(_op_branch_equiv, prev, curr, default=False))
 
 
+def _value_sort_key(v):
+    """Deterministic order for solution values: reals by magnitude, rest by srepr.
+
+    Sorting the *rendered* strings instead puts ``$10$`` before ``$2$``, so the
+    key works on the values and the rendering happens after.
+    """
+    try:
+        if v.is_real:
+            return (0, float(v), "")
+    except (TypeError, ValueError):
+        pass
+    return (1, 0.0, sp.srepr(v))
+
+
+def _values_phrase(x, values) -> str:
+    """``x = 3, x = -3`` — name the VALUES, not the unknown they solve for."""
+    return ", ".join(f"${sp.latex(x)} = {sp.latex(v)}$"
+                     for v in sorted(values, key=_value_sort_key))
+
+
+def _narrowing_detail(x, prev_sols, curr_sols) -> Optional[str]:
+    """``selects …; discards …`` when both sides are finite, else None.
+
+    Naming what a narrowing step threw away is the whole point of the badge
+    (#516) — "selects x = 3; discards x = -3" is an explanation, "narrows" is
+    just a label. Both sets must be finite before we ask the CAS for the
+    difference: on a ConditionSet/Interval the diff can't come back as a
+    ``FiniteSet`` anyway, so the round-trip is pure cost.
+    """
+    if not (isinstance(prev_sols, sp.FiniteSet) and isinstance(curr_sols, sp.FiniteSet)):
+        return None
+    dropped = _guard(_op_set_diff, prev_sols, curr_sols)
+    if not isinstance(dropped, sp.FiniteSet) or len(dropped) == 0:
+        return None
+    return (f"selects {_values_phrase(x, curr_sols)}; "
+            f"discards {_values_phrase(x, dropped)}")
+
+
+_SQUARED_REASON = ("the previous step is exactly this step squared — taking a root "
+                   "keeps only solutions of the original")
+
+
 def _narrows_check(prev, curr, relation, method, reason):
     """Solution-set containment for relational/boolean states (solving steps)."""
     rel_kinds = ("equation", "inequality", "boolean")
     if _kind(prev) not in rel_kinds or _kind(curr) not in rel_kinds:
         return relation, method, reason
     # take-the-root pattern: an unconditional implication, decided structurally
-    if _squared_pair(prev, curr):
-        return ("narrows", "symbolic",
-                "the previous step is exactly this step squared — taking a root "
-                "keeps only solutions of the original")
+    squared = _squared_pair(prev, curr)
     x = _sole_symbol(prev, curr)
     if x is None:
-        # multivariate — handled later by the (weaker) parametric pass, AFTER
-        # the scaled-residual check has had its chance to prove equivalence
+        # multivariate — a squared pair is still a proven narrowing (that check
+        # exists precisely because solveset can't settle these), just with no
+        # solution sets to name; anything else falls through to the (weaker)
+        # parametric pass, AFTER the scaled-residual check has had its chance
+        # to prove equivalence
+        if squared:
+            return ("narrows", "symbolic", _SQUARED_REASON)
         return relation, method, reason
     prev_sols = _guard(_solution_set, prev, x)
     curr_sols = _guard(_solution_set, curr, x)
+    if squared:
+        # univariate take-the-root: keep the structural proof as the reason and
+        # append the dropped root when we can name it. The solution sets are
+        # computed only for the wording — the verdict is already decided — so a
+        # CAS degrade just costs the detail, not the grade.
+        detail = (None if prev_sols is None or curr_sols is None
+                  else _narrowing_detail(x, prev_sols, curr_sols))
+        return ("narrows", "symbolic",
+                f"{_SQUARED_REASON} — {detail}" if detail else _SQUARED_REASON)
     if prev_sols is None or curr_sols is None:
         return relation, method, reason
     contained = _guard(_op_is_subset, curr_sols, prev_sols)
@@ -626,6 +679,9 @@ def _narrows_check(prev, curr, relation, method, reason):
         if _guard(_op_is_subset, prev_sols, curr_sols):
             return ("equivalent", "symbolic",
                     "same solution set as the previous step")
+        detail = _narrowing_detail(x, prev_sols, curr_sols)
+        if detail:
+            return ("narrows", "symbolic", detail)
         return ("narrows", "symbolic",
                 "every solution of this step solves the previous one (valid narrowing)")
     # provably introduces non-solutions? (only claim it when the gap is concrete)
@@ -718,7 +774,11 @@ def _tier_for(relation: Relation, method: Method, type_consistent: bool) -> Tier
         return Tier.RED                       # a mislabel can't make it worse
     if relation == "unknown":
         return Tier.BLUE
-    base = Tier.GOLD if method == "symbolic" else Tier.SILVER
+    # narrows is proven but weaker than equivalence — cap at SILVER
+    if relation == "narrows":
+        base = Tier.SILVER
+    else:
+        base = Tier.GOLD if method == "symbolic" else Tier.SILVER
     if not type_consistent:                   # one-notch downgrade for mislabels
         return Tier.SILVER if base is Tier.GOLD else Tier.BLUE
     return base
