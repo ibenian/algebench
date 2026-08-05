@@ -172,10 +172,25 @@ def _is_special(a: Any) -> bool:
     return base is not None and isinstance(a, type) and issubclass(a, base)
 
 
+#: Collection types this format cannot express, in BOTH spellings. ``get_origin``
+#: alone is not enough: it returns the container for a *parameterised* generic
+#: (``dict[str, str]`` -> ``dict``) but ``None`` for a BARE one (``dict``), so a
+#: bare-``dict`` annotation passed the old check as a scalar. That mattered most
+#: exactly where it was least visible — ``list[dict]`` is checked by its ITEM
+#: type, so an unparameterised ``dict`` item made the whole field look
+#: expressible, and each item would have been ``str()``-ed onto a line as a
+#: Python repr (#543).
+_COLLECTIONS = (list, dict, set, tuple, frozenset)
+
+
 def _is_leaf(a: Any) -> bool:
     """True if ``a`` renders as a single line (not a model, not a collection)."""
     a = _unwrap_optional(a)
-    return not _is_model(a) and get_origin(a) not in (list, dict, set, tuple)
+    if _is_model(a):
+        return False
+    if get_origin(a) in _COLLECTIONS:        # dict[str, str], list[int], …
+        return False
+    return not (isinstance(a, type) and issubclass(a, _COLLECTIONS))  # bare dict, set, …
 
 
 # --------------------------------------------------------------------------- #

@@ -26,7 +26,7 @@ from functools import cache
 import dspy
 from pydantic import BaseModel, ConfigDict, Field
 
-from backend.experts.llm_config import scoped_lm
+from backend.experts.llm_config import make_adapter, scoped_lm
 from backend.experts.modules.proof_completion.outputs import _unmangle_json_escapes
 
 # DSPy's ChatAdapter frames fields with `[[ ## name ## ]]` markers; some models
@@ -211,7 +211,7 @@ class ProofEditSig(dspy.Signature):
         desc="true if the message asks for a math operation on the step")
     question: str = dspy.OutputField(
         desc="ONE short question if a math-changing choice is missing; else empty")
-    steps: list[dict] = dspy.OutputField(
+    steps: list[ProposedStep] = dspy.OutputField(
         desc="ordered [{operation, expr_latex, justification}]: the user's step "
              "first, THEN up to 3 glue steps bridging back to the original next "
              "step. Fill the glue even when `op` is set — the CAS performs the "
@@ -266,13 +266,22 @@ class EditIntentParser(dspy.Module):
 
     def forward(self, *, derivation: str, current_step: str, request: str,
                 recent_thread: str = "", clarifications: str = ""):
-        return self.predict(
-            derivation=derivation,
-            current_step=current_step,
-            request=request,
-            recent_thread=recent_thread,
-            clarifications=clarifications,
-        )
+        # LineAdapter, installed via ``dspy.context`` — ``Predict.forward`` reads
+        # ``settings.adapter``, so an ``adapter=`` kwarg on ``Predict`` would sit
+        # inertly in ``self.config`` and be forwarded to the LM instead (#543).
+        # ``steps`` is the reason: a ``list[BaseModel]`` output is JSON-decoded
+        # under ChatAdapter, and ``\r \n \t \f \b`` are valid JSON escapes AND
+        # LaTeX command prefixes — so ``\right`` written with one backslash
+        # decodes to CR + ``ight`` and parses as the product ``i·g·h·t``. The
+        # line format has no escape layer, so the backslashes survive verbatim.
+        with dspy.context(adapter=make_adapter(line_oriented=True)):
+            return self.predict(
+                derivation=derivation,
+                current_step=current_step,
+                request=request,
+                recent_thread=recent_thread,
+                clarifications=clarifications,
+            )
 
 
 # Built once, LAZILY on first use — this file is imported before
@@ -361,12 +370,15 @@ def propose_edit(derivation: str, current_step: str, request: str,
 
     steps: list[ProposedStep] = []
     for raw in (out.steps or [])[:MAX_GLUE_STEPS + 1]:
-        if not isinstance(raw, dict):
+        # ``ProposedStep`` under LineAdapter; a plain dict from any caller that
+        # still hands one over (older fixtures, a JSONAdapter path). ``_field``
+        # reads either, so the shape change does not gate the cleaning.
+        if not isinstance(raw, (dict, ProposedStep)):
             continue
-        step = ProposedStep(
-            operation=_clean(raw.get("operation")),
-            expr_latex=_clean(raw.get("expr_latex")),
-            justification=_clean(raw.get("justification")),
+        step = ProposedStep(              # ``_field`` already runs ``_clean``
+            operation=_field(raw, "operation"),
+            expr_latex=_field(raw, "expr_latex"),
+            justification=_field(raw, "justification"),
         )
         if step.expr_latex:            # an expressionless step cannot be built
             steps.append(step)
