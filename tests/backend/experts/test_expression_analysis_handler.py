@@ -123,6 +123,63 @@ def test_proposed_view_coerces_nested_plots_and_annotations():
     assert isinstance(v.annotations[0], ProposedAnnotation)
 
 
+# ── flat wire shapes re-nest into the API shape (#543) ─────────────────
+#
+# The LM writes flat blocks so its LaTeX never reaches a JSON decoder; the
+# nesting the handler and the page expect is rebuilt here. These tests pin the
+# join, because a wrong one attaches a curve to the wrong chart — a
+# mathematically false picture presented as a proposal.
+
+def test_wire_views_renest_by_index():
+    from backend.experts.modules.expression_analysis.proposer import (
+        AnnotationPlan, PlotPlan, ViewPlan, _assemble_views,
+    )
+    views = _assemble_views(
+        [ViewPlan(kind="plane-2d", x_var="t", x_min=0, x_max=4,
+                  pinned="v_0=20, g=9.8", mark="peak, landing",
+                  rationale="the arc"),
+         ViewPlan(x_var="v_0", x_min=-1, x_max=1)],
+        [PlotPlan(view=2, latex=r"e^{-\beta t}", label="envelope"),
+         PlotPlan(view=9, latex="x", label="addressed to nothing")],
+        [AnnotationPlan(view=1, kind="vline", at=r"\frac{v_0}{g}", label="peak")],
+    )
+    assert views[0].x_range == [0.0, 4.0]
+    assert views[0].pinned == {"v_0": 20.0, "g": 9.8}
+    assert views[0].mark == ["peak", "landing"]
+    assert [a.at for a in views[0].annotations] == [r"\frac{v_0}{g}"]
+    assert views[0].plots == []
+    # The join is by index, not by order of arrival.
+    assert [p.label for p in views[1].plots] == ["envelope"]
+    # A plot naming a view that does not exist is DROPPED, never reassigned.
+    assert sum(len(v.plots) for v in views) == 1
+
+
+def test_wire_view_pins_survive_a_malformed_entry():
+    """One unparseable pin must not cost the learner the other pins.
+
+    ``pinned`` is a delimited leaf because it holds only names and numbers —
+    but the model still writes it, so a stray entry has to be survivable.
+    """
+    from backend.experts.modules.expression_analysis.proposer import _parse_pinned
+    assert _parse_pinned("v_0=20, nonsense, g=9.8, h=tall") == {
+        "v_0": 20.0, "g": 9.8}
+
+
+def test_wire_probe_options_and_index_convert():
+    """Options come back in numbered slots and the index is 1-based on the wire.
+
+    Getting the base wrong marks a *different* option correct, which
+    ``_usable_probes`` cannot catch — the index is still in range.
+    """
+    from backend.experts.modules.expression_analysis.proposer import ProbePlan
+    p = ProbePlan(question="where is the peak?", option_1="$t=0$",
+                  option_2=r"$t=\frac{v_0}{g}$", correct_index=2,
+                  explanation="velocity vanishes there", feature="max").as_probe()
+    assert p.options == ["$t=0$", r"$t=\frac{v_0}{g}$"]
+    assert p.correct_index == 1
+    assert p.options[p.correct_index] == r"$t=\frac{v_0}{g}$"
+
+
 # ── probe validation (structurally unusable probes are dropped) ─────────
 
 def test_only_answerable_probes_survive():

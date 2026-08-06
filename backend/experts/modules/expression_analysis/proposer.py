@@ -24,7 +24,7 @@ from typing import Optional
 import dspy
 from pydantic import BaseModel, ConfigDict, Field
 
-from backend.experts.llm_config import scoped_lm
+from backend.experts.llm_config import make_adapter, scoped_lm
 
 log = logging.getLogger(__name__)
 
@@ -40,13 +40,26 @@ MAX_ANNOTATIONS = 4
 
 
 class RankedFeature(BaseModel):
-    """One detected characteristic with its pedagogical assessment."""
+    """One detected characteristic with its pedagogical assessment.
+
+    Already flat, so this one doubles as its own wire shape — it is a
+    ``VizProposalSig`` output field directly. The ``description``s are therefore
+    prompt surface: ``LineAdapter`` renders each key with its description as the
+    block template the model fills in (see :class:`ViewPlan`).
+    """
 
     model_config = ConfigDict(extra="ignore")
 
-    feature: str = Field(default="", max_length=200)
-    usefulness: int = Field(default=0, ge=0, le=5)
-    why: str = Field(default="", max_length=400)
+    feature: str = Field(
+        default="", max_length=200,
+        description="the detected feature, named as the CAS report names it")
+    usefulness: int = Field(
+        default=0, ge=0, le=5,
+        description="5 = the one insight a learner must not miss; "
+                    "1 = true but unremarkable")
+    why: str = Field(
+        default="", max_length=400,
+        description="one line on what makes it worth (or not worth) teaching")
 
 
 class ProposedPlot(BaseModel):
@@ -103,6 +116,226 @@ class ProposedProbe(BaseModel):
     correct_index: int = Field(default=0, ge=0)
     explanation: str = Field(default="", max_length=600)
     feature: str = Field(default="", max_length=200)
+
+
+# --------------------------------------------------------------------------- #
+# The LM-facing wire shapes (#543)
+#
+# The models ABOVE are the API contract: they are what ``VizProposal`` carries,
+# what the handler compiles, and what the page renders — nested two and three
+# levels deep, which is right for JSON on the way OUT.
+#
+# They cannot be the LM's OUTPUT shape, because a nested field means DSPy hands
+# the value to ``json_repair``, and ``\r \n \t \f \b`` are valid JSON escapes as
+# well as LaTeX command prefixes: ``\right`` written with one backslash decodes
+# to CR + ``ight`` and parses as the product ``i·g·h·t``. ``views[].plots[].latex``
+# is model-authored LaTeX two levels down, so it was squarely exposed.
+#
+# So the wire shapes below are FLAT — one level, every field a leaf — which is
+# what ``LineAdapter`` can carry with no escape layer at all. Nesting is
+# recovered afterwards by :func:`_assemble_views`, joining on a 1-based view
+# index. Nothing outside this module changes shape: the handler, the response
+# schema and the page still see ``ProposedView.plots`` exactly as before.
+# --------------------------------------------------------------------------- #
+
+class ViewPlan(BaseModel):
+    """One viewport as the LM writes it: flat, one ``key: value`` line each.
+
+    The per-field ``description``s are prompt surface, not documentation —
+    ``LineAdapter`` renders each key with its description as the block template
+    the model fills in, so omitting one deletes that guidance from the prompt.
+
+    ``x_range`` is split into two numbers and the two collections are carried as
+    delimited leaves. Both hold only mechanical names and numbers (report
+    variables, detected-feature names), never prose or LaTeX, so a comma is a
+    safe separator here in a way it would never be for :class:`PlotPlan.latex`.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    kind: str = Field(
+        default="plane-2d", max_length=40,
+        description="plane-2d | surface-3d | limiting-behavior")
+    x_var: str = Field(
+        default="", max_length=40,
+        description="the swept variable, verbatim from the report's `variables`")
+    x_min: float = Field(
+        default=0.0, description="left end of the default sweep, a number")
+    x_max: float = Field(
+        default=0.0, description="right end of the default sweep, a number")
+    pinned: str = Field(
+        default="", max_length=300,
+        description="values for the non-swept symbols as `name=value`, comma "
+                    "separated (e.g. `v_0=20, g=9.8`); empty if none")
+    mark: str = Field(
+        default="", max_length=300,
+        description="detected features this viewport should annotate, by name, "
+                    "comma separated; empty if none")
+    rationale: str = Field(
+        default="", max_length=500,
+        description="what a learner sees HERE that the other views don't show")
+
+
+class PlotPlan(BaseModel):
+    """A companion curve, addressed to a view by index rather than nested in it."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    view: int = Field(
+        default=1, ge=1,
+        description="which viewport this belongs to: its 1-based position in "
+                    "`views`")
+    latex: str = Field(
+        default="", max_length=400,
+        description=r"the companion expression as BARE LaTeX (\frac{b}{2a}), "
+                    r"never wrapped in $…$ — this one is compiled, not "
+                    r"displayed; never restate the analyzed expression")
+    label: str = Field(
+        default="", max_length=120,
+        description="short legend label for the curve")
+
+
+class AnnotationPlan(BaseModel):
+    """A significance marker, addressed to a view by index."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    view: int = Field(
+        default=1, ge=1,
+        description="which viewport this belongs to: its 1-based position in "
+                    "`views`")
+    kind: str = Field(
+        default="vline", max_length=10, description="vline | hline | band")
+    at: str = Field(
+        default="", max_length=200,
+        description=r"the marker's position: BARE LaTeX (\frac{v_0}{g}), never "
+                    r"wrapped in $…$ — this one is compiled, not displayed")
+    to: str = Field(
+        default="", max_length=200,
+        description="upper bound of a band, bare LaTeX like `at`; empty for "
+                    "vline/hline")
+    label: str = Field(
+        default="", max_length=120, description="what the marker means")
+    group: str = Field(
+        default="", max_length=60,
+        description="shared name for markers that belong together; empty if none")
+
+
+class ProbePlan(BaseModel):
+    """A probe with its options lifted into fixed slots.
+
+    ``options`` is a ``list[str]`` on :class:`ProposedProbe`, which the line
+    format cannot nest inside a repeated block. Four numbered fields carry the
+    same 2–4 options with no separator to choose and nothing for the model to
+    escape — the delimiter trick that works for :class:`ViewPlan.mark` is not
+    available here, because an option is learner-facing prose containing ``$…$``.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    question: str = Field(
+        default="", max_length=400,
+        description="the question, asked BEFORE the learner sees the curve")
+    option_1: str = Field(default="", max_length=200, description="first choice")
+    option_2: str = Field(default="", max_length=200, description="second choice")
+    option_3: str = Field(
+        default="", max_length=200, description="third choice, or empty")
+    option_4: str = Field(
+        default="", max_length=200, description="fourth choice, or empty")
+    correct_index: int = Field(
+        default=0, ge=0,
+        description="1-based number of the correct option (1, 2, 3 or 4), "
+                    "VERIFIED against the CAS report")
+    explanation: str = Field(
+        default="", max_length=600,
+        description="one line tying the answer to the expression's structure")
+    feature: str = Field(
+        default="", max_length=200,
+        description="the detected feature this probe is grounded in")
+
+    def as_probe(self) -> "ProposedProbe":
+        """The nested shape the rest of the pipeline speaks.
+
+        ``correct_index`` is 1-based on the wire and 0-based in
+        :class:`ProposedProbe`. Models count options from one when asked to; the
+        conversion is done ONCE, here, rather than hoped for in the prompt — an
+        off-by-one marks the wrong answer correct, which ``_usable_probes``
+        cannot detect because the index is still in range.
+        """
+        options = [o.strip() for o in (self.option_1, self.option_2,
+                                       self.option_3, self.option_4) if o.strip()]
+        return ProposedProbe(
+            question=self.question, options=options,
+            correct_index=max(self.correct_index - 1, 0),
+            explanation=self.explanation, feature=self.feature)
+
+
+class GlossaryEntry(BaseModel):
+    """One variable's gloss. A mapping is not expressible; a list of pairs is."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    name: str = Field(
+        default="", max_length=40,
+        description="the variable name, verbatim from the report's `variables`")
+    description: str = Field(
+        default="", max_length=300,
+        description="one plain line saying what the quantity is in this "
+                    "context, with typical units when meaningful")
+
+
+def _split_list(text: str) -> list[str]:
+    """A ``ViewPlan`` delimited leaf -> its items, blanks dropped."""
+    return [p.strip() for p in (text or "").split(",") if p.strip()]
+
+
+def _parse_pinned(text: str) -> dict[str, float]:
+    """``"v_0=20, g=9.8"`` -> ``{"v_0": 20.0, "g": 9.8}``.
+
+    An entry that is not ``name=<number>`` is DROPPED rather than raising: the
+    handler already flags pins naming symbols the CAS report doesn't know, and
+    losing one pin should not cost the learner the whole proposal.
+    """
+    out: dict[str, float] = {}
+    for part in _split_list(text):
+        name, sep, value = part.partition("=")
+        if not sep:
+            continue
+        try:
+            out[name.strip()] = float(value.strip())
+        except ValueError:
+            continue
+    return out
+
+
+def _assemble_views(views: list[ViewPlan], plots: list[PlotPlan],
+                    annotations: list[AnnotationPlan]) -> list[ProposedView]:
+    """Re-nest the flat wire tables into the :class:`ProposedView` shape.
+
+    Plots and annotations whose ``view`` index addresses no viewport are
+    dropped — the alternative is attaching a curve to an arbitrary chart, which
+    would be a mathematically wrong picture presented as a proposal.
+    """
+    built = [
+        ProposedView(
+            kind=v.kind, x_var=v.x_var,
+            x_range=[v.x_min, v.x_max],
+            pinned=_parse_pinned(v.pinned),
+            mark=_split_list(v.mark),
+            rationale=v.rationale,
+        )
+        for v in views
+    ]
+    for p in plots:
+        if 1 <= p.view <= len(built) and len(built[p.view - 1].plots) < MAX_PLOTS:
+            built[p.view - 1].plots.append(
+                ProposedPlot(latex=p.latex, label=p.label))
+    for a in annotations:
+        if 1 <= a.view <= len(built) and len(built[a.view - 1].annotations) < MAX_ANNOTATIONS:
+            built[a.view - 1].annotations.append(
+                ProposedAnnotation(kind=a.kind, at=a.at, to=a.to,
+                                   label=a.label, group=a.group))
+    return built
 
 
 def _usable_probes(probes: list["ProposedProbe"]) -> list["ProposedProbe"]:
@@ -165,7 +398,8 @@ class VizProposalSig(dspy.Signature):
        itself* outranks an anonymous numeric root.
     3. PROPOSE 1–3 viewports (`views`). Pick x-ranges so the interesting
        features sit INSIDE the default sweep — the learner should stumble
-       into them (implicit scaffolding), not hunt. RESPECT the physical
+       into them (implicit scaffolding), not hunt. Give the sweep as two
+       numbers, `x_min` and `x_max`. RESPECT the physical
        domain the context implies: a variable that cannot meaningfully be
        negative there (time since launch, mass, volume, a distance)
        starts its range at that physical bound (usually 0) — include the
@@ -176,33 +410,38 @@ class VizProposalSig(dspy.Signature):
        DIFFERENT marked feature or qualitative regime than the previous
        ones — a rescaled duplicate of view 1 (same shape, different axis
        numbers) is worse than proposing no second view at all.
-       Per view you may also add:
-       - `plots`: 0–3 companion curves as LaTeX expressions with labels
-         (an envelope $e^{-bt}$, a limiting form, a linear approximation).
-         The analyzed expression itself is ALWAYS drawn — never restate
-         it. Add a companion only when seeing both curves together
-         teaches something a single curve cannot.
-       - `annotations`: 0–4 significance markers — {kind: vline|hline|
-         band, at: <LaTeX position>, to: <LaTeX, band upper bound only>,
-         label, group}. Use them SPARINGLY, only where a limit,
-         threshold, or critical value carries real pedagogical weight;
-         give related markers the same `group` label so the UI can
-         toggle them together; never duplicate what `mark` already
-         annotates (detected zeros/extrema/asymptotes draw themselves).
+       Two SEPARATE lists then decorate those viewports. Each entry names
+       the viewport it belongs to by its position in `views` — `view: 1`
+       is the first block you wrote, `view: 2` the second:
+       - `plots`: 0–3 companion curves PER VIEW, as LaTeX expressions
+         with labels (an envelope $e^{-bt}$, a limiting form, a linear
+         approximation). The analyzed expression itself is ALWAYS drawn —
+         never restate it. Add a companion only when seeing both curves
+         together teaches something a single curve cannot.
+       - `annotations`: 0–4 significance markers PER VIEW. Use them
+         SPARINGLY, only where a limit, threshold, or critical value
+         carries real pedagogical weight; give related markers the same
+         `group` label so the UI can toggle them together; never
+         duplicate what a view's `mark` already annotates (detected
+         zeros/extrema/asymptotes draw themselves).
+       Leave either list empty when a view needs no decoration.
     4. WRITE 1–4 predict-before-reveal probes (`probes`): short questions
        a learner answers BEFORE seeing the curve, each grounded in one
-       detected feature, with 2–4 options, the correct index, and a one-
-       line explanation tied to the expression's structure. VERIFY each
-       `correct_index` against the CAS report before returning: the
+       detected feature, with 2–4 options and a one-line explanation tied
+       to the expression's structure. Fill `option_1` and `option_2`
+       always; `option_3` and `option_4` only if the question needs them,
+       and leave them EMPTY otherwise — never pad with filler choices.
+       `correct_index` is the NUMBER of the winning option (1, 2, 3 or
+       4). VERIFY it against the CAS report before returning: the
        explanation must follow from the expression EXACTLY as given —
        watch signs and coefficients; never reason about a term the
        expression does not contain. A quiz that marks a right answer
        wrong is worse than no quiz.
-    5. GLOSS every variable (`variable_glossary`): for EACH name in the
-       report's `variables` list, one plain-language line saying what the
-       quantity is in this context, with typical units when meaningful —
-       e.g. "g": "gravitational acceleration (~9.8 m/s² on Earth)". Keys
-       must be the report's variable names verbatim.
+    5. GLOSS every variable (`variable_glossary`): one entry for EACH
+       name in the report's `variables` list — the `name` verbatim, and
+       one plain-language line saying what the quantity is in this
+       context, with typical units when meaningful (e.g. name "g",
+       description "gravitational acceleration (~9.8 m/s² on Earth)").
     6. ABSTAIN (set `abstain` true, everything else empty) when there is
        nothing behaviorally interesting to visualize — e.g. a bare
        constant or a purely notational identity. Always say WHY in
@@ -240,27 +479,24 @@ class VizProposalSig(dspy.Signature):
         desc="ONE sentence telling the expression's behavioral story in "
              "plain language, e.g. 'A steady rise fighting an accelerating "
              "fall — the fall always wins.'")
-    ranked: list[dict] = dspy.OutputField(
-        desc="[{feature, usefulness, why}] every notable detected feature, "
-             "most pedagogically useful first; usefulness is 1-5")
-    views: list[dict] = dspy.OutputField(
-        desc="[{kind, x_var, x_range:[min,max], pinned:{symbol:value}, "
-             "mark:[feature names], rationale, "
-             "plots:[{latex, label}] (0-3 companion curves), "
-             "annotations:[{kind: vline|hline|band, at, to, label, group}] "
-             "(0-4 significance markers, positions as LaTeX)}] "
-             "1-3 proposed viewports, each revealing something the others "
-             "don't; kind is one of plane-2d | surface-3d | limiting-behavior. "
-             "x_var and every pinned key MUST be names from the report's "
+    ranked: list[RankedFeature] = dspy.OutputField(
+        desc="every notable detected feature, most pedagogically useful first")
+    views: list[ViewPlan] = dspy.OutputField(
+        desc="1-3 proposed viewports, each revealing something the others "
+             "don't. x_var and every pinned name MUST come from the report's "
              "`variables` list, verbatim — no LaTeX, no renaming")
-    probes: list[dict] = dspy.OutputField(
-        desc="[{question, options, correct_index, explanation, feature}] "
-             "1-4 predict-before-reveal questions grounded in detected "
+    plots: list[PlotPlan] = dspy.OutputField(
+        desc="companion curves for the viewports above, up to 3 per view, "
+             "each naming its view by position; empty if none are warranted")
+    annotations: list[AnnotationPlan] = dspy.OutputField(
+        desc="significance markers for the viewports above, up to 4 per view, "
+             "each naming its view by position; empty if none are warranted")
+    probes: list[ProbePlan] = dspy.OutputField(
+        desc="1-4 predict-before-reveal questions grounded in detected "
              "features; empty if abstaining")
-    variable_glossary: dict = dspy.OutputField(
-        desc="{variable name: one-line contextual description with typical "
-             "units}. One entry for EVERY name in the report's `variables` "
-             "list, keys verbatim; empty if abstaining")
+    variable_glossary: list[GlossaryEntry] = dspy.OutputField(
+        desc="one entry for EVERY name in the report's `variables` list, "
+             "names verbatim; empty if abstaining")
 
 
 class VizProposer(dspy.Module):
@@ -278,9 +514,16 @@ class VizProposer(dspy.Module):
         self.predict = dspy.Predict(VizProposalSig)
 
     def forward(self, *, expression: str, characteristics: str, context: str = ""):
-        return self.predict(expression=expression,
-                            characteristics=characteristics,
-                            context=context)
+        # LineAdapter, installed via ``dspy.context`` — ``Predict.forward`` reads
+        # ``settings.adapter``, so an ``adapter=`` kwarg on ``Predict`` would sit
+        # inertly in ``self.config`` and be forwarded to the LM instead (#543).
+        # ``plots[].latex`` and ``annotations[].at`` are the reason: model-authored
+        # LaTeX in a non-``str`` field is JSON-decoded under ChatAdapter, and
+        # ``\r \n \t \f \b`` are valid JSON escapes AND LaTeX command prefixes.
+        with dspy.context(adapter=make_adapter(line_oriented=True)):
+            return self.predict(expression=expression,
+                                characteristics=characteristics,
+                                context=context)
 
 
 # Lazily built on first use — imported before ``configure_dspy()`` runs.
@@ -377,35 +620,39 @@ def propose_views(expression: str, characteristics: str,
         # became unreachable.
         return VizProposal(abstain=True, failed=True)
 
-    def shape(model, raws, limit):
-        shaped = []
-        for raw in (raws or [])[:limit]:
-            if isinstance(raw, dict):
-                try:
-                    shaped.append(model(**raw))
-                except Exception:
-                    continue
-        return shaped
+    def take(model, values, limit=None):
+        """The already-typed items of one output field, capped.
+
+        ``LineAdapter`` returns model instances (pydantic validated them at
+        parse time), so this no longer builds anything — it only enforces the
+        ceilings and stays defensive about the field being absent or holding
+        something unexpected, which a stubbed predictor in a test can produce.
+        """
+        items = [v for v in (getattr(out, values, None) or [])
+                 if isinstance(v, model)]
+        return items if limit is None else items[:limit]
 
     glossary = {}
-    if isinstance(getattr(out, "variable_glossary", None), dict):
-        for k, v in out.variable_glossary.items():
-            if isinstance(k, str) and isinstance(v, str) and v.strip():
-                glossary[k] = v.strip()[:300]
+    for entry in take(GlossaryEntry, "variable_glossary"):
+        if entry.name.strip() and entry.description.strip():
+            glossary[entry.name.strip()] = entry.description.strip()[:300]
 
-    views = shape(ProposedView, out.views, MAX_VIEWS)
-    for v in views:                       # per-view crowding ceilings
-        v.plots = v.plots[:MAX_PLOTS]
-        v.annotations = v.annotations[:MAX_ANNOTATIONS]
+    # Views are capped FIRST so that a plot or annotation addressed to a view
+    # that did not survive the ceiling is dropped with it, rather than sliding
+    # onto whichever chart now occupies that index.
+    views = _assemble_views(take(ViewPlan, "views", MAX_VIEWS),
+                            take(PlotPlan, "plots"),
+                            take(AnnotationPlan, "annotations"))
 
     return VizProposal(
         abstain=bool(out.abstain),
         abstain_reason=str(getattr(out, "abstain_reason", "") or "").strip(),
         title=str(getattr(out, "title", "") or "").strip(),
         story=str(out.story or "").strip(),
-        ranked=shape(RankedFeature, out.ranked, MAX_RANKED),
+        ranked=take(RankedFeature, "ranked", MAX_RANKED),
         views=views,
-        probes=_usable_probes(shape(ProposedProbe, out.probes, MAX_PROBES)),
+        probes=_usable_probes([p.as_probe()
+                               for p in take(ProbePlan, "probes", MAX_PROBES)]),
         variable_glossary=glossary,
     )
 
@@ -437,9 +684,8 @@ class MoreProbesSig(dspy.Signature):
     asked: str = dspy.InputField(
         desc="questions the learner has already been asked, one per line")
 
-    probes: list[dict] = dspy.OutputField(
-        desc="[{question, options, correct_index, explanation, feature}] "
-             "1-4 NEW predict-before-reveal questions; none may repeat or "
+    probes: list[ProbePlan] = dspy.OutputField(
+        desc="1-4 NEW predict-before-reveal questions; none may repeat or "
              "rephrase an `asked` question")
 
 
@@ -452,9 +698,13 @@ class MoreProbesGenerator(dspy.Module):
 
     def forward(self, *, expression: str, characteristics: str,
                 context: str = "", asked: str = ""):
-        return self.predict(expression=expression,
-                            characteristics=characteristics,
-                            context=context, asked=asked)
+        # LineAdapter for the same reason as ``VizProposer.forward``: probe
+        # prose carries $…$ math, and a ``list[BaseModel]`` output is otherwise
+        # JSON-decoded.
+        with dspy.context(adapter=make_adapter(line_oriented=True)):
+            return self.predict(expression=expression,
+                                characteristics=characteristics,
+                                context=context, asked=asked)
 
 
 @cache
@@ -474,20 +724,16 @@ def propose_more_probes(expression: str, characteristics: str,
     except Exception:
         return []
 
-    shaped = []
-    for raw in (out.probes or [])[:MAX_PROBES]:
-        if isinstance(raw, dict):
-            try:
-                shaped.append(ProposedProbe(**raw))
-            except Exception:
-                continue
-    return _usable_probes(shaped)
+    return _usable_probes([p.as_probe()
+                           for p in (out.probes or [])[:MAX_PROBES]
+                           if isinstance(p, ProbePlan)])
 
 
 __all__ = [
     "MAX_ANNOTATIONS", "MAX_PLOTS", "MAX_PROBES", "MAX_RANKED", "MAX_VIEWS",
-    "MoreProbesGenerator", "MoreProbesSig", "ProposedAnnotation",
-    "ProposedPlot", "ProposedProbe", "ProposedView", "RankedFeature",
+    "AnnotationPlan", "GlossaryEntry", "MoreProbesGenerator", "MoreProbesSig",
+    "PlotPlan", "ProbePlan", "ProposedAnnotation", "ProposedPlot",
+    "ProposedProbe", "ProposedView", "RankedFeature", "ViewPlan",
     "VizProposal", "VizProposalSig", "VizProposer", "propose_more_probes",
     "propose_views",
 ]
