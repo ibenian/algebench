@@ -75,6 +75,15 @@ const AI_SPARKLE_SVG =
   '<svg viewBox="0 0 16 16" fill="currentColor" width="11" height="11" aria-hidden="true">' +
   '<path d="M8 1c0 4-3 6.5-7 7 4 .5 7 3 7 7 0-4 3-6.5 7-7-4-.5-7-3-7-7z"/></svg>';
 
+// Function Analysis icon (axes + a curve) for the per-step ƒ button. Mirrors
+// icons.js FUNCTION_ANALYSIS_ICON, inlined so the engine stays dependency-free.
+const FUNCTION_ANALYSIS_SVG =
+  '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" ' +
+  'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<path d="M4 3v17h17"/>' +
+  '<path d="M4 17.5h17" stroke-dasharray="2 2.5" opacity="0.75"/>' +
+  '<path d="M7.5 5.5c0 7.5 3.5 11 12.5 11.7" stroke-width="1.9"/></svg>';
+
 // Synthetic operator-node ids (from the backend structural renderer) for n-ary /
 // relational nodes that SPAN many terms — a product/fraction, a sum, an equation.
 // Hovering the bare chrome of one (a fraction bar, the space between factors)
@@ -122,12 +131,19 @@ export class ProofAnimator {
     this._askBtnFadeTimer = null;
     this._askBtnRelocateTimer = null;   // intent-delay before moving the button to a new term
     this._askBtnRelocateEl = null;
+    // Step-ask chip (stacked mode): hovering a line's step pill fades in the same
+    // sparkle chip as the term ask, but asking about that STEP (any line, not
+    // just the current one). Built only when an ask factory exists (see _build).
+    this._stepAskBtnEl = null;
+    this._stepAskIdx = null;        // the step the visible chip would ask about
+    this._stepAskHideTimer = null;
+    this._stepAskFadeTimer = null;
     // Standalone/embedded term-ask has no host chat factory, but we still want the
     // per-step ask buttons — render engine-native ones that route via _routeAsk
     // (embedded → new tab + auto-ask; standalone → clipboard). The app path keeps
     // its own factory (opts.aiAskButton), which asks chat directly.
     if (!this._aiAsk && this._enableTermAsk) {
-      this._aiAsk = (cls, title, getMessage) => this._makeRoutedAskButton(cls, title, getMessage);
+      this._aiAsk = (cls, title, getMessage, getIdx) => this._makeRoutedAskButton(cls, title, getMessage, getIdx);
     }
     // Optional "Derive this step" integration: a button factory (className,
     // title, onClick) → <button> plus an onDerive(payload, anchorEl) handler the
@@ -137,6 +153,13 @@ export class ProofAnimator {
     // animation step into finer sub-steps on demand.
     this._deriveBtnFactory = typeof opts.deriveButton === "function" ? opts.deriveButton : null;
     this._onDerive = typeof opts.onDerive === "function" ? opts.onDerive : null;
+    // Function Analysis (ƒ) for the CURRENT step's expression. Shown wherever the
+    // ask buttons are (the app's factory, or ?ai=1 standalone/embedded), because it
+    // is the same kind of affordance: an AI-backed side quest off this step.
+    // In-app the host hook opens the analysis page in place; without one the button
+    // deeplinks into the app (?fax=<expression>) — see _faTargetUrl.
+    this._onFunctionAnalysis = typeof opts.onFunctionAnalysis === "function" ? opts.onFunctionAnalysis : null;
+    this._faBtnEl = null;
     // Host hook for clicking a prerequisite / follow-up chip. Receives
     // {kind:'prerequisite'|'followup', text, message} — the app asks its agent with
     // the context-rich `message`. Absent + embedded → posted to the parent page;
@@ -280,6 +303,12 @@ export class ProofAnimator {
       const der = document.createElement("span"); der.className = "pa-ask-btn pa-derive-btn";
       opHost.append(der);
     }
+    // Function Analysis is a third inline button, on the same condition as the
+    // live one (_build) — same reason as Derive above: probe must equal live.
+    if (this._aiAsk) {
+      const fa = document.createElement("span"); fa.className = "pa-ask-btn pa-fa-btn";
+      opHost.append(fa);
+    }
     // (The overall-confidence pill is an absolute OVERLAY on the widget — out
     // of flow, so it does not participate in the meta height reservation.)
     probe.append(opHost, just, next);
@@ -329,7 +358,11 @@ export class ProofAnimator {
     // scale applies to every step (computed from the widest/tallest), so there is
     // no per-step zoom jump.
     const PAD = 8;
-    const availW = Math.max(40, this.stage.clientWidth - 2 * PAD);
+    // Stacked lines carry a step pill in a left gutter — reserve it, or the
+    // widest line (pill + gap + expression, centred) overflows the column and
+    // the expand tween's overflow:hidden clips the pill's left edge.
+    const gutter = this.stacked ? this._lineGutterW() : 0;
+    const availW = Math.max(40, this.stage.clientWidth - 2 * PAD - gutter);
     let scale = Math.min(1, availW / w);
     if (this._fitHeight) {
       // Container mode: the stage fills a FIXED height (flex remaining after the
@@ -394,13 +427,23 @@ export class ProofAnimator {
     }
   }
 
+  // Width of the stacked line's left gutter (step pill + pill↔expression gap),
+  // read from the CSS vars so the reserve always matches what CSS lays out.
+  _lineGutterW() {
+    const cs = getComputedStyle(this.container);
+    const pill = parseFloat(cs.getPropertyValue("--pa-pill-w")) || 26;
+    const gap = parseFloat(cs.getPropertyValue("--pa-pill-gap")) || 16;
+    return pill + gap;
+  }
+
   // Stacked variant of the overflow cap: check EVERY visible line and shrink
   // the shared stage font so the widest one fits. Height never needs capping —
   // report mode grows, fitHeight mode scrolls.
   _capOverflowStacked() {
     if (!this._linesEl) return;
     const PAD = 8;
-    const availW = Math.max(40, this.stage.clientWidth - 2 * PAD);
+    // Same gutter reserve as _fit() — the line is pill + gap + expression.
+    const availW = Math.max(40, this.stage.clientWidth - 2 * PAD - this._lineGutterW());
     let ratio = 1, maxW = 0;
     for (const line of this._linesEl.children) {
       const k = line.querySelector(".katex-display") || line.querySelector(".katex");
@@ -507,7 +550,9 @@ export class ProofAnimator {
     if (this._askBtnRelocateTimer) { clearTimeout(this._askBtnRelocateTimer); this._askBtnRelocateTimer = null; }
     // Remove the body-appended popups/buttons this widget created (else they leak
     // when a proof box is torn down and recreated in the app).
-    for (const k of ["_termTip", "_mathTip", "_goalPop", "_explorePop", "_termAskBtnEl"]) {
+    if (this._stepAskHideTimer) { clearTimeout(this._stepAskHideTimer); this._stepAskHideTimer = null; }
+    if (this._stepAskFadeTimer) { clearTimeout(this._stepAskFadeTimer); this._stepAskFadeTimer = null; }
+    for (const k of ["_termTip", "_mathTip", "_goalPop", "_explorePop", "_termAskBtnEl", "_stepAskBtnEl"]) {
       const el = this[k];
       if (el && el.parentNode) el.parentNode.removeChild(el);
       this[k] = null;
@@ -740,6 +785,14 @@ export class ProofAnimator {
   _applyAskClasses() {
     const expr = this._exprEl();
     if (!expr) return;
+    // Stacked history lines are frozen snapshots — the outgoing current line
+    // keeps whatever pa-term-ask classes it carried. Sweep them off every line
+    // but the current one, so the selection only ever shows on the active step.
+    if (this.stacked && this._linesEl) {
+      for (const node of this._linesEl.querySelectorAll(".pa-term-ask")) {
+        if (!expr.contains(node)) node.classList.remove("pa-term-ask");
+      }
+    }
     const keys = new Set(this._askSel.map((s) => s.key));
     for (const node of expr.querySelectorAll("[data-n]")) {
       const k = this._apprKey(node.textContent || "");
@@ -869,6 +922,81 @@ export class ProofAnimator {
     // only once it's actually invisible.
     if (this._askBtnFadeTimer) clearTimeout(this._askBtnFadeTimer);
     this._askBtnFadeTimer = setTimeout(() => {
+      if (btn.style.opacity === "0") btn.style.pointerEvents = "none";
+    }, 200);
+  }
+
+  // ── Step-ask chip (stacked pills) ──────────────────────────────────────────
+  // Hovering a step pill fades in the same sparkle chip as the term ask, asking
+  // about THAT step (any line — not just the current one). One reusable button
+  // on document.body (fixed), created through the ask factory so the click
+  // routes exactly like the meta "Ask AI about this step" button: in-app → chat,
+  // embedded → new tab + auto-ask, standalone → clipboard.
+  _buildStepAskButton() {
+    if (!this._aiAsk || this._stepAskBtnEl) return;
+    const btn = this._aiAsk("pa-term-ask-btn pa-step-ask-btn", "Ask AI about this step",
+      () => (this._stepAskIdx == null ? null : this._askStepMessage(this._stepAskIdx)),
+      () => (this._stepAskIdx == null ? this.current : this._stepAskIdx));
+    btn.style.position = "fixed";
+    btn.style.opacity = "0";
+    btn.style.pointerEvents = "none";
+    btn.tabIndex = -1;                       // invisible → out of the tab order
+    btn.setAttribute("aria-hidden", "true");
+    // Above the tooltips (term tip z 10000, same as the term chip) — hovering a
+    // pill raises its math tooltip at the same time, so without this the chip
+    // could paint underneath it.
+    btn.style.zIndex = "10001";
+    btn.addEventListener("mouseenter", () => {
+      if (this._stepAskHideTimer) { clearTimeout(this._stepAskHideTimer); this._stepAskHideTimer = null; }
+    });
+    btn.addEventListener("mouseleave", () => this._scheduleHideStepAskBtn());
+    btn.addEventListener("click", () => this._hideStepAskBtn());   // after the factory's ask fires
+    document.body.appendChild(btn);
+    this._stepAskBtnEl = btn;
+  }
+
+  // Fade the chip in at the pill's top-right corner (superscript-badge pose,
+  // mirroring the term chip) — the short up-right move to reach it never crosses
+  // another pill, so the chip doesn't relocate out from under the cursor.
+  _showStepAskBtn(pill, idx) {
+    const btn = this._stepAskBtnEl;
+    if (!btn) return;
+    if (this._stepAskHideTimer) { clearTimeout(this._stepAskHideTimer); this._stepAskHideTimer = null; }
+    this._stepAskIdx = idx;
+    const r = pill.getBoundingClientRect();
+    const bw = btn.offsetWidth || 22;
+    const bh = btn.offsetHeight || 22;
+    let left = r.right - bw / 3;
+    let top = r.top - bh * (2 / 3);
+    if (top < 4) top = r.bottom - bh / 3;    // flip below when no room above
+    left = Math.max(4, Math.min(left, window.innerWidth - bw - 4));
+    top = Math.max(4, Math.min(top, window.innerHeight - bh - 4));
+    btn.style.left = `${Math.round(left)}px`;
+    btn.style.top = `${Math.round(top)}px`;
+    btn.style.opacity = "1";
+    btn.style.pointerEvents = "auto";
+    btn.tabIndex = 0;
+    btn.removeAttribute("aria-hidden");
+  }
+
+  // Grace period long enough to travel from the pill onto the chip (its
+  // mouseenter cancels the timer) — same rhythm as the term chip.
+  _scheduleHideStepAskBtn() {
+    if (!this._stepAskBtnEl) return;
+    if (this._stepAskHideTimer) clearTimeout(this._stepAskHideTimer);
+    this._stepAskHideTimer = setTimeout(() => this._hideStepAskBtn(), 600);
+  }
+
+  _hideStepAskBtn() {
+    if (this._stepAskHideTimer) { clearTimeout(this._stepAskHideTimer); this._stepAskHideTimer = null; }
+    const btn = this._stepAskBtnEl;
+    if (!btn) return;
+    btn.style.opacity = "0";
+    btn.tabIndex = -1;
+    btn.setAttribute("aria-hidden", "true");
+    // Stay clickable through the fade; disable only once actually invisible.
+    if (this._stepAskFadeTimer) clearTimeout(this._stepAskFadeTimer);
+    this._stepAskFadeTimer = setTimeout(() => {
       if (btn.style.opacity === "0") btn.style.pointerEvents = "none";
     }, 200);
   }
@@ -1004,9 +1132,64 @@ export class ProofAnimator {
     } catch (e) { return null; }
   }
 
+  // ── Function Analysis (ƒ) ─────────────────────────────────────────────────
+  // Engine-native button (never the host's ask factory — this doesn't ask chat).
+  _makeFaButton() {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "pa-ask-btn pa-fa-btn";
+    btn.title = "Function analysis — plot and characterize this step's expression";
+    btn.innerHTML = FUNCTION_ANALYSIS_SVG;
+    btn.setAttribute("aria-label", "Function analysis for this step");
+    btn.addEventListener("click", (e) => { e.stopPropagation(); this._faClick(); });
+    return btn;
+  }
+
+  // Route a Function Analysis request the same three ways an ask routes:
+  //   1. IN-APP    — a host hook is wired → open the analysis page in place.
+  //   2. EMBEDDED  — open the app in a NEW TAB at ?fax=<expression>.
+  //   3. STANDALONE — navigate THIS tab to the same url.
+  // The expression is this step's id-free `plain` LaTeX — exactly what the
+  // expression-analysis expert parses, not the annotated render.
+  _faClick() {
+    const i = this.current;
+    const latex = this._stepExpr(i);
+    if (!latex) return;
+    if (this._onFunctionAnalysis) { this._onFunctionAnalysis({ latex, step: i }); return; }
+    this._openAppUrl(
+      this._faTargetUrl(this._stepDeeplink(i), latex),
+      () => this._postToParent({ type: "algebench-function-analysis", latex, step: i }),
+      () => { try { navigator.clipboard.writeText(latex); } catch (e) {} });
+  }
+
+  // Where a Function Analysis click lands: the step's view (its own deeplink, else
+  // the proof's, else the app root) plus `?fax=<expression>` and the Math view the
+  // analysis page lives in. Deliberately NOT `panel=chat` — this opens an
+  // apparatus, not a conversation. Like an ask, it carries this proof's `pa`/`pas`
+  // so the derivation travels along and the analysis attaches to the right step —
+  // which is what supplies the lesson/domain context for the expert.
+  _faTargetUrl(deeplink, latex) {
+    try {
+      const origin = this._askOrigin || window.location.origin;
+      const raw = deeplink || "/";
+      const u = new URL(raw, origin);
+      if (u.origin !== origin) return null;   // off-origin deeplink → reject
+      u.searchParams.set("view", "math");
+      u.searchParams.set("fax", String(latex).slice(0, 1000));
+      // A stale `fa` on the deeplink would win over our expression (the id is
+      // resolved first) and open somebody else's analysis — drop it.
+      u.searchParams.delete("fa");
+      const sameApp = raw.startsWith("/");
+      const ownPa = this._ownPaId();
+      if (sameApp && ownPa && !u.searchParams.has("pa")) u.searchParams.set("pa", ownPa);
+      if (u.searchParams.has("pa")) u.searchParams.set("pas", String(this.current));
+      return u.href;
+    } catch (e) { return null; }
+  }
+
   // Engine-native ask button (used only when the app supplies no aiAskButton
   // factory but term-ask is on). Routes via _routeAsk instead of asking chat.
-  _makeRoutedAskButton(className, title, getMessage) {
+  _makeRoutedAskButton(className, title, getMessage, getIdx) {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = className;
@@ -1016,7 +1199,9 @@ export class ProofAnimator {
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
       const message = getMessage();
-      if (message) this._routeAsk(message, this._stepDeeplink(this.current));
+      // getIdx lets a caller pin the deeplink to a specific step (the step-ask
+      // chip on a history pill); default is the current step.
+      if (message) this._routeAsk(message, this._stepDeeplink(getIdx ? getIdx() : this.current));
     });
     return btn;
   }
@@ -1115,6 +1300,14 @@ export class ProofAnimator {
         () => this._deriveCurrent(this._deriveBtnEl));
       meta.querySelector(".pa-op-row").appendChild(this._deriveBtnEl);
     }
+    // Function Analysis button — sits after the derive button, same op-row, and
+    // acts on the step the learner is looking at.
+    if (this._aiAsk) {
+      const meta = this.container.querySelector(".pa-meta");
+      meta.classList.add("pa-has-ask");
+      this._faBtnEl = this._makeFaButton();
+      meta.querySelector(".pa-op-row").appendChild(this._faBtnEl);
+    }
     this.container.querySelector(".pa-play").onclick = () => this._togglePlay();
     this.container.querySelector(".pa-speed").onclick = () => {
       this._speedIdx = (this._speedIdx + 1) % SPEEDS.length;
@@ -1137,6 +1330,7 @@ export class ProofAnimator {
     this._renderGoal();
     this._renderExplore();
     this._buildTermAskButton();
+    this._buildStepAskButton();
   }
 
   // Model-produced framing, shown top-left (mirrors the grounding-rank pill
@@ -1149,6 +1343,9 @@ export class ProofAnimator {
     const dock = this.container.querySelector(".pa-goal-dock");
     if (!pill) return;
     const goal = (this.data && this.data.goal || "").trim();
+    // Stacked mode is top-anchored, so the first line would slide under the
+    // corner pill — pa-has-goal lets CSS reserve headroom only when it exists.
+    this.container.classList.toggle("pa-has-goal", !!goal);
     if (!goal) { pill.hidden = true; if (dock) dock.hidden = true; return; }
     this._goalText = goal;
     this._goalDocked = false;
@@ -1348,6 +1545,7 @@ export class ProofAnimator {
     if (this._termTip) this._termTip.style.display = "none";
     if (this._mathTip) this._mathTip.style.opacity = "0";
     this._hideTermAskBtn();
+    this._hideStepAskBtn();
     if (this._explorePop) {
       this._explorePop.style.display = "none";
       this._explorePinned = false;
@@ -1477,6 +1675,23 @@ export class ProofAnimator {
     line.style.display = "";
     line.style.fontSize = "";   // promote/demote overrides — resting size is CSS-owned
     this._renderInto(line, this.data.steps[i].latex);
+    // Step pill in the line's left gutter: click jumps to that step, hover shows
+    // the KaTeX-rendered operation (same tip as the control-bar step buttons).
+    // Lives OUTSIDE .pa-expr, so the morph collectors (scoped to .katex-html)
+    // never sweep it into a flight.
+    const pill = document.createElement("button");
+    pill.type = "button";
+    pill.className = "pa-line-pill";
+    pill.textContent = String(i);
+    this._attachMathTip(pill, this._opText(i));
+    pill.addEventListener("click", () => this._userGoTo(i));
+    // Step-ask chip: fades in beside the hovered pill (no-ops when no ask
+    // factory — _stepAskBtnEl stays null).
+    pill.addEventListener("mouseenter", () => this._showStepAskBtn(pill, i));
+    pill.addEventListener("mouseleave", () => this._scheduleHideStepAskBtn());
+    pill.addEventListener("focus", () => this._showStepAskBtn(pill, i));
+    pill.addEventListener("blur", () => this._scheduleHideStepAskBtn());
+    line.insertBefore(pill, line.firstChild);
   }
 
   // Reconcile the line set to steps [0, count): remove extras, add missing,
@@ -1504,6 +1719,15 @@ export class ProofAnimator {
       }
     }
     this._markCurrentLine();
+    // Pill ACTIVE styling moves only at settle (here) — _markCurrentLine runs at
+    // transition START for layout, but the pill's highlight follows the anim.
+    [...linesEl.children].forEach((el, i) => {
+      const pill = el.querySelector(".pa-line-pill");
+      if (pill) pill.classList.toggle("pa-pill-active", i === this.current);
+    });
+    // A rebuilt line discards the pill the math tooltip was anchored to — its
+    // mouseleave can never fire, so the tip would stick open. Hide it here.
+    if (this._mathTipFor && !this._mathTipFor.isConnected) this._hideMathTip();
     return linesEl;
   }
 
@@ -1726,6 +1950,110 @@ export class ProofAnimator {
     return r;
   }
 
+  // `_r3_a____add_2` → `a`. Strips the variant patcher's rebase prefix and the
+  // renderer's `__<parent>` occurrence scope. Empty for a structural id that is
+  // ITSELF scope-shaped (`__add_2` → ""), which callers must skip — those are
+  // subexpression wrappers, not symbols, and collapsing them would alias
+  // unrelated nodes onto each other.
+  _canonicalTermId(id) {
+    return String(id || "").replace(/^_r\d+_/, "").split("__")[0];
+  }
+
+  /**
+   * Pair SOURCE leaves to TARGET leaves, bridging occurrence-scoped ids.
+   * Returns `Map<sourceId, targetId[]>`.
+   *
+   * `latex_renderer` gives a node a bare id when it has ONE parent and a
+   * `<id>__<parent>` id when it is shared, deciding per state. So the id of a
+   * symbol is not stable across a step whose multiplicity changes:
+   *
+   *     (a-b)^2          -> a                            (one parent, bare)
+   *     (a-b)·(a-b)      -> a____add_2, a____add_4       (two parents, scoped)
+   *     a^2 - 2ab + b^2  -> a____power_3, a____multiply_6
+   *
+   * Keyed on raw ids, NONE of those pair — the last transition scores zero
+   * matches even though both sides plainly hold two `a`s and two `b`s. So we
+   * compare the CANONICAL name on BOTH sides. (An earlier version only looked
+   * the canonical name up as a literal source id, which fixed the first
+   * transition — where the source happens to be bare — and left the rest broken.)
+   *
+   * Exact ids win first and are never disturbed, so anything that already
+   * animates keeps the identical pairing. What is left is grouped by canonical
+   * name and paired IN OCCURRENCE ORDER: first `a` to first `a`, second to
+   * second. When the target holds more copies than the source, the surplus all
+   * splits from the LAST source — a term dividing should fly out of where it was,
+   * not pop into existence.
+   */
+  _pairLeaves(fromIds, toIds) {
+    const pairs = new Map();
+    const claimedFrom = new Set();
+    const claimedTo = new Set();
+    const toSet = new Set(toIds);
+
+    // 1. Exact matches — unambiguous, and the behaviour that already worked.
+    for (const id of fromIds) {
+      if (toSet.has(id)) {
+        pairs.set(id, [id]);
+        claimedFrom.add(id);
+        claimedTo.add(id);
+      }
+    }
+
+    // 2. Whatever is left, grouped by canonical name in document order. An empty
+    //    canon means a structural wrapper (`__add_2`), not a symbol — pairing
+    //    those would collapse unrelated subexpressions onto each other.
+    const group = (ids, skip) => {
+      const m = new Map();
+      for (const id of ids) {
+        if (skip.has(id)) continue;
+        const c = this._canonicalTermId(id);
+        if (!c) continue;
+        if (!m.has(c)) m.set(c, []);
+        m.get(c).push(id);
+      }
+      return m;
+    };
+    const srcByCanon = group(fromIds, claimedFrom);
+    const tgtByCanon = group(toIds, claimedTo);
+
+    for (const [canon, targets] of tgtByCanon) {
+      const sources = srcByCanon.get(canon);
+      if (!sources || !sources.length) continue;
+      targets.forEach((t, i) => {
+        const src = sources[Math.min(i, sources.length - 1)];
+        if (!pairs.has(src)) pairs.set(src, []);
+        pairs.get(src).push(t);
+      });
+    }
+    return pairs;
+  }
+
+  /**
+   * Bridge occurrence-scoped ids so a persistent term animates across the step.
+   *
+   * Gives every target that paired to a DIFFERENT source id that source's pose,
+   * via :meth:`_pairLeaves`. Returns the set of source ids that were adopted by
+   * some other id — the caller must not ghost those: they did not disappear,
+   * they moved or divided.
+   *
+   * Only ever ADDS matches; a target that pairs exactly is untouched.
+   */
+  _aliasOccurrences(fromRects, cloneOf, fromFontSize, toLeaves) {
+    const origins = new Set();
+    const pairs = this._pairLeaves([...cloneOf.keys()], [...toLeaves.keys()]);
+    for (const [src, targets] of pairs) {
+      if (!fromRects.has(src)) continue;
+      for (const t of targets) {
+        if (t === src) continue;                  // exact match, already paired
+        fromRects.set(t, fromRects.get(src));
+        if (cloneOf.has(src)) cloneOf.set(t, cloneOf.get(src));
+        if (fromFontSize.has(src)) fromFontSize.set(t, fromFontSize.get(src));
+        origins.add(src);
+      }
+    }
+    return origins;
+  }
+
   // rects for EVERY tagged node (internal subexpressions too, not just leaves) —
   // ids are occurrence-unique so there are no collisions.
   _nodeRects(root) {
@@ -1939,6 +2267,17 @@ export class ProofAnimator {
     const toLeaves = this._leaves(toRoot);
     const toRects = this._nodeRects(toRoot);
 
+    // Occurrence-scoped ids otherwise break identity across states. A symbol
+    // appearing ONCE in the source is tagged `a`; where the target holds it
+    // TWICE the renderer scopes each copy (`a____add_2`, `a____add_4`) to keep
+    // ids unique. Keyed on the raw id those never pair, so a variable that is
+    // plainly the same in both lines gets no FLIP — it pops in instead of
+    // gliding. Observed on `(a-b)^2 → (a-b)·(a-b)`: neither `a` nor `b` moved.
+    // Each copy flies out of the shared origin; `splitOrigins` are the sources
+    // that DIVIDED — they must not also ghost out as if they had been deleted.
+    const splitOrigins = this._aliasOccurrences(fromRects, cloneOf, fromFontSize,
+                                                toLeaves);
+
     // Matched ids whose GLYPH CHANGED — the diff reused a node id for a different
     // symbol (e.g. + → −, or a coefficient 2 → 3). Without this, such a node is
     // treated as "matched/stationary" and the NEW glyph renders instantly at full
@@ -2079,6 +2418,7 @@ export class ProofAnimator {
     const ghosts = [];
     if (deleteGhosts) fromLeaves.forEach((el, id) => {
       if (toRects.has(id) && !changedIds.has(id)) return;   // still present, same glyph
+      if (splitOrigins.has(id)) return;   // it divided into scoped copies, not gone
       const f = fromRects.get(id);
       const host = document.createElement("span");
       host.className = "katex pa-ghost";
@@ -2292,6 +2632,7 @@ export class ProofAnimator {
     const token = (this._token = {});
     const seq = this.mode === "sequential";
     this._cancel();
+    this._hideStepAskBtn();   // lines are about to reflow under the chip
     // Reconcile to the resting invariant [0, prev] (self-heals an interrupted run).
     this._syncLines(prev + 1);
     this.current = target;
@@ -2308,6 +2649,16 @@ export class ProofAnimator {
     if (done && this.stacked) {   // mode may have flipped mid-run (belt & braces)
       this._running = [];
       this._syncLines(target + 1);   // pristine settle (drops leftover morph styles)
+      // The new current line's pill arrives AFTER the morph: hidden through the
+      // flight (see _stackedAdvance's onSetup), it fades in here — in the same
+      // synchronous turn as the settle re-render, so no visible pop between.
+      // fill:backwards self-releases (no held style). Advance only — on retreat
+      // the target pill already existed and was visible; fading it would blink.
+      if (target > prev) {
+        const pill = this._lineAt(target) && this._lineAt(target).querySelector(".pa-line-pill");
+        if (pill) this._tween(pill, [{ opacity: 0 }, { opacity: 1 }],
+          { duration: this._baseDuration * 0.5, easing: EASE, fill: "backwards" });
+      }
       this._scrollToCurrent(false);
       this._capOverflow();
       if (metaFinish) metaFinish();
@@ -2386,7 +2737,15 @@ export class ProofAnimator {
     const from = this._morphSnapshot(this._lineAt(prev));
     return this._morphFlight(from, targetLine, {
       token, seq, ghostHost: this.stage, deleteGhosts: false,
-      onSetup: () => { targetLine.style.visibility = ""; },
+      onSetup: () => {
+        targetLine.style.visibility = "";
+        // The line is revealed by a visibility flip (its glyphs are posed by the
+        // flight) — keep the step pill HIDDEN through the flight; it fades in at
+        // the settle, after the morph completes (see _stackedGoTo). An interrupt
+        // marks the line dirty, so the reconcile re-renders a visible pill.
+        const pill = targetLine.querySelector(".pa-line-pill");
+        if (pill) pill.style.opacity = "0";
+      },
     });
   }
 
@@ -2430,6 +2789,9 @@ export class ProofAnimator {
     const toRects = this._nodeRects(toLine);
     const toFontSize = new Map();
     toLeaves.forEach((el, id) => toFontSize.set(id, getComputedStyle(el).fontSize));
+    // Same pairing the id-keyed morph uses, so the two paths never disagree about
+    // which glyph is which across a step.
+    const pairs = this._pairLeaves([...fromLeaves.keys()], [...toLeaves.keys()]);
     // ids matched but with a DIFFERENT glyph — they don't fly (they'd land on
     // another symbol); they just dissolve with the outgoing line.
     const changedIds = new Set();
@@ -2442,31 +2804,38 @@ export class ProofAnimator {
     const flyAnims = [];
     let fi = 0;
     fromLeaves.forEach((el, id) => {
-      const t = toRects.get(id);
-      if (!t || changedIds.has(id)) return;
+      if (changedIds.has(id)) return;
       const f = fromRects.get(id);
-      const sfs = parseFloat(getComputedStyle(el).fontSize);
-      const tfs = parseFloat(toFontSize.get(id));
-      let s = sfs > 0 && tfs > 0 ? tfs / sfs : 1;
-      if (Math.abs(s - 1) < 0.02) s = 1;
-      const host = document.createElement("span");
-      host.className = "katex pa-ghost";
-      Object.assign(host.style, {
-        position: "absolute", margin: "0",
-        left: f.left - stageRect.left + "px",
-        top: f.top - stageRect.top + "px",
-        fontSize: getComputedStyle(el).fontSize,
-        transformOrigin: "0 0",
-      });
-      host.appendChild(el.cloneNode(true));
-      this.stage.appendChild(host);
-      this._ghosts.push(host);
-      const a = this._tween(host,
-        [{ transform: "translate(0px, 0px) scale(1)" },
-         { transform: `translate(${t.left - f.left}px, ${t.top - f.top}px) scale(${s})` }],
-        { duration: D, delay: seq ? fi++ * this._baseStagger : 0, easing: EASE, fill: "both" });
-      a.onfinish = () => host.remove();
-      flyAnims.push(a);
+      // Usually one destination. A term that DIVIDES — `a` becoming
+      // `a____add_2` and `a____add_4` when it gains a second parent — flies a
+      // copy to EACH, so the split reads as one glyph becoming two rather than
+      // one gliding while the other pops in.
+      for (const tid of (pairs.get(id) || [])) {
+        const t = toRects.get(tid);
+        if (!t) continue;
+        const sfs = parseFloat(getComputedStyle(el).fontSize);
+        const tfs = parseFloat(toFontSize.get(tid));
+        let s = sfs > 0 && tfs > 0 ? tfs / sfs : 1;
+        if (Math.abs(s - 1) < 0.02) s = 1;
+        const host = document.createElement("span");
+        host.className = "katex pa-ghost";
+        Object.assign(host.style, {
+          position: "absolute", margin: "0",
+          left: f.left - stageRect.left + "px",
+          top: f.top - stageRect.top + "px",
+          fontSize: getComputedStyle(el).fontSize,
+          transformOrigin: "0 0",
+        });
+        host.appendChild(el.cloneNode(true));
+        this.stage.appendChild(host);
+        this._ghosts.push(host);
+        const a = this._tween(host,
+          [{ transform: "translate(0px, 0px) scale(1)" },
+           { transform: `translate(${t.left - f.left}px, ${t.top - f.top}px) scale(${s})` }],
+          { duration: D, delay: seq ? fi++ * this._baseStagger : 0, easing: EASE, fill: "both" });
+        a.onfinish = () => host.remove();
+        flyAnims.push(a);
+      }
     });
     // The outgoing line(s) dissolve as their terms fly home.
     const drop = [];
@@ -2669,6 +3038,7 @@ export class ProofAnimator {
   _showMathTip(el) {
     const text = el && el._mathTipText;
     if (!text) return;
+    this._mathTipFor = el;   // anchor — so a re-render that discards it can hide the tip
     let tip = this._mathTip;
     if (!tip) {
       tip = document.createElement("div");
@@ -2692,6 +3062,7 @@ export class ProofAnimator {
   }
 
   _hideMathTip() {
+    this._mathTipFor = null;
     if (this._mathTip) this._mathTip.style.opacity = "0";   // fade out
   }
 
@@ -2837,7 +3208,12 @@ export class ProofAnimator {
 
   // Chat message for the "ask about the current step" button.
   _askCurrentMessage() {
-    const i = this.current;
+    return this._askStepMessage(this.current);
+  }
+
+  // Chat message asking about step `i` — the meta "Ask AI about this step"
+  // button (i = current) and the stacked step-pill chip (any line) share it.
+  _askStepMessage(i) {
     const s = this.data.steps[i];
     let msg = `I'm looking at step ${i} of the derivation`
       + (this.data.title ? ` "${this.data.title}"` : "") + `:\n$$${this._stepExpr(i)}$$`;

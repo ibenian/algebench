@@ -155,6 +155,29 @@ def _op_factor(expr, side="both"):
     return _side_apply(expr, sp.factor, side)
 
 
+def _evalf(e):
+    """``evalf`` that also works on a BOOLEAN combination of equations.
+
+    ``evalf`` is an ``Expr`` method. ``Or``/``And`` are ``BooleanFunction``s and do
+    not have it, so ``Or(Eq(x, -1 + sqrt(2)), Eq(x, -sqrt(2) - 1)).evalf()`` raises
+    ``AttributeError``, the killable guard turns that into ``None``, and the reader
+    gets "the computer algebra system could not complete that operation".
+
+    That is exactly the shape :func:`_op_solve_for` returns for several roots, so
+    without this the two ops cannot compose — "solve for $x$" followed by "now give
+    me the decimals" failed every time, which is the most natural way to ask.
+    Recursing over ``args`` and rebuilding with ``func`` keeps the ``Or`` of ``Eq``
+    form (the evaluation-stable one ``_op_solve_for`` documents).
+    """
+    if isinstance(e, sp.Expr):
+        return e.evalf(_EVAL_DIGITS)
+    if isinstance(e, sp.logic.boolalg.BooleanFunction):
+        return e.func(*[_evalf(a) for a in e.args])
+    # Relational (``Eq`` and friends) has its own evalf; anything else that
+    # happens to expose one is fine too.
+    return e.evalf(_EVAL_DIGITS) if hasattr(e, "evalf") else e
+
+
 @cas_register_safe_function
 def _op_evaluate(expr, side="both"):
     """Evaluate to a decimal number — ``\\sin(1)`` becomes ``0.841471``.
@@ -163,9 +186,10 @@ def _op_evaluate(expr, side="both"):
     other mapping, so without it the model authors the step and just echoes the
     exact form unchanged (observed: ``\\sin(1)`` captioned "evaluated numerically"
     but still ``\\sin(1)``). Any free symbols are left as-is (``x + \\sin(1)`` →
-    ``x + 0.841471``); on an equation each side is evaluated.
+    ``x + 0.841471``); on an equation each side is evaluated, and on a solution set
+    (``x = r_1 \\lor x = r_2``) each root is — see :func:`_evalf`.
     """
-    return _side_apply(expr, lambda e: e.evalf(_EVAL_DIGITS), side)
+    return _side_apply(expr, _evalf, side)
 
 
 @cas_register_safe_function

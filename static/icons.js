@@ -42,6 +42,26 @@ export const AI_ICON =
   '<circle cx="9.5" cy="13" r="1.2" fill="currentColor" stroke="none"/>' +
   '<circle cx="14.5" cy="13" r="1.2" fill="currentColor" stroke="none"/></svg>';
 
+/** Function Analysis — x/y axes with a curve settling onto a dashed
+ *  asymptote: "study this function's behavior", deliberately distinct from
+ *  the chart button's plain plotted line. Used for the semantic-graph
+ *  node's button, the Math-tree artifact rows, and the analysis page.
+ *  The D3 node button mirrors this shape with SVG primitives (see
+ *  d3-semantic-graph.js _appendFaBtn) since it draws inside an <svg>. */
+export const FUNCTION_ANALYSIS_ICON =
+  '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" ' +
+  'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<path d="M4 3v17h17"/>' +
+  '<path d="M4 17.5h17" stroke-dasharray="2 2.5" opacity="0.75"/>' +
+  '<path d="M7.5 5.5c0 7.5 3.5 11 12.5 11.7" stroke-width="1.9"/></svg>';
+
+/** Trash — for discarding a generated artifact (e.g. a Function Analysis
+ *  page). Same 24×24 stroke style as the toolbar set. */
+export const TRASH_ICON =
+  '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" ' +
+  'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<path d="M4 7h16M10 4h4M9 7v12M15 7v12M6 7l1 13h10l1-13"/></svg>';
+
 /** User — a filled person silhouette, for marking the user's (chat) messages. */
 export const USER_ICON =
   '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">' +

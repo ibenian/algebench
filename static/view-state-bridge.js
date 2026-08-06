@@ -153,6 +153,14 @@ export function captureViewState({ includeCamera = false } = {}) {
         ? window.__algebenchGraph.getSelection() : [];
     if (sel && sel.length) vs.nodes = sel;
 
+    // Function Analysis page, when one is showing — the page swaps in place of the
+    // graph, so it belongs in the restorable view (Back closes it, Forward reopens).
+    if (window.__algebenchGraph
+        && typeof window.__algebenchGraph.getFunctionAnalysisId === 'function') {
+        const faId = window.__algebenchGraph.getFunctionAnalysisId();
+        if (faId) vs.fa = faId;
+    }
+
     // Slider overrides = diff from default.
     const sliders = {};
     for (const [id, s] of Object.entries(state.sceneSliders || {})) {
@@ -312,6 +320,22 @@ export async function applyViewState(vs, opts = {}) {
             const anchorNode = (Array.isArray(vs.nodes) && vs.nodes.length)
                 ? vs.nodes[vs.nodes.length - 1] : null;
             try { await g.dockProofAnimation(vs.pa, anchorNode, vs.pas); } catch (_) { /* ignore */ }
+        }
+
+        // 5b″. Function Analysis page (?fa= / ?fax=). Runs after the graph and any
+        //      docked animation exist, so the proof step the analysis attaches to
+        //      (and the lesson/domain context built from it) is the one the rest of
+        //      this link selected. `fa` re-focuses an artifact already open in this
+        //      session; `fax` analyzes an expression — creating the artifact, or
+        //      re-focusing an identical one rather than re-billing the LM. Neither
+        //      present ⇒ close a page left open by the previous view (Back).
+        if (g && typeof g.openFunctionAnalysis === 'function') {
+            if (vs.fa || vs.fax) {
+                try { g.openFunctionAnalysis({ id: vs.fa || null, latex: vs.fax || null }); }
+                catch (_) { /* best-effort — never block the rest of the link */ }
+            } else if (typeof g.closeFunctionAnalysis === 'function') {
+                try { g.closeFunctionAnalysis(); } catch (_) { /* ignore */ }
+            }
         }
 
         // 5c. Right panel tab (Doc/Chat) and proof panel open/closed.
@@ -477,8 +501,17 @@ export function setupViewSync() {
 
     // These all create a Back/Forward history entry (coalesced per tick):
     //   scene/step, proof step, node selection, Scenes↔Math view,
-    //   Doc↔Chat panel, and proof-panel open/close.
+    //   Doc↔Chat panel, proof-panel open/close, and the Function Analysis page
+    //   opening/closing (so Back leaves the analysis the way it leaves a view).
     window.addEventListener('algebench:navchange', schedulePush);
+    // Function Analysis: opening/closing the page is a navigation, but the id
+    // settling (fa-pending-N -> the expert's) is the SAME view renaming itself —
+    // pushing there would cost an extra Back press and leave the first entry on
+    // a superseded id. `detail.replace` marks that case.
+    window.addEventListener('algebench:fachange', (e) => {
+        if (e && e.detail && e.detail.replace) replace();
+        else schedulePush();
+    });
     window.addEventListener('algebench:proofchange', schedulePush);
     window.addEventListener('algebench:selectionchange', schedulePush);
     window.addEventListener('algebench:viewchange', schedulePush);

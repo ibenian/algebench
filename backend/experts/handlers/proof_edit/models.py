@@ -61,7 +61,12 @@ class Variant(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     kind: VariantKind
-    at: int = Field(ge=0, description="index of the step the edit follows")
+    # ``-1`` = "before everything", the only meaningful anchor when the
+    # derivation is still empty and this edit authors step 0. Every consumer
+    # already handles it: ``steps[:at + 1]`` is the empty head server-side, and
+    # ``slice(0, at + 1)`` is the same on the client.
+    at: int = Field(ge=-1, description="index of the step the edit follows; "
+                                       "-1 when it starts an empty derivation")
     take: int = Field(ge=1, description="how many of new_steps this variant uses")
     delete_count: int = Field(
         default=0, ge=0, description="following steps dropped (supersede only)")

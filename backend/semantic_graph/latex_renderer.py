@@ -131,8 +131,16 @@ def to_latex(
     return emit(roots[0])[0]
 
 
-def _starts_negative(node) -> bool:
-    if node.type == "operator" and node.op == "negation":
+def _carries_own_sign(node) -> bool:
+    """True when a summand already renders its own leading sign.
+
+    The ``add`` renderer must not put a ``+`` in front of these, or the term
+    reads ``- b + \\pm \\sqrt{\\Delta}`` instead of ``- b \\pm \\sqrt{\\Delta}``.
+    ``±`` / ``∓`` belong here for the same reason ``negation`` does: the sign is
+    part of the operator, not a separator between terms.
+    """
+    if node.type == "operator" and node.op in ("negation", "plus_minus",
+                                               "minus_plus"):
         return True
     if node.type == "number":
         val = node.label if node.label is not None else node.value
@@ -279,7 +287,7 @@ def _emit_operator(n, op, ins, nodes, incoming, child, oid, gw) -> tuple[str, in
             cs = child(c, _ADD)
             if i == 0:
                 parts.append(cs)
-            elif _starts_negative(nodes[c]):
+            elif _carries_own_sign(nodes[c]):
                 parts.append(" " + cs)                    # cs already begins with a (tagged) "-"
             else:
                 parts.append(f" {gw(oid + '__op' + str(i), '+')} {cs}")
@@ -316,6 +324,16 @@ def _emit_operator(n, op, ins, nodes, incoming, child, oid, gw) -> tuple[str, in
         if len(ins) != 1:
             raise StructuralRenderError("negation arity")
         return (f"{gw(oid + '__op', '-')} {child(ins[0][1], _ADDSUB)}", _ADDSUB)
+
+    # ``±`` / ``∓`` — unary, same shape and binding as negation (issue #369).
+    # Rendering the operator back out is what keeps the compact ``±`` form in
+    # derivations instead of expanding to a two-branch disjunction; the
+    # expansion belongs to grounding, not display.
+    if op in ("plus_minus", "minus_plus"):
+        if len(ins) != 1:
+            raise StructuralRenderError(f"{op} arity")
+        sym = r"\pm" if op == "plus_minus" else r"\mp"
+        return (f"{gw(oid + '__op', sym)} {child(ins[0][1], _ADDSUB)}", _ADDSUB)
 
     if op == "power":
         bases = [c for role, c in ins if role != "exp"]

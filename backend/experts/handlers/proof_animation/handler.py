@@ -43,6 +43,7 @@ from .prompt_endpoints import (
     answer_proof_question,
     endpoints_from_prompt,
     start_given_target,
+    target_given_start,
 )
 
 log = logging.getLogger(__name__)
@@ -106,6 +107,13 @@ class DeriveProofRequest(BaseModel):
     context: Optional[dict] = None
     # The proof's `given` step when available — skips start inference.
     start_latex: Optional[str] = None
+    # Step 0's caption and sub-caption, when the CALLER already had them named.
+    # Start inference produces both, but it only runs when `start_latex` is
+    # absent — so a caller that names the start itself (proof_from_prompt, which
+    # gets them from the SAME namer) must pass them through, or step 0 falls back
+    # to the generic "the starting expression".
+    given_label: Optional[str] = Field(default=None, max_length=200)
+    start_note: Optional[str] = Field(default=None, max_length=300)
     intent: Optional[str] = None
     # The proof steps leading up to the target (a proof-card "Derive" sends the
     # full lead-up: `proof.steps[:index]`). Threaded into `lesson_context` so the
@@ -264,8 +272,11 @@ def derive_proof_animation(req: DeriveProofRequest) -> dict:
     givens = _givens_clause(req)
 
     # --- pre: resolve the START (and display captions) --------------------------
-    given_label = ""
-    start_note = ""
+    # Seeded from the request: when the caller resolved the start itself it also
+    # has the captions, and the inference block below (which produces them) is
+    # skipped precisely because the start is already known.
+    given_label = (req.given_label or "").strip()
+    start_note = (req.start_note or "").strip()
     lm_domain = lm_title = ""
     start = (req.start_latex or "").strip()
     if not start:
@@ -414,6 +425,11 @@ class PromptDeriveRequest(BaseModel):
     prompt: str = Field(min_length=1, max_length=4000)
     # Optional domain hint; otherwise inferred from the prompt.
     domain: Optional[str] = None
+    # Force the START state instead of letting the namer infer it. Set when
+    # CONTINUING an open derivation from the chat: the new chain must begin at
+    # the step the reader is already on, or the two halves don't join up and the
+    # appended steps are verified against the wrong predecessor.
+    start_latex: Optional[str] = Field(default=None, max_length=600)
     # Optional free-text / markdown documentation the user attached. Named
     # `documentation` (not `context`) since `context` is a structured dict
     # elsewhere. Fed to the derivation expert's lesson_context (not the endpoint
@@ -444,11 +460,34 @@ def derive_proof_from_prompt(req: PromptDeriveRequest) -> dict:
     # The namer raises InvalidPromptError when the request isn't derivable math
     # (it would otherwise emit INVALID_PROMPT, which parses as a variable product
     # and fabricates a trivial proof). Same guard now covers the CLI too.
+    supplied_start = (req.start_latex or "").strip()
     try:
-        start, target, lm_domain, lm_title, _given_label, _start_note = \
-            endpoints_from_prompt(req.prompt)
+        if supplied_start:
+            # CONTINUING an open derivation: the start is known, so only the
+            # target is missing. The both-endpoints namer cannot do this — handed
+            # "solve for y" with no expression attached it has nothing to solve
+            # and rejects the request as non-math, even though the pair is
+            # perfectly derivable. Mirror of the `start_given_target` path (#396).
+            start = supplied_start
+            target, lm_domain, lm_title, given_label, start_note = \
+                target_given_start(supplied_start, req.prompt)
+        else:
+            start, target, lm_domain, lm_title, given_label, start_note = \
+                endpoints_from_prompt(req.prompt)
     except InvalidPromptError:
-        log.info("proof_from_prompt: namer rejected prompt=%r as non-math", req.prompt)
+        log.info("proof_from_prompt: namer rejected prompt=%r as non-math (start=%r)",
+                 req.prompt, supplied_start or None)
+        if supplied_start:
+            # CONTINUING: the prompt may be a perfectly good derivation that
+            # simply does not follow from where this proof currently is (asking
+            # for the quadratic formula from `x = y/2`). Saying "that doesn't
+            # look like a math derivation" blames the request for what is really
+            # a mismatch, and the reader has just chosen "continue" — tell them
+            # what actually failed so replacing is an obvious next move.
+            return {"error": "I couldn't continue this derivation from "
+                             f"${supplied_start}$ toward that. It may not follow "
+                             "from where the proof is now — try replacing the "
+                             "derivation instead, or name a step that does follow."}
         return {"error": _NOT_A_DERIVATION_MSG}
     target = (target or "").strip()
     start = (start or "").strip()
@@ -466,6 +505,11 @@ def derive_proof_from_prompt(req: PromptDeriveRequest) -> dict:
         start_latex=start or None,
         domain=domain,
         title=title,
+        # The namer already wrote step 0's captions; without threading them the
+        # inner handler cannot re-derive them (it only names captions when it has
+        # to infer the start) and step 0 reads "the starting expression".
+        given_label=given_label or None,
+        start_note=start_note or None,
         intent=f"Derive {target}",
         context=context,
     ))

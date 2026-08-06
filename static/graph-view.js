@@ -17,11 +17,12 @@
 // ============================================================
 
 import { state } from '/state.js';
-import { BRACES_ICON, MOON_GLYPH, SUN_GLYPH } from '/icons.js';
+import { BRACES_ICON, FUNCTION_ANALYSIS_ICON, MOON_GLYPH, SUN_GLYPH } from '/icons.js';
 import { SemanticGraphPanel } from '/graph-panel/graph-panel.js';
 import { D3SemanticGraphRenderer, nodeLongLabel } from '/graph-panel/d3-semantic-graph.js';
 import { SgChartManager } from '/graph-panel/sg-chart.js';
 import { SgProofManager, clearDeriveCache } from '/proof-animation/sg-proof.js';
+import { FunctionAnalysisManager, clearAnalysisCache } from '/graph-panel/fa-page.js';
 import { validateProofData } from '/proof-animation/validate-proof.js';
 import { buildEnrichContext } from '/proof-animation/derive-payload.js';
 import {
@@ -37,6 +38,85 @@ let _currentD3Renderer = null;
 let _currentChartManager = null;
 const _chartManagers = new Map();     // stepKey -> SgChartManager (per-step, persistent)
 let _currentProofManager = null;
+let _faManager = null;                // FunctionAnalysisManager (lazy singleton)
+
+/** Function-analysis page manager — created on first use so the module can
+ *  hook rebuildProofTree/currentProofStep, which are declared later. */
+function getFaManager() {
+    if (_faManager) return _faManager;
+    _faManager = new FunctionAnalysisManager({
+        katex: window.katex,
+        getViewport: () => document.getElementById('graph-viewport'),
+        buildContext: (step) => {
+            const ctx = buildEnrichContext(step) || {};
+            // The proof's domain ("physics", "algebra", …) is the signal that
+            // decides whether e.g. negative time is exploration or nonsense —
+            // the CAS's mathematical domain can never know that.
+            const entry = state.proofSpec && state.proofSpec[state.proofActiveIndex];
+            const domain = entry && entry.proof && entry.proof.domain;
+            if (domain) ctx.mathDomain = domain;
+            return Object.entries(ctx)
+                .map(([k, v]) => `${k}: ${v}`)
+                .join('\n');
+        },
+        onArtifactsChanged: () => rebuildProofTree(),
+        onPageClosed: () => {},
+        onActiveChanged: ({ replace = false } = {}) => {
+            // Keep `?fa=` in step with the page (view-state-bridge listens).
+            // `replace` rides along so an id settling rewrites the current
+            // history entry rather than pushing a second one.
+            try {
+                window.dispatchEvent(new CustomEvent('algebench:fachange',
+                    { detail: { replace: !!replace } }));
+            } catch (_) { /* no CustomEvent — the URL just lags */ }
+        },
+    });
+    return _faManager;
+}
+
+// ----- Function Analysis deeplink bridge (consumed by view-state-bridge.js) -----
+
+// Stand-in step for analyses that arrive with no proof step to attach to (see
+// openFunctionAnalysis). One per session, so repeat links still dedup together.
+const _faOrphanStep = {};
+
+/** The id of the artifact whose Function Analysis page is showing, else null. */
+function getFunctionAnalysisId() {
+    if (!_faManager || !_faManager.isOpen()) return null;
+    const a = _faManager.activeArtifact;
+    return (a && a.id) || null;
+}
+
+/**
+ * Open the Function Analysis page from a deeplink.
+ *   `id`    — an artifact already attached to the current proof step (this
+ *             session): re-focus it, no expert call.
+ *   `latex` — an expression to analyze. `open()` dedups on (node, expression),
+ *             so arriving twice with the same expression re-focuses the first
+ *             analysis instead of stacking duplicates or re-billing the LM.
+ * Node-less by construction: the producer is a proof step (or an agent), not a
+ * semantic-graph node, so the artifact carries `nodeId: null`.
+ */
+function openFunctionAnalysis({ id = null, latex = null } = {}) {
+    // No proof step to hang it on — a `?fax=` link from an UNSAVED /prove
+    // derivation, which lands on whatever the app was showing. Attach to a
+    // stand-in so the page still opens (it just won't appear in the Math tree,
+    // which lists the real proof's steps). The expert then works from the
+    // expression alone, with no lesson/domain context to add.
+    const step = currentProofStep() || _faOrphanStep;
+    const mgr = getFaManager();
+    const existing = mgr.findById(step, id);
+    if (existing) { mgr.show(existing); return true; }
+    if (!latex) return false;
+    mgr.open({ id: null, subexpr: String(latex) }, step);
+    return true;
+}
+
+/** Close the Function Analysis page if it is showing (no-op otherwise). */
+function closeFunctionAnalysis() {
+    if (_faManager && _faManager.isOpen()) _faManager.close();
+}
+
 let _d3NodeAskBtn = null;
 let _d3NodeAskHideTimer = null;
 let _d3HoveredNodeId = null;
@@ -107,6 +187,11 @@ if (typeof window !== 'undefined') {
         showGraphView,
         showSceneView,
         dockProofAnimation,
+        // Function Analysis page (?fa= / ?fax=) — read for serialization, driven
+        // by a deeplink. See openFunctionAnalysis above.
+        getFunctionAnalysisId,
+        openFunctionAnalysis,
+        closeFunctionAnalysis,
         // Dock (split) layout — read for deeplink serialization, set when a
         // deeplink requests it. `setDocked` forces the requested state but does
         // NOT persist it (persist=false), so applying a `?dock=1` link changes
@@ -703,6 +788,12 @@ function rebuildProofTree() {
                     handleTreeStepClick(entry, sIdx);
                 });
                 stepsEl.appendChild(stepEl);
+
+                // Function-analysis artifacts attached to this step
+                // (session-only side storage — see fa-page.js _byStep).
+                for (const fa of getFaManager().listFor(step)) {
+                    stepsEl.appendChild(_buildFaTreeRow(entry, sIdx, fa));
+                }
             });
 
             header.addEventListener('click', () => proofEl.classList.toggle('expanded'));
@@ -714,6 +805,34 @@ function rebuildProofTree() {
         root.appendChild(groupEl);
     });
     updateTreeHighlight();
+}
+
+/** One Math-tree child row for a function-analysis artifact. Clicking
+ *  navigates to the owning step, then opens the artifact's page. */
+function _buildFaTreeRow(entry, stepIdx, fa) {
+    const row = document.createElement('div');
+    row.className = 'gp-tree-fa' +
+        (_faManager && _faManager.activeArtifact === fa ? ' active' : '');
+    const glyph = document.createElement('span');
+    glyph.className = 'fa-glyph';
+    glyph.innerHTML = FUNCTION_ANALYSIS_ICON;
+    const label = document.createElement('span');
+    if (fa.status === 'loading') {
+        label.className = 'fa-loading';
+        label.textContent = 'Analyzing…';
+    } else if (fa.status === 'error') {
+        label.className = 'fa-err';
+        label.textContent = fa.title || 'Analysis failed';
+    } else {
+        label.textContent = fa.title || 'Function analysis';
+    }
+    row.append(glyph, label);
+    row.addEventListener('click', (e) => {
+        e.stopPropagation();
+        handleTreeStepClick(entry, stepIdx);   // closes any open page (sync)
+        getFaManager().show(fa);
+    });
+    return row;
 }
 
 /** Stable identifier for a proof spec entry — uses the real proof id when
@@ -971,6 +1090,10 @@ async function _renderWithD3(container, graph, step, key) {
                 if (!_currentChartManager) return;
                 // Always open — never toggle.  Only the × button closes.
                 _currentChartManager.openChart(nodeId, btnEl);
+            },
+            onFaClick: (nodeId, nodeData) => {
+                const step = currentProofStep();
+                if (step) getFaManager().open(nodeData, step);
             },
         });
     } else {
@@ -1592,6 +1715,9 @@ function _showD3MultiInfoPanel(selectedIds, graph) {
 async function renderCurrentStepGraph(force = false) {
     const container = document.getElementById('graph-mermaid-container');
     if (!container) return;
+    // Navigating steps leaves the function-analysis page — the graph is the
+    // home view; artifacts stay reachable from the Math tab tree.
+    if (_faManager && _faManager.isOpen()) _faManager.close();
     const step = currentProofStep();
     const sg = step && step.semanticGraph;
     const graph = sg && sg.graph;
@@ -2298,6 +2424,8 @@ function _resetGraphSession() {
     _currentChartManager = null;
     if (_currentProofManager) { try { _currentProofManager.destroy(); } catch {} _currentProofManager = null; }
     clearDeriveCache();   // derivation results are lesson-specific
+    clearAnalysisCache(); // so are function analyses
+    if (_faManager) { try { _faManager.destroy(); } catch {} _faManager = null; }
 }
 
 // Shared monochrome moon/sun glyphs from /icons.js (LAST QUARTER MOON / BLACK

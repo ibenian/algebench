@@ -32,14 +32,18 @@
 //     cam: {              // camera (data-space)            -> ?cam=px,py,pz,tx,ty,tz[,ux,uy,uz]
 //       position:[x,y,z], target:[x,y,z], up?:[x,y,z]
 //     },
+//     fa,                 // open Function Analysis artifact id             -> ?fa=
+//     fax,                // expression to analyze when `fa` doesn't resolve -> ?fax=
 //     aa,                 // auto-ask: a chat message to fire ONCE on boot -> ?aa=
 //     pa,                 // pre-baked proof animation to load ONCE (<domain>/<name>) -> ?pa=
 //     pas,                // step to open that animation on (with pa)            -> ?pas=
 //   }
 //
-// NOTE: `aa`, `pa` and `pas` are fire-once boot DIRECTIVES, not canonical shareable state —
-// they are parsed but deliberately NOT re-serialized, so the post-apply replaceView()
-// strips them from the URL (preventing a re-fire on reload / back / forward).
+// NOTE: `aa`, `pa`, `pas` and `fax` are fire-once boot DIRECTIVES, not canonical shareable
+// state — they are parsed but deliberately NOT re-serialized, so the post-apply
+// replaceView() strips them from the URL (preventing a re-fire on reload / back / forward).
+// `fa` IS serialized: it names an analysis that already exists in this session, so it
+// describes the restorable view (Back closes the page, Forward reopens it).
 // ============================================================
 
 const CAM_DECIMALS = 4;
@@ -133,6 +137,10 @@ export function serializeViewState(vs) {
     if (vs.st != null && vs.st !== '') pairs.push(['st', vs.st]);
     if (vs.pf != null && vs.pf !== '') pairs.push(['pf', vs.pf]);
     if (vs.ps != null && vs.ps !== '') pairs.push(['ps', vs.ps]);
+    // Function Analysis page open on artifact `fa`. Session-scoped ids: a link
+    // shared into a fresh session won't resolve it, which is why the producer
+    // (the proof widget's ƒ button) sends `fax` — the expression — instead.
+    if (vs.fa != null && vs.fa !== '') pairs.push(['fa', vs.fa]);
 
     if (Array.isArray(vs.nodes) && vs.nodes.length) {
         pairs.push(['nodes', vs.nodes.map((id) => String(id)).join(',')]);
@@ -217,6 +225,16 @@ export function parseViewState(search) {
     if (st) vs.st = st;
     if (pf) vs.pf = pf;
     if (ps) vs.ps = ps;
+
+    // Function Analysis deeplink. `fa` names an artifact already attached to the
+    // target step (serialized — see above); `fax` carries the LaTeX to analyze when
+    // no such artifact exists, which is the cross-session path (a proof widget's ƒ
+    // button knows the expression, never an id). Both capped so a malformed link
+    // can't push an unbounded payload into the expert request.
+    const fa = params.get('fa');
+    if (fa) vs.fa = String(fa).slice(0, 200);
+    const fax = params.get('fax');
+    if (fax) vs.fax = String(fax).slice(0, 1000);
 
     const nodes = params.get('nodes');
     if (nodes) {

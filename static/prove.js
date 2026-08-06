@@ -11,10 +11,14 @@
 // render against the storage layer.)
 import { ProofAnimator } from "/proof-animation/proof-animation.js";
 import { validateProofData } from "/proof-animation/validate-proof.js";
-import { invokeExpert, ExpertError } from "/expert-client.js";
+import { DERIVE_TIMEOUT_MS, invokeExpert, ExpertError } from "/expert-client.js";
 import { applyTheme, initialTheme, wireThemeToggle } from "/theme.js";
 import { BRACES_ICON, CODE_ICON, AI_ICON, USER_ICON } from "/icons.js";
 import { createProofEditTool } from "/proof-edit-tool.js";
+import {
+  ID_DOMAIN_MAX, ID_DOMAIN_MIN, ID_NAME_MAX, ID_NAME_MIN, ID_RESERVED,
+  MAX_PROOF_BYTES, formatBytes, idProblem, proofBytes,
+} from "/proof-id.js";
 
 const ID_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?\/[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
 
@@ -272,6 +276,8 @@ async function openProof(id) {
       // This proof now has its own chat — a term "Ask AI" flows into it (step-
       // aware), not the app. The app hand-off is the explicit button below.
       onTermAsk: ({ message }) => chat.ask(message),
+      // Function Analysis has no local equivalent — hand off to the app, new tab.
+      onFunctionAnalysis: ({ latex, step }) => openFaInApp(data.deeplink, id, step, latex),
     });
     setContinue(continueBtn, contDeep, data);       // reveal the app hand-off
   } catch (e) {
@@ -302,7 +308,46 @@ function openInApp(message, deeplink, id, step) {
   if ((u.searchParams.has("pa")) && step != null && !u.searchParams.has("pas")) {
     u.searchParams.set("pas", String(step));
   }
-  window.open(u.toString(), "_blank", "noopener");
+  openAppTab(u.toString());
+}
+
+/** Open an app URL in a new tab, falling back to THIS tab when the popup is
+ *  blocked. Without the fallback a blocked popup is a dead click — nothing
+ *  happens and nothing says why (which is exactly what an embedded preview pane
+ *  or a strict popup blocker produces). `noopener` is deliberately omitted: it
+ *  forces `window.open` to return null even on success, so there'd be no way to
+ *  tell "blocked" from "opened". The target is our own origin, so the opener
+ *  reference it leaves behind is not a cross-origin concern. */
+function openAppTab(url) {
+  let w = null;
+  try { w = window.open(url, "_blank"); } catch (e) { w = null; }
+  if (!w) location.assign(url);
+}
+
+/** Open the main app's Function Analysis page for a step's expression, preferring
+ *  a NEW tab. The engine would navigate this tab (it's a top-level page, not an
+ *  embed), which would throw away the derivation and chat sitting here — so /prove
+ *  routes the click itself. Carries `pa`/`pas` like the ask hand-off, so the
+ *  analysis attaches to the right proof step and the expert gets its context; an
+ *  unsaved derivation has no `pa` and lands on the expression alone.
+ *  A blocked popup falls back to this tab (openAppTab) — going somewhere the user
+ *  didn't want beats a button that silently does nothing. */
+function openFaInApp(deeplink, id, step, latex) {
+  const tex = String(latex || "").trim();
+  if (!tex) return;
+  let u;
+  try {
+    u = new URL(deeplink || "/", location.origin);
+    if (u.origin !== location.origin) u = new URL("/", location.origin);
+  } catch (e) { u = new URL("/", location.origin); }
+  u.searchParams.set("view", "math");
+  u.searchParams.set("fax", tex.slice(0, 1000));
+  u.searchParams.delete("fa");                      // never resolve a stale id first
+  if (id && !u.searchParams.has("pa")) u.searchParams.set("pa", id);
+  if (u.searchParams.has("pa") && step != null && !u.searchParams.has("pas")) {
+    u.searchParams.set("pas", String(step));
+  }
+  openAppTab(u.toString());
 }
 
 // ── { } JSON viewer + < > embed dialog (shared modals) ──────────────────────
@@ -396,18 +441,46 @@ function setupModals() {
   const jModal = document.getElementById("pa-json-modal");
   const jTitle = document.getElementById("pa-json-title");
   const jBody = document.getElementById("pa-json-body");
+  // Held so Copy hands over exactly what is on screen — re-serializing could
+  // drift from the rendered text, and reading it back out of the <pre> would
+  // depend on the DOM staying a single text node.
+  let jText = "";
   openJsonModal = (proof, id) => {
     jTitle.textContent = proof && proof.title ? proof.title : (id || "Proof JSON");
     jBody.textContent = "";
     const pre = document.createElement("pre");
     // textContent — never innerHTML: the JSON is untrusted proof data.
-    pre.textContent = proof ? JSON.stringify(proof, null, 2) : "(no proof loaded)";
+    jText = proof ? JSON.stringify(proof, null, 2) : "(no proof loaded)";
+    pre.textContent = jText;
     jBody.appendChild(pre);
     jModal.classList.add("open");
   };
   const jHide = () => jModal.classList.remove("open");
   document.getElementById("pa-json-close").addEventListener("click", jHide);
   jModal.addEventListener("click", (e) => { if (e.target === jModal) jHide(); });
+
+  // Copy the whole proof JSON. Same two-step as the embed dialog: the async
+  // clipboard API, falling back to a selection + execCommand where it is blocked
+  // (insecure origin, or permission denied). The fallback needs a real focusable
+  // node, so it selects the <pre> rather than an off-screen textarea.
+  const jCopied = document.getElementById("pa-json-copied");
+  document.getElementById("pa-json-copy").addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(jText);
+    } catch {
+      const pre = jBody.querySelector("pre");
+      if (pre && window.getSelection) {
+        const range = document.createRange();
+        range.selectNodeContents(pre);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        try { document.execCommand("copy"); } catch (e) { /* clipboard unavailable */ }
+      }
+    }
+    jCopied.hidden = false;
+    setTimeout(() => { jCopied.hidden = true; }, 1500);
+  });
 
   // < > embed dialog.
   const eModal = document.getElementById("pa-embed-modal");
@@ -761,6 +834,48 @@ function continueInAppWith(proof, history, id, step) {
   openInApp(seed, proof.deeplink, id || null, step);
 }
 
+/** Reveal the Derive toolbar, showing only what the current state supports.
+ *
+ *  The bar used to appear only once a derivation existed, which made the lock —
+ *  its only always-meaningful control — unreachable before deriving. It is
+ *  reachable from the start now, because unlocking with nothing derived is a
+ *  legitimate way to BEGIN one: the chat writes step 0 (see
+ *  `startEmptyDerivation`). `{ }` and Submit still need a proof with steps, so
+ *  they stay hidden until there is one rather than opening on an empty shell. */
+function syncViewerBar() {
+  if (!els.dViewerBar) return;
+  els.dViewerBar.hidden = false;
+  const hasSteps = !!(deriveProof && (deriveProof.steps || []).length);
+  // "Describe what to derive" + Derive are for STARTING one. Once there is a
+  // derivation on screen they are the wrong affordance: the chat owns changing
+  // it from here, and asking there is what gets the continue-or-replace choice
+  // rather than silently discarding the proof the way Rederive did.
+  if (els.dBar) els.dBar.hidden = hasSteps;
+  if (els.dJson) els.dJson.hidden = !hasSteps;
+  if (els.dSubmit) els.dSubmit.hidden = !hasSteps;
+  if (els.dViewerId) {
+    els.dViewerId.textContent = hasSteps ? "Derived proof" : "New derivation";
+  }
+}
+
+/** Start an EMPTY derivation so edit prompts have something to write into.
+ *
+ *  `deriveProof` is null until something is derived, and both the chat payload
+ *  and the edit tool need a proof object. This is that object: a real, valid
+ *  proof with zero steps. The expert treats an empty derivation as `at = -1`
+ *  ("insert before everything") and authors step 0 from the reader's
+ *  description, so "start with $E = mc^2$" works with nothing on screen. */
+function startEmptyDerivation() {
+  deriveProof = {
+    title: "Untitled derivation",
+    domain: effectiveDomain() || "algebra",
+    goal: "",
+    steps: [],
+    terms: {},
+  };
+  syncViewerBar();
+}
+
 /** Reflect the lock's state on its button (label, pressed state, tooltip). */
 function syncLockButton() {
   if (!els.dLock) return;
@@ -798,7 +913,10 @@ function initEditTool() {
     getCurrentStep: () => (deriveAnimator && typeof deriveAnimator.current === "number")
       ? deriveAnimator.current : 0,
     onMount: (proof, startStep) => mountAnimator(proof, startStep),
-    onCommit: (proof) => { deriveProof = proof; },
+    // syncViewerBar AFTER the assignment, not before: the preview mount ran
+    // while `deriveProof` was still the empty shell, so { } and Submit are
+    // hidden. Committing the first step is what earns them.
+    onCommit: (proof) => { deriveProof = proof; syncViewerBar(); },
     setEditPending,
     // Variant notes quote step captions that may contain $…$ math. renderSafe
     // escapes HTML and renders the math with KaTeX (null if KaTeX isn't ready).
@@ -841,10 +959,13 @@ function mountAnimator(proof, startStep) {
     startStep: typeof startStep === "number" ? startStep : 0,
     // A term "Ask AI" goes to the LOCAL step-aware chat, not the app.
     onTermAsk: ({ message }) => askInChat(message),
+    // An in-progress derivation isn't saved, so there's no `pa` to carry — the
+    // app gets the expression and analyzes it without proof context.
+    onFunctionAnalysis: ({ latex, step }) => openFaInApp(proof && proof.deeplink, null, step, latex),
     ...keep,
   });
   els.dGo.textContent = "Rederive";              // a derivation now exists
-  if (els.dViewerBar) els.dViewerBar.hidden = false;   // reveal the { } JSON viewer
+  syncViewerBar();                                // now with { } and Submit
   showContinue(proof);                            // reveal the explicit app hand-off
 }
 
@@ -959,6 +1080,82 @@ function applyDeriveDraft() {
 /** The special Derive/Rederive action (top): prompt (+ domain + docs) →
  *  proof_from_prompt → render in the derivation box. Once a proof exists the
  *  button reads "Rederive". */
+/** Run a derivation the CHAT asked for (the `derive` tool), then add or replace.
+ *
+ *  Deliberately the same expert call as the Derive box — the chat is a second
+ *  door onto one derivation path, not a parallel implementation. The server
+ *  hands the request over rather than running it: a derivation routinely takes
+ *  longer than the chat's own timeout allows.
+ *
+ *  `continue` derives ONWARD from the current last step by pinning `start_latex`
+ *  to it. That is what makes appending sound: the new chain's step 0 IS our last
+ *  step, so every step after it was CAS-verified against the predecessor it
+ *  actually lands on, and splicing needs no re-grading — only renumbering. */
+async function runChatDerive(req) {
+  const prompt = String((req && req.prompt) || "").trim();
+  if (!prompt) return false;
+  const steps = (deriveProof && deriveProof.steps) || [];
+  const appending = req.mode === "continue" && steps.length > 0;
+  // Into the THREAD, not just the log — the agent must see what happened on the
+  // next turn, or "add another step" arrives with no idea a derivation just ran.
+  const say = (text, cls) => { addBubble("bot", text, cls); chatHistory.push({ role: "bot", text }); };
+
+  els.dGo.disabled = true;
+  setStatus(appending
+    ? "Continuing the derivation… (CAS-verifying each step)"
+    : "Deriving… (CAS-verifying each step)", "pending");
+
+  const body = { prompt };
+  const domain = effectiveDomain();
+  const documentation = els.dDoc.value.trim();
+  if (domain) body.domain = domain;
+  if (documentation) body.documentation = documentation;
+  if (appending) body.start_latex = steps[steps.length - 1].input_latex || "";
+
+  try {
+    const data = await invokeExpert("proof_from_prompt", body, { timeoutMs: DERIVE_TIMEOUT_MS });
+    if (data && data.error) { setStatus(data.error, "err"); say(data.error, "err"); return true; }
+    const derived = validateProofData(data);
+
+    if (!appending) {
+      showInDerive(derived);                       // same as the Derive box
+      setDeriveSource(null);
+      const shown = (derived.title || "proof").replace(/^Deriving\s+/i, "");
+      setStatus(`Derived ${shown} — ${derived.steps.length} steps.`, "ok");
+      say(`Replaced the derivation — ${derived.steps.length} steps.`);
+      return true;
+    }
+
+    // Drop the derived step 0: it is our own last step restated, and keeping it
+    // would show the reader the same line twice.
+    const added = (derived.steps || []).slice(1);
+    if (!added.length) {
+      setStatus("That derivation added no new steps.", "err");
+      say("That didn't add any steps beyond where the derivation already is.");
+      return true;
+    }
+    const merged = {
+      ...deriveProof,
+      steps: [...steps, ...added].map((s, i) => ({ ...s, index: i })),
+      terms: { ...(deriveProof.terms || {}), ...(derived.terms || {}) },
+    };
+    deriveProof = validateProofData(merged);       // same trust gate as a fresh derive
+    if (editTool) editTool.reset();                // stale undo history / preview
+    syncLockButton();
+    mountAnimator(deriveProof, steps.length);      // land on the first NEW step
+    setStatus(`Continued the derivation — ${added.length} step(s) added.`, "ok");
+    say(`Added ${added.length} step(s) to the derivation.`);
+    return true;
+  } catch (e) {
+    const msg = (e instanceof ExpertError ? e.message : (e && e.message)) || "Derivation failed.";
+    setStatus(msg, "err");
+    say(msg, "err");
+    return true;
+  } finally {
+    els.dGo.disabled = false;
+  }
+}
+
 async function runDerive() {
   const prompt = els.dPrompt.value.trim();
   if (!prompt || els.dGo.disabled) return;
@@ -975,7 +1172,7 @@ async function runDerive() {
   if (domain) body.domain = domain;
   if (documentation) body.documentation = documentation;
   try {
-    const data = await invokeExpert("proof_from_prompt", body, { timeoutMs: 150000 });
+    const data = await invokeExpert("proof_from_prompt", body, { timeoutMs: DERIVE_TIMEOUT_MS });
     if (data && data.error) { setStatus(data.error, "err"); return; }
     const proof = validateProofData(data);
     showInDerive(proof);                           // render + fresh chat + hand-off
@@ -1059,6 +1256,61 @@ async function showCtx() {
 // variants inline, so the ceiling is generous — but finite.
 const CHAT_TIMEOUT_MS = 120000;
 
+// ── chat tool results ───────────────────────────────────────────────────────
+// EVERY tool the proof chat can call is listed here, and nowhere else — the
+// client half of `PROOF_CHAT_TOOLS` in backend/server.py. Adding a tool means
+// adding a row on each side, rather than hiding an `if (data.someKey)` inside
+// `sendChat`.
+//
+// `tool` is the ONE identifier: it is the name the server declared to Gemini,
+// AND the key the payload arrives under. Dispatch is an exact property lookup —
+// no substring or prefix matching anywhere.
+//
+// `run(payload, data)` returns truthy when it produced something the reader can
+// see; that is what stops the turn falling through to "(no response)".
+//
+// `blocking` marks work that outlives the request: Send stays disabled for its
+// duration so a second long job cannot be queued behind it.
+const CHAT_ACTIONS = [
+  {
+    tool: "edit_step",
+    // Already done and CAS-checked server-side — the variants rode back on this
+    // reply, so this only renders the picker.
+    blocking: false,
+    run: (payload, data) => !!(editTool && editTool.applyEditResult(data)),
+  },
+  {
+    tool: "derive",
+    // NOT done yet: a derivation outlives a chat turn, so the server handed the
+    // request over and it runs here on the Derive box's own path.
+    blocking: true,
+    run: (payload) => runChatDerive(payload),
+  },
+];
+
+/** Dispatch whatever tool results came back on a chat reply.
+ *
+ *  The server sends at most one, but this does not assume it — each action whose
+ *  key is present runs, in table order. */
+async function runChatActions(data) {
+  if (!data) return false;
+  let acted = false;
+  for (const action of CHAT_ACTIONS) {
+    const payload = data[action.tool];
+    if (!payload) continue;
+    if (action.blocking) els.dSend.disabled = true;
+    try {
+      acted = (await action.run(payload, data)) || acted;
+    } catch (e) {
+      addBubble("bot", `Couldn't complete “${action.tool}”.`, "err");
+      acted = true;
+    } finally {
+      if (action.blocking && !editPending) els.dSend.disabled = false;
+    }
+  }
+  return acted;
+}
+
 /** Chat (right panel) — a PROOF-SCOPED conversation about the current derivation,
  *  via POST /api/proof-chat: the Gemini chat agent run with a proof-only system
  *  prompt (NOT the app's lesson/scene-framed /api/chat). The whole thread + the
@@ -1103,10 +1355,8 @@ async function sendChat() {
       addBubble("bot", reply);
       chatHistory.push({ role: "bot", text: reply });
     }
-    // The agent called its edit_step tool: the operation has already been applied
-    // and CAS-checked server-side, and the variants rode back on this reply.
-    const edited = editTool && editTool.applyEditResult(data);
-    if (!reply && !edited) addBubble("bot", "(no response)");
+    const acted = await runChatActions(data);
+    if (!reply && !acted) addBubble("bot", "(no response)");
   } catch (e) {
     pending.remove();
     addBubble("bot", e && e.name === "AbortError"
@@ -1133,8 +1383,29 @@ function setAvail(text, cls) {
   els.subAvail.className = `sub-avail ${cls || ""}`;
 }
 
+/** State the naming rules and the size budget before the user types.
+ *
+ *  Both were previously discoverable only by failing: the character rules showed
+ *  up as an error after an invalid name, and the 2 MB cap not at all until the
+ *  POST came back. Shows the proof's ACTUAL size against the cap so "is mine too
+ *  big?" is answered rather than left to be guessed at. */
+function syncSubmitHint() {
+  if (!els.subHint) return;
+  const bytes = proofBytes(deriveProof);
+  const over = bytes > MAX_PROOF_BYTES;
+  els.subHint.innerHTML =
+    `Format <code>domain/name</code> — lowercase letters, digits and hyphens only `
+    + `(e.g. <code>algebra/quadratic-roots</code>). Each part must start and end `
+    + `with a letter or digit. Domain ${ID_DOMAIN_MIN}–${ID_DOMAIN_MAX} characters, `
+    + `name ${ID_NAME_MIN}–${ID_NAME_MAX}. Reserved names: `
+    + `<code>${ID_RESERVED.join("</code>, <code>")}</code>.<br>`
+    + `Proof size <strong${over ? ' class="sub-over"' : ""}>${formatBytes(bytes)}</strong>`
+    + ` of ${formatBytes(MAX_PROOF_BYTES)}${over ? " — too large to submit." : ""}`;
+}
+
 function openSubmitModal() {
   if (!deriveProof) return;
+  syncSubmitHint();
   els.subForm.hidden = false;
   els.subDone.hidden = true;
   els.subGo.disabled = true;
@@ -1174,6 +1445,12 @@ function openSubmitModal() {
 }
 
 function checkSubmitName() {
+  // Invalidate SYNCHRONOUSLY, before the debounce. `doCheckSubmitName` runs
+  // 300 ms later, and until it does the button still reflects the PREVIOUS
+  // name — so typing one bad character after a valid name left Submit live and
+  // showing an error underneath it. Any edit now disables until re-validated.
+  submitAvailable = false;
+  if (els.subGo) els.subGo.disabled = true;
   clearTimeout(subCheckTimer);
   subCheckTimer = setTimeout(doCheckSubmitName, 300);   // debounce keystrokes
 }
@@ -1190,8 +1467,13 @@ async function doCheckSubmitName() {
     return;
   }
   els.subGo.textContent = "Submit";    // different name → a separate new version
-  if (!ID_RE.test(raw)) {
-    setAvail("Use <domain>/<name> — lowercase letters, digits, hyphens.", "err");
+  const problem = idProblem(raw);
+  if (problem) { setAvail(problem, "err"); return; }
+  // Size is a hard server limit, so say so here rather than after a failed POST.
+  const bytes = proofBytes(deriveProof);
+  if (bytes > MAX_PROOF_BYTES) {
+    setAvail(`This proof is ${formatBytes(bytes)} — over the `
+      + `${formatBytes(MAX_PROOF_BYTES)} limit. Shorten it before submitting.`, "err");
     return;
   }
   setAvail("Checking…", "");
@@ -1204,8 +1486,12 @@ async function doCheckSubmitName() {
       submitAvailable = true; submitCheckedId = d.id || raw;
       setAvail(`✓ ${submitCheckedId} is available`, "ok");
       els.subGo.disabled = false;
+    } else if (d.reason === "invalid") {
+      // The local checks above passed but the server still refused it — they have
+      // drifted apart. Say that honestly instead of blaming a collision.
+      setAvail("The server rejected that name as invalid — check the rules above.", "err");
     } else {
-      setAvail(`✗ taken or reserved — try ${raw}-v2`, "err");
+      setAvail(`✗ ${raw} is already taken — try ${raw}-v2`, "err");
     }
   } catch (e) {
     setAvail("Couldn't check availability — try again.", "err");
@@ -1279,6 +1565,7 @@ function setupSubmitModal() {
   els.subDone = document.getElementById("sub-done");
   els.subBased = document.getElementById("sub-based");
   els.subName = document.getElementById("sub-name");
+  els.subHint = document.getElementById("sub-hint");
   els.subAvail = document.getElementById("sub-avail");
   els.subGo = document.getElementById("sub-go");
   els.subDoneLink = document.getElementById("sub-done-link");
@@ -1343,6 +1630,7 @@ async function main() {
   els.dEmpty = document.getElementById("d-empty");
   // { } JSON viewer for the derived proof (revealed once a derivation exists).
   els.dViewerBar = document.getElementById("d-viewer-bar");
+  els.dViewerId = document.getElementById("d-viewer-id");
   els.dJson = document.getElementById("d-json");
   els.dJson.innerHTML = BRACES_ICON;
   els.dJson.addEventListener("click",
@@ -1356,14 +1644,22 @@ async function main() {
   els.dLock = document.getElementById("d-lock");
   initEditTool();
   els.dLock.addEventListener("click", () => {
-    editTool.setUnlocked(!editTool.isUnlocked());
+    const unlocking = !editTool.isUnlocked();
+    // Unlocking with nothing derived starts an empty derivation rather than
+    // refusing: the reader can then simply state the first line in the chat.
+    const starting = unlocking && !deriveProof;
+    if (starting) startEmptyDerivation();
+    editTool.setUnlocked(unlocking);
     syncLockButton();
-    setStatus(editTool.isUnlocked()
-      ? "Editing unlocked — describe an operation in the chat, e.g. “multiply both sides by 2”."
-      : "Editing locked — the chat only answers questions. Click 🔒 Locked to unlock and make edits.", "ok");
+    setStatus(starting
+      ? "Editing unlocked on a new, empty derivation — describe the first step in the chat, e.g. “start with $E = mc^2$”."
+      : unlocking
+        ? "Editing unlocked — describe an operation in the chat, e.g. “multiply both sides by 2”."
+        : "Editing locked — the chat only answers questions. Click 🔒 Locked to unlock and make edits.", "ok");
   });
   els.dStatus = document.getElementById("d-status");
   els.dLog = document.getElementById("d-log");
+  els.dBar = document.getElementById("d-bar");
   els.dPrompt = document.getElementById("d-prompt");
   els.dGo = document.getElementById("d-go");
   els.dChatInput = document.getElementById("d-chat-input");
@@ -1371,6 +1667,9 @@ async function main() {
   els.dContinue = document.getElementById("d-continue");
   els.dContinueDeep = document.getElementById("d-continue-deep");
   els.dContinue.addEventListener("click", continueInApp);
+  // Reveal the toolbar up front so the lock is reachable before anything is
+  // derived — { } and Submit stay hidden until there are steps.
+  syncViewerBar();
   // Draggable chat splitter (Derive workspace).
   const dCols = els.panelDerive.querySelector(".derive-cols");
   applyStoredChatW(dCols);

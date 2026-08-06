@@ -8,7 +8,7 @@
 // the charts exactly; only the body hosts a ProofAnimator instead of a canvas.
 
 import { ProofAnimator } from '/proof-animation/proof-animation.js';
-import { invokeExpert } from '/expert-client.js';
+import { DERIVE_TIMEOUT_MS, invokeExpert } from '/expert-client.js';
 import { nextDockSeq } from '/proof-animation/dock-seq.js';
 import { makeAiAskButton, makeDeriveButton, openChatPanel } from '/labels.js';
 
@@ -33,7 +33,8 @@ export function clearDeriveCache() {
 // while. Past this it's almost certainly stuck — fail with a retryable error
 // rather than spin the "Deriving proof…" pill forever. Keep this comfortably
 // above the server-side refinement time budget (ALGEBENCH_PC_TIME_BUDGET).
-const DERIVE_TIMEOUT_MS = 360_000;
+// Shared with every other derivation caller — see expert-client.js for why
+// this number is a contract with the backend's refine budget.
 
 const GRID_COLS = 8;          // same grid as SgChartManager
 const GRID_ROWS = 8;
@@ -419,6 +420,15 @@ export class SgProofManager {
                     }
                 },
                 onBuildTermAskMessage: (focus) => this._buildTermAskMessage(entry, focus),
+                // Function Analysis: in-app there's nowhere to navigate TO — the
+                // analysis page is right here, in place of the graph. Same entry
+                // point the ?fax= deeplink uses, so both paths dedup together.
+                onFunctionAnalysis: ({ latex }) => {
+                    const g = typeof window !== "undefined" && window.__algebenchGraph;
+                    if (g && typeof g.openFunctionAnalysis === "function") {
+                        g.openFunctionAnalysis({ latex });
+                    }
+                },
                 // Reverse sync: re-apply selection/linked classes after every
                 // (re)render (a morph wipes them); a background click deselects all.
                 onAfterRender: () => this._refreshTermClasses(entry),
@@ -543,7 +553,12 @@ export class SgProofManager {
 
     /** The expression element of a box, or null. */
     _termExpr(entry) {
-        return entry && entry.box ? entry.box.querySelector('.pa-stage > .pa-expr') : null;
+        if (!entry || !entry.box) return null;
+        // Stacked mode nests the expression per line — only the CURRENT line is
+        // live (history lines are frozen snapshots, and their duplicate data-n
+        // ids would make the term map ambiguous). Single mode: direct child.
+        return entry.box.querySelector('.pa-stage .pa-line-current > .pa-expr')
+            || entry.box.querySelector('.pa-stage > .pa-expr');
     }
 
     /** Resolve ONE term element's data-n to a scene-graph node id (cached by

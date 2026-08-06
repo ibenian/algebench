@@ -272,8 +272,12 @@ def rescue_uncheckable(
         for sc in report.steps
     ]
     counts = _count_tiers(new_pairs)
-    overall = finalize_overall(new_pairs, report.endpoint_reached)
-    reason = _overall_reason(new_pairs, counts, report.endpoint_reached)
+    # Pass the POST-override steps: a refuted STEP has no transition to carry its
+    # verdict, so re-rolling from pairs alone dropped it and reinstated the exact
+    # "Plausible about a Refuted step" bug (Copilot review, #511). Post-override
+    # so a rescue that legitimately lifts a refutation lifts the overall too.
+    overall = finalize_overall(new_pairs, report.endpoint_reached, new_steps)
+    reason = _overall_reason(new_pairs, counts, report.endpoint_reached, new_steps)
     return StepGroundingReport(
         steps=new_steps, pairs=new_pairs, overall=overall, counts=counts,
         endpoint_reached=report.endpoint_reached, reason=reason,

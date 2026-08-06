@@ -133,7 +133,9 @@ function _relationToLhsMinusRhs(latex) {
 
 let _chartJsLoaded = false;
 let _chartJsPromise = null;
-function loadChartJs() {
+// Exported: shared by the Function Analysis page (fa-page.js) so Chart.js
+// is fetched once no matter which feature asks first.
+export function loadChartJs() {
     if (_chartJsLoaded) return Promise.resolve();
     if (_chartJsPromise) return _chartJsPromise;
     _chartJsPromise = new Promise((resolve, reject) => {

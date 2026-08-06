@@ -153,6 +153,56 @@ def start_given_target(target_latex: str, context: str) -> tuple[str, str, str, 
             (ep.given_label or "").strip(), (ep.start_note or "").strip())
 
 
+class TargetGivenStartSig(dspy.Signature):
+    r"""Name the TARGET expression an instruction reaches from a KNOWN start.
+
+    The mirror of :class:`StartGivenTargetSig`. Here the START is already known —
+    the reader is CONTINUING an open derivation — and the instruction says where
+    to go from it: "solve for $y$", "factor it", "isolate $t$", "now simplify".
+
+    :class:`BothEndpointsSig` cannot do this job. Handed "solve for y" with no
+    expression attached it has nothing to solve, so it emits the INVALID_PROMPT
+    sentinel and the request is rejected as non-math — even though the start was
+    supplied and the pair is perfectly derivable.
+
+    ``target_latex`` must be exactly ONE complete, valid, parseable LaTeX
+    relation: a single statement (one ``=``/``\leq``/…), with NO ``;`` or
+    comma-joined extra relations, and NO math-mode delimiters. It is parsed
+    directly, so any of those makes it unusable. Work the instruction out on the
+    START and state the RESULT — do not restate the start, and do not describe
+    the operation in words.
+    """
+
+    start_latex: str = dspy.InputField(
+        desc="the expression the derivation continues FROM")
+    instruction: str = dspy.InputField(
+        desc="what to do to it, in the reader's own words")
+    target_latex: str = dspy.OutputField(
+        desc="ONE resulting relation, bare LaTeX, a single statement "
+             "(no ';', no $…$); INVALID_PROMPT if the instruction is not math")
+    domain: str = dspy.OutputField(desc="math domain: algebra, calculus, etc.")
+    title: str = dspy.OutputField(desc="short display title for the derivation")
+    given_label: str = dspy.OutputField(
+        desc="a short 'Given …' label NAMING the starting expression")
+    start_note: str = dspy.OutputField(
+        desc="one short line on the goal / what to do; may use inline $…$ LaTeX")
+
+
+def target_given_start(start_latex: str, instruction: str) -> tuple[str, str, str, str, str]:
+    """LM-name (target, domain, title, given_label, start_note) for a KNOWN start.
+
+    Raises :class:`InvalidPromptError` when the instruction is not math, matching
+    :func:`endpoints_from_prompt` so the caller's guard is unchanged.
+    """
+    ep = _predictor(TargetGivenStartSig)(start_latex=start_latex,
+                                         instruction=instruction)
+    target = strip_math_delimiters(ep.target_latex)
+    if is_invalid_sentinel(target):
+        raise InvalidPromptError(instruction)
+    return (target, (ep.domain or "").strip(), (ep.title or "").strip(),
+            (ep.given_label or "").strip(), (ep.start_note or "").strip())
+
+
 class ProofQuestionSig(dspy.Signature):
     r"""Answer a question about ONE specific, self-contained math derivation.
 

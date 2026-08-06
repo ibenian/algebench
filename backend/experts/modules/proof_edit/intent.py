@@ -22,11 +22,11 @@ from __future__ import annotations
 
 import re
 from functools import cache
-from typing import Optional
 
 import dspy
 from pydantic import BaseModel, ConfigDict, Field
 
+from backend.experts.llm_config import scoped_lm
 from backend.experts.modules.proof_completion.outputs import _unmangle_json_escapes
 
 # DSPy's ChatAdapter frames fields with `[[ ## name ## ]]` markers; some models
@@ -105,6 +105,59 @@ class ProofEditSig(dspy.Signature):
     algebra system will perform it for you — that is more reliable than writing
     the result yourself, and it is the only way operations like differentiation
     are accepted.
+
+    STATING A LINE VERBATIM — also a case of 3, and easy to get badly wrong.
+    "add $x^2 - 4 = 0$ as the next step", "add this as a new step", "put
+    $v = d/t$ next" mean: make that expression, EXACTLY as written, the new step.
+    It is NOT `add_both_sides` — that would add the expression TO both sides of
+    the previous one and produce something the reader never asked for. Leave `op`
+    EMPTY and copy their expression into `steps[0].expr_latex` unchanged. The
+    giveaway is "as a/the … step" or "next"; contrast "add $3x$ to both sides",
+    which names a TARGET to add to and IS `add_both_sides`.
+
+    NEVER SILENTLY CORRECT WHAT THEY WROTE. If the reader states an expression —
+    as a first step or a next step — transcribe it EXACTLY, even when it is
+    mathematically wrong. Asked to add $2 + 2 = 3$, write $2 + 2 = 3$. Do NOT
+    write $2 + 2 = 4$, and above all do not then justify it as "the correct sum":
+    that silently replaces the reader's own statement with a different one and
+    tells them it is what they asked for.
+
+    You are not the last line of defence and must not act like it. A false
+    statement is REFUTED by the computer algebra system, which says so plainly and
+    refuses the edit — so transcribing it faithfully costs nothing and the reader
+    finds out. Substituting your own version costs them the truth about what their
+    proof now says. If you believe an expression is wrong, write it as given and
+    say so in `summary`; never fix it in `expr_latex`.
+
+    BUT NOT WHEN THE LINE IS THE CURRENT STEP EVALUATED. If what they want added
+    is the DECIMAL/NUMERIC form of the step in view — "add the decimal
+    approximations as the next step", "add $x \approx 0.414$ and
+    $x \approx -2.414$", "now give me the numbers" — set `op` to `evaluate`
+    instead and let the CAS produce the decimals. Do NOT copy their numbers in.
+    Two reasons, both fatal to the verbatim route: a rounded decimal does not
+    exactly satisfy the previous step, so the CAS REFUTES it as introducing values
+    that do not solve it; and `\approx` is not a relation the parser accepts, so
+    the step cannot be checked at all. `evaluate` is computed by the CAS, so it is
+    correct by construction and states `=` with evaluated roots.
+
+    EMPTY DERIVATION — a special case of 3. When `current_step` says the
+    derivation is EMPTY, there is no previous expression, so there is nothing to
+    apply an operation TO. The reader is stating the FIRST line ("start with
+    $E = mc^2$", "let $f(x) = x^2 + 1$", "begin from the ideal gas law"):
+
+    * Set `is_edit` true and leave `op` EMPTY — every listed op transforms a
+      previous expression, and there isn't one. The CAS cannot help here.
+    * Write the opening expression in full as `steps[0].expr_latex`, and add NO
+      glue (there is nothing after it to bridge back to).
+    * If they name a known law or relation by name rather than writing it, write
+      the standard form of it yourself.
+    * Only ask a `question` if you cannot tell WHAT relation they mean — not
+      because the derivation is empty. "Start with the quadratic equation" is
+      clear enough to write down; treat it as an instruction, not a puzzle.
+    * `steps[0].operation` is the CAPTION shown above the step, so write it in
+      the reader's language — "Given", "Start from the mass-energy relation",
+      "Let $f(x) = x^2 + 1$". Never a tool or function name, and never
+      `add_step`: those are internal and read as a bug on the page.
 
     `steps` has TWO parts and you fill BOTH, whether or not you set `op`:
 
@@ -197,21 +250,19 @@ class ProofEditSig(dspy.Signature):
 class EditIntentParser(dspy.Module):
     """The intent parser: request → structured :class:`ProofEditProposal`.
 
-    A single ``Predict`` today, wrapped as a ``Module`` so it has a first-class
-    home in the expert package and — like ``ProofCompletionExpert`` — a compile
-    target if we later optimize it against a labelled dataset. Its ``forward``
-    returns the RAW DSPy prediction; field cleaning + shaping into the pydantic
-    proposal stays in :func:`propose_edit`, so the Module is a thin, optimizable
-    unit and the messy post-processing lives outside it.
+    A single ``Predict``, wrapped as a ``Module`` so it has a first-class home in
+    the expert package and — like ``ProofCompletionExpert`` — a compile target if
+    we later optimize it against a labelled dataset. Its ``forward`` returns the
+    RAW DSPy prediction; field cleaning + shaping into the pydantic proposal stays
+    in :func:`propose_edit`, so the Module is a thin, optimizable unit and the
+    messy post-processing lives outside it.
 
-    ``ChainOfThought`` (not bare ``Predict``): the routing decision — instruction
-    vs question vs clarify, and which ``op`` a request maps to — benefits from an
-    explicit reasoning step, and it matches ``ProofCompletionExpert``.
+    Bare ``Predict``, not ``ChainOfThought`` — measured, see ``_LM``.
     """
 
     def __init__(self):
         super().__init__()
-        self.predict = dspy.ChainOfThought(ProofEditSig)
+        self.predict = dspy.Predict(ProofEditSig)
 
     def forward(self, *, derivation: str, current_step: str, request: str,
                 recent_thread: str = "", clarifications: str = ""):
@@ -231,6 +282,41 @@ class EditIntentParser(dspy.Module):
 @cache
 def _parser() -> EditIntentParser:
     return EditIntentParser()
+
+
+# Measured A/B (2026-07-25, gemini-2.5-flash, 10 scenarios x 5 configurations,
+# cache off, then 3 repeat passes over the finalists — see
+# docs/proposals/proof-edit/predict-nothink-report.md).
+#
+# The shipped configuration paid for deliberation TWICE: a ``ChainOfThought``
+# reasoning field on top of Gemini's own internal thinking. Every figure below is
+# from the report's combined table (n = 40 calls per configuration) — do not mix
+# in the single-pass or 3-pass-only numbers, which differ.
+#
+# Dropping both runs 4.14 s/call against 11.65 s, and — the number that actually
+# matters to someone watching a spinner — collapses the spread from sd 12.31 s
+# (worst case 60.4 s) to sd 2.58 s (worst case 11.3 s).
+#
+# Accuracy did not pay for it: this configuration scored 164/164 mechanical
+# checks against the old one's 160/164; on the single scenario where the model
+# must author the LaTeX unaided rather than name an op for the CAS, all five
+# configurations emitted byte-identical, correct LaTeX. Most of this call is
+# ROUTING (edit vs question vs clarify) and NAMING an op — the CAS performs the
+# mathematics in ops.py and refutes anything it cannot verify, so extra
+# deliberation had nothing to buy.
+#
+# ``ChainOfThought`` + thinking-disabled was the other finalist and is
+# DELIBERATELY NOT ADOPTED: same speed (3.95 s), but it scored 156/164,
+# repeatably mis-routing "simplify the right-hand side" as not-an-edit and
+# bouncing a plain operation to the tutor chat.
+#
+# Scoped to THIS call, not llm_config, so every other expert keeps full
+# reasoning — the global ALGEBENCH_LM_REASONING knob would also silence the
+# proof-completion expert and domain rescue, which were not measured here.
+#
+# ``reasoning_effort="disable"`` is litellm's Gemini mapping for thinkingBudget
+# 0 with includeThoughts off (see its vertex_and_google_ai_studio_gemini.py).
+_LM = scoped_lm(reasoning_effort="disable")
 
 
 def _clean(s) -> str:
@@ -260,14 +346,16 @@ def propose_edit(derivation: str, current_step: str, request: str,
     ask = request if not feedback else (
         f"{request}\n\nYour previous attempt was rejected by the computer algebra "
         f"system:\n{feedback}\nFix the math and try again.")
+    kwargs = dict(
+        derivation=derivation,
+        current_step=current_step,
+        request=ask,
+        recent_thread=recent_thread,
+        clarifications=clarifications,
+    )
     try:
-        out = _parser()(
-            derivation=derivation,
-            current_step=current_step,
-            request=ask,
-            recent_thread=recent_thread,
-            clarifications=clarifications,
-        )
+        with _LM():
+            out = _parser()(**kwargs)
     except Exception:
         return ProofEditProposal()
 
@@ -326,8 +414,18 @@ def format_clarifications(pairs) -> str:
 
 
 def format_current_step(proof: dict, index: int) -> str:
-    """Render the step under the cursor for the prompt."""
+    """Render the step under the cursor for the prompt.
+
+    An empty derivation says so explicitly rather than "(no step selected)".
+    The two are different situations and the model must tell them apart: nothing
+    exists yet, so the request describes the FIRST line rather than an operation
+    on a previous one.
+    """
     steps = (proof or {}).get("steps") or []
+    if not steps:
+        return ("(the derivation is EMPTY — there are no steps yet. The reader's "
+                "request describes the FIRST step, which you must write out in "
+                "full as `steps[0]`.)")
     if not 0 <= index < len(steps):
         return "(no step selected)"
     s = steps[index] or {}

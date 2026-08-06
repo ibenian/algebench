@@ -109,9 +109,48 @@ def _bra(node) -> sp.Expr:
     return _dirac(node, _BRA_LATEX, Bra, "bra")
 
 
+# ``±`` / ``∓`` node ops (issue #369). One SHARED sign governs a whole state:
+# every ``±`` takes the same choice and every ``∓`` the opposite, so a state has
+# exactly TWO readings no matter how many sites it has. That is the standard
+# convention (``cos(a ± b) = cos a cos b ∓ sin a sin b``) and it means there is
+# no 2^k enumeration to cap.
+_PM_OPS = ("plus_minus", "minus_plus")
+
+
+def has_plus_minus(graph: SemanticGraph) -> bool:
+    """Whether the graph contains a ``±`` / ``∓`` operator node."""
+    return any(n.type == "operator" and n.op in _PM_OPS for n in graph.nodes)
+
+
 @cas_register_safe_function
-def graph_to_sympy(graph: SemanticGraph) -> sp.Expr:
-    """Reconstruct a sympy expression from the graph structure. Raise if unmodeled."""
+def graph_to_sympy(graph: SemanticGraph):
+    """Reconstruct the sympy meaning of a graph. Raise if unmodeled.
+
+    Single-valued for an ordinary graph. For one carrying ``±`` / ``∓`` the
+    meaning is genuinely multivalued — ``x = ±√Δ`` *means* ``x = √Δ ∨ x = −√Δ``
+    — so both sign readings are evaluated and combined: a disjunction for a
+    relation (which ``step_grounding._solution_set`` already unions into the
+    full solution set), a ``FiniteSet`` for a bare expression.
+
+    That expansion is for GROUNDING only. Display must not go through here or
+    every derivation would render the two-branch form instead of the compact
+    ``±`` the author wrote — see :func:`graph_to_latex`.
+    """
+    if not has_plus_minus(graph):
+        return _eval_graph(graph, sign=1)          # sign is unused; no ± present
+
+    plus = _eval_graph(graph, sign=1)
+    minus = _eval_graph(graph, sign=-1)
+    if plus == minus:
+        return plus                                # degenerate (e.g. ±0)
+    from sympy.logic.boolalg import Boolean
+    if isinstance(plus, (sp.core.relational.Relational, Boolean)):
+        return sp.Or(plus, minus)
+    return sp.FiniteSet(plus, minus)
+
+
+def _eval_graph(graph: SemanticGraph, *, sign: int) -> sp.Expr:
+    """Evaluate the graph with ``±`` resolved to ``sign`` (and ``∓`` to ``-sign``)."""
     nodes = {n.id: n for n in graph.nodes}
     if not nodes:
         raise UngroundableGraph("empty graph")
@@ -151,7 +190,7 @@ def graph_to_sympy(graph: SemanticGraph) -> sp.Expr:
         elif t == "number":
             res = sp.sympify(n.label if n.label is not None else n.value)
         elif t == "operator":
-            res = _eval_operator(n, op, ins, ev, nodes)
+            res = _eval_operator(n, op, ins, ev, nodes, sign)
         elif t == "function":
             # ``\log_b`` / ``\ln`` carry the logarithm base as a separate
             # ``base``-role operand (``e`` for ``\ln``); every other function has
@@ -231,7 +270,16 @@ def _sympify_exponent(raw) -> sp.Expr:
         return parsed
 
 
-def _eval_operator(n, op, ins, ev, nodes) -> sp.Expr:
+def _eval_operator(n, op, ins, ev, nodes, sign: int = 1) -> sp.Expr:
+    # ``±``/``∓``: unary, same shape as ``negation``. ``sign`` is the ONE
+    # shared sign choice for this evaluation pass; the caller evaluates the
+    # graph twice (+1 / -1) and combines. ``∓`` is the opposite by
+    # definition, which is the whole of the coupling rule.
+    if op in ("plus_minus", "minus_plus"):
+        if len(ins) != 1:
+            raise UngroundableGraph(f"{op} arity")
+        s = sign if op == "plus_minus" else -sign
+        return s * ev(ins[0][1])
     if op == "add":
         return sp.Add(*[ev(c) for _, c in ins])
     if op == "multiply":
@@ -343,6 +391,7 @@ def _eval_relation(op, ins, ev) -> sp.Expr:
 def graph_to_latex(graph: SemanticGraph) -> Optional[str]:
     """Faithful LaTeX for a *well-formed* graph.
 
+    0. **± / ∓** — rendered by the STRUCTURAL renderer, never through sympy.
     1. **structural** — reconstruct via ``graph_to_sympy`` and render (faithful).
     2. **single-root subexpr** — if the graph has exactly one root (no outgoing
        edge) carrying a ``subexpr``, use it.
@@ -351,6 +400,30 @@ def graph_to_latex(graph: SemanticGraph) -> Optional[str]:
     *not* guess from stale subexprs — a wrong-but-confident expression is worse
     than honestly flagging an un-renderable intermediate.
     """
+    # ``graph_to_sympy`` deliberately EXPANDS ``±`` into its two sign readings —
+    # correct for grounding, wrong for display: routing it through sympy here
+    # would turn every ``x = ±√Δ`` a reader wrote into ``x = √Δ ∨ x = −√Δ``. The
+    # structural renderer walks the graph node-by-node, so it puts the ``±``
+    # back (issue #369).
+    #
+    # If the structural renderer fails, this must NOT fall through to the sympy
+    # path below — that would emit the very disjunction the branch exists to
+    # avoid. Skip to the subexpr fallback instead, which returns the author's own
+    # LaTeX (``±`` intact) or None. Latent today, since the constructs the
+    # structural renderer rejects are largely ones ``graph_to_sympy`` rejects too,
+    # but the guard is what makes the contract above true rather than merely
+    # usually-true (Copilot, #520).
+    pm_graph = has_plus_minus(graph)
+    if pm_graph:
+        try:
+            from backend.semantic_graph.latex_renderer import to_latex
+            return to_latex(graph)
+        except Exception:
+            pass
+
+    if pm_graph:
+        return _root_subexpr(graph)
+
     try:
         # mul_symbol="dot": explicit \cdot so start_latex/target_latex round-trip
         # through latex_to_graph (a symbol before "(" would parse as a function
@@ -359,6 +432,16 @@ def graph_to_latex(graph: SemanticGraph) -> Optional[str]:
     except Exception:
         pass
 
+    return _root_subexpr(graph)
+
+
+def _root_subexpr(graph: SemanticGraph) -> Optional[str]:
+    """The single root's own ``subexpr``, or None.
+
+    The last-resort rendering path: the author's LaTeX as written. Shared with
+    the ``±`` branch above, which must reach it *without* passing through the
+    sympy path in between.
+    """
     outdeg = {n.id: 0 for n in graph.nodes}
     for e in graph.edges:
         outdeg[e.from_] = outdeg.get(e.from_, 0) + 1
