@@ -20,6 +20,8 @@ from dataclasses import dataclass
 
 import dspy
 
+from backend.experts.llm_config import make_adapter
+
 
 class ProofJudgeSig(dspy.Signature):
     """Rate the pedagogical quality of a math derivation (you only SCORE it).
@@ -108,11 +110,17 @@ class ProofJudge(dspy.Module):
 
     def __call__(self, *, start_latex: str, target_latex: str, steps) -> JudgeVerdict:
         try:
-            pred = self.rate(
-                start_latex=start_latex or "",
-                target_latex=target_latex or "",
-                derivation=render_derivation(steps),
-            )
+            # LineAdapter for the same reason as every other call site in #543:
+            # ``score`` is a ``float``, so it is JSON-decoded under ChatAdapter.
+            # No LaTeX rides on it today, but "which adapter carries this
+            # signature" should be a stated choice everywhere rather than a
+            # default that only some signatures were audited against.
+            with dspy.context(adapter=make_adapter(line_oriented=True)):
+                pred = self.rate(
+                    start_latex=start_latex or "",
+                    target_latex=target_latex or "",
+                    derivation=render_derivation(steps),
+                )
         except Exception as exc:  # the judge must never break the loop
             return JudgeVerdict(score=0.0, issues=f"(judge unavailable: {exc})")
         return JudgeVerdict(score=_clamp01(getattr(pred, "score", 0.0)),
@@ -227,15 +235,18 @@ class DomainStepJudge(dspy.Module):
                  current_step: str, operation: str = "", justification: str = "",
                  cas_status: str = "uncheckable") -> DomainVerdict:
         try:
-            pred = self.decide(
-                domain=domain or "",
-                context=context or "",
-                previous_step=previous_step or "",
-                current_step=current_step or "",
-                operation=operation or "",
-                justification=justification or "",
-                cas_status=cas_status or "uncheckable",
-            )
+            # LineAdapter — ``follows`` (bool) and ``confidence`` (float) are
+            # both JSON-decoded otherwise. See ProofJudge.__call__.
+            with dspy.context(adapter=make_adapter(line_oriented=True)):
+                pred = self.decide(
+                    domain=domain or "",
+                    context=context or "",
+                    previous_step=previous_step or "",
+                    current_step=current_step or "",
+                    operation=operation or "",
+                    justification=justification or "",
+                    cas_status=cas_status or "uncheckable",
+                )
         except Exception as exc:  # the judge must never break the build
             return DomainVerdict(False, 0.0, f"(domain judge unavailable: {exc})")
         return DomainVerdict(

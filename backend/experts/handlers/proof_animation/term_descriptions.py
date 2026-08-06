@@ -19,6 +19,9 @@ import logging
 from functools import cache
 
 import dspy
+from pydantic import BaseModel, ConfigDict, Field
+
+from backend.experts.llm_config import make_adapter
 
 log = logging.getLogger(__name__)
 
@@ -32,6 +35,27 @@ def _predictor(signature):
     return dspy.Predict(signature)
 
 
+class TermDescription(BaseModel):
+    """One term's description, keyed by the id it was given.
+
+    A model rather than a ``dict`` so the field is expressible in the line
+    format: a ``list[dict]`` output is handed to ``json_repair``, and these
+    descriptions may contain inline ``$…$`` LaTeX (#543). The per-field
+    ``description``s are prompt surface — ``LineAdapter`` renders each key with
+    its description as the block template the model fills in.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    id: str = Field(
+        default="", max_length=120,
+        description="the given id, verbatim — never invent one")
+    description: str = Field(
+        default="", max_length=400,
+        description="ONE sentence saying what this term denotes in THIS "
+                    "derivation; inline $…$ is allowed")
+
+
 class TermDescriptionsSig(dspy.Signature):
     r"""Describe each symbol that appears in a derivation, IN CONTEXT.
 
@@ -43,18 +67,17 @@ class TermDescriptionsSig(dspy.Signature):
     or mathematical object it stands for (and its role), not how to read the glyph.
     Use the context to disambiguate (e.g. ``v`` is a velocity in a kinematics proof).
 
-    Return ``descriptions`` as a LIST with one entry per given term — each entry an
-    object ``{"id": <the given id, verbatim>, "description": <one sentence>}``.
-    Describe EVERY id; keep each to one concise sentence; inline ``$…$`` LaTeX is
-    allowed; do NOT invent ids that were not provided.
+    Return one ``descriptions`` entry per given term. Describe EVERY id; keep each
+    to one concise sentence; inline ``$…$`` LaTeX is allowed; do NOT invent ids
+    that were not provided.
     """
 
     domain: str = dspy.InputField(desc="math/physics domain, e.g. classical_mechanics")
     context: str = dspy.InputField(desc="lesson/scene/proof context prose (may be empty)")
-    terms: list[dict] = dspy.InputField(
-        desc='the symbols to describe: [{"id": "...", "latex": "..."}, ...]')
-    descriptions: list[dict] = dspy.OutputField(
-        desc='one per given id: [{"id": "<given id>", "description": "<one sentence>"}, ...]')
+    terms: str = dspy.InputField(
+        desc="the symbols to describe, one `id: latex` per line")
+    descriptions: list[TermDescription] = dspy.OutputField(
+        desc="one entry per given id, in the order the terms were listed")
 
 
 def describe_terms(terms: dict, domain: str, context: str) -> dict:
@@ -63,25 +86,32 @@ def describe_terms(terms: dict, domain: str, context: str) -> dict:
     ids the LM described; ``{}`` on empty input or any failure (caller-isolated).
     DSPy's adapter handles (de)serializing the typed list/dict fields.
     """
-    items = [{"id": tid, "latex": (t.get("latex") or t.get("name") or "")}
+    items = [(tid, str(t.get("latex") or t.get("name") or ""))
              for tid, t in (terms or {}).items()]
     if not items:
         return {}
+    # One `id: latex` per line — the same dialect the output comes back in, so
+    # the prompt does not ask for lines while showing JSON.
+    listing = "\n".join(f"{tid}: {latex}" for tid, latex in items)
     # The LM (or DSPy's typed-dict parse) occasionally comes back empty/malformed,
     # which would blank EVERY tooltip for the derivation. Retry a couple of times;
     # the structured output usually parses on the next attempt.
     for attempt in range(_ATTEMPTS):
         try:
-            out = _predictor(TermDescriptionsSig)(
-                domain=(domain or "").strip(),
-                context=(context or "").strip(),
-                terms=items,
-            )
+            # LineAdapter via ``dspy.context``: the descriptions carry inline
+            # ``$…$`` LaTeX in a ``list[BaseModel]`` field, which ChatAdapter
+            # would hand to ``json_repair`` — where ``\r \n \t \f \b`` are valid
+            # escapes as well as LaTeX command prefixes (#543).
+            with dspy.context(adapter=make_adapter(line_oriented=True)):
+                out = _predictor(TermDescriptionsSig)(
+                    domain=(domain or "").strip(),
+                    context=(context or "").strip(),
+                    terms=listing,
+                )
             result = {}
             for item in (out.descriptions or []):
-                if isinstance(item, dict):
-                    tid = str(item.get("id") or "").strip()
-                    d = str(item.get("description") or "").strip()
+                if isinstance(item, TermDescription):
+                    tid, d = item.id.strip(), item.description.strip()
                     if tid and d:
                         result[tid] = d
             if result:

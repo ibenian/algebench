@@ -20,6 +20,15 @@ import pytest
 
 from backend.experts.adapters import LineAdapter
 from backend.experts.adapters.line_adapter import LineFormatError, _is_leaf
+from backend.experts.handlers.proof_animation.term_descriptions import (
+    TermDescriptionsSig,
+)
+from backend.experts.modules.expression_analysis.proposer import (
+    MoreProbesSig, VizProposalSig,
+)
+from backend.experts.modules.proof_completion.judge import (
+    DomainStepJudgeSig, ProofJudgeSig,
+)
 from backend.experts.modules.proof_completion.signature import ProofCompletionSig
 from backend.experts.modules.proof_edit.intent import ProofEditSig
 
@@ -27,10 +36,29 @@ from backend.experts.modules.proof_edit.intent import ProofEditSig
 #: Signatures whose output carries model-authored LaTeX in a non-``str`` field.
 #: Each MUST be expressible in the line format — that is what lets its call site
 #: install ``LineAdapter`` instead of handing the field to ``json_repair``.
-LATEX_BEARING = [ProofCompletionSig, ProofEditSig]
+LATEX_BEARING = [ProofCompletionSig, ProofEditSig, VizProposalSig,
+                 MoreProbesSig, TermDescriptionsSig]
+
+#: Every signature with a non-``str`` output field, LaTeX-bearing or not. The
+#: judges carry only ``float``/``bool``, so nothing can be *mangled* there — but
+#: #543's second criterion is that the adapter is a stated choice per signature
+#: rather than a default only some of them were audited against, and a scalar is
+#: JSON-decoded exactly like everything else.
+NON_STR_OUTPUT = LATEX_BEARING + [ProofJudgeSig, DomainStepJudgeSig]
+
+#: Where each of those is CALLED, and the function that must open the context.
+#: A signature being line-EXPRESSIBLE buys nothing on its own; the adapter is
+#: chosen per call site, and the global one is ``ChatAdapter``.
+CALL_SITES = [
+    ("backend.experts.modules.proof_edit.intent", "forward"),
+    ("backend.experts.modules.expression_analysis.proposer", "forward"),
+    ("backend.experts.handlers.proof_animation.term_descriptions",
+     "describe_terms"),
+    ("backend.experts.modules.proof_completion.judge", "__call__"),
+]
 
 
-@pytest.mark.parametrize("signature", LATEX_BEARING,
+@pytest.mark.parametrize("signature", NON_STR_OUTPUT,
                          ids=lambda s: s.__name__)
 def test_latex_bearing_signature_is_line_expressible(signature):
     """Every output field survives ``check_annotation`` — no JSON fallback."""
@@ -58,8 +86,10 @@ def test_proof_edit_steps_is_a_model_not_a_dict():
     assert ann == list[ProposedStep], f"steps regressed to {ann}"
 
 
-def test_edit_intent_uses_line_adapter():
-    """``EditIntentParser.forward`` must install LineAdapter, via ``dspy.context``.
+@pytest.mark.parametrize("module_name,func_name", CALL_SITES,
+                         ids=lambda v: v.rsplit(".", 1)[-1])
+def test_call_site_installs_line_adapter(module_name, func_name):
+    """Every function calling a LaTeX-bearing predictor must open the context.
 
     Structure, not source text — an ``adapter=`` kwarg on ``Predict`` LOOKS like
     it selects an adapter and does not: ``Predict.forward`` reads
@@ -67,36 +97,112 @@ def test_edit_intent_uses_line_adapter():
     forwarded to the LM as a generation parameter. That mistake shipped in #539
     and passed review, so it is worth a test that can tell the two apart.
 
-    Losing this silently reinstates the JSON escape layer on ``steps``, and
-    ``propose_edit`` swallows the resulting parse failure into a "not an edit" —
-    so the symptom would be edits quietly falling through to tutor chat.
+    EVERY definition of the named function is checked, not the first one found:
+    ``proposer`` has two (``VizProposer`` and ``MoreProbesGenerator``), and a
+    test that stopped at the first would have passed with the second left on
+    ChatAdapter.
+
+    Losing this silently reinstates the JSON escape layer, and each of these
+    callers swallows the resulting parse failure — ``propose_edit`` returns "not
+    an edit", ``propose_views`` abstains, ``describe_terms`` returns ``{}``. So
+    the symptom is not an error but silence.
     """
     import ast
+    import importlib
     import inspect
-    from backend.experts.modules.proof_edit import intent
 
-    tree = ast.parse(inspect.getsource(intent))
-    forward = next(
-        (n for n in ast.walk(tree)
-         if isinstance(n, ast.FunctionDef) and n.name == "forward"), None)
-    assert forward is not None, "EditIntentParser.forward has been renamed"
+    tree = ast.parse(inspect.getsource(importlib.import_module(module_name)))
+    funcs = [n for n in ast.walk(tree)
+             if isinstance(n, ast.FunctionDef) and n.name == func_name]
+    assert funcs, f"{module_name}.{func_name} has been renamed"
 
-    contexts = [n for n in ast.walk(forward)
-                if isinstance(n, ast.Call)
-                and getattr(n.func, "attr", "") == "context"]
-    assert contexts, (
-        "forward() no longer opens a dspy.context — the adapter is whatever is "
-        "globally configured, which means ChatAdapter and a JSON-decoded `steps`")
-    assert any(kw.arg == "adapter" for c in contexts for kw in c.keywords), (
-        "dspy.context is opened without an adapter= keyword")
+    for func in funcs:
+        contexts = [n for n in ast.walk(func)
+                    if isinstance(n, ast.Call)
+                    and getattr(n.func, "attr", "") == "context"]
+        assert any(kw.arg == "adapter" for c in contexts for kw in c.keywords), (
+            f"{module_name}.{func_name} does not open a dspy.context(adapter=…) "
+            f"— the adapter is whatever is globally configured, which means "
+            f"ChatAdapter and a JSON-decoded output field")
 
-    # And the predictor itself must NOT carry the inert kwarg.
+    # And no predictor may carry the inert kwarg.
     predicts = [n for n in ast.walk(tree)
                 if isinstance(n, ast.Call)
                 and getattr(n.func, "attr", "") == "Predict"]
     assert not any(kw.arg == "adapter" for p in predicts for kw in p.keywords), (
         "adapter= passed to dspy.Predict does nothing but reach the LM as a "
         "generation kwarg; install it with dspy.context instead")
+
+
+@pytest.mark.parametrize("signature", NON_STR_OUTPUT, ids=lambda s: s.__name__)
+def test_no_output_field_is_a_bare_mapping(signature):
+    """#543's first acceptance criterion, checked directly.
+
+    ``check_annotation`` already refuses these, so this is not redundant belt
+    and braces: it names the *shape* that was wrong rather than the adapter that
+    happens to reject it, and it keeps failing usefully if the guard is ever
+    relaxed.
+    """
+    for name, field in signature.output_fields.items():
+        ann = field.annotation
+        assert ann not in (dict, list[dict]), (
+            f"{signature.__name__}.{name} is {ann} — a JSON-decoded shape with "
+            f"no field validation. Reshape it into a flat pydantic model.")
+
+
+def test_viz_proposal_latex_survives_a_real_parse():
+    """End to end on the field #543 called the sharpest case.
+
+    ``views[].plots[].latex`` was model-authored LaTeX two levels inside a
+    ``list[dict]``, JSON-decoded on every expression-analysis call. Here the
+    same LaTeX goes through the adapter that now carries it, written the way a
+    model actually writes it — ONE backslash. Under a JSON decoder ``\\right``
+    becomes CR + ``ight`` and ``\\theta`` becomes TAB + ``heta``; both would then
+    parse as implicit products, silently.
+    """
+    completion = (
+        "[[ ## abstain ## ]]\nFalse\n\n"
+        "[[ ## abstain_reason ## ]]\n\n\n"
+        "[[ ## title ## ]]\nDamped Oscillation\n\n"
+        "[[ ## story ## ]]\nA swing that never quite stops.\n\n"
+        "[[ ## ranked ## ]]\nfeature: peak\nusefulness: 5\nwhy: it is the point\n\n"
+        "[[ ## views ## ]]\n"
+        "kind: plane-2d\nx_var: t\nx_min: 0\nx_max: 10\n"
+        "pinned: beta=0.3\nmark: peak\nrationale: the whole decay\n\n"
+        "[[ ## plots ## ]]\n"
+        "view: 1\n"
+        r"latex: \left(e^{-\beta t}\right)\cos\theta" "\n"
+        "label: envelope\n\n"
+        "[[ ## annotations ## ]]\n"
+        "view: 1\nkind: vline\n"
+        r"at: \frac{\pi}{2\theta}" "\n"
+        "to: \nlabel: quarter turn\ngroup: \n\n"
+        "[[ ## probes ## ]]\n"
+        "question: What happens as $t$ grows?\n"
+        "option_1: it grows\noption_2: it decays\noption_3: \noption_4: \n"
+        "correct_index: 2\nexplanation: the envelope shrinks\nfeature: peak\n\n"
+        "[[ ## variable_glossary ## ]]\n"
+        "name: t\ndescription: time since release, in seconds\n\n"
+        "[[ ## completed ## ]]\n"
+    )
+    parsed = LineAdapter().parse(VizProposalSig, completion)
+
+    plot = parsed["plots"][0]
+    assert plot.latex == r"\left(e^{-\beta t}\right)\cos\theta"
+    assert parsed["annotations"][0].at == r"\frac{\pi}{2\theta}"
+    # The specific corruption: a JSON decode would leave control characters and
+    # eat the command names. Neither survives here, because no decode ran.
+    for field in (plot.latex, parsed["annotations"][0].at):
+        assert not any(c in field for c in "\r\n\t\f\b")
+        assert "ight" not in field.replace("right", "")
+        assert "heta" not in field.replace("theta", "")
+
+    # And the flat wire still re-nests into the shape the page consumes.
+    from backend.experts.modules.expression_analysis.proposer import _assemble_views
+    views = _assemble_views(parsed["views"], parsed["plots"],
+                            parsed["annotations"])
+    assert views[0].plots[0].latex == plot.latex
+    assert views[0].pinned == {"beta": 0.3}
 
 
 @pytest.mark.parametrize("annotation", [dict, set, tuple, frozenset])
