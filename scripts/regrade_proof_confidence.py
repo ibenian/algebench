@@ -6,11 +6,11 @@ serves those straight to the client — so changing a grading rule does NOT reac
 reader until the files are re-baked. This script is that re-bake for the ``narrows``
 tier change (#516): a step that discards solutions can no longer be badged 🥇.
 
-**This is a surgical patch, not a full re-grade.** Re-running ``ground_steps`` over a
-stored proof cannot reproduce it faithfully, because steps persist no ``change_type``
-— so ``type_consistent`` comes back True for every pair and every mislabel downgrade
-silently disappears. Nor can it reproduce ``domain``-tier steps, which came from an LM
-judge (``rescue_uncheckable``). So we touch only what the rule change actually moved:
+**This is a surgical patch, not a full re-grade.** For the general case use
+``scripts/regrade_proofs.py``, which re-grades a whole file with the guard rails
+issue #542 added (the stored ``change_type``, and judged steps preserved rather than
+demoted). This script predates them and stays deliberately narrow: it touches only
+what the #516 rule change actually moved, and nothing else —
 
 * steps whose stored ``relation`` is ``narrows`` and stored tier is ``grounded``
   (the old rule's GOLD; the new rule caps these at SILVER), and

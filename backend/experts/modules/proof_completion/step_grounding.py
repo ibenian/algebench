@@ -39,6 +39,7 @@ top-level sympy entry point) — never a lambda/closure, which cannot be pickled
 
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass
 from enum import Enum
@@ -48,6 +49,8 @@ import sympy as sp
 
 from .cas_guard import guard as _guard, cas_register_safe_function
 from .grounding import _coerce_expr, sympy_equiv
+
+log = logging.getLogger(__name__)
 
 # --------------------------------------------------------------------------- #
 # tiers
@@ -142,6 +145,7 @@ class PairVerdict:
     change_type: Optional[str]      # the model's declared claim, if any
     type_consistent: bool           # did the CAS finding agree with the claim?
     reason: str                     # human one-liner (tooltip text)
+    judged: bool = False            # tier came from the LM domain judge, not the CAS
 
 
 @dataclass(frozen=True)
@@ -153,6 +157,11 @@ class StepConfidence:
     relation: Optional[Relation]    # None for the start state
     reason: str
     type_consistent: bool
+    # Provenance: True when this tier came from the LM domain judge
+    # (``rescue_uncheckable``) rather than the CAS. Persisted with the stored
+    # verdict (issue #542) so an offline re-grade — which has no judge — can
+    # PRESERVE such a step instead of silently demoting it back to the CAS tier.
+    judged: bool = False
 
 
 @dataclass(frozen=True)
@@ -790,7 +799,8 @@ def _tier_for(relation: Relation, method: Method, type_consistent: bool) -> Tier
 
 
 def ground_steps(states: Sequence, *, change_types: Optional[Sequence] = None,
-                 target=None, domain=None) -> StepGroundingReport:
+                 target=None, domain=None,
+                 allow_missing_change_types: bool = False) -> StepGroundingReport:
     """Rank an ordered chain of derivation states by step-to-step confidence.
 
     ``states``: sympy expressions or sympify-able strings (None marks a state
@@ -799,12 +809,33 @@ def ground_steps(states: Sequence, *, change_types: Optional[Sequence] = None,
     ``target``: optional expression the chain should reach (endpoint gate).
     ``domain`` is advisory (kept for signature symmetry with the parsers).
 
+    ``allow_missing_change_types`` acknowledges a deliberately claim-free grade.
+    Without it, a call that supplies NO usable claim logs a WARNING: absent
+    claims resolve to ``type_consistent=True`` for every pair, so a caller that
+    LOST the claims (re-grading a stored proof) silently erases every mislabel
+    downgrade rather than reproducing it (issue #542). The two cases are
+    indistinguishable from inside, so the caller has to say which it is.
+
+    "No usable claim" is judged on the CONTENT, not on which spelling of empty
+    arrived: ``None``, ``[]`` and ``[None, None]`` all grade identically, so
+    keying the warning off ``change_types is None`` would let the two commonest
+    ways of saying "I have none" through in silence. A PARTIAL list is not a
+    loss — that caller has real claims — so it does not warn.
+
     Pure and total: never raises, never blocks past the per-call timeout.
     """
     exprs = [_safe_coerce(s) for s in states]
     n_trans = max(len(exprs) - 1, 0)
     declared = list(change_types or [])
     declared += [None] * (n_trans - len(declared))
+    if n_trans and not allow_missing_change_types \
+            and not any(ct for ct in declared):
+        log.warning(
+            "ground_steps: no change_types for %d transition(s) — every pair "
+            "will grade type_consistent=True, so mislabel downgrades cannot be "
+            "reproduced. Pass the declared claims, or "
+            "allow_missing_change_types=True to acknowledge this (issue #542).",
+            n_trans)
 
     steps: list[StepConfidence] = []
     pairs: list[PairVerdict] = []

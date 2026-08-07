@@ -39,14 +39,16 @@ from .models import (
 log = logging.getLogger(__name__)
 
 
-# A stored proof's steps do not carry ``change_type`` (it is the model's declared
-# claim, consumed at build time and not persisted — see PR-2). Rebuilding needs
-# one per step, and a wrong guess is not free: ``_EXPECTED_RELATIONS`` marks a
-# mismatch type-inconsistent and downgrades the pair a notch. So instead of
-# blanket-defaulting to "rewrite", infer the claim from what the CAS actually
-# FOUND last time, recorded in ``confidence.relation``. This picks a label whose
-# expected set contains that relation, which cannot introduce a spurious
-# inconsistency.
+# Proofs built since #542 persist each step's ``change_type``, and a rebuild uses
+# that stored claim verbatim — it is the one the verdict was actually measured
+# against. Older files don't carry it, and a wrong guess is not free:
+# ``_EXPECTED_RELATIONS`` marks a mismatch type-inconsistent and downgrades the
+# pair a notch. So instead of blanket-defaulting to "rewrite", infer the claim
+# from what the CAS actually FOUND last time, recorded in ``confidence.relation``.
+# This picks a label whose expected set contains that relation, which cannot
+# introduce a spurious inconsistency. Note what it CANNOT do: a step whose stored
+# verdict IS a mislabel downgrade gets a consistent label back, quietly undoing
+# the downgrade — exactly the loss the stored claim now prevents.
 _RELATION_TO_CHANGE_TYPE = {
     "equivalent": "rewrite",
     "narrows": "solve",
@@ -56,7 +58,10 @@ _RELATION_TO_CHANGE_TYPE = {
 
 
 def _infer_change_type(step: dict) -> str:
-    """Best-effort ``change_type`` for a stored step (see module note)."""
+    """The stored ``change_type``, else a best-effort guess (see module note)."""
+    stored = step.get("change_type")
+    if stored:
+        return stored
     relation = (step.get("confidence") or {}).get("relation")
     return _RELATION_TO_CHANGE_TYPE.get(relation, "rewrite")
 

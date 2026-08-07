@@ -137,7 +137,8 @@
         "relation": "narrows",
         "reason": "treating $x$ as the unknown, every solution of this step solves the previous one (other symbols as generic parameters) — but the step was declared 'rewrite'",
         "type_consistent": false
-      }
+      },
+      "change_type": "rewrite"
     },
     {
       "index": 8,
