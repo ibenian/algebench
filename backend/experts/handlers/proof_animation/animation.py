@@ -104,12 +104,19 @@ def build(trajectory: ProofTrajectory, domain: str, title: str = "", *,
     the ``DOMAIN`` tier (issue #385). Omitting it (offline tooling, tests) leaves
     confidence pure-CAS — the rescue is strictly additive.
     """
-    # (operation, justification, latex) for every state, starting from the start.
-    chain: list[tuple[str, str, str]] = []
+    # (operation, justification, latex, change_type) for every state, starting
+    # from the start. ``change_type`` is the claim the model declared for the
+    # transition that REACHES this state — None for the start state, which has no
+    # incoming transition. It is persisted per state (issue #542) because it is
+    # the only input to ``type_consistent`` that is not otherwise recoverable
+    # from the stored file: without it a re-grade cannot tell "no declaration"
+    # from "declaration lost", and silently erases every mislabel downgrade.
+    chain: list[tuple[str, str, str, str | None]] = []
     if trajectory.start_latex:
-        chain.append((start_operation, start_justification, trajectory.start_latex))
+        chain.append((start_operation, start_justification,
+                      trajectory.start_latex, None))
     for s in trajectory.steps:
-        chain.append((s.operation, s.justification, s.expr_latex))
+        chain.append((s.operation, s.justification, s.expr_latex, s.change_type))
     if not chain:
         raise ValueError("trajectory has no states (need start_latex or steps)")
 
@@ -123,7 +130,7 @@ def build(trajectory: ProofTrajectory, domain: str, title: str = "", *,
     out = []
     terms: dict = {}   # node id -> {latex, name}: the derivation's named symbols
     state_exprs = []   # per-state sympy expr (None: not convertible) for grounding
-    for i, (operation, justification, ltx) in enumerate(chain):
+    for i, (operation, justification, ltx, change_type) in enumerate(chain):
         try:
             g = svc.latex_to_graph(ltx, domain=domain)
         except Exception:
@@ -155,14 +162,20 @@ def build(trajectory: ProofTrajectory, domain: str, title: str = "", *,
             except Exception:
                 annotated = plain = ltx
         state_exprs.append(expr)
-        out.append({
+        entry = {
             "index": i,
             "operation": operation,
             "justification": justification,
             "input_latex": ltx,
             "latex": annotated,
             "plain": plain,
-        })
+        }
+        # Only on a state with an incoming transition (state 0 is the given): a
+        # chain that leads with steps[0] instead of a start state has no
+        # transition into index 0, and ``_attach_confidence`` skips its claim.
+        if i and change_type:
+            entry["change_type"] = change_type
+        out.append(entry)
 
     overall = _attach_confidence(out, state_exprs, trajectory, svc, domain,
                                  judge=judge, lesson_context=lesson_context)
@@ -183,8 +196,9 @@ def build(trajectory: ProofTrajectory, domain: str, title: str = "", *,
 
 
 def _confidence_payload(tier: Tier, relation=None, reason: str = "",
-                        type_consistent: bool = True) -> dict:
-    return {
+                        type_consistent: bool = True,
+                        judged: bool = False) -> dict:
+    payload = {
         "tier": tier.value,
         "label": TIER_LABEL[tier],
         "icon": TIER_ICON[tier],
@@ -193,6 +207,12 @@ def _confidence_payload(tier: Tier, relation=None, reason: str = "",
         "reason": reason,
         "type_consistent": type_consistent,
     }
+    # Only when true, so the stored shape of a pure-CAS verdict is unchanged: an
+    # offline re-grade (no judge) must be able to tell a judged tier apart from a
+    # CAS one and preserve it rather than demote it (issue #542).
+    if judged:
+        payload["judged"] = True
+    return payload
 
 
 def _attach_confidence(out, state_exprs, trajectory, svc, domain,
@@ -238,7 +258,8 @@ def _attach_confidence(out, state_exprs, trajectory, svc, domain,
                 pass
         for entry, sc in zip(out, report.steps):
             entry["confidence"] = _confidence_payload(
-                sc.tier, sc.relation, sc.reason, sc.type_consistent)
+                sc.tier, sc.relation, sc.reason, sc.type_consistent,
+                judged=getattr(sc, "judged", False))
         overall = _confidence_payload(report.overall, reason=report.reason)
         overall["counts"] = report.counts
         overall["endpoint_reached"] = report.endpoint_reached

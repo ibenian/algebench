@@ -13,6 +13,13 @@
 const MAX_STEPS = 300;
 const MAX_TERMS = 2000;
 const MAX_STR = 50000;          // generous per-field cap (annotated latex is long)
+// The model's declared claim for the transition into a step. Carried through
+// (not dropped as an unknown key) because the stored proof is re-graded offline
+// later, and without the claim every mislabel downgrade silently disappears —
+// issue #542. Whitelisted against the DerivationStep enum: it is a grading input,
+// so an arbitrary string has no business reaching the store.
+const CHANGE_TYPES = new Set(
+  ["rewrite", "solve", "substitute", "approximate", "given"]);
 
 /** Coerce a value to a bounded string (defends against huge / non-string fields). */
 export function str(v) {
@@ -50,6 +57,9 @@ export function cleanConfidence(c) {
     if (c[k] != null) out[k] = str(c[k]);
   }
   if (typeof c.type_consistent === "boolean") out.type_consistent = c.type_consistent;
+  // Provenance: this tier came from the LM domain judge, not the CAS. Kept so an
+  // offline re-grade preserves the step instead of demoting it (#542).
+  if (c.judged === true) out.judged = true;
   if (typeof c.endpoint_reached === "boolean") out.endpoint_reached = c.endpoint_reached;
   if (c.counts && typeof c.counts === "object") {
     out.counts = {};
@@ -85,6 +95,7 @@ export function validateProofData(data) {
       plain: str(s.plain),
       confidence: cleanConfidence(s.confidence),
     };
+    if (CHANGE_TYPES.has(s.change_type)) out.change_type = s.change_type;
     // Optional per-step deeplink override (where an "Ask AI" on this step lands).
     const dl = cleanDeeplink(s.deeplink);
     if (dl) out.deeplink = dl;
