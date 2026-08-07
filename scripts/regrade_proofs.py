@@ -29,8 +29,8 @@ this tool refuses to guess where they are missing:
 target expression is not stored, so it cannot be re-checked.
 
 Usage:
-    ./run.sh scripts/regrade_proofs.py proofs/domains/**/*.json [--check]
-    ./run.sh scripts/regrade_proofs.py proofs/domains/**/*.json --backfill-claims
+    ./run.sh scripts/regrade_proofs.py proofs/domains/*/*.json [--check]
+    ./run.sh scripts/regrade_proofs.py proofs/domains/*/*.json --backfill-claims
 
 ``--check`` reports what would change and exits non-zero without writing.
 ``--backfill-claims`` recovers the declared ``change_type`` of MISLABELED steps

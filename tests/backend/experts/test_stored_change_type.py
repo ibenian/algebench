@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import logging
 
+import pytest
 import sympy as sp
 
 from backend.experts.handlers.proof_animation.animation import (
@@ -91,10 +92,17 @@ class _Step:
         self.change_type = change_type
 
 
-def test_missing_change_types_warns(caplog):
+@pytest.mark.parametrize("claims", [None, [], [None], [None, None]])
+def test_missing_change_types_warns(caplog, claims):
+    """Every spelling of "I have no claims" warns — not just ``None``.
+
+    ``[]`` and an all-``None`` list grade identically to ``None``, so keying the
+    guard rail off the sentinel would let the two commonest ways of saying it
+    through in silence.
+    """
     x = sp.Symbol("x")
     with caplog.at_level(logging.WARNING):
-        ground_steps([x + 1, x + 1])
+        ground_steps([x + 1, x + 1], change_types=claims)
     assert any("change_types" in r.getMessage() for r in caplog.records)
 
 
@@ -104,6 +112,8 @@ def test_supplied_or_acknowledged_change_types_do_not_warn(caplog):
         ground_steps([x + 1, x + 1], change_types=["rewrite"])
         ground_steps([x + 1, x + 1], allow_missing_change_types=True)
         ground_steps([x + 1])                  # no transitions, nothing to claim
+        # PARTIAL claims are not a loss — this caller has real ones.
+        ground_steps([x + 1, x + 1, x + 1], change_types=[None, "rewrite"])
     assert not caplog.records
 
 
