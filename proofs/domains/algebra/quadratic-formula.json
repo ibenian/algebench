@@ -1,6 +1,7 @@
 {
   "title": "Quadratic Roots",
   "domain": "algebra",
+  "deeplink": "/?builtin=quadratic-formula&view=math&panel=chat&pp=1&dock=1&sc=deriving-the-quadratic-formula&st=the-complete-picture&pf=quadratic-formula&ps=qed&nodes=__equals_1&pa=algebra/quadratic-formula",
   "steps": [
     {
       "index": 0,
@@ -167,7 +168,7 @@
     {
       "index": 9,
       "operation": "Simplify the square root on the right side.",
-      "justification": "The square root of a fraction can be written as the square root of the numerator divided by the square root of the denominator. $\\sqrt{4a^2} = 2a$.",
+      "justification": "The square root of a fraction can be written as the square root of the numerator divided by the square root of the denominator. Over the reals $\\sqrt{4a^{2}} = 2\\left|a\\right|$, and the outer $\\pm$ absorbs that sign, so the denominator can be written $2a$.",
       "input_latex": "x + \\frac{b}{2 \\cdot a} = \\pm\\frac{\\sqrt{b^{2} - 4 \\cdot a \\cdot c}}{2 \\cdot a}",
       "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=__add_2}{\\htmlData{n=x}{x} \\htmlData{n=__add_2__op1}{+} \\htmlData{n=__multiply_9}{\\frac{\\htmlData{n=b____multiply_9}{b}}{\\htmlData{n=__multiply_11}{\\htmlData{n=__num_12}{2} \\htmlData{n=__multiply_11__m1}{\\cdot} \\htmlData{n=a____multiply_11}{a}}}}} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__plus_minus_7}{\\htmlData{n=__plus_minus_7__op}{\\pm} \\htmlData{n=__multiply_12}{\\frac{\\htmlData{n=_r1___power_8}{\\sqrt{\\htmlData{n=__add_13}{\\htmlData{n=__power_13}{\\htmlData{n=b____power_13}{b}^{\\htmlData{n=__power_13__exp}{2}}} \\htmlData{n=__negation_9}{\\htmlData{n=__negation_9__op}{-} \\htmlData{n=__multiply_8}{\\htmlData{n=_r1___multiply_12}{\\htmlData{n=__num_13}{4} \\htmlData{n=_r1___multiply_12__m1}{\\cdot} \\htmlData{n=a___r1___multiply_12}{a}} \\htmlData{n=__multiply_8__m1}{\\cdot} \\htmlData{n=c}{c}}}}}}}{\\htmlData{n=__multiply_15}{\\htmlData{n=__num_18}{2} \\htmlData{n=__multiply_15__m1}{\\cdot} \\htmlData{n=a____multiply_15}{a}}}}}}",
       "plain": "x + \\frac{b}{2 \\cdot a} = \\pm \\frac{\\sqrt{b^{2} - 4 \\cdot a \\cdot c}}{2 \\cdot a}",
@@ -332,6 +333,5 @@
     "Solving linear equations",
     "Simplifying square roots",
     "Basic fraction arithmetic"
-  ],
-  "deeplink": "/?builtin=quadratic-formula&view=math&panel=chat&pp=1&dock=1&sc=deriving-the-quadratic-formula&st=the-complete-picture&pf=quadratic-formula&ps=qed&nodes=__equals_1&pa=algebra/quadratic-formula"
+  ]
 }
