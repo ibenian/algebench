@@ -856,8 +856,8 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 }
 
 .cam-btn.active {
-    background: color-mix(in srgb, var(--accent-color) 50%, transparent);
-    color: var(--text-color);
+    background: var(--accent-color);
+    color: var(--page-bg);   /* on-accent text; these float on the dark board */
     border-color: color-mix(in srgb, var(--accent-color) 60%, transparent);
 }
 
@@ -901,7 +901,7 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 .proj-btn:first-child { border-radius: 4px 0 0 4px; }
 .proj-btn:last-child { border-radius: 0 4px 4px 0; }
 .proj-btn:hover { background: color-mix(in srgb, var(--panel-bg) 50%, transparent); color: var(--text-color); }
-.proj-btn.active { background: color-mix(in srgb, var(--accent-color) 50%, transparent); color: var(--text-color); border-color: color-mix(in srgb, var(--accent-color) 60%, transparent); }
+.proj-btn.active { background: var(--accent-color); color: var(--page-bg); border-color: color-mix(in srgb, var(--accent-color) 60%, transparent); }  /* floats on the dark board — needs a solid fill, not a wash */
 
 /* Labels Overlay */
 #labels-container {
@@ -1753,7 +1753,7 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     padding: 0;
 }
 .sp-btn:hover { background: color-mix(in srgb, var(--panel-bg) 80%, transparent); color: var(--text-color); }
-.sp-btn:active { background: color-mix(in srgb, var(--accent-color) 80%, transparent); }
+.sp-btn:active { background: color-mix(in srgb, var(--accent-color) 80%, transparent); color: var(--page-bg); }
 
 .sp-toggle-row { justify-content: space-between; }
 .sp-select {
@@ -2023,6 +2023,7 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 }
 .nav-btn:active {
     background: color-mix(in srgb, var(--accent-color) 80%, transparent);
+    color: var(--page-bg);   /* on-accent text */
 }
 .nav-btn.playing {
     color: #44ff88;
@@ -2134,8 +2135,8 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 /* Selected (angle-lock ON): match the camera view button's active state. */
 #follow-angle-lock-toggle.active,
 #follow-angle-lock-toggle.active:hover {
-    color: var(--text-color);
-    background: color-mix(in srgb, var(--accent-color) 50%, transparent);
+    color: var(--page-bg);
+    background: var(--accent-color);
     border-color: color-mix(in srgb, var(--accent-color) 60%, transparent);
 }
 
@@ -3384,9 +3385,9 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
    ============================================================ */
 
 #proof-toggle-btn.active {
-    background: color-mix(in srgb, var(--accent-color) 85%, transparent);
+    background: var(--accent-color);
     border-color: color-mix(in srgb, var(--accent-color) 60%, transparent);
-    color: var(--text-color);
+    color: var(--page-bg);   /* on-accent text: ink-on-ochre in both themes */
 }
 
 #proof-panel {
@@ -3477,9 +3478,9 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     border-color: color-mix(in srgb, var(--accent-color) 30%, transparent);
 }
 .proof-ctrl-btn.active {
-    background: color-mix(in srgb, var(--accent-color) 88%, transparent);
+    background: var(--accent-color);
     border-color: color-mix(in srgb, var(--accent-color) 36%, transparent);
-    color: var(--text-color);
+    color: var(--page-bg);   /* on-accent text */
 }
 
 .proof-tab-content { display: none; overflow-y: auto; flex: 1; padding: 14px; }
@@ -3719,9 +3720,9 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     pointer-events: auto;
 }
 .proof-ask-btn:hover {
-    background: color-mix(in srgb, var(--accent-color) 70%, transparent);
+    background: var(--accent-color);
     border-color: color-mix(in srgb, var(--accent-color) 50%, transparent);
-    color: var(--text-color);
+    color: var(--page-bg);   /* on-accent text */
 }
 
 /* Highlight annotation (shown on click) */

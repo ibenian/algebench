@@ -22,7 +22,7 @@
 
   // EXPERIMENTAL palette variants (see tokens.css). ?palette=blueprint|sepia
   // applies and persists; ?palette=slate (the default) resets.
-  var PALETTES = ["blueprint", "sepia"];
+  var PALETTES = ["blueprint", "sepia", "plum", "cerulean", "graphite", "contrast"];
   if (p === "slate" || p === "default") {
     try { localStorage.removeItem("algebench-palette"); } catch (e) {}
     p = null;

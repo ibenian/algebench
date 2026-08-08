@@ -1001,11 +1001,13 @@ export function setupSettingsPanel() {
     // theme-init.js stamps data-palette pre-paint from the same storage key.
     const paletteSel = document.getElementById('palette-select');
     const PALETTE_KEY = 'algebench-palette';
+    // Must match theme-init.js PALETTES and the tokens.css variant blocks.
+    const PALETTES = ['blueprint', 'sepia', 'plum', 'cerulean', 'graphite', 'contrast'];
     if (paletteSel) {
         paletteSel.value = document.documentElement.dataset.palette || 'slate';
         paletteSel.addEventListener('change', () => {
             const v = paletteSel.value;
-            if (v === 'blueprint' || v === 'sepia') {
+            if (PALETTES.includes(v)) {
                 document.documentElement.dataset.palette = v;
                 try { localStorage.setItem(PALETTE_KEY, v); } catch (e) { /* blocked storage */ }
             } else {

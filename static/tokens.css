@@ -228,6 +228,173 @@ html[data-palette="sepia"][data-theme="light"] {
   --shadow-lg: 0 12px 32px rgba(46, 40, 32, 0.16);
 }
 
+/* plum — ink & orchid: aubergine charcoal / lavender-grey paper, wisteria
+   accent.  cerulean — observatory: deep space blue, cool paper, cerulean
+   accent.  graphite — pencil monochrome: pure greys, the accent is contrast
+   itself. */
+
+html[data-palette="plum"] {
+  --page-bg: #18151e;
+  --panel-bg: #211d29;
+  --text-color: #e7e3ee;
+  --muted-color: #9d94ac;
+  --title-fg: #ded8e8;
+  --border-color: rgba(231, 227, 238, 0.14);
+  --accent-color: #a98fd6;
+  --btn-bg: #2b2537;
+  --btn-border: rgba(231, 227, 238, 0.18);
+  --btn-hover: #332c41;
+  --err-fg: #c96b64;
+  --err-bg: #2a1917;
+  --err-border: #6e4036;
+  --chip-bg: rgba(169, 143, 214, 0.14);
+  --scrim: rgba(12, 10, 16, 0.55);
+  --canvas-bg: #100d15;
+}
+html[data-palette="plum"][data-theme="light"] {
+  --page-bg: #f3f1f6;
+  --panel-bg: #fbfafd;
+  --text-color: #292336;
+  --muted-color: #6e6880;
+  --title-fg: #332c45;
+  --border-color: rgba(41, 35, 54, 0.16);
+  --accent-color: #6d4fa8;
+  --btn-bg: #eae7f0;
+  --btn-border: rgba(41, 35, 54, 0.22);
+  --btn-hover: #e2dee9;
+  --err-fg: #a8503f;
+  --err-bg: #f9edea;
+  --err-border: #e4c3ba;
+  --chip-bg: rgba(109, 79, 168, 0.10);
+  --scrim: rgba(41, 35, 54, 0.35);
+  --canvas-bg: #2a2438;
+  --shadow-sm: 0 2px 0 rgba(41, 35, 54, 0.10);
+  --shadow-lg: 0 12px 32px rgba(41, 35, 54, 0.16);
+}
+
+html[data-palette="cerulean"] {
+  --page-bg: #101820;
+  --panel-bg: #17222c;
+  --text-color: #dde8f0;
+  --muted-color: #8aa0b0;
+  --title-fg: #d3e1ea;
+  --border-color: rgba(221, 232, 240, 0.14);
+  --accent-color: #57b1d4;
+  --btn-bg: #20303d;
+  --btn-border: rgba(221, 232, 240, 0.18);
+  --btn-hover: #273a4a;
+  --err-fg: #c9705f;
+  --err-bg: #291a16;
+  --err-border: #6e4036;
+  --chip-bg: rgba(87, 177, 212, 0.14);
+  --scrim: rgba(6, 11, 15, 0.55);
+  --canvas-bg: #0a1219;
+}
+html[data-palette="cerulean"][data-theme="light"] {
+  --page-bg: #eff4f7;
+  --panel-bg: #fafcfd;
+  --text-color: #1e3240;
+  --muted-color: #5a7181;
+  --title-fg: #274050;
+  --border-color: rgba(30, 50, 64, 0.16);
+  --accent-color: #22759c;
+  --btn-bg: #e4edf2;
+  --btn-border: rgba(30, 50, 64, 0.22);
+  --btn-hover: #dbe7ee;
+  --err-fg: #a8503f;
+  --err-bg: #f9edea;
+  --err-border: #e4c3ba;
+  --chip-bg: rgba(34, 117, 156, 0.10);
+  --scrim: rgba(30, 50, 64, 0.35);
+  --canvas-bg: #1c2f3d;
+  --shadow-sm: 0 2px 0 rgba(30, 50, 64, 0.10);
+  --shadow-lg: 0 12px 32px rgba(30, 50, 64, 0.16);
+}
+
+html[data-palette="graphite"] {
+  --page-bg: #161616;
+  --panel-bg: #1f1f1f;
+  --text-color: #e9e8e4;
+  --muted-color: #9c9b96;
+  --title-fg: #e0dfda;
+  --border-color: rgba(233, 232, 228, 0.14);
+  --accent-color: #cfcecb;
+  --btn-bg: #2a2a2a;
+  --btn-border: rgba(233, 232, 228, 0.18);
+  --btn-hover: #333333;
+  --err-fg: #c9705f;
+  --err-bg: #291a16;
+  --err-border: #6e4036;
+  --chip-bg: rgba(233, 232, 228, 0.10);
+  --scrim: rgba(0, 0, 0, 0.55);
+  --canvas-bg: #0e0e0e;
+}
+html[data-palette="graphite"][data-theme="light"] {
+  --page-bg: #f4f4f2;
+  --panel-bg: #fcfcfb;
+  --text-color: #232322;
+  --muted-color: #6d6d69;
+  --title-fg: #2c2c2a;
+  --border-color: rgba(35, 35, 34, 0.16);
+  --accent-color: #3a3a38;
+  --btn-bg: #ebebe8;
+  --btn-border: rgba(35, 35, 34, 0.22);
+  --btn-hover: #e3e3df;
+  --err-fg: #a8503f;
+  --err-bg: #f9edea;
+  --err-border: #e4c3ba;
+  --chip-bg: rgba(58, 58, 56, 0.08);
+  --scrim: rgba(35, 35, 34, 0.35);
+  --canvas-bg: #262626;
+  --shadow-sm: 0 2px 0 rgba(35, 35, 34, 0.10);
+  --shadow-lg: 0 12px 32px rgba(35, 35, 34, 0.16);
+}
+
+/* contrast — accessibility-first high contrast: true black/white surfaces,
+   strong borders, luminance-driven yellow/amber accent (readable under every
+   color-vision deficiency; distinction never relies on hue alone). */
+
+html[data-palette="contrast"] {
+  --page-bg: #000000;
+  --panel-bg: #0d0d0d;
+  --text-color: #ffffff;
+  --muted-color: #c9c9c9;
+  --title-fg: #ffffff;
+  --border-color: rgba(255, 255, 255, 0.38);
+  --accent-color: #ffd23e;
+  --btn-bg: #1a1a1a;
+  --btn-border: rgba(255, 255, 255, 0.55);
+  --btn-hover: #292929;
+  --err-fg: #ff9a80;
+  --err-bg: #38130a;
+  --err-border: #a85a44;
+  --chip-bg: rgba(255, 210, 62, 0.18);
+  --scrim: rgba(0, 0, 0, 0.72);
+  --canvas-bg: #000000;
+}
+html[data-palette="contrast"][data-theme="light"] {
+  --page-bg: #ffffff;
+  --panel-bg: #ffffff;
+  --text-color: #000000;
+  --muted-color: #3d3d3d;
+  --title-fg: #000000;
+  --border-color: rgba(0, 0, 0, 0.48);
+  /* Dark blue, not amber: amber's luminance collides with the error red
+     under deuteranopia; blue stays separable under every CVD type. */
+  --accent-color: #00509e;
+  --btn-bg: #f0f0f0;
+  --btn-border: rgba(0, 0, 0, 0.60);
+  --btn-hover: #e3e3e3;
+  --err-fg: #8a1f00;
+  --err-bg: #ffe9e2;
+  --err-border: #c07a5e;
+  --chip-bg: rgba(107, 68, 0, 0.12);
+  --scrim: rgba(0, 0, 0, 0.5);
+  --canvas-bg: #111111;
+  --shadow-sm: 0 2px 0 rgba(0, 0, 0, 0.25);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.30);
+}
+
 /* ── Global reduced-motion floor ──────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
