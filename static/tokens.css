@@ -140,6 +140,94 @@ html[data-theme="light"] {
   --canvas-bg: #26302a;
 }
 
+/* ── EXPERIMENTAL palette variants ────────────────────────────────────────
+   Re-map the palette tokens under html[data-palette] while keeping the
+   dark/light structure, type, spacing, and elevation identical. theme-init.js
+   stamps data-palette from ?palette=<name> (persisted in localStorage;
+   ?palette=slate resets to the default). Main app only for now.
+
+   blueprint — drafting room: Prussian blue slate, vellum paper, sanguine
+   pencil accent.  sepia — manuscript library: warm umber, cream paper,
+   viridian ink accent. */
+
+html[data-palette="blueprint"] {
+  --page-bg: #141a21;
+  --panel-bg: #1c2530;
+  --text-color: #dee6ed;
+  --muted-color: #8da0af;
+  --title-fg: #d5dee6;
+  --border-color: rgba(222, 230, 237, 0.14);
+  --accent-color: #dd8148;
+  --btn-bg: #253141;
+  --btn-border: rgba(222, 230, 237, 0.18);
+  --btn-hover: #2c3a4d;
+  --err-fg: #c96257;
+  --err-bg: #2b1a15;
+  --err-border: #6f4136;
+  --chip-bg: rgba(221, 129, 72, 0.12);
+  --scrim: rgba(8, 12, 17, 0.55);
+  --canvas-bg: #0e141b;
+}
+html[data-palette="blueprint"][data-theme="light"] {
+  --page-bg: #f0f3f5;
+  --panel-bg: #fafcfd;
+  --text-color: #243240;
+  --muted-color: #61707e;
+  --title-fg: #2b3b4a;
+  --border-color: rgba(36, 50, 64, 0.16);
+  --accent-color: #b25b2b;
+  --btn-bg: #e7ecf0;
+  --btn-border: rgba(36, 50, 64, 0.22);
+  --btn-hover: #dfe6ec;
+  --err-fg: #a34a38;
+  --err-bg: #f9ece9;
+  --err-border: #e4c1b7;
+  --chip-bg: rgba(178, 91, 43, 0.10);
+  --scrim: rgba(36, 50, 64, 0.35);
+  --canvas-bg: #223040;
+  --shadow-sm: 0 2px 0 rgba(36, 50, 64, 0.10);
+  --shadow-lg: 0 12px 32px rgba(36, 50, 64, 0.16);
+}
+
+html[data-palette="sepia"] {
+  --page-bg: #1d1915;
+  --panel-bg: #272119;
+  --text-color: #eae2d3;
+  --muted-color: #a4978a;
+  --title-fg: #e2d9c9;
+  --border-color: rgba(234, 226, 211, 0.14);
+  --accent-color: #55a68e;
+  --btn-bg: #322a20;
+  --btn-border: rgba(234, 226, 211, 0.18);
+  --btn-hover: #3a3126;
+  --err-fg: #c9705f;
+  --err-bg: #291a16;
+  --err-border: #6e4036;
+  --chip-bg: rgba(85, 166, 142, 0.12);
+  --scrim: rgba(16, 13, 10, 0.55);
+  --canvas-bg: #14110d;
+}
+html[data-palette="sepia"][data-theme="light"] {
+  --page-bg: #f5f1e8;
+  --panel-bg: #fcfaf4;
+  --text-color: #2e2820;
+  --muted-color: #6f675c;
+  --title-fg: #3a3227;
+  --border-color: rgba(46, 40, 32, 0.16);
+  --accent-color: #2e7a66;
+  --btn-bg: #ede8db;
+  --btn-border: rgba(46, 40, 32, 0.22);
+  --btn-hover: #e5dfd0;
+  --err-fg: #a8503f;
+  --err-bg: #f9ede8;
+  --err-border: #e4c3b7;
+  --chip-bg: rgba(46, 122, 102, 0.10);
+  --scrim: rgba(46, 40, 32, 0.35);
+  --canvas-bg: #2a2620;
+  --shadow-sm: 0 2px 0 rgba(46, 40, 32, 0.10);
+  --shadow-lg: 0 12px 32px rgba(46, 40, 32, 0.16);
+}
+
 /* ── Global reduced-motion floor ──────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
