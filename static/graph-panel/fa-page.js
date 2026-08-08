@@ -692,6 +692,11 @@ export class FunctionAnalysisManager {
             borderDash: s.main ? [] : [6, 4],
             pointRadius: 0,
             pointHitRadius: 6,
+            // Solid hover marker — the default inherits the 13%-alpha series
+            // fill and reads as a ghost ring.
+            pointHoverRadius: 4,
+            pointHoverBackgroundColor: SERIES_COLORS[si % SERIES_COLORS.length],
+            pointHoverBorderColor: SERIES_COLORS[si % SERIES_COLORS.length],
             fill: false,
             tension: 0.25,
             spanGaps: false,

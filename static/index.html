@@ -17,6 +17,10 @@
 <!-- mermaid.min.js is loaded lazily from graph-view.js the first time the
      Math tab is activated — see loadMermaidLib(). Keeps the ~700 KB gzipped
      bundle off the critical path for users who stay in the 3D view. -->
+<!-- Pre-paint theme stamp (classic script, must precede the stylesheets so
+     <html data-theme> is set by first paint — see theme-init.js). -->
+<script src="/theme-init.js"></script>
+<link rel="stylesheet" href="/tokens.css">
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/graph-panel/graph-panel.css">
 <link rel="stylesheet" href="/graph-panel/d3-semantic-graph.css">
@@ -52,6 +56,7 @@
                     <button class="toolbar-menu-item" type="button" data-format="mp4">MP4</button>
                 </div>
             </div>
+            <button class="tb-btn" id="btn-theme" title="Switch theme">&#9790;</button>
             <div id="explain-toggle" title="Toggle explanation panel (E)">&#9776;</div>
         </div>
     </div>
@@ -143,7 +148,6 @@
                             <line x1="8" y1="1" x2="8" y2="13"/>
                         </svg>
                     </button>
-                    <button id="graph-mode-toggle" class="graph-ctrl-btn" title="Switch between dark and light themes" aria-label="Theme mode">&#x263E;&#xFE0E;</button>
                     <label for="graph-theme-select" class="graph-ctrl-label">Theme</label>
                     <select id="graph-theme-select" class="graph-ctrl-select"></select>
                     <label for="graph-labels-select" class="graph-ctrl-label">Labels</label>

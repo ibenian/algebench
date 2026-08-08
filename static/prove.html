@@ -11,26 +11,13 @@
   <!-- marked: markdown for chat replies (rendered with KaTeX for math). Same
        version the main app uses. -->
   <script defer src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
+  <!-- Shared theme tokens (dark default + [data-theme="light"]) — both palettes
+       live in tokens.css now; this page only writes page-specific rules. -->
+  <link rel="stylesheet" href="/tokens.css?v=__APP_VERSION__">
   <link rel="stylesheet" href="/proof-animation/proof-animation.css?v=__APP_VERSION__">
   <style>
-    :root {
-      color-scheme: dark;
-      --panel-bg: #1a1a2e; --text-color: #e5e7eb; --muted-color: #9ca3af; --border-color: #2a2f45;
-      --page-bg: #12121c; --title-fg: #cbd5e1; --accent: #818cf8;
-      --btn-bg: #1f2937; --btn-fg: #e5e7eb; --btn-border: #374151; --btn-hover: #273449;
-      --err-fg: #fca5a5; --err-bg: #2a1414; --err-border: #7f1d1d;
-      --chip-bg: #1b2133;
-    }
-    html[data-theme="light"] {
-      color-scheme: light;
-      --panel-bg: #ffffff; --text-color: #1a1a2e; --muted-color: #6b7280; --border-color: #e5e7eb;
-      --page-bg: #f6f7fb; --title-fg: #4b5563; --accent: #4f46e5;
-      --btn-bg: #ffffff; --btn-fg: #374151; --btn-border: #cbd5e1; --btn-hover: #f1f5f9;
-      --err-fg: #b91c1c; --err-bg: #fef2f2; --err-border: #fecaca;
-      --chip-bg: #eef1f8;
-    }
     * { box-sizing: border-box; }
-    body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    body { font-family: var(--font-body);
            margin: 0; padding: 0; background: var(--page-bg); color: var(--text-color);
            transition: background-color .4s ease, color .4s ease; }
     html { scrollbar-width: thin; scrollbar-color: var(--border-color) transparent; }

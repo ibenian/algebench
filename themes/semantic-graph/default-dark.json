@@ -4,22 +4,22 @@
   "direction": "RL",
   "labelMode": "emoji",
   "nodeStyles": {
-    "scalar":   { "shape": "rect",    "fill": "#1b3a1e", "stroke": "#66bb6a", "color": "#c8e6c9" },
-    "vector":   { "shape": "rect",    "fill": "#1b3a1e", "stroke": "#66bb6a", "color": "#c8e6c9" },
-    "constant": { "shape": "rect",    "fill": "#1b3a1e", "stroke": "#66bb6a", "color": "#c8e6c9" },
-    "number":     { "shape": "rect",    "fill": "#1b3a1e", "stroke": "#66bb6a", "color": "#c8e6c9" },
-    "expression": { "shape": "rect",    "fill": "#1b3a1e", "stroke": "#66bb6a", "color": "#c8e6c9" },
-    "text":       { "shape": "rect",    "fill": "#1b3a1e", "stroke": "#66bb6a", "color": "#c8e6c9" },
-    "operator":   { "shape": "circle",  "fill": "#1a2740", "stroke": "#42a5f5", "color": "#bbdefb" },
-    "function":   { "shape": "hexagon", "fill": "#1a2740", "stroke": "#42a5f5", "color": "#bbdefb" },
-    "relation":   { "shape": "diamond", "fill": "#332a0b", "stroke": "#ffa726", "color": "#ffe0b2" },
-    "result":     { "shape": "stadium", "fill": "#332a0b", "stroke": "#ffa726", "color": "#ffe0b2" },
-    "annotation": { "shape": "circle",  "fill": "#131a2c", "stroke": "#4a5580", "color": "#b0bcd0" }
+    "scalar":   { "shape": "rect",    "fill": "#1d2b22", "stroke": "#7fae8a", "color": "#cfe3d3" },
+    "vector":   { "shape": "rect",    "fill": "#1d2b22", "stroke": "#7fae8a", "color": "#cfe3d3" },
+    "constant": { "shape": "rect",    "fill": "#1d2b22", "stroke": "#7fae8a", "color": "#cfe3d3" },
+    "number":     { "shape": "rect",    "fill": "#1d2b22", "stroke": "#7fae8a", "color": "#cfe3d3" },
+    "expression": { "shape": "rect",    "fill": "#1d2b22", "stroke": "#7fae8a", "color": "#cfe3d3" },
+    "text":       { "shape": "rect",    "fill": "#1d2b22", "stroke": "#7fae8a", "color": "#cfe3d3" },
+    "operator":   { "shape": "circle",  "fill": "#202a30", "stroke": "#7fa3b8", "color": "#d2e2ea" },
+    "function":   { "shape": "hexagon", "fill": "#202a30", "stroke": "#7fa3b8", "color": "#d2e2ea" },
+    "relation":   { "shape": "diamond", "fill": "#2e2617", "stroke": "#d9a441", "color": "#ecd9ae" },
+    "result":     { "shape": "stadium", "fill": "#2e2617", "stroke": "#d9a441", "color": "#ecd9ae" },
+    "annotation": { "shape": "circle",  "fill": "#232a26", "stroke": "#6f7d73", "color": "#b9c2bb" }
   },
   "edgeStyles": {
-    "direct":  { "stroke": "#ef5350", "strokeWidth": 3 },
-    "inverse": { "stroke": "#42a5f5", "strokeWidth": 1, "arrow": "-.->" },
-    "neutral": { "stroke": "#aaa",    "strokeWidth": 2 }
+    "direct":  { "stroke": "#c9705f", "strokeWidth": 3 },
+    "inverse": { "stroke": "#7fa3b8", "strokeWidth": 1, "arrow": "-.->" },
+    "neutral": { "stroke": "#97a29a", "strokeWidth": 2 }
   },
   "paintBySemantic": true,
   "fontSize": 15

@@ -396,6 +396,15 @@ function updateExprCamera() {
 
 // ----- MathBox Initialization -----
 
+/** Paint the WebGL clear color from the --canvas-bg token (a slate board in
+ *  both themes — see tokens.css). Called at init and on every theme toggle. */
+export function applyCanvasClearColor() {
+    if (!state.renderer) return;
+    const v = getComputedStyle(document.documentElement)
+        .getPropertyValue('--canvas-bg').trim();
+    state.renderer.setClearColor(new THREE.Color(v || '#0a0a0f'), 1);
+}
+
 export function initMathBox() {
     const container = document.getElementById('mathbox-container');
     const w = container.clientWidth;
@@ -415,7 +424,7 @@ export function initMathBox() {
     state.renderer = state.three.renderer;
     state.controls = state.three.controls;
 
-    state.renderer.setClearColor(new THREE.Color(0x0a0a0f), 1);
+    applyCanvasClearColor();
     state.renderer.setPixelRatio(window.devicePixelRatio);
     state.renderer.setSize(w, h);
 
