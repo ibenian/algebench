@@ -2185,7 +2185,9 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
         return JSONResponse(current_spec[0] if current_spec[0] else {})
 
     @fastapp.get("/shutdown")
-    async def shutdown():
+    async def shutdown(request: Request):
+        if request.client and request.client.host not in ("127.0.0.1", "::1"):
+            return Response(status_code=403, content=b"Forbidden")
         # Kill active TTS streams so uvicorn doesn't hang waiting for them
         for gen in list(_tts_active_gens):
             try:
