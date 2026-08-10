@@ -46,10 +46,10 @@ svg.d3-semantic-graph {
     filter: brightness(1.25) drop-shadow(0 0 6px rgba(109, 240, 142, 0.65));
 }
 .d3sg-node.d3sg-live-hover .d3sg-op-bg {
-    filter: brightness(1.25) drop-shadow(0 0 6px rgba(126, 168, 255, 0.65));
+    filter: brightness(1.25) drop-shadow(0 0 6px color-mix(in srgb, var(--accent-color) 65%, transparent));
 }
 .d3sg-node.d3sg-live-hover .d3sg-tile-bg {
-    filter: brightness(1.2) drop-shadow(0 0 6px rgba(126, 168, 255, 0.6));
+    filter: brightness(1.2) drop-shadow(0 0 6px color-mix(in srgb, var(--accent-color) 60%, transparent));
 }
 
 /* Collapsed tile — fill/stroke set by theme via inline attributes */
@@ -63,13 +63,13 @@ svg.d3-semantic-graph {
 
 /* Node labels */
 .d3sg-label {
-    fill: #dde6ff;
+    fill: var(--text-color);
     pointer-events: none;
     user-select: none;
 }
 
 .d3sg-katex-host {
-    color: #dde6ff;
+    color: var(--text-color);
     font-size: 17px;
     pointer-events: none;
     user-select: none;
@@ -81,16 +81,18 @@ svg.d3-semantic-graph {
 
 /* Edge labels */
 .d3sg-edge-label {
-    fill: #aebbd1;
+    fill: var(--muted-color, #68726b);
     font-size: 11px;
+    /* Knockout halo matches the panel surface so the label stays legible over
+       edge strokes — must follow the theme, never a hardcoded dark. */
     paint-order: stroke;
-    stroke: #131a2c;
+    stroke: var(--panel-bg, #fbfcf8);
     stroke-width: 4px;
     pointer-events: auto;   /* so the hand cursor shows over edge text */
     cursor: pointer;
 }
 .d3sg-role-label {
-    fill: #8fa8c8;
+    fill: var(--muted-color);
     font-size: 10px;
     font-style: italic;
 }
@@ -98,6 +100,22 @@ svg.d3-semantic-graph {
 .d3sg-role-rhs {
     stroke-dasharray: none;
 }
+
+/* Node hover buttons (chevron / chart / ƒ-analysis) — the JS draws them with
+   dark-mode presentation attributes; these rules override so they follow the
+   theme. Each keeps its own affordance hue: chevron = muted, chart = slate
+   blue, analysis = ochre accent. */
+.d3sg-chevron rect,
+.d3sg-chart-btn rect,
+.d3sg-fa-btn rect { fill: var(--btn-bg, #1a2440); }
+.d3sg-chevron rect { stroke: var(--muted-color, #a8c5ff); }
+.d3sg-chevron text { fill: var(--text-color, #a8c5ff); }
+.d3sg-chart-btn rect,
+.d3sg-chart-btn path { stroke: #7fa3b8; }
+html[data-theme="light"] .d3sg-chart-btn rect,
+html[data-theme="light"] .d3sg-chart-btn path { stroke: #46718a; }
+.d3sg-fa-btn rect,
+.d3sg-fa-btn path { stroke: var(--accent-color, #ffa726); }
 
 /* Chevron (collapse/expand button) */
 .d3sg-chevron {
@@ -118,7 +136,7 @@ svg.d3-semantic-graph {
     transition: stroke 0.12s ease-out, stroke-opacity 0.12s ease-out;
 }
 .d3sg-node:hover .d3sg-hit-target {
-    stroke: #7ea8ff !important;
+    stroke: var(--accent-color) !important;
     stroke-width: 1.5px !important;
     stroke-opacity: 0.4;
 }
@@ -129,11 +147,11 @@ svg.d3-semantic-graph {
     stroke-width: 2.5px;
 }
 .d3sg-node.active .d3sg-op-bg {
-    stroke: #7ea8ff;
+    stroke: var(--accent-color);
     stroke-width: 2.5px;
 }
 .d3sg-node.active .d3sg-tile-bg {
-    stroke: #7ea8ff;
+    stroke: var(--accent-color);
     stroke-width: 2.5px;
 }
 
@@ -144,17 +162,17 @@ svg.d3-semantic-graph {
     filter: drop-shadow(0 0 6px rgba(109, 240, 142, 0.5));
 }
 .d3sg-node.selected .d3sg-op-bg {
-    stroke: #7ea8ff;
+    stroke: var(--accent-color);
     stroke-width: 2.5px;
-    filter: drop-shadow(0 0 6px rgba(126, 168, 255, 0.5));
+    filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent-color) 50%, transparent));
 }
 .d3sg-node.selected .d3sg-tile-bg {
-    stroke: #7ea8ff;
+    stroke: var(--accent-color);
     stroke-width: 2.5px;
-    filter: drop-shadow(0 0 6px rgba(126, 168, 255, 0.5));
+    filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent-color) 50%, transparent));
 }
 .d3sg-node.selected .d3sg-hit-target {
-    stroke: #7ea8ff !important;
+    stroke: var(--accent-color) !important;
     stroke-width: 2px !important;
     stroke-opacity: 0.6;
 }
@@ -182,7 +200,6 @@ svg.d3-semantic-graph {
     font-size: 0.78rem;
     font-style: italic;
     line-height: 1.45;
-    backdrop-filter: blur(8px);
     opacity: 0.92;
     text-align: center;
     min-width: 0;
@@ -208,8 +225,8 @@ svg.d3-semantic-graph {
     height: 20px;
     border: none;
     border-radius: 50%;
-    background: rgba(100, 110, 255, 0.15);
-    color: rgba(160, 170, 255, 0.8);
+    background: color-mix(in srgb, var(--accent-color) 15%, transparent);
+    color: color-mix(in srgb, var(--accent-color) 80%, transparent);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -225,8 +242,8 @@ svg.d3-semantic-graph {
 }
 
 .d3sg-anno-ai-btn:hover {
-    background: rgba(100, 110, 255, 0.35);
-    color: #c0c8ff;
+    background: color-mix(in srgb, var(--accent-color) 35%, transparent);
+    color: var(--text-color);
 }
 
 /* Edge semantics legend — bottom-right corner of graph viewport.
@@ -240,15 +257,13 @@ svg.d3-semantic-graph {
     flex-direction: column;
     gap: 4px;
     padding: 8px 10px;
-    background: rgba(10, 12, 26, 0.75);
-    border: 1px solid rgba(110, 124, 180, 0.35);
+    background: color-mix(in srgb, var(--panel-bg) 75%, transparent);
+    border: 1px solid var(--border-color);
     border-radius: 6px;
     font-size: 0.72rem;
-    color: rgba(210, 218, 245, 0.92);
+    color: var(--text-color);
     letter-spacing: 0.02em;
     z-index: 2;
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
     pointer-events: none;
     user-select: none;
 }

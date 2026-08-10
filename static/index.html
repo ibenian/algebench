@@ -17,6 +17,10 @@
 <!-- mermaid.min.js is loaded lazily from graph-view.js the first time the
      Math tab is activated — see loadMermaidLib(). Keeps the ~700 KB gzipped
      bundle off the critical path for users who stay in the 3D view. -->
+<!-- Pre-paint theme stamp (classic script, must precede the stylesheets so
+     <html data-theme> is set by first paint — see theme-init.js). -->
+<script src="/theme-init.js"></script>
+<link rel="stylesheet" href="/tokens.css">
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/graph-panel/graph-panel.css">
 <link rel="stylesheet" href="/graph-panel/d3-semantic-graph.css">
@@ -52,6 +56,7 @@
                     <button class="toolbar-menu-item" type="button" data-format="mp4">MP4</button>
                 </div>
             </div>
+            <button class="tb-btn" id="btn-theme" title="Switch theme">&#9790;</button>
             <div id="explain-toggle" title="Toggle explanation panel (E)">&#9776;</div>
         </div>
     </div>
@@ -97,13 +102,16 @@
                 <div class="sp-row"><span>Vectors</span><span class="sp-ctrl"><button class="sp-btn" data-param="vectorWidth" data-dir="-">&minus;</button><span class="sp-val" id="val-vectorWidth">1.0</span><button class="sp-btn" data-param="vectorWidth" data-dir="+">+</button></span><span class="sp-ctrl"><button class="sp-btn" data-param="vectorOpacity" data-dir="-">&minus;</button><span class="sp-val" id="val-vectorOpacity">1.0</span><button class="sp-btn" data-param="vectorOpacity" data-dir="+">+</button></span></div>
                 <div class="sp-row"><span>Lines</span><span class="sp-ctrl"><button class="sp-btn" data-param="lineWidth" data-dir="-">&minus;</button><span class="sp-val" id="val-lineWidth">1.0</span><button class="sp-btn" data-param="lineWidth" data-dir="+">+</button></span><span class="sp-ctrl"><button class="sp-btn" data-param="lineOpacity" data-dir="-">&minus;</button><span class="sp-val" id="val-lineOpacity">1.0</span><button class="sp-btn" data-param="lineOpacity" data-dir="+">+</button></span></div>
                 <div class="sp-row"><span>Planes</span><span class="sp-ctrl"><button class="sp-btn" data-param="planeScale" data-dir="-">&minus;</button><span class="sp-val" id="val-planeScale">1.0</span><button class="sp-btn" data-param="planeScale" data-dir="+">+</button></span><span class="sp-ctrl"><button class="sp-btn" data-param="planeOpacity" data-dir="-">&minus;</button><span class="sp-val" id="val-planeOpacity">0.2</span><button class="sp-btn" data-param="planeOpacity" data-dir="+">+</button></span></div>
-                <div class="sp-row"><span>Caption</span><span class="sp-ctrl"><button class="sp-btn" data-param="captionScale" data-dir="-">&minus;</button><span class="sp-val" id="val-captionScale">1.0</span><button class="sp-btn" data-param="captionScale" data-dir="+">+</button></span><span class="sp-ctrl"><button class="sp-btn" data-param="overlayOpacity" data-dir="-">&minus;</button><span class="sp-val" id="val-overlayOpacity">0.7</span><button class="sp-btn" data-param="overlayOpacity" data-dir="+">+</button></span></div>
+                <div class="sp-row"><span>Caption</span><span class="sp-ctrl"><button class="sp-btn" data-param="captionScale" data-dir="-">&minus;</button><span class="sp-val" id="val-captionScale">1.0</span><button class="sp-btn" data-param="captionScale" data-dir="+">+</button></span><span class="sp-ctrl"><button class="sp-btn" data-param="overlayOpacity" data-dir="-">&minus;</button><span class="sp-val" id="val-overlayOpacity">1.0</span><button class="sp-btn" data-param="overlayOpacity" data-dir="+">+</button></span></div>
                 <div class="sp-row sp-toggle-row"><span id="declutter-mode-label">Overlap labels</span><select id="declutter-mode" class="sp-select" aria-labelledby="declutter-mode-label"><option value="shade">Shade behind</option><option value="position">Move apart</option><option value="off">Off</option></select></div>
                 <div class="sp-divider"></div>
                 <div class="sp-section-label">Light</div>
                 <div class="sp-light-row"><span>Azimuth</span><input type="range" id="light-az" min="0" max="360" value="35" class="sp-light-slider"><span class="sp-light-val" id="val-light-az">35°</span></div>
                 <div class="sp-light-row"><span>Elevation</span><input type="range" id="light-el" min="10" max="90" value="50" class="sp-light-slider"><span class="sp-light-val" id="val-light-el">50°</span></div>
                 <div class="sp-light-row"><span>Brightness</span><input type="range" id="light-int" min="10" max="250" value="80" class="sp-light-slider"><span class="sp-light-val" id="val-light-int">0.80</span></div>
+                <div class="sp-divider"></div>
+                <div class="sp-section-label">Theme</div>
+                <div class="sp-row sp-toggle-row"><span id="palette-select-label">Palette</span><select id="palette-select" class="sp-select" aria-labelledby="palette-select-label"><option value="slate">Slate (default)</option><option value="blueprint">Blueprint</option><option value="sepia">Sepia</option><option value="plum">Plum</option><option value="cerulean">Cerulean</option><option value="graphite">Graphite</option><option value="contrast">High Contrast</option></select></div>
                 <div class="sp-divider"></div>
                 <div class="sp-section-label">Controls</div>
                 <div class="sp-light-row"><span>Momentum</span><input type="range" id="momentum-slider" min="0" max="100" value="50" class="sp-light-slider"><span class="sp-light-val" id="val-momentum">50%</span></div>
@@ -143,7 +151,6 @@
                             <line x1="8" y1="1" x2="8" y2="13"/>
                         </svg>
                     </button>
-                    <button id="graph-mode-toggle" class="graph-ctrl-btn" title="Switch between dark and light themes" aria-label="Theme mode">&#x263E;&#xFE0E;</button>
                     <label for="graph-theme-select" class="graph-ctrl-label">Theme</label>
                     <select id="graph-theme-select" class="graph-ctrl-select"></select>
                     <label for="graph-labels-select" class="graph-ctrl-label">Labels</label>
@@ -210,7 +217,7 @@
                     </select>
                     <span id="ttsVolumeIcon" class="tts-volume-icon" title="Mute/Unmute"><svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M8 1.3L4.63 4H2.5A1.5 1.5 0 001 5.5v5A1.5 1.5 0 002.5 12h2.13L8 14.7V1.3zm3.74 2.04a4.5 4.5 0 010 9.32l-.55-.96a3.5 3.5 0 000-7.4l.55-.96zm-.93 2.17a2.5 2.5 0 010 4.98l-.55-.96a1.5 1.5 0 000-3.06l.55-.96z"/></svg></span>
                     <input type="range" id="ttsVolumeSlider" min="0" max="1" step="0.05" value="0.5" title="TTS Volume">
-                    <button id="proof-toggle-btn" class="chat-control-btn" title="Toggle proof panel" style="display:none">&#x1F4D0; Proof</button>
+                    <button id="proof-toggle-btn" class="chat-control-btn" title="Toggle proof panel" style="display:none"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px;margin-right:4px"><path d="M5 19L19 19L5 5Z"/><path d="M8.5 15.5l2 2"/></svg>Proof</button>
                 </div>
                 <!-- Proof panel (inside chat tab, above chat messages) -->
                 <div id="proof-panel" class="hidden">
@@ -221,7 +228,7 @@
                         </div>
                         <div id="proof-panel-controls">
                             <button id="proof-mode-toggle" class="proof-ctrl-btn" title="Toggle progressive/verbose view">Progressive</button>
-                            <button id="proof-sync-btn" class="proof-ctrl-btn active" title="Sync with scene steps">&#x21C4;</button>
+                            <button id="proof-sync-btn" class="proof-ctrl-btn active" title="Sync with scene steps"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:middle"><path d="M4 8h14"/><path d="M15 4.5L18.5 8L15 11.5"/><path d="M20 16H6"/><path d="M9 12.5L5.5 16L9 19.5"/></svg></button>
                         </div>
                     </div>
                     <div id="proof-tab-context" class="proof-tab-content active">

@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AlgeBench — Slate &amp; Graph Paper style tile</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@500;600&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;600&family=Instrument+Sans:wght@400;600&family=Schibsted+Grotesk:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { display: flex; min-height: 100vh; font-family: "Atkinson Hyperlegible", sans-serif; }
+
+  .theme {
+    flex: 1 1 50%; min-width: 380px; padding: 32px 28px 48px;
+    background-color: var(--page-bg);
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 24px 24px;
+    color: var(--text-color);
+  }
+  .dark {
+    --page-bg:#161c19; --panel-bg:#1e2621; --text-color:#e8e6da; --muted-color:#97a29a;
+    --accent-color:#d9a441; --err-fg:#c9705f; --border-color:rgba(232,230,218,.14);
+    --grid:rgba(232,230,218,.045);
+    --shadow-sm:0 2px 0 rgba(0,0,0,.35); --shadow-lg:0 12px 32px rgba(0,0,0,.45);
+    --btn-bg:#28322c; --chip-bg:rgba(217,164,65,.12);
+  }
+  .light {
+    --page-bg:#f3f4ee; --panel-bg:#fbfcf8; --text-color:#253029; --muted-color:#68726b;
+    --accent-color:#9a6d1c; --err-fg:#a8503f; --border-color:rgba(37,48,41,.16);
+    --grid:rgba(37,48,41,.05);
+    --shadow-sm:0 2px 0 rgba(37,48,41,.10); --shadow-lg:0 12px 32px rgba(37,48,41,.16);
+    --btn-bg:#eceee5; --chip-bg:rgba(154,109,28,.10);
+  }
+
+  .theme-label { font-family:"Zilla Slab", serif; font-size:11px; font-weight:600;
+    text-transform:uppercase; letter-spacing:.08em; color:var(--muted-color); margin-bottom:6px; }
+  h1 { font-family:"Zilla Slab", serif; font-size:26px; font-weight:600; margin-bottom:4px; }
+  .sub { color:var(--muted-color); font-size:14px; margin-bottom:24px; }
+
+  .swatches { display:flex; gap:8px; margin-bottom:24px; }
+  .sw { flex:1; border:1px solid var(--border-color); border-radius:4px; padding:6px;
+    font-family:"IBM Plex Mono", monospace; font-size:10px; }
+  .sw i { display:block; height:28px; border-radius:3px; margin-bottom:4px; border:1px solid var(--border-color); }
+
+  .panel { background:var(--panel-bg); border:1px solid var(--border-color);
+    border-radius:8px; padding:16px; margin-bottom:16px; }
+  .panel.raised { box-shadow:var(--shadow-sm); }
+  .panel.overlay { box-shadow:var(--shadow-lg); }
+  .panel-title { font-family:"Zilla Slab", serif; font-size:20px; font-weight:600;
+    display:inline-block; border-bottom:3px solid var(--accent-color);
+    padding-bottom:2px; margin-bottom:10px; }
+  .panel p { font-size:14px; line-height:1.55; }
+  .panel .muted { color:var(--muted-color); font-size:12.5px; margin-top:8px; }
+
+  .math { font-family:"IBM Plex Mono", monospace; font-size:15px; padding:12px;
+    border:1px solid var(--border-color); border-radius:4px; margin:10px 0;
+    color:var(--text-color); }
+  .math .op { color:var(--accent-color); }
+
+  .tabs { display:flex; gap:16px; border-bottom:1px solid var(--border-color);
+    margin-bottom:12px; font-size:12.5px; }
+  .tab { padding:6px 2px 8px; color:var(--muted-color); }
+  .tab.active { color:var(--text-color); border-bottom:3px solid var(--accent-color);
+    margin-bottom:-1px; font-weight:700; }
+
+  .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:16px; }
+  button { font-family:inherit; font-size:12.5px; font-weight:700; padding:7px 14px;
+    border-radius:4px; border:1px solid var(--border-color); background:var(--btn-bg);
+    color:var(--text-color); cursor:pointer; transition:transform 140ms cubic-bezier(.2,.7,.3,1); }
+  button:hover { transform:translateY(-1px); box-shadow:var(--shadow-sm); }
+  button.primary { background:var(--accent-color); border-color:transparent;
+    color:var(--page-bg); }
+  button.danger { background:transparent; color:var(--err-fg); border-color:var(--err-fg); }
+  button:focus-visible { outline:2px solid var(--accent-color); outline-offset:2px; }
+
+  .chip { font-size:11px; font-weight:700; padding:3px 10px; border-radius:999px;
+    background:var(--chip-bg); color:var(--accent-color); border:1px solid var(--accent-color); }
+  .chip.plain { color:var(--muted-color); border-color:var(--border-color); background:transparent; }
+
+  .msg { border-left:3px solid var(--accent-color); padding:8px 12px; font-size:14px;
+    background:var(--panel-bg); border-radius:0 8px 8px 0; margin-top:8px; }
+  .msg .who { font-family:"Zilla Slab", serif; font-size:11px; font-weight:600;
+    text-transform:uppercase; letter-spacing:.08em; color:var(--muted-color); }
+
+  .specimen { padding:10px 0; border-bottom:1px dashed var(--border-color); }
+  .specimen:last-child { border-bottom:0; }
+  .spec-name { font-family:"IBM Plex Mono", monospace; font-size:10px;
+    color:var(--accent-color); margin-bottom:4px; }
+  .spec-body { font-size:14px; line-height:1.55; margin-bottom:6px; }
+  .spec-ui { display:flex; gap:10px; align-items:center; }
+  .spec-label { font-size:11px; font-weight:600; letter-spacing:.06em; color:var(--muted-color); }
+  .specimen button { font-family:inherit; }
+</style>
+</head>
+<body>
+<template id="tile">
+  <div class="theme-label"></div>
+  <h1>Vector Projection</h1>
+  <div class="sub">Lesson 4 · Predict the result before revealing the derivation.</div>
+
+  <div class="swatches"></div>
+
+  <div class="tabs">
+    <div class="tab active">Derivation</div><div class="tab">Semantic graph</div><div class="tab">Chat</div>
+  </div>
+
+  <div class="panel raised">
+    <div class="panel-title">Step 3 — Substitute</div>
+    <p>Replace the dot product with its component form, then factor the scalar.</p>
+    <div class="math">proj<sub>b</sub>(a) <span class="op">=</span> (a·b / ‖b‖²) <span class="op">·</span> b</div>
+    <div class="muted">Grounded via CAS · residual 0</div>
+  </div>
+
+  <div class="row">
+    <button class="primary">Reveal step</button>
+    <button>Predict first</button>
+    <button class="danger">Reset</button>
+    <span class="chip">🥇 Grounded</span>
+    <span class="chip plain">tier 2 · verified</span>
+  </div>
+
+  <div class="msg"><div class="who">Coach</div>Before revealing — what happens to the ‖b‖² term when b is a unit vector?</div>
+
+  <div class="panel" style="margin-top:16px">
+    <div class="panel-title" style="font-size:16px">UI typeface candidates</div>
+    <div class="specimens"></div>
+  </div>
+</template>
+
+<template id="specimen">
+  <div class="specimen">
+    <div class="spec-name"></div>
+    <p class="spec-body">Substitute the component form, then factor the scalar out of the sum. 0123456789 · Illegal — l1I O0</p>
+    <div class="spec-ui">
+      <button>Predict first</button>
+      <span class="spec-label">STEP 3 OF 7 · GROUNDED VIA CAS</span>
+    </div>
+  </div>
+</template>
+
+<div class="theme dark" data-name="Dark — Slate Lecture"></div>
+<div class="theme light" data-name="Light — Graph Paper"></div>
+
+<script>
+  const palettes = {
+    dark: [["Slate","#161c19"],["Board","#1e2621"],["Chalk","#e8e6da"],["Dust","#97a29a"],["Ochre","#d9a441"],["Clay","#c9705f"]],
+    light:[["Paper","#f3f4ee"],["Card","#fbfcf8"],["Ink","#253029"],["Graphite","#68726b"],["Ochre","#9a6d1c"],["Clay","#a8503f"]],
+  };
+  const uiFonts = [
+    ["Atkinson Hyperlegible", "humanist, built for legibility (current brief)"],
+    ["Inter", "the neutral grotesque you asked about"],
+    ["Instrument Sans", "Inter-like proportions, subtly warmer"],
+    ["Schibsted Grotesk", "clean grotesque with a bit more personality"],
+  ];
+  document.querySelectorAll(".theme").forEach(el => {
+    el.appendChild(document.getElementById("tile").content.cloneNode(true));
+    el.querySelector(".theme-label").textContent = el.dataset.name;
+    const specs = el.querySelector(".specimens");
+    for (const [family, note] of uiFonts) {
+      const s = document.getElementById("specimen").content.cloneNode(true);
+      s.querySelector(".spec-name").textContent = `${family} — ${note}`;
+      s.querySelector(".specimen").style.fontFamily = `"${family}", sans-serif`;
+      specs.appendChild(s);
+    }
+    const sw = el.querySelector(".swatches");
+    for (const [name, hex] of palettes[el.classList.contains("dark") ? "dark" : "light"]) {
+      const d = document.createElement("div");
+      d.className = "sw";
+      d.innerHTML = `<i style="background:${hex}"></i>${name}<br>${hex}`;
+      sw.appendChild(d);
+    }
+  });
+</script>
+</body>
+</html>

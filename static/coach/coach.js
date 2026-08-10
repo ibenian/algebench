@@ -342,7 +342,14 @@ function buildButton() {
     btnEl.className = 'tb-btn';
     btnEl.id = 'btn-coach';
     btnEl.title = 'Quick guided tour';
-    btnEl.innerHTML = '\u{1F393} Tour<span class="coach-dot"></span>';
+    // Monochrome mortarboard (currentColor) — a full-color emoji would clash
+    // with the button's accent fill states.
+    btnEl.innerHTML =
+        '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" ' +
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ' +
+        'style="vertical-align:-2px;margin-right:4px">' +
+        '<path d="M2 9.5L12 5l10 4.5L12 14z"/><path d="M6.5 11.8V16c0 1.2 2.5 2.5 5.5 2.5s5.5-1.3 5.5-2.5v-4.2"/>' +
+        '</svg>Tour<span class="coach-dot"></span>';
     btnEl.addEventListener('click', () => {
         if (S.active) dismiss();
         else openTour();

@@ -104,6 +104,20 @@ const DEFAULT_NODE_STYLES = {
     annotation: { fill: '#2a2518', stroke: '#8d6e63', color: '#d7ccc8' },
 };
 
+// Light-mode counterparts — same hues, light fills + dark text. Picked when
+// the active theme declares ``mode: "light"`` so built-in fallbacks never
+// paint dark boxes onto a light canvas.
+const DEFAULT_NODE_STYLES_LIGHT = {
+    scalar:   { fill: '#e8f2e9', stroke: '#4c8a52', color: '#26492a' },
+    vector:   { fill: '#e8f2e9', stroke: '#4c8a52', color: '#26492a' },
+    constant: { fill: '#e8f2e9', stroke: '#4c8a52', color: '#26492a' },
+    number:   { fill: '#e8f2e9', stroke: '#4c8a52', color: '#26492a' },
+    relation: { fill: '#f1e7f3', stroke: '#8e4a9e', color: '#4c2456' },
+    expression: { fill: '#e8f2e9', stroke: '#4c8a52', color: '#26492a' },
+    text:       { fill: '#e8f2e9', stroke: '#4c8a52', color: '#26492a' },
+    annotation: { fill: '#f2ede6', stroke: '#7d675e', color: '#43352e' },
+};
+
 let _themeCache = Object.create(null);
 
 async function fetchTheme(name) {
@@ -241,6 +255,17 @@ const OPERATOR_KIND_STYLES = {
     set:        { fill: '#1a2a20', stroke: '#66bb6a', color: '#c8e6c9' },
     aggregate:  { fill: '#1d2540', stroke: '#5c6bc0', color: '#c5cae9' },
     quantum:    { fill: '#2d1530', stroke: '#ab47bc', color: '#e1bee7' },
+};
+
+// Light-mode per-kind tints (same hue mapping as above, inverted lightness).
+const OPERATOR_KIND_STYLES_LIGHT = {
+    arithmetic: { fill: '#e7eef4', stroke: '#3a7ca8', color: '#1c4562' },
+    function:   { fill: '#e3f0f5', stroke: '#1f89ad', color: '#10485c' },
+    comparison: { fill: '#ebe8f4', stroke: '#6a51b0', color: '#372a63' },
+    logical:    { fill: '#e2f1f3', stroke: '#1b9aab', color: '#0e4f58' },
+    set:        { fill: '#e9f2ea', stroke: '#4c8a52', color: '#26492a' },
+    aggregate:  { fill: '#e8eaf5', stroke: '#4f5da8', color: '#2a3260' },
+    quantum:    { fill: '#f1e7f3', stroke: '#8e4a9e', color: '#4c2456' },
 };
 
 export function operatorKind(node) {
@@ -584,8 +609,13 @@ export class D3SemanticGraphRenderer {
         const kind = isNode ? operatorKind(nodeOrType) : null;
         if (kind && ts && ts[kind]) return ts[kind];
         if (ts && ts[nodeType]) return ts[nodeType];
-        if (kind && OPERATOR_KIND_STYLES[kind]) return OPERATOR_KIND_STYLES[kind];
-        return DEFAULT_NODE_STYLES[nodeType] || DEFAULT_NODE_STYLES.scalar;
+        // Built-in fallbacks follow the theme's declared mode so a silent
+        // light theme never inherits dark tints (and vice versa).
+        const light = this._theme?.mode === 'light';
+        const kindStyles = light ? OPERATOR_KIND_STYLES_LIGHT : OPERATOR_KIND_STYLES;
+        const defaults = light ? DEFAULT_NODE_STYLES_LIGHT : DEFAULT_NODE_STYLES;
+        if (kind && kindStyles[kind]) return kindStyles[kind];
+        return defaults[nodeType] || defaults.scalar;
     }
 
     _edgeColor(semantic) {
