@@ -93,7 +93,7 @@ def canonical_bytes(data: dict) -> bytes:
 def _salt() -> bytes:
     # Deploy-provided secret; an obviously-insecure default keeps dev/CI working
     # without cloud — but warns loudly so operators know to set the env var.
-    val = os.environ.get("ALGEBENCH_PROOFS_SALT")
+    val = os.environ.get("ALGEBENCH_PROOFS_SALT") or None
     if val is None:
         warnings.warn(
             "ALGEBENCH_PROOFS_SALT is not set; using insecure dev default. "
