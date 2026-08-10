@@ -810,6 +810,8 @@ html, body {
     flex: 1;
     position: relative;
     overflow: hidden;
+    /* Breathing room so the rounded board reads as a card on the page. */
+    padding: 10px;
 }
 
 #viewport canvas { display: block; }
@@ -819,6 +821,8 @@ html, body {
     width: 100%;
     height: 100%;
     overflow: hidden;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
 }
 #mathbox-container { width: 100%; height: 100%; cursor: grab; }
 #mathbox-container canvas { cursor: grab; }
@@ -837,12 +841,13 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 }
 
 .cam-btn {
-    background: color-mix(in srgb, var(--panel-bg) 75%, transparent);
-    border: 1px solid var(--border-color);
-    color: var(--muted-color);
+    background: var(--btn-bg);
+    border: 1px solid var(--btn-border);
+    color: var(--btn-fg);
     padding: 5px 10px;
     border-radius: 4px;
     font-size: 0.72em;
+    font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
     text-align: center;
@@ -850,7 +855,7 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 }
 
 .cam-btn:hover {
-    background: color-mix(in srgb, var(--panel-bg) 50%, transparent);
+    background: var(--btn-hover);
     color: var(--text-color);
     border-color: color-mix(in srgb, var(--accent-color) 50%, transparent);
 }
@@ -862,26 +867,26 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 }
 
 .cam-btn-follow {
-    border-color: rgba(100, 200, 100, 0.35);
-    color: #90d090;
+    border-color: color-mix(in srgb, var(--accent-color) 45%, transparent);
+    color: var(--accent-color);
 }
 
 .cam-btn-follow:hover {
-    background: rgba(30, 100, 50, 0.5);
-    border-color: rgba(80, 200, 100, 0.6);
-    color: #c0ffc0;
+    background: var(--btn-hover);
+    border-color: color-mix(in srgb, var(--accent-color) 70%, transparent);
+    color: var(--accent-color);
 }
 
 .cam-btn-follow.active {
-    background: rgba(20, 120, 50, 0.6);
-    border-color: rgba(60, 220, 100, 0.7);
-    color: #c0ffc0;
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+    color: var(--page-bg);
     animation: followCamPulse 1.5s ease-in-out infinite;
 }
 
 @keyframes followCamPulse {
-    0%, 100% { border-color: rgba(60, 220, 100, 0.7); }
-    50% { border-color: rgba(60, 220, 100, 0.25); }
+    0%, 100% { border-color: var(--accent-color); }
+    50% { border-color: color-mix(in srgb, var(--accent-color) 25%, transparent); }
 }
 
 /* Projection Toggle */
@@ -890,17 +895,18 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     gap: 2px;
 }
 .proj-btn {
-    background: color-mix(in srgb, var(--panel-bg) 75%, transparent);
-    border: 1px solid var(--border-color);
-    color: var(--muted-color);
+    background: var(--btn-bg);
+    border: 1px solid var(--btn-border);
+    color: var(--btn-fg);
     padding: 4px 8px;
     font-size: 0.68em;
+    font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
 }
 .proj-btn:first-child { border-radius: 4px 0 0 4px; }
 .proj-btn:last-child { border-radius: 0 4px 4px 0; }
-.proj-btn:hover { background: color-mix(in srgb, var(--panel-bg) 50%, transparent); color: var(--text-color); }
+.proj-btn:hover { background: var(--btn-hover); color: var(--text-color); }
 .proj-btn.active { background: var(--accent-color); color: var(--page-bg); border-color: color-mix(in srgb, var(--accent-color) 60%, transparent); }  /* floats on the dark board — needs a solid fill, not a wash */
 
 /* Labels Overlay */
@@ -1669,10 +1675,11 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 #settings-toggle {
     cursor: pointer;
     font-size: 18px;
-    color: var(--muted-color);
+    color: var(--btn-fg);
     user-select: none;
     transition: color 0.2s, background 0.2s;
-    background: color-mix(in srgb, var(--panel-bg) 60%, transparent);
+    background: var(--btn-bg);
+    border: 1px solid var(--btn-border);
     border-radius: 6px;
     padding: 4px 7px;
     line-height: 0;
@@ -1996,7 +2003,7 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     display: flex;
     align-items: center;
     gap: 8px;
-    background: color-mix(in srgb, var(--panel-bg) 55%, transparent);
+    background: color-mix(in srgb, var(--panel-bg) 94%, transparent);
     border: 1px solid var(--border-color);
     border-radius: 10px;
     padding: 6px 10px;
@@ -2004,10 +2011,10 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 .nav-btn {
     width: 32px;
     height: 32px;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--btn-border);
     border-radius: 6px;
-    background: color-mix(in srgb, var(--panel-bg) 60%, transparent);
-    color: var(--muted-color);
+    background: var(--btn-bg);
+    color: var(--btn-fg);
     font-size: 18px;
     line-height: 1;
     cursor: pointer;
@@ -2017,7 +2024,7 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     transition: all 0.15s;
 }
 .nav-btn:hover {
-    background: color-mix(in srgb, var(--panel-bg) 80%, transparent);
+    background: var(--btn-hover);
     color: var(--text-color);
     border-color: color-mix(in srgb, var(--accent-color) 50%, transparent);
 }
@@ -2143,6 +2150,13 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 /* Panel Resize Handle */
 #panel-resize-handle {
     width: 4px;
+    /* Overlap the viewport's right gutter so the padding reads symmetric —
+       the 4px drag strip otherwise widens the right gap to 14px. Must be
+       positioned above the (relatively positioned) viewport it overlaps,
+       or the viewport swallows the pointer events. */
+    margin-left: -4px;
+    position: relative;
+    z-index: 20;
     cursor: col-resize;
     background: transparent;
     transition: background 0.15s;
@@ -2674,7 +2688,9 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     bottom: 56px;
     left: 16px;
     z-index: 65;
-    background: color-mix(in srgb, var(--panel-bg) 55%, transparent);
+    /* Near-opaque like the other on-board panels — the JS-driven idle fade
+       (element opacity) already provides the see-through effect. */
+    background: color-mix(in srgb, var(--panel-bg) 94%, transparent);
     border: 1px solid var(--border-color);
     border-radius: 10px;
     padding: 10px 14px;
@@ -2777,7 +2793,9 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     position: absolute;
     display: flex;
     flex-direction: column;
-    background: color-mix(in srgb, var(--panel-bg) 65%, transparent);
+    /* Near-opaque: these float over the dark board, and a translucent light
+       panel reads as grey smoke in light mode. */
+    background: color-mix(in srgb, var(--panel-bg) 94%, transparent);
     border: 1px solid var(--border-color);
     border-radius: 10px;
     color: var(--text-color);
@@ -2793,7 +2811,7 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 }
 /* The drawer stays a compact panel by default (an explicit resize width overrides). */
 .dockable-panel.dp-drawer { width: min(400px, 46vw); }
-.dockable-panel:hover { border-color: color-mix(in srgb, var(--accent-color) 50%, transparent); background: color-mix(in srgb, var(--panel-bg) 80%, transparent); }
+.dockable-panel:hover { border-color: color-mix(in srgb, var(--accent-color) 50%, transparent); background: var(--panel-bg); }
 .dockable-panel.dragging { opacity: 0.85 !important; }
 .dockable-panel.resizing { user-select: none; }
 
@@ -3993,7 +4011,9 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 /* Graph viewport (Mermaid host) */
 #graph-viewport {
     position: absolute;
-    inset: 0;
+    inset: 10px;               /* match the padded, rounded 3D board */
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
     background-color: var(--panel-bg);
     background-image: radial-gradient(ellipse at center, var(--panel-bg) 0%, var(--panel-bg) 100%);
     display: flex;
@@ -4222,6 +4242,7 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 #viewport.graph-docked {
     display: flex;
     flex-direction: row;
+    gap: 0;   /* the resize handle separates the two rounded panes */
 }
 
 #viewport.graph-docked #mathbox-wrapper {
