@@ -545,6 +545,7 @@ export class ProofAnimator {
       this.stage.removeEventListener("click", this._onStageClick);
       this._onStageMove = this._onStageLeave = this._onStageClick = null;
     }
+    if (this._errChipCleanup) this._errChipCleanup();
     if (this._askBtnHideTimer) { clearTimeout(this._askBtnHideTimer); this._askBtnHideTimer = null; }
     if (this._askBtnFadeTimer) { clearTimeout(this._askBtnFadeTimer); this._askBtnFadeTimer = null; }
     if (this._askBtnRelocateTimer) { clearTimeout(this._askBtnRelocateTimer); this._askBtnRelocateTimer = null; }
@@ -1660,12 +1661,15 @@ export class ProofAnimator {
   // short and wrappable: it is measured by _fit() alongside the real steps, so it
   // must never be the widest thing on the stage.
   //
-  // Clicking it opens the source it replaced, IN FULL and as real selectable
-  // text, with a copy button — that string is the whole diagnostic, so it has to
-  // be liftable, which a hover tooltip (CSS ::after, pointer-events: none) can
-  // never be. The panel is absolutely positioned, so however long the dump is it
+  // The source it replaced sits behind it IN FULL, as real selectable text with a
+  // copy button — that string is the whole diagnostic, so it has to be liftable,
+  // which a CSS tooltip (::after, pointer-events: none) can never be. Hovering
+  // shows it like any tooltip would; clicking PINS it so the pointer can travel
+  // in to select and copy without it vanishing. Clicking away (or Escape)
+  // unpins. The panel is absolutely positioned, so however long the dump is it
   // stays out of flow and out of every width/height measurement.
   _renderErrorChip(host, latex) {
+    if (this._errChipCleanup) this._errChipCleanup();   // a re-render replaced the old chip
     host.innerHTML = "";
     const src = String(latex || "");
 
@@ -1691,17 +1695,36 @@ export class ProofAnimator {
     pre.textContent = src;
     panel.append(copy, pre);
 
-    const toggle = (open) => {
-      panel.hidden = !open;
-      chip.setAttribute("aria-expanded", String(open));
+    let pinned = false;
+    const show = (on) => {
+      panel.hidden = !on;
+      chip.setAttribute("aria-expanded", String(on));
+      // The stage isolates its own stacking context (so insert ghosts can sit at
+      // z-index -1), and .pa-meta is a LATER positioned sibling — so no z-index
+      // inside the stage can lift the panel over the caption. Raise the stage
+      // itself for as long as the panel is up.
+      if (this.stage) this.stage.classList.toggle("pa-stage-lift", on);
+      if (on) document.addEventListener("pointerdown", onDocDown, true);
+      else document.removeEventListener("pointerdown", onDocDown, true);
     };
-    chip.addEventListener("click", () => toggle(panel.hidden));
+    const unpin = () => { pinned = false; show(false); };
+    const onDocDown = (e) => { if (!wrap.contains(e.target)) unpin(); };
+
+    chip.addEventListener("mouseenter", () => show(true));
+    // Hover-out closes only the unpinned (tooltip) state; the panel sits flush
+    // under the chip, so the pointer can reach it without crossing a gap.
+    wrap.addEventListener("mouseleave", () => { if (!pinned) show(false); });
+    chip.addEventListener("click", () => {
+      pinned = !pinned;
+      show(pinned);
+    });
     chip.addEventListener("keydown", (e) => {
       if (e.key !== "Enter" && e.key !== " ") return;
       e.preventDefault();                       // Space would scroll the page
-      toggle(panel.hidden);
+      pinned = !pinned;
+      show(pinned);
     });
-    wrap.addEventListener("keydown", (e) => { if (e.key === "Escape") toggle(false); });
+    wrap.addEventListener("keydown", (e) => { if (e.key === "Escape") unpin(); });
     copy.addEventListener("click", async () => {
       // The async clipboard API is refused in an embed without clipboard-write
       // (this widget ships as an iframe snippet) and over plain http. Falling
@@ -1712,6 +1735,15 @@ export class ProofAnimator {
       copy.textContent = ok ? "Copied" : "Press ⌘C";
       setTimeout(() => { copy.textContent = "Copy"; }, 1200);
     });
+
+    // Every path that opens the panel also registers a document listener, so the
+    // widget owns a teardown for it — otherwise a re-render or destroy() while
+    // the panel is up leaks a handler bound to a detached node.
+    this._errChipCleanup = () => {
+      document.removeEventListener("pointerdown", onDocDown, true);
+      if (this.stage) this.stage.classList.remove("pa-stage-lift");
+      this._errChipCleanup = null;
+    };
 
     wrap.append(chip, panel);
     host.appendChild(wrap);

@@ -133,13 +133,22 @@
 .pa-expr-error:hover { background: rgba(200, 80, 80, 0.22); }
 .pa-expr-error:focus-visible { outline: 2px solid var(--pa-accent); outline-offset: 2px; }
 
+/* The stage isolates its own stacking context (so insert ghosts can sit at
+   z-index -1), and .pa-meta is a LATER positioned sibling — so the caption paints
+   OVER anything inside the stage, whatever z-index it carries. The only fix is
+   to lift the stage itself, which _renderErrorChip does for as long as the
+   source panel is up. */
+.pa-stage.pa-stage-lift { z-index: 40; }
+
 /* The source panel the chip opens. ABSOLUTE on purpose: however long the dump
    is, it stays out of flow and out of _fit()'s and _capOverflow()'s
    measurements, so opening it can never re-shrink the derivation. Sizes are in
-   px, not em, so the panel stays readable at any stage scale. */
+   px, not em, so the panel stays readable at any stage scale. It sits FLUSH
+   under the chip (no gap) so the pointer can travel from the hovered chip into
+   the panel without crossing dead space and dismissing it. */
 .pa-expr-error-panel {
   position: absolute;
-  top: calc(100% + 7px);
+  top: 100%;
   left: 50%;
   transform: translateX(-50%);
   z-index: 30;

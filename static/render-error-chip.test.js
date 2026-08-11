@@ -18,11 +18,24 @@ class El {
         this.tagName = tag; this.children = []; this.className = '';
         this.textContent = ''; this.attrs = {}; this.hidden = false;
         this.listeners = {};
+        this.classList = {
+            names: new Set(),
+            toggle: (n, on) => { on ? this.classList.names.add(n) : this.classList.names.delete(n); },
+            remove: (n) => this.classList.names.delete(n),
+            has: (n) => this.classList.names.has(n),
+        };
     }
     setAttribute(name, value) { this.attrs[name] = String(value); }
     getAttribute(name) { return this.attrs[name] ?? null; }
     addEventListener(type, fn) { (this.listeners[type] ||= []).push(fn); }
+    removeEventListener(type, fn) {
+        this.listeners[type] = (this.listeners[type] || []).filter((f) => f !== fn);
+    }
     fire(type, ev = {}) { (this.listeners[type] || []).forEach((fn) => fn(ev)); }
+    contains(node) {
+        if (node === this) return true;
+        return this.children.some((c) => (c.contains ? c.contains(node) : false));
+    }
     set innerHTML(_v) { this.children = []; }
     get innerHTML() { return ''; }
     appendChild(c) { this.children.push(c); return c; }
@@ -37,7 +50,11 @@ class El {
         return null;
     }
 }
-globalThis.document = { createElement: (tag) => new El(tag) };
+
+// The document doubles as an event target: the chip registers an outside-click
+// listener there while the panel is up.
+const docEl = new El('#document');
+globalThis.document = Object.assign(docEl, { createElement: (tag) => new El(tag) });
 
 // A KaTeX stub: `fails` decides whether the render lands as a .katex-error span
 // (what throwOnError:false actually produces for unparseable input).
@@ -51,12 +68,15 @@ const katexStub = (fails) => ({
 });
 
 // The animator's constructor wants a live DOM; the render path only needs
-// `katex`, so drive it off a bare prototype instance.
-const renderInto = (latex, fails) => {
+// `katex` and `stage`, so drive it off a bare prototype instance.
+const render = (latex, fails) => {
     const animator = Object.create(ProofAnimator.prototype);
     animator.katex = katexStub(fails);
-    return animator._renderInto(new El('div'), latex);
+    animator.stage = new El('div');
+    const host = animator._renderInto(new El('div'), latex);
+    return { animator, host, stage: animator.stage };
 };
+const renderInto = (latex, fails) => render(latex, fails).host;
 
 const { ProofAnimator } = await import('./proof-animation/proof-animation.js');
 
@@ -83,18 +103,80 @@ test('the source panel starts closed and carries the failing source in full', ()
     assert.equal(host.querySelector('.pa-expr-error-src').textContent, BAD);
 });
 
-test('clicking the chip toggles the panel open and shut', () => {
+test('hovering shows the panel like a tooltip, leaving hides it', () => {
     const host = renderInto(BAD, true);
     const chip = host.querySelector('.pa-expr-error');
+    const wrap = host.querySelector('.pa-expr-error-wrap');
+    const panel = host.querySelector('.pa-expr-error-panel');
+
+    chip.fire('mouseenter');
+    assert.equal(panel.hidden, false, 'hover did not open it');
+    wrap.fire('mouseleave');
+    assert.equal(panel.hidden, true, 'unpinned panel should close on hover-out');
+});
+
+test('clicking pins the panel so hover-out no longer closes it', () => {
+    const host = renderInto(BAD, true);
+    const chip = host.querySelector('.pa-expr-error');
+    const wrap = host.querySelector('.pa-expr-error-wrap');
     const panel = host.querySelector('.pa-expr-error-panel');
 
     chip.fire('click');
     assert.equal(panel.hidden, false);
     assert.equal(chip.getAttribute('aria-expanded'), 'true');
+    // The whole reason to pin: the pointer has to leave the chip to reach the
+    // text, and the panel must survive that.
+    wrap.fire('mouseleave');
+    assert.equal(panel.hidden, false, 'pinned panel closed on hover-out');
 
     chip.fire('click');
     assert.equal(panel.hidden, true);
-    assert.equal(chip.getAttribute('aria-expanded'), 'false');
+});
+
+test('a click outside unpins and closes the panel', () => {
+    const host = renderInto(BAD, true);
+    const chip = host.querySelector('.pa-expr-error');
+    const wrap = host.querySelector('.pa-expr-error-wrap');
+    const panel = host.querySelector('.pa-expr-error-panel');
+
+    chip.fire('click');
+    assert.equal(panel.hidden, false);
+    document.fire('pointerdown', { target: new El('div') });     // elsewhere on the page
+    assert.equal(panel.hidden, true, 'outside click did not close it');
+
+    // ...and a click INSIDE the panel must not, or selecting the text would
+    // dismiss the thing you are selecting from.
+    chip.fire('click');
+    document.fire('pointerdown', { target: host.querySelector('.pa-expr-error-src') });
+    assert.equal(panel.hidden, false, 'clicking the source closed the panel');
+    assert.ok(wrap.contains(host.querySelector('.pa-expr-error-src')));
+});
+
+test('the stage is lifted only while the panel is up', () => {
+    // .pa-meta is a later positioned sibling, so the caption paints over
+    // anything inside the stage — the stage itself has to rise.
+    const { host, stage } = render(BAD, true);
+    const chip = host.querySelector('.pa-expr-error');
+
+    assert.equal(stage.classList.has('pa-stage-lift'), false);
+    chip.fire('click');
+    assert.equal(stage.classList.has('pa-stage-lift'), true);
+    chip.fire('click');
+    assert.equal(stage.classList.has('pa-stage-lift'), false);
+});
+
+test('a re-render tears down the previous chip listener and stage lift', () => {
+    const animator = Object.create(ProofAnimator.prototype);
+    animator.katex = katexStub(true);
+    animator.stage = new El('div');
+    const host = animator._renderInto(new El('div'), BAD);
+    host.querySelector('.pa-expr-error').fire('click');
+    const before = (document.listeners.pointerdown || []).length;
+
+    animator._renderInto(new El('div'), BAD);                    // relayout rebuilds the chip
+    assert.equal((document.listeners.pointerdown || []).length, before - 1,
+        'the detached chip left its document listener behind');
+    assert.equal(animator.stage.classList.has('pa-stage-lift'), false);
 });
 
 test('the copy button puts the whole source on the clipboard', async () => {
