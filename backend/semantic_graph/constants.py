@@ -53,6 +53,53 @@ _LATEX_FUNCS: tuple[str, ...] = tuple(sorted((
     "log", "ln", "exp", "det", "gcd", "deg", "arg",
 ), key=len, reverse=True))
 
+# LaTeX commands that are pure *structure* — delimiters, fractions, layout — with
+# no glyph of their own: each needs an argument or a matching partner to mean
+# anything, and unlike an accent (``\vec{A}``) or a font switch (``\mathrm{d}``)
+# there is no body underneath that a later pass can unwrap into a symbol.
+#
+# The preprocessor braces a bare differential ``d`` in front of these, because
+# SymPy's ``parse_latex`` otherwise fuses the command NAME onto the ``d``:
+# ``d\left(\rho\right)`` parses as ``dleft·ρ`` (issue #549).  Accents are
+# deliberately excluded — ``d\vec{A}`` MUST keep fusing, since the accent is
+# peeled to ``dA``, the surface differential of an area element.
+_STRUCTURAL_COMMANDS: frozenset[str] = frozenset({
+    # delimiters and their sizing forms
+    "left", "right", "middle",
+    "big", "Big", "bigg", "Bigg",
+    "bigl", "Bigl", "biggl", "Biggl",
+    "bigr", "Bigr", "biggr", "Biggr",
+    "bigm", "Bigm", "biggm", "Biggm",
+    # fractions, roots, binomials
+    "frac", "dfrac", "tfrac", "cfrac", "over", "atop", "above",
+    "binom", "dbinom", "tbinom", "choose", "sqrt", "root",
+    # environments, layout, and grouping
+    "begin", "end", "array", "matrix", "substack", "cases",
+    "limits", "nolimits", "displaystyle", "textstyle",
+    "scriptstyle", "scriptscriptstyle",
+    "mathop", "mathbin", "mathrel", "mathopen", "mathclose", "mathpunct",
+    "phantom", "hphantom", "vphantom", "smash", "raisebox", "rule",
+    "overbrace", "underbrace", "overset", "underset", "stackrel", "not",
+    "boxed", "colorbox", "fcolorbox", "color", "textcolor",
+})
+
+# Commands that can never stand alone as a symbol's rendered form: the structural
+# set above, plus the wrappers whose meaning lives in a body they were given
+# (accents, font switches, ``\text``, HTML escapes).  ``_extract_latex_commands``
+# keeps these out of the symbol→LaTeX map, so no symbol can be rendered back AS
+# one — the step that turned a stray ``dleft`` into ``\mathrm{d}\left``, a
+# delimiter-less ``\left`` that KaTeX refuses to parse (issue #549).
+#
+# Non-glyph is the criterion, so ``\cdot``/``\times``/``\infty`` are absent (they
+# render fine alone) and so are the function names above (``\ln`` is looked up
+# through the same map).
+_NON_GLYPH_COMMANDS: frozenset[str] = _STRUCTURAL_COMMANDS | frozenset({
+    "text", "textbf", "textit", "textrm", "textsf", "texttt", "mbox",
+    "html", "htmlData", "htmlClass", "htmlId", "htmlStyle",
+    *_ACCENT_COMMANDS,
+    *_DOT_ACCENT_ORDERS,
+})
+
 # ---------------------------------------------------------------------------
 # Equation-chain / statement-splitting constants (from server.py)
 # ---------------------------------------------------------------------------

@@ -109,6 +109,26 @@
 .pa-stage > .pa-expr .katex-display { margin: 0; text-align: left; }
 .pa-stage > .pa-expr .katex-display > .katex { text-align: left; }
 
+/* Stand-in for a step KaTeX could not parse (see _renderErrorChip). The width
+   cap and wrapping are the point: _fit() scales the whole derivation to the
+   WIDEST step, so an unbounded fallback shrinks every good step to nothing. */
+.pa-expr-error {
+  display: inline-block;
+  max-width: 22em;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-size: 0.62em;
+  line-height: 1.35;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(214, 120, 120, 0.55);
+  background: rgba(200, 80, 80, 0.14);
+  /* Text stays on the theme's own foreground — the widget renders on a light or
+     a dark card — and the red tint plus the ⚠ carry the error signal. */
+  color: var(--pa-fg);
+  cursor: help;
+}
+
 /* Animated tokens must be inline-block — CSS transforms are IGNORED on
    display:inline elements (KaTeX renders tokens inline), so without this the
    translate/scale has no visual effect. baseline keeps vertical alignment. */

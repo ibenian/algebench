@@ -1645,7 +1645,27 @@ export class ProofAnimator {
       strict: false,
       trust: (ctx) => ctx.command === "\\htmlData",
     });
+    // throwOnError:false renders an unparseable step as ONE .katex-error span
+    // holding the raw source. For a decorated step that source is thousands of
+    // \htmlData characters on a single unwrapped line, so _fit()'s nowrap probe
+    // reads it as the widest "step" and scales EVERY other step down to
+    // illegibility — one bad step blanking the whole derivation (issue #549).
+    // Swap it for a bounded chip: the failure stays visible and the source stays
+    // inspectable (it moves to the chip's title), but its width stops mattering.
+    if (host.querySelector(".katex-error")) this._renderErrorChip(host, latex);
     return host;
+  }
+
+  // Compact stand-in for a step whose LaTeX KaTeX could not parse. Deliberately
+  // short and wrappable: it is measured by _fit() alongside the real steps, so
+  // it must never be the widest thing on the stage.
+  _renderErrorChip(host, latex) {
+    host.innerHTML = "";
+    const chip = document.createElement("span");
+    chip.className = "pa-expr-error";
+    chip.textContent = "⚠ step could not be rendered";
+    chip.title = String(latex || "");
+    host.appendChild(chip);
   }
 
   // ── Stacked (accordion) mode ────────────────────────────────────────────────
