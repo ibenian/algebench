@@ -14,11 +14,11 @@
     "/labels.js": "data:text/javascript,export function makeAiAskButton(){return document.createElement('span')}",
     "/expr.js": "data:text/javascript,const m=math.create(math.all);m.import({binomial:(n,k)=>m.combinations(n,k),erfc:x=>1-m.erf(x),beta:(a,b)=>m.gamma(a)*m.gamma(b)/m.gamma(a%2Bb),conjugate:x=>m.conj(x)});export function compileExpr(s){return m.compile(s)}export function evalExpr(c,t,opts){const scope=opts%26%26opts.extraScope?{...opts.extraScope}:{};return c.evaluate(scope)}",
     "/proof-animation/dock-seq.js": "data:text/javascript,let n=0;export const nextDockSeq=()=>%2B%2Bn",
-    "/graph-panel/term-resolve.js": "./term-resolve.js?v=1785816320"
+    "/graph-panel/term-resolve.js": "./term-resolve.js?v=1786487157"
   }
 }</script>
 <script>
-  window.__SG_REPORT_THEME__ = {"name": "default-dark", "mode": "dark", "direction": "RL", "labelMode": "emoji", "nodeStyles": {"scalar": {"shape": "rect", "fill": "#1b3a1e", "stroke": "#66bb6a", "color": "#c8e6c9"}, "vector": {"shape": "rect", "fill": "#1b3a1e", "stroke": "#66bb6a", "color": "#c8e6c9"}, "constant": {"shape": "rect", "fill": "#1b3a1e", "stroke": "#66bb6a", "color": "#c8e6c9"}, "number": {"shape": "rect", "fill": "#1b3a1e", "stroke": "#66bb6a", "color": "#c8e6c9"}, "expression": {"shape": "rect", "fill": "#1b3a1e", "stroke": "#66bb6a", "color": "#c8e6c9"}, "text": {"shape": "rect", "fill": "#1b3a1e", "stroke": "#66bb6a", "color": "#c8e6c9"}, "operator": {"shape": "circle", "fill": "#1a2740", "stroke": "#42a5f5", "color": "#bbdefb"}, "function": {"shape": "hexagon", "fill": "#1a2740", "stroke": "#42a5f5", "color": "#bbdefb"}, "relation": {"shape": "diamond", "fill": "#332a0b", "stroke": "#ffa726", "color": "#ffe0b2"}, "result": {"shape": "stadium", "fill": "#332a0b", "stroke": "#ffa726", "color": "#ffe0b2"}, "annotation": {"shape": "circle", "fill": "#131a2c", "stroke": "#4a5580", "color": "#b0bcd0"}}, "edgeStyles": {"direct": {"stroke": "#ef5350", "strokeWidth": 3}, "inverse": {"stroke": "#42a5f5", "strokeWidth": 1, "arrow": "-.->"}, "neutral": {"stroke": "#aaa", "strokeWidth": 2}}, "paintBySemantic": true, "fontSize": 15};
+  window.__SG_REPORT_THEME__ = {"name": "default-dark", "mode": "dark", "direction": "RL", "labelMode": "emoji", "nodeStyles": {"scalar": {"shape": "rect", "fill": "#1d2b22", "stroke": "#7fae8a", "color": "#cfe3d3"}, "vector": {"shape": "rect", "fill": "#1d2b22", "stroke": "#7fae8a", "color": "#cfe3d3"}, "constant": {"shape": "rect", "fill": "#1d2b22", "stroke": "#7fae8a", "color": "#cfe3d3"}, "number": {"shape": "rect", "fill": "#1d2b22", "stroke": "#7fae8a", "color": "#cfe3d3"}, "expression": {"shape": "rect", "fill": "#1d2b22", "stroke": "#7fae8a", "color": "#cfe3d3"}, "text": {"shape": "rect", "fill": "#1d2b22", "stroke": "#7fae8a", "color": "#cfe3d3"}, "operator": {"shape": "circle", "fill": "#202a30", "stroke": "#7fa3b8", "color": "#d2e2ea"}, "function": {"shape": "hexagon", "fill": "#202a30", "stroke": "#7fa3b8", "color": "#d2e2ea"}, "relation": {"shape": "diamond", "fill": "#2e2617", "stroke": "#d9a441", "color": "#ecd9ae"}, "result": {"shape": "stadium", "fill": "#2e2617", "stroke": "#d9a441", "color": "#ecd9ae"}, "annotation": {"shape": "circle", "fill": "#232a26", "stroke": "#6f7d73", "color": "#b9c2bb"}}, "edgeStyles": {"direct": {"stroke": "#c9705f", "strokeWidth": 3}, "inverse": {"stroke": "#7fa3b8", "strokeWidth": 1, "arrow": "-.->"}, "neutral": {"stroke": "#97a29a", "strokeWidth": 2}}, "paintBySemantic": true, "fontSize": 15};
 </script>
 <script type="module">
   import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
@@ -135,23 +135,34 @@
   }
 </script>
 <style>
+  /* App design tokens — the embedded D3/mermaid CSS reads these vars just
+     like it does inside the app's graph panel. */
+  :root {
+    --page-bg: #161c19;
+    --panel-bg: #1e2621;
+    --text-color: #e8e6da;
+    --muted-color: #97a29a;
+    --border-color: #343d37;
+    --accent-color: #d9a441;
+    --math-fg: #e8e6da;
+  }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb {
-    background: #30363d;
+    background: #343d37;
     border-radius: 3px;
   }
-  ::-webkit-scrollbar-thumb:hover { background: #8b949e; }
+  ::-webkit-scrollbar-thumb:hover { background: #97a29a; }
   ::-webkit-scrollbar-corner { background: transparent; }
   * {
     scrollbar-width: thin;
-    scrollbar-color: #30363d transparent;
+    scrollbar-color: #343d37 transparent;
   }
   body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: #0d1117;
-    color: #e6edf3;
+    background: #161c19;
+    color: #e8e6da;
     padding: 2rem;
   }
   h1 {
@@ -160,16 +171,16 @@
   }
   .report-meta {
     font-size: 0.8rem;
-    color: #8b949e;
+    color: #97a29a;
     margin-bottom: 2rem;
   }
   .section-title {
     font-size: 1.1rem;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: #8b949e;
+    color: #97a29a;
     margin: 2rem 0 1rem 0;
-    border-bottom: 1px solid #30363d;
+    border-bottom: 1px solid #343d37;
     padding-bottom: 0.5rem;
   }
   .row {
@@ -177,8 +188,8 @@
     grid-template-columns: 1fr 2fr auto;
     gap: 1rem;
     align-items: start;
-    background: #161b22;
-    border: 1px solid #30363d;
+    background: #1e2621;
+    border: 1px solid #343d37;
     border-radius: 8px;
     padding: 1rem 1.2rem;
     margin-bottom: 0.75rem;
@@ -187,7 +198,7 @@
   .row-id {
     font-family: monospace;
     font-size: 0.7rem;
-    color: #8b949e;
+    color: #97a29a;
     margin-bottom: 0.3rem;
   }
   .row-latex {
@@ -219,9 +230,9 @@
   .row-toggle,
   .row-toggle-d3 {
     background: none;
-    border: 1px solid #30363d;
+    border: 1px solid #343d37;
     border-radius: 4px;
-    color: #8b949e;
+    color: #97a29a;
     font-family: monospace;
     font-size: 0.75rem;
     padding: 0.2rem 0.5rem;
@@ -230,14 +241,14 @@
   }
   .row-toggle:hover,
   .row-toggle-d3:hover {
-    color: #e6edf3;
-    border-color: #e6edf3;
+    color: #e8e6da;
+    border-color: #e8e6da;
   }
   .row-panel {
     display: none;
     grid-column: 1 / -1;
-    background: #0d1117;
-    border: 1px solid #30363d;
+    background: #161c19;
+    border: 1px solid #343d37;
     border-radius: 6px;
     padding: 0.8rem;
     font-family: monospace;
@@ -253,20 +264,20 @@
   }
   .row-error {
     grid-column: 2 / 3;
-    background: #2d1b1b;
-    border: 1px solid #6b2020;
+    background: #291a16;
+    border: 1px solid #6e4036;
     border-radius: 6px;
     padding: 0.5rem 0.8rem;
     font-family: monospace;
     font-size: 0.75rem;
-    color: #f87171;
+    color: #c9705f;
     white-space: pre-wrap;
   }
   .summary {
     margin-top: 2rem;
     padding: 1rem;
-    background: #161b22;
-    border: 1px solid #30363d;
+    background: #1e2621;
+    border: 1px solid #343d37;
     border-radius: 8px;
     font-size: 0.85rem;
   }
@@ -314,7 +325,7 @@
     justify-content: space-between;
     position: sticky;
     top: 0;
-    background: #161b22;
+    background: #1e2621;
     padding: 0.2rem 0;
     z-index: 1;
     margin-bottom: 0.3rem;
@@ -323,30 +334,30 @@
     font-size: 0.65rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: #8b949e;
+    color: #97a29a;
   }
   .row-copy-btn {
     background: none;
-    border: 1px solid #30363d;
+    border: 1px solid #343d37;
     border-radius: 3px;
-    color: #8b949e;
+    color: #97a29a;
     font-size: 0.6rem;
     padding: 1px 5px;
     cursor: pointer;
     line-height: 1.3;
   }
   .row-copy-btn:hover {
-    color: #e6edf3;
-    border-color: #e6edf3;
+    color: #e8e6da;
+    border-color: #e8e6da;
   }
   .row-copy-btn.copied {
     color: #66bb6a;
     border-color: #66bb6a;
   }
   .row-toggle.active {
-    color: #e6edf3;
-    border-color: #e6edf3;
-    background: #0d1117;
+    color: #e8e6da;
+    border-color: #e8e6da;
+    background: #161c19;
   }
   .row-panel.row-d3 {
     position: relative;
@@ -365,7 +376,7 @@
     align-items: center;
     justify-content: center;
     height: 100%;
-    color: #8b949e;
+    color: #97a29a;
     font-size: 0.85rem;
   }
   /* D3 Semantic Graph Renderer — dark theme styles */
@@ -416,10 +427,10 @@ svg.d3-semantic-graph {
     filter: brightness(1.25) drop-shadow(0 0 6px rgba(109, 240, 142, 0.65));
 }
 .d3sg-node.d3sg-live-hover .d3sg-op-bg {
-    filter: brightness(1.25) drop-shadow(0 0 6px rgba(126, 168, 255, 0.65));
+    filter: brightness(1.25) drop-shadow(0 0 6px color-mix(in srgb, var(--accent-color) 65%, transparent));
 }
 .d3sg-node.d3sg-live-hover .d3sg-tile-bg {
-    filter: brightness(1.2) drop-shadow(0 0 6px rgba(126, 168, 255, 0.6));
+    filter: brightness(1.2) drop-shadow(0 0 6px color-mix(in srgb, var(--accent-color) 60%, transparent));
 }
 
 /* Collapsed tile — fill/stroke set by theme via inline attributes */
@@ -433,13 +444,13 @@ svg.d3-semantic-graph {
 
 /* Node labels */
 .d3sg-label {
-    fill: #dde6ff;
+    fill: var(--text-color);
     pointer-events: none;
     user-select: none;
 }
 
 .d3sg-katex-host {
-    color: #dde6ff;
+    color: var(--text-color);
     font-size: 17px;
     pointer-events: none;
     user-select: none;
@@ -451,16 +462,18 @@ svg.d3-semantic-graph {
 
 /* Edge labels */
 .d3sg-edge-label {
-    fill: #aebbd1;
+    fill: var(--muted-color, #68726b);
     font-size: 11px;
+    /* Knockout halo matches the panel surface so the label stays legible over
+       edge strokes — must follow the theme, never a hardcoded dark. */
     paint-order: stroke;
-    stroke: #131a2c;
+    stroke: var(--panel-bg, #fbfcf8);
     stroke-width: 4px;
     pointer-events: auto;   /* so the hand cursor shows over edge text */
     cursor: pointer;
 }
 .d3sg-role-label {
-    fill: #8fa8c8;
+    fill: var(--muted-color);
     font-size: 10px;
     font-style: italic;
 }
@@ -468,6 +481,22 @@ svg.d3-semantic-graph {
 .d3sg-role-rhs {
     stroke-dasharray: none;
 }
+
+/* Node hover buttons (chevron / chart / ƒ-analysis) — the JS draws them with
+   dark-mode presentation attributes; these rules override so they follow the
+   theme. Each keeps its own affordance hue: chevron = muted, chart = slate
+   blue, analysis = ochre accent. */
+.d3sg-chevron rect,
+.d3sg-chart-btn rect,
+.d3sg-fa-btn rect { fill: var(--btn-bg, #1a2440); }
+.d3sg-chevron rect { stroke: var(--muted-color, #a8c5ff); }
+.d3sg-chevron text { fill: var(--text-color, #a8c5ff); }
+.d3sg-chart-btn rect,
+.d3sg-chart-btn path { stroke: #7fa3b8; }
+html[data-theme="light"] .d3sg-chart-btn rect,
+html[data-theme="light"] .d3sg-chart-btn path { stroke: #46718a; }
+.d3sg-fa-btn rect,
+.d3sg-fa-btn path { stroke: var(--accent-color, #ffa726); }
 
 /* Chevron (collapse/expand button) */
 .d3sg-chevron {
@@ -488,7 +517,7 @@ svg.d3-semantic-graph {
     transition: stroke 0.12s ease-out, stroke-opacity 0.12s ease-out;
 }
 .d3sg-node:hover .d3sg-hit-target {
-    stroke: #7ea8ff !important;
+    stroke: var(--accent-color) !important;
     stroke-width: 1.5px !important;
     stroke-opacity: 0.4;
 }
@@ -499,11 +528,11 @@ svg.d3-semantic-graph {
     stroke-width: 2.5px;
 }
 .d3sg-node.active .d3sg-op-bg {
-    stroke: #7ea8ff;
+    stroke: var(--accent-color);
     stroke-width: 2.5px;
 }
 .d3sg-node.active .d3sg-tile-bg {
-    stroke: #7ea8ff;
+    stroke: var(--accent-color);
     stroke-width: 2.5px;
 }
 
@@ -514,17 +543,17 @@ svg.d3-semantic-graph {
     filter: drop-shadow(0 0 6px rgba(109, 240, 142, 0.5));
 }
 .d3sg-node.selected .d3sg-op-bg {
-    stroke: #7ea8ff;
+    stroke: var(--accent-color);
     stroke-width: 2.5px;
-    filter: drop-shadow(0 0 6px rgba(126, 168, 255, 0.5));
+    filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent-color) 50%, transparent));
 }
 .d3sg-node.selected .d3sg-tile-bg {
-    stroke: #7ea8ff;
+    stroke: var(--accent-color);
     stroke-width: 2.5px;
-    filter: drop-shadow(0 0 6px rgba(126, 168, 255, 0.5));
+    filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent-color) 50%, transparent));
 }
 .d3sg-node.selected .d3sg-hit-target {
-    stroke: #7ea8ff !important;
+    stroke: var(--accent-color) !important;
     stroke-width: 2px !important;
     stroke-opacity: 0.6;
 }
@@ -552,7 +581,6 @@ svg.d3-semantic-graph {
     font-size: 0.78rem;
     font-style: italic;
     line-height: 1.45;
-    backdrop-filter: blur(8px);
     opacity: 0.92;
     text-align: center;
     min-width: 0;
@@ -578,8 +606,8 @@ svg.d3-semantic-graph {
     height: 20px;
     border: none;
     border-radius: 50%;
-    background: rgba(100, 110, 255, 0.15);
-    color: rgba(160, 170, 255, 0.8);
+    background: color-mix(in srgb, var(--accent-color) 15%, transparent);
+    color: color-mix(in srgb, var(--accent-color) 80%, transparent);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -595,8 +623,8 @@ svg.d3-semantic-graph {
 }
 
 .d3sg-anno-ai-btn:hover {
-    background: rgba(100, 110, 255, 0.35);
-    color: #c0c8ff;
+    background: color-mix(in srgb, var(--accent-color) 35%, transparent);
+    color: var(--text-color);
 }
 
 /* Edge semantics legend — bottom-right corner of graph viewport.
@@ -610,15 +638,13 @@ svg.d3-semantic-graph {
     flex-direction: column;
     gap: 4px;
     padding: 8px 10px;
-    background: rgba(10, 12, 26, 0.75);
-    border: 1px solid rgba(110, 124, 180, 0.35);
+    background: color-mix(in srgb, var(--panel-bg) 75%, transparent);
+    border: 1px solid var(--border-color);
     border-radius: 6px;
     font-size: 0.72rem;
-    color: rgba(210, 218, 245, 0.92);
+    color: var(--text-color);
     letter-spacing: 0.02em;
     z-index: 2;
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
     pointer-events: none;
     user-select: none;
 }
@@ -701,17 +727,15 @@ svg.d3-semantic-graph {
 /* ── Chart box (inline or pinned) ───────────────────────────────────── */
 .sgc-chart-box {
     width: 340px;
-    background: rgba(10, 12, 26, 0.92);
-    border: 1px solid rgba(110, 124, 180, 0.35);
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
     border-radius: 8px;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
     overflow: hidden;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    box-shadow: var(--shadow-sm);
     transition: box-shadow 0.2s ease;
 }
 .sgc-chart-box:hover {
-    box-shadow: 0 6px 28px rgba(0, 0, 0, 0.55);
+    box-shadow: var(--shadow-sm);
 }
 
 .sgc-chart-header {
@@ -719,7 +743,7 @@ svg.d3-semantic-graph {
     align-items: center;
     justify-content: space-between;
     padding: 8px 10px;
-    border-bottom: 1px solid rgba(110, 124, 180, 0.2);
+    border-bottom: 1px solid var(--border-color);
     gap: 8px;
     min-height: 36px;
 }
@@ -732,7 +756,7 @@ svg.d3-semantic-graph {
 
 .sgc-chart-title {
     font-size: 0.78rem;
-    color: #dde6ff;
+    color: var(--text-color);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -752,10 +776,10 @@ svg.d3-semantic-graph {
 }
 
 .sgc-x-select {
-    background: rgba(30, 40, 70, 0.8);
-    border: 1px solid rgba(110, 124, 180, 0.3);
+    background: color-mix(in srgb, var(--panel-bg) 80%, transparent);
+    border: 1px solid var(--border-color);
     border-radius: 4px;
-    color: #aebbd1;
+    color: var(--muted-color);
     font-size: 0.7rem;
     padding: 2px 4px;
     cursor: pointer;
@@ -763,18 +787,18 @@ svg.d3-semantic-graph {
     max-width: 70px;
 }
 .sgc-x-select:hover {
-    border-color: rgba(110, 124, 180, 0.6);
-    color: #dde6ff;
+    border-color: color-mix(in srgb, var(--accent-color) 50%, transparent);
+    color: var(--text-color);
 }
 .sgc-x-select:focus {
-    border-color: #42a5f5;
+    border-color: var(--accent-color);
 }
 
 .sgc-btn {
     background: none;
-    border: 1px solid rgba(110, 124, 180, 0.25);
+    border: 1px solid var(--border-color);
     border-radius: 4px;
-    color: #7e8aa3;
+    color: var(--muted-color);
     cursor: pointer;
     width: 24px;
     height: 24px;
@@ -786,18 +810,18 @@ svg.d3-semantic-graph {
     transition: all 0.12s ease;
 }
 .sgc-btn:hover {
-    background: rgba(110, 124, 180, 0.15);
-    border-color: rgba(110, 124, 180, 0.5);
-    color: #dde6ff;
+    background: color-mix(in srgb, var(--accent-color) 15%, transparent);
+    border-color: color-mix(in srgb, var(--accent-color) 50%, transparent);
+    color: var(--text-color);
 }
 
 .sgc-pin-btn {
     font-size: 0.65rem;
 }
 .sgc-pin-btn.sgc-pin-active {
-    background: rgba(66, 165, 245, 0.25);
-    border-color: rgba(66, 165, 245, 0.5);
-    color: #42a5f5;
+    background: color-mix(in srgb, var(--accent-color) 25%, transparent);
+    border-color: color-mix(in srgb, var(--accent-color) 50%, transparent);
+    color: var(--accent-color);
 }
 
 .sgc-close-btn {
@@ -854,11 +878,11 @@ svg.d3-semantic-graph {
     right: 4px;
     width: 8px;
     height: 8px;
-    border-right: 2px solid rgba(110, 124, 180, 0.4);
-    border-bottom: 2px solid rgba(110, 124, 180, 0.4);
+    border-right: 2px solid var(--border-color);
+    border-bottom: 2px solid var(--border-color);
 }
 .sgc-resize-handle:hover::after {
-    border-color: rgba(140, 160, 220, 0.7);
+    border-color: color-mix(in srgb, var(--accent-color) 70%, transparent);
 }
 
 /* ── Slider panel — bottom-left ───────────────────────────────────── */
@@ -870,11 +894,9 @@ svg.d3-semantic-graph {
     flex-direction: column;
     gap: 6px;
     padding: 10px 12px;
-    background: rgba(10, 12, 26, 0.82);
-    border: 1px solid rgba(110, 124, 180, 0.35);
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
     border-radius: 6px;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
     z-index: 25;
     min-width: 200px;
     max-width: 300px;
@@ -888,7 +910,7 @@ svg.d3-semantic-graph {
     font-size: 0.6rem;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: rgba(210, 218, 245, 0.55);
+    color: color-mix(in srgb, var(--text-color) 55%, transparent);
     margin-bottom: 2px;
 }
 
@@ -900,7 +922,7 @@ svg.d3-semantic-graph {
 
 .sgc-slider-label {
     font-size: 0.78rem;
-    color: #aebbd1;
+    color: var(--muted-color);
     min-width: 28px;
     text-align: right;
     flex-shrink: 0;
@@ -914,7 +936,7 @@ svg.d3-semantic-graph {
     -webkit-appearance: none;
     appearance: none;
     height: 4px;
-    background: rgba(110, 124, 180, 0.25);
+    background: color-mix(in srgb, var(--accent-color) 25%, transparent);
     border-radius: 2px;
     outline: none;
     cursor: pointer;
@@ -924,26 +946,26 @@ svg.d3-semantic-graph {
     width: 14px;
     height: 14px;
     border-radius: 50%;
-    background: #42a5f5;
-    border: 2px solid rgba(10, 12, 26, 0.8);
+    background: var(--accent-color);
+    border: 2px solid var(--border-color);
     cursor: pointer;
     transition: background 0.12s;
 }
 .sgc-slider::-webkit-slider-thumb:hover {
-    background: #64b5f6;
+    background: var(--accent-color);
 }
 .sgc-slider::-moz-range-thumb {
     width: 14px;
     height: 14px;
     border-radius: 50%;
-    background: #42a5f5;
-    border: 2px solid rgba(10, 12, 26, 0.8);
+    background: var(--accent-color);
+    border: 2px solid var(--border-color);
     cursor: pointer;
 }
 
 .sgc-slider-value {
     font-size: 0.7rem;
-    color: #7e8aa3;
+    color: var(--muted-color);
     min-width: 42px;
     text-align: left;
     font-variant-numeric: tabular-nums;
@@ -958,11 +980,9 @@ svg.d3-semantic-graph {
     flex-direction: column;
     gap: 4px;
     padding: 8px 10px;
-    background: rgba(10, 12, 26, 0.82);
-    border: 1px solid rgba(110, 124, 180, 0.35);
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
     border-radius: 6px;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
     z-index: 25;
     pointer-events: none;
 }
@@ -974,7 +994,7 @@ svg.d3-semantic-graph {
     font-size: 0.6rem;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: rgba(210, 218, 245, 0.55);
+    color: color-mix(in srgb, var(--text-color) 55%, transparent);
     margin-bottom: 2px;
 }
 
@@ -993,7 +1013,7 @@ svg.d3-semantic-graph {
 
 .sgc-legend-name {
     font-size: 0.72rem;
-    color: rgba(210, 218, 245, 0.9);
+    color: var(--text-color);
 }
 .sgc-legend-name .katex {
     font-size: 0.85em;
@@ -1001,7 +1021,7 @@ svg.d3-semantic-graph {
 
 /* ── Code button (show mathjs script) ────────────────────────────── */
 .sgc-code-btn {
-    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-family: var(--font-mono);
     font-size: 0.65rem;
     letter-spacing: -0.03em;
 }
@@ -1013,11 +1033,11 @@ svg.d3-semantic-graph {
     right: 0;
     margin-top: 4px;
     padding: 8px 10px;
-    background: rgba(18, 22, 40, 0.96);
-    border: 1px solid rgba(110, 124, 180, 0.4);
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
     border-radius: 6px;
-    color: #b8c8e8;
-    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    color: var(--text-color);
+    font-family: var(--font-mono);
     font-size: 0.72rem;
     line-height: 1.45;
     white-space: pre-wrap;
@@ -1025,7 +1045,7 @@ svg.d3-semantic-graph {
     max-width: 320px;
     min-width: 140px;
     z-index: 50;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+    box-shadow: var(--shadow-sm);
     pointer-events: auto;
 }
 
@@ -1051,7 +1071,7 @@ svg.d3-semantic-graph {
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-08-04 04:06 UTC &middot; theme: default-dark &middot; 16 expressions</div>
+<div class="report-meta">Generated 2026-08-11 22:27 UTC &middot; theme: default-dark &middot; 16 expressions</div>
 <div class="section-title">Chemistry (16 expressions)</div>
 <div class="row">
   <div>
@@ -1060,17 +1080,17 @@ svg.d3-semantic-graph {
   </div>
   <div class="row-graph">
     <pre class="mermaid">flowchart RL
-  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  classDef scalar fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef vector fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef constant fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef number fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef expression fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef text fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef operator fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef function fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef relation fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef result fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef annotation fill:#232a26,stroke:#6f7d73,color:#b9c2bb,font-size:15px
   __equals_1{"="}:::relation
   r["$r$"]:::scalar
   __multiply_2(("$\times$")):::operator
@@ -1080,10 +1100,10 @@ svg.d3-semantic-graph {
   k --&gt; __multiply_2
   A --&gt; __multiply_2
   __multiply_2 --&gt; __equals_1
-  linkStyle 0 stroke:#aaa,stroke-width:2px
-  linkStyle 1 stroke:#ef5350,stroke-width:3px
-  linkStyle 2 stroke:#ef5350,stroke-width:3px
-  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 0 stroke:#97a29a,stroke-width:2px
+  linkStyle 1 stroke:#c9705f,stroke-width:3px
+  linkStyle 2 stroke:#c9705f,stroke-width:3px
+  linkStyle 3 stroke:#97a29a,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -1187,17 +1207,17 @@ svg.d3-semantic-graph {
   },
   "domain": "chemistry"
 }</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
-  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  classDef scalar fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef vector fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef constant fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef number fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef expression fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef text fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef operator fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef function fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef relation fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef result fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef annotation fill:#232a26,stroke:#6f7d73,color:#b9c2bb,font-size:15px
   __equals_1{"="}:::relation
   r["$r$"]:::scalar
   __multiply_2(("$\times$")):::operator
@@ -1207,10 +1227,10 @@ svg.d3-semantic-graph {
   k --&gt; __multiply_2
   A --&gt; __multiply_2
   __multiply_2 --&gt; __equals_1
-  linkStyle 0 stroke:#aaa,stroke-width:2px
-  linkStyle 1 stroke:#ef5350,stroke-width:3px
-  linkStyle 2 stroke:#ef5350,stroke-width:3px
-  linkStyle 3 stroke:#aaa,stroke-width:2px
+  linkStyle 0 stroke:#97a29a,stroke-width:2px
+  linkStyle 1 stroke:#c9705f,stroke-width:3px
+  linkStyle 2 stroke:#c9705f,stroke-width:3px
+  linkStyle 3 stroke:#97a29a,stroke-width:2px
 </pre></div></div>
   <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(r, A*k)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(Symbol('r'), Mul(Symbol('A'), Symbol('k')))</pre></div></div>
   <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>-A*k + r</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>A, k, r</pre></div></div>
@@ -1223,17 +1243,17 @@ svg.d3-semantic-graph {
   </div>
   <div class="row-graph">
     <pre class="mermaid">flowchart RL
-  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  classDef scalar fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef vector fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef constant fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef number fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef expression fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef text fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef operator fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef function fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef relation fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef result fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef annotation fill:#232a26,stroke:#6f7d73,color:#b9c2bb,font-size:15px
   __equals_1{"="}:::relation
   r["$r$"]:::scalar
   __multiply_2(("$\times$")):::operator
@@ -1245,11 +1265,11 @@ svg.d3-semantic-graph {
   A --&gt; __power_3
   __power_3 --&gt; __multiply_2
   __multiply_2 --&gt; __equals_1
-  linkStyle 0 stroke:#aaa,stroke-width:2px
-  linkStyle 1 stroke:#ef5350,stroke-width:3px
-  linkStyle 2 stroke:#aaa,stroke-width:2px
-  linkStyle 3 stroke:#ef5350,stroke-width:3px
-  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 0 stroke:#97a29a,stroke-width:2px
+  linkStyle 1 stroke:#c9705f,stroke-width:3px
+  linkStyle 2 stroke:#97a29a,stroke-width:2px
+  linkStyle 3 stroke:#c9705f,stroke-width:3px
+  linkStyle 4 stroke:#97a29a,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -1370,17 +1390,17 @@ svg.d3-semantic-graph {
   },
   "domain": "chemistry"
 }</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
-  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  classDef scalar fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef vector fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef constant fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef number fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef expression fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef text fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef operator fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef function fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef relation fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef result fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef annotation fill:#232a26,stroke:#6f7d73,color:#b9c2bb,font-size:15px
   __equals_1{"="}:::relation
   r["$r$"]:::scalar
   __multiply_2(("$\times$")):::operator
@@ -1392,11 +1412,11 @@ svg.d3-semantic-graph {
   A --&gt; __power_3
   __power_3 --&gt; __multiply_2
   __multiply_2 --&gt; __equals_1
-  linkStyle 0 stroke:#aaa,stroke-width:2px
-  linkStyle 1 stroke:#ef5350,stroke-width:3px
-  linkStyle 2 stroke:#aaa,stroke-width:2px
-  linkStyle 3 stroke:#ef5350,stroke-width:3px
-  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 0 stroke:#97a29a,stroke-width:2px
+  linkStyle 1 stroke:#c9705f,stroke-width:3px
+  linkStyle 2 stroke:#97a29a,stroke-width:2px
+  linkStyle 3 stroke:#c9705f,stroke-width:3px
+  linkStyle 4 stroke:#97a29a,stroke-width:2px
 </pre></div></div>
   <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(r, A**2*k)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(Symbol('r'), Mul(Pow(Symbol('A'), Integer(2)), Symbol('k')))</pre></div></div>
   <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>-pow(A, 2)*k + r</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>A, k, r</pre></div></div>
@@ -1409,17 +1429,17 @@ svg.d3-semantic-graph {
   </div>
   <div class="row-graph">
     <pre class="mermaid">flowchart RL
-  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  classDef scalar fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef vector fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef constant fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef number fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef expression fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef text fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef operator fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef function fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef relation fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef result fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef annotation fill:#232a26,stroke:#6f7d73,color:#b9c2bb,font-size:15px
   __equals_1{"="}:::relation
   r["$r$"]:::scalar
   __multiply_2(("$\times$")):::operator
@@ -1441,16 +1461,16 @@ svg.d3-semantic-graph {
   __power_5 --&gt; __multiply_3
   __multiply_3 --&gt; __multiply_2
   __multiply_2 --&gt; __equals_1
-  linkStyle 0 stroke:#aaa,stroke-width:2px
-  linkStyle 1 stroke:#ef5350,stroke-width:3px
-  linkStyle 2 stroke:#aaa,stroke-width:2px
-  linkStyle 3 stroke:#aaa,stroke-width:2px
-  linkStyle 4 stroke:#ef5350,stroke-width:3px
-  linkStyle 5 stroke:#aaa,stroke-width:2px
-  linkStyle 6 stroke:#aaa,stroke-width:2px
-  linkStyle 7 stroke:#ef5350,stroke-width:3px
-  linkStyle 8 stroke:#ef5350,stroke-width:3px
-  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 0 stroke:#97a29a,stroke-width:2px
+  linkStyle 1 stroke:#c9705f,stroke-width:3px
+  linkStyle 2 stroke:#97a29a,stroke-width:2px
+  linkStyle 3 stroke:#97a29a,stroke-width:2px
+  linkStyle 4 stroke:#c9705f,stroke-width:3px
+  linkStyle 5 stroke:#97a29a,stroke-width:2px
+  linkStyle 6 stroke:#97a29a,stroke-width:2px
+  linkStyle 7 stroke:#c9705f,stroke-width:3px
+  linkStyle 8 stroke:#c9705f,stroke-width:3px
+  linkStyle 9 stroke:#97a29a,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -1667,17 +1687,17 @@ svg.d3-semantic-graph {
   },
   "domain": "chemistry"
 }</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
-  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  classDef scalar fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef vector fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef constant fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef number fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef expression fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef text fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef operator fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef function fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef relation fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef result fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef annotation fill:#232a26,stroke:#6f7d73,color:#b9c2bb,font-size:15px
   __equals_1{"="}:::relation
   r["$r$"]:::scalar
   __multiply_2(("$\times$")):::operator
@@ -1699,16 +1719,16 @@ svg.d3-semantic-graph {
   __power_5 --&gt; __multiply_3
   __multiply_3 --&gt; __multiply_2
   __multiply_2 --&gt; __equals_1
-  linkStyle 0 stroke:#aaa,stroke-width:2px
-  linkStyle 1 stroke:#ef5350,stroke-width:3px
-  linkStyle 2 stroke:#aaa,stroke-width:2px
-  linkStyle 3 stroke:#aaa,stroke-width:2px
-  linkStyle 4 stroke:#ef5350,stroke-width:3px
-  linkStyle 5 stroke:#aaa,stroke-width:2px
-  linkStyle 6 stroke:#aaa,stroke-width:2px
-  linkStyle 7 stroke:#ef5350,stroke-width:3px
-  linkStyle 8 stroke:#ef5350,stroke-width:3px
-  linkStyle 9 stroke:#aaa,stroke-width:2px
+  linkStyle 0 stroke:#97a29a,stroke-width:2px
+  linkStyle 1 stroke:#c9705f,stroke-width:3px
+  linkStyle 2 stroke:#97a29a,stroke-width:2px
+  linkStyle 3 stroke:#97a29a,stroke-width:2px
+  linkStyle 4 stroke:#c9705f,stroke-width:3px
+  linkStyle 5 stroke:#97a29a,stroke-width:2px
+  linkStyle 6 stroke:#97a29a,stroke-width:2px
+  linkStyle 7 stroke:#c9705f,stroke-width:3px
+  linkStyle 8 stroke:#c9705f,stroke-width:3px
+  linkStyle 9 stroke:#97a29a,stroke-width:2px
 </pre></div></div>
   <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(r, A**m*B**n*k)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(Symbol('r'), Mul(Pow(Symbol('A'), Symbol('m')), Pow(Symbol('B'), Symbol('n')), Symbol('k')))</pre></div></div>
   <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>-pow(A, m)*pow(B, n)*k + r</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>A, B, k, m, n, r</pre></div></div>
@@ -1721,17 +1741,17 @@ svg.d3-semantic-graph {
   </div>
   <div class="row-graph">
     <pre class="mermaid">flowchart RL
-  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  classDef scalar fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef vector fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef constant fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef number fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef expression fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef text fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef operator fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef function fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef relation fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef result fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef annotation fill:#232a26,stroke:#6f7d73,color:#b9c2bb,font-size:15px
   __equals_1{"="}:::relation
   __log_2{{"$\ln(\cdot)$"}}:::function
   A["$A$"]:::scalar
@@ -1754,17 +1774,17 @@ svg.d3-semantic-graph {
   __const_3 --&gt;|base| __log_7
   __log_7 --&gt; __add_4
   __add_4 --&gt; __equals_1
-  linkStyle 0 stroke:#aaa,stroke-width:2px
-  linkStyle 1 stroke:#aaa,stroke-width:2px
-  linkStyle 2 stroke:#aaa,stroke-width:2px
-  linkStyle 3 stroke:#ef5350,stroke-width:3px
-  linkStyle 4 stroke:#ef5350,stroke-width:3px
-  linkStyle 5 stroke:#aaa,stroke-width:2px
-  linkStyle 6 stroke:#aaa,stroke-width:2px
-  linkStyle 7 stroke:#aaa,stroke-width:2px
-  linkStyle 8 stroke:#aaa,stroke-width:2px
-  linkStyle 9 stroke:#aaa,stroke-width:2px
-  linkStyle 10 stroke:#aaa,stroke-width:2px
+  linkStyle 0 stroke:#97a29a,stroke-width:2px
+  linkStyle 1 stroke:#97a29a,stroke-width:2px
+  linkStyle 2 stroke:#97a29a,stroke-width:2px
+  linkStyle 3 stroke:#c9705f,stroke-width:3px
+  linkStyle 4 stroke:#c9705f,stroke-width:3px
+  linkStyle 5 stroke:#97a29a,stroke-width:2px
+  linkStyle 6 stroke:#97a29a,stroke-width:2px
+  linkStyle 7 stroke:#97a29a,stroke-width:2px
+  linkStyle 8 stroke:#97a29a,stroke-width:2px
+  linkStyle 9 stroke:#97a29a,stroke-width:2px
+  linkStyle 10 stroke:#97a29a,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -1959,17 +1979,17 @@ svg.d3-semantic-graph {
   },
   "domain": "chemistry"
 }</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
-  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  classDef scalar fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef vector fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef constant fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef number fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef expression fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef text fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef operator fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef function fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef relation fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef result fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef annotation fill:#232a26,stroke:#6f7d73,color:#b9c2bb,font-size:15px
   __equals_1{"="}:::relation
   __log_2{{"$\ln(\cdot)$"}}:::function
   A["$A$"]:::scalar
@@ -1992,17 +2012,17 @@ svg.d3-semantic-graph {
   __const_3 --&gt;|base| __log_7
   __log_7 --&gt; __add_4
   __add_4 --&gt; __equals_1
-  linkStyle 0 stroke:#aaa,stroke-width:2px
-  linkStyle 1 stroke:#aaa,stroke-width:2px
-  linkStyle 2 stroke:#aaa,stroke-width:2px
-  linkStyle 3 stroke:#ef5350,stroke-width:3px
-  linkStyle 4 stroke:#ef5350,stroke-width:3px
-  linkStyle 5 stroke:#aaa,stroke-width:2px
-  linkStyle 6 stroke:#aaa,stroke-width:2px
-  linkStyle 7 stroke:#aaa,stroke-width:2px
-  linkStyle 8 stroke:#aaa,stroke-width:2px
-  linkStyle 9 stroke:#aaa,stroke-width:2px
-  linkStyle 10 stroke:#aaa,stroke-width:2px
+  linkStyle 0 stroke:#97a29a,stroke-width:2px
+  linkStyle 1 stroke:#97a29a,stroke-width:2px
+  linkStyle 2 stroke:#97a29a,stroke-width:2px
+  linkStyle 3 stroke:#c9705f,stroke-width:3px
+  linkStyle 4 stroke:#c9705f,stroke-width:3px
+  linkStyle 5 stroke:#97a29a,stroke-width:2px
+  linkStyle 6 stroke:#97a29a,stroke-width:2px
+  linkStyle 7 stroke:#97a29a,stroke-width:2px
+  linkStyle 8 stroke:#97a29a,stroke-width:2px
+  linkStyle 9 stroke:#97a29a,stroke-width:2px
+  linkStyle 10 stroke:#97a29a,stroke-width:2px
 </pre></div></div>
   <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(log(A), -k*t + log(A))</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(log(Symbol('A')), Add(Mul(Integer(-1), Symbol('k'), Symbol('t')), log(Symbol('A'))))</pre></div></div>
   <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>k*t</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>k, t</pre></div></div>
@@ -2015,17 +2035,17 @@ svg.d3-semantic-graph {
   </div>
   <div class="row-graph">
     <pre class="mermaid">flowchart RL
-  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  classDef scalar fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef vector fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef constant fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef number fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef expression fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef text fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef operator fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef function fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef relation fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef result fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef annotation fill:#232a26,stroke:#6f7d73,color:#b9c2bb,font-size:15px
   __equals_1{"="}:::relation
   __power_2(("$\dfrac{1}{(\cdot)}$")):::operator
   A["$A$"]:::scalar
@@ -2037,11 +2057,11 @@ svg.d3-semantic-graph {
   k --&gt; __multiply_3
   t --&gt; __multiply_3
   __multiply_3 --&gt; __equals_1
-  linkStyle 0 stroke:#aaa,stroke-width:2px
-  linkStyle 1 stroke:#42a5f5,stroke-width:1px
-  linkStyle 2 stroke:#ef5350,stroke-width:3px
-  linkStyle 3 stroke:#ef5350,stroke-width:3px
-  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 0 stroke:#97a29a,stroke-width:2px
+  linkStyle 1 stroke:#7fa3b8,stroke-width:1px
+  linkStyle 2 stroke:#c9705f,stroke-width:3px
+  linkStyle 3 stroke:#c9705f,stroke-width:3px
+  linkStyle 4 stroke:#97a29a,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -2163,17 +2183,17 @@ svg.d3-semantic-graph {
   },
   "domain": "chemistry"
 }</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
-  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  classDef scalar fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef vector fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef constant fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef number fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef expression fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef text fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef operator fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef function fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef relation fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef result fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef annotation fill:#232a26,stroke:#6f7d73,color:#b9c2bb,font-size:15px
   __equals_1{"="}:::relation
   __power_2(("$\dfrac{1}{(\cdot)}$")):::operator
   A["$A$"]:::scalar
@@ -2185,11 +2205,11 @@ svg.d3-semantic-graph {
   k --&gt; __multiply_3
   t --&gt; __multiply_3
   __multiply_3 --&gt; __equals_1
-  linkStyle 0 stroke:#aaa,stroke-width:2px
-  linkStyle 1 stroke:#42a5f5,stroke-width:1px
-  linkStyle 2 stroke:#ef5350,stroke-width:3px
-  linkStyle 3 stroke:#ef5350,stroke-width:3px
-  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 0 stroke:#97a29a,stroke-width:2px
+  linkStyle 1 stroke:#7fa3b8,stroke-width:1px
+  linkStyle 2 stroke:#c9705f,stroke-width:3px
+  linkStyle 3 stroke:#c9705f,stroke-width:3px
+  linkStyle 4 stroke:#97a29a,stroke-width:2px
 </pre></div></div>
   <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(1/A, k*t)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(Pow(Symbol('A'), Integer(-1)), Mul(Symbol('k'), Symbol('t')))</pre></div></div>
   <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>-k*t + 1/A</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>A, k, t</pre></div></div>
@@ -2202,23 +2222,23 @@ svg.d3-semantic-graph {
   </div>
   <div class="row-graph">
     <pre class="mermaid">flowchart RL
-  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  classDef scalar fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef vector fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef constant fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef number fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef expression fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef text fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef operator fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef function fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef relation fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef result fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef annotation fill:#232a26,stroke:#6f7d73,color:#b9c2bb,font-size:15px
   A["$A$"]:::scalar
   __equals_1{"="}:::relation
   A --&gt; __equals_1
   A --&gt; __equals_1
-  linkStyle 0 stroke:#aaa,stroke-width:2px
-  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 0 stroke:#97a29a,stroke-width:2px
+  linkStyle 1 stroke:#97a29a,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -2269,23 +2289,23 @@ svg.d3-semantic-graph {
   },
   "domain": "chemistry"
 }</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
-  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  classDef scalar fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef vector fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef constant fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef number fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef expression fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef text fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef operator fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef function fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef relation fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef result fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef annotation fill:#232a26,stroke:#6f7d73,color:#b9c2bb,font-size:15px
   A["$A$"]:::scalar
   __equals_1{"="}:::relation
   A --&gt; __equals_1
   A --&gt; __equals_1
-  linkStyle 0 stroke:#aaa,stroke-width:2px
-  linkStyle 1 stroke:#aaa,stroke-width:2px
+  linkStyle 0 stroke:#97a29a,stroke-width:2px
+  linkStyle 1 stroke:#97a29a,stroke-width:2px
 </pre></div></div>
   <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>True</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>true</pre></div></div>
   <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>True</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre></pre></div></div>
@@ -2298,17 +2318,17 @@ svg.d3-semantic-graph {
   </div>
   <div class="row-graph">
     <pre class="mermaid">flowchart RL
-  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  classDef scalar fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef vector fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef constant fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef number fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef expression fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef text fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef operator fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef function fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef relation fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef result fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef annotation fill:#232a26,stroke:#6f7d73,color:#b9c2bb,font-size:15px
   __equals_1{"="}:::relation
   K["$K$"]:::scalar
   __multiply_2(("$\times$")):::operator
@@ -2344,23 +2364,23 @@ svg.d3-semantic-graph {
   __multiply_7 --&gt; __power_6
   __power_6 -.-&gt; __multiply_2
   __multiply_2 --&gt; __equals_1
-  linkStyle 0 stroke:#aaa,stroke-width:2px
-  linkStyle 1 stroke:#aaa,stroke-width:2px
-  linkStyle 2 stroke:#aaa,stroke-width:2px
-  linkStyle 3 stroke:#ef5350,stroke-width:3px
-  linkStyle 4 stroke:#aaa,stroke-width:2px
-  linkStyle 5 stroke:#aaa,stroke-width:2px
-  linkStyle 6 stroke:#ef5350,stroke-width:3px
-  linkStyle 7 stroke:#ef5350,stroke-width:3px
-  linkStyle 8 stroke:#aaa,stroke-width:2px
-  linkStyle 9 stroke:#aaa,stroke-width:2px
-  linkStyle 10 stroke:#ef5350,stroke-width:3px
-  linkStyle 11 stroke:#aaa,stroke-width:2px
-  linkStyle 12 stroke:#aaa,stroke-width:2px
-  linkStyle 13 stroke:#ef5350,stroke-width:3px
-  linkStyle 14 stroke:#aaa,stroke-width:2px
-  linkStyle 15 stroke:#42a5f5,stroke-width:1px
-  linkStyle 16 stroke:#aaa,stroke-width:2px
+  linkStyle 0 stroke:#97a29a,stroke-width:2px
+  linkStyle 1 stroke:#97a29a,stroke-width:2px
+  linkStyle 2 stroke:#97a29a,stroke-width:2px
+  linkStyle 3 stroke:#c9705f,stroke-width:3px
+  linkStyle 4 stroke:#97a29a,stroke-width:2px
+  linkStyle 5 stroke:#97a29a,stroke-width:2px
+  linkStyle 6 stroke:#c9705f,stroke-width:3px
+  linkStyle 7 stroke:#c9705f,stroke-width:3px
+  linkStyle 8 stroke:#97a29a,stroke-width:2px
+  linkStyle 9 stroke:#97a29a,stroke-width:2px
+  linkStyle 10 stroke:#c9705f,stroke-width:3px
+  linkStyle 11 stroke:#97a29a,stroke-width:2px
+  linkStyle 12 stroke:#97a29a,stroke-width:2px
+  linkStyle 13 stroke:#c9705f,stroke-width:3px
+  linkStyle 14 stroke:#97a29a,stroke-width:2px
+  linkStyle 15 stroke:#7fa3b8,stroke-width:1px
+  linkStyle 16 stroke:#97a29a,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -2709,17 +2729,17 @@ svg.d3-semantic-graph {
   },
   "domain": "chemistry"
 }</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
-  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  classDef scalar fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef vector fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef constant fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef number fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef expression fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef text fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef operator fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef function fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef relation fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef result fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef annotation fill:#232a26,stroke:#6f7d73,color:#b9c2bb,font-size:15px
   __equals_1{"="}:::relation
   K["$K$"]:::scalar
   __multiply_2(("$\times$")):::operator
@@ -2755,23 +2775,23 @@ svg.d3-semantic-graph {
   __multiply_7 --&gt; __power_6
   __power_6 -.-&gt; __multiply_2
   __multiply_2 --&gt; __equals_1
-  linkStyle 0 stroke:#aaa,stroke-width:2px
-  linkStyle 1 stroke:#aaa,stroke-width:2px
-  linkStyle 2 stroke:#aaa,stroke-width:2px
-  linkStyle 3 stroke:#ef5350,stroke-width:3px
-  linkStyle 4 stroke:#aaa,stroke-width:2px
-  linkStyle 5 stroke:#aaa,stroke-width:2px
-  linkStyle 6 stroke:#ef5350,stroke-width:3px
-  linkStyle 7 stroke:#ef5350,stroke-width:3px
-  linkStyle 8 stroke:#aaa,stroke-width:2px
-  linkStyle 9 stroke:#aaa,stroke-width:2px
-  linkStyle 10 stroke:#ef5350,stroke-width:3px
-  linkStyle 11 stroke:#aaa,stroke-width:2px
-  linkStyle 12 stroke:#aaa,stroke-width:2px
-  linkStyle 13 stroke:#ef5350,stroke-width:3px
-  linkStyle 14 stroke:#aaa,stroke-width:2px
-  linkStyle 15 stroke:#42a5f5,stroke-width:1px
-  linkStyle 16 stroke:#aaa,stroke-width:2px
+  linkStyle 0 stroke:#97a29a,stroke-width:2px
+  linkStyle 1 stroke:#97a29a,stroke-width:2px
+  linkStyle 2 stroke:#97a29a,stroke-width:2px
+  linkStyle 3 stroke:#c9705f,stroke-width:3px
+  linkStyle 4 stroke:#97a29a,stroke-width:2px
+  linkStyle 5 stroke:#97a29a,stroke-width:2px
+  linkStyle 6 stroke:#c9705f,stroke-width:3px
+  linkStyle 7 stroke:#c9705f,stroke-width:3px
+  linkStyle 8 stroke:#97a29a,stroke-width:2px
+  linkStyle 9 stroke:#97a29a,stroke-width:2px
+  linkStyle 10 stroke:#c9705f,stroke-width:3px
+  linkStyle 11 stroke:#97a29a,stroke-width:2px
+  linkStyle 12 stroke:#97a29a,stroke-width:2px
+  linkStyle 13 stroke:#c9705f,stroke-width:3px
+  linkStyle 14 stroke:#97a29a,stroke-width:2px
+  linkStyle 15 stroke:#7fa3b8,stroke-width:1px
+  linkStyle 16 stroke:#97a29a,stroke-width:2px
 </pre></div></div>
   <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(K, C**c*D**d/(A**a*B**b))</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(Symbol('K'), Mul(Pow(Symbol('A'), Mul(Integer(-1), Symbol('a'))), Pow(Symbol('B'), Mul(Integer(-1), Symbol('b'))), Pow(Symbol('C'), Symbol('c')), Pow(Symbol('D'), Symbol('d'))))</pre></div></div>
   <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>K - pow(A, -a)*pow(B, -b)*pow(C, c)*pow(D, d)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>A, B, C, D, K, a, b, c, d</pre></div></div>
@@ -2784,17 +2804,17 @@ svg.d3-semantic-graph {
   </div>
   <div class="row-graph">
     <pre class="mermaid">flowchart RL
-  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  classDef scalar fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef vector fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef constant fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef number fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef expression fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef text fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef operator fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef function fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef relation fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef result fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef annotation fill:#232a26,stroke:#6f7d73,color:#b9c2bb,font-size:15px
   __equals_1{"="}:::relation
   __multiply_2(("$\times$")):::operator
   P["$P$"]:::scalar
@@ -2812,14 +2832,14 @@ svg.d3-semantic-graph {
   T --&gt; __multiply_4
   __multiply_4 --&gt; __multiply_3
   __multiply_3 --&gt; __equals_1
-  linkStyle 0 stroke:#ef5350,stroke-width:3px
-  linkStyle 1 stroke:#ef5350,stroke-width:3px
-  linkStyle 2 stroke:#aaa,stroke-width:2px
-  linkStyle 3 stroke:#ef5350,stroke-width:3px
-  linkStyle 4 stroke:#ef5350,stroke-width:3px
-  linkStyle 5 stroke:#ef5350,stroke-width:3px
-  linkStyle 6 stroke:#ef5350,stroke-width:3px
-  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 0 stroke:#c9705f,stroke-width:3px
+  linkStyle 1 stroke:#c9705f,stroke-width:3px
+  linkStyle 2 stroke:#97a29a,stroke-width:2px
+  linkStyle 3 stroke:#c9705f,stroke-width:3px
+  linkStyle 4 stroke:#c9705f,stroke-width:3px
+  linkStyle 5 stroke:#c9705f,stroke-width:3px
+  linkStyle 6 stroke:#c9705f,stroke-width:3px
+  linkStyle 7 stroke:#97a29a,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -3000,17 +3020,17 @@ svg.d3-semantic-graph {
   },
   "domain": "chemistry"
 }</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
-  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  classDef scalar fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef vector fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef constant fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef number fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef expression fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef text fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef operator fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef function fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef relation fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef result fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef annotation fill:#232a26,stroke:#6f7d73,color:#b9c2bb,font-size:15px
   __equals_1{"="}:::relation
   __multiply_2(("$\times$")):::operator
   P["$P$"]:::scalar
@@ -3028,14 +3048,14 @@ svg.d3-semantic-graph {
   T --&gt; __multiply_4
   __multiply_4 --&gt; __multiply_3
   __multiply_3 --&gt; __equals_1
-  linkStyle 0 stroke:#ef5350,stroke-width:3px
-  linkStyle 1 stroke:#ef5350,stroke-width:3px
-  linkStyle 2 stroke:#aaa,stroke-width:2px
-  linkStyle 3 stroke:#ef5350,stroke-width:3px
-  linkStyle 4 stroke:#ef5350,stroke-width:3px
-  linkStyle 5 stroke:#ef5350,stroke-width:3px
-  linkStyle 6 stroke:#ef5350,stroke-width:3px
-  linkStyle 7 stroke:#aaa,stroke-width:2px
+  linkStyle 0 stroke:#c9705f,stroke-width:3px
+  linkStyle 1 stroke:#c9705f,stroke-width:3px
+  linkStyle 2 stroke:#97a29a,stroke-width:2px
+  linkStyle 3 stroke:#c9705f,stroke-width:3px
+  linkStyle 4 stroke:#c9705f,stroke-width:3px
+  linkStyle 5 stroke:#c9705f,stroke-width:3px
+  linkStyle 6 stroke:#c9705f,stroke-width:3px
+  linkStyle 7 stroke:#97a29a,stroke-width:2px
 </pre></div></div>
   <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(P*V, R*T*n)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(Mul(Symbol('P'), Symbol('V')), Mul(Symbol('R'), Symbol('T'), Symbol('n')))</pre></div></div>
   <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>P*V - R*T*n</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>P, R, T, V, n</pre></div></div>
@@ -3048,17 +3068,17 @@ svg.d3-semantic-graph {
   </div>
   <div class="row-graph">
     <pre class="mermaid">flowchart RL
-  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  classDef scalar fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef vector fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef constant fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef number fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef expression fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef text fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef operator fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef function fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef relation fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef result fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef annotation fill:#232a26,stroke:#6f7d73,color:#b9c2bb,font-size:15px
   __equals_1{"="}:::relation
   k["$k$"]:::scalar
   __multiply_2(("$\times$")):::operator
@@ -3085,18 +3105,18 @@ svg.d3-semantic-graph {
   __multiply_4 --&gt;|exp| __power_3
   __power_3 --&gt; __multiply_2
   __multiply_2 --&gt; __equals_1
-  linkStyle 0 stroke:#aaa,stroke-width:2px
-  linkStyle 1 stroke:#ef5350,stroke-width:3px
-  linkStyle 2 stroke:#aaa,stroke-width:2px
-  linkStyle 3 stroke:#aaa,stroke-width:2px
-  linkStyle 4 stroke:#ef5350,stroke-width:3px
-  linkStyle 5 stroke:#ef5350,stroke-width:3px
-  linkStyle 6 stroke:#ef5350,stroke-width:3px
-  linkStyle 7 stroke:#aaa,stroke-width:2px
-  linkStyle 8 stroke:#42a5f5,stroke-width:1px
-  linkStyle 9 stroke:#aaa,stroke-width:2px
-  linkStyle 10 stroke:#ef5350,stroke-width:3px
-  linkStyle 11 stroke:#aaa,stroke-width:2px
+  linkStyle 0 stroke:#97a29a,stroke-width:2px
+  linkStyle 1 stroke:#c9705f,stroke-width:3px
+  linkStyle 2 stroke:#97a29a,stroke-width:2px
+  linkStyle 3 stroke:#97a29a,stroke-width:2px
+  linkStyle 4 stroke:#c9705f,stroke-width:3px
+  linkStyle 5 stroke:#c9705f,stroke-width:3px
+  linkStyle 6 stroke:#c9705f,stroke-width:3px
+  linkStyle 7 stroke:#97a29a,stroke-width:2px
+  linkStyle 8 stroke:#7fa3b8,stroke-width:1px
+  linkStyle 9 stroke:#97a29a,stroke-width:2px
+  linkStyle 10 stroke:#c9705f,stroke-width:3px
+  linkStyle 11 stroke:#97a29a,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -3345,17 +3365,17 @@ svg.d3-semantic-graph {
   },
   "domain": "chemistry"
 }</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
-  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  classDef scalar fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef vector fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef constant fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef number fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef expression fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef text fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef operator fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef function fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef relation fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef result fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef annotation fill:#232a26,stroke:#6f7d73,color:#b9c2bb,font-size:15px
   __equals_1{"="}:::relation
   k["$k$"]:::scalar
   __multiply_2(("$\times$")):::operator
@@ -3382,18 +3402,18 @@ svg.d3-semantic-graph {
   __multiply_4 --&gt;|exp| __power_3
   __power_3 --&gt; __multiply_2
   __multiply_2 --&gt; __equals_1
-  linkStyle 0 stroke:#aaa,stroke-width:2px
-  linkStyle 1 stroke:#ef5350,stroke-width:3px
-  linkStyle 2 stroke:#aaa,stroke-width:2px
-  linkStyle 3 stroke:#aaa,stroke-width:2px
-  linkStyle 4 stroke:#ef5350,stroke-width:3px
-  linkStyle 5 stroke:#ef5350,stroke-width:3px
-  linkStyle 6 stroke:#ef5350,stroke-width:3px
-  linkStyle 7 stroke:#aaa,stroke-width:2px
-  linkStyle 8 stroke:#42a5f5,stroke-width:1px
-  linkStyle 9 stroke:#aaa,stroke-width:2px
-  linkStyle 10 stroke:#ef5350,stroke-width:3px
-  linkStyle 11 stroke:#aaa,stroke-width:2px
+  linkStyle 0 stroke:#97a29a,stroke-width:2px
+  linkStyle 1 stroke:#c9705f,stroke-width:3px
+  linkStyle 2 stroke:#97a29a,stroke-width:2px
+  linkStyle 3 stroke:#97a29a,stroke-width:2px
+  linkStyle 4 stroke:#c9705f,stroke-width:3px
+  linkStyle 5 stroke:#c9705f,stroke-width:3px
+  linkStyle 6 stroke:#c9705f,stroke-width:3px
+  linkStyle 7 stroke:#97a29a,stroke-width:2px
+  linkStyle 8 stroke:#7fa3b8,stroke-width:1px
+  linkStyle 9 stroke:#97a29a,stroke-width:2px
+  linkStyle 10 stroke:#c9705f,stroke-width:3px
+  linkStyle 11 stroke:#97a29a,stroke-width:2px
 </pre></div></div>
   <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(k, A*exp(-E_{a}/(R*T)))</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(Symbol('k'), Mul(Symbol('A'), exp(Mul(Integer(-1), Symbol('E_{a}'), Pow(Symbol('R'), Integer(-1)), Pow(Symbol('T'), Integer(-1))))))</pre></div></div>
   <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>-A*exp(-E_a/(R*T)) + k</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>A, E_a, R, T, k</pre></div></div>
@@ -3406,17 +3426,17 @@ svg.d3-semantic-graph {
   </div>
   <div class="row-graph">
     <pre class="mermaid">flowchart RL
-  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  classDef scalar fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef vector fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef constant fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef number fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef expression fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef text fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef operator fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef function fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef relation fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef result fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef annotation fill:#232a26,stroke:#6f7d73,color:#b9c2bb,font-size:15px
   __equals_1{"="}:::relation
   t_1_2["$t_{1/2}$"]:::scalar
   __multiply_2(("$\times$")):::operator
@@ -3432,13 +3452,13 @@ svg.d3-semantic-graph {
   k --&gt; __power_6
   __power_6 -.-&gt; __multiply_2
   __multiply_2 --&gt; __equals_1
-  linkStyle 0 stroke:#aaa,stroke-width:2px
-  linkStyle 1 stroke:#aaa,stroke-width:2px
-  linkStyle 2 stroke:#aaa,stroke-width:2px
-  linkStyle 3 stroke:#ef5350,stroke-width:3px
-  linkStyle 4 stroke:#aaa,stroke-width:2px
-  linkStyle 5 stroke:#42a5f5,stroke-width:1px
-  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 0 stroke:#97a29a,stroke-width:2px
+  linkStyle 1 stroke:#97a29a,stroke-width:2px
+  linkStyle 2 stroke:#97a29a,stroke-width:2px
+  linkStyle 3 stroke:#c9705f,stroke-width:3px
+  linkStyle 4 stroke:#97a29a,stroke-width:2px
+  linkStyle 5 stroke:#7fa3b8,stroke-width:1px
+  linkStyle 6 stroke:#97a29a,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -3584,17 +3604,17 @@ svg.d3-semantic-graph {
   },
   "domain": "chemistry"
 }</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
-  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  classDef scalar fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef vector fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef constant fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef number fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef expression fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef text fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef operator fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef function fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef relation fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef result fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef annotation fill:#232a26,stroke:#6f7d73,color:#b9c2bb,font-size:15px
   __equals_1{"="}:::relation
   t_1_2["$t_{1/2}$"]:::scalar
   __multiply_2(("$\times$")):::operator
@@ -3610,13 +3630,13 @@ svg.d3-semantic-graph {
   k --&gt; __power_6
   __power_6 -.-&gt; __multiply_2
   __multiply_2 --&gt; __equals_1
-  linkStyle 0 stroke:#aaa,stroke-width:2px
-  linkStyle 1 stroke:#aaa,stroke-width:2px
-  linkStyle 2 stroke:#aaa,stroke-width:2px
-  linkStyle 3 stroke:#ef5350,stroke-width:3px
-  linkStyle 4 stroke:#aaa,stroke-width:2px
-  linkStyle 5 stroke:#42a5f5,stroke-width:1px
-  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 0 stroke:#97a29a,stroke-width:2px
+  linkStyle 1 stroke:#97a29a,stroke-width:2px
+  linkStyle 2 stroke:#97a29a,stroke-width:2px
+  linkStyle 3 stroke:#c9705f,stroke-width:3px
+  linkStyle 4 stroke:#97a29a,stroke-width:2px
+  linkStyle 5 stroke:#7fa3b8,stroke-width:1px
+  linkStyle 6 stroke:#97a29a,stroke-width:2px
 </pre></div></div>
   <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(t_{1/2}, log(2)/k)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(Symbol('t_{1/2}'), Mul(Pow(Symbol('k'), Integer(-1)), log(Integer(2))))</pre></div></div>
   <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>t_1/2 - log(2)/k</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>k, t_1/2</pre></div></div>
@@ -3629,17 +3649,17 @@ svg.d3-semantic-graph {
   </div>
   <div class="row-graph">
     <pre class="mermaid">flowchart RL
-  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  classDef scalar fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef vector fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef constant fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef number fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef expression fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef text fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef operator fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef function fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef relation fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef result fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef annotation fill:#232a26,stroke:#6f7d73,color:#b9c2bb,font-size:15px
   __equals_1{"="}:::relation
   E["$E$"]:::scalar
   __add_2(("$+$")):::operator
@@ -3675,23 +3695,23 @@ svg.d3-semantic-graph {
   __multiply_5 --&gt; __negation_4
   __negation_4 --&gt; __add_2
   __add_2 --&gt; __equals_1
-  linkStyle 0 stroke:#aaa,stroke-width:2px
-  linkStyle 1 stroke:#aaa,stroke-width:2px
-  linkStyle 2 stroke:#aaa,stroke-width:2px
-  linkStyle 3 stroke:#ef5350,stroke-width:3px
-  linkStyle 4 stroke:#ef5350,stroke-width:3px
-  linkStyle 5 stroke:#ef5350,stroke-width:3px
-  linkStyle 6 stroke:#ef5350,stroke-width:3px
-  linkStyle 7 stroke:#ef5350,stroke-width:3px
-  linkStyle 8 stroke:#aaa,stroke-width:2px
-  linkStyle 9 stroke:#42a5f5,stroke-width:1px
-  linkStyle 10 stroke:#ef5350,stroke-width:3px
-  linkStyle 11 stroke:#aaa,stroke-width:2px
-  linkStyle 12 stroke:#aaa,stroke-width:2px
-  linkStyle 13 stroke:#ef5350,stroke-width:3px
-  linkStyle 14 stroke:#aaa,stroke-width:2px
-  linkStyle 15 stroke:#aaa,stroke-width:2px
-  linkStyle 16 stroke:#aaa,stroke-width:2px
+  linkStyle 0 stroke:#97a29a,stroke-width:2px
+  linkStyle 1 stroke:#97a29a,stroke-width:2px
+  linkStyle 2 stroke:#97a29a,stroke-width:2px
+  linkStyle 3 stroke:#c9705f,stroke-width:3px
+  linkStyle 4 stroke:#c9705f,stroke-width:3px
+  linkStyle 5 stroke:#c9705f,stroke-width:3px
+  linkStyle 6 stroke:#c9705f,stroke-width:3px
+  linkStyle 7 stroke:#c9705f,stroke-width:3px
+  linkStyle 8 stroke:#97a29a,stroke-width:2px
+  linkStyle 9 stroke:#7fa3b8,stroke-width:1px
+  linkStyle 10 stroke:#c9705f,stroke-width:3px
+  linkStyle 11 stroke:#97a29a,stroke-width:2px
+  linkStyle 12 stroke:#97a29a,stroke-width:2px
+  linkStyle 13 stroke:#c9705f,stroke-width:3px
+  linkStyle 14 stroke:#97a29a,stroke-width:2px
+  linkStyle 15 stroke:#97a29a,stroke-width:2px
+  linkStyle 16 stroke:#97a29a,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -4022,17 +4042,17 @@ svg.d3-semantic-graph {
   },
   "domain": "chemistry"
 }</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
-  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  classDef scalar fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef vector fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef constant fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef number fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef expression fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef text fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef operator fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef function fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef relation fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef result fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef annotation fill:#232a26,stroke:#6f7d73,color:#b9c2bb,font-size:15px
   __equals_1{"="}:::relation
   E["$E$"]:::scalar
   __add_2(("$+$")):::operator
@@ -4068,25 +4088,25 @@ svg.d3-semantic-graph {
   __multiply_5 --&gt; __negation_4
   __negation_4 --&gt; __add_2
   __add_2 --&gt; __equals_1
-  linkStyle 0 stroke:#aaa,stroke-width:2px
-  linkStyle 1 stroke:#aaa,stroke-width:2px
-  linkStyle 2 stroke:#aaa,stroke-width:2px
-  linkStyle 3 stroke:#ef5350,stroke-width:3px
-  linkStyle 4 stroke:#ef5350,stroke-width:3px
-  linkStyle 5 stroke:#ef5350,stroke-width:3px
-  linkStyle 6 stroke:#ef5350,stroke-width:3px
-  linkStyle 7 stroke:#ef5350,stroke-width:3px
-  linkStyle 8 stroke:#aaa,stroke-width:2px
-  linkStyle 9 stroke:#42a5f5,stroke-width:1px
-  linkStyle 10 stroke:#ef5350,stroke-width:3px
-  linkStyle 11 stroke:#aaa,stroke-width:2px
-  linkStyle 12 stroke:#aaa,stroke-width:2px
-  linkStyle 13 stroke:#ef5350,stroke-width:3px
-  linkStyle 14 stroke:#aaa,stroke-width:2px
-  linkStyle 15 stroke:#aaa,stroke-width:2px
-  linkStyle 16 stroke:#aaa,stroke-width:2px
+  linkStyle 0 stroke:#97a29a,stroke-width:2px
+  linkStyle 1 stroke:#97a29a,stroke-width:2px
+  linkStyle 2 stroke:#97a29a,stroke-width:2px
+  linkStyle 3 stroke:#c9705f,stroke-width:3px
+  linkStyle 4 stroke:#c9705f,stroke-width:3px
+  linkStyle 5 stroke:#c9705f,stroke-width:3px
+  linkStyle 6 stroke:#c9705f,stroke-width:3px
+  linkStyle 7 stroke:#c9705f,stroke-width:3px
+  linkStyle 8 stroke:#97a29a,stroke-width:2px
+  linkStyle 9 stroke:#7fa3b8,stroke-width:1px
+  linkStyle 10 stroke:#c9705f,stroke-width:3px
+  linkStyle 11 stroke:#97a29a,stroke-width:2px
+  linkStyle 12 stroke:#97a29a,stroke-width:2px
+  linkStyle 13 stroke:#c9705f,stroke-width:3px
+  linkStyle 14 stroke:#97a29a,stroke-width:2px
+  linkStyle 15 stroke:#97a29a,stroke-width:2px
+  linkStyle 16 stroke:#97a29a,stroke-width:2px
 </pre></div></div>
-  <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(E, 1 - R*T*log(Q)/(F*n))</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(E, Add(Integer(1), Mul(Integer(-1), Pow(Symbol('F'), Integer(-1)), Symbol('R'), Symbol('T'), Pow(Symbol('n'), Integer(-1)), log(Symbol('Q')))))</pre></div></div>
+  <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(E, 1 - R*T*log(Q)/(F*n))</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(Symbol('E'), Add(Integer(1), Mul(Integer(-1), Pow(Symbol('F'), Integer(-1)), Symbol('R'), Symbol('T'), Pow(Symbol('n'), Integer(-1)), log(Symbol('Q')))))</pre></div></div>
   <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>E - 1 + R*T*log(Q)/(F*n)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>E, F, Q, R, T, n</pre></div></div>
   <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;E = E^0 - \\frac{R T}{n F} \\ln Q&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;E - 1 + R*T*log(Q)/(F*n)&quot;,&quot;variables&quot;:[&quot;E&quot;,&quot;F&quot;,&quot;Q&quot;,&quot;R&quot;,&quot;T&quot;,&quot;n&quot;]}},{&quot;id&quot;:&quot;E&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;E&quot;,&quot;subexpr&quot;:&quot;E&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;E&quot;,&quot;variables&quot;:[&quot;E&quot;]}},{&quot;id&quot;:&quot;__add_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;add&quot;,&quot;subexpr&quot;:&quot;E^{0} - R T \\frac{1}{F n} \\ln{\\left(Q \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1 - R*T*log(Q)/(F*n)&quot;,&quot;variables&quot;:[&quot;F&quot;,&quot;Q&quot;,&quot;R&quot;,&quot;T&quot;,&quot;n&quot;]}},{&quot;id&quot;:&quot;__power_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;0&quot;,&quot;subexpr&quot;:&quot;E^{0}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__negation_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;negation&quot;,&quot;subexpr&quot;:&quot;-R T \\frac{1}{F n} \\ln{\\left(Q \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-R*T*log(Q)/(F*n)&quot;,&quot;variables&quot;:[&quot;F&quot;,&quot;Q&quot;,&quot;R&quot;,&quot;T&quot;,&quot;n&quot;]}},{&quot;id&quot;:&quot;__multiply_5&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;R T \\frac{1}{F n} \\ln{\\left(Q \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;R*T*log(Q)/(F*n)&quot;,&quot;variables&quot;:[&quot;F&quot;,&quot;Q&quot;,&quot;R&quot;,&quot;T&quot;,&quot;n&quot;]}},{&quot;id&quot;:&quot;__multiply_6&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;R T \\frac{1}{F n}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;R*T/(F*n)&quot;,&quot;variables&quot;:[&quot;F&quot;,&quot;R&quot;,&quot;T&quot;,&quot;n&quot;]}},{&quot;id&quot;:&quot;__multiply_7&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;R T&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;R*T&quot;,&quot;variables&quot;:[&quot;R&quot;,&quot;T&quot;]}},{&quot;id&quot;:&quot;R&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;R&quot;,&quot;subexpr&quot;:&quot;R&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;R&quot;,&quot;variables&quot;:[&quot;R&quot;]}},{&quot;id&quot;:&quot;T&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;T&quot;,&quot;subexpr&quot;:&quot;T&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;T&quot;,&quot;variables&quot;:[&quot;T&quot;]}},{&quot;id&quot;:&quot;__power_8&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{F n}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;1/(F*n)&quot;,&quot;variables&quot;:[&quot;F&quot;,&quot;n&quot;]}},{&quot;id&quot;:&quot;__multiply_9&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;n F&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;F*n&quot;,&quot;variables&quot;:[&quot;F&quot;,&quot;n&quot;]}},{&quot;id&quot;:&quot;n&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;n&quot;,&quot;subexpr&quot;:&quot;n&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;n&quot;,&quot;variables&quot;:[&quot;n&quot;]}},{&quot;id&quot;:&quot;F&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;F&quot;,&quot;subexpr&quot;:&quot;F&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;F&quot;,&quot;variables&quot;:[&quot;F&quot;]}},{&quot;id&quot;:&quot;__log_10&quot;,&quot;type&quot;:&quot;function&quot;,&quot;op&quot;:&quot;log&quot;,&quot;subexpr&quot;:&quot;\\ln{\\left(Q \\right)}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;log(Q)&quot;,&quot;variables&quot;:[&quot;Q&quot;]}},{&quot;id&quot;:&quot;Q&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;Q&quot;,&quot;subexpr&quot;:&quot;Q&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;Q&quot;,&quot;variables&quot;:[&quot;Q&quot;]}},{&quot;id&quot;:&quot;__const_11&quot;,&quot;type&quot;:&quot;constant&quot;,&quot;label&quot;:&quot;e (Euler's number)&quot;,&quot;latex&quot;:&quot;e&quot;,&quot;subexpr&quot;:&quot;e&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;e&quot;,&quot;variables&quot;:[]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;E&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;E&quot;,&quot;to&quot;:&quot;__power_3&quot;},{&quot;from&quot;:&quot;__power_3&quot;,&quot;to&quot;:&quot;__add_2&quot;},{&quot;from&quot;:&quot;R&quot;,&quot;to&quot;:&quot;__multiply_7&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;T&quot;,&quot;to&quot;:&quot;__multiply_7&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_7&quot;,&quot;to&quot;:&quot;__multiply_6&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;n&quot;,&quot;to&quot;:&quot;__multiply_9&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;F&quot;,&quot;to&quot;:&quot;__multiply_9&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_9&quot;,&quot;to&quot;:&quot;__power_8&quot;},{&quot;from&quot;:&quot;__power_8&quot;,&quot;to&quot;:&quot;__multiply_6&quot;},{&quot;from&quot;:&quot;__multiply_6&quot;,&quot;to&quot;:&quot;__multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;Q&quot;,&quot;to&quot;:&quot;__log_10&quot;},{&quot;from&quot;:&quot;__const_11&quot;,&quot;to&quot;:&quot;__log_10&quot;,&quot;role&quot;:&quot;base&quot;},{&quot;from&quot;:&quot;__log_10&quot;,&quot;to&quot;:&quot;__multiply_5&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_5&quot;,&quot;to&quot;:&quot;__negation_4&quot;},{&quot;from&quot;:&quot;__negation_4&quot;,&quot;to&quot;:&quot;__add_2&quot;},{&quot;from&quot;:&quot;__add_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;},&quot;domain&quot;:&quot;chemistry&quot;}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
@@ -4097,17 +4117,17 @@ svg.d3-semantic-graph {
   </div>
   <div class="row-graph">
     <pre class="mermaid">flowchart RL
-  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  classDef scalar fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef vector fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef constant fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef number fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef expression fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef text fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef operator fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef function fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef relation fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef result fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef annotation fill:#232a26,stroke:#6f7d73,color:#b9c2bb,font-size:15px
   __equals_1{"="}:::relation
   A["$A$"]:::scalar
   __multiply_2(("$\times$")):::operator
@@ -4121,12 +4141,12 @@ svg.d3-semantic-graph {
   c --&gt; __multiply_3
   __multiply_3 --&gt; __multiply_2
   __multiply_2 --&gt; __equals_1
-  linkStyle 0 stroke:#aaa,stroke-width:2px
-  linkStyle 1 stroke:#ef5350,stroke-width:3px
-  linkStyle 2 stroke:#ef5350,stroke-width:3px
-  linkStyle 3 stroke:#ef5350,stroke-width:3px
-  linkStyle 4 stroke:#ef5350,stroke-width:3px
-  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 0 stroke:#97a29a,stroke-width:2px
+  linkStyle 1 stroke:#c9705f,stroke-width:3px
+  linkStyle 2 stroke:#c9705f,stroke-width:3px
+  linkStyle 3 stroke:#c9705f,stroke-width:3px
+  linkStyle 4 stroke:#c9705f,stroke-width:3px
+  linkStyle 5 stroke:#97a29a,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -4269,17 +4289,17 @@ svg.d3-semantic-graph {
   },
   "domain": "chemistry"
 }</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
-  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  classDef scalar fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef vector fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef constant fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef number fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef expression fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef text fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef operator fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef function fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef relation fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef result fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef annotation fill:#232a26,stroke:#6f7d73,color:#b9c2bb,font-size:15px
   __equals_1{"="}:::relation
   A["$A$"]:::scalar
   __multiply_2(("$\times$")):::operator
@@ -4293,12 +4313,12 @@ svg.d3-semantic-graph {
   c --&gt; __multiply_3
   __multiply_3 --&gt; __multiply_2
   __multiply_2 --&gt; __equals_1
-  linkStyle 0 stroke:#aaa,stroke-width:2px
-  linkStyle 1 stroke:#ef5350,stroke-width:3px
-  linkStyle 2 stroke:#ef5350,stroke-width:3px
-  linkStyle 3 stroke:#ef5350,stroke-width:3px
-  linkStyle 4 stroke:#ef5350,stroke-width:3px
-  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 0 stroke:#97a29a,stroke-width:2px
+  linkStyle 1 stroke:#c9705f,stroke-width:3px
+  linkStyle 2 stroke:#c9705f,stroke-width:3px
+  linkStyle 3 stroke:#c9705f,stroke-width:3px
+  linkStyle 4 stroke:#c9705f,stroke-width:3px
+  linkStyle 5 stroke:#97a29a,stroke-width:2px
 </pre></div></div>
   <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(A, \epsilon*b*c)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(Symbol('A'), Mul(Symbol('\\epsilon'), Symbol('b'), Symbol('c')))</pre></div></div>
   <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>A - b*c*epsilon</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>A, b, c, epsilon</pre></div></div>
@@ -4311,17 +4331,17 @@ svg.d3-semantic-graph {
   </div>
   <div class="row-graph">
     <pre class="mermaid">flowchart RL
-  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  classDef scalar fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef vector fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef constant fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef number fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef expression fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef text fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef operator fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef function fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef relation fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef result fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef annotation fill:#232a26,stroke:#6f7d73,color:#b9c2bb,font-size:15px
   __equals_1{"="}:::relation
   M["$M$"]:::scalar
   __multiply_2(("$\times$")):::operator
@@ -4333,11 +4353,11 @@ svg.d3-semantic-graph {
   V --&gt; __power_3
   __power_3 -.-&gt; __multiply_2
   __multiply_2 --&gt; __equals_1
-  linkStyle 0 stroke:#aaa,stroke-width:2px
-  linkStyle 1 stroke:#ef5350,stroke-width:3px
-  linkStyle 2 stroke:#aaa,stroke-width:2px
-  linkStyle 3 stroke:#42a5f5,stroke-width:1px
-  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 0 stroke:#97a29a,stroke-width:2px
+  linkStyle 1 stroke:#c9705f,stroke-width:3px
+  linkStyle 2 stroke:#97a29a,stroke-width:2px
+  linkStyle 3 stroke:#7fa3b8,stroke-width:1px
+  linkStyle 4 stroke:#97a29a,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -4457,17 +4477,17 @@ svg.d3-semantic-graph {
   },
   "domain": "chemistry"
 }</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
-  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  classDef scalar fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef vector fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef constant fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef number fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef expression fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef text fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef operator fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef function fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef relation fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef result fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef annotation fill:#232a26,stroke:#6f7d73,color:#b9c2bb,font-size:15px
   __equals_1{"="}:::relation
   M["$M$"]:::scalar
   __multiply_2(("$\times$")):::operator
@@ -4479,11 +4499,11 @@ svg.d3-semantic-graph {
   V --&gt; __power_3
   __power_3 -.-&gt; __multiply_2
   __multiply_2 --&gt; __equals_1
-  linkStyle 0 stroke:#aaa,stroke-width:2px
-  linkStyle 1 stroke:#ef5350,stroke-width:3px
-  linkStyle 2 stroke:#aaa,stroke-width:2px
-  linkStyle 3 stroke:#42a5f5,stroke-width:1px
-  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 0 stroke:#97a29a,stroke-width:2px
+  linkStyle 1 stroke:#c9705f,stroke-width:3px
+  linkStyle 2 stroke:#97a29a,stroke-width:2px
+  linkStyle 3 stroke:#7fa3b8,stroke-width:1px
+  linkStyle 4 stroke:#97a29a,stroke-width:2px
 </pre></div></div>
   <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(M, n/V)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(Symbol('M'), Mul(Pow(Symbol('V'), Integer(-1)), Symbol('n')))</pre></div></div>
   <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>M - n/V</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>M, V, n</pre></div></div>
@@ -4496,17 +4516,17 @@ svg.d3-semantic-graph {
   </div>
   <div class="row-graph">
     <pre class="mermaid">flowchart RL
-  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  classDef scalar fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef vector fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef constant fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef number fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef expression fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef text fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef operator fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef function fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef relation fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef result fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef annotation fill:#232a26,stroke:#6f7d73,color:#b9c2bb,font-size:15px
   __equals_1{"="}:::relation
   rho["$\rho$"]:::scalar
   __multiply_2(("$\times$")):::operator
@@ -4518,11 +4538,11 @@ svg.d3-semantic-graph {
   V --&gt; __power_3
   __power_3 -.-&gt; __multiply_2
   __multiply_2 --&gt; __equals_1
-  linkStyle 0 stroke:#aaa,stroke-width:2px
-  linkStyle 1 stroke:#ef5350,stroke-width:3px
-  linkStyle 2 stroke:#aaa,stroke-width:2px
-  linkStyle 3 stroke:#42a5f5,stroke-width:1px
-  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 0 stroke:#97a29a,stroke-width:2px
+  linkStyle 1 stroke:#c9705f,stroke-width:3px
+  linkStyle 2 stroke:#97a29a,stroke-width:2px
+  linkStyle 3 stroke:#7fa3b8,stroke-width:1px
+  linkStyle 4 stroke:#97a29a,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -4642,17 +4662,17 @@ svg.d3-semantic-graph {
   },
   "domain": "chemistry"
 }</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
-  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  classDef scalar fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef vector fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef constant fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef number fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef expression fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef text fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef operator fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef function fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef relation fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef result fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef annotation fill:#232a26,stroke:#6f7d73,color:#b9c2bb,font-size:15px
   __equals_1{"="}:::relation
   rho["$\rho$"]:::scalar
   __multiply_2(("$\times$")):::operator
@@ -4664,11 +4684,11 @@ svg.d3-semantic-graph {
   V --&gt; __power_3
   __power_3 -.-&gt; __multiply_2
   __multiply_2 --&gt; __equals_1
-  linkStyle 0 stroke:#aaa,stroke-width:2px
-  linkStyle 1 stroke:#ef5350,stroke-width:3px
-  linkStyle 2 stroke:#aaa,stroke-width:2px
-  linkStyle 3 stroke:#42a5f5,stroke-width:1px
-  linkStyle 4 stroke:#aaa,stroke-width:2px
+  linkStyle 0 stroke:#97a29a,stroke-width:2px
+  linkStyle 1 stroke:#c9705f,stroke-width:3px
+  linkStyle 2 stroke:#97a29a,stroke-width:2px
+  linkStyle 3 stroke:#7fa3b8,stroke-width:1px
+  linkStyle 4 stroke:#97a29a,stroke-width:2px
 </pre></div></div>
   <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(\rho, m/V)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(Symbol('\\rho'), Mul(Pow(Symbol('V'), Integer(-1)), Symbol('m')))</pre></div></div>
   <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>rho - m/V</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>V, m, rho</pre></div></div>
@@ -4681,17 +4701,17 @@ svg.d3-semantic-graph {
   </div>
   <div class="row-graph">
     <pre class="mermaid">flowchart RL
-  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  classDef scalar fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef vector fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef constant fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef number fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef expression fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef text fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef operator fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef function fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef relation fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef result fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef annotation fill:#232a26,stroke:#6f7d73,color:#b9c2bb,font-size:15px
   __equals_1{"="}:::relation
   __multiply_2(("$\times$")):::operator
   M_1["$M_{1}$"]:::scalar
@@ -4705,12 +4725,12 @@ svg.d3-semantic-graph {
   M_2 --&gt; __multiply_3
   V_2 --&gt; __multiply_3
   __multiply_3 --&gt; __equals_1
-  linkStyle 0 stroke:#ef5350,stroke-width:3px
-  linkStyle 1 stroke:#ef5350,stroke-width:3px
-  linkStyle 2 stroke:#aaa,stroke-width:2px
-  linkStyle 3 stroke:#ef5350,stroke-width:3px
-  linkStyle 4 stroke:#ef5350,stroke-width:3px
-  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 0 stroke:#c9705f,stroke-width:3px
+  linkStyle 1 stroke:#c9705f,stroke-width:3px
+  linkStyle 2 stroke:#97a29a,stroke-width:2px
+  linkStyle 3 stroke:#c9705f,stroke-width:3px
+  linkStyle 4 stroke:#c9705f,stroke-width:3px
+  linkStyle 5 stroke:#97a29a,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -4852,17 +4872,17 @@ svg.d3-semantic-graph {
   },
   "domain": "chemistry"
 }</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
-  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  classDef scalar fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef vector fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef constant fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef number fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef expression fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef text fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef operator fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef function fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef relation fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef result fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef annotation fill:#232a26,stroke:#6f7d73,color:#b9c2bb,font-size:15px
   __equals_1{"="}:::relation
   __multiply_2(("$\times$")):::operator
   M_1["$M_{1}$"]:::scalar
@@ -4876,12 +4896,12 @@ svg.d3-semantic-graph {
   M_2 --&gt; __multiply_3
   V_2 --&gt; __multiply_3
   __multiply_3 --&gt; __equals_1
-  linkStyle 0 stroke:#ef5350,stroke-width:3px
-  linkStyle 1 stroke:#ef5350,stroke-width:3px
-  linkStyle 2 stroke:#aaa,stroke-width:2px
-  linkStyle 3 stroke:#ef5350,stroke-width:3px
-  linkStyle 4 stroke:#ef5350,stroke-width:3px
-  linkStyle 5 stroke:#aaa,stroke-width:2px
+  linkStyle 0 stroke:#c9705f,stroke-width:3px
+  linkStyle 1 stroke:#c9705f,stroke-width:3px
+  linkStyle 2 stroke:#97a29a,stroke-width:2px
+  linkStyle 3 stroke:#c9705f,stroke-width:3px
+  linkStyle 4 stroke:#c9705f,stroke-width:3px
+  linkStyle 5 stroke:#97a29a,stroke-width:2px
 </pre></div></div>
   <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(M_{1}*V_{1}, M_{2}*V_{2})</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(Mul(Symbol('M_{1}'), Symbol('V_{1}')), Mul(Symbol('M_{2}'), Symbol('V_{2}')))</pre></div></div>
   <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>M_1*V_1 - M_2*V_2</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>M_1, M_2, V_1, V_2</pre></div></div>
@@ -4894,17 +4914,17 @@ svg.d3-semantic-graph {
   </div>
   <div class="row-graph">
     <pre class="mermaid">flowchart RL
-  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  classDef scalar fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef vector fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef constant fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef number fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef expression fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef text fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef operator fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef function fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef relation fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef result fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef annotation fill:#232a26,stroke:#6f7d73,color:#b9c2bb,font-size:15px
   __equals_1{"="}:::relation
   Delta_G["$\Delta G$"]:::scalar
   __add_2(("$+$")):::operator
@@ -4921,13 +4941,13 @@ svg.d3-semantic-graph {
   __multiply_4 --&gt; __negation_3
   __negation_3 --&gt; __add_2
   __add_2 --&gt; __equals_1
-  linkStyle 0 stroke:#aaa,stroke-width:2px
-  linkStyle 1 stroke:#aaa,stroke-width:2px
-  linkStyle 2 stroke:#ef5350,stroke-width:3px
-  linkStyle 3 stroke:#ef5350,stroke-width:3px
-  linkStyle 4 stroke:#aaa,stroke-width:2px
-  linkStyle 5 stroke:#aaa,stroke-width:2px
-  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 0 stroke:#97a29a,stroke-width:2px
+  linkStyle 1 stroke:#97a29a,stroke-width:2px
+  linkStyle 2 stroke:#c9705f,stroke-width:3px
+  linkStyle 3 stroke:#c9705f,stroke-width:3px
+  linkStyle 4 stroke:#97a29a,stroke-width:2px
+  linkStyle 5 stroke:#97a29a,stroke-width:2px
+  linkStyle 6 stroke:#97a29a,stroke-width:2px
 </pre>
   </div>
   <div class="row-actions">
@@ -5083,17 +5103,17 @@ svg.d3-semantic-graph {
   },
   "domain": "chemistry"
 }</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">Mermaid Script</span><button class="row-copy-btn" title="Copy Mermaid">copy</button></div><pre>flowchart RL
-  classDef scalar fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef vector fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef constant fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef number fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef expression fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef text fill:#1b3a1e,stroke:#66bb6a,color:#c8e6c9,font-size:15px
-  classDef operator fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef function fill:#1a2740,stroke:#42a5f5,color:#bbdefb,font-size:15px
-  classDef relation fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef result fill:#332a0b,stroke:#ffa726,color:#ffe0b2,font-size:15px
-  classDef annotation fill:#131a2c,stroke:#4a5580,color:#b0bcd0,font-size:15px
+  classDef scalar fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef vector fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef constant fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef number fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef expression fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef text fill:#1d2b22,stroke:#7fae8a,color:#cfe3d3,font-size:15px
+  classDef operator fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef function fill:#202a30,stroke:#7fa3b8,color:#d2e2ea,font-size:15px
+  classDef relation fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef result fill:#2e2617,stroke:#d9a441,color:#ecd9ae,font-size:15px
+  classDef annotation fill:#232a26,stroke:#6f7d73,color:#b9c2bb,font-size:15px
   __equals_1{"="}:::relation
   Delta_G["$\Delta G$"]:::scalar
   __add_2(("$+$")):::operator
@@ -5110,13 +5130,13 @@ svg.d3-semantic-graph {
   __multiply_4 --&gt; __negation_3
   __negation_3 --&gt; __add_2
   __add_2 --&gt; __equals_1
-  linkStyle 0 stroke:#aaa,stroke-width:2px
-  linkStyle 1 stroke:#aaa,stroke-width:2px
-  linkStyle 2 stroke:#ef5350,stroke-width:3px
-  linkStyle 3 stroke:#ef5350,stroke-width:3px
-  linkStyle 4 stroke:#aaa,stroke-width:2px
-  linkStyle 5 stroke:#aaa,stroke-width:2px
-  linkStyle 6 stroke:#aaa,stroke-width:2px
+  linkStyle 0 stroke:#97a29a,stroke-width:2px
+  linkStyle 1 stroke:#97a29a,stroke-width:2px
+  linkStyle 2 stroke:#c9705f,stroke-width:3px
+  linkStyle 3 stroke:#c9705f,stroke-width:3px
+  linkStyle 4 stroke:#97a29a,stroke-width:2px
+  linkStyle 5 stroke:#97a29a,stroke-width:2px
+  linkStyle 6 stroke:#97a29a,stroke-width:2px
 </pre></div></div>
   <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(\Delta G, -T*\Delta S + \Delta H)</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(Symbol('\\Delta G'), Add(Mul(Integer(-1), Symbol('T'), Symbol('\\Delta S')), Symbol('\\Delta H')))</pre></div></div>
   <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>Delta_G - Delta_H + Delta_S*T</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>Delta_G, Delta_H, Delta_S, T</pre></div></div>
@@ -5183,8 +5203,8 @@ document.querySelectorAll('.row-copy-btn').forEach(btn => {
 })();
 
 Promise.all([
-  import('./d3-semantic-graph.js?v=1785816320'),
-  import('./sg-chart.js?v=1785816320'),
+  import('./d3-semantic-graph.js?v=1786487157'),
+  import('./sg-chart.js?v=1786487157'),
 ]).then(function(mods) {
   var D3SemanticGraphRenderer = mods[0].D3SemanticGraphRenderer;
   var SgChartManager = mods[1].SgChartManager;
