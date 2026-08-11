@@ -1651,20 +1651,24 @@ export class ProofAnimator {
     // reads it as the widest "step" and scales EVERY other step down to
     // illegibility — one bad step blanking the whole derivation (issue #549).
     // Swap it for a bounded chip: the failure stays visible and the source stays
-    // inspectable (it moves to the chip's title), but its width stops mattering.
+    // inspectable (it moves to the chip's tooltip), but its width stops mattering.
     if (host.querySelector(".katex-error")) this._renderErrorChip(host, latex);
     return host;
   }
 
   // Compact stand-in for a step whose LaTeX KaTeX could not parse. Deliberately
   // short and wrappable: it is measured by _fit() alongside the real steps, so
-  // it must never be the widest thing on the stage.
+  // it must never be the widest thing on the stage. The source it replaced goes
+  // on the hover tip IN FULL — that string is the whole diagnostic, so truncating
+  // it would just move the dead end. data-tip (not title) because the native
+  // tooltip is slow and doesn't render in embedded/zoomed contexts; the tip is
+  // sized for a long monospace dump in CSS.
   _renderErrorChip(host, latex) {
     host.innerHTML = "";
     const chip = document.createElement("span");
     chip.className = "pa-expr-error";
     chip.textContent = "⚠ step could not be rendered";
-    chip.title = String(latex || "");
+    chip.setAttribute("data-tip", String(latex || ""));
     host.appendChild(chip);
   }
 
