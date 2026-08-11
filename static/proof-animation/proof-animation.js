@@ -1651,25 +1651,88 @@ export class ProofAnimator {
     // reads it as the widest "step" and scales EVERY other step down to
     // illegibility — one bad step blanking the whole derivation (issue #549).
     // Swap it for a bounded chip: the failure stays visible and the source stays
-    // inspectable (it moves to the chip's tooltip), but its width stops mattering.
+    // reachable behind it, but its width stops mattering.
     if (host.querySelector(".katex-error")) this._renderErrorChip(host, latex);
     return host;
   }
 
   // Compact stand-in for a step whose LaTeX KaTeX could not parse. Deliberately
-  // short and wrappable: it is measured by _fit() alongside the real steps, so
-  // it must never be the widest thing on the stage. The source it replaced goes
-  // on the hover tip IN FULL — that string is the whole diagnostic, so truncating
-  // it would just move the dead end. data-tip (not title) because the native
-  // tooltip is slow and doesn't render in embedded/zoomed contexts; the tip is
-  // sized for a long monospace dump in CSS.
+  // short and wrappable: it is measured by _fit() alongside the real steps, so it
+  // must never be the widest thing on the stage.
+  //
+  // Clicking it opens the source it replaced, IN FULL and as real selectable
+  // text, with a copy button — that string is the whole diagnostic, so it has to
+  // be liftable, which a hover tooltip (CSS ::after, pointer-events: none) can
+  // never be. The panel is absolutely positioned, so however long the dump is it
+  // stays out of flow and out of every width/height measurement.
   _renderErrorChip(host, latex) {
     host.innerHTML = "";
+    const src = String(latex || "");
+
+    const wrap = document.createElement("span");
+    wrap.className = "pa-expr-error-wrap";
+
     const chip = document.createElement("span");
     chip.className = "pa-expr-error";
     chip.textContent = "⚠ step could not be rendered";
-    chip.setAttribute("data-tip", String(latex || ""));
-    host.appendChild(chip);
+    chip.setAttribute("role", "button");
+    chip.setAttribute("tabindex", "0");
+    chip.setAttribute("aria-expanded", "false");
+
+    const panel = document.createElement("div");
+    panel.className = "pa-expr-error-panel";
+    panel.hidden = true;
+    const copy = document.createElement("button");
+    copy.type = "button";
+    copy.className = "pa-expr-error-copy";
+    copy.textContent = "Copy";
+    const pre = document.createElement("pre");
+    pre.className = "pa-expr-error-src";
+    pre.textContent = src;
+    panel.append(copy, pre);
+
+    const toggle = (open) => {
+      panel.hidden = !open;
+      chip.setAttribute("aria-expanded", String(open));
+    };
+    chip.addEventListener("click", () => toggle(panel.hidden));
+    chip.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      e.preventDefault();                       // Space would scroll the page
+      toggle(panel.hidden);
+    });
+    wrap.addEventListener("keydown", (e) => { if (e.key === "Escape") toggle(false); });
+    copy.addEventListener("click", async () => {
+      // The async clipboard API is refused in an embed without clipboard-write
+      // (this widget ships as an iframe snippet) and over plain http. Falling
+      // back to selecting the <pre> leaves the user one ⌘C away either way.
+      let ok = false;
+      try { await navigator.clipboard.writeText(src); ok = true; }
+      catch (e) { ok = this._selectContents(pre) && this._execCopy(); }
+      copy.textContent = ok ? "Copied" : "Press ⌘C";
+      setTimeout(() => { copy.textContent = "Copy"; }, 1200);
+    });
+
+    wrap.append(chip, panel);
+    host.appendChild(wrap);
+  }
+
+  // Put the caret around an element's text. On its own that is already the
+  // useful half of the clipboard fallback — even where the copy command is
+  // refused, the source ends up selected and ⌘C works.
+  _selectContents(el) {
+    try {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      return true;
+    } catch (e) { return false; }
+  }
+
+  _execCopy() {
+    try { return document.execCommand("copy"); } catch (e) { return false; }
   }
 
   // ── Stacked (accordion) mode ────────────────────────────────────────────────
