@@ -37,6 +37,7 @@ from typing import Any, Optional
 
 import sympy
 
+from backend.experts.modules.expression_analysis.build_log import note
 from backend.experts.modules.proof_completion.cas_guard import (
     cas_register_safe_function, guard,
 )
@@ -179,6 +180,23 @@ def _widened(fn, lo: float, hi: float) -> Optional[tuple[float, float]]:
     return _window_at(lo, hi, min(covering))
 
 
+def _swept_symbol(expr, view: dict, fallback):
+    """The symbol THIS view sweeps — its own ``x_var``, not a global guess.
+
+    Each view names the variable it sweeps, and different views of one
+    expression can sweep different variables. Re-deriving a single variable from
+    the expression and applying it to every view mistakes the swept variable for
+    an unpinned parameter (``no value pinned for h``, where h is the very thing
+    on the x-axis) and blocks the repair outright.
+    """
+    name = str(view.get("x_var") or "").strip()
+    if name:
+        for sym in expr.free_symbols:
+            if str(sym) == name:
+                return sym
+    return fallback
+
+
 def _repair_one(expr, var, view: dict) -> dict:
     """Decide what to do with *view*. Always reports; ``to`` only when changing.
 
@@ -194,10 +212,14 @@ def _repair_one(expr, var, view: dict) -> dict:
     if lo is None or hi is None or hi <= lo:
         return {"why": "malformed-range"}
 
+    swept = _swept_symbol(expr, view, var)
+    if swept is None:
+        return {"why": "no-swept-variable"}
+
     pinned = view.get("pinned") or {}
     subs = {}
     for sym in expr.free_symbols:
-        if sym == var:
+        if sym == swept:
             continue
         value = _finite(pinned.get(str(sym)))
         if value is None:
@@ -208,7 +230,7 @@ def _repair_one(expr, var, view: dict) -> dict:
         subs[sym] = sympy.Float(value)
 
     try:
-        fn = sympy.lambdify(var, expr.subs(subs), "math")
+        fn = sympy.lambdify(swept, expr.subs(subs), "math")
     except Exception:
         return {"why": "not-evaluable"}
 
@@ -225,8 +247,34 @@ def _repair_one(expr, var, view: dict) -> dict:
             "reason": "widen", "variation": round(variation, 4)}
 
 
+_WHY_PROSE = {
+    "already-reads": "the proposer's sweep {rng} already shows the curve moving",
+    "flat-at-every-scale": "the curve is flat at every scale — nothing to widen to",
+    "malformed-range": "the proposer gave no usable sweep ({rng})",
+    "not-evaluable": "the expression could not be evaluated at these values",
+}
+
+
+def _prose(record: dict, lo_hi: list) -> str:
+    """The decline, said in words rather than a slug."""
+    why = record.get("why", "")
+    if why.startswith("unpinned:"):
+        return (f"no value pinned for {why.split(':', 1)[1]}, so the curve "
+                f"cannot be sampled (and the view cannot be plotted either)")
+    return _WHY_PROSE.get(why, why).format(rng=_fmt_range(lo_hi))
+
+
+def _fmt_range(rng) -> str:
+    try:
+        lo, hi = rng
+        return f"[{lo:g}, {hi:g}]"
+    except Exception:
+        return str(rng)
+
+
 def repair_view_ranges(expression_latex: str, views: list[dict],
-                       timeout: Optional[float] = None) -> None:
+                       timeout: Optional[float] = None,
+                       notes: Optional[list] = None) -> None:
     """Widen any proposed sweep the curve is flat across, in place.
 
     Each repaired view records what changed under ``range_repaired`` so a
@@ -240,20 +288,37 @@ def repair_view_ranges(expression_latex: str, views: list[dict],
     if parsed is None:
         log.info("%s skipped %d view(s): expression did not parse",
                  _LOG_TAG, len(views))
+        note(notes, "view-ranges", "warning",
+             "could not re-parse the expression, so no sweep was checked")
         return
     expr, var = parsed
     for i, view in enumerate(views):
+        n = i + 1
+        original = list(view.get("x_range") or [])
         record = guard(_repair_one, expr, var, view, default=None, timeout=timeout)
         if record is None:                      # the guard itself gave up
-            log.info("%s view %d: op timed out or errored", _LOG_TAG, i + 1)
+            log.info("%s view %d: op timed out or errored", _LOG_TAG, n)
+            note(notes, "view-ranges", "warning",
+                 "checking the sweep timed out, so it was left as proposed",
+                 view=n)
             continue
         if "to" not in record:
-            log.info("%s view %d: left alone (%s)", _LOG_TAG, i + 1, record["why"])
+            log.info("%s view %d: left alone (%s)", _LOG_TAG, n, record["why"])
+            level = "warning" if record["why"].startswith("unpinned:") else "ok"
+            note(notes, "view-ranges", level, _prose(record, original), view=n,
+                 why=record["why"])
             continue
         view["x_range"] = record["to"]
         view["range_repaired"] = {k: record[k] for k in ("from", "to", "reason")}
         log.info("%s view %d: widened %s → %s (variation was %.4f)", _LOG_TAG,
-                 i + 1, record["from"], record["to"], record["variation"])
+                 n, record["from"], record["to"], record["variation"])
+        note(notes, "view-ranges", "changed",
+             f"the proposer's sweep {_fmt_range(record['from'])} is flat at its "
+             f"own pinned values (the curve varies by "
+             f"{record['variation'] * 100:.1f}% across it) — widened to "
+             f"{_fmt_range(record['to'])}",
+             view=n, **{"from": record["from"], "to": record["to"],
+                        "variation": record["variation"]})
 
 
 def _parse(expression_latex: str):

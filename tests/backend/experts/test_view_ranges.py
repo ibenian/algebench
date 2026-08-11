@@ -184,6 +184,123 @@ class TestWidensFarEnough:
         assert (hi - lo) / ENTRY_PINNED["H"] >= 4.0, out["x_range"]
 
 
+class TestSweptVariableComesFromTheView:
+    """Each view names the variable it sweeps; that is the one to sweep.
+
+    The repair used to re-derive a single variable from the expression and apply
+    it to every view. When that guess disagreed with the view, the view's OWN
+    x-axis variable looked like an unpinned parameter — `no value pinned for h`,
+    where h is the thing on the x-axis — and the repair refused to run at all.
+    Found by the construction trail, which is the point of having one.
+    """
+
+    def test_the_swept_variable_is_never_demanded_as_a_pin(self):
+        notes = []
+        # `pinned` deliberately holds every parameter EXCEPT h, which is correct:
+        # h is swept, not pinned.
+        repair_view_ranges(ENTRY_LATEX,
+                           [_view("h", [-5.0, 20.0], ENTRY_PINNED)], notes=notes)
+        assert "unpinned:h" not in str(notes), notes
+        assert notes[0]["level"] == "changed", notes
+
+    def test_two_views_may_sweep_different_variables(self):
+        """One expression, two views, different x_var each — the second must not
+        be judged against the first's variable."""
+        notes = []
+        pinned_for_H = {**ENTRY_PINNED}
+        pinned_for_H.pop("H")            # H is swept here, so it is not pinned
+        repair_view_ranges(ENTRY_LATEX, [
+            _view("h", [0.0, 40000.0], ENTRY_PINNED),
+            _view("H", [1000.0, 20000.0], {**pinned_for_H, "h": 10000.0}),
+        ], notes=notes)
+        assert len(notes) == 2
+        assert "unpinned" not in str(notes), notes
+
+    def test_an_unknown_x_var_falls_back_rather_than_failing(self):
+        """A view naming a symbol the expression lacks still gets checked
+        against the expression's own variable — degraded, not dead."""
+        notes = []
+        repair_view_ranges(ENTRY_LATEX,
+                           [_view("nonsense", [-5.0, 20.0], ENTRY_PINNED)],
+                           notes=notes)
+        assert len(notes) == 1, notes
+
+
+class TestConstructionTrail:
+    """The response says what the server changed about the model's answer.
+
+    Several passes rewrite the proposal on its way out. Without a record the
+    artifact arrives looking like something the proposer wrote, including the
+    parts that are ours — so "why is this range not what the model asked for?"
+    has to be answerable from the payload, not the server log.
+    """
+
+    def _notes(self, view):
+        notes = []
+        repair_view_ranges(ENTRY_LATEX, [view], notes=notes)
+        return notes
+
+    def test_a_widened_range_reports_both_ranges_and_the_measurement(self):
+        n = self._notes(_view("h", [-5.0, 20.0], ENTRY_PINNED))[0]
+        assert n["stage"] == "view-ranges" and n["level"] == "changed"
+        assert n["view"] == 1
+        assert "[-5, 20]" in n["message"], n["message"]
+        assert "flat" in n["message"] and "widened to" in n["message"], n["message"]
+        # The numbers a client might want to render live in `detail`, so the
+        # message stays prose and nobody has to parse it back out.
+        assert n["detail"]["from"] == [-5.0, 20.0]
+        assert n["detail"]["to"] == n["detail"]["to"]
+
+    def test_an_untouched_range_is_recorded_as_ok_not_omitted(self):
+        """The trail is a record of what happened, not a list of complaints —
+        a missing entry would read as "this view was never looked at"."""
+        n = self._notes(_view("h", [0.0, 40000.0], ENTRY_PINNED))[0]
+        assert n["level"] == "ok"
+        assert "already shows the curve moving" in n["message"], n["message"]
+
+    def test_an_unpinned_parameter_is_a_warning_in_plain_words(self):
+        n = self._notes(_view("h", [0.0, 40000.0], {"H": 6360.0}))[0]
+        assert n["level"] == "warning"
+        assert "no value pinned for" in n["message"], n["message"]
+        # Worth a warning rather than a shrug: the sliders are built from
+        # `pinned`, so this view cannot be plotted at all.
+        assert "cannot be plotted" in n["message"], n["message"]
+
+    def test_one_note_per_view(self):
+        notes = []
+        repair_view_ranges(ENTRY_LATEX, [
+            _view("h", [-5.0, 20.0], ENTRY_PINNED),
+            _view("h", [0.0, 40000.0], ENTRY_PINNED),
+            _view("h", [5.0, 5.0], ENTRY_PINNED)], notes=notes)
+        assert len(notes) == 3
+        assert [n["view"] for n in notes] == [1, 2, 3]
+
+    def test_notes_are_optional_so_every_pass_stays_callable_bare(self):
+        views = [_view("h", [-5.0, 20.0], ENTRY_PINNED)]
+        repair_view_ranges(ENTRY_LATEX, views)          # no sink — must not raise
+        assert views[0]["x_range"] != [-5.0, 20.0]
+
+    def test_the_summary_names_what_was_corrected(self):
+        from backend.experts.modules.expression_analysis.build_log import summarize
+        assert summarize([]) == "returned as proposed"
+        assert summarize([{"stage": "view-ranges", "level": "ok"}]) == "returned as proposed"
+        assert "view-ranges" in summarize([
+            {"stage": "view-ranges", "level": "changed"},
+            {"stage": "view-ranges", "level": "changed"}])
+
+    def test_the_summary_never_swallows_a_warning(self):
+        """A proposal left untouched BECAUSE it could not be checked is not the
+        same as one that came back clean — seen live, where two unplottable
+        views were summarised as "returned as proposed"."""
+        from backend.experts.modules.expression_analysis.build_log import summarize
+        warned = [{"stage": "view-ranges", "level": "warning"},
+                  {"stage": "view-ranges", "level": "warning"}]
+        assert summarize(warned) == "2 warnings"
+        assert summarize(warned[:1]) == "1 warning"
+        both = summarize([{"stage": "extras", "level": "dropped"}] + warned)
+        assert "corrected" in both and "2 warnings" in both, both
+
+
 class TestHandlerWiring:
     def test_the_handler_repairs_before_returning(self, monkeypatch):
         """The pass has to be wired into the analyze path — a correct module
@@ -192,7 +309,7 @@ class TestHandlerWiring:
 
         seen = {}
 
-        def fake_repair(expression_latex, views, timeout=None):
+        def fake_repair(expression_latex, views, timeout=None, notes=None):
             seen["called"] = (expression_latex, views)
 
         monkeypatch.setattr(H, "repair_view_ranges", fake_repair)
