@@ -32,6 +32,7 @@ import hmac
 import json
 import os
 import re
+import warnings
 from pathlib import Path
 from typing import Optional, Protocol, runtime_checkable
 
@@ -90,9 +91,18 @@ def canonical_bytes(data: dict) -> bytes:
 
 
 def _salt() -> bytes:
-    # Deploy-provided secret; a loud, obviously-insecure default keeps dev/CI
-    # working without cloud while never masquerading as a real secret.
-    return os.environ.get("ALGEBENCH_PROOFS_SALT", "dev-insecure-salt").encode("utf-8")
+    # Deploy-provided secret; an obviously-insecure default keeps dev/CI working
+    # without cloud — but warns loudly so operators know to set the env var.
+    val = os.environ.get("ALGEBENCH_PROOFS_SALT") or None
+    if val is None:
+        warnings.warn(
+            "ALGEBENCH_PROOFS_SALT is not set; using insecure dev default. "
+            "Set this env var to a random secret before deploying.",
+            UserWarning,
+            stacklevel=2,
+        )
+        return b"dev-insecure-salt"
+    return val.encode("utf-8")
 
 
 def compute_secret(id: str, stored: bytes) -> str:
