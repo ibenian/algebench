@@ -402,6 +402,53 @@ class TestBraceDifferentialBeforeStructure:
         assert r"{d}\left(" in out, out
 
 
+# Everything TeX accepts straight after ``\left``. Spelled out as an allow-list
+# on purpose: the obvious negative lookahead — "not one of ``([|.{`` or a
+# backslash" — lets EVERY ``\left\<command>`` through, including the
+# ``\left\frac`` / ``\left\right`` shapes this guard exists to catch.
+_DELIMITER_CHARS = r"()\[\]<>|./"
+_DELIMITER_COMMANDS = (
+    r"\{", r"\}", r"\|",
+    r"\langle", r"\rangle",
+    r"\lvert", r"\rvert", r"\lVert", r"\rVert",
+    r"\lfloor", r"\rfloor", r"\lceil", r"\rceil",
+    r"\backslash", r"\uparrow", r"\downarrow", r"\updownarrow",
+    r"\Uparrow", r"\Downarrow", r"\Updownarrow",
+)
+_DANGLING_LEFT_RE = re.compile(
+    r"\\left(?!\s*(?:[" + _DELIMITER_CHARS + r"]|"
+    + "|".join(re.escape(c) for c in _DELIMITER_COMMANDS) + r"))"
+)
+
+
+class TestDanglingLeftGuard:
+    r"""The guard the end-to-end test leans on has to actually catch things."""
+
+    @pytest.mark.parametrize("bad", [
+        r"\htmlData{n=dleft}{\mathrm{d}\left}",     # the shape from issue #549
+        r"\mathrm{d}\left \cdot x",
+        r"\left\frac{a}{b}",
+        r"\left\right)",
+        r"\left\alpha",
+        r"x = \left",
+    ])
+    def test_flags_a_delimiter_less_left(self, bad):
+        assert _DANGLING_LEFT_RE.search(bad) is not None, bad
+
+    @pytest.mark.parametrize("ok", [
+        r"\left(x\right)",
+        r"\left[x\right]",
+        r"\left\{x\right\}",
+        r"\left|x\right|",
+        r"\left\lVert x\right\rVert",
+        r"\left\langle x\right\rangle",
+        r"\left.\frac{a}{b}\right|",
+        r"\left\lfloor x\right\rfloor",
+    ])
+    def test_passes_a_real_delimiter(self, ok):
+        assert _DANGLING_LEFT_RE.search(ok) is None, ok
+
+
 class TestDifferentialOfAGroupRenders:
     r"""End-to-end: no step may render as an un-parseable ``\left`` (issue #549)."""
 
@@ -417,9 +464,9 @@ class TestDifferentialOfAGroupRenders:
         assert g is not None
         assert not [n for n in g.nodes if n.id == "dleft"], [n.id for n in g.nodes]
         out = to_latex(g, with_ids=True)
-        # Every \left must be followed by a delimiter, never by `}` or another
-        # command — that is exactly the shape KaTeX rejects.
-        assert re.search(r"\\left(?![(\[|.{\\]|\\\{)", out) is None, out
+        # Every \left must be followed by a REAL delimiter, never by `}` or some
+        # other command — that is exactly the shape KaTeX rejects.
+        assert _DANGLING_LEFT_RE.search(out) is None, out
         assert r"\mathrm{d}\left" not in out, out
 
     def test_flux_integral_still_fuses_its_accented_differential(self):
