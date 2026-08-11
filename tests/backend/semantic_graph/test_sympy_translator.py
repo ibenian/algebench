@@ -25,6 +25,7 @@ from backend.semantic_graph.sympy_translator import (
     _is_bare_variable,
     _rejoin_subject_group_commas,
     _classify_expression,
+    _extract_latex_commands,
 )
 
 
@@ -429,3 +430,23 @@ class TestLatexToSemanticGraph:
         subexpr = sum_nodes[0].subexpr or ""
         assert "i=1" in subexpr
         assert "^{n}" in subexpr
+
+
+class TestExtractLatexCommands:
+    r"""The symbol→LaTeX map must hold only names a symbol could render AS.
+
+    Structural commands used to land in it, letting ``_symbol_latex`` compose the
+    differential form ``\mathrm{d}`` + ``\left`` for a symbol SymPy had named
+    ``dleft`` — emitting a delimiter-less ``\left`` that KaTeX rejects, so the
+    whole step fell back to raw source in the proof overlay (issue #549).
+    """
+
+    @pytest.mark.parametrize("name", ["left", "right", "frac", "sqrt", "begin", "text", "vec"])
+    def test_structural_commands_are_excluded(self, name):
+        cmds = _extract_latex_commands(rf"d\{name}{{x}} + \rho")
+        assert name not in cmds, cmds
+
+    def test_symbol_and_function_commands_are_kept(self):
+        cmds = _extract_latex_commands(r"\ln\left(\rho\right) + \Omega + \sin\theta")
+        for name in ("ln", "rho", "Omega", "sin", "theta"):
+            assert cmds.get(name) == "\\" + name, (name, cmds)

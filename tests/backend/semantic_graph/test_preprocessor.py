@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from backend.semantic_graph.preprocessor import (
@@ -354,3 +356,124 @@ class TestNormalizeAppliedSymbolBraces:
         assert g is not None
         kinds = {(n.type, n.op) for n in g.nodes}
         assert ("function", "f") in kinds
+
+
+class TestBraceDifferentialBeforeStructure:
+    r"""``d\left(…\right)`` must not fuse into a ``dleft`` symbol (issue #549).
+
+    SymPy's ``parse_latex`` fuses a bare ``d`` with the NAME of the command after
+    it — the rule that makes ``d\rho`` one symbol. Applied to a structural
+    command it mints nonsense (``dleft``), which the renderer then spells back as
+    ``\mathrm{d}\left`` — a delimiter-less ``\left`` KaTeX cannot parse, so the
+    step fell back to dumping its raw source into the proof overlay.
+    """
+
+    brace = staticmethod(LaTeXPreprocessor.brace_differential_before_structure)
+
+    @pytest.mark.parametrize("latex, expected", [
+        (r"d\left(\rho\right)", r"{d}\left(\rho\right)"),
+        (r"dP = d\left(x\right)", r"dP = {d}\left(x\right)"),
+        (r"d\frac{a}{b}", r"{d}\frac{a}{b}"),
+        (r"d\sqrt{x}", r"{d}\sqrt{x}"),
+        (r"d \left(x\right)", r"{d} \left(x\right)"),   # spacing preserved
+        (r"2d\left(x\right)", r"2{d}\left(x\right)"),   # digit is not an identifier char
+    ])
+    def test_braces_before_structural_commands(self, latex, expected):
+        assert self.brace(latex) == expected
+
+    @pytest.mark.parametrize("latex", [
+        r"d\rho",                # genuine differential — must keep fusing
+        r"d\Omega",
+        r"d\vec{A}",             # accent is peeled to `dA` downstream
+        r"d\theta \, d\phi",
+        r"\mathrm{d}\Omega",     # already upright, no bare d before a command
+        r"ad\left(x\right)",     # `d` is the tail of an identifier, not a differential
+        r"\frac{d}{dx} f",       # derivative notation has no command after the d
+        r"x + 1",                # nothing to do
+    ])
+    def test_leaves_everything_else_alone(self, latex):
+        assert self.brace(latex) == latex
+
+    def test_upright_differential_is_caught_after_the_accent_pass(self, pp):
+        r"""``\mathrm{d}`` is peeled to a bare ``d`` earlier in ``preprocess``, so
+        the upright spelling reaches SymPy in the same broken shape unless this
+        pass runs after that peel."""
+        out = pp.preprocess(r"dP = \mathrm{d}\left(\rho\right)").cleaned_latex
+        assert r"{d}\left(" in out, out
+
+
+# Everything TeX accepts straight after ``\left``. Spelled out as an allow-list
+# on purpose: the obvious negative lookahead — "not one of ``([|.{`` or a
+# backslash" — lets EVERY ``\left\<command>`` through, including the
+# ``\left\frac`` / ``\left\right`` shapes this guard exists to catch.
+_DELIMITER_CHARS = r"()\[\]<>|./"
+_DELIMITER_COMMANDS = (
+    r"\{", r"\}", r"\|",
+    r"\langle", r"\rangle",
+    r"\lvert", r"\rvert", r"\lVert", r"\rVert",
+    r"\lfloor", r"\rfloor", r"\lceil", r"\rceil",
+    r"\backslash", r"\uparrow", r"\downarrow", r"\updownarrow",
+    r"\Uparrow", r"\Downarrow", r"\Updownarrow",
+)
+_DANGLING_LEFT_RE = re.compile(
+    r"\\left(?!\s*(?:[" + _DELIMITER_CHARS + r"]|"
+    + "|".join(re.escape(c) for c in _DELIMITER_COMMANDS) + r"))"
+)
+
+
+class TestDanglingLeftGuard:
+    r"""The guard the end-to-end test leans on has to actually catch things."""
+
+    @pytest.mark.parametrize("bad", [
+        r"\htmlData{n=dleft}{\mathrm{d}\left}",     # the shape from issue #549
+        r"\mathrm{d}\left \cdot x",
+        r"\left\frac{a}{b}",
+        r"\left\right)",
+        r"\left\alpha",
+        r"x = \left",
+    ])
+    def test_flags_a_delimiter_less_left(self, bad):
+        assert _DANGLING_LEFT_RE.search(bad) is not None, bad
+
+    @pytest.mark.parametrize("ok", [
+        r"\left(x\right)",
+        r"\left[x\right]",
+        r"\left\{x\right\}",
+        r"\left|x\right|",
+        r"\left\lVert x\right\rVert",
+        r"\left\langle x\right\rangle",
+        r"\left.\frac{a}{b}\right|",
+        r"\left\lfloor x\right\rfloor",
+    ])
+    def test_passes_a_real_delimiter(self, ok):
+        assert _DANGLING_LEFT_RE.search(ok) is None, ok
+
+
+class TestDifferentialOfAGroupRenders:
+    r"""End-to-end: no step may render as an un-parseable ``\left`` (issue #549)."""
+
+    @pytest.mark.parametrize("latex", [
+        r"dP = d\left(\frac{k_B T}{m}\right)",
+        r"dP = \mathrm{d}\left(\frac{k_B T}{m}\right)",
+        r"dP = \frac{k_B T}{m} \cdot d\left(\rho\right)",
+    ])
+    def test_no_dangling_left_in_the_rendered_latex(self, latex):
+        from backend.semantic_graph.latex_renderer import to_latex
+        from backend.semantic_graph.service import SemanticGraphService
+        g = SemanticGraphService().latex_to_graph(latex, domain="physics")
+        assert g is not None
+        assert not [n for n in g.nodes if n.id == "dleft"], [n.id for n in g.nodes]
+        out = to_latex(g, with_ids=True)
+        # Every \left must be followed by a REAL delimiter, never by `}` or some
+        # other command — that is exactly the shape KaTeX rejects.
+        assert _DANGLING_LEFT_RE.search(out) is None, out
+        assert r"\mathrm{d}\left" not in out, out
+
+    def test_flux_integral_still_fuses_its_accented_differential(self):
+        """Guard the narrow trigger set: ``d\\vec{A}`` is a real differential and
+        must stay one node (``dA``), not become ``d · A``."""
+        from backend.semantic_graph.service import SemanticGraphService
+        g = SemanticGraphService().latex_to_graph(
+            r"\oint \vec{E} \cdot d\vec{A} = \frac{Q}{\epsilon_0}", domain="physics")
+        assert g is not None
+        assert "dA" in {n.id for n in g.nodes}, [n.id for n in g.nodes]

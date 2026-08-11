@@ -9,11 +9,16 @@ from .constants import (
     _DOT_ACCENT_ORDERS,
     _GREEK_POOL,
     _LATEX_FUNCS,
+    _STRUCTURAL_COMMANDS,
 )
 from .preprocess_result import PreprocessResult
 
 # LaTeX spacing commands, longest-first so endswith() strips the longest match.
 _SPACING_COMMANDS = ("\\qquad", "\\quad", "\\,", "\\;", "\\!", "\\:")
+
+# A bare ``d`` (not the tail of a longer identifier) immediately in front of a
+# ``\command`` — the shape SymPy's differential rule glues into one symbol.
+_BARE_D_BEFORE_COMMAND_RE = re.compile(r"(?<![A-Za-z\\])d(\s*)\\([a-zA-Z]+)")
 
 # Math-mode delimiter pairs, longest opener first so ``$$`` beats ``$``.
 _MATH_DELIMITERS = (("$$", "$$"), ("\\[", "\\]"), ("\\(", "\\)"), ("$", "$"))
@@ -100,6 +105,9 @@ class LaTeXPreprocessor:
         src = self.normalize_bare_sums(src)
         accent_map: dict[str, str] = {}
         src = self.strip_accent_commands(src, accent_map)
+        # After the accent pass, so an upright ``\mathrm{d}\left(…\right)`` — by
+        # then peeled to the bare ``d\left(…\right)`` — is caught too.
+        src = self.brace_differential_before_structure(src)
         src, subscript_map = self.substitute_multichar_subscripts(src)
         return PreprocessResult(
             cleaned_latex=src,
@@ -112,6 +120,38 @@ class LaTeXPreprocessor:
     # ------------------------------------------------------------------
     # Individual passes
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def brace_differential_before_structure(latex: str) -> str:
+        r"""Rewrite ``d\STRUCTURE`` → ``{d}\STRUCTURE`` so the ``d`` stays a symbol.
+
+        SymPy's ``parse_latex`` fuses a bare ``d`` with the NAME of whatever
+        command follows it — the differential rule that makes ``d\rho`` the single
+        symbol ``drho``.  It does not check that the command is a glyph, so a
+        differential written over a group, ``d\left(\rho\right)``, parses as
+        ``dleft·ρ``.  That bogus ``dleft`` then renders back through the
+        differential path as ``\mathrm{d}\left`` — a ``\left`` with no delimiter
+        after it, which KaTeX rejects, so the whole step falls back to raw source
+        (issue #549).  ``d\frac``/``d\sqrt`` fail the same way.
+
+        Bracing the ``d`` blocks the fusion without touching the maths:
+        ``{d}\left(\rho\right)`` parses as ``d·ρ``, the product the surrounding
+        notation already means.  This runs after :meth:`strip_accent_commands`, so
+        the upright spelling ``\mathrm{d}\left(\rho\right)`` — peeled to a bare
+        ``d`` by then — is covered by the same pass.  Only
+        :data:`_STRUCTURAL_COMMANDS` trigger it, so genuine differentials keep
+        fusing as they should — ``d\rho``, ``d\Omega``, and the accented
+        ``d\vec{A}`` (peeled to ``dA`` downstream).
+        """
+        if not isinstance(latex, str) or "\\" not in latex or "d" not in latex:
+            return latex
+
+        def _repl(m: re.Match) -> str:
+            if m.group(2) not in _STRUCTURAL_COMMANDS:
+                return m.group(0)
+            return "{d}" + m.group(1) + "\\" + m.group(2)
+
+        return _BARE_D_BEFORE_COMMAND_RE.sub(_repl, latex)
 
     @staticmethod
     def normalize_func_call_braces(latex: str) -> str:

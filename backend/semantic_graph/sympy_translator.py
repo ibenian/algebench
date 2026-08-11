@@ -36,6 +36,7 @@ from .constants import (
     _ASYMMETRIC_OPS,
     _SYMMETRIC_OPS,
     _META_RELATION_OPS,
+    _NON_GLYPH_COMMANDS,
     _PLACEHOLDER_NAME_RE,
     _STYLE_SYMBOL_COMMAND_RE,
     _SIMPLE_STYLED_SYMBOL_RE,
@@ -197,8 +198,20 @@ def _braket_skeleton_latex(bra_content: str, ket_content: str) -> str:
 # ---------------------------------------------------------------------------
 
 def _extract_latex_commands(latex: str) -> dict[str, str]:
-    r"""Scan raw LaTeX for ``\command`` tokens and return {name: \name}."""
-    commands = {m.group(1): m.group(0) for m in re.finditer(r"\\([a-zA-Z]+)", latex)}
+    r"""Scan raw LaTeX for ``\command`` tokens and return {name: \name}.
+
+    Non-glyph commands (:data:`_NON_GLYPH_COMMANDS`) are skipped: the map's only
+    consumers turn a name back into a symbol's rendered LaTeX, and none of these
+    can stand alone as one.  That is the WIDER of the two sets — the structural
+    commands (``\left`` / ``\frac`` / ``\sqrt``, which drive the preprocessor's
+    :data:`_STRUCTURAL_COMMANDS` pass) plus the wrappers whose meaning lives in a
+    body they were handed (accents, font switches, ``\text``, HTML escapes).
+    Keeping any of them let ``_symbol_latex`` compose the differential form
+    ``\mathrm{d}`` + ``\left`` for a symbol SymPy had named ``dleft``, emitting a
+    delimiter-less ``\left`` that KaTeX cannot parse (issue #549).
+    """
+    commands = {m.group(1): m.group(0) for m in re.finditer(r"\\([a-zA-Z]+)", latex)
+                if m.group(1) not in _NON_GLYPH_COMMANDS}
     for m in _STYLE_SYMBOL_COMMAND_RE.finditer(latex):
         body = m.group("body").strip()
         if not _SIMPLE_STYLED_SYMBOL_RE.fullmatch(body):
