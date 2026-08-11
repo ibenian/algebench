@@ -293,24 +293,27 @@ def repair_view_ranges(expression_latex: str, views: list[dict],
         return
     expr, var = parsed
     for i, view in enumerate(views):
-        n = i + 1
+        # Views built by the proposer carry an id; a caller assembling one by
+        # hand may not, so fall back to a positional handle rather than
+        # reporting an anonymous view.
+        n = view.get("id") or f"#{i + 1}"
         original = list(view.get("x_range") or [])
         record = guard(_repair_one, expr, var, view, default=None, timeout=timeout)
         if record is None:                      # the guard itself gave up
-            log.info("%s view %d: op timed out or errored", _LOG_TAG, n)
+            log.info("%s %s: op timed out or errored", _LOG_TAG, n)
             note(notes, "view-ranges", "warning",
                  "checking the sweep timed out, so it was left as proposed",
                  view=n)
             continue
         if "to" not in record:
-            log.info("%s view %d: left alone (%s)", _LOG_TAG, n, record["why"])
+            log.info("%s %s: left alone (%s)", _LOG_TAG, n, record["why"])
             level = "warning" if record["why"].startswith("unpinned:") else "ok"
             note(notes, "view-ranges", level, _prose(record, original), view=n,
                  why=record["why"])
             continue
         view["x_range"] = record["to"]
         view["range_repaired"] = {k: record[k] for k in ("from", "to", "reason")}
-        log.info("%s view %d: widened %s → %s (variation was %.4f)", _LOG_TAG,
+        log.info("%s %s: widened %s → %s (variation was %.4f)", _LOG_TAG,
                  n, record["from"], record["to"], record["variation"])
         note(notes, "view-ranges", "changed",
              f"the proposer's sweep {_fmt_range(record['from'])} is flat at its "

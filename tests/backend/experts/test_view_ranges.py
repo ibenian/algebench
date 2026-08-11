@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import pytest
 
+from backend.experts.modules.expression_analysis.build_log import note
 from backend.experts.modules.expression_analysis.view_ranges import (
     MIN_VARIATION, repair_view_ranges,
 )
@@ -27,9 +28,12 @@ ENTRY_PINNED = {"V_E": 11055.0, "H": 6360.0, "rho_0": 1.23,
                 "beta": 10050.0, "gamma": 0.0877}
 
 
-def _view(x_var, x_range, pinned=None):
-    return {"x_var": x_var, "x_range": list(x_range),
-            "pinned": dict(pinned or {}), "mark": []}
+def _view(x_var, x_range, pinned=None, vid=None):
+    v = {"x_var": x_var, "x_range": list(x_range),
+         "pinned": dict(pinned or {}), "mark": []}
+    if vid:
+        v["id"] = vid
+    return v
 
 
 def _repaired(latex, view):
@@ -201,7 +205,7 @@ class TestSweptVariableComesFromTheView:
         repair_view_ranges(ENTRY_LATEX,
                            [_view("h", [-5.0, 20.0], ENTRY_PINNED)], notes=notes)
         assert "unpinned:h" not in str(notes), notes
-        assert notes[0]["level"] == "changed", notes
+        assert notes[0].level == "changed", notes
 
     def test_two_views_may_sweep_different_variables(self):
         """One expression, two views, different x_var each — the second must not
@@ -226,6 +230,60 @@ class TestSweptVariableComesFromTheView:
         assert len(notes) == 1, notes
 
 
+class TestViewsAreNamedNotCounted:
+    """Viewports carry an id, and everything referring to one uses it.
+
+    The wire format has the LM address viewports by POSITION, which is right for
+    the model — it can hardly get it wrong and cannot collide. But a position
+    stops being true the moment a viewport is dropped or reordered, and the
+    construction notes are read after every pass that might do either has run.
+    """
+
+    def test_the_proposer_mints_a_readable_id_per_view(self):
+        from backend.experts.modules.expression_analysis.proposer import _view_id
+        assert _view_id(1, "h") == "v1-h"
+        assert _view_id(2, "t") == "v2-t"
+        # Two views of the same variable is the COMMON case (one function at
+        # several scales), so the ordinal has to survive in the id.
+        assert _view_id(1, "h") != _view_id(2, "h")
+
+    def test_a_latex_bearing_variable_still_yields_a_clean_id(self):
+        from backend.experts.modules.expression_analysis.proposer import _view_id
+        vid = _view_id(1, r"V_{\text{exit}}")
+        assert vid.startswith("v1-")
+        assert all(c.isalnum() or c == "_" for c in vid[3:]), vid
+
+    def test_a_view_with_no_variable_still_gets_an_id(self):
+        from backend.experts.modules.expression_analysis.proposer import _view_id
+        assert _view_id(3, "") == "v3"
+        assert _view_id(3, "   ") == "v3"
+
+    def test_notes_carry_the_view_id_when_there_is_one(self):
+        notes = []
+        repair_view_ranges(ENTRY_LATEX, [
+            _view("h", [-5.0, 20.0], ENTRY_PINNED, vid="v1-h"),
+            _view("h", [0.0, 40000.0], ENTRY_PINNED, vid="v2-h"),
+        ], notes=notes)
+        assert [n.view for n in notes] == ["v1-h", "v2-h"]
+
+    def test_an_id_less_view_falls_back_to_a_positional_handle(self):
+        """A caller assembling a view by hand gets a usable handle rather than
+        an anonymous note."""
+        notes = []
+        repair_view_ranges(ENTRY_LATEX,
+                           [_view("h", [-5.0, 20.0], ENTRY_PINNED)], notes=notes)
+        assert notes[0].view == "#1"
+
+    def test_the_id_survives_the_assembly_that_builds_real_views(self):
+        from backend.experts.modules.expression_analysis.proposer import (
+            ViewPlan, _assemble_views,
+        )
+        built = _assemble_views(
+            [ViewPlan(x_var="h", x_min=0.0, x_max=10.0),
+             ViewPlan(x_var="h", x_min=0.0, x_max=99.0)], [], [])
+        assert [v.id for v in built] == ["v1-h", "v2-h"]
+
+
 class TestConstructionTrail:
     """The response says what the server changed about the model's answer.
 
@@ -242,29 +300,29 @@ class TestConstructionTrail:
 
     def test_a_widened_range_reports_both_ranges_and_the_measurement(self):
         n = self._notes(_view("h", [-5.0, 20.0], ENTRY_PINNED))[0]
-        assert n["stage"] == "view-ranges" and n["level"] == "changed"
-        assert n["view"] == 1
-        assert "[-5, 20]" in n["message"], n["message"]
-        assert "flat" in n["message"] and "widened to" in n["message"], n["message"]
+        assert n.stage == "view-ranges" and n.level == "changed"
+        assert n.view == "#1"      # no id on a hand-built view
+        assert "[-5, 20]" in n.message, n.message
+        assert "flat" in n.message and "widened to" in n.message, n.message
         # The numbers a client might want to render live in `detail`, so the
         # message stays prose and nobody has to parse it back out.
-        assert n["detail"]["from"] == [-5.0, 20.0]
-        assert n["detail"]["to"] == n["detail"]["to"]
+        assert n.detail["from"] == [-5.0, 20.0]
+        assert n.detail["to"][1] > n.detail["from"][1]
 
     def test_an_untouched_range_is_recorded_as_ok_not_omitted(self):
         """The trail is a record of what happened, not a list of complaints —
         a missing entry would read as "this view was never looked at"."""
         n = self._notes(_view("h", [0.0, 40000.0], ENTRY_PINNED))[0]
-        assert n["level"] == "ok"
-        assert "already shows the curve moving" in n["message"], n["message"]
+        assert n.level == "ok"
+        assert "already shows the curve moving" in n.message, n.message
 
     def test_an_unpinned_parameter_is_a_warning_in_plain_words(self):
         n = self._notes(_view("h", [0.0, 40000.0], {"H": 6360.0}))[0]
-        assert n["level"] == "warning"
-        assert "no value pinned for" in n["message"], n["message"]
+        assert n.level == "warning"
+        assert "no value pinned for" in n.message, n.message
         # Worth a warning rather than a shrug: the sliders are built from
         # `pinned`, so this view cannot be plotted at all.
-        assert "cannot be plotted" in n["message"], n["message"]
+        assert "cannot be plotted" in n.message, n.message
 
     def test_one_note_per_view(self):
         notes = []
@@ -273,7 +331,7 @@ class TestConstructionTrail:
             _view("h", [0.0, 40000.0], ENTRY_PINNED),
             _view("h", [5.0, 5.0], ENTRY_PINNED)], notes=notes)
         assert len(notes) == 3
-        assert [n["view"] for n in notes] == [1, 2, 3]
+        assert [n.view for n in notes] == ["#1", "#2", "#3"]
 
     def test_notes_are_optional_so_every_pass_stays_callable_bare(self):
         views = [_view("h", [-5.0, 20.0], ENTRY_PINNED)]
@@ -281,24 +339,75 @@ class TestConstructionTrail:
         assert views[0]["x_range"] != [-5.0, 20.0]
 
     def test_the_summary_names_what_was_corrected(self):
-        from backend.experts.modules.expression_analysis.build_log import summarize
+        from backend.experts.modules.expression_analysis.build_log import (
+            BuildNote, summarize)
+        n = lambda level, stage="view-ranges": BuildNote(
+            stage=stage, level=level, message="")
         assert summarize([]) == "returned as proposed"
-        assert summarize([{"stage": "view-ranges", "level": "ok"}]) == "returned as proposed"
-        assert "view-ranges" in summarize([
-            {"stage": "view-ranges", "level": "changed"},
-            {"stage": "view-ranges", "level": "changed"}])
+        assert summarize([n("ok")]) == "returned as proposed"
+        assert "view-ranges" in summarize([n("changed"), n("changed")])
 
     def test_the_summary_never_swallows_a_warning(self):
         """A proposal left untouched BECAUSE it could not be checked is not the
         same as one that came back clean — seen live, where two unplottable
         views were summarised as "returned as proposed"."""
-        from backend.experts.modules.expression_analysis.build_log import summarize
-        warned = [{"stage": "view-ranges", "level": "warning"},
-                  {"stage": "view-ranges", "level": "warning"}]
+        from backend.experts.modules.expression_analysis.build_log import (
+            BuildNote, summarize)
+        n = lambda level, stage="view-ranges": BuildNote(
+            stage=stage, level=level, message="")
+        warned = [n("warning"), n("warning")]
         assert summarize(warned) == "2 warnings"
         assert summarize(warned[:1]) == "1 warning"
-        both = summarize([{"stage": "extras", "level": "dropped"}] + warned)
+        both = summarize([n("dropped", "extras")] + warned)
         assert "corrected" in both and "2 warnings" in both, both
+
+
+class TestNotesAreTypedNotJustShaped:
+    """``stage`` and ``level`` are switched on downstream, so they are a
+    vocabulary rather than free text — the module declared one from the start
+    and, as a plain dict, enforced none of it."""
+
+    def test_a_bad_level_is_refused_not_silently_miscounted(self, caplog):
+        from backend.experts.modules.expression_analysis.build_log import summarize
+        sink = []
+        with caplog.at_level("ERROR"):
+            note(sink, "view-ranges", "warn", "typo in the level")   # not "warning"
+        assert sink == [], "a malformed note was accepted"
+        assert "refusing malformed note" in caplog.text
+        # The failure this prevents: bucketed by neither branch of summarize(),
+        # a typo'd warning would vanish from the headline entirely.
+        assert summarize(sink) == "returned as proposed"
+
+    def test_a_bad_stage_is_refused_too(self):
+        sink = []
+        note(sink, "viewranges", "ok", "typo in the stage")
+        assert sink == []
+
+    def test_a_malformed_note_never_fails_the_analysis(self):
+        """It is an error in TELEMETRY. Losing the note beats 500-ing a request
+        that otherwise produced a perfectly good artifact."""
+        sink = []
+        note(sink, "nonsense", "nonsense", "bad")        # must not raise
+        note(sink, "view-ranges", "ok", "good")
+        assert len(sink) == 1 and sink[0].message == "good"
+
+    def test_the_wire_form_drops_empty_optionals(self):
+        from backend.experts.modules.expression_analysis.build_log import serialize
+        sink = []
+        note(sink, "symbols", "dropped", "no view attached")
+        note(sink, "view-ranges", "ok", "has one", view="v1-h", extra=1)
+        wire = serialize(sink)
+        assert "view" not in wire[0], wire[0]
+        assert wire[1]["view"] == "v1-h"
+        assert wire[1]["detail"] == {"extra": 1}
+
+    def test_unknown_fields_are_refused(self):
+        """extra='forbid': a note carrying a field nobody reads is a mistake at
+        the call site, not a payload to pass along."""
+        from pydantic import ValidationError
+        from backend.experts.modules.expression_analysis.build_log import BuildNote
+        with pytest.raises(ValidationError):
+            BuildNote(stage="symbols", level="ok", message="m", typo="x")
 
 
 class TestHandlerWiring:

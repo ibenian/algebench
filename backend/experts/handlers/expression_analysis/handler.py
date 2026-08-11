@@ -41,7 +41,9 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from backend.experts.modules.expression_analysis.features import analyze
-from backend.experts.modules.expression_analysis.build_log import note, summarize
+from backend.experts.modules.expression_analysis.build_log import (
+    BuildNote, note, serialize, summarize,
+)
 from backend.experts.modules.expression_analysis.view_ranges import repair_view_ranges
 from backend.experts.modules.expression_analysis.proposer import (
     propose_more_probes, propose_views,
@@ -118,7 +120,7 @@ def _analyze(req: ExpressionAnalysisRequest) -> dict:
     # the artifact does not arrive looking like something the model wrote when
     # parts of it are ours (issue: "agent returned wild ranges, and was
     # repaired" should be readable from the payload, not the server log).
-    notes: list = []
+    notes: list[BuildNote] = []
     _flag_unknown_symbols(out, known, notes)
     # Glossary entries for names the CAS report doesn't know are dropped
     # outright — a tooltip on a nonexistent symbol can never render.
@@ -140,7 +142,8 @@ def _analyze(req: ExpressionAnalysisRequest) -> dict:
     title = out.get("title") or ""
     return {"id": req.id or _make_id(title), "title": title,
             "characteristics": characteristics, "proposal": out,
-            "construction": {"summary": summarize(notes), "notes": notes}}
+            "construction": {"summary": summarize(notes),
+                             "notes": serialize(notes)}}
 
 
 def _more_probes(req: ExpressionAnalysisRequest) -> dict:
@@ -167,6 +170,16 @@ def _make_id(title: str) -> str:
     return f"{slug[:48]}-{uuid.uuid4().hex[:6]}"
 
 
+def _view_handle(view: dict, index: int) -> str:
+    """The viewport's id, or a positional stand-in when it has none.
+
+    Notes name a viewport rather than counting to it: by the time anyone
+    reads them, later passes may have dropped or reordered what they refer
+    to, and an ordinal would then point at the wrong picture.
+    """
+    return str(view.get("id") or f"#{index + 1}")
+
+
 def _flag_unknown_symbols(proposal: dict, variables: list[str],
                           notes: Optional[list] = None) -> None:
     """Mark view symbols the CAS report doesn't know (LM never gets the last word).
@@ -188,7 +201,7 @@ def _flag_unknown_symbols(proposal: dict, variables: list[str],
                  f"names the CAS report does not know: {', '.join(unknown)} — "
                  f"the view is flagged rather than dropped, since its rationale "
                  f"is still useful to a reviewing author",
-                 view=i + 1, unknown=unknown)
+                 view=_view_handle(view, i), unknown=unknown)
 
 
 def _compile_view_extras(proposal: dict, variables: list[str],
@@ -230,7 +243,7 @@ def _compile_view_extras(proposal: dict, variables: list[str],
                  f"convert, or needed a symbol the CAS report has no value "
                  f"for — attaching a curve we cannot evaluate would put a "
                  f"mathematically wrong picture on the chart",
-                 view=i + 1, count=dropped)
+                 view=_view_handle(view, i), count=dropped)
 
         kept_anns = []
         dropped = 0
@@ -256,4 +269,4 @@ def _compile_view_extras(proposal: dict, variables: list[str],
             note(notes, "extras", "dropped",
                  f"{dropped} annotation(s) dropped: an unconvertible position, "
                  f"or a marker kind that is not one of vline/hline/band",
-                 view=i + 1, count=dropped)
+                 view=_view_handle(view, i), count=dropped)
