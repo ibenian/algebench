@@ -14,8 +14,10 @@ import assert from 'node:assert/strict';
 class El {
     constructor(tag) {
         this.tagName = tag; this.children = []; this.className = '';
-        this.textContent = ''; this.title = '';
+        this.textContent = ''; this.attrs = {};
     }
+    setAttribute(name, value) { this.attrs[name] = String(value); }
+    getAttribute(name) { return this.attrs[name] ?? null; }
     set innerHTML(_v) { this.children = []; }
     get innerHTML() { return ''; }
     appendChild(c) { this.children.push(c); return c; }
@@ -65,9 +67,12 @@ test('an un-renderable step collapses to a bounded chip', () => {
     assert.ok(!chip.textContent.includes('htmlData'), chip.textContent);
 });
 
-test('the failing source stays inspectable on the chip', () => {
+test('the chip tooltip carries the failing source in full', () => {
+    // Whole string, untruncated — it IS the diagnostic, and a clipped dump just
+    // moves the dead end. data-tip, not title: the project tooltip renders in
+    // embedded/zoomed contexts where the native one doesn't.
     const chip = renderInto(BAD, true).querySelector('.pa-expr-error');
-    assert.equal(chip.title, BAD);
+    assert.equal(chip.getAttribute('data-tip'), BAD);
 });
 
 test('a step that renders is left exactly as KaTeX produced it', () => {

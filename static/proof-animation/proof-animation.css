@@ -128,6 +128,26 @@
   color: var(--pa-fg);
   cursor: help;
 }
+/* The chip's tip carries the ENTIRE un-renderable source, so it needs far more
+   room than the 240px label tooltips: monospace, left-aligned, wrapped at the
+   raw string's own line structure so the \htmlData nesting stays readable, and
+   uncapped in height — a clipped dump would just move the dead end one step
+   further out. It opens BELOW the chip (the only override of the shared tip's
+   placement) because the chip sits near the top of the stage, and a tall dump
+   growing upward would run straight off the viewport. */
+.pa-root .pa-expr-error[data-tip]:hover::after,
+.pa-root .pa-expr-error[data-tip]:focus-visible::after {
+  top: calc(100% + 7px);
+  bottom: auto;
+  width: max-content;
+  max-width: min(90vw, 720px);
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 10.5px;
+  line-height: 1.45;
+  text-align: left;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 
 /* Animated tokens must be inline-block — CSS transforms are IGNORED on
    display:inline elements (KaTeX renders tokens inline), so without this the
