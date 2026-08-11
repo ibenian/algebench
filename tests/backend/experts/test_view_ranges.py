@@ -126,6 +126,64 @@ class TestRefusesRatherThanGuesses:
         repair_view_ranges(ENTRY_LATEX, [])                 # must not raise
 
 
+class TestEveryViewIsAccountedFor:
+    """A pass that only logs when it acts is indistinguishable from one that
+    never ran — which is the first question anyone debugging a bad range asks.
+    So every view gets a line naming its outcome."""
+
+    def test_a_widened_view_says_so_with_the_measurement(self, caplog):
+        with caplog.at_level("INFO"):
+            _repaired(ENTRY_LATEX, _view("h", [-5.0, 20.0], ENTRY_PINNED))
+        line = [r.message for r in caplog.records if "[view-ranges]" in r.message]
+        assert len(line) == 1, caplog.text
+        assert "widened" in line[0] and "variation was" in line[0], line[0]
+
+    @pytest.mark.parametrize("view, why", [
+        (_view("h", [0.0, 40000.0], ENTRY_PINNED), "already-reads"),
+        (_view("h", [0.0, 40000.0], {"H": 6360.0}), "unpinned:"),
+        (_view("h", [5.0, 5.0], ENTRY_PINNED), "malformed-range"),
+    ])
+    def test_a_view_left_alone_says_why(self, caplog, view, why):
+        with caplog.at_level("INFO"):
+            _repaired(ENTRY_LATEX, view)
+        line = [r.message for r in caplog.records if "[view-ranges]" in r.message]
+        assert len(line) == 1, caplog.text
+        assert "left alone" in line[0] and why in line[0], line[0]
+
+    def test_one_line_per_view_no_matter_the_mix(self, caplog):
+        views = [_view("h", [-5.0, 20.0], ENTRY_PINNED),
+                 _view("h", [0.0, 40000.0], ENTRY_PINNED),
+                 _view("h", [5.0, 5.0], ENTRY_PINNED)]
+        with caplog.at_level("INFO"):
+            repair_view_ranges(ENTRY_LATEX, views)
+        lines = [r.message for r in caplog.records if "[view-ranges]" in r.message]
+        assert len(lines) == 3, caplog.text
+
+
+class TestWidensFarEnough:
+    """Scored by how much of the curve's total span the window shows, not by the
+    relative variation that detected the flatness — that measure divides by the
+    window's own largest value, so it saturates wherever the curve passes near
+    zero and stops while most of the range is still off screen."""
+
+    def test_the_window_covers_most_of_the_curves_range(self):
+        import math
+        out = _repaired(ENTRY_LATEX, _view("h", [-5.0, 20.0], ENTRY_PINNED))
+        lo, hi = out["x_range"]
+        k = (ENTRY_PINNED["rho_0"] * ENTRY_PINNED["H"]
+             / (2 * ENTRY_PINNED["beta"] * math.sin(ENTRY_PINNED["gamma"])))
+        V = lambda h: ENTRY_PINNED["V_E"] * math.exp(-k * math.exp(-h / ENTRY_PINNED["H"]))
+        shown = [V(lo + i * (hi - lo) / 95) for i in range(96)]
+        # V runs from ~0 at the surface to V_E far above; the window must show
+        # most of that, not a low-altitude sliver that merely looks curved.
+        assert (max(shown) - min(shown)) / ENTRY_PINNED["V_E"] >= 0.85, out["x_range"]
+
+    def test_it_reaches_several_scale_heights(self):
+        out = _repaired(ENTRY_LATEX, _view("h", [-5.0, 20.0], ENTRY_PINNED))
+        lo, hi = out["x_range"]
+        assert (hi - lo) / ENTRY_PINNED["H"] >= 4.0, out["x_range"]
+
+
 class TestHandlerWiring:
     def test_the_handler_repairs_before_returning(self, monkeypatch):
         """The pass has to be wired into the analyze path — a correct module

@@ -43,6 +43,12 @@ from backend.experts.modules.proof_completion.cas_guard import (
 
 log = logging.getLogger(__name__)
 
+# Every view produces exactly one line under this tag, whether or not the range
+# changed. Grep it to answer "did this pass even look at my view?" — a question
+# the previous log-only-on-change version could not distinguish from "the pass
+# never ran".
+_LOG_TAG = "[view-ranges]"
+
 # Relative peak-to-peak variation a sweep must show to count as informative.
 # 2% is comfortably above float noise and below anything a learner would read as
 # "flat" — the entry-velocity view that motivated this managed 0.16%.
@@ -58,9 +64,9 @@ _SAMPLES = 96
 # without letting a genuinely constant expression run away.
 _MAX_DOUBLINGS = 24
 
-# How much of the best available variation the chosen window must show. The
-# ladder stops at the SMALLEST span reaching this, so a flat window is widened to
-# where the curve reads — not to the largest span that technically varies more.
+# How much of the curve's total span (across every scale sampled) the chosen
+# window must put on screen. The ladder stops at the SMALLEST span reaching this,
+# so a flat window is widened to where the curve reads and no further.
 _RETAIN = 0.9
 
 
@@ -133,41 +139,60 @@ def _window_at(lo: float, hi: float, span: float) -> tuple[float, float]:
 
 
 def _widened(fn, lo: float, hi: float) -> Optional[tuple[float, float]]:
-    """The smallest enlargement of [lo, hi] across which the curve reads.
+    """The smallest enlargement of [lo, hi] showing most of the curve's range.
+
+    Scored by COVERAGE — what fraction of the function's whole span, across every
+    scale sampled, this window puts on screen. The obvious alternative, reusing
+    the relative :func:`_variation` that detected the flatness, stops far too
+    early wherever the curve passes near zero: a window holding V ∈ [50, 1500]
+    scores 0.97 on that measure, because it divides by its own largest value,
+    even though the curve actually runs to 11 055 and the window shows an eighth
+    of it. Against the global span the same window scores 0.13 and the search
+    keeps climbing.
 
     Only ever enlarges. Shrinking an over-wide sweep is the mirror problem and
-    wants a different measure entirely: relative variation grows without bound on
-    an unbounded function, so "take the tightest span with the best variation"
-    cheerfully crops a parabola's arms and clips a projectile at its apex. That
-    needs the feature locations, not a magnitude — left for its own change.
+    needs a different measure again — see the module docstring.
     """
     base = hi - lo
     if base <= 0:
         return None
-    scored: list[tuple[float, float]] = []      # (span, variation)
+    scored: list[tuple[float, float, float]] = []      # (span, y_lo, y_hi)
     for k in range(1, _MAX_DOUBLINGS + 1):
         span = base * (2.0 ** k)
         if not math.isfinite(span) or span <= 0:
             break
-        scored.append((span, _variation(
-            [y for _, y in _sample(fn, *_window_at(lo, hi, span))])))
+        ys = [y for _, y in _sample(fn, *_window_at(lo, hi, span))]
+        if ys:
+            scored.append((span, min(ys), max(ys)))
     if not scored:
         return None
-    best = max(v for _, v in scored)
-    if best < MIN_VARIATION:
+    global_lo = min(y for _, y, _ in scored)
+    global_hi = max(y for _, _, y in scored)
+    global_span = global_hi - global_lo
+    scale = max(abs(global_lo), abs(global_hi))
+    if global_span <= 0 or scale < 1e-300 or (global_span / scale) < MIN_VARIATION:
         return None                             # flat at every scale we can reach
-    span = min(s for s, v in scored if v >= best * _RETAIN)
-    return _window_at(lo, hi, span)
+    covering = [s for s, y_lo, y_hi in scored
+                if (y_hi - y_lo) >= global_span * _RETAIN]
+    if not covering:
+        return None
+    return _window_at(lo, hi, min(covering))
 
 
-def _repair_one(expr, var, view: dict) -> Optional[dict]:
-    """Return a repair record for *view*, or None to leave it untouched."""
+def _repair_one(expr, var, view: dict) -> dict:
+    """Decide what to do with *view*. Always reports; ``to`` only when changing.
+
+    Every outcome is named, including the ones that change nothing. A pass whose
+    only signal is "I did something" cannot be told apart from a pass that never
+    ran — which is exactly the question anyone debugging a suspicious range asks
+    first — so the declines carry a ``why`` and get logged too.
+    """
     x_range = view.get("x_range") or []
     if len(x_range) != 2:
-        return None
+        return {"why": "malformed-range"}
     lo, hi = _finite(x_range[0]), _finite(x_range[1])
     if lo is None or hi is None or hi <= lo:
-        return None
+        return {"why": "malformed-range"}
 
     pinned = view.get("pinned") or {}
     subs = {}
@@ -176,24 +201,28 @@ def _repair_one(expr, var, view: dict) -> Optional[dict]:
             continue
         value = _finite(pinned.get(str(sym)))
         if value is None:
-            return None            # unpinned parameter — nothing to evaluate
+            # Not a silent skip: a view that pins no value for a parameter also
+            # cannot be PLOTTED (the sliders are built from `pinned`), so this
+            # says something is wrong upstream, not merely unmeasurable here.
+            return {"why": f"unpinned:{sym}"}
         subs[sym] = sympy.Float(value)
 
     try:
         fn = sympy.lambdify(var, expr.subs(subs), "math")
     except Exception:
-        return None
+        return {"why": "not-evaluable"}
 
-    if _variation([y for _, y in _sample(fn, lo, hi)]) >= MIN_VARIATION:
-        return None                # the proposed sweep already reads
+    variation = _variation([y for _, y in _sample(fn, lo, hi)])
+    if variation >= MIN_VARIATION:
+        return {"why": "already-reads", "variation": round(variation, 4)}
 
     window = _widened(fn, lo, hi)
     if window is None:
-        return None                # flat at every scale — genuinely constant here
+        return {"why": "flat-at-every-scale", "variation": round(variation, 4)}
 
-    return {"from": [lo, hi],
+    return {"why": "widened", "from": [lo, hi],
             "to": [round(window[0], 6), round(window[1], 6)],
-            "reason": "widen"}
+            "reason": "widen", "variation": round(variation, 4)}
 
 
 def repair_view_ranges(expression_latex: str, views: list[dict],
@@ -209,16 +238,22 @@ def repair_view_ranges(expression_latex: str, views: list[dict],
         return
     parsed = guard(_parse, expression_latex, default=None, timeout=timeout)
     if parsed is None:
+        log.info("%s skipped %d view(s): expression did not parse",
+                 _LOG_TAG, len(views))
         return
     expr, var = parsed
-    for view in views:
+    for i, view in enumerate(views):
         record = guard(_repair_one, expr, var, view, default=None, timeout=timeout)
-        if record is None:
+        if record is None:                      # the guard itself gave up
+            log.info("%s view %d: op timed out or errored", _LOG_TAG, i + 1)
+            continue
+        if "to" not in record:
+            log.info("%s view %d: left alone (%s)", _LOG_TAG, i + 1, record["why"])
             continue
         view["x_range"] = record["to"]
-        view["range_repaired"] = record
-        log.info("expression_analysis: %s sweep %s → %s",
-                 record["reason"], record["from"], record["to"])
+        view["range_repaired"] = {k: record[k] for k in ("from", "to", "reason")}
+        log.info("%s view %d: widened %s → %s (variation was %.4f)", _LOG_TAG,
+                 i + 1, record["from"], record["to"], record["variation"])
 
 
 def _parse(expression_latex: str):
