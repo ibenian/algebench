@@ -41,6 +41,7 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from backend.experts.modules.expression_analysis.features import analyze
+from backend.experts.modules.expression_analysis.view_ranges import repair_view_ranges
 from backend.experts.modules.expression_analysis.proposer import (
     propose_more_probes, propose_views,
 )
@@ -120,6 +121,11 @@ def _analyze(req: ExpressionAnalysisRequest) -> dict:
         if k in set(known)
     }
     _compile_view_extras(out, known)
+    # The proposer picks each sweep against the report's numbers, which are all
+    # computed with every parameter pinned to 1 — while the view renders at its
+    # OWN pinned values. Reconcile the two before the range reaches a chart.
+    repair_view_ranges(characteristics.get("expression") or req.latex,
+                       out.get("views") or [])
 
     title = out.get("title") or ""
     return {"id": req.id or _make_id(title), "title": title,

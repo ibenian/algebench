@@ -405,7 +405,16 @@ class VizProposalSig(dspy.Signature):
        starts its range at that physical bound (usually 0) — include the
        negative side only when it genuinely means something (a symmetric
        mathematical function, a signed velocity). Pin non-swept symbols
-       to representative values. `mark` lists which detected features the
+       to representative values — and then SIZE THE SWEEP AGAINST THOSE
+       VALUES, not against the report's numbers. Every `approx` in the
+       report was computed with EVERY parameter set to 1, so a range that
+       looks right there can be meaningless at the values you pinned: if
+       the expression contains $e^{-h/H}$ and you pin $H = 6360$, the
+       sweep must cover thousands, because over $h \\in [-5, 20]$ that
+       term never moves off 1 and the curve draws as a flat line. Read
+       the scale off your OWN pinned parameters — a decay constant, a
+       half-life, a characteristic length — and span a few multiples of
+       it. `mark` lists which detected features the
        viewport should annotate. EACH ADDITIONAL VIEW MUST REVEAL A
        DIFFERENT marked feature or qualitative regime than the previous
        ones — a rescaled duplicate of view 1 (same shape, different axis
