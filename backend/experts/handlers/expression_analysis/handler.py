@@ -41,6 +41,10 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from backend.experts.modules.expression_analysis.features import analyze
+from backend.experts.modules.expression_analysis.build_log import (
+    BuildNote, note, serialize, summarize,
+)
+from backend.experts.modules.expression_analysis.view_ranges import repair_view_ranges
 from backend.experts.modules.expression_analysis.proposer import (
     propose_more_probes, propose_views,
 )
@@ -112,18 +116,34 @@ def _analyze(req: ExpressionAnalysisRequest) -> dict:
     )
     out = proposal.model_dump()
     known = characteristics.get("variables") or []
-    _flag_unknown_symbols(out, known)
+    # Everything below rewrites the proposal. Each pass records what it did, so
+    # the artifact does not arrive looking like something the model wrote when
+    # parts of it are ours (issue: "agent returned wild ranges, and was
+    # repaired" should be readable from the payload, not the server log).
+    notes: list[BuildNote] = []
+    _flag_unknown_symbols(out, known, notes)
     # Glossary entries for names the CAS report doesn't know are dropped
     # outright — a tooltip on a nonexistent symbol can never render.
-    out["variable_glossary"] = {
-        k: v for k, v in (out.get("variable_glossary") or {}).items()
-        if k in set(known)
-    }
-    _compile_view_extras(out, known)
+    glossary = out.get("variable_glossary") or {}
+    dropped_terms = [k for k in glossary if k not in set(known)]
+    out["variable_glossary"] = {k: v for k, v in glossary.items() if k in set(known)}
+    if dropped_terms:
+        note(notes, "symbols", "dropped",
+             f"glossary entries dropped for symbols the expression does not "
+             f"contain: {', '.join(sorted(dropped_terms))}",
+             terms=sorted(dropped_terms))
+    _compile_view_extras(out, known, notes)
+    # The proposer picks each sweep against the report's numbers, which are all
+    # computed with every parameter pinned to 1 — while the view renders at its
+    # OWN pinned values. Reconcile the two before the range reaches a chart.
+    repair_view_ranges(characteristics.get("expression") or req.latex,
+                       out.get("views") or [], notes=notes)
 
     title = out.get("title") or ""
     return {"id": req.id or _make_id(title), "title": title,
-            "characteristics": characteristics, "proposal": out}
+            "characteristics": characteristics, "proposal": out,
+            "construction": {"summary": summarize(notes),
+                             "notes": serialize(notes)}}
 
 
 def _more_probes(req: ExpressionAnalysisRequest) -> dict:
@@ -150,7 +170,18 @@ def _make_id(title: str) -> str:
     return f"{slug[:48]}-{uuid.uuid4().hex[:6]}"
 
 
-def _flag_unknown_symbols(proposal: dict, variables: list[str]) -> None:
+def _view_handle(view: dict, index: int) -> str:
+    """The viewport's id, or a positional stand-in when it has none.
+
+    Notes name a viewport rather than counting to it: by the time anyone
+    reads them, later passes may have dropped or reordered what they refer
+    to, and an ordinal would then point at the wrong picture.
+    """
+    return str(view.get("id") or f"#{index + 1}")
+
+
+def _flag_unknown_symbols(proposal: dict, variables: list[str],
+                          notes: Optional[list] = None) -> None:
     """Mark view symbols the CAS report doesn't know (LM never gets the last word).
 
     The proposer is instructed to use the report's variable names verbatim,
@@ -161,14 +192,20 @@ def _flag_unknown_symbols(proposal: dict, variables: list[str]) -> None:
     still useful to a reviewing author.
     """
     known = set(variables)
-    for view in proposal.get("views") or []:
+    for i, view in enumerate(proposal.get("views") or []):
         unknown = [s for s in [view.get("x_var"), *(view.get("pinned") or {})]
                    if s and s not in known]
         if unknown:
             view["unknown_symbols"] = unknown
+            note(notes, "symbols", "warning",
+                 f"names the CAS report does not know: {', '.join(unknown)} — "
+                 f"the view is flagged rather than dropped, since its rationale "
+                 f"is still useful to a reviewing author",
+                 view=_view_handle(view, i), unknown=unknown)
 
 
-def _compile_view_extras(proposal: dict, variables: list[str]) -> None:
+def _compile_view_extras(proposal: dict, variables: list[str],
+                         notes: Optional[list] = None) -> None:
     """Turn LM-proposed plot/annotation LaTeX into CAS-generated scripts.
 
     Each companion plot and each annotation position gets ``{script,
@@ -189,7 +226,7 @@ def _compile_view_extras(proposal: dict, variables: list[str]) -> None:
             return None
         return {"script": script, "variables": script_vars}
 
-    for view in proposal.get("views") or []:
+    for i, view in enumerate(proposal.get("views") or []):
         kept_plots = []
         dropped = 0
         for plot in view.get("plots") or []:
@@ -201,6 +238,12 @@ def _compile_view_extras(proposal: dict, variables: list[str]) -> None:
         view["plots"] = kept_plots
         if dropped:
             view["dropped_plots"] = dropped
+            note(notes, "extras", "dropped",
+                 f"{dropped} companion plot(s) dropped: the LaTeX did not "
+                 f"convert, or needed a symbol the CAS report has no value "
+                 f"for — attaching a curve we cannot evaluate would put a "
+                 f"mathematically wrong picture on the chart",
+                 view=_view_handle(view, i), count=dropped)
 
         kept_anns = []
         dropped = 0
@@ -223,3 +266,7 @@ def _compile_view_extras(proposal: dict, variables: list[str]) -> None:
         view["annotations"] = kept_anns
         if dropped:
             view["dropped_annotations"] = dropped
+            note(notes, "extras", "dropped",
+                 f"{dropped} annotation(s) dropped: an unconvertible position, "
+                 f"or a marker kind that is not one of vline/hline/band",
+                 view=_view_handle(view, i), count=dropped)

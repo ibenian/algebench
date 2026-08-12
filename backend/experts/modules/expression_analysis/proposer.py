@@ -25,6 +25,7 @@ import dspy
 from pydantic import BaseModel, ConfigDict, Field
 
 from backend.experts.llm_config import make_adapter, scoped_lm
+from backend.semantic_graph.id_utils import _slug_id
 
 log = logging.getLogger(__name__)
 
@@ -92,10 +93,19 @@ class ProposedAnnotation(BaseModel):
 
 
 class ProposedView(BaseModel):
-    """One viewport the AI proposes building."""
+    """One viewport the AI proposes building.
+
+    ``id`` is minted server-side by :func:`_view_id`, never asked of the model:
+    the wire format has the LM address viewports by POSITION (``view: 1``),
+    which it can hardly get wrong and cannot collide. Everything downstream
+    wants a handle instead of an ordinal, though — the construction trail names
+    which viewport it corrected, and a position is the one thing that stops
+    being true the moment a viewport is dropped or reordered.
+    """
 
     model_config = ConfigDict(extra="ignore")
 
+    id: str = Field(default="", max_length=64)
     kind: str = Field(default="plane-2d", max_length=40)
     x_var: str = Field(default="", max_length=40)
     x_range: list[float] = Field(default_factory=list)
@@ -308,6 +318,18 @@ def _parse_pinned(text: str) -> dict[str, float]:
     return out
 
 
+def _view_id(ordinal: int, x_var: str) -> str:
+    """Readable, collision-free handle for one viewport: ``v1-h``, ``v2-t``.
+
+    Carries the swept variable so a bare id in a log line or a review note still
+    says something ("the h sweep") instead of being a bare counter. The ordinal
+    keeps it unique when two viewports sweep the SAME variable, which is the
+    common case — several views of one function at different scales.
+    """
+    slug = _slug_id(x_var.strip()) if x_var and x_var.strip() else ""
+    return f"v{ordinal}-{slug}" if slug else f"v{ordinal}"
+
+
 def _assemble_views(views: list[ViewPlan], plots: list[PlotPlan],
                     annotations: list[AnnotationPlan]) -> list[ProposedView]:
     """Re-nest the flat wire tables into the :class:`ProposedView` shape.
@@ -318,13 +340,14 @@ def _assemble_views(views: list[ViewPlan], plots: list[PlotPlan],
     """
     built = [
         ProposedView(
+            id=_view_id(n, v.x_var),
             kind=v.kind, x_var=v.x_var,
             x_range=[v.x_min, v.x_max],
             pinned=_parse_pinned(v.pinned),
             mark=_split_list(v.mark),
             rationale=v.rationale,
         )
-        for v in views
+        for n, v in enumerate(views, 1)
     ]
     for p in plots:
         if 1 <= p.view <= len(built) and len(built[p.view - 1].plots) < MAX_PLOTS:
@@ -405,7 +428,16 @@ class VizProposalSig(dspy.Signature):
        starts its range at that physical bound (usually 0) — include the
        negative side only when it genuinely means something (a symmetric
        mathematical function, a signed velocity). Pin non-swept symbols
-       to representative values. `mark` lists which detected features the
+       to representative values — and then SIZE THE SWEEP AGAINST THOSE
+       VALUES, not against the report's numbers. Every `approx` in the
+       report was computed with EVERY parameter set to 1, so a range that
+       looks right there can be meaningless at the values you pinned: if
+       the expression contains $e^{-h/H}$ and you pin $H = 6360$, the
+       sweep must cover thousands, because over $h \\in [-5, 20]$ that
+       term never moves off 1 and the curve draws as a flat line. Read
+       the scale off your OWN pinned parameters — a decay constant, a
+       half-life, a characteristic length — and span a few multiples of
+       it. `mark` lists which detected features the
        viewport should annotate. EACH ADDITIONAL VIEW MUST REVEAL A
        DIFFERENT marked feature or qualitative regime than the previous
        ones — a rescaled duplicate of view 1 (same shape, different axis
