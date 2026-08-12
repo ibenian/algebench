@@ -98,8 +98,6 @@
       "runtimeExecutable": "./algebench",
       "runtimeArgs": [
         "scenes/atmospheric-entry-physics.json",
-        "--port",
-        "5732",
         "--debug",
         "--server-only",
         "--skip-tour"
