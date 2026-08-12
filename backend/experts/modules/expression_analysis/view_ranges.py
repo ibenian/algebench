@@ -6,7 +6,7 @@ non-swept symbol set to **1**.  The view it writes then renders with its OWN
 ``pinned`` values, which are the physical ones.  So the sweep is chosen in one
 parameter regime and drawn in another, and nothing reconciles the two.
 
-The barometric entry velocity is the worst case::
+The Allen-Eggers velocity solution is the worst case::
 
     V(h) = V_E exp(-ρ₀H/(2β sin γ) · e^{-h/H})
 

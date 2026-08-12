@@ -20,8 +20,8 @@ from backend.experts.modules.expression_analysis.view_ranges import (
     MIN_VARIATION, repair_view_ranges,
 )
 
-# The view from issue-report: barometric entry velocity, whose scale height H is
-# 6360 while the proposed sweep spans 25.
+# The reported view: the Allen-Eggers velocity solution, whose scale height H
+# is 6360 while the proposed sweep spans 25.
 ENTRY_LATEX = (r"V(h) = V_E \exp\left(-\frac{\rho_0 H}{2\beta\sin\gamma}"
                r"\,e^{-h/H}\right)")
 ENTRY_PINNED = {"V_E": 11055.0, "H": 6360.0, "rho_0": 1.23,
