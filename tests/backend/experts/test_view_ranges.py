@@ -333,6 +333,57 @@ class TestConstructionTrail:
         assert len(notes) == 3
         assert [n.view for n in notes] == ["#1", "#2", "#3"]
 
+    def test_an_unparseable_expression_still_accounts_for_every_view(self):
+        """The batch-level failure keeps the per-view contract (Copilot, #553).
+
+        One unscoped note for N views satisfies "something went wrong" but not
+        the accounting this pass exists for: a client filtering by view id would
+        find nothing for any of them, which reads as "never looked at".
+        """
+        notes = []
+        # An unterminated `\frac{` is rejected by `parse_latex` outright — a
+        # nonsense STRING is not enough, since the grammar happily reads bare
+        # words as an implicit product.
+        repair_view_ranges(r"\frac{", [
+            _view("h", [-5.0, 20.0], ENTRY_PINNED),
+            _view("t", [0.0, 10.0], ENTRY_PINNED)], notes=notes)
+        assert len(notes) == 2
+        assert [n.view for n in notes] == ["#1", "#2"]
+        assert all(n.level == "warning" for n in notes)
+        assert all("not checked" in n.message for n in notes), notes[0].message
+
+    def test_a_window_with_no_values_is_not_reported_as_flat(self):
+        """Undefined here is a different (worse) finding than constant here.
+
+        ``_variation`` returns 0.0 for an empty sample set, which is exactly
+        what a genuinely flat curve scores — so without this the two are
+        indistinguishable and an unplottable view is reported as merely boring
+        (Copilot, #553).
+        """
+        notes = []
+        # sqrt over a strictly negative window: no real values anywhere in it.
+        views = [_view("x", [-9.0, -1.0], {})]
+        repair_view_ranges(r"\sqrt{x}", views, notes=notes)
+        n = notes[0]
+        assert n.level == "warning", n
+        assert n.detail["why"] == "undefined-here", n.detail
+        assert "no defined values" in n.message, n.message
+        assert "nothing to plot" in n.message, n.message
+        # And it is left exactly as proposed — widening cannot rescue it.
+        assert views[0]["x_range"] == [-9.0, -1.0]
+        assert "range_repaired" not in views[0]
+
+    def test_a_genuinely_flat_curve_still_reads_as_flat(self):
+        """The guard above must not swallow the real flat case it sits in front
+        of: a constant samples fine, it just does not move."""
+        notes = []
+        # Samples fine at every scale and is identically 1 — a literal constant
+        # would instead have no free symbol to sweep, and never reach here.
+        repair_view_ranges(r"\cos^2(x) + \sin^2(x)",
+                           [_view("x", [0.0, 1.0], {})], notes=notes)
+        assert notes[0].detail["why"] == "flat-at-every-scale", notes[0].detail
+        assert notes[0].level == "ok"
+
     def test_notes_are_optional_so_every_pass_stays_callable_bare(self):
         views = [_view("h", [-5.0, 20.0], ENTRY_PINNED)]
         repair_view_ranges(ENTRY_LATEX, views)          # no sink — must not raise

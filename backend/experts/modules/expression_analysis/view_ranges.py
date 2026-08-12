@@ -234,7 +234,18 @@ def _repair_one(expr, var, view: dict) -> dict:
     except Exception:
         return {"why": "not-evaluable"}
 
-    variation = _variation([y for _, y in _sample(fn, lo, hi)])
+    samples = [y for _, y in _sample(fn, lo, hi)]
+    if len(samples) < 2:
+        # NOT flat: `_variation` returns 0.0 for an empty or single-point sample
+        # set, which is indistinguishable from a genuinely constant curve. A
+        # window the expression has no values across (a `sqrt` over negatives,
+        # an evaluation that errors everywhere) is a DIFFERENT and more serious
+        # finding — the view cannot be plotted at all — and reporting it as
+        # "flat at every scale" hides that. Same distinction as `unresolved`
+        # vs "no features": unknown is not absent.
+        return {"why": "undefined-here", "samples": len(samples)}
+
+    variation = _variation(samples)
     if variation >= MIN_VARIATION:
         return {"why": "already-reads", "variation": round(variation, 4)}
 
@@ -252,7 +263,14 @@ _WHY_PROSE = {
     "flat-at-every-scale": "the curve is flat at every scale — nothing to widen to",
     "malformed-range": "the proposer gave no usable sweep ({rng})",
     "not-evaluable": "the expression could not be evaluated at these values",
+    "undefined-here": "the expression has no defined values across {rng}, so "
+                      "there is nothing to measure (and nothing to plot)",
 }
+
+# Declines that mean "this view is broken", not "this view is fine as proposed".
+# Anything listed here is noted at `warning` level so the summary counts it; the
+# rest are the routine `ok` of a pass that looked and had nothing to do.
+_WARNING_WHYS = frozenset({"undefined-here", "malformed-range", "not-evaluable"})
 
 
 def _prose(record: dict, lo_hi: list) -> str:
@@ -262,6 +280,16 @@ def _prose(record: dict, lo_hi: list) -> str:
         return (f"no value pinned for {why.split(':', 1)[1]}, so the curve "
                 f"cannot be sampled (and the view cannot be plotted either)")
     return _WHY_PROSE.get(why, why).format(rng=_fmt_range(lo_hi))
+
+
+def _handle(view: dict, index: int) -> str:
+    """How a note names this viewport: its id, else a positional stand-in.
+
+    Views built by the proposer carry an id; a caller assembling one by hand may
+    not, so an anonymous view still gets a handle rather than a bare ``None``
+    that every note would share.
+    """
+    return str(view.get("id") or f"#{index + 1}")
 
 
 def _fmt_range(rng) -> str:
@@ -288,15 +316,19 @@ def repair_view_ranges(expression_latex: str, views: list[dict],
     if parsed is None:
         log.info("%s skipped %d view(s): expression did not parse",
                  _LOG_TAG, len(views))
-        note(notes, "view-ranges", "warning",
-             "could not re-parse the expression, so no sweep was checked")
+        # One note PER VIEW, not one for the batch. A single unscoped warning
+        # satisfies "something went wrong" but not the contract this pass is
+        # built on: a client filtering notes by view id would find nothing for
+        # any of them, which reads as "never looked at" — the exact ambiguity
+        # the per-view accounting exists to remove (Copilot, #553).
+        for i, view in enumerate(views):
+            note(notes, "view-ranges", "warning",
+                 "could not re-parse the expression, so this sweep was not "
+                 "checked", view=_handle(view, i), why="unparsed-expression")
         return
     expr, var = parsed
     for i, view in enumerate(views):
-        # Views built by the proposer carry an id; a caller assembling one by
-        # hand may not, so fall back to a positional handle rather than
-        # reporting an anonymous view.
-        n = view.get("id") or f"#{i + 1}"
+        n = _handle(view, i)
         original = list(view.get("x_range") or [])
         record = guard(_repair_one, expr, var, view, default=None, timeout=timeout)
         if record is None:                      # the guard itself gave up
@@ -307,9 +339,11 @@ def repair_view_ranges(expression_latex: str, views: list[dict],
             continue
         if "to" not in record:
             log.info("%s %s: left alone (%s)", _LOG_TAG, n, record["why"])
-            level = "warning" if record["why"].startswith("unpinned:") else "ok"
+            why = record["why"]
+            level = ("warning" if why.startswith("unpinned:")
+                     or why in _WARNING_WHYS else "ok")
             note(notes, "view-ranges", level, _prose(record, original), view=n,
-                 why=record["why"])
+                 why=why)
             continue
         view["x_range"] = record["to"]
         view["range_repaired"] = {k: record[k] for k in ("from", "to", "reason")}
