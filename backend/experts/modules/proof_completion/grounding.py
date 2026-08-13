@@ -41,9 +41,19 @@ _FUNC = {
     "abs": sp.Abs, "arg": sp.arg,
 }
 
-# Constant leaves (``type="constant"``) are emitted by the translator only when
-# the sympy expression *is* that constant, so every ``CONSTANT_MAP`` entry is
-# safe to ground here — including ``i``, which is ambiguous as a bare name.
+# Constant leaves (``type="constant"``). These come from two places: a sympy
+# expression that *is* one of the ``CONSTANT_MAP`` constants, and a plain
+# ``Symbol`` whose name is typed ``"constant"`` in ``KNOWN_VARIABLES`` (today
+# only ``pi``, which carries the same ``\pi`` spelling and so grounds to the
+# same value either way).
+#
+# The property the ``i`` split below relies on is therefore *not* "this node is
+# necessarily a sympy constant" — it is the narrower, checkable one that **no
+# constant-typed node is ever emitted with ``latex="i"``**: ``CONSTANT_MAP``
+# maps ``i`` only from ``sp.I`` itself, and ``KNOWN_VARIABLES`` types nothing
+# but ``pi`` as a constant. ``test_no_known_variable_is_typed_constant_as_i``
+# pins that so a new ``KNOWN_VARIABLES`` entry can't quietly void it.
+#
 # Derived from ``CONSTANT_MAP`` rather than restated: the two tables drifted
 # once already (#541), and inverting the source makes that structurally
 # impossible.
@@ -60,6 +70,10 @@ _CONSTANTS_BY_TYPE = {
 # in a far more common spelling. ``e`` is kept — ``e^x`` parses as a plain
 # symbol leaf yet always means Euler's number (capital ``E`` stays free, #538).
 _AMBIGUOUS_BARE_CONSTANTS = {"i"}
+
+# ``label`` -> sympy boolean, for the latex-less constant leaves above.
+_BOOLEAN_LITERALS = {"true": sp.true, "false": sp.false}
+
 _CONSTANTS = {
     latex: const
     for latex, const in _CONSTANTS_BY_TYPE.items()
@@ -100,6 +114,16 @@ def trajectory_consistent(start: SemanticGraph, ops, target: SemanticGraph) -> b
 # --------------------------------------------------------------------------- #
 
 def _symbol(node) -> sp.Expr:
+    if node.type == "constant":
+        # ``S.true``/``S.false`` (sympy collapses tautologies like Eq(x, x) to
+        # these) are emitted as constant leaves carrying only a ``label`` and no
+        # ``latex``, so they have to be matched before the latex lookup —
+        # otherwise they fall through to ``Symbol(node.id)``, i.e. a graph-local
+        # counter like ``__const_3``, and every tautology grounds to a distinct
+        # meaningless symbol.
+        boolean = _BOOLEAN_LITERALS.get((node.label or "").strip().lower())
+        if boolean is not None:
+            return boolean
     name = node.latex or node.id
     table = _CONSTANTS_BY_TYPE if node.type == "constant" else _CONSTANTS
     const = table.get(name)

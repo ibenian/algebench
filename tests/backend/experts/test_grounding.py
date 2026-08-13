@@ -342,3 +342,60 @@ def test_constant_table_is_derived_from_the_parser_s_spellings():
 
     for const, meta in CONSTANT_MAP.items():
         assert _CONSTANTS_BY_TYPE[meta["latex"]] is const
+
+
+def test_no_known_variable_is_typed_constant_as_i():
+    """The ``i`` split in ``_symbol`` grounds ``latex="i"`` on a *constant* leaf
+    to ``sp.I`` while leaving scalar ``i`` free. That is only sound while no
+    constant-typed node can carry ``latex="i"`` — ``CONSTANT_MAP`` maps it from
+    ``sp.I`` alone, and ``KNOWN_VARIABLES`` types only ``pi`` as a constant.
+    A new ``KNOWN_VARIABLES`` entry typed ``"constant"`` with ``latex="i"``
+    would silently turn every index ``i`` into the imaginary unit (#526/#541),
+    so pin it here rather than trusting the comment (PR #556 review)."""
+    from backend.semantic_graph.constants import KNOWN_VARIABLES
+
+    typed_constant = {
+        name: meta for name, meta in KNOWN_VARIABLES.items()
+        if meta.get("type") == "constant"
+    }
+    assert all(meta.get("latex") != "i" for meta in typed_constant.values()), (
+        f"a KNOWN_VARIABLES entry is typed constant with latex='i': {typed_constant}"
+    )
+    # ...and the one entry that *is* typed constant must agree with CONSTANT_MAP,
+    # so routing it through the constant tier can't change its value.
+    from backend.experts.modules.proof_completion.grounding import _CONSTANTS_BY_TYPE
+    for name, meta in typed_constant.items():
+        assert _CONSTANTS_BY_TYPE.get(meta["latex"]) is not None, (
+            f"KNOWN_VARIABLES[{name!r}] is typed constant but its latex "
+            f"{meta['latex']!r} has no CONSTANT_MAP value"
+        )
+
+
+def test_boolean_literal_leaves_ground_to_sympy_booleans():
+    """Sympy collapses tautologies to ``S.true``/``S.false``, which the
+    translator emits as a constant leaf with a ``label`` and *no* ``latex``.
+    Those used to fall through to ``Symbol(node.id)`` — a graph-local counter
+    like ``__const_3`` — so two tautologies grounded to two different
+    meaningless symbols and compared unequal (PR #556 review)."""
+    from backend.experts.modules.proof_completion.grounding import _symbol
+    from backend.model.semantic_graph import SemanticGraphNode
+
+    assert _symbol(SemanticGraphNode(id="__const_3", type="constant", label="true")) is sp.true
+    assert _symbol(SemanticGraphNode(id="__const_9", type="constant", label="false")) is sp.false
+    # id must not leak into the result for either literal
+    for nid in ("__const_3", "__const_9"):
+        for label in ("true", "false"):
+            got = _symbol(SemanticGraphNode(id=nid, type="constant", label=label))
+            assert not got.free_symbols
+
+    # a named constant still wins on latex, and an unlabelled constant is untouched
+    assert _symbol(SemanticGraphNode(id="c", type="constant", latex=r"\pi", label="pi")) is sp.pi
+    assert _symbol(SemanticGraphNode(id="c2", type="constant", label="infinity",
+                                     latex=r"\infty")) is sp.oo
+
+
+def test_latex_tautologies_still_ground_to_true():
+    """Guard the LaTeX path the boolean fix does *not* touch: these keep a
+    relation node and are evaluated by sympy at grounding time."""
+    for tex in (r"x = x", r"1 = 1", r"x + 0 = x"):
+        assert graph_to_sympy(SVC.latex_to_graph(tex)) == sp.true
