@@ -257,3 +257,88 @@ def test_capital_E_is_free_symbol():
     # E = mc^2 should have E as a free symbol
     result = graph_to_sympy(SVC.latex_to_graph(r"E = m c^2"))
     assert result == sp.Eq(E, m * c**2)
+
+
+# --------------------------------------------------------------------------- #
+# named constants (issue #541)
+# --------------------------------------------------------------------------- #
+
+CONSTANT_GROUNDING = [
+    # \pi and \infty reach the grounder as LaTeX ("\pi", "\infty"), not as the
+    # bare names the old table was keyed on — so they used to survive as free
+    # symbols and silently poison every comparison they took part in.
+    (r"\sin(\pi)", sp.Integer(0)),
+    (r"\cos(2\pi)", sp.Integer(1)),
+    (r"\tan(\frac{\pi}{4})", sp.Integer(1)),
+    (r"\frac{\pi}{2}", sp.pi / 2),
+    (r"\pi r^2", sp.pi * sp.Symbol("r") ** 2),
+    (r"2\pi", 2 * sp.pi),
+    (r"\sqrt{\pi}", sp.sqrt(sp.pi)),
+    (r"\infty", sp.oo),
+]
+
+
+@pytest.mark.parametrize("latex,expected", CONSTANT_GROUNDING)
+def test_named_constants_ground_to_sympy_values(latex, expected):
+    assert graph_to_sympy(SVC.latex_to_graph(latex)) == expected
+
+
+@pytest.mark.parametrize("latex", [r"\sin(\pi)", r"\pi r^2", r"2\pi", r"\infty",
+                                   r"\frac{\pi}{2}"])
+def test_pi_and_infinity_are_never_free_symbols(latex):
+    """The sharp end of #541: a free ``\\pi`` makes two *different* expressions
+    compare equal because both sides agree on the same meaningless symbol."""
+    free = {str(s) for s in graph_to_sympy(SVC.latex_to_graph(latex)).free_symbols}
+    assert r"\pi" not in free and "pi" not in free
+    assert r"\infty" not in free and "oo" not in free
+
+
+def test_pi_carrying_expressions_are_distinguishable():
+    """With \\pi free, these graded as equivalent; with \\pi grounded they don't."""
+    half = graph_to_sympy(SVC.latex_to_graph(r"\sin(\frac{\pi}{2})"))
+    whole = graph_to_sympy(SVC.latex_to_graph(r"\sin(\pi)"))
+    assert half == 1 and whole == 0
+    assert not sympy_equiv(half, whole)
+
+
+def test_lowercase_e_still_grounds_to_eulers_number():
+    """Regression guard for #526/#538: ``e`` is Euler's number, ``E`` is free."""
+    assert graph_to_sympy(SVC.latex_to_graph(r"e")) == sp.E
+    assert graph_to_sympy(SVC.latex_to_graph(r"e^x")) == sp.exp(x)
+    assert graph_to_sympy(SVC.latex_to_graph(r"E")) == sp.Symbol("E")
+
+
+@pytest.mark.parametrize("latex", [r"i", r"i^2", r"a_i + i", r"z = a + b i"])
+def test_index_i_stays_a_free_symbol(latex):
+    """``i`` is far more often an index (``a_i``, ``\\sum_i``) than the imaginary
+    unit, and the parser spells both ``latex="i"`` on a *scalar* leaf. Grounding
+    it by name would reintroduce #526 in a much more common spelling, so bare
+    ``i`` is deliberately left alone (#541)."""
+    got = graph_to_sympy(SVC.latex_to_graph(latex))
+    assert sp.Symbol("i") in got.free_symbols
+    assert sp.I not in got.atoms()
+
+
+def test_constant_leaves_ground_the_imaginary_unit():
+    """A ``type="constant"`` leaf is only emitted when the sympy expression *is*
+    that constant, so it carries the provenance a bare symbol lacks — ``i`` is
+    safe to ground there even though it is not safe to ground by name."""
+    from backend.experts.modules.proof_completion.grounding import (
+        _CONSTANTS, _CONSTANTS_BY_TYPE, _symbol,
+    )
+    from backend.model.semantic_graph import SemanticGraphNode
+
+    assert _CONSTANTS_BY_TYPE["i"] is sp.I
+    assert "i" not in _CONSTANTS          # ...but not by bare name
+    assert _symbol(SemanticGraphNode(id="c1", type="constant", latex="i")) is sp.I
+    assert _symbol(SemanticGraphNode(id="s1", type="scalar", latex="i")) == sp.Symbol("i")
+
+
+def test_constant_table_is_derived_from_the_parser_s_spellings():
+    """The grounder's table and ``CONSTANT_MAP`` drifted once (#541); deriving
+    one from the other is what keeps them from drifting again."""
+    from backend.experts.modules.proof_completion.grounding import _CONSTANTS_BY_TYPE
+    from backend.semantic_graph.constants import CONSTANT_MAP
+
+    for const, meta in CONSTANT_MAP.items():
+        assert _CONSTANTS_BY_TYPE[meta["latex"]] is const

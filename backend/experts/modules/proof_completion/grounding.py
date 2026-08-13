@@ -27,6 +27,7 @@ import sympy as sp
 from sympy.physics.quantum.state import Ket, Bra
 
 from backend.model.semantic_graph import SemanticGraph
+from backend.semantic_graph.constants import CONSTANT_MAP
 
 from .cas_guard import cas_register_safe_function
 from .graph_ops import apply, canonical_equal
@@ -40,7 +41,30 @@ _FUNC = {
     "abs": sp.Abs, "arg": sp.arg,
 }
 
-_CONSTANTS = {"pi": sp.pi, "e": sp.E, "infty": sp.oo, "oo": sp.oo}
+# Constant leaves (``type="constant"``) are emitted by the translator only when
+# the sympy expression *is* that constant, so every ``CONSTANT_MAP`` entry is
+# safe to ground here — including ``i``, which is ambiguous as a bare name.
+# Derived from ``CONSTANT_MAP`` rather than restated: the two tables drifted
+# once already (#541), and inverting the source makes that structurally
+# impossible.
+_CONSTANTS_BY_TYPE = {
+    meta["latex"]: const
+    for const, meta in CONSTANT_MAP.items()
+    if meta.get("latex")
+}
+
+# Symbol leaves (``type="scalar"``/``"vector"``) carry no such provenance, so
+# only spellings that cannot be a variable name are grounded. ``i`` is excluded:
+# the parser emits ``latex="i"`` for the index in ``a_i`` and ``\sum_i`` just as
+# it does for the imaginary unit, and mapping it blindly would reintroduce #526
+# in a far more common spelling. ``e`` is kept — ``e^x`` parses as a plain
+# symbol leaf yet always means Euler's number (capital ``E`` stays free, #538).
+_AMBIGUOUS_BARE_CONSTANTS = {"i"}
+_CONSTANTS = {
+    latex: const
+    for latex, const in _CONSTANTS_BY_TYPE.items()
+    if latex not in _AMBIGUOUS_BARE_CONSTANTS
+}
 
 # relation op -> sympy relational constructor
 _RELATIONS = {
@@ -77,8 +101,10 @@ def trajectory_consistent(start: SemanticGraph, ops, target: SemanticGraph) -> b
 
 def _symbol(node) -> sp.Expr:
     name = node.latex or node.id
-    if name in _CONSTANTS:
-        return _CONSTANTS[name]
+    table = _CONSTANTS_BY_TYPE if node.type == "constant" else _CONSTANTS
+    const = table.get(name)
+    if const is not None:
+        return const
     return sp.Symbol(name)
 
 
