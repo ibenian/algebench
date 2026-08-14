@@ -95,9 +95,15 @@
   right: auto;
 }
 .graph-panel-info .graph-panel-ai-btn,
-.graph-panel-info .graph-panel-derive-btn {
+.graph-panel-info .graph-panel-derive-btn,
+.graph-panel-info .graph-panel-fa-btn {
   opacity: 1;
   pointer-events: auto;
+}
+/* Function analysis keeps its ochre affordance hue, matching the node's
+   ƒ button. */
+.graph-panel-info .graph-panel-fa-btn {
+  color: var(--accent-color, #ffa726);
 }
 
 .graph-node-ai-btn {

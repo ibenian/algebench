@@ -1541,6 +1541,23 @@ function _showD3InfoPanel(nodeId, nodeData, graph) {
                 _currentProofManager.openProof(nodeId, anchor, payload);
             });
         header.appendChild(deriveBtn);
+
+        // Function-analysis button — same artifact the node's ƒ button opens,
+        // reachable without hunting for the tiny on-graph button.
+        if (fullNode.subexpr) {
+            const faBtn = document.createElement('button');
+            faBtn.type = 'button';
+            faBtn.className = 'ai-ask-btn graph-panel-fa-btn';
+            faBtn.title = 'Function analysis for this expression';
+            faBtn.setAttribute('aria-label', 'Function analysis for this expression');
+            faBtn.innerHTML = FUNCTION_ANALYSIS_ICON;
+            faBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const step = currentProofStep();
+                if (step) getFaManager().open(fullNode, step);
+            });
+            header.appendChild(faBtn);
+        }
     }
 
     // Populate the inline panel
