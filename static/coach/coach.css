@@ -10,7 +10,7 @@
 #btn-coach .coach-dot {
     position: absolute; top: -3px; right: -3px;
     width: 8px; height: 8px; border-radius: 50%;
-    background: #ffcf5a; box-shadow: 0 0 6px #ffcf5a;
+    background: var(--accent-color); box-shadow: 0 0 6px #ffcf5a;
     animation: coach-dot-pulse 1.8s ease-in-out infinite;
 }
 @keyframes coach-dot-pulse {
@@ -31,16 +31,14 @@
     display: none;
     pointer-events: none;
     border-radius: 8px;
-    border: 2px solid rgba(140, 150, 255, 0.95);
-    box-shadow:
-        0 0 0 2px rgba(140, 150, 255, 0.35),
-        0 0 18px 4px rgba(120, 130, 255, 0.55);
+    border: 2px solid color-mix(in srgb, var(--accent-color) 95%, transparent);
+    box-shadow: var(--shadow-sm);
     transition: left .25s ease, top .25s ease, width .25s ease, height .25s ease;
     animation: coach-spot-pulse 1.8s ease-in-out infinite;
 }
 @keyframes coach-spot-pulse {
-    0%, 100% { box-shadow: 0 0 0 2px rgba(140,150,255,0.35), 0 0 18px 4px rgba(120,130,255,0.55); }
-    50%      { box-shadow: 0 0 0 2px rgba(140,150,255,0.20), 0 0 26px 8px rgba(120,130,255,0.30); }
+    0%, 100% { box-shadow: var(--shadow-sm); }
+    50%      { box-shadow: var(--shadow-sm); }
 }
 
 /* Keep hover-reveal targets visible while spotlighted. The ✦ ask buttons are
@@ -48,10 +46,10 @@
    empty (dark) ring when the Coach highlights them. */
 .coach-spotlit { opacity: 1 !important; }
 .ai-ask-btn.coach-spotlit {
-    background: rgba(100, 110, 240, 0.3);
-    color: #c8d4ff;
-    border-color: rgba(160, 180, 255, 0.6);
-    box-shadow: 0 0 6px rgba(120, 140, 255, 0.35);
+    background: color-mix(in srgb, var(--accent-color) 30%, transparent);
+    color: var(--text-color);
+    border-color: color-mix(in srgb, var(--accent-color) 60%, transparent);
+    box-shadow: var(--shadow-sm);
 }
 
 /* The card — the only interactive piece. */
@@ -61,11 +59,11 @@
     width: 330px;
     max-width: calc(100vw - 28px);
     pointer-events: auto;
-    background: linear-gradient(180deg, rgba(28, 28, 48, 0.98), rgba(20, 20, 36, 0.98));
-    border: 1px solid rgba(120, 120, 255, 0.4);
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
     border-radius: 12px;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
-    color: #d6d6ee;
+    box-shadow: var(--shadow-sm);
+    color: var(--text-color);
     font-size: 0.9em;
     line-height: 1.45;
     overflow: hidden;
@@ -79,36 +77,36 @@
     touch-action: none;   /* let pointer drag work on touch without scrolling */
 }
 .coach-card-title {
-    flex: 1; font-weight: 600; font-size: 1.02em; color: #fff;
+    flex: 1; font-weight: 600; font-size: 1.02em; color: var(--text-color);
 }
 .coach-card-counter {
-    font-size: 0.78em; color: #9aa0d8; white-space: nowrap;
+    font-size: 0.78em; color: var(--accent-color); white-space: nowrap;
 }
 .coach-icon-btn {
     background: transparent; border: none; cursor: pointer;
-    color: #9aa0d8; font-size: 1em; padding: 2px 4px; border-radius: 5px;
+    color: var(--accent-color); font-size: 1em; padding: 2px 4px; border-radius: 5px;
     transition: all .15s;
 }
-.coach-icon-btn:hover { color: #fff; background: rgba(120,120,255,0.2); }
+.coach-icon-btn:hover { color: var(--text-color); background: color-mix(in srgb, var(--accent-color) 20%, transparent); }
 .coach-tts-toggle.coach-tts-off { opacity: 0.5; }
 
-.coach-card-body { padding: 0 14px 12px 14px; color: #c8c8e6; }
+.coach-card-body { padding: 0 14px 12px 14px; color: var(--text-color); }
 
 .coach-examples {
     display: flex; flex-wrap: wrap; gap: 6px;
     padding: 0 14px 12px 14px;
 }
 .coach-chip {
-    background: rgba(80, 80, 160, 0.3);
-    border: 1px solid rgba(120, 120, 255, 0.3);
-    color: #c0c0e8;
+    background: color-mix(in srgb, var(--accent-color) 30%, transparent);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
     border-radius: 14px; padding: 5px 11px;
     font-size: 0.82em; cursor: pointer; transition: all .15s;
 }
 .coach-chip:hover {
-    background: rgba(90, 90, 210, 0.45);
-    border-color: rgba(150, 150, 255, 0.6);
-    color: #fff;
+    background: color-mix(in srgb, var(--accent-color) 45%, transparent);
+    border-color: color-mix(in srgb, var(--accent-color) 60%, transparent);
+    color: var(--text-color);
 }
 
 .coach-prompt-row {
@@ -116,41 +114,41 @@
 }
 #coach-prompt-input {
     flex: 1; min-width: 0;
-    background: rgba(15, 15, 28, 0.9);
-    border: 1px solid rgba(120, 120, 255, 0.3);
-    color: #e6e6f6; border-radius: 8px; padding: 7px 10px;
-    font-size: 0.9em; font-family: inherit;
+    background: var(--page-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-color); border-radius: 8px; padding: 7px 10px;
+    font-size: 0.9em; font-family: var(--font-body);
 }
 #coach-prompt-input:focus {
-    outline: none; border-color: rgba(150, 150, 255, 0.7);
+    outline: none; border-color: color-mix(in srgb, var(--accent-color) 70%, transparent);
 }
 #coach-prompt-send {
-    background: rgba(70, 130, 220, 0.4);
-    border: 1px solid rgba(120, 160, 255, 0.5);
-    color: #eaf0ff; border-radius: 8px; padding: 7px 12px;
+    background: color-mix(in srgb, var(--accent-color) 40%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent-color) 50%, transparent);
+    color: var(--text-color); border-radius: 8px; padding: 7px 12px;
     cursor: pointer; transition: all .15s;
 }
-#coach-prompt-send:hover { background: rgba(80, 150, 250, 0.6); color: #fff; }
+#coach-prompt-send:hover { background: color-mix(in srgb, var(--accent-color) 60%, transparent); color: var(--text-color); }
 
 .coach-card-foot {
     display: flex; align-items: center; gap: 8px;
     padding: 10px 14px 12px 14px;
-    border-top: 1px solid rgba(120, 120, 255, 0.15);
+    border-top: 1px solid var(--border-color);
 }
 .coach-btn {
-    background: rgba(80, 80, 160, 0.3);
-    border: 1px solid rgba(120, 120, 255, 0.3);
-    color: #d0d0ee; border-radius: 7px; padding: 7px 13px;
+    background: color-mix(in srgb, var(--accent-color) 30%, transparent);
+    border: 1px solid var(--border-color);
+    color: var(--text-color); border-radius: 7px; padding: 7px 13px;
     font-size: 0.85em; cursor: pointer; transition: all .15s;
 }
-.coach-btn:hover { background: rgba(90, 90, 210, 0.5); color: #fff; }
+.coach-btn:hover { background: color-mix(in srgb, var(--accent-color) 50%, transparent); color: var(--text-color); }
 .coach-btn:disabled { opacity: 0.4; cursor: default; }
 .coach-btn-primary {
     background: rgba(45, 125, 85, 0.55);
     border-color: rgba(90, 220, 160, 0.6);
     color: #eafff1;
 }
-.coach-btn-primary:hover { background: rgba(55, 150, 105, 0.7); color: #fff; }
+.coach-btn-primary:hover { background: rgba(55, 150, 105, 0.7); color: var(--text-color); }
 .coach-foot-spacer { flex: 1; }
 
 .coach-hidden { display: none !important; }

@@ -177,30 +177,35 @@ def _collect_expressions() -> list[tuple[str, list[tuple[str, str, str | None]]]
 
 # ── HTML templates ─────────────────────────────────────────────────────
 
+# Page chrome aligned with the app's "Slate & Graph Paper" tokens
+# (static/tokens.css) so the D3/mermaid renderers' var(--*) references
+# resolve the same way they do inside the app.
 THEMES = {
     "light": {
-        "bg": "#f8f9fa",
-        "fg": "#1a1a2e",
-        "card_bg": "#ffffff",
-        "border": "#e2e8f0",
-        "shadow": "rgba(0,0,0,0.06)",
-        "muted": "#718096",
+        "bg": "#f3f4ee",
+        "fg": "#253029",
+        "card_bg": "#fbfcf8",
+        "border": "#dfe2d9",
+        "shadow": "rgba(37,48,41,0.08)",
+        "muted": "#68726b",
+        "accent": "#9a6d1c",
         "mermaid_theme": "default",
-        "error_bg": "#fff5f5",
-        "error_border": "#feb2b2",
-        "error_fg": "#c53030",
+        "error_bg": "#f9edea",
+        "error_border": "#e4c3ba",
+        "error_fg": "#a8503f",
     },
     "dark": {
-        "bg": "#0d1117",
-        "fg": "#e6edf3",
-        "card_bg": "#161b22",
-        "border": "#30363d",
+        "bg": "#161c19",
+        "fg": "#e8e6da",
+        "card_bg": "#1e2621",
+        "border": "#343d37",
         "shadow": "rgba(0,0,0,0.3)",
-        "muted": "#8b949e",
+        "muted": "#97a29a",
+        "accent": "#d9a441",
         "mermaid_theme": "dark",
-        "error_bg": "#2d1b1b",
-        "error_border": "#6b2020",
-        "error_fg": "#f87171",
+        "error_bg": "#291a16",
+        "error_border": "#6e4036",
+        "error_fg": "#c9705f",
     },
 }
 
@@ -372,6 +377,17 @@ def _page_template() -> str:
       }}
     </script>
     <style>
+      /* App design tokens — the embedded D3/mermaid CSS reads these vars just
+         like it does inside the app's graph panel. */
+      :root {{
+        --page-bg: {bg};
+        --panel-bg: {card_bg};
+        --text-color: {fg};
+        --muted-color: {muted};
+        --border-color: {border};
+        --accent-color: {accent};
+        --math-fg: {fg};
+      }}
       * {{ margin: 0; padding: 0; box-sizing: border-box; }}
       ::-webkit-scrollbar {{ width: 6px; height: 6px; }}
       ::-webkit-scrollbar-track {{ background: transparent; }}

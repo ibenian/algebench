@@ -26,7 +26,7 @@ from functools import cache
 import dspy
 from pydantic import BaseModel, ConfigDict, Field
 
-from backend.experts.llm_config import scoped_lm
+from backend.experts.llm_config import make_adapter, scoped_lm
 from backend.experts.modules.proof_completion.outputs import _unmangle_json_escapes
 
 # DSPy's ChatAdapter frames fields with `[[ ## name ## ]]` markers; some models
@@ -46,13 +46,28 @@ MAX_CLARIFICATIONS = 2
 
 
 class ProposedStep(BaseModel):
-    """One step the model proposes adding to the derivation."""
+    """One step the model proposes adding to the derivation.
+
+    The per-field ``description``s are prompt surface, not documentation: this
+    model is a ``ProofEditSig`` output field, so ``LineAdapter`` renders each key
+    with its description as the block template the model fills in. Without them
+    the template degrades to bare ``operation: <operation>`` placeholders and the
+    per-key guidance is simply absent from the prompt.
+    """
 
     model_config = ConfigDict(extra="ignore")
 
-    operation: str = Field(default="", max_length=200)
-    expr_latex: str = Field(default="", max_length=600)
-    justification: str = Field(default="", max_length=600)
+    operation: str = Field(
+        default="", max_length=200,
+        description="the CAPTION shown above the step, in the reader's language "
+                    "(e.g. 'Multiply both sides by 2', 'Given') — never a tool or "
+                    "function name")
+    expr_latex: str = Field(
+        default="", max_length=600,
+        description="the COMPLETE LaTeX of the expression after this step")
+    justification: str = Field(
+        default="", max_length=600,
+        description="why this step is valid; wrap any math in $…$")
 
 
 class ProofEditProposal(BaseModel):
@@ -211,12 +226,11 @@ class ProofEditSig(dspy.Signature):
         desc="true if the message asks for a math operation on the step")
     question: str = dspy.OutputField(
         desc="ONE short question if a math-changing choice is missing; else empty")
-    steps: list[dict] = dspy.OutputField(
-        desc="ordered [{operation, expr_latex, justification}]: the user's step "
-             "first, THEN up to 3 glue steps bridging back to the original next "
-             "step. Fill the glue even when `op` is set — the CAS performs the "
-             "operation but cannot write the bridge. Empty only if is_edit is "
-             "false or a question is being asked")
+    steps: list[ProposedStep] = dspy.OutputField(
+        desc="ordered: the user's step FIRST, then up to 3 glue steps bridging "
+             "back to the original next step. Fill the glue even when `op` is "
+             "set — the CAS performs the operation but cannot write the bridge. "
+             "Empty only if is_edit is false or a question is being asked")
     op: str = dspy.OutputField(
         desc="if the request maps onto one of these, name it EXACTLY, else leave "
              "empty: add_both_sides, subtract_both_sides, multiply_both_sides, "
@@ -266,13 +280,22 @@ class EditIntentParser(dspy.Module):
 
     def forward(self, *, derivation: str, current_step: str, request: str,
                 recent_thread: str = "", clarifications: str = ""):
-        return self.predict(
-            derivation=derivation,
-            current_step=current_step,
-            request=request,
-            recent_thread=recent_thread,
-            clarifications=clarifications,
-        )
+        # LineAdapter, installed via ``dspy.context`` — ``Predict.forward`` reads
+        # ``settings.adapter``, so an ``adapter=`` kwarg on ``Predict`` would sit
+        # inertly in ``self.config`` and be forwarded to the LM instead (#543).
+        # ``steps`` is the reason: a ``list[BaseModel]`` output is JSON-decoded
+        # under ChatAdapter, and ``\r \n \t \f \b`` are valid JSON escapes AND
+        # LaTeX command prefixes — so ``\right`` written with one backslash
+        # decodes to CR + ``ight`` and parses as the product ``i·g·h·t``. The
+        # line format has no escape layer, so the backslashes survive verbatim.
+        with dspy.context(adapter=make_adapter(line_oriented=True)):
+            return self.predict(
+                derivation=derivation,
+                current_step=current_step,
+                request=request,
+                recent_thread=recent_thread,
+                clarifications=clarifications,
+            )
 
 
 # Built once, LAZILY on first use — this file is imported before
@@ -322,11 +345,18 @@ _LM = scoped_lm(reasoning_effort="disable")
 def _clean(s) -> str:
     """Strip DSPy framing, then repair JSON-mangled LaTeX.
 
-    ``_unmangle_json_escapes`` is not optional here. A JSON parser eats the first
-    letter of a single-backslash LaTeX command, so ``\\frac{c}{\\sin(w)}`` arrives
-    as ``fraccsin(w)`` — which renders as garbage in a caption and fails to parse
-    as an operand. ``DerivationStep`` applies the same repair via a field
-    validator; these fields bypass that model, so they need it explicitly.
+    A JSON parser eats the first letter of a single-backslash LaTeX command, so
+    ``\\frac{c}{\\sin(w)}`` arrives as ``fraccsin(w)`` — garbage in a caption and
+    unparseable as an operand.
+
+    The repair is no longer load-bearing for this signature's own fields: since
+    #543 they are read under ``LineAdapter``, which has no escape layer, so
+    nothing on that path can arrive mangled. It stays because ``_clean`` also
+    runs over CHAT THREAD text (``clarifications_from_thread``), which reaches us
+    by other routes and carries no such guarantee. Do not read its presence here
+    as evidence that the signature path still needs repairing — if that path ever
+    does, the adapter has been removed and ``test_edit_intent_uses_line_adapter``
+    will have failed first.
     """
     return _unmangle_json_escapes(_DSPY_MARKER.sub("", str(s or "")).strip())
 
@@ -361,12 +391,15 @@ def propose_edit(derivation: str, current_step: str, request: str,
 
     steps: list[ProposedStep] = []
     for raw in (out.steps or [])[:MAX_GLUE_STEPS + 1]:
-        if not isinstance(raw, dict):
+        # ``ProposedStep`` under LineAdapter; a plain dict from any caller that
+        # still hands one over (older fixtures, a JSONAdapter path). ``_field``
+        # reads either, so the shape change does not gate the cleaning.
+        if not isinstance(raw, (dict, ProposedStep)):
             continue
-        step = ProposedStep(
-            operation=_clean(raw.get("operation")),
-            expr_latex=_clean(raw.get("expr_latex")),
-            justification=_clean(raw.get("justification")),
+        step = ProposedStep(              # ``_field`` already runs ``_clean``
+            operation=_field(raw, "operation"),
+            expr_latex=_field(raw, "expr_latex"),
+            justification=_field(raw, "justification"),
         )
         if step.expr_latex:            # an expressionless step cannot be built
             steps.append(step)

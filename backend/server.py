@@ -1608,6 +1608,26 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
         return Response(content=css.encode('utf-8'), media_type="text/css",
                         headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
 
+    @fastapp.get("/tokens.css")
+    async def get_tokens_css():
+        """Shared design tokens (both themes) — linked by every app page."""
+        with open(static_dir / "tokens.css", 'r') as f:
+            css = f.read()
+        return Response(content=css.encode('utf-8'), media_type="text/css",
+                        headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+
+    @fastapp.get("/fonts/{filename}")
+    async def get_font_file(filename: str):
+        """Serve self-hosted webfonts from static/fonts/ (woff2 only)."""
+        path = sanitize_path(static_dir / "fonts", filename)
+        if not path or not path.is_file() or path.suffix != '.woff2':
+            return Response(status_code=404)
+        with open(path, 'rb') as f:
+            content = f.read()
+        # Font binaries are immutable per filename — cache aggressively.
+        return Response(content=content, media_type="font/woff2",
+                        headers={"Cache-Control": "public, max-age=86400"})
+
     @fastapp.get("/objects/{filename:path}")
     async def get_objects_js(filename: str):
         """Serve ES module files from static/objects/ subdirectory."""
@@ -1625,7 +1645,7 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
         'json-browser', 'main', 'proof', 'graph-view', 'expert-client',
         'view-state', 'view-state-bridge', 'nav-history', 'nav-history-core',
         'renderproof', 'embed-resizer', 'object-picker', 'prove', 'theme', 'icons',
-        'proof-edit-tool', 'proof-id',
+        'theme-init', 'proof-edit-tool', 'proof-id',
     }
 
     @fastapp.get("/api/version")
@@ -2185,7 +2205,9 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
         return JSONResponse(current_spec[0] if current_spec[0] else {})
 
     @fastapp.get("/shutdown")
-    async def shutdown():
+    async def shutdown(request: Request):
+        if not request.client or request.client.host not in ("127.0.0.1", "::1"):
+            return Response(status_code=403, content=b"Forbidden")
         # Kill active TTS streams so uvicorn doesn't hang waiting for them
         for gen in list(_tts_active_gens):
             try:

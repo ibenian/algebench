@@ -5,7 +5,8 @@
 // ============================================================
 
 import { state } from '/state.js';
-import { initMathBox, animateCamera, setupRollDrag, setupProjectionToggle, setupTrackpadPan } from '/camera.js';
+import { initMathBox, animateCamera, setupRollDrag, setupProjectionToggle, setupTrackpadPan,
+         applyCanvasClearColor } from '/camera.js';
 import { animateSlider } from '/sliders.js';
 import { setupDragDrop, setupFilePicker, setupScenesDropdown, setupVideoExportControls,
          loadBuiltinScenesList, loadInitialSceneFromQuery } from '/ui.js';
@@ -25,7 +26,7 @@ import { captureViewState, applyViewState, setupViewSync, setupShareButton } fro
 import { setupPopstateListener } from '/nav-history.js';
 import { setupObjectPicker } from '/object-picker.js';
 import { AI_ICON, USER_ICON } from '/icons.js';
-import { applyTheme, initialTheme } from '/theme.js';
+import { applyTheme, initialTheme, wireThemeToggle } from '/theme.js';
 
 // chat.js is a classic script (no ES imports), so expose the shared chat-avatar
 // icons on window for it to read. Set at module-eval, well before any message
@@ -46,6 +47,8 @@ setBuildSceneTreeFn(buildSceneTree);
 
 document.addEventListener('DOMContentLoaded', async () => {
     applyTheme(initialTheme());
+    wireThemeToggle(document.getElementById('btn-theme'),
+                    { onChange: () => applyCanvasClearColor() });
     initMathBox();
     setupObjectPicker();
     setupRollDrag(document.getElementById('mathbox-container'));

@@ -7,7 +7,15 @@ jsonschema>=4.23.0
 sympy>=1.13.0
 antlr4-python3-runtime==4.11.1
 pydantic-ai-slim[google]>=1.56.0
-dspy>=2.6,<3.0
+# DSPy 3.x. The `<3.0` ceiling stranded us on 2.6.27 — the last 2.6.x, released
+# 2h27m before the fix for its broken structured-outputs path landed upstream
+# (`create_model(__config__=<class>)` against pydantic 2.13; stanfordnlp/dspy#8256).
+# Every signature raised there, so constrained decoding was never once used.
+# The [optuna] extra is what MIPROv2 needs: 3.x moved optuna (and pandas,
+# datasets, ujson, joblib, rich, backoff) out of the core dependency set, and
+# `scripts/proof_completion/optimize.py --optimizer mipro` is the documented
+# default. Net install is still substantially smaller than under 2.6.
+dspy[optuna]>=3.2,<4.0
 # SECURITY: litellm 1.82.7 / 1.82.8 were compromised (Mar 2025 supply chain attack).
 # Floor of 1.82.9 guarantees a fresh resolve can never land on the malicious versions.
 litellm>=1.82.9

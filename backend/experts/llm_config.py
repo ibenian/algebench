@@ -9,10 +9,17 @@ independent stack from the pydantic-ai enricher; both can coexist.
 from __future__ import annotations
 
 import contextlib
+import logging
 import os
-from typing import Callable, ContextManager, Optional
+from typing import Any, Callable, ContextManager, Optional
 
 import dspy
+from dspy.adapters.chat_adapter import ChatAdapter
+from dspy.utils.exceptions import AdapterParseError
+
+from backend.experts.adapters import LineAdapter
+
+log = logging.getLogger(__name__)
 
 # The expert emits large structured trajectories, so it needs a model with a
 # generous output-token budget (gemini-2.0-flash caps at 8192 and truncates).
@@ -44,12 +51,117 @@ def make_lm(temperature: float = 0.7, max_tokens: int = 32768) -> dspy.LM:
     return dspy.LM(LM_MODEL, **kwargs)
 
 
+def make_adapter(*, json_fallback: bool = False,
+                 line_oriented: bool = False) -> ChatAdapter:
+    r"""Build a DSPy adapter. **Both knobs default to the safe setting.**
+
+    The single place adapters are constructed, so the project's two wire-format
+    decisions are stated once instead of drifting apart in unrelated files.
+
+    ``json_fallback`` — whether ``ChatAdapter`` may silently re-run a failed
+    prediction through ``JSONAdapter``. **Off.** Its ``__call__`` wraps the work
+    in a bare ``except Exception`` and, on *any* failure, re-asks as JSON and
+    logs nothing. That is a trapdoor, not a safety net:
+
+    * it costs **three** extra LM calls (``JSONAdapter`` retries internally) and
+      the caller sees only a slightly slow success;
+    * it hands every field back to the JSON escape layer. ``\r \n \t \f \b`` are
+      valid JSON escapes *and* LaTeX command prefixes, so a model writing
+      ``\right`` with one backslash yields valid JSON decoding to a carriage
+      return plus ``ight`` — which parses as the product ``i·g·h·t`` (#517).
+      Under ``ChatAdapter`` a flat ``str`` field never reaches a JSON decoder
+      (``parse_value`` short-circuits on ``annotation is str``), so that
+      corruption is reachable *only* down this path. Closing it makes the
+      exposure structurally unreachable rather than merely unlikely.
+
+    ``line_oriented`` — whether to use :class:`LineAdapter`, whose wire format
+    has no escape layer at all, so backslashes survive verbatim (#522). It is
+    the stronger guarantee but only accepts one-level-deep signatures, which is
+    why it is opt-in per call site rather than the default.
+
+    Refusing the fallback means a parse failure RAISES. Callers that already
+    swallow exceptions (``proof_edit``, ``expression_analysis``, the judge,
+    ``term_descriptions``) degrade exactly as before; ``prompt_endpoints``
+    re-asks via :func:`retry_on_parse_error`, which is the resilience the
+    fallback actually provided, without the escape layer.
+    """
+    cls = LineAdapter if line_oriented else ChatAdapter
+    return cls(use_json_adapter_fallback=json_fallback)
+
+
+def retry_on_parse_error(call: Callable[[], Any], *,
+                         attempts: int = 2, label: str = "") -> Any:
+    r"""Run a DSPy prediction, re-asking if the response cannot be PARSED.
+
+    The replacement for ``ChatAdapter``'s silent ``JSONAdapter`` fallback, which
+    :func:`make_adapter` refuses. That fallback was doing two things at once and
+    only one of them was wanted:
+
+    * **wanted** — a second roll at a stochastic formatting slip;
+    * **not wanted** — re-decoding every field through JSON escaping, the sole
+      route by which a flat ``str`` LaTeX field can be silently corrupted
+      (#517).
+
+    This keeps the first and drops the second by re-asking in the SAME wire
+    format. It is deliberately narrow:
+
+    * Only ``AdapterParseError`` is retried. A network/transient failure is
+      litellm's job (``dspy.LM(num_retries=3)``) and retrying it here would
+      multiply, not add. A domain exception (``InvalidPromptError``) is a real
+      answer and must propagate untouched.
+    * It takes a zero-argument CALLABLE, not a signature, so it fits every
+      predictor shape in the codebase — a cached ``_predictor(sig)(**kw)``, a
+      module's ``self.predict(**kw)``, or a whole ``dspy.Module.__call__``.
+    * The happy path costs exactly one call; nothing is paid unless a parse
+      actually fails.
+
+    Exhausting the attempts RAISES. Callers that already degrade on exception
+    (``proof_edit``, ``expression_analysis``, the judge) keep doing so, one
+    re-ask later than before; callers that do not (``prompt_endpoints``) surface
+    a clean error rather than a quiet wrong answer.
+
+    LIMITATION — this re-roll is BLIND
+    ----------------------------------
+    The model is not told that its previous response failed to parse. That is
+    weaker than ``proof_completion.refine``, which threads
+    ``_PARSE_FAILURE_FEEDBACK`` back into the next attempt, and it is the very
+    thing that module's docstring criticises DSPy 2.6 for.
+
+    It is blind because there is nowhere to put the feedback: none of the
+    signatures behind these call sites has a free input field for it
+    (``BothEndpointsSig`` takes only ``prompt``), so threading it would mean
+    adding an input field to each — changing prompts that are load-bearing
+    (the ``INVALID_PROMPT`` sentinel, the bare-LaTeX instructions).
+
+    The cost of that is lower than it first looks: the output schema is in the
+    prompt on *every* call, so — as ``refine.py`` notes about its own text — the
+    feedback only flags the failure and deliberately does not restate the
+    structure. Against a fresh sample of a stochastic formatting slip, a re-roll
+    recovers most of what the nudge would. Worth revisiting if these signatures
+    ever grow an instruction field for another reason.
+    """
+    for attempt in range(1, attempts + 1):
+        try:
+            return call()
+        except AdapterParseError:
+            if attempt == attempts:
+                log.warning("%s: response still unparseable after %d attempt(s) "
+                            "— giving up", label or "predict", attempts)
+                raise
+            log.warning("%s: unparseable response, re-asking (attempt %d/%d)",
+                        label or "predict", attempt + 1, attempts)
+
+
 def configure_dspy(force: bool = False, **kwargs) -> dspy.LM:
-    """Install a global DSPy LM (idempotent unless ``force``)."""
+    """Install a global DSPy LM + adapter (idempotent unless ``force``)."""
     global _configured
     lm = make_lm(**kwargs)
     if not _configured or force:
-        dspy.configure(lm=lm)
+        # The adapter is installed EXPLICITLY, and the flag is spelled out at
+        # the one site where the guarantee actually takes effect. Left unset,
+        # ``dspy.settings.adapter`` is None and DSPy supplies its own implicit
+        # ``ChatAdapter()`` — with the JSON fallback ON. See :func:`make_adapter`.
+        dspy.configure(lm=lm, adapter=make_adapter(json_fallback=False))
         _configured = True
     return lm
 

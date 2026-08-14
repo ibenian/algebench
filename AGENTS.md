@@ -82,6 +82,21 @@ back-compat. The test suite runs in `thread` isolation (see `tests/conftest.py`)
 ./run.sh scripts/proof_animation/derive.py "x^2 - 4 = 0" "x = 2" --title "Solve x^2=4" --render
 ```
 
+**Re-baking stored proof verdicts** — a stored proof serves the `confidence` block it
+was baked with, so a grading-rule change reaches the reader only after a re-bake:
+
+```bash
+./run.sh scripts/regrade_proofs.py proofs/domains/*/*.json --check      # report, exit 1 if stale
+./run.sh scripts/regrade_proofs.py proofs/domains/*/*.json              # re-grade in place
+```
+
+Never hand-roll a re-grade loop over `ground_steps`. It needs inputs the CAS alone
+does not have — the model's declared `change_type` (drop it and every mislabel
+downgrade silently reverts) and which tiers came from the LM domain judge (offline
+there is no judge, so they silently demote). `regrade_proofs.py` reads both from the
+stored file and refuses to guess where they are missing; `ground_steps` itself warns
+when called with no `change_types` (issue #542).
+
 **Proof-completion expert** — sympy is ground truth; only inference/optimize call the LM:
 
 ```bash

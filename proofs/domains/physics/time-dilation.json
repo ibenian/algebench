@@ -113,10 +113,10 @@
       "latex": "\\htmlData{n=__equals_1}{\\htmlData{n=t}{t} \\htmlData{n=__equals_1__op}{=} \\htmlData{n=__multiply_3}{\\frac{\\htmlData{n=t_0}{t_{0}}}{\\htmlData{n=__power_4}{\\sqrt{\\htmlData{n=__add_4}{\\htmlData{n=__num_7}{1} \\htmlData{n=__negation_6}{\\htmlData{n=__negation_6__op}{-} \\htmlData{n=__multiply_9}{\\frac{\\htmlData{n=__power_10}{\\htmlData{n=v}{v}^{\\htmlData{n=__power_10__exp}{2}}}}{\\htmlData{n=__power_3}{\\htmlData{n=c}{c}^{\\htmlData{n=__power_3__exp}{2}}}}}}}}}}}}",
       "plain": "t = \\frac{t_{0}}{\\sqrt{1 - \\frac{v^{2}}{c^{2}}}}",
       "confidence": {
-        "tier": "grounded",
-        "label": "Grounded",
-        "icon": "🥇",
-        "meaning": "symbolically proven to follow from the previous step",
+        "tier": "verified",
+        "label": "Verified",
+        "icon": "🥈",
+        "meaning": "strong CAS evidence, short of a symbolic proof",
         "relation": "narrows",
         "reason": "the previous step is exactly this step squared — taking a root keeps only solutions of the original",
         "type_consistent": true
@@ -136,8 +136,8 @@
       "unchecked": 0,
       "plausible": 0,
       "domain": 0,
-      "verified": 1,
-      "grounded": 5
+      "verified": 2,
+      "grounded": 4
     },
     "endpoint_reached": true
   },

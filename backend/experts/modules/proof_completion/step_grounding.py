@@ -39,6 +39,7 @@ top-level sympy entry point) — never a lambda/closure, which cannot be pickled
 
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass
 from enum import Enum
@@ -48,6 +49,8 @@ import sympy as sp
 
 from .cas_guard import guard as _guard, cas_register_safe_function
 from .grounding import _coerce_expr, sympy_equiv
+
+log = logging.getLogger(__name__)
 
 # --------------------------------------------------------------------------- #
 # tiers
@@ -142,6 +145,7 @@ class PairVerdict:
     change_type: Optional[str]      # the model's declared claim, if any
     type_consistent: bool           # did the CAS finding agree with the claim?
     reason: str                     # human one-liner (tooltip text)
+    judged: bool = False            # tier came from the LM domain judge, not the CAS
 
 
 @dataclass(frozen=True)
@@ -153,6 +157,11 @@ class StepConfidence:
     relation: Optional[Relation]    # None for the start state
     reason: str
     type_consistent: bool
+    # Provenance: True when this tier came from the LM domain judge
+    # (``rescue_uncheckable``) rather than the CAS. Persisted with the stored
+    # verdict (issue #542) so an offline re-grade — which has no judge — can
+    # PRESERVE such a step instead of silently demoting it back to the CAS tier.
+    judged: bool = False
 
 
 @dataclass(frozen=True)
@@ -600,23 +609,76 @@ def _branch_pair(prev, curr) -> bool:
     return bool(_guard(_op_branch_equiv, prev, curr, default=False))
 
 
+def _value_sort_key(v):
+    """Deterministic order for solution values: reals by magnitude, rest by srepr.
+
+    Sorting the *rendered* strings instead puts ``$10$`` before ``$2$``, so the
+    key works on the values and the rendering happens after.
+    """
+    try:
+        if v.is_real:
+            return (0, float(v), "")
+    except (TypeError, ValueError):
+        pass
+    return (1, 0.0, sp.srepr(v))
+
+
+def _values_phrase(x, values) -> str:
+    """``x = 3, x = -3`` — name the VALUES, not the unknown they solve for."""
+    return ", ".join(f"${sp.latex(x)} = {sp.latex(v)}$"
+                     for v in sorted(values, key=_value_sort_key))
+
+
+def _narrowing_detail(x, prev_sols, curr_sols) -> Optional[str]:
+    """``selects …; discards …`` when both sides are finite, else None.
+
+    Naming what a narrowing step threw away is the whole point of the badge
+    (#516) — "selects x = 3; discards x = -3" is an explanation, "narrows" is
+    just a label. Both sets must be finite before we ask the CAS for the
+    difference: on a ConditionSet/Interval the diff can't come back as a
+    ``FiniteSet`` anyway, so the round-trip is pure cost.
+    """
+    if not (isinstance(prev_sols, sp.FiniteSet) and isinstance(curr_sols, sp.FiniteSet)):
+        return None
+    dropped = _guard(_op_set_diff, prev_sols, curr_sols)
+    if not isinstance(dropped, sp.FiniteSet) or len(dropped) == 0:
+        return None
+    return (f"selects {_values_phrase(x, curr_sols)}; "
+            f"discards {_values_phrase(x, dropped)}")
+
+
+_SQUARED_REASON = ("the previous step is exactly this step squared — taking a root "
+                   "keeps only solutions of the original")
+
+
 def _narrows_check(prev, curr, relation, method, reason):
     """Solution-set containment for relational/boolean states (solving steps)."""
     rel_kinds = ("equation", "inequality", "boolean")
     if _kind(prev) not in rel_kinds or _kind(curr) not in rel_kinds:
         return relation, method, reason
     # take-the-root pattern: an unconditional implication, decided structurally
-    if _squared_pair(prev, curr):
-        return ("narrows", "symbolic",
-                "the previous step is exactly this step squared — taking a root "
-                "keeps only solutions of the original")
+    squared = _squared_pair(prev, curr)
     x = _sole_symbol(prev, curr)
     if x is None:
-        # multivariate — handled later by the (weaker) parametric pass, AFTER
-        # the scaled-residual check has had its chance to prove equivalence
+        # multivariate — a squared pair is still a proven narrowing (that check
+        # exists precisely because solveset can't settle these), just with no
+        # solution sets to name; anything else falls through to the (weaker)
+        # parametric pass, AFTER the scaled-residual check has had its chance
+        # to prove equivalence
+        if squared:
+            return ("narrows", "symbolic", _SQUARED_REASON)
         return relation, method, reason
     prev_sols = _guard(_solution_set, prev, x)
     curr_sols = _guard(_solution_set, curr, x)
+    if squared:
+        # univariate take-the-root: keep the structural proof as the reason and
+        # append the dropped root when we can name it. The solution sets are
+        # computed only for the wording — the verdict is already decided — so a
+        # CAS degrade just costs the detail, not the grade.
+        detail = (None if prev_sols is None or curr_sols is None
+                  else _narrowing_detail(x, prev_sols, curr_sols))
+        return ("narrows", "symbolic",
+                f"{_SQUARED_REASON} — {detail}" if detail else _SQUARED_REASON)
     if prev_sols is None or curr_sols is None:
         return relation, method, reason
     contained = _guard(_op_is_subset, curr_sols, prev_sols)
@@ -626,6 +688,9 @@ def _narrows_check(prev, curr, relation, method, reason):
         if _guard(_op_is_subset, prev_sols, curr_sols):
             return ("equivalent", "symbolic",
                     "same solution set as the previous step")
+        detail = _narrowing_detail(x, prev_sols, curr_sols)
+        if detail:
+            return ("narrows", "symbolic", detail)
         return ("narrows", "symbolic",
                 "every solution of this step solves the previous one (valid narrowing)")
     # provably introduces non-solutions? (only claim it when the gap is concrete)
@@ -718,7 +783,11 @@ def _tier_for(relation: Relation, method: Method, type_consistent: bool) -> Tier
         return Tier.RED                       # a mislabel can't make it worse
     if relation == "unknown":
         return Tier.BLUE
-    base = Tier.GOLD if method == "symbolic" else Tier.SILVER
+    # narrows is proven but weaker than equivalence — cap at SILVER
+    if relation == "narrows":
+        base = Tier.SILVER
+    else:
+        base = Tier.GOLD if method == "symbolic" else Tier.SILVER
     if not type_consistent:                   # one-notch downgrade for mislabels
         return Tier.SILVER if base is Tier.GOLD else Tier.BLUE
     return base
@@ -730,7 +799,8 @@ def _tier_for(relation: Relation, method: Method, type_consistent: bool) -> Tier
 
 
 def ground_steps(states: Sequence, *, change_types: Optional[Sequence] = None,
-                 target=None, domain=None) -> StepGroundingReport:
+                 target=None, domain=None,
+                 allow_missing_change_types: bool = False) -> StepGroundingReport:
     """Rank an ordered chain of derivation states by step-to-step confidence.
 
     ``states``: sympy expressions or sympify-able strings (None marks a state
@@ -739,12 +809,33 @@ def ground_steps(states: Sequence, *, change_types: Optional[Sequence] = None,
     ``target``: optional expression the chain should reach (endpoint gate).
     ``domain`` is advisory (kept for signature symmetry with the parsers).
 
+    ``allow_missing_change_types`` acknowledges a deliberately claim-free grade.
+    Without it, a call that supplies NO usable claim logs a WARNING: absent
+    claims resolve to ``type_consistent=True`` for every pair, so a caller that
+    LOST the claims (re-grading a stored proof) silently erases every mislabel
+    downgrade rather than reproducing it (issue #542). The two cases are
+    indistinguishable from inside, so the caller has to say which it is.
+
+    "No usable claim" is judged on the CONTENT, not on which spelling of empty
+    arrived: ``None``, ``[]`` and ``[None, None]`` all grade identically, so
+    keying the warning off ``change_types is None`` would let the two commonest
+    ways of saying "I have none" through in silence. A PARTIAL list is not a
+    loss — that caller has real claims — so it does not warn.
+
     Pure and total: never raises, never blocks past the per-call timeout.
     """
     exprs = [_safe_coerce(s) for s in states]
     n_trans = max(len(exprs) - 1, 0)
     declared = list(change_types or [])
     declared += [None] * (n_trans - len(declared))
+    if n_trans and not allow_missing_change_types \
+            and not any(ct for ct in declared):
+        log.warning(
+            "ground_steps: no change_types for %d transition(s) — every pair "
+            "will grade type_consistent=True, so mislabel downgrades cannot be "
+            "reproduced. Pass the declared claims, or "
+            "allow_missing_change_types=True to acknowledge this (issue #542).",
+            n_trans)
 
     steps: list[StepConfidence] = []
     pairs: list[PairVerdict] = []

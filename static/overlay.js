@@ -9,6 +9,7 @@ import { renderMarkdown, renderKaTeX, parseColor, colorToCSS, injectAskButtons, 
 import { compileExpr, evalExpr, _getMathNamesAndValues, EXTENSION_NAMES } from '/expr.js';
 import { getSliderIds, syncSliderState } from '/sliders.js';
 import { worldCameraToData } from '/coords.js';
+import { applyCanvasClearColor } from '/camera.js';
 import { createDockablePanel } from '/dockable-panel.js';
 
 // Forward reference for buildSceneTree — assigned by context-browser.js via
@@ -995,6 +996,27 @@ export function setupSettingsPanel() {
         panel.classList.toggle('hidden');
         toggle.classList.toggle('active');
     });
+
+    // Palette selector (experimental variants — tokens.css html[data-palette]).
+    // theme-init.js stamps data-palette pre-paint from the same storage key.
+    const paletteSel = document.getElementById('palette-select');
+    const PALETTE_KEY = 'algebench-palette';
+    // Must match theme-init.js PALETTES and the tokens.css variant blocks.
+    const PALETTES = ['blueprint', 'sepia', 'plum', 'cerulean', 'graphite', 'contrast'];
+    if (paletteSel) {
+        paletteSel.value = document.documentElement.dataset.palette || 'slate';
+        paletteSel.addEventListener('change', () => {
+            const v = paletteSel.value;
+            if (PALETTES.includes(v)) {
+                document.documentElement.dataset.palette = v;
+                try { localStorage.setItem(PALETTE_KEY, v); } catch (e) { /* blocked storage */ }
+            } else {
+                delete document.documentElement.dataset.palette;
+                try { localStorage.removeItem(PALETTE_KEY); } catch (e) { /* blocked storage */ }
+            }
+            applyCanvasClearColor();   // the 3D board's --canvas-bg changes per palette
+        });
+    }
 
     // Momentum slider
     const momentumSlider = document.getElementById('momentum-slider');

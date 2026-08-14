@@ -91,6 +91,7 @@ from __future__ import annotations
 import enum
 import re
 import types
+from functools import lru_cache
 from typing import Any, Literal, Type, Union, get_args, get_origin
 
 from pydantic import BaseModel
@@ -143,23 +144,53 @@ def _list_item_type(a: Any) -> Any | None:
     return None
 
 
+@lru_cache(maxsize=1)
+def _media_base() -> type | None:
+    """DSPy's media/tool base class — ``Type`` in 3.x, ``BaseType`` in 2.6.
+
+    Renamed in DSPy 3.0 (``dspy.adapters.types.BaseType`` -> ``.Type``). Probing
+    only ONE spelling is not a cosmetic miss: :func:`_is_special` would return
+    False for every media type on the other version, ``Image`` would then pass
+    the leaf test, and an image output field would render as ``url: …`` — text
+    where the provider expects an image part. That is the silent-corruption
+    class this whole adapter exists to remove, so both names are tried.
+    """
+    from dspy.adapters import types as t
+    return getattr(t, "Type", None) or getattr(t, "BaseType", None)
+
+
 def _is_special(a: Any) -> bool:
-    """True for DSPy's ``BaseType`` subclasses (Image, Audio, History, …).
+    """True for DSPy's media/tool types (Image, Audio, History, ToolCalls, …).
 
     They serialise into multimodal message content blocks, not text, so the line
     format cannot carry them as OUTPUT fields.
     """
     try:
-        from dspy.adapters.types import BaseType
-    except Exception:                       # older/newer DSPy without BaseType
+        base = _media_base()
+    except Exception:                       # a DSPy without the types package
         return False
-    return isinstance(a, type) and issubclass(a, BaseType)
+    return base is not None and isinstance(a, type) and issubclass(a, base)
+
+
+#: Collection types this format cannot express, in BOTH spellings. ``get_origin``
+#: alone is not enough: it returns the container for a *parameterised* generic
+#: (``dict[str, str]`` -> ``dict``) but ``None`` for a BARE one (``dict``), so a
+#: bare-``dict`` annotation passed the old check as a scalar. That mattered most
+#: exactly where it was least visible — ``list[dict]`` is checked by its ITEM
+#: type, so an unparameterised ``dict`` item made the whole field look
+#: expressible, and each item would have been ``str()``-ed onto a line as a
+#: Python repr (#543).
+_COLLECTIONS = (list, dict, set, tuple, frozenset)
 
 
 def _is_leaf(a: Any) -> bool:
     """True if ``a`` renders as a single line (not a model, not a collection)."""
     a = _unwrap_optional(a)
-    return not _is_model(a) and get_origin(a) not in (list, dict, set, tuple)
+    if _is_model(a):
+        return False
+    if get_origin(a) in _COLLECTIONS:        # dict[str, str], list[int], …
+        return False
+    return not (isinstance(a, type) and issubclass(a, _COLLECTIONS))  # bare dict, set, …
 
 
 # --------------------------------------------------------------------------- #
@@ -177,15 +208,28 @@ class LineAdapter(ChatAdapter):
     than module functions so a subclass can retune the dialect — change
     :attr:`KEY_SEP`, or override a single hook — without reimplementing the walk.
 
-    .. warning::
-       The inherited ``ChatAdapter.__call__`` falls back to ``JSONAdapter`` on
-       any exception, **and logs nothing**. That is left intact so a signature
-       this format cannot express degrades rather than failing outright — but it
-       means a parse bug here is invisible, costing a silent second LM call and
-       reinstating the escaping exposure. It fooled the author once during
-       development. Pair this adapter with a check that rejects control
-       characters if the fields carry LaTeX.
+    THE SILENT FALLBACK IS OFF (issue #527)
+    ---------------------------------------
+    ``ChatAdapter.__call__`` catches *any* exception and silently re-runs the
+    whole prediction through ``JSONAdapter``, logging nothing. For this adapter
+    that fallback is not a safety net but a trapdoor: it costs a second,
+    unlogged LM call and — the part that matters — hands the field values back
+    to the JSON escape layer this class exists to remove, so the very corruption
+    being prevented returns by the back door with no trace. It fooled the author
+    once during development.
+
+    DSPy 3.x added ``use_json_adapter_fallback``, so it can simply be refused;
+    :attr:`SILENT_JSON_FALLBACK` is that switch. A parse failure now RAISES —
+    consistent with every other refusal here, and the honest signal for a
+    refinement loop to retry with feedback (``refine.py``). A signature this
+    format genuinely cannot express should be given ``JSONAdapter`` explicitly
+    rather than discovered by silent degradation at runtime.
     """
+
+    #: Whether to allow ``ChatAdapter``'s unlogged JSONAdapter retry. OFF: see
+    #: the class docstring. Requires DSPy >= 3.0 (2.6 has no such parameter, and
+    #: constructing this class against it raises — loudly, which is the point).
+    SILENT_JSON_FALLBACK: bool = False
 
     #: Separator between a key and its value. Also what ``parse`` splits on.
     KEY_SEP: str = ": "
@@ -196,6 +240,10 @@ class LineAdapter(ChatAdapter):
     KEY_PATTERN: re.Pattern = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*): ?(.*)$")
     #: Splits repeated ``list[BaseModel]`` blocks.
     BLOCK_SPLIT: re.Pattern = re.compile(r"\n\s*\n")
+
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("use_json_adapter_fallback", self.SILENT_JSON_FALLBACK)
+        super().__init__(*args, **kwargs)
 
     # ---------------------------------------------------------------- scalars
 
@@ -277,6 +325,47 @@ class LineAdapter(ChatAdapter):
 
     # ----------------------------------------------------------------- parse
 
+    def split_blocks(self, text: str, model: Type[BaseModel]) -> list[str]:
+        """A repeated-model field's text -> one block of lines per item.
+
+        A blank line is the documented separator and the one the prompt shows,
+        but models run blocks together often enough that treating it as the ONLY
+        separator is not viable. A key that REPEATS is unambiguous evidence the
+        next item has begun — ``parse_block`` already rejects a key appearing
+        twice within one block — so the split falls back to that.
+
+        Without this, a run-together response raised ``duplicate key`` and every
+        item was lost. For a caller that swallows parse failures (``propose_edit``
+        returns "not an edit") the symptom is not an error but SILENCE: a valid
+        request drops through to chat with nothing to show for it (#543).
+
+        Lines that are not ``key: value`` at all are passed through untouched, so
+        ``parse_block`` still raises on a value that spilled onto a second line.
+        """
+        blocks: list[str] = []
+        current: list[str] = []
+        seen: set[str] = set()
+
+        def flush() -> None:
+            if current:
+                blocks.append("\n".join(current))
+            current.clear()
+            seen.clear()
+
+        for chunk in self.BLOCK_SPLIT.split(text.strip()):
+            for line in chunk.splitlines():
+                if not line.strip():
+                    continue
+                m = self.KEY_PATTERN.match(line.strip())
+                key = m.group(1) if m else None
+                if key is not None and key in seen:
+                    flush()                       # a repeat starts the next item
+                if key is not None and key in model.model_fields:
+                    seen.add(key)
+                current.append(line)
+            flush()                               # a blank line also ends an item
+        return [b for b in blocks if b.strip()]
+
     def parse_block(self, block: str, model: Type[BaseModel], field: str) -> BaseModel:
         """One ``key: value`` block -> a model instance. Pydantic still validates."""
         self.check_model(model, field)
@@ -340,8 +429,8 @@ class LineAdapter(ChatAdapter):
         item = _list_item_type(annotation)
         if item is not None:
             if _is_model(item):
-                blocks = [b for b in self.BLOCK_SPLIT.split(text.strip()) if b.strip()]
-                return [self.parse_block(b, item, field) for b in blocks]
+                return [self.parse_block(b, item, field)
+                        for b in self.split_blocks(text, item)]
             # Coerce each item to the declared type. Returning raw strings for a
             # ``list[int]`` would be a SILENT type error — the caller gets
             # ``['1', '2']`` where it declared ints, and pydantic never sees it

@@ -248,6 +248,7 @@ def rescue_uncheckable(
             tier=Tier.DOMAIN,
             type_consistent=True,
             reason=_rescue_reason(pv.tier, verdict),
+            judged=True,          # provenance: this tier is the judge's, not the CAS's
         )
         new_pairs[j] = new_pv
         overrides[pv.index] = new_pv
@@ -267,7 +268,7 @@ def rescue_uncheckable(
     # re-roll counts / overall / reason from the patched pairs.
     new_steps = [
         replace(sc, tier=overrides[sc.index].tier, reason=overrides[sc.index].reason,
-                type_consistent=True)
+                type_consistent=True, judged=True)
         if sc.index in overrides else sc
         for sc in report.steps
     ]

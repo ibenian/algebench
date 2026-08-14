@@ -17,7 +17,7 @@
 // ============================================================
 
 import { state } from '/state.js';
-import { BRACES_ICON, FUNCTION_ANALYSIS_ICON, MOON_GLYPH, SUN_GLYPH } from '/icons.js';
+import { BRACES_ICON, FUNCTION_ANALYSIS_ICON } from '/icons.js';
 import { SemanticGraphPanel } from '/graph-panel/graph-panel.js';
 import { D3SemanticGraphRenderer, nodeLongLabel } from '/graph-panel/d3-semantic-graph.js';
 import { SgChartManager } from '/graph-panel/sg-chart.js';
@@ -206,7 +206,6 @@ if (typeof window !== 'undefined') {
 // colliding with stored values from unrelated features.
 const LS_KEYS = {
     theme: 'algebench.graph.theme',
-    mode: 'algebench.graph.mode',
     direction: 'algebench.graph.direction',
     labels: 'algebench.graph.labels',
     zoom: 'algebench.graph.zoom',
@@ -222,9 +221,12 @@ const _lsSet = (key, value) => {
 };
 
 let _currentTheme = _lsGet(LS_KEYS.theme, 'linalg-dark');
-// Mode is derived from the theme's declared ``mode`` once themes are loaded.
-// Until then we bootstrap from localStorage (or 'dark' as the historical default).
-let _currentMode = _lsGet(LS_KEYS.mode, 'dark');
+// Graph light/dark follows the APP theme (html[data-theme], stamped pre-paint
+// by theme-init.js) — the graph panel has no mode toggle of its own. The theme
+// dropdown only ever offers themes matching the app's current mode.
+const _appMode = () =>
+    document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
+let _currentMode = _appMode();
 // Our direction vocabulary describes the layout from the user's reading
 // perspective — "Left-Right" means the root equation sits on the left and
 // the graph unfolds rightward into variables. Because our semantic graphs
@@ -992,8 +994,8 @@ function hideErrorState() {
 async function _renderWithD3(container, graph, step, key) {
     const viewport = document.getElementById('graph-viewport');
     if (viewport) {
-        viewport.classList.toggle('gv-theme-light', false);
-        viewport.classList.toggle('gv-theme-dark', true);
+        viewport.classList.toggle('gv-theme-light', _currentMode === 'light');
+        viewport.classList.toggle('gv-theme-dark', _currentMode !== 'light');
     }
 
     // Destroy previous Mermaid panel if it existed
@@ -2428,12 +2430,6 @@ function _resetGraphSession() {
     if (_faManager) { try { _faManager.destroy(); } catch {} _faManager = null; }
 }
 
-// Shared monochrome moon/sun glyphs from /icons.js (LAST QUARTER MOON / BLACK
-// SUN WITH RAYS), matching the blog + /prove toggles. They carry no U+FE0E
-// variation selector; #graph-mode-toggle pins font-family: system-ui so they
-// render as clean text glyphs rather than a full-color emoji.
-const MODE_ICON = { dark: MOON_GLYPH, light: SUN_GLYPH };
-
 // Try to find the ``targetMode`` counterpart of a theme by suffix-swap.
 // E.g. ``power-direction-light`` ↔ ``power-direction-dark``. Returns null
 // when the stem has no alternative in the target mode (e.g. ``linalg-dark``
@@ -2472,13 +2468,20 @@ function refreshThemeDropdown() {
     });
 }
 
-function refreshModeToggle() {
-    const btn = document.getElementById('graph-mode-toggle');
-    if (!btn) return;
-    btn.textContent = MODE_ICON[_currentMode] || MODE_ICON.dark;
-    const other = _currentMode === 'dark' ? 'light' : 'dark';
-    btn.title = `Switch to ${other} theme`;
-    btn.setAttribute('aria-label', `Theme mode: ${_currentMode} (click to switch)`);
+// Follow the app's theme toggle: when html[data-theme] flips, swap the active
+// graph theme for its counterpart in the new mode (blueprint-light ↔
+// blueprint-dark), refill the dropdown, and re-render.
+function watchAppTheme() {
+    new MutationObserver(() => {
+        const mode = _appMode();
+        if (mode === _currentMode) return;
+        _currentMode = mode;
+        const twin = counterpartTheme(_currentTheme, _currentMode);
+        if (twin) _currentTheme = twin;
+        refreshThemeDropdown();
+        _lsSet(LS_KEYS.theme, _currentTheme);
+        renderCurrentStepGraph(true);
+    }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 }
 
 async function setupGraphControls() {
@@ -2501,31 +2504,17 @@ async function setupGraphControls() {
         console.warn('[graph-view] could not load themes:', e);
         _allThemes = [];
     }
-    // Align mode with the stored theme's declared mode. Stored mode only
-    // matters as a fallback when the stored theme is unknown to the server.
-    const active = _allThemes.find(t => t.name === _currentTheme);
-    if (active) _currentMode = active.mode;
-    _lsSet(LS_KEYS.mode, _currentMode);
+    // Mode always mirrors the app theme. If the stored theme belongs to the
+    // other mode (e.g. app is light but linalg-dark was stored), prefer its
+    // stem counterpart; otherwise refreshThemeDropdown falls back to the
+    // first theme of the current mode.
+    _currentMode = _appMode();
+    const twin = counterpartTheme(_currentTheme, _currentMode);
+    if (twin) _currentTheme = twin;
 
-    refreshModeToggle();
     refreshThemeDropdown();
-
-    const modeBtn = document.getElementById('graph-mode-toggle');
-    if (modeBtn) {
-        modeBtn.addEventListener('click', () => {
-            _currentMode = _currentMode === 'dark' ? 'light' : 'dark';
-            _lsSet(LS_KEYS.mode, _currentMode);
-            refreshModeToggle();
-            // Prefer the stem-matching counterpart of the active theme when
-            // one exists (e.g. power-direction-light → power-direction-dark),
-            // otherwise leave it to refreshThemeDropdown's fallback.
-            const twin = counterpartTheme(_currentTheme, _currentMode);
-            if (twin) _currentTheme = twin;
-            refreshThemeDropdown();
-            _lsSet(LS_KEYS.theme, _currentTheme);
-            renderCurrentStepGraph(true);
-        });
-    }
+    _lsSet(LS_KEYS.theme, _currentTheme);
+    watchAppTheme();
 
     const themeSel = document.getElementById('graph-theme-select');
     if (themeSel) {

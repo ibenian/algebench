@@ -24,18 +24,18 @@
     inset: 0;
     overflow-y: auto;
     padding: 0 20px 24px;
-    background: #0a0c1a;
+    background: var(--panel-bg);
     z-index: 15;
 }
 #fa-page-container.open { display: block; }
 
 .fa-card {
-    background: #10142a;
-    border: 1px solid rgba(110, 124, 180, 0.35);
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
     border-radius: 10px;
     padding: 12px 16px;
     margin-bottom: 12px;
-    color: #dde6ff;
+    color: var(--text-color);
     font-size: 13.5px;
 }
 
@@ -49,22 +49,22 @@
     gap: 14px;
     padding: 14px 0 10px;
     margin-bottom: 12px;
-    background: #0a0c1a;
-    border-bottom: 1px solid rgba(110, 124, 180, 0.18);
+    background: var(--panel-bg);
+    border-bottom: 1px solid var(--border-color);
     flex-wrap: wrap;
 }
-.fa-title { font-size: 16px; font-weight: 600; color: #dde6ff; }
-.fa-expr { font-size: 15px; color: #aebbd1; }
+.fa-title { font-size: 16px; font-weight: 600; color: var(--text-color); }
+.fa-expr { font-size: 15px; color: var(--muted-color); }
 .fa-btn {
     background: none;
-    border: 1px solid rgba(110, 124, 180, 0.35);
-    color: #8fa8c8;
+    border: 1px solid var(--border-color);
+    color: var(--muted-color);
     border-radius: 6px;
     padding: 2px 10px;
     font-size: 12.5px;
     cursor: pointer;
 }
-.fa-btn:hover { color: #dde6ff; border-color: #42a5f5; background: rgba(66, 165, 245, 0.1); }
+.fa-btn:hover { color: var(--text-color); border-color: var(--accent-color); background: color-mix(in srgb, var(--accent-color) 10%, transparent); }
 .fa-back { font-size: 15px; padding: 2px 12px; }
 .fa-json-btn { margin-left: auto; display: inline-flex; align-items: center; padding: 3px 8px; }
 .fa-json-btn svg { display: block; }
@@ -74,21 +74,21 @@
 /* When the JSON button is absent (loading/error), the delete button is the
    one that must push to the right edge. */
 .fa-header > .fa-delete-btn:nth-child(4) { margin-left: auto; }
-.fa-json-btn.open { background: rgba(66, 165, 245, 0.15); color: #dde6ff; }
+.fa-json-btn.open { background: color-mix(in srgb, var(--accent-color) 15%, transparent); color: var(--text-color); }
 
 /* ── status / error ── */
-.fa-status { display: flex; align-items: center; gap: 10px; color: #8fa8c8; }
+.fa-status { display: flex; align-items: center; gap: 10px; color: var(--muted-color); }
 .fa-status-label { display: inline-flex; align-items: center; gap: 5px; }
 .fa-error { color: #ef9a9a; display: flex; align-items: center; gap: 14px; }
-.fa-retry { color: #dde6ff; }
-.fa-abstain { color: #8fa8c8; font-style: italic; }
+.fa-retry { color: var(--text-color); }
+.fa-abstain { color: var(--muted-color); font-style: italic; }
 
 /* ── story ── */
-.fa-story { color: #aebbd1; }
+.fa-story { color: var(--muted-color); }
 /* AI-authorship marker — the shared robot icon in the chat-avatar tint. */
 .fa-ai-badge {
     display: inline-block;
-    color: #cdd3f5;             /* same tint as the chat's .msg-avatar */
+    color: var(--text-color);             /* same tint as the chat's .msg-avatar */
     opacity: 0.9;
     margin-right: 2px;
 }
@@ -97,20 +97,20 @@
 /* ── views ── */
 .fa-view-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
 .fa-view-tab.active {
-    background: rgba(66, 165, 245, 0.15);
-    color: #dde6ff;
-    border-color: #42a5f5;
+    background: color-mix(in srgb, var(--accent-color) 15%, transparent);
+    color: var(--text-color);
+    border-color: var(--accent-color);
 }
 .fa-view-rationale {
-    color: #7e8aa3;
+    color: var(--muted-color);
     font-size: 12px;
     font-style: italic;
     margin: 2px 0 8px;
     min-height: 16px;
 }
 .fa-view-actions { margin-left: auto; display: flex; gap: 6px; }
-.fa-expr-btn { font-family: Georgia, serif; font-style: italic; }
-.fa-expr-btn.open { background: rgba(66, 165, 245, 0.15); color: #dde6ff; border-color: #42a5f5; }
+.fa-expr-btn { font-family: var(--font-body); font-style: italic; }
+.fa-expr-btn.open { background: color-mix(in srgb, var(--accent-color) 15%, transparent); color: var(--text-color); border-color: var(--accent-color); }
 
 /* what each curve plots: colour swatch, label, LaTeX, evaluated script */
 .fa-expr-panel { display: none; margin-top: 10px; }
@@ -120,19 +120,19 @@
     align-items: center;
     gap: 10px;
     padding: 4px 0;
-    border-top: 1px solid rgba(110, 124, 180, 0.12);
+    border-top: 1px solid var(--border-color);
     font-size: 12.5px;
 }
 .fa-expr-row:first-child { border-top: none; }
 .fa-expr-swatch { width: 10px; height: 3px; border-radius: 2px; flex-shrink: 0; }
 .fa-expr-swatch-ann { background: rgba(239, 83, 80, 0.75); height: 0; border-top: 2px dashed rgba(239, 83, 80, 0.75); }
-.fa-expr-label { color: #8fa8c8; min-width: 92px; }
-.fa-expr-math { color: #dde6ff; }
+.fa-expr-label { color: var(--muted-color); min-width: 92px; }
+.fa-expr-math { color: var(--text-color); }
 .fa-expr-code {
     margin-left: auto;
     font: 11.5px ui-monospace, Menlo, monospace;
-    color: #7e8aa3;
-    background: rgba(110, 124, 180, 0.1);
+    color: var(--muted-color);
+    background: color-mix(in srgb, var(--accent-color) 10%, transparent);
     border-radius: 4px;
     padding: 1px 7px;
     max-width: 48%;
@@ -142,7 +142,7 @@
 
 /* the CAS report, one row per detected feature */
 .fa-feat-btn { font-size: 12px; }
-.fa-feat-btn.open { background: rgba(66, 165, 245, 0.15); color: #dde6ff; border-color: #42a5f5; }
+.fa-feat-btn.open { background: color-mix(in srgb, var(--accent-color) 15%, transparent); color: var(--text-color); border-color: var(--accent-color); }
 .fa-feat-panel { display: none; margin-top: 10px; }
 .fa-feat-panel.open { display: block; }
 .fa-feat-row {
@@ -150,22 +150,22 @@
     align-items: center;
     gap: 10px;
     padding: 4px 0;
-    border-top: 1px solid rgba(110, 124, 180, 0.12);
+    border-top: 1px solid var(--border-color);
     font-size: 12.5px;
 }
 .fa-feat-row:first-child { border-top: none; }
-.fa-feat-label { color: #8fa8c8; min-width: 118px; }
-.fa-feat-math { color: #dde6ff; }
-.fa-feat-detail { color: #aebbd1; }
-.fa-feat-note { color: #7e8aa3; font-style: italic; font-size: 11.5px; }
+.fa-feat-label { color: var(--muted-color); min-width: 118px; }
+.fa-feat-math { color: var(--text-color); }
+.fa-feat-detail { color: var(--muted-color); }
+.fa-feat-note { color: var(--muted-color); font-style: italic; font-size: 11.5px; }
 /* a CAS timeout, said plainly — unknown is not the same as absent */
-.fa-feat-stalled { color: #ffcc80; font-style: italic; font-size: 11.5px; }
+.fa-feat-stalled { color: var(--accent-color); font-style: italic; font-size: 11.5px; }
 /* why a detected point has no dot on the curve */
 .fa-feat-off {
     margin-left: auto;
-    color: #7e8aa3;
+    color: var(--muted-color);
     font-size: 11px;
-    border: 1px solid rgba(110, 124, 180, 0.25);
+    border: 1px solid var(--border-color);
     border-radius: 4px;
     padding: 0 6px;
 }
@@ -179,7 +179,7 @@
     align-items: center;
     gap: 6px;
     font-size: 11px;
-    color: #aebbd1;
+    color: var(--muted-color);
     padding: 2px 9px;
 }
 .fa-series-key.off { opacity: 0.45; text-decoration: line-through; }
@@ -199,13 +199,13 @@
     align-items: center;
     gap: 5px;
     font-size: 11px;
-    color: #7e8aa3;
+    color: var(--muted-color);
     padding: 2px 9px;
 }
 .fa-mark-key.off { opacity: 0.45; text-decoration: line-through; }
 .fa-key-glyph { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
-.fa-key-zero { background: #dde6ff; }
-.fa-key-extremum { background: #ffa726; }
+.fa-key-zero { background: var(--text-color); }
+.fa-key-extremum { background: var(--accent-color); }
 .fa-key-sing {
     width: 0;
     height: 10px;
@@ -221,7 +221,7 @@
    button, and declared later) sets position: relative. */
 .fa-canvas-wrap .fa-axis-title {
     position: absolute;
-    color: #8fa8c8;
+    color: var(--muted-color);
     font-size: 12px;
     pointer-events: auto;
 }
@@ -248,25 +248,21 @@
     z-index: 25;
     display: none;
     transform: translate(-50%, calc(-100% - 12px));
-    /* 70% transparent, so the curve the learner is reading stays visible
-       underneath. The PANEL is see-through, not its contents — fading the
-       text along with it would cost more legibility than the glimpse of
-       chart is worth. The blur keeps grid lines from running through the
-       numbers. */
-    background: rgba(10, 12, 26, 0.3);
-    backdrop-filter: blur(3px);
-    -webkit-backdrop-filter: blur(3px);
-    border: 1px solid rgba(110, 124, 180, 0.45);
+    /* Near-opaque so the numbers stay readable over curves and gridlines
+       (the design system has no backdrop blur to lean on); the last 8%
+       keeps a hint of the chart visible through the panel. */
+    background: color-mix(in srgb, var(--panel-bg) 92%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent-color) 50%, transparent);
     border-radius: 7px;
     padding: 6px 9px;
     font-size: 12px;
-    color: #aebbd1;
+    color: var(--text-color);
     /* Transparent to the pointer while it is just a hover readout, so the
        click that pins it reaches the canvas underneath rather than being
        swallowed by the very box it is meant to pin. */
     pointer-events: none;
     white-space: nowrap;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+    box-shadow: var(--shadow-sm);
 }
 .fa-chart-tip.show { display: block; }
 /* Pinned: parked where the learner dropped it, no longer following the
@@ -277,14 +273,14 @@
        clicks so clicking the note never counts as clicking the chart. */
     pointer-events: auto;
     cursor: move;
-    border-color: rgba(66, 165, 245, 0.75);
-    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.55);
+    border-color: color-mix(in srgb, var(--accent-color) 75%, transparent);
+    box-shadow: var(--shadow-sm);
 }
 .fa-tip-head {
     display: flex;
     align-items: center;
     gap: 12px;                  /* keeps the ask button off the readout */
-    color: #dde6ff;
+    color: var(--text-color);
     margin-bottom: 3px;
 }
 /* Top-right corner of a pinned note. This is the shared .ai-ask-btn circle,
@@ -301,7 +297,7 @@
 .fa-tip-row { display: flex; align-items: center; gap: 6px; }
 .fa-tip-swatch { width: 9px; height: 3px; border-radius: 2px; flex-shrink: 0; }
 .fa-tip-name { max-width: 210px; overflow: hidden; text-overflow: ellipsis; }
-.fa-tip-val { margin-left: auto; color: #dde6ff; font: 11.5px ui-monospace, Menlo, monospace; }
+.fa-tip-val { margin-left: auto; color: var(--text-color); font: 11.5px ui-monospace, Menlo, monospace; }
 
 /* Why a y-axis click could not be answered — brief, and out of the way. */
 .fa-snap-miss {
@@ -312,9 +308,9 @@
     max-width: 92%;
     padding: 4px 11px;
     border-radius: 6px;
-    background: rgba(10, 12, 26, 0.92);
+    background: var(--panel-bg);
     border: 1px solid rgba(239, 83, 80, 0.45);
-    color: #dde6ff;
+    color: var(--text-color);
     font-size: 11.5px;
     pointer-events: none;
     opacity: 0;
@@ -328,31 +324,33 @@
     position: absolute;
     font-size: 11px;
     line-height: 1.2;
-    color: #ef9a9a;
+    color: var(--err-fg);
     white-space: nowrap;
-    text-shadow: 0 0 4px #0a0c1a, 0 0 4px #0a0c1a;
+    /* Knockout halo matches the chart surface so labels stay legible over
+       gridlines/curves in either theme. */
+    text-shadow: 0 0 4px var(--panel-bg), 0 0 4px var(--panel-bg);
 }
-.fa-chart-label.band { color: #8fa8c8; }
+.fa-chart-label.band { color: var(--muted-color); }
 /* Annotations are hoverable: they report the values at their marker. */
 .fa-chart-label.probe { pointer-events: auto; cursor: help; }
-.fa-chart-label.probe:hover { color: #dde6ff; }
+.fa-chart-label.probe:hover { color: var(--text-color); }
 .fa-chart-label .katex { font-size: 1em; }
 
 /* ── sliders ── */
 .fa-sliders { display: flex; gap: 22px; flex-wrap: wrap; margin-top: 10px; }
 .fa-slider-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
-.fa-var { color: #ffa726; min-width: 18px; text-align: center; position: relative; }
+.fa-var { color: var(--accent-color); min-width: 18px; text-align: center; position: relative; }
 .fa-var .fa-var-ask {
     position: absolute;
     top: -13px;
     right: -15px;
     margin-left: 0;
 }
-.fa-slider-row input[type="range"] { width: 130px; accent-color: #42a5f5; cursor: pointer; }
+.fa-slider-row input[type="range"] { width: 130px; accent-color: var(--accent-color); cursor: pointer; }
 .fa-slider-row input[type="range"]:active { cursor: grabbing; }
 .fa-slider-val {
     font: 11.5px ui-monospace, Menlo, monospace;
-    color: #8fa8c8;
+    color: var(--muted-color);
     min-width: 48px;
 }
 
@@ -360,18 +358,18 @@
 .fa-sect-label {
     font-size: 11px;
     letter-spacing: 0.08em;
-    color: #7e8aa3;
+    color: var(--muted-color);
     text-transform: uppercase;
     margin-bottom: 8px;
 }
-.fa-probe { border-top: 1px solid rgba(110, 124, 180, 0.12); padding: 10px 0; }
+.fa-probe { border-top: 1px solid var(--border-color); padding: 10px 0; }
 .fa-probe:first-child { border-top: none; }
 .fa-probe-q { margin-bottom: 8px; }
 .fa-probe-opts { display: flex; gap: 8px; flex-wrap: wrap; }
 .fa-probe-chip {
-    background: rgba(66, 165, 245, 0.1);
-    border: 1px solid rgba(66, 165, 245, 0.45);
-    color: #dde6ff;
+    background: color-mix(in srgb, var(--accent-color) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent-color) 45%, transparent);
+    color: var(--text-color);
     border-radius: 16px;
     padding: 3px 14px;
     font-size: 13px;
@@ -379,39 +377,39 @@
 .fa-probe-chip:disabled { opacity: 0.55; cursor: default; }
 .fa-probe-chip.right { background: rgba(102, 187, 106, 0.25); border-color: #66bb6a; opacity: 1; }
 .fa-probe-chip.wrong { background: rgba(239, 83, 80, 0.25); border-color: #ef5350; opacity: 1; }
-.fa-probe-exp { display: none; margin-top: 8px; font-size: 12.5px; color: #8fa8c8; }
+.fa-probe-exp { display: none; margin-top: 8px; font-size: 12.5px; color: var(--muted-color); }
 .fa-probe-exp.show { display: block; }
 .fa-more { margin-top: 10px; border-style: dashed; border-radius: 16px; }
-.fa-more-status { margin-left: 10px; color: #7e8aa3; font-size: 12px; }
+.fa-more-status { margin-left: 10px; color: var(--muted-color); font-size: 12px; }
 
 /* ── raw JSON popup ── */
 .fa-json-overlay {
     display: none;
     position: fixed;
     inset: 0;
-    background: rgba(4, 6, 14, 0.6);
+    background: var(--scrim);
     z-index: 60;
     align-items: center;
     justify-content: center;
 }
 .fa-json-overlay.open { display: flex; }
 .fa-json-modal {
-    background: #10142a;
-    border: 1px solid rgba(110, 124, 180, 0.45);
+    background: var(--panel-bg);
+    border: 1px solid color-mix(in srgb, var(--accent-color) 50%, transparent);
     border-radius: 10px;
     width: min(720px, 86vw);
     max-height: 80vh;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+    box-shadow: var(--shadow-sm);
 }
 .fa-json-modal-head {
     display: flex;
     align-items: center;
     gap: 8px;
     padding: 10px 14px;
-    border-bottom: 1px solid rgba(110, 124, 180, 0.25);
-    color: #aebbd1;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--muted-color);
     font-size: 12.5px;
 }
 .fa-json-modal-head span { flex: 1; }
@@ -421,7 +419,7 @@
     padding: 12px 14px;
     overflow: auto;
     font: 11.5px/1.45 ui-monospace, Menlo, monospace;
-    color: #8fa8c8;
+    color: var(--muted-color);
     white-space: pre;
 }
 
@@ -431,14 +429,14 @@
     position: absolute;
     z-index: 40;
     max-width: 320px;
-    background: #060814;
-    border: 1px solid rgba(110, 124, 180, 0.45);
+    background: var(--panel-bg);
+    border: 1px solid color-mix(in srgb, var(--accent-color) 50%, transparent);
     border-radius: 8px;
     padding: 8px 10px;
     font-size: 12.5px;
-    color: #aebbd1;
+    color: var(--muted-color);
     transform: translateY(-100%);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+    box-shadow: var(--shadow-sm);
     pointer-events: none;
 }
 .fa-tooltip.show { display: block; }
@@ -461,16 +459,16 @@
     gap: 6px;
     padding: 2px 8px 2px 34px;
     font-size: 12px;
-    color: #8fa8c8;
+    color: var(--muted-color);
     cursor: pointer;
     border-left: 3px solid transparent;
 }
-.gp-tree-fa:hover { background: rgba(66, 165, 245, 0.08); color: #dde6ff; }
+.gp-tree-fa:hover { background: color-mix(in srgb, var(--accent-color) 8%, transparent); color: var(--text-color); }
 .gp-tree-fa.active {
-    background: rgba(66, 165, 245, 0.12);
-    border-left-color: #42a5f5;
-    color: #dde6ff;
+    background: color-mix(in srgb, var(--accent-color) 12%, transparent);
+    border-left-color: var(--accent-color);
+    color: var(--text-color);
 }
-.gp-tree-fa .fa-glyph { color: #ffa726; font-style: italic; font-family: Georgia, serif; }
-.gp-tree-fa .fa-loading { color: #7e8aa3; font-style: italic; }
+.gp-tree-fa .fa-glyph { color: var(--accent-color); font-style: italic; font-family: var(--font-body); }
+.gp-tree-fa .fa-loading { color: var(--muted-color); font-style: italic; }
 .gp-tree-fa .fa-err { color: #ef9a9a; }

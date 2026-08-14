@@ -17,17 +17,15 @@
 /* ── Chart box (inline or pinned) ───────────────────────────────────── */
 .sgc-chart-box {
     width: 340px;
-    background: rgba(10, 12, 26, 0.92);
-    border: 1px solid rgba(110, 124, 180, 0.35);
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
     border-radius: 8px;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
     overflow: hidden;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    box-shadow: var(--shadow-sm);
     transition: box-shadow 0.2s ease;
 }
 .sgc-chart-box:hover {
-    box-shadow: 0 6px 28px rgba(0, 0, 0, 0.55);
+    box-shadow: var(--shadow-sm);
 }
 
 .sgc-chart-header {
@@ -35,7 +33,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 8px 10px;
-    border-bottom: 1px solid rgba(110, 124, 180, 0.2);
+    border-bottom: 1px solid var(--border-color);
     gap: 8px;
     min-height: 36px;
 }
@@ -48,7 +46,7 @@
 
 .sgc-chart-title {
     font-size: 0.78rem;
-    color: #dde6ff;
+    color: var(--text-color);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -68,10 +66,10 @@
 }
 
 .sgc-x-select {
-    background: rgba(30, 40, 70, 0.8);
-    border: 1px solid rgba(110, 124, 180, 0.3);
+    background: color-mix(in srgb, var(--panel-bg) 80%, transparent);
+    border: 1px solid var(--border-color);
     border-radius: 4px;
-    color: #aebbd1;
+    color: var(--muted-color);
     font-size: 0.7rem;
     padding: 2px 4px;
     cursor: pointer;
@@ -79,18 +77,18 @@
     max-width: 70px;
 }
 .sgc-x-select:hover {
-    border-color: rgba(110, 124, 180, 0.6);
-    color: #dde6ff;
+    border-color: color-mix(in srgb, var(--accent-color) 50%, transparent);
+    color: var(--text-color);
 }
 .sgc-x-select:focus {
-    border-color: #42a5f5;
+    border-color: var(--accent-color);
 }
 
 .sgc-btn {
     background: none;
-    border: 1px solid rgba(110, 124, 180, 0.25);
+    border: 1px solid var(--border-color);
     border-radius: 4px;
-    color: #7e8aa3;
+    color: var(--muted-color);
     cursor: pointer;
     width: 24px;
     height: 24px;
@@ -102,18 +100,18 @@
     transition: all 0.12s ease;
 }
 .sgc-btn:hover {
-    background: rgba(110, 124, 180, 0.15);
-    border-color: rgba(110, 124, 180, 0.5);
-    color: #dde6ff;
+    background: color-mix(in srgb, var(--accent-color) 15%, transparent);
+    border-color: color-mix(in srgb, var(--accent-color) 50%, transparent);
+    color: var(--text-color);
 }
 
 .sgc-pin-btn {
     font-size: 0.65rem;
 }
 .sgc-pin-btn.sgc-pin-active {
-    background: rgba(66, 165, 245, 0.25);
-    border-color: rgba(66, 165, 245, 0.5);
-    color: #42a5f5;
+    background: color-mix(in srgb, var(--accent-color) 25%, transparent);
+    border-color: color-mix(in srgb, var(--accent-color) 50%, transparent);
+    color: var(--accent-color);
 }
 
 .sgc-close-btn {
@@ -170,11 +168,11 @@
     right: 4px;
     width: 8px;
     height: 8px;
-    border-right: 2px solid rgba(110, 124, 180, 0.4);
-    border-bottom: 2px solid rgba(110, 124, 180, 0.4);
+    border-right: 2px solid var(--border-color);
+    border-bottom: 2px solid var(--border-color);
 }
 .sgc-resize-handle:hover::after {
-    border-color: rgba(140, 160, 220, 0.7);
+    border-color: color-mix(in srgb, var(--accent-color) 70%, transparent);
 }
 
 /* ── Slider panel — bottom-left ───────────────────────────────────── */
@@ -186,11 +184,9 @@
     flex-direction: column;
     gap: 6px;
     padding: 10px 12px;
-    background: rgba(10, 12, 26, 0.82);
-    border: 1px solid rgba(110, 124, 180, 0.35);
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
     border-radius: 6px;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
     z-index: 25;
     min-width: 200px;
     max-width: 300px;
@@ -204,7 +200,7 @@
     font-size: 0.6rem;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: rgba(210, 218, 245, 0.55);
+    color: color-mix(in srgb, var(--text-color) 55%, transparent);
     margin-bottom: 2px;
 }
 
@@ -216,7 +212,7 @@
 
 .sgc-slider-label {
     font-size: 0.78rem;
-    color: #aebbd1;
+    color: var(--muted-color);
     min-width: 28px;
     text-align: right;
     flex-shrink: 0;
@@ -230,7 +226,7 @@
     -webkit-appearance: none;
     appearance: none;
     height: 4px;
-    background: rgba(110, 124, 180, 0.25);
+    background: color-mix(in srgb, var(--accent-color) 25%, transparent);
     border-radius: 2px;
     outline: none;
     cursor: pointer;
@@ -240,26 +236,26 @@
     width: 14px;
     height: 14px;
     border-radius: 50%;
-    background: #42a5f5;
-    border: 2px solid rgba(10, 12, 26, 0.8);
+    background: var(--accent-color);
+    border: 2px solid var(--border-color);
     cursor: pointer;
     transition: background 0.12s;
 }
 .sgc-slider::-webkit-slider-thumb:hover {
-    background: #64b5f6;
+    background: var(--accent-color);
 }
 .sgc-slider::-moz-range-thumb {
     width: 14px;
     height: 14px;
     border-radius: 50%;
-    background: #42a5f5;
-    border: 2px solid rgba(10, 12, 26, 0.8);
+    background: var(--accent-color);
+    border: 2px solid var(--border-color);
     cursor: pointer;
 }
 
 .sgc-slider-value {
     font-size: 0.7rem;
-    color: #7e8aa3;
+    color: var(--muted-color);
     min-width: 42px;
     text-align: left;
     font-variant-numeric: tabular-nums;
@@ -274,11 +270,9 @@
     flex-direction: column;
     gap: 4px;
     padding: 8px 10px;
-    background: rgba(10, 12, 26, 0.82);
-    border: 1px solid rgba(110, 124, 180, 0.35);
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
     border-radius: 6px;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
     z-index: 25;
     pointer-events: none;
 }
@@ -290,7 +284,7 @@
     font-size: 0.6rem;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: rgba(210, 218, 245, 0.55);
+    color: color-mix(in srgb, var(--text-color) 55%, transparent);
     margin-bottom: 2px;
 }
 
@@ -309,7 +303,7 @@
 
 .sgc-legend-name {
     font-size: 0.72rem;
-    color: rgba(210, 218, 245, 0.9);
+    color: var(--text-color);
 }
 .sgc-legend-name .katex {
     font-size: 0.85em;
@@ -317,7 +311,7 @@
 
 /* ── Code button (show mathjs script) ────────────────────────────── */
 .sgc-code-btn {
-    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    font-family: var(--font-mono);
     font-size: 0.65rem;
     letter-spacing: -0.03em;
 }
@@ -329,11 +323,11 @@
     right: 0;
     margin-top: 4px;
     padding: 8px 10px;
-    background: rgba(18, 22, 40, 0.96);
-    border: 1px solid rgba(110, 124, 180, 0.4);
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
     border-radius: 6px;
-    color: #b8c8e8;
-    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    color: var(--text-color);
+    font-family: var(--font-mono);
     font-size: 0.72rem;
     line-height: 1.45;
     white-space: pre-wrap;
@@ -341,7 +335,7 @@
     max-width: 320px;
     min-width: 140px;
     z-index: 50;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+    box-shadow: var(--shadow-sm);
     pointer-events: auto;
 }
 
