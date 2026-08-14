@@ -15,6 +15,13 @@ import { resolveTermId } from '/graph-panel/term-resolve.js';
 const D3_CDN_URL = 'https://cdn.jsdelivr.net/npm/d3@7/+esm';
 const DAGRE_CDN_URL = 'https://cdn.jsdelivr.net/npm/@dagrejs/dagre@1.1.4/dist/dagre.min.js';
 
+// Node buttons (chevron, chart, function analysis) are UI chrome, not chart
+// content: they hold a constant on-screen size at every zoom level, matching
+// the ~19px HTML ask-AI button, so they stay clickable when zoomed out.
+const UI_BTN_SIZE = 18;
+const UI_BTN_GAP = 4;
+const UI_BTN_MAX_SCALE = 6;
+
 const SUPERSCRIPT_MAP = {
     '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴',
     '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
@@ -717,6 +724,7 @@ export class D3SemanticGraphRenderer {
             .on('zoom', (event) => {
                 this._currentTransform = event.transform;
                 this._viewport.attr('transform', event.transform);
+                this._rescaleUiBtns();
                 if (this.onZoomChange) {
                     this.onZoomChange(Math.round(event.transform.k * 100));
                 }
@@ -764,7 +772,13 @@ export class D3SemanticGraphRenderer {
         if (!svgW || !svgH) return;
 
         const vpNode = this._viewport.node();
+        // Measure the graph alone: the UI buttons are counter-scaled chrome, so
+        // at low zoom they'd inflate the bbox and the fit would shrink the graph
+        // to make room for them (which in turn grows them — a feedback loop).
+        const btns = this._viewport.selectAll('.d3sg-ui-btn');
+        btns.attr('display', 'none');
         const bbox = vpNode.getBBox();
+        btns.attr('display', null);
         if (!bbox.width || !bbox.height) return;
 
         // Charts pinned at the top dock over the graph; reserve their vertical
@@ -1373,89 +1387,121 @@ export class D3SemanticGraphRenderer {
         this._renderGraph(nodeId);
     }
 
-    _chevronPos(isCollapsed, shape) {
-        const glyph = isCollapsed ? '+' : '−';
-        const sz = 14, half = sz / 2;
+    /** Anchor (in graph coordinates) for the chevron — the node-edge midpoint
+     *  on the outgoing side of the flow. The button itself is centred on it. */
+    _chevronAnchor(shape) {
         const dir = this.direction;
         if (shape.type === 'rect' || shape.type === 'stadium') {
-            if (dir === 'left-right')  return { glyph, x: shape.hw - half, y: -half };
-            if (dir === 'right-left')  return { glyph, x: -shape.hw - half, y: -half };
-            if (dir === 'bottom-up')   return { glyph, x: -half, y: -shape.hh - half };
-            return { glyph, x: -half, y: shape.hh - half };
+            if (dir === 'left-right')  return { x: shape.hw, y: 0 };
+            if (dir === 'right-left')  return { x: -shape.hw, y: 0 };
+            if (dir === 'bottom-up')   return { x: 0, y: -shape.hh };
+            return { x: 0, y: shape.hh };
         }
         const r = shape.r || 26;
-        if (dir === 'left-right')  return { glyph, x: r - half, y: -half };
-        if (dir === 'right-left')  return { glyph, x: -r - half, y: -half };
-        if (dir === 'bottom-up')   return { glyph, x: -half, y: -r - half };
-        return { glyph, x: -half, y: r - half };
+        if (dir === 'left-right')  return { x: r, y: 0 };
+        if (dir === 'right-left')  return { x: -r, y: 0 };
+        if (dir === 'bottom-up')   return { x: 0, y: -r };
+        return { x: 0, y: r };
+    }
+
+    /** Anchor for the chart / analysis buttons — the node-edge midpoint on the
+     *  incoming side, i.e. opposite the chevron. */
+    _chartBtnAnchor(shape) {
+        const a = this._chevronAnchor(shape);
+        return { x: -a.x, y: -a.y };
+    }
+
+    /** Transform for a node UI button: pinned at its graph-space anchor but
+     *  counter-scaled by the zoom factor so it keeps a constant on-screen
+     *  size (see UI_BTN_SIZE). `dy` stacks buttons in screen pixels. */
+    _uiBtnTransform(ax, ay, dy) {
+        const k = (this._currentTransform && this._currentTransform.k) || 1;
+        // Capped at 6× so the far-zoomed-out buttons cannot balloon the
+        // viewport bbox that zoomToFit measures. At the 0.15 zoom floor they
+        // still render ~16px — comfortably clickable.
+        const s = Math.min(1 / k, UI_BTN_MAX_SCALE);
+        let t = `translate(${ax},${ay}) scale(${s})`;
+        if (dy) t += ` translate(0,${dy})`;
+        return t;
+    }
+
+    /** Create a zoom-invariant button group centred on (ax, ay). Returns an
+     *  inner <g> whose coordinate system is the legacy 14×14 icon box with
+     *  its origin at the box's top-left, so icon paths stay unchanged. */
+    _uiBtnGroup(group, cls, ax, ay, dy, onClick) {
+        const g = group.append('g')
+            .attr('class', `${cls} d3sg-ui-btn`)
+            .attr('data-ax', ax)
+            .attr('data-ay', ay)
+            .attr('data-dy', dy || 0)
+            .attr('transform', this._uiBtnTransform(ax, ay, dy))
+            .on('click', onClick);
+        const half = UI_BTN_SIZE / 2;
+        const box = g.append('g')
+            .attr('transform', `translate(${-half},${-half}) scale(${UI_BTN_SIZE / 14})`);
+        return { g, box };
+    }
+
+    /** Re-apply the counter-scale to every node UI button. Called on zoom so
+     *  the buttons never shrink out of reach at low zoom levels. */
+    _rescaleUiBtns() {
+        if (!this._viewport) return;
+        const self = this;
+        this._viewport.selectAll('.d3sg-ui-btn').attr('transform', function () {
+            return self._uiBtnTransform(
+                +this.getAttribute('data-ax') || 0,
+                +this.getAttribute('data-ay') || 0,
+                +this.getAttribute('data-dy') || 0,
+            );
+        });
     }
 
     _appendChevron(group, d, isCollapsed) {
         const shape = this._nodeShape(d);
-        const cp = this._chevronPos(isCollapsed, shape);
+        const anchor = this._chevronAnchor(shape);
         const self = this;
         const sz = 14;
-        const g = group.append('g')
-            .attr('class', 'd3sg-chevron')
-            .attr('transform', `translate(${cp.x},${cp.y})`)
-            .on('click', function (event) {
+        const { g, box } = this._uiBtnGroup(group, 'd3sg-chevron', anchor.x, anchor.y, 0,
+            function (event) {
                 event.stopPropagation();
                 self._handleChevronClick(d);
             });
-        g.append('rect')
+        box.append('rect')
             .attr('x', 0).attr('y', 0)
             .attr('width', sz).attr('height', sz)
             .attr('rx', 2)
             .attr('fill', '#1a2440')
             .attr('stroke', '#a8c5ff')
             .attr('stroke-width', 1);
-        g.append('text')
+        box.append('text')
             .attr('x', sz / 2).attr('y', sz / 2 + 1)
             .attr('text-anchor', 'middle')
             .attr('dominant-baseline', 'middle')
             .attr('font-size', '11px')
             .attr('fill', '#a8c5ff')
-            .text(cp.glyph);
+            .text(isCollapsed ? '+' : '−');
         return g;
-    }
-
-    _chartBtnPos(shape) {
-        const sz = 14, half = sz / 2;
-        const dir = this.direction;
-        if (shape.type === 'rect' || shape.type === 'stadium') {
-            if (dir === 'left-right')  return { x: -shape.hw - half, y: -half };
-            if (dir === 'right-left')  return { x: shape.hw - half, y: -half };
-            if (dir === 'bottom-up')   return { x: -half, y: shape.hh - half };
-            return { x: -half, y: -shape.hh - half };
-        }
-        const r = shape.r || 26;
-        if (dir === 'left-right')  return { x: -r - half, y: -half };
-        if (dir === 'right-left')  return { x: r - half, y: -half };
-        if (dir === 'bottom-up')   return { x: -half, y: r - half };
-        return { x: -half, y: -r - half };
     }
 
     _appendChartBtn(group, d) {
         const shape = this._nodeShape(d);
-        const pos = this._chartBtnPos(shape);
+        const anchor = this._chartBtnAnchor(shape);
         const self = this;
         const sz = 14;
-        const g = group.append('g')
-            .attr('class', 'd3sg-chart-btn')
-            .attr('transform', `translate(${pos.x},${pos.y})`)
-            .on('click', function (event) {
+        const { g, box } = this._uiBtnGroup(group, 'd3sg-chart-btn', anchor.x, anchor.y, 0,
+            function (event) {
                 event.stopPropagation();
                 if (self.onChartClick) self.onChartClick(d.data.id, d.data, this);
             });
         g.append('title').text('Plot this expression');
-        g.append('rect')
+        box.append('rect')
             .attr('x', 0).attr('y', 0)
             .attr('width', sz).attr('height', sz)
             .attr('rx', 2)
             .attr('fill', '#1a2440')
             .attr('stroke', '#42a5f5')
             .attr('stroke-width', 1);
-        g.append('path')
+        box.append('path')
             .attr('d', `M3,${sz-3} L5,5 L8,8 L${sz-3},3`)
             .attr('fill', 'none')
             .attr('stroke', '#42a5f5')
@@ -1469,19 +1515,19 @@ export class D3SemanticGraphRenderer {
      *  the full-page expert analysis for this node's subexpr. */
     _appendFaBtn(group, d) {
         const shape = this._nodeShape(d);
-        const pos = this._chartBtnPos(shape);
+        const anchor = this._chartBtnAnchor(shape);
         const self = this;
         const sz = 14;
-        // Stack under the chart button so both stay clickable at any zoom.
-        const g = group.append('g')
-            .attr('class', 'd3sg-fa-btn')
-            .attr('transform', `translate(${pos.x},${pos.y + sz + 3})`)
-            .on('click', function (event) {
+        // Stack under the chart button (in screen pixels, so the gap holds at
+        // any zoom) so both stay clickable.
+        const { g, box } = this._uiBtnGroup(group, 'd3sg-fa-btn', anchor.x, anchor.y,
+            UI_BTN_SIZE + UI_BTN_GAP,
+            function (event) {
                 event.stopPropagation();
                 if (self.onFaClick) self.onFaClick(d.data.id, d.data, this);
             });
         g.append('title').text('Function analysis');
-        g.append('rect')
+        box.append('rect')
             .attr('x', 0).attr('y', 0)
             .attr('width', sz).attr('height', sz)
             .attr('rx', 2)
@@ -1491,13 +1537,13 @@ export class D3SemanticGraphRenderer {
         // Axes + a curve settling toward the horizontal — the same idea as
         // icons.js FUNCTION_ANALYSIS_ICON, but the dashed asymptote is
         // dropped: at 14px it reads as specks rather than a line.
-        g.append('path')                                   // axes (L)
+        box.append('path')                                 // axes (L)
             .attr('d', 'M3.5,2.8 V10.5 H11.5')
             .attr('fill', 'none')
             .attr('stroke', '#ffa726')
             .attr('stroke-width', 1.2)
             .attr('stroke-linecap', 'square');
-        g.append('path')                                   // decaying curve
+        box.append('path')                                 // decaying curve
             .attr('d', 'M5.2,4 C5.9,8 7.2,9 10.6,9.2')
             .attr('fill', 'none')
             .attr('stroke', '#ffa726')
