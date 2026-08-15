@@ -1,5 +1,5 @@
 import { defineConfig, type Plugin } from 'vite';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -60,7 +60,13 @@ function resolveRootAbsolute(): Plugin {
         // Leave it to the browser: a real request to the Python server.
         return { id: source, external: true };
       }
-      return join(ROOT, 'src', path.slice(1));
+      // Importers keep writing `/foo.js` even after foo.js becomes foo.ts —
+      // rewriting all ~57 specifiers on every conversion would make the
+      // migration diffs unreadable and is exactly the churn the faithful-port
+      // rule exists to avoid. Prefer the .ts source when one exists.
+      const base = join(ROOT, 'src', path.slice(1));
+      const ts = base.replace(/\.js$/, '.ts');
+      return existsSync(ts) ? ts : base;
     },
   };
 }

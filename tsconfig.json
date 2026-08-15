@@ -9,6 +9,13 @@
     "moduleResolution": "bundler",
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
 
+    // Modules import each other by server-root-absolute URL (`from
+    // '/expr.js'`) — the paths the Python server used to serve them from.
+    // Vite maps those to src/ via a resolver plugin (vite.config.mts); this
+    // teaches tsc the same mapping so the two agree.
+    // (TypeScript 7 removed `baseUrl`; path targets must be relative.)
+    "paths": { "/*": ["./src/*"] },
+
     // tsc never emits. It is the correctness gate; anything that eventually
     // needs emitting will be emitted by the bundler, not by tsc.
     "noEmit": true,
