@@ -61,6 +61,9 @@ def _judge():
 
 
 _ROOT = Path(__file__).resolve().parent.parent.parent   # scripts/proof_animation/report.py → repo root
+# JS sources live under src/ since the frontend build was introduced;
+# the hand-authored CSS stayed beside the other static assets.
+_ASSETS_JS = _ROOT / "src" / "proof-animation"
 _ASSETS = _ROOT / "static" / "proof-animation"
 # Built-in shareable proofs live here; the /renderproof page loads them by
 # ?builtin=<domain>/<name>. See docs/shareable-proof-animations.md.
@@ -430,7 +433,7 @@ def render_site(animations: list[dict], outdir) -> Path:
     out.mkdir(parents=True, exist_ok=True)
     (out / "animations.json").write_text(
         json.dumps(animations, indent=2, ensure_ascii=False), encoding="utf-8")
-    shutil.copy(_ASSETS / "proof-animation.js", out / "proof-animation.js")
+    shutil.copy(_ASSETS_JS / "proof-animation.js", out / "proof-animation.js")
     shutil.copy(_ASSETS / "proof-animation.css", out / "proof-animation.css")
     # cache-bust the engine on every (re)generation so a reload never serves a
     # stale module (browsers cache ES modules aggressively).

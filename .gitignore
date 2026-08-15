@@ -34,3 +34,4 @@ backend/experts/modules/*/artifacts/
 # /prove page local proof store (user-derived proofs; never committed)
 .proof-store/
 .proof-source-material/
+.vite/

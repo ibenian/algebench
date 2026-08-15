@@ -17,3 +17,15 @@ docs
 .claude
 deploy
 tests
+
+# Dev-time-only frontend tooling. The Space serves the COMMITTED build output
+# in static/ — it never runs Node, so the sources and build config are dead
+# weight there. (Sourcemaps in static/dist/ will not resolve on the Space as a
+# result; that is accepted.)
+src
+package.json
+package-lock.json
+tsconfig.json
+vite.config.mts
+.npmrc
+scripts/generate_ts_types.mjs
