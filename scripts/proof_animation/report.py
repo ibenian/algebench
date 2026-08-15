@@ -278,8 +278,12 @@ _INDEX = """<!DOCTYPE html>
        from the OS preference to keep its OS-following behaviour. Inline and
        synchronous, before the stylesheet, so there is no dark→light flash. -->
   <script>
+    // Optional-chained: this runs synchronously BEFORE the stylesheet, so a
+    // throw here would leave data-theme unstamped and the report would fall
+    // back to the dark default. matchMedia is browser-baseline, but a guard
+    // costs nothing and keeps a pre-paint script from being a failure point.
     document.documentElement.dataset.theme =
-      matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ? "dark" : "light";
   </script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>

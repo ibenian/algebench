@@ -831,9 +831,9 @@
    ─────────────────────────────────────────────────────────────────────────── */
 .pa-root {
   --pa-tier-grounded: #e6b832;                      /* gold   — all checks pass */
-  --pa-tier-grounded-bg: rgba(212, 160, 23, 0.16);
+  --pa-tier-grounded-bg: rgba(230, 184, 50, 0.16);
   --pa-tier-verified: #aeb8cc;                    /* silver — strong evidence */
-  --pa-tier-verified-bg: rgba(154, 163, 181, 0.18);
+  --pa-tier-verified-bg: rgba(174, 184, 204, 0.18);
   --pa-tier-domain: #2fb6a3;                      /* teal   — domain-justified */
   --pa-tier-domain-bg: rgba(47, 182, 163, 0.18);
   --pa-tier-plausible: var(--pa-accent);          /* blue   — undecided */
@@ -841,7 +841,7 @@
   --pa-tier-unchecked: var(--pa-muted);           /* gray   — not convertible */
   --pa-tier-unchecked-bg: rgba(120, 130, 150, 0.12);
   --pa-tier-refuted: #e07a7a;                     /* red    — provably wrong */
-  --pa-tier-refuted-bg: rgba(208, 90, 90, 0.18);
+  --pa-tier-refuted-bg: rgba(224, 122, 122, 0.18);
 }
 .pa-conf-grounded    { --pa-conf-fg: var(--pa-tier-grounded);    --pa-conf-bg: var(--pa-tier-grounded-bg); }
 .pa-conf-verified  { --pa-conf-fg: var(--pa-tier-verified);  --pa-conf-bg: var(--pa-tier-verified-bg); }
@@ -971,8 +971,11 @@ html[data-theme="light"] .pa-root {
    the badge / pill / dot-strip rules, all inside the widget). */
 html[data-theme="light"] .pa-root {
   --pa-tier-grounded: #d4a017;
+  --pa-tier-grounded-bg: rgba(212, 160, 23, 0.16);
   --pa-tier-verified: #9aa3b5;
+  --pa-tier-verified-bg: rgba(154, 163, 181, 0.18);
   --pa-tier-refuted: #d05a5a;
+  --pa-tier-refuted-bg: rgba(208, 90, 90, 0.18);
 }
 
 
