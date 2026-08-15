@@ -1,4 +1,4 @@
-name: Frontend Types
+name: Frontend
 
 # Guards the generated TypeScript declarations in src/types/ against drift.
 #
@@ -17,8 +17,11 @@ on:
     paths:
       - 'schemas/*.json'
       - 'scripts/generate_ts_types.mjs'
-      - 'src/types/**'
+      - 'src/**'
+      - 'static/**'
+      - '*.html'
       - 'tsconfig.json'
+      - 'vite.config.mts'
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/frontend-types.yml'
@@ -28,7 +31,7 @@ on:
 
 jobs:
   types:
-    name: Schema types up to date
+    name: Types, build and bundle sync
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -51,3 +54,32 @@ jobs:
 
       - name: Type-check
         run: npm run typecheck
+
+      # The bundle in static/dist/ is committed so that Render and the HF
+      # Space serve ready-made artifacts without ever running Node. That only
+      # holds if the committed output actually matches src/ — rebuild and
+      # fail if anything moved.
+      - name: Build frontend
+        run: npx vite build
+
+      - name: Check committed build output is up to date
+        run: |
+          if ! git diff --exit-code -- static/; then
+            echo "::error::static/ is stale. Run 'npm run build' and commit the result."
+            exit 1
+          fi
+
+      # The app's CSP is script-src 'self' https://cdn.jsdelivr.net with no
+      # 'unsafe-inline' (backend/server.py), so a single inline <script> in
+      # the emitted HTML takes the whole page down. Vite's module-preload
+      # polyfill is the usual culprit; it is disabled in vite.config.mts.
+      - name: Assert no inline script in emitted HTML
+        run: |
+          if grep -nE '<script[^>]*>[^<]' static/index.html static/prove.html static/renderproof.html; then
+            echo "::error::inline <script> found in emitted HTML — the CSP will block it."
+            exit 1
+          fi
+          echo "no inline scripts ✓"
+
+      - name: Frontend unit tests
+        run: npm test

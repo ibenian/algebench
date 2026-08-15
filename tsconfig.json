@@ -14,6 +14,12 @@
     "noEmit": true,
     "isolatedModules": true,
 
+    // Incremental migration: the .js sources under src/ ride along unchecked
+    // until converted file-by-file in later phases. `checkJs` flips on in the
+    // final phase, once nothing is left in JavaScript.
+    "allowJs": true,
+    "checkJs": false,
+
     "strict": true,
     "noUncheckedIndexedAccess": true,
 

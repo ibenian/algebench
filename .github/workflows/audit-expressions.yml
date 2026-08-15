@@ -5,8 +5,8 @@ on:
     paths:
       - 'scenes/*.json'
       - 'scenes/**/*.json'
-      - 'static/expr.js'
-      - 'static/trust.js'
+      - 'src/expr.js'
+      - 'src/trust.js'
       - 'scripts/audit_expressions.py'
   workflow_dispatch:
 

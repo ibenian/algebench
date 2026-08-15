@@ -1026,19 +1026,19 @@ def generate_report(
         os.close(fd)
         output = Path(path)
 
-    d3_js_src = _PROJECT_ROOT / "static" / "graph-panel" / "d3-semantic-graph.js"
+    d3_js_src = _PROJECT_ROOT / "src" / "graph-panel" / "d3-semantic-graph.js"
     d3_js_dst = output.parent / "d3-semantic-graph.js"
     shutil.copy2(d3_js_src, d3_js_dst)
 
-    chart_js_src = _PROJECT_ROOT / "static" / "graph-panel" / "sg-chart.js"
+    chart_js_src = _PROJECT_ROOT / "src" / "graph-panel" / "sg-chart.js"
     chart_js_dst = output.parent / "sg-chart.js"
     shutil.copy2(chart_js_src, chart_js_dst)
 
-    chart_script_src = _PROJECT_ROOT / "static" / "graph-panel" / "sg-chart-script.js"
+    chart_script_src = _PROJECT_ROOT / "src" / "graph-panel" / "sg-chart-script.js"
     chart_script_dst = output.parent / "sg-chart-script.js"
     shutil.copy2(chart_script_src, chart_script_dst)
 
-    term_resolve_src = _PROJECT_ROOT / "static" / "graph-panel" / "term-resolve.js"
+    term_resolve_src = _PROJECT_ROOT / "src" / "graph-panel" / "term-resolve.js"
     term_resolve_dst = output.parent / "term-resolve.js"
     shutil.copy2(term_resolve_src, term_resolve_dst)
 
@@ -1105,19 +1105,19 @@ def generate_site(
 
     outdir.mkdir(parents=True, exist_ok=True)
 
-    d3_js_src = _PROJECT_ROOT / "static" / "graph-panel" / "d3-semantic-graph.js"
+    d3_js_src = _PROJECT_ROOT / "src" / "graph-panel" / "d3-semantic-graph.js"
     d3_js_dst = outdir / "d3-semantic-graph.js"
     shutil.copy2(d3_js_src, d3_js_dst)
 
-    chart_js_src = _PROJECT_ROOT / "static" / "graph-panel" / "sg-chart.js"
+    chart_js_src = _PROJECT_ROOT / "src" / "graph-panel" / "sg-chart.js"
     chart_js_dst = outdir / "sg-chart.js"
     shutil.copy2(chart_js_src, chart_js_dst)
 
-    chart_script_src = _PROJECT_ROOT / "static" / "graph-panel" / "sg-chart-script.js"
+    chart_script_src = _PROJECT_ROOT / "src" / "graph-panel" / "sg-chart-script.js"
     chart_script_dst = outdir / "sg-chart-script.js"
     shutil.copy2(chart_script_src, chart_script_dst)
 
-    term_resolve_src = _PROJECT_ROOT / "static" / "graph-panel" / "term-resolve.js"
+    term_resolve_src = _PROJECT_ROOT / "src" / "graph-panel" / "term-resolve.js"
     term_resolve_dst = outdir / "term-resolve.js"
     shutil.copy2(term_resolve_src, term_resolve_dst)
 

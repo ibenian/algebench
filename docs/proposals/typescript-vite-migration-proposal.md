@@ -103,7 +103,7 @@ Bundling makes most of these unreferenced, but **they are not deleted during the
 
 ### 3.6 Dynamic `import()` call sites
 
-3 sites in production code — `static/expr.js`, `static/scene-loader.js`, and `static/graph-panel/d3-semantic-graph.js` (2 further uses live in `*.test.js` and are out of scope). Each must be audited: either let Vite code-split it into `static/dist/`, or exclude it and keep it server-served. Decide per site, document the decision.
+2 sites in production code — `src/scene-loader.js` (`import('/objects/index.js')`) and `src/graph-panel/d3-semantic-graph.js` (`import(D3_CDN_URL)`). Two further uses live in `*.test.js` and are out of scope. Each must be audited: either let Vite code-split it into `static/dist/`, or exclude it and keep it server-served. Decide per site, document the decision.
 
 ### 3.7 CDN globals and version-sensitive typings
 
@@ -311,7 +311,7 @@ Flip `checkJs` on (no JS left), or document deliberate holdouts. Update `AGENTS.
 | Vite emits inline script → CSP blocks the app | `modulePreload.polyfill: false`; assert no inline `<script>` in emitted HTML; console checked every phase | Phase 2 exit |
 | Committed bundle drifts from source | CI sync check (`build` then `git diff --exit-code -- static/`) | Phase 2 exit |
 | `__APP_VERSION__` breaks in one mode | Build plugin + dev plugin, both verified | Phase 2 exit |
-| A dynamic `import()` breaks at runtime (silent — no compile error) | Audit all 3 production sites in Phase 2, document each decision, exercise each path live | Phase 2 exit |
+| A dynamic `import()` breaks at runtime (silent — no compile error) | Audit both production sites in Phase 2, document each decision, exercise each path live | Phase 2 exit |
 | MathBox `.d.ts` harder than estimated | Isolated to Phase 3; can ship loose and tighten later | Phase 3 |
 | Bulk rename corrupts string literals | A regex-based rename can silently break CDN URLs, theme keys and element ids — all type-check fine and fail only at runtime. Use a string/comment-aware scanner, and assert affected literals still appear verbatim in the built output | any phase |
 | Scale (36.5k lines) exceeds appetite | Phases are independent and additive | **Stop cleanly after Phase 1** (most of the type value, no build step at all) or **after Phase 2** (fully reversible: revert the renames, drop the mount) |

@@ -39,11 +39,16 @@ try:
 except ImportError:
     from scripts.graph_to_mermaid import semantic_graph_to_mermaid, load_theme, validate_graph
 
-_GRAPH_PANEL_DIR = Path(__file__).resolve().parent.parent / "static" / "graph-panel"
+# JS sources moved to src/ when the frontend build was introduced; the
+# hand-authored CSS stayed under static/. Pick the directory by suffix.
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+_GRAPH_PANEL_JS_DIR = _REPO_ROOT / "src" / "graph-panel"
+_GRAPH_PANEL_CSS_DIR = _REPO_ROOT / "static" / "graph-panel"
 
 
 def _read_asset(name: str) -> str:
-    return (_GRAPH_PANEL_DIR / name).read_text(encoding="utf-8")
+    root = _GRAPH_PANEL_JS_DIR if name.endswith(".js") else _GRAPH_PANEL_CSS_DIR
+    return (root / name).read_text(encoding="utf-8")
 
 
 _GRAPH_PANEL_CSS = _read_asset("graph-panel.css")
