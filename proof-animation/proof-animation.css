@@ -55,6 +55,14 @@
 }
 .pa-root .pa-mathtip .katex { font-size: 1em; color: var(--pa-fg); }
 
+/* Also on :root, not just .pa-root. The engine appends two elements to
+   document.body on purpose — the term tooltip and the "Ask AI" term button —
+   so a proof box's overflow can never clip them. Those live OUTSIDE .pa-root,
+   so a token defined only there does not inherit, and any rule wrapping it in
+   color-mix() is dropped as invalid: the ask button rendered with its
+   border-radius but no fill and no border. Every token here is --pa-*-prefixed
+   and only read by .pa-* rules, so hoisting them is inert for the host page. */
+:root,
 .pa-root {
   --pa-fg: var(--text-color, #253029);
   --pa-muted: var(--muted-color, #68726b);
@@ -108,6 +116,87 @@
 }
 .pa-stage > .pa-expr .katex-display { margin: 0; text-align: left; }
 .pa-stage > .pa-expr .katex-display > .katex { text-align: left; }
+
+/* Stand-in for a step KaTeX could not parse (see _renderErrorChip). The width
+   cap and wrapping are the point: _fit() scales the whole derivation to the
+   WIDEST step, so an unbounded fallback shrinks every good step to nothing. */
+.pa-expr-error-wrap { position: relative; display: inline-block; max-width: 100%; }
+.pa-expr-error {
+  display: inline-block;
+  max-width: 22em;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-size: 0.62em;
+  line-height: 1.35;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(214, 120, 120, 0.55);
+  background: rgba(200, 80, 80, 0.14);
+  /* Text stays on the theme's own foreground — the widget renders on a light or
+     a dark card — and the red tint plus the ⚠ carry the error signal. */
+  color: var(--pa-fg);
+  cursor: pointer;
+  user-select: none;
+}
+.pa-expr-error:hover { background: rgba(200, 80, 80, 0.22); }
+.pa-expr-error:focus-visible { outline: 2px solid var(--pa-accent); outline-offset: 2px; }
+
+/* The stage isolates its own stacking context (so insert ghosts can sit at
+   z-index -1), and .pa-meta is a LATER positioned sibling — so the caption paints
+   OVER anything inside the stage, whatever z-index it carries. The only fix is
+   to lift the stage itself, which _renderErrorChip does for as long as the
+   source panel is up. */
+.pa-stage.pa-stage-lift { z-index: 40; }
+
+/* The source panel the chip opens. ABSOLUTE on purpose: however long the dump
+   is, it stays out of flow and out of _fit()'s and _capOverflow()'s
+   measurements, so opening it can never re-shrink the derivation. Sizes are in
+   px, not em, so the panel stays readable at any stage scale. It sits FLUSH
+   under the chip (no gap) so the pointer can travel from the hovered chip into
+   the panel without crossing dead space and dismissing it. */
+.pa-expr-error-panel {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  width: max-content;
+  max-width: min(90vw, 720px);
+  max-height: 46vh;
+  overflow: auto;               /* a real element, so a long dump scrolls */
+  padding: 8px 10px 10px;
+  border-radius: 8px;
+  background: var(--pa-bg);
+  border: 1px solid var(--pa-border);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.25);
+  text-align: left;
+  cursor: auto;
+}
+.pa-expr-error-panel[hidden] { display: none; }
+.pa-root .pa-expr-error-copy {
+  float: right;
+  margin-left: 12px;
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.3;
+  padding: 2px 9px;
+  border-radius: 6px;
+  border: 1px solid var(--pa-border);
+  background: var(--pa-bg);
+  color: var(--pa-muted);
+  cursor: pointer;
+}
+.pa-root .pa-expr-error-copy:hover { border-color: var(--pa-accent); color: var(--pa-fg); }
+.pa-expr-error-src {
+  margin: 0;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 10.5px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;            /* the whole point — it has to be liftable */
+  color: var(--pa-fg);
+}
 
 /* Animated tokens must be inline-block — CSS transforms are IGNORED on
    display:inline elements (KaTeX renders tokens inline), so without this the
@@ -852,6 +941,7 @@
 
 /* dark theme friendliness when the host sets a dark background var */
 @media (prefers-color-scheme: dark) {
+  :root,
   .pa-root {
     --pa-fg: var(--text-color, #e8e6da);
     --pa-bg: var(--panel-bg, #1e2621);
