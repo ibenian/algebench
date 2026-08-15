@@ -62,6 +62,12 @@
    color-mix() is dropped as invalid: the ask button rendered with its
    border-radius but no fill and no border. Every token here is --pa-*-prefixed
    and only read by .pa-* rules, so hoisting them is inert for the host page. */
+/* TOKENS ONLY — deliberately also on :root. The engine appends the term
+   tooltip and the "Ask AI" button to document.body so a proof box's overflow
+   cannot clip them; outside .pa-root a token defined only there does not
+   inherit, and any rule wrapping it in color-mix() is dropped as invalid.
+   Keep this block free of ordinary properties: everything here lands on
+   <html> for every page that loads this stylesheet. */
 :root,
 .pa-root {
   --pa-fg: var(--text-color, #253029);
@@ -71,7 +77,10 @@
   --pa-border: var(--border-color, #dfe2d9);
   --pa-active-bg: var(--pa-accent);
   --pa-active-fg: #ffffff;
+}
 
+/* The proof box's own appearance — .pa-root ONLY, never :root. */
+.pa-root {
   font-family: var(--font-sans, system-ui, -apple-system, "Segoe UI", sans-serif);
   color: var(--pa-fg);
   background: var(--pa-bg);
