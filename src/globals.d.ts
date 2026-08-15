@@ -63,3 +63,14 @@ interface Window {
   katex: typeof katex;
   marked: typeof marked;
 }
+
+// ── Globals defined by static/chat.js ────────────────────────────────────────
+// chat.js is still a classic, non-module script (it becomes a module in phase
+// 4), so modules reach these as bare globals behind `typeof … === 'function'`
+// guards — the page can load without chat.js and the guards must stay honest.
+
+/** Switch the right-hand panel to a named tab (chat.js:268). */
+declare function switchPanelTab(tabName: string): void;
+
+/** Send a message to the AI chat (chat.js:447). */
+declare function sendChatMessage(text: string, opts?: { silent?: boolean }): Promise<void>;

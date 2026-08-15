@@ -931,7 +931,7 @@ function _normalizeUpVector(up) {
 	return v.normalize();
 }
 //#endregion
-//#region src/labels.js
+//#region src/labels.ts
 var AI_SPARKLE_SVG = "<svg viewBox=\"0 0 16 16\" fill=\"currentColor\" width=\"11\" height=\"11\"><path d=\"M8 1c0 4-3 6.5-7 7 4 .5 7 3 7 7 0-4 3-6.5 7-7-4-.5-7-3-7-7z\"/></svg>";
 function escapeHtml$2(s) {
 	const d = document.createElement("div");
@@ -951,7 +951,7 @@ var _HTML_MACROS = [
 /** Strip KaTeX \htmlClass/\htmlData/\htmlId/\htmlStyle wrappers, keeping their
 *  inner content (recursively). Leaves malformed wrappers intact. */
 function stripHtmlMacros(s) {
-	if (!s) return s;
+	if (!s) return s ?? "";
 	const str = String(s);
 	const skipBalanced = (k) => {
 		let depth = 0;
@@ -990,7 +990,7 @@ function normLatex(s) {
 function renderKaTeX(text, displayMode) {
 	if (!text) return "";
 	const tables = [];
-	const withTables = text.replace(/^(\|.+\|)\n(\|[\s:?-]+(?:\|[\s:?-]+)+\|)\n((?:\|.+\|\n?)+)/gm, (match, headerLine, sepLine, bodyBlock) => {
+	const withTables = text.replace(/^(\|.+\|)\n(\|[\s:?-]+(?:\|[\s:?-]+)+\|)\n((?:\|.+\|\n?)+)/gm, (_match, headerLine, _sepLine, bodyBlock) => {
 		const parseRow = (row) => {
 			const content = row.replace(/^\|/, "").replace(/\|$/, "");
 			const cells = [];
@@ -1037,7 +1037,7 @@ function renderKaTeX(text, displayMode) {
 		return `\x01T${tables.length - 1}\x01`;
 	});
 	const headings = [];
-	let prepped = withTables.replace(/^(#{1,3})\s+(.+)$/gm, (_, hashes, content) => {
+	let prepped = withTables.replace(/^(#{1,3})\s+(.+)$/gm, (_m, hashes, content) => {
 		const sz = [
 			"1.05em",
 			"0.95em",
@@ -1047,7 +1047,7 @@ function renderKaTeX(text, displayMode) {
 		return `\x01H${headings.length - 1}\x01`;
 	});
 	const codeSpans = [];
-	prepped = prepped.replace(/`(.+?)`/g, (match, inner) => {
+	prepped = prepped.replace(/`(.+?)`/g, (_m, inner) => {
 		codeSpans.push(inner);
 		return `\x01C${codeSpans.length - 1}\x01`;
 	});
@@ -1057,16 +1057,16 @@ function renderKaTeX(text, displayMode) {
 		return `\x01M${mathSpans.length - 1}\x01`;
 	});
 	const boldSpans = [];
-	prepped = prepped.replace(/\*\*(.+?)\*\*/g, (match, inner) => {
+	prepped = prepped.replace(/\*\*(.+?)\*\*/g, (_m, inner) => {
 		boldSpans.push(inner);
 		return `\x01B${boldSpans.length - 1}\x01`;
 	});
 	const italicSpans = [];
-	prepped = prepped.replace(/\*(.+?)\*/g, (match, inner) => {
+	prepped = prepped.replace(/\*(.+?)\*/g, (_m, inner) => {
 		italicSpans.push(inner);
 		return `\x01I${italicSpans.length - 1}\x01`;
 	});
-	const restoreMath = (s) => s.replace(/\x01M(\d+)\x01/g, (m, idx) => mathSpans[+idx]);
+	const restoreMath = (str) => str.replace(/\x01M(\d+)\x01/g, (_m, idx) => mathSpans[+idx]);
 	prepped = restoreMath(prepped);
 	for (let i = 0; i < boldSpans.length; i++) boldSpans[i] = restoreMath(boldSpans[i]);
 	for (let i = 0; i < italicSpans.length; i++) italicSpans[i] = restoreMath(italicSpans[i]);
@@ -1086,7 +1086,7 @@ function renderKaTeX(text, displayMode) {
 					"0.88em"
 				][hm[1].length - 1]};font-weight:bold;margin:3px 0 1px">${hm[2]}</div>`;
 				if (t === "---") return "<hr style=\"border:none;border-top:1px solid rgba(255,255,255,0.2);margin:4px 0\">";
-				const inline = line.replace(/\x01B(\d+)\x01/g, (m, idx) => `<strong>${renderKaTeX(boldSpans[+idx], false)}</strong>`).replace(/\x01I(\d+)\x01/g, (m, idx) => `<em>${renderKaTeX(italicSpans[+idx], false)}</em>`).replace(/\x01C(\d+)\x01/g, (m, idx) => `<code>${codeSpans[+idx]}</code>`).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\*(.+?)\*/g, "<em>$1</em>").replace(/`(.+?)`/g, "<code>$1</code>");
+				const inline = line.replace(/\x01B(\d+)\x01/g, (_m, idx) => `<strong>${renderKaTeX(boldSpans[+idx], false)}</strong>`).replace(/\x01I(\d+)\x01/g, (_m, idx) => `<em>${renderKaTeX(italicSpans[+idx], false)}</em>`).replace(/\x01C(\d+)\x01/g, (_m, idx) => `<code>${codeSpans[+idx]}</code>`).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\*(.+?)\*/g, "<em>$1</em>").replace(/`(.+?)`/g, "<code>$1</code>");
 				return li < lines.length - 1 ? inline + "<br>" : inline;
 			}).join("");
 		} else if (seg.startsWith("$$")) {
@@ -1098,7 +1098,7 @@ function renderKaTeX(text, displayMode) {
 					displayMode: true,
 					trust: (ctx) => ctx.command === "\\htmlClass"
 				});
-			} catch (e) {
+			} catch (_e) {
 				return escapeHtml$2(seg);
 			}
 		} else {
@@ -1110,7 +1110,7 @@ function renderKaTeX(text, displayMode) {
 					displayMode: false,
 					trust: (ctx) => ctx.command === "\\htmlClass"
 				});
-			} catch (e) {
+			} catch (_e) {
 				return escapeHtml$2(seg);
 			}
 		}
@@ -1118,15 +1118,15 @@ function renderKaTeX(text, displayMode) {
 }
 function renderMarkdown(md) {
 	if (!md) return "";
-	let mathBlocks = [];
-	let safe = md.replace(/\$\$([\s\S]+?)\$\$/g, (m, tex) => {
+	const mathBlocks = [];
+	let safe = md.replace(/\$\$([\s\S]+?)\$\$/g, (_m, tex) => {
 		mathBlocks.push({
 			tex: tex.trim(),
 			display: true
 		});
 		return "%%MATH_BLOCK_" + (mathBlocks.length - 1) + "%%";
 	});
-	safe = safe.replace(/\$([^$\n]+)\$/g, (m, tex) => {
+	safe = safe.replace(/\$([^$\n]+)\$/g, (_m, tex) => {
 		mathBlocks.push({
 			tex: tex.trim(),
 			display: false
@@ -1134,7 +1134,7 @@ function renderMarkdown(md) {
 		return "%%MATH_BLOCK_" + (mathBlocks.length - 1) + "%%";
 	});
 	let html = marked.parse(safe);
-	html = html.replace(/%%MATH_BLOCK_(\d+)%%/g, (m, idx) => {
+	html = html.replace(/%%MATH_BLOCK_(\d+)%%/g, (_m, idx) => {
 		const block = mathBlocks[parseInt(idx)];
 		try {
 			return katex.renderToString(block.tex, {
@@ -1143,7 +1143,7 @@ function renderMarkdown(md) {
 				displayMode: block.display,
 				trust: (ctx) => ctx.command === "\\htmlClass"
 			});
-		} catch (e) {
+		} catch (_e) {
 			return block.tex;
 		}
 	});
@@ -1242,17 +1242,17 @@ function colorToCSS(c) {
 	const rgb = parseColor(c);
 	return `rgb(${Math.round(rgb[0] * 255)}, ${Math.round(rgb[1] * 255)}, ${Math.round(rgb[2] * 255)})`;
 }
+var labelsState = state;
 var _labelSeq = 0;
 function addLabel3D(text, dataPos, color, opts) {
-	if (typeof opts === "string") opts = { cssClass: opts };
-	opts = opts || {};
+	const o = typeof opts === "string" ? { cssClass: opts } : opts || {};
 	const container = document.getElementById("labels-container");
 	const el = document.createElement("div");
-	el.className = opts.cssClass || "label-3d";
+	el.className = o.cssClass || "label-3d";
 	el.innerHTML = renderKaTeX(text, false);
 	if (color) el.style.color = colorToCSS(color);
 	container.appendChild(el);
-	const align = opts.align || "center";
+	const align = o.align || "center";
 	const entry = {
 		el,
 		dataPos: dataPos.slice(),
@@ -1274,29 +1274,32 @@ function addLabel3D(text, dataPos, color, opts) {
 		lastDataPos: null,
 		moveCooldown: 0
 	};
-	state.labels.push(entry);
+	labelsState.labels.push(entry);
 	return entry;
 }
 function clearLabels() {
 	const container = document.getElementById("labels-container");
 	container.innerHTML = "";
-	state.labels = [];
+	labelsState.labels = [];
 }
 var _labelsContainer = null;
 var _appliedLabelScale = null;
 function updateLabels() {
-	if (!state.camera || !state.renderer) return;
-	const w = state.renderer.domElement.clientWidth;
-	const h = state.renderer.domElement.clientHeight;
-	const s = state.displayParams.labelScale;
+	const camera = labelsState.camera;
+	const renderer = labelsState.renderer;
+	if (!camera || !renderer) return;
+	const w = renderer.domElement.clientWidth;
+	const h = renderer.domElement.clientHeight;
+	const s = labelsState.displayParams.labelScale;
 	if (_appliedLabelScale !== s) {
 		if (!_labelsContainer) _labelsContainer = document.getElementById("labels-container");
-		if (_labelsContainer) _labelsContainer.style.setProperty("--label-scale", s);
+		if (_labelsContainer) _labelsContainer.style.setProperty("--label-scale", String(s));
 		_appliedLabelScale = s;
 	}
-	for (const lbl of state.labels) {
+	for (const lbl of labelsState.labels) {
 		const dp = lbl.dataPos;
-		if (lbl.lastDataPos && (Math.abs(dp[0] - lbl.lastDataPos[0]) > 1e-6 || Math.abs(dp[1] - lbl.lastDataPos[1]) > 1e-6 || Math.abs(dp[2] - lbl.lastDataPos[2]) > 1e-6)) lbl.moveCooldown = 20;
+		const prev = lbl.lastDataPos;
+		if (prev && (Math.abs(dp[0] - prev[0]) > 1e-6 || Math.abs(dp[1] - prev[1]) > 1e-6 || Math.abs(dp[2] - prev[2]) > 1e-6)) lbl.moveCooldown = 20;
 		else if (lbl.moveCooldown > 0) lbl.moveCooldown--;
 		lbl.lastDataPos = [
 			dp[0],
@@ -1306,8 +1309,8 @@ function updateLabels() {
 		lbl.moving = lbl.moveCooldown > 0;
 		const world = dataToWorld(dp);
 		const v = new THREE.Vector3(world[0], world[1], world[2]);
-		lbl.depth = state.camera.position.distanceTo(v);
-		const projected = v.project(state.camera);
+		lbl.depth = camera.position.distanceTo(v);
+		const projected = v.project(camera);
 		const targetX = (projected.x * .5 + .5) * w;
 		const targetY = (-projected.y * .5 + .5) * h;
 		lbl.visible = !lbl.forceHidden && projected.z < 1 && targetX > -50 && targetX < w + 50 && targetY > -50 && targetY < h + 50;
@@ -1329,22 +1332,23 @@ function updateLabels() {
 	resolveDepthDimming();
 	const declutterAlpha = state.displayParams.labelDeclutterAlpha;
 	const dimAlpha = state.displayParams.labelDimAlpha;
-	for (const lbl of state.labels) {
+	for (const lbl of labelsState.labels) {
 		lbl.offsetY += (lbl.targetOffsetY - lbl.offsetY) * declutterAlpha;
 		lbl.dim += (lbl.targetDim - lbl.dim) * dimAlpha;
 		lbl.fade += (lbl.targetFade - lbl.fade) * dimAlpha;
 		const ax = lbl.align === "right" ? "-100%" : lbl.align === "left" ? "0%" : "-50%";
 		const y = lbl.screenY + lbl.offsetY;
 		lbl.el.style.transform = `translate(${lbl.screenX}px, ${y}px) translate(${ax}, -50%)`;
-		lbl.el.style.opacity = lbl.visible ? (state.displayParams.labelOpacity * lbl.fade).toFixed(3) : "0";
+		lbl.el.style.opacity = lbl.visible ? (labelsState.displayParams.labelOpacity * lbl.fade).toFixed(3) : "0";
 		lbl.el.style.filter = lbl.dim < .999 ? `brightness(${lbl.dim.toFixed(3)})` : "";
 	}
-	const ordered = state.labels.filter((l) => l.visible).sort(frontToBack);
+	const ordered = labelsState.labels.filter((l) => l.visible).sort(frontToBack);
 	for (let i = 0; i < ordered.length; i++) {
 		const zi = ordered.length - i;
-		if (ordered[i]._zi !== zi) {
-			ordered[i].el.style.zIndex = String(zi);
-			ordered[i]._zi = zi;
+		const o = ordered[i];
+		if (o._zi !== zi) {
+			o.el.style.zIndex = String(zi);
+			o._zi = zi;
 		}
 	}
 }
@@ -1355,7 +1359,7 @@ function frontToBack(a, b) {
 }
 function resolveDepthDimming() {
 	const active = [];
-	for (const lbl of state.labels) {
+	for (const lbl of labelsState.labels) {
 		lbl.targetDim = 1;
 		lbl.targetFade = 1;
 		if (lbl.visible && lbl.boxW != null) active.push(lbl);
@@ -1377,8 +1381,9 @@ function resolveDepthDimming() {
 		if (hideThreshold >= 2 && cluster.length >= hideThreshold) {
 			const byDepth = cluster.slice().sort(frontToBack);
 			for (let r = hideThreshold - 1; r < byDepth.length; r++) {
-				byDepth[r].targetFade = hideLevel;
-				hidden.add(byDepth[r]);
+				const far = byDepth[r];
+				far.targetFade = hideLevel;
+				hidden.add(far);
 			}
 		}
 		for (const lbl of cluster) {
@@ -1400,7 +1405,7 @@ function resolveDepthDimming() {
 }
 function resolveLabelOffsets() {
 	const active = [];
-	for (const lbl of state.labels) {
+	for (const lbl of labelsState.labels) {
 		lbl.targetOffsetY = 0;
 		if (lbl.visible && lbl.boxW != null && !lbl.moving) active.push(lbl);
 	}
@@ -1455,7 +1460,8 @@ function resolveRun(cluster, start, end, gap, maxStack) {
 		sAvg /= b.size;
 		for (let k = b.k0; k < b.k0 + b.size; k++) {
 			const finalY = mean + sAvg + (S[k] - sAvg) * scale;
-			cluster[start + k].targetOffsetY = finalY - cluster[start + k].screenY;
+			const lbl = cluster[start + k];
+			lbl.targetOffsetY = finalY - lbl.screenY;
 		}
 	}
 }
