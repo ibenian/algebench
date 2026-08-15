@@ -55,15 +55,14 @@
 }
 .pa-root .pa-mathtip .katex { font-size: 1em; color: var(--pa-fg); }
 
-/* Also on :root, not just .pa-root. The engine appends two elements to
-   document.body on purpose — the term tooltip and the "Ask AI" term button —
-   so a proof box's overflow can never clip them. Those live OUTSIDE .pa-root,
-   so a token defined only there does not inherit, and any rule wrapping it in
-   color-mix() is dropped as invalid: the ask button rendered with its
-   border-radius but no fill and no border. Every token here is --pa-*-prefixed
-   and only read by .pa-* rules, so hoisting them is inert for the host page. */
+/* TOKENS ONLY — deliberately also on :root. The engine appends the term
+   tooltip and the "Ask AI" button to document.body so a proof box's overflow
+   cannot clip them; outside .pa-root a token defined only there does not
+   inherit, and any rule wrapping it in color-mix() is dropped as invalid.
+   Keep this block free of ordinary properties: everything here lands on
+   <html> for every page that loads this stylesheet.
 
-/* Dark is the DEFAULT here, mirroring tokens.css: the app themes off
+   Dark is the DEFAULT here, mirroring tokens.css: the app themes off
    html[data-theme] (dark on :root, light under [data-theme="light"]), so this
    file must switch on the SAME signal. Keying the fallbacks off
    prefers-color-scheme instead would disagree with tokens.css whenever the two
@@ -81,7 +80,10 @@
   --pa-border: var(--border-color, #343d37);
   --pa-active-bg: var(--pa-accent);
   --pa-active-fg: #201805;  /* dark ink on the light ochre accent */
+}
 
+/* The proof box's own appearance — .pa-root ONLY, never :root. */
+.pa-root {
   font-family: var(--font-sans, system-ui, -apple-system, "Segoe UI", sans-serif);
   color: var(--pa-fg);
   background: var(--pa-bg);
