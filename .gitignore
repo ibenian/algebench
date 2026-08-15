@@ -1,6 +1,10 @@
 __pycache__/
 *.pyc
 *.pyo
+
+# Dev-time-only Node tooling (type generation + typecheck). The app never
+# runs Node — src/types/*.d.ts is generated and committed.
+node_modules/
 .venv/
 venv/
 .env

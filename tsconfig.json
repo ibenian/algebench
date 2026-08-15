@@ -1,0 +1,24 @@
+{
+  // TypeScript is a DEV-TIME dependency only. Nothing here runs at request
+  // time or at deploy time — `noEmit` is set and no bundler is wired up yet.
+  // At this stage the only inputs are the generated declarations in
+  // src/types/, so this config exists to prove they compile under `strict`.
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+
+    // tsc never emits. It is the correctness gate; anything that eventually
+    // needs emitting will be emitted by the bundler, not by tsc.
+    "noEmit": true,
+    "isolatedModules": true,
+
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+
+    "skipLibCheck": true,
+    "types": []
+  },
+  "include": ["src"]
+}

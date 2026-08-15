@@ -4,6 +4,13 @@
   "type": "module",
   "description": "Tooling/test harness for AlgeBench static ES modules (no build step).",
   "scripts": {
-    "test": "node --test static/*.test.js"
+    "test": "node --test static/*.test.js",
+    "types:generate": "node scripts/generate_ts_types.mjs",
+    "types:check": "node scripts/generate_ts_types.mjs --check",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "json-schema-to-typescript": "^15.0.4",
+    "typescript": "^7.0.2"
   }
 }

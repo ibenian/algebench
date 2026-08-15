@@ -1,0 +1,53 @@
+name: Frontend Types
+
+# Guards the generated TypeScript declarations in src/types/ against drift.
+#
+# schemas/lesson.schema.json is maintained by hand and by the
+# `algebench-schema-generator` skill — not by a deterministic build — so the
+# committed .d.ts can silently fall behind it. This job regenerates and fails
+# if the result differs, then type-checks the output under `strict`.
+#
+# Path-filtered: it only has an opinion when a schema, the generator, the
+# generated types, or the TS config changes. It is NOT a required status
+# check, so a filtered-out PR skipping it is fine. If it is ever promoted to
+# required, drop the paths filter first — a required check that never reports
+# leaves PRs stuck on "Expected — waiting for status to be reported".
+on:
+  pull_request:
+    paths:
+      - 'schemas/*.json'
+      - 'scripts/generate_ts_types.mjs'
+      - 'src/types/**'
+      - 'tsconfig.json'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/frontend-types.yml'
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  types:
+    name: Schema types up to date
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dev dependencies
+        run: npm ci
+
+      - name: Check generated types match the schemas
+        run: npm run types:check
+
+      - name: Type-check
+        run: npm run typecheck
