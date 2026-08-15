@@ -55,23 +55,35 @@
 }
 .pa-root .pa-mathtip .katex { font-size: 1em; color: var(--pa-fg); }
 
-/* Also on :root, not just .pa-root. The engine appends two elements to
-   document.body on purpose — the term tooltip and the "Ask AI" term button —
-   so a proof box's overflow can never clip them. Those live OUTSIDE .pa-root,
-   so a token defined only there does not inherit, and any rule wrapping it in
-   color-mix() is dropped as invalid: the ask button rendered with its
-   border-radius but no fill and no border. Every token here is --pa-*-prefixed
-   and only read by .pa-* rules, so hoisting them is inert for the host page. */
+/* TOKENS ONLY — deliberately also on :root. The engine appends the term
+   tooltip and the "Ask AI" button to document.body so a proof box's overflow
+   cannot clip them; outside .pa-root a token defined only there does not
+   inherit, and any rule wrapping it in color-mix() is dropped as invalid.
+   Keep this block free of ordinary properties: everything here lands on
+   <html> for every page that loads this stylesheet.
+
+   Dark is the DEFAULT here, mirroring tokens.css: the app themes off
+   html[data-theme] (dark on :root, light under [data-theme="light"]), so this
+   file must switch on the SAME signal. Keying the fallbacks off
+   prefers-color-scheme instead would disagree with tokens.css whenever the two
+   differ — e.g. a dark-OS machine with the light theme selected would take
+   light --panel-bg/--text-color from tokens.css but dark --pa-* fallbacks here.
+   That is invisible while every --pa-* is consumed through color-mix(…,
+   transparent) or resolves via var(--panel-bg, <fallback>), but any opaque
+   element on the proof surface renders with the wrong-theme fallback. */
 :root,
 .pa-root {
-  --pa-fg: var(--text-color, #253029);
-  --pa-muted: var(--muted-color, #68726b);
-  --pa-accent: var(--accent-color, #9a6d1c);
-  --pa-bg: var(--panel-bg, #fbfcf8);
-  --pa-border: var(--border-color, #dfe2d9);
+  --pa-fg: var(--text-color, #e8e6da);
+  --pa-muted: var(--muted-color, #97a29a);
+  --pa-accent: var(--accent-color, #d9a441);
+  --pa-bg: var(--panel-bg, #1e2621);
+  --pa-border: var(--border-color, #343d37);
   --pa-active-bg: var(--pa-accent);
-  --pa-active-fg: #ffffff;
+  --pa-active-fg: #201805;  /* dark ink on the light ochre accent */
+}
 
+/* The proof box's own appearance — .pa-root ONLY, never :root. */
+.pa-root {
   font-family: var(--font-sans, system-ui, -apple-system, "Segoe UI", sans-serif);
   color: var(--pa-fg);
   background: var(--pa-bg);
@@ -818,18 +830,18 @@
    of this (the badge is :empty-hidden, the pill is removed).
    ─────────────────────────────────────────────────────────────────────────── */
 .pa-root {
-  --pa-tier-grounded: #d4a017;                      /* gold   — all checks pass */
-  --pa-tier-grounded-bg: rgba(212, 160, 23, 0.16);
-  --pa-tier-verified: #9aa3b5;                    /* silver — strong evidence */
-  --pa-tier-verified-bg: rgba(154, 163, 181, 0.18);
+  --pa-tier-grounded: #e6b832;                      /* gold   — all checks pass */
+  --pa-tier-grounded-bg: rgba(230, 184, 50, 0.16);
+  --pa-tier-verified: #aeb8cc;                    /* silver — strong evidence */
+  --pa-tier-verified-bg: rgba(174, 184, 204, 0.18);
   --pa-tier-domain: #2fb6a3;                      /* teal   — domain-justified */
   --pa-tier-domain-bg: rgba(47, 182, 163, 0.18);
   --pa-tier-plausible: var(--pa-accent);          /* blue   — undecided */
   --pa-tier-plausible-bg: color-mix(in srgb, var(--pa-accent) 16%, transparent);
   --pa-tier-unchecked: var(--pa-muted);           /* gray   — not convertible */
   --pa-tier-unchecked-bg: rgba(120, 130, 150, 0.12);
-  --pa-tier-refuted: #d05a5a;                     /* red    — provably wrong */
-  --pa-tier-refuted-bg: rgba(208, 90, 90, 0.18);
+  --pa-tier-refuted: #e07a7a;                     /* red    — provably wrong */
+  --pa-tier-refuted-bg: rgba(224, 122, 122, 0.18);
 }
 .pa-conf-grounded    { --pa-conf-fg: var(--pa-tier-grounded);    --pa-conf-bg: var(--pa-tier-grounded-bg); }
 .pa-conf-verified  { --pa-conf-fg: var(--pa-tier-verified);  --pa-conf-bg: var(--pa-tier-verified-bg); }
@@ -939,21 +951,31 @@
   box-shadow: inset 0 -3px 0 var(--pa-conf-fg);
 }
 
-/* dark theme friendliness when the host sets a dark background var */
-@media (prefers-color-scheme: dark) {
-  :root,
-  .pa-root {
-    --pa-fg: var(--text-color, #e8e6da);
-    --pa-bg: var(--panel-bg, #1e2621);
-    --pa-border: var(--border-color, #343d37);
-    --pa-muted: var(--muted-color, #97a29a);
-    --pa-accent: var(--accent-color, #d9a441);
-    --pa-active-fg: #201805;  /* dark ink on the light ochre accent */
-    /* tier colors brighten slightly for dark backgrounds */
-    --pa-tier-grounded: #e6b832;
-    --pa-tier-verified: #aeb8cc;
-    --pa-tier-refuted: #e07a7a;
-  }
+/* LIGHT theme. Same switch the rest of the app uses (tokens.css line ~114), so
+   the --pa-* fallbacks can never disagree with --panel-bg/--text-color: the
+   selected theme drives both. Standalone hosts that don't link tokens.css must
+   stamp html[data-theme] themselves — scripts/proof_animation/report.py does it
+   pre-paint from prefers-color-scheme, which keeps its OS-following behaviour.
+   Beats :root/.pa-root on specificity, so it wins wherever it applies. */
+html[data-theme="light"],
+html[data-theme="light"] .pa-root {
+  --pa-fg: var(--text-color, #253029);
+  --pa-bg: var(--panel-bg, #fbfcf8);
+  --pa-border: var(--border-color, #dfe2d9);
+  --pa-muted: var(--muted-color, #68726b);
+  --pa-accent: var(--accent-color, #9a6d1c);
+  --pa-active-fg: #ffffff;  /* white ink on the darker ochre accent */
+}
+/* Tier colors deepen slightly for light backgrounds. Scoped to .pa-root only —
+   mirroring where the dark defaults are declared (they're read exclusively by
+   the badge / pill / dot-strip rules, all inside the widget). */
+html[data-theme="light"] .pa-root {
+  --pa-tier-grounded: #d4a017;
+  --pa-tier-grounded-bg: rgba(212, 160, 23, 0.16);
+  --pa-tier-verified: #9aa3b5;
+  --pa-tier-verified-bg: rgba(154, 163, 181, 0.18);
+  --pa-tier-refuted: #d05a5a;
+  --pa-tier-refuted-bg: rgba(208, 90, 90, 0.18);
 }
 
 
