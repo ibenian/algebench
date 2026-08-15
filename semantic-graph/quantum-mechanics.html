@@ -14,7 +14,7 @@
     "/labels.js": "data:text/javascript,export function makeAiAskButton(){return document.createElement('span')}",
     "/expr.js": "data:text/javascript,const m=math.create(math.all);m.import({binomial:(n,k)=>m.combinations(n,k),erfc:x=>1-m.erf(x),beta:(a,b)=>m.gamma(a)*m.gamma(b)/m.gamma(a%2Bb),conjugate:x=>m.conj(x)});export function compileExpr(s){return m.compile(s)}export function evalExpr(c,t,opts){const scope=opts%26%26opts.extraScope?{...opts.extraScope}:{};return c.evaluate(scope)}",
     "/proof-animation/dock-seq.js": "data:text/javascript,let n=0;export const nextDockSeq=()=>%2B%2Bn",
-    "/graph-panel/term-resolve.js": "./term-resolve.js?v=1786487157"
+    "/graph-panel/term-resolve.js": "./term-resolve.js?v=1786763906"
   }
 }</script>
 <script>
@@ -1071,7 +1071,7 @@ html[data-theme="light"] .d3sg-chart-btn path { stroke: #46718a; }
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-08-11 22:27 UTC &middot; theme: default-dark &middot; 16 expressions</div>
+<div class="report-meta">Generated 2026-08-15 03:19 UTC &middot; theme: default-dark &middot; 16 expressions</div>
 <div class="section-title">Quantum Mechanics (16 expressions)</div>
 <div class="row">
   <div>
@@ -4547,7 +4547,7 @@ html[data-theme="light"] .d3sg-chart-btn path { stroke: #46718a; }
   linkStyle 5 stroke:#7fa3b8,stroke-width:1px
   linkStyle 6 stroke:#97a29a,stroke-width:2px
 </pre></div></div>
-  <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(\hbar, h/(2*\pi))</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(Symbol('\\hbar'), Mul(Rational(1, 2), Pow(Symbol('\\pi'), Integer(-1)), Symbol('h')))</pre></div></div>
+  <div class="row-panel row-sympy"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">SymPy</span><button class="row-copy-btn" title="Copy SymPy">copy</button></div><pre>Eq(\hbar, h/(2*pi))</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">srepr</span><button class="row-copy-btn" title="Copy srepr">copy</button></div><pre>Equality(Symbol('\\hbar'), Mul(Rational(1, 2), Pow(pi, Integer(-1)), Symbol('h')))</pre></div></div>
   <div class="row-panel row-js"><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">math.js</span><button class="row-copy-btn" title="Copy math.js">copy</button></div><pre>-1/2*h/pi + hbar</pre></div><div class="row-json-pane"><div class="row-json-header"><span class="row-json-label">variables</span><button class="row-copy-btn" title="Copy variables">copy</button></div><pre>h, hbar</pre></div></div>
   <div class="row-panel row-d3" data-graph="{&quot;nodes&quot;:[{&quot;id&quot;:&quot;__equals_1&quot;,&quot;type&quot;:&quot;relation&quot;,&quot;op&quot;:&quot;equals&quot;,&quot;subexpr&quot;:&quot;\\hbar = \\frac{h}{2\\pi}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;-1/2*h/pi + hbar&quot;,&quot;variables&quot;:[&quot;h&quot;,&quot;hbar&quot;]}},{&quot;id&quot;:&quot;hbar&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;\\hbar&quot;,&quot;subexpr&quot;:&quot;\\hbar&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;hbar&quot;,&quot;variables&quot;:[&quot;hbar&quot;]}},{&quot;id&quot;:&quot;__multiply_2&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;h \\frac{1}{2 \\pi}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;(1/2)*h/pi&quot;,&quot;variables&quot;:[&quot;h&quot;]}},{&quot;id&quot;:&quot;h&quot;,&quot;type&quot;:&quot;scalar&quot;,&quot;latex&quot;:&quot;h&quot;,&quot;subexpr&quot;:&quot;h&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;h&quot;,&quot;variables&quot;:[&quot;h&quot;]}},{&quot;id&quot;:&quot;__power_3&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;latex&quot;:&quot;\\dfrac{1}{(\\cdot)}&quot;,&quot;op&quot;:&quot;power&quot;,&quot;exponent&quot;:&quot;-1&quot;,&quot;subexpr&quot;:&quot;\\frac{1}{2 \\pi}&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;(1/2)/pi&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__multiply_4&quot;,&quot;type&quot;:&quot;operator&quot;,&quot;op&quot;:&quot;multiply&quot;,&quot;subexpr&quot;:&quot;\\pi 2&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;2*pi&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;__num_5&quot;,&quot;type&quot;:&quot;number&quot;,&quot;label&quot;:&quot;2&quot;,&quot;subexpr&quot;:&quot;2&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;2&quot;,&quot;variables&quot;:[]}},{&quot;id&quot;:&quot;pi&quot;,&quot;type&quot;:&quot;constant&quot;,&quot;latex&quot;:&quot;\\pi&quot;,&quot;subexpr&quot;:&quot;\\pi&quot;,&quot;chartScript&quot;:{&quot;script&quot;:&quot;pi&quot;,&quot;variables&quot;:[]}}],&quot;edges&quot;:[{&quot;from&quot;:&quot;hbar&quot;,&quot;to&quot;:&quot;__equals_1&quot;},{&quot;from&quot;:&quot;h&quot;,&quot;to&quot;:&quot;__multiply_2&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__num_5&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;pi&quot;,&quot;to&quot;:&quot;__multiply_4&quot;,&quot;semantic&quot;:&quot;direct&quot;,&quot;weight&quot;:1.0},{&quot;from&quot;:&quot;__multiply_4&quot;,&quot;to&quot;:&quot;__power_3&quot;},{&quot;from&quot;:&quot;__power_3&quot;,&quot;to&quot;:&quot;__multiply_2&quot;},{&quot;from&quot;:&quot;__multiply_2&quot;,&quot;to&quot;:&quot;__equals_1&quot;}],&quot;classification&quot;:{&quot;kind&quot;:&quot;algebraic&quot;},&quot;domain&quot;:&quot;quantum_mechanics&quot;}"><div class="row-d3-placeholder">Click D3 to render</div></div>
 </div>
@@ -5146,8 +5146,8 @@ document.querySelectorAll('.row-copy-btn').forEach(btn => {
 })();
 
 Promise.all([
-  import('./d3-semantic-graph.js?v=1786487157'),
-  import('./sg-chart.js?v=1786487157'),
+  import('./d3-semantic-graph.js?v=1786763906'),
+  import('./sg-chart.js?v=1786763906'),
 ]).then(function(mods) {
   var D3SemanticGraphRenderer = mods[0].D3SemanticGraphRenderer;
   var SgChartManager = mods[1].SgChartManager;
