@@ -2538,7 +2538,7 @@ function _deriveTitle(content) {
 	for (let ln of lines) {
 		ln = ln.trim();
 		if (!ln) continue;
-		ln = ln.replace(/^#{1,6}\s*/, "").replace(/^[*_>\s-]+/, "").replace(/[*_]+$/, "").trim();
+		ln = ln.replace(/^#{1,6}\s*/, "").replace(/\*\*(.+?)\*\*/g, "$1").replace(/^[*_>\s-]+/, "").replace(/[*_]+$/, "").trim();
 		if (ln) return ln;
 	}
 	return "Info";
