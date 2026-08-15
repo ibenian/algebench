@@ -272,6 +272,19 @@ _INDEX = """<!DOCTYPE html>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Proof Animation</title>
+  <!-- Pre-paint theme stamp. proof-animation.css themes off html[data-theme]
+       (the same switch tokens.css uses in the app), NOT prefers-color-scheme —
+       this report doesn't link tokens.css, so it stamps the attribute itself
+       from the OS preference to keep its OS-following behaviour. Inline and
+       synchronous, before the stylesheet, so there is no dark→light flash. -->
+  <script>
+    // Optional-chained: this runs synchronously BEFORE the stylesheet, so a
+    // throw here would leave data-theme unstamped and the report would fall
+    // back to the dark default. matchMedia is browser-baseline, but a guard
+    // costs nothing and keeps a pre-paint script from being a failure point.
+    document.documentElement.dataset.theme =
+      window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ? "dark" : "light";
+  </script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
   <link rel="stylesheet" href="./proof-animation.css">
@@ -282,14 +295,13 @@ _INDEX = """<!DOCTYPE html>
     h1 { font-size: 1.15rem; font-weight: 600; color: #374151; margin: 0 0 8px; }
     .pa-title { font-size: 1rem; font-weight: 600; color: #4b5563; margin: 28px 0 8px; }
     .hint { color: #6b7280; font-size: .9rem; margin: 0 0 8px; }
-    /* Match the proof container, which follows prefers-color-scheme: in dark mode
-       the panels go dark (#1a1a2e), so the page sits a touch darker behind them. */
-    @media (prefers-color-scheme: dark) {
-      body { background: #12121c; color: #e5e7eb; }
-      h1 { color: #cbd5e1; }
-      .pa-title { color: #cbd5e1; }
-      .hint { color: #9ca3af; }
-    }
+    /* Match the proof container, which follows html[data-theme] (stamped above):
+       in dark mode the panels go dark, so the page sits a touch darker behind
+       them. Keyed off the same attribute so page chrome and proof never split. */
+    html[data-theme="dark"] body { background: #12121c; color: #e5e7eb; }
+    html[data-theme="dark"] h1 { color: #cbd5e1; }
+    html[data-theme="dark"] .pa-title { color: #cbd5e1; }
+    html[data-theme="dark"] .hint { color: #9ca3af; }
   </style>
 </head>
 <body>
