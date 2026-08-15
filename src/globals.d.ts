@@ -7,13 +7,19 @@
 // solely so `typeof import(...)` can borrow their types; nothing here reaches
 // the browser.
 //
-// Versions are pinned to whatever the HTML actually loads — a mismatch here
-// types the code against an API the page never had:
+// These four are pinned EXACTLY in package.json — no caret. A caret would let
+// `npm update` pull types a minor ahead of the CDN bundle (mathjs ^13.0.0
+// reaches 13.2.3, marked ^12.0.0 reaches 12.0.2), which types the code against
+// APIs the page never loaded: it compiles, then fails at runtime. Bump these
+// only together with the corresponding <script> tag in the HTML.
 //
 //   three   0.137.0   @types/three@0.137.0   (index.html)
-//   katex   0.16.9    @types/katex           (all three pages)
+//   katex   0.16.9    @types/katex@0.16.8    (all three pages)
 //   marked  12.0.0    bundled types          (index.html, prove.html)
 //   mathjs  13.0.0    bundled types          (index.html)
+//
+// @types/katex is one patch behind on purpose: 0.16.8 is the newest published,
+// and a KaTeX patch release adds no API.
 //
 // MathBox (2.3.1) is deliberately absent: it has no published types and its
 // chained-builder API needs a hand-written declaration. Nothing converted so
