@@ -53,9 +53,18 @@ function banner(schemaFile) {
 }
 
 const COMPILE_OPTIONS = {
-  // The schemas are the contract; a stricter surface here would silently
-  // diverge from what the Python validator accepts.
-  additionalProperties: false,
+  // NOTE: `additionalProperties` is deliberately NOT set here. The library
+  // default mirrors each subschema's own declaration, which is what keeps the
+  // generated types a faithful projection of the contract the Python
+  // validator enforces (tests/test_scene_schemas.py). Forcing `false` here
+  // would make the types stricter than the schema — most visibly on
+  // `element`, which the schema declares OPEN (additionalProperties: true).
+  // A type that rejects what the validator accepts is worse than a loose one.
+  //
+  // Consequence: any subschema without an explicit `additionalProperties`
+  // gains an index signature, so typos on those objects are not caught. The
+  // fix belongs in the schema, not here.
+  //
   // Schema `description` fields become JSDoc — the lesson schema carries ~294
   // of them, which is most of this file's value in an editor.
   bannerComment: '',

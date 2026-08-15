@@ -218,7 +218,13 @@ export interface LessonFormat {
  * Lesson-level data tables shared across all scenes. Accessible via dataTable('tableName', rowIndex, 'column') in expressions.
  */
 export interface DataTable {
-  [k: string]: {}[] | {};
+  [k: string]:
+    | {
+        [k: string]: unknown;
+      }[]
+    | {
+        [k: string]: unknown;
+      };
 }
 /**
  * A step-by-step mathematical proof or derivation displayed in the proof panel.
@@ -330,7 +336,9 @@ export interface ProofStep {
         /**
          * Semantic graph JSON (nodes + edges) used by the Mermaid renderer and the interactive info panel. See schemas/semantic-graph.schema.json. Produced by scripts/latex_to_graph.py.
          */
-        graph: {};
+        graph: {
+          [k: string]: unknown;
+        };
       }
     | {
         /**
@@ -510,7 +518,13 @@ export interface SceneFunction {
  * Scene-level data tables. Override lesson-level tables with the same name.
  */
 export interface DataTable1 {
-  [k: string]: {}[] | {};
+  [k: string]:
+    | {
+        [k: string]: unknown;
+      }[]
+    | {
+        [k: string]: unknown;
+      };
 }
 /**
  * Background starfield configuration for space-themed scenes.
@@ -804,6 +818,7 @@ export interface Element {
        * Color at this stop.
        */
       color: string | [number, number, number];
+      [k: string]: unknown;
     }[];
     /**
      * Number of tessellation segments for smooth gradient rendering. Default: 64.
@@ -1341,7 +1356,13 @@ export interface Camera2 {
  * Data tables accessible via dataTable() in expressions.
  */
 export interface DataTable2 {
-  [k: string]: {}[] | {};
+  [k: string]:
+    | {
+        [k: string]: unknown;
+      }[]
+    | {
+        [k: string]: unknown;
+      };
 }
 /**
  * Background starfield configuration.
