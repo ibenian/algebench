@@ -97,13 +97,13 @@ Requires `build.modulePreload: { polyfill: false }` plus a check that no other i
 
 ### 3.5 Server-owned frontend routes
 
-There is **no `StaticFiles` mount**. Every asset is served by an explicit hand-written route behind an allowlist: `_TOP_LEVEL_MODULES` (`backend/server.py:1642`, 32 names) plus `/objects/`, `/coach/`, `/graph-panel/`, `/proof-animation/`, `/domains/`, `/fonts/`, and the catch-all `/{name}.js` (`:2071`).
+There is **no `StaticFiles` mount**. Every asset is served by an explicit hand-written route behind an allowlist: `_TOP_LEVEL_MODULES` (`backend/server.py:1642`, 31 names) plus `/objects/`, `/coach/`, `/graph-panel/`, `/proof-animation/`, `/domains/`, `/fonts/`, `/chat.js`, and the catch-all `/{name}.js` (`:2071`).
 
 Bundling makes most of these unreferenced, but **they are not deleted during the migration** — removing them is refactoring, and some still back dynamic imports. See §11.
 
 ### 3.6 Dynamic `import()` call sites
 
-4 sites in `static/*.js`. Each must be audited: either let Vite code-split it into `static/dist/`, or exclude it and keep it server-served. Decide per site, document the decision.
+3 sites in production code — `static/expr.js`, `static/scene-loader.js`, and `static/graph-panel/d3-semantic-graph.js` (2 further uses live in `*.test.js` and are out of scope). Each must be audited: either let Vite code-split it into `static/dist/`, or exclude it and keep it server-served. Decide per site, document the decision.
 
 ### 3.7 CDN globals and version-sensitive typings
 
@@ -311,7 +311,7 @@ Flip `checkJs` on (no JS left), or document deliberate holdouts. Update `AGENTS.
 | Vite emits inline script → CSP blocks the app | `modulePreload.polyfill: false`; assert no inline `<script>` in emitted HTML; console checked every phase | Phase 2 exit |
 | Committed bundle drifts from source | CI sync check (`build` then `git diff --exit-code -- static/`) | Phase 2 exit |
 | `__APP_VERSION__` breaks in one mode | Build plugin + dev plugin, both verified | Phase 2 exit |
-| A dynamic `import()` breaks at runtime (silent — no compile error) | Audit all 4 sites in Phase 2, document each decision, exercise each path live | Phase 2 exit |
+| A dynamic `import()` breaks at runtime (silent — no compile error) | Audit all 3 production sites in Phase 2, document each decision, exercise each path live | Phase 2 exit |
 | MathBox `.d.ts` harder than estimated | Isolated to Phase 3; can ship loose and tighten later | Phase 3 |
 | Bulk rename corrupts string literals | A regex-based rename can silently break CDN URLs, theme keys and element ids — all type-check fine and fail only at runtime. Use a string/comment-aware scanner, and assert affected literals still appear verbatim in the built output | any phase |
 | Scale (36.5k lines) exceeds appetite | Phases are independent and additive | **Stop cleanly after Phase 1** (most of the type value, no build step at all) or **after Phase 2** (fully reversible: revert the renames, drop the mount) |
@@ -326,7 +326,7 @@ Each to be considered only after the migration is complete and stable, as its ow
 
 - **Splitting the 1,100–1,900-line modules** (`graph-view`, `chat`, `json-browser`, `overlay`, `proof`), guarded by the type checker.
 - **Issue #406's remaining work** — replacing the ~50 flat `window.*` cross-module calls with imports plus a single `AlgeBench` namespace.
-- **Retiring `_TOP_LEVEL_MODULES` and the per-directory asset routes.** The allowlist does no security work: `/{name}.js` already gates on `re.fullmatch(r"[A-Za-z0-9_-]+")` — no `/`, no `.`, so traversal is impossible by construction — *and* then runs `sanitize_path`. Its only real effect today is keeping the 7 `static/*.test.js` files unserved: 39 root `.js` files minus 7 tests = the 32 names on the list. Every other asset route (`/objects/`, `/coach/`, `/graph-panel/`, `/domains/`, `/fonts/`) already uses confine-plus-suffix with no allowlist. Post-migration these can collapse into `StaticFiles` mounts — and Phase 2's git renames already move the test files under `src/`, removing the list's only justification.
+- **Retiring `_TOP_LEVEL_MODULES` and the per-directory asset routes.** The allowlist does no security work: `/{name}.js` already gates on `re.fullmatch(r"[A-Za-z0-9_-]+")` — no `/`, no `.`, so traversal is impossible by construction — *and* then runs `sanitize_path`. Its only real effect today is keeping the 7 `static/*.test.js` files unserved: 39 root `.js` files, minus those 7 tests, minus `chat.js` (which has its own dedicated `/chat.js` route at `backend/server.py:1577`), leaves exactly the 31 names on the list — verified by set difference, with no dead entries. Every other asset route (`/objects/`, `/coach/`, `/graph-panel/`, `/domains/`, `/fonts/`) already uses confine-plus-suffix with no allowlist. Post-migration these can collapse into `StaticFiles` mounts — and Phase 2's git renames already move the test files under `src/`, removing the list's only justification.
 - **Caching strategy.** All JS is served `no-cache, no-store, must-revalidate` today, so ~36k lines are re-fetched on every page load. Best practice is hashed filenames + `public, max-age=31536000, immutable`, but hashing fights committed output (new filenames every build = add/delete churn instead of readable diffs). Options: hashed and accept the churn, or stable filenames served under a version-scoped path (`/dist/{version}/…`, immutable) reusing the `VERSION` file that already drives `__APP_VERSION__`. Either makes `?v=__APP_VERSION__` obsolete and removes the plugin §3.4 requires. **Deliberately excluded from the migration** — caching is behavior.
 - **OpenAPI-generated API types.** Generating TS types from FastAPI's schema (`openapi-typescript`) beats hand-written DTOs because they cannot drift. Not viable yet: 25 `/api` routes, **zero `response_model`**, 63 raw `JSONResponse` — response schemas would generate empty. Adding `response_model` is backend refactoring. Until then: hand-written DTOs plus the Phase-1 schema-generated lesson types.
 - **Upgrading `three@0.137`** off the deprecated `examples/js/` controls path.
