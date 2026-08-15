@@ -238,6 +238,19 @@ def _load_chart_css() -> str:
     return css_path.read_text(encoding="utf-8")
 
 
+def _load_fa_css() -> str:
+    """Read the function-analysis CSS and return it for inline embedding.
+
+    The renderer draws a per-node function-analysis button whose
+    hide-until-hover rule lives here (``.d3sg-fa-btn { opacity: 0 }``),
+    mirroring the chart button's rule in sg-chart.css. Without this sheet the
+    buttons have no opacity rule at all and every node in the report renders
+    with its icon permanently visible.
+    """
+    css_path = _PROJECT_ROOT / "static" / "graph-panel" / "fa-page.css"
+    return css_path.read_text(encoding="utf-8")
+
+
 def _page_template() -> str:
     return textwrap.dedent("""\
     <!DOCTYPE html>
@@ -623,6 +636,7 @@ def _page_template() -> str:
       }}
       {d3_css}
       {chart_css}
+      {fa_css}
     </style>
     </head>
     <body>
@@ -979,6 +993,7 @@ def _build_report_html(
 
     d3_css = _load_d3_css()
     chart_css = _load_chart_css()
+    fa_css = _load_fa_css()
     theme_json_str = json.dumps(theme, ensure_ascii=False)
     d3_direction = theme.get("direction", "LR")
     # Mermaid reverses edge direction (child→parent), so its LR puts
@@ -997,6 +1012,7 @@ def _build_report_html(
         theme_json=theme_json_str,
         d3_css=d3_css,
         chart_css=chart_css,
+        fa_css=fa_css,
         d3_module_url=effective_d3_url,
         chart_module_url=effective_chart_url,
         term_resolve_url=effective_term_resolve_url,

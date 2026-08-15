@@ -55,6 +55,14 @@
 }
 .pa-root .pa-mathtip .katex { font-size: 1em; color: var(--pa-fg); }
 
+/* Also on :root, not just .pa-root. The engine appends two elements to
+   document.body on purpose — the term tooltip and the "Ask AI" term button —
+   so a proof box's overflow can never clip them. Those live OUTSIDE .pa-root,
+   so a token defined only there does not inherit, and any rule wrapping it in
+   color-mix() is dropped as invalid: the ask button rendered with its
+   border-radius but no fill and no border. Every token here is --pa-*-prefixed
+   and only read by .pa-* rules, so hoisting them is inert for the host page. */
+:root,
 .pa-root {
   --pa-fg: var(--text-color, #253029);
   --pa-muted: var(--muted-color, #68726b);
@@ -933,6 +941,7 @@
 
 /* dark theme friendliness when the host sets a dark background var */
 @media (prefers-color-scheme: dark) {
+  :root,
   .pa-root {
     --pa-fg: var(--text-color, #e8e6da);
     --pa-bg: var(--panel-bg, #1e2621);
