@@ -144,36 +144,40 @@ var state = {
 	}
 };
 //#endregion
-//#region src/coords.js
+//#region src/coords.ts
+var range = () => state.currentRange;
+var scale = () => state.currentScale;
 function dataToWorld(pos) {
-	const r = state.currentRange;
-	const s = state.currentScale;
-	if (!r || !r[0] || !r[1] || !r[2]) return [
+	const r = range();
+	const s = scale();
+	const [rx, ry, rz] = r ?? [];
+	if (!rx || !ry || !rz) return [
 		0,
 		0,
 		0
 	];
 	return [
-		((pos[0] - r[0][0]) / (r[0][1] - r[0][0]) * 2 - 1) * s[0],
-		((pos[1] - r[1][0]) / (r[1][1] - r[1][0]) * 2 - 1) * s[1],
-		((pos[2] - r[2][0]) / (r[2][1] - r[2][0]) * 2 - 1) * s[2]
+		((pos[0] - rx[0]) / (rx[1] - rx[0]) * 2 - 1) * s[0],
+		((pos[1] - ry[0]) / (ry[1] - ry[0]) * 2 - 1) * s[1],
+		((pos[2] - rz[0]) / (rz[1] - rz[0]) * 2 - 1) * s[2]
 	];
 }
 function dataCameraToWorld(pos) {
-	const r = state.currentRange;
-	const s = state.currentScale;
-	if (!r || !r[0] || !r[1] || !r[2]) return [
+	const r = range();
+	const s = scale();
+	const [rx, ry, rz] = r ?? [];
+	if (!rx || !ry || !rz) return [
 		0,
 		0,
 		0
 	];
-	const hx = (r[0][1] - r[0][0]) / 2;
-	const hy = (r[1][1] - r[1][0]) / 2;
-	const hz = (r[2][1] - r[2][0]) / 2;
+	const hx = (rx[1] - rx[0]) / 2;
+	const hy = (ry[1] - ry[0]) / 2;
+	const hz = (rz[1] - rz[0]) / 2;
 	const maxH = Math.max(hx, hy, hz, .001);
-	const cx = (r[0][0] + r[0][1]) / 2;
-	const cy = (r[1][0] + r[1][1]) / 2;
-	const cz = (r[2][0] + r[2][1]) / 2;
+	const cx = (rx[0] + rx[1]) / 2;
+	const cy = (ry[0] + ry[1]) / 2;
+	const cz = (rz[0] + rz[1]) / 2;
 	return [
 		(pos[0] - cx) / maxH * s[0],
 		(pos[1] - cy) / maxH * s[1],
@@ -181,20 +185,21 @@ function dataCameraToWorld(pos) {
 	];
 }
 function worldCameraToData(pos) {
-	const r = state.currentRange;
-	const s = state.currentScale;
-	if (!r || !r[0] || !r[1] || !r[2]) return [
+	const r = range();
+	const s = scale();
+	const [rx, ry, rz] = r ?? [];
+	if (!rx || !ry || !rz) return [
 		0,
 		0,
 		0
 	];
-	const hx = (r[0][1] - r[0][0]) / 2;
-	const hy = (r[1][1] - r[1][0]) / 2;
-	const hz = (r[2][1] - r[2][0]) / 2;
+	const hx = (rx[1] - rx[0]) / 2;
+	const hy = (ry[1] - ry[0]) / 2;
+	const hz = (rz[1] - rz[0]) / 2;
 	const maxH = Math.max(hx, hy, hz, .001);
-	const cx = (r[0][0] + r[0][1]) / 2;
-	const cy = (r[1][0] + r[1][1]) / 2;
-	const cz = (r[2][0] + r[2][1]) / 2;
+	const cx = (rx[0] + rx[1]) / 2;
+	const cy = (ry[0] + ry[1]) / 2;
+	const cz = (rz[0] + rz[1]) / 2;
 	return [
 		pos[0] * maxH / s[0] + cx,
 		pos[1] * maxH / s[1] + cy,
@@ -202,15 +207,16 @@ function worldCameraToData(pos) {
 	];
 }
 function dataLenToWorld(len) {
-	const r = state.currentRange;
-	const s = state.currentScale;
+	const r = range();
+	const s = scale();
 	const sx = 2 * s[0] / (r[0][1] - r[0][0]);
 	const sy = 2 * s[1] / (r[1][1] - r[1][0]);
 	const sz = 2 * s[2] / (r[2][1] - r[2][0]);
 	return len * (sx + sy + sz) / 3;
 }
 //#endregion
-//#region src/expr.js
+//#region src/expr.ts
+var exprState = state;
 var _mathjs = math.create(math.all);
 var _MATHJS_EXTENSIONS = {
 	toFixed: (val, decimals) => Number(val).toFixed(Number(decimals)),
@@ -220,7 +226,7 @@ var _MATHJS_EXTENSIONS = {
 		return "█".repeat(n) + "░".repeat(Number(w) - n);
 	},
 	dataTable: (table, rowIndex, column) => {
-		const t = state.sceneData && state.sceneData[String(table)];
+		const t = exprState.sceneData && exprState.sceneData[String(table)];
 		if (!Array.isArray(t)) return 0;
 		const row = t[Math.max(0, Math.min(t.length - 1, Math.round(Number(rowIndex))))];
 		if (!row) return 0;
@@ -288,7 +294,7 @@ function _isValidSceneFunctionName(name) {
 function _getMathNamesAndValues() {
 	const names = _CORE_MATH_NAMES.slice();
 	const vals = names.map((n) => Object.prototype.hasOwnProperty.call(_EXPR_HELPERS, n) ? _EXPR_HELPERS[n] : Math[n]);
-	for (const src of [state._activeDomainFunctions, state.activeSceneExprFunctions]) for (const [name, fn] of Object.entries(src || {})) {
+	for (const src of [exprState._activeDomainFunctions, exprState.activeSceneExprFunctions]) for (const [name, fn] of Object.entries(src || {})) {
 		if (typeof fn !== "function") continue;
 		if (names.includes(name)) continue;
 		names.push(name);
@@ -303,11 +309,11 @@ function _buildScope(extras, overrides) {
 	const scope = {
 		..._MATH_SCOPE,
 		..._EXPR_HELPERS,
-		...state._activeDomainFunctions,
-		...state.activeSceneExprFunctions || {},
+		...exprState._activeDomainFunctions,
+		...exprState.activeSceneExprFunctions || {},
 		...extras
 	};
-	for (const [id, s] of Object.entries(state.sceneSliders)) scope[id] = s ? s.value : 0;
+	for (const [id, s] of Object.entries(exprState.sceneSliders)) scope[id] = s ? s.value : 0;
 	return overrides ? {
 		...scope,
 		...overrides
@@ -323,7 +329,7 @@ function _loadDomainScript(name) {
 	});
 }
 async function importDomains(importList) {
-	state._activeDomainFunctions = {};
+	exprState._activeDomainFunctions = {};
 	if (!Array.isArray(importList) || importList.length === 0) return;
 	for (const name of importList) {
 		if (typeof name !== "string") continue;
@@ -336,31 +342,32 @@ async function importDomains(importList) {
 		const fns = window.AlgeBenchDomains._registry[name];
 		if (fns) {
 			if (typeof fns._init === "function") fns._init({ getSlider(id, fallback = 0) {
-				const s = state.sceneSliders[id];
+				const s = exprState.sceneSliders[id];
 				if (!s) return fallback;
 				const v = Number(s.value);
 				return Number.isFinite(v) ? v : fallback;
 			} });
 			const { _init, ...publicFns } = fns;
-			Object.assign(state._activeDomainFunctions, publicFns);
+			Object.assign(exprState._activeDomainFunctions, publicFns);
 		}
 	}
 }
 function setActiveSceneFunctions(scene) {
-	state.activeSceneExprFunctions = {};
-	state.activeSceneFunctionDefs = [];
+	exprState.activeSceneExprFunctions = {};
+	exprState.activeSceneFunctionDefs = [];
 	const defs = scene && Array.isArray(scene.functions) ? scene.functions : [];
 	if (!defs.length) return;
 	const used = /* @__PURE__ */ new Set();
 	const normalized = [];
-	for (const raw of defs) {
-		if (!raw || typeof raw !== "object") continue;
+	for (const rawEntry of defs) {
+		if (!rawEntry || typeof rawEntry !== "object") continue;
+		const raw = rawEntry;
 		const name = typeof raw.name === "string" ? raw.name : raw.id;
 		if (!_isValidSceneFunctionName(name)) {
 			console.warn("scene.functions entry skipped (invalid name):", raw);
 			continue;
 		}
-		if (_CORE_MATH_NAMES.includes(name) || Object.prototype.hasOwnProperty.call(_EXPR_HELPERS, name) || Object.prototype.hasOwnProperty.call(state._activeDomainFunctions, name)) {
+		if (_CORE_MATH_NAMES.includes(name) || Object.prototype.hasOwnProperty.call(_EXPR_HELPERS, name) || Object.prototype.hasOwnProperty.call(exprState._activeDomainFunctions, name)) {
 			console.warn("scene.functions entry skipped (reserved name):", name);
 			continue;
 		}
@@ -398,7 +405,7 @@ function setActiveSceneFunctions(scene) {
 		});
 		used.add(name);
 	}
-	for (const def of normalized) state.activeSceneExprFunctions[def.name] = () => 0;
+	for (const def of normalized) exprState.activeSceneExprFunctions[def.name] = () => 0;
 	for (const def of normalized) {
 		let compiled;
 		try {
@@ -407,13 +414,13 @@ function setActiveSceneFunctions(scene) {
 			console.warn("scene.functions compile error:", def.name, err);
 			compiled = _mathjs.compile("0");
 		}
-		state.activeSceneFunctionDefs.push({
+		exprState.activeSceneFunctionDefs.push({
 			...def,
 			compiled
 		});
 	}
-	for (const def of state.activeSceneFunctionDefs) state.activeSceneExprFunctions[def.name] = (...callArgs) => {
-		const frame = state._activeExprEvalFrame || null;
+	for (const def of exprState.activeSceneFunctionDefs) exprState.activeSceneExprFunctions[def.name] = (...callArgs) => {
+		const frame = exprState._activeExprEvalFrame || null;
 		const scope = frame && frame.extraScope && typeof frame.extraScope === "object" ? { ...frame.extraScope } : {};
 		for (let i = 0; i < def.args.length; i++) scope[def.args[i]] = i < callArgs.length ? callArgs[i] : 0;
 		if (frame && Number.isFinite(frame.t)) scope.t = frame.t;
@@ -427,8 +434,8 @@ function setActiveSceneFunctions(scene) {
 	};
 }
 function recompileActiveSceneFunctions() {
-	if (!Array.isArray(state.activeSceneFunctionDefs) || !state.activeSceneFunctionDefs.length) return;
-	for (const def of state.activeSceneFunctionDefs) try {
+	if (!Array.isArray(exprState.activeSceneFunctionDefs) || !exprState.activeSceneFunctionDefs.length) return;
+	for (const def of exprState.activeSceneFunctionDefs) try {
 		def.compiled = compileExpr(def.expr);
 	} catch (err) {
 		console.warn("scene.functions recompile error:", def.name, err);
@@ -437,35 +444,36 @@ function recompileActiveSceneFunctions() {
 }
 function _normalizeVirtualTimeExpr(spec) {
 	if (typeof spec === "string") return spec;
-	if (spec && spec.options) {
-		if (typeof spec.options.expr === "string") return spec.options.expr;
-		if (typeof spec.options.scale === "number") return `${Number(spec.options.scale)}*t`;
+	const o = spec;
+	if (o && o.options) {
+		if (typeof o.options.expr === "string") return o.options.expr;
+		if (typeof o.options.scale === "number") return `${Number(o.options.scale)}*t`;
 	}
-	if (spec && typeof spec.expr === "string") return spec.expr;
+	if (o && typeof o.expr === "string") return o.expr;
 	return null;
 }
 function setActiveVirtualTimeExpr(scene, stepIdx) {
 	const sceneExpr = _normalizeVirtualTimeExpr(scene && scene.virtualTime);
 	let stepExpr = null;
 	if (scene && Array.isArray(scene.steps) && stepIdx >= 0 && scene.steps[stepIdx]) stepExpr = _normalizeVirtualTimeExpr(scene.steps[stepIdx].virtualTime);
-	state.activeVirtualTimeExpr = stepExpr || sceneExpr || null;
-	if (!state.activeVirtualTimeExpr) {
-		state.activeVirtualTimeCompiled = null;
+	exprState.activeVirtualTimeExpr = stepExpr || sceneExpr || null;
+	if (!exprState.activeVirtualTimeExpr) {
+		exprState.activeVirtualTimeCompiled = null;
 		return;
 	}
 	try {
-		state.activeVirtualTimeCompiled = compileExpr(state.activeVirtualTimeExpr);
+		exprState.activeVirtualTimeCompiled = compileExpr(exprState.activeVirtualTimeExpr);
 	} catch (err) {
 		console.warn("virtualTime compile error:", err);
-		state.activeVirtualTimeCompiled = null;
+		exprState.activeVirtualTimeCompiled = null;
 	}
 }
 function resolveVirtualAnimTime(rawT) {
-	if (!state.activeVirtualTimeCompiled) return rawT;
-	const tauSlider = state.sceneSliders.tau;
+	if (!exprState.activeVirtualTimeCompiled) return rawT;
+	const tauSlider = exprState.sceneSliders.tau;
 	const tau = tauSlider ? Number(tauSlider.value) : rawT;
 	try {
-		const mapped = evalExpr(state.activeVirtualTimeCompiled, rawT, {
+		const mapped = evalExpr(exprState.activeVirtualTimeCompiled, rawT, {
 			useVirtualTime: false,
 			extraScope: { tau }
 		});
@@ -477,7 +485,7 @@ function resolveVirtualAnimTime(rawT) {
 function compileExpr(exprStr) {
 	exprStr = _normalizeSingleQuotes(exprStr);
 	if (_JS_ONLY_RE.test(exprStr)) {
-		if (state._sceneJsTrustState === "trusted") {
+		if (exprState._sceneJsTrustState === "trusted") {
 			const fn = Function("scope", "with (scope) { return (" + exprStr + "); }");
 			fn._isFallback = true;
 			return fn;
@@ -487,7 +495,7 @@ function compileExpr(exprStr) {
 	try {
 		return _mathjs.compile(exprStr);
 	} catch (_e) {
-		if (state._sceneJsTrustState === "trusted") {
+		if (exprState._sceneJsTrustState === "trusted") {
 			const fn = Function("scope", "with (scope) { return (" + exprStr + "); }");
 			fn._isFallback = true;
 			return fn;
@@ -499,8 +507,8 @@ function evalExpr(compiled, t, opts = {}) {
 	const evalT = opts.useVirtualTime !== false ? resolveVirtualAnimTime(t) : t;
 	const extraScope = opts && typeof opts.extraScope === "object" && opts.extraScope ? opts.extraScope : null;
 	const overrideScope = opts && typeof opts.overrideScope === "object" && opts.overrideScope ? opts.overrideScope : null;
-	const prevFrame = state._activeExprEvalFrame;
-	state._activeExprEvalFrame = {
+	const prevFrame = exprState._activeExprEvalFrame;
+	exprState._activeExprEvalFrame = {
 		t: evalT,
 		extraScope
 	};
@@ -514,13 +522,13 @@ function evalExpr(compiled, t, opts = {}) {
 			...extraScope || {}
 		}, overrideScope));
 	} finally {
-		state._activeExprEvalFrame = prevFrame;
+		exprState._activeExprEvalFrame = prevFrame;
 	}
 }
 function compileSurfaceExpr(exprStr) {
 	exprStr = _normalizeSingleQuotes(exprStr);
 	if (_JS_ONLY_RE.test(exprStr)) {
-		if (state._sceneJsTrustState === "trusted") {
+		if (exprState._sceneJsTrustState === "trusted") {
 			const fn = Function("scope", "with (scope) { return (" + exprStr + "); }");
 			fn._isFallback = true;
 			return fn;
@@ -530,7 +538,7 @@ function compileSurfaceExpr(exprStr) {
 	try {
 		return _mathjs.compile(exprStr);
 	} catch (_e) {
-		if (state._sceneJsTrustState === "trusted") {
+		if (exprState._sceneJsTrustState === "trusted") {
 			const fn = Function("scope", "with (scope) { return (" + exprStr + "); }");
 			fn._isFallback = true;
 			return fn;
@@ -539,8 +547,8 @@ function compileSurfaceExpr(exprStr) {
 	}
 }
 function evalSurfaceExpr(compiled, u, v) {
-	const prevFrame = state._activeExprEvalFrame;
-	state._activeExprEvalFrame = {
+	const prevFrame = exprState._activeExprEvalFrame;
+	exprState._activeExprEvalFrame = {
 		t: prevFrame && Number.isFinite(prevFrame.t) ? prevFrame.t : 0,
 		u,
 		v,
@@ -556,7 +564,7 @@ function evalSurfaceExpr(compiled, u, v) {
 			v
 		}));
 	} finally {
-		state._activeExprEvalFrame = prevFrame;
+		exprState._activeExprEvalFrame = prevFrame;
 	}
 }
 //#endregion
@@ -7528,7 +7536,8 @@ function renderElement(el, view) {
 	}
 }
 //#endregion
-//#region src/trust.js
+//#region src/trust.ts
+var trustState = state;
 var _issuesPanelToggleFn = null;
 function scanSpecForUnsafeJs(spec) {
 	const issues = [];
@@ -7564,17 +7573,20 @@ function scanSpecForUnsafeJs(spec) {
 			if (k === "content" && typeof v === "string") {
 				let m;
 				_TEMPLATE_RE.lastIndex = 0;
-				while ((m = _TEMPLATE_RE.exec(v)) !== null) if (_JS_ONLY_RE.test(m[1])) issues.push({
-					path: childPath,
-					expr: m[1].trim(),
-					type: "template"
-				});
+				while ((m = _TEMPLATE_RE.exec(v)) !== null) {
+					const inner = m[1];
+					if (_JS_ONLY_RE.test(inner)) issues.push({
+						path: childPath,
+						expr: inner.trim(),
+						type: "template"
+					});
+				}
 			}
 			walk(v, k, childPath);
 		});
 	}
 	walk(spec, null, "");
-	state._sceneJsIssues = issues;
+	trustState._sceneJsIssues = issues;
 	return issues.length > 0;
 }
 function showTrustDialog(explanation, imports) {
@@ -7587,10 +7599,13 @@ function showTrustDialog(explanation, imports) {
 			resolve(false);
 			return;
 		}
-		body.innerHTML = "";
+		const bodyEl = body;
+		const allow = allowBtn;
+		const deny = denyBtn;
+		bodyEl.innerHTML = "";
 		const explanationEl = document.createElement("p");
 		explanationEl.textContent = explanation;
-		body.appendChild(explanationEl);
+		bodyEl.appendChild(explanationEl);
 		if (Array.isArray(imports) && imports.length > 0) {
 			const domainNote = document.createElement("div");
 			domainNote.className = "trust-dialog-domains";
@@ -7606,13 +7621,13 @@ function showTrustDialog(explanation, imports) {
 				pills.appendChild(pill);
 			});
 			domainNote.appendChild(pills);
-			body.appendChild(domainNote);
+			bodyEl.appendChild(domainNote);
 		}
 		overlay.classList.remove("hidden");
 		function cleanup(result) {
 			overlay.classList.add("hidden");
-			allowBtn.removeEventListener("click", onAllow);
-			denyBtn.removeEventListener("click", onDeny);
+			allow.removeEventListener("click", onAllow);
+			deny.removeEventListener("click", onDeny);
 			resolve(result);
 		}
 		function onAllow() {
@@ -7621,8 +7636,8 @@ function showTrustDialog(explanation, imports) {
 		function onDeny() {
 			cleanup(false);
 		}
-		allowBtn.addEventListener("click", onAllow);
-		denyBtn.addEventListener("click", onDeny);
+		allow.addEventListener("click", onAllow);
+		deny.addEventListener("click", onDeny);
 	});
 }
 function updateJsTrustPill() {
@@ -7630,18 +7645,18 @@ function updateJsTrustPill() {
 	const icon = document.getElementById("js-trust-pill-icon");
 	const label = document.getElementById("js-trust-pill-label");
 	if (!pill) return;
-	if (state._sceneJsTrustState === "trusted") {
+	if (trustState._sceneJsTrustState === "trusted") {
 		pill.className = "js-trusted";
 		icon.textContent = "⚡";
 		label.textContent = "Native JS";
 		pill.classList.remove("hidden");
-	} else if (state._sceneJsTrustState === "untrusted") {
+	} else if (trustState._sceneJsTrustState === "untrusted") {
 		pill.className = "js-untrusted";
 		icon.textContent = "⚠";
 		label.textContent = "JS disabled";
 		pill.classList.remove("hidden");
 	} else pill.classList.add("hidden");
-	const pillClickable = state._sceneIsUnsafe || state._sceneJsIssues.length > 0;
+	const pillClickable = trustState._sceneIsUnsafe || trustState._sceneJsIssues.length > 0;
 	pill.onclick = pillClickable ? () => {
 		document.getElementById("btn-show-json").click();
 		if (_issuesPanelToggleFn) _issuesPanelToggleFn(document.getElementById("json-viewer-issues"));

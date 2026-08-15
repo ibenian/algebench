@@ -1,4 +1,4 @@
-//#region src/icons.js
+//#region src/icons.ts
 /** { } View proof JSON. */
 var BRACES_ICON = "<svg viewBox=\"0 0 24 24\" width=\"14\" height=\"14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5a2 2 0 0 0 2 2h1\"/><path d=\"M16 3h1a2 2 0 0 1 2 2v5a2 2 0 0 0 2 2 2 2 0 0 0-2 2v5a2 2 0 0 1-2 2h-1\"/></svg>";
 /** < > Get embed script. */
@@ -2963,7 +2963,7 @@ function validateProofData(data) {
 	return out;
 }
 //#endregion
-//#region src/theme.js
+//#region src/theme.ts
 var THEMES = /* @__PURE__ */ new Set([
 	"dark",
 	"light",
@@ -2999,9 +2999,8 @@ function persistTheme(t, key = THEME_KEY) {
 *  URL param override (allowlisted) → saved localStorage preference → fallback.
 *  If the chosen value is "auto", resolve it against the OS as the final step. */
 function initialTheme({ key = THEME_KEY, param = "theme", fallback = "dark", useStored = true } = {}) {
-	let t = param ? new URLSearchParams(location.search).get(param) : null;
-	if (!THEMES.has(t)) t = useStored && storedTheme(key) || fallback;
-	return resolveTheme(t);
+	const raw = param ? new URLSearchParams(location.search).get(param) : null;
+	return resolveTheme(raw !== null && THEMES.has(raw) ? raw : useStored && storedTheme(key) || fallback);
 }
 /** Wire a header toggle button: flip dark<->light, persist it, and repaint the
 *  glyph (☾ in dark, ☀ in light). Calls onChange(next) after each flip. Returns
