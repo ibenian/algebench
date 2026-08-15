@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lines of Code Report — AlgeBench</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0d1117; color: #e6edf3; padding: 2rem; line-height: 1.6;
+    max-width: 960px; margin: 0 auto;
+  }
+  h1 { font-size: 1.5rem; margin: 1.5rem 0 0.5rem; border-bottom: 1px solid #30363d; padding-bottom: 0.5rem; }
+  h2 { font-size: 1.2rem; margin: 1.5rem 0 0.5rem; color: #8b949e; }
+  p { margin: 0.5rem 0; }
+  blockquote {
+    border-left: 3px solid #30363d; padding: 0.5rem 1rem;
+    color: #8b949e; margin: 0.5rem 0; background: #161b22; border-radius: 4px;
+  }
+  table {
+    border-collapse: collapse; width: 100%; margin: 0.5rem 0;
+    background: #161b22; border-radius: 8px; overflow: hidden;
+  }
+  th, td {
+    border: 1px solid #30363d; padding: 0.5rem 0.75rem; text-align: left;
+    font-size: 0.85rem;
+  }
+  th { background: #1c2128; font-weight: 600; }
+  pre {
+    background: #161b22; border: 1px solid #30363d; border-radius: 8px;
+    padding: 1rem; overflow-x: auto; font-size: 0.8rem; margin: 0.5rem 0;
+  }
+  code { font-family: 'JetBrains Mono', 'Fira Code', monospace; }
+  .mermaid { background: #161b22; border-radius: 8px; padding: 1rem; margin: 0.5rem 0; }
+  a { color: #58a6ff; }
+  .markdown-alert {
+    border-left: 3px solid; padding: 0.5rem 1rem; margin: 0.5rem 0;
+    background: #161b22; border-radius: 4px;
+  }
+  .markdown-alert-title { font-weight: 600; margin-bottom: 0.25rem; display: flex; align-items: center; gap: 0.4rem; }
+  .markdown-alert-note  { border-color: #539bf5; }
+  .markdown-alert-note .markdown-alert-title { color: #539bf5; }
+  .markdown-alert-tip   { border-color: #57ab5a; }
+  .markdown-alert-tip .markdown-alert-title { color: #57ab5a; }
+  .markdown-alert-important { border-color: #986ee2; }
+  .markdown-alert-important .markdown-alert-title { color: #986ee2; }
+  .markdown-alert-warning { border-color: #c69026; }
+  .markdown-alert-warning .markdown-alert-title { color: #c69026; }
+  .markdown-alert-caution { border-color: #e5534b; }
+  .markdown-alert-caution .markdown-alert-title { color: #e5534b; }
+</style>
+</head>
+<body>
+<div id="content"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: false, theme: 'dark' });
+
+  const md = document.getElementById('raw-md').textContent;
+
+  const alertIcons = {
+    note: 'ℹ️', tip: '💡', important: '❗',
+    warning: '⚠️', caution: '🛑'
+  };
+
+  const renderer = new marked.Renderer();
+  const origCode = renderer.code.bind(renderer);
+  renderer.code = function(code, language) {
+    if (language === 'mermaid') {
+      return '<div class="mermaid">' + code + '</div>';
+    }
+    return origCode(code, language);
+  };
+  const origBlockquote = renderer.blockquote.bind(renderer);
+  renderer.blockquote = function(quote) {
+    const m = quote.match(/^\s*<p>\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\][\s\n]*/i);
+    if (m) {
+      const kind = m[1].toLowerCase();
+      const body = quote.replace(m[0], '<p>');
+      const icon = alertIcons[kind] || '';
+      return '<div class="markdown-alert markdown-alert-' + kind + '">'
+        + '<p class="markdown-alert-title">' + icon + ' ' + m[1] + '</p>'
+        + body + '</div>';
+    }
+    return origBlockquote(quote);
+  };
+
+  marked.setOptions({ renderer, gfm: true, breaks: false });
+  const dirty = marked.parse(md);
+  if (typeof DOMPurify !== 'undefined') {
+    document.getElementById('content').innerHTML = DOMPurify.sanitize(dirty, {ADD_TAGS: ['div'], ADD_ATTR: ['class']});
+  } else {
+    document.getElementById('content').innerHTML = dirty;
+  }
+
+  await mermaid.run();
+</script>
+<script id="raw-md" type="text/plain">
+# Lines of Code Report
+
+> **Auto-generated** by [`scripts/loc-report.sh`](scripts/loc-report.sh) — do not edit manually.
+
+| Field | Value |
+|---|---|
+| **Branch** | `fix/derive-title-inline-bold` |
+| **Commit** | `1e2187e` |
+| **Date** | 2026-08-15 00:02:24 -0400 |
+
+> [!NOTE]
+> Charts render on GitHub and in Mermaid-compatible viewers.
+
+```mermaid
+xychart-beta horizontal
+  title "Code Lines by Directory"
+  x-axis ["scenes", "static", "(other)", "backend", "tests", "scripts", "docs", "schemas", "themes"]
+  bar [63481, 37037, 36229, 21115, 20905, 7378, 4199, 1841, 317]
+```
+
+## By Directory
+
+| Directory | Code | Comments | Blanks |
+|---|---:|---:|---:|
+| `scenes/` | 63,481 | 0 | 1 |
+| `static/` | 37,037 | 1,980 | 652 |
+| `(other)/` | 36,229 | 0 | 0 |
+| `backend/` | 21,115 | 3,575 | 3,155 |
+| `tests/` | 20,905 | 1,813 | 4,670 |
+| `scripts/` | 7,378 | 824 | 1,020 |
+| `docs/` | 4,199 | 9,414 | 2,976 |
+| `schemas/` | 1,841 | 0 | 0 |
+| `themes/` | 317 | 0 | 0 |
+| **Total** | **192,502** | **17,606** | **12,474** |
+
+```mermaid
+xychart-beta horizontal
+  title "Lines of Code by Language"
+  x-axis ["JSON", "JavaScript", "Python", "CSS", "HTML", "TypeScript", "Shell", "BASH", "YAML", "Dockerfile"]
+  bar [73228, 57351, 47304, 6630, 2297, 540, 404, 124, 25, 16]
+```
+
+## Summary by Language
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Language              Files        Lines         Code     Comments       Blanks
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ JSON                     68        73233        73228            0            5
+ JavaScript               88        64571        57351         4677         2543
+ Python                  233        61042        47304         5229         8509
+ CSS                       9         7666         6630          670          366
+ TypeScript                2         1561          540         1013            8
+ Shell                     5          610          404          136           70
+ BASH                      2          171          124           33           14
+ YAML                      1           39           25           13            1
+ Dockerfile                1           32           16            9            7
+ Plain Text                2           61            0           59            2
+─────────────────────────────────────────────────────────────────────────────────
+ HTML                     14         2491         2297          113           81
+ |- CSS                   10         1584         1356          156           72
+ |- HTML                   1           39           33            0            6
+ |- JavaScript             7         1045          905           48           92
+ (Total)                             5159         4591          317          251
+─────────────────────────────────────────────────────────────────────────────────
+ Markdown                 84        17341            0        13230         4111
+ |- BASH                  25          480          359           82           39
+ |- JavaScript             1           10            6            3            1
+ |- JSON                  33         1318         1318            0            0
+ |- Markdown               1            1            0            1            0
+ |- Python                 9          462          421            7           34
+ |- XML                    1          228          185           43            0
+ (Total)                            19840         2289        13366         4185
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Total                   509       233985       192502        25522        15961
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+## Frontend Assets (per file)
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Language              Files        Lines         Code     Comments       Blanks
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ JavaScript               10        30590        29132         1190          268
+─────────────────────────────────────────────────────────────────────────────────
+ |bench/static/dist/index.js        22394        21652          741            1
+ |bench/static/dist/theme.js         3030         2964           65            1
+ |bench/static/dist/prove.js         1937         1754          182            1
+ |h/algebench/static/chat.js         1523         1233          135          155
+ |cislunar-dynamics/index.js          611          546            8           57
+ |static/dist/renderproof.js          400          370           29            1
+ |atmospheric-entry/index.js          373          335            8           30
+ |ins/astrodynamics/index.js          228          198           10           20
+ |atic/dist/expert-client.js           59           55            3            1
+ |bench/static/theme-init.js           35           25            9            1
+─────────────────────────────────────────────────────────────────────────────────
+ CSS                       8         7545         6546          644          355
+─────────────────────────────────────────────────────────────────────────────────
+ |algebench/static/style.css         4570         4163          208          199
+ |mation/proof-animation.css         1135          814          284           37
+ |ic/graph-panel/fa-page.css          474          399           54           21
+ |lgebench/static/tokens.css          405          330           45           30
+ |c/graph-panel/sg-chart.css          358          320           10           28
+ |anel/d3-semantic-graph.css          328          277           27           24
+ |nch/static/coach/coach.css          154          130           13           11
+ |raph-panel/graph-panel.css          121          113            3            5
+─────────────────────────────────────────────────────────────────────────────────
+ JSON                      3          319          319            0            0
+─────────────────────────────────────────────────────────────────────────────────
+ |ns/astrodynamics/docs.json          156          156            0            0
+ |islunar-dynamics/docs.json          122          122            0            0
+ |tmospheric-entry/docs.json           41           41            0            0
+─────────────────────────────────────────────────────────────────────────────────
+ HTML                      3          733          677           47            9
+ |- CSS                    2          433          360           61           12
+ (Total)                             1166         1037          108           21
+─────────────────────────────────────────────────────────────────────────────────
+ |lgebench/static/index.html          396          383            9            4
+-- /home/runner/work/algebench/algebench/static/prove.html ----------------------
+ |- HTML                              268          232           31            5
+ |- CSS                               345          295           38           12
+ /home/runner/work/algebench/algebench/static/prove.html            268          232           31            5
+-- /home/runner/work/algebench/algebench/static/renderproof.html ----------------
+ |- HTML                               69           62            7            0
+ |- CSS                                88           65           23            0
+ /home/runner/work/algebench/algebench/static/renderproof.html             69           62            7            0
+─────────────────────────────────────────────────────────────────────────────────
+ Markdown                  1           46            0           38            8
+ |- BASH                   1            3            3            0            0
+ (Total)                               49            3           38            8
+─────────────────────────────────────────────────────────────────────────────────
+ /home/runner/work/algebench/algebench/static/proof-animation/README.md
+ |- Markdown                           46            0           38            8
+ |- BASH                                3            3            0            0
+ /home/runner/work/algebench/algebench/static/proof-animation/README.md             46            0           38            8
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Total                    25        39669        37037         1980          652
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+## Backend Python (per file)
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Language              Files        Lines         Code     Comments       Blanks
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Python                  233        61042        47304         5229         8509
+─────────────────────────────────────────────────────────────────────────────────
+ |_graph/sympy_translator.py         4430         3527          519          384
+ |lgebench/backend/server.py         2762         2244          276          242
+ |aph/test_latex_to_graph.py         2172         1735          166          271
+ |s/semantic_graph_report.py         1239         1118           37           84
+ |semantic_graph_enricher.py         1174          820          219          135
+ |cripts/graph_to_mermaid.py         1035          746          200           89
+ |mpletion/step_grounding.py          960          685          132          143
+ |semantic_graph_enricher.py          858          677          110           71
+ |ntic_graph/preprocessor.py          738          650           41           47
+ |nch/backend/agent_tools.py          737          631           50           56
+ |ssion_analysis/proposer.py          771          610           62           99
+ |s/test_graph_to_mermaid.py          740          539          100          101
+ |nch/scripts/render_math.py          567          524            6           37
+ |ripts/audit_expressions.py          707          521           93           93
+ |ench/backend/proof_chat.py          599          501           55           43
+ |of_completion/cas_guard.py          642          499           56           87
+ |backend/proof_api/store.py          581          482           40           59
+ |ic_graph/equation_chain.py          566          479           25           62
+ |s/adapters/line_adapter.py          567          461           55           51
+ |cripts/validate_content.py          602          453           42          107
+ |ers/proof_edit/validate.py          545          437           47           61
+ |rts/test_proof_edit_ops.py          555          433           20          102
+ |of_completion/grounding.py          622          432          112           78
+ |mantic_graph_enrichment.py          487          417           30           40
+ |dules/proof_edit/intent.py          514          406           59           49
+ |xperts/test_view_ranges.py          488          393           23           72
+ |prebake_semantic_graphs.py          482          392           52           38
+ |/proof_animation/report.py          449          388           22           39
+ |proof_animation/handler.py          590          381          144           65
+ |backend/test_proof_chat.py          518          372           32          114
+ |proof_animation_handler.py          531          369           36          126
+ |ers/proof_edit/variants.py          474          366           61           47
+ |rts/test_step_grounding.py          498          364           44           90
+ |f_completion/tree_match.py          443          363           24           56
+ |_graph/mathjs_converter.py          498          360           72           66
+ |perts/test_line_adapter.py          465          355           12           98
+ |ssion_analysis/features.py          451          354           40           57
+ |graph/test_preprocessor.py          479          338           52           89
+ |nd/test_proof_endpoints.py          444          332           34           78
+ |h/test_sympy_translator.py          452          331           27           94
+ |ph/test_conditional_bar.py          417          327           19           71
+ |h/generators/invariants.py          412          321            7           84
+ |est_proof_edit_variants.py          416          304           30           82
+ |ic_graph/latex_renderer.py          451          304          103           44
+ |handlers/proof_edit/ops.py          406          293           52           61
+ |on_analysis/view_ranges.py          378          293           37           48
+ |est_proof_edit_outcomes.py          382          287           23           72
+ |experts/test_tree_match.py          387          281           30           76
+ |/experts/test_grounding.py          401          280           50           71
+ |h/test_mathjs_converter.py          403          277           30           96
+ |/test_domain_arithmetic.py          335          261           25           49
+ |roof_completion/outputs.py          388          261           72           55
+ |test_domain_probability.py          313          260           13           40
+ |c_graph/test_edge_roles.py          290          256            5           29
+ |/experts/test_cas_guard.py          368          255           31           82
+ |/test_domain_structural.py          311          250           14           47
+ |ompletion/domain_rescue.py          301          239           33           29
+ |domains/test_domain_pde.py          286          234            7           45
+ |ns/test_domain_calculus.py          289          234           14           41
+ |ins/test_domain_quantum.py          294          233           17           44
+ |raph/test_postprocessor.py          318          233           24           61
+ |proof_completion_derive.py          283          232           20           31
+ |t_autofill_proof_shapes.py          268          230            6           32
+ |/scripts/regrade_proofs.py          266          229            9           28
+ |s/test_domain_chemistry.py          291          229           20           42
+ |ession_analysis/handler.py          272          222           19           31
+ |kend/experts/llm_config.py          273          222           23           28
+ |ripts/extract_structure.py          259          218            5           36
+ |/test_domain_relativity.py          275          218           16           41
+ |/proof_completion/judge.py          256          217           10           29
+ |ins/test_domain_algebra.py          279          216           24           39
+ |end/experts/test_refine.py          312          216           21           75
+ |proof_completion/module.py          347          216          102           29
+ |experts/test_llm_config.py          283          210            9           64
+ |erts/test_domain_rescue.py          306          209           28           69
+ |emantic_graph/constants.py          280          206           42           32
+ |roof_completion/dataset.py          279          206           33           40
+ |oof_animation/animation.py          275          203           55           17
+ |mation/prompt_endpoints.py          255          203           16           36
+ |proof_completion/metric.py          273          202           32           39
+ |tic_graph/postprocessor.py          246          197           25           24
+ |ackend/proof_api/routes.py          243          196           25           22
+ |latex_fields_avoid_json.py          236          193           15           28
+ |ench/scripts/lint_scene.py          242          189           15           38
+ |est_domain_trigonometry.py          238          186           13           39
+ |mains/test_domain_logic.py          236          186           13           37
+ |ains/test_domain_fluids.py          238          184           15           39
+ |/domains/test_domain_em.py          228          180            6           42
+ |ains/test_domain_thermo.py          226          179            6           41
+ |mains/test_domain_waves.py          227          179            6           42
+ |of_completion/graph_ops.py          233          178           19           36
+ |domains/test_domain_ode.py          226          176           14           36
+ |nd/experts/test_outputs.py          267          175           37           55
+ |ession_analysis_handler.py          236          175           15           46
+ |s/test_domain_mechanics.py          222          174            6           42
+ |st_domain_combinatorics.py          206          160           13           33
+ |ins/test_domain_complex.py          205          159           13           33
+ |/test_limits_unresolved.py          207          159            6           42
+ |ains/test_domain_linalg.py          204          157           13           34
+ |scripts/validate_schema.py          180          154            1           25
+ |proof_completion/refine.py          212          153           42           17
+ |/scripts/assemble_scene.py          194          149            2           43
+ |oof_completion/evaluate.py          178          148            5           25
+ |st_domain_number_theory.py          195          147           13           35
+ |backend/proof_api/pages.py          185          145           27           13
+ |lers/proof_edit/handler.py          182          142           13           27
+ |ench/backend/util/latex.py          159          141            2           16
+ |egrade_proof_confidence.py          166          139            6           21
+ |ackend/test_proof_store.py          183          139           12           32
+ |est_expression_features.py          211          139           20           52
+ |ipts/loc_report_to_html.py          155          138            3           14
+ |graph_highlight_overlay.py          178          137            2           39
+ |ph/test_cycle_detection.py          160          134            3           23
+ |/test_derivative_in_sum.py          168          132            4           32
+ |mpletion/compare_refine.py          164          129            8           27
+ |perts/test_domain_judge.py          191          128           13           50
+ |ackend/experts/registry.py          164          125           11           28
+ |/tests/test_render_math.py          177          124           18           35
+ |/generators/expressions.py          150          118            5           27
+ |nd/model/semantic_graph.py          172          116           23           33
+ |c_graph/test_plus_minus.py          149          115            5           29
+ |f_completion/wellformed.py          151          115           11           25
+ |aph/test_equation_chain.py          177          114           15           48
+ |st_dot_notation_restore.py          162          112           21           29
+ |ic_graph/test_constants.py          142          111            3           28
+ |/proof_animation/derive.py          129          106            8           15
+ |nch/backend/agents/base.py          124          105            0           19
+ |ench/tests/test_version.py          152          104            5           43
+ |test_stored_change_type.py          152           99           20           33
+ |proof_completion/reward.py          128           99           12           17
+ |_prompt_endpoints_retry.py          123           98            2           23
+ |s/test_proof_edit_patch.py          123           98            2           23
+ |end/experts/test_reward.py          136           96            8           32
+ |ation/term_descriptions.py          124           96           11           17
+ |latex_renderer_integral.py          120           94            3           23
+ |emantic_graph/signature.py          115           93            0           22
+ |of_completion/signature.py          106           93            7            6
+ |h/test_negated_fraction.py          109           90            2           17
+ |/scripts/latex_to_graph.py          108           89            8           11
+ |kend/experts/context_id.py          108           89            2           17
+ |backend/experts/service.py          106           88            0           18
+ |ests/test_path_security.py          119           87            5           27
+ |sion_analysis/build_log.py          112           87            8           17
+ |ts/ci_validate_prebaked.py          101           85            4           12
+ |proof_completion_module.py          118           85            8           25
+ |_selected_nodes_context.py          108           85            7           16
+ |gebench/scripts/version.py          103           84            1           18
+ |ntic_graph/test_service.py          107           80            4           23
+ |ntic_graph/test_compose.py          101           80            2           19
+ |pletion/grounding_score.py          100           80            4           16
+ |ch/tests/test_ratelimit.py           99           77            1           21
+ |est_coverage_exhaustive.py          102           75            4           23
+ |resolve_scene_path_safe.py          100           72            4           24
+ |aph/test_tuple_equation.py          107           72           10           25
+ |/backend/util/ratelimit.py           88           71            0           17
+ |oof_completion/optimize.py           88           68            7           13
+ |ph/generators/variables.py           77           68            0            9
+ |dlers/proof_edit/models.py          112           67           25           20
+ |experts/test_wellformed.py          123           66           17           40
+ |tic_graph/test_id_utils.py           89           65            8           16
+ |test_loc_report_to_html.py           87           64            0           23
+ |_graph/test_disjunction.py           96           64           13           19
+ |tex_renderer_derivative.py           84           64            4           16
+ |tic_graph/test_integral.py           84           64            3           17
+ |end/experts/test_metric.py           85           62            4           19
+ |/experts/test_graph_ops.py           83           61            2           20
+ |roof_completion/dataset.py           75           60            4           11
+ |gebench/scripts/_pc_env.py           71           59            0           12
+ |kend/util/test_pathutil.py           76           58            3           15
+ |backend/util/test_latex.py          118           57           15           46
+ |test_latex_renderer_log.py           74           57            4           13
+ |/test_repeated_operands.py           72           57            0           15
+ |mantic_graph/test_cache.py           70           57            0           13
+ |ents/test_schema_parity.py           73           55            0           18
+ |roof_animation/finalize.py           61           54            0            7
+ |t_semantic_graph_themes.py           69           51            0           18
+ |s/proof_animation/build.py           67           50            9            8
+ |ests/test_scene_schemas.py           66           50            0           16
+ |omains/equation_solving.py           64           50            0           14
+ |x_renderer_undefined_fn.py           63           48            0           15
+ |/agents/test_base_agent.py           71           47            0           24
+ |/semantic_graph/service.py           60           44            3           13
+ |ch/scripts/_json_format.py           48           43            0            5
+ |aph/generators/__init__.py           45           43            0            2
+ |t_proof_term_collection.py           60           43            8            9
+ |kend/proof_api/__init__.py           45           42            0            3
+ |h/backend/util/pathutil.py           53           41            8            4
+ |t_semantic_graph_report.py           58           40            4           14
+ |on/domains/inequalities.py           52           40            0           12
+ |backend/experts/outputs.py           55           39            4           12
+ |/test_preprocess_result.py           44           37            0            7
+ |d/experts/test_registry.py           55           37            2           16
+ |ests/test_generate_html.py           51           35            1           15
+ |completion/domains/base.py           49           34            2           13
+ |nd/experts/test_dataset.py           44           33            0           11
+ |ts/test_grounding_score.py           48           33            4           11
+ |nd/semantic_graph/cache.py           41           29            0           12
+ |semantic_graph/id_utils.py           35           29            1            5
+ |/backend/model/__init__.py           31           29            0            2
+ |ackend/experts/__init__.py           34           28            0            6
+ |end/experts/cas_workers.py           41           27            0           14
+ |ompletion/domains/logic.py           32           24            0            8
+ |/proof_completion/model.py           31           23            0            8
+ |semantic_graph/__init__.py           25           22            0            3
+ |letion/domains/calculus.py           27           21            0            6
+ |lgebench/tests/conftest.py           29           19            5            5
+ |semantic_graph/conftest.py           23           18            0            5
+ |backend/agents/__init__.py           20           18            0            2
+ |pletion/domains/algebra.py           23           18            0            5
+ |perts/handlers/__init__.py           22           17            0            5
+ |h/backend/util/__init__.py           17           15            0            2
+ |letion/domains/rational.py           19           14            0            5
+ |oof_completion/__init__.py           20           14            1            5
+ |xperts/modules/__init__.py           18           13            0            5
+ |graph/preprocess_result.py           16           11            0            5
+ |ssion_analysis/__init__.py           11           11            0            0
+ |letion/domains/__init__.py           13            9            0            4
+ |/algebench/backend/asgi.py            9            7            0            2
+ |perts/adapters/__init__.py            9            7            0            2
+ |ers/proof_edit/__init__.py            8            7            0            1
+ |les/proof_edit/__init__.py            6            6            0            0
+ |roof_animation/__init__.py            5            3            0            2
+ |ssion_analysis/__init__.py            2            2            0            0
+ |ebench/backend/__init__.py            1            1            0            0
+ |ebench/scripts/__init__.py            0            0            0            0
+ |s/backend/util/__init__.py            0            0            0            0
+ |_graph/domains/__init__.py            0            0            0            0
+ |semantic_graph/__init__.py            0            0            0            0
+ |/backend/model/__init__.py            0            0            0            0
+ |backend/agents/__init__.py            0            0            0            0
+ |ackend/experts/__init__.py            0            0            0            0
+ |/tests/backend/__init__.py            0            0            0            0
+ |lgebench/tests/__init__.py            0            0            0            0
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ Total                   233        61042        47304         5229         8509
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+## Category Breakdown
+
+| Category | Code Lines | % of JS+Python |
+|---|---|---|
+| JavaScript (frontend) | 29132 | 38% |
+| Python (backend) | 47304 | 62% |
+| **Total** | **76436** | **100%** |
+
+</script>
+</body>
+</html>
