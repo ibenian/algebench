@@ -494,7 +494,20 @@ function _deriveTitle(content) {
     for (let ln of lines) {
         ln = ln.trim();
         if (!ln) continue;
-        ln = ln.replace(/^#{1,6}\s*/, '').replace(/^[*_>\s-]+/, '').replace(/[*_]+$/, '').trim();
+        ln = ln
+            .replace(/^#{1,6}\s*/, '')
+            // Unwrap **bold** as a PAIR first. The leading/trailing strips below
+            // only clear emphasis that wraps the whole line (`**Mass Budget**`);
+            // when it wraps just part of one — `**Phase:** Outbound coast` — the
+            // opening marker went and the closing `**` was left stranded in the
+            // collapsed title.
+            // Deliberately bold-only: this runs BEFORE {{…}} is evaluated, and a
+            // single-`*` rule would eat the multiplication in expressions like
+            // {{0.6*cos(theta) - 0.5*sin(theta)}}.
+            .replace(/\*\*(.+?)\*\*/g, '$1')
+            .replace(/^[*_>\s-]+/, '')
+            .replace(/[*_]+$/, '')
+            .trim();
         if (ln) return ln;
     }
     return 'Info';
