@@ -4194,7 +4194,6 @@ function _makeGradientSkyboxTexture(topHex, bottomHex, starCount = 0, starColor 
 	}
 	const tex = new THREE.CanvasTexture(canvas);
 	tex.mapping = THREE.EquirectangularReflectionMapping;
-	tex.colorSpace = THREE.SRGBColorSpace;
 	return tex;
 }
 function configureWorldStarfield(spec) {
@@ -4329,7 +4328,6 @@ function renderSkybox(el) {
 	}
 	if (style === "cubemap" && Array.isArray(el.urls) && el.urls.length === 6) try {
 		const tex = new THREE.CubeTextureLoader().load(el.urls);
-		tex.colorSpace = THREE.SRGBColorSpace;
 		skyboxState.three.scene.background = tex;
 		skyboxState.worldSkybox = { texture: tex };
 		return {
