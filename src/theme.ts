@@ -52,7 +52,9 @@ export function initialTheme({
   useStored = true,
 }: {
   key?: string;
-  param?: string;
+  // `null` opts out of reading a URL param at all — renderproof.ts passes it to
+  // get "saved preference → fallback" while handling ?theme= itself.
+  param?: string | null;
   fallback?: ThemeChoice;
   useStored?: boolean;
 } = {}): Theme {

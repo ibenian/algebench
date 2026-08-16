@@ -1,6 +1,6 @@
 import { C as USER_ICON, a as wireThemeToggle, c as AI_ICON, d as CODE_ICON, n as applyTheme, o as validateProofData, r as initialTheme, s as ProofAnimator, u as BRACES_ICON } from "./theme.js";
 import { n as ExpertError, r as invokeExpert, t as DERIVE_TIMEOUT_MS } from "./expert-client.js";
-//#region src/proof-edit-tool.js
+//#region src/proof-edit-tool.ts
 var UNDO_WORD = /^\s*(undo|revert)\s*$/i;
 var UNDO_MAX = 20;
 var VARIANT_LABELS = {
@@ -128,7 +128,8 @@ function createProofEditTool(deps) {
 		return true;
 	}
 	function variantProof(index) {
-		if (session.cache[index]) return session.cache[index];
+		const cached = session.cache[index];
+		if (cached) return cached;
 		const raw = assembleVariant(session.original, session.newSteps, session.variants[index]);
 		const safe = validateProofData(raw);
 		session.cache[index] = safe;
