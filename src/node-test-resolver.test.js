@@ -9,7 +9,9 @@ import assert from 'node:assert/strict';
 
 test('server-served paths are refused with a named error', async () => {
   await assert.rejects(
-    () => import('/chat.js'),
+    // /theme-init.js is a classic pre-paint script the Python server owns.
+    // (/chat.js used to be the example here; phase 4e made it src/chat.ts.)
+    () => import('/theme-init.js'),
     (err) => {
       assert.equal(err.name, 'ServerServedImportError');
       assert.match(err.message, /SERVER_SERVED/);

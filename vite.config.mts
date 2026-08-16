@@ -35,14 +35,19 @@ const BACKEND = process.env.ALGEBENCH_BACKEND ?? 'http://localhost:8000';
  * faithful-port rule), map them here.
  *
  * EXCLUDED — these stay server-served and must not be bundled:
- *   /chat.js, /theme-init.js  classic non-module scripts (chat.js is
- *                             converted in phase 4)
+ *   /theme-init.js            classic non-module script: it must run BEFORE
+ *                             the stylesheets so <html data-theme> is set by
+ *                             first paint, which a deferred module cannot do
  *   /domains/*                injected as <script> at runtime from a URL
  *                             built out of lesson data (src/expr.js), so it
  *                             can never be statically resolved
  *   /gemini-live-tools/*      served from the installed Python package
+ *
+ * /chat.js LEFT this list in phase 4e: chat is now src/chat.ts, loaded as
+ * `<script type="module" src="/chat.js">` from index.html and folded into the
+ * index bundle like every other module on that page.
  */
-const SERVER_SERVED = ['/chat.js', '/theme-init.js', '/domains/', '/gemini-live-tools/'];
+const SERVER_SERVED = ['/theme-init.js', '/domains/', '/gemini-live-tools/'];
 
 function resolveRootAbsolute(): Plugin {
   return {
@@ -110,8 +115,8 @@ export default defineConfig(({ command }) => ({
   plugins: [resolveRootAbsolute(), appVersion()],
   build: {
     outDir: 'static',
-    // static/ also holds hand-authored files (style.css, chat.js, domains/,
-    // fonts/) — never wipe it.
+    // static/ also holds hand-authored files (style.css, domains/, fonts/) —
+    // never wipe it.
     emptyOutDir: false,
     sourcemap: true,
     // Unminified, unhashed, stable names: the output is COMMITTED, so diffs
@@ -142,7 +147,6 @@ export default defineConfig(({ command }) => ({
       '/proofs': BACKEND,
       '/scenes': BACKEND,
       '/domains': BACKEND,
-      '/chat.js': BACKEND,
       '/theme-init.js': BACKEND,
       '/gemini-live-tools': BACKEND,
       '/fonts': BACKEND,

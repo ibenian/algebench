@@ -162,7 +162,7 @@ function dataToWorld(pos) {
 		((pos[2] - rz[0]) / (rz[1] - rz[0]) * 2 - 1) * s[2]
 	];
 }
-function dataCameraToWorld(pos) {
+function dataCameraToWorld$1(pos) {
 	const r = range();
 	const s = scale();
 	const [rx, ry, rz] = r ?? [];
@@ -184,7 +184,7 @@ function dataCameraToWorld(pos) {
 		(pos[2] - cz) / maxH * s[2]
 	];
 }
-function worldCameraToData(pos) {
+function worldCameraToData$1(pos) {
 	const r = range();
 	const s = scale();
 	const [rx, ry, rz] = r ?? [];
@@ -987,7 +987,7 @@ function stripHtmlMacros(s) {
 function normLatex(s) {
 	return (s || "").replace(/\\(?:text|mathrm|mathbf|operatorname)\s*\{([^{}]*)\}/g, "$1").replace(/\\le(?![a-zA-Z])/g, "\\leq").replace(/\\ge(?![a-zA-Z])/g, "\\geq").replace(/[\s{}]/g, "");
 }
-function renderKaTeX(text, displayMode) {
+function renderKaTeX$1(text, displayMode) {
 	if (!text) return "";
 	const tables = [];
 	const withTables = text.replace(/^(\|.+\|)\n(\|[\s:?-]+(?:\|[\s:?-]+)+\|)\n((?:\|.+\|\n?)+)/gm, (_match, headerLine, _sepLine, bodyBlock) => {
@@ -1029,9 +1029,9 @@ function renderKaTeX(text, displayMode) {
 		const cellStyle = "padding:3px 8px;border:1px solid rgba(255,255,255,0.15)";
 		const thStyle = "padding:3px 8px;border:1px solid rgba(255,255,255,0.15);font-weight:bold;background:rgba(255,255,255,0.06)";
 		let html = `<table style="${tableStyle}"><thead><tr>`;
-		html += headers.map((h) => `<th style="${thStyle}">${renderKaTeX(h, false)}</th>`).join("");
+		html += headers.map((h) => `<th style="${thStyle}">${renderKaTeX$1(h, false)}</th>`).join("");
 		html += "</tr></thead><tbody>";
-		for (const row of rows) html += "<tr>" + row.map((c) => `<td style="${cellStyle}">${renderKaTeX(c, false)}</td>`).join("") + "</tr>";
+		for (const row of rows) html += "<tr>" + row.map((c) => `<td style="${cellStyle}">${renderKaTeX$1(c, false)}</td>`).join("") + "</tr>";
 		html += "</tbody></table>";
 		tables.push(html);
 		return `\x01T${tables.length - 1}\x01`;
@@ -1043,7 +1043,7 @@ function renderKaTeX(text, displayMode) {
 			"0.95em",
 			"0.88em"
 		][hashes.length - 1];
-		headings.push(`<div style="font-size:${sz};font-weight:bold;margin:3px 0 1px">${renderKaTeX(content, false)}</div>`);
+		headings.push(`<div style="font-size:${sz};font-weight:bold;margin:3px 0 1px">${renderKaTeX$1(content, false)}</div>`);
 		return `\x01H${headings.length - 1}\x01`;
 	});
 	const codeSpans = [];
@@ -1086,7 +1086,7 @@ function renderKaTeX(text, displayMode) {
 					"0.88em"
 				][hm[1].length - 1]};font-weight:bold;margin:3px 0 1px">${hm[2]}</div>`;
 				if (t === "---") return "<hr style=\"border:none;border-top:1px solid rgba(255,255,255,0.2);margin:4px 0\">";
-				const inline = line.replace(/\x01B(\d+)\x01/g, (_m, idx) => `<strong>${renderKaTeX(boldSpans[+idx], false)}</strong>`).replace(/\x01I(\d+)\x01/g, (_m, idx) => `<em>${renderKaTeX(italicSpans[+idx], false)}</em>`).replace(/\x01C(\d+)\x01/g, (_m, idx) => `<code>${codeSpans[+idx]}</code>`).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\*(.+?)\*/g, "<em>$1</em>").replace(/`(.+?)`/g, "<code>$1</code>");
+				const inline = line.replace(/\x01B(\d+)\x01/g, (_m, idx) => `<strong>${renderKaTeX$1(boldSpans[+idx], false)}</strong>`).replace(/\x01I(\d+)\x01/g, (_m, idx) => `<em>${renderKaTeX$1(italicSpans[+idx], false)}</em>`).replace(/\x01C(\d+)\x01/g, (_m, idx) => `<code>${codeSpans[+idx]}</code>`).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/\*(.+?)\*/g, "<em>$1</em>").replace(/`(.+?)`/g, "<code>$1</code>");
 				return li < lines.length - 1 ? inline + "<br>" : inline;
 			}).join("");
 		} else if (seg.startsWith("$$")) {
@@ -1116,7 +1116,7 @@ function renderKaTeX(text, displayMode) {
 		}
 	}).join("");
 }
-function renderMarkdown(md) {
+function renderMarkdown$1(md) {
 	if (!md) return "";
 	const mathBlocks = [];
 	let safe = md.replace(/\$\$([\s\S]+?)\$\$/g, (_m, tex) => {
@@ -1249,7 +1249,7 @@ function addLabel3D(text, dataPos, color, opts) {
 	const container = document.getElementById("labels-container");
 	const el = document.createElement("div");
 	el.className = o.cssClass || "label-3d";
-	el.innerHTML = renderKaTeX(text, false);
+	el.innerHTML = renderKaTeX$1(text, false);
 	if (color) el.style.color = colorToCSS(color);
 	container.appendChild(el);
 	const align = o.align || "center";
@@ -1782,7 +1782,7 @@ function buildSliderOverlay() {
 		row.className = "slider-row";
 		const labelSpan = document.createElement("span");
 		labelSpan.className = "slider-label";
-		labelSpan.innerHTML = renderKaTeX(s.label || id, false);
+		labelSpan.innerHTML = renderKaTeX$1(s.label || id, false);
 		labelSpan.title = stripLatex(s.label || id);
 		row.appendChild(labelSpan);
 		const input = document.createElement("input");
@@ -1961,7 +1961,7 @@ function setSliderValue(id, value) {
 	syncSliderState();
 	return true;
 }
-function animateSlider(id, target, duration) {
+function animateSlider$1(id, target, duration) {
 	return new Promise((resolve) => {
 		const slider = state.sceneSliders[id];
 		if (!slider) {
@@ -2267,7 +2267,7 @@ function updateExplanationPanel(spec) {
 	const handle = document.getElementById("panel-resize-handle");
 	const toggle = document.getElementById("explain-toggle");
 	if (spec && spec.markdown) {
-		content.innerHTML = renderMarkdown(spec.markdown);
+		content.innerHTML = renderMarkdown$1(spec.markdown);
 		content.dataset.markdown = spec.markdown;
 		injectAskButtons(content);
 	} else content.innerHTML = "<p style=\"color: rgba(180,180,200,0.5); font-style: italic;\">No explanation available for this scene.</p>";
@@ -2378,10 +2378,10 @@ function updateTitle(spec) {
 	const titleEl = document.getElementById("scene-title");
 	const descEl = document.getElementById("scene-description");
 	const sourceEl = document.getElementById("scene-source-file");
-	if (spec && spec.title) titleEl.innerHTML = renderKaTeX(spec.title, false);
+	if (spec && spec.title) titleEl.innerHTML = renderKaTeX$1(spec.title, false);
 	else titleEl.innerHTML = "AlgeBench";
 	if (spec && spec.description) {
-		descEl.innerHTML = renderKaTeX(spec.description, false);
+		descEl.innerHTML = renderKaTeX$1(spec.description, false);
 		descEl.dataset.markdown = spec.description;
 		const descText = spec.description;
 		const btn = makeAiAskButton("ai-ask-btn", "Ask AI to explain this scene", () => "Can you explain this scene:\n" + descText.trim());
@@ -2430,7 +2430,7 @@ function buildLegend(elements) {
 		if (hidden) swatch.style.opacity = "0.3";
 		div.appendChild(swatch);
 		const span = document.createElement("span");
-		span.innerHTML = renderKaTeX(it.label, false);
+		span.innerHTML = renderKaTeX$1(it.label, false);
 		div.appendChild(span);
 		legend.appendChild(div);
 	}
@@ -2524,18 +2524,18 @@ function _replaceDoubleBraceExprs(template, evaluator) {
 function resolveInfoContent(template) {
 	return _replaceDoubleBraceExprs(template, (expr) => _evalInfoExpr(expr));
 }
-function updateInfoOverlays() {
+function updateInfoOverlays$1() {
 	for (const item of Object.values(infoState.items)) {
 		if (!item.contentEl) continue;
 		const resolved = resolveInfoContent(item.content);
-		item.contentEl.innerHTML = renderKaTeX(resolved, false);
+		item.contentEl.innerHTML = renderKaTeX$1(resolved, false);
 		const titleHtml = _titleHtml(item);
 		if (item.panel) item.panel.setTitle(titleHtml);
 		if (item.sectionTitleEl) item.sectionTitleEl.innerHTML = titleHtml;
 	}
 	_updateDrawerHeader();
 }
-window._algebenchUpdateInfoOverlays = updateInfoOverlays;
+window._algebenchUpdateInfoOverlays = updateInfoOverlays$1;
 function _infoContainer() {
 	return document.getElementById("info-overlays");
 }
@@ -2550,7 +2550,7 @@ function _deriveTitle(content) {
 	return "Info";
 }
 function _titleHtml(item) {
-	return renderKaTeX(resolveInfoContent(item.explicitTitle ? item.title : _deriveTitle(item.content)), false);
+	return renderKaTeX$1(resolveInfoContent(item.explicitTitle ? item.title : _deriveTitle(item.content)), false);
 }
 function _loadPlacement(id) {
 	try {
@@ -2825,7 +2825,7 @@ function _route() {
 		_mountFree(item);
 	}
 	_destroyDrawerIfEmpty();
-	updateInfoOverlays();
+	updateInfoOverlays$1();
 }
 function removeStepInfoOverlays() {
 	let changed = false;
@@ -2838,7 +2838,7 @@ function removeStepInfoOverlays() {
 	}
 	if (changed) _scheduleRoute();
 }
-function addInfoOverlay(id, content, position, stepDefined = false, keep = false, title = null) {
+function addInfoOverlay$1(id, content, position, stepDefined = false, keep = false, title = null) {
 	if (!_infoContainer()) return;
 	if (!id) {
 		const preview = typeof content === "string" ? content.length > 80 ? content.slice(0, 80) + "…" : content : void 0;
@@ -2882,7 +2882,7 @@ function removeInfoOverlay(id) {
 	_disposeItem(item);
 	_scheduleRoute();
 }
-function removeAllInfoOverlays() {
+function removeAllInfoOverlays$1() {
 	for (const id of Object.keys(infoState.items)) _disposeItem(infoState.items[id]);
 	if (infoState.drawerPanel) {
 		infoState.drawerPanel.destroy();
@@ -2890,7 +2890,7 @@ function removeAllInfoOverlays() {
 		infoState.drawerBodyEl = null;
 	}
 }
-function getAllElements(scene, stepIdx) {
+function getAllElements$1(scene, stepIdx) {
 	let elements = [...scene.elements || []];
 	const removedIds = /* @__PURE__ */ new Set();
 	const removedTypes = /* @__PURE__ */ new Set();
@@ -2940,12 +2940,12 @@ function updateStatusBar() {
 		const pw = state.camera.position;
 		const tw = state.controls.target;
 		const u = state.camera.up;
-		const p = worldCameraToData([
+		const p = worldCameraToData$1([
 			pw.x,
 			pw.y,
 			pw.z
 		]);
-		const t = worldCameraToData([
+		const t = worldCameraToData$1([
 			tw.x,
 			tw.y,
 			tw.z
@@ -3170,7 +3170,7 @@ function updateStepCaption(scene, stepIdx) {
 	if (stepIdx >= 0 && scene.steps && scene.steps[stepIdx] && scene.steps[stepIdx].description) text = scene.steps[stepIdx].description;
 	else if (stepIdx === -1 && scene.description) text = scene.description;
 	if (text) {
-		el.innerHTML = renderMarkdown(text);
+		el.innerHTML = renderMarkdown$1(text);
 		el.dataset.markdown = text;
 		const btn = makeAiAskButton("ai-ask-btn caption-ai-btn", "Ask AI to explain this", () => `Can you explain the step description: "${text}"`);
 		el.appendChild(btn);
@@ -3831,8 +3831,8 @@ function updateExprCamera() {
 	} catch (err) {
 		return;
 	}
-	const posWorld = dataCameraToWorld(posData);
-	const tgtWorld = dataCameraToWorld(tgtData);
+	const posWorld = dataCameraToWorld$1(posData);
+	const tgtWorld = dataCameraToWorld$1(tgtData);
 	state.camera.position.set(posWorld[0], posWorld[1], posWorld[2]);
 	state.controls.target.set(tgtWorld[0], tgtWorld[1], tgtWorld[2]);
 	state.camera.up.copy(normalizeUpVector(state.cameraExprState.up));
@@ -4000,7 +4000,7 @@ function resolveEffectiveStepCamera(scene, stepIdx) {
 	}
 	return effective;
 }
-function animateCamera(view, duration) {
+function animateCamera$1(view, duration) {
 	duration = duration == null ? 800 : duration;
 	deactivateFollowCam();
 	deactivateExprCamera();
@@ -4066,7 +4066,7 @@ function buildCameraButtons(spec) {
 		btn.className = "cam-btn";
 		btn.dataset.view = key;
 		btn.title = v.description || v.name;
-		btn.innerHTML = renderKaTeX(v.name, false);
+		btn.innerHTML = renderKaTeX$1(v.name, false);
 		if (v.follow) {
 			btn.classList.add("cam-btn-follow");
 			btn.addEventListener("click", () => {
@@ -4098,8 +4098,8 @@ function buildCameraButtons(spec) {
 			});
 		} else {
 			state.CAMERA_VIEWS[key] = {
-				position: dataCameraToWorld(v.position),
-				target: dataCameraToWorld(v.target || [
+				position: dataCameraToWorld$1(v.position),
+				target: dataCameraToWorld$1(v.target || [
 					0,
 					0,
 					0
@@ -4109,9 +4109,9 @@ function buildCameraButtons(spec) {
 			btn.addEventListener("click", (e) => {
 				deactivateFollowCam();
 				deactivateExprCamera();
-				if (e.shiftKey) animateCamera(key, 0);
-				else if (e.altKey) animateCamera(key, 200);
-				else animateCamera(key, 800);
+				if (e.shiftKey) animateCamera$1(key, 0);
+				else if (e.altKey) animateCamera$1(key, 200);
+				else animateCamera$1(key, 800);
 			});
 		}
 		container.appendChild(btn);
@@ -4125,8 +4125,8 @@ function buildCameraButtons(spec) {
 		deactivateFollowCam();
 		deactivateExprCamera();
 		const camSpec = resolveEffectiveStepCamera(state.lessonSpec && state.currentSceneIndex >= 0 && state.lessonSpec.scenes ? state.lessonSpec.scenes[state.currentSceneIndex] : state.currentSpec, state.currentStepIndex) || state.currentSpec && state.currentSpec.camera || null;
-		const pos = dataCameraToWorld(camSpec && camSpec.position || DEFAULT_CAMERA.position);
-		const tgt = dataCameraToWorld(camSpec && camSpec.target || DEFAULT_CAMERA.target);
+		const pos = dataCameraToWorld$1(camSpec && camSpec.position || DEFAULT_CAMERA.position);
+		const tgt = dataCameraToWorld$1(camSpec && camSpec.target || DEFAULT_CAMERA.target);
 		state.CAMERA_VIEWS.reset = {
 			position: pos,
 			target: tgt,
@@ -4136,9 +4136,9 @@ function buildCameraButtons(spec) {
 				0
 			]
 		};
-		if (e.shiftKey) animateCamera("reset", 0);
-		else if (e.altKey) animateCamera("reset", 200);
-		else animateCamera("reset", 800);
+		if (e.shiftKey) animateCamera$1("reset", 0);
+		else if (e.altKey) animateCamera$1("reset", 200);
+		else animateCamera$1("reset", 800);
 	});
 	container.appendChild(resetBtn);
 	updateFollowAngleLockButtonState();
@@ -5347,7 +5347,7 @@ function renderText(el, view) {
 					if (rounded !== prevTextVal) {
 						prevTextVal = rounded;
 						const formatted = textFormat.replace("%d", rounded);
-						labelEl.el.innerHTML = renderKaTeX(formatted, false);
+						labelEl.el.innerHTML = renderKaTeX$1(formatted, false);
 					}
 				} catch (_err) {}
 			}
@@ -5722,7 +5722,7 @@ function renderAnimatedVector(el, view) {
 		labelEl = addLabel3D(label || "", labelPos, color);
 		if (labelExprFn) try {
 			const txt = String(evalExpr(labelExprFn, 0));
-			labelEl.el.innerHTML = renderKaTeX(txt, false);
+			labelEl.el.innerHTML = renderKaTeX$1(txt, false);
 			labelEl._lastDynamicText = txt;
 		} catch (_e) {}
 	}
@@ -5845,7 +5845,7 @@ function renderAnimatedVector(el, view) {
 				if (labelExprFn) try {
 					const txt = String(evalExpr(labelExprFn, tSec));
 					if (labelEl._lastDynamicText !== txt) {
-						labelEl.el.innerHTML = renderKaTeX(txt, false);
+						labelEl.el.innerHTML = renderKaTeX$1(txt, false);
 						labelEl._lastDynamicText = txt;
 					}
 				} catch (_e) {}
@@ -6257,7 +6257,7 @@ function renderAnimatedLine(el, view) {
 		labelEl = addLabel3D(label || "", mid, color);
 		if (labelExprFn) try {
 			const txt = String(evalExpr(labelExprFn, 0));
-			labelEl.el.innerHTML = renderKaTeX(txt, false);
+			labelEl.el.innerHTML = renderKaTeX$1(txt, false);
 			labelEl._lastDynamicText = txt;
 		} catch (_e) {}
 	}
@@ -6289,7 +6289,7 @@ function renderAnimatedLine(el, view) {
 					if (labelExprFn) try {
 						const txt = String(evalExpr(labelExprFn, tSec));
 						if (labelEl._lastDynamicText !== txt) {
-							labelEl.el.innerHTML = renderKaTeX(txt, false);
+							labelEl.el.innerHTML = renderKaTeX$1(txt, false);
 							labelEl._lastDynamicText = txt;
 						}
 					} catch (_e) {}
@@ -6441,7 +6441,7 @@ function renderAnimatedPoint(el, view) {
 		], color);
 		if (labelExprFn) try {
 			const txt = String(evalExpr(labelExprFn, 0));
-			labelEl.el.innerHTML = renderKaTeX(txt, false);
+			labelEl.el.innerHTML = renderKaTeX$1(txt, false);
 			labelEl._lastDynamicText = txt;
 		} catch (_e) {}
 	}
@@ -6518,7 +6518,7 @@ function renderAnimatedPoint(el, view) {
 				if (labelExprFn) try {
 					const txt = String(evalExpr(labelExprFn, tSec));
 					if (labelEl._lastDynamicText !== txt) {
-						labelEl.el.innerHTML = renderKaTeX(txt, false);
+						labelEl.el.innerHTML = renderKaTeX$1(txt, false);
 						labelEl._lastDynamicText = txt;
 					}
 				} catch (_e) {}
@@ -6728,7 +6728,7 @@ function renderAnimatedCylinder(el, view) {
 		labelEl = addLabel3D(label || "", mid, color);
 		if (labelExprFn) try {
 			const txt = String(evalExpr(labelExprFn, 0));
-			labelEl.el.innerHTML = renderKaTeX(txt, false);
+			labelEl.el.innerHTML = renderKaTeX$1(txt, false);
 			labelEl._lastDynamicText = txt;
 		} catch (_e) {}
 	}
@@ -6767,7 +6767,7 @@ function renderAnimatedCylinder(el, view) {
 				if (labelExprFn) try {
 					const txt = String(evalExpr(labelExprFn, tSec));
 					if (labelEl._lastDynamicText !== txt) {
-						labelEl.el.innerHTML = renderKaTeX(txt, false);
+						labelEl.el.innerHTML = renderKaTeX$1(txt, false);
 						labelEl._lastDynamicText = txt;
 					}
 				} catch (_e) {}
@@ -7056,7 +7056,7 @@ function renderAnimatedPolygon(el, view) {
 		], color);
 		if (labelExprFn) try {
 			const txt = String(evalExpr(labelExprFn, 0));
-			labelEl.el.innerHTML = renderKaTeX(txt, false);
+			labelEl.el.innerHTML = renderKaTeX$1(txt, false);
 			labelEl._lastDynamicText = txt;
 		} catch (_e) {}
 	}
@@ -7085,7 +7085,7 @@ function renderAnimatedPolygon(el, view) {
 					if (labelExprFn) try {
 						const txt = String(evalExpr(labelExprFn, tSec));
 						if (labelEl._lastDynamicText !== txt) {
-							labelEl.el.innerHTML = renderKaTeX(txt, false);
+							labelEl.el.innerHTML = renderKaTeX$1(txt, false);
 							labelEl._lastDynamicText = txt;
 						}
 					} catch (_e) {}
@@ -7213,7 +7213,7 @@ function renderAnimatedCurve(el, view) {
 		], color);
 		if (labelExprFn) try {
 			const txt = String(evalExpr(labelExprFn, 0));
-			labelEl.el.innerHTML = renderKaTeX(txt, false);
+			labelEl.el.innerHTML = renderKaTeX$1(txt, false);
 			labelEl._lastDynamicText = txt;
 		} catch (_e) {}
 	}
@@ -7484,7 +7484,7 @@ function renderAnimatedCurve(el, view) {
 					if (labelExprFn) try {
 						const txt = String(evalExpr(labelExprFn, tSec));
 						if (labelEl._lastDynamicText !== txt) {
-							labelEl.el.innerHTML = renderKaTeX(txt, false);
+							labelEl.el.innerHTML = renderKaTeX$1(txt, false);
 							labelEl._lastDynamicText = txt;
 						}
 					} catch (_e) {}
@@ -7675,7 +7675,7 @@ var _navigateFn = null;
 function setNavigateFn(fn) {
 	_navigateFn = fn;
 }
-function buildSceneTree(spec) {
+function buildSceneTree$1(spec) {
 	const tree = document.getElementById("scene-tree");
 	tree.innerHTML = "";
 	if (!spec || !spec.scenes) return;
@@ -7692,7 +7692,7 @@ function buildSceneTree(spec) {
 		arrow.textContent = "▶";
 		header.appendChild(arrow);
 		const title = document.createElement("span");
-		title.innerHTML = renderKaTeX(sceneTitle, false);
+		title.innerHTML = renderKaTeX$1(sceneTitle, false);
 		title.title = sceneTitle;
 		header.appendChild(title);
 		header.addEventListener("click", (e) => {
@@ -7714,7 +7714,7 @@ function buildSceneTree(spec) {
 				stepDiv.dataset.sceneIdx = i;
 				stepDiv.dataset.stepIdx = j;
 				stepDiv.title = stepTitle;
-				stepDiv.innerHTML = renderKaTeX(stepTitle, false);
+				stepDiv.innerHTML = renderKaTeX$1(stepTitle, false);
 				stepDiv.addEventListener("click", () => {
 					if (_navigateFn) _navigateFn(i, j);
 				});
@@ -8697,21 +8697,21 @@ function preRenderProofSteps(proof) {
 		let contentHtml = `<div class="proof-step-header">
             <span class="proof-step-number">${i + 1}</span>
             <span class="proof-step-type ${typeClass}">${escapeHtml$1(type)}</span>
-            <span class="proof-step-label">${renderKaTeX(step.label, false)}</span>
+            <span class="proof-step-label">${renderKaTeX$1(step.label, false)}</span>
             <span class="proof-step-status"></span>
         </div>`;
 		if (step.math) contentHtml += `<div class="proof-step-math-row">
-                <div class="proof-step-math">${renderKaTeX("$$" + step.math + "$$", true)}</div>
+                <div class="proof-step-math">${renderKaTeX$1("$$" + step.math + "$$", true)}</div>
                 <div class="proof-step-actions"></div>
             </div>`;
 		if (step.justification) contentHtml += `<div class="proof-step-justification">
-                <span class="proof-justification-text">${renderKaTeX(step.justification, false)}</span>
+                <span class="proof-justification-text">${renderKaTeX$1(step.justification, false)}</span>
             </div>`;
-		if (step.explanation) contentHtml += `<div class="proof-step-explanation">${renderMarkdown(step.explanation)}</div>`;
+		if (step.explanation) contentHtml += `<div class="proof-step-explanation">${renderMarkdown$1(step.explanation)}</div>`;
 		if (step.tags && step.tags.length) contentHtml += `<div class="proof-step-tags">${step.tags.map((t) => `<span class="proof-tag">${escapeHtml$1(t)}</span>`).join("")}</div>`;
 		div.innerHTML = contentHtml;
 		_injectProofAskButtons(div, step, proof);
-		div.addEventListener("click", () => navigateProof(i));
+		div.addEventListener("click", () => navigateProof$1(i));
 		return div;
 	});
 }
@@ -8787,7 +8787,7 @@ function _deriveTooltip(proof, index) {
 async function _onDeriveStep(index) {
 	const proof = _activeProof$1();
 	if (!proof) return;
-	if (state.proofStepIndex !== index) navigateProof(index);
+	if (state.proofStepIndex !== index) navigateProof$1(index);
 	const payload = buildProofStepDerivePayload(proof, index);
 	if (!payload) return;
 	if (typeof window.algebenchDeriveProofPayload === "function") try {
@@ -8808,7 +8808,7 @@ function renderGoalHTML(proof) {
 	return `<div class="proof-goal">
         <div class="proof-goal-label">Goal</div>
         <div class="proof-goal-row">
-            <div class="proof-goal-math">${renderKaTeX(proof.goal, false)}</div>
+            <div class="proof-goal-math">${renderKaTeX$1(proof.goal, false)}</div>
             <div class="proof-goal-actions"></div>
         </div>
     </div>`;
@@ -8864,7 +8864,7 @@ function _toggleHighlightAnnotation(stepEl, name, spec) {
 	const colorName = spec.color || "cyan";
 	annotation.style.borderLeftColor = _hlRGBA(colorName, .6);
 	annotation.style.color = _hlRGBA(colorName, .9);
-	const labelHtml = renderKaTeX(spec.label);
+	const labelHtml = renderKaTeX$1(spec.label);
 	annotation.innerHTML = `<span class="proof-hl-annotation-dot" style="background:${_hlRGBA(colorName, .7)}"></span>${labelHtml}`;
 	annotation.addEventListener("click", (e) => {
 		e.stopPropagation();
@@ -8962,7 +8962,7 @@ function _hlRGBA(color, opacity) {
 	return `rgba(${r}, ${g}, ${b}, ${opacity})`;
 }
 /** Navigate to a specific proof step. -1 = goal overview. */
-function navigateProof(index) {
+function navigateProof$1(index) {
 	const proof = _activeProof$1();
 	if (!proof) return;
 	const steps = proof.steps || [];
@@ -9026,7 +9026,7 @@ function syncProofFromSceneStep(stepIdx) {
 	if (matchIdx >= 0 && matchIdx !== state.proofStepIndex) {
 		state._proofSyncInProgress = true;
 		try {
-			navigateProof(matchIdx);
+			navigateProof$1(matchIdx);
 		} finally {
 			state._proofSyncInProgress = false;
 		}
@@ -9059,7 +9059,7 @@ function _renderSlide() {
 	container.innerHTML = "";
 	nodes.forEach((node, i) => {
 		const clone = node.cloneNode(true);
-		clone.addEventListener("click", () => navigateProof(i));
+		clone.addEventListener("click", () => navigateProof$1(i));
 		clone.querySelectorAll(".proof-ask-btn").forEach((b) => b.remove());
 		_injectProofAskButtons(clone, proof.steps[i], proof);
 		if (i < idx) {
@@ -9091,7 +9091,7 @@ function _renderList() {
 	container.innerHTML = "";
 	nodes.forEach((node, i) => {
 		const clone = node.cloneNode(true);
-		clone.addEventListener("click", () => navigateProof(i));
+		clone.addEventListener("click", () => navigateProof$1(i));
 		clone.querySelectorAll(".proof-ask-btn").forEach((b) => b.remove());
 		_injectProofAskButtons(clone, proof.steps[i], proof);
 		clone.classList.remove("collapsed");
@@ -9206,7 +9206,7 @@ function switchActiveProof(newIndex) {
 	});
 	_updateCounter();
 	_updateNavButtons();
-	if (proof) navigateProof(state.proofStepIndex);
+	if (proof) navigateProof$1(state.proofStepIndex);
 }
 /**
 * Public: activate a proof by index (deeplink / AI jump). Clamps to range and
@@ -9261,7 +9261,7 @@ function loadProof(lessonSpec, sceneIndex, stepIndex) {
 	if (_activeProof$1() && !state._proofSyncInProgress) {
 		state._proofSyncInProgress = true;
 		try {
-			navigateProof(state.proofStepIndex);
+			navigateProof$1(state.proofStepIndex);
 		} finally {
 			state._proofSyncInProgress = false;
 		}
@@ -9299,7 +9299,7 @@ function _buildContextTab(allProofs) {
 		const badge = techniqueBadgeHTML(proof);
 		section.innerHTML = `<div class="proof-section-header${isActive ? " active" : ""}" data-proof-index="${i}">
             <span class="proof-section-arrow">&#9660;</span>
-            <span class="proof-section-title">Proof: ${renderKaTeX(title)}</span>
+            <span class="proof-section-title">Proof: ${renderKaTeX$1(title)}</span>
             ${badge}
             <span class="proof-section-step-hint"></span>
         </div>`;
@@ -9413,7 +9413,7 @@ function _setupProofTabs() {
 		});
 	});
 }
-function refreshProofPanel() {
+function refreshProofPanel$1() {
 	if (!_activeProof$1() || !state.proofExpanded) return;
 	if (state.proofViewMode === "list") _renderList();
 	else _renderSlide();
@@ -9431,21 +9431,21 @@ function setupProofPanel() {
 	const lastBtn = document.getElementById("proof-last");
 	if (firstBtn) {
 		firstBtn.innerHTML = FIRST_ICON;
-		firstBtn.addEventListener("click", () => navigateProof(-1));
+		firstBtn.addEventListener("click", () => navigateProof$1(-1));
 	}
 	if (prevBtn) {
 		prevBtn.innerHTML = PREV_ICON;
-		prevBtn.addEventListener("click", () => navigateProof(state.proofStepIndex - 1));
+		prevBtn.addEventListener("click", () => navigateProof$1(state.proofStepIndex - 1));
 	}
 	if (nextBtn) {
 		nextBtn.innerHTML = NEXT_ICON;
-		nextBtn.addEventListener("click", () => navigateProof(state.proofStepIndex + 1));
+		nextBtn.addEventListener("click", () => navigateProof$1(state.proofStepIndex + 1));
 	}
 	if (lastBtn) {
 		lastBtn.innerHTML = LAST_ICON;
 		lastBtn.addEventListener("click", () => {
 			const proof = _activeProof$1();
-			if (proof && proof.steps) navigateProof(proof.steps.length - 1);
+			if (proof && proof.steps) navigateProof$1(proof.steps.length - 1);
 		});
 	}
 	const savedViewMode = localStorage.getItem("algebench-proof-view-mode");
@@ -9457,31 +9457,31 @@ function setupProofPanel() {
 			state.proofViewMode = state.proofViewMode === "slide" ? "list" : "slide";
 			modeBtn.textContent = state.proofViewMode === "slide" ? "Progressive" : "Verbose";
 			localStorage.setItem("algebench-proof-view-mode", state.proofViewMode);
-			navigateProof(state.proofStepIndex);
+			navigateProof$1(state.proofStepIndex);
 		});
 	}
 	const syncBtn = document.getElementById("proof-sync-btn");
 	if (syncBtn) syncBtn.addEventListener("click", () => {
 		state.proofSyncEnabled = !state.proofSyncEnabled;
 		syncBtn.classList.toggle("active", state.proofSyncEnabled);
-		if (state.proofSyncEnabled) navigateProof(state.proofStepIndex);
+		if (state.proofSyncEnabled) navigateProof$1(state.proofStepIndex);
 	});
 	document.addEventListener("keydown", (e) => {
 		if (!state.proofExpanded || !_activeProof$1()) return;
 		if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
 		if (e.key === "ArrowLeft") {
 			e.preventDefault();
-			navigateProof(state.proofStepIndex - 1);
+			navigateProof$1(state.proofStepIndex - 1);
 		} else if (e.key === "ArrowRight") {
 			e.preventDefault();
-			navigateProof(state.proofStepIndex + 1);
+			navigateProof$1(state.proofStepIndex + 1);
 		}
 	});
 	_setupProofTabs();
 	_setupProofResize();
 }
 /** Get proof context for the chat system prompt. */
-function getProofContext() {
+function getProofContext$1() {
 	const proof = _activeProof$1();
 	if (!proof) return null;
 	const stripHlClass = (m) => m ? stripHtmlMacros(m) : null;
@@ -9593,7 +9593,7 @@ var __vitePreload = function preload(baseModule, deps, importerUrl) {
 //#endregion
 //#region src/scene-loader.js
 var AUTO_PLAY_DEFAULT_DURATION = 3e3;
-setNavigateFn((si, sti) => navigateTo(si, sti));
+setNavigateFn((si, sti) => navigateTo$1(si, sti));
 function snapshotBefore() {
 	return {
 		arrows: state.arrowMeshes.length,
@@ -9687,7 +9687,7 @@ function applyTrackerInfoOverlays(tracker, step) {
 	const infoDefs = step.info;
 	if (!infoDefs || !infoDefs.length) return;
 	for (const def of infoDefs) {
-		addInfoOverlay(def.id, def.content, def.position || "top-left", true, def.keep || false);
+		addInfoOverlay$1(def.id, def.content, def.position || "top-left", true, def.keep || false);
 		tracker.infoIds.push(def.id);
 	}
 }
@@ -9795,7 +9795,7 @@ function processStepRemoves(removeList, tracker) {
 		}
 		if (item.type === "info") {
 			if (item.id) removeInfoOverlay(item.id);
-			else removeAllInfoOverlays();
+			else removeAllInfoOverlays$1();
 			continue;
 		}
 		if (item.id) {
@@ -10175,8 +10175,8 @@ async function loadScene(spec) {
 			0
 		];
 		state.camera.up.set(up[0], up[1], up[2]);
-		const pos = dataCameraToWorld(spec.camera.position || DEFAULT_CAMERA.position);
-		const tgt = dataCameraToWorld(spec.camera.target || DEFAULT_CAMERA.target);
+		const pos = dataCameraToWorld$1(spec.camera.position || DEFAULT_CAMERA.position);
+		const tgt = dataCameraToWorld$1(spec.camera.target || DEFAULT_CAMERA.target);
 		state.camera.position.set(pos[0], pos[1], pos[2]);
 		if (state.controls) {
 			state.controls.target.set(tgt[0], tgt[1], tgt[2]);
@@ -10232,7 +10232,7 @@ async function loadLesson(spec) {
 		stopAutoPlay();
 		state._activeDomainFunctions = {};
 		await importDomains(spec && spec.import);
-		updateDockVisibility();
+		updateDockVisibility$1();
 		loadScene(spec);
 		return;
 	}
@@ -10242,9 +10242,9 @@ async function loadLesson(spec) {
 	state.visitedSteps = /* @__PURE__ */ new Set();
 	stopAutoPlay();
 	await importDomains(spec.import);
-	buildSceneTree(spec);
-	updateDockVisibility();
-	navigateTo(0, -1);
+	buildSceneTree$1(spec);
+	updateDockVisibility$1();
+	navigateTo$1(0, -1);
 }
 var _PROOF_ID_RE = /^[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+$/;
 var _PROOF_MAX_BYTES$1 = 524288;
@@ -10303,7 +10303,7 @@ async function loadProofAsLesson(id) {
 	await loadLesson(proofFileToLesson(proof, id));
 	return true;
 }
-function navigateTo(sceneIdx, stepIdx) {
+function navigateTo$1(sceneIdx, stepIdx) {
 	if (!state.lessonSpec || !state.lessonSpec.scenes) return;
 	const scene = state.lessonSpec.scenes[sceneIdx];
 	if (!scene) return;
@@ -10317,7 +10317,7 @@ function navigateTo(sceneIdx, stepIdx) {
 		state.legendToggledOff = /* @__PURE__ */ new Set();
 		stopAllSliderLoops();
 		state.sceneSliders = {};
-		removeAllInfoOverlays();
+		removeAllInfoOverlays$1();
 		buildSliderOverlay();
 		loadScene({
 			title: scene.title,
@@ -10339,7 +10339,7 @@ function navigateTo(sceneIdx, stepIdx) {
 			state.stepTrackers.push(tracker);
 			state.visitedSteps.add(sceneIdx + ":" + i);
 		}
-		buildLegend(getAllElements(scene, stepIdx));
+		buildLegend(getAllElements$1(scene, stepIdx));
 	} else {
 		if (stepIdx > state.currentStepIndex) {
 			for (let i = state.currentStepIndex + 1; i <= stepIdx; i++) if (scene.steps && scene.steps[i]) {
@@ -10360,17 +10360,17 @@ function navigateTo(sceneIdx, stepIdx) {
 			const landingTracker = state.stepTrackers[state.stepTrackers.length - 1];
 			if (landingTracker && landingTracker.infoDefs && landingTracker.infoDefs.length > 0) {
 				removeStepInfoOverlays();
-				for (const def of landingTracker.infoDefs) addInfoOverlay(def.id, def.content, def.position || "top-left", true, def.keep || false);
+				for (const def of landingTracker.infoDefs) addInfoOverlay$1(def.id, def.content, def.position || "top-left", true, def.keep || false);
 				landingTracker.infoIds = landingTracker.infoDefs.map((d) => d.id);
 			}
 		}
-		buildLegend(getAllElements(scene, stepIdx));
+		buildLegend(getAllElements$1(scene, stepIdx));
 	}
 	if (!state.followCamState && !state.cameraExprState && stepIdx >= 0 && scene.steps) {
 		const cam = resolveEffectiveStepCamera(scene, stepIdx);
 		if (cam) {
-			const pos = dataCameraToWorld(cam.position || DEFAULT_CAMERA.position);
-			const tgt = dataCameraToWorld(cam.target || DEFAULT_CAMERA.target);
+			const pos = dataCameraToWorld$1(cam.position || DEFAULT_CAMERA.position);
+			const tgt = dataCameraToWorld$1(cam.target || DEFAULT_CAMERA.target);
 			state.CAMERA_VIEWS["_step"] = {
 				position: pos,
 				target: tgt,
@@ -10380,7 +10380,7 @@ function navigateTo(sceneIdx, stepIdx) {
 					0
 				]
 			};
-			animateCamera("_step", 600);
+			animateCamera$1("_step", 600);
 		}
 	}
 	state.currentSceneIndex = sceneIdx;
@@ -10397,7 +10397,7 @@ function navigateTo(sceneIdx, stepIdx) {
 		window.dispatchEvent(new CustomEvent("algebench:navchange"));
 	} catch (_) {}
 }
-function updateDockVisibility() {
+function updateDockVisibility$1() {
 	const dock = document.getElementById("scene-dock");
 	const toggle = document.getElementById("scene-dock-toggle");
 	if (state.lessonSpec) {
@@ -10485,17 +10485,17 @@ function stepNext() {
 	const scene = state.lessonSpec.scenes[state.currentSceneIndex];
 	if (!scene) return;
 	const maxStep = (scene.steps ? scene.steps.length : 0) - 1;
-	if (state.currentStepIndex < maxStep) navigateTo(state.currentSceneIndex, state.currentStepIndex + 1);
-	else if (state.currentSceneIndex < state.lessonSpec.scenes.length - 1) navigateTo(state.currentSceneIndex + 1, -1);
+	if (state.currentStepIndex < maxStep) navigateTo$1(state.currentSceneIndex, state.currentStepIndex + 1);
+	else if (state.currentSceneIndex < state.lessonSpec.scenes.length - 1) navigateTo$1(state.currentSceneIndex + 1, -1);
 	else stopAutoPlay();
 }
 function stepPrev() {
 	if (!state.lessonSpec || !state.lessonSpec.scenes) return;
-	if (state.currentStepIndex > -1) navigateTo(state.currentSceneIndex, state.currentStepIndex - 1);
+	if (state.currentStepIndex > -1) navigateTo$1(state.currentSceneIndex, state.currentStepIndex - 1);
 	else if (state.currentSceneIndex > 0) {
 		const prevScene = state.lessonSpec.scenes[state.currentSceneIndex - 1];
 		const prevMaxStep = (prevScene.steps ? prevScene.steps.length : 0) - 1;
-		navigateTo(state.currentSceneIndex - 1, prevMaxStep);
+		navigateTo$1(state.currentSceneIndex - 1, prevMaxStep);
 	}
 }
 function setupSceneDock() {
@@ -11197,15 +11197,15 @@ function _toggleJsIssuesPanel(panel) {
 	const trusted = state._sceneJsTrustState === "trusted";
 	const stateLabel = trusted ? "⚡ JS Trusted — expressions are running natively" : "⚠ JS Disabled — expressions are no-ops (returning 0 / \"?\")";
 	const stateClass = trusted ? "js-issues-state-trusted" : "js-issues-state-untrusted";
-	const explanationBlock = state._sceneUnsafeExplanation ? `<div class="ji-explanation"><span class="ji-explanation-label">Scene-declared explanation:</span> ${_escHtml(state._sceneUnsafeExplanation)}</div>` : "";
+	const explanationBlock = state._sceneUnsafeExplanation ? `<div class="ji-explanation"><span class="ji-explanation-label">Scene-declared explanation:</span> ${_escHtml$1(state._sceneUnsafeExplanation)}</div>` : "";
 	const unsafeBanner = state._sceneIsUnsafe ? `<div class="ji-unsafe-banner">⚠ This scene sets <code>unsafe: true</code> — all expressions execute as native JavaScript regardless of pattern matching.</div>` : "";
 	const rows = state._sceneJsIssues.map(({ path, expr, type }) => {
 		const truncExpr = expr.length > 60 ? expr.slice(0, 57) + "…" : expr;
 		const typeLabel = type === "template" ? "{{…}} template" : "expr field";
 		const action = trusted ? "✅ Running" : "🚫 Disabled";
 		return `<tr>
-            <td class="ji-path" title="${_escHtml(path)}">${_escHtml(path)}</td>
-            <td class="ji-expr" title="${_escHtml(expr)}"><code>${_escHtml(truncExpr)}</code></td>
+            <td class="ji-path" title="${_escHtml$1(path)}">${_escHtml$1(path)}</td>
+            <td class="ji-expr" title="${_escHtml$1(expr)}"><code>${_escHtml$1(truncExpr)}</code></td>
             <td class="ji-type">${typeLabel}</td>
             <td class="ji-action ${trusted ? "ji-running" : "ji-disabled"}">${action}</td>
         </tr>`;
@@ -11214,7 +11214,7 @@ function _toggleJsIssuesPanel(panel) {
 	panel.innerHTML = `<div class="ji-header ${stateClass}">${stateLabel}</div>` + explanationBlock + unsafeBanner + `<div class="ji-scroll"><table class="ji-table"><thead><tr><th>JSON Path</th><th>Expression</th><th>Type</th><th>Action</th></tr></thead><tbody>${rows || noRows}</tbody></table></div>`;
 	panel.classList.remove("hidden");
 }
-function _escHtml(str) {
+function _escHtml$1(str) {
 	return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 var _JT_TYPE_ICONS = {
@@ -11808,7 +11808,7 @@ function setupJsonViewer() {
 		}
 		const imports = json && Array.isArray(json.import) ? json.import : [];
 		if (imports.length > 0 && importsBar) {
-			importsBar.innerHTML = "<span class=\"imports-label\">Imports</span>" + imports.map((name) => `<a href="/api/domains/${encodeURIComponent(name)}" target="_blank" rel="noopener">${_escHtml(name)} ↗</a>`).join("");
+			importsBar.innerHTML = "<span class=\"imports-label\">Imports</span>" + imports.map((name) => `<a href="/api/domains/${encodeURIComponent(name)}" target="_blank" rel="noopener">${_escHtml$1(name)} ↗</a>`).join("");
 			importsBar.classList.remove("hidden");
 		} else if (importsBar) importsBar.classList.add("hidden");
 		const s = _computeSceneSummary(json);
@@ -12663,12 +12663,12 @@ function captureViewState({ includeCamera = false } = {}) {
 			}
 		}
 		if (state.camera && state.controls) vs.cam = {
-			position: worldCameraToData([
+			position: worldCameraToData$1([
 				state.camera.position.x,
 				state.camera.position.y,
 				state.camera.position.z
 			]),
-			target: worldCameraToData([
+			target: worldCameraToData$1([
 				state.controls.target.x,
 				state.controls.target.y,
 				state.controls.target.z
@@ -12698,7 +12698,7 @@ async function applyViewState(vs, opts = {}) {
 			if (sceneIdx >= 0) {
 				const stepIds = maps.stepIds[sceneIdx] || [];
 				const stepIdx = vs.st != null ? resolveIndex(vs.st, stepIds) : -1;
-				navigateTo(sceneIdx, stepIdx);
+				navigateTo$1(sceneIdx, stepIdx);
 			}
 		}
 		if (vs.pf != null && Array.isArray(state.proofSpec) && state.proofSpec.length) {
@@ -12710,7 +12710,7 @@ async function applyViewState(vs, opts = {}) {
 				try {
 					setActiveProof(pIdx);
 					const sIds = proofStepIds(state.proofSpec[pIdx] && state.proofSpec[pIdx].proof);
-					navigateProof(vs.ps != null ? resolveIndex(vs.ps, sIds) : -1);
+					navigateProof$1(vs.ps != null ? resolveIndex(vs.ps, sIds) : -1);
 				} finally {
 					state._proofSyncInProgress = prevLatch;
 				}
@@ -12722,7 +12722,7 @@ async function applyViewState(vs, opts = {}) {
 			state._proofSyncInProgress = true;
 			try {
 				setActiveProof(0);
-				navigateProof(Number.isFinite(vs.pas) ? vs.pas : 0);
+				navigateProof$1(Number.isFinite(vs.pas) ? vs.pas : 0);
 			} finally {
 				state._proofSyncInProgress = prevLatch;
 			}
@@ -12796,8 +12796,8 @@ async function applyViewState(vs, opts = {}) {
 		const dynamicCam = state.followCamState || state.cameraExprState;
 		const camOk = vs.cam && Array.isArray(vs.cam.position) && Array.isArray(vs.cam.target);
 		if (camOk && dynamicCam && state.camera && state.controls) {
-			const wPos = dataCameraToWorld(vs.cam.position);
-			const wTgt = dataCameraToWorld(vs.cam.target);
+			const wPos = dataCameraToWorld$1(vs.cam.position);
+			const wTgt = dataCameraToWorld$1(vs.cam.target);
 			const up = Array.isArray(vs.cam.up) ? vs.cam.up.slice(0, 3) : [
 				0,
 				1,
@@ -12846,8 +12846,8 @@ async function applyViewState(vs, opts = {}) {
 			};
 			requestAnimationFrame(pin);
 		} else if (camOk && !dynamicCam) {
-			const wPos = dataCameraToWorld(vs.cam.position);
-			const wTgt = dataCameraToWorld(vs.cam.target);
+			const wPos = dataCameraToWorld$1(vs.cam.position);
+			const wTgt = dataCameraToWorld$1(vs.cam.target);
 			const up = Array.isArray(vs.cam.up) ? vs.cam.up.slice(0, 3) : [
 				0,
 				1,
@@ -12859,7 +12859,7 @@ async function applyViewState(vs, opts = {}) {
 				target: wTgt,
 				up
 			};
-			animateCamera("__deeplink", 600);
+			animateCamera$1("__deeplink", 600);
 		}
 		if (cvBtn && !cvDynamic) {
 			if (camOk) {
@@ -13470,28 +13470,28 @@ document.addEventListener("DOMContentLoaded", async () => {
 	loadBuiltinScenesList();
 	await loadInitialSceneFromQuery();
 });
-window.renderMarkdown = renderMarkdown;
-window.renderKaTeX = renderKaTeX;
-window.navigateTo = navigateTo;
-window.animateCamera = animateCamera;
-window.buildSceneTree = buildSceneTree;
-window.addInfoOverlay = addInfoOverlay;
-window.removeAllInfoOverlays = removeAllInfoOverlays;
-window.updateInfoOverlays = updateInfoOverlays;
-window.getAllElements = getAllElements;
+window.renderMarkdown = renderMarkdown$1;
+window.renderKaTeX = renderKaTeX$1;
+window.navigateTo = navigateTo$1;
+window.animateCamera = animateCamera$1;
+window.buildSceneTree = buildSceneTree$1;
+window.addInfoOverlay = addInfoOverlay$1;
+window.removeAllInfoOverlays = removeAllInfoOverlays$1;
+window.updateInfoOverlays = updateInfoOverlays$1;
+window.getAllElements = getAllElements$1;
 window.loadLesson = loadLesson;
 window.loadScene = loadScene;
 window.isLessonFormat = isLessonFormat;
-window.updateDockVisibility = updateDockVisibility;
-window.animateSlider = animateSlider;
-window.dataCameraToWorld = dataCameraToWorld;
-window.worldCameraToData = worldCameraToData;
+window.updateDockVisibility = updateDockVisibility$1;
+window.animateSlider = animateSlider$1;
+window.dataCameraToWorld = dataCameraToWorld$1;
+window.worldCameraToData = worldCameraToData$1;
 window.captureViewState = captureViewState;
 window.applyViewState = applyViewState;
-window.navigateProof = navigateProof;
+window.navigateProof = navigateProof$1;
 window.loadProof = loadProof;
-window.getProofContext = getProofContext;
-window.refreshProofPanel = refreshProofPanel;
+window.getProofContext = getProofContext$1;
+window.refreshProofPanel = refreshProofPanel$1;
 Object.defineProperties(window, {
 	lessonSpec: {
 		get() {
@@ -17809,7 +17809,7 @@ var FunctionAnalysisManager = class {
 			const name = document.createElement("span");
 			name.className = "fa-tip-name";
 			const label = ds.$faLabel || ds.label || "";
-			name.innerHTML = renderKaTeX(label, false);
+			name.innerHTML = renderKaTeX$1(label, false);
 			const val = document.createElement("span");
 			val.className = "fa-tip-val";
 			const y = this._seriesValueAt(chart, chars, view, state, di, x);
@@ -17967,7 +17967,7 @@ var FunctionAnalysisManager = class {
 		const di = this._mainDatasetIndex(chart);
 		const ys = di < 0 ? [] : chart.data.datasets[di].data.filter(Number.isFinite);
 		const y = chars.dependentLatex || chars.expression || "f";
-		el.innerHTML = renderKaTeX(`$${y}$ does not reach ${this._fmt(value)} here` + (ys.length ? ` — it runs from ${this._fmt(Math.min(...ys))} to ${this._fmt(Math.max(...ys))} over this range.` : "."), false);
+		el.innerHTML = renderKaTeX$1(`$${y}$ does not reach ${this._fmt(value)} here` + (ys.length ? ` — it runs from ${this._fmt(Math.min(...ys))} to ${this._fmt(Math.max(...ys))} over this range.` : "."), false);
 		el.classList.add("show");
 		clearTimeout(this._snapMissTimer);
 		this._snapMissTimer = setTimeout(() => el.classList.remove("show"), 2600);
@@ -18539,7 +18539,7 @@ var FunctionAnalysisManager = class {
 			swatch.className = "fa-series-swatch" + ((ds.borderDash || []).length ? " dashed" : "");
 			swatch.style.borderTopColor = ds.borderColor;
 			const text = document.createElement("span");
-			text.innerHTML = renderKaTeX(source, false);
+			text.innerHTML = renderKaTeX$1(source, false);
 			chip.append(swatch, text);
 			chip.addEventListener("click", () => {
 				const wasVisible = chart.isDatasetVisible(i);
@@ -18911,7 +18911,7 @@ var FunctionAnalysisManager = class {
 	*  app (labels.js renderKaTeX — used by tree labels, proof titles). */
 	_inlineMath(el, text) {
 		const span = document.createElement("span");
-		span.innerHTML = renderKaTeX(String(text || ""), false);
+		span.innerHTML = renderKaTeX$1(String(text || ""), false);
 		el.appendChild(span);
 	}
 	/** Instant styled tooltip with the variable's AI-written description
@@ -18924,7 +18924,7 @@ var FunctionAnalysisManager = class {
 				tip.className = "fa-tooltip";
 				this.pageEl.appendChild(tip);
 			}
-			tip.innerHTML = `<span class="fa-ai-badge">${AI_ICON}</span> ` + renderKaTeX(desc, false);
+			tip.innerHTML = `<span class="fa-ai-badge">${AI_ICON}</span> ` + renderKaTeX$1(desc, false);
 			const r = el.getBoundingClientRect();
 			const host = this.pageEl.getBoundingClientRect();
 			tip.style.left = `${r.left - host.left}px`;
@@ -19499,7 +19499,7 @@ function rebuildProofTree() {
 		if (multiScene) {
 			const ttl = document.createElement("div");
 			ttl.className = "gp-tree-scene-title";
-			ttl.innerHTML = renderKaTeX(group.sceneTitle, false);
+			ttl.innerHTML = renderKaTeX$1(group.sceneTitle, false);
 			groupEl.appendChild(ttl);
 		}
 		group.entries.forEach((entry) => {
@@ -19515,7 +19515,7 @@ function rebuildProofTree() {
 			arrow.className = "gp-tree-proof-arrow";
 			arrow.textContent = "▶";
 			const title = document.createElement("span");
-			title.innerHTML = renderKaTeX(proof.title || proof.id || "Proof", false);
+			title.innerHTML = renderKaTeX$1(proof.title || proof.id || "Proof", false);
 			header.append(arrow, title);
 			proofEl.appendChild(header);
 			const stepsEl = document.createElement("div");
@@ -19536,7 +19536,7 @@ function rebuildProofTree() {
 				idxEl.textContent = String(sIdx + 1);
 				const labelEl = document.createElement("span");
 				labelEl.className = "gp-tree-step-label";
-				labelEl.innerHTML = renderKaTeX(step.label || step.justification || step.math || `Step ${sIdx + 1}`, false);
+				labelEl.innerHTML = renderKaTeX$1(step.label || step.justification || step.math || `Step ${sIdx + 1}`, false);
 				stepEl.append(idxEl, labelEl);
 				if (hasGraph) {
 					const dot = document.createElement("span");
@@ -21111,6 +21111,1178 @@ function _buildGraphNodePayload(graph, nodeId) {
 	};
 }
 window.algebenchGetGraphPanelState = getGraphPanelState;
+//#endregion
+//#region src/chat.ts
+var chatHistory = [];
+var chatAvailable$1 = false;
+var chatSending = false;
+var activeSpeakBtn = null;
+var welcomeInFlight = false;
+var memorySnapshot = null;
+var ttsCharacterPicker = null;
+var selectedTtsCharacter = "joker";
+var selectedTtsVoice = "Charon";
+var selectedTtsMode = "read";
+var CHAT_HISTORY_MAX = Infinity;
+function _escHtml(s) {
+	const d = document.createElement("div");
+	d.textContent = s;
+	return d.innerHTML;
+}
+var _presetPrompts = [];
+var _lastFocusedSurface = null;
+function _classifyFocusTarget(target) {
+	const el = target;
+	if (!el || !el.closest) return null;
+	if (el.closest("#graph-viewport, #dock-tab-graph, .graph-panel-info, .graph-panel-tooltip")) return "graph";
+	if (el.closest("#mathbox-container, #mathbox-overlay, canvas")) return "viewport";
+	if (el.closest(".explanation-panel, .panel-tab, .tab-content, #chat-input, #preset-prompts")) return "panel";
+	return null;
+}
+if (typeof window !== "undefined") window.addEventListener("pointerdown", (e) => {
+	const surface = _classifyFocusTarget(e.target);
+	if (surface) _lastFocusedSurface = surface;
+}, true);
+function setPresetPrompts$1(prompts) {
+	_presetPrompts = prompts || [];
+	const container = document.getElementById("preset-prompts");
+	if (!container) return;
+	container.innerHTML = "";
+	if (!_presetPrompts.length) {
+		container.classList.add("hidden");
+		return;
+	}
+	container.classList.remove("hidden");
+	for (const text of _presetPrompts) {
+		const btn = document.createElement("button");
+		btn.className = "preset-prompt-btn";
+		btn.textContent = text;
+		btn.title = text + "\n\nClick to send · ⌘/Ctrl-click to edit";
+		btn.addEventListener("click", (e) => {
+			if (e.metaKey || e.ctrlKey) {
+				const input = document.getElementById("chat-input");
+				if (input) {
+					input.value = text;
+					input.focus();
+					input.dispatchEvent(new Event("input"));
+				}
+			} else if (!chatSending) sendChatMessage$1(text);
+		});
+		container.appendChild(btn);
+	}
+}
+function shouldSkipWelcome() {
+	return chatHistory.length > 0 || chatSending;
+}
+function buildChatContext() {
+	const ctx = {};
+	if (typeof lessonSpec !== "undefined" && lessonSpec && lessonSpec.title) ctx.lessonTitle = lessonSpec.title;
+	if (typeof lessonSpec !== "undefined" && lessonSpec && lessonSpec.scenes) {
+		ctx.totalScenes = lessonSpec.scenes.length;
+		const idx = typeof currentSceneIndex !== "undefined" ? currentSceneIndex : 0;
+		ctx.sceneNumber = idx + 1;
+		const scene = lessonSpec.scenes[idx];
+		if (scene) ctx.currentScene = scene;
+		ctx.sceneTree = lessonSpec.scenes.map((s, i) => {
+			const entry = {
+				sceneNumber: i + 1,
+				title: s.title || "Scene " + (i + 1)
+			};
+			if (s.steps && s.steps.length > 0) entry.steps = s.steps.map((st, j) => ({
+				stepNumber: j + 1,
+				title: st.title || "Step " + (j + 1),
+				description: st.description || ""
+			}));
+			return entry;
+		});
+	}
+	const runtime = {};
+	runtime.stepNumber = (typeof currentStepIndex !== "undefined" ? currentStepIndex : -1) + 1;
+	if (typeof camera !== "undefined" && camera) runtime.cameraPosition = {
+		x: +camera.position.x.toFixed(2),
+		y: +camera.position.y.toFixed(2),
+		z: +camera.position.z.toFixed(2)
+	};
+	if (typeof controls !== "undefined" && controls && controls.target) runtime.cameraTarget = {
+		x: +controls.target.x.toFixed(2),
+		y: +controls.target.y.toFixed(2),
+		z: +controls.target.z.toFixed(2)
+	};
+	if (typeof CAMERA_VIEWS !== "undefined") {
+		const viewNames = Object.keys(CAMERA_VIEWS).filter((k) => k !== "__agent" && k !== "_step" && k !== "reset");
+		if (viewNames.length > 0) runtime.cameraViews = viewNames;
+	}
+	if (typeof lessonSpec !== "undefined" && lessonSpec && lessonSpec.scenes && typeof getAllElements === "function") {
+		const scene = lessonSpec.scenes[currentSceneIndex];
+		if (scene) {
+			const els = getAllElements(scene, currentStepIndex);
+			const NON_VISUAL_TYPES = /* @__PURE__ */ new Set([
+				"slider",
+				"info",
+				"preset_prompts"
+			]);
+			runtime.visibleElements = els.filter((el) => {
+				if (NON_VISUAL_TYPES.has(el.type)) return false;
+				if (typeof elementRegistry !== "undefined" && el.id && elementRegistry[el.id]) return !elementRegistry[el.id].hidden;
+				return true;
+			}).map((el) => ({
+				label: el.label || el.id || el.type,
+				type: el.type
+			}));
+		}
+	}
+	if (typeof sceneSliders !== "undefined" && sceneSliders) {
+		const sliders = {};
+		for (const [id, s] of Object.entries(sceneSliders)) sliders[id] = {
+			value: s.value,
+			min: s.min,
+			max: s.max,
+			step: s.step,
+			label: s.label || id
+		};
+		if (Object.keys(sliders).length > 0) runtime.sliders = sliders;
+	}
+	const captionEl = document.getElementById("step-caption");
+	if (captionEl && !captionEl.classList.contains("hidden")) runtime.currentCaption = (captionEl.dataset.markdown || captionEl.textContent).trim();
+	const activeTab = document.querySelector(".tab-content.active");
+	if (activeTab) runtime.activeTab = activeTab.id.replace("tab-", "");
+	if (typeof currentProjection !== "undefined") runtime.projection = currentProjection;
+	if (typeof getProofContext === "function") {
+		const proofCtx = getProofContext();
+		if (proofCtx) runtime.proof = proofCtx;
+	}
+	if (typeof window.algebenchGetGraphPanelState === "function") try {
+		const gp = window.algebenchGetGraphPanelState();
+		if (gp) runtime.graphPanel = gp;
+	} catch (e) {
+		console.warn("[chat] failed to read graph panel state:", e);
+	}
+	if (_lastFocusedSurface) runtime.lastFocusedSurface = _lastFocusedSurface;
+	const viewing = [];
+	const graphActive = runtime.graphPanel && runtime.graphPanel.open;
+	viewing.push(graphActive ? "semantic graph" : "scene");
+	if (runtime.activeTab === "chat") {
+		viewing.push("chat");
+		const proofPanel = document.getElementById("proof-panel");
+		if (proofPanel && !proofPanel.classList.contains("hidden")) viewing.push("proof");
+	} else if (runtime.activeTab === "doc") viewing.push("doc");
+	runtime.userViewing = viewing;
+	try {
+		const coachEngine = window.AlgeBenchCoach && window.AlgeBenchCoach.engine;
+		if (coachEngine && typeof coachEngine.status === "function") runtime.coach = coachEngine.status();
+	} catch {}
+	ctx.runtime = runtime;
+	return ctx;
+}
+window.algebenchBuildChatContext = buildChatContext;
+function switchPanelTab$1(tabName) {
+	document.querySelectorAll(".panel-tab").forEach((btn) => {
+		btn.classList.toggle("active", btn.dataset.tab === tabName);
+	});
+	document.querySelectorAll(".tab-content").forEach((el) => {
+		el.classList.toggle("active", el.id === "tab-" + tabName);
+	});
+	try {
+		window.dispatchEvent(new CustomEvent("algebench:panelchange"));
+	} catch (_) {}
+	if (tabName === "chat") {
+		if (typeof refreshProofPanel === "function") refreshProofPanel();
+		const input = document.getElementById("chat-input");
+		if (input) setTimeout(() => input.focus(), 50);
+		if (chatAvailable$1 && !welcomeInFlight && !shouldSkipWelcome()) setTimeout(() => {
+			if (!welcomeInFlight && !shouldSkipWelcome()) sendWelcomeMessage();
+		}, 800);
+	}
+}
+function setupChat() {
+	fetch("/api/chat/available").then((r) => r.json()).then((data) => {
+		chatAvailable$1 = data.available;
+		if (!chatAvailable$1) {
+			const msg = document.getElementById("chat-unavailable-msg");
+			const tab = document.getElementById("tab-chat");
+			if (msg) msg.classList.remove("hidden");
+			if (tab) tab.classList.add("unavailable");
+		}
+	}).catch(() => {
+		chatAvailable$1 = false;
+		const msg = document.getElementById("chat-unavailable-msg");
+		const tab = document.getElementById("tab-chat");
+		if (msg) msg.classList.remove("hidden");
+		if (tab) tab.classList.add("unavailable");
+	});
+	document.querySelectorAll(".panel-tab").forEach((btn) => {
+		btn.addEventListener("click", () => {
+			switchPanelTab$1(btn.dataset.tab);
+		});
+	});
+	document.addEventListener("keydown", (e) => {
+		const target = e.target;
+		if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
+		if (e.key === "c" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+			const panel = document.getElementById("explanation-panel");
+			const toggle = document.getElementById("explain-toggle");
+			const handle = document.getElementById("panel-resize-handle");
+			if (panel.classList.contains("hidden")) {
+				panel.classList.remove("hidden");
+				handle.style.display = "block";
+				toggle.style.display = "block";
+				toggle.classList.add("active");
+				setTimeout(() => window.dispatchEvent(new Event("resize")), 50);
+			}
+			switchPanelTab$1("chat");
+		}
+	});
+	const input = document.getElementById("chat-input");
+	const sendBtn = document.getElementById("chat-send");
+	initChatTtsControls();
+	input.addEventListener("keydown", (e) => {
+		if (e.key === "Enter" && !e.shiftKey) {
+			e.preventDefault();
+			const text = input.value.trim();
+			if (text && !chatSending) {
+				input.value = "";
+				input.style.height = "auto";
+				sendChatMessage$1(text);
+			}
+		}
+	});
+	input.addEventListener("input", () => {
+		input.style.height = "auto";
+		input.style.height = Math.min(input.scrollHeight, 120) + "px";
+	});
+	sendBtn.addEventListener("click", () => {
+		const text = input.value.trim();
+		if (text && !chatSending) {
+			input.value = "";
+			input.style.height = "auto";
+			sendChatMessage$1(text);
+		}
+	});
+}
+function initChatTtsControls() {
+	const lib = window.GeminiVoiceCharacterSelector;
+	if (!lib) return;
+	const characterBtn = document.getElementById("chatCharacterBtn");
+	const characterPalette = document.getElementById("chatCharacterPalette");
+	const characterSearch = document.getElementById("chatCharacterSearch");
+	const characterList = document.getElementById("chatCharacterList");
+	const characterBackdrop = document.getElementById("chatCharacterBackdrop");
+	const voiceSelect = document.getElementById("chatVoiceSelect");
+	if (!characterBtn || !characterPalette || !characterSearch || !characterList || !characterBackdrop || !voiceSelect) return;
+	if (characterPalette.parentElement !== document.body) document.body.appendChild(characterPalette);
+	if (characterBackdrop.parentElement !== document.body) document.body.appendChild(characterBackdrop);
+	selectedTtsVoice = lib.setupVoiceSelect(voiceSelect, {
+		includeSystem: false,
+		storageKey: "algebenchTtsVoice",
+		defaultValue: "Charon"
+	});
+	ttsCharacterPicker = new lib.CharacterPicker({
+		buttonEl: characterBtn,
+		paletteEl: characterPalette,
+		searchEl: characterSearch,
+		listEl: characterList,
+		backdropEl: characterBackdrop,
+		options: lib.CHARACTER_OPTIONS,
+		groupMap: lib.CHARACTER_GROUPS,
+		groupOrder: lib.CHARACTER_GROUP_ORDER,
+		storageKey: "algebenchTtsCharacter",
+		recentsKey: "algebenchTtsCharacterRecents",
+		defaultId: "joker",
+		hotkey: "k",
+		onChange: (characterId) => {
+			selectedTtsCharacter = characterId;
+			const opt = lib.CHARACTER_OPTIONS.find((o) => o.id === characterId);
+			if (opt && opt.defaultVoice && voiceSelect) {
+				voiceSelect.value = opt.defaultVoice;
+				selectedTtsVoice = opt.defaultVoice;
+				localStorage.setItem("algebenchTtsVoice", opt.defaultVoice);
+			}
+		}
+	});
+	selectedTtsCharacter = ttsCharacterPicker.init();
+	voiceSelect.addEventListener("change", () => {
+		selectedTtsVoice = voiceSelect.value || "Charon";
+	});
+	const ttsModeSelect = document.getElementById("chatTtsModeSelect");
+	if (ttsModeSelect) {
+		selectedTtsMode = localStorage.getItem("algebenchTtsMode") || "read";
+		ttsModeSelect.value = selectedTtsMode;
+		ttsModeSelect.addEventListener("change", () => {
+			selectedTtsMode = ttsModeSelect.value;
+			localStorage.setItem("algebenchTtsMode", selectedTtsMode);
+		});
+	}
+}
+async function sendChatMessage$1(text, { silent = false } = {}) {
+	chatSending = true;
+	if (!silent) addChatMessage("user", text);
+	const loadingEl = addChatLoading();
+	const context = buildChatContext();
+	console.log("%c🤖 Chat send: %c" + text.substring(0, 60), "color: #8888ff; font-weight: bold", "color: #ccc");
+	const payload = {
+		message: text,
+		history: silent ? chatHistory : chatHistory.slice(0, -1),
+		context
+	};
+	try {
+		const res = await fetch("/api/chat", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(payload)
+		});
+		loadingEl.remove();
+		if (!res.ok) {
+			const err = await res.json().catch(() => ({ error: "Request failed" }));
+			const rawMsg = err.detail ?? err.error;
+			const msg = typeof rawMsg === "string" ? rawMsg : rawMsg != null ? JSON.stringify(rawMsg) : "";
+			console.error("%c🤖 Chat error: %c" + res.status + " — " + (msg || "unknown"), "color: #ff4444; font-weight: bold", "color: #ccc");
+			addChatMessage("assistant", msg || "Something went wrong. Please try again.");
+			if (chatHistory.length && chatHistory[chatHistory.length - 1].role === "user") chatHistory.pop();
+			chatSending = false;
+			return;
+		}
+		const data = await res.json();
+		const tcNames = (data.toolCalls || []).map((tc) => tc.name).join(", ");
+		console.log("%c🤖 Chat response: %c" + data.response.length + " chars" + (tcNames ? " | tools: " + tcNames : ""), "color: #88ff88; font-weight: bold", "color: #ccc");
+		if (data.toolCalls && data.toolCalls.length > 0) for (const tc of data.toolCalls) {
+			console.groupCollapsed("%c🔧 TOOL CALL: " + tc.name, "color: #ff8844; font-weight: bold");
+			console.log("%cRequest rawArgs:", "color: #aaa; font-weight: bold", tc.rawArgs || tc.args);
+			console.log("%cRequest exec args:", "color: #aaa; font-weight: bold", tc.args);
+			console.log("%cResult:", "color: #aaa; font-weight: bold", tc.result);
+			if (tc.name === "add_scene") {
+				console.log("%cparsedScene:", "color: #ffcc00; font-weight: bold", tc.args.parsedScene || "❌ NOT SET");
+				if (tc.args.scene) console.log("%craw scene:", "color: #888", typeof tc.args.scene === "string" ? tc.args.scene.substring(0, 500) : tc.args.scene);
+			}
+			console.groupEnd();
+		}
+		if (data.debug) {
+			const contents = data.debug.contents || [];
+			const modelParts = [{ text: data.response }];
+			if (data.toolCalls && data.toolCalls.length > 0) for (const tc of data.toolCalls) modelParts.push({ functionCall: {
+				name: tc.name,
+				args: tc.rawArgs || tc.args
+			} });
+			contents.push({
+				role: "model",
+				parts: modelParts
+			});
+			window.geminiChatHistory = {
+				systemPrompt: data.debug.systemPrompt,
+				contents
+			};
+			try {
+				localStorage.setItem("geminiChatHistory", JSON.stringify(window.geminiChatHistory));
+			} catch (e) {}
+			console.log("%c📋 geminiChatHistory: %c" + (window.geminiChatHistory.systemPrompt || "").length + " char prompt, " + contents.length + " messages (window.geminiChatHistory)", "color: #ffaa44; font-weight: bold", "color: #ccc");
+		}
+		if (data.toolCalls && data.toolCalls.length > 0) {
+			const messagesEl = document.getElementById("chat-messages");
+			for (const tc of data.toolCalls) messagesEl.appendChild(renderToolCallChip(tc));
+			messagesEl.scrollTop = messagesEl.scrollHeight;
+		}
+		let assistantMsg = null;
+		if (data.response) assistantMsg = addChatMessage("assistant", data.response);
+		if (data.toolCalls && data.toolCalls.length > 0) {
+			for (const tc of data.toolCalls) if (tc.name === "navigate_to") {
+				const agentScene = Math.round(Number(tc.args.scene) || 1);
+				const agentStep = tc.args.step !== void 0 ? Math.round(Number(tc.args.step)) : 0;
+				const internalScene = agentScene - 1;
+				const internalStep = agentStep - 1;
+				const totalScenes = typeof lessonSpec !== "undefined" && lessonSpec && lessonSpec.scenes ? lessonSpec.scenes.length : 0;
+				const beforeScene = currentSceneIndex;
+				const beforeStep = currentStepIndex;
+				console.log("%c📍 navigate_to: %cagent: scene=" + agentScene + " step=" + agentStep + " → internal: scene=" + internalScene + " step=" + internalStep + " | before: scene=" + (beforeScene + 1) + " step=" + (beforeStep + 1) + " | totalScenes=" + totalScenes, "color: #ff8844; font-weight: bold", "color: #ccc");
+				if (internalScene < 0 || internalScene >= totalScenes) console.error("📍 navigate_to REJECTED: scene " + agentScene + " out of bounds (1-" + totalScenes + ")");
+				else if (typeof navigateTo === "function") {
+					navigateTo(internalScene, internalStep);
+					if (typeof window.algebenchEnsureSceneVisible === "function") window.algebenchEnsureSceneVisible();
+					console.log("%c📍 navigate_to result: %cnow at scene " + (currentSceneIndex + 1) + " step " + (currentStepIndex + 1) + (currentSceneIndex === beforeScene && currentStepIndex === beforeStep ? " ⚠️ NO CHANGE" : ""), "color: #ff8844; font-weight: bold", "color: #ccc");
+				}
+			} else if (tc.name === "set_camera") {
+				const viewName = tc.args.view;
+				if (viewName && typeof CAMERA_VIEWS !== "undefined") {
+					const key = viewName.toLowerCase().replace(/\s+/g, "-");
+					if (CAMERA_VIEWS[key]) animateCamera(key, 800);
+					else {
+						const btn = document.querySelector(`.cam-btn[data-view="${key}"]`);
+						if (btn) btn.click();
+					}
+				} else if (tc.args.position || tc.args.target) {
+					const tgt = tc.args.target || [
+						0,
+						0,
+						0
+					];
+					let pos = tc.args.position;
+					const zoom = tc.args.zoom;
+					if (!pos && typeof camera !== "undefined" && typeof controls !== "undefined" && typeof worldCameraToData === "function") {
+						const curPosData = worldCameraToData([
+							camera.position.x,
+							camera.position.y,
+							camera.position.z
+						]);
+						const curTgtData = worldCameraToData([
+							controls.target.x,
+							controls.target.y,
+							controls.target.z
+						]);
+						pos = [
+							tgt[0] + (curPosData[0] - curTgtData[0]),
+							tgt[1] + (curPosData[1] - curTgtData[1]),
+							tgt[2] + (curPosData[2] - curTgtData[2])
+						];
+					} else if (!pos) pos = [
+						tgt[0],
+						tgt[1] + 50,
+						tgt[2] + 50
+					];
+					if (pos) {
+						const dx = pos[0] - tgt[0], dy = pos[1] - tgt[1], dz = pos[2] - tgt[2];
+						Math.sqrt(dx * dx + dy * dy + dz * dz);
+						if (zoom != null && zoom > 0) {
+							const s = 1 / zoom;
+							pos = [
+								tgt[0] + dx * s,
+								tgt[1] + dy * s,
+								tgt[2] + dz * s
+							];
+						}
+					}
+					if (typeof CAMERA_VIEWS !== "undefined" && typeof animateCamera === "function") {
+						const wPos = typeof dataCameraToWorld === "function" ? dataCameraToWorld(pos) : pos;
+						const wTgt = typeof dataCameraToWorld === "function" ? dataCameraToWorld(tgt) : tgt;
+						const sceneUp = typeof camera !== "undefined" && camera ? [
+							camera.up.x,
+							camera.up.y,
+							camera.up.z
+						] : [
+							0,
+							1,
+							0
+						];
+						CAMERA_VIEWS["__agent"] = {
+							position: wPos,
+							target: wTgt,
+							up: sceneUp
+						};
+						animateCamera("__agent", 800);
+					}
+				}
+			} else if (tc.name === "add_scene") {
+				const newScene = tc.args.parsedScene;
+				if (!newScene) {
+					console.error("add_scene: no parsedScene in args");
+					continue;
+				}
+				console.log("%c🎬 add_scene:", "color: #ffaa00; font-weight: bold", "elements:", (newScene.elements || []).length, "title:", newScene.title);
+				tc._generatedScene = newScene;
+				if (typeof lessonSpec === "undefined" || !lessonSpec) {
+					const existingScene = typeof currentSpec !== "undefined" && currentSpec ? currentSpec : null;
+					lessonSpec = {
+						title: "Lesson",
+						scenes: existingScene ? [existingScene] : []
+					};
+					console.log("  Created lesson wrapper, existing scenes:", lessonSpec.scenes.length);
+					if (existingScene) {
+						currentSceneIndex = 0;
+						currentStepIndex = -1;
+					}
+				}
+				if (!Array.isArray(lessonSpec.scenes)) lessonSpec.scenes = [];
+				lessonSpec.scenes.push(newScene);
+				const targetIdx = lessonSpec.scenes.length - 1;
+				const targetStep = !!(Array.isArray(newScene.steps) && newScene.steps.length > 0 && Array.isArray(newScene.steps[0].sliders) && newScene.steps[0].sliders.length > 0) ? 0 : -1;
+				console.log("  Navigating to scene index:", targetIdx, "currentSceneIndex:", currentSceneIndex);
+				try {
+					if (typeof buildSceneTree === "function") buildSceneTree(lessonSpec);
+					if (typeof updateDockVisibility === "function") updateDockVisibility();
+					if (typeof navigateTo === "function") navigateTo(targetIdx, targetStep);
+					if (typeof window.algebenchEnsureSceneVisible === "function") window.algebenchEnsureSceneVisible();
+					console.log("%c🎬 add_scene complete", "color: #44ff44; font-weight: bold");
+				} catch (e) {
+					console.error("add_scene: navigation/render failed:", e);
+				}
+			} else if (tc.name === "set_sliders") {
+				const values = tc.args.values || {};
+				const promises = Object.entries(values).map(([id, target]) => typeof animateSlider === "function" ? animateSlider(id, parseFloat(String(target)), 800) : Promise.resolve(false));
+				await Promise.all(promises);
+			} else if (tc.name === "set_preset_prompts") setPresetPrompts$1(tc.args.prompts || []);
+			else if (tc.name === "set_info_overlay") {
+				if (tc.args.id) {
+					if (typeof addInfoOverlay === "function") addInfoOverlay(tc.args.id, tc.args.content || "", tc.args.position || "top-left");
+				} else console.warn("set_info_overlay: tool call missing required `id`; dropping", { args: tc.args });
+			} else if (tc.name === "clear_info_overlays") {
+				if (typeof removeAllInfoOverlays === "function") removeAllInfoOverlays();
+			} else if (tc.name === "navigate_proof") {
+				const proofStep = parseInt(String(tc.result?.step ?? tc.args?.step ?? 0));
+				if (typeof navigateProof === "function") navigateProof(proofStep - 1);
+			} else if (tc.name === "derive_proof_animation") {
+				if (tc.result && tc.result.status !== "success") console.log("derive_proof_animation: skipped —", tc.result.error || "not permitted");
+				else if (typeof window.algebenchDeriveProof === "function") window.algebenchDeriveProof(tc.args || {});
+				else console.warn("derive_proof_animation: graph view not ready to derive");
+			} else if (tc.name === "control_coach") {
+				const engine = window.AlgeBenchCoach && window.AlgeBenchCoach.engine;
+				if (engine && typeof engine.control === "function") engine.control(tc.args?.action, { step: tc.args?.step });
+				else console.warn("control_coach: coach engine not available");
+			}
+		}
+		chatHistory.push({
+			role: "assistant",
+			text: data.response
+		});
+		while (chatHistory.length > CHAT_HISTORY_MAX) chatHistory.shift();
+		const memToolNames = [
+			"eval_math",
+			"mem_get",
+			"mem_set"
+		];
+		if ((data.toolCalls || []).some((tc) => memToolNames.includes(tc.name))) updateMemoryStatus();
+		if (assistantMsg && typeof assistantMsg._startSpeak === "function" && data.response && selectedTtsMode !== "silent") assistantMsg._startSpeak();
+		if (typeof window.algebenchRefreshPromptContext === "function") window.algebenchRefreshPromptContext("chat-turn");
+	} catch (err) {
+		loadingEl.remove();
+		console.error("%c🤖 Chat error: %c" + err, "color: #ff4444; font-weight: bold", "color: #ccc", err);
+		addChatMessage("assistant", err instanceof TypeError && /fetch|network|connect/i.test(err.message) ? "Failed to reach AI service. Check your connection." : "Error processing response: " + err.message);
+		if (chatHistory.length && chatHistory[chatHistory.length - 1].role === "user") chatHistory.pop();
+	}
+	chatSending = false;
+}
+function addChatMessage(role, content, toolCalls) {
+	const messagesEl = document.getElementById("chat-messages");
+	const msgDiv = document.createElement("div");
+	msgDiv.className = "chat-msg " + role;
+	const avatar = document.createElement("div");
+	avatar.className = "msg-avatar";
+	const _icons = window.algebenchIcons;
+	if (_icons) avatar.innerHTML = role === "user" ? _icons.user : _icons.ai;
+	else avatar.textContent = role === "user" ? "👤" : "🤖";
+	msgDiv.appendChild(avatar);
+	const body = document.createElement("div");
+	body.className = "msg-body";
+	if (typeof renderKaTeX === "function" && typeof renderMarkdown === "function") body.innerHTML = role === "user" ? renderKaTeX(content, false) : renderMarkdown(content);
+	else body.textContent = content;
+	body.dataset.markdown = content;
+	msgDiv.appendChild(body);
+	if (role === "assistant") {
+		const SVG_SPEAKER = "<svg viewBox=\"0 0 24 24\" fill=\"currentColor\" width=\"12\" height=\"12\"><path d=\"M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z\"/></svg>";
+		const speakBtn = document.createElement("button");
+		speakBtn.className = "msg-speak-btn";
+		speakBtn.title = "Read aloud";
+		speakBtn.innerHTML = SVG_SPEAKER;
+		const setBtnState = (state) => {
+			speakBtn.classList.remove("active", "loading", "idle");
+			if (state) speakBtn.classList.add(state);
+			else speakBtn.classList.add("idle");
+			msgDiv.classList.remove("tts-speaking", "tts-loading");
+			if (state === "active") msgDiv.classList.add("tts-speaking");
+			if (state === "loading") msgDiv.classList.add("tts-loading");
+			if (state === "loading") {
+				speakBtn.textContent = "...";
+				speakBtn.title = "Loading audio (click to cancel)";
+			} else if (state === "active") {
+				speakBtn.innerHTML = SVG_SPEAKER;
+				speakBtn.title = "Playing (click to stop, double-click to restart)";
+			} else {
+				speakBtn.innerHTML = SVG_SPEAKER;
+				speakBtn.title = "Read aloud (click to play)";
+			}
+		};
+		const stopOtherBtn = () => {
+			if (activeSpeakBtn && activeSpeakBtn !== speakBtn) {
+				if (activeSpeakBtn._ttsLoadPoll) {
+					clearInterval(activeSpeakBtn._ttsLoadPoll);
+					activeSpeakBtn._ttsLoadPoll = null;
+				}
+				if (activeSpeakBtn._ttsStatePoll) {
+					clearInterval(activeSpeakBtn._ttsStatePoll);
+					activeSpeakBtn._ttsStatePoll = null;
+				}
+				if (typeof activeSpeakBtn._setBtnState === "function") activeSpeakBtn._setBtnState(null);
+				if (activeSpeakBtn._downloadBtn) activeSpeakBtn._downloadBtn.style.display = "none";
+				activeSpeakBtn = null;
+			}
+		};
+		const stopAndReset = () => {
+			if (typeof window.algebenchStopTTS === "function") window.algebenchStopTTS();
+			if (speakBtn._ttsStatePoll) {
+				clearInterval(speakBtn._ttsStatePoll);
+				speakBtn._ttsStatePoll = null;
+			}
+			setBtnState(null);
+			if (activeSpeakBtn === speakBtn) activeSpeakBtn = null;
+		};
+		const startPlay = () => {
+			stopOtherBtn();
+			if (typeof window.algebenchSpeakText !== "function") return;
+			if (speakBtn._ttsStatePoll) {
+				clearInterval(speakBtn._ttsStatePoll);
+				speakBtn._ttsStatePoll = null;
+			}
+			setBtnState("loading");
+			activeSpeakBtn = speakBtn;
+			window.algebenchSpeakText(body.dataset.markdown || content, () => {
+				if (speakBtn._ttsStatePoll) {
+					clearInterval(speakBtn._ttsStatePoll);
+					speakBtn._ttsStatePoll = null;
+				}
+				setBtnState(null);
+				if (activeSpeakBtn === speakBtn) activeSpeakBtn = null;
+			});
+			speakBtn._ttsStatePoll = setInterval(() => {
+				if (activeSpeakBtn !== speakBtn) {
+					clearInterval(speakBtn._ttsStatePoll);
+					speakBtn._ttsStatePoll = null;
+					return;
+				}
+				const p = typeof _ensureTTSPlayer === "function" ? _ensureTTSPlayer() : null;
+				if (!p) return;
+				const playerState = p._state;
+				if (playerState === "loading") {
+					if (!speakBtn.classList.contains("loading")) setBtnState("loading");
+				} else if (playerState === "playing") {
+					if (!speakBtn.classList.contains("active")) setBtnState("active");
+				}
+			}, 80);
+		};
+		speakBtn._setBtnState = setBtnState;
+		msgDiv._startSpeak = startPlay;
+		speakBtn.addEventListener("click", () => {
+			if (speakBtn._ignoreNextClick) {
+				speakBtn._ignoreNextClick = false;
+				return;
+			}
+			if (activeSpeakBtn === speakBtn) {
+				stopAndReset();
+				return;
+			}
+			startPlay();
+		});
+		speakBtn.addEventListener("dblclick", (e) => {
+			e.preventDefault();
+			speakBtn._ignoreNextClick = true;
+			stopAndReset();
+			startPlay();
+		});
+		const downloadBtn = document.createElement("a");
+		downloadBtn.className = "tts-download-btn";
+		downloadBtn.href = "/api/tts/download";
+		downloadBtn.download = "";
+		downloadBtn.title = "Download audio";
+		downloadBtn.innerHTML = "<svg viewBox=\"0 0 24 24\" fill=\"currentColor\" width=\"11\" height=\"11\"><path d=\"M19 9h-4V3H9v6H5l7 7 7-7zm-8 2V5h2v6h1.17L12 13.17 9.83 11H11zm-6 7h14v2H5v-2z\"/></svg>";
+		downloadBtn.style.display = "none";
+		speakBtn._downloadBtn = downloadBtn;
+		const speakCol = document.createElement("div");
+		speakCol.className = "tts-speak-col";
+		speakCol.appendChild(speakBtn);
+		speakCol.appendChild(downloadBtn);
+		msgDiv.appendChild(speakCol);
+	}
+	messagesEl.appendChild(msgDiv);
+	messagesEl.scrollTop = messagesEl.scrollHeight;
+	if (role === "user") chatHistory.push({
+		role: "user",
+		text: content
+	});
+	return msgDiv;
+}
+function addChatLoading() {
+	const messagesEl = document.getElementById("chat-messages");
+	const loadingDiv = document.createElement("div");
+	loadingDiv.className = "chat-msg assistant";
+	const avatar = document.createElement("div");
+	avatar.className = "msg-avatar";
+	if (window.algebenchIcons) avatar.innerHTML = window.algebenchIcons.ai;
+	else avatar.textContent = "🤖";
+	loadingDiv.appendChild(avatar);
+	const body = document.createElement("div");
+	body.className = "msg-body chat-loading";
+	body.innerHTML = "<span></span><span></span><span></span>";
+	loadingDiv.appendChild(body);
+	messagesEl.appendChild(loadingDiv);
+	messagesEl.scrollTop = messagesEl.scrollHeight;
+	return loadingDiv;
+}
+function renderToolCallChip(tc) {
+	const chip = document.createElement("div");
+	chip.className = "chat-tool-call";
+	const rawArgs = tc.rawArgs || tc.args;
+	const e = _escHtml;
+	let friendlyText = e(tc.name);
+	if (tc.name === "navigate_to") {
+		const reason = tc.args.reason || "";
+		const agentScene = Math.round(Number(tc.args.scene) || 1);
+		const agentStep = tc.args.step !== void 0 ? Math.round(Number(tc.args.step)) : 0;
+		let sceneTitle = "Scene " + agentScene;
+		let stepTitle = "";
+		if (typeof lessonSpec !== "undefined" && lessonSpec && lessonSpec.scenes) {
+			const s = lessonSpec.scenes[agentScene - 1];
+			if (s) {
+				sceneTitle = s.title || sceneTitle;
+				if (agentStep >= 1 && s.steps && s.steps[agentStep - 1]) stepTitle = s.steps[agentStep - 1].title || "Step " + agentStep;
+				else if (agentStep === 0) stepTitle = "Root";
+			}
+		}
+		friendlyText = "📍 Navigated to \"" + e(sceneTitle) + "\"";
+		if (stepTitle) friendlyText += ", " + e(stepTitle);
+		if (reason) friendlyText += " — " + e(reason);
+	} else if (tc.name === "set_camera") {
+		const reason = tc.args.reason || "better viewing angle";
+		friendlyText = "🎥 Camera adjusted" + (tc.args.view ? " (" + e(tc.args.view) + ")" : "") + " — " + e(reason);
+	} else if (tc.name === "add_scene") friendlyText = "🎬 New scene added — " + e(tc.args.title || tc.args.parsedScene?.title || "new visualization");
+	else if (tc.name === "set_sliders") {
+		const vals = tc.args.values || {};
+		const parts = Object.entries(vals).map(([id, v]) => e(id) + "→" + e(String(v)));
+		friendlyText = "🎚️ Set " + (parts.length > 0 ? parts.join(", ") : "sliders");
+	} else if (tc.name === "eval_math") {
+		const expr = tc.args.expression || "";
+		const result = tc.result && tc.result.result !== void 0 ? tc.result.result : null;
+		const storedAs = tc.result && tc.result.stored_as;
+		const err = tc.result && tc.result.error;
+		if (err) friendlyText = "🧮 eval: " + e(expr) + " → ❌ " + e(err);
+		else if (storedAs) {
+			const summary = tc.result && tc.result.summary || "";
+			friendlyText = "🧮 " + e(expr) + " → 💾 memory['" + e(storedAs) + "'] " + e(summary);
+		} else if (Array.isArray(result) && result.length > 3) friendlyText = "🧮 " + e(expr) + " → [" + result.length + " points]";
+		else {
+			const val = typeof result === "number" ? Number.isInteger(result) ? result : +result.toFixed(6) : JSON.stringify(result);
+			friendlyText = "🧮 " + e(expr) + " = " + e(String(val));
+		}
+	} else if (tc.name === "mem_get") {
+		const key = tc.args.key || "";
+		const err = tc.result && tc.result.error;
+		if (key === "?") {
+			const keys = tc.result && tc.result.keys;
+			friendlyText = "🗂️ memory keys: " + e(keys && typeof keys === "object" ? Object.keys(keys).join(", ") : "(empty)");
+		} else if (err) friendlyText = "🗂️ memory['" + e(key) + "'] → ❌ not found";
+		else {
+			const summary = tc.result && tc.result.summary || "";
+			friendlyText = "🗂️ memory['" + e(key) + "'] → " + e(summary);
+		}
+	} else if (tc.name === "mem_set") {
+		const key = tc.args.key || "";
+		const err = tc.result && tc.result.error;
+		if (err) friendlyText = "💾 mem_set['" + e(key) + "'] → ❌ " + e(err);
+		else {
+			const summary = tc.result && tc.result.summary || "";
+			friendlyText = "💾 memory['" + e(key) + "'] = " + e(summary);
+		}
+	} else if (tc.name === "set_preset_prompts") {
+		const count = (tc.args.prompts || []).length;
+		friendlyText = count === 0 ? "💬 Cleared preset prompts" : "💬 Set " + count + " preset prompt" + (count === 1 ? "" : "s");
+	} else if (tc.name === "set_info_overlay") {
+		if (tc.args.clear) friendlyText = "🖼️ Cleared info overlays";
+		else {
+			const id = tc.args.id || "overlay";
+			const pos = tc.args.position || "top-left";
+			friendlyText = "🖼️ Info overlay \"" + e(id) + "\" @ " + e(pos);
+		}
+	} else if (tc.name === "navigate_proof") {
+		const step = tc.args.step || 0;
+		const reason = tc.args.reason || "";
+		friendlyText = step === 0 ? "📐 Proof: showing goal overview" : "📐 Proof: step " + step + (reason ? " — " + e(reason) : "");
+	} else if (tc.name === "control_coach") {
+		const action = tc.args.action || "status";
+		const step = tc.args.step ? " → " + e(String(tc.args.step)) : "";
+		friendlyText = "🧭 Tour: " + e(action) + step;
+	}
+	const header = document.createElement("div");
+	header.style.cssText = "display:flex;align-items:flex-start;justify-content:space-between;gap:8px;";
+	chip.appendChild(header);
+	const summary = document.createElement("div");
+	summary.className = "tool-call-summary";
+	summary.style.flex = "1";
+	if (typeof renderMarkdown === "function") summary.innerHTML = renderMarkdown(friendlyText);
+	else summary.textContent = friendlyText;
+	header.appendChild(summary);
+	const resolvedBtn = document.createElement("button");
+	resolvedBtn.type = "button";
+	resolvedBtn.title = "View resolved args/result";
+	resolvedBtn.textContent = "ⓘ";
+	resolvedBtn.style.cssText = "border:1px solid rgba(255,255,255,0.2);background:transparent;color:#9aa0a6;border-radius:999px;width:18px;height:18px;line-height:16px;font-size:11px;cursor:pointer;padding:0;flex-shrink:0;";
+	header.appendChild(resolvedBtn);
+	const details = document.createElement("div");
+	details.className = "tool-call-details hidden";
+	details.textContent = JSON.stringify({ functionCall: {
+		name: tc.name,
+		args: rawArgs
+	} }, null, 2);
+	chip.appendChild(details);
+	const resultPreview = document.createElement("div");
+	resultPreview.className = "tool-call-details hidden";
+	resultPreview.style.cssText = "margin-top:4px;font-size:11px;color:#7f8790;";
+	const r = tc.result || {};
+	if (typeof r.message === "string" && r.message.trim()) resultPreview.textContent = r.message.trim();
+	else if (typeof r.error === "string" && r.error.trim()) resultPreview.textContent = "Error: " + r.error.trim();
+	else if (typeof r.summary === "string" && r.summary.trim()) resultPreview.textContent = r.summary.trim();
+	else if (r.status) resultPreview.textContent = "Status: " + r.status;
+	chip.appendChild(resultPreview);
+	const resolvedBackdrop = document.createElement("div");
+	resolvedBackdrop.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9999;display:none;align-items:center;justify-content:center;padding:16px;";
+	const resolvedPanel = document.createElement("div");
+	resolvedPanel.style.cssText = "width:min(760px,92vw);max-height:82vh;overflow:auto;background:#11161d;border:1px solid rgba(255,255,255,0.18);border-radius:10px;padding:10px 12px;";
+	resolvedBackdrop.appendChild(resolvedPanel);
+	const resolvedHeader = document.createElement("div");
+	resolvedHeader.style.cssText = "position:sticky;top:0;z-index:1;display:flex;justify-content:space-between;align-items:center;margin:-10px -12px 8px -12px;padding:10px 12px;background:#11161d;border-bottom:1px solid rgba(255,255,255,0.12);color:#cfd6df;font-size:12px;";
+	resolvedHeader.textContent = "Resolved args/result";
+	resolvedPanel.appendChild(resolvedHeader);
+	const closeBtn = document.createElement("button");
+	closeBtn.type = "button";
+	closeBtn.textContent = "✕";
+	closeBtn.style.cssText = "border:1px solid rgba(255,255,255,0.25);background:transparent;color:#cfd6df;border-radius:6px;padding:1px 6px;cursor:pointer;";
+	resolvedHeader.appendChild(closeBtn);
+	const resolvedBody = document.createElement("pre");
+	resolvedBody.style.cssText = "margin:0;font-size:12px;line-height:1.35;white-space:pre-wrap;word-break:break-word;color:#c9d1d9;";
+	resolvedBody.textContent = JSON.stringify({
+		functionCall: {
+			name: tc.name,
+			args: tc.args
+		},
+		result: tc.result
+	}, null, 2);
+	resolvedPanel.appendChild(resolvedBody);
+	document.body.appendChild(resolvedBackdrop);
+	summary.addEventListener("click", () => {
+		details.classList.toggle("hidden");
+		resultPreview.classList.toggle("hidden");
+	});
+	const hideResolvedPopup = () => {
+		resolvedBackdrop.style.display = "none";
+	};
+	const onResolvedPopupKeydown = (e) => {
+		if (e.key === "Escape" && resolvedBackdrop.style.display !== "none") hideResolvedPopup();
+	};
+	resolvedBtn.addEventListener("click", (e) => {
+		e.stopPropagation();
+		resolvedBackdrop.style.display = "flex";
+	});
+	closeBtn.addEventListener("click", hideResolvedPopup);
+	resolvedBackdrop.addEventListener("click", (e) => {
+		if (e.target === resolvedBackdrop) hideResolvedPopup();
+	});
+	document.addEventListener("keydown", onResolvedPopupKeydown);
+	return chip;
+}
+var _SVG_UNMUTED = "<svg viewBox=\"0 0 16 16\" width=\"14\" height=\"14\" fill=\"currentColor\"><path d=\"M8 1.3L4.63 4H2.5A1.5 1.5 0 001 5.5v5A1.5 1.5 0 002.5 12h2.13L8 14.7V1.3zm3.74 2.04a4.5 4.5 0 010 9.32l-.55-.96a3.5 3.5 0 000-7.4l.55-.96zm-.93 2.17a2.5 2.5 0 010 4.98l-.55-.96a1.5 1.5 0 000-3.06l.55-.96z\"/></svg>";
+var _SVG_MUTED = "<svg viewBox=\"0 0 16 16\" width=\"14\" height=\"14\" fill=\"currentColor\"><path d=\"M8 1.3L4.63 4H2.5A1.5 1.5 0 001 5.5v5A1.5 1.5 0 002.5 12h2.13L8 14.7V1.3zm3 4.2l1.5 1.5L14 5.5l.7.7L13.2 7.7l1.5 1.5-.7.7L12.5 8.4 11 9.9l-.7-.7 1.5-1.5L10.3 6.2l.7-.7z\"/></svg>";
+var ttsRequestId = 0;
+var ttsPausedByUser = false;
+var ttsPlayer = null;
+var ttsHasOutputFile = false;
+var ttsAbortController = null;
+function _ensureTTSPlayer() {
+	if (!ttsPlayer && window.GeminiTTSPlayer) {
+		ttsPlayer = new window.GeminiTTSPlayer.TTSAudioPlayer({
+			volume: .5,
+			persistKey: "algebenchTTS",
+			onVolumeChange(vol, muted) {
+				const slider = document.getElementById("ttsVolumeSlider");
+				const icon = document.getElementById("ttsVolumeIcon");
+				if (slider) slider.value = String(muted ? 0 : vol);
+				if (icon) icon.innerHTML = muted ? _SVG_MUTED : _SVG_UNMUTED;
+			}
+		});
+		const slider = document.getElementById("ttsVolumeSlider");
+		const icon = document.getElementById("ttsVolumeIcon");
+		if (slider) {
+			slider.value = String(ttsPlayer.isMuted() ? 0 : ttsPlayer.getVolume());
+			slider.addEventListener("input", () => ttsPlayer.setVolume(parseFloat(slider.value)));
+		}
+		if (icon) {
+			icon.innerHTML = ttsPlayer.isMuted() ? _SVG_MUTED : _SVG_UNMUTED;
+			icon.addEventListener("click", () => ttsPlayer.toggleMute());
+		}
+	}
+	return ttsPlayer;
+}
+window.algebenchGetTTSAudioStream = function() {
+	const p = _ensureTTSPlayer();
+	return p ? p.getMediaStream() : null;
+};
+window.algebenchIsTTSSpeaking = function() {
+	if (ttsPausedByUser) return false;
+	const p = _ensureTTSPlayer();
+	return p ? p._state === "playing" : false;
+};
+window.algebenchIsTTSPaused = function() {
+	return ttsPausedByUser;
+};
+window.algebenchIsTTSLoading = function() {
+	const p = _ensureTTSPlayer();
+	return p ? p._state === "loading" : false;
+};
+window.algebenchPauseTTS = function() {
+	const p = _ensureTTSPlayer();
+	if (!p || !p._ctx) return;
+	ttsPausedByUser = true;
+	p._ctx.suspend().catch(() => {});
+};
+window.algebenchResumeTTS = function() {
+	const p = _ensureTTSPlayer();
+	if (!p || !p._ctx) return;
+	ttsPausedByUser = false;
+	p._ctx.resume().catch(() => {});
+};
+window.algebenchStopTTS = function() {
+	++ttsRequestId;
+	ttsPausedByUser = false;
+	ttsHasOutputFile = false;
+	if (ttsAbortController) {
+		ttsAbortController.abort();
+		ttsAbortController = null;
+	}
+	const p = _ensureTTSPlayer();
+	if (p) p.stop();
+	fetch("/api/tts/kill", { method: "POST" }).catch(() => {});
+};
+window.algebenchSpeakText = function(text, onEnd) {
+	const expectedId = ttsRequestId + 1;
+	speakText(text, { explicit: true });
+	if (typeof onEnd !== "function") return;
+	const startTime = Date.now();
+	let hasStarted = false;
+	let sawNonIdle = false;
+	const poll = setInterval(() => {
+		if (ttsRequestId !== expectedId) {
+			clearInterval(poll);
+			onEnd();
+			return;
+		}
+		const p = _ensureTTSPlayer();
+		if (p && p._state !== "idle") sawNonIdle = true;
+		if (p && p.isPlaying()) hasStarted = true;
+		if (hasStarted && p && !p.isPlaying()) {
+			clearInterval(poll);
+			onEnd();
+			return;
+		}
+		if (!hasStarted && sawNonIdle && p && p._state === "idle") {
+			clearInterval(poll);
+			onEnd();
+			return;
+		}
+		if (Date.now() - startTime > 6e4) {
+			clearInterval(poll);
+			onEnd();
+		}
+	}, 80);
+};
+async function speakText(text, { explicit = false } = {}) {
+	if (selectedTtsMode === "silent" && !explicit) return;
+	const clean = text.replace(/```[\s\S]*?```/g, "").replace(/\[([^\]]+)\]\([^)]+\)/g, "$1").replace(/[📍🤖👤]/gu, "").replace(/\s{2,}/g, " ").trim();
+	if (!clean) return;
+	const myId = ++ttsRequestId;
+	ttsPausedByUser = false;
+	ttsHasOutputFile = false;
+	if (activeSpeakBtn && activeSpeakBtn._downloadBtn) activeSpeakBtn._downloadBtn.style.display = "none";
+	const myDownloadBtn = activeSpeakBtn ? activeSpeakBtn._downloadBtn : null;
+	const player = _ensureTTSPlayer();
+	if (!player) return;
+	if (ttsAbortController) {
+		ttsAbortController.abort();
+		ttsAbortController = null;
+	}
+	const abort = new AbortController();
+	ttsAbortController = abort;
+	let response;
+	try {
+		response = await fetch("/api/tts/stream", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			signal: abort.signal,
+			body: JSON.stringify({
+				text: clean,
+				character: selectedTtsCharacter || "joker",
+				voice: selectedTtsVoice || "Charon",
+				mode: selectedTtsMode === "silent" ? "perform" : selectedTtsMode || "read"
+			})
+		});
+		if (!response.ok || ttsRequestId !== myId) return;
+		ttsHasOutputFile = response.headers.get("X-TTS-Has-Output-File") === "1";
+		await player.playStreamWithAbort(response, abort);
+		if (ttsRequestId === myId && ttsHasOutputFile && myDownloadBtn) myDownloadBtn.style.display = "flex";
+	} catch (err) {
+		return;
+	} finally {
+		if (ttsAbortController === abort) ttsAbortController = null;
+	}
+}
+(function _initTTSKillListener() {
+	let es = null;
+	function connect() {
+		es = new EventSource("/api/tts/events");
+		es.addEventListener("kill", () => {
+			++ttsRequestId;
+			ttsPausedByUser = false;
+			ttsHasOutputFile = false;
+			if (ttsAbortController) {
+				ttsAbortController.abort();
+				ttsAbortController = null;
+			}
+			const p = _ensureTTSPlayer();
+			if (p) p.stop();
+		});
+		es.onerror = () => {
+			es.close();
+			setTimeout(connect, 3e3);
+		};
+	}
+	if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", connect);
+	else connect();
+})();
+var _lastContextJson = "";
+function logContextIfChanged() {
+	const context = buildChatContext();
+	const json = JSON.stringify(context, null, 2);
+	if (json === _lastContextJson) return;
+	_lastContextJson = json;
+	localStorage.setItem("algebench-chat-context", json);
+	window.dispatchEvent(new CustomEvent("algebench-context-changed", { detail: {
+		context,
+		json
+	} }));
+	const scene = context.currentScene || {};
+	const rt = context.runtime || {};
+	const sceneParts = [
+		scene.title ? `"${scene.title}"` : null,
+		scene.steps ? `${scene.steps.length} steps` : null,
+		scene.prompt ? "has prompt" : null
+	].filter(Boolean).join(", ");
+	const rtParts = [
+		rt.stepNumber !== void 0 ? `step ${rt.stepNumber}` : null,
+		rt.sliders ? `${Object.keys(rt.sliders).length} sliders` : null,
+		rt.activeTab || null
+	].filter(Boolean).join(", ");
+	if (document.body.dataset.debugMode === "true") console.log(`%c🤖 Chat context updated: %cscene=[${sceneParts}] runtime=[${rtParts}] (${json.length} chars)`, "color: #8888ff; font-weight: bold", "color: #ccc");
+}
+var _contextPollId = null;
+function startContextPolling() {
+	if (_contextPollId) return;
+	_contextPollId = setInterval(logContextIfChanged, 1e3);
+}
+function sendWelcomeMessage() {
+	if (!chatAvailable$1 || shouldSkipWelcome() || welcomeInFlight) return;
+	welcomeInFlight = true;
+	sendChatMessage$1("**LENGTH OVERRIDE FOR THIS REPLY ONLY:** the usual brevity rule does NOT apply to this welcome. Subsequent replies revert to normal brevity.\n\nThe user just switched to the Chat tab. Read the **USER VIEWING** line in Current State and ground your welcome in exactly that surface. *Actually explain what is on screen* — do not just acknowledge it. Structure:\n\n1. ONE short sentence acknowledging the surface (e.g. \"You are looking at the semantic graph for step 3\" or \"You are on the 3D scene of …\").\n2. A SUBSTANTIVE explanation (3–6 sentences) of what is on screen right now:\n   - If a graph node is selected: explain that node — what the symbol means in context, what role it plays in the equation, and how it relates to the surrounding nodes (use the incoming/outgoing neighbors from Active Semantic Graph).\n   - If the semantic graph is open with no node selected: walk through the structure of the graph (root operator, key operands, the relationship the graph encodes).\n   - If on the 3D scene: explain the visible elements and what the current step is demonstrating.\n3. End with ONE concrete follow-up question the user is most likely to ask next, phrased as an offer (e.g. \"Want me to walk through how … relates to … ?\").\n\nDo not be generic. Do not list capabilities. Use the specific names, symbols, and relationships from the Active Semantic Graph / Active Proof Step / Current Scene Definition sections of the system prompt.", { silent: true }).finally(() => {
+		welcomeInFlight = false;
+	});
+}
+function renderMemoryPopup(mem, queryText) {
+	const body = document.getElementById("memory-popup-body");
+	if (!body) return;
+	body.innerHTML = "";
+	if (!mem || Object.keys(mem).length === 0) {
+		const empty = document.createElement("div");
+		empty.id = "memory-popup-empty";
+		empty.textContent = "No keys stored yet.";
+		body.appendChild(empty);
+		return;
+	}
+	const q = (queryText || "").trim().toLowerCase();
+	let matchCount = 0;
+	for (const key of Object.keys(mem)) {
+		const entry = mem[key] || {};
+		const summary = entry.summary || "";
+		const val = entry.value;
+		let previewText = "";
+		if (val !== null && val !== void 0) {
+			previewText = JSON.stringify(val);
+			if (previewText.length > 120) previewText = previewText.slice(0, 120) + "…";
+		}
+		if (q) {
+			if (!`${key}\n${summary}\n${previewText}`.toLowerCase().includes(q)) continue;
+		}
+		matchCount++;
+		const div = document.createElement("div");
+		div.className = "memory-entry";
+		const keyEl = document.createElement("span");
+		keyEl.className = "memory-entry-key";
+		keyEl.textContent = key;
+		div.appendChild(keyEl);
+		const sep = document.createElement("span");
+		sep.style.color = "rgba(120,200,255,0.4)";
+		sep.textContent = " → ";
+		div.appendChild(sep);
+		const summaryEl = document.createElement("span");
+		summaryEl.className = "memory-entry-summary";
+		summaryEl.textContent = summary;
+		div.appendChild(summaryEl);
+		if (previewText) {
+			const preview = document.createElement("div");
+			preview.className = "memory-entry-preview";
+			preview.textContent = previewText;
+			div.appendChild(preview);
+		}
+		body.appendChild(div);
+	}
+	if (matchCount === 0) {
+		const noRes = document.createElement("div");
+		noRes.id = "memory-popup-no-results";
+		noRes.textContent = "No matching memory entries.";
+		body.appendChild(noRes);
+	}
+}
+function updateMemoryStatus() {
+	fetch("/api/memory").then((r) => r.ok ? r.json() : null).then((mem) => {
+		if (!mem) return;
+		memorySnapshot = mem;
+		window.agentMemoryValues = Object.fromEntries(Object.entries(mem).map(([k, v]) => [k, v && Object.prototype.hasOwnProperty.call(v, "value") ? v.value : void 0]));
+		if (typeof updateInfoOverlays === "function") try {
+			updateInfoOverlays();
+		} catch (_e) {}
+		const keys = Object.keys(mem);
+		const pill = document.getElementById("memory-status");
+		const countEl = pill && pill.querySelector(".memory-status-count");
+		const searchInput = document.getElementById("memory-popup-search");
+		if (!pill) return;
+		if (keys.length === 0) {
+			pill.classList.add("hidden");
+			const popup = document.getElementById("memory-popup");
+			if (popup) popup.classList.add("hidden");
+			return;
+		}
+		if (countEl) countEl.textContent = String(keys.length);
+		pill.classList.remove("hidden");
+		const bar = document.getElementById("status-bar");
+		if (bar) bar.classList.remove("hidden");
+		renderMemoryPopup(mem, searchInput ? searchInput.value : "");
+	}).catch(() => {});
+}
+document.addEventListener("DOMContentLoaded", () => {
+	setupChat();
+	startContextPolling();
+	const memPill = document.getElementById("memory-status");
+	const memPopup = document.getElementById("memory-popup");
+	const memClose = document.getElementById("memory-popup-close");
+	const memSearch = document.getElementById("memory-popup-search");
+	if (memPill && memPopup) memPill.addEventListener("click", () => {
+		memPopup.classList.toggle("hidden");
+	});
+	if (memClose && memPopup) memClose.addEventListener("click", () => {
+		memPopup.classList.add("hidden");
+	});
+	if (memSearch) memSearch.addEventListener("input", () => {
+		renderMemoryPopup(memorySnapshot, memSearch.value);
+	});
+});
+window._escHtml = _escHtml;
+window._classifyFocusTarget = _classifyFocusTarget;
+window.setPresetPrompts = setPresetPrompts$1;
+window.shouldSkipWelcome = shouldSkipWelcome;
+window.buildChatContext = buildChatContext;
+window.switchPanelTab = switchPanelTab$1;
+window.setupChat = setupChat;
+window.initChatTtsControls = initChatTtsControls;
+window.sendChatMessage = sendChatMessage$1;
+window.addChatMessage = addChatMessage;
+window.addChatLoading = addChatLoading;
+window.renderToolCallChip = renderToolCallChip;
+window._ensureTTSPlayer = _ensureTTSPlayer;
+window.speakText = speakText;
+window.logContextIfChanged = logContextIfChanged;
+window.startContextPolling = startContextPolling;
+window.sendWelcomeMessage = sendWelcomeMessage;
+window.renderMemoryPopup = renderMemoryPopup;
+window.updateMemoryStatus = updateMemoryStatus;
 //#endregion
 //#region src/coach/registry.js
 var coach = window.AlgeBenchCoach = window.AlgeBenchCoach || {

@@ -69,6 +69,122 @@ interface AlgeBenchGraphController {
   openFunctionAnalysis?(opts: { id?: string | null; latex?: string | null }): void;
 }
 
+// ── gemini-live-tools browser globals ───────────────────────────────────────
+// index.html loads voice-character-selector.js and tts-audio-player.js as
+// CLASSIC <script> tags served out of the installed gemini_live_tools Python
+// package (backend/server.py). They are not on npm and ship no types, so the
+// slice src/chat.ts actually uses is declared by hand here.
+
+/** One entry of `CHARACTER_OPTIONS` from voice-character-selector.js. */
+interface GeminiCharacterOption {
+  id: string;
+  defaultVoice?: string;
+  [key: string]: unknown;
+}
+
+/** The picker instance returned by `new lib.CharacterPicker(...)`. */
+interface GeminiCharacterPicker {
+  /** Wire up the DOM and return the initially-selected character id. */
+  init(): string;
+}
+
+interface GeminiCharacterPickerConfig {
+  buttonEl: HTMLElement;
+  paletteEl: HTMLElement;
+  searchEl: HTMLElement;
+  listEl: HTMLElement;
+  backdropEl: HTMLElement;
+  options: GeminiCharacterOption[];
+  groupMap: unknown;
+  groupOrder: unknown;
+  storageKey: string;
+  recentsKey: string;
+  defaultId: string;
+  hotkey: string;
+  onChange(characterId: string): void;
+}
+
+/** `window.GeminiVoiceCharacterSelector` (voice-character-selector.js). */
+interface GeminiVoiceCharacterSelectorLib {
+  CHARACTER_OPTIONS: GeminiCharacterOption[];
+  CHARACTER_GROUPS: unknown;
+  CHARACTER_GROUP_ORDER: unknown;
+  CharacterPicker: new (config: GeminiCharacterPickerConfig) => GeminiCharacterPicker;
+  /** Populate a <select> with voices; returns the selected voice name. */
+  setupVoiceSelect(
+    el: HTMLSelectElement,
+    opts: { includeSystem: boolean; storageKey: string; defaultValue: string },
+  ): string;
+}
+
+/** A `TTSAudioPlayer` instance (tts-audio-player.js). */
+interface GeminiTTSAudioPlayer {
+  /** Internal player phase, read directly by the chat button-state poller. */
+  _state: 'idle' | 'loading' | 'playing';
+  /** Internal AudioContext; absent until the first play. */
+  _ctx: AudioContext | null;
+  isPlaying(): boolean;
+  isMuted(): boolean;
+  getVolume(): number;
+  setVolume(volume: number): void;
+  toggleMute(): void;
+  stop(): void;
+  getMediaStream(): MediaStream | null;
+  playStreamWithAbort(response: Response, abort: AbortController): Promise<void>;
+}
+
+/** `window.GeminiTTSPlayer` (tts-audio-player.js). */
+interface GeminiTTSPlayerLib {
+  TTSAudioPlayer: new (opts: {
+    volume: number;
+    persistKey: string;
+    onVolumeChange(volume: number, muted: boolean): void;
+  }) => GeminiTTSAudioPlayer;
+}
+
+// ── The chat context snapshot ───────────────────────────────────────────────
+// Built by src/chat.ts and published as window.algebenchBuildChatContext,
+// which src/json-browser.js reads. Declared here (rather than exported from
+// chat.ts) because chat.ts is a side-effecting entry module with no exports.
+
+interface AlgeBenchChatSceneTreeStep {
+  stepNumber: number;
+  title: string;
+  description: string;
+}
+
+interface AlgeBenchChatSceneTreeEntry {
+  sceneNumber: number;
+  title: string;
+  steps?: AlgeBenchChatSceneTreeStep[];
+}
+
+interface AlgeBenchChatRuntimeContext {
+  stepNumber?: number;
+  cameraPosition?: { x: number; y: number; z: number };
+  cameraTarget?: { x: number; y: number; z: number };
+  cameraViews?: string[];
+  visibleElements?: { label: string; type: string }[];
+  sliders?: Record<string, AlgeBenchSliderState>;
+  currentCaption?: string;
+  activeTab?: string;
+  projection?: string;
+  proof?: unknown;
+  graphPanel?: AlgeBenchGraphPanelState;
+  lastFocusedSurface?: string;
+  userViewing?: string[];
+  coach?: unknown;
+}
+
+interface AlgeBenchChatContext {
+  lessonTitle?: string;
+  totalScenes?: number;
+  sceneNumber?: number;
+  currentScene?: AlgeBenchSceneSpec;
+  sceneTree?: AlgeBenchChatSceneTreeEntry[];
+  runtime?: AlgeBenchChatRuntimeContext;
+}
+
 interface Window {
   AlgeBenchDomains: AlgeBenchDomainRegistry;
   katex: typeof katex;
@@ -82,15 +198,229 @@ interface Window {
   __algebenchGraph?: AlgeBenchGraphController;
   /** Defined by static/chat.js — see the classic-script globals below. */
   sendChatMessage?: typeof sendChatMessage;
+
+  // ---- gemini-live-tools classic scripts (index.html only) ----
+  GeminiVoiceCharacterSelector?: GeminiVoiceCharacterSelectorLib;
+  GeminiTTSPlayer?: GeminiTTSPlayerLib;
+
+  // ---- Read by src/chat.ts, published by other modules ----
+  /** src/main.js — inline avatar SVGs for chat messages. */
+  algebenchIcons?: { ai: string; user: string };
+  /** src/graph-view.js — current semantic-graph dock state. */
+  algebenchGetGraphPanelState?: () => AlgeBenchGraphPanelState | null;
+  /** src/graph-view.js — leave the full-screen Math view if the user is on it. */
+  algebenchEnsureSceneVisible?: () => void;
+  /** src/graph-view.js — start a client-side derivation on the current graph. */
+  algebenchDeriveProof?: (args: Record<string, unknown>) => unknown;
+  /** src/json-browser.js — re-read the prompt-context popup. */
+  algebenchRefreshPromptContext?: (reason?: string) => void;
+  /** src/coach/registry.js — the guided-tour registry and engine. */
+  AlgeBenchCoach?: {
+    engine?: {
+      status?: () => unknown;
+      control?: (action: unknown, opts: { step?: unknown }) => void;
+    };
+  };
+
+  // ---- Published BY src/chat.ts ----
+  // chat.js used to be a classic script, so every top-level `function` became
+  // a window property automatically. As a module it must assign them back, or
+  // every consumer breaks at runtime with no compile error. Replacing this
+  // flat surface with an AlgeBench namespace is issue #406 — post-migration.
+  _escHtml: (s: string) => string;
+  _classifyFocusTarget: (target: EventTarget | null) => string | null;
+  setPresetPrompts: (prompts: string[] | null | undefined) => void;
+  shouldSkipWelcome: () => boolean;
+  buildChatContext: () => AlgeBenchChatContext;
+  switchPanelTab: (tabName: string) => void;
+  setupChat: () => void;
+  initChatTtsControls: () => void;
+  sendChatMessage: (text: string, opts?: { silent?: boolean }) => Promise<void>;
+  addChatMessage: (role: string, content: string) => HTMLDivElement;
+  addChatLoading: () => HTMLDivElement;
+  renderToolCallChip: (tc: AlgeBenchChatToolCall) => HTMLDivElement;
+  _ensureTTSPlayer: () => GeminiTTSAudioPlayer | null;
+  speakText: (text: string, opts?: { explicit?: boolean }) => Promise<void>;
+  logContextIfChanged: () => void;
+  startContextPolling: () => void;
+  sendWelcomeMessage: () => void;
+  renderMemoryPopup: (
+    mem: Record<string, AlgeBenchMemoryEntry> | null,
+    queryText?: string | null,
+  ) => void;
+  updateMemoryStatus: () => void;
+
+  // Assigned explicitly by chat.js today, and still explicitly by chat.ts.
+  algebenchBuildChatContext: () => AlgeBenchChatContext;
+  algebenchGetTTSAudioStream: () => MediaStream | null;
+  algebenchIsTTSSpeaking: () => boolean;
+  algebenchIsTTSPaused: () => boolean;
+  algebenchIsTTSLoading: () => boolean;
+  algebenchPauseTTS: () => void;
+  algebenchResumeTTS: () => void;
+  algebenchStopTTS: () => void;
+  algebenchSpeakText: (text: string, onEnd?: () => void) => void;
+  /** Full Gemini transcript of the last turn — a debugging handle. */
+  geminiChatHistory?: { systemPrompt?: string; contents: unknown[] };
+  /** Raw agent-memory values, read by info-overlay `{{expr}}` bindings. */
+  agentMemoryValues?: Record<string, unknown>;
 }
 
-// ── Globals defined by static/chat.js ────────────────────────────────────────
-// chat.js is still a classic, non-module script (it becomes a module in phase
-// 4), so modules reach these as bare globals behind `typeof … === 'function'`
-// guards — the page can load without chat.js and the guards must stay honest.
+// ── Globals defined by src/chat.ts ──────────────────────────────────────────
+// chat.js was a classic, non-module script until phase 4e; modules still reach
+// these as bare globals behind `typeof … === 'function'` guards, because the
+// page can load without the chat module and the guards must stay honest.
+// (src/overlay.js, src/labels.ts, src/scene-loader.js.)
 
-/** Switch the right-hand panel to a named tab (chat.js:268). */
+/** Switch the right-hand panel to a named tab (chat.ts). */
 declare function switchPanelTab(tabName: string): void;
 
-/** Send a message to the AI chat (chat.js:447). */
+/** Send a message to the AI chat (chat.ts). */
 declare function sendChatMessage(text: string, opts?: { silent?: boolean }): Promise<void>;
+
+/** Replace the preset-prompt buttons under the chat input (chat.ts). */
+declare function setPresetPrompts(prompts: string[] | null | undefined): void;
+
+// ── First-party globals src/chat.ts READS ───────────────────────────────────
+// src/main.js publishes these onto `window` (some as accessors over `state`)
+// precisely so chat could reach them as bare globals. chat.ts keeps doing
+// exactly that; rewiring it to import from '/state.js' is issue #406's job.
+
+/** One step of a scene, as chat reads it. */
+interface AlgeBenchSceneStepSpec {
+  title?: string;
+  description?: string;
+  sliders?: unknown[];
+  [key: string]: unknown;
+}
+
+/** One scene, as chat reads it. */
+interface AlgeBenchSceneSpec {
+  title?: string;
+  steps?: AlgeBenchSceneStepSpec[];
+  elements?: unknown[];
+  prompt?: unknown;
+  [key: string]: unknown;
+}
+
+/** A lesson (multi-scene) spec, as chat reads it. */
+interface AlgeBenchLessonSpec {
+  title?: string;
+  scenes?: AlgeBenchSceneSpec[];
+  [key: string]: unknown;
+}
+
+/** A scene element, as chat reads it when listing what is visible. */
+interface AlgeBenchElementSpec {
+  type: string;
+  id?: string;
+  label?: string;
+  [key: string]: unknown;
+}
+
+/** Live slider state (src/state.js `sceneSliders`). */
+interface AlgeBenchSliderState {
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  label?: string;
+}
+
+/** A named camera view (src/state.js `CAMERA_VIEWS`). */
+interface AlgeBenchCameraView {
+  position: number[];
+  target: number[];
+  up?: number[];
+}
+
+/** Semantic-graph dock state (src/graph-view.js `getGraphPanelState`). */
+interface AlgeBenchGraphPanelState {
+  open?: boolean;
+  [key: string]: unknown;
+}
+
+/** One stored agent-memory entry (`GET /api/memory`). */
+interface AlgeBenchMemoryEntry {
+  summary?: string;
+  value?: unknown;
+}
+
+/** One tool call in a `/api/chat` response. */
+interface AlgeBenchChatToolCall {
+  name: string;
+  args: AlgeBenchChatToolArgs;
+  rawArgs?: unknown;
+  result?: AlgeBenchChatToolResult;
+  /** Stashed by chat for debugging after an `add_scene`. */
+  _generatedScene?: unknown;
+}
+
+/**
+ * Tool-call arguments. Per-tool shapes differ (`position` is a `[x,y,z]` for
+ * `set_camera` but a corner name for `set_info_overlay`), so anything not
+ * uniformly typed stays `unknown` via the index signature and is narrowed at
+ * its use site.
+ */
+interface AlgeBenchChatToolArgs {
+  [key: string]: unknown;
+  scene?: unknown;
+  step?: unknown;
+  reason?: string;
+  view?: string;
+  zoom?: number;
+  values?: Record<string, unknown>;
+  prompts?: string[];
+  id?: string;
+  content?: string;
+  clear?: boolean;
+  action?: string;
+  title?: string;
+  expression?: string;
+  key?: string;
+  parsedScene?: AlgeBenchSceneSpec;
+}
+
+/** A tool call's server-side result. */
+interface AlgeBenchChatToolResult {
+  [key: string]: unknown;
+  status?: string;
+  error?: string;
+  message?: string;
+  summary?: string;
+  stored_as?: string;
+  keys?: unknown;
+  result?: unknown;
+  step?: unknown;
+}
+
+declare var lessonSpec: AlgeBenchLessonSpec | null;
+declare var currentSpec: AlgeBenchSceneSpec | null;
+declare var currentSceneIndex: number;
+declare var currentStepIndex: number;
+declare var currentProjection: string;
+declare var sceneSliders: Record<string, AlgeBenchSliderState>;
+declare var elementRegistry: Record<string, { hidden?: boolean }>;
+declare var CAMERA_VIEWS: Record<string, AlgeBenchCameraView>;
+declare var camera: import('three').Camera | null;
+declare var controls: { target: { x: number; y: number; z: number } } | null;
+
+declare function getAllElements(
+  scene: AlgeBenchSceneSpec,
+  stepIndex: number,
+): AlgeBenchElementSpec[];
+declare function getProofContext(): unknown;
+declare function navigateTo(sceneIndex: number, stepIndex: number): void;
+declare function navigateProof(stepIndex: number): void;
+declare function refreshProofPanel(): void;
+declare function animateCamera(viewName: string, durationMs: number): void;
+declare function animateSlider(id: string, value: number, durationMs: number): Promise<boolean>;
+declare function buildSceneTree(lesson: AlgeBenchLessonSpec): void;
+declare function updateDockVisibility(): void;
+declare function addInfoOverlay(id: string, content: string, position: string): void;
+declare function removeAllInfoOverlays(): void;
+declare function updateInfoOverlays(): void;
+declare function dataCameraToWorld(v: number[]): number[];
+declare function worldCameraToData(v: number[]): number[];
+declare function renderMarkdown(text: string): string;
+declare function renderKaTeX(text: string, displayMode?: boolean): string;
