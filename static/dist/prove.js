@@ -307,7 +307,7 @@ function illegalChars(s) {
 function idProblem(raw) {
 	const parts = String(raw || "").split("/");
 	if (parts.length !== 2) return parts.length < 2 ? "Include the domain: <domain>/<name>, e.g. algebra/quadratic-roots." : "Use exactly one “/” — <domain>/<name>.";
-	const [domain, name] = parts;
+	const domain = parts[0], name = parts[1];
 	for (const [label, value, min, max] of [[
 		"Domain",
 		domain,

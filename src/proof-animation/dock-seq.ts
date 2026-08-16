@@ -3,4 +3,4 @@
 // dock panel can be sorted into a stable, creation-order arrangement that
 // survives navigation/re-attach regardless of which manager re-attaches first.
 let _seq = 0;
-export const nextDockSeq = () => ++_seq;
+export const nextDockSeq = (): number => ++_seq;
