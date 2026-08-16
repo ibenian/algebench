@@ -1,5 +1,5 @@
 /**
- * proof-animation.js — realtime, Manim-style morphing of a derivation.
+ * proof-animation.ts — realtime, Manim-style morphing of a derivation.
  *
  * Framework-free ES-module class (graph-panel pattern): point it at a container
  * + data; embeddable in the app and runnable from the local launcher.
@@ -18,6 +18,156 @@
  * an interrupting click cancels the in-flight morph and retargets from live pos.
  */
 
+// ── Payload and option shapes ───────────────────────────────────────────────
+// The proof payload is whatever validate-proof.js let through (every proof JSON
+// is treated as hostile input and whitelisted there), so every field the engine
+// reads is optional here and every read stays guarded, exactly as before.
+// schemas/lesson.schema.json describes the LESSON `proof` block — a different,
+// authored shape — so src/types/lesson.d.ts has nothing to reuse for this one.
+
+/** A grounding verdict — per step (`step.confidence`) or for the whole
+ *  derivation (`data.overall_confidence`). Attached by the server
+ *  (animation.build → step_grounding.ground_steps); absent on legacy payloads. */
+export interface ProofConfidence {
+  tier?: string;
+  label?: string;
+  icon?: string;
+  meaning?: string;
+  relation?: string;
+  reason?: string;
+  type_consistent?: boolean;
+  judged?: boolean;
+  endpoint_reached?: boolean;
+  counts?: Record<string, number | undefined>;
+}
+
+/** One state of the derivation. `latex` is the annotated render (every glyph
+ *  carries \htmlData{n=<id>} — the id IS the correspondence the morph keys off);
+ *  `plain` is the id-free render the expression experts parse. */
+export interface ProofStepData {
+  index?: number;
+  operation?: string;
+  justification?: string;
+  input_latex?: string;
+  latex: string;
+  plain?: string;
+  confidence?: ProofConfidence;
+  change_type?: string;
+  deeplink?: string;
+}
+
+/** A named term's metadata, keyed by node id (`data.terms`). */
+export interface ProofTerm {
+  latex?: string;
+  name?: string;
+  description?: string;
+}
+
+/** A prerequisite / explore-further chip. Entries arrive as plain strings or as
+ *  objects giving that chip its own landing view (see validate-proof.js). */
+export interface ExploreItem {
+  text: string;
+  deeplink?: string;
+}
+
+/** One tab of the Explore popup — Prerequisites or Explore further. */
+interface ExploreTab {
+  key: string;
+  label: string;
+  items: ExploreItem[];
+}
+
+/** The proof payload the animator renders. */
+export interface ProofAnimationData {
+  title?: string;
+  domain?: string;
+  goal?: string;
+  deeplink?: string;
+  steps: ProofStepData[];
+  terms?: Record<string, ProofTerm | undefined>;
+  overall_confidence?: ProofConfidence;
+  prerequisites?: (string | ExploreItem)[];
+  followups?: (string | ExploreItem)[];
+}
+
+/** A tagged term in the hover/click chain: innermost glyph first, then its
+ *  enclosing operator wrappers. */
+export interface TermChainEntry {
+  id: string;
+  text: string;
+}
+
+/** The term an ask is about — the one the floating button is anchored to. */
+export interface AskFocus {
+  el: HTMLElement;
+  chain: TermChainEntry[];
+  text: string;
+  desc: string;
+}
+
+/** The request `_deriveCurrent` hands to the host to dock a finer derivation. */
+export interface DerivePayload {
+  target_latex: string;
+  domain?: string;
+  start_latex?: string;
+  previous_steps?: { step: number; label: string | null; math: string }[];
+  intent?: string;
+}
+
+/** Host factory for an AI-ask button (labels.js makeAiAskButton). `getIdx` lets
+ *  a caller pin the deeplink to a specific step; default is the current one. */
+export type AskButtonFactory = (
+  className: string,
+  title: string,
+  getMessage: () => string | null,
+  getIdx?: () => number,
+) => HTMLButtonElement;
+
+/** Host factory for the "Derive this step" button (labels.js makeDeriveButton). */
+export type DeriveButtonFactory = (
+  className: string,
+  title: string,
+  onClick: () => void,
+) => HTMLButtonElement;
+
+/** Everything a host may wire up. All optional — the standalone report passes
+ *  almost none of it, and each feature is gated on its own hook being present. */
+export interface ProofAnimatorOptions {
+  katex?: typeof katex;
+  aiAskButton?: AskButtonFactory;
+  enableTermAsk?: boolean;
+  onTermAsk?: (payload: { message: string }) => void;
+  onBuildTermAskMessage?: (focus: AskFocus | null) => string | null;
+  deriveButton?: DeriveButtonFactory;
+  onDerive?: (payload: DerivePayload, anchorEl: HTMLElement | null) => void;
+  onFunctionAnalysis?: (payload: { latex: string; step: number }) => void;
+  onExplore?: (payload: { kind: string; text: string; message: string }) => void;
+  enableExplore?: boolean;
+  askOrigin?: string;
+  paId?: string;
+  onRelayout?: () => void;
+  liveTerms?: boolean;
+  onTermHover?: (chain: TermChainEntry[], el: HTMLElement | null) => void;
+  onTermClick?: (chain: TermChainEntry[], el: HTMLElement, opts: { additive: boolean }) => void;
+  onAfterRender?: () => void;
+  onTermBackgroundClick?: () => void;
+  fitHeight?: boolean;
+  mode?: string;
+  stacked?: boolean;
+  duration?: number;
+  staggerMs?: number;
+  stepPause?: number;
+  speed?: number;
+  startStep?: number;
+}
+
+/** An element carrying the JS (KaTeX-rendering) tooltip state `_attachMathTip`
+ *  hangs off it — the CSS `data-tip` tooltip can't render inline math. */
+interface MathTipElement extends HTMLElement {
+  _mathTipText?: string;
+  _mathTipBound?: boolean;
+}
+
 const EASE = "cubic-bezier(0.42, 0, 0.58, 1)"; // ease-in-out
 
 // Untagged structural decorations KaTeX draws (no data-n of their own): the
@@ -31,7 +181,7 @@ const DECORATIONS = [".frac-line", ".sqrt svg"];
 
 // Delimiter glyphs the renderer emits via \left…\right (plain or stretchy).
 const PAREN_RE = /^[()[\]|]$/;
-const _parenChar = (s) => {
+const _parenChar = (s: string | null | undefined): string | null => {
   const t = (s || "").replace(/[​-‍﻿]/g, "").trim();
   return PAREN_RE.test(t) ? t : null;
 };
@@ -44,7 +194,7 @@ const SPEEDS = [0.25, 0.5, 1, 2, 4];
 // muddies against a dark badge. These are plain text glyphs that inherit the
 // badge's tier color (--pa-conf-fg), staying crisp on any theme. Keyed by tier;
 // falls back to the baked icon for an unknown tier.
-const TIER_GLYPH = {
+const TIER_GLYPH: Record<string, string | undefined> = {
   grounded:  "★",   // gold   — algebraically grounded (a CAS identity)
   verified:  "✓",   // silver — verified (strong evidence)
   domain:    "✦",   // teal   — domain-vouched (expert; CAS couldn't check)
@@ -52,7 +202,7 @@ const TIER_GLYPH = {
   unchecked: "○",   // gray   — unchecked (undecided)
   refuted:   "✗",   // red    — refuted
 };
-const _tierGlyph = (tier, fallback) => TIER_GLYPH[tier] || fallback || "";
+const _tierGlyph = (tier: string, fallback?: string): string => TIER_GLYPH[tier] || fallback || "";
 
 // Info (ⓘ) icon for the explore pill — static author-controlled markup.
 const INFO_ICON =
@@ -92,7 +242,7 @@ const FUNCTION_ANALYSIS_SVG =
 // resolve-chain stops below it. Tight operators (power, derivative, function,
 // negation) are NOT here — those are real, pickable terms.
 const _SPANNING_OP = /^(?:multiply|add|subtract|plus|minus|equals|not_equal|less_than|greater_than|less_equal|greater_equal|implies|iff|conjunction|disjunction)_\d+$/;
-function _isSpanningWrapperId(id) {
+function _isSpanningWrapperId(id: string | null): boolean {
   if (!id) return false;
   // Strip any leading id prefixes before matching the op name: rebase (`_r3_`) AND
   // disjunction-branch (`d0_`, `d1_`, … — the two sides of a `\lor`). Missing the
@@ -104,13 +254,162 @@ function _isSpanningWrapperId(id) {
 
 // Caption LaTeX delimiters: $…$, `…` (backticks — what the LM emits), \(…\), \[…\].
 const _CAPTION_RE = /(\$[^$]+\$|`[^`]+`|\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\])/g;
-const _speedLabel = (s) => ({ 0.25: "¼×", 0.5: "½×" }[s] || `${s}×`);
+const _speedLabel = (s: number): string =>
+  ({ 0.25: "¼×", 0.5: "½×" } as Record<number, string | undefined>)[s] || `${s}×`;
+
+/** One entry of the engine-owned gold ask CONTEXT set (standalone/embedded). */
+interface AskSelection {
+  key: string;
+  chain: TermChainEntry[];
+  text: string;
+  desc: string;
+}
+
+/** A rigid group discovered by `_rigidBlocks`: the largest subtree that moves
+ *  (and possibly scales) as one unit between two states. */
+interface RigidBlock {
+  el: HTMLElement;
+  dx: number;
+  dy: number;
+  scale: number;
+  single: boolean;
+}
+
+/** A parenthesis unit found by `_parens` — the `.delimsizing` box when the
+ *  renderer drew it stretchy, else the bare glyph span. */
+interface ParenUnit {
+  char: string;
+  el: HTMLElement;
+  delim: boolean;
+  content: string;
+}
+
+/** The snapshot `_morphSnapshot` takes of a rendered state — everything the
+ *  FLIP flight needs after the DOM it measured has been replaced. */
+interface MorphSnapshot {
+  leaves: Map<string, HTMLElement>;
+  rects: Map<string, DOMRect>;
+  cloneOf: Map<string, HTMLElement>;
+  fontSize: Map<string, string>;
+  untagged: { text: string | null; clone: HTMLElement; rect: DOMRect; fontSize: string }[];
+  parens: { char: string; delim: boolean; content: string; clone: HTMLElement; rect: DOMRect; fontSize: string }[];
+  decos: { key: string; clone: HTMLElement; rect: DOMRect; fontSize: string }[];
+}
+
+/** A decoration or parenthesis held at its source pose and tweened to identity
+ *  during the move phase (translate + non-uniform scale). */
+interface BoxMorph {
+  el: HTMLElement;
+  dx: number;
+  dy: number;
+  sx: number;
+  sy: number;
+}
+
+/** Everything `_morphFlight` needs beyond the two states: the caller's
+ *  cancellation token, whether to stagger, and where/whether delete ghosts go. */
+interface MorphFlightOpts {
+  token: object;
+  seq: boolean;
+  ghostHost?: HTMLElement;
+  deleteGhosts?: boolean;
+  onSetup?: (() => void) | null;
+}
 
 export class ProofAnimator {
-  constructor(container, data, opts = {}) {
+  // ── Instance state ────────────────────────────────────────────────────────
+  // Declared here only so the type checker knows the shape; every value is set
+  // exactly where it was before (constructor, _build, _fit, _observeResize, …).
+  container: HTMLElement;
+  data: ProofAnimationData;
+  katex: typeof katex;
+  /** The .pa-stage element — assigned by _build(), which the constructor runs. */
+  stage!: HTMLElement;
+  mode: string;
+  stacked: boolean;
+  current: number;
+  /** The live speed multiplier — set by _applySpeed(), run in the constructor. */
+  speed!: number;
+  /** Base (unscaled) expression font — measured at the end of the constructor. */
+  _baseFontPx!: number;
+
+  _aiAsk: AskButtonFactory | null;
+  _nextAskBtn: HTMLButtonElement | null;
+  _enableTermAsk: boolean;
+  _onTermAsk: ((payload: { message: string }) => void) | null;
+  _onBuildTermAskMessage: ((focus: AskFocus | null) => string | null) | null;
+  _askSel: AskSelection[];
+  _termAskBtnEl: HTMLButtonElement | null;
+  _askBtnFocus: AskFocus | null;
+  _askBtnHideTimer: number | null;
+  _askBtnFadeTimer: number | null;
+  _askBtnRelocateTimer: number | null;
+  _askBtnRelocateEl: HTMLElement | null;
+  _stepAskBtnEl: HTMLButtonElement | null;
+  _stepAskIdx: number | null;
+  _stepAskHideTimer: number | null;
+  _stepAskFadeTimer: number | null;
+  _deriveBtnFactory: DeriveButtonFactory | null;
+  _onDerive: ((payload: DerivePayload, anchorEl: HTMLElement | null) => void) | null;
+  _onFunctionAnalysis: ((payload: { latex: string; step: number }) => void) | null;
+  _faBtnEl: HTMLButtonElement | null;
+  _onExplore: ((payload: { kind: string; text: string; message: string }) => void) | null;
+  _enableExplore: boolean;
+  _askOrigin: string | null;
+  _paId: string | null;
+  _deriveBtnEl: HTMLButtonElement | null;
+  _onRelayout: (() => void) | null;
+  _liveTerms: boolean;
+  _onTermHover: ((chain: TermChainEntry[], el: HTMLElement | null) => void) | null;
+  _onTermClick: ((chain: TermChainEntry[], el: HTMLElement, opts: { additive: boolean }) => void) | null;
+  _onAfterRender: (() => void) | null;
+  _onTermBackgroundClick: (() => void) | null;
+  _hotTermEl: HTMLElement | null;
+  _fitHeight: boolean;
+  _linesEl: HTMLElement | null;
+  _baseDuration: number;
+  _baseStagger: number;
+  _baseStepPause: number;
+  _speedIdx: number;
+  _running: Animation[];
+  _ghosts: HTMLElement[];
+  _token: object | null;
+  _playId: object | null;
+  _paused: boolean;
+  _pauseGate: Promise<void> | null;
+  _pauseOpen: (() => void) | null;
+  _destroyed: boolean;
+  _ro: ResizeObserver | null;
+
+  // Set outside the constructor, on first use.
+  _maxExprW!: number;
+  _lastFitW!: number;
+  _lastFitH!: number;
+  _raf?: number;
+  _onVisibility: (() => void) | null = null;
+  _onStageMove: ((ev: MouseEvent) => void) | null = null;
+  _onStageLeave: (() => void) | null = null;
+  _onStageClick: ((ev: MouseEvent) => void) | null = null;
+  _onDocExplore: ((ev: MouseEvent) => void) | null = null;
+  _errChipCleanup: (() => void) | null = null;
+  _nextPillEl!: HTMLElement;
+  _goalText?: string;
+  _goalDocked?: boolean;
+  _explorePinned?: boolean;
+  _termTip: HTMLElement | null = null;
+  _mathTip: HTMLElement | null = null;
+  _mathTipFor: HTMLElement | null = null;
+  _goalPop: HTMLElement | null = null;
+  _explorePop: HTMLElement | null = null;
+  _metaGhosts?: HTMLElement[];
+  _metaAnims?: Animation[];
+
+  constructor(container: HTMLElement, data: ProofAnimationData, opts: ProofAnimatorOptions = {}) {
     this.container = container;
     this.data = data;
-    this.katex = opts.katex || (typeof window !== "undefined" && window.katex);
+    // The `&&` yields `false` off-browser; the throw below is what makes the
+    // field non-null, so the cast asserts exactly what the guard enforces.
+    this.katex = (opts.katex || (typeof window !== "undefined" && window.katex)) as typeof katex;
     if (!this.katex) throw new Error("ProofAnimator: KaTeX not available");
     // Optional AI-ask integration: a factory (className, title, getMessage) →
     // <button>. The app passes labels.js makeAiAskButton; the standalone report
@@ -233,7 +532,7 @@ export class ProofAnimator {
     // Open on a specific step (e.g. a deeplink that carries the learner's current
     // derivation step), clamped to the available steps. Defaults to the first.
     this.current = Math.max(0, Math.min(
-      Number.isFinite(opts.startStep) ? Math.floor(opts.startStep) : 0,
+      Number.isFinite(opts.startStep) ? Math.floor(opts.startStep!) : 0,
       (this.data.steps ? this.data.steps.length : 1) - 1));
     this._running = [];
     this._ghosts = [];
@@ -266,7 +565,7 @@ export class ProofAnimator {
   // Reserve the height of the tallest caption (operation + justification) so the
   // controls below never shift as captions wrap to more/fewer lines per step.
   _fixMetaSize() {
-    const meta = this.container.querySelector(".pa-meta");
+    const meta = this.container.querySelector<HTMLElement>(".pa-meta");
     if (!meta) return;
     const probe = document.createElement("div");
     probe.className = "pa-meta";
@@ -406,9 +705,9 @@ export class ProofAnimator {
 
   _capOverflowImpl() {
     if (this.stacked) return this._capOverflowStacked();
-    const expr = this.stage.querySelector(".pa-expr");
+    const expr = this.stage.querySelector<HTMLElement>(".pa-expr");
     if (!expr) return;
-    const k = expr.querySelector(".katex-display") || expr.querySelector(".katex");
+    const k = expr.querySelector<HTMLElement>(".katex-display") || expr.querySelector<HTMLElement>(".katex");
     if (!k) return;
     const PAD = 8;
     const availW = Math.max(40, this.stage.clientWidth - 2 * PAD);
@@ -446,7 +745,7 @@ export class ProofAnimator {
     const availW = Math.max(40, this.stage.clientWidth - 2 * PAD - this._lineGutterW());
     let ratio = 1, maxW = 0;
     for (const line of this._linesEl.children) {
-      const k = line.querySelector(".katex-display") || line.querySelector(".katex");
+      const k = line.querySelector<HTMLElement>(".katex-display") || line.querySelector<HTMLElement>(".katex");
       if (!k) continue;
       const w = k.getBoundingClientRect().width;
       maxW = Math.max(maxW, w);
@@ -541,8 +840,9 @@ export class ProofAnimator {
     }
     if (this.stage && this._onStageMove) {
       this.stage.removeEventListener("mousemove", this._onStageMove);
-      this.stage.removeEventListener("mouseleave", this._onStageLeave);
-      this.stage.removeEventListener("click", this._onStageClick);
+      // Bound together in _bindLiveTerms — if the move handler exists so do these.
+      this.stage.removeEventListener("mouseleave", this._onStageLeave!);
+      this.stage.removeEventListener("click", this._onStageClick!);
       this._onStageMove = this._onStageLeave = this._onStageClick = null;
     }
     if (this._errChipCleanup) this._errChipCleanup();
@@ -553,8 +853,9 @@ export class ProofAnimator {
     // when a proof box is torn down and recreated in the app).
     if (this._stepAskHideTimer) { clearTimeout(this._stepAskHideTimer); this._stepAskHideTimer = null; }
     if (this._stepAskFadeTimer) { clearTimeout(this._stepAskFadeTimer); this._stepAskFadeTimer = null; }
-    for (const k of ["_termTip", "_mathTip", "_goalPop", "_explorePop", "_termAskBtnEl", "_stepAskBtnEl"]) {
-      const el = this[k];
+    const bodyOwned = ["_termTip", "_mathTip", "_goalPop", "_explorePop", "_termAskBtnEl", "_stepAskBtnEl"] as const;
+    for (const k of bodyOwned) {
+      const el: HTMLElement | null = this[k];
       if (el && el.parentNode) el.parentNode.removeChild(el);
       this[k] = null;
     }
@@ -577,12 +878,13 @@ export class ProofAnimator {
     // tolerance-capped, so a true background point still no-ops.) _termChain then
     // walks UP from the leaf to its enclosing operator, so the graph host can
     // still resolve the fraction/power/√ from the chain when it wants to.
-    const tagOf = (t, x, y) => {
-      const el = t && t.closest ? t.closest("[data-n]") : null;
+    const tagOf = (t: EventTarget | null, x: number, y: number): HTMLElement | null => {
+      const target = t as Element | null;
+      const el = target && target.closest ? target.closest<HTMLElement>("[data-n]") : null;
       // Scoped to _liveRoot(): the current line in stacked mode (older static
       // lines are inert), the whole stage otherwise.
       if (!el || !this._liveRoot().contains(el)) return null;
-      if (el.querySelector("[data-n]")) {
+      if (el.querySelector<HTMLElement>("[data-n]")) {
         if (x == null) return null;
         // Prefer the nearest inner leaf. Only when the pointer is on NO term at all
         // (the bare √ surd, a fraction bar) fall back to the wrapper itself — and
@@ -634,7 +936,7 @@ export class ProofAnimator {
     this.stage.addEventListener("click", this._onStageClick);
   }
 
-  _setHotTerm(el) {
+  _setHotTerm(el: HTMLElement | null) {
     if (this._hotTermEl && this._hotTermEl !== el) this._hotTermEl.classList.remove("pa-term-hot");
     this._hotTermEl = el || null;
     if (el) el.classList.add("pa-term-hot");
@@ -661,13 +963,13 @@ export class ProofAnimator {
   // The rendered data-n can carry a rebase prefix (`_r3_…`) and an occurrence
   // suffix (`__<parent>`); data.terms is keyed by the clean id, so try the raw id,
   // the prefix-stripped id, then the canonical symbol before it.
-  _termDescription(chain) {
+  _termDescription(chain: TermChainEntry[]): string {
     const terms = this.data && this.data.terms;
     if (!terms) return "";
     for (const c of (chain || [])) {
       const raw = c.id || "";
       const clean = raw.replace(/^_r\d+_/, "");
-      const t = terms[raw] || terms[clean] || terms[clean.split("__")[0]];
+      const t = terms[raw] || terms[clean] || terms[clean.split("__")[0]!];
       const d = t && (t.description || "").trim();
       if (d) return d;
     }
@@ -678,7 +980,7 @@ export class ProofAnimator {
   // (position:fixed) so a host box's overflow never clips it; placed on the side
   // the term is nearest (below in the lower half of the viewport, above otherwise),
   // flipped to the opposite side if the preferred one would run off-screen.
-  _showTermTip(anchorEl, text) {
+  _showTermTip(anchorEl: HTMLElement, text: string) {
     let tip = this._termTip;
     if (!tip) {
       tip = document.createElement("div");
@@ -712,16 +1014,16 @@ export class ProofAnimator {
   // Tagged terms from the given element up to the stage root, innermost first —
   // the candidate chain the host walks to find the nearest term that maps to a
   // graph node (a leaf glyph, then its operator wrapper, then the wrapper's…).
-  _termChain(el) {
-    const out = [];
-    for (let n = el; n && this.stage.contains(n); n = n.parentElement) {
+  _termChain(el: HTMLElement): TermChainEntry[] {
+    const out: TermChainEntry[] = [];
+    for (let n: HTMLElement | null = el; n && this.stage.contains(n); n = n.parentElement) {
       if (n.nodeType === 1 && n.hasAttribute && n.hasAttribute("data-n")) {
         const id = n.getAttribute("data-n");
         // Stop below a spanning combiner — a hovered glyph may reach its tight
         // operator (the "2" of a square → its power), but never the product/
         // equation above it (which would resolve to a sprawling node).
         if (n !== el && _isSpanningWrapperId(id)) break;
-        out.push({ id, text: n.textContent || "" });
+        out.push({ id: id!, text: n.textContent || "" });   // hasAttribute ⇒ non-null
       }
     }
     return out;
@@ -732,10 +1034,10 @@ export class ProofAnimator {
   // whose rect CONTAINS the point wins at distance 0, which is the fraction dead
   // zone: the denominator glyph's box covers the point even where the wrapper shows
   // through above it.
-  _nearestLeafTerm(wrapper, x, y) {
-    let best = null, bestD = Infinity;
-    for (const leaf of wrapper.querySelectorAll("[data-n]")) {
-      if (leaf.querySelector("[data-n]")) continue;   // leaves only
+  _nearestLeafTerm(wrapper: HTMLElement, x: number, y: number): HTMLElement | null {
+    let best: HTMLElement | null = null, bestD = Infinity;
+    for (const leaf of wrapper.querySelectorAll<HTMLElement>("[data-n]")) {
+      if (leaf.querySelector<HTMLElement>("[data-n]")) continue;   // leaves only
       const r = leaf.getBoundingClientRect();
       if (!r.width || !r.height) continue;
       const dx = x < r.left ? r.left - x : x > r.right ? x - r.right : 0;
@@ -751,7 +1053,7 @@ export class ProofAnimator {
   // Appearance key — identical-looking terms collapse to one key; reject empty +
   // numeric-only (a literal "2" and the "2" of a square render identically). Same
   // rule SgProofManager uses, so selection behaves consistently across contexts.
-  _apprKey(text) {
+  _apprKey(text: string | null | undefined): string {
     const k = (text || "").replace(/[\s\u200B-\u200F\u2060\uFEFF]/g, "");
     return (!k || /^[\d.,/+\-]+$/.test(k)) ? "" : k;
   }
@@ -759,7 +1061,7 @@ export class ProofAnimator {
   // Toggle a term in the ask CONTEXT set (gold). These are the "also include
   // these" terms that ride along when you ask about a hovered focus term — like
   // cmd/ctrl-selecting extra graph nodes. Plain click REPLACES; cmd/ctrl toggles.
-  _toggleAskTerm(el, additive) {
+  _toggleAskTerm(el: HTMLElement, additive: boolean) {
     const chain = this._termChain(el);
     const text = (chain[0] && chain[0].text) || (el.textContent || "");
     const key = this._apprKey(text);
@@ -790,12 +1092,12 @@ export class ProofAnimator {
     // keeps whatever pa-term-ask classes it carried. Sweep them off every line
     // but the current one, so the selection only ever shows on the active step.
     if (this.stacked && this._linesEl) {
-      for (const node of this._linesEl.querySelectorAll(".pa-term-ask")) {
+      for (const node of this._linesEl.querySelectorAll<HTMLElement>(".pa-term-ask")) {
         if (!expr.contains(node)) node.classList.remove("pa-term-ask");
       }
     }
     const keys = new Set(this._askSel.map((s) => s.key));
-    for (const node of expr.querySelectorAll("[data-n]")) {
+    for (const node of expr.querySelectorAll<HTMLElement>("[data-n]")) {
       const k = this._apprKey(node.textContent || "");
       node.classList.toggle("pa-term-ask", !!k && keys.has(k));
     }
@@ -840,7 +1142,7 @@ export class ProofAnimator {
   // the pointer to SETTLE there (~150ms). A move to empty chrome or onto the button
   // itself cancels the pending relocate (see _onStageMove / the button's mouseenter),
   // so a cursor traveling to the button never loses it.
-  _requestTermAskBtn(el) {
+  _requestTermAskBtn(el: HTMLElement) {
     const btn = this._termAskBtnEl;
     const visible = btn && btn.style.opacity === "1";
     if (!visible || !this._askBtnFocus || this._askBtnFocus.el === el) {
@@ -865,7 +1167,7 @@ export class ProofAnimator {
 
   // Fade the button in just above the hovered term (flipped below if no room),
   // and remember that term as the ask FOCUS. Clamped inside the viewport.
-  _showTermAskBtn(el) {
+  _showTermAskBtn(el: HTMLElement | null) {
     const btn = this._termAskBtnEl;
     if (!btn || !el) return;
     if (this._askBtnHideTimer) { clearTimeout(this._askBtnHideTimer); this._askBtnHideTimer = null; }
@@ -959,7 +1261,7 @@ export class ProofAnimator {
   // Fade the chip in at the pill's top-right corner (superscript-badge pose,
   // mirroring the term chip) — the short up-right move to reach it never crosses
   // another pill, so the chip doesn't relocate out from under the cursor.
-  _showStepAskBtn(pill, idx) {
+  _showStepAskBtn(pill: HTMLElement, idx: number) {
     const btn = this._stepAskBtnEl;
     if (!btn) return;
     if (this._stepAskHideTimer) { clearTimeout(this._stepAskHideTimer); this._stepAskHideTimer = null; }
@@ -1004,7 +1306,7 @@ export class ProofAnimator {
 
   // Resolve the deeplink for an ask: a step's own override, else the proof-level
   // one. Empty when neither is present (the route then falls back).
-  _stepDeeplink(idx) {
+  _stepDeeplink(idx: number): string {
     const s = this.data && this.data.steps && this.data.steps[idx];
     return (s && s.deeplink) || (this.data && this.data.deeplink) || "";
   }
@@ -1014,7 +1316,7 @@ export class ProofAnimator {
   // the engine. Mirrors the graph node ask (hovered = subject, selected = context).
   _termAskClick() {
     const focus = this._askBtnFocus;
-    let message = null;
+    let message: string | null = null;
     if (this._onBuildTermAskMessage) {
       try { message = this._onBuildTermAskMessage(focus); } catch (e) { message = null; }
     }
@@ -1027,7 +1329,7 @@ export class ProofAnimator {
   // Standalone ask message: the focus term + any gold context terms. Deliberately
   // omits the full $$expr$$ (the deep-linked app already has the proof) so the
   // auto-ask URL stays short.
-  _buildTermAskMessage(focus) {
+  _buildTermAskMessage(focus: AskFocus | null): string {
     if (!focus || !focus.text) return "";
     const title = this.data && this.data.title ? ` "${this.data.title}"` : "";
     const goal = this.data && this.data.goal ? ` (${this.data.goal})` : "";
@@ -1048,7 +1350,7 @@ export class ProofAnimator {
   // Cases 2 and 3 go to the SAME url (built by _askTargetUrl); only HOW it's opened
   // differs, and that lives in _openAppUrl. Shared by the term button, the per-step
   // buttons, and the explore chips.
-  _routeAsk(message, deeplink) {
+  _routeAsk(message: string | null, deeplink: string) {
     if (!message) return;
     if (this._onTermAsk) { this._onTermAsk({ message }); return; }   // (1) in-app → chat
     this._openAppUrl(                                                // (2) embedded / (3) standalone
@@ -1061,7 +1363,7 @@ export class ProofAnimator {
   //   EMBEDDED  → a NEW TAB (an iframe can't navigate its host page);
   //   STANDALONE → THIS tab (reliable — a new tab can be popup-blocked).
   // Runs the matching fallback only if there's no usable url or the open was blocked.
-  _openAppUrl(url, onEmbeddedFail, onStandaloneFail) {
+  _openAppUrl(url: string | null, onEmbeddedFail: (() => void) | null, onStandaloneFail: (() => void) | null) {
     const embedded = typeof window !== "undefined" && window.self !== window.top;
     if (url) {
       try {
@@ -1081,7 +1383,7 @@ export class ProofAnimator {
 
   // Last-resort fallback when embedded and we couldn't open a tab: notify an
   // AlgeBench-aware parent page. Tagged with this proof's title.
-  _postToParent(payload) {
+  _postToParent(payload: Record<string, unknown>) {
     try {
       window.parent.postMessage(
         { ...payload, title: (this.data && this.data.title) || null }, "*");
@@ -1109,7 +1411,7 @@ export class ProofAnimator {
     } catch (e) { return null; }
   }
 
-  _askTargetUrl(deeplink, message) {
+  _askTargetUrl(deeplink: string, message: string): string | null {
     try {
       const origin = this._askOrigin || window.location.origin;
       const raw = deeplink || "/";
@@ -1169,7 +1471,7 @@ export class ProofAnimator {
   // apparatus, not a conversation. Like an ask, it carries this proof's `pa`/`pas`
   // so the derivation travels along and the analysis attaches to the right step —
   // which is what supplies the lesson/domain context for the expert.
-  _faTargetUrl(deeplink, latex) {
+  _faTargetUrl(deeplink: string, latex: string): string | null {
     try {
       const origin = this._askOrigin || window.location.origin;
       const raw = deeplink || "/";
@@ -1190,7 +1492,12 @@ export class ProofAnimator {
 
   // Engine-native ask button (used only when the app supplies no aiAskButton
   // factory but term-ask is on). Routes via _routeAsk instead of asking chat.
-  _makeRoutedAskButton(className, title, getMessage, getIdx) {
+  _makeRoutedAskButton(
+    className: string,
+    title: string,
+    getMessage: () => string | null,
+    getIdx?: () => number,
+  ): HTMLButtonElement {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = className;
@@ -1211,15 +1518,19 @@ export class ProofAnimator {
   // and play at this.speed via playbackRate, so changing it here ALSO rescales
   // whatever is mid-flight (immediate effect), then updates the button label.
   _applySpeed() {
-    this.speed = SPEEDS[this._speedIdx];
+    this.speed = SPEEDS[this._speedIdx]!;   // _speedIdx is always a valid SPEEDS index
     for (const a of this._running) { try { a.playbackRate = this.speed; } catch (e) {} }
-    const btn = this.container.querySelector(".pa-speed");
+    const btn = this.container.querySelector<HTMLElement>(".pa-speed");
     if (btn) btn.textContent = _speedLabel(this.speed);
   }
 
   // Create an animation already running at the current speed (via playbackRate),
   // so _applySpeed can rescale it live. Durations/delays are in BASE units.
-  _tween(el, keyframes, opts) {
+  _tween(
+    el: HTMLElement,
+    keyframes: Keyframe[] | PropertyIndexedKeyframes | null,
+    opts?: number | KeyframeAnimationOptions,
+  ): Animation {
     const a = el.animate(keyframes, opts);
     a.playbackRate = this.speed;
     if (this._paused) a.pause();   // stay frozen if paused mid-sequence
@@ -1244,8 +1555,8 @@ export class ProofAnimator {
         <button class="pa-btn pa-stack" type="button" data-tip="Stacked — keep previous steps visible" aria-label="Stacked — keep previous steps visible" aria-pressed="false">☰</button>
         <button class="pa-btn pa-info-pill" type="button" hidden aria-label="Prerequisites & follow-ups"></button>
       </div>`;
-    this.stage = this.container.querySelector(".pa-stage");
-    const steps = this.container.querySelector(".pa-steps");
+    this.stage = this.container.querySelector<HTMLElement>(".pa-stage")!;
+    const steps = this.container.querySelector<HTMLElement>(".pa-steps")!;
     this.data.steps.forEach((s, i) => {
       const b = document.createElement("button");
       b.type = "button";   // never submit a surrounding <form>
@@ -1266,10 +1577,10 @@ export class ProofAnimator {
       steps.appendChild(b);
     });
     this._setOverall();   // overall-confidence pill (removed when data lacks it)
-    this.container.querySelector(".pa-prev").onclick = () => this._userGoTo(this.current - 1);
-    this.container.querySelector(".pa-next").onclick = () => this._userGoTo(this.current + 1);
+    this.container.querySelector<HTMLElement>(".pa-prev")!.onclick = () => this._userGoTo(this.current - 1);
+    this.container.querySelector<HTMLElement>(".pa-next")!.onclick = () => this._userGoTo(this.current + 1);
     // The "Next" pill acts like the next button.
-    const nextPill = this.container.querySelector(".pa-next-pill");
+    const nextPill = this.container.querySelector<HTMLElement>(".pa-next-pill")!;
     this._nextPillEl = nextPill;
     nextPill.onclick = () => this._userGoTo(this.current + 1);
     nextPill.onkeydown = (e) => {
@@ -1278,11 +1589,11 @@ export class ProofAnimator {
     };
     // AI ask buttons (app-provided factory only — see constructor).
     if (this._aiAsk) {
-      const meta = this.container.querySelector(".pa-meta");
+      const meta = this.container.querySelector<HTMLElement>(".pa-meta")!;
       meta.classList.add("pa-has-ask");
       // Current-step button sits inline right after the explanation text (in the
       // op-row), so it reads as "ask about THIS step" rather than floating loose.
-      meta.querySelector(".pa-op-row").appendChild(
+      meta.querySelector<HTMLElement>(".pa-op-row")!.appendChild(
         this._aiAsk("pa-ask-btn pa-ask-current", "Ask AI about this step",
           () => this._askCurrentMessage()));
       // The next-step button lives INSIDE the pill (re-attached by _setNextPill on
@@ -1294,27 +1605,27 @@ export class ProofAnimator {
     // Derive button — sits beside the current-step ask button; breaks THIS step
     // into finer sub-steps (a fresh derivation toward this step's expression).
     if (this._deriveBtnFactory && this._onDerive) {
-      const meta = this.container.querySelector(".pa-meta");
+      const meta = this.container.querySelector<HTMLElement>(".pa-meta")!;
       meta.classList.add("pa-has-ask");
       this._deriveBtnEl = this._deriveBtnFactory(
         "pa-ask-btn pa-derive-btn", "Derive this step — break it into finer sub-steps",
         () => this._deriveCurrent(this._deriveBtnEl));
-      meta.querySelector(".pa-op-row").appendChild(this._deriveBtnEl);
+      meta.querySelector<HTMLElement>(".pa-op-row")!.appendChild(this._deriveBtnEl);
     }
     // Function Analysis button — sits after the derive button, same op-row, and
     // acts on the step the learner is looking at.
     if (this._aiAsk) {
-      const meta = this.container.querySelector(".pa-meta");
+      const meta = this.container.querySelector<HTMLElement>(".pa-meta")!;
       meta.classList.add("pa-has-ask");
       this._faBtnEl = this._makeFaButton();
-      meta.querySelector(".pa-op-row").appendChild(this._faBtnEl);
+      meta.querySelector<HTMLElement>(".pa-op-row")!.appendChild(this._faBtnEl);
     }
-    this.container.querySelector(".pa-play").onclick = () => this._togglePlay();
-    this.container.querySelector(".pa-speed").onclick = () => {
+    this.container.querySelector<HTMLElement>(".pa-play")!.onclick = () => this._togglePlay();
+    this.container.querySelector<HTMLElement>(".pa-speed")!.onclick = () => {
       this._speedIdx = (this._speedIdx + 1) % SPEEDS.length;
       this._applySpeed();
     };
-    const modeBtn = this.container.querySelector(".pa-mode");
+    const modeBtn = this.container.querySelector<HTMLElement>(".pa-mode")!;
     // Reflect a host-seeded mode (e.g. carried across a variant-preview remount).
     modeBtn.classList.toggle("pa-active", this.mode === "sequential");
     modeBtn.setAttribute("aria-pressed", String(this.mode === "sequential"));
@@ -1324,7 +1635,7 @@ export class ProofAnimator {
       modeBtn.classList.toggle("pa-active", on);
       modeBtn.setAttribute("aria-pressed", String(on));
     };
-    const stackBtn = this.container.querySelector(".pa-stack");
+    const stackBtn = this.container.querySelector<HTMLElement>(".pa-stack")!;
     stackBtn.classList.toggle("pa-active", this.stacked);
     stackBtn.setAttribute("aria-pressed", String(this.stacked));
     stackBtn.onclick = () => this._setStacked(!this.stacked);
@@ -1340,8 +1651,8 @@ export class ProofAnimator {
   // docks the goal as a banner at the front of the math view (click the banner to
   // collapse back to the pill). Hidden when no goal.
   _renderGoal() {
-    const pill = this.container.querySelector(".pa-goal-pill");
-    const dock = this.container.querySelector(".pa-goal-dock");
+    const pill = this.container.querySelector<HTMLElement>(".pa-goal-pill");
+    const dock = this.container.querySelector<HTMLElement>(".pa-goal-dock");
     if (!pill) return;
     const goal = (this.data && this.data.goal || "").trim();
     // Stacked mode is top-anchored, so the first line would slide under the
@@ -1368,8 +1679,8 @@ export class ProofAnimator {
   // the banner (with its own "Goal" label) shows the full goal, pushing the steps
   // down; click the banner to undock and restore the pill.
   _toggleGoalDock() {
-    const pill = this.container.querySelector(".pa-goal-pill");
-    const dock = this.container.querySelector(".pa-goal-dock");
+    const pill = this.container.querySelector<HTMLElement>(".pa-goal-pill")!;
+    const dock = this.container.querySelector<HTMLElement>(".pa-goal-dock");
     if (!dock) return;
     this._goalDocked = !this._goalDocked;
     this._hideGoalPop();
@@ -1406,7 +1717,7 @@ export class ProofAnimator {
     this._caption(tip, this._goalText || "");   // textContent + KaTeX — never raw HTML
     tip.style.display = "block";
     tip.style.visibility = "hidden";
-    const pill = this.container.querySelector(".pa-goal-pill");
+    const pill = this.container.querySelector<HTMLElement>(".pa-goal-pill")!;
     const r = pill.getBoundingClientRect();
     const tw = tip.offsetWidth, th = tip.offsetHeight, GAP = 8;
     let left = Math.max(8, Math.min(r.left, window.innerWidth - tw - 8));
@@ -1425,14 +1736,14 @@ export class ProofAnimator {
   // open (hover bridge); leaving both hides it. Clicking the pill pins it open.
   // Every chip (both kinds) is clickable → _exploreClick.
   _renderExplore() {
-    const pill = this.container.querySelector(".pa-info-pill");
+    const pill = this.container.querySelector<HTMLElement>(".pa-info-pill");
     if (!pill) return;
     // Entries are strings or {text, deeplink} (validate-proof.js) — normalize to
     // objects so chips can carry their own landing view.
-    const clean = (v) => (Array.isArray(v) ? v : [])
+    const clean = (v: (string | ExploreItem)[] | undefined): ExploreItem[] => (Array.isArray(v) ? v : [])
       .map((s) => (typeof s === "string" ? { text: s } : s))
       .filter((s) => s && typeof s.text === "string" && s.text.trim()).slice(0, 8);
-    const tabs = [];
+    const tabs: ExploreTab[] = [];
     const prereqs = clean(this.data && this.data.prerequisites);
     const followups = clean(this.data && this.data.followups);
     if (prereqs.length) tabs.push({ key: "prerequisite", label: "Prerequisites", items: prereqs });
@@ -1466,8 +1777,8 @@ export class ProofAnimator {
     this._explorePop = pop;
     this._wireExploreResize(grip, pop);
 
-    const select = (tab, btn) => {
-      tabsEl.querySelectorAll(".pa-explore-tab").forEach((b) => b.classList.remove("pa-active"));
+    const select = (tab: ExploreTab, btn: HTMLElement) => {
+      tabsEl.querySelectorAll<HTMLElement>(".pa-explore-tab").forEach((b) => b.classList.remove("pa-active"));
       btn.classList.add("pa-active");
       contentEl.innerHTML = "";
       for (const item of tab.items) {
@@ -1488,7 +1799,7 @@ export class ProofAnimator {
         contentEl.appendChild(chip);
       }
     };
-    let firstBtn = null;
+    let firstBtn: HTMLButtonElement | null = null;
     tabs.forEach((tab, i) => {
       const btn = document.createElement("button");
       btn.type = "button";
@@ -1498,14 +1809,16 @@ export class ProofAnimator {
       tabsEl.appendChild(btn);
       if (i === 0) firstBtn = btn;
     });
-    if (firstBtn) select(tabs[0], firstBtn);   // default to the first tab
+    if (firstBtn) select(tabs[0]!, firstBtn);   // default to the first tab
 
     // Hover (temporary) + click (pinned), with a hover bridge so moving pill→popup
     // doesn't close it; leaving both closes it (unless pinned).
     // pinned state lives on the instance so hidePopups() (called when the box is
     // hidden) can unpin it — else a pinned popup orphans on document.body.
     this._explorePinned = false;
-    let hideT = null;
+    // `undefined` rather than `null` only because clearTimeout's signature takes
+    // `number | undefined`; both are equally a no-op there.
+    let hideT: number | undefined;
     const show = () => { clearTimeout(hideT); pop.style.display = "flex"; this._positionExplorePop(); };
     const hide = () => { pop.style.display = "none"; };
     const scheduleHide = () => { if (this._explorePinned) return; clearTimeout(hideT); hideT = setTimeout(hide, 140); };
@@ -1526,7 +1839,7 @@ export class ProofAnimator {
     if (this._onDocExplore) document.removeEventListener("mousedown", this._onDocExplore, true);
     this._onDocExplore = (ev) => {
       if (!this._explorePinned) return;
-      if (pop.contains(ev.target) || pill.contains(ev.target)) return;
+      if (pop.contains(ev.target as Node | null) || pill.contains(ev.target as Node | null)) return;
       this._explorePinned = false;
       pill.classList.remove("pa-pinned");
       hide();
@@ -1550,7 +1863,7 @@ export class ProofAnimator {
     if (this._explorePop) {
       this._explorePop.style.display = "none";
       this._explorePinned = false;
-      const pill = this.container.querySelector(".pa-info-pill");
+      const pill = this.container.querySelector<HTMLElement>(".pa-info-pill");
       if (pill) pill.classList.remove("pa-pinned");
     }
   }
@@ -1566,7 +1879,7 @@ export class ProofAnimator {
 
   _positionExplorePop() {
     const pop = this._explorePop;
-    const pill = this.container.querySelector(".pa-info-pill");
+    const pill = this.container.querySelector<HTMLElement>(".pa-info-pill");
     if (!pop || !pill) return;
     // Absolute coords within the box (its containing block). Right-aligned to the
     // info pill and anchored just above it; clamped inside the box on both axes.
@@ -1585,9 +1898,9 @@ export class ProofAnimator {
   }
 
   // Drag the top grip to resize the popup upward (bottom stays anchored to the pill).
-  _wireExploreResize(grip, pop) {
+  _wireExploreResize(grip: HTMLElement, pop: HTMLElement) {
     let h0 = 0, y0 = 0;
-    const onMove = (e) => {
+    const onMove = (e: PointerEvent) => {
       const max = Math.round(window.innerHeight * 0.7);
       const h = Math.min(Math.max(h0 + (y0 - e.clientY), 120), max);
       pop.style.height = `${h}px`;
@@ -1607,7 +1920,7 @@ export class ProofAnimator {
 
   // A context-rich message for the agent built from the clicked prereq/follow-up +
   // this derivation's title/goal, so the agent grounds on THIS proof, not a bare prompt.
-  _exploreMessage(kind, text) {
+  _exploreMessage(kind: string, text: string): string {
     const title = this.data && this.data.title ? ` "${this.data.title}"` : "";
     const goal = this.data && this.data.goal ? ` (${this.data.goal})` : "";
     if (kind === "prerequisite") {
@@ -1625,7 +1938,7 @@ export class ProofAnimator {
   // whole proof, so it uses the proof-level deeplink (scene/step + auto-ask) — unless
   // the chip carries its OWN deeplink, which is a "go see it" action in EVERY
   // context: navigate to that view (chat + auto-ask) instead of asking in place.
-  _exploreClick(kind, item) {
+  _exploreClick(kind: string, item: ExploreItem) {
     const text = item.text;
     const message = this._exploreMessage(kind, text);
     if (!item.deeplink && this._onExplore) { this._onExplore({ kind, text, message }); return; }   // (1) in-app → chat
@@ -1635,7 +1948,7 @@ export class ProofAnimator {
       () => { try { navigator.clipboard.writeText(text); } catch (e) {} });          // standalone fallback
   }
 
-  _renderInto(el, latex) {
+  _renderInto(el: HTMLElement, latex: string): HTMLElement {
     el.innerHTML = "";
     const host = document.createElement("span");
     host.className = "pa-expr";
@@ -1653,7 +1966,7 @@ export class ProofAnimator {
     // illegibility — one bad step blanking the whole derivation (issue #549).
     // Swap it for a bounded chip: the failure stays visible and the source stays
     // reachable behind it, but its width stops mattering.
-    if (host.querySelector(".katex-error")) this._renderErrorChip(host, latex);
+    if (host.querySelector<HTMLElement>(".katex-error")) this._renderErrorChip(host, latex);
     return host;
   }
 
@@ -1668,7 +1981,7 @@ export class ProofAnimator {
   // in to select and copy without it vanishing. Clicking away (or Escape)
   // unpins. The panel is absolutely positioned, so however long the dump is it
   // stays out of flow and out of every width/height measurement.
-  _renderErrorChip(host, latex) {
+  _renderErrorChip(host: HTMLElement, latex: string) {
     if (this._errChipCleanup) this._errChipCleanup();   // a re-render replaced the old chip
     host.innerHTML = "";
     const src = String(latex || "");
@@ -1696,7 +2009,7 @@ export class ProofAnimator {
     panel.append(copy, pre);
 
     let pinned = false;
-    const show = (on) => {
+    const show = (on: boolean) => {
       panel.hidden = !on;
       chip.setAttribute("aria-expanded", String(on));
       // The stage isolates its own stacking context (so insert ghosts can sit at
@@ -1708,7 +2021,7 @@ export class ProofAnimator {
       else document.removeEventListener("pointerdown", onDocDown, true);
     };
     const unpin = () => { pinned = false; show(false); };
-    const onDocDown = (e) => { if (!wrap.contains(e.target)) unpin(); };
+    const onDocDown = (e: PointerEvent) => { if (!wrap.contains(e.target as Node | null)) unpin(); };
 
     chip.addEventListener("mouseenter", () => show(true));
     // Hover-out closes only the unpinned (tooltip) state; the panel sits flush
@@ -1752,13 +2065,13 @@ export class ProofAnimator {
   // Put the caret around an element's text. On its own that is already the
   // useful half of the clipboard fallback — even where the copy command is
   // refused, the source ends up selected and ⌘C works.
-  _selectContents(el) {
+  _selectContents(el: Node): boolean {
     try {
       const range = document.createRange();
       range.selectNodeContents(el);
       const sel = window.getSelection();
-      sel.removeAllRanges();
-      sel.addRange(range);
+      sel!.removeAllRanges();
+      sel!.addRange(range);
       return true;
     } catch (e) { return false; }
   }
@@ -1786,14 +2099,14 @@ export class ProofAnimator {
     return el;
   }
 
-  _renderLine(line, i) {
+  _renderLine(line: HTMLElement, i: number) {
     line.dataset.step = String(i);
     delete line.dataset.dirty;
     line.style.visibility = "";
     line.style.opacity = "";
     line.style.display = "";
     line.style.fontSize = "";   // promote/demote overrides — resting size is CSS-owned
-    this._renderInto(line, this.data.steps[i].latex);
+    this._renderInto(line, this.data.steps[i]!.latex);
     // Step pill in the line's left gutter: click jumps to that step, hover shows
     // the KaTeX-rendered operation (same tip as the control-bar step buttons).
     // Lives OUTSIDE .pa-expr, so the morph collectors (scoped to .katex-html)
@@ -1816,13 +2129,13 @@ export class ProofAnimator {
   // Reconcile the line set to steps [0, count): remove extras, add missing,
   // re-render only the lines a transition dirtied. Clears transient accordion
   // styles (held heights, hidden lines) so the resting state is always clean.
-  _syncLines(count) {
+  _syncLines(count: number) {
     const linesEl = this._ensureLinesEl();
     linesEl.style.height = "";
     linesEl.style.overflow = "";
-    while (linesEl.children.length > count) linesEl.lastElementChild.remove();
+    while (linesEl.children.length > count) linesEl.lastElementChild!.remove();
     for (let i = 0; i < count; i++) {
-      let line = linesEl.children[i];
+      let line = linesEl.children[i] as HTMLElement | undefined;
       if (!line) {
         line = document.createElement("div");
         line.className = "pa-line";
@@ -1841,7 +2154,7 @@ export class ProofAnimator {
     // Pill ACTIVE styling moves only at settle (here) — _markCurrentLine runs at
     // transition START for layout, but the pill's highlight follows the anim.
     [...linesEl.children].forEach((el, i) => {
-      const pill = el.querySelector(".pa-line-pill");
+      const pill = el.querySelector<HTMLElement>(".pa-line-pill");
       if (pill) pill.classList.toggle("pa-pill-active", i === this.current);
     });
     // A rebuilt line discards the pill the math tooltip was anchored to — its
@@ -1850,8 +2163,8 @@ export class ProofAnimator {
     return linesEl;
   }
 
-  _lineAt(i) {
-    return this._linesEl ? this._linesEl.children[i] || null : null;
+  _lineAt(i: number): HTMLElement | null {
+    return this._linesEl ? (this._linesEl.children[i] as HTMLElement | undefined) || null : null;
   }
 
   // Term interactivity is scoped to the CURRENT line in stacked mode (older
@@ -1865,13 +2178,13 @@ export class ProofAnimator {
 
   // The root live-terms events/classes operate on: the current line in stacked
   // mode, the whole stage otherwise.
-  _liveRoot() {
+  _liveRoot(): HTMLElement {
     return (this.stacked && this._lineAt(this.current)) || this.stage;
   }
 
   _exprEl() {
     const root = this._liveRoot();
-    return root ? root.querySelector(".pa-expr") : null;
+    return root ? root.querySelector<HTMLElement>(".pa-expr") : null;
   }
 
   // Mode-aware render of the RESTING state at this.current (no animation).
@@ -1882,13 +2195,13 @@ export class ProofAnimator {
       this._scrollToCurrent(false);
     } else {
       this._linesEl = null;
-      this._renderInto(this.stage, this.data.steps[this.current].latex);
+      this._renderInto(this.stage, this.data.steps[this.current]!.latex);
     }
   }
 
   // fitHeight boxes never grow — the line column scrolls instead. Keep the
   // newest (current) line in view.
-  _scrollToCurrent(smooth) {
+  _scrollToCurrent(smooth: boolean) {
     if (!this._fitHeight || !this._linesEl) return;
     const el = this._linesEl;
     if (el.scrollHeight <= el.clientHeight + 1) return;
@@ -1903,7 +2216,7 @@ export class ProofAnimator {
   // Toggle stacked mode at runtime: cancel anything in flight, rebuild the
   // stage scaffold for the new mode, and re-render the current step (a
   // relayout, not a step change — mirrors _relayout()).
-  _setStacked(on) {
+  _setStacked(on: boolean) {
     on = !!on;
     if (this.stacked === on) return;
     this._playId = null;
@@ -1918,7 +2231,7 @@ export class ProofAnimator {
     this._token = {};
     this._cancel();
     this.stacked = on;
-    const btn = this.container.querySelector(".pa-stack");
+    const btn = this.container.querySelector<HTMLElement>(".pa-stack");
     if (btn) { btn.classList.toggle("pa-active", on); btn.setAttribute("aria-pressed", String(on)); }
     this.stage.innerHTML = "";
     this._linesEl = null;
@@ -1934,11 +2247,11 @@ export class ProofAnimator {
   // invisible to it and would POP in/out; we fade in the ones that are genuinely
   // ADDED and fade out the ones genuinely REMOVED (matched via _lcsMatch), so
   // parentheses that persist across a step are left untouched.
-  _untaggedGlyphs(root) {
-    const html = root.querySelector(".katex-html");
+  _untaggedGlyphs(root: HTMLElement): HTMLElement[] {
+    const html = root.querySelector<HTMLElement>(".katex-html");
     if (!html) return [];
-    const out = [];
-    html.querySelectorAll("*").forEach((el) => {
+    const out: HTMLElement[] = [];
+    html.querySelectorAll<HTMLElement>("*").forEach((el) => {
       if (el.firstElementChild) return;        // not a leaf element
       // Strip zero-width spacers (U+200B/C/D, BOM) KaTeX inserts for structure —
       // they're not real glyphs and `String.trim()` doesn't remove them.
@@ -1954,7 +2267,7 @@ export class ProofAnimator {
       // without an id (e.g. a parenthesis from \left(\right)). If the nearest
       // tagged ancestor is a LEAF glyph, this span is just part of that glyph's
       // rendering → skip.
-      if (!p || p.querySelector("[data-n]")) out.push(el);
+      if (!p || p.querySelector<HTMLElement>("[data-n]")) out.push(el);
     });
     return out;
   }
@@ -1966,23 +2279,23 @@ export class ProofAnimator {
   // between them across a step (KaTeX picks plain vs stretchy by content height)
   // be matched as one and morph — instead of ghosting the old AND fading the new
   // at the same spot (which looked like DUPLICATE parentheses).
-  _parens(root) {
-    const html = root.querySelector(".katex-html");
+  _parens(root: HTMLElement): ParenUnit[] {
+    const html = root.querySelector<HTMLElement>(".katex-html");
     if (!html) return [];
-    const out = [];
-    const seen = new Set();
-    html.querySelectorAll("*").forEach((el) => {
+    const out: ParenUnit[] = [];
+    const seen = new Set<HTMLElement>();
+    html.querySelectorAll<HTMLElement>("*").forEach((el) => {
       if (el.firstElementChild) return;        // leaf glyph only
       const ch = _parenChar(el.textContent);
       if (!ch) return;
-      const delim = el.closest(".delimsizing");
+      const delim = el.closest<HTMLElement>(".delimsizing");
       const unit = delim || el;
       if (seen.has(unit)) return;
       seen.add(unit);
       if (!delim) {
         if (el.hasAttribute("data-n")) return;            // part of a tagged glyph
         const p = el.closest("[data-n]");
-        if (p && !p.querySelector("[data-n]")) return;    // inside a tagged leaf glyph
+        if (p && !p.querySelector<HTMLElement>("[data-n]")) return;    // inside a tagged leaf glyph
       }
       // The CONTENT — the id of the node this paren wraps. A paren is identified
       // by WHAT IT ENCLOSES, not by its glyph or its position: `\sin`'s `(` wraps
@@ -2007,29 +2320,29 @@ export class ProofAnimator {
   // so keying off `( ` would misread an opening `[` or `|` as a close and grab the
   // wrong sibling. Returns "" when the content carries no id (e.g. a bare number)
   // — those parens fall back to order-based matching.
-  _parenContent(el, ch) {
-    const cell = el.closest(".mopen, .mclose") || el;
+  _parenContent(el: HTMLElement, ch: string): string {
+    const cell = el.closest<HTMLElement>(".mopen, .mclose") || el;
     const isOpen = cell.classList ? cell.classList.contains("mopen") : ch !== ")";
     const sib = isOpen ? cell.nextElementSibling : cell.previousElementSibling;
     if (!sib) return "";
-    let id = sib.getAttribute && sib.getAttribute("data-n");
-    if (!id) { const inner = sib.querySelector && sib.querySelector("[data-n]"); id = inner ? inner.getAttribute("data-n") : ""; }
+    let id: string | null = sib.getAttribute && sib.getAttribute("data-n");
+    if (!id) { const inner = sib.querySelector && sib.querySelector<HTMLElement>("[data-n]"); id = inner ? inner.getAttribute("data-n") : ""; }
     return (id || "").replace(/^_r\d+_/, "");
   }
 
   // Like _lcsMatch but returns the actual aligned index PAIRS [srcIdx, tgtIdx],
   // so a preserved paren can be morphed from its source pose to its target pose.
-  _lcsPairs(a, b) {
+  _lcsPairs(a: string[], b: string[]): [number, number][] {
     const n = a.length, m = b.length;
-    const dp = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
+    const dp = Array.from({ length: n + 1 }, () => new Array<number>(m + 1).fill(0));
     for (let i = n - 1; i >= 0; i--)
       for (let j = m - 1; j >= 0; j--)
-        dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
-    const pairs = [];
+        dp[i]![j] = a[i] === b[j] ? dp[i + 1]![j + 1]! + 1 : Math.max(dp[i + 1]![j]!, dp[i]![j + 1]!);
+    const pairs: [number, number][] = [];
     let i = 0, j = 0;
     while (i < n && j < m) {
       if (a[i] === b[j]) { pairs.push([i, j]); i++; j++; }
-      else if (dp[i + 1][j] >= dp[i][j + 1]) i++;
+      else if (dp[i + 1]![j]! >= dp[i]![j + 1]!) i++;
       else j++;
     }
     return pairs;
@@ -2038,33 +2351,33 @@ export class ProofAnimator {
   // Longest-common-subsequence match between two text sequences. Returns the sets
   // of source/target indices that align (the items that PERSIST). Used to tell a
   // parenthesis that stays put from one that was added or removed.
-  _lcsMatch(a, b) {
+  _lcsMatch(a: (string | null)[], b: (string | null)[]): { aKeep: Set<number>; bKeep: Set<number> } {
     const n = a.length, m = b.length;
-    const dp = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
+    const dp = Array.from({ length: n + 1 }, () => new Array<number>(m + 1).fill(0));
     for (let i = n - 1; i >= 0; i--)
       for (let j = m - 1; j >= 0; j--)
-        dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
-    const aKeep = new Set(), bKeep = new Set();
+        dp[i]![j] = a[i] === b[j] ? dp[i + 1]![j + 1]! + 1 : Math.max(dp[i + 1]![j]!, dp[i]![j + 1]!);
+    const aKeep = new Set<number>(), bKeep = new Set<number>();
     let i = 0, j = 0;
     while (i < n && j < m) {
       if (a[i] === b[j]) { aKeep.add(i); bKeep.add(j); i++; j++; }
-      else if (dp[i + 1][j] >= dp[i][j + 1]) i++;
+      else if (dp[i + 1]![j]! >= dp[i]![j + 1]!) i++;
       else j++;
     }
     return { aKeep, bKeep };
   }
 
   // leaf glyph spans: a `data-n` with no nested `data-n` (excludes hidden MathML)
-  _leaves(root) {
-    const map = new Map();
-    root.querySelectorAll(".katex-html [data-n]").forEach((el) => {
-      if (el.querySelector("[data-n]")) return;
-      map.set(el.getAttribute("data-n"), el);
+  _leaves(root: HTMLElement): Map<string, HTMLElement> {
+    const map = new Map<string, HTMLElement>();
+    root.querySelectorAll<HTMLElement>(".katex-html [data-n]").forEach((el) => {
+      if (el.querySelector<HTMLElement>("[data-n]")) return;
+      map.set(el.getAttribute("data-n")!, el);   // the selector guarantees the attribute
     });
     return map;
   }
-  _rects(map) {
-    const r = new Map();
+  _rects(map: Map<string, HTMLElement>): Map<string, DOMRect> {
+    const r = new Map<string, DOMRect>();
     map.forEach((el, id) => r.set(id, el.getBoundingClientRect()));
     return r;
   }
@@ -2074,8 +2387,8 @@ export class ProofAnimator {
   // ITSELF scope-shaped (`__add_2` → ""), which callers must skip — those are
   // subexpression wrappers, not symbols, and collapsing them would alias
   // unrelated nodes onto each other.
-  _canonicalTermId(id) {
-    return String(id || "").replace(/^_r\d+_/, "").split("__")[0];
+  _canonicalTermId(id: string | null | undefined): string {
+    return String(id || "").replace(/^_r\d+_/, "").split("__")[0]!;
   }
 
   /**
@@ -2103,10 +2416,10 @@ export class ProofAnimator {
    * splits from the LAST source — a term dividing should fly out of where it was,
    * not pop into existence.
    */
-  _pairLeaves(fromIds, toIds) {
-    const pairs = new Map();
-    const claimedFrom = new Set();
-    const claimedTo = new Set();
+  _pairLeaves(fromIds: string[], toIds: string[]): Map<string, string[]> {
+    const pairs = new Map<string, string[]>();
+    const claimedFrom = new Set<string>();
+    const claimedTo = new Set<string>();
     const toSet = new Set(toIds);
 
     // 1. Exact matches — unambiguous, and the behaviour that already worked.
@@ -2121,14 +2434,14 @@ export class ProofAnimator {
     // 2. Whatever is left, grouped by canonical name in document order. An empty
     //    canon means a structural wrapper (`__add_2`), not a symbol — pairing
     //    those would collapse unrelated subexpressions onto each other.
-    const group = (ids, skip) => {
-      const m = new Map();
+    const group = (ids: string[], skip: Set<string>): Map<string, string[]> => {
+      const m = new Map<string, string[]>();
       for (const id of ids) {
         if (skip.has(id)) continue;
         const c = this._canonicalTermId(id);
         if (!c) continue;
         if (!m.has(c)) m.set(c, []);
-        m.get(c).push(id);
+        m.get(c)!.push(id);
       }
       return m;
     };
@@ -2139,9 +2452,9 @@ export class ProofAnimator {
       const sources = srcByCanon.get(canon);
       if (!sources || !sources.length) continue;
       targets.forEach((t, i) => {
-        const src = sources[Math.min(i, sources.length - 1)];
+        const src = sources[Math.min(i, sources.length - 1)]!;
         if (!pairs.has(src)) pairs.set(src, []);
-        pairs.get(src).push(t);
+        pairs.get(src)!.push(t);
       });
     }
     return pairs;
@@ -2157,16 +2470,21 @@ export class ProofAnimator {
    *
    * Only ever ADDS matches; a target that pairs exactly is untouched.
    */
-  _aliasOccurrences(fromRects, cloneOf, fromFontSize, toLeaves) {
-    const origins = new Set();
+  _aliasOccurrences(
+    fromRects: Map<string, DOMRect>,
+    cloneOf: Map<string, HTMLElement>,
+    fromFontSize: Map<string, string>,
+    toLeaves: Map<string, HTMLElement>,
+  ): Set<string> {
+    const origins = new Set<string>();
     const pairs = this._pairLeaves([...cloneOf.keys()], [...toLeaves.keys()]);
     for (const [src, targets] of pairs) {
       if (!fromRects.has(src)) continue;
       for (const t of targets) {
         if (t === src) continue;                  // exact match, already paired
-        fromRects.set(t, fromRects.get(src));
-        if (cloneOf.has(src)) cloneOf.set(t, cloneOf.get(src));
-        if (fromFontSize.has(src)) fromFontSize.set(t, fromFontSize.get(src));
+        fromRects.set(t, fromRects.get(src)!);
+        if (cloneOf.has(src)) cloneOf.set(t, cloneOf.get(src)!);
+        if (fromFontSize.has(src)) fromFontSize.set(t, fromFontSize.get(src)!);
         origins.add(src);
       }
     }
@@ -2175,10 +2493,10 @@ export class ProofAnimator {
 
   // rects for EVERY tagged node (internal subexpressions too, not just leaves) —
   // ids are occurrence-unique so there are no collisions.
-  _nodeRects(root) {
-    const r = new Map();
-    root.querySelectorAll(".katex-html [data-n]").forEach((el) =>
-      r.set(el.getAttribute("data-n"), el.getBoundingClientRect()));
+  _nodeRects(root: HTMLElement): Map<string, DOMRect> {
+    const r = new Map<string, DOMRect>();
+    root.querySelectorAll<HTMLElement>(".katex-html [data-n]").forEach((el) =>
+      r.set(el.getAttribute("data-n")!, el.getBoundingClientRect()));
     return r;
   }
 
@@ -2193,28 +2511,34 @@ export class ProofAnimator {
   // descendant glyph maps from→to under one shared (scale s about the block's
   // top-left, then translate). Singletons (lone glyphs) fall out as size-1 blocks.
   // Returns { blocks: [{el, dx, dy, scale, single}] }.
-  _rigidBlocks(stage, fromRects, toRects, fromFontSize, changedIds = new Set()) {
-    const els = [...stage.querySelectorAll(".katex-html [data-n]")];
-    const depth = (el) => {
-      let d = 0, p = el.parentElement;
+  _rigidBlocks(
+    stage: HTMLElement,
+    fromRects: Map<string, DOMRect>,
+    toRects: Map<string, DOMRect>,
+    fromFontSize: Map<string, string>,
+    changedIds: Set<string> = new Set(),
+  ): { blocks: RigidBlock[] } {
+    const els = [...stage.querySelectorAll<HTMLElement>(".katex-html [data-n]")];
+    const depth = (el: HTMLElement) => {
+      let d = 0, p: HTMLElement | null = el.parentElement;
       while (p) { if (p.hasAttribute && p.hasAttribute("data-n")) d++; p = p.parentElement; }
       return d;
     };
     els.sort((a, b) => depth(a) - depth(b));   // shallow → deep (maximal first)
 
-    const claimed = new WeakSet();
-    const blocks = [];
+    const claimed = new WeakSet<HTMLElement>();
+    const blocks: RigidBlock[] = [];
 
     for (const el of els) {
       if (claimed.has(el)) continue;
-      const id = el.getAttribute("data-n");
+      const id = el.getAttribute("data-n")!;   // the selector guarantees the attribute
       if (!fromRects.has(id) || !toRects.has(id) || changedIds.has(id)) continue;  // inserted / changed-glyph node
-      const fb = fromRects.get(id), tb = toRects.get(id);
-      const inner = el.querySelectorAll("[data-n]");
+      const fb = fromRects.get(id)!, tb = toRects.get(id)!;
+      const inner = el.querySelectorAll<HTMLElement>("[data-n]");
       const leafEls = inner.length
-        ? [...inner].filter((x) => !x.querySelector("[data-n]"))
+        ? [...inner].filter((x) => !x.querySelector<HTMLElement>("[data-n]"))
         : [el];
-      const leafIds = leafEls.map((x) => x.getAttribute("data-n"));
+      const leafIds = leafEls.map((x) => x.getAttribute("data-n")!);
       // holds an inserted glyph OR a changed-glyph reuse → not rigid (recurse)
       if (!leafIds.every((lid) => fromRects.has(lid) && !changedIds.has(lid))) continue;
 
@@ -2224,14 +2548,18 @@ export class ProofAnimator {
       // Font size only changes on a real scriptstyle shift, which is uniform
       // across the whole subtree, so any representative leaf gives the true scale.
       let s = 1;
-      const ffs = parseFloat(fromFontSize.get(leafIds[0]));
-      const tfs = parseFloat(getComputedStyle(leafEls[0]).fontSize);
+      // `leafEls` is never empty (it falls back to `[el]`), and every leaf id was
+      // just proven present in fromRects — but not necessarily in fromFontSize;
+      // a miss yields NaN here exactly as it did before, and the `s > 0.02` guard
+      // below is what catches it.
+      const ffs = parseFloat(fromFontSize.get(leafIds[0]!)!);
+      const tfs = parseFloat(getComputedStyle(leafEls[0]!).fontSize);
       if (ffs > 0 && tfs > 0) s = ffs / tfs;
       if (!(s > 0.02 && s < 50)) s = 1;
       if (Math.abs(s - 1) < 0.02) s = 1;   // exact-equal sizes → no scale
       const tol = 2 + 0.04 * Math.max(fb.width, fb.height);
       const fits = leafIds.every((lid) => {
-        const lf = fromRects.get(lid), lt = toRects.get(lid);
+        const lf = fromRects.get(lid)!, lt = toRects.get(lid)!;
         const ex = fb.left + s * (lt.left - tb.left);   // predicted from-pos under the affine
         const ey = fb.top + s * (lt.top - tb.top);
         return Math.abs(ex - lf.left) < tol && Math.abs(ey - lf.top) < tol;
@@ -2239,7 +2567,7 @@ export class ProofAnimator {
       if (!fits) continue;                                        // parts move/scale independently → recurse to children
 
       blocks.push({ el, dx: fb.left - tb.left, dy: fb.top - tb.top, scale: s, single: leafEls.length === 1 });
-      el.querySelectorAll("[data-n]").forEach((c) => claimed.add(c));
+      el.querySelectorAll<HTMLElement>("[data-n]").forEach((c) => claimed.add(c));
       claimed.add(el);
     }
     return { blocks };
@@ -2255,7 +2583,7 @@ export class ProofAnimator {
 
   // Instantly show a step's final state — no animation. Used when the page can't
   // animate (hidden tab, or a phase whose clock is frozen by window occlusion).
-  _snapTo(target) {
+  _snapTo(target: number) {
     this._cancel();
     this.current = target;
     this._renderStage();
@@ -2268,20 +2596,20 @@ export class ProofAnimator {
   // retarget), leaf clones (the DOM may be destroyed on re-render — needed for
   // delete ghosts), untagged glyphs, parens, and structural decorations.
   // Threaded into _morphFlight as its `from` state.
-  _morphSnapshot(root) {
+  _morphSnapshot(root: HTMLElement): MorphSnapshot {
     const leaves = this._leaves(root);
     const rects = this._nodeRects(root);    // all nodes, not just leaves
-    const cloneOf = new Map();
-    const fontSize = new Map();   // exact rendered size (encodes scriptstyle etc.)
+    const cloneOf = new Map<string, HTMLElement>();
+    const fontSize = new Map<string, string>();   // exact rendered size (encodes scriptstyle etc.)
     leaves.forEach((el, id) => {
-      cloneOf.set(id, el.cloneNode(true));
+      cloneOf.set(id, el.cloneNode(true) as HTMLElement);
       fontSize.set(id, getComputedStyle(el).fontSize);
     });
     // Source untagged glyphs (parens etc.) — snapshot so we can ghost them out
     // if they disappear (they have no id to thread).
     const untagged = this._untaggedGlyphs(root).map((el) => ({
       text: el.textContent,
-      clone: el.cloneNode(true),
+      clone: el.cloneNode(true) as HTMLElement,
       rect: el.getBoundingClientRect(),
       fontSize: getComputedStyle(el).fontSize,
     }));
@@ -2289,7 +2617,7 @@ export class ProofAnimator {
     // paren can morph from its old pose and a removed one can ghost out.
     const parens = this._parens(root).map((p) => ({
       char: p.char, delim: p.delim, content: p.content,
-      clone: p.el.cloneNode(true),
+      clone: p.el.cloneNode(true) as HTMLElement,
       rect: p.el.getBoundingClientRect(),
       fontSize: getComputedStyle(p.el).fontSize,
     }));
@@ -2297,19 +2625,19 @@ export class ProofAnimator {
     // their owning node (nearest [data-n]) + type — the target ones are matched
     // against these to MORPH a preserved decoration that resized/moved, FADE OUT
     // removed ones, FADE IN new ones.
-    const decos = [];
+    const decos: MorphSnapshot["decos"] = [];
     for (const sel of DECORATIONS) {
-      root.querySelectorAll(sel).forEach((el) => {
+      root.querySelectorAll<HTMLElement>(sel).forEach((el) => {
         const o = el.closest("[data-n]");
         if (!o) return;
         const key = o.getAttribute("data-n") + "|" + sel;
-        decos.push({ key, clone: el.cloneNode(true), rect: el.getBoundingClientRect(), fontSize: getComputedStyle(el).fontSize });
+        decos.push({ key, clone: el.cloneNode(true) as HTMLElement, rect: el.getBoundingClientRect(), fontSize: getComputedStyle(el).fontSize });
       });
     }
     return { leaves, rects, cloneOf, fontSize, untagged, parens, decos };
   }
 
-  async goTo(target) {
+  async goTo(target: number) {
     target = Math.max(0, Math.min(this.data.steps.length - 1, target));
     if (target === this.current && this._running.length === 0) return;
     const prev = this.current;
@@ -2336,7 +2664,7 @@ export class ProofAnimator {
     // slides up into the explanation slot while the old caption fades out; the new
     // Next pill fades in only AFTER the morph (metaFinish, below). Any other jump
     // just snaps the caption.
-    let metaFinish = null;
+    let metaFinish: (() => void) | null = null;
     if (target === prev + 1) {
       this._updateStepButtons();
       metaFinish = this._beginMetaPromote(target);
@@ -2345,7 +2673,7 @@ export class ProofAnimator {
     }
 
     // LAST: render target, then fly from the snapshot to the fresh render
-    this._renderInto(this.stage, this.data.steps[target].latex);
+    this._renderInto(this.stage, this.data.steps[target]!.latex);
     const done = await this._morphFlight(from, this.stage, { token, seq });
     if (done) {
       this._running = [];
@@ -2355,7 +2683,7 @@ export class ProofAnimator {
       // invisible in some browsers/themes. Re-rendering the clean step drops ALL of
       // it, so the resting expression is guaranteed correct and identical to a fresh
       // render. It's visually identical to the just-finished frame, so no flicker.
-      this._renderInto(this.stage, this.data.steps[target].latex);
+      this._renderInto(this.stage, this.data.steps[target]!.latex);
       this._capOverflow();
       // Step animation done → now fade in the new justification + "Next" pill.
       if (metaFinish) metaFinish();
@@ -2370,7 +2698,11 @@ export class ProofAnimator {
   // toRoot); `deleteGhosts:false` skips ghosting removed items entirely —
   // stacked mode uses that for a forward step, where the disappearing glyphs
   // stay visible in the frozen line above.
-  async _morphFlight(from, toRoot, { token, seq, ghostHost = toRoot, deleteGhosts = true, onSetup = null } = {}) {
+  async _morphFlight(
+    from: MorphSnapshot,
+    toRoot: HTMLElement,
+    { token, seq, ghostHost = toRoot, deleteGhosts = true, onSetup = null }: Partial<MorphFlightOpts> = {},
+  ): Promise<boolean> {
     const fromLeaves = from.leaves;   // NB: may be detached if the root re-rendered
     const fromRects = from.rects;
     // Delete-ghosts are absolutely positioned INSIDE ghostHost, so their offsets
@@ -2402,13 +2734,13 @@ export class ProofAnimator {
     // treated as "matched/stationary" and the NEW glyph renders instantly at full
     // opacity (popping in before anything fades). Treat them as delete+insert
     // instead: the old glyph fades OUT (phase 0) and the new one fades IN (phase 2).
-    const changedIds = new Set();
+    const changedIds = new Set<string>();
     toLeaves.forEach((el, id) => {
       const old = cloneOf.get(id);
       if (old && old.textContent !== el.textContent) changedIds.add(id);
     });
 
-    const await_ = (anims) =>
+    const await_ = (anims: Animation[]) =>
       Promise.all(anims.map((a) => a.finished.catch(() => {})));
 
     // ── set up MOVES, but hold each group STATICALLY at its from-pose so the
@@ -2416,7 +2748,7 @@ export class ProofAnimator {
     // matched → MOVE the LARGEST rigid groups together (translate + uniform scale,
     // about each block's top-left, so a sub-expression glides/shrinks as one unit)
     const { blocks } = this._rigidBlocks(toRoot, fromRects, toRects, fromFontSize, changedIds);
-    const movers = [];
+    const movers: RigidBlock[] = [];
     for (const blk of blocks) {
       const moved = Math.abs(blk.dx) > 0.5 || Math.abs(blk.dy) > 0.5;
       const scaled = Math.abs(blk.scale - 1) > 0.01;
@@ -2429,7 +2761,7 @@ export class ProofAnimator {
     }
 
     // target-only glyphs (and changed-glyph reuses) → INSERT (hidden until the end)
-    const insertEls = [];
+    const insertEls: HTMLElement[] = [];
     toLeaves.forEach((el, id) => {
       if (!fromRects.has(id) || changedIds.has(id)) { el.style.opacity = "0"; insertEls.push(el); }
     });
@@ -2442,7 +2774,7 @@ export class ProofAnimator {
     const toUntagged = this._untaggedGlyphs(toRoot);
     const _uMatch = this._lcsMatch(fromUntagged.map((u) => u.text), toUntagged.map((el) => el.textContent));
     const _uFromKeep = _uMatch.aKeep;
-    const untagInserts = [];
+    const untagInserts: HTMLElement[] = [];
     toUntagged.forEach((el, j) => {
       if (!_uMatch.bKeep.has(j)) { el.style.opacity = "0"; untagInserts.push(el); }  // newly added → fade in last
     });
@@ -2452,16 +2784,16 @@ export class ProofAnimator {
     //     move phase tweens it to identity) so a fraction bar or radical grows /
     //     shrinks / slides smoothly instead of snapping to its new shape;
     //   • new → fade in last (phase 2);   • removed → ghost out (phase 0, below).
-    const decoEls = [];
-    const decoMovers = [];
-    const srcDecoByKey = new Map();
+    const decoEls: HTMLElement[] = [];
+    const decoMovers: BoxMorph[] = [];
+    const srcDecoByKey = new Map<string, MorphSnapshot["decos"]>();
     for (const d of fromDecos) {
       if (!srcDecoByKey.has(d.key)) srcDecoByKey.set(d.key, []);
-      srcDecoByKey.get(d.key).push(d);
+      srcDecoByKey.get(d.key)!.push(d);
     }
-    const matchedSrcDeco = new Set();
+    const matchedSrcDeco = new Set<MorphSnapshot["decos"][number]>();
     for (const sel of DECORATIONS) {
-      toRoot.querySelectorAll(sel).forEach((el) => {
+      toRoot.querySelectorAll<HTMLElement>(sel).forEach((el) => {
         const owner = el.closest("[data-n]");
         const key = (owner ? owner.getAttribute("data-n") : "") + "|" + sel;
         const pool = srcDecoByKey.get(key);
@@ -2501,19 +2833,19 @@ export class ProofAnimator {
     // node, so a preserved function/group paren morphs while an unrelated paren that
     // merely shares the same `(`/`)` glyph can't hijack its slot (see the content
     // note in _parens).
-    const _pTok = (p) => p.char + " " + p.content;
+    const _pTok = (p: { char: string; content: string }) => p.char + " " + p.content;
     const parenPairs = this._lcsPairs(fromParens.map(_pTok), toParens.map(_pTok));
     const _pFromKeep = new Set(parenPairs.map((pr) => pr[0]));
     const _pToKeep = new Set(parenPairs.map((pr) => pr[1]));
-    const parenMovers = [];
+    const parenMovers: BoxMorph[] = [];
     for (const [si, ti] of parenPairs) {
-      const src = fromParens[si], el = toParens[ti].el;
+      const src = fromParens[si]!, el = toParens[ti]!.el;
       const tr = el.getBoundingClientRect();
       const dx = src.rect.left - tr.left, dy = src.rect.top - tr.top;
       // A stretchy SVG delimiter distorts under a non-uniform scale (like a
       // radical), so scale only when the target isn't an SVG; otherwise glide
       // position only and let it settle to its true size at the end.
-      const isSvg = !!el.querySelector("svg");
+      const isSvg = !!el.querySelector<HTMLElement>("svg");
       const sx = !isSvg && tr.width > 0 ? src.rect.width / tr.width : 1;
       const sy = !isSvg && tr.height > 0 ? src.rect.height / tr.height : 1;
       const changed = Math.abs(dx) > 1 || Math.abs(dy) > 1 || Math.abs(sx - 1) > 0.02 || Math.abs(sy - 1) > 0.02;
@@ -2524,7 +2856,7 @@ export class ProofAnimator {
         parenMovers.push({ el, dx, dy, sx, sy });
       }
     }
-    const parenInserts = [];
+    const parenInserts: HTMLElement[] = [];
     toParens.forEach((p, j) => {
       if (!_pToKeep.has(j)) { p.el.style.opacity = "0"; parenInserts.push(p.el); }   // new → fade in
     });
@@ -2534,11 +2866,11 @@ export class ProofAnimator {
     // ghost is wrapped in a `.katex` host so KaTeX's font CSS (scoped under
     // `.katex …`) still applies — otherwise the glyph reverts to the default
     // font for a frame before fading.
-    const ghosts = [];
+    const ghosts: HTMLElement[] = [];
     if (deleteGhosts) fromLeaves.forEach((el, id) => {
       if (toRects.has(id) && !changedIds.has(id)) return;   // still present, same glyph
       if (splitOrigins.has(id)) return;   // it divided into scoped copies, not gone
-      const f = fromRects.get(id);
+      const f = fromRects.get(id)!;
       const host = document.createElement("span");
       host.className = "katex pa-ghost";
       Object.assign(host.style, {
@@ -2550,14 +2882,14 @@ export class ProofAnimator {
         // jump to full size for a frame before fading.
         fontSize: fromFontSize.get(id),
       });
-      host.appendChild(cloneOf.get(id));
+      host.appendChild(cloneOf.get(id)!);
       ghostHost.appendChild(host);
       this._ghosts.push(host);
       ghosts.push(host);
     });
     // Untagged source glyphs (parens etc.) that were REMOVED (not LCS-matched)
     // → ghost them out (in their own array, so they fade AFTER the id'd ghosts).
-    const untagGhosts = [];
+    const untagGhosts: HTMLElement[] = [];
     if (deleteGhosts) fromUntagged.forEach((u, ui) => {
       if (!_uFromKeep.has(ui)) {
         const host = document.createElement("span");
@@ -2632,7 +2964,7 @@ export class ProofAnimator {
 
     // ── PHASE 0: dropped items fade OUT first, before any motion ──
     const D_OUT = this._baseDuration * 0.6;
-    const delAnims = [];
+    const delAnims: Animation[] = [];
     let di = 0;
     for (const host of ghosts) {
       const a = this._tween(host,
@@ -2659,7 +2991,7 @@ export class ProofAnimator {
     if (this._token !== token) return false;   // interrupted by a newer goTo
 
     // ── PHASE 1: matched groups MOVE into place (from held pose → identity) ──
-    const moveAnims = [];
+    const moveAnims: Animation[] = [];
     let mi = 0;
     for (const blk of movers) {
       const a = this._tween(blk.el,
@@ -2707,7 +3039,7 @@ export class ProofAnimator {
 
     // ── PHASE 2: new items fade IN last (glyphs + structural decorations) ──
     const D_IN = this._baseDuration * 0.7;
-    const insAnims = [];
+    const insAnims: Animation[] = [];
     let ii = 0;
     for (const el of insertEls) {
       el.classList.add("pa-move", "pa-insert");   // pa-insert → paints behind movers/ghosts
@@ -2747,7 +3079,7 @@ export class ProofAnimator {
   // terms up into the (untouched) target line, then collapse the abandoned
   // space. Any-to-any jumps reconcile the line set first and animate only the
   // boundary transition — the same id-keyed generality single-step mode has.
-  async _stackedGoTo(target, prev) {
+  async _stackedGoTo(target: number, prev: number) {
     const token = (this._token = {});
     const seq = this.mode === "sequential";
     this._cancel();
@@ -2755,7 +3087,7 @@ export class ProofAnimator {
     // Reconcile to the resting invariant [0, prev] (self-heals an interrupted run).
     this._syncLines(prev + 1);
     this.current = target;
-    let metaFinish = null;
+    let metaFinish: (() => void) | null = null;
     if (target === prev + 1) {
       this._updateStepButtons();
       metaFinish = this._beginMetaPromote(target);
@@ -2774,7 +3106,7 @@ export class ProofAnimator {
       // fill:backwards self-releases (no held style). Advance only — on retreat
       // the target pill already existed and was visible; fading it would blink.
       if (target > prev) {
-        const pill = this._lineAt(target) && this._lineAt(target).querySelector(".pa-line-pill");
+        const pill = this._lineAt(target) && this._lineAt(target)!.querySelector<HTMLElement>(".pa-line-pill");
         if (pill) this._tween(pill, [{ opacity: 0 }, { opacity: 1 }],
           { duration: this._baseDuration * 0.5, easing: EASE, fill: "backwards" });
       }
@@ -2784,14 +3116,14 @@ export class ProofAnimator {
     }
   }
 
-  async _stackedAdvance(prev, target, token, seq) {
-    const linesEl = this._linesEl;
+  async _stackedAdvance(prev: number, target: number, token: object, seq: boolean): Promise<boolean> {
+    const linesEl = this._linesEl!;
     const h0 = linesEl.getBoundingClientRect().height;
     // Add lines (prev, target]: intermediates (multi-step jump) render at once
     // and fade in with the expansion; the target line renders HIDDEN — its
     // glyphs get posed by the flight (matched ones held exactly over the
     // previous line's copies), so its final state never flashes early.
-    const faders = [];
+    const faders: HTMLElement[] = [];
     for (let i = prev + 1; i <= target; i++) {
       const line = document.createElement("div");
       line.className = "pa-line";
@@ -2801,7 +3133,7 @@ export class ProofAnimator {
       if (i < target) { line.style.opacity = "0"; faders.push(line); }
       else line.style.visibility = "hidden";
     }
-    const targetLine = this._lineAt(target);
+    const targetLine = this._lineAt(target)!;   // just appended by the loop above
     const prevLine = this._lineAt(prev);
     // Full-size font BEFORE the class toggle demotes the outgoing line (its
     // resting style shrinks to the history scale — see .pa-stacked .pa-line).
@@ -2817,7 +3149,7 @@ export class ProofAnimator {
     // the column scrolls instead. The outgoing line DEMOTES in the same
     // breath — it shrinks/dims to its history style while the space opens.
     const D_EXP = this._baseDuration * 0.6;
-    const expAnims = [];
+    const expAnims: Animation[] = [];
     if (!this._fitHeight && h1 - h0 > 1) {
       linesEl.style.overflow = "hidden";
       expAnims.push(this._tween(linesEl,
@@ -2853,7 +3185,7 @@ export class ProofAnimator {
     // ── flight: snapshot the (still static, untouched) from-line and run the
     // standard FLIP phases into the new line. No delete-ghosts — disappearing
     // terms stay visible in the frozen line above.
-    const from = this._morphSnapshot(this._lineAt(prev));
+    const from = this._morphSnapshot(this._lineAt(prev)!);
     return this._morphFlight(from, targetLine, {
       token, seq, ghostHost: this.stage, deleteGhosts: false,
       onSetup: () => {
@@ -2862,14 +3194,14 @@ export class ProofAnimator {
         // flight) — keep the step pill HIDDEN through the flight; it fades in at
         // the settle, after the morph completes (see _stackedGoTo). An interrupt
         // marks the line dirty, so the reconcile re-renders a visible pill.
-        const pill = targetLine.querySelector(".pa-line-pill");
+        const pill = targetLine.querySelector<HTMLElement>(".pa-line-pill");
         if (pill) pill.style.opacity = "0";
       },
     });
   }
 
-  async _stackedRetreat(prev, target, token, seq) {
-    const linesEl = this._linesEl;
+  async _stackedRetreat(prev: number, target: number, token: object, seq: boolean): Promise<boolean> {
+    const linesEl = this._linesEl!;
     const fromLine = this._lineAt(prev);
     const toLine = this._lineAt(target);
     if (!fromLine || !toLine) return this._token === token;   // degenerate → settle snaps
@@ -2906,25 +3238,25 @@ export class ProofAnimator {
     const fromRects = this._nodeRects(fromLine);
     const toLeaves = this._leaves(toLine);
     const toRects = this._nodeRects(toLine);
-    const toFontSize = new Map();
+    const toFontSize = new Map<string, string>();
     toLeaves.forEach((el, id) => toFontSize.set(id, getComputedStyle(el).fontSize));
     // Same pairing the id-keyed morph uses, so the two paths never disagree about
     // which glyph is which across a step.
     const pairs = this._pairLeaves([...fromLeaves.keys()], [...toLeaves.keys()]);
     // ids matched but with a DIFFERENT glyph — they don't fly (they'd land on
     // another symbol); they just dissolve with the outgoing line.
-    const changedIds = new Set();
+    const changedIds = new Set<string>();
     fromLeaves.forEach((el, id) => {
       const t = toLeaves.get(id);
       if (t && t.textContent !== el.textContent) changedIds.add(id);
     });
 
     const D = this._baseDuration;
-    const flyAnims = [];
+    const flyAnims: Animation[] = [];
     let fi = 0;
     fromLeaves.forEach((el, id) => {
       if (changedIds.has(id)) return;
-      const f = fromRects.get(id);
+      const f = fromRects.get(id)!;   // every leaf id is a node id
       // Usually one destination. A term that DIVIDES — `a` becoming
       // `a____add_2` and `a____add_4` when it gains a second parent — flies a
       // copy to EACH, so the split reads as one glyph becoming two rather than
@@ -2933,7 +3265,7 @@ export class ProofAnimator {
         const t = toRects.get(tid);
         if (!t) continue;
         const sfs = parseFloat(getComputedStyle(el).fontSize);
-        const tfs = parseFloat(toFontSize.get(tid));
+        const tfs = parseFloat(toFontSize.get(tid)!);
         let s = sfs > 0 && tfs > 0 ? tfs / sfs : 1;
         if (Math.abs(s - 1) < 0.02) s = 1;
         const host = document.createElement("span");
@@ -2957,7 +3289,7 @@ export class ProofAnimator {
       }
     });
     // The outgoing line(s) dissolve as their terms fly home.
-    const drop = [];
+    const drop: HTMLElement[] = [];
     for (let i = target + 1; i <= prev; i++) {
       const l = this._lineAt(i);
       if (l) drop.push(l);
@@ -2998,7 +3330,7 @@ export class ProofAnimator {
   // hardcoded value, so the button can't drift out of sync with reality.
   _syncPlayUI() {
     const playing = !!this._playId && !this._paused;
-    const b = this.container.querySelector(".pa-play");
+    const b = this.container.querySelector<HTMLElement>(".pa-play");
     if (!b) return;
     b.textContent = playing ? "⏸ Pause" : "▶ Play";
     const tip = playing ? "Pause" : "Play through";
@@ -3036,7 +3368,7 @@ export class ProofAnimator {
 
   // a user-initiated jump: cancels any running play()/pause so autoplay never
   // fights manual navigation, then goes to the step.
-  _userGoTo(target) {
+  _userGoTo(target: number) {
     this._playId = null;
     this._paused = false;
     this._openPauseGate();   // unpark a gated play() loop so it can exit
@@ -3072,14 +3404,14 @@ export class ProofAnimator {
   // Render a caption: inline LaTeX interspersed with plain text. LaTeX may be
   // delimited by $…$, `…` (backticks — what the LM tends to emit), \(…\) or \[…\];
   // everything else is plain text.
-  _caption(el, text) {
+  _caption(el: HTMLElement, text: string) {
     el.innerHTML = "";
     const s = String(text);
-    let last = 0, m;
+    let last = 0, m: RegExpExecArray | null;
     _CAPTION_RE.lastIndex = 0;
     while ((m = _CAPTION_RE.exec(s)) !== null) {
       if (m.index > last) el.appendChild(document.createTextNode(s.slice(last, m.index)));
-      const tok = m[0];
+      const tok = m[0]!;
       const inner = (tok[0] === "$" || tok[0] === "`") ? tok.slice(1, -1) : tok.slice(2, -2);
       const span = document.createElement("span");
       try {
@@ -3095,25 +3427,25 @@ export class ProofAnimator {
 
   _syncUI() {
     this._updateStepButtons();
-    this._caption(this.container.querySelector(".pa-op"), this._opText(this.current));
+    this._caption(this.container.querySelector<HTMLElement>(".pa-op")!, this._opText(this.current));
     this._setConfBadge(this.current);
-    this._caption(this.container.querySelector(".pa-just"), this.data.steps[this.current].justification || "");
-    this._setNextPill(this.container.querySelector(".pa-next-pill"), this.current);
+    this._caption(this.container.querySelector<HTMLElement>(".pa-just")!, this.data.steps[this.current]!.justification || "");
+    this._setNextPill(this.container.querySelector<HTMLElement>(".pa-next-pill"), this.current);
   }
 
   // ── step-grounding confidence (tier badges) ─────────────────────────────
   // Per-step `confidence` and top-level `overall_confidence` are attached by
   // the server (animation.build → step_grounding.ground_steps). All reads are
   // guarded: payloads without them render exactly as before (no badges).
-  _conf(idx) {
+  _conf(idx: number): (ProofConfidence & { tier: string }) | null {
     const s = this.data.steps[idx];
-    return (s && s.confidence && s.confidence.tier) ? s.confidence : null;
+    return (s && s.confidence && s.confidence.tier) ? (s.confidence as ProofConfidence & { tier: string }) : null;
   }
 
   // The per-step badge beside the explanation: tier icon + color, with a
   // self-explanatory tooltip (label — meaning, then the concrete reason).
-  _setConfBadge(idx, el) {
-    el = el || this.container.querySelector(".pa-conf-badge");
+  _setConfBadge(idx: number, badge?: HTMLElement | null) {
+    const el = badge || this.container.querySelector<HTMLElement>(".pa-conf-badge");
     if (!el) return;
     const c = this._conf(idx);
     el.className = "pa-conf-badge";
@@ -3140,7 +3472,7 @@ export class ProofAnimator {
   // "scaled by $\frac{…}{…}$") that the plain CSS data-tip can't render, so
   // these badges use a JS tooltip instead. Listeners bind once; re-calls just
   // swap the text. ``aria-label`` keeps a plain-text version for a11y.
-  _attachMathTip(el, text) {
+  _attachMathTip(el: MathTipElement, text: string) {
     el._mathTipText = text || "";
     el.setAttribute("aria-label", this._plainOp(text || ""));
     el.removeAttribute("data-tip");        // ensure no double (CSS) tooltip
@@ -3154,7 +3486,7 @@ export class ProofAnimator {
     el.addEventListener("blur", hide);
   }
 
-  _showMathTip(el) {
+  _showMathTip(el: MathTipElement) {
     const text = el && el._mathTipText;
     if (!text) return;
     this._mathTipFor = el;   // anchor — so a re-render that discards it can hide the tip
@@ -3188,7 +3520,7 @@ export class ProofAnimator {
   // The overall-confidence pill (static for the derivation): icon + tier label
   // + how many transitions verified, e.g. "🥇 Grounded · 6/7".
   _setOverall() {
-    const el = this.container.querySelector(".pa-overall");
+    const el = this.container.querySelector<HTMLElement>(".pa-overall");
     if (!el) return;
     const oc = this.data.overall_confidence;
     if (!oc || !oc.tier) { el.remove(); return; }   // legacy payload → no pill
@@ -3201,7 +3533,7 @@ export class ProofAnimator {
     label.textContent = oc.label || oc.tier;
     el.append(icon, label);
     const counts = oc.counts || {};
-    const total = Object.values(counts).reduce((a, b) => a + (b || 0), 0);
+    const total = Object.values(counts).reduce<number>((a, b) => a + (b || 0), 0);
     if (total > 0) {
       const good = (counts.grounded || 0) + (counts.verified || 0);
       const count = document.createElement("span");
@@ -3240,7 +3572,7 @@ export class ProofAnimator {
   }
 
   _updateStepButtons() {
-    this.container.querySelectorAll(".pa-step").forEach((b, i) =>
+    this.container.querySelectorAll<HTMLElement>(".pa-step").forEach((b, i) =>
       b.classList.toggle("pa-active", i === this.current));
     // The start state (step 0) has nothing before it to derive — hide the button.
     // Done HERE (not in _syncUI) because forward steps animate via _beginMetaPromote,
@@ -3251,26 +3583,26 @@ export class ProofAnimator {
   // If the controls row would overflow the container width, hide the numbered
   // step buttons (keep prev / next / play / speed / mode). Re-runs on resize.
   _fitControls() {
-    const controls = this.container.querySelector(".pa-controls");
-    const steps = this.container.querySelector(".pa-steps");
+    const controls = this.container.querySelector<HTMLElement>(".pa-controls");
+    const steps = this.container.querySelector<HTMLElement>(".pa-steps");
     if (!controls || !steps) return;
     controls.classList.remove("pa-compact");           // measure with steps shown
     const cs = getComputedStyle(controls);
     const gap = parseFloat(cs.columnGap || cs.gap) || 0;
-    const kids = [...controls.children];
+    const kids = [...controls.children] as HTMLElement[];
     let natural = kids.reduce((sum, k) => sum + k.offsetWidth, 0) + gap * Math.max(0, kids.length - 1);
     if (natural > controls.clientWidth + 1) controls.classList.add("pa-compact");
   }
 
   // The explanation/title text for a step (numbered).
-  _opText(idx) {
-    const s = this.data.steps[idx];
+  _opText(idx: number): string {
+    const s = this.data.steps[idx]!;
     return s.operation ? `${idx}. ${s.operation}` : `state ${idx}`;
   }
   // Flatten an operation string (text + inline LaTeX) to readable plain text for
   // a native tooltip — strip delimiters and turn the most common LaTeX into
   // legible ASCII/Unicode.
-  _plainOp(s) {
+  _plainOp(s: string | null | undefined): string {
     return String(s)
       .replace(/\$|`|\\\(|\\\)|\\\[|\\\]/g, "")                       // math delimiters
       .replace(/\\left|\\right/g, "")                                  // \left( -> (
@@ -3283,15 +3615,15 @@ export class ProofAnimator {
   }
 
   // The plain title (no number) of the step AFTER idx, or null if idx is the last.
-  _nextOpText(idx) {
+  _nextOpText(idx: number): string | null {
     const n = this.data.steps[idx + 1];
     return n ? (n.operation || `state ${idx + 1}`) : null;
   }
 
   // Clean LaTeX for a step's expression — `plain` is the id-free render the
   // server emits alongside the annotated `latex`; fall back to the raw input.
-  _stepExpr(idx) {
-    const s = this.data.steps[idx];
+  _stepExpr(idx: number): string {
+    const s = this.data.steps[idx]!;
     return s.plain || s.input_latex || s.latex || "";
   }
 
@@ -3301,12 +3633,12 @@ export class ProofAnimator {
   // produced degenerate results — the model inferred a start ≈ the target, so the
   // first two states came out identical.) The earlier steps still ride along as
   // ``previous_steps`` context; domain carries over; the host adds lesson context.
-  _deriveCurrent(anchorEl) {
+  _deriveCurrent(anchorEl: HTMLElement | null) {
     if (!this._onDerive) return;
     const i = this.current;
     const target = this._stepExpr(i);
     if (!target) return;
-    const payload = { target_latex: target };
+    const payload: DerivePayload = { target_latex: target };
     if (this.data.domain) payload.domain = this.data.domain;
     // Anchor the start to the previous step (skip if it's somehow equal/empty).
     if (i > 0) {
@@ -3320,7 +3652,7 @@ export class ProofAnimator {
     })).filter(p => p.math);
     if (previous_steps.length) payload.previous_steps = previous_steps;
     // intent hint from the step's own operation (what move produced it)
-    const op = this.data.steps[i].operation;
+    const op = this.data.steps[i]!.operation;
     if (op) payload.intent = String(op).trim();
     this._onDerive(payload, anchorEl);
   }
@@ -3332,8 +3664,8 @@ export class ProofAnimator {
 
   // Chat message asking about step `i` — the meta "Ask AI about this step"
   // button (i = current) and the stacked step-pill chip (any line) share it.
-  _askStepMessage(i) {
-    const s = this.data.steps[i];
+  _askStepMessage(i: number): string {
+    const s = this.data.steps[i]!;
     let msg = `I'm looking at step ${i} of the derivation`
       + (this.data.title ? ` "${this.data.title}"` : "") + `:\n$$${this._stepExpr(i)}$$`;
     if (s.operation) msg += `\nOperation: ${s.operation}`;
@@ -3383,7 +3715,7 @@ export class ProofAnimator {
     const title = this.data && this.data.title ? ` "${this.data.title}"` : "";
     const tier = oc.label || oc.tier || "this";
     const counts = oc.counts || {};
-    const total = Object.values(counts).reduce((a, b) => a + (b || 0), 0);
+    const total = Object.values(counts).reduce<number>((a, b) => a + (b || 0), 0);
     let m = `The derivation${title} carries an overall confidence of "${tier}"`;
     if (total) {
       const good = (counts.grounded || 0) + (counts.verified || 0);
@@ -3404,12 +3736,12 @@ export class ProofAnimator {
   // into the title position to become the new explanation. Returns a finish()
   // closure that the caller runs AFTER the expression morph completes, which
   // fades in the new justification and the new "Next" pill (never during).
-  _beginMetaPromote(target) {
-    const meta = this.container.querySelector(".pa-meta");
-    const opEl = meta.querySelector(".pa-op");
-    const justEl = meta.querySelector(".pa-just");
-    const nextEl = meta.querySelector(".pa-next-pill");
-    const badgeEl = meta.querySelector(".pa-conf-badge");
+  _beginMetaPromote(target: number): () => void {
+    const meta = this.container.querySelector<HTMLElement>(".pa-meta")!;
+    const opEl = meta.querySelector<HTMLElement>(".pa-op")!;
+    const justEl = meta.querySelector<HTMLElement>(".pa-just")!;
+    const nextEl = meta.querySelector<HTMLElement>(".pa-next-pill")!;
+    const badgeEl = meta.querySelector<HTMLElement>(".pa-conf-badge");
     const metaRect = meta.getBoundingClientRect();
     const opRect = opEl.getBoundingClientRect();
     const justRect = justEl.getBoundingClientRect();
@@ -3429,9 +3761,9 @@ export class ProofAnimator {
     const Dbadge = this._baseDuration;
 
     // 1. Ghost the OLD explanation + justification at their spots and fade out.
-    const ghostOut = (el, rect, duration = this._baseDuration * 0.55) => {
-      if (!el.textContent.trim()) return;
-      const g = el.cloneNode(true);
+    const ghostOut = (el: HTMLElement, rect: DOMRect, duration = this._baseDuration * 0.55) => {
+      if (!el.textContent!.trim()) return;
+      const g = el.cloneNode(true) as HTMLElement;
       g.classList.add("pa-meta-ghost");
       // Force absolute inline (beats any selector that might keep a ghost in
       // flow) so it fades out exactly over its source spot instead of sinking to
@@ -3443,22 +3775,22 @@ export class ProofAnimator {
       g.style.top = (rect.top - metaRect.top) + "px";
       g.style.width = Math.ceil(rect.width) + "px";
       meta.appendChild(g);
-      this._metaGhosts.push(g);
+      this._metaGhosts!.push(g);
       const a = this._tween(g, [{ opacity: 1 }, { opacity: 0 }],
         { duration, easing: EASE, fill: "forwards" });
       a.onfinish = () => g.remove();
-      this._metaAnims.push(a);
+      this._metaAnims!.push(a);
     };
     ghostOut(opEl, opRect);
     ghostOut(justEl, justRect);
-    if (badgeShown) ghostOut(badgeEl, badgeRect, Dbadge);   // fades out IN PLACE, slow
+    if (badgeShown) ghostOut(badgeEl!, badgeRect!, Dbadge);   // fades out IN PLACE, slow
 
     // 2. The new explanation IS the promoted "Next" title. Put it in the op slot,
     //    hide the (now-promoted) next pill and the old justification, then FLIP the
     //    op up from the Next position into place.
     this._caption(opEl, this._opText(target));
     this._setConfBadge(target);
-    this._caption(justEl, this.data.steps[target].justification || "");
+    this._caption(justEl, this.data.steps[target]!.justification || "");
     justEl.style.opacity = "0";
     nextEl.style.opacity = "0";
     const newOpRect = opEl.getBoundingClientRect();
@@ -3490,14 +3822,14 @@ export class ProofAnimator {
       const ja = this._tween(justEl, [{ opacity: 0 }, { opacity: 1 }],
         { duration: this._baseDuration * 0.6, easing: EASE, fill: "both" });
       ja.onfinish = () => (justEl.style.opacity = "");
-      this._metaAnims.push(ja);
+      this._metaAnims!.push(ja);
       this._setNextPill(nextEl, target);
       if (!nextEl.classList.contains("pa-next-hidden")) {
         nextEl.style.opacity = "0";
         const na = this._tween(nextEl, [{ opacity: 0 }, { opacity: 1 }],
           { duration: this._baseDuration * 0.6, delay: this._baseDuration * 0.7, easing: EASE, fill: "both" });
         na.onfinish = () => (nextEl.style.opacity = "");
-        this._metaAnims.push(na);
+        this._metaAnims!.push(na);
       }
     };
   }
@@ -3510,18 +3842,18 @@ export class ProofAnimator {
     this._metaAnims = [];
     (this._metaGhosts || []).forEach((g) => g.remove());
     this._metaGhosts = [];
-    const opEl = this.container.querySelector(".pa-op");
+    const opEl = this.container.querySelector<HTMLElement>(".pa-op");
     if (opEl) { opEl.style.transform = ""; opEl.style.opacity = ""; opEl.classList.remove("pa-promoting"); }
-    const justEl = this.container.querySelector(".pa-just");
+    const justEl = this.container.querySelector<HTMLElement>(".pa-just");
     if (justEl) justEl.style.opacity = "";
-    const nextEl = this.container.querySelector(".pa-next-pill");
+    const nextEl = this.container.querySelector<HTMLElement>(".pa-next-pill");
     if (nextEl) nextEl.style.opacity = "";
-    const badgeEl = this.container.querySelector(".pa-conf-badge");
+    const badgeEl = this.container.querySelector<HTMLElement>(".pa-conf-badge");
     if (badgeEl) badgeEl.style.opacity = "";
   }
 
   // Render the "Next" pill for the step after idx (hidden on the last step).
-  _setNextPill(el, idx) {
+  _setNextPill(el: HTMLElement | null, idx: number) {
     if (!el) return;
     const txt = this._nextOpText(idx);
     el.innerHTML = "";
@@ -3553,10 +3885,10 @@ export class ProofAnimator {
   // resize, since the available width — and thus truncation — changes). Operates
   // on the given pill (defaults to the live one) so the offscreen probe pill in
   // _fixMetaSize() is measured in isolation, not the live pill.
-  _updateNextTip(el) {
-    el = el || this.container.querySelector(".pa-next-pill");
+  _updateNextTip(pill?: HTMLElement | null) {
+    const el = pill || this.container.querySelector<HTMLElement>(".pa-next-pill");
     if (!el || el.classList.contains("pa-next-hidden")) return;
-    const body = el.querySelector(".pa-next-body");
+    const body = el.querySelector<HTMLElement>(".pa-next-body");
     const full = el.getAttribute("data-fulltip");
     if (body && full && body.scrollWidth > body.clientWidth + 1) el.setAttribute("data-tip", full);
     else el.removeAttribute("data-tip");

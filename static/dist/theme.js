@@ -39,26 +39,7 @@ var FIRST_ICON = "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"c
 /** ›| Last (skip to end) — a right triangle + a bar. */
 var LAST_ICON = "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"currentColor\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M6 6l8 6-8 6z\" stroke=\"none\"/><path d=\"M17 6v12\" fill=\"none\"/></svg>";
 //#endregion
-//#region src/proof-animation/proof-animation.js
-/**
-* proof-animation.js — realtime, Manim-style morphing of a derivation.
-*
-* Framework-free ES-module class (graph-panel pattern): point it at a container
-* + data; embeddable in the app and runnable from the local launcher.
-*
-* data = { title, steps: [ { index, operation, justification, latex, plain } ] }
-* where `latex` is annotated (\htmlData{n=<id>}) on EVERY glyph — variables,
-* numbers, operators (+ = · −) and exponents — and a piece that persists across
-* steps keeps the same id (threaded server-side). The id IS the correspondence.
-*
-* Morph (FLIP on the leaf `data-n` glyphs, keyed by id):
-*   - id in both states  → MOVE: translate old → new position (coordinate interp)
-*   - id only in current → DELETE: ghost fades out (during motion, phase 1)
-*   - id only in target  → INSERT: fades in AFTER all motion completes (phase 2)
-* So everything that persists (incl. operators/powers) interpolates; only new
-* items fade in and only removed items fade out. Any-to-any jumps work by id;
-* an interrupting click cancels the in-flight morph and retargets from live pos.
-*/
+//#region src/proof-animation/proof-animation.ts
 var EASE = "cubic-bezier(0.42, 0, 0.58, 1)";
 var DECORATIONS = [".frac-line", ".sqrt svg"];
 var PAREN_RE = /^[()[\]|]$/;
@@ -99,6 +80,17 @@ var _speedLabel = (s) => ({
 })[s] || `${s}×`;
 var ProofAnimator = class {
 	constructor(container, data, opts = {}) {
+		this._onVisibility = null;
+		this._onStageMove = null;
+		this._onStageLeave = null;
+		this._onStageClick = null;
+		this._onDocExplore = null;
+		this._errChipCleanup = null;
+		this._termTip = null;
+		this._mathTip = null;
+		this._mathTipFor = null;
+		this._goalPop = null;
+		this._explorePop = null;
 		this.container = container;
 		this.data = data;
 		this.katex = opts.katex || typeof window !== "undefined" && window.katex;
@@ -421,7 +413,8 @@ var ProofAnimator = class {
 		if (!this._liveTerms || !this.stage) return;
 		this.container.classList.add("pa-live-terms");
 		const tagOf = (t, x, y) => {
-			const el = t && t.closest ? t.closest("[data-n]") : null;
+			const target = t;
+			const el = target && target.closest ? target.closest("[data-n]") : null;
 			if (!el || !this._liveRoot().contains(el)) return null;
 			if (el.querySelector("[data-n]")) {
 				if (x == null) return null;
@@ -1156,7 +1149,7 @@ var ProofAnimator = class {
 		});
 		if (firstBtn) select(tabs[0], firstBtn);
 		this._explorePinned = false;
-		let hideT = null;
+		let hideT;
 		const show = () => {
 			clearTimeout(hideT);
 			pop.style.display = "flex";
@@ -2484,8 +2477,8 @@ var ProofAnimator = class {
 		const s = this.data.steps[idx];
 		return s && s.confidence && s.confidence.tier ? s.confidence : null;
 	}
-	_setConfBadge(idx, el) {
-		el = el || this.container.querySelector(".pa-conf-badge");
+	_setConfBadge(idx, badge) {
+		const el = badge || this.container.querySelector(".pa-conf-badge");
 		if (!el) return;
 		const c = this._conf(idx);
 		el.className = "pa-conf-badge";
@@ -2821,8 +2814,8 @@ var ProofAnimator = class {
 		if (this._nextAskBtn) el.appendChild(el === this._nextPillEl ? this._nextAskBtn : this._nextAskBtn.cloneNode(true));
 		this._updateNextTip(el);
 	}
-	_updateNextTip(el) {
-		el = el || this.container.querySelector(".pa-next-pill");
+	_updateNextTip(pill) {
+		const el = pill || this.container.querySelector(".pa-next-pill");
 		if (!el || el.classList.contains("pa-next-hidden")) return;
 		const body = el.querySelector(".pa-next-body");
 		const full = el.getAttribute("data-fulltip");
