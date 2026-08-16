@@ -105,6 +105,28 @@ function appVersion(): Plugin {
   };
 }
 
+/**
+ * static/coach/, static/graph-panel/ and static/proof-animation/ still hold
+ * hand-authored CSS, but their JS moved to src/ during the TypeScript
+ * migration. Proxying the whole prefix therefore sends `/coach/coach.js` —
+ * requested straight from the browser by index.html's <script> tag, so it is
+ * never rewritten to `/src/...` the way an imported specifier is — to a
+ * FastAPI that no longer has the file (404).
+ *
+ * Proxy everything under the prefix EXCEPT module sources: those fall through
+ * to Vite, where resolveRootAbsolute() maps them onto src/. Returning a path
+ * from bypass() tells Vite to skip the proxy and keep walking its middleware.
+ */
+function assetsOnly(target: string) {
+  return {
+    target,
+    bypass(req: { url?: string }) {
+      const path = (req.url ?? '').split('?')[0]!;
+      return /\.[cm]?[jt]s$/.test(path) ? path : undefined;
+    },
+  };
+}
+
 export default defineConfig(({ command }) => ({
   // Built asset URLs are server-root absolute (/dist/...); in dev Vite owns
   // the origin root and proxies everything else to Python.
@@ -154,15 +176,13 @@ export default defineConfig(({ command }) => ({
       '/tokens.css': BACKEND,
       '/favicon.ico': BACKEND,
       // Hand-authored CSS living beside the moved modules (static/coach/,
-      // static/graph-panel/, static/proof-animation/). Proxying the whole
-      // prefix is safe: the .js in those directories is imported as
-      // `/graph-panel/x.js`, which the resolver above rewrites to
-      // src/graph-panel/x.js, so the browser only ever asks Vite for
-      // `/src/...`. Without these the dev server answers the CSS request
-      // with its HTML fallback — 200, but zero style rules.
-      '/coach': BACKEND,
-      '/graph-panel': BACKEND,
-      '/proof-animation': BACKEND,
+      // static/graph-panel/, static/proof-animation/). Without these the dev
+      // server answers the CSS request with its HTML fallback — 200, but zero
+      // style rules. JS is excluded and served by Vite from src/ — see
+      // assetsOnly().
+      '/coach': assetsOnly(BACKEND),
+      '/graph-panel': assetsOnly(BACKEND),
+      '/proof-animation': assetsOnly(BACKEND),
     },
   },
 }));
