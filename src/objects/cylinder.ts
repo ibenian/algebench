@@ -1,20 +1,33 @@
 import { state } from '/state.js';
 import { parseColor, addLabel3D } from '/labels.js';
 import { dataToWorld } from '/coords.js';
+import type { Vec3 } from '/coords.js';
+import type { Element } from '/types/lesson.js';
+import type { MeshPhongMaterialParameters, Object3D, Scene } from 'three';
 
-function _axisToDataDir(axis) {
+/** parseColor returns `number[]`; spreading into `new THREE.Color(...)` needs a tuple. */
+type Rgb3 = [number, number, number];
+
+/** The slice of the shared state object this module touches. */
+interface CylinderState {
+    three: { scene: Scene };
+    planeMeshes: Object3D[];
+}
+const cylinderState = state as unknown as CylinderState;
+
+function _axisToDataDir(axis: string): Vec3 {
     if (axis === 'x') return [1, 0, 0];
     if (axis === 'y') return [0, 1, 0];
     return [0, 0, 1];
 }
 
-export function _resolveCylinderDataEndpoints(el) {
-    const from = Array.isArray(el.from) ? el.from.slice(0, 3) : null;
-    const to = Array.isArray(el.to) ? el.to.slice(0, 3) : null;
+export function _resolveCylinderDataEndpoints(el: Element): { from: Vec3; to: Vec3 } {
+    const from = Array.isArray(el.from) ? el.from.slice(0, 3) as Vec3 : null;
+    const to = Array.isArray(el.to) ? el.to.slice(0, 3) as Vec3 : null;
     if (from && to) return { from, to };
 
-    const center = Array.isArray(el.center) ? el.center.slice(0, 3)
-        : (Array.isArray(el.position) ? el.position.slice(0, 3) : [0, 0, 0]);
+    const center = (Array.isArray(el.center) ? el.center.slice(0, 3)
+        : (Array.isArray(el.position) ? el.position.slice(0, 3) : [0, 0, 0])) as Vec3;
     const h = el.height !== undefined ? el.height : 1;
     const dir = _axisToDataDir(el.axis || 'z');
     const half = h / 2;
@@ -24,7 +37,7 @@ export function _resolveCylinderDataEndpoints(el) {
     };
 }
 
-export function _setCylinderTransformFromData(mesh, fromData, toData, radiusData) {
+export function _setCylinderTransformFromData(mesh: Object3D, fromData: Vec3, toData: Vec3, radiusData: number) {
     const fromW = new THREE.Vector3(...dataToWorld(fromData));
     const toW = new THREE.Vector3(...dataToWorld(toData));
     const delta = new THREE.Vector3().subVectors(toW, fromW);
@@ -43,7 +56,7 @@ export function _setCylinderTransformFromData(mesh, fromData, toData, radiusData
     const basis = Math.abs(dataDir.z) < 0.9 ? new THREE.Vector3(0, 0, 1) : new THREE.Vector3(0, 1, 0);
     const perpData = new THREE.Vector3().crossVectors(dataDir, basis).normalize();
     const radiusDataSafe = isFinite(radiusData) ? Number(radiusData) : 0;
-    const sampleData = [
+    const sampleData: Vec3 = [
         fromData[0] + perpData.x * radiusDataSafe,
         fromData[1] + perpData.y * radiusDataSafe,
         fromData[2] + perpData.z * radiusDataSafe,
@@ -56,9 +69,11 @@ export function _setCylinderTransformFromData(mesh, fromData, toData, radiusData
     mesh.scale.set(rWorld, len, rWorld);
 }
 
-export function renderCylinder(el, view) {
-    const color = parseColor(el.color || '#88aaff');
-    const opacity = el.opacity !== undefined ? el.opacity : 0.35;
+export function renderCylinder(el: Element, view: MathBoxNode) {
+    const color = parseColor(el.color || '#88aaff') as Rgb3;
+    // `opacity` is `number | string` on the schema (animated elements accept an
+    // expression); the static cylinder never animates it.
+    const opacity = (el.opacity !== undefined ? el.opacity : 0.35) as number;
     const radius = el.radius !== undefined ? el.radius : 1;
     const radialSegments = el.radialSegments || 32;
     const openEnded = !!el.openEnded;
@@ -68,7 +83,7 @@ export function renderCylinder(el, view) {
 
     const geom = new THREE.CylinderGeometry(1, 1, 1, radialSegments, 1, openEnded);
     const matType = (el.shader && el.shader.type === 'basic') ? THREE.MeshBasicMaterial : THREE.MeshPhongMaterial;
-    const matOpts = {
+    const matOpts: MeshPhongMaterialParameters = {
         color: new THREE.Color(...color),
         transparent: true,
         opacity: opacity,
@@ -87,8 +102,8 @@ export function renderCylinder(el, view) {
     const mesh = new THREE.Mesh(geom, mat);
     mesh.userData.targetOpacity = opacity;
     _setCylinderTransformFromData(mesh, from, to, radius);
-    state.three.scene.add(mesh);
-    state.planeMeshes.push(mesh);
+    cylinderState.three.scene.add(mesh);
+    cylinderState.planeMeshes.push(mesh);
 
     if (label) {
         const mid = [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2, (from[2] + to[2]) / 2];

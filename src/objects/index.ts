@@ -21,8 +21,16 @@ import { renderCylinder } from '/objects/cylinder.js';
 import { renderAnimatedCylinder } from '/objects/animated-cylinder.js';
 import { renderAnimatedPolygon } from '/objects/animated-polygon.js';
 import { renderAnimatedCurve } from '/objects/animated-curve.js';
+import type { Element } from '/types/lesson.js';
 
-export function renderElement(el, view) {
+/**
+ * Dispatch one scene element to its renderer.
+ *
+ * Returns whatever the chosen renderer returns — a small descriptor object for
+ * most types, `undefined` for the two that render purely for side effects
+ * (`axis`, `grid`), and `null` when the type is unknown.
+ */
+export function renderElement(el: Element, view: MathBoxNode) {
     switch (el.type) {
         case 'skybox': return renderSkybox(el);
         case 'axis': return renderAxis(el, view);

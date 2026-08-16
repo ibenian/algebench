@@ -1,13 +1,56 @@
 import { state } from '/state.js';
 import { parseColor, addLabel3D } from '/labels.js';
 import { dataToWorld } from '/coords.js';
+import type { Vec3 } from '/coords.js';
 import {
     resolveArrowSizeScale, resolveSmallVectorAutoScale, applyShaftThickness,
     ARROW_HEAD_MIN_FACTOR, ARROW_HEAD_MAX_FACTOR, ARROW_HEAD_RADIUS_RATIO,
     SHAFT_RADIUS_TO_HEAD_RADIUS_RATIO, SHAFT_CONE_OVERLAP_HEAD_RATIO,
 } from '/camera.js';
+import type { Element } from '/types/lesson.js';
+import type { Mesh, Scene, Vector3 } from 'three';
 
-export function makeArrowMesh(from, to, color, sizeScale, shaftBaseScale, baseOpacity = 1) {
+/** parseColor returns `number[]`; spreading into `new THREE.Color(...)` needs a tuple. */
+type Rgb3 = [number, number, number];
+
+/** The shaft/cone pair of one arrow, shared by both meshes' userData. */
+interface ArrowPair {
+    fromWorld: Vector3;
+    tipWorld: Vector3;
+    dir: Vector3;
+    baseHeadLen: number;
+    baseShaftLen: number;
+    dynamic: boolean;
+    shaft?: Mesh;
+    cone?: Mesh;
+}
+
+/** One registered arrow mesh, as camera.js's arrow manager expects it. */
+interface ArrowMeshEntry {
+    mesh: Mesh;
+    tipWorld: Vector3;
+    dir: Vector3;
+    wLen: number;
+    isShaft?: boolean;
+}
+
+/** The slice of the shared state object this module touches. */
+interface VectorState {
+    currentScale: Vec3;
+    three: { scene: Scene };
+    arrowMeshes: ArrowMeshEntry[];
+    displayParams: { arrowScale: number };
+}
+const vectorState = state as unknown as VectorState;
+
+export function makeArrowMesh(
+    from: Vec3,
+    to: Vec3,
+    color: Rgb3,
+    sizeScale: number,
+    shaftBaseScale: number,
+    baseOpacity: number = 1,
+) {
     sizeScale = resolveArrowSizeScale(sizeScale);
     shaftBaseScale = shaftBaseScale || 1;
 
@@ -17,7 +60,7 @@ export function makeArrowMesh(from, to, color, sizeScale, shaftBaseScale, baseOp
     const wLen = Math.sqrt(wdx*wdx + wdy*wdy + wdz*wdz);
     if (wLen < 0.0001) return;
 
-    const currentScale = state.currentScale;
+    const currentScale = vectorState.currentScale;
     const worldSceneSize = Math.min(currentScale[0], currentScale[1]) * 2;
     const baseHeadLen = Math.max(Math.min(wLen * 0.25, worldSceneSize * ARROW_HEAD_MAX_FACTOR), worldSceneSize * ARROW_HEAD_MIN_FACTOR) * sizeScale;
     const autoScale = resolveSmallVectorAutoScale(wLen, baseHeadLen);
@@ -53,8 +96,8 @@ export function makeArrowMesh(from, to, color, sizeScale, shaftBaseScale, baseOp
     shaft.userData.baseShaftRadius = shaftRadius;
     shaft.userData.maxRadiusFromHead = wHeadRadius * 0.75;
     applyShaftThickness(shaft);
-    state.three.scene.add(shaft);
-    const arrowPair = {
+    vectorState.three.scene.add(shaft);
+    const arrowPair: ArrowPair = {
         fromWorld: new THREE.Vector3(...fromWorld),
         tipWorld: new THREE.Vector3(...tipWorld),
         dir: dir.clone(),
@@ -64,7 +107,7 @@ export function makeArrowMesh(from, to, color, sizeScale, shaftBaseScale, baseOp
     };
     shaft.userData.arrowPair = arrowPair;
     shaft.userData.baseOpacity = shaftOpacity;
-    state.arrowMeshes.push({ mesh: shaft, tipWorld: new THREE.Vector3(fromWorld[0] + dir.x*shaftLen, fromWorld[1] + dir.y*shaftLen, fromWorld[2] + dir.z*shaftLen), dir: dir.clone(), wLen: shaftLen, isShaft: true });
+    vectorState.arrowMeshes.push({ mesh: shaft, tipWorld: new THREE.Vector3(fromWorld[0] + dir.x*shaftLen, fromWorld[1] + dir.y*shaftLen, fromWorld[2] + dir.z*shaftLen), dir: dir.clone(), wLen: shaftLen, isShaft: true });
 
     const coneGeom = new THREE.ConeGeometry(wHeadRadius, wHeadLen, 16);
     const coneOpacity = Math.max(0, Math.min(1, Number.isFinite(baseOpacity) ? baseOpacity : 1));
@@ -85,32 +128,32 @@ export function makeArrowMesh(from, to, color, sizeScale, shaftBaseScale, baseOp
     cone.userData.baseOpacity = coneOpacity;
     arrowPair.shaft = shaft;
     arrowPair.cone = cone;
-    state.three.scene.add(cone);
-    state.arrowMeshes.push({ mesh: cone, tipWorld: new THREE.Vector3(...tipWorld), dir: dir.clone(), wLen: wHeadLen });
+    vectorState.three.scene.add(cone);
+    vectorState.arrowMeshes.push({ mesh: cone, tipWorld: new THREE.Vector3(...tipWorld), dir: dir.clone(), wLen: wHeadLen });
 }
 
-export function renderVector(el, view) {
-    const from = el.origin || el.from || [0, 0, 0];
-    const to = el.to || [1, 0, 0];
-    const color = parseColor(el.color || '#ff6644');
+export function renderVector(el: Element, view: MathBoxNode) {
+    const from = (el.origin || el.from || [0, 0, 0]) as Vec3;
+    const to = (el.to || [1, 0, 0]) as Vec3;
+    const color = parseColor(el.color || '#ff6644') as Rgb3;
     const label = el.label;
     const elementOpacity = (typeof el.opacity === 'number' && isFinite(el.opacity))
         ? Math.max(0, Math.min(1, el.opacity))
         : 1;
     const shaftBaseScale = 1;
 
-    makeArrowMesh(from, to, color, state.displayParams.arrowScale, shaftBaseScale, elementOpacity);
+    makeArrowMesh(from, to, color, vectorState.displayParams.arrowScale, shaftBaseScale, elementOpacity);
 
     if (label) {
         const lo = (Array.isArray(el.labelOffset) && el.labelOffset.length === 3)
             ? [Number(el.labelOffset[0]) || 0, Number(el.labelOffset[1]) || 0, Number(el.labelOffset[2]) || 0] : null;
         if (el.labelPosition) {
-            addLabel3D(label, el.labelPosition, color);
+            addLabel3D(label, el.labelPosition as number[], color);
         } else {
             const mid = [
-                (from[0] + to[0]) / 2 + (lo ? lo[0] : 0),
-                (from[1] + to[1]) / 2 + 0.15 + (lo ? lo[1] : 0),
-                (from[2] + to[2]) / 2 + (lo ? lo[2] : 0)
+                (from[0] + to[0]) / 2 + (lo ? lo[0]! : 0),
+                (from[1] + to[1]) / 2 + 0.15 + (lo ? lo[1]! : 0),
+                (from[2] + to[2]) / 2 + (lo ? lo[2]! : 0)
             ];
             addLabel3D(label, mid, color);
         }
@@ -118,4 +161,3 @@ export function renderVector(el, view) {
 
     return { type: 'vector', color, label };
 }
-

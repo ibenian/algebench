@@ -1,32 +1,48 @@
 import { state } from '/state.js';
 import { parseColor } from '/labels.js';
 import { _JS_ONLY_RE, _mathjs } from '/expr.js';
+import type { Element } from '/types/lesson.js';
 
-export function renderVectorField(el, view) {
-    const color = parseColor(el.color || '#88ccff');
+/** parseColor returns `number[]`; spreading into `new THREE.Color(...)` needs a tuple. */
+type Rgb3 = [number, number, number];
+
+/** A compiled field component: a trusted-JS function, a math.js node, or nothing. */
+type VectorFieldFn =
+    | ((x: number, y: number, z: number) => number)
+    | import('mathjs').EvalFunction
+    | null;
+
+/** The slice of the shared state object this module touches. */
+interface VectorFieldState {
+    _sceneJsTrustState: string | null;
+}
+const vectorFieldState = state as unknown as VectorFieldState;
+
+export function renderVectorField(el: Element, view: MathBoxNode) {
+    const color = parseColor(el.color || '#88ccff') as Rgb3;
     const opacity = el.opacity !== undefined ? el.opacity : 0.6;
-    const range = el.range || [[-2, 2], [-2, 2], [-2, 2]];
+    const range = (el.range || [[-2, 2], [-2, 2], [-2, 2]]) as [[number, number], [number, number], [number, number]];
     const density = el.density || 3;
-    const scale = el.scale || 0.3;
+    const scale = (el.scale as number | undefined) || 0.3;
     const label = el.label;
 
     const exprX = el.fx || 'y';
     const exprY = el.fy || '-x';
     const exprZ = el.fz || '0';
 
-    const _compileVF = (e) => {
+    const _compileVF = (e: string): VectorFieldFn => {
         if (_JS_ONLY_RE.test(e)) {
-            if (state._sceneJsTrustState === 'trusted') {
-                return new Function('x', 'y', 'z', 'return ' + e);
+            if (vectorFieldState._sceneJsTrustState === 'trusted') {
+                return new Function('x', 'y', 'z', 'return ' + e) as (x: number, y: number, z: number) => number;
             }
             return null;
         }
         return _mathjs.compile(e);
     };
-    const _evalVF = (compiled, x, y, z) => {
+    const _evalVF = (compiled: VectorFieldFn, x: number, y: number, z: number): number => {
         if (!compiled) return 0;
         if (typeof compiled === 'function') return compiled(x, y, z);
-        return compiled.evaluate({ x, y, z });
+        return compiled.evaluate({ x, y, z }) as number;
     };
     const compiledX = _compileVF(exprX);
     const compiledY = _compileVF(exprY);

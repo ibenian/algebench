@@ -1,17 +1,59 @@
 import { state } from '/state.js';
 import { parseColor, addLabel3D, renderKaTeX } from '/labels.js';
+import type { Label3D } from '/labels.js';
 import { compileExpr, evalExpr } from '/expr.js';
+import type { CompiledExpr } from '/expr.js';
 import { dataToWorld, dataLenToWorld } from '/coords.js';
+import type { Vec3 } from '/coords.js';
+import type { Element } from '/types/lesson.js';
+import type { CanvasTexture, Material, Mesh, MeshPhongMaterialParameters, Object3D, Scene, Sprite } from 'three';
+
+/** parseColor returns `number[]`; spreading into `new THREE.Color(...)` needs a tuple. */
+type Rgb3 = [number, number, number];
+
+/** A label whose text is driven by `labelExpr`, memoising its last rendered value. */
+type DynamicLabel = Label3D & { _lastDynamicText?: string };
+
+/** Meshes the step system hides carry this flag; the updater skips them. */
+type RemovableMesh = Mesh<import('three').BufferGeometry, Material> & { _hiddenByRemove?: boolean };
+type RemovableSprite = Sprite & { _hiddenByRemove?: boolean };
+
+/** A live expression-driven element, as the scene loader's rebuild pass expects it. */
+interface AnimExprEntry {
+    exprStrings: string[];
+    animState: { stopped: boolean };
+    compiledFns: CompiledExpr[];
+    visibleExprString: string | null;
+    visibleFn: CompiledExpr | null;
+}
+
+/** A per-frame updater, as the scene loader's animation loop expects it. */
+interface AnimUpdater {
+    animState: { stopped: boolean };
+    updateFrame(nowMs: number): void;
+}
+
+/** The slice of the shared state object this module touches. */
+interface AnimatedPointState {
+    three: { scene: Scene };
+    planeMeshes: Object3D[];
+    activeAnimExprs: AnimExprEntry[];
+    activeAnimUpdaters: AnimUpdater[];
+    animatedElementPos: Record<string, { pos: number[]; startTime: number; time: number }>;
+    sceneStartTime: number;
+}
+const animatedPointState = state as unknown as AnimatedPointState;
 
 // Shared radial-gradient texture for glow halos (built once, reused by all points).
-let _haloTexture = null;
-function getHaloTexture() {
+let _haloTexture: CanvasTexture | null = null;
+function getHaloTexture(): CanvasTexture {
     if (_haloTexture) return _haloTexture;
     const c = document.createElement('canvas');
     c.width = c.height = 256;
-    const ctx = c.getContext('2d');
+    // `!` not `?.`: an unavailable 2d context threw in the original.
+    const ctx = c.getContext('2d')!;
     // Star-shine decal: soft round core + cross light-streaks + faint diagonals.
-    const ray = (rot, len, width, alpha) => {
+    const ray = (rot: number, len: number, width: number, alpha: number) => {
         ctx.save();
         ctx.translate(128, 128);
         ctx.rotate(rot);
@@ -37,8 +79,8 @@ function getHaloTexture() {
     return _haloTexture;
 }
 
-export function renderAnimatedPoint(el, view) {
-    const color = parseColor(el.color || '#ffdd00');
+export function renderAnimatedPoint(el: Element, view: MathBoxNode) {
+    const color = parseColor(el.color || '#ffdd00') as Rgb3;
     const shader = el.shader || {};
     const size = Number(el.size);
     const opacity = Number.isFinite(Number(el.opacity)) ? Math.max(0, Math.min(1, Number(el.opacity))) : 1;
@@ -46,8 +88,8 @@ export function renderAnimatedPoint(el, view) {
         ? el.radius
         : (Number.isFinite(size) ? Math.max(size, 0) / 50 : 0.25);
     const label = el.label;
-    const exprStrings = el.expr || el.positionExpr || el.toExpr
-        || (Array.isArray(el.position) && el.position.length === 3 ? el.position.map(v => String(v)) : null);
+    const exprStrings = (el.expr || el.positionExpr || el.toExpr
+        || (Array.isArray(el.position) && el.position.length === 3 ? el.position.map(v => String(v)) : null)) as string[] | null;
     const visibleExprString = (typeof el.visibleExpr === 'string' && el.visibleExpr.trim()) ? el.visibleExpr.trim() : null;
     const sizeExprString = (typeof el.sizeExpr === 'string' && el.sizeExpr.trim()) ? el.sizeExpr.trim() : null;
     const opacityExprString = (typeof el.opacityExpr === 'string' && el.opacityExpr.trim()) ? el.opacityExpr.trim() : null;
@@ -58,14 +100,14 @@ export function renderAnimatedPoint(el, view) {
 
     if (!Array.isArray(exprStrings) || exprStrings.length !== 3) return null;
 
-    let exprFns;
-    let visibleFn = null;
-    let sizeFn = null;
-    let opacityFn = null;
-    let initPos;
+    let exprFns: CompiledExpr[];
+    let visibleFn: CompiledExpr | null = null;
+    let sizeFn: CompiledExpr | null = null;
+    let opacityFn: CompiledExpr | null = null;
+    let initPos: Vec3;
     try {
         exprFns = exprStrings.map(e => compileExpr(e));
-        initPos = exprFns.map(fn => evalExpr(fn, 0));
+        initPos = exprFns.map(fn => evalExpr(fn, 0) as number) as Vec3;
         if (visibleExprString) visibleFn = compileExpr(visibleExprString);
         if (sizeExprString) sizeFn = compileExpr(sizeExprString);
         if (opacityExprString) opacityFn = compileExpr(opacityExprString);
@@ -76,7 +118,7 @@ export function renderAnimatedPoint(el, view) {
 
     const initWorld = dataToWorld(initPos);
     const geom = new THREE.SphereGeometry(1, 20, 16);
-    const matOpts = {
+    const matOpts: MeshPhongMaterialParameters = {
         color: new THREE.Color(...color),
         transparent: opacity < 0.999 || !!opacityFn,
         opacity,
@@ -94,7 +136,7 @@ export function renderAnimatedPoint(el, view) {
         if (shader.flatShading) matOpts.flatShading = true;
         mat = new THREE.MeshPhongMaterial(matOpts);
     }
-    const mesh = new THREE.Mesh(geom, mat);
+    const mesh = new THREE.Mesh(geom, mat) as RemovableMesh;
     // With a glow halo the sprite IS the visual — the core mesh is kept only as
     // an invisible position/label anchor (visible=false each frame; targetOpacity 0
     // so the plane-opacity manager never fades it back in).
@@ -109,11 +151,11 @@ export function renderAnimatedPoint(el, view) {
     mesh.scale.setScalar(initWorldRadius);
     mesh.userData.targetOpacity = glowOnly ? 0 : opacity;
     mesh.userData.ignorePlaneOpacity = !!shader.ignorePlaneOpacity;
-    state.three.scene.add(mesh);
-    state.planeMeshes.push(mesh);
+    animatedPointState.three.scene.add(mesh);
+    animatedPointState.planeMeshes.push(mesh);
 
     // Optional light-halo sprite: camera-facing radial gradient, additively blended.
-    let halo = null;
+    let halo: RemovableSprite | null = null;
     const glowScale = Number.isFinite(Number(el.glowScale)) ? Number(el.glowScale) : 2;
     if (el.glow) {
         const haloMat = new THREE.SpriteMaterial({
@@ -129,19 +171,19 @@ export function renderAnimatedPoint(el, view) {
         halo.scale.setScalar(initWorldRadius * glowScale * 2);
         halo.userData.targetOpacity = opacity;
         halo.userData.ignorePlaneOpacity = !!shader.ignorePlaneOpacity;
-        state.three.scene.add(halo);
-        state.planeMeshes.push(halo);
+        animatedPointState.three.scene.add(halo);
+        animatedPointState.planeMeshes.push(halo);
     }
 
-    let labelExprFn = null;
+    let labelExprFn: CompiledExpr | null = null;
     if (labelExprString) {
         try { labelExprFn = compileExpr(labelExprString); } catch (err) { console.warn('animated_point labelExpr compile error:', err); }
     }
 
-    let labelEl = null;
+    let labelEl: DynamicLabel | null = null;
     if (label || labelExprFn) {
         const initText = label || '';
-        labelEl = addLabel3D(initText, [initPos[0] + labelOffset[0], initPos[1] + labelOffset[1], initPos[2] + labelOffset[2]], color);
+        labelEl = addLabel3D(initText, [initPos[0] + labelOffset[0]!, initPos[1] + labelOffset[1]!, initPos[2] + labelOffset[2]!], color);
         if (labelExprFn) {
             try {
                 const txt = String(evalExpr(labelExprFn, 0));
@@ -152,38 +194,38 @@ export function renderAnimatedPoint(el, view) {
     }
 
     const animState = { stopped: false };
-    const animExprEntry = {
+    const animExprEntry: AnimExprEntry = {
         exprStrings,
         animState,
         compiledFns: exprFns,
         visibleExprString,
         visibleFn,
     };
-    state.activeAnimExprs.push(animExprEntry);
+    animatedPointState.activeAnimExprs.push(animExprEntry);
 
-    const startTime = state.sceneStartTime;
-    state.activeAnimUpdaters.push({
+    const startTime = animatedPointState.sceneStartTime;
+    animatedPointState.activeAnimUpdaters.push({
         animState,
         updateFrame(nowMs) {
             // Step-removed elements aren't rendered and must not publish
             // positions — retract any previously published entry (so the
             // follow-cam can't latch onto a stale one) and skip evaluation.
             if (mesh._hiddenByRemove) {
-                if (el.id) delete state.animatedElementPos[el.id];
+                if (el.id) delete animatedPointState.animatedElementPos[el.id];
                 return;
             }
 
             const tSec = (nowMs - startTime) / 1000;
             const fns = animExprEntry.compiledFns || exprFns;
-            let p = initPos;
+            let p: Vec3 = initPos;
             try {
-                p = fns.map(fn => evalExpr(fn, tSec));
+                p = fns.map(fn => evalExpr(fn, tSec) as number) as Vec3;
             } catch (err) {
                 // keep previous position
             }
 
             if (el.id) {
-                state.animatedElementPos[el.id] = { pos: p, startTime, time: nowMs };
+                animatedPointState.animatedElementPos[el.id] = { pos: p, startTime, time: nowMs };
             }
 
             let isVisible = true;
@@ -202,16 +244,16 @@ export function renderAnimatedPoint(el, view) {
             let radiusNow = radius;
             if (sizeFn) {
                 try {
-                    const rv = evalExpr(sizeFn, tSec);
+                    const rv = evalExpr(sizeFn, tSec) as number;
                     if (Number.isFinite(rv)) radiusNow = Math.max(rv, 0) / 50;
                 } catch (_err) { /* keep static radius */ }
             }
             const worldRadius = Math.max(dataLenToWorld(radiusNow), 0.0005);
             mesh.scale.setScalar(worldRadius);
-            let opacityNow = null;
+            let opacityNow: number | null = null;
             if (opacityFn) {
                 try {
-                    const ov = evalExpr(opacityFn, tSec);
+                    const ov = evalExpr(opacityFn, tSec) as number;
                     if (Number.isFinite(ov)) {
                         opacityNow = Math.max(0, Math.min(1, ov));
                         if (!halo) {
@@ -232,9 +274,9 @@ export function renderAnimatedPoint(el, view) {
             }
 
             if (labelEl) {
-                labelEl.dataPos[0] = p[0] + labelOffset[0];
-                labelEl.dataPos[1] = p[1] + labelOffset[1];
-                labelEl.dataPos[2] = p[2] + labelOffset[2];
+                labelEl.dataPos[0] = p[0] + labelOffset[0]!;
+                labelEl.dataPos[1] = p[1] + labelOffset[1]!;
+                labelEl.dataPos[2] = p[2] + labelOffset[2]!;
                 labelEl.forceHidden = !isVisible;
                 if (labelExprFn) {
                     try {

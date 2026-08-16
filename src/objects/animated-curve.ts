@@ -1,15 +1,82 @@
 import { state } from '/state.js';
 import { parseColor, addLabel3D, renderKaTeX } from '/labels.js';
+import type { Label3D } from '/labels.js';
 import { compileExpr, evalExpr } from '/expr.js';
+import type { CompiledExpr } from '/expr.js';
 import { dataToWorld } from '/coords.js';
+import type { Vec3 } from '/coords.js';
 import { resolveLineWidth } from '/camera.js';
+import type { Element, FillRegion } from '/types/lesson.js';
+import type { BufferGeometry, Float32BufferAttribute, MeshBasicMaterial, Object3D, Scene } from 'three';
 
-export function renderAnimatedCurve(el, view) {
-    const color = parseColor(el.color || '#ff8844');
+/** parseColor returns `number[]`; spreading into `new THREE.Color(...)` needs a tuple. */
+type Rgb3 = [number, number, number];
+
+/** A label whose text is driven by `labelExpr`, memoising its last rendered value. */
+type DynamicLabel = Label3D & { _lastDynamicText?: string };
+
+/** A registered line, as camera.js's width/opacity manager expects it. */
+interface LineEntry {
+    node: MathBoxNode | null;
+    baseWidth: number;
+    baseOpacity: number;
+    widthParam: string;
+    anchorDataPos: number[];
+}
+
+/** One `fillRegions` entry, with everything the per-frame update needs. */
+interface FillEntry {
+    fr: FillRegion;
+    frOpacityExpr: CompiledExpr | null;
+    frOpacity: number;
+    cAbove: CompiledExpr | null;
+    cBelow: CompiledExpr | null;
+    cRightOf: CompiledExpr | null;
+    cLeftOf: CompiledExpr | null;
+    fillAttr: Float32BufferAttribute;
+    fillGeom: BufferGeometry;
+    fillMat: MeshBasicMaterial;
+    cBoundary: CompiledExpr | null;
+    outlineArrayNode: MathBoxNode | null;
+    outlineLineNode: MathBoxNode | null;
+    outlineWidthExpr: CompiledExpr | null;
+    outlineOpacityExpr: CompiledExpr | null;
+    outlineOpacityRaw: number | string | null;
+}
+
+/** A live expression-driven element, as the scene loader's rebuild pass expects it. */
+interface AnimExprEntry {
+    exprStrings: string[];
+    animState: { stopped: boolean };
+    compiledFns: CompiledExpr[];
+    _isAnimatedCurve: boolean;
+}
+
+/** A per-frame updater, as the scene loader's animation loop expects it. */
+interface AnimUpdater {
+    animState: { stopped: boolean };
+    updateFrame(nowMs: number): void;
+}
+
+/** The slice of the shared state object this module touches. */
+interface AnimatedCurveState {
+    lineNodes: LineEntry[];
+    displayParams: { lineOpacity: number; planeOpacity: number };
+    _planeMeshSerial: number;
+    three: { scene: Scene };
+    planeMeshes: Object3D[];
+    activeAnimExprs: AnimExprEntry[];
+    activeAnimUpdaters: AnimUpdater[];
+    sceneStartTime: number;
+}
+const animatedCurveState = state as unknown as AnimatedCurveState;
+
+export function renderAnimatedCurve(el: Element, view: MathBoxNode) {
+    const color = parseColor(el.color || '#ff8844') as Rgb3;
     const width = el.width != null ? el.width : 3;
     const opacityRaw = el.opacity != null ? el.opacity : 1;
     const opacityExpr = typeof opacityRaw === 'string' ? compileExpr(opacityRaw) : null;
-    const lineOpacity = opacityExpr ? evalExpr(opacityExpr, 0) : Number(opacityRaw);
+    const lineOpacity = opacityExpr ? evalExpr(opacityExpr, 0) as number : Number(opacityRaw);
     const label = el.label;
     const labelExprString = (typeof el.labelExpr === 'string' && el.labelExpr.trim()) ? el.labelExpr.trim() : null;
     const labelOffset = (Array.isArray(el.labelOffset) && el.labelOffset.length === 3)
@@ -17,27 +84,28 @@ export function renderAnimatedCurve(el, view) {
         : [0, 0.3, 0];
     const samples = el.samples || 200;
 
-    let rangeLExpr = null, rangeRExpr = null;
+    let rangeLExpr: CompiledExpr | null = null, rangeRExpr: CompiledExpr | null = null;
     let rangeL = -1, rangeR = 1;
-    const rangeSpec = el.rangeExpr || el.range || [-1, 1];
+    const rangeSpec = (el.rangeExpr || el.range || [-1, 1]) as [number | string, number | string];
     const rSpec0 = rangeSpec[0], rSpec1 = rangeSpec[1];
-    if (typeof rSpec0 === 'string') { rangeLExpr = compileExpr(rSpec0); rangeL = evalExpr(rangeLExpr, 0); }
+    if (typeof rSpec0 === 'string') { rangeLExpr = compileExpr(rSpec0); rangeL = evalExpr(rangeLExpr, 0) as number; }
     else { rangeL = Number(rSpec0) || 0; }
-    if (typeof rSpec1 === 'string') { rangeRExpr = compileExpr(rSpec1); rangeR = evalExpr(rangeRExpr, 0); }
+    if (typeof rSpec1 === 'string') { rangeRExpr = compileExpr(rSpec1); rangeR = evalExpr(rangeRExpr, 0) as number; }
     else { rangeR = Number(rSpec1) || 1; }
 
-    const exprStr = el.expr || '0';
+    // animated_curve's `expr` is the single-string form.
+    const exprStr = (el.expr || '0') as string;
     const cCurve = compileExpr(exprStr);
 
-    function evalRange(tSec) {
-        const rL = rangeLExpr ? evalExpr(rangeLExpr, tSec) : rangeL;
-        const rR = rangeRExpr ? evalExpr(rangeRExpr, tSec) : rangeR;
+    function evalRange(tSec: number) {
+        const rL = rangeLExpr ? evalExpr(rangeLExpr, tSec) as number : rangeL;
+        const rR = rangeRExpr ? evalExpr(rangeRExpr, tSec) as number : rangeR;
         return [rL, rR];
     }
 
-    function evalAtX(x, tSec) {
+    function evalAtX(x: number, tSec: number): number {
         try {
-            const y = evalExpr(cCurve, tSec, { extraScope: { x } });
+            const y = evalExpr(cCurve, tSec, { extraScope: { x } }) as number;
             return isFinite(y) ? y : 0;
         } catch(e) { return 0; }
     }
@@ -51,9 +119,9 @@ export function renderAnimatedCurve(el, view) {
     }
     const curvePlane = el.plane === 'xz' ? 'xz' : 'xy';
 
-    function buildCurvePoints(tSec) {
-        const [rL, rR] = evalRange(tSec);
-        const pts = [];
+    function buildCurvePoints(tSec: number): Vec3[] {
+        const [rL, rR] = evalRange(tSec) as [number, number];
+        const pts: Vec3[] = [];
         for (let i = 0; i <= samples; i++) {
             const x = rL + (rR - rL) * (i / samples);
             const v = evalAtX(x, tSec);
@@ -63,7 +131,7 @@ export function renderAnimatedCurve(el, view) {
     }
 
     const initPts = buildCurvePoints(0);
-    const curveEntry = {
+    const curveEntry: LineEntry = {
         node: null,
         baseWidth: width,
         baseOpacity: lineOpacity,
@@ -75,22 +143,22 @@ export function renderAnimatedCurve(el, view) {
     const curveNode = curveData.line({
         color: new THREE.Color(...color),
         width: lineW,
-        opacity: lineOpacity * (state.displayParams.lineOpacity || 1),
+        opacity: lineOpacity * (animatedCurveState.displayParams.lineOpacity || 1),
         visible: el.showCurve !== false,
     });
     curveEntry.node = curveNode;
-    state.lineNodes.push(curveEntry);
+    animatedCurveState.lineNodes.push(curveEntry);
 
     // Label
-    let labelExprFn = null;
+    let labelExprFn: CompiledExpr | null = null;
     if (labelExprString) {
         try { labelExprFn = compileExpr(labelExprString); } catch (err) { console.warn('animated_curve labelExpr compile error:', err); }
     }
 
-    let labelEl = null;
+    let labelEl: DynamicLabel | null = null;
     if (label || labelExprFn) {
         const mid = initPts[Math.floor(initPts.length / 2)] || [0, 0, 0];
-        labelEl = addLabel3D(label || '', [mid[0] + labelOffset[0], mid[1] + labelOffset[1], mid[2] + labelOffset[2]], color);
+        labelEl = addLabel3D(label || '', [mid[0] + labelOffset[0]!, mid[1] + labelOffset[1]!, mid[2] + labelOffset[2]!], color);
         if (labelExprFn) {
             try {
                 const txt = String(evalExpr(labelExprFn, 0));
@@ -107,11 +175,11 @@ export function renderAnimatedCurve(el, view) {
     const fillRegions = curvePlane === 'xz' ? [] : (Array.isArray(el.fillRegions) ? el.fillRegions : []);
     const FILL_MAX_FLOATS = 1024 * 18;
 
-    const fillEntries = fillRegions.map(fr => {
-        const frColor = parseColor(fr.color || el.color || '#ff8844');
+    const fillEntries: FillEntry[] = fillRegions.map(fr => {
+        const frColor = parseColor(fr.color || el.color || '#ff8844') as Rgb3;
         const frOpacityRaw = fr.opacity != null ? fr.opacity : 0.35;
         const frOpacityExpr = typeof frOpacityRaw === 'string' ? compileExpr(frOpacityRaw) : null;
-        const frOpacity = frOpacityExpr ? evalExpr(frOpacityExpr, 0) : Number(frOpacityRaw);
+        const frOpacity = frOpacityExpr ? evalExpr(frOpacityExpr, 0) as number : Number(frOpacityRaw);
         const cAbove   = fr.above   != null ? compileExpr(String(fr.above))   : null;
         const cBelow   = fr.below   != null ? compileExpr(String(fr.below))   : null;
         const cRightOf = fr.rightOf != null ? compileExpr(String(fr.rightOf)) : null;
@@ -123,28 +191,28 @@ export function renderAnimatedCurve(el, view) {
         fillGeom.setAttribute('position', fillAttr);
         const fillMat = new THREE.MeshBasicMaterial({
             color: new THREE.Color(...frColor),
-            opacity: state.displayParams.planeOpacity * (frOpacity / 0.5),
+            opacity: animatedCurveState.displayParams.planeOpacity * (frOpacity / 0.5),
             transparent: true,
             side: THREE.DoubleSide,
             depthWrite: false,
         });
         const fillMesh = new THREE.Mesh(fillGeom, fillMat);
-        const _ser = state._planeMeshSerial++;
+        const _ser = animatedCurveState._planeMeshSerial++;
         fillMesh.renderOrder = _ser;
         fillMesh.position.z = el.depthZ !== undefined ? el.depthZ : _ser * 0.0002;
-        state.three.scene.add(fillMesh);
-        state.planeMeshes.push(fillMesh);
+        animatedCurveState.three.scene.add(fillMesh);
+        animatedCurveState.planeMeshes.push(fillMesh);
 
-        let outlineArrayNode = null, outlineLineNode = null;
-        let outlineWidthExpr = null, outlineOpacityExpr = null;
+        let outlineArrayNode: MathBoxNode | null = null, outlineLineNode: MathBoxNode | null = null;
+        let outlineWidthExpr: CompiledExpr | null = null, outlineOpacityExpr: CompiledExpr | null = null;
         const outlineWidthRaw = fr.outlineWidth != null ? fr.outlineWidth : null;
         const outlineOpacityRaw = fr.outlineOpacity != null ? fr.outlineOpacity : null;
         const cBoundary = cAbove || cBelow || null;
         if (outlineWidthRaw != null) {
             if (typeof outlineWidthRaw === 'string') outlineWidthExpr = compileExpr(outlineWidthRaw);
             if (outlineOpacityRaw != null && typeof outlineOpacityRaw === 'string') outlineOpacityExpr = compileExpr(String(outlineOpacityRaw));
-            const outlineColor = parseColor(fr.outlineColor || fr.color || el.color || '#ff8844');
-            const outlineWidthInit = typeof outlineWidthRaw === 'string' ? (evalExpr(compileExpr(outlineWidthRaw), 0) || 2) : outlineWidthRaw;
+            const outlineColor = parseColor(fr.outlineColor || fr.color || el.color || '#ff8844') as Rgb3;
+            const outlineWidthInit = typeof outlineWidthRaw === 'string' ? ((evalExpr(compileExpr(outlineWidthRaw), 0) as number) || 2) : outlineWidthRaw;
             const outlineOpacityInit = outlineOpacityRaw != null
                 ? (typeof outlineOpacityRaw === 'string' ? evalExpr(compileExpr(String(outlineOpacityRaw)), 0) : Number(outlineOpacityRaw))
                 : Math.min(1, frOpacity * 2);
@@ -159,27 +227,31 @@ export function renderAnimatedCurve(el, view) {
             });
         }
 
+        // NOTE: the JavaScript original listed `frOpacity` twice in this literal
+        // (identical shorthand, so the second was a no-op). TypeScript rejects a
+        // duplicate key, so it appears once. No behavior change.
         return { fr, frOpacityExpr, frOpacity, cAbove, cBelow, cRightOf, cLeftOf, fillAttr, fillGeom, fillMat,
-                 cBoundary, outlineArrayNode, outlineLineNode, outlineWidthExpr, outlineOpacityExpr, outlineOpacityRaw, frOpacity };
+                 cBoundary, outlineArrayNode, outlineLineNode, outlineWidthExpr, outlineOpacityExpr, outlineOpacityRaw };
     });
 
-    function evalBound(compiled, x, tSec) {
+    function evalBound(compiled: CompiledExpr, x: number, tSec: number): number {
         try {
-            const v = evalExpr(compiled, tSec, { extraScope: { x } });
+            const v = evalExpr(compiled, tSec, { extraScope: { x } }) as number;
             return isFinite(v) ? v : 0;
         } catch(e) { return 0; }
     }
 
-    function updateFillMesh(entry, tSec, pts) {
+    function updateFillMesh(entry: FillEntry, tSec: number, pts: Vec3[]) {
         const { cAbove, cBelow, cRightOf, cLeftOf, fillAttr, fillGeom } = entry;
-        const rightOfX = cRightOf ? evalExpr(cRightOf, tSec) : null;
-        const leftOfX  = cLeftOf  ? evalExpr(cLeftOf,  tSec) : null;
-        const floats = fillAttr.array;
+        const rightOfX = cRightOf ? evalExpr(cRightOf, tSec) as number : null;
+        const leftOfX  = cLeftOf  ? evalExpr(cLeftOf,  tSec) as number : null;
+        // `.array` is typed `ArrayLike<number>`; it is the Float32Array above.
+        const floats = fillAttr.array as Float32Array;
         let idx = 0;
 
         for (let i = 0; i < pts.length - 1; i++) {
-            const x0 = pts[i][0],   x1 = pts[i + 1][0];
-            const cy0 = pts[i][1],  cy1 = pts[i + 1][1];
+            const x0 = pts[i]![0],   x1 = pts[i + 1]![0];
+            const cy0 = pts[i]![1],  cy1 = pts[i + 1]![1];
 
             if (rightOfX != null && x1 < rightOfX) continue;
             if (leftOfX  != null && x0 > leftOfX)  continue;
@@ -189,18 +261,18 @@ export function renderAnimatedCurve(el, view) {
             const belowY0 = cBelow ? evalBound(cBelow, x0, tSec) : null;
             const belowY1 = cBelow ? evalBound(cBelow, x1, tSec) : null;
 
-            let yTop0, yBot0, yTop1, yBot1, show0, show1;
+            let yTop0: number, yBot0: number, yTop1: number, yBot1: number, show0: boolean, show1: boolean;
             if (cAbove != null && cBelow != null) {
-                yBot0 = aboveY0; yTop0 = belowY0;
-                yBot1 = aboveY1; yTop1 = belowY1;
+                yBot0 = aboveY0!; yTop0 = belowY0!;
+                yBot1 = aboveY1!; yTop1 = belowY1!;
                 show0 = yTop0 > yBot0;
                 show1 = yTop1 > yBot1;
             } else if (cAbove != null) {
-                show0 = cy0 >= aboveY0; show1 = cy1 >= aboveY1;
-                yTop0 = cy0; yBot0 = aboveY0; yTop1 = cy1; yBot1 = aboveY1;
+                show0 = cy0 >= aboveY0!; show1 = cy1 >= aboveY1!;
+                yTop0 = cy0; yBot0 = aboveY0!; yTop1 = cy1; yBot1 = aboveY1!;
             } else if (cBelow != null) {
-                show0 = cy0 <= belowY0; show1 = cy1 <= belowY1;
-                yTop0 = belowY0; yBot0 = cy0; yTop1 = belowY1; yBot1 = cy1;
+                show0 = cy0 <= belowY0!; show1 = cy1 <= belowY1!;
+                yTop0 = belowY0!; yBot0 = cy0; yTop1 = belowY1!; yBot1 = cy1;
             } else {
                 show0 = show1 = true;
                 yTop0 = Math.max(0, cy0); yBot0 = Math.min(0, cy0);
@@ -227,10 +299,10 @@ export function renderAnimatedCurve(el, view) {
         fillGeom.setDrawRange(0, idx / 3);
     }
 
-    function buildOutlinePts(entry, tSec, pts) {
+    function buildOutlinePts(entry: FillEntry, tSec: number, pts: Vec3[]): number[][] {
         const { cAbove, cBelow, cRightOf, cLeftOf } = entry;
-        const rightOfX = cRightOf ? evalExpr(cRightOf, tSec) : null;
-        const leftOfX  = cLeftOf  ? evalExpr(cLeftOf,  tSec) : null;
+        const rightOfX = cRightOf ? evalExpr(cRightOf, tSec) as number : null;
+        const leftOfX  = cLeftOf  ? evalExpr(cLeftOf,  tSec) as number : null;
 
         const clipped = [];
         for (const p of pts) {
@@ -253,16 +325,17 @@ export function renderAnimatedCurve(el, view) {
 
         if (clipped.length === 0) return [[0, 0, 0]];
 
-        const perimeter = [];
+        const perimeter: number[][] = [];
         for (const s of clipped) perimeter.push([s.x, s.topY, 0]);
-        const last = clipped[clipped.length - 1];
+        // `!` not `?.`: the emptiness check above guarantees these.
+        const last = clipped[clipped.length - 1]!;
         perimeter.push([last.x, last.botY, 0]);
-        for (let i = clipped.length - 1; i >= 0; i--) perimeter.push([clipped[i].x, clipped[i].botY, 0]);
-        perimeter.push([clipped[0].x, clipped[0].topY, 0]);
-        perimeter.push(perimeter[0]);
+        for (let i = clipped.length - 1; i >= 0; i--) perimeter.push([clipped[i]!.x, clipped[i]!.botY, 0]);
+        perimeter.push([clipped[0]!.x, clipped[0]!.topY, 0]);
+        perimeter.push(perimeter[0]!);
 
         const OUTLINE_MAX_PTS = 2 * (samples + 1) + 4;
-        const padPt = perimeter[perimeter.length - 1];
+        const padPt = perimeter[perimeter.length - 1]!;
         while (perimeter.length < OUTLINE_MAX_PTS) perimeter.push(padPt);
         return perimeter;
     }
@@ -275,16 +348,16 @@ export function renderAnimatedCurve(el, view) {
     }
 
     const animState = { stopped: false };
-    const animExprEntry = {
+    const animExprEntry: AnimExprEntry = {
         exprStrings: [exprStr],
         animState,
         compiledFns: [cCurve],
         _isAnimatedCurve: true,
     };
-    state.activeAnimExprs.push(animExprEntry);
+    animatedCurveState.activeAnimExprs.push(animExprEntry);
 
-    const startTime = state.sceneStartTime;
-    state.activeAnimUpdaters.push({
+    const startTime = animatedCurveState.sceneStartTime;
+    animatedCurveState.activeAnimUpdaters.push({
         animState,
         updateFrame(nowMs) {
             const tSec = (nowMs - startTime) / 1000;
@@ -293,9 +366,9 @@ export function renderAnimatedCurve(el, view) {
                 curveData.set('data', pts);
                 if (labelEl) {
                     const mid = pts[Math.floor(pts.length / 2)] || [0, 0, 0];
-                    labelEl.dataPos[0] = mid[0] + labelOffset[0];
-                    labelEl.dataPos[1] = mid[1] + labelOffset[1];
-                    labelEl.dataPos[2] = mid[2] + labelOffset[2];
+                    labelEl.dataPos[0] = mid[0] + labelOffset[0]!;
+                    labelEl.dataPos[1] = mid[1] + labelOffset[1]!;
+                    labelEl.dataPos[2] = mid[2] + labelOffset[2]!;
                     if (labelExprFn) {
                         try {
                             const txt = String(evalExpr(labelExprFn, tSec));
@@ -307,12 +380,12 @@ export function renderAnimatedCurve(el, view) {
                     }
                 }
                 if (opacityExpr) {
-                    curveNode.set('opacity', evalExpr(opacityExpr, tSec) * (state.displayParams.lineOpacity || 1));
+                    curveNode.set('opacity', (evalExpr(opacityExpr, tSec) as number) * (animatedCurveState.displayParams.lineOpacity || 1));
                 }
                 for (const entry of fillEntries) {
                     updateFillMesh(entry, tSec, pts);
                     if (entry.frOpacityExpr) {
-                        entry.fillMat.opacity = state.displayParams.planeOpacity * (evalExpr(entry.frOpacityExpr, tSec) / 0.5);
+                        entry.fillMat.opacity = animatedCurveState.displayParams.planeOpacity * ((evalExpr(entry.frOpacityExpr, tSec) as number) / 0.5);
                     }
                     if (entry.outlineArrayNode) {
                         entry.outlineArrayNode.set('data', buildOutlinePts(entry, tSec, pts));
