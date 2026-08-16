@@ -34,6 +34,16 @@ const SRC = join(ROOT, 'src');
 //   /gemini-live-tools/*      served from the installed Python package
 const SERVER_SERVED = ['/chat.js', '/theme-init.js', '/domains/', '/gemini-live-tools/'];
 
+/** Thrown when a test imports a path the Python server owns (see
+ *  SERVER_SERVED). Named so tests and tooling can distinguish it from an
+ *  ordinary resolution failure — `err.name === 'ServerServedImportError'`. */
+export class ServerServedImportError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'ServerServedImportError';
+  }
+}
+
 /** `foo.js` → `foo.ts` when the .ts exists on disk; otherwise unchanged. */
 function preferTs(absPath) {
   const ts = absPath.replace(/\.js$/, '.ts');
@@ -43,16 +53,16 @@ function preferTs(absPath) {
 export async function resolve(specifier, context, nextResolve) {
   // Server-root-absolute: `/expr.js`, `/graph-panel/term-resolve.js`.
   if (specifier.startsWith('/')) {
-    // prove.html / renderproof.html load their entry as
-    // `/prove.js?v=__APP_VERSION__`; strip the cache-busting query, as the
-    // Vite plugin does.
+    // The built pages load their entries with a cache-busting query —
+    // `/dist/prove.js?v=__APP_VERSION__` (static/prove.html), likewise
+    // renderproof. Strip the query before matching, as the Vite plugin does.
     const path = specifier.split('?')[0];
     if (path.endsWith('.js')) {
       if (SERVER_SERVED.some((p) => path === p || path.startsWith(p))) {
         // Vite marks these external (a real request to the Python server).
         // Node has no equivalent, so fail loudly rather than resolve to
         // something that is not what the browser would load.
-        throw new Error(
+        throw new ServerServedImportError(
           `[node-test-resolver] '${specifier}' is server-served (SERVER_SERVED) ` +
             `and is not importable under node --test. Stub it in the test instead.`,
         );
