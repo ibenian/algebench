@@ -1,29 +1,55 @@
 import { state } from '/state.js';
 import { dataToWorld } from '/coords.js';
+import type { Range3 } from '/coords.js';
+import type { Element, Starfield } from '/types/lesson.js';
+import type { BufferGeometry, Points, Scene, ShaderMaterial, Texture } from 'three';
+
+/** The starfield Points object, with the shader material that animates it. */
+type Starfield3D = Points<BufferGeometry, ShaderMaterial>;
+
+/** The slice of the shared state object this module touches. */
+interface SkyboxState {
+    _starfieldAnimId: number | null;
+    worldStarfield: Starfield3D | null;
+    worldSkybox: { texture: Texture } | null;
+    three: { scene: Scene } | null;
+    currentRange: Range3;
+    currentScale: [number, number, number];
+}
+const skyboxState = state as unknown as SkyboxState;
 
 export function clearWorldStarfield() {
-    if (state._starfieldAnimId) { cancelAnimationFrame(state._starfieldAnimId); state._starfieldAnimId = null; }
-    if (!state.worldStarfield || !state.three || !state.three.scene) return;
-    state.three.scene.remove(state.worldStarfield);
-    if (state.worldStarfield.geometry) state.worldStarfield.geometry.dispose();
-    if (state.worldStarfield.material) state.worldStarfield.material.dispose();
-    state.worldStarfield = null;
+    if (skyboxState._starfieldAnimId) { cancelAnimationFrame(skyboxState._starfieldAnimId); skyboxState._starfieldAnimId = null; }
+    if (!skyboxState.worldStarfield || !skyboxState.three || !skyboxState.three.scene) return;
+    skyboxState.three.scene.remove(skyboxState.worldStarfield);
+    if (skyboxState.worldStarfield.geometry) skyboxState.worldStarfield.geometry.dispose();
+    if (skyboxState.worldStarfield.material) skyboxState.worldStarfield.material.dispose();
+    skyboxState.worldStarfield = null;
 }
 
 export function clearWorldSkybox() {
-    if (!state.three || !state.three.scene) return;
-    if (state.worldSkybox && state.worldSkybox.texture && typeof state.worldSkybox.texture.dispose === 'function') {
-        state.worldSkybox.texture.dispose();
+    if (!skyboxState.three || !skyboxState.three.scene) return;
+    if (skyboxState.worldSkybox && skyboxState.worldSkybox.texture && typeof skyboxState.worldSkybox.texture.dispose === 'function') {
+        skyboxState.worldSkybox.texture.dispose();
     }
-    state.worldSkybox = null;
-    state.three.scene.background = null;
+    skyboxState.worldSkybox = null;
+    skyboxState.three.scene.background = null;
 }
 
-function _makeGradientSkyboxTexture(topHex, bottomHex, starCount = 0, starColor = '#e6efff', starMin = 0.5, starMax = 2.0) {
+function _makeGradientSkyboxTexture(
+    topHex: string,
+    bottomHex: string,
+    starCount: number = 0,
+    starColor: string = '#e6efff',
+    starMin: number = 0.5,
+    starMax: number = 2.0,
+) {
     const canvas = document.createElement('canvas');
     canvas.width = 2048;
     canvas.height = 1024;
-    const ctx = canvas.getContext('2d');
+    // `!` not `?.`: an unavailable 2d context threw on the next line before and
+    // must keep throwing.
+    const ctx = canvas.getContext('2d')!;
     const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
     grad.addColorStop(0, topHex || '#070b18');
     grad.addColorStop(1, bottomHex || '#010205');
@@ -48,17 +74,21 @@ function _makeGradientSkyboxTexture(topHex, bottomHex, starCount = 0, starColor 
 
     const tex = new THREE.CanvasTexture(canvas);
     tex.mapping = THREE.EquirectangularReflectionMapping;
-    tex.colorSpace = THREE.SRGBColorSpace;
+    // three@0.137 predates `Texture.colorSpace` / `THREE.SRGBColorSpace` (both
+    // land in r152), so at runtime this reads `undefined` and assigns a property
+    // three ignores. Ported verbatim: deleting it would be a behavior change,
+    // not a migration. See the note in the PR body.
+    (tex as unknown as { colorSpace?: unknown }).colorSpace = (THREE as unknown as { SRGBColorSpace?: unknown }).SRGBColorSpace;
     return tex;
 }
 
-export function configureWorldStarfield(spec) {
+export function configureWorldStarfield(spec: { starfield?: Starfield } | null | undefined) {
     clearWorldStarfield();
     const cfg = spec && spec.starfield;
     if (!cfg || cfg.enabled === false) return;
 
-    const currentRange = state.currentRange;
-    const currentScale = state.currentScale;
+    const currentRange = skyboxState.currentRange;
+    const currentScale = skyboxState.currentScale;
 
     const spanX = Math.abs(currentRange[0][1] - currentRange[0][0]);
     const spanY = Math.abs(currentRange[1][1] - currentRange[1][0]);
@@ -66,11 +96,11 @@ export function configureWorldStarfield(spec) {
     const halfMaxSpan = Math.max(spanX, spanY, spanZ, 1) / 2;
 
     const count = Math.max(50, Math.floor(cfg.count || 900));
-    const radiusMin = Number.isFinite(cfg.radiusMin) ? cfg.radiusMin : halfMaxSpan * 3;
-    const radiusMax = Number.isFinite(cfg.radiusMax) ? cfg.radiusMax : halfMaxSpan * 7;
-    const size = Number.isFinite(cfg.size) ? cfg.size : 2.1;
-    const opacity = Number.isFinite(cfg.opacity) ? cfg.opacity : 0.9;
-    const twinkle = Number.isFinite(cfg.twinkle) ? Math.max(0, Math.min(1, cfg.twinkle)) : 0.25;
+    const radiusMin = Number.isFinite(cfg.radiusMin) ? cfg.radiusMin! : halfMaxSpan * 3;
+    const radiusMax = Number.isFinite(cfg.radiusMax) ? cfg.radiusMax! : halfMaxSpan * 7;
+    const size = Number.isFinite(cfg.size) ? cfg.size! : 2.1;
+    const opacity = Number.isFinite(cfg.opacity) ? cfg.opacity! : 0.9;
+    const twinkle = Number.isFinite(cfg.twinkle) ? Math.max(0, Math.min(1, cfg.twinkle!)) : 0.25;
     const baseColor = new THREE.Color(cfg.color || '#d9e6ff');
 
     const positions = new Float32Array(count * 3);
@@ -88,7 +118,7 @@ export function configureWorldStarfield(spec) {
 
         const u = Math.random();
         const radius = radiusMin + (radiusMax - radiusMin) * Math.pow(u, 0.6);
-        const dataPos = [dirX * radius, dirY * radius, dirZ * radius];
+        const dataPos: [number, number, number] = [dirX * radius, dirY * radius, dirZ * radius];
         const w = dataToWorld(dataPos);
 
         const pi = i * 3;
@@ -157,50 +187,54 @@ export function configureWorldStarfield(spec) {
         vertexColors: true,
     });
 
-    state.worldStarfield = new THREE.Points(geom, mat);
-    state.worldStarfield.renderOrder = -1000;
-    state.worldStarfield.frustumCulled = false;
-    state.three.scene.add(state.worldStarfield);
+    skyboxState.worldStarfield = new THREE.Points(geom, mat);
+    skyboxState.worldStarfield.renderOrder = -1000;
+    skyboxState.worldStarfield.frustumCulled = false;
+    // `!` not `?.`: the original assumed the three context existed here and threw
+    // otherwise; only the two clear* helpers above guard it.
+    skyboxState.three!.scene.add(skyboxState.worldStarfield);
 
     // Animate twinkle (skip entirely when twinkle is off)
-    state._starfieldAnimId = null;
+    skyboxState._starfieldAnimId = null;
     if (twinkle > 0) {
-        const thisStarfield = state.worldStarfield;
+        const thisStarfield = skyboxState.worldStarfield;
         const startTime = performance.now();
         function animateStarfield() {
-            if (!state.worldStarfield || state.worldStarfield !== thisStarfield) return;
-            mat.uniforms.uTime.value = (performance.now() - startTime) / 1000;
-            state._starfieldAnimId = requestAnimationFrame(animateStarfield);
+            if (!skyboxState.worldStarfield || skyboxState.worldStarfield !== thisStarfield) return;
+            mat.uniforms.uTime!.value = (performance.now() - startTime) / 1000;
+            skyboxState._starfieldAnimId = requestAnimationFrame(animateStarfield);
         }
         animateStarfield();
     }
 }
 
-export function renderSkybox(el) {
-    if (!state.three || !state.three.scene) return null;
+export function renderSkybox(el: Element) {
+    if (!skyboxState.three || !skyboxState.three.scene) return null;
     clearWorldSkybox();
 
-    const style = (el.style || el.mode || 'solid').toLowerCase();
+    const style = ((el.style || el.mode || 'solid') as string).toLowerCase();
     if (style === 'none' || style === 'off') {
         return { type: 'skybox', style };
     }
 
     if (style === 'solid' || style === 'color') {
-        state.three.scene.background = new THREE.Color(el.color || '#02040b');
+        // `el.color` is `string | [r,g,b]` on the schema; the skybox path has
+        // always passed it straight to THREE.Color, which wants the string form.
+        skyboxState.three.scene.background = new THREE.Color((el.color || '#02040b') as string);
         return { type: 'skybox', style };
     }
 
     if (style === 'gradient') {
         const tex = _makeGradientSkyboxTexture(
-            el.topColor || el.top,
-            el.bottomColor || el.bottom,
+            (el.topColor || el.top) as string,
+            (el.bottomColor || el.bottom) as string,
             el.starCount || 0,
             el.starColor || '#e6efff',
             el.starMinSize || 0.5,
             el.starMaxSize || 2.0
         );
-        state.three.scene.background = tex;
-        state.worldSkybox = { texture: tex };
+        skyboxState.three.scene.background = tex;
+        skyboxState.worldSkybox = { texture: tex };
         return { type: 'skybox', style };
     }
 
@@ -208,18 +242,18 @@ export function renderSkybox(el) {
         try {
             const loader = new THREE.CubeTextureLoader();
             const tex = loader.load(el.urls);
-            tex.colorSpace = THREE.SRGBColorSpace;
-            state.three.scene.background = tex;
-            state.worldSkybox = { texture: tex };
+            (tex as unknown as { colorSpace?: unknown }).colorSpace = (THREE as unknown as { SRGBColorSpace?: unknown }).SRGBColorSpace;
+            skyboxState.three.scene.background = tex;
+            skyboxState.worldSkybox = { texture: tex };
             return { type: 'skybox', style };
         } catch (err) {
             console.warn('skybox cubemap load failed:', err);
-            state.three.scene.background = new THREE.Color('#02040b');
+            skyboxState.three.scene.background = new THREE.Color('#02040b');
             return { type: 'skybox', style: 'fallback-solid' };
         }
     }
 
     console.warn('Unknown skybox style:', style);
-    state.three.scene.background = new THREE.Color(el.color || '#02040b');
+    skyboxState.three.scene.background = new THREE.Color((el.color || '#02040b') as string);
     return { type: 'skybox', style: 'fallback-solid' };
 }

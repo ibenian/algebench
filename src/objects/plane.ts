@@ -1,7 +1,11 @@
 import { parseColor, addLabel3D } from '/labels.js';
+import type { Element } from '/types/lesson.js';
 
-export function renderPlane(el, view) {
-    const color = parseColor(el.color || '#4466aa');
+/** parseColor returns `number[]`; spreading into `new THREE.Color(...)` needs a tuple. */
+type Rgb3 = [number, number, number];
+
+export function renderPlane(el: Element, view: MathBoxNode) {
+    const color = parseColor(el.color || '#4466aa') as Rgb3;
     const opacity = el.opacity !== undefined ? el.opacity : 0.5;
     const normal = el.normal || [0, 1, 0];
     const point = el.point || [0, 0, 0];

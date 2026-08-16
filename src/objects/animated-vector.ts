@@ -1,23 +1,94 @@
 import { state } from '/state.js';
 import { parseColor, addLabel3D, renderKaTeX } from '/labels.js';
+import type { Label3D } from '/labels.js';
 import { compileExpr, evalExpr } from '/expr.js';
+import type { CompiledExpr } from '/expr.js';
 import { dataToWorld } from '/coords.js';
+import type { Vec3 } from '/coords.js';
 import { resolveLineWidth,
     resolveArrowSizeScale, resolveSmallVectorAutoScale,
     ARROW_HEAD_MIN_FACTOR, ARROW_HEAD_MAX_FACTOR, ARROW_HEAD_RADIUS_RATIO,
     SHAFT_RADIUS_TO_HEAD_RADIUS_RATIO, SHAFT_CONE_OVERLAP_HEAD_RATIO,
 } from '/camera.js';
+import type { Element } from '/types/lesson.js';
+import type { Material, Mesh, Vector3, Scene } from 'three';
 
-export function renderAnimatedVector(el, view) {
+/** parseColor returns `number[]`; spreading into `new THREE.Color(...)` needs a tuple. */
+type Rgb3 = [number, number, number];
+
+/** A label whose text is driven by `labelExpr`, memoising its last rendered value. */
+type DynamicLabel = Label3D & { _lastDynamicText?: string };
+
+/** Meshes the step system hides carry this flag; the updater skips them. */
+type RemovableMesh = Mesh<import('three').BufferGeometry, Material> & { _hiddenByRemove?: boolean };
+
+/** One keyframe of the non-expression animation form. */
+interface VectorKeyframe {
+    origin?: Vec3;
+    from?: Vec3;
+    to?: Vec3;
+}
+
+/** One registered arrow mesh, as camera.js's arrow manager expects it. */
+interface ArrowMeshEntry {
+    mesh: Mesh;
+    tipWorld: Vector3;
+    dir: Vector3;
+    wLen: number;
+    isShaft?: boolean;
+    owner?: object;
+}
+
+/** A registered line, as camera.js's width/opacity manager expects it. */
+interface LineEntry {
+    node: MathBoxNode | null;
+    baseWidth: number;
+    baseOpacity: number;
+    widthParam: string;
+    anchorDataPosFn: () => number[];
+}
+
+/** A live expression-driven element, as the scene loader's rebuild pass expects it. */
+interface AnimExprEntry {
+    exprStrings: string[] | null;
+    fromExprStrings: string[] | undefined;
+    visibleExprString: string | null;
+    animState: { stopped: boolean } | null;
+    compiledFns: CompiledExpr[] | null;
+    fromExprFns: CompiledExpr[] | null;
+    visibleFn: CompiledExpr | null;
+}
+
+/** A per-frame updater, as the scene loader's animation loop expects it. */
+interface AnimUpdater {
+    animState: { stopped: boolean };
+    updateFrame(nowMs: number): void;
+}
+
+/** The slice of the shared state object this module touches. */
+interface AnimatedVectorState {
+    currentScale: Vec3;
+    displayParams: { arrowScale: number; vectorWidth: number; lineOpacity: number };
+    three: { scene: Scene };
+    arrowMeshes: ArrowMeshEntry[];
+    lineNodes: LineEntry[];
+    activeAnimExprs: AnimExprEntry[];
+    activeAnimUpdaters: AnimUpdater[];
+    animatedElementPos: Record<string, { pos: number[]; from: number[]; to: number[]; startTime: number; time: number }>;
+    sceneStartTime: number;
+}
+const animatedVectorState = state as unknown as AnimatedVectorState;
+
+export function renderAnimatedVector(el: Element, view: MathBoxNode) {
     // Identity token tying every arrow mesh this element ever creates back to
     // this render. Meshes can be created LAZILY by the anim updater (a vector
     // that starts at zero length has no mesh at render time), so step trackers
     // can't rely on their creation-time snapshot — they sweep by owner instead.
     const ownerToken = {};
-    const color = parseColor(el.color || '#ff8844');
+    const color = parseColor(el.color || '#ff8844') as Rgb3;
     const shader = el.shader || {};
-    const emissive = parseColor(shader.emissive || '#000000');
-    const specular = parseColor(shader.specular || '#111111');
+    const emissive = parseColor(shader.emissive || '#000000') as Rgb3;
+    const specular = parseColor(shader.specular || '#111111') as Rgb3;
     const shininess = (typeof shader.shininess === 'number' && isFinite(shader.shininess))
         ? shader.shininess
         : 60;
@@ -33,22 +104,22 @@ export function renderAnimatedVector(el, view) {
     const labelOffset = (Array.isArray(el.labelOffset) && el.labelOffset.length === 3)
         ? [Number(el.labelOffset[0]) || 0, Number(el.labelOffset[1]) || 0, Number(el.labelOffset[2]) || 0]
         : [0, 0.3, 0];
-    const keyframes = el.keyframes || [];
-    const duration = el.duration || 2000;
+    const keyframes = (el.keyframes || []) as VectorKeyframe[];
+    const duration = (el.duration as number | undefined) || 2000;
     const loop = el.loop !== false;
-    const exprStrings = el.expr || el.toExpr
-        || (Array.isArray(el.to) && el.to.length === 3 ? el.to.map(v => String(v)) : null);
-    const fromExprStrings = el.fromExpr;
+    const exprStrings = (el.expr || el.toExpr
+        || (Array.isArray(el.to) && el.to.length === 3 ? el.to.map(v => String(v)) : null)) as string[] | null;
+    const fromExprStrings = el.fromExpr as string[] | undefined;
     const visibleExprString = (typeof el.visibleExpr === 'string' && el.visibleExpr.trim()) ? el.visibleExpr.trim() : null;
     const labelExprString = (typeof el.labelExpr === 'string' && el.labelExpr.trim()) ? el.labelExpr.trim() : null;
     const trailOpts = el.trail;
     const panelOpts = (el.panels && typeof el.panels === 'object') ? el.panels : null;
     const hasExplicitWidth = (typeof el.width === 'number' && isFinite(el.width));
-    const widthScale = hasExplicitWidth ? Math.max(0.01, el.width) : 1.3;
+    const widthScale = hasExplicitWidth ? Math.max(0.01, el.width!) : 1.3;
     const widthHeadScale = Math.max(0.4, Math.sqrt(widthScale));
-    const localArrowScale = (el.arrowScale !== undefined ? el.arrowScale : 1) * widthHeadScale;
-    const localArrowMinFactor = el.arrowMinFactor !== undefined ? el.arrowMinFactor : ARROW_HEAD_MIN_FACTOR;
-    const localArrowMaxFactor = el.arrowMaxFactor !== undefined ? el.arrowMaxFactor : ARROW_HEAD_MAX_FACTOR;
+    const localArrowScale = ((el.arrowScale !== undefined ? el.arrowScale : 1)) * widthHeadScale;
+    const localArrowMinFactor = (el.arrowMinFactor !== undefined ? el.arrowMinFactor : ARROW_HEAD_MIN_FACTOR) as number;
+    const localArrowMaxFactor = (el.arrowMaxFactor !== undefined ? el.arrowMaxFactor : ARROW_HEAD_MAX_FACTOR) as number;
     const defaultAnimatedShaftMul = 1;
     const shaftBaseScale = (typeof el.shaftScale === 'number' && isFinite(el.shaftScale))
         ? Math.max(0.01, widthScale * el.shaftScale)
@@ -58,22 +129,23 @@ export function renderAnimatedVector(el, view) {
     const useFromExpr = Array.isArray(fromExprStrings) && fromExprStrings.length === 3;
     if (!useExpr && keyframes.length === 0) return null;
 
-    const initFrom = el.origin || el.from || (keyframes.length > 0 ? (keyframes[0].origin || keyframes[0].from || [0,0,0]) : [0,0,0]);
-    let initTo;
+    // `!` not `?.`: guarded by the `keyframes.length` checks, exactly as before.
+    const initFrom = (el.origin || el.from || (keyframes.length > 0 ? (keyframes[0]!.origin || keyframes[0]!.from || [0,0,0]) : [0,0,0])) as Vec3;
+    let initTo: Vec3;
     if (useExpr) {
         try {
-            initTo = exprStrings.map(e => evalExpr(compileExpr(e), 0));
+            initTo = exprStrings!.map(e => evalExpr(compileExpr(e), 0) as number) as Vec3;
         } catch (err) {
             console.warn('animated_vector expr eval error:', err);
             initTo = [1, 0, 0];
         }
     } else {
-        initTo = keyframes[0].to || [1, 0, 0];
+        initTo = (keyframes[0]!.to || [1, 0, 0]) as Vec3;
     }
     if (useFromExpr) {
         try {
-            const evalFrom = fromExprStrings.map(e => evalExpr(compileExpr(e), 0));
-            initFrom[0] = evalFrom[0]; initFrom[1] = evalFrom[1]; initFrom[2] = evalFrom[2];
+            const evalFrom = fromExprStrings!.map(e => evalExpr(compileExpr(e), 0) as number);
+            initFrom[0] = evalFrom[0]!; initFrom[1] = evalFrom[1]!; initFrom[2] = evalFrom[2]!;
         } catch (err) {
             console.warn('animated_vector fromExpr eval error:', err);
         }
@@ -81,10 +153,10 @@ export function renderAnimatedVector(el, view) {
 
     const vecScale = (typeof el.scale === 'number' && isFinite(el.scale)) ? el.scale : 1;
 
-    let currentFrom = initFrom.slice();
-    let currentTo = initTo.slice();
+    let currentFrom = initFrom.slice() as Vec3;
+    let currentTo = initTo.slice() as Vec3;
 
-    function applyVecScale(from, to) {
+    function applyVecScale(from: Vec3, to: Vec3): Vec3 {
         if (vecScale === 1) return to;
         return [
             from[0] + (to[0] - from[0]) * vecScale,
@@ -93,15 +165,15 @@ export function renderAnimatedVector(el, view) {
         ];
     }
 
-    function computeArrowParams(from, to) {
+    function computeArrowParams(from: Vec3, to: Vec3) {
         to = applyVecScale(from, to);
         const tipWorld = dataToWorld(to);
         const fromWorld = dataToWorld(from);
         const wdx = tipWorld[0]-fromWorld[0], wdy = tipWorld[1]-fromWorld[1], wdz = tipWorld[2]-fromWorld[2];
         const wLen = Math.sqrt(wdx*wdx + wdy*wdy + wdz*wdz);
-        const currentScale = state.currentScale;
+        const currentScale = animatedVectorState.currentScale;
         const worldSceneSize = Math.min(currentScale[0], currentScale[1]) * 2;
-        const effectiveArrowScale = resolveArrowSizeScale(localArrowScale * (state.displayParams.arrowScale || 1));
+        const effectiveArrowScale = resolveArrowSizeScale(localArrowScale * (animatedVectorState.displayParams.arrowScale || 1));
         const baseHeadLen = Math.max(Math.min(wLen * 0.25, worldSceneSize * localArrowMaxFactor), worldSceneSize * localArrowMinFactor) * effectiveArrowScale;
         const autoScale = resolveSmallVectorAutoScale(wLen, baseHeadLen);
         const wHeadLen = baseHeadLen * autoScale;
@@ -113,12 +185,12 @@ export function renderAnimatedVector(el, view) {
         return { tipWorld, fromWorld, wLen, wHeadLen, wHeadRadius, shaftLen, shaftRadius, dir, autoScale };
     }
 
-    function computeShaftThicknessMul(autoScale) {
-        const base = (shaftBaseScale || 1) * (state.displayParams.vectorWidth || 1) * (autoScale || 1);
+    function computeShaftThicknessMul(autoScale: number) {
+        const base = (shaftBaseScale || 1) * (animatedVectorState.displayParams.vectorWidth || 1) * (autoScale || 1);
         return Math.max(0.01, base);
     }
 
-    function createCone(from, to) {
+    function createCone(from: Vec3, to: Vec3): RemovableMesh | null {
         const { tipWorld, wLen, wHeadLen, wHeadRadius, dir } = computeArrowParams(from, to);
         if (wLen < 0.0001) return null;
 
@@ -147,12 +219,12 @@ export function renderAnimatedVector(el, view) {
         const up = new THREE.Vector3(0, 1, 0);
         cone.setRotationFromQuaternion(new THREE.Quaternion().setFromUnitVectors(up, dir));
 
-        state.three.scene.add(cone);
-        state.arrowMeshes.push({ mesh: cone, tipWorld: new THREE.Vector3(...tipWorld), dir: dir.clone(), wLen: wHeadLen, owner: ownerToken });
+        animatedVectorState.three.scene.add(cone);
+        animatedVectorState.arrowMeshes.push({ mesh: cone, tipWorld: new THREE.Vector3(...tipWorld), dir: dir.clone(), wLen: wHeadLen, owner: ownerToken });
         return cone;
     }
 
-    function createShaft(from, to) {
+    function createShaft(from: Vec3, to: Vec3): RemovableMesh | null {
         const { fromWorld, wLen, wHeadRadius, shaftLen, shaftRadius, dir, autoScale } = computeArrowParams(from, to);
         if (wLen < 0.0001) return null;
 
@@ -185,12 +257,12 @@ export function renderAnimatedVector(el, view) {
         );
         shaft.scale.set(shaftRadiusScaled, shaftLen, shaftRadiusScaled);
 
-        state.three.scene.add(shaft);
-        state.arrowMeshes.push({ mesh: shaft, tipWorld: new THREE.Vector3(fromWorld[0] + dir.x*shaftLen, fromWorld[1] + dir.y*shaftLen, fromWorld[2] + dir.z*shaftLen), dir: dir.clone(), wLen: shaftLen, isShaft: true, owner: ownerToken });
+        animatedVectorState.three.scene.add(shaft);
+        animatedVectorState.arrowMeshes.push({ mesh: shaft, tipWorld: new THREE.Vector3(fromWorld[0] + dir.x*shaftLen, fromWorld[1] + dir.y*shaftLen, fromWorld[2] + dir.z*shaftLen), dir: dir.clone(), wLen: shaftLen, isShaft: true, owner: ownerToken });
         return shaft;
     }
 
-    function computePanelLayout(from, to) {
+    function computePanelLayout(from: Vec3, to: Vec3) {
         const { fromWorld, wLen, dir } = computeArrowParams(from, to);
         if (wLen < 0.0001) return null;
         const panelLength = Math.max(0.01, Number(panelOpts && panelOpts.length) || 0.12);
@@ -214,18 +286,18 @@ export function renderAnimatedVector(el, view) {
         };
     }
 
-    function createPanels(from, to) {
+    function createPanels(from: Vec3, to: Vec3): Mesh[] {
         if (!panelOpts) return [];
         const layout = computePanelLayout(from, to);
         if (!layout) return [];
-        const colorPanels = parseColor(panelOpts.color || '#7dd3fc');
+        const colorPanels = parseColor(panelOpts.color || '#7dd3fc') as Rgb3;
         const opacityPanels = Number.isFinite(Number(panelOpts.opacity))
             ? Math.max(0, Math.min(1, Number(panelOpts.opacity)))
             : elementOpacity;
         const panelRenderOrder = (typeof panelOpts.renderOrder === 'number' && isFinite(panelOpts.renderOrder))
             ? panelOpts.renderOrder
             : renderOrder;
-        const meshes = [];
+        const meshes: Mesh[] = [];
         for (const side of [-1, 1]) {
             for (let seg = 0; seg < layout.segments; seg++) {
                 const geom = new THREE.BoxGeometry(1, 1, 1);
@@ -241,11 +313,11 @@ export function renderAnimatedVector(el, view) {
                 mesh.userData.dynamicVector = true;
                 if (panelRenderOrder !== null) mesh.renderOrder = panelRenderOrder;
                 const centerDist = layout.panelGap + (seg + 0.5) * layout.panelLength;
-                mesh.position.copy(layout.fromWorld).addScaledVector(layout.panelNormal, side * centerDist);
+                mesh.position.copy(layout.fromWorld as unknown as Vector3).addScaledVector(layout.panelNormal, side * centerDist);
                 mesh.rotation.z = layout.angle;
                 mesh.scale.set(layout.panelLength, layout.panelWidth, layout.panelThickness);
-                state.three.scene.add(mesh);
-                state.arrowMeshes.push({
+                animatedVectorState.three.scene.add(mesh);
+                animatedVectorState.arrowMeshes.push({
                     mesh,
                     tipWorld: mesh.position.clone(),
                     dir: layout.panelNormal.clone(),
@@ -259,7 +331,7 @@ export function renderAnimatedVector(el, view) {
         return meshes;
     }
 
-    function updateArrow(cone, shaft, from, to) {
+    function updateArrow(cone: RemovableMesh | null, shaft: RemovableMesh | null, from: Vec3, to: Vec3) {
         const { tipWorld, fromWorld, wLen, wHeadLen, wHeadRadius, shaftLen, shaftRadius, dir, autoScale } = computeArrowParams(from, to);
         const visible = wLen >= 0.0001;
 
@@ -276,7 +348,7 @@ export function renderAnimatedVector(el, view) {
                     tipWorld[2] - dir.z * wHeadLen / 2,
                 );
                 cone.setRotationFromQuaternion(quat);
-                const entry = state.arrowMeshes.find(e => e.mesh === cone);
+                const entry = animatedVectorState.arrowMeshes.find(e => e.mesh === cone);
                 if (entry) { entry.wLen = wHeadLen; entry.tipWorld.set(...tipWorld); entry.dir.copy(dir); }
             }
         }
@@ -295,7 +367,7 @@ export function renderAnimatedVector(el, view) {
                     wHeadRadius * 0.75
                 );
                 shaft.scale.set(shaftRadiusScaled, shaftLen, shaftRadiusScaled);
-                const entry = state.arrowMeshes.find(e => e.mesh === shaft);
+                const entry = animatedVectorState.arrowMeshes.find(e => e.mesh === shaft);
                 if (entry) {
                     entry.wLen = shaftLen;
                     entry.tipWorld.set(fromWorld[0] + dir.x*shaftLen, fromWorld[1] + dir.y*shaftLen, fromWorld[2] + dir.z*shaftLen);
@@ -305,7 +377,7 @@ export function renderAnimatedVector(el, view) {
         }
     }
 
-    function updatePanels(meshes, from, to) {
+    function updatePanels(meshes: Mesh[] | null, from: Vec3, to: Vec3) {
         if (!Array.isArray(meshes) || meshes.length === 0) return;
         const layout = computePanelLayout(from, to);
         const visible = !!layout;
@@ -316,21 +388,21 @@ export function renderAnimatedVector(el, view) {
                 if (!mesh) continue;
                 mesh.visible = visible;
                 if (!visible) continue;
-                const centerDist = layout.panelGap + (seg + 0.5) * layout.panelLength;
-                mesh.position.copy(layout.fromWorld).addScaledVector(layout.panelNormal, side * centerDist);
-                mesh.rotation.z = layout.angle;
-                mesh.scale.set(layout.panelLength, layout.panelWidth, layout.panelThickness);
-                const entry = state.arrowMeshes.find(e => e.mesh === mesh);
+                const centerDist = layout!.panelGap + (seg + 0.5) * layout!.panelLength;
+                mesh.position.copy(layout!.fromWorld as unknown as Vector3).addScaledVector(layout!.panelNormal, side * centerDist);
+                mesh.rotation.z = layout!.angle;
+                mesh.scale.set(layout!.panelLength, layout!.panelWidth, layout!.panelThickness);
+                const entry = animatedVectorState.arrowMeshes.find(e => e.mesh === mesh);
                 if (entry) {
                     entry.tipWorld.copy(mesh.position);
-                    entry.dir.copy(layout.panelNormal);
-                    entry.wLen = layout.panelLength;
+                    entry.dir.copy(layout!.panelNormal);
+                    entry.wLen = layout!.panelLength;
                 }
             }
         }
     }
 
-    let arrowCone = null;
+    let arrowCone: RemovableMesh | null = null;
     let arrowShaft = createShaft(initFrom, initTo);
     let panelMeshes = createPanels(initFrom, initTo);
     if (el.arrow !== false) {
@@ -338,15 +410,15 @@ export function renderAnimatedVector(el, view) {
     }
 
     // Trail setup
-    let trailData = null;
-    let trailLine = null;
-    let trailBuffer = [];
+    let trailData: MathBoxNode | null = null;
+    let trailLine: MathBoxNode | null = null;
+    let trailBuffer: number[][] = [];
     const trailMaxLen = (trailOpts && trailOpts.length) || 200;
     if (trailOpts) {
-        const trailColor = parseColor(trailOpts.color || el.color || '#ff8844');
+        const trailColor = parseColor(trailOpts.color || el.color || '#ff8844') as Rgb3;
         const trailOpacityRaw = (trailOpts && trailOpts.opacity !== undefined) ? Number(trailOpts.opacity) : 1;
         const trailBaseOpacity = Math.max(0, Math.min(1, Number.isFinite(trailOpacityRaw) ? trailOpacityRaw : 1));
-        const trailEntry = {
+        const trailEntry: LineEntry = {
             node: null,
             baseWidth: trailOpts.width || 1,
             baseOpacity: trailBaseOpacity,
@@ -361,25 +433,25 @@ export function renderAnimatedVector(el, view) {
             color: new THREE.Color(...trailColor),
             width: trailWidth,
             zBias: 1,
-            opacity: trailBaseOpacity * (state.displayParams.lineOpacity || 1),
+            opacity: trailBaseOpacity * (animatedVectorState.displayParams.lineOpacity || 1),
         });
         trailEntry.node = trailLine;
-        state.lineNodes.push(trailEntry);
+        animatedVectorState.lineNodes.push(trailEntry);
     }
 
     // Label
-    let labelExprFn = null;
+    let labelExprFn: CompiledExpr | null = null;
     if (labelExprString) {
         try { labelExprFn = compileExpr(labelExprString); } catch (err) { console.warn('animated_vector labelExpr compile error:', err); }
     }
 
-    let labelEl = null;
+    let labelEl: DynamicLabel | null = null;
     if (label || labelExprFn) {
-        const labelPos = el.labelPosition || [
-            (initFrom[0] + initTo[0]) / 2 + labelOffset[0],
-            (initFrom[1] + initTo[1]) / 2 + labelOffset[1],
-            (initFrom[2] + initTo[2]) / 2 + labelOffset[2]
-        ];
+        const labelPos = (el.labelPosition || [
+            (initFrom[0] + initTo[0]) / 2 + labelOffset[0]!,
+            (initFrom[1] + initTo[1]) / 2 + labelOffset[1]!,
+            (initFrom[2] + initTo[2]) / 2 + labelOffset[2]!
+        ]) as number[];
         labelEl = addLabel3D(label || '', labelPos, color);
         if (labelExprFn) {
             try {
@@ -391,13 +463,13 @@ export function renderAnimatedVector(el, view) {
     }
 
     // Compiled expr functions
-    let exprFns = null;
-    let fromExprFns = null;
-    let visibleFn = null;
-    const animExprEntry = { exprStrings, fromExprStrings, visibleExprString, animState: null, compiledFns: null, fromExprFns: null, visibleFn: null };
+    let exprFns: CompiledExpr[] | null = null;
+    let fromExprFns: CompiledExpr[] | null = null;
+    let visibleFn: CompiledExpr | null = null;
+    const animExprEntry: AnimExprEntry = { exprStrings, fromExprStrings, visibleExprString, animState: null, compiledFns: null, fromExprFns: null, visibleFn: null };
     if (useExpr) {
         try {
-            exprFns = exprStrings.map(e => compileExpr(e));
+            exprFns = exprStrings!.map(e => compileExpr(e));
             animExprEntry.compiledFns = exprFns;
         } catch (err) {
             console.warn('animated_vector expr compile error:', err);
@@ -405,7 +477,7 @@ export function renderAnimatedVector(el, view) {
     }
     if (useFromExpr) {
         try {
-            fromExprFns = fromExprStrings.map(e => compileExpr(e));
+            fromExprFns = fromExprStrings!.map(e => compileExpr(e));
             animExprEntry.fromExprFns = fromExprFns;
         } catch (err) {
             console.warn('animated_vector fromExpr compile error:', err);
@@ -422,32 +494,32 @@ export function renderAnimatedVector(el, view) {
 
     const animState = { stopped: false };
     animExprEntry.animState = animState;
-    if (useExpr) state.activeAnimExprs.push(animExprEntry);
+    if (useExpr) animatedVectorState.activeAnimExprs.push(animExprEntry);
 
-    const startTime = state.sceneStartTime;
-    state.activeAnimUpdaters.push({
+    const startTime = animatedVectorState.sceneStartTime;
+    animatedVectorState.activeAnimUpdaters.push({
         animState,
         updateFrame(nowMs) {
             if (arrowCone && !arrowCone.visible && arrowCone._hiddenByRemove) return;
 
             const elapsed = nowMs - startTime;
             const tSec = elapsed / 1000;
-            let cf, ct;
+            let cf: Vec3, ct: Vec3;
 
             if (useExpr && (animExprEntry.compiledFns || exprFns)) {
                 const fromFns = animExprEntry.fromExprFns || fromExprFns;
                 if (fromFns) {
                     try {
-                        cf = fromFns.map(fn => evalExpr(fn, tSec));
+                        cf = fromFns.map(fn => evalExpr(fn, tSec) as number) as Vec3;
                     } catch (err) {
-                        cf = initFrom.slice();
+                        cf = initFrom.slice() as Vec3;
                     }
                 } else {
-                    cf = initFrom.slice();
+                    cf = initFrom.slice() as Vec3;
                 }
                 const fns = animExprEntry.compiledFns || exprFns;
                 try {
-                    ct = fns.map(fn => evalExpr(fn, tSec));
+                    ct = fns!.map(fn => evalExpr(fn, tSec) as number) as Vec3;
                 } catch (err) {
                     ct = initTo;
                 }
@@ -458,16 +530,17 @@ export function renderAnimatedVector(el, view) {
 
                 const idx = Math.min(Math.floor(t), keyframes.length - 2);
                 const frac = t - idx;
-                const kf0 = keyframes[idx];
-                const kf1 = keyframes[Math.min(idx + 1, keyframes.length - 1)];
+                // `!` not `?.`: idx is clamped into range just above.
+                const kf0 = keyframes[idx]!;
+                const kf1 = keyframes[Math.min(idx + 1, keyframes.length - 1)]!;
 
                 const f0 = kf0.origin || kf0.from || [0,0,0];
                 const t0 = kf0.to || [1,0,0];
                 const f1 = kf1.origin || kf1.from || [0,0,0];
                 const t1 = kf1.to || [1,0,0];
 
-                cf = f0.map((v, i) => v + (f1[i] - v) * frac);
-                ct = t0.map((v, i) => v + (t1[i] - v) * frac);
+                cf = f0.map((v, i) => v + (f1[i]! - v) * frac) as Vec3;
+                ct = t0.map((v, i) => v + (t1[i]! - v) * frac) as Vec3;
             } else {
                 return;
             }
@@ -508,9 +581,9 @@ export function renderAnimatedVector(el, view) {
             }
 
             if (labelEl) {
-                labelEl.dataPos[0] = (cf[0] + ct[0]) / 2 + labelOffset[0];
-                labelEl.dataPos[1] = (cf[1] + ct[1]) / 2 + labelOffset[1];
-                labelEl.dataPos[2] = (cf[2] + ct[2]) / 2 + labelOffset[2];
+                labelEl.dataPos[0] = (cf[0] + ct[0]) / 2 + labelOffset[0]!;
+                labelEl.dataPos[1] = (cf[1] + ct[1]) / 2 + labelOffset[1]!;
+                labelEl.dataPos[2] = (cf[2] + ct[2]) / 2 + labelOffset[2]!;
                 labelEl.forceHidden = false;
                 if (labelExprFn) {
                     try {
@@ -524,7 +597,7 @@ export function renderAnimatedVector(el, view) {
             }
 
             if (el.id) {
-                state.animatedElementPos[el.id] = {
+                animatedVectorState.animatedElementPos[el.id] = {
                     pos: ct,
                     from: cf,
                     to: ct,

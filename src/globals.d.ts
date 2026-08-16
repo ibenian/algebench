@@ -21,9 +21,10 @@
 // @types/katex is one patch behind on purpose: 0.16.8 is the newest published,
 // and a KaTeX patch release adds no API.
 //
-// MathBox (2.3.1) is deliberately absent: it has no published types and its
-// chained-builder API needs a hand-written declaration. Nothing converted so
-// far touches it — it arrives with the modules that actually drive it.
+// MathBox (2.3.1) is absent here on purpose: it has no published types and no
+// npm package to borrow from, so its chained-builder API is hand-written in
+// src/mathbox.d.ts instead — deliberately minimal, covering only the surface
+// the converted modules actually drive.
 
 /** three.js, loaded from CDN as a global (index.html). */
 declare const THREE: typeof import('three');

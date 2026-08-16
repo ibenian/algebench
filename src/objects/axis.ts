@@ -1,11 +1,31 @@
 import { state } from '/state.js';
 import { parseColor, addLabel3D } from '/labels.js';
 import { resolveLineWidth } from '/camera.js';
+import type { Element } from '/types/lesson.js';
 
-export function renderAxis(el, view) {
+/** parseColor returns `number[]`; spreading into `new THREE.Color(...)` needs a tuple. */
+type Rgb3 = [number, number, number];
+
+/** A registered axis line, as camera.js's width/opacity manager expects it. */
+interface AxisEntry {
+    node: MathBoxNode | null;
+    baseWidth: number;
+    baseOpacity: number;
+    widthParam: string;
+    anchorDataPos: number[];
+}
+
+/** The slice of the shared state object this module touches. */
+interface AxisState {
+    axisLineNodes: AxisEntry[];
+    displayParams: { axisOpacity: number };
+}
+const axisState = state as unknown as AxisState;
+
+export function renderAxis(el: Element, view: MathBoxNode) {
     const axis = el.axis || 'x';
-    const range = el.range || [-5, 5];
-    const color = parseColor(el.color || (axis === 'x' ? '#ff4444' : axis === 'y' ? '#44ff44' : '#4488ff'));
+    const range = (el.range || [-5, 5]) as [number, number];
+    const color = parseColor(el.color || (axis === 'x' ? '#ff4444' : axis === 'y' ? '#44ff44' : '#4488ff')) as Rgb3;
     const width = el.width || 2;
     const opacity = (el.opacity !== undefined) ? Number(el.opacity) : 1;
     const baseOpacity = Math.max(0, Math.min(1, Number.isFinite(opacity) ? opacity : 1));
@@ -15,18 +35,18 @@ export function renderAxis(el, view) {
     const defaultTickStep = span > 0 ? Math.max(1, Math.ceil(span / 24)) : 1;
     const tickStep = Math.max(1e-9, Number(el.tickStep || defaultTickStep));
 
-    const axisMap = { x: [1,0,0], y: [0,1,0], z: [0,0,1] };
+    const axisMap: Record<string, number[]> = { x: [1,0,0], y: [0,1,0], z: [0,0,1] };
     const dir = axisMap[axis] || [1,0,0];
 
     const start = dir.map(d => d * range[0]);
     const end = dir.map(d => d * range[1]);
 
     const axisMid = [
-        (start[0] + end[0]) / 2,
-        (start[1] + end[1]) / 2,
-        (start[2] + end[2]) / 2,
+        (start[0]! + end[0]!) / 2,
+        (start[1]! + end[1]!) / 2,
+        (start[2]! + end[2]!) / 2,
     ];
-    const axisEntry = {
+    const axisEntry: AxisEntry = {
         node: null,
         baseWidth: width,
         baseOpacity,
@@ -36,9 +56,9 @@ export function renderAxis(el, view) {
     const axisW = resolveLineWidth(axisEntry);
     const axisLine = view
         .array({ channels: 3, width: 2, data: [start, end] })
-        .line({ color: new THREE.Color(...color), width: axisW, opacity: baseOpacity * (state.displayParams.axisOpacity || 1) });
+        .line({ color: new THREE.Color(...color), width: axisW, opacity: baseOpacity * (axisState.displayParams.axisOpacity || 1) });
     axisEntry.node = axisLine;
-    state.axisLineNodes.push(axisEntry);
+    axisState.axisLineNodes.push(axisEntry);
 
     if (showTicks) {
         const ticks = [];

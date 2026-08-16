@@ -4144,23 +4144,24 @@ function buildCameraButtons(spec) {
 	updateFollowAngleLockButtonState();
 }
 //#endregion
-//#region src/objects/skybox.js
+//#region src/objects/skybox.ts
+var skyboxState = state;
 function clearWorldStarfield() {
-	if (state._starfieldAnimId) {
-		cancelAnimationFrame(state._starfieldAnimId);
-		state._starfieldAnimId = null;
+	if (skyboxState._starfieldAnimId) {
+		cancelAnimationFrame(skyboxState._starfieldAnimId);
+		skyboxState._starfieldAnimId = null;
 	}
-	if (!state.worldStarfield || !state.three || !state.three.scene) return;
-	state.three.scene.remove(state.worldStarfield);
-	if (state.worldStarfield.geometry) state.worldStarfield.geometry.dispose();
-	if (state.worldStarfield.material) state.worldStarfield.material.dispose();
-	state.worldStarfield = null;
+	if (!skyboxState.worldStarfield || !skyboxState.three || !skyboxState.three.scene) return;
+	skyboxState.three.scene.remove(skyboxState.worldStarfield);
+	if (skyboxState.worldStarfield.geometry) skyboxState.worldStarfield.geometry.dispose();
+	if (skyboxState.worldStarfield.material) skyboxState.worldStarfield.material.dispose();
+	skyboxState.worldStarfield = null;
 }
 function clearWorldSkybox() {
-	if (!state.three || !state.three.scene) return;
-	if (state.worldSkybox && state.worldSkybox.texture && typeof state.worldSkybox.texture.dispose === "function") state.worldSkybox.texture.dispose();
-	state.worldSkybox = null;
-	state.three.scene.background = null;
+	if (!skyboxState.three || !skyboxState.three.scene) return;
+	if (skyboxState.worldSkybox && skyboxState.worldSkybox.texture && typeof skyboxState.worldSkybox.texture.dispose === "function") skyboxState.worldSkybox.texture.dispose();
+	skyboxState.worldSkybox = null;
+	skyboxState.three.scene.background = null;
 }
 function _makeGradientSkyboxTexture(topHex, bottomHex, starCount = 0, starColor = "#e6efff", starMin = .5, starMax = 2) {
 	const canvas = document.createElement("canvas");
@@ -4195,8 +4196,8 @@ function configureWorldStarfield(spec) {
 	clearWorldStarfield();
 	const cfg = spec && spec.starfield;
 	if (!cfg || cfg.enabled === false) return;
-	const currentRange = state.currentRange;
-	state.currentScale;
+	const currentRange = skyboxState.currentRange;
+	skyboxState.currentScale;
 	const spanX = Math.abs(currentRange[0][1] - currentRange[0][0]);
 	const spanY = Math.abs(currentRange[1][1] - currentRange[1][0]);
 	const spanZ = Math.abs(currentRange[2][1] - currentRange[2][0]);
@@ -4281,24 +4282,24 @@ function configureWorldStarfield(spec) {
 		depthWrite: false,
 		vertexColors: true
 	});
-	state.worldStarfield = new THREE.Points(geom, mat);
-	state.worldStarfield.renderOrder = -1e3;
-	state.worldStarfield.frustumCulled = false;
-	state.three.scene.add(state.worldStarfield);
-	state._starfieldAnimId = null;
+	skyboxState.worldStarfield = new THREE.Points(geom, mat);
+	skyboxState.worldStarfield.renderOrder = -1e3;
+	skyboxState.worldStarfield.frustumCulled = false;
+	skyboxState.three.scene.add(skyboxState.worldStarfield);
+	skyboxState._starfieldAnimId = null;
 	if (twinkle > 0) {
-		const thisStarfield = state.worldStarfield;
+		const thisStarfield = skyboxState.worldStarfield;
 		const startTime = performance.now();
 		function animateStarfield() {
-			if (!state.worldStarfield || state.worldStarfield !== thisStarfield) return;
+			if (!skyboxState.worldStarfield || skyboxState.worldStarfield !== thisStarfield) return;
 			mat.uniforms.uTime.value = (performance.now() - startTime) / 1e3;
-			state._starfieldAnimId = requestAnimationFrame(animateStarfield);
+			skyboxState._starfieldAnimId = requestAnimationFrame(animateStarfield);
 		}
 		animateStarfield();
 	}
 }
 function renderSkybox(el) {
-	if (!state.three || !state.three.scene) return null;
+	if (!skyboxState.three || !skyboxState.three.scene) return null;
 	clearWorldSkybox();
 	const style = (el.style || el.mode || "solid").toLowerCase();
 	if (style === "none" || style === "off") return {
@@ -4306,7 +4307,7 @@ function renderSkybox(el) {
 		style
 	};
 	if (style === "solid" || style === "color") {
-		state.three.scene.background = new THREE.Color(el.color || "#02040b");
+		skyboxState.three.scene.background = new THREE.Color(el.color || "#02040b");
 		return {
 			type: "skybox",
 			style
@@ -4314,8 +4315,8 @@ function renderSkybox(el) {
 	}
 	if (style === "gradient") {
 		const tex = _makeGradientSkyboxTexture(el.topColor || el.top, el.bottomColor || el.bottom, el.starCount || 0, el.starColor || "#e6efff", el.starMinSize || .5, el.starMaxSize || 2);
-		state.three.scene.background = tex;
-		state.worldSkybox = { texture: tex };
+		skyboxState.three.scene.background = tex;
+		skyboxState.worldSkybox = { texture: tex };
 		return {
 			type: "skybox",
 			style
@@ -4324,29 +4325,30 @@ function renderSkybox(el) {
 	if (style === "cubemap" && Array.isArray(el.urls) && el.urls.length === 6) try {
 		const tex = new THREE.CubeTextureLoader().load(el.urls);
 		tex.colorSpace = THREE.SRGBColorSpace;
-		state.three.scene.background = tex;
-		state.worldSkybox = { texture: tex };
+		skyboxState.three.scene.background = tex;
+		skyboxState.worldSkybox = { texture: tex };
 		return {
 			type: "skybox",
 			style
 		};
 	} catch (err) {
 		console.warn("skybox cubemap load failed:", err);
-		state.three.scene.background = new THREE.Color("#02040b");
+		skyboxState.three.scene.background = new THREE.Color("#02040b");
 		return {
 			type: "skybox",
 			style: "fallback-solid"
 		};
 	}
 	console.warn("Unknown skybox style:", style);
-	state.three.scene.background = new THREE.Color(el.color || "#02040b");
+	skyboxState.three.scene.background = new THREE.Color(el.color || "#02040b");
 	return {
 		type: "skybox",
 		style: "fallback-solid"
 	};
 }
 //#endregion
-//#region src/objects/axis.js
+//#region src/objects/axis.ts
+var axisState = state;
 function renderAxis(el, view) {
 	const axis = el.axis || "x";
 	const range = el.range || [-5, 5];
@@ -4401,9 +4403,9 @@ function renderAxis(el, view) {
 	}).line({
 		color: new THREE.Color(...color),
 		width: axisW,
-		opacity: baseOpacity * (state.displayParams.axisOpacity || 1)
+		opacity: baseOpacity * (axisState.displayParams.axisOpacity || 1)
 	});
-	state.axisLineNodes.push(axisEntry);
+	axisState.axisLineNodes.push(axisEntry);
 	if (showTicks) {
 		const ticks = [];
 		const startTick = Math.ceil(range[0] / tickStep) * tickStep;
@@ -4424,7 +4426,7 @@ function renderAxis(el, view) {
 	if (label) addLabel3D(label, dir.map((d) => d * (range[1] + .3)), color, "label-3d label-axis");
 }
 //#endregion
-//#region src/objects/grid.js
+//#region src/objects/grid.ts
 function renderGrid(el, view) {
 	const plane = el.plane || "xy";
 	const range = el.range || [-5, 5];
@@ -4460,7 +4462,8 @@ function renderGrid(el, view) {
 	});
 }
 //#endregion
-//#region src/objects/vector.js
+//#region src/objects/vector.ts
+var vectorState = state;
 function makeArrowMesh(from, to, color, sizeScale, shaftBaseScale, baseOpacity = 1) {
 	sizeScale = resolveArrowSizeScale(sizeScale);
 	shaftBaseScale = shaftBaseScale || 1;
@@ -4469,7 +4472,7 @@ function makeArrowMesh(from, to, color, sizeScale, shaftBaseScale, baseOpacity =
 	const wdx = tipWorld[0] - fromWorld[0], wdy = tipWorld[1] - fromWorld[1], wdz = tipWorld[2] - fromWorld[2];
 	const wLen = Math.sqrt(wdx * wdx + wdy * wdy + wdz * wdz);
 	if (wLen < 1e-4) return;
-	const currentScale = state.currentScale;
+	const currentScale = vectorState.currentScale;
 	const worldSceneSize = Math.min(currentScale[0], currentScale[1]) * 2;
 	const baseHeadLen = Math.max(Math.min(wLen * .25, worldSceneSize * ARROW_HEAD_MAX_FACTOR), worldSceneSize * ARROW_HEAD_MIN_FACTOR) * sizeScale;
 	const autoScale = resolveSmallVectorAutoScale(wLen, baseHeadLen);
@@ -4498,7 +4501,7 @@ function makeArrowMesh(from, to, color, sizeScale, shaftBaseScale, baseOpacity =
 	shaft.userData.baseShaftRadius = shaftRadius;
 	shaft.userData.maxRadiusFromHead = wHeadRadius * .75;
 	applyShaftThickness(shaft);
-	state.three.scene.add(shaft);
+	vectorState.three.scene.add(shaft);
 	const arrowPair = {
 		fromWorld: new THREE.Vector3(...fromWorld),
 		tipWorld: new THREE.Vector3(...tipWorld),
@@ -4509,7 +4512,7 @@ function makeArrowMesh(from, to, color, sizeScale, shaftBaseScale, baseOpacity =
 	};
 	shaft.userData.arrowPair = arrowPair;
 	shaft.userData.baseOpacity = shaftOpacity;
-	state.arrowMeshes.push({
+	vectorState.arrowMeshes.push({
 		mesh: shaft,
 		tipWorld: new THREE.Vector3(fromWorld[0] + dir.x * shaftLen, fromWorld[1] + dir.y * shaftLen, fromWorld[2] + dir.z * shaftLen),
 		dir: dir.clone(),
@@ -4531,8 +4534,8 @@ function makeArrowMesh(from, to, color, sizeScale, shaftBaseScale, baseOpacity =
 	cone.userData.baseOpacity = coneOpacity;
 	arrowPair.shaft = shaft;
 	arrowPair.cone = cone;
-	state.three.scene.add(cone);
-	state.arrowMeshes.push({
+	vectorState.three.scene.add(cone);
+	vectorState.arrowMeshes.push({
 		mesh: cone,
 		tipWorld: new THREE.Vector3(...tipWorld),
 		dir: dir.clone(),
@@ -4553,7 +4556,7 @@ function renderVector(el, view) {
 	const color = parseColor(el.color || "#ff6644");
 	const label = el.label;
 	const elementOpacity = typeof el.opacity === "number" && isFinite(el.opacity) ? Math.max(0, Math.min(1, el.opacity)) : 1;
-	makeArrowMesh(from, to, color, state.displayParams.arrowScale, 1, elementOpacity);
+	makeArrowMesh(from, to, color, vectorState.displayParams.arrowScale, 1, elementOpacity);
 	if (label) {
 		const lo = Array.isArray(el.labelOffset) && el.labelOffset.length === 3 ? [
 			Number(el.labelOffset[0]) || 0,
@@ -4574,7 +4577,8 @@ function renderVector(el, view) {
 	};
 }
 //#endregion
-//#region src/objects/vectors.js
+//#region src/objects/vectors.ts
+var vectorsState = state;
 function renderVectors(el, view) {
 	const tos = el.tos || [];
 	const froms = el.froms || tos.map(() => [
@@ -4593,7 +4597,7 @@ function renderVectors(el, view) {
 		];
 		const to = tos[i];
 		if (!to) continue;
-		makeArrowMesh(from, to, color, state.displayParams.arrowScale, shaftBaseScale, elementOpacity);
+		makeArrowMesh(from, to, color, vectorsState.displayParams.arrowScale, shaftBaseScale, elementOpacity);
 	}
 	return {
 		type: "vectors",
@@ -4601,7 +4605,8 @@ function renderVectors(el, view) {
 	};
 }
 //#endregion
-//#region src/objects/point.js
+//#region src/objects/point.ts
+var pointState = state;
 function renderPoint(el, view) {
 	const pos = el.position || el.at || [
 		0,
@@ -4621,7 +4626,7 @@ function renderPoint(el, view) {
 		size,
 		zBias: 5
 	});
-	state.pointNodes.push({ node: pointNode });
+	pointState.pointNodes.push({ node: pointNode });
 	if (label && positions.length === 1) addLabel3D(label, [
 		positions[0][0],
 		positions[0][1] + .2,
@@ -4634,7 +4639,8 @@ function renderPoint(el, view) {
 	};
 }
 //#endregion
-//#region src/objects/line.js
+//#region src/objects/line.ts
+var lineState = state;
 function renderLine(el, view) {
 	const points = el.points || el.data || (el.from && el.to ? [el.from, el.to] : null) || [[
 		0,
@@ -4670,9 +4676,9 @@ function renderLine(el, view) {
 		color: new THREE.Color(...color),
 		width: lineW,
 		zBias: 1,
-		opacity: baseOpacity * (state.displayParams.lineOpacity || 1)
+		opacity: baseOpacity * (lineState.displayParams.lineOpacity || 1)
 	});
-	state.lineNodes.push(lineEntry);
+	lineState.lineNodes.push(lineEntry);
 	if (label) {
 		const mid = points[Math.floor(points.length / 2)];
 		addLabel3D(label, mid, color);
@@ -4684,7 +4690,8 @@ function renderLine(el, view) {
 	};
 }
 //#endregion
-//#region src/objects/surface.js
+//#region src/objects/surface.ts
+var surfaceState = state;
 function renderSurface(el, view) {
 	const color = parseColor(el.color || "#4488ff");
 	const opacity = el.opacity !== void 0 ? el.opacity : .6;
@@ -4701,7 +4708,7 @@ function renderSurface(el, view) {
 		const y = rangeY[0] + j * dy;
 		let z;
 		try {
-			if (_JS_ONLY_RE.test(expr) && state._sceneJsTrustState === "trusted") z = new Function("x", "y", "return " + expr)(x, y);
+			if (_JS_ONLY_RE.test(expr) && surfaceState._sceneJsTrustState === "trusted") z = new Function("x", "y", "return " + expr)(x, y);
 			else if (_JS_ONLY_RE.test(expr)) z = 0;
 			else z = _mathjs.evaluate(expr, {
 				x,
@@ -4734,7 +4741,8 @@ function renderSurface(el, view) {
 	};
 }
 //#endregion
-//#region src/objects/parametric-curve.js
+//#region src/objects/parametric-curve.ts
+var parametricCurveState = state;
 function renderParametricCurve(el, view) {
 	const color = parseColor(el.color || "#ff88aa");
 	const width = el.width || 3;
@@ -4809,9 +4817,9 @@ function renderParametricCurve(el, view) {
 	curveEntry.node = curveData.line({
 		color: new THREE.Color(...color),
 		width: lineW,
-		opacity: baseOpacity * (state.displayParams.lineOpacity || 1)
+		opacity: baseOpacity * (parametricCurveState.displayParams.lineOpacity || 1)
 	});
-	state.lineNodes.push(curveEntry);
+	parametricCurveState.lineNodes.push(curveEntry);
 	let labelEl = null;
 	if (label) {
 		const mid = points[Math.floor(points.length / 2)];
@@ -4846,7 +4854,7 @@ function renderParametricCurve(el, view) {
 			}
 		}
 	};
-	state.activeAnimExprs.push(animExprEntry);
+	parametricCurveState.activeAnimExprs.push(animExprEntry);
 	return {
 		type: "parametric_curve",
 		color,
@@ -4856,7 +4864,8 @@ function renderParametricCurve(el, view) {
 	};
 }
 //#endregion
-//#region src/objects/parametric-surface.js
+//#region src/objects/parametric-surface.ts
+var parametricSurfaceState = state;
 function renderParametricSurface(el, view) {
 	const color = parseColor(el.color || "#66aaff");
 	const opacity = el.opacity !== void 0 ? el.opacity : .6;
@@ -4929,11 +4938,11 @@ function renderParametricSurface(el, view) {
 	const mesh = new THREE.Mesh(geom, mat);
 	mesh.userData.targetOpacity = opacity;
 	mesh.userData.isParametricSurface = true;
-	mesh.renderOrder = state._planeMeshSerial;
-	mesh.position.z = state._planeMeshSerial * 2e-4;
-	state._planeMeshSerial++;
-	state.three.scene.add(mesh);
-	state.planeMeshes.push(mesh);
+	mesh.renderOrder = parametricSurfaceState._planeMeshSerial;
+	mesh.position.z = parametricSurfaceState._planeMeshSerial * 2e-4;
+	parametricSurfaceState._planeMeshSerial++;
+	parametricSurfaceState.three.scene.add(mesh);
+	parametricSurfaceState.planeMeshes.push(mesh);
 	const animState = { stopped: false };
 	const animExprEntry = {
 		exprStrings: [
@@ -4955,7 +4964,7 @@ function renderParametricSurface(el, view) {
 			geom.computeVertexNormals();
 		}
 	};
-	state.activeAnimExprs.push(animExprEntry);
+	parametricSurfaceState.activeAnimExprs.push(animExprEntry);
 	return {
 		type: "parametric_surface",
 		color,
@@ -4965,7 +4974,8 @@ function renderParametricSurface(el, view) {
 	};
 }
 //#endregion
-//#region src/objects/sphere.js
+//#region src/objects/sphere.ts
+var sphereState = state;
 function _makeSurfaceMaterial(el, color, opacity, defaults = {}) {
 	const matType = el.shader && el.shader.type === "basic" ? THREE.MeshBasicMaterial : THREE.MeshPhongMaterial;
 	const matOpts = {
@@ -5039,8 +5049,8 @@ function renderSphere(el, view) {
 	const mat = _makeSurfaceMaterial(el, color, opacity, { shininess: 50 });
 	const mesh = new THREE.Mesh(geom, mat);
 	mesh.userData.targetOpacity = opacity;
-	state.three.scene.add(mesh);
-	state.planeMeshes.push(mesh);
+	sphereState.three.scene.add(mesh);
+	sphereState.planeMeshes.push(mesh);
 	let labelEl = null;
 	if (label) labelEl = addLabel3D(label, [
 		0,
@@ -5063,7 +5073,7 @@ function renderSphere(el, view) {
 			}
 		}
 	};
-	state.activeAnimExprs.push(animExprEntry);
+	sphereState.activeAnimExprs.push(animExprEntry);
 	animExprEntry._rebuildFn();
 	return {
 		type: "sphere",
@@ -5074,7 +5084,8 @@ function renderSphere(el, view) {
 	};
 }
 //#endregion
-//#region src/objects/ellipsoid.js
+//#region src/objects/ellipsoid.ts
+var ellipsoidState = state;
 function renderEllipsoid(el, view) {
 	const color = parseColor(el.color || "#66aaff");
 	const opacity = el.opacity !== void 0 ? el.opacity : .8;
@@ -5117,8 +5128,8 @@ function renderEllipsoid(el, view) {
 	const mat = _makeSurfaceMaterial(el, color, opacity, { shininess: 50 });
 	const mesh = new THREE.Mesh(geom, mat);
 	mesh.userData.targetOpacity = opacity;
-	state.three.scene.add(mesh);
-	state.planeMeshes.push(mesh);
+	ellipsoidState.three.scene.add(mesh);
+	ellipsoidState.planeMeshes.push(mesh);
 	let labelEl = null;
 	if (label) labelEl = addLabel3D(label, [
 		0,
@@ -5141,7 +5152,7 @@ function renderEllipsoid(el, view) {
 			}
 		}
 	};
-	state.activeAnimExprs.push(animExprEntry);
+	ellipsoidState.activeAnimExprs.push(animExprEntry);
 	animExprEntry._rebuildFn();
 	return {
 		type: "ellipsoid",
@@ -5152,7 +5163,8 @@ function renderEllipsoid(el, view) {
 	};
 }
 //#endregion
-//#region src/objects/vector-field.js
+//#region src/objects/vector-field.ts
+var vectorFieldState = state;
 function renderVectorField(el, view) {
 	const color = parseColor(el.color || "#88ccff");
 	const opacity = el.opacity !== void 0 ? el.opacity : .6;
@@ -5169,7 +5181,7 @@ function renderVectorField(el, view) {
 	const exprZ = el.fz || "0";
 	const _compileVF = (e) => {
 		if (_JS_ONLY_RE.test(e)) {
-			if (state._sceneJsTrustState === "trusted") return new Function("x", "y", "z", "return " + e);
+			if (vectorFieldState._sceneJsTrustState === "trusted") return new Function("x", "y", "z", "return " + e);
 			return null;
 		}
 		return _mathjs.compile(e);
@@ -5237,7 +5249,7 @@ function renderVectorField(el, view) {
 	};
 }
 //#endregion
-//#region src/objects/plane.js
+//#region src/objects/plane.ts
 function renderPlane(el, view) {
 	const color = parseColor(el.color || "#4466aa");
 	const opacity = el.opacity !== void 0 ? el.opacity : .5;
@@ -5289,7 +5301,8 @@ function renderPlane(el, view) {
 	};
 }
 //#endregion
-//#region src/objects/text.js
+//#region src/objects/text.ts
+var textState = state;
 function renderText(el, view) {
 	const text = el.text || el.value || "";
 	const color = parseColor(el.color || "#ffffff");
@@ -5309,7 +5322,7 @@ function renderText(el, view) {
 			cssClass: el.cssClass
 		};
 		const labelEl = addLabel3D(text, initPos, color, labelOpts);
-		const startTime = state.sceneStartTime;
+		const startTime = textState.sceneStartTime;
 		let textExprFn = null;
 		const textFormat = el.textFormat || "%d";
 		if (el.textExpr) try {
@@ -5323,7 +5336,7 @@ function renderText(el, view) {
 			console.warn("text visibleExpr compile error:", err);
 		}
 		let prevVisible = null;
-		state.activeAnimUpdaters.push({
+		textState.activeAnimUpdaters.push({
 			animState: { stopped: false },
 			updateFrame(nowMs) {
 				const tSec = (nowMs - startTime) / 1e3;
@@ -5373,7 +5386,8 @@ function renderText(el, view) {
 	};
 }
 //#endregion
-//#region src/objects/animated-vector.js
+//#region src/objects/animated-vector.ts
+var animatedVectorState = state;
 function renderAnimatedVector(el, view) {
 	const ownerToken = {};
 	const color = parseColor(el.color || "#ff8844");
@@ -5463,9 +5477,9 @@ function renderAnimatedVector(el, view) {
 		const fromWorld = dataToWorld(from);
 		const wdx = tipWorld[0] - fromWorld[0], wdy = tipWorld[1] - fromWorld[1], wdz = tipWorld[2] - fromWorld[2];
 		const wLen = Math.sqrt(wdx * wdx + wdy * wdy + wdz * wdz);
-		const currentScale = state.currentScale;
+		const currentScale = animatedVectorState.currentScale;
 		const worldSceneSize = Math.min(currentScale[0], currentScale[1]) * 2;
-		const effectiveArrowScale = resolveArrowSizeScale(localArrowScale * (state.displayParams.arrowScale || 1));
+		const effectiveArrowScale = resolveArrowSizeScale(localArrowScale * (animatedVectorState.displayParams.arrowScale || 1));
 		const baseHeadLen = Math.max(Math.min(wLen * .25, worldSceneSize * localArrowMaxFactor), worldSceneSize * localArrowMinFactor) * effectiveArrowScale;
 		const autoScale = resolveSmallVectorAutoScale(wLen, baseHeadLen);
 		const wHeadLen = baseHeadLen * autoScale;
@@ -5484,7 +5498,7 @@ function renderAnimatedVector(el, view) {
 		};
 	}
 	function computeShaftThicknessMul(autoScale) {
-		const base = (shaftBaseScale || 1) * (state.displayParams.vectorWidth || 1) * (autoScale || 1);
+		const base = (shaftBaseScale || 1) * (animatedVectorState.displayParams.vectorWidth || 1) * (autoScale || 1);
 		return Math.max(.01, base);
 	}
 	function createCone(from, to) {
@@ -5509,8 +5523,8 @@ function renderAnimatedVector(el, view) {
 		cone.position.set(tipWorld[0] - dir.x * wHeadLen / 2, tipWorld[1] - dir.y * wHeadLen / 2, tipWorld[2] - dir.z * wHeadLen / 2);
 		const up = new THREE.Vector3(0, 1, 0);
 		cone.setRotationFromQuaternion(new THREE.Quaternion().setFromUnitVectors(up, dir));
-		state.three.scene.add(cone);
-		state.arrowMeshes.push({
+		animatedVectorState.three.scene.add(cone);
+		animatedVectorState.arrowMeshes.push({
 			mesh: cone,
 			tipWorld: new THREE.Vector3(...tipWorld),
 			dir: dir.clone(),
@@ -5542,8 +5556,8 @@ function renderAnimatedVector(el, view) {
 		shaft.setRotationFromQuaternion(new THREE.Quaternion().setFromUnitVectors(up, dir));
 		const shaftRadiusScaled = Math.min(shaftRadius * computeShaftThicknessMul(autoScale), wHeadRadius * .75);
 		shaft.scale.set(shaftRadiusScaled, shaftLen, shaftRadiusScaled);
-		state.three.scene.add(shaft);
-		state.arrowMeshes.push({
+		animatedVectorState.three.scene.add(shaft);
+		animatedVectorState.arrowMeshes.push({
 			mesh: shaft,
 			tipWorld: new THREE.Vector3(fromWorld[0] + dir.x * shaftLen, fromWorld[1] + dir.y * shaftLen, fromWorld[2] + dir.z * shaftLen),
 			dir: dir.clone(),
@@ -5600,8 +5614,8 @@ function renderAnimatedVector(el, view) {
 			mesh.position.copy(layout.fromWorld).addScaledVector(layout.panelNormal, side * centerDist);
 			mesh.rotation.z = layout.angle;
 			mesh.scale.set(layout.panelLength, layout.panelWidth, layout.panelThickness);
-			state.three.scene.add(mesh);
-			state.arrowMeshes.push({
+			animatedVectorState.three.scene.add(mesh);
+			animatedVectorState.arrowMeshes.push({
 				mesh,
 				tipWorld: mesh.position.clone(),
 				dir: layout.panelNormal.clone(),
@@ -5624,7 +5638,7 @@ function renderAnimatedVector(el, view) {
 				cone.scale.set(wHeadRadius, wHeadLen, wHeadRadius);
 				cone.position.set(tipWorld[0] - dir.x * wHeadLen / 2, tipWorld[1] - dir.y * wHeadLen / 2, tipWorld[2] - dir.z * wHeadLen / 2);
 				cone.setRotationFromQuaternion(quat);
-				const entry = state.arrowMeshes.find((e) => e.mesh === cone);
+				const entry = animatedVectorState.arrowMeshes.find((e) => e.mesh === cone);
 				if (entry) {
 					entry.wLen = wHeadLen;
 					entry.tipWorld.set(...tipWorld);
@@ -5639,7 +5653,7 @@ function renderAnimatedVector(el, view) {
 				shaft.setRotationFromQuaternion(quat);
 				const shaftRadiusScaled = Math.min(shaftRadius * computeShaftThicknessMul(autoScale), wHeadRadius * .75);
 				shaft.scale.set(shaftRadiusScaled, shaftLen, shaftRadiusScaled);
-				const entry = state.arrowMeshes.find((e) => e.mesh === shaft);
+				const entry = animatedVectorState.arrowMeshes.find((e) => e.mesh === shaft);
 				if (entry) {
 					entry.wLen = shaftLen;
 					entry.tipWorld.set(fromWorld[0] + dir.x * shaftLen, fromWorld[1] + dir.y * shaftLen, fromWorld[2] + dir.z * shaftLen);
@@ -5662,7 +5676,7 @@ function renderAnimatedVector(el, view) {
 			mesh.position.copy(layout.fromWorld).addScaledVector(layout.panelNormal, side * centerDist);
 			mesh.rotation.z = layout.angle;
 			mesh.scale.set(layout.panelLength, layout.panelWidth, layout.panelThickness);
-			const entry = state.arrowMeshes.find((e) => e.mesh === mesh);
+			const entry = animatedVectorState.arrowMeshes.find((e) => e.mesh === mesh);
 			if (entry) {
 				entry.tipWorld.copy(mesh.position);
 				entry.dir.copy(layout.panelNormal);
@@ -5701,10 +5715,10 @@ function renderAnimatedVector(el, view) {
 			color: new THREE.Color(...trailColor),
 			width: trailWidth,
 			zBias: 1,
-			opacity: trailBaseOpacity * (state.displayParams.lineOpacity || 1)
+			opacity: trailBaseOpacity * (animatedVectorState.displayParams.lineOpacity || 1)
 		});
 		trailEntry.node = trailLine;
-		state.lineNodes.push(trailEntry);
+		animatedVectorState.lineNodes.push(trailEntry);
 	}
 	let labelExprFn = null;
 	if (labelExprString) try {
@@ -5758,9 +5772,9 @@ function renderAnimatedVector(el, view) {
 	}
 	const animState = { stopped: false };
 	animExprEntry.animState = animState;
-	if (useExpr) state.activeAnimExprs.push(animExprEntry);
-	const startTime = state.sceneStartTime;
-	state.activeAnimUpdaters.push({
+	if (useExpr) animatedVectorState.activeAnimExprs.push(animExprEntry);
+	const startTime = animatedVectorState.sceneStartTime;
+	animatedVectorState.activeAnimUpdaters.push({
 		animState,
 		updateFrame(nowMs) {
 			if (arrowCone && !arrowCone.visible && arrowCone._hiddenByRemove) return;
@@ -5850,7 +5864,7 @@ function renderAnimatedVector(el, view) {
 					}
 				} catch (_e) {}
 			}
-			if (el.id) state.animatedElementPos[el.id] = {
+			if (el.id) animatedVectorState.animatedElementPos[el.id] = {
 				pos: ct,
 				from: cf,
 				to: ct,
@@ -5869,7 +5883,8 @@ function renderAnimatedVector(el, view) {
 	};
 }
 //#endregion
-//#region src/objects/polygon.js
+//#region src/objects/polygon.ts
+var polygonState = state;
 var _noiseTexture$1 = null;
 function _getNoiseTexture$1() {
 	if (_noiseTexture$1) return _noiseTexture$1;
@@ -6111,20 +6126,20 @@ function renderPolygon(el, view) {
 		};
 	}
 	const geom = new THREE.BufferGeometry();
-	const gradResult = el.gradient ? _buildGradientSlab(wVerts, el.gradient, baseHalf * state.displayParams.planeScale, normal) : null;
+	const gradResult = el.gradient ? _buildGradientSlab(wVerts, el.gradient, baseHalf * polygonState.displayParams.planeScale, normal) : null;
 	const hasGradient = !!gradResult;
 	if (hasGradient) {
 		geom.setAttribute("position", new THREE.Float32BufferAttribute(gradResult.positions, 3));
 		geom.setAttribute("color", new THREE.Float32BufferAttribute(gradResult.colors, 3));
 	} else {
-		const { positions, uvData } = buildSlabGeometry(baseHalf * state.displayParams.planeScale);
+		const { positions, uvData } = buildSlabGeometry(baseHalf * polygonState.displayParams.planeScale);
 		geom.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
 		if (uvData) geom.setAttribute("uv", new THREE.Float32BufferAttribute(uvData, 2));
 	}
 	geom.computeVertexNormals();
 	const baseMatOpts = {
 		color: hasGradient ? new THREE.Color(1, 1, 1) : new THREE.Color(...color),
-		opacity: state.displayParams.planeOpacity,
+		opacity: polygonState.displayParams.planeOpacity,
 		transparent: true,
 		side: THREE.DoubleSide,
 		depthWrite: false
@@ -6159,11 +6174,11 @@ function renderPolygon(el, view) {
 		const g = _buildGradientSlab(wVerts, el.gradient, halfThick, normal);
 		return g ? g.positions : buildSlabGeometry(halfThick).positions;
 	} : (halfThick) => buildSlabGeometry(halfThick).positions;
-	const _serial = el.renderOrder !== void 0 ? el.renderOrder : state._planeMeshSerial++;
+	const _serial = el.renderOrder !== void 0 ? el.renderOrder : polygonState._planeMeshSerial++;
 	mesh.renderOrder = _serial;
 	mesh.position.z = el.depthZ !== void 0 ? el.depthZ : _serial * 2e-4;
-	state.three.scene.add(mesh);
-	state.planeMeshes.push(mesh);
+	polygonState.three.scene.add(mesh);
+	polygonState.planeMeshes.push(mesh);
 	if (label) addLabel3D(label, [
 		vertices.reduce((s, v) => s + v[0], 0) / vertices.length,
 		vertices.reduce((s, v) => s + v[1], 0) / vertices.length,
@@ -6193,7 +6208,8 @@ function renderPolygon(el, view) {
 	};
 }
 //#endregion
-//#region src/objects/animated-line.js
+//#region src/objects/animated-line.ts
+var animatedLineState = state;
 function renderAnimatedLine(el, view) {
 	const color = parseColor(el.color || "#88aaff");
 	const width = (el.width || 3) * getAbstractWidthScale(el);
@@ -6236,9 +6252,9 @@ function renderAnimatedLine(el, view) {
 		color: new THREE.Color(...color),
 		width: lineW,
 		zBias: 1,
-		opacity: baseOpacity * (state.displayParams.lineOpacity || 1)
+		opacity: baseOpacity * (animatedLineState.displayParams.lineOpacity || 1)
 	});
-	state.lineNodes.push(lineEntry);
+	animatedLineState.lineNodes.push(lineEntry);
 	let labelExprFn = null;
 	if (labelExprString) try {
 		labelExprFn = compileExpr(labelExprString);
@@ -6270,9 +6286,9 @@ function renderAnimatedLine(el, view) {
 		_pointExprs: pointExprs,
 		_compiledPoints: compiledPoints
 	};
-	state.activeAnimExprs.push(animExprEntry);
-	const startTime = state.sceneStartTime;
-	state.activeAnimUpdaters.push({
+	animatedLineState.activeAnimExprs.push(animExprEntry);
+	const startTime = animatedLineState.sceneStartTime;
+	animatedLineState.activeAnimUpdaters.push({
 		animState,
 		updateFrame(nowMs) {
 			const tSec = (nowMs - startTime) / 1e3;
@@ -6306,7 +6322,8 @@ function renderAnimatedLine(el, view) {
 	};
 }
 //#endregion
-//#region src/objects/animated-point.js
+//#region src/objects/animated-point.ts
+var animatedPointState = state;
 var _haloTexture = null;
 function getHaloTexture() {
 	if (_haloTexture) return _haloTexture;
@@ -6405,8 +6422,8 @@ function renderAnimatedPoint(el, view) {
 	mesh.scale.setScalar(initWorldRadius);
 	mesh.userData.targetOpacity = glowOnly ? 0 : opacity;
 	mesh.userData.ignorePlaneOpacity = !!shader.ignorePlaneOpacity;
-	state.three.scene.add(mesh);
-	state.planeMeshes.push(mesh);
+	animatedPointState.three.scene.add(mesh);
+	animatedPointState.planeMeshes.push(mesh);
 	let halo = null;
 	const glowScale = Number.isFinite(Number(el.glowScale)) ? Number(el.glowScale) : 2;
 	if (el.glow) {
@@ -6423,8 +6440,8 @@ function renderAnimatedPoint(el, view) {
 		halo.scale.setScalar(initWorldRadius * glowScale * 2);
 		halo.userData.targetOpacity = opacity;
 		halo.userData.ignorePlaneOpacity = !!shader.ignorePlaneOpacity;
-		state.three.scene.add(halo);
-		state.planeMeshes.push(halo);
+		animatedPointState.three.scene.add(halo);
+		animatedPointState.planeMeshes.push(halo);
 	}
 	let labelExprFn = null;
 	if (labelExprString) try {
@@ -6453,13 +6470,13 @@ function renderAnimatedPoint(el, view) {
 		visibleExprString,
 		visibleFn
 	};
-	state.activeAnimExprs.push(animExprEntry);
-	const startTime = state.sceneStartTime;
-	state.activeAnimUpdaters.push({
+	animatedPointState.activeAnimExprs.push(animExprEntry);
+	const startTime = animatedPointState.sceneStartTime;
+	animatedPointState.activeAnimUpdaters.push({
 		animState,
 		updateFrame(nowMs) {
 			if (mesh._hiddenByRemove) {
-				if (el.id) delete state.animatedElementPos[el.id];
+				if (el.id) delete animatedPointState.animatedElementPos[el.id];
 				return;
 			}
 			const tSec = (nowMs - startTime) / 1e3;
@@ -6468,7 +6485,7 @@ function renderAnimatedPoint(el, view) {
 			try {
 				p = fns.map((fn) => evalExpr(fn, tSec));
 			} catch (err) {}
-			if (el.id) state.animatedElementPos[el.id] = {
+			if (el.id) animatedPointState.animatedElementPos[el.id] = {
 				pos: p,
 				startTime,
 				time: nowMs
@@ -6534,7 +6551,8 @@ function renderAnimatedPoint(el, view) {
 	};
 }
 //#endregion
-//#region src/objects/cylinder.js
+//#region src/objects/cylinder.ts
+var cylinderState = state;
 function _axisToDataDir(axis) {
 	if (axis === "x") return [
 		1,
@@ -6638,8 +6656,8 @@ function renderCylinder(el, view) {
 	const mesh = new THREE.Mesh(geom, mat);
 	mesh.userData.targetOpacity = opacity;
 	_setCylinderTransformFromData(mesh, from, to, radius);
-	state.three.scene.add(mesh);
-	state.planeMeshes.push(mesh);
+	cylinderState.three.scene.add(mesh);
+	cylinderState.planeMeshes.push(mesh);
 	if (label) addLabel3D(label, [
 		(from[0] + to[0]) / 2,
 		(from[1] + to[1]) / 2,
@@ -6652,7 +6670,8 @@ function renderCylinder(el, view) {
 	};
 }
 //#endregion
-//#region src/objects/animated-cylinder.js
+//#region src/objects/animated-cylinder.ts
+var animatedCylinderState = state;
 function renderAnimatedCylinder(el, view) {
 	const color = parseColor(el.color || "#88aaff");
 	const opacity = el.opacity !== void 0 ? el.opacity : .35;
@@ -6710,8 +6729,8 @@ function renderAnimatedCylinder(el, view) {
 		initRadius = evalExpr(radiusFn, 0);
 	} catch (err) {}
 	_setCylinderTransformFromData(mesh, initFrom, initTo, initRadius);
-	state.three.scene.add(mesh);
-	state.planeMeshes.push(mesh);
+	animatedCylinderState.three.scene.add(mesh);
+	animatedCylinderState.planeMeshes.push(mesh);
 	let labelExprFn = null;
 	if (labelExprString) try {
 		labelExprFn = compileExpr(labelExprString);
@@ -6742,9 +6761,9 @@ function renderAnimatedCylinder(el, view) {
 		fromExprFns: fromFns,
 		radiusFn
 	};
-	state.activeAnimExprs.push(animExprEntry);
-	const startTime = state.sceneStartTime;
-	state.activeAnimUpdaters.push({
+	animatedCylinderState.activeAnimExprs.push(animExprEntry);
+	const startTime = animatedCylinderState.sceneStartTime;
+	animatedCylinderState.activeAnimUpdaters.push({
 		animState,
 		updateFrame(nowMs) {
 			const tSec = (nowMs - startTime) / 1e3;
@@ -6783,7 +6802,8 @@ function renderAnimatedCylinder(el, view) {
 	};
 }
 //#endregion
-//#region src/objects/animated-polygon.js
+//#region src/objects/animated-polygon.ts
+var animatedPolygonState = state;
 var _noiseTexture = null;
 function _getNoiseTexture() {
 	if (_noiseTexture) return _noiseTexture;
@@ -6922,7 +6942,7 @@ function renderAnimatedPolygon(el, view) {
 		const a = new THREE.Vector3(wVerts[1][0] - wVerts[0][0], wVerts[1][1] - wVerts[0][1], wVerts[1][2] - wVerts[0][2]);
 		const b = new THREE.Vector3(wVerts[2][0] - wVerts[0][0], wVerts[2][1] - wVerts[0][1], wVerts[2][2] - wVerts[0][2]);
 		const normal = a.cross(b).normalize();
-		const halfThick = dataLenToWorld(thickness / 2) * (state.displayParams.planeScale || 1);
+		const halfThick = dataLenToWorld(thickness / 2) * (animatedPolygonState.displayParams.planeScale || 1);
 		const positions = [];
 		const top = wVerts.map((v) => [
 			v[0] + normal.x * halfThick,
@@ -6975,7 +6995,7 @@ function renderAnimatedPolygon(el, view) {
 	applyGeomVerts(currentDataVerts);
 	const baseMatOpts = {
 		color: new THREE.Color(...color),
-		opacity: state.displayParams.planeOpacity * (opacity / .5),
+		opacity: animatedPolygonState.displayParams.planeOpacity * (opacity / .5),
 		transparent: true,
 		side: THREE.DoubleSide,
 		depthWrite: false
@@ -7000,11 +7020,11 @@ function renderAnimatedPolygon(el, view) {
 		mat = new THREE.MeshPhongMaterial(baseMatOpts);
 	}
 	const mesh = new THREE.Mesh(geom, mat);
-	const _serialA = el.renderOrder !== void 0 ? el.renderOrder : state._planeMeshSerial++;
+	const _serialA = el.renderOrder !== void 0 ? el.renderOrder : animatedPolygonState._planeMeshSerial++;
 	mesh.renderOrder = _serialA;
 	mesh.position.z = el.depthZ !== void 0 ? el.depthZ : _serialA * 2e-4;
-	state.three.scene.add(mesh);
-	state.planeMeshes.push(mesh);
+	animatedPolygonState.three.scene.add(mesh);
+	animatedPolygonState.planeMeshes.push(mesh);
 	let outlineArrayNode = null;
 	let outlineLineNode = null;
 	let outlineWidthExpr = null;
@@ -7060,9 +7080,9 @@ function renderAnimatedPolygon(el, view) {
 			labelEl._lastDynamicText = txt;
 		} catch (_e) {}
 	}
-	state.activeAnimExprs.push(animExprEntry);
-	const startTime = state.sceneStartTime;
-	state.activeAnimUpdaters.push({
+	animatedPolygonState.activeAnimExprs.push(animExprEntry);
+	const startTime = animatedPolygonState.sceneStartTime;
+	animatedPolygonState.activeAnimUpdaters.push({
 		animState,
 		updateFrame(nowMs) {
 			if (!mesh.visible) return;
@@ -7072,7 +7092,7 @@ function renderAnimatedPolygon(el, view) {
 				applyGeomVerts(verts);
 				if (opacityExpr) {
 					const op = evalExpr(opacityExpr, tSec);
-					mat.opacity = state.displayParams.planeOpacity * (op / .5);
+					mat.opacity = animatedPolygonState.displayParams.planeOpacity * (op / .5);
 					if (outlineLineNode && !outlineOpacityExpr) outlineLineNode.set("opacity", Math.min(1, op * 2));
 				}
 				if (outlineArrayNode) outlineArrayNode.set("data", buildOutlinePts(verts));
@@ -7102,7 +7122,8 @@ function renderAnimatedPolygon(el, view) {
 	};
 }
 //#endregion
-//#region src/objects/animated-curve.js
+//#region src/objects/animated-curve.ts
+var animatedCurveState = state;
 function renderAnimatedCurve(el, view) {
 	const color = parseColor(el.color || "#ff8844");
 	const width = el.width != null ? el.width : 3;
@@ -7188,11 +7209,11 @@ function renderAnimatedCurve(el, view) {
 	const curveNode = curveData.line({
 		color: new THREE.Color(...color),
 		width: lineW,
-		opacity: lineOpacity * (state.displayParams.lineOpacity || 1),
+		opacity: lineOpacity * (animatedCurveState.displayParams.lineOpacity || 1),
 		visible: el.showCurve !== false
 	});
 	curveEntry.node = curveNode;
-	state.lineNodes.push(curveEntry);
+	animatedCurveState.lineNodes.push(curveEntry);
 	let labelExprFn = null;
 	if (labelExprString) try {
 		labelExprFn = compileExpr(labelExprString);
@@ -7235,17 +7256,17 @@ function renderAnimatedCurve(el, view) {
 		fillGeom.setAttribute("position", fillAttr);
 		const fillMat = new THREE.MeshBasicMaterial({
 			color: new THREE.Color(...frColor),
-			opacity: state.displayParams.planeOpacity * (frOpacity / .5),
+			opacity: animatedCurveState.displayParams.planeOpacity * (frOpacity / .5),
 			transparent: true,
 			side: THREE.DoubleSide,
 			depthWrite: false
 		});
 		const fillMesh = new THREE.Mesh(fillGeom, fillMat);
-		const _ser = state._planeMeshSerial++;
+		const _ser = animatedCurveState._planeMeshSerial++;
 		fillMesh.renderOrder = _ser;
 		fillMesh.position.z = el.depthZ !== void 0 ? el.depthZ : _ser * 2e-4;
-		state.three.scene.add(fillMesh);
-		state.planeMeshes.push(fillMesh);
+		animatedCurveState.three.scene.add(fillMesh);
+		animatedCurveState.planeMeshes.push(fillMesh);
 		let outlineArrayNode = null, outlineLineNode = null;
 		let outlineWidthExpr = null, outlineOpacityExpr = null;
 		const outlineWidthRaw = fr.outlineWidth != null ? fr.outlineWidth : null;
@@ -7292,8 +7313,7 @@ function renderAnimatedCurve(el, view) {
 			outlineLineNode,
 			outlineWidthExpr,
 			outlineOpacityExpr,
-			outlineOpacityRaw,
-			frOpacity
+			outlineOpacityRaw
 		};
 	});
 	function evalBound(compiled, x, tSec) {
@@ -7463,9 +7483,9 @@ function renderAnimatedCurve(el, view) {
 		compiledFns: [cCurve],
 		_isAnimatedCurve: true
 	};
-	state.activeAnimExprs.push(animExprEntry);
-	const startTime = state.sceneStartTime;
-	state.activeAnimUpdaters.push({
+	animatedCurveState.activeAnimExprs.push(animExprEntry);
+	const startTime = animatedCurveState.sceneStartTime;
+	animatedCurveState.activeAnimUpdaters.push({
 		animState,
 		updateFrame(nowMs) {
 			const tSec = (nowMs - startTime) / 1e3;
@@ -7489,10 +7509,10 @@ function renderAnimatedCurve(el, view) {
 						}
 					} catch (_e) {}
 				}
-				if (opacityExpr) curveNode.set("opacity", evalExpr(opacityExpr, tSec) * (state.displayParams.lineOpacity || 1));
+				if (opacityExpr) curveNode.set("opacity", evalExpr(opacityExpr, tSec) * (animatedCurveState.displayParams.lineOpacity || 1));
 				for (const entry of fillEntries) {
 					updateFillMesh(entry, tSec, pts);
-					if (entry.frOpacityExpr) entry.fillMat.opacity = state.displayParams.planeOpacity * (evalExpr(entry.frOpacityExpr, tSec) / .5);
+					if (entry.frOpacityExpr) entry.fillMat.opacity = animatedCurveState.displayParams.planeOpacity * (evalExpr(entry.frOpacityExpr, tSec) / .5);
 					if (entry.outlineArrayNode) entry.outlineArrayNode.set("data", buildOutlinePts(entry, tSec, pts));
 					if (entry.outlineLineNode && entry.outlineWidthExpr) entry.outlineLineNode.set("width", evalExpr(entry.outlineWidthExpr, tSec));
 					if (entry.outlineLineNode && entry.outlineOpacityExpr) entry.outlineLineNode.set("opacity", evalExpr(entry.outlineOpacityExpr, tSec));
@@ -7509,8 +7529,15 @@ function renderAnimatedCurve(el, view) {
 	};
 }
 //#endregion
-//#region src/objects/index.js
+//#region src/objects/index.ts
 var objects_exports = /* @__PURE__ */ __exportAll({ renderElement: () => renderElement });
+/**
+* Dispatch one scene element to its renderer.
+*
+* Returns whatever the chosen renderer returns — a small descriptor object for
+* most types, `undefined` for the two that render purely for side effects
+* (`axis`, `grid`), and `null` when the type is unknown.
+*/
 function renderElement(el, view) {
 	switch (el.type) {
 		case "skybox": return renderSkybox(el);
