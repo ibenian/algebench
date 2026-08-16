@@ -22,6 +22,115 @@ import {
 
 const ID_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?\/[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
 
+/** One catalog row from GET /api/proofs. */
+export interface CatalogEntry {
+  id: string;
+  title?: string;
+  domain?: string;
+  goal?: string;
+  status?: string;
+}
+
+/** One step of a proof animation, as this page reads one. */
+export interface ProofStepData {
+  index?: number;
+  input_latex?: string;
+  latex?: string;
+  operation?: string;
+  justification?: string;
+  plain?: string;
+}
+
+/** A proof animation — the shape validateProofData() returns and ProofAnimator
+ *  consumes. Only the members this page touches are named. */
+export interface ProofData {
+  title?: string;
+  domain?: string;
+  goal?: string;
+  deeplink?: string;
+  steps: ProofStepData[];
+  terms?: Record<string, unknown>;
+}
+
+/** The `proof_from_prompt` expert request body. */
+export interface DeriveRequest {
+  prompt: string;
+  domain?: string;
+  documentation?: string;
+  start_latex?: string;
+}
+
+/** One turn of a proof chat thread (the wire shape POSTed to /api/proof-chat). */
+export interface ChatTurn {
+  role: string;
+  text: string;
+}
+
+/** An open proof tab: its tab button, its panel, and its animator. */
+interface ProofTab {
+  tab: HTMLDivElement;
+  panel: HTMLElement;
+  animator: ProofAnimator | null;
+}
+
+/**
+ * Every element this page looks up by id. Populated by main() (and
+ * setupSubmitModal); reads before that resolve to `undefined` and throw at the
+ * point of use, exactly as they did untyped.
+ */
+interface Els {
+  search: HTMLInputElement;
+  browse: HTMLElement;
+  count: HTMLElement;
+  empty: HTMLElement;
+  tabbar: HTMLElement;
+  panels: HTMLElement;
+  tabBrowse: HTMLElement;
+  panelBrowse: HTMLElement;
+  tabDerive: HTMLElement;
+  panelDerive: HTMLElement;
+  showReview: HTMLInputElement;
+  dDomain: HTMLSelectElement;
+  dDomainCustom: HTMLInputElement;
+  dDocBtn: HTMLElement;
+  dDocHint: HTMLElement;
+  dDocEditor: HTMLElement;
+  dDoc: HTMLTextAreaElement;
+  dDocCount: HTMLElement;
+  dRoot: HTMLElement;
+  dEmpty: HTMLElement;
+  dViewerBar: HTMLElement;
+  dViewerId: HTMLElement;
+  dJson: HTMLButtonElement;
+  dBasedOn: HTMLElement;
+  dEditing: HTMLElement;
+  dSubmit: HTMLButtonElement;
+  dLock: HTMLButtonElement;
+  dStatus: HTMLElement;
+  dLog: HTMLElement;
+  dBar: HTMLElement;
+  dPrompt: HTMLTextAreaElement;
+  dGo: HTMLButtonElement;
+  dChatInput: HTMLTextAreaElement;
+  dSend: HTMLButtonElement;
+  dContinue: HTMLButtonElement;
+  dContinueDeep: HTMLElement;
+  ctxBtn: HTMLButtonElement;
+  ctxPanel: HTMLElement;
+  ctxBody: HTMLElement;
+  subModal: HTMLElement;
+  subForm: HTMLElement;
+  subDone: HTMLElement;
+  subBased: HTMLElement;
+  subName: HTMLInputElement;
+  subHint: HTMLElement;
+  subAvail: HTMLElement;
+  subGo: HTMLButtonElement;
+  subDoneLink: HTMLAnchorElement;
+  subDoneMsg: HTMLElement;
+  subKey: HTMLElement;
+}
+
 const params = () => new URLSearchParams(location.search);
 
 /** Paint the on-load theme (?theme= > saved preference > dark). Theme helpers
@@ -36,14 +145,17 @@ async function awaitKatex() {
   return window.katex || null;
 }
 
-const els = {};
-let catalog = [];        // [{id, title, domain, goal}]
+// Filled in by main(); every field is assigned before anything reads it, so the
+// assertion here keeps the original "assume the element exists" crash semantics
+// rather than turning every access into an optional chain.
+const els = {} as Els;
+let catalog: CatalogEntry[] = [];        // [{id, title, domain, goal}]
 // Multi-tab: Browse (always present) + one tab per open proof. Each entry holds
 // its tab button, panel, and animator. `activeId` = null means the Browse tab.
-const openTabs = new Map();   // id -> { tab, panel, animator }
-let activeId = null;
+const openTabs = new Map<string, ProofTab>();   // id -> { tab, panel, animator }
+let activeId: string | null = null;
 
-function showError(container, msg) {
+function showError(container: HTMLElement, msg: string) {
   const div = document.createElement("div");
   div.className = "pa-error";
   div.textContent = msg;                 // textContent — never innerHTML
@@ -51,7 +163,7 @@ function showError(container, msg) {
 }
 
 /** Case-insensitive substring match over title/domain/goal/id. */
-function filterCatalog(q) {
+function filterCatalog(q: string) {
   q = q.trim().toLowerCase();
   if (!q) return catalog;
   const terms = q.split(/\s+/);
@@ -63,7 +175,7 @@ function filterCatalog(q) {
 
 /** Render the (filtered) browse list. Author-controlled markup only via DOM
  *  nodes; all catalog strings go through textContent. */
-function renderBrowse(list) {
+function renderBrowse(list: CatalogEntry[]) {
   els.browse.textContent = "";
   els.empty.hidden = list.length > 0;
   els.count.textContent = list.length
@@ -104,7 +216,7 @@ function renderBrowse(list) {
 }
 
 /** Focus a tab: null = Browse, "derive" = Derive workspace, else an open proof id. */
-function switchTo(target) {
+function switchTo(target: string | null) {
   activeId = target;
   els.tabBrowse.setAttribute("aria-selected", String(target === null));
   els.tabDerive.setAttribute("aria-selected", String(target === "derive"));
@@ -124,7 +236,7 @@ function switchTo(target) {
 }
 
 /** Close a proof tab: destroy its animator, remove tab+panel, focus a neighbour. */
-function closeProof(id) {
+function closeProof(id: string) {
   const t = openTabs.get(id);
   if (!t) return;
   try { t.animator && t.animator.destroy(); } catch (e) { /* best effort */ }
@@ -136,14 +248,14 @@ function closeProof(id) {
   openTabs.delete(id);
   if (wasActive) {
     const rest = [...openTabs.keys()];
-    switchTo(rest.length ? (rest[idx] || rest[rest.length - 1]) : null);
+    switchTo(rest.length ? (rest[idx] || rest[rest.length - 1]!) : null);
   } else {
     renderBrowse(filterCatalog(els.search.value));
   }
 }
 
 /** Open a proof in its own tab (or focus the existing tab if already open). */
-async function openProof(id) {
+async function openProof(id: string) {
   if (!ID_RE.test(id)) return;
   if (openTabs.has(id)) { switchTo(id); return; }   // already open → focus it
 
@@ -155,7 +267,7 @@ async function openProof(id) {
   tab.tabIndex = 0;
   const label = document.createElement("span");
   label.className = "tab-label";
-  label.textContent = id.split("/")[1];             // placeholder until title arrives
+  label.textContent = id.split("/")[1]!;            // placeholder until title arrives
   const x = document.createElement("button");
   x.type = "button"; x.className = "tab-x"; x.textContent = "✕";
   x.setAttribute("aria-label", `Close ${id}`);
@@ -219,8 +331,8 @@ async function openProof(id) {
   // Two columns like the Derive workspace: animation (+ app hand-off) on the
   // left, a proof-scoped chat on the right. `loadedProof` is filled after fetch;
   // the chat's getters read it (and the animator) lazily.
-  let loadedProof = null;
-  const entry = { tab, panel, animator: null };
+  let loadedProof: ProofData | null = null;
+  const entry: ProofTab = { tab, panel, animator: null };
   const chat = buildProofChat(() => loadedProof, () => entry.animator);
   const box = document.createElement("div");
   box.className = "derive-box";
@@ -261,32 +373,32 @@ async function openProof(id) {
     const resp = await fetch(`/api/proofs/item?id=${encodeURIComponent(id)}`, { cache: "no-store" });
     if (!resp.ok) throw new Error(resp.status === 404 ? "not found" : `error ${resp.status}`);
     const underReview = resp.headers.get("X-Proof-Status") === "under-review";
-    const data = validateProofData(await resp.json());
+    const data: ProofData = validateProofData(await resp.json());
     if (!openTabs.has(id)) return;                  // closed while loading
     loadedProof = data;
     reviewBadge.hidden = !underReview;
     keyEditBtn.hidden = !underReview;              // edit-by-key only while in review
     editBtn.disabled = false;                        // proof is loaded → editable
     jsonBtn.disabled = false;                         // JSON is available → viewable
-    label.textContent = data.title || id.split("/")[1];
+    label.textContent = data.title || id.split("/")[1]!;
     tab.title = data.title || id;
     entry.animator = new ProofAnimator(root, data, {
       katex: window.katex, liveTerms: true, enableTermAsk: true, enableExplore: true,
       paId: id,   // same-app explore/ask navigations carry ?pa=<id> so the animation travels
       // This proof now has its own chat — a term "Ask AI" flows into it (step-
       // aware), not the app. The app hand-off is the explicit button below.
-      onTermAsk: ({ message }) => chat.ask(message),
+      onTermAsk: ({ message }: { message: string }) => chat.ask(message),
       // Function Analysis has no local equivalent — hand off to the app, new tab.
-      onFunctionAnalysis: ({ latex, step }) => openFaInApp(data.deeplink, id, step, latex),
+      onFunctionAnalysis: ({ latex, step }: { latex: string; step?: number }) => openFaInApp(data.deeplink, id, step, latex),
     });
     setContinue(continueBtn, contDeep, data);       // reveal the app hand-off
   } catch (e) {
-    showError(root, `Could not load "${id}": ${e.message}`);
+    showError(root, `Could not load "${id}": ${(e as Error).message}`);
   }
 }
 
 /** The animator's current step index (0 = goal), or null if unavailable. */
-function animStep(anim) {
+function animStep(anim: ProofAnimator | null): number | null {
   return anim && typeof anim.current === "number" ? anim.current : null;
 }
 
@@ -294,7 +406,12 @@ function animStep(anim) {
  *  Carries the proof animation (`pa`) and the step the user is on (`pas`) so the
  *  app docks the same derivation at the same step. A proof's own `deeplink` may
  *  already pin these — if so we respect them and only fill what's missing. */
-function openInApp(message, deeplink, id, step) {
+function openInApp(
+  message: string,
+  deeplink: string | null | undefined,
+  id: string | null,
+  step: number | null | undefined,
+) {
   let u;
   try {
     u = new URL(deeplink || "/", location.origin);
@@ -318,8 +435,8 @@ function openInApp(message, deeplink, id, step) {
  *  forces `window.open` to return null even on success, so there'd be no way to
  *  tell "blocked" from "opened". The target is our own origin, so the opener
  *  reference it leaves behind is not a cross-origin concern. */
-function openAppTab(url) {
-  let w = null;
+function openAppTab(url: string) {
+  let w: Window | null = null;
   try { w = window.open(url, "_blank"); } catch (e) { w = null; }
   if (!w) location.assign(url);
 }
@@ -332,7 +449,12 @@ function openAppTab(url) {
  *  unsaved derivation has no `pa` and lands on the expression alone.
  *  A blocked popup falls back to this tab (openAppTab) — going somewhere the user
  *  didn't want beats a button that silently does nothing. */
-function openFaInApp(deeplink, id, step, latex) {
+function openFaInApp(
+  deeplink: string | null | undefined,
+  id: string | null,
+  step: number | null | undefined,
+  latex: string | null | undefined,
+) {
   const tex = String(latex || "").trim();
   if (!tex) return;
   let u;
@@ -358,7 +480,7 @@ function openFaInApp(deeplink, id, step, latex) {
 /** The embeddable /renderproof URL for a proof id, in the chosen theme. The
  *  origin is wherever this page is served, so the snippet is environment-correct
  *  (localhost in dev, the real host in prod). */
-function buildEmbedUrl(id, theme) {
+function buildEmbedUrl(id: string, theme: string) {
   const u = new URL("/renderproof", location.origin);
   u.searchParams.set("builtin", id);
   u.searchParams.set("theme", theme);          // explicit → deterministic embed
@@ -366,7 +488,7 @@ function buildEmbedUrl(id, theme) {
 }
 
 /** The copy-paste iframe snippet (+ optional auto-resize companion script). */
-function embedSnippet(url) {
+function embedSnippet(url: string) {
   const origin = new URL(url).origin;
   return `<iframe src="${url}" width="100%" height="600" style="border:0;background:transparent" loading="lazy" ` +
          `title="AlgeBench proof animation" data-algebench-embed></iframe>\n` +
@@ -377,7 +499,7 @@ function embedSnippet(url) {
 /** A throwaway in-browser mock host page, so the user can see the embed dropped
  *  into a real article. `url`/`theme` come from a validated id + allowlisted
  *  theme, so they're safe to interpolate. Ported from /renderproof. */
-function previewPageHtml(url, theme) {
+function previewPageHtml(url: string, theme: string) {
   const iframe = embedSnippet(url);
   const dark = "--bg:#12121c;--ink:#e5e7eb;--muted:#9ca3af;--rule:#2a2f45;--accent:#818cf8;--bar:#1a1a2e;";
   const light = "--bg:#fbfbfd;--ink:#1f2430;--muted:#5b6472;--rule:#e6e8ee;--accent:#4f46e5;--bar:#ffffff;";
@@ -431,16 +553,16 @@ function previewPageHtml(url, theme) {
 }
 
 // Module-level openers, wired once by setupModals() in main().
-let openJsonModal = () => {};    // (proof, id) → show the { } viewer
-let openEmbedModal = () => {};   // (id)        → show the < > embed dialog
+let openJsonModal: (proof: ProofData | null, id: string | null | undefined) => void = () => {};    // (proof, id) → show the { } viewer
+let openEmbedModal: (id: string) => void = () => {};   // (id)        → show the < > embed dialog
 
 /** Wire the two shared modals once: close (button / backdrop / Escape) and, for
  *  the embed dialog, the theme picker + Preview + Copy. Exposes the openers. */
 function setupModals() {
   // { } JSON viewer.
-  const jModal = document.getElementById("pa-json-modal");
-  const jTitle = document.getElementById("pa-json-title");
-  const jBody = document.getElementById("pa-json-body");
+  const jModal = document.getElementById("pa-json-modal")!;
+  const jTitle = document.getElementById("pa-json-title")!;
+  const jBody = document.getElementById("pa-json-body")!;
   // Held so Copy hands over exactly what is on screen — re-serializing could
   // drift from the rendered text, and reading it back out of the <pre> would
   // depend on the DOM staying a single text node.
@@ -456,15 +578,15 @@ function setupModals() {
     jModal.classList.add("open");
   };
   const jHide = () => jModal.classList.remove("open");
-  document.getElementById("pa-json-close").addEventListener("click", jHide);
+  document.getElementById("pa-json-close")!.addEventListener("click", jHide);
   jModal.addEventListener("click", (e) => { if (e.target === jModal) jHide(); });
 
   // Copy the whole proof JSON. Same two-step as the embed dialog: the async
   // clipboard API, falling back to a selection + execCommand where it is blocked
   // (insecure origin, or permission denied). The fallback needs a real focusable
   // node, so it selects the <pre> rather than an off-screen textarea.
-  const jCopied = document.getElementById("pa-json-copied");
-  document.getElementById("pa-json-copy").addEventListener("click", async () => {
+  const jCopied = document.getElementById("pa-json-copied")!;
+  document.getElementById("pa-json-copy")!.addEventListener("click", async () => {
     try {
       await navigator.clipboard.writeText(jText);
     } catch {
@@ -472,7 +594,7 @@ function setupModals() {
       if (pre && window.getSelection) {
         const range = document.createRange();
         range.selectNodeContents(pre);
-        const sel = window.getSelection();
+        const sel = window.getSelection()!;
         sel.removeAllRanges();
         sel.addRange(range);
         try { document.execCommand("copy"); } catch (e) { /* clipboard unavailable */ }
@@ -483,12 +605,12 @@ function setupModals() {
   });
 
   // < > embed dialog.
-  const eModal = document.getElementById("pa-embed-modal");
-  const eTitle = document.getElementById("pa-embed-title");
-  const code = document.getElementById("pa-embed-code");
-  const sel = document.getElementById("pa-theme");
-  const copied = document.getElementById("pa-copied");
-  let embedId = null;
+  const eModal = document.getElementById("pa-embed-modal")!;
+  const eTitle = document.getElementById("pa-embed-title")!;
+  const code = document.getElementById("pa-embed-code") as HTMLTextAreaElement;
+  const sel = document.getElementById("pa-theme") as HTMLSelectElement;
+  const copied = document.getElementById("pa-copied")!;
+  let embedId: string | null = null;
   const refresh = () => { if (embedId) code.value = embedSnippet(buildEmbedUrl(embedId, sel.value)); };
   openEmbedModal = (id) => {
     embedId = id;
@@ -498,10 +620,10 @@ function setupModals() {
     code.focus(); code.select();
   };
   const eHide = () => eModal.classList.remove("open");
-  document.getElementById("pa-embed-close").addEventListener("click", eHide);
+  document.getElementById("pa-embed-close")!.addEventListener("click", eHide);
   eModal.addEventListener("click", (e) => { if (e.target === eModal) eHide(); });
   sel.addEventListener("change", () => { refresh(); code.focus(); code.select(); });
-  document.getElementById("pa-preview").addEventListener("click", () => {
+  document.getElementById("pa-preview")!.addEventListener("click", () => {
     if (!embedId) return;
     const w = window.open("", "_blank");
     if (!w) return;                 // popup blocked
@@ -511,7 +633,7 @@ function setupModals() {
     w.document.write(previewPageHtml(buildEmbedUrl(embedId, sel.value), sel.value));
     w.document.close();
   });
-  document.getElementById("pa-copy").addEventListener("click", async () => {
+  document.getElementById("pa-copy")!.addEventListener("click", async () => {
     try {
       await navigator.clipboard.writeText(code.value);
     } catch {
@@ -530,14 +652,14 @@ function setupModals() {
 }
 
 // ── Derive workspace ────────────────────────────────────────────────────────
-let deriveAnimator = null;
-let deriveProof = null;        // the current derived proof (chat context)
-let deriveSourceId = null;     // published id an Edit-cloned proof came from
-let chatHistory = [];
+let deriveAnimator: ProofAnimator | null = null;
+let deriveProof: ProofData | null = null;        // the current derived proof (chat context)
+let deriveSourceId: string | null = null;     // published id an Edit-cloned proof came from
+let chatHistory: ChatTurn[] = [];
 
 // Interactive step editing (proof-edit-tool.js). Owns the editing lock, the
 // variant picker and undo; this module only supplies the wiring.
-let editTool = null;
+let editTool: ReturnType<typeof createProofEditTool> | null = null;
 // True while a variant is being chosen: the animator shows a CANDIDATE but
 // deriveProof is still the original, so actions that act on "the proof" are
 // gated to stop the user shipping the version they are not looking at.
@@ -545,11 +667,11 @@ let editPending = false;
 
 // Edit-by-key: when set, this Derive session updates the pending submission in
 // place ({id, secret}); Submit becomes Update and the secret rotates on save.
-let editingSubmission = null;
+let editingSubmission: { id: string; secret: string } | null = null;
 
 /** Enter/leave submission-edit mode: chip + Submit→Update relabel. */
-function setEditingSubmission(id, secret) {
-  editingSubmission = id ? { id, secret } : null;
+function setEditingSubmission(id: string | null, secret?: string) {
+  editingSubmission = id ? { id, secret: secret! } : null;
   if (els.dEditing) {
     els.dEditing.hidden = !editingSubmission;
     els.dEditing.textContent = editingSubmission ? `editing ${editingSubmission.id}` : "";
@@ -562,7 +684,7 @@ function setEditingSubmission(id, secret) {
 /** Show/clear the "based on <id>" provenance chip. The inherited id belongs to
  *  a published proof, so it can never be submitted under — the chip makes that
  *  visible; the name-availability check enforces it. */
-function setDeriveSource(id) {
+function setDeriveSource(id: string | null) {
   deriveSourceId = id || null;
   if (!els.dBasedOn) return;
   els.dBasedOn.hidden = !deriveSourceId;
@@ -594,37 +716,37 @@ function closeDocEditor() { els.dDocEditor.hidden = true; refreshDocHint(); }
 
 // ── rendering (markdown + KaTeX), self-contained (no app-module deps) ─────────
 const _hasRender = () => typeof window.katex !== "undefined";
-const _escapeHtml = (s) => String(s).replace(/[&<>"']/g,
-  (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-function _katex(tex, display) {
+const _escapeHtml = (s: unknown) => String(s).replace(/[&<>"']/g,
+  (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
+function _katex(tex: string, display: boolean) {
   try { return window.katex.renderToString(tex, { throwOnError: false, strict: false, displayMode: display }); }
   catch (e) { return _escapeHtml(tex); }
 }
 /** Pull $…$/$$…$$ out to placeholders (so they survive escaping/markdown),
  *  run `body` on the rest, then render the math back with KaTeX. */
-function _withMath(text, body) {
-  const blocks = [];
-  const stash = (tex, display) => { blocks.push([String(tex).trim(), display]); return '%%M' + (blocks.length - 1) + '%%'; };
+function _withMath(text: unknown, body: (s: string) => string) {
+  const blocks: [string, boolean][] = [];
+  const stash = (tex: string, display: boolean) => { blocks.push([String(tex).trim(), display]); return '%%M' + (blocks.length - 1) + '%%'; };
   let s = String(text)
     .replace(/\$\$([\s\S]+?)\$\$/g, (m, tex) => stash(tex, true))
     .replace(/\$([^$\n]+)\$/g, (m, tex) => stash(tex, false));
   s = body(s);
-  return s.replace(/%%M(\d+)%%/g, (m, i) => _katex(blocks[+i][0], blocks[+i][1]));
+  return s.replace(/%%M(\d+)%%/g, (m, i) => _katex(blocks[+i]![0], blocks[+i]![1]));
 }
 /** Untrusted text (user input / status): escape HTML, keep newlines, render math. */
-function renderSafe(text) {
+function renderSafe(text: unknown) {
   return _withMath(text, (s) => _escapeHtml(s).replace(/\n/g, '<br>'));
 }
 /** Assistant markdown (the proof-chat reply): markdown + math. The reply is LM
  *  output — untrusted — so escape raw HTML BEFORE markdown so embedded tags
  *  (`<img onerror=…>`, etc.) render as inert text; markdown syntax has no
  *  `<>&`, so formatting still works, and math is already stashed by _withMath. */
-function renderReply(text) {
+function renderReply(text: unknown) {
   if (typeof window.marked === 'undefined') return null;   // fall back to plain text
-  return _withMath(text, (s) => window.marked.parse(_escapeHtml(s)));
+  return _withMath(text, (s) => window.marked.parse(_escapeHtml(s)) as string);
 }
 
-function setStatus(text, cls) {
+function setStatus(text: string, cls?: string) {
   els.dStatus.hidden = !text;
   els.dStatus.className = `derive-status ${cls || ""}`;
   if (text && cls === "pending") {
@@ -641,7 +763,7 @@ function setStatus(text, cls) {
 /** Append a chat bubble (wrapped with a person/bot avatar) to a log (defaults to
  *  the Derive workspace log); returns the ROW so a "pending" one can be removed.
  *  User text is escaped + math-rendered; assistant text is markdown + math. */
-function addBubble(role, text, cls, logEl) {
+function addBubble(role: string, text: string, cls?: string, logEl?: HTMLElement) {
   const log = logEl || els.dLog;
   const isUser = role === "user";
   const b = document.createElement("div");
@@ -672,17 +794,17 @@ function addBubble(role, text, cls, logEl) {
 // ── chat column resizing (draggable splitter, remembered across chats) ───────
 const CHAT_W_KEY = "proveChatW";
 const CHAT_W_MIN = 300, CHAT_W_MAX = 680, CHAT_W_STEP = 24;
-const _clampChatW = (px) => Math.max(CHAT_W_MIN, Math.min(CHAT_W_MAX, px));
+const _clampChatW = (px: number) => Math.max(CHAT_W_MIN, Math.min(CHAT_W_MAX, px));
 
 /** Persist the chat width — localStorage can throw (blocked storage / privacy). */
-function _storeChatW(px) {
+function _storeChatW(px: number) {
   try { localStorage.setItem(CHAT_W_KEY, String(px)); } catch (e) { /* blocked storage */ }
 }
 
 /** Apply the remembered chat width to a `.derive-cols` element (the --chat-w var).
  *  Guarded: `localStorage.getItem` can throw a SecurityError in blocked-storage /
  *  privacy modes, which would otherwise abort page init. */
-function applyStoredChatW(colsEl) {
+function applyStoredChatW(colsEl: HTMLElement | null) {
   if (!colsEl) return;
   let raw = "";
   try { raw = localStorage.getItem(CHAT_W_KEY) || ""; } catch (e) { return; }
@@ -693,7 +815,7 @@ function applyStoredChatW(colsEl) {
 /** Wire a `.col-resizer` to drag- OR keyboard-resize the chat column of its
  *  `.derive-cols`. Width is clamped [300,680] and persisted so all chats (Derive
  *  + every opened proof) share the preference. */
-function wireColResizer(resizer, colsEl) {
+function wireColResizer(resizer: HTMLElement | null, colsEl: HTMLElement | null) {
   if (!resizer || !colsEl) return;
   const curW = () => parseInt(getComputedStyle(colsEl).getPropertyValue("--chat-w"), 10) || 360;
   // Keyboard-accessible slider semantics (focusable + arrow-adjustable).
@@ -701,7 +823,7 @@ function wireColResizer(resizer, colsEl) {
   resizer.setAttribute("aria-label", "Resize chat width");
   resizer.setAttribute("aria-valuemin", String(CHAT_W_MIN));
   resizer.setAttribute("aria-valuemax", String(CHAT_W_MAX));
-  const setW = (px, persist) => {
+  const setW = (px: number, persist: boolean) => {
     const w = _clampChatW(px);
     colsEl.style.setProperty("--chat-w", w + "px");
     resizer.setAttribute("aria-valuenow", String(w));
@@ -711,7 +833,7 @@ function wireColResizer(resizer, colsEl) {
   setW(curW(), false);   // seed aria-valuenow
 
   let startX = 0, startW = 0, dragging = false;
-  const onMove = (e) => { if (dragging) setW(startW - (e.clientX - startX), false); };
+  const onMove = (e: PointerEvent) => { if (dragging) setW(startW - (e.clientX - startX), false); };
   const onUp = () => {
     if (!dragging) return;
     dragging = false; resizer.classList.remove("dragging");
@@ -730,7 +852,7 @@ function wireColResizer(resizer, colsEl) {
   });
   // Keyboard: ←/↑ widen the chat, →/↓ narrow it; Home/End to the limits.
   resizer.addEventListener("keydown", (e) => {
-    let w;
+    let w: number;
     if (e.key === "ArrowLeft" || e.key === "ArrowUp") w = curW() + CHAT_W_STEP;
     else if (e.key === "ArrowRight" || e.key === "ArrowDown") w = curW() - CHAT_W_STEP;
     else if (e.key === "End") w = CHAT_W_MAX;
@@ -744,8 +866,8 @@ function wireColResizer(resizer, colsEl) {
 /** A self-contained proof-scoped chat column (head + log + input + Send), bound
  *  to a proof and its animator via getters. Used by OPENED proofs (the Derive
  *  workspace keeps its own inline chat). Returns { wrap, ask, history }. */
-function buildProofChat(getProof, getAnimator) {
-  const history = [];
+function buildProofChat(getProof: () => ProofData | null, getAnimator: () => ProofAnimator | null) {
+  const history: ChatTurn[] = [];
   const wrap = document.createElement("div");
   wrap.className = "derive-chat";
   const head = document.createElement("div");
@@ -783,7 +905,7 @@ function buildProofChat(getProof, getAnimator) {
         }),
       });
       if (!resp.ok) throw new Error(`chat error ${resp.status}`);
-      const data = await resp.json();
+      const data: { answer?: string } = await resp.json();
       pending.remove();
       const reply = (data && data.answer) || "(no response)";
       addBubble("bot", reply, "", log);
@@ -800,7 +922,7 @@ function buildProofChat(getProof, getAnimator) {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); doSend(); }
   });
   /** Drop a message into the input and send it (used by a term's "Ask AI"). */
-  function ask(message) {
+  function ask(message: string) {
     const m = String(message || "").trim();
     if (!m) return;
     input.value = m;
@@ -810,7 +932,7 @@ function buildProofChat(getProof, getAnimator) {
 }
 
 /** Reveal an app hand-off button and surface the proof's deep link if it has one. */
-function setContinue(btnEl, deepEl, proof) {
+function setContinue(btnEl: HTMLElement, deepEl: HTMLElement, proof: ProofData | null) {
   btnEl.hidden = false;
   const deep = proof && proof.deeplink;
   if (deep) {
@@ -826,7 +948,12 @@ function setContinue(btnEl, deepEl, proof) {
 
 /** Open the main app to continue: carry the proof (deep link or ?pa=<id>) and
  *  seed the app chat with the last thing the user asked here. */
-function continueInAppWith(proof, history, id, step) {
+function continueInAppWith(
+  proof: ProofData | null,
+  history: ChatTurn[],
+  id: string | null,
+  step: number | null,
+) {
   if (!proof) return;
   const lastUser = [...history].reverse().find((m) => m.role === "user");
   const seed = (lastUser && lastUser.text)
@@ -893,7 +1020,7 @@ function syncLockButton() {
  *  the chat input is locked so the user can't fire another request mid-choice,
  *  and Submit/Rederive are disabled because they'd act on deriveProof — the
  *  version the user is NOT looking at while previewing a candidate. */
-function setEditPending(pending) {
+function setEditPending(pending: boolean) {
   editPending = !!pending;
   if (els.dSubmit) els.dSubmit.disabled = editPending;
   if (els.dGo) els.dGo.disabled = editPending;
@@ -912,20 +1039,20 @@ function initEditTool() {
     getProof: () => deriveProof,
     getCurrentStep: () => (deriveAnimator && typeof deriveAnimator.current === "number")
       ? deriveAnimator.current : 0,
-    onMount: (proof, startStep) => mountAnimator(proof, startStep),
+    onMount: (proof: ProofData, startStep: number) => mountAnimator(proof, startStep),
     // syncViewerBar AFTER the assignment, not before: the preview mount ran
     // while `deriveProof` was still the empty shell, so { } and Submit are
     // hidden. Committing the first step is what earns them.
-    onCommit: (proof) => { deriveProof = proof; syncViewerBar(); },
+    onCommit: (proof: ProofData) => { deriveProof = proof; syncViewerBar(); },
     setEditPending,
     // Variant notes quote step captions that may contain $…$ math. renderSafe
     // escapes HTML and renders the math with KaTeX (null if KaTeX isn't ready).
-    renderMath: (text) => (_hasRender() ? renderSafe(text) : null),
-    addBubble: (role, text) => { addBubble(role, text); chatHistory.push({ role, text }); },
+    renderMath: (text: string) => (_hasRender() ? renderSafe(text) : null),
+    addBubble: (role: string, text: string) => { addBubble(role, text); chatHistory.push({ role, text }); },
     // The picker is part of the conversation, not a floating toolbar. Mount it as
     // a bot message in the chat thread so the question sits where the user is
     // looking and reading; selecting still previews in the animator below.
-    mountBar: (bar) => {
+    mountBar: (bar: HTMLElement) => {
       const avatar = document.createElement("div");
       avatar.className = "msg-avatar";
       avatar.innerHTML = AI_ICON;
@@ -935,7 +1062,13 @@ function initEditTool() {
       els.dLog.appendChild(row);
       els.dLog.scrollTop = els.dLog.scrollHeight;
     },
-  });
+    // proof-edit-tool.js is still JavaScript, and its JSDoc `@param deps.*`
+    // block documents only six of the eight dependencies it destructures —
+    // `renderMath` and `mountBar` are missing, so tsc reads them as excess
+    // properties. Fixing the doc block belongs to that file's own conversion
+    // (it is owned by another migration PR), so assert here rather than reach
+    // across and edit it.
+  } as Parameters<typeof createProofEditTool>[0]);
   syncLockButton();
 }
 
@@ -945,7 +1078,7 @@ function initEditTool() {
  *  `startStep` keeps the user where they were. Used both for a fresh derivation
  *  and to flip between edit variants, which is why the chat reset lives in
  *  showInDerive rather than here. */
-function mountAnimator(proof, startStep) {
+function mountAnimator(proof: ProofData, startStep?: number) {
   // Carry the user's runtime toggles (stacked / sequential / speed) across the
   // destroy+reconstruct — previewing an edit variant must not reset them.
   const keep = deriveAnimator
@@ -958,10 +1091,10 @@ function mountAnimator(proof, startStep) {
     katex: window.katex, liveTerms: true, enableTermAsk: true, enableExplore: true,
     startStep: typeof startStep === "number" ? startStep : 0,
     // A term "Ask AI" goes to the LOCAL step-aware chat, not the app.
-    onTermAsk: ({ message }) => askInChat(message),
+    onTermAsk: ({ message }: { message: string }) => askInChat(message),
     // An in-progress derivation isn't saved, so there's no `pa` to carry — the
     // app gets the expression and analyzes it without proof context.
-    onFunctionAnalysis: ({ latex, step }) => openFaInApp(proof && proof.deeplink, null, step, latex),
+    onFunctionAnalysis: ({ latex, step }: { latex: string; step?: number }) => openFaInApp(proof && proof.deeplink, null, step, latex),
     ...keep,
   });
   els.dGo.textContent = "Rederive";              // a derivation now exists
@@ -972,7 +1105,7 @@ function mountAnimator(proof, startStep) {
 /** Render a proof into the Derive workspace: fresh chat, live animator (term
  *  Ask-AI → local chat), Rederive button, app hand-off. Shared by runDerive
  *  (after deriving) and Edit (cloning an opened proof in to tweak). */
-function showInDerive(proof) {
+function showInDerive(proof: ProofData) {
   deriveProof = proof;
   chatHistory = [];                              // fresh thread, scoped to this proof
   if (els.dLog) els.dLog.textContent = "";
@@ -987,9 +1120,9 @@ function showInDerive(proof) {
 /** "Edit" an opened proof: clone it into the Derive workspace as a fresh, unsaved
  *  working copy (nothing is written). The user can chat to refine, or edit the
  *  prompt and Rederive. The original tab is untouched. */
-function editInDerive(proof, id) {
+function editInDerive(proof: ProofData | null, id: string) {
   if (!proof) return;
-  const clone = JSON.parse(JSON.stringify(proof));   // never mutate the opened proof
+  const clone: ProofData = JSON.parse(JSON.stringify(proof));   // never mutate the opened proof
   switchTo("derive");
   showInDerive(clone);
   setDeriveSource(id);                               // provenance chip (inherited id)
@@ -1004,12 +1137,12 @@ function editInDerive(proof, id) {
  *  by fetching the source package (prompt + documentation), then load the proof
  *  into Derive in edit mode — Submit becomes Update (PUT, key rotates). Only
  *  offered while the proof is under review; approved proofs can only be cloned. */
-async function editSubmissionWithKey(proof, id) {
+async function editSubmissionWithKey(proof: ProofData | null, id: string) {
   if (!proof) return;
   const key = (window.prompt(
     `Paste the edit key for ${id}\n(shown once when it was submitted or last updated):`) || "").trim();
   if (!key) return;
-  let src;
+  let src: { prompt?: string; documentation?: string } | undefined;
   try {
     const resp = await fetch(
       `/api/proofs/source?id=${encodeURIComponent(id)}&secret=${encodeURIComponent(key)}`,
@@ -1032,7 +1165,7 @@ async function editSubmissionWithKey(proof, id) {
     window.alert("Couldn't verify the key — please try again.");
     return;
   }
-  const clone = JSON.parse(JSON.stringify(proof));
+  const clone: ProofData = JSON.parse(JSON.stringify(proof));
   switchTo("derive");
   showInDerive(clone);
   setDeriveSource(null);
@@ -1053,7 +1186,7 @@ async function editSubmissionWithKey(proof, id) {
 function applyDeriveDraft() {
   const raw = document.body.dataset.deriveDraft;
   if (!raw) return;
-  let draft;
+  let draft: { prompt?: unknown; domain?: unknown; doc?: unknown } | undefined;
   try { draft = JSON.parse(raw); } catch (e) { return; }
   if (!draft || typeof draft !== "object") return;
 
@@ -1091,31 +1224,31 @@ function applyDeriveDraft() {
  *  to it. That is what makes appending sound: the new chain's step 0 IS our last
  *  step, so every step after it was CAS-verified against the predecessor it
  *  actually lands on, and splicing needs no re-grading — only renumbering. */
-async function runChatDerive(req) {
+async function runChatDerive(req: { prompt?: string; mode?: string }) {
   const prompt = String((req && req.prompt) || "").trim();
   if (!prompt) return false;
   const steps = (deriveProof && deriveProof.steps) || [];
   const appending = req.mode === "continue" && steps.length > 0;
   // Into the THREAD, not just the log — the agent must see what happened on the
   // next turn, or "add another step" arrives with no idea a derivation just ran.
-  const say = (text, cls) => { addBubble("bot", text, cls); chatHistory.push({ role: "bot", text }); };
+  const say = (text: string, cls?: string) => { addBubble("bot", text, cls); chatHistory.push({ role: "bot", text }); };
 
   els.dGo.disabled = true;
   setStatus(appending
     ? "Continuing the derivation… (CAS-verifying each step)"
     : "Deriving… (CAS-verifying each step)", "pending");
 
-  const body = { prompt };
+  const body: DeriveRequest = { prompt };
   const domain = effectiveDomain();
   const documentation = els.dDoc.value.trim();
   if (domain) body.domain = domain;
   if (documentation) body.documentation = documentation;
-  if (appending) body.start_latex = steps[steps.length - 1].input_latex || "";
+  if (appending) body.start_latex = steps[steps.length - 1]!.input_latex || "";
 
   try {
-    const data = await invokeExpert("proof_from_prompt", body, { timeoutMs: DERIVE_TIMEOUT_MS });
+    const data: { error?: string } = await invokeExpert("proof_from_prompt", body, { timeoutMs: DERIVE_TIMEOUT_MS });
     if (data && data.error) { setStatus(data.error, "err"); say(data.error, "err"); return true; }
-    const derived = validateProofData(data);
+    const derived: ProofData = validateProofData(data);
 
     if (!appending) {
       showInDerive(derived);                       // same as the Derive box
@@ -1137,7 +1270,7 @@ async function runChatDerive(req) {
     const merged = {
       ...deriveProof,
       steps: [...steps, ...added].map((s, i) => ({ ...s, index: i })),
-      terms: { ...(deriveProof.terms || {}), ...(derived.terms || {}) },
+      terms: { ...(deriveProof!.terms || {}), ...(derived.terms || {}) },
     };
     deriveProof = validateProofData(merged);       // same trust gate as a fresh derive
     if (editTool) editTool.reset();                // stale undo history / preview
@@ -1147,7 +1280,7 @@ async function runChatDerive(req) {
     say(`Added ${added.length} step(s) to the derivation.`);
     return true;
   } catch (e) {
-    const msg = (e instanceof ExpertError ? e.message : (e && e.message)) || "Derivation failed.";
+    const msg = (e instanceof ExpertError ? e.message : (e ? (e as Error).message : undefined)) || "Derivation failed.";
     setStatus(msg, "err");
     say(msg, "err");
     return true;
@@ -1166,15 +1299,15 @@ async function runDerive() {
   // shown strictly when a proof box exists: revealed on the first success below,
   // and never cleared (there's no path that empties the box).
 
-  const body = { prompt };
+  const body: DeriveRequest = { prompt };
   const domain = effectiveDomain();
   const documentation = els.dDoc.value.trim();
   if (domain) body.domain = domain;
   if (documentation) body.documentation = documentation;
   try {
-    const data = await invokeExpert("proof_from_prompt", body, { timeoutMs: DERIVE_TIMEOUT_MS });
+    const data: { error?: string } = await invokeExpert("proof_from_prompt", body, { timeoutMs: DERIVE_TIMEOUT_MS });
     if (data && data.error) { setStatus(data.error, "err"); return; }
-    const proof = validateProofData(data);
+    const proof: ProofData = validateProofData(data);
     showInDerive(proof);                           // render + fresh chat + hand-off
     setDeriveSource(null);                         // fresh derivation — no inherited id
     // The title is "Deriving <target> from <start>"; strip the leading verb so
@@ -1182,10 +1315,17 @@ async function runDerive() {
     const shown = (proof.title || "proof").replace(/^Deriving\s+/i, "");
     setStatus(`Derived ${shown} — ${proof.steps.length} steps.`, "ok");
   } catch (e) {
-    setStatus((e instanceof ExpertError ? e.message : (e && e.message)) || "Derivation failed.", "err");
+    setStatus((e instanceof ExpertError ? e.message : (e ? (e as Error).message : undefined)) || "Derivation failed.", "err");
   } finally {
     els.dGo.disabled = false;
   }
+}
+
+/** A /api/proof-chat reply: the prose answer, plus at most one tool payload
+ *  keyed by the tool's own name (see CHAT_ACTIONS). */
+export interface ChatReply {
+  answer?: string;
+  [tool: string]: unknown;
 }
 
 /** The payload the proof chat sends: the thread + the proof + the step in view. */
@@ -1208,7 +1348,7 @@ function chatBody() {
 
 /** A term's "Ask AI" now flows into the LOCAL step-aware chat (we have one here),
  *  not the app. Drops the question in the input and sends it. */
-function askInChat(message) {
+function askInChat(message: string) {
   const m = String(message || "").trim();
   if (!m) return;
   els.dChatInput.value = m;
@@ -1218,7 +1358,7 @@ function askInChat(message) {
 /** Reveal the explicit "Continue in the main app" hand-off, and surface the
  *  proof's deep link when it has one (built-ins / saved proofs do; a fresh,
  *  unsaved derivation does not — then only the chat context carries over). */
-function showContinue(proof) {
+function showContinue(proof: ProofData | null) {
   setContinue(els.dContinue, els.dContinueDeep, proof);
 }
 
@@ -1239,7 +1379,10 @@ async function showCtx() {
       body: JSON.stringify(chatBody()),
     });
     if (!resp.ok) throw new Error(`ctx error ${resp.status}`);
-    const d = await resp.json();
+    const d: {
+      model?: string; charCount?: number; currentStep?: number | null;
+      contents?: ChatTurn[]; systemPrompt?: string;
+    } = await resp.json();
     const meta = `model: ${d.model} · system prompt: ${d.charCount} chars · currentStep: ${d.currentStep ?? "—"}`;
     const contents = (d.contents || []).map((m) => `${m.role}: ${m.text}`).join("\n\n") || "(no turns yet)";
     els.ctxBody.innerHTML =
@@ -1248,7 +1391,7 @@ async function showCtx() {
       `<h4>Contents (thread)</h4><pre>${_escapeHtml(contents)}</pre>`;
   } catch (e) {
     els.ctxBody.innerHTML =
-      `<div class="ctx-meta">Couldn't load context (${_escapeHtml(String((e && e.message) || e))}).</div>`;
+      `<div class="ctx-meta">Couldn't load context (${_escapeHtml(String((e ? (e as Error).message : undefined) || e))}).</div>`;
   }
 }
 
@@ -1271,7 +1414,15 @@ const CHAT_TIMEOUT_MS = 120000;
 //
 // `blocking` marks work that outlives the request: Send stays disabled for its
 // duration so a second long job cannot be queued behind it.
-const CHAT_ACTIONS = [
+/** One row of the tool table below. `payload` arrives as the raw JSON value the
+ *  server sent under `tool`, so each row narrows it itself. */
+interface ChatAction {
+  tool: string;
+  blocking: boolean;
+  run(payload: unknown, data: ChatReply): boolean | Promise<boolean>;
+}
+
+const CHAT_ACTIONS: ChatAction[] = [
   {
     tool: "edit_step",
     // Already done and CAS-checked server-side — the variants rode back on this
@@ -1284,7 +1435,7 @@ const CHAT_ACTIONS = [
     // NOT done yet: a derivation outlives a chat turn, so the server handed the
     // request over and it runs here on the Derive box's own path.
     blocking: true,
-    run: (payload) => runChatDerive(payload),
+    run: (payload) => runChatDerive(payload as { prompt?: string; mode?: string }),
   },
 ];
 
@@ -1292,7 +1443,7 @@ const CHAT_ACTIONS = [
  *
  *  The server sends at most one, but this does not assume it — each action whose
  *  key is present runs, in table order. */
-async function runChatActions(data) {
+async function runChatActions(data: ChatReply) {
   if (!data) return false;
   let acted = false;
   for (const action of CHAT_ACTIONS) {
@@ -1336,7 +1487,7 @@ async function sendChat() {
     // wedged one must not leave the reader watching a spinner forever.
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), CHAT_TIMEOUT_MS);
-    let resp;
+    let resp: Response;
     try {
       resp = await fetch("/api/proof-chat", {
         method: "POST",
@@ -1348,7 +1499,7 @@ async function sendChat() {
       clearTimeout(timer);
     }
     if (!resp.ok) throw new Error(`chat error ${resp.status}`);
-    const data = await resp.json();
+    const data: ChatReply = await resp.json();
     pending.remove();
     const reply = ((data && data.answer) || "").trim();
     if (reply) {
@@ -1359,7 +1510,7 @@ async function sendChat() {
     if (!reply && !acted) addBubble("bot", "(no response)");
   } catch (e) {
     pending.remove();
-    addBubble("bot", e && e.name === "AbortError"
+    addBubble("bot", e && (e as Error).name === "AbortError"
       ? "That took too long and was stopped — try again, or a simpler operation."
       : "Chat is unavailable right now.", "err");
   } finally {
@@ -1375,10 +1526,10 @@ async function sendChat() {
 // then POSTs the package {proof, prompt, documentation} to
 // /api/proof-submissions and shows a thank-you with the direct link.
 let submitAvailable = false;   // the last checked name is claimable
-let submitCheckedId = null;    // the normalized id that check was for
-let subCheckTimer = null;
+let submitCheckedId: string | null = null;    // the normalized id that check was for
+let subCheckTimer: number | null = null;
 
-function setAvail(text, cls) {
+function setAvail(text: string, cls?: string) {
   els.subAvail.textContent = text;
   els.subAvail.className = `sub-avail ${cls || ""}`;
 }
@@ -1451,7 +1602,7 @@ function checkSubmitName() {
   // showing an error underneath it. Any edit now disables until re-validated.
   submitAvailable = false;
   if (els.subGo) els.subGo.disabled = true;
-  clearTimeout(subCheckTimer);
+  clearTimeout(subCheckTimer!);
   subCheckTimer = setTimeout(doCheckSubmitName, 300);   // debounce keystrokes
 }
 
@@ -1480,7 +1631,7 @@ async function doCheckSubmitName() {
   try {
     const resp = await fetch(
       `/api/proofs/name-available?name=${encodeURIComponent(raw)}`, { cache: "no-store" });
-    const d = await resp.json();
+    const d: { available?: boolean; id?: string; reason?: string } = await resp.json();
     if (els.subName.value.trim().toLowerCase() !== raw) return;   // stale — user kept typing
     if (d.available) {
       submitAvailable = true; submitCheckedId = d.id || raw;
@@ -1514,13 +1665,13 @@ async function doSubmit() {
   };
   try {
     const url = updating
-      ? `/api/proof-submissions?secret=${encodeURIComponent(editingSubmission.secret)}`
+      ? `/api/proof-submissions?secret=${encodeURIComponent(editingSubmission!.secret)}`
       : "/api/proof-submissions";
     const resp = await fetch(url, {
       method: updating ? "PUT" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        id: updating ? editingSubmission.id : submitCheckedId,
+        id: updating ? editingSubmission!.id : submitCheckedId,
         data: deriveProof,
         source,
       }),
@@ -1536,7 +1687,7 @@ async function doSubmit() {
       return;
     }
     if (!resp.ok) throw new Error(`error ${resp.status}`);
-    const d = await resp.json();
+    const d: { id: string; secret: string } = await resp.json();
     // Hold the (new) key so this session can keep editing without re-entering it.
     setEditingSubmission(d.id, d.secret);
     els.subForm.hidden = true;
@@ -1560,26 +1711,26 @@ async function doSubmit() {
 
 /** Wire the submit dialog once (open/close, live name check, submit). */
 function setupSubmitModal() {
-  els.subModal = document.getElementById("pa-submit-modal");
-  els.subForm = document.getElementById("sub-form");
-  els.subDone = document.getElementById("sub-done");
-  els.subBased = document.getElementById("sub-based");
-  els.subName = document.getElementById("sub-name");
-  els.subHint = document.getElementById("sub-hint");
-  els.subAvail = document.getElementById("sub-avail");
-  els.subGo = document.getElementById("sub-go");
-  els.subDoneLink = document.getElementById("sub-done-link");
-  els.subDoneMsg = document.getElementById("sub-done-msg");
-  els.subKey = document.getElementById("sub-key");
-  document.getElementById("sub-key-copy").addEventListener("click", async () => {
+  els.subModal = document.getElementById("pa-submit-modal")!;
+  els.subForm = document.getElementById("sub-form")!;
+  els.subDone = document.getElementById("sub-done")!;
+  els.subBased = document.getElementById("sub-based")!;
+  els.subName = document.getElementById("sub-name") as HTMLInputElement;
+  els.subHint = document.getElementById("sub-hint")!;
+  els.subAvail = document.getElementById("sub-avail")!;
+  els.subGo = document.getElementById("sub-go") as HTMLButtonElement;
+  els.subDoneLink = document.getElementById("sub-done-link") as HTMLAnchorElement;
+  els.subDoneMsg = document.getElementById("sub-done-msg")!;
+  els.subKey = document.getElementById("sub-key")!;
+  document.getElementById("sub-key-copy")!.addEventListener("click", async () => {
     const key = els.subKey.textContent;
     if (!key) return;
     try { await navigator.clipboard.writeText(key); } catch (e) { /* blocked clipboard */ }
   });
   const hide = () => els.subModal.classList.remove("open");
-  document.getElementById("sub-close").addEventListener("click", hide);
-  document.getElementById("sub-cancel").addEventListener("click", hide);
-  document.getElementById("sub-done-close").addEventListener("click", hide);
+  document.getElementById("sub-close")!.addEventListener("click", hide);
+  document.getElementById("sub-cancel")!.addEventListener("click", hide);
+  document.getElementById("sub-done-close")!.addEventListener("click", hide);
   els.subModal.addEventListener("click", (e) => { if (e.target === els.subModal) hide(); });
   window.addEventListener("keydown", (e) => { if (e.key === "Escape") hide(); });
   els.subName.addEventListener("input", checkSubmitName);
@@ -1591,7 +1742,7 @@ function setupSubmitModal() {
 
 /** Fetch the catalog — optionally including pending submissions (the Browse
  *  "show proofs under review" opt-in; each such entry is status-tagged). */
-async function loadCatalog(includeSubmissions) {
+async function loadCatalog(includeSubmissions: boolean) {
   const url = includeSubmissions ? "/api/proofs?includeSubmissions=1" : "/api/proofs";
   const resp = await fetch(url, { cache: "no-store" });
   if (!resp.ok) throw new Error(`catalog error ${resp.status}`);
@@ -1604,52 +1755,52 @@ async function main() {
   const repaintToggle = wireThemeToggle(document.getElementById("theme-toggle"));
   matchMedia("(prefers-color-scheme: dark)")
     .addEventListener("change", () => { paintTheme(); repaintToggle(); });
-  els.search = document.getElementById("search");
-  els.browse = document.getElementById("browse");
-  els.count = document.getElementById("count");
-  els.empty = document.getElementById("empty");
-  els.tabbar = document.getElementById("tabbar");
-  els.panels = document.getElementById("panels");
-  els.tabBrowse = document.getElementById("tab-browse");
-  els.panelBrowse = document.getElementById("panel-browse");
+  els.search = document.getElementById("search") as HTMLInputElement;
+  els.browse = document.getElementById("browse")!;
+  els.count = document.getElementById("count")!;
+  els.empty = document.getElementById("empty")!;
+  els.tabbar = document.getElementById("tabbar")!;
+  els.panels = document.getElementById("panels")!;
+  els.tabBrowse = document.getElementById("tab-browse")!;
+  els.panelBrowse = document.getElementById("panel-browse")!;
   els.tabBrowse.addEventListener("click", () => switchTo(null));
   setupModals();                    // shared { } JSON + < > embed dialogs
   setupSubmitModal();               // submit-for-review dialog
 
   // Derive workspace
-  els.tabDerive = document.getElementById("tab-derive");
-  els.panelDerive = document.getElementById("panel-derive");
-  els.dDomain = document.getElementById("d-domain");
-  els.dDomainCustom = document.getElementById("d-domain-custom");
-  els.dDocBtn = document.getElementById("d-doc-btn");
-  els.dDocHint = document.getElementById("d-doc-hint");
-  els.dDocEditor = document.getElementById("d-doc-editor");
-  els.dDoc = document.getElementById("d-doc");
-  els.dDocCount = document.getElementById("d-doc-count");
-  els.dRoot = document.getElementById("d-root");
-  els.dEmpty = document.getElementById("d-empty");
+  els.tabDerive = document.getElementById("tab-derive")!;
+  els.panelDerive = document.getElementById("panel-derive")!;
+  els.dDomain = document.getElementById("d-domain") as HTMLSelectElement;
+  els.dDomainCustom = document.getElementById("d-domain-custom") as HTMLInputElement;
+  els.dDocBtn = document.getElementById("d-doc-btn")!;
+  els.dDocHint = document.getElementById("d-doc-hint")!;
+  els.dDocEditor = document.getElementById("d-doc-editor")!;
+  els.dDoc = document.getElementById("d-doc") as HTMLTextAreaElement;
+  els.dDocCount = document.getElementById("d-doc-count")!;
+  els.dRoot = document.getElementById("d-root")!;
+  els.dEmpty = document.getElementById("d-empty")!;
   // { } JSON viewer for the derived proof (revealed once a derivation exists).
-  els.dViewerBar = document.getElementById("d-viewer-bar");
-  els.dViewerId = document.getElementById("d-viewer-id");
-  els.dJson = document.getElementById("d-json");
+  els.dViewerBar = document.getElementById("d-viewer-bar")!;
+  els.dViewerId = document.getElementById("d-viewer-id")!;
+  els.dJson = document.getElementById("d-json") as HTMLButtonElement;
   els.dJson.innerHTML = BRACES_ICON;
   els.dJson.addEventListener("click",
     () => openJsonModal(deriveProof, deriveProof && deriveProof.title));
   // Provenance + editing chips + Submit-for-review (same toolbar).
-  els.dBasedOn = document.getElementById("d-based-on");
-  els.dEditing = document.getElementById("d-editing");
-  els.dSubmit = document.getElementById("d-submit");
+  els.dBasedOn = document.getElementById("d-based-on")!;
+  els.dEditing = document.getElementById("d-editing")!;
+  els.dSubmit = document.getElementById("d-submit") as HTMLButtonElement;
   els.dSubmit.addEventListener("click", openSubmitModal);
   // Editing lock + the variant picker slot (interactive step editing).
-  els.dLock = document.getElementById("d-lock");
+  els.dLock = document.getElementById("d-lock") as HTMLButtonElement;
   initEditTool();
   els.dLock.addEventListener("click", () => {
-    const unlocking = !editTool.isUnlocked();
+    const unlocking = !editTool!.isUnlocked();
     // Unlocking with nothing derived starts an empty derivation rather than
     // refusing: the reader can then simply state the first line in the chat.
     const starting = unlocking && !deriveProof;
     if (starting) startEmptyDerivation();
-    editTool.setUnlocked(unlocking);
+    editTool!.setUnlocked(unlocking);
     syncLockButton();
     setStatus(starting
       ? "Editing unlocked on a new, empty derivation — describe the first step in the chat, e.g. “start with $E = mc^2$”."
@@ -1657,28 +1808,28 @@ async function main() {
         ? "Editing unlocked — describe an operation in the chat, e.g. “multiply both sides by 2”."
         : "Editing locked — the chat only answers questions. Click 🔒 Locked to unlock and make edits.", "ok");
   });
-  els.dStatus = document.getElementById("d-status");
-  els.dLog = document.getElementById("d-log");
-  els.dBar = document.getElementById("d-bar");
-  els.dPrompt = document.getElementById("d-prompt");
-  els.dGo = document.getElementById("d-go");
-  els.dChatInput = document.getElementById("d-chat-input");
-  els.dSend = document.getElementById("d-send");
-  els.dContinue = document.getElementById("d-continue");
-  els.dContinueDeep = document.getElementById("d-continue-deep");
+  els.dStatus = document.getElementById("d-status")!;
+  els.dLog = document.getElementById("d-log")!;
+  els.dBar = document.getElementById("d-bar")!;
+  els.dPrompt = document.getElementById("d-prompt") as HTMLTextAreaElement;
+  els.dGo = document.getElementById("d-go") as HTMLButtonElement;
+  els.dChatInput = document.getElementById("d-chat-input") as HTMLTextAreaElement;
+  els.dSend = document.getElementById("d-send") as HTMLButtonElement;
+  els.dContinue = document.getElementById("d-continue") as HTMLButtonElement;
+  els.dContinueDeep = document.getElementById("d-continue-deep")!;
   els.dContinue.addEventListener("click", continueInApp);
   // Reveal the toolbar up front so the lock is reachable before anything is
   // derived — { } and Submit stay hidden until there are steps.
   syncViewerBar();
   // Draggable chat splitter (Derive workspace).
-  const dCols = els.panelDerive.querySelector(".derive-cols");
+  const dCols = els.panelDerive.querySelector(".derive-cols") as HTMLElement | null;
   applyStoredChatW(dCols);
   wireColResizer(dCols && dCols.querySelector(".col-resizer"), dCols);
   els.tabDerive.addEventListener("click", () => switchTo("derive"));
   els.dDocBtn.addEventListener("click", openDocEditor);
   els.dDocHint.addEventListener("click", openDocEditor);
-  document.getElementById("d-doc-done").addEventListener("click", closeDocEditor);
-  document.getElementById("d-doc-clear").addEventListener("click",
+  document.getElementById("d-doc-done")!.addEventListener("click", closeDocEditor);
+  document.getElementById("d-doc-clear")!.addEventListener("click",
     () => { els.dDoc.value = ""; updateDocCount(); refreshDocHint(); });
   els.dDoc.addEventListener("input", updateDocCount);
   // Top: the special Derive/Rederive action.
@@ -1691,13 +1842,13 @@ async function main() {
     (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat(); } });
 
   // Debug-only CTX inspector — shows the exact context sent to the proof chat.
-  els.ctxBtn = document.getElementById("ctx-btn");
-  els.ctxPanel = document.getElementById("ctx-panel");
-  els.ctxBody = document.getElementById("ctx-panel-body");
+  els.ctxBtn = document.getElementById("ctx-btn") as HTMLButtonElement;
+  els.ctxPanel = document.getElementById("ctx-panel")!;
+  els.ctxBody = document.getElementById("ctx-panel-body")!;
   if (document.body.dataset.debug === "true" && els.ctxBtn) {
     els.ctxBtn.hidden = false;
     els.ctxBtn.addEventListener("click", showCtx);
-    document.getElementById("ctx-close")
+    document.getElementById("ctx-close")!
       .addEventListener("click", () => { els.ctxPanel.hidden = true; });
   }
 
@@ -1707,7 +1858,7 @@ async function main() {
   try {
     await loadCatalog(false);
   } catch (e) {
-    showError(els.panelBrowse, `Could not load the proof catalog: ${e.message}`);
+    showError(els.panelBrowse, `Could not load the proof catalog: ${(e as Error).message}`);
     return;
   }
 
@@ -1715,7 +1866,7 @@ async function main() {
   els.search.addEventListener("input", () => renderBrowse(filterCatalog(els.search.value)));
 
   // Deliberate opt-in: also list pending submissions (badged "under review").
-  els.showReview = document.getElementById("show-review");
+  els.showReview = document.getElementById("show-review") as HTMLInputElement;
   els.showReview.addEventListener("change", async () => {
     try { await loadCatalog(els.showReview.checked); } catch (e) { return; /* keep the current list */ }
     renderBrowse(filterCatalog(els.search.value));

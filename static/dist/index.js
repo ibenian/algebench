@@ -7743,7 +7743,7 @@ function updateTreeHighlight$1() {
 var _seq = 0;
 var nextDockSeq = () => ++_seq;
 //#endregion
-//#region src/proof-animation/sg-proof.js
+//#region src/proof-animation/sg-proof.ts
 var _DERIVE_CACHE = /* @__PURE__ */ new Map();
 var _cacheKey$1 = (p) => JSON.stringify({
 	t: p.target_latex || "",
@@ -8299,7 +8299,7 @@ var SgProofManager = class {
 	}
 	_renderError(entry, err, payload) {
 		entry.paWrap = null;
-		const msg = err && err.message || "Derivation failed.";
+		const msg = (err ? err.message : void 0) || "Derivation failed.";
 		entry.body.innerHTML = "";
 		const wrap = document.createElement("div");
 		wrap.className = "sgp-error";
