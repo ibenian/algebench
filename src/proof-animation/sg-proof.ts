@@ -7,7 +7,7 @@
 // / .sgc-btn / .sgc-resize-handle / .sgc-pinned) so borders and buttons match
 // the charts exactly; only the body hosts a ProofAnimator instead of a canvas.
 
-import { ProofAnimator, type ProofAnimationData, type AskButtonFactory } from '/proof-animation/proof-animation.js';
+import { ProofAnimator, type ProofAnimationData } from '/proof-animation/proof-animation.js';
 import { DERIVE_TIMEOUT_MS, invokeExpert } from '/expert-client.js';
 import { nextDockSeq } from '/proof-animation/dock-seq.js';
 import { makeAiAskButton, makeDeriveButton, openChatPanel } from '/labels.js';
@@ -542,12 +542,7 @@ export class SgProofManager {
                 // loaded); the engine's option is optional, and it gates on
                 // truthiness either way — so false and undefined behave alike.
                 katex: this.katex || undefined,
-                // The engine's AskButtonFactory may hand `makeAiAskButton` a
-                // getMessage that returns null, which labels.ts does not guard
-                // (it would put the literal "null" in the chat box). That is
-                // pre-existing behaviour, preserved rather than quietly fixed
-                // here — see the PR body.
-                aiAskButton: makeAiAskButton as AskButtonFactory,
+                aiAskButton: makeAiAskButton,
                 deriveButton: makeDeriveButton,
                 onDerive: (p: SgDerivePayload, anchorEl: Element | null) => this._deriveFromAnimator(entry, p, anchorEl),
                 fitHeight: true,
