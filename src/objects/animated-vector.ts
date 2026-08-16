@@ -313,6 +313,11 @@ export function renderAnimatedVector(el: Element, view: MathBoxNode) {
                 mesh.userData.dynamicVector = true;
                 if (panelRenderOrder !== null) mesh.renderOrder = panelRenderOrder;
                 const centerDist = layout.panelGap + (seg + 0.5) * layout.panelLength;
+                // KNOWN BUG — issue #579. fromWorld is a [x,y,z] array, and
+                // Vector3.copy() reads .x/.y/.z, so this yields NaN. The cast
+                // silences a TRUE positive: preserved here only because the
+                // migration ports behaviour verbatim. Remove it when #579 is
+                // fixed — do not "tidy" the cast away on its own.
                 mesh.position.copy(layout.fromWorld as unknown as Vector3).addScaledVector(layout.panelNormal, side * centerDist);
                 mesh.rotation.z = layout.angle;
                 mesh.scale.set(layout.panelLength, layout.panelWidth, layout.panelThickness);
@@ -389,6 +394,9 @@ export function renderAnimatedVector(el: Element, view: MathBoxNode) {
                 mesh.visible = visible;
                 if (!visible) continue;
                 const centerDist = layout!.panelGap + (seg + 0.5) * layout!.panelLength;
+                // KNOWN BUG — issue #579, same as the layout path above. The
+                // cast hides a real defect; it stays only to keep this port
+                // behaviour-identical. Remove it when #579 is fixed.
                 mesh.position.copy(layout!.fromWorld as unknown as Vector3).addScaledVector(layout!.panelNormal, side * centerDist);
                 mesh.rotation.z = layout!.angle;
                 mesh.scale.set(layout!.panelLength, layout!.panelWidth, layout!.panelThickness);
