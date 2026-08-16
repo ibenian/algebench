@@ -7739,7 +7739,7 @@ function updateTreeHighlight$1() {
 	});
 }
 //#endregion
-//#region src/proof-animation/dock-seq.js
+//#region src/proof-animation/dock-seq.ts
 var _seq = 0;
 var nextDockSeq = () => ++_seq;
 //#endregion
@@ -8494,10 +8494,11 @@ var SgProofManager = class {
 	}
 };
 //#endregion
-//#region src/proof-animation/derive-payload.js
+//#region src/proof-animation/derive-payload.ts
+var derivePayloadState = state;
 function buildEnrichContext(step) {
-	const lesson = state.lessonSpec || null;
-	const entry = state.proofSpec && state.proofSpec[state.proofActiveIndex];
+	const lesson = derivePayloadState.lessonSpec || null;
+	const entry = derivePayloadState.proofSpec && derivePayloadState.proofSpec[derivePayloadState.proofActiveIndex];
 	if (!lesson && !entry) return null;
 	const scene = lesson && lesson.scenes && entry ? lesson.scenes[entry.sceneIndex] : null;
 	const proof = entry && entry.proof || null;

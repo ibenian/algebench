@@ -23,13 +23,13 @@ const SEG = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
 // Whitespace and other invisibles get NAMED. Listing them literally is useless —
 // a pasted "my proof" reported its offending character as an empty gap, which is
 // the one case where the user most needs to be told what is wrong.
-const CHAR_NAMES = {
+const CHAR_NAMES: Record<string, string> = {
     " ": "space", "\t": "tab", "\n": "line break", "\r": "line break",
     " ": "non-breaking space",
 };
 
 /** The distinct not-allowed characters in `s`, rendered so each is visible. */
-function illegalChars(s) {
+function illegalChars(s: string): string {
     const seen = [...new Set(s.replace(/[a-z0-9-]/g, ""))];
     return seen.map((c) => CHAR_NAMES[c] || `“${c}”`).join(", ");
 }
@@ -38,19 +38,22 @@ function illegalChars(s) {
  * The SPECIFIC reason `raw` is not a usable id, or "" when it is well-formed.
  * `raw` is expected already trimmed and lowercased (the server lowercases too).
  */
-export function idProblem(raw) {
+export function idProblem(raw: unknown): string {
     const parts = String(raw || "").split("/");
     if (parts.length !== 2) {
         return parts.length < 2
             ? "Include the domain: <domain>/<name>, e.g. algebra/quadratic-roots."
             : "Use exactly one “/” — <domain>/<name>.";
     }
-    const [domain, name] = parts;
+    // Exactly two, by the guard above — `split` cannot leave a hole.
+    const domain = parts[0]!, name = parts[1]!;
 
+    // `as const` only so the rows destructure as tuples rather than as a
+    // widened (string | number)[]; the rows themselves are unchanged.
     for (const [label, value, min, max] of [
         ["Domain", domain, ID_DOMAIN_MIN, ID_DOMAIN_MAX],
         ["Name", name, ID_NAME_MIN, ID_NAME_MAX],
-    ]) {
+    ] as const) {
         if (!value) return `${label} is empty — use <domain>/<name>.`;
         const illegal = illegalChars(value);
         if (illegal) {
@@ -72,7 +75,7 @@ export function idProblem(raw) {
 }
 
 /** Bytes the proof occupies once serialized as UTF-8, as the server measures it. */
-export function proofBytes(proof) {
+export function proofBytes(proof: unknown): number {
     try {
         return new TextEncoder().encode(JSON.stringify(proof || {})).length;
     } catch (e) {
@@ -82,7 +85,7 @@ export function proofBytes(proof) {
 
 /** DECIMAL units (1 KB = 1000 B). The cap is a round 2,000,000, so binary units
  *  would render the limit as a puzzling "1.91 MB". */
-export function formatBytes(n) {
+export function formatBytes(n: number): string {
     if (n < 1000) return `${n} B`;
     if (n < 1_000_000) return `${(n / 1000).toFixed(1)} KB`;
     return `${(n / 1_000_000).toFixed(2)} MB`;

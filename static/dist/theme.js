@@ -2831,7 +2831,7 @@ var ProofAnimator = class {
 	}
 };
 //#endregion
-//#region src/proof-animation/validate-proof.js
+//#region src/proof-animation/validate-proof.ts
 var MAX_STEPS = 300;
 var MAX_TERMS = 2e3;
 var MAX_STR = 5e4;
@@ -2873,6 +2873,7 @@ function cleanDeeplink(v) {
 /** Shallow-sanitize a confidence object: keep known keys, primitives only. */
 function cleanConfidence(c) {
 	if (!c || typeof c !== "object") return void 0;
+	const src = c;
 	const out = {};
 	for (const k of [
 		"tier",
@@ -2881,15 +2882,20 @@ function cleanConfidence(c) {
 		"meaning",
 		"relation",
 		"reason"
-	]) if (c[k] != null) out[k] = str(c[k]);
-	if (typeof c.type_consistent === "boolean") out.type_consistent = c.type_consistent;
-	if (c.judged === true) out.judged = true;
-	if (typeof c.endpoint_reached === "boolean") out.endpoint_reached = c.endpoint_reached;
-	if (c.counts && typeof c.counts === "object") {
-		out.counts = {};
-		for (const [k, n] of Object.entries(c.counts)) if (typeof n === "number" && isFinite(n)) out.counts[str(k)] = n;
+	]) if (src[k] != null) out[k] = str(src[k]);
+	if (typeof src.type_consistent === "boolean") out.type_consistent = src.type_consistent;
+	if (src.judged === true) out.judged = true;
+	if (typeof src.endpoint_reached === "boolean") out.endpoint_reached = src.endpoint_reached;
+	if (src.counts && typeof src.counts === "object") {
+		const counts = {};
+		out.counts = counts;
+		for (const [k, n] of Object.entries(src.counts)) if (typeof n === "number" && isFinite(n)) counts[str(k)] = n;
 	}
 	return out;
+}
+/** Whether an untrusted value is one of the whitelisted change types. */
+function isChangeType(v) {
+	return CHANGE_TYPES.has(v);
 }
 /**
 * Whitelist-validate a proof payload into a clean object the engine can consume.
@@ -2897,45 +2903,48 @@ function cleanConfidence(c) {
 */
 function validateProofData(data) {
 	if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error("proof must be a JSON object");
-	if (!Array.isArray(data.steps) || data.steps.length === 0) throw new Error("proof has no steps");
-	if (data.steps.length > MAX_STEPS) throw new Error(`too many steps (${data.steps.length} > ${MAX_STEPS})`);
-	const steps = data.steps.map((s, i) => {
+	const raw = data;
+	if (!Array.isArray(raw.steps) || raw.steps.length === 0) throw new Error("proof has no steps");
+	if (raw.steps.length > MAX_STEPS) throw new Error(`too many steps (${raw.steps.length} > ${MAX_STEPS})`);
+	const steps = raw.steps.map((s, i) => {
 		if (!s || typeof s !== "object") throw new Error(`step ${i} is not an object`);
+		const src = s;
 		const out = {
-			index: typeof s.index === "number" && isFinite(s.index) ? s.index : i,
-			operation: str(s.operation),
-			justification: str(s.justification),
-			input_latex: str(s.input_latex),
-			latex: str(s.latex),
-			plain: str(s.plain),
-			confidence: cleanConfidence(s.confidence)
+			index: typeof src.index === "number" && isFinite(src.index) ? src.index : i,
+			operation: str(src.operation),
+			justification: str(src.justification),
+			input_latex: str(src.input_latex),
+			latex: str(src.latex),
+			plain: str(src.plain),
+			confidence: cleanConfidence(src.confidence)
 		};
-		if (CHANGE_TYPES.has(s.change_type)) out.change_type = s.change_type;
-		const dl = cleanDeeplink(s.deeplink);
+		if (isChangeType(src.change_type)) out.change_type = src.change_type;
+		const dl = cleanDeeplink(src.deeplink);
 		if (dl) out.deeplink = dl;
 		return out;
 	});
 	const terms = {};
-	if (data.terms && typeof data.terms === "object" && !Array.isArray(data.terms)) {
+	if (raw.terms && typeof raw.terms === "object" && !Array.isArray(raw.terms)) {
 		let n = 0;
-		for (const [id, t] of Object.entries(data.terms)) {
+		for (const [id, t] of Object.entries(raw.terms)) {
 			if (n++ >= MAX_TERMS) break;
 			if (!t || typeof t !== "object") continue;
+			const term = t;
 			terms[str(id)] = {
-				latex: str(t.latex),
-				name: str(t.name),
-				description: str(t.description)
+				latex: str(term.latex),
+				name: str(term.name),
+				description: str(term.description)
 			};
 		}
 	}
 	const out = {
-		title: str(data.title),
-		domain: str(data.domain),
+		title: str(raw.title),
+		domain: str(raw.domain),
 		steps,
 		terms,
-		overall_confidence: cleanConfidence(data.overall_confidence)
+		overall_confidence: cleanConfidence(raw.overall_confidence)
 	};
-	if (data.goal) out.goal = str(data.goal);
+	if (raw.goal) out.goal = str(raw.goal);
 	const chipList = (v) => {
 		if (!Array.isArray(v)) return void 0;
 		const items = [];
@@ -2945,20 +2954,23 @@ function validateProofData(data) {
 				items.push(str(x));
 				continue;
 			}
-			if (x && typeof x === "object" && typeof x.text === "string" && x.text.trim()) {
-				const chip = { text: str(x.text) };
-				const cdl = cleanDeeplink(x.deeplink);
-				if (cdl) chip.deeplink = cdl;
-				items.push(chip);
+			if (x && typeof x === "object") {
+				const src = x;
+				if (typeof src.text === "string" && src.text.trim()) {
+					const chip = { text: str(src.text) };
+					const cdl = cleanDeeplink(src.deeplink);
+					if (cdl) chip.deeplink = cdl;
+					items.push(chip);
+				}
 			}
 		}
 		return items.length ? items : void 0;
 	};
-	const followups = chipList(data.followups);
+	const followups = chipList(raw.followups);
 	if (followups) out.followups = followups;
-	const prerequisites = chipList(data.prerequisites);
+	const prerequisites = chipList(raw.prerequisites);
 	if (prerequisites) out.prerequisites = prerequisites;
-	const dl = cleanDeeplink(data.deeplink);
+	const dl = cleanDeeplink(raw.deeplink);
 	if (dl) out.deeplink = dl;
 	return out;
 }

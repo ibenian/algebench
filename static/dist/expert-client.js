@@ -1,4 +1,4 @@
-//#region src/expert-client.js
+//#region src/expert-client.ts
 var ExpertError = class extends Error {
 	constructor(message, { status = 0, retryAfter = null, detail = null, timedOut = false } = {}) {
 		super(message);
@@ -39,8 +39,9 @@ async function invokeExpert(name, body, { timeoutMs = 0 } = {}) {
 			status: 429,
 			retryAfter: Number(res.headers.get("Retry-After")) || null
 		});
-		const detail = data && data.detail;
-		let msg = data && typeof data.error === "string" && data.error || `Request failed (${res.status}).`;
+		const bodyData = data;
+		const detail = bodyData && bodyData.detail;
+		let msg = bodyData && typeof bodyData.error === "string" && bodyData.error || `Request failed (${res.status}).`;
 		if (res.status === 422 && Array.isArray(detail) && detail.length) {
 			const d = detail[0];
 			const loc = Array.isArray(d.loc) ? d.loc.filter((x) => x !== "body").join(".") : "";

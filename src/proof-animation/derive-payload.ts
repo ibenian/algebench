@@ -6,17 +6,107 @@
 import { state } from '/state.js';
 import { stripHtmlMacros, normLatex } from '/labels.js';
 
+/** A proof step, as far as this module reads one. */
+export interface DeriveProofStep {
+    type?: string;
+    label?: string;
+    math?: string;
+    justification?: string;
+    explanation?: string;
+}
+
+/** A proof, as far as this module reads one. `domain`/`meta` are runtime
+ *  annotations that the lesson schema does not describe. */
+export interface DeriveProof {
+    title?: string;
+    goal?: string;
+    technique?: string;
+    domain?: string;
+    meta?: { domain?: string };
+    steps?: DeriveProofStep[];
+}
+
+/** A scene, as far as the enrichment context reads one. */
+interface DeriveScene {
+    title?: string;
+    description?: string;
+}
+
+/** A lesson, as far as the enrichment context reads one. */
+interface DeriveLesson {
+    title?: string;
+    description?: string;
+    scenes?: DeriveScene[];
+}
+
+/** One entry of the normalized in-context proof list held on `state`. */
+interface ProofSpecEntry {
+    sceneIndex: number;
+    proof?: DeriveProof;
+}
+
+// state.js is still untyped JavaScript, so its fields infer from their
+// initializers. Describe the slice this module owns rather than spreading
+// `any`; the cast goes away when state.js is converted.
+interface DerivePayloadState {
+    lessonSpec: DeriveLesson | null;
+    proofSpec: ProofSpecEntry[] | null;
+    proofActiveIndex: number;
+}
+const derivePayloadState = state as unknown as DerivePayloadState;
+
+/** Lesson/scene/proof/step metadata handed to the enrichment agents. */
+export interface EnrichContext {
+    lessonTitle?: string;
+    lessonDescription?: string;
+    sceneTitle?: string;
+    sceneDescription?: string;
+    proofTitle?: string;
+    proofGoal?: string;
+    proofTechnique?: string;
+    stepLabel?: string;
+    stepMath?: string;
+    stepJustification?: string;
+    stepExplanation?: string;
+}
+
+/** A `type: 'given'` proof step, reduced to what the deriver needs. */
+export interface DeriveGiven {
+    math: string;
+    label: string | null;
+}
+
+/** One earlier step, compacted for the deriver's lead-up. */
+export interface DerivePreviousStep {
+    step: number;
+    label: string | null;
+    math: string;
+}
+
+/** The `proof_animation` derive request this module assembles. */
+export interface DerivePayload {
+    target_latex: string;
+    domain?: string;
+    title?: string;
+    goal?: string;
+    givens?: DeriveGiven[];
+    start_latex?: string;
+    previous_steps?: DerivePreviousStep[];
+    context?: EnrichContext;
+    intent?: string;
+}
+
 // Build context payload for the enrichment/derivation agents — lesson/scene/
 // proof/step metadata that disambiguates symbols (e.g. T = thrust vs temperature).
 // Returns null when no useful context is available.
-export function buildEnrichContext(step) {
-    const lesson = state.lessonSpec || null;
-    const entry = state.proofSpec && state.proofSpec[state.proofActiveIndex];
+export function buildEnrichContext(step?: DeriveProofStep | null): EnrichContext | null {
+    const lesson = derivePayloadState.lessonSpec || null;
+    const entry = derivePayloadState.proofSpec && derivePayloadState.proofSpec[derivePayloadState.proofActiveIndex];
     if (!lesson && !entry) return null;
     const scene = lesson && lesson.scenes && entry
         ? lesson.scenes[entry.sceneIndex] : null;
     const proof = entry && entry.proof || null;
-    const ctx = {};
+    const ctx: EnrichContext = {};
     if (lesson) {
         if (lesson.title) ctx.lessonTitle = lesson.title;
         if (lesson.description) ctx.lessonDescription = lesson.description;
@@ -40,7 +130,7 @@ export function buildEnrichContext(step) {
 }
 
 /** Givens for a proof — its `type: 'given'` steps as `{math, label}`. */
-function _proofGivens(proof) {
+function _proofGivens(proof: DeriveProof): DeriveGiven[] {
     return (proof.steps || [])
         .filter(s => s && s.type === 'given' && s.math)
         .map(s => ({ math: stripHtmlMacros(s.math), label: s.label || null }))
@@ -56,16 +146,16 @@ function _proofGivens(proof) {
  * always avoiding a start equal to the target. Returns the START LaTeX, or
  * null to let the expert infer one.
  */
-function _chooseStartLatex(proof, index, target, givens) {
+function _chooseStartLatex(proof: DeriveProof, index: number, target: string, givens: DeriveGiven[]): string | null {
     const steps = proof.steps || [];
     const tnorm = normLatex(target);
-    const usable = (m) => {
+    const usable = (m: string | null | undefined): string | null => {
         const s = stripHtmlMacros(m);
         return s && s.trim() && normLatex(s) !== tnorm ? s : null;
     };
     // 1. Previous step.
     if (index > 0 && steps[index - 1]) {
-        const prev = usable(steps[index - 1].math);
+        const prev = usable(steps[index - 1]!.math);
         if (prev) return prev;
     }
     // 2. A proof given that differs from the target.
@@ -85,7 +175,7 @@ function _chooseStartLatex(proof, index, target, givens) {
  * Returns null when the step has no derivable expression. Used to word the
  * proof-card Derive button's tooltip so the learner knows what it will do.
  */
-export function describeDeriveStart(proof, index) {
+export function describeDeriveStart(proof: DeriveProof | null | undefined, index: number): string | null {
     if (!proof || !Array.isArray(proof.steps)) return null;
     const step = proof.steps[index];
     if (!step) return null;
@@ -96,7 +186,7 @@ export function describeDeriveStart(proof, index) {
     if (!start) return 'inferred';
     const sn = normLatex(start);
     if (index > 0 && proof.steps[index - 1]
-        && normLatex(stripHtmlMacros(proof.steps[index - 1].math || '')) === sn) {
+        && normLatex(stripHtmlMacros(proof.steps[index - 1]!.math || '')) === sn) {
         return 'previous step';
     }
     if (givens.some(g => normLatex(g.math) === sn)) return 'givens';
@@ -111,14 +201,14 @@ export function describeDeriveStart(proof, index) {
  * domain, ALL previous steps, lesson/scene/proof context, and an intent hint.
  * Returns null when the step has no derivable expression.
  */
-export function buildProofStepDerivePayload(proof, index, opts = {}) {
+export function buildProofStepDerivePayload(proof: DeriveProof | null | undefined, index: number, opts: { domain?: string } = {}): DerivePayload | null {
     if (!proof || !Array.isArray(proof.steps)) return null;
     const step = proof.steps[index];
     if (!step) return null;
     const target = stripHtmlMacros(step.math || '').trim();
     if (!target) return null;
 
-    const payload = { target_latex: target };
+    const payload: DerivePayload = { target_latex: target };
 
     const domain = opts.domain
         || proof.domain
