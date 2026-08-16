@@ -4,7 +4,7 @@
   "type": "module",
   "description": "Tooling/test harness for AlgeBench static ES modules (no build step).",
   "scripts": {
-    "test": "node --test src/*.test.js",
+    "test": "node --experimental-strip-types --import ./scripts/register-test-resolver.mjs --test src/*.test.js",
     "types:generate": "node scripts/generate_ts_types.mjs",
     "types:check": "node scripts/generate_ts_types.mjs --check",
     "typecheck": "tsc --noEmit",
