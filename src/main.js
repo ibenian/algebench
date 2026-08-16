@@ -28,9 +28,10 @@ import { setupObjectPicker } from '/object-picker.js';
 import { AI_ICON, USER_ICON } from '/icons.js';
 import { applyTheme, initialTheme, wireThemeToggle } from '/theme.js';
 
-// chat.js is a classic script (no ES imports), so expose the shared chat-avatar
-// icons on window for it to read. Set at module-eval, well before any message
-// renders; chat.js falls back to emoji if this is somehow absent.
+// Expose the shared chat-avatar icons on window for src/chat.ts to read. Set at
+// module-eval, well before any message renders; chat falls back to emoji if this
+// is somehow absent. (chat was a classic script until phase 4e; it is a module
+// now, but this stays a window handoff until #406 replaces the flat globals.)
 window.algebenchIcons = { ai: AI_ICON, user: USER_ICON };
 
 // Domain library registry — scripts under static/domains/<name>/index.js self-register here.

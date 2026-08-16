@@ -2,41 +2,89 @@
 // AlgeBench AI Chat Agent (Gemini-powered)
 // Integrated as a tab in the explanation panel
 // ============================================================
+//
+// Until phase 4e this file was a CLASSIC, non-module script
+// (`<script src="/chat.js">`), so every top-level `function` became a window
+// property automatically and other modules reached them as bare globals. It is
+// now an ES module in the index bundle, which removes those automatic globals —
+// so the whole public surface is re-assigned to `window` explicitly at the
+// bottom of this file. Replacing that flat surface with an `AlgeBench`
+// namespace is issue #406, deliberately deferred to post-migration.
+//
+// The ambient declarations for both directions live in src/globals.d.ts.
+
+export {};
+
+/** One turn of the chat transcript sent back to the server as history. */
+interface ChatHistoryEntry {
+    role: 'user' | 'assistant';
+    text: string;
+}
+
+/** The `/api/chat` response body. */
+interface ChatApiResponse {
+    response: string;
+    toolCalls?: AlgeBenchChatToolCall[];
+    debug?: { systemPrompt?: string; contents?: unknown[] };
+}
+
+/** Visual state of a message's speaker button. */
+type SpeakBtnState = 'active' | 'loading' | null;
+
+/**
+ * The per-message speaker button. chat.js hung its polling handles and helpers
+ * straight onto the DOM node; the port keeps that exactly, typed.
+ */
+interface SpeakButton extends HTMLButtonElement {
+    _ttsLoadPoll?: ReturnType<typeof setInterval> | null;
+    _ttsStatePoll?: ReturnType<typeof setInterval> | null;
+    _setBtnState?: (state: SpeakBtnState) => void;
+    _downloadBtn?: HTMLAnchorElement;
+    _ignoreNextClick?: boolean;
+}
+
+/** A rendered chat message; assistant messages carry their own speak starter. */
+interface ChatMessageElement extends HTMLDivElement {
+    _startSpeak?: () => void;
+}
 
 // ----- Chat State -----
-let chatHistory = [];       // [{role: 'user'|'assistant', text: string}]
+let chatHistory: ChatHistoryEntry[] = [];       // [{role: 'user'|'assistant', text: string}]
 let chatAvailable = false;  // set true if GEMINI_API_KEY is configured
 let chatSending = false;
-let activeSpeakBtn = null;  // the .msg-speak-btn currently playing TTS
+let activeSpeakBtn: SpeakButton | null = null;  // the .msg-speak-btn currently playing TTS
 let welcomeInFlight = false;
 let welcomeRequestId = 0;
-let memorySnapshot = null;
-let ttsCharacterPicker = null;
+let memorySnapshot: Record<string, AlgeBenchMemoryEntry> | null = null;
+let ttsCharacterPicker: GeminiCharacterPicker | null = null;
 let selectedTtsCharacter = 'joker';
 let selectedTtsVoice = 'Charon';
 let selectedTtsMode = 'read';
 
 const CHAT_HISTORY_MAX = Infinity;
 
-function _escHtml(s) {
+function _escHtml(s: string): string {
     const d = document.createElement('div');
     d.textContent = s;
     return d.innerHTML;
 }
 
-let _presetPrompts = [];
+let _presetPrompts: string[] = [];
 
 // Track which surface the user last interacted with so chat context can
 // disambiguate "what are they looking at right now" — the dock tab being
 // "graph" only tells us the graph is *visible*, not that the user is
 // actually working in it (vs. the 3D viewport or the side panel).
 // Values: 'graph' | 'viewport' | 'panel' | null
-let _lastFocusedSurface = null;
-function _classifyFocusTarget(target) {
-    if (!target || !target.closest) return null;
-    if (target.closest('#graph-viewport, #dock-tab-graph, .graph-panel-info, .graph-panel-tooltip')) return 'graph';
-    if (target.closest('#mathbox-container, #mathbox-overlay, canvas')) return 'viewport';
-    if (target.closest('.explanation-panel, .panel-tab, .tab-content, #chat-input, #preset-prompts')) return 'panel';
+let _lastFocusedSurface: string | null = null;
+function _classifyFocusTarget(target: EventTarget | null): string | null {
+    // Event targets are only sometimes Elements (window, document, media
+    // elements); the original guarded on `.closest` existing, so keep that.
+    const el = target as Element | null;
+    if (!el || !el.closest) return null;
+    if (el.closest('#graph-viewport, #dock-tab-graph, .graph-panel-info, .graph-panel-tooltip')) return 'graph';
+    if (el.closest('#mathbox-container, #mathbox-overlay, canvas')) return 'viewport';
+    if (el.closest('.explanation-panel, .panel-tab, .tab-content, #chat-input, #preset-prompts')) return 'panel';
     return null;
 }
 if (typeof window !== 'undefined') {
@@ -46,7 +94,7 @@ if (typeof window !== 'undefined') {
     }, true);
 }
 
-function setPresetPrompts(prompts) {
+function setPresetPrompts(prompts: string[] | null | undefined): void {
     _presetPrompts = prompts || [];
     const container = document.getElementById('preset-prompts');
     if (!container) return;
@@ -63,7 +111,7 @@ function setPresetPrompts(prompts) {
         btn.title = text + '\n\nClick to send · ⌘/Ctrl-click to edit';
         btn.addEventListener('click', (e) => {
             if (e.metaKey || e.ctrlKey) {
-                const input = document.getElementById('chat-input');
+                const input = document.getElementById('chat-input') as HTMLTextAreaElement | null;
                 if (input) {
                     input.value = text;
                     input.focus();
@@ -77,13 +125,13 @@ function setPresetPrompts(prompts) {
     }
 }
 
-function shouldSkipWelcome() {
+function shouldSkipWelcome(): boolean {
     return chatHistory.length > 0 || chatSending;
 }
 
 // ----- Context Snapshot -----
-function buildChatContext() {
-    const ctx = {};
+function buildChatContext(): AlgeBenchChatContext {
+    const ctx: AlgeBenchChatContext = {};
 
     // ---- Lesson metadata ----
     if (typeof lessonSpec !== 'undefined' && lessonSpec && lessonSpec.title) {
@@ -103,7 +151,7 @@ function buildChatContext() {
 
         // Scene tree for navigation awareness
         ctx.sceneTree = lessonSpec.scenes.map((s, i) => {
-            const entry = { sceneNumber: i + 1, title: s.title || ('Scene ' + (i + 1)) };
+            const entry: AlgeBenchChatSceneTreeEntry = { sceneNumber: i + 1, title: s.title || ('Scene ' + (i + 1)) };
             if (s.steps && s.steps.length > 0) {
                 entry.steps = s.steps.map((st, j) => ({
                     stepNumber: j + 1,  // 1-based: step 1 = first step
@@ -116,7 +164,7 @@ function buildChatContext() {
     }
 
     // ---- Live runtime state (not in scene JSON) ----
-    const runtime = {};
+    const runtime: AlgeBenchChatRuntimeContext = {};
 
     // Step navigation — agent-facing: 0=root, 1=first step, 2=second, etc.
     // Internal currentStepIndex: -1=root, 0=first step, 1=second, etc.
@@ -157,7 +205,7 @@ function buildChatContext() {
                 .filter(el => {
                     if (NON_VISUAL_TYPES.has(el.type)) return false;
                     if (typeof elementRegistry !== 'undefined' && el.id && elementRegistry[el.id]) {
-                        return !elementRegistry[el.id].hidden;
+                        return !elementRegistry[el.id]!.hidden;
                     }
                     return true;
                 })
@@ -170,7 +218,7 @@ function buildChatContext() {
 
     // Slider current values + definitions
     if (typeof sceneSliders !== 'undefined' && sceneSliders) {
-        const sliders = {};
+        const sliders: Record<string, AlgeBenchSliderState> = {};
         for (const [id, s] of Object.entries(sceneSliders)) {
             sliders[id] = {
                 value: s.value,
@@ -189,7 +237,7 @@ function buildChatContext() {
     const captionEl = document.getElementById('step-caption');
     if (captionEl && !captionEl.classList.contains('hidden')) {
         const raw = captionEl.dataset.markdown || captionEl.textContent;
-        runtime.currentCaption = raw.trim();
+        runtime.currentCaption = raw!.trim();
     }
 
     // Active panel tab (doc vs chat)
@@ -235,7 +283,7 @@ function buildChatContext() {
     //   ['scene', 'doc']
     //   ['scene', 'chat', 'proof']
     //   ['semantic graph', 'chat', 'proof']
-    const viewing = [];
+    const viewing: string[] = [];
     const graphActive = runtime.graphPanel && runtime.graphPanel.open;
     viewing.push(graphActive ? 'semantic graph' : 'scene');
     if (runtime.activeTab === 'chat') {
@@ -265,9 +313,9 @@ function buildChatContext() {
 window.algebenchBuildChatContext = buildChatContext;
 
 // ----- Tab Switching -----
-function switchPanelTab(tabName) {
+function switchPanelTab(tabName: string): void {
     // Update tab buttons
-    document.querySelectorAll('.panel-tab').forEach(btn => {
+    document.querySelectorAll<HTMLElement>('.panel-tab').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.tab === tabName);
     });
     // Update tab content
@@ -294,11 +342,11 @@ function switchPanelTab(tabName) {
 }
 
 // ----- UI Setup -----
-function setupChat() {
+function setupChat(): void {
     // Check availability and show/hide tab bar
     fetch('/api/chat/available')
         .then(r => r.json())
-        .then(data => {
+        .then((data: { available: boolean }) => {
             chatAvailable = data.available;
             if (!chatAvailable) {
                 const msg = document.getElementById('chat-unavailable-msg');
@@ -316,19 +364,20 @@ function setupChat() {
         });
 
     // Tab click handlers
-    document.querySelectorAll('.panel-tab').forEach(btn => {
+    document.querySelectorAll<HTMLElement>('.panel-tab').forEach(btn => {
         btn.addEventListener('click', () => {
-            switchPanelTab(btn.dataset.tab);
+            switchPanelTab(btn.dataset.tab!);
         });
     });
 
     // 'C' keyboard shortcut — open panel on Chat tab
     document.addEventListener('keydown', (e) => {
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        const target = e.target as HTMLElement;
+        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
         if (e.key === 'c' && !e.ctrlKey && !e.metaKey && !e.altKey) {
-            const panel = document.getElementById('explanation-panel');
-            const toggle = document.getElementById('explain-toggle');
-            const handle = document.getElementById('panel-resize-handle');
+            const panel = document.getElementById('explanation-panel')!;
+            const toggle = document.getElementById('explain-toggle')!;
+            const handle = document.getElementById('panel-resize-handle')!;
             // Open panel if hidden
             if (panel.classList.contains('hidden')) {
                 panel.classList.remove('hidden');
@@ -341,8 +390,8 @@ function setupChat() {
         }
     });
 
-    const input = document.getElementById('chat-input');
-    const sendBtn = document.getElementById('chat-send');
+    const input = document.getElementById('chat-input') as HTMLTextAreaElement;
+    const sendBtn = document.getElementById('chat-send')!;
     initChatTtsControls();
 
     // Send on Enter (Shift+Enter for newline)
@@ -374,7 +423,7 @@ function setupChat() {
     });
 }
 
-function initChatTtsControls() {
+function initChatTtsControls(): void {
     const lib = window.GeminiVoiceCharacterSelector;
     if (!lib) return;
 
@@ -383,7 +432,7 @@ function initChatTtsControls() {
     const characterSearch = document.getElementById('chatCharacterSearch');
     const characterList = document.getElementById('chatCharacterList');
     const characterBackdrop = document.getElementById('chatCharacterBackdrop');
-    const voiceSelect = document.getElementById('chatVoiceSelect');
+    const voiceSelect = document.getElementById('chatVoiceSelect') as HTMLSelectElement | null;
     if (!characterBtn || !characterPalette || !characterSearch || !characterList || !characterBackdrop || !voiceSelect) {
         return;
     }
@@ -432,7 +481,7 @@ function initChatTtsControls() {
         selectedTtsVoice = voiceSelect.value || 'Charon';
     });
 
-    const ttsModeSelect = document.getElementById('chatTtsModeSelect');
+    const ttsModeSelect = document.getElementById('chatTtsModeSelect') as HTMLSelectElement | null;
     if (ttsModeSelect) {
         selectedTtsMode = localStorage.getItem('algebenchTtsMode') || 'read';
         ttsModeSelect.value = selectedTtsMode;
@@ -444,7 +493,7 @@ function initChatTtsControls() {
 }
 
 // ----- Message Sending -----
-async function sendChatMessage(text, { silent = false } = {}) {
+async function sendChatMessage(text: string, { silent = false }: { silent?: boolean } = {}): Promise<void> {
     chatSending = true;
     if (!silent) addChatMessage('user', text);
 
@@ -472,7 +521,8 @@ async function sendChatMessage(text, { silent = false } = {}) {
         loadingEl.remove();
 
         if (!res.ok) {
-            const err = await res.json().catch(() => ({ error: 'Request failed' }));
+            const err: { detail?: unknown; error?: unknown } =
+                await res.json().catch(() => ({ error: 'Request failed' }));
             // FastAPI HTTPException (e.g. 429 rate limit) returns `detail`;
             // the app's own errors use `error`. Surface whichever is present.
             // `detail` may be a non-string (e.g. 422 returns a list of dicts),
@@ -485,12 +535,12 @@ async function sendChatMessage(text, { silent = false } = {}) {
             console.error('%c🤖 Chat error: %c' + res.status + ' — ' + (msg || 'unknown'),
                 'color: #ff4444; font-weight: bold', 'color: #ccc');
             addChatMessage('assistant', msg || 'Something went wrong. Please try again.');
-            if (chatHistory.length && chatHistory[chatHistory.length - 1].role === 'user') chatHistory.pop();
+            if (chatHistory.length && chatHistory[chatHistory.length - 1]!.role === 'user') chatHistory.pop();
             chatSending = false;
             return;
         }
 
-        const data = await res.json();
+        const data: ChatApiResponse = await res.json();
 
         const tcNames = (data.toolCalls || []).map(tc => tc.name).join(', ');
         console.log('%c🤖 Chat response: %c' + data.response.length + ' chars' + (tcNames ? ' | tools: ' + tcNames : ''),
@@ -515,7 +565,7 @@ async function sendChatMessage(text, { silent = false } = {}) {
         if (data.debug) {
             const contents = data.debug.contents || [];
             // Append the model's response just like other messages in the history
-            const modelParts = [{ text: data.response }];
+            const modelParts: unknown[] = [{ text: data.response }];
             if (data.toolCalls && data.toolCalls.length > 0) {
                 for (const tc of data.toolCalls) {
                     modelParts.push({ functionCall: { name: tc.name, args: tc.rawArgs || tc.args } });
@@ -535,14 +585,14 @@ async function sendChatMessage(text, { silent = false } = {}) {
 
         // Render tool calls first, then the text response
         if (data.toolCalls && data.toolCalls.length > 0) {
-            const messagesEl = document.getElementById('chat-messages');
+            const messagesEl = document.getElementById('chat-messages')!;
             for (const tc of data.toolCalls) {
                 messagesEl.appendChild(renderToolCallChip(tc));
             }
             messagesEl.scrollTop = messagesEl.scrollHeight;
         }
 
-        let assistantMsg = null;
+        let assistantMsg: ChatMessageElement | null = null;
         if (data.response) assistantMsg = addChatMessage('assistant', data.response);
 
         // Execute tool calls client-side
@@ -584,39 +634,39 @@ async function sendChatMessage(text, { silent = false } = {}) {
                         } else {
                             // Follow-cam and expr-camera views aren't in CAMERA_VIEWS;
                             // activate them by clicking the matching camera button.
-                            const btn = document.querySelector(`.cam-btn[data-view="${key}"]`);
+                            const btn = document.querySelector<HTMLElement>(`.cam-btn[data-view="${key}"]`);
                             if (btn) btn.click();
                         }
                     } else if (tc.args.position || tc.args.target) {
-                        const tgt = tc.args.target || [0, 0, 0];
-                        let pos = tc.args.position;
+                        const tgt = (tc.args.target as number[] | undefined) || [0, 0, 0];
+                        let pos = tc.args.position as number[] | undefined;
                         const zoom = tc.args.zoom;
                         if (!pos && typeof camera !== 'undefined' && typeof controls !== 'undefined'
                             && typeof worldCameraToData === 'function') {
                             // Target-only: keep current camera offset, re-aim at new target
-                            const curPosData = worldCameraToData([camera.position.x, camera.position.y, camera.position.z]);
-                            const curTgtData = worldCameraToData([controls.target.x, controls.target.y, controls.target.z]);
+                            const curPosData = worldCameraToData([camera!.position.x, camera!.position.y, camera!.position.z]);
+                            const curTgtData = worldCameraToData([controls!.target.x, controls!.target.y, controls!.target.z]);
                             pos = [
-                                tgt[0] + (curPosData[0] - curTgtData[0]),
-                                tgt[1] + (curPosData[1] - curTgtData[1]),
-                                tgt[2] + (curPosData[2] - curTgtData[2]),
+                                tgt[0]! + (curPosData[0]! - curTgtData[0]!),
+                                tgt[1]! + (curPosData[1]! - curTgtData[1]!),
+                                tgt[2]! + (curPosData[2]! - curTgtData[2]!),
                             ];
                         } else if (!pos) {
-                            pos = [tgt[0], tgt[1] + 50, tgt[2] + 50]; // fallback offset
+                            pos = [tgt[0]!, tgt[1]! + 50, tgt[2]! + 50]; // fallback offset
                         }
                         if (pos) {
                             // Direction vector from target to requested position
-                            const dx = pos[0] - tgt[0], dy = pos[1] - tgt[1], dz = pos[2] - tgt[2];
+                            const dx = pos[0]! - tgt[0]!, dy = pos[1]! - tgt[1]!, dz = pos[2]! - tgt[2]!;
                             const dirLen = Math.sqrt(dx * dx + dy * dy + dz * dz) || 1;
                             if (zoom != null && zoom > 0) {
                                 // Explicit zoom: scale the requested distance
                                 const s = 1 / zoom;
-                                pos = [tgt[0] + dx * s, tgt[1] + dy * s, tgt[2] + dz * s];
+                                pos = [tgt[0]! + dx * s, tgt[1]! + dy * s, tgt[2]! + dz * s];
                             }
                         }
                         if (typeof CAMERA_VIEWS !== 'undefined' && typeof animateCamera === 'function') {
                             // Convert data-space coords to world-space (same as view buttons)
-                            const wPos = (typeof dataCameraToWorld === 'function') ? dataCameraToWorld(pos) : pos;
+                            const wPos = (typeof dataCameraToWorld === 'function') ? dataCameraToWorld(pos!) : pos!;
                             const wTgt = (typeof dataCameraToWorld === 'function') ? dataCameraToWorld(tgt) : tgt;
                             // Preserve the current up vector so orientation isn't flipped
                             const sceneUp = (typeof camera !== 'undefined' && camera)
@@ -646,7 +696,7 @@ async function sendChatMessage(text, { silent = false } = {}) {
                         // Wrap the currently displayed single scene into a lesson
                         const existingScene = (typeof currentSpec !== 'undefined' && currentSpec) ? currentSpec : null;
                         lessonSpec = { title: "Lesson", scenes: existingScene ? [existingScene] : [] };
-                        console.log('  Created lesson wrapper, existing scenes:', lessonSpec.scenes.length);
+                        console.log('  Created lesson wrapper, existing scenes:', lessonSpec.scenes!.length);
                         // Sync navigation indices so navigateTo sees a scene change
                         if (existingScene) {
                             currentSceneIndex = 0;
@@ -659,8 +709,8 @@ async function sendChatMessage(text, { silent = false } = {}) {
                     const firstStepHasSliders = !!(
                         Array.isArray(newScene.steps) &&
                         newScene.steps.length > 0 &&
-                        Array.isArray(newScene.steps[0].sliders) &&
-                        newScene.steps[0].sliders.length > 0
+                        Array.isArray(newScene.steps[0]!.sliders) &&
+                        newScene.steps[0]!.sliders!.length > 0
                     );
                     const targetStep = firstStepHasSliders ? 0 : -1;
                     console.log('  Navigating to scene index:', targetIdx, 'currentSceneIndex:', currentSceneIndex);
@@ -681,7 +731,7 @@ async function sendChatMessage(text, { silent = false } = {}) {
                     const values = tc.args.values || {};
                     const promises = Object.entries(values).map(([id, target]) =>
                         typeof animateSlider === 'function'
-                            ? animateSlider(id, parseFloat(target), 800)
+                            ? animateSlider(id, parseFloat(String(target)), 800)
                             : Promise.resolve(false)
                     );
                     await Promise.all(promises);
@@ -690,14 +740,14 @@ async function sendChatMessage(text, { silent = false } = {}) {
                 } else if (tc.name === 'set_info_overlay') {
                     if (tc.args.id) {
                         if (typeof addInfoOverlay === 'function')
-                            addInfoOverlay(tc.args.id, tc.args.content || '', tc.args.position || 'top-left');
+                            addInfoOverlay(tc.args.id, tc.args.content || '', (tc.args.position as string | undefined) || 'top-left');
                     } else {
                         console.warn('set_info_overlay: tool call missing required `id`; dropping', { args: tc.args });
                     }
                 } else if (tc.name === 'clear_info_overlays') {
                     if (typeof removeAllInfoOverlays === 'function') removeAllInfoOverlays();
                 } else if (tc.name === 'navigate_proof') {
-                    const proofStep = parseInt(tc.result?.step ?? tc.args?.step ?? 0);
+                    const proofStep = parseInt(String(tc.result?.step ?? tc.args?.step ?? 0));
                     // Agent uses 1-based, navigateProof uses 0-based (-1 = goal)
                     if (typeof navigateProof === 'function') navigateProof(proofStep - 1);
                 } else if (tc.name === 'derive_proof_animation') {
@@ -748,22 +798,22 @@ async function sendChatMessage(text, { silent = false } = {}) {
 
     } catch (err) {
         loadingEl.remove();
-        console.error('%c🤖 Chat error: %c' + err, 'color: #ff4444; font-weight: bold', 'color: #ccc', err);
+        console.error('%c🤖 Chat error: %c' + (err as Error), 'color: #ff4444; font-weight: bold', 'color: #ccc', err);
         const isNetwork = err instanceof TypeError && /fetch|network|connect/i.test(err.message);
         const msg = isNetwork
             ? 'Failed to reach AI service. Check your connection.'
-            : 'Error processing response: ' + err.message;
+            : 'Error processing response: ' + (err as Error).message;
         addChatMessage('assistant', msg);
-        if (chatHistory.length && chatHistory[chatHistory.length - 1].role === 'user') chatHistory.pop();
+        if (chatHistory.length && chatHistory[chatHistory.length - 1]!.role === 'user') chatHistory.pop();
     }
 
     chatSending = false;
 }
 
 // ----- Message Rendering -----
-function addChatMessage(role, content, toolCalls) {
-    const messagesEl = document.getElementById('chat-messages');
-    const msgDiv = document.createElement('div');
+function addChatMessage(role: string, content: string, toolCalls?: AlgeBenchChatToolCall[]): ChatMessageElement {
+    const messagesEl = document.getElementById('chat-messages')!;
+    const msgDiv = document.createElement('div') as ChatMessageElement;
     msgDiv.className = 'chat-msg ' + role;
 
     const avatar = document.createElement('div');
@@ -790,12 +840,12 @@ function addChatMessage(role, content, toolCalls) {
     if (role === 'assistant') {
         const SVG_SPEAKER = '<svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>';
 
-        const speakBtn = document.createElement('button');
+        const speakBtn = document.createElement('button') as SpeakButton;
         speakBtn.className = 'msg-speak-btn';
         speakBtn.title = 'Read aloud';
         speakBtn.innerHTML = SVG_SPEAKER;
 
-        const setBtnState = (state) => {
+        const setBtnState = (state: SpeakBtnState) => {
             speakBtn.classList.remove('active', 'loading', 'idle');
             if (state) speakBtn.classList.add(state);
             else speakBtn.classList.add('idle');
@@ -846,7 +896,7 @@ function addChatMessage(role, content, toolCalls) {
             // Poll to keep button state synced with player state
             speakBtn._ttsStatePoll = setInterval(() => {
                 if (activeSpeakBtn !== speakBtn) {
-                    clearInterval(speakBtn._ttsStatePoll); speakBtn._ttsStatePoll = null; return;
+                    clearInterval(speakBtn._ttsStatePoll!); speakBtn._ttsStatePoll = null; return;
                 }
                 const p = typeof _ensureTTSPlayer === 'function' ? _ensureTTSPlayer() : null;
                 if (!p) return;
@@ -908,8 +958,8 @@ function addChatMessage(role, content, toolCalls) {
     return msgDiv;
 }
 
-function addChatLoading() {
-    const messagesEl = document.getElementById('chat-messages');
+function addChatLoading(): HTMLDivElement {
+    const messagesEl = document.getElementById('chat-messages')!;
     const loadingDiv = document.createElement('div');
     loadingDiv.className = 'chat-msg assistant';
 
@@ -929,7 +979,7 @@ function addChatLoading() {
     return loadingDiv;
 }
 
-function renderToolCallChip(tc) {
+function renderToolCallChip(tc: AlgeBenchChatToolCall): HTMLDivElement {
     const chip = document.createElement('div');
     chip.className = 'chat-tool-call';
     const rawArgs = tc.rawArgs || tc.args;
@@ -947,7 +997,7 @@ function renderToolCallChip(tc) {
             if (s) {
                 sceneTitle = s.title || sceneTitle;
                 if (agentStep >= 1 && s.steps && s.steps[agentStep - 1]) {
-                    stepTitle = s.steps[agentStep - 1].title || ('Step ' + agentStep);
+                    stepTitle = s.steps[agentStep - 1]!.title || ('Step ' + agentStep);
                 } else if (agentStep === 0) {
                     stepTitle = 'Root';
                 }
@@ -1014,7 +1064,7 @@ function renderToolCallChip(tc) {
             friendlyText = '🖼️ Cleared info overlays';
         } else {
             const id = tc.args.id || 'overlay';
-            const pos = tc.args.position || 'top-left';
+            const pos = (tc.args.position as string | undefined) || 'top-left';
             friendlyText = '🖼️ Info overlay "' + e(id) + '" @ ' + e(pos);
         }
     } else if (tc.name === 'navigate_proof') {
@@ -1025,7 +1075,7 @@ function renderToolCallChip(tc) {
             : '📐 Proof: step ' + step + (reason ? ' — ' + e(reason) : '');
     } else if (tc.name === 'control_coach') {
         const action = tc.args.action || 'status';
-        const step = tc.args.step ? ' → ' + e(tc.args.step) : '';
+        const step = tc.args.step ? ' → ' + e(String(tc.args.step)) : '';
         friendlyText = '🧭 Tour: ' + e(action) + step;
     }
 
@@ -1106,7 +1156,7 @@ function renderToolCallChip(tc) {
     });
 
     const hideResolvedPopup = () => { resolvedBackdrop.style.display = 'none'; };
-    const onResolvedPopupKeydown = (e) => {
+    const onResolvedPopupKeydown = (e: KeyboardEvent) => {
         if (e.key === 'Escape' && resolvedBackdrop.style.display !== 'none') {
             hideResolvedPopup();
         }
@@ -1129,32 +1179,32 @@ const _SVG_UNMUTED = '<svg viewBox="0 0 16 16" width="14" height="14" fill="curr
 const _SVG_MUTED = '<svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M8 1.3L4.63 4H2.5A1.5 1.5 0 001 5.5v5A1.5 1.5 0 002.5 12h2.13L8 14.7V1.3zm3 4.2l1.5 1.5L14 5.5l.7.7L13.2 7.7l1.5 1.5-.7.7L12.5 8.4 11 9.9l-.7-.7 1.5-1.5L10.3 6.2l.7-.7z"/></svg>';
 let ttsRequestId = 0;         // Monotonic counter — invalidates stale streams on new request
 let ttsPausedByUser = false;
-let ttsPlayer = null;         // TTSAudioPlayer instance (lazy-init)
+let ttsPlayer: GeminiTTSAudioPlayer | null = null;         // TTSAudioPlayer instance (lazy-init)
 let ttsHasOutputFile = false;
-let ttsAbortController = null; // AbortController for the active fetch stream
+let ttsAbortController: AbortController | null = null; // AbortController for the active fetch stream
 
-function _ensureTTSPlayer() {
+function _ensureTTSPlayer(): GeminiTTSAudioPlayer | null {
     if (!ttsPlayer && window.GeminiTTSPlayer) {
         ttsPlayer = new window.GeminiTTSPlayer.TTSAudioPlayer({
             volume: 0.5,
             persistKey: 'algebenchTTS',
             onVolumeChange(vol, muted) {
-                const slider = document.getElementById('ttsVolumeSlider');
+                const slider = document.getElementById('ttsVolumeSlider') as HTMLInputElement | null;
                 const icon = document.getElementById('ttsVolumeIcon');
-                if (slider) slider.value = muted ? 0 : vol;
+                if (slider) slider.value = String(muted ? 0 : vol);
                 if (icon) icon.innerHTML = muted ? _SVG_MUTED : _SVG_UNMUTED;
             },
         });
         // Sync slider/icon to persisted volume on init
-        const slider = document.getElementById('ttsVolumeSlider');
+        const slider = document.getElementById('ttsVolumeSlider') as HTMLInputElement | null;
         const icon = document.getElementById('ttsVolumeIcon');
         if (slider) {
-            slider.value = ttsPlayer.isMuted() ? 0 : ttsPlayer.getVolume();
-            slider.addEventListener('input', () => ttsPlayer.setVolume(parseFloat(slider.value)));
+            slider.value = String(ttsPlayer.isMuted() ? 0 : ttsPlayer.getVolume());
+            slider.addEventListener('input', () => ttsPlayer!.setVolume(parseFloat(slider.value)));
         }
         if (icon) {
             icon.innerHTML = ttsPlayer.isMuted() ? _SVG_MUTED : _SVG_UNMUTED;
-            icon.addEventListener('click', () => ttsPlayer.toggleMute());
+            icon.addEventListener('click', () => ttsPlayer!.toggleMute());
         }
     }
     return ttsPlayer;
@@ -1244,7 +1294,7 @@ window.algebenchSpeakText = function(text, onEnd) {
 
 // ---- Core streaming speakText ----
 
-async function speakText(text, { explicit = false } = {}) {
+async function speakText(text: string, { explicit = false }: { explicit?: boolean } = {}): Promise<void> {
     if (selectedTtsMode === 'silent' && !explicit) return;
 
     const clean = text
@@ -1268,7 +1318,7 @@ async function speakText(text, { explicit = false } = {}) {
     if (ttsAbortController) { ttsAbortController.abort(); ttsAbortController = null; }
     const abort = new AbortController();
     ttsAbortController = abort;
-    let response;
+    let response: Response;
     try {
         response = await fetch('/api/tts/stream', {
             method: 'POST',
@@ -1301,7 +1351,7 @@ async function speakText(text, { explicit = false } = {}) {
 
 // ----- TTS Kill SSE Listener -----
 (function _initTTSKillListener() {
-    let es = null;
+    let es: EventSource | null = null;
     function connect() {
         es = new EventSource('/api/tts/events');
         es.addEventListener('kill', () => {
@@ -1315,7 +1365,7 @@ async function speakText(text, { explicit = false } = {}) {
             if (p) p.stop();
         });
         es.onerror = () => {
-            es.close();
+            es!.close();
             setTimeout(connect, 3000);
         };
     }
@@ -1329,7 +1379,7 @@ async function speakText(text, { explicit = false } = {}) {
 // ----- Context Change Tracking -----
 let _lastContextJson = '';
 
-function logContextIfChanged() {
+function logContextIfChanged(): void {
     const context = buildChatContext();
     const json = JSON.stringify(context, null, 2);
     if (json === _lastContextJson) return;
@@ -1358,14 +1408,14 @@ function logContextIfChanged() {
 }
 
 // Poll for context changes (scene/step/camera/slider changes)
-let _contextPollId = null;
-function startContextPolling() {
+let _contextPollId: ReturnType<typeof setInterval> | null = null;
+function startContextPolling(): void {
     if (_contextPollId) return;
     _contextPollId = setInterval(logContextIfChanged, 1000);
 }
 
 // ----- Welcome Message -----
-function sendWelcomeMessage() {
+function sendWelcomeMessage(): void {
     if (!chatAvailable || shouldSkipWelcome() || welcomeInFlight) return;
     welcomeInFlight = true;
     sendChatMessage(
@@ -1383,7 +1433,7 @@ function sendWelcomeMessage() {
 }
 
 // ----- Memory Status Popup -----
-function renderMemoryPopup(mem, queryText) {
+function renderMemoryPopup(mem: Record<string, AlgeBenchMemoryEntry> | null, queryText?: string | null): void {
     const body = document.getElementById('memory-popup-body');
     if (!body) return;
     body.innerHTML = '';
@@ -1451,10 +1501,10 @@ function renderMemoryPopup(mem, queryText) {
     }
 }
 
-function updateMemoryStatus() {
+function updateMemoryStatus(): void {
     fetch('/api/memory')
         .then(r => r.ok ? r.json() : null)
-        .then(mem => {
+        .then((mem: Record<string, AlgeBenchMemoryEntry> | null) => {
             if (!mem) return;
             memorySnapshot = mem;
             // Expose raw memory values globally so info overlays can evaluate
@@ -1469,7 +1519,7 @@ function updateMemoryStatus() {
             const keys = Object.keys(mem);
             const pill = document.getElementById('memory-status');
             const countEl = pill && pill.querySelector('.memory-status-count');
-            const searchInput = document.getElementById('memory-popup-search');
+            const searchInput = document.getElementById('memory-popup-search') as HTMLInputElement | null;
 
             if (!pill) return;
 
@@ -1481,8 +1531,8 @@ function updateMemoryStatus() {
                 return;
             }
 
-            // Update pill
-            if (countEl) countEl.textContent = keys.length;
+            // Update pill — String() is what the textContent setter did implicitly.
+            if (countEl) countEl.textContent = String(keys.length);
             pill.classList.remove('hidden');
 
             // Update status bar visibility (show bar even if no sliders)
@@ -1503,7 +1553,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const memPill = document.getElementById('memory-status');
     const memPopup = document.getElementById('memory-popup');
     const memClose = document.getElementById('memory-popup-close');
-    const memSearch = document.getElementById('memory-popup-search');
+    const memSearch = document.getElementById('memory-popup-search') as HTMLInputElement | null;
 
     if (memPill && memPopup) {
         memPill.addEventListener('click', () => {
@@ -1521,3 +1571,42 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+// ============================================================
+// Re-publish the classic-script global surface.
+//
+// As a classic <script>, every top-level `function` in this file automatically
+// became a property of `window`, and other modules reach several of them that
+// way — `switchPanelTab` and `sendChatMessage` as bare globals behind
+// `typeof … === 'function'` guards (src/overlay.js, src/labels.ts),
+// `setPresetPrompts` likewise (src/scene-loader.js), and `window.*`-qualified
+// in src/view-state-bridge.js and src/proof-animation/sg-proof.js.
+//
+// Module scope publishes nothing, so the full set is re-assigned here. This is
+// deliberately the SAME flat surface as before — replacing it with an
+// `AlgeBench` namespace is issue #406, out of scope for the migration.
+//
+// (The top-level `let`/`const` bindings — chatHistory, ttsPlayer, … — were
+// never window properties even as a classic script: `let`/`const` land in the
+// global LEXICAL scope, not on the global object. Nothing outside this file
+// reads them, so there is nothing to re-publish.)
+// ============================================================
+window._escHtml = _escHtml;
+window._classifyFocusTarget = _classifyFocusTarget;
+window.setPresetPrompts = setPresetPrompts;
+window.shouldSkipWelcome = shouldSkipWelcome;
+window.buildChatContext = buildChatContext;
+window.switchPanelTab = switchPanelTab;
+window.setupChat = setupChat;
+window.initChatTtsControls = initChatTtsControls;
+window.sendChatMessage = sendChatMessage;
+window.addChatMessage = addChatMessage;
+window.addChatLoading = addChatLoading;
+window.renderToolCallChip = renderToolCallChip;
+window._ensureTTSPlayer = _ensureTTSPlayer;
+window.speakText = speakText;
+window.logContextIfChanged = logContextIfChanged;
+window.startContextPolling = startContextPolling;
+window.sendWelcomeMessage = sendWelcomeMessage;
+window.renderMemoryPopup = renderMemoryPopup;
+window.updateMemoryStatus = updateMemoryStatus;
