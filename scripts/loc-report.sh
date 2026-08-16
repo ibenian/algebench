@@ -6,7 +6,12 @@ set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 REPORT_FILE="${1:-LOC-REPORT.md}"
-EXCLUDE=(-e .venv -e node_modules -e __pycache__)
+# static/dist is Vite's committed build output — a bundled copy of src/, so
+# counting it double-counts the frontend and swamps the handwritten source.
+# The pattern is bare `dist`, not `static/dist`: tokei only matches a
+# path-qualified pattern when the scanned root is given relatively, and this
+# script passes absolute paths. `static/dist` is the repo's only dist/.
+EXCLUDE=(-e .venv -e node_modules -e __pycache__ -e dist)
 
 if ! command -v tokei &>/dev/null; then
   echo "tokei not found, installing..."
@@ -42,7 +47,7 @@ BRANCH="${GITHUB_HEAD_REF:-$(git -C "$REPO_ROOT" rev-parse --abbrev-ref HEAD)}"
 
   # ── Collect per-directory stats ──
   dir_data=""
-  for d in backend docs scenes schemas scripts static tests themes; do
+  for d in backend docs scenes schemas scripts src static tests themes; do
     dir_path="$REPO_ROOT/$d"
     [ -d "$dir_path" ] || continue
     stats=$(tokei "$dir_path" "${EXCLUDE[@]}" --output json 2>/dev/null | python3 -c "
@@ -169,7 +174,9 @@ print('\`\`\`')
   echo "## Frontend Assets (per file)"
   echo ""
   echo '```'
-  tokei "$REPO_ROOT/static" --files --sort code
+  # src/ holds the handwritten TS/JS; static/ the CSS, fonts and HTML that
+  # ship beside it. Both are needed for a full picture of the frontend.
+  tokei "$REPO_ROOT/src" "$REPO_ROOT/static" "${EXCLUDE[@]}" --files --sort code
   echo '```'
   echo ""
 
@@ -183,11 +190,18 @@ print('\`\`\`')
   echo "## Category Breakdown"
   echo ""
 
-  js_lines=$(tokei "$REPO_ROOT/static" --output json 2>/dev/null | python3 -c "
+  # Frontend logic = handwritten TS + JS under src/ (plus any left in static/).
+  # TypeScript is counted alongside JavaScript because the migration converts
+  # files in place: a module moving .js -> .ts must not read as lines deleted.
+  js_lines=$(tokei "$REPO_ROOT/src" "$REPO_ROOT/static" "${EXCLUDE[@]}" --output json 2>/dev/null | python3 -c "
 import sys, json
 data = json.load(sys.stdin)
-js = data.get('JavaScript', data.get('Inner', {}))
-print(js.get('code', 0) if isinstance(js, dict) else 0)
+total = 0
+for lang in ('JavaScript', 'TypeScript'):
+    stats = data.get(lang)
+    if isinstance(stats, dict):
+        total += stats.get('code', 0)
+print(total)
 " 2>/dev/null || echo "0")
 
   py_lines=$(tokei "$REPO_ROOT" "${EXCLUDE[@]}" --types Python --output json 2>/dev/null | python3 -c "
@@ -208,7 +222,7 @@ print(py.get('code', 0) if isinstance(py, dict) else 0)
 
   echo "| Category | Code Lines | % of JS+Python |"
   echo "|---|---|---|"
-  echo "| JavaScript (frontend) | $js_lines | ${js_pct}% |"
+  echo "| TypeScript + JavaScript (frontend) | $js_lines | ${js_pct}% |"
   echo "| Python (backend) | $py_lines | ${py_pct}% |"
   echo "| **Total** | **$total** | **100%** |"
 
