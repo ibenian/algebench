@@ -114,15 +114,22 @@ function appVersion(): Plugin {
  * FastAPI that no longer has the file (404).
  *
  * Proxy everything under the prefix EXCEPT module sources: those fall through
- * to Vite, where resolveRootAbsolute() maps them onto src/. Returning a path
- * from bypass() tells Vite to skip the proxy and keep walking its middleware.
+ * to Vite. A `/coach/x.js` request is then picked up by resolveRootAbsolute()
+ * and mapped onto src/ (that plugin handles `.js` only — the other extensions
+ * below are matched so a future .ts/.mjs source is not silently proxied to a
+ * Python server that has never had it). Returning a path from bypass() tells
+ * Vite to skip the proxy and keep walking its middleware.
  */
 function assetsOnly(target: string) {
   return {
     target,
     bypass(req: { url?: string }) {
-      const path = (req.url ?? '').split('?')[0]!;
-      return /\.[cm]?[jt]s$/.test(path) ? path : undefined;
+      const url = req.url ?? '';
+      // Test the extension on the bare path, but hand Vite back the FULL url:
+      // it uses query params on module requests (?t= cache-busting, ?import,
+      // ?raw) and dropping them changes how the module is transformed.
+      const path = url.split('?')[0]!;
+      return /\.[cm]?[jt]s$/.test(path) ? url : undefined;
     },
   };
 }
