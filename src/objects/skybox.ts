@@ -74,11 +74,10 @@ function _makeGradientSkyboxTexture(
 
     const tex = new THREE.CanvasTexture(canvas);
     tex.mapping = THREE.EquirectangularReflectionMapping;
-    // three@0.137 predates `Texture.colorSpace` / `THREE.SRGBColorSpace` (both
-    // land in r152), so at runtime this reads `undefined` and assigns a property
-    // three ignores. Ported verbatim: deleting it would be a behavior change,
-    // not a migration. See the note in the PR body.
-    (tex as unknown as { colorSpace?: unknown }).colorSpace = (THREE as unknown as { SRGBColorSpace?: unknown }).SRGBColorSpace;
+    // No encoding flag on purpose: MathBox leaves renderer.outputEncoding at
+    // LinearEncoding, so tagging the texture sRGBEncoding would decode it to
+    // linear and never re-encode — the authored sRGB hex gradient would render
+    // near-black. Default (linear in, linear out) shows the canvas verbatim.
     return tex;
 }
 
@@ -242,7 +241,8 @@ export function renderSkybox(el: Element) {
         try {
             const loader = new THREE.CubeTextureLoader();
             const tex = loader.load(el.urls);
-            (tex as unknown as { colorSpace?: unknown }).colorSpace = (THREE as unknown as { SRGBColorSpace?: unknown }).SRGBColorSpace;
+            // Left at the default encoding for the same reason as the gradient
+            // texture above — outputEncoding is linear, so tagging sRGB only darkens.
             skyboxState.three.scene.background = tex;
             skyboxState.worldSkybox = { texture: tex };
             return { type: 'skybox', style };
