@@ -196,8 +196,6 @@ interface Window {
    */
   __animators: import('/proof-animation/proof-animation.js').ProofAnimator[];
   __algebenchGraph?: AlgeBenchGraphController;
-  /** Defined by static/chat.js — see the classic-script globals below. */
-  sendChatMessage?: typeof sendChatMessage;
 
   // ---- gemini-live-tools classic scripts (index.html only) ----
   GeminiVoiceCharacterSelector?: GeminiVoiceCharacterSelectorLib;
