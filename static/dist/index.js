@@ -1515,6 +1515,10 @@ function openChatPanel() {
 	}
 	if (typeof switchPanelTab === "function") switchPanelTab("chat");
 }
+/** Build an AI ask-button. `getMessage` may return null/'' when there is nothing
+*  to ask about (e.g. the proof step-ask chip before it is anchored to a step);
+*  the click is then a complete no-op — no chat panel, no input text, no send —
+*  matching the proof engine's own routed ask button. */
 function makeAiAskButton(className, title, getMessage) {
 	const btn = document.createElement("button");
 	btn.type = "button";
@@ -1525,6 +1529,7 @@ function makeAiAskButton(className, title, getMessage) {
 	btn.addEventListener("click", (e) => {
 		e.stopPropagation();
 		const message = getMessage();
+		if (!message) return;
 		openChatPanel();
 		if (e.metaKey || e.ctrlKey) {
 			const input = document.getElementById("chat-input");
