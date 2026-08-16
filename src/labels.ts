@@ -10,13 +10,13 @@ export const AI_SPARKLE_SVG = '<svg viewBox="0 0 16 16" fill="currentColor" widt
 
 // ----- Utility -----
 
-export function escapeHtml(s) {
+export function escapeHtml(s: string): string {
     const d = document.createElement('div');
     d.textContent = s;
     return d.innerHTML;
 }
 
-export function stripLatex(text) {
+export function stripLatex(text: string | null | undefined): string {
     if (!text) return '';
     return text.replace(/\$\$([^$]*)\$\$/g, '$1').replace(/\$([^$]*)\$/g, '$1');
 }
@@ -27,11 +27,11 @@ const _HTML_MACROS = ['htmlClass', 'htmlData', 'htmlId', 'htmlStyle'];
 
 /** Strip KaTeX \htmlClass/\htmlData/\htmlId/\htmlStyle wrappers, keeping their
  *  inner content (recursively). Leaves malformed wrappers intact. */
-export function stripHtmlMacros(s) {
-    if (!s) return s;
+export function stripHtmlMacros(s: string | null | undefined): string {
+    if (!s) return s ?? '';
     const str = String(s);
     // Return the index just past the '}' matching the '{' at k, or -1 if unbalanced.
-    const skipBalanced = (k) => {
+    const skipBalanced = (k: number): number => {
         let depth = 0;
         for (; k < str.length; k++) {
             if (str[k] === '{') depth++;
@@ -42,13 +42,13 @@ export function stripHtmlMacros(s) {
     let out = '';
     let i = 0;
     while (i < str.length) {
-        const m = str[i] === '\\' && _HTML_MACROS.find(x => str.startsWith('\\' + x, i));
+        const m = str[i] === '\\' && _HTML_MACROS.find((x) => str.startsWith('\\' + x, i));
         if (!m) { out += str[i++]; continue; }
         let k = i + 1 + m.length;
-        while (k < str.length && /\s/.test(str[k])) k++;       // ws before the class/data arg
+        while (k < str.length && /\s/.test(str[k]!)) k++;      // ws before the class/data arg
         const arg1End = str[k] === '{' ? skipBalanced(k) : -1;
         let c = arg1End;
-        if (c > 0) while (c < str.length && /\s/.test(str[c])) c++;   // ws before the content arg
+        if (c > 0) while (c < str.length && /\s/.test(str[c]!)) c++;  // ws before the content arg
         const contentEnd = (c > 0 && str[c] === '{') ? skipBalanced(c) : -1;
         if (contentEnd < 0) { out += str[i++]; continue; }     // malformed — leave intact, advance 1
         out += stripHtmlMacros(str.slice(c + 1, contentEnd - 1));   // recurse into the content
@@ -60,7 +60,7 @@ export function stripHtmlMacros(s) {
 /** Loose LaTeX normalization for equality comparison: drop \text{}/\mathrm{}
  *  wrappers, braces, whitespace, and normalize \le/\ge spelling — so e.g.
  *  \gamma_{steep} compares equal to \gamma_{\text{steep}}. */
-export function normLatex(s) {
+export function normLatex(s: string | null | undefined): string {
     return (s || '')
         .replace(/\\(?:text|mathrm|mathbf|operatorname)\s*\{([^{}]*)\}/g, '$1')
         .replace(/\\le(?![a-zA-Z])/g, '\\leq')
@@ -70,17 +70,17 @@ export function normLatex(s) {
 
 // ----- KaTeX rendering -----
 
-export function renderKaTeX(text, displayMode) {
+export function renderKaTeX(text: string | null | undefined, displayMode?: boolean): string {
     if (!text) return '';
     // Pre-pass 1: extract markdown tables (before $ splitting, since cells contain LaTeX).
     // Each table is rendered independently (cells get renderKaTeX) and replaced with a sentinel.
-    const tables = [];
+    const tables: string[] = [];
     const withTables = text.replace(
         /^(\|.+\|)\n(\|[\s:?-]+(?:\|[\s:?-]+)+\|)\n((?:\|.+\|\n?)+)/gm,
-        (match, headerLine, sepLine, bodyBlock) => {
-            const parseRow = (row) => {
+        (_match: string, headerLine: string, _sepLine: string, bodyBlock: string) => {
+            const parseRow = (row: string): string[] => {
                 const content = row.replace(/^\|/, '').replace(/\|$/, '');
-                const cells = [];
+                const cells: string[] = [];
                 let current = '';
                 let inMath = false, inDisplayMath = false;
                 for (let ci = 0; ci < content.length; ci++) {
@@ -98,15 +98,15 @@ export function renderKaTeX(text, displayMode) {
                 return cells;
             };
             const headers = parseRow(headerLine);
-            const rows = bodyBlock.trim().split('\n').map(r => parseRow(r));
+            const rows = bodyBlock.trim().split('\n').map((r: string) => parseRow(r));
             const tableStyle = 'border-collapse:collapse;margin:6px 0;font-size:0.9em';
             const cellStyle = 'padding:3px 8px;border:1px solid rgba(255,255,255,0.15)';
             const thStyle = cellStyle + ';font-weight:bold;background:rgba(255,255,255,0.06)';
             let html = `<table style="${tableStyle}"><thead><tr>`;
-            html += headers.map(h => `<th style="${thStyle}">${renderKaTeX(h, false)}</th>`).join('');
+            html += headers.map((h: string) => `<th style="${thStyle}">${renderKaTeX(h, false)}</th>`).join('');
             html += '</tr></thead><tbody>';
             for (const row of rows) {
-                html += '<tr>' + row.map(c => `<td style="${cellStyle}">${renderKaTeX(c, false)}</td>`).join('') + '</tr>';
+                html += '<tr>' + row.map((c: string) => `<td style="${cellStyle}">${renderKaTeX(c, false)}</td>`).join('') + '</tr>';
             }
             html += '</tbody></table>';
             tables.push(html);
@@ -114,65 +114,68 @@ export function renderKaTeX(text, displayMode) {
         }
     );
     // Pre-pass 2: extract heading lines so LaTeX inside them isn't split apart.
-    const headings = [];
-    let prepped = withTables.replace(/^(#{1,3})\s+(.+)$/gm, (_, hashes, content) => {
+    const headings: string[] = [];
+    let prepped = withTables.replace(/^(#{1,3})\s+(.+)$/gm, (_m: string, hashes: string, content: string) => {
         const sz = ['1.05em', '0.95em', '0.88em'][hashes.length - 1];
         headings.push(`<div style="font-size:${sz};font-weight:bold;margin:3px 0 1px">${renderKaTeX(content, false)}</div>`);
         return `\x01H${headings.length - 1}\x01`;
     });
     // Pre-pass 3: extract `code` spans so asterisks inside them
     // (e.g. `*args`) aren't consumed by the bold/italic pass.
-    const codeSpans = [];
-    prepped = prepped.replace(/`(.+?)`/g, (match, inner) => {
+    const codeSpans: string[] = [];
+    prepped = prepped.replace(/`(.+?)`/g, (_m: string, inner: string) => {
         codeSpans.push(inner);
         return `\x01C${codeSpans.length - 1}\x01`;
     });
     // Pre-pass 4: extract $$ and $ math blocks so asterisks inside them
     // (e.g. $T^*$, $A*B$) aren't consumed by the bold/italic pass.
-    const mathSpans = [];
-    prepped = prepped.replace(/(\$\$[\s\S]+?\$\$|\$[^$]+?\$)/g, (match) => {
+    const mathSpans: string[] = [];
+    prepped = prepped.replace(/(\$\$[\s\S]+?\$\$|\$[^$]+?\$)/g, (match: string) => {
         mathSpans.push(match);
         return `\x01M${mathSpans.length - 1}\x01`;
     });
     // Pre-pass 4: extract **bold** and *italic* spans that may contain $math$ inside,
     // so the $ split doesn't break the markers apart.
-    const boldSpans = [];
-    prepped = prepped.replace(/\*\*(.+?)\*\*/g, (match, inner) => {
+    const boldSpans: string[] = [];
+    prepped = prepped.replace(/\*\*(.+?)\*\*/g, (_m: string, inner: string) => {
         boldSpans.push(inner);
         return `\x01B${boldSpans.length - 1}\x01`;
     });
-    const italicSpans = [];
-    prepped = prepped.replace(/\*(.+?)\*/g, (match, inner) => {
+    const italicSpans: string[] = [];
+    prepped = prepped.replace(/\*(.+?)\*/g, (_m: string, inner: string) => {
         italicSpans.push(inner);
         return `\x01I${italicSpans.length - 1}\x01`;
     });
     // Restore math sentinels everywhere before the $ split
-    const restoreMath = s => s.replace(/\x01M(\d+)\x01/g, (m, idx) => mathSpans[+idx]);
+    // Sentinels are generated a few lines above, so every index resolves; `!`
+    // keeps a corrupted one throwing rather than splicing in "undefined".
+    const restoreMath = (str: string): string =>
+        str.replace(/\x01M(\d+)\x01/g, (_m: string, idx: string) => mathSpans[+idx]!);
     prepped = restoreMath(prepped);
-    for (let i = 0; i < boldSpans.length; i++) boldSpans[i] = restoreMath(boldSpans[i]);
-    for (let i = 0; i < italicSpans.length; i++) italicSpans[i] = restoreMath(italicSpans[i]);
+    for (let i = 0; i < boldSpans.length; i++) boldSpans[i] = restoreMath(boldSpans[i]!);
+    for (let i = 0; i < italicSpans.length; i++) italicSpans[i] = restoreMath(italicSpans[i]!);
     const segments = prepped.split(/(\$\$[\s\S]+?\$\$|\$[^$]+?\$)/g);
-    return segments.map((seg, i) => {
+    return segments.map((seg: string, i: number) => {
         if (i % 2 === 0) {
             const lines = escapeHtml(seg).split(/\\n|\n/);
-            return lines.map((line, li) => {
+            return lines.map((line: string, li: number) => {
                 const t = line.trim();
                 // Restore heading sentinel
                 const hIdx = t.match(/^\x01H(\d+)\x01$/);
-                if (hIdx) return headings[+hIdx[1]];
+                if (hIdx) return headings[+hIdx[1]!]!;
                 // Restore table sentinel
                 const tIdx = t.match(/^\x01T(\d+)\x01$/);
-                if (tIdx) return tables[+tIdx[1]];
+                if (tIdx) return tables[+tIdx[1]!]!;
                 const hm = t.match(/^(#{1,3})\s+(.*)/);
                 if (hm) {
-                    const sz = ['1.05em', '0.95em', '0.88em'][hm[1].length - 1];
+                    const sz = ['1.05em', '0.95em', '0.88em'][hm[1]!.length - 1];
                     return `<div style="font-size:${sz};font-weight:bold;margin:3px 0 1px">${hm[2]}</div>`;
                 }
                 if (t === '---') return '<hr style="border:none;border-top:1px solid rgba(255,255,255,0.2);margin:4px 0">';
                 const inline = line
-                    .replace(/\x01B(\d+)\x01/g, (m, idx) => `<strong>${renderKaTeX(boldSpans[+idx], false)}</strong>`)
-                    .replace(/\x01I(\d+)\x01/g, (m, idx) => `<em>${renderKaTeX(italicSpans[+idx], false)}</em>`)
-                    .replace(/\x01C(\d+)\x01/g, (m, idx) => `<code>${codeSpans[+idx]}</code>`)
+                    .replace(/\x01B(\d+)\x01/g, (_m: string, idx: string) => `<strong>${renderKaTeX(boldSpans[+idx], false)}</strong>`)
+                    .replace(/\x01I(\d+)\x01/g, (_m: string, idx: string) => `<em>${renderKaTeX(italicSpans[+idx], false)}</em>`)
+                    .replace(/\x01C(\d+)\x01/g, (_m: string, idx: string) => `<code>${codeSpans[+idx]}</code>`)
                     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
                     .replace(/\*(.+?)\*/g, '<em>$1</em>')
                     .replace(/`(.+?)`/g, '<code>$1</code>');
@@ -181,36 +184,39 @@ export function renderKaTeX(text, displayMode) {
         } else if (seg.startsWith('$$')) {
             const tex = seg.slice(2, -2);
             try { return katex.renderToString(tex, { throwOnError: false, strict: false, displayMode: true, trust: (ctx) => ctx.command === '\\htmlClass' }); }
-            catch(e) { return escapeHtml(seg); }
+            catch (_e) { return escapeHtml(seg); }
         } else {
             const tex = seg.slice(1, -1);
             try { return katex.renderToString(tex, { throwOnError: false, strict: false, displayMode: false, trust: (ctx) => ctx.command === '\\htmlClass' }); }
-            catch(e) { return escapeHtml(seg); }
+            catch (_e) { return escapeHtml(seg); }
         }
     }).join('');
 }
 
 // ----- Markdown rendering (LaTeX-safe two-pass) -----
 
-export function renderMarkdown(md) {
+export function renderMarkdown(md: string | null | undefined): string {
     if (!md) return '';
-    let mathBlocks = [];
+    const mathBlocks: { tex: string; display: boolean }[] = [];
 
-    let safe = md.replace(/\$\$([\s\S]+?)\$\$/g, (m, tex) => {
+    let safe = md.replace(/\$\$([\s\S]+?)\$\$/g, (_m: string, tex: string) => {
         mathBlocks.push({ tex: tex.trim(), display: true });
         return '%%MATH_BLOCK_' + (mathBlocks.length - 1) + '%%';
     });
-    safe = safe.replace(/\$([^$\n]+)\$/g, (m, tex) => {
+    safe = safe.replace(/\$([^$\n]+)\$/g, (_m: string, tex: string) => {
         mathBlocks.push({ tex: tex.trim(), display: false });
         return '%%MATH_BLOCK_' + (mathBlocks.length - 1) + '%%';
     });
 
-    let html = marked.parse(safe);
-    html = html.replace(/%%MATH_BLOCK_(\d+)%%/g, (m, idx) => {
-        const block = mathBlocks[parseInt(idx)];
+    // marked.parse is typed string | Promise<string> because it supports async
+    // extensions; none are registered here, so the sync string is what comes back.
+    let html = marked.parse(safe) as string;
+    html = html.replace(/%%MATH_BLOCK_(\d+)%%/g, (_m: string, idx: string) => {
+        // Sentinel indices are generated just above, so this always resolves.
+        const block = mathBlocks[parseInt(idx)]!;
         try {
             return katex.renderToString(block.tex, { throwOnError: false, strict: false, displayMode: block.display, trust: (ctx) => ctx.command === '\\htmlClass' });
-        } catch(e) { return block.tex; }
+        } catch (_e) { return block.tex; }
     });
 
     return html;
@@ -218,7 +224,10 @@ export function renderMarkdown(md) {
 
 // ----- Color parsing -----
 
-export function parseColor(c) {
+/** Normalized RGB, each channel in 0..1. */
+export type Rgb = number[];
+
+export function parseColor(c: unknown): Rgb {
     if (!c) return [0.5, 0.5, 1];
     if (typeof c === 'string') {
         if (c.startsWith('#')) {
@@ -229,7 +238,7 @@ export function parseColor(c) {
                 parseInt(hex.substr(4,2), 16) / 255,
             ];
         }
-        const named = {
+        const named: Record<string, number[]> = {
             'red': [1,0.2,0.2], 'green': [0.2,0.9,0.2], 'blue': [0.3,0.4,1],
             'yellow': [1,1,0.2], 'cyan': [0.2,1,1], 'magenta': [1,0.2,1],
             'orange': [1,0.6,0.1], 'purple': [0.7,0.3,1], 'white': [1,1,1],
@@ -237,30 +246,92 @@ export function parseColor(c) {
         };
         return named[c.toLowerCase()] || [0.5, 0.5, 1];
     }
-    if (Array.isArray(c)) return c.map(v => v > 1 ? v/255 : v);
+    // A caller-supplied array is passed through channel-wise, preserving its
+    // length — hence Rgb is number[] rather than a 3-tuple.
+    if (Array.isArray(c)) return (c as number[]).map((v) => (v > 1 ? v / 255 : v));
     return [0.5, 0.5, 1];
 }
 
-export function colorToCSS(c) {
+export function colorToCSS(c: unknown): string {
     const rgb = parseColor(c);
-    return `rgb(${Math.round(rgb[0]*255)}, ${Math.round(rgb[1]*255)}, ${Math.round(rgb[2]*255)})`;
+    // A short array yields NaN channels here, exactly as the JavaScript did.
+    return `rgb(${Math.round(rgb[0]! * 255)}, ${Math.round(rgb[1]! * 255)}, ${Math.round(rgb[2]! * 255)})`;
 }
 
 // ----- Label system -----
 
+/** Options accepted by addLabel3D; a bare string is shorthand for cssClass. */
+export interface Label3DOptions {
+    cssClass?: string;
+    align?: string;
+}
+
+/** A live 3D label: its DOM node plus the per-frame projection/declutter state
+ *  that updateLabels reads and writes. */
+export interface Label3D {
+    el: HTMLDivElement;
+    dataPos: number[];
+    screenX: number | null;
+    screenY: number | null;
+    forceHidden: boolean;
+    align: string;
+    /** Cached DOM size, measured lazily, and the labelScale it was measured at. */
+    boxW: number | null;
+    boxH: number | null;
+    boxScale: number | null;
+    /** Vertical de-occlusion offset (position mode). */
+    offsetY: number;
+    targetOffsetY: number;
+    /** World-space distance from the camera (smaller = nearer). */
+    depth: number;
+    /** Applied / target brightness (shade mode). */
+    dim: number;
+    targetDim: number;
+    /** Applied / target opacity for near-hiding a big stack's farthest labels. */
+    fade: number;
+    targetFade: number;
+    /** Paint order; higher = on top (depth tiebreak). */
+    seq: number;
+    lastDataPos: number[] | null;
+    moveCooldown: number;
+    /** Set each frame by updateLabels; absent until the first pass runs. */
+    moving?: boolean;
+    /** On-screen visibility for this frame (frustum + forceHidden). */
+    visible?: boolean;
+    /** Last z-index written to the DOM, so paint order only touches the style
+     *  when the rank actually changes. */
+    _zi?: number;
+}
+
+// state.js is still untyped JavaScript, so describe the slice this module uses
+// rather than spreading `any`. The cast goes away when state.js is converted.
+interface LabelsState {
+    labels: Label3D[];
+    camera: import('three').Camera | null;
+    renderer: { domElement: HTMLCanvasElement } | null;
+    displayParams: { labelScale: number; labelOpacity: number; labelDeclutter?: string };
+}
+const labelsState = state as unknown as LabelsState;
+
 let _labelSeq = 0; // monotonic; later = appended later = painted on top
 
-export function addLabel3D(text, dataPos, color, opts) {
-    if (typeof opts === 'string') opts = { cssClass: opts };
-    opts = opts || {};
+export function addLabel3D(
+    text: string,
+    dataPos: number[],
+    color?: unknown,
+    opts?: Label3DOptions | string | null,
+): Label3D {
+    const o: Label3DOptions = typeof opts === 'string' ? { cssClass: opts } : (opts || {});
     const container = document.getElementById('labels-container');
     const el = document.createElement('div');
-    el.className = opts.cssClass || 'label-3d';
+    el.className = o.cssClass || 'label-3d';
     el.innerHTML = renderKaTeX(text, false);
     if (color) el.style.color = colorToCSS(color);
-    container.appendChild(el);
-    const align = opts.align || 'center';
-    const entry = {
+    // Unguarded in the original: a missing container threw here and still must,
+    // rather than silently creating labels that are never mounted.
+    container!.appendChild(el);
+    const align = o.align || 'center';
+    const entry: Label3D = {
         el, dataPos: dataPos.slice(), screenX: null, screenY: null, forceHidden: false, align,
         boxW: null, boxH: null, // cached DOM size (measured lazily)
         boxScale: null,       // labelScale the cached size was measured at
@@ -272,35 +343,37 @@ export function addLabel3D(text, dataPos, color, opts) {
         lastDataPos: null,    // dataPos from the previous frame (motion detection)
         moveCooldown: 0,      // frames remaining while treated as "animating"
     };
-    state.labels.push(entry);
+    labelsState.labels.push(entry);
     return entry;
 }
 
-export function clearLabels() {
+export function clearLabels(): void {
     const container = document.getElementById('labels-container');
-    container.innerHTML = '';
-    state.labels = [];
+    container!.innerHTML = '';
+    labelsState.labels = [];
 }
 
-let _labelsContainer = null;
-let _appliedLabelScale = null;
+let _labelsContainer: HTMLElement | null = null;
+let _appliedLabelScale: number | null = null;
 
-export function updateLabels() {
-    if (!state.camera || !state.renderer) return;
-    const w = state.renderer.domElement.clientWidth;
-    const h = state.renderer.domElement.clientHeight;
-    const s = state.displayParams.labelScale;
+export function updateLabels(): void {
+    const camera = labelsState.camera;
+    const renderer = labelsState.renderer;
+    if (!camera || !renderer) return;
+    const w = renderer.domElement.clientWidth;
+    const h = renderer.domElement.clientHeight;
+    const s = labelsState.displayParams.labelScale;
 
     // Drive label size through a CSS variable so the font (and KaTeX) re-render
     // crisply at the new size, instead of resampling glyphs with transform scale.
     if (_appliedLabelScale !== s) {
         if (!_labelsContainer) _labelsContainer = document.getElementById('labels-container');
-        if (_labelsContainer) _labelsContainer.style.setProperty('--label-scale', s);
+        if (_labelsContainer) _labelsContainer.style.setProperty('--label-scale', String(s));
         _appliedLabelScale = s;
     }
 
     // ----- Pass 1: project + measure (reads only) -----
-    for (const lbl of state.labels) {
+    for (const lbl of labelsState.labels) {
         // A label whose data position is animating is "glued" to a moving marker
         // (a rider dot, an animated point). Exclude it from declutter so it stays
         // pinned to its marker instead of being nudged off it as it sweeps past
@@ -309,21 +382,22 @@ export function updateLabels() {
         // pauses (e.g. a turnaround) so a slow stretch doesn't re-engage and
         // blip; once motion truly settles the label declutters again.
         const dp = lbl.dataPos;
-        const dataMoved = lbl.lastDataPos && (
-            Math.abs(dp[0] - lbl.lastDataPos[0]) > 1e-6 ||
-            Math.abs(dp[1] - lbl.lastDataPos[1]) > 1e-6 ||
-            Math.abs(dp[2] - lbl.lastDataPos[2]) > 1e-6);
+        const prev = lbl.lastDataPos;
+        const dataMoved = prev && (
+            Math.abs(dp[0]! - prev[0]!) > 1e-6 ||
+            Math.abs(dp[1]! - prev[1]!) > 1e-6 ||
+            Math.abs(dp[2]! - prev[2]!) > 1e-6);
         if (dataMoved) lbl.moveCooldown = 20;
         else if (lbl.moveCooldown > 0) lbl.moveCooldown--;
-        lbl.lastDataPos = [dp[0], dp[1], dp[2]];
+        lbl.lastDataPos = [dp[0]!, dp[1]!, dp[2]!];
         lbl.moving = lbl.moveCooldown > 0;
 
-        const world = dataToWorld(dp);
+        const world = dataToWorld(dp as [number, number, number]);
         const v = new THREE.Vector3(world[0], world[1], world[2]);
         // World-space distance to the camera (linear; smaller = nearer). NDC z is
         // useless here — a near-planar scene crushes every label to ~the same z.
-        lbl.depth = state.camera.position.distanceTo(v);
-        const projected = v.project(state.camera);
+        lbl.depth = camera.position.distanceTo(v);
+        const projected = v.project(camera);
         const targetX = (projected.x * 0.5 + 0.5) * w;
         const targetY = (-projected.y * 0.5 + 0.5) * h;
         lbl.visible = !lbl.forceHidden && projected.z < 1
@@ -355,32 +429,33 @@ export function updateLabels() {
     // ----- Pass 3: smooth offset + dim, then write transforms -----
     const declutterAlpha = state.displayParams.labelDeclutterAlpha;
     const dimAlpha = state.displayParams.labelDimAlpha;
-    for (const lbl of state.labels) {
+    for (const lbl of labelsState.labels) {
         lbl.offsetY += (lbl.targetOffsetY - lbl.offsetY) * declutterAlpha;
         lbl.dim += (lbl.targetDim - lbl.dim) * dimAlpha;
         lbl.fade += (lbl.targetFade - lbl.fade) * dimAlpha;
         const ax = lbl.align === 'right' ? '-100%' : lbl.align === 'left' ? '0%' : '-50%';
-        const y = lbl.screenY + lbl.offsetY;
+        const y = lbl.screenY! + lbl.offsetY;
         lbl.el.style.transform = `translate(${lbl.screenX}px, ${y}px) translate(${ax}, -50%)`;
         // Near-hidden far labels fade via opacity (fade); gentle recede uses brightness (dim).
-        lbl.el.style.opacity = lbl.visible ? (state.displayParams.labelOpacity * lbl.fade).toFixed(3) : '0';
+        lbl.el.style.opacity = lbl.visible ? (labelsState.displayParams.labelOpacity * lbl.fade).toFixed(3) : '0';
         lbl.el.style.filter = lbl.dim < 0.999 ? `brightness(${lbl.dim.toFixed(3)})` : '';
     }
 
     // Paint order: nearest the camera draws on top. Assign z-index by depth rank
     // using the SAME order the shade dimming uses, so the label drawn on top is
     // exactly the one kept bright.
-    const ordered = state.labels.filter(l => l.visible).sort(frontToBack);
+    const ordered = labelsState.labels.filter((l) => l.visible).sort(frontToBack);
     for (let i = 0; i < ordered.length; i++) {
         const zi = ordered.length - i; // front (index 0) gets the highest z-index
-        if (ordered[i]._zi !== zi) { ordered[i].el.style.zIndex = String(zi); ordered[i]._zi = zi; }
+        const o = ordered[i]!;
+        if (o._zi !== zi) { o.el.style.zIndex = String(zi); o._zi = zi; }
     }
 }
 
 // Front-to-back order for paint (z-index): nearest the camera first. On a near
 // tie the moving label wins (it sits on top of what it passes over), then the
 // later-painted label.
-function frontToBack(a, b) {
+function frontToBack(a: Label3D, b: Label3D): number {
     if (Math.abs(a.depth - b.depth) > 0.01) return a.depth - b.depth;
     if (a.moving !== b.moving) return a.moving ? -1 : 1;
     return b.seq - a.seq;
@@ -393,7 +468,7 @@ function frontToBack(a, b) {
 // a label genuinely deeper than what's drawn over it recedes.
 function resolveDepthDimming() {
     const active = [];
-    for (const lbl of state.labels) {
+    for (const lbl of labelsState.labels) {
         lbl.targetDim = 1;
         lbl.targetFade = 1;
         if (lbl.visible && lbl.boxW != null) active.push(lbl);
@@ -408,9 +483,10 @@ function resolveDepthDimming() {
     // params against out-of-range values set via the console or a future UI.
     const hideThreshold = Math.round(state.displayParams.labelDimHideThreshold); // cluster size that triggers near-hiding
     const hideLevel = Math.min(1, Math.max(0, state.displayParams.labelDimHideLevel)); // opacity the farthest fade to
-    const boxes = new Map(active.map(l => [l, labelBox(l)]));
-    const overlaps = (a, b) => {
-        const A = boxes.get(a), B = boxes.get(b);
+    const boxes = new Map<Label3D, LabelBox>(active.map((l) => [l, labelBox(l)]));
+    // Every label in `active` is in the map by construction.
+    const overlaps = (a: Label3D, b: Label3D): boolean => {
+        const A = boxes.get(a)!, B = boxes.get(b)!;
         return A.left < B.right && B.left < A.right && A.top < B.bottom && B.top < A.bottom;
     };
 
@@ -424,8 +500,9 @@ function resolveDepthDimming() {
         if (hideThreshold >= 2 && cluster.length >= hideThreshold) {
             const byDepth = cluster.slice().sort(frontToBack);
             for (let r = hideThreshold - 1; r < byDepth.length; r++) {
-                byDepth[r].targetFade = hideLevel;   // opacity, not brightness — no dark text
-                hidden.add(byDepth[r]);
+                const far = byDepth[r]!;
+                far.targetFade = hideLevel;   // opacity, not brightness — no dark text
+                hidden.add(far);
             }
         }
         for (const lbl of cluster) {
@@ -459,7 +536,7 @@ function resolveDepthDimming() {
 // no feedback into detection and therefore no oscillation.
 function resolveLabelOffsets() {
     const active = [];
-    for (const lbl of state.labels) {
+    for (const lbl of labelsState.labels) {
         lbl.targetOffsetY = 0;
         // Only labels holding still are moved. A label glued to a moving marker
         // stays pinned and passes over static text (a purely-vertical offset
@@ -475,7 +552,7 @@ function resolveLabelOffsets() {
     // Cluster labels whose boxes *actually* overlap in 2D, then stack each cluster.
     for (const cluster of clusterByOverlap(active)) {
         if (cluster.length < 2) continue;
-        cluster.sort((a, b) => a.screenY - b.screenY);
+        cluster.sort((a, b) => a.screenY! - b.screenY!);
         resolveVerticalStack(cluster, gap, maxStack);
     }
 }
@@ -485,13 +562,15 @@ function resolveLabelOffsets() {
 // truly overlap (centre distance < mean height, gap excluded); resolution then
 // spreads them to mean height + gap. The gap between engage and resolved spacing
 // is a deadband that stops boundary jitter.
-function resolveVerticalStack(cluster, gap, maxStack) {
+function resolveVerticalStack(cluster: Label3D[], gap: number, maxStack: number): void {
     const n = cluster.length;
     let i = 0;
     while (i < n) {
         let j = i;
+        // Indices stay inside the run by the loop bounds; screenY/boxH are
+        // populated by pass 1 before any of this runs.
         while (j + 1 < n
-            && cluster[j + 1].screenY - cluster[j].screenY < (cluster[j].boxH + cluster[j + 1].boxH) / 2) {
+            && cluster[j + 1]!.screenY! - cluster[j]!.screenY! < (cluster[j]!.boxH! + cluster[j + 1]!.boxH!) / 2) {
             j++;
         }
         if (j > i) resolveRun(cluster, i, j, gap, maxStack);
@@ -501,21 +580,23 @@ function resolveVerticalStack(cluster, gap, maxStack) {
 
 // Pool-Adjacent-Violators (isotonic regression) over one engaged run: minimal-
 // displacement separation to mean height + gap, with compression past maxStack.
-function resolveRun(cluster, start, end, gap, maxStack) {
+function resolveRun(cluster: Label3D[], start: number, end: number, gap: number, maxStack: number): void {
     const n = end - start + 1;
-    const S = new Array(n);
+    const S: number[] = new Array(n);
     S[0] = 0;
     for (let k = 1; k < n; k++) {
-        S[k] = S[k - 1] + (cluster[start + k - 1].boxH + cluster[start + k].boxH) / 2 + gap;
+        S[k] = S[k - 1]! + (cluster[start + k - 1]!.boxH! + cluster[start + k]!.boxH!) / 2 + gap;
     }
-    const desired = [];
-    for (let k = 0; k < n; k++) desired[k] = cluster[start + k].screenY - S[k];
+    const desired: number[] = [];
+    for (let k = 0; k < n; k++) desired[k] = cluster[start + k]!.screenY! - S[k]!;
 
-    const blocks = []; // { sum, size, k0 }  (mean = sum / size)
+    /** One pooled block of the isotonic regression (mean = sum / size). */
+    interface PavBlock { sum: number; size: number; k0: number; }
+    const blocks: PavBlock[] = [];
     for (let k = 0; k < n; k++) {
-        let b = { sum: desired[k], size: 1, k0: k };
-        while (blocks.length && blocks[blocks.length - 1].sum / blocks[blocks.length - 1].size > b.sum / b.size) {
-            const prev = blocks.pop();
+        let b: PavBlock = { sum: desired[k]!, size: 1, k0: k };
+        while (blocks.length && blocks[blocks.length - 1]!.sum / blocks[blocks.length - 1]!.size > b.sum / b.size) {
+            const prev = blocks.pop()!;
             b = { sum: prev.sum + b.sum, size: prev.size + b.size, k0: prev.k0 };
         }
         blocks.push(b);
@@ -525,32 +606,43 @@ function resolveRun(cluster, start, end, gap, maxStack) {
         const mean = b.sum / b.size;
         const scale = Math.min(1, maxStack / Math.max(1, b.size - 1));
         let sAvg = 0;
-        for (let k = b.k0; k < b.k0 + b.size; k++) sAvg += S[k];
+        for (let k = b.k0; k < b.k0 + b.size; k++) sAvg += S[k]!;
         sAvg /= b.size;
         for (let k = b.k0; k < b.k0 + b.size; k++) {
-            const finalY = mean + sAvg + (S[k] - sAvg) * scale;
-            cluster[start + k].targetOffsetY = finalY - cluster[start + k].screenY;
+            const finalY = mean + sAvg + (S[k]! - sAvg) * scale;
+            const lbl = cluster[start + k]!;
+            lbl.targetOffsetY = finalY - lbl.screenY!;
         }
     }
 }
 
 // Screen-space box of a label, honoring its anchor alignment (labels are
 // vertically centered on screenY via the CSS translate(-50%)).
-function labelBox(l) {
-    const left = l.align === 'right' ? l.screenX - l.boxW
-        : l.align === 'left' ? l.screenX : l.screenX - l.boxW / 2;
-    return { left, right: left + l.boxW, top: l.screenY - l.boxH / 2, bottom: l.screenY + l.boxH / 2 };
+/** Screen-space bounds of a label. Only ever called on labels that pass 1 has
+ *  projected and measured, so screenX/screenY/boxW/boxH are populated — `!`
+ *  keeps a caller that skipped that failing loudly instead of silently
+ *  comparing NaN boxes. */
+interface LabelBox { left: number; right: number; top: number; bottom: number; }
+
+function labelBox(l: Label3D): LabelBox {
+    const left = l.align === 'right' ? l.screenX! - l.boxW!
+        : l.align === 'left' ? l.screenX! : l.screenX! - l.boxW! / 2;
+    return { left, right: left + l.boxW!, top: l.screenY! - l.boxH! / 2, bottom: l.screenY! + l.boxH! / 2 };
 }
 
-function clusterByOverlap(labels) {
+function clusterByOverlap(labels: Label3D[]): Label3D[][] {
     const n = labels.length;
     const boxes = labels.map(labelBox);
     const parent = labels.map((_, i) => i);
-    const find = (i) => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+    // Union-find over indices in [0,n), so every lookup is in range.
+    const find = (i: number): number => {
+        while (parent[i] !== i) { parent[i] = parent[parent[i]!]!; i = parent[i]!; }
+        return i;
+    };
     for (let i = 0; i < n; i++) {
-        const a = boxes[i];
+        const a = boxes[i]!;
         for (let j = i + 1; j < n; j++) {
-            const b = boxes[j];
+            const b = boxes[j]!;
             // Real box intersection on both axes — no gap padding, so labels
             // resting a gap apart are not engaged (that gap is the deadband that
             // keeps boundary cases from flickering in and out of a cluster).
@@ -559,11 +651,11 @@ function clusterByOverlap(labels) {
             }
         }
     }
-    const groups = new Map();
+    const groups = new Map<number, Label3D[]>();
     for (let i = 0; i < n; i++) {
         const r = find(i);
         if (!groups.has(r)) groups.set(r, []);
-        groups.get(r).push(labels[i]);
+        groups.get(r)!.push(labels[i]!);
     }
     return [...groups.values()];
 }
@@ -583,7 +675,11 @@ export function openChatPanel() {
     if (typeof switchPanelTab === 'function') switchPanelTab('chat');
 }
 
-export function makeAiAskButton(className, title, getMessage) {
+export function makeAiAskButton(
+    className: string,
+    title: string,
+    getMessage: () => string,
+): HTMLButtonElement {
     const btn = document.createElement('button');
     btn.type = 'button';   // never submit an enclosing form
     btn.className = className;
@@ -595,7 +691,7 @@ export function makeAiAskButton(className, title, getMessage) {
         const message = getMessage();
         openChatPanel();
         if (e.metaKey || e.ctrlKey) {
-            const input = document.getElementById('chat-input');
+            const input = document.getElementById('chat-input') as HTMLTextAreaElement | null;
             if (input) {
                 input.value = message;
                 input.focus();
@@ -620,7 +716,11 @@ export const DERIVE_SVG =
 
 /** Build a Derive icon button (matches the AI ask-button styling). `onClick`
  *  fires on click; propagation is stopped so it never triggers row handlers. */
-export function makeDeriveButton(className, title, onClick) {
+export function makeDeriveButton(
+    className: string,
+    title: string,
+    onClick: (e: MouseEvent) => void,
+): HTMLButtonElement {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = className;
@@ -634,25 +734,27 @@ export function makeDeriveButton(className, title, onClick) {
     return btn;
 }
 
-export function elementToMarkdown(el) {
-    const clone = el.cloneNode(true);
-    clone.querySelectorAll('.katex-display').forEach(dispEl => {
+export function elementToMarkdown(el: Element): string {
+    const clone = el.cloneNode(true) as Element;
+    clone.querySelectorAll('.katex-display').forEach((dispEl) => {
         const ann = dispEl.querySelector('annotation[encoding="application/x-tex"]');
-        if (ann) dispEl.replaceWith(`$$${ann.textContent.trim()}$$`);
+        // A KaTeX annotation always carries text; `!` keeps a malformed one
+        // throwing rather than emitting the string "undefined" into the markdown.
+        if (ann) dispEl.replaceWith(`$$${ann.textContent!.trim()}$$`);
     });
-    clone.querySelectorAll('.katex').forEach(inlineEl => {
+    clone.querySelectorAll('.katex').forEach((inlineEl) => {
         const ann = inlineEl.querySelector('annotation[encoding="application/x-tex"]');
-        if (ann) inlineEl.replaceWith(`$${ann.textContent.trim()}$`);
+        if (ann) inlineEl.replaceWith(`$${ann.textContent!.trim()}$`);
     });
-    return clone.textContent.trim();
+    return clone.textContent!.trim();
 }
 
-export function injectAskButtons(contentEl) {
-    contentEl.querySelectorAll('h1, h2, h3, p, li').forEach(el => {
+export function injectAskButtons(contentEl: Element): void {
+    contentEl.querySelectorAll<HTMLElement>('h1, h2, h3, p, li').forEach((el) => {
         const markdown = el.dataset.markdown || elementToMarkdown(el);
         if (!markdown || markdown.length < 10) return;
         const btn = makeAiAskButton('ai-ask-btn', 'Explain this', () => 'Can you explain this:\n' + markdown.trim());
-        while (el.lastChild && el.lastChild.nodeType === 3 && !el.lastChild.textContent.trim()) {
+        while (el.lastChild && el.lastChild.nodeType === 3 && !el.lastChild.textContent!.trim()) {
             el.removeChild(el.lastChild);
         }
         const lastEl = el.lastElementChild;
