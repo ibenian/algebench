@@ -58,6 +58,17 @@ interface AlgeBenchDomainRegistry {
   register(name: string, functions: AlgeBenchDomainFunctions): void;
 }
 
+/**
+ * The semantic-graph controller (src/graph-view.js) publishes itself on
+ * `window.__algebenchGraph` so other modules can drive the graph without
+ * importing it. Only the members converted modules actually touch are declared;
+ * every call site guards with `typeof … === 'function'`, so a partial view is
+ * the honest one until graph-view itself is converted.
+ */
+interface AlgeBenchGraphController {
+  openFunctionAnalysis?(opts: { id?: string | null; latex?: string | null }): void;
+}
+
 interface Window {
   AlgeBenchDomains: AlgeBenchDomainRegistry;
   katex: typeof katex;
@@ -68,6 +79,9 @@ interface Window {
    * animators after the load loop has finished.
    */
   __animators: import('/proof-animation/proof-animation.js').ProofAnimator[];
+  __algebenchGraph?: AlgeBenchGraphController;
+  /** Defined by static/chat.js — see the classic-script globals below. */
+  sendChatMessage?: typeof sendChatMessage;
 }
 
 // ── Globals defined by static/chat.js ────────────────────────────────────────

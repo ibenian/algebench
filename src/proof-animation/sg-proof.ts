@@ -7,17 +7,134 @@
 // / .sgc-btn / .sgc-resize-handle / .sgc-pinned) so borders and buttons match
 // the charts exactly; only the body hosts a ProofAnimator instead of a canvas.
 
-import { ProofAnimator } from '/proof-animation/proof-animation.js';
+import { ProofAnimator, type ProofAnimationData, type AskButtonFactory } from '/proof-animation/proof-animation.js';
 import { DERIVE_TIMEOUT_MS, invokeExpert } from '/expert-client.js';
 import { nextDockSeq } from '/proof-animation/dock-seq.js';
 import { makeAiAskButton, makeDeriveButton, openChatPanel } from '/labels.js';
+
+/** The KaTeX API surface this module uses (the CDN global's type). */
+type KatexApi = typeof katex;
+
+/** The renderer's pan/zoom transform (d3-zoom's {x, y, k}). */
+export interface SgTransform {
+    x: number;
+    y: number;
+    k: number;
+}
+
+/** A semantic-graph node, as far as this module reads one. */
+export interface SgNode {
+    id: string;
+    label?: string;
+    type?: string;
+    description?: string;
+}
+
+/** The displayed semantic graph, as far as this module reads one. */
+export interface SgGraph {
+    nodes?: SgNode[];
+}
+
+/**
+ * The slice of the semantic-graph renderer (graph-panel/d3-semantic-graph.js)
+ * this module drives. Every method is optional because the call sites guard
+ * with `typeof r.foo === 'function'` — a renderer that predates one of them
+ * must keep degrading to a silent no-op, not throw.
+ */
+export interface SgRenderer {
+    _destroyed?: boolean;
+    _graph?: SgGraph | null;
+    _currentTransform?: SgTransform | null;
+    resolveTermNodeId?(termId: string | null, termText: string): string | null;
+    getNode?(nodeId: string): SgNode | null | undefined;
+    selectNodeById?(nodeId: string, opts?: { additive?: boolean }): void;
+    highlightNodeById?(nodeId: string | null): void;
+}
+
+/** One link of a term's candidate chain (ProofAnimator._termChain). */
+export interface SgTermChainLink {
+    id: string | null;
+    text: string;
+}
+
+/** The hovered FOCUS term ProofAnimator passes to onBuildTermAskMessage. */
+export interface SgTermFocus {
+    chain?: SgTermChainLink[];
+    text?: string;
+}
+
+/**
+ * A `proof_animation` derive request. Only the fields that affect the
+ * derivation (and therefore the cache key) are named; the payload is assembled
+ * by proof-animation/derive-payload.js.
+ */
+export interface SgDerivePayload {
+    target_latex?: string;
+    start_latex?: string;
+    domain?: string;
+    goal?: string;
+    givens?: unknown[];
+    intent?: string;
+    context?: unknown;
+    previous_steps?: unknown[];
+}
+
+/**
+ * A derived proof animation, as far as this module reads one. The full shape is
+ * whatever validate-proof.js emits; the host only needs the title (for the box
+ * header) and the steps (to tell an empty derivation from a real one).
+ */
+/** The expert's `proof_animation` payload. This is exactly what ProofAnimator
+ *  consumes — it was a local placeholder only while proof-animation.js was
+ *  still untyped, so it now aliases the engine's own type rather than
+ *  describing the same object twice and disagreeing. */
+export type SgProofData = ProofAnimationData;
+
+/** Options for the manager itself. */
+export interface SgProofManagerOptions {
+    katex?: KatexApi;
+    onBackgroundDeselect?: () => void;
+}
+
+/** Options for a single ``openProof`` call. */
+export interface SgOpenProofOptions {
+    dock?: boolean;
+    colSpan?: number;
+    rowSpan?: number;
+    step?: number;
+}
+
+/** One docked/floating proof box and everything hanging off it. */
+interface SgProofBoxEntry {
+    boxId: string;
+    nodeId: string;
+    stepKey: string | null;
+    box: HTMLDivElement;
+    body: HTMLDivElement;
+    titleEl: HTMLSpanElement;
+    header: HTMLDivElement;
+    dockBtn: HTMLButtonElement;
+    paWrap: HTMLDivElement | null;
+    colSpan: number;
+    rowSpan: number;
+    startStep: number | undefined;
+    graphX: number;
+    graphY: number;
+    pinned: boolean;
+    docked: boolean;
+    state: 'loading' | 'ready' | 'error';
+    animator: ProofAnimator | null;
+    payload?: SgDerivePayload | null;
+    data?: SgProofData | null;
+    _termNodes?: Map<Element, { nid: string | null; key: string }>;
+}
 
 // Session-persistent cache of derivation results, keyed by the FULL request
 // shape (everything that affects the derivation — target/start/domain plus
 // goal/givens/intent/context), so different givens or lesson context never reuse
 // a wrong derivation. Cleared on a new lesson (see clearDeriveCache).
-const _DERIVE_CACHE = new Map();
-const _cacheKey = (p) => JSON.stringify({
+const _DERIVE_CACHE = new Map<string, SgProofData>();
+const _cacheKey = (p: SgDerivePayload) => JSON.stringify({
     t: p.target_latex || '', s: p.start_latex || '', d: p.domain || '',
     g: p.goal || '', gv: p.givens || [], i: p.intent || '', c: p.context || null,
     ps: p.previous_steps || [],   // affects lesson_context + start inference
@@ -43,7 +160,26 @@ const DEFAULT_COLSPAN = 4;
 const DEFAULT_ROWSPAN = 3;
 
 export class SgProofManager {
-    constructor(container, opts = {}) {
+    container: HTMLElement;
+    katex: KatexApi | false;
+    boxes: Map<string, SgProofBoxEntry>;
+    _byKey: Map<string, string>;
+    _transform: SgTransform;
+    _renderer: SgRenderer | null;
+    _rafId: number | null;
+    _resizeObserver: ResizeObserver | null;
+    _destroyed: boolean;
+    _seq: number;
+    _z: number;
+    _stepKey: string | null;
+    _apprCache: Map<string, string>;
+    _apprCacheGraph: SgGraph | null | undefined;
+    _hoverNodeId: string | null;
+    _selectedNodeIds: Set<string>;
+    _selectedTermKeys: Set<string>;
+    _onBackgroundDeselect: (() => void) | null;
+
+    constructor(container: HTMLElement, opts: SgProofManagerOptions = {}) {
         this.container = container;
         this.katex = opts.katex || (typeof window !== 'undefined' && window.katex);
         this.boxes = new Map();      // boxId -> entry
@@ -79,18 +215,18 @@ export class SgProofManager {
     }
 
     // ── Renderer wiring (identical contract to SgChartManager) ───────────────
-    setTransform(t) {
+    setTransform(t: SgTransform | null | undefined) {
         this._transform = t || { x: 0, y: 0, k: 1 };
         this._updatePositions();
     }
 
-    setRenderer(renderer) {
+    setRenderer(renderer: SgRenderer | null) {
         this._renderer = renderer;
         this._startTransformPolling();
         this._observeResize();
     }
 
-    _card() {
+    _card(): Element {
         return this.container.querySelector('.d3-graph-card') || this.container;
     }
 
@@ -99,7 +235,7 @@ export class SgProofManager {
     // boxes are shown — others are detached (kept in memory) and re-shown when
     // their step is revisited. Their position/scale/dock are per-box, so docking
     // on one step never carries over to another.
-    setCurrentStep(stepKey) {
+    setCurrentStep(stepKey: string | null) {
         this._stepKey = stepKey;
         this._syncStep();
     }
@@ -161,7 +297,7 @@ export class SgProofManager {
     }
 
     // ── Grid sizing (copied from SgChartManager so it snaps identically) ─────
-    _getGridSteps() {
+    _getGridSteps(): { w: number; h: number } {
         const rect = this._card().getBoundingClientRect();
         const availW = rect.width - 16;
         const availH = rect.height - 16;
@@ -171,7 +307,7 @@ export class SgProofManager {
         };
     }
 
-    _applyGridSize(entry) {
+    _applyGridSize(entry: SgProofBoxEntry) {
         const step = this._getGridSteps();
         const w = entry.colSpan * step.w + (entry.colSpan - 1) * GRID_GAP;
         const h = entry.rowSpan * step.h + (entry.rowSpan - 1) * GRID_GAP;
@@ -190,7 +326,7 @@ export class SgProofManager {
     _updatePositions() {
         const rect = this._card().getBoundingClientRect();
         const { x: tx, y: ty, k } = this._transform;
-        const placed = [];
+        const placed: { left: number; top: number; right: number; bottom: number }[] = [];
         for (const entry of this.boxes.values()) {
             if (entry.docked || entry.stepKey !== this._stepKey) continue;  // only current step
             const w = entry.box.offsetWidth;
@@ -223,13 +359,19 @@ export class SgProofManager {
     // ── Public entry: dock a proof animation for a node ──────────────────────
     // `prebaked` (optional): an already-validated proof JSON — mount it directly
     // and SKIP the LM derivation (used to show a pre-baked proof from a deeplink).
-    openProof(nodeId, anchorEl, payload, prebaked, opts = {}) {
+    openProof(
+        nodeId: string,
+        anchorEl: Element | null | undefined,
+        payload: SgDerivePayload | null | undefined,
+        prebaked?: SgProofData | null,
+        opts: SgOpenProofOptions = {},
+    ) {
         if (this._destroyed) return;
 
         const dedupKey = `${this._stepKey}|${nodeId}`;   // one box per node PER STEP
         const existingId = this._byKey.get(dedupKey);
         if (existingId && this.boxes.has(existingId)) {
-            const e = this.boxes.get(existingId);
+            const e = this.boxes.get(existingId)!;
             e.box.style.zIndex = String(++this._z);
             if (e.state === 'error') {
                 if (prebaked) this._mountPrebaked(e, payload, prebaked);
@@ -271,7 +413,7 @@ export class SgProofManager {
         box.append(header, body);
         card.appendChild(box);
 
-        const entry = {
+        const entry: SgProofBoxEntry = {
             boxId: `proof_${++this._seq}`, nodeId, stepKey: this._stepKey, box, body, titleEl, header, dockBtn,
             paWrap: null,
             colSpan: Math.max(2, Math.min(GRID_COLS, opts.colSpan || DEFAULT_COLSPAN)),
@@ -323,14 +465,18 @@ export class SgProofManager {
     // Mount a pre-baked (already-validated) proof animation directly — no LM call.
     // Mirrors the cache-hit branch of _runDerivation. `payload` is kept only so a
     // nested "derive this step" can inherit the lesson context.
-    _mountPrebaked(entry, payload, data) {
+    _mountPrebaked(
+        entry: SgProofBoxEntry,
+        payload: SgDerivePayload | null | undefined,
+        data: SgProofData | null | undefined,
+    ) {
         entry.payload = payload;
         if (data && data.title) this._renderInlineMath(entry.titleEl, data.title);
         this._mountAnimator(entry, data);
         entry.state = 'ready';
     }
 
-    async _runDerivation(entry, payload) {
+    async _runDerivation(entry: SgProofBoxEntry, payload: SgDerivePayload | null | undefined) {
         // Remember the request so a nested "derive this step" can inherit its
         // lesson context (the step payload from the animator has none of its own).
         entry.payload = payload;
@@ -355,7 +501,10 @@ export class SgProofManager {
         this._renderLoading(entry, payload);
         const pill = this._showPill();
         try {
-            const data = await invokeExpert('proof_animation', payload, { timeoutMs: DERIVE_TIMEOUT_MS });
+            // invokeExpert returns `unknown`. This path deliberately does NOT
+            // run validateProofData (unlike /prove) — asserted, not validated,
+            // exactly as the JS did. _mountAnimator re-checks `steps` below.
+            const data = await invokeExpert('proof_animation', payload, { timeoutMs: DERIVE_TIMEOUT_MS }) as SgProofData;
             if (this._destroyed || !this.boxes.has(entry.boxId)) return;
             _DERIVE_CACHE.set(key, data);
             if (data && data.title) this._renderInlineMath(entry.titleEl, data.title);
@@ -370,7 +519,7 @@ export class SgProofManager {
         }
     }
 
-    _mountAnimator(entry, data) {
+    _mountAnimator(entry: SgProofBoxEntry, data: SgProofData | null | undefined) {
         entry.body.innerHTML = '';
         entry.paWrap = null;
         entry.data = data;   // holds data.terms (per-term descriptions) for tooltips
@@ -389,21 +538,29 @@ export class SgProofManager {
             // expression to fit (the box CSS owns the layout — see .sgp-pa). No
             // host-side transform, so the nav bar stays anchored to the bottom.
             entry.animator = new ProofAnimator(paWrap, data, {
-                katex: this.katex,
-                aiAskButton: makeAiAskButton,
+                // `this.katex` is `KatexApi | false` (false when KaTeX never
+                // loaded); the engine's option is optional, and it gates on
+                // truthiness either way — so false and undefined behave alike.
+                katex: this.katex || undefined,
+                // The engine's AskButtonFactory may hand `makeAiAskButton` a
+                // getMessage that returns null, which labels.ts does not guard
+                // (it would put the literal "null" in the chat box). That is
+                // pre-existing behaviour, preserved rather than quietly fixed
+                // here — see the PR body.
+                aiAskButton: makeAiAskButton as AskButtonFactory,
                 deriveButton: makeDeriveButton,
-                onDerive: (p, anchorEl) => this._deriveFromAnimator(entry, p, anchorEl),
+                onDerive: (p: SgDerivePayload, anchorEl: Element | null) => this._deriveFromAnimator(entry, p, anchorEl),
                 fitHeight: true,
                 startStep: entry.startStep,   // open on the deeplinked step (?pas=), else step 0
                 // Live terms: hover/click a named term → light up & select its
                 // linked semantic-graph node. No-ops when there's no renderer.
                 liveTerms: true,
-                onTermHover: (chain, _el) => this._onTermHover(chain),   // ProofAnimator passes (chain, el); we only need the chain
-                onTermClick: (chain, _el, ev) => this._onTermClick(chain, ev),
+                onTermHover: (chain: SgTermChainLink[], _el: Element | null) => this._onTermHover(chain),   // ProofAnimator passes (chain, el); we only need the chain
+                onTermClick: (chain: SgTermChainLink[], _el: Element | null, ev: { additive?: boolean }) => this._onTermClick(chain, ev),
                 // Prerequisite / follow-up chips → ask the agent with the proof
                 // context baked into the message (chat.js exposes these globally).
                 enableExplore: true,
-                onExplore: ({ message }) => {
+                onExplore: ({ message }: { message: string }) => {
                     try { openChatPanel(); } catch (e) { /* panel optional */ }
                     if (typeof window !== "undefined" && typeof window.sendChatMessage === "function") {
                         window.sendChatMessage(message);
@@ -413,17 +570,17 @@ export class SgProofManager {
                 // In-app there's chat already, so just ask (no navigation). The
                 // ordered, graph-enriched message is built from the host's selection.
                 enableTermAsk: true,
-                onTermAsk: ({ message }) => {
+                onTermAsk: ({ message }: { message: string }) => {
                     try { openChatPanel(); } catch (e) { /* panel optional */ }
                     if (typeof window !== "undefined" && typeof window.sendChatMessage === "function") {
                         window.sendChatMessage(message);
                     }
                 },
-                onBuildTermAskMessage: (focus) => this._buildTermAskMessage(entry, focus),
+                onBuildTermAskMessage: (focus: SgTermFocus | null) => this._buildTermAskMessage(entry, focus),
                 // Function Analysis: in-app there's nowhere to navigate TO — the
                 // analysis page is right here, in place of the graph. Same entry
                 // point the ?fax= deeplink uses, so both paths dedup together.
-                onFunctionAnalysis: ({ latex }) => {
+                onFunctionAnalysis: ({ latex }: { latex: string }) => {
                     const g = typeof window !== "undefined" && window.__algebenchGraph;
                     if (g && typeof g.openFunctionAnalysis === "function") {
                         g.openFunctionAnalysis({ latex });
@@ -447,7 +604,11 @@ export class SgProofManager {
     // A "derive this step" click inside ``parentEntry``'s animator: dock a fresh
     // derivation box for the sub-step, anchored beside the clicked button. The
     // step payload carries no lesson context, so inherit the parent's.
-    _deriveFromAnimator(parentEntry, payload, anchorEl) {
+    _deriveFromAnimator(
+        parentEntry: SgProofBoxEntry | null,
+        payload: SgDerivePayload | null | undefined,
+        anchorEl: Element | null | undefined,
+    ) {
         if (this._destroyed || !payload || !payload.target_latex) return;
         if (!payload.context && parentEntry && parentEntry.payload && parentEntry.payload.context) {
             payload = { ...payload, context: parentEntry.payload.context };
@@ -472,7 +633,7 @@ export class SgProofManager {
     // by id when learning, since they repeat for different operator instances.
     // Single symbols (H, V, E) are kept — each maps to one node — so a lone letter
     // gets cached and stays stable across steps (no length floor).
-    _apprKey(text) {
+    _apprKey(text: string | null | undefined): string {
         const k = (text || '').replace(/[\s\u200B-\u200F\u2060\uFEFF]/g, '');
         return (!k || /^[\d.,/+\-]+$/.test(k)) ? '' : k;   // reject empty + numeric-only
     }
@@ -481,11 +642,11 @@ export class SgProofManager {
     // wrappers) and return the first that maps to a node in the current graph.
     // The appearance cache makes this STABLE across steps: a term resolved once
     // (here or in another step) is reused for every identical-looking term.
-    _resolveChain(chain) {
+    _resolveChain(chain: SgTermChainLink[] | null | undefined): string | null {
         const r = this._renderer;
         if (!r || r._destroyed || typeof r.resolveTermNodeId !== 'function') return null;
         if (this._apprCacheGraph !== r._graph) { this._apprCache = new Map(); this._apprCacheGraph = r._graph; }
-        const present = id => (id && typeof r.getNode === 'function' && r.getNode(id)) ? id : null;
+        const present = (id: string | null | undefined) => (id && typeof r.getNode === 'function' && r.getNode(id)) ? id : null;
         // 1) Appearance cache — a previously-resolved look-alike (still in graph).
         for (const c of (chain || [])) {
             const k = this._apprKey(c.text);
@@ -494,7 +655,7 @@ export class SgProofManager {
         // 2) Structural resolution — id, then look-alike-of-a-node; learn on hit.
         // Don't learn from an operator GLYPH (·, =, ^, …): its bare text repeats
         // for different operator instances, so its appearance isn't a stable key.
-        const isOpGlyph = id => /__(?:op\d*|exp|one|m\d+)$/.test(id || '');
+        const isOpGlyph = (id: string | null | undefined) => /__(?:op\d*|exp|one|m\d+)$/.test(id || '');
         for (const c of (chain || [])) {
             const id = r.resolveTermNodeId(c.id, c.text);
             if (id) {
@@ -511,13 +672,13 @@ export class SgProofManager {
     // symmetric. (The TOOLTIP is owned by ProofAnimator now — graph-free, shared
     // with the standalone proof-animation page.) Best-effort: an intermediate-only
     // symbol has no node, which is fine.
-    _onTermHover(chain) {
+    _onTermHover(chain: SgTermChainLink[] | null | undefined) {
         const r = this._renderer;
         const id = (r && !r._destroyed) ? this._resolveChain(chain) : null;
         this._setHoverNode(id);
     }
 
-    _onTermClick(chain, ev) {
+    _onTermClick(chain: SgTermChainLink[] | null | undefined, ev: { additive?: boolean } | null | undefined) {
         const r = this._renderer;
         const additive = !!(ev && ev.additive);
         const id = (r && !r._destroyed && typeof r.selectNodeById === 'function')
@@ -526,7 +687,7 @@ export class SgProofManager {
             // Mapped term → drive the graph's selection; its onNodeClick rounds back
             // through syncSelectionFromGraph(), which golds the term(s). One source
             // of truth, so a term-click and a node-click select identically.
-            r.selectNodeById(id, { additive });
+            r!.selectNodeById!(id, { additive });
             return;
         }
         // OFF-GRAPH term (no scene node) → select it LOCALLY, keyed by appearance.
@@ -552,7 +713,7 @@ export class SgProofManager {
     // re-dispatches the term/node mouse events that would echo back.
 
     /** The expression element of a box, or null. */
-    _termExpr(entry) {
+    _termExpr(entry: SgProofBoxEntry | null | undefined): Element | null {
         if (!entry || !entry.box) return null;
         // Stacked mode nests the expression per line — only the CURRENT line is
         // live (history lines are frozen snapshots, and their duplicate data-n
@@ -563,7 +724,7 @@ export class SgProofManager {
 
     /** Resolve ONE term element's data-n to a scene-graph node id (cached by
      *  appearance for stability across steps), or null. */
-    _resolveTermEl(el) {
+    _resolveTermEl(el: Element): string | null {
         const r = this._renderer;
         if (!r || r._destroyed || typeof r.resolveTermNodeId !== 'function') return null;
         const text = el.textContent || '';
@@ -580,11 +741,11 @@ export class SgProofManager {
     /** (Re)build a box's element → {nodeId, key} map — call after each (re)render,
      *  since a morph replaces the term elements. `key` is the appearance key, used
      *  to select terms that have NO scene-graph node (off-graph proof symbols). */
-    _buildTermNodeMap(entry) {
+    _buildTermNodeMap(entry: SgProofBoxEntry) {
         // Keep the appearance cache keyed to the current graph (mirrors _resolveChain).
         const r = this._renderer;
         if (r && this._apprCacheGraph !== r._graph) { this._apprCache = new Map(); this._apprCacheGraph = r._graph; }
-        const map = new Map();
+        const map = new Map<Element, { nid: string | null; key: string }>();
         const expr = this._termExpr(entry);
         if (expr) {
             for (const el of expr.querySelectorAll('[data-n]')) {
@@ -598,7 +759,7 @@ export class SgProofManager {
     }
 
     /** Apply the shared hover/selection state as term classes for one box. */
-    _applyTermClasses(entry) {
+    _applyTermClasses(entry: SgProofBoxEntry) {
         const map = entry._termNodes || this._buildTermNodeMap(entry);
         for (const [el, info] of map) {
             const { nid, key } = info;
@@ -610,7 +771,7 @@ export class SgProofManager {
     }
 
     /** After a (re)render: rebuild the map, then re-apply (the morph wiped classes). */
-    _refreshTermClasses(entry) {
+    _refreshTermClasses(entry: SgProofBoxEntry) {
         this._buildTermNodeMap(entry);
         this._applyTermClasses(entry);
     }
@@ -623,10 +784,10 @@ export class SgProofManager {
     // passes the hovered FOCUS term; we resolve it (and the gold context terms) to
     // graph nodes and frame the focus as the subject + the rest as context —
     // mirroring the multi-node graph ask (hovered = subject, selected = context).
-    _buildTermAskMessage(entry, focus) {
+    _buildTermAskMessage(entry: SgProofBoxEntry | null | undefined, focus: SgTermFocus | null | undefined) {
         const r = this._renderer;
         const graph = r && r._graph;
-        const getNode = (id) => (r && typeof r.getNode === 'function') ? r.getNode(id)
+        const getNode = (id: string): SgNode | null | undefined => (r && typeof r.getNode === 'function') ? r.getNode(id)
             : ((graph && Array.isArray(graph.nodes)) ? graph.nodes.find((n) => n.id === id) : null);
         const title = entry && entry.data && entry.data.title ? ` "${entry.data.title}"` : '';
 
@@ -663,7 +824,7 @@ export class SgProofManager {
 
     /** Shared hover node (set by a term hover OR a graph-node hover). Lights the
      *  node on the graph and the matching term(s) in every box. */
-    _setHoverNode(nodeId) {
+    _setHoverNode(nodeId: string | null | undefined) {
         this._hoverNodeId = nodeId || null;
         const r = this._renderer;
         if (r && !r._destroyed && typeof r.highlightNodeById === 'function') {
@@ -673,13 +834,13 @@ export class SgProofManager {
     }
 
     /** Graph node hovered (graph-view → here). */
-    highlightTermsForNode(nodeId) {
+    highlightTermsForNode(nodeId: string | null | undefined) {
         this._setHoverNode(nodeId);
     }
 
     /** The graph's selection changed (graph-view → here, after any node/term click).
      *  Mirror it onto the terms so selected terms are gold everywhere. */
-    syncSelectionFromGraph(selectedIds, additive) {
+    syncSelectionFromGraph(selectedIds: Iterable<string> | null | undefined, additive?: boolean) {
         this._selectedNodeIds = new Set(selectedIds || []);
         // A PLAIN (non-additive) selection replaces everything, so clear the
         // off-graph term selection too — only cmd/ctrl keeps both. A full deselect
@@ -697,7 +858,7 @@ export class SgProofManager {
         else this._applyAllBoxes();
     }
 
-    _renderLoading(entry, payload) {
+    _renderLoading(entry: SgProofBoxEntry, payload: SgDerivePayload | null | undefined) {
         entry.paWrap = null;
         entry.body.innerHTML = '';
         const wrap = document.createElement('div');
@@ -711,7 +872,10 @@ export class SgProofManager {
             // Qualify with the expression being derived, e.g. "Deriving $a = …$".
             label.appendChild(document.createTextNode('Deriving '));
             const m = document.createElement('span');
-            try { this.katex.render(String(target), m, { throwOnError: false, displayMode: false }); }
+            // `this.katex` is falsy when KaTeX never loaded; the original relied on
+            // the resulting TypeError landing in this catch, so the cast preserves
+            // that path exactly rather than short-circuiting it.
+            try { (this.katex as KatexApi).render(String(target), m, { throwOnError: false, displayMode: false }); }
             catch (_e) { m.textContent = String(target); }
             label.appendChild(m);
             label.appendChild(document.createTextNode('…'));
@@ -722,9 +886,9 @@ export class SgProofManager {
         entry.body.appendChild(wrap);
     }
 
-    _renderError(entry, err, payload) {
+    _renderError(entry: SgProofBoxEntry, err: unknown, payload?: SgDerivePayload | null) {
         entry.paWrap = null;
-        const msg = (err && err.message) || 'Derivation failed.';
+        const msg = (err ? (err as { message?: string }).message : undefined) || 'Derivation failed.';
         entry.body.innerHTML = '';
         const wrap = document.createElement('div');
         wrap.className = 'sgp-error';
@@ -743,7 +907,7 @@ export class SgProofManager {
         entry.body.appendChild(wrap);
     }
 
-    closeBox(boxId) {
+    closeBox(boxId: string) {
         const entry = this.boxes.get(boxId);
         if (!entry) return;
         try { entry.animator && entry.animator.destroy && entry.animator.destroy(); } catch (_e) {}
@@ -755,9 +919,9 @@ export class SgProofManager {
 
     // Drag the box by its header; update the stored graph anchor so it stays put
     // under subsequent pan/zoom.
-    _makeDraggable(entry, handle) {
+    _makeDraggable(entry: SgProofBoxEntry, handle: HTMLElement) {
         let startX = 0, startY = 0, baseLeft = 0, baseTop = 0;
-        const onMove = (ev) => {
+        const onMove = (ev: PointerEvent) => {
             const card = this._card().getBoundingClientRect();
             let left = baseLeft + (ev.clientX - startX);
             let top = baseTop + (ev.clientY - startY);
@@ -775,7 +939,7 @@ export class SgProofManager {
         };
         handle.addEventListener('pointerdown', (ev) => {
             if (entry.docked) return;                  // docked boxes flow in the panel
-            if (ev.target.closest('button')) return;   // not from header buttons
+            if ((ev.target as Element).closest('button')) return;   // not from header buttons
             ev.preventDefault();
             entry.box.style.zIndex = String(++this._z);
             startX = ev.clientX; startY = ev.clientY;
@@ -787,13 +951,13 @@ export class SgProofManager {
     }
 
     // ── Resize corner — snap-to-grid (col/row spans), identical to charts ────
-    _addResizeHandle(entry) {
+    _addResizeHandle(entry: SgProofBoxEntry) {
         const handle = document.createElement('div');
         handle.className = 'sgc-resize-handle';
         handle.title = 'Resize';
         entry.box.appendChild(handle);
         let startX = 0, startY = 0, startCol = 0, startRow = 0;
-        const onMove = (ev) => {
+        const onMove = (ev: PointerEvent) => {
             const step = this._getGridSteps();
             const unitW = step.w + GRID_GAP;
             const unitH = step.h + GRID_GAP;
@@ -822,7 +986,7 @@ export class SgProofManager {
     }
 
     // ── Dock / undock — share the chart manager's pinned panel (side by side) ─
-    _sharedPinnedPanel() {
+    _sharedPinnedPanel(): Element {
         const card = this._card();
         let panel = card.querySelector('.sgc-pinned-panel');
         if (!panel) {
@@ -833,13 +997,13 @@ export class SgProofManager {
         return panel;
     }
 
-    _toggleDock(boxId) {
+    _toggleDock(boxId: string) {
         const entry = this.boxes.get(boxId);
         if (!entry) return;
         entry.docked ? this._undock(entry) : this._dock(entry);
     }
 
-    _dock(entry) {
+    _dock(entry: SgProofBoxEntry) {
         entry.docked = true;
         entry.box.classList.add('sgc-pinned');
         entry.box.style.position = '';
@@ -851,7 +1015,7 @@ export class SgProofManager {
         if (entry.dockBtn) { entry.dockBtn.classList.add('sgc-pin-active'); entry.dockBtn.title = 'Unpin from overlay'; }
     }
 
-    _undock(entry) {
+    _undock(entry: SgProofBoxEntry) {
         entry.docked = false;
         entry.box.classList.remove('sgc-pinned');
         this._card().appendChild(entry.box);
@@ -864,7 +1028,7 @@ export class SgProofManager {
 
     // Render a caption that may contain inline $…$ LaTeX (e.g. a proof goal) into
     // an element, KaTeX-rendering the math segments and leaving prose as text.
-    _renderInlineMath(el, text) {
+    _renderInlineMath(el: Element, text: string | null | undefined) {
         el.innerHTML = '';
         if (!text) { el.textContent = 'Derivation'; return; }
         for (const part of String(text).split(/(\$[^$]+\$)/g)) {
@@ -882,7 +1046,7 @@ export class SgProofManager {
     // ── "Deriving proof…" pill — coexists in the enrichment indicator stack ──
     // Uses a distinct class so the enrichment step-visibility logic never hides
     // it; dispatches sgc:legend-change so graph-view re-stacks it above legends.
-    _showPill() {
+    _showPill(): HTMLDivElement | null {
         const vp = document.getElementById('graph-viewport');
         if (!vp) return null;
         let stack = vp.querySelector('.graph-enrich-indicator-stack');
@@ -901,7 +1065,7 @@ export class SgProofManager {
         return el;
     }
 
-    _removePill(pill) {
+    _removePill(pill: Element | null) {
         if (pill && pill.parentNode) {
             pill.parentNode.removeChild(pill);
             document.dispatchEvent(new CustomEvent('sgc:legend-change'));

@@ -346,7 +346,7 @@ function formatBytes(n) {
 	return `${(n / 1e6).toFixed(2)} MB`;
 }
 //#endregion
-//#region src/prove.js
+//#region src/prove.ts
 var ID_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?\/[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
 var params = () => new URLSearchParams(location.search);
 /** Paint the on-load theme (?theme= > saved preference > dark). Theme helpers
@@ -1450,7 +1450,7 @@ async function runChatDerive(req) {
 		say(`Added ${added.length} step(s) to the derivation.`);
 		return true;
 	} catch (e) {
-		const msg = (e instanceof ExpertError ? e.message : e && e.message) || "Derivation failed.";
+		const msg = (e instanceof ExpertError ? e.message : e ? e.message : void 0) || "Derivation failed.";
 		setStatus(msg, "err");
 		say(msg, "err");
 		return true;
@@ -1479,7 +1479,7 @@ async function runDerive() {
 		setDeriveSource(null);
 		setStatus(`Derived ${(proof.title || "proof").replace(/^Deriving\s+/i, "")} — ${proof.steps.length} steps.`, "ok");
 	} catch (e) {
-		setStatus((e instanceof ExpertError ? e.message : e && e.message) || "Derivation failed.", "err");
+		setStatus((e instanceof ExpertError ? e.message : e ? e.message : void 0) || "Derivation failed.", "err");
 	} finally {
 		els.dGo.disabled = false;
 	}
@@ -1529,7 +1529,7 @@ async function showCtx() {
 		const contents = (d.contents || []).map((m) => `${m.role}: ${m.text}`).join("\n\n") || "(no turns yet)";
 		els.ctxBody.innerHTML = `<div class="ctx-meta">${_escapeHtml(meta)}</div><h4>System prompt</h4><pre>${_escapeHtml(d.systemPrompt || "")}</pre><h4>Contents (thread)</h4><pre>${_escapeHtml(contents)}</pre>`;
 	} catch (e) {
-		els.ctxBody.innerHTML = `<div class="ctx-meta">Couldn't load context (${_escapeHtml(String(e && e.message || e))}).</div>`;
+		els.ctxBody.innerHTML = `<div class="ctx-meta">Couldn't load context (${_escapeHtml(String((e ? e.message : void 0) || e))}).</div>`;
 	}
 }
 var CHAT_TIMEOUT_MS = 12e4;
