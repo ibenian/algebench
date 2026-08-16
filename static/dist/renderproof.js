@@ -1,5 +1,5 @@
 import { d as CODE_ICON, i as persistTheme, n as applyTheme$1, o as validateProofData, p as FULLSCREEN_ICON, r as initialTheme, s as ProofAnimator, t as THEMES, u as BRACES_ICON } from "./theme.js";
-//#region src/renderproof.js
+//#region src/renderproof.ts
 var SLUG_RE = /^[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+$/;
 var loadedProofs = [];
 var MAX_PROOFS = 12;
@@ -42,7 +42,8 @@ matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
 	if (_currentTheme === "auto") applyTheme("auto");
 });
 window.addEventListener("message", (e) => {
-	if (e.source === window.parent && e.data && e.data.type === "algebench-embed-theme" && THEMES.has(e.data.theme)) applyTheme(e.data.theme);
+	const data = e.data;
+	if (e.source === window.parent && data && data.type === "algebench-embed-theme" && THEMES.has(data.theme)) applyTheme(data.theme);
 });
 /** Build the embeddable URL. The origin comes from wherever this page is served,
 *  so the snippet is environment-specific (localhost in dev, the real host in prod). */
@@ -74,7 +75,8 @@ function setupEmbedAutoResize() {
 	};
 	if (window.ResizeObserver && wrap) new ResizeObserver(() => post()).observe(wrap);
 	window.addEventListener("message", (e) => {
-		if (e.source === window.parent && e.data && e.data.type === "algebench-embed-request") post(true);
+		const data = e.data;
+		if (e.source === window.parent && data && data.type === "algebench-embed-request") post(true);
 	});
 	window.addEventListener("load", () => post(true));
 	post(true);

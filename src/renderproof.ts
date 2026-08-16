@@ -14,31 +14,37 @@
 // See docs/shareable-proof-animations.md §7.
 import { ProofAnimator } from "/proof-animation/proof-animation.js";
 import { validateProofData } from "/proof-animation/validate-proof.js";
-import { THEMES, applyTheme as paintTheme, initialTheme, persistTheme } from "/theme.js";
+import { THEMES, applyTheme as paintTheme, initialTheme, persistTheme, type ThemeChoice } from "/theme.js";
 import { FULLSCREEN_ICON, BRACES_ICON, CODE_ICON } from "/icons.js";
 
 const SLUG_RE = /^[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+$/;
 
+/** One loaded proof's raw JSON text, kept for the { } viewer. */
+interface LoadedProof {
+  slug: string;
+  text: string;
+}
+
 // Raw JSON text of each loaded proof, for the { } viewer. Filled during load.
-const loadedProofs = [];
+const loadedProofs: LoadedProof[] = [];
 const MAX_PROOFS = 12;
 const MAX_BYTES = 2_000_000;    // per-proof response cap
 const PERSISTABLE_THEMES = new Set([...THEMES].filter((t) => t !== "auto"));
 
-const root = document.getElementById("root");
+const root = document.getElementById("root")!;
 
 /** Collect + validate the builtin slugs from the query string. */
-function parseBuiltins() {
+function parseBuiltins(): { valid: string[]; bad: string[]; overflow: boolean } {
   const params = new URLSearchParams(location.search);
-  const raw = [];
+  const raw: string[] = [];
   for (const v of params.getAll("builtin")) {
     for (const part of v.split(",")) {
       const s = part.trim();
       if (s) raw.push(s);
     }
   }
-  const valid = [];
-  const bad = [];
+  const valid: string[] = [];
+  const bad: string[] = [];
   for (const s of raw) {
     if (SLUG_RE.test(s) && !s.includes("..")) valid.push(s);
     else bad.push(s);
@@ -49,16 +55,17 @@ function parseBuiltins() {
 /** Canonical precedence with one caveat: keep an explicit ?theme=auto raw so
  *  the page can continue tracking OS changes live while open; collapsing auto
  *  to dark/light on load would freeze that mode for the rest of the session. */
-function loadTheme() {
+function loadTheme(): ThemeChoice {
   const t = new URLSearchParams(location.search).get("theme");
-  if (THEMES.has(t)) return t;           // URL wins (incl. explicit auto for embeds)
+  // THEMES is the allowlist, so narrowing the param to ThemeChoice is sound.
+  if (THEMES.has(t as string)) return t as ThemeChoice;   // URL wins (incl. explicit auto for embeds)
   return initialTheme({ param: null });  // else saved preference → shared dark default
 }
 
-let _currentTheme = "dark";
+let _currentTheme: ThemeChoice = "dark";
 
 /** Apply a theme to the live page (the engine + chrome read it off CSS vars). */
-function applyTheme(t) {
+function applyTheme(t: ThemeChoice) {
   _currentTheme = t;
   paintTheme(t);
 }
@@ -71,23 +78,24 @@ matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
 // Let the host recolor the embed live, without a reload — e.g. a blog page whose
 // theme toggle posts the new theme. Only the parent frame may drive it, and only
 // to a known theme; recoloring is pure CSS-var swapping so the proof stays put.
-window.addEventListener("message", (e) => {
-  if (e.source === window.parent && e.data && e.data.type === "algebench-embed-theme"
-      && THEMES.has(e.data.theme)) {
-    applyTheme(e.data.theme);
+window.addEventListener("message", (e: MessageEvent<unknown>) => {
+  const data = e.data as { type?: string; theme?: string } | null;
+  if (e.source === window.parent && data && data.type === "algebench-embed-theme"
+      && THEMES.has(data.theme as string)) {
+    applyTheme(data.theme as ThemeChoice);
   }
 });
 
 /** Build the embeddable URL. The origin comes from wherever this page is served,
  *  so the snippet is environment-specific (localhost in dev, the real host in prod). */
-function buildEmbedUrl(builtins, theme) {
+function buildEmbedUrl(builtins: string[], theme: string): string {
   const u = new URL("/renderproof", location.origin);
   for (const b of builtins) u.searchParams.append("builtin", b);
   u.searchParams.set("theme", theme);          // explicit, so the embed is deterministic
   return u.toString();
 }
 
-function embedSnippet(url) {
+function embedSnippet(url: string): string {
   // The <iframe> alone works (fixed height). The optional companion <script> auto-sizes
   // the iframe to its content — a cross-origin iframe can't resize its own element, so
   // this host-side helper applies the height the embedded page reports.
@@ -109,7 +117,7 @@ function setupEmbedAutoResize() {
   const measure = () => wrap
     ? Math.ceil(wrap.getBoundingClientRect().bottom + window.scrollY + 2)
     : Math.ceil(document.documentElement.scrollHeight);
-  const post = (force) => {
+  const post = (force?: boolean) => {
     const h = measure();
     if (!force && Math.abs(h - last) < 2) return;   // ignore churn (e.g. a hover tooltip)
     last = h;
@@ -120,10 +128,11 @@ function setupEmbedAutoResize() {
   // Observe the .wrap, not <body>: an absolutely-positioned hover tooltip overflows
   // without changing wrap's content box, so hovering can't drive a resize/flicker loop.
   if (window.ResizeObserver && wrap) new ResizeObserver(() => post()).observe(wrap);
-  window.addEventListener("message", (e) => {
+  window.addEventListener("message", (e: MessageEvent<unknown>) => {
     // Only the host (our parent frame) may request a height re-report — ignore any
     // other frame/injected script so it can't spam measurements.
-    if (e.source === window.parent && e.data && e.data.type === "algebench-embed-request") {
+    const data = e.data as { type?: string } | null;
+    if (e.source === window.parent && data && data.type === "algebench-embed-request") {
       post(true);
     }
   });
@@ -135,7 +144,7 @@ function setupEmbedAutoResize() {
  *  embed looks dropped into a real article. The page adopts the chosen theme so it
  *  matches the embed (auto follows the viewer's OS). `url`/`theme` are built from
  *  validated slugs + an allowlisted theme, so they're safe to interpolate. */
-function previewPageHtml(url, theme) {
+function previewPageHtml(url: string, theme: string): string {
   const iframe = embedSnippet(url);
   const dark = "--bg:#12121c;--ink:#e5e7eb;--muted:#9ca3af;--rule:#2a2f45;--accent:#818cf8;--bar:#1a1a2e;";
   const light = "--bg:#fbfbfd;--ink:#1f2430;--muted:#5b6472;--rule:#e6e8ee;--accent:#4f46e5;--bar:#ffffff;";
@@ -188,7 +197,7 @@ function previewPageHtml(url, theme) {
 </body></html>`;
 }
 
-function showError(container, msg) {
+function showError(container: HTMLElement, msg: string) {
   const div = document.createElement("div");
   div.className = "pa-error";
   div.textContent = msg;           // textContent — never innerHTML
@@ -196,7 +205,7 @@ function showError(container, msg) {
 }
 
 /** Wait for the deferred KaTeX classic script to define window.katex. */
-async function awaitKatex() {
+async function awaitKatex(): Promise<typeof katex | null> {
   for (let i = 0; i < 150 && !window.katex; i++) {
     await new Promise((r) => setTimeout(r, 30));
   }
@@ -206,10 +215,10 @@ async function awaitKatex() {
 /** The { } button: opens a themed modal showing each loaded proof's raw JSON,
  *  pretty-printed. Shown in both top-level and embedded views. */
 function setupJsonButton() {
-  const btn = document.getElementById("pa-json");
-  const modal = document.getElementById("pa-json-modal");
-  const body = document.getElementById("pa-json-body");
-  const close = document.getElementById("pa-json-close");
+  const btn = document.getElementById("pa-json")!;
+  const modal = document.getElementById("pa-json-modal")!;
+  const body = document.getElementById("pa-json-body")!;
+  const close = document.getElementById("pa-json-close")!;
   btn.classList.add("pa-icon-btn");
   btn.title = "View proof JSON";
   btn.setAttribute("aria-label", "View proof JSON");
@@ -248,15 +257,15 @@ function setupJsonButton() {
 /** The < > button: opens the embed modal — a theme picker (updates the live page
  *  and the snippet), Preview, Copy, and the copyable iframe snippet. Shown in both
  *  views so a reader of an embed can grab the script to re-share it. */
-function setupEmbedButton(builtins, theme, { persist = false } = {}) {
-  const btn = document.getElementById("pa-embed");
-  const modal = document.getElementById("pa-embed-modal");
-  const close = document.getElementById("pa-embed-close");
-  const code = document.getElementById("pa-embed-code");
-  const sel = document.getElementById("pa-theme");
-  const previewBtn = document.getElementById("pa-preview");
-  const copyBtn = document.getElementById("pa-copy");
-  const copied = document.getElementById("pa-copied");
+function setupEmbedButton(builtins: string[], theme: ThemeChoice, { persist = false }: { persist?: boolean } = {}) {
+  const btn = document.getElementById("pa-embed")!;
+  const modal = document.getElementById("pa-embed-modal")!;
+  const close = document.getElementById("pa-embed-close")!;
+  const code = document.getElementById("pa-embed-code") as HTMLTextAreaElement;
+  const sel = document.getElementById("pa-theme") as HTMLSelectElement;
+  const previewBtn = document.getElementById("pa-preview")!;
+  const copyBtn = document.getElementById("pa-copy")!;
+  const copied = document.getElementById("pa-copied")!;
 
   btn.classList.add("pa-icon-btn");
   btn.title = "Get embed script";
@@ -276,8 +285,8 @@ function setupEmbedButton(builtins, theme, { persist = false } = {}) {
 
   sel.addEventListener("change", () => {
     // "auto" is intentionally transient here: we only persist concrete choices.
-    if (persist && PERSISTABLE_THEMES.has(sel.value)) persistTheme(sel.value);
-    applyTheme(sel.value);          // preview the chosen theme live
+    if (persist && PERSISTABLE_THEMES.has(sel.value)) persistTheme(sel.value as ThemeChoice);
+    applyTheme(sel.value as ThemeChoice);          // preview the chosen theme live
     refresh();
     code.focus(); code.select();
   });
@@ -309,12 +318,12 @@ function setupEmbedButton(builtins, theme, { persist = false } = {}) {
  *  • otherwise               → this standalone renderproof page (the default).
  *  The destination is the host page's call — it's not part of the embedded
  *  widget — so it's chosen here from the URL the host framed the iframe with. */
-function fullscreenTarget(builtins, theme) {
+function fullscreenTarget(builtins: string[], theme: ThemeChoice): { url: string; label: string } {
   const mode = (new URLSearchParams(location.search).get("fullscreenTarget") || "")
     .trim().toLowerCase();
   if (mode === "prove" && builtins.length) {
     const u = new URL("/prove", location.origin);
-    u.searchParams.set("id", builtins[0]);   // /prove opens a single proof
+    u.searchParams.set("id", builtins[0]!);   // /prove opens a single proof
     u.searchParams.set("theme", theme);       // carry the embed's theme through
     return { url: u.toString(), label: "Open on the Prove page" };
   }
@@ -323,13 +332,13 @@ function fullscreenTarget(builtins, theme) {
 
 /** Wire the control bar: { } JSON viewer and < > embed dialog (both views), plus a
  *  full-screen icon only when embedded (top-level is already full screen). */
-function setupControlBar(builtins, theme) {
+function setupControlBar(builtins: string[], theme: ThemeChoice) {
   setupJsonButton();
   const embedded = window.self !== window.top;
   setupEmbedButton(builtins, theme, { persist: !embedded });
   if (embedded) {
     const { url, label } = fullscreenTarget(builtins, theme);
-    const btn = document.getElementById("pa-action");
+    const btn = document.getElementById("pa-action")!;
     btn.classList.add("pa-icon-btn");
     btn.title = label;
     btn.setAttribute("aria-label", label);
@@ -431,7 +440,7 @@ async function main() {
         // else copy/postMessage). The deeplink lives on the proof JSON.
       }));
     } catch (e) {
-      showError(card, `Could not load "${slug}": ${e.message}`);
+      showError(card, `Could not load "${slug}": ${(e as Error).message}`);
     }
   }
 

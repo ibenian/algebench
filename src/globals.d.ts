@@ -62,6 +62,12 @@ interface Window {
   AlgeBenchDomains: AlgeBenchDomainRegistry;
   katex: typeof katex;
   marked: typeof marked;
+  /**
+   * Every ProofAnimator the /renderproof page built, in card order
+   * (src/renderproof.ts). A debugging handle, and how autoplay reaches the
+   * animators after the load loop has finished.
+   */
+  __animators: import('/proof-animation/proof-animation.js').ProofAnimator[];
 }
 
 // ── Globals defined by static/chat.js ────────────────────────────────────────

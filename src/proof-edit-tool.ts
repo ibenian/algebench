@@ -18,13 +18,57 @@
 //     separate, so Submit can never see a candidate the user did not accept;
 //   * render anything that has not been through `validateProofData`.
 
-import { validateProofData } from './proof-animation/validate-proof.js';
+import { validateProofData, type CleanProof } from './proof-animation/validate-proof.js';
+
+/**
+ * A proof step as this module handles one. The server owns the field set; the
+ * only one ever written here is `index` (renumbering after a splice), and the
+ * rest ride along untouched through the object spreads below.
+ */
+export interface EditProofStep {
+    index?: number;
+}
+
+/** A proof as this module handles one — steps plus the fields a variant patches. */
+export interface EditProof {
+    steps?: EditProofStep[];
+    terms?: Record<string, unknown>;
+    overall_confidence?: unknown;
+}
+
+/** One way to apply an edit, in the server's compact wire format. */
+export interface EditVariant {
+    kind: string;
+    at: number;
+    take: number;
+    delete_count: number;
+    step_updates?: Record<string, Record<string, unknown>>;
+    terms_added?: Record<string, unknown>;
+    overall_confidence?: unknown;
+    badge_delta?: string;
+    readability_note?: string;
+}
+
+/** The `edit_step` block a chat reply may carry. */
+export interface EditStepResult {
+    question?: string;
+    reason?: string;
+    summary?: string;
+    caveat?: string;
+    new_steps?: EditProofStep[];
+    variants?: EditVariant[];
+}
+
+/** The chat reply, as far as this module reads it. */
+export interface ChatReply {
+    edit_step?: EditStepResult;
+}
 
 const UNDO_WORD = /^\s*(undo|revert)\s*$/i;
 
 const UNDO_MAX = 20;
 
-const VARIANT_LABELS = {
+const VARIANT_LABELS: Record<string, string> = {
     insert: 'Just my step',
     glue: 'My step + bridge',
     // A bridge that undoes the inserted step, returning the chain to where the
@@ -40,7 +84,7 @@ const VARIANT_LABELS = {
 };
 
 /** Deep clone via JSON — proofs are plain data by construction. */
-const clone = (o) => JSON.parse(JSON.stringify(o));
+const clone = <T>(o: T): T => JSON.parse(JSON.stringify(o));
 
 /**
  * Reassemble a full proof from the compact wire format.
@@ -51,7 +95,7 @@ const clone = (o) => JSON.parse(JSON.stringify(o));
  *
  * `step_updates` is keyed by ORIGINAL index, so it is applied before renumbering.
  */
-export function assembleVariant(original, newSteps, variant) {
+export function assembleVariant(original: EditProof, newSteps: EditProofStep[], variant: EditVariant): EditProof {
     const { at, take, delete_count: del } = variant;
     const steps = original.steps || [];
 
@@ -65,15 +109,55 @@ export function assembleVariant(original, newSteps, variant) {
             if (head[origIndex]) Object.assign(head[origIndex], changed);
         } else {
             const pos = origIndex - (at + 1 + del);
-            if (pos >= 0 && pos < tail.length) Object.assign(tail[pos], changed);
+            if (pos >= 0 && pos < tail.length) Object.assign(tail[pos]!, changed);
         }
     }
 
-    const out = { ...original, steps: [...head, ...inserted, ...tail] };
-    out.steps.forEach((s, i) => { s.index = i; });
+    const out: EditProof = { ...original, steps: [...head, ...inserted, ...tail] };
+    out.steps!.forEach((s, i) => { s.index = i; });
     out.terms = { ...(original.terms || {}), ...(variant.terms_added || {}) };
     if (variant.overall_confidence) out.overall_confidence = variant.overall_confidence;
     return out;
+}
+
+/** The host wiring `createProofEditTool` needs; see the @param list below. */
+export interface ProofEditToolDeps {
+    getProof: () => EditProof | null;
+    getCurrentStep: () => number;
+    onMount: (proof: EditProof, startStep: number) => void;
+    onCommit: (proof: EditProof) => void;
+    setEditPending: (pending: boolean) => void;
+    addBubble: (role: string, text: string) => void;
+    /** Math-aware renderer for a variant's note; plain text when absent. */
+    renderMath?: (text: string) => string | null;
+    /** Put the picker element into the chat log. */
+    mountBar: (bar: HTMLElement) => void;
+    /** Document the Esc handler binds to; `document` when absent. */
+    doc?: Document;
+}
+
+/** The live editing session while a picker (or an auto-applied edit) is open. */
+interface EditSession {
+    original: EditProof;
+    newSteps: EditProofStep[];
+    variants: EditVariant[];
+    cache: Record<number, CleanProof>;
+    selected: number;
+    returnStep: number;
+}
+
+/** The interface `prove.js` drives this module through. */
+export interface ProofEditTool {
+    interceptLocal: (rawMsg: unknown) => boolean;
+    applyEditResult: (res: ChatReply | null | undefined) => boolean;
+    undo: () => boolean;
+    reset: () => void;
+    setUnlocked: (next: unknown) => void;
+    isUnlocked: () => boolean;
+    canUndo: () => boolean;
+    commitSelected: (auto?: unknown) => void;
+    cancelSelected: () => void;
+    dispose: () => void;
 }
 
 /**
@@ -85,16 +169,16 @@ export function assembleVariant(original, newSteps, variant) {
  * @param {(pending: boolean) => void} deps.setEditPending  gate Submit/Rederive
  * @param {(role, text) => void} deps.addBubble    write to the chat log
  */
-export function createProofEditTool(deps) {
+export function createProofEditTool(deps: ProofEditToolDeps): ProofEditTool {
     const {
         getProof, getCurrentStep, onMount, onCommit, setEditPending, addBubble,
     } = deps;
 
     let unlocked = false;          // locked is the default; see reset()
-    let session = null;            // { original, newSteps, variants, cache, selected }
-    let bar = null;                // the picker element, while open
-    let onKeydown = null;          // Esc-to-cancel handler, live only while open
-    const undoStack = [];
+    let session: EditSession | null = null;  // { original, newSteps, variants, cache, selected }
+    let bar: HTMLElement | null = null;      // the picker element, while open
+    let onKeydown: ((e: KeyboardEvent) => void) | null = null;  // Esc-to-cancel handler, live only while open
+    const undoStack: Array<{ proof: EditProof; step: number }> = [];
 
     // ---- lock ------------------------------------------------------------- //
 
@@ -105,7 +189,7 @@ export function createProofEditTool(deps) {
         closeBar();
     }
 
-    function setUnlocked(next) {
+    function setUnlocked(next: unknown) {
         unlocked = !!next;
         if (!unlocked) closeBar();
     }
@@ -117,7 +201,7 @@ export function createProofEditTool(deps) {
      * Only undo lives here. Everything else — including deciding whether a
      * message is an edit at all — belongs to the chat agent.
      */
-    function interceptLocal(rawMsg) {
+    function interceptLocal(rawMsg: unknown): boolean {
         const msg = String(rawMsg || '').trim();
         if (!msg || !unlocked) return false;
         return UNDO_WORD.test(msg) ? undo() : false;
@@ -130,7 +214,7 @@ export function createProofEditTool(deps) {
      * derivation; by the time we get here the operation has been applied and
      * CAS-checked server-side. Returns true if an edit was presented.
      */
-    function applyEditResult(res) {
+    function applyEditResult(res: ChatReply | null | undefined): boolean {
         // Keyed by the TOOL NAME the server declared — see PROOF_CHAT_TOOLS
         // in backend/server.py. One concept, one name.
         const edit = res && res.edit_step;
@@ -189,22 +273,23 @@ export function createProofEditTool(deps) {
 
     // ---- variants --------------------------------------------------------- //
 
-    function variantProof(index) {
-        if (session.cache[index]) return session.cache[index];
-        const raw = assembleVariant(session.original, session.newSteps,
-                                    session.variants[index]);
+    function variantProof(index: number): CleanProof {
+        const cached = session!.cache[index];
+        if (cached) return cached;
+        const raw = assembleVariant(session!.original, session!.newSteps,
+                                    session!.variants[index]!);
         // Same trust boundary as a freshly derived proof: nothing reaches the
         // animator that has not been validated as a COMPLETE proof.
         const safe = validateProofData(raw);
-        session.cache[index] = safe;
+        session!.cache[index] = safe;
         return safe;
     }
 
-    function select(index) {
-        session.selected = index;
+    function select(index: number) {
+        session!.selected = index;
         onMount(variantProof(index), insertedStep(index));
         if (bar) {
-            bar.querySelectorAll('[data-variant]').forEach((el) => {
+            bar.querySelectorAll<HTMLElement>('[data-variant]').forEach((el) => {
                 const on = Number(el.dataset.variant) === index;
                 el.classList.toggle('is-selected', on);
                 el.setAttribute('aria-checked', on ? 'true' : 'false');
@@ -213,22 +298,22 @@ export function createProofEditTool(deps) {
     }
 
     /** The first step this variant inserts — what the user just asked for. */
-    function insertedStep(index) {
-        return (session.variants[index].at || 0) + 1;
+    function insertedStep(index: number): number {
+        return (session!.variants[index]!.at || 0) + 1;
     }
 
     /** Adopt an edit result as the live session, without rendering anything. */
-    function startSession(original, res) {
+    function startSession(original: EditProof, res: EditStepResult) {
         const returnStep = getCurrentStep();
         closeBar();
         session = {
-            original, newSteps: res.new_steps, variants: res.variants,
+            original, newSteps: res.new_steps!, variants: res.variants!,
             cache: {}, selected: 0,
             returnStep,          // where to put the reader back if they cancel
         };
     }
 
-    function openBar(original, res) {
+    function openBar(original: EditProof, res: EditStepResult) {
         startSession(original, res);
 
         bar = document.createElement('div');
@@ -238,11 +323,11 @@ export function createProofEditTool(deps) {
 
         const title = document.createElement('span');
         title.className = 'edit-variants-title';
-        title.textContent = res.variants.length > 1
-            ? `${res.variants.length} ways to apply this` : 'Apply this';
+        title.textContent = res.variants!.length > 1
+            ? `${res.variants!.length} ways to apply this` : 'Apply this';
         bar.appendChild(title);
 
-        res.variants.forEach((v, i) => {
+        res.variants!.forEach((v, i) => {
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'edit-variant';
@@ -269,7 +354,7 @@ export function createProofEditTool(deps) {
                 btn.appendChild(sub);
             }
             btn.addEventListener('click', () => select(i));
-            bar.appendChild(btn);
+            bar!.appendChild(btn);
         });
 
         const done = document.createElement('button');
@@ -324,11 +409,14 @@ export function createProofEditTool(deps) {
     // interesting step is the one just inserted — the thing they asked for — and
     // after a cancel or undo it is wherever they were before.
 
-    function commit(auto = false) {
+    // `auto` is `unknown`, not `boolean`: this doubles as the Done button's click
+    // handler, so it is also called with a MouseEvent. Only its truthiness is
+    // ever read — exactly as in the JavaScript.
+    function commit(auto: unknown = false) {
         if (!session) return;
         const chosen = variantProof(session.selected);
         const landing = insertedStep(session.selected);
-        const label = VARIANT_LABELS[session.variants[session.selected].kind]
+        const label = VARIANT_LABELS[session.variants[session.selected]!.kind]
             || 'that option';
         pushUndo(session.original, session.returnStep);
         closeBar();
@@ -354,19 +442,19 @@ export function createProofEditTool(deps) {
 
     // ---- undo ------------------------------------------------------------- //
 
-    function pushUndo(proof, step) {
+    function pushUndo(proof: EditProof, step: number) {
         // The step rides with the proof: an undone edit changes the numbering, so
         // the index the reader was on only means anything against its own proof.
         undoStack.push({ proof: clone(proof), step: step || 0 });
         if (undoStack.length > UNDO_MAX) undoStack.shift();
     }
 
-    function undo() {
+    function undo(): boolean {
         if (!undoStack.length) {
             addBubble('bot', 'Nothing to undo.');
             return true;
         }
-        const { proof: prev, step } = undoStack.pop();
+        const { proof: prev, step } = undoStack.pop()!;
         closeBar();
         onCommit(prev);
         onMount(prev, Math.min(step, (prev.steps || []).length - 1));
