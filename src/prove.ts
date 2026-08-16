@@ -9,12 +9,12 @@
 //
 // (Derivation chat / save-and-share come in a later pass; this pass is browse +
 // render against the storage layer.)
-import { ProofAnimator } from "/proof-animation/proof-animation.js";
+import { ProofAnimator, type ProofTerm } from "/proof-animation/proof-animation.js";
 import { validateProofData } from "/proof-animation/validate-proof.js";
 import { DERIVE_TIMEOUT_MS, invokeExpert, ExpertError } from "/expert-client.js";
 import { applyTheme, initialTheme, wireThemeToggle } from "/theme.js";
 import { BRACES_ICON, CODE_ICON, AI_ICON, USER_ICON } from "/icons.js";
-import { createProofEditTool } from "/proof-edit-tool.js";
+import { createProofEditTool, type ChatReply as EditToolChatReply } from "/proof-edit-tool.js";
 import {
   ID_DOMAIN_MAX, ID_DOMAIN_MIN, ID_NAME_MAX, ID_NAME_MIN, ID_RESERVED,
   MAX_PROOF_BYTES, formatBytes, idProblem, proofBytes,
@@ -35,7 +35,10 @@ export interface CatalogEntry {
 export interface ProofStepData {
   index?: number;
   input_latex?: string;
-  latex?: string;
+  // Required, not optional: validateProofData() builds every step as
+  // `latex: str(src.latex)`, and str() returns a string unconditionally — so a
+  // validated step always carries one. ProofAnimator declares it required too.
+  latex: string;
   operation?: string;
   justification?: string;
   plain?: string;
@@ -49,7 +52,10 @@ export interface ProofData {
   goal?: string;
   deeplink?: string;
   steps: ProofStepData[];
-  terms?: Record<string, unknown>;
+  // Same reasoning as `latex` above: validateProofData() builds each entry as
+  // `{ latex, name, description }` via str(), so the values are ProofTerm, not
+  // `unknown`. ProofAnimator — the only consumer — declares them that way.
+  terms?: Record<string, ProofTerm | undefined>;
 }
 
 /** The `proof_from_prompt` expert request body. */
@@ -1246,7 +1252,10 @@ async function runChatDerive(req: { prompt?: string; mode?: string }) {
   if (appending) body.start_latex = steps[steps.length - 1]!.input_latex || "";
 
   try {
-    const data: { error?: string } = await invokeExpert("proof_from_prompt", body, { timeoutMs: DERIVE_TIMEOUT_MS });
+    // invokeExpert returns `unknown`; the expert answers either an error
+    // envelope or a proof. Narrowed here only far enough to read .error —
+    // the proof itself still goes through validateProofData below.
+    const data = await invokeExpert("proof_from_prompt", body, { timeoutMs: DERIVE_TIMEOUT_MS }) as { error?: string };
     if (data && data.error) { setStatus(data.error, "err"); say(data.error, "err"); return true; }
     const derived: ProofData = validateProofData(data);
 
@@ -1305,7 +1314,10 @@ async function runDerive() {
   if (domain) body.domain = domain;
   if (documentation) body.documentation = documentation;
   try {
-    const data: { error?: string } = await invokeExpert("proof_from_prompt", body, { timeoutMs: DERIVE_TIMEOUT_MS });
+    // invokeExpert returns `unknown`; the expert answers either an error
+    // envelope or a proof. Narrowed here only far enough to read .error —
+    // the proof itself still goes through validateProofData below.
+    const data = await invokeExpert("proof_from_prompt", body, { timeoutMs: DERIVE_TIMEOUT_MS }) as { error?: string };
     if (data && data.error) { setStatus(data.error, "err"); return; }
     const proof: ProofData = validateProofData(data);
     showInDerive(proof);                           // render + fresh chat + hand-off
@@ -1323,7 +1335,7 @@ async function runDerive() {
 
 /** A /api/proof-chat reply: the prose answer, plus at most one tool payload
  *  keyed by the tool's own name (see CHAT_ACTIONS). */
-export interface ChatReply {
+export interface ChatReply extends EditToolChatReply {
   answer?: string;
   [tool: string]: unknown;
 }

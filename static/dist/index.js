@@ -8053,7 +8053,7 @@ var SgProofManager = class {
 		entry.paWrap = paWrap;
 		try {
 			entry.animator = new ProofAnimator(paWrap, data, {
-				katex: this.katex,
+				katex: this.katex || void 0,
 				aiAskButton: makeAiAskButton,
 				deriveButton: makeDeriveButton,
 				onDerive: (p, anchorEl) => this._deriveFromAnimator(entry, p, anchorEl),
