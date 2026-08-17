@@ -16,7 +16,7 @@ import { runAnimUpdaters } from '/sliders.js';
 import { updateStatusBar } from '/overlay.js';
 import type { Camera, Quaternion, Scene, Vector3, WebGLRenderer } from 'three';
 import type { Vec3 } from '/coords.js';
-import type { Element } from '/types/lesson.js';
+import type { Element, View } from '/types/lesson.js';
 
 /**
  * The active camera — perspective or orthographic, swapped by
@@ -59,18 +59,29 @@ interface ArrowEntry {
     isShaft?: boolean;
 }
 
-/** A named camera view, as scenes declare them and CAMERA_VIEWS stores them. */
-export interface CameraView {
-    name?: string;
-    position: number[];
-    target?: number[];
-    up?: number[];
-    description?: string;
-    /** A follow-cam view: tracks a scene element rather than sitting still. */
-    follow?: unknown;
-    /** Expression-driven views carry expr triplets instead of fixed positions. */
-    positionExpr?: string[];
-    targetExpr?: string[];
+/**
+ * An AUTHORED camera view, exactly as schemas/lesson.schema.json defines it:
+ * `name` is required (it is the button label) and `position` is optional,
+ * because a view may instead be a follow-cam (`follow`) or expression-driven
+ * (`positionExpr`/`targetExpr`). Re-exported from the generated lesson types
+ * rather than restated, so the two cannot drift.
+ */
+export type CameraView = View;
+
+/**
+ * A RESOLVED view, as buildCameraButtons() writes it into state.CAMERA_VIEWS.
+ * Distinct from CameraView on purpose: these are computed, never authored, and
+ * always carry all three vectors in WORLD space — which is why animateCamera()
+ * can read them without assertions. Follow and expression views never land
+ * here; they are handled by their own activate* paths.
+ */
+export interface ResolvedCameraView {
+    /** Vec3 tuples, not number[]: both come straight from dataCameraToWorld(),
+     *  so animateCamera() can spread them into a Vector3 without a cast. */
+    position: Vec3;
+    target: Vec3;
+    /** Still a plain array — it is `.slice(0, 3)`d from author data or sceneUp. */
+    up: number[];
 }
 
 /** The scene shape this module reads. Looser than the schema on purpose —
@@ -127,7 +138,7 @@ interface CameraState {
     lessonSpec: { scenes?: CameraScene[] } | null | undefined;
     currentSceneIndex: number;
     currentStepIndex: number;
-    CAMERA_VIEWS: Record<string, CameraView | undefined>;
+    CAMERA_VIEWS: Record<string, ResolvedCameraView | undefined>;
     displayParams: Record<string, number>;
     sceneUp: number[];
     mainDirLight: import('three').DirectionalLight | null;
@@ -761,9 +772,9 @@ export function animateCamera(view: string, duration?: number): void {
     if (!targetView || !cameraState.camera || !cameraState.controls) return;
 
     const startPos    = cameraState.camera.position.clone();
-    const endPos      = new THREE.Vector3(...targetView.position as [number, number, number]);
+    const endPos      = new THREE.Vector3(...targetView.position);
     const startTarget = cameraState.controls.target.clone();
-    const endTarget   = new THREE.Vector3(...targetView.target as [number, number, number]);
+    const endTarget   = new THREE.Vector3(...targetView.target);
     const startUp     = cameraState.camera.up.clone();
     let endUp         = normalizeUpVector(targetView.up);
 
@@ -834,13 +845,13 @@ export function buildCameraButtons(spec: CameraScene | null | undefined): void {
     const views = (spec && spec.views) ? spec.views : DEFAULT_VIEWS;
 
     views.forEach(v => {
-        const key = v.name!.toLowerCase().replace(/\s+/g, '-');
+        const key = v.name.toLowerCase().replace(/\s+/g, '-');
         const btn = document.createElement('button');
         btn.className = 'cam-btn';
         btn.dataset.view = key;
         // Cast, not `|| ''`: assigning undefined sets the attribute to the
         // string "undefined", which is what the JS did.
-        btn.title = (v.description || v.name) as string;
+        btn.title = v.description || v.name;
         btn.innerHTML = renderKaTeX(v.name, false);
 
         if (v.follow) {
@@ -871,7 +882,10 @@ export function buildCameraButtons(spec: CameraScene | null | undefined): void {
             });
         } else {
             cameraState.CAMERA_VIEWS[key] = {
-                position: dataCameraToWorld(v.position as Vec3),
+                // Non-null: this is the plain-view branch (not follow, not expr), but
+                // the schema still permits a view with none of the three. The JS passed
+                // undefined straight through to dataCameraToWorld, so keep it throwing.
+                position: dataCameraToWorld(v.position! as Vec3),
                 target:   dataCameraToWorld((v.target || [0, 0, 0]) as Vec3),
                 up:       Array.isArray(v.up) ? v.up.slice(0, 3) : cameraState.sceneUp.slice(0, 3),
             };
