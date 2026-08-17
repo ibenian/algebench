@@ -75,3 +75,36 @@ interface MathBoxNode {
     /** Surface over the parent 2-D data source. */
     surface(props?: MathBoxProps): MathBoxNode;
 }
+
+/**
+ * The three.js objects MathBox builds and owns. src/camera.ts pulls the
+ * renderer/camera/controls back out of here rather than constructing its own —
+ * MathBox has already wired them together by the time mathBox() returns.
+ */
+interface MathBoxThree {
+    scene: import('three').Scene;
+    camera: import('three').Camera;
+    renderer: import('three').WebGLRenderer;
+    /** Present only when the 'controls' plugin is enabled (it is). */
+    controls: ThreeControls;
+}
+
+/** The root node mathBox() returns: a normal node plus the three.js handles. */
+interface MathBoxRoot extends MathBoxNode {
+    three: MathBoxThree;
+}
+
+/**
+ * The MathBox library, loaded from CDN as a global (index.html). Only the
+ * factory is declared — everything downstream is MathBoxNode.
+ */
+declare const MathBox: {
+    mathBox(opts: {
+        element: HTMLElement;
+        plugins?: string[];
+        controls?: { klass: unknown };
+        camera?: MathBoxProps;
+        renderer?: MathBoxProps;
+        [opt: string]: unknown;
+    }): MathBoxRoot;
+};
