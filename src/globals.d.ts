@@ -17,6 +17,14 @@
 //   katex   0.16.9    @types/katex@0.16.8    (all three pages)
 //   marked  12.0.0    bundled types          (index.html, prove.html)
 //   mathjs  13.0.0    bundled types          (index.html)
+//   d3      7          @types/d3@7.4.3        (CDN import in d3-semantic-graph)
+//   dagre   1.1.4     bundled types          (CDN <script> in d3-semantic-graph)
+//
+// d3 and dagre differ from the four above in HOW they load — d3 via an `+esm`
+// dynamic import and dagre via an injected <script> that self-attaches to
+// `window`, both from inside src/graph-panel/d3-semantic-graph.ts rather than
+// from an HTML <script> tag. The pinning rule is the same either way: the
+// devDependency exists only to borrow types, and must track the CDN URL.
 //
 // @types/katex is one patch behind on purpose: 0.16.8 is the newest published,
 // and a KaTeX patch release adds no API.
