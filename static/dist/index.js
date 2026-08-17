@@ -2004,7 +2004,7 @@ function animateSlider$1(id, target, duration) {
 	});
 }
 //#endregion
-//#region src/dockable-panel.js
+//#region src/dockable-panel.ts
 var CORNERS = [
 	"top-left",
 	"top-right",
@@ -2016,26 +2016,7 @@ var CORNERS = [
 function _clamp(v, lo, hi) {
 	return Math.max(lo, Math.min(hi, v));
 }
-/**
-* Create a dockable panel.
-*
-* @param {object} opts
-* @param {string} opts.persistKey   localStorage suffix (e.g. 'info-foo' or 'info-drawer').
-* @param {string} [opts.corner]     initial anchor corner (one of CORNERS).
-* @param {string} [opts.title]      header title HTML (already rendered).
-* @param {HTMLElement} opts.bodyEl  caller body appended into the panel body.
-* @param {HTMLElement} opts.container  parent element to append into.
-* @param {Array<HTMLElement>} [opts.headerButtons]  buttons rendered in the header.
-* @param {boolean} [opts.resizable]  enable the resize grip (default true).
-* @param {boolean} [opts.titleAlwaysVisible]  show title even when expanded (default false).
-* @param {number} [opts.minWidth]
-* @param {number} [opts.minHeight]
-* @param {number} [opts.opacity]
-* @param {() => (object|null)} [opts.legacyMigrate]  returns a geometry blob to seed from
-*        old persistence keys when no new blob exists.
-* @param {(collapsed:boolean)=>void} [opts.onCollapseChange]
-* @returns {{el, bodyContainer, headerEl, setTitle, setCollapsed, isCollapsed, getCorner, setOpacity, destroy}}
-*/
+/** Create a dockable panel. */
 function createDockablePanel(opts) {
 	const { persistKey, corner = "top-left", title = "", bodyEl, container, headerButtons = [], resizable = true, titleAlwaysVisible = false, minWidth = 120, minHeight = 36, opacity = 1, legacyMigrate = null, onCollapseChange = null } = opts;
 	const KEY = "dockable-panel-" + persistKey;
@@ -2070,7 +2051,7 @@ function createDockablePanel(opts) {
 	const el = document.createElement("div");
 	el.className = "dockable-panel";
 	if (titleAlwaysVisible) el.classList.add("title-always");
-	el.style.opacity = opacity;
+	el.style.opacity = String(opacity);
 	const header = document.createElement("div");
 	header.className = "dockable-panel-header";
 	const caret = document.createElement("button");
@@ -2259,7 +2240,7 @@ function createDockablePanel(opts) {
 			return geom.corner;
 		},
 		setOpacity(o) {
-			el.style.opacity = o;
+			el.style.opacity = String(o);
 		},
 		destroy() {
 			el.remove();
@@ -2267,7 +2248,8 @@ function createDockablePanel(opts) {
 	};
 }
 //#endregion
-//#region src/overlay.js
+//#region src/overlay.ts
+var overlayState = state;
 function updateExplanationPanel(spec) {
 	const panel = document.getElementById("explanation-panel");
 	const content = document.getElementById("explanation-content");
@@ -2316,7 +2298,7 @@ function setupPanelResize() {
 		handle.classList.remove("dragging");
 		document.body.style.cursor = "";
 		document.body.style.userSelect = "";
-		localStorage.setItem("algebench-panel-width", panel.offsetWidth);
+		localStorage.setItem("algebench-panel-width", String(panel.offsetWidth));
 	});
 }
 function setupExplainToggle() {
@@ -2331,9 +2313,10 @@ function setupExplainToggle() {
 		setTimeout(() => window.dispatchEvent(new Event("resize")), 50);
 	});
 	document.addEventListener("keydown", (e) => {
-		if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+		const target = e.target;
+		if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
 		if (e.key === "e" && !e.ctrlKey && !e.metaKey && !e.altKey) {
-			if (state.currentSpec && state.currentSpec.markdown && toggle.style.display !== "none") toggle.click();
+			if (overlayState.currentSpec && overlayState.currentSpec.markdown && toggle.style.display !== "none") toggle.click();
 		}
 	});
 }
@@ -2353,7 +2336,7 @@ function setupDocSpeakButtons() {
 			return;
 		}
 		const contentEl = document.getElementById("explanation-content");
-		const text = state.currentSpec && state.currentSpec.markdown ? state.currentSpec.markdown : contentEl.dataset.markdown || contentEl.textContent;
+		const text = overlayState.currentSpec && overlayState.currentSpec.markdown ? overlayState.currentSpec.markdown : contentEl.dataset.markdown || contentEl.textContent;
 		if (!text || !text.trim()) return;
 		if (typeof window.algebenchSpeakText === "function") {
 			speakBtn.textContent = "⏹ Stop";
@@ -2397,8 +2380,8 @@ function updateTitle(spec) {
 	} else if (spec && spec.title) descEl.innerHTML = "";
 	else descEl.innerHTML = "Load a scene to begin";
 	if (sourceEl) {
-		sourceEl.textContent = state.currentSceneSourceLabel ? `- ${state.currentSceneSourceLabel}` : "- no file";
-		sourceEl.title = state.currentSceneSourcePath || "";
+		sourceEl.textContent = overlayState.currentSceneSourceLabel ? `- ${overlayState.currentSceneSourceLabel}` : "- no file";
+		sourceEl.title = overlayState.currentSceneSourcePath || "";
 	}
 }
 function buildLegend(elements) {
@@ -2426,8 +2409,8 @@ function buildLegend(elements) {
 	legend.classList.remove("hidden");
 	legend.innerHTML = "";
 	for (const it of items) {
-		const clickableIds = (it.ids || []).filter((id) => state.elementRegistry[id]);
-		const hidden = clickableIds.length > 0 && clickableIds.every((id) => state.legendToggledOff.has(id));
+		const clickableIds = (it.ids || []).filter((id) => overlayState.elementRegistry[id]);
+		const hidden = clickableIds.length > 0 && clickableIds.every((id) => overlayState.legendToggledOff.has(id));
 		const div = document.createElement("div");
 		div.className = "legend-item" + (clickableIds.length ? " legend-clickable" : "") + (hidden ? " legend-hidden" : "");
 		if (clickableIds.length) div.dataset.elementIds = clickableIds.join(",");
@@ -2442,26 +2425,26 @@ function buildLegend(elements) {
 		legend.appendChild(div);
 	}
 	for (const div of legend.querySelectorAll(".legend-clickable")) div.addEventListener("click", () => {
-		const elIds = (div.dataset.elementIds || "").split(",").map((s) => s.trim()).filter(Boolean).filter((id) => state.elementRegistry[id]);
+		const elIds = (div.dataset.elementIds || "").split(",").map((s) => s.trim()).filter(Boolean).filter((id) => overlayState.elementRegistry[id]);
 		if (elIds.length === 0) return;
-		if (elIds.every((id) => state.legendToggledOff.has(id))) {
+		if (elIds.every((id) => overlayState.legendToggledOff.has(id))) {
 			for (const elId of elIds) {
-				state.legendToggledOff.delete(elId);
+				overlayState.legendToggledOff.delete(elId);
 				if (typeof window._algebenchShowElementById === "function") window._algebenchShowElementById(elId);
 			}
 			div.classList.remove("legend-hidden");
 			div.querySelector(".legend-swatch").style.opacity = "";
 		} else {
 			for (const elId of elIds) {
-				state.legendToggledOff.add(elId);
+				overlayState.legendToggledOff.add(elId);
 				if (typeof window._algebenchHideElementById === "function") window._algebenchHideElementById(elId);
 			}
 			div.classList.add("legend-hidden");
 			div.querySelector(".legend-swatch").style.opacity = "0.3";
 		}
 	});
-	for (const id of [...state.legendToggledOff]) if (!state.elementRegistry[id]) state.legendToggledOff.delete(id);
-	else if (!state.elementRegistry[id].hidden) {
+	for (const id of [...state.legendToggledOff]) if (!overlayState.elementRegistry[id]) overlayState.legendToggledOff.delete(id);
+	else if (!overlayState.elementRegistry[id].hidden) {
 		if (typeof window._algebenchHideElementById === "function") window._algebenchHideElementById(id);
 	}
 }
@@ -2483,8 +2466,8 @@ function _fmtNum(val) {
 }
 function _isKnownInfoExprIdentifier(name) {
 	if (!name) return false;
-	if (Object.prototype.hasOwnProperty.call(state.sceneSliders, name)) return true;
-	if (Object.prototype.hasOwnProperty.call(state.activeSceneExprFunctions, name)) return true;
+	if (Object.prototype.hasOwnProperty.call(overlayState.sceneSliders, name)) return true;
+	if (Object.prototype.hasOwnProperty.call(overlayState.activeSceneExprFunctions, name)) return true;
 	if (window.agentMemoryValues && Object.prototype.hasOwnProperty.call(window.agentMemoryValues, name)) return true;
 	if (name === "t" || name === "u" || name === "v") return true;
 	if (name === "pi" || name === "e" || name === "PI" || name === "E") return true;
@@ -2506,13 +2489,13 @@ function _evalInfoExpr(expr) {
 	try {
 		return _fmtNum(evalExpr(compileExpr(trimmed), 0, { extraScope: memScope }));
 	} catch {
-		if (state._sceneJsTrustState === "trusted") try {
+		if (overlayState._sceneJsTrustState === "trusted") try {
 			const ids = getSliderIds();
 			const memNames = memScope ? Object.keys(memScope) : [];
 			const { names, vals: mathVals } = _getMathNamesAndValues();
 			const fn = Function("t", ...ids, ...memNames, ...names, "return (" + trimmed + ")");
 			const sliderVals = ids.map((id) => {
-				const s = state.sceneSliders[id];
+				const s = overlayState.sceneSliders[id];
 				return s ? s.value : 0;
 			});
 			const memVals = memNames.map((k) => memScope[k]);
@@ -2661,7 +2644,7 @@ function _mountFree(item) {
 		container: _infoContainer(),
 		headerButtons: [_makeItemAiBtn(item), _makeDockBtn(item)],
 		titleAlwaysVisible: !!item.explicitTitle,
-		opacity: state.displayParams.overlayOpacity,
+		opacity: overlayState.displayParams.overlayOpacity,
 		legacyMigrate: () => _migrateOldOverlayKeys(item.id)
 	});
 }
@@ -2731,7 +2714,7 @@ function _ensureDrawer(corner) {
 			dissolveBtn
 		],
 		titleAlwaysVisible: true,
-		opacity: state.displayParams.overlayOpacity
+		opacity: overlayState.displayParams.overlayOpacity
 	});
 	infoState.drawerPanel.el.classList.add("dp-drawer");
 }
@@ -2930,12 +2913,12 @@ function updateStatusBar() {
 	const pill = document.getElementById("slider-status");
 	const countEl = pill && pill.querySelector(".slider-status-count");
 	const tooltipEl = pill && pill.querySelector(".slider-status-tooltip");
-	const ids = Object.keys(state.sceneSliders);
+	const ids = Object.keys(overlayState.sceneSliders);
 	if (pill) {
 		if (ids.length > 0) {
-			if (countEl) countEl.textContent = ids.length;
+			if (countEl) countEl.textContent = String(ids.length);
 			if (tooltipEl) tooltipEl.textContent = ids.map((id) => {
-				const s = state.sceneSliders[id];
+				const s = overlayState.sceneSliders[id];
 				return `${(s.label || id).replace(/\$|\\[a-z]+\{?|\}|_|\^/gi, "").trim() || id} (${id}) = ${Number(s.value).toFixed(2)}  [${s.min} … ${s.max}]`;
 			}).join("\n");
 			pill.classList.remove("hidden");
@@ -2943,10 +2926,10 @@ function updateStatusBar() {
 	}
 	const camPopup = document.getElementById("cam-popup-content");
 	const camPopupText = document.getElementById("cam-popup-text");
-	if (camPopup && state.camera && state.controls) {
-		const pw = state.camera.position;
-		const tw = state.controls.target;
-		const u = state.camera.up;
+	if (camPopup && overlayState.camera && overlayState.controls) {
+		const pw = overlayState.camera.position;
+		const tw = overlayState.controls.target;
+		const u = overlayState.camera.up;
 		const p = worldCameraToData$1([
 			pw.x,
 			pw.y,
@@ -2958,7 +2941,7 @@ function updateStatusBar() {
 			tw.z
 		]);
 		const dist = Math.sqrt((p[0] - t[0]) ** 2 + (p[1] - t[1]) ** 2 + (p[2] - t[2]) ** 2);
-		const fov = state.camera.isPerspectiveCamera ? state.camera.fov : null;
+		const fov = overlayState.camera.isPerspectiveCamera ? overlayState.camera.fov : null;
 		const fmt = (v) => v.toFixed(3);
 		const activeViewBtn = document.querySelector(".cam-btn.active");
 		const viewName = activeViewBtn ? activeViewBtn.dataset.view : null;
@@ -2971,10 +2954,10 @@ function updateStatusBar() {
 	}
 	const debugText = document.getElementById("debug-status-text");
 	if (debugText) {
-		const sceneNum = state.currentSceneIndex + 1;
-		const totalScenes = state.lessonSpec && state.lessonSpec.scenes ? state.lessonSpec.scenes.length : "?";
-		const stepNum = state.currentStepIndex + 1;
-		const scene = state.lessonSpec && state.lessonSpec.scenes ? state.lessonSpec.scenes[state.currentSceneIndex] : null;
+		const sceneNum = overlayState.currentSceneIndex + 1;
+		const totalScenes = overlayState.lessonSpec && overlayState.lessonSpec.scenes ? overlayState.lessonSpec.scenes.length : "?";
+		const stepNum = overlayState.currentStepIndex + 1;
+		const scene = overlayState.lessonSpec && overlayState.lessonSpec.scenes ? overlayState.lessonSpec.scenes[overlayState.currentSceneIndex] : null;
 		debugText.textContent = `scene ${sceneNum}/${totalScenes}  step ${stepNum}/${scene && scene.steps ? scene.steps.length : 0}`;
 	}
 }
@@ -3018,26 +3001,26 @@ function setupSettingsPanel() {
 	const momentumSlider = document.getElementById("momentum-slider");
 	const valMomentum = document.getElementById("val-momentum");
 	const MOMENTUM_KEY = "algebench-momentum";
-	const savedMomentum = parseFloat(localStorage.getItem(MOMENTUM_KEY));
-	if (!isNaN(savedMomentum)) state.arcballMomentum = Math.max(0, Math.min(1, savedMomentum));
+	const savedMomentum = parseFloat(String(localStorage.getItem(MOMENTUM_KEY)));
+	if (!isNaN(savedMomentum)) overlayState.arcballMomentum = Math.max(0, Math.min(1, savedMomentum));
 	if (momentumSlider) {
-		momentumSlider.value = Math.round(state.arcballMomentum * 100);
-		if (valMomentum) valMomentum.textContent = Math.round(state.arcballMomentum * 100) + "%";
+		momentumSlider.value = String(Math.round(overlayState.arcballMomentum * 100));
+		if (valMomentum) valMomentum.textContent = Math.round(overlayState.arcballMomentum * 100) + "%";
 		momentumSlider.addEventListener("input", () => {
-			state.arcballMomentum = momentumSlider.value / 100;
-			if (valMomentum) valMomentum.textContent = Math.round(state.arcballMomentum * 100) + "%";
-			localStorage.setItem(MOMENTUM_KEY, state.arcballMomentum);
+			overlayState.arcballMomentum = Number(momentumSlider.value) / 100;
+			if (valMomentum) valMomentum.textContent = Math.round(overlayState.arcballMomentum * 100) + "%";
+			localStorage.setItem(MOMENTUM_KEY, String(overlayState.arcballMomentum));
 		});
 	}
-	for (const [key, val] of Object.entries(state.displayParams)) {
+	for (const [key, val] of Object.entries(overlayState.displayParams)) {
 		const el = document.getElementById("val-" + key);
 		if (el) el.textContent = val.toFixed(1);
 	}
-	const _iniOp = state.displayParams.overlayOpacity;
+	const _iniOp = overlayState.displayParams.overlayOpacity;
 	const _sliderOv = document.getElementById("slider-overlay");
 	const _legend = document.getElementById("legend");
-	if (_sliderOv) _sliderOv.style.opacity = _iniOp;
-	if (_legend) _legend.style.opacity = _iniOp;
+	if (_sliderOv) _sliderOv.style.opacity = String(_iniOp);
+	if (_legend) _legend.style.opacity = String(_iniOp);
 	const isOpacity = (p) => p.endsWith("Opacity");
 	panel.querySelectorAll(".sp-btn").forEach((btn) => {
 		btn.addEventListener("click", () => {
@@ -3046,16 +3029,16 @@ function setupSettingsPanel() {
 			const step = isOpacity(param) ? .1 : .2;
 			const min = isOpacity(param) ? 0 : .2;
 			const max = isOpacity(param) ? 1 : 5;
-			let val = state.displayParams[param] + dir * step;
+			let val = overlayState.displayParams[param] + dir * step;
 			val = Math.round(Math.max(min, Math.min(max, val)) * 10) / 10;
-			state.displayParams[param] = val;
+			overlayState.displayParams[param] = val;
 			document.getElementById("val-" + param).textContent = val.toFixed(1);
 			if (param === "labelOpacity") document.querySelectorAll(".label-3d").forEach((el) => {
-				el.style.opacity = val;
+				el.style.opacity = String(val);
 			});
 			else if (param === "arrowScale") {
 				if (typeof window._algebenchApplyArrowScale === "function") window._algebenchApplyArrowScale(val);
-			} else if (param === "arrowOpacity") for (const entry of state.arrowMeshes) {
+			} else if (param === "arrowOpacity") for (const entry of overlayState.arrowMeshes) {
 				if (entry.isShaft) continue;
 				const baseOp = entry.mesh && entry.mesh.userData && typeof entry.mesh.userData.baseOpacity === "number" ? entry.mesh.userData.baseOpacity : 1;
 				const targetOp = Math.max(0, Math.min(1, baseOp * val));
@@ -3063,21 +3046,21 @@ function setupSettingsPanel() {
 				entry.mesh.material.transparent = targetOp < 1;
 			}
 			else if (param === "axisWidth") {
-				if (typeof window._algebenchApplyLineWidth === "function") for (const entry of state.axisLineNodes) window._algebenchApplyLineWidth(entry);
-			} else if (param === "axisOpacity") for (const entry of state.axisLineNodes) {
+				if (typeof window._algebenchApplyLineWidth === "function") for (const entry of overlayState.axisLineNodes) window._algebenchApplyLineWidth(entry);
+			} else if (param === "axisOpacity") for (const entry of overlayState.axisLineNodes) {
 				const baseOp = entry && typeof entry.baseOpacity === "number" ? entry.baseOpacity : 1;
 				entry.node.set("opacity", baseOp * val);
 			}
 			else if (param === "vectorWidth") {
 				if (typeof window._algebenchApplyShaftThickness === "function" && typeof window._algebenchApplyLineWidth === "function") {
-					for (const entry of state.arrowMeshes) {
+					for (const entry of overlayState.arrowMeshes) {
 						if (!window._algebenchIsShaftEntry || !window._algebenchIsShaftEntry(entry)) continue;
 						if (entry.mesh && entry.mesh.userData && entry.mesh.userData.dynamicVector) continue;
 						window._algebenchApplyShaftThickness(entry.mesh);
 					}
-					for (const entry of state.vectorLineNodes) window._algebenchApplyLineWidth(entry);
+					for (const entry of overlayState.vectorLineNodes) window._algebenchApplyLineWidth(entry);
 				}
-			} else if (param === "vectorOpacity") for (const entry of state.arrowMeshes) {
+			} else if (param === "vectorOpacity") for (const entry of overlayState.arrowMeshes) {
 				if (typeof window._algebenchIsShaftEntry === "function" && !window._algebenchIsShaftEntry(entry)) continue;
 				const baseOp = entry.mesh && entry.mesh.userData && typeof entry.mesh.userData.baseOpacity === "number" ? entry.mesh.userData.baseOpacity : 1;
 				const targetOp = Math.max(0, Math.min(1, baseOp * val));
@@ -3085,12 +3068,12 @@ function setupSettingsPanel() {
 				entry.mesh.material.transparent = targetOp < 1;
 			}
 			else if (param === "lineWidth") {
-				if (typeof window._algebenchApplyLineWidth === "function") for (const entry of state.lineNodes) window._algebenchApplyLineWidth(entry);
-			} else if (param === "lineOpacity") for (const entry of state.lineNodes) {
+				if (typeof window._algebenchApplyLineWidth === "function") for (const entry of overlayState.lineNodes) window._algebenchApplyLineWidth(entry);
+			} else if (param === "lineOpacity") for (const entry of overlayState.lineNodes) {
 				const baseOp = entry && typeof entry.baseOpacity === "number" ? entry.baseOpacity : 1;
 				entry.node.set("opacity", baseOp * val);
 			}
-			else if (param === "planeScale") for (const m of state.planeMeshes) {
+			else if (param === "planeScale") for (const m of overlayState.planeMeshes) {
 				if (m._hiddenByRemove) continue;
 				if (m.userData.buildSlab) {
 					const newPositions = m.userData.buildSlab(m.userData.baseHalf * val);
@@ -3099,7 +3082,7 @@ function setupSettingsPanel() {
 					m.geometry.attributes.position.needsUpdate = true;
 				}
 			}
-			else if (param === "planeOpacity") for (const m of state.planeMeshes) {
+			else if (param === "planeOpacity") for (const m of overlayState.planeMeshes) {
 				if (m._hiddenByRemove) continue;
 				if (m.isSprite) continue;
 				if (m.userData && m.userData.ignorePlaneOpacity) {
@@ -3128,22 +3111,22 @@ function setupSettingsPanel() {
 				}
 			} else if (param === "overlayOpacity") {
 				const cap = document.getElementById("step-caption");
-				if (cap && !cap.classList.contains("hidden")) cap.style.opacity = val;
+				if (cap && !cap.classList.contains("hidden")) cap.style.opacity = String(val);
 				const sliderOv = document.getElementById("slider-overlay");
-				if (sliderOv) sliderOv.style.opacity = val;
+				if (sliderOv) sliderOv.style.opacity = String(val);
 				const legend = document.getElementById("legend");
-				if (legend) legend.style.opacity = val;
+				if (legend) legend.style.opacity = String(val);
 				document.querySelectorAll("#info-overlays .dockable-panel").forEach((el) => {
-					el.style.opacity = val;
+					el.style.opacity = String(val);
 				});
 			}
 		});
 	});
 	const declutterMode = document.getElementById("declutter-mode");
 	if (declutterMode) {
-		declutterMode.value = state.displayParams.labelDeclutterMode;
+		declutterMode.value = overlayState.displayParams.labelDeclutterMode;
 		declutterMode.addEventListener("change", () => {
-			state.displayParams.labelDeclutterMode = declutterMode.value;
+			overlayState.displayParams.labelDeclutterMode = declutterMode.value;
 		});
 	}
 }
@@ -3151,7 +3134,7 @@ function initLightControls() {
 	const azEl = document.getElementById("light-az");
 	const elEl = document.getElementById("light-el");
 	const intEl = document.getElementById("light-int");
-	if (!azEl || !state.mainDirLight) return;
+	if (!azEl || !overlayState.mainDirLight) return;
 	function applyLight() {
 		const azDeg = parseFloat(azEl.value);
 		const elDeg = parseFloat(elEl.value);
@@ -3159,8 +3142,8 @@ function initLightControls() {
 		const az = azDeg * Math.PI / 180;
 		const el = elDeg * Math.PI / 180;
 		const dist = 20;
-		state.mainDirLight.position.set(dist * Math.cos(el) * Math.sin(az), dist * Math.sin(el), dist * Math.cos(el) * Math.cos(az));
-		state.mainDirLight.intensity = intensity;
+		overlayState.mainDirLight.position.set(dist * Math.cos(el) * Math.sin(az), dist * Math.sin(el), dist * Math.cos(el) * Math.cos(az));
+		overlayState.mainDirLight.intensity = intensity;
 		document.getElementById("val-light-az").textContent = azDeg + "°";
 		document.getElementById("val-light-el").textContent = elDeg + "°";
 		document.getElementById("val-light-int").textContent = intensity.toFixed(2);
@@ -3181,18 +3164,20 @@ function updateStepCaption(scene, stepIdx) {
 		el.dataset.markdown = text;
 		const btn = makeAiAskButton("ai-ask-btn caption-ai-btn", "Ask AI to explain this", () => `Can you explain the step description: "${text}"`);
 		el.appendChild(btn);
-		el.style.opacity = state.displayParams.overlayOpacity;
+		el.style.opacity = String(overlayState.displayParams.overlayOpacity);
 		resetCaptionPosition(el);
 		el.classList.remove("hidden");
 	} else el.classList.add("hidden");
 }
+/** `bottom` and `left` are CSS lengths ('64px', '50%'), not numbers — the
+*  '50%' default and the `endsWith('px')` test below both depend on that. */
 function _applyBottomPos(el, bottom, left) {
 	el.style.bottom = bottom;
 	el.style.left = left || "50%";
 	el.style.top = "auto";
 	el.style.right = "auto";
 	el.style.width = "";
-	const scale = "scale(" + (state.displayParams.captionScale || 1) + ")";
+	const scale = "scale(" + (overlayState.displayParams.captionScale || 1) + ")";
 	if (left && left.endsWith("px")) {
 		el.style.transform = scale;
 		el.style.transformOrigin = "left bottom";
@@ -3252,7 +3237,7 @@ function setupCaptionDrag() {
 		startY = e.clientY;
 		const parentRect = (el.offsetParent || document.body).getBoundingClientRect();
 		const elRect = el.getBoundingClientRect();
-		const s = state.displayParams.captionScale || 1;
+		const s = overlayState.displayParams.captionScale || 1;
 		startLeft = elRect.left - parentRect.left;
 		startBottom = parentRect.bottom - elRect.bottom;
 		const cs = getComputedStyle(el);
@@ -3308,9 +3293,10 @@ function setupOverlayHoverBoost() {
 	_overlayHoverWired = true;
 	const SEL = "#step-caption, #scene-description, #slider-overlay, #legend, #info-overlays .dockable-panel";
 	document.addEventListener("mouseover", (e) => {
-		const t = e.target.closest && e.target.closest(SEL);
+		const target = e.target;
+		const t = target.closest && target.closest(SEL);
 		if (!t) return;
-		const panel = e.target.closest("#info-overlays .dockable-panel");
+		const panel = target.closest("#info-overlays .dockable-panel");
 		if (panel) bringOverlayToFront(panel);
 		if (t._hoverBoosted) return;
 		t._hoverBoosted = true;
@@ -3320,11 +3306,13 @@ function setupOverlayHoverBoost() {
 		t.style.opacity = t._boostedOp;
 	});
 	document.addEventListener("mousedown", (e) => {
-		const panel = e.target.closest && e.target.closest("#info-overlays .dockable-panel");
+		const target = e.target;
+		const panel = target.closest && target.closest("#info-overlays .dockable-panel");
 		if (panel) bringOverlayToFront(panel);
 	}, true);
 	document.addEventListener("mouseout", (e) => {
-		const t = e.target.closest && e.target.closest(SEL);
+		const target = e.target;
+		const t = target.closest && target.closest(SEL);
 		if (!t || !t._hoverBoosted) return;
 		if (e.relatedTarget && t.contains(e.relatedTarget)) return;
 		t._hoverBoosted = false;
@@ -3405,9 +3393,9 @@ function setupSceneDescDrag() {
 function setCamPopupPinned(pinned, suppressHover = false) {
 	const camStatus = document.getElementById("cam-status");
 	if (!camStatus) return;
-	state.camPopupPinned = !!pinned;
-	camStatus.classList.toggle("pinned", state.camPopupPinned);
-	if (state.camPopupPinned) camStatus.classList.remove("suppress-hover");
+	overlayState.camPopupPinned = !!pinned;
+	camStatus.classList.toggle("pinned", overlayState.camPopupPinned);
+	if (overlayState.camPopupPinned) camStatus.classList.remove("suppress-hover");
 	else if (suppressHover) camStatus.classList.add("suppress-hover");
 }
 function setupCamStatusPopup() {
@@ -3420,7 +3408,7 @@ function setupCamStatusPopup() {
 		if (e.target && e.target.closest("#cam-popup-close")) return;
 		if (e.target && e.target.closest("#cam-popup-copy")) return;
 		if (e.target && e.target.closest(".cam-status-popup")) return;
-		setCamPopupPinned(!state.camPopupPinned, state.camPopupPinned);
+		setCamPopupPinned(!overlayState.camPopupPinned, overlayState.camPopupPinned);
 	});
 	camStatus.addEventListener("mouseleave", () => {
 		camStatus.classList.remove("suppress-hover");
@@ -7702,7 +7690,8 @@ function updateJsTrustPill() {
 	pill.style.cursor = pillClickable ? "pointer" : "";
 }
 //#endregion
-//#region src/context-browser.js
+//#region src/context-browser.ts
+var contextState = state;
 var _navigateFn = null;
 function setNavigateFn(fn) {
 	_navigateFn = fn;
@@ -7715,7 +7704,7 @@ function buildSceneTree$1(spec) {
 		const sceneTitle = scene.title || "Scene " + (i + 1);
 		const sceneDiv = document.createElement("div");
 		sceneDiv.className = "tree-scene";
-		sceneDiv.dataset.sceneIdx = i;
+		sceneDiv.dataset.sceneIdx = String(i);
 		const header = document.createElement("div");
 		header.className = "tree-scene-header";
 		header.title = sceneTitle;
@@ -7743,8 +7732,8 @@ function buildSceneTree$1(spec) {
 				const stepTitle = step.title || "Step " + (j + 1);
 				const stepDiv = document.createElement("div");
 				stepDiv.className = "tree-step";
-				stepDiv.dataset.sceneIdx = i;
-				stepDiv.dataset.stepIdx = j;
+				stepDiv.dataset.sceneIdx = String(i);
+				stepDiv.dataset.stepIdx = String(j);
 				stepDiv.title = stepTitle;
 				stepDiv.innerHTML = renderKaTeX$1(stepTitle, false);
 				stepDiv.addEventListener("click", () => {
@@ -7760,14 +7749,14 @@ function buildSceneTree$1(spec) {
 function updateTreeHighlight$1() {
 	document.querySelectorAll(".tree-scene").forEach((el) => {
 		const idx = parseInt(el.dataset.sceneIdx);
-		el.classList.toggle("active", idx === state.currentSceneIndex);
-		if (idx === state.currentSceneIndex) el.classList.add("expanded");
+		el.classList.toggle("active", idx === contextState.currentSceneIndex);
+		if (idx === contextState.currentSceneIndex) el.classList.add("expanded");
 	});
 	document.querySelectorAll(".tree-step").forEach((el) => {
 		const si = parseInt(el.dataset.sceneIdx);
 		const sti = parseInt(el.dataset.stepIdx);
-		el.classList.toggle("active", si === state.currentSceneIndex && sti === state.currentStepIndex);
-		el.classList.toggle("visited", state.visitedSteps.has(si + ":" + sti) && !(si === state.currentSceneIndex && sti === state.currentStepIndex));
+		el.classList.toggle("active", si === contextState.currentSceneIndex && sti === contextState.currentStepIndex);
+		el.classList.toggle("visited", contextState.visitedSteps.has(si + ":" + sti) && !(si === contextState.currentSceneIndex && sti === contextState.currentStepIndex));
 	});
 }
 //#endregion
@@ -11113,7 +11102,8 @@ function setupVideoExportControls() {
 	});
 }
 //#endregion
-//#region src/json-browser.js
+//#region src/json-browser.ts
+var browserState = state;
 function _computeSceneSummary(spec) {
 	if (!spec) return null;
 	const isLesson = Array.isArray(spec.scenes) && spec.scenes.length > 0;
@@ -11230,12 +11220,12 @@ function _toggleJsIssuesPanel(panel) {
 		panel.classList.add("hidden");
 		return;
 	}
-	const trusted = state._sceneJsTrustState === "trusted";
+	const trusted = browserState._sceneJsTrustState === "trusted";
 	const stateLabel = trusted ? "⚡ JS Trusted — expressions are running natively" : "⚠ JS Disabled — expressions are no-ops (returning 0 / \"?\")";
 	const stateClass = trusted ? "js-issues-state-trusted" : "js-issues-state-untrusted";
-	const explanationBlock = state._sceneUnsafeExplanation ? `<div class="ji-explanation"><span class="ji-explanation-label">Scene-declared explanation:</span> ${_escHtml$1(state._sceneUnsafeExplanation)}</div>` : "";
-	const unsafeBanner = state._sceneIsUnsafe ? `<div class="ji-unsafe-banner">⚠ This scene sets <code>unsafe: true</code> — all expressions execute as native JavaScript regardless of pattern matching.</div>` : "";
-	const rows = state._sceneJsIssues.map(({ path, expr, type }) => {
+	const explanationBlock = browserState._sceneUnsafeExplanation ? `<div class="ji-explanation"><span class="ji-explanation-label">Scene-declared explanation:</span> ${_escHtml$1(browserState._sceneUnsafeExplanation)}</div>` : "";
+	const unsafeBanner = browserState._sceneIsUnsafe ? `<div class="ji-unsafe-banner">⚠ This scene sets <code>unsafe: true</code> — all expressions execute as native JavaScript regardless of pattern matching.</div>` : "";
+	const rows = browserState._sceneJsIssues.map(({ path, expr, type }) => {
 		const truncExpr = expr.length > 60 ? expr.slice(0, 57) + "…" : expr;
 		const typeLabel = type === "template" ? "{{…}} template" : "expr field";
 		const action = trusted ? "✅ Running" : "🚫 Disabled";
@@ -11246,7 +11236,7 @@ function _toggleJsIssuesPanel(panel) {
             <td class="ji-action ${trusted ? "ji-running" : "ji-disabled"}">${action}</td>
         </tr>`;
 	}).join("");
-	const noRows = state._sceneJsIssues.length === 0 ? `<tr><td colspan="4" class="ji-empty">No specific JS patterns detected — scene uses <code>unsafe: true</code> to opt in globally.</td></tr>` : "";
+	const noRows = browserState._sceneJsIssues.length === 0 ? `<tr><td colspan="4" class="ji-empty">No specific JS patterns detected — scene uses <code>unsafe: true</code> to opt in globally.</td></tr>` : "";
 	panel.innerHTML = `<div class="ji-header ${stateClass}">${stateLabel}</div>` + explanationBlock + unsafeBanner + `<div class="ji-scroll"><table class="ji-table"><thead><tr><th>JSON Path</th><th>Expression</th><th>Type</th><th>Action</th></tr></thead><tbody>${rows || noRows}</tbody></table></div>`;
 	panel.classList.remove("hidden");
 }
@@ -11422,8 +11412,9 @@ var _JT_KEY_ICONS = {
 	}
 };
 function _getTreeIcon(key, value) {
-	if (value !== null && typeof value === "object" && !Array.isArray(value) && typeof value.type === "string") {
-		const ti = _JT_TYPE_ICONS[value.type];
+	const rec = value;
+	if (value !== null && typeof value === "object" && !Array.isArray(value) && typeof rec.type === "string") {
+		const ti = _JT_TYPE_ICONS[rec.type];
 		if (ti) return ti;
 	}
 	if (key === "type" && typeof value === "string") {
@@ -11475,7 +11466,8 @@ function _buildJsonWithLineMap(obj) {
 			newline(indent);
 			append("]");
 		} else {
-			const keys = Object.keys(val);
+			const rec = val;
+			const keys = Object.keys(rec);
 			if (keys.length === 0) {
 				append("{}");
 				return;
@@ -11486,7 +11478,7 @@ function _buildJsonWithLineMap(obj) {
 				const cp = path ? `${path}.${key}` : key;
 				pathLineMap[cp] = lines.length - 1;
 				append(JSON.stringify(key) + ": ");
-				serialize(val[key], cp, indent + 1);
+				serialize(rec[key], cp, indent + 1);
 				if (i < keys.length - 1) append(",");
 			});
 			newline(indent);
@@ -11502,9 +11494,10 @@ function _buildJsonWithLineMap(obj) {
 function _jsonTreeSummary(val) {
 	if (Array.isArray(val)) return `[${val.length}]`;
 	if (val && typeof val === "object") {
-		const keys = Object.keys(val);
+		const rec = val;
+		const keys = Object.keys(rec);
 		return `{ ${keys.slice(0, 3).map((k) => {
-			const v = val[k];
+			const v = rec[k];
 			if (typeof v === "string") return `${k}: "${v.length > 12 ? v.slice(0, 12) + "…" : v}"`;
 			if (typeof v === "number" || typeof v === "boolean") return `${k}: ${v}`;
 			return k;
@@ -11537,7 +11530,7 @@ function _buildTreeNodes(ul, val, path, depth) {
 			toggle.textContent = collapsed ? "▶" : "▼";
 			const keyEl = document.createElement("span");
 			keyEl.className = "jt-key";
-			keyEl.textContent = isArray ? `[${key}]` : key;
+			keyEl.textContent = isArray ? `[${key}]` : String(key);
 			const summary = document.createElement("span");
 			summary.className = "jt-summary";
 			summary.textContent = " " + _jsonTreeSummary(value);
@@ -11560,7 +11553,7 @@ function _buildTreeNodes(ul, val, path, depth) {
 			indent.className = "jt-indent";
 			const keyEl = document.createElement("span");
 			keyEl.className = "jt-key";
-			keyEl.textContent = isArray ? `[${key}]` : key;
+			keyEl.textContent = isArray ? `[${key}]` : String(key);
 			const colon = document.createElement("span");
 			colon.className = "jt-colon";
 			colon.textContent = ": ";
@@ -11803,7 +11796,7 @@ function setupJsonViewer() {
 					resizeHandle.classList.remove("dragging");
 					document.body.style.cursor = "";
 					document.body.style.userSelect = "";
-					localStorage.setItem("jsonTreePanelWidth", treePanel.offsetWidth);
+					localStorage.setItem("jsonTreePanelWidth", String(treePanel.offsetWidth));
 					document.removeEventListener("mousemove", onMove);
 					document.removeEventListener("mouseup", onUp);
 				}
@@ -11827,8 +11820,8 @@ function setupJsonViewer() {
 	btn.addEventListener("click", () => {
 		if (issuesPanel) issuesPanel.classList.add("hidden");
 		let json;
-		if (state.lessonSpec) json = state.lessonSpec;
-		else if (state.currentSpec) json = state.currentSpec;
+		if (browserState.lessonSpec) json = browserState.lessonSpec;
+		else if (browserState.currentSpec) json = browserState.currentSpec;
 		_jsonLineHeight = 0;
 		if (json) {
 			const { text, pathLineMap } = _buildJsonWithLineMap(json);
@@ -11844,7 +11837,7 @@ function setupJsonViewer() {
 		}
 		const imports = json && Array.isArray(json.import) ? json.import : [];
 		if (imports.length > 0 && importsBar) {
-			importsBar.innerHTML = "<span class=\"imports-label\">Imports</span>" + imports.map((name) => `<a href="/api/domains/${encodeURIComponent(name)}" target="_blank" rel="noopener">${_escHtml$1(name)} ↗</a>`).join("");
+			importsBar.innerHTML = "<span class=\"imports-label\">Imports</span>" + imports.map((name) => `<a href="/api/domains/${encodeURIComponent(String(name))}" target="_blank" rel="noopener">${_escHtml$1(name)} ↗</a>`).join("");
 			importsBar.classList.remove("hidden");
 		} else if (importsBar) importsBar.classList.add("hidden");
 		const s = _computeSceneSummary(json);
@@ -11926,9 +11919,9 @@ score = floor(100 × (1 − e^(−raw / 80)))" style="--score-color:${ag.color}"
 			}
 			const existingBadge = summaryBar.querySelector(".summary-stat-js-issues");
 			if (existingBadge) existingBadge.remove();
-			if (state._sceneIsUnsafe || state._sceneJsIssues.length > 0) {
-				const trusted = state._sceneJsTrustState === "trusted";
-				const count = state._sceneIsUnsafe && state._sceneJsIssues.length === 0 ? "!" : state._sceneJsIssues.length;
+			if (browserState._sceneIsUnsafe || browserState._sceneJsIssues.length > 0) {
+				const trusted = browserState._sceneJsTrustState === "trusted";
+				const count = browserState._sceneIsUnsafe && browserState._sceneJsIssues.length === 0 ? "!" : browserState._sceneJsIssues.length;
 				const badge = document.createElement("span");
 				badge.className = "summary-stat summary-stat-js-issues" + (trusted ? " js-trusted" : " js-untrusted");
 				badge.title = "Click to view detected JavaScript expressions and trust status";
@@ -12012,7 +12005,7 @@ score = floor(100 × (1 − e^(−raw / 80)))" style="--score-color:${ag.color}"
 			valInput.classList.toggle("jsb-has-results", n > 0);
 			valInput.classList.toggle("jsb-no-results", n === 0);
 		}
-		if (keyCount) keyCount.textContent = n || (keyTerm ? "none" : "");
+		if (keyCount) keyCount.textContent = n ? String(n) : keyTerm ? "none" : "";
 		if (valCount) valCount.textContent = n ? `1/${n}` : valTerm ? "none" : "";
 		if (n > 0) {
 			_matchIndex = 0;

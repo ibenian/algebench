@@ -119,6 +119,9 @@ interface StepTracker extends SubTracker {
  * optional here rather than being asserted present.
  */
 interface SceneStep {
+    // Rendered by the scene tree (src/context-browser.ts) and the step caption;
+    // the loader itself never reads it, which is why phase 4g missed it.
+    title?: string;
     add?: Element[];
     remove?: { id?: string; type?: string }[];
     sliders?: SliderDef[];

@@ -11,19 +11,146 @@ import { getSliderIds, syncSliderState } from '/sliders.js';
 import { worldCameraToData } from '/coords.js';
 import { applyCanvasClearColor } from '/camera.js';
 import { createDockablePanel } from '/dockable-panel.js';
+import type { DockablePanel, DockGeometry } from '/dockable-panel.js';
+import type { Element } from '/types/lesson.js';
+import type { Material, Mesh } from 'three';
+
+/** A mesh the settings panel can restyle. Mirrors the shapes src/objects/ and
+ *  src/scene-loader.ts push into the shared registries: `_hiddenByRemove` and
+ *  the userData keys are the codebase's own conventions, and the single-Material
+ *  parameter reflects that nothing here builds a multi-material mesh. */
+type SceneMesh = Mesh<import('three').BufferGeometry, Material> & {
+    _hiddenByRemove?: boolean;
+    isSprite?: boolean;
+};
+
+/** An overlay panel the hover-boost decorates with its own bookkeeping: the
+ *  pre-hover opacity to restore, and the boosted value it set (compared on
+ *  mouseout so a competing change — e.g. the overlayOpacity setting — wins). */
+type HoverBoostable = HTMLElement & {
+    _hoverBoosted?: boolean;
+    _preHoverOp?: string;
+    _boostedOp?: string;
+};
+
+/** One legend row: a label, its swatch colour, and every element id that
+ *  shares the row (so clicking it toggles all of them together). */
+interface LegendItem {
+    label: string | null;
+    color: unknown;
+    ids: string[];
+}
+
+/** An arrow-registry entry, as the vector renderers publish it. */
+interface ArrowMeshEntry {
+    mesh: SceneMesh;
+    isShaft?: boolean;
+}
+
+/** A MathBox line/axis/point registry entry. */
+interface NodeEntry {
+    node: MathBoxNode;
+    baseOpacity?: number;
+}
+
+/**
+ * One info overlay. The same record backs both renderings: `panel`/`freeInner`
+ * are set while it floats free, `sectionEl`/`sectionBodyEl`/`sectionTitleEl`
+ * while it lives in the drawer. `_route()` swaps between them, so each group is
+ * null exactly when the other is populated.
+ */
+interface InfoItem {
+    id: string;
+    contentEl: HTMLElement;
+    panel: DockablePanel | null;
+    freeInner: HTMLElement | null;
+    sectionEl: HTMLElement | null;
+    sectionBodyEl: HTMLElement | null;
+    sectionTitleEl: HTMLElement | null;
+    placement: 'free' | 'drawer';
+    content?: string;
+    title?: string | null;
+    explicitTitle?: boolean;
+    position?: string;
+    stepDefined?: boolean;
+    keep?: boolean;
+}
+
+/** An info-overlay definition, as a step or the tutor supplies it. `pos` is a
+ *  legacy spelling of `position` that applyStepInfoOverlays still honours. */
+interface InfoOverlayDef {
+    id: string;
+    content: string;
+    position?: string;
+    pos?: string;
+    keep?: boolean;
+    title?: string | null;
+}
+
+/** The scene shape this module reads — titles, markdown, and the element lists
+ *  getAllElements() walks. Looser than the schema on purpose: scenes also come
+ *  from the AI, and every field here is guarded at its use site. */
+interface OverlayScene {
+    title?: string;
+    description?: string;
+    markdown?: string;
+    elements?: Element[];
+    steps?: {
+        title?: string;
+        caption?: string;
+        description?: string;
+        add?: Element[];
+        remove?: { id?: string; type?: string }[];
+    }[];
+}
+
+// state.js is still untyped JavaScript, so its fields infer from their
+// initializers. Describe the slice this module owns rather than spreading
+// `any`; the cast goes away when state.js is converted.
+interface OverlayState {
+    currentSpec: OverlayScene | null | undefined;
+    lessonSpec: (OverlayScene & { scenes?: OverlayScene[] }) | null | undefined;
+    currentSceneIndex: number;
+    currentStepIndex: number;
+    currentSceneSourceLabel: string | null;
+    currentSceneSourcePath: string | null;
+    sceneSliders: Record<string, { value: number; label?: string; min?: number; max?: number } | undefined>;
+    activeSceneExprFunctions: Record<string, unknown>;
+    elementRegistry: Record<string, { hidden: boolean; type?: string } | undefined>;
+    legendToggledOff: Set<string>;
+    // Numeric display params. `labelDeclutterMode` also lives in this object as
+    // a string; the two sites that touch it cast, rather than widening every
+    // arithmetic use site here to `number | string`.
+    displayParams: Record<string, number>;
+    camera: { position: { x: number; y: number; z: number };
+              up: { x: number; y: number; z: number };
+              isPerspectiveCamera?: boolean; fov?: number } | null;
+    controls: { target: { x: number; y: number; z: number } } | null;
+    mainDirLight: { intensity: number; position: { set(x: number, y: number, z: number): void } } | null;
+    arcballMomentum: number;
+    camPopupPinned: boolean;
+    arrowMeshes: ArrowMeshEntry[];
+    planeMeshes: SceneMesh[];
+    lineNodes: NodeEntry[];
+    vectorLineNodes: NodeEntry[];
+    axisLineNodes: NodeEntry[];
+    _sceneJsTrustState: string | null;
+}
+const overlayState = state as unknown as OverlayState;
 
 // Forward reference for buildSceneTree — assigned by context-browser.js via
 // setBuildSceneTreeFn() to avoid a circular import.
-let _buildSceneTreeFn = null;
-export function setBuildSceneTreeFn(fn) { _buildSceneTreeFn = fn; }
+type BuildSceneTreeFn = (spec: unknown) => void;
+let _buildSceneTreeFn: BuildSceneTreeFn | null = null;
+export function setBuildSceneTreeFn(fn: BuildSceneTreeFn): void { _buildSceneTreeFn = fn; }
 
 // ----- Explanation Panel -----
 
-export function updateExplanationPanel(spec) {
-    const panel = document.getElementById('explanation-panel');
-    const content = document.getElementById('explanation-content');
-    const handle = document.getElementById('panel-resize-handle');
-    const toggle = document.getElementById('explain-toggle');
+export function updateExplanationPanel(spec: OverlayScene | null | undefined): void {
+    const panel = document.getElementById('explanation-panel')!;
+    const content = document.getElementById('explanation-content')!;
+    const handle = document.getElementById('panel-resize-handle')!;
+    const toggle = document.getElementById('explain-toggle')!;
 
     if (spec && spec.markdown) {
         content.innerHTML = renderMarkdown(spec.markdown);
@@ -49,11 +176,11 @@ export function updateExplanationPanel(spec) {
     setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
 }
 
-export function setupPanelResize() {
-    const handle = document.getElementById('panel-resize-handle');
-    const panel = document.getElementById('explanation-panel');
+export function setupPanelResize(): void {
+    const handle = document.getElementById('panel-resize-handle')!;
+    const panel = document.getElementById('explanation-panel')!;
     let dragging = false;
-    let startX, startWidth;
+    let startX: number, startWidth: number;
 
     handle.addEventListener('mousedown', (e) => {
         e.preventDefault();
@@ -80,14 +207,15 @@ export function setupPanelResize() {
         handle.classList.remove('dragging');
         document.body.style.cursor = '';
         document.body.style.userSelect = '';
-        localStorage.setItem('algebench-panel-width', panel.offsetWidth);
+        // setItem stringifies its value; String() is that same coercion.
+        localStorage.setItem('algebench-panel-width', String(panel.offsetWidth));
     });
 }
 
-export function setupExplainToggle() {
-    const toggle = document.getElementById('explain-toggle');
-    const panel = document.getElementById('explanation-panel');
-    const handle = document.getElementById('panel-resize-handle');
+export function setupExplainToggle(): void {
+    const toggle = document.getElementById('explain-toggle')!;
+    const panel = document.getElementById('explanation-panel')!;
+    const handle = document.getElementById('panel-resize-handle')!;
 
     toggle.addEventListener('click', () => {
         const isHidden = panel.classList.toggle('hidden');
@@ -101,10 +229,12 @@ export function setupExplainToggle() {
 
     // Keyboard shortcut: 'e' to toggle
     document.addEventListener('keydown', (e) => {
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        // Cast, not optional chaining: a null target threw in the JS.
+        const target = e.target as HTMLElement;
+        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
         if (e.key === 'e' && !e.ctrlKey && !e.metaKey && !e.altKey) {
             // Only toggle if there's markdown content
-            if (state.currentSpec && state.currentSpec.markdown && toggle.style.display !== 'none') {
+            if (overlayState.currentSpec && overlayState.currentSpec.markdown && toggle.style.display !== 'none') {
                 toggle.click();
             }
         }
@@ -113,8 +243,8 @@ export function setupExplainToggle() {
 
 // ----- Doc Panel Speak / Commentate Buttons -----
 
-export function setupDocSpeakButtons() {
-    const speakBtn = document.getElementById('doc-speak-btn');
+export function setupDocSpeakButtons(): void {
+    const speakBtn = document.getElementById('doc-speak-btn')!;
     const commentateBtn = document.getElementById('doc-commentate-btn');
     if (!speakBtn || !commentateBtn) return;
 
@@ -134,9 +264,9 @@ export function setupDocSpeakButtons() {
             return;
         }
 
-        const contentEl = document.getElementById('explanation-content');
-        const text = (state.currentSpec && state.currentSpec.markdown)
-            ? state.currentSpec.markdown
+        const contentEl = document.getElementById('explanation-content')!;
+        const text = (overlayState.currentSpec && overlayState.currentSpec.markdown)
+            ? overlayState.currentSpec.markdown
             : (contentEl.dataset.markdown || contentEl.textContent);
 
         if (!text || !text.trim()) return;
@@ -159,9 +289,9 @@ export function setupDocSpeakButtons() {
         }
 
         // Open panel and switch to Chat tab so the exchange is visible
-        const panel = document.getElementById('explanation-panel');
-        const handle = document.getElementById('panel-resize-handle');
-        const toggle = document.getElementById('explain-toggle');
+        const panel = document.getElementById('explanation-panel')!;
+        const handle = document.getElementById('panel-resize-handle')!;
+        const toggle = document.getElementById('explain-toggle')!;
         if (panel.classList.contains('hidden')) {
             panel.classList.remove('hidden');
             handle.style.display = 'block';
@@ -177,9 +307,9 @@ export function setupDocSpeakButtons() {
 
 // ----- Title Bar Update -----
 
-export function updateTitle(spec) {
-    const titleEl = document.getElementById('scene-title');
-    const descEl = document.getElementById('scene-description');
+export function updateTitle(spec: OverlayScene | null | undefined): void {
+    const titleEl = document.getElementById('scene-title')!;
+    const descEl = document.getElementById('scene-description')!;
     const sourceEl = document.getElementById('scene-source-file');
     if (spec && spec.title) {
         titleEl.innerHTML = renderKaTeX(spec.title, false);
@@ -199,17 +329,18 @@ export function updateTitle(spec) {
         descEl.innerHTML = 'Load a scene to begin';
     }
     if (sourceEl) {
-        sourceEl.textContent = state.currentSceneSourceLabel ? `- ${state.currentSceneSourceLabel}` : '- no file';
-        sourceEl.title = state.currentSceneSourcePath || '';
+        sourceEl.textContent = overlayState.currentSceneSourceLabel ? `- ${overlayState.currentSceneSourceLabel}` : '- no file';
+        sourceEl.title = overlayState.currentSceneSourcePath || '';
     }
 }
 
 // ----- Legend Builder -----
 
-export function buildLegend(elements) {
-    const legend = document.getElementById('legend');
-    const grouped = new Map();
-    for (const el of elements) {
+export function buildLegend(elements: Element[] | null | undefined): void {
+    const legend = document.getElementById('legend')!;
+    const grouped = new Map<string, LegendItem>();
+    // Non-null: every caller passes an array; a null one threw in the JS.
+    for (const el of elements!) {
         if (el.type === 'axis' || el.type === 'grid') continue;
         // legendGroup lets an element join a legend group without rendering its own label text.
         // The group key matches the label+color of the primary element.
@@ -221,10 +352,11 @@ export function buildLegend(elements) {
             grouped.set(key, { label: el.label || null, color: el.color, ids: [] });
         }
         // If this element has a real label and the group was created by a legendGroup-only element, upgrade it
-        if (el.label && !grouped.get(key).label) {
-            grouped.get(key).label = el.label;
+        // Non-null throughout: the entry was created by the `has` check above.
+        if (el.label && !grouped.get(key)!.label) {
+            grouped.get(key)!.label = el.label;
         }
-        if (el.id) grouped.get(key).ids.push(el.id);
+        if (el.id) grouped.get(key)!.ids.push(el.id);
     }
     // Remove groups that never got a real label (only legendGroup members, no primary)
     for (const [key, val] of grouped) {
@@ -238,8 +370,8 @@ export function buildLegend(elements) {
     legend.classList.remove('hidden');
     legend.innerHTML = '';
     for (const it of items) {
-        const clickableIds = (it.ids || []).filter(id => state.elementRegistry[id]);
-        const hidden = clickableIds.length > 0 && clickableIds.every(id => state.legendToggledOff.has(id));
+        const clickableIds = (it.ids || []).filter((id: string) => overlayState.elementRegistry[id]);
+        const hidden = clickableIds.length > 0 && clickableIds.every((id: string) => overlayState.legendToggledOff.has(id));
 
         const div = document.createElement('div');
         div.className = 'legend-item' + (clickableIds.length ? ' legend-clickable' : '') + (hidden ? ' legend-hidden' : '');
@@ -259,39 +391,40 @@ export function buildLegend(elements) {
     }
 
     // Attach click handlers (only for elements currently in the registry)
-    for (const div of legend.querySelectorAll('.legend-clickable')) {
+    for (const div of legend.querySelectorAll<HTMLElement>('.legend-clickable')) {
         div.addEventListener('click', () => {
             const elIds = (div.dataset.elementIds || '')
                 .split(',')
-                .map(s => s.trim())
+                .map((s: string) => s.trim())
                 .filter(Boolean)
-                .filter(id => state.elementRegistry[id]);
+                .filter((id: string) => overlayState.elementRegistry[id]);
             if (elIds.length === 0) return;
             // hideElementById / showElementById are injected at runtime via window shims
-            const allHidden = elIds.every(id => state.legendToggledOff.has(id));
+            const allHidden = elIds.every((id: string) => overlayState.legendToggledOff.has(id));
             if (allHidden) {
                 for (const elId of elIds) {
-                    state.legendToggledOff.delete(elId);
+                    overlayState.legendToggledOff.delete(elId);
                     if (typeof window._algebenchShowElementById === 'function') window._algebenchShowElementById(elId);
                 }
                 div.classList.remove('legend-hidden');
-                div.querySelector('.legend-swatch').style.opacity = '';
+                // Non-null: the swatch is built into every legend item above.
+                div.querySelector<HTMLElement>('.legend-swatch')!.style.opacity = '';
             } else {
                 for (const elId of elIds) {
-                    state.legendToggledOff.add(elId);
+                    overlayState.legendToggledOff.add(elId);
                     if (typeof window._algebenchHideElementById === 'function') window._algebenchHideElementById(elId);
                 }
                 div.classList.add('legend-hidden');
-                div.querySelector('.legend-swatch').style.opacity = '0.3';
+                div.querySelector<HTMLElement>('.legend-swatch')!.style.opacity = '0.3';
             }
         });
     }
 
     // Prune stale IDs and apply toggled-off state for elements hidden by user
     for (const id of [...state.legendToggledOff]) {
-        if (!state.elementRegistry[id]) {
-            state.legendToggledOff.delete(id);
-        } else if (!state.elementRegistry[id].hidden) {
+        if (!overlayState.elementRegistry[id]) {
+            overlayState.legendToggledOff.delete(id);
+        } else if (!overlayState.elementRegistry[id].hidden) {
             if (typeof window._algebenchHideElementById === 'function') window._algebenchHideElementById(id);
         }
     }
@@ -303,7 +436,15 @@ export function buildLegend(elements) {
 // panel or as a section inside the shared info drawer; `placement` (persisted
 // per id) is the authoritative location so manual dock/pop-out survives step
 // navigation and reloads.
-const infoState = {
+const infoState: {
+    forcedMode: 'free' | 'drawer' | null;
+    mode: 'free' | 'drawer';
+    items: Record<string, InfoItem>;
+    drawerPanel: DockablePanel | null;
+    drawerBodyEl: HTMLElement | null;
+    _routeScheduled: boolean;
+    _pendingDrawerCorner: string | null;
+} = {
     forcedMode: null,               // null = auto ( >3 items => drawer ), else 'free' | 'drawer'
     mode: 'free',                   // resolved this route
     items: {},                      // id -> item record
@@ -313,18 +454,20 @@ const infoState = {
     _pendingDrawerCorner: null,     // corner to inherit on lazy drawer creation
 };
 
-function _fmtNum(val) {
+function _fmtNum(val: unknown): string {
     if (typeof val === 'string') return val;
-    if (!isFinite(val)) return String(val);
+    // isFinite (not Number.isFinite) coerces its argument, which is exactly what
+    // the JS relied on for string/other inputs reaching this line.
+    if (!isFinite(val as number)) return String(val);
     const n = Number(val);
     if (Number.isInteger(n)) return String(n);
     return parseFloat(n.toFixed(3)).toString();
 }
 
-function _isKnownInfoExprIdentifier(name) {
+function _isKnownInfoExprIdentifier(name: string): boolean {
     if (!name) return false;
-    if (Object.prototype.hasOwnProperty.call(state.sceneSliders, name)) return true;
-    if (Object.prototype.hasOwnProperty.call(state.activeSceneExprFunctions, name)) return true;
+    if (Object.prototype.hasOwnProperty.call(overlayState.sceneSliders, name)) return true;
+    if (Object.prototype.hasOwnProperty.call(overlayState.activeSceneExprFunctions, name)) return true;
     if (window.agentMemoryValues && Object.prototype.hasOwnProperty.call(window.agentMemoryValues, name)) return true;
     if (name === 't' || name === 'u' || name === 'v') return true;
     if (name === 'pi' || name === 'e' || name === 'PI' || name === 'E') return true;
@@ -333,7 +476,7 @@ function _isKnownInfoExprIdentifier(name) {
     return _getMathNamesAndValues().names.includes(name);
 }
 
-function _exprHasUnknownIdentifiers(expr) {
+function _exprHasUnknownIdentifiers(expr: string): boolean {
     const sanitized = String(expr).replace(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/g, ' ');
     const matches = sanitized.match(/[A-Za-z_][A-Za-z0-9_]*/g);
     if (!matches) return false;
@@ -343,7 +486,7 @@ function _exprHasUnknownIdentifiers(expr) {
     return false;
 }
 
-function _evalInfoExpr(expr) {
+function _evalInfoExpr(expr: string): string {
     const trimmed = String(expr || '').trim();
     if (!trimmed) return '';
     if (_exprHasUnknownIdentifiers(trimmed)) {
@@ -359,14 +502,14 @@ function _evalInfoExpr(expr) {
         return _fmtNum(evalExpr(compileExpr(trimmed), 0, { extraScope: memScope }));
     } catch {
         // math.js failed (e.g. JS-only helpers/method calls)
-        if (state._sceneJsTrustState === 'trusted') {
+        if (overlayState._sceneJsTrustState === 'trusted') {
             try {
                 const ids = getSliderIds();
                 const memNames = memScope ? Object.keys(memScope) : [];
                 const { names, vals: mathVals } = _getMathNamesAndValues();
                 const fn = Function('t', ...ids, ...memNames, ...names, 'return (' + trimmed + ')');
-                const sliderVals = ids.map(id => { const s = state.sceneSliders[id]; return s ? s.value : 0; });
-                const memVals = memNames.map(k => memScope[k]);
+                const sliderVals = ids.map(id => { const s = overlayState.sceneSliders[id]; return s ? s.value : 0; });
+                const memVals = memNames.map(k => memScope![k]);
                 return _fmtNum(fn(0, ...sliderVals, ...memVals, ...mathVals));
             } catch { /* fall through */ }
         }
@@ -374,7 +517,7 @@ function _evalInfoExpr(expr) {
     }
 }
 
-function _replaceDoubleBraceExprs(template, evaluator) {
+function _replaceDoubleBraceExprs(template: string, evaluator: (expr: string) => string): string {
     if (typeof template !== 'string' || template.indexOf('{{') === -1) return template;
     return template.replace(/\{\{([\s\S]*?)\}\}/g, (_m, expr) => {
         const v = evaluator(expr);
@@ -382,7 +525,7 @@ function _replaceDoubleBraceExprs(template, evaluator) {
     });
 }
 
-function _replaceInlineExprs(template, evaluator) {
+function _replaceInlineExprs(template: string, evaluator: (expr: string) => string): string {
     if (typeof template !== 'string' || template.indexOf('{') === -1) return template;
     let out = '';
     let i = 0;
@@ -438,9 +581,11 @@ function _replaceInlineExprs(template, evaluator) {
             ]);
             {
                 let k = i - 1;
-                while (k >= 0 && /\s/.test(template[k])) k -= 1;
+                // Non-null throughout: every index is bounds-checked by the
+                // surrounding `k >= 0` / `end >= 0` conditions.
+                while (k >= 0 && /\s/.test(template[k]!)) k -= 1;
                 let end = k;
-                while (k >= 0 && /[A-Za-z]/.test(template[k])) k -= 1;
+                while (k >= 0 && /[A-Za-z]/.test(template[k]!)) k -= 1;
                 if (end >= 0 && k >= 0 && template[k] === '\\' && end > k) {
                     const cmd = template.slice(k + 1, end + 1);
                     if (latexLiteralArgCmds.has(cmd)) isLatexCommandArg = true;
@@ -448,13 +593,13 @@ function _replaceInlineExprs(template, evaluator) {
                 if (!isLatexCommandArg && end >= 0 && template[end] === '}') {
                     const prefix = template.slice(0, i);
                     const m = prefix.match(/\\([A-Za-z]+)\{[^{}]*\}\s*$/);
-                    if (m && latexSecondLiteralArgCmds.has(m[1])) {
+                    if (m && latexSecondLiteralArgCmds.has(m[1]!)) {
                         isLatexCommandArg = true;
                     }
                 }
             }
             const isSimpleIdent = /^[A-Za-z_][A-Za-z0-9_]*$/.test(expr);
-            const isSliderIdent = !!state.sceneSliders[expr];
+            const isSliderIdent = !!overlayState.sceneSliders[expr];
             const shouldEval = !(isLatexCommandArg || (prev === '_' || prev === '^') || (isSimpleIdent && !isSliderIdent));
             out += shouldEval ? evaluator(expr) : ('{' + expr + '}');
         }
@@ -463,12 +608,14 @@ function _replaceInlineExprs(template, evaluator) {
     return out;
 }
 
-export function resolveInfoContent(template) {
+export function resolveInfoContent(template: string | null | undefined): string {
     // Explicit bindings only: evaluate {{expr}} and leave all single-brace groups untouched.
-    return _replaceDoubleBraceExprs(template, (expr) => _evalInfoExpr(expr));
+    // Non-null: _replaceDoubleBraceExprs returns a non-string input unchanged,
+    // which is how the JS handled null/undefined templates.
+    return _replaceDoubleBraceExprs(template!, (expr) => _evalInfoExpr(expr));
 }
 
-export function updateInfoOverlays() {
+export function updateInfoOverlays(): void {
     for (const item of Object.values(infoState.items)) {
         if (!item.contentEl) continue;
         const resolved = resolveInfoContent(item.content);
@@ -487,9 +634,9 @@ window._algebenchUpdateInfoOverlays = updateInfoOverlays;
 
 // ----- helpers -----
 
-function _infoContainer() { return document.getElementById('info-overlays'); }
+function _infoContainer(): HTMLElement | null { return document.getElementById('info-overlays'); }
 
-function _deriveTitle(content) {
+function _deriveTitle(content: string | null | undefined): string {
     const lines = String(content || '').split('\n');
     for (let ln of lines) {
         ln = ln.trim();
@@ -513,28 +660,28 @@ function _deriveTitle(content) {
     return 'Info';
 }
 
-function _titleHtml(item) {
+function _titleHtml(item: InfoItem): string {
     const raw = item.explicitTitle ? item.title : _deriveTitle(item.content);
     return renderKaTeX(resolveInfoContent(raw), false);
 }
 
-function _loadPlacement(id) {
+function _loadPlacement(id: string): 'free' | 'drawer' | null {
     try { const v = localStorage.getItem('info-item-placement-' + id); return (v === 'free' || v === 'drawer') ? v : null; } catch { return null; }
 }
-function _savePlacement(id, placement) {
+function _savePlacement(id: string, placement: string): void {
     try { localStorage.setItem('info-item-placement-' + id, placement); } catch {}
 }
 
-function _loadSectionCollapsed() {
+function _loadSectionCollapsed(): Record<string, boolean> {
     try { return JSON.parse(localStorage.getItem('info-drawer-sections') || '{}') || {}; } catch { return {}; }
 }
-function _saveSectionCollapsed(map) {
+function _saveSectionCollapsed(map: Record<string, boolean>): void {
     try { localStorage.setItem('info-drawer-sections', JSON.stringify(map)); } catch {}
 }
 
 // Translate the pre-refactor persistence keys into a dockable-panel geometry blob.
-function _migrateOldOverlayKeys(id) {
-    let geom = null;
+function _migrateOldOverlayKeys(id: string): Partial<DockGeometry> | null {
+    let geom: Partial<DockGeometry> | null = null;
     try {
         const raw = localStorage.getItem('info-overlay-pos-' + id);
         const saved = raw ? JSON.parse(raw) : null;
@@ -554,12 +701,12 @@ function _migrateOldOverlayKeys(id) {
     return geom;
 }
 
-function _makeItemAiBtn(item) {
+function _makeItemAiBtn(item: InfoItem): HTMLElement {
     return makeAiAskButton('info-overlay-ai-btn', 'Ask AI about this',
         () => 'Can you explain this:\n' + resolveInfoContent(item.content).trim());
 }
 
-function _makeDockBtn(item) {
+function _makeDockBtn(item: InfoItem): HTMLElement {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'info-dock-btn';
@@ -574,7 +721,7 @@ function _makeDockBtn(item) {
     return b;
 }
 
-function _makePopBtn(item) {
+function _makePopBtn(item: InfoItem): HTMLElement {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'info-dock-btn';
@@ -588,7 +735,7 @@ function _makePopBtn(item) {
     return b;
 }
 
-function _setItemPlacement(id, placement, inheritCorner) {
+function _setItemPlacement(id: string, placement: 'free' | 'drawer', inheritCorner: string | null | undefined): void {
     const item = infoState.items[id];
     if (!item) return;
     _savePlacement(id, placement);
@@ -598,9 +745,11 @@ function _setItemPlacement(id, placement, inheritCorner) {
 
 // ----- free-floating overlay -----
 
-function _mountFree(item) {
+function _mountFree(item: InfoItem): void {
     if (item.panel) {
-        if (item.contentEl.parentElement !== item.freeInner) item.freeInner.appendChild(item.contentEl);
+        // Non-null: freeInner and panel are set together by _mountFree below, and
+        // the early return above is gated on panel.
+        if (item.contentEl.parentElement !== item.freeInner) item.freeInner!.appendChild(item.contentEl);
         return;
     }
     const inner = document.createElement('div');
@@ -615,12 +764,12 @@ function _mountFree(item) {
         container: _infoContainer(),
         headerButtons: [_makeItemAiBtn(item), _makeDockBtn(item)],
         titleAlwaysVisible: !!item.explicitTitle,
-        opacity: state.displayParams.overlayOpacity,
+        opacity: overlayState.displayParams.overlayOpacity,
         legacyMigrate: () => _migrateOldOverlayKeys(item.id),
     });
 }
 
-function _unmountFree(item) {
+function _unmountFree(item: InfoItem): void {
     if (!item.panel) return;
     if (item.contentEl.parentElement) item.contentEl.parentElement.removeChild(item.contentEl);
     item.panel.destroy();
@@ -630,15 +779,15 @@ function _unmountFree(item) {
 
 // ----- drawer -----
 
-function _chooseDrawerCorner(items) {
+function _chooseDrawerCorner(items: InfoItem[]): string {
     if (infoState._pendingDrawerCorner) return infoState._pendingDrawerCorner;
-    const counts = {};
+    const counts: Record<string, number | undefined> = {};
     let best = 'top-right', bestN = 0;
     for (const it of items) {
         if (it.placement !== 'drawer') continue;
         const c = it.position || 'top-right';
         counts[c] = (counts[c] || 0) + 1;
-        if (counts[c] > bestN) { bestN = counts[c]; best = c; }
+        if (counts[c]! > bestN) { bestN = counts[c]!; best = c; }
     }
     return best;
 }
@@ -647,7 +796,7 @@ function _chooseDrawerCorner(items) {
 const _CHEVRON_UP = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 12 12 7 7 12"/><polyline points="17 18 12 13 7 18"/></svg>';
 const _CHEVRON_DOWN = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 12 12 17 17 12"/><polyline points="7 6 12 11 17 6"/></svg>';
 
-function _makeDrawerIconBtn(glyph, title, onClick) {
+function _makeDrawerIconBtn(glyph: string, title: string, onClick: () => void): HTMLElement {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'info-dock-btn';
@@ -658,7 +807,7 @@ function _makeDrawerIconBtn(glyph, title, onClick) {
     return b;
 }
 
-function _setAllSectionsCollapsed(collapsed) {
+function _setAllSectionsCollapsed(collapsed: boolean): void {
     const map = _loadSectionCollapsed();
     for (const item of Object.values(infoState.items)) {
         if (item.placement === 'drawer' && item.sectionEl) {
@@ -669,7 +818,7 @@ function _setAllSectionsCollapsed(collapsed) {
     _saveSectionCollapsed(map);
 }
 
-function _ensureDrawer(corner) {
+function _ensureDrawer(corner: string | null | undefined): void {
     if (infoState.drawerPanel) return;
     const body = document.createElement('div');
     body.className = 'info-drawer';
@@ -685,12 +834,12 @@ function _ensureDrawer(corner) {
         container: _infoContainer(),
         headerButtons: [collapseAllBtn, expandAllBtn, dissolveBtn],
         titleAlwaysVisible: true,
-        opacity: state.displayParams.overlayOpacity,
+        opacity: overlayState.displayParams.overlayOpacity,
     });
     infoState.drawerPanel.el.classList.add('dp-drawer');
 }
 
-function _destroyDrawerIfEmpty() {
+function _destroyDrawerIfEmpty(): void {
     if (!infoState.drawerPanel) return;
     const hasSection = Object.values(infoState.items).some(it => it.placement === 'drawer');
     if (hasSection) return;
@@ -699,17 +848,20 @@ function _destroyDrawerIfEmpty() {
     infoState.drawerBodyEl = null;
 }
 
-function _dissolveDrawer() {
+function _dissolveDrawer(): void {
     for (const item of Object.values(infoState.items)) {
         if (item.placement === 'drawer') _savePlacement(item.id, 'free');
     }
     _route();
 }
 
-function _mountSection(item) {
+function _mountSection(item: InfoItem): void {
     if (item.sectionEl) {
-        if (item.contentEl.parentElement !== item.sectionBodyEl) item.sectionBodyEl.appendChild(item.contentEl);
-        if (item.sectionEl.parentElement !== infoState.drawerBodyEl) infoState.drawerBodyEl.appendChild(item.sectionEl);
+        // Non-null: the three section fields are set together at the end of this
+        // function, and the early return above is gated on sectionEl. drawerBodyEl
+        // exists because _route() calls _ensureDrawer before mounting a section.
+        if (item.contentEl.parentElement !== item.sectionBodyEl) item.sectionBodyEl!.appendChild(item.contentEl);
+        if (item.sectionEl.parentElement !== infoState.drawerBodyEl) infoState.drawerBodyEl!.appendChild(item.sectionEl);
         return;
     }
     const section = document.createElement('div');
@@ -749,7 +901,8 @@ function _mountSection(item) {
 
     // Clicking anywhere on the header (not the action buttons) toggles the section.
     header.addEventListener('click', (e) => {
-        if (e.target.closest('.info-dock-btn, .info-overlay-ai-btn')) return;
+        // Cast, not optional chaining: a null target threw in the JS.
+        if ((e.target as HTMLElement).closest('.info-dock-btn, .info-overlay-ai-btn')) return;
         const nowCollapsed = !section.classList.contains('collapsed');
         section.classList.toggle('collapsed', nowCollapsed);
         const map = _loadSectionCollapsed();
@@ -759,14 +912,14 @@ function _mountSection(item) {
 
     section.appendChild(header);
     section.appendChild(sBody);
-    infoState.drawerBodyEl.appendChild(section);
+    infoState.drawerBodyEl!.appendChild(section);
 
     item.sectionEl = section;
     item.sectionBodyEl = sBody;
     item.sectionTitleEl = titleEl;
 }
 
-function _unmountSection(item) {
+function _unmountSection(item: InfoItem): void {
     if (!item.sectionEl) return;
     if (item.contentEl.parentElement) item.contentEl.parentElement.removeChild(item.contentEl);
     item.sectionEl.remove();
@@ -775,7 +928,7 @@ function _unmountSection(item) {
     item.sectionTitleEl = null;
 }
 
-function _updateDrawerHeader() {
+function _updateDrawerHeader(): void {
     if (!infoState.drawerPanel) return;
     const n = Object.values(infoState.items).filter(it => it.placement === 'drawer').length;
     infoState.drawerPanel.setTitle('Info <span class="info-drawer-count">' + n + '</span>');
@@ -783,7 +936,7 @@ function _updateDrawerHeader() {
 
 // ----- routing -----
 
-function _scheduleRoute() {
+function _scheduleRoute(): void {
     if (infoState._routeScheduled) return;
     infoState._routeScheduled = true;
     Promise.resolve().then(() => {
@@ -792,7 +945,7 @@ function _scheduleRoute() {
     });
 }
 
-function _route() {
+function _route(): void {
     const items = Object.values(infoState.items);
     const count = items.length;
     const mode = infoState.forcedMode || (count > 3 ? 'drawer' : 'free');
@@ -819,16 +972,17 @@ function _route() {
 
 // ----- public API -----
 
-export function removeStepInfoOverlays() {
+export function removeStepInfoOverlays(): void {
     let changed = false;
     for (const id of Object.keys(infoState.items)) {
-        const item = infoState.items[id];
+        // Non-null: `id` came from Object.keys of this same record.
+        const item = infoState.items[id]!;
         if (item.stepDefined && !item.keep) { _disposeItem(item); changed = true; }
     }
     if (changed) _scheduleRoute();
 }
 
-export function applyStepInfoOverlays(infoDefs) {
+export function applyStepInfoOverlays(infoDefs: InfoOverlayDef[] | null | undefined): void {
     removeStepInfoOverlays();
     if (infoDefs && infoDefs.length) {
         for (const def of infoDefs) {
@@ -839,7 +993,8 @@ export function applyStepInfoOverlays(infoDefs) {
     }
 }
 
-export function addInfoOverlay(id, content, position, stepDefined = false, keep = false, title = null) {
+export function addInfoOverlay(id: string, content: string, position?: string | null,
+                               stepDefined = false, keep = false, title: string | null = null): void {
     if (!_infoContainer()) return;
     if (!id) {
         const preview = typeof content === 'string'
@@ -867,26 +1022,26 @@ export function addInfoOverlay(id, content, position, stepDefined = false, keep 
     _scheduleRoute();
 }
 
-function _disposeItem(item) {
+function _disposeItem(item: InfoItem): void {
     _unmountFree(item);
     _unmountSection(item);
     delete infoState.items[item.id];
 }
 
-export function removeInfoOverlay(id) {
+export function removeInfoOverlay(id: string): void {
     const item = infoState.items[id];
     if (!item) return;
     _disposeItem(item);
     _scheduleRoute();
 }
 
-export function removeAllInfoOverlays() {
-    for (const id of Object.keys(infoState.items)) _disposeItem(infoState.items[id]);
+export function removeAllInfoOverlays(): void {
+    for (const id of Object.keys(infoState.items)) _disposeItem(infoState.items[id]!);
     if (infoState.drawerPanel) { infoState.drawerPanel.destroy(); infoState.drawerPanel = null; infoState.drawerBodyEl = null; }
 }
 
 /** Master toggle: 'free' | 'drawer' | null (auto). Clears per-item overrides. */
-export function setInfoDrawerMode(mode) {
+export function setInfoDrawerMode(mode: string | null): void {
     infoState.forcedMode = (mode === 'free' || mode === 'drawer') ? mode : null;
     for (const id of Object.keys(infoState.items)) {
         try { localStorage.removeItem('info-item-placement-' + id); } catch {}
@@ -894,14 +1049,16 @@ export function setInfoDrawerMode(mode) {
     _route();
 }
 
-export function getAllElements(scene, stepIdx) {
+export function getAllElements(scene: OverlayScene, stepIdx: number): Element[] {
     let elements = [...(scene.elements || [])];
     const removedIds = new Set();
     const removedTypes = new Set();
     let removeAll = false;
     if (scene.steps) {
         for (let i = 0; i <= stepIdx; i++) {
-            const step = scene.steps[i];
+            // Non-null: `i` is bounded by stepIdx, which callers clamp to the
+            // step count. An out-of-range index threw in the JS.
+            const step = scene.steps[i]!;
             if (step.remove) {
                 for (const item of step.remove) {
                     if (item.id === '*' || item.type === '*') { removeAll = true; }
@@ -928,7 +1085,7 @@ export function getAllElements(scene, stepIdx) {
 
 // ----- Status Bar -----
 
-export function updateStatusBar() {
+export function updateStatusBar(): void {
     const bar = document.getElementById('status-bar');
     if (!bar) return;
 
@@ -942,13 +1099,15 @@ export function updateStatusBar() {
     const pill = document.getElementById('slider-status');
     const countEl = pill && pill.querySelector('.slider-status-count');
     const tooltipEl = pill && pill.querySelector('.slider-status-tooltip');
-    const ids = Object.keys(state.sceneSliders);
+    const ids = Object.keys(overlayState.sceneSliders);
     if (pill) {
         if (ids.length > 0) {
-            if (countEl) countEl.textContent = ids.length;
+            if (countEl) countEl.textContent = String(ids.length);
             if (tooltipEl) {
                 tooltipEl.textContent = ids.map(id => {
-                    const s = state.sceneSliders[id];
+                    // Non-null: `ids` comes from getSliderIds(), i.e. the
+                    // registry's own keys.
+                    const s = overlayState.sceneSliders[id]!;
                     const label = (s.label || id).replace(/\$|\\[a-z]+\{?|\}|_|\^/gi, '').trim() || id;
                     return `${label} (${id}) = ${Number(s.value).toFixed(2)}  [${s.min} … ${s.max}]`;
                 }).join('\n');
@@ -962,16 +1121,16 @@ export function updateStatusBar() {
     // --- Camera popup content ---
     const camPopup = document.getElementById('cam-popup-content');
     const camPopupText = document.getElementById('cam-popup-text');
-    if (camPopup && state.camera && state.controls) {
-        const pw = state.camera.position;
-        const tw = state.controls.target;
-        const u = state.camera.up;
+    if (camPopup && overlayState.camera && overlayState.controls) {
+        const pw = overlayState.camera.position;
+        const tw = overlayState.controls.target;
+        const u = overlayState.camera.up;
         const p = worldCameraToData([pw.x, pw.y, pw.z]);
         const t = worldCameraToData([tw.x, tw.y, tw.z]);
         const dist = Math.sqrt((p[0]-t[0])**2 + (p[1]-t[1])**2 + (p[2]-t[2])**2);
-        const fov = state.camera.isPerspectiveCamera ? state.camera.fov : null;
-        const fmt = v => v.toFixed(3);
-        const activeViewBtn = document.querySelector('.cam-btn.active');
+        const fov = overlayState.camera.isPerspectiveCamera ? overlayState.camera.fov : null;
+        const fmt = (v: number) => v.toFixed(3);
+        const activeViewBtn = document.querySelector<HTMLElement>('.cam-btn.active');
         const viewName = activeViewBtn ? activeViewBtn.dataset.view : null;
         let txt = '';
         if (viewName) txt += `view ${viewName}\n`;
@@ -987,10 +1146,10 @@ export function updateStatusBar() {
     // --- Scene/step text ---
     const debugText = document.getElementById('debug-status-text');
     if (debugText) {
-        const sceneNum = state.currentSceneIndex + 1;
-        const totalScenes = (state.lessonSpec && state.lessonSpec.scenes) ? state.lessonSpec.scenes.length : '?';
-        const stepNum = state.currentStepIndex + 1;
-        const scene = (state.lessonSpec && state.lessonSpec.scenes) ? state.lessonSpec.scenes[state.currentSceneIndex] : null;
+        const sceneNum = overlayState.currentSceneIndex + 1;
+        const totalScenes = (overlayState.lessonSpec && overlayState.lessonSpec.scenes) ? overlayState.lessonSpec.scenes.length : '?';
+        const stepNum = overlayState.currentStepIndex + 1;
+        const scene = (overlayState.lessonSpec && overlayState.lessonSpec.scenes) ? overlayState.lessonSpec.scenes[overlayState.currentSceneIndex] : null;
         const totalSteps = scene && scene.steps ? scene.steps.length : 0;
         debugText.textContent = `scene ${sceneNum}/${totalScenes}  step ${stepNum}/${totalSteps}`;
     }
@@ -1001,9 +1160,9 @@ window._algebenchUpdateStatusBar = updateStatusBar;
 
 // ----- Settings Panel -----
 
-export function setupSettingsPanel() {
-    const toggle = document.getElementById('settings-toggle');
-    const panel = document.getElementById('settings-panel');
+export function setupSettingsPanel(): void {
+    const toggle = document.getElementById('settings-toggle')!;
+    const panel = document.getElementById('settings-panel')!;
     toggle.innerHTML = GEAR_ICON;
     toggle.addEventListener('click', () => {
         panel.classList.toggle('hidden');
@@ -1012,7 +1171,7 @@ export function setupSettingsPanel() {
 
     // Palette selector (experimental variants — tokens.css html[data-palette]).
     // theme-init.js stamps data-palette pre-paint from the same storage key.
-    const paletteSel = document.getElementById('palette-select');
+    const paletteSel = document.getElementById('palette-select') as HTMLSelectElement;
     const PALETTE_KEY = 'algebench-palette';
     // Must match theme-init.js PALETTES and the tokens.css variant blocks.
     const PALETTES = ['blueprint', 'sepia', 'plum', 'cerulean', 'graphite', 'contrast'];
@@ -1032,57 +1191,62 @@ export function setupSettingsPanel() {
     }
 
     // Momentum slider
-    const momentumSlider = document.getElementById('momentum-slider');
+    const momentumSlider = document.getElementById('momentum-slider') as HTMLInputElement;
     const valMomentum    = document.getElementById('val-momentum');
     const MOMENTUM_KEY   = 'algebench-momentum';
-    const savedMomentum  = parseFloat(localStorage.getItem(MOMENTUM_KEY));
-    if (!isNaN(savedMomentum)) state.arcballMomentum = Math.max(0, Math.min(1, savedMomentum));
+    // parseFloat stringifies its argument, so a null key yields NaN — which the
+    // isNaN guard below already handles. String() makes that explicit.
+    const savedMomentum  = parseFloat(String(localStorage.getItem(MOMENTUM_KEY)));
+    if (!isNaN(savedMomentum)) overlayState.arcballMomentum = Math.max(0, Math.min(1, savedMomentum));
     if (momentumSlider) {
-        momentumSlider.value = Math.round(state.arcballMomentum * 100);
-        if (valMomentum) valMomentum.textContent = Math.round(state.arcballMomentum * 100) + '%';
+        momentumSlider.value = String(Math.round(overlayState.arcballMomentum * 100));
+        if (valMomentum) valMomentum.textContent = Math.round(overlayState.arcballMomentum * 100) + '%';
         momentumSlider.addEventListener('input', () => {
-            state.arcballMomentum = momentumSlider.value / 100;
-            if (valMomentum) valMomentum.textContent = Math.round(state.arcballMomentum * 100) + '%';
-            localStorage.setItem(MOMENTUM_KEY, state.arcballMomentum);
+            overlayState.arcballMomentum = Number(momentumSlider.value) / 100;
+            if (valMomentum) valMomentum.textContent = Math.round(overlayState.arcballMomentum * 100) + '%';
+            localStorage.setItem(MOMENTUM_KEY, String(overlayState.arcballMomentum));
         });
     }
 
     // Sync displayed values with actual displayParams
-    for (const [key, val] of Object.entries(state.displayParams)) {
+    for (const [key, val] of Object.entries(overlayState.displayParams)) {
         const el = document.getElementById('val-' + key);
-        if (el) el.textContent = val.toFixed(1);
+        if (el) el.textContent = val!.toFixed(1);
     }
 
     // Apply initial overlayOpacity to floating panels
-    const _iniOp = state.displayParams.overlayOpacity;
+    const _iniOp = overlayState.displayParams.overlayOpacity;
     const _sliderOv = document.getElementById('slider-overlay');
     const _legend = document.getElementById('legend');
-    if (_sliderOv) _sliderOv.style.opacity = _iniOp;
-    if (_legend) _legend.style.opacity = _iniOp;
+    // style.opacity is a string property; the JS assigned the number and let
+    // the DOM coerce. String() is that same conversion, spelled out.
+    if (_sliderOv) _sliderOv.style.opacity = String(_iniOp);
+    if (_legend) _legend.style.opacity = String(_iniOp);
 
-    const isOpacity = (p) => p.endsWith('Opacity');
+    const isOpacity = (p: string) => p.endsWith('Opacity');
 
-    panel.querySelectorAll('.sp-btn').forEach(btn => {
+    panel.querySelectorAll<HTMLElement>('.sp-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-            const param = btn.dataset.param;
+            // Non-null: every .sp-btn carries data-param in index.html.
+            const param = btn.dataset.param!;
             const dir = btn.dataset.dir === '+' ? 1 : -1;
             const step = isOpacity(param) ? 0.1 : 0.2;
             const min = isOpacity(param) ? 0.0 : 0.2;
             const max = isOpacity(param) ? 1.0 : 5.0;
-            let val = state.displayParams[param] + dir * step;
+            let val = overlayState.displayParams[param]! + dir * step;
             val = Math.round(Math.max(min, Math.min(max, val)) * 10) / 10;
-            state.displayParams[param] = val;
-            document.getElementById('val-' + param).textContent = val.toFixed(1);
+            overlayState.displayParams[param] = val;
+            document.getElementById('val-' + param)!.textContent = val.toFixed(1);
 
             if (param === 'labelOpacity') {
-                document.querySelectorAll('.label-3d').forEach(el => {
-                    el.style.opacity = val;
+                document.querySelectorAll<HTMLElement>('.label-3d').forEach(el => {
+                    el.style.opacity = String(val);
                 });
             } else if (param === 'arrowScale') {
                 // Delegate complex arrow scaling to camera.js helpers via window shim
                 if (typeof window._algebenchApplyArrowScale === 'function') window._algebenchApplyArrowScale(val);
             } else if (param === 'arrowOpacity') {
-                for (const entry of state.arrowMeshes) {
+                for (const entry of overlayState.arrowMeshes) {
                     if (entry.isShaft) continue;
                     const baseOp = (entry.mesh && entry.mesh.userData && typeof entry.mesh.userData.baseOpacity === 'number')
                         ? entry.mesh.userData.baseOpacity : 1;
@@ -1092,24 +1256,24 @@ export function setupSettingsPanel() {
                 }
             } else if (param === 'axisWidth') {
                 if (typeof window._algebenchApplyLineWidth === 'function') {
-                    for (const entry of state.axisLineNodes) window._algebenchApplyLineWidth(entry);
+                    for (const entry of overlayState.axisLineNodes) window._algebenchApplyLineWidth(entry);
                 }
             } else if (param === 'axisOpacity') {
-                for (const entry of state.axisLineNodes) {
+                for (const entry of overlayState.axisLineNodes) {
                     const baseOp = (entry && typeof entry.baseOpacity === 'number') ? entry.baseOpacity : 1;
                     entry.node.set('opacity', baseOp * val);
                 }
             } else if (param === 'vectorWidth') {
                 if (typeof window._algebenchApplyShaftThickness === 'function' && typeof window._algebenchApplyLineWidth === 'function') {
-                    for (const entry of state.arrowMeshes) {
+                    for (const entry of overlayState.arrowMeshes) {
                         if (!window._algebenchIsShaftEntry || !window._algebenchIsShaftEntry(entry)) continue;
                         if (entry.mesh && entry.mesh.userData && entry.mesh.userData.dynamicVector) continue;
                         window._algebenchApplyShaftThickness(entry.mesh);
                     }
-                    for (const entry of state.vectorLineNodes) window._algebenchApplyLineWidth(entry);
+                    for (const entry of overlayState.vectorLineNodes) window._algebenchApplyLineWidth(entry);
                 }
             } else if (param === 'vectorOpacity') {
-                for (const entry of state.arrowMeshes) {
+                for (const entry of overlayState.arrowMeshes) {
                     if (typeof window._algebenchIsShaftEntry === 'function' && !window._algebenchIsShaftEntry(entry)) continue;
                     const baseOp = (entry.mesh && entry.mesh.userData && typeof entry.mesh.userData.baseOpacity === 'number')
                         ? entry.mesh.userData.baseOpacity : 1;
@@ -1119,25 +1283,25 @@ export function setupSettingsPanel() {
                 }
             } else if (param === 'lineWidth') {
                 if (typeof window._algebenchApplyLineWidth === 'function') {
-                    for (const entry of state.lineNodes) window._algebenchApplyLineWidth(entry);
+                    for (const entry of overlayState.lineNodes) window._algebenchApplyLineWidth(entry);
                 }
             } else if (param === 'lineOpacity') {
-                for (const entry of state.lineNodes) {
+                for (const entry of overlayState.lineNodes) {
                     const baseOp = (entry && typeof entry.baseOpacity === 'number') ? entry.baseOpacity : 1;
                     entry.node.set('opacity', baseOp * val);
                 }
             } else if (param === 'planeScale') {
-                for (const m of state.planeMeshes) {
+                for (const m of overlayState.planeMeshes) {
                     if (m._hiddenByRemove) continue;
                     if (m.userData.buildSlab) {
                         const newPositions = m.userData.buildSlab(m.userData.baseHalf * val);
                         m.geometry.setAttribute('position', new THREE.Float32BufferAttribute(newPositions, 3));
                         m.geometry.computeVertexNormals();
-                        m.geometry.attributes.position.needsUpdate = true;
+                        m.geometry.attributes.position!.needsUpdate = true;
                     }
                 }
             } else if (param === 'planeOpacity') {
-                for (const m of state.planeMeshes) {
+                for (const m of overlayState.planeMeshes) {
                     if (m._hiddenByRemove) continue;
                     // Glow-halo sprites manage their own opacity/visibility per
                     // frame, and additive sprites must never write depth.
@@ -1172,30 +1336,32 @@ export function setupSettingsPanel() {
                 }
             } else if (param === 'overlayOpacity') {
                 const cap = document.getElementById('step-caption');
-                if (cap && !cap.classList.contains('hidden')) cap.style.opacity = val;
+                if (cap && !cap.classList.contains('hidden')) cap.style.opacity = String(val);
                 const sliderOv = document.getElementById('slider-overlay');
-                if (sliderOv) sliderOv.style.opacity = val;
-                const legend = document.getElementById('legend');
-                if (legend) legend.style.opacity = val;
-                document.querySelectorAll('#info-overlays .dockable-panel').forEach(el => { el.style.opacity = val; });
+                if (sliderOv) sliderOv.style.opacity = String(val);
+                const legend = document.getElementById('legend')!;
+                if (legend) legend.style.opacity = String(val);
+                document.querySelectorAll<HTMLElement>('#info-overlays .dockable-panel').forEach(el => { el.style.opacity = String(val); });
             }
         });
     });
 
-    const declutterMode = document.getElementById('declutter-mode');
+    const declutterMode = document.getElementById('declutter-mode') as HTMLSelectElement;
     if (declutterMode) {
-        declutterMode.value = state.displayParams.labelDeclutterMode;
+        // labelDeclutterMode is the one non-numeric entry in displayParams — see
+        // the slice declaration at the top of this file.
+        declutterMode.value = overlayState.displayParams.labelDeclutterMode as unknown as string;
         declutterMode.addEventListener('change', () => {
-            state.displayParams.labelDeclutterMode = declutterMode.value;
+            (overlayState.displayParams as Record<string, unknown>).labelDeclutterMode = declutterMode.value;
         });
     }
 }
 
-export function initLightControls() {
-    const azEl  = document.getElementById('light-az');
-    const elEl  = document.getElementById('light-el');
-    const intEl = document.getElementById('light-int');
-    if (!azEl || !state.mainDirLight) return;
+export function initLightControls(): void {
+    const azEl  = document.getElementById('light-az') as HTMLInputElement;
+    const elEl  = document.getElementById('light-el') as HTMLInputElement;
+    const intEl = document.getElementById('light-int') as HTMLInputElement;
+    if (!azEl || !overlayState.mainDirLight) return;
 
     function applyLight() {
         const azDeg = parseFloat(azEl.value);
@@ -1204,15 +1370,19 @@ export function initLightControls() {
         const az = azDeg * Math.PI / 180;
         const el = elDeg * Math.PI / 180;
         const dist = 20;
-        state.mainDirLight.position.set(
+        // Non-null: guarded by the early return above; the narrowing does not
+        // reach this hoisted function declaration.
+        overlayState.mainDirLight!.position.set(
             dist * Math.cos(el) * Math.sin(az),
             dist * Math.sin(el),
             dist * Math.cos(el) * Math.cos(az)
         );
-        state.mainDirLight.intensity = intensity;
-        document.getElementById('val-light-az').textContent  = azDeg  + '°';
-        document.getElementById('val-light-el').textContent  = elDeg  + '°';
-        document.getElementById('val-light-int').textContent = intensity.toFixed(2);
+        overlayState.mainDirLight!.intensity = intensity;
+        // Non-null: the three readouts are static markup beside their sliders,
+        // which the early return above already proved present.
+        document.getElementById('val-light-az')!.textContent  = azDeg  + '°';
+        document.getElementById('val-light-el')!.textContent  = elDeg  + '°';
+        document.getElementById('val-light-int')!.textContent = intensity.toFixed(2);
     }
 
     azEl.addEventListener('input',  applyLight);
@@ -1223,21 +1393,24 @@ export function initLightControls() {
 
 // ----- Caption drag -----
 
-export function updateStepCaption(scene, stepIdx) {
+export function updateStepCaption(scene: OverlayScene | null | undefined, stepIdx: number): void {
     const el = document.getElementById('step-caption');
     if (!el) return;
-    let text = null;
-    if (stepIdx >= 0 && scene.steps && scene.steps[stepIdx] && scene.steps[stepIdx].description) {
-        text = scene.steps[stepIdx].description;
-    } else if (stepIdx === -1 && scene.description) {
-        text = scene.description;
+    let text: string | null | undefined = null;
+    // Non-null on `scene`: the JS dereferenced it straight after the `el` guard,
+    // so a null scene threw here and must keep throwing. The index assertions
+    // are the `scene.steps[stepIdx] &&` check on the same line.
+    if (stepIdx >= 0 && scene!.steps && scene!.steps[stepIdx] && scene!.steps[stepIdx]!.description) {
+        text = scene!.steps[stepIdx]!.description;
+    } else if (stepIdx === -1 && scene!.description) {
+        text = scene!.description;
     }
     if (text) {
         el.innerHTML = renderMarkdown(text);
         el.dataset.markdown = text;
         const btn = makeAiAskButton('ai-ask-btn caption-ai-btn', 'Ask AI to explain this', () => `Can you explain the step description: "${text}"`);
         el.appendChild(btn);
-        el.style.opacity = state.displayParams.overlayOpacity;
+        el.style.opacity = String(overlayState.displayParams.overlayOpacity);
         resetCaptionPosition(el);
         el.classList.remove('hidden');
     } else {
@@ -1245,13 +1418,15 @@ export function updateStepCaption(scene, stepIdx) {
     }
 }
 
-function _applyBottomPos(el, bottom, left) {
+/** `bottom` and `left` are CSS lengths ('64px', '50%'), not numbers — the
+ *  '50%' default and the `endsWith('px')` test below both depend on that. */
+function _applyBottomPos(el: HTMLElement, bottom: string, left: string): void {
     el.style.bottom = bottom;
     el.style.left   = left || '50%';
     el.style.top    = 'auto';
     el.style.right  = 'auto';
     el.style.width  = '';
-    const scale = 'scale(' + (state.displayParams.captionScale || 1) + ')';
+    const scale = 'scale(' + (overlayState.displayParams.captionScale || 1) + ')';
     if (left && left.endsWith('px')) {
         // Dragged: anchor the scale to the bottom-left corner so left/bottom and
         // the scaled box agree (no drift when zoomed).
@@ -1263,13 +1438,13 @@ function _applyBottomPos(el, bottom, left) {
     }
 }
 
-function _defaultCaptionPos(el) {
+function _defaultCaptionPos(el: HTMLElement): void {
     _applyBottomPos(el, '64px', '50%');
 }
 
 // Nudge a dragged caption back inside the viewport (e.g. after it shrinks and
 // its bottom-left anchor pulls it off-screen). No-op for a centered caption.
-export function clampCaptionIntoView(el) {
+export function clampCaptionIntoView(el: HTMLElement): void {
     el = el || document.getElementById('step-caption');
     if (!el || el.classList.contains('hidden')) return;
     if (!el.style.left || !el.style.left.endsWith('px')) return; // only dragged (px) mode
@@ -1290,7 +1465,7 @@ export function clampCaptionIntoView(el) {
     el.style.bottom = Math.max(0, bottom) + 'px';
 }
 
-export function resetCaptionPosition(el) {
+export function resetCaptionPosition(el: HTMLElement): void {
     try {
         const saved = JSON.parse(localStorage.getItem('caption-pos') || 'null');
         if (saved && typeof saved.bottom === 'string' && saved.bottom.endsWith('px')) {
@@ -1310,7 +1485,7 @@ export function resetCaptionPosition(el) {
     _defaultCaptionPos(el);
 }
 
-export function setupCaptionDrag() {
+export function setupCaptionDrag(): void {
     const el = document.getElementById('step-caption');
     if (!el) return;
     let dragging = false, startX = 0, startY = 0, startLeft = 0, startBottom = 0;
@@ -1320,14 +1495,14 @@ export function setupCaptionDrag() {
     const EDGE_MARGIN = 8; // matches clampCaptionIntoView so drop doesn't jump
 
     el.addEventListener('mousedown', (e) => {
-        if (e.target.closest('.ai-ask-btn')) return;
+        if ((e.target as HTMLElement).closest('.ai-ask-btn')) return;
         dragging = true;
         startX = e.clientX;
         startY = e.clientY;
         const parent = el.offsetParent || document.body;
         const parentRect = parent.getBoundingClientRect();
         const elRect = el.getBoundingClientRect();
-        const s = state.displayParams.captionScale || 1;
+        const s = overlayState.displayParams.captionScale || 1;
         startLeft   = elRect.left - parentRect.left;
         startBottom = parentRect.bottom - elRect.bottom;
         // Freeze the width at its current rendered value so the text doesn't
@@ -1397,17 +1572,20 @@ export function setupCaptionDrag() {
 // Delegated so dynamically-created info panels are covered too.
 let _overlayHoverWired = false;
 let _overlayZ = 10;
-function bringOverlayToFront(panel) {
+function bringOverlayToFront(panel: HTMLElement): void {
     panel.style.zIndex = String(++_overlayZ); // relative to the #info-overlays stacking context
 }
-function setupOverlayHoverBoost() {
+function setupOverlayHoverBoost(): void {
     if (_overlayHoverWired) return;
     _overlayHoverWired = true;
     const SEL = '#step-caption, #scene-description, #slider-overlay, #legend, #info-overlays .dockable-panel';
     document.addEventListener('mouseover', (e) => {
-        const t = e.target.closest && e.target.closest(SEL);
+        // `closest &&` is a feature test the JS did on purpose: mouseover can
+        // fire with document/window as the target, which has no closest().
+        const target = e.target as HTMLElement;
+        const t = target.closest && target.closest<HoverBoostable>(SEL);
         if (!t) return;
-        const panel = e.target.closest('#info-overlays .dockable-panel');
+        const panel = target.closest<HTMLElement>('#info-overlays .dockable-panel');
         if (panel) bringOverlayToFront(panel);
         if (t._hoverBoosted) return;
         t._hoverBoosted = true;
@@ -1417,13 +1595,15 @@ function setupOverlayHoverBoost() {
         t.style.opacity = t._boostedOp;
     });
     document.addEventListener('mousedown', (e) => {
-        const panel = e.target.closest && e.target.closest('#info-overlays .dockable-panel');
+        const target = e.target as HTMLElement;
+        const panel = target.closest && target.closest<HTMLElement>('#info-overlays .dockable-panel');
         if (panel) bringOverlayToFront(panel);
     }, true);
     document.addEventListener('mouseout', (e) => {
-        const t = e.target.closest && e.target.closest(SEL);
+        const target = e.target as HTMLElement;
+        const t = target.closest && target.closest<HoverBoostable>(SEL);
         if (!t || !t._hoverBoosted) return;
-        if (e.relatedTarget && t.contains(e.relatedTarget)) return; // still inside
+        if (e.relatedTarget && t.contains(e.relatedTarget as Node)) return; // still inside
         t._hoverBoosted = false;
         // Only undo our boost if nothing else changed the opacity meanwhile (e.g.
         // the overlayOpacity setting) — otherwise keep the newer value.
@@ -1433,8 +1613,10 @@ function setupOverlayHoverBoost() {
 
 // ----- Scene Description Drag -----
 
-export function resetSceneDescPosition(el) {
-    if (!el) el = document.getElementById('scene-description');
+export function resetSceneDescPosition(el: HTMLElement): void {
+    // The `!el` guard on the next line is the real check; the assertion only
+    // stops the reassignment widening `el` to include null.
+    if (!el) el = document.getElementById('scene-description')!;
     if (!el) return;
     try {
         const saved = JSON.parse(localStorage.getItem('scene-desc-pos') || 'null');
@@ -1465,13 +1647,13 @@ export function resetSceneDescPosition(el) {
     el.style.transform = 'translateX(-50%)';
 }
 
-export function setupSceneDescDrag() {
+export function setupSceneDescDrag(): void {
     const el = document.getElementById('scene-description');
     if (!el) return;
     let dragging = false, startX = 0, startY = 0, startLeft = 0, startBottom = 0;
 
     el.addEventListener('mousedown', (e) => {
-        if (e.target.closest('.ai-ask-btn')) return;
+        if ((e.target as HTMLElement).closest('.ai-ask-btn')) return;
         dragging = true;
         startX = e.clientX;
         startY = e.clientY;
@@ -1513,19 +1695,19 @@ export function setupSceneDescDrag() {
 
 // ----- Cam status popup -----
 
-export function setCamPopupPinned(pinned, suppressHover = false) {
+export function setCamPopupPinned(pinned: boolean, suppressHover = false): void {
     const camStatus = document.getElementById('cam-status');
     if (!camStatus) return;
-    state.camPopupPinned = !!pinned;
-    camStatus.classList.toggle('pinned', state.camPopupPinned);
-    if (state.camPopupPinned) {
+    overlayState.camPopupPinned = !!pinned;
+    camStatus.classList.toggle('pinned', overlayState.camPopupPinned);
+    if (overlayState.camPopupPinned) {
         camStatus.classList.remove('suppress-hover');
     } else if (suppressHover) {
         camStatus.classList.add('suppress-hover');
     }
 }
 
-export function setupCamStatusPopup() {
+export function setupCamStatusPopup(): void {
     const camStatus = document.getElementById('cam-status');
     const closeBtn = document.getElementById('cam-popup-close');
     const copyBtn = document.getElementById('cam-popup-copy');
@@ -1533,10 +1715,10 @@ export function setupCamStatusPopup() {
     if (!camStatus) return;
 
     camStatus.addEventListener('click', (e) => {
-        if (e.target && e.target.closest('#cam-popup-close')) return;
-        if (e.target && e.target.closest('#cam-popup-copy')) return;
-        if (e.target && e.target.closest('.cam-status-popup')) return;
-        setCamPopupPinned(!state.camPopupPinned, state.camPopupPinned);
+        if (e.target && (e.target as HTMLElement).closest('#cam-popup-close')) return;
+        if (e.target && (e.target as HTMLElement).closest('#cam-popup-copy')) return;
+        if (e.target && (e.target as HTMLElement).closest('.cam-status-popup')) return;
+        setCamPopupPinned(!overlayState.camPopupPinned, overlayState.camPopupPinned);
     });
 
     camStatus.addEventListener('mouseleave', () => {
@@ -1567,7 +1749,7 @@ export function setupCamStatusPopup() {
 
 // ----- About / version popup -----
 
-export function setupAboutPopup() {
+export function setupAboutPopup(): void {
     const about = document.getElementById('about-status');
     if (!about) return;
 
@@ -1584,7 +1766,7 @@ export function setupAboutPopup() {
     // Same interaction model as the camera pill: hover previews the popup,
     // a click pins it open (stays after the mouse leaves). Clicking a pinned
     // pill unpins and suppresses hover until the mouse leaves, so it closes.
-    const setPinned = (pinned, suppressHover) => {
+    const setPinned = (pinned: boolean, suppressHover?: boolean) => {
         about.classList.toggle('pinned', pinned);
         about.setAttribute('aria-expanded', pinned ? 'true' : 'false');
         if (pinned) about.classList.remove('suppress-hover');
@@ -1593,8 +1775,8 @@ export function setupAboutPopup() {
 
     about.addEventListener('click', (e) => {
         // Clicks inside the popup body (links, close button) shouldn't toggle it.
-        if (e.target && e.target.closest('#about-popup-close')) return;
-        if (e.target && e.target.closest('.about-status-popup')) return;
+        if (e.target && (e.target as HTMLElement).closest('#about-popup-close')) return;
+        if (e.target && (e.target as HTMLElement).closest('.about-status-popup')) return;
         const pinned = about.classList.contains('pinned');
         setPinned(!pinned, pinned);
     });
@@ -1602,7 +1784,7 @@ export function setupAboutPopup() {
     // Keyboard activation: the pill is role="button" tabindex="0", so Enter and
     // Space toggle the popup; Escape closes a pinned popup.
     about.addEventListener('keydown', (e) => {
-        if (e.target && e.target.closest('.about-status-popup')) return;
+        if (e.target && (e.target as HTMLElement).closest('.about-status-popup')) return;
         if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
             e.preventDefault();
             setPinned(!about.classList.contains('pinned'), true);

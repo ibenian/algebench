@@ -240,6 +240,19 @@ interface Window {
   _algebenchShowElementById?: (id: string) => void;
   /** src/trust.ts, published by src/scene-loader.ts — redraw the JS-trust pill. */
   _algebenchUpdateJsTrustPill?: () => void;
+  // ---- src/camera.js shims, called by src/overlay.ts's settings panel ----
+  // Arrow/line geometry maths lives in camera.js, which imports overlay — so
+  // the settings sliders reach it this way rather than the other direction.
+  /** Rescale every arrow head/shaft to the given display scale. */
+  _algebenchApplyArrowScale?: (scale: number) => void;
+  /** Re-apply the display line width to one line/axis registry entry. */
+  _algebenchApplyLineWidth?: (entry: unknown) => void;
+  /** Re-apply the display shaft thickness to one arrow mesh. */
+  _algebenchApplyShaftThickness?: (mesh: unknown) => void;
+  /** True when an arrow-registry entry is a vector shaft rather than a head. */
+  _algebenchIsShaftEntry?: (entry: unknown) => boolean;
+  /** src/json-browser.ts — open the JSON browser focused on a spec path. */
+  algebenchOpenJsonBrowserAtPath?: (path: string) => void;
   /** src/coach/registry.js — the guided-tour registry and engine. */
   AlgeBenchCoach?: {
     engine?: {

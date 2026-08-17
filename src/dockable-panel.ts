@@ -11,29 +11,65 @@
 
 const CORNERS = ['top-left', 'top-right', 'bottom-left', 'bottom-right', 'top-center', 'bottom-center'];
 
-function _clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+/** One of CORNERS. Kept as a plain string in the persisted blob — the loader
+ *  validates against CORNERS rather than trusting localStorage. */
+export type DockCorner = typeof CORNERS[number];
 
-/**
- * Create a dockable panel.
- *
- * @param {object} opts
- * @param {string} opts.persistKey   localStorage suffix (e.g. 'info-foo' or 'info-drawer').
- * @param {string} [opts.corner]     initial anchor corner (one of CORNERS).
- * @param {string} [opts.title]      header title HTML (already rendered).
- * @param {HTMLElement} opts.bodyEl  caller body appended into the panel body.
- * @param {HTMLElement} opts.container  parent element to append into.
- * @param {Array<HTMLElement>} [opts.headerButtons]  buttons rendered in the header.
- * @param {boolean} [opts.resizable]  enable the resize grip (default true).
- * @param {boolean} [opts.titleAlwaysVisible]  show title even when expanded (default false).
- * @param {number} [opts.minWidth]
- * @param {number} [opts.minHeight]
- * @param {number} [opts.opacity]
- * @param {() => (object|null)} [opts.legacyMigrate]  returns a geometry blob to seed from
- *        old persistence keys when no new blob exists.
- * @param {(collapsed:boolean)=>void} [opts.onCollapseChange]
- * @returns {{el, bodyContainer, headerEl, setTitle, setCollapsed, isCollapsed, getCorner, setOpacity, destroy}}
- */
-export function createDockablePanel(opts) {
+/** The persisted geometry blob, stored under `dockable-panel-{persistKey}`.
+ *  `h`/`v` are null until the panel is first dragged (CSS-class anchoring
+ *  handles the un-dragged case); `w`/`ht` are null until first resized. */
+export interface DockGeometry {
+    corner: string;
+    h: number | null;
+    v: number | null;
+    w: number | null;
+    ht: number | null;
+    collapsed: boolean;
+}
+
+export interface DockablePanelOptions {
+    /** localStorage suffix (e.g. 'info-foo' or 'info-drawer'). */
+    persistKey: string;
+    /** Initial anchor corner (one of CORNERS). */
+    corner?: string;
+    /** Header title HTML (already rendered). */
+    title?: string;
+    /** Caller body appended into the panel body. */
+    bodyEl?: HTMLElement | null;
+    /** Parent element to append into. */
+    container?: HTMLElement | null;
+    /** Buttons rendered in the header. */
+    headerButtons?: HTMLElement[];
+    /** Enable the resize grip (default true). */
+    resizable?: boolean;
+    /** Show title even when expanded (default false). */
+    titleAlwaysVisible?: boolean;
+    minWidth?: number;
+    minHeight?: number;
+    opacity?: number;
+    /** Returns a geometry blob to seed from old persistence keys when no new
+     *  blob exists. */
+    legacyMigrate?: (() => Partial<DockGeometry> | null) | null;
+    onCollapseChange?: ((collapsed: boolean) => void) | null;
+}
+
+/** The handle createDockablePanel() hands back to its caller. */
+export interface DockablePanel {
+    el: HTMLElement;
+    bodyContainer: HTMLElement;
+    headerEl: HTMLElement;
+    setTitle(html: string | null | undefined): void;
+    setCollapsed(c: boolean): void;
+    isCollapsed(): boolean;
+    getCorner(): string;
+    setOpacity(o: number): void;
+    destroy(): void;
+}
+
+function _clamp(v: number, lo: number, hi: number): number { return Math.max(lo, Math.min(hi, v)); }
+
+/** Create a dockable panel. */
+export function createDockablePanel(opts: DockablePanelOptions): DockablePanel {
     const {
         persistKey,
         corner = 'top-left',
@@ -52,10 +88,10 @@ export function createDockablePanel(opts) {
 
     const KEY = 'dockable-panel-' + persistKey;
 
-    function loadGeom() {
+    function loadGeom(): Partial<DockGeometry> | null {
         try {
             const raw = localStorage.getItem(KEY);
-            if (raw) return JSON.parse(raw);
+            if (raw) return JSON.parse(raw) as Partial<DockGeometry>;
         } catch {}
         if (legacyMigrate) {
             try {
@@ -65,11 +101,13 @@ export function createDockablePanel(opts) {
         }
         return null;
     }
-    function saveGeom(g) { try { localStorage.setItem(KEY, JSON.stringify(g)); } catch {} }
+    function saveGeom(g: Partial<DockGeometry>): void { try { localStorage.setItem(KEY, JSON.stringify(g)); } catch {} }
 
     const saved = loadGeom();
-    const geom = {
-        corner: (saved && CORNERS.includes(saved.corner)) ? saved.corner : (CORNERS.includes(corner) ? corner : 'top-left'),
+    const geom: DockGeometry = {
+        // Non-null: `includes` is the validation — a saved blob without a corner
+        // fails it and falls through to the `corner` option, exactly as before.
+        corner: (saved && CORNERS.includes(saved.corner!)) ? saved.corner! : (CORNERS.includes(corner) ? corner : 'top-left'),
         h: saved && saved.h != null ? saved.h : null,
         v: saved && saved.v != null ? saved.v : null,
         w: saved && saved.w != null ? saved.w : null,
@@ -81,7 +119,9 @@ export function createDockablePanel(opts) {
     const el = document.createElement('div');
     el.className = 'dockable-panel';
     if (titleAlwaysVisible) el.classList.add('title-always');
-    el.style.opacity = opacity;
+    // style.opacity is a string property; the JS assigned the number and let
+    // the DOM coerce. String() is that same conversion, spelled out.
+    el.style.opacity = String(opacity);
 
     const header = document.createElement('div');
     header.className = 'dockable-panel-header';
@@ -113,7 +153,7 @@ export function createDockablePanel(opts) {
     if (bodyEl) bodyContainer.appendChild(bodyEl);
     el.appendChild(bodyContainer);
 
-    let grip = null;
+    let grip: HTMLElement | null = null;
     if (resizable) {
         grip = document.createElement('div');
         grip.className = 'dp-resize';
@@ -125,7 +165,7 @@ export function createDockablePanel(opts) {
     (container || document.body).appendChild(el);
 
     // ---- geometry application ----
-    function applyGeom() {
+    function applyGeom(): void {
         for (const c of CORNERS) el.classList.remove('pos-' + c);
         for (const c of CORNERS) el.classList.remove('anchor-' + c);
         el.style.left = el.style.right = el.style.top = el.style.bottom = el.style.transform = '';
@@ -150,13 +190,14 @@ export function createDockablePanel(opts) {
     // ---- drag ----
     header.addEventListener('mousedown', (e) => {
         if (e.button !== 0) return;
-        if (e.target.closest('button, .dp-resize')) return;
+        // Cast, not optional chaining: a null target threw in the JS.
+        if ((e.target as HTMLElement).closest('button, .dp-resize')) return;
         beginDrag(e);
     });
 
     // Pick the anchor corner nearest to the panel's current position, so a
     // dropped panel re-docks to whichever corner it was dragged toward.
-    function pickCornerByProximity() {
+    function pickCornerByProximity(): string {
         const parent = container || el.offsetParent || document.body;
         const parentRect = parent.getBoundingClientRect();
         const rect = el.getBoundingClientRect();
@@ -167,17 +208,17 @@ export function createDockablePanel(opts) {
         return vert + '-' + horiz;
     }
 
-    function beginDrag(e) {
+    function beginDrag(e: MouseEvent): void {
         e.preventDefault();
         const parent = container || el.offsetParent || document.body;
         const startX = e.clientX, startY = e.clientY;
         const DRAG_THRESHOLD = 4;
         let moved = false;
-        let isRight, isBottom, startH, startV, parentRect;
+        let isRight: boolean, isBottom: boolean, startH: number, startV: number, parentRect: DOMRect;
 
         // Convert from CSS-class anchoring to explicit offsets — deferred until
         // the pointer actually moves, so a plain click stays a click.
-        function initDrag() {
+        function initDrag(): void {
             if (geom.corner.includes('center')) {
                 const r = el.getBoundingClientRect();
                 const isB = geom.corner.includes('bottom');
@@ -194,7 +235,7 @@ export function createDockablePanel(opts) {
             el.classList.add('dragging');
         }
 
-        const onMove = (me) => {
+        const onMove = (me: MouseEvent) => {
             const dx = me.clientX - startX, dy = me.clientY - startY;
             if (!moved) {
                 if (Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
@@ -235,7 +276,7 @@ export function createDockablePanel(opts) {
     }
 
     // ---- resize (grip sits on the corner opposite the anchor) ----
-    function beginResize(e) {
+    function beginResize(e: MouseEvent): void {
         if (e.button !== 0) return;
         e.preventDefault(); e.stopPropagation();
         if (geom.collapsed) return;
@@ -248,7 +289,7 @@ export function createDockablePanel(opts) {
         const capH = () => window.innerHeight * 0.9;
         el.classList.add('resizing');
 
-        const onMove = (me) => {
+        const onMove = (me: MouseEvent) => {
             const dx = me.clientX - startX, dy = me.clientY - startY;
             let newW = isRight ? startW - dx : startW + dx;
             let newHt = isBottom ? startHt - dy : startHt + dy;
@@ -268,7 +309,7 @@ export function createDockablePanel(opts) {
         window.addEventListener('mouseup', onUp);
     }
 
-    function setCollapsed(c) {
+    function setCollapsed(c: boolean): void {
         geom.collapsed = !!c;
         el.classList.toggle('collapsed', geom.collapsed);
         el.style.height = (!geom.collapsed && geom.ht) ? geom.ht + 'px' : '';
@@ -282,11 +323,11 @@ export function createDockablePanel(opts) {
         el,
         bodyContainer,
         headerEl: header,
-        setTitle(html) { titleEl.innerHTML = html || ''; },
+        setTitle(html: string | null | undefined) { titleEl.innerHTML = html || ''; },
         setCollapsed,
         isCollapsed() { return !!geom.collapsed; },
         getCorner() { return geom.corner; },
-        setOpacity(o) { el.style.opacity = o; },
+        setOpacity(o: number) { el.style.opacity = String(o); },
         destroy() { el.remove(); },
     };
 }
