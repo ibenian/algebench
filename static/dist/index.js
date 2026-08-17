@@ -13620,27 +13620,7 @@ Object.defineProperties(window, {
 	}
 });
 //#endregion
-//#region src/graph-panel/term-resolve.js
-/**
-* term-resolve — resolve a proof-animation term to a node of an
-* INDEPENDENTLY-derived semantic graph. Pure functions (no DOM, no d3), so the
-* ladder is unit-testable under `node --test`.
-*
-* The animation and the displayed graph come from two separate parses, which
-* splits the id space in two:
-*
-* - **Named-symbol ids** (`pi`, `sigma`, `C`, `e`, …) are deterministic slugs
-*   of the symbol name (backend id_utils._slug_id) — the same symbol gets the
-*   same id in ANY parse, so raw id equality is meaningful.
-* - **Structural ids** (`__power_7`, `__multiply_2`, …) are allocation-order
-*   artifacts: `__power_7` means "the 7th anonymous node of THAT parse" and
-*   nothing more. Two parses of related expressions routinely stamp the same
-*   counter value on unrelated nodes — the animation's `__power_7` (√π) landed
-*   on the app graph's `__power_7` (the Gaussian exponential), so clicking √π
-*   confidently selected the wrong node. Raw id equality across parses is
-*   NOISE for these ids; a structural-id hit must be verified against the
-*   node's rendered content before it is trusted.
-*/
+//#region src/graph-panel/term-resolve.ts
 var NOISE_COMMANDS = /* @__PURE__ */ new Set([
 	"left",
 	"right",
