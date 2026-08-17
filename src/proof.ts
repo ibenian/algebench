@@ -9,9 +9,118 @@ import { renderKaTeX, renderMarkdown, makeAiAskButton, makeDeriveButton, openCha
 import { SgProofManager } from '/proof-animation/sg-proof.js';
 import { buildProofStepDerivePayload, describeDeriveStart } from '/proof-animation/derive-payload.js';
 
+/**
+ * A highlight region on a proof step's math.
+ *
+ * Deliberately looser than schemas/lesson.schema.json's ProofHighlight: `color`
+ * is a plain string, because _highlightColorRGB() falls back to cyan for any
+ * unknown name and proofs also arrive from the expert (unvalidated), not only
+ * from schema-checked lesson JSON. The same reasoning applies to Proof and
+ * ProofStep below — every field the renderer guards on stays optional here, so
+ * the guards keep compiling instead of being deleted as "unreachable".
+ */
+export interface ProofHighlight {
+    color?: string;
+    label?: string;
+}
+
+/** One line of a proof, as the panel renders it. */
+export interface ProofStep {
+    id?: string;
+    type?: string;
+    label?: string;
+    math?: string;
+    justification?: string;
+    explanation?: string;
+    tags?: string[];
+    highlights?: Record<string, ProofHighlight>;
+    sceneStep?: number | string;
+    prompt?: string;
+}
+
+/** A proof, as the panel renders it. */
+export interface Proof {
+    id?: string;
+    title?: string;
+    goal?: string;
+    technique?: string;
+    techniqueHint?: string;
+    sceneStep?: number | string;
+    prompt?: string;
+    steps?: ProofStep[];
+}
+
+/**
+ * What getProofContext() hands the chat tutor. The three step lists are added
+ * conditionally — absent rather than empty when there is nothing to say — so
+ * the system prompt stays compact.
+ */
+export interface ProofContext {
+    title: string | null;
+    technique: string | null;
+    techniqueHint: string | null;
+    goal: string | null;
+    stepCount: number;
+    currentStepIndex: number;
+    proofPrompt: string | null;
+    expanded: boolean;
+    previousSteps?: { step: number; label: string | undefined; math: string | null }[];
+    currentStep?: {
+        step: number;
+        id: string | undefined;
+        label: string | undefined;
+        math: string | null;
+        justification: string | null;
+        explanation: string | null;
+        stepPrompt: string | null;
+    };
+    upcomingSteps?: { step: number; label: string | undefined }[];
+}
+
+/** A proof plus where in the lesson hierarchy it was found. */
+export interface ProofEntry {
+    level: 'file' | 'scene' | 'step';
+    sceneIndex?: number;
+    stepIndex?: number;
+    proof: Proof;
+}
+
+/**
+ * The lesson shape this module reads. Only the proof-bearing fields matter;
+ * a bare scene (no `scenes`, but `elements`) is treated as a one-scene lesson,
+ * which is why both spellings appear.
+ */
+interface ProofLessonSpec {
+    proof?: Proof | Proof[] | null;
+    elements?: unknown;
+    scenes?: { proof?: Proof | Proof[] | null; steps?: { proof?: Proof | Proof[] | null }[] }[];
+}
+
+// state.js is still untyped JavaScript, so its fields infer from their
+// initializers. Describe the slice this module owns rather than spreading
+// `any`; the cast goes away when state.js is converted.
+interface ProofState {
+    proofSpec: ProofEntry[] | null;
+    proofAllSpecs: ProofEntry[] | null;
+    proofActiveIndex: number;
+    proofStepIndex: number;
+    proofExpanded: boolean;
+    proofSyncEnabled: boolean;
+    proofViewMode: 'slide' | 'list';
+    proofStepMemory: Record<string, number | undefined>;
+    currentSceneIndex: number;
+    _proofPreRendered: HTMLElement[] | null;
+    _proofPreRenderedAll: Record<string, HTMLElement[] | undefined>;
+    _proofLastScene: number | null;
+    _proofLastStep: number | null;
+    _proofSyncInProgress: boolean;
+    _proofTabMode: string;
+}
+const proofState = state as unknown as ProofState;
+
 // ---- Technique metadata ----
 
-const proofTechniques = {
+const proofTechniques: Record<string, string | undefined> = {
     // Core logical strategies
     direct: 'Direct Proof',
     contradiction: 'Proof by Contradiction',
@@ -44,13 +153,13 @@ const proofTechniques = {
 };
 
 /** Sanitize a string for use as a CSS class name token. */
-function sanitizeClassName(s) {
+function sanitizeClassName(s: unknown): string {
     if (typeof s !== 'string') return '';
     return s.replace(/[^a-zA-Z0-9_-]/g, '');
 }
 
 /** Return an HTML badge string for a proof technique, or '' if none. */
-function techniqueBadgeHTML(proof) {
+function techniqueBadgeHTML(proof: Proof | null | undefined): string {
     const t = proof && proof.technique;
     if (typeof t !== 'string' || !t || t === 'derivation') return '';
     const safeClass = sanitizeClassName(t);
@@ -63,14 +172,14 @@ function techniqueBadgeHTML(proof) {
 // ---- Helpers ----
 
 /** Normalize a proof field (single object or array) into an array. */
-function normalizeProofs(proofField) {
+function normalizeProofs(proofField: Proof | Proof[] | null | undefined): Proof[] {
     if (proofField == null) return [];
     return Array.isArray(proofField) ? proofField : [proofField];
 }
 
 /** Collect all proofs from the entire lesson spec. */
-function collectAllProofs(lessonSpec) {
-    const all = [];
+function collectAllProofs(lessonSpec: ProofLessonSpec | null | undefined): ProofEntry[] {
+    const all: ProofEntry[] = [];
     if (!lessonSpec) return all;
 
     // Root-level proofs
@@ -79,7 +188,11 @@ function collectAllProofs(lessonSpec) {
     }
 
     // Scene & step-level proofs
-    const scenes = lessonSpec.scenes || (lessonSpec.elements ? [lessonSpec] : []);
+    // A bare scene (no `scenes`, but `elements`) is treated as a one-scene lesson,
+    // so `lessonSpec` itself stands in for the scene. The cast reconciles the two
+    // shapes; only `proof` and `steps` are read off the result either way.
+    const scenes = (lessonSpec.scenes
+        || (lessonSpec.elements ? [lessonSpec] : [])) as ProofLessonSpec['scenes'] & object[];
     scenes.forEach((scene, si) => {
         for (const p of normalizeProofs(scene.proof)) {
             all.push({ level: 'scene', sceneIndex: si, proof: p });
@@ -96,22 +209,22 @@ function collectAllProofs(lessonSpec) {
 }
 
 /** Check if a proof entry is visible in the current context. */
-function _isProofInContext(entry, sceneIndex, stepIndex) {
+function _isProofInContext(entry: ProofEntry, sceneIndex: number, stepIndex: number): boolean {
     if (entry.level === 'file') return true;
     if (entry.level === 'scene') return entry.sceneIndex === sceneIndex;
-    if (entry.level === 'step') return entry.sceneIndex === sceneIndex && entry.stepIndex <= stepIndex;
+    if (entry.level === 'step') return entry.sceneIndex === sceneIndex && entry.stepIndex! <= stepIndex;
     return false;
 }
 
 // ---- Pre-rendering ----
 
 /** Pre-render all steps for a proof, returning an array of DOM nodes. */
-function preRenderProofSteps(proof) {
+function preRenderProofSteps(proof: Proof | null | undefined): HTMLElement[] {
     if (!proof || !proof.steps) return [];
     return proof.steps.map((step, i) => {
         const div = document.createElement('div');
         div.className = 'proof-step';
-        div.dataset.proofStepIndex = i;
+        div.dataset.proofStepIndex = String(i);
 
         const type = step.type || 'step';
         const typeClass = `type-${sanitizeClassName(type)}`;
@@ -162,8 +275,8 @@ function preRenderProofSteps(proof) {
 }
 
 /** Inject AI ask + Derive buttons into the actions strip of a proof step. */
-function _injectProofAskButtons(stepEl, step, proof) {
-    const actionsEl = stepEl.querySelector('.proof-step-actions');
+function _injectProofAskButtons(stepEl: HTMLElement, step: ProofStep, proof: Proof): void {
+    const actionsEl = stepEl.querySelector<HTMLElement>('.proof-step-actions');
     if (!actionsEl) return;
 
     // "Explain" button — prose explanation in the chat.
@@ -194,21 +307,21 @@ function _injectProofAskButtons(stepEl, step, proof) {
 // keyed to the proof step they were launched on; navigating steps shows/hides
 // them. The manager runs without a graph renderer (no pan/zoom), so boxes stay
 // statically positioned over the panel.
-let _proofDeriveManager = null;
+let _proofDeriveManager: SgProofManager | null = null;
 
 /** Stable key for the active proof + step, scoping derivation boxes per step. */
-function _proofStepKey() {
-    if (!state.proofSpec || state.proofActiveIndex < 0) return null;
-    const entry = state.proofSpec[state.proofActiveIndex];
-    return `${_proofKey(entry, state.proofActiveIndex)}#${state.proofStepIndex}`;
+function _proofStepKey(): string | null {
+    if (!proofState.proofSpec || proofState.proofActiveIndex < 0) return null;
+    const entry = proofState.proofSpec[proofState.proofActiveIndex];
+    return `${_proofKey(entry, proofState.proofActiveIndex)}#${proofState.proofStepIndex}`;
 }
 
 /** Get (or lazily create) the proof-panel derivation manager + its host. */
-function _ensureProofDeriveManager() {
+function _ensureProofDeriveManager(): SgProofManager | null {
     if (_proofDeriveManager && !_proofDeriveManager._destroyed) return _proofDeriveManager;
     const panel = document.getElementById('proof-panel');
     if (!panel) return null;
-    let host = panel.querySelector('#proof-derive-host');
+    let host = panel.querySelector<HTMLElement>('#proof-derive-host');
     if (!host) {
         host = document.createElement('div');
         host.id = 'proof-derive-host';
@@ -220,7 +333,7 @@ function _ensureProofDeriveManager() {
 }
 
 /** Tear down the derivation manager (called on scene change — boxes are scene-scoped). */
-function _destroyProofDeriveManager() {
+function _destroyProofDeriveManager(): void {
     if (_proofDeriveManager) {
         try { _proofDeriveManager.destroy(); } catch (_e) { /* ignore */ }
         _proofDeriveManager = null;
@@ -230,7 +343,7 @@ function _destroyProofDeriveManager() {
 }
 
 /** Keep the manager's visible boxes in sync with the active proof step. */
-function _syncProofDeriveStep() {
+function _syncProofDeriveStep(): void {
     if (_proofDeriveManager && !_proofDeriveManager._destroyed) {
         _proofDeriveManager.setCurrentStep(_proofStepKey());
     }
@@ -238,7 +351,7 @@ function _syncProofDeriveStep() {
 
 /** Word the Derive button's tooltip by where the derivation starts, so the
  *  learner knows it fills the gap from the previous line (the common case). */
-function _deriveTooltip(proof, index) {
+function _deriveTooltip(proof: Proof, index: number): string {
     switch (describeDeriveStart(proof, index)) {
         case 'previous step': return 'Derive: fill in the steps from the previous line to here';
         case 'givens':        return 'Derive: fill in the steps from the givens to here';
@@ -253,12 +366,12 @@ function _deriveTooltip(proof, index) {
  *  Docks in the roomy semantic-graph canvas (switching to the Math view) when
  *  the step has a graph; falls back to an in-panel box for the rare graph-less
  *  step so the button always does something. */
-async function _onDeriveStep(index) {
+async function _onDeriveStep(index: number): Promise<void> {
     const proof = _activeProof();
     if (!proof) return;
     // Make the step active (clicking a step navigates anyway) so the derivation
     // anchors to the right step's graph / panel box.
-    if (state.proofStepIndex !== index) navigateProof(index);
+    if (proofState.proofStepIndex !== index) navigateProof(index);
 
     const payload = buildProofStepDerivePayload(proof, index);
     if (!payload) return;   // step has no derivable expression
@@ -282,7 +395,7 @@ async function _onDeriveStep(index) {
 
 
 /** Render the goal block for a proof. */
-function renderGoalHTML(proof) {
+function renderGoalHTML(proof: Proof | null | undefined): string {
     if (!proof || !proof.goal) return '';
     return `<div class="proof-goal">
         <div class="proof-goal-label">Goal</div>
@@ -294,9 +407,9 @@ function renderGoalHTML(proof) {
 }
 
 /** Inject AI ask button into the goal block. */
-function _injectGoalAskButton(container, proof) {
+function _injectGoalAskButton(container: HTMLElement, proof: Proof | null | undefined): void {
     if (!proof || !proof.goal) return;
-    const actionsEl = container.querySelector('.proof-goal-actions');
+    const actionsEl = container.querySelector<HTMLElement>('.proof-goal-actions');
     if (!actionsEl) return;
     const btn = makeAiAskButton('proof-ask-btn', 'Explain this proof goal',
         () => `Explain the goal of this proof: "${proof.title || ''}". Goal: ${proof.goal}`);
@@ -304,7 +417,7 @@ function _injectGoalAskButton(container, proof) {
 }
 
 /** Simple HTML escaper. */
-function escapeHtml(s) {
+function escapeHtml(s: string | null | undefined): string {
     if (!s) return '';
     return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
@@ -312,7 +425,7 @@ function escapeHtml(s) {
 // ---- Highlight activation ----
 
 /** Activate highlights for a proof step, deactivate all others. */
-function activateHighlights(stepEl, step) {
+function activateHighlights(stepEl: HTMLElement | null | undefined, step: ProofStep | null | undefined): void {
     // Remove all active highlights in the proof panel
     const panel = document.getElementById('proof-panel');
     if (panel) {
@@ -326,14 +439,16 @@ function activateHighlights(stepEl, step) {
 
     const highlights = step.highlights;
     for (const [name, spec] of Object.entries(highlights)) {
-        const els = stepEl.querySelectorAll(`.hl-${name}`);
+        const els = stepEl.querySelectorAll<HTMLElement>(`.hl-${name}`);
         els.forEach(el => {
             const colorName = spec.color || 'cyan';
             const [r, g, b] = _highlightColorRGB(colorName);
             el.style.backgroundColor = _hlRGBA(colorName, 0.22);
-            el.style.setProperty('--hl-r', r);
-            el.style.setProperty('--hl-g', g);
-            el.style.setProperty('--hl-b', b);
+            // setProperty takes a string; the JS passed numbers and let the DOM
+            // coerce, so String() here is that same conversion made explicit.
+            el.style.setProperty('--hl-r', String(r));
+            el.style.setProperty('--hl-g', String(g));
+            el.style.setProperty('--hl-b', String(b));
             // Add tooltip
             if (spec.label) {
                 el.title = spec.label;
@@ -353,7 +468,7 @@ function activateHighlights(stepEl, step) {
 }
 
 /** Toggle a highlight annotation label below the math block. */
-function _toggleHighlightAnnotation(stepEl, name, spec) {
+function _toggleHighlightAnnotation(stepEl: HTMLElement, name: string, spec: ProofHighlight): void {
     const existing = stepEl.querySelector(`.proof-hl-annotation[data-hl="${name}"]`);
     if (existing) {
         existing.remove();
@@ -378,18 +493,22 @@ function _toggleHighlightAnnotation(stepEl, name, spec) {
 
     // Insert after the math row (so it appears below math + AI button)
     const mathRow = stepEl.querySelector('.proof-step-math-row');
+    // Non-null: the row was found by querying inside stepEl, so it has a parent.
+    // A detached row threw in the JS and must keep doing so.
     if (mathRow && mathRow.nextSibling) {
-        mathRow.parentNode.insertBefore(annotation, mathRow.nextSibling);
+        mathRow.parentNode!.insertBefore(annotation, mathRow.nextSibling);
     } else if (mathRow) {
-        mathRow.parentNode.appendChild(annotation);
+        mathRow.parentNode!.appendChild(annotation);
     } else {
         stepEl.appendChild(annotation);
     }
 }
 
 /** Convert a highlight color name to RGB components (r, g, b). */
-function _highlightColorRGB(color) {
-    const colors = {
+type Rgb = [number, number, number];
+
+function _highlightColorRGB(color: string): Rgb {
+    const colors: Record<string, Rgb | undefined> = {
         cyan:    [0, 200, 255],
         yellow:  [255, 220, 50],
         green:   [80, 220, 120],
@@ -406,11 +525,11 @@ function _highlightColorRGB(color) {
         teal:    [60, 200, 200],
         lime:    [180, 230, 80],
     };
-    return colors[color] || colors.cyan;
+    return colors[color] || colors.cyan!;
 }
 
 /** Build rgba string from color name at a given opacity. */
-function _hlRGBA(color, opacity) {
+function _hlRGBA(color: string, opacity: number): string {
     const [r, g, b] = _highlightColorRGB(color);
     return `rgba(${r}, ${g}, ${b}, ${opacity})`;
 }
@@ -418,17 +537,17 @@ function _hlRGBA(color, opacity) {
 // ---- Navigation ----
 
 /** Navigate to a specific proof step. -1 = goal overview. */
-export function navigateProof(index) {
+export function navigateProof(index: number): void {
     const proof = _activeProof();
     if (!proof) return;
 
     const steps = proof.steps || [];
     index = Math.max(-1, Math.min(index, steps.length - 1));
-    state.proofStepIndex = index;
+    proofState.proofStepIndex = index;
 
     // Ensure proof panel is expanded and active section is visible
-    if (!state.proofExpanded) _toggleProofPanel(true);
-    const activeSection = document.querySelector(`.proof-section[data-proof-idx="${state.proofActiveIndex}"]`);
+    if (!proofState.proofExpanded) _toggleProofPanel(true);
+    const activeSection = document.querySelector<HTMLElement>(`.proof-section[data-proof-idx="${proofState.proofActiveIndex}"]`);
     if (activeSection && activeSection.classList.contains('collapsed')) {
         activeSection.classList.remove('collapsed');
     }
@@ -437,7 +556,7 @@ export function navigateProof(index) {
     _saveProofStepToMemory();
 
     // Render based on view mode
-    if (state.proofViewMode === 'list') {
+    if (proofState.proofViewMode === 'list') {
         _renderList();
     } else {
         _renderSlide();
@@ -448,8 +567,9 @@ export function navigateProof(index) {
     _updateNavButtons();
 
     // Activate highlights
-    if (index >= 0 && state._proofPreRendered && state._proofPreRendered[index]) {
-        activateHighlights(state._proofPreRendered[index], steps[index]);
+    if (index >= 0 && proofState._proofPreRendered && proofState._proofPreRendered[index]) {
+        activateHighlights(proofState._proofPreRendered[index], steps[index]);
+        // (both indexes re-checked by the guard above)
     }
 
     // Keep any docked per-step derivation boxes scoped to the active step.
@@ -460,9 +580,9 @@ export function navigateProof(index) {
         window.dispatchEvent(new CustomEvent('algebench:stepchange', {
             detail: {
                 proof,
-                proofActiveIndex: state.proofActiveIndex,
+                proofActiveIndex: proofState.proofActiveIndex,
                 stepIndex: index,
-                sceneIndex: state.currentSceneIndex,
+                sceneIndex: proofState.currentSceneIndex,
             },
         }));
     } catch (_) { /* ignore event errors */ }
@@ -471,32 +591,35 @@ export function navigateProof(index) {
     try { window.dispatchEvent(new CustomEvent('algebench:proofchange')); } catch (_) { /* ignore */ }
 
     // Bidirectional sync: proof → scene
-    if (state.proofSyncEnabled && !state._proofSyncInProgress) {
+    if (proofState.proofSyncEnabled && !proofState._proofSyncInProgress) {
         // At goal (index -1), use proof-level sceneStep; otherwise use step-level
         const sceneStep = index >= 0
-            ? (steps[index] && steps[index].sceneStep)
+            ? (steps[index] && steps[index]!.sceneStep)
             : (proof.sceneStep);
         if (sceneStep != null) {
-            state._proofSyncInProgress = true;
+            proofState._proofSyncInProgress = true;
             try {
                 if (typeof sceneStep === 'string' && sceneStep.includes(':')) {
+                    // Non-null: the branch is gated on the string containing ':',
+                    // so split() yields at least two parts. A malformed value
+                    // produced NaN in the JS, and still does.
                     const [si, sti] = sceneStep.split(':').map(Number);
-                    if (typeof window.navigateTo === 'function') window.navigateTo(si, sti);
+                    if (typeof window.navigateTo === 'function') window.navigateTo(si!, sti!);
                 } else {
                     if (typeof window.navigateTo === 'function') {
-                        window.navigateTo(state.currentSceneIndex, Number(sceneStep));
+                        window.navigateTo(proofState.currentSceneIndex, Number(sceneStep));
                     }
                 }
             } finally {
-                state._proofSyncInProgress = false;
+                proofState._proofSyncInProgress = false;
             }
         }
     }
 }
 
 /** Reverse sync: scene step changed, update proof to match. */
-export function syncProofFromSceneStep(stepIdx) {
-    if (!state.proofSyncEnabled || state._proofSyncInProgress) return;
+export function syncProofFromSceneStep(stepIdx: number): void {
+    if (!proofState.proofSyncEnabled || proofState._proofSyncInProgress) return;
     const proof = _activeProof();
     if (!proof || !proof.steps) return;
 
@@ -510,19 +633,19 @@ export function syncProofFromSceneStep(stepIdx) {
             const si = Number(siStr);
             const sti = Number(stiStr);
             if (Number.isNaN(si) || Number.isNaN(sti)) return false;
-            return si === state.currentSceneIndex && sti === stepIdx;
+            return si === proofState.currentSceneIndex && sti === stepIdx;
         }
 
         const n = Number(sceneStep);
         if (Number.isNaN(n)) return false;
         return n === stepIdx;
     });
-    if (matchIdx >= 0 && matchIdx !== state.proofStepIndex) {
-        state._proofSyncInProgress = true;
+    if (matchIdx >= 0 && matchIdx !== proofState.proofStepIndex) {
+        proofState._proofSyncInProgress = true;
         try {
             navigateProof(matchIdx);
         } finally {
-            state._proofSyncInProgress = false;
+            proofState._proofSyncInProgress = false;
         }
     }
 }
@@ -534,8 +657,8 @@ export function syncProofFromSceneStep(stepIdx) {
  * ancestor (.proof-tab-content).  Priority: show the entire step; if the
  * step is taller than the viewport, show its top edge instead.
  */
-function _scrollActiveIntoView(container) {
-    const activeEl = container && container.querySelector('.proof-step.active');
+function _scrollActiveIntoView(container: HTMLElement | null | undefined): void {
+    const activeEl = container && container.querySelector<HTMLElement>('.proof-step.active');
     if (!activeEl) return;
 
     // Find the scrollable ancestor (.proof-tab-content)
@@ -562,25 +685,27 @@ function _scrollActiveIntoView(container) {
 
 // ---- Render modes ----
 
-function _renderSlide() {
+function _renderSlide(): void {
     const container = _activeContainer();
     if (!container) return;
 
     const proof = _activeProof();
     if (!proof) return;
-    const nodes = state._proofPreRendered || [];
-    const idx = state.proofStepIndex;
+    const nodes = proofState._proofPreRendered || [];
+    const idx = proofState.proofStepIndex;
 
     container.innerHTML = '';
 
     // Show previous steps collapsed, current step full
     nodes.forEach((node, i) => {
-        const clone = node.cloneNode(true);
+        // cloneNode() is declared as returning Node; these are the HTMLElements
+        // preRenderProofSteps() built, so the cast just restores what was lost.
+        const clone = node.cloneNode(true) as HTMLElement;
         // Re-attach event handlers lost during cloneNode
         clone.addEventListener('click', () => navigateProof(i));
         // Remove dead button clones (no listeners), re-inject live ones
         clone.querySelectorAll('.proof-ask-btn').forEach(b => b.remove());
-        _injectProofAskButtons(clone, proof.steps[i], proof);
+        _injectProofAskButtons(clone, proof.steps![i]!, proof);
 
         if (i < idx) {
             clone.classList.add('collapsed', 'visited');
@@ -598,29 +723,29 @@ function _renderSlide() {
 
     // Activate highlights on the active step DOM in the container
     if (idx >= 0) {
-        const activeEl = container.querySelector('.proof-step.active');
-        if (activeEl) activateHighlights(activeEl, proof.steps[idx]);
+        const activeEl = container.querySelector<HTMLElement>('.proof-step.active');
+        if (activeEl) activateHighlights(activeEl, proof.steps![idx]);
     }
 
     _scrollActiveIntoView(container);
 }
 
-function _renderList() {
+function _renderList(): void {
     const container = _activeContainer();
     if (!container) return;
 
     const proof = _activeProof();
     if (!proof) return;
-    const nodes = state._proofPreRendered || [];
-    const idx = state.proofStepIndex;
+    const nodes = proofState._proofPreRendered || [];
+    const idx = proofState.proofStepIndex;
 
     container.innerHTML = '';
 
     nodes.forEach((node, i) => {
-        const clone = node.cloneNode(true);
+        const clone = node.cloneNode(true) as HTMLElement;
         clone.addEventListener('click', () => navigateProof(i));
         clone.querySelectorAll('.proof-ask-btn').forEach(b => b.remove());
-        _injectProofAskButtons(clone, proof.steps[i], proof);
+        _injectProofAskButtons(clone, proof.steps![i]!, proof);
 
         clone.classList.remove('collapsed');
         if (i <= idx) {
@@ -640,19 +765,19 @@ function _renderList() {
     });
 
     // Activate highlights and scroll active step into view
-    const activeEl = container.querySelector('.proof-step.active');
+    const activeEl = container.querySelector<HTMLElement>('.proof-step.active');
     if (activeEl) {
-        activateHighlights(activeEl, proof.steps[idx]);
+        activateHighlights(activeEl, proof.steps![idx]);
     }
     _scrollActiveIntoView(container);
 }
 
-function _updateCounter() {
+function _updateCounter(): void {
     const counter = document.getElementById('proof-counter');
     if (!counter) return;
     const proof = _activeProof();
     if (!proof || !proof.steps) { counter.textContent = ''; return; }
-    const idx = state.proofStepIndex;
+    const idx = proofState.proofStepIndex;
     if (idx < 0) {
         counter.textContent = `Goal · ${proof.steps.length} steps`;
     } else {
@@ -660,16 +785,16 @@ function _updateCounter() {
     }
 }
 
-function _updateNavButtons() {
+function _updateNavButtons(): void {
     const proof = _activeProof();
-    const idx = state.proofStepIndex;
+    const idx = proofState.proofStepIndex;
     const maxIdx = proof && proof.steps ? proof.steps.length - 1 : -1;
     const hasProof = !!proof;
 
-    const firstBtn = document.getElementById('proof-first');
-    const prevBtn = document.getElementById('proof-prev');
-    const nextBtn = document.getElementById('proof-next');
-    const lastBtn = document.getElementById('proof-last');
+    const firstBtn = document.getElementById('proof-first') as HTMLButtonElement | null;
+    const prevBtn = document.getElementById('proof-prev') as HTMLButtonElement | null;
+    const nextBtn = document.getElementById('proof-next') as HTMLButtonElement | null;
+    const lastBtn = document.getElementById('proof-last') as HTMLButtonElement | null;
 
     if (firstBtn) firstBtn.disabled = !hasProof || idx <= -1;
     if (prevBtn) prevBtn.disabled = !hasProof || idx <= -1;
@@ -679,14 +804,14 @@ function _updateNavButtons() {
 
 // ---- Active proof helpers ----
 
-function _activeProof() {
-    if (!state.proofSpec || state.proofSpec.length === 0) return null;
-    if (state.proofActiveIndex < 0) return null;
-    const idx = Math.min(state.proofActiveIndex, state.proofSpec.length - 1);
-    return state.proofSpec[idx]?.proof || null;
+function _activeProof(): Proof | null {
+    if (!proofState.proofSpec || proofState.proofSpec.length === 0) return null;
+    if (proofState.proofActiveIndex < 0) return null;
+    const idx = Math.min(proofState.proofActiveIndex, proofState.proofSpec.length - 1);
+    return proofState.proofSpec[idx]?.proof || null;
 }
 
-function _activeContainer() {
+function _activeContainer(): HTMLElement | null {
     // Return the dedicated steps container inside the active proof section
     const stepsContainer = document.getElementById('proof-steps-container');
     if (stepsContainer) return stepsContainer;
@@ -697,46 +822,49 @@ function _activeContainer() {
 // ---- Load / update proofs ----
 
 /** Get a stable key for a proof entry (uses proof.id or falls back to index). */
-function _proofKey(entry, index) {
+function _proofKey(entry: ProofEntry | null | undefined, index: number): string {
     return entry?.proof?.id || `_idx_${index}`;
 }
 
 /** Save current proof step index to memory before switching away. */
-function _saveProofStepToMemory() {
+function _saveProofStepToMemory(): void {
     const proof = _activeProof();
     if (proof) {
-        const key = _proofKey(state.proofSpec[state.proofActiveIndex], state.proofActiveIndex);
-        state.proofStepMemory[key] = state.proofStepIndex;
+            // Non-null: _activeProof() returned a proof, so proofSpec is populated.
+        const key = _proofKey(proofState.proofSpec![proofState.proofActiveIndex], proofState.proofActiveIndex);
+        proofState.proofStepMemory[key] = proofState.proofStepIndex;
     }
 }
 
 /** Restore proof step index from memory when switching to a proof. */
-function _restoreProofStepFromMemory(entry, index) {
+function _restoreProofStepFromMemory(entry: ProofEntry | null | undefined, index: number): number {
     const key = _proofKey(entry, index);
-    return state.proofStepMemory[key] != null ? state.proofStepMemory[key] : -1;
+    return proofState.proofStepMemory[key] != null ? proofState.proofStepMemory[key]! : -1;
 }
 
 /** Switch the active proof, preserving step state for both old and new. */
-function switchActiveProof(newIndex) {
-    if (newIndex === state.proofActiveIndex) return;
+function switchActiveProof(newIndex: number): void {
+    if (newIndex === proofState.proofActiveIndex) return;
     // Save current proof's step position
     _saveProofStepToMemory();
 
-    const oldIndex = state.proofActiveIndex;
-    state.proofActiveIndex = newIndex;
+    const oldIndex = proofState.proofActiveIndex;
+    proofState.proofActiveIndex = newIndex;
 
     // Restore new proof's step position
-    const entry = state.proofSpec[newIndex];
-    state.proofStepIndex = _restoreProofStepFromMemory(entry, newIndex);
+    // Non-null: switchActiveProof is only reached with a populated proofSpec.
+    const entry = proofState.proofSpec![newIndex];
+    proofState.proofStepIndex = _restoreProofStepFromMemory(entry, newIndex);
     const proof = _activeProof();
-    state._proofPreRendered = proof ? _getOrPreRender(entry, newIndex) : [];
+    proofState._proofPreRendered = proof ? _getOrPreRender(entry, newIndex) : [];
 
     // Update DOM without full rebuild: move steps container, toggle active/collapsed classes
     const container = document.getElementById('proof-context-content');
     if (container) {
-        const sections = container.querySelectorAll('.proof-section[data-proof-idx]');
+        const sections = container.querySelectorAll<HTMLElement>('.proof-section[data-proof-idx]');
         sections.forEach(section => {
-            const idx = parseInt(section.dataset.proofIdx);
+            // Non-null: the selector matched on [data-proof-idx], so it is set.
+            const idx = parseInt(section.dataset.proofIdx!);
             const header = section.querySelector('.proof-section-header');
 
             if (idx === oldIndex) {
@@ -748,7 +876,7 @@ function switchActiveProof(newIndex) {
                 // Update step hint
                 const hintEl = section.querySelector('.proof-section-step-hint');
                 if (hintEl) {
-                    const oldEntry = state.proofSpec[oldIndex];
+                    const oldEntry = proofState.proofSpec![oldIndex];
                     const memStep = _restoreProofStepFromMemory(oldEntry, oldIndex);
                     const oldProof = oldEntry?.proof;
                     hintEl.textContent = memStep >= 0 && oldProof?.steps
@@ -775,7 +903,7 @@ function switchActiveProof(newIndex) {
 
     _updateCounter();
     _updateNavButtons();
-    if (proof) navigateProof(state.proofStepIndex);
+    if (proof) navigateProof(proofState.proofStepIndex);
 }
 
 /**
@@ -783,28 +911,28 @@ function switchActiveProof(newIndex) {
  * reuses switchActiveProof so step memory + DOM stay consistent. No-op if the
  * proof is already active.
  */
-export function setActiveProof(index) {
-    if (!state.proofSpec || !state.proofSpec.length) return;
-    const clamped = Math.max(0, Math.min(index | 0, state.proofSpec.length - 1));
+export function setActiveProof(index: number): void {
+    if (!proofState.proofSpec || !proofState.proofSpec.length) return;
+    const clamped = Math.max(0, Math.min(index | 0, proofState.proofSpec.length - 1));
     switchActiveProof(clamped);
 }
 
 /** Get cached pre-rendered steps or create them. */
-function _getOrPreRender(entry, index) {
+function _getOrPreRender(entry: ProofEntry | null | undefined, index: number): HTMLElement[] {
     const key = _proofKey(entry, index);
-    if (!state._proofPreRenderedAll[key]) {
+    if (!proofState._proofPreRenderedAll[key]) {
         const proof = entry?.proof;
-        state._proofPreRenderedAll[key] = proof ? preRenderProofSteps(proof) : [];
+        proofState._proofPreRenderedAll[key] = proof ? preRenderProofSteps(proof) : [];
     }
-    return state._proofPreRenderedAll[key];
+    return proofState._proofPreRenderedAll[key];
 }
 
 /** Load proofs for the current context. Called on scene/step change. */
-export function loadProof(lessonSpec, sceneIndex, stepIndex) {
+export function loadProof(lessonSpec: ProofLessonSpec | null | undefined, sceneIndex: number, stepIndex: number): void {
     const allProofs = collectAllProofs(lessonSpec);
-    const sceneChanged = state._proofLastScene !== sceneIndex ||
-        !state.proofAllSpecs ||
-        state.proofAllSpecs.length !== allProofs.length;
+    const sceneChanged = proofState._proofLastScene !== sceneIndex ||
+        !proofState.proofAllSpecs ||
+        proofState.proofAllSpecs.length !== allProofs.length;
 
     if (sceneChanged) {
         // Save step memory for outgoing proof
@@ -814,15 +942,15 @@ export function loadProof(lessonSpec, sceneIndex, stepIndex) {
         _destroyProofDeriveManager();
 
         // Capture previous active proof id before overwriting state
-        const prevProofId = state.proofSpec?.[state.proofActiveIndex]?.proof?.id;
+        const prevProofId = proofState.proofSpec?.[proofState.proofActiveIndex]?.proof?.id;
 
-        state.proofAllSpecs = allProofs;
-        state.proofSpec = allProofs;
-        state._proofLastScene = sceneIndex;
-        state._proofLastStep = stepIndex;
+        proofState.proofAllSpecs = allProofs;
+        proofState.proofSpec = allProofs;
+        proofState._proofLastScene = sceneIndex;
+        proofState._proofLastStep = stepIndex;
 
         // Pre-render steps for all proofs (cache by id)
-        state._proofPreRenderedAll = {};
+        proofState._proofPreRenderedAll = {};
         allProofs.forEach((entry, i) => _getOrPreRender(entry, i));
 
         // Try to keep the same active proof if it's still in context
@@ -836,19 +964,19 @@ export function loadProof(lessonSpec, sceneIndex, stepIndex) {
         if (newActiveIndex < 0) {
             newActiveIndex = allProofs.findIndex(e => _isProofInContext(e, sceneIndex, stepIndex));
         }
-        state.proofActiveIndex = newActiveIndex;
+        proofState.proofActiveIndex = newActiveIndex;
 
         // Restore step index for the active proof
         const activeEntry = allProofs[newActiveIndex];
-        state.proofStepIndex = activeEntry ? _restoreProofStepFromMemory(activeEntry, newActiveIndex) : -1;
-        state._proofPreRendered = activeEntry ? _getOrPreRender(activeEntry, newActiveIndex) : [];
+        proofState.proofStepIndex = activeEntry ? _restoreProofStepFromMemory(activeEntry, newActiveIndex) : -1;
+        proofState._proofPreRendered = activeEntry ? _getOrPreRender(activeEntry, newActiveIndex) : [];
 
         // Full rebuild
         _buildContextTab(allProofs);
     }
 
     // Track last step for tab switching
-    state._proofLastStep = stepIndex;
+    proofState._proofLastStep = stepIndex;
 
     // Update visibility based on current step (no DOM rebuild)
     _updateContextVisibility(sceneIndex, stepIndex);
@@ -866,23 +994,23 @@ export function loadProof(lessonSpec, sceneIndex, stepIndex) {
 
     // Render active proof steps — but skip if we're already inside a proof→scene sync
     // (re-entrant call from navigateProof → navigateTo → loadProof)
-    if (_activeProof() && !state._proofSyncInProgress) {
-        state._proofSyncInProgress = true;
+    if (_activeProof() && !proofState._proofSyncInProgress) {
+        proofState._proofSyncInProgress = true;
         try {
-            navigateProof(state.proofStepIndex);
+            navigateProof(proofState.proofStepIndex);
         } finally {
-            state._proofSyncInProgress = false;
+            proofState._proofSyncInProgress = false;
         }
     }
 
     // If expanded and no visible proofs, collapse
-    if (!hasVisible && state.proofExpanded) {
+    if (!hasVisible && proofState.proofExpanded) {
         _toggleProofPanel(false);
     }
 
     // Auto-expand if proofs exist and user had it expanded
     const savedExpanded = localStorage.getItem('algebench-proof-expanded');
-    if (hasVisible && savedExpanded === 'true' && !state.proofExpanded) {
+    if (hasVisible && savedExpanded === 'true' && !proofState.proofExpanded) {
         _toggleProofPanel(true);
     }
 
@@ -899,7 +1027,7 @@ export function loadProof(lessonSpec, sceneIndex, stepIndex) {
 }
 
 /** Build the "In Context" tab DOM once with all proofs. Visibility is toggled by _updateContextVisibility. */
-function _buildContextTab(allProofs) {
+function _buildContextTab(allProofs: ProofEntry[]): void {
     const container = document.getElementById('proof-context-content');
     if (!container) return;
     container.innerHTML = '';
@@ -911,12 +1039,12 @@ function _buildContextTab(allProofs) {
 
     allProofs.forEach((entry, i) => {
         const section = document.createElement('div');
-        const isActive = i === state.proofActiveIndex;
+        const isActive = i === proofState.proofActiveIndex;
         section.className = 'proof-section' + (isActive ? '' : ' collapsed');
-        section.dataset.proofIdx = i;
+        section.dataset.proofIdx = String(i);
         section.dataset.proofLevel = entry.level;
-        if (entry.sceneIndex != null) section.dataset.proofScene = entry.sceneIndex;
-        if (entry.stepIndex != null) section.dataset.proofStep = entry.stepIndex;
+        if (entry.sceneIndex != null) section.dataset.proofScene = String(entry.sceneIndex);
+        if (entry.stepIndex != null) section.dataset.proofStep = String(entry.stepIndex);
 
         const proof = entry.proof;
         const title = proof.title || proof.goal || 'Untitled proof';
@@ -946,9 +1074,11 @@ function _buildContextTab(allProofs) {
         section.appendChild(body);
 
         // Click header to switch active proof (with state preservation)
-        const header = section.querySelector('.proof-section-header');
+        // Non-null: the header was just written into section.innerHTML above.
+        // A missing one threw in the JS and must keep throwing.
+        const header = section.querySelector('.proof-section-header')!;
         header.addEventListener('click', () => {
-            if (i !== state.proofActiveIndex) {
+            if (i !== proofState.proofActiveIndex) {
                 switchActiveProof(i);
             } else {
                 section.classList.toggle('collapsed');
@@ -960,18 +1090,18 @@ function _buildContextTab(allProofs) {
 }
 
 /** Update visibility of context proof sections based on current scene/step. No DOM rebuild. */
-function _updateContextVisibility(sceneIndex, stepIndex) {
+function _updateContextVisibility(sceneIndex: number, stepIndex: number): void {
     const container = document.getElementById('proof-context-content');
     if (!container) return;
 
-    const showAll = state._proofTabMode === 'all';
-    const sections = container.querySelectorAll('.proof-section[data-proof-idx]');
+    const showAll = proofState._proofTabMode === 'all';
+    const sections = container.querySelectorAll<HTMLElement>('.proof-section[data-proof-idx]');
     sections.forEach(section => {
-        const idx = parseInt(section.dataset.proofIdx);
-        const entry = state.proofSpec[idx];
+        const idx = parseInt(section.dataset.proofIdx!);
+        const entry = proofState.proofSpec![idx];
         if (!entry) { section.style.display = 'none'; return; }
 
-        const isActive = idx === state.proofActiveIndex;
+        const isActive = idx === proofState.proofActiveIndex;
         // In "all" mode show everything; in "context" mode filter by hierarchy
         const inContext = _isProofInContext(entry, sceneIndex, stepIndex);
         const visible = showAll || inContext;
@@ -998,13 +1128,13 @@ function _updateContextVisibility(sceneIndex, stepIndex) {
 
 // ---- Panel toggle ----
 
-function _toggleProofPanel(show) {
+function _toggleProofPanel(show: boolean): void {
     const panel = document.getElementById('proof-panel');
     const handle = document.getElementById('proof-resize-handle');
     const btn = document.getElementById('proof-toggle-btn');
     if (!panel) return;
 
-    state.proofExpanded = show;
+    proofState.proofExpanded = show;
     if (show) {
         panel.classList.remove('hidden');
         if (handle) handle.classList.remove('hidden');
@@ -1033,27 +1163,27 @@ function _toggleProofPanel(show) {
  * Public: open/close the proof panel (deeplink / AI jump). Opening is a no-op
  * when there's no active proof in context (nothing to show).
  */
-export function setProofPanelOpen(show) {
+export function setProofPanelOpen(show: boolean): void {
     if (show && !_activeProof()) return;
-    if (!!show === !!state.proofExpanded) return;
+    if (!!show === !!proofState.proofExpanded) return;
     _toggleProofPanel(!!show);
 }
 
 // ---- Resize handle ----
 
-function _setupProofResize() {
+function _setupProofResize(): void {
     const handle = document.getElementById('proof-resize-handle');
     const panel = document.getElementById('proof-panel');
     if (!handle || !panel) return;
 
-    let startY, startHeight;
+    let startY: number, startHeight: number;
 
     handle.addEventListener('mousedown', (e) => {
         e.preventDefault();
         startY = e.clientY;
         startHeight = panel.offsetHeight;
 
-        const onMove = (e2) => {
+        const onMove = (e2: MouseEvent) => {
             const delta = e2.clientY - startY;
             const newH = Math.max(100, Math.min(600, startHeight + delta));
             panel.style.height = newH + 'px';
@@ -1070,21 +1200,21 @@ function _setupProofResize() {
 
 // ---- Proof tab switching (Proofs in Context / All Proofs) ----
 
-function _setupProofTabs() {
-    document.querySelectorAll('.proof-tab').forEach(tab => {
+function _setupProofTabs(): void {
+    document.querySelectorAll<HTMLElement>('.proof-tab').forEach(tab => {
         tab.addEventListener('click', () => {
             document.querySelectorAll('.proof-tab').forEach(t => t.classList.toggle('active', t === tab));
-            state._proofTabMode = tab.dataset.proofTab || 'context'; // 'context' or 'all'
-            _updateContextVisibility(state._proofLastScene ?? 0, state._proofLastStep ?? 0);
+            proofState._proofTabMode = tab.dataset.proofTab || 'context'; // 'context' or 'all'
+            _updateContextVisibility(proofState._proofLastScene ?? 0, proofState._proofLastStep ?? 0);
         });
     });
 }
 
 // ---- Refresh (re-render current step without changing state) ----
 
-export function refreshProofPanel() {
-    if (!_activeProof() || !state.proofExpanded) return;
-    if (state.proofViewMode === 'list') {
+export function refreshProofPanel(): void {
+    if (!_activeProof() || !proofState.proofExpanded) return;
+    if (proofState.proofViewMode === 'list') {
         _renderList();
     } else {
         _renderSlide();
@@ -1095,12 +1225,12 @@ export function refreshProofPanel() {
 
 // ---- Setup (called once on DOMContentLoaded) ----
 
-export function setupProofPanel() {
+export function setupProofPanel(): void {
     // Toggle button
     const toggleBtn = document.getElementById('proof-toggle-btn');
     if (toggleBtn) {
         toggleBtn.addEventListener('click', () => {
-            _toggleProofPanel(!state.proofExpanded);
+            _toggleProofPanel(!proofState.proofExpanded);
         });
     }
 
@@ -1110,8 +1240,8 @@ export function setupProofPanel() {
     const nextBtn = document.getElementById('proof-next');
     const lastBtn = document.getElementById('proof-last');
     if (firstBtn) { firstBtn.innerHTML = FIRST_ICON; firstBtn.addEventListener('click', () => navigateProof(-1)); }
-    if (prevBtn) { prevBtn.innerHTML = PREV_ICON; prevBtn.addEventListener('click', () => navigateProof(state.proofStepIndex - 1)); }
-    if (nextBtn) { nextBtn.innerHTML = NEXT_ICON; nextBtn.addEventListener('click', () => navigateProof(state.proofStepIndex + 1)); }
+    if (prevBtn) { prevBtn.innerHTML = PREV_ICON; prevBtn.addEventListener('click', () => navigateProof(proofState.proofStepIndex - 1)); }
+    if (nextBtn) { nextBtn.innerHTML = NEXT_ICON; nextBtn.addEventListener('click', () => navigateProof(proofState.proofStepIndex + 1)); }
     if (lastBtn) {
         lastBtn.innerHTML = LAST_ICON;
         lastBtn.addEventListener('click', () => {
@@ -1123,17 +1253,17 @@ export function setupProofPanel() {
     // Mode toggle (slide / list) — restore saved preference
     const savedViewMode = localStorage.getItem('algebench-proof-view-mode');
     if (savedViewMode === 'list' || savedViewMode === 'slide') {
-        state.proofViewMode = savedViewMode;
+        proofState.proofViewMode = savedViewMode;
     }
     const modeBtn = document.getElementById('proof-mode-toggle');
     if (modeBtn) {
-        modeBtn.textContent = state.proofViewMode === 'slide' ? 'Progressive' : 'Verbose';
+        modeBtn.textContent = proofState.proofViewMode === 'slide' ? 'Progressive' : 'Verbose';
         modeBtn.addEventListener('click', () => {
-            state.proofViewMode = state.proofViewMode === 'slide' ? 'list' : 'slide';
-            modeBtn.textContent = state.proofViewMode === 'slide' ? 'Progressive' : 'Verbose';
-            localStorage.setItem('algebench-proof-view-mode', state.proofViewMode);
+            proofState.proofViewMode = proofState.proofViewMode === 'slide' ? 'list' : 'slide';
+            modeBtn.textContent = proofState.proofViewMode === 'slide' ? 'Progressive' : 'Verbose';
+            localStorage.setItem('algebench-proof-view-mode', proofState.proofViewMode);
             // Re-render current view
-            navigateProof(state.proofStepIndex);
+            navigateProof(proofState.proofStepIndex);
         });
     }
 
@@ -1141,27 +1271,29 @@ export function setupProofPanel() {
     const syncBtn = document.getElementById('proof-sync-btn');
     if (syncBtn) {
         syncBtn.addEventListener('click', () => {
-            state.proofSyncEnabled = !state.proofSyncEnabled;
-            syncBtn.classList.toggle('active', state.proofSyncEnabled);
+            proofState.proofSyncEnabled = !proofState.proofSyncEnabled;
+            syncBtn.classList.toggle('active', proofState.proofSyncEnabled);
             // Sync immediately when enabled
-            if (state.proofSyncEnabled) {
-                navigateProof(state.proofStepIndex);
+            if (proofState.proofSyncEnabled) {
+                navigateProof(proofState.proofStepIndex);
             }
         });
     }
 
     // Keyboard navigation
     document.addEventListener('keydown', (e) => {
-        if (!state.proofExpanded || !_activeProof()) return;
+        if (!proofState.proofExpanded || !_activeProof()) return;
         // Don't capture if user is typing in an input
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        // Cast, not optional chaining: a null target threw in the JS.
+        const target = e.target as HTMLElement;
+        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
 
         if (e.key === 'ArrowLeft') {
             e.preventDefault();
-            navigateProof(state.proofStepIndex - 1);
+            navigateProof(proofState.proofStepIndex - 1);
         } else if (e.key === 'ArrowRight') {
             e.preventDefault();
-            navigateProof(state.proofStepIndex + 1);
+            navigateProof(proofState.proofStepIndex + 1);
         }
     });
 
@@ -1175,17 +1307,17 @@ export function setupProofPanel() {
 // ---- Public API for agent context ----
 
 /** Get proof context for the chat system prompt. */
-export function getProofContext() {
+export function getProofContext(): ProofContext | null {
     const proof = _activeProof();
     if (!proof) return null;
 
     // Unwrap \htmlClass/\htmlData highlight wrappers from step math; null for
     // missing math (kept distinct from "" so callers can omit absent fields).
-    const stripHlClass = (m) => (m ? stripHtmlMacros(m) : null);
+    const stripHlClass = (m: string | null | undefined) => (m ? stripHtmlMacros(m) : null);
     const steps = proof.steps || [];
-    const idx = state.proofStepIndex;
+    const idx = proofState.proofStepIndex;
 
-    const ctx = {
+    const ctx: ProofContext = {
         title: proof.title || null,
         technique: proof.technique || null,
         techniqueHint: proof.techniqueHint || null,
@@ -1193,7 +1325,7 @@ export function getProofContext() {
         stepCount: steps.length,
         currentStepIndex: idx,
         proofPrompt: proof.prompt || null,
-        expanded: state.proofExpanded,
+        expanded: proofState.proofExpanded,
     };
 
     // Previous steps — compact (label + math only)

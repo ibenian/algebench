@@ -11,6 +11,7 @@ import { buildSliderOverlay, registerSliders, stopAllSliderLoops, stopSliderLoop
          syncSliderState } from '/sliders.js';
 import { buildCameraButtons, animateCamera, resolveEffectiveStepCamera, DEFAULT_CAMERA } from '/camera.js';
 import { dataCameraToWorld } from '/coords.js';
+import type { Vec3 } from '/coords.js';
 import { clearLabels } from '/labels.js';
 import { scanSpecForUnsafeJs, showTrustDialog, updateJsTrustPill } from '/trust.js';
 import { importDomains, setActiveSceneFunctions, setActiveVirtualTimeExpr } from '/expr.js';
@@ -22,36 +23,245 @@ import { updateTitle, updateExplanationPanel, buildLegend, addInfoOverlay,
 import { buildSceneTree, updateTreeHighlight, setNavigateFn } from '/context-browser.js';
 import { loadProof, syncProofFromSceneStep } from '/proof.js';
 import { validateProofData } from '/proof-animation/validate-proof.js';
+import type { Material, Mesh, Scene } from 'three';
+import type { Label3D } from '/labels.js';
+import type { SceneSlider, SliderDef, AnimExprEntry } from '/sliders.js';
+import type { Element } from '/types/lesson.js';
+import type { Proof } from '/proof.js';
+
+/**
+ * The per-element registry/tracker entry shapes. Each src/objects/ renderer
+ * declares its own narrow view of these and pushes into the shared arrays; the
+ * scene loader is the consumer that slices them back out, so the fields it
+ * actually reads are what is declared here.
+ */
+/** A mesh the loader can hide or dispose. `_hiddenByRemove` is the codebase's
+ *  own flag (see src/objects/), and the single-Material parameter reflects that
+ *  nothing here ever builds a multi-material mesh. */
+type RemovableMesh = Mesh<import('three').BufferGeometry, Material> & { _hiddenByRemove?: boolean };
+
+interface ArrowMeshEntry {
+    mesh: RemovableMesh;
+    isShaft?: boolean;
+    owner?: object;
+}
+interface NodeEntry {
+    node: MathBoxNode | null;
+    baseOpacity?: number;
+}
+
+/** Counts of every global registry, taken before a render so the entries a
+ *  single element or step added can be sliced back out afterwards. */
+interface RegistrySnapshot {
+    arrows: number;
+    labels: number;
+    planes: number;
+    lines: number;
+    vecLines: number;
+    axisLines: number;
+    points: number;
+}
+
+/** Everything one element (or one step) put into the shared registries. */
+interface SubTracker {
+    group: MathBoxNode;
+    arrowMeshes: ArrowMeshEntry[];
+    labels: Label3D[];
+    planeMeshes: RemovableMesh[];
+    lineNodes: NodeEntry[];
+    vectorLineNodes: NodeEntry[];
+    axisLineNodes: NodeEntry[];
+    pointNodes: NodeEntry[];
+}
+
+/** What a renderElement() call hands back for later teardown. Every field is
+ *  optional: the renderers publish different subsets. */
+interface RenderResult {
+    _animState?: { stopped: boolean };
+    _animExprEntry?: AnimExprEntry;
+    _arrowOwner?: object;
+}
+
+/** An element's entry in the shared id → element registry. */
+interface ElementRegistryEntry {
+    tracker: SubTracker;
+    hidden: boolean;
+    type?: string;
+    prompt?: string | null;
+    label?: string | null;
+}
+
+/** An info-overlay definition, as a step declares it. */
+interface InfoOverlayDef {
+    id: string;
+    content: string;
+    position?: string;
+    keep?: boolean;
+}
+
+/** A SubTracker plus the undo bookkeeping a *step* needs for backward nav. */
+interface StepTracker extends SubTracker {
+    removedIds: string[];
+    removedSliders: Record<string, SceneSlider | undefined>;
+    replacedElements: Record<string, ElementRegistryEntry> | null;
+    sliderIds: string[];
+    prevSliderStates: Record<string, SceneSlider>;
+    elementIds: string[];
+    renderResults: RenderResult[];
+    infoIds?: string[];
+    infoDefs?: InfoOverlayDef[];
+}
+
+/**
+ * The lesson/scene/step shapes this module reads. Deliberately looser than
+ * schemas/lesson.schema.json: scenes also arrive from the AI and from
+ * proofFileToLesson() below, so every field the loader guards on stays
+ * optional here rather than being asserted present.
+ */
+interface SceneStep {
+    add?: Element[];
+    remove?: { id?: string; type?: string }[];
+    sliders?: SliderDef[];
+    info?: InfoOverlayDef[];
+    duration?: number | null;
+    proof?: Proof | Proof[] | null;
+}
+interface SceneSpec {
+    title?: string;
+    description?: string;
+    markdown?: string;
+    range?: number[][];
+    scale?: number[];
+    camera?: { position?: number[]; target?: number[]; up?: number[] };
+    views?: unknown;
+    functions?: unknown;
+    elements?: Element[];
+    starfield?: unknown;
+    steps?: SceneStep[];
+    duration?: number | null;
+    data?: Record<string, unknown>;
+    proof?: Proof | Proof[] | null;
+}
+/** The grid/axis renderers the empty state pulls in lazily (see
+ *  _importDefaultRenderers — objects/index.js exports only the dispatcher). */
+interface DefaultRenderers {
+    renderGrid(el: Record<string, unknown>, view: MathBoxNode): unknown;
+    renderAxis(el: Record<string, unknown>, view: MathBoxNode): unknown;
+}
+
+/** A pre-baked proof-animation file, as validateProofData() returns it. */
+interface ProofFile {
+    title?: string;
+    goal?: string;
+    steps?: {
+        id?: string;
+        type?: string;
+        operation?: string;
+        label?: string;
+        plain?: string;
+        input_latex?: string;
+        math?: string;
+        justification?: string;
+    }[];
+}
+
+interface LessonSpec extends SceneSpec {
+    scenes?: SceneSpec[];
+    import?: string[];
+    unsafe?: boolean;
+    unsafeExplanation?: string;
+}
+
+// state.js is still untyped JavaScript, so its fields infer from their
+// initializers. Describe the slice this module owns rather than spreading
+// `any`; the cast goes away when state.js is converted.
+interface SceneLoaderState {
+    mathbox: MathBoxNode;
+    three: { scene: Scene };
+    sceneView: MathBoxNode;
+    camera: { up: { set(x: number, y: number, z: number): void };
+              position: { set(x: number, y: number, z: number): void } } | null;
+    controls: { target: { set(x: number, y: number, z: number): void };
+                update(): void;
+                enableDamping?: boolean;
+                dampingFactor?: number } | null;
+    arrowMeshes: ArrowMeshEntry[];
+    labels: Label3D[];
+    planeMeshes: RemovableMesh[];
+    lineNodes: NodeEntry[];
+    vectorLineNodes: NodeEntry[];
+    axisLineNodes: NodeEntry[];
+    pointNodes: NodeEntry[];
+    _planeMeshSerial: number;
+    currentRange: number[][];
+    currentScale: number[];
+    // `| undefined` on purpose: loadScene(undefined) stores undefined here, and
+    // widening rather than coercing to null keeps that observable difference.
+    currentSpec: SceneSpec | null | undefined;
+    lessonSpec: LessonSpec | null | undefined;
+    currentSceneIndex: number;
+    currentStepIndex: number;
+    visitedSteps: Set<string>;
+    stepTrackers: StepTracker[];
+    elementRegistry: Record<string, ElementRegistryEntry | undefined>;
+    legendToggledOff: Set<string>;
+    sceneSliders: Record<string, SceneSlider | undefined>;
+    sceneData: Record<string, unknown>;
+    // Only the four opacities this module reads; the panel owns the rest.
+    displayParams: { vectorOpacity: number; arrowOpacity: number;
+                     planeOpacity: number; labelOpacity: number; lineOpacity: number };
+    animatedElementPos: Record<string, number[]>;
+    activeAnimExprs: AnimExprEntry[];
+    activeAnimUpdaters: unknown[];
+    sceneStartTime: number;
+    followCamState: unknown;
+    followCamSavedControls: { enableDamping?: boolean; dampingFactor?: number } | null;
+    cameraExprState: unknown;
+    cameraExprStartTime: number;
+    CAMERA_VIEWS: Record<string, { position: number[]; target: number[]; up: number[] }>;
+    // `true` while auto-play is starting up, before the first timer id lands —
+    // startAutoPlay() sets the flag so a re-entrant call bails, then
+    // scheduleNextAutoPlay() overwrites it with the real handle.
+    autoPlayTimer: ReturnType<typeof setTimeout> | boolean | null;
+    proofSyncEnabled: boolean;
+    proofSpec: unknown[] | null;
+    _sceneJsTrustState: string | null;
+    _sceneJsIssues: unknown[];
+    _sceneIsUnsafe: boolean;
+    _sceneUnsafeExplanation: string;
+    _activeDomainFunctions: Record<string, unknown>;
+}
+const sceneState = state as unknown as SceneLoaderState;
 
 const AUTO_PLAY_DEFAULT_DURATION = 3000;
 
 // Wire up the navigation function into context-browser so tree clicks work.
-setNavigateFn((si, sti) => navigateTo(si, sti));
+setNavigateFn((si: number, sti: number) => navigateTo(si, sti));
 
 // ----- Incremental Step Rendering -----
 
-function snapshotBefore() {
+function snapshotBefore(): RegistrySnapshot {
     return {
-        arrows:    state.arrowMeshes.length,
-        labels:    state.labels.length,
-        planes:    state.planeMeshes.length,
-        lines:     state.lineNodes.length,
-        vecLines:  state.vectorLineNodes.length,
-        axisLines: state.axisLineNodes.length,
-        points:    state.pointNodes.length,
+        arrows:    sceneState.arrowMeshes.length,
+        labels:    sceneState.labels.length,
+        planes:    sceneState.planeMeshes.length,
+        lines:     sceneState.lineNodes.length,
+        vecLines:  sceneState.vectorLineNodes.length,
+        axisLines: sceneState.axisLineNodes.length,
+        points:    sceneState.pointNodes.length,
     };
 }
 
-function buildSubTracker(group, before) {
+function buildSubTracker(group: MathBoxNode, before: RegistrySnapshot): SubTracker {
     return {
         group,
-        arrowMeshes:     state.arrowMeshes.slice(before.arrows),
-        labels:          state.labels.slice(before.labels),
-        planeMeshes:     state.planeMeshes.slice(before.planes),
-        lineNodes:       state.lineNodes.slice(before.lines),
-        vectorLineNodes: state.vectorLineNodes.slice(before.vecLines),
-        axisLineNodes:   state.axisLineNodes.slice(before.axisLines),
-        pointNodes:      state.pointNodes.slice(before.points),
+        arrowMeshes:     sceneState.arrowMeshes.slice(before.arrows),
+        labels:          sceneState.labels.slice(before.labels),
+        planeMeshes:     sceneState.planeMeshes.slice(before.planes),
+        lineNodes:       sceneState.lineNodes.slice(before.lines),
+        vectorLineNodes: sceneState.vectorLineNodes.slice(before.vecLines),
+        axisLineNodes:   sceneState.axisLineNodes.slice(before.axisLines),
+        pointNodes:      sceneState.pointNodes.slice(before.points),
     };
 }
 
@@ -59,7 +269,7 @@ function buildSubTracker(group, before) {
 // or a `text` element's own text content (text objects carry no `label`). Null
 // for elements whose label is dynamic (labelExpr/textExpr) — those are named from
 // the live rendered label at click time instead.
-function elementDisplayName(el) {
+function elementDisplayName(el: Element): string | null {
     // A dynamic label (labelExpr/textExpr) is named from the live rendered label
     // at click time, so return null here even when a static label also exists —
     // otherwise the stale static value would win.
@@ -70,11 +280,11 @@ function elementDisplayName(el) {
 // Does the element render a label at all — static (`label`/`text`) or dynamic
 // (`labelExpr`/`textExpr`, e.g. an animated point's live "6.3 km/s")? Such objects
 // are eligible for the Ask-AI button and so must be registered.
-function elementHasLabelSource(el) {
+function elementHasLabelSource(el: Element): boolean {
     return !!(elementDisplayName(el) || el.labelExpr || el.textExpr);
 }
 
-export function renderStepAdd(elements, sliderDefs) {
+export function renderStepAdd(elements: Element[], sliderDefs: SliderDef[] | undefined): StepTracker {
     // Register sliders first (so expressions can reference them during render)
     const { ids: sliderIds, prevStates: prevSliderStates } = registerSliders(sliderDefs);
     if (sliderIds.length > 0) {
@@ -85,23 +295,24 @@ export function renderStepAdd(elements, sliderDefs) {
     const before = snapshotBefore();
 
     // Create a MathBox group for this step's elements
-    const group = state.sceneView.group();
+    const group = sceneState.sceneView.group();
 
     // Auto-assign IDs to labeled elements so they're toggleable via legend
     let autoIdCounter = 0;
-    const renderResults = [];
-    const addedElementIds = [];
-    let replacedElements = null;
+    const renderResults: RenderResult[] = [];
+    const addedElementIds: string[] = [];
+    let replacedElements: Record<string, ElementRegistryEntry> | null = null;
     for (const el of elements) {
         if (!el.id && (el.prompt || (elementHasLabelSource(el) && el.type !== 'axis' && el.type !== 'grid'))) {
             el.id = '__auto_' + (autoIdCounter++) + '_' + Date.now();
         }
         // If this step reuses an element id, hide any previously visible instance first.
         // Save the old registry entry so removeStepTracker can restore it on backward nav.
-        if (el.id && state.elementRegistry[el.id]) {
+        // Non-null throughout: the branch is gated on the entry existing.
+        if (el.id && sceneState.elementRegistry[el.id]) {
             if (!replacedElements) replacedElements = {};
-            replacedElements[el.id] = state.elementRegistry[el.id];
-            if (!state.elementRegistry[el.id].hidden) hideElementById(el.id);
+            replacedElements[el.id] = sceneState.elementRegistry[el.id]!;
+            if (!sceneState.elementRegistry[el.id]!.hidden) hideElementById(el.id);
         }
         const elBefore = el.id ? snapshotBefore() : null;
         const elGroup = el.id ? group.group() : group;
@@ -109,15 +320,21 @@ export function renderStepAdd(elements, sliderDefs) {
         try { result = renderElement(el, elGroup); } catch (e) {
             console.error('Error rendering step element:', el, e);
         }
-        if (result) renderResults.push(result);
+        // renderElement()'s return type is the union of every renderer's result;
+        // only the teardown fields in RenderResult are ever read off it here.
+        if (result) renderResults.push(result as RenderResult);
         if (el.id) {
             addedElementIds.push(el.id);
-            const subTracker = buildSubTracker(elGroup, elBefore);
-            state.elementRegistry[el.id] = { tracker: subTracker, hidden: false, type: el.type, prompt: el.prompt || null, label: elementDisplayName(el) };
+            // Non-null: elBefore was snapshotted under the same `el.id` guard.
+            const subTracker = buildSubTracker(elGroup, elBefore!);
+            sceneState.elementRegistry[el.id] = { tracker: subTracker, hidden: false, type: el.type, prompt: el.prompt || null, label: elementDisplayName(el) };
         }
     }
 
-    const tracker = buildSubTracker(group, before);
+    // buildSubTracker returns the registry slice; a step tracker is that plus
+    // the undo bookkeeping assigned immediately below. Asserted rather than
+    // built in one literal so the field order stays exactly as it was.
+    const tracker = buildSubTracker(group, before) as StepTracker;
     tracker.removedIds = [];
     tracker.removedSliders = {};
     tracker.replacedElements = replacedElements;
@@ -136,7 +353,7 @@ export function renderStepAdd(elements, sliderDefs) {
  * Non-kept overlays from previous steps are removed first.
  * Kept overlays persist until the tracker is popped (backward nav).
  */
-function applyTrackerInfoOverlays(tracker, step) {
+function applyTrackerInfoOverlays(tracker: StepTracker, step: SceneStep): void {
     // Remove non-kept info overlays from previous steps
     removeStepInfoOverlays();
     tracker.infoIds = [];
@@ -150,15 +367,15 @@ function applyTrackerInfoOverlays(tracker, step) {
 }
 
 /** Remove info overlays that were added by this tracker (backward navigation). */
-function undoTrackerInfoOverlays(tracker) {
+function undoTrackerInfoOverlays(tracker: StepTracker): void {
     if (!tracker.infoIds) return;
     for (const id of tracker.infoIds) {
         removeInfoOverlay(id);
     }
 }
 
-export function hideElementById(id) {
-    const reg = state.elementRegistry[id];
+export function hideElementById(id: string): void {
+    const reg = sceneState.elementRegistry[id];
     if (!reg || reg.hidden) return;
     reg.hidden = true;
     const t = reg.tracker;
@@ -167,17 +384,17 @@ export function hideElementById(id) {
         for (const entry of t.arrowMeshes) { entry.mesh.visible = false; entry.mesh._hiddenByRemove = true; }
         for (const m of t.planeMeshes) { m.visible = false; m._hiddenByRemove = true; }
         for (const lbl of t.labels) lbl.el.style.display = 'none';
-        for (const entry of t.pointNodes) { try { entry.node.set('visible', false); } catch(e) {} }
+        for (const entry of t.pointNodes) { try { entry.node!.set('visible', false); } catch(e) {} }
         if (t.group) { try { t.group.set('visible', false); } catch(e) {} }
     });
     // Hide arrow cones immediately to prevent animated orphans
     for (const entry of t.arrowMeshes) { entry.mesh.visible = false; entry.mesh._hiddenByRemove = true; }
     for (const m of t.planeMeshes) { m.visible = false; m._hiddenByRemove = true; }
-    for (const entry of (t.pointNodes || [])) { try { entry.node.set('visible', false); } catch(e) {} }
+    for (const entry of (t.pointNodes || [])) { try { entry.node!.set('visible', false); } catch(e) {} }
 }
 
-export function showElementById(id) {
-    const reg = state.elementRegistry[id];
+export function showElementById(id: string): void {
+    const reg = sceneState.elementRegistry[id];
     if (!reg || !reg.hidden) return;
     reg.hidden = false;
     const t = reg.tracker;
@@ -187,7 +404,7 @@ export function showElementById(id) {
     for (const entry of t.arrowMeshes) entry.mesh.visible = true;
     for (const m of t.planeMeshes) m.visible = true;
     for (const lbl of t.labels) lbl.el.style.display = '';
-    for (const entry of (t.pointNodes || [])) { try { entry.node.set('visible', true); } catch(e) {} }
+    for (const entry of (t.pointNodes || [])) { try { entry.node!.set('visible', true); } catch(e) {} }
     if (t.group) { try { t.group.set('visible', true); } catch(e) {} }
 
     fadeInTracker(t);
@@ -197,15 +414,15 @@ export function showElementById(id) {
 window._algebenchHideElementById = hideElementById;
 window._algebenchShowElementById = showElementById;
 
-function removeTrackSliders(tracker) {
+function removeTrackSliders(tracker: StepTracker): void {
     const ownIds = new Set(tracker.sliderIds || []);
     let changed = false;
-    for (const id of Object.keys(state.sceneSliders)) {
+    for (const id of Object.keys(sceneState.sceneSliders)) {
         if (ownIds.has(id)) continue;
         if (!tracker.removedSliders[id]) {
             stopSliderLoop(id);
-            tracker.removedSliders[id] = { ...state.sceneSliders[id] };
-            delete state.sceneSliders[id];
+            tracker.removedSliders[id] = { ...sceneState.sceneSliders[id]! };
+            delete sceneState.sceneSliders[id];
             changed = true;
         }
     }
@@ -215,26 +432,26 @@ function removeTrackSliders(tracker) {
     }
 }
 
-function removeTrackSliderById(id, tracker) {
+function removeTrackSliderById(id: string, tracker: StepTracker): boolean {
     if (tracker.sliderIds && tracker.sliderIds.includes(id)) return false;
-    if (state.sceneSliders[id] && !tracker.removedSliders[id]) {
+    if (sceneState.sceneSliders[id] && !tracker.removedSliders[id]) {
         stopSliderLoop(id);
-        tracker.removedSliders[id] = { ...state.sceneSliders[id] };
-        delete state.sceneSliders[id];
+        tracker.removedSliders[id] = { ...sceneState.sceneSliders[id]! };
+        delete sceneState.sceneSliders[id];
         return true;
     }
     return false;
 }
 
-function processStepRemoves(removeList, tracker) {
+function processStepRemoves(removeList: SceneStep['remove'], tracker: StepTracker): void {
     if (!removeList || !Array.isArray(removeList)) return;
     const ownIds = new Set(tracker.elementIds || []);
     let slidersChanged = false;
     for (const item of removeList) {
         if (item.id === '*' || item.type === '*') {
-            for (const id of Object.keys(state.elementRegistry)) {
+            for (const id of Object.keys(sceneState.elementRegistry)) {
                 if (ownIds.has(id)) continue;
-                if (!state.elementRegistry[id].hidden) {
+                if (!sceneState.elementRegistry[id]!.hidden) {
                     hideElementById(id);
                     tracker.removedIds.push(id);
                 }
@@ -248,7 +465,7 @@ function processStepRemoves(removeList, tracker) {
             continue;
         }
         if (item.id) {
-            if (!ownIds.has(item.id) && state.elementRegistry[item.id] && !state.elementRegistry[item.id].hidden) {
+            if (!ownIds.has(item.id) && sceneState.elementRegistry[item.id] && !sceneState.elementRegistry[item.id]!.hidden) {
                 hideElementById(item.id);
                 tracker.removedIds.push(item.id);
             }
@@ -261,9 +478,9 @@ function processStepRemoves(removeList, tracker) {
             continue;
         }
         if (item.type) {
-            for (const [id, reg] of Object.entries(state.elementRegistry)) {
+            for (const [id, reg] of Object.entries(sceneState.elementRegistry)) {
                 if (ownIds.has(id)) continue;
-                if (reg.type === item.type && !reg.hidden) {
+                if (reg!.type === item.type && !reg!.hidden) {
                     hideElementById(id);
                     tracker.removedIds.push(id);
                 }
@@ -276,11 +493,11 @@ function processStepRemoves(removeList, tracker) {
     }
 }
 
-function undoStepRemoves(tracker) {
+function undoStepRemoves(tracker: StepTracker): void {
     if (!tracker.removedIds) return;
     const stillRemoved = new Set();
     const stillRemovedSliders = new Set();
-    for (const t of state.stepTrackers) {
+    for (const t of sceneState.stepTrackers) {
         if (t === tracker) break;
         if (t.removedIds) {
             for (const id of t.removedIds) stillRemoved.add(id);
@@ -297,8 +514,8 @@ function undoStepRemoves(tracker) {
     if (tracker.removedSliders) {
         let slidersChanged = false;
         for (const [id, def] of Object.entries(tracker.removedSliders)) {
-            if (!stillRemovedSliders.has(id) && !state.sceneSliders[id]) {
-                state.sceneSliders[id] = def;
+            if (!stillRemovedSliders.has(id) && !sceneState.sceneSliders[id]) {
+                sceneState.sceneSliders[id] = def;
                 slidersChanged = true;
             }
         }
@@ -309,16 +526,16 @@ function undoStepRemoves(tracker) {
     }
 }
 
-function removeStepTracker(tracker) {
+function removeStepTracker(tracker: StepTracker): void {
     if (tracker.sliderIds && tracker.sliderIds.length > 0) {
-        const stillNeeded = new Set(state.stepTrackers.flatMap(t => t.sliderIds || []));
+        const stillNeeded = new Set(sceneState.stepTrackers.flatMap(t => t.sliderIds || []));
         const toRemove = tracker.sliderIds.filter(id => !stillNeeded.has(id));
         // Restore previous slider states for sliders that aren't being removed
         // (i.e., sliders that existed before this step overrode their defaults).
         if (tracker.prevSliderStates) {
             for (const [id, prev] of Object.entries(tracker.prevSliderStates)) {
-                if (!toRemove.includes(id) && state.sceneSliders[id]) {
-                    Object.assign(state.sceneSliders[id], prev);
+                if (!toRemove.includes(id) && sceneState.sceneSliders[id]) {
+                    Object.assign(sceneState.sceneSliders[id], prev);
                 }
             }
         }
@@ -343,11 +560,11 @@ function removeStepTracker(tracker) {
     // restore it if no remaining tracker still has the id in its removedIds.
     if (tracker.replacedElements) {
         const stillRemoved = new Set();
-        for (const t of state.stepTrackers) {
+        for (const t of sceneState.stepTrackers) {
             if (t.removedIds) for (const id of t.removedIds) stillRemoved.add(id);
         }
         for (const [id, savedReg] of Object.entries(tracker.replacedElements)) {
-            state.elementRegistry[id] = savedReg;
+            sceneState.elementRegistry[id] = savedReg;
             if (!stillRemoved.has(id)) showElementById(id);
         }
     }
@@ -360,8 +577,8 @@ function removeStepTracker(tracker) {
     if (tracker.elementIds) {
         for (const id of tracker.elementIds) {
             if (tracker.replacedElements && tracker.replacedElements[id]) continue;
-            delete state.elementRegistry[id];
-            state.legendToggledOff.delete(id);
+            delete sceneState.elementRegistry[id];
+            sceneState.legendToggledOff.delete(id);
         }
     }
 
@@ -371,11 +588,11 @@ function removeStepTracker(tracker) {
         }
 
         for (const entry of tracker.arrowMeshes) {
-            state.three.scene.remove(entry.mesh);
+            sceneState.three.scene.remove(entry.mesh);
             entry.mesh.geometry.dispose();
             entry.mesh.material.dispose();
-            const idx = state.arrowMeshes.indexOf(entry);
-            if (idx >= 0) state.arrowMeshes.splice(idx, 1);
+            const idx = sceneState.arrowMeshes.indexOf(entry);
+            if (idx >= 0) sceneState.arrowMeshes.splice(idx, 1);
         }
 
         // Animated vectors create arrow meshes LAZILY (a vector that starts at
@@ -386,51 +603,51 @@ function removeStepTracker(tracker) {
         // meshes is harmless: scene.remove and dispose are idempotent.)
         for (const r of tracker.renderResults || []) {
             if (!r || !r._arrowOwner) continue;
-            for (let i = state.arrowMeshes.length - 1; i >= 0; i--) {
-                const entry = state.arrowMeshes[i];
+            for (let i = sceneState.arrowMeshes.length - 1; i >= 0; i--) {
+                const entry = sceneState.arrowMeshes[i]!;
                 if (entry.owner === r._arrowOwner) {
-                    state.three.scene.remove(entry.mesh);
+                    sceneState.three.scene.remove(entry.mesh);
                     entry.mesh.geometry.dispose();
                     entry.mesh.material.dispose();
-                    state.arrowMeshes.splice(i, 1);
+                    sceneState.arrowMeshes.splice(i, 1);
                 }
             }
         }
 
         for (const lbl of tracker.labels) {
             if (lbl.el.parentNode) lbl.el.parentNode.removeChild(lbl.el);
-            const idx = state.labels.indexOf(lbl);
-            if (idx >= 0) state.labels.splice(idx, 1);
+            const idx = sceneState.labels.indexOf(lbl);
+            if (idx >= 0) sceneState.labels.splice(idx, 1);
         }
 
         for (const m of tracker.planeMeshes) {
-            state.three.scene.remove(m);
+            sceneState.three.scene.remove(m);
             m.geometry.dispose();
             m.material.dispose();
-            const idx = state.planeMeshes.indexOf(m);
-            if (idx >= 0) state.planeMeshes.splice(idx, 1);
+            const idx = sceneState.planeMeshes.indexOf(m);
+            if (idx >= 0) sceneState.planeMeshes.splice(idx, 1);
         }
 
         for (const entry of tracker.lineNodes) {
-            const idx = state.lineNodes.indexOf(entry);
-            if (idx >= 0) state.lineNodes.splice(idx, 1);
+            const idx = sceneState.lineNodes.indexOf(entry);
+            if (idx >= 0) sceneState.lineNodes.splice(idx, 1);
         }
         for (const entry of tracker.vectorLineNodes) {
-            const idx = state.vectorLineNodes.indexOf(entry);
-            if (idx >= 0) state.vectorLineNodes.splice(idx, 1);
+            const idx = sceneState.vectorLineNodes.indexOf(entry);
+            if (idx >= 0) sceneState.vectorLineNodes.splice(idx, 1);
         }
         for (const entry of tracker.axisLineNodes) {
-            const idx = state.axisLineNodes.indexOf(entry);
-            if (idx >= 0) state.axisLineNodes.splice(idx, 1);
+            const idx = sceneState.axisLineNodes.indexOf(entry);
+            if (idx >= 0) sceneState.axisLineNodes.splice(idx, 1);
         }
         for (const entry of (tracker.pointNodes || [])) {
-            const idx = state.pointNodes.indexOf(entry);
-            if (idx >= 0) state.pointNodes.splice(idx, 1);
+            const idx = sceneState.pointNodes.indexOf(entry);
+            if (idx >= 0) sceneState.pointNodes.splice(idx, 1);
         }
     });
 }
 
-function fadeInTracker(tracker, duration) {
+function fadeInTracker(tracker: SubTracker, duration?: number): void {
     duration = duration || 350;
     const startTime = performance.now();
 
@@ -447,42 +664,44 @@ function fadeInTracker(tracker, duration) {
         lbl.el.style.opacity = '0';
     }
     for (const entry of tracker.lineNodes) {
-        try { entry.node.set('opacity', 0); } catch(e) {}
+        try { entry.node!.set('opacity', 0); } catch(e) {}
     }
     for (const entry of tracker.vectorLineNodes) {
-        try { entry.node.set('opacity', 0); } catch(e) {}
+        try { entry.node!.set('opacity', 0); } catch(e) {}
     }
     for (const entry of (tracker.pointNodes || [])) {
-        try { entry.node.set('opacity', 0); } catch(e) {}
+        try { entry.node!.set('opacity', 0); } catch(e) {}
     }
 
-    function step(now) {
-        const t = Math.min((now - startTime) / duration, 1);
+    function step(now: number): void {
+        // Non-null: `duration` was defaulted above; the narrowing just does not
+        // survive into this hoisted declaration.
+        const t = Math.min((now - startTime) / duration!, 1);
         const ease = t * t * (3 - 2 * t); // smoothstep
 
         for (const entry of tracker.arrowMeshes) {
             const baseOp = (entry.mesh && entry.mesh.userData && typeof entry.mesh.userData.baseOpacity === 'number')
                 ? entry.mesh.userData.baseOpacity : 1;
-            const globalOp = entry.isShaft ? state.displayParams.vectorOpacity : state.displayParams.arrowOpacity;
+            const globalOp = entry.isShaft ? sceneState.displayParams.vectorOpacity : sceneState.displayParams.arrowOpacity;
             entry.mesh.material.opacity = ease * Math.max(0, Math.min(1, baseOp * globalOp));
         }
         for (const m of tracker.planeMeshes) {
-            const targetOp = m.userData.targetOpacity !== undefined ? m.userData.targetOpacity : state.displayParams.planeOpacity;
+            const targetOp = m.userData.targetOpacity !== undefined ? m.userData.targetOpacity : sceneState.displayParams.planeOpacity;
             m.material.opacity = ease * targetOp;
         }
         for (const lbl of tracker.labels) {
-            lbl.el.style.opacity = String(ease * state.displayParams.labelOpacity);
+            lbl.el.style.opacity = String(ease * sceneState.displayParams.labelOpacity);
         }
         for (const entry of tracker.lineNodes) {
             const baseOp = (entry && typeof entry.baseOpacity === 'number') ? entry.baseOpacity : 1;
-            try { entry.node.set('opacity', ease * baseOp * state.displayParams.lineOpacity); } catch(e) {}
+            try { entry.node!.set('opacity', ease * baseOp * sceneState.displayParams.lineOpacity); } catch(e) {}
         }
         for (const entry of tracker.vectorLineNodes) {
             const baseOp = (entry && typeof entry.baseOpacity === 'number') ? entry.baseOpacity : 1;
-            try { entry.node.set('opacity', ease * baseOp * state.displayParams.vectorOpacity); } catch(e) {}
+            try { entry.node!.set('opacity', ease * baseOp * sceneState.displayParams.vectorOpacity); } catch(e) {}
         }
         for (const entry of (tracker.pointNodes || [])) {
-            try { entry.node.set('opacity', ease); } catch(e) {}
+            try { entry.node!.set('opacity', ease); } catch(e) {}
         }
 
         if (t < 1) requestAnimationFrame(step);
@@ -495,34 +714,37 @@ function fadeInTracker(tracker, duration) {
     requestAnimationFrame(step);
 }
 
-function fadeOutTracker(tracker, duration, onComplete) {
+function fadeOutTracker(tracker: SubTracker, duration?: number, onComplete?: () => void): void {
     duration = duration || 200;
     const startTime = performance.now();
 
     const arrowOps = tracker.arrowMeshes.map(e => e.mesh.material.opacity);
     const planeOps = tracker.planeMeshes.map(m => m.material.opacity);
 
-    function step(now) {
-        const t = Math.min((now - startTime) / duration, 1);
+    function step(now: number): void {
+        // Non-null for the same reason as fadeInTracker's step().
+        const t = Math.min((now - startTime) / duration!, 1);
         const ease = 1 - t * t; // inverse quadratic
 
         for (let i = 0; i < tracker.arrowMeshes.length; i++) {
-            tracker.arrowMeshes[i].mesh.material.opacity = arrowOps[i] * ease;
+            tracker.arrowMeshes[i]!.mesh.material.opacity = arrowOps[i]! * ease;
         }
         for (let i = 0; i < tracker.planeMeshes.length; i++) {
-            tracker.planeMeshes[i].material.opacity = planeOps[i] * ease;
+            tracker.planeMeshes[i]!.material.opacity = planeOps[i]! * ease;
         }
         for (const lbl of tracker.labels) {
-            lbl.el.style.opacity = String(parseFloat(lbl.el.style.opacity || 1) * ease);
+            // `|| 1` fed a number to parseFloat, which stringifies it; String()
+            // makes that same coercion explicit.
+            lbl.el.style.opacity = String(parseFloat(lbl.el.style.opacity || String(1)) * ease);
         }
         for (const entry of tracker.lineNodes) {
-            try { entry.node.set('opacity', (entry.node.get('opacity') || 1) * ease); } catch(e) {}
+            try { entry.node!.set('opacity', ((entry.node!.get('opacity') as number) || 1) * ease); } catch(e) {}
         }
         for (const entry of tracker.vectorLineNodes) {
-            try { entry.node.set('opacity', (entry.node.get('opacity') || 1) * ease); } catch(e) {}
+            try { entry.node!.set('opacity', ((entry.node!.get('opacity') as number) || 1) * ease); } catch(e) {}
         }
         for (const entry of (tracker.pointNodes || [])) {
-            try { entry.node.set('opacity', (entry.node.get('opacity') || 1) * ease); } catch(e) {}
+            try { entry.node!.set('opacity', ((entry.node!.get('opacity') as number) || 1) * ease); } catch(e) {}
         }
 
         if (t < 1) {
@@ -536,69 +758,71 @@ function fadeOutTracker(tracker, duration, onComplete) {
 
 // ----- Scene Loader -----
 
-export async function loadScene(spec) {
+export async function loadScene(spec: SceneSpec | null | undefined): Promise<void> {
     // Clear MathBox elements
-    const root = state.mathbox.select('*');
+    const root = sceneState.mathbox.select('*');
     if (root) root.remove();
 
     // Clear 3D arrow meshes
-    for (const entry of state.arrowMeshes) {
-        state.three.scene.remove(entry.mesh);
+    for (const entry of sceneState.arrowMeshes) {
+        sceneState.three.scene.remove(entry.mesh);
         entry.mesh.geometry.dispose();
         entry.mesh.material.dispose();
     }
-    state.arrowMeshes = [];
-    state.axisLineNodes = [];
-    state.vectorLineNodes = [];
-    state.lineNodes = [];
-    for (const m of state.planeMeshes) { state.three.scene.remove(m); m.geometry.dispose(); m.material.dispose(); }
-    state.planeMeshes = [];
-    state.pointNodes = [];
-    state._planeMeshSerial = 0;
+    sceneState.arrowMeshes = [];
+    sceneState.axisLineNodes = [];
+    sceneState.vectorLineNodes = [];
+    sceneState.lineNodes = [];
+    for (const m of sceneState.planeMeshes) { sceneState.three.scene.remove(m); m.geometry.dispose(); m.material.dispose(); }
+    sceneState.planeMeshes = [];
+    sceneState.pointNodes = [];
+    sceneState._planeMeshSerial = 0;
 
     clearLabels();
-    state.followCamState = null;
-    state.cameraExprState = null;
-    state.cameraExprStartTime = 0;
-    if (state.controls && state.followCamSavedControls) {
-        if (Object.prototype.hasOwnProperty.call(state.controls, 'enableDamping')) {
-            state.controls.enableDamping = state.followCamSavedControls.enableDamping;
-            if (Number.isFinite(state.followCamSavedControls.dampingFactor)) {
-                state.controls.dampingFactor = state.followCamSavedControls.dampingFactor;
+    sceneState.followCamState = null;
+    sceneState.cameraExprState = null;
+    sceneState.cameraExprStartTime = 0;
+    if (sceneState.controls && sceneState.followCamSavedControls) {
+        if (Object.prototype.hasOwnProperty.call(sceneState.controls, 'enableDamping')) {
+            sceneState.controls.enableDamping = sceneState.followCamSavedControls.enableDamping;
+            if (Number.isFinite(sceneState.followCamSavedControls.dampingFactor)) {
+                sceneState.controls.dampingFactor = sceneState.followCamSavedControls.dampingFactor;
             }
         }
     }
-    state.followCamSavedControls = null;
+    sceneState.followCamSavedControls = null;
     updateFollowAngleLockButtonState();
-    for (const k in state.animatedElementPos) delete state.animatedElementPos[k];
-    state.activeAnimExprs = [];
-    state.activeAnimUpdaters = [];
-    state.sceneStartTime = performance.now();
+    for (const k in sceneState.animatedElementPos) delete sceneState.animatedElementPos[k];
+    sceneState.activeAnimExprs = [];
+    sceneState.activeAnimUpdaters = [];
+    sceneState.sceneStartTime = performance.now();
     clearWorldStarfield();
     clearWorldSkybox();
-    state.currentSpec = spec;
+    sceneState.currentSpec = spec;
     // Merge data tables: lesson-level first, scene-level overrides
-    const lessonData = (state.lessonSpec && state.lessonSpec.data) || {};
+    const lessonData = (sceneState.lessonSpec && sceneState.lessonSpec.data) || {};
     const sceneData = (spec && spec.data) || {};
-    state.sceneData = { ...lessonData, ...sceneData };
+    sceneState.sceneData = { ...lessonData, ...sceneData };
     setActiveSceneFunctions(spec);
     setActiveVirtualTimeExpr(spec, -1);
     updateTitle(spec);
     updateExplanationPanel(spec);
-    loadProof(state.lessonSpec || spec, state.currentSceneIndex, -1);
+    loadProof(sceneState.lessonSpec || spec, sceneState.currentSceneIndex, -1);
 
     // Show/hide empty state
-    const emptyState = document.getElementById('empty-state');
+    // Non-null: #empty-state is part of index.html's static markup. A missing
+    // one threw in the JS and must keep throwing.
+    const emptyState = document.getElementById('empty-state')!;
     if (!spec || !spec.elements || spec.elements.length === 0) {
-        state.currentRange = [[-5, 5], [-5, 5], [-5, 5]];
-        state.currentScale = [1, 1, 1];
+        sceneState.currentRange = [[-5, 5], [-5, 5], [-5, 5]];
+        sceneState.currentScale = [1, 1, 1];
         buildCameraButtons(spec);
         emptyState.style.display = 'block';
-        const view = state.mathbox.cartesian({
-            range: state.currentRange,
-            scale: state.currentScale,
+        const view = sceneState.mathbox.cartesian({
+            range: sceneState.currentRange,
+            scale: sceneState.currentScale,
         });
-        state.sceneView = view;
+        sceneState.sceneView = view;
         // Import inline renderers for the default grid/axes
         const { renderGrid, renderAxis } = await _importDefaultRenderers();
         renderGrid({ plane: 'xz', color: [0.3, 0.3, 0.5], opacity: 0.1, divisions: 10 }, view);
@@ -610,16 +834,16 @@ export async function loadScene(spec) {
     }
     emptyState.style.display = 'none';
 
-    state.currentRange = spec.range || [[-5, 5], [-5, 5], [-5, 5]];
-    state.currentScale = spec.scale || [1, 1, 1];
-    configureWorldStarfield(spec);
+    sceneState.currentRange = spec.range || [[-5, 5], [-5, 5], [-5, 5]];
+    sceneState.currentScale = spec.scale || [1, 1, 1];
+    configureWorldStarfield(spec as Parameters<typeof configureWorldStarfield>[0]);
     buildCameraButtons(spec);
 
-    const view = state.mathbox.cartesian({
-        range: state.currentRange,
-        scale: state.currentScale,
+    const view = sceneState.mathbox.cartesian({
+        range: sceneState.currentRange,
+        scale: sceneState.currentScale,
     });
-    state.sceneView = view;
+    sceneState.sceneView = view;
 
     let baseAutoIdCounter = 0;
     for (const el of spec.elements) {
@@ -635,8 +859,8 @@ export async function loadScene(spec) {
         try {
             renderElement(el, elGroup);
             if (el.id) {
-                const subTracker = buildSubTracker(elGroup, elBefore);
-                state.elementRegistry[el.id] = { tracker: subTracker, hidden: false, type: el.type, prompt: el.prompt || null, label: dn };
+                const subTracker = buildSubTracker(elGroup, elBefore!);
+                sceneState.elementRegistry[el.id] = { tracker: subTracker, hidden: false, type: el.type, prompt: el.prompt || null, label: dn };
             }
         } catch (e) {
             console.error('Error rendering element:', el, e);
@@ -649,21 +873,24 @@ export async function loadScene(spec) {
         const up = (spec.camera && Array.isArray(spec.camera.up) && spec.camera.up.length === 3)
             ? spec.camera.up
             : [0, 1, 0];
-        state.camera.up.set(up[0], up[1], up[2]);
-        const pos = dataCameraToWorld(spec.camera.position || DEFAULT_CAMERA.position);
-        const tgt = dataCameraToWorld(spec.camera.target || DEFAULT_CAMERA.target);
-        state.camera.position.set(pos[0], pos[1], pos[2]);
-        if (state.controls) {
-            state.controls.target.set(tgt[0], tgt[1], tgt[2]);
-            state.controls.update();
+        // Non-null throughout: initMathBox() creates the camera before any scene
+        // loads, and the JS dereferenced it unguarded. The index assertions are
+        // the `length === 3` / DEFAULT_CAMERA fallbacks above, restated.
+        sceneState.camera!.up.set(up[0]!, up[1]!, up[2]!);
+        const pos = dataCameraToWorld(spec.camera.position as Vec3 || DEFAULT_CAMERA.position);
+        const tgt = dataCameraToWorld(spec.camera.target as Vec3 || DEFAULT_CAMERA.target);
+        sceneState.camera!.position.set(pos[0]!, pos[1]!, pos[2]!);
+        if (sceneState.controls) {
+            sceneState.controls.target.set(tgt[0]!, tgt[1]!, tgt[2]!);
+            sceneState.controls.update();
         }
     }
 }
 
 // Helper to dynamically import axis/grid renderers for the empty state.
 // These are already imported in objects/index.js but we need them synchronously-ish here.
-let _defaultRenderersCache = null;
-async function _importDefaultRenderers() {
+let _defaultRenderersCache: DefaultRenderers | null = null;
+async function _importDefaultRenderers(): Promise<DefaultRenderers> {
     if (_defaultRenderersCache) return _defaultRenderersCache;
     const mod = await import('/objects/index.js');
     // renderGrid and renderAxis are not individually exported from index.js,
@@ -677,27 +904,32 @@ async function _importDefaultRenderers() {
 
 // ----- Lesson Navigation -----
 
-export function isLessonFormat(spec) {
-    return spec && Array.isArray(spec.scenes) && spec.scenes.length > 0;
+export function isLessonFormat(spec: unknown) {
+    // Return type deliberately left to inference rather than pinned to boolean:
+    // `s &&` yields the falsy value itself, and every caller uses the result as
+    // a condition. Narrowing it to `boolean` would need a `!!` that changes what
+    // this returns.
+    const s = spec as { scenes?: unknown[] } | null | undefined;
+    return s && Array.isArray(s.scenes) && s.scenes.length > 0;
 }
 
-export async function loadLesson(spec) {
+export async function loadLesson(spec: LessonSpec | null | undefined): Promise<void> {
     // --- Trust check ---
-    state._sceneJsTrustState = null;
-    state._sceneJsIssues = [];
-    state._sceneIsUnsafe = false;
-    state._sceneUnsafeExplanation = '';
+    sceneState._sceneJsTrustState = null;
+    sceneState._sceneJsIssues = [];
+    sceneState._sceneIsUnsafe = false;
+    sceneState._sceneUnsafeExplanation = '';
     if (spec) {
-        state._sceneIsUnsafe = spec.unsafe === true;
-        state._sceneUnsafeExplanation = spec.unsafeExplanation || '';
+        sceneState._sceneIsUnsafe = spec.unsafe === true;
+        sceneState._sceneUnsafeExplanation = spec.unsafeExplanation || '';
         const scanned = scanSpecForUnsafeJs(spec);
-        const needsDialog = state._sceneIsUnsafe || scanned;
+        const needsDialog = sceneState._sceneIsUnsafe || scanned;
         if (needsDialog) {
             const explanation = spec.unsafeExplanation ||
                 'This scene contains native JavaScript expressions that execute in your browser.\nAllow execution only if you trust the source of this file.';
             const imports = Array.isArray(spec.import) ? spec.import : [];
             const trusted = await showTrustDialog(explanation, imports);
-            state._sceneJsTrustState = trusted ? 'trusted' : 'untrusted';
+            sceneState._sceneJsTrustState = trusted ? 'trusted' : 'untrusted';
         }
     }
     updateJsTrustPill();
@@ -714,23 +946,23 @@ export async function loadLesson(spec) {
     }
 
     if (!isLessonFormat(spec)) {
-        state.lessonSpec = null;
-        state.currentSceneIndex = -1;
-        state.currentStepIndex = -1;
-        state.visitedSteps = new Set();
+        sceneState.lessonSpec = null;
+        sceneState.currentSceneIndex = -1;
+        sceneState.currentStepIndex = -1;
+        sceneState.visitedSteps = new Set();
         stopAutoPlay();
-        state._activeDomainFunctions = {};
+        sceneState._activeDomainFunctions = {};
         await importDomains(spec && spec.import);
         updateDockVisibility();
         loadScene(spec);
         return;
     }
-    state.lessonSpec = spec;
-    state.currentSceneIndex = -1;
-    state.currentStepIndex = -1;
-    state.visitedSteps = new Set();
+    sceneState.lessonSpec = spec;
+    sceneState.currentSceneIndex = -1;
+    sceneState.currentStepIndex = -1;
+    sceneState.visitedSteps = new Set();
     stopAutoPlay();
-    await importDomains(spec.import);
+    await importDomains(spec!.import);
     buildSceneTree(spec);
     updateDockVisibility();
     navigateTo(0, -1);
@@ -748,7 +980,7 @@ const _PROOF_MAX_BYTES = 512 * 1024;
  *  standalone dock. The proof-file step shape (operation / input_latex /
  *  justification) maps onto the lesson proofStep shape (label / math /
  *  justification); per-step graphs are derived on demand from `math`. */
-export function proofFileToLesson(proof, id) {
+export function proofFileToLesson(proof: ProofFile, id: string): LessonSpec {
     const rawSteps = Array.isArray(proof.steps) ? proof.steps : [];
     const steps = rawSteps.map((s, i) => ({
         id: s.id || `step-${i}`,
@@ -786,7 +1018,7 @@ export function proofFileToLesson(proof, id) {
  *  lesson from it (see proofFileToLesson), and load it through the normal lesson
  *  pipeline. Returns true on success. Best-effort/validated: a bad id or malformed
  *  proof is a no-op returning false, so a deeplink never breaks. */
-export async function loadProofAsLesson(id) {
+export async function loadProofAsLesson(id: string): Promise<boolean> {
     if (typeof id !== 'string' || id.includes('..') || !_PROOF_ID_RE.test(id)) return false;
     let proof;
     try {
@@ -803,25 +1035,25 @@ export async function loadProofAsLesson(id) {
     return true;
 }
 
-export function navigateTo(sceneIdx, stepIdx) {
-    if (!state.lessonSpec || !state.lessonSpec.scenes) { return; }
-    const scene = state.lessonSpec.scenes[sceneIdx];
+export function navigateTo(sceneIdx: number, stepIdx: number): void {
+    if (!sceneState.lessonSpec || !sceneState.lessonSpec.scenes) { return; }
+    const scene = sceneState.lessonSpec.scenes[sceneIdx];
     if (!scene) { return; }
 
     const maxStep = (scene.steps ? scene.steps.length : 0) - 1;
     stepIdx = Math.max(-1, Math.min(stepIdx, maxStep));
 
     // Same position — no-op
-    if (sceneIdx === state.currentSceneIndex && stepIdx === state.currentStepIndex) { return; }
+    if (sceneIdx === sceneState.currentSceneIndex && stepIdx === sceneState.currentStepIndex) { return; }
 
-    const sceneChanged = sceneIdx !== state.currentSceneIndex;
+    const sceneChanged = sceneIdx !== sceneState.currentSceneIndex;
 
     if (sceneChanged) {
-        state.stepTrackers = [];
-        state.elementRegistry = {};
-        state.legendToggledOff = new Set();
+        sceneState.stepTrackers = [];
+        sceneState.elementRegistry = {};
+        sceneState.legendToggledOff = new Set();
         stopAllSliderLoops();
-        state.sceneSliders = {};
+        sceneState.sceneSliders = {};
         removeAllInfoOverlays();
         buildSliderOverlay();
 
@@ -842,39 +1074,42 @@ export function navigateTo(sceneIdx, stepIdx) {
 
         for (let i = 0; i <= stepIdx; i++) {
             if (scene.steps && scene.steps[i]) {
-                const step = scene.steps[i];
+                // Non-null: guarded on the same index one line up.
+                const step = scene.steps[i]!;
                 const tracker = renderStepAdd(step.add || [], step.sliders);
                 processStepRemoves(step.remove, tracker);
                 applyTrackerInfoOverlays(tracker, step);
-                state.stepTrackers.push(tracker);
-                state.visitedSteps.add(sceneIdx + ':' + i);
+                sceneState.stepTrackers.push(tracker);
+                sceneState.visitedSteps.add(sceneIdx + ':' + i);
             }
         }
 
         buildLegend(getAllElements(scene, stepIdx));
 
     } else {
-        if (stepIdx > state.currentStepIndex) {
-            for (let i = state.currentStepIndex + 1; i <= stepIdx; i++) {
+        if (stepIdx > sceneState.currentStepIndex) {
+            for (let i = sceneState.currentStepIndex + 1; i <= stepIdx; i++) {
                 if (scene.steps && scene.steps[i]) {
-                    const step = scene.steps[i];
+                    // Non-null: guarded on the same index one line up.
+                    const step = scene.steps[i]!;
                     const tracker = renderStepAdd(step.add || [], step.sliders);
                     processStepRemoves(step.remove, tracker);
                     applyTrackerInfoOverlays(tracker, step);
-                    state.stepTrackers.push(tracker);
-                    state.visitedSteps.add(sceneIdx + ':' + i);
+                    sceneState.stepTrackers.push(tracker);
+                    sceneState.visitedSteps.add(sceneIdx + ':' + i);
                 }
             }
         } else {
-            while (state.stepTrackers.length > stepIdx + 1) {
-                const tracker = state.stepTrackers.pop();
+            while (sceneState.stepTrackers.length > stepIdx + 1) {
+                // Non-null: the while condition proves the stack is non-empty.
+                const tracker = sceneState.stepTrackers.pop()!;
                 undoStepRemoves(tracker);
                 undoTrackerInfoOverlays(tracker);
                 removeStepTracker(tracker);
             }
             // Re-apply info overlays from the step we landed on, since they
             // were removed when a later step called removeStepInfoOverlays().
-            const landingTracker = state.stepTrackers[state.stepTrackers.length - 1];
+            const landingTracker = sceneState.stepTrackers[sceneState.stepTrackers.length - 1];
             if (landingTracker && landingTracker.infoDefs && landingTracker.infoDefs.length > 0) {
                 removeStepInfoOverlays();
                 for (const def of landingTracker.infoDefs) {
@@ -888,12 +1123,12 @@ export function navigateTo(sceneIdx, stepIdx) {
     }
 
     // Animate camera using effective step camera
-    if (!state.followCamState && !state.cameraExprState && stepIdx >= 0 && scene.steps) {
+    if (!sceneState.followCamState && !sceneState.cameraExprState && stepIdx >= 0 && scene.steps) {
         const cam = resolveEffectiveStepCamera(scene, stepIdx);
         if (cam) {
             const pos = dataCameraToWorld(cam.position || DEFAULT_CAMERA.position);
             const tgt = dataCameraToWorld(cam.target || DEFAULT_CAMERA.target);
-            state.CAMERA_VIEWS['_step'] = {
+            sceneState.CAMERA_VIEWS['_step'] = {
                 position: pos,
                 target: tgt,
                 up: Array.isArray(cam.up) ? cam.up.slice(0, 3) : [0, 1, 0],
@@ -902,8 +1137,8 @@ export function navigateTo(sceneIdx, stepIdx) {
         }
     }
 
-    state.currentSceneIndex = sceneIdx;
-    state.currentStepIndex = stepIdx;
+    sceneState.currentSceneIndex = sceneIdx;
+    sceneState.currentStepIndex = stepIdx;
     setActiveVirtualTimeExpr(scene, stepIdx);
 
     const activeStep = scene.steps && scene.steps[stepIdx];
@@ -913,8 +1148,8 @@ export function navigateTo(sceneIdx, stepIdx) {
     updateStatusBar();
 
     // Update proof panel (always update — visibility depends on current step)
-    loadProof(state.lessonSpec || scene, sceneIdx, stepIdx);
-    if (!sceneChanged && state.proofSyncEnabled && state.proofSpec && state.proofSpec.length > 0) {
+    loadProof(sceneState.lessonSpec || scene, sceneIdx, stepIdx);
+    if (!sceneChanged && sceneState.proofSyncEnabled && sceneState.proofSpec && sceneState.proofSpec.length > 0) {
         syncProofFromSceneStep(stepIdx);
     }
 
@@ -928,10 +1163,12 @@ export function navigateTo(sceneIdx, stepIdx) {
 
 // ----- Auto-play -----
 
-export function updateDockVisibility() {
-    const dock = document.getElementById('scene-dock');
+export function updateDockVisibility(): void {
+    // Non-null: #scene-dock is static markup in index.html; a missing one threw
+    // in the JS. #scene-dock-toggle is genuinely optional and stays guarded.
+    const dock = document.getElementById('scene-dock')!;
     const toggle = document.getElementById('scene-dock-toggle');
-    if (state.lessonSpec) {
+    if (sceneState.lessonSpec) {
         dock.classList.add('visible');
         if (toggle) toggle.style.display = '';
     } else {
@@ -944,7 +1181,7 @@ export function updateDockVisibility() {
 // loads a scene (Load button / Built-in Scenes) so they land on the scene tree.
 // The right panel is intentionally left untouched. No-op when there is no scene
 // tree to show (single non-lesson scene -> dock stays hidden).
-export function showSceneDockScenesTab() {
+export function showSceneDockScenesTab(): void {
     const dock = document.getElementById('scene-dock');
     const panel = document.getElementById('scene-dock-panel');
     const toggle = document.getElementById('scene-dock-toggle');
@@ -957,46 +1194,50 @@ export function showSceneDockScenesTab() {
     if (graph && typeof graph.showSceneView === 'function') {
         graph.showSceneView();
     } else {
-        document.querySelectorAll('.dock-tab').forEach((b) =>
+        document.querySelectorAll<HTMLElement>('.dock-tab').forEach((b) =>
             b.classList.toggle('active', b.dataset.dockTab === 'scenes'));
         document.querySelectorAll('.dock-tab-content').forEach((c) =>
             c.classList.toggle('active', c.id === 'dock-tab-scenes'));
     }
 }
 
-function getCurrentStepDuration() {
-    const scene = state.lessonSpec && state.lessonSpec.scenes[state.currentSceneIndex];
+function getCurrentStepDuration(): number {
+    // Non-null: matches the JS, which indexed `.scenes` after only a truthiness
+    // check on lessonSpec — a lesson without scenes threw here and still does.
+    const scene = sceneState.lessonSpec && sceneState.lessonSpec.scenes![sceneState.currentSceneIndex];
     if (!scene || !scene.steps) return AUTO_PLAY_DEFAULT_DURATION;
-    const step = scene.steps[state.currentStepIndex];
+    const step = scene.steps[sceneState.currentStepIndex];
     if (step && step.duration != null) return step.duration;
-    if (state.currentStepIndex === -1 && scene.duration != null) return scene.duration;
+    if (sceneState.currentStepIndex === -1 && scene.duration != null) return scene.duration;
     return AUTO_PLAY_DEFAULT_DURATION;
 }
 
-function scheduleNextAutoPlay() {
-    if (!state.autoPlayTimer) return;
-    const scene = state.lessonSpec && state.lessonSpec.scenes[state.currentSceneIndex];
+function scheduleNextAutoPlay(): void {
+    if (!sceneState.autoPlayTimer) return;
+    const scene = sceneState.lessonSpec && sceneState.lessonSpec.scenes![sceneState.currentSceneIndex];
     if (!scene) { stopAutoPlay(); return; }
     const maxStep = (scene.steps ? scene.steps.length : 0) - 1;
-    const isLast = state.currentSceneIndex >= state.lessonSpec.scenes.length - 1 && state.currentStepIndex >= maxStep;
+    const isLast = sceneState.currentSceneIndex >= sceneState.lessonSpec!.scenes!.length - 1 && sceneState.currentStepIndex >= maxStep;
     if (isLast) { stopAutoPlay(); return; }
 
-    const step = scene.steps && scene.steps[state.currentStepIndex];
+    const step = scene.steps && scene.steps[sceneState.currentStepIndex];
     if (step && Array.isArray(step.sliders) && step.sliders.length > 0 && step.duration == null) {
         stopAutoPlay();
         return;
     }
 
     const dur = getCurrentStepDuration();
-    state.autoPlayTimer = setTimeout(() => {
+    sceneState.autoPlayTimer = setTimeout(() => {
         stepNext();
         scheduleNextAutoPlay();
     }, dur);
 }
 
-function startAutoPlay() {
-    if (state.autoPlayTimer) return;
-    state.autoPlayTimer = true;
+function startAutoPlay(): void {
+    if (sceneState.autoPlayTimer) return;
+    // A sentinel, not a handle: scheduleNextAutoPlay() checks the flag on entry
+    // and then overwrites it with the real setTimeout id.
+    sceneState.autoPlayTimer = true;
     scheduleNextAutoPlay();
     const playBtn = document.getElementById('nav-play');
     if (playBtn) {
@@ -1005,10 +1246,13 @@ function startAutoPlay() {
     }
 }
 
-export function stopAutoPlay() {
-    if (state.autoPlayTimer) {
-        clearTimeout(state.autoPlayTimer);
-        state.autoPlayTimer = null;
+export function stopAutoPlay(): void {
+    if (sceneState.autoPlayTimer) {
+        // The `true` sentinel above never reaches clearTimeout in practice —
+        // scheduleNextAutoPlay() replaces it synchronously — but clearTimeout
+        // tolerated it in the JS either way.
+        clearTimeout(sceneState.autoPlayTimer as ReturnType<typeof setTimeout>);
+        sceneState.autoPlayTimer = null;
     }
     const playBtn = document.getElementById('nav-play');
     if (playBtn) {
@@ -1017,48 +1261,52 @@ export function stopAutoPlay() {
     }
 }
 
-function toggleAutoPlay() {
-    if (state.autoPlayTimer) {
+function toggleAutoPlay(): void {
+    if (sceneState.autoPlayTimer) {
         stopAutoPlay();
     } else {
         startAutoPlay();
     }
 }
 
-function stepNext() {
-    if (!state.lessonSpec || !state.lessonSpec.scenes) return;
-    const scene = state.lessonSpec.scenes[state.currentSceneIndex];
+function stepNext(): void {
+    if (!sceneState.lessonSpec || !sceneState.lessonSpec.scenes) return;
+    const scene = sceneState.lessonSpec.scenes[sceneState.currentSceneIndex];
     if (!scene) return;
 
     const maxStep = (scene.steps ? scene.steps.length : 0) - 1;
 
-    if (state.currentStepIndex < maxStep) {
-        navigateTo(state.currentSceneIndex, state.currentStepIndex + 1);
-    } else if (state.currentSceneIndex < state.lessonSpec.scenes.length - 1) {
-        navigateTo(state.currentSceneIndex + 1, -1);
+    if (sceneState.currentStepIndex < maxStep) {
+        navigateTo(sceneState.currentSceneIndex, sceneState.currentStepIndex + 1);
+    } else if (sceneState.currentSceneIndex < sceneState.lessonSpec.scenes.length - 1) {
+        navigateTo(sceneState.currentSceneIndex + 1, -1);
     } else {
         stopAutoPlay();
     }
 }
 
-function stepPrev() {
-    if (!state.lessonSpec || !state.lessonSpec.scenes) return;
+function stepPrev(): void {
+    if (!sceneState.lessonSpec || !sceneState.lessonSpec.scenes) return;
 
-    if (state.currentStepIndex > -1) {
-        navigateTo(state.currentSceneIndex, state.currentStepIndex - 1);
-    } else if (state.currentSceneIndex > 0) {
-        const prevScene = state.lessonSpec.scenes[state.currentSceneIndex - 1];
+    if (sceneState.currentStepIndex > -1) {
+        navigateTo(sceneState.currentSceneIndex, sceneState.currentStepIndex - 1);
+    } else if (sceneState.currentSceneIndex > 0) {
+        // Non-null: the branch is gated on currentSceneIndex > 0.
+        const prevScene = sceneState.lessonSpec.scenes![sceneState.currentSceneIndex - 1]!;
         const prevMaxStep = (prevScene.steps ? prevScene.steps.length : 0) - 1;
-        navigateTo(state.currentSceneIndex - 1, prevMaxStep);
+        navigateTo(sceneState.currentSceneIndex - 1, prevMaxStep);
     }
 }
 
-export function setupSceneDock() {
-    const toggle = document.getElementById('scene-dock-toggle');
-    const panel = document.getElementById('scene-dock-panel');
-    const prevBtn = document.getElementById('nav-prev');
-    const playBtn = document.getElementById('nav-play');
-    const nextBtn = document.getElementById('nav-next');
+export function setupSceneDock(): void {
+    // Non-null: all five are static markup in index.html. The JS dereferenced
+    // them unguarded (except the innerHTML writes just below, which it did
+    // guard) and must keep throwing when one is missing.
+    const toggle = document.getElementById('scene-dock-toggle')!;
+    const panel = document.getElementById('scene-dock-panel')!;
+    const prevBtn = document.getElementById('nav-prev')!;
+    const playBtn = document.getElementById('nav-play')!;
+    const nextBtn = document.getElementById('nav-next')!;
     if (prevBtn) prevBtn.innerHTML = PREV_ICON;
     if (playBtn) playBtn.innerHTML = PLAY_ICON;
     if (nextBtn) nextBtn.innerHTML = NEXT_ICON;
@@ -1073,7 +1321,8 @@ export function setupSceneDock() {
     toggle.addEventListener('click', () => {
         const isOpen = panel.classList.toggle('open');
         toggle.classList.toggle('active', isOpen);
-        localStorage.setItem('algebench-dock-open', isOpen);
+        // setItem stringifies its value; String() is that same coercion.
+        localStorage.setItem('algebench-dock-open', String(isOpen));
         setTimeout(() => window.dispatchEvent(new Event('resize')), 250);
     });
 
@@ -1082,8 +1331,10 @@ export function setupSceneDock() {
     nextBtn.addEventListener('click', () => stepNext());
 
     document.addEventListener('keydown', (e) => {
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-        if (!state.lessonSpec) return;
+        // Cast, not optional chaining: a null target threw in the JS.
+        const target = e.target as HTMLElement;
+        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+        if (!sceneState.lessonSpec) return;
 
         if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
             e.preventDefault();

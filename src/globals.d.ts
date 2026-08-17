@@ -68,6 +68,12 @@ interface AlgeBenchDomainRegistry {
  */
 interface AlgeBenchGraphController {
   openFunctionAnalysis?(opts: { id?: string | null; latex?: string | null }): void;
+  /**
+   * Leave the full-screen Math view and show the scene dock's Scenes tab.
+   * src/scene-loader.ts prefers this over toggling the tab classes itself, and
+   * falls back to doing so when the graph controller is absent.
+   */
+  showSceneView?(): void;
 }
 
 // ── gemini-live-tools browser globals ───────────────────────────────────────
@@ -211,8 +217,29 @@ interface Window {
   algebenchEnsureSceneVisible?: () => void;
   /** src/graph-view.js — start a client-side derivation on the current graph. */
   algebenchDeriveProof?: (args: Record<string, unknown>) => unknown;
+  /**
+   * src/graph-view.js — dock a proof-step derivation into the semantic-graph
+   * canvas. Resolves false when the step has no graph to dock onto, which is
+   * how src/proof.ts knows to fall back to an in-panel box.
+   */
+  algebenchDeriveProofPayload?: (payload: unknown) => Promise<boolean> | boolean;
   /** src/json-browser.js — re-read the prompt-context popup. */
   algebenchRefreshPromptContext?: (reason?: string) => void;
+  // ---- Circular-import shims, called by src/sliders.ts ----
+  // sliders.ts is imported by overlay.js and scene-loader.js, so it cannot
+  // import them back. Both publish these under the same names they call.
+  /** src/overlay.js — re-evaluate every info overlay's interpolated values. */
+  _algebenchUpdateInfoOverlays?: () => void;
+  /** src/overlay.js — redraw the status bar's slider pill. */
+  _algebenchUpdateStatusBar?: () => void;
+  // Published by src/scene-loader.ts, called by src/overlay.js — the legend's
+  // per-element toggles, reached this way for the same circular-import reason.
+  /** src/scene-loader.ts — fade an element out and mark it hidden. */
+  _algebenchHideElementById?: (id: string) => void;
+  /** src/scene-loader.ts — fade a hidden element back in. */
+  _algebenchShowElementById?: (id: string) => void;
+  /** src/trust.ts, published by src/scene-loader.ts — redraw the JS-trust pill. */
+  _algebenchUpdateJsTrustPill?: () => void;
   /** src/coach/registry.js — the guided-tour registry and engine. */
   AlgeBenchCoach?: {
     engine?: {
