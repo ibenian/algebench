@@ -6,12 +6,73 @@
 import { state } from '/state.js';
 import { BRACES_ICON } from '/icons.js';
 
+/** A tree-node icon plus the CSS class that colours it. */
+interface TreeIcon { icon: string; cls: string; }
+
+/** Any JSON value the browser renders. */
+type JsonValue = unknown;
+
+/**
+ * A lesson or bare scene, as the summary walkers read it. Deliberately looser
+ * than schemas/lesson.schema.json — the JSON browser renders whatever spec is
+ * loaded, including AI-authored and half-edited ones — but the fields the
+ * walkers actually touch are typed, so the counters stay checkable.
+ */
+interface BrowserElement {
+    type?: string;
+    prompt?: string;
+    points?: unknown[];
+    vertices?: unknown[];
+    [field: string]: unknown;
+}
+
+interface BrowserStep {
+    prompt?: string;
+    title?: string;
+    caption?: string;
+    add?: BrowserElement[];
+    sliders?: { id?: string; label?: string }[];
+    info?: unknown[];
+    camera?: unknown;
+    remove?: unknown[];
+    [field: string]: unknown;
+}
+
+interface BrowserSpec {
+    title?: string;
+    description?: string;
+    markdown?: string;
+    prompt?: string;
+    scenes?: BrowserSpec[];
+    steps?: BrowserStep[];
+    elements?: BrowserElement[];
+    functions?: Record<string, unknown>;
+    import?: unknown[];
+    proof?: unknown;
+    data?: unknown;
+    [k: string]: unknown;
+}
+
+// state.js is still untyped JavaScript, so its fields infer from their
+// initializers. Describe the slice this module owns rather than spreading
+// `any`; the cast goes away when state.js is converted.
+interface JsonBrowserState {
+    currentSpec: BrowserSpec | null | undefined;
+    lessonSpec: BrowserSpec | null | undefined;
+    _sceneJsTrustState: string | null;
+    _sceneJsIssues: { path?: string; expr?: string; type?: string }[];
+    _sceneIsUnsafe: boolean;
+    _sceneUnsafeExplanation: string;
+}
+const browserState = state as unknown as JsonBrowserState;
+
 // ----- Scene Summary Helpers -----
 
-function _computeSceneSummary(spec) {
+function _computeSceneSummary(spec: BrowserSpec | null | undefined) {
     if (!spec) return null;
     const isLesson = Array.isArray(spec.scenes) && spec.scenes.length > 0;
-    const scenes = isLesson ? spec.scenes : [spec];
+    // Non-null: `isLesson` is exactly the `Array.isArray(spec.scenes)` test.
+    const scenes: BrowserSpec[] = isLesson ? spec.scenes! : [spec];
 
     let totalSteps = 0, totalSliders = 0, totalAnimated = 0, totalStatic = 0,
         totalFunctions = 0, totalExpressions = 0, totalPrompts = 0;
@@ -20,12 +81,12 @@ function _computeSceneSummary(spec) {
         'animated_vector','animated_point','animated_line','animated_cylinder','animated_polygon'
     ]);
 
-    function countExpressions(el) {
+    function countExpressions(el: BrowserElement): number {
         let n = 0;
         const exprFields = ['expr','fromExpr','toExpr','radiusExpr','x','y','z','fx','fy','fz'];
         for (const f of exprFields) {
-            if (typeof el[f] === 'string') n++;
-            else if (Array.isArray(el[f])) n += el[f].filter(v => typeof v === 'string').length;
+            if (typeof el[f!] === 'string') n++;
+            else if (Array.isArray(el[f!])) n += (el[f!] as unknown[]).filter(v => typeof v === 'string').length;
         }
         if (Array.isArray(el.points)) n += el.points.filter(v => typeof v === 'string').length;
         if (Array.isArray(el.vertices)) n += el.vertices.filter(v => typeof v === 'string').length;
@@ -99,10 +160,10 @@ function _computeSceneSummary(spec) {
     };
 }
 
-function _computeAgenticScore(spec) {
+function _computeAgenticScore(spec: BrowserSpec | null | undefined) {
     if (!spec) return null;
     const isLesson = Array.isArray(spec.scenes) && spec.scenes.length > 0;
-    const scenes = isLesson ? spec.scenes : [spec];
+    const scenes: BrowserSpec[] = isLesson ? spec.scenes! : [spec];
 
     let raw = 0;
 
@@ -165,29 +226,30 @@ function _computeAgenticScore(spec) {
     return { score, label, color };
 }
 
-function _toggleJsIssuesPanel(panel) {
+function _toggleJsIssuesPanel(panel: HTMLElement): void {
     if (!panel) return;
     if (!panel.classList.contains('hidden')) {
         panel.classList.add('hidden');
         return;
     }
 
-    const trusted = state._sceneJsTrustState === 'trusted';
+    const trusted = browserState._sceneJsTrustState === 'trusted';
     const stateLabel = trusted
         ? '⚡ JS Trusted — expressions are running natively'
         : '⚠ JS Disabled — expressions are no-ops (returning 0 / "?")';
     const stateClass = trusted ? 'js-issues-state-trusted' : 'js-issues-state-untrusted';
 
-    const explanationBlock = state._sceneUnsafeExplanation
-        ? `<div class="ji-explanation"><span class="ji-explanation-label">Scene-declared explanation:</span> ${_escHtml(state._sceneUnsafeExplanation)}</div>`
+    const explanationBlock = browserState._sceneUnsafeExplanation
+        ? `<div class="ji-explanation"><span class="ji-explanation-label">Scene-declared explanation:</span> ${_escHtml(browserState._sceneUnsafeExplanation)}</div>`
         : '';
 
-    const unsafeBanner = state._sceneIsUnsafe
+    const unsafeBanner = browserState._sceneIsUnsafe
         ? `<div class="ji-unsafe-banner">⚠ This scene sets <code>unsafe: true</code> — all expressions execute as native JavaScript regardless of pattern matching.</div>`
         : '';
 
-    const rows = state._sceneJsIssues.map(({ path, expr, type }) => {
-        const truncExpr = expr.length > 60 ? expr.slice(0, 57) + '…' : expr;
+    const rows = browserState._sceneJsIssues.map(({ path, expr, type }) => {
+        // Non-null: every issue trust.ts records carries the expression it flagged.
+        const truncExpr = expr!.length > 60 ? expr!.slice(0, 57) + '…' : expr;
         const typeLabel = type === 'template' ? '{{…}} template' : 'expr field';
         const action = trusted ? '✅ Running' : '🚫 Disabled';
         return `<tr>
@@ -198,7 +260,7 @@ function _toggleJsIssuesPanel(panel) {
         </tr>`;
     }).join('');
 
-    const noRows = state._sceneJsIssues.length === 0
+    const noRows = browserState._sceneJsIssues.length === 0
         ? `<tr><td colspan="4" class="ji-empty">No specific JS patterns detected — scene uses <code>unsafe: true</code> to opt in globally.</td></tr>`
         : '';
 
@@ -212,13 +274,13 @@ function _toggleJsIssuesPanel(panel) {
     panel.classList.remove('hidden');
 }
 
-function _escHtml(str) {
+function _escHtml(str: unknown): string {
     return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 // ─── JSON tree helpers ────────────────────────────────────────────────────────
 
-const _JT_TYPE_ICONS = {
+const _JT_TYPE_ICONS: Record<string, TreeIcon | undefined> = {
     point:              { icon: '\u25CF', cls: 'jti-point' },
     animated_point:     { icon: '\u25C9', cls: 'jti-anim' },
     vector:             { icon: '\u2197', cls: 'jti-vector' },
@@ -241,7 +303,7 @@ const _JT_TYPE_ICONS = {
     skybox:             { icon: '\u25CC', cls: 'jti-skybox' },
 };
 
-const _JT_KEY_ICONS = {
+const _JT_KEY_ICONS: Record<string, TreeIcon | undefined> = {
     title:       { icon: '\u25C6', cls: 'jti-title' },
     description: { icon: '\u00B6', cls: 'jti-desc' },
     markdown:    { icon: '\u00B6', cls: 'jti-desc' },
@@ -265,9 +327,10 @@ const _JT_KEY_ICONS = {
     info:        { icon: '\u2139', cls: 'jti-info' },
 };
 
-function _getTreeIcon(key, value) {
-    if (value !== null && typeof value === 'object' && !Array.isArray(value) && typeof value.type === 'string') {
-        const ti = _JT_TYPE_ICONS[value.type];
+function _getTreeIcon(key: string, value: JsonValue): TreeIcon | null {
+    const rec = value as { type?: unknown } | null;
+    if (value !== null && typeof value === 'object' && !Array.isArray(value) && typeof rec!.type === 'string') {
+        const ti = _JT_TYPE_ICONS[rec!.type as string];
         if (ti) return ti;
     }
     if (key === 'type' && typeof value === 'string') {
@@ -278,15 +341,15 @@ function _getTreeIcon(key, value) {
     return _JT_KEY_ICONS[key] || null;
 }
 
-function _buildJsonWithLineMap(obj) {
+function _buildJsonWithLineMap(obj: JsonValue): { text: string; pathLineMap: Record<string, number> } {
     const lines = [''];
 
-    function append(str) { lines[lines.length - 1] += str; }
-    function newline(indent) { lines.push('  '.repeat(indent)); }
+    function append(str: string): void { lines[lines.length - 1] += str; }
+    function newline(indent: number): void { lines.push('  '.repeat(indent)); }
 
-    const pathLineMap = {};
+    const pathLineMap: Record<string, number> = {};
 
-    function serialize(val, path, indent) {
+    function serialize(val: JsonValue, path: string, indent: number): void {
         if (val === null) { append('null'); return; }
         if (typeof val === 'string') { append(JSON.stringify(val)); return; }
         if (typeof val === 'number' || typeof val === 'boolean') { append(String(val)); return; }
@@ -306,7 +369,8 @@ function _buildJsonWithLineMap(obj) {
             newline(indent);
             append(']');
         } else {
-            const keys = Object.keys(val);
+            const rec = val as Record<string, JsonValue>;
+            const keys = Object.keys(rec);
             if (keys.length === 0) { append('{}'); return; }
             append('{');
             keys.forEach((key, i) => {
@@ -314,7 +378,7 @@ function _buildJsonWithLineMap(obj) {
                 const cp = path ? `${path}.${key}` : key;
                 pathLineMap[cp] = lines.length - 1;
                 append(JSON.stringify(key) + ': ');
-                serialize(val[key], cp, indent + 1);
+                serialize(rec[key], cp, indent + 1);
                 if (i < keys.length - 1) append(',');
             });
             newline(indent);
@@ -326,12 +390,13 @@ function _buildJsonWithLineMap(obj) {
     return { text: lines.join('\n'), pathLineMap };
 }
 
-function _jsonTreeSummary(val) {
+function _jsonTreeSummary(val: JsonValue): string {
     if (Array.isArray(val)) return `[${val.length}]`;
     if (val && typeof val === 'object') {
-        const keys = Object.keys(val);
+        const rec = val as Record<string, JsonValue>;
+        const keys = Object.keys(rec);
         const preview = keys.slice(0, 3).map(k => {
-            const v = val[k];
+            const v = rec[k];
             if (typeof v === 'string') return `${k}: "${v.length > 12 ? v.slice(0, 12) + '\u2026' : v}"`;
             if (typeof v === 'number' || typeof v === 'boolean') return `${k}: ${v}`;
             return k;
@@ -341,9 +406,13 @@ function _jsonTreeSummary(val) {
     return '';
 }
 
-function _buildTreeNodes(ul, val, path, depth) {
+function _buildTreeNodes(ul: HTMLElement, val: JsonValue, path: string, depth: number): void {
     const isArray = Array.isArray(val);
-    const entries = isArray ? val.map((v, i) => [i, v]) : Object.entries(val);
+    // [key, value] pairs, where an array's key is its index. Typed as the union
+    // so the destructure below reads the same for both shapes, as the JS did.
+    const entries: [string | number, JsonValue][] = isArray
+        ? (val as JsonValue[]).map((v, i) => [i, v])
+        : Object.entries(val as Record<string, JsonValue>);
 
     for (const [key, value] of entries) {
         const childPath = path
@@ -360,7 +429,7 @@ function _buildTreeNodes(ul, val, path, depth) {
         const isPrimitive = value === null || typeof value !== 'object';
         const iconInfo = _getTreeIcon(String(key), value);
 
-        function makeIcon(info) {
+        function makeIcon(info: TreeIcon): HTMLElement {
             const ic = document.createElement('span');
             ic.className = 'jt-icon ' + info.cls;
             ic.textContent = info.icon;
@@ -375,7 +444,7 @@ function _buildTreeNodes(ul, val, path, depth) {
 
             const keyEl = document.createElement('span');
             keyEl.className = 'jt-key';
-            keyEl.textContent = isArray ? `[${key}]` : key;
+            keyEl.textContent = isArray ? `[${key}]` : String(key);
 
             const summary = document.createElement('span');
             summary.className = 'jt-summary';
@@ -404,7 +473,7 @@ function _buildTreeNodes(ul, val, path, depth) {
 
             const keyEl = document.createElement('span');
             keyEl.className = 'jt-key';
-            keyEl.textContent = isArray ? `[${key}]` : key;
+            keyEl.textContent = isArray ? `[${key}]` : String(key);
 
             const colon = document.createElement('span');
             colon.className = 'jt-colon';
@@ -426,7 +495,7 @@ function _buildTreeNodes(ul, val, path, depth) {
     }
 }
 
-function _renderJsonTree(treePanel, obj) {
+function _renderJsonTree(treePanel: HTMLElement, obj: JsonValue): void {
     treePanel.innerHTML = '';
     if (!obj || typeof obj !== 'object') {
         treePanel.innerHTML = '<div class="jt-empty">No scene loaded</div>';
@@ -438,7 +507,7 @@ function _renderJsonTree(treePanel, obj) {
     treePanel.appendChild(ul);
 }
 
-function _getParentPath(path) {
+function _getParentPath(path: string): string | null {
     if (!path) return null;
     const dot = path.lastIndexOf('.');
     if (dot > 0) return path.substring(0, dot);
@@ -447,7 +516,7 @@ function _getParentPath(path) {
     return null;
 }
 
-function _findPathAtLine(line, pathLineMap) {
+function _findPathAtLine(line: number, pathLineMap: Record<string, number>): string | null {
     let bestPath = '';
     let bestLine = -1;
     for (const [p, ln] of Object.entries(pathLineMap)) {
@@ -458,15 +527,15 @@ function _findPathAtLine(line, pathLineMap) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function setupJsonViewer() {
+export function setupJsonViewer(): void {
     const btn = document.getElementById('btn-show-json');
     const overlay = document.getElementById('json-viewer-overlay');
-    const content = document.getElementById('json-viewer-content');
-    const treePanel = document.getElementById('json-tree-panel');
+    const content = document.getElementById('json-viewer-content')!;
+    const treePanel = document.getElementById('json-tree-panel')!;
     const importsBar = document.getElementById('json-viewer-imports');
     const summaryBar = document.getElementById('json-viewer-summary');
-    const closeBtn = document.getElementById('json-viewer-close');
-    const copyBtn = document.getElementById('json-viewer-copy');
+    const closeBtn = document.getElementById('json-viewer-close')!;
+    const copyBtn = document.getElementById('json-viewer-copy')!;
 
     const issuesPanel = document.getElementById('json-viewer-issues');
 
@@ -478,8 +547,8 @@ export function setupJsonViewer() {
     btn.classList.add('icon-only');
     btn.setAttribute('aria-label', 'Show current scene JSON');
 
-    let _pathLineMap = {};
-    let _jsonScrollAnimFrame = null;
+    let _pathLineMap: Record<string, number> = {};
+    let _jsonScrollAnimFrame: number | null = null;
     let _jsonScrollProgrammatic = false;
     let _jsonLineHeight = 0;
 
@@ -490,14 +559,14 @@ export function setupJsonViewer() {
         return _jsonLineHeight;
     }
 
-    function animateJsonScrollTo(targetTop, duration = 160) {
+    function animateJsonScrollTo(targetTop: number, duration = 160): void {
         if (_jsonScrollAnimFrame != null) { cancelAnimationFrame(_jsonScrollAnimFrame); _jsonScrollAnimFrame = null; }
         const startTop = content.scrollTop;
         const delta = targetTop - startTop;
         if (Math.abs(delta) < 2) { content.scrollTop = targetTop; return; }
         const startTime = performance.now();
         _jsonScrollProgrammatic = true;
-        function step(now) {
+        function step(now: number): void {
             const t = Math.min(1, (now - startTime) / duration);
             const eased = 1 - Math.pow(1 - t, 3);
             content.scrollTop = startTop + delta * eased;
@@ -512,8 +581,8 @@ export function setupJsonViewer() {
         _jsonScrollAnimFrame = requestAnimationFrame(step);
     }
 
-    let _treeScrollAnimFrame = null;
-    function scrollTreeIntoView(el, duration = 160) {
+    let _treeScrollAnimFrame: number | null = null;
+    function scrollTreeIntoView(el: HTMLElement | null | undefined, duration = 160): void {
         if (!treePanel || !el) return;
         const elRect  = el.getBoundingClientRect();
         const ctRect  = treePanel.getBoundingClientRect();
@@ -530,7 +599,7 @@ export function setupJsonViewer() {
         const delta    = target - startTop;
         if (Math.abs(delta) < 2) { treePanel.scrollTop = target; return; }
         const startTime = performance.now();
-        function step(now) {
+        function step(now: number): void {
             const t = Math.min(1, (now - startTime) / duration);
             const eased = 1 - Math.pow(1 - t, 3);
             treePanel.scrollTop = startTop + delta * eased;
@@ -540,13 +609,13 @@ export function setupJsonViewer() {
         _treeScrollAnimFrame = requestAnimationFrame(step);
     }
 
-    function setActiveTreeItem(path) {
+    function setActiveTreeItem(path: string | null): void {
         if (!treePanel) return;
         treePanel.querySelectorAll('.jt-active').forEach(el => el.classList.remove('jt-active'));
         let target = path;
-        let el = null;
+        let el: HTMLElement | null = null;
         while (target !== null) {
-            const found = [...treePanel.querySelectorAll('.jt-item')].find(e => e.dataset.path === target);
+            const found = [...treePanel.querySelectorAll<HTMLElement>('.jt-item')].find(e => e.dataset.path === target);
             if (found) { el = found; break; }
             target = _getParentPath(target);
         }
@@ -569,15 +638,15 @@ export function setupJsonViewer() {
         return parseFloat(window.getComputedStyle(content).paddingTop) || 0;
     }
 
-    let _lineOffsets = [];
-    function buildLineOffsets(text) {
+    let _lineOffsets: number[] = [];
+    function buildLineOffsets(text: string): void {
         _lineOffsets = [0];
         for (let i = 0; i < text.length; i++) {
             if (text[i] === '\n') _lineOffsets.push(i + 1);
         }
     }
 
-    function lineToScrollTop(lineNum) {
+    function lineToScrollTop(lineNum: number): number {
         const textNode = content.firstChild;
         if (!textNode || textNode.nodeType !== Node.TEXT_NODE || !_lineOffsets.length) {
             return getContentPaddingTop() + lineNum * getLineHeight();
@@ -599,13 +668,15 @@ export function setupJsonViewer() {
         setActiveTreeItem(_findPathAtLine(topLine, _pathLineMap));
     }
 
-    function selectJsonLine(lineNum) {
+    function selectJsonLine(lineNum: number): void {
         const textNode = content.firstChild;
         if (!textNode || textNode.nodeType !== Node.TEXT_NODE) return;
-        const text = textNode.textContent;
+        // Non-null: a TEXT_NODE always has textContent, and the loop bound keeps
+        // the index inside `lines`.
+        const text = textNode.textContent!;
         const lines = text.split('\n');
         let offset = 0;
-        for (let i = 0; i < lineNum; i++) offset += lines[i].length + 1;
+        for (let i = 0; i < lineNum; i++) offset += lines[i]!.length + 1;
         const lineText = (lines[lineNum] || '').trimStart();
         const start = offset + (lines[lineNum] || '').length - lineText.length;
         const end = offset + (lines[lineNum] || '').length;
@@ -613,12 +684,14 @@ export function setupJsonViewer() {
         const range = document.createRange();
         range.setStart(textNode, start);
         range.setEnd(textNode, end);
-        const sel = window.getSelection();
+        // Non-null: getSelection() only returns null in a detached document.
+        // The JS dereferenced it unguarded and must keep throwing.
+        const sel = window.getSelection()!;
         sel.removeAllRanges();
         sel.addRange(range);
     }
 
-    function syncJsonFromTreeClick(path, { select = true } = {}) {
+    function syncJsonFromTreeClick(path: string, { select = true }: { select?: boolean } = {}): void {
         const line = _pathLineMap[path];
         if (line === undefined) return;
         const lh = getLineHeight();
@@ -639,9 +712,10 @@ export function setupJsonViewer() {
     // Wire up tree clicks (delegated)
     if (treePanel) {
         treePanel.addEventListener('click', e => {
-            const item = e.target.closest('.jt-item');
-            if (!item || e.target.classList.contains('jt-toggle')) return;
-            syncJsonFromTreeClick(item.dataset.path);
+            const item = (e.target as HTMLElement).closest<HTMLElement>('.jt-item');
+            if (!item || (e.target as HTMLElement).classList.contains('jt-toggle')) return;
+            // Non-null: every .jt-item is built above with data-path set.
+            syncJsonFromTreeClick(item.dataset.path!);
         });
 
         // Restore saved width
@@ -649,7 +723,7 @@ export function setupJsonViewer() {
         if (savedWidth) treePanel.style.width = savedWidth + 'px';
 
         // Resize handle
-        const resizeHandle = document.getElementById('json-tree-resize-handle');
+        const resizeHandle = document.getElementById('json-tree-resize-handle')!;
         if (resizeHandle) {
             let startX = 0;
             let startWidth = 0;
@@ -661,15 +735,15 @@ export function setupJsonViewer() {
                 document.body.style.cursor = 'col-resize';
                 document.body.style.userSelect = 'none';
 
-                function onMove(e) {
+                function onMove(e: MouseEvent): void {
                     const newWidth = Math.min(520, Math.max(120, startWidth + (e.clientX - startX)));
                     treePanel.style.width = newWidth + 'px';
                 }
-                function onUp() {
+                function onUp(): void {
                     resizeHandle.classList.remove('dragging');
                     document.body.style.cursor = '';
                     document.body.style.userSelect = '';
-                    localStorage.setItem('jsonTreePanelWidth', treePanel.offsetWidth);
+                    localStorage.setItem('jsonTreePanelWidth', String(treePanel.offsetWidth));
                     document.removeEventListener('mousemove', onMove);
                     document.removeEventListener('mouseup', onUp);
                 }
@@ -685,7 +759,9 @@ export function setupJsonViewer() {
     // Wire up selection/click in JSON → tree
     document.addEventListener('selectionchange', () => {
         if (overlay.classList.contains('hidden')) return;
-        const sel = window.getSelection();
+        // Non-null: see selectJsonLine — getSelection() only returns null in a
+        // detached document, and the JS dereferenced it unguarded.
+        const sel = window.getSelection()!;
         if (!sel.rangeCount) return;
         const range = sel.getRangeAt(0);
         if (!content.contains(range.startContainer)) return;
@@ -699,10 +775,10 @@ export function setupJsonViewer() {
     btn.addEventListener('click', () => {
         if (issuesPanel) issuesPanel.classList.add('hidden');
         let json;
-        if (state.lessonSpec) {
-            json = state.lessonSpec;
-        } else if (state.currentSpec) {
-            json = state.currentSpec;
+        if (browserState.lessonSpec) {
+            json = browserState.lessonSpec;
+        } else if (browserState.currentSpec) {
+            json = browserState.currentSpec;
         }
         // Build JSON text with line map and render tree
         _jsonLineHeight = 0; // reset cached line height
@@ -723,8 +799,8 @@ export function setupJsonViewer() {
         const imports = json && Array.isArray(json.import) ? json.import : [];
         if (imports.length > 0 && importsBar) {
             importsBar.innerHTML = '<span class="imports-label">Imports</span>' +
-                imports.map(name =>
-                    `<a href="/api/domains/${encodeURIComponent(name)}" target="_blank" rel="noopener">${_escHtml(name)} ↗</a>`
+                imports.map((name: unknown) =>
+                    `<a href="/api/domains/${encodeURIComponent(String(name))}" target="_blank" rel="noopener">${_escHtml(name)} ↗</a>`
                 ).join('');
             importsBar.classList.remove('hidden');
         } else if (importsBar) {
@@ -772,9 +848,9 @@ export function setupJsonViewer() {
             // JS Issues badge — shown when trust dialog was triggered
             const existingBadge = summaryBar.querySelector('.summary-stat-js-issues');
             if (existingBadge) existingBadge.remove();
-            if (state._sceneIsUnsafe || state._sceneJsIssues.length > 0) {
-                const trusted = state._sceneJsTrustState === 'trusted';
-                const count = state._sceneIsUnsafe && state._sceneJsIssues.length === 0 ? '!' : state._sceneJsIssues.length;
+            if (browserState._sceneIsUnsafe || browserState._sceneJsIssues.length > 0) {
+                const trusted = browserState._sceneJsTrustState === 'trusted';
+                const count = browserState._sceneIsUnsafe && browserState._sceneJsIssues.length === 0 ? '!' : browserState._sceneJsIssues.length;
                 const badge = document.createElement('span');
                 badge.className = 'summary-stat summary-stat-js-issues' + (trusted ? ' js-trusted' : ' js-untrusted');
                 badge.title = 'Click to view detected JavaScript expressions and trust status';
@@ -782,7 +858,8 @@ export function setupJsonViewer() {
                     `<span class="summary-stat-value">${count}</span>` +
                     `<span class="summary-stat-label">JS ${trusted ? '⚡' : '⚠'}</span>`;
                 summaryBar.appendChild(badge);
-                badge.addEventListener('click', () => _toggleJsIssuesPanel(issuesPanel));
+                // Non-null: the enclosing branch is gated on issuesPanel.
+                badge.addEventListener('click', () => _toggleJsIssuesPanel(issuesPanel!));
             } else if (issuesPanel) {
                 issuesPanel.classList.add('hidden');
             }
@@ -816,15 +893,15 @@ export function setupJsonViewer() {
 
     // ── Search ──────────────────────────────────────────────────────────────
 
-    const keyInput = document.getElementById('json-search-key');
-    const valInput = document.getElementById('json-search-val');
+    const keyInput = document.getElementById('json-search-key') as HTMLInputElement;
+    const valInput = document.getElementById('json-search-val') as HTMLInputElement;
     const keyCount = document.getElementById('json-search-key-count');
     const valCount = document.getElementById('json-search-val-count');
-    const prevBtn  = document.getElementById('json-search-prev');
-    const nextBtn  = document.getElementById('json-search-next');
+    const prevBtn  = document.getElementById('json-search-prev')!;
+    const nextBtn  = document.getElementById('json-search-next')!;
     if (!keyInput || !valInput) return;
 
-    let _matchItems = [];
+    let _matchItems: HTMLElement[] = [];
     let _matchIndex = -1;
 
     function applyTreeSearch() {
@@ -832,7 +909,7 @@ export function setupJsonViewer() {
         const focused = document.activeElement;
         const keyTerm = keyInput.value.trim().toLowerCase();
         const valTerm = valInput.value.trim().toLowerCase();
-        const items   = [...treePanel.querySelectorAll('.jt-item')];
+        const items   = [...treePanel.querySelectorAll<HTMLElement>('.jt-item')];
 
         items.forEach(el => el.classList.remove('jt-dim', 'jt-match'));
         [keyInput, valInput].forEach(inp =>
@@ -875,7 +952,7 @@ export function setupJsonViewer() {
             }
         });
 
-        _matchItems = [...treePanel.querySelectorAll('.jt-item.jt-match')];
+        _matchItems = [...treePanel.querySelectorAll<HTMLElement>('.jt-item.jt-match')];
         const n = _matchItems.length;
 
         if (keyTerm) {
@@ -886,25 +963,28 @@ export function setupJsonViewer() {
             valInput.classList.toggle('jsb-has-results', n > 0);
             valInput.classList.toggle('jsb-no-results',  n === 0);
         }
-        if (keyCount) keyCount.textContent = n || (keyTerm ? 'none' : '');
+        // textContent is a string property; the JS assigned the count and let
+        // the DOM coerce. String() is that same conversion, spelled out.
+        if (keyCount) keyCount.textContent = n ? String(n) : (keyTerm ? 'none' : '');
         if (valCount) valCount.textContent = n ? `1/${n}` : (valTerm ? 'none' : '');
 
         if (n > 0) {
             _matchIndex = 0;
             navigateMatch(0);
         }
-        if (focused === keyInput || focused === valInput) setTimeout(() => focused.focus(), 0);
+        if (focused === keyInput || focused === valInput) setTimeout(() => (focused as HTMLElement).focus(), 0);
     }
 
-    function navigateMatch(delta) {
+    function navigateMatch(delta: number): void {
         if (!_matchItems.length) return;
         const focused = document.activeElement;
         _matchIndex = ((_matchIndex + delta) % _matchItems.length + _matchItems.length) % _matchItems.length;
-        const el = _matchItems[_matchIndex];
+        // Non-null: _matchIndex is taken modulo _matchItems.length just above.
+        const el = _matchItems[_matchIndex]!;
         scrollTreeIntoView(el);
-        syncJsonFromTreeClick(el.dataset.path, { select: false });
+        syncJsonFromTreeClick(el.dataset.path!, { select: false });
         if (focused === keyInput || focused === valInput) {
-            setTimeout(() => focused.focus(), 0);
+            setTimeout(() => (focused as HTMLElement).focus(), 0);
         }
         const label = `${_matchIndex + 1}/${_matchItems.length}`;
         if (valCount) valCount.textContent = label;
@@ -938,15 +1018,15 @@ export function setupJsonViewer() {
 
 // ----- Context Status Popup -----
 
-export function setupContextStatusPopup() {
+export function setupContextStatusPopup(): void {
     const pill = document.getElementById('context-status');
-    const popup = document.getElementById('context-popup');
-    const meta = document.getElementById('context-popup-meta');
-    const nav = document.getElementById('context-popup-nav');
-    const body = document.getElementById('context-popup-body');
-    const closeBtn = document.getElementById('context-popup-close');
-    const copyBtn = document.getElementById('context-popup-copy');
-    const toggleBtn = document.getElementById('context-popup-toggle');
+    const popup = document.getElementById('context-popup')!;
+    const meta = document.getElementById('context-popup-meta')!;
+    const nav = document.getElementById('context-popup-nav')!;
+    const body = document.getElementById('context-popup-body')!;
+    const closeBtn = document.getElementById('context-popup-close')!;
+    const copyBtn = document.getElementById('context-popup-copy')!;
+    const toggleBtn = document.getElementById('context-popup-toggle')!;
     const topResizeHandle = document.getElementById('context-popup-top-resize');
     const rightResizeHandle = document.getElementById('context-popup-right-resize');
     if (!pill || !popup || !meta || !nav || !body || !closeBtn || !copyBtn || !toggleBtn || !topResizeHandle || !rightResizeHandle) return;
@@ -958,22 +1038,22 @@ export function setupContextStatusPopup() {
     }
 
     let currentPromptText = '';
-    let sectionEls = [];
-    let navButtons = [];
+    let sectionEls: HTMLElement[] = [];
+    let navButtons: HTMLElement[] = [];
     let programmaticScrollIndex = -1;
-    let programmaticScrollTimer = null;
-    let contextScrollAnimFrame = null;
-    let contextRefreshTimer = null;
+    let programmaticScrollTimer: ReturnType<typeof setTimeout> | null = null;
+    let contextScrollAnimFrame: number | null = null;
+    let contextRefreshTimer: ReturnType<typeof setTimeout> | null = null;
     let contextCollapsed = true;
-    let popupResizeCleanup = null;
+    let popupResizeCleanup: (() => void) | null = null;
     const CONTEXT_POPUP_SIZE_KEY = 'algebench-context-popup-size';
     const CONTEXT_POPUP_STATE_KEY = 'algebench-context-popup-state';
 
-    function readStoredContextPopupState() {
+    function readStoredContextPopupState(): { collapsed?: boolean | null } {
         try {
             const raw = localStorage.getItem(CONTEXT_POPUP_STATE_KEY);
             if (!raw) return {};
-            const parsed = JSON.parse(raw);
+            const parsed = JSON.parse(raw) as { collapsed?: unknown } | null;
             return {
                 collapsed: typeof parsed?.collapsed === 'boolean' ? parsed.collapsed : null,
             };
@@ -982,7 +1062,7 @@ export function setupContextStatusPopup() {
         }
     }
 
-    function storeContextPopupState({ collapsed }) {
+    function storeContextPopupState({ collapsed }: { collapsed?: boolean }): void {
         const current = readStoredContextPopupState();
         const next = {
             collapsed: typeof collapsed === 'boolean' ? collapsed : current.collapsed,
@@ -992,25 +1072,27 @@ export function setupContextStatusPopup() {
         } catch (_err) {}
     }
 
-    function readStoredContextPopupSize() {
+    function readStoredContextPopupSize(): { width?: number | null; height?: number | null } {
         try {
             const raw = localStorage.getItem(CONTEXT_POPUP_SIZE_KEY);
             if (!raw) return {};
             const parsed = JSON.parse(raw);
             return {
-                width: Number.isFinite(parsed?.width) ? parsed.width : null,
-                height: Number.isFinite(parsed?.height) ? parsed.height : null,
+                width: Number.isFinite(parsed?.width) ? parsed!.width as number : null,
+                height: Number.isFinite(parsed?.height) ? parsed!.height as number : null,
             };
         } catch (_err) {
             return {};
         }
     }
 
-    function storeContextPopupSize({ width, height }) {
+    function storeContextPopupSize({ width, height }: { width?: number; height?: number }): void {
         const current = readStoredContextPopupSize();
         const next = {
-            width: Number.isFinite(width) ? Math.round(width) : current.width,
-            height: Number.isFinite(height) ? Math.round(height) : current.height,
+            // Non-null: Number.isFinite() is the guard — undefined fails it and
+            // falls through to the stored value, exactly as before.
+            width: Number.isFinite(width) ? Math.round(width!) : current.width,
+            height: Number.isFinite(height) ? Math.round(height!) : current.height,
         };
         try {
             localStorage.setItem(CONTEXT_POPUP_SIZE_KEY, JSON.stringify(next));
@@ -1028,8 +1110,8 @@ export function setupContextStatusPopup() {
     function applyStoredContextPopupSize() {
         const stored = readStoredContextPopupSize();
         const caps = getContextPopupSizeCaps();
-        const width = Number.isFinite(stored.width) ? Math.min(stored.width, caps.maxWidth) : null;
-        const height = Number.isFinite(stored.height) ? Math.min(stored.height, caps.maxHeight) : null;
+        const width = Number.isFinite(stored.width) ? Math.min(stored.width!, caps.maxWidth) : null;
+        const height = Number.isFinite(stored.height) ? Math.min(stored.height!, caps.maxHeight) : null;
 
         if (contextCollapsed) {
             popup.style.right = '';
@@ -1064,7 +1146,7 @@ export function setupContextStatusPopup() {
         }
     }
 
-    function beginContextHeightResize(startEvent) {
+    function beginContextHeightResize(startEvent: MouseEvent): void {
         startEvent.preventDefault();
         startEvent.stopPropagation();
         clearPopupResizeHandlers();
@@ -1077,7 +1159,7 @@ export function setupContextStatusPopup() {
 
         popup.style.height = `${Math.round(startHeight)}px`;
 
-        const onMove = (moveEvt) => {
+        const onMove = (moveEvt: MouseEvent) => {
             const dy = moveEvt.clientY - startY;
             const nextHeight = Math.max(minHeight, Math.min(maxHeight, startHeight - dy));
             popup.style.height = `${Math.round(nextHeight)}px`;
@@ -1095,7 +1177,7 @@ export function setupContextStatusPopup() {
         };
     }
 
-    function beginContextWidthResize(startEvent) {
+    function beginContextWidthResize(startEvent: MouseEvent): void {
         if (contextCollapsed) return;
         startEvent.preventDefault();
         startEvent.stopPropagation();
@@ -1110,7 +1192,7 @@ export function setupContextStatusPopup() {
         popup.style.right = window.innerWidth <= 900 ? '8px' : '12px';
         popup.style.width = `${Math.round(startWidth)}px`;
 
-        const onMove = (moveEvt) => {
+        const onMove = (moveEvt: MouseEvent) => {
             const dx = moveEvt.clientX - startX;
             const nextWidth = Math.max(minWidth, Math.min(maxWidth, startWidth + dx));
             popup.style.width = `${Math.round(nextWidth)}px`;
@@ -1128,10 +1210,10 @@ export function setupContextStatusPopup() {
         };
     }
 
-    function parsePromptSections(text) {
+    function parsePromptSections(text: string | null | undefined): { title: string; content: string }[] {
         const lines = String(text || '').split('\n');
-        const sections = [];
-        let current = { title: 'Prelude', body: [] };
+        const sections: { title: string; content: string }[] = [];
+        let current: { title: string; body: string[] } = { title: 'Prelude', body: [] };
 
         function flushCurrent() {
             const content = current.body.join('\n').trim();
@@ -1146,7 +1228,8 @@ export function setupContextStatusPopup() {
             const match = line.match(/^##\s+(.*)$/);
             if (match) {
                 flushCurrent();
-                current = { title: match[1].trim(), body: [] };
+                // Non-null: the regex has a single capture group, which matched.
+                current = { title: match[1]!.trim(), body: [] };
             } else {
                 current.body.push(line);
             }
@@ -1159,7 +1242,7 @@ export function setupContextStatusPopup() {
         return sections;
     }
 
-    function setActiveSection(index) {
+    function setActiveSection(index: number): void {
         navButtons.forEach((btn, i) => btn.classList.toggle('active', i === index));
     }
 
@@ -1194,7 +1277,10 @@ export function setupContextStatusPopup() {
                 body.innerHTML = '';
                 const empty = document.createElement('div');
                 empty.className = 'context-popup-empty';
-                empty.textContent = `Unable to build prompt context: ${err.message || err}`;
+                // `err` is `unknown` under strict. Cast, NOT optional chaining: the JS
+                // read .message straight off it, so a null rejection threw here and
+                // must keep throwing.
+                empty.textContent = `Unable to build prompt context: ${(err as Error).message || err}`;
                 body.appendChild(empty);
                 meta.textContent = 'Prompt context unavailable';
             }
@@ -1211,7 +1297,7 @@ export function setupContextStatusPopup() {
         }, 140);
     }
 
-    function animateContextScrollTo(targetTop, duration = 160) {
+    function animateContextScrollTo(targetTop: number, duration = 160): void {
         if (contextScrollAnimFrame != null) {
             cancelAnimationFrame(contextScrollAnimFrame);
             contextScrollAnimFrame = null;
@@ -1224,7 +1310,7 @@ export function setupContextStatusPopup() {
         }
         const startTime = performance.now();
 
-        function step(now) {
+        function step(now: number): void {
             const t = Math.min(1, (now - startTime) / duration);
             const eased = 1 - Math.pow(1 - t, 3);
             body.scrollTop = startTop + delta * eased;
@@ -1249,13 +1335,14 @@ export function setupContextStatusPopup() {
         const scrollTop = body.scrollTop + 108;
         let activeIndex = 0;
         for (let i = 0; i < sectionEls.length; i++) {
-            if (sectionEls[i].offsetTop <= scrollTop) activeIndex = i;
+            // Non-null: `i` is bounded by sectionEls.length.
+            if (sectionEls[i]!.offsetTop <= scrollTop) activeIndex = i;
             else break;
         }
         setActiveSection(activeIndex);
     }
 
-    function renderPrompt(text) {
+    function renderPrompt(text: string | null | undefined): void {
         const sections = parsePromptSections(text);
         sectionEls = [];
         navButtons = [];
@@ -1300,7 +1387,9 @@ export function setupContextStatusPopup() {
             sectionEls.push(sec);
         });
 
-        meta.textContent = `${text.length} chars • ${sections.length} sections • built from live client context`;
+        // Non-null: the JS read .length straight off the argument, so a null
+        // prompt threw here and must keep throwing.
+        meta.textContent = `${text!.length} chars • ${sections.length} sections • built from live client context`;
         clearProgrammaticScroll();
         setActiveSection(0);
         body.scrollTop = 0;
@@ -1366,7 +1455,10 @@ export function setupContextStatusPopup() {
             body.innerHTML = '';
             const empty = document.createElement('div');
             empty.className = 'context-popup-empty';
-            empty.textContent = `Unable to build prompt context: ${err.message || err}`;
+            // `err` is `unknown` under strict. Cast, NOT optional chaining: the JS
+                // read .message straight off it, so a null rejection threw here and
+                // must keep throwing.
+                empty.textContent = `Unable to build prompt context: ${(err as Error).message || err}`;
             body.appendChild(empty);
             meta.textContent = 'Prompt context unavailable';
         }
