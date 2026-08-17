@@ -1593,9 +1593,10 @@ function injectAskButtons(contentEl) {
 	});
 }
 //#endregion
-//#region src/sliders.js
+//#region src/sliders.ts
+var sliderState = state;
 function getSliderIds() {
-	const ids = Object.keys(state.sceneSliders);
+	const ids = Object.keys(sliderState.sceneSliders);
 	const launchIdx = ids.indexOf("h");
 	const injectionIdx = ids.indexOf("h_target");
 	if (launchIdx >= 0 && injectionIdx >= 0 && launchIdx !== injectionIdx - 1) {
@@ -1613,7 +1614,7 @@ function _formatSliderValue(s) {
 	return Number(s.value).toFixed(1);
 }
 function startSliderLoop(id) {
-	const slider = state.sceneSliders[id];
+	const slider = sliderState.sceneSliders[id];
 	if (!slider) return;
 	slider._loopPlaying = true;
 	if (typeof slider._onPlayStateChange === "function") slider._onPlayStateChange();
@@ -1624,7 +1625,7 @@ function startSliderLoop(id) {
 	const resumeT = mode === "once" && rawResumeT >= 1 ? 0 : rawResumeT;
 	const startTime = performance.now() - resumeT * period;
 	function tick(now) {
-		if (!slider._loopPlaying || !state.sceneSliders[id]) return;
+		if (!slider._loopPlaying || !sliderState.sceneSliders[id]) return;
 		const elapsed = (now - startTime) / period;
 		let tNorm;
 		if (mode === "loop") tNorm = elapsed % 1;
@@ -1641,7 +1642,7 @@ function startSliderLoop(id) {
 		slider.value = slider.min + tNorm * range;
 		const input = document.querySelector(`input[data-slider-id="${id}"]`);
 		if (input) {
-			input.value = slider.value;
+			input.value = String(slider.value);
 			const valSpan = input.parentElement && input.parentElement.querySelector(".slider-value");
 			if (valSpan) valSpan.textContent = _formatSliderValue(slider);
 		}
@@ -1652,7 +1653,7 @@ function startSliderLoop(id) {
 	slider._loopRaf = requestAnimationFrame(tick);
 }
 function stopSliderLoop(id) {
-	const slider = state.sceneSliders[id];
+	const slider = sliderState.sceneSliders[id];
 	if (!slider) return;
 	slider._loopPlaying = false;
 	if (slider._loopRaf) {
@@ -1662,7 +1663,7 @@ function stopSliderLoop(id) {
 	if (typeof slider._onPlayStateChange === "function") slider._onPlayStateChange();
 }
 function stopAllSliderLoops() {
-	for (const id of Object.keys(state.sceneSliders)) stopSliderLoop(id);
+	for (const id of Object.keys(sliderState.sceneSliders)) stopSliderLoop(id);
 }
 function setupSliderDrag(e, overlay) {
 	e.preventDefault();
@@ -1670,25 +1671,25 @@ function setupSliderDrag(e, overlay) {
 	const parentH = parent.clientHeight;
 	const rect = overlay.getBoundingClientRect();
 	const parentRect = parent.getBoundingClientRect();
-	state._sliderDrag.active = true;
-	state._sliderDrag.startX = e.clientX;
-	state._sliderDrag.startY = e.clientY;
-	state._sliderDrag.startLeft = rect.left - parentRect.left;
-	state._sliderDrag.startBottom = parentRect.bottom - rect.bottom;
+	sliderState._sliderDrag.active = true;
+	sliderState._sliderDrag.startX = e.clientX;
+	sliderState._sliderDrag.startY = e.clientY;
+	sliderState._sliderDrag.startLeft = rect.left - parentRect.left;
+	sliderState._sliderDrag.startBottom = parentRect.bottom - rect.bottom;
 	overlay.classList.add("dragging");
 	const onMove = (me) => {
-		if (!state._sliderDrag.active) return;
-		const dx = me.clientX - state._sliderDrag.startX;
-		const dy = me.clientY - state._sliderDrag.startY;
-		let newLeft = state._sliderDrag.startLeft + dx;
-		let newBottom = state._sliderDrag.startBottom - dy;
+		if (!sliderState._sliderDrag.active) return;
+		const dx = me.clientX - sliderState._sliderDrag.startX;
+		const dy = me.clientY - sliderState._sliderDrag.startY;
+		let newLeft = sliderState._sliderDrag.startLeft + dx;
+		let newBottom = sliderState._sliderDrag.startBottom - dy;
 		newLeft = Math.max(0, Math.min(newLeft, parent.clientWidth - overlay.offsetWidth));
 		newBottom = Math.max(0, Math.min(newBottom, parentH - overlay.offsetHeight));
 		overlay.style.left = newLeft + "px";
 		overlay.style.bottom = newBottom + "px";
 	};
 	const onUp = () => {
-		state._sliderDrag.active = false;
+		sliderState._sliderDrag.active = false;
 		overlay.classList.remove("dragging");
 		document.removeEventListener("mousemove", onMove);
 		document.removeEventListener("mouseup", onUp);
@@ -1712,11 +1713,12 @@ function registerSliders(sliderDefs) {
 	const ids = [];
 	const prevStates = {};
 	for (const def of sliderDefs) {
-		if (state.sceneSliders[def.id]) {
+		const prev = sliderState.sceneSliders[def.id];
+		if (prev) {
 			stopSliderLoop(def.id);
-			if (def.reset) prevStates[def.id] = { ...state.sceneSliders[def.id] };
+			if (def.reset) prevStates[def.id] = { ...prev };
 		}
-		state.sceneSliders[def.id] = {
+		sliderState.sceneSliders[def.id] = {
 			value: def.default !== void 0 ? def.default : (def.min + def.max) / 2,
 			min: def.min !== void 0 ? def.min : 0,
 			max: def.max !== void 0 ? def.max : 1,
@@ -1733,12 +1735,12 @@ function registerSliders(sliderDefs) {
 			_valueExprCompiled: null
 		};
 		if (def.valueExpr) try {
-			state.sceneSliders[def.id]._valueExprCompiled = compileExpr(def.valueExpr);
+			sliderState.sceneSliders[def.id]._valueExprCompiled = compileExpr(def.valueExpr);
 		} catch (_e) {}
 		ids.push(def.id);
 	}
 	for (const id of ids) {
-		const s = state.sceneSliders[id];
+		const s = sliderState.sceneSliders[id];
 		if (s && s.animate && s.autoplay) startSliderLoop(id);
 	}
 	return {
@@ -1749,13 +1751,13 @@ function registerSliders(sliderDefs) {
 function removeSliderIds(ids) {
 	for (const id of ids) {
 		stopSliderLoop(id);
-		delete state.sceneSliders[id];
+		delete sliderState.sceneSliders[id];
 	}
-	if (state.activeVirtualTimeExpr) try {
-		state.activeVirtualTimeCompiled = compileExpr(state.activeVirtualTimeExpr);
+	if (sliderState.activeVirtualTimeExpr) try {
+		sliderState.activeVirtualTimeCompiled = compileExpr(sliderState.activeVirtualTimeExpr);
 	} catch (err) {
 		console.warn("virtualTime recompile error:", err);
-		state.activeVirtualTimeCompiled = null;
+		sliderState.activeVirtualTimeCompiled = null;
 	}
 	syncSliderState();
 }
@@ -1782,7 +1784,7 @@ function buildSliderOverlay() {
 	dragHandle.addEventListener("mousedown", (e) => setupSliderDrag(e, overlay));
 	overlay.appendChild(dragHandle);
 	for (const id of ids) {
-		const s = state.sceneSliders[id];
+		const s = sliderState.sceneSliders[id];
 		const row = document.createElement("div");
 		row.className = "slider-row";
 		const labelSpan = document.createElement("span");
@@ -1794,10 +1796,10 @@ function buildSliderOverlay() {
 		input.type = "range";
 		input.className = "slider-range";
 		input.dataset.sliderId = id;
-		input.min = s.min;
-		input.max = s.max;
-		input.step = s.step;
-		input.value = s.value;
+		input.min = String(s.min);
+		input.max = String(s.max);
+		input.step = String(s.step);
+		input.value = String(s.value);
 		row.appendChild(input);
 		const valSpan = document.createElement("span");
 		valSpan.className = "slider-value";
@@ -1836,15 +1838,15 @@ function buildSliderOverlay() {
 	syncSliderState();
 }
 function unregisterAnimExpr(animState) {
-	state.activeAnimExprs = state.activeAnimExprs.filter((e) => e.animState !== animState);
+	sliderState.activeAnimExprs = sliderState.activeAnimExprs.filter((e) => e.animState !== animState);
 }
 function unregisterAnimUpdater(animState) {
-	state.activeAnimUpdaters = state.activeAnimUpdaters.filter((e) => e.animState !== animState);
+	sliderState.activeAnimUpdaters = sliderState.activeAnimUpdaters.filter((e) => e.animState !== animState);
 }
 function runAnimUpdaters(nowMs) {
-	if (!state.activeAnimUpdaters.length) return;
+	if (!sliderState.activeAnimUpdaters.length) return;
 	const next = [];
-	for (const entry of state.activeAnimUpdaters) {
+	for (const entry of sliderState.activeAnimUpdaters) {
 		if (!entry || !entry.animState || entry.animState.stopped) continue;
 		try {
 			entry.updateFrame(nowMs);
@@ -1853,10 +1855,10 @@ function runAnimUpdaters(nowMs) {
 			console.warn("Animation updater error:", err);
 		}
 	}
-	state.activeAnimUpdaters = next;
+	sliderState.activeAnimUpdaters = next;
 }
 function refreshActiveExprsForSliderValueChange() {
-	for (const entry of state.activeAnimExprs) {
+	for (const entry of sliderState.activeAnimExprs) {
 		if (!entry || !entry.animState || entry.animState.stopped) continue;
 		if (typeof entry._rebuildFn === "function") try {
 			entry._rebuildFn();
@@ -1868,10 +1870,10 @@ function refreshActiveExprsForSliderValueChange() {
 }
 function recompileActiveExprs() {
 	recompileActiveSceneFunctions();
-	for (const s of Object.values(state.sceneSliders)) if (s._valueExprString) try {
+	for (const s of Object.values(sliderState.sceneSliders)) if (s._valueExprString) try {
 		s._valueExprCompiled = compileExpr(s._valueExprString);
 	} catch (_e) {}
-	for (const entry of state.activeAnimExprs) {
+	for (const entry of sliderState.activeAnimExprs) {
 		if (entry.animState.stopped) continue;
 		if (typeof entry._rebuildFn === "function") {
 			try {
@@ -1923,42 +1925,42 @@ function recompileActiveExprs() {
 			console.warn("Slider animated_line recompile error:", err);
 		}
 	}
-	if (state.followCamState && state.followCamState.exprStrings) {
+	if (sliderState.followCamState && sliderState.followCamState.exprStrings) {
 		try {
-			state.followCamState.compiledExprs = state.followCamState.exprStrings.map((e) => compileExpr(e));
+			sliderState.followCamState.compiledExprs = sliderState.followCamState.exprStrings.map((e) => compileExpr(e));
 		} catch (err) {
 			console.warn("Follow-cam recompile error:", err);
 		}
-		if (state.followCamState.fromExprStrings) try {
-			state.followCamState.compiledFromExprs = state.followCamState.fromExprStrings.map((e) => compileExpr(e));
+		if (sliderState.followCamState.fromExprStrings) try {
+			sliderState.followCamState.compiledFromExprs = sliderState.followCamState.fromExprStrings.map((e) => compileExpr(e));
 		} catch (err) {
 			console.warn("Follow-cam fromExpr recompile error:", err);
 		}
 	}
-	if (state.activeVirtualTimeExpr) try {
-		state.activeVirtualTimeCompiled = compileExpr(state.activeVirtualTimeExpr);
+	if (sliderState.activeVirtualTimeExpr) try {
+		sliderState.activeVirtualTimeCompiled = compileExpr(sliderState.activeVirtualTimeExpr);
 	} catch (err) {
 		console.warn("virtualTime recompile error:", err);
-		state.activeVirtualTimeCompiled = null;
+		sliderState.activeVirtualTimeCompiled = null;
 	}
 	if (typeof window._algebenchUpdateInfoOverlays === "function") window._algebenchUpdateInfoOverlays();
 }
 function syncSliderState() {
 	const s = {};
-	for (const [id, sl] of Object.entries(state.sceneSliders)) s[id] = sl.value;
+	for (const [id, sl] of Object.entries(sliderState.sceneSliders)) s[id] = sl.value;
 	try {
 		localStorage.setItem("algebench-sliders", JSON.stringify(s));
 	} catch (e) {}
 	if (typeof window._algebenchUpdateStatusBar === "function") window._algebenchUpdateStatusBar();
 }
 function setSliderValue(id, value) {
-	const s = state.sceneSliders[id];
+	const s = sliderState.sceneSliders[id];
 	if (!s || !Number.isFinite(value)) return false;
 	if (s._loopPlaying) stopSliderLoop(id);
 	s.value = Math.max(s.min, Math.min(s.max, value));
 	const input = document.querySelector(`input[data-slider-id="${id}"]`);
 	if (input) {
-		input.value = s.value;
+		input.value = String(s.value);
 		const valSpan = input.parentElement && input.parentElement.querySelector(".slider-value");
 		if (valSpan) valSpan.textContent = _formatSliderValue(s);
 	}
@@ -1968,7 +1970,7 @@ function setSliderValue(id, value) {
 }
 function animateSlider$1(id, target, duration) {
 	return new Promise((resolve) => {
-		const slider = state.sceneSliders[id];
+		const slider = sliderState.sceneSliders[id];
 		if (!slider) {
 			resolve(false);
 			return;
@@ -1987,7 +1989,7 @@ function animateSlider$1(id, target, duration) {
 			slider.value = start + (target - start) * eased;
 			const input = document.querySelector(`input[data-slider-id="${id}"]`);
 			if (input) {
-				input.value = slider.value;
+				input.value = String(slider.value);
 				const valSpan = input.parentElement && input.parentElement.querySelector(".slider-value");
 				if (valSpan) valSpan.textContent = _formatSliderValue(slider);
 			}
@@ -8645,7 +8647,8 @@ function buildProofStepDerivePayload(proof, index, opts = {}) {
 	return payload;
 }
 //#endregion
-//#region src/proof.js
+//#region src/proof.ts
+var proofState = state;
 var proofTechniques = {
 	direct: "Direct Proof",
 	contradiction: "Proof by Contradiction",
@@ -8721,7 +8724,7 @@ function preRenderProofSteps(proof) {
 	return proof.steps.map((step, i) => {
 		const div = document.createElement("div");
 		div.className = "proof-step";
-		div.dataset.proofStepIndex = i;
+		div.dataset.proofStepIndex = String(i);
 		const type = step.type || "step";
 		const typeClass = `type-${sanitizeClassName(type)}`;
 		let contentHtml = `<div class="proof-step-header">
@@ -8764,9 +8767,9 @@ function _injectProofAskButtons(stepEl, step, proof) {
 var _proofDeriveManager = null;
 /** Stable key for the active proof + step, scoping derivation boxes per step. */
 function _proofStepKey() {
-	if (!state.proofSpec || state.proofActiveIndex < 0) return null;
-	const entry = state.proofSpec[state.proofActiveIndex];
-	return `${_proofKey(entry, state.proofActiveIndex)}#${state.proofStepIndex}`;
+	if (!proofState.proofSpec || proofState.proofActiveIndex < 0) return null;
+	const entry = proofState.proofSpec[proofState.proofActiveIndex];
+	return `${_proofKey(entry, proofState.proofActiveIndex)}#${proofState.proofStepIndex}`;
 }
 /** Get (or lazily create) the proof-panel derivation manager + its host. */
 function _ensureProofDeriveManager() {
@@ -8817,7 +8820,7 @@ function _deriveTooltip(proof, index) {
 async function _onDeriveStep(index) {
 	const proof = _activeProof$1();
 	if (!proof) return;
-	if (state.proofStepIndex !== index) navigateProof$1(index);
+	if (proofState.proofStepIndex !== index) navigateProof$1(index);
 	const payload = buildProofStepDerivePayload(proof, index);
 	if (!payload) return;
 	if (typeof window.algebenchDeriveProofPayload === "function") try {
@@ -8867,9 +8870,9 @@ function activateHighlights(stepEl, step) {
 		const colorName = spec.color || "cyan";
 		const [r, g, b] = _highlightColorRGB(colorName);
 		el.style.backgroundColor = _hlRGBA(colorName, .22);
-		el.style.setProperty("--hl-r", r);
-		el.style.setProperty("--hl-g", g);
-		el.style.setProperty("--hl-b", b);
+		el.style.setProperty("--hl-r", String(r));
+		el.style.setProperty("--hl-g", String(g));
+		el.style.setProperty("--hl-b", String(b));
 		if (spec.label) el.title = spec.label;
 		if (spec.label) {
 			el.style.cursor = "pointer";
@@ -8905,7 +8908,6 @@ function _toggleHighlightAnnotation(stepEl, name, spec) {
 	else if (mathRow) mathRow.parentNode.appendChild(annotation);
 	else stepEl.appendChild(annotation);
 }
-/** Convert a highlight color name to RGB components (r, g, b). */
 function _highlightColorRGB(color) {
 	const colors = {
 		cyan: [
@@ -8997,46 +8999,46 @@ function navigateProof$1(index) {
 	if (!proof) return;
 	const steps = proof.steps || [];
 	index = Math.max(-1, Math.min(index, steps.length - 1));
-	state.proofStepIndex = index;
-	if (!state.proofExpanded) _toggleProofPanel(true);
-	const activeSection = document.querySelector(`.proof-section[data-proof-idx="${state.proofActiveIndex}"]`);
+	proofState.proofStepIndex = index;
+	if (!proofState.proofExpanded) _toggleProofPanel(true);
+	const activeSection = document.querySelector(`.proof-section[data-proof-idx="${proofState.proofActiveIndex}"]`);
 	if (activeSection && activeSection.classList.contains("collapsed")) activeSection.classList.remove("collapsed");
 	_saveProofStepToMemory();
-	if (state.proofViewMode === "list") _renderList();
+	if (proofState.proofViewMode === "list") _renderList();
 	else _renderSlide();
 	_updateCounter();
 	_updateNavButtons();
-	if (index >= 0 && state._proofPreRendered && state._proofPreRendered[index]) activateHighlights(state._proofPreRendered[index], steps[index]);
+	if (index >= 0 && proofState._proofPreRendered && proofState._proofPreRendered[index]) activateHighlights(proofState._proofPreRendered[index], steps[index]);
 	_syncProofDeriveStep();
 	try {
 		window.dispatchEvent(new CustomEvent("algebench:stepchange", { detail: {
 			proof,
-			proofActiveIndex: state.proofActiveIndex,
+			proofActiveIndex: proofState.proofActiveIndex,
 			stepIndex: index,
-			sceneIndex: state.currentSceneIndex
+			sceneIndex: proofState.currentSceneIndex
 		} }));
 	} catch (_) {}
 	try {
 		window.dispatchEvent(new CustomEvent("algebench:proofchange"));
 	} catch (_) {}
-	if (state.proofSyncEnabled && !state._proofSyncInProgress) {
+	if (proofState.proofSyncEnabled && !proofState._proofSyncInProgress) {
 		const sceneStep = index >= 0 ? steps[index] && steps[index].sceneStep : proof.sceneStep;
 		if (sceneStep != null) {
-			state._proofSyncInProgress = true;
+			proofState._proofSyncInProgress = true;
 			try {
 				if (typeof sceneStep === "string" && sceneStep.includes(":")) {
 					const [si, sti] = sceneStep.split(":").map(Number);
 					if (typeof window.navigateTo === "function") window.navigateTo(si, sti);
-				} else if (typeof window.navigateTo === "function") window.navigateTo(state.currentSceneIndex, Number(sceneStep));
+				} else if (typeof window.navigateTo === "function") window.navigateTo(proofState.currentSceneIndex, Number(sceneStep));
 			} finally {
-				state._proofSyncInProgress = false;
+				proofState._proofSyncInProgress = false;
 			}
 		}
 	}
 }
 /** Reverse sync: scene step changed, update proof to match. */
 function syncProofFromSceneStep(stepIdx) {
-	if (!state.proofSyncEnabled || state._proofSyncInProgress) return;
+	if (!proofState.proofSyncEnabled || proofState._proofSyncInProgress) return;
 	const proof = _activeProof$1();
 	if (!proof || !proof.steps) return;
 	const matchIdx = proof.steps.findIndex((s) => {
@@ -9047,18 +9049,18 @@ function syncProofFromSceneStep(stepIdx) {
 			const si = Number(siStr);
 			const sti = Number(stiStr);
 			if (Number.isNaN(si) || Number.isNaN(sti)) return false;
-			return si === state.currentSceneIndex && sti === stepIdx;
+			return si === proofState.currentSceneIndex && sti === stepIdx;
 		}
 		const n = Number(sceneStep);
 		if (Number.isNaN(n)) return false;
 		return n === stepIdx;
 	});
-	if (matchIdx >= 0 && matchIdx !== state.proofStepIndex) {
-		state._proofSyncInProgress = true;
+	if (matchIdx >= 0 && matchIdx !== proofState.proofStepIndex) {
+		proofState._proofSyncInProgress = true;
 		try {
 			navigateProof$1(matchIdx);
 		} finally {
-			state._proofSyncInProgress = false;
+			proofState._proofSyncInProgress = false;
 		}
 	}
 }
@@ -9084,8 +9086,8 @@ function _renderSlide() {
 	if (!container) return;
 	const proof = _activeProof$1();
 	if (!proof) return;
-	const nodes = state._proofPreRendered || [];
-	const idx = state.proofStepIndex;
+	const nodes = proofState._proofPreRendered || [];
+	const idx = proofState.proofStepIndex;
 	container.innerHTML = "";
 	nodes.forEach((node, i) => {
 		const clone = node.cloneNode(true);
@@ -9116,8 +9118,8 @@ function _renderList() {
 	if (!container) return;
 	const proof = _activeProof$1();
 	if (!proof) return;
-	const nodes = state._proofPreRendered || [];
-	const idx = state.proofStepIndex;
+	const nodes = proofState._proofPreRendered || [];
+	const idx = proofState.proofStepIndex;
 	container.innerHTML = "";
 	nodes.forEach((node, i) => {
 		const clone = node.cloneNode(true);
@@ -9149,13 +9151,13 @@ function _updateCounter() {
 		counter.textContent = "";
 		return;
 	}
-	const idx = state.proofStepIndex;
+	const idx = proofState.proofStepIndex;
 	if (idx < 0) counter.textContent = `Goal · ${proof.steps.length} steps`;
 	else counter.textContent = `Step ${idx + 1} of ${proof.steps.length}`;
 }
 function _updateNavButtons() {
 	const proof = _activeProof$1();
-	const idx = state.proofStepIndex;
+	const idx = proofState.proofStepIndex;
 	const maxIdx = proof && proof.steps ? proof.steps.length - 1 : -1;
 	const hasProof = !!proof;
 	const firstBtn = document.getElementById("proof-first");
@@ -9168,10 +9170,10 @@ function _updateNavButtons() {
 	if (lastBtn) lastBtn.disabled = !hasProof || idx >= maxIdx;
 }
 function _activeProof$1() {
-	if (!state.proofSpec || state.proofSpec.length === 0) return null;
-	if (state.proofActiveIndex < 0) return null;
-	const idx = Math.min(state.proofActiveIndex, state.proofSpec.length - 1);
-	return state.proofSpec[idx]?.proof || null;
+	if (!proofState.proofSpec || proofState.proofSpec.length === 0) return null;
+	if (proofState.proofActiveIndex < 0) return null;
+	const idx = Math.min(proofState.proofActiveIndex, proofState.proofSpec.length - 1);
+	return proofState.proofSpec[idx]?.proof || null;
 }
 function _activeContainer() {
 	const stepsContainer = document.getElementById("proof-steps-container");
@@ -9185,25 +9187,25 @@ function _proofKey(entry, index) {
 /** Save current proof step index to memory before switching away. */
 function _saveProofStepToMemory() {
 	if (_activeProof$1()) {
-		const key = _proofKey(state.proofSpec[state.proofActiveIndex], state.proofActiveIndex);
-		state.proofStepMemory[key] = state.proofStepIndex;
+		const key = _proofKey(proofState.proofSpec[proofState.proofActiveIndex], proofState.proofActiveIndex);
+		proofState.proofStepMemory[key] = proofState.proofStepIndex;
 	}
 }
 /** Restore proof step index from memory when switching to a proof. */
 function _restoreProofStepFromMemory(entry, index) {
 	const key = _proofKey(entry, index);
-	return state.proofStepMemory[key] != null ? state.proofStepMemory[key] : -1;
+	return proofState.proofStepMemory[key] != null ? proofState.proofStepMemory[key] : -1;
 }
 /** Switch the active proof, preserving step state for both old and new. */
 function switchActiveProof(newIndex) {
-	if (newIndex === state.proofActiveIndex) return;
+	if (newIndex === proofState.proofActiveIndex) return;
 	_saveProofStepToMemory();
-	const oldIndex = state.proofActiveIndex;
-	state.proofActiveIndex = newIndex;
-	const entry = state.proofSpec[newIndex];
-	state.proofStepIndex = _restoreProofStepFromMemory(entry, newIndex);
+	const oldIndex = proofState.proofActiveIndex;
+	proofState.proofActiveIndex = newIndex;
+	const entry = proofState.proofSpec[newIndex];
+	proofState.proofStepIndex = _restoreProofStepFromMemory(entry, newIndex);
 	const proof = _activeProof$1();
-	state._proofPreRendered = proof ? _getOrPreRender(entry, newIndex) : [];
+	proofState._proofPreRendered = proof ? _getOrPreRender(entry, newIndex) : [];
 	const container = document.getElementById("proof-context-content");
 	if (container) container.querySelectorAll(".proof-section[data-proof-idx]").forEach((section) => {
 		const idx = parseInt(section.dataset.proofIdx);
@@ -9215,7 +9217,7 @@ function switchActiveProof(newIndex) {
 			if (oldSteps) oldSteps.remove();
 			const hintEl = section.querySelector(".proof-section-step-hint");
 			if (hintEl) {
-				const oldEntry = state.proofSpec[oldIndex];
+				const oldEntry = proofState.proofSpec[oldIndex];
 				const memStep = _restoreProofStepFromMemory(oldEntry, oldIndex);
 				const oldProof = oldEntry?.proof;
 				hintEl.textContent = memStep >= 0 && oldProof?.steps ? `(step ${memStep + 1}/${oldProof.steps.length})` : "";
@@ -9236,7 +9238,7 @@ function switchActiveProof(newIndex) {
 	});
 	_updateCounter();
 	_updateNavButtons();
-	if (proof) navigateProof$1(state.proofStepIndex);
+	if (proof) navigateProof$1(proofState.proofStepIndex);
 }
 /**
 * Public: activate a proof by index (deeplink / AI jump). Clamps to range and
@@ -9244,30 +9246,30 @@ function switchActiveProof(newIndex) {
 * proof is already active.
 */
 function setActiveProof(index) {
-	if (!state.proofSpec || !state.proofSpec.length) return;
-	switchActiveProof(Math.max(0, Math.min(index | 0, state.proofSpec.length - 1)));
+	if (!proofState.proofSpec || !proofState.proofSpec.length) return;
+	switchActiveProof(Math.max(0, Math.min(index | 0, proofState.proofSpec.length - 1)));
 }
 /** Get cached pre-rendered steps or create them. */
 function _getOrPreRender(entry, index) {
 	const key = _proofKey(entry, index);
-	if (!state._proofPreRenderedAll[key]) {
+	if (!proofState._proofPreRenderedAll[key]) {
 		const proof = entry?.proof;
-		state._proofPreRenderedAll[key] = proof ? preRenderProofSteps(proof) : [];
+		proofState._proofPreRenderedAll[key] = proof ? preRenderProofSteps(proof) : [];
 	}
-	return state._proofPreRenderedAll[key];
+	return proofState._proofPreRenderedAll[key];
 }
 /** Load proofs for the current context. Called on scene/step change. */
 function loadProof(lessonSpec, sceneIndex, stepIndex) {
 	const allProofs = collectAllProofs(lessonSpec);
-	if (state._proofLastScene !== sceneIndex || !state.proofAllSpecs || state.proofAllSpecs.length !== allProofs.length) {
+	if (proofState._proofLastScene !== sceneIndex || !proofState.proofAllSpecs || proofState.proofAllSpecs.length !== allProofs.length) {
 		_saveProofStepToMemory();
 		_destroyProofDeriveManager();
-		const prevProofId = state.proofSpec?.[state.proofActiveIndex]?.proof?.id;
-		state.proofAllSpecs = allProofs;
-		state.proofSpec = allProofs;
-		state._proofLastScene = sceneIndex;
-		state._proofLastStep = stepIndex;
-		state._proofPreRenderedAll = {};
+		const prevProofId = proofState.proofSpec?.[proofState.proofActiveIndex]?.proof?.id;
+		proofState.proofAllSpecs = allProofs;
+		proofState.proofSpec = allProofs;
+		proofState._proofLastScene = sceneIndex;
+		proofState._proofLastStep = stepIndex;
+		proofState._proofPreRenderedAll = {};
 		allProofs.forEach((entry, i) => _getOrPreRender(entry, i));
 		let newActiveIndex = -1;
 		if (prevProofId) {
@@ -9275,30 +9277,30 @@ function loadProof(lessonSpec, sceneIndex, stepIndex) {
 			if (match >= 0) newActiveIndex = match;
 		}
 		if (newActiveIndex < 0) newActiveIndex = allProofs.findIndex((e) => _isProofInContext(e, sceneIndex, stepIndex));
-		state.proofActiveIndex = newActiveIndex;
+		proofState.proofActiveIndex = newActiveIndex;
 		const activeEntry = allProofs[newActiveIndex];
-		state.proofStepIndex = activeEntry ? _restoreProofStepFromMemory(activeEntry, newActiveIndex) : -1;
-		state._proofPreRendered = activeEntry ? _getOrPreRender(activeEntry, newActiveIndex) : [];
+		proofState.proofStepIndex = activeEntry ? _restoreProofStepFromMemory(activeEntry, newActiveIndex) : -1;
+		proofState._proofPreRendered = activeEntry ? _getOrPreRender(activeEntry, newActiveIndex) : [];
 		_buildContextTab(allProofs);
 	}
-	state._proofLastStep = stepIndex;
+	proofState._proofLastStep = stepIndex;
 	_updateContextVisibility(sceneIndex, stepIndex);
 	const hasVisible = allProofs.some((e) => _isProofInContext(e, sceneIndex, stepIndex));
 	const toggleBtn = document.getElementById("proof-toggle-btn");
 	if (toggleBtn) toggleBtn.style.display = hasVisible ? "" : "none";
 	_updateCounter();
 	_updateNavButtons();
-	if (_activeProof$1() && !state._proofSyncInProgress) {
-		state._proofSyncInProgress = true;
+	if (_activeProof$1() && !proofState._proofSyncInProgress) {
+		proofState._proofSyncInProgress = true;
 		try {
-			navigateProof$1(state.proofStepIndex);
+			navigateProof$1(proofState.proofStepIndex);
 		} finally {
-			state._proofSyncInProgress = false;
+			proofState._proofSyncInProgress = false;
 		}
 	}
-	if (!hasVisible && state.proofExpanded) _toggleProofPanel(false);
+	if (!hasVisible && proofState.proofExpanded) _toggleProofPanel(false);
 	const savedExpanded = localStorage.getItem("algebench-proof-expanded");
-	if (hasVisible && savedExpanded === "true" && !state.proofExpanded) _toggleProofPanel(true);
+	if (hasVisible && savedExpanded === "true" && !proofState.proofExpanded) _toggleProofPanel(true);
 	try {
 		window.dispatchEvent(new CustomEvent("algebench:proofload", { detail: {
 			sceneIndex,
@@ -9318,12 +9320,12 @@ function _buildContextTab(allProofs) {
 	}
 	allProofs.forEach((entry, i) => {
 		const section = document.createElement("div");
-		const isActive = i === state.proofActiveIndex;
+		const isActive = i === proofState.proofActiveIndex;
 		section.className = "proof-section" + (isActive ? "" : " collapsed");
-		section.dataset.proofIdx = i;
+		section.dataset.proofIdx = String(i);
 		section.dataset.proofLevel = entry.level;
-		if (entry.sceneIndex != null) section.dataset.proofScene = entry.sceneIndex;
-		if (entry.stepIndex != null) section.dataset.proofStep = entry.stepIndex;
+		if (entry.sceneIndex != null) section.dataset.proofScene = String(entry.sceneIndex);
+		if (entry.stepIndex != null) section.dataset.proofStep = String(entry.stepIndex);
 		const proof = entry.proof;
 		const title = proof.title || proof.goal || "Untitled proof";
 		const badge = techniqueBadgeHTML(proof);
@@ -9344,7 +9346,7 @@ function _buildContextTab(allProofs) {
 		}
 		section.appendChild(body);
 		section.querySelector(".proof-section-header").addEventListener("click", () => {
-			if (i !== state.proofActiveIndex) switchActiveProof(i);
+			if (i !== proofState.proofActiveIndex) switchActiveProof(i);
 			else section.classList.toggle("collapsed");
 		});
 		container.appendChild(section);
@@ -9354,15 +9356,15 @@ function _buildContextTab(allProofs) {
 function _updateContextVisibility(sceneIndex, stepIndex) {
 	const container = document.getElementById("proof-context-content");
 	if (!container) return;
-	const showAll = state._proofTabMode === "all";
+	const showAll = proofState._proofTabMode === "all";
 	container.querySelectorAll(".proof-section[data-proof-idx]").forEach((section) => {
 		const idx = parseInt(section.dataset.proofIdx);
-		const entry = state.proofSpec[idx];
+		const entry = proofState.proofSpec[idx];
 		if (!entry) {
 			section.style.display = "none";
 			return;
 		}
-		const isActive = idx === state.proofActiveIndex;
+		const isActive = idx === proofState.proofActiveIndex;
 		const inContext = _isProofInContext(entry, sceneIndex, stepIndex);
 		const visible = showAll || inContext;
 		section.style.display = visible ? "" : "none";
@@ -9382,7 +9384,7 @@ function _toggleProofPanel(show) {
 	const handle = document.getElementById("proof-resize-handle");
 	const btn = document.getElementById("proof-toggle-btn");
 	if (!panel) return;
-	state.proofExpanded = show;
+	proofState.proofExpanded = show;
 	if (show) {
 		panel.classList.remove("hidden");
 		if (handle) handle.classList.remove("hidden");
@@ -9408,7 +9410,7 @@ function _toggleProofPanel(show) {
 */
 function setProofPanelOpen(show) {
 	if (show && !_activeProof$1()) return;
-	if (!!show === !!state.proofExpanded) return;
+	if (!!show === !!proofState.proofExpanded) return;
 	_toggleProofPanel(!!show);
 }
 function _setupProofResize() {
@@ -9438,14 +9440,14 @@ function _setupProofTabs() {
 	document.querySelectorAll(".proof-tab").forEach((tab) => {
 		tab.addEventListener("click", () => {
 			document.querySelectorAll(".proof-tab").forEach((t) => t.classList.toggle("active", t === tab));
-			state._proofTabMode = tab.dataset.proofTab || "context";
-			_updateContextVisibility(state._proofLastScene ?? 0, state._proofLastStep ?? 0);
+			proofState._proofTabMode = tab.dataset.proofTab || "context";
+			_updateContextVisibility(proofState._proofLastScene ?? 0, proofState._proofLastStep ?? 0);
 		});
 	});
 }
 function refreshProofPanel$1() {
-	if (!_activeProof$1() || !state.proofExpanded) return;
-	if (state.proofViewMode === "list") _renderList();
+	if (!_activeProof$1() || !proofState.proofExpanded) return;
+	if (proofState.proofViewMode === "list") _renderList();
 	else _renderSlide();
 	_updateCounter();
 	_updateNavButtons();
@@ -9453,7 +9455,7 @@ function refreshProofPanel$1() {
 function setupProofPanel() {
 	const toggleBtn = document.getElementById("proof-toggle-btn");
 	if (toggleBtn) toggleBtn.addEventListener("click", () => {
-		_toggleProofPanel(!state.proofExpanded);
+		_toggleProofPanel(!proofState.proofExpanded);
 	});
 	const firstBtn = document.getElementById("proof-first");
 	const prevBtn = document.getElementById("proof-prev");
@@ -9465,11 +9467,11 @@ function setupProofPanel() {
 	}
 	if (prevBtn) {
 		prevBtn.innerHTML = PREV_ICON;
-		prevBtn.addEventListener("click", () => navigateProof$1(state.proofStepIndex - 1));
+		prevBtn.addEventListener("click", () => navigateProof$1(proofState.proofStepIndex - 1));
 	}
 	if (nextBtn) {
 		nextBtn.innerHTML = NEXT_ICON;
-		nextBtn.addEventListener("click", () => navigateProof$1(state.proofStepIndex + 1));
+		nextBtn.addEventListener("click", () => navigateProof$1(proofState.proofStepIndex + 1));
 	}
 	if (lastBtn) {
 		lastBtn.innerHTML = LAST_ICON;
@@ -9479,32 +9481,33 @@ function setupProofPanel() {
 		});
 	}
 	const savedViewMode = localStorage.getItem("algebench-proof-view-mode");
-	if (savedViewMode === "list" || savedViewMode === "slide") state.proofViewMode = savedViewMode;
+	if (savedViewMode === "list" || savedViewMode === "slide") proofState.proofViewMode = savedViewMode;
 	const modeBtn = document.getElementById("proof-mode-toggle");
 	if (modeBtn) {
-		modeBtn.textContent = state.proofViewMode === "slide" ? "Progressive" : "Verbose";
+		modeBtn.textContent = proofState.proofViewMode === "slide" ? "Progressive" : "Verbose";
 		modeBtn.addEventListener("click", () => {
-			state.proofViewMode = state.proofViewMode === "slide" ? "list" : "slide";
-			modeBtn.textContent = state.proofViewMode === "slide" ? "Progressive" : "Verbose";
-			localStorage.setItem("algebench-proof-view-mode", state.proofViewMode);
-			navigateProof$1(state.proofStepIndex);
+			proofState.proofViewMode = proofState.proofViewMode === "slide" ? "list" : "slide";
+			modeBtn.textContent = proofState.proofViewMode === "slide" ? "Progressive" : "Verbose";
+			localStorage.setItem("algebench-proof-view-mode", proofState.proofViewMode);
+			navigateProof$1(proofState.proofStepIndex);
 		});
 	}
 	const syncBtn = document.getElementById("proof-sync-btn");
 	if (syncBtn) syncBtn.addEventListener("click", () => {
-		state.proofSyncEnabled = !state.proofSyncEnabled;
-		syncBtn.classList.toggle("active", state.proofSyncEnabled);
-		if (state.proofSyncEnabled) navigateProof$1(state.proofStepIndex);
+		proofState.proofSyncEnabled = !proofState.proofSyncEnabled;
+		syncBtn.classList.toggle("active", proofState.proofSyncEnabled);
+		if (proofState.proofSyncEnabled) navigateProof$1(proofState.proofStepIndex);
 	});
 	document.addEventListener("keydown", (e) => {
-		if (!state.proofExpanded || !_activeProof$1()) return;
-		if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+		if (!proofState.proofExpanded || !_activeProof$1()) return;
+		const target = e.target;
+		if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
 		if (e.key === "ArrowLeft") {
 			e.preventDefault();
-			navigateProof$1(state.proofStepIndex - 1);
+			navigateProof$1(proofState.proofStepIndex - 1);
 		} else if (e.key === "ArrowRight") {
 			e.preventDefault();
-			navigateProof$1(state.proofStepIndex + 1);
+			navigateProof$1(proofState.proofStepIndex + 1);
 		}
 	});
 	_setupProofTabs();
@@ -9516,7 +9519,7 @@ function getProofContext$1() {
 	if (!proof) return null;
 	const stripHlClass = (m) => m ? stripHtmlMacros(m) : null;
 	const steps = proof.steps || [];
-	const idx = state.proofStepIndex;
+	const idx = proofState.proofStepIndex;
 	const ctx = {
 		title: proof.title || null,
 		technique: proof.technique || null,
@@ -9525,7 +9528,7 @@ function getProofContext$1() {
 		stepCount: steps.length,
 		currentStepIndex: idx,
 		proofPrompt: proof.prompt || null,
-		expanded: state.proofExpanded
+		expanded: proofState.proofExpanded
 	};
 	if (idx > 0) ctx.previousSteps = steps.slice(0, idx).map((s, i) => ({
 		step: i + 1,
@@ -9621,30 +9624,31 @@ var __vitePreload = function preload(baseModule, deps, importerUrl) {
 	});
 };
 //#endregion
-//#region src/scene-loader.js
+//#region src/scene-loader.ts
+var sceneState = state;
 var AUTO_PLAY_DEFAULT_DURATION = 3e3;
 setNavigateFn((si, sti) => navigateTo$1(si, sti));
 function snapshotBefore() {
 	return {
-		arrows: state.arrowMeshes.length,
-		labels: state.labels.length,
-		planes: state.planeMeshes.length,
-		lines: state.lineNodes.length,
-		vecLines: state.vectorLineNodes.length,
-		axisLines: state.axisLineNodes.length,
-		points: state.pointNodes.length
+		arrows: sceneState.arrowMeshes.length,
+		labels: sceneState.labels.length,
+		planes: sceneState.planeMeshes.length,
+		lines: sceneState.lineNodes.length,
+		vecLines: sceneState.vectorLineNodes.length,
+		axisLines: sceneState.axisLineNodes.length,
+		points: sceneState.pointNodes.length
 	};
 }
 function buildSubTracker(group, before) {
 	return {
 		group,
-		arrowMeshes: state.arrowMeshes.slice(before.arrows),
-		labels: state.labels.slice(before.labels),
-		planeMeshes: state.planeMeshes.slice(before.planes),
-		lineNodes: state.lineNodes.slice(before.lines),
-		vectorLineNodes: state.vectorLineNodes.slice(before.vecLines),
-		axisLineNodes: state.axisLineNodes.slice(before.axisLines),
-		pointNodes: state.pointNodes.slice(before.points)
+		arrowMeshes: sceneState.arrowMeshes.slice(before.arrows),
+		labels: sceneState.labels.slice(before.labels),
+		planeMeshes: sceneState.planeMeshes.slice(before.planes),
+		lineNodes: sceneState.lineNodes.slice(before.lines),
+		vectorLineNodes: sceneState.vectorLineNodes.slice(before.vecLines),
+		axisLineNodes: sceneState.axisLineNodes.slice(before.axisLines),
+		pointNodes: sceneState.pointNodes.slice(before.points)
 	};
 }
 function elementDisplayName(el) {
@@ -9661,17 +9665,17 @@ function renderStepAdd(elements, sliderDefs) {
 		recompileActiveExprs();
 	}
 	const before = snapshotBefore();
-	const group = state.sceneView.group();
+	const group = sceneState.sceneView.group();
 	let autoIdCounter = 0;
 	const renderResults = [];
 	const addedElementIds = [];
 	let replacedElements = null;
 	for (const el of elements) {
 		if (!el.id && (el.prompt || elementHasLabelSource(el) && el.type !== "axis" && el.type !== "grid")) el.id = "__auto_" + autoIdCounter++ + "_" + Date.now();
-		if (el.id && state.elementRegistry[el.id]) {
+		if (el.id && sceneState.elementRegistry[el.id]) {
 			if (!replacedElements) replacedElements = {};
-			replacedElements[el.id] = state.elementRegistry[el.id];
-			if (!state.elementRegistry[el.id].hidden) hideElementById(el.id);
+			replacedElements[el.id] = sceneState.elementRegistry[el.id];
+			if (!sceneState.elementRegistry[el.id].hidden) hideElementById(el.id);
 		}
 		const elBefore = el.id ? snapshotBefore() : null;
 		const elGroup = el.id ? group.group() : group;
@@ -9685,7 +9689,7 @@ function renderStepAdd(elements, sliderDefs) {
 		if (el.id) {
 			addedElementIds.push(el.id);
 			const subTracker = buildSubTracker(elGroup, elBefore);
-			state.elementRegistry[el.id] = {
+			sceneState.elementRegistry[el.id] = {
 				tracker: subTracker,
 				hidden: false,
 				type: el.type,
@@ -9727,7 +9731,7 @@ function undoTrackerInfoOverlays(tracker) {
 	for (const id of tracker.infoIds) removeInfoOverlay(id);
 }
 function hideElementById(id) {
-	const reg = state.elementRegistry[id];
+	const reg = sceneState.elementRegistry[id];
 	if (!reg || reg.hidden) return;
 	reg.hidden = true;
 	const t = reg.tracker;
@@ -9761,7 +9765,7 @@ function hideElementById(id) {
 	} catch (e) {}
 }
 function showElementById(id) {
-	const reg = state.elementRegistry[id];
+	const reg = sceneState.elementRegistry[id];
 	if (!reg || !reg.hidden) return;
 	reg.hidden = false;
 	const t = reg.tracker;
@@ -9783,12 +9787,12 @@ window._algebenchShowElementById = showElementById;
 function removeTrackSliders(tracker) {
 	const ownIds = new Set(tracker.sliderIds || []);
 	let changed = false;
-	for (const id of Object.keys(state.sceneSliders)) {
+	for (const id of Object.keys(sceneState.sceneSliders)) {
 		if (ownIds.has(id)) continue;
 		if (!tracker.removedSliders[id]) {
 			stopSliderLoop(id);
-			tracker.removedSliders[id] = { ...state.sceneSliders[id] };
-			delete state.sceneSliders[id];
+			tracker.removedSliders[id] = { ...sceneState.sceneSliders[id] };
+			delete sceneState.sceneSliders[id];
 			changed = true;
 		}
 	}
@@ -9799,10 +9803,10 @@ function removeTrackSliders(tracker) {
 }
 function removeTrackSliderById(id, tracker) {
 	if (tracker.sliderIds && tracker.sliderIds.includes(id)) return false;
-	if (state.sceneSliders[id] && !tracker.removedSliders[id]) {
+	if (sceneState.sceneSliders[id] && !tracker.removedSliders[id]) {
 		stopSliderLoop(id);
-		tracker.removedSliders[id] = { ...state.sceneSliders[id] };
-		delete state.sceneSliders[id];
+		tracker.removedSliders[id] = { ...sceneState.sceneSliders[id] };
+		delete sceneState.sceneSliders[id];
 		return true;
 	}
 	return false;
@@ -9813,9 +9817,9 @@ function processStepRemoves(removeList, tracker) {
 	let slidersChanged = false;
 	for (const item of removeList) {
 		if (item.id === "*" || item.type === "*") {
-			for (const id of Object.keys(state.elementRegistry)) {
+			for (const id of Object.keys(sceneState.elementRegistry)) {
 				if (ownIds.has(id)) continue;
-				if (!state.elementRegistry[id].hidden) {
+				if (!sceneState.elementRegistry[id].hidden) {
 					hideElementById(id);
 					tracker.removedIds.push(id);
 				}
@@ -9829,7 +9833,7 @@ function processStepRemoves(removeList, tracker) {
 			continue;
 		}
 		if (item.id) {
-			if (!ownIds.has(item.id) && state.elementRegistry[item.id] && !state.elementRegistry[item.id].hidden) {
+			if (!ownIds.has(item.id) && sceneState.elementRegistry[item.id] && !sceneState.elementRegistry[item.id].hidden) {
 				hideElementById(item.id);
 				tracker.removedIds.push(item.id);
 			}
@@ -9841,7 +9845,7 @@ function processStepRemoves(removeList, tracker) {
 			removeTrackSliders(tracker);
 			continue;
 		}
-		if (item.type) for (const [id, reg] of Object.entries(state.elementRegistry)) {
+		if (item.type) for (const [id, reg] of Object.entries(sceneState.elementRegistry)) {
 			if (ownIds.has(id)) continue;
 			if (reg.type === item.type && !reg.hidden) {
 				hideElementById(id);
@@ -9858,7 +9862,7 @@ function undoStepRemoves(tracker) {
 	if (!tracker.removedIds) return;
 	const stillRemoved = /* @__PURE__ */ new Set();
 	const stillRemovedSliders = /* @__PURE__ */ new Set();
-	for (const t of state.stepTrackers) {
+	for (const t of sceneState.stepTrackers) {
 		if (t === tracker) break;
 		if (t.removedIds) for (const id of t.removedIds) stillRemoved.add(id);
 		if (t.removedSliders) for (const id of Object.keys(t.removedSliders)) stillRemovedSliders.add(id);
@@ -9866,8 +9870,8 @@ function undoStepRemoves(tracker) {
 	for (const id of tracker.removedIds) if (!stillRemoved.has(id)) showElementById(id);
 	if (tracker.removedSliders) {
 		let slidersChanged = false;
-		for (const [id, def] of Object.entries(tracker.removedSliders)) if (!stillRemovedSliders.has(id) && !state.sceneSliders[id]) {
-			state.sceneSliders[id] = def;
+		for (const [id, def] of Object.entries(tracker.removedSliders)) if (!stillRemovedSliders.has(id) && !sceneState.sceneSliders[id]) {
+			sceneState.sceneSliders[id] = def;
 			slidersChanged = true;
 		}
 		if (slidersChanged) {
@@ -9878,10 +9882,10 @@ function undoStepRemoves(tracker) {
 }
 function removeStepTracker(tracker) {
 	if (tracker.sliderIds && tracker.sliderIds.length > 0) {
-		const stillNeeded = new Set(state.stepTrackers.flatMap((t) => t.sliderIds || []));
+		const stillNeeded = new Set(sceneState.stepTrackers.flatMap((t) => t.sliderIds || []));
 		const toRemove = tracker.sliderIds.filter((id) => !stillNeeded.has(id));
 		if (tracker.prevSliderStates) {
-			for (const [id, prev] of Object.entries(tracker.prevSliderStates)) if (!toRemove.includes(id) && state.sceneSliders[id]) Object.assign(state.sceneSliders[id], prev);
+			for (const [id, prev] of Object.entries(tracker.prevSliderStates)) if (!toRemove.includes(id) && sceneState.sceneSliders[id]) Object.assign(sceneState.sceneSliders[id], prev);
 		}
 		if (toRemove.length > 0) removeSliderIds(toRemove);
 		buildSliderOverlay();
@@ -9895,67 +9899,67 @@ function removeStepTracker(tracker) {
 	}
 	if (tracker.replacedElements) {
 		const stillRemoved = /* @__PURE__ */ new Set();
-		for (const t of state.stepTrackers) if (t.removedIds) for (const id of t.removedIds) stillRemoved.add(id);
+		for (const t of sceneState.stepTrackers) if (t.removedIds) for (const id of t.removedIds) stillRemoved.add(id);
 		for (const [id, savedReg] of Object.entries(tracker.replacedElements)) {
-			state.elementRegistry[id] = savedReg;
+			sceneState.elementRegistry[id] = savedReg;
 			if (!stillRemoved.has(id)) showElementById(id);
 		}
 	}
 	if (tracker.elementIds) for (const id of tracker.elementIds) {
 		if (tracker.replacedElements && tracker.replacedElements[id]) continue;
-		delete state.elementRegistry[id];
-		state.legendToggledOff.delete(id);
+		delete sceneState.elementRegistry[id];
+		sceneState.legendToggledOff.delete(id);
 	}
 	fadeOutTracker(tracker, 200, () => {
 		if (tracker.group) try {
 			tracker.group.remove();
 		} catch (e) {}
 		for (const entry of tracker.arrowMeshes) {
-			state.three.scene.remove(entry.mesh);
+			sceneState.three.scene.remove(entry.mesh);
 			entry.mesh.geometry.dispose();
 			entry.mesh.material.dispose();
-			const idx = state.arrowMeshes.indexOf(entry);
-			if (idx >= 0) state.arrowMeshes.splice(idx, 1);
+			const idx = sceneState.arrowMeshes.indexOf(entry);
+			if (idx >= 0) sceneState.arrowMeshes.splice(idx, 1);
 		}
 		for (const r of tracker.renderResults || []) {
 			if (!r || !r._arrowOwner) continue;
-			for (let i = state.arrowMeshes.length - 1; i >= 0; i--) {
-				const entry = state.arrowMeshes[i];
+			for (let i = sceneState.arrowMeshes.length - 1; i >= 0; i--) {
+				const entry = sceneState.arrowMeshes[i];
 				if (entry.owner === r._arrowOwner) {
-					state.three.scene.remove(entry.mesh);
+					sceneState.three.scene.remove(entry.mesh);
 					entry.mesh.geometry.dispose();
 					entry.mesh.material.dispose();
-					state.arrowMeshes.splice(i, 1);
+					sceneState.arrowMeshes.splice(i, 1);
 				}
 			}
 		}
 		for (const lbl of tracker.labels) {
 			if (lbl.el.parentNode) lbl.el.parentNode.removeChild(lbl.el);
-			const idx = state.labels.indexOf(lbl);
-			if (idx >= 0) state.labels.splice(idx, 1);
+			const idx = sceneState.labels.indexOf(lbl);
+			if (idx >= 0) sceneState.labels.splice(idx, 1);
 		}
 		for (const m of tracker.planeMeshes) {
-			state.three.scene.remove(m);
+			sceneState.three.scene.remove(m);
 			m.geometry.dispose();
 			m.material.dispose();
-			const idx = state.planeMeshes.indexOf(m);
-			if (idx >= 0) state.planeMeshes.splice(idx, 1);
+			const idx = sceneState.planeMeshes.indexOf(m);
+			if (idx >= 0) sceneState.planeMeshes.splice(idx, 1);
 		}
 		for (const entry of tracker.lineNodes) {
-			const idx = state.lineNodes.indexOf(entry);
-			if (idx >= 0) state.lineNodes.splice(idx, 1);
+			const idx = sceneState.lineNodes.indexOf(entry);
+			if (idx >= 0) sceneState.lineNodes.splice(idx, 1);
 		}
 		for (const entry of tracker.vectorLineNodes) {
-			const idx = state.vectorLineNodes.indexOf(entry);
-			if (idx >= 0) state.vectorLineNodes.splice(idx, 1);
+			const idx = sceneState.vectorLineNodes.indexOf(entry);
+			if (idx >= 0) sceneState.vectorLineNodes.splice(idx, 1);
 		}
 		for (const entry of tracker.axisLineNodes) {
-			const idx = state.axisLineNodes.indexOf(entry);
-			if (idx >= 0) state.axisLineNodes.splice(idx, 1);
+			const idx = sceneState.axisLineNodes.indexOf(entry);
+			if (idx >= 0) sceneState.axisLineNodes.splice(idx, 1);
 		}
 		for (const entry of tracker.pointNodes || []) {
-			const idx = state.pointNodes.indexOf(entry);
-			if (idx >= 0) state.pointNodes.splice(idx, 1);
+			const idx = sceneState.pointNodes.indexOf(entry);
+			if (idx >= 0) sceneState.pointNodes.splice(idx, 1);
 		}
 	});
 }
@@ -9988,24 +9992,24 @@ function fadeInTracker(tracker, duration) {
 		const ease = t * t * (3 - 2 * t);
 		for (const entry of tracker.arrowMeshes) {
 			const baseOp = entry.mesh && entry.mesh.userData && typeof entry.mesh.userData.baseOpacity === "number" ? entry.mesh.userData.baseOpacity : 1;
-			const globalOp = entry.isShaft ? state.displayParams.vectorOpacity : state.displayParams.arrowOpacity;
+			const globalOp = entry.isShaft ? sceneState.displayParams.vectorOpacity : sceneState.displayParams.arrowOpacity;
 			entry.mesh.material.opacity = ease * Math.max(0, Math.min(1, baseOp * globalOp));
 		}
 		for (const m of tracker.planeMeshes) {
-			const targetOp = m.userData.targetOpacity !== void 0 ? m.userData.targetOpacity : state.displayParams.planeOpacity;
+			const targetOp = m.userData.targetOpacity !== void 0 ? m.userData.targetOpacity : sceneState.displayParams.planeOpacity;
 			m.material.opacity = ease * targetOp;
 		}
-		for (const lbl of tracker.labels) lbl.el.style.opacity = String(ease * state.displayParams.labelOpacity);
+		for (const lbl of tracker.labels) lbl.el.style.opacity = String(ease * sceneState.displayParams.labelOpacity);
 		for (const entry of tracker.lineNodes) {
 			const baseOp = entry && typeof entry.baseOpacity === "number" ? entry.baseOpacity : 1;
 			try {
-				entry.node.set("opacity", ease * baseOp * state.displayParams.lineOpacity);
+				entry.node.set("opacity", ease * baseOp * sceneState.displayParams.lineOpacity);
 			} catch (e) {}
 		}
 		for (const entry of tracker.vectorLineNodes) {
 			const baseOp = entry && typeof entry.baseOpacity === "number" ? entry.baseOpacity : 1;
 			try {
-				entry.node.set("opacity", ease * baseOp * state.displayParams.vectorOpacity);
+				entry.node.set("opacity", ease * baseOp * sceneState.displayParams.vectorOpacity);
 			} catch (e) {}
 		}
 		for (const entry of tracker.pointNodes || []) try {
@@ -10026,7 +10030,7 @@ function fadeOutTracker(tracker, duration, onComplete) {
 		const ease = 1 - t * t;
 		for (let i = 0; i < tracker.arrowMeshes.length; i++) tracker.arrowMeshes[i].mesh.material.opacity = arrowOps[i] * ease;
 		for (let i = 0; i < tracker.planeMeshes.length; i++) tracker.planeMeshes[i].material.opacity = planeOps[i] * ease;
-		for (const lbl of tracker.labels) lbl.el.style.opacity = String(parseFloat(lbl.el.style.opacity || 1) * ease);
+		for (const lbl of tracker.labels) lbl.el.style.opacity = String(parseFloat(lbl.el.style.opacity || String(1)) * ease);
 		for (const entry of tracker.lineNodes) try {
 			entry.node.set("opacity", (entry.node.get("opacity") || 1) * ease);
 		} catch (e) {}
@@ -10042,47 +10046,47 @@ function fadeOutTracker(tracker, duration, onComplete) {
 	requestAnimationFrame(step);
 }
 async function loadScene(spec) {
-	const root = state.mathbox.select("*");
+	const root = sceneState.mathbox.select("*");
 	if (root) root.remove();
-	for (const entry of state.arrowMeshes) {
-		state.three.scene.remove(entry.mesh);
+	for (const entry of sceneState.arrowMeshes) {
+		sceneState.three.scene.remove(entry.mesh);
 		entry.mesh.geometry.dispose();
 		entry.mesh.material.dispose();
 	}
-	state.arrowMeshes = [];
-	state.axisLineNodes = [];
-	state.vectorLineNodes = [];
-	state.lineNodes = [];
-	for (const m of state.planeMeshes) {
-		state.three.scene.remove(m);
+	sceneState.arrowMeshes = [];
+	sceneState.axisLineNodes = [];
+	sceneState.vectorLineNodes = [];
+	sceneState.lineNodes = [];
+	for (const m of sceneState.planeMeshes) {
+		sceneState.three.scene.remove(m);
 		m.geometry.dispose();
 		m.material.dispose();
 	}
-	state.planeMeshes = [];
-	state.pointNodes = [];
-	state._planeMeshSerial = 0;
+	sceneState.planeMeshes = [];
+	sceneState.pointNodes = [];
+	sceneState._planeMeshSerial = 0;
 	clearLabels();
-	state.followCamState = null;
-	state.cameraExprState = null;
-	state.cameraExprStartTime = 0;
-	if (state.controls && state.followCamSavedControls) {
-		if (Object.prototype.hasOwnProperty.call(state.controls, "enableDamping")) {
-			state.controls.enableDamping = state.followCamSavedControls.enableDamping;
-			if (Number.isFinite(state.followCamSavedControls.dampingFactor)) state.controls.dampingFactor = state.followCamSavedControls.dampingFactor;
+	sceneState.followCamState = null;
+	sceneState.cameraExprState = null;
+	sceneState.cameraExprStartTime = 0;
+	if (sceneState.controls && sceneState.followCamSavedControls) {
+		if (Object.prototype.hasOwnProperty.call(sceneState.controls, "enableDamping")) {
+			sceneState.controls.enableDamping = sceneState.followCamSavedControls.enableDamping;
+			if (Number.isFinite(sceneState.followCamSavedControls.dampingFactor)) sceneState.controls.dampingFactor = sceneState.followCamSavedControls.dampingFactor;
 		}
 	}
-	state.followCamSavedControls = null;
+	sceneState.followCamSavedControls = null;
 	updateFollowAngleLockButtonState();
-	for (const k in state.animatedElementPos) delete state.animatedElementPos[k];
-	state.activeAnimExprs = [];
-	state.activeAnimUpdaters = [];
-	state.sceneStartTime = performance.now();
+	for (const k in sceneState.animatedElementPos) delete sceneState.animatedElementPos[k];
+	sceneState.activeAnimExprs = [];
+	sceneState.activeAnimUpdaters = [];
+	sceneState.sceneStartTime = performance.now();
 	clearWorldStarfield();
 	clearWorldSkybox();
-	state.currentSpec = spec;
-	const lessonData = state.lessonSpec && state.lessonSpec.data || {};
+	sceneState.currentSpec = spec;
+	const lessonData = sceneState.lessonSpec && sceneState.lessonSpec.data || {};
 	const sceneData = spec && spec.data || {};
-	state.sceneData = {
+	sceneState.sceneData = {
 		...lessonData,
 		...sceneData
 	};
@@ -10090,26 +10094,26 @@ async function loadScene(spec) {
 	setActiveVirtualTimeExpr(spec, -1);
 	updateTitle(spec);
 	updateExplanationPanel(spec);
-	loadProof(state.lessonSpec || spec, state.currentSceneIndex, -1);
+	loadProof(sceneState.lessonSpec || spec, sceneState.currentSceneIndex, -1);
 	const emptyState = document.getElementById("empty-state");
 	if (!spec || !spec.elements || spec.elements.length === 0) {
-		state.currentRange = [
+		sceneState.currentRange = [
 			[-5, 5],
 			[-5, 5],
 			[-5, 5]
 		];
-		state.currentScale = [
+		sceneState.currentScale = [
 			1,
 			1,
 			1
 		];
 		buildCameraButtons(spec);
 		emptyState.style.display = "block";
-		const view = state.mathbox.cartesian({
-			range: state.currentRange,
-			scale: state.currentScale
+		const view = sceneState.mathbox.cartesian({
+			range: sceneState.currentRange,
+			scale: sceneState.currentScale
 		});
-		state.sceneView = view;
+		sceneState.sceneView = view;
 		const { renderGrid, renderAxis } = await _importDefaultRenderers();
 		renderGrid({
 			plane: "xz",
@@ -10158,23 +10162,23 @@ async function loadScene(spec) {
 		return;
 	}
 	emptyState.style.display = "none";
-	state.currentRange = spec.range || [
+	sceneState.currentRange = spec.range || [
 		[-5, 5],
 		[-5, 5],
 		[-5, 5]
 	];
-	state.currentScale = spec.scale || [
+	sceneState.currentScale = spec.scale || [
 		1,
 		1,
 		1
 	];
 	configureWorldStarfield(spec);
 	buildCameraButtons(spec);
-	const view = state.mathbox.cartesian({
-		range: state.currentRange,
-		scale: state.currentScale
+	const view = sceneState.mathbox.cartesian({
+		range: sceneState.currentRange,
+		scale: sceneState.currentScale
 	});
-	state.sceneView = view;
+	sceneState.sceneView = view;
 	let baseAutoIdCounter = 0;
 	for (const el of spec.elements) {
 		const dn = elementDisplayName(el);
@@ -10185,7 +10189,7 @@ async function loadScene(spec) {
 			renderElement(el, elGroup);
 			if (el.id) {
 				const subTracker = buildSubTracker(elGroup, elBefore);
-				state.elementRegistry[el.id] = {
+				sceneState.elementRegistry[el.id] = {
 					tracker: subTracker,
 					hidden: false,
 					type: el.type,
@@ -10204,13 +10208,13 @@ async function loadScene(spec) {
 			1,
 			0
 		];
-		state.camera.up.set(up[0], up[1], up[2]);
+		sceneState.camera.up.set(up[0], up[1], up[2]);
 		const pos = dataCameraToWorld$1(spec.camera.position || DEFAULT_CAMERA.position);
 		const tgt = dataCameraToWorld$1(spec.camera.target || DEFAULT_CAMERA.target);
-		state.camera.position.set(pos[0], pos[1], pos[2]);
-		if (state.controls) {
-			state.controls.target.set(tgt[0], tgt[1], tgt[2]);
-			state.controls.update();
+		sceneState.camera.position.set(pos[0], pos[1], pos[2]);
+		if (sceneState.controls) {
+			sceneState.controls.target.set(tgt[0], tgt[1], tgt[2]);
+			sceneState.controls.update();
 		}
 	}
 }
@@ -10231,18 +10235,19 @@ async function _importDefaultRenderers() {
 	return _defaultRenderersCache;
 }
 function isLessonFormat(spec) {
-	return spec && Array.isArray(spec.scenes) && spec.scenes.length > 0;
+	const s = spec;
+	return s && Array.isArray(s.scenes) && s.scenes.length > 0;
 }
 async function loadLesson(spec) {
-	state._sceneJsTrustState = null;
-	state._sceneJsIssues = [];
-	state._sceneIsUnsafe = false;
-	state._sceneUnsafeExplanation = "";
+	sceneState._sceneJsTrustState = null;
+	sceneState._sceneJsIssues = [];
+	sceneState._sceneIsUnsafe = false;
+	sceneState._sceneUnsafeExplanation = "";
 	if (spec) {
-		state._sceneIsUnsafe = spec.unsafe === true;
-		state._sceneUnsafeExplanation = spec.unsafeExplanation || "";
+		sceneState._sceneIsUnsafe = spec.unsafe === true;
+		sceneState._sceneUnsafeExplanation = spec.unsafeExplanation || "";
 		const scanned = scanSpecForUnsafeJs(spec);
-		if (state._sceneIsUnsafe || scanned) state._sceneJsTrustState = await showTrustDialog(spec.unsafeExplanation || "This scene contains native JavaScript expressions that execute in your browser.\nAllow execution only if you trust the source of this file.", Array.isArray(spec.import) ? spec.import : []) ? "trusted" : "untrusted";
+		if (sceneState._sceneIsUnsafe || scanned) sceneState._sceneJsTrustState = await showTrustDialog(spec.unsafeExplanation || "This scene contains native JavaScript expressions that execute in your browser.\nAllow execution only if you trust the source of this file.", Array.isArray(spec.import) ? spec.import : []) ? "trusted" : "untrusted";
 	}
 	updateJsTrustPill();
 	window._algebenchUpdateJsTrustPill = updateJsTrustPill;
@@ -10255,21 +10260,21 @@ async function loadLesson(spec) {
 		else setPresetPrompts([]);
 	}
 	if (!isLessonFormat(spec)) {
-		state.lessonSpec = null;
-		state.currentSceneIndex = -1;
-		state.currentStepIndex = -1;
-		state.visitedSteps = /* @__PURE__ */ new Set();
+		sceneState.lessonSpec = null;
+		sceneState.currentSceneIndex = -1;
+		sceneState.currentStepIndex = -1;
+		sceneState.visitedSteps = /* @__PURE__ */ new Set();
 		stopAutoPlay();
-		state._activeDomainFunctions = {};
+		sceneState._activeDomainFunctions = {};
 		await importDomains(spec && spec.import);
 		updateDockVisibility$1();
 		loadScene(spec);
 		return;
 	}
-	state.lessonSpec = spec;
-	state.currentSceneIndex = -1;
-	state.currentStepIndex = -1;
-	state.visitedSteps = /* @__PURE__ */ new Set();
+	sceneState.lessonSpec = spec;
+	sceneState.currentSceneIndex = -1;
+	sceneState.currentStepIndex = -1;
+	sceneState.visitedSteps = /* @__PURE__ */ new Set();
 	stopAutoPlay();
 	await importDomains(spec.import);
 	buildSceneTree$1(spec);
@@ -10334,19 +10339,19 @@ async function loadProofAsLesson(id) {
 	return true;
 }
 function navigateTo$1(sceneIdx, stepIdx) {
-	if (!state.lessonSpec || !state.lessonSpec.scenes) return;
-	const scene = state.lessonSpec.scenes[sceneIdx];
+	if (!sceneState.lessonSpec || !sceneState.lessonSpec.scenes) return;
+	const scene = sceneState.lessonSpec.scenes[sceneIdx];
 	if (!scene) return;
 	const maxStep = (scene.steps ? scene.steps.length : 0) - 1;
 	stepIdx = Math.max(-1, Math.min(stepIdx, maxStep));
-	if (sceneIdx === state.currentSceneIndex && stepIdx === state.currentStepIndex) return;
-	const sceneChanged = sceneIdx !== state.currentSceneIndex;
+	if (sceneIdx === sceneState.currentSceneIndex && stepIdx === sceneState.currentStepIndex) return;
+	const sceneChanged = sceneIdx !== sceneState.currentSceneIndex;
 	if (sceneChanged) {
-		state.stepTrackers = [];
-		state.elementRegistry = {};
-		state.legendToggledOff = /* @__PURE__ */ new Set();
+		sceneState.stepTrackers = [];
+		sceneState.elementRegistry = {};
+		sceneState.legendToggledOff = /* @__PURE__ */ new Set();
 		stopAllSliderLoops();
-		state.sceneSliders = {};
+		sceneState.sceneSliders = {};
 		removeAllInfoOverlays$1();
 		buildSliderOverlay();
 		loadScene({
@@ -10366,28 +10371,28 @@ function navigateTo$1(sceneIdx, stepIdx) {
 			const tracker = renderStepAdd(step.add || [], step.sliders);
 			processStepRemoves(step.remove, tracker);
 			applyTrackerInfoOverlays(tracker, step);
-			state.stepTrackers.push(tracker);
-			state.visitedSteps.add(sceneIdx + ":" + i);
+			sceneState.stepTrackers.push(tracker);
+			sceneState.visitedSteps.add(sceneIdx + ":" + i);
 		}
 		buildLegend(getAllElements$1(scene, stepIdx));
 	} else {
-		if (stepIdx > state.currentStepIndex) {
-			for (let i = state.currentStepIndex + 1; i <= stepIdx; i++) if (scene.steps && scene.steps[i]) {
+		if (stepIdx > sceneState.currentStepIndex) {
+			for (let i = sceneState.currentStepIndex + 1; i <= stepIdx; i++) if (scene.steps && scene.steps[i]) {
 				const step = scene.steps[i];
 				const tracker = renderStepAdd(step.add || [], step.sliders);
 				processStepRemoves(step.remove, tracker);
 				applyTrackerInfoOverlays(tracker, step);
-				state.stepTrackers.push(tracker);
-				state.visitedSteps.add(sceneIdx + ":" + i);
+				sceneState.stepTrackers.push(tracker);
+				sceneState.visitedSteps.add(sceneIdx + ":" + i);
 			}
 		} else {
-			while (state.stepTrackers.length > stepIdx + 1) {
-				const tracker = state.stepTrackers.pop();
+			while (sceneState.stepTrackers.length > stepIdx + 1) {
+				const tracker = sceneState.stepTrackers.pop();
 				undoStepRemoves(tracker);
 				undoTrackerInfoOverlays(tracker);
 				removeStepTracker(tracker);
 			}
-			const landingTracker = state.stepTrackers[state.stepTrackers.length - 1];
+			const landingTracker = sceneState.stepTrackers[sceneState.stepTrackers.length - 1];
 			if (landingTracker && landingTracker.infoDefs && landingTracker.infoDefs.length > 0) {
 				removeStepInfoOverlays();
 				for (const def of landingTracker.infoDefs) addInfoOverlay$1(def.id, def.content, def.position || "top-left", true, def.keep || false);
@@ -10396,12 +10401,12 @@ function navigateTo$1(sceneIdx, stepIdx) {
 		}
 		buildLegend(getAllElements$1(scene, stepIdx));
 	}
-	if (!state.followCamState && !state.cameraExprState && stepIdx >= 0 && scene.steps) {
+	if (!sceneState.followCamState && !sceneState.cameraExprState && stepIdx >= 0 && scene.steps) {
 		const cam = resolveEffectiveStepCamera(scene, stepIdx);
 		if (cam) {
 			const pos = dataCameraToWorld$1(cam.position || DEFAULT_CAMERA.position);
 			const tgt = dataCameraToWorld$1(cam.target || DEFAULT_CAMERA.target);
-			state.CAMERA_VIEWS["_step"] = {
+			sceneState.CAMERA_VIEWS["_step"] = {
 				position: pos,
 				target: tgt,
 				up: Array.isArray(cam.up) ? cam.up.slice(0, 3) : [
@@ -10413,15 +10418,15 @@ function navigateTo$1(sceneIdx, stepIdx) {
 			animateCamera$1("_step", 600);
 		}
 	}
-	state.currentSceneIndex = sceneIdx;
-	state.currentStepIndex = stepIdx;
+	sceneState.currentSceneIndex = sceneIdx;
+	sceneState.currentStepIndex = stepIdx;
 	setActiveVirtualTimeExpr(scene, stepIdx);
 	scene.steps && scene.steps[stepIdx];
 	updateTreeHighlight$1();
 	updateStepCaption(scene, stepIdx);
 	updateStatusBar();
-	loadProof(state.lessonSpec || scene, sceneIdx, stepIdx);
-	if (!sceneChanged && state.proofSyncEnabled && state.proofSpec && state.proofSpec.length > 0) syncProofFromSceneStep(stepIdx);
+	loadProof(sceneState.lessonSpec || scene, sceneIdx, stepIdx);
+	if (!sceneChanged && sceneState.proofSyncEnabled && sceneState.proofSpec && sceneState.proofSpec.length > 0) syncProofFromSceneStep(stepIdx);
 	if (sceneChanged) setTimeout(() => window.dispatchEvent(new Event("resize")), 50);
 	try {
 		window.dispatchEvent(new CustomEvent("algebench:navchange"));
@@ -10430,7 +10435,7 @@ function navigateTo$1(sceneIdx, stepIdx) {
 function updateDockVisibility$1() {
 	const dock = document.getElementById("scene-dock");
 	const toggle = document.getElementById("scene-dock-toggle");
-	if (state.lessonSpec) {
+	if (sceneState.lessonSpec) {
 		dock.classList.add("visible");
 		if (toggle) toggle.style.display = "";
 	} else {
@@ -10455,39 +10460,39 @@ function showSceneDockScenesTab() {
 	}
 }
 function getCurrentStepDuration() {
-	const scene = state.lessonSpec && state.lessonSpec.scenes[state.currentSceneIndex];
+	const scene = sceneState.lessonSpec && sceneState.lessonSpec.scenes[sceneState.currentSceneIndex];
 	if (!scene || !scene.steps) return AUTO_PLAY_DEFAULT_DURATION;
-	const step = scene.steps[state.currentStepIndex];
+	const step = scene.steps[sceneState.currentStepIndex];
 	if (step && step.duration != null) return step.duration;
-	if (state.currentStepIndex === -1 && scene.duration != null) return scene.duration;
+	if (sceneState.currentStepIndex === -1 && scene.duration != null) return scene.duration;
 	return AUTO_PLAY_DEFAULT_DURATION;
 }
 function scheduleNextAutoPlay() {
-	if (!state.autoPlayTimer) return;
-	const scene = state.lessonSpec && state.lessonSpec.scenes[state.currentSceneIndex];
+	if (!sceneState.autoPlayTimer) return;
+	const scene = sceneState.lessonSpec && sceneState.lessonSpec.scenes[sceneState.currentSceneIndex];
 	if (!scene) {
 		stopAutoPlay();
 		return;
 	}
 	const maxStep = (scene.steps ? scene.steps.length : 0) - 1;
-	if (state.currentSceneIndex >= state.lessonSpec.scenes.length - 1 && state.currentStepIndex >= maxStep) {
+	if (sceneState.currentSceneIndex >= sceneState.lessonSpec.scenes.length - 1 && sceneState.currentStepIndex >= maxStep) {
 		stopAutoPlay();
 		return;
 	}
-	const step = scene.steps && scene.steps[state.currentStepIndex];
+	const step = scene.steps && scene.steps[sceneState.currentStepIndex];
 	if (step && Array.isArray(step.sliders) && step.sliders.length > 0 && step.duration == null) {
 		stopAutoPlay();
 		return;
 	}
 	const dur = getCurrentStepDuration();
-	state.autoPlayTimer = setTimeout(() => {
+	sceneState.autoPlayTimer = setTimeout(() => {
 		stepNext();
 		scheduleNextAutoPlay();
 	}, dur);
 }
 function startAutoPlay() {
-	if (state.autoPlayTimer) return;
-	state.autoPlayTimer = true;
+	if (sceneState.autoPlayTimer) return;
+	sceneState.autoPlayTimer = true;
 	scheduleNextAutoPlay();
 	const playBtn = document.getElementById("nav-play");
 	if (playBtn) {
@@ -10496,9 +10501,9 @@ function startAutoPlay() {
 	}
 }
 function stopAutoPlay() {
-	if (state.autoPlayTimer) {
-		clearTimeout(state.autoPlayTimer);
-		state.autoPlayTimer = null;
+	if (sceneState.autoPlayTimer) {
+		clearTimeout(sceneState.autoPlayTimer);
+		sceneState.autoPlayTimer = null;
 	}
 	const playBtn = document.getElementById("nav-play");
 	if (playBtn) {
@@ -10507,25 +10512,25 @@ function stopAutoPlay() {
 	}
 }
 function toggleAutoPlay() {
-	if (state.autoPlayTimer) stopAutoPlay();
+	if (sceneState.autoPlayTimer) stopAutoPlay();
 	else startAutoPlay();
 }
 function stepNext() {
-	if (!state.lessonSpec || !state.lessonSpec.scenes) return;
-	const scene = state.lessonSpec.scenes[state.currentSceneIndex];
+	if (!sceneState.lessonSpec || !sceneState.lessonSpec.scenes) return;
+	const scene = sceneState.lessonSpec.scenes[sceneState.currentSceneIndex];
 	if (!scene) return;
 	const maxStep = (scene.steps ? scene.steps.length : 0) - 1;
-	if (state.currentStepIndex < maxStep) navigateTo$1(state.currentSceneIndex, state.currentStepIndex + 1);
-	else if (state.currentSceneIndex < state.lessonSpec.scenes.length - 1) navigateTo$1(state.currentSceneIndex + 1, -1);
+	if (sceneState.currentStepIndex < maxStep) navigateTo$1(sceneState.currentSceneIndex, sceneState.currentStepIndex + 1);
+	else if (sceneState.currentSceneIndex < sceneState.lessonSpec.scenes.length - 1) navigateTo$1(sceneState.currentSceneIndex + 1, -1);
 	else stopAutoPlay();
 }
 function stepPrev() {
-	if (!state.lessonSpec || !state.lessonSpec.scenes) return;
-	if (state.currentStepIndex > -1) navigateTo$1(state.currentSceneIndex, state.currentStepIndex - 1);
-	else if (state.currentSceneIndex > 0) {
-		const prevScene = state.lessonSpec.scenes[state.currentSceneIndex - 1];
+	if (!sceneState.lessonSpec || !sceneState.lessonSpec.scenes) return;
+	if (sceneState.currentStepIndex > -1) navigateTo$1(sceneState.currentSceneIndex, sceneState.currentStepIndex - 1);
+	else if (sceneState.currentSceneIndex > 0) {
+		const prevScene = sceneState.lessonSpec.scenes[sceneState.currentSceneIndex - 1];
 		const prevMaxStep = (prevScene.steps ? prevScene.steps.length : 0) - 1;
-		navigateTo$1(state.currentSceneIndex - 1, prevMaxStep);
+		navigateTo$1(sceneState.currentSceneIndex - 1, prevMaxStep);
 	}
 }
 function setupSceneDock() {
@@ -10544,15 +10549,16 @@ function setupSceneDock() {
 	toggle.addEventListener("click", () => {
 		const isOpen = panel.classList.toggle("open");
 		toggle.classList.toggle("active", isOpen);
-		localStorage.setItem("algebench-dock-open", isOpen);
+		localStorage.setItem("algebench-dock-open", String(isOpen));
 		setTimeout(() => window.dispatchEvent(new Event("resize")), 250);
 	});
 	prevBtn.addEventListener("click", () => stepPrev());
 	playBtn.addEventListener("click", () => toggleAutoPlay());
 	nextBtn.addEventListener("click", () => stepNext());
 	document.addEventListener("keydown", (e) => {
-		if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
-		if (!state.lessonSpec) return;
+		const target = e.target;
+		if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
+		if (!sceneState.lessonSpec) return;
 		if (e.key === "ArrowDown" || e.key === "ArrowRight") {
 			e.preventDefault();
 			stepNext();

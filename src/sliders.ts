@@ -4,13 +4,116 @@
 // ============================================================
 
 import { state } from '/state.js';
-import { compileExpr, evalExpr, recompileActiveSceneFunctions, _getMathNamesAndValues } from '/expr.js';
+import { compileExpr, evalExpr, recompileActiveSceneFunctions, _getMathNamesAndValues,
+         type CompiledExpr } from '/expr.js';
 import { renderKaTeX, stripLatex } from '/labels.js';
+import type { Slider } from '/types/lesson.js';
+
+/**
+ * A slider definition as it appears in lesson JSON, plus `animationMode` —
+ * a legacy spelling of `animateMode` that registerSliders still honours but
+ * the schema never documented. Kept because scenes in the wild use it.
+ */
+export interface SliderDef extends Slider {
+    animationMode?: string;
+}
+
+/** A registered slider, as registerSliders() builds it into sliderState.sceneSliders. */
+export interface SceneSlider {
+    value: number;
+    min: number;
+    max: number;
+    step: number;
+    label: string;
+    default: number | undefined;
+    animate: boolean;
+    animateMode: string;
+    autoplay: boolean;
+    duration: number;
+    _loopPlaying: boolean;
+    _loopRaf: number | null;
+    _valueExprString: string | null;
+    _valueExprCompiled: CompiledExpr | null;
+    /** Installed by buildSliderOverlay() for sliders that render a play button. */
+    _onPlayStateChange?: () => void;
+}
+
+/** The compiled regular-polygon expressions an animated_polygon entry carries. */
+interface RegularPolygonState {
+    cN: CompiledExpr;
+    cR: CompiledExpr;
+    cCx: CompiledExpr;
+    cCy: CompiledExpr;
+    cCz: CompiledExpr;
+    cRot: CompiledExpr;
+}
+
+/**
+ * A live expression-driven element. Each object renderer in src/objects/
+ * declares its own narrow view of this record and pushes only the fields it
+ * uses; this module is the one place that sees the union of all of them, so
+ * everything but `animState` is optional here.
+ */
+export interface AnimExprEntry {
+    animState: { stopped: boolean } | null;
+    exprStrings?: string[];
+    compiledFns?: CompiledExpr[] | null;
+    _rebuildFn?: () => void;
+    fromExprStrings?: string[] | null;
+    fromExprFns?: CompiledExpr[] | null;
+    radiusExprString?: string | null;
+    radiusFn?: CompiledExpr | null;
+    visibleExprString?: string | null;
+    visibleFn?: CompiledExpr | null;
+    _isAnimatedPolygon?: boolean;
+    _vertexExprs?: string[][];
+    _compiledVerts?: CompiledExpr[][];
+    _isRegularPolygon?: boolean;
+    _regExprs?: string[];
+    _regState?: RegularPolygonState;
+    _isAnimatedLine?: boolean;
+    _pointExprs?: string[][];
+    _compiledPoints?: CompiledExpr[][];
+}
+
+/** A per-frame updater, driven by the scene loader's animation loop. */
+export interface AnimUpdater {
+    animState: { stopped: boolean } | null;
+    updateFrame(nowMs: number): void;
+}
+
+/** Follow-cam expression state, recompiled here when the slider set changes. */
+interface FollowCamState {
+    exprStrings?: string[] | null;
+    compiledExprs?: CompiledExpr[];
+    fromExprStrings?: string[] | null;
+    compiledFromExprs?: CompiledExpr[];
+}
+
+// state.js is still untyped JavaScript, so its fields infer from their
+// initializers. Describe the slice this module owns rather than spreading
+// `any`; the cast goes away when state.js is converted.
+interface SliderState {
+    sceneSliders: Record<string, SceneSlider | undefined>;
+    activeAnimExprs: AnimExprEntry[];
+    activeAnimUpdaters: AnimUpdater[];
+    activeVirtualTimeExpr: string | null;
+    activeVirtualTimeCompiled: CompiledExpr | null;
+    followCamState: FollowCamState | null;
+    _sliderDrag: {
+        active: boolean;
+        startX: number;
+        startY: number;
+        startLeft: number;
+        startBottom: number;
+    };
+}
+const sliderState = state as unknown as SliderState;
 
 // ----- Slider helpers -----
 
-export function getSliderIds() {
-    const ids = Object.keys(state.sceneSliders);
+export function getSliderIds(): string[] {
+    const ids = Object.keys(sliderState.sceneSliders);
     const launchIdx = ids.indexOf('h');
     const injectionIdx = ids.indexOf('h_target');
     if (launchIdx >= 0 && injectionIdx >= 0 && launchIdx !== injectionIdx - 1) {
@@ -21,14 +124,14 @@ export function getSliderIds() {
     return ids;
 }
 
-export function _sliderValueNum(id, fallback = 0) {
-    const s = state.sceneSliders[id];
+export function _sliderValueNum(id: string, fallback = 0): number {
+    const s = sliderState.sceneSliders[id];
     if (!s) return fallback;
     const v = Number(s.value);
     return Number.isFinite(v) ? v : fallback;
 }
 
-function _formatSliderValue(s) {
+function _formatSliderValue(s: SceneSlider): string {
     if (s._valueExprCompiled) {
         try {
             const result = evalExpr(s._valueExprCompiled, 0, { useVirtualTime: false });
@@ -40,8 +143,11 @@ function _formatSliderValue(s) {
 
 // ----- Slider Loop Animation -----
 
-export function startSliderLoop(id) {
-    const slider = state.sceneSliders[id];
+export function startSliderLoop(id: string): void {
+    // The `if (!slider) return` below is the real guard. The cast exists only
+    // because TypeScript does not carry that narrowing into the hoisted `tick`
+    // function declaration further down, and hoisting is worth preserving.
+    const slider = sliderState.sceneSliders[id] as SceneSlider;
     if (!slider) return;
     slider._loopPlaying = true;
     if (typeof slider._onPlayStateChange === 'function') slider._onPlayStateChange();
@@ -53,10 +159,10 @@ export function startSliderLoop(id) {
     const resumeT = (mode === 'once' && rawResumeT >= 1) ? 0 : rawResumeT;
     const startTime = performance.now() - resumeT * period;
 
-    function tick(now) {
-        if (!slider._loopPlaying || !state.sceneSliders[id]) return;
+    function tick(now: number): void {
+        if (!slider._loopPlaying || !sliderState.sceneSliders[id]) return;
         const elapsed = (now - startTime) / period;
-        let tNorm;
+        let tNorm: number;
         if (mode === 'loop') {
             tNorm = elapsed % 1;                            // sawtooth 0→1 loop
         } else if (mode === 'once') {
@@ -70,9 +176,12 @@ export function startSliderLoop(id) {
             tNorm = phase < 1 ? phase : 2 - phase;         // triangle wave 0→1→0
         }
         slider.value = slider.min + tNorm * range;
-        const input = document.querySelector(`input[data-slider-id="${id}"]`);
+        const input = document.querySelector<HTMLInputElement>(`input[data-slider-id="${id}"]`);
         if (input) {
-            input.value = slider.value;
+            // `input.value` is a string; assigning the number relied on the DOM's
+            // own ToString coercion, so String() here is the same conversion made
+            // explicit — not a behaviour change. Same at the two call sites below.
+            input.value = String(slider.value);
             const valSpan = input.parentElement && input.parentElement.querySelector('.slider-value');
             if (valSpan) valSpan.textContent = _formatSliderValue(slider);
         }
@@ -86,8 +195,8 @@ export function startSliderLoop(id) {
     slider._loopRaf = requestAnimationFrame(tick);
 }
 
-export function stopSliderLoop(id) {
-    const slider = state.sceneSliders[id];
+export function stopSliderLoop(id: string): void {
+    const slider = sliderState.sceneSliders[id];
     if (!slider) return;
     slider._loopPlaying = false;
     if (slider._loopRaf) {
@@ -97,14 +206,14 @@ export function stopSliderLoop(id) {
     if (typeof slider._onPlayStateChange === 'function') slider._onPlayStateChange();
 }
 
-export function stopAllSliderLoops() {
-    for (const id of Object.keys(state.sceneSliders)) stopSliderLoop(id);
+export function stopAllSliderLoops(): void {
+    for (const id of Object.keys(sliderState.sceneSliders)) stopSliderLoop(id);
 }
 
 // ----- Shared drag utility -----
 
 /** After restoring a saved position, clamp element so at least `margin` px remains visible. */
-export function clampToParent(el, margin = 40) {
+export function clampToParent(el: HTMLElement, margin = 40): void {
     const parent = el.offsetParent || document.body;
     const pw = parent.clientWidth;
     const ph = parent.clientHeight;
@@ -120,7 +229,7 @@ export function clampToParent(el, margin = 40) {
 
 // ----- Slider drag -----
 
-export function setupSliderDrag(e, overlay) {
+export function setupSliderDrag(e: MouseEvent, overlay: HTMLElement): void {
     e.preventDefault();
     const parent = overlay.offsetParent || document.body;
     const parentH = parent.clientHeight;
@@ -128,21 +237,21 @@ export function setupSliderDrag(e, overlay) {
     const parentRect = parent.getBoundingClientRect();
 
     // Capture starting state in bottom-left coordinate space
-    state._sliderDrag.active   = true;
-    state._sliderDrag.startX   = e.clientX;
-    state._sliderDrag.startY   = e.clientY;
-    state._sliderDrag.startLeft   = rect.left - parentRect.left;
-    state._sliderDrag.startBottom = parentRect.bottom - rect.bottom;
+    sliderState._sliderDrag.active   = true;
+    sliderState._sliderDrag.startX   = e.clientX;
+    sliderState._sliderDrag.startY   = e.clientY;
+    sliderState._sliderDrag.startLeft   = rect.left - parentRect.left;
+    sliderState._sliderDrag.startBottom = parentRect.bottom - rect.bottom;
 
     overlay.classList.add('dragging');
 
-    const onMove = (me) => {
-        if (!state._sliderDrag.active) return;
-        const dx = me.clientX - state._sliderDrag.startX;
-        const dy = me.clientY - state._sliderDrag.startY;  // positive = moved down
+    const onMove = (me: MouseEvent) => {
+        if (!sliderState._sliderDrag.active) return;
+        const dx = me.clientX - sliderState._sliderDrag.startX;
+        const dy = me.clientY - sliderState._sliderDrag.startY;  // positive = moved down
 
-        let newLeft   = state._sliderDrag.startLeft   + dx;
-        let newBottom = state._sliderDrag.startBottom - dy; // subtract: moving down reduces bottom offset
+        let newLeft   = sliderState._sliderDrag.startLeft   + dx;
+        let newBottom = sliderState._sliderDrag.startBottom - dy; // subtract: moving down reduces bottom offset
 
         // Clamp so panel stays within parent
         newLeft   = Math.max(0, Math.min(newLeft,   parent.clientWidth  - overlay.offsetWidth));
@@ -153,7 +262,7 @@ export function setupSliderDrag(e, overlay) {
     };
 
     const onUp = () => {
-        state._sliderDrag.active = false;
+        sliderState._sliderDrag.active = false;
         overlay.classList.remove('dragging');
         document.removeEventListener('mousemove', onMove);
         document.removeEventListener('mouseup',   onUp);
@@ -172,19 +281,22 @@ export function setupSliderDrag(e, overlay) {
 
 // ----- Slider registration -----
 
-export function registerSliders(sliderDefs) {
+export function registerSliders(
+    sliderDefs: SliderDef[] | null | undefined,
+): { ids: string[]; prevStates: Record<string, SceneSlider> } {
     if (!sliderDefs || !Array.isArray(sliderDefs)) return { ids: [], prevStates: {} };
-    const ids = [];
-    const prevStates = {};
+    const ids: string[] = [];
+    const prevStates: Record<string, SceneSlider> = {};
     for (const def of sliderDefs) {
         // Snapshot previous state for undo on backward navigation (only when reset flag is set).
-        if (state.sceneSliders[def.id]) {
+        const prev = sliderState.sceneSliders[def.id];
+        if (prev) {
             stopSliderLoop(def.id);
             if (def.reset) {
-                prevStates[def.id] = { ...state.sceneSliders[def.id] };
+                prevStates[def.id] = { ...prev };
             }
         }
-        state.sceneSliders[def.id] = {
+        sliderState.sceneSliders[def.id] = {
             value: def.default !== undefined ? def.default : (def.min + def.max) / 2,
             min: def.min !== undefined ? def.min : 0,
             max: def.max !== undefined ? def.max : 1,
@@ -201,29 +313,30 @@ export function registerSliders(sliderDefs) {
             _valueExprCompiled: null,
         };
         if (def.valueExpr) {
-            try { state.sceneSliders[def.id]._valueExprCompiled = compileExpr(def.valueExpr); } catch (_e) {}
+            // Non-null: the entry was assigned immediately above.
+            try { sliderState.sceneSliders[def.id]!._valueExprCompiled = compileExpr(def.valueExpr); } catch (_e) {}
         }
         ids.push(def.id);
     }
     // Auto-start animated sliders unless explicitly disabled.
     for (const id of ids) {
-        const s = state.sceneSliders[id];
+        const s = sliderState.sceneSliders[id];
         if (s && s.animate && s.autoplay) startSliderLoop(id);
     }
     return { ids, prevStates };
 }
 
-export function removeSliderIds(ids) {
+export function removeSliderIds(ids: string[]): void {
     for (const id of ids) {
         stopSliderLoop(id);
-        delete state.sceneSliders[id];
+        delete sliderState.sceneSliders[id];
     }
-    if (state.activeVirtualTimeExpr) {
+    if (sliderState.activeVirtualTimeExpr) {
         try {
-            state.activeVirtualTimeCompiled = compileExpr(state.activeVirtualTimeExpr);
+            sliderState.activeVirtualTimeCompiled = compileExpr(sliderState.activeVirtualTimeExpr);
         } catch (err) {
             console.warn('virtualTime recompile error:', err);
-            state.activeVirtualTimeCompiled = null;
+            sliderState.activeVirtualTimeCompiled = null;
         }
     }
     syncSliderState();
@@ -231,11 +344,13 @@ export function removeSliderIds(ids) {
 
 // ----- Build slider overlay UI -----
 
-export function buildSliders(sliderDefs) {
+export function buildSliders(
+    sliderDefs: SliderDef[] | null | undefined,
+): { ids: string[]; prevStates: Record<string, SceneSlider> } {
     return registerSliders(sliderDefs);
 }
 
-export function buildSliderOverlay() {
+export function buildSliderOverlay(): void {
     const overlay = document.getElementById('slider-overlay');
     if (!overlay) return;
 
@@ -250,7 +365,8 @@ export function buildSliderOverlay() {
 
     // Restore saved position (bottom-left anchoring)
     try {
-        const saved = JSON.parse(localStorage.getItem('slider-overlay-pos') || 'null');
+        const saved = JSON.parse(localStorage.getItem('slider-overlay-pos') || 'null') as
+            { left?: number | null; bottom?: number | null } | null;
         if (saved && saved.left != null && saved.bottom != null) {
             overlay.style.left   = saved.left   + 'px';
             overlay.style.bottom = saved.bottom + 'px';
@@ -265,7 +381,9 @@ export function buildSliderOverlay() {
     overlay.appendChild(dragHandle);
 
     for (const id of ids) {
-        const s = state.sceneSliders[id];
+        // Non-null: `ids` comes from getSliderIds(), i.e. the record's own keys.
+        // A missing entry must still throw here, exactly as the JS did.
+        const s = sliderState.sceneSliders[id]!;
         const row = document.createElement('div');
         row.className = 'slider-row';
 
@@ -279,10 +397,12 @@ export function buildSliderOverlay() {
         input.type = 'range';
         input.className = 'slider-range';
         input.dataset.sliderId = id;
-        input.min = s.min;
-        input.max = s.max;
-        input.step = s.step;
-        input.value = s.value;
+        // These four are string-valued DOM properties; the JS assigned numbers
+        // and let the DOM coerce. String() is that same coercion, spelled out.
+        input.min = String(s.min);
+        input.max = String(s.max);
+        input.step = String(s.step);
+        input.value = String(s.value);
         row.appendChild(input);
 
         const valSpan = document.createElement('span');
@@ -328,28 +448,28 @@ export function buildSliderOverlay() {
 
 // ----- Reactive expression tracking -----
 
-export function registerAnimExpr(entry) {
-    state.activeAnimExprs.push(entry);
+export function registerAnimExpr(entry: AnimExprEntry): void {
+    sliderState.activeAnimExprs.push(entry);
 }
 
-export function unregisterAnimExpr(animState) {
-    state.activeAnimExprs = state.activeAnimExprs.filter(e => e.animState !== animState);
+export function unregisterAnimExpr(animState: { stopped: boolean } | null): void {
+    sliderState.activeAnimExprs = sliderState.activeAnimExprs.filter(e => e.animState !== animState);
 }
 
-export function registerAnimUpdater(entry) {
-    state.activeAnimUpdaters.push(entry);
+export function registerAnimUpdater(entry: AnimUpdater): void {
+    sliderState.activeAnimUpdaters.push(entry);
 }
 
-export function unregisterAnimUpdater(animState) {
-    state.activeAnimUpdaters = state.activeAnimUpdaters.filter(e => e.animState !== animState);
+export function unregisterAnimUpdater(animState: { stopped: boolean } | null): void {
+    sliderState.activeAnimUpdaters = sliderState.activeAnimUpdaters.filter(e => e.animState !== animState);
 }
 
-export function runAnimUpdaters(nowMs) {
-    if (!state.activeAnimUpdaters.length) return;
+export function runAnimUpdaters(nowMs: number): void {
+    if (!sliderState.activeAnimUpdaters.length) return;
     // Compact the updater list as we run it so stopped animators are removed
     // without requiring a separate cleanup pass.
-    const next = [];
-    for (const entry of state.activeAnimUpdaters) {
+    const next: AnimUpdater[] = [];
+    for (const entry of sliderState.activeAnimUpdaters) {
         if (!entry || !entry.animState || entry.animState.stopped) continue;
         try {
             entry.updateFrame(nowMs);
@@ -358,11 +478,11 @@ export function runAnimUpdaters(nowMs) {
             console.warn('Animation updater error:', err);
         }
     }
-    state.activeAnimUpdaters = next;
+    sliderState.activeAnimUpdaters = next;
 }
 
-export function refreshActiveExprsForSliderValueChange() {
-    for (const entry of state.activeAnimExprs) {
+export function refreshActiveExprsForSliderValueChange(): void {
+    for (const entry of sliderState.activeAnimExprs) {
         if (!entry || !entry.animState || entry.animState.stopped) continue;
         if (typeof entry._rebuildFn === 'function') {
             try {
@@ -378,16 +498,23 @@ export function refreshActiveExprsForSliderValueChange() {
     }
 }
 
-export function recompileActiveExprs() {
+export function recompileActiveExprs(): void {
     recompileActiveSceneFunctions();
     // Recompile valueExpr for all sliders
-    for (const s of Object.values(state.sceneSliders)) {
-        if (s._valueExprString) {
-            try { s._valueExprCompiled = compileExpr(s._valueExprString); } catch (_e) {}
+    for (const s of Object.values(sliderState.sceneSliders)) {
+        // Non-null: Object.values() of a Record<string, T | undefined> widens to
+        // include undefined, but the record never holds one. The JS dereferenced
+        // it unguarded and must keep throwing if that ever stops being true.
+        if (s!._valueExprString) {
+            try { s!._valueExprCompiled = compileExpr(s!._valueExprString); } catch (_e) {}
         }
     }
-    for (const entry of state.activeAnimExprs) {
-        if (entry.animState.stopped) continue;
+    for (const entry of sliderState.activeAnimExprs) {
+        // Non-null on purpose: unlike the loop in
+        // refreshActiveExprsForSliderValueChange() above, this one never guarded
+        // `animState`. An entry registered before its animState is attached
+        // throws here — preserved verbatim.
+        if (entry.animState!.stopped) continue;
         if (typeof entry._rebuildFn === 'function') {
             try {
                 entry._rebuildFn();
@@ -397,7 +524,9 @@ export function recompileActiveExprs() {
             continue;
         }
         try {
-            entry.compiledFns = entry.exprStrings.map(e => compileExpr(e));
+            // Non-null for the same reason as animState above: an entry without
+            // exprStrings threw here in the JS and must keep doing so.
+            entry.compiledFns = entry.exprStrings!.map(e => compileExpr(e));
         } catch (err) {
             console.warn('Slider recompile error:', err);
         }
@@ -431,13 +560,16 @@ export function recompileActiveExprs() {
         }
         if (entry._isRegularPolygon && entry._regExprs) {
             try {
+                // Non-null throughout: a short _regExprs or a missing _regState
+                // threw in the JS, and the surrounding catch logged it. Keeping
+                // the assertions keeps that path identical.
                 const [nE, rE, cxE, cyE, czE, rotE] = entry._regExprs;
-                entry._regState.cN   = compileExpr(nE);
-                entry._regState.cR   = compileExpr(rE);
-                entry._regState.cCx  = compileExpr(cxE);
-                entry._regState.cCy  = compileExpr(cyE);
-                entry._regState.cCz  = compileExpr(czE);
-                entry._regState.cRot = compileExpr(rotE);
+                entry._regState!.cN   = compileExpr(nE!);
+                entry._regState!.cR   = compileExpr(rE!);
+                entry._regState!.cCx  = compileExpr(cxE!);
+                entry._regState!.cCy  = compileExpr(cyE!);
+                entry._regState!.cCz  = compileExpr(czE!);
+                entry._regState!.cRot = compileExpr(rotE!);
             } catch (err) {
                 console.warn('Slider regular polygon recompile error:', err);
             }
@@ -451,26 +583,26 @@ export function recompileActiveExprs() {
         }
     }
     // Recompile follow-cam expressions too (slider set may have changed)
-    if (state.followCamState && state.followCamState.exprStrings) {
+    if (sliderState.followCamState && sliderState.followCamState.exprStrings) {
         try {
-            state.followCamState.compiledExprs = state.followCamState.exprStrings.map(e => compileExpr(e));
+            sliderState.followCamState.compiledExprs = sliderState.followCamState.exprStrings.map(e => compileExpr(e));
         } catch (err) {
             console.warn('Follow-cam recompile error:', err);
         }
-        if (state.followCamState.fromExprStrings) {
+        if (sliderState.followCamState.fromExprStrings) {
             try {
-                state.followCamState.compiledFromExprs = state.followCamState.fromExprStrings.map(e => compileExpr(e));
+                sliderState.followCamState.compiledFromExprs = sliderState.followCamState.fromExprStrings.map(e => compileExpr(e));
             } catch (err) {
                 console.warn('Follow-cam fromExpr recompile error:', err);
             }
         }
     }
-    if (state.activeVirtualTimeExpr) {
+    if (sliderState.activeVirtualTimeExpr) {
         try {
-            state.activeVirtualTimeCompiled = compileExpr(state.activeVirtualTimeExpr);
+            sliderState.activeVirtualTimeCompiled = compileExpr(sliderState.activeVirtualTimeExpr);
         } catch (err) {
             console.warn('virtualTime recompile error:', err);
-            state.activeVirtualTimeCompiled = null;
+            sliderState.activeVirtualTimeCompiled = null;
         }
     }
     if (typeof window._algebenchUpdateInfoOverlays === 'function') {
@@ -480,11 +612,13 @@ export function recompileActiveExprs() {
 
 // ----- Slider state persistence -----
 
-export function syncSliderState() {
+export function syncSliderState(): void {
     // Persist current slider values to localStorage
-    const s = {};
-    for (const [id, sl] of Object.entries(state.sceneSliders)) {
-        s[id] = sl.value;
+    const s: Record<string, number> = {};
+    for (const [id, sl] of Object.entries(sliderState.sceneSliders)) {
+        // Non-null: see the note in recompileActiveExprs() — Object.entries()
+        // widens the value type, the record itself never holds undefined.
+        s[id] = sl!.value;
     }
     try { localStorage.setItem('algebench-sliders', JSON.stringify(s)); } catch(e) {}
     // Update status bar pill — call via window shim to avoid circular import
@@ -497,14 +631,14 @@ export function syncSliderState() {
 
 // Unlike animateSlider, this applies synchronously with no requestAnimationFrame
 // — restoring a shared view must not depend on the tab actively rendering.
-export function setSliderValue(id, value) {
-    const s = state.sceneSliders[id];
+export function setSliderValue(id: string, value: number): boolean {
+    const s = sliderState.sceneSliders[id];
     if (!s || !Number.isFinite(value)) return false;
     if (s._loopPlaying) stopSliderLoop(id);
     s.value = Math.max(s.min, Math.min(s.max, value));
-    const input = document.querySelector(`input[data-slider-id="${id}"]`);
+    const input = document.querySelector<HTMLInputElement>(`input[data-slider-id="${id}"]`);
     if (input) {
-        input.value = s.value;
+        input.value = String(s.value);
         const valSpan = input.parentElement && input.parentElement.querySelector('.slider-value');
         if (valSpan) valSpan.textContent = _formatSliderValue(s);
     }
@@ -515,22 +649,24 @@ export function setSliderValue(id, value) {
 
 // ----- Animate Slider Programmatically -----
 
-export function animateSlider(id, target, duration) {
+export function animateSlider(id: string, target: number, duration: number): Promise<boolean> {
     return new Promise(resolve => {
-        const slider = state.sceneSliders[id];
+        // Cast for the same reason as startSliderLoop(): the guard on the next
+        // line is real, but it does not reach the hoisted `tick` below.
+        const slider = sliderState.sceneSliders[id] as SceneSlider;
         if (!slider) { resolve(false); return; }
         target = Math.max(slider.min, Math.min(slider.max, target));
         const start = slider.value;
         if (start === target) { syncSliderState(); resolve(true); return; }
         const startTime = performance.now();
-        function tick(now) {
+        function tick(now: number): void {
             const t = Math.min((now - startTime) / duration, 1);
             const eased = t < 1 ? t * (2 - t) : 1;  // ease-out quad
             slider.value = start + (target - start) * eased;
             // Update the HTML range input and value display to match
-            const input = document.querySelector(`input[data-slider-id="${id}"]`);
+            const input = document.querySelector<HTMLInputElement>(`input[data-slider-id="${id}"]`);
             if (input) {
-                input.value = slider.value;
+                input.value = String(slider.value);
                 const valSpan = input.parentElement && input.parentElement.querySelector('.slider-value');
                 if (valSpan) valSpan.textContent = _formatSliderValue(slider);
             }

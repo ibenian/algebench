@@ -73,8 +73,16 @@ export async function resolve(specifier, context, nextResolve) {
     }
   }
 
-  // Relative/absolute file specifiers whose target has been converted to .ts.
-  if (specifier.endsWith('.js') && context.parentURL?.startsWith('file:')) {
+  // Relative specifiers whose target has been converted to .ts.
+  //
+  // The `./` / `../` test is load-bearing, not decoration: several npm packages
+  // are NAMED like a relative path — `decimal.js` (a mathjs dependency),
+  // `chart.js`, `three.js`. Matching on the `.js` suffix alone resolved those
+  // bare specifiers against the importing file's directory, so `import Decimal
+  // from 'decimal.js'` inside mathjs looked for a sibling file and threw
+  // ERR_MODULE_NOT_FOUND. Bare specifiers must fall through to Node.
+  if (/^\.{1,2}\//.test(specifier) && specifier.endsWith('.js')
+      && context.parentURL?.startsWith('file:')) {
     const target = new URL(specifier, context.parentURL);
     if (target.protocol === 'file:') {
       const resolved = preferTs(fileURLToPath(target));

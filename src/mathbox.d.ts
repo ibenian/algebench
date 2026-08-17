@@ -39,6 +39,28 @@ interface MathBoxNode {
      */
     set(key: string, value: unknown): MathBoxNode;
 
+    /** Read one prop back off a live node (`node.get('opacity')`). */
+    get(key: string): unknown;
+
+    /**
+     * Select nodes by CSS-ish selector. src/scene-loader.ts uses `select('*')`
+     * to grab everything under the root so it can drop the previous scene.
+     */
+    select(selector: string): MathBoxNode;
+
+    /** Detach this node (and its subtree) from its parent. */
+    remove(): void;
+
+    /** Cartesian view — the coordinate frame a scene's elements live in. */
+    cartesian(props?: MathBoxProps): MathBoxNode;
+
+    /**
+     * Grouping node. The scene loader gives every step — and every id'd element
+     * within a step — its own group so the whole subtree can be shown, hidden
+     * or removed as a unit.
+     */
+    group(props?: MathBoxProps): MathBoxNode;
+
     /** 1-D data source: `{ channels, width, data, live? }`. */
     array(props?: MathBoxProps): MathBoxNode;
     /** Sampled 2-D domain: `{ rangeX, rangeY, width, height, axes, channels }`. */
