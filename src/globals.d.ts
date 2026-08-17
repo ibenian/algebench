@@ -26,8 +26,55 @@
 // src/mathbox.d.ts instead — deliberately minimal, covering only the surface
 // the converted modules actually drive.
 
+/**
+ * The orbit/trackball controls index.html loads from three's deprecated
+ * `examples/js/` path, which attaches them onto the THREE global rather than
+ * exporting a module. @types/three@0.137 does not cover that path (the typed
+ * versions live under `examples/jsm/`), so the slice src/camera.ts drives is
+ * declared by hand. Retiring `examples/js/` is tracked in the migration
+ * proposal's post-migration work.
+ */
+interface ThreeControls {
+    target: import('three').Vector3;
+    enabled: boolean;
+    update(): void;
+    dispose(): void;
+    addEventListener(type: string, listener: () => void): void;
+
+    // ---- OrbitControls ----
+    enableDamping?: boolean;
+    dampingFactor?: number;
+    enableZoom?: boolean;
+    enableRotate?: boolean;
+    enablePan?: boolean;
+    screenSpacePanning?: boolean;
+    mouseButtons?: Record<string, unknown>;
+    touches?: Record<string, unknown>;
+    minDistance?: number;
+    maxDistance?: number;
+
+    // ---- TrackballControls ----
+    // Same concepts under the older names, plus its own damping model.
+    rotateSpeed?: number;
+    zoomSpeed?: number;
+    panSpeed?: number;
+    noRotate?: boolean;
+    noZoom?: boolean;
+    noPan?: boolean;
+    staticMoving?: boolean;
+    dynamicDampingFactor?: number;
+}
+
+type ThreeControlsCtor = new (
+    camera: import('three').Camera,
+    domElement: HTMLElement,
+) => ThreeControls;
+
 /** three.js, loaded from CDN as a global (index.html). */
-declare const THREE: typeof import('three');
+declare const THREE: typeof import('three') & {
+    OrbitControls?: ThreeControlsCtor;
+    TrackballControls?: ThreeControlsCtor;
+};
 
 /** KaTeX, loaded from CDN as a global on every page. */
 declare const katex: typeof import('katex');

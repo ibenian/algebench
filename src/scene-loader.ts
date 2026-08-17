@@ -10,6 +10,7 @@ import { buildSliderOverlay, registerSliders, stopAllSliderLoops, stopSliderLoop
          removeSliderIds, recompileActiveExprs, unregisterAnimExpr, unregisterAnimUpdater,
          syncSliderState } from '/sliders.js';
 import { buildCameraButtons, animateCamera, resolveEffectiveStepCamera, DEFAULT_CAMERA } from '/camera.js';
+import type { CameraView, StepCamera } from '/camera.js';
 import { dataCameraToWorld } from '/coords.js';
 import type { Vec3 } from '/coords.js';
 import { clearLabels } from '/labels.js';
@@ -128,6 +129,8 @@ interface SceneStep {
     info?: InfoOverlayDef[];
     duration?: number | null;
     proof?: Proof | Proof[] | null;
+    /** Per-step camera override, resolved by camera.ts. */
+    camera?: StepCamera;
 }
 interface SceneSpec {
     title?: string;
@@ -135,8 +138,8 @@ interface SceneSpec {
     markdown?: string;
     range?: number[][];
     scale?: number[];
-    camera?: { position?: number[]; target?: number[]; up?: number[] };
-    views?: unknown;
+    camera?: StepCamera;
+    views?: CameraView[];
     functions?: unknown;
     elements?: Element[];
     starfield?: unknown;
@@ -1129,8 +1132,8 @@ export function navigateTo(sceneIdx: number, stepIdx: number): void {
     if (!sceneState.followCamState && !sceneState.cameraExprState && stepIdx >= 0 && scene.steps) {
         const cam = resolveEffectiveStepCamera(scene, stepIdx);
         if (cam) {
-            const pos = dataCameraToWorld(cam.position || DEFAULT_CAMERA.position);
-            const tgt = dataCameraToWorld(cam.target || DEFAULT_CAMERA.target);
+            const pos = dataCameraToWorld((cam.position || DEFAULT_CAMERA.position) as Vec3);
+            const tgt = dataCameraToWorld((cam.target || DEFAULT_CAMERA.target) as Vec3);
             sceneState.CAMERA_VIEWS['_step'] = {
                 position: pos,
                 target: tgt,

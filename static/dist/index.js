@@ -568,12 +568,13 @@ function evalSurfaceExpr(compiled, u, v) {
 	}
 }
 //#endregion
-//#region src/follow-cam.js
+//#region src/follow-cam.ts
+var followState = state;
 function findElementSpecById(id) {
-	if (!state.currentSpec) return null;
-	for (const el of state.currentSpec.elements || []) if (el.id === id) return el;
-	for (const step of state.currentSpec.steps || []) for (const el of step.add || []) if (el.id === id) return el;
-	for (const scene of state.lessonSpec && state.lessonSpec.scenes || []) {
+	if (!followState.currentSpec) return null;
+	for (const el of followState.currentSpec.elements || []) if (el.id === id) return el;
+	for (const step of followState.currentSpec.steps || []) for (const el of step.add || []) if (el.id === id) return el;
+	for (const scene of followState.lessonSpec && followState.lessonSpec.scenes || []) {
 		for (const el of scene.elements || []) if (el.id === id) return el;
 		for (const step of scene.steps || []) for (const el of step.add || []) if (el.id === id) return el;
 	}
@@ -629,8 +630,10 @@ function activateFollowCam(viewSpec) {
 	} catch (err) {
 		console.warn("follow-cam: fromExpr compile error", err);
 	}
-	const up = Array.isArray(viewSpec.up) ? viewSpec.up.slice(0, 3) : state.sceneUp.slice(0, 3);
-	const angleLockAxisData = Array.isArray(viewSpec.angleLockAxis) && viewSpec.angleLockAxis.length === 3 ? viewSpec.angleLockAxis.slice(0, 3) : Array.isArray(state.currentSpec && state.currentSpec.angleLockAxis) && state.currentSpec.angleLockAxis.length === 3 ? state.currentSpec.angleLockAxis.slice(0, 3) : state.sceneUp.slice(0, 3);
+	const up = Array.isArray(viewSpec.up) ? viewSpec.up.slice(0, 3) : followState.sceneUp.slice(0, 3);
+	const viewAxis = viewSpec.angleLockAxis;
+	const sceneAxis = followState.currentSpec && followState.currentSpec.angleLockAxis;
+	const angleLockAxisData = Array.isArray(viewAxis) && viewAxis.length === 3 ? viewAxis.slice(0, 3) : Array.isArray(sceneAxis) && sceneAxis.length === 3 ? sceneAxis.slice(0, 3) : followState.sceneUp.slice(0, 3);
 	const angleLockDirectionTargets = Array.isArray(viewSpec.angleLockDirection) && viewSpec.angleLockDirection.length === 2 ? viewSpec.angleLockDirection.slice(0, 2) : null;
 	const angleLockDirectionVectorTargets = typeof viewSpec.angleLockDirection === "string" && viewSpec.angleLockDirection.trim() ? [viewSpec.angleLockDirection.trim()] : null;
 	let resolvedAngleLockVectorTargets = (Array.isArray(viewSpec.angleLockVector) ? viewSpec.angleLockVector.slice() : typeof viewSpec.angleLockVector === "string" && viewSpec.angleLockVector.trim() ? [viewSpec.angleLockVector.trim()] : null) || angleLockDirectionVectorTargets;
@@ -653,12 +656,12 @@ function activateFollowCam(viewSpec) {
 		initDataPos[1] + offset[1],
 		initDataPos[2] + offset[2]
 	]);
-	if (state.camera && state.controls) {
-		state.camera.position.set(initCamWorld[0], initCamWorld[1], initCamWorld[2]);
-		state.controls.target.set(initTargetWorld[0], initTargetWorld[1], initTargetWorld[2]);
-		state.camera.up.copy(_normalizeUpVector(up));
-		state.camera.lookAt(state.controls.target);
-		state.controls.update();
+	if (followState.camera && followState.controls) {
+		followState.camera.position.set(initCamWorld[0], initCamWorld[1], initCamWorld[2]);
+		followState.controls.target.set(initTargetWorld[0], initTargetWorld[1], initTargetWorld[2]);
+		followState.camera.up.copy(_normalizeUpVector(up));
+		followState.camera.lookAt(followState.controls.target);
+		followState.controls.update();
 	}
 	let directionEval = null;
 	if (resolvedAngleLockVectorTargets) for (const vid of resolvedAngleLockVectorTargets) {
@@ -701,7 +704,7 @@ function activateFollowCam(viewSpec) {
 			} };
 		} catch (err) {}
 	}
-	state.followCamState = {
+	followState.followCamState = {
 		followTargets,
 		offset,
 		compiledExprs,
@@ -723,34 +726,34 @@ function activateFollowCam(viewSpec) {
 		refStartTime: freshEntry && Number.isFinite(freshEntry.startTime) ? freshEntry.startTime : performance.now(),
 		viewKey: viewSpec && viewSpec._viewKey ? viewSpec._viewKey : null
 	};
-	state.followCamStartTime = performance.now();
+	followState.followCamStartTime = performance.now();
 	console.log("🎥 follow-cam activated for targets:", followTargets);
-	if (state.controls && Object.prototype.hasOwnProperty.call(state.controls, "enableDamping")) {
-		state.followCamSavedControls = {
-			enableDamping: !!state.controls.enableDamping,
-			dampingFactor: Number.isFinite(state.controls.dampingFactor) ? state.controls.dampingFactor : 0
+	if (followState.controls && Object.prototype.hasOwnProperty.call(followState.controls, "enableDamping")) {
+		followState.followCamSavedControls = {
+			enableDamping: !!followState.controls.enableDamping,
+			dampingFactor: Number.isFinite(followState.controls.dampingFactor) ? followState.controls.dampingFactor : 0
 		};
-		state.controls.enableDamping = false;
+		followState.controls.enableDamping = false;
 	}
 	updateFollowAngleLockButtonState();
 }
 function deactivateFollowCam() {
-	if (!state.followCamState) return;
-	state.followCamState = null;
-	if (state.controls && state.followCamSavedControls) {
-		if (Object.prototype.hasOwnProperty.call(state.controls, "enableDamping")) {
-			state.controls.enableDamping = state.followCamSavedControls.enableDamping;
-			if (Number.isFinite(state.followCamSavedControls.dampingFactor)) state.controls.dampingFactor = state.followCamSavedControls.dampingFactor;
+	if (!followState.followCamState) return;
+	followState.followCamState = null;
+	if (followState.controls && followState.followCamSavedControls) {
+		if (Object.prototype.hasOwnProperty.call(followState.controls, "enableDamping")) {
+			followState.controls.enableDamping = followState.followCamSavedControls.enableDamping;
+			if (Number.isFinite(followState.followCamSavedControls.dampingFactor)) followState.controls.dampingFactor = followState.followCamSavedControls.dampingFactor;
 		}
 	}
-	state.followCamSavedControls = null;
+	followState.followCamSavedControls = null;
 	console.log("🎥 follow-cam deactivated");
 	updateFollowAngleLockButtonState();
 }
 function _getFreshAnimEntry(targets) {
 	let best = null;
 	for (const tid of targets) {
-		const entry = state.animatedElementPos[tid];
+		const entry = followState.animatedElementPos[tid];
 		if (entry && performance.now() - entry.time < 500) {
 			if (!best || entry.time > best.time) best = entry;
 		}
@@ -760,7 +763,7 @@ function _getFreshAnimEntry(targets) {
 function _getLatestAnimEntry(targets) {
 	let best = null;
 	for (const tid of targets) {
-		const entry = state.animatedElementPos[tid];
+		const entry = followState.animatedElementPos[tid];
 		if (entry) {
 			if (!best || entry.time > best.time) best = entry;
 		}
@@ -769,8 +772,8 @@ function _getLatestAnimEntry(targets) {
 }
 function _computeDerivedDirectionWorld(targets) {
 	if (!Array.isArray(targets) || targets.length < 2) return null;
-	const first = state.animatedElementPos[targets[0]];
-	const last = state.animatedElementPos[targets[targets.length - 1]];
+	const first = followState.animatedElementPos[targets[0]];
+	const last = followState.animatedElementPos[targets[targets.length - 1]];
 	if (!first || !last) return null;
 	const firstIsVec = first.from !== void 0;
 	const lastIsVec = last.from !== void 0;
@@ -832,13 +835,13 @@ function _getDirectionWorldFromVectorTargets(vectorTargets) {
 	return null;
 }
 function updateFollowCam() {
-	if (!state.followCamState || !state.camera || !state.controls) return;
-	const { followTargets, compiledExprs } = state.followCamState;
+	if (!followState.followCamState || !followState.camera || !followState.controls) return;
+	const { followTargets, compiledExprs } = followState.followCamState;
 	let targetDataPos;
-	const tSecRef = (performance.now() - (state.followCamState.refStartTime || state.followCamStartTime)) / 1e3;
+	const tSecRef = (performance.now() - (followState.followCamState.refStartTime || followState.followCamStartTime)) / 1e3;
 	const latest = _getLatestAnimEntry(followTargets);
-	if (!state.followCamAngleLock && latest) targetDataPos = latest.pos;
-	if (!targetDataPos && state.followCamAngleLock && compiledExprs) try {
+	if (!followState.followCamAngleLock && latest) targetDataPos = latest.pos;
+	if (!targetDataPos && followState.followCamAngleLock && compiledExprs) try {
 		targetDataPos = compiledExprs.map((fn) => evalExpr(fn, tSecRef));
 	} catch (err) {
 		targetDataPos = null;
@@ -846,8 +849,8 @@ function updateFollowCam() {
 	if (!targetDataPos && latest) targetDataPos = latest.pos;
 	if (!targetDataPos) {
 		let staleEntry = null;
-		for (const tid of followTargets) if (state.animatedElementPos[tid]) {
-			staleEntry = state.animatedElementPos[tid];
+		for (const tid of followTargets) if (followState.animatedElementPos[tid]) {
+			staleEntry = followState.animatedElementPos[tid];
 			break;
 		}
 		if (staleEntry && compiledExprs) {
@@ -858,7 +861,7 @@ function updateFollowCam() {
 				return;
 			}
 		} else if (compiledExprs) {
-			const tSec = (performance.now() - state.followCamStartTime) / 1e3;
+			const tSec = (performance.now() - followState.followCamStartTime) / 1e3;
 			try {
 				targetDataPos = compiledExprs.map((fn) => evalExpr(fn, tSec));
 			} catch (err) {
@@ -867,15 +870,15 @@ function updateFollowCam() {
 		} else return;
 	}
 	const newTargetWorld = new THREE.Vector3(...dataToWorld(targetDataPos));
-	const oldTargetWorld = state.followCamState.lastTargetWorld.clone();
+	const oldTargetWorld = followState.followCamState.lastTargetWorld.clone();
 	const delta = newTargetWorld.clone().sub(oldTargetWorld);
-	state.camera.position.add(delta);
-	state.controls.target.copy(newTargetWorld);
-	if (state.followCamAngleLock) {
-		const axis = state.followCamState.axisWorld;
-		const center = state.followCamState.axisCenterWorld;
-		const oldDir = state.followCamState.lastDirectionWorld ? state.followCamState.lastDirectionWorld.clone() : null;
-		const newDir = state.followCamState.directionEval && typeof state.followCamState.directionEval.evalDir === "function" ? state.followCamState.directionEval.evalDir(tSecRef) : _computeDerivedDirectionWorld(followTargets) || _getDirectionWorldFromVectorTargets(state.followCamState.vectorTargets) || _getDirectionWorldFromTargets(state.followCamState.directionTargets);
+	followState.camera.position.add(delta);
+	followState.controls.target.copy(newTargetWorld);
+	if (followState.followCamAngleLock) {
+		const axis = followState.followCamState.axisWorld;
+		const center = followState.followCamState.axisCenterWorld;
+		const oldDir = followState.followCamState.lastDirectionWorld ? followState.followCamState.lastDirectionWorld.clone() : null;
+		const newDir = followState.followCamState.directionEval && typeof followState.followCamState.directionEval.evalDir === "function" ? followState.followCamState.directionEval.evalDir(tSecRef) : _computeDerivedDirectionWorld(followTargets) || _getDirectionWorldFromVectorTargets(followState.followCamState.vectorTargets) || _getDirectionWorldFromTargets(followState.followCamState.directionTargets);
 		const prevBase = oldDir || oldTargetWorld.clone().sub(center);
 		const nextBase = newDir || newTargetWorld.clone().sub(center);
 		const prevProj = prevBase.sub(axis.clone().multiplyScalar(prevBase.dot(axis)));
@@ -890,24 +893,24 @@ function updateFollowCam() {
 			const cosA = THREE.MathUtils.clamp(prevProj.dot(nextProj), -1, 1);
 			const dAngle = Math.atan2(sinA, cosA);
 			if (Number.isFinite(dAngle) && Math.abs(dAngle) > 1e-7) {
-				const offset = state.camera.position.clone().sub(newTargetWorld);
+				const offset = followState.camera.position.clone().sub(newTargetWorld);
 				offset.applyAxisAngle(axis, dAngle);
-				state.camera.position.copy(newTargetWorld).add(offset);
-				state.camera.up.applyAxisAngle(axis, dAngle).normalize();
+				followState.camera.position.copy(newTargetWorld).add(offset);
+				followState.camera.up.applyAxisAngle(axis, dAngle).normalize();
 			}
 		}
-		if (newDir) state.followCamState.lastDirectionWorld = newDir;
+		if (newDir) followState.followCamState.lastDirectionWorld = newDir;
 	}
-	state.camera.lookAt(state.controls.target);
-	state.followCamState.lastTargetWorld.copy(newTargetWorld);
+	followState.camera.lookAt(followState.controls.target);
+	followState.followCamState.lastTargetWorld.copy(newTargetWorld);
 }
 function updateFollowAngleLockButtonState() {
 	const btn = document.getElementById("follow-angle-lock-toggle");
 	if (!btn) return;
-	btn.classList.toggle("active", !!state.followCamAngleLock);
-	btn.classList.toggle("cam-active", !!state.followCamState);
-	if (state.followCamState) btn.title = state.followCamAngleLock ? "Angle-lock ON: camera rotates with followed object" : "Angle-lock OFF: camera follows position only";
-	else btn.title = state.followCamAngleLock ? "Angle-lock armed (applies in follow-cam views)" : "Toggle angle-lock for follow camera";
+	btn.classList.toggle("active", !!followState.followCamAngleLock);
+	btn.classList.toggle("cam-active", !!followState.followCamState);
+	if (followState.followCamState) btn.title = followState.followCamAngleLock ? "Angle-lock ON: camera rotates with followed object" : "Angle-lock OFF: camera follows position only";
+	else btn.title = followState.followCamAngleLock ? "Angle-lock armed (applies in follow-cam views)" : "Toggle angle-lock for follow camera";
 }
 function setupFollowAngleLockToggle() {
 	const btn = document.getElementById("follow-angle-lock-toggle");
@@ -915,7 +918,7 @@ function setupFollowAngleLockToggle() {
 	btn.innerHTML = ANGLE_LOCK_ICON;
 	btn.style.display = "flex";
 	btn.addEventListener("click", () => {
-		state.followCamAngleLock = !state.followCamAngleLock;
+		followState.followCamAngleLock = !followState.followCamAngleLock;
 		updateFollowAngleLockButtonState();
 	});
 	updateFollowAngleLockButtonState();
@@ -3471,7 +3474,8 @@ function setupAboutPopup() {
 	});
 }
 //#endregion
-//#region src/camera.js
+//#region src/camera.ts
+var cameraState = state;
 var ABSTRACT_LINE_THICKNESS_FACTOR = 1 / 20;
 var ARROW_HEAD_MIN_FACTOR = .004;
 var ARROW_HEAD_MAX_FACTOR = .012;
@@ -3550,17 +3554,19 @@ var DEFAULT_VIEWS = [
 	}
 ];
 var CONTROL_CLASS = typeof THREE !== "undefined" && THREE.OrbitControls ? THREE.OrbitControls : typeof THREE !== "undefined" ? THREE.TrackballControls : null;
+/** `abstract` is not in schemas/lesson.schema.json — it is a renderer-level
+*  opt-in some elements carry — so the parameter admits a lesson Element too. */
 function getAbstractWidthScale(el) {
 	return el && el.abstract === true ? ABSTRACT_LINE_THICKNESS_FACTOR : 1;
 }
 function resolveLineWidth(entry) {
-	const scale = state.displayParams[entry.widthParam || "lineWidth"] ?? 1;
+	const scale = cameraState.displayParams[entry.widthParam || "lineWidth"] ?? 1;
 	return Math.max(entry.baseWidth * scale, .1);
 }
 function resolveShaftThicknessScale(mesh) {
 	const base = mesh?.userData?.baseThicknessScale ?? 1;
 	const auto = mesh?.userData?.autoThicknessScale ?? 1;
-	return Math.max(base * auto * (state.displayParams.vectorWidth || 1) * 1, .05);
+	return Math.max(base * auto * (cameraState.displayParams.vectorWidth || 1) * 1, .05);
 }
 function applyShaftThickness(mesh) {
 	if (!mesh) return;
@@ -3615,8 +3621,8 @@ function configureControlsInstance(ctrl, target) {
 	ctrl.update();
 }
 function screenToArcball(clientX, clientY) {
-	if (!state.renderer) return new THREE.Vector3(0, 0, 1);
-	const rect = state.renderer.domElement.getBoundingClientRect();
+	if (!cameraState.renderer) return new THREE.Vector3(0, 0, 1);
+	const rect = cameraState.renderer.domElement.getBoundingClientRect();
 	const nx = (clientX - rect.left - rect.width * .5) / (rect.width * .5);
 	const ny = -(clientY - rect.top - rect.height * .5) / (rect.height * .5);
 	const r2 = nx * nx + ny * ny;
@@ -3625,63 +3631,63 @@ function screenToArcball(clientX, clientY) {
 	return new THREE.Vector3(nx / r, ny / r, 0);
 }
 function applyArcballOrbit(prevPt, currPt) {
-	if (!state.camera || !state.controls) return;
+	if (!cameraState.camera || !cameraState.controls) return;
 	if (prevPt.distanceToSquared(currPt) < 1e-10) return;
 	const q = new THREE.Quaternion().setFromUnitVectors(currPt.clone().normalize(), prevPt.clone().normalize());
-	const camQ = state.camera.quaternion.clone();
+	const camQ = cameraState.camera.quaternion.clone();
 	const worldQ = camQ.clone().multiply(q).multiply(camQ.clone().conjugate());
-	const target = state.controls.target.clone();
-	const offset = state.camera.position.clone().sub(target);
+	const target = cameraState.controls.target.clone();
+	const offset = cameraState.camera.position.clone().sub(target);
 	offset.applyQuaternion(worldQ);
-	state.camera.up.applyQuaternion(worldQ).normalize();
-	state.camera.position.copy(target).add(offset);
-	state.camera.lookAt(target);
-	state.controls.update();
-	state.arcballLastMoveTime = performance.now();
-	state.arcballInertiaQ = state.arcballInertiaQ ? state.arcballInertiaQ.slerp(worldQ, .5) : worldQ.clone();
+	cameraState.camera.up.applyQuaternion(worldQ).normalize();
+	cameraState.camera.position.copy(target).add(offset);
+	cameraState.camera.lookAt(target);
+	cameraState.controls.update();
+	cameraState.arcballLastMoveTime = performance.now();
+	cameraState.arcballInertiaQ = cameraState.arcballInertiaQ ? cameraState.arcballInertiaQ.slerp(worldQ, .5) : worldQ.clone();
 }
 function startArcballInertia() {
-	if (state.arcballInertiaId) {
-		cancelAnimationFrame(state.arcballInertiaId);
-		state.arcballInertiaId = null;
+	if (cameraState.arcballInertiaId) {
+		cancelAnimationFrame(cameraState.arcballInertiaId);
+		cameraState.arcballInertiaId = null;
 	}
 	const identity = new THREE.Quaternion();
-	if (!state.arcballInertiaQ || state.arcballMomentum < .01 || performance.now() - state.arcballLastMoveTime > 80 || state.arcballInertiaQ.angleTo(identity) < 2e-4) {
-		state.arcballInertiaQ = null;
+	if (!cameraState.arcballInertiaQ || cameraState.arcballMomentum < .01 || performance.now() - cameraState.arcballLastMoveTime > 80 || cameraState.arcballInertiaQ.angleTo(identity) < 2e-4) {
+		cameraState.arcballInertiaQ = null;
 		return;
 	}
-	const slerpT = Math.pow(.01, state.arcballMomentum);
+	const slerpT = Math.pow(.01, cameraState.arcballMomentum);
 	function step() {
-		if (!state.arcballInertiaQ || !state.camera || !state.controls) {
-			state.arcballInertiaId = null;
+		if (!cameraState.arcballInertiaQ || !cameraState.camera || !cameraState.controls) {
+			cameraState.arcballInertiaId = null;
 			return;
 		}
-		if (state.arcballInertiaQ.angleTo(identity) < 5e-5) {
-			state.arcballInertiaQ = null;
-			state.arcballInertiaId = null;
+		if (cameraState.arcballInertiaQ.angleTo(identity) < 5e-5) {
+			cameraState.arcballInertiaQ = null;
+			cameraState.arcballInertiaId = null;
 			return;
 		}
-		const tgt = state.controls.target.clone();
-		const offset = state.camera.position.clone().sub(tgt);
-		offset.applyQuaternion(state.arcballInertiaQ);
-		state.camera.up.applyQuaternion(state.arcballInertiaQ).normalize();
-		state.camera.position.copy(tgt).add(offset);
-		state.camera.lookAt(tgt);
-		state.controls.update();
-		state.arcballInertiaQ.slerp(identity, slerpT);
-		state.arcballInertiaId = requestAnimationFrame(step);
+		const tgt = cameraState.controls.target.clone();
+		const offset = cameraState.camera.position.clone().sub(tgt);
+		offset.applyQuaternion(cameraState.arcballInertiaQ);
+		cameraState.camera.up.applyQuaternion(cameraState.arcballInertiaQ).normalize();
+		cameraState.camera.position.copy(tgt).add(offset);
+		cameraState.camera.lookAt(tgt);
+		cameraState.controls.update();
+		cameraState.arcballInertiaQ.slerp(identity, slerpT);
+		cameraState.arcballInertiaId = requestAnimationFrame(step);
 	}
-	state.arcballInertiaId = requestAnimationFrame(step);
+	cameraState.arcballInertiaId = requestAnimationFrame(step);
 }
 function applyCameraRoll(deltaAngle) {
-	if (!state.camera || !state.controls) return;
-	const viewDir = new THREE.Vector3().subVectors(state.controls.target, state.camera.position);
+	if (!cameraState.camera || !cameraState.controls) return;
+	const viewDir = new THREE.Vector3().subVectors(cameraState.controls.target, cameraState.camera.position);
 	if (viewDir.lengthSq() < 1e-12) return;
 	viewDir.normalize();
 	const q = new THREE.Quaternion().setFromAxisAngle(viewDir, deltaAngle);
-	state.camera.up.applyQuaternion(q).normalize();
-	state.camera.lookAt(state.controls.target);
-	state.controls.update();
+	cameraState.camera.up.applyQuaternion(q).normalize();
+	cameraState.camera.lookAt(cameraState.controls.target);
+	cameraState.controls.update();
 }
 function setupRollDrag(container) {
 	if (!container) return;
@@ -3692,26 +3698,26 @@ function setupRollDrag(container) {
 		if (e.altKey) {
 			e.preventDefault();
 			e.stopImmediatePropagation();
-			state.rollDrag = {
+			cameraState.rollDrag = {
 				x: e.clientX,
 				awaitingMouseUp: false
 			};
 			document.body.classList.add("rotating");
-			if (state.controls) state.controls.enabled = false;
+			if (cameraState.controls) cameraState.controls.enabled = false;
 			return;
 		}
 		if (e.shiftKey) return;
 		if (e.ctrlKey || e.metaKey) return;
 		e.preventDefault();
 		e.stopImmediatePropagation();
-		if (state.arcballInertiaId) {
-			cancelAnimationFrame(state.arcballInertiaId);
-			state.arcballInertiaId = null;
+		if (cameraState.arcballInertiaId) {
+			cancelAnimationFrame(cameraState.arcballInertiaId);
+			cameraState.arcballInertiaId = null;
 		}
-		state.arcballInertiaQ = null;
+		cameraState.arcballInertiaQ = null;
 		orbitDrag = { pt: screenToArcball(e.clientX, e.clientY) };
 		document.body.classList.add("rotating");
-		if (state.controls) state.controls.enabled = false;
+		if (cameraState.controls) cameraState.controls.enabled = false;
 	}, { capture: true });
 	window.addEventListener("mousemove", (e) => {
 		if (orbitDrag) {
@@ -3723,43 +3729,43 @@ function setupRollDrag(container) {
 			orbitDrag.pt = currPt;
 			return;
 		}
-		if (!state.rollDrag) return;
+		if (!cameraState.rollDrag) return;
 		e.preventDefault();
 		e.stopImmediatePropagation();
 		if (!e.altKey) {
-			state.rollDrag.awaitingMouseUp = true;
+			cameraState.rollDrag.awaitingMouseUp = true;
 			return;
 		}
 		if ((e.buttons & 1) === 0) return endRollDrag();
-		if (state.rollDrag.awaitingMouseUp) return;
-		const dx = e.clientX - state.rollDrag.x;
-		state.rollDrag.x = e.clientX;
+		if (cameraState.rollDrag.awaitingMouseUp) return;
+		const dx = e.clientX - cameraState.rollDrag.x;
+		cameraState.rollDrag.x = e.clientX;
 		applyCameraRoll(-dx * .0045);
 	});
 	function endOrbitDrag() {
 		if (!orbitDrag) return;
 		orbitDrag = null;
 		document.body.classList.remove("rotating");
-		if (state.controls) {
-			state.controls.enabled = true;
-			state.controls.update();
+		if (cameraState.controls) {
+			cameraState.controls.enabled = true;
+			cameraState.controls.update();
 		}
 		startArcballInertia();
 	}
 	function endRollDrag() {
 		document.body.classList.remove("rotating");
-		if (state.controls) {
-			state.controls.enabled = true;
-			state.controls.update();
+		if (cameraState.controls) {
+			cameraState.controls.enabled = true;
+			cameraState.controls.update();
 		}
-		if (!state.rollDrag) return;
-		state.rollDrag = null;
+		if (!cameraState.rollDrag) return;
+		cameraState.rollDrag = null;
 	}
 	window.addEventListener("keyup", (e) => {
-		if (e.key === "Alt" && state.rollDrag) state.rollDrag.awaitingMouseUp = true;
+		if (e.key === "Alt" && cameraState.rollDrag) cameraState.rollDrag.awaitingMouseUp = true;
 	});
 	window.addEventListener("mouseup", (e) => {
-		if (state.rollDrag || orbitDrag) {
+		if (cameraState.rollDrag || orbitDrag) {
 			e.preventDefault();
 			e.stopImmediatePropagation();
 		}
@@ -3789,13 +3795,13 @@ function setupRollDrag(container) {
 		}
 	});
 	window.addEventListener("mousedown", () => {
-		if (!state.rollDrag && !orbitDrag && state.controls && !state.controls.enabled) state.controls.enabled = true;
+		if (!cameraState.rollDrag && !orbitDrag && cameraState.controls && !cameraState.controls.enabled) cameraState.controls.enabled = true;
 	}, { capture: true });
 }
 function activateExprCamera(viewSpec, key) {
 	const posExpr = Array.isArray(viewSpec.positionExpr) && viewSpec.positionExpr.length === 3 ? viewSpec.positionExpr : null;
 	const tgtExpr = Array.isArray(viewSpec.targetExpr) && viewSpec.targetExpr.length === 3 ? viewSpec.targetExpr : null;
-	if (!posExpr || !tgtExpr || !state.camera || !state.controls) return;
+	if (!posExpr || !tgtExpr || !cameraState.camera || !cameraState.controls) return;
 	let posFns, tgtFns;
 	try {
 		posFns = posExpr.map((e) => compileExpr(typeof e === "number" ? String(e) : e));
@@ -3804,47 +3810,47 @@ function activateExprCamera(viewSpec, key) {
 		console.warn("expr-camera compile error:", err);
 		return;
 	}
-	state.cameraExprState = {
+	cameraState.cameraExprState = {
 		posFns,
 		tgtFns,
-		up: Array.isArray(viewSpec.up) ? viewSpec.up.slice(0, 3) : state.sceneUp.slice(0, 3),
+		up: Array.isArray(viewSpec.up) ? viewSpec.up.slice(0, 3) : cameraState.sceneUp.slice(0, 3),
 		viewKey: key || null
 	};
-	state.cameraExprStartTime = performance.now();
+	cameraState.cameraExprStartTime = performance.now();
 	updateExprCamera();
 }
 function deactivateExprCamera() {
-	state.cameraExprState = null;
+	cameraState.cameraExprState = null;
 }
 function updateExprCamera() {
-	if (!state.cameraExprState || !state.camera || !state.controls) return;
-	const tSec = (performance.now() - state.cameraExprStartTime) / 1e3;
+	if (!cameraState.cameraExprState || !cameraState.camera || !cameraState.controls) return;
+	const tSec = (performance.now() - cameraState.cameraExprStartTime) / 1e3;
 	let posData, tgtData;
 	try {
-		posData = state.cameraExprState.posFns.map((fn) => evalExpr(fn, tSec));
-		tgtData = state.cameraExprState.tgtFns.map((fn) => evalExpr(fn, tSec));
+		posData = cameraState.cameraExprState.posFns.map((fn) => evalExpr(fn, tSec));
+		tgtData = cameraState.cameraExprState.tgtFns.map((fn) => evalExpr(fn, tSec));
 	} catch (err) {
 		return;
 	}
 	const posWorld = dataCameraToWorld$1(posData);
 	const tgtWorld = dataCameraToWorld$1(tgtData);
-	state.camera.position.set(posWorld[0], posWorld[1], posWorld[2]);
-	state.controls.target.set(tgtWorld[0], tgtWorld[1], tgtWorld[2]);
-	state.camera.up.copy(normalizeUpVector(state.cameraExprState.up));
-	state.camera.lookAt(state.controls.target);
+	cameraState.camera.position.set(posWorld[0], posWorld[1], posWorld[2]);
+	cameraState.controls.target.set(tgtWorld[0], tgtWorld[1], tgtWorld[2]);
+	cameraState.camera.up.copy(normalizeUpVector(cameraState.cameraExprState.up));
+	cameraState.camera.lookAt(cameraState.controls.target);
 }
 /** Paint the WebGL clear color from the --canvas-bg token (a slate board in
 *  both themes — see tokens.css). Called at init and on every theme toggle. */
 function applyCanvasClearColor() {
-	if (!state.renderer) return;
+	if (!cameraState.renderer) return;
 	const v = getComputedStyle(document.documentElement).getPropertyValue("--canvas-bg").trim();
-	state.renderer.setClearColor(new THREE.Color(v || "#0a0a0f"), 1);
+	cameraState.renderer.setClearColor(new THREE.Color(v || "#0a0a0f"), 1);
 }
 function initMathBox() {
 	const container = document.getElementById("mathbox-container");
 	const w = container.clientWidth;
 	const h = container.clientHeight;
-	state.mathbox = MathBox.mathBox({
+	cameraState.mathbox = MathBox.mathBox({
 		element: container,
 		plugins: [
 			"core",
@@ -3855,82 +3861,82 @@ function initMathBox() {
 		camera: { fov: 75 },
 		renderer: { antialias: true }
 	});
-	state.three = state.mathbox.three;
-	state.camera = state.three.camera;
-	state.perspCamera = state.camera;
-	state.renderer = state.three.renderer;
-	state.controls = state.three.controls;
+	cameraState.three = cameraState.mathbox.three;
+	cameraState.camera = cameraState.three.camera;
+	cameraState.perspCamera = cameraState.camera;
+	cameraState.renderer = cameraState.three.renderer;
+	cameraState.controls = cameraState.three.controls;
 	applyCanvasClearColor();
-	state.renderer.setPixelRatio(window.devicePixelRatio);
-	state.renderer.setSize(w, h);
+	cameraState.renderer.setPixelRatio(window.devicePixelRatio);
+	cameraState.renderer.setSize(w, h);
 	const ambientLight = new THREE.AmbientLight(16777215, .5);
-	state.three.scene.add(ambientLight);
-	state.mainDirLight = new THREE.DirectionalLight(16777215, .8);
-	state.mainDirLight.position.set(5, 10, 7);
-	state.three.scene.add(state.mainDirLight);
+	cameraState.three.scene.add(ambientLight);
+	cameraState.mainDirLight = new THREE.DirectionalLight(16777215, .8);
+	cameraState.mainDirLight.position.set(5, 10, 7);
+	cameraState.three.scene.add(cameraState.mainDirLight);
 	const dirLight2 = new THREE.DirectionalLight(16777215, .3);
 	dirLight2.position.set(-3, -5, -4);
-	state.three.scene.add(dirLight2);
+	cameraState.three.scene.add(dirLight2);
 	const initPos = dataToWorld(DEFAULT_CAMERA.position);
 	const initTgt = dataToWorld(DEFAULT_CAMERA.target);
-	state.camera.position.set(initPos[0], initPos[1], initPos[2]);
-	state.camera.lookAt(initTgt[0], initTgt[1], initTgt[2]);
-	if (state.controls) {
+	cameraState.camera.position.set(initPos[0], initPos[1], initPos[2]);
+	cameraState.camera.lookAt(initTgt[0], initTgt[1], initTgt[2]);
+	if (cameraState.controls) {
 		const target = new THREE.Vector3(initTgt[0], initTgt[1], initTgt[2]);
-		configureControlsInstance(state.controls, target);
+		configureControlsInstance(cameraState.controls, target);
 	}
 	updateControlsHint();
 	window.addEventListener("resize", () => {
 		const w2 = container.clientWidth;
 		const h2 = container.clientHeight;
-		state.renderer.setSize(w2, h2);
-		if (state.camera.isOrthographicCamera) {
+		cameraState.renderer.setSize(w2, h2);
+		if (cameraState.camera.isOrthographicCamera) {
 			const aspect2 = w2 / h2;
-			const halfH = (state.camera.top - state.camera.bottom) / 2;
-			state.camera.left = -halfH * aspect2;
-			state.camera.right = halfH * aspect2;
-		} else state.camera.aspect = w2 / h2;
-		state.camera.updateProjectionMatrix();
+			const halfH = (cameraState.camera.top - cameraState.camera.bottom) / 2;
+			cameraState.camera.left = -halfH * aspect2;
+			cameraState.camera.right = halfH * aspect2;
+		} else cameraState.camera.aspect = w2 / h2;
+		cameraState.camera.updateProjectionMatrix();
 	});
 	let _statusFrameTick = 0;
 	function updateLoop() {
-		state.animationFrameId = requestAnimationFrame(updateLoop);
+		cameraState.animationFrameId = requestAnimationFrame(updateLoop);
 		runAnimUpdaters(performance.now());
-		if (state.cameraExprState) updateExprCamera();
-		else if (state.followCamState) updateFollowCam();
-		else if (state.controls && typeof state.controls.update === "function") state.controls.update();
+		if (cameraState.cameraExprState) updateExprCamera();
+		else if (cameraState.followCamState) updateFollowCam();
+		else if (cameraState.controls && typeof cameraState.controls.update === "function") cameraState.controls.update();
 		updateLabels();
 		if (++_statusFrameTick % 6 === 0) updateStatusBar();
 	}
 	updateLoop();
 }
 function switchProjection(mode) {
-	if (mode === state.currentProjection) return;
-	state.currentProjection = mode;
+	if (mode === cameraState.currentProjection) return;
+	cameraState.currentProjection = mode;
 	const container = document.getElementById("mathbox-container");
 	const aspect = container.clientWidth / container.clientHeight;
-	const pos = state.camera.position.clone();
-	const target = state.controls ? state.controls.target.clone() : new THREE.Vector3();
+	const pos = cameraState.camera.position.clone();
+	const target = cameraState.controls ? cameraState.controls.target.clone() : new THREE.Vector3();
 	let newCamera;
 	if (mode === "orthographic") {
-		const frustumHeight = Math.max(pos.distanceTo(target), .001) * Math.tan(state.perspCamera.fov / 2 * Math.PI / 180) * 2;
+		const frustumHeight = Math.max(pos.distanceTo(target), .001) * Math.tan(cameraState.perspCamera.fov / 2 * Math.PI / 180) * 2;
 		const frustumWidth = frustumHeight * aspect;
 		newCamera = new THREE.OrthographicCamera(-frustumWidth / 2, frustumWidth / 2, frustumHeight / 2, -frustumHeight / 2, -1e3, 1e3);
 		newCamera.updateProjectionMatrix();
-	} else newCamera = state.perspCamera;
-	newCamera.up.copy(state.camera.up);
+	} else newCamera = cameraState.perspCamera;
+	newCamera.up.copy(cameraState.camera.up);
 	newCamera.position.copy(pos);
 	newCamera.lookAt(target);
-	state.three.camera = newCamera;
-	state.camera = newCamera;
-	if (!state.renderer._origRender) state.renderer._origRender = state.renderer.render.bind(state.renderer);
-	state.renderer.render = function(scene, cam) {
-		state.renderer._origRender(scene, state.camera);
+	cameraState.three.camera = newCamera;
+	cameraState.camera = newCamera;
+	if (!cameraState.renderer._origRender) cameraState.renderer._origRender = cameraState.renderer.render.bind(cameraState.renderer);
+	cameraState.renderer.render = function(scene, cam) {
+		cameraState.renderer._origRender(scene, cameraState.camera);
 	};
-	if (state.controls) state.controls.dispose();
-	state.controls = new CONTROL_CLASS(state.camera, state.renderer.domElement);
-	configureControlsInstance(state.controls, target);
-	state.three.controls = state.controls;
+	if (cameraState.controls) cameraState.controls.dispose();
+	cameraState.controls = new CONTROL_CLASS(cameraState.camera, cameraState.renderer.domElement);
+	configureControlsInstance(cameraState.controls, target);
+	cameraState.three.controls = cameraState.controls;
 	document.querySelectorAll(".proj-btn").forEach((btn) => {
 		btn.classList.toggle("active", btn.dataset.proj === mode);
 	});
@@ -3941,20 +3947,20 @@ function setupProjectionToggle() {
 	});
 }
 function setupTrackpadPan() {
-	const canvas = state.renderer && state.renderer.domElement;
+	const canvas = cameraState.renderer && cameraState.renderer.domElement;
 	if (!canvas) return;
 	canvas.addEventListener("wheel", (e) => {
 		if (e.ctrlKey || e.deltaMode !== 0) return;
 		e.preventDefault();
 		e.stopImmediatePropagation();
-		if (!state.camera || !state.controls) return;
-		const panFactor = state.camera.position.distanceTo(state.controls.target) / canvas.clientHeight * .8;
-		const right = new THREE.Vector3().setFromMatrixColumn(state.camera.matrix, 0);
-		const up = new THREE.Vector3().setFromMatrixColumn(state.camera.matrix, 1);
+		if (!cameraState.camera || !cameraState.controls) return;
+		const panFactor = cameraState.camera.position.distanceTo(cameraState.controls.target) / canvas.clientHeight * .8;
+		const right = new THREE.Vector3().setFromMatrixColumn(cameraState.camera.matrix, 0);
+		const up = new THREE.Vector3().setFromMatrixColumn(cameraState.camera.matrix, 1);
 		const panOffset = new THREE.Vector3().addScaledVector(right, e.deltaX * panFactor).addScaledVector(up, -e.deltaY * panFactor);
-		state.camera.position.add(panOffset);
-		state.controls.target.add(panOffset);
-		state.controls.update();
+		cameraState.camera.position.add(panOffset);
+		cameraState.controls.target.add(panOffset);
+		cameraState.controls.update();
 	}, {
 		capture: true,
 		passive: false
@@ -3999,13 +4005,13 @@ function animateCamera$1(view, duration) {
 	duration = duration == null ? 800 : duration;
 	deactivateFollowCam();
 	deactivateExprCamera();
-	const targetView = state.CAMERA_VIEWS[view];
-	if (!targetView || !state.camera || !state.controls) return;
-	const startPos = state.camera.position.clone();
+	const targetView = cameraState.CAMERA_VIEWS[view];
+	if (!targetView || !cameraState.camera || !cameraState.controls) return;
+	const startPos = cameraState.camera.position.clone();
 	const endPos = new THREE.Vector3(...targetView.position);
-	const startTarget = state.controls.target.clone();
+	const startTarget = cameraState.controls.target.clone();
 	const endTarget = new THREE.Vector3(...targetView.target);
-	const startUp = state.camera.up.clone();
+	const startUp = cameraState.camera.up.clone();
 	let endUp = normalizeUpVector(targetView.up);
 	const offset = endPos.clone().sub(endTarget);
 	if (offset.clone().sub(endUp.clone().multiplyScalar(offset.dot(endUp))).length() < VIEW_EPSILON) {
@@ -4023,34 +4029,34 @@ function animateCamera$1(view, duration) {
 	document.querySelectorAll(".cam-btn").forEach((b) => b.classList.remove("active"));
 	const activeBtn = document.querySelector(`.cam-btn[data-view="${view}"]`);
 	if (activeBtn) activeBtn.classList.add("active");
-	state.cameraAnimating = true;
+	cameraState.cameraAnimating = true;
 	if (duration === 0) {
-		state.camera.position.copy(endPos);
-		state.controls.target.copy(endTarget);
-		state.camera.up.copy(endUp);
-		state.camera.lookAt(state.controls.target);
-		state.cameraAnimating = false;
+		cameraState.camera.position.copy(endPos);
+		cameraState.controls.target.copy(endTarget);
+		cameraState.camera.up.copy(endUp);
+		cameraState.camera.lookAt(cameraState.controls.target);
+		cameraState.cameraAnimating = false;
 		return;
 	}
 	function step(now) {
 		const elapsed = now - startTime;
 		let t = Math.min(elapsed / duration, 1);
 		t = t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-		state.camera.position.lerpVectors(startPos, endPos, t);
-		state.controls.target.lerpVectors(startTarget, endTarget, t);
-		state.camera.up.lerpVectors(startUp, endUp, t).normalize();
-		state.camera.lookAt(state.controls.target);
-		state.controls.update();
+		cameraState.camera.position.lerpVectors(startPos, endPos, t);
+		cameraState.controls.target.lerpVectors(startTarget, endTarget, t);
+		cameraState.camera.up.lerpVectors(startUp, endUp, t).normalize();
+		cameraState.camera.lookAt(cameraState.controls.target);
+		cameraState.controls.update();
 		if (t < 1) requestAnimationFrame(step);
-		else state.cameraAnimating = false;
+		else cameraState.cameraAnimating = false;
 	}
 	requestAnimationFrame(step);
 }
 function buildCameraButtons(spec) {
 	const container = document.getElementById("camera-buttons");
 	container.innerHTML = "";
-	state.CAMERA_VIEWS = {};
-	state.sceneUp = spec && spec.camera && Array.isArray(spec.camera.up) && spec.camera.up.length === 3 ? spec.camera.up.slice(0, 3) : [
+	cameraState.CAMERA_VIEWS = {};
+	cameraState.sceneUp = spec && spec.camera && Array.isArray(spec.camera.up) && spec.camera.up.length === 3 ? spec.camera.up.slice(0, 3) : [
 		0,
 		1,
 		0
@@ -4066,7 +4072,7 @@ function buildCameraButtons(spec) {
 			btn.classList.add("cam-btn-follow");
 			btn.addEventListener("click", () => {
 				deactivateExprCamera();
-				if (state.followCamState && state.followCamState.viewKey === key) {
+				if (cameraState.followCamState && cameraState.followCamState.viewKey === key) {
 					deactivateFollowCam();
 					document.querySelectorAll(".cam-btn").forEach((b) => b.classList.remove("active"));
 					return;
@@ -4082,7 +4088,7 @@ function buildCameraButtons(spec) {
 			btn.classList.add("cam-btn-follow");
 			btn.addEventListener("click", () => {
 				deactivateFollowCam();
-				if (state.cameraExprState && state.cameraExprState.viewKey === key) {
+				if (cameraState.cameraExprState && cameraState.cameraExprState.viewKey === key) {
 					deactivateExprCamera();
 					document.querySelectorAll(".cam-btn").forEach((b) => b.classList.remove("active"));
 					return;
@@ -4092,14 +4098,14 @@ function buildCameraButtons(spec) {
 				activateExprCamera(v, key);
 			});
 		} else {
-			state.CAMERA_VIEWS[key] = {
+			cameraState.CAMERA_VIEWS[key] = {
 				position: dataCameraToWorld$1(v.position),
 				target: dataCameraToWorld$1(v.target || [
 					0,
 					0,
 					0
 				]),
-				up: Array.isArray(v.up) ? v.up.slice(0, 3) : state.sceneUp.slice(0, 3)
+				up: Array.isArray(v.up) ? v.up.slice(0, 3) : cameraState.sceneUp.slice(0, 3)
 			};
 			btn.addEventListener("click", (e) => {
 				deactivateFollowCam();
@@ -4119,10 +4125,10 @@ function buildCameraButtons(spec) {
 	resetBtn.addEventListener("click", (e) => {
 		deactivateFollowCam();
 		deactivateExprCamera();
-		const camSpec = resolveEffectiveStepCamera(state.lessonSpec && state.currentSceneIndex >= 0 && state.lessonSpec.scenes ? state.lessonSpec.scenes[state.currentSceneIndex] : state.currentSpec, state.currentStepIndex) || state.currentSpec && state.currentSpec.camera || null;
+		const camSpec = resolveEffectiveStepCamera(cameraState.lessonSpec && cameraState.currentSceneIndex >= 0 && cameraState.lessonSpec.scenes ? cameraState.lessonSpec.scenes[cameraState.currentSceneIndex] : cameraState.currentSpec, cameraState.currentStepIndex) || cameraState.currentSpec && cameraState.currentSpec.camera || null;
 		const pos = dataCameraToWorld$1(camSpec && camSpec.position || DEFAULT_CAMERA.position);
 		const tgt = dataCameraToWorld$1(camSpec && camSpec.target || DEFAULT_CAMERA.target);
-		state.CAMERA_VIEWS.reset = {
+		cameraState.CAMERA_VIEWS.reset = {
 			position: pos,
 			target: tgt,
 			up: camSpec && Array.isArray(camSpec.up) ? camSpec.up.slice(0, 3) : [
