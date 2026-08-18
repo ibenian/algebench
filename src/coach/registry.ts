@@ -65,7 +65,7 @@ export interface CoachRegistry {
 
 const coach = (window.AlgeBenchCoach = window.AlgeBenchCoach || {
     _steps: [],
-    // register(step | step[]) — called by steps/*.js modules at import time.
+    // register(step | step[]) — called by steps/*.ts modules at import time.
     register(s: CoachStep | CoachStep[] | null | undefined) {
         if (Array.isArray(s)) this._steps.push(...s);
         else if (s) this._steps.push(s);

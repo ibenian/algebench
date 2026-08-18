@@ -75,7 +75,7 @@ export interface CoachEngine {
     reset: () => void;
 }
 
-// ---- Persistence (mirrors the graph-view.js _lsGet/_lsSet pattern) ----
+// ---- Persistence (mirrors the graph-view.ts _lsGet/_lsSet pattern) ----
 const STEP_VERSION = 1;
 const LS = {
     version:        'algebench.coach.version',
@@ -319,7 +319,7 @@ function gotoSliderStep() {
     }
     return false;
 }
-// Hand off to the MAIN chat via DOM only (no chat.js edit). Auto-sends.
+// Hand off to the MAIN chat via DOM only (no chat.ts edit). Auto-sends.
 function handToChat(text: string, examples?: string[]) {
     openChatTab();
     if (!chatAvailable()) return false;
@@ -1040,7 +1040,7 @@ function coachControl(action: string, opts: { step?: unknown } = {}): CoachContr
             dismiss();
             return { ok: true, action, status: coachStatus() };
         case 'reset': case 'restart': {
-            // `!`: registry.js assigns window.AlgeBenchCoach at import time, and
+            // `!`: registry.ts assigns window.AlgeBenchCoach at import time, and
             // the block at the bottom of this module attaches .engine.
             window.AlgeBenchCoach!.engine!.reset();
             _lsSet(LS.dismissed, '0');
@@ -1084,7 +1084,7 @@ if (document.readyState === 'loading') {
 
 // Public control surface — used by the chat `control_coach` tool and handy for
 // manual driving from the console.
-// `!`: registry.js assigned window.AlgeBenchCoach at import time (top of file).
+// `!`: registry.ts assigned window.AlgeBenchCoach at import time (top of file).
 window.AlgeBenchCoach!.engine = {
     openTour,
     dismiss,
