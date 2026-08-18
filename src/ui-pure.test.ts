@@ -9,24 +9,37 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as mathjs from 'mathjs';
 
-globalThis.math = mathjs;
-globalThis.window ??= globalThis;
+// The stubs below stand in for the browser globals ui.ts's import chain reads
+// at module-eval time. Only `href` of Location and only `replaceState` of
+// History are ever touched, so full DOM interfaces are unnecessary — install
+// them through one deliberately loose view of `globalThis` rather than casting
+// at each assignment.
+const g = globalThis as unknown as {
+  math: typeof mathjs;
+  window: typeof globalThis;
+  location: { href: string };
+  history: { replaceState(state: unknown, title: string, url: string): void };
+};
 
-let replacedUrl = null;
-globalThis.location = { href: 'https://example.test/app' };
-globalThis.history = {
+g.math = mathjs;
+g.window ??= globalThis;
+
+let replacedUrl: string | null = null;
+g.location = { href: 'https://example.test/app' };
+g.history = {
   replaceState(_state, _title, url) { replacedUrl = url; },
 };
 
 const { updateSceneUrl } = await import('/ui.js');
 
 /** Run updateSceneUrl against a starting href and return the rewritten one. */
-function rewrite(href, opts) {
-  globalThis.location.href = href;
+function rewrite(href: string, opts?: { builtin?: string; path?: string }): URL {
+  g.location.href = href;
   replacedUrl = null;
   if (opts === undefined) updateSceneUrl();
   else updateSceneUrl(opts);
-  return new URL(replacedUrl);
+  // updateSceneUrl always ends in a replaceState, so the stub has recorded one.
+  return new URL(replacedUrl!);
 }
 
 test('builtin replaces any ?scene= with ?builtin=', () => {

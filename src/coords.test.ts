@@ -10,11 +10,21 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { dataToWorld, dataCameraToWorld, worldCameraToData, dataLenToWorld } from '/coords.js';
+import type { Vec3 } from '/coords.js';
 import { state } from '/state.js';
 
-/** Set the module-level range/scale coords.ts reads through `state`. */
-function setView(range, scale) {
-  state.currentRange = range;
+/**
+ * Set the module-level range/scale coords.ts reads through `state`.
+ *
+ * `range` is nullable here while `state.currentRange` is declared
+ * non-nullable — but coords.ts re-reads it as `Range3 | null` and every
+ * exported function guards the no-range case, which the tests below exercise
+ * on purpose. The cast keeps that disagreement at this single boundary rather
+ * than loosening the shared state type, which non-null consumers
+ * (src/objects/skybox.ts, src/scene-loader.ts) depend on.
+ */
+function setView(range: number[][] | null, scale: number[]): void {
+  state.currentRange = range as number[][];
   state.currentScale = scale;
 }
 
@@ -39,9 +49,10 @@ test('dataToWorld returns the origin when no range is set', () => {
 
 test('worldCameraToData inverts dataCameraToWorld', () => {
   setView([[-4, 6], [-2, 2], [0, 10]], [1, 1, 1]);
-  const pt = [3, -1, 7];
+  const pt: Vec3 = [3, -1, 7];
   const round = worldCameraToData(dataCameraToWorld(pt));
-  for (let i = 0; i < 3; i++) assert.ok(Math.abs(round[i] - pt[i]) < 1e-9);
+  // Both are Vec3 tuples, so indices 0..2 are always present.
+  for (let i = 0; i < 3; i++) assert.ok(Math.abs(round[i]! - pt[i]!) < 1e-9);
 });
 
 test('dataCameraToWorld normalizes uniformly by the largest half-span', () => {
