@@ -6,6 +6,41 @@
 import { state } from '/state.js';
 import { loadLesson, loadScene, stopAutoPlay, showSceneDockScenesTab } from '/scene-loader.js';
 import { parseViewState } from '/view-state.js';
+import type { LessonSpec } from '/scene-loader.js';
+
+/** `GET /api/scenes` — the built-in scene names, without the .json suffix. */
+interface ScenesListResponse {
+    scenes?: string[];
+}
+
+/** `GET /api/scene_file` — one scene read off disk, plus where it came from. */
+interface SceneFileResponse {
+    spec?: LessonSpec;
+    label?: string;
+    path?: string;
+}
+
+/** A dropped or picked file. `path` is not a browser File field — it is read
+ *  here (and falls back) because the code has always read it. */
+type PickedFile = File & { path?: string };
+
+/**
+ * getDisplayMedia options. `cursor` and `preferCurrentTab` are non-standard
+ * Chromium extensions the DOM lib does not declare, and `preferCurrentTab` is
+ * what makes the picker default to this tab — so the bag is typed here rather
+ * than dropped.
+ */
+type TabCaptureOptions = DisplayMediaStreamOptions & {
+    video: MediaTrackConstraints & { displaySurface?: string; cursor?: string };
+    preferCurrentTab?: boolean;
+};
+
+/** One entry of the recorder-format preference list. */
+interface RecorderFormat {
+    mimeType: string;
+    containerMime: string;
+    ext: string;
+}
 
 // ----- Scene Loading Indicator -----
 // Shown while a scene is fetched + parsed. The server derives a semantic
@@ -14,7 +49,7 @@ import { parseViewState } from '/view-state.js';
 // Ref-counted so overlapping loads don't hide it early.
 let _sceneLoadingCount = 0;
 
-export function showSceneLoading() {
+export function showSceneLoading(): void {
     _sceneLoadingCount++;
     const el = document.getElementById('scene-loading');
     if (el) {
@@ -23,7 +58,7 @@ export function showSceneLoading() {
     }
 }
 
-export function hideSceneLoading() {
+export function hideSceneLoading(): void {
     _sceneLoadingCount = Math.max(0, _sceneLoadingCount - 1);
     if (_sceneLoadingCount > 0) return;
     const el = document.getElementById('scene-loading');
@@ -35,11 +70,12 @@ export function hideSceneLoading() {
 
 // ----- Built-in Scenes Dropdown -----
 
-export async function loadBuiltinScenesList() {
+export async function loadBuiltinScenesList(): Promise<void> {
     try {
         const resp = await fetch('/api/scenes', { cache: 'no-store' });
-        const data = await resp.json();
-        const menu = document.getElementById('scenes-menu');
+        const data = await resp.json() as ScenesListResponse;
+        // Non-null: #scenes-menu is in index.html; a missing one threw here before.
+        const menu = document.getElementById('scenes-menu')!;
         menu.innerHTML = '';
         if (data.scenes && data.scenes.length > 0) {
             for (const name of data.scenes) {
@@ -65,14 +101,14 @@ export async function loadBuiltinScenesList() {
     }
 }
 
-export async function loadBuiltinScene(name) {
+export async function loadBuiltinScene(name: string): Promise<boolean> {
     showSceneLoading();
     try {
         const resp = await fetch('/scenes/' + encodeURIComponent(name), { cache: 'no-store' });
         if (!resp.ok) {
             throw new Error(`HTTP ${resp.status} loading scene '${name}'`);
         }
-        const spec = await resp.json();
+        const spec = await resp.json() as LessonSpec;
         state.currentSceneSourceLabel = `${name}.json`;
         state.currentSceneSourcePath = `/scenes/${name}`;
         // Force a full re-init path so selecting from scenes always reloads.
@@ -82,7 +118,8 @@ export async function loadBuiltinScene(name) {
         stopAutoPlay();
         await loadLesson(spec);
         updateSceneUrl({ builtin: name });
-        document.getElementById('scenes-menu').classList.remove('open');
+        // Non-null: same #scenes-menu the list above populates.
+        document.getElementById('scenes-menu')!.classList.remove('open');
         return true;
     } catch (e) {
         console.error('Failed to load scene:', name, e);
@@ -92,15 +129,19 @@ export async function loadBuiltinScene(name) {
     }
 }
 
-export async function loadSceneFromPath(path) {
+export async function loadSceneFromPath(path: string): Promise<void> {
     showSceneLoading();
     try {
         const resp = await fetch('/api/scene_file?path=' + encodeURIComponent(path), { cache: 'no-store' });
         if (!resp.ok) {
             throw new Error(`HTTP ${resp.status} loading scene file`);
         }
-        const data = await resp.json();
-        if (!data || typeof data.spec !== 'object') {
+        const data = await resp.json() as SceneFileResponse | null;
+        // `!data.spec` is load-bearing, not redundant with the typeof: `typeof
+        // null === 'object'`, so a `{ spec: null }` response used to pass this
+        // guard and fail later inside loadLesson() with a much less clear error.
+        // This is the one DELIBERATE behaviour change in this PR — see the body.
+        if (!data || !data.spec || typeof data.spec !== 'object') {
             throw new Error('Invalid scene payload');
         }
         state.currentSceneSourceLabel = data.label || path.split(/[\\/]/).pop() || path;
@@ -113,7 +154,7 @@ export async function loadSceneFromPath(path) {
     }
 }
 
-export function updateSceneUrl(opts = {}) {
+export function updateSceneUrl(opts: { builtin?: string; path?: string } = {}): void {
     const url = new URL(window.location.href);
     if (opts.builtin) {
         url.searchParams.set('builtin', opts.builtin);
@@ -128,7 +169,7 @@ export function updateSceneUrl(opts = {}) {
     window.history.replaceState({}, '', url.toString());
 }
 
-export async function loadInitialSceneFromQuery() {
+export async function loadInitialSceneFromQuery(): Promise<void> {
     // Capture the FULL deeplink before loading the source — loadBuiltinScene /
     // loadSceneFromPath rewrite the URL (dropping sc/st/etc.) via updateSceneUrl.
     const vs = parseViewState(window.location.search);
@@ -155,7 +196,7 @@ export async function loadInitialSceneFromQuery() {
         try {
             const res = await fetch('/api/scene', { cache: 'no-store' });
             if (res.ok) {
-                const spec = await res.json();
+                const spec = await res.json() as LessonSpec | null;
                 if (spec && Array.isArray(spec.scenes) && spec.scenes.length) {
                     await loadLesson(spec);
                     await applyRest();   // apply panel/aa/etc. on the default scene too
@@ -180,9 +221,10 @@ export async function loadInitialSceneFromQuery() {
 
 // ----- Drag and Drop -----
 
-export function setupDragDrop() {
-    const viewport = document.getElementById('viewport');
-    const overlay = document.getElementById('drop-overlay');
+export function setupDragDrop(): void {
+    // Non-null: both are in index.html; a missing one threw on addEventListener.
+    const viewport = document.getElementById('viewport')!;
+    const overlay = document.getElementById('drop-overlay')!;
 
     viewport.addEventListener('dragover', (e) => {
         e.preventDefault();
@@ -190,19 +232,24 @@ export function setupDragDrop() {
     });
 
     viewport.addEventListener('dragleave', (e) => {
-        if (e.relatedTarget && viewport.contains(e.relatedTarget)) return;
+        // `as Node`: contains() takes a Node and relatedTarget is a typed
+        // EventTarget; the truthiness check above is the original guard.
+        if (e.relatedTarget && viewport.contains(e.relatedTarget as Node)) return;
         overlay.classList.remove('active');
     });
 
     viewport.addEventListener('drop', (e) => {
         e.preventDefault();
         overlay.classList.remove('active');
-        const file = e.dataTransfer.files[0];
+        // Non-null: a drop event always carries a dataTransfer.
+        const file = e.dataTransfer!.files[0] as PickedFile | undefined;
         if (file && file.name.endsWith('.json')) {
             const reader = new FileReader();
             reader.onload = async (ev) => {
                 try {
-                    const spec = JSON.parse(ev.target.result);
+                    // Non-null + cast: `target` is the reader that fired, and
+                    // readAsText below always yields a string result.
+                    const spec = JSON.parse(ev.target!.result as string) as LessonSpec;
                     state.currentSceneSourceLabel = file.name || '';
                     state.currentSceneSourcePath = file.path || file.webkitRelativePath || file.name || '';
                     await loadLesson(spec);
@@ -219,18 +266,21 @@ export function setupDragDrop() {
 
 // ----- File Picker -----
 
-export function setupFilePicker() {
-    const btn = document.getElementById('btn-load');
-    const input = document.getElementById('file-input');
+export function setupFilePicker(): void {
+    // Non-null: both are in index.html; a missing one threw on addEventListener.
+    const btn = document.getElementById('btn-load')!;
+    const input = document.getElementById('file-input') as HTMLInputElement;
 
     btn.addEventListener('click', () => input.click());
     input.addEventListener('change', (e) => {
-        const file = e.target.files[0];
+        // Non-null: `target` is the file input above, so `files` is a list.
+        const file = (e.target as HTMLInputElement).files![0] as PickedFile | undefined;
         if (file) {
             const reader = new FileReader();
             reader.onload = async (ev) => {
                 try {
-                    const spec = JSON.parse(ev.target.result);
+                    // Non-null + cast: as in setupDragDrop above.
+                    const spec = JSON.parse(ev.target!.result as string) as LessonSpec;
                     state.currentSceneSourceLabel = file.name || '';
                     state.currentSceneSourcePath = file.path || file.webkitRelativePath || file.name || '';
                     await loadLesson(spec);
@@ -248,9 +298,10 @@ export function setupFilePicker() {
 
 // ----- Scenes Dropdown Toggle -----
 
-export function setupScenesDropdown() {
-    const btn = document.getElementById('btn-scenes');
-    const menu = document.getElementById('scenes-menu');
+export function setupScenesDropdown(): void {
+    // Non-null: both are in index.html; a missing one threw on addEventListener.
+    const btn = document.getElementById('btn-scenes')!;
+    const menu = document.getElementById('scenes-menu')!;
 
     btn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -264,7 +315,7 @@ export function setupScenesDropdown() {
 
 // ----- Video Export -----
 
-function pickVideoRecorderFormat() {
+function pickVideoRecorderFormat(): RecorderFormat | null {
     const webmOptions = [
         'video/webm;codecs=vp9,opus',
         'video/webm;codecs=vp8,opus',
@@ -279,7 +330,7 @@ function pickVideoRecorderFormat() {
     ];
 
     const preference = state.videoExportFormatPreference;
-    const candidates = [];
+    const candidates: { options: string[]; containerMime: string; ext: string }[] = [];
     if (preference === 'webm') {
         candidates.push({ options: webmOptions, containerMime: 'video/webm', ext: 'webm' });
     } else if (preference === 'mp4') {
@@ -305,37 +356,37 @@ function pickVideoRecorderFormat() {
     return null;
 }
 
-function sanitizeFilename(name) {
+function sanitizeFilename(name: string): string {
     return (name || 'algebench')
         .replace(/[^a-zA-Z0-9._-]+/g, '_')
         .replace(/^_+|_+$/g, '')
         .slice(0, 80) || 'algebench';
 }
 
-function updateVideoExportFormatUI() {
+function updateVideoExportFormatUI(): void {
     const selected = state.videoExportFormatPreference;
     const label = document.getElementById('video-export-format-label');
     if (label) label.textContent = `(${selected === 'auto' ? 'Auto' : selected.toUpperCase()})`;
-    document.querySelectorAll('#video-export-format-menu .toolbar-menu-item').forEach((item) => {
+    document.querySelectorAll<HTMLElement>('#video-export-format-menu .toolbar-menu-item').forEach((item) => {
         item.classList.toggle('active', item.dataset.format === selected);
     });
 }
 
-function getExportBaseName() {
+function getExportBaseName(): string {
     const title = (state.lessonSpec && state.lessonSpec.title)
         || (state.currentSpec && state.currentSpec.title)
         || 'algebench-export';
     return sanitizeFilename(title);
 }
 
-function cleanupVideoRecording() {
+function cleanupVideoRecording(): void {
     if (state.videoRecordingStream) {
         state.videoRecordingStream.getTracks().forEach(track => track.stop());
         state.videoRecordingStream = null;
     }
 }
 
-function updateVideoRecordButtonUI() {
+function updateVideoRecordButtonUI(): void {
     const btn = document.getElementById('btn-video-record');
     if (!btn) return;
     updateVideoExportFormatUI();
@@ -348,7 +399,7 @@ function updateVideoRecordButtonUI() {
     }
 }
 
-async function startVideoExport() {
+async function startVideoExport(): Promise<void> {
     const btn = document.getElementById('btn-video-record');
     if (!btn) return;
 
@@ -365,7 +416,7 @@ async function startVideoExport() {
             },
             audio: true,
             preferCurrentTab: true,
-        });
+        } as TabCaptureOptions);
 
         const tracks = [...displayStream.getTracks()];
         const getTTSStream = window.algebenchGetTTSAudioStream;
@@ -392,7 +443,9 @@ async function startVideoExport() {
         };
 
         state.videoRecorder.onerror = (event) => {
-            const error = event?.error || event;
+            // `?.` is the ORIGINAL guard, kept verbatim; the cast only reaches
+            // the non-standard `error` field MediaRecorder puts on the event.
+            const error = (event as Event & { error?: unknown })?.error || event;
             console.error('Video recorder error:', error);
         };
 
@@ -412,7 +465,8 @@ async function startVideoExport() {
             updateVideoRecordButtonUI();
         };
 
-        displayStream.getVideoTracks()[0].onended = () => {
+        // Non-null: a display-capture stream always carries a video track.
+        displayStream.getVideoTracks()[0]!.onended = () => {
             if (state.videoRecorder && state.videoRecorder.state === 'recording') state.videoRecorder.stop();
         };
 
@@ -427,7 +481,7 @@ async function startVideoExport() {
     }
 }
 
-export function setupVideoExportControls() {
+export function setupVideoExportControls(): void {
     const btn = document.getElementById('btn-video-record');
     const menu = document.getElementById('video-export-format-menu');
     if (!btn || !menu) return;
@@ -443,7 +497,7 @@ export function setupVideoExportControls() {
         menu.classList.toggle('open');
     });
 
-    menu.querySelectorAll('.toolbar-menu-item').forEach((item) => {
+    menu.querySelectorAll<HTMLElement>('.toolbar-menu-item').forEach((item) => {
         item.addEventListener('click', async (e) => {
             e.stopPropagation();
             state.videoExportFormatPreference = item.dataset.format || 'auto';

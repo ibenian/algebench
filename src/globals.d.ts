@@ -263,6 +263,26 @@ interface Window {
   GeminiVoiceCharacterSelector?: GeminiVoiceCharacterSelectorLib;
   GeminiTTSPlayer?: GeminiTTSPlayerLib;
 
+  // ---- Published by src/main.ts for the modules that still reach them via
+  // `window` rather than an import. Declared as the exported functions
+  // themselves so the publish site in main.ts and every reader agree.
+  // (The rest of main.ts's publish list is already declared as bare globals in
+  // the "First-party globals src/chat.ts READS" section further down; those
+  // land on `typeof globalThis`, which `window.x` also resolves through.)
+  /** src/scene-loader.ts — load a lesson (or single scene) spec. */
+  loadLesson: typeof import('/scene-loader.js').loadLesson;
+  /** src/scene-loader.ts — load one scene spec. */
+  loadScene: typeof import('/scene-loader.js').loadScene;
+  /** src/scene-loader.ts — true when a spec is the multi-scene lesson format. */
+  isLessonFormat: typeof import('/scene-loader.js').isLessonFormat;
+  /** src/view-state-bridge.js — snapshot the current view as a deeplink. */
+  captureViewState: typeof import('/view-state-bridge.js').captureViewState;
+  /** src/view-state-bridge.js — restore a deeplinked view. Read back by
+   *  src/ui.ts's initial-load path and by the popstate listener. */
+  applyViewState: typeof import('/view-state-bridge.js').applyViewState;
+  /** src/proof.ts — load a proof into the proof panel. */
+  loadProof: typeof import('/proof.js').loadProof;
+
   // ---- Read by src/chat.ts, published by other modules ----
   /** src/main.js — inline avatar SVGs for chat messages. */
   algebenchIcons?: { ai: string; user: string };
