@@ -22,32 +22,101 @@
 import { state } from '/state.js';
 import { dataToWorld } from '/coords.js';
 import { makeAiAskButton } from '/labels.js';
+import type { AppState } from '/state.js';
+import type { Vec3 } from '/coords.js';
+import type { Label3D } from '/labels.js';
+import type { Object3D, Raycaster, Vector2, Vector3 } from 'three';
+
+/** One element's registry entry, as src/state.ts types it. */
+type PickerReg = NonNullable<AppState['elementRegistry'][string]>;
+
+/**
+ * A live label entry, plus the raw dynamic string the animated renderers stash
+ * on it (`_lastDynamicText`) — not part of src/labels.ts's exported `Label3D`.
+ */
+type PickerLabel = Label3D & { _lastDynamicText?: string | null };
+
+/** One arrow (vector head/shaft) entry on a tracker. */
+interface PickerArrowEntry {
+    mesh?: Object3D | null;
+    tipWorld?: Vector3 | null;
+}
+
+/** One MathBox line/curve/axis entry on a tracker. */
+interface PickerLineNode {
+    anchorDataPos?: number[] | null;
+}
+
+/**
+ * The slice of src/scene-loader.ts's private SubTracker this module reads.
+ * src/state.ts types `ElementRegistryEntry.tracker` as `unknown` on purpose
+ * ("only that module opens it"), so every read here casts down to this narrow
+ * view rather than widening the shared state type.
+ */
+interface PickerTracker {
+    arrowMeshes?: (PickerArrowEntry | null)[];
+    planeMeshes?: (Object3D | null)[];
+    labels?: PickerLabel[];
+    lineNodes?: (PickerLineNode | null)[];
+}
+
+/** A world point projected into canvas-local pixels (see projectToScreen). */
+interface ScreenPoint {
+    x: number;
+    y: number;
+    ndc: Vector3;
+    onScreen: boolean;
+}
+
+/** What pickAt resolved under the cursor. */
+interface PickHit {
+    id: string;
+    point: Vector3 | null;
+    labelEl: HTMLElement | null;
+}
+
+/** What (if anything) occludes an element — see occluderOf. */
+interface Occluder {
+    name?: string | null;
+    generic?: boolean;
+}
+
+/** One visible element's viewport geometry (see collectVisible). */
+interface VisibleEntry {
+    id: string;
+    reg: PickerReg;
+    anchor: Vector3;
+    name: string | null;
+    type: string;
+    screen: ScreenPoint | null;
+    depth: number;
+}
 
 const PICK_PX = 20;          // screen-space radius for the nearest-anchor fallback
 const HIDE_DELAY = 600;      // grace period so the cursor can travel onto the button
 const MAX_NEIGHBORS = 12;    // cap the "other objects in view" list in the prompt
 
-let _raycaster = null;
-let _canvas = null;
-let _btn = null;
-let _hideTimer = null;
-let _hoveredId = null;
+let _raycaster: Raycaster | null = null;
+let _canvas: HTMLCanvasElement | null = null;
+let _btn: HTMLButtonElement | null = null;
+let _hideTimer: ReturnType<typeof setTimeout> | null = null;
+let _hoveredId: string | null = null;
 let _rafPending = false;
-let _lastEvt = null;
-let _trackRaf = null;
-let _hoverPoint = null;   // world point the cursor last hit on the object (or null)
-let _hoverLabelEl = null;  // label DOM element the cursor is over (anchor the button on it)
+let _lastEvt: PointerEvent | null = null;
+let _trackRaf: number | null = null;
+let _hoverPoint: Vector3 | null = null;   // world point the cursor last hit on the object (or null)
+let _hoverLabelEl: HTMLElement | null = null;  // label DOM element the cursor is over (anchor the button on it)
 
 // ----- reverse mesh → element-id map -----
 
 /** Build a `Map<THREE.Mesh, elementId>` by walking the per-element trackers.
  *  Cheap enough to rebuild on demand (a scene holds few registered elements),
  *  and always current with the live registry — no invalidation bookkeeping. */
-function buildMeshIdMap() {
-    const map = new Map();
+function buildMeshIdMap(): Map<Object3D, string> {
+    const map = new Map<Object3D, string>();
     for (const [id, reg] of Object.entries(state.elementRegistry)) {
         if (!reg || reg.hidden || !reg.tracker) continue;
-        const t = reg.tracker;
+        const t = reg.tracker as PickerTracker;
         for (const e of (t.arrowMeshes || [])) if (e && e.mesh) map.set(e.mesh, id);
         for (const m of (t.planeMeshes || [])) if (m) map.set(m, id);
     }
@@ -55,14 +124,14 @@ function buildMeshIdMap() {
 }
 
 /** All currently-visible, raycastable meshes across every registered element. */
-function pickableMeshes() {
-    const meshes = [];
+function pickableMeshes(): Object3D[] {
+    const meshes: Object3D[] = [];
     for (const e of state.arrowMeshes) if (e && e.mesh && e.mesh.visible) meshes.push(e.mesh);
     for (const m of state.planeMeshes) if (m && m.visible) meshes.push(m);
     return meshes;
 }
 
-function isHidden(id) {
+function isHidden(id: string): boolean {
     const reg = state.elementRegistry[id];
     return !reg || reg.hidden || state.legendToggledOff.has(id);
 }
@@ -74,13 +143,15 @@ const STRUCTURAL_TYPES = new Set(['axis', 'grid', 'skybox']);
 /** Pickable if the author opted in with a `prompt`, or it's a content object that
  *  renders a label — static (`reg.label`) or dynamic (a live label entry on its
  *  tracker, e.g. an animated point's `labelExpr` "6.3 km/s"). */
-function isPickable(id) {
+function isPickable(id: string): boolean {
     const reg = state.elementRegistry[id];
     if (!reg || isHidden(id)) return false;
     if (reg.prompt) return true;
-    if (STRUCTURAL_TYPES.has(reg.type)) return false;
+    // `as string` — Set<string>.has takes a string; `reg.type` may be undefined,
+    // which the JavaScript passed through here unchanged (always a miss).
+    if (STRUCTURAL_TYPES.has(reg.type as string)) return false;
     if (reg.label) return true;
-    const t = reg.tracker;
+    const t = reg.tracker as PickerTracker;
     return !!(t && t.labels && t.labels.length);
 }
 
@@ -88,12 +159,13 @@ function isPickable(id) {
 
 /** A representative world-space anchor for an element, tried in order:
  *  live animated position → its label → a mesh centroid/tip → a line anchor. */
-function worldAnchor(id, reg) {
-    const t = (reg && reg.tracker) || {};
+function worldAnchor(id: string, reg: PickerReg | undefined): Vector3 | null {
+    const t = ((reg && reg.tracker) || {}) as PickerTracker;
     const ap = state.animatedElementPos[id];
-    if (ap && ap.pos) return new THREE.Vector3(...dataToWorld(ap.pos));
-    if (t.labels && t.labels.length && t.labels[0].dataPos) {
-        return new THREE.Vector3(...dataToWorld(t.labels[0].dataPos));
+    if (ap && ap.pos) return new THREE.Vector3(...dataToWorld(ap.pos as Vec3));
+    if (t.labels && t.labels.length && t.labels[0]!.dataPos) {
+        // `!` ×2 — guarded by the `t.labels.length` test on the line above.
+        return new THREE.Vector3(...dataToWorld(t.labels[0]!.dataPos as Vec3));
     }
     for (const e of (t.arrowMeshes || [])) if (e && e.tipWorld) return e.tipWorld.clone();
     for (const m of (t.planeMeshes || [])) {
@@ -103,14 +175,16 @@ function worldAnchor(id, reg) {
         if (!box.isEmpty()) { box.getCenter(c); return c; }
     }
     for (const e of (t.lineNodes || [])) if (e && e.anchorDataPos) {
-        return new THREE.Vector3(...dataToWorld(e.anchorDataPos));
+        return new THREE.Vector3(...dataToWorld(e.anchorDataPos as Vec3));
     }
     return null;
 }
 
 /** Project a world point to canvas-local pixels. Returns null if behind camera. */
-function projectToScreen(world, rect) {
-    const v = world.clone().project(state.camera);
+function projectToScreen(world: Vector3, rect: DOMRect): ScreenPoint | null {
+    // `!` — every caller runs only once a scene is live (state.camera set); a
+    // null camera threw inside .project() before this conversion too.
+    const v = world.clone().project(state.camera!);
     if (v.z >= 1) return null;   // behind the camera / clipped
     return {
         x: (v.x * 0.5 + 0.5) * rect.width,
@@ -126,10 +200,10 @@ function projectToScreen(world, rect) {
  *  `pointer-events:none`, so the canvas still gets the move and we test their
  *  bounding boxes directly — this catches hovering the text/name tag itself
  *  (e.g. anywhere along "Orion"), which a point-anchor proximity test misses. */
-function labelHitTest(clientX, clientY) {
+function labelHitTest(clientX: number, clientY: number): { id: string; el: HTMLElement } | null {
     for (const [id, reg] of Object.entries(state.elementRegistry)) {
         if (!isPickable(id)) continue;
-        const t = reg.tracker;
+        const t = reg.tracker as PickerTracker;
         if (!t || !t.labels) continue;
         for (const lbl of t.labels) {
             if (!lbl.el || lbl.visible === false || lbl.forceHidden) continue;
@@ -148,7 +222,7 @@ function labelHitTest(clientX, clientY) {
  *  = the world hit location for a raycast hit, so the button can appear right
  *  where the user hovered rather than at a possibly-distant label; null for a
  *  screen-anchor fallback) or null if nothing is under the cursor. */
-function pickAt(clientX, clientY) {
+function pickAt(clientX: number, clientY: number): PickHit | null {
     if (!state.camera || !_canvas) return null;
     const rect = _canvas.getBoundingClientRect();
     if (!rect.width || !rect.height) return null;
@@ -162,8 +236,11 @@ function pickAt(clientX, clientY) {
 
     // 2) Raycast the real meshes (true geometry + occlusion ordering).
     const ndc = { x: (localX / rect.width) * 2 - 1, y: -((localY / rect.height) * 2 - 1) };
-    _raycaster.setFromCamera(ndc, state.camera);
-    const hits = _raycaster.intersectObjects(pickableMeshes(), false);
+    // `as unknown as Vector2` — three only reads `.x`/`.y` off `coords`;
+    // the plain object literal is exactly what the JavaScript passed.
+    // `_raycaster!` — setupObjectPicker creates it before wiring this listener.
+    _raycaster!.setFromCamera(ndc as unknown as Vector2, state.camera);
+    const hits = _raycaster!.intersectObjects(pickableMeshes(), false);
     if (hits.length) {
         const map = buildMeshIdMap();
         for (const h of hits) {
@@ -173,7 +250,7 @@ function pickAt(clientX, clientY) {
     }
 
     // 3) Fallback: nearest projected anchor (covers points, lines, curves, axes).
-    let best = null, bestD = PICK_PX;
+    let best: string | null = null, bestD = PICK_PX;
     for (const [id, reg] of Object.entries(state.elementRegistry)) {
         if (!isPickable(id)) continue;
         const anchor = worldAnchor(id, reg);
@@ -188,7 +265,7 @@ function pickAt(clientX, clientY) {
 
 // ----- the floating button -----
 
-function ensureBtn() {
+function ensureBtn(): HTMLButtonElement {
     if (_btn) return _btn;
     const btn = makeAiAskButton(
         'ai-ask-btn object-ai-btn',
@@ -214,7 +291,7 @@ function ensureBtn() {
  *  the object's label is offset far away (e.g. a vector whose "Orion" tag sits
  *  across the view). Falls back to the object's own anchor (label/point) for
  *  screen-anchor picks that have no hit point. Returns false if not visible. */
-function positionBtn(id, rect) {
+function positionBtn(id: string, rect: DOMRect): boolean {
     const reg = state.elementRegistry[id];
     if (!reg || isHidden(id)) return false;
     // Hovering the label → pin to its top-right corner.
@@ -236,7 +313,7 @@ function positionBtn(id, rect) {
     return true;
 }
 
-function showBtnFor(hit) {
+function showBtnFor(hit: PickHit) {
     if (!_canvas) return;
     const id = hit.id;
     // Anchor the button ONCE, when the hovered object first changes — then hold it
@@ -265,7 +342,8 @@ function showBtnFor(hit) {
 function retrack() {
     _trackRaf = null;
     if (!_btn || _btn.style.opacity === '0' || !_hoveredId) return;
-    const rect = _canvas.getBoundingClientRect();
+    // `!` — _btn only exists once setupObjectPicker has assigned _canvas.
+    const rect = _canvas!.getBoundingClientRect();
     if (!positionBtn(_hoveredId, rect)) { hideBtn(); return; }  // object gone → let it fade out
     _trackRaf = requestAnimationFrame(retrack);
 }
@@ -301,7 +379,7 @@ function hideBtnNow() {
 
 // ----- camera-relative view description (Option B) -----
 
-function viewportLabel(ndc) {
+function viewportLabel(ndc: { x: number; y: number }): string {
     const col = ndc.x < -0.33 ? 'left' : ndc.x > 0.33 ? 'right' : 'center';
     const row = ndc.y > 0.33 ? 'upper' : ndc.y < -0.33 ? 'lower' : 'middle';
     if (row === 'middle' && col === 'center') return 'the center of the frame';
@@ -313,23 +391,24 @@ function viewportLabel(ndc) {
 /** Clean text for a live label entry: the raw dynamic string if the renderer kept
  *  one (`_lastDynamicText`), else the DOM text with each KaTeX span collapsed back
  *  to its `$…$` source (plain textContent triples the math and reads as garbage). */
-function liveLabelText(lbl) {
+function liveLabelText(lbl: PickerLabel | null | undefined): string | null {
     if (!lbl) return null;
     if (lbl._lastDynamicText) return String(lbl._lastDynamicText).trim() || null;
     if (!lbl.el) return null;
-    const clone = lbl.el.cloneNode(true);
+    const clone = lbl.el.cloneNode(true) as HTMLElement;
     clone.querySelectorAll('.katex').forEach(k => {
         const ann = k.querySelector('annotation[encoding="application/x-tex"]');
-        k.replaceWith(ann ? `$${ann.textContent.trim()}$` : (k.textContent || ''));
+        // `!` — a KaTeX <annotation> always carries its TeX source as text.
+        k.replaceWith(ann ? `$${ann.textContent!.trim()}$` : (k.textContent || ''));
     });
     return (clone.textContent || '').trim().replace(/\s+/g, ' ') || null;
 }
 
-function elementName(id, reg) {
+function elementName(id: string | null, reg: PickerReg | undefined): string | null {
     // Prefer the author's raw static label (may be KaTeX TeX, which the AI reads
     // fine). Otherwise resolve the live rendered label (covers labelExpr/textExpr).
     if (reg && reg.label) return reg.label;
-    const t = reg && reg.tracker;
+    const t = reg && (reg.tracker as PickerTracker);
     if (t && t.labels && t.labels.length) {
         const name = liveLabelText(t.labels[0]);
         if (name) return name;
@@ -339,9 +418,9 @@ function elementName(id, reg) {
 }
 
 /** Approximate on-screen extent (px) of an element's meshes, or null. */
-function screenExtentPx(reg, rect) {
-    const t = (reg && reg.tracker) || {};
-    const meshes = [];
+function screenExtentPx(reg: PickerReg | undefined, rect: DOMRect): { w: number; h: number } | null {
+    const t = ((reg && reg.tracker) || {}) as PickerTracker;
+    const meshes: Object3D[] = [];
     for (const e of (t.arrowMeshes || [])) if (e && e.mesh) meshes.push(e.mesh);
     for (const m of (t.planeMeshes || [])) if (m) meshes.push(m);
     if (!meshes.length) return null;
@@ -363,7 +442,7 @@ function screenExtentPx(reg, rect) {
     return { w: maxX - minX, h: maxY - minY };
 }
 
-function sizeWord(extent, rect) {
+function sizeWord(extent: { w: number; h: number } | null, rect: DOMRect): string | null {
     if (!extent) return null;
     const frac = Math.max(extent.w, extent.h) / Math.min(rect.width, rect.height);
     if (frac > 0.6) return 'large — it fills much of the view';
@@ -374,11 +453,13 @@ function sizeWord(extent, rect) {
 /** What (if anything) occludes `anchor` along the camera ray. Returns null (not
  *  occluded), `{ name }` for a resolved element, or `{ generic: true }` when a
  *  closer mesh can't be mapped back to an element id (still a real occluder). */
-function occluderOf(id, anchor) {
-    const origin = state.camera.position;
+function occluderOf(id: string, anchor: Vector3): Occluder | null {
+    // `!` — only reached from buildViewContext, i.e. with a live scene camera.
+    const origin = state.camera!.position;
     const dir = anchor.clone().sub(origin).normalize();
-    _raycaster.set(origin, dir);
-    const hits = _raycaster.intersectObjects(pickableMeshes(), false);  // sorted nearest-first
+    // `!` — setupObjectPicker created the raycaster before any pick can happen.
+    _raycaster!.set(origin, dir);
+    const hits = _raycaster!.intersectObjects(pickableMeshes(), false);  // sorted nearest-first
     if (!hits.length) return null;
     const map = buildMeshIdMap();
     const distToAnchor = origin.distanceTo(anchor);
@@ -393,8 +474,8 @@ function occluderOf(id, anchor) {
 }
 
 /** Snapshot every visible element's viewport geometry (for the target + layout). */
-function collectVisible(rect) {
-    const out = [];
+function collectVisible(rect: DOMRect): VisibleEntry[] {
+    const out: VisibleEntry[] = [];
     for (const [id, reg] of Object.entries(state.elementRegistry)) {
         if (isHidden(id)) continue;
         const anchor = worldAnchor(id, reg);
@@ -405,14 +486,15 @@ function collectVisible(rect) {
             name: elementName(id, reg),
             type: reg.type || 'object',
             screen: p,                                     // null if behind camera
-            depth: state.camera.position.distanceTo(anchor),
+            // `!` — same live-camera invariant as projectToScreen above.
+            depth: state.camera!.position.distanceTo(anchor),
         });
     }
     out.sort((a, b) => a.depth - b.depth);                  // nearest first
     return out;
 }
 
-function depthPhrase(rank, total) {
+function depthPhrase(rank: number, total: number): string | null {
     if (total <= 1) return null;
     if (rank === 0) return 'nearest the camera';
     if (rank === total - 1) return 'the farthest object from the camera';
@@ -421,7 +503,7 @@ function depthPhrase(rank, total) {
 
 /** The deterministic, camera-relative context block for the clicked object —
  *  attached to the author's prompt so the model knows what is actually on screen. */
-function buildViewContext(id, reg) {
+function buildViewContext(id: string, reg: PickerReg): string {
     if (!_canvas) return '';
     const rect = _canvas.getBoundingClientRect();
     const visible = collectVisible(rect);
@@ -430,7 +512,7 @@ function buildViewContext(id, reg) {
     const name = elementName(id, reg);
     const type = reg.type || 'object';
 
-    const lines = [];
+    const lines: string[] = [];
     lines.push('[Context — I clicked this object in the 3D view. From my current camera view:]');
 
     const facts = [`the object "${name}" (type \`${type}\`)`];
@@ -461,7 +543,8 @@ function buildViewContext(id, reg) {
     if (others.length) {
         lines.push('Other objects currently in view (nearest first):');
         for (const o of others) {
-            lines.push(`- "${o.name}" (${o.type}) — ${viewportLabel(o.screen.ndc)}`);
+            // `!` — the filter above kept only entries with a non-null `screen`.
+            lines.push(`- "${o.name}" (${o.type}) — ${viewportLabel(o.screen!.ndc)}`);
         }
     }
     lines.push('Ground your answer in what I am actually looking at from this viewpoint.');
@@ -470,7 +553,7 @@ function buildViewContext(id, reg) {
 
 /** Default ask for a labeled object with no author `prompt` — generated at click
  *  time from the label, never written back to the scene JSON. */
-function autoPromptFor(id, reg) {
+function autoPromptFor(id: string | null, reg: PickerReg): string {
     const name = elementName(id, reg);
     return `Explain what ${name} represents here and how it relates to the other objects in this scene.`;
 }
@@ -478,17 +561,18 @@ function autoPromptFor(id, reg) {
 /** The message sent on click: the author's per-object `prompt` if set, otherwise
  *  an auto-generated ask from the label — with the camera-relative view context
  *  appended. */
-function buildObjectAskMessage(id) {
+function buildObjectAskMessage(id: string | null): string {
     const reg = id && state.elementRegistry[id];
     if (!reg) return 'Explain this object in the 3D scene.';
     const ask = (reg.prompt || '').trim() || autoPromptFor(id, reg);
-    const ctx = buildViewContext(id, reg);
+    // `!` — `reg` is only truthy when `id` was, per the `&&` above.
+    const ctx = buildViewContext(id!, reg);
     return ctx ? `${ask}\n\n${ctx}` : ask;
 }
 
 // ----- setup -----
 
-function onPointerMove(e) {
+function onPointerMove(e: PointerEvent) {
     // Ignore moves while the user is orbiting/panning (a button is held) — hide
     // immediately so the button never lingers over the scene mid-drag.
     if (e.buttons !== 0) { hideBtnNow(); return; }

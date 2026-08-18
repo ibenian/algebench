@@ -13004,7 +13004,7 @@ function setupShareButton() {
 	});
 }
 //#endregion
-//#region src/object-picker.js
+//#region src/object-picker.ts
 var PICK_PX = 20;
 var HIDE_DELAY = 600;
 var MAX_NEIGHBORS = 12;
@@ -15811,21 +15811,7 @@ var SemanticGraphPanel = class SemanticGraphPanel {
 	}
 };
 //#endregion
-//#region src/graph-panel/sg-chart-script.js
-/**
-* SgChartScript — fetches or retrieves mathjs scripts for semantic graph nodes.
-*
-* Isolates script generation (backend API calls, caching, pre-computed
-* lookups) from chart rendering.  The chart manager only ever sees
-* ``{ script, variables }`` results.
-*
-* Two paths:
-*   1. **Pre-computed** — node.chartScript is already populated (offline
-*      reports embed scripts at generation time).
-*   2. **Backend API** — POST /api/graph/generate-mathjs with the node's
-*      ``subexpr`` (LaTeX).  Backend handles relation detection, LHS−RHS
-*      construction, and SymPy→mathjs conversion.
-*/
+//#region src/graph-panel/sg-chart-script.ts
 var SgChartScript = class {
 	/**
 	* @param {Object} graph - Semantic graph JSON ({ nodes, edges })
@@ -15906,7 +15892,7 @@ var SgChartScript = class {
 	}
 };
 //#endregion
-//#region src/graph-panel/sg-chart.js
+//#region src/graph-panel/sg-chart.ts
 /**
 * SgChartManager — interactive Chart.js plots for semantic graph nodes.
 *
@@ -16865,10 +16851,10 @@ var SgChartManager = class {
 			const input = document.createElement("input");
 			input.type = "range";
 			input.className = "sgc-slider";
-			input.min = range.min;
-			input.max = range.max;
-			input.step = range.step;
-			input.value = this.sliderValues[v];
+			input.min = String(range.min);
+			input.max = String(range.max);
+			input.step = String(range.step);
+			input.value = String(this.sliderValues[v]);
 			const val = document.createElement("span");
 			val.className = "sgc-slider-value";
 			val.textContent = (+this.sliderValues[v]).toFixed(2);
