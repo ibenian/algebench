@@ -1,8 +1,11 @@
 {
-  // TypeScript is a DEV-TIME dependency only. Nothing here runs at request
-  // time or at deploy time — `noEmit` is set and no bundler is wired up yet.
-  // At this stage the only inputs are the generated declarations in
-  // src/types/, so this config exists to prove they compile under `strict`.
+  // The BROWSER program: every handwritten frontend source under src/.
+  // src/*.test.ts is a separate program — see tsconfig.test.json.
+  //
+  // TypeScript is a BUILD- and DEV-TIME dependency only. Nothing here runs at
+  // request time: `noEmit` is set, Vite/esbuild produces the committed bundle
+  // in static/dist/, and the Python server serves that. Running AlgeBench needs
+  // no Node toolchain at all.
   "compilerOptions": {
     "target": "ES2020",
     "module": "ESNext",
@@ -25,11 +28,16 @@
     "noEmit": true,
     "isolatedModules": true,
 
-    // Incremental migration: the .js sources under src/ ride along unchecked
-    // until converted file-by-file in later phases. `checkJs` flips on in the
-    // final phase, once nothing is left in JavaScript.
-    "allowJs": true,
-    "checkJs": false,
+    // The migration is complete: nothing under src/ is JavaScript any more, so
+    // JS is no longer accepted at all. This is a RATCHET, not bookkeeping —
+    // with `allowJs` off, a .ts file importing a .js one fails outright
+    // (TS7016), so the frontend cannot quietly slide back. `checkJs` is gone
+    // with it: there is no JavaScript left in this program for it to check.
+    //
+    // static/domains/ is deliberately still JavaScript — it is user-authored
+    // lesson content loaded at runtime, not application code — and sits
+    // outside `include` below, so this does not touch it.
+    "allowJs": false,
 
     "strict": true,
     "noUncheckedIndexedAccess": true,
