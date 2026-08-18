@@ -1,5 +1,5 @@
 // ============================================================
-// view-state.js — Pure query-string serialization for deeplinking.
+// view-state.ts — Pure query-string serialization for deeplinking.
 //
 // Converts a canonical `ViewState` object to/from a URL query string.
 // This module is intentionally PURE: no DOM access, no `state.js` import,
@@ -46,13 +46,53 @@
 // describes the restorable view (Back closes the page, Forward reopens it).
 // ============================================================
 
+/**
+ * Camera as it rides in the URL — DATA space, matching scene JSON.
+ * Fixed-length tuples (rather than `number[]`) so the vectors can go straight
+ * into coords.js's `Vec3` conversions without a cast; decodeCamera() below
+ * only ever produces exactly-three-element vectors.
+ */
+export interface ViewStateCamera {
+    position: [number, number, number];
+    target: [number, number, number];
+    up?: [number, number, number];
+}
+
+/**
+ * The canonical deeplink state. Every field is optional; see the header block
+ * above for what each one maps to in the query string.
+ */
+export interface ViewState {
+    builtin?: string;
+    scene?: string;
+    view?: string;
+    panel?: string;
+    pp?: boolean;
+    dock?: boolean;
+    sc?: string;
+    st?: string;
+    pf?: string;
+    ps?: string;
+    nodes?: string[];
+    sliders?: Record<string, number>;
+    cv?: string;
+    proj?: string;
+    oz?: number;
+    cam?: ViewStateCamera;
+    fa?: string;
+    fax?: string;
+    aa?: string;
+    pa?: string;
+    pas?: number;
+}
+
 const CAM_DECIMALS = 4;
 const DEFAULT_UP = [0, 1, 0];
 
 // ----- Number / string helpers -----
 
 /** Round to `dp` decimals and stringify, dropping trailing zeros. */
-export function fmtNum(n, dp = CAM_DECIMALS) {
+export function fmtNum(n: number, dp: number = CAM_DECIMALS): string {
     if (!Number.isFinite(n)) return '0';
     const f = Math.pow(10, dp);
     return String(Math.round(n * f) / f);
@@ -60,11 +100,14 @@ export function fmtNum(n, dp = CAM_DECIMALS) {
 
 // Minimal percent-encoding that keeps the compact separators (`,` `~`)
 // readable. URLSearchParams parsing decodes these fine on the way back.
-function encMin(v) {
+function encMin(v: unknown): string {
     return encodeURIComponent(String(v)).replace(/%2C/gi, ',').replace(/%7E/gi, '~');
 }
 
-function buildQuery(pairs) {
+/** One `key=value` pair on its way into the query string. */
+type QueryPair = [string, string | number | null | undefined];
+
+function buildQuery(pairs: QueryPair[]): string {
     return pairs
         .filter(([, v]) => v !== undefined && v !== null && v !== '')
         .map(([k, v]) => `${k}=${encMin(v)}`)
@@ -75,7 +118,7 @@ function buildQuery(pairs) {
  * Stable slug from a human title: lowercase, non-alphanumerics -> '-',
  * collapse/trim hyphens. Empty input yields ''.
  */
-export function slugify(title) {
+export function slugify(title: unknown): string {
     return String(title == null ? '' : title)
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
@@ -85,7 +128,7 @@ export function slugify(title) {
 // ----- Camera encode / decode -----
 
 /** Encode camera to compact `px,py,pz,tx,ty,tz[,ux,uy,uz]` (data-space). */
-export function encodeCamera(cam) {
+export function encodeCamera(cam: ViewStateCamera | null | undefined): string {
     if (!cam || !Array.isArray(cam.position) || !Array.isArray(cam.target)) return '';
     const p = cam.position, t = cam.target;
     const nums = [p[0], p[1], p[2], t[0], t[1], t[2]];
@@ -98,7 +141,7 @@ export function encodeCamera(cam) {
 }
 
 /** Decode `px,py,pz,tx,ty,tz[,ux,uy,uz]` back to a camera object, or null. */
-export function decodeCamera(str) {
+export function decodeCamera(str: string | null | undefined): ViewStateCamera | null {
     if (!str) return null;
     const segs = String(str).split(',');
     // The format is exactly 6 (position+target) or 9 (with up) numbers.
@@ -108,11 +151,12 @@ export function decodeCamera(str) {
     if (segs.some((s) => s.trim() === '')) return null;
     const parts = segs.map(Number);
     if (parts.some((n) => !Number.isFinite(n))) return null;
-    const cam = {
-        position: [parts[0], parts[1], parts[2]],
-        target: [parts[3], parts[4], parts[5]],
+    // The length check above guarantees indices 0..5 (and 0..8 below) exist.
+    const cam: ViewStateCamera = {
+        position: [parts[0]!, parts[1]!, parts[2]!],
+        target: [parts[3]!, parts[4]!, parts[5]!],
     };
-    if (parts.length === 9) cam.up = [parts[6], parts[7], parts[8]];
+    if (parts.length === 9) cam.up = [parts[6]!, parts[7]!, parts[8]!];
     return cam;
 }
 
@@ -120,9 +164,9 @@ export function decodeCamera(str) {
 // Adding/changing a param below? Update docs/deeplink-params.md in the same change.
 
 /** Serialize a ViewState to a query string (no leading '?'). */
-export function serializeViewState(vs) {
+export function serializeViewState(vs: ViewState | null | undefined): string {
     if (!vs) return '';
-    const pairs = [];
+    const pairs: QueryPair[] = [];
     if (vs.builtin) pairs.push(['builtin', vs.builtin]);
     else if (vs.scene) pairs.push(['scene', vs.scene]);
 
@@ -159,7 +203,8 @@ export function serializeViewState(vs) {
 
     if (vs.cv) pairs.push(['cv', vs.cv]);
     if (vs.proj && vs.proj !== 'perspective') pairs.push(['proj', vs.proj]);
-    if (Number.isFinite(vs.oz)) pairs.push(['oz', fmtNum(vs.oz)]);
+    // Number.isFinite() is the guard: it is only true for a real number here.
+    if (Number.isFinite(vs.oz)) pairs.push(['oz', fmtNum(vs.oz!)]);
 
     if (vs.cam) {
         const enc = encodeCamera(vs.cam);
@@ -170,7 +215,7 @@ export function serializeViewState(vs) {
 }
 
 /** Parse a query string (or URLSearchParams) into a ViewState. */
-export function parseViewState(search) {
+export function parseViewState(search: string | URLSearchParams | null | undefined): ViewState {
     // Adding/changing a param below? Update docs/deeplink-params.md in the same change.
     let params;
     if (search instanceof URLSearchParams) {
@@ -180,7 +225,7 @@ export function parseViewState(search) {
         params = new URLSearchParams(s);
     }
 
-    const vs = {};
+    const vs: ViewState = {};
     const builtin = params.get('builtin');
     const scene = params.get('scene');
     if (builtin) vs.builtin = builtin;
@@ -244,7 +289,7 @@ export function parseViewState(search) {
 
     const sl = params.get('sl');
     if (sl) {
-        const sliders = {};
+        const sliders: Record<string, number> = {};
         for (const pair of sl.split(',')) {
             const idx = pair.indexOf('~');
             if (idx <= 0) continue;
@@ -274,6 +319,9 @@ export function parseViewState(search) {
 }
 
 /** True when two ViewStates serialize identically (cheap structural eq). */
-export function viewStatesEqual(a, b) {
+export function viewStatesEqual(
+    a: ViewState | null | undefined,
+    b: ViewState | null | undefined,
+): boolean {
     return serializeViewState(a) === serializeViewState(b);
 }

@@ -129,6 +129,41 @@ interface AlgeBenchGraphController {
    * falls back to doing so when the graph controller is absent.
    */
   showSceneView?(): void;
+  /** Close a Function Analysis page left open by the previous view. */
+  closeFunctionAnalysis?(): void;
+  /** The artifact id of the Function Analysis page currently showing, if any. */
+  getFunctionAnalysisId?(): string | null;
+  /** 'math' when the Math tab is active, else 'scene'. */
+  getCurrentView?(): string;
+  /** Show the Math (graph) view; resolves once the graph has rendered. */
+  showGraphView?(): Promise<void> | void;
+  /** Ordered node selection, last entry = active. */
+  getSelection?(): string[];
+  /** Stash a selection for the graph to apply once its renderer has drawn. */
+  applyDeeplinkSelection?(ids: string[]): void;
+  /** True when the graph is in the docked (split) layout. */
+  isDocked?(): boolean;
+  /** Force the docked layout on/off WITHOUT persisting the preference. */
+  setDocked?(on: boolean): void;
+  /** Fetch a pre-baked proof animation and dock it onto `nodeId`. */
+  dockProofAnimation?(
+    proofPath: string,
+    nodeId?: string | null,
+    step?: number,
+  ): Promise<void> | void;
+}
+
+/**
+ * First-party events dispatched on `window`. Only the ones whose `detail` a
+ * converted module reads are mapped — the rest stay plain `Event` listeners.
+ */
+interface WindowEventMap {
+  /**
+   * The Function Analysis page opened, closed, or renamed itself.
+   * `detail.replace` marks the rename (same view, new id), which
+   * src/view-state-bridge.ts turns into a replaceView rather than a push.
+   */
+  'algebench:fachange': CustomEvent<{ replace?: boolean } | undefined>;
 }
 
 // ── gemini-live-tools browser globals ───────────────────────────────────────

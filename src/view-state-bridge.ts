@@ -1,5 +1,5 @@
 // ============================================================
-// view-state-bridge.js — Connect the pure ViewState serializer to the live app.
+// view-state-bridge.ts — Connect the pure ViewState serializer to the live app.
 //
 //   captureViewState({includeCamera}) -> ViewState   (read current app state)
 //   applyViewState(vs, opts)          -> drive the app to that state
@@ -26,26 +26,95 @@ import { setSliderValue } from '/sliders.js';
 import { animateCamera, switchProjection } from '/camera.js';
 import { dataCameraToWorld, worldCameraToData } from '/coords.js';
 import { openChatPanel } from '/labels.js';
+import type { ViewState } from '/view-state.js';
+import type { ApplyViewStateOpts } from '/nav-history.js';
+import type { ProofEntry, Proof } from '/proof.js';
+import type { SceneSlider } from '/sliders.js';
+import type { ResolvedCameraView } from '/camera.js';
+import type { LessonFormat } from '/types/lesson.js';
+import type { Camera as ThreeCamera, Vector3 } from 'three';
+
+/**
+ * The active camera as this module reads it. Declared structurally (rather
+ * than `PerspectiveCamera | OrthographicCamera`) for the same reason
+ * src/camera.ts does: the frustum fields are reached behind an
+ * `isOrthographicCamera` truthiness check, not a discriminated narrowing.
+ */
+type BridgeCamera = ThreeCamera & {
+    isOrthographicCamera?: boolean;
+    top?: number;
+    bottom?: number;
+    left?: number;
+    right?: number;
+    zoom?: number;
+    updateProjectionMatrix(): void;
+};
+
+/** The follow-cam runtime record, as this module touches it. */
+interface BridgeFollowCamState {
+    lastTargetWorld?: Vector3;
+}
+
+// state.js is still untyped JavaScript, so its fields infer from their
+// initializers. Describe the slice this module owns rather than spreading
+// `any`; the cast goes away when state.js is converted.
+interface ViewStateBridgeState {
+    currentSceneSourcePath: string | null;
+    lessonSpec: LessonFormat | null | undefined;
+    currentSceneIndex: number;
+    currentStepIndex: number;
+    proofSpec: ProofEntry[] | null;
+    proofActiveIndex: number;
+    proofStepIndex: number;
+    proofExpanded: boolean;
+    sceneSliders: Record<string, SceneSlider | undefined> | null;
+    currentProjection: string;
+    camera: BridgeCamera | null;
+    controls: { target: Vector3 } | null;
+    renderer: { domElement: HTMLElement } | null;
+    followCamState: BridgeFollowCamState | null;
+    cameraExprState: object | null;
+    CAMERA_VIEWS: Record<string, ResolvedCameraView | undefined>;
+    _proofSyncInProgress: boolean;
+}
+const bridgeState = state as unknown as ViewStateBridgeState;
+
+/**
+ * The minimum buildIds() needs from an entry: an optional explicit `id`, plus
+ * a human title under whichever key the caller names. Widened to `unknown` so
+ * the generated schema types (Scene / Step / ProofStep) all satisfy it.
+ */
+interface IdItem {
+    id?: unknown;
+}
+
+/** The per-lesson id maps sceneMaps() memoizes. */
+interface SceneMaps {
+    sceneIds: string[];
+    stepIds: string[][];
+}
 
 let _applying = false;
-const _sceneMapCache = new WeakMap();
+const _sceneMapCache = new WeakMap<object, SceneMaps>();
 // Auto-ask (?aa=) fires AT MOST once per session — a deeplink from an embedded
 // proof's "Ask AI". Latched so back/forward/reload can't re-ask (belt-and-braces
 // with the fromHistory skip + `aa` not being serialized back into the URL).
 let _autoAskFired = false;
 
 /** True while applyViewState is driving the app (suppresses outbound sync). */
-export function isApplyingViewState() {
+export function isApplyingViewState(): boolean {
     return _applying || isApplyingFromHistory();
 }
 
 // ----- Id resolution (hybrid: id -> slug(title) -> index) -----
 
 // Build a deterministic, collision-free id list for an array of {id?, title?}.
-function buildIds(items, titleKey) {
-    const used = new Set();
+function buildIds(items: readonly IdItem[] | null | undefined, titleKey: string): string[] {
+    const used = new Set<string>();
     return (items || []).map((it, i) => {
-        let base = (it && it.id) ? String(it.id) : slugify(it && it[titleKey]);
+        // `titleKey` is a runtime-chosen key ('title' / 'label'), so the lookup
+        // is widened here rather than baked into IdItem.
+        let base = (it && it.id) ? String(it.id) : slugify(it && (it as Record<string, unknown>)[titleKey]);
         if (!base) base = String(i);
         let id = base, n = 2;
         while (used.has(id)) id = `${base}-${n++}`;
@@ -54,7 +123,7 @@ function buildIds(items, titleKey) {
     });
 }
 
-function sceneMaps(lesson) {
+function sceneMaps(lesson: LessonFormat | null | undefined): SceneMaps {
     if (!lesson || !Array.isArray(lesson.scenes)) return { sceneIds: [], stepIds: [] };
     let cached = _sceneMapCache.get(lesson);
     if (cached) return cached;
@@ -66,7 +135,7 @@ function sceneMaps(lesson) {
 }
 
 // Resolve a token against an id list using id/slug match, then integer index.
-function resolveIndex(token, ids) {
+function resolveIndex(token: string | null | undefined, ids: string[]): number {
     if (token == null) return -1;
     const direct = ids.indexOf(token);
     if (direct >= 0) return direct;
@@ -77,26 +146,27 @@ function resolveIndex(token, ids) {
     return -1;
 }
 
-function proofId(entry, index) {
+function proofId(entry: ProofEntry | undefined, index: number): string {
     return (entry && entry.proof && entry.proof.id)
         || slugify(entry && entry.proof && entry.proof.title)
         || `_idx_${index}`;
 }
 
-function proofStepIds(proof) {
+function proofStepIds(proof: Proof | null | undefined): string[] {
     return buildIds((proof && proof.steps) || [], 'label');
 }
 
-function currentBuiltin() {
-    const p = state.currentSceneSourcePath || '';
+function currentBuiltin(): string | null {
+    const p = bridgeState.currentSceneSourcePath || '';
     const m = /^\/scenes\/(.+)$/.exec(p);
-    return m ? decodeURIComponent(m[1]) : null;
+    // Group 1 is unconditional in the pattern, so a match always has it.
+    return m ? decodeURIComponent(m[1]!) : null;
 }
 
 // ----- Capture: live app state -> ViewState -----
 
-export function captureViewState({ includeCamera = false } = {}) {
-    const vs = {};
+export function captureViewState({ includeCamera = false }: { includeCamera?: boolean } = {}): ViewState {
+    const vs: ViewState = {};
 
     // Source: preserve whatever the URL already carries (set on scene load).
     const cur = parseViewState(window.location.search);
@@ -104,24 +174,24 @@ export function captureViewState({ includeCamera = false } = {}) {
     else if (cur.scene) vs.scene = cur.scene;
 
     // Scene / step ids.
-    const lesson = state.lessonSpec;
-    if (lesson && Array.isArray(lesson.scenes) && state.currentSceneIndex >= 0) {
+    const lesson = bridgeState.lessonSpec;
+    if (lesson && Array.isArray(lesson.scenes) && bridgeState.currentSceneIndex >= 0) {
         const maps = sceneMaps(lesson);
-        vs.sc = maps.sceneIds[state.currentSceneIndex];
-        if (state.currentStepIndex >= 0) {
-            const stepIds = maps.stepIds[state.currentSceneIndex] || [];
-            if (stepIds[state.currentStepIndex] != null) vs.st = stepIds[state.currentStepIndex];
+        vs.sc = maps.sceneIds[bridgeState.currentSceneIndex];
+        if (bridgeState.currentStepIndex >= 0) {
+            const stepIds = maps.stepIds[bridgeState.currentSceneIndex] || [];
+            if (stepIds[bridgeState.currentStepIndex] != null) vs.st = stepIds[bridgeState.currentStepIndex];
         }
     }
 
     // Proof / proof step ids.
-    if (Array.isArray(state.proofSpec) && state.proofSpec.length && state.proofActiveIndex >= 0) {
-        const entry = state.proofSpec[state.proofActiveIndex];
+    if (Array.isArray(bridgeState.proofSpec) && bridgeState.proofSpec.length && bridgeState.proofActiveIndex >= 0) {
+        const entry = bridgeState.proofSpec[bridgeState.proofActiveIndex];
         if (entry && entry.proof) {
-            vs.pf = proofId(entry, state.proofActiveIndex);
-            if (state.proofStepIndex >= 0) {
+            vs.pf = proofId(entry, bridgeState.proofActiveIndex);
+            if (bridgeState.proofStepIndex >= 0) {
                 const sIds = proofStepIds(entry.proof);
-                if (sIds[state.proofStepIndex] != null) vs.ps = sIds[state.proofStepIndex];
+                if (sIds[bridgeState.proofStepIndex] != null) vs.ps = sIds[bridgeState.proofStepIndex];
             }
         }
     }
@@ -144,9 +214,9 @@ export function captureViewState({ includeCamera = false } = {}) {
     }
 
     // Right panel tab (Doc/Chat) and proof-panel open state.
-    const tab = document.querySelector('.panel-tab.active');
+    const tab = document.querySelector<HTMLElement>('.panel-tab.active');
     if (tab && tab.dataset.tab === 'chat') vs.panel = 'chat';
-    if (state.proofExpanded) vs.pp = true;
+    if (bridgeState.proofExpanded) vs.pp = true;
 
     // Ordered graph selection (last = active).
     const sel = (window.__algebenchGraph && window.__algebenchGraph.getSelection)
@@ -162,8 +232,8 @@ export function captureViewState({ includeCamera = false } = {}) {
     }
 
     // Slider overrides = diff from default.
-    const sliders = {};
-    for (const [id, s] of Object.entries(state.sceneSliders || {})) {
+    const sliders: Record<string, number> = {};
+    for (const [id, s] of Object.entries(bridgeState.sceneSliders || {})) {
         if (!s || !Number.isFinite(s.value)) continue;
         const def = Number.isFinite(s.default) ? s.default : null;
         if (def == null || Math.abs(s.value - def) > 1e-6) {
@@ -176,22 +246,23 @@ export function captureViewState({ includeCamera = false } = {}) {
     // captured (Share button). Like the camera, the selected view is NOT in the
     // live URL or nav history, so the 3D viewport never jumps on back/forward.
     if (includeCamera) {
-        const activeBtn = document.querySelector('.cam-btn.active');
+        const activeBtn = document.querySelector<HTMLElement>('.cam-btn.active');
         if (activeBtn && activeBtn.dataset.view) vs.cv = activeBtn.dataset.view;
-        if (state.currentProjection === 'orthographic') {
+        if (bridgeState.currentProjection === 'orthographic') {
             vs.proj = 'orthographic';
             // Ortho scale is the frustum/zoom, independent of camera distance, so
             // it must be captured explicitly to reconstruct the exact view.
-            const c = state.camera;
+            const c = bridgeState.camera;
             if (c && c.isOrthographicCamera) {
-                const halfH = Math.abs((c.top - c.bottom) / (2 * (c.zoom || 1)));
+                // An orthographic camera always carries top/bottom/zoom.
+                const halfH = Math.abs((c.top! - c.bottom!) / (2 * (c.zoom || 1)));
                 if (halfH > 0) vs.oz = halfH;
             }
         }
-        if (state.camera && state.controls) {
-            const p = worldCameraToData([state.camera.position.x, state.camera.position.y, state.camera.position.z]);
-            const t = worldCameraToData([state.controls.target.x, state.controls.target.y, state.controls.target.z]);
-            const up = [state.camera.up.x, state.camera.up.y, state.camera.up.z];
+        if (bridgeState.camera && bridgeState.controls) {
+            const p = worldCameraToData([bridgeState.camera.position.x, bridgeState.camera.position.y, bridgeState.camera.position.z]);
+            const t = worldCameraToData([bridgeState.controls.target.x, bridgeState.controls.target.y, bridgeState.controls.target.z]);
+            const up: [number, number, number] = [bridgeState.camera.up.x, bridgeState.camera.up.y, bridgeState.camera.up.z];
             vs.cam = { position: p, target: t, up };
         }
     }
@@ -201,7 +272,7 @@ export function captureViewState({ includeCamera = false } = {}) {
 
 // ----- Apply: ViewState -> drive the app -----
 
-export async function applyViewState(vs, opts = {}) {
+export async function applyViewState(vs: ViewState | null | undefined, opts: ApplyViewStateOpts = {}): Promise<void> {
     if (!vs) return;
     _applying = true;
     try {
@@ -209,7 +280,7 @@ export async function applyViewState(vs, opts = {}) {
         let paLesson = false;
         if (vs.builtin && vs.builtin !== currentBuiltin()) {
             await loadBuiltinScene(vs.builtin);
-        } else if (vs.scene && vs.scene !== state.currentSceneSourcePath) {
+        } else if (vs.scene && vs.scene !== bridgeState.currentSceneSourcePath) {
             await loadSceneFromPath(vs.scene);
         } else if (vs.pa && !vs.builtin && !vs.scene && !opts.fromHistory) {
             // A scene-less pre-baked proof (the /prove "Continue in main app" hand-off):
@@ -220,11 +291,11 @@ export async function applyViewState(vs, opts = {}) {
         }
 
         // 2. Scene / step.
-        const lesson = state.lessonSpec;
+        const lesson = bridgeState.lessonSpec;
         if (lesson && Array.isArray(lesson.scenes)) {
             const maps = sceneMaps(lesson);
             let sceneIdx = vs.sc != null ? resolveIndex(vs.sc, maps.sceneIds) : -1;
-            if (sceneIdx < 0 && (vs.sc != null || vs.st != null)) sceneIdx = state.currentSceneIndex >= 0 ? state.currentSceneIndex : 0;
+            if (sceneIdx < 0 && (vs.sc != null || vs.st != null)) sceneIdx = bridgeState.currentSceneIndex >= 0 ? bridgeState.currentSceneIndex : 0;
             if (sceneIdx >= 0) {
                 const stepIds = maps.stepIds[sceneIdx] || [];
                 const stepIdx = vs.st != null ? resolveIndex(vs.st, stepIds) : -1;
@@ -237,22 +308,23 @@ export async function applyViewState(vs, opts = {}) {
         //    independently, so restoring the proof position must not let
         //    proof→scene sync yank the scene to the proof step's `sceneStep`
         //    binding, overriding the explicit `st` applied in step 2.
-        if (vs.pf != null && Array.isArray(state.proofSpec) && state.proofSpec.length) {
-            const ids = state.proofSpec.map((e, i) => proofId(e, i));
+        if (vs.pf != null && Array.isArray(bridgeState.proofSpec) && bridgeState.proofSpec.length) {
+            const ids = bridgeState.proofSpec.map((e, i) => proofId(e, i));
             const pIdx = resolveIndex(vs.pf, ids);
             if (pIdx >= 0) {
                 // Save/restore rather than clear: keeps the latch composable
                 // if this ever runs inside another latched sync path.
-                const prevLatch = state._proofSyncInProgress;
-                state._proofSyncInProgress = true;
+                const prevLatch = bridgeState._proofSyncInProgress;
+                bridgeState._proofSyncInProgress = true;
                 try {
                     setActiveProof(pIdx);
-                    const proof = state.proofSpec[pIdx] && state.proofSpec[pIdx].proof;
+                    // The left operand of `&&` already proved the entry is there.
+                    const proof = bridgeState.proofSpec[pIdx] && bridgeState.proofSpec[pIdx]!.proof;
                     const sIds = proofStepIds(proof);
                     const sIdx = vs.ps != null ? resolveIndex(vs.ps, sIds) : -1;
                     navigateProof(sIdx);
                 } finally {
-                    state._proofSyncInProgress = prevLatch;
+                    bridgeState._proofSyncInProgress = prevLatch;
                 }
             }
         }
@@ -262,22 +334,23 @@ export async function applyViewState(vs, opts = {}) {
         //     lesson has exactly one scene proof — select it and navigate. Force the
         //     proof panel open via vs.pp so step 5c (setProofPanelOpen(!!vs.pp))
         //     keeps it open instead of closing it (the hand-off URL has no pp).
-        if (paLesson && Array.isArray(state.proofSpec) && state.proofSpec.length) {
+        if (paLesson && Array.isArray(bridgeState.proofSpec) && bridgeState.proofSpec.length) {
             vs.pp = true;
-            const prevLatch = state._proofSyncInProgress;
-            state._proofSyncInProgress = true;
+            const prevLatch = bridgeState._proofSyncInProgress;
+            bridgeState._proofSyncInProgress = true;
             try {
                 setActiveProof(0);
-                navigateProof(Number.isFinite(vs.pas) ? vs.pas : 0);
+                // Number.isFinite() is the guard on the non-zero branch.
+                navigateProof(Number.isFinite(vs.pas) ? vs.pas! : 0);
             } finally {
-                state._proofSyncInProgress = prevLatch;
+                bridgeState._proofSyncInProgress = prevLatch;
             }
         }
 
         // 4. Slider overrides (apply instantly — no rAF dependency).
         if (vs.sliders) {
             for (const [id, val] of Object.entries(vs.sliders)) {
-                if (state.sceneSliders && state.sceneSliders[id]) {
+                if (bridgeState.sceneSliders && bridgeState.sceneSliders[id]) {
                     setSliderValue(id, Number(val));
                 }
             }
@@ -372,12 +445,13 @@ export async function applyViewState(vs, opts = {}) {
             // from the wrong distance and ignores the user's zoom). Vertical
             // extent is fixed; horizontal adapts to the recipient's aspect.
             if (vs.proj === 'orthographic' && Number.isFinite(vs.oz)
-                && state.camera && state.camera.isOrthographicCamera) {
+                && bridgeState.camera && bridgeState.camera.isOrthographicCamera) {
                 const cont = document.getElementById('mathbox-container');
                 const aspect = cont ? cont.clientWidth / Math.max(cont.clientHeight, 1) : 1;
-                const c = state.camera;
-                c.top = vs.oz; c.bottom = -vs.oz;
-                c.left = -vs.oz * aspect; c.right = vs.oz * aspect;
+                const c = bridgeState.camera;
+                // Number.isFinite(vs.oz) above is the guard for every read here.
+                c.top = vs.oz; c.bottom = -vs.oz!;
+                c.left = -vs.oz! * aspect; c.right = vs.oz! * aspect;
                 c.zoom = 1;
                 c.updateProjectionMatrix();
             }
@@ -389,25 +463,26 @@ export async function applyViewState(vs, opts = {}) {
         //      all .cam-btn active states), THEN mark the preset button active so
         //      it isn't wiped. The exact camera matters because the user may have
         //      orbited off the preset before sharing.
-        const cvBtn = vs.cv ? document.querySelector(`.cam-btn[data-view="${vs.cv}"]`) : null;
+        const cvBtn = vs.cv ? document.querySelector<HTMLElement>(`.cam-btn[data-view="${vs.cv}"]`) : null;
         const cvDynamic = !!(cvBtn && cvBtn.classList.contains('cam-btn-follow'));
 
         // Dynamic views (follow-cam / expression-cam): activate them like a click.
         if (cvBtn && cvDynamic && !cvBtn.classList.contains('active')) cvBtn.click();
 
-        const dynamicCam = state.followCamState || state.cameraExprState;
+        const dynamicCam = bridgeState.followCamState || bridgeState.cameraExprState;
         const camOk = vs.cam && Array.isArray(vs.cam.position) && Array.isArray(vs.cam.target);
 
-        if (camOk && dynamicCam && state.camera && state.controls) {
+        if (camOk && dynamicCam && bridgeState.camera && bridgeState.controls) {
             // Live follow/expr cam: reproduce the EXACT shared angle. The shared
             // camera is target + offset, where offset already encodes the
             // angle-lock framing at the shared moment. We maintain that offset
             // relative to the follow-controlled target until the followed element
             // settles at the restored time (the slider repositions it over later
             // frames), then release — the follow loop holds it from there.
-            const wPos = dataCameraToWorld(vs.cam.position);
-            const wTgt = dataCameraToWorld(vs.cam.target);
-            const up = Array.isArray(vs.cam.up) ? vs.cam.up.slice(0, 3) : [0, 1, 0];
+            // `camOk` is the guard proving vs.cam is present with both vectors.
+            const wPos = dataCameraToWorld(vs.cam!.position);
+            const wTgt = dataCameraToWorld(vs.cam!.target);
+            const up = Array.isArray(vs.cam!.up) ? vs.cam!.up.slice(0, 3) : [0, 1, 0];
             const offset = [wPos[0] - wTgt[0], wPos[1] - wTgt[1], wPos[2] - wTgt[2]];
             // Maintain the shared offset relative to the live follow target EVERY
             // frame, starting immediately — so the exact angle shows from frame 1
@@ -416,8 +491,8 @@ export async function applyViewState(vs, opts = {}) {
             // been stable for a stretch (element settled → the follow loop holds
             // the offset on its own), or when the user interacts (so they can
             // orbit), or when the view changes. Backstop frame cap too.
-            const dom = state.renderer && state.renderer.domElement;
-            let stop = false, frames = 0, stable = 0, lastKey = null;
+            const dom = bridgeState.renderer && bridgeState.renderer.domElement;
+            let stop = false, frames = 0, stable = 0, lastKey: string | null = null;
             const release = () => {
                 stop = true;
                 if (dom) {
@@ -430,12 +505,14 @@ export async function applyViewState(vs, opts = {}) {
                 dom.addEventListener('wheel', release, { once: true, passive: true });
             }
             const pin = () => {
-                const fc = state.followCamState;
-                if (stop || (!fc && !state.cameraExprState)) { release(); return; }
-                const t = state.controls.target;
-                state.camera.position.set(t.x + offset[0], t.y + offset[1], t.z + offset[2]);
-                state.camera.up.set(up[0], up[1], up[2]);
-                state.camera.lookAt(t);
+                const fc = bridgeState.followCamState;
+                if (stop || (!fc && !bridgeState.cameraExprState)) { release(); return; }
+                // camera/controls were checked by the enclosing `if`; a missing one
+                // must still throw here exactly as the untyped version did.
+                const t = bridgeState.controls!.target;
+                bridgeState.camera!.position.set(t.x + offset[0]!, t.y + offset[1]!, t.z + offset[2]!);
+                bridgeState.camera!.up.set(up[0]!, up[1]!, up[2]!);
+                bridgeState.camera!.lookAt(t);
                 if (fc) fc.lastTargetWorld = t.clone();
                 const key = `${t.x.toFixed(4)},${t.y.toFixed(4)},${t.z.toFixed(4)}`;
                 stable = key === lastKey ? stable + 1 : 0;
@@ -446,11 +523,12 @@ export async function applyViewState(vs, opts = {}) {
             requestAnimationFrame(pin);
         } else if (camOk && !dynamicCam) {
             // Static view or free camera: animate to the exact captured camera.
-            const wPos = dataCameraToWorld(vs.cam.position);
-            const wTgt = dataCameraToWorld(vs.cam.target);
-            const up = Array.isArray(vs.cam.up) ? vs.cam.up.slice(0, 3) : [0, 1, 0];
-            state.CAMERA_VIEWS = state.CAMERA_VIEWS || {};
-            state.CAMERA_VIEWS['__deeplink'] = { position: wPos, target: wTgt, up };
+            // Same `camOk` guard as the branch above.
+            const wPos = dataCameraToWorld(vs.cam!.position);
+            const wTgt = dataCameraToWorld(vs.cam!.target);
+            const up = Array.isArray(vs.cam!.up) ? vs.cam!.up.slice(0, 3) : [0, 1, 0];
+            bridgeState.CAMERA_VIEWS = bridgeState.CAMERA_VIEWS || {};
+            bridgeState.CAMERA_VIEWS['__deeplink'] = { position: wPos, target: wTgt, up };
             animateCamera('__deeplink', 600);
         }
 
@@ -481,10 +559,10 @@ export async function applyViewState(vs, opts = {}) {
 
 // ----- Outbound sync: app navigation -> URL -----
 
-let _sliderTimer = null;
-let _pushTimer = null;
+let _sliderTimer: number | null = null;
+let _pushTimer: number | null = null;
 
-export function setupViewSync() {
+export function setupViewSync(): void {
     // Coalesce push events fired within the same tick into ONE history entry.
     // A single user action (e.g. stepping scenes) can cascade into several
     // events — navchange + an auto proof-panel toggle + a view change — and we
@@ -530,31 +608,33 @@ export function setupViewSync() {
  * Wire the "Copy link" button. This is the ONLY path that pins the camera into
  * the URL — capturing the exact viewport so a recipient lands on the same view.
  */
-export function setupShareButton() {
+export function setupShareButton(): void {
     const btn = document.getElementById('nav-share');
     if (!btn) return;
     btn.innerHTML = SHARE_VIEW_ICON;
     // Lazily-created floating confirmation pill, anchored next to the button.
-    let toast = null;
-    let toastTimer = null;
-    function flashToast(message) {
+    let toast: HTMLDivElement | null = null;
+    let toastTimer: number | null = null;
+    function flashToast(message: string) {
         if (!toast) {
             toast = document.createElement('div');
             toast.id = 'share-copied-toast';
-            (btn.parentElement || document.body).appendChild(toast);
+            (btn!.parentElement || document.body).appendChild(toast);
         }
         toast.textContent = message;
         // Force reflow so re-triggering the animation works on rapid clicks.
         toast.classList.remove('show');
         void toast.offsetWidth;
         toast.classList.add('show');
-        clearTimeout(toastTimer);
-        toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
+        // clearTimeout(null) is a documented no-op; the DOM lib just types the
+        // handle as `number | undefined`.
+        clearTimeout(toastTimer!);
+        toastTimer = setTimeout(() => toast!.classList.remove('show'), 3000);
     }
 
     // Copy with a legacy fallback for contexts where the async Clipboard API
     // is unavailable (insecure origins, sandboxed frames).
-    async function copyText(text) {
+    async function copyText(text: string): Promise<boolean> {
         try {
             await navigator.clipboard.writeText(text);
             return true;

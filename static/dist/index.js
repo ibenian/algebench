@@ -10567,7 +10567,7 @@ function setupSceneDock() {
 	});
 }
 //#endregion
-//#region src/view-state.js
+//#region src/view-state.ts
 var CAM_DECIMALS = 4;
 var DEFAULT_UP = [
 	0,
@@ -12461,7 +12461,7 @@ var NavStack = class {
 	* Push a new entry after the cursor. Truncates any forward history
 	* (classic browser behavior). No-op if equal to the current entry.
 	* Enforces the max size by dropping the oldest entries.
-	* @returns {boolean} true if an entry was added.
+	* @returns true if an entry was added.
 	*/
 	push(entry) {
 		if (this.cursor >= 0 && this.entries[this.cursor] === entry) return false;
@@ -12503,7 +12503,7 @@ var NavStack = class {
 	/**
 	* Sync the cursor to a known entry (used on popstate where the browser,
 	* not us, moved). Picks the nearest matching index to the current cursor.
-	* @returns {boolean} true if found.
+	* @returns true if found.
 	*/
 	syncTo(entry) {
 		if (this.cursor >= 0 && this.entries[this.cursor] === entry) return true;
@@ -12535,7 +12535,7 @@ var NavStack = class {
 	}
 };
 //#endregion
-//#region src/nav-history.js
+//#region src/nav-history.ts
 var stack = new NavStack(100);
 var _applyingFromHistory = false;
 /** True while a popstate-driven apply is in flight (guards push loops). */
@@ -12589,7 +12589,8 @@ function setupPopstateListener(applyFn) {
 	});
 }
 //#endregion
-//#region src/view-state-bridge.js
+//#region src/view-state-bridge.ts
+var bridgeState = state;
 var _applying = false;
 var _sceneMapCache = /* @__PURE__ */ new WeakMap();
 var _autoAskFired = false;
@@ -12639,7 +12640,7 @@ function proofStepIds(proof) {
 	return buildIds(proof && proof.steps || [], "label");
 }
 function currentBuiltin() {
-	const p = state.currentSceneSourcePath || "";
+	const p = bridgeState.currentSceneSourcePath || "";
 	const m = /^\/scenes\/(.+)$/.exec(p);
 	return m ? decodeURIComponent(m[1]) : null;
 }
@@ -12648,22 +12649,22 @@ function captureViewState({ includeCamera = false } = {}) {
 	const cur = parseViewState(window.location.search);
 	if (cur.builtin) vs.builtin = cur.builtin;
 	else if (cur.scene) vs.scene = cur.scene;
-	const lesson = state.lessonSpec;
-	if (lesson && Array.isArray(lesson.scenes) && state.currentSceneIndex >= 0) {
+	const lesson = bridgeState.lessonSpec;
+	if (lesson && Array.isArray(lesson.scenes) && bridgeState.currentSceneIndex >= 0) {
 		const maps = sceneMaps(lesson);
-		vs.sc = maps.sceneIds[state.currentSceneIndex];
-		if (state.currentStepIndex >= 0) {
-			const stepIds = maps.stepIds[state.currentSceneIndex] || [];
-			if (stepIds[state.currentStepIndex] != null) vs.st = stepIds[state.currentStepIndex];
+		vs.sc = maps.sceneIds[bridgeState.currentSceneIndex];
+		if (bridgeState.currentStepIndex >= 0) {
+			const stepIds = maps.stepIds[bridgeState.currentSceneIndex] || [];
+			if (stepIds[bridgeState.currentStepIndex] != null) vs.st = stepIds[bridgeState.currentStepIndex];
 		}
 	}
-	if (Array.isArray(state.proofSpec) && state.proofSpec.length && state.proofActiveIndex >= 0) {
-		const entry = state.proofSpec[state.proofActiveIndex];
+	if (Array.isArray(bridgeState.proofSpec) && bridgeState.proofSpec.length && bridgeState.proofActiveIndex >= 0) {
+		const entry = bridgeState.proofSpec[bridgeState.proofActiveIndex];
 		if (entry && entry.proof) {
-			vs.pf = proofId(entry, state.proofActiveIndex);
-			if (state.proofStepIndex >= 0) {
+			vs.pf = proofId(entry, bridgeState.proofActiveIndex);
+			if (bridgeState.proofStepIndex >= 0) {
 				const sIds = proofStepIds(entry.proof);
-				if (sIds[state.proofStepIndex] != null) vs.ps = sIds[state.proofStepIndex];
+				if (sIds[bridgeState.proofStepIndex] != null) vs.ps = sIds[bridgeState.proofStepIndex];
 			}
 		}
 	}
@@ -12672,7 +12673,7 @@ function captureViewState({ includeCamera = false } = {}) {
 	if (view === "math" && window.__algebenchGraph && typeof window.__algebenchGraph.isDocked === "function" && window.__algebenchGraph.isDocked()) vs.dock = true;
 	const tab = document.querySelector(".panel-tab.active");
 	if (tab && tab.dataset.tab === "chat") vs.panel = "chat";
-	if (state.proofExpanded) vs.pp = true;
+	if (bridgeState.proofExpanded) vs.pp = true;
 	const sel = window.__algebenchGraph && window.__algebenchGraph.getSelection ? window.__algebenchGraph.getSelection() : [];
 	if (sel && sel.length) vs.nodes = sel;
 	if (window.__algebenchGraph && typeof window.__algebenchGraph.getFunctionAnalysisId === "function") {
@@ -12680,7 +12681,7 @@ function captureViewState({ includeCamera = false } = {}) {
 		if (faId) vs.fa = faId;
 	}
 	const sliders = {};
-	for (const [id, s] of Object.entries(state.sceneSliders || {})) {
+	for (const [id, s] of Object.entries(bridgeState.sceneSliders || {})) {
 		if (!s || !Number.isFinite(s.value)) continue;
 		const def = Number.isFinite(s.default) ? s.default : null;
 		if (def == null || Math.abs(s.value - def) > 1e-6) sliders[id] = Number(fmtNum(s.value));
@@ -12689,29 +12690,29 @@ function captureViewState({ includeCamera = false } = {}) {
 	if (includeCamera) {
 		const activeBtn = document.querySelector(".cam-btn.active");
 		if (activeBtn && activeBtn.dataset.view) vs.cv = activeBtn.dataset.view;
-		if (state.currentProjection === "orthographic") {
+		if (bridgeState.currentProjection === "orthographic") {
 			vs.proj = "orthographic";
-			const c = state.camera;
+			const c = bridgeState.camera;
 			if (c && c.isOrthographicCamera) {
 				const halfH = Math.abs((c.top - c.bottom) / (2 * (c.zoom || 1)));
 				if (halfH > 0) vs.oz = halfH;
 			}
 		}
-		if (state.camera && state.controls) vs.cam = {
+		if (bridgeState.camera && bridgeState.controls) vs.cam = {
 			position: worldCameraToData$1([
-				state.camera.position.x,
-				state.camera.position.y,
-				state.camera.position.z
+				bridgeState.camera.position.x,
+				bridgeState.camera.position.y,
+				bridgeState.camera.position.z
 			]),
 			target: worldCameraToData$1([
-				state.controls.target.x,
-				state.controls.target.y,
-				state.controls.target.z
+				bridgeState.controls.target.x,
+				bridgeState.controls.target.y,
+				bridgeState.controls.target.z
 			]),
 			up: [
-				state.camera.up.x,
-				state.camera.up.y,
-				state.camera.up.z
+				bridgeState.camera.up.x,
+				bridgeState.camera.up.y,
+				bridgeState.camera.up.z
 			]
 		};
 	}
@@ -12723,47 +12724,47 @@ async function applyViewState(vs, opts = {}) {
 	try {
 		let paLesson = false;
 		if (vs.builtin && vs.builtin !== currentBuiltin()) await loadBuiltinScene(vs.builtin);
-		else if (vs.scene && vs.scene !== state.currentSceneSourcePath) await loadSceneFromPath(vs.scene);
+		else if (vs.scene && vs.scene !== bridgeState.currentSceneSourcePath) await loadSceneFromPath(vs.scene);
 		else if (vs.pa && !vs.builtin && !vs.scene && !opts.fromHistory) paLesson = await loadProofAsLesson(vs.pa);
-		const lesson = state.lessonSpec;
+		const lesson = bridgeState.lessonSpec;
 		if (lesson && Array.isArray(lesson.scenes)) {
 			const maps = sceneMaps(lesson);
 			let sceneIdx = vs.sc != null ? resolveIndex(vs.sc, maps.sceneIds) : -1;
-			if (sceneIdx < 0 && (vs.sc != null || vs.st != null)) sceneIdx = state.currentSceneIndex >= 0 ? state.currentSceneIndex : 0;
+			if (sceneIdx < 0 && (vs.sc != null || vs.st != null)) sceneIdx = bridgeState.currentSceneIndex >= 0 ? bridgeState.currentSceneIndex : 0;
 			if (sceneIdx >= 0) {
 				const stepIds = maps.stepIds[sceneIdx] || [];
 				const stepIdx = vs.st != null ? resolveIndex(vs.st, stepIds) : -1;
 				navigateTo$1(sceneIdx, stepIdx);
 			}
 		}
-		if (vs.pf != null && Array.isArray(state.proofSpec) && state.proofSpec.length) {
-			const ids = state.proofSpec.map((e, i) => proofId(e, i));
+		if (vs.pf != null && Array.isArray(bridgeState.proofSpec) && bridgeState.proofSpec.length) {
+			const ids = bridgeState.proofSpec.map((e, i) => proofId(e, i));
 			const pIdx = resolveIndex(vs.pf, ids);
 			if (pIdx >= 0) {
-				const prevLatch = state._proofSyncInProgress;
-				state._proofSyncInProgress = true;
+				const prevLatch = bridgeState._proofSyncInProgress;
+				bridgeState._proofSyncInProgress = true;
 				try {
 					setActiveProof(pIdx);
-					const sIds = proofStepIds(state.proofSpec[pIdx] && state.proofSpec[pIdx].proof);
+					const sIds = proofStepIds(bridgeState.proofSpec[pIdx] && bridgeState.proofSpec[pIdx].proof);
 					navigateProof$1(vs.ps != null ? resolveIndex(vs.ps, sIds) : -1);
 				} finally {
-					state._proofSyncInProgress = prevLatch;
+					bridgeState._proofSyncInProgress = prevLatch;
 				}
 			}
 		}
-		if (paLesson && Array.isArray(state.proofSpec) && state.proofSpec.length) {
+		if (paLesson && Array.isArray(bridgeState.proofSpec) && bridgeState.proofSpec.length) {
 			vs.pp = true;
-			const prevLatch = state._proofSyncInProgress;
-			state._proofSyncInProgress = true;
+			const prevLatch = bridgeState._proofSyncInProgress;
+			bridgeState._proofSyncInProgress = true;
 			try {
 				setActiveProof(0);
 				navigateProof$1(Number.isFinite(vs.pas) ? vs.pas : 0);
 			} finally {
-				state._proofSyncInProgress = prevLatch;
+				bridgeState._proofSyncInProgress = prevLatch;
 			}
 		}
 		if (vs.sliders) {
-			for (const [id, val] of Object.entries(vs.sliders)) if (state.sceneSliders && state.sceneSliders[id]) setSliderValue(id, Number(val));
+			for (const [id, val] of Object.entries(vs.sliders)) if (bridgeState.sceneSliders && bridgeState.sceneSliders[id]) setSliderValue(id, Number(val));
 		}
 		if (window.__algebenchGraph && window.__algebenchGraph.applyDeeplinkSelection) window.__algebenchGraph.applyDeeplinkSelection(vs.nodes || []);
 		const wantGraph = vs.view === "math" || vs.dock === true || Array.isArray(vs.nodes) && vs.nodes.length || !!vs.pa;
@@ -12813,10 +12814,10 @@ async function applyViewState(vs, opts = {}) {
 		}
 		if (vs.proj || vs.cam) {
 			switchProjection(vs.proj === "orthographic" ? "orthographic" : "perspective");
-			if (vs.proj === "orthographic" && Number.isFinite(vs.oz) && state.camera && state.camera.isOrthographicCamera) {
+			if (vs.proj === "orthographic" && Number.isFinite(vs.oz) && bridgeState.camera && bridgeState.camera.isOrthographicCamera) {
 				const cont = document.getElementById("mathbox-container");
 				const aspect = cont ? cont.clientWidth / Math.max(cont.clientHeight, 1) : 1;
-				const c = state.camera;
+				const c = bridgeState.camera;
 				c.top = vs.oz;
 				c.bottom = -vs.oz;
 				c.left = -vs.oz * aspect;
@@ -12828,9 +12829,9 @@ async function applyViewState(vs, opts = {}) {
 		const cvBtn = vs.cv ? document.querySelector(`.cam-btn[data-view="${vs.cv}"]`) : null;
 		const cvDynamic = !!(cvBtn && cvBtn.classList.contains("cam-btn-follow"));
 		if (cvBtn && cvDynamic && !cvBtn.classList.contains("active")) cvBtn.click();
-		const dynamicCam = state.followCamState || state.cameraExprState;
+		const dynamicCam = bridgeState.followCamState || bridgeState.cameraExprState;
 		const camOk = vs.cam && Array.isArray(vs.cam.position) && Array.isArray(vs.cam.target);
-		if (camOk && dynamicCam && state.camera && state.controls) {
+		if (camOk && dynamicCam && bridgeState.camera && bridgeState.controls) {
 			const wPos = dataCameraToWorld$1(vs.cam.position);
 			const wTgt = dataCameraToWorld$1(vs.cam.target);
 			const up = Array.isArray(vs.cam.up) ? vs.cam.up.slice(0, 3) : [
@@ -12843,7 +12844,7 @@ async function applyViewState(vs, opts = {}) {
 				wPos[1] - wTgt[1],
 				wPos[2] - wTgt[2]
 			];
-			const dom = state.renderer && state.renderer.domElement;
+			const dom = bridgeState.renderer && bridgeState.renderer.domElement;
 			let stop = false, frames = 0, stable = 0, lastKey = null;
 			const release = () => {
 				stop = true;
@@ -12860,15 +12861,15 @@ async function applyViewState(vs, opts = {}) {
 				});
 			}
 			const pin = () => {
-				const fc = state.followCamState;
-				if (stop || !fc && !state.cameraExprState) {
+				const fc = bridgeState.followCamState;
+				if (stop || !fc && !bridgeState.cameraExprState) {
 					release();
 					return;
 				}
-				const t = state.controls.target;
-				state.camera.position.set(t.x + offset[0], t.y + offset[1], t.z + offset[2]);
-				state.camera.up.set(up[0], up[1], up[2]);
-				state.camera.lookAt(t);
+				const t = bridgeState.controls.target;
+				bridgeState.camera.position.set(t.x + offset[0], t.y + offset[1], t.z + offset[2]);
+				bridgeState.camera.up.set(up[0], up[1], up[2]);
+				bridgeState.camera.lookAt(t);
 				if (fc) fc.lastTargetWorld = t.clone();
 				const key = `${t.x.toFixed(4)},${t.y.toFixed(4)},${t.z.toFixed(4)}`;
 				stable = key === lastKey ? stable + 1 : 0;
@@ -12888,8 +12889,8 @@ async function applyViewState(vs, opts = {}) {
 				1,
 				0
 			];
-			state.CAMERA_VIEWS = state.CAMERA_VIEWS || {};
-			state.CAMERA_VIEWS["__deeplink"] = {
+			bridgeState.CAMERA_VIEWS = bridgeState.CAMERA_VIEWS || {};
+			bridgeState.CAMERA_VIEWS["__deeplink"] = {
 				position: wPos,
 				target: wTgt,
 				up
