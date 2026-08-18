@@ -2,7 +2,7 @@
  * SgChartManager — interactive Chart.js plots for semantic graph nodes.
  *
  * Expression evaluation is handled by the backend (SymPy→mathjs pipeline)
- * and evaluated client-side via expr.js.  Chart.js renders the results.
+ * and evaluated client-side via expr.ts.  Chart.js renders the results.
  *
  * Slider panel sits bottom-left, legend bottom-right (matching the 3D
  * viewport layout convention).
@@ -11,6 +11,61 @@
 import { SgChartScript } from './sg-chart-script.js';
 import { compileExpr, evalExpr } from '/expr.js';
 import { nextDockSeq } from '/proof-animation/dock-seq.js';
+import type { CompiledExpr } from '/expr.js';
+import type { SgRenderer, SgTransform } from '/proof-animation/sg-proof.js';
+import type { Node as GraphNode, SemanticGraph } from '/types/semantic-graph.js';
+
+/** The KaTeX API surface this module uses (the CDN global's type). */
+type KatexApi = typeof katex;
+
+/** Options for the manager itself. */
+export interface SgChartManagerOptions {
+    katex?: KatexApi;
+}
+
+/** The auto-derived slider/sweep range for one variable. */
+interface AutoRange {
+    min: number;
+    max: number;
+    step: number;
+    default: number;
+}
+
+/** One sampled point of a plotted curve. `y` is null at a discontinuity. */
+interface ChartPoint {
+    x: number;
+    y: number | null;
+}
+
+/** One open chart box and everything hanging off it. */
+interface SgChartEntry {
+    chartId: string;
+    nodeId: string;
+    chart: ChartInstance | null;
+    box: HTMLDivElement;
+    canvas: HTMLCanvasElement | null;
+    titleEl: HTMLSpanElement;
+    exprLabel: string;
+    /** Null when the script declared no variables (a constant expression). */
+    xVar: string | null;
+    vars: string[];
+    scriptText: string | null | undefined;
+    color: string;
+    pinned: boolean;
+    graphX: number;
+    graphY: number;
+    colSpan: number;
+    rowSpan: number;
+    /**
+     * NOT a boolean: the JavaScript computes this as
+     * `(n.subexpr || n.latex) && _RELATION_RE.test(...)`, so a match yields the
+     * LaTeX string and a non-match yields `false`/`undefined`. It is only ever
+     * read for truthiness, so the union is kept rather than normalised.
+     */
+    isRelation: string | boolean | undefined;
+    _dragCleanup?: (() => void) | null;
+    _resizeCleanup?: (() => void) | null;
+}
 
 const CHART_JS_CDN = 'https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js';
 const NUM_POINTS = 200;
@@ -65,13 +120,19 @@ const _GREEK_LATEX = new Map([
 // Convert sanitized variable names back to display-friendly form.
 // u_prime → u', u_dprime → u'', gamma → γ, mu_0 → μ₀ (Unicode).
 // Used for plain-text contexts (dropdowns, axis titles, tooltips).
-function _displayVar(name) {
-    let out = name
+//
+// `name` is typed nullable because the chart-title / axis-label call sites pass
+// `xVar`, which is null for a script with no variables. The `!` below therefore
+// preserves the original crash EXACTLY (a null name threw a TypeError here in
+// the JavaScript too) rather than papering over it — see the PR notes.
+function _displayVar(name: string | null): string {
+    let out = name!
         .replace(/_tprime$/, "'''")
         .replace(/_dprime$/, "''")
         .replace(/_prime$/, "'");
     // Exact match first (e.g. "gamma" → "γ")
-    if (_GREEK_UNICODE.has(out)) return _GREEK_UNICODE.get(out);
+    // `!` — guarded by the `has` on the line above.
+    if (_GREEK_UNICODE.has(out)) return _GREEK_UNICODE.get(out)!;
     // Subscripted Greek: "mu_0" → "μ₀", "epsilon_0" → "ε₀"
     const uIdx = out.indexOf('_');
     if (uIdx > 0) {
@@ -85,13 +146,15 @@ function _displayVar(name) {
 
 // Convert variable name to LaTeX for KaTeX rendering.
 // gamma → \gamma, u_prime → u', mu_0 → \mu_{0}, etc.
-function _latexVar(name) {
-    let out = name
+// (Nullable `name` + `!`: same pre-existing crash semantics as _displayVar.)
+function _latexVar(name: string | null): string {
+    let out = name!
         .replace(/_tprime$/, "'''")
         .replace(/_dprime$/, "''")
         .replace(/_prime$/, "'");
     // Exact match first (e.g. "gamma" → "\\gamma")
-    if (_GREEK_LATEX.has(out)) return _GREEK_LATEX.get(out);
+    // `!` — guarded by the `has` on the line above.
+    if (_GREEK_LATEX.has(out)) return _GREEK_LATEX.get(out)!;
     // Subscripted Greek: "mu_0" → "\\mu_{0}", "epsilon_0" → "\\epsilon_{0}"
     const uIdx = out.indexOf('_');
     if (uIdx > 0) {
@@ -107,7 +170,7 @@ function _latexVar(name) {
 const _RELATION_RE = /(?:^|[^\\])=|\\(?:leq|geq|neq|lt|gt|le|ge)\b|[<>]/;
 
 // Convert an equation LaTeX into "LHS − (RHS)" display form.
-function _relationToLhsMinusRhs(latex) {
+function _relationToLhsMinusRhs(latex: string): string {
     // Find the first top-level relation operator using the same matcher as
     // detection (_RELATION_RE) so escaped operators (e.g. "\=") are ignored.
     // Capture the operator separately to know how much to slice off.
@@ -132,13 +195,13 @@ function _relationToLhsMinusRhs(latex) {
 }
 
 let _chartJsLoaded = false;
-let _chartJsPromise = null;
+let _chartJsPromise: Promise<void> | null = null;
 // Exported: shared by the Function Analysis page (fa-page.js) so Chart.js
 // is fetched once no matter which feature asks first.
-export function loadChartJs() {
+export function loadChartJs(): Promise<void> {
     if (_chartJsLoaded) return Promise.resolve();
     if (_chartJsPromise) return _chartJsPromise;
-    _chartJsPromise = new Promise((resolve, reject) => {
+    _chartJsPromise = new Promise<void>((resolve, reject) => {
         const s = document.createElement('script');
         s.src = CHART_JS_CDN;
         s.onload = () => { _chartJsLoaded = true; resolve(); };
@@ -151,8 +214,10 @@ export function loadChartJs() {
 
 // ── Auto-range heuristics ────────────────────────────────────────────
 
-function autoRange(varName) {
-    const lower = varName.toLowerCase();
+// (Nullable `varName` + `!`: same pre-existing crash semantics as _displayVar —
+// _computeData passes `entry.xVar`, which is null for a variable-less script.)
+function autoRange(varName: string | null): AutoRange {
+    const lower = varName!.toLowerCase();
     if (lower.includes('angle') || lower === 'θ' || lower === 'theta' ||
         lower === 'φ' || lower === 'phi' || lower === 'α' || lower === 'β') {
         return { min: 0, max: 2 * Math.PI, step: 0.01, default: Math.PI / 4 };
@@ -174,7 +239,31 @@ function autoRange(varName) {
 let _chartIdCounter = 0;
 
 export class SgChartManager {
-    constructor(container, graph, opts = {}) {
+    container: HTMLElement;
+    graph: SemanticGraph;
+    katex: KatexApi | false;
+    charts: Map<string, SgChartEntry>;
+    pinnedCharts: string[];
+    sliderValues: Record<string, number>;
+    _allVariables: Set<string>;
+    _ready: boolean;
+    _sliderPanel: HTMLElement | null;
+    _pinnedPanel: HTMLElement | null;
+    _legendPanel: HTMLElement | null;
+    _transform: SgTransform;
+    _renderer: SgRenderer | null;
+    _rafId: number | null;
+    _resizeObserver: ResizeObserver | null;
+    _destroyed: boolean;
+    _scriptService: SgChartScript;
+    _compiledScripts: Map<string, CompiledExpr>;
+    _crosshairPlugin: ChartPlugin;
+    // `!` — both are populated by _buildNodeIndex(), called from the constructor
+    // below (and again from setGraph).
+    _nodeById!: Record<string, GraphNode>;
+    _childrenOf!: Record<string, string[]>;
+
+    constructor(container: HTMLElement, graph: SemanticGraph, opts: SgChartManagerOptions = {}) {
         this.container = container;
         this.graph = graph;
         this.katex = opts.katex || (typeof window !== 'undefined' && window.katex);
@@ -207,18 +296,19 @@ export class SgChartManager {
         this._childrenOf = Object.create(null);
         for (const e of this.graph.edges) {
             if (!this._childrenOf[e.to]) this._childrenOf[e.to] = [];
-            this._childrenOf[e.to].push(e.from);
+            // `!` — the bucket was just created on the line above if absent.
+            this._childrenOf[e.to]!.push(e.from);
         }
     }
 
-    setTransform(t) {
+    setTransform(t: SgTransform | null | undefined) {
         this._transform = t || { x: 0, y: 0, k: 1 };
         this._updateUnpinnedPositions();
     }
 
     /** Point this (per-step, persistent) manager at the step's current graph
      *  object — it may be replaced across re-renders (e.g. by enrichment). */
-    setGraph(graph) {
+    setGraph(graph: SemanticGraph | null | undefined) {
         if (!graph || graph === this.graph) return;
         this.graph = graph;
         this._buildNodeIndex();
@@ -267,7 +357,7 @@ export class SgChartManager {
      * transform sources (drag-pan, trackpad, scrollbar, zoomToFit, …)
      * regardless of whether the callback chain fires.
      */
-    setRenderer(renderer) {
+    setRenderer(renderer: SgRenderer | null) {
         this._renderer = renderer;
         this._startTransformPolling();
         this._observeContainerResize();
@@ -317,7 +407,7 @@ export class SgChartManager {
         const card = this.container.querySelector('.d3-graph-card') || this.container;
         const rect = card.getBoundingClientRect();
         const { x: tx, y: ty, k } = this._transform;
-        const placed = [];
+        const placed: { left: number; top: number; right: number; bottom: number }[] = [];
         for (const entry of this.charts.values()) {
             if (entry.pinned) continue;
             const boxW = entry.box.offsetWidth;
@@ -369,7 +459,7 @@ export class SgChartManager {
         if (!this._pinnedPanel) {
             // Adopt an existing dock panel (e.g. one the proof manager created) so
             // pinned charts and pinned proof animations share one row, side by side.
-            this._pinnedPanel = card.querySelector('.sgc-pinned-panel');
+            this._pinnedPanel = card.querySelector<HTMLElement>('.sgc-pinned-panel');
             if (!this._pinnedPanel) {
                 this._pinnedPanel = document.createElement('div');
                 this._pinnedPanel.className = 'sgc-pinned-panel';
@@ -384,24 +474,24 @@ export class SgChartManager {
         }
     }
 
-    hasExpression(nodeId) {
+    hasExpression(nodeId: string): boolean {
         return this._scriptService.canChart(nodeId);
     }
 
-    canChart(nodeId) {
+    canChart(nodeId: string): boolean {
         return this._scriptService.canChart(nodeId);
     }
 
     /** Return all chart entries belonging to a given node. */
-    _chartsForNode(nodeId) {
-        const result = [];
+    _chartsForNode(nodeId: string): SgChartEntry[] {
+        const result: SgChartEntry[] = [];
         for (const entry of this.charts.values()) {
             if (entry.nodeId === nodeId) result.push(entry);
         }
         return result;
     }
 
-    async openChart(nodeId, anchorEl) {
+    async openChart(nodeId: string, anchorEl?: Element | null) {
         if (!this._ready) await this.init();
         if (this._destroyed) return;
 
@@ -412,11 +502,13 @@ export class SgChartManager {
         const result = await this._scriptService.getScript(nodeId);
         if (this._destroyed) return;
         const hasError = !result || result.error;
-        const vars = hasError ? [] : result.variables;
+        // `!` — a non-error outcome always carries `variables`: both success
+        // paths in SgChartScript.getScript default it to [].
+        const vars = hasError ? [] : result.variables!;
         const scriptText = hasError ? null : result.script;
 
-        // Compile the mathjs script via expr.js
-        let compiled = null;
+        // Compile the mathjs script via expr.ts
+        let compiled: CompiledExpr | null = null;
         if (scriptText) {
             try {
                 compiled = compileExpr(scriptText);
@@ -427,7 +519,7 @@ export class SgChartManager {
         }
 
         const chartId = `sgc-${++_chartIdCounter}`;
-        const xVar = vars.length > 0 ? vars[0] : null;
+        const xVar = vars.length > 0 ? vars[0]! : null;   // `!` — length checked
 
         // ── Dedup: skip if a chart for this node already uses xVar ───
         // Each node can have at most one chart per independent variable.
@@ -509,7 +601,7 @@ export class SgChartManager {
         canvasWrap.className = 'sgc-canvas-wrap';
 
         // ── Error state or canvas ────────────────────────────────────
-        let chart = null;
+        let chart: ChartInstance | null = null;
         if (hasError || !compiled) {
             canvasWrap.classList.add('sgc-chart-error');
             const errMsg = document.createElement('div');
@@ -525,7 +617,8 @@ export class SgChartManager {
             const { data } = this._computeData(nodeId, xVar, vars);
 
             const colorIdx = _chartIdCounter % CHART_PALETTE.length;
-            const chartColor = CHART_PALETTE[colorIdx];
+            // `!` — colorIdx is a modulo of CHART_PALETTE.length, always in range.
+            const chartColor = CHART_PALETTE[colorIdx]!;
 
             chart = new Chart(canvas, {
                 type: 'line',
@@ -598,7 +691,7 @@ export class SgChartManager {
             left = Math.max(4, Math.min(left, containerRect.width - boxW - 4));
             top = Math.max(4, Math.min(top, containerRect.height - boxH - 4));
 
-            const occupied = [];
+            const occupied: { left: number; top: number; right: number; bottom: number }[] = [];
             for (const existing of this.charts.values()) {
                 if (existing.pinned) continue;
                 const er = existing.box.getBoundingClientRect();
@@ -640,9 +733,10 @@ export class SgChartManager {
         const _graphY = (top - ty) / k;
 
         const colorIdx = _chartIdCounter % CHART_PALETTE.length;
-        const chartColor = CHART_PALETTE[colorIdx];
+        // `!` — colorIdx is a modulo of CHART_PALETTE.length, always in range.
+        const chartColor = CHART_PALETTE[colorIdx]!;
 
-        const entry = {
+        const entry: SgChartEntry = {
             chartId,
             nodeId,
             chart,
@@ -690,7 +784,7 @@ export class SgChartManager {
 
     // ── Script tooltip ──────────────────────────────────────────────
 
-    _toggleScriptTooltip(chartId, btnEl) {
+    _toggleScriptTooltip(chartId: string, btnEl: HTMLButtonElement) {
         // Close any existing tooltip
         const existing = btnEl.parentElement?.querySelector('.sgc-script-tooltip');
         if (existing) { existing.remove(); return; }
@@ -703,11 +797,15 @@ export class SgChartManager {
         tip.textContent = text;
 
         // Position below the button
-        btnEl.parentElement.appendChild(tip);
+        // `!` — the button is always inside .sgc-chart-controls (it is appended
+        // there in openChart); a detached button threw here before too.
+        btnEl.parentElement!.appendChild(tip);
 
         // Auto-close when clicking elsewhere
-        const close = (e) => {
-            if (!tip.contains(e.target) && e.target !== btnEl) {
+        const close = (e: MouseEvent) => {
+            // `as Node | null` — Node.contains takes a Node; an event target on
+            // this listener is always one (or null).
+            if (!tip.contains(e.target as Node | null) && e.target !== btnEl) {
                 tip.remove();
                 document.removeEventListener('click', close, true);
             }
@@ -715,7 +813,7 @@ export class SgChartManager {
         setTimeout(() => document.addEventListener('click', close, true), 0);
     }
 
-    closeChart(chartId) {
+    closeChart(chartId: string) {
         const entry = this.charts.get(chartId);
         if (!entry) return;
         if (entry._dragCleanup) entry._dragCleanup();
@@ -733,7 +831,7 @@ export class SgChartManager {
         this._updateLegend();
     }
 
-    _pinChart(chartId) {
+    _pinChart(chartId: string) {
         const entry = this.charts.get(chartId);
         if (!entry || entry.pinned) return;
         entry.pinned = true;
@@ -746,11 +844,13 @@ export class SgChartManager {
         entry.box.style.top = '';
         entry.box.style.zIndex = '';
 
-        this._pinnedPanel.appendChild(entry.box);
+        // `!` — _ensureOverlays() creates the panel, and it runs in init()
+        // before any chart can exist to be pinned.
+        this._pinnedPanel!.appendChild(entry.box);
         this._applyGridSize(entry);
         this._addResizeHandle(entry);
 
-        const pinBtn = entry.box.querySelector('.sgc-pin-btn');
+        const pinBtn = entry.box.querySelector<HTMLButtonElement>('.sgc-pin-btn');
         if (pinBtn) {
             pinBtn.innerHTML = '&#x1F4CC;';
             pinBtn.title = 'Unpin from overlay';
@@ -761,12 +861,12 @@ export class SgChartManager {
         if (entry.chart) entry.chart.resize();
     }
 
-    _unpinChart(chartId) {
+    _unpinChart(chartId: string) {
         const idx = this.pinnedCharts.indexOf(chartId);
         if (idx >= 0) this.pinnedCharts.splice(idx, 1);
     }
 
-    _unpinAndRestore(chartId) {
+    _unpinAndRestore(chartId: string) {
         const entry = this.charts.get(chartId);
         if (!entry) return;
         entry.pinned = false;
@@ -790,7 +890,7 @@ export class SgChartManager {
         entry.box.style.left = `${left}px`;
         entry.box.style.top = `${top}px`;
 
-        const pinBtn = entry.box.querySelector('.sgc-pin-btn');
+        const pinBtn = entry.box.querySelector<HTMLButtonElement>('.sgc-pin-btn');
         if (pinBtn) {
             pinBtn.innerHTML = '&#x1F4CC;';
             pinBtn.title = 'Pin chart to overlay';
@@ -802,13 +902,14 @@ export class SgChartManager {
         if (entry.chart) entry.chart.resize();
     }
 
-    _makeDraggable(entry) {
-        const header = entry.box.querySelector('.sgc-chart-header');
+    _makeDraggable(entry: SgChartEntry) {
+        const header = entry.box.querySelector<HTMLElement>('.sgc-chart-header');
         if (!header) return;
-        let startX, startY, startLeft, startTop;
+        let startX: number, startY: number, startLeft: number, startTop: number;
 
-        const onMouseDown = (e) => {
-            if (e.target.closest('.sgc-chart-controls')) return;
+        const onMouseDown = (e: MouseEvent) => {
+            // `as Element` — the header's own descendants are all elements.
+            if ((e.target as Element).closest('.sgc-chart-controls')) return;
             e.preventDefault();
             const card = this.container.querySelector('.d3-graph-card') || this.container;
             const boxRect = entry.box.getBoundingClientRect();
@@ -822,7 +923,7 @@ export class SgChartManager {
             header.style.cursor = 'grabbing';
         };
 
-        const onMouseMove = (e) => {
+        const onMouseMove = (e: MouseEvent) => {
             const dx = e.clientX - startX;
             const dy = e.clientY - startY;
             const card = this.container.querySelector('.d3-graph-card') || this.container;
@@ -848,7 +949,7 @@ export class SgChartManager {
         entry._dragCleanup = () => header.removeEventListener('mousedown', onMouseDown);
     }
 
-    _getGridSteps() {
+    _getGridSteps(): { w: number; h: number } {
         const card = this.container.querySelector('.d3-graph-card') || this.container;
         const rect = card.getBoundingClientRect();
         const availW = rect.width - 16;
@@ -859,27 +960,27 @@ export class SgChartManager {
         };
     }
 
-    _applyGridSize(entry) {
+    _applyGridSize(entry: SgChartEntry) {
         const step = this._getGridSteps();
         const w = entry.colSpan * step.w + (entry.colSpan - 1) * GRID_GAP;
         const h = entry.rowSpan * step.h + (entry.rowSpan - 1) * GRID_GAP;
         entry.box.style.width = `${w}px`;
         entry.box.style.height = `${h}px`;
-        const header = entry.box.querySelector('.sgc-chart-header');
+        const header = entry.box.querySelector<HTMLElement>('.sgc-chart-header');
         const headerH = header ? header.offsetHeight : 36;
-        const wrap = entry.box.querySelector('.sgc-canvas-wrap');
+        const wrap = entry.box.querySelector<HTMLElement>('.sgc-canvas-wrap');
         if (wrap) wrap.style.height = `${h - headerH - 2}px`;
     }
 
-    _addResizeHandle(entry) {
+    _addResizeHandle(entry: SgChartEntry) {
         if (entry.box.querySelector('.sgc-resize-handle')) return;
         const handle = document.createElement('div');
         handle.className = 'sgc-resize-handle';
         entry.box.appendChild(handle);
 
-        let startX, startY, startColSpan, startRowSpan;
+        let startX: number, startY: number, startColSpan: number, startRowSpan: number;
 
-        const onMouseDown = (e) => {
+        const onMouseDown = (e: MouseEvent) => {
             e.preventDefault();
             e.stopPropagation();
             startX = e.clientX;
@@ -890,7 +991,7 @@ export class SgChartManager {
             document.addEventListener('mouseup', onMouseUp);
         };
 
-        const onMouseMove = (e) => {
+        const onMouseMove = (e: MouseEvent) => {
             const step = this._getGridSteps();
             const unitW = step.w + GRID_GAP;
             const unitH = step.h + GRID_GAP;
@@ -923,7 +1024,7 @@ export class SgChartManager {
      * user can see what the vertical axis represents.  Uses KaTeX when
      * available.
      */
-    _renderTitle(el, exprLabel, xVar, _isRelation) {
+    _renderTitle(el: HTMLElement, exprLabel: string, xVar: string | null, _isRelation: unknown) {
         const xLatex = _latexVar(xVar);
         const fullLatex = `f(${xLatex}) = ${exprLabel}`;
         if (this.katex) {
@@ -937,23 +1038,23 @@ export class SgChartManager {
         el.textContent = `f(${xDisp}) = ${exprLabel}`;
     }
 
-    _computeData(nodeId, xVar, _vars) {
+    _computeData(nodeId: string, xVar: string | null, _vars: string[]): { data: ChartPoint[]; xLabel: string | null } {
         const compiled = this._compiledScripts.get(nodeId);
         if (!compiled) return { data: [], xLabel: xVar };
 
         const range = autoRange(xVar);
-        const points = [];
+        const points: ChartPoint[] = [];
         const step = (range.max - range.min) / NUM_POINTS;
 
         for (let i = 0; i <= NUM_POINTS; i++) {
             const xVal = range.min + step * i;
-            const scope = { ...this.sliderValues };
-            scope[xVar] = xVal;
+            const scope: Record<string, number> = { ...this.sliderValues };
+            scope[xVar!] = xVal;   // `!` — same nullable-xVar contract as autoRange above
 
             try {
                 const y = evalExpr(compiled, 0, { extraScope: scope });
                 if (Number.isFinite(y)) {
-                    points.push({ x: +xVal.toFixed(6), y: +y.toFixed(6) });
+                    points.push({ x: +xVal.toFixed(6), y: +(y as number).toFixed(6) });
                 } else {
                     // Insert null to break the line at discontinuities
                     // (asymptotes, division by zero, etc.)
@@ -967,11 +1068,12 @@ export class SgChartManager {
         return { data: points, xLabel: xVar };
     }
 
-    _updateChart(entry) {
+    _updateChart(entry: SgChartEntry) {
         if (!entry.chart) return;
         const { data } = this._computeData(entry.nodeId, entry.xVar, entry.vars);
         entry.chart.data.labels = data.map(p => p.x);
-        entry.chart.data.datasets[0].data = data.map(p => p.y);
+        // `!` — every chart is constructed with exactly one dataset.
+        entry.chart.data.datasets[0]!.data = data.map(p => p.y);
         const dv = _displayVar(entry.xVar);
         entry.chart.options.scales.x.title.text = dv;
         entry.chart.options.scales.y.title.text = entry.isRelation ? 'LHS − RHS' : `f(${dv})`;
@@ -1001,7 +1103,7 @@ export class SgChartManager {
         if (!this._sliderPanel) return;
         this._sliderPanel.innerHTML = '';
 
-        const activeVars = new Set();
+        const activeVars = new Set<string>();
         for (const entry of this.charts.values()) {
             for (const v of entry.vars) {
                 if (v !== entry.xVar) activeVars.add(v);
@@ -1043,14 +1145,15 @@ export class SgChartManager {
             const input = document.createElement('input');
             input.type = 'range';
             input.className = 'sgc-slider';
-            input.min = range.min;
-            input.max = range.max;
-            input.step = range.step;
-            input.value = this.sliderValues[v];
+            input.min = String(range.min);
+            input.max = String(range.max);
+            input.step = String(range.step);
+            input.value = String(this.sliderValues[v]);
 
             const val = document.createElement('span');
             val.className = 'sgc-slider-value';
-            val.textContent = (+this.sliderValues[v]).toFixed(2);
+            // `!` — filled in by the `== null` branch a few lines above.
+            val.textContent = (+this.sliderValues[v]!).toFixed(2);
 
             input.addEventListener('input', () => {
                 this.sliderValues[v] = parseFloat(input.value);
@@ -1067,7 +1170,7 @@ export class SgChartManager {
 
     // ── Cross-chart hover synchronization ────────────────────────────
 
-    _createCrosshairPlugin() {
+    _createCrosshairPlugin(): ChartPlugin {
         const mgr = this;
         return {
             id: 'sgcCrosshair',
@@ -1078,7 +1181,8 @@ export class SgChartManager {
                         event, 'index', { intersect: false }, false,
                     );
                     if (elements.length > 0) {
-                        mgr._syncCrosshair(chart, elements[0].index);
+                        // `!` — length checked on the line above.
+                        mgr._syncCrosshair(chart, elements[0]!.index);
                     }
                 } else if (event.type === 'mouseout') {
                     mgr._clearCrosshair(chart);
@@ -1105,10 +1209,10 @@ export class SgChartManager {
         };
     }
 
-    _syncCrosshair(sourceChart, index) {
+    _syncCrosshair(sourceChart: ChartInstance, index: number) {
         // Find the source chart's x-axis variable so we only sync charts
         // that share the same independent variable.
-        let sourceXVar = null;
+        let sourceXVar: string | null = null;
         for (const entry of this.charts.values()) {
             if (entry.chart === sourceChart) { sourceXVar = entry.xVar; break; }
         }
@@ -1128,7 +1232,7 @@ export class SgChartManager {
         }
     }
 
-    _clearCrosshair(sourceChart) {
+    _clearCrosshair(sourceChart: ChartInstance) {
         for (const entry of this.charts.values()) {
             if (!entry.chart || entry.chart === sourceChart) continue;
             if (entry.chart._sgcSyncIndex == null) continue;
@@ -1155,11 +1259,12 @@ export class SgChartManager {
         // legend (which sits in the bottom-right corner). When the edge legend
         // is absent or hidden, fall back to the corner ourselves.
         const parent = this._legendPanel.parentElement;
-        const edgeLegend = parent ? parent.querySelector('.d3sg-edge-legend') : null;
+        const edgeLegend = parent ? parent.querySelector<HTMLElement>('.d3sg-edge-legend') : null;
         const edgeVisible = edgeLegend && !edgeLegend.classList.contains('hidden')
             && edgeLegend.offsetParent !== null;
         this._legendPanel.style.right = edgeVisible
-            ? `${edgeLegend.offsetWidth + 16}px`
+            // `!` — edgeVisible is only truthy when edgeLegend is non-null.
+            ? `${edgeLegend!.offsetWidth + 16}px`
             : '8px';
 
         const title = document.createElement('div');
@@ -1181,7 +1286,9 @@ export class SgChartManager {
             const lbl = n?.label || n?.latex || entry.nodeId;
             if (this.katex && (n?.latex || n?.subexpr)) {
                 try {
-                    this.katex.render(n.latex || n.subexpr, name, { throwOnError: false, displayMode: false });
+                    // `!` ×3 — the guard above proves `n` exists and that at
+                    // least one of latex/subexpr is a non-empty string.
+                    this.katex.render(n!.latex || n!.subexpr!, name, { throwOnError: false, displayMode: false });
                 } catch (_) {
                     name.textContent = lbl;
                 }
@@ -1197,10 +1304,10 @@ export class SgChartManager {
         this._emitLegendChange();
     }
 
-    // Notify graph-view.js (which owns the enrichment-progress stack in a
+    // Notify graph-view.ts (which owns the enrichment-progress stack in a
     // sibling container) that the legend strip changed, so it can re-stack the
     // enrichment pills above the new legend height. Decoupled via a DOM event
-    // to avoid a circular import between this module and graph-view.js.
+    // to avoid a circular import between this module and graph-view.ts.
     _emitLegendChange() {
         try {
             document.dispatchEvent(new CustomEvent('sgc:legend-change'));
