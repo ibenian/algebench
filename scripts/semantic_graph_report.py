@@ -38,7 +38,12 @@ except ImportError:
 
 import sympy as sp
 
-import graph_panel_assets
+# Same dual-invocation guard as graph_to_mermaid above: bare `scripts/` is on
+# the path under ./run.sh, but not under `python -m scripts.…`.
+try:
+    import graph_panel_assets
+except ImportError:
+    from scripts import graph_panel_assets
 from backend.semantic_graph.mathjs_converter import latex_to_mathjs
 from backend.semantic_graph.service import SemanticGraphService
 from backend.experts.modules.proof_completion.grounding import graph_to_sympy
