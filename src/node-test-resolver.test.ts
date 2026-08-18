@@ -11,10 +11,19 @@ test('server-served paths are refused with a named error', async () => {
   await assert.rejects(
     // /theme-init.js is a classic pre-paint script the Python server owns.
     // (/chat.js used to be the example here; phase 4e made it src/chat.ts.)
+    //
+    // Its absence under src/ is the assertion, so tsc is right that the module
+    // cannot be resolved — @ts-expect-error (not @ts-ignore) records that on
+    // purpose: if a src/theme-init.ts ever appears, this line starts failing
+    // the build and whoever added it has to revisit the test.
+    // @ts-expect-error TS2307: /theme-init.js deliberately does not exist here.
     () => import('/theme-init.js'),
     (err) => {
-      assert.equal(err.name, 'ServerServedImportError');
-      assert.match(err.message, /SERVER_SERVED/);
+      // node types a rejection reason as `unknown`; the hook always rejects
+      // with a real Error carrying a custom `name`, so narrow at the boundary.
+      const e = err as Error;
+      assert.equal(e.name, 'ServerServedImportError');
+      assert.match(e.message, /SERVER_SERVED/);
       return true;
     },
   );
