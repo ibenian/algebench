@@ -1075,9 +1075,12 @@ export class SgChartManager {
         // `!` — every chart is constructed with exactly one dataset.
         entry.chart.data.datasets[0]!.data = data.map(p => p.y);
         const dv = _displayVar(entry.xVar);
-        entry.chart.options.scales.x.title.text = dv;
-        entry.chart.options.scales.y.title.text = entry.isRelation ? 'LHS − RHS' : `f(${dv})`;
-        entry.chart.options.plugins.tooltip.callbacks.title =
+        // `!` on title/callbacks — optional on ChartScaleOptions/
+        // ChartTooltipOptions because fa-page omits them, but every chart THIS
+        // module builds supplies both (see the config literal in _buildChart).
+        entry.chart.options.scales.x.title!.text = dv;
+        entry.chart.options.scales.y.title!.text = entry.isRelation ? 'LHS − RHS' : `f(${dv})`;
+        entry.chart.options.plugins.tooltip.callbacks!.title =
             (items) => `${dv} = ${items[0]?.parsed.x?.toFixed(4)}`;
         entry.chart.update('none');
         // Refresh the header title to reflect the current x-variable.

@@ -8,12 +8,19 @@
 // precedent as src/mathbox.d.ts.
 //
 // It is DELIBERATELY MINIMAL: it declares only the constructor, config keys,
-// instance members and plugin hooks that src/graph-panel/sg-chart.ts actually
+// instance members and plugin hooks that src/graph-panel/sg-chart.ts and
+// src/graph-panel/fa-page.ts actually
 // touches. Chart.js's real option bags are far larger and validated at runtime;
 // enumerating them here would document Chart.js rather than this app, and a
 // half-accurate config type would reject valid options while proving nothing.
 // Widen it option by option as more chart code is converted; nothing here
 // should be read as "this is all of Chart.js".
+//
+// TWO consumers share this file: sg-chart (config-shaped: options, datasets,
+// tooltip callbacks) and fa-page (instance-shaped: live scales, external
+// tooltip, dataset visibility). Members only one of them uses are optional,
+// and say which one in their doc comment — that is why `title` and
+// `callbacks` are optional despite sg-chart always supplying them.
 //
 // The three option bags that sg-chart MUTATES after construction
 // (`options.scales.x/y.title`, `options.plugins.tooltip.callbacks`) are
@@ -34,14 +41,43 @@ interface ChartTitleOptions {
 
 /** One axis. `title` is required — sg-chart writes `scales.x.title.text`. */
 interface ChartScaleOptions {
+    [option: string]: unknown;
     type?: string;
-    title: ChartTitleOptions;
+    /** Optional: sg-chart labels both axes, fa-page labels neither (its axis
+     *  names live in the surrounding KaTeX chrome instead). */
+    title?: ChartTitleOptions;
+    /** Sticky bounds fa-page writes back onto `chart.options.scales.y`. */
+    min?: number;
+    max?: number;
     ticks?: {
         color?: string;
         maxTicksLimit?: number;
-        callback?: (value: number) => unknown;
+        /** `this` is the live scale when Chart.js invokes a tick callback. */
+        callback?: (this: ChartScale, value: number) => unknown;
     };
-    grid?: { color?: string };
+    /** `color` is scriptable: Chart.js accepts a per-tick function as well as
+     *  a flat string, and fa-page uses the function form to highlight zero. */
+    grid?: {
+        color?: string | ((c: ChartScriptableTick) => string);
+        lineWidth?: number | ((c: ChartScriptableTick) => number);
+    };
+}
+
+/** The context Chart.js passes a scriptable grid option, per tick. */
+interface ChartScriptableTick {
+    tick?: { value: number };
+}
+
+/**
+ * A LIVE axis off a built chart (`chart.scales.x`) — not the config object
+ * above. Pixel lookups are what fa-page's annotation overlays are drawn from.
+ */
+interface ChartScale {
+    min: number;
+    max: number;
+    ticks: { value: number; label?: string }[];
+    getPixelForTick(index: number): number;
+    getPixelForValue(value: number): number;
 }
 
 interface ChartTooltipCallbacks {
@@ -51,12 +87,18 @@ interface ChartTooltipCallbacks {
 
 /** `callbacks` is required — sg-chart replaces `callbacks.title` on x-var change. */
 interface ChartTooltipOptions {
+    /** fa-page turns the built-in tooltip off and draws its own readout. */
+    enabled?: boolean;
+    /** Custom tooltip renderer — Chart.js calls this instead of drawing. */
+    external?: (ctx: ChartTooltipContext) => void;
     backgroundColor?: string;
     titleColor?: string;
     bodyColor?: string;
     borderColor?: string;
     borderWidth?: number;
-    callbacks: ChartTooltipCallbacks;
+    /** Optional: sg-chart supplies callbacks for the built-in tooltip, while
+     *  fa-page disables it entirely and renders its own via `external`. */
+    callbacks?: ChartTooltipCallbacks;
 }
 
 interface ChartPluginOptions {
@@ -67,15 +109,23 @@ interface ChartPluginOptions {
 interface ChartOptions {
     responsive?: boolean;
     maintainAspectRatio?: boolean;
-    animation?: { duration?: number };
+    /** `false` disables animation outright — Chart.js accepts either. */
+    animation?: false | { duration?: number };
     plugins: ChartPluginOptions;
     scales: { x: ChartScaleOptions; y: ChartScaleOptions };
     interaction?: { mode?: string; intersect?: boolean };
+    /** Canvas padding — fa-page reserves room for its annotation overlays. */
+    layout?: { padding?: number | { top?: number; right?: number; bottom?: number; left?: number } };
 }
 
 /** One dataset. `null` entries break the line at discontinuities. */
 interface ChartDataset {
+    /** Open on purpose: Chart.js accepts far more per-dataset options than are
+     *  named here, and callers attach their own display metadata (fa-page hangs
+     *  a `$faLabel` KaTeX source off each series). */
+    [option: string]: unknown;
     label?: string;
+    borderDash?: number[];
     data: (number | null)[];
     borderColor?: string;
     backgroundColor?: string;
@@ -126,6 +176,17 @@ interface ChartArea {
 
 interface ChartTooltipModel {
     setActiveElements(elements: ChartActiveElement[], point: { x: number; y: number }): void;
+    /** Read by fa-page's external handler to place/hide its own readout. */
+    opacity?: number;
+    caretX?: number;
+    caretY?: number;
+    dataPoints?: { parsed: { x: number; y: number } }[];
+}
+
+/** The argument Chart.js hands an `external` tooltip handler. */
+interface ChartTooltipContext {
+    chart: ChartInstance;
+    tooltip?: ChartTooltipModel;
 }
 
 /**
@@ -149,6 +210,9 @@ interface ChartInstance {
     data: ChartData;
     options: ChartOptions;
     ctx: CanvasRenderingContext2D;
+    canvas: HTMLCanvasElement;
+    /** Live axes (see ChartScale). Absent until the first draw completes. */
+    scales: { x?: ChartScale; y?: ChartScale };
     chartArea: ChartArea;
     tooltip: ChartTooltipModel;
     /**
@@ -161,6 +225,10 @@ interface ChartInstance {
     update(mode?: string): void;
     destroy(): void;
     setActiveElements(elements: ChartActiveElement[]): void;
+    /** Per-series visibility — fa-page's legend toggles drive these. */
+    isDatasetVisible(index: number): boolean;
+    hide(index: number): void;
+    show(index: number): void;
     getDatasetMeta(datasetIndex: number): ChartDatasetMeta | undefined;
     getElementsAtEventForMode(
         e: ChartEvent,

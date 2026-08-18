@@ -265,7 +265,7 @@ interface FaChartState {
 }
 
 /** A Chart.js instance carrying this module's live state. */
-interface FaChart extends ChartJsInstance {
+interface FaChart extends ChartInstance {
     $fa?: FaChartState;
 }
 
@@ -1123,7 +1123,7 @@ export class FunctionAnalysisManager {
                                  // noise (`4.24`?) and, sitting outside every
                                  // curve's range by construction, a y-axis
                                  // snap can never land on them. Unlabelled.
-                                 callback: function (this: ChartJsScale, v: number) {
+                                 callback: function (this: ChartScale, v: number) {
                                      if (v === this.min || v === this.max) return null;
                                      return +Number(v).toFixed(3);
                                  } },
@@ -1260,7 +1260,7 @@ export class FunctionAnalysisManager {
     _makeTooltipHandler(artifact: FaArtifact, chars: FaCharacteristics,
                         view: FaView, state: FaViewState) {
         const xLatex = this._varLatex(chars, view.x_var);
-        return (ctx: ChartJsTooltipContext) => {
+        return (ctx: ChartTooltipContext) => {
             const { chart, tooltip } = ctx;
             // `as` — the canvas's parent is the `.fa-canvas-wrap` <div> this
             // module created; ParentNode alone has no appendChild.
@@ -1397,7 +1397,7 @@ export class FunctionAnalysisManager {
     /** The tick value nearest `pixel` along `scale`, or null if the click
      *  landed between ticks. `TICK_TOL` is generous: tick labels are wider
      *  than the tick itself, and the learner is aiming at the number. */
-    _nearestTick(scale: ChartJsScale, pixel: number, tol = 18) {
+    _nearestTick(scale: ChartScale, pixel: number, tol = 18) {
         let best: number | null = null, bestD = Infinity;
         (scale.ticks || []).forEach((t, i) => {
             // Skip ticks the axis draws no label for — there is nothing there
@@ -2147,7 +2147,7 @@ export class FunctionAnalysisManager {
     }
 
     /** Padded finite y-extent across all datasets. */
-    _yBounds(datasets: ChartJsDataset[]) {
+    _yBounds(datasets: ChartDataset[]) {
         const ys: number[] = [];
         // `!` — Number.isFinite on the same value is the guard.
         for (const ds of datasets) {
@@ -2280,7 +2280,7 @@ export class FunctionAnalysisManager {
     }
 
     /** Numeric feature markers (from the main dataset) + AI annotations. */
-    _drawOverlays(chart: FaChart, mainDataset: ChartJsDataset | undefined, xs: number[],
+    _drawOverlays(chart: FaChart, mainDataset: ChartDataset | undefined, xs: number[],
                   marks: Set<string>, annotations: FaEvalAnnotation[]) {
         const { ctx, chartArea, scales } = chart;
         if (!chartArea || !scales.x || !scales.y) return;
