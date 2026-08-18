@@ -1,23 +1,81 @@
 // ============================================================
-// coach/coach.js — Quick-intro "Coach" engine.
+// coach/coach.ts — Quick-intro "Coach" engine.
 //
 // One engine powers BOTH the guided tour and the daily-hint system.
 // It reads steps from the registry (steps self-register via
-// steps/*.js), tracks completion by stable step id in localStorage,
+// steps/*.ts), tracks completion by stable step id in localStorage,
 // renders a non-blocking spotlight + card, narrates via the existing
 // TTS API, and hands the user off into the main chat.
 //
 // Boot: a single <script type="module" src="/coach/coach.js"> tag.
 // This module imports the registry, then the step manifest (which
 // registers all steps), then self-initializes on DOMContentLoaded.
-// No edits to main.js / chat.js are required.
+// No edits to main.ts / chat.ts are required.
 // ============================================================
 
-import { coach } from './registry.js';
+import { coach, type CoachContext, type CoachStep } from './registry.js';
 import './steps/index.js';            // side-effect: registers all steps
 import { loadBuiltinScene } from '/ui.js';
 
-// ---- Persistence (mirrors the graph-view.js _lsGet/_lsSet pattern) ----
+/** What `coachStatus()` reports — also the chat tool's `control_coach` payload. */
+export interface CoachStatus {
+    active: boolean;
+    currentStepId: string | null;
+    currentStepNumber: number | null;
+    total: number;
+    completed: string[];
+    remaining: string[];
+    dismissed: boolean;
+    narration: string;
+    steps: { id: string; title: string | undefined }[];
+}
+
+/** The small result object `coachControl()` hands back to the chat tool. */
+export interface CoachControlResult {
+    ok: boolean;
+    action: string;
+    error?: string;
+    stepId?: string;
+    status: CoachStatus;
+}
+
+/** The engine's in-memory state (`S`). */
+interface CoachEngineState {
+    completed: Set<string>;
+    steps: CoachStep[];
+    idx: number;
+    active: boolean;
+    target: Element | null;
+    position: string;
+    ttsOn: boolean;
+    lastNarration: string;
+    cardMoved: boolean;
+    justOpened: boolean;
+    seekIncomplete: boolean;
+    spotlitEl: Element | null;
+    userGestured: boolean;
+    pendingNarration: string;
+}
+
+/** `engine.state()` — `S` with the completed Set flattened to an array. */
+export type CoachStateSnapshot =
+    Omit<CoachEngineState, 'completed'> & { completed: string[] };
+
+/** The control surface published at `window.AlgeBenchCoach.engine`. */
+export interface CoachEngine {
+    openTour: (startId?: string | null) => Promise<void>;
+    dismiss: () => void;
+    // Method syntax (bivariant) on purpose: callers hand in whatever the chat
+    // tool produced, while the implementation coerces to a string up front and
+    // is typed for what it works with from then on.
+    control(action: unknown, opts?: { step?: unknown }): CoachControlResult;
+    status: () => CoachStatus;
+    state: () => CoachStateSnapshot;
+    setDebug: (on: unknown) => void;
+    reset: () => void;
+}
+
+// ---- Persistence (mirrors the graph-view.ts _lsGet/_lsSet pattern) ----
 const STEP_VERSION = 1;
 const LS = {
     version:        'algebench.coach.version',
@@ -29,19 +87,22 @@ const LS = {
     tts:            'algebench.coach.tts',             // '1' | '0' (narration on/off; default on)
     debug:          'algebench.coach.debug',           // '1' | '0' (verbose console logging)
 };
-const _lsGet  = (k, f = null) => { try { return localStorage.getItem(k) ?? f; } catch { return f; } };
-const _lsSet  = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
-const _lsJSON = (k, f) => { try { return JSON.parse(localStorage.getItem(k)) ?? f; } catch { return f; } };
+const _lsGet  = <T = null>(k: string, f = null as T): string | T => { try { return localStorage.getItem(k) ?? f; } catch { return f; } };
+const _lsSet  = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch {} };
+// The cast keeps JSON.parse's own behaviour for a missing key: JSON.parse(null)
+// coerces to JSON.parse('null') → null → falls through to `f`. A guard here
+// would change nothing at runtime but would hide that.
+const _lsJSON = <T>(k: string, f: T): unknown => { try { return JSON.parse(localStorage.getItem(k) as string) ?? f; } catch { return f; } };
 
 const today = () => new Date().toISOString().slice(0, 10);
-const delay = (ms) => new Promise((r) => setTimeout(r, ms));
+const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 // ---- Debug logging ----
 // Enabled by any of: ?coachdebug URL param, localStorage 'algebench.coach.debug'=1,
 // or the server --debug flag (body[data-debug-mode="true"]). Toggle at runtime via
 // window.AlgeBenchCoach.engine.setDebug(true).
 let DEBUG = false;
-function log(...args) {
+function log(...args: unknown[]) {
     if (!DEBUG) return;
     try { console.log('%c[coach]', 'color:#8c96ff;font-weight:bold', ...args); } catch {}
 }
@@ -73,7 +134,7 @@ function tourSkipped() {
 }
 
 // ---- In-memory state ----
-const S = {
+const S: CoachEngineState = {
     completed: new Set(),
     steps: [],          // relevant steps for the current context
     idx: 0,
@@ -98,7 +159,7 @@ const REOPEN_TIP = ' By the way — you can jump back into this tour anytime: ju
 // Browsers block the AudioContext until the user interacts, so a narration
 // fired on page load (first-visit welcome) can't play. We defer it until the
 // first gesture, then flush — see setupAudioUnlock().
-function speak(text) {
+function speak(text: string) {
     if (!text) return;
     S.lastNarration = text;
     if (!S.ttsOn) return;
@@ -164,10 +225,10 @@ function openChatTab() {
         if (toggle) { toggle.style.display = 'block'; toggle.classList.add('active'); }
         setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
     }
-    document.querySelector('.panel-tab[data-tab="chat"]')?.click();
+    document.querySelector<HTMLElement>('.panel-tab[data-tab="chat"]')?.click();
 }
-function clickDockTab(name) {
-    document.querySelector(`.dock-tab[data-dock-tab="${name}"]`)?.click();
+function clickDockTab(name: string) {
+    document.querySelector<HTMLElement>(`.dock-tab[data-dock-tab="${name}"]`)?.click();
 }
 // Open the chat tab and reveal the proof panel (if a proof is in context).
 function openProofPanel() {
@@ -189,11 +250,12 @@ function gotoProofStep() {
     if (spec.proof != null) return true;                          // lesson-level proof: always in context
     const scenes = spec.scenes || [];
     for (let si = 0; si < scenes.length; si++) {
-        const sc = scenes[si] || {};
+        const sc: AlgeBenchSceneSpec = scenes[si] || {};
         if (sc.proof != null) { window.navigateTo(si, -1); return true; }
         const steps = sc.steps || [];
+        // `ti < steps.length` bounds the index, so the element is always present.
         for (let ti = 0; ti < steps.length; ti++) {
-            if (steps[ti].proof != null) { window.navigateTo(si, ti); return true; }
+            if (steps[ti]!.proof != null) { window.navigateTo(si, ti); return true; }
         }
     }
     return false;
@@ -217,7 +279,7 @@ function selectFirstGraphStep() {
     if (document.querySelector('#graph-mermaid-container svg')) return true;
     const tree = document.getElementById('graph-proof-tree');
     if (!tree) return false;
-    const steps = [...tree.querySelectorAll('.gp-tree-step')];
+    const steps = [...tree.querySelectorAll<HTMLElement>('.gp-tree-step')];
     const node = steps.find((s) => s.querySelector('.gp-tree-step-has-graph')) || steps[0];
     if (node) { node.click(); return true; }
     return false;
@@ -245,22 +307,23 @@ function gotoSliderStep() {
     const spec = window.lessonSpec;
     if (!spec || !Array.isArray(spec.scenes) || typeof window.navigateTo !== 'function') return false;
     for (let si = 0; si < spec.scenes.length; si++) {
-        const sc = spec.scenes[si] || {};
+        const sc: AlgeBenchSceneSpec = spec.scenes[si] || {};
         if (Array.isArray(sc.sliders) && sc.sliders.length) { window.navigateTo(si, -1); return true; }
         const steps = sc.steps || [];
+        // `ti < steps.length` bounds the index, so the element is always present.
         for (let ti = 0; ti < steps.length; ti++) {
-            if (Array.isArray(steps[ti].sliders) && steps[ti].sliders.length) {
+            if (Array.isArray(steps[ti]!.sliders) && steps[ti]!.sliders!.length) {
                 window.navigateTo(si, ti); return true;
             }
         }
     }
     return false;
 }
-// Hand off to the MAIN chat via DOM only (no chat.js edit). Auto-sends.
-function handToChat(text, examples) {
+// Hand off to the MAIN chat via DOM only (no chat.ts edit). Auto-sends.
+function handToChat(text: string, examples?: string[]) {
     openChatTab();
     if (!chatAvailable()) return false;
-    const input = document.getElementById('chat-input');
+    const input = document.getElementById('chat-input') as HTMLInputElement | null;
     if (input && text) {
         input.value = text;
         input.dispatchEvent(new Event('input'));
@@ -268,14 +331,14 @@ function handToChat(text, examples) {
     document.getElementById('chat-send')?.click();
     return true;
 }
-function buildCtx() {
+function buildCtx(): CoachContext {
     return { hasScene: hasScene(), chatAvailable: chatAvailable(),
              openChatTab, clickDockTab, selectFirstGraphStep, selectFirstGraphNode,
              gotoSliderStep, gotoProofStep, openProofPanel, ensureProofStep, handToChat, delay, speak };
 }
 
 // ---- Step selection ----
-function safeWhen(step, ctx) {
+function safeWhen(step: CoachStep, ctx: CoachContext) {
     if (typeof step.when !== 'function') return true;
     try { return !!step.when(ctx); } catch { return true; }
 }
@@ -298,16 +361,17 @@ function firstPendingIdx() {
 // The step to show after index `i`. In "seek incomplete" mode (resuming with new
 // steps inserted) we skip over already-completed steps and finish once none
 // remain ahead; otherwise we step forward by one (linear re-watch / explicit nav).
-function nextStepIdx(i) {
+function nextStepIdx(i: number) {
     if (S.seekIncomplete) {
+        // `j < S.steps.length` bounds the index, so the element is always present.
         for (let j = i + 1; j < S.steps.length; j++) {
-            if (!S.completed.has(S.steps[j].id)) return j;
+            if (!S.completed.has(S.steps[j]!.id)) return j;
         }
         return -1;
     }
     return i + 1 < S.steps.length ? i + 1 : -1;
 }
-function markComplete(id) {
+function markComplete(id: string) {
     if (!id || S.completed.has(id)) return;
     S.completed.add(id);
     _lsSet(LS.completed, JSON.stringify([...S.completed]));
@@ -317,14 +381,31 @@ function markComplete(id) {
 // The Tour button's yellow signal means "there's something to see": shown while
 // any step is incomplete (incl. newly-added ones), hidden once all are done.
 function updateDot() {
-    const dot = btnEl && btnEl.querySelector('.coach-dot');
+    const dot = btnEl && btnEl.querySelector<HTMLElement>('.coach-dot');
     if (!dot) return;
     dot.style.display = pendingSteps().length ? '' : 'none';
 }
 
 // ---- DOM scaffold (built once) ----
-let layerEl, spotlightEl, cardEl, btnEl;
-let els = {};   // named card sub-elements
+/** The card's named sub-elements. buildLayer() writes the markup they come from. */
+interface CoachEls {
+    head: HTMLElement;
+    title: HTMLElement;
+    counter: HTMLElement;
+    ttsToggle: HTMLElement;
+    close: HTMLElement;
+    body: HTMLElement;
+    examples: HTMLElement;
+    promptRow: HTMLElement;
+    promptInput: HTMLInputElement;
+    promptSend: HTMLElement;
+    foot: HTMLElement;
+    prev: HTMLButtonElement;
+    secondary: HTMLButtonElement;
+    next: HTMLButtonElement;
+}
+let layerEl: HTMLDivElement, spotlightEl: HTMLDivElement, cardEl: HTMLDivElement, btnEl: HTMLButtonElement | undefined;
+let els = {} as CoachEls;   // named card sub-elements
 
 function injectCSS() {
     if (document.getElementById('coach-css')) return;
@@ -398,21 +479,23 @@ function buildLayer() {
     layerEl.appendChild(cardEl);
     document.body.appendChild(layerEl);
 
+    // Every `!` below is guaranteed by the innerHTML literal directly above —
+    // a miss is a programming error and must keep throwing exactly as it did.
     els = {
-        head:      cardEl.querySelector('.coach-card-head'),
-        title:     cardEl.querySelector('.coach-card-title'),
-        counter:   cardEl.querySelector('.coach-card-counter'),
-        ttsToggle: cardEl.querySelector('.coach-tts-toggle'),
-        close:     cardEl.querySelector('.coach-close'),
-        body:      cardEl.querySelector('.coach-card-body'),
-        examples:  cardEl.querySelector('.coach-examples'),
-        promptRow: cardEl.querySelector('.coach-prompt-row'),
-        promptInput: cardEl.querySelector('#coach-prompt-input'),
-        promptSend:  cardEl.querySelector('#coach-prompt-send'),
-        foot:      cardEl.querySelector('.coach-card-foot'),
-        prev:      cardEl.querySelector('.coach-prev'),
-        secondary: cardEl.querySelector('.coach-secondary'),
-        next:      cardEl.querySelector('.coach-next'),
+        head:      cardEl.querySelector<HTMLElement>('.coach-card-head')!,
+        title:     cardEl.querySelector<HTMLElement>('.coach-card-title')!,
+        counter:   cardEl.querySelector<HTMLElement>('.coach-card-counter')!,
+        ttsToggle: cardEl.querySelector<HTMLElement>('.coach-tts-toggle')!,
+        close:     cardEl.querySelector<HTMLElement>('.coach-close')!,
+        body:      cardEl.querySelector<HTMLElement>('.coach-card-body')!,
+        examples:  cardEl.querySelector<HTMLElement>('.coach-examples')!,
+        promptRow: cardEl.querySelector<HTMLElement>('.coach-prompt-row')!,
+        promptInput: cardEl.querySelector<HTMLInputElement>('#coach-prompt-input')!,
+        promptSend:  cardEl.querySelector<HTMLElement>('#coach-prompt-send')!,
+        foot:      cardEl.querySelector<HTMLElement>('.coach-card-foot')!,
+        prev:      cardEl.querySelector<HTMLButtonElement>('.coach-prev')!,
+        secondary: cardEl.querySelector<HTMLButtonElement>('.coach-secondary')!,
+        next:      cardEl.querySelector<HTMLButtonElement>('.coach-next')!,
     };
 
     // close / replay / prompt are stable handlers. Prev/Next/secondary are
@@ -436,9 +519,9 @@ function buildLayer() {
 // Dimensions are cached on pointerdown and writes are batched in rAF so the
 // card tracks the cursor without per-move layout reflows (no lag).
 function setupCardDrag() {
-    let drag = null;       // { dx, dy, w, h }
+    let drag: { dx: number; dy: number; w: number; h: number } | null = null;       // { dx, dy, w, h }
     let raf = 0;
-    let pending = null;    // { left, top }
+    let pending: { left: number; top: number } | null = null;    // { left, top }
     const flush = () => {
         raf = 0;
         if (!pending) return;
@@ -447,7 +530,9 @@ function setupCardDrag() {
         pending = null;
     };
     els.head.addEventListener('pointerdown', (e) => {
-        if (e.target.closest('.coach-icon-btn')) return;   // let close / mute clicks through
+        // A dispatched pointerdown always carries a target; a null one must
+        // still throw here, exactly as it did before.
+        if ((e.target as Element).closest('.coach-icon-btn')) return;   // let close / mute clicks through
         const r = cardEl.getBoundingClientRect();
         drag = { dx: e.clientX - r.left, dy: e.clientY - r.top, w: r.width, h: r.height };
         S.cardMoved = true;
@@ -465,7 +550,7 @@ function setupCardDrag() {
         pending = { left, top };
         if (!raf) raf = requestAnimationFrame(flush);
     });
-    const endDrag = (e) => {
+    const endDrag = (e: PointerEvent) => {
         if (!drag) return;
         drag = null;
         if (raf) { cancelAnimationFrame(raf); raf = 0; }
@@ -478,7 +563,7 @@ function setupCardDrag() {
 }
 
 // ---- Positioning (non-blocking) ----
-function resolveTarget(step) {
+function resolveTarget(step: CoachStep | undefined): Element | null {
     if (!step) return null;
     const t = step.target;
     try {
@@ -487,7 +572,7 @@ function resolveTarget(step) {
         return el || null;
     } catch { return null; }
 }
-function positionSpotlight(el) {
+function positionSpotlight(el: Element | null) {
     if (!el) { spotlightEl.style.display = 'none'; return; }
     const r = el.getBoundingClientRect();
     if (r.width === 0 && r.height === 0) { spotlightEl.style.display = 'none'; return; }
@@ -499,17 +584,17 @@ function positionSpotlight(el) {
 }
 // Mark the spotlighted element so CSS can keep hover-reveal targets (e.g. the
 // ✦ ask buttons, which are opacity:0 until hovered) visible while highlighted.
-function markSpotlit(el) {
+function markSpotlit(el: Element | null) {
     if (S.spotlitEl && S.spotlitEl !== el) S.spotlitEl.classList.remove('coach-spotlit');
     if (el) el.classList.add('coach-spotlit');
     S.spotlitEl = el || null;
 }
-function placeCard(el, position) {
+function placeCard(el: Element | null, position: string) {
     const m = 14;
     cardEl.style.visibility = 'hidden';
     cardEl.style.display = 'block';
     const cw = cardEl.offsetWidth, ch = cardEl.offsetHeight;
-    let left, top;
+    let left: number, top: number;
     const r = el ? el.getBoundingClientRect() : null;
     if (!r || position === 'center' || (r.width === 0 && r.height === 0)) {
         left = (window.innerWidth - cw) / 2;
@@ -542,15 +627,15 @@ function reposition() {
     });
 }
 // Auto-place the card and clear any prior manual drag (called on each new step/offer).
-function autoPlace(el, position) {
+function autoPlace(el: Element | null, position: string) {
     S.cardMoved = false;
     placeCard(el, position);
 }
 
 // ---- Card rendering modes ----
-function show(el, on) { el.classList.toggle('coach-hidden', !on); }
+function show(el: Element, on: boolean) { el.classList.toggle('coach-hidden', !on); }
 
-function renderStep(step, idx) {
+function renderStep(step: CoachStep, idx: number) {
     const total = S.steps.length;
     els.title.textContent = step.title || 'AlgeBench';
     els.counter.textContent = `${idx + 1} / ${total}`;
@@ -586,7 +671,17 @@ function renderStep(step, idx) {
     els.next.onclick = () => gotoNext();
 }
 
-function renderOffer({ title, message, primaryLabel, onPrimary, secondaryLabel, onSecondary }) {
+/** One offer card — welcome / daily hint / finish / chat hand-off. */
+interface CoachOffer {
+    title: string;
+    message: string;
+    primaryLabel: string;
+    onPrimary: () => void;
+    secondaryLabel?: string;
+    onSecondary?: () => void;
+}
+
+function renderOffer({ title, message, primaryLabel, onPrimary, secondaryLabel, onSecondary }: CoachOffer) {
     markSpotlit(null);   // offer cards have no spotlight target
     els.title.textContent = title;
     show(els.counter, false);
@@ -635,7 +730,7 @@ function dismiss() {
     closePlayer();
 }
 
-async function showStep(i) {
+async function showStep(i: number) {
     stopTTS();
     const step = S.steps[i];
     if (!step) { finish(); return; }
@@ -705,7 +800,7 @@ function finish() {
 }
 
 // Prompt engaged from the player → continue in the MAIN chat.
-function engagePrompt(text) {
+function engagePrompt(text: string) {
     stopTTS();
     const step = S.steps[S.idx];
     const ok = handToChat(text, step?.examplePrompts);
@@ -733,21 +828,22 @@ function engagePrompt(text) {
 async function autoPickLesson() {
     try {
         const resp = await fetch('/api/scenes', { cache: 'no-store' });
-        const data = await resp.json();
+        const data: { scenes?: string[] } = await resp.json();
         const names = data.scenes || [];
         if (!names.length) return false;
         // Prefer a lesson that actually has a proof / semantic graph, so the
         // Math-tab steps land on real content. Lightest graph-having scene first.
         const prefer = ['artemis-ii-mission-simulation', 'quantum-states',
                         'atmospheric-entry-physics', 'vector-operations'];
-        const pick = prefer.find((p) => names.includes(p)) || names[0];
+        // `names.length` was just checked, so names[0] is present.
+        const pick = prefer.find((p) => names.includes(p)) || names[0]!;
         log('autoPickLesson →', pick);
         return await loadBuiltinScene(pick);
     } catch (e) { log('autoPickLesson failed:', e); return false; }
 }
 
 // Open the full tour (button / resume / first-time start).
-async function openTour(startId) {
+async function openTour(startId?: string | null) {
     ensureReady();   // may be invoked via the engine before init()
     log('openTour', { startId, hasScene: hasScene() });
     _lsSet(LS.dismissed, '0');   // opening = re-engaging; leave daily-hint mode
@@ -770,7 +866,8 @@ async function openTour(startId) {
         if (i >= 0) { start = i; explicit = true; }
     }
     const firstPending = firstPendingIdx();
-    if ((!explicit || S.completed.has(S.steps[start].id)) && firstPending >= 0) {
+    // `start` is 0 or a findIndex hit, and S.steps is non-empty (checked above).
+    if ((!explicit || S.completed.has(S.steps[start]!.id)) && firstPending >= 0) {
         start = firstPending;
         S.seekIncomplete = true;   // skip completed steps as we advance
     } else {
@@ -786,12 +883,12 @@ function loadState() {
     const ver = parseInt(_lsGet(LS.version, '0'), 10) || 0;
     if (ver < STEP_VERSION) _lsSet(LS.version, String(STEP_VERSION));
     const rawCompleted = _lsJSON(LS.completed, []);   // tolerate corrupted (non-array) state
-    S.completed = new Set(Array.isArray(rawCompleted) ? rawCompleted : []);
+    S.completed = new Set(Array.isArray(rawCompleted) ? rawCompleted as string[] : []);
     S.ttsOn = _lsGet(LS.tts, '1') !== '0';   // default on
     updateTTSIcon();
 }
 
-function showWelcome(firstTime) {
+function showWelcome(firstTime: boolean) {
     openPlayer();
     spotlightEl.style.display = 'none';
     const all = coach.get();
@@ -824,7 +921,7 @@ function showWelcome(firstTime) {
     autoPlace(null, 'center');
 }
 
-function showDailyHint(step) {
+function showDailyHint(step: CoachStep) {
     openPlayer();
     spotlightEl.style.display = 'none';
     renderOffer({
@@ -866,8 +963,9 @@ function decide() {
         // Daily-hint mode: one nudge per calendar day until all steps are done.
         if (_lsGet(LS.lastHintDate) !== today()) {
             _lsSet(LS.lastHintDate, today());
-            log('→ daily hint:', pending[0].id);
-            showDailyHint(pending[0]);
+            // The `pending.length === 0` return above guarantees pending[0].
+            log('→ daily hint:', pending[0]!.id);
+            showDailyHint(pending[0]!);
         } else {
             log('→ dismissed + already hinted today: stay quiet');
         }
@@ -883,13 +981,13 @@ function decide() {
 
 // Resolve a user-supplied step reference (id, fuzzy title, or 1-based index)
 // to a concrete step id. Returns undefined if nothing matches.
-function resolveStepId(step) {
+function resolveStepId(step: unknown): string | undefined {
     if (step == null || step === '') return undefined;
     const all = coach.get();
     const n = Number(step);
     if (Number.isFinite(n) && String(step).trim() !== '' && !/[a-z]/i.test(String(step))) {
         const i = Math.max(0, Math.min(all.length - 1, Math.round(n) - 1));   // 1-based
-        return all[i] && all[i].id;
+        return all[i] && all[i]!.id;
     }
     const key = String(step).toLowerCase().trim();
     let s = all.find((x) => x.id.toLowerCase() === key);
@@ -898,11 +996,12 @@ function resolveStepId(step) {
     return s && s.id;
 }
 
-function coachStatus() {
+function coachStatus(): CoachStatus {
     const all = coach.get();
     return {
         active: S.active,
-        currentStepId: S.active && S.steps[S.idx] ? S.steps[S.idx].id : null,
+        // The same ternary already proved S.steps[S.idx] is present.
+        currentStepId: S.active && S.steps[S.idx] ? S.steps[S.idx]!.id : null,
         currentStepNumber: S.active ? S.idx + 1 : null,
         total: all.length,
         completed: [...S.completed],
@@ -914,7 +1013,7 @@ function coachStatus() {
 }
 
 // Single entry point for the chat tool. Returns a small result object.
-function coachControl(action, opts = {}) {
+function coachControl(action: string, opts: { step?: unknown } = {}): CoachControlResult {
     ensureReady();   // engine may be called (via the chat tool) before init() runs
     action = String(action || '').toLowerCase().trim();
     const step = opts.step;
@@ -941,7 +1040,9 @@ function coachControl(action, opts = {}) {
             dismiss();
             return { ok: true, action, status: coachStatus() };
         case 'reset': case 'restart': {
-            window.AlgeBenchCoach.engine.reset();
+            // `!`: registry.ts assigns window.AlgeBenchCoach at import time, and
+            // the block at the bottom of this module attaches .engine.
+            window.AlgeBenchCoach!.engine!.reset();
             _lsSet(LS.dismissed, '0');
             openTour();   // start over from the first step
             return { ok: true, action, status: coachStatus() };
@@ -983,13 +1084,14 @@ if (document.readyState === 'loading') {
 
 // Public control surface — used by the chat `control_coach` tool and handy for
 // manual driving from the console.
-window.AlgeBenchCoach.engine = {
+// `!`: registry.ts assigned window.AlgeBenchCoach at import time (top of file).
+window.AlgeBenchCoach!.engine = {
     openTour,
     dismiss,
     control: coachControl,     // control_coach tool entry point
     status: coachStatus,
     state: () => ({ ...S, completed: [...S.completed] }),
-    setDebug(on) { DEBUG = !!on; _lsSet(LS.debug, on ? '1' : '0'); log('debug logging', on ? 'enabled' : 'disabled'); },
+    setDebug(on: unknown) { DEBUG = !!on; _lsSet(LS.debug, on ? '1' : '0'); log('debug logging', on ? 'enabled' : 'disabled'); },
     reset() {
         [LS.completed, LS.position, LS.dismissed, LS.lastHintDate, LS.firstVisitDone, LS.version]
             .forEach((k) => { try { localStorage.removeItem(k); } catch {} });

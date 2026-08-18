@@ -22288,7 +22288,7 @@ window.sendWelcomeMessage = sendWelcomeMessage;
 window.renderMemoryPopup = renderMemoryPopup;
 window.updateMemoryStatus = updateMemoryStatus;
 //#endregion
-//#region src/coach/registry.js
+//#region src/coach/registry.ts
 var coach = window.AlgeBenchCoach = window.AlgeBenchCoach || {
 	_steps: [],
 	register(s) {
@@ -22300,7 +22300,7 @@ var coach = window.AlgeBenchCoach = window.AlgeBenchCoach || {
 	}
 };
 //#endregion
-//#region src/coach/steps/core.js
+//#region src/coach/steps/core.ts
 coach.register([
 	{
 		id: "scenes-nav",
@@ -22578,7 +22578,7 @@ coach.register([
 	}
 ]);
 //#endregion
-//#region src/coach/coach.js
+//#region src/coach/coach.ts
 var STEP_VERSION = 1;
 var LS = {
 	version: "algebench.coach.version",

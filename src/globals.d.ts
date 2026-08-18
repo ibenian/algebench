@@ -399,13 +399,12 @@ interface Window {
   _algebenchIsShaftEntry?: (entry: unknown) => boolean;
   /** src/json-browser.ts — open the JSON browser focused on a spec path. */
   algebenchOpenJsonBrowserAtPath?: (path: string) => void;
-  /** src/coach/registry.js — the guided-tour registry and engine. */
-  AlgeBenchCoach?: {
-    engine?: {
-      status?: () => unknown;
-      control?: (action: unknown, opts: { step?: unknown }) => void;
-    };
-  };
+  /**
+   * src/coach/registry.ts — the guided-tour registry, created at import time by
+   * registry.ts; `.engine` is attached later by src/coach/coach.ts. Optional
+   * because only index.html loads the coach module.
+   */
+  AlgeBenchCoach?: import('/coach/registry.js').CoachRegistry;
 
   // ---- Published BY src/chat.ts ----
   // chat.js used to be a classic script, so every top-level `function` became
@@ -674,6 +673,8 @@ declare var lessonSpec: AlgeBenchLessonSpec | null;
 declare var currentSpec: AlgeBenchSceneSpec | null;
 declare var currentSceneIndex: number;
 declare var currentStepIndex: number;
+/** Current proof step (-1 = the goal overview). Read by src/coach/coach.ts. */
+declare var proofStepIndex: number;
 declare var currentProjection: string;
 declare var sceneSliders: Record<string, AlgeBenchSliderState>;
 declare var elementRegistry: Record<string, { hidden?: boolean }>;
