@@ -143,13 +143,22 @@ When you need to test the UI in a browser (e.g. debugging TTS, buttons, styles),
 
 ```
 algebench/         Launcher script
-server.py          Python HTTP server + WebSocket handler
-agent_tools.py     Tool definitions for the in-app AI agent
+backend/
+  server.py        Python HTTP server + WebSocket handler
+  agent_tools.py   Tool definitions for the in-app AI agent
 scenes/            Lesson JSON files
-static/
-  app.js           3D scene rendering, sliders, camera
-  chat.js          AI chat panel, TTS, voice picker
+schemas/           JSON Schemas — the source of truth for src/types/
+src/               Frontend SOURCE (TypeScript, handwritten)
+  main.ts          Entry point — wires all modules, exposes globals
+  chat.ts          AI chat panel, TTS, voice picker
+  graph-panel/     Semantic-graph renderers, themes, layout engines
   proof-animation/ Realtime, Manim-style derivation morph engine (FLIP)
+  objects/         Element renderers
+  types/           GENERATED from schemas/ — never hand-edit
+  *.test.ts        Node test suite (see Frontend TypeScript below)
+static/
+  dist/            BUILD OUTPUT from src/ — committed, do not hand-edit
+  domains/         Domain library plugins (JavaScript by design — lesson content)
   index.html
   style.css
 scripts/
@@ -158,6 +167,58 @@ scripts/
 tests/proof_animation/proof_animations.json   Curated proof-animation test suite (trajectories)
 docs/              Architecture, sandbox model, feature ideas
 ```
+
+## Frontend TypeScript
+
+The frontend is TypeScript. **Edit `src/`; never edit `static/dist/`** — that is
+build output and gets overwritten.
+
+**Two ways to run, and TypeScript is optional for both.** The committed bundle
+under `static/dist/` is what the Python server serves, so `./algebench` needs no
+Node toolchain. Vite is a convenience for frontend work, never a runtime or
+deploy dependency:
+
+```bash
+./algebench scenes/foo.json     # Python server, serves the committed bundle
+npm run dev                     # optional: Vite dev server with HMR
+npm run build                   # rebuild static/dist/ — COMMIT the result
+npm run typecheck               # both programs (see below)
+npm test                        # Node test suite
+```
+
+**Rebuild and commit `static/dist/` whenever you change `src/`.** CI has a
+bundle-sync check that rebuilds and fails if the committed output differs.
+
+### Conventions
+
+- **Import specifiers are server-root-absolute and keep a `.js` extension** —
+  `import { state } from '/state.js'`, even though the file is `state.ts`. That
+  is the path the Python server serves modules from; `tsconfig.json` `paths` and
+  `vite.config.mts` both map it onto `src/`, and `scripts/node-test-resolver.mjs`
+  does the same for the test suite. **Never rewrite these to `.ts`.**
+- **`src/types/*.d.ts` is generated** from `schemas/*.json` by
+  `scripts/generate_ts_types.mjs`. Before hand-writing an interface, check
+  whether a generated one already exists — and prefer exporting a type from the
+  module that owns it over restating its shape somewhere else.
+- **Crash semantics are preserved deliberately.** Use `!` or an explicit cast,
+  not `?.`, when a missing element should still throw as it did before; each `!`
+  carries a comment naming the guard or invariant that justifies it.
+- **`static/domains/` stays JavaScript on purpose.** Those are user-authored
+  lesson content loaded at runtime, not application code, and they sit outside
+  `tsconfig.json`'s `include`.
+
+### Two tsconfigs
+
+`tsconfig.json` is the **browser** program (`types: []`); `tsconfig.test.json` is
+the **Node** program for `src/*.test.ts` (`types: ["node"]`). `npm run typecheck`
+runs both.
+
+The split is load-bearing. Putting `types: ["node"]` in a single shared config
+pulls Node's globals into browser modules and redefines `setTimeout`'s return
+type (`Timeout` vs `number`) — which broke 12 correct call sites when tried.
+Timer handles are therefore annotated `ReturnType<typeof setTimeout>`, which is
+right under both libraries. Scoping node types with a per-file
+`/// <reference types="node" />` does **not** work: those register program-wide.
 
 ## Key Conventions
 
