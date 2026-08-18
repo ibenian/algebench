@@ -1,11 +1,11 @@
 // ============================================================
-// coach/registry.js — the Coach step registry (singleton).
+// coach/registry.ts — the Coach step registry (singleton).
 //
-// Mirrors the window.AlgeBenchDomains pattern in main.js: a tiny
+// Mirrors the window.AlgeBenchDomains pattern in main.ts: a tiny
 // self-registering collection that decouples step *definitions*
-// (steps/*.js modules) from the *engine* (coach.js). Features push
+// (steps/*.ts modules) from the *engine* (coach.ts). Features push
 // steps; the engine reads them. Adding a new feature's hint is a new
-// self-registering module + one import line in steps/index.js — no
+// self-registering module + one import line in steps/index.ts — no
 // engine, app, or index.html changes.
 // ============================================================
 
@@ -31,7 +31,7 @@ export interface CoachContext {
     speak: (text: string) => void;
 }
 
-/** One tour stop, as registered by a steps/*.js module. */
+/** One tour stop, as registered by a steps/*.ts module. */
 export interface CoachStep {
     /** STABLE id — drives completion tracking; never rename/reuse. */
     id: string;

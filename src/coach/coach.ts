@@ -1,16 +1,16 @@
 // ============================================================
-// coach/coach.js — Quick-intro "Coach" engine.
+// coach/coach.ts — Quick-intro "Coach" engine.
 //
 // One engine powers BOTH the guided tour and the daily-hint system.
 // It reads steps from the registry (steps self-register via
-// steps/*.js), tracks completion by stable step id in localStorage,
+// steps/*.ts), tracks completion by stable step id in localStorage,
 // renders a non-blocking spotlight + card, narrates via the existing
 // TTS API, and hands the user off into the main chat.
 //
 // Boot: a single <script type="module" src="/coach/coach.js"> tag.
 // This module imports the registry, then the step manifest (which
 // registers all steps), then self-initializes on DOMContentLoaded.
-// No edits to main.js / chat.js are required.
+// No edits to main.ts / chat.ts are required.
 // ============================================================
 
 import { coach, type CoachContext, type CoachStep } from './registry.js';

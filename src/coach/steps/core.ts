@@ -1,9 +1,9 @@
 // ============================================================
-// coach/steps/core.js — the built-in tour stops.
+// coach/steps/core.ts — the built-in tour stops.
 //
 // Self-registers via the registry. Each step has a STABLE `id`
 // (drives completion tracking — never rename/reuse). Adding a new
-// feature's hint later is a sibling file + one line in index.js;
+// feature's hint later is a sibling file + one line in index.ts;
 // this file never needs to change for that.
 // ============================================================
 
