@@ -7,7 +7,11 @@
     "target": "ES2020",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    // ES2022 for the library surface (not the emit target — tsc never emits).
+    // The test suite uses Array.prototype.at, which is ES2022; every runtime
+    // this code reaches has it (Node 22 here, and Vite's default browser
+    // target is well past it). `target` stays ES2020.
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
 
     // Modules import each other by server-root-absolute URL (`from
     // '/expr.js'`) — the paths the Python server used to serve them from.
@@ -31,7 +35,17 @@
     "noUncheckedIndexedAccess": true,
 
     "skipLibCheck": true,
-    "types": []
+    // `node` is here for the test suite: src/*.test.ts import node:test and
+    // node:assert/strict, which need @types/node in the program.
+    //
+    // This DOES put Node's globals (process, Buffer, __dirname) in scope for
+    // application code too, which is a real if mild loosening — app modules
+    // run in the browser and have no business touching them. It is not
+    // avoidable per-file: a triple-slash `/// <reference types="node" />`
+    // registers program-wide, not file-locally (measured, not assumed), so
+    // scoping it to the tests would need a second tsconfig for a payoff that
+    // does not justify the machinery.
+    "types": ["node"]
   },
   "include": ["src"]
 }
