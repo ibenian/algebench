@@ -68,6 +68,14 @@ export interface EnrichContext {
     stepMath?: string;
     stepJustification?: string;
     stepExplanation?: string;
+    /**
+     * The proof's subject domain, added by src/graph-view.ts (not by
+     * buildEnrichContext) before the context is handed to the Function
+     * Analysis expert. It is the signal that decides whether e.g. negative
+     * time is exploration or nonsense — something the CAS's purely
+     * mathematical domain can never know. See `Proof.domain`.
+     */
+    mathDomain?: string;
 }
 
 /** A `type: 'given'` proof step, reduced to what the deriver needs. */

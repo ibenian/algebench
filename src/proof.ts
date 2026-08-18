@@ -8,6 +8,7 @@ import { FIRST_ICON, PREV_ICON, NEXT_ICON, LAST_ICON } from '/icons.js';
 import { renderKaTeX, renderMarkdown, makeAiAskButton, makeDeriveButton, openChatPanel, stripHtmlMacros } from '/labels.js';
 import { SgProofManager } from '/proof-animation/sg-proof.js';
 import { buildProofStepDerivePayload, describeDeriveStart } from '/proof-animation/derive-payload.js';
+import type { SemanticGraph } from '/types/semantic-graph.js';
 
 /**
  * A highlight region on a proof step's math.
@@ -36,6 +37,27 @@ export interface ProofStep {
     highlights?: Record<string, ProofHighlight>;
     sceneStep?: number | string;
     prompt?: string;
+    /**
+     * Derived semantic graph for this step, or the diagnostic explaining why
+     * derivation failed. Read by src/graph-view.ts.
+     *
+     * Both members are optional here, where schemas/lesson.schema.json makes
+     * them a `oneOf` (exactly one of graph/error). That is the same deliberate
+     * loosening described in the file header: graph-view probes `sg.graph` and
+     * `sg.error` independently on the same value, so a discriminated union
+     * would force narrowing that the runtime code does not perform.
+     */
+    semanticGraph?: {
+        graph?: SemanticGraph;
+        error?: { reason?: string; message?: string; math?: string };
+    };
+    /**
+     * Re-entrancy marker stamped by src/graph-view.ts while an on-demand
+     * derivation for this step is in flight, and `delete`d when it settles.
+     * Runtime-only — deliberately absent from the schema, since it is never
+     * authored or persisted.
+     */
+    __sgDeriving?: boolean;
 }
 
 /** A proof, as the panel renders it. */
@@ -47,6 +69,12 @@ export interface Proof {
     techniqueHint?: string;
     sceneStep?: number | string;
     prompt?: string;
+    /**
+     * Subject domain ("physics", "algebra", …) — see the `domain` property on
+     * schemas/lesson.schema.json's proof def. Set on the standalone proofs
+     * under proofs/domains/; absent on proofs embedded in a scene.
+     */
+    domain?: string;
     steps?: ProofStep[];
 }
 
@@ -83,6 +111,12 @@ export interface ProofEntry {
     sceneIndex?: number;
     stepIndex?: number;
     proof: Proof;
+    /**
+     * Stable per-entry id, stamped by src/graph-view.ts's rebuildProofTree()
+     * and read back off the tree rows' `data-proof-id`. Runtime-only — it is
+     * derived from the entry's position, never authored or persisted.
+     */
+    _entryId?: string;
 }
 
 /**
@@ -90,9 +124,16 @@ export interface ProofEntry {
  * a bare scene (no `scenes`, but `elements`) is treated as a one-scene lesson,
  * which is why both spellings appear.
  */
-interface ProofLessonSpec {
+export interface ProofLessonSpec {
     proof?: Proof | Proof[] | null;
     elements?: unknown;
+    /**
+     * Root-level steps — present only on a bare scene, which collectAllProofs
+     * models by aliasing the spec itself into the `scenes` slot. Declared here
+     * because src/graph-view.ts walks that same single-scene shape directly
+     * when building the JSON path to a step's semanticGraph.
+     */
+    steps?: { proof?: Proof | Proof[] | null }[];
     scenes?: { proof?: Proof | Proof[] | null; steps?: { proof?: Proof | Proof[] | null }[] }[];
 }
 

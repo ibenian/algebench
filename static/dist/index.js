@@ -18954,7 +18954,7 @@ var FunctionAnalysisManager = class {
 	}
 };
 //#endregion
-//#region src/graph-view.js
+//#region src/graph-view.ts
 var _currentGraphPanel = null;
 var _currentSemanticKey = null;
 var _activeStepForPanel = null;
@@ -19107,24 +19107,24 @@ var _lsSet$1 = (key, value) => {
 var _currentTheme = _lsGet$1(LS_KEYS.theme, "linalg-dark");
 var _appMode = () => document.documentElement.dataset.theme === "light" ? "light" : "dark";
 var _currentMode = _appMode();
-var DIRECTION_TO_MERMAID = {
+var DIRECTION_TO_MERMAID = Object.assign(Object.create(null), {
 	"top-down": "BT",
 	"left-right": "RL",
 	"right-left": "LR",
 	"bottom-up": "TB"
-};
-var LEGACY_DIRECTION_MAP = {
+});
+var LEGACY_DIRECTION_MAP = Object.assign(Object.create(null), {
 	TB: "bottom-up",
 	BT: "top-down",
 	LR: "right-left",
 	RL: "left-right"
-};
+});
 {
 	const stored = _lsGet$1(LS_KEYS.direction, null);
 	if (stored && LEGACY_DIRECTION_MAP[stored]) _lsSet$1(LS_KEYS.direction, LEGACY_DIRECTION_MAP[stored]);
 }
 var _currentDirection = _lsGet$1(LS_KEYS.direction, "left-right");
-var LABEL_PRESETS = {
+var LABEL_PRESETS = Object.assign(Object.create(null), {
 	minimal: null,
 	description: [
 		"emoji",
@@ -19140,7 +19140,7 @@ var LABEL_PRESETS = {
 		"quantity",
 		"dimension"
 	]
-};
+});
 var _currentLabels = _lsGet$1(LS_KEYS.labels, "description");
 if (!(_currentLabels in LABEL_PRESETS)) _currentLabels = "description";
 var _currentRenderer = _lsGet$1(LS_KEYS.renderer, "d3");
@@ -19531,9 +19531,9 @@ function rebuildProofTree() {
 				if (hasError) cls += " has-error";
 				const stepEl = document.createElement("div");
 				stepEl.className = cls;
-				stepEl.dataset.sceneIdx = entry.sceneIndex != null ? entry.sceneIndex : "";
+				stepEl.dataset.sceneIdx = entry.sceneIndex != null ? String(entry.sceneIndex) : "";
 				stepEl.dataset.proofId = entry._entryId;
-				stepEl.dataset.stepIdx = sIdx;
+				stepEl.dataset.stepIdx = String(sIdx);
 				const idxEl = document.createElement("span");
 				idxEl.className = "gp-tree-step-idx";
 				idxEl.textContent = String(sIdx + 1);
@@ -20195,7 +20195,7 @@ function _showD3InfoPanel(nodeId, nodeData, graph) {
 		k.textContent = flabel;
 		const v = document.createElement("span");
 		v.className = "gp-val";
-		v.textContent = fullNode[fkey];
+		v.textContent = String(fullNode[fkey]);
 		row.append(k, v);
 		fieldsEl.appendChild(row);
 	}
@@ -20293,7 +20293,7 @@ function _showD3MultiInfoPanel(selectedIds, graph) {
 			k.textContent = flabel;
 			const v = document.createElement("span");
 			v.className = "gp-val";
-			v.textContent = node[fkey];
+			v.textContent = String(node[fkey]);
 			row.append(k, v);
 			fieldsEl.appendChild(row);
 		}
@@ -21007,7 +21007,8 @@ function init$1() {
 	window.addEventListener("algebench:proofload", onProofLoad);
 	window.addEventListener("algebench:graphselectionchange", onGraphSelectionChange);
 	document.addEventListener("keydown", (e) => {
-		if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.tagName === "SELECT") return;
+		const target = e.target;
+		if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT") return;
 		if (e.key === "d" && !e.ctrlKey && !e.metaKey && !e.altKey) {
 			if (isGraphModeActive()) toggleDockMode();
 		}

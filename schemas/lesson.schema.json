@@ -1233,6 +1233,10 @@
           "type": "string",
           "description": "Tooltip text explaining why this technique was chosen. Shown on hover over the technique badge."
         },
+        "domain": {
+          "type": "string",
+          "description": "Subject domain of the proof (\"physics\", \"algebra\", \"calculus\", \"quantum\", \"statistics\", \u2026). Free-form, not enumerated. Read by the Function Analysis page as `mathDomain` context: it is the signal that decides whether e.g. negative time is exploration or nonsense, which the CAS's purely mathematical domain can never know. Set on standalone proofs under proofs/domains/."
+        },
         "sceneStep": {
           "oneOf": [
             { "type": "integer" },

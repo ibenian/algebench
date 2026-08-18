@@ -115,14 +115,17 @@ interface AlgeBenchDomainRegistry {
 }
 
 /**
- * The semantic-graph controller (src/graph-view.js) publishes itself on
+ * The semantic-graph controller (src/graph-view.ts) publishes itself on
  * `window.__algebenchGraph` so other modules can drive the graph without
- * importing it. Only the members converted modules actually touch are declared;
- * every call site guards with `typeof … === 'function'`, so a partial view is
- * the honest one until graph-view itself is converted.
+ * importing it. Now that graph-view is TypeScript, its publish site is checked
+ * against this interface, so the two cannot drift. Members stay optional
+ * because the module is loaded lazily — every call site still guards with
+ * `typeof … === 'function'`.
  */
 interface AlgeBenchGraphController {
-  openFunctionAnalysis?(opts: { id?: string | null; latex?: string | null }): void;
+  /** Returns true when a page was opened or re-focused, false when there was
+   *  nothing to show (no `latex`, and no artifact matching `id`). */
+  openFunctionAnalysis?(opts?: { id?: string | null; latex?: string | null }): boolean;
   /**
    * Leave the full-screen Math view and show the scene dock's Scenes tab.
    * src/scene-loader.ts prefers this over toggling the tab classes itself, and
@@ -304,6 +307,21 @@ interface Window {
    */
   __animators: import('/proof-animation/proof-animation.js').ProofAnimator[];
   __algebenchGraph?: AlgeBenchGraphController;
+  /**
+   * Mermaid, injected as a CDN <script> by src/graph-view.ts's loadMermaidLib()
+   * on first use — index.html deliberately does NOT include it, so it is absent
+   * until the Math tab is first opened. Every call site feature-detects with
+   * `typeof window.mermaid === 'undefined'`, which is why this is optional.
+   */
+  mermaid?: MermaidLib;
+  /** src/graph-view.ts — debugging handle on the semantic-graph controller. */
+  graphView?: AlgeBenchGraphViewDebug;
+  /**
+   * src/graph-view.ts — switch to the Math (graph) view, resolving once the
+   * graph has rendered. Separate from `__algebenchGraph.showGraphView` because
+   * this one is also reachable from the inline pages.
+   */
+  algebenchEnsureGraphVisible?: () => Promise<boolean>;
 
   // ---- gemini-live-tools classic scripts (index.html only) ----
   GeminiVoiceCharacterSelector?: GeminiVoiceCharacterSelectorLib;
@@ -334,16 +352,23 @@ interface Window {
   algebenchIcons?: { ai: string; user: string };
   /** src/graph-view.js — current semantic-graph dock state. */
   algebenchGetGraphPanelState?: () => AlgeBenchGraphPanelState | null;
-  /** src/graph-view.js — leave the full-screen Math view if the user is on it. */
-  algebenchEnsureSceneVisible?: () => void;
+  /** src/graph-view.ts — leave the full-screen Math view if the user is on it.
+   *  Returns true when it actually switched tabs. */
+  algebenchEnsureSceneVisible?: () => boolean;
   /** src/graph-view.js — start a client-side derivation on the current graph. */
-  algebenchDeriveProof?: (args: Record<string, unknown>) => unknown;
+  algebenchDeriveProof?: (args: {
+    target_latex?: string;
+    start_latex?: string;
+    prompt?: string;
+  }) => Promise<boolean>;
   /**
    * src/graph-view.js — dock a proof-step derivation into the semantic-graph
    * canvas. Resolves false when the step has no graph to dock onto, which is
    * how src/proof.ts knows to fall back to an in-panel box.
    */
-  algebenchDeriveProofPayload?: (payload: unknown) => Promise<boolean> | boolean;
+  algebenchDeriveProofPayload?: (
+    payload: import('/proof-animation/derive-payload.js').DerivePayload,
+  ) => Promise<boolean>;
   /** src/json-browser.js — re-read the prompt-context popup. */
   algebenchRefreshPromptContext?: (reason?: string) => void;
   // ---- Circular-import shims, called by src/sliders.ts ----
@@ -494,11 +519,96 @@ interface AlgeBenchCameraView {
   up?: number[];
 }
 
-/** Semantic-graph dock state (src/graph-view.js `getGraphPanelState`). */
-interface AlgeBenchGraphPanelState {
-  open?: boolean;
-  [key: string]: unknown;
+/**
+ * Mermaid 11.4.0, loaded from CDN (see `Window.mermaid`). Deliberately minimal:
+ * only the two methods src/graph-view.ts drives are declared. `initialize`
+ * takes an open config bag rather than an enumerated one — Mermaid validates it
+ * at runtime, and a half-accurate config type would reject valid settings while
+ * proving nothing (same reasoning as src/mathbox.d.ts).
+ */
+interface MermaidLib {
+  initialize(config: Record<string, unknown>): void;
+  /** Renders `code` to SVG under a fresh element id. */
+  render(id: string, code: string): Promise<{ svg: string }>;
 }
+
+/**
+ * `window.graphView` — the debugging handle src/graph-view.ts publishes
+ * ("Expose for debugging" at its foot). Nothing in the app calls through it;
+ * it exists so the console can drive the dock.
+ */
+interface AlgeBenchGraphViewDebug {
+  setDockTab(name: string): Promise<void> | void;
+  rebuildProofTree(): void;
+  renderCurrentStepGraph(force?: boolean): Promise<void>;
+  toggleDockMode(forceDocked?: boolean, persist?: boolean): void;
+}
+
+/**
+ * Semantic-graph dock state (src/graph-view.ts `getGraphPanelState`) — the
+ * snapshot src/chat.ts folds into the tutor's prompt context (issue #124).
+ *
+ * This replaces an `{ open?: boolean; [key: string]: unknown }` stub. Now that
+ * graph-view is TypeScript its return value is checked against this interface,
+ * so the two cannot drift. The optional members are genuinely conditional: the
+ * node/edge blocks appear only when the step has a graph, `parseError` only
+ * when derivation failed, and the selection pair only when something is
+ * selected.
+ */
+interface AlgeBenchGraphPanelState {
+  /** True when the user is on the Math dock (even with no graph to show). */
+  open: boolean | null;
+  /** True only in the split layout AND on the Math dock. */
+  docked: boolean | null;
+  hasGraph: boolean;
+  source: string | null;
+  /** 1-based, for display. Null when no proof step is active. */
+  stepNumber: number | null;
+  theme: string;
+  labelMode: string;
+  direction: string;
+  /** Percent (100 = default view), read from whichever renderer is live. */
+  zoom: number;
+  nodeCount: number;
+  edgeCount: number;
+  /** Present only when the step carries a `semanticGraph.error`. */
+  parseError?: string;
+  /** Compacted nodes/edges, capped at 60/80 to keep the prompt small. */
+  nodes?: AlgeBenchGraphPanelNode[];
+  edges?: { from: string; to: string; semantic?: string }[];
+  /** How many nodes/edges the caps dropped, when they did. */
+  nodesTruncated?: number;
+  edgesTruncated?: number;
+  /** The active (last-selected) node — same object as selectedNodes' tail. */
+  selectedNode?: AlgeBenchGraphPanelSelectedNode;
+  /** Full ordered selection, active node last. */
+  selectedNodes?: AlgeBenchGraphPanelSelectedNode[];
+}
+
+/** One compacted node in AlgeBenchGraphPanelState.nodes. */
+interface AlgeBenchGraphPanelNode {
+  id: string;
+  type?: string;
+  op?: string;
+  label?: string;
+  role?: string;
+  /** Truncated to 120 chars with an ellipsis. */
+  description?: string;
+}
+
+/**
+ * A selected node: the full graph node plus its immediate neighbours.
+ *
+ * `subexpr` is Omit-ed and redeclared rather than intersected: the generated
+ * Node types it `string | undefined`, and intersecting that with `string | null`
+ * collapses to plain `string` — which would hide the explicit `|| null`
+ * normalisation _buildGraphNodePayload does.
+ */
+type AlgeBenchGraphPanelSelectedNode =
+  Omit<import('/types/semantic-graph.js').Node, 'subexpr'> & {
+    subexpr: string | null;
+    neighbors: { incoming: string[]; outgoing: string[] };
+  };
 
 /** One stored agent-memory entry (`GET /api/memory`). */
 interface AlgeBenchMemoryEntry {
@@ -531,6 +641,12 @@ interface AlgeBenchChatToolArgs {
   zoom?: number;
   values?: Record<string, unknown>;
   prompts?: string[];
+  // ---- `derive_proof_animation` (handled in src/chat.ts) — forwarded whole to
+  // window.algebenchDeriveProof, so its three fields are named here rather than
+  // left to the index signature.
+  target_latex?: string;
+  start_latex?: string;
+  prompt?: string;
   id?: string;
   content?: string;
   clear?: boolean;

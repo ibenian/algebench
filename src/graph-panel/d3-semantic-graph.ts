@@ -135,8 +135,10 @@ type OperatorKind =
     | 'arithmetic' | 'function' | 'comparison'
     | 'logical' | 'set' | 'aggregate' | 'quantum';
 
-/** One entry of a theme's `edgeStyles`, or its single `edgeStyle` default. */
-interface GraphEdgeStyle {
+/** One entry of a theme's `edgeStyles`, or its single `edgeStyle` default.
+ *  Exported so src/graph-view.ts's legend renderer describes the same shape
+ *  rather than keeping a second copy of it. */
+export interface GraphEdgeStyle {
     stroke?: string;
     strokeWidth?: number;
     arrow?: string;

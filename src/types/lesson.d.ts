@@ -268,6 +268,10 @@ export interface Proof {
    */
   techniqueHint?: string;
   /**
+   * Subject domain of the proof ("physics", "algebra", "calculus", "quantum", "statistics", …). Free-form, not enumerated. Read by the Function Analysis page as `mathDomain` context: it is the signal that decides whether e.g. negative time is exploration or nonsense, which the CAS's purely mathematical domain can never know. Set on standalone proofs under proofs/domains/.
+   */
+  domain?: string;
+  /**
    * Scene step to navigate to when viewing the proof goal. Integer for step index, or 'sceneIdx:stepIdx' string. Enables bidirectional sync between proof and scene navigation.
    */
   sceneStep?: number | string;
