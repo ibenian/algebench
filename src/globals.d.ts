@@ -701,3 +701,4 @@ declare function dataCameraToWorld(v: number[]): number[];
 declare function worldCameraToData(v: number[]): number[];
 declare function renderMarkdown(text: string): string;
 declare function renderKaTeX(text: string, displayMode?: boolean): string;
+

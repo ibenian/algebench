@@ -1,5 +1,5 @@
 // ============================================================
-// fa-page.js — Function Analysis page.
+// fa-page.ts — Function Analysis page.
 //
 // A full-page, expert-generated apparatus shown IN PLACE of the semantic
 // graph view (inside #graph-viewport). Triggered from a semantic-graph
@@ -21,6 +21,307 @@ import { compileExpr, evalExpr } from '/expr.js';
 import { AI_ICON, BRACES_ICON, TRASH_ICON } from '/icons.js';
 import { makeAiAskButton, renderKaTeX } from '/labels.js';
 import { loadChartJs } from '/graph-panel/sg-chart.js';
+import type { CompiledExpr, ExprScope } from '/expr.js';
+import type { Node as GraphNode } from '/types/semantic-graph.js';
+import type { ProofStep } from '/proof.js';
+
+/* ------------------------------------------------------------------ */
+/* Wire shapes                                                        */
+/*                                                                    */
+/* The `expression_analysis` expert has no JSON Schema (schemas/ only  */
+/* covers lessons and semantic graphs), so the payload it returns is   */
+/* described here, mirroring backend/experts/{modules,handlers}/       */
+/* expression_analysis. Members are optional wherever this module      */
+/* probes for them — the defensive reads below are the contract.       */
+/* ------------------------------------------------------------------ */
+
+/** One symbolic location or value: LaTeX plus a numeric approximation. */
+export interface FaPoint {
+    latex?: string;
+    approx?: number;
+}
+
+/** A CAS extremum: where it is, what the curve reads there, and its kind. */
+export interface FaExtremum {
+    location: FaPoint;
+    value?: FaPoint;
+    kind?: string;
+}
+
+/** A CAS singularity, flagged when it is a vertical asymptote. */
+export interface FaSingularity {
+    location: FaPoint;
+    vertical_asymptote?: boolean;
+}
+
+/** One end of the real line, as the limits-at-infinity pass reports it. */
+export interface FaLimitDirection {
+    direction?: string;
+    /** Infinite limits arrive as bare LaTeX, finite ones as points. */
+    limit?: string | FaPoint;
+    horizontal_asymptote?: boolean;
+    oblique_asymptote?: { slope?: FaPoint; intercept?: FaPoint };
+}
+
+/**
+ * One entry in the CAS feature report. `status: 'unresolved'` is the guard's
+ * timeout marker — the kind carries no points but is NOT known to be empty.
+ */
+export interface FaFeature {
+    status?: string;
+    /** A solution SET the CAS could not enumerate ($\pi n$, $\mathbb{R}$). */
+    family?: string;
+    points?: unknown[];
+    directions?: FaLimitDirection[];
+    latex?: string;
+}
+
+/**
+ * The report, keyed by feature kind. `parity` and `domain` are plain strings,
+ * which is why the index signature is `unknown` rather than `FaFeature`.
+ */
+export interface FaFeatures {
+    [kind: string]: unknown;
+    zeros?: FaFeature;
+    extrema?: FaFeature;
+    singularities?: FaFeature;
+    inflections?: FaFeature;
+    limits_at_infinity?: FaFeature;
+    periodicity?: FaFeature;
+    parity?: string;
+    domain?: string;
+}
+
+/** A SymPy-generated mathjs script and the symbols it needs. */
+export interface FaScript {
+    script?: string;
+    variables?: string[];
+    /** The LaTeX it was compiled from — added for annotation positions. */
+    latex?: string;
+}
+
+/** The CAS half of the report: what the expression IS. */
+export interface FaCharacteristics {
+    error?: string;
+    expression?: string;
+    dependentLatex?: string;
+    variable?: string;
+    variables?: string[];
+    variables_latex?: Record<string, string>;
+    chartScript?: FaScript;
+    features?: FaFeatures;
+}
+
+/** A companion curve proposed beside the analyzed expression. */
+export interface FaPlot {
+    latex?: string;
+    label?: string;
+    script?: string;
+}
+
+/**
+ * A significance marker. `kind` is required (the model defaults it to
+ * "vline" and the handler drops anything it cannot classify), and `at` is
+ * compiled server-side into `{script, variables, latex}`.
+ */
+export interface FaAnnotation {
+    kind: string;
+    at?: FaScript;
+    to?: FaScript;
+    label?: string;
+    group?: string;
+}
+
+/** One proposed viewport. */
+export interface FaView {
+    id?: string;
+    kind?: string;
+    x_var: string;
+    x_range?: number[];
+    pinned?: Record<string, number>;
+    mark?: string[];
+    rationale?: string;
+    plots?: FaPlot[];
+    annotations?: FaAnnotation[];
+    /** Set by the handler when the LM named symbols the CAS does not know. */
+    unknown_symbols?: string[];
+}
+
+/**
+ * One predict-before-reveal question. `correct_index` is required because the
+ * backend model gives it a default (`Field(default=0, ge=0)`) and this module
+ * indexes `options` with it.
+ */
+export interface FaProbe {
+    question?: string;
+    options?: string[];
+    correct_index: number;
+    explanation?: string;
+    feature?: string;
+}
+
+/** The LM half of the report: what is worth SHOWING. */
+export interface FaProposal {
+    abstain?: boolean;
+    /** True when the LM call itself failed — not the same as abstaining. */
+    failed?: boolean;
+    abstain_reason?: string;
+    title?: string;
+    story?: string;
+    views?: FaView[];
+    probes?: FaProbe[];
+    variable_glossary?: Record<string, string>;
+}
+
+/** The expert's response root. */
+export interface FaAnalysisData {
+    id?: string;
+    title?: string;
+    characteristics?: FaCharacteristics;
+    proposal?: FaProposal | null;
+}
+
+/** The request shape the session cache is keyed on. */
+interface FaRequestPayload {
+    latex?: string;
+    variable?: string;
+    context?: string;
+}
+
+/**
+ * One function-analysis artifact, as attached to a proof step. Exported
+ * because src/graph-view.ts derives its own `FaArtifact` alias from
+ * `listFor`'s return type and renders these rows in the Math tab tree.
+ */
+export interface FaArtifact {
+    id: string;
+    /**
+     * The `fa-pending-N` id the artifact was born with, kept after `_run`
+     * overwrites `id` with the expert's — see `findById`.
+     */
+    pendingId: string;
+    title: string;
+    status: 'loading' | 'ready' | 'error';
+    latex: string;
+    nodeId: string | null;
+    step: ProofStep;
+    data: FaAnalysisData | null;
+    error: string | null;
+    /** Set by `_run` so `remove` can evict the cached response. */
+    cacheKey?: string;
+}
+
+/**
+ * What `open()` needs off a node. A full semantic-graph node satisfies it;
+ * so does the node-less `{id: null, subexpr}` the `?fax=` deeplink builds.
+ */
+export type FaNodeSource = (GraphNode | { id: null }) & {
+    subexpr?: string;
+    latex?: string;
+};
+
+/** Constructor options — see the JSDoc on the constructor itself. */
+export interface FunctionAnalysisManagerOptions {
+    getViewport?: () => HTMLElement | null;
+    katex?: typeof katex;
+    onArtifactsChanged?: (step: ProofStep) => void;
+    onPageClosed?: () => void;
+    onActiveChanged?: (opts?: { replace?: boolean }) => void;
+    buildContext?: (step: ProofStep) => string;
+}
+
+/* ------------------------------------------------------------------ */
+/* Internal view/chart state                                          */
+/* ------------------------------------------------------------------ */
+
+/** Which view is showing, and where its sliders currently sit. */
+interface FaViewState {
+    viewIdx: number;
+    pins: Record<string, number>;
+}
+
+/** One evaluable series: the main curve or a companion plot. */
+interface FaSeries {
+    label: string;
+    script: string;
+    main?: boolean;
+}
+
+/** An annotation with its position(s) resolved under the current pins. */
+interface FaEvalAnnotation extends FaAnnotation {
+    atValue: number;
+    toValue?: number;
+}
+
+/** Live per-chart state the draw plugin reads off `chart.$fa`. */
+interface FaChartState {
+    xs: number[];
+    marks: Set<string>;
+    compiled: (CompiledExpr | null)[];
+    yb: { min: number; max: number };
+    xLatex: string;
+    exprLatex: string;
+    anns: FaEvalAnnotation[];
+}
+
+/** A Chart.js instance carrying this module's live state. */
+interface FaChart extends ChartInstance {
+    $fa?: FaChartState;
+}
+
+/** One row of a hover readout, frozen for the pinned note's ask button. */
+interface FaTipValue {
+    label: string;
+    value: string;
+}
+
+/** What a hover readout is showing — see `_fillTip`. */
+interface FaTipState {
+    xLatex: string;
+    xValue: string;
+    values: FaTipValue[];
+    datasets: number[];
+    x: number;
+    chars: FaCharacteristics;
+    view: FaView;
+    state: FaViewState;
+}
+
+/** The readout element, which carries its own contents on `$fa`. */
+interface FaTipElement extends HTMLElement {
+    $fa?: FaTipState;
+}
+
+/** One annotation label, placed over the canvas by `_syncLabels`. */
+interface FaLabelPlacement {
+    text: string;
+    left: number;
+    top: number;
+    band?: boolean;
+    ann?: FaEvalAnnotation;
+}
+
+/** One flattened CAS finding — see `_featureRows` for the field contract. */
+interface FaRow {
+    kind: string;
+    group: string;
+    label: string;
+    math?: string;
+    detail?: string;
+    off?: boolean;
+    family?: boolean;
+    at?: boolean;
+    article?: boolean;
+    prose?: string;
+}
+
+/** What a `points()` describer contributes to a row. */
+interface FaRowDescriptor {
+    label: string;
+    math?: string;
+    detail?: string;
+    off?: boolean;
+}
 
 const REQUEST_TIMEOUT_MS = 180_000;   // LM proposal is ~5-10s; generous ceiling
 const NUM_POINTS = 220;
@@ -34,15 +335,17 @@ const BAND_FILL = 'rgba(66, 165, 245, 0.10)';
 // with the same context never re-bills the LM (mirrors sg-proof's cache).
 // Bounded and lesson-scoped: a long session opening many analyses would
 // otherwise accumulate response payloads that can never be hit again.
-const _FA_CACHE = new Map();
+const _FA_CACHE = new Map<string, FaAnalysisData>();
 const _FA_CACHE_MAX = 32;
-const _cacheKey = (p) => JSON.stringify({ l: p.latex, v: p.variable || '', c: p.context || '' });
+const _cacheKey = (p: FaRequestPayload) => JSON.stringify({ l: p.latex, v: p.variable || '', c: p.context || '' });
 
 /** Insert with oldest-first eviction (Map preserves insertion order). */
-function _cacheSet(key, data) {
+function _cacheSet(key: string, data: FaAnalysisData) {
     _FA_CACHE.set(key, data);
     while (_FA_CACHE.size > _FA_CACHE_MAX) {
-        _FA_CACHE.delete(_FA_CACHE.keys().next().value);
+        // `!` — the loop condition proves the map is non-empty, so the first
+        // key of its iteration order exists.
+        _FA_CACHE.delete(_FA_CACHE.keys().next().value!);
     }
 }
 
@@ -60,13 +363,13 @@ let _idCounter = 0;
  *  legend, tooltip, axis titles) — this is a degradation, not a renderer.
  *  Text-ish wrappers are unwrapped BEFORE braces are stripped, or
  *  `\text{rad/s}` degrades into the literal `\text rad/s`. */
-function detex(s) {
+function detex(s: string | null | undefined) {
     return String(s || '')
         .replace(/\\(?:text|textrm|mathrm|mathbf|mathit|operatorname)\s*\{([^{}]*)\}/g, '$1')
         .replace(/\\(?:quad|qquad)|\\[,;:! ]/g, ' ')
         .replace(/\\cdot(?![a-zA-Z])/g, '·')
         .replace(/\\(alpha|beta|gamma|delta|epsilon|zeta|eta|theta|iota|kappa|lambda|mu|nu|xi|pi|rho|sigma|tau|upsilon|phi|chi|psi|omega|Gamma|Delta|Theta|Lambda|Pi|Sigma|Phi|Psi|Omega)/g,
-            (_, name) => ({
+            (_: string, name: string) => ({
                 alpha: 'α', beta: 'β', gamma: 'γ', delta: 'δ', epsilon: 'ε',
                 zeta: 'ζ', eta: 'η', theta: 'θ', iota: 'ι', kappa: 'κ',
                 lambda: 'λ', mu: 'μ', nu: 'ν', xi: 'ξ', pi: 'π', rho: 'ρ',
@@ -74,13 +377,33 @@ function detex(s) {
                 psi: 'ψ', omega: 'ω', Gamma: 'Γ', Delta: 'Δ', Theta: 'Θ',
                 Lambda: 'Λ', Pi: 'Π', Sigma: 'Σ', Phi: 'Φ', Psi: 'Ψ',
                 Omega: 'Ω',
-            }[name] || name))
+            } as Record<string, string | undefined>)[name] || name)
         .replace(/[{}$]/g, '')
         .replace(/\s+/g, ' ')
         .trim();
 }
 
 export class FunctionAnalysisManager {
+    katex: typeof katex | false;
+    getViewport: () => HTMLElement | null;
+    onArtifactsChanged: (step: ProofStep) => void;
+    onPageClosed: () => void;
+    onActiveChanged: (opts?: { replace?: boolean }) => void;
+    buildContext: (step: ProofStep) => string;
+    pageEl: HTMLDivElement | null;
+    activeArtifact: FaArtifact | null;
+    _charts: FaChart[];
+    _hiddenEls: Element[];
+    _hiddenGroups: Set<string>;
+    _hiddenMarks: Set<string>;
+    _hiddenSeries: Set<number>;
+    _pinnedTip: FaTipElement | null;
+    _pinnedChart: FaChart | null;
+    _pinnedPoints: FaTipState | null;
+    _byStep: WeakMap<ProofStep, FaArtifact[]>;
+    /** Set on the first missed y-axis snap only — see `_saySnapFailed`. */
+    _snapMissTimer?: ReturnType<typeof setTimeout>;
+
     /**
      * @param {Object} opts
      *   getViewport      () => #graph-viewport element
@@ -90,7 +413,7 @@ export class FunctionAnalysisManager {
      *   onActiveChanged  () => void         — the shown artifact (or its id) changed
      *   buildContext     (step) => string   — lesson/step context for the expert
      */
-    constructor(opts = {}) {
+    constructor(opts: FunctionAnalysisManagerOptions = {}) {
         this.katex = opts.katex || (typeof window !== 'undefined' && window.katex);
         this.getViewport = opts.getViewport ||
             (() => document.getElementById('graph-viewport'));
@@ -107,9 +430,9 @@ export class FunctionAnalysisManager {
         this.activeArtifact = null;
         this._charts = [];             // live Chart.js instances (destroyed per render)
         this._hiddenEls = [];          // graph elements hidden while page shows
-        this._hiddenGroups = new Set();// annotation groups toggled off (per render)
-        this._hiddenMarks = new Set(); // CAS feature kinds toggled off
-        this._hiddenSeries = new Set();// dataset indices toggled off in the legend
+        this._hiddenGroups = new Set<string>();// annotation groups toggled off (per render)
+        this._hiddenMarks = new Set<string>(); // CAS feature kinds toggled off
+        this._hiddenSeries = new Set<number>();// dataset indices toggled off in the legend
         this._pinnedTip = null;        // hover readout pinned as a sticky note
         this._pinnedChart = null;      // the chart it was pinned on
         this._pinnedPoints = null;     // its markers, drawn by the plugin
@@ -117,11 +440,11 @@ export class FunctionAnalysisManager {
         // serialized wholesale into chat context and proof saves, and an
         // artifact both back-references its step (a JSON cycle) and carries
         // kilobytes of analysis data. Session-only side storage instead.
-        this._byStep = new WeakMap();  // step -> artifact[]
+        this._byStep = new WeakMap<ProofStep, FaArtifact[]>();  // step -> artifact[]
     }
 
     /** Artifacts attached to a step (render order). */
-    listFor(step) {
+    listFor(step: ProofStep | null | undefined): FaArtifact[] {
         return (step && this._byStep.get(step)) || [];
     }
 
@@ -130,7 +453,7 @@ export class FunctionAnalysisManager {
      *  the artifact was born with. BOTH stay matchable (the placeholder is kept
      *  as `pendingId`) so a URL captured mid-analysis still resolves after the
      *  id settles. */
-    findById(step, id) {
+    findById(step: ProofStep | null | undefined, id: string | null | undefined) {
         if (!id) return null;
         return this.listFor(step).find(
             (a) => a.id === id || a.pendingId === id) || null;
@@ -144,7 +467,7 @@ export class FunctionAnalysisManager {
      *  Re-clicking a node whose analysis already exists re-focuses it
      *  (same dedup contract as SgProofManager) — multiple artifacts per
      *  step are for DIFFERENT expressions, not accidental double-clicks. */
-    open(nodeData, step) {
+    open(nodeData: FaNodeSource, step: ProofStep | null | undefined) {
         if (!step) return;
         const latex = nodeData.subexpr || nodeData.latex;
         if (!latex) return;
@@ -155,7 +478,7 @@ export class FunctionAnalysisManager {
             return;
         }
         const pendingId = `fa-pending-${++_idCounter}`;
-        const artifact = {
+        const artifact: FaArtifact = {
             id: pendingId,
             // Kept after `_run` overwrites `id` with the expert's, so a URL
             // captured while the analysis was still running keeps resolving
@@ -177,7 +500,7 @@ export class FunctionAnalysisManager {
         this._run(artifact);
     }
 
-    async _run(artifact) {
+    async _run(artifact: FaArtifact) {
         const payload = {
             latex: artifact.latex,
             context: String(this.buildContext(artifact.step) || '').slice(0, 2000),
@@ -187,8 +510,10 @@ export class FunctionAnalysisManager {
         try {
             let data = _FA_CACHE.get(key);
             if (!data) {
+                // `as` — invokeExpert is typed `unknown`; every field read
+                // below is guarded, which is what makes the cast honest.
                 data = await invokeExpert('expression_analysis', payload,
-                                          { timeoutMs: REQUEST_TIMEOUT_MS });
+                                          { timeoutMs: REQUEST_TIMEOUT_MS }) as FaAnalysisData;
                 if (data && data.characteristics && !data.characteristics.error) {
                     _cacheSet(key, data);
                 }
@@ -203,7 +528,9 @@ export class FunctionAnalysisManager {
                 (data.proposal && data.proposal.title) || 'Function analysis';
         } catch (e) {
             artifact.status = 'error';
-            artifact.error = (e && e.message) || 'Analysis failed.';
+            // `as` — a truthy `unknown` narrows to `{}`, so the whole probe
+            // is re-typed rather than the caught value.
+            artifact.error = ((e && (e as { message?: string }).message) as string | undefined) || 'Analysis failed.';
         }
         this.onArtifactsChanged(artifact.step);
         // `replace`: the page was already showing this artifact — only its id
@@ -214,7 +541,7 @@ export class FunctionAnalysisManager {
         if (this.activeArtifact === artifact) this.show(artifact, { replace: true });
     }
 
-    retry(artifact) {
+    retry(artifact: FaArtifact) {
         artifact.status = 'loading';
         artifact.error = null;
         this.onArtifactsChanged(artifact.step);
@@ -225,7 +552,7 @@ export class FunctionAnalysisManager {
     /** Delete an artifact: drop it from its step, evict its cached response
      *  (so re-triggering the same node genuinely re-analyzes), and close
      *  the page if it is the one showing. */
-    remove(artifact) {
+    remove(artifact: FaArtifact) {
         const list = this._byStep.get(artifact.step);
         if (Array.isArray(list)) {
             const i = list.indexOf(artifact);
@@ -254,7 +581,7 @@ export class FunctionAnalysisManager {
     /** Show the page for an artifact (loading, error, or ready).
      *  `opts.replace` marks this as a re-show of the artifact already on screen
      *  (an id settling, a retry) rather than a new view — see onActiveChanged. */
-    show(artifact, opts = {}) {
+    show(artifact: FaArtifact, opts: { replace?: boolean } = {}) {
         const page = this._ensurePage();
         if (!page) return;
         this.activeArtifact = artifact;
@@ -309,12 +636,14 @@ export class FunctionAnalysisManager {
     /* Rendering                                                          */
     /* ------------------------------------------------------------------ */
 
-    _render(artifact) {
-        const page = this.pageEl;
+    _render(artifact: FaArtifact) {
+        // `!` — every caller reaches here through `show`, which returns early
+        // unless `_ensurePage()` produced the container.
+        const page = this.pageEl!;
         this._destroyCharts();
-        this._hiddenGroups = new Set();
-        this._hiddenMarks = new Set();
-        this._hiddenSeries = new Set();
+        this._hiddenGroups = new Set<string>();
+        this._hiddenMarks = new Set<string>();
+        this._hiddenSeries = new Set<number>();
         page.innerHTML = '';
 
         page.appendChild(this._renderHeader(artifact));
@@ -328,8 +657,8 @@ export class FunctionAnalysisManager {
             return;
         }
 
-        const proposal = (artifact.data && artifact.data.proposal) || {};
-        const chars = (artifact.data && artifact.data.characteristics) || {};
+        const proposal: FaProposal = (artifact.data && artifact.data.proposal) || {};
+        const chars: FaCharacteristics = (artifact.data && artifact.data.characteristics) || {};
 
         if (proposal.abstain) {
             // A failed LM call must not masquerade as "nothing to see here".
@@ -360,7 +689,7 @@ export class FunctionAnalysisManager {
         page.appendChild(this._renderJsonPanel(artifact));
     }
 
-    _renderHeader(artifact) {
+    _renderHeader(artifact: FaArtifact) {
         const head = document.createElement('div');
         head.className = 'fa-header';
 
@@ -386,7 +715,8 @@ export class FunctionAnalysisManager {
             jsonBtn.title = 'Show the raw analysis JSON';
             jsonBtn.innerHTML = BRACES_ICON;   // shared { } glyph (matches toolbar)
             jsonBtn.addEventListener('click', () => {
-                const overlay = this.pageEl.querySelector('.fa-json-overlay');
+                // `!` — the button only exists on a page this manager built.
+                const overlay = this.pageEl!.querySelector('.fa-json-overlay');
                 if (overlay) overlay.classList.toggle('open');
             });
             head.appendChild(jsonBtn);
@@ -403,7 +733,7 @@ export class FunctionAnalysisManager {
         return head;
     }
 
-    _renderLoading(artifact) {
+    _renderLoading(artifact: FaArtifact) {
         const wrap = document.createElement('div');
         wrap.className = 'fa-card fa-status';
         wrap.innerHTML =
@@ -419,7 +749,7 @@ export class FunctionAnalysisManager {
         return wrap;
     }
 
-    _renderErrorCard(artifact) {
+    _renderErrorCard(artifact: FaArtifact) {
         const wrap = document.createElement('div');
         wrap.className = 'fa-card fa-error';
         const msg = document.createElement('div');
@@ -432,7 +762,7 @@ export class FunctionAnalysisManager {
         return wrap;
     }
 
-    _renderStory(artifact, proposal) {
+    _renderStory(artifact: FaArtifact, proposal: FaProposal) {
         const card = document.createElement('div');
         card.className = 'fa-card fa-story';
         const badge = document.createElement('span');
@@ -440,7 +770,8 @@ export class FunctionAnalysisManager {
         badge.title = 'AI-generated';
         badge.innerHTML = AI_ICON;
         const text = document.createElement('span');
-        this._inlineMath(text, ' ' + proposal.story);
+        // `!` — `_render` only builds this card when `proposal.story` is set.
+        this._inlineMath(text, ' ' + proposal.story!);
         card.append(badge, text);
         this._attachHoverAsk(card, () =>
             `About $${artifact.latex}$ — the analysis says: "${proposal.story}". ` +
@@ -450,7 +781,7 @@ export class FunctionAnalysisManager {
 
     /* ---------------- views + charts ---------------------------------- */
 
-    _renderViews(artifact, chars, proposal) {
+    _renderViews(artifact: FaArtifact, chars: FaCharacteristics, proposal: FaProposal) {
         const card = document.createElement('div');
         card.className = 'fa-card fa-views';
         const views = (proposal.views || []).filter(v => !v.unknown_symbols);
@@ -501,15 +832,17 @@ export class FunctionAnalysisManager {
         card.append(tabs, rationale, legend, canvasWrap, exprPanel, featPanel,
                     sliders);
 
-        const state = { viewIdx: 0, pins: {} };
+        const state: FaViewState = { viewIdx: 0, pins: {} };
 
-        const activate = (idx) => {
+        const activate = (idx: number) => {
             state.viewIdx = idx;
-            const view = views[idx];
+            // `!` — `activate` is only ever called with an index into `views`
+            // (the tab handlers below, and 0 after the non-empty check above).
+            const view = views[idx]!;
             state.pins = { ...(view.pinned || {}) };
-            this._hiddenGroups = new Set();
-            this._hiddenMarks = new Set();
-            this._hiddenSeries = new Set();
+            this._hiddenGroups = new Set<string>();
+            this._hiddenMarks = new Set<string>();
+            this._hiddenSeries = new Set<number>();
             [...tabs.querySelectorAll('.fa-view-tab')].forEach((b, i) =>
                 b.classList.toggle('active', i === idx));
             this._renderExprPanel(exprPanel, chars, view);
@@ -567,9 +900,9 @@ export class FunctionAnalysisManager {
     /** What this chart actually plots: each curve's expression (LaTeX) and
      *  the mathjs script evaluated for it, plus any annotation positions.
      *  Every script here is SymPy-generated server-side. */
-    _renderExprPanel(host, chars, view) {
+    _renderExprPanel(host: HTMLElement, chars: FaCharacteristics, view: FaView) {
         host.innerHTML = '';
-        const row = (color, label, latex, script) => {
+        const row = (color: string | null, label: string, latex: string, script: string) => {
             const r = document.createElement('div');
             r.className = 'fa-expr-row';
             const swatch = document.createElement('span');
@@ -599,11 +932,13 @@ export class FunctionAnalysisManager {
             const shown = chars.dependentLatex
                 ? `${chars.dependentLatex} = ${chars.expression}`
                 : (chars.expression || '');
-            row(SERIES_COLORS[0], 'curve', shown, main.script);
+            // `!` on the palette lookups here and below — SERIES_COLORS is a
+            // non-empty literal and every index is taken modulo its length.
+            row(SERIES_COLORS[0]!, 'curve', shown, main.script);
         }
         (view.plots || []).forEach((p, i) => {
             if (!p.script) return;
-            row(SERIES_COLORS[(i + 1) % SERIES_COLORS.length],
+            row(SERIES_COLORS[(i + 1) % SERIES_COLORS.length]!,
                 p.label || 'companion', p.latex || '', p.script);
         });
         for (const a of view.annotations || []) {
@@ -625,8 +960,8 @@ export class FunctionAnalysisManager {
      *  ("Faster spin ($\omega = 0.2\ \text{rad/s}$)"). A bare LaTeX
      *  expression is `$`-wrapped here so one renderer (labels.js
      *  renderKaTeX) covers both the LM's prose and the CAS's expressions. */
-    _seriesFor(chars, view) {
-        const out = [];
+    _seriesFor(chars: FaCharacteristics, view: FaView) {
+        const out: FaSeries[] = [];
         const main = chars.chartScript;
         if (main && main.script) {
             const f = chars.dependentLatex || chars.expression || 'f';
@@ -642,15 +977,16 @@ export class FunctionAnalysisManager {
         return out;
     }
 
-    _scopeFor(chars, view, pins, xValue) {
-        const scope = {};
+    _scopeFor(chars: FaCharacteristics, view: FaView, pins: Record<string, number>, xValue: number) {
+        const scope: ExprScope = {};
         for (const name of chars.variables || []) scope[name] = 1;
         Object.assign(scope, pins);
         scope[view.x_var] = xValue;
         return scope;
     }
 
-    _renderChart(artifact, chars, view, canvasWrap, legend, state) {
+    _renderChart(artifact: FaArtifact, chars: FaCharacteristics, view: FaView,
+                 canvasWrap: HTMLElement, legend: HTMLElement, state: FaViewState) {
         this._destroyCharts();
         canvasWrap.innerHTML = '';
         const canvas = document.createElement('canvas');
@@ -661,14 +997,16 @@ export class FunctionAnalysisManager {
         labelLayer.className = 'fa-chart-labels';
         canvasWrap.appendChild(labelLayer);
 
-        const [xa, xb] = (view.x_range && view.x_range.length === 2)
-            ? view.x_range : [-5, 5];
+        // `as` — both arms of the ternary are two numbers by construction
+        // (the guard tests `length === 2`), which the array type cannot say.
+        const [xa, xb] = ((view.x_range && view.x_range.length === 2)
+            ? view.x_range : [-5, 5]) as [number, number];
         const series = this._seriesFor(chars, view);
         const compiled = series.map(s => {
             try { return compileExpr(s.script); } catch (_e) { return null; }
         });
 
-        const xs = [];
+        const xs: number[] = [];
         for (let i = 0; i <= NUM_POINTS; i++) {
             xs.push(xa + (xb - xa) * i / NUM_POINTS);
         }
@@ -679,15 +1017,17 @@ export class FunctionAnalysisManager {
             // run it through KaTeX.
             $faLabel: s.label,
             data: xs.map(x => {
+                // `!` — the truthiness check on the same element is what
+                // guards the call; TS cannot narrow a variable index.
                 if (!compiled[si]) return null;
                 try {
-                    const y = evalExpr(compiled[si], 0,
+                    const y = evalExpr(compiled[si]!, 0,
                         { overrideScope: this._scopeFor(chars, view, state.pins, x) });
-                    return Number.isFinite(y) ? y : null;
+                    return Number.isFinite(y) ? (y as number) : null;
                 } catch (_e) { return null; }
             }),
-            borderColor: SERIES_COLORS[si % SERIES_COLORS.length],
-            backgroundColor: SERIES_COLORS[si % SERIES_COLORS.length] + '22',
+            borderColor: SERIES_COLORS[si % SERIES_COLORS.length]!,
+            backgroundColor: SERIES_COLORS[si % SERIES_COLORS.length]! + '22',
             borderWidth: s.main ? 2 : 1.5,
             borderDash: s.main ? [] : [6, 4],
             pointRadius: 0,
@@ -695,8 +1035,8 @@ export class FunctionAnalysisManager {
             // Solid hover marker — the default inherits the 13%-alpha series
             // fill and reads as a ghost ring.
             pointHoverRadius: 4,
-            pointHoverBackgroundColor: SERIES_COLORS[si % SERIES_COLORS.length],
-            pointHoverBorderColor: SERIES_COLORS[si % SERIES_COLORS.length],
+            pointHoverBackgroundColor: SERIES_COLORS[si % SERIES_COLORS.length]!,
+            pointHoverBorderColor: SERIES_COLORS[si % SERIES_COLORS.length]!,
             fill: false,
             tension: 0.25,
             spanGaps: false,
@@ -715,14 +1055,14 @@ export class FunctionAnalysisManager {
         // (sliders, group toggles) re-draw overlays without a rebuild.
         const featurePlugin = {
             id: 'faFeatures',
-            afterDraw: (chart) => {
+            afterDraw: (chart: FaChart) => {
                 const fa = chart.$fa;
                 if (!fa) return;
                 // Feature markers are read off the main curve — hiding that
                 // curve from the legend must take its markers with it.
                 const visible = chart.isDatasetVisible(0)
                     ? new Set([...fa.marks].filter(k => !this._hiddenMarks.has(k)))
-                    : new Set();
+                    : new Set<string>();
                 this._drawOverlays(chart, chart.data.datasets[0], fa.xs,
                                    visible, fa.anns);
                 // Chart.js drops its own hover points the moment the pointer
@@ -734,6 +1074,8 @@ export class FunctionAnalysisManager {
             },
         };
 
+        // `as FaChart` — the instance carries this module's own `$fa` state,
+        // hung on it a few lines below.
         const chart = new Chart(canvas, {
             type: 'line',
             plugins: [featurePlugin],
@@ -763,13 +1105,13 @@ export class FunctionAnalysisManager {
                         type: 'linear',
                         // Axis titles are HTML (KaTeX) in the label layer.
                         ticks: { color: '#7e8aa3', maxTicksLimit: 9,
-                                 callback: v => +Number(v).toFixed(3) },
+                                 callback: (v: number) => +Number(v).toFixed(3) },
                         // The zero axis draws clearly stronger than the grid.
                         grid: {
-                            color: (c) => c.tick && c.tick.value === 0
+                            color: (c: { tick?: { value: number } }) => c.tick && c.tick.value === 0
                                 ? 'rgba(174, 187, 209, 0.85)'
                                 : 'rgba(110, 124, 180, 0.12)',
-                            lineWidth: (c) => c.tick && c.tick.value === 0 ? 1.6 : 1,
+                            lineWidth: (c: { tick?: { value: number } }) => c.tick && c.tick.value === 0 ? 1.6 : 1,
                         },
                     },
                     y: {
@@ -781,21 +1123,21 @@ export class FunctionAnalysisManager {
                                  // noise (`4.24`?) and, sitting outside every
                                  // curve's range by construction, a y-axis
                                  // snap can never land on them. Unlabelled.
-                                 callback: function (v) {
+                                 callback: function (this: ChartScale, v: number) {
                                      if (v === this.min || v === this.max) return null;
                                      return +Number(v).toFixed(3);
                                  } },
                         grid: {
-                            color: (c) => c.tick && c.tick.value === 0
+                            color: (c: { tick?: { value: number } }) => c.tick && c.tick.value === 0
                                 ? 'rgba(174, 187, 209, 0.85)'
                                 : 'rgba(110, 124, 180, 0.12)',
-                            lineWidth: (c) => c.tick && c.tick.value === 0 ? 1.6 : 1,
+                            lineWidth: (c: { tick?: { value: number } }) => c.tick && c.tick.value === 0 ? 1.6 : 1,
                         },
                     },
                 },
                 interaction: { mode: 'index', intersect: false },
             },
-        });
+        }) as FaChart;
         // Sticky y-bounds: computed from the initial data and only ever
         // EXPANDED by slider moves — a shrinking auto-scale re-derives its
         // ticks every tick of the drag, which reads as axis flicker.
@@ -811,7 +1153,9 @@ export class FunctionAnalysisManager {
                 return;
             }
             if (this._pinnedTip) { this._unpinTip(); return; }
-            const tip = canvasWrap.querySelector('.fa-chart-tip');
+            // `as` — `.fa-chart-tip` is a <div> this module creates; the
+            // querySelector return type just lacks style/$fa.
+            const tip = canvasWrap.querySelector('.fa-chart-tip') as FaTipElement | null;
             if (tip && tip.classList.contains('show')) {
                 this._pinTip(tip, chart, artifact, chars, view, state);
             }
@@ -843,16 +1187,17 @@ export class FunctionAnalysisManager {
     }
 
     /** In-place data refresh for slider moves / group toggles — no rebuild. */
-    _updateChartData(chart, chars, view, state) {
+    _updateChartData(chart: FaChart, chars: FaCharacteristics, view: FaView, state: FaViewState) {
         const fa = chart && chart.$fa;
         if (!fa) return;
         chart.data.datasets.forEach((ds, si) => {
             ds.data = fa.xs.map(x => {
+                // `!` — same guard-then-use as `_renderChart`.
                 if (!fa.compiled[si]) return null;
                 try {
-                    const y = evalExpr(fa.compiled[si], 0,
+                    const y = evalExpr(fa.compiled[si]!, 0,
                         { overrideScope: this._scopeFor(chars, view, state.pins, x) });
-                    return Number.isFinite(y) ? y : null;
+                    return Number.isFinite(y) ? (y as number) : null;
                 } catch (_e) { return null; }
             });
         });
@@ -873,7 +1218,8 @@ export class FunctionAnalysisManager {
     /** Axis titles as KaTeX: the swept variable under the x-axis, the
      *  analyzed expression rotated along the y-axis. Both carry the AI's
      *  glossary description on hover where one exists. */
-    _renderAxisTitles(canvasWrap, chars, proposal, view, state) {
+    _renderAxisTitles(canvasWrap: HTMLElement, chars: FaCharacteristics,
+                      proposal: FaProposal, view: FaView, state: FaViewState) {
         for (const el of canvasWrap.querySelectorAll('.fa-axis-title')) el.remove();
         const expr = chars.expression || '';
         const xLatex = this._varLatex(chars, view.x_var);
@@ -882,7 +1228,8 @@ export class FunctionAnalysisManager {
         const xTitle = document.createElement('div');
         xTitle.className = 'fa-axis-title fa-axis-x';
         this._katex(xTitle, xLatex);
-        const xDesc = (proposal.variable_glossary || {})[view.x_var];
+        // `as` — the `|| {}` fallback has no index signature of its own.
+        const xDesc = ((proposal.variable_glossary || {}) as Record<string, string | undefined>)[view.x_var];
         if (xDesc) this._attachVarTooltip(xTitle, xDesc);
         this._attachHoverAsk(xTitle, () =>
             `In $${expr}$, the chart sweeps $${xLatex}$ across ${range}` +
@@ -910,13 +1257,16 @@ export class FunctionAnalysisManager {
     /** HTML hover tooltip (Chart.js `external`) so the hovered x-value and
      *  every series label render as KaTeX rather than canvas text. Clicking
      *  it pins it — see `_pinTip`. */
-    _makeTooltipHandler(artifact, chars, view, state) {
+    _makeTooltipHandler(artifact: FaArtifact, chars: FaCharacteristics,
+                        view: FaView, state: FaViewState) {
         const xLatex = this._varLatex(chars, view.x_var);
-        return (ctx) => {
+        return (ctx: ChartTooltipContext) => {
             const { chart, tooltip } = ctx;
-            const wrap = chart.canvas.parentNode;
+            // `as` — the canvas's parent is the `.fa-canvas-wrap` <div> this
+            // module created; ParentNode alone has no appendChild.
+            const wrap = chart.canvas.parentNode as HTMLElement | null;
             if (!wrap) return;
-            let el = wrap.querySelector('.fa-chart-tip');
+            let el = wrap.querySelector('.fa-chart-tip') as FaTipElement | null;
             if (!el) {
                 el = document.createElement('div');
                 el.className = 'fa-chart-tip';
@@ -929,7 +1279,7 @@ export class FunctionAnalysisManager {
                 el.classList.remove('show');
                 return;
             }
-            this._fillTip(el, chart, chars, view, state,
+            this._fillTip(el, chart as FaChart, chars, view, state,
                           +(tooltip.dataPoints?.[0]?.parsed?.x ?? 0));
             el.style.left = `${tooltip.caretX}px`;
             el.style.top = `${tooltip.caretY}px`;
@@ -941,19 +1291,22 @@ export class FunctionAnalysisManager {
      *  curve itself was plotted from — so a readout is not limited to the
      *  NUM_POINTS samples. Falls back to the plotted array before the chart's
      *  `$fa` state exists. */
-    _seriesValueAt(chart, chars, view, state, di, x) {
-        const compiled = (chart.$fa || {}).compiled;
+    _seriesValueAt(chart: FaChart, chars: FaCharacteristics, view: FaView,
+                   state: FaViewState, di: number, x: number): number | null {
+        const compiled = ((chart.$fa || {}) as Partial<FaChartState>).compiled;
         if (compiled && compiled[di]) {
             try {
-                const y = evalExpr(compiled[di], 0, {
+                // `!` — the `compiled[di]` truthiness test above is the guard.
+                const y = evalExpr(compiled[di]!, 0, {
                     overrideScope: this._scopeFor(chars, view, state.pins, x) });
-                if (Number.isFinite(y)) return y;
+                if (Number.isFinite(y)) return y as number;
             } catch (_e) { /* fall through to the plotted samples */ }
             return null;
         }
         const i = this._indexNearestX(chart, x);
-        const y = chart.data.datasets[di].data[i];
-        return Number.isFinite(y) ? y : null;
+        // `!` — `di` is a live dataset index from the caller.
+        const y = chart.data.datasets[di]!.data[i];
+        return Number.isFinite(y) ? (y as number) : null;
     }
 
     /** The readout's contents at an exact x: every visible series with its
@@ -963,11 +1316,12 @@ export class FunctionAnalysisManager {
      *  Keyed by the x VALUE, not a sample index: a y-axis snap solves for a
      *  crossing that almost never falls on a sample, and rounding it to the
      *  nearest one would quietly answer a slightly different question. */
-    _fillTip(el, chart, chars, view, state, x) {
+    _fillTip(el: FaTipElement, chart: FaChart, chars: FaCharacteristics,
+             view: FaView, state: FaViewState, x: number) {
         el.innerHTML = '';
         const xLatex = this._varLatex(chars, view.x_var);
         // What this readout is showing, for the pinned note's ask button.
-        const values = [], datasets = [];
+        const values: FaTipValue[] = [], datasets: number[] = [];
 
         const head = document.createElement('div');
         head.className = 'fa-tip-head';
@@ -987,17 +1341,19 @@ export class FunctionAnalysisManager {
             row.className = 'fa-tip-row';
             const sw = document.createElement('span');
             sw.className = 'fa-tip-swatch';
-            sw.style.background = ds.borderColor;
+            // `!` — every dataset this module builds sets borderColor.
+            sw.style.background = ds.borderColor!;
             const name = document.createElement('span');
             name.className = 'fa-tip-name';
             // Same display source as the HTML legend: LM prose with inline
             // math, or a $-wrapped expression (see _seriesFor).
-            const label = ds.$faLabel || ds.label || '';
+            const label = (ds.$faLabel as string | undefined) || ds.label || '';
             name.innerHTML = renderKaTeX(label, false);
             const val = document.createElement('span');
             val.className = 'fa-tip-val';
             const y = this._seriesValueAt(chart, chars, view, state, di, x);
-            val.textContent = Number.isFinite(y) ? (+y).toPrecision(5) : '—';
+            // `!` — Number.isFinite is the guard on the same expression.
+            val.textContent = Number.isFinite(y) ? (+y!).toPrecision(5) : '—';
             row.append(sw, name, val);
             el.appendChild(row);
             values.push({ label, value: val.textContent });
@@ -1014,15 +1370,16 @@ export class FunctionAnalysisManager {
      *  Once pinned the tip takes pointer events, which is both what makes it
      *  draggable and what stops a click on the note counting as a click on
      *  the chart — so the note is never its own dismiss target. */
-    _wireTip(el) {
+    _wireTip(el: FaTipElement) {
         el.addEventListener('mousedown', (e) => {
             if (!el.classList.contains('pinned')) return;
-            if (e.target.closest('.ai-ask-btn')) return;   // let the ask fire
+            // `as` — the tip's own listener, so the target is inside it.
+            if ((e.target as HTMLElement).closest('.ai-ask-btn')) return;   // let the ask fire
             e.preventDefault();                            // no text selection
-            const wrapR = el.parentNode.getBoundingClientRect();
+            const wrapR = (el.parentNode as HTMLElement).getBoundingClientRect();
             const r = el.getBoundingClientRect();
             const dx = e.clientX - r.left, dy = e.clientY - r.top;
-            const move = (ev) => {
+            const move = (ev: MouseEvent) => {
                 el.style.left = `${ev.clientX - wrapR.left - dx}px`;
                 el.style.top = `${ev.clientY - wrapR.top - dy}px`;
             };
@@ -1040,8 +1397,8 @@ export class FunctionAnalysisManager {
     /** The tick value nearest `pixel` along `scale`, or null if the click
      *  landed between ticks. `TICK_TOL` is generous: tick labels are wider
      *  than the tick itself, and the learner is aiming at the number. */
-    _nearestTick(scale, pixel, tol = 18) {
-        let best = null, bestD = Infinity;
+    _nearestTick(scale: ChartScale, pixel: number, tol = 18) {
+        let best: number | null = null, bestD = Infinity;
         (scale.ticks || []).forEach((t, i) => {
             // Skip ticks the axis draws no label for — there is nothing there
             // to aim at, so a click near one belongs to its labelled neighbour.
@@ -1054,13 +1411,13 @@ export class FunctionAnalysisManager {
 
     /** The main curve: dataset 0 when it is showing, else the first that is.
      *  A y-axis snap solves against whatever curve the learner can see. */
-    _mainDatasetIndex(chart) {
+    _mainDatasetIndex(chart: FaChart) {
         if (chart.isDatasetVisible(0)) return 0;
         return chart.data.datasets.findIndex((_d, i) => chart.isDatasetVisible(i));
     }
 
     /** Sample index whose x is nearest `value`. */
-    _indexNearestX(chart, value) {
+    _indexNearestX(chart: FaChart, value: number) {
         let best = 0, bestD = Infinity;
         chart.data.labels.forEach((x, i) => {
             const d = Math.abs(x - value);
@@ -1085,22 +1442,25 @@ export class FunctionAnalysisManager {
      *  than whichever nearby sample happened to be closest. Null when the
      *  curve does not reach that value in this window — see `_saySnapFailed`
      *  for what the chart says instead. */
-    _solveForY(chart, chars, view, state, value) {
+    _solveForY(chart: FaChart, chars: FaCharacteristics, view: FaView,
+               state: FaViewState, value: number) {
         const di = this._mainDatasetIndex(chart);
         if (di < 0) return null;
-        const data = chart.data.datasets[di].data;
+        // `!` — `_mainDatasetIndex` returned an index it found on this chart.
+        const data = chart.data.datasets[di]!.data;
         const xs = chart.data.labels;
-        const brackets = [];
+        const brackets: [number, number][] = [];
         for (let i = 0; i < data.length; i++) {
             const y = data[i];
             if (!Number.isFinite(y)) continue;
             // An exact hit counts wherever it lands, including the last
             // sample — a curve that only reaches the value at the very end
             // of the window still reaches it.
-            if (y === value) { brackets.push([xs[i], xs[i]]); continue; }
+            // `!` throughout — `i` walks `data`, and `xs` is the same length.
+            if (y === value) { brackets.push([xs[i]!, xs[i]!]); continue; }
             const next = data[i + 1];
-            if (Number.isFinite(next) && (y - value) * (next - value) < 0) {
-                brackets.push([xs[i], xs[i + 1]]);
+            if (Number.isFinite(next) && (y! - value) * (next! - value) < 0) {
+                brackets.push([xs[i]!, xs[i + 1]!]);
             }
         }
         if (!brackets.length) return null;
@@ -1108,8 +1468,9 @@ export class FunctionAnalysisManager {
         // whatever is already pinned, so repeated clicks stay local.
         const from = this._pinnedTip && this._pinnedTip.$fa
             ? this._pinnedTip.$fa.x : null;
-        const [lo, hi] = from == null ? brackets[0] : brackets.reduce((p, c) =>
-            Math.abs(c[0] - from) < Math.abs(p[0] - from) ? c : p);
+        // `as` — the emptiness check above is what makes `brackets[0]` real.
+        const [lo, hi] = (from == null ? brackets[0] : brackets.reduce((p, c) =>
+            Math.abs(c[0] - from) < Math.abs(p[0] - from) ? c : p)) as [number, number];
         return this._refineCrossing(chart, chars, view, state, di, lo, hi, value);
     }
 
@@ -1117,11 +1478,13 @@ export class FunctionAnalysisManager {
      *  — down to float precision on the compiled expression. Fifty steps is
      *  nothing next to the redraw it precedes, and it is what turns "works
      *  approximately" into an exact answer. */
-    _refineCrossing(chart, chars, view, state, di, lo, hi, value) {
+    _refineCrossing(chart: FaChart, chars: FaCharacteristics, view: FaView,
+                    state: FaViewState, di: number, lo: number, hi: number, value: number) {
         if (lo === hi) return lo;
-        const f = (x) => {
+        const f = (x: number) => {
             const y = this._seriesValueAt(chart, chars, view, state, di, x);
-            return Number.isFinite(y) ? y - value : null;
+            // `!` — Number.isFinite on the same value is the guard.
+            return Number.isFinite(y) ? y! - value : null;
         };
         let a = lo, b = hi;
         const fa = f(a);
@@ -1140,8 +1503,10 @@ export class FunctionAnalysisManager {
      *  Reports the range the curve actually covers, so the learner can see
      *  how far off the ask was — and, since the pins are live, that moving a
      *  slider may well bring the value into reach. */
-    _saySnapFailed(chart, chars, view, value) {
-        const wrap = chart.canvas.parentNode;
+    _saySnapFailed(chart: FaChart, chars: FaCharacteristics, view: FaView, value: number) {
+        // `as` (unguarded, as before) — a chart being clicked is mounted, so
+        // its canvas has the wrapper this appends into.
+        const wrap = chart.canvas.parentNode as HTMLElement;
         let el = wrap.querySelector('.fa-snap-miss');
         if (!el) {
             el = document.createElement('div');
@@ -1149,7 +1514,9 @@ export class FunctionAnalysisManager {
             wrap.appendChild(el);
         }
         const di = this._mainDatasetIndex(chart);
-        const ys = di < 0 ? [] : chart.data.datasets[di].data.filter(Number.isFinite);
+        // `!` / `as number[]` — the index came from `_mainDatasetIndex`, and
+        // the filter is what leaves only finite numbers behind.
+        const ys = di < 0 ? [] : chart.data.datasets[di]!.data.filter(Number.isFinite) as number[];
         const y = chars.dependentLatex || chars.expression || 'f';
         el.innerHTML = renderKaTeX(
             `$${y}$ does not reach ${this._fmt(value)} here` +
@@ -1162,7 +1529,7 @@ export class FunctionAnalysisManager {
     }
 
     /** Is the pointer over a tick label? Drives the cursor only. */
-    _overAxisTick(e, chart) {
+    _overAxisTick(e: MouseEvent, chart: FaChart) {
         const area = chart.chartArea;
         if (!area || !chart.scales.x || !chart.scales.y) return false;
         const r = chart.canvas.getBoundingClientRect();
@@ -1175,12 +1542,13 @@ export class FunctionAnalysisManager {
     /** A click in an axis's tick band snaps the note to that value: the x
      *  axis reads forwards ("put me at $R = 40$"), the y axis backwards
      *  ("put me where $a = 3$"). Returns whether it handled the click. */
-    _snapFromAxisClick(e, chart, artifact, chars, view, state) {
+    _snapFromAxisClick(e: MouseEvent, chart: FaChart, artifact: FaArtifact,
+                       chars: FaCharacteristics, view: FaView, state: FaViewState) {
         const area = chart.chartArea;
         if (!area || !chart.scales.x || !chart.scales.y) return false;
         const r = chart.canvas.getBoundingClientRect();
         const px = e.clientX - r.left, py = e.clientY - r.top;
-        let x = null;
+        let x: number | null = null;
         if (py > area.bottom) {                       // under the plot: x ticks
             // The tick value IS the answer — no need to round it to a sample.
             x = this._nearestTick(chart.scales.x, px);
@@ -1199,7 +1567,9 @@ export class FunctionAnalysisManager {
         } else {
             return false;
         }
-        const el = chart.canvas.parentNode.querySelector('.fa-chart-tip');
+        // `as` twice — a mounted chart has its wrapper, and `.fa-chart-tip`
+        // is the <div> this module created there.
+        const el = (chart.canvas.parentNode as HTMLElement).querySelector('.fa-chart-tip') as FaTipElement | null;
         if (!el) return false;
         this._unpinTip();
         this._fillTip(el, chart, chars, view, state, x);
@@ -1209,7 +1579,7 @@ export class FunctionAnalysisManager {
             : this._seriesValueAt(chart, chars, view, state, di, x);
         el.style.left = `${chart.scales.x.getPixelForValue(x)}px`;
         el.style.top = `${Number.isFinite(y)
-            ? chart.scales.y.getPixelForValue(y) : area.top + 20}px`;
+            ? chart.scales.y.getPixelForValue(y!) : area.top + 20}px`;
         el.classList.add('show');
         this._pinTip(el, chart, artifact, chars, view, state);
         return true;
@@ -1218,9 +1588,11 @@ export class FunctionAnalysisManager {
     /** Pin the hover readout as a sticky note: it stops following the
      *  pointer, can be dragged anywhere, and grows an ask button for the
      *  exact set of values it froze. Clicking off it puts it away. */
-    _pinTip(el, chart, artifact, chars, view, state) {
+    _pinTip(el: FaTipElement, chart: FaChart, artifact: FaArtifact,
+            chars: FaCharacteristics, view: FaView, state: FaViewState) {
         this._unpinTip();
-        const wrapR = el.parentNode.getBoundingClientRect();
+        // `as` — the tip lives in the chart's `.fa-canvas-wrap`.
+        const wrapR = (el.parentNode as HTMLElement).getBoundingClientRect();
         const r = el.getBoundingClientRect();
         // Freeze it where it already sits, THEN drop the hover transform, so
         // left/top become plain coordinates a drag can update directly.
@@ -1240,7 +1612,9 @@ export class FunctionAnalysisManager {
         if (head) {
             head.appendChild(makeAiAskButton('ai-ask-btn fa-tip-ask',
                 'Ask the AI about these values', () => {
-                    const d = el.$fa || { values: [] };
+                    // `as` — the `{values: []}` fallback stands in for a tip
+                    // that was never filled, exactly as before.
+                    const d = (el.$fa || { values: [] }) as FaTipState;
                     const vals = d.values
                         .map(v => `${v.label} = ${v.value}`).join(', ');
                     return `On the chart of $${artifact.latex}$ I have ` +
@@ -1272,25 +1646,27 @@ export class FunctionAnalysisManager {
     /** The hovered points, kept on screen for a pinned note. Positions are
      *  recomputed from the LIVE data each draw, so a slider move slides the
      *  markers along with the curves instead of stranding them. */
-    _drawPinnedPoints(chart, pinned) {
+    _drawPinnedPoints(chart: FaChart, pinned: FaTipState) {
         const { ctx, scales, chartArea } = chart;
         if (!chartArea || !scales.x || !scales.y) return;
         const { x, datasets, chars, view, state } = pinned;
         ctx.save();
         for (const di of datasets) {
             if (!chart.isDatasetVisible(di)) continue;
-            const ds = chart.data.datasets[di];
+            // `!` — `datasets` holds indices `_fillTip` read off this chart.
+            const ds = chart.data.datasets[di]!;
             const y = this._seriesValueAt(chart, chars, view, state, di, x);
             if (!Number.isFinite(y)) continue;
             const px = scales.x.getPixelForValue(x);
-            const py = scales.y.getPixelForValue(y);
+            const py = scales.y.getPixelForValue(y!);
             if (px < chartArea.left || px > chartArea.right) continue;
             ctx.beginPath();
             ctx.arc(px, py, 4, 0, TAU);
             ctx.fillStyle = '#0a0c1a';
             ctx.fill();
             ctx.lineWidth = 2;
-            ctx.strokeStyle = ds.borderColor;
+            // `!` — every dataset this module builds sets borderColor.
+            ctx.strokeStyle = ds.borderColor!;
             ctx.stroke();
         }
         ctx.restore();
@@ -1299,21 +1675,23 @@ export class FunctionAnalysisManager {
     /** A pinned note is pinned in x, not frozen in time: when a slider moves
      *  the curves, its numbers follow, or it would sit there quoting values
      *  that no longer match the curve underneath it. */
-    _refreshPinnedValues(chart) {
+    _refreshPinnedValues(chart: FaChart) {
         const el = this._pinnedTip;
         const d = el && el.$fa;
         if (!d || !d.datasets) return;
-        const cells = el.querySelectorAll('.fa-tip-row .fa-tip-val');
+        // `!` — `d` is `el.$fa`, so a truthy `d` proves `el` is there too.
+        const cells = el!.querySelectorAll('.fa-tip-row .fa-tip-val');
         d.datasets.forEach((di, i) => {
             const y = this._seriesValueAt(chart, d.chars, d.view, d.state, di, d.x);
-            const text = Number.isFinite(y) ? (+y).toPrecision(5) : '—';
-            if (cells[i]) cells[i].textContent = text;
-            if (d.values[i]) d.values[i].value = text;
+            // `!` — Number.isFinite on the same value is the guard.
+            const text = Number.isFinite(y) ? (+y!).toPrecision(5) : '—';
+            if (cells[i]) cells[i]!.textContent = text;
+            if (d.values[i]) d.values[i]!.value = text;
         });
     }
 
-    _fmt(v) {
-        return Number.isFinite(+v) ? String(+(+v).toPrecision(4)) : '?';
+    _fmt(v: number | undefined) {
+        return Number.isFinite(+v!) ? String(+(+v!).toPrecision(4)) : '?';
     }
 
     /** Which CAS feature kinds this view draws. Roots, extrema and
@@ -1321,10 +1699,12 @@ export class FunctionAnalysisManager {
      *  report found any. `view.mark` stays as an additive hint (the LM
      *  regularly forgets to list them, and a learner asking "where are the
      *  roots" deserves an answer). */
-    _marksFor(chars, view) {
+    _marksFor(chars: FaCharacteristics, view: FaView) {
         const marks = new Set(view.mark || []);
         for (const kind of ['zeros', 'extrema', 'singularities']) {
-            const f = (chars.features || {})[kind];
+            // `as` — the report is keyed by kind, and only point-shaped kinds
+            // are looked up here.
+            const f = ((chars.features || {}) as FaFeatures)[kind] as FaFeature | undefined;
             if (f && (f.points || []).length) marks.add(kind);
         }
         return marks;
@@ -1345,25 +1725,27 @@ export class FunctionAnalysisManager {
      *    family  `math` is a solution SET, not a single point
      *    prose   the row as a sentence fragment, for prompts
      *  Point lists are bounded server-side (features.MAX_POINTS). */
-    _featureRows(chars, view) {
-        const feats = chars.features || {};
+    _featureRows(chars: FaCharacteristics, view: FaView) {
+        const feats: FaFeatures = chars.features || {};
         // The report is in terms of the ANALYZED variable, which is not
         // always the one a view sweeps (this expression is analyzed in $R$;
         // its second view sweeps $\omega$). Label locations with the variable
         // they actually belong to.
         const fv = chars.variable || view.x_var;
         const xL = this._varLatex(chars, fv);
-        const [xa, xb] = (view.x_range || []).length === 2
-            ? view.x_range : [-Infinity, Infinity];
+        // `as` — the guard tests for exactly two entries.
+        const [xa, xb] = ((view.x_range || []).length === 2
+            ? view.x_range : [-Infinity, Infinity]) as [number, number];
         const lo = Math.min(xa, xb), hi = Math.max(xa, xb);
         // Markers are re-detected numerically over the plotted window, so a
         // CAS point outside it draws nothing however the legend key is set.
         // The window only means anything when the view sweeps that variable.
         const sameAxis = fv === view.x_var;
-        const isOff = (p) => sameAxis && !(p && Number.isFinite(p.approx) &&
-                                           p.approx >= lo && p.approx <= hi);
-        const rows = [];
-        const push = (r) => {
+        // `!` — Number.isFinite on the same property is the guard.
+        const isOff = (p: FaPoint | undefined) => sameAxis && !(p && Number.isFinite(p.approx) &&
+                                           p.approx! >= lo && p.approx! <= hi);
+        const rows: FaRow[] = [];
+        const push = (r: FaRow) => {
             // "a maximum at $x = 1$ (value $2$) (off-chart)" / "period $2\pi$"
             // `at` marks a located point; `article` names a thing that reads
             // with one ("a horizontal asymptote", but plain "period").
@@ -1384,8 +1766,9 @@ export class FunctionAnalysisManager {
             }
             rows.push(r);
         };
-        const points = (kind, group, describe) => {
-            const f = feats[kind] || {};
+        const points = <P>(kind: string, group: string, describe: (p: P) => FaRowDescriptor) => {
+            // `as` — same keyed-report lookup as `_marksFor`.
+            const f = (feats[kind] || {}) as { points?: P[]; family?: string };
             for (const p of f.points || []) push({ kind, group, at: true, ...describe(p) });
             // `family` is what the CAS returns when the solution set is not a
             // finite list ($\pi n$, $\mathbb{R}$) — say so, rather than phrase
@@ -1394,23 +1777,24 @@ export class FunctionAnalysisManager {
                 push({ kind, group, label: group, math: f.family, family: true });
             }
         };
-        points('zeros', 'roots', (p) => ({
+        points('zeros', 'roots', (p: FaPoint) => ({
             label: 'root', math: `${xL} = ${p.latex}`, off: isOff(p) }));
-        points('extrema', 'critical points', (p) => ({
+        points('extrema', 'critical points', (p: FaExtremum) => ({
             // The CAS labels a point it could not classify `critical`, which
             // is an adjective — taking it verbatim reads "a critical at".
             label: (!p.kind || p.kind === 'critical') ? 'critical point' : p.kind,
             math: `${xL} = ${p.location.latex}`,
             detail: (p.value && p.value.latex) || '',
             off: isOff(p.location) }));
-        points('singularities', 'singularities', (p) => ({
+        points('singularities', 'singularities', (p: FaSingularity) => ({
             label: p.vertical_asymptote ? 'vertical asymptote' : 'singularity',
             math: `${xL} = ${p.location.latex}`,
             off: isOff(p.location) }));
-        points('inflections', 'inflection points', (p) => ({
+        points('inflections', 'inflection points', (p: FaPoint) => ({
             label: 'inflection point', math: `${xL} = ${p.latex}`, off: isOff(p) }));
 
-        for (const d of (feats.limits_at_infinity || {}).directions || []) {
+        // `as` — the `|| {}` fallback carries no `directions` of its own.
+        for (const d of ((feats.limits_at_infinity || {}) as FaFeature).directions || []) {
             const to = `${xL} \\to ${d.direction === '-inf' ? '-' : '+'}\\infty`;
             const kind = 'limits_at_infinity', group = 'limits at infinity';
             const o = d.oblique_asymptote;
@@ -1421,7 +1805,7 @@ export class FunctionAnalysisManager {
                        math: `y = ${o.slope.latex} ${xL} ${term}`, detail: to });
             } else if (d.horizontal_asymptote && d.limit) {
                 push({ kind, group, label: 'horizontal asymptote', article: true,
-                       math: `y = ${d.limit.latex}`, detail: to });
+                       math: `y = ${(d.limit as FaPoint).latex}`, detail: to });
             } else if (d.limit) {
                 // Infinite limits arrive as bare LaTeX, finite ones as points.
                 const lim = typeof d.limit === 'string' ? d.limit : d.limit.latex;
@@ -1448,23 +1832,27 @@ export class FunctionAnalysisManager {
      *  report, and those carry no points — so without this they are
      *  indistinguishable from "the curve has none", which is a different
      *  and much stronger claim. */
-    _unresolvedKinds(chars) {
-        const feats = chars.features || {};
-        const NAMES = {
+    _unresolvedKinds(chars: FaCharacteristics) {
+        const feats: FaFeatures = chars.features || {};
+        const NAMES: Record<string, string> = {
             zeros: 'roots', extrema: 'critical points',
             singularities: 'singularities', inflections: 'inflection points',
             limits_at_infinity: 'limits at infinity',
             periodicity: 'periodicity', parity: 'symmetry', domain: 'domain',
         };
+        // `as` — the report's string-valued kinds (parity, domain) simply
+        // have no `status`, which is exactly what this filter wants. `!` —
+        // every key comes from NAMES itself.
         return Object.keys(NAMES)
-            .filter(k => feats[k] && feats[k].status === 'unresolved')
-            .map(k => NAMES[k]);
+            .filter(k => feats[k] && (feats[k] as FaFeature).status === 'unresolved')
+            .map(k => NAMES[k]!);
     }
 
     /** The CAS report opened up: every detected feature as its own row, with
      *  a hover-revealed ask button on each so any single finding can be taken
      *  to chat on its own. Returns the row count for the toggle's caption. */
-    _renderFeaturePanel(host, artifact, chars, view, state) {
+    _renderFeaturePanel(host: HTMLElement, artifact: FaArtifact, chars: FaCharacteristics,
+                        view: FaView, state: FaViewState) {
         host.innerHTML = '';
         const rows = this._featureRows(chars, view);
         const stalled = this._unresolvedKinds(chars);
@@ -1536,21 +1924,22 @@ export class FunctionAnalysisManager {
      *  chart, so every finding is listed and the ones the learner cannot
      *  currently see are flagged instead — `(hidden)` for a legend key
      *  switched off, `(off-chart)` for a point outside the swept range. */
-    _featureSummary(chars, view) {
+    _featureSummary(chars: FaCharacteristics, view: FaView) {
         const rows = this._featureRows(chars, view);
         const marked = ['zeros', 'extrema', 'singularities'];
-        const drawn = [], extra = [];
+        const drawn: string[] = [], extra: string[] = [];
 
         // Rows arrive grouped by kind; fold each run into one clause.
+        // `!` throughout — `i` is bounded by `rows.length` at every read.
         for (let i = 0; i < rows.length;) {
-            const kind = rows[i].kind;
-            const run = [];
-            while (i < rows.length && rows[i].kind === kind) run.push(rows[i++]);
-            const { group } = run[0];
+            const kind = rows[i]!.kind;
+            const run: FaRow[] = [];
+            while (i < rows.length && rows[i]!.kind === kind) run.push(rows[i++]!);
+            const { group } = run[0]!;
             // Rows whose label is just the group's singular collapse to
             // "roots at A, B". Where the wording carries more than the group
             // name does (a maximum vs a minimum, a value) each stands alone.
-            const uniform = !run[0].family && !run.some(r => r.detail) &&
+            const uniform = !run[0]!.family && !run.some(r => r.detail) &&
                 run.every(r => r.group === r.label + 's');
             const body = uniform
                 ? run.map(r => `$${r.math}$` + (r.off ? ' (off-chart)' : '')).join(', ')
@@ -1572,11 +1961,12 @@ export class FunctionAnalysisManager {
         // A kind the view asked to mark that the report found nothing for
         // says so rather than silently vanishing.
         const found = new Set(rows.map(r => r.kind));
-        const feats = chars.features || {};
+        const feats: FaFeatures = chars.features || {};
         const empty = [...this._marksFor(chars, view)].filter(k =>
             // A kind the CAS timed out on is unknown, not empty — it belongs
             // in the `stalled` clause below, not in a "none were found" claim.
-            !found.has(k) && (feats[k] || {}).status !== 'unresolved');
+            // `as` — same keyed-report lookup as `_unresolvedKinds`.
+            !found.has(k) && ((feats[k] || {}) as FaFeature).status !== 'unresolved');
         if (empty.length) out.push(`No ${empty.join(' or ')} were found.`);
         // Never let the tutor read a CAS timeout as "the curve has none".
         const stalled = this._unresolvedKinds(chars);
@@ -1590,7 +1980,7 @@ export class FunctionAnalysisManager {
     /** Everything else drawn beside the main curve — companion plots and the
      *  annotation lines, by the labels the learner reads in the legend. All
      *  of them, with the ones switched off flagged `(hidden)`. */
-    _overlaySummary(chars, view) {
+    _overlaySummary(chars: FaCharacteristics, view: FaView) {
         const parts = [];
         // Dataset order is `_seriesFor`'s: the main curve (when there is one)
         // then each plot that has a script — the same index the legend chips
@@ -1619,7 +2009,7 @@ export class FunctionAnalysisManager {
      *  tutor answers about what the learner is actually looking at rather
      *  than the expression in the abstract — the full CAS report and every
      *  extra curve, with whatever is currently off-screen flagged. */
-    _configSummary(chars, view, state) {
+    _configSummary(chars: FaCharacteristics, view: FaView, state: FaViewState) {
         const pins = Object.entries(state.pins || {})
             .map(([k, v]) => `$${this._varLatex(chars, k)}$ = ${this._fmt(v)}`);
         const range = (view.x_range || []).map(v => this._fmt(v)).join(' to ');
@@ -1633,19 +2023,21 @@ export class FunctionAnalysisManager {
 
     /** Hovering an annotation reports the values AT that marker — the same
      *  readout the plot hover gives, but pinned to the point of interest. */
-    _showAnnotationTip(chart, l) {
-        const wrap = chart.canvas.parentNode;
+    _showAnnotationTip(chart: FaChart, l: FaLabelPlacement) {
+        // `as` — the canvas's parent is the wrapper this module created.
+        const wrap = chart.canvas.parentNode as HTMLElement | null;
         if (!wrap) return;
-        let el = wrap.querySelector('.fa-chart-tip');
+        let el = wrap.querySelector('.fa-chart-tip') as HTMLElement | null;
         if (!el) {
             el = document.createElement('div');
             el.className = 'fa-chart-tip';
             wrap.appendChild(el);
         }
         el.innerHTML = '';
-        const a = l.ann;
-        const fa = chart.$fa || {};
-        const num = (v) => Number.isFinite(v) ? +(+v).toPrecision(5) : '—';
+        // `!` — only labels carrying an annotation get this listener.
+        const a = l.ann!;
+        const fa = (chart.$fa || {}) as Partial<FaChartState>;
+        const num = (v: number | null | undefined) => Number.isFinite(v) ? +(+v!).toPrecision(5) : '—';
 
         const head = document.createElement('div');
         head.className = 'fa-tip-head';
@@ -1658,7 +2050,7 @@ export class FunctionAnalysisManager {
         }
         el.appendChild(head);
 
-        const row = (name, value, color) => {
+        const row = (name: string | HTMLElement, value: string | number, color?: string) => {
             const r = document.createElement('div');
             r.className = 'fa-tip-row';
             const sw = document.createElement('span');
@@ -1670,9 +2062,10 @@ export class FunctionAnalysisManager {
             else n.appendChild(name);
             const v = document.createElement('span');
             v.className = 'fa-tip-val';
-            v.textContent = value;
+            // `as` — textContent coerces a number exactly as before.
+            v.textContent = value as string;
             r.append(sw, n, v);
-            el.appendChild(r);
+            el!.appendChild(r);
         };
 
         if (a.kind === 'vline') {
@@ -1684,15 +2077,17 @@ export class FunctionAnalysisManager {
                 if (d < best) { best = d; idx = i; }
             });
             for (const ds of chart.data.datasets) {
-                row(ds.label === 'f' ? (fa.exprLatex || 'f') : ds.label,
+                // `!` — the ternary's false arm is only reached when
+                // `ds.label` compared unequal to 'f', so it is a string.
+                row(ds.label === 'f' ? (fa.exprLatex || 'f') : ds.label!,
                     num(ds.data[idx]), ds.borderColor);
             }
         } else if (a.kind === 'hline') {
             row('y', num(a.atValue));
         } else if (a.kind === 'band') {
             const sym = fa.xLatex || 'x';
-            row(sym, `${num(Math.min(a.atValue, a.toValue))} … ` +
-                     `${num(Math.max(a.atValue, a.toValue))}`);
+            row(sym, `${num(Math.min(a.atValue, a.toValue!))} … ` +
+                     `${num(Math.max(a.atValue, a.toValue!))}`);
         }
 
         el.style.left = `${l.left}px`;
@@ -1703,12 +2098,12 @@ export class FunctionAnalysisManager {
     /** Place annotation labels as KaTeX-rendered HTML over the canvas.
      *  Called from the draw plugin, so positions follow every slider move
      *  and resize. Canvas text can't render math; this layer can. */
-    _syncLabels(chart, labels) {
+    _syncLabels(chart: FaChart, labels: FaLabelPlacement[]) {
         const layer = chart.canvas.parentNode &&
             chart.canvas.parentNode.querySelector('.fa-chart-labels');
         if (!layer) return;
         layer.innerHTML = '';
-        const placed = [];
+        const placed: { el: HTMLSpanElement; l: FaLabelPlacement }[] = [];
         for (const l of labels) {
             const el = document.createElement('span');
             el.className = 'fa-chart-label' + (l.band ? ' band' : '');
@@ -1722,7 +2117,8 @@ export class FunctionAnalysisManager {
                 el.addEventListener('mouseenter',
                     () => this._showAnnotationTip(chart, l));
                 el.addEventListener('mouseleave', () => {
-                    const tip = chart.canvas.parentNode
+                    // `!` — the chart is mounted while its labels are hovered.
+                    const tip = chart.canvas.parentNode!
                         .querySelector('.fa-chart-tip');
                     if (tip) tip.classList.remove('show');
                 });
@@ -1734,7 +2130,7 @@ export class FunctionAnalysisManager {
         // to the left of its line, and stacked labels step down so they
         // don't overprint each other.
         const wide = layer.clientWidth;
-        const rows = [];
+        const rows: { top: number; left: number; right: number }[] = [];
         for (const { el, l } of placed) {
             const w = el.offsetWidth, h = el.offsetHeight || 14;
             let left = l.left;
@@ -1751,10 +2147,11 @@ export class FunctionAnalysisManager {
     }
 
     /** Padded finite y-extent across all datasets. */
-    _yBounds(datasets) {
-        const ys = [];
+    _yBounds(datasets: ChartDataset[]) {
+        const ys: number[] = [];
+        // `!` — Number.isFinite on the same value is the guard.
         for (const ds of datasets) {
-            for (const y of ds.data) if (Number.isFinite(y)) ys.push(y);
+            for (const y of ds.data) if (Number.isFinite(y)) ys.push(y!);
         }
         if (!ys.length) return { min: -1, max: 1 };
         let min = Math.min(...ys), max = Math.max(...ys);
@@ -1763,12 +2160,12 @@ export class FunctionAnalysisManager {
         return { min: min - pad, max: max + pad };
     }
 
-    _evalAnnotations(chars, view, pins) {
-        const out = [];
+    _evalAnnotations(chars: FaCharacteristics, view: FaView, pins: Record<string, number>) {
+        const out: FaEvalAnnotation[] = [];
         for (const ann of view.annotations || []) {
             const val = this._evalPos(chars, view, pins, ann.at);
             if (val == null) continue;
-            const entry = { ...ann, atValue: val };
+            const entry: FaEvalAnnotation = { ...ann, atValue: val };
             if (ann.kind === 'band') {
                 const to = this._evalPos(chars, view, pins, ann.to);
                 if (to == null) continue;
@@ -1779,13 +2176,14 @@ export class FunctionAnalysisManager {
         return out;
     }
 
-    _evalPos(chars, view, pins, pos) {
+    _evalPos(chars: FaCharacteristics, view: FaView, pins: Record<string, number>,
+             pos: FaScript | undefined) {
         if (!pos || !pos.script) return null;
         try {
             const compiled = compileExpr(pos.script);
             const scope = this._scopeFor(chars, view, pins, 1);
             const v = evalExpr(compiled, 0, { overrideScope: scope });
-            return Number.isFinite(v) ? v : null;
+            return Number.isFinite(v) ? (v as number) : null;
         } catch (_e) { return null; }
     }
 
@@ -1798,20 +2196,21 @@ export class FunctionAnalysisManager {
      *  dataset, clicking toggles that dataset, an off chip is struck
      *  through, and the swatch carries the curve's real stroke — solid for
      *  the analyzed expression, dashed for a companion plot. */
-    _renderSeriesLegend(legend, chart) {
+    _renderSeriesLegend(legend: HTMLElement, chart: FaChart) {
         for (const el of legend.querySelectorAll('.fa-series-key')) el.remove();
         this._hiddenSeries.clear();         // a fresh chart shows everything
         const datasets = chart.data.datasets;
         if (datasets.length < 2) return;    // a lone curve is the y-axis title
         datasets.forEach((ds, i) => {
-            const source = ds.$faLabel || ds.label || '';
+            const source = (ds.$faLabel as string | undefined) || ds.label || '';
             const chip = document.createElement('button');
             chip.className = 'fa-btn fa-series-key';
             chip.title = `Show or hide ${detex(source)}`;
             const swatch = document.createElement('span');
             swatch.className = 'fa-series-swatch' +
                 ((ds.borderDash || []).length ? ' dashed' : '');
-            swatch.style.borderTopColor = ds.borderColor;
+            // `!` — every dataset this module builds sets borderColor.
+            swatch.style.borderTopColor = ds.borderColor!;
             const text = document.createElement('span');
             text.innerHTML = renderKaTeX(source, false);
             chip.append(swatch, text);
@@ -1829,9 +2228,9 @@ export class FunctionAnalysisManager {
 
     /** Legend for the drawn markers — and the switch that hides them.
      *  Lists only the kinds this chart actually has. */
-    _renderMarkerLegend(legend, marks, chart) {
+    _renderMarkerLegend(legend: HTMLElement, marks: Set<string>, chart: FaChart) {
         for (const el of legend.querySelectorAll('.fa-mark-key')) el.remove();
-        const keys = [
+        const keys: [string, string, string][] = [
             ['zeros', 'fa-key-zero', 'roots'],
             ['extrema', 'fa-key-extremum', 'max / min'],
             ['singularities', 'fa-key-sing', 'singularity'],
@@ -1855,10 +2254,11 @@ export class FunctionAnalysisManager {
         }
     }
 
-    _renderAnnLegend(legend, view, annotations, redraw) {
+    _renderAnnLegend(legend: HTMLElement, view: FaView,
+                     annotations: FaEvalAnnotation[], redraw: () => void) {
         // Keep the marker keys; only the annotation chips are rebuilt.
         for (const el of legend.querySelectorAll('.fa-ann-chip')) el.remove();
-        const groups = new Map();   // group label -> count
+        const groups = new Map<string, number>();   // group label -> count
         for (const a of annotations) {
             const g = a.group || '';
             groups.set(g, (groups.get(g) || 0) + 1);
@@ -1880,7 +2280,8 @@ export class FunctionAnalysisManager {
     }
 
     /** Numeric feature markers (from the main dataset) + AI annotations. */
-    _drawOverlays(chart, mainDataset, xs, marks, annotations) {
+    _drawOverlays(chart: FaChart, mainDataset: ChartDataset | undefined, xs: number[],
+                  marks: Set<string>, annotations: FaEvalAnnotation[]) {
         const { ctx, chartArea, scales } = chart;
         if (!chartArea || !scales.x || !scales.y) return;
         ctx.save();
@@ -1912,7 +2313,7 @@ export class FunctionAnalysisManager {
         // ── AI annotations: vline / hline / band ─────────────────────
         // Lines are drawn on the canvas; their labels are collected and
         // rendered as KaTeX in the HTML layer above it (see _syncLabels).
-        const labels = [];
+        const labels: FaLabelPlacement[] = [];
         for (const a of annotations) {
             if (a.kind === 'vline') {
                 const px = scales.x.getPixelForValue(a.atValue);
@@ -1939,8 +2340,9 @@ export class FunctionAnalysisManager {
                     labels.push({ text: a.label, left: chartArea.left + 6, top: py - 17, ann: a });
                 }
             } else if (a.kind === 'band') {
-                const p0 = scales.x.getPixelForValue(Math.min(a.atValue, a.toValue));
-                const p1 = scales.x.getPixelForValue(Math.max(a.atValue, a.toValue));
+                // `!` — `_evalAnnotations` only keeps a band once `to` resolved.
+                const p0 = scales.x.getPixelForValue(Math.min(a.atValue, a.toValue!));
+                const p1 = scales.x.getPixelForValue(Math.max(a.atValue, a.toValue!));
                 ctx.fillStyle = BAND_FILL;
                 ctx.fillRect(p0, chartArea.top, p1 - p0,
                              chartArea.bottom - chartArea.top);
@@ -1953,15 +2355,17 @@ export class FunctionAnalysisManager {
         this._syncLabels(chart, labels);
 
         // ── numeric feature markers on the main curve ────────────────
+        // `!` throughout this block — every index walks `ys`/`xs` inside its
+        // own bounds, and the null checks above each read are the guards.
         if (mainDataset) {
             const ys = mainDataset.data;
             if (marks.has('zeros')) {
                 ctx.fillStyle = '#dde6ff';
                 for (let i = 1; i < ys.length; i++) {
                     if (ys[i - 1] == null || ys[i] == null) continue;
-                    if (Math.sign(ys[i - 1]) !== Math.sign(ys[i]) &&
-                        Math.abs(ys[i - 1]) < 1e6) {
-                        const x = (xs[i - 1] + xs[i]) / 2;
+                    if (Math.sign(ys[i - 1]!) !== Math.sign(ys[i]!) &&
+                        Math.abs(ys[i - 1]!) < 1e6) {
+                        const x = (xs[i - 1]! + xs[i]!) / 2;
                         ctx.beginPath();
                         ctx.arc(scales.x.getPixelForValue(x),
                                 scales.y.getPixelForValue(0), 3.5, 0, TAU);
@@ -1973,11 +2377,11 @@ export class FunctionAnalysisManager {
                 for (let i = 2; i < ys.length - 2; i++) {
                     const w = ys.slice(i - 2, i + 3);
                     if (w.some(y => y == null)) continue;
-                    const c = ys[i];
-                    const isMax = w.every(y => y <= c) && ys[i - 2] < c && ys[i + 2] < c;
-                    const isMin = w.every(y => y >= c) && ys[i - 2] > c && ys[i + 2] > c;
+                    const c = ys[i]!;
+                    const isMax = w.every(y => y! <= c) && ys[i - 2]! < c && ys[i + 2]! < c;
+                    const isMin = w.every(y => y! >= c) && ys[i - 2]! > c && ys[i + 2]! > c;
                     if (!isMax && !isMin) continue;
-                    const px = scales.x.getPixelForValue(xs[i]);
+                    const px = scales.x.getPixelForValue(xs[i]!);
                     const py = scales.y.getPixelForValue(c);
                     ctx.fillStyle = '#ffa726';
                     ctx.beginPath();
@@ -1995,7 +2399,7 @@ export class FunctionAnalysisManager {
                 ctx.setLineDash([3, 3]);
                 for (let i = 1; i < ys.length; i++) {
                     if ((ys[i - 1] == null) !== (ys[i] == null)) {
-                        const x = (xs[i - 1] + xs[i]) / 2;
+                        const x = (xs[i - 1]! + xs[i]!) / 2;
                         const px = scales.x.getPixelForValue(x);
                         ctx.beginPath();
                         ctx.moveTo(px, chartArea.top);
@@ -2011,7 +2415,8 @@ export class FunctionAnalysisManager {
 
     /* ---------------- sliders ------------------------------------------ */
 
-    _renderSliders(artifact, chars, proposal, view, host, state, onChange) {
+    _renderSliders(artifact: FaArtifact, chars: FaCharacteristics, proposal: FaProposal,
+                   view: FaView, host: HTMLElement, state: FaViewState, onChange: () => void) {
         host.innerHTML = '';
         const pins = view.pinned || {};
         const names = Object.keys(pins);
@@ -2024,7 +2429,8 @@ export class FunctionAnalysisManager {
             const sym = document.createElement('span');
             sym.className = 'fa-var';
             this._katex(sym, this._varLatex(chars, name));
-            const desc = (proposal.variable_glossary || {})[name];
+            // `as` — the `|| {}` fallback has no index signature of its own.
+            const desc = ((proposal.variable_glossary || {}) as Record<string, string | undefined>)[name];
             if (desc) this._attachVarTooltip(sym, desc);
             // Ask button anchored at the variable's top-right corner,
             // revealed while hovering anywhere on the slider row.
@@ -2046,8 +2452,10 @@ export class FunctionAnalysisManager {
             const hi = v0 === 0 ? 10 : Math.max(v0 * 3, 0.001);
             const input = document.createElement('input');
             input.type = 'range';
-            input.min = lo; input.max = hi; input.step = (hi - lo) / 200;
-            input.value = state.pins[name] != null ? state.pins[name] : v0;
+            // `String(...)` — these DOM properties are strings, and the
+            // assignment did the same coercion implicitly before.
+            input.min = String(lo); input.max = String(hi); input.step = String((hi - lo) / 200);
+            input.value = String(state.pins[name] != null ? state.pins[name] : v0);
 
             const val = document.createElement('span');
             val.className = 'fa-slider-val';
@@ -2066,7 +2474,7 @@ export class FunctionAnalysisManager {
 
     /* ---------------- quiz --------------------------------------------- */
 
-    _renderQuiz(artifact, chars, proposal) {
+    _renderQuiz(artifact: FaArtifact, chars: FaCharacteristics, proposal: FaProposal) {
         const card = document.createElement('div');
         card.className = 'fa-card fa-quiz';
         const label = document.createElement('div');
@@ -2078,7 +2486,7 @@ export class FunctionAnalysisManager {
         list.className = 'fa-quiz-list';
         card.appendChild(list);
 
-        const appendProbes = (probes) => {
+        const appendProbes = (probes: FaProbe[]) => {
             const startIdx = list.querySelectorAll('.fa-probe').length;
             probes.forEach((p, i) => {
                 list.appendChild(this._renderProbe(artifact, p, startIdx + i + 1));
@@ -2096,8 +2504,10 @@ export class FunctionAnalysisManager {
             more.disabled = true;
             moreStatus.innerHTML =
                 '<span class="sgp-dots"><span></span><span></span><span></span></span>';
+            // `as` — `.fa-probe-q` rows are <div>s this module built, and the
+            // question is the `data-question` attribute it stamped on them.
             const asked = [...list.querySelectorAll('.fa-probe .fa-probe-q')]
-                .map(el => el.dataset.question || '');
+                .map(el => (el as HTMLElement).dataset.question || '');
             try {
                 const res = await invokeExpert('expression_analysis', {
                     verb: 'more_probes',
@@ -2105,7 +2515,7 @@ export class FunctionAnalysisManager {
                     characteristics: chars,
                     context: String(this.buildContext(artifact.step) || '').slice(0, 2000),
                     asked,
-                }, { timeoutMs: REQUEST_TIMEOUT_MS });
+                }, { timeoutMs: REQUEST_TIMEOUT_MS }) as { probes?: FaProbe[] } | null;
                 const probes = (res && res.probes) || [];
                 if (probes.length) {
                     appendProbes(probes);
@@ -2113,12 +2523,14 @@ export class FunctionAnalysisManager {
                     // truth: fold the new probes in so re-opening the page
                     // re-renders them and the { } popup shows them.
                     proposal.probes = [...(proposal.probes || []), ...probes];
-                    const pre = this.pageEl.querySelector('.fa-json-modal pre');
+                    // `!` — this handler only runs on a page this manager built.
+                    const pre = this.pageEl!.querySelector('.fa-json-modal pre');
                     if (pre) pre.textContent = JSON.stringify(artifact.data, null, 2);
                 }
                 moreStatus.textContent = probes.length ? '' : 'No new questions.';
             } catch (e) {
-                moreStatus.textContent = (e && e.message) || 'Failed.';
+                // `as` — see `_run`: a truthy `unknown` narrows to `{}`.
+                moreStatus.textContent = ((e && (e as { message?: string }).message) as string | undefined) || 'Failed.';
             }
             more.disabled = false;
         });
@@ -2126,7 +2538,7 @@ export class FunctionAnalysisManager {
         return card;
     }
 
-    _renderProbe(artifact, probe, number) {
+    _renderProbe(artifact: FaArtifact, probe: FaProbe, number: number) {
         const div = document.createElement('div');
         div.className = 'fa-probe';
         const q = document.createElement('div');
@@ -2161,11 +2573,14 @@ export class FunctionAnalysisManager {
             b.className = 'fa-btn fa-probe-chip';
             this._inlineMath(b, o);
             b.addEventListener('click', () => {
-                for (const c of opts.children) c.disabled = true;
+                // `as` — every child of `.fa-probe-opts` is a <button> built
+                // by this same loop.
+                for (const c of opts.children) (c as HTMLButtonElement).disabled = true;
                 const right = i === probe.correct_index;
                 b.classList.add(right ? 'right' : 'wrong');
                 if (!right && opts.children[probe.correct_index]) {
-                    opts.children[probe.correct_index].classList.add('right');
+                    // `!` — the same lookup was just tested for presence.
+                    opts.children[probe.correct_index]!.classList.add('right');
                 }
                 exp.classList.add('show');
                 // Post-answer ask button: the tutor gets the full outcome —
@@ -2200,7 +2615,7 @@ export class FunctionAnalysisManager {
 
     /* ---------------- raw JSON ---------------------------------------- */
 
-    _renderJsonPanel(artifact) {
+    _renderJsonPanel(artifact: FaArtifact) {
         // Popup over the view (backdrop click or × closes it).
         const overlay = document.createElement('div');
         overlay.className = 'fa-json-overlay';
@@ -2228,7 +2643,8 @@ export class FunctionAnalysisManager {
         pre.textContent = JSON.stringify(artifact.data, null, 2);
         // Same copy affordance as the JSON browser: clipboard + brief "Copied!".
         copy.addEventListener('click', () => {
-            navigator.clipboard.writeText(pre.textContent).then(() => {
+            // `!` — textContent was assigned a string two lines above.
+            navigator.clipboard.writeText(pre.textContent!).then(() => {
                 copy.textContent = 'Copied!';
                 setTimeout(() => { copy.textContent = 'Copy'; }, 1200);
             }).catch(() => { copy.textContent = 'Copy failed'; });
@@ -2240,15 +2656,16 @@ export class FunctionAnalysisManager {
 
     /* ---------------- helpers ------------------------------------------ */
 
-    _varLatex(chars, name) {
-        return (chars.variables_latex || {})[name] || name;
+    _varLatex(chars: FaCharacteristics, name: string) {
+        // `as` — the `|| {}` fallback has no index signature of its own.
+        return ((chars.variables_latex || {}) as Record<string, string | undefined>)[name] || name;
     }
 
-    _varText(chars, name) {
+    _varText(chars: FaCharacteristics, name: string) {
         return detex(this._varLatex(chars, name));
     }
 
-    _katex(el, latex) {
+    _katex(el: HTMLElement, latex: string | undefined) {
         if (this.katex) {
             try {
                 this.katex.render(String(latex), el,
@@ -2261,7 +2678,7 @@ export class FunctionAnalysisManager {
 
     /** Render text with inline $…$ math the same way as the rest of the
      *  app (labels.js renderKaTeX — used by tree labels, proof titles). */
-    _inlineMath(el, text) {
+    _inlineMath(el: HTMLElement, text: string | undefined) {
         const span = document.createElement('span');
         span.innerHTML = renderKaTeX(String(text || ''), false);
         el.appendChild(span);
@@ -2269,30 +2686,32 @@ export class FunctionAnalysisManager {
 
     /** Instant styled tooltip with the variable's AI-written description
      *  (native `title` is too slow/subtle for a teaching surface). */
-    _attachVarTooltip(el, desc) {
+    _attachVarTooltip(el: HTMLElement, desc: string) {
         el.addEventListener('mouseenter', () => {
-            let tip = this.pageEl.querySelector('.fa-tooltip');
+            // `!` / `as` — tooltips are only wired on a page this manager
+            // built, and `.fa-tooltip` is the <div> it creates right here.
+            let tip = this.pageEl!.querySelector('.fa-tooltip') as HTMLElement | null;
             if (!tip) {
                 tip = document.createElement('div');
                 tip.className = 'fa-tooltip';
-                this.pageEl.appendChild(tip);
+                this.pageEl!.appendChild(tip);
             }
             tip.innerHTML = `<span class="fa-ai-badge">${AI_ICON}</span> ` +
                 renderKaTeX(desc, false);
             const r = el.getBoundingClientRect();
-            const host = this.pageEl.getBoundingClientRect();
+            const host = this.pageEl!.getBoundingClientRect();
             tip.style.left = `${r.left - host.left}px`;
-            tip.style.top = `${r.top - host.top + this.pageEl.scrollTop - 8}px`;
+            tip.style.top = `${r.top - host.top + this.pageEl!.scrollTop - 8}px`;
             tip.classList.add('show');
         });
         el.addEventListener('mouseleave', () => {
-            const tip = this.pageEl.querySelector('.fa-tooltip');
+            const tip = this.pageEl!.querySelector('.fa-tooltip');
             if (tip) tip.classList.remove('show');
         });
     }
 
     /** Hover-revealed AI ask button beside the element (app-wide pattern). */
-    _attachHoverAsk(el, getMessage) {
+    _attachHoverAsk(el: HTMLElement, getMessage: () => string) {
         const btn = makeAiAskButton('ai-ask-btn fa-hover-ask',
                                     'Ask the AI about this', getMessage);
         el.classList.add('fa-askable');
