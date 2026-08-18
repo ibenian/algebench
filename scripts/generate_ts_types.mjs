@@ -26,13 +26,14 @@ const OUT_DIR = join(REPO_ROOT, 'src', 'types');
 
 // Each entry: the schema to read, and the .d.ts to emit beside it.
 //
-// Only the lesson schema is projected today. semantic-graph.schema.json is
-// deliberately NOT included yet — the graph shapes are typed in phase 3,
-// alongside the modules that actually consume them. semantic-graph-theme is
-// Python-side theme-authoring input (scripts/graph_to_mermaid.py) and is not a
-// frontend shape at all.
+// semantic-graph.schema.json joined the list when its consumers were converted
+// to TypeScript (src/graph-panel/), which is exactly the condition the earlier
+// note here set. semantic-graph-theme is Python-side theme-authoring input
+// (scripts/graph_to_mermaid.py) and is not a frontend shape at all, so it stays
+// out.
 const TARGETS = [
   { schema: 'lesson.schema.json', out: 'lesson.d.ts', name: 'Lesson' },
+  { schema: 'semantic-graph.schema.json', out: 'semantic-graph.d.ts', name: 'SemanticGraph' },
 ];
 
 // `bannerComment` replaces the library's own banner. Keep it explicit about

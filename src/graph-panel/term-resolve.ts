@@ -19,6 +19,8 @@
  *   node's rendered content before it is trusted.
  */
 
+import type { Node, SemanticGraph } from '/types/semantic-graph.js';
+
 // Layout-only LaTeX commands: they shape the typography but carry no symbol
 // content, so they never distinguish one subexpression from another.
 const NOISE_COMMANDS = new Set([
@@ -29,7 +31,7 @@ const NOISE_COMMANDS = new Set([
 // Rendered-glyph → LaTeX-command-name equivalents, so a DOM textContent
 // ("√π") and a node's latex ("\sqrt{\pi}") reduce to the same tokens. Covers
 // the glyphs KaTeX emits for the symbols the graph actually uses.
-const GLYPH_TOKENS = {
+const GLYPH_TOKENS: Record<string, string | undefined> = {
     'π': 'pi', 'σ': 'sigma', 'μ': 'mu', 'θ': 'theta', 'λ': 'lambda',
     'α': 'alpha', 'β': 'beta', 'γ': 'gamma', 'δ': 'delta', 'ε': 'epsilon',
     'ρ': 'rho', 'τ': 'tau', 'φ': 'phi', 'ω': 'omega', 'Δ': 'delta',
@@ -49,14 +51,15 @@ const GLYPH_TOKENS = {
  * in display order (`C·√2·σ·√π`) — same content, different order, so the
  * skeleton compares the token MULTISET, not the sequence.
  */
-export function apprSkeleton(s) {
+export function apprSkeleton(s: unknown): string {
     if (!s) return '';
-    const tokens = [];
+    const tokens: string[] = [];
     const str = String(s);
     const cmdRe = /\\([a-zA-Z]+)/g;
-    let m;
+    let m: RegExpExecArray | null;
     while ((m = cmdRe.exec(str)) !== null) {
-        const name = m[1].toLowerCase();
+        // Non-null: the regex has exactly one capture group, which matched.
+        const name = m[1]!.toLowerCase();
         if (!NOISE_COMMANDS.has(name)) tokens.push(name);
     }
     // Everything outside commands: letters/digits one token each, mapped glyphs
@@ -76,7 +79,7 @@ export function apprSkeleton(s) {
 }
 
 /** Does this graph node's stored content look like the term's rendered text? */
-export function contentAgrees(node, termText) {
+export function contentAgrees(node: Node | null | undefined, termText: unknown): boolean {
     const want = apprSkeleton(termText);
     if (!want) return false;              // nothing to verify against → don't trust
     return (
@@ -96,10 +99,14 @@ export function contentAgrees(node, termText) {
  * `__<parent>` stripped) against node ids' own canonical symbols; then a loose
  * label/latex match on the rendered glyph text.
  */
-export function resolveTermId(graph, termId, termText) {
+export function resolveTermId(
+    graph: SemanticGraph | null | undefined,
+    termId: string | null | undefined,
+    termText?: string | null,
+): string | null {
     if (!termId || !graph || !Array.isArray(graph.nodes)) return null;
     const nodes = graph.nodes;
-    const byId = id => nodes.find(n => n.id === id) || null;
+    const byId = (id: string) => nodes.find(n => n.id === id) || null;
     // The animation's ids carry affixes the graph node ids don't: a glyph
     // suffix on operator/structural glyphs (`__op`/`__op<n>`, `__exp`,
     // `__one`, `__m<n>`), and a rebase prefix on the threaded spine
@@ -127,7 +134,7 @@ export function resolveTermId(graph, termId, termText) {
     // superscripts and multiplication dots normalised away so "V²" ≡ "V^{2}".
     const t = (termText || '').trim();
     if (t) {
-        const norm = s => (s || '').replace(/\\cdot|\\[a-zA-Z]+|[{}\\$\s^*·]/g, '').trim();
+        const norm = (s: string | undefined) => (s || '').replace(/\\cdot|\\[a-zA-Z]+|[{}\\$\s^*·]/g, '').trim();
         // Skip a purely NUMERIC appearance ("2", "1/2"): a bare number is
         // ambiguous (an exponent, a denominator, a coefficient all render the
         // same), so matching it by text mis-links — e.g. a square's "2" to the
