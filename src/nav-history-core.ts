@@ -1,16 +1,20 @@
 // ============================================================
-// nav-history-core.js — Pure, browser-like navigation stack.
+// nav-history-core.ts — Pure, browser-like navigation stack.
 //
 // A linear back/forward history with a cursor, bounded to a max size.
 // Entries are opaque strings (serialized ViewStates). No imports, no DOM —
-// unit-testable under `node --test` and reused by nav-history.js (which adds
+// unit-testable under `node --test` and reused by nav-history.ts (which adds
 // the History API + URL wiring) and, later, breadcrumb UI.
 // ============================================================
 
 export const DEFAULT_MAX = 100;
 
 export class NavStack {
-    constructor(max = DEFAULT_MAX) {
+    max: number;
+    entries: string[];
+    cursor: number;
+
+    constructor(max: number = DEFAULT_MAX) {
         this.max = Math.max(1, max | 0);
         this.entries = [];
         this.cursor = -1; // index of the current entry, -1 when empty
@@ -20,9 +24,9 @@ export class NavStack {
      * Push a new entry after the cursor. Truncates any forward history
      * (classic browser behavior). No-op if equal to the current entry.
      * Enforces the max size by dropping the oldest entries.
-     * @returns {boolean} true if an entry was added.
+     * @returns true if an entry was added.
      */
-    push(entry) {
+    push(entry: string): boolean {
         if (this.cursor >= 0 && this.entries[this.cursor] === entry) return false;
         // Drop forward history.
         this.entries.length = this.cursor + 1;
@@ -38,7 +42,7 @@ export class NavStack {
     }
 
     /** Replace the current entry in place (or seed the stack if empty). */
-    replace(entry) {
+    replace(entry: string): void {
         if (this.cursor < 0) {
             this.entries = [entry];
             this.cursor = 0;
@@ -47,29 +51,31 @@ export class NavStack {
         }
     }
 
-    canBack() { return this.cursor > 0; }
-    canForward() { return this.cursor >= 0 && this.cursor < this.entries.length - 1; }
+    canBack(): boolean { return this.cursor > 0; }
+    canForward(): boolean { return this.cursor >= 0 && this.cursor < this.entries.length - 1; }
 
     /** Move cursor back one; returns the new current entry or null. */
-    back() {
+    back(): string | null {
         if (!this.canBack()) return null;
         this.cursor -= 1;
-        return this.entries[this.cursor];
+        // canBack() proved cursor > 0, so cursor - 1 is a populated index.
+        return this.entries[this.cursor]!;
     }
 
     /** Move cursor forward one; returns the new current entry or null. */
-    forward() {
+    forward(): string | null {
         if (!this.canForward()) return null;
         this.cursor += 1;
-        return this.entries[this.cursor];
+        // canForward() proved cursor < length - 1, so cursor + 1 is populated.
+        return this.entries[this.cursor]!;
     }
 
     /**
      * Sync the cursor to a known entry (used on popstate where the browser,
      * not us, moved). Picks the nearest matching index to the current cursor.
-     * @returns {boolean} true if found.
+     * @returns true if found.
      */
-    syncTo(entry) {
+    syncTo(entry: string): boolean {
         if (this.cursor >= 0 && this.entries[this.cursor] === entry) return true;
         let best = -1, bestDist = Infinity;
         for (let i = 0; i < this.entries.length; i++) {
@@ -82,8 +88,9 @@ export class NavStack {
         return false;
     }
 
-    current() { return this.cursor >= 0 ? this.entries[this.cursor] : null; }
-    getStack() { return this.entries.slice(); }
-    getCursor() { return this.cursor; }
-    get size() { return this.entries.length; }
+    // cursor >= 0 means the stack is non-empty and cursor indexes an entry.
+    current(): string | null { return this.cursor >= 0 ? this.entries[this.cursor]! : null; }
+    getStack(): string[] { return this.entries.slice(); }
+    getCursor(): number { return this.cursor; }
+    get size(): number { return this.entries.length; }
 }

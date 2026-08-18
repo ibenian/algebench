@@ -1,5 +1,5 @@
 // ============================================================
-// nav-history.js — Browser History API bridge for deeplinking.
+// nav-history.ts — Browser History API bridge for deeplinking.
 //
 // Wraps the pure NavStack core with the URL rewriting + popstate handling.
 //   - pushView(vs):    new history entry (scene/step/proof-step transitions)
@@ -12,25 +12,33 @@
 // replaceView (explicit Copy-link capture).
 // ============================================================
 
-import { serializeViewState, parseViewState } from '/view-state.js';
+import { serializeViewState, parseViewState, type ViewState } from '/view-state.js';
 import { NavStack } from '/nav-history-core.js';
+
+/** Options applyViewState() accepts (see view-state-bridge). */
+export interface ApplyViewStateOpts {
+    fromHistory?: boolean;
+}
+
+/** The apply callback setupPopstateListener() drives on back/forward. */
+export type ApplyViewStateFn = (vs: ViewState, opts: ApplyViewStateOpts) => unknown;
 
 const stack = new NavStack(100);
 let _applyingFromHistory = false;
 
 /** True while a popstate-driven apply is in flight (guards push loops). */
-export function isApplyingFromHistory() {
+export function isApplyingFromHistory(): boolean {
     return _applyingFromHistory;
 }
 
-function urlFor(query) {
+function urlFor(query: string): string {
     const path = window.location.pathname;
     const hash = window.location.hash || '';
     return path + (query ? '?' + query : '') + hash;
 }
 
 /** Read the current view state from the live URL. */
-export function currentUrlViewState() {
+export function currentUrlViewState(): ViewState {
     return parseViewState(window.location.search);
 }
 
@@ -38,7 +46,7 @@ export function currentUrlViewState() {
  * Push a new history entry for a discrete navigation (scene/step/proof step).
  * No-op while applying from history, or when identical to the current URL.
  */
-export function pushView(vs) {
+export function pushView(vs: ViewState): void {
     if (_applyingFromHistory) return;
     const query = serializeViewState(vs);
     const currentQuery = window.location.search.replace(/^\?/, '');
@@ -53,7 +61,7 @@ export function pushView(vs) {
  * Rewrite the current URL in place (selection / sliders / camera capture).
  * Does not create a history entry.
  */
-export function replaceView(vs) {
+export function replaceView(vs: ViewState): void {
     if (_applyingFromHistory) return;
     const query = serializeViewState(vs);
     const currentQuery = window.location.search.replace(/^\?/, '');
@@ -68,8 +76,10 @@ export function replaceView(vs) {
  * Install the browser back/forward handler. `applyFn(vs, {fromHistory:true})`
  * is invoked with the parsed ViewState for the URL the browser navigated to.
  */
-export function setupPopstateListener(applyFn) {
+export function setupPopstateListener(applyFn: ApplyViewStateFn): void {
     window.addEventListener('popstate', (e) => {
+        // `e.state` is `any` per the DOM lib — the History API hands back
+        // whatever the pusher stored. We only ever push `{vs: <query string>}`.
         const query = (e.state && e.state.vs != null)
             ? e.state.vs
             : window.location.search.replace(/^\?/, '');
@@ -84,5 +94,5 @@ export function setupPopstateListener(applyFn) {
 }
 
 // Reusable accessors for future breadcrumb UI.
-export function getStack() { return stack.getStack(); }
-export function getCursor() { return stack.getCursor(); }
+export function getStack(): string[] { return stack.getStack(); }
+export function getCursor(): number { return stack.getCursor(); }

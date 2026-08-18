@@ -6,10 +6,12 @@
 // steps through the proof. Safe: it only reads a numeric height from an iframe it
 // already hosts (matched by contentWindow) and changes that iframe's height.
 (function () {
-  function embeds() {
-    return document.querySelectorAll("iframe[data-algebench-embed]");
+  function embeds(): NodeListOf<HTMLIFrameElement> {
+    return document.querySelectorAll<HTMLIFrameElement>("iframe[data-algebench-embed]");
   }
-  function onMessage(e) {
+  function onMessage(e: MessageEvent) {
+    // `e.data` is `any` per the DOM lib — a host page receives whatever the
+    // embed posted, so the shape is checked field by field right below.
     var d = e.data;
     if (!d || d.type !== "algebench-embed-height" || typeof d.height !== "number") return;
     // Guard against a misbehaving embed: reject non-finite (NaN/Infinity both pass
@@ -19,8 +21,9 @@
     var h = Math.max(0, Math.min(Math.ceil(d.height), 20000));
     var list = embeds();
     for (var i = 0; i < list.length; i++) {
-      if (list[i].contentWindow === e.source) {
-        list[i].style.height = h + "px";
+      // `i < list.length` — every index in the loop is populated.
+      if (list[i]!.contentWindow === e.source) {
+        list[i]!.style.height = h + "px";
       }
     }
   }
@@ -29,7 +32,9 @@
     // this script attached its listener: ask each embed to report again.
     var list = embeds();
     for (var i = 0; i < list.length; i++) {
-      try { list[i].contentWindow.postMessage({ type: "algebench-embed-request" }, "*"); } catch (e) {}
+      // `list[i]` is in range (loop bound); `contentWindow` is null for an iframe
+      // that has not navigated yet — the try/catch is the original guard for that.
+      try { list[i]!.contentWindow!.postMessage({ type: "algebench-embed-request" }, "*"); } catch (e) {}
     }
   }
   window.addEventListener("message", onMessage);
