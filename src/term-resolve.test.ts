@@ -10,6 +10,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { apprSkeleton, contentAgrees, resolveTermId } from './graph-panel/term-resolve.js';
+import type { Node, SemanticGraph } from '/types/semantic-graph.js';
+
+/**
+ * A node stand-in carrying only the fields under test. contentAgrees() reads
+ * `subexpr`/`latex`/`label`; a real Node also carries `id` and `type`, which
+ * play no part in content agreement. One cast, named, instead of one per call.
+ */
+function nodeWith(fields: Partial<Node>): Node {
+    return fields as Node;
+}
 
 // The app-side graph of the proof's start equation (subexprs abridged to the
 // fields the resolver reads). Ids match a real parse of the plain state-0 latex.
@@ -27,7 +37,10 @@ const APP_GRAPH = {
         { id: 'sigma', latex: '\\sigma' },
         { id: '__num_13', label: '2' },
     ],
-};
+    // Abridged on purpose (see above): the resolver reads only ids and the
+    // three content fields, so `type` per node and the graph's `edges` are
+    // omitted rather than invented. Cast once here at the fixture boundary.
+} as unknown as SemanticGraph;
 
 test('named-symbol ids are trusted across parses', () => {
     assert.equal(resolveTermId(APP_GRAPH, 'sigma', 'σ'), 'sigma');
@@ -71,20 +84,20 @@ test('apprSkeleton is order-insensitive and layout-blind', () => {
 test('contentAgrees separates √π from the exponential', () => {
     const exp = APP_GRAPH.nodes.find(n => n.id === '__power_7');
     assert.equal(contentAgrees(exp, '√π'), false);
-    assert.equal(contentAgrees({ subexpr: '\\sqrt{\\pi}' }, '√π'), true);
+    assert.equal(contentAgrees(nodeWith({ subexpr: '\\sqrt{\\pi}' }), '√π'), true);
 });
 
 test('empty term text cannot verify a structural id', () => {
     assert.equal(resolveTermId(APP_GRAPH, '__power_7', ''), null);
-    assert.equal(contentAgrees({ subexpr: '\\sqrt{\\pi}' }, ''), false);
+    assert.equal(contentAgrees(nodeWith({ subexpr: '\\sqrt{\\pi}' }), ''), false);
 });
 
 test('sign structure survives the skeleton (Copilot review, PR #477)', () => {
     // x+y and x−y must NOT reduce to the same skeleton…
     assert.notEqual(apprSkeleton('x+y'), apprSkeleton('x−y'));
     // …so a counter-collision between sign-differing nodes cannot "verify".
-    assert.equal(contentAgrees({ subexpr: 'x + y' }, 'x−y'), false);
-    assert.equal(contentAgrees({ subexpr: 'x - y' }, 'x−y'), true);
+    assert.equal(contentAgrees(nodeWith({ subexpr: 'x + y' }), 'x−y'), false);
+    assert.equal(contentAgrees(nodeWith({ subexpr: 'x - y' }), 'x−y'), true);
     // minus count (not `+`) is the reorder-proof invariant: sympy prints
     // `x - μ` as `- \mu + x` — the `+` migrates with term order, the `-` stays.
     assert.equal(apprSkeleton('x − μ'), apprSkeleton('- \\mu + x'));

@@ -13,10 +13,11 @@ import assert from 'node:assert/strict';
 import {
   serializeViewState, parseViewState, viewStatesEqual, decodeCamera, encodeCamera,
 } from './view-state.js';
+import type { ViewState, ViewStateCamera } from './view-state.js';
 import { NavStack } from './nav-history-core.js';
 
 /** serialize -> parse -> serialize must be a fixed point. */
-function assertStable(vs) {
+function assertStable(vs: ViewState): void {
   const once = serializeViewState(vs);
   assert.equal(serializeViewState(parseViewState(once)), once);
 }
@@ -115,20 +116,30 @@ test('camera decode rejects a trailing comma rather than reading a spurious 0', 
 });
 
 test('camera round-trips through the query string with a non-default up', () => {
-  const cam = { position: [1, 2, 3], target: [0, 0, 0], up: [0, 0, 1] };
+  // Annotated so the literals land as the [x, y, z] tuples ViewStateCamera
+  // declares, rather than widening to number[].
+  const cam: ViewStateCamera = { position: [1, 2, 3], target: [0, 0, 0], up: [0, 0, 1] };
   const parsed = parseViewState(serializeViewState({ cam }));
   assert.deepEqual(parsed.cam, cam);
   // The default up is dropped on the way out and absent on the way back.
   const flat = parseViewState(serializeViewState({
     cam: { position: [1, 2, 3], target: [0, 0, 0], up: [0, 1, 0] },
   }));
-  assert.equal('up' in flat.cam, false);
+  // `!`: the camera above encodes, so parsing it back always yields a cam.
+  assert.equal('up' in flat.cam!, false);
 });
 
 test('an incomplete camera encodes to nothing rather than a broken param', () => {
-  assert.equal(encodeCamera({ position: [1, 2, 3] }), '');
+  // These two stand in for a half-built camera arriving from untyped runtime
+  // input (a hand-edited URL, a partially restored snapshot). ViewStateCamera
+  // requires both position and target, so the type cannot express them — but
+  // encodeCamera guards for exactly this at runtime, and that guard is what is
+  // under test. Cast at the call boundary rather than loosening the type.
+  assert.equal(encodeCamera({ position: [1, 2, 3] } as unknown as ViewStateCamera), '');
   assert.equal(encodeCamera(null), '');
-  assert.equal(serializeViewState({ cam: { target: [0, 0, 0] } }), '');
+  assert.equal(serializeViewState({
+    cam: { target: [0, 0, 0] } as unknown as ViewStateCamera,
+  }), '');
 });
 
 // ----- Whole-state stability -----

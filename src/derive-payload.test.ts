@@ -16,10 +16,18 @@ import assert from 'node:assert/strict';
 import {
     buildEnrichContext, buildProofStepDerivePayload, describeDeriveStart,
 } from '/proof-animation/derive-payload.js';
+import type { DeriveProof } from '/proof-animation/derive-payload.js';
+import type { ProofEntry } from '/proof.js';
 import { state } from '/state.js';
 
+// `!` on a payload throughout this file: buildProofStepDerivePayload() returns
+// null only for a missing proof, a missing step or an empty one — pinned by its
+// own test below ("a missing proof, a missing step or an empty step yields
+// null"). Every other fixture here is a well-formed step, so the payload is
+// there. Same for `steps!` / `steps[i]!`: the fixtures declare them.
+
 /** A proof whose steps are given/step pairs, in the shape lessons use. */
-const proof = () => ({
+const proof = (): DeriveProof => ({
     title: 'Kinetic energy',
     goal: 'E = \\tfrac12 m v^2',
     technique: 'derivation',
@@ -41,27 +49,27 @@ function clearContext() {
 test('the payload anchors on the step math and carries the proof framing', () => {
     clearContext();
     const p = buildProofStepDerivePayload(proof(), 2);
-    assert.equal(p.target_latex, 'W = m a d');
-    assert.equal(p.domain, 'physics');
-    assert.equal(p.title, 'Kinetic energy');
-    assert.equal(p.goal, 'E = \\tfrac12 m v^2');
-    assert.equal(p.intent, 'Substitute');
+    assert.equal(p!.target_latex, 'W = m a d');
+    assert.equal(p!.domain, 'physics');
+    assert.equal(p!.title, 'Kinetic energy');
+    assert.equal(p!.goal, 'E = \\tfrac12 m v^2');
+    assert.equal(p!.intent, 'Substitute');
 });
 
 test('an explicit opts.domain wins, then proof.domain, then proof.meta.domain', () => {
     clearContext();
-    assert.equal(buildProofStepDerivePayload(proof(), 1, { domain: 'calculus' }).domain, 'calculus');
+    assert.equal(buildProofStepDerivePayload(proof(), 1, { domain: 'calculus' })!.domain, 'calculus');
     const noDomain = proof();
     delete noDomain.domain;
     noDomain.meta = { domain: 'mechanics' };
-    assert.equal(buildProofStepDerivePayload(noDomain, 1).domain, 'mechanics');
+    assert.equal(buildProofStepDerivePayload(noDomain, 1)!.domain, 'mechanics');
 });
 
 test('givens are the `given` steps only, and previous steps are numbered from 1', () => {
     clearContext();
     const p = buildProofStepDerivePayload(proof(), 2);
-    assert.deepEqual(p.givens, [{ math: 'F = m a', label: 'Newton II' }]);
-    assert.deepEqual(p.previous_steps, [
+    assert.deepEqual(p!.givens, [{ math: 'F = m a', label: 'Newton II' }]);
+    assert.deepEqual(p!.previous_steps, [
         { step: 1, label: 'Newton II', math: 'F = m a' },
         { step: 2, label: 'Work done', math: 'W = F d' },
     ]);
@@ -69,22 +77,22 @@ test('givens are the `given` steps only, and previous steps are numbered from 1'
 
 test('the start is the previous step, and the tooltip says so', () => {
     clearContext();
-    assert.equal(buildProofStepDerivePayload(proof(), 2).start_latex, 'W = F d');
+    assert.equal(buildProofStepDerivePayload(proof(), 2)!.start_latex, 'W = F d');
     assert.equal(describeDeriveStart(proof(), 2), 'previous step');
 });
 
 test('a previous step equal to the target falls through to a given', () => {
     clearContext();
     const p = proof();
-    p.steps[1].math = p.steps[2].math;          // previous step == target
-    assert.equal(buildProofStepDerivePayload(p, 2).start_latex, 'F = m a');
+    p.steps![1]!.math = p.steps![2]!.math;      // previous step == target
+    assert.equal(buildProofStepDerivePayload(p, 2)!.start_latex, 'F = m a');
     assert.equal(describeDeriveStart(p, 2), 'givens');
 });
 
 test('with no usable previous step or given, the goal is the start', () => {
     clearContext();
     const p = { goal: 'E = \\tfrac12 m v^2', steps: [{ type: 'step', label: 'only', math: 'W = m a d' }] };
-    assert.equal(buildProofStepDerivePayload(p, 0).start_latex, 'E = \\tfrac12 m v^2');
+    assert.equal(buildProofStepDerivePayload(p, 0)!.start_latex, 'E = \\tfrac12 m v^2');
     assert.equal(describeDeriveStart(p, 0), 'goal');
 });
 
@@ -92,14 +100,14 @@ test('with nothing usable at all the expert is left to infer the start', () => {
     clearContext();
     const p = { steps: [{ type: 'step', label: 'only', math: 'W = m a d' }] };
     const payload = buildProofStepDerivePayload(p, 0);
-    assert.equal('start_latex' in payload, false);
+    assert.equal('start_latex' in payload!, false);
     assert.equal(describeDeriveStart(p, 0), 'inferred');
 });
 
 test('a start equal to the target is never chosen, even from the goal', () => {
     clearContext();
     const p = { goal: 'W = m a d', steps: [{ type: 'step', label: 'only', math: 'W = m a d' }] };
-    assert.equal('start_latex' in buildProofStepDerivePayload(p, 0), false);
+    assert.equal('start_latex' in buildProofStepDerivePayload(p, 0)!, false);
 });
 
 test('KaTeX html macros are stripped everywhere the payload carries LaTeX', () => {
@@ -112,10 +120,10 @@ test('KaTeX html macros are stripped everywhere the payload carries LaTeX', () =
         ],
     };
     const payload = buildProofStepDerivePayload(p, 1);
-    assert.equal(payload.title, 'Kinetic energy');
-    assert.equal(payload.target_latex, 'W = F d');
-    assert.deepEqual(payload.givens, [{ math: 'F = m a', label: 'g' }]);
-    assert.equal(payload.start_latex, 'F = m a');
+    assert.equal(payload!.title, 'Kinetic energy');
+    assert.equal(payload!.target_latex, 'W = F d');
+    assert.deepEqual(payload!.givens, [{ math: 'F = m a', label: 'g' }]);
+    assert.equal(payload!.start_latex, 'F = m a');
 });
 
 test('a missing proof, a missing step or an empty step yields null', () => {
@@ -131,7 +139,7 @@ test('a missing proof, a missing step or an empty step yields null', () => {
 test('no lesson and no proof context means no context block at all', () => {
     clearContext();
     assert.equal(buildEnrichContext(null), null);
-    assert.equal('context' in buildProofStepDerivePayload(proof(), 1), false);
+    assert.equal('context' in buildProofStepDerivePayload(proof(), 1)!, false);
 });
 
 test('lesson, scene, proof and step metadata all reach the context block', () => {
@@ -140,9 +148,11 @@ test('lesson, scene, proof and step metadata all reach the context block', () =>
         title: 'Energy', description: 'A lesson',
         scenes: [{ title: 'Intro', description: 'first' }, { title: 'Work', description: 'second' }],
     };
-    state.proofSpec = [{ sceneIndex: 1, proof: proof() }];
+    // Stands in for a ProofEntry: derive-payload reads only `sceneIndex` and
+    // `proof` off it, so the entry's `level` is left out rather than invented.
+    state.proofSpec = [{ sceneIndex: 1, proof: proof() } as unknown as ProofEntry];
     state.proofActiveIndex = 0;
-    const ctx = buildProofStepDerivePayload(proof(), 1).context;
+    const ctx = buildProofStepDerivePayload(proof(), 1)!.context;
     assert.deepEqual(ctx, {
         lessonTitle: 'Energy',
         lessonDescription: 'A lesson',
@@ -161,5 +171,5 @@ test('lesson, scene, proof and step metadata all reach the context block', () =>
 test('the intent falls back to the justification when a step has no label', () => {
     clearContext();
     const p = { steps: [{ type: 'step', math: 'a = b', justification: 'because' }] };
-    assert.equal(buildProofStepDerivePayload(p, 0).intent, 'because');
+    assert.equal(buildProofStepDerivePayload(p, 0)!.intent, 'because');
 });
