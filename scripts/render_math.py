@@ -39,20 +39,43 @@ try:
 except ImportError:
     from scripts.graph_to_mermaid import semantic_graph_to_mermaid, load_theme, validate_graph
 
+try:
+    import graph_panel_assets
+except ImportError:
+    from scripts import graph_panel_assets
+
 # JS sources moved to src/ when the frontend build was introduced; the
-# hand-authored CSS stayed under static/. Pick the directory by suffix.
+# hand-authored CSS stayed under static/.
 _REPO_ROOT = Path(__file__).resolve().parent.parent
-_GRAPH_PANEL_JS_DIR = _REPO_ROOT / "src" / "graph-panel"
 _GRAPH_PANEL_CSS_DIR = _REPO_ROOT / "static" / "graph-panel"
 
 
 def _read_asset(name: str) -> str:
-    root = _GRAPH_PANEL_JS_DIR if name.endswith(".js") else _GRAPH_PANEL_CSS_DIR
-    return (root / name).read_text(encoding="utf-8")
+    return (_GRAPH_PANEL_CSS_DIR / name).read_text(encoding="utf-8")
 
 
 _GRAPH_PANEL_CSS = _read_asset("graph-panel.css")
-_GRAPH_PANEL_JS = _read_asset("graph-panel.js").replace("export class", "class")
+
+_GRAPH_PANEL_JS_CACHE: str | None = None
+
+
+def _graph_panel_js() -> str:
+    """The SemanticGraphPanel module source, inlined into rendered pages.
+
+    Read lazily and memoised rather than at import: graph-panel is TypeScript
+    now, so producing the JavaScript shells out to tsc (graph_panel_assets),
+    which is far too slow to pay for on every import of this module.
+
+    ``export class`` becomes ``class`` because the source is inlined into a
+    ``<script type="module">`` that nothing imports — its own top-level imports
+    still resolve against the host server, exactly as before.
+    """
+    global _GRAPH_PANEL_JS_CACHE
+    if _GRAPH_PANEL_JS_CACHE is None:
+        _GRAPH_PANEL_JS_CACHE = (
+            graph_panel_assets.read_js("graph-panel").replace("export class", "class")
+        )
+    return _GRAPH_PANEL_JS_CACHE
 
 
 FRAGMENT_CSS = """\
@@ -364,7 +387,7 @@ class MathRenderer:
     def _build_hover_script(graph: dict) -> str:
         if not graph or not graph.get("nodes"):
             return ""
-        graph_panel_js = _GRAPH_PANEL_JS
+        graph_panel_js = _graph_panel_js()
         graph_json = json.dumps(graph).replace("</", "<\\/")
         return (
             f'<script type="application/json" id="semantic-graph-data">'

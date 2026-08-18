@@ -17,8 +17,25 @@
 
 import { makeAiAskButton } from "/labels.js";
 import { nodeLongLabel } from "/graph-panel/d3-semantic-graph.js";
+import type { Node as GraphNode, SemanticGraph } from "/types/semantic-graph.js";
 
-const PANEL_FIELDS = [
+/**
+ * The subset of a node's fields this panel copies out of the graph, keyed by
+ * the SANITIZED node id. Partial because `_buildNodeIndex` copies only the
+ * keys that are present and non-null.
+ */
+type PanelNodeInfo = Partial<GraphNode>;
+
+/** One `[sanitized-from, sanitized-to]` pair of the flattened edge list. */
+type PanelEdge = [string, string];
+
+/** One removable DOM listener, as recorded for `destroy()`. */
+type PanelHandler = [EventTarget, string, EventListener];
+
+/** See the cast in `sanitizeId` — lib ES2020 predates `String.replaceAll`. */
+type Es2021String = { replaceAll(searchValue: string, replaceValue: string): string };
+
+const PANEL_FIELDS: ReadonlyArray<readonly [keyof GraphNode, string]> = [
   ["label", "Label"],
   ["type", "Type"],
   ["role", "Role"],
@@ -29,16 +46,42 @@ const PANEL_FIELDS = [
   ["op", "Operation"],
 ];
 
+/** Options accepted by the panel's constructor. */
+export interface SemanticGraphPanelOptions {
+  /** Element containing the Mermaid SVG. */
+  container?: HTMLElement;
+  /** KaTeX instance (for LaTeX rendering). */
+  katex?: typeof katex;
+  /** Pre-existing tooltip element (created if absent). */
+  tooltip?: HTMLElement;
+  /** Pre-existing panel element (created if absent). */
+  panel?: HTMLElement;
+}
+
 export class SemanticGraphPanel {
-  /**
-   * @param {Object} graph - Semantic graph {nodes, edges}
-   * @param {Object} opts
-   * @param {HTMLElement} opts.container - Element containing the Mermaid SVG
-   * @param {Object}  [opts.katex]     - KaTeX instance (for LaTeX rendering)
-   * @param {HTMLElement} [opts.tooltip]  - Pre-existing tooltip element (created if absent)
-   * @param {HTMLElement} [opts.panel]    - Pre-existing panel element (created if absent)
-   */
-  constructor(graph, opts = {}) {
+  graph: SemanticGraph;
+  container: HTMLElement;
+  katex: typeof katex | false | undefined;
+  tooltip: HTMLElement;
+  panel: HTMLElement;
+
+  // Built by _buildNodeIndex() / _buildEdgeList(), both called from the
+  // constructor before anything reads them.
+  _nodeData!: Record<string, PanelNodeInfo | undefined>;
+  _subexprs!: Record<string, string | undefined>;
+  _edges!: PanelEdge[];
+
+  _activeNode: string | null;
+  _handlers: PanelHandler[];
+  _nodeAskBtn: HTMLElement | null;
+
+  // Assigned outside the constructor.
+  _panelAskBtn?: HTMLElement;
+  _askNodeEls?: { id: string; el: SVGGElement }[];
+  _hoveredAskNodeId?: string | null;
+  _nodeAskHideTimer?: ReturnType<typeof setTimeout> | null;
+
+  constructor(graph: SemanticGraph, opts: SemanticGraphPanelOptions = {}) {
     this.graph = graph;
     this.container = opts.container || document.body;
     this.katex = opts.katex || (typeof window !== "undefined" && window.katex);
@@ -57,7 +100,7 @@ export class SemanticGraphPanel {
     this._nodeAskBtn = null;
   }
 
-  _ensurePanelHeader(panelEl) {
+  _ensurePanelHeader(panelEl: HTMLElement): void {
     if (panelEl.querySelector(".gp-header")) return;
     const h3 = panelEl.querySelector("h3");
     if (!h3) return;
@@ -76,29 +119,34 @@ export class SemanticGraphPanel {
   /* Data setup                                                         */
   /* ------------------------------------------------------------------ */
 
-  _buildNodeIndex() {
+  _buildNodeIndex(): void {
     this._nodeData = {};
     this._subexprs = {};
     const sanitize = SemanticGraphPanel.sanitizeId;
     for (const node of this.graph.nodes || []) {
       const sid = sanitize(node.id);
-      const info = {};
+      const info: PanelNodeInfo = {};
       // ``subexpr`` is included so ``nodeLongLabel(info)`` can resolve
       // it; ``exponent`` / ``with_respect_to`` so ``operatorGlyph`` can
       // synthesize ``(·)²`` / ``∂·/∂x`` short labels.
+      // `as const` (erased at emit) types each key as a literal `keyof Node`,
+      // which is what makes the reads below check.
       for (const key of ["id", "type", "label", "description", "emoji", "op", "quantity",
                           "dimension", "unit", "value", "role", "latex",
-                          "subexpr", "exponent", "with_respect_to"]) {
-        if (node[key] !== undefined && node[key] !== null) info[key] = node[key];
+                          "subexpr", "exponent", "with_respect_to"] as const) {
+        // Cast: copying one key of a union across two objects of the same
+        // shape defeats TypeScript's per-key correlation, so the WRITE is
+        // widened to a plain string-keyed record. The read stays typed.
+        if (node[key] !== undefined && node[key] !== null) (info as Record<string, unknown>)[key] = node[key];
       }
       this._nodeData[sid] = info;
       if (node.subexpr) this._subexprs[sid] = node.subexpr;
     }
   }
 
-  _buildEdgeList() {
+  _buildEdgeList(): void {
     const sanitize = SemanticGraphPanel.sanitizeId;
-    this._edges = (this.graph.edges || []).map(e => [
+    this._edges = (this.graph.edges || []).map((e): PanelEdge => [
       sanitize(e.from), sanitize(e.to),
     ]);
   }
@@ -107,14 +155,14 @@ export class SemanticGraphPanel {
   /* DOM creation                                                       */
   /* ------------------------------------------------------------------ */
 
-  _createTooltip() {
+  _createTooltip(): HTMLElement {
     const el = document.createElement("div");
     el.className = "graph-panel-tooltip";
     document.body.appendChild(el);
     return el;
   }
 
-  _createPanel() {
+  _createPanel(): HTMLElement {
     const el = document.createElement("div");
     el.className = "graph-panel-info";
     el.innerHTML =
@@ -122,7 +170,9 @@ export class SemanticGraphPanel {
       '<button class="gp-close">&times;</button></div>' +
       '<div class="gp-symbol"></div>' +
       '<div class="gp-fields"></div>';
-    el.querySelector(".gp-close").addEventListener("click", () => {
+    // Non-null: the markup assigned to innerHTML on the line above contains
+    // exactly this button.
+    el.querySelector(".gp-close")!.addEventListener("click", () => {
       el.classList.remove("open");
     });
     this._injectPanelAskButton(el);
@@ -130,7 +180,7 @@ export class SemanticGraphPanel {
     return el;
   }
 
-  _injectPanelAskButton(panelEl) {
+  _injectPanelAskButton(panelEl: HTMLElement): void {
     const header = panelEl.querySelector(".gp-header") || panelEl;
     const btn = makeAiAskButton(
       "ai-ask-btn graph-panel-ai-btn",
@@ -143,7 +193,7 @@ export class SemanticGraphPanel {
     this._panelAskBtn = btn;
   }
 
-  _buildNodeAskMessage(nodeId) {
+  _buildNodeAskMessage(nodeId: string | null | undefined): string {
     if (!nodeId) return "Explain this graph node.";
     const data = this._nodeData[nodeId] || {};
     const subexpr = this._subexprs[nodeId];
@@ -158,8 +208,8 @@ export class SemanticGraphPanel {
     if (data.op) lines.push(`Operation: ${data.op}`);
     if (subexpr) lines.push(`Expression: $${subexpr}$`);
     if (data.description) lines.push(`Description: ${data.description}`);
-    const incoming = [];
-    const outgoing = [];
+    const incoming: string[] = [];
+    const outgoing: string[] = [];
     for (const [src, dst] of this._edges) {
       if (dst === nodeId && src !== nodeId) incoming.push(src);
       if (src === nodeId && dst !== nodeId) outgoing.push(dst);
@@ -173,11 +223,12 @@ export class SemanticGraphPanel {
   /* Graph traversal                                                    */
   /* ------------------------------------------------------------------ */
 
-  _getUpstream(nodeId) {
-    const visited = new Set();
+  _getUpstream(nodeId: string): Set<string> {
+    const visited = new Set<string>();
     const queue = [nodeId];
     while (queue.length) {
-      const cur = queue.shift();
+      // Non-null: the loop condition guarantees a non-empty queue.
+      const cur = queue.shift()!;
       if (visited.has(cur)) continue;
       visited.add(cur);
       for (const [src, dst] of this._edges) {
@@ -187,8 +238,8 @@ export class SemanticGraphPanel {
     return visited;
   }
 
-  _getUpstreamEdgeIndices(upstream) {
-    const indices = new Set();
+  _getUpstreamEdgeIndices(upstream: Set<string>): Set<number> {
+    const indices = new Set<number>();
     this._edges.forEach(([src, dst], i) => {
       if (upstream.has(src) && upstream.has(dst)) indices.add(i);
     });
@@ -199,27 +250,27 @@ export class SemanticGraphPanel {
   /* Highlight                                                          */
   /* ------------------------------------------------------------------ */
 
-  _highlight(nodeId) {
+  _highlight(nodeId: string): void {
     const svg = this.container.querySelector("svg");
     if (!svg) return;
     const upstream = this._getUpstream(nodeId);
     const upEdges = this._getUpstreamEdgeIndices(upstream);
-    svg.querySelectorAll(".node").forEach(el => {
+    svg.querySelectorAll<SVGGElement>(".node").forEach(el => {
       const id = el.id.replace(/^flowchart-/, "").replace(/-\d+$/, "");
       el.style.opacity = upstream.has(id) ? "1" : "0.15";
     });
-    svg.querySelectorAll(".edgePath, .flowchart-link").forEach((el, i) => {
+    svg.querySelectorAll<SVGGElement>(".edgePath, .flowchart-link").forEach((el, i) => {
       el.style.opacity = upEdges.has(i) ? "1" : "0.1";
     });
-    svg.querySelectorAll(".edgeLabel").forEach((el, i) => {
+    svg.querySelectorAll<SVGGElement>(".edgeLabel").forEach((el, i) => {
       el.style.opacity = upEdges.has(i) ? "1" : "0.1";
     });
   }
 
-  _clearHighlight() {
+  _clearHighlight(): void {
     const svg = this.container.querySelector("svg");
     if (!svg) return;
-    svg.querySelectorAll(".node, .edgePath, .flowchart-link, .edgeLabel")
+    svg.querySelectorAll<SVGGElement>(".node, .edgePath, .flowchart-link, .edgeLabel")
       .forEach(el => { el.style.opacity = "1"; });
   }
 
@@ -227,12 +278,14 @@ export class SemanticGraphPanel {
   /* Info panel                                                         */
   /* ------------------------------------------------------------------ */
 
-  _showPanel(nodeId) {
+  _showPanel(nodeId: string): void {
     const data = this._nodeData[nodeId];
     if (!data) { this.panel.classList.remove("open"); return; }
 
-    const symbolEl = this.panel.querySelector(".gp-symbol");
-    const fieldsEl = this.panel.querySelector(".gp-fields");
+    // Non-null: both live in the markup _createPanel() writes, and a
+    // caller-supplied panel is expected to carry the same structure.
+    const symbolEl = this.panel.querySelector(".gp-symbol")!;
+    const fieldsEl = this.panel.querySelector(".gp-fields")!;
     const emoji = data.emoji || "";
     const expr = this._subexprs[nodeId];
     const isOp = data.type === 'operator' || data.type === 'relation' || data.type === 'function';
@@ -275,9 +328,14 @@ export class SemanticGraphPanel {
         // Labels can be plain prose ("force"), pure LaTeX, or a mix —
         // ``renderKaTeX`` handles all three: text passes through, ``$..$``
         // segments typeset as math.
-        valEl.innerHTML = window.renderKaTeX(data.label, false);
+        // Non-null: `if (!data[key]) continue` above proved this key truthy.
+        valEl.innerHTML = window.renderKaTeX(data.label!, false);
       } else {
-        valEl.textContent = data[key];
+        // String(): textContent is string-valued, while `value` is typed
+        // number | string. The `if (!data[key]) continue` above has already
+        // dropped every falsy value, so this is the coercion the DOM was
+        // performing anyway.
+        valEl.textContent = String(data[key]);
       }
       row.append(keyEl, valEl);
       fieldsEl.appendChild(row);
@@ -291,9 +349,10 @@ export class SemanticGraphPanel {
       // Safe to use innerHTML here because the agent schema rejects HTML
       // brackets via _NO_HTML pattern on the description field.
       if (typeof window !== "undefined" && typeof window.renderKaTeX === "function") {
-        desc.innerHTML = window.renderKaTeX(data.description, false);
+        // Non-null: guarded by `if (data.description)`.
+        desc.innerHTML = window.renderKaTeX(data.description!, false);
       } else {
-        desc.textContent = data.description;
+        desc.textContent = data.description!;
       }
       fieldsEl.appendChild(desc);
     }
@@ -304,7 +363,7 @@ export class SemanticGraphPanel {
   /* Attach / detach                                                    */
   /* ------------------------------------------------------------------ */
 
-  _ensureNodeAskBtn() {
+  _ensureNodeAskBtn(): HTMLElement {
     if (this._nodeAskBtn) return this._nodeAskBtn;
     const btn = makeAiAskButton(
       "ai-ask-btn graph-node-ai-btn",
@@ -322,7 +381,7 @@ export class SemanticGraphPanel {
     return btn;
   }
 
-  _showNodeAskBtnFor(nodeEl) {
+  _showNodeAskBtnFor(nodeEl: SVGGElement): void {
     const btn = this._ensureNodeAskBtn();
     this._cancelNodeAskHide();
     const r = nodeEl.getBoundingClientRect();
@@ -332,14 +391,14 @@ export class SemanticGraphPanel {
     btn.style.pointerEvents = "auto";
   }
 
-  _cancelNodeAskHide() {
+  _cancelNodeAskHide(): void {
     if (this._nodeAskHideTimer) {
       clearTimeout(this._nodeAskHideTimer);
       this._nodeAskHideTimer = null;
     }
   }
 
-  _hideNodeAskBtn() {
+  _hideNodeAskBtn(): void {
     if (!this._nodeAskBtn) return;
     const btn = this._nodeAskBtn;
     this._cancelNodeAskHide();
@@ -349,36 +408,39 @@ export class SemanticGraphPanel {
     }, 220);
   }
 
-  attach() {
+  attach(): void {
     const svg = this.container.querySelector("svg");
     if (!svg) return;
 
     this._askNodeEls = [];
 
-    svg.querySelectorAll(".node").forEach(el => {
+    svg.querySelectorAll<SVGGElement>(".node").forEach(el => {
       const id = el.id.replace(/^flowchart-/, "").replace(/-\d+$/, "");
       const expr = this._subexprs[id];
       el.style.cursor = "pointer";
 
       if (expr && this.katex) {
-        const onEnter = (e) => {
-          this.katex.render(expr, this.tooltip, { displayMode: true, throwOnError: false });
+        // Alias: `this.katex` is typed as possibly-false, and the truthiness
+        // narrowing above does not survive into the closure below.
+        const katexLib = this.katex;
+        const onEnter = (e: Event) => {
+          katexLib.render(expr, this.tooltip, { displayMode: true, throwOnError: false });
           this.tooltip.classList.add("visible");
         };
-        const onMove = (e) => {
+        const onMove = (e: MouseEvent) => {
           this.tooltip.style.left = (e.clientX + 16) + "px";
           this.tooltip.style.top = (e.clientY - 40) + "px";
         };
         const onLeave = () => { this.tooltip.classList.remove("visible"); };
         el.addEventListener("mouseenter", onEnter);
-        el.addEventListener("mousemove", onMove);
+        el.addEventListener("mousemove", onMove as EventListener);
         el.addEventListener("mouseleave", onLeave);
         this._handlers.push([el, "mouseenter", onEnter]);
-        this._handlers.push([el, "mousemove", onMove]);
+        this._handlers.push([el, "mousemove", onMove as EventListener]);
         this._handlers.push([el, "mouseleave", onLeave]);
       }
 
-      const onClick = (e) => {
+      const onClick = (e: Event) => {
         e.preventDefault();
         e.stopPropagation();
         if (this._activeNode === id) {
@@ -401,17 +463,17 @@ export class SemanticGraphPanel {
       this._askNodeEls.push({ id, el });
     });
 
-    const onDocClick = (e) => {
+    const onDocClick = (e: MouseEvent) => {
       if (this._activeNode === null) return;
-      if (this.panel.contains(e.target)) return;
+      if (this.panel.contains(e.target as globalThis.Node)) return;
       // Only deselect when the click landed inside the graph viewport itself
       // (i.e. clicked the canvas / empty SVG area). Clicks on the chat,
       // side panel, scenes tree, controls, etc. must preserve selection so
       // the user can reference the active node from the chat.
-      if (!this.container.contains(e.target)) return;
+      if (!this.container.contains(e.target as globalThis.Node)) return;
       // Clicks on a node are handled by the node-level click handler above —
       // bail here so we don't double-process and clear state mid-toggle.
-      if (e.target.closest && e.target.closest(".node")) return;
+      if ((e.target as Element).closest && (e.target as Element).closest(".node")) return;
       this._activeNode = null;
       this._clearHighlight();
       this.panel.classList.remove("open");
@@ -419,25 +481,25 @@ export class SemanticGraphPanel {
       this._emitSelectionChange();
     };
     document.addEventListener("click", onDocClick);
-    this._handlers.push([document, "click", onDocClick]);
+    this._handlers.push([document, "click", onDocClick as EventListener]);
 
     // Global pointer tracker for the ask button — robust to gaps between a
     // node and the floating button when nodes are large or shapes are wide.
-    const onPointerMove = (e) => {
+    const onPointerMove = (e: PointerEvent) => {
       const x = e.clientX;
       const y = e.clientY;
       const btn = this._nodeAskBtn;
       if (btn) {
         const br = btn.getBoundingClientRect();
-        const padded = (r, pad) => x >= r.left - pad && x <= r.right + pad
+        const padded = (r: DOMRect, pad: number) => x >= r.left - pad && x <= r.right + pad
           && y >= r.top - pad && y <= r.bottom + pad;
         if (btn.style.opacity === "1" && padded(br, 12)) {
           this._cancelNodeAskHide();
           return;
         }
       }
-      let bestEl = null;
-      let bestId = null;
+      let bestEl: SVGGElement | null = null;
+      let bestId: string | null = null;
       let bestDist = Infinity;
       for (const { id, el } of this._askNodeEls || []) {
         const op = el.style.opacity;
@@ -460,8 +522,8 @@ export class SemanticGraphPanel {
         this._hideNodeAskBtn();
       }
     };
-    document.addEventListener("pointermove", onPointerMove);
-    this._handlers.push([document, "pointermove", onPointerMove]);
+    document.addEventListener("pointermove", onPointerMove as EventListener);
+    this._handlers.push([document, "pointermove", onPointerMove as EventListener]);
   }
 
   /**
@@ -470,7 +532,7 @@ export class SemanticGraphPanel {
    * callers can safely pass a stale id from a previous render without
    * having to check first. Returns true on successful selection.
    */
-  selectNode(nodeId) {
+  selectNode(nodeId: string | null | undefined): boolean {
     if (!nodeId || !this._nodeData[nodeId]) return false;
     this._activeNode = nodeId;
     this._highlight(nodeId);
@@ -480,7 +542,7 @@ export class SemanticGraphPanel {
   }
 
   /** Currently active node id, or null. */
-  get activeNode() {
+  get activeNode(): string | null {
     return this._activeNode;
   }
 
@@ -489,12 +551,14 @@ export class SemanticGraphPanel {
    * including immediate edge neighbors. Used by chat-context builders to
    * tell the AI assistant which node the user has selected.
    */
-  getNodePayload(nodeId) {
+  getNodePayload(
+    nodeId: string | null | undefined,
+  ): (Omit<PanelNodeInfo, "subexpr"> & { subexpr: string | null; neighbors: { incoming: string[]; outgoing: string[] } }) | null {
     if (!nodeId || !this._nodeData[nodeId]) return null;
     const data = this._nodeData[nodeId];
     const subexpr = this._subexprs[nodeId] || null;
-    const incoming = [];
-    const outgoing = [];
+    const incoming: string[] = [];
+    const outgoing: string[] = [];
     for (const [src, dst] of this._edges) {
       if (dst === nodeId && src !== nodeId) incoming.push(src);
       if (src === nodeId && dst !== nodeId) outgoing.push(dst);
@@ -506,7 +570,7 @@ export class SemanticGraphPanel {
     };
   }
 
-  _emitSelectionChange() {
+  _emitSelectionChange(): void {
     if (typeof window === "undefined") return;
     try {
       window.dispatchEvent(new CustomEvent("algebench:graphselectionchange", {
@@ -518,7 +582,7 @@ export class SemanticGraphPanel {
     } catch {}
   }
 
-  destroy() {
+  destroy(): void {
     for (const [el, evt, fn] of this._handlers) {
       el.removeEventListener(evt, fn);
     }
@@ -533,9 +597,12 @@ export class SemanticGraphPanel {
   /* Utilities                                                          */
   /* ------------------------------------------------------------------ */
 
-  static sanitizeId(nodeId) {
+  static sanitizeId(nodeId: string): string {
     let out = String(nodeId);
-    for (const ch of "-. {}()*") out = out.replaceAll(ch, "_");
+    // Cast: `String.prototype.replaceAll` is ES2021 and this project compiles
+    // against lib ES2020, so the string type has no `replaceAll`; every browser
+    // that runs this build does.
+    for (const ch of "-. {}()*") out = (out as unknown as Es2021String).replaceAll(ch, "_");
     if (!out || !/^[A-Za-z_]/.test(out)) out = `n_${out}`;
     return out;
   }
