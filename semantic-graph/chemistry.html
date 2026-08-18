@@ -14,7 +14,7 @@
     "/labels.js": "data:text/javascript,export function makeAiAskButton(){return document.createElement('span')}",
     "/expr.js": "data:text/javascript,const m=math.create(math.all);m.import({binomial:(n,k)=>m.combinations(n,k),erfc:x=>1-m.erf(x),beta:(a,b)=>m.gamma(a)*m.gamma(b)/m.gamma(a%2Bb),conjugate:x=>m.conj(x)});export function compileExpr(s){return m.compile(s)}export function evalExpr(c,t,opts){const scope=opts%26%26opts.extraScope?{...opts.extraScope}:{};return c.evaluate(scope)}",
     "/proof-animation/dock-seq.js": "data:text/javascript,let n=0;export const nextDockSeq=()=>%2B%2Bn",
-    "/graph-panel/term-resolve.js": "./term-resolve.js?v=1786763906"
+    "/graph-panel/term-resolve.js": "./term-resolve.js?v=1787025763"
   }
 }</script>
 <script>
@@ -1067,11 +1067,486 @@ html[data-theme="light"] .d3sg-chart-btn path { stroke: #46718a; }
     max-width: 90%;
 }
 
+  /* fa-page.css — Function Analysis page (shown in place of the semantic
+   graph inside #graph-viewport). Palette matches the graph panel / charts. */
+
+.fa-hidden { display: none !important; }
+
+/* ── ƒ button on graph nodes — hover-revealed, matching the chart button
+      (see .d3sg-chart-btn in sg-chart.css) ── */
+.d3sg-fa-btn {
+    opacity: 0;
+    cursor: pointer;
+    pointer-events: all;
+    transition: opacity 0.12s ease-out;
+}
+.d3sg-node:hover .d3sg-fa-btn {
+    opacity: 0.7;
+}
+.d3sg-fa-btn:hover {
+    opacity: 1 !important;
+}
+
+#fa-page-container {
+    display: none;
+    position: absolute;
+    inset: 0;
+    overflow-y: auto;
+    padding: 0 20px 24px;
+    background: var(--panel-bg);
+    z-index: 15;
+}
+#fa-page-container.open { display: block; }
+
+.fa-card {
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 12px;
+    color: var(--text-color);
+    font-size: 13.5px;
+}
+
+/* ── header — sticky so the title stays visible while scrolling ── */
+.fa-header {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 0 10px;
+    margin-bottom: 12px;
+    background: var(--panel-bg);
+    border-bottom: 1px solid var(--border-color);
+    flex-wrap: wrap;
+}
+.fa-title { font-size: 16px; font-weight: 600; color: var(--text-color); }
+.fa-expr { font-size: 15px; color: var(--muted-color); }
+.fa-btn {
+    background: none;
+    border: 1px solid var(--border-color);
+    color: var(--muted-color);
+    border-radius: 6px;
+    padding: 2px 10px;
+    font-size: 12.5px;
+    cursor: pointer;
+}
+.fa-btn:hover { color: var(--text-color); border-color: var(--accent-color); background: color-mix(in srgb, var(--accent-color) 10%, transparent); }
+.fa-back { font-size: 15px; padding: 2px 12px; }
+.fa-json-btn { margin-left: auto; display: inline-flex; align-items: center; padding: 3px 8px; }
+.fa-json-btn svg { display: block; }
+.fa-delete-btn { display: inline-flex; align-items: center; padding: 3px 8px; }
+.fa-delete-btn svg { display: block; }
+.fa-delete-btn:hover { color: #ef9a9a; border-color: #ef5350; background: rgba(239, 83, 80, 0.1); }
+/* When the JSON button is absent (loading/error), the delete button is the
+   one that must push to the right edge. */
+.fa-header > .fa-delete-btn:nth-child(4) { margin-left: auto; }
+.fa-json-btn.open { background: color-mix(in srgb, var(--accent-color) 15%, transparent); color: var(--text-color); }
+
+/* ── status / error ── */
+.fa-status { display: flex; align-items: center; gap: 10px; color: var(--muted-color); }
+.fa-status-label { display: inline-flex; align-items: center; gap: 5px; }
+.fa-error { color: #ef9a9a; display: flex; align-items: center; gap: 14px; }
+.fa-retry { color: var(--text-color); }
+.fa-abstain { color: var(--muted-color); font-style: italic; }
+
+/* ── story ── */
+.fa-story { color: var(--muted-color); }
+/* AI-authorship marker — the shared robot icon in the chat-avatar tint. */
+.fa-ai-badge {
+    display: inline-block;
+    color: var(--text-color);             /* same tint as the chat's .msg-avatar */
+    opacity: 0.9;
+    margin-right: 2px;
+}
+.fa-ai-badge svg { vertical-align: -2px; }
+
+/* ── views ── */
+.fa-view-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+.fa-view-tab.active {
+    background: color-mix(in srgb, var(--accent-color) 15%, transparent);
+    color: var(--text-color);
+    border-color: var(--accent-color);
+}
+.fa-view-rationale {
+    color: var(--muted-color);
+    font-size: 12px;
+    font-style: italic;
+    margin: 2px 0 8px;
+    min-height: 16px;
+}
+.fa-view-actions { margin-left: auto; display: flex; gap: 6px; }
+.fa-expr-btn { font-family: var(--font-body); font-style: italic; }
+.fa-expr-btn.open { background: color-mix(in srgb, var(--accent-color) 15%, transparent); color: var(--text-color); border-color: var(--accent-color); }
+
+/* what each curve plots: colour swatch, label, LaTeX, evaluated script */
+.fa-expr-panel { display: none; margin-top: 10px; }
+.fa-expr-panel.open { display: block; }
+.fa-expr-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 0;
+    border-top: 1px solid var(--border-color);
+    font-size: 12.5px;
+}
+.fa-expr-row:first-child { border-top: none; }
+.fa-expr-swatch { width: 10px; height: 3px; border-radius: 2px; flex-shrink: 0; }
+.fa-expr-swatch-ann { background: rgba(239, 83, 80, 0.75); height: 0; border-top: 2px dashed rgba(239, 83, 80, 0.75); }
+.fa-expr-label { color: var(--muted-color); min-width: 92px; }
+.fa-expr-math { color: var(--text-color); }
+.fa-expr-code {
+    margin-left: auto;
+    font: 11.5px ui-monospace, Menlo, monospace;
+    color: var(--muted-color);
+    background: color-mix(in srgb, var(--accent-color) 10%, transparent);
+    border-radius: 4px;
+    padding: 1px 7px;
+    max-width: 48%;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+
+/* the CAS report, one row per detected feature */
+.fa-feat-btn { font-size: 12px; }
+.fa-feat-btn.open { background: color-mix(in srgb, var(--accent-color) 15%, transparent); color: var(--text-color); border-color: var(--accent-color); }
+.fa-feat-panel { display: none; margin-top: 10px; }
+.fa-feat-panel.open { display: block; }
+.fa-feat-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 0;
+    border-top: 1px solid var(--border-color);
+    font-size: 12.5px;
+}
+.fa-feat-row:first-child { border-top: none; }
+.fa-feat-label { color: var(--muted-color); min-width: 118px; }
+.fa-feat-math { color: var(--text-color); }
+.fa-feat-detail { color: var(--muted-color); }
+.fa-feat-note { color: var(--muted-color); font-style: italic; font-size: 11.5px; }
+/* a CAS timeout, said plainly — unknown is not the same as absent */
+.fa-feat-stalled { color: var(--accent-color); font-style: italic; font-size: 11.5px; }
+/* why a detected point has no dot on the curve */
+.fa-feat-off {
+    margin-left: auto;
+    color: var(--muted-color);
+    font-size: 11px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 0 6px;
+}
+
+.fa-ann-legend { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 6px; }
+.fa-ann-chip { font-size: 11px; border-style: dashed; }
+/* which curve is which — HTML (not the Chart.js canvas legend) so the
+   labels can render as KaTeX; see _renderSeriesLegend */
+.fa-series-key {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--muted-color);
+    padding: 2px 9px;
+}
+.fa-series-key.off { opacity: 0.45; text-decoration: line-through; }
+.fa-series-key .katex { font-size: 1.05em; }
+/* the curve's own stroke: solid for the analyzed expression, dashed for a
+   companion plot (colour is set inline from the dataset) */
+.fa-series-swatch {
+    width: 15px;
+    height: 0;
+    border-top: 2px solid currentColor;
+    flex-shrink: 0;
+}
+.fa-series-swatch.dashed { border-top-style: dashed; }
+/* what the drawn markers mean */
+.fa-mark-key {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: var(--muted-color);
+    padding: 2px 9px;
+}
+.fa-mark-key.off { opacity: 0.45; text-decoration: line-through; }
+.fa-key-glyph { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+.fa-key-zero { background: var(--text-color); }
+.fa-key-extremum { background: var(--accent-color); }
+.fa-key-sing {
+    width: 0;
+    height: 10px;
+    border-radius: 0;
+    border-left: 2px dashed rgba(239, 83, 80, 0.75);
+}
+.fa-ann-chip.off { opacity: 0.4; text-decoration: line-through; }
+.fa-canvas-wrap { position: relative; height: 320px; }
+.fa-canvas-wrap canvas { width: 100% !important; height: 100% !important; }
+
+/* Axis titles — HTML so they render as KaTeX. The descendant selector keeps
+   these absolutely positioned even though .fa-askable (added by the hover ask
+   button, and declared later) sets position: relative. */
+.fa-canvas-wrap .fa-axis-title {
+    position: absolute;
+    color: var(--muted-color);
+    font-size: 12px;
+    pointer-events: auto;
+}
+/* The y-title is rotated; counter-rotate its ask button so it stays upright. */
+.fa-axis-y .fa-hover-ask { transform: rotate(90deg); transform-origin: center; }
+.fa-axis-x { left: 50%; bottom: -2px; transform: translateX(-50%); }
+/* Rotated about its own centre, which sits ~half a line-height in from the
+   left edge so the whole label lands inside the canvas instead of being
+   clipped. Chart.js reserves the matching space via layout.padding.left. */
+.fa-axis-y {
+    left: 11px;
+    top: 50%;
+    transform: translate(-50%, -50%) rotate(-90deg);
+    transform-origin: center center;
+    max-width: 240px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* HTML hover tooltip (canvas tooltips can't render math) */
+.fa-chart-tip {
+    position: absolute;
+    z-index: 25;
+    display: none;
+    transform: translate(-50%, calc(-100% - 12px));
+    /* Near-opaque so the numbers stay readable over curves and gridlines
+       (the design system has no backdrop blur to lean on); the last 8%
+       keeps a hint of the chart visible through the panel. */
+    background: color-mix(in srgb, var(--panel-bg) 92%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent-color) 50%, transparent);
+    border-radius: 7px;
+    padding: 6px 9px;
+    font-size: 12px;
+    color: var(--text-color);
+    /* Transparent to the pointer while it is just a hover readout, so the
+       click that pins it reaches the canvas underneath rather than being
+       swallowed by the very box it is meant to pin. */
+    pointer-events: none;
+    white-space: nowrap;
+    box-shadow: var(--shadow-sm);
+}
+.fa-chart-tip.show { display: block; }
+/* Pinned: parked where the learner dropped it, no longer following the
+   pointer. `transform: none` is what makes left/top plain drag coordinates. */
+.fa-chart-tip.pinned {
+    transform: none;
+    /* Now it IS interactive: it can be dragged, and it swallows its own
+       clicks so clicking the note never counts as clicking the chart. */
+    pointer-events: auto;
+    cursor: move;
+    border-color: color-mix(in srgb, var(--accent-color) 75%, transparent);
+    box-shadow: var(--shadow-sm);
+}
+.fa-tip-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;                  /* keeps the ask button off the readout */
+    color: var(--text-color);
+    margin-bottom: 3px;
+}
+/* Top-right corner of a pinned note. This is the shared .ai-ask-btn circle,
+   untouched — no size, padding or geometry of its own, or it stops matching
+   every other ask button in the app. It is revealed by hovering the note,
+   the same as every other hover-revealed ask; only the corner placement is
+   its own. */
+.fa-tip-ask {
+    margin-left: auto;
+    pointer-events: none;       /* same as .fa-askable's hidden state */
+    transition: opacity 0.12s ease;
+}
+.fa-chart-tip.pinned:hover .fa-tip-ask { opacity: 1; pointer-events: auto; }
+.fa-tip-row { display: flex; align-items: center; gap: 6px; }
+.fa-tip-swatch { width: 9px; height: 3px; border-radius: 2px; flex-shrink: 0; }
+.fa-tip-name { max-width: 210px; overflow: hidden; text-overflow: ellipsis; }
+.fa-tip-val { margin-left: auto; color: var(--text-color); font: 11.5px ui-monospace, Menlo, monospace; }
+
+/* Why a y-axis click could not be answered — brief, and out of the way. */
+.fa-snap-miss {
+    position: absolute;
+    left: 50%;
+    bottom: 8px;
+    transform: translateX(-50%);
+    max-width: 92%;
+    padding: 4px 11px;
+    border-radius: 6px;
+    background: var(--panel-bg);
+    border: 1px solid rgba(239, 83, 80, 0.45);
+    color: var(--text-color);
+    font-size: 11.5px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+.fa-snap-miss.show { opacity: 1; }
+
+/* KaTeX layer for annotation labels (canvas text can't render math) */
+.fa-chart-labels { position: absolute; inset: 0; pointer-events: none; }
+.fa-chart-label {
+    position: absolute;
+    font-size: 11px;
+    line-height: 1.2;
+    color: var(--err-fg);
+    white-space: nowrap;
+    /* Knockout halo matches the chart surface so labels stay legible over
+       gridlines/curves in either theme. */
+    text-shadow: 0 0 4px var(--panel-bg), 0 0 4px var(--panel-bg);
+}
+.fa-chart-label.band { color: var(--muted-color); }
+/* Annotations are hoverable: they report the values at their marker. */
+.fa-chart-label.probe { pointer-events: auto; cursor: help; }
+.fa-chart-label.probe:hover { color: var(--text-color); }
+.fa-chart-label .katex { font-size: 1em; }
+
+/* ── sliders ── */
+.fa-sliders { display: flex; gap: 22px; flex-wrap: wrap; margin-top: 10px; }
+.fa-slider-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.fa-var { color: var(--accent-color); min-width: 18px; text-align: center; position: relative; }
+.fa-var .fa-var-ask {
+    position: absolute;
+    top: -13px;
+    right: -15px;
+    margin-left: 0;
+}
+.fa-slider-row input[type="range"] { width: 130px; accent-color: var(--accent-color); cursor: pointer; }
+.fa-slider-row input[type="range"]:active { cursor: grabbing; }
+.fa-slider-val {
+    font: 11.5px ui-monospace, Menlo, monospace;
+    color: var(--muted-color);
+    min-width: 48px;
+}
+
+/* ── quiz ── */
+.fa-sect-label {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--muted-color);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+.fa-probe { border-top: 1px solid var(--border-color); padding: 10px 0; }
+.fa-probe:first-child { border-top: none; }
+.fa-probe-q { margin-bottom: 8px; }
+.fa-probe-opts { display: flex; gap: 8px; flex-wrap: wrap; }
+.fa-probe-chip {
+    background: color-mix(in srgb, var(--accent-color) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent-color) 45%, transparent);
+    color: var(--text-color);
+    border-radius: 16px;
+    padding: 3px 14px;
+    font-size: 13px;
+}
+.fa-probe-chip:disabled { opacity: 0.55; cursor: default; }
+.fa-probe-chip.right { background: rgba(102, 187, 106, 0.25); border-color: #66bb6a; opacity: 1; }
+.fa-probe-chip.wrong { background: rgba(239, 83, 80, 0.25); border-color: #ef5350; opacity: 1; }
+.fa-probe-exp { display: none; margin-top: 8px; font-size: 12.5px; color: var(--muted-color); }
+.fa-probe-exp.show { display: block; }
+.fa-more { margin-top: 10px; border-style: dashed; border-radius: 16px; }
+.fa-more-status { margin-left: 10px; color: var(--muted-color); font-size: 12px; }
+
+/* ── raw JSON popup ── */
+.fa-json-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: var(--scrim);
+    z-index: 60;
+    align-items: center;
+    justify-content: center;
+}
+.fa-json-overlay.open { display: flex; }
+.fa-json-modal {
+    background: var(--panel-bg);
+    border: 1px solid color-mix(in srgb, var(--accent-color) 50%, transparent);
+    border-radius: 10px;
+    width: min(720px, 86vw);
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-sm);
+}
+.fa-json-modal-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--muted-color);
+    font-size: 12.5px;
+}
+.fa-json-modal-head span { flex: 1; }
+.fa-json-close { font-size: 15px; line-height: 1; padding: 1px 8px; }
+.fa-json-modal pre {
+    margin: 0;
+    padding: 12px 14px;
+    overflow: auto;
+    font: 11.5px/1.45 ui-monospace, Menlo, monospace;
+    color: var(--muted-color);
+    white-space: pre;
+}
+
+/* ── variable description tooltip (instant, styled, KaTeX-capable) ── */
+.fa-tooltip {
+    display: none;
+    position: absolute;
+    z-index: 40;
+    max-width: 320px;
+    background: var(--panel-bg);
+    border: 1px solid color-mix(in srgb, var(--accent-color) 50%, transparent);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    color: var(--muted-color);
+    transform: translateY(-100%);
+    box-shadow: var(--shadow-sm);
+    pointer-events: none;
+}
+.fa-tooltip.show { display: block; }
+
+/* ── hover-revealed AI ask button (app-wide sparkle pattern) ── */
+.fa-askable { position: relative; }
+.fa-askable .fa-hover-ask {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.12s ease;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+.fa-askable:hover .fa-hover-ask { opacity: 1; pointer-events: auto; }
+
+/* ── Math tab tree: artifact rows under steps ── */
+.gp-tree-fa {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 8px 2px 34px;
+    font-size: 12px;
+    color: var(--muted-color);
+    cursor: pointer;
+    border-left: 3px solid transparent;
+}
+.gp-tree-fa:hover { background: color-mix(in srgb, var(--accent-color) 8%, transparent); color: var(--text-color); }
+.gp-tree-fa.active {
+    background: color-mix(in srgb, var(--accent-color) 12%, transparent);
+    border-left-color: var(--accent-color);
+    color: var(--text-color);
+}
+.gp-tree-fa .fa-glyph { color: var(--accent-color); font-style: italic; font-family: var(--font-body); }
+.gp-tree-fa .fa-loading { color: var(--muted-color); font-style: italic; }
+.gp-tree-fa .fa-err { color: #ef9a9a; }
+
 </style>
 </head>
 <body>
 <h1>Semantic Graph &mdash; Visual Examination Report</h1>
-<div class="report-meta">Generated 2026-08-15 03:19 UTC &middot; theme: default-dark &middot; 16 expressions</div>
+<div class="report-meta">Generated 2026-08-18 04:03 UTC &middot; theme: default-dark &middot; 16 expressions</div>
 <div class="section-title">Chemistry (16 expressions)</div>
 <div class="row">
   <div>
@@ -5203,8 +5678,8 @@ document.querySelectorAll('.row-copy-btn').forEach(btn => {
 })();
 
 Promise.all([
-  import('./d3-semantic-graph.js?v=1786763906'),
-  import('./sg-chart.js?v=1786763906'),
+  import('./d3-semantic-graph.js?v=1787025763'),
+  import('./sg-chart.js?v=1787025715'),
 ]).then(function(mods) {
   var D3SemanticGraphRenderer = mods[0].D3SemanticGraphRenderer;
   var SgChartManager = mods[1].SgChartManager;
