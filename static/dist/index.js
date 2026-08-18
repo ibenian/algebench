@@ -10807,7 +10807,7 @@ async function loadSceneFromPath(path) {
 		const resp = await fetch("/api/scene_file?path=" + encodeURIComponent(path), { cache: "no-store" });
 		if (!resp.ok) throw new Error(`HTTP ${resp.status} loading scene file`);
 		const data = await resp.json();
-		if (!data || typeof data.spec !== "object") throw new Error("Invalid scene payload");
+		if (!data || !data.spec || typeof data.spec !== "object") throw new Error("Invalid scene payload");
 		state.currentSceneSourceLabel = data.label || path.split(/[\\/]/).pop() || path;
 		state.currentSceneSourcePath = data.path || path;
 		stopAutoPlay();

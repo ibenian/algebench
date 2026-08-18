@@ -348,7 +348,10 @@ export const state: AppState = {
     camPopupPinned: false,
 
     // ----- Animation -----
-    animatedElementPos: {},  // id -> [x,y,z] in data space — updated each frame
+    // id -> { pos, time, from?, to?, startTime? } — updated each frame. NOT a
+    // bare [x,y,z]: `from`/`to` are present only for vector-shaped elements, and
+    // that is how follow-cam.ts tells a vector from a point. See AnimPosEntry.
+    animatedElementPos: {},
     activeAnimUpdaters: [],
     sceneStartTime: 0,
     activeAnimExprs: [],     // { exprStrings, animState, updateFns }

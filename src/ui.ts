@@ -137,7 +137,11 @@ export async function loadSceneFromPath(path: string): Promise<void> {
             throw new Error(`HTTP ${resp.status} loading scene file`);
         }
         const data = await resp.json() as SceneFileResponse | null;
-        if (!data || typeof data.spec !== 'object') {
+        // `!data.spec` is load-bearing, not redundant with the typeof: `typeof
+        // null === 'object'`, so a `{ spec: null }` response used to pass this
+        // guard and fail later inside loadLesson() with a much less clear error.
+        // This is the one DELIBERATE behaviour change in this PR — see the body.
+        if (!data || !data.spec || typeof data.spec !== 'object') {
             throw new Error('Invalid scene payload');
         }
         state.currentSceneSourceLabel = data.label || path.split(/[\\/]/).pop() || path;
