@@ -132,7 +132,7 @@ interface SceneStep {
     /** Per-step camera override, resolved by camera.ts. */
     camera?: StepCamera;
 }
-interface SceneSpec {
+export interface SceneSpec {
     title?: string;
     description?: string;
     markdown?: string;
@@ -171,7 +171,7 @@ interface ProofFile {
     }[];
 }
 
-interface LessonSpec extends SceneSpec {
+export interface LessonSpec extends SceneSpec {
     scenes?: SceneSpec[];
     import?: string[];
     unsafe?: boolean;

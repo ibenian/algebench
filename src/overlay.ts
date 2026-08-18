@@ -140,7 +140,11 @@ const overlayState = state as unknown as OverlayState;
 
 // Forward reference for buildSceneTree — assigned by context-browser.js via
 // setBuildSceneTreeFn() to avoid a circular import.
-type BuildSceneTreeFn = (spec: unknown) => void;
+// (`import type` is erased, so naming the module here does not create one
+// either.) Typed as the injected function itself: `(spec: unknown) => void`
+// was not something buildSceneTree could satisfy, which only surfaced once
+// src/main.ts — its one caller — became TypeScript.
+type BuildSceneTreeFn = typeof import('/context-browser.js').buildSceneTree;
 let _buildSceneTreeFn: BuildSceneTreeFn | null = null;
 export function setBuildSceneTreeFn(fn: BuildSceneTreeFn): void { _buildSceneTreeFn = fn; }
 

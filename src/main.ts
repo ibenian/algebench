@@ -100,14 +100,21 @@ window.buildSceneTree = buildSceneTree;
 window.addInfoOverlay = addInfoOverlay;
 window.removeAllInfoOverlays = removeAllInfoOverlays;
 window.updateInfoOverlays = updateInfoOverlays;
-window.getAllElements = getAllElements;
+// Cast: chat's declared view of this global (globals.d.ts) is looser than
+// overlay's implementation — it passes the open-bag AlgeBenchSceneSpec where
+// overlay declares OverlayScene, and reads back AlgeBenchElementSpec rather
+// than the schema's Element. Untyped JS papered the two views over; publishing
+// under chat's contract keeps every reader compiling against what it expects.
+window.getAllElements = getAllElements as unknown as typeof window.getAllElements;
 window.loadLesson = loadLesson;
 window.loadScene = loadScene;
 window.isLessonFormat = isLessonFormat;
 window.updateDockVisibility = updateDockVisibility;
 window.animateSlider = animateSlider;
-window.dataCameraToWorld = dataCameraToWorld;
-window.worldCameraToData = worldCameraToData;
+// Cast, same reason as getAllElements above: coords.ts takes and returns the
+// Vec3 tuple, while chat calls these globals with a plain number[].
+window.dataCameraToWorld = dataCameraToWorld as unknown as typeof window.dataCameraToWorld;
+window.worldCameraToData = worldCameraToData as unknown as typeof window.worldCameraToData;
 
 // Deeplinking — single entry point reused by ui.js init, popstate, and the
 // future AI "jump to view" tool.

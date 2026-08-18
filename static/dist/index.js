@@ -12,7 +12,7 @@ var __exportAll = (all, no_symbols) => {
 	return target;
 };
 //#endregion
-//#region src/state.js
+//#region src/state.ts
 var state = {
 	mathbox: null,
 	three: null,
@@ -10736,7 +10736,7 @@ function parseViewState(search) {
 	return vs;
 }
 //#endregion
-//#region src/ui.js
+//#region src/ui.ts
 var _sceneLoadingCount = 0;
 function showSceneLoading() {
 	_sceneLoadingCount++;
@@ -13461,7 +13461,7 @@ function setupObjectPicker() {
 	_canvas.addEventListener("pointerdown", () => hideBtnNow(), { passive: true });
 }
 //#endregion
-//#region src/main.js
+//#region src/main.ts
 window.algebenchIcons = {
 	ai: AI_ICON,
 	user: USER_ICON

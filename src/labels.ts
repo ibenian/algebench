@@ -309,7 +309,7 @@ interface LabelsState {
     labels: Label3D[];
     camera: import('three').Camera | null;
     renderer: { domElement: HTMLCanvasElement } | null;
-    displayParams: { labelScale: number; labelOpacity: number; labelDeclutter?: string };
+    displayParams: { labelScale: number; labelOpacity: number };
 }
 const labelsState = state as unknown as LabelsState;
 
