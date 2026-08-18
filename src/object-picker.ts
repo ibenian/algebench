@@ -1,7 +1,7 @@
 // ============================================================
-// object-picker.js — per-object "Ask AI" affordance for the 3D scene.
+// object-picker.ts — per-object "Ask AI" affordance for the 3D scene.
 //
-// Mirrors the semantic-graph per-node Ask-AI button (graph-view.js): hovering a
+// Mirrors the semantic-graph per-node Ask-AI button (graph-view.ts): hovering a
 // pickable 3D object reveals a floating sparkle button. An object is pickable if
 // the author gave it a `prompt`, or if it's a labeled content object (axes/grid
 // excluded) — in which case the ask is auto-generated from the label at click

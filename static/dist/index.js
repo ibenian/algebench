@@ -15897,7 +15897,7 @@ var SgChartScript = class {
 * SgChartManager — interactive Chart.js plots for semantic graph nodes.
 *
 * Expression evaluation is handled by the backend (SymPy→mathjs pipeline)
-* and evaluated client-side via expr.js.  Chart.js renders the results.
+* and evaluated client-side via expr.ts.  Chart.js renders the results.
 *
 * Slider panel sits bottom-left, legend bottom-right (matching the 3D
 * viewport layout convention).

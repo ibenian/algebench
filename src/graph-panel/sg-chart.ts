@@ -2,7 +2,7 @@
  * SgChartManager — interactive Chart.js plots for semantic graph nodes.
  *
  * Expression evaluation is handled by the backend (SymPy→mathjs pipeline)
- * and evaluated client-side via expr.js.  Chart.js renders the results.
+ * and evaluated client-side via expr.ts.  Chart.js renders the results.
  *
  * Slider panel sits bottom-left, legend bottom-right (matching the 3D
  * viewport layout convention).
@@ -507,7 +507,7 @@ export class SgChartManager {
         const vars = hasError ? [] : result.variables!;
         const scriptText = hasError ? null : result.script;
 
-        // Compile the mathjs script via expr.js
+        // Compile the mathjs script via expr.ts
         let compiled: CompiledExpr | null = null;
         if (scriptText) {
             try {
@@ -1304,10 +1304,10 @@ export class SgChartManager {
         this._emitLegendChange();
     }
 
-    // Notify graph-view.js (which owns the enrichment-progress stack in a
+    // Notify graph-view.ts (which owns the enrichment-progress stack in a
     // sibling container) that the legend strip changed, so it can re-stack the
     // enrichment pills above the new legend height. Decoupled via a DOM event
-    // to avoid a circular import between this module and graph-view.js.
+    // to avoid a circular import between this module and graph-view.ts.
     _emitLegendChange() {
         try {
             document.dispatchEvent(new CustomEvent('sgc:legend-change'));
