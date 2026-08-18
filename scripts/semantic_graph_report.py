@@ -38,6 +38,12 @@ except ImportError:
 
 import sympy as sp
 
+# Same dual-invocation guard as graph_to_mermaid above: bare `scripts/` is on
+# the path under ./run.sh, but not under `python -m scripts.…`.
+try:
+    import graph_panel_assets
+except ImportError:
+    from scripts import graph_panel_assets
 from backend.semantic_graph.mathjs_converter import latex_to_mathjs
 from backend.semantic_graph.service import SemanticGraphService
 from backend.experts.modules.proof_completion.grounding import graph_to_sympy
@@ -224,6 +230,13 @@ _TERM_RESOLVE_MODULE_URL = (
     "https://cdn.jsdelivr.net/gh/ibenian/algebench@main"
     "/static/graph-panel/term-resolve.js"
 )
+
+
+# The graph-panel modules the report imports, staged beside it as .js by
+# graph_panel_assets (which absorbs the .js-or-.ts split of the TypeScript
+# migration). Import specifiers survive staging untouched, so the report's
+# importmap keeps resolving `/labels.js` & friends — see _page_template.
+_REPORT_MODULES = ["d3-semantic-graph", "sg-chart", "sg-chart-script", "term-resolve"]
 
 
 def _load_d3_css() -> str:
@@ -1028,8 +1041,6 @@ def generate_report(
     graph_theme: str = "default-dark",
     output: Path | None = None,
 ) -> Path:
-    import shutil
-
     theme = load_theme(graph_theme)
     color_mode = theme.get("mode", "dark")
     colors = THEMES[color_mode]
@@ -1042,21 +1053,7 @@ def generate_report(
         os.close(fd)
         output = Path(path)
 
-    d3_js_src = _PROJECT_ROOT / "src" / "graph-panel" / "d3-semantic-graph.js"
-    d3_js_dst = output.parent / "d3-semantic-graph.js"
-    shutil.copy2(d3_js_src, d3_js_dst)
-
-    chart_js_src = _PROJECT_ROOT / "src" / "graph-panel" / "sg-chart.js"
-    chart_js_dst = output.parent / "sg-chart.js"
-    shutil.copy2(chart_js_src, chart_js_dst)
-
-    chart_script_src = _PROJECT_ROOT / "src" / "graph-panel" / "sg-chart-script.js"
-    chart_script_dst = output.parent / "sg-chart-script.js"
-    shutil.copy2(chart_script_src, chart_script_dst)
-
-    term_resolve_src = _PROJECT_ROOT / "src" / "graph-panel" / "term-resolve.js"
-    term_resolve_dst = output.parent / "term-resolve.js"
-    shutil.copy2(term_resolve_src, term_resolve_dst)
+    graph_panel_assets.stage(_REPORT_MODULES, output.parent)
 
     html, _, _ = _build_report_html(
         sections, graph_theme=graph_theme, theme=theme, colors=colors,
@@ -1117,25 +1114,13 @@ def generate_site(
     outdir: Path,
 ) -> Path:
     import datetime
-    import shutil
 
     outdir.mkdir(parents=True, exist_ok=True)
 
-    d3_js_src = _PROJECT_ROOT / "src" / "graph-panel" / "d3-semantic-graph.js"
+    graph_panel_assets.stage(_REPORT_MODULES, outdir)
     d3_js_dst = outdir / "d3-semantic-graph.js"
-    shutil.copy2(d3_js_src, d3_js_dst)
-
-    chart_js_src = _PROJECT_ROOT / "src" / "graph-panel" / "sg-chart.js"
     chart_js_dst = outdir / "sg-chart.js"
-    shutil.copy2(chart_js_src, chart_js_dst)
-
-    chart_script_src = _PROJECT_ROOT / "src" / "graph-panel" / "sg-chart-script.js"
-    chart_script_dst = outdir / "sg-chart-script.js"
-    shutil.copy2(chart_script_src, chart_script_dst)
-
-    term_resolve_src = _PROJECT_ROOT / "src" / "graph-panel" / "term-resolve.js"
     term_resolve_dst = outdir / "term-resolve.js"
-    shutil.copy2(term_resolve_src, term_resolve_dst)
 
     # Cache-bust the ES modules on every (re)generation — browsers cache module
     # imports aggressively, so without this a regenerated report keeps running the

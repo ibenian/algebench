@@ -13755,7 +13755,7 @@ function resolveTermId(graph, termId, termText) {
 	return null;
 }
 //#endregion
-//#region src/graph-panel/d3-semantic-graph.js
+//#region src/graph-panel/d3-semantic-graph.ts
 /**
 * D3SemanticGraphRenderer — renders a semantic graph model directly with D3.
 *
@@ -14202,10 +14202,9 @@ function operatorGlyph(node) {
 * When ``hasCondition`` is true, the last argument is separated
 * by ``|`` (conditional probability) instead of ``, ``.
 *
-* @param {number} arity  Number of arguments.
-* @param {boolean} hasCondition  Whether the function has a condition edge.
-* @param {string} dot  The dot character (``·`` for text, ``\\cdot`` for LaTeX).
-* @returns {string}
+* @param arity  Number of arguments.
+* @param hasCondition  Whether the function has a condition edge.
+* @param dot  The dot character (``·`` for text, ``\\cdot`` for LaTeX).
 */
 function _arityDots(arity, hasCondition, hasAssertion, dot) {
 	if (hasCondition && arity >= 2) {
@@ -14250,8 +14249,6 @@ function nodeLongLabel(node) {
 * Thin wrapper around ``nodeShortLabel`` that adds the emoji prefix
 * for ``minimal`` label mode on data nodes.
 *
-* @param {Object} node
-* @param {'minimal'|'description'|'full'} labelMode
 */
 function getNodeLabel(node, labelMode) {
 	const short = nodeShortLabel(node);
@@ -14262,14 +14259,11 @@ function getNodeLabel(node, labelMode) {
 }
 var D3SemanticGraphRenderer = class {
 	/**
-	* @param {HTMLElement} container — the DOM element to render into
-	* @param {Object} opts
-	* @param {Object} [opts.katex] — KaTeX instance for label rendering
-	* @param {'top-down'|'left-right'|'right-left'|'bottom-up'} [opts.direction]
-	* @param {'minimal'|'description'|'full'} [opts.labels]
-	* @param {Function} [opts.onNodeClick] — callback(nodeId, nodeData)
-	* @param {Function} [opts.onNodeHover] — callback(nodeId|null, nodeData|null, nodeEl|null)
-	* @param {Function} [opts.onBackgroundClick] — callback()
+	* @param container — the DOM element to render into
+	* @param opts.katex — KaTeX instance for label rendering
+	* @param opts.onNodeClick — callback(nodeId, nodeData)
+	* @param opts.onNodeHover — callback(nodeId|null, nodeData|null, nodeEl|null)
+	* @param opts.onBackgroundClick — callback()
 	*/
 	constructor(container, opts = {}) {
 		this.container = container;
@@ -14509,7 +14503,7 @@ var D3SemanticGraphRenderer = class {
 			return !event.ctrlKey && (event.button == null || event.button === 0 || event.button === 2);
 		}).on("zoom", (event) => {
 			this._currentTransform = event.transform;
-			this._viewport.attr("transform", event.transform);
+			this._viewport.attr("transform", String(event.transform));
 			this._rescaleUiBtns();
 			if (this.onZoomChange) this.onZoomChange(Math.round(event.transform.k * 100));
 			if (this.onTransformChange) this.onTransformChange(event.transform);
@@ -15352,7 +15346,7 @@ var D3SemanticGraphRenderer = class {
 	}
 };
 //#endregion
-//#region src/graph-panel/graph-panel.js
+//#region src/graph-panel/graph-panel.ts
 /**
 * SemanticGraphPanel — reusable info panel + highlight + tooltip for semantic graph
 * Mermaid diagrams.
@@ -15380,14 +15374,6 @@ var PANEL_FIELDS = [
 	["op", "Operation"]
 ];
 var SemanticGraphPanel = class SemanticGraphPanel {
-	/**
-	* @param {Object} graph - Semantic graph {nodes, edges}
-	* @param {Object} opts
-	* @param {HTMLElement} opts.container - Element containing the Mermaid SVG
-	* @param {Object}  [opts.katex]     - KaTeX instance (for LaTeX rendering)
-	* @param {HTMLElement} [opts.tooltip]  - Pre-existing tooltip element (created if absent)
-	* @param {HTMLElement} [opts.panel]    - Pre-existing panel element (created if absent)
-	*/
 	constructor(graph, opts = {}) {
 		this.graph = graph;
 		this.container = opts.container || document.body;
@@ -15577,7 +15563,7 @@ var SemanticGraphPanel = class SemanticGraphPanel {
 			const valEl = document.createElement("span");
 			valEl.className = "gp-val";
 			if (key === "label" && typeof window !== "undefined" && typeof window.renderKaTeX === "function") valEl.innerHTML = window.renderKaTeX(data.label, false);
-			else valEl.textContent = data[key];
+			else valEl.textContent = String(data[key]);
 			row.append(keyEl, valEl);
 			fieldsEl.appendChild(row);
 		}
@@ -15636,8 +15622,9 @@ var SemanticGraphPanel = class SemanticGraphPanel {
 			const expr = this._subexprs[id];
 			el.style.cursor = "pointer";
 			if (expr && this.katex) {
+				const katexLib = this.katex;
 				const onEnter = (e) => {
-					this.katex.render(expr, this.tooltip, {
+					katexLib.render(expr, this.tooltip, {
 						displayMode: true,
 						throwOnError: false
 					});

@@ -287,6 +287,17 @@ interface Window {
   katex: typeof katex;
   marked: typeof marked;
   /**
+   * dagre, injected as a classic <script> from jsdelivr by
+   * src/graph-panel/d3-semantic-graph.ts (loadDagre) the first time a semantic
+   * graph is laid out. Optional: absent until that script has run.
+   */
+  dagre?: typeof import('@dagrejs/dagre');
+  /**
+   * src/labels.ts — published onto window so modules that cannot import it
+   * (and the inline pages) can feature-detect it before calling.
+   */
+  renderKaTeX?: typeof renderKaTeX;
+  /**
    * Every ProofAnimator the /renderproof page built, in card order
    * (src/renderproof.ts). A debugging handle, and how autoplay reaches the
    * animators after the load loop has finished.

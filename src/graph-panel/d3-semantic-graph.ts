@@ -11,6 +11,181 @@
 
 import { makeAiAskButton } from '/labels.js';
 import { resolveTermId } from '/graph-panel/term-resolve.js';
+import type * as D3 from 'd3';
+import type { Edge as GraphEdge, Node as GraphNode, SemanticGraph } from '/types/semantic-graph.js';
+
+// d3 and dagre are CDN globals here — d3 arrives through a dynamic `import()`
+// of jsdelivr's `+esm` build, dagre through an injected <script> that defines
+// `window.dagre`. Neither is bundled; the npm packages are dev-only type
+// sources, pinned to the exact versions the two CDN URLs below name.
+type D3Module = typeof import('d3');
+type DagreModule = typeof import('@dagrejs/dagre');
+
+/**
+ * A d3 selection, with all four generics left open.
+ *
+ * d3 rebinds every one of `Selection<GElement, Datum, PElement, PDatum>` on
+ * essentially every chained call (`.append` changes GElement, `.data` changes
+ * Datum, `.selectAll` moves the old element into PElement), so spelling them
+ * out on the ~60 chains in this file would document d3's API rather than this
+ * renderer. The datum types that DO matter are named where they enter — on the
+ * `selectAll<Element, Datum>` calls that start each keyed join, and on the
+ * method signatures below — so the join callbacks are still checked.
+ */
+type D3Sel = D3.Selection<any, any, any, any>;   // eslint-disable-line @typescript-eslint/no-explicit-any
+
+/**
+ * A d3 transition, generics left open for the same reason as `D3Sel` — plus
+ * one of d3's own: `selection.transition(t)` declares its parameter as
+ * `Transition<BaseType, …>`, and `BaseType` includes `null`, so a transition
+ * typed to a concrete element is NOT assignable to it. Open generics are the
+ * only shape that threads a shared transition through every keyed join here.
+ */
+type D3Transition = D3.Transition<any, any, any, any>;   // eslint-disable-line @typescript-eslint/no-explicit-any
+
+/** The `semantic` tag of an edge, once inferred (never absent at render time). */
+type EdgeSemantic = NonNullable<GraphEdge['semantic']>;
+
+/**
+ * A semantic-graph node plus the layout-time facts `_layoutGraph` derives from
+ * the edge list and folds into each node's copy. The underscore-prefixed
+ * fields exist only between `_layoutGraph` and the draw pass — they are not
+ * part of schemas/semantic-graph.schema.json.
+ */
+export interface RenderNode extends GraphNode {
+    _collapsed?: boolean;
+    _childIds?: string[];
+    _hasConditionEdge?: boolean;
+    _hasAssertionEdge?: boolean;
+    _hasDifferentialChild?: boolean;
+    _lowerBoundLabel?: string;
+    _upperBoundLabel?: string;
+    /**
+     * Also not in the schema: an evaluable mathjs script attached by the
+     * expression-analysis backend / the report generator. This module only
+     * tests it for presence (it decides whether to draw the chart button);
+     * graph-panel/sg-chart-script.js is what reads inside it.
+     */
+    chartScript?: unknown;
+}
+
+/**
+ * The label helpers are also called with a PARTIAL node — graph-panel.ts hands
+ * them the field subset it copied out of the graph — so they take the loosest
+ * shape any caller supplies rather than a full node.
+ */
+export type LabelNode = Partial<RenderNode>;
+
+/** One dagre-laid-out node. NOTE: dagre nests the graph node under `data`. */
+interface LayoutNode {
+    data: RenderNode;
+    x: number;
+    y: number;
+}
+
+/** One laid-out edge, resolved to the wrapper objects at both ends. */
+interface LayoutLink {
+    source: LayoutNode;
+    target: LayoutNode;
+    id: string;
+    semantic: EdgeSemantic;
+    role: NonNullable<GraphEdge['role']> | null;
+}
+
+/** A point in graph (pre-zoom) coordinates. */
+interface Point {
+    x: number;
+    y: number;
+}
+
+/**
+ * The node outline `_boundaryPoint` / `_chevronAnchor` trace against. This is a
+ * UNION, not a normalised box: boxy shapes carry half-extents, radial ones a
+ * single radius.
+ */
+type NodeShape =
+    | { type: 'circle'; r: number }
+    | { type: 'diamond'; r: number }
+    | { type: 'polygon'; r: number }
+    | { type: 'rect'; hw: number; hh: number }
+    | { type: 'stadium'; hw: number; hh: number };
+
+/** One entry of a theme's `nodeStyles` — see schemas/semantic-graph-theme.schema.json. */
+interface GraphNodeStyle {
+    shape?: string;
+    fill?: string;
+    stroke?: string;
+    color?: string;
+    strokeWidth?: number;
+    fontSize?: number;
+}
+
+/**
+ * The built-in per-type style tables. `scalar` is named as a required key
+ * because `_nodeStyle` falls back to it when the node type has no entry, so it
+ * must not read as possibly-undefined under `noUncheckedIndexedAccess`.
+ */
+interface NodeStyleTable {
+    scalar: GraphNodeStyle;
+    [nodeType: string]: GraphNodeStyle | undefined;
+}
+
+/** The semantic categories `operatorKind` sorts operator/relation/function nodes into. */
+type OperatorKind =
+    | 'arithmetic' | 'function' | 'comparison'
+    | 'logical' | 'set' | 'aggregate' | 'quantum';
+
+/** One entry of a theme's `edgeStyles`, or its single `edgeStyle` default. */
+interface GraphEdgeStyle {
+    stroke?: string;
+    strokeWidth?: number;
+    arrow?: string;
+}
+
+/**
+ * A graph theme as this renderer reads one (`/api/graph/theme/<name>`).
+ *
+ * `nodeStyles` is keyed more loosely here than the schema declares: the schema
+ * lists only node TYPES, while `_nodeStyle` also looks up an op name and an
+ * operator KIND so a theme can tint `multiply` or `aggregate` specifically.
+ */
+interface GraphTheme {
+    mode?: string;
+    paintBySemantic?: boolean;
+    nodeStyles?: Record<string, GraphNodeStyle | undefined>;
+    edgeStyles?: Record<string, GraphEdgeStyle | undefined>;
+    edgeStyle?: GraphEdgeStyle;
+}
+
+/** Options accepted by the renderer's constructor. */
+export interface D3SemanticGraphOptions {
+    katex?: typeof katex;
+    direction?: 'top-down' | 'left-right' | 'right-left' | 'bottom-up';
+    labels?: 'minimal' | 'description' | 'full';
+    theme?: string;
+    onNodeClick?: ((nodeId: string, node: RenderNode, selected: Set<string>, multiSelect: boolean) => void) | null;
+    onNodeHover?: ((nodeId: string | null, node: RenderNode | null, nodeEl: SVGGElement | null) => void) | null;
+    onBackgroundClick?: (() => void) | null;
+    onZoomChange?: ((percent: number) => void) | null;
+    onTransformChange?: ((transform: D3.ZoomTransform) => void) | null;
+    onChartClick?: ((nodeId: string, node: RenderNode, btnEl: SVGGElement) => void) | null;
+    onFaClick?: ((nodeId: string, node: RenderNode, btnEl: SVGGElement) => void) | null;
+}
+
+/** The modifier-key surface `_handleNodeClick` reads off a click. */
+interface NodeClickModifiers {
+    metaKey: boolean;
+    ctrlKey: boolean;
+}
+
+/** A saved renderer state, as produced by `saveState`. */
+export interface D3SemanticGraphState {
+    collapsed: Set<string>;
+    activeNodeId: string | null;
+    selectedNodeIds: Set<string>;
+    positionById: Map<string, Point>;
+    zoomTransform: D3.ZoomTransform | null;
+}
 
 const D3_CDN_URL = 'https://cdn.jsdelivr.net/npm/d3@7/+esm';
 const DAGRE_CDN_URL = 'https://cdn.jsdelivr.net/npm/@dagrejs/dagre@1.1.4/dist/dagre.min.js';
@@ -22,22 +197,25 @@ const UI_BTN_SIZE = 18;
 const UI_BTN_GAP = 4;
 const UI_BTN_MAX_SCALE = 6;
 
-const SUPERSCRIPT_MAP = {
+const SUPERSCRIPT_MAP: Record<string, string | undefined> = {
     '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴',
     '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
     '+': '⁺', '-': '⁻', '−': '⁻', 'n': 'ⁿ', 'i': 'ⁱ',
 };
-function toSuperscript(s) {
+function toSuperscript(s: string | number): string {
     return String(s).split('').map(c => SUPERSCRIPT_MAP[c] || c).join('');
 }
 
-let _d3 = null;
-let _d3LoadPromise = null;
+let _d3: D3Module | null = null;
+let _d3LoadPromise: Promise<D3Module> | null = null;
 
-function loadD3() {
+function loadD3(): Promise<D3Module> {
     if (_d3) return Promise.resolve(_d3);
     if (_d3LoadPromise) return _d3LoadPromise;
-    _d3LoadPromise = import(D3_CDN_URL).then(mod => {
+    // The specifier is a variable, so TypeScript cannot resolve the module and
+    // types the import as `any`; the URL pins d3 v7, which is what @types/d3
+    // describes.
+    _d3LoadPromise = (import(D3_CDN_URL) as Promise<D3Module>).then(mod => {
         _d3 = mod;
         return mod;
     });
@@ -45,21 +223,26 @@ function loadD3() {
     return _d3LoadPromise;
 }
 
-let _dagre = null;
-let _dagreLoadPromise = null;
+let _dagre: DagreModule | null = null;
+let _dagreLoadPromise: Promise<DagreModule> | null = null;
 
-function loadDagre() {
+function loadDagre(): Promise<DagreModule> {
     if (_dagre) return Promise.resolve(_dagre);
     if (_dagreLoadPromise) return _dagreLoadPromise;
-    _dagreLoadPromise = new Promise((resolve, reject) => {
+    _dagreLoadPromise = new Promise<DagreModule>((resolve, reject) => {
         if (typeof window !== 'undefined' && window.dagre) {
             _dagre = window.dagre;
-            resolve(_dagre);
+            // Non-null: assigned from the truthy window.dagre on the line above
+            // (TypeScript drops the narrowing for a module-level `let` that
+            // other closures in this file also assign).
+            resolve(_dagre!);
             return;
         }
         const script = document.createElement('script');
         script.src = DAGRE_CDN_URL;
-        script.onload = () => { _dagre = window.dagre; resolve(_dagre); };
+        // Non-null: the CDN bundle defines window.dagre by the time onload
+        // fires — the untyped original resolved with whatever was there.
+        script.onload = () => { _dagre = window.dagre!; resolve(_dagre!); };
         script.onerror = reject;
         document.head.appendChild(script);
     });
@@ -68,19 +251,19 @@ function loadDagre() {
 }
 
 // Default edge styles (fallback when theme has no edgeStyles)
-const DEFAULT_EDGE_COLORS = {
+const DEFAULT_EDGE_COLORS: Record<EdgeSemantic, string> = {
     direct: '#e74c3c',
     inverse: '#5b8fc7',
     neutral: '#7e8aa3',
 };
 
-const EDGE_SEMANTIC_LABELS = [
+const EDGE_SEMANTIC_LABELS: ReadonlyArray<readonly [EdgeSemantic, string]> = [
     ['direct',  'Proportional'],
     ['inverse', 'Inversely proportional'],
     ['neutral', 'Structural'],
 ];
 
-const DEFAULT_EDGE_WIDTHS = {
+const DEFAULT_EDGE_WIDTHS: Record<EdgeSemantic, number> = {
     direct: 2.5,
     inverse: 1.8,
     neutral: 1.4,
@@ -100,7 +283,7 @@ const DEFAULT_EDGE_WIDTHS = {
 // in ``_nodeStyle``.  This keeps the default palette taxonomy-driven
 // (operator vs function vs data) and avoids singling out individual
 // ops in the built-in defaults.
-const DEFAULT_NODE_STYLES = {
+const DEFAULT_NODE_STYLES: NodeStyleTable = {
     scalar:   { fill: '#1b3a1e', stroke: '#66bb6a', color: '#c8e6c9' },
     vector:   { fill: '#1b3a1e', stroke: '#66bb6a', color: '#c8e6c9' },
     constant: { fill: '#1b3a1e', stroke: '#66bb6a', color: '#c8e6c9' },
@@ -114,7 +297,7 @@ const DEFAULT_NODE_STYLES = {
 // Light-mode counterparts — same hues, light fills + dark text. Picked when
 // the active theme declares ``mode: "light"`` so built-in fallbacks never
 // paint dark boxes onto a light canvas.
-const DEFAULT_NODE_STYLES_LIGHT = {
+const DEFAULT_NODE_STYLES_LIGHT: NodeStyleTable = {
     scalar:   { fill: '#e8f2e9', stroke: '#4c8a52', color: '#26492a' },
     vector:   { fill: '#e8f2e9', stroke: '#4c8a52', color: '#26492a' },
     constant: { fill: '#e8f2e9', stroke: '#4c8a52', color: '#26492a' },
@@ -125,9 +308,9 @@ const DEFAULT_NODE_STYLES_LIGHT = {
     annotation: { fill: '#f2ede6', stroke: '#7d675e', color: '#43352e' },
 };
 
-let _themeCache = Object.create(null);
+let _themeCache: Record<string, GraphTheme | undefined> = Object.create(null);
 
-async function fetchTheme(name) {
+async function fetchTheme(name: string): Promise<GraphTheme | null> {
     if (_themeCache[name]) return _themeCache[name];
     try {
         const res = await fetch(`/api/graph/theme/${encodeURIComponent(name)}`);
@@ -141,13 +324,18 @@ async function fetchTheme(name) {
 }
 
 // Infer edge semantic from graph structure when not explicitly tagged
-function inferEdgeSemantic(edge, nodeById) {
+function inferEdgeSemantic(
+    edge: GraphEdge,
+    nodeById: Record<string, GraphNode | undefined>,
+): EdgeSemantic {
     if (edge.semantic) return edge.semantic;
     const src = nodeById[edge.from];
     const dst = nodeById[edge.to];
     if (src && src.op === 'power') {
         const raw = src.exponent;
-        const n = parseFloat(raw);
+        // `raw` is a string per the schema; parseFloat(undefined) is NaN, which
+        // the Number.isFinite guard below already handles — as it did untyped.
+        const n = parseFloat(raw!);
         if (Number.isFinite(n)) {
             if (n < 0) return 'inverse';
             if (Math.abs(n) > 1) return 'direct';
@@ -172,7 +360,7 @@ function inferEdgeSemantic(edge, nodeById) {
 // Operator-glyph map mirrors ``_OPERATOR_GLYPHS`` in the Python parser.
 // ---------------------------------------------------------------------------
 
-const OPERATOR_GLYPHS = {
+const OPERATOR_GLYPHS: Record<string, string | undefined> = {
     equals: '=', congruent: '≡', divides: '∣', asymptotic: '∼',
     approximately: '≈', proportional: '∝', maps_to: '→',
     greater_than: '>', less_than: '<',
@@ -194,7 +382,7 @@ const OPERATOR_GLYPHS = {
 
 // LaTeX equivalents for operator glyphs — used when rendering operator
 // labels through KaTeX (nodes without an explicit ``latex`` field).
-const OPERATOR_LATEX = {
+const OPERATOR_LATEX: Record<string, string | undefined> = {
     equals: '=', congruent: '\\equiv', divides: '\\mid', asymptotic: '\\sim',
     approximately: '\\approx', proportional: '\\propto', maps_to: '\\to',
     greater_than: '>', less_than: '<',
@@ -216,7 +404,9 @@ const OPERATOR_LATEX = {
     function: 'f(\\cdot)',
 };
 
-const OP_KINDS = new Set(['operator', 'relation', 'function']);
+// Typed to admit `undefined` because the label helpers accept a PARTIAL node,
+// whose `type` may be absent — `has(undefined)` is false, as it was untyped.
+const OP_KINDS: ReadonlySet<string | undefined> = new Set(['operator', 'relation', 'function']);
 
 // Operator-kind classification — mirrors ``_OPERATOR_KINDS`` in
 // ``scripts/latex_to_graph.py``.  Each kind gets a distinct cool-palette
@@ -229,7 +419,7 @@ const OP_KINDS = new Set(['operator', 'relation', 'function']);
 //   aggregate  — variable-binding reducers (Σ, ∏, ∫, lim, d/dx, ∂/∂x)
 //   quantum    — Dirac/linalg operators (⟨·|·⟩, future outer/expect.)
 // Keep in sync with _OPERATOR_KINDS in scripts/latex_to_graph.py
-const OPERATOR_KINDS = {
+const OPERATOR_KINDS: Record<string, OperatorKind | undefined> = {
     add: 'arithmetic', subtract: 'arithmetic', multiply: 'arithmetic',
     divide: 'arithmetic', power: 'arithmetic', negation: 'arithmetic',
     Abs: 'function', abs: 'function', sqrt: 'function',
@@ -254,7 +444,7 @@ const OPERATOR_KINDS = {
 
 // Per-kind tint variants (cool-palette — distinct enough to
 // glance-discriminate but unified as "operator").
-const OPERATOR_KIND_STYLES = {
+const OPERATOR_KIND_STYLES: Record<OperatorKind, GraphNodeStyle> = {
     arithmetic: { fill: '#0f2540', stroke: '#42a5f5', color: '#bbdefb' },
     function:   { fill: '#0f3340', stroke: '#29b6f6', color: '#b3e5fc' },
     comparison: { fill: '#1a2240', stroke: '#7e57c2', color: '#d1c4e9' },
@@ -265,7 +455,7 @@ const OPERATOR_KIND_STYLES = {
 };
 
 // Light-mode per-kind tints (same hue mapping as above, inverted lightness).
-const OPERATOR_KIND_STYLES_LIGHT = {
+const OPERATOR_KIND_STYLES_LIGHT: Record<OperatorKind, GraphNodeStyle> = {
     arithmetic: { fill: '#e7eef4', stroke: '#3a7ca8', color: '#1c4562' },
     function:   { fill: '#e3f0f5', stroke: '#1f89ad', color: '#10485c' },
     comparison: { fill: '#ebe8f4', stroke: '#6a51b0', color: '#372a63' },
@@ -275,7 +465,7 @@ const OPERATOR_KIND_STYLES_LIGHT = {
     quantum:    { fill: '#f1e7f3', stroke: '#8e4a9e', color: '#4c2456' },
 };
 
-export function operatorKind(node) {
+export function operatorKind(node: LabelNode | null | undefined): OperatorKind | null {
     if (!node || !OP_KINDS.has(node.type)) return null;
     const op = node.op;
     if (op && OPERATOR_KINDS[op]) return OPERATOR_KINDS[op];
@@ -284,7 +474,7 @@ export function operatorKind(node) {
     return node.type === 'function' ? 'function' : 'arithmetic';
 }
 
-function operatorGlyph(node) {
+function operatorGlyph(node: LabelNode | null | undefined): string | null {
     if (!node) return null;
     const op = node.op;
     if (!op) return null;
@@ -300,12 +490,16 @@ function operatorGlyph(node) {
  * When ``hasCondition`` is true, the last argument is separated
  * by ``|`` (conditional probability) instead of ``, ``.
  *
- * @param {number} arity  Number of arguments.
- * @param {boolean} hasCondition  Whether the function has a condition edge.
- * @param {string} dot  The dot character (``·`` for text, ``\\cdot`` for LaTeX).
- * @returns {string}
+ * @param arity  Number of arguments.
+ * @param hasCondition  Whether the function has a condition edge.
+ * @param dot  The dot character (``·`` for text, ``\\cdot`` for LaTeX).
  */
-function _arityDots(arity, hasCondition, hasAssertion, dot) {
+function _arityDots(
+    arity: number,
+    hasCondition: boolean | undefined,
+    hasAssertion: boolean | undefined,
+    dot: string,
+): string {
     if (hasCondition && arity >= 2) {
         const sep = dot === '·' ? '|' : '\\mid ';
         const regular = Array(arity - 1).fill(dot).join(', ');
@@ -324,7 +518,7 @@ function _arityDots(arity, hasCondition, hasAssertion, dot) {
  * Compact symbol shown on the graph node itself.
  * ``\cos``, ``⟨0|·⟩``, ``|·|``, ``(·)²``, ``+``, ``=``…
  */
-export function nodeShortLabel(node) {
+export function nodeShortLabel(node: LabelNode | null | undefined): string {
     if (!node) return '';
     if (OP_KINDS.has(node.type)) {
         if (node.latex) {
@@ -352,7 +546,7 @@ export function nodeShortLabel(node) {
  * Full applied form shown in the details panel / hover / TTS.
  * ``\cos(θ/2)``, ``⟨0|ψ⟩``, ``|⟨0|ψ⟩|²``…
  */
-export function nodeLongLabel(node) {
+export function nodeLongLabel(node: LabelNode | null | undefined): string {
     if (!node) return '';
     return node.subexpr || node.latex || nodeShortLabel(node);
 }
@@ -362,10 +556,8 @@ export function nodeLongLabel(node) {
  * Thin wrapper around ``nodeShortLabel`` that adds the emoji prefix
  * for ``minimal`` label mode on data nodes.
  *
- * @param {Object} node
- * @param {'minimal'|'description'|'full'} labelMode
  */
-function getNodeLabel(node, labelMode) {
+function getNodeLabel(node: LabelNode, labelMode: 'minimal' | 'description' | 'full'): string {
     const short = nodeShortLabel(node);
     if (OP_KINDS.has(node.type)) return short;
     // Data nodes show only the emoji in minimal mode.
@@ -377,17 +569,54 @@ function getNodeLabel(node, labelMode) {
 }
 
 export class D3SemanticGraphRenderer {
+    container: HTMLElement;
+    katex: typeof katex | false | undefined;
+    direction: NonNullable<D3SemanticGraphOptions['direction']>;
+    labels: NonNullable<D3SemanticGraphOptions['labels']>;
+    themeName: string;
+    onNodeClick: D3SemanticGraphOptions['onNodeClick'];
+    onNodeHover: D3SemanticGraphOptions['onNodeHover'];
+    onBackgroundClick: D3SemanticGraphOptions['onBackgroundClick'];
+    onZoomChange: D3SemanticGraphOptions['onZoomChange'];
+    onTransformChange: D3SemanticGraphOptions['onTransformChange'];
+    onChartClick: D3SemanticGraphOptions['onChartClick'];
+    onFaClick: D3SemanticGraphOptions['onFaClick'];
+
+    _graph: SemanticGraph | null;
+    _theme: GraphTheme | null;
+    _collapsed: Set<string>;
+    _svg: D3.Selection<SVGSVGElement, unknown, null, undefined> | null;
+    _viewport: D3.Selection<SVGGElement, unknown, null, undefined> | null;
+    _zoomBehavior: D3.ZoomBehavior<SVGSVGElement, unknown> | null;
+    _currentTransform: D3.ZoomTransform | null;
+    _needsInitialFit: boolean;
+    _d3: D3Module | null;
+    _dagre: DagreModule | null;
+    _positionById: Map<string, Point>;
+    _lastInteractionId: string | null;
+    _activeNodeId: string | null;
+    _selectedNodeIds: Set<string>;
+    _highlightTimer: ReturnType<typeof setTimeout> | null;
+    _destroyed: boolean;
+
+    // Assigned by _setupSvg(), not the constructor — every read is either
+    // after a render or guarded by a `_svg` null check.
+    _annotationOverlay?: HTMLDivElement;
+    _edgeLegend?: HTMLDivElement;
+    _linkLayer?: D3.Selection<SVGGElement, unknown, null, undefined>;
+    _labelLayer?: D3.Selection<SVGGElement, unknown, null, undefined>;
+    _nodeLayer?: D3.Selection<SVGGElement, unknown, null, undefined>;
+    // Assigned by _setupZoom(), and removed again in destroy().
+    _wheelPanHandler?: (event: WheelEvent) => void;
+
     /**
-     * @param {HTMLElement} container — the DOM element to render into
-     * @param {Object} opts
-     * @param {Object} [opts.katex] — KaTeX instance for label rendering
-     * @param {'top-down'|'left-right'|'right-left'|'bottom-up'} [opts.direction]
-     * @param {'minimal'|'description'|'full'} [opts.labels]
-     * @param {Function} [opts.onNodeClick] — callback(nodeId, nodeData)
-     * @param {Function} [opts.onNodeHover] — callback(nodeId|null, nodeData|null, nodeEl|null)
-     * @param {Function} [opts.onBackgroundClick] — callback()
+     * @param container — the DOM element to render into
+     * @param opts.katex — KaTeX instance for label rendering
+     * @param opts.onNodeClick — callback(nodeId, nodeData)
+     * @param opts.onNodeHover — callback(nodeId|null, nodeData|null, nodeEl|null)
+     * @param opts.onBackgroundClick — callback()
      */
-    constructor(container, opts = {}) {
+    constructor(container: HTMLElement, opts: D3SemanticGraphOptions = {}) {
         this.container = container;
         this.katex = opts.katex || (typeof window !== 'undefined' && window.katex);
         this.direction = opts.direction || 'left-right';
@@ -420,7 +649,7 @@ export class D3SemanticGraphRenderer {
         this._destroyed = false;
     }
 
-    async render(graph) {
+    async render(graph: SemanticGraph): Promise<void> {
         if (this._destroyed) return;
         this._graph = graph;
         const [d3, dagre] = await Promise.all([loadD3(), loadDagre()]);
@@ -434,12 +663,13 @@ export class D3SemanticGraphRenderer {
             this.container.innerHTML = '<div style="color:#7e8aa3;padding:2rem;text-align:center;">No renderable graph structure.</div>';
             return;
         }
-        this._lastInteractionId = graph.nodes[0].id;
+        // Non-null: guarded by the `graph.nodes.length` check above.
+        this._lastInteractionId = graph.nodes[0]!.id;
         this._setupSvg();
         this._renderGraph();
     }
 
-    async update(opts = {}) {
+    async update(opts: { direction?: D3SemanticGraphOptions['direction']; labels?: D3SemanticGraphOptions['labels']; theme?: string } = {}): Promise<void> {
         if (opts.direction) this.direction = opts.direction;
         if (opts.labels) this.labels = opts.labels;
         if (opts.theme && opts.theme !== this.themeName) {
@@ -451,7 +681,7 @@ export class D3SemanticGraphRenderer {
         }
     }
 
-    selectNode(nodeId) {
+    selectNode(nodeId: string | null): void {
         this._activeNodeId = nodeId;
         this._selectedNodeIds.clear();
         if (nodeId) this._selectedNodeIds.add(nodeId);
@@ -463,10 +693,11 @@ export class D3SemanticGraphRenderer {
      * the array becomes the active node — matching Cmd+Click semantics, where
      * the most recently added node is active. JS Set preserves insertion order.
      */
-    setSelection(orderedIds) {
-        const ids = (orderedIds || []).filter(Boolean);
+    setSelection(orderedIds: readonly (string | null | undefined)[] | null | undefined): void {
+        const ids = (orderedIds || []).filter(Boolean) as string[];
         this._selectedNodeIds = new Set(ids);
-        this._activeNodeId = ids.length ? ids[ids.length - 1] : null;
+        // Non-null: guarded by the `ids.length` test.
+        this._activeNodeId = ids.length ? ids[ids.length - 1]! : null;
         this._applyHighlight();
         // Selection is often set right after a render whose enter/update
         // transitions are still animating opacity back to 1 (deeplink restore);
@@ -476,24 +707,26 @@ export class D3SemanticGraphRenderer {
 
     // Re-apply the highlight after in-flight render transitions settle, so the
     // imperative opacity dimming isn't overridden by a concurrent transition.
-    _scheduleHighlightReapply(delay = 420) {
-        clearTimeout(this._highlightTimer);
+    _scheduleHighlightReapply(delay = 420): void {
+        // Cast: the field starts as null and clearTimeout(null) is a runtime
+        // no-op, but the DOM lib types the parameter as number | undefined.
+        clearTimeout(this._highlightTimer as number | undefined);
         this._highlightTimer = setTimeout(() => {
             if (!this._destroyed && this._selectedNodeIds.size) this._applyHighlight();
         }, delay);
     }
 
-    clearSelection() {
+    clearSelection(): void {
         this._activeNodeId = null;
         this._selectedNodeIds.clear();
         this._applyHighlight();
     }
 
-    get activeNode() {
+    get activeNode(): string | null {
         return this._activeNodeId;
     }
 
-    get selectedNodes() {
+    get selectedNodes(): Set<string> {
         return new Set(this._selectedNodeIds);
     }
 
@@ -513,7 +746,7 @@ export class D3SemanticGraphRenderer {
      * suffix `__<parent>` stripped) against node ids' own canonical symbols; then
      * a loose label/latex match on the rendered glyph text.
      */
-    resolveTermNodeId(termId, termText) {
+    resolveTermNodeId(termId: string | null | undefined, termText?: string | null): string | null {
         // Pure ladder in term-resolve.js (unit-tested): exact/affix-stripped id
         // — named ids trusted as-is, structural ids only when the node's content
         // agrees with the term's rendered text (positional `__<type>_<n>` ids
@@ -524,15 +757,15 @@ export class D3SemanticGraphRenderer {
     }
 
     /** The node datum for an id (label, description, latex, …), or null. */
-    getNode(nodeId) {
+    getNode(nodeId: string | null | undefined): GraphNode | null {
         if (!nodeId || !this._graph || !Array.isArray(this._graph.nodes)) return null;
         return this._graph.nodes.find(n => n.id === nodeId) || null;
     }
 
     /** Toggle a transient hover halo on the node with this id (null clears all). */
-    highlightNodeById(nodeId) {
+    highlightNodeById(nodeId: string | null): void {
         if (!this._svg || !this._nodeLayer) return;
-        this._nodeLayer.selectAll('g.d3sg-node')
+        this._nodeLayer.selectAll<SVGGElement, LayoutNode>('g.d3sg-node')
             .classed('d3sg-live-hover', d => !!nodeId && d.data.id === nodeId);
     }
 
@@ -542,14 +775,14 @@ export class D3SemanticGraphRenderer {
      * onNodeClick, so the info panel and `algebench:selectionchange` event happen
      * identically to a real click. No-op if the id isn't in this graph.
      */
-    selectNodeById(nodeId, opts = {}) {
+    selectNodeById(nodeId: string, opts: { additive?: boolean } = {}): void {
         if (!this._graph || !Array.isArray(this._graph.nodes)) return;
         const node = this._graph.nodes.find(n => n.id === nodeId);
         if (!node) return;
         this._handleNodeClick({ data: node }, { metaKey: !!opts.additive, ctrlKey: false });
     }
 
-    saveState() {
+    saveState(): D3SemanticGraphState {
         return {
             collapsed: new Set(this._collapsed),
             activeNodeId: this._activeNodeId,
@@ -559,7 +792,7 @@ export class D3SemanticGraphRenderer {
         };
     }
 
-    restoreState(snapshot) {
+    restoreState(snapshot: D3SemanticGraphState | null | undefined): void {
         if (!snapshot) return;
         this._collapsed = new Set(snapshot.collapsed);
         this._activeNodeId = snapshot.activeNodeId;
@@ -570,13 +803,16 @@ export class D3SemanticGraphRenderer {
         if (this._svg) this._applyHighlight();
     }
 
-    destroy() {
+    destroy(): void {
         this._destroyed = true;
-        clearTimeout(this._highlightTimer);
+        // Cast: see _scheduleHighlightReapply.
+        clearTimeout(this._highlightTimer as number | undefined);
         if (this._svg && this._zoomBehavior) {
             this._svg.on('.zoom', null);
             if (this._wheelPanHandler) {
-                this._svg.node().removeEventListener('wheel', this._wheelPanHandler);
+                // Non-null: `_svg` is a live selection over the <svg> element
+                // _setupSvg appended, so node() is that element.
+                this._svg.node()!.removeEventListener('wheel', this._wheelPanHandler);
             }
         }
         this.container.innerHTML = '';
@@ -589,7 +825,7 @@ export class D3SemanticGraphRenderer {
 
     // ─── Theme helpers ─────────────────────────────────────────────────
 
-    _nodeStyle(nodeOrType) {
+    _nodeStyle(nodeOrType: RenderNode | string): GraphNodeStyle {
         // Accept either a bare type string (legacy callers) or a full
         // node data object.  Precedence:
         //   1. theme.nodeStyles[op]      — theme op-specific override
@@ -609,7 +845,7 @@ export class D3SemanticGraphRenderer {
         // operator coloring: set ``operator`` to wash over kinds.
         // Themes that want both: set ``operator`` AND specific kinds.
         const isNode = nodeOrType && typeof nodeOrType === 'object';
-        const nodeType = isNode ? nodeOrType.type : nodeOrType;
+        const nodeType = isNode ? nodeOrType.type : nodeOrType as string;
         const op = isNode ? nodeOrType.op : null;
         const ts = this._theme?.nodeStyles;
         if (op && ts && ts[op]) return ts[op];
@@ -625,15 +861,17 @@ export class D3SemanticGraphRenderer {
         return defaults[nodeType] || defaults.scalar;
     }
 
-    _edgeColor(semantic) {
+    _edgeColor(semantic: EdgeSemantic): string {
         const es = this._theme?.edgeStyles;
-        if (es && es[semantic]) return es[semantic].stroke;
+        // Non-null: a theme declares an edgeStyles entry in order to give it a
+        // stroke; the untyped original returned this unchecked.
+        if (es && es[semantic]) return es[semantic].stroke!;
         const single = this._theme?.edgeStyle;
         if (single?.stroke && !this._theme?.paintBySemantic) return single.stroke;
         return DEFAULT_EDGE_COLORS[semantic] || DEFAULT_EDGE_COLORS.neutral;
     }
 
-    _edgeWidth(semantic) {
+    _edgeWidth(semantic: EdgeSemantic): number {
         const es = this._theme?.edgeStyles;
         if (es && es[semantic]) return es[semantic].strokeWidth || DEFAULT_EDGE_WIDTHS.neutral;
         const single = this._theme?.edgeStyle;
@@ -643,8 +881,9 @@ export class D3SemanticGraphRenderer {
 
     // ─── Private ──────────────────────────────────────────────────────
 
-    _setupSvg() {
-        const d3 = this._d3;
+    _setupSvg(): void {
+        // Non-null: render() awaits loadD3() and assigns _d3 before calling in.
+        const d3 = this._d3!;
         this.container.innerHTML = '';
 
         const card = document.createElement('div');
@@ -686,12 +925,13 @@ export class D3SemanticGraphRenderer {
 
         this._setupZoom(d3);
 
-        this._svg.on('contextmenu', (event) => event.preventDefault());
+        this._svg.on('contextmenu', (event: MouseEvent) => event.preventDefault());
 
         // Background click — only fire when not panning
-        this._svg.on('click', (event) => {
+        this._svg.on('click', (event: MouseEvent) => {
             if (event.defaultPrevented) return;
-            if (event.target === this._svg.node() || event.target.tagName === 'svg') {
+            // Non-null: this listener is bound to the live `_svg` selection.
+            if (event.target === this._svg!.node() || (event.target as Element).tagName === 'svg') {
                 this._activeNodeId = null;
                 this._selectedNodeIds.clear();
                 this._applyHighlight();
@@ -701,29 +941,31 @@ export class D3SemanticGraphRenderer {
 
         // Double-click on background → zoom to fit
         this._svg.on('dblclick.zoom', null);
-        this._svg.on('dblclick', (event) => {
-            if (event.target === this._svg.node() || event.target.tagName === 'svg') {
+        this._svg.on('dblclick', (event: MouseEvent) => {
+            // Non-null: same live-selection invariant as the click handler above.
+            if (event.target === this._svg!.node() || (event.target as Element).tagName === 'svg') {
                 event.preventDefault();
                 this.zoomToFit();
             }
         });
     }
 
-    _setupZoom(d3) {
+    _setupZoom(d3: D3Module): void {
         const ZOOM_MIN = 0.15;
         const ZOOM_MAX = 5;
 
-        this._zoomBehavior = d3.zoom()
+        this._zoomBehavior = d3.zoom<SVGSVGElement, unknown>()
             .scaleExtent([ZOOM_MIN, ZOOM_MAX])
-            .filter((event) => {
+            .filter((event: WheelEvent & MouseEvent) => {
                 // Trackpad two-finger scroll (deltaMode 0) → handled separately as pan; let mouse wheel + pinch through
                 if (event.type === 'wheel') return event.ctrlKey || event.deltaMode !== 0;
                 // Allow touch/pointer events (button is 0 or undefined) and right-click (button 2)
                 return !event.ctrlKey && (event.button == null || event.button === 0 || event.button === 2);
             })
-            .on('zoom', (event) => {
+            .on('zoom', (event: D3.D3ZoomEvent<SVGSVGElement, unknown>) => {
                 this._currentTransform = event.transform;
-                this._viewport.attr('transform', event.transform);
+                // Non-null: _setupSvg appends the viewport before calling here.
+                this._viewport!.attr('transform', String(event.transform));
                 this._rescaleUiBtns();
                 if (this.onZoomChange) {
                     this.onZoomChange(Math.round(event.transform.k * 100));
@@ -733,49 +975,54 @@ export class D3SemanticGraphRenderer {
                 }
             });
 
-        this._svg.call(this._zoomBehavior);
+        // Non-null: _setupSvg appends the <svg> before calling here.
+        this._svg!.call(this._zoomBehavior);
 
         // Two-finger scroll → pan (pinch-to-zoom is handled by D3 zoom above)
-        this._wheelPanHandler = (event) => {
+        this._wheelPanHandler = (event: WheelEvent) => {
             if (event.ctrlKey || event.deltaMode !== 0) return;
             event.preventDefault();
             const t = this._currentTransform || d3.zoomIdentity;
             const nt = d3.zoomIdentity.translate(t.x - event.deltaX, t.y - event.deltaY).scale(t.k);
-            this._svg.call(this._zoomBehavior.transform, nt);
+            // Non-null: both are set above, and the handler only runs while the
+            // <svg> it is attached to is live.
+            this._svg!.call(this._zoomBehavior!.transform, nt);
         };
-        this._svg.node().addEventListener('wheel', this._wheelPanHandler, { passive: false });
+        this._svg!.node()!.addEventListener('wheel', this._wheelPanHandler, { passive: false });
 
         // Restore saved transform if switching back to a step that had one
         if (this._currentTransform) {
             const t = this._currentTransform;
-            this._svg.call(this._zoomBehavior.transform,
+            this._svg!.call(this._zoomBehavior.transform,
                 d3.zoomIdentity.translate(t.x, t.y).scale(t.k));
         }
     }
 
-    resetZoom() {
+    resetZoom(): void {
         this._currentTransform = null;
         this._needsInitialFit = true;
     }
 
-    zoomBy(factor) {
+    zoomBy(factor: number): void {
         if (!this._svg || !this._zoomBehavior || !this._d3) return;
         this._svg.transition().duration(200)
             .call(this._zoomBehavior.scaleBy, factor);
     }
 
-    zoomToFit(animate = true) {
+    zoomToFit(animate = true): void {
         if (!this._svg || !this._zoomBehavior || !this._d3) return;
         const d3 = this._d3;
-        const svgNode = this._svg.node();
+        // Non-null throughout this method: the guard above proved _svg is a
+        // live selection, and _setupSvg() appends the viewport alongside it.
+        const svgNode = this._svg.node()!;
         const { width: svgW, height: svgH } = svgNode.getBoundingClientRect();
         if (!svgW || !svgH) return;
 
-        const vpNode = this._viewport.node();
+        const vpNode = this._viewport!.node()!;
         // Measure the graph alone: the UI buttons are counter-scaled chrome, so
         // at low zoom they'd inflate the bbox and the fit would shrink the graph
         // to make room for them (which in turn grows them — a feedback loop).
-        const btns = this._viewport.selectAll('.d3sg-ui-btn');
+        const btns = this._viewport!.selectAll('.d3sg-ui-btn');
         btns.attr('display', 'none');
         const bbox = vpNode.getBBox();
         btns.attr('display', null);
@@ -783,11 +1030,11 @@ export class D3SemanticGraphRenderer {
 
         // Charts pinned at the top dock over the graph; reserve their vertical
         // band so the fit only uses the space left beneath them.
-        const card = svgNode.parentNode;
-        const pinned = card && card.querySelector('.sgc-pinned-panel');
+        const card = svgNode.parentNode as HTMLElement | null;
+        const pinned = card && card.querySelector<HTMLElement>('.sgc-pinned-panel');
         let topInset = 0;
         if (pinned && pinned.offsetParent !== null) {
-            const cardTop = card.getBoundingClientRect().top;
+            const cardTop = card!.getBoundingClientRect().top;
             const pinnedRect = pinned.getBoundingClientRect();
             // distance from the card's top edge to the bottom of the pinned band
             topInset = Math.max(0, pinnedRect.bottom - cardTop);
@@ -813,24 +1060,26 @@ export class D3SemanticGraphRenderer {
         }
     }
 
-    get zoomLevel() {
+    get zoomLevel(): number {
         return this._currentTransform ? Math.round(this._currentTransform.k * 100) : 100;
     }
 
-    _isHorizontal() {
+    _isHorizontal(): boolean {
         return this.direction === 'left-right' || this.direction === 'right-left';
     }
 
-    _layoutGraph() {
-        const dagre = this._dagre;
-        const graph = this._graph;
+    _layoutGraph(): { nodes: LayoutNode[]; edges: LayoutLink[] } {
+        // Non-null: render() awaits loadDagre() and sets _graph before the
+        // first call, and update() re-checks both before re-rendering.
+        const dagre = this._dagre!;
+        const graph = this._graph!;
         const nodes = graph.nodes || [];
         const edges = graph.edges || [];
 
-        const nodeById = Object.create(null);
+        const nodeById: Record<string, GraphNode | undefined> = Object.create(null);
         for (const n of nodes) nodeById[n.id] = n;
 
-        const childrenOf = Object.create(null);
+        const childrenOf: Record<string, string[] | undefined> = Object.create(null);
         const conditionEdgeTargets = new Set();
         const assertionEdgeTargets = new Set();
         // Integrals whose integration variable is a first-class ``differential``
@@ -841,7 +1090,8 @@ export class D3SemanticGraphRenderer {
         const differentialChildTargets = new Set();
         for (const e of edges) {
             if (!childrenOf[e.to]) childrenOf[e.to] = [];
-            childrenOf[e.to].push(e.from);
+            // Non-null: the line above guarantees the bucket exists.
+            childrenOf[e.to]!.push(e.from);
             if (e.role === 'condition') conditionEdgeTargets.add(e.to);
             if (e.role === 'assertion') assertionEdgeTargets.add(e.to);
             if (e.role === 'wrt' && nodeById[e.from]?.type === 'differential')
@@ -854,10 +1104,11 @@ export class D3SemanticGraphRenderer {
         const hasOutgoing = new Set(edges.map(e => e.from));
         const roots = nodes.filter(n => !hasOutgoing.has(n.id));
 
-        const visible = new Set();
+        const visible = new Set<string>();
         const queue = roots.map(r => r.id);
         while (queue.length) {
-            const id = queue.shift();
+            // Non-null: the loop condition guarantees a non-empty queue.
+            const id = queue.shift()!;
             if (visible.has(id)) continue;
             if (annoIds.has(id)) continue;
             visible.add(id);
@@ -878,7 +1129,7 @@ export class D3SemanticGraphRenderer {
             if (n.type === 'annotation') continue;
             const isCollapsed = this._collapsed.has(n.id);
             const isOp = n.type === 'operator' || n.type === 'relation' || n.type === 'function';
-            let w, h;
+            let w: number, h: number;
             if (isCollapsed) {
                 const label = n.subexpr || n.label || n.id || '';
                 w = Math.max(100, Math.min(260, label.length * 7 + 30));
@@ -891,7 +1142,7 @@ export class D3SemanticGraphRenderer {
             g.setNode(n.id, { width: w, height: h });
         }
 
-        const edgeSemanticMap = Object.create(null);
+        const edgeSemanticMap: Record<string, EdgeSemantic | undefined> = Object.create(null);
         for (const e of edges) {
             if (!visible.has(e.from) || !visible.has(e.to)) continue;
             const key = `${e.from}->${e.to}`;
@@ -903,18 +1154,19 @@ export class D3SemanticGraphRenderer {
 
         // Integral/sum bounds are stored as the bound NODE's id (e.g. "__num_2").
         // Resolve to that node's value so labels read ∫_0^1, not ∫_{__num_2}.
-        const boundLabel = (ref) => {
+        const boundLabel = (ref: string | undefined): string => {
             if (!ref) return '';
             const b = nodeById[ref];
             return b ? (b.latex || b.label || b.subexpr || ref) : ref;
         };
 
-        const nodeWrappers = Object.create(null);
-        const layoutNodes = [];
+        const nodeWrappers: Record<string, LayoutNode | undefined> = Object.create(null);
+        const layoutNodes: LayoutNode[] = [];
         for (const id of g.nodes()) {
             const pos = g.node(id);
-            const src = nodeById[id];
-            const wrapper = {
+            // Non-null: every id in `g` was added from `nodes`, all indexed above.
+            const src = nodeById[id]!;
+            const wrapper: LayoutNode = {
                 data: {
                     ...src,
                     _collapsed: this._collapsed.has(id),
@@ -932,7 +1184,7 @@ export class D3SemanticGraphRenderer {
             layoutNodes.push(wrapper);
         }
 
-        const layoutEdges = [];
+        const layoutEdges: LayoutLink[] = [];
         for (const e of edges) {
             if (!visible.has(e.from) || !visible.has(e.to)) continue;
             const src = nodeWrappers[e.to];
@@ -950,8 +1202,9 @@ export class D3SemanticGraphRenderer {
         return { nodes: layoutNodes, edges: layoutEdges };
     }
 
-    _renderGraph(interactionId) {
-        const d3 = this._d3;
+    _renderGraph(interactionId?: string): void {
+        // Non-null: render() assigns _d3 before the first _renderGraph call.
+        const d3 = this._d3!;
         if (interactionId) this._lastInteractionId = interactionId;
 
         const oldPos = interactionId ? this._positionById.get(interactionId) : null;
@@ -974,7 +1227,8 @@ export class D3SemanticGraphRenderer {
         if (initialFit) this._needsInitialFit = false;
 
         const duration = initialFit ? 0 : 360;
-        const transition = this._svg.transition().duration(duration).ease(d3.easeCubicOut);
+        // Non-null: _setupSvg() runs before the first _renderGraph call.
+        const transition = this._svg!.transition().duration(duration).ease(d3.easeCubicOut);
 
         this._renderLinks(links, transition, d3);
         this._renderEdgeLabels(links, transition, d3);
@@ -1000,7 +1254,7 @@ export class D3SemanticGraphRenderer {
         }
     }
 
-    _nodeShape(d) {
+    _nodeShape(d: LayoutNode | null | undefined): NodeShape {
         if (!d || !d.data) return { type: 'circle', r: 26 };
         const style = this._nodeStyle(d.data);
         const invisible = (!style.fill || style.fill === 'none') &&
@@ -1032,7 +1286,7 @@ export class D3SemanticGraphRenderer {
         }
     }
 
-    _boundaryPoint(center, other, shape) {
+    _boundaryPoint(center: Point, other: Point, shape: NodeShape): Point {
         const dx = other.x - center.x;
         const dy = other.y - center.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
@@ -1055,7 +1309,13 @@ export class D3SemanticGraphRenderer {
         return { x: center.x + dx * ratio, y: center.y + dy * ratio };
     }
 
-    _diagonal(d3, source, target, sourceNode, targetNode) {
+    _diagonal(
+        d3: D3Module,
+        source: Point,
+        target: Point,
+        sourceNode: LayoutNode | null,
+        targetNode: LayoutNode | null,
+    ): string {
         const ss = sourceNode ? this._nodeShape(sourceNode) : null;
         const ts = targetNode ? this._nodeShape(targetNode) : null;
 
@@ -1071,30 +1331,34 @@ export class D3SemanticGraphRenderer {
         return `M${s.x},${s.y} C${s.x},${midY} ${t.x},${midY} ${t.x},${t.y}`;
     }
 
-    _startPos(id) {
-        return this._positionById.get(id) ||
-            this._positionById.get(this._lastInteractionId) ||
+    _startPos(id: string | null): Point {
+        // Casts: Map.get is typed to the key type, but a null lookup is a
+        // legitimate miss here — _lastInteractionId is null until the first
+        // render, and the `|| {x:0,y:0}` fallback is what handles it.
+        return this._positionById.get(id as string) ||
+            this._positionById.get(this._lastInteractionId as string) ||
             { x: 0, y: 0 };
     }
 
-    _renderLinks(links, transition, d3) {
+    _renderLinks(links: LayoutLink[], transition: D3Transition, d3: D3Module): void {
         const showArrows = this._theme?.paintBySemantic;
-        const markerEnd = d => (showArrows && d.role) ? 'url(#d3sg-arrow-role)' : null;
+        const markerEnd = (d: LayoutLink) => (showArrows && d.role) ? 'url(#d3sg-arrow-role)' : null;
         // Roles whose visual arrow points outward (reversed from the
         // data-model direction). Data edges always flow inward
         // (child → parent); these roles swap source/target at render
         // time so the arrow reads naturally — e.g. "derivative →wrt→ x".
         // ── Keep in sync with VISUAL_REVERSE_ROLES in
         //    scripts/graph_to_mermaid.py ──
-        const VISUAL_REVERSE_ROLES = new Set([]);
-        const linkPath = d => {
+        const VISUAL_REVERSE_ROLES = new Set<string | null>([]);
+        const linkPath = (d: LayoutLink) => {
             if (VISUAL_REVERSE_ROLES.has(d.role)) {
                 return this._diagonal(d3, d.target, d.source, d.target, d.source);
             }
             return this._diagonal(d3, d.source, d.target, d.source, d.target);
         };
 
-        const link = this._linkLayer.selectAll('path.d3sg-link')
+        // Non-null: _setupSvg() appends the layer before the first render.
+        const link = this._linkLayer!.selectAll<SVGPathElement, LayoutLink>('path.d3sg-link')
             .data(links, d => d.id);
 
         link.enter()
@@ -1132,19 +1396,20 @@ export class D3SemanticGraphRenderer {
             .remove();
     }
 
-    _renderEdgeLabels(links, transition, d3) {
+    _renderEdgeLabels(links: LayoutLink[], transition: D3Transition, d3: D3Module): void {
         const showSemantic = this._theme?.paintBySemantic;
         const labeled = links.filter(d =>
             (d.semantic && d.semantic !== 'neutral') || (showSemantic && d.role)
         );
-        const labelText = d => {
-            const parts = [];
+        const labelText = (d: LayoutLink) => {
+            const parts: string[] = [];
             if (d.role) parts.push(d.role);
             if (d.semantic && d.semantic !== 'neutral') parts.push(d.semantic);
             return parts.join(' · ');
         };
 
-        const label = this._labelLayer.selectAll('text.d3sg-edge-label')
+        // Non-null: _setupSvg() appends the layer before the first render.
+        const label = this._labelLayer!.selectAll<SVGTextElement, LayoutLink>('text.d3sg-edge-label')
             .data(labeled, d => d.id);
 
         label.enter()
@@ -1170,9 +1435,10 @@ export class D3SemanticGraphRenderer {
         label.exit().transition(transition).style('opacity', 0).remove();
     }
 
-    _renderNodes(nodes, transition, d3) {
+    _renderNodes(nodes: LayoutNode[], transition: D3Transition, d3: D3Module): void {
         const self = this;
-        const node = this._nodeLayer.selectAll('g.d3sg-node')
+        // Non-null: _setupSvg() appends the layer before the first render.
+        const node = this._nodeLayer!.selectAll<SVGGElement, LayoutNode>('g.d3sg-node')
             .data(nodes, d => d.data.id);
 
         const nodeEnter = node.enter()
@@ -1222,10 +1488,11 @@ export class D3SemanticGraphRenderer {
             .remove();
     }
 
-    _groupKatexWords(base) {
+    _groupKatexWords(base: HTMLElement): void {
         const text = base.textContent;
         base.innerHTML = '';
-        const parts = text.split(/(\s+)/);
+        // Non-null: textContent is null only for document/doctype nodes.
+        const parts = text!.split(/(\s+)/);
         for (const part of parts) {
             if (/^\s+$/.test(part)) {
                 base.appendChild(document.createTextNode(' '));
@@ -1238,7 +1505,7 @@ export class D3SemanticGraphRenderer {
         }
     }
 
-    _renderAnnotationOverlay() {
+    _renderAnnotationOverlay(): void {
         const el = this._annotationOverlay;
         if (!el) return;
         el.innerHTML = '';
@@ -1275,7 +1542,7 @@ export class D3SemanticGraphRenderer {
         }
     }
 
-    _renderEdgeLegend(layoutEdges) {
+    _renderEdgeLegend(layoutEdges: LayoutLink[] | null | undefined): void {
         const el = this._edgeLegend;
         if (!el) return;
         el.innerHTML = '';
@@ -1289,7 +1556,7 @@ export class D3SemanticGraphRenderer {
             if (e.semantic) present.add(e.semantic);
         }
 
-        const rows = [];
+        const rows: { semantic: EdgeSemantic; label: string; style: GraphEdgeStyle }[] = [];
         for (const [semantic, label] of EDGE_SEMANTIC_LABELS) {
             const s = styled[semantic];
             if (!s) continue;
@@ -1331,7 +1598,7 @@ export class D3SemanticGraphRenderer {
         el.classList.remove('hidden');
     }
 
-    _nodeClass(d) {
+    _nodeClass(d: LayoutNode): string {
         const kind = d.data.type;
         const isOp = kind === 'operator' || kind === 'relation' || kind === 'function';
         const base = isOp ? 'op' : 'var';
@@ -1341,21 +1608,25 @@ export class D3SemanticGraphRenderer {
         return `d3sg-node d3sg-${base}${collapsed}${selected}${active}`;
     }
 
-    _isCollapsible(d) {
+    _isCollapsible(d: LayoutNode): boolean | undefined {
         const kind = d.data.type;
         return (kind === 'operator' || kind === 'relation' || kind === 'function') &&
             (d.data._childIds && d.data._childIds.length > 0);
     }
 
-    _handleNodeClick(d, event) {
+    _handleNodeClick(d: { data: RenderNode }, event: NodeClickModifiers): void {
         const nodeId = d.data.id;
         const multiSelect = event && (event.metaKey || event.ctrlKey);
 
         if (multiSelect) {
             if (this._selectedNodeIds.has(nodeId)) {
                 this._selectedNodeIds.delete(nodeId);
+                // Cast + non-null: `Array.prototype.at` is ES2022 and this
+                // project compiles against lib ES2020, so the array type has no
+                // `at`; every browser that runs this build does. The `!` is
+                // guarded by the `.size` test on the same line.
                 this._activeNodeId = this._selectedNodeIds.size
-                    ? [...this._selectedNodeIds].at(-1) : null;
+                    ? ([...this._selectedNodeIds] as unknown as { at(i: number): string | undefined }).at(-1)! : null;
             } else {
                 this._selectedNodeIds.add(nodeId);
                 this._activeNodeId = nodeId;
@@ -1377,7 +1648,7 @@ export class D3SemanticGraphRenderer {
         }
     }
 
-    _handleChevronClick(d) {
+    _handleChevronClick(d: LayoutNode): void {
         const nodeId = d.data.id;
         if (this._collapsed.has(nodeId)) {
             this._collapsed.delete(nodeId);
@@ -1389,7 +1660,7 @@ export class D3SemanticGraphRenderer {
 
     /** Anchor (in graph coordinates) for the chevron — the node-edge midpoint
      *  on the outgoing side of the flow. The button itself is centred on it. */
-    _chevronAnchor(shape) {
+    _chevronAnchor(shape: NodeShape): Point {
         const dir = this.direction;
         if (shape.type === 'rect' || shape.type === 'stadium') {
             if (dir === 'left-right')  return { x: shape.hw, y: 0 };
@@ -1406,7 +1677,7 @@ export class D3SemanticGraphRenderer {
 
     /** Anchor for the chart / analysis buttons — the node-edge midpoint on the
      *  incoming side, i.e. opposite the chevron. */
-    _chartBtnAnchor(shape) {
+    _chartBtnAnchor(shape: NodeShape): Point {
         const a = this._chevronAnchor(shape);
         return { x: -a.x, y: -a.y };
     }
@@ -1414,7 +1685,7 @@ export class D3SemanticGraphRenderer {
     /** Transform for a node UI button: pinned at its graph-space anchor but
      *  counter-scaled by the zoom factor so it keeps a constant on-screen
      *  size (see UI_BTN_SIZE). `dy` stacks buttons in screen pixels. */
-    _uiBtnTransform(ax, ay, dy) {
+    _uiBtnTransform(ax: number, ay: number, dy: number): string {
         const k = (this._currentTransform && this._currentTransform.k) || 1;
         // Capped at 6× so the far-zoomed-out buttons cannot balloon the
         // viewport bbox that zoomToFit measures. At the 0.15 zoom floor they
@@ -1428,7 +1699,14 @@ export class D3SemanticGraphRenderer {
     /** Create a zoom-invariant button group centred on (ax, ay). Returns an
      *  inner <g> whose coordinate system is the legacy 14×14 icon box with
      *  its origin at the box's top-left, so icon paths stay unchanged. */
-    _uiBtnGroup(group, cls, ax, ay, dy, onClick) {
+    _uiBtnGroup(
+        group: D3Sel,
+        cls: string,
+        ax: number,
+        ay: number,
+        dy: number,
+        onClick: (this: SVGGElement, event: MouseEvent) => void,
+    ): { g: D3.Selection<SVGGElement, unknown, null, undefined>; box: D3.Selection<SVGGElement, unknown, null, undefined> } {
         const g = group.append('g')
             .attr('class', `${cls} d3sg-ui-btn`)
             .attr('data-ax', ax)
@@ -1444,19 +1722,21 @@ export class D3SemanticGraphRenderer {
 
     /** Re-apply the counter-scale to every node UI button. Called on zoom so
      *  the buttons never shrink out of reach at low zoom levels. */
-    _rescaleUiBtns() {
+    _rescaleUiBtns(): void {
         if (!this._viewport) return;
         const self = this;
-        this._viewport.selectAll('.d3sg-ui-btn').attr('transform', function () {
+        this._viewport.selectAll<SVGGElement, unknown>('.d3sg-ui-btn').attr('transform', function () {
+            // Non-null: _uiBtnGroup sets all three data-* attributes on every
+            // element carrying the .d3sg-ui-btn class this selects.
             return self._uiBtnTransform(
-                +this.getAttribute('data-ax') || 0,
-                +this.getAttribute('data-ay') || 0,
-                +this.getAttribute('data-dy') || 0,
+                +this.getAttribute('data-ax')! || 0,
+                +this.getAttribute('data-ay')! || 0,
+                +this.getAttribute('data-dy')! || 0,
             );
         });
     }
 
-    _appendChevron(group, d, isCollapsed) {
+    _appendChevron(group: D3Sel, d: LayoutNode, isCollapsed: boolean): D3Sel {
         const shape = this._nodeShape(d);
         const anchor = this._chevronAnchor(shape);
         const self = this;
@@ -1483,7 +1763,7 @@ export class D3SemanticGraphRenderer {
         return g;
     }
 
-    _appendChartBtn(group, d) {
+    _appendChartBtn(group: D3Sel, d: LayoutNode): D3Sel {
         const shape = this._nodeShape(d);
         const anchor = this._chartBtnAnchor(shape);
         const self = this;
@@ -1513,7 +1793,7 @@ export class D3SemanticGraphRenderer {
 
     /** Function-Analysis button (ƒ) — sits beside the chart button; opens
      *  the full-page expert analysis for this node's subexpr. */
-    _appendFaBtn(group, d) {
+    _appendFaBtn(group: D3Sel, d: LayoutNode): D3Sel {
         const shape = this._nodeShape(d);
         const anchor = this._chartBtnAnchor(shape);
         const self = this;
@@ -1552,7 +1832,7 @@ export class D3SemanticGraphRenderer {
         return g;
     }
 
-    _drawNode(group, d) {
+    _drawNode(group: D3Sel, d: LayoutNode): void {
         group.selectAll('*').remove();
         const data = d.data;
         const isOp = data.type === 'operator' || data.type === 'relation' || data.type === 'function';
@@ -1631,7 +1911,7 @@ export class D3SemanticGraphRenderer {
         }
     }
 
-    _drawShape(group, shapeName, style, isOp) {
+    _drawShape(group: D3Sel, shapeName: string, style: GraphNodeStyle, isOp: boolean): void {
         const fill = style.fill || '';
         const stroke = style.stroke || '';
         const cls = isOp ? 'd3sg-op-bg' : 'd3sg-var-bg';
@@ -1691,7 +1971,7 @@ export class D3SemanticGraphRenderer {
         }
     }
 
-    _operatorLatex(data) {
+    _operatorLatex(data: RenderNode): string {
         const op = data.op;
         if (!op) return `\\text{${data.id || '?'}}`;
         if (OPERATOR_LATEX[op]) return OPERATOR_LATEX[op];
@@ -1722,7 +2002,8 @@ export class D3SemanticGraphRenderer {
             return `${cmd}${diff}`;
         }
         if (op === 'sum' || op === 'product') {
-            const cmd = OPERATOR_LATEX[op];
+            // Non-null: both keys have OPERATOR_LATEX entries.
+            const cmd = OPERATOR_LATEX[op]!;
             const wrt = data.with_respect_to;
             if (wrt) return `${cmd}_{${wrt}}`;
             return cmd;
@@ -1737,7 +2018,13 @@ export class D3SemanticGraphRenderer {
      * caller can resize the background shape to fit, or ``null`` when the
      * plain-text fallback was used.
      */
-    _renderLabel(group, data, maxWidth, isCollapsed, style = {}) {
+    _renderLabel(
+        group: D3Sel,
+        data: RenderNode,
+        maxWidth: number,
+        isCollapsed: boolean,
+        style: GraphNodeStyle = {},
+    ): { width: number; height: number } | null {
         let latex = isCollapsed
             ? (data.subexpr || data.latex || null)
             : (data.latex || null);
@@ -1808,9 +2095,11 @@ export class D3SemanticGraphRenderer {
                     const emojiSpan = document.createElement('span');
                     emojiSpan.textContent = data.emoji;
                     emojiSpan.style.marginRight = '4px';
-                    div.node().appendChild(emojiSpan);
+                    // Cast: `append('xhtml:div')` is not one of d3's known tag
+                    // names, so the selection's element type widens to BaseType.
+                    (div.node() as HTMLDivElement).appendChild(emojiSpan);
                 }
-                div.node().appendChild(span);
+                (div.node() as HTMLDivElement).appendChild(span);
                 return { width: measuredW, height: measuredH };
             } else {
                 div.text(data.label || data.id);
@@ -1829,46 +2118,50 @@ export class D3SemanticGraphRenderer {
         }
     }
 
-    _applyHighlight() {
+    _applyHighlight(): void {
         if (!this._svg) return;
 
-        this._nodeLayer.selectAll('g.d3sg-node')
+        // Non-null throughout: the three layers are appended by _setupSvg()
+        // alongside _svg, so a live _svg implies all three exist.
+        this._nodeLayer!.selectAll<SVGGElement, LayoutNode>('g.d3sg-node')
             .attr('class', d => this._nodeClass(d));
 
         if (!this._selectedNodeIds.size) {
-            this._nodeLayer.selectAll('g.d3sg-node').style('opacity', 1);
-            this._linkLayer.selectAll('path.d3sg-link').style('opacity', 1);
-            this._labelLayer.selectAll('text.d3sg-edge-label').style('opacity', 1);
+            this._nodeLayer!.selectAll('g.d3sg-node').style('opacity', 1);
+            this._linkLayer!.selectAll('path.d3sg-link').style('opacity', 1);
+            this._labelLayer!.selectAll('text.d3sg-edge-label').style('opacity', 1);
             return;
         }
 
-        const upstream = new Set();
+        const upstream = new Set<string>();
         for (const id of this._selectedNodeIds) {
             for (const n of this._getUpstream(id)) upstream.add(n);
         }
 
-        this._nodeLayer.selectAll('g.d3sg-node').style('opacity', d =>
+        this._nodeLayer!.selectAll<SVGGElement, LayoutNode>('g.d3sg-node').style('opacity', d =>
             upstream.has(d.data.id) ? 1 : 0.30
         );
 
-        this._linkLayer.selectAll('path.d3sg-link').style('opacity', d =>
+        this._linkLayer!.selectAll<SVGPathElement, LayoutLink>('path.d3sg-link').style('opacity', d =>
             upstream.has(d.source.data.id) && upstream.has(d.target.data.id) ? 1 : 0.25
         );
 
-        this._labelLayer.selectAll('text.d3sg-edge-label').style('opacity', d =>
+        this._labelLayer!.selectAll<SVGTextElement, LayoutLink>('text.d3sg-edge-label').style('opacity', d =>
             upstream.has(d.source.data.id) && upstream.has(d.target.data.id) ? 1 : 0.25
         );
     }
 
-    _getUpstream(nodeId) {
+    _getUpstream(nodeId: string): Set<string> {
         // In our tree, "upstream" = the node itself plus all its descendants
         // (since edges point from leaves to root, upstream means the subtree
         // that feeds into this node).
-        const visited = new Set();
-        const edges = this._graph.edges || [];
+        const visited = new Set<string>();
+        // Non-null: _applyHighlight only reaches here with a rendered graph.
+        const edges = this._graph!.edges || [];
         const queue = [nodeId];
         while (queue.length) {
-            const cur = queue.shift();
+            // Non-null: the loop condition guarantees a non-empty queue.
+            const cur = queue.shift()!;
             if (visited.has(cur)) continue;
             visited.add(cur);
             for (const e of edges) {
