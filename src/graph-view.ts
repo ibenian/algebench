@@ -20,25 +20,51 @@ import { state } from '/state.js';
 import { BRACES_ICON, FUNCTION_ANALYSIS_ICON } from '/icons.js';
 import { SemanticGraphPanel } from '/graph-panel/graph-panel.js';
 import { D3SemanticGraphRenderer, nodeLongLabel } from '/graph-panel/d3-semantic-graph.js';
+import type {
+    D3SemanticGraphOptions, D3SemanticGraphState, GraphEdgeStyle,
+} from '/graph-panel/d3-semantic-graph.js';
 import { SgChartManager } from '/graph-panel/sg-chart.js';
 import { SgProofManager, clearDeriveCache } from '/proof-animation/sg-proof.js';
 import { FunctionAnalysisManager, clearAnalysisCache } from '/graph-panel/fa-page.js';
 import { validateProofData } from '/proof-animation/validate-proof.js';
 import { buildEnrichContext } from '/proof-animation/derive-payload.js';
+import type { DerivePayload } from '/proof-animation/derive-payload.js';
+
+/**
+ * Arguments to `window.algebenchDeriveProof` — the agent's entry point into a
+ * node derivation. A strict subset of DerivePayload's optional half, because
+ * the agent supplies only the target and its two overrides; everything else is
+ * filled in from the active proof by _proofContextPayload().
+ */
+interface DeriveProofArgs {
+    target_latex?: string;
+    start_latex?: string;
+    prompt?: string;
+}
 import {
     makeAiAskButton, makeDeriveButton, renderKaTeX,
     stripHtmlMacros as _stripHtmlMacros, normLatex as _normLatex,
 } from '/labels.js';
+import type { Proof, ProofEntry, ProofLessonSpec, ProofStep } from '/proof.js';
 
-let _currentGraphPanel = null;
-let _currentSemanticKey = null;
-let _activeStepForPanel = null;
+/**
+ * One function-analysis artifact, DERIVED from fa-page.js's own return type
+ * rather than hand-written. fa-page is still JavaScript, so its artifact shape
+ * is inferred; deriving it here means this file cannot drift from it, and the
+ * alias simply sharpens when fa-page.ts lands.
+ */
+type FaArtifact = ReturnType<FunctionAnalysisManager['listFor']>[number];
+import type { Node as GraphNode, SemanticGraph } from '/types/semantic-graph.js';
+
+let _currentGraphPanel: SemanticGraphPanel | null = null;
+let _currentSemanticKey: string | null = null;
+let _activeStepForPanel: ProofStep | null = null;
 let _initDone = false;
-let _currentD3Renderer = null;
-let _currentChartManager = null;
-const _chartManagers = new Map();     // stepKey -> SgChartManager (per-step, persistent)
-let _currentProofManager = null;
-let _faManager = null;                // FunctionAnalysisManager (lazy singleton)
+let _currentD3Renderer: D3SemanticGraphRenderer | null = null;
+let _currentChartManager: SgChartManager | null = null;
+const _chartManagers = new Map<string, SgChartManager>();     // stepKey -> SgChartManager (per-step, persistent)
+let _currentProofManager: SgProofManager | null = null;
+let _faManager: FunctionAnalysisManager | null = null;                // FunctionAnalysisManager (lazy singleton)
 
 /** Function-analysis page manager — created on first use so the module can
  *  hook rebuildProofTree/currentProofStep, which are declared later. */
@@ -47,7 +73,7 @@ function getFaManager() {
     _faManager = new FunctionAnalysisManager({
         katex: window.katex,
         getViewport: () => document.getElementById('graph-viewport'),
-        buildContext: (step) => {
+        buildContext: (step: ProofStep) => {
             const ctx = buildEnrichContext(step) || {};
             // The proof's domain ("physics", "algebra", …) is the signal that
             // decides whether e.g. negative time is exploration or nonsense —
@@ -78,7 +104,7 @@ function getFaManager() {
 
 // Stand-in step for analyses that arrive with no proof step to attach to (see
 // openFunctionAnalysis). One per session, so repeat links still dedup together.
-const _faOrphanStep = {};
+const _faOrphanStep: ProofStep = {};
 
 /** The id of the artifact whose Function Analysis page is showing, else null. */
 function getFunctionAnalysisId() {
@@ -97,7 +123,9 @@ function getFunctionAnalysisId() {
  * Node-less by construction: the producer is a proof step (or an agent), not a
  * semantic-graph node, so the artifact carries `nodeId: null`.
  */
-function openFunctionAnalysis({ id = null, latex = null } = {}) {
+function openFunctionAnalysis(
+    { id = null, latex = null }: { id?: string | null; latex?: string | null } = {},
+) {
     // No proof step to hang it on — a `?fax=` link from an UNSAVED /prove
     // derivation, which lands on whatever the app was showing. Attach to a
     // stand-in so the page still opens (it just won't appear in the Math tree,
@@ -117,13 +145,13 @@ function closeFunctionAnalysis() {
     if (_faManager && _faManager.isOpen()) _faManager.close();
 }
 
-let _d3NodeAskBtn = null;
-let _d3NodeAskHideTimer = null;
-let _d3HoveredNodeId = null;
-let _d3ActiveGraph = null;
-let _d3StepStates = new Map();
-let _d3LastStepKey = null;
-let _pendingDeeplinkSelection = null;  // node ids awaiting the target step's render
+let _d3NodeAskBtn: HTMLElement | null = null;
+let _d3NodeAskHideTimer: ReturnType<typeof setTimeout> | null = null;
+let _d3HoveredNodeId: string | null = null;
+let _d3ActiveGraph: SemanticGraph | null = null;
+let _d3StepStates = new Map<string, D3SemanticGraphState>();
+let _d3LastStepKey: string | null = null;
+let _pendingDeeplinkSelection: string[] | null = null;  // node ids awaiting the target step's render
 
 // ----- Deeplink selection bridge (consumed by view-state-bridge.js) -----
 
@@ -139,14 +167,14 @@ function getGraphSelection() {
 }
 
 /** Stash a deeplink selection; applied on the next/current step render. */
-function applyDeeplinkSelection(ids) {
+function applyDeeplinkSelection(ids: string[] | null) {
     _pendingDeeplinkSelection = Array.isArray(ids) ? ids.slice() : [];
     if (_currentD3Renderer && !_currentD3Renderer._destroyed && _d3ActiveGraph) {
         _applyPendingDeeplinkSelection(_d3ActiveGraph);
     }
 }
 
-function _applyPendingDeeplinkSelection(graph) {
+function _applyPendingDeeplinkSelection(graph: SemanticGraph) {
     if (_pendingDeeplinkSelection == null) return;
     const want = _pendingDeeplinkSelection;
     _pendingDeeplinkSelection = null;
@@ -157,7 +185,10 @@ function _applyPendingDeeplinkSelection(graph) {
         _showD3MultiInfoPanel(new Set(valid), graph);
     } else if (valid.length === 1) {
         const node = (graph.nodes || []).find((n) => n.id === valid[0]);
-        _showD3InfoPanel(valid[0], node, graph);
+        // `!` on valid[0] — guarded by `valid.length === 1`. `node` is passed
+        // through untouched (it can legitimately be undefined when the id is not
+        // in the graph); _showD3InfoPanel's parameter accepts that.
+        _showD3InfoPanel(valid[0]!, node, graph);
     } else {
         _hideD3InfoPanel();
     }
@@ -165,7 +196,9 @@ function _applyPendingDeeplinkSelection(graph) {
 
 /** 'math' when the Math tab is active, else 'scene'. (Internal dock id is 'graph'.) */
 function getCurrentView() {
-    const active = document.querySelector('.dock-tab.active');
+    // Cast, not `?.`: querySelector is typed Element, but `.dock-tab` is only
+    // ever stamped on the <button>s in index.html's dock header.
+    const active = document.querySelector('.dock-tab.active') as HTMLElement | null;
     return (active && active.dataset.dockTab === 'graph') ? 'math' : 'scene';
 }
 
@@ -213,10 +246,13 @@ const LS_KEYS = {
     docked: 'algebench.graph.docked',
     dockRatio: 'algebench.graph.dockRatio',
 };
-const _lsGet = (key, fallback) => {
+// Generic in the fallback so the one caller that passes `null` (the legacy
+// direction migration below) keeps a `string | null` result rather than
+// widening every other caller's `string`.
+const _lsGet = <T>(key: string, fallback: T): string | T => {
     try { return localStorage.getItem(key) ?? fallback; } catch { return fallback; }
 };
-const _lsSet = (key, value) => {
+const _lsSet = (key: string, value: string) => {
     try { localStorage.setItem(key, value); } catch {}
 };
 
@@ -233,7 +269,7 @@ let _currentMode = _appMode();
 // point from variables → operators → root, this maps to Mermaid's
 // *opposite* edge-flow token: "left-right" → "RL", "top-down" → "BT", etc.
 // The mapping is applied at the API boundary (see fetchMermaidFromGraph).
-const DIRECTION_TO_MERMAID = {
+const DIRECTION_TO_MERMAID: Record<string, string | undefined> = {
     'top-down':   'BT',
     'left-right': 'RL',
     'right-left': 'LR',
@@ -243,26 +279,35 @@ const DIRECTION_TO_MERMAID = {
 // in localStorage (from before the semantic-name refactor) into our
 // vocabulary so returning users don't land on a direction the dropdown
 // can't reflect.
-const LEGACY_DIRECTION_MAP = {
+const LEGACY_DIRECTION_MAP: Record<string, string | undefined> = {
     TB: 'bottom-up', BT: 'top-down', LR: 'right-left', RL: 'left-right',
 };
 {
     const stored = _lsGet(LS_KEYS.direction, null);
     if (stored && LEGACY_DIRECTION_MAP[stored]) {
-        _lsSet(LS_KEYS.direction, LEGACY_DIRECTION_MAP[stored]);
+        // `!` — guarded by the truthiness test on the line above.
+        _lsSet(LS_KEYS.direction, LEGACY_DIRECTION_MAP[stored]!);
     }
 }
-let _currentDirection = _lsGet(LS_KEYS.direction, 'left-right');
+// Cast to the renderer's literal union. localStorage is unvalidated here in
+// exactly the way it was before conversion — the legacy migration above only
+// rewrites the four old Mermaid tokens — so this documents an assumption the
+// original already made implicitly rather than adding a new one.
+let _currentDirection = _lsGet(LS_KEYS.direction, 'left-right') as
+    NonNullable<D3SemanticGraphOptions['direction']>;
 // Label detail presets — map UI dropdown values to `show` field sets
 // passed to scripts/graph_to_mermaid.py via /api/graph/mermaid.
-const LABEL_PRESETS = {
+const LABEL_PRESETS: Record<string, string[] | null | undefined> = {
     minimal:     null,                                                   // emoji + symbol (legacy emoji mode)
     // + human description. `description` (context-rich) takes priority over `label`
     // (short name) when both are on the node — see graph_to_mermaid._format_label.
     description: ['emoji', 'description', 'label'],
     full:        ['emoji', 'description', 'label', 'unit', 'role', 'quantity', 'dimension'],
 };
-let _currentLabels = _lsGet(LS_KEYS.labels, 'description');
+// Unlike _currentDirection this one IS validated against LABEL_PRESETS on the
+// next line, so the cast is checked at runtime.
+let _currentLabels = _lsGet(LS_KEYS.labels, 'description') as
+    NonNullable<D3SemanticGraphOptions['labels']>;
 if (!(_currentLabels in LABEL_PRESETS)) _currentLabels = 'description';
 let _currentRenderer = _lsGet(LS_KEYS.renderer, 'd3');
 if (_currentRenderer !== 'mermaid' && _currentRenderer !== 'd3') _currentRenderer = 'd3';
@@ -277,8 +322,10 @@ let _dockRatio = (() => {
 })();
 // Authoritative list of available themes, populated from /api/graph/themes.
 // Each entry: { name, mode }. Used to filter the dropdown by current mode.
-let _allThemes = [];
-let _activeMermaidMode = null;
+/** One entry of /api/graph/themes (backend/server.py `get_graph_themes`). */
+interface GraphThemeEntry { name: string; mode: string; }
+let _allThemes: GraphThemeEntry[] = [];
+let _activeMermaidMode: string | null = null;
 // `_zoom` is in display-percent space (1.0 = 100%). The actual CSS transform
 // scale applied to the SVG is `ZOOM_BASELINE * _zoom` — so "100%" corresponds
 // to the comfortable default view rather than an untransformed (unreadably
@@ -289,7 +336,7 @@ const ZOOM_MAX = 4.0;   // 400%
 const ZOOM_STEP = 0.1;  // 10% per click → 90/100/110/120%
 // Clamp+sanitize a stored zoom value — localStorage strings can be anything,
 // including NaN or out-of-range numbers from older builds.
-function _normalizeZoom(v) {
+function _normalizeZoom(v: unknown) {
     const n = Number(v);
     if (!Number.isFinite(n)) return 1.0;
     return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, n));
@@ -307,17 +354,18 @@ let _zoom = _normalizeZoom(_lsGet(LS_KEYS.zoom, '1.0'));
 const MERMAID_CDN_URL =
     'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.min.js';
 
-let _mermaidLoadPromise = null;
+let _mermaidLoadPromise: Promise<MermaidLib> | null = null;
 
 function loadMermaidLib() {
     if (_mermaidLoadPromise) return _mermaidLoadPromise;
     // If the page was already loaded with mermaid (e.g. a consumer embedded
     // a <script> tag of its own), don't re-inject.
     if (typeof window.mermaid !== 'undefined') {
-        _mermaidLoadPromise = Promise.resolve(window.mermaid);
+        // `!` — guarded by the `typeof … === 'undefined'` test above.
+        _mermaidLoadPromise = Promise.resolve(window.mermaid!);
         return _mermaidLoadPromise;
     }
-    _mermaidLoadPromise = new Promise((resolve, reject) => {
+    _mermaidLoadPromise = new Promise<MermaidLib>((resolve, reject) => {
         const s = document.createElement('script');
         s.src = MERMAID_CDN_URL;
         s.async = true;
@@ -326,7 +374,8 @@ function loadMermaidLib() {
                 reject(new Error('mermaid script loaded but window.mermaid is undefined'));
                 return;
             }
-            resolve(window.mermaid);
+            // `!` — the `typeof … === 'undefined'` guard four lines up.
+            resolve(window.mermaid!);
         };
         s.onerror = () => reject(new Error(`failed to load mermaid from ${MERMAID_CDN_URL}`));
         document.head.appendChild(s);
@@ -337,7 +386,7 @@ function loadMermaidLib() {
     return _mermaidLoadPromise;
 }
 
-function initMermaidForMode(mode) {
+function initMermaidForMode(mode: string) {
     if (typeof window.mermaid === 'undefined') return false;
     const isDark = mode === 'dark';
     const cfg = {
@@ -363,7 +412,8 @@ function initMermaidForMode(mode) {
             nodeBorder: '#888',
         },
     };
-    window.mermaid.initialize(cfg);
+    // `!` — the `typeof … === 'undefined'` early-return at the top of this fn.
+    window.mermaid!.initialize(cfg);
     _activeMermaidMode = mode;
     return true;
 }
@@ -379,7 +429,9 @@ async function ensureMermaid(mode = 'dark') {
     return true;
 }
 
-async function fetchMermaidFromGraph(graph, theme, direction, show) {
+async function fetchMermaidFromGraph(
+    graph: SemanticGraph, theme: string, direction: string, show: string[] | null,
+) {
     // Translate our UI direction vocabulary to Mermaid's edge-flow token.
     // Unknown values pass through so explicit Mermaid tokens still work.
     const mermaidDir = DIRECTION_TO_MERMAID[direction] || direction;
@@ -407,7 +459,7 @@ async function fetchMermaidFromGraph(graph, theme, direction, show) {
  * and rendering it here with KaTeX's HTML output. Also keeps the
  * per-line layout of auto-derived graphs.
  */
-function renderInlineLatexInNodes(container) {
+function renderInlineLatexInNodes(container: HTMLElement | null) {
     const katex = window.katex;
     if (!katex || !container) return;
     // Mermaid with htmlLabels:true places each label inside a foreignObject
@@ -417,11 +469,11 @@ function renderInlineLatexInNodes(container) {
     const labels = container.querySelectorAll(
         'foreignObject span, foreignObject div, foreignObject p, .nodeLabel'
     );
-    labels.forEach((host) => {
+    labels.forEach((host: Element) => {
         if (!host.textContent || host.textContent.indexOf('$') === -1) return;
         // Collect all text descendants first — we mutate the tree as we go.
         const walker = document.createTreeWalker(host, NodeFilter.SHOW_TEXT, null);
-        const textNodes = [];
+        const textNodes: Node[] = [];
         while (walker.nextNode()) textNodes.push(walker.currentNode);
         textNodes.forEach((tn) => {
             const src = tn.nodeValue;
@@ -439,7 +491,9 @@ function renderInlineLatexInNodes(container) {
                 }
                 const span = document.createElement('span');
                 try {
-                    katex.render(m[1], span, { throwOnError: false, displayMode: false });
+                    // `!` — m[1] is the one capture group of INLINE_MATH, so a
+                    // successful exec() always fills it.
+                    katex.render(m[1]!, span, { throwOnError: false, displayMode: false });
                 } catch (_err) {
                     span.textContent = m[0];
                 }
@@ -449,7 +503,8 @@ function renderInlineLatexInNodes(container) {
             if (last < src.length) {
                 frag.appendChild(document.createTextNode(src.slice(last)));
             }
-            tn.parentNode.replaceChild(frag, tn);
+            // `!` — tn came from a TreeWalker rooted at `host`, so it is attached.
+            tn.parentNode!.replaceChild(frag, tn);
         });
     });
 }
@@ -470,12 +525,13 @@ function renderInlineLatexInNodes(container) {
  * foreignObject itself are left untouched so every Mermaid-computed
  * edge keeps terminating at the correct stroke boundary.
  */
-function centerLabelsInNodes(container) {
+function centerLabelsInNodes(container: HTMLElement | null) {
     const svg = container && container.querySelector('svg');
     if (!svg) return;
     const NS = 'http://www.w3.org/1999/xhtml';
-    svg.querySelectorAll('g.node foreignObject').forEach((fo) => {
-        const outer = fo.firstElementChild;
+    svg.querySelectorAll('g.node foreignObject').forEach((fo: Element) => {
+        // Cast: Mermaid's foreignObject child is always the XHTML label <div>.
+        const outer = fo.firstElementChild as HTMLElement | null;
         if (!outer || outer.nodeType !== 1) return;
         // Idempotent — a second pass (e.g. on re-render in place) would
         // otherwise nest wrappers indefinitely.
@@ -497,7 +553,8 @@ function centerLabelsInNodes(container) {
 
 
 function isGraphModeActive() {
-    const tab = document.querySelector('.dock-tab.active');
+    // Cast, not `?.`: `.dock-tab` is only ever on index.html's dock <button>s.
+    const tab = document.querySelector('.dock-tab.active') as HTMLElement | null;
     return tab && tab.dataset.dockTab === 'graph';
 }
 
@@ -506,17 +563,18 @@ function isGraphModeActive() {
 /* ------------------------------------------------------------------ */
 
 function setupDockTabs() {
-    const tabs = document.querySelectorAll('.dock-tab');
+    const tabs = document.querySelectorAll<HTMLElement>('.dock-tab');
     tabs.forEach(btn => {
         btn.addEventListener('click', () => {
             if (btn.classList.contains('active')) return;
-            setDockTab(btn.dataset.dockTab);
+            // `!` — every .dock-tab in index.html carries data-dock-tab.
+            setDockTab(btn.dataset.dockTab!);
         });
     });
 }
 
-function setDockTab(name) {
-    document.querySelectorAll('.dock-tab').forEach(b => {
+function setDockTab(name: string) {
+    document.querySelectorAll<HTMLElement>('.dock-tab').forEach(b => {
         b.classList.toggle('active', b.dataset.dockTab === name);
     });
     document.querySelectorAll('.dock-tab-content').forEach(c => {
@@ -594,13 +652,17 @@ function _syncDockButton() {
     const btn = document.getElementById('graph-dock-toggle');
     if (!btn) return;
     const active = _docked && isGraphModeActive();
-    btn.classList.toggle('active', active);
+    // Cast, not `!!active`: isGraphModeActive() can return null, and
+    // classList.toggle's WebIDL `optional boolean force` converts null to
+    // false — NOT to "absent", which would flip instead. Coercing here would
+    // be a no-op at runtime, so the cast keeps the emitted JS identical.
+    btn.classList.toggle('active', active as boolean);
     btn.title = active
         ? 'Undock graph to full viewport (D)'
         : 'Dock graph alongside 3D viewport (D)';
 }
 
-function toggleDockMode(forceDocked, persist = true) {
+function toggleDockMode(forceDocked?: boolean | null, persist = true) {
     const next = typeof forceDocked === 'boolean' ? forceDocked : !_docked;
     if (next === _docked) return;
     _docked = next;
@@ -636,9 +698,9 @@ function setupDockResize() {
     const viewport = document.getElementById('viewport');
     if (!handle || !viewport) return;
     let dragging = false;
-    let startX, startWidth, startRatio;
+    let startX: number, startWidth: number, startRatio: number;
 
-    handle.addEventListener('mousedown', (e) => {
+    handle.addEventListener('mousedown', (e: MouseEvent) => {
         if (!viewport.classList.contains('graph-docked')) return;
         e.preventDefault();
         dragging = true;
@@ -650,7 +712,7 @@ function setupDockResize() {
         document.body.style.userSelect = 'none';
     });
 
-    document.addEventListener('mousemove', (e) => {
+    document.addEventListener('mousemove', (e: MouseEvent) => {
         if (!dragging) return;
         const dx = e.clientX - startX;
         const minPx = 160;
@@ -682,7 +744,7 @@ function getAllProofEntries() {
     return [];
 }
 
-function sceneTitleForIndex(si) {
+function sceneTitleForIndex(si: number) {
     if (state.lessonSpec && state.lessonSpec.scenes && state.lessonSpec.scenes[si]) {
         return state.lessonSpec.scenes[si].title || `Scene ${si + 1}`;
     }
@@ -690,15 +752,16 @@ function sceneTitleForIndex(si) {
     return `Scene ${si + 1}`;
 }
 
-function groupEntriesByScene(entries) {
+function groupEntriesByScene(entries: ProofEntry[]) {
     // Returns [{ sceneIndex, sceneTitle, entries: [...] }]
-    const bySi = new Map();
+    const bySi = new Map<number, ProofEntry[]>();
     for (const e of entries) {
         const si = (e.sceneIndex != null) ? e.sceneIndex : -1;
         if (!bySi.has(si)) bySi.set(si, []);
-        bySi.get(si).push(e);
+        // `!` — has()/set() on the line above guarantees the entry exists.
+        bySi.get(si)!.push(e);
     }
-    const out = [];
+    const out: { sceneIndex: number; sceneTitle: string; entries: ProofEntry[] }[] = [];
     for (const [si, group] of bySi) {
         out.push({
             sceneIndex: si,
@@ -729,7 +792,7 @@ function rebuildProofTree() {
             ttl.innerHTML = renderKaTeX(group.sceneTitle, false);
             groupEl.appendChild(ttl);
         }
-        group.entries.forEach((entry) => {
+        group.entries.forEach((entry: ProofEntry) => {
             const proof = entry.proof;
             if (!proof || !proof.steps) return;
             const specIdx = state.proofSpec ? state.proofSpec.indexOf(entry) : -1;
@@ -749,7 +812,7 @@ function rebuildProofTree() {
 
             const stepsEl = document.createElement('div');
             stepsEl.className = 'gp-tree-steps';
-            (proof.steps || []).forEach((step, sIdx) => {
+            (proof.steps || []).forEach((step: ProofStep, sIdx: number) => {
                 const hasGraph = !!(step && step.semanticGraph &&
                     step.semanticGraph.graph);
                 const hasError = !!(step && step.semanticGraph &&
@@ -759,9 +822,12 @@ function rebuildProofTree() {
                 if (hasError) cls += ' has-error';
                 const stepEl = document.createElement('div');
                 stepEl.className = cls;
-                stepEl.dataset.sceneIdx = entry.sceneIndex != null ? entry.sceneIndex : '';
+                // String() on the two numeric writes: `dataset` is typed
+                // string-only, and the DOM was already coercing these exact
+                // values. No runtime change.
+                stepEl.dataset.sceneIdx = entry.sceneIndex != null ? String(entry.sceneIndex) : '';
                 stepEl.dataset.proofId = entry._entryId;
-                stepEl.dataset.stepIdx = sIdx;
+                stepEl.dataset.stepIdx = String(sIdx);
 
                 const idxEl = document.createElement('span');
                 idxEl.className = 'gp-tree-step-idx';
@@ -779,7 +845,8 @@ function rebuildProofTree() {
                 } else if (hasError) {
                     const warn = document.createElement('span');
                     warn.className = 'gp-tree-step-has-error';
-                    warn.title = step.semanticGraph.error.message ||
+                    // `!` twice — `hasError` above tested both links.
+                    warn.title = step.semanticGraph!.error!.message ||
                         'Graph could not be derived for this step';
                     warn.textContent = '⚠';
                     stepEl.appendChild(warn);
@@ -811,7 +878,7 @@ function rebuildProofTree() {
 
 /** One Math-tree child row for a function-analysis artifact. Clicking
  *  navigates to the owning step, then opens the artifact's page. */
-function _buildFaTreeRow(entry, stepIdx, fa) {
+function _buildFaTreeRow(entry: ProofEntry, stepIdx: number, fa: FaArtifact) {
     const row = document.createElement('div');
     row.className = 'gp-tree-fa' +
         (_faManager && _faManager.activeArtifact === fa ? ' active' : '');
@@ -840,11 +907,11 @@ function _buildFaTreeRow(entry, stepIdx, fa) {
 /** Stable identifier for a proof spec entry — uses the real proof id when
  *  present, otherwise synthesises one from the spec-array position so that
  *  every entry is matchable even when the lesson JSON omits the id field. */
-function _proofEntryId(entry, specIdx) {
+function _proofEntryId(entry: ProofEntry, specIdx: number) {
     return (entry.proof && entry.proof.id) || `__proof_${specIdx}`;
 }
 
-function handleTreeStepClick(entry, stepIdx) {
+function handleTreeStepClick(entry: ProofEntry, stepIdx: number) {
     const proof = entry.proof;
     const step = proof && proof.steps && proof.steps[stepIdx];
     if (!step) return;
@@ -856,7 +923,9 @@ function handleTreeStepClick(entry, stepIdx) {
             if (typeof sceneStep === 'string' && sceneStep.includes(':')) {
                 const [si, sti] = sceneStep.split(':').map(Number);
                 if (!Number.isNaN(si) && !Number.isNaN(sti)) {
-                    window.navigateTo(si, sti);
+                    // `!` — Number.isNaN() on undefined is false, so reaching
+                    // here means split() yielded both halves.
+                    window.navigateTo(si!, sti!);
                     _forceActivateProofStep(entry, stepIdx);
                     return;
                 }
@@ -878,17 +947,19 @@ function handleTreeStepClick(entry, stepIdx) {
     }
 }
 
-function _forceActivateProofStep(entry, stepIdx) {
+function _forceActivateProofStep(entry: ProofEntry, stepIdx: number) {
     // Ensure the tree-clicked proof becomes the active proof, then navigate the step.
     if (!state.proofSpec) return;
-    const targetIdx = state.proofSpec.findIndex((e, idx) =>
+    const targetIdx = state.proofSpec.findIndex((e: ProofEntry, idx: number) =>
         _proofEntryId(e, idx) === entry._entryId &&
         e.sceneIndex === entry.sceneIndex);
     if (targetIdx < 0) return;
     if (targetIdx !== state.proofActiveIndex) {
         // Dispatch via DOM — the existing context tab has handlers for this.
+        // Cast, not `?.`: the header is a <div> in the context tab's proof
+        // section; querySelector's Element type just lacks click().
         const header = document.querySelector(
-            `.proof-section[data-proof-idx="${targetIdx}"] .proof-section-header`);
+            `.proof-section[data-proof-idx="${targetIdx}"] .proof-section-header`) as HTMLElement | null;
         if (header) header.click();
     }
     if (typeof window.navigateProof === 'function') {
@@ -900,7 +971,7 @@ function updateTreeHighlight() {
     const activeEntry = state.proofSpec && state.proofSpec[state.proofActiveIndex];
     const activeId = activeEntry ? _proofEntryId(activeEntry, state.proofActiveIndex) : null;
     const activeStep = state.proofStepIndex;
-    document.querySelectorAll('#graph-proof-tree .gp-tree-step').forEach(el => {
+    document.querySelectorAll<HTMLElement>('#graph-proof-tree .gp-tree-step').forEach(el => {
         const match = el.dataset.proofId === activeId &&
             Number(el.dataset.stepIdx) === activeStep;
         el.classList.toggle('active', match);
@@ -959,7 +1030,7 @@ function clearGraph() {
 // Render the parse-failure banner (issue #137) when the current step has
 // a ``semanticGraph.error`` record but no graph. The banner replaces the
 // neutral empty-state copy so users see *why* a graph is missing.
-function showErrorState(err) {
+function showErrorState(err: NonNullable<ProofStep['semanticGraph']>['error'] | null) {
     const host = document.getElementById('graph-error-state');
     if (!host) return;
     const reason = err && err.reason === 'parse_crashed'
@@ -991,7 +1062,9 @@ function hideErrorState() {
     if (empty) empty.style.display = '';
 }
 
-async function _renderWithD3(container, graph, step, key) {
+async function _renderWithD3(
+    container: HTMLElement, graph: SemanticGraph, step: ProofStep | null, key: string,
+) {
     const viewport = document.getElementById('graph-viewport');
     if (viewport) {
         viewport.classList.toggle('gv-theme-light', _currentMode === 'light');
@@ -1055,9 +1128,11 @@ async function _renderWithD3(container, graph, step, key) {
                 if (!selectedIds || selectedIds.size === 0) {
                     _hideD3InfoPanel();
                 } else if (selectedIds.size > 1) {
-                    _showD3MultiInfoPanel(selectedIds, _d3ActiveGraph);
+                    // `!` on _d3ActiveGraph — this callback can only fire from a
+                    // rendered graph, which _renderWithD3 assigns before wiring it.
+                    _showD3MultiInfoPanel(selectedIds, _d3ActiveGraph!);
                 } else {
-                    _showD3InfoPanel(nodeId, nodeData, _d3ActiveGraph);
+                    _showD3InfoPanel(nodeId, nodeData, _d3ActiveGraph!);
                 }
                 // Reverse sync: mirror the graph selection onto the proof terms (gold).
                 // Pass additive so a PLAIN (replacing) selection also clears off-graph terms.
@@ -1142,8 +1217,10 @@ async function _renderWithD3(container, graph, step, key) {
     // switch after navigation.
     const dock = container.querySelector('.d3-graph-card .sgc-pinned-panel');
     if (dock && dock.children.length > 1) {
-        [...dock.children]
-            .sort((a, b) => (+a.dataset.dockOrder || 0) - (+b.dataset.dockOrder || 0))
+        // Cast: both managers create these children as HTMLElements and stamp
+        // data-dock-order on them; `children` is only typed Element.
+        [...(dock.children as HTMLCollectionOf<HTMLElement>)]
+            .sort((a, b) => (+a.dataset.dockOrder! || 0) - (+b.dataset.dockOrder! || 0))
             .forEach(c => dock.appendChild(c));
     }
 
@@ -1151,7 +1228,9 @@ async function _renderWithD3(container, graph, step, key) {
     enrichGraphInBackground(graph, key, step);
 }
 
-function _buildD3NodeAskMessage(nodeId, graph, otherSelectedIds) {
+function _buildD3NodeAskMessage(
+    nodeId: string | null, graph: SemanticGraph | null, otherSelectedIds?: string[] | null,
+) {
     if (!nodeId || !graph) return 'Explain this graph node.';
     const node = (graph.nodes || []).find(n => n.id === nodeId);
     if (!node) return 'Explain this graph node.';
@@ -1166,7 +1245,7 @@ function _buildD3NodeAskMessage(nodeId, graph, otherSelectedIds) {
     if (node.op) lines.push(`Operation: ${node.op}`);
     if (node.subexpr) lines.push(`Expression: $${node.subexpr}$`);
     if (node.description) lines.push(`Description: ${node.description}`);
-    const incoming = [], outgoing = [];
+    const incoming: string[] = [], outgoing: string[] = [];
     for (const e of (graph.edges || [])) {
         if (e.to === nodeId && e.from !== nodeId) incoming.push(e.from);
         if (e.from === nodeId && e.to !== nodeId) outgoing.push(e.to);
@@ -1189,7 +1268,7 @@ function _buildD3NodeAskMessage(nodeId, graph, otherSelectedIds) {
     return lines.join('\n');
 }
 
-function _getOtherContextNodes(targetNodeId) {
+function _getOtherContextNodes(targetNodeId: string) {
     const selected = _currentD3Renderer?.selectedNodes;
     if (selected && selected.size > 1) {
         return [...selected].filter(id => id !== targetNodeId);
@@ -1205,7 +1284,9 @@ function _ensureD3NodeAskBtn() {
         'ai-ask-btn graph-node-ai-btn',
         'Ask AI about this node',
         () => {
-            const others = _getOtherContextNodes(_d3HoveredNodeId);
+            // `!` — the button only exists while a node is hovered, and
+            // _showD3NodeAskBtn sets _d3HoveredNodeId before revealing it.
+            const others = _getOtherContextNodes(_d3HoveredNodeId!);
             return _buildD3NodeAskMessage(_d3HoveredNodeId, _d3ActiveGraph, others);
         },
     );
@@ -1224,7 +1305,7 @@ function _ensureD3NodeAskBtn() {
     return btn;
 }
 
-function _showD3NodeAskBtn(nodeEl) {
+function _showD3NodeAskBtn(nodeEl: SVGGElement) {
     const btn = _ensureD3NodeAskBtn();
     if (_d3NodeAskHideTimer) { clearTimeout(_d3NodeAskHideTimer); _d3NodeAskHideTimer = null; }
     const shape = nodeEl.querySelector('polygon, circle, rect');
@@ -1279,11 +1360,14 @@ function _hideD3NodeAskBtn() {
 }
 
 /** Find a rendered node's SVG <g> element by id (d3 binds the datum to it). */
-function _d3NodeElById(nodeId) {
+function _d3NodeElById(nodeId: string): SVGGElement | null {
     const layer = document.querySelector('#graph-viewport .d3sg-nodes');
     if (!layer) return null;
-    for (const g of layer.querySelectorAll(':scope > g')) {
-        const d = g.__data__;
+    for (const g of layer.querySelectorAll<SVGGElement>(':scope > g')) {
+        // `__data__` is d3's own datum backdoor — it stamps it on the element
+        // and @types/d3 does not declare it, so read it through a cast rather
+        // than augmenting Element globally for one call site.
+        const d = (g as SVGGElement & { __data__?: { data?: { id?: string } } }).__data__;
         if (d && d.data && d.data.id === nodeId) return g;
     }
     return null;
@@ -1307,9 +1391,17 @@ function _activeProof() {
  *  (The proof-card per-step Derive button is different — it prefers the previous
  *  step as the start; see buildProofStepDerivePayload.) Shared by the node Derive
  *  button and the agent's derive tool. */
-function _proofContextPayload(graph) {
-    const payload = {};
-    const domain = graph && (graph.domain || (graph.meta && graph.meta.domain));
+function _proofContextPayload(graph: SemanticGraph | null): Omit<DerivePayload, 'target_latex'> {
+    // The generated DerivePayload minus its one required field — this function
+    // builds everything EXCEPT the target, which its two callers add.
+    const payload: Omit<DerivePayload, 'target_latex'> = {};
+    // `meta` is not in schemas/semantic-graph.schema.json, and no baked graph
+    // under scenes/ or proofs/ carries one — this branch is a defensive
+    // fallback that never fires on current data. Preserved verbatim (migration,
+    // not cleanup) and read through a cast rather than widening the generated
+    // type with a field the schema does not have.
+    const domain = graph && (graph.domain ||
+        ((graph as { meta?: { domain?: string } }).meta && (graph as { meta?: { domain?: string } }).meta!.domain));
     if (domain) payload.domain = domain;
 
     const proof = _activeProof();
@@ -1318,7 +1410,8 @@ function _proofContextPayload(graph) {
         if (proof.goal) payload.goal = _stripHtmlMacros(proof.goal);
         const givens = (proof.steps || [])
             .filter(s => s && s.type === 'given' && s.math)
-            .map(s => ({ math: _stripHtmlMacros(s.math), label: s.label || null }))
+            // `!` — the `s.math` truthiness test in the filter above.
+            .map(s => ({ math: _stripHtmlMacros(s.math!), label: s.label || null }))
             .filter(g => g.math);
         if (givens.length) payload.givens = givens;
     }
@@ -1335,7 +1428,7 @@ function _proofContextPayload(graph) {
 
 /** Assemble the DeriveProofRequest payload for a clicked node.
  *  Target = the node's expression; the rest comes from the active proof. */
-function _buildDerivePayload(nodeId, fullNode, graph) {
+function _buildDerivePayload(nodeId: string, fullNode: GraphNode, graph: SemanticGraph | null): DerivePayload {
     const target = _stripHtmlMacros(nodeLongLabel(fullNode) || fullNode.subexpr || fullNode.label || '');
     return { ..._proofContextPayload(graph), target_latex: target };
 }
@@ -1350,7 +1443,9 @@ const _PROOF_MAX_BYTES = 2_000_000;    // per-proof response cap (mirrors render
  *  same whitelist the standalone /renderproof page uses, and mounts it on the graph
  *  anchored to `nodeId` (the deeplink's selected node). Best-effort: a missing /
  *  malformed proof is a silent no-op so it never breaks the rest of the deeplink. */
-async function dockProofAnimation(proofPath, nodeId, step) {
+async function dockProofAnimation(
+    proofPath: string, nodeId?: string | null, step?: number,
+) {
     if (!_currentProofManager || _currentProofManager._destroyed) return;
     if (typeof proofPath !== 'string' || proofPath.includes('..') || !_PROOF_PATH_RE.test(proofPath)) return;
     let data;
@@ -1377,7 +1472,7 @@ async function dockProofAnimation(proofPath, nodeId, step) {
 /** Find a graph node whose displayed expression matches ``target`` (loose
  *  compare), so an agent-initiated derivation can anchor to it like the Derive
  *  button. Returns the node id, or null when nothing matches. */
-function _findNodeIdByLatex(graph, target) {
+function _findNodeIdByLatex(graph: SemanticGraph | null, target: string) {
     if (!graph || !Array.isArray(graph.nodes) || !target) return null;
     const t = _normLatex(target);
     for (const n of graph.nodes) {
@@ -1391,13 +1486,14 @@ function _findNodeIdByLatex(graph, target) {
  *  graph proof manager. Anchors beside a matching node when one exists, else
  *  uses a synthetic id keyed on the target so re-deriving the same expression on
  *  the same step re-focuses its box instead of stacking duplicates. */
-function _openDerivationBox(payload) {
+function _openDerivationBox(payload: DerivePayload) {
     const graph = _d3ActiveGraph;
     const target = payload.target_latex;
     const matchedId = _findNodeIdByLatex(graph, target);
     const nodeId = matchedId || ('derive::' + _normLatex(target));
     const anchor = matchedId ? _d3NodeElById(matchedId) : null;
-    _currentProofManager.openProof(nodeId, anchor, payload);
+    // `!` — both callers return early unless _currentProofManager is live.
+    _currentProofManager!.openProof(nodeId, anchor, payload);
 }
 
 /** Dock a fully-assembled DeriveProofRequest payload into the semantic-graph
@@ -1406,14 +1502,16 @@ function _openDerivationBox(payload) {
  *  builds the payload itself (previous-step start + previous_steps). Returns
  *  false when the current step has no semantic graph to dock onto, so the caller
  *  can fall back. */
-window.algebenchDeriveProofPayload = async function (payload) {
+window.algebenchDeriveProofPayload = async function (payload: DerivePayload) {
     const target = _stripHtmlMacros(((payload && payload.target_latex) || '')).trim();
     if (!target) {
         console.warn('algebenchDeriveProofPayload: target_latex is required');
         return false;
     }
     payload = { ...payload, target_latex: target };
-    await window.algebenchEnsureGraphVisible();
+    // `!` — this module assigns it a few lines below; it is only optional on
+    // Window because other modules feature-detect it.
+    await window.algebenchEnsureGraphVisible!();
     if (!_currentProofManager || _currentProofManager._destroyed) {
         return false;                                // no graph on this step
     }
@@ -1425,7 +1523,7 @@ window.algebenchDeriveProofPayload = async function (payload) {
  *  exactly as if the user clicked a node's Derive button. Fire-and-forget: the
  *  SgProofManager runs the (verified) derivation and docks it; it persists on
  *  this step across navigation. ``args`` = { target_latex, start_latex?, prompt? }. */
-window.algebenchDeriveProof = async function (args) {
+window.algebenchDeriveProof = async function (args: DeriveProofArgs) {
     const target = _stripHtmlMacros(((args && args.target_latex) || '')).trim();
     if (!target) {
         console.warn('algebenchDeriveProof: target_latex is required');
@@ -1434,7 +1532,8 @@ window.algebenchDeriveProof = async function (args) {
     // Make the semantic graph visible first — switching to the Math view also
     // renders the graph and wires its proof manager (awaited so the box docks on
     // the right step). No-op if the graph is already showing.
-    await window.algebenchEnsureGraphVisible();
+    // `!` — assigned by this module (see above).
+    await window.algebenchEnsureGraphVisible!();
     if (!_currentProofManager) {
         console.warn('algebenchDeriveProof: no semantic graph to derive into');
         return false;
@@ -1483,7 +1582,7 @@ window.algebenchEnsureGraphVisible = async function () {
     if (_currentRenderer !== 'd3') {
         _currentRenderer = 'd3';
         _lsSet(LS_KEYS.renderer, 'd3');
-        const sel = document.getElementById('graph-renderer-select');
+        const sel = document.getElementById('graph-renderer-select') as HTMLSelectElement | null;
         if (sel) sel.value = 'd3';
         _updateFitControls();
         forcedD3 = true;
@@ -1501,13 +1600,17 @@ window.algebenchEnsureGraphVisible = async function () {
     return forcedD3;
 };
 
-function _showD3InfoPanel(nodeId, nodeData, graph) {
+function _showD3InfoPanel(
+    nodeId: string | null, nodeData: GraphNode | null | undefined, graph: SemanticGraph,
+) {
     const infoHost = document.getElementById('graph-info-panel-host');
     if (!infoHost) return;
     if (!nodeId) { _hideD3InfoPanel(); return; }
 
     // Find the full node from graph model
-    const fullNode = (graph.nodes || []).find(n => n.id === nodeId) || nodeData;
+    // `!` — the `if (!nodeId)` early-return above; nodeData is only null when
+    // the caller already located the node inside `graph`.
+    const fullNode = ((graph.nodes || []).find(n => n.id === nodeId) || nodeData)!;
     infoHost.innerHTML = '';
     const panel = buildInlineInfoPanel(infoHost);
     if (!panel) return;
@@ -1561,8 +1664,8 @@ function _showD3InfoPanel(nodeId, nodeData, graph) {
     }
 
     // Populate the inline panel
-    const symbolEl = panel.querySelector('.gp-symbol');
-    const fieldsEl = panel.querySelector('.gp-fields');
+    const symbolEl = panel.querySelector('.gp-symbol') as HTMLElement | null;
+    const fieldsEl = panel.querySelector('.gp-fields') as HTMLElement | null;
     if (!symbolEl || !fieldsEl) return;
 
     // Details panel shows the *long label* — full applied form
@@ -1587,7 +1690,7 @@ function _showD3InfoPanel(nodeId, nodeData, graph) {
     symbolEl.style.opacity = '1';
     symbolEl.style.fontSize = '';
 
-    const FIELDS = [
+    const FIELDS: [keyof GraphNode, string][] = [
         ['label', 'Label'], ['type', 'Type'], ['role', 'Role'],
         ['quantity', 'Quantity'], ['dimension', 'Dimension'],
         ['unit', 'Unit'], ['value', 'Value'], ['op', 'Operation'],
@@ -1602,7 +1705,9 @@ function _showD3InfoPanel(nodeId, nodeData, graph) {
         k.textContent = flabel;
         const v = document.createElement('span');
         v.className = 'gp-val';
-        v.textContent = fullNode[fkey];
+        // String(): textContent is string-typed and `value` is the one FIELDS
+        // entry that can hold a number — the DOM was already coercing it.
+        v.textContent = String(fullNode[fkey]);
         row.append(k, v);
         fieldsEl.appendChild(row);
     }
@@ -1624,7 +1729,7 @@ function _hideD3InfoPanel() {
     infoHost.innerHTML = '';
 }
 
-function _buildD3MultiNodeAskMessage(selectedIds, graph) {
+function _buildD3MultiNodeAskMessage(selectedIds: Set<string>, graph: SemanticGraph | null) {
     if (!selectedIds || !selectedIds.size || !graph) return 'Explain these graph nodes.';
     const nodes = (graph.nodes || []).filter(n => selectedIds.has(n.id));
     if (!nodes.length) return 'Explain these graph nodes.';
@@ -1647,7 +1752,7 @@ function _buildD3MultiNodeAskMessage(selectedIds, graph) {
     return lines.join('\n');
 }
 
-function _showD3MultiInfoPanel(selectedIds, graph) {
+function _showD3MultiInfoPanel(selectedIds: Set<string>, graph: SemanticGraph) {
     const infoHost = document.getElementById('graph-info-panel-host');
     if (!infoHost) return;
     if (!selectedIds || !selectedIds.size) { _hideD3InfoPanel(); return; }
@@ -1671,8 +1776,8 @@ function _showD3MultiInfoPanel(selectedIds, graph) {
         header.appendChild(askBtn);
     }
 
-    const symbolEl = panel.querySelector('.gp-symbol');
-    const fieldsEl = panel.querySelector('.gp-fields');
+    const symbolEl = panel.querySelector('.gp-symbol') as HTMLElement | null;
+    const fieldsEl = panel.querySelector('.gp-fields') as HTMLElement | null;
     if (!symbolEl || !fieldsEl) return;
 
     symbolEl.textContent = `${nodes.length} nodes selected`;
@@ -1681,7 +1786,8 @@ function _showD3MultiInfoPanel(selectedIds, graph) {
 
     fieldsEl.innerHTML = '';
     for (let i = 0; i < nodes.length; i++) {
-        const node = nodes[i];
+        // `!` — index is bounded by nodes.length.
+        const node = nodes[i]!;
         if (i > 0) {
             const sep = document.createElement('hr');
             sep.className = 'gp-separator';
@@ -1700,7 +1806,7 @@ function _showD3MultiInfoPanel(selectedIds, graph) {
             symLine.textContent = node.label || node.id;
         }
         fieldsEl.appendChild(symLine);
-        const FIELDS = [
+        const FIELDS: [keyof GraphNode, string][] = [
             ['label', 'Label'], ['type', 'Type'], ['role', 'Role'],
             ['quantity', 'Quantity'], ['dimension', 'Dimension'],
             ['unit', 'Unit'], ['value', 'Value'], ['op', 'Operation'],
@@ -1714,7 +1820,9 @@ function _showD3MultiInfoPanel(selectedIds, graph) {
             k.textContent = flabel;
             const v = document.createElement('span');
             v.className = 'gp-val';
-            v.textContent = node[fkey];
+            // String(): same as the single-node panel above — `value` is the one
+            // FIELDS entry that can hold a number, and the DOM already coerced it.
+            v.textContent = String(node[fkey]);
             row.append(k, v);
             fieldsEl.appendChild(row);
         }
@@ -1790,7 +1898,10 @@ async function renderCurrentStepGraph(force = false) {
                 console.warn('[graph-view] on-demand graph derivation failed:', e);
                 step.semanticGraph = { error: {
                     reason: 'derive_request_failed',
-                    message: 'On-demand graph derivation request failed: ' + (e && e.message ? e.message : e),
+                    // Cast, NOT `?.`: preserve the exact `e && e.message` guard
+                    // (a thrown non-Error still falls through to String(e)).
+                    message: 'On-demand graph derivation request failed: ' +
+                        ((e as Error) && (e as Error).message ? (e as Error).message : e),
                     math: step.math,
                 } };
             } finally {
@@ -1832,7 +1943,7 @@ async function renderCurrentStepGraph(force = false) {
         edgeStyles = res.edgeStyles || {};
     } catch (err) {
         console.error('[graph-view] failed to build mermaid source:', err);
-        container.innerHTML = `<div style="color:#f88; padding:2rem;">Failed to build graph source.<br><small>${escapeHtml(err.message || String(err))}</small></div>`;
+        container.innerHTML = `<div style="color:#f88; padding:2rem;">Failed to build graph source.<br><small>${escapeHtml((err as Error).message || String(err))}</small></div>`;
         return;
     }
 
@@ -1852,7 +1963,8 @@ async function renderCurrentStepGraph(force = false) {
 
     try {
         const svgId = 'gp-svg-' + Math.random().toString(36).slice(2, 8);
-        const { svg } = await window.mermaid.render(svgId, mermaidCode);
+        // `!` — ensureMermaid() above returned true, which means it loaded.
+        const { svg } = await window.mermaid!.render(svgId, mermaidCode);
         // Wrap the SVG in a ``.gv-card`` host so the card styling (background,
         // rounded corners, shadow in light theme) and the zoom transform live
         // on the same element — that way zoom scales the card *with* the SVG
@@ -1894,7 +2006,7 @@ async function renderCurrentStepGraph(force = false) {
         centerLabelsInNodes(container);
     } catch (err) {
         console.error('[graph-view] mermaid render failed:', err);
-        container.innerHTML = `<div style="color:#f88; padding:2rem;">Failed to render graph.<br><small>${escapeHtml(err.message || String(err))}</small></div>`;
+        container.innerHTML = `<div style="color:#f88; padding:2rem;">Failed to render graph.<br><small>${escapeHtml((err as Error).message || String(err))}</small></div>`;
         return;
     }
 
@@ -1941,7 +2053,7 @@ async function renderCurrentStepGraph(force = false) {
 // Returns true only when EVERY node already has a non-empty description.
 // We skip the Gemini call in that case (authored scene already covered);
 // otherwise we enrich so missing descriptions get filled in.
-function allNodesHaveDescriptions(graph) {
+function allNodesHaveDescriptions(graph: SemanticGraph | null) {
     const nodes = graph && graph.nodes;
     if (!Array.isArray(nodes) || nodes.length === 0) return false;
     for (const n of nodes) {
@@ -1965,9 +2077,22 @@ const _enrichDwellTimers = new WeakMap();
 // requests while still letting a future render retry if the fetch fails
 // (failed graphs are removed from this set, but ``__enriched`` is only set
 // on success — so the next render can try again).
-const _enrichInFlight = new WeakSet();
+const _enrichInFlight = new WeakSet<EnrichableGraph>();
 
-function enrichGraphInBackground(graph, keyAtFetch, stepAtFetch) {
+/**
+ * A graph plus the two non-enumerable markers the enrichment path stamps on it.
+ * Runtime-only — deliberately absent from schemas/semantic-graph.schema.json,
+ * since neither is ever authored or persisted (`__enriched` is defined with
+ * `enumerable: false` precisely so it never serialises back into a scene).
+ */
+type EnrichableGraph = SemanticGraph & {
+    __enriched?: boolean;
+    enrichment?: unknown;
+};
+
+function enrichGraphInBackground(
+    graph: EnrichableGraph | null, keyAtFetch: string, stepAtFetch: ProofStep | null,
+) {
     if (!graph || graph.__enriched) return;
     if (_enrichInFlight.has(graph)) return;
     // Server-stamped marker: the persisted graph already went through Gemini
@@ -2011,7 +2136,9 @@ function enrichGraphInBackground(graph, keyAtFetch, stepAtFetch) {
     _enrichDwellTimers.set(graph, handle);
 }
 
-function _runEnrichmentFetch(graph, keyAtFetch, stepAtFetch) {
+function _runEnrichmentFetch(
+    graph: EnrichableGraph, keyAtFetch: string, stepAtFetch: ProofStep | null,
+) {
     if (graph.__enriched || _enrichInFlight.has(graph)) return;
     // Mark in-flight so concurrent renders don't fire a duplicate fetch.
     // ``__enriched`` itself is set only after a successful response — a
@@ -2029,7 +2156,7 @@ function _runEnrichmentFetch(graph, keyAtFetch, stepAtFetch) {
             indicator.parentNode.removeChild(indicator);
         }
     };
-    const markEnriched = (g) => {
+    const markEnriched = (g: EnrichableGraph) => {
         try {
             Object.defineProperty(g, '__enriched', {
                 value: true, writable: true, configurable: true, enumerable: false,
@@ -2077,7 +2204,7 @@ function _runEnrichmentFetch(graph, keyAtFetch, stepAtFetch) {
 // ones that don't belong to the currently visible step — they stay in the
 // DOM so the same indicator reappears if the user navigates back before
 // the fetch resolves.
-function showEnrichmentIndicator(step) {
+function showEnrichmentIndicator(step: ProofStep | null) {
     const viewport = document.getElementById('graph-viewport');
     if (!viewport) return null;
     let stack = viewport.querySelector('.graph-enrich-indicator-stack');
@@ -2121,7 +2248,9 @@ function positionEnrichmentStack() {
     let reach = 0;        // px the tallest docked legend rises from the viewport bottom
     let rightGap = null;  // smallest gap from viewport right edge to a legend's right edge
     for (const sel of ['.d3sg-edge-legend', '.sgc-legend-panel']) {
-        const el = viewport.querySelector(sel);
+        // Cast: both selectors match <div>s this module and SgChartManager
+        // create; querySelector's Element type just lacks offsetParent.
+        const el = viewport.querySelector(sel) as HTMLElement | null;
         if (!el || el.classList.contains('hidden') || el.offsetParent === null) continue;
         const r = el.getBoundingClientRect();
         reach = Math.max(reach, vpRect.bottom - r.top);
@@ -2131,8 +2260,8 @@ function positionEnrichmentStack() {
     // Pad above the legend strip and right-align the pills with the legends'
     // right edge (falling back to the 8px corner when no legend is docked).
     const TOP_PAD = 14;
-    stack.style.bottom = reach > 0 ? `${Math.round(reach) + TOP_PAD}px` : '8px';
-    stack.style.right = rightGap !== null ? `${Math.round(rightGap)}px` : '8px';
+    (stack as HTMLElement).style.bottom = reach > 0 ? `${Math.round(reach) + TOP_PAD}px` : '8px';
+    (stack as HTMLElement).style.right = rightGap !== null ? `${Math.round(rightGap)}px` : '8px';
 }
 
 // The chart legend (managed by SgChartManager) appears, grows and disappears
@@ -2147,7 +2276,7 @@ function refreshEnrichmentIndicatorVisibility() {
     const currentKey = step ? stableStepKey(step) : null;
     const stack = viewport.querySelector('.graph-enrich-indicator-stack');
     if (!stack) return;
-    stack.querySelectorAll('.graph-enrich-indicator').forEach((el) => {
+    stack.querySelectorAll<HTMLElement>('.graph-enrich-indicator').forEach((el) => {
         el.classList.toggle('hidden', el.dataset.stepKey !== currentKey);
     });
 }
@@ -2155,7 +2284,7 @@ function refreshEnrichmentIndicatorVisibility() {
 // Map from ``edge.semantic`` values to user-facing legend copy. Order here
 // is also the display order in the legend so that the proportionality axis
 // (direct → inverse) reads naturally before the structural ``neutral`` row.
-const EDGE_SEMANTIC_LABELS = [
+const EDGE_SEMANTIC_LABELS: [string, string][] = [
     ['direct',  'Proportional'],
     ['inverse', 'Inversely proportional'],
     ['neutral', 'Structural'],
@@ -2175,7 +2304,10 @@ const LEGEND_DEFAULT_ARROW = '-->';
  * keeps the viewport uncluttered on themes that don't differentiate
  * edge semantics visually.
  */
-function renderEdgeLegend(edgeStyles, graph) {
+function renderEdgeLegend(
+    edgeStyles: Record<string, GraphEdgeStyle | undefined> | null,
+    graph: SemanticGraph | null,
+) {
     const host = document.getElementById('graph-edge-legend');
     if (!host) return;
     const styled = edgeStyles && typeof edgeStyles === 'object' ? edgeStyles : {};
@@ -2226,7 +2358,7 @@ function renderEdgeLegend(edgeStyles, graph) {
     // graph — rare in practice but nicer than an empty panel.
     const noneTagged = present.size === 0;
 
-    const rows = [];
+    const rows: { semantic: string; label: string; style: GraphEdgeStyle }[] = [];
     for (const [semantic, label] of EDGE_SEMANTIC_LABELS) {
         const s = styled[semantic];
         if (!s) continue;
@@ -2279,7 +2411,7 @@ function renderEdgeLegend(edgeStyles, graph) {
     host.classList.remove('hidden');
 }
 
-function buildInlineInfoPanel(host) {
+function buildInlineInfoPanel(host: HTMLElement | null) {
     if (!host) return null;
     const el = document.createElement('div');
     el.className = 'graph-panel-info open'; // always "open" in inline mode
@@ -2305,14 +2437,20 @@ function currentProofStep() {
 // the path cannot be determined. Handles single-scene-as-root lessons (no
 // ``scenes`` wrapper) and single-vs-array ``proof`` fields at every level.
 function currentSemanticGraphJsonPath() {
-    const lesson = state.lessonSpec;
+    // Cast to the proof-bearing view of the spec. AlgeBenchLessonSpec's index
+    // signature is `unknown`, and this walk needs the same proof/scenes/steps
+    // shape src/proof.ts already describes — so reuse its interface rather
+    // than keeping a second description of the same JSON.
+    const lesson = state.lessonSpec as ProofLessonSpec | null | undefined;
     const entry = state.proofSpec && state.proofSpec[state.proofActiveIndex];
     const stepIdx = state.proofStepIndex;
     if (!lesson || !entry || stepIdx < 0) return null;
 
     const singleSceneRoot = !lesson.scenes && !!lesson.elements;
 
-    function containerToPath(container, basePath, needle) {
+    function containerToPath(
+        container: Proof | Proof[] | null | undefined, basePath: string, needle: Proof,
+    ): string | null {
         if (!container) return null;
         if (Array.isArray(container)) {
             const i = container.indexOf(needle);
@@ -2321,14 +2459,16 @@ function currentSemanticGraphJsonPath() {
         return container === needle ? basePath : null;
     }
 
-    let proofPath = null;
+    let proofPath: string | null = null;
     if (entry.level === 'file') {
         proofPath = containerToPath(lesson.proof, 'proof', entry.proof);
     } else if (entry.level === 'scene') {
         if (singleSceneRoot) {
             proofPath = containerToPath(lesson.proof, 'proof', entry.proof);
         } else {
-            const scene = lesson.scenes && lesson.scenes[entry.sceneIndex];
+            // `!` — proof.ts's loadProof sets sceneIndex on every 'scene'-level
+            // entry; the level field is the discriminant.
+            const scene = lesson.scenes && lesson.scenes[entry.sceneIndex!];
             proofPath = containerToPath(
                 scene && scene.proof,
                 `scenes[${entry.sceneIndex}].proof`,
@@ -2337,17 +2477,19 @@ function currentSemanticGraphJsonPath() {
         }
     } else if (entry.level === 'step') {
         if (singleSceneRoot) {
-            const step = lesson.steps && lesson.steps[entry.stepIndex];
+            // `!` — 'step'-level entries always carry stepIndex (see above).
+            const step = lesson.steps && lesson.steps[entry.stepIndex!];
             proofPath = containerToPath(
                 step && step.proof,
                 `steps[${entry.stepIndex}].proof`,
                 entry.proof,
             );
         } else {
+            // `!` — 'step'-level entries carry both indices (see above).
             const step = lesson.scenes &&
-                lesson.scenes[entry.sceneIndex] &&
-                lesson.scenes[entry.sceneIndex].steps &&
-                lesson.scenes[entry.sceneIndex].steps[entry.stepIndex];
+                lesson.scenes[entry.sceneIndex!] &&
+                lesson.scenes[entry.sceneIndex!]!.steps &&
+                lesson.scenes[entry.sceneIndex!]!.steps![entry.stepIndex!];
             proofPath = containerToPath(
                 step && step.proof,
                 `scenes[${entry.sceneIndex}].steps[${entry.stepIndex}].proof`,
@@ -2361,7 +2503,7 @@ function currentSemanticGraphJsonPath() {
 }
 
 function updateShowJsonButtonState() {
-    const btn = document.getElementById('graph-show-json');
+    const btn = document.getElementById('graph-show-json') as HTMLButtonElement | null;
     if (!btn) return;
     const step = currentProofStep();
     const hasGraph = !!(step && step.semanticGraph && step.semanticGraph.graph);
@@ -2385,15 +2527,17 @@ function setupShowJsonButton() {
     updateShowJsonButtonState();
 }
 
-function stableStepKey(step) {
-    return `${state.proofActiveIndex}:${state.proofStepIndex}:${step.id || ''}`;
+function stableStepKey(step: ProofStep | null) {
+    // `!` — every caller reaches here only for a step it just resolved. Kept as
+    // a member access, not `step?.id`, so a null step still throws as before.
+    return `${state.proofActiveIndex}:${state.proofStepIndex}:${step!.id || ''}`;
 }
 
 /* ------------------------------------------------------------------ */
 /* Utilities                                                          */
 /* ------------------------------------------------------------------ */
 
-function escapeHtml(s) {
+function escapeHtml(s: unknown) {
     return String(s || '')
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
@@ -2411,7 +2555,7 @@ function onStepChange() {
     if (isGraphModeActive()) renderCurrentStepGraph();
 }
 
-function onGraphSelectionChange(e) {
+function onGraphSelectionChange(e: CustomEvent<{ activeNode?: string } | undefined>) {
     if (state._graphSyncInProgress) return;
     if (!e.detail || !e.detail.activeNode) return;
     // The graph is rendered for the current proof step, so selection
@@ -2419,7 +2563,7 @@ function onGraphSelectionChange(e) {
     // loops when renderCurrentStepGraph preserves a prior selection.
 }
 
-let _lastLessonSpec = null;
+let _lastLessonSpec: AlgeBenchLessonSpec | null | undefined = null;
 
 function onProofLoad() {
     // Charts and derivation boxes persist per-step across navigation (incl. proof
@@ -2452,7 +2596,7 @@ function _resetGraphSession() {
 // when the stem has no alternative in the target mode (e.g. ``linalg-dark``
 // has no ``linalg-light``), so the caller can fall back to its default
 // picking strategy.
-function counterpartTheme(name, targetMode) {
+function counterpartTheme(name: string, targetMode: string) {
     const otherMode = targetMode === 'dark' ? 'light' : 'dark';
     const suffix = `-${otherMode}`;
     if (!name.endsWith(suffix)) return null;
@@ -2467,12 +2611,13 @@ function counterpartTheme(name, targetMode) {
 // If the active theme doesn't fit the new mode, fall back to the first
 // available theme in that mode (or the first theme overall as last resort).
 function refreshThemeDropdown() {
-    const themeSel = document.getElementById('graph-theme-select');
+    const themeSel = document.getElementById('graph-theme-select') as HTMLSelectElement | null;
     if (!themeSel) return;
     const matching = _allThemes.filter(t => t.mode === _currentMode);
     const pool = matching.length ? matching : _allThemes;
     if (!pool.some(t => t.name === _currentTheme)) {
-        _currentTheme = pool.length ? pool[0].name : 'default';
+        // `!` — guarded by `pool.length`.
+        _currentTheme = pool.length ? pool[0]!.name : 'default';
         _lsSet(LS_KEYS.theme, _currentTheme);
     }
     themeSel.innerHTML = '';
@@ -2509,7 +2654,7 @@ async function setupGraphControls() {
         const raw = (data && data.themes) || [];
         if (!raw.length) throw new Error('empty themes list');
         // `raw` may be a list of strings (legacy) or {name, mode} objects.
-        _allThemes = raw.map(item => (typeof item === 'string')
+        _allThemes = (raw as (string | GraphThemeEntry)[]).map(item => (typeof item === 'string')
             ? { name: item, mode: 'light' }
             : { name: item.name, mode: item.mode || 'light' });
     } catch (e) {
@@ -2533,7 +2678,7 @@ async function setupGraphControls() {
     _lsSet(LS_KEYS.theme, _currentTheme);
     watchAppTheme();
 
-    const themeSel = document.getElementById('graph-theme-select');
+    const themeSel = document.getElementById('graph-theme-select') as HTMLSelectElement | null;
     if (themeSel) {
         themeSel.addEventListener('change', () => {
             _currentTheme = themeSel.value || 'default';
@@ -2541,26 +2686,26 @@ async function setupGraphControls() {
             renderCurrentStepGraph(true);
         });
     }
-    const dirSel = document.getElementById('graph-direction-select');
+    const dirSel = document.getElementById('graph-direction-select') as HTMLSelectElement | null;
     if (dirSel) {
         dirSel.value = _currentDirection;
         dirSel.addEventListener('change', () => {
-            _currentDirection = dirSel.value || 'left-right';
+            _currentDirection = (dirSel.value || 'left-right') as typeof _currentDirection;
             _lsSet(LS_KEYS.direction, _currentDirection);
             renderCurrentStepGraph(true);
         });
     }
-    const labelsSel = document.getElementById('graph-labels-select');
+    const labelsSel = document.getElementById('graph-labels-select') as HTMLSelectElement | null;
     if (labelsSel) {
         labelsSel.value = _currentLabels;
         labelsSel.addEventListener('change', () => {
-            _currentLabels = labelsSel.value in LABEL_PRESETS
-                ? labelsSel.value : 'description';
+            _currentLabels = (labelsSel.value in LABEL_PRESETS
+                ? labelsSel.value : 'description') as typeof _currentLabels;
             _lsSet(LS_KEYS.labels, _currentLabels);
             renderCurrentStepGraph(true);
         });
     }
-    const rendererSel = document.getElementById('graph-renderer-select');
+    const rendererSel = document.getElementById('graph-renderer-select') as HTMLSelectElement | null;
     if (rendererSel) {
         rendererSel.value = _currentRenderer;
         rendererSel.addEventListener('change', () => {
@@ -2573,9 +2718,10 @@ async function setupGraphControls() {
     }
 }
 
-function prettyThemeName(name) {
+function prettyThemeName(name: string) {
     return String(name).split(/[-_]/).map(p =>
-        p.length ? p[0].toUpperCase() + p.slice(1) : p).join(' ');
+        // `!` — guarded by `p.length`.
+        p.length ? p[0]!.toUpperCase() + p.slice(1) : p).join(' ');
 }
 
 function applyZoom() {
@@ -2587,7 +2733,8 @@ function applyZoom() {
     }
     // Mermaid fallback: CSS scale on the card wrapper
     const card = document.querySelector('#graph-mermaid-container .gv-card');
-    const target = card || document.querySelector('#graph-mermaid-container svg');
+    const target = (card || document.querySelector('#graph-mermaid-container svg')) as
+        HTMLElement | SVGElement | null;
     if (target) target.style.transform = `scale(${(ZOOM_BASELINE * _zoom).toFixed(3)})`;
     const label = document.getElementById('graph-zoom-level');
     if (label) label.textContent = `${Math.round(_zoom * 100)}%`;
@@ -2595,7 +2742,7 @@ function applyZoom() {
 
 function _updateFitControls() {
     const isD3 = _currentRenderer === 'd3';
-    const fitBtn = document.getElementById('graph-zoom-fit');
+    const fitBtn = document.getElementById('graph-zoom-fit') as HTMLButtonElement | null;
     const zoomLabel = document.getElementById('graph-zoom-level');
     if (fitBtn) {
         fitBtn.disabled = !isD3;
@@ -2684,10 +2831,17 @@ function init() {
     setupControlsOverflowWatcher();
     window.addEventListener('algebench:stepchange', onStepChange);
     window.addEventListener('algebench:proofload', onProofLoad);
-    window.addEventListener('algebench:graphselectionchange', onGraphSelectionChange);
+    // Cast: onGraphSelectionChange reads e.detail, so it takes a CustomEvent.
+    // The event is not in the WindowEventMap augmentation (its detail is only
+    // read here), so addEventListener still types the handler as (e: Event).
+    window.addEventListener('algebench:graphselectionchange',
+        onGraphSelectionChange as EventListener);
 
     document.addEventListener('keydown', (e) => {
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+        // Cast, NOT `?.`: a keydown always has a target, and a null one should
+        // still throw here exactly as it did before.
+        const target = e.target as HTMLElement;
+        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return;
         if (e.key === 'd' && !e.ctrlKey && !e.metaKey && !e.altKey) {
             if (isGraphModeActive()) {
                 toggleDockMode();
@@ -2733,7 +2887,7 @@ function getGraphPanelState() {
     const nodes = (graph && Array.isArray(graph.nodes)) ? graph.nodes : [];
     const edges = (graph && Array.isArray(graph.edges)) ? graph.edges : [];
 
-    const out = {
+    const out: AlgeBenchGraphPanelState = {
         open: dockActive,
         docked: _docked && dockActive,
         hasGraph: !!graph,
@@ -2760,7 +2914,7 @@ function getGraphPanelState() {
     if (graph) {
         const NODE_CAP = 60, EDGE_CAP = 80, DESC_CAP = 120;
         out.nodes = nodes.slice(0, NODE_CAP).map(n => {
-            const e = { id: n.id };
+            const e: AlgeBenchGraphPanelNode = { id: n.id };
             if (n.type) e.type = n.type;
             if (n.op) e.op = n.op;
             if (n.label) e.label = n.label;
@@ -2774,7 +2928,7 @@ function getGraphPanelState() {
         });
         if (nodes.length > NODE_CAP) out.nodesTruncated = nodes.length - NODE_CAP;
         out.edges = edges.slice(0, EDGE_CAP).map(e => {
-            const o = { from: e.from, to: e.to };
+            const o: { from: string; to: string; semantic?: string } = { from: e.from, to: e.to };
             if (e.semantic) o.semantic = e.semantic;
             return o;
         });
@@ -2789,11 +2943,15 @@ function getGraphPanelState() {
         const ids = _selectedNodeIdsForContext();
         const payloads = ids
             .map(id => _buildGraphNodePayload(graph, id))
-            .filter(Boolean);
+            // Cast rather than a type-predicate callback: filter(Boolean) does
+            // not narrow, and swapping in a predicate would change the emitted
+            // JS. The nulls really are dropped.
+            .filter(Boolean) as AlgeBenchGraphPanelSelectedNode[];
         if (payloads.length) {
             // ``selectedNode`` = the active (last) node, kept for back-compat
             // and the header summary; ``selectedNodes`` = the full ordered set.
-            out.selectedNode = payloads[payloads.length - 1];
+            // `!` — guarded by `payloads.length`.
+            out.selectedNode = payloads[payloads.length - 1]!;
             out.selectedNodes = payloads;
         }
     }
@@ -2824,11 +2982,13 @@ function _selectedNodeIdsForContext() {
  * including immediate edge neighbors. Renderer-agnostic — both the D3 and
  * Mermaid paths share the same graph structure.
  */
-function _buildGraphNodePayload(graph, nodeId) {
+function _buildGraphNodePayload(
+    graph: SemanticGraph | null, nodeId: string | null,
+): AlgeBenchGraphPanelSelectedNode | null {
     if (!graph || !nodeId) return null;
     const node = (graph.nodes || []).find(n => n.id === nodeId);
     if (!node) return null;
-    const incoming = [], outgoing = [];
+    const incoming: string[] = [], outgoing: string[] = [];
     for (const e of (graph.edges || [])) {
         if (e.to === nodeId && e.from !== nodeId) incoming.push(e.from);
         if (e.from === nodeId && e.to !== nodeId) outgoing.push(e.to);

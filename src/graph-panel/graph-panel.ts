@@ -54,8 +54,11 @@ export interface SemanticGraphPanelOptions {
   katex?: typeof katex;
   /** Pre-existing tooltip element (created if absent). */
   tooltip?: HTMLElement;
-  /** Pre-existing panel element (created if absent). */
-  panel?: HTMLElement;
+  /** Pre-existing panel element (created if absent). `null` is accepted as
+   *  well as absent: src/graph-view.ts passes buildInlineInfoPanel()'s result
+   *  straight through, and that returns null when there is no host to build
+   *  into. The constructor's falsiness check already handles both. */
+  panel?: HTMLElement | null;
 }
 
 export class SemanticGraphPanel {

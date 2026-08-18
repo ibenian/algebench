@@ -18954,7 +18954,7 @@ var FunctionAnalysisManager = class {
 	}
 };
 //#endregion
-//#region src/graph-view.js
+//#region src/graph-view.ts
 var _currentGraphPanel = null;
 var _currentSemanticKey = null;
 var _activeStepForPanel = null;
@@ -19531,9 +19531,9 @@ function rebuildProofTree() {
 				if (hasError) cls += " has-error";
 				const stepEl = document.createElement("div");
 				stepEl.className = cls;
-				stepEl.dataset.sceneIdx = entry.sceneIndex != null ? entry.sceneIndex : "";
+				stepEl.dataset.sceneIdx = entry.sceneIndex != null ? String(entry.sceneIndex) : "";
 				stepEl.dataset.proofId = entry._entryId;
-				stepEl.dataset.stepIdx = sIdx;
+				stepEl.dataset.stepIdx = String(sIdx);
 				const idxEl = document.createElement("span");
 				idxEl.className = "gp-tree-step-idx";
 				idxEl.textContent = String(sIdx + 1);
@@ -20195,7 +20195,7 @@ function _showD3InfoPanel(nodeId, nodeData, graph) {
 		k.textContent = flabel;
 		const v = document.createElement("span");
 		v.className = "gp-val";
-		v.textContent = fullNode[fkey];
+		v.textContent = String(fullNode[fkey]);
 		row.append(k, v);
 		fieldsEl.appendChild(row);
 	}
@@ -20293,7 +20293,7 @@ function _showD3MultiInfoPanel(selectedIds, graph) {
 			k.textContent = flabel;
 			const v = document.createElement("span");
 			v.className = "gp-val";
-			v.textContent = node[fkey];
+			v.textContent = String(node[fkey]);
 			row.append(k, v);
 			fieldsEl.appendChild(row);
 		}
@@ -21007,7 +21007,8 @@ function init$1() {
 	window.addEventListener("algebench:proofload", onProofLoad);
 	window.addEventListener("algebench:graphselectionchange", onGraphSelectionChange);
 	document.addEventListener("keydown", (e) => {
-		if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.tagName === "SELECT") return;
+		const target = e.target;
+		if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT") return;
 		if (e.key === "d" && !e.ctrlKey && !e.metaKey && !e.altKey) {
 			if (isGraphModeActive()) toggleDockMode();
 		}

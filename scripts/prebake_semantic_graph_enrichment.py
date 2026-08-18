@@ -7,7 +7,7 @@ structural graphs and runs the Gemini **enrichment** agent over them offline —
 filling in node ``description``/``emoji``, correcting ``quantity``/``unit``/
 ``dimension``/``role``, inferring ``domain`` — and writes the result back so the
 browser never has to fire the live ``/api/graph/enrich`` round-trip (see
-``enrichGraphInBackground`` in ``static/graph-view.js``).
+``enrichGraphInBackground`` in ``src/graph-view.ts``).
 
 The pipeline is the *exact* one the server uses at ``/api/graph/enrich``:
 strip annotation nodes → validate as ``SemanticGraph`` → ``aenrich`` (first
@@ -125,7 +125,7 @@ def _is_enriched(graph):
 
 def _build_context(spec, scene, proof, step):
     """Reconstruct the enrichment context the browser sends, field-for-field
-    from ``buildEnrichContext`` in ``static/graph-view.js``. Context
+    from ``buildEnrichContext`` in ``src/graph-view.ts``. Context
     disambiguates ambiguous symbols (e.g. ``T`` = thrust vs temperature), so
     baking with it produces the same result the live UI would.
     """

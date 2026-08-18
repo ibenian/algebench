@@ -450,7 +450,7 @@ def _format_label(
     # because Mermaid's own KaTeX integration (``$$...$$``) swallows the
     # surrounding ``<br/>`` separators and collapses multi-line labels. The
     # client instead runs a post-Mermaid pass via ``window.katex`` to rewrite
-    # every ``$...$`` span in the rendered SVG — see ``graph-view.js``.
+    # every ``$...$`` span in the rendered SVG — see ``graph-view.ts``.
     display_name = f"${symbol_latex}$"
 
     # Used below to suppress a description/label line that merely repeats
@@ -498,7 +498,7 @@ def _format_label(
         if len(lines) <= 1:
             return lines[0] if lines else display_name
         # Mermaid flowcharts with ``htmlLabels: true`` render ``<br/>`` as a
-        # real line break inside node labels. The graph-view.js init already
+        # real line break inside node labels. The graph-view.ts init already
         # sets that flag; we just emit the separator.
         return "<br/>".join(lines)
 
