@@ -48,10 +48,10 @@ import {
 import type { Proof, ProofEntry, ProofLessonSpec, ProofStep } from '/proof.js';
 
 /**
- * One function-analysis artifact, DERIVED from fa-page.js's own return type
- * rather than hand-written. fa-page is still JavaScript, so its artifact shape
- * is inferred; deriving it here means this file cannot drift from it, and the
- * alias simply sharpens when fa-page.ts lands.
+ * One function-analysis artifact, DERIVED from fa-page's own return type
+ * rather than hand-written, so this file cannot drift from it. fa-page is now
+ * TypeScript and the alias has sharpened accordingly: it resolves to the
+ * `FaArtifact` interface that module exports.
  */
 type FaArtifact = ReturnType<FunctionAnalysisManager['listFor']>[number];
 import type { Node as GraphNode, SemanticGraph } from '/types/semantic-graph.js';

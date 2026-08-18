@@ -17007,7 +17007,7 @@ var SgChartManager = class {
 	}
 };
 //#endregion
-//#region src/graph-panel/fa-page.js
+//#region src/graph-panel/fa-page.ts
 var REQUEST_TIMEOUT_MS = 18e4;
 var NUM_POINTS = 220;
 var TAU = Math.PI * 2;
@@ -18737,10 +18737,10 @@ var FunctionAnalysisManager = class {
 			const hi = v0 === 0 ? 10 : Math.max(v0 * 3, .001);
 			const input = document.createElement("input");
 			input.type = "range";
-			input.min = lo;
-			input.max = hi;
-			input.step = (hi - lo) / 200;
-			input.value = state.pins[name] != null ? state.pins[name] : v0;
+			input.min = String(lo);
+			input.max = String(hi);
+			input.step = String((hi - lo) / 200);
+			input.value = String(state.pins[name] != null ? state.pins[name] : v0);
 			const val = document.createElement("span");
 			val.className = "fa-slider-val";
 			val.textContent = (+input.value).toFixed(2);

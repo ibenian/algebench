@@ -701,3 +701,84 @@ declare function dataCameraToWorld(v: number[]): number[];
 declare function worldCameraToData(v: number[]): number[];
 declare function renderMarkdown(text: string): string;
 declare function renderKaTeX(text: string, displayMode?: boolean): string;
+
+// ── Chart.js 4 (CDN UMD global) ───────────────────────────────────────
+//
+// Loaded on demand by src/graph-panel/sg-chart.js, which injects a <script>
+// tag for chart.js@4/dist/chart.umd.min.js — so `Chart` is a plain global by
+// the time any chart is built. There is no npm devDependency to borrow types
+// from (chart.js is not installed), so the surface the app actually touches is
+// hand-declared here, in the same spirit as the rest of this file.
+//
+// Deliberately partial: only what src/graph-panel/fa-page.ts reads or writes.
+
+/** One axis, as the instance exposes it (NOT the config object). */
+interface ChartJsScale {
+  min: number;
+  max: number;
+  ticks: { value: number; label?: string }[];
+  getPixelForTick(index: number): number;
+  getPixelForValue(value: number): number;
+}
+
+/** Sticky min/max the app writes back onto `chart.options.scales.y`. */
+interface ChartJsScaleOptions {
+  [option: string]: unknown;
+  min?: number;
+  max?: number;
+}
+
+/**
+ * One dataset. Open on purpose: chart.js accepts far more per-dataset options
+ * than are named here, and callers attach their own display metadata (fa-page
+ * hangs a `$faLabel` KaTeX source off each series).
+ */
+interface ChartJsDataset {
+  [option: string]: unknown;
+  label?: string;
+  data: (number | null)[];
+  borderColor?: string;
+  borderDash?: number[];
+}
+
+interface ChartJsTooltip {
+  opacity: number;
+  caretX: number;
+  caretY: number;
+  dataPoints?: { parsed: { x: number; y: number } }[];
+}
+
+/** The argument chart.js hands an `external` tooltip handler. */
+interface ChartJsTooltipContext {
+  chart: ChartJsInstance;
+  tooltip?: ChartJsTooltip;
+}
+
+interface ChartJsInstance {
+  canvas: HTMLCanvasElement;
+  ctx: CanvasRenderingContext2D;
+  chartArea: { left: number; right: number; top: number; bottom: number } | null;
+  scales: { x?: ChartJsScale; y?: ChartJsScale };
+  data: { labels: number[]; datasets: ChartJsDataset[] };
+  options: { scales: { x: ChartJsScaleOptions; y: ChartJsScaleOptions } };
+  isDatasetVisible(index: number): boolean;
+  hide(index: number): void;
+  show(index: number): void;
+  update(mode?: string): void;
+  destroy(): void;
+}
+
+/**
+ * The config literal. `options` and `plugins` stay loose: they are large,
+ * deeply optional chart.js shapes whose callbacks the app annotates itself.
+ */
+interface ChartJsConfig {
+  type: string;
+  plugins?: unknown[];
+  data: { labels?: number[]; datasets: ChartJsDataset[] };
+  options?: Record<string, unknown>;
+}
+
+declare var Chart: {
+  new (canvas: HTMLCanvasElement, config: ChartJsConfig): ChartJsInstance;
+};
