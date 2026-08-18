@@ -12,6 +12,8 @@
     "build": "tsc --noEmit && vite build"
   },
   "devDependencies": {
+    "@dagrejs/dagre": "1.1.4",
+    "@types/d3": "7.4.3",
     "@types/katex": "0.16.8",
     "@types/three": "0.137.0",
     "json-schema-to-typescript": "^15.0.4",
