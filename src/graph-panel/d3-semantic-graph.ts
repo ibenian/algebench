@@ -712,7 +712,7 @@ export class D3SemanticGraphRenderer {
     _scheduleHighlightReapply(delay = 420): void {
         // Cast: the field starts as null and clearTimeout(null) is a runtime
         // no-op, but the DOM lib types the parameter as number | undefined.
-        clearTimeout(this._highlightTimer as number | undefined);
+        clearTimeout(this._highlightTimer as ReturnType<typeof setTimeout> | undefined);
         this._highlightTimer = setTimeout(() => {
             if (!this._destroyed && this._selectedNodeIds.size) this._applyHighlight();
         }, delay);
@@ -808,7 +808,7 @@ export class D3SemanticGraphRenderer {
     destroy(): void {
         this._destroyed = true;
         // Cast: see _scheduleHighlightReapply.
-        clearTimeout(this._highlightTimer as number | undefined);
+        clearTimeout(this._highlightTimer as ReturnType<typeof setTimeout> | undefined);
         if (this._svg && this._zoomBehavior) {
             this._svg.on('.zoom', null);
             if (this._wheelPanHandler) {

@@ -1539,7 +1539,7 @@ async function sendChat() {
 // /api/proof-submissions and shows a thank-you with the direct link.
 let submitAvailable = false;   // the last checked name is claimable
 let submitCheckedId: string | null = null;    // the normalized id that check was for
-let subCheckTimer: number | null = null;
+let subCheckTimer: ReturnType<typeof setTimeout> | null = null;
 
 function setAvail(text: string, cls?: string) {
   els.subAvail.textContent = text;

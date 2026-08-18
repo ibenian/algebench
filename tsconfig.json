@@ -35,17 +35,13 @@
     "noUncheckedIndexedAccess": true,
 
     "skipLibCheck": true,
-    // `node` is here for the test suite: src/*.test.ts import node:test and
-    // node:assert/strict, which need @types/node in the program.
-    //
-    // This DOES put Node's globals (process, Buffer, __dirname) in scope for
-    // application code too, which is a real if mild loosening — app modules
-    // run in the browser and have no business touching them. It is not
-    // avoidable per-file: a triple-slash `/// <reference types="node" />`
-    // registers program-wide, not file-locally (measured, not assumed), so
-    // scoping it to the tests would need a second tsconfig for a payoff that
-    // does not justify the machinery.
-    "types": ["node"]
+    // Empty on purpose: this is the BROWSER program. Node's types live in
+    // tsconfig.test.json instead — see its header for why the split is real
+    // rather than tidiness.
+    "types": []
   },
-  "include": ["src"]
+  "include": ["src"],
+  // The tests are a separate program (tsconfig.test.json); `npm run typecheck`
+  // runs both.
+  "exclude": ["src/**/*.test.ts"]
 }

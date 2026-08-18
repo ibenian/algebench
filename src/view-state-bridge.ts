@@ -559,8 +559,8 @@ export async function applyViewState(vs: ViewState | null | undefined, opts: App
 
 // ----- Outbound sync: app navigation -> URL -----
 
-let _sliderTimer: number | null = null;
-let _pushTimer: number | null = null;
+let _sliderTimer: ReturnType<typeof setTimeout> | null = null;
+let _pushTimer: ReturnType<typeof setTimeout> | null = null;
 
 export function setupViewSync(): void {
     // Coalesce push events fired within the same tick into ONE history entry.
@@ -614,7 +614,7 @@ export function setupShareButton(): void {
     btn.innerHTML = SHARE_VIEW_ICON;
     // Lazily-created floating confirmation pill, anchored next to the button.
     let toast: HTMLDivElement | null = null;
-    let toastTimer: number | null = null;
+    let toastTimer: ReturnType<typeof setTimeout> | null = null;
     function flashToast(message: string) {
         if (!toast) {
             toast = document.createElement('div');
