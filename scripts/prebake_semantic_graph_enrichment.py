@@ -125,9 +125,10 @@ def _is_enriched(graph):
 
 def _build_context(spec, scene, proof, step):
     """Reconstruct the enrichment context the browser sends, field-for-field
-    from ``buildEnrichContext`` in ``src/graph-view.ts``. Context
-    disambiguates ambiguous symbols (e.g. ``T`` = thrust vs temperature), so
-    baking with it produces the same result the live UI would.
+    from ``buildEnrichContext`` in ``src/proof-animation/derive-payload.ts``
+    (``src/graph-view.ts`` imports it, and adds ``mathDomain`` on top).
+    Context disambiguates ambiguous symbols (e.g. ``T`` = thrust vs
+    temperature), so baking with it produces the same result the live UI would.
     """
     ctx = {}
     if isinstance(spec, dict):

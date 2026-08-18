@@ -19107,24 +19107,24 @@ var _lsSet$1 = (key, value) => {
 var _currentTheme = _lsGet$1(LS_KEYS.theme, "linalg-dark");
 var _appMode = () => document.documentElement.dataset.theme === "light" ? "light" : "dark";
 var _currentMode = _appMode();
-var DIRECTION_TO_MERMAID = {
+var DIRECTION_TO_MERMAID = Object.assign(Object.create(null), {
 	"top-down": "BT",
 	"left-right": "RL",
 	"right-left": "LR",
 	"bottom-up": "TB"
-};
-var LEGACY_DIRECTION_MAP = {
+});
+var LEGACY_DIRECTION_MAP = Object.assign(Object.create(null), {
 	TB: "bottom-up",
 	BT: "top-down",
 	LR: "right-left",
 	RL: "left-right"
-};
+});
 {
 	const stored = _lsGet$1(LS_KEYS.direction, null);
 	if (stored && LEGACY_DIRECTION_MAP[stored]) _lsSet$1(LS_KEYS.direction, LEGACY_DIRECTION_MAP[stored]);
 }
 var _currentDirection = _lsGet$1(LS_KEYS.direction, "left-right");
-var LABEL_PRESETS = {
+var LABEL_PRESETS = Object.assign(Object.create(null), {
 	minimal: null,
 	description: [
 		"emoji",
@@ -19140,7 +19140,7 @@ var LABEL_PRESETS = {
 		"quantity",
 		"dimension"
 	]
-};
+});
 var _currentLabels = _lsGet$1(LS_KEYS.labels, "description");
 if (!(_currentLabels in LABEL_PRESETS)) _currentLabels = "description";
 var _currentRenderer = _lsGet$1(LS_KEYS.renderer, "d3");

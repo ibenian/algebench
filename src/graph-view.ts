@@ -269,19 +269,30 @@ let _currentMode = _appMode();
 // point from variables → operators → root, this maps to Mermaid's
 // *opposite* edge-flow token: "left-right" → "RL", "top-down" → "BT", etc.
 // The mapping is applied at the API boundary (see fetchMermaidFromGraph).
-const DIRECTION_TO_MERMAID: Record<string, string | undefined> = {
+// Null-prototype: `direction` originates from localStorage / the dropdown, and
+// the result is serialized into the /api/graph/mermaid request body — a
+// prototype hit would put a non-string on the wire.
+const DIRECTION_TO_MERMAID: Record<string, string | undefined> =
+    Object.assign(Object.create(null), {
     'top-down':   'BT',
     'left-right': 'RL',
     'right-left': 'LR',
     'bottom-up':  'TB',
-};
+});
 // One-shot migration: rewrite any pre-existing Mermaid-token values
 // in localStorage (from before the semantic-name refactor) into our
 // vocabulary so returning users don't land on a direction the dropdown
 // can't reflect.
-const LEGACY_DIRECTION_MAP: Record<string, string | undefined> = {
-    TB: 'bottom-up', BT: 'top-down', LR: 'right-left', RL: 'left-right',
-};
+// Null-prototype: the key comes straight from localStorage, which the user can
+// set to anything. On a normal object literal a stored value of "__proto__"
+// makes the lookup below return Object.prototype — truthy, and non-string — so
+// the migration would write "[object Object]" back as the saved direction.
+// Dropping the prototype makes every non-own key read as undefined, with no
+// change at the two call sites.
+const LEGACY_DIRECTION_MAP: Record<string, string | undefined> =
+    Object.assign(Object.create(null), {
+        TB: 'bottom-up', BT: 'top-down', LR: 'right-left', RL: 'left-right',
+    });
 {
     const stored = _lsGet(LS_KEYS.direction, null);
     if (stored && LEGACY_DIRECTION_MAP[stored]) {
@@ -297,13 +308,20 @@ let _currentDirection = _lsGet(LS_KEYS.direction, 'left-right') as
     NonNullable<D3SemanticGraphOptions['direction']>;
 // Label detail presets — map UI dropdown values to `show` field sets
 // passed to scripts/graph_to_mermaid.py via /api/graph/mermaid.
-const LABEL_PRESETS: Record<string, string[] | null | undefined> = {
+// Null-prototype for the same reason as LEGACY_DIRECTION_MAP — and here it
+// matters twice over, because the membership tests below use `in` rather than
+// truthiness (deliberately: `minimal` maps to null, so a truthy check would
+// reject a valid preset). `in` walks the prototype chain, so on a normal object
+// a stored "__proto__" / "toString" would pass validation and then read back a
+// non-preset value. Object.create(null) leaves `in` meaning exactly own-key.
+const LABEL_PRESETS: Record<string, string[] | null | undefined> =
+    Object.assign(Object.create(null), {
     minimal:     null,                                                   // emoji + symbol (legacy emoji mode)
     // + human description. `description` (context-rich) takes priority over `label`
     // (short name) when both are on the node — see graph_to_mermaid._format_label.
     description: ['emoji', 'description', 'label'],
     full:        ['emoji', 'description', 'label', 'unit', 'role', 'quantity', 'dimension'],
-};
+});
 // Unlike _currentDirection this one IS validated against LABEL_PRESETS on the
 // next line, so the cast is checked at runtime.
 let _currentLabels = _lsGet(LS_KEYS.labels, 'description') as
