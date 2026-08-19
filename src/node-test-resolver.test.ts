@@ -9,22 +9,26 @@ import assert from 'node:assert/strict';
 
 test('server-served paths are refused with a named error', async () => {
   await assert.rejects(
-    // /theme-init.js is a classic pre-paint script the Python server owns.
-    // (/chat.js used to be the example here; phase 4e made it src/chat.ts.)
+    // A domain library: injected as a <script> at runtime from a URL built
+    // out of lesson data, so it can never be statically resolved. It lives in
+    // static/domains/, not src/, and is the last category of path the Python
+    // server genuinely owns.
     //
-    // src/theme-init.ts NOW EXISTS — it was converted, and this directive's
-    // tripwire duly fired. What it proves got stronger rather than weaker:
-    // the refusal is driven by the SERVER_SERVED list, not by the file being
-    // missing from disk, which is what the hook actually promises.
+    // /theme-init.js was the example here until it became src/theme-init.ts,
+    // built to /dist/theme-init.js like every other entry — at which point it
+    // stopped being server-served and stopped belonging in this test.
     //
-    // The suppressed error moved with it: TS2307 "cannot find module" became
-    // TS2306 "not a module", because theme-init is an import-free IIFE with no
-    // exports. Type error and runtime refusal now say the same thing — this is
-    // not an importable module — so @ts-expect-error (not @ts-ignore) still
-    // earns its place: it fails the build again if theme-init ever grows an
-    // export, which would mean someone had made it importable after all.
-    // @ts-expect-error TS2306: theme-init is a classic script, not a module.
-    () => import('/theme-init.js'),
+    // Its absence under src/ is part of the assertion, so tsc is right that
+    // the module cannot be resolved. The directive below records that on
+    // purpose (expect-error, not ignore): if a src/domains/ ever appears, it
+    // starts failing the build and whoever added it has to revisit this test.
+    //
+    // NOTE: keep that token off the START of a comment line unless you mean
+    // it. TypeScript reads a comment beginning with the expect-error token as
+    // a real directive, prose or not — a wrapped sentence mentioning it here
+    // silently swallowed the TS2307 below and made this file compile clean.
+    // @ts-expect-error TS2307: /domains/* is served at runtime, never bundled.
+    () => import('/domains/astrodynamics/index.js'),
     (err) => {
       // node types a rejection reason as `unknown`; the hook always rejects
       // with a real Error carrying a custom `name`, so narrow at the boundary.

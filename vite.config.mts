@@ -35,13 +35,6 @@ const BACKEND = process.env.ALGEBENCH_BACKEND ?? 'http://localhost:8000';
  * faithful-port rule), map them here.
  *
  * EXCLUDED — these stay server-served and must not be bundled:
- *   /theme-init.js            classic non-module script: it must run BEFORE
- *                             the stylesheets so <html data-theme> is set by
- *                             first paint, which a deferred module cannot do.
- *                             It IS built from src/theme-init.ts (a ROOT_SCRIPTS
- *                             entry below) — "classic script" describes the
- *                             output, not the source — but it stays on this
- *                             list because nothing may `import` it.
  *   /domains/*                injected as <script> at runtime from a URL
  *                             built out of lesson data (src/expr.js), so it
  *                             can never be statically resolved
@@ -50,52 +43,13 @@ const BACKEND = process.env.ALGEBENCH_BACKEND ?? 'http://localhost:8000';
  * /chat.js LEFT this list in phase 4e: chat is now src/chat.ts, loaded as
  * `<script type="module" src="/chat.js">` from index.html and folded into the
  * index bundle like every other module on that page.
- */
-const SERVER_SERVED = ['/theme-init.js', '/domains/', '/gemini-live-tools/'];
-
-/**
- * Entries emitted to the static/ ROOT rather than dist/, because their public
- * urls are fixed by things outside this repo: `/embed-resizer.js` is baked into
- * every embed snippet ever generated (pasted into pages we do not control), and
- * `/theme-init.js` is hard-coded in index.html's <head>.
  *
- * Both are import-free IIFEs loaded by a plain <script> tag. Being classic
- * scripts says nothing about their SOURCE — both are TypeScript, type-checked
- * with the rest of the frontend.
+ * /theme-init.js LEFT it too: it is src/theme-init.ts, built to
+ * /dist/theme-init.js like every other entry. It is still a CLASSIC script —
+ * it must run before the stylesheets, which a deferred module cannot do — but
+ * that is a property of how the tag loads it, not a reason to bypass the build.
  */
-const ROOT_SCRIPTS = ['embed-resizer', 'theme-init'];
-
-/**
- * Drop the sourcemap for ROOT_SCRIPTS — the file and the `//# sourceMappingURL`
- * comment both.
- *
- * backend/server.py's `/{name}.js` route matches `[A-Za-z0-9_-]+` and appends
- * `.js`, so it cannot serve a `.map` at all; leaving the comment in makes
- * devtools request one and get a 404 every time (Copilot review, #603).
- *
- * Suppressing rather than routing around it is the right trade here on its own
- * terms: these files are a few hundred bytes, unminified, and their emitted
- * output already reads as the source, so a sourcemap buys nothing — and
- * embed-resizer ships to third-party pages, where handing out a sourcemap is
- * actively undesirable. Everything under dist/ keeps its maps as before.
- */
-function stripRootScriptSourcemaps(): Plugin {
-  return {
-    name: 'algebench:strip-root-script-sourcemaps',
-    generateBundle(_options, bundle) {
-      for (const [fileName, chunk] of Object.entries(bundle)) {
-        if (chunk.type === 'chunk' && ROOT_SCRIPTS.includes(chunk.name)) {
-          chunk.code = chunk.code.replace(/\n?\/\/# sourceMappingURL=.*\n?$/, '\n');
-          chunk.map = null;
-        }
-        if (chunk.type === 'asset'
-            && ROOT_SCRIPTS.some((n) => fileName === `${n}.js.map`)) {
-          delete bundle[fileName];
-        }
-      }
-    },
-  };
-}
+const SERVER_SERVED = ['/domains/', '/gemini-live-tools/'];
 
 function resolveRootAbsolute(): Plugin {
   return {
@@ -189,7 +143,7 @@ export default defineConfig(({ command }) => ({
   // No Vite public dir — static/ is hand-authored plus build output, and is
   // served by FastAPI, not copied by Vite.
   publicDir: false,
-  plugins: [resolveRootAbsolute(), appVersion(), stripRootScriptSourcemaps()],
+  plugins: [resolveRootAbsolute(), appVersion()],
   build: {
     outDir: 'static',
     // static/ also holds hand-authored files (style.css, domains/, fonts/) —
@@ -209,26 +163,20 @@ export default defineConfig(({ command }) => ({
         index: join(ROOT, 'index.html'),
         prove: join(ROOT, 'prove.html'),
         renderproof: join(ROOT, 'renderproof.html'),
-        // ROOT_SCRIPTS — not app pages. Standalone import-free scripts loaded
-        // by a plain <script> tag, so they emit to the static/ root rather than
-        // dist/ (see entryFileNames + stripRootScriptSourcemaps below).
+        // Standalone import-free scripts, loaded by a plain <script> tag
+        // rather than imported. They still build to dist/ like everything
+        // else — being a CLASSIC script is a property of the output, not a
+        // reason to live somewhere special.
         //
-        // embed-resizer runs on the THIRD-PARTY host page embedding a proof;
-        // before this it had no build artifact at all, so every embedded iframe
-        // 404'd on it (issue #590). theme-init runs pre-paint in <head>.
+        // embed-resizer runs on the third-party host page embedding a proof;
+        // before it was an entry it had no build artifact at all, so every
+        // embedded iframe 404'd on it (issue #590). theme-init runs pre-paint
+        // in <head>, which is why it cannot be a module.
         'embed-resizer': join(ROOT, 'src', 'embed-resizer.ts'),
         'theme-init': join(ROOT, 'src', 'theme-init.ts'),
       },
       output: {
-        // ROOT_SCRIPTS keep their existing public urls. `/embed-resizer.js`
-        // appears in every embed snippet prove.ts and renderproof.ts have ever
-        // generated, pasted into pages we do not control; `/theme-init.js` is
-        // hard-coded in index.html's <head>. Both are served from the static/
-        // root by backend/server.py's `/{name}.js` route, so that is where they
-        // are emitted — moving them under dist/ would break embeds in the wild
-        // and the pre-paint tag respectively.
-        entryFileNames: (chunk) =>
-          ROOT_SCRIPTS.includes(chunk.name) ? '[name].js' : 'dist/[name].js',
+        entryFileNames: 'dist/[name].js',
         chunkFileNames: 'dist/[name].js',
         assetFileNames: 'dist/[name][extname]',
       },

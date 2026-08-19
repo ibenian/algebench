@@ -206,18 +206,19 @@ bundle-sync check that rebuilds and fails if the committed output differs.
 - **One deliberate JavaScript holdout:** `static/domains/` — user-authored
   lesson content loaded at runtime, not application code. It sits outside
   `tsconfig.json`'s `include`.
-- **`ROOT_SCRIPTS` build to the `static/` root, not `dist/`.** `embed-resizer`
-  and `theme-init` are import-free IIFEs loaded by a plain `<script>` tag, and
-  their public URLs are fixed by things outside this repo — `/embed-resizer.js`
-  is baked into every embed snippet ever generated, `/theme-init.js` is
-  hard-coded in `index.html`'s `<head>`. Being *classic scripts* says nothing
-  about their source: both are TypeScript, type-checked with everything else.
-  They also ship without sourcemaps, since the `/{name}.js` route cannot serve
-  a `.map`. See `ROOT_SCRIPTS` in `vite.config.mts`.
-- **Nothing may `import` a `SERVER_SERVED` path** (`/theme-init.js`,
-  `/domains/*`, `/gemini-live-tools/*`) — Vite marks them external and the test
-  resolver refuses them with a named error, even when the source exists under
-  `src/`.
+- **Classic scripts build to `dist/` like everything else.** `embed-resizer`
+  (runs on the third-party page embedding a proof) and `theme-init` (runs
+  pre-paint in `<head>`) are import-free IIFEs loaded by a plain `<script>`
+  tag rather than imported. Being a *classic script* is a property of the
+  output, not a reason to bypass the build: both are TypeScript, both are
+  ordinary Vite entries, and both are served from `/dist/` — which also means
+  they get `?v=<version>` cache-busting and working sourcemaps for free.
+- **Nothing may `import` a `SERVER_SERVED` path** (`/domains/*`,
+  `/gemini-live-tools/*`) — Vite marks them external and the test resolver
+  refuses them with a named error.
+- **Don't start a comment line with the `@ts-expect-error` token unless you
+  mean it.** TypeScript reads it as a real directive even mid-prose, so a
+  wrapped sentence *mentioning* it will silently suppress the next error.
 
 ### Two tsconfigs
 

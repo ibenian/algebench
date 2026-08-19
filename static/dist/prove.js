@@ -682,7 +682,7 @@ function buildEmbedUrl(id, theme) {
 }
 /** The copy-paste iframe snippet (+ optional auto-resize companion script). */
 function embedSnippet(url) {
-	return `<iframe src="${url}" width="100%" height="600" style="border:0;background:transparent" loading="lazy" title="AlgeBench proof animation" data-algebench-embed></iframe>\n<!-- optional: auto-fits the height to the proof; remove to keep a fixed height -->\n<script src="${new URL(url).origin}/embed-resizer.js" async><\/script>`;
+	return `<iframe src="${url}" width="100%" height="600" style="border:0;background:transparent" loading="lazy" title="AlgeBench proof animation" data-algebench-embed></iframe>\n<!-- optional: auto-fits the height to the proof; remove to keep a fixed height -->\n<script src="${new URL(url).origin}/dist/embed-resizer.js" async><\/script>`;
 }
 /** A throwaway in-browser mock host page, so the user can see the embed dropped
 *  into a real article. `url`/`theme` come from a validated id + allowlisted
