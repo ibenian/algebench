@@ -7,11 +7,13 @@
 // can't import it: module scripts are deferred, which defeats pre-paint.
 //
 // "Classic script" is a statement about the OUTPUT, not the source. This is a
-// Vite entry like any other (vite.config.mts) — it is TypeScript, type-checked
-// with the rest of the frontend, and emitted as a bare IIFE to
-// static/theme-init.js because it has no imports to bundle. `/theme-init.js`
-// stays on SERVER_SERVED: nothing may `import` it, since it has to run
-// standalone before paint.
+// Vite entry like any other (vite.config.mts) — TypeScript, type-checked with
+// the rest of the frontend, emitted as a bare IIFE (it has no imports to
+// bundle) to static/dist/theme-init.js and loaded from /dist/theme-init.js,
+// which also gets it ?v=<version> cache-busting from the appVersion plugin.
+//
+// It is NOT on SERVER_SERVED: that list is for paths the Python server owns
+// and Vite must leave alone, and this is an ordinary build artifact.
 (function () {
   var t: string | null = null, p: string | null = null;
   try {
