@@ -119,7 +119,7 @@ the `expression_analysis` expert parses.
 | `fullscreenTarget` | `fullscreenTarget=prove` | renderproof | Where the **full-screen button** opens (embedded only). `prove` → the editable `/prove?id=<first builtin>&theme=<theme>` page (the embed's theme is carried through); anything else → this standalone renderproof view. |
 
 When embedded in an iframe the page detects it (`window.self !== window.top`) and
-adapts (full-screen button, height auto-resize via `embed-resizer.js`). The
+adapts (full-screen button, height auto-resize via `/dist/embed-resizer.js`). The
 full-screen button's destination is chosen by the **host** page via `full=`
 (the button lives in the renderproof chrome, not the embedded proof widget).
 

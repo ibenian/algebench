@@ -35,9 +35,6 @@ const BACKEND = process.env.ALGEBENCH_BACKEND ?? 'http://localhost:8000';
  * faithful-port rule), map them here.
  *
  * EXCLUDED — these stay server-served and must not be bundled:
- *   /theme-init.js            classic non-module script: it must run BEFORE
- *                             the stylesheets so <html data-theme> is set by
- *                             first paint, which a deferred module cannot do
  *   /domains/*                injected as <script> at runtime from a URL
  *                             built out of lesson data (src/expr.js), so it
  *                             can never be statically resolved
@@ -46,8 +43,13 @@ const BACKEND = process.env.ALGEBENCH_BACKEND ?? 'http://localhost:8000';
  * /chat.js LEFT this list in phase 4e: chat is now src/chat.ts, loaded as
  * `<script type="module" src="/chat.js">` from index.html and folded into the
  * index bundle like every other module on that page.
+ *
+ * /theme-init.js LEFT it too: it is src/theme-init.ts, built to
+ * /dist/theme-init.js like every other entry. It is still a CLASSIC script —
+ * it must run before the stylesheets, which a deferred module cannot do — but
+ * that is a property of how the tag loads it, not a reason to bypass the build.
  */
-const SERVER_SERVED = ['/theme-init.js', '/domains/', '/gemini-live-tools/'];
+const SERVER_SERVED = ['/domains/', '/gemini-live-tools/'];
 
 function resolveRootAbsolute(): Plugin {
   return {
@@ -161,6 +163,17 @@ export default defineConfig(({ command }) => ({
         index: join(ROOT, 'index.html'),
         prove: join(ROOT, 'prove.html'),
         renderproof: join(ROOT, 'renderproof.html'),
+        // Standalone import-free scripts, loaded by a plain <script> tag
+        // rather than imported. They still build to dist/ like everything
+        // else — being a CLASSIC script is a property of the output, not a
+        // reason to live somewhere special.
+        //
+        // embed-resizer runs on the third-party host page embedding a proof;
+        // before it was an entry it had no build artifact at all, so every
+        // embedded iframe 404'd on it (issue #590). theme-init runs pre-paint
+        // in <head>, which is why it cannot be a module.
+        'embed-resizer': join(ROOT, 'src', 'embed-resizer.ts'),
+        'theme-init': join(ROOT, 'src', 'theme-init.ts'),
       },
       output: {
         entryFileNames: 'dist/[name].js',
@@ -176,7 +189,16 @@ export default defineConfig(({ command }) => ({
       '/proofs': BACKEND,
       '/scenes': BACKEND,
       '/domains': BACKEND,
-      '/theme-init.js': BACKEND,
+      // The committed build output. Vite does not serve it in dev — its
+      // publicDir is off and there is no root-level dist/ — and the two
+      // CLASSIC scripts (theme-init, embed-resizer) are plain <script src>
+      // urls rather than imports, so nothing in the module graph resolves
+      // them either. Without this they hit Vite's SPA fallback and come back
+      // as 200 text/html: the browser then parses index.html as JavaScript,
+      // the pre-paint theme stamp never runs, and dev gets the very flash it
+      // exists to prevent — silently, because it is not a 404.
+      // ('/theme-init.js' was proxied here until the script moved to /dist/.)
+      '/dist': BACKEND,
       '/gemini-live-tools': BACKEND,
       '/fonts': BACKEND,
       '/style.css': BACKEND,

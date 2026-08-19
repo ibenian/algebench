@@ -54,7 +54,7 @@ function buildEmbedUrl(builtins, theme) {
 	return u.toString();
 }
 function embedSnippet(url) {
-	return `<iframe src="${url}" width="100%" height="600" style="border:0;background:transparent" loading="lazy" title="AlgeBench proof animation" data-algebench-embed></iframe>\n<!-- optional: auto-fits the height to the proof; remove to keep a fixed height -->\n<script src="${new URL(url).origin}/embed-resizer.js" async><\/script>`;
+	return `<iframe src="${url}" width="100%" height="600" style="border:0;background:transparent" loading="lazy" title="AlgeBench proof animation" data-algebench-embed></iframe>\n<!-- optional: auto-fits the height to the proof; remove to keep a fixed height -->\n<script src="${new URL(url).origin}/dist/embed-resizer.js" async><\/script>`;
 }
 /** When embedded, report our content height to the host page so its resizer can
 *  size the iframe to fit (no top/bottom dead space; adapts as steps change height). */

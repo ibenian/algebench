@@ -203,9 +203,22 @@ bundle-sync check that rebuilds and fails if the committed output differs.
 - **Crash semantics are preserved deliberately.** Use `!` or an explicit cast,
   not `?.`, when a missing element should still throw as it did before; each `!`
   carries a comment naming the guard or invariant that justifies it.
-- **`static/domains/` stays JavaScript on purpose.** Those are user-authored
-  lesson content loaded at runtime, not application code, and they sit outside
+- **One deliberate JavaScript holdout:** `static/domains/` — user-authored
+  lesson content loaded at runtime, not application code. It sits outside
   `tsconfig.json`'s `include`.
+- **Classic scripts build to `dist/` like everything else.** `embed-resizer`
+  (runs on the third-party page embedding a proof) and `theme-init` (runs
+  pre-paint in `<head>`) are import-free IIFEs loaded by a plain `<script>`
+  tag rather than imported. Being a *classic script* is a property of the
+  output, not a reason to bypass the build: both are TypeScript, both are
+  ordinary Vite entries, and both are served from `/dist/` — which also means
+  they get `?v=<version>` cache-busting and working sourcemaps for free.
+- **Nothing may `import` a `SERVER_SERVED` path** (`/domains/*`,
+  `/gemini-live-tools/*`) — Vite marks them external and the test resolver
+  refuses them with a named error.
+- **Don't start a comment line with the `@ts-expect-error` token unless you
+  mean it.** TypeScript reads it as a real directive even mid-prose, so a
+  wrapped sentence *mentioning* it will silently suppress the next error.
 
 ### Two tsconfigs
 
