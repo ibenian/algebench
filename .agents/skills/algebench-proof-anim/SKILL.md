@@ -94,7 +94,7 @@ the app root `/` (the main 3D viewer), and confirm the page stayed on that URL
 before screenshotting.
 
 Report the share URL and the embed snippet (an `<iframe>` + the optional
-`embed-resizer.js` script). Use the deployed host in the snippet only once the
+`/dist/embed-resizer.js` script). Use the deployed host in the snippet only once the
 `/renderproof` feature is live there.
 
 ### 5. Confirm or iterate

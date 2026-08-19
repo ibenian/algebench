@@ -75,7 +75,8 @@ inside the embed lets a reader grab the script to re-share it. The snippet's `sr
 the staging host, production the production host — with the chosen `theme` baked in.
 
 The snippet is an `<iframe data-algebench-embed>` plus a companion
-`<script src="<origin>/embed-resizer.js" async>` (served by the `/{name}.js` allowlist). The
+`<script src="<origin>/dist/embed-resizer.js" async>` (a Vite entry, served from the
+`/dist` mount like every other build artifact). The
 embedded page posts its content height to the host; the resizer sizes the iframe to fit, so there
 is no top/bottom dead space and it adapts as the reader steps through the proof. When viewed inside
 an iframe the page also trims its chrome to the proof (no header; controls become small corner
