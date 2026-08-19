@@ -203,20 +203,21 @@ bundle-sync check that rebuilds and fails if the committed output differs.
 - **Crash semantics are preserved deliberately.** Use `!` or an explicit cast,
   not `?.`, when a missing element should still throw as it did before; each `!`
   carries a comment naming the guard or invariant that justifies it.
-- **Two deliberate JavaScript holdouts**, both outside `tsconfig.json`'s
-  `include`, both permanent rather than unfinished migration:
-  - `static/domains/` — user-authored lesson content loaded at runtime, not
-    application code.
-  - `static/theme-init.js` — the pre-paint theme stamp. It **cannot** be a
-    module: module scripts are deferred, which defeats running before first
-    paint, so it stays a classic synchronous `<script>` in `<head>`. It
-    deliberately duplicates `theme.ts#initialTheme` for that reason.
-- **`src/embed-resizer.ts` is a third-party script, not an app page.** It runs
-  on the *host* page embedding a proof, is loaded there by a plain
-  `<script src async>`, and so builds to `static/embed-resizer.js` rather than
-  into `dist/` — `/embed-resizer.js` is a published URL baked into every embed
-  snippet ever generated. See the `entryFileNames` override in
-  `vite.config.mts`.
+- **One deliberate JavaScript holdout:** `static/domains/` — user-authored
+  lesson content loaded at runtime, not application code. It sits outside
+  `tsconfig.json`'s `include`.
+- **`ROOT_SCRIPTS` build to the `static/` root, not `dist/`.** `embed-resizer`
+  and `theme-init` are import-free IIFEs loaded by a plain `<script>` tag, and
+  their public URLs are fixed by things outside this repo — `/embed-resizer.js`
+  is baked into every embed snippet ever generated, `/theme-init.js` is
+  hard-coded in `index.html`'s `<head>`. Being *classic scripts* says nothing
+  about their source: both are TypeScript, type-checked with everything else.
+  They also ship without sourcemaps, since the `/{name}.js` route cannot serve
+  a `.map`. See `ROOT_SCRIPTS` in `vite.config.mts`.
+- **Nothing may `import` a `SERVER_SERVED` path** (`/theme-init.js`,
+  `/domains/*`, `/gemini-live-tools/*`) — Vite marks them external and the test
+  resolver refuses them with a named error, even when the source exists under
+  `src/`.
 
 ### Two tsconfigs
 

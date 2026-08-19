@@ -254,10 +254,8 @@ latter is build output and is overwritten. TypeScript is a build- and
 dev-time dependency only: the committed bundle is what the Python server
 serves, so running AlgeBench needs no Node toolchain at all.
 
-Two things stay JavaScript on purpose: `static/domains/` (lesson content —
-user-authored domain libraries loaded at runtime, not application code) and
-`static/theme-init.js` (the pre-paint theme stamp, which cannot be a module
-because module scripts are deferred and would flash the wrong theme).
+`static/domains/` stays JavaScript on purpose — those are lesson content
+(user-authored domain libraries loaded at runtime), not application code.
 
 ---
 
