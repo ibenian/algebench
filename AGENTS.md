@@ -203,9 +203,20 @@ bundle-sync check that rebuilds and fails if the committed output differs.
 - **Crash semantics are preserved deliberately.** Use `!` or an explicit cast,
   not `?.`, when a missing element should still throw as it did before; each `!`
   carries a comment naming the guard or invariant that justifies it.
-- **`static/domains/` stays JavaScript on purpose.** Those are user-authored
-  lesson content loaded at runtime, not application code, and they sit outside
-  `tsconfig.json`'s `include`.
+- **Two deliberate JavaScript holdouts**, both outside `tsconfig.json`'s
+  `include`, both permanent rather than unfinished migration:
+  - `static/domains/` — user-authored lesson content loaded at runtime, not
+    application code.
+  - `static/theme-init.js` — the pre-paint theme stamp. It **cannot** be a
+    module: module scripts are deferred, which defeats running before first
+    paint, so it stays a classic synchronous `<script>` in `<head>`. It
+    deliberately duplicates `theme.ts#initialTheme` for that reason.
+- **`src/embed-resizer.ts` is a third-party script, not an app page.** It runs
+  on the *host* page embedding a proof, is loaded there by a plain
+  `<script src async>`, and so builds to `static/embed-resizer.js` rather than
+  into `dist/` — `/embed-resizer.js` is a published URL baked into every embed
+  snippet ever generated. See the `entryFileNames` override in
+  `vite.config.mts`.
 
 ### Two tsconfigs
 

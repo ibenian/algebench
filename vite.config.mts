@@ -161,9 +161,20 @@ export default defineConfig(({ command }) => ({
         index: join(ROOT, 'index.html'),
         prove: join(ROOT, 'prove.html'),
         renderproof: join(ROOT, 'renderproof.html'),
+        // Not an app page: a standalone script that runs on the THIRD-PARTY
+        // host page embedding a proof (see src/embed-resizer.ts). It needs a
+        // build artifact of its own — before this it had none, so every
+        // embedded iframe 404'd on it (issue #590).
+        'embed-resizer': join(ROOT, 'src', 'embed-resizer.ts'),
       },
       output: {
-        entryFileNames: 'dist/[name].js',
+        // `/embed-resizer.js` is a PUBLISHED url — it appears in every embed
+        // snippet prove.ts and renderproof.ts have ever generated, pasted into
+        // pages we do not control. So it is emitted at the static/ root, where
+        // backend/server.py's `/{name}.js` route serves it, rather than under
+        // dist/ with everything else. Moving it would break embeds in the wild.
+        entryFileNames: (chunk) =>
+          chunk.name === 'embed-resizer' ? '[name].js' : 'dist/[name].js',
         chunkFileNames: 'dist/[name].js',
         assetFileNames: 'dist/[name][extname]',
       },
