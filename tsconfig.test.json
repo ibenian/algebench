@@ -1,0 +1,27 @@
+{
+  // The TEST program. Separate from tsconfig.json because the suite runs in
+  // Node and the app runs in a browser, and those need different global
+  // environments — `types: ["node"]` here would otherwise put `process`,
+  // `Buffer` and friends in scope for application modules that must never
+  // touch them.
+  //
+  // It is a genuine split, not tidiness: adding "node" to the single shared
+  // config was measured and it redefined setTimeout's return type project-wide
+  // (Node's `Timeout` vs the browser's `number`), breaking 12 correct call
+  // sites across 4 application modules. Those now annotate timer handles as
+  // `ReturnType<typeof setTimeout>`, which is right under both libs — the
+  // idiom src/graph-panel/d3-semantic-graph.ts already used.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // node: for `node:test` and `node:assert/strict`.
+    "types": ["node"]
+  },
+  // `exclude` is inherited through `extends`, and the base excludes exactly
+  // these files — so it must be cleared here or this program has no inputs.
+  "exclude": [],
+  // The ambient declarations (globals.d.ts, mathbox.d.ts, chartjs.d.ts,
+  // types/*.d.ts) must be named explicitly: nothing imports them, so an
+  // include of only the test files leaves them out of the program and every
+  // global they declare goes missing.
+  "include": ["src/**/*.test.ts", "src/**/*.d.ts"]
+}

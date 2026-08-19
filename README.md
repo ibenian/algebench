@@ -223,26 +223,39 @@ See [docs/feature-ideas.md](docs/feature-ideas.md) for technical directions and 
 ```
 algebench/
 ├── algebench          Launcher (run this)
-├── server.py          Python server
+├── backend/
+│   └── server.py      Python server
 ├── scenes/            Lesson JSON files (contribute here!)
 │   └── ...
+├── src/               Frontend SOURCE — TypeScript, handwritten
+│   ├── main.ts        Entry point — wires all modules, exposes globals
+│   ├── state.ts       Shared mutable state
+│   ├── scene-loader.ts  Scene/lesson loading, step navigation & undo
+│   ├── chat.ts        AI chat panel, TTS, voice picker
+│   ├── proof.ts       Step-by-step proof panel with LaTeX rendering
+│   ├── graph-view.ts  Semantic graph tab (D3 expression flowcharts)
+│   ├── graph-panel/   Graph renderers, themes, and layout engines
+│   ├── proof-animation/  Realtime, Manim-style derivation morph engine (FLIP)
+│   ├── objects/       Element renderers
+│   │   ├── point.ts, vector.ts, polygon.ts, sphere.ts, …
+│   ├── types/         GENERATED from schemas/ — never hand-edit
+│   └── *.test.ts      Node test suite
 └── static/
-    ├── main.js        Entry point — wires all modules, exposes globals
-    ├── state.js       Shared mutable state
-    ├── scene-loader.js  Scene/lesson loading, step navigation & undo
-    ├── chat.js        AI chat panel, TTS, voice picker
-    ├── proof.js       Step-by-step proof panel with LaTeX rendering
-    ├── graph-view.js  Semantic graph tab (D3 expression flowcharts)
-    ├── graph-panel/   Graph renderers, themes, and layout engines
-    ├── proof-animation/  Realtime, Manim-style derivation morph engine (FLIP)
-    ├── objects/       Element renderers
-    │   ├── point.js, vector.js, polygon.js, sphere.js, …
-    ├── domains/       Domain library plugins
+    ├── dist/          BUILD OUTPUT — generated from src/, committed
+    ├── domains/       Domain library plugins (still JavaScript, by design)
     │   ├── astrodynamics/
     │   └── ...
     ├── index.html
     └── ...
 ```
+
+**The frontend is TypeScript.** Edit `src/`, never `static/dist/` — the
+latter is build output and is overwritten. TypeScript is a build- and
+dev-time dependency only: the committed bundle is what the Python server
+serves, so running AlgeBench needs no Node toolchain at all.
+
+`static/domains/` stays JavaScript on purpose — those are lesson content
+(user-authored domain libraries loaded at runtime), not application code.
 
 ---
 

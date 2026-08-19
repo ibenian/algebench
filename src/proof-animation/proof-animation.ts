@@ -341,14 +341,14 @@ export class ProofAnimator {
   _askSel: AskSelection[];
   _termAskBtnEl: HTMLButtonElement | null;
   _askBtnFocus: AskFocus | null;
-  _askBtnHideTimer: number | null;
-  _askBtnFadeTimer: number | null;
-  _askBtnRelocateTimer: number | null;
+  _askBtnHideTimer: ReturnType<typeof setTimeout> | null;
+  _askBtnFadeTimer: ReturnType<typeof setTimeout> | null;
+  _askBtnRelocateTimer: ReturnType<typeof setTimeout> | null;
   _askBtnRelocateEl: HTMLElement | null;
   _stepAskBtnEl: HTMLButtonElement | null;
   _stepAskIdx: number | null;
-  _stepAskHideTimer: number | null;
-  _stepAskFadeTimer: number | null;
+  _stepAskHideTimer: ReturnType<typeof setTimeout> | null;
+  _stepAskFadeTimer: ReturnType<typeof setTimeout> | null;
   _deriveBtnFactory: DeriveButtonFactory | null;
   _onDerive: ((payload: DerivePayload, anchorEl: HTMLElement | null) => void) | null;
   _onFunctionAnalysis: ((payload: { latex: string; step: number }) => void) | null;
@@ -1818,7 +1818,7 @@ export class ProofAnimator {
     this._explorePinned = false;
     // `undefined` rather than `null` only because clearTimeout's signature takes
     // `number | undefined`; both are equally a no-op there.
-    let hideT: number | undefined;
+    let hideT: ReturnType<typeof setTimeout> | undefined;
     const show = () => { clearTimeout(hideT); pop.style.display = "flex"; this._positionExplorePop(); };
     const hide = () => { pop.style.display = "none"; };
     const scheduleHide = () => { if (this._explorePinned) return; clearTimeout(hideT); hideT = setTimeout(hide, 140); };

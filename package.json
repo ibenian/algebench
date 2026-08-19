@@ -4,10 +4,10 @@
   "type": "module",
   "description": "Tooling/test harness for AlgeBench static ES modules (no build step).",
   "scripts": {
-    "test": "node --experimental-strip-types --import ./scripts/register-test-resolver.mjs --test src/*.test.js",
+    "test": "node --experimental-strip-types --import ./scripts/register-test-resolver.mjs --test src/*.test.ts",
     "types:generate": "node scripts/generate_ts_types.mjs",
     "types:check": "node scripts/generate_ts_types.mjs --check",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
     "dev": "vite",
     "build": "tsc --noEmit && vite build"
   },
@@ -15,6 +15,7 @@
     "@dagrejs/dagre": "1.1.4",
     "@types/d3": "7.4.3",
     "@types/katex": "0.16.8",
+    "@types/node": "^22.20.1",
     "@types/three": "0.137.0",
     "json-schema-to-typescript": "^15.0.4",
     "marked": "12.0.0",

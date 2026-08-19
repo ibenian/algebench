@@ -10,11 +10,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
+// Stands in for `document`: only the three members /labels.js touches while
+// evaluating its module body are provided, so the whole stub is cast once here
+// rather than pretending it is a real Document.
 globalThis.document = {
   createElement: () => ({ style: {}, classList: { add() {}, remove() {} }, appendChild() {} }),
   head: { appendChild() {} },
   body: { appendChild() {}, removeChild() {} },
-};
+} as unknown as Document;
 
 const { operatorKind, nodeShortLabel, nodeLongLabel } =
   await import('/graph-panel/d3-semantic-graph.js');

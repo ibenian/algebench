@@ -9,16 +9,26 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as mathjs from 'mathjs';
+import type { SceneSlider } from '/sliders.js';
 
-globalThis.math = mathjs;
+// `math` is declared as a CDN `const` global (src/globals.d.ts), which types
+// readers but not writers — so installing the stub casts globalThis once here.
+(globalThis as unknown as { math: typeof mathjs }).math = mathjs;
 
 const { state } = await import('/state.js');
 const { _sliderValueNum, getSliderIds } = await import('/sliders.js');
 
-/** Replace the shared slider registry with `entries` for one test. */
-function withSliders(entries, fn) {
+/**
+ * Replace the shared slider registry with `entries` for one test.
+ *
+ * The fixtures below stand in for SceneSlider but are deliberately partial and
+ * sometimes ill-typed (a string, null or non-finite `value`) — coercing those
+ * is exactly what _sliderValueNum() is being tested on. The single cast here
+ * keeps that boundary in one place instead of at every call site.
+ */
+function withSliders(entries: Record<string, unknown>, fn: () => void): void {
   const saved = state.sceneSliders;
-  state.sceneSliders = entries;
+  state.sceneSliders = entries as Record<string, SceneSlider>;
   try { fn(); } finally { state.sceneSliders = saved; }
 }
 

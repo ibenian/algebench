@@ -10,21 +10,52 @@ import assert from 'node:assert/strict';
 
 import { DERIVE_TIMEOUT_MS, ExpertError, invokeExpert } from './expert-client.js';
 
+/**
+ * The request init invokeExpert builds. Narrower than RequestInit — it is the
+ * literal that module writes, so the assertions below can read
+ * `headers['content-type']` and `signal` without re-narrowing every time.
+ */
+interface ExpertRequestInit {
+    method: string;
+    headers: Record<string, string>;
+    body: string;
+    signal: AbortSignal | undefined;
+}
+
+/** One recorded fetch call: the arguments the stub was handed. */
+interface StubCall {
+    url: string;
+    opts: ExpertRequestInit;
+}
+
+interface StubFetchOptions {
+    status?: number;
+    body?: unknown;
+    headers?: Record<string, string>;
+    json?: boolean;
+}
+
 /** A fetch stub returning one canned response; records the call it saw. */
-function stubFetch({ status = 200, body = {}, headers = {}, json = true } = {}) {
-    const calls = [];
-    globalThis.fetch = async (url, opts) => {
+function stubFetch(
+    { status = 200, body = {}, headers = {}, json = true }: StubFetchOptions = {},
+): StubCall[] {
+    const calls: StubCall[] = [];
+    // The stub answers only the Response members expert-client reads (ok,
+    // status, headers.get, json), and is handed only the arguments that module
+    // passes — so it stands in for the real fetch through one cast here rather
+    // than implementing Response and the full fetch overload set.
+    globalThis.fetch = (async (url: string, opts: ExpertRequestInit) => {
         calls.push({ url, opts });
         return {
             ok: status >= 200 && status < 300,
             status,
-            headers: { get: (k) => headers[k] ?? null },
+            headers: { get: (k: string) => headers[k] ?? null },
             json: async () => {
                 if (!json) throw new SyntaxError('not JSON');
                 return body;
             },
         };
-    };
+    }) as unknown as typeof fetch;
     return calls;
 }
 
@@ -33,18 +64,21 @@ test('posts JSON to the named expert and returns the parsed body', async () => {
     const out = await invokeExpert('proof_animation', { a: 1 });
     assert.deepEqual(out, { ok: 1 });
     assert.equal(calls.length, 1);
-    assert.equal(calls[0].url, '/api/expert/proof_animation');
-    assert.equal(calls[0].opts.method, 'POST');
-    assert.equal(calls[0].opts.headers['content-type'], 'application/json');
-    assert.equal(calls[0].opts.body, '{"a":1}');
-    assert.equal(calls[0].opts.signal, undefined);   // no timeout → no abort signal
+    // `calls[0]!` throughout: the await above has already returned, so the
+    // stub was called and the length assertion right here proves it.
+    assert.equal(calls[0]!.url, '/api/expert/proof_animation');
+    assert.equal(calls[0]!.opts.method, 'POST');
+    assert.equal(calls[0]!.opts.headers['content-type'], 'application/json');
+    assert.equal(calls[0]!.opts.body, '{"a":1}');
+    assert.equal(calls[0]!.opts.signal, undefined);   // no timeout → no abort signal
 });
 
 test('the expert name is URL-encoded, and a missing body posts {}', async () => {
     const calls = stubFetch();
     await invokeExpert('a/b c', null);
-    assert.equal(calls[0].url, `/api/expert/${encodeURIComponent('a/b c')}`);
-    assert.equal(calls[0].opts.body, '{}');
+    // `!`: the awaited call went through the stub, so calls[0] exists.
+    assert.equal(calls[0]!.url, `/api/expert/${encodeURIComponent('a/b c')}`);
+    assert.equal(calls[0]!.opts.body, '{}');
 });
 
 test('a non-JSON success body is tolerated, not thrown', async () => {
@@ -107,9 +141,12 @@ test('an unreachable server is reported as such, with status 0', async () => {
 });
 
 test('the client timeout aborts and is distinguishable from a network failure', async () => {
-    globalThis.fetch = (_url, opts) => new Promise((_resolve, reject) => {
-        opts.signal.addEventListener('abort', () => reject(new Error('aborted')));
-    });
+    // Same stand-in as stubFetch, minus the response: this one never settles
+    // until the abort fires. `signal!` — timeoutMs is set below, so
+    // invokeExpert always builds an AbortController for this call.
+    globalThis.fetch = ((_url: string, opts: ExpertRequestInit) => new Promise((_resolve, reject) => {
+        opts.signal!.addEventListener('abort', () => reject(new Error('aborted')));
+    })) as unknown as typeof fetch;
     const err = await invokeExpert('x', {}, { timeoutMs: 5 }).then(() => null, (e) => e);
     assert.ok(err instanceof ExpertError);
     assert.equal(err.timedOut, true);

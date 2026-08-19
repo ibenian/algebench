@@ -11,9 +11,12 @@ import {
     fmtNum,
     viewStatesEqual,
 } from './view-state.js';
+import type { ViewState } from './view-state.js';
 
 test('round-trips a full ViewState', () => {
-    const vs = {
+    // Annotated so the camera literals land as the [x, y, z] tuples
+    // ViewStateCamera declares, rather than widening to number[].
+    const vs: ViewState = {
         builtin: 'conditional-probability',
         sc: 'bayes-theorem',
         st: 'derive-numerator',
@@ -91,7 +94,7 @@ test('sliders pack/unpack with separators that stay readable', () => {
 });
 
 test('camera-view preset (cv) round-trips alongside cam', () => {
-    const vs = { cv: 'iso', cam: { position: [1, 2, 3], target: [0, 0, 0] } };
+    const vs: ViewState = { cv: 'iso', cam: { position: [1, 2, 3], target: [0, 0, 0] } };
     const round = parseViewState(serializeViewState(vs));
     assert.deepEqual(round, vs);
     assert.ok(serializeViewState({ cv: 'top' }).includes('cv=top'));
@@ -172,7 +175,8 @@ test('viewStatesEqual compares by serialization', () => {
 test('aa (auto-ask) is captured on parse and capped, never serialized', () => {
     assert.equal(parseViewState('aa=explain%20this').aa, 'explain this');
     // capped to 2000 chars
-    assert.equal(parseViewState('aa=' + 'x'.repeat(2500)).aa.length, 2000);
+    // `!`: the query sets aa, so the parse always yields one.
+    assert.equal(parseViewState('aa=' + 'x'.repeat(2500)).aa!.length, 2000);
     // load-once: not emitted back out
     assert.equal(serializeViewState({ aa: 'explain this', sc: 's1' }), 'sc=s1');
 });
@@ -201,7 +205,8 @@ test('fa (function-analysis artifact id) round-trips', () => {
     assert.equal(parseViewState('fa=fa-7c1e').fa, 'fa-7c1e');
     assert.equal(serializeViewState({ fa: 'fa-7c1e', sc: 's1' }), 'sc=s1&fa=fa-7c1e');
     // Capped so a hand-built link can't push an unbounded id.
-    assert.equal(parseViewState(`fa=${'x'.repeat(500)}`).fa.length, 200);
+    // `!`: the query sets fa, so the parse always yields one.
+    assert.equal(parseViewState(`fa=${'x'.repeat(500)}`).fa!.length, 200);
     assert.equal(parseViewState('').fa, undefined);
 });
 
@@ -209,7 +214,8 @@ test('fax (function-analysis expression) parses, never serialized', () => {
     // LaTeX survives round-tripping through the query string intact.
     const q = new URLSearchParams({ fax: 'v_0 t - \\frac{1}{2} g t^2' }).toString();
     assert.equal(parseViewState(q).fax, 'v_0 t - \\frac{1}{2} g t^2');
-    assert.equal(parseViewState(`fax=${'x'.repeat(2000)}`).fax.length, 1000);
+    // `!`: the query sets fax, so the parse always yields one.
+    assert.equal(parseViewState(`fax=${'x'.repeat(2000)}`).fax!.length, 1000);
     // Create-once directive: the resulting artifact's `fa` id is what persists.
     assert.equal(serializeViewState({ fax: 'x^2', sc: 's1' }), 'sc=s1');
 });

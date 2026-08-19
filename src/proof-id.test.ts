@@ -88,7 +88,7 @@ test('proofBytes measures UTF-8, not code units', () => {
 });
 
 test('proofBytes survives an unserializable proof', () => {
-    const circular = {};
+    const circular: { self?: unknown } = {};
     circular.self = circular;
     assert.equal(proofBytes(circular), 0);
 });
