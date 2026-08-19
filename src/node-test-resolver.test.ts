@@ -12,11 +12,18 @@ test('server-served paths are refused with a named error', async () => {
     // /theme-init.js is a classic pre-paint script the Python server owns.
     // (/chat.js used to be the example here; phase 4e made it src/chat.ts.)
     //
-    // Its absence under src/ is the assertion, so tsc is right that the module
-    // cannot be resolved — @ts-expect-error (not @ts-ignore) records that on
-    // purpose: if a src/theme-init.ts ever appears, this line starts failing
-    // the build and whoever added it has to revisit the test.
-    // @ts-expect-error TS2307: /theme-init.js deliberately does not exist here.
+    // src/theme-init.ts NOW EXISTS — it was converted, and this directive's
+    // tripwire duly fired. What it proves got stronger rather than weaker:
+    // the refusal is driven by the SERVER_SERVED list, not by the file being
+    // missing from disk, which is what the hook actually promises.
+    //
+    // The suppressed error moved with it: TS2307 "cannot find module" became
+    // TS2306 "not a module", because theme-init is an import-free IIFE with no
+    // exports. Type error and runtime refusal now say the same thing — this is
+    // not an importable module — so @ts-expect-error (not @ts-ignore) still
+    // earns its place: it fails the build again if theme-init ever grows an
+    // export, which would mean someone had made it importable after all.
+    // @ts-expect-error TS2306: theme-init is a classic script, not a module.
     () => import('/theme-init.js'),
     (err) => {
       // node types a rejection reason as `unknown`; the hook always rejects

@@ -27,8 +27,12 @@ const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const SRC = join(ROOT, 'src');
 
 // Kept identical to SERVER_SERVED in vite.config.mts. These are never bundled
-// and never resolvable from disk under src/ as a module the tests can import:
-//   /theme-init.js            classic non-module script (must run pre-paint)
+// and never importable as a module by the tests:
+//   /theme-init.js            classic non-module script (must run pre-paint).
+//                             src/theme-init.ts DOES exist — it is a Vite entry
+//                             emitted to static/theme-init.js — but it is an
+//                             import-free IIFE, so importing it is still wrong
+//                             and is still refused here.
 //   /domains/*                injected as <script> at runtime from a URL
 //                             built out of lesson data
 //   /gemini-live-tools/*      served from the installed Python package

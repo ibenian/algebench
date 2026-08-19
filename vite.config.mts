@@ -37,7 +37,11 @@ const BACKEND = process.env.ALGEBENCH_BACKEND ?? 'http://localhost:8000';
  * EXCLUDED — these stay server-served and must not be bundled:
  *   /theme-init.js            classic non-module script: it must run BEFORE
  *                             the stylesheets so <html data-theme> is set by
- *                             first paint, which a deferred module cannot do
+ *                             first paint, which a deferred module cannot do.
+ *                             It IS built from src/theme-init.ts (a ROOT_SCRIPTS
+ *                             entry below) — "classic script" describes the
+ *                             output, not the source — but it stays on this
+ *                             list because nothing may `import` it.
  *   /domains/*                injected as <script> at runtime from a URL
  *                             built out of lesson data (src/expr.js), so it
  *                             can never be statically resolved
@@ -48,6 +52,50 @@ const BACKEND = process.env.ALGEBENCH_BACKEND ?? 'http://localhost:8000';
  * index bundle like every other module on that page.
  */
 const SERVER_SERVED = ['/theme-init.js', '/domains/', '/gemini-live-tools/'];
+
+/**
+ * Entries emitted to the static/ ROOT rather than dist/, because their public
+ * urls are fixed by things outside this repo: `/embed-resizer.js` is baked into
+ * every embed snippet ever generated (pasted into pages we do not control), and
+ * `/theme-init.js` is hard-coded in index.html's <head>.
+ *
+ * Both are import-free IIFEs loaded by a plain <script> tag. Being classic
+ * scripts says nothing about their SOURCE — both are TypeScript, type-checked
+ * with the rest of the frontend.
+ */
+const ROOT_SCRIPTS = ['embed-resizer', 'theme-init'];
+
+/**
+ * Drop the sourcemap for ROOT_SCRIPTS — the file and the `//# sourceMappingURL`
+ * comment both.
+ *
+ * backend/server.py's `/{name}.js` route matches `[A-Za-z0-9_-]+` and appends
+ * `.js`, so it cannot serve a `.map` at all; leaving the comment in makes
+ * devtools request one and get a 404 every time (Copilot review, #603).
+ *
+ * Suppressing rather than routing around it is the right trade here on its own
+ * terms: these files are a few hundred bytes, unminified, and their emitted
+ * output already reads as the source, so a sourcemap buys nothing — and
+ * embed-resizer ships to third-party pages, where handing out a sourcemap is
+ * actively undesirable. Everything under dist/ keeps its maps as before.
+ */
+function stripRootScriptSourcemaps(): Plugin {
+  return {
+    name: 'algebench:strip-root-script-sourcemaps',
+    generateBundle(_options, bundle) {
+      for (const [fileName, chunk] of Object.entries(bundle)) {
+        if (chunk.type === 'chunk' && ROOT_SCRIPTS.includes(chunk.name)) {
+          chunk.code = chunk.code.replace(/\n?\/\/# sourceMappingURL=.*\n?$/, '\n');
+          chunk.map = null;
+        }
+        if (chunk.type === 'asset'
+            && ROOT_SCRIPTS.some((n) => fileName === `${n}.js.map`)) {
+          delete bundle[fileName];
+        }
+      }
+    },
+  };
+}
 
 function resolveRootAbsolute(): Plugin {
   return {
@@ -141,7 +189,7 @@ export default defineConfig(({ command }) => ({
   // No Vite public dir — static/ is hand-authored plus build output, and is
   // served by FastAPI, not copied by Vite.
   publicDir: false,
-  plugins: [resolveRootAbsolute(), appVersion()],
+  plugins: [resolveRootAbsolute(), appVersion(), stripRootScriptSourcemaps()],
   build: {
     outDir: 'static',
     // static/ also holds hand-authored files (style.css, domains/, fonts/) —
@@ -161,20 +209,26 @@ export default defineConfig(({ command }) => ({
         index: join(ROOT, 'index.html'),
         prove: join(ROOT, 'prove.html'),
         renderproof: join(ROOT, 'renderproof.html'),
-        // Not an app page: a standalone script that runs on the THIRD-PARTY
-        // host page embedding a proof (see src/embed-resizer.ts). It needs a
-        // build artifact of its own — before this it had none, so every
-        // embedded iframe 404'd on it (issue #590).
+        // ROOT_SCRIPTS — not app pages. Standalone import-free scripts loaded
+        // by a plain <script> tag, so they emit to the static/ root rather than
+        // dist/ (see entryFileNames + stripRootScriptSourcemaps below).
+        //
+        // embed-resizer runs on the THIRD-PARTY host page embedding a proof;
+        // before this it had no build artifact at all, so every embedded iframe
+        // 404'd on it (issue #590). theme-init runs pre-paint in <head>.
         'embed-resizer': join(ROOT, 'src', 'embed-resizer.ts'),
+        'theme-init': join(ROOT, 'src', 'theme-init.ts'),
       },
       output: {
-        // `/embed-resizer.js` is a PUBLISHED url — it appears in every embed
-        // snippet prove.ts and renderproof.ts have ever generated, pasted into
-        // pages we do not control. So it is emitted at the static/ root, where
-        // backend/server.py's `/{name}.js` route serves it, rather than under
-        // dist/ with everything else. Moving it would break embeds in the wild.
+        // ROOT_SCRIPTS keep their existing public urls. `/embed-resizer.js`
+        // appears in every embed snippet prove.ts and renderproof.ts have ever
+        // generated, pasted into pages we do not control; `/theme-init.js` is
+        // hard-coded in index.html's <head>. Both are served from the static/
+        // root by backend/server.py's `/{name}.js` route, so that is where they
+        // are emitted — moving them under dist/ would break embeds in the wild
+        // and the pre-paint tag respectively.
         entryFileNames: (chunk) =>
-          chunk.name === 'embed-resizer' ? '[name].js' : 'dist/[name].js',
+          ROOT_SCRIPTS.includes(chunk.name) ? '[name].js' : 'dist/[name].js',
         chunkFileNames: 'dist/[name].js',
         assetFileNames: 'dist/[name][extname]',
       },

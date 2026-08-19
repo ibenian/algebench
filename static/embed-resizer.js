@@ -23,4 +23,3 @@
 })();
 //#endregion
 
-//# sourceMappingURL=embed-resizer.js.map
