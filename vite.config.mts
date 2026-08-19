@@ -189,7 +189,16 @@ export default defineConfig(({ command }) => ({
       '/proofs': BACKEND,
       '/scenes': BACKEND,
       '/domains': BACKEND,
-      '/theme-init.js': BACKEND,
+      // The committed build output. Vite does not serve it in dev — its
+      // publicDir is off and there is no root-level dist/ — and the two
+      // CLASSIC scripts (theme-init, embed-resizer) are plain <script src>
+      // urls rather than imports, so nothing in the module graph resolves
+      // them either. Without this they hit Vite's SPA fallback and come back
+      // as 200 text/html: the browser then parses index.html as JavaScript,
+      // the pre-paint theme stamp never runs, and dev gets the very flash it
+      // exists to prevent — silently, because it is not a 404.
+      // ('/theme-init.js' was proxied here until the script moved to /dist/.)
+      '/dist': BACKEND,
       '/gemini-live-tools': BACKEND,
       '/fonts': BACKEND,
       '/style.css': BACKEND,
