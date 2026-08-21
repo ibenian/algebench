@@ -34,8 +34,12 @@ case "${1:-}" in
                 APP_LOG="/tmp/algebench-$APP_PORT.log"
                 echo "▶ Starting AlgeBench app → http://localhost:$APP_PORT  (logs: $APP_LOG)"
                 "$DIR/algebench" --server-only --skip-tour --port "$APP_PORT" >"$APP_LOG" 2>&1 &
+                APP_PID=$!
                 # Only stop the app WE started; a pre-existing one is untouched.
-                trap 'kill $! 2>/dev/null || true' EXIT INT TERM
+                # $APP_PID is captured here rather than using $! inside the trap:
+                # single quotes defer expansion to when the trap FIRES, by which
+                # point $! is whatever background job started most recently.
+                trap 'kill "$APP_PID" 2>/dev/null || true' EXIT INT TERM
                 printf "  waiting for app to be ready"
                 for _ in $(seq 1 40); do
                     curl -s -o /dev/null "http://localhost:$APP_PORT/" 2>/dev/null && break
@@ -71,11 +75,6 @@ if [ $# -eq 0 ]; then
     exit 0
 fi
 
-# Create venv if missing. Prefer `uv` so the venv is built on a native CPython
-# (arm64 on Apple Silicon), pinned by .python-version. Bare `python3 -m venv`
-# resolves to whatever python3 is first on PATH — on Apple Silicon that's often
-# the x86 Homebrew build, which runs everything under Rosetta and roughly halves
-# sympy throughput (issue #388). Fall back to python3 if uv is unavailable.
 # .venv is built by scripts/setup-venv.sh, not here. This script only runs
 # project Python through it. Dependency locking and upgrading are plain uv
 # commands — see AGENTS.md.
