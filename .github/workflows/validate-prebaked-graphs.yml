@@ -36,7 +36,9 @@ jobs:
           python-version: '3.12'
 
       - name: Set up venv (installs backend deps once)
-        run: ./run.sh -c "import backend.server; print('venv ready')"
+        run: |
+          ./scripts/setup-venv.sh
+          ./run.sh -c "import backend.server; print('venv ready')"
 
       - name: Resolve baked scenes to check
         id: scenes

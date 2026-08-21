@@ -45,7 +45,9 @@ jobs:
           python-version: '3.13'
 
       - name: Install dependencies
-        run: ./run.sh -m pip install pytest -q
+        run: |
+          ./scripts/setup-venv.sh
+          ./run.sh -m pip install pytest -q
 
       - name: Determine destination directory
         id: dest

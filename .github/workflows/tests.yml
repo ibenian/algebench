@@ -50,6 +50,9 @@ jobs:
         with:
           python-version: '3.13'
 
+      - name: Set up .venv
+        run: ./scripts/setup-venv.sh
+
       - name: Install test runner
         run: |
           ./run.sh -m pip install pytest -q
