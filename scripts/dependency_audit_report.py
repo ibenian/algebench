@@ -27,11 +27,41 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
-# No patched release exists in ANY version of diskcache (pickle is its default
-# serializer by design, and the project's last release predates the advisory by
-# years). Accepted risk, documented in AGENTS.md. Without this the gate could
-# never pass.
-IGNORED = {"PYSEC-2026-2447": "diskcache — no patched release exists in any version"}
+# Advisories excluded from failing the build. Keyed by advisory ID, never by
+# package — a different advisory against the same package still fails normally.
+#
+# An entry must justify itself: why no upgrade is possible, what is actually
+# mitigating it today, and what is still outstanding. "No fix exists" alone is
+# indistinguishable from giving up, and an entry nobody can audit is worse than
+# a red build. Delete an entry the moment its premise changes.
+IGNORED = {
+    "PYSEC-2026-2447": {
+        "package": "diskcache (via dspy)",
+        "why": (
+            "Unfixable rather than unfixed. `diskcache` uses `pickle` as its default "
+            "serializer by design, across all 76 releases (0.1.0–5.6.3). Its last "
+            "release was 2023-08-31, years before the advisory was published in "
+            "Feb 2026, and the project is effectively unmaintained — there is no "
+            "version to upgrade to, and none is coming."
+        ),
+        "mitigations": [
+            "LM response caching is **off by default** (`ALGEBENCH_LM_CACHE`), so the "
+            "pickle store is not written at all during normal local use.",
+            "Exploitation requires **write access to the cache directory** (CVSS "
+            "`AV:L/PR:L`). Anything holding that on a single-user machine can already "
+            "execute as that user and has no need of a pickle.",
+            "Deploys are isolated, single-tenant, ephemeral containers — the advisory "
+            "names shared storage and multi-tenant hosts as the high-risk contexts, "
+            "and neither applies.",
+        ],
+        "outstanding": [
+            "`dspy.configure_cache(restrict_pickle=True)` limits deserialization to a "
+            "known-safe type set. Not yet applied; it is the one real hardening "
+            "available for the paths where caching *is* enabled (Render, and local "
+            "optimizer runs).",
+        ],
+    },
+}
 
 # Status icons for the version table. Each answers a different question, so they
 # are deliberately not a severity scale.
@@ -235,11 +265,18 @@ def build(deps: list[dict], total: int) -> tuple[str, int]:
 
     if ignored_hits:
         out.append("\n## Ignored by policy\n")
-        out.append("| Package | Pinned | Advisory | Reason |")
-        out.append("|---|---|---|---|")
+        out.append("These do not fail the build. They are listed in full every run so "
+                   "the exclusion stays auditable rather than silent.\n")
         for f in ignored_hits:
-            out.append(f"| `{f['package']}` | `{f['version']}` | "
-                       f"[{f['id']}]({f['url']}) | {IGNORED[f['id']]} |")
+            meta = IGNORED[f["id"]]
+            out.append(f"### [{f['id']}]({f['url']}) — `{f['package']}` `{f['version']}`\n")
+            out.append(f"**Why no upgrade:** {meta['why']}\n")
+            out.append("**Mitigating today:**\n")
+            out.extend(f"- {m}" for m in meta["mitigations"])
+            if meta.get("outstanding"):
+                out.append("\n**Still outstanding:**\n")
+                out.extend(f"- {o}" for o in meta["outstanding"])
+            out.append("")
 
     return "\n".join(out) + "\n", len(findings)
 
