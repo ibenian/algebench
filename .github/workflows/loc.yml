@@ -50,7 +50,7 @@ jobs:
       - name: Generate HTML site
         run: |
           mkdir -p _site
-          python3 scripts/loc_report_to_html.py LOC-REPORT.md --outdir _site
+          python3 scripts/md_report_to_html.py LOC-REPORT.md --outdir _site --title "Lines of Code Report"
 
       - name: Deploy to GitHub Pages
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository

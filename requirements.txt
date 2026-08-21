@@ -1,3 +1,26 @@
+# Direct dependencies — the human-authored statement of intent.
+#
+# NOTE: this file is NOT what gets installed. requirements.lock is: run.sh,
+# CI and Render (prod + staging) all install from the lock. Adding or changing
+# a line here has no effect until the lock is recompiled:
+#
+#     ./run.sh --upgrade                 # everything, to the newest allowed
+#     ./run.sh --upgrade <pkg> [pkg...]  # only these packages
+#     ./run.sh --glt <TAG|latest>        # repoint gemini-live-tools
+#     ./run.sh --security <pkg>...       # take a CVE fix (see below)
+#     ./run.sh --audit                   # check pins for known CVEs
+#
+# Do that in its own PR so the resolved diff is reviewable. Issue #593.
+#
+# SUPPLY-CHAIN POLICY: dependency resolution never selects a release published
+# in the last 30 days. Compromised releases are normally caught and yanked
+# within hours to days, so the cooldown removes most of that exposure at no
+# real cost. A published CVE is the exception — its fix is usually days old,
+# and waiting is the riskier choice — so `--security` bypasses the cooldown
+# and says so loudly. The cooldown is never applied as a blanket re-resolve:
+# rolling every package back raised this project's known-advisory
+# count from 9 to 33.
+
 gemini-live-tools @ git+https://github.com/ibenian/gemini-live-tools.git@v0.1.19#subdirectory=python
 google-genai>=1.27.0
 numpy>=1.26.0

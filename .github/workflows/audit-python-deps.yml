@@ -1,0 +1,139 @@
+name: Python Dependency Audit
+
+# Audits requirements.lock against the PyPA advisory database, publishes an HTML
+# report to GitHub Pages (same pattern as the LOC report), and opens an issue —
+# only when something is actually found.
+#
+# Why not actions/dependency-review-action for Python: GitHub's dependency graph
+# only parses requirements.txt / Pipfile.lock / Pipfile / setup.py for pip. It
+# does not read `requirements.lock`, so it would see the 13 ranged entries in
+# requirements.txt and none of the ~110 pinned transitive versions that actually
+# install. Every advisory found in this project — aiohttp, pyasn1, cryptography,
+# diskcache — was a transitive pin, invisible in requirements.txt. npm is still
+# covered by dependency-review.yml, since GitHub does parse package-lock.json.
+#
+# The schedule matters as much as the PR trigger: a lock that was clean when
+# pinned does not stay clean, because advisories get published against versions
+# already held. That is exactly how the August 2026 batch appeared, with no code
+# change to hang a PR check off. Note GitHub only runs `schedule` on the default
+# branch.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'requirements.txt'
+      - 'requirements.lock'
+      - 'scripts/dependency_audit_report.py'
+      - '.github/workflows/audit-python-deps.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'requirements.txt'
+      - 'requirements.lock'
+  schedule:
+    # Mondays 09:00 UTC.
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+# Shared with the other report workflows so gh-pages deploys serialize. Keep
+# cancel-in-progress false: with a shared group, cancelling would abort another
+# workflow's deploy mid-push.
+concurrency:
+  group: gh-pages-deploy
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Generate report
+        id: audit
+        run: |
+          set +e
+          python3 scripts/dependency_audit_report.py DEPENDENCY-AUDIT-REPORT.md
+          echo "found=$?" >> "$GITHUB_OUTPUT"
+          set -e
+
+      - name: Post summary
+        run: cat DEPENDENCY-AUDIT-REPORT.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Determine destination directory
+        id: dest
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "dir=dep-audit/pr-${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "dir=dep-audit" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Generate HTML site
+        run: |
+          mkdir -p _site
+          python3 scripts/md_report_to_html.py DEPENDENCY-AUDIT-REPORT.md --outdir _site \
+            --title "Python Dependency Audit"
+
+      - name: Deploy to GitHub Pages
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./_site
+          destination_dir: ${{ steps.dest.outputs.dir }}
+          keep_files: true
+
+      - name: Post preview URL on PR
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ steps.dest.outputs.dir }}/"
+          echo "## 🔒 Dependency Audit" >> "$GITHUB_STEP_SUMMARY"
+          echo "Report: ${URL}" >> "$GITHUB_STEP_SUMMARY"
+          EXISTING=$(gh pr view ${{ github.event.pull_request.number }} --json comments \
+            --jq '[.comments[] | select(.body | contains("Dependency Audit"))] | length')
+          if [ "$EXISTING" = "0" ]; then
+            gh pr comment ${{ github.event.pull_request.number }} \
+              --body "$(printf '## 🔒 Dependency Audit\n**Report:** %s' "$URL")"
+          fi
+
+      # Only when something was actually found, and only outside PRs — on a PR
+      # the failing check and the comment above are already visible. This is for
+      # the scheduled run, which has no PR to report into.
+      - name: Open an issue for findings
+        if: steps.audit.outputs.found != '0' && github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/dep-audit/"
+          RUN="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          # One open issue at a time — the weekly run would otherwise file a
+          # duplicate every Monday until the advisory is dealt with.
+          EXISTING=$(gh issue list --state open --label dependencies --search "Dependency audit" \
+            --json number --jq 'length')
+          if [ "$EXISTING" != "0" ]; then
+            echo "An open dependency-audit issue already exists; not filing another."
+            exit 0
+          fi
+          {
+            printf 'The scheduled audit of `requirements.lock` found known vulnerabilities.\n\n'
+            cat DEPENDENCY-AUDIT-REPORT.md
+            printf '\n---\n\n[Full report](%s) · [Workflow run](%s)\n' "$URL" "$RUN"
+          } > issue-body.md
+          gh issue create \
+            --title "Dependency audit: known vulnerabilities in requirements.lock" \
+            --label dependencies --label security \
+            --body-file issue-body.md
+
+      - name: Fail if vulnerabilities were found
+        if: steps.audit.outputs.found != '0'
+        run: exit 1

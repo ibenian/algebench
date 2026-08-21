@@ -104,4 +104,7 @@ Authoring, assembling, and validating AlgeBench lesson/scene JSON.
 
 | Script | What it does |
 | --- | --- |
-| `loc-report.sh` / `loc_report_to_html.py` | Lines-of-code report → styled HTML for Pages. |
+| `loc-report.sh` | Lines-of-code report (markdown). |
+| `md_report_to_html.py` | Shared renderer: any markdown report → styled HTML for Pages. |
+| `dependency_audit_report.py` | Audits `requirements.lock` for advisories and compares current / cooldown-allowed / latest versions. |
+| `setup-venv.sh` | Creates `.venv` and installs `requirements.lock`. |

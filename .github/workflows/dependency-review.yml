@@ -1,0 +1,37 @@
+name: Dependency Review
+
+# Blocks a PR that introduces an npm dependency with a known advisory, checked
+# against the GitHub Advisory Database.
+#
+# npm ONLY, deliberately. GitHub's dependency graph parses package-lock.json, so
+# this sees real transitive versions there. It does NOT parse `requirements.lock`
+# — for pip it would only read the ranged entries in requirements.txt and miss
+# every pinned transitive package. Python is audited against its actual lock by
+# audit-python-deps.yml instead.
+#
+# To make it binding, mark this check as required in branch protection.
+# Without that it reports but does not block.
+
+on:
+  pull_request:
+    paths:
+      - 'package.json'
+      - 'package-lock.json'
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/dependency-review-action@v4
+        with:
+          # Block on high and critical; moderate/low are reported but do not
+          # fail. No allow-list is needed here — the one accepted advisory
+          # (diskcache, CVE-2025-69872) is a Python package, handled in
+          # audit-python-deps.yml.
+          fail-on-severity: high
+          comment-summary-in-pr: on-failure

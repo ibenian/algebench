@@ -28,6 +28,24 @@ log = logging.getLogger(__name__)
 _DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
 LM_MODEL = os.environ.get("ALGEBENCH_LM_MODEL") or f"gemini/{_DEFAULT_GEMINI_MODEL}"
 
+
+def _cache_enabled() -> bool:
+    """Whether DSPy may cache LM responses. **Off unless explicitly enabled.**
+
+    DSPy's own default is ``cache=True``, which writes every prompt and
+    completion to ``~/.dspy_cache`` as a pickle — the store CVE-2025-69872 is
+    about. We do not inherit that default; caching is opted into per
+    environment via ``ALGEBENCH_LM_CACHE``.
+
+    Worth enabling for repeated-identical-prompt workloads, which is what pays
+    for it: ``scripts/proof_completion/optimize.py`` (MIPROv2 re-runs
+    overlapping prompts across a trainset) and eval sweeps. Set it there rather
+    than globally, so an interactive session never silently serves a cached
+    answer when ``temperature`` is non-zero and a fresh sample was intended
+    (DSPy's ``rollout_id`` is the supported way to vary that — see dspy.LM).
+    """
+    return os.environ.get("ALGEBENCH_LM_CACHE", "").strip().lower() in {"1", "true", "yes", "on"}
+
 _configured = False
 
 
@@ -44,7 +62,8 @@ def make_lm(temperature: float = 0.7, max_tokens: int = 32768) -> dspy.LM:
     env_temp = os.environ.get("ALGEBENCH_LM_TEMPERATURE")
     if env_temp is not None:
         temperature = float(env_temp)
-    kwargs = dict(api_key=api_key, temperature=temperature, max_tokens=max_tokens)
+    kwargs = dict(api_key=api_key, temperature=temperature, max_tokens=max_tokens,
+                  cache=_cache_enabled())
     effort = os.environ.get("ALGEBENCH_LM_REASONING")
     if effort:
         kwargs["reasoning_effort"] = effort
@@ -219,7 +238,7 @@ def _build_scoped(overrides: dict) -> Optional[dspy.LM]:
     # a ``GEMINI_API_KEY`` would override the auth it resolves for itself.
     # ``None`` means "resolve from the environment", which is what a non-Gemini
     # provider should be trusted to do (Copilot, #519).
-    kwargs: dict = dict(temperature=0.7, max_tokens=32768)
+    kwargs: dict = dict(temperature=0.7, max_tokens=32768, cache=_cache_enabled())
     if LM_MODEL.startswith("gemini/"):
         kwargs["api_key"] = (os.environ.get("GEMINI_API_KEY")
                              or os.environ.get("GOOGLE_API_KEY"))

@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
 """Optimize the ProofCompletionExpert with MIPROv2 (or GEPA) and save it.
 
+Set ``ALGEBENCH_LM_CACHE=1`` when running this. LM caching is off by default
+(see ``backend/experts/llm_config.py``), but an optimizer re-runs overlapping
+prompts across the trainset many times, so cache hits here are the single
+largest saving available — this is the workload caching exists for:
+
+    ALGEBENCH_LM_CACHE=1 ./run.sh scripts/proof_completion/optimize.py ...
+
 The metric is ``proof_completion_metric`` (endpoint match + partial credit).
 The compiled program (optimized instructions + bootstrapped demos) is saved to
 an artifact that ``proof_completion/evaluate.py --program`` can load.

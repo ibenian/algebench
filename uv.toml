@@ -1,0 +1,35 @@
+# uv configuration for AlgeBench.
+#
+# SUPPLY-CHAIN COOLDOWN
+#
+# `exclude-newer` refuses any release published in the last 30 days. This is
+# uv's own mechanism, applied automatically to *every* uv command run inside
+# this project — `uv pip install`, `uv pip compile`, `uv add`, and anything
+# run.sh does. It needs no wrapper script, so it cannot be bypassed by reaching
+# for uv directly — there is no wrapper to go around.
+#
+# Why: compromised packages are typically found and yanked within hours to days
+# of publication (litellm 1.82.7/1.82.8 were quarantined ~40 minutes after
+# release, March 2026). A cooldown removes most of that exposure without
+# needing to know anything is wrong — it simply declines anything too fresh to
+# have been noticed. Crucially this protects the *install*, which is where
+# malicious code executes; a CI or PR gate is too late for a local machine.
+#
+# The trade-off, stated plainly: security fixes are also held back. A published
+# CVE is a present risk whose fix is usually days old, so that case overrides
+# the cooldown explicitly:
+#
+#     UV_EXCLUDE_NEWER="0 days" uv pip compile requirements.txt -o requirements.lock \\
+#         --universal --python-version 3.12 --no-header --upgrade-package <name>
+#
+# Do NOT reach for that override yourself — it is the user's call. See AGENTS.md.
+#
+# uv's own env var beats this file, so the same override works for any ad-hoc
+# uv command. No wrapper flag is needed.
+#
+# NOTE: this applies to PyPI releases only. A git dependency (gemini-live-tools)
+# has no upload timestamp to filter on, so the cooldown does not reach it — the
+# lock pins it by immutable commit SHA instead.
+#
+# NOTE: uv rejects "3 months" — durations must be expressed in days.
+exclude-newer = "30 days"

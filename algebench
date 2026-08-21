@@ -4,55 +4,45 @@
 DIR="$(cd "$(dirname "$0")" && pwd)"
 VENV="$DIR/.venv"
 
-# Provision .venv on first use. Prefer `uv` so the venv is built on a native
-# CPython (arm64 on Apple Silicon), pinned by .python-version. Bare
-# `python3 -m venv` picks whatever python3 is first on PATH — often the x86
-# Homebrew build on Apple Silicon, which runs under Rosetta and roughly halves
-# sympy throughput (issue #388). Falls back to python3 if uv is unavailable.
+# Venv provisioning lives in scripts/setup-venv.sh — one implementation, shared
+# with run.sh. They used to hold near-identical copies, which is how the lockfile
+# work in issue #593 landed in one and silently missed the other.
 ensure_venv() {
-    [ -d "$VENV" ] && return 0
-    echo "Setting up virtual environment (first run only)..."
-    if command -v uv >/dev/null 2>&1; then
-        PYVER="$(cat "$DIR/.python-version" 2>/dev/null || echo 3.13)"
-        # only-managed forces a uv-managed CPython, which always matches the host
-        # arch (arm64 on Apple Silicon) — avoids selecting an x86 Homebrew python.
-        uv venv --python "$PYVER" --python-preference only-managed "$VENV"
-        uv pip install --python "$VENV/bin/python3" -r "$DIR/requirements.txt"
-    else
-        echo "⚠️  uv not found — using 'python3 -m venv' (may be x86/Rosetta on Apple Silicon; see issue #388)."
-        python3 -m venv "$VENV"
-        "$VENV/bin/pip" install -r "$DIR/requirements.txt"
-    fi
+    [ -x "$VENV/bin/python3" ] || "$DIR/scripts/setup-venv.sh" || exit 1
 }
 
+# --update: bump gemini-live-tools to its newest tag, then move every other
+# dependency to the newest version requirements.txt allows. Both steps go
+# so requirements.lock is regenerated — upgrading the venv
+# without relocking would leave local dev ahead of CI and Render, which is
+# exactly the drift issue #593 closed.
 if [ "$1" = "--update" ]; then
     shift
     echo "🔍 Checking for latest gemini-live-tools..."
-    LATEST=$(git ls-remote --tags https://github.com/ibenian/gemini-live-tools.git \
-        | grep -v '\^{}' | awk '{print $2}' | sed 's|refs/tags/||' | sort -V | tail -1)
+    LATEST=$(git ls-remote --tags --refs https://github.com/ibenian/gemini-live-tools.git 'v*' \
+        | awk -F/ '{print $NF}' | sort -V | tail -1)
     if [ -n "$LATEST" ]; then
         CURRENT=$(grep 'gemini-live-tools' "$DIR/requirements.txt" | grep -o '@v[^#]*' | tr -d '@')
         if [ "$CURRENT" != "$LATEST" ]; then
-            echo "⬆️  Updating gemini-live-tools $CURRENT → $LATEST"
+            echo "⬆️  gemini-live-tools $CURRENT → $LATEST"
             sed -i '' "s|gemini-live-tools\.git@[^#]*|gemini-live-tools.git@$LATEST|" "$DIR/requirements.txt"
         else
             echo "✅ gemini-live-tools already at $LATEST"
         fi
     else
-        echo "⚠️  Could not fetch latest gemini-live-tools tag, skipping version update"
+        echo "⚠️  Could not fetch latest tag, skipping"
     fi
-    if [ ! -d "$VENV" ]; then
-        # No venv yet — a fresh provision already installs the latest deps.
-        ensure_venv
-    else
-        echo "📦 Updating dependencies..."
-        if command -v uv >/dev/null 2>&1; then
-            uv pip install --python "$VENV/bin/python3" --upgrade -r "$DIR/requirements.txt"
-        else
-            "$VENV/bin/pip" install --upgrade -r "$DIR/requirements.txt"
-        fi
-    fi
-    echo "✓ Update complete"
+    # Regenerate the lock — that is what actually gets installed. Upgrading the
+    # venv without relocking would leave local dev ahead of CI and both deploys.
+    # uv.toml's 30-day cooldown applies automatically; do not override it.
+    echo "📦 Upgrading dependencies and regenerating requirements.lock..."
+    uv pip compile "$DIR/requirements.txt" -o "$DIR/requirements.lock" \
+        --universal --python-version 3.12 --no-header --upgrade || exit 1
+    "$DIR/scripts/setup-venv.sh" >/dev/null || exit 1
+    echo "⚠️  Read the version diff before committing — the cooldown can move a"
+    echo "    package BACKWARDS if its pin is younger than 30 days."
+    echo "✓ Update complete — review and commit:"
+    echo "    git diff requirements.txt requirements.lock"
     exit 0
 fi
 

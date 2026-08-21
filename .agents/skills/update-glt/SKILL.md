@@ -47,28 +47,96 @@ Examples:
 
 - **Anything else**: Use as a branch name directly.
 
-### 2. Update requirements.txt
+### 2. Pick the path — release vs. test drive
 
-Replace the `gemini-live-tools` line in `/Users/ibenian/dev/algebench/requirements.txt` with:
+These are now genuinely different operations, because `requirements.lock` is
+what actually gets installed (issue #593). Choose by what the ref *is*:
+
+| Target | Path | Touches the repo? |
+|---|---|---|
+| A version **tag** (`v0.1.20`, `latest`) | **A — permanent pin** | yes: `requirements.txt` + `requirements.lock` |
+| A **PR branch** or named branch | **B — temporary override** | no |
+
+Never commit a lock that resolves a branch: the lock records the branch's
+*current commit SHA*, so committing one silently pins the repo to a transient
+commit that moves out from under everyone on the next push to that branch.
+
+---
+
+### Path A — permanent pin (tags only)
+
+**A1.** Replace the `gemini-live-tools` line in `requirements.txt`:
 ```
-gemini-live-tools @ git+https://github.com/ibenian/gemini-live-tools.git@<REF>#subdirectory=python
+gemini-live-tools @ git+https://github.com/ibenian/gemini-live-tools.git@<TAG>#subdirectory=python
+```
+For "latest", find the newest tag first:
+```bash
+git ls-remote --tags --refs https://github.com/ibenian/gemini-live-tools.git 'v*' \
+    | awk -F/ '{print $NF}' | sort -V | tail -1
 ```
 
-### 3. Install into venv
+**A2.** Regenerate the lock — editing `requirements.txt` alone changes nothing:
+```bash
+cd /Users/ibenian/dev/algebench && uv pip compile requirements.txt -o requirements.lock \
+    --universal --python-version 3.12 --no-header --upgrade-package gemini-live-tools
+```
+The lock records the resolved **commit SHA**, not the tag, so the diff on that file is how you
+confirm the bump took. The 30-day cooldown from `uv.toml` does not apply to a git dependency —
+it filters PyPI upload timestamps, and a git ref has none.
+
+**A3.** Sync the venv:
+```bash
+cd /Users/ibenian/dev/algebench && ./scripts/setup-venv.sh
+```
+
+Commit `requirements.txt` and `requirements.lock` together — and both must reach the
+`deploy/on-render*` branches together, since Render installs from the lock.
+
+---
+
+### Path B — temporary override (PR / branch testing)
+
+Leave `requirements.txt` and `requirements.lock` **untouched**. Install the ref
+straight over the top of the venv:
 
 ```bash
-source /Users/ibenian/dev/algebench/.venv/bin/activate && pip install --force-reinstall "gemini-live-tools @ git+https://github.com/ibenian/gemini-live-tools.git@<REF>#subdirectory=python"
+cd /Users/ibenian/dev/algebench && uv pip install --python .venv/bin/python3 \
+    --force-reinstall "gemini-live-tools @ git+https://github.com/ibenian/gemini-live-tools.git@<REF>#subdirectory=python"
 ```
 
-### 4. Verify
+The override is sticky — `run.sh`'s staleness check only fires when the lock
+file itself changes, so it survives normal use. To undo it and return to the
+pinned SHA:
+
+```bash
+cd /Users/ibenian/dev/algebench && ./scripts/setup-venv.sh
+```
+
+An **unpushed** local commit cannot be installed this way — a git URL can only
+reference something that exists on the remote. Push the branch first, or
+install the local checkout directly:
+
+```bash
+cd /Users/ibenian/dev/algebench && uv pip install --python .venv/bin/python3 \
+    -e /Users/ibenian/dev/gemini-live-tools/python
+```
+
+(also undone by `./scripts/setup-venv.sh`).
+
+---
+
+### 3. Verify
 
 ```bash
 source /Users/ibenian/dev/algebench/.venv/bin/activate && python -c "from gemini_live_tools import get_static_content; get_static_content('tts-audio-player.js'); print('OK')"
 ```
 
-### 5. Report
+### 4. Report
 
 Tell the user:
 - What ref was installed (branch, tag, or PR number + branch)
 - What the previous ref was (from requirements.txt before the change)
+- Which path was taken (A permanent pin, or B temporary override)
+- For path A: that requirements.lock was recompiled, and the new resolved SHA
+- For path B: that the override is temporary and `./scripts/setup-venv.sh` reverts it
 - Remind them to restart algebench to pick up changes
