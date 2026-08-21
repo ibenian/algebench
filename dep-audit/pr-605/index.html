@@ -14,6 +14,12 @@
   h1 { font-size: 1.5rem; margin: 1.5rem 0 0.5rem; border-bottom: 1px solid #30363d; padding-bottom: 0.5rem; }
   h2 { font-size: 1.2rem; margin: 1.5rem 0 0.5rem; color: #8b949e; }
   p { margin: 0.5rem 0; }
+  /* The `*` reset above strips ul/ol padding, so without this the markers hang
+     into the left margin instead of indenting under the preceding text. */
+  ul, ol { margin: 0.5rem 0; padding-left: 1.5rem; }
+  li { margin: 0.3rem 0; }
+  li > ul, li > ol { margin: 0.3rem 0; }
+  li > p { margin: 0.2rem 0; }
   blockquote {
     border-left: 3px solid #30363d; padding: 0.5rem 1rem;
     color: #8b949e; margin: 0.5rem 0; background: #161b22; border-radius: 4px;
@@ -104,7 +110,9 @@
 
 `requirements.lock` — **110** pinned packages checked against the PyPA advisory database.
 
-_2026-08-21 01:21 UTC_
+Release cooldown: **30 days** — set by [`uv.toml`](https://github.com/ibenian/algebench/blob/main/uv.toml) (`exclude-newer`), which uv applies to every command in this project. Nothing here restates the value; it is read from that file.
+
+_2026-08-21 03:02 UTC_
 
 ## ✅ No known vulnerabilities
 
@@ -114,7 +122,7 @@ Every pinned version is clear of the advisory database.
 
 **61** package(s) could move. Columns are three different ceilings, not a progression:
 
-| | Package | Current | Allowed (30-day cooldown) | Latest on PyPI |
+| | Package | Current | Allowed (≥30 days old) | Latest on PyPI |
 |---|---|---|---|---|
 | ⬆️ | `aiohappyeyeballs` | `2.6.2` | `2.7.1` | `2.7.1` |
 | 🔻 | `aiohttp` | `3.14.3` | `3.14.2` | `3.14.3` |
@@ -180,8 +188,8 @@ Every pinned version is clear of the advisory database.
 
 ### How to read this
 
-- ⬆️ **Ready** (9) — a newer release has cleared the 30-day cooldown. Take it with a targeted relock.
-- ⏳ **Cooling** (48) — something newer exists but is less than 30 days old. **This is the policy working, not a problem.** Compromised packages are usually caught and yanked within hours to days; waiting removes most of that exposure.
+- ⬆️ **Ready** (9) — a newer release has cleared the 30 days cooldown. Take it with a targeted relock.
+- ⏳ **Cooling** (48) — something newer exists but is younger than 30 days. **This is the policy working, not a problem.** Compromised packages are usually caught and yanked within hours to days; waiting removes most of that exposure.
 - 🔒 **Capped** (1) — the cooldown is not what is holding this back; a constraint in `requirements.txt` (or a transitive dependency's own pin) is. Loosening the range is the only way forward.
 - 🔻 **Backwards** (3) — a relock would move this to an *older* release, because the current pin is itself younger than 30 days (a security fix taken deliberately). Older releases carry more advisories, never fewer — check the diff before committing any relock while this row is present.
 - ✅ **Current** — nothing newer exists.
