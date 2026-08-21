@@ -4,7 +4,7 @@
 Writes a report to the given path and exits non-zero if anything unignored was
 found, so CI can gate on it.
 
-    python3 scripts/audit_report.py DEPENDENCY-AUDIT-REPORT.md
+    python3 scripts/dependency_audit_report.py DEPENDENCY-AUDIT-REPORT.md
 
 Why this exists rather than actions/dependency-review-action: GitHub's dependency
 graph only parses requirements.txt / Pipfile.lock / Pipfile / setup.py for pip.
@@ -15,6 +15,7 @@ get installed — which is where every advisory found in this project has been.
 
 import argparse
 import json
+import tomllib
 import os
 import re
 import subprocess
@@ -26,6 +27,24 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+UV_TOML = ROOT / "uv.toml"
+UV_TOML_URL = "https://github.com/ibenian/algebench/blob/main/uv.toml"
+
+
+def cooldown() -> str:
+    """The configured release cooldown, read from uv.toml rather than restated.
+
+    uv.toml is the single place the policy is set — there is no CLI flag and no
+    computed cutoff anywhere in the codebase. Reading it here means the report
+    cannot drift from what is actually enforced: change the file to "14 days"
+    and every sentence below follows.
+    """
+    try:
+        with open(UV_TOML, "rb") as fh:
+            value = tomllib.load(fh).get("exclude-newer")
+        return str(value) if value else "no cooldown configured"
+    except (OSError, tomllib.TOMLDecodeError):
+        return "unknown (uv.toml unreadable)"
 
 # Advisories excluded from failing the build. Keyed by advisory ID, never by
 # package — a different advisory against the same package still fails normally.
@@ -93,11 +112,23 @@ def resolve(lock: Path, out_path: Path, cooldown: bool) -> None:
         # The ONLY place the cooldown is switched off, and it never writes to the
         # real lock — this is how the report shows what is being held back.
         env["UV_EXCLUDE_NEWER"] = "0 days"
-    subprocess.run(
+    # cwd=ROOT is load-bearing, not tidiness: uv discovers uv.toml by walking up
+    # from the working directory, so running this script from anywhere else
+    # silently drops the 30-day cooldown and the report then contradicts the
+    # policy it exists to check. Measured from /tmp: numpy showed as "ready" at
+    # 2.5.2, a release 11 days old that the cooldown should have held back.
+    proc = subprocess.run(
         ["uv", "pip", "compile", str(ROOT / "requirements.txt"), "-o", str(out_path),
          "--universal", "--python-version", "3.12", "--no-header", "--upgrade"],
-        env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False,
+        env=env, cwd=ROOT, capture_output=True, text=True, check=False,
     )
+    if proc.returncode != 0:
+        # Never fall through to the copied lock: that would silently report the
+        # current pins as though they were the resolution result.
+        raise SystemExit(
+            f"uv pip compile failed ({'no cooldown' if not cooldown else 'cooldown'} "
+            f"resolution), exit {proc.returncode}:\n{proc.stderr.strip()}"
+        )
 
 
 def pins(path: Path) -> dict:
@@ -135,10 +166,11 @@ def version_table(lock: Path) -> list[str]:
     with ThreadPoolExecutor(max_workers=16) as ex:
         pypi = dict(ex.map(pypi_latest, moving))
 
+    cd = cooldown()
     out = ["## Versions\n",
            f"**{len(moving)}** package(s) could move. Columns are three different "
            "ceilings, not a progression:\n",
-           "| | Package | Current | Allowed (30-day cooldown) | Latest on PyPI |",
+           f"| | Package | Current | Allowed (≥{cd} old) | Latest on PyPI |",
            "|---|---|---|---|---|"]
     counts = {k: 0 for k in ICON}
     for p in moving:
@@ -158,16 +190,16 @@ def version_table(lock: Path) -> list[str]:
 
     out += ["", "### How to read this\n",
             f"- {ICON['ready']} **Ready** ({counts['ready']}) — a newer release has cleared the "
-            "30-day cooldown. Take it with a targeted relock.",
+            f"{cd} cooldown. Take it with a targeted relock.",
             f"- {ICON['cooling']} **Cooling** ({counts['cooling']}) — something newer exists but "
-            "is less than 30 days old. **This is the policy working, not a problem.** "
+            f"is younger than {cd}. **This is the policy working, not a problem.** "
             "Compromised packages are usually caught and yanked within hours to days; waiting "
             "removes most of that exposure.",
             f"- {ICON['capped']} **Capped** ({counts['capped']}) — the cooldown is not what is "
             "holding this back; a constraint in `requirements.txt` (or a transitive dependency's "
             "own pin) is. Loosening the range is the only way forward.",
             f"- {ICON['back']} **Backwards** ({counts['back']}) — a relock would move this to an "
-            "*older* release, because the current pin is itself younger than 30 days (a security "
+            f"*older* release, because the current pin is itself younger than {cd} (a security "
             "fix taken deliberately). Older releases carry more advisories, never fewer — check "
             "the diff before committing any relock while this row is present.",
             f"- {ICON['current']} **Current** — nothing newer exists.",
@@ -189,8 +221,8 @@ def advisory_url(vuln_id: str, aliases: list[str]) -> str:
     return f"https://osv.dev/vulnerability/{vuln_id}"
 
 
-def run_audit(lock: Path) -> list[dict]:
-    """Return pip-audit's dependency records for the pinned entries in `lock`."""
+def run_audit(lock: Path) -> tuple[list[dict], int]:
+    """Return (pip-audit dependency records, number of pinned entries) for `lock`."""
     pinned = [
         line.split(";")[0].strip()
         for line in lock.read_text().splitlines()
@@ -232,9 +264,15 @@ def build(deps: list[dict], total: int) -> tuple[str, int]:
             (ignored_hits if vuln["id"] in IGNORED else findings).append(row)
 
     stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    cd = cooldown()
     out = [f"# Python Dependency Audit\n",
            f"`requirements.lock` — **{total}** pinned packages checked against the "
-           f"PyPA advisory database.\n", f"_{stamp}_\n"]
+           f"PyPA advisory database.\n",
+           f"Release cooldown: **{cd}** — set by "
+           f"[`uv.toml`]({UV_TOML_URL}) (`exclude-newer`), which uv applies to every "
+           f"command in this project. Nothing here restates the value; it is read "
+           f"from that file.\n",
+           f"_{stamp}_\n"]
 
     if findings:
         out.append(f"## ⚠️ {len(findings)} advisory(s) found\n")
@@ -254,8 +292,9 @@ def build(deps: list[dict], total: int) -> tuple[str, int]:
         out.append("./scripts/setup-venv.sh")
         out.append("```")
         out.append("")
-        out.append("> If the fix is newer than the 30-day cooldown it will be held back. "
-                   "Overriding the cooldown is a deliberate decision — see AGENTS.md.")
+        out.append(f"> If the fix is newer than the {cooldown()} cooldown "
+                   f"([`uv.toml`]({UV_TOML_URL})) it will be held back. Overriding the "
+                   "cooldown is a deliberate decision — see AGENTS.md.")
     else:
         out.append("## ✅ No known vulnerabilities\n")
         out.append("Every pinned version is clear of the advisory database.")

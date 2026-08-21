@@ -25,7 +25,20 @@ if [ "$1" = "--update" ]; then
         CURRENT=$(grep 'gemini-live-tools' "$DIR/requirements.txt" | grep -o '@v[^#]*' | tr -d '@')
         if [ "$CURRENT" != "$LATEST" ]; then
             echo "⬆️  gemini-live-tools $CURRENT → $LATEST"
-            sed -i '' "s|gemini-live-tools\.git@[^#]*|gemini-live-tools.git@$LATEST|" "$DIR/requirements.txt"
+            # python3 rather than `sed -i`: the in-place flag differs between BSD
+            # (macOS, needs an empty backup arg) and GNU sed (Linux, rejects it),
+            # so `sed -i ''` breaks anywhere that is not macOS. python3 is already
+            # a hard requirement of this project.
+            LATEST="$LATEST" python3 - "$DIR/requirements.txt" <<'PYEOF'
+import os, re, sys
+path = sys.argv[1]
+src = open(path).read()
+new, n = re.subn(r"(gemini-live-tools\.git@)[^#]*",
+                 lambda m: m.group(1) + os.environ["LATEST"], src)
+if n != 1:
+    sys.exit(f"expected exactly 1 gemini-live-tools ref in {path}, found {n}")
+open(path, "w").write(new)
+PYEOF
         else
             echo "✅ gemini-live-tools already at $LATEST"
         fi

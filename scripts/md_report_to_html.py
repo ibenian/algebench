@@ -37,6 +37,12 @@ def _html_template() -> str:
   h1 { font-size: 1.5rem; margin: 1.5rem 0 0.5rem; border-bottom: 1px solid #30363d; padding-bottom: 0.5rem; }
   h2 { font-size: 1.2rem; margin: 1.5rem 0 0.5rem; color: #8b949e; }
   p { margin: 0.5rem 0; }
+  /* The `*` reset above strips ul/ol padding, so without this the markers hang
+     into the left margin instead of indenting under the preceding text. */
+  ul, ol { margin: 0.5rem 0; padding-left: 1.5rem; }
+  li { margin: 0.3rem 0; }
+  li > ul, li > ol { margin: 0.3rem 0; }
+  li > p { margin: 0.2rem 0; }
   blockquote {
     border-left: 3px solid #30363d; padding: 0.5rem 1rem;
     color: #8b949e; margin: 0.5rem 0; background: #161b22; border-radius: 4px;
