@@ -8,6 +8,9 @@ args: "[target=<PR_NUMBER|BRANCH_NAME|TAG|latest>]"
 
 Update the gemini-live-tools dependency — either to a PR branch for testing, a specific version tag, or the latest release.
 
+This skill is the only path. The `algebench` launcher has no update flag: it provisions `.venv` from
+`requirements.lock` and nothing else. Deciding what goes *into* the lock happens here, with plain uv.
+
 ---
 
 ## Usage
@@ -75,11 +78,20 @@ git ls-remote --tags --refs https://github.com/ibenian/gemini-live-tools.git 'v*
     | awk -F/ '{print $NF}' | sort -V | tail -1
 ```
 
-**A2.** Regenerate the lock — editing `requirements.txt` alone changes nothing:
+**A2.** Regenerate the lock. Not optional and not someone else's job — editing `requirements.txt`
+alone changes nothing, because `requirements.lock` is what actually gets installed, locally and on
+both deploys:
 ```bash
 cd /Users/ibenian/dev/algebench && uv pip compile requirements.txt -o requirements.lock \
     --universal --python-version 3.12 --no-header --upgrade-package gemini-live-tools
 ```
+`--upgrade-package`, never a bare `--upgrade`: every other pin is carried over from the existing
+lock, so the diff stays reviewable and this stays a one-dependency change.
+
+If `uv` is missing, stop and tell the user — there is no fallback, since pip cannot produce a
+universal lock. Do not leave a rewritten `requirements.txt` behind against an unchanged lock:
+revert A1 rather than handing back a half-applied update.
+
 The lock records the resolved **commit SHA**, not the tag, so the diff on that file is how you
 confirm the bump took. The 30-day cooldown from `uv.toml` does not apply to a git dependency —
 it filters PyPI upload timestamps, and a git ref has none.
@@ -128,8 +140,10 @@ cd /Users/ibenian/dev/algebench && uv pip install --python .venv/bin/python3 \
 ### 3. Verify
 
 ```bash
-source /Users/ibenian/dev/algebench/.venv/bin/activate && python -c "from gemini_live_tools import get_static_content; get_static_content('tts-audio-player.js'); print('OK')"
+cd /Users/ibenian/dev/algebench && ./run.sh -c "from gemini_live_tools import get_static_content; get_static_content('tts-audio-player.js'); print('OK')"
 ```
+`./run.sh` rather than activating the venv by hand — it is how project Python is run here, and it
+warns when `.venv` is out of step with the lock.
 
 ### 4. Report
 
@@ -137,6 +151,7 @@ Tell the user:
 - What ref was installed (branch, tag, or PR number + branch)
 - What the previous ref was (from requirements.txt before the change)
 - Which path was taken (A permanent pin, or B temporary override)
-- For path A: that requirements.lock was recompiled, and the new resolved SHA
+- For path A: that requirements.lock was recompiled, and the new resolved SHA (both files
+  must be committed together, and both must reach the `deploy/on-render*` branches together)
 - For path B: that the override is temporary and `./scripts/setup-venv.sh` reverts it
 - Remind them to restart algebench to pick up changes
