@@ -32,4 +32,4 @@
 # lock pins it by immutable commit SHA instead.
 #
 # NOTE: uv rejects "3 months" — durations must be expressed in days.
-exclude-newer = "30 days"
+exclude-newer = "2026-07-23T00:00:00Z"
