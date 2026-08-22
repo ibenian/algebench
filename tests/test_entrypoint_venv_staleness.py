@@ -151,10 +151,23 @@ def test_setup_venv_replaces_an_incomplete_venv_without_rm_rf():
     )
 
 
-def test_algebench_update_checks_for_uv_before_using_it():
-    """--update cannot fall back (pip cannot build a universal lock), so it must explain."""
-    src = ALGEBENCH.read_text()
-    update = src[src.index('if [ "$1" = "--update" ]'):]
-    assert "command -v uv" in update, (
-        "--update must check for uv and explain, not emit 'command not found'"
-    )
+def test_neither_entrypoint_manages_dependencies():
+    """Updating dependencies is uv's job, driven by the update-glt skill.
+
+    The launcher used to carry an --update flag that bumped gemini-live-tools
+    *and* relocked every other pin — a second, divergent implementation of what
+    README documents as a plain uv command, and one that could leave a bumped
+    requirements.txt against an unchanged lock when uv was missing. Provisioning
+    (install what the lock says) stays; resolution (decide what the lock says)
+    does not belong in an entrypoint.
+    """
+    for path in (ALGEBENCH, RUN_SH):
+        code = _code_only(path)
+        assert "uv pip compile" not in code, (
+            f"{path.name} resolves dependencies; that belongs to uv, driven by "
+            f"the update-glt skill"
+        )
+        assert "--update" not in code, (
+            f"{path.name} has an update flag again; dependency updates go "
+            f"through the update-glt skill"
+        )
