@@ -107,8 +107,11 @@ characters and the voice picker UI), use the `update-glt` skill — it resolves 
 `requirements.txt`, regenerates the lock and syncs `.venv`, and it also handles installing a PR branch
 for testing without touching either file.
 
-Dependencies are managed with uv throughout. `requirements.lock` is the resolved file that local dev, CI
-and both deploys install from, so editing `requirements.txt` alone changes nothing — always relock:
+Dependency *resolution* is uv's — locking, upgrading, the cooldown below. Installing is not: everything
+installs from `requirements.lock` with pip, deliberately, because uv applies the cooldown to installs too
+and would refuse an already-reviewed lock that holds a pin younger than 30 days. `requirements.lock` is
+what local dev, CI and both deploys install, so editing `requirements.txt` alone changes nothing — always
+relock:
 
 ```bash
 uv pip compile requirements.txt -o requirements.lock --universal --python-version 3.12 \

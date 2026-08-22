@@ -54,8 +54,13 @@ def _setup_venv_gate() -> str:
 
 
 def _ensure_venv_body() -> str:
-    """The body of algebench's ensure_venv()."""
-    src = ALGEBENCH.read_text()
+    """The body of algebench's ensure_venv(), comments stripped.
+
+    Comment-stripped for the same reason `_code_only` exists: this body carries
+    a comment naming requirements.lock and setup-venv.sh to explain itself, so a
+    substring search over the raw text is satisfied by the explanation alone.
+    """
+    src = _code_only(ALGEBENCH)
     m = re.search(r"ensure_venv\(\)\s*\{(.*?)\n\}", src, re.S)
     assert m, "algebench no longer defines ensure_venv() — update this test"
     return m.group(1)
@@ -89,9 +94,11 @@ def test_algebench_reinstalls_rather_than_only_warning():
 
 def test_run_sh_still_warns_about_a_stale_venv():
     """run.sh warns rather than installs; both behaviours are deliberate."""
-    src = RUN_SH.read_text()
-    assert ".lock-stamp" in src, "run.sh lost its staleness check"
-    assert "setup-venv.sh" in src, "run.sh must point at setup-venv.sh"
+    # Comment-stripped: run.sh explains this behaviour in a comment that names
+    # setup-venv.sh, which would satisfy a search over the raw file on its own.
+    code = _code_only(RUN_SH)
+    assert ".lock-stamp" in code, "run.sh lost its staleness check"
+    assert "setup-venv.sh" in code, "run.sh must point at setup-venv.sh"
 
 
 def test_neither_entrypoint_provisions_the_venv_itself():
