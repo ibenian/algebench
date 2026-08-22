@@ -57,6 +57,16 @@ PYEOF
     # Regenerate the lock — that is what actually gets installed. Upgrading the
     # venv without relocking would leave local dev ahead of CI and both deploys.
     # uv.toml's 30-day cooldown applies automatically; do not override it.
+    # uv is required here and there is no fallback: pip cannot produce a
+    # universal lock. setup-venv.sh can still build a venv without uv, so only
+    # --update is blocked — say so rather than emitting "command not found".
+    if ! command -v uv >/dev/null 2>&1; then
+        echo "Error: --update needs uv to regenerate requirements.lock." >&2
+        echo "  Install: https://docs.astral.sh/uv/getting-started/installation/" >&2
+        echo "  Without uv you can still run the app; ./scripts/setup-venv.sh" >&2
+        echo "  builds .venv from the committed lock." >&2
+        exit 1
+    fi
     echo "📦 Upgrading dependencies and regenerating requirements.lock..."
     uv pip compile "$DIR/requirements.txt" -o "$DIR/requirements.lock" \
         --universal --python-version 3.12 --no-header --upgrade || exit 1
