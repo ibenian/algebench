@@ -19,6 +19,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 ALGEBENCH = ROOT / "algebench"
 RUN_SH = ROOT / "run.sh"
+SETUP_VENV = ROOT / "scripts" / "setup-venv.sh"
 
 
 def _ensure_venv_body() -> str:
@@ -75,3 +76,42 @@ def test_neither_entrypoint_provisions_the_venv_itself():
         assert "python3 -m venv" not in src, (
             f"{path.name} creates a venv itself; that belongs to setup-venv.sh"
         )
+
+
+def test_setup_venv_keys_creation_on_the_interpreter_not_the_directory():
+    """A directory is not a usable venv.
+
+    Regression: `[ ! -d "$VENV" ]` skipped creation whenever .venv/ existed, so
+    an interrupted setup — directory present, bin/ empty — fell through to
+    `$VENV/bin/pip install` and died on a raw "no such file".
+
+    Third instance of this shape in these scripts: algebench once used "python3
+    exists" to mean "venv matches the lock", and setup-venv.sh used "directory
+    exists" to mean "venv is usable".
+    """
+    src = SETUP_VENV.read_text()
+    assert 'bin/python3"' in src or "bin/python3'" in src, (
+        "setup-venv.sh must gate creation on the interpreter existing"
+    )
+    assert "bin/pip" in src, (
+        "setup-venv.sh must gate creation on pip existing — the install step needs it"
+    )
+
+
+def test_setup_venv_replaces_an_incomplete_venv_without_rm_rf():
+    """Recreation goes through each tool's --clear, not a hand-rolled delete."""
+    src = SETUP_VENV.read_text()
+    assert "--clear" in src, "setup-venv.sh must use --clear to replace an incomplete venv"
+    code = "\n".join(l for l in src.splitlines() if not l.lstrip().startswith("#"))
+    assert "rm -rf" not in code, (
+        "setup-venv.sh should not rm -rf a venv directory; use --clear"
+    )
+
+
+def test_algebench_update_checks_for_uv_before_using_it():
+    """--update cannot fall back (pip cannot build a universal lock), so it must explain."""
+    src = ALGEBENCH.read_text()
+    update = src[src.index('if [ "$1" = "--update" ]'):]
+    assert "command -v uv" in update, (
+        "--update must check for uv and explain, not emit 'command not found'"
+    )
