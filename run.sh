@@ -14,9 +14,50 @@ set -e
 DIR="$(cd "$(dirname "$0")" && pwd)"
 VENV="$DIR/.venv"
 
+# Dev servers, folded in from the old top-level `run` script (deleted — nothing
+# referenced it and its name only caused confusion with this file).
+case "${1:-}" in
+    landing-page|landing-page-with-algebench)
+        CMD="$1"; shift
+        PORT=5760; APP_PORT=5751
+        while [ $# -gt 0 ]; do
+            case "$1" in
+                --port) PORT="$2"; shift 2 ;;
+                --app-port) APP_PORT="$2"; shift 2 ;;
+                *) echo "Unknown arg: $1" >&2; exit 1 ;;
+            esac
+        done
+        if [ "$CMD" = "landing-page-with-algebench" ]; then
+            if curl -s -o /dev/null "http://localhost:$APP_PORT/" 2>/dev/null; then
+                echo "▶ AlgeBench app already running on :$APP_PORT — reusing it"
+            else
+                APP_LOG="/tmp/algebench-$APP_PORT.log"
+                echo "▶ Starting AlgeBench app → http://localhost:$APP_PORT  (logs: $APP_LOG)"
+                "$DIR/algebench" --server-only --skip-tour --port "$APP_PORT" >"$APP_LOG" 2>&1 &
+                APP_PID=$!
+                # Only stop the app WE started; a pre-existing one is untouched.
+                # $APP_PID is captured here rather than using $! inside the trap:
+                # single quotes defer expansion to when the trap FIRES, by which
+                # point $! is whatever background job started most recently.
+                trap 'kill "$APP_PID" 2>/dev/null || true' EXIT INT TERM
+                printf "  waiting for app to be ready"
+                for _ in $(seq 1 40); do
+                    curl -s -o /dev/null "http://localhost:$APP_PORT/" 2>/dev/null && break
+                    printf "."; sleep 0.5
+                done
+                echo " ✓"
+            fi
+        fi
+        echo "▶ Landing page → http://localhost:$PORT"
+        exec python3 -m http.server "$PORT" --directory "$DIR/docs/landing-page"
+        ;;
+esac
+
 if [ $# -eq 0 ]; then
     echo "Usage: ./run.sh <script.py> [args...]"
     echo "       ./run.sh -m <module> [args...]"
+    echo "       ./run.sh landing-page [--port P]"
+    echo "       ./run.sh landing-page-with-algebench [--port P] [--app-port P]"
     echo ""
     echo "Runs Python scripts using the project .venv."
     echo ""
@@ -34,24 +75,20 @@ if [ $# -eq 0 ]; then
     exit 0
 fi
 
-# Create venv if missing. Prefer `uv` so the venv is built on a native CPython
-# (arm64 on Apple Silicon), pinned by .python-version. Bare `python3 -m venv`
-# resolves to whatever python3 is first on PATH — on Apple Silicon that's often
-# the x86 Homebrew build, which runs everything under Rosetta and roughly halves
-# sympy throughput (issue #388). Fall back to python3 if uv is unavailable.
-if [ ! -d "$VENV" ]; then
-    echo "Setting up virtual environment (first run only)..."
-    if command -v uv >/dev/null 2>&1; then
-        PYVER="$(cat "$DIR/.python-version" 2>/dev/null || echo 3.13)"
-        # only-managed forces a uv-managed CPython, which always matches the host
-        # arch (arm64 on Apple Silicon) — avoids selecting an x86 Homebrew python.
-        uv venv --python "$PYVER" --python-preference only-managed "$VENV"
-        uv pip install --python "$VENV/bin/python3" -r "$DIR/requirements.txt"
-    else
-        echo "⚠️  uv not found — using 'python3 -m venv' (may be x86/Rosetta on Apple Silicon; see issue #388)."
-        python3 -m venv "$VENV"
-        "$VENV/bin/pip" install -r "$DIR/requirements.txt"
-    fi
+# .venv is built by scripts/setup-venv.sh, not here. This script only runs
+# project Python through it. Dependency locking and upgrading are plain uv
+# commands — see AGENTS.md.
+if [ ! -d "$VENV" ] || [ ! -x "$VENV/bin/python3" ]; then
+    echo "No .venv found. Create it with:" >&2
+    echo "    ./scripts/setup-venv.sh" >&2
+    exit 1
+fi
+
+# The lock moved since this venv was built (pulled a change, switched branches).
+# Warn rather than install — installing is setup-venv.sh's job, not this one's.
+if [ -f "$DIR/requirements.lock" ] && ! cmp -s "$DIR/requirements.lock" "$VENV/.lock-stamp"; then
+    echo "⚠️  requirements.lock has changed since .venv was built." >&2
+    echo "    Run ./scripts/setup-venv.sh to catch up." >&2
 fi
 
 # Ensure the repo root AND scripts/ are on PYTHONPATH so 'backend.*' imports

@@ -1,3 +1,26 @@
+# Direct dependencies — the human-authored statement of intent.
+#
+# NOTE: this file is NOT what gets installed. requirements.lock is: setup-venv.sh,
+# algebench, run.sh, CI, Render (prod + staging) and the HF Space all install from
+# the lock. Adding or changing a line here has no effect until it is regenerated:
+#
+#     uv pip compile requirements.txt -o requirements.lock \
+#         --universal --python-version 3.12 --no-header
+#         ...add --upgrade                 to move every package
+#         ...add --upgrade-package <name>  to move just one
+#     ./scripts/setup-venv.sh              # rebuild .venv from the lock
+#
+# Do that in its own PR so the resolved diff is reviewable. Issue #593.
+#
+# SUPPLY-CHAIN POLICY: dependency resolution never selects a release published
+# in the last 30 days. Compromised releases are normally caught and yanked
+# within hours to days, so the cooldown removes most of that exposure at no
+# real cost. A published CVE is the exception — its fix is usually days old,
+# and waiting is the riskier choice — so `--security` bypasses the cooldown
+# and says so loudly. The cooldown is never applied as a blanket re-resolve:
+# rolling every package back raised this project's known-advisory
+# count from 9 to 33.
+
 gemini-live-tools @ git+https://github.com/ibenian/gemini-live-tools.git@v0.1.19#subdirectory=python
 google-genai>=1.27.0
 numpy>=1.26.0

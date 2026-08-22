@@ -241,7 +241,32 @@ right under both libraries. Scoping node types with a per-file
   using the output of `git config user.name` and `git config user.email`.
 - **Co-author trailers** — each AI agent must append its own co-author trailer to all GitHub interactions (commits, PR descriptions, reviews, comments). See agent-specific instructions in `CLAUDE.md`, `GEMINI.md`, or `CODEX.md`.
 - **Scene files are JSON** in `scenes/` — no Python or JS changes needed for new lessons.
-- **Pinned dependencies** — `requirements.txt` pins `gemini-live-tools` to a specific tag. Update the tag intentionally, don't switch back to `HEAD`.
+- **LM response caching is OFF by default** — DSPy's own default is `cache=True`, which writes every prompt and completion to `~/.dspy_cache` as a pickle (the store CVE-2025-69872 concerns). `backend/experts/llm_config.py` does not inherit that; set `ALGEBENCH_LM_CACHE=1` to opt in. It is enabled on Render (staging + prod), where repeated identical derivations across users turn a cache hit into a Gemini call not made — though the container filesystem is ephemeral, so it only pays within one container's life. Enable it locally for `scripts/proof_completion/optimize.py` and eval sweeps, which re-run overlapping prompts and are what caching actually pays for. Leave it off for interactive work: with `temperature` non-zero, a cached response returns the *same* sample rather than a fresh one (DSPy's `rollout_id` is the supported way to vary that).
+
+- **`requirements.lock` is what installs, not `requirements.txt`** — `run.sh`, `algebench`, CI, Render (prod + staging) and the HF Space all install from the lock. `requirements.txt` is the human-authored intent file; editing it changes nothing until the lock is regenerated. `run.sh` does not manage dependencies — that is plain `uv`, below.
+
+- **Dependency commands** (run from the repo root):
+  ```bash
+  uv pip compile requirements.txt -o requirements.lock --universal --python-version 3.12 --no-header
+  #   ...add --upgrade                  to move every package
+  #   ...add --upgrade-package <name>   to move just one
+  ./scripts/setup-venv.sh                                          # rebuild .venv from the lock
+  ```
+  Commit `requirements.txt` and `requirements.lock` together, in their own PR, so the resolved diff is reviewable.
+
+- **⚠️ ALWAYS resolve with a 30-day cooldown. NEVER use `0 days` unless the user explicitly asks.** The cooldown is set once in `uv.toml` (`exclude-newer = "30 days"`) and uv applies it to every command in this project, so the commands above already honour it — you do not need to pass anything. Compromised packages are usually found and yanked within hours to days (litellm 1.82.7/1.82.8 were quarantined ~40 minutes after release), and this is what stops one being installed. **Do not set `UV_EXCLUDE_NEWER="0 days"`, and do not pass `--exclude-newer`, on your own initiative** — not to "get the latest", not to make a resolution succeed, not to work around an error. It is the user's call alone. An upgrade under the cooldown means *newest that is at least 30 days old*, and that is the intended behaviour, not a problem to route around.
+
+- **The cooldown can push a package backwards.** If a pinned version is itself younger than 30 days (a security fix taken deliberately), it is not a legal candidate, so a relock picks an *older* release — e.g. `aiohttp 3.14.3 -> 3.14.2`, undoing the fix. Always read the version diff before committing a relock. Older releases carry more advisories, never fewer.
+
+- **The cooldown does not cover `gemini-live-tools`.** It filters PyPI upload timestamps, and a git dependency has none. The lock pins it by immutable commit SHA instead, so review that SHA when the tag moves.
+
+- **`run.sh` runs project Python and nothing else.** It does not create, sync or manage the venv — `./scripts/setup-venv.sh` does that, and dependency locking is plain `uv` (above). If `run.sh` warns that `requirements.lock` has changed, run setup-venv.
+- **One report covers both questions:** `./run.sh scripts/dependency_audit_report.py DEPENDENCY-AUDIT-REPORT.md` — advisories against the pinned versions, *and* a current / allowed-under-cooldown / latest-on-PyPI table with a legend for reading it. Writes nothing but the markdown file; exits non-zero if an unignored advisory is found. CI runs the same script and publishes it to Pages.
+
+- **Audit the pins:** `./run.sh scripts/dependency_audit_report.py DEPENDENCY-AUDIT-REPORT.md`. CI runs the same script (`.github/workflows/audit-python-deps.yml`) on every PR touching the lock, on push to main, and weekly — a lock that was clean when pinned does not stay clean, because advisories get published against versions you already hold. `PYSEC-2026-2447` is ignored by policy: `diskcache` (via `dspy`) has no patched release in any version — see CVE-2025-69872.
+- **GitHub's dependency graph cannot see our Python pins.** It parses `requirements.txt`, `Pipfile.lock`, `Pipfile`, `setup.py` — not `requirements.lock`. Our `requirements.txt` holds 13 ranged entries; the 110 pinned transitive versions live only in the lock, and that is where every advisory has ever been found here. So `dependency-review.yml` is scoped to **npm only**, and Python is audited against its real lock by `audit-python-deps.yml`. Do not "fix" this by renaming files to suit the parser.
+
+- **Pinned dependencies** — `requirements.txt` pins `gemini-live-tools` to a specific tag (the lock resolves it to an immutable commit SHA). Update the tag intentionally, don't switch back to `HEAD`, and recompile the lock afterwards — see the `update-glt` skill.
 - **JS from package** — `voice-character-selector.js` is served at runtime from the installed `gemini_live_tools` package via `get_static_content()`. Do not copy it into `static/`.
 - **`.venv` is local** — recreate with `rm -rf .venv && ./algebench` if broken.
 - **Native arm64 venv via `uv`** — `run.sh`/`algebench` provision `.venv` with `uv` when available, on a uv-managed CPython pinned by `.python-version` (3.13). This keeps the venv native arm64 on Apple Silicon instead of an x86 Homebrew Python under Rosetta, which roughly halves sympy throughput (issue #388). Without `uv` they fall back to `python3 -m venv`. Verify with `.venv/bin/python3 -c "import platform; print(platform.machine())"` → `arm64`. Dev-only: cloud deploys (Render, HF) are native Linux and unaffected.

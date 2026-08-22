@@ -35,3 +35,7 @@ backend/experts/modules/*/artifacts/
 .proof-store/
 .proof-source-material/
 .vite/
+
+# Generated report artifacts (published to gh-pages by CI, not committed)
+LOC-REPORT.md
+DEPENDENCY-AUDIT-REPORT.md

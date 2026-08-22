@@ -4,7 +4,7 @@
 # HF runs the container as UID 1000 and routes external traffic to port 7860.
 FROM python:3.12-slim
 
-# git is required: requirements.txt pulls gemini-live-tools from GitHub.
+# git is required: requirements.lock pulls gemini-live-tools from GitHub.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends git \
     && rm -rf /var/lib/apt/lists/*
@@ -19,10 +19,13 @@ ENV HOME=/home/user \
 
 WORKDIR /home/user/app
 
-# Install deps first for layer caching.
-COPY --chown=user requirements.txt .
+# Install deps first for layer caching. Install from requirements.lock, not
+# requirements.txt — the lock is the resolved set Render and CI also install,
+# so a Space rebuild can no longer pick up whatever is newest on PyPI that day
+# and quietly diverge from production (issue #593).
+COPY --chown=user requirements.lock .
 RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt
+    && pip install --no-cache-dir -r requirements.lock
 
 # App code (the deploy snapshot).
 COPY --chown=user . .

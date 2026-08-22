@@ -86,7 +86,8 @@ export GEMINI_API_KEY=your_key_here
 ```
 
 On first run, `./algebench` creates a virtual environment and installs the
-dependencies automatically — no manual `pip install` needed. Then open
+dependencies automatically (via `./scripts/setup-venv.sh`) — no manual `pip install`
+needed. Then open
 [http://localhost:8785](http://localhost:8785) in your browser.
 
 To confirm the venv is native (no Rosetta) on Apple Silicon:
@@ -107,7 +108,24 @@ To update to the latest version of `[gemini-live-tools](https://github.com/ibeni
 ./algebench --update
 ```
 
-This reinstalls `gemini-live-tools` from GitHub and copies the updated `voice-character-selector.js` into the app. Not ideal, but simple enough for now.
+This repoints `gemini-live-tools` at its newest tag, moves every other dependency to the newest version
+`requirements.txt` allows, and regenerates `requirements.lock` — the resolved file that local dev, CI and
+both deploys install from. Review `git diff requirements.txt requirements.lock` before committing.
+
+To move a single dependency instead of all of them, or to reinstall the venv from the lock without
+changing anything:
+
+```bash
+uv pip compile requirements.txt -o requirements.lock --universal --python-version 3.12 \
+    --no-header --upgrade-package numpy     # relock just this package
+./scripts/setup-venv.sh                     # rebuild .venv from requirements.lock
+./run.sh scripts/dependency_audit_report.py DEPENDENCY-AUDIT-REPORT.md   # advisories + what would move
+```
+
+**Release cooldown.** Dependency resolution never picks a release published in the last 30 days —
+compromised packages are normally caught and yanked within hours to days, so waiting removes most of
+that exposure. It is set once in `uv.toml`, so every `uv` command in the project honours it
+automatically. An upgrade therefore means *newest that is at least 30 days old*.
 
 For all available CLI options including TTS settings:
 
@@ -213,6 +231,7 @@ See [docs/feature-ideas.md](docs/feature-ideas.md) for technical directions and 
 - [docs/proof-authoring.md](docs/proof-authoring.md) — Authoring proofs for the `/prove` page: vision, review process, and the two contribution paths
 - [tests/proof_animation/](tests/proof_animation/README.md) — Proof-animation test suite (how to add/derive/render proofs)
 - [Codebase Statistics](https://ibenian.github.io/algebench/loc-report/) — Lines of code (LOC) by language, per-file breakdowns (auto-updated)
+- [Dependency Audit](https://ibenian.github.io/algebench/dep-audit/) — Pinned versions checked against the PyPA advisory database, with a current / cooldown-allowed / latest comparison (auto-updated)
 - [Semantic Graph Report](https://ibenian.github.io/algebench/semantic-graph/) — Visual examination of the LaTeX → semantic graph pipeline (auto-deployed)
 - [Proof Animation Report](https://ibenian.github.io/algebench/proof-animation/) — Interactive, morph-animated derivations from the proof test suite (auto-deployed)
 

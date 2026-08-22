@@ -1,4 +1,4 @@
-"""Tests for scripts/loc_report_to_html.py"""
+"""Tests for scripts/md_report_to_html.py"""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from pathlib import Path
 
-from scripts.loc_report_to_html import convert
+from scripts.md_report_to_html import convert
 
 
 class TestConvert:

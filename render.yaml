@@ -13,12 +13,20 @@ services:
     runtime: python
     plan: free
     branch: deploy/on-render
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install -r requirements.lock
     startCommand: uvicorn backend.asgi:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
     envVars:
       - key: PYTHON_VERSION
         value: "3.12.7"
+      # DSPy LM response caching. Off by default in the app (see
+      # backend/experts/llm_config.py); enabled here because repeated identical
+      # derivations — the builtin scenes especially — are common across users,
+      # and a cache hit is a Gemini call not made. Note the container filesystem
+      # is ephemeral: the cache starts empty on every deploy and dies on
+      # restart, so this only pays within one container's lifetime.
+      - key: ALGEBENCH_LM_CACHE
+        value: "1"
 
   # --- Staging: deploys from deploy/on-render-staging ---
   - type: web
@@ -26,12 +34,20 @@ services:
     runtime: python
     plan: free
     branch: deploy/on-render-staging
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install -r requirements.lock
     startCommand: uvicorn backend.asgi:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
     envVars:
       - key: PYTHON_VERSION
         value: "3.12.7"
+      # DSPy LM response caching. Off by default in the app (see
+      # backend/experts/llm_config.py); enabled here because repeated identical
+      # derivations — the builtin scenes especially — are common across users,
+      # and a cache hit is a Gemini call not made. Note the container filesystem
+      # is ephemeral: the cache starts empty on every deploy and dies on
+      # restart, so this only pays within one container's lifetime.
+      - key: ALGEBENCH_LM_CACHE
+        value: "1"
       # Staging-only: turn on backend.* DEBUG logs for diagnostics. create_app
       # reads this and configures the `backend` logger, so it works under the
       # uvicorn/asgi entrypoint (not just the CLI). Prod leaves it unset (WARNING).
