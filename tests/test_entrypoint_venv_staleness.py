@@ -22,6 +22,20 @@ RUN_SH = ROOT / "run.sh"
 SETUP_VENV = ROOT / "scripts" / "setup-venv.sh"
 
 
+def _code_only(path: Path) -> str:
+    """`path` with comment lines removed.
+
+    Every assertion about *behaviour* must go through this. A substring search
+    over the raw file is satisfied by the comment that explains the behaviour —
+    which is exactly how two assertions in this file came to guard their own
+    documentation instead of the code.
+    """
+    return "\n".join(
+        line for line in path.read_text().splitlines()
+        if not line.lstrip().startswith("#")
+    )
+
+
 def _setup_venv_gate() -> str:
     """The `if ...; then` line that decides whether setup-venv.sh creates a venv.
 
@@ -118,9 +132,20 @@ def test_setup_venv_keys_creation_on_the_interpreter_not_the_directory():
 
 def test_setup_venv_replaces_an_incomplete_venv_without_rm_rf():
     """Recreation goes through each tool's --clear, not a hand-rolled delete."""
-    src = SETUP_VENV.read_text()
-    assert "--clear" in src, "setup-venv.sh must use --clear to replace an incomplete venv"
-    code = "\n".join(l for l in src.splitlines() if not l.lstrip().startswith("#"))
+    code = _code_only(SETUP_VENV)
+    assert 'CLEAR="--clear"' in code, (
+        "setup-venv.sh must set CLEAR=--clear when replacing an incomplete venv "
+        "(comments mentioning --clear do not count)"
+    )
+    # Both creation paths must actually receive it; asserting only on the
+    # assignment would pass while the flag was never passed to anything.
+    for cmd in ("uv venv", "python3 -m venv"):
+        line = next((l for l in code.splitlines() if cmd in l and "$VENV" in l), None)
+        assert line is not None, f"setup-venv.sh no longer creates a venv with `{cmd}`"
+        assert "$CLEAR" in line, (
+            f"`{cmd}` must be passed $CLEAR so an incomplete venv is replaced; "
+            f"line is: {line.strip()}"
+        )
     assert "rm -rf" not in code, (
         "setup-venv.sh should not rm -rf a venv directory; use --clear"
     )
