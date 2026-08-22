@@ -8,7 +8,16 @@ VENV="$DIR/.venv"
 # with run.sh. They used to hold near-identical copies, which is how the lockfile
 # work in issue #593 landed in one and silently missed the other.
 ensure_venv() {
-    [ -x "$VENV/bin/python3" ] || "$DIR/scripts/setup-venv.sh" || exit 1
+    # Existence is NOT enough. A `git pull` that moves requirements.lock leaves
+    # .venv installed from the old one, and this entrypoint execs the server
+    # immediately — there is no later step to notice, so it must act rather than
+    # warn. run.sh warns instead because the user is right there at a prompt.
+    # setup-venv.sh is idempotent: it keeps an existing venv and reinstalls the
+    # lock into it.
+    if [ ! -x "$VENV/bin/python3" ] \
+       || ! cmp -s "$DIR/requirements.lock" "$VENV/.lock-stamp"; then
+        "$DIR/scripts/setup-venv.sh" || exit 1
+    fi
 }
 
 # --update: bump gemini-live-tools to its newest tag, then move every other
