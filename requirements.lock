@@ -1,37 +1,3 @@
-# requirements.lock — fully resolved dependency set. DO NOT EDIT BY HAND.
-#
-# Generated from requirements.txt by `./run.sh --upgrade`. This is what actually
-# gets installed: render.yaml (prod + staging), CI and run.sh all install from
-# this file, so a deploy can no longer re-resolve to whatever is newest on PyPI
-# that day. See issue #593.
-#
-# Universal resolution: one lock covering every environment we run in — Render
-# on Python 3.12.7/linux, CI on 3.13/linux, local dev on 3.13/darwin-arm64.
-# Platform-specific wheels carry environment markers.
-#
-# SUPPLY-CHAIN POLICY: releases published within the last 3 months are never
-# selected. Compromised packages are typically found and yanked within hours to
-# days of publication, so a cooldown removes most of that exposure. The one
-# exception is a published CVE, where the fix is usually days old and the risk
-# of NOT taking it is higher — `./run.sh --security <pkg>` bypasses the
-# cooldown for exactly that case, and prints a warning when it does.
-#
-# The cooldown only restrains forward movement. It is never applied as a blanket
-# re-resolve, because rolling the whole graph back to 3-month-old releases
-# raises known-CVE exposure rather than lowering it (measured on this project:
-# 9 advisories -> 33). recompile_lock reports any package that moves backwards.
-#
-# To change what is pinned here (do it in its own PR, with the diff reviewed):
-#
-#     ./run.sh --upgrade                 # everything, to the newest allowed
-#     ./run.sh --upgrade <pkg> [pkg...]  # only these packages
-#     ./run.sh --glt <TAG|latest>        # repoint gemini-live-tools
-#     ./run.sh --security <pkg>...       # take a CVE fix, cooldown bypassed
-#     ./run.sh --audit                   # check pins against the PyPA advisory DB
-#
-# Editing requirements.txt without running one of those has no effect on what
-# gets installed.
-#
 aiohappyeyeballs==2.6.2
     # via aiohttp
 aiohttp==3.14.3

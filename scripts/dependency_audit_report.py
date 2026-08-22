@@ -64,6 +64,12 @@ IGNORED = {
             "version to upgrade to, and none is coming."
         ),
         "mitigations": [
+            "`dspy.configure_cache(restrict_pickle=True)` is applied in "
+            "`backend/experts/llm_config.py`, restricting deserialization to a "
+            "known-safe type set. This is the direct mitigation for the flaw. "
+            "(`JSONDisk`, the advisory's general advice, is unreachable here: dspy "
+            "exposes no way to swap the disk backend, and it caches litellm "
+            "`ModelResponse` objects that are not JSON-serializable.)",
             "LM response caching is **off by default** (`ALGEBENCH_LM_CACHE`), so the "
             "pickle store is not written at all during normal local use.",
             "Exploitation requires **write access to the cache directory** (CVSS "
@@ -74,10 +80,14 @@ IGNORED = {
             "and neither applies.",
         ],
         "outstanding": [
-            "`dspy.configure_cache(restrict_pickle=True)` limits deserialization to a "
-            "known-safe type set. Not yet applied; it is the one real hardening "
-            "available for the paths where caching *is* enabled (Render, and local "
-            "optimizer runs).",
+            "**Cache poisoning is a separate, lower-bar threat that `restrict_pickle` "
+            "does not address.** It constrains deserialization, not content: a "
+            "crafted entry built only from safe types is accepted, served as though "
+            "the model produced it, and — because the proof-completion refinement "
+            "loop threads responses back into the next prompt — becomes input to a "
+            "subsequent live LLM call. The precondition is the same (write access to "
+            "the cache directory), so the same containment applies, but no "
+            "deserialization setting can prevent it.",
         ],
     },
 }

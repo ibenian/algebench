@@ -181,6 +181,22 @@ def configure_dspy(force: bool = False, **kwargs) -> dspy.LM:
         # ``dspy.settings.adapter`` is None and DSPy supplies its own implicit
         # ``ChatAdapter()`` — with the JSON fallback ON. See :func:`make_adapter`.
         dspy.configure(lm=lm, adapter=make_adapter(json_fallback=False))
+        # Harden the on-disk cache against CVE-2025-69872: diskcache deserializes
+        # cached values with unrestricted pickle, so anything able to write into
+        # the cache directory gets arbitrary code execution on the next read.
+        # There is no fixed diskcache release — the flaw is its default
+        # serializer, unchanged across all 76 versions — so DSPy's own
+        # restriction is the only reachable mitigation. (JSONDisk, which the
+        # advisory recommends generally, is not: DSPy exposes no way to swap the
+        # disk backend, and it caches litellm ModelResponse objects that are not
+        # JSON-serializable.)
+        #
+        # Applied unconditionally, not only when ALGEBENCH_LM_CACHE is set: the
+        # cost is nil when caching is off, and this must not depend on
+        # remembering to pair it with the opt-in. Verified that ModelResponse
+        # still round-trips under the restricted unpickler, so no safe_types
+        # entries are needed.
+        dspy.configure_cache(restrict_pickle=True)
         _configured = True
     return lm
 
