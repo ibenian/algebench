@@ -9,7 +9,6 @@ AlgeBench is an interactive 3D math visualizer built on MathBox / Three.js, with
 ```bash
 ./algebench                        # start server (auto-creates .venv on first run)
 ./algebench scenes/eigenvalues.json  # open a specific scene
-./algebench --update               # upgrade dependencies
 ```
 
 The server runs at `http://localhost:8785`.

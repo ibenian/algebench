@@ -102,25 +102,28 @@ To launch directly into a scene:
 ./algebench scenes/eigenvalues.json
 ```
 
-To update to the latest version of `[gemini-live-tools](https://github.com/ibenian/gemini-live-tools)` (which includes new voice characters and the voice picker UI):
+To update `[gemini-live-tools](https://github.com/ibenian/gemini-live-tools)` (which includes new voice
+characters and the voice picker UI), use the `update-glt` skill — it resolves the newest tag, rewrites
+`requirements.txt`, regenerates the lock and syncs `.venv`, and it also handles installing a PR branch
+for testing without touching either file.
 
-```bash
-./algebench --update
-```
-
-This repoints `gemini-live-tools` at its newest tag, moves every other dependency to the newest version
-`requirements.txt` allows, and regenerates `requirements.lock` — the resolved file that local dev, CI and
-both deploys install from. Review `git diff requirements.txt requirements.lock` before committing.
-
-To move a single dependency instead of all of them, or to reinstall the venv from the lock without
-changing anything:
+Dependency *resolution* is uv's — locking, upgrading, the cooldown below. Installing is not: everything
+installs from `requirements.lock` with pip, deliberately, because uv applies the cooldown to installs too
+and would refuse an already-reviewed lock that holds a pin younger than 30 days. `requirements.lock` is
+what local dev, CI and both deploys install, so editing `requirements.txt` alone changes nothing — always
+relock:
 
 ```bash
 uv pip compile requirements.txt -o requirements.lock --universal --python-version 3.12 \
     --no-header --upgrade-package numpy     # relock just this package
+uv pip compile requirements.txt -o requirements.lock --universal --python-version 3.12 \
+    --no-header --upgrade                   # relock everything
 ./scripts/setup-venv.sh                     # rebuild .venv from requirements.lock
 ./run.sh scripts/dependency_audit_report.py DEPENDENCY-AUDIT-REPORT.md   # advisories + what would move
 ```
+
+Review `git diff requirements.txt requirements.lock` before committing, and commit the two together —
+both must reach the `deploy/on-render*` branches together, since Render installs from the lock.
 
 **Release cooldown.** Dependency resolution never picks a release published in the last 30 days —
 compromised packages are normally caught and yanked within hours to days, so waiting removes most of
