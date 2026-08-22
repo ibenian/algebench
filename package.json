@@ -2,7 +2,7 @@
   "name": "algebench",
   "private": true,
   "type": "module",
-  "description": "Tooling/test harness for AlgeBench static ES modules (no build step).",
+  "description": "Build- and dev-time toolchain for the AlgeBench TypeScript frontend: Vite builds src/ into the committed static/dist/ bundle that the Python server serves. Not needed to run AlgeBench.",
   "scripts": {
     "test": "node --experimental-strip-types --import ./scripts/register-test-resolver.mjs --test src/*.test.ts",
     "types:generate": "node scripts/generate_ts_types.mjs",
