@@ -22,6 +22,23 @@ RUN_SH = ROOT / "run.sh"
 SETUP_VENV = ROOT / "scripts" / "setup-venv.sh"
 
 
+def _setup_venv_gate() -> str:
+    """The `if ...; then` line that decides whether setup-venv.sh creates a venv.
+
+    Asserting on this rather than on whole-file text matters: the comment above
+    the condition necessarily names bin/python3 and bin/pip to explain itself,
+    and `$VENV/bin/pip` appears again where the script actually installs. Both
+    would satisfy a substring search over the file while the real gate said
+    something else entirely.
+    """
+    src = SETUP_VENV.read_text()
+    for line in src.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("if [") and "$VENV" in stripped:
+            return stripped
+    raise AssertionError("no venv-gating `if` found in setup-venv.sh")
+
+
 def _ensure_venv_body() -> str:
     """The body of algebench's ensure_venv()."""
     src = ALGEBENCH.read_text()
@@ -89,12 +106,13 @@ def test_setup_venv_keys_creation_on_the_interpreter_not_the_directory():
     exists" to mean "venv matches the lock", and setup-venv.sh used "directory
     exists" to mean "venv is usable".
     """
-    src = SETUP_VENV.read_text()
-    assert 'bin/python3"' in src or "bin/python3'" in src, (
-        "setup-venv.sh must gate creation on the interpreter existing"
+    gate = _setup_venv_gate()
+    assert "bin/python3" in gate, (
+        f"setup-venv.sh must gate creation on the interpreter existing; gate is: {gate}"
     )
-    assert "bin/pip" in src, (
-        "setup-venv.sh must gate creation on pip existing — the install step needs it"
+    assert "bin/pip" in gate, (
+        f"setup-venv.sh must gate creation on pip existing — the install step "
+        f"needs it; gate is: {gate}"
     )
 
 
