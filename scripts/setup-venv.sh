@@ -14,7 +14,20 @@ DIR="$(cd "$(dirname "$0")/.." && pwd)"
 VENV="$DIR/.venv"
 LOCK="$DIR/requirements.lock"
 
-if [ ! -d "$VENV" ]; then
+# Keyed on the interpreter and pip, NOT on the directory existing. An
+# interrupted first-time setup leaves .venv/ present but without bin/python3,
+# and a directory-only check then skips creation and dies further down on a raw
+# "no such file" from bin/pip. Same failure shape as the one fixed in the
+# algebench launcher: an existence test standing in for a usability claim.
+if [ ! -x "$VENV/bin/python3" ] || [ ! -x "$VENV/bin/pip" ]; then
+    CLEAR=""
+    if [ -d "$VENV" ]; then
+        echo "⚠️  .venv exists but is incomplete (no interpreter or pip) — recreating."
+        # --clear rather than `rm -rf`: each tool's own supported way to replace
+        # an existing environment, so nothing here deletes a directory by hand.
+        # uv refuses to write into a populated venv dir without it.
+        CLEAR="--clear"
+    fi
     echo "Creating virtual environment..."
     if command -v uv >/dev/null 2>&1; then
         PYVER="$(cat "$DIR/.python-version" 2>/dev/null || echo 3.13)"
@@ -23,10 +36,12 @@ if [ ! -d "$VENV" ]; then
         # first on PATH — often the x86 Homebrew build, which runs under Rosetta
         # and roughly halves sympy throughput (issue #388).
         # --seed installs pip, which the install step below needs.
-        uv venv --seed --python "$PYVER" --python-preference only-managed "$VENV"
+        # shellcheck disable=SC2086  # CLEAR is empty or --clear, intentionally unquoted
+        uv venv $CLEAR --seed --python "$PYVER" --python-preference only-managed "$VENV"
     else
         echo "⚠️  uv not found — using 'python3 -m venv' (may be x86/Rosetta on Apple Silicon; see issue #388)."
-        python3 -m venv "$VENV"
+        # shellcheck disable=SC2086
+        python3 -m venv $CLEAR "$VENV"
     fi
 fi
 
