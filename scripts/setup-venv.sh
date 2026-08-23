@@ -14,6 +14,46 @@ DIR="$(cd "$(dirname "$0")/.." && pwd)"
 VENV="$DIR/.venv"
 LOCK="$DIR/requirements.lock"
 
+# Minimum uv. Two independent reasons land on the same floor:
+#
+#   * SECURITY. uv <0.11.15 is affected by two advisories with no fix in any
+#     earlier line — arbitrary file deletion via RECORD entries (GHSA-pjjw-68hj-v9mw,
+#     fixed 0.11.6) and arbitrary file write via entry point names
+#     (GHSA-4gg8-gxpx-9rph, fixed 0.11.15). Both land while INSTALLING a package,
+#     which is precisely the moment uv.toml's cooldown exists to protect.
+#   * FUNCTION. `exclude-newer` only accepts relative durations ("30 days") from
+#     uv 0.9.17 (astral-sh/uv#16814). Older uv fails to parse uv.toml at all —
+#     every uv command in the project dies with a TOML error that names a line
+#     number rather than the cause.
+#
+# 0.11.32 (2026-07-23) is the newest release that is both clear of every known
+# advisory and older than the 30-day cooldown this project applies to its own
+# dependencies — the consistent choice, so it is what the message suggests.
+UV_MIN="0.11.15"
+
+# True when $1 is older than $2. sort -V is version-aware, so 0.11.9 < 0.11.15
+# sorts correctly where a string compare would not.
+uv_older_than() {
+    [ "$1" != "$2" ] && [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -1)" = "$1" ]
+}
+
+if command -v uv >/dev/null 2>&1; then
+    UV_VER="$(uv --version 2>/dev/null | awk '{print $2}')"
+    if [ -n "$UV_VER" ] && uv_older_than "$UV_VER" "$UV_MIN"; then
+        echo "❌ uv $UV_VER is too old — this project needs >= $UV_MIN."
+        echo
+        echo "   Below $UV_MIN, uv is affected by two advisories that trigger while"
+        echo "   installing a package (GHSA-pjjw-68hj-v9mw, GHSA-4gg8-gxpx-9rph), and"
+        echo "   it cannot parse uv.toml's \"30 days\" cooldown, so every uv command"
+        echo "   in this project fails with a TOML parse error."
+        echo
+        echo "   Upgrade:  uv self update    (or reinstall from https://astral.sh/uv)"
+        echo "   Suggested: 0.11.32 — newest release clear of all known advisories"
+        echo "              and past this project's own 30-day cooldown."
+        exit 1
+    fi
+fi
+
 # Keyed on the interpreter and pip, NOT on the directory existing. An
 # interrupted first-time setup leaves .venv/ present but without bin/python3,
 # and a directory-only check then skips creation and dies further down on a raw

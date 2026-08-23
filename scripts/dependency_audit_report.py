@@ -118,6 +118,13 @@ def resolve(lock: Path, out_path: Path, cooldown: bool) -> None:
     """Compile into out_path, seeded from the lock so uv keeps existing pins."""
     out_path.write_text(lock.read_text())
     env = dict(os.environ)
+    # Drop any inherited UV_EXCLUDE_NEWER before deciding what this run should use.
+    # uv's env var beats uv.toml, so a developer with it exported in their shell
+    # would silently resolve the "cooldown" column against THEIR cutoff instead of
+    # the project's — the report would then contradict the policy it exists to
+    # check, exactly the failure the cwd=ROOT comment below guards against by a
+    # different route.
+    env.pop("UV_EXCLUDE_NEWER", None)
     if not cooldown:
         # The ONLY place the cooldown is switched off, and it never writes to the
         # real lock — this is how the report shows what is being held back.

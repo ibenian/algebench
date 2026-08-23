@@ -27,9 +27,21 @@
 # uv's own env var beats this file, so the same override works for any ad-hoc
 # uv command. No wrapper flag is needed.
 #
+# REQUIRES uv >= 0.11.15 (enforced by scripts/setup-venv.sh). Relative durations
+# in `exclude-newer` arrived in uv 0.9.17 (astral-sh/uv#16814) — before that only
+# absolute timestamps parsed, and older uv dies on this file with a TOML error
+# that names a line number rather than the cause. The floor is 0.11.15 rather
+# than 0.9.17 because two advisories affecting the INSTALL path are unfixed below
+# it (GHSA-pjjw-68hj-v9mw, GHSA-4gg8-gxpx-9rph) — see setup-venv.sh.
+#
+# A duration is deliberate. An absolute timestamp would need a human to roll it
+# forward, and a date nobody edits silently TIGHTENS the cutoff as it ages,
+# eventually holding back the security fixes this policy is meant to let through.
+#
 # NOTE: this applies to PyPI releases only. A git dependency (gemini-live-tools)
 # has no upload timestamp to filter on, so the cooldown does not reach it — the
 # lock pins it by immutable commit SHA instead.
 #
-# NOTE: uv rejects "3 months" — durations must be expressed in days.
+# NOTE: units must be fixed-length — "30 days", "1 week" and "24 hours" all parse;
+# "3 months" does not, because a month has no fixed duration.
 exclude-newer = "30 days"
