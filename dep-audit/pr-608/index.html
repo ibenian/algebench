@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Python Dependency Audit — AlgeBench</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0d1117; color: #e6edf3; padding: 2rem; line-height: 1.6;
+    max-width: 960px; margin: 0 auto;
+  }
+  h1 { font-size: 1.5rem; margin: 1.5rem 0 0.5rem; border-bottom: 1px solid #30363d; padding-bottom: 0.5rem; }
+  h2 { font-size: 1.2rem; margin: 1.5rem 0 0.5rem; color: #8b949e; }
+  p { margin: 0.5rem 0; }
+  /* The `*` reset above strips ul/ol padding, so without this the markers hang
+     into the left margin instead of indenting under the preceding text. */
+  ul, ol { margin: 0.5rem 0; padding-left: 1.5rem; }
+  li { margin: 0.3rem 0; }
+  li > ul, li > ol { margin: 0.3rem 0; }
+  li > p { margin: 0.2rem 0; }
+  blockquote {
+    border-left: 3px solid #30363d; padding: 0.5rem 1rem;
+    color: #8b949e; margin: 0.5rem 0; background: #161b22; border-radius: 4px;
+  }
+  table {
+    border-collapse: collapse; width: 100%; margin: 0.5rem 0;
+    background: #161b22; border-radius: 8px; overflow: hidden;
+  }
+  th, td {
+    border: 1px solid #30363d; padding: 0.5rem 0.75rem; text-align: left;
+    font-size: 0.85rem;
+  }
+  th { background: #1c2128; font-weight: 600; }
+  pre {
+    background: #161b22; border: 1px solid #30363d; border-radius: 8px;
+    padding: 1rem; overflow-x: auto; font-size: 0.8rem; margin: 0.5rem 0;
+  }
+  code { font-family: 'JetBrains Mono', 'Fira Code', monospace; }
+  .mermaid { background: #161b22; border-radius: 8px; padding: 1rem; margin: 0.5rem 0; }
+  a { color: #58a6ff; }
+  .markdown-alert {
+    border-left: 3px solid; padding: 0.5rem 1rem; margin: 0.5rem 0;
+    background: #161b22; border-radius: 4px;
+  }
+  .markdown-alert-title { font-weight: 600; margin-bottom: 0.25rem; display: flex; align-items: center; gap: 0.4rem; }
+  .markdown-alert-note  { border-color: #539bf5; }
+  .markdown-alert-note .markdown-alert-title { color: #539bf5; }
+  .markdown-alert-tip   { border-color: #57ab5a; }
+  .markdown-alert-tip .markdown-alert-title { color: #57ab5a; }
+  .markdown-alert-important { border-color: #986ee2; }
+  .markdown-alert-important .markdown-alert-title { color: #986ee2; }
+  .markdown-alert-warning { border-color: #c69026; }
+  .markdown-alert-warning .markdown-alert-title { color: #c69026; }
+  .markdown-alert-caution { border-color: #e5534b; }
+  .markdown-alert-caution .markdown-alert-title { color: #e5534b; }
+</style>
+</head>
+<body>
+<div id="content"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: false, theme: 'dark' });
+
+  const md = document.getElementById('raw-md').textContent;
+
+  const alertIcons = {
+    note: 'ℹ️', tip: '💡', important: '❗',
+    warning: '⚠️', caution: '🛑'
+  };
+
+  const renderer = new marked.Renderer();
+  const origCode = renderer.code.bind(renderer);
+  renderer.code = function(code, language) {
+    if (language === 'mermaid') {
+      return '<div class="mermaid">' + code + '</div>';
+    }
+    return origCode(code, language);
+  };
+  const origBlockquote = renderer.blockquote.bind(renderer);
+  renderer.blockquote = function(quote) {
+    const m = quote.match(/^\s*<p>\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\][\s\n]*/i);
+    if (m) {
+      const kind = m[1].toLowerCase();
+      const body = quote.replace(m[0], '<p>');
+      const icon = alertIcons[kind] || '';
+      return '<div class="markdown-alert markdown-alert-' + kind + '">'
+        + '<p class="markdown-alert-title">' + icon + ' ' + m[1] + '</p>'
+        + body + '</div>';
+    }
+    return origBlockquote(quote);
+  };
+
+  marked.setOptions({ renderer, gfm: true, breaks: false });
+  const dirty = marked.parse(md);
+  if (typeof DOMPurify !== 'undefined') {
+    document.getElementById('content').innerHTML = DOMPurify.sanitize(dirty, {ADD_TAGS: ['div'], ADD_ATTR: ['class']});
+  } else {
+    document.getElementById('content').innerHTML = dirty;
+  }
+
+  await mermaid.run();
+</script>
+<script id="raw-md" type="text/plain">
+# Python Dependency Audit
+
+`requirements.lock` — **110** pinned packages checked against the PyPA advisory database.
+
+Release cooldown: **2026-07-24T00:00:00Z** — set by [`uv.toml`](https://github.com/ibenian/algebench/blob/main/uv.toml) (`exclude-newer`), which uv applies to every command in this project. Nothing here restates the value; it is read from that file.
+
+_2026-08-23 12:17 UTC_
+
+## ✅ No known vulnerabilities
+
+Every pinned version is clear of the advisory database.
+
+## Versions
+
+**60** package(s) could move. Columns are three different ceilings, not a progression:
+
+| | Package | Current | Allowed (≥2026-07-24T00:00:00Z old) | Latest on PyPI |
+|---|---|---|---|---|
+| ⬆️ | `aiohappyeyeballs` | `2.6.2` | `2.7.1` | `2.7.1` |
+| ⏳ | `alembic` | `1.18.4` | `1.18.5` | `1.19.1` |
+| ⏳ | `annotated-doc` | `0.0.4` | `0.0.4` | `0.0.5` |
+| ⬆️ | `annotated-types` | `0.7.0` | `0.8.0` | `0.8.0` |
+| ⬆️ | `anyio` | `4.14.0` | `4.14.2` | `4.14.2` |
+| ⏳ | `cachetools` | `7.1.4` | `7.1.6` | `7.1.7` |
+| ⬆️ | `certifi` | `2026.6.17` | `2026.7.22` | `2026.7.22` |
+| ⏳ | `cffi` | `2.0.0` | `2.1.0` | `2.1.1` |
+| ⏳ | `charset-normalizer` | `3.4.7` | `3.4.9` | `3.5.1` |
+| ⬆️ | `click` | `8.4.1` | `8.4.2` | `8.4.2` |
+| ⬆️ | `colorlog` | `6.10.1` | `6.12.0` | `6.12.0` |
+| 🔻 | `cryptography` | `50.0.0` | `49.0.0` | `50.0.0` |
+| ⏳ | `dspy` | `3.2.1` | `3.2.1` | `3.3.1` |
+| ⏳ | `fastapi` | `0.138.0` | `0.139.2` | `0.141.1` |
+| ⏳ | `filelock` | `3.29.4` | `3.32.0` | `3.32.3` |
+| ⏳ | `fsspec` | `2026.4.0` | `2026.6.0` | `2026.7.0` |
+| ⏳ | `genai-prices` | `0.0.66` | `0.0.72` | `0.1.4` |
+| ⏳ | `gepa` | `0.0.27` | `0.0.27` | `0.1.4` |
+| ⏳ | `google-api-core` | `2.31.0` | `2.33.0` | `2.34.0` |
+| ⏳ | `google-auth` | `2.55.0` | `2.56.2` | `2.56.3` |
+| ⏳ | `google-cloud-core` | `2.6.0` | `2.6.0` | `2.6.1` |
+| ⏳ | `google-cloud-storage` | `3.12.1` | `3.13.0` | `3.13.1` |
+| ⏳ | `google-genai` | `2.9.0` | `2.14.0` | `2.19.0` |
+| ⏳ | `google-resumable-media` | `2.10.0` | `2.10.0` | `2.10.1` |
+| ⏳ | `googleapis-common-protos` | `1.75.0` | `1.75.0` | `1.75.1` |
+| 🔻 | `greenlet` | `3.5.5` | `3.5.4` | `3.5.5` |
+| ⏳ | `griffelib` | `2.1.0` | `2.1.0` | `2.2.0` |
+| ⏳ | `hf-xet` | `1.5.1` | `1.5.2` | `1.6.0` |
+| ⏳ | `httpcore2` | `2.4.0` | `2.9.0` | `2.12.0` |
+| ⏳ | `httpx2` | `2.4.0` | `2.9.0` | `2.12.0` |
+| ⏳ | `huggingface-hub` | `1.20.1` | `1.24.0` | `1.28.0` |
+| ⏳ | `idna` | `3.18` | `3.18` | `3.19` |
+| ⬆️ | `jiter` | `0.15.0` | `0.16.0` | `0.16.0` |
+| ⏳ | `json-repair` | `0.61.0` | `0.61.7` | `0.63.3` |
+| ⏳ | `litellm` | `1.89.2` | `1.93.0` | `1.98.0` |
+| ⏳ | `logfire-api` | `4.37.0` | `4.38.0` | `4.41.0` |
+| ⏳ | `mako` | `1.3.12` | `1.3.12` | `1.4.1` |
+| ⏳ | `numpy` | `2.4.6` | `2.5.1` | `2.5.2` |
+| ⏳ | `openai` | `2.43.0` | `2.48.0` | `3.3.1` |
+| ⬆️ | `opentelemetry-api` | `1.42.1` | `1.44.0` | `1.44.0` |
+| ⏳ | `orjson` | `3.11.9` | `3.11.9` | `3.12.0` |
+| ⏳ | `packaging` | `26.2` | `26.2` | `26.3` |
+| ⏳ | `proto-plus` | `1.28.1` | `1.28.2` | `1.28.3` |
+| ⏳ | `protobuf` | `7.35.1` | `7.35.1` | `7.36.0` |
+| ⏳ | `pydantic-ai-slim` | `1.107.0` | `2.16.0` | `2.33.0` |
+| ⏳ | `pydantic-graph` | `1.107.0` | `2.16.0` | `2.33.0` |
+| ⏳ | `python-dotenv` | `1.2.2` | `1.2.2` | `1.2.3` |
+| ⬆️ | `regex` | `2026.5.9` | `2026.7.19` | `2026.7.19` |
+| ⬆️ | `rpds-py` | `2026.5.1` | `2026.6.3` | `2026.6.3` |
+| ⏳ | `sounddevice` | `0.5.5` | `0.5.5` | `0.5.6` |
+| ⏳ | `sqlalchemy` | `2.0.51` | `2.0.51` | `2.0.52` |
+| ⏳ | `starlette` | `1.3.1` | `1.3.1` | `1.6.0` |
+| ⏳ | `tiktoken` | `0.13.0` | `0.13.0` | `0.14.0` |
+| ⏳ | `tqdm` | `4.68.3` | `4.69.0` | `4.70.0` |
+| ⬆️ | `typing-extensions` | `4.15.0` | `4.16.0` | `4.16.0` |
+| ⏳ | `typing-inspection` | `0.4.2` | `0.4.2` | `0.4.4` |
+| ⏳ | `uvicorn` | `0.49.0` | `0.51.0` | `0.52.4` |
+| 🔒 | `websockets` | `16.0` | `16.1.1` | `17.0.1` |
+| ⏳ | `xxhash` | `3.7.0` | `3.8.1` | `4.0.1` |
+| ⬆️ | `yarl` | `1.24.2` | `1.24.5` | `1.24.5` |
+
+### How to read this
+
+- ⬆️ **Ready** (12) — a newer release has cleared the 2026-07-24T00:00:00Z cooldown. Take it with a targeted relock.
+- ⏳ **Cooling** (45) — something newer exists but is younger than 2026-07-24T00:00:00Z. **This is the policy working, not a problem.** Compromised packages are usually caught and yanked within hours to days; waiting removes most of that exposure.
+- 🔒 **Capped** (1) — the cooldown is not what is holding this back; a constraint in `requirements.txt` (or a transitive dependency's own pin) is. Loosening the range is the only way forward.
+- 🔻 **Backwards** (2) — a relock would move this to an *older* release, because the current pin is itself younger than 2026-07-24T00:00:00Z (a security fix taken deliberately). Older releases carry more advisories, never fewer — check the diff before committing any relock while this row is present.
+- ✅ **Current** — nothing newer exists.
+
+> **Allowed** is what `uv pip compile --upgrade` would pin today. **Latest on PyPI** may be unreachable regardless of the cooldown if a constraint caps it.
+
+
+## Ignored by policy
+
+These do not fail the build. They are listed in full every run so the exclusion stays auditable rather than silent.
+
+### [PYSEC-2026-2447](https://github.com/advisories/GHSA-w8v5-vhqr-4h9v) — `diskcache` `5.6.3`
+
+**Why no upgrade:** Unfixable rather than unfixed. `diskcache` uses `pickle` as its default serializer by design, across all 76 releases (0.1.0–5.6.3). Its last release was 2023-08-31, years before the advisory was published in Feb 2026, and the project is effectively unmaintained — there is no version to upgrade to, and none is coming.
+
+**Mitigating today:**
+
+- `dspy.configure_cache(restrict_pickle=True)` is applied in `backend/experts/llm_config.py`, restricting deserialization to a known-safe type set. This is the direct mitigation for the flaw. (`JSONDisk`, the advisory's general advice, is unreachable here: dspy exposes no way to swap the disk backend, and it caches litellm `ModelResponse` objects that are not JSON-serializable.)
+- LM response caching is **off by default** (`ALGEBENCH_LM_CACHE`), so the pickle store is not written at all during normal local use.
+- Exploitation requires **write access to the cache directory** (CVSS `AV:L/PR:L`). Anything holding that on a single-user machine can already execute as that user and has no need of a pickle.
+- Deploys are isolated, single-tenant, ephemeral containers — the advisory names shared storage and multi-tenant hosts as the high-risk contexts, and neither applies.
+
+**Still outstanding:**
+
+- **Cache poisoning is a separate, lower-bar threat that `restrict_pickle` does not address.** It constrains deserialization, not content: a crafted entry built only from safe types is accepted, served as though the model produced it, and — because the proof-completion refinement loop threads responses back into the next prompt — becomes input to a subsequent live LLM call. The precondition is the same (write access to the cache directory), so the same containment applies, but no deserialization setting can prevent it.
+
+
+</script>
+</body>
+</html>
