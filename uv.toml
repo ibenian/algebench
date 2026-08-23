@@ -19,7 +19,7 @@
 # CVE is a present risk whose fix is usually days old, so that case overrides
 # the cooldown explicitly:
 #
-#     UV_EXCLUDE_NEWER="0 days" uv pip compile requirements.txt -o requirements.lock \\
+#     UV_EXCLUDE_NEWER="2024-01-01T00:00:00Z" uv pip compile requirements.txt -o requirements.lock \\
 #         --universal --python-version 3.12 --no-header --upgrade-package <name>
 #
 # Do NOT reach for that override yourself — it is the user's call. See AGENTS.md.
@@ -31,5 +31,7 @@
 # has no upload timestamp to filter on, so the cooldown does not reach it — the
 # lock pins it by immutable commit SHA instead.
 #
-# NOTE: uv rejects "3 months" — durations must be expressed in days.
-exclude-newer = "30 days"
+# NOTE: uv >= 0.8 requires an ISO-8601 datetime string, not a relative duration.
+# Update this date periodically (keep it ~30 days before the current date).
+# Last updated: 2026-08-23
+exclude-newer = "2026-07-24T00:00:00Z"
