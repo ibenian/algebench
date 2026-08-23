@@ -1,0 +1,56 @@
+name: Backend Model
+
+# Guards backend/model/lesson.py against drift from schemas/lesson.schema.json.
+#
+# The mirror image of frontend-types.yml: that job regenerates the TypeScript
+# declarations and fails if they no longer match the schema; this one checks the
+# pydantic models the DSPy builders return. The schema is maintained by hand and
+# by the `algebench-schema-generator` skill — not by a deterministic build — so
+# either artifact can silently fall behind it.
+#
+# This is its own workflow rather than a job in validate-data.yml because that
+# workflow validates DATA FILES on disk; a model-versus-schema conformance check
+# is a different thing wearing the same words.
+#
+# It does not rely on tests.yml either: that suite runs SAMPLED unless Python
+# changed, and a schema-only PR changes no Python — so these checks could be
+# sampled out of exactly the change that needs them. A named check also reads as
+# "your schema edit broke the model" rather than "tests are broken".
+#
+# Path-filtered, so do NOT mark it a required check — see the note in
+# frontend-types.yml about PRs stuck on "Expected — waiting for status".
+on:
+  pull_request:
+    paths:
+      - 'schemas/*.schema.json'
+      - 'backend/model/**'
+      - 'tests/test_lesson_model.py'
+      - '.github/workflows/backend-model.yml'
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  model:
+    name: Model matches the schema
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      # Deliberately NOT requirements.lock: backend/model/lesson.py imports
+      # nothing heavy (the test asserts it), so three packages suffice and the
+      # job finishes in seconds.
+      - name: Install dependencies
+        run: pip install pydantic jsonschema pytest
+
+      - name: Model round-trips the corpus and matches the schema
+        run: python -m pytest tests/test_lesson_model.py -q
