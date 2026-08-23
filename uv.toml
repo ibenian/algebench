@@ -32,6 +32,9 @@
 # lock pins it by immutable commit SHA instead.
 #
 # NOTE: uv >= 0.8 requires an ISO-8601 datetime string, not a relative duration.
-# Update this date periodically (keep it ~30 days before the current date).
+# ⚠️  Keep this date rolling: set it to ~30 days before today each time you
+# update dependencies. A stale date makes the cutoff OLDER than 30 days,
+# progressively blocking more packages and potentially preventing security
+# fixes from being resolved. Update alongside every requirements.lock commit.
 # Last updated: 2026-08-23
 exclude-newer = "2026-07-24T00:00:00Z"
