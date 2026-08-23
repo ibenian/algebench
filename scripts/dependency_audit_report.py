@@ -121,7 +121,7 @@ def resolve(lock: Path, out_path: Path, cooldown: bool) -> None:
     if not cooldown:
         # The ONLY place the cooldown is switched off, and it never writes to the
         # real lock — this is how the report shows what is being held back.
-        env["UV_EXCLUDE_NEWER"] = "0 days"
+        env["UV_EXCLUDE_NEWER"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     # cwd=ROOT is load-bearing, not tidiness: uv discovers uv.toml by walking up
     # from the working directory, so running this script from anywhere else
     # silently drops the 30-day cooldown and the report then contradicts the

@@ -19,7 +19,7 @@
 # CVE is a present risk whose fix is usually days old, so that case overrides
 # the cooldown explicitly:
 #
-#     UV_EXCLUDE_NEWER="2024-01-01T00:00:00Z" uv pip compile requirements.txt -o requirements.lock \\
+#     UV_EXCLUDE_NEWER="$(date -u +%Y-%m-%dT%H:%M:%SZ)" uv pip compile requirements.txt -o requirements.lock \\
 #         --universal --python-version 3.12 --no-header --upgrade-package <name>
 #
 # Do NOT reach for that override yourself — it is the user's call. See AGENTS.md.

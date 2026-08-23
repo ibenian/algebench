@@ -49,7 +49,7 @@ fi
 # cooldown to installs as well as resolutions, which makes an already reviewed
 # lock unbuildable whenever it holds a pin younger than 30 days — e.g. aiohttp
 # 3.14.3, taken on purpose as a CVE fix. The alternative was to set
-# UV_EXCLUDE_NEWER="0 days" here, and that override is the user's call alone
+# UV_EXCLUDE_NEWER="$(date -u +%Y-%m-%dT%H:%M:%SZ)" here, and that override is the user's call alone
 # (see AGENTS.md), never something a script should do on their behalf. pip has
 # no notion of exclude-newer, so the lock installs exactly as written.
 echo "Installing requirements.lock..."
