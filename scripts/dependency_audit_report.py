@@ -29,6 +29,44 @@ ROOT = Path(__file__).resolve().parent.parent
 UV_TOML = ROOT / "uv.toml"
 UV_TOML_URL = "https://github.com/ibenian/algebench/blob/main/uv.toml"
 
+# Minimum uv, mirroring UV_MIN in scripts/setup-venv.sh. Enforced HERE as well
+# because setup-venv.sh is not on this path: this script is documented and run
+# directly (and from CI), and run.sh only checks that a .venv exists — it never
+# looks at the uv binary. So a machine with an existing venv and an old uv would
+# otherwise reach the `uvx` call below, which INSTALLS pip-audit and its
+# dependencies through a uv covered by the very advisories the floor exists to
+# avoid (GHSA-4gg8-gxpx-9rph, GHSA-pjjw-68hj-v9mw — both install-time).
+#
+# tests/test_uv_floor.py asserts this stays equal to the shell constant.
+UV_MIN = "0.11.15"
+
+
+def _require_uv() -> None:
+    """Refuse to shell out to uv/uvx below the project's security floor.
+
+    Fails CLOSED: an unreadable or unparseable version is refused rather than
+    assumed recent, matching uv_older_than() in setup-venv.sh.
+    """
+    try:
+        out = subprocess.run(["uv", "--version"], capture_output=True, text=True, check=False)
+        raw = out.stdout.split()[1] if len(out.stdout.split()) > 1 else ""
+    except (OSError, IndexError):
+        raw = ""
+
+    def parts(v: str):
+        bits = v.split(".")[:3]
+        return tuple(int(b) for b in bits) if len(bits) == 3 and all(b.isdigit() for b in bits) else None
+
+    have, need = parts(raw), parts(UV_MIN)
+    if have is None or have < need:
+        raise SystemExit(
+            f"uv {raw or '(version unreadable)'} is below this project's floor of {UV_MIN}.\n"
+            f"Below {UV_MIN}, uv is affected by install-time advisories "
+            f"(GHSA-4gg8-gxpx-9rph; below 0.11.6 also GHSA-pjjw-68hj-v9mw), and this "
+            f"script installs pip-audit through uv.\n"
+            f"Upgrade with `uv self update` (0.11.32 suggested), then re-run."
+        )
+
 
 def cooldown() -> str:
     """The configured release cooldown, read from uv.toml rather than restated.
@@ -359,6 +397,7 @@ def main() -> None:
     ap.add_argument("--lock", type=Path, default=ROOT / "requirements.lock")
     args = ap.parse_args()
 
+    _require_uv()   # before ANY uv/uvx subprocess — see UV_MIN above
     deps, total = run_audit(args.lock)
     md, count = build(deps, total)
     args.output.write_text(md, encoding="utf-8")

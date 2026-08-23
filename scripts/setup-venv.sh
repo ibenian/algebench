@@ -65,13 +65,21 @@ uv_older_than() {
 
 if command -v uv >/dev/null 2>&1; then
     UV_VER="$(uv --version 2>/dev/null | awk '{print $2}')"
-    if [ -n "$UV_VER" ] && uv_older_than "$UV_VER" "$UV_MIN"; then
-        echo "❌ uv $UV_VER is too old — this project needs >= $UV_MIN."
+    # An unreadable version is REFUSED, not waved through. The obvious spelling
+    # here — `[ -n "$UV_VER" ] && uv_older_than ...` — fails OPEN: if `uv --version`
+    # prints something unexpected, UV_VER is empty, the condition is false, and the
+    # script goes on to use that unknown binary. uv_older_than() itself already
+    # refuses anything it cannot parse; this makes the caller agree with it.
+    if [ -z "$UV_VER" ] || uv_older_than "$UV_VER" "$UV_MIN"; then
+        echo "❌ uv ${UV_VER:-(version unreadable)} is too old — this project needs >= $UV_MIN."
         echo
         # Say which requirement this version actually fails. Most rejected
         # versions parse uv.toml perfectly well and are refused on security
         # grounds alone; claiming otherwise sends people chasing a config error.
-        if uv_older_than "$UV_VER" "$UV_DURATION_MIN"; then
+        if [ -z "$UV_VER" ]; then
+            echo "   Its version could not be read from \`uv --version\`, so it cannot be"
+            echo "   checked against the floor below. Refusing rather than guessing."
+        elif uv_older_than "$UV_VER" "$UV_DURATION_MIN"; then
             echo "   It cannot parse uv.toml's \"30 days\" cooldown (relative durations"
             echo "   need uv >= $UV_DURATION_MIN), so every uv command in this project fails"
             echo "   with a TOML parse error. It is also affected by the advisories below."
