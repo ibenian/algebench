@@ -32,12 +32,16 @@ UV_TOML_URL = "https://github.com/ibenian/algebench/blob/main/uv.toml"
 
 
 def cooldown() -> str:
-    """The configured release cooldown, read from uv.toml rather than restated.
+    """The configured cutoff, read from uv.toml rather than restated.
 
     uv.toml is the single place the policy is set — there is no CLI flag and no
     computed cutoff anywhere in the codebase. Reading it here means the report
-    cannot drift from what is actually enforced: change the file to "14 days"
-    and every sentence below follows.
+    cannot drift from what is actually enforced: roll the date in that file and
+    every sentence below follows.
+
+    Returns the raw value. Since uv >= 0.8 that is an ISO-8601 TIMESTAMP, not a
+    duration like the old "30 days" — so it can no longer be dropped into a
+    sentence as if it were an age. Use :func:`cutoff_phrase` for prose.
     """
     try:
         with open(UV_TOML, "rb") as fh:
@@ -45,6 +49,18 @@ def cooldown() -> str:
         return str(value) if value else "no cooldown configured"
     except (OSError, tomllib.TOMLDecodeError):
         return "unknown (uv.toml unreadable)"
+
+
+def cutoff_phrase(cd: str) -> str:
+    """``cooldown()`` rendered as something a sentence can contain.
+
+    The value used to be a duration ("30 days"), which read naturally as an age:
+    "younger than 30 days". It is now a cutoff instant, so the same interpolation
+    produced "younger than 2026-07-24T00:00:00Z". This wraps it once rather than
+    re-phrasing five call sites, and degrades gracefully when uv.toml is
+    unreadable (the value is then already a sentence).
+    """
+    return f"the {cd} cutoff" if cd[:1].isdigit() else cd
 
 # Advisories excluded from failing the build. Keyed by advisory ID, never by
 # package — a different advisory against the same package still fails normally.
@@ -118,6 +134,13 @@ def resolve(lock: Path, out_path: Path, cooldown: bool) -> None:
     """Compile into out_path, seeded from the lock so uv keeps existing pins."""
     out_path.write_text(lock.read_text())
     env = dict(os.environ)
+    # Drop any inherited UV_EXCLUDE_NEWER before deciding what this run should use.
+    # uv's env var beats uv.toml, so a developer with it exported in their shell
+    # would silently resolve the "cooldown" column against THEIR cutoff instead of
+    # the project's — the report would then contradict the policy it exists to
+    # check, exactly the failure the cwd=ROOT comment below guards against by a
+    # different route.
+    env.pop("UV_EXCLUDE_NEWER", None)
     if not cooldown:
         # The ONLY place the cooldown is switched off, and it never writes to the
         # real lock — this is how the report shows what is being held back.
@@ -177,10 +200,11 @@ def version_table(lock: Path) -> list[str]:
         pypi = dict(ex.map(pypi_latest, moving))
 
     cd = cooldown()
+    phrase = cutoff_phrase(cd)
     out = ["## Versions\n",
            f"**{len(moving)}** package(s) could move. Columns are three different "
            "ceilings, not a progression:\n",
-           f"| | Package | Current | Allowed (≥{cd} old) | Latest on PyPI |",
+           f"| | Package | Current | Allowed (published ≤{cd}) | Latest on PyPI |",
            "|---|---|---|---|---|"]
     counts = {k: 0 for k in ICON}
     for p in moving:
@@ -199,17 +223,17 @@ def version_table(lock: Path) -> list[str]:
         out.append(f"| {ICON[state]} | `{p}` | `{cur[p]}` | `{a}` | `{y}` |")
 
     out += ["", "### How to read this\n",
-            f"- {ICON['ready']} **Ready** ({counts['ready']}) — a newer release has cleared the "
-            f"{cd} cooldown. Take it with a targeted relock.",
+            f"- {ICON['ready']} **Ready** ({counts['ready']}) — a newer release has cleared "
+            f"{phrase}. Take it with a targeted relock.",
             f"- {ICON['cooling']} **Cooling** ({counts['cooling']}) — something newer exists but "
-            f"is younger than {cd}. **This is the policy working, not a problem.** "
+            f"was published after {phrase}. **This is the policy working, not a problem.** "
             "Compromised packages are usually caught and yanked within hours to days; waiting "
             "removes most of that exposure.",
             f"- {ICON['capped']} **Capped** ({counts['capped']}) — the cooldown is not what is "
             "holding this back; a constraint in `requirements.txt` (or a transitive dependency's "
             "own pin) is. Loosening the range is the only way forward.",
             f"- {ICON['back']} **Backwards** ({counts['back']}) — a relock would move this to an "
-            f"*older* release, because the current pin is itself younger than {cd} (a security "
+            f"*older* release, because the current pin was itself published after {phrase} (a security "
             "fix taken deliberately). Older releases carry more advisories, never fewer — check "
             "the diff before committing any relock while this row is present.",
             f"- {ICON['current']} **Current** — nothing newer exists.",
@@ -278,7 +302,7 @@ def build(deps: list[dict], total: int) -> tuple[str, int]:
     out = [f"# Python Dependency Audit\n",
            f"`requirements.lock` — **{total}** pinned packages checked against the "
            f"PyPA advisory database.\n",
-           f"Release cooldown: **{cd}** — set by "
+           f"Release cutoff: packages published after **{cd}** are held back — set by "
            f"[`uv.toml`]({UV_TOML_URL}) (`exclude-newer`), which uv applies to every "
            f"command in this project. Nothing here restates the value; it is read "
            f"from that file.\n",
