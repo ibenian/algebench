@@ -31,8 +31,10 @@
 # in `exclude-newer` arrived in uv 0.9.17 (astral-sh/uv#16814) — before that only
 # absolute timestamps parsed, and older uv dies on this file with a TOML error
 # that names a line number rather than the cause. The floor is 0.11.15 rather
-# than 0.9.17 because two advisories affecting the INSTALL path are unfixed below
-# it (GHSA-pjjw-68hj-v9mw, GHSA-4gg8-gxpx-9rph) — see setup-venv.sh.
+# than 0.9.17 for security: an arbitrary file write via entry point names is
+# unfixed below 0.11.15 (GHSA-4gg8-gxpx-9rph), and an arbitrary file deletion via
+# RECORD entries below 0.11.6 (GHSA-pjjw-68hj-v9mw) — so 0.11.6-0.11.14 is
+# affected by the first only. Both trigger on INSTALL. See setup-venv.sh.
 #
 # A duration is deliberate. An absolute timestamp would need a human to roll it
 # forward, and a date nobody edits silently TIGHTENS the cutoff as it ages,

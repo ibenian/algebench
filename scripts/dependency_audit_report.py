@@ -33,10 +33,15 @@ UV_TOML_URL = "https://github.com/ibenian/algebench/blob/main/uv.toml"
 def cooldown() -> str:
     """The configured release cooldown, read from uv.toml rather than restated.
 
-    uv.toml is the single place the policy is set — there is no CLI flag and no
-    computed cutoff anywhere in the codebase. Reading it here means the report
-    cannot drift from what is actually enforced: change the file to "14 days"
-    and every sentence below follows.
+    uv.toml is the single place the policy is set, and this is the single place it
+    is read: the value labels the report AND is forwarded to uv as
+    ``--exclude-newer`` (see :func:`resolve`), so the heading and the data cannot
+    disagree, and neither can drift from what the project actually enforces.
+    Change the file to "14 days" and every sentence below follows.
+
+    Forwarding it explicitly is deliberate rather than relying on uv discovering
+    uv.toml: the flag also beats an inherited ``UV_EXCLUDE_NEWER``, so the report
+    does not depend on the caller's shell.
     """
     try:
         with open(UV_TOML, "rb") as fh:

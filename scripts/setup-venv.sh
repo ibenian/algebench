@@ -14,27 +14,53 @@ DIR="$(cd "$(dirname "$0")/.." && pwd)"
 VENV="$DIR/.venv"
 LOCK="$DIR/requirements.lock"
 
-# Minimum uv. Two independent reasons land on the same floor:
+# Minimum uv. The floor is set by the LATER of two independent requirements, so
+# which one applies depends on how old the installed uv is:
 #
-#   * SECURITY. uv <0.11.15 is affected by two advisories with no fix in any
-#     earlier line — arbitrary file deletion via RECORD entries (GHSA-pjjw-68hj-v9mw,
-#     fixed 0.11.6) and arbitrary file write via entry point names
-#     (GHSA-4gg8-gxpx-9rph, fixed 0.11.15). Both land while INSTALLING a package,
-#     which is precisely the moment uv.toml's cooldown exists to protect.
-#   * FUNCTION. `exclude-newer` only accepts relative durations ("30 days") from
-#     uv 0.9.17 (astral-sh/uv#16814). Older uv fails to parse uv.toml at all —
-#     every uv command in the project dies with a TOML error that names a line
-#     number rather than the cause.
+#   * FUNCTION, below 0.9.17. `exclude-newer` gained relative durations
+#     ("30 days") in 0.9.17 (astral-sh/uv#16814). Below that, uv cannot parse
+#     uv.toml at all and every uv command in the project dies with a TOML error
+#     naming a line number rather than the cause.
+#   * SECURITY, below 0.11.15. Two advisories, with DIFFERENT fixed versions —
+#     they do not both apply to every lower release:
+#       - below 0.11.6  — arbitrary file deletion via RECORD entries
+#                         (GHSA-pjjw-68hj-v9mw)
+#       - below 0.11.15 — arbitrary file write via entry point names
+#                         (GHSA-4gg8-gxpx-9rph)
+#     So 0.11.6-0.11.14 is affected by the second only. Both land while
+#     INSTALLING a package, which is precisely the moment uv.toml's cooldown
+#     exists to protect — hence the floor rather than a warning.
 #
-# 0.11.32 (2026-07-23) is the newest release that is both clear of every known
-# advisory and older than the 30-day cooldown this project applies to its own
+# 0.11.32 (2026-07-23) is the newest release both clear of every known advisory
+# and older than the 30-day cooldown this project applies to its own
 # dependencies — the consistent choice, so it is what the message suggests.
 UV_MIN="0.11.15"
+UV_DURATION_MIN="0.9.17"   # below this, uv.toml itself will not parse
 
-# True when $1 is older than $2. sort -V is version-aware, so 0.11.9 < 0.11.15
-# sorts correctly where a string compare would not.
+# True when $1 is older than $2, comparing major.minor.patch numerically.
+#
+# NOT `sort -V`: that is a GNU extension. macOS's sort (2.3-Apple) does implement
+# it, so the pipeline works here — but a gate deciding whether to run a
+# known-vulnerable uv should not depend on which sort happens to be first on
+# PATH. `cut` is base POSIX and needs no such caveat.
+#
+# The important property is that this FAILS CLOSED. A version string it cannot
+# parse is treated as too old, so an unrecognised uv is refused rather than
+# waved through. The previous form did the opposite: any failure in the pipeline
+# produced an empty string, the comparison went false, and an old uv passed the
+# security gate silently.
 uv_older_than() {
-    [ "$1" != "$2" ] && [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -1)" = "$1" ]
+    _a="$1"; _b="$2"
+    for _i in 1 2 3; do
+        _av="$(printf '%s' "$_a" | cut -d. -f"$_i")"
+        _bv="$(printf '%s' "$_b" | cut -d. -f"$_i")"
+        # Non-numeric or missing component: refuse rather than guess.
+        case "$_av" in ''|*[!0-9]*) return 0 ;; esac
+        case "$_bv" in ''|*[!0-9]*) return 1 ;; esac
+        [ "$_av" -lt "$_bv" ] && return 0
+        [ "$_av" -gt "$_bv" ] && return 1
+    done
+    return 1   # all three components equal — not older
 }
 
 if command -v uv >/dev/null 2>&1; then
@@ -42,10 +68,20 @@ if command -v uv >/dev/null 2>&1; then
     if [ -n "$UV_VER" ] && uv_older_than "$UV_VER" "$UV_MIN"; then
         echo "❌ uv $UV_VER is too old — this project needs >= $UV_MIN."
         echo
-        echo "   Below $UV_MIN, uv is affected by two advisories that trigger while"
-        echo "   installing a package (GHSA-pjjw-68hj-v9mw, GHSA-4gg8-gxpx-9rph), and"
-        echo "   it cannot parse uv.toml's \"30 days\" cooldown, so every uv command"
-        echo "   in this project fails with a TOML parse error."
+        # Say which requirement this version actually fails. Most rejected
+        # versions parse uv.toml perfectly well and are refused on security
+        # grounds alone; claiming otherwise sends people chasing a config error.
+        if uv_older_than "$UV_VER" "$UV_DURATION_MIN"; then
+            echo "   It cannot parse uv.toml's \"30 days\" cooldown (relative durations"
+            echo "   need uv >= $UV_DURATION_MIN), so every uv command in this project fails"
+            echo "   with a TOML parse error. It is also affected by the advisories below."
+        else
+            echo "   It parses uv.toml fine — this is a security floor. uv below $UV_MIN"
+            echo "   is affected by an arbitrary file write via entry point names"
+            echo "   (GHSA-4gg8-gxpx-9rph, fixed $UV_MIN); below 0.11.6 also by an"
+            echo "   arbitrary file deletion via RECORD entries (GHSA-pjjw-68hj-v9mw)."
+            echo "   Both trigger while INSTALLING a package."
+        fi
         echo
         echo "   Upgrade:  uv self update    (or reinstall from https://astral.sh/uv)"
         echo "   Suggested: 0.11.32 — newest release clear of all known advisories"
