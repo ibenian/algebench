@@ -16,7 +16,6 @@ get installed — which is where every advisory found in this project has been.
 import argparse
 import json
 import tomllib
-import os
 import re
 import subprocess
 import sys
@@ -114,36 +113,39 @@ def _older(a, b):
         return a < b
 
 
-def resolve(lock: Path, out_path: Path, cooldown: bool) -> None:
+def resolve(lock: Path, out_path: Path, apply_cooldown: bool) -> None:
     """Compile into out_path, seeded from the lock so uv keeps existing pins."""
     out_path.write_text(lock.read_text())
-    env = dict(os.environ)
-    # Drop any inherited UV_EXCLUDE_NEWER before deciding what this run should use.
-    # uv's env var beats uv.toml, so a developer with it exported in their shell
-    # would silently resolve the "cooldown" column against THEIR cutoff instead of
-    # the project's — the report would then contradict the policy it exists to
-    # check, exactly the failure the cwd=ROOT comment below guards against by a
-    # different route.
-    env.pop("UV_EXCLUDE_NEWER", None)
-    if not cooldown:
-        # The ONLY place the cooldown is switched off, and it never writes to the
-        # real lock — this is how the report shows what is being held back.
-        env["UV_EXCLUDE_NEWER"] = "0 days"
-    # cwd=ROOT is load-bearing, not tidiness: uv discovers uv.toml by walking up
-    # from the working directory, so running this script from anywhere else
-    # silently drops the 30-day cooldown and the report then contradicts the
-    # policy it exists to check. Measured from /tmp: numpy showed as "ready" at
-    # 2.5.2, a release 11 days old that the cooldown should have held back.
+    # Pass the cutoff EXPLICITLY rather than leaning on uv.toml plus the ambient
+    # environment. --exclude-newer beats both uv.toml and an inherited
+    # UV_EXCLUDE_NEWER, so the resolution depends on nothing but this line — and
+    # the cooldown value comes from cooldown(), the same call that labels the
+    # report, so the heading and the data cannot disagree. A developer with
+    # UV_EXCLUDE_NEWER="0 days" left over in their shell would otherwise have
+    # BOTH resolutions run at 0 days, making the two columns identical and the
+    # report announce that nothing is held back.
+    #   cooldown=False is the ONLY place the cooldown is switched off, and it
+    #   never writes to the real lock — this is how the report shows what is
+    #   being held back.
+    # NB: the parameter is `apply_cooldown`, not `cooldown` — the latter is the
+    # module-level function read from uv.toml, and shadowing it here would call a bool.
+    cutoff = cooldown() if apply_cooldown else "0 days"
+    # cwd=ROOT so uv still discovers uv.toml for any OTHER setting it may grow.
+    # The cooldown itself no longer depends on it — that is passed explicitly
+    # above, which is the point. Before that flag existed this line was
+    # load-bearing: run from /tmp, numpy showed as "ready" at 2.5.2, a release 11
+    # days old that the cooldown should have held back.
     proc = subprocess.run(
         ["uv", "pip", "compile", str(ROOT / "requirements.txt"), "-o", str(out_path),
-         "--universal", "--python-version", "3.12", "--no-header", "--upgrade"],
-        env=env, cwd=ROOT, capture_output=True, text=True, check=False,
+         "--universal", "--python-version", "3.12", "--no-header", "--upgrade",
+         "--exclude-newer", cutoff],
+        cwd=ROOT, capture_output=True, text=True, check=False,
     )
     if proc.returncode != 0:
         # Never fall through to the copied lock: that would silently report the
         # current pins as though they were the resolution result.
         raise SystemExit(
-            f"uv pip compile failed ({'no cooldown' if not cooldown else 'cooldown'} "
+            f"uv pip compile failed ({'no cooldown' if not apply_cooldown else 'cooldown'} "
             f"resolution), exit {proc.returncode}:\n{proc.stderr.strip()}"
         )
 
@@ -170,8 +172,8 @@ def version_table(lock: Path) -> list[str]:
     """Current vs newest-allowed vs newest-in-existence, for everything that moves."""
     with tempfile.TemporaryDirectory() as tmp:
         allowed_p, newest_p = Path(tmp) / "a.lock", Path(tmp) / "n.lock"
-        resolve(lock, allowed_p, cooldown=True)
-        resolve(lock, newest_p, cooldown=False)
+        resolve(lock, allowed_p, apply_cooldown=True)
+        resolve(lock, newest_p, apply_cooldown=False)
         cur, allowed, newest = pins(lock), pins(allowed_p), pins(newest_p)
 
     moving = sorted(p for p in cur
@@ -248,9 +250,18 @@ def run_audit(lock: Path) -> tuple[list[dict], int]:
     tmp = ROOT / ".audit-input.txt"
     tmp.write_text("\n".join(pinned) + "\n")
     try:
+        # --exclude-newer here too, for the same reason as in resolve(): uvx has to
+        # resolve pip-audit ITSELF, and without an explicit cutoff that resolution
+        # obeys uv.toml plus whatever is in the caller's environment. A stale
+        # UV_EXCLUDE_NEWER in a shell made this fail outright ("pip-audit was
+        # filtered by exclude-newer to only include packages uploaded before
+        # 2016"). Using the project cooldown rather than "0 days" is deliberate:
+        # pip-audit is code this script executes locally, so the supply-chain
+        # argument for holding back fresh releases applies to it at least as much
+        # as to the dependencies it inspects.
         proc = subprocess.run(
-            ["uvx", "pip-audit", "-r", str(tmp), "--no-deps", "--disable-pip",
-             "--progress-spinner", "off", "-f", "json"],
+            ["uvx", "--exclude-newer", cooldown(), "pip-audit", "-r", str(tmp),
+             "--no-deps", "--disable-pip", "--progress-spinner", "off", "-f", "json"],
             capture_output=True, text=True,
         )
         if not proc.stdout.strip():
