@@ -27,9 +27,43 @@
 # uv's own env var beats this file, so the same override works for any ad-hoc
 # uv command. No wrapper flag is needed.
 #
+# REQUIRES uv >= 0.11.15 (enforced by scripts/setup-venv.sh). Relative durations
+# in `exclude-newer` arrived in uv 0.9.17 (astral-sh/uv#16814) — before that only
+# absolute timestamps parsed, and older uv dies on this file with a TOML error
+# that names a line number rather than the cause. The floor is 0.11.15 rather
+# than 0.9.17 for security: an arbitrary file write via entry point names is
+# unfixed below 0.11.15 (GHSA-4gg8-gxpx-9rph), and an arbitrary file deletion via
+# RECORD entries below 0.11.6 (GHSA-pjjw-68hj-v9mw) — so 0.11.6-0.11.14 is
+# affected by the first only. Both trigger on INSTALL. See setup-venv.sh.
+#
+# A duration is deliberate. An absolute timestamp would need a human to roll it
+# forward, and a date nobody edits silently TIGHTENS the cutoff as it ages,
+# eventually holding back the security fixes this policy is meant to let through.
+#
 # NOTE: this applies to PyPI releases only. A git dependency (gemini-live-tools)
 # has no upload timestamp to filter on, so the cooldown does not reach it — the
 # lock pins it by immutable commit SHA instead.
 #
-# NOTE: uv rejects "3 months" — durations must be expressed in days.
+# NOTE: units must be fixed-length — "30 days", "1 week" and "24 hours" all parse;
+# "3 months" does not, because a month has no fixed duration.
+# uv enforces this itself, on every project command, and refuses with an
+# actionable message ("Update `uv` by running `uv self update`"). That is why
+# there is no hand-rolled version check in setup-venv.sh: uv's own mechanism
+# cannot be bypassed by reaching for uv directly, and covers entry points a
+# script gate never would (e.g. the `uv pip install` in
+# .agents/skills/update-glt/SKILL.md).
+#
+# CAVEAT: `uv tool run` / `uvx` does NOT read this file at all. That is
+# documented, not a quirk — https://docs.astral.sh/uv/concepts/configuration-files/
+# : "For `tool` commands, which operate at the user level, local configuration
+# files will be ignored." Reproduced against uv 0.10.12 in this directory:
+# `uv pip compile` is refused, `uv tool run --no-cache <tool>` installs happily.
+#
+# So BOTH settings in this file are bypassed for tool commands — the floor above
+# and the cooldown below. scripts/dependency_audit_report.py therefore checks the
+# version itself AND passes `--exclude-newer` explicitly for the one `uv tool run`
+# call it makes; see the UV_MIN comment there. That call is the install path the
+# advisories concern, which is why it gets its own belt.
+required-version = ">=0.11.15"
+
 exclude-newer = "30 days"

@@ -14,6 +14,26 @@ DIR="$(cd "$(dirname "$0")/.." && pwd)"
 VENV="$DIR/.venv"
 LOCK="$DIR/requirements.lock"
 
+# Anchor the working directory before ANY uv call. uv discovers uv.toml by
+# walking UP from the cwd, so running this script by absolute path from
+# elsewhere would silently drop both `required-version` (the security floor) and
+# `exclude-newer` (the cooldown) — uv would simply never see the file. Verified:
+# from /tmp, uv 0.10.12 creates a venv without hitting the floor at all.
+#
+# This matters more than it looks: with no hand-rolled version gate in this
+# script any more (see the note below), uv.toml discovery is the ONLY thing
+# enforcing the floor here. scripts/dependency_audit_report.py passes cwd=ROOT
+# for the same reason.
+cd "$DIR"
+
+# NOTE: the minimum uv version is NOT checked here. `uv.toml` sets
+# `required-version`, so uv refuses to run at all below the floor and says how to
+# fix it — enforced for every uv command in the project, not just this script.
+# An earlier revision hand-rolled that check and produced four separate defects
+# (fail-open on an empty version, a pipefail abort that swallowed the
+# diagnostic, an ignored exit code, and garbage misreported as a parse failure).
+# Do not reintroduce it: uv already does this correctly.
+
 # Keyed on the interpreter and pip, NOT on the directory existing. An
 # interrupted first-time setup leaves .venv/ present but without bin/python3,
 # and a directory-only check then skips creation and dies further down on a raw

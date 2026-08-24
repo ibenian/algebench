@@ -16,7 +16,6 @@ get installed — which is where every advisory found in this project has been.
 import argparse
 import json
 import tomllib
-import os
 import re
 import subprocess
 import sys
@@ -30,14 +29,126 @@ ROOT = Path(__file__).resolve().parent.parent
 UV_TOML = ROOT / "uv.toml"
 UV_TOML_URL = "https://github.com/ibenian/algebench/blob/main/uv.toml"
 
+# Minimum uv, mirroring `required-version` in uv.toml (pinned by
+# tests/test_uv_floor.py).
+#
+# WHY THIS EXISTS AT ALL, since uv.toml already sets `required-version`
+# ------------------------------------------------------------------------
+# `required-version` makes uv refuse to run below the floor on every PROJECT
+# command, so nothing else in this repo hand-rolls a version check. `uv tool run`
+# is the exception, and it is documented as such — uv's configuration-files page
+# (https://docs.astral.sh/uv/concepts/configuration-files/) says:
+#
+#     "For `tool` commands, which operate at the user level, local configuration
+#      files will be ignored. Instead, uv will exclusively read from user-level
+#      configuration (e.g., ~/.config/uv/uv.toml) and system-level configuration."
+#
+# So a project uv.toml simply does not reach `uv tool run`. Reproduced, same
+# directory and same uv.toml, against uv 0.10.12:
+#
+#     uv pip compile                 -> refused, "Required uv version >=0.11.15
+#                                       does not match the running version 0.10.12"
+#     uv tool run --no-cache cowsay  -> ran, and installed a package
+#
+# (`--no-cache` on purpose: it forces a real resolve+install, ruling out "the tool
+# was already cached so no configuration was read".)
+#
+# That matters twice over, because BOTH uv.toml settings are ignored there:
+#
+#   * the FLOOR — hence _require_uv() below. This is the one call in this script
+#     that actually INSTALLS packages, which is exactly the exposure
+#     GHSA-4gg8-gxpx-9rph and GHSA-pjjw-68hj-v9mw describe.
+#   * the COOLDOWN — hence the explicit `--exclude-newer` on that call in
+#     run_audit(). It is load-bearing, not belt-and-braces: without it the tool
+#     install has no cooldown at all.
+#
+# If a future uv makes `tool` commands honour project configuration, both can go.
+UV_MIN = "0.11.15"
+
+
+def _uv_version() -> str | None:
+    """The running uv's version, or None if it cannot be trusted.
+
+    None covers three distinct cases — uv absent, uv failing, or uv printing
+    something unparseable — because none of them justify proceeding. Note the
+    returncode check: a binary that exits nonzero while still printing a
+    version-shaped line must not be treated as verified.
+    """
+    try:
+        out = subprocess.run(["uv", "--version"], capture_output=True, text=True, check=False)
+    except OSError:
+        return None                      # not on PATH, or not executable
+    if out.returncode != 0:
+        return None
+    parts = out.stdout.split()
+    return parts[1] if len(parts) > 1 else None
+
+
+def _require_uv() -> None:
+    """Refuse to install through a uv below the project's security floor.
+
+    Fails CLOSED: anything unverifiable is refused rather than assumed recent.
+    """
+    def triple(v: str):
+        bits = v.split(".")[:3]
+        return tuple(int(b) for b in bits) if len(bits) == 3 and all(b.isdigit() for b in bits) else None
+
+    raw = _uv_version()
+    have = triple(raw) if raw else None
+
+    if have is None:
+        # Distinct from "too old": `uv self update` cannot help if uv is missing
+        # or broken, so do not suggest it.
+        raise SystemExit(
+            "uv could not be run, or its version could not be read.\n"
+            f"This script installs pip-audit through uv and requires >= {UV_MIN}.\n"
+            "Install or repair uv first: https://astral.sh/uv"
+        )
+    if have < triple(UV_MIN):
+        raise SystemExit(
+            f"uv {raw} is below this project's floor of {UV_MIN}.\n"
+            f"Below {UV_MIN}, uv is affected by install-time advisories "
+            f"(GHSA-4gg8-gxpx-9rph; below 0.11.6 also GHSA-pjjw-68hj-v9mw), and this "
+            f"script installs pip-audit through uv.\n"
+            f"Upgrade with `uv self update` (0.11.32 suggested), then re-run."
+        )
+
+
+def cutoff() -> str | None:
+    """The configured cutoff as uv would accept it, or None if there is none.
+
+    Separate from :func:`cooldown` on purpose. That one always returns something
+    printable — including "no cooldown configured" and "unknown (uv.toml
+    unreadable)" — because a heading has to say *something*. Those sentinels are
+    prose, not values: uv rejects them outright ("could not be parsed as a valid
+    exclude-newer value"). Once the same string started being forwarded as
+    ``--exclude-newer`` it became machine input too, and the display fallbacks
+    had to stop travelling with it.
+    """
+    try:
+        with open(UV_TOML, "rb") as fh:
+            value = tomllib.load(fh).get("exclude-newer")
+    except (OSError, tomllib.TOMLDecodeError):
+        raise SystemExit(
+            f"{UV_TOML} could not be read, so the release cooldown is unknown.\n"
+            "Refusing to resolve: an audit that silently drops the cooldown reports "
+            "the opposite of the policy it exists to check."
+        )
+    return str(value) if value else None
+
 
 def cooldown() -> str:
     """The configured release cooldown, read from uv.toml rather than restated.
 
-    uv.toml is the single place the policy is set — there is no CLI flag and no
-    computed cutoff anywhere in the codebase. Reading it here means the report
-    cannot drift from what is actually enforced: change the file to "14 days"
-    and every sentence below follows.
+    uv.toml is the single place the policy is set, and this is the single place it
+    is read: the value labels the report AND is forwarded to uv as
+    ``--exclude-newer`` (see :func:`resolve`), so the heading and the data cannot
+    disagree, and neither can drift from what the project actually enforces.
+    Change the file to "14 days" and every sentence below follows.
+
+    Forwarding it explicitly is deliberate rather than relying on uv discovering
+    uv.toml: the flag also beats an inherited ``UV_EXCLUDE_NEWER``, so the report
+    does not depend on the caller's shell.
     """
     try:
         with open(UV_TOML, "rb") as fh:
@@ -114,29 +225,43 @@ def _older(a, b):
         return a < b
 
 
-def resolve(lock: Path, out_path: Path, cooldown: bool) -> None:
+def resolve(lock: Path, out_path: Path, apply_cooldown: bool) -> None:
     """Compile into out_path, seeded from the lock so uv keeps existing pins."""
     out_path.write_text(lock.read_text())
-    env = dict(os.environ)
-    if not cooldown:
-        # The ONLY place the cooldown is switched off, and it never writes to the
-        # real lock — this is how the report shows what is being held back.
-        env["UV_EXCLUDE_NEWER"] = "0 days"
-    # cwd=ROOT is load-bearing, not tidiness: uv discovers uv.toml by walking up
-    # from the working directory, so running this script from anywhere else
-    # silently drops the 30-day cooldown and the report then contradicts the
-    # policy it exists to check. Measured from /tmp: numpy showed as "ready" at
-    # 2.5.2, a release 11 days old that the cooldown should have held back.
+    # Pass the cutoff EXPLICITLY rather than leaning on uv.toml plus the ambient
+    # environment. --exclude-newer beats both uv.toml and an inherited
+    # UV_EXCLUDE_NEWER, so the resolution depends on nothing but this line — and
+    # the cooldown value comes from cooldown(), the same call that labels the
+    # report, so the heading and the data cannot disagree. A developer with
+    # UV_EXCLUDE_NEWER="0 days" left over in their shell would otherwise have
+    # BOTH resolutions run at 0 days, making the two columns identical and the
+    # report announce that nothing is held back.
+    #   cooldown=False is the ONLY place the cooldown is switched off, and it
+    #   never writes to the real lock — this is how the report shows what is
+    #   being held back.
+    # NB: the parameter is `apply_cooldown`, not `cooldown` — the latter is the
+    # module-level function read from uv.toml, and shadowing it here would call a bool.
+    # `None` = no cooldown configured in uv.toml. Omit the flag entirely rather
+    # than inventing a value: uv then applies whatever uv.toml says (nothing),
+    # which is the configured intent.
+    cut = cutoff() if apply_cooldown else "0 days"
+    newer = ["--exclude-newer", cut] if cut else []
+    # cwd=ROOT so uv still discovers uv.toml for any OTHER setting it may grow.
+    # The cooldown itself no longer depends on it — that is passed explicitly
+    # above, which is the point. Before that flag existed this line was
+    # load-bearing: run from /tmp, numpy showed as "ready" at 2.5.2, a release 11
+    # days old that the cooldown should have held back.
     proc = subprocess.run(
         ["uv", "pip", "compile", str(ROOT / "requirements.txt"), "-o", str(out_path),
-         "--universal", "--python-version", "3.12", "--no-header", "--upgrade"],
-        env=env, cwd=ROOT, capture_output=True, text=True, check=False,
+         "--universal", "--python-version", "3.12", "--no-header", "--upgrade",
+         *newer],
+        cwd=ROOT, capture_output=True, text=True, check=False,
     )
     if proc.returncode != 0:
         # Never fall through to the copied lock: that would silently report the
         # current pins as though they were the resolution result.
         raise SystemExit(
-            f"uv pip compile failed ({'no cooldown' if not cooldown else 'cooldown'} "
+            f"uv pip compile failed ({'no cooldown' if not apply_cooldown else 'cooldown'} "
             f"resolution), exit {proc.returncode}:\n{proc.stderr.strip()}"
         )
 
@@ -163,8 +288,8 @@ def version_table(lock: Path) -> list[str]:
     """Current vs newest-allowed vs newest-in-existence, for everything that moves."""
     with tempfile.TemporaryDirectory() as tmp:
         allowed_p, newest_p = Path(tmp) / "a.lock", Path(tmp) / "n.lock"
-        resolve(lock, allowed_p, cooldown=True)
-        resolve(lock, newest_p, cooldown=False)
+        resolve(lock, allowed_p, apply_cooldown=True)
+        resolve(lock, newest_p, apply_cooldown=False)
         cur, allowed, newest = pins(lock), pins(allowed_p), pins(newest_p)
 
     moving = sorted(p for p in cur
@@ -241,10 +366,32 @@ def run_audit(lock: Path) -> tuple[list[dict], int]:
     tmp = ROOT / ".audit-input.txt"
     tmp.write_text("\n".join(pinned) + "\n")
     try:
+        # --exclude-newer here too, for the same reason as in resolve(): uvx has to
+        # resolve pip-audit ITSELF, and `tool` commands ignore project
+        # configuration entirely (see UV_MIN above for the uv docs quote). So the
+        # fallback without this flag is NOT "uv.toml's cooldown" — it is NO
+        # project cooldown at all, plus whatever UV_EXCLUDE_NEWER the caller
+        # happens to export. A stale value in a shell made this fail outright
+        # once ("pip-audit was filtered by exclude-newer to only include packages
+        # uploaded before 2016"), which is how the environment dependence
+        # surfaced. Passing the project cooldown rather than "0 days" is
+        # deliberate: pip-audit is code this script executes locally, so the
+        # supply-chain argument for holding back fresh releases applies to it as much
+        # as to the dependencies it inspects.
         proc = subprocess.run(
-            ["uvx", "pip-audit", "-r", str(tmp), "--no-deps", "--disable-pip",
+            # `uv tool run`, NOT `uvx`: uvx is a separate executable, so a newer
+            # `uv` sitting beside an older standalone `uvx` would sail past
+            # _require_uv(). Routing through the binary that was actually checked
+            # closes that gap.
+            #
+            # `--exclude-newer` is REQUIRED here, not defensive: `tool` commands
+            # ignore project configuration entirely (see UV_MIN above for the uv
+            # docs quote), so uv.toml's cooldown does not apply to this install.
+            # cwd=ROOT still matters for everything else uv reads.
+            ["uv", "tool", "run", *(["--exclude-newer", _cut] if (_cut := cutoff()) else []),
+             "pip-audit", "-r", str(tmp), "--no-deps", "--disable-pip",
              "--progress-spinner", "off", "-f", "json"],
-            capture_output=True, text=True,
+            cwd=ROOT, capture_output=True, text=True,
         )
         if not proc.stdout.strip():
             raise SystemExit(f"pip-audit produced no output:\n{proc.stderr}")
@@ -336,6 +483,7 @@ def main() -> None:
     ap.add_argument("--lock", type=Path, default=ROOT / "requirements.lock")
     args = ap.parse_args()
 
+    _require_uv()   # before ANY uv/uvx subprocess — see UV_MIN above
     deps, total = run_audit(args.lock)
     md, count = build(deps, total)
     args.output.write_text(md, encoding="utf-8")
