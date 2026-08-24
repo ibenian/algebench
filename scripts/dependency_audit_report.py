@@ -89,6 +89,29 @@ def _require_uv() -> None:
         )
 
 
+def cutoff() -> str | None:
+    """The configured cutoff as uv would accept it, or None if there is none.
+
+    Separate from :func:`cooldown` on purpose. That one always returns something
+    printable — including "no cooldown configured" and "unknown (uv.toml
+    unreadable)" — because a heading has to say *something*. Those sentinels are
+    prose, not values: uv rejects them outright ("could not be parsed as a valid
+    exclude-newer value"). Once the same string started being forwarded as
+    ``--exclude-newer`` it became machine input too, and the display fallbacks
+    had to stop travelling with it.
+    """
+    try:
+        with open(UV_TOML, "rb") as fh:
+            value = tomllib.load(fh).get("exclude-newer")
+    except (OSError, tomllib.TOMLDecodeError):
+        raise SystemExit(
+            f"{UV_TOML} could not be read, so the release cooldown is unknown.\n"
+            "Refusing to resolve: an audit that silently drops the cooldown reports "
+            "the opposite of the policy it exists to check."
+        )
+    return str(value) if value else None
+
+
 def cooldown() -> str:
     """The configured release cooldown, read from uv.toml rather than restated.
 
@@ -193,7 +216,11 @@ def resolve(lock: Path, out_path: Path, apply_cooldown: bool) -> None:
     #   being held back.
     # NB: the parameter is `apply_cooldown`, not `cooldown` — the latter is the
     # module-level function read from uv.toml, and shadowing it here would call a bool.
-    cutoff = cooldown() if apply_cooldown else "0 days"
+    # `None` = no cooldown configured in uv.toml. Omit the flag entirely rather
+    # than inventing a value: uv then applies whatever uv.toml says (nothing),
+    # which is the configured intent.
+    cut = cutoff() if apply_cooldown else "0 days"
+    newer = ["--exclude-newer", cut] if cut else []
     # cwd=ROOT so uv still discovers uv.toml for any OTHER setting it may grow.
     # The cooldown itself no longer depends on it — that is passed explicitly
     # above, which is the point. Before that flag existed this line was
@@ -202,7 +229,7 @@ def resolve(lock: Path, out_path: Path, apply_cooldown: bool) -> None:
     proc = subprocess.run(
         ["uv", "pip", "compile", str(ROOT / "requirements.txt"), "-o", str(out_path),
          "--universal", "--python-version", "3.12", "--no-header", "--upgrade",
-         "--exclude-newer", cutoff],
+         *newer],
         cwd=ROOT, capture_output=True, text=True, check=False,
     )
     if proc.returncode != 0:
@@ -328,8 +355,8 @@ def run_audit(lock: Path) -> tuple[list[dict], int]:
             # `uv` sitting beside an older standalone `uvx` would sail past
             # _require_uv(). Routing through the binary that was actually checked
             # closes that gap. cwd=ROOT so uv.toml is found from any caller.
-            ["uv", "tool", "run", "--exclude-newer", cooldown(), "pip-audit",
-             "-r", str(tmp), "--no-deps", "--disable-pip",
+            ["uv", "tool", "run", *(["--exclude-newer", _cut] if (_cut := cutoff()) else []),
+             "pip-audit", "-r", str(tmp), "--no-deps", "--disable-pip",
              "--progress-spinner", "off", "-f", "json"],
             cwd=ROOT, capture_output=True, text=True,
         )

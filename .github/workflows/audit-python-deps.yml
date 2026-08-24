@@ -24,6 +24,11 @@ on:
     paths:
       - 'requirements.txt'
       - 'requirements.lock'
+      # uv.toml sets BOTH the release cooldown (`exclude-newer`) and the uv
+      # security floor (`required-version`), so a policy-only edit changes what
+      # this report means and must regenerate it — otherwise the change merges
+      # and the published report stays stale until the Monday cron.
+      - 'uv.toml'
       - 'scripts/dependency_audit_report.py'
       - '.github/workflows/audit-python-deps.yml'
   push:
@@ -31,6 +36,7 @@ on:
     paths:
       - 'requirements.txt'
       - 'requirements.lock'
+      - 'uv.toml'   # see the note above
   schedule:
     # Mondays 09:00 UTC.
     - cron: '0 9 * * 1'
