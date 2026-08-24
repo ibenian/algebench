@@ -246,6 +246,22 @@ class Element(BaseModel):
     value: Optional[str] = None
 
 
+class Proof(BaseModel):
+    """A derivation attached to a scene or step.
+
+    PARTIAL, like `Scene` and `Step` above: only the fields the generated
+    TypeScript type makes mandatory are pinned, so a builder cannot emit a proof
+    node the client contract rejects. The rest rides through `extra="allow"` and
+    is judged by jsonschema. Completed in iteration 5, when the proof builders
+    are re-expressed under the build contract.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    title: str
+    steps: list
+
+
 class Step(BaseModel):
     """One step of a scene. ``extra="allow"`` for virtualTime, proof, … ."""
 
@@ -285,6 +301,6 @@ class Scene(BaseModel):
 
 
 __all__ = [
-    "Camera", "Color", "Element", "ElementType", "InfoOverlay", "Range3D",
+    "Camera", "Color", "Element", "ElementType", "InfoOverlay", "Proof", "Range3D",
     "RemoveDirective", "Scene", "Slider", "Step", "Vec3", "Vec3Number", "View",
 ]

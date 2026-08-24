@@ -22,7 +22,7 @@ from typing import Annotated, Literal, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from backend.model.lesson import Scene, Step
+from backend.model.lesson import Proof, Scene, Step
 
 NodeKind = Literal["lesson", "scene", "step", "proof", "proof_step"]
 
@@ -112,27 +112,16 @@ class StepOp(_BuildOpBase):
 #: exact rather than best-effort. `ProofOp`/`ProofStepOp` land in iteration 5 with
 #: `Proof`/`ProofStep` in backend/model/lesson.py; `LessonOp` if a whole-lesson
 #: build ever needs it. No refactor, no behaviour change to what already ships.
-class MinimalProof(BaseModel):
-    """The part of `Proof` this contract can enforce today.
-
-    `extra="allow"` because it is deliberately NOT the full model — see ProofOp.
-    """
-
-    model_config = ConfigDict(extra="allow")
-
-    title: str
-    steps: list
-
-
 class ProofOp(_BuildOpBase):
     kind: Literal["proof"] = "proof"
     #: TypeScript declares `node: Proof`, which requires `title` and `steps`, so a
     #: bare `dict` let the backend emit a proof node the client contract rejects.
-    #: `Proof` itself is not modelled until iteration 5 (when the proof builders
-    #: are re-expressed under this contract), so this pins the two fields the
-    #: generated type makes mandatory and leaves the rest open — narrower than
-    #: `dict`, honest about not being the full model yet.
-    node: Optional[MinimalProof] = None
+    #: `Proof` is partial for now (see backend/model/lesson.py) — it pins the two
+    #: fields the generated type makes mandatory and leaves the rest open. It
+    #: lives there rather than here because it is a LESSON NODE, not a wire shape:
+    #: this module holds placements, ops, outcomes and serialization, and nothing
+    #: that describes the document itself.
+    node: Optional[Proof] = None
 
 
 BuildOp = Annotated[Union[SceneOp, StepOp, ProofOp], Field(discriminator="kind")]
