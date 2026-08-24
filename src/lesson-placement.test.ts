@@ -18,7 +18,7 @@ const lessonOf = (...titles: string[]): MutableLesson =>
 const titles = (l: MutableLesson) => l.scenes.map((s) => s.title);
 
 const insertScene = (index: number, title: string): BuildOp =>
-    ({ op: 'insert', kind: 'scene', at: { field: 'scenes', index }, node: scene(title) });
+    ({ op: 'insert', kind: 'scene', at: { index }, node: scene(title) });
 
 // ---- insert / delete / replace round-trips -------------------------------
 
@@ -35,7 +35,7 @@ test('insert appends and its inverse is a delete at the same placement', () => {
 
 test('replace captures the old node so undo restores it exactly', () => {
     const l = lessonOf('a', 'b');
-    const op: BuildOp = { op: 'replace', kind: 'scene', at: { field: 'scenes', index: 1 }, node: scene('B!') };
+    const op: BuildOp = { op: 'replace', kind: 'scene', at: { index: 1 }, node: scene('B!') };
     const inv = applyBuildOps(l, [op]);
     assert.deepEqual(titles(l), ['a', 'B!']);
 
@@ -45,7 +45,7 @@ test('replace captures the old node so undo restores it exactly', () => {
 
 test('delete captures the node so its inverse re-inserts it', () => {
     const l = lessonOf('a', 'b', 'c');
-    const inv = applyBuildOps(l, [{ op: 'delete', kind: 'scene', at: { field: 'scenes', index: 1 } }]);
+    const inv = applyBuildOps(l, [{ op: 'delete', kind: 'scene', at: { index: 1 } }]);
     assert.deepEqual(titles(l), ['a', 'c']);
 
     applyBuildOps(l, inv);
@@ -78,7 +78,7 @@ test('a stale placement is refused rather than overwriting the wrong node', () =
     const l = { title: 'L', scenes: [scene('a', 's1'), scene('b', 's2')] } as MutableLesson;
     const op: BuildOp = {
         op: 'replace', kind: 'scene',
-        at: { field: 'scenes', index: 1, id: 's-gone' }, node: scene('new'),
+        at: { index: 1, id: 's-gone' }, node: scene('new'),
     };
     assert.throws(() => applyBuildOps(l, [op]), PlacementError);
     assert.deepEqual(titles(l), ['a', 'b'], 'lesson must be untouched after a refusal');
@@ -93,7 +93,7 @@ test('insert past the end is refused', () => {
 
 test('steps are placed inside the named scene', () => {
     const l = { title: 'L', scenes: [{ title: 'a', steps: [step('s0'), step('s1')] }] } as unknown as MutableLesson;
-    applyBuildOps(l, [{ op: 'insert', kind: 'step', at: { scene: 0, field: 'steps', index: 1 }, node: step('mid') }]);
+    applyBuildOps(l, [{ op: 'insert', kind: 'step', at: { scene: 0, index: 1 }, node: step('mid') }]);
     assert.deepEqual(l.scenes[0]!.steps!.map((s) => s.title), ['s0', 'mid', 's1']);
 });
 
@@ -101,7 +101,7 @@ test('a bare-object proof stays a bare object after a replace', () => {
     const l = { title: 'L', scenes: [{ title: 'a', proof: { title: 'p0' } }] } as unknown as MutableLesson;
     const op = {
         op: 'replace', kind: 'proof',
-        at: { scene: 0, field: 'proof', index: 0 }, node: { title: 'p1' },
+        at: { scene: 0, index: 0 }, node: { title: 'p1' },
     } as unknown as BuildOp;
     applyBuildOps(l, [op]);
     const proof = (l.scenes[0] as unknown as { proof: unknown }).proof;
@@ -131,4 +131,28 @@ test('an existing lesson is passed through untouched', () => {
     const { lesson, bootstrap } = ensureLessonFormat(existing, null);
     assert.equal(lesson, existing);
     assert.equal(bootstrap.bootstrapped, false);
+});
+
+// ---- the container is derived from `kind`, not named ---------------------
+
+test('a lesson-level proof is reachable when no scene is given', () => {
+    // LessonFormat.proof is valid per the schema. An earlier resolver keyed off a
+    // `field` and threw whenever `scene` was absent, so this address type-checked
+    // but could never be applied.
+    const l = { title: 'L', scenes: [scene('a')] } as MutableLesson;
+    const op = { op: 'insert', kind: 'proof', at: { index: 0 }, node: { title: 'p' } } as unknown as BuildOp;
+    applyBuildOps(l, [op]);
+    const proof = (l as unknown as { proof: unknown }).proof;
+    assert.ok(!Array.isArray(proof), 'a single proof collapses back to a bare object');
+    assert.equal((proof as { title: string }).title, 'p');
+});
+
+test('a scene op and a step op reach different containers from the same index', () => {
+    // The mismatch this rules out: with a `field` on the placement, a scene op
+    // could name `steps` and splice a Scene into a step array.
+    const l = { title: 'L', scenes: [{ title: 'a', steps: [step('s0')] }] } as unknown as MutableLesson;
+    applyBuildOps(l, [{ op: 'insert', kind: 'step', at: { scene: 0, index: 0 }, node: step('new') }]);
+    applyBuildOps(l, [insertScene(0, 'front')]);
+    assert.deepEqual(titles(l), ['front', 'a']);
+    assert.deepEqual(l.scenes[1]!.steps!.map((s) => s.title), ['new', 's0']);
 });

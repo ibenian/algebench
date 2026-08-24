@@ -26,12 +26,6 @@ from backend.model.lesson import Scene, Step
 
 NodeKind = Literal["lesson", "scene", "step", "proof", "proof_step"]
 
-#: Which property on the parent holds the target. Named for the PROPERTY, not its
-#: runtime type: `proof` is `oneOf: [proof, proof[]]` and is a bare object in most
-#: published occurrences. ``None`` is the root itself (kind "lesson").
-PlacementField = Optional[Literal["scenes", "steps", "elements", "add", "proof"]]
-
-
 class Placement(BaseModel):
     """WHERE a node goes — positional, not id-based.
 
@@ -41,6 +35,18 @@ class Placement(BaseModel):
     ambiguous anyway — the same element id may appear in ``scene.elements`` and
     again in a ``step.add[]``.
 
+    There is deliberately NO ``field`` naming the target array. That made ``kind``
+    and ``field`` independent axes when only a few pairings are legal, so
+    ``{kind: "scene", field: "steps"}`` validated and would have spliced a Scene
+    into a Step array. The container is DERIVED from the kind instead, which makes
+    the illegal combinations unrepresentable rather than merely rejected:
+
+        lesson      -> the root itself (replace only)
+        scene       -> lesson.scenes
+        step        -> lesson.scenes[scene].steps
+        proof       -> scenes[scene].proof, or lesson.proof when ``scene`` is absent
+        proof_step  -> scenes[scene].proof.steps
+
     ``kind`` deliberately does NOT live here; it is a discriminant on the op so
     that TypeScript narrows ``node`` natively. Placement answers WHERE, kind
     answers WHAT.
@@ -48,9 +54,10 @@ class Placement(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    #: Which scene. Absent for a lesson-level placement, including the ``proof``
+    #: the schema permits on LessonFormat itself.
     scene: Optional[int] = Field(default=None, ge=0)
     step: Optional[int] = Field(default=None, ge=0)
-    field: PlacementField = None
     index: Optional[int] = Field(default=None, ge=0)
     #: NOT for lookup — for VERIFICATION. On replace/delete the applier asserts
     #: the node at ``index`` still carries this id, so an op computed against a
@@ -120,3 +127,59 @@ class BuildResult(BaseModel):
     ops: list[BuildOp] = Field(default_factory=list)
     summary: str = ""
     focus: Optional[Placement] = None
+
+
+# ── The four outcomes every builder returns ──────────────────────────────────
+#
+# Mirrors `BuilderOutcome` in src/placement.ts, and follows proof_edit's contract:
+# a builder answers with exactly ONE of these, and "I could not do this" is a
+# normal answer rather than an error. Modelled here (not just in TypeScript) so a
+# handler cannot invent a fifth shape or misspell a field on the way out.
+
+
+class BuilderQuestion(BaseModel):
+    """A pedagogically load-bearing ambiguity the model will not guess at.
+
+    Budgeted by the caller (see MAX_CLARIFICATIONS in proof_edit) so it cannot
+    turn into an interrogation.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["question"] = "question"
+    question: str = Field(min_length=1)
+    focus: Optional[Placement] = None
+
+
+class BuilderRefusal(BaseModel):
+    """The request was understood and cannot be satisfied. Says why, offers nothing."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["refused"] = "refused"
+    reason: str = Field(min_length=1)
+    focus: Optional[Placement] = None
+
+
+class BuilderPassthrough(BaseModel):
+    """Not a build request at all — the conversational agent should handle it."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["passthrough"] = "passthrough"
+
+
+class BuilderSuccess(BaseModel):
+    """A built node, or nodes, and where they go."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["result"] = "result"
+    result: BuildResult
+    caveat: Optional[str] = None
+
+
+BuilderOutcome = Annotated[
+    Union[BuilderSuccess, BuilderQuestion, BuilderRefusal, BuilderPassthrough],
+    Field(discriminator="kind"),
+]

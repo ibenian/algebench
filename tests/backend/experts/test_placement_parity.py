@@ -20,7 +20,7 @@ import pytest
 from pydantic import TypeAdapter
 
 from backend.experts.contracts import (
-    NODE_KINDS, BuildOp, BuildResult, Placement, SceneOp, StepOp,
+    NODE_KINDS, BuilderOutcome, BuildOp, BuildResult, Placement, SceneOp, StepOp,
 )
 
 OP = TypeAdapter(BuildOp)
@@ -64,11 +64,26 @@ def test_op_classes_are_a_subset_of_the_declared_kinds() -> None:
     assert implemented <= set(NODE_KINDS)
 
 
-def test_placement_fields_enum_matches(ts_source: str) -> None:
-    """`field` names a PROPERTY on the parent, and the two lists must agree —
-    including `proof`, which is often a bare object rather than an array."""
-    ts = _ts_union_members(ts_source, "PlacementField")
-    assert ts == {"scenes", "steps", "elements", "add", "proof"}
+def test_placement_carries_no_field(ts_source: str) -> None:
+    """The container is DERIVED from `kind`, never named by the placement.
+
+    An earlier revision had a `field` on both sides, which made kind and field
+    independent axes: `{kind: "scene", field: "steps"}` validated in both
+    languages and would have spliced a Scene into a Step array. Neither side may
+    reintroduce it without the other.
+    """
+    assert "field" not in Placement.model_fields
+    assert "PlacementField" not in ts_source, "src/placement.ts reintroduced a placement field"
+
+
+def test_all_four_outcomes_exist_on_both_sides(ts_source: str) -> None:
+    """A builder answers with exactly one of four shapes, and both sides must
+    agree on which four — the Python mirror previously stopped at the success
+    case, so a handler had no way to validate a question or a refusal."""
+    ts = set(re.findall(r"kind: '(result|question|refused|passthrough)'", ts_source))
+    py = {m.model_fields["kind"].default for m in BuilderOutcome.__origin__.__args__}
+    assert ts == {"result", "question", "refused", "passthrough"}
+    assert py == ts, f"outcome kinds disagree: TypeScript {ts}, Python {py}"
 
 
 def test_build_result_fields_match(ts_source: str) -> None:
@@ -86,10 +101,10 @@ def test_kind_selects_the_node_type() -> None:
     """The discriminator must tie `kind` to `node`. A smart union did not: a
     `kind="step"` op whose node carried only a title parsed as a Scene."""
     step = OP.validate_python(
-        {"op": "insert", "kind": "step", "at": {"scene": 0, "field": "steps", "index": 0},
+        {"op": "insert", "kind": "step", "at": {"scene": 0, "index": 0},
          "node": {"title": "T"}})
     scene = OP.validate_python(
-        {"op": "insert", "kind": "scene", "at": {"field": "scenes", "index": 0},
+        {"op": "insert", "kind": "scene", "at": {"index": 0},
          "node": {"title": "T"}})
     assert type(step).__name__ == "StepOp" and type(step.node).__name__ == "Step"
     assert type(scene).__name__ == "SceneOp" and type(scene.node).__name__ == "Scene"
@@ -103,7 +118,7 @@ def test_insert_and_replace_require_a_node_and_delete_refuses_one() -> None:
             OP.validate_python({"op": op, "kind": "scene", "at": {"field": "scenes", "index": 0}})
     with pytest.raises(Exception):
         OP.validate_python({"op": "delete", "kind": "scene",
-                            "at": {"field": "scenes", "index": 0}, "node": {"title": "x"}})
+                            "at": {"index": 0}, "node": {"title": "x"}})
 
 
 # ---- a real payload survives the boundary -----------------------------------
@@ -115,26 +130,26 @@ def test_serialized_op_is_exactly_what_the_client_expects() -> None:
     result = BuildResult(
         ops=[OP.validate_python({
             "op": "insert", "kind": "scene",
-            "at": {"field": "scenes", "index": 6},
+            "at": {"index": 6},
             "node": {"title": "Vector Addition"},
         })],
         summary="Added a scene.",
-        focus=Placement(field="scenes", index=6),
+        focus=Placement(index=6),
     )
     dumped = json.loads(result.model_dump_json(exclude_none=True))
     assert dumped == {
         "ops": [{
             "op": "insert", "kind": "scene",
-            "at": {"field": "scenes", "index": 6},
+            "at": {"index": 6},
             "node": {"title": "Vector Addition"},
         }],
         "summary": "Added a scene.",
-        "focus": {"field": "scenes", "index": 6},
+        "focus": {"index": 6},
     }
 
 
 def test_delete_op_carries_no_node() -> None:
-    op = OP.validate_python({"op": "delete", "kind": "scene", "at": {"field": "scenes", "index": 1}})
+    op = OP.validate_python({"op": "delete", "kind": "scene", "at": {"index": 1}})
     assert "node" not in json.loads(op.model_dump_json(exclude_none=True))
 
 
@@ -142,4 +157,4 @@ def test_unknown_field_is_refused() -> None:
     """extra='forbid' both sides: a typo must fail loudly at the boundary, not
     silently do nothing (the schema's additionalProperties:true would allow it)."""
     with pytest.raises(Exception):
-        Placement.model_validate({"field": "scenes", "index": 0, "indx": 1})
+        Placement.model_validate({"index": 0, "indx": 1})

@@ -11,7 +11,7 @@
 // ============================================================
 
 import type { LessonFormat, Scene, Step, Proof } from '/types/lesson.js';
-import type { BuildOp, Placement } from '/placement.js';
+import type { BuildOp, NodeKind, Placement } from '/placement.js';
 
 /** Thrown when an op cannot be applied. Callers discard and clear history. */
 export class PlacementError extends Error {}
@@ -72,34 +72,38 @@ export function ensureLessonFormat(
 }
 
 /**
- * Resolve a placement's target array.
+ * Resolve the container a node of `kind` lives in.
  *
- * `proof` is `oneOf: [proof, proof[]]` in the schema and is a bare object in most
- * published occurrences, so it is normalized to a one-element array here and
- * collapsed back by `collapseProof` on write. Without that collapse the model
- * round-trip test fails on every bare-object lesson.
+ * The container is DERIVED from the kind rather than named by the placement, so
+ * a mismatched pair (a Scene addressed into a step's array, say) cannot be
+ * expressed at all — see the note on `Placement`.
+ *
+ * `proof` is `oneOf: [proof, proof[]]` in the schema and is a bare object in
+ * most published occurrences, so it is normalized to a one-element array here
+ * and collapsed back by `collapseProof` on write. Without that collapse the
+ * model round-trip test fails on every bare-object lesson.
  */
-function resolveField(lesson: MutableLesson, at: Placement): unknown[] {
-    if (at.field === 'scenes') return lesson.scenes as unknown[];
+function resolveContainer(lesson: MutableLesson, kind: NodeKind, at: Placement): unknown[] {
+    if (kind === 'scene') return lesson.scenes as unknown[];
 
-    const scene = at.scene != null ? (lesson.scenes || [])[at.scene] : undefined;
+    if (kind === 'proof' && at.scene == null) {
+        // The schema allows `proof` on LessonFormat itself, so a placement with
+        // no scene addresses the lesson-level collection rather than being an error.
+        const root = lesson as unknown as { proof?: Proof | Proof[] };
+        if (root.proof == null) root.proof = [];
+        else if (!Array.isArray(root.proof)) root.proof = [root.proof];
+        return root.proof as unknown[];
+    }
+
+    const scene = at.scene != null ? lesson.scenes[at.scene] : undefined;
     if (!scene) throw new PlacementError(`placement names scene ${at.scene}, which does not exist`);
 
-    if (at.field === 'steps') {
+    if (kind === 'step') {
         if (!Array.isArray(scene.steps)) scene.steps = [];
         return scene.steps as unknown[];
     }
-    if (at.field === 'elements') {
-        if (!Array.isArray(scene.elements)) scene.elements = [];
-        return scene.elements as unknown[];
-    }
-    if (at.field === 'add') {
-        const step = at.step != null ? (scene.steps || [])[at.step] : undefined;
-        if (!step) throw new PlacementError(`placement names step ${at.step}, which does not exist`);
-        if (!Array.isArray(step.add)) step.add = [];
-        return step.add as unknown[];
-    }
-    if (at.field === 'proof') {
+
+    if (kind === 'proof') {
         const holder = (at.step != null ? (scene.steps || [])[at.step] : scene) as
             { proof?: Proof | Proof[] } | undefined;
         if (!holder) throw new PlacementError(`placement names step ${at.step}, which does not exist`);
@@ -107,7 +111,8 @@ function resolveField(lesson: MutableLesson, at: Placement): unknown[] {
         else if (!Array.isArray(holder.proof)) holder.proof = [holder.proof];
         return holder.proof as unknown[];
     }
-    throw new PlacementError(`placement field ${String(at.field)} has no array to resolve`);
+
+    throw new PlacementError(`no container is defined for kind '${kind}'`);
 }
 
 /**
@@ -116,11 +121,13 @@ function resolveField(lesson: MutableLesson, at: Placement): unknown[] {
  * The published corpus writes `proof` as a bare object far more often than as an
  * array; preserving that is required for lossless round-tripping.
  */
-function collapseProof(lesson: MutableLesson, at: Placement): void {
-    if (at.field !== 'proof') return;
-    const scene = at.scene != null ? (lesson.scenes || [])[at.scene] : undefined;
-    const holder = (at.step != null && scene ? (scene.steps || [])[at.step] : scene) as
-        { proof?: Proof | Proof[] } | undefined;
+function collapseProof(lesson: MutableLesson, kind: NodeKind, at: Placement): void {
+    if (kind !== 'proof') return;
+    const holder = (at.scene == null
+        ? (lesson as unknown as { proof?: Proof | Proof[] })
+        : (at.step != null
+            ? (lesson.scenes[at.scene]?.steps || [])[at.step]
+            : lesson.scenes[at.scene])) as { proof?: Proof | Proof[] } | undefined;
     if (!holder) return;
     if (Array.isArray(holder.proof) && holder.proof.length === 1) holder.proof = holder.proof[0]!;
 }
@@ -138,7 +145,7 @@ function verifyIdentity(node: unknown, at: Placement): void {
 
 function requireIndex(at: Placement): number {
     if (typeof at.index !== 'number' || at.index < 0) {
-        throw new PlacementError(`placement on field ${String(at.field)} needs a non-negative index`);
+        throw new PlacementError('placement needs a non-negative index');
     }
     return at.index;
 }
@@ -161,7 +168,7 @@ export function applyBuildOps(lesson: MutableLesson, ops: BuildOp[]): BuildOp[] 
         if (op.kind === 'lesson') {
             throw new PlacementError('whole-lesson ops are not supported in iteration 1');
         }
-        const arr = resolveField(lesson, op.at);
+        const arr = resolveContainer(lesson, op.kind, op.at);
 
         if (op.op === 'insert') {
             const index = requireIndex(op.at);
@@ -186,7 +193,7 @@ export function applyBuildOps(lesson: MutableLesson, ops: BuildOp[]): BuildOp[] 
             arr.splice(index, 1);
         }
 
-        collapseProof(lesson, op.at);
+        collapseProof(lesson, op.kind, op.at);
     }
 
     return inverse.reverse();

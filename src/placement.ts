@@ -15,16 +15,6 @@ import type { LessonFormat, Scene, Step, Proof, ProofStep } from '/types/lesson.
 export type NodeKind = 'lesson' | 'scene' | 'step' | 'proof' | 'proof_step';
 
 /**
- * Which property on the parent node holds the target.
- *
- * Named for the PROPERTY, not its runtime type, because not every target is an
- * array: `proof` is `oneOf: [proof, proof[]]` in the schema and is a bare object
- * in 18 of the 30 published occurrences. `null` is the root itself (kind
- * 'lesson'), which has no container at all.
- */
-export type PlacementField = 'scenes' | 'steps' | 'elements' | 'add' | 'proof' | null;
-
-/**
  * WHERE a node goes. Positional, not id-based, for three reasons:
  *   1. a node being inserted has no id in the document yet (ids are minted
  *      server-side, never proposed by the model);
@@ -32,16 +22,35 @@ export type PlacementField = 'scenes' | 'steps' | 'elements' | 'add' | 'proof' |
  *   3. ids are ambiguous anyway, since the same element id may appear in
  *      `scene.elements` and again in a `step.add[]` (a supported feature).
  *
- * `kind` deliberately does NOT live here — it is a discriminant on the op, so
- * TypeScript narrows `node` natively. Placement answers WHERE; kind answers WHAT.
+ * There is deliberately NO `field` naming the target array. An earlier revision
+ * had one, which made `kind` and `field` independent axes when only a few
+ * pairings are legal: `{kind: 'scene', field: 'steps'}` type-checked, and
+ * applying it would have spliced a Scene into a Step array. The container is a
+ * function of the kind, so it is DERIVED rather than declared — the illegal
+ * combinations stop being representable instead of being caught at runtime:
+ *
+ *     lesson      -> the root itself (replace only)
+ *     scene       -> lesson.scenes
+ *     step        -> lesson.scenes[scene].steps
+ *     proof       -> scenes[scene].proof, or lesson.proof when `scene` is absent
+ *     proof_step  -> scenes[scene].proof.steps
+ *
+ * `proof` is `oneOf: [proof, proof[]]` in the schema and is a bare object in 18
+ * of its 30 published occurrences, so the applier normalizes on read and
+ * collapses back on write.
+ *
+ * `kind` lives on the op, not here, so TypeScript narrows `node` natively.
+ * Placement answers WHERE; kind answers WHAT.
  */
 export interface Placement {
-    /** Which scene, for step- and proof-level placements. */
+    /**
+     * Which scene. Absent for a lesson-level placement — including
+     * `LessonFormat.proof`, which the schema permits at the root.
+     */
     scene?: number;
     /** Which step, for a step-level proof. */
     step?: number;
-    field: PlacementField;
-    /** Present iff `field` holds an array. */
+    /** Insert-before / replace-at position within the derived container. */
     index?: number;
     /**
      * NOT for lookup — for VERIFICATION. On replace/delete the target already
