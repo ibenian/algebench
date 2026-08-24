@@ -53,10 +53,17 @@
 # script gate never would (e.g. the `uv pip install` in
 # .agents/skills/update-glt/SKILL.md).
 #
-# CAVEAT, measured: `uv tool run` / `uvx` does NOT honour this — tools resolve
-# outside the project. scripts/dependency_audit_report.py therefore keeps its own
-# check for the one `uv tool run` call it makes, which is the install path the
-# advisories below actually concern.
+# CAVEAT: `uv tool run` / `uvx` does NOT read this file at all. That is
+# documented, not a quirk — https://docs.astral.sh/uv/concepts/configuration-files/
+# : "For `tool` commands, which operate at the user level, local configuration
+# files will be ignored." Reproduced against uv 0.10.12 in this directory:
+# `uv pip compile` is refused, `uv tool run --no-cache <tool>` installs happily.
+#
+# So BOTH settings in this file are bypassed for tool commands — the floor above
+# and the cooldown below. scripts/dependency_audit_report.py therefore checks the
+# version itself AND passes `--exclude-newer` explicitly for the one `uv tool run`
+# call it makes; see the UV_MIN comment there. That call is the install path the
+# advisories concern, which is why it gets its own belt.
 required-version = ">=0.11.15"
 
 exclude-newer = "30 days"

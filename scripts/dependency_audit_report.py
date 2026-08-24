@@ -32,12 +32,37 @@ UV_TOML_URL = "https://github.com/ibenian/algebench/blob/main/uv.toml"
 # Minimum uv, mirroring `required-version` in uv.toml (pinned by
 # tests/test_uv_floor.py).
 #
-# uv.toml's `required-version` makes uv refuse to run below the floor, which
-# covers every project command — so nothing else in the repo hand-rolls this
-# check. But `uv tool run` resolves tools OUTSIDE the project and does NOT honour
-# it (measured), and that is the one call this script makes which actually
-# INSTALLS packages — precisely the exposure GHSA-4gg8-gxpx-9rph and
-# GHSA-pjjw-68hj-v9mw describe. Hence this narrow check, for that path only.
+# WHY THIS EXISTS AT ALL, since uv.toml already sets `required-version`
+# ------------------------------------------------------------------------
+# `required-version` makes uv refuse to run below the floor on every PROJECT
+# command, so nothing else in this repo hand-rolls a version check. `uv tool run`
+# is the exception, and it is documented as such — uv's configuration-files page
+# (https://docs.astral.sh/uv/concepts/configuration-files/) says:
+#
+#     "For `tool` commands, which operate at the user level, local configuration
+#      files will be ignored. Instead, uv will exclusively read from user-level
+#      configuration (e.g., ~/.config/uv/uv.toml) and system-level configuration."
+#
+# So a project uv.toml simply does not reach `uv tool run`. Reproduced, same
+# directory and same uv.toml, against uv 0.10.12:
+#
+#     uv pip compile                 -> refused, "Required uv version >=0.11.15
+#                                       does not match the running version 0.10.12"
+#     uv tool run --no-cache cowsay  -> ran, and installed a package
+#
+# (`--no-cache` on purpose: it forces a real resolve+install, ruling out "the tool
+# was already cached so no configuration was read".)
+#
+# That matters twice over, because BOTH uv.toml settings are ignored there:
+#
+#   * the FLOOR — hence _require_uv() below. This is the one call in this script
+#     that actually INSTALLS packages, which is exactly the exposure
+#     GHSA-4gg8-gxpx-9rph and GHSA-pjjw-68hj-v9mw describe.
+#   * the COOLDOWN — hence the explicit `--exclude-newer` on that call in
+#     run_audit(). It is load-bearing, not belt-and-braces: without it the tool
+#     install has no cooldown at all.
+#
+# If a future uv makes `tool` commands honour project configuration, both can go.
 UV_MIN = "0.11.15"
 
 
@@ -354,7 +379,12 @@ def run_audit(lock: Path) -> tuple[list[dict], int]:
             # `uv tool run`, NOT `uvx`: uvx is a separate executable, so a newer
             # `uv` sitting beside an older standalone `uvx` would sail past
             # _require_uv(). Routing through the binary that was actually checked
-            # closes that gap. cwd=ROOT so uv.toml is found from any caller.
+            # closes that gap.
+            #
+            # `--exclude-newer` is REQUIRED here, not defensive: `tool` commands
+            # ignore project configuration entirely (see UV_MIN above for the uv
+            # docs quote), so uv.toml's cooldown does not apply to this install.
+            # cwd=ROOT still matters for everything else uv reads.
             ["uv", "tool", "run", *(["--exclude-newer", _cut] if (_cut := cutoff()) else []),
              "pip-audit", "-r", str(tmp), "--no-deps", "--disable-pip",
              "--progress-spinner", "off", "-f", "json"],
