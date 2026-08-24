@@ -21,6 +21,7 @@ from pydantic import TypeAdapter
 
 from backend.experts.contracts import (
     NODE_KINDS, BuilderOutcome, BuildOp, BuildResult, Placement, SceneOp, StepOp,
+    dump_outcome,
 )
 
 OP = TypeAdapter(BuildOp)
@@ -136,7 +137,12 @@ def test_serialized_op_is_exactly_what_the_client_expects() -> None:
         summary="Added a scene.",
         focus=Placement(index=6),
     )
-    dumped = json.loads(result.model_dump_json(exclude_none=True))
+    # NOTE: dump_outcome(), not model_dump_json(exclude_none=True). An earlier
+    # version of this test applied exclude_none ITSELF, so it validated a
+    # serialization the transport never performs and hid the mismatch it was
+    # written to catch — the transport calls a bare model_dump(), which shipped
+    # `node: null` on deletes and null scene/step/id on every placement.
+    dumped = dump_outcome(result)
     assert dumped == {
         "ops": [{
             "op": "insert", "kind": "scene",
@@ -158,3 +164,33 @@ def test_unknown_field_is_refused() -> None:
     silently do nothing (the schema's additionalProperties:true would allow it)."""
     with pytest.raises(Exception):
         Placement.model_validate({"index": 0, "indx": 1})
+
+
+def test_the_wire_shape_carries_no_nulls_the_client_does_not_declare() -> None:
+    """The TypeScript delete variant has no `node` at all, and `Placement`'s
+    optional members are absent rather than null. A bare `model_dump()` emits
+    every Optional as an explicit null, so handlers must serialize through
+    `dump_outcome`."""
+    op = OP.validate_python({"op": "delete", "kind": "scene", "at": {"index": 1}})
+    result = BuildResult(ops=[op], summary="s", focus=None)
+
+    raw = result.model_dump()
+    assert "node" in raw["ops"][0] and raw["ops"][0]["node"] is None, (
+        "precondition: a bare model_dump does emit the null this guards against"
+    )
+
+    wire = dump_outcome(result)
+    assert "node" not in wire["ops"][0], "a delete must not ship `node: null`"
+    assert set(wire["ops"][0]["at"]) == {"index"}, (
+        f"placement shipped keys the client does not declare: {sorted(wire['ops'][0]['at'])}"
+    )
+
+
+def test_build_result_fields_are_required_like_the_typescript_interface() -> None:
+    """Defaults on the Python side would let the backend emit a shape the client
+    rejects — the same drift that had `Placement.field` optional here and
+    required there."""
+    with pytest.raises(Exception):
+        BuildResult()                       # ops/summary/focus all missing
+    with pytest.raises(Exception):
+        BuildResult(ops=[], summary="s")    # focus must be passed, even as None

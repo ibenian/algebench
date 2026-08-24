@@ -124,9 +124,14 @@ class BuildResult(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    ops: list[BuildOp] = Field(default_factory=list)
-    summary: str = ""
-    focus: Optional[Placement] = None
+    # Required, mirroring the TypeScript interface exactly. Defaults here would
+    # let the backend emit a shape the client contract rejects — the same drift
+    # that made `Placement.field` optional on one side and required on the other.
+    # `focus` is Optional but has NO default: the wire format carries an explicit
+    # null, so it must be passed deliberately rather than fall out of an omission.
+    ops: list[BuildOp]
+    summary: str
+    focus: Optional[Placement]
 
 
 # ── The four outcomes every builder returns ──────────────────────────────────
@@ -183,3 +188,22 @@ BuilderOutcome = Annotated[
     Union[BuilderSuccess, BuilderQuestion, BuilderRefusal, BuilderPassthrough],
     Field(discriminator="kind"),
 ]
+
+
+def dump_outcome(outcome) -> dict:
+    """Serialize a builder outcome the way the wire contract declares it.
+
+    ``backend/experts/service.py`` calls a bare ``result.model_dump()``, which
+    emits every Optional as an explicit ``null`` — so a delete op shipped
+    ``node: null`` even though the TypeScript delete variant has no ``node`` at
+    all, and a placement shipped ``scene``/``step``/``id`` nulls it never
+    declared. The client's parser rejects unknown keys, so those nulls are not
+    merely noise.
+
+    Handlers must serialize through THIS, not ``model_dump()``. The parity test
+    asserts against it for the same reason it exists: an earlier version of that
+    test passed ``exclude_none=True`` itself and therefore validated a
+    serialization the transport never performs, hiding the very mismatch it was
+    written to catch.
+    """
+    return outcome.model_dump(exclude_none=True)

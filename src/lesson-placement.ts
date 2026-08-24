@@ -60,14 +60,36 @@ export function ensureLessonFormat(
     }
     // No lesson (or a single-scene spec): wrap it. A displayed scene becomes scenes[0]
     // so the user does not lose what they were looking at.
-    const promoted = displayedScene || (lesson && !(lesson as MutableLesson).scenes ? (lesson as Scene) : null);
+    //
+    // `import`, `unsafe` and `unsafeExplanation` are declared on singleSceneFormat
+    // but NOT on scene, and `$defs.scene` is `additionalProperties: false` — so
+    // carrying the whole object into scenes[0] produced a lesson that fails schema
+    // validation. Worse, it was silent at runtime: loadLesson reads `spec.import`
+    // and `spec.unsafe` at the ROOT, so domain imports stopped loading and trust
+    // metadata was ignored. They are lifted to the wrapper instead.
+    const source = displayedScene || (lesson && !(lesson as MutableLesson).scenes ? (lesson as Scene) : null);
+    let promoted = source;
+    const rootOnly: Record<string, unknown> = {};
+    if (source) {
+        const { import: imports, unsafe, unsafeExplanation, ...sceneOnly } =
+            source as Scene & { import?: unknown; unsafe?: unknown; unsafeExplanation?: unknown };
+        if (imports !== undefined) rootOnly.import = imports;
+        if (unsafe !== undefined) rootOnly.unsafe = unsafe;
+        if (unsafeExplanation !== undefined) rootOnly.unsafeExplanation = unsafeExplanation;
+        promoted = sceneOnly as Scene;
+    }
     const wrapper: MutableLesson = {
         title: 'Lesson',
+        ...rootOnly,
         scenes: promoted ? [promoted] : [],
     };
     return {
         lesson: wrapper,
-        bootstrap: { previousLesson: null, promotedScene: promoted || null, bootstrapped: true },
+        // The bootstrap record keeps the ORIGINAL object, root-only fields and
+        // all: it exists to restore the pre-lesson state on undo, and restoring a
+        // stripped copy would quietly discard `import`/`unsafe` from the very
+        // spec the user started with. `scenes[0]` gets the stripped version.
+        bootstrap: { previousLesson: null, promotedScene: source || null, bootstrapped: true },
     };
 }
 
@@ -144,8 +166,12 @@ function verifyIdentity(node: unknown, at: Placement): void {
 }
 
 function requireIndex(at: Placement): number {
-    if (typeof at.index !== 'number' || at.index < 0) {
-        throw new PlacementError('placement needs a non-negative index');
+    // Integer, not merely non-negative. A fractional index passes a `>= 0` check
+    // and then behaves DIFFERENTLY per op: `replace` writes `arr[1.5]`, a plain
+    // property that no splice can see, while `insert`/`delete` coerce it. The
+    // three ops would silently address different slots.
+    if (typeof at.index !== 'number' || !Number.isInteger(at.index) || at.index < 0) {
+        throw new PlacementError(`placement needs a non-negative integer index, got ${String(at.index)}`);
     }
     return at.index;
 }
@@ -164,6 +190,22 @@ function requireIndex(at: Placement): number {
 export function applyBuildOps(lesson: MutableLesson, ops: BuildOp[]): BuildOp[] {
     const inverse: BuildOp[] = [];
 
+    try {
+        return applyEach(lesson, ops, inverse);
+    } catch (err) {
+        // ALL OR NOTHING. Without this, a valid insert followed by a stale
+        // replace left the insert applied while the caller — seeing a throw —
+        // believed the whole build was refused, and the undo stack never
+        // received the inverse that would have undone it. Unwind what did land,
+        // in reverse, before rethrowing.
+        for (const undo of [...inverse].reverse()) {
+            try { applyEach(lesson, [undo], []); } catch { /* best effort; the throw below is the real signal */ }
+        }
+        throw err;
+    }
+}
+
+function applyEach(lesson: MutableLesson, ops: BuildOp[], inverse: BuildOp[]): BuildOp[] {
     for (const op of ops) {
         if (op.kind === 'lesson') {
             throw new PlacementError('whole-lesson ops are not supported in iteration 1');
@@ -182,7 +224,18 @@ export function applyBuildOps(lesson: MutableLesson, ops: BuildOp[]): BuildOp[] 
             const old = arr[index];
             if (old === undefined) throw new PlacementError(`replace index ${index} does not exist`);
             verifyIdentity(old, op.at);
-            inverse.push({ op: 'replace', kind: op.kind, at: op.at, node: old } as BuildOp);
+            // The inverse must verify what will be THERE when it runs — the
+            // replacement — not what was there for the forward op. Reusing
+            // `op.at` verbatim carried the OLD node's id, so undoing a replace
+            // threw `stale placement` whenever the new node had a different id
+            // (or none), which is the ordinary case.
+            const replacementId = (op.node as { id?: string } | null)?.id;
+            inverse.push({
+                op: 'replace',
+                kind: op.kind,
+                at: { ...op.at, ...(replacementId ? { id: replacementId } : { id: undefined }) },
+                node: old,
+            } as BuildOp);
             arr[index] = op.node;
         } else {
             const index = requireIndex(op.at);

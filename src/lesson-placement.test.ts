@@ -122,6 +122,8 @@ test('a displayed single scene is promoted into scenes[0]', () => {
     const displayed = scene('solo');
     const { lesson, bootstrap } = ensureLessonFormat(null, displayed);
     assert.deepEqual(lesson.scenes.map((s) => s.title), ['solo']);
+    // The record keeps the ORIGINAL, so undo restores the spec the user had —
+    // including any root-only fields stripped out of scenes[0].
     assert.equal(bootstrap.promotedScene, displayed);
     assert.equal(bootstrap.bootstrapped, true);
 });
@@ -155,4 +157,62 @@ test('a scene op and a step op reach different containers from the same index', 
     applyBuildOps(l, [insertScene(0, 'front')]);
     assert.deepEqual(titles(l), ['front', 'a']);
     assert.deepEqual(l.scenes[1]!.steps!.map((s) => s.title), ['new', 's0']);
+});
+
+// ---- review round 2: apply/undo correctness ------------------------------
+
+test('undoing a replace works when the replacement has a different id', () => {
+    // The inverse used to reuse the forward placement verbatim, carrying the OLD
+    // node's id — so verifyIdentity ran against a node that was no longer there
+    // and threw `stale placement` for the ordinary case.
+    const l = { title: 'L', scenes: [scene('a', 'old-id')] } as MutableLesson;
+    const op: BuildOp = {
+        op: 'replace', kind: 'scene',
+        at: { index: 0, id: 'old-id' }, node: scene('b', 'new-id'),
+    };
+    const inv = applyBuildOps(l, [op]);
+    assert.deepEqual(titles(l), ['b']);
+    applyBuildOps(l, inv);                       // must not throw
+    assert.deepEqual(titles(l), ['a']);
+});
+
+test('a failure part-way through a batch leaves the lesson untouched', () => {
+    // Previously a valid insert followed by a stale replace left the insert
+    // applied while the caller, seeing a throw, believed nothing had happened.
+    const l = { title: 'L', scenes: [scene('a', 's1')] } as MutableLesson;
+    const good = insertScene(0, 'front');
+    const stale: BuildOp = {
+        op: 'replace', kind: 'scene',
+        at: { index: 1, id: 'not-there' }, node: scene('x'),
+    };
+    assert.throws(() => applyBuildOps(l, [good, stale]), PlacementError);
+    assert.deepEqual(titles(l), ['a'], 'the successful insert must be rolled back too');
+});
+
+test('a fractional index is refused rather than addressing a phantom slot', () => {
+    // 1.5 passes a `>= 0` check, then `replace` writes arr[1.5] — a plain
+    // property no splice can see — while insert/delete coerce it differently.
+    const l = lessonOf('a', 'b');
+    const op = { op: 'replace', kind: 'scene', at: { index: 1.5 }, node: scene('x') } as unknown as BuildOp;
+    assert.throws(() => applyBuildOps(l, [op]), PlacementError);
+    assert.deepEqual(titles(l), ['a', 'b']);
+});
+
+test('promoting a single scene keeps root-only fields at the root', () => {
+    // `import` / `unsafe` / `unsafeExplanation` are singleSceneFormat fields, not
+    // scene fields, and `$defs.scene` is additionalProperties:false. Burying them
+    // in scenes[0] failed schema AND silently stopped domain imports loading,
+    // since loadLesson reads them at the root.
+    const single = {
+        title: 'solo', import: ['orbital'], unsafe: true, unsafeExplanation: 'why',
+    } as unknown as Scene;
+    const { lesson } = ensureLessonFormat(null, single);
+    const root = lesson as unknown as Record<string, unknown>;
+    assert.deepEqual(root.import, ['orbital']);
+    assert.equal(root.unsafe, true);
+    assert.equal(root.unsafeExplanation, 'why');
+    const s0 = lesson.scenes[0] as unknown as Record<string, unknown>;
+    assert.equal(s0.import, undefined, 'root-only fields must not land in the scene');
+    assert.equal(s0.unsafe, undefined);
+    assert.equal(s0.title, 'solo', 'the scene keeps its own fields');
 });
