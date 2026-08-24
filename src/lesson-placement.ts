@@ -287,7 +287,14 @@ function applyEach(lesson: MutableLesson, ops: BuildOp[], inverse: BuildOp[]): B
                 throw new PlacementError(`insert index ${index} is past the end (${arr.length})`);
             }
             arr.splice(index, 0, op.node);
-            inverse.push({ op: 'delete', kind: op.kind, at: op.at } as BuildOp);
+            // The inverse must verify the node IT will remove — the one just
+            // inserted. `op.at` carries no id (an insert has no pre-existing
+            // target to check), so reusing it verbatim gave the undo no identity
+            // check at all: if another build shifted this array in between, the
+            // delete would remove whatever now sat at that index. That is exactly
+            // the stale-placement protection every other op path has.
+            const insertedId = (op.node as { id?: string } | null)?.id;
+            inverse.push({ op: 'delete', kind: op.kind, at: { ...op.at, id: insertedId } } as BuildOp);
         } else if (op.op === 'replace') {
             const old = arr[index];
             if (old === undefined) { restoreShape(); throw new PlacementError(`replace index ${index} does not exist`); }

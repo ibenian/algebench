@@ -264,3 +264,17 @@ test('a step-level proof without a scene is refused, not routed to the lesson ro
     assert.throws(() => applyBuildOps(l, [op]), PlacementError);
     assert.equal((l as unknown as { proof?: unknown }).proof, undefined);
 });
+
+test("undoing an insert will not delete a node it did not insert", () => {
+    // The inverse of an insert used to reuse the forward placement, which carries
+    // no id — an insert has no pre-existing target to verify. So the undo had no
+    // identity check and would remove whatever had since moved into that index.
+    const l = lessonOf('a');
+    const inv = applyBuildOps(l, [
+        { op: 'insert', kind: 'scene', at: { index: 1 }, node: scene('mine', 'mine-id') },
+    ]);
+    // Something else lands in that slot before the undo runs.
+    l.scenes[1] = scene('someone-elses', 'other-id');
+    assert.throws(() => applyBuildOps(l, inv), PlacementError);
+    assert.deepEqual(titles(l), ['a', 'someone-elses'], 'the wrong node must survive');
+});
