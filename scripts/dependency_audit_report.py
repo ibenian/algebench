@@ -367,13 +367,16 @@ def run_audit(lock: Path) -> tuple[list[dict], int]:
     tmp.write_text("\n".join(pinned) + "\n")
     try:
         # --exclude-newer here too, for the same reason as in resolve(): uvx has to
-        # resolve pip-audit ITSELF, and without an explicit cutoff that resolution
-        # obeys uv.toml plus whatever is in the caller's environment. A stale
-        # UV_EXCLUDE_NEWER in a shell made this fail outright ("pip-audit was
-        # filtered by exclude-newer to only include packages uploaded before
-        # 2016"). Using the project cooldown rather than "0 days" is deliberate:
-        # pip-audit is code this script executes locally, so the supply-chain
-        # argument for holding back fresh releases applies to it at least as much
+        # resolve pip-audit ITSELF, and `tool` commands ignore project
+        # configuration entirely (see UV_MIN above for the uv docs quote). So the
+        # fallback without this flag is NOT "uv.toml's cooldown" — it is NO
+        # project cooldown at all, plus whatever UV_EXCLUDE_NEWER the caller
+        # happens to export. A stale value in a shell made this fail outright
+        # once ("pip-audit was filtered by exclude-newer to only include packages
+        # uploaded before 2016"), which is how the environment dependence
+        # surfaced. Passing the project cooldown rather than "0 days" is
+        # deliberate: pip-audit is code this script executes locally, so the
+        # supply-chain argument for holding back fresh releases applies to it as much
         # as to the dependencies it inspects.
         proc = subprocess.run(
             # `uv tool run`, NOT `uvx`: uvx is a separate executable, so a newer
