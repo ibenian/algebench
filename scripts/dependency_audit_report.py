@@ -29,38 +29,59 @@ ROOT = Path(__file__).resolve().parent.parent
 UV_TOML = ROOT / "uv.toml"
 UV_TOML_URL = "https://github.com/ibenian/algebench/blob/main/uv.toml"
 
-# Minimum uv, mirroring UV_MIN in scripts/setup-venv.sh. Enforced HERE as well
-# because setup-venv.sh is not on this path: this script is documented and run
-# directly (and from CI), and run.sh only checks that a .venv exists — it never
-# looks at the uv binary. So a machine with an existing venv and an old uv would
-# otherwise reach the `uvx` call below, which INSTALLS pip-audit and its
-# dependencies through a uv covered by the very advisories the floor exists to
-# avoid (GHSA-4gg8-gxpx-9rph, GHSA-pjjw-68hj-v9mw — both install-time).
+# Minimum uv, mirroring `required-version` in uv.toml (pinned by
+# tests/test_uv_floor.py).
 #
-# tests/test_uv_floor.py asserts this stays equal to the shell constant.
+# uv.toml's `required-version` makes uv refuse to run below the floor, which
+# covers every project command — so nothing else in the repo hand-rolls this
+# check. But `uv tool run` resolves tools OUTSIDE the project and does NOT honour
+# it (measured), and that is the one call this script makes which actually
+# INSTALLS packages — precisely the exposure GHSA-4gg8-gxpx-9rph and
+# GHSA-pjjw-68hj-v9mw describe. Hence this narrow check, for that path only.
 UV_MIN = "0.11.15"
 
 
-def _require_uv() -> None:
-    """Refuse to shell out to uv/uvx below the project's security floor.
+def _uv_version() -> str | None:
+    """The running uv's version, or None if it cannot be trusted.
 
-    Fails CLOSED: an unreadable or unparseable version is refused rather than
-    assumed recent, matching uv_older_than() in setup-venv.sh.
+    None covers three distinct cases — uv absent, uv failing, or uv printing
+    something unparseable — because none of them justify proceeding. Note the
+    returncode check: a binary that exits nonzero while still printing a
+    version-shaped line must not be treated as verified.
     """
     try:
         out = subprocess.run(["uv", "--version"], capture_output=True, text=True, check=False)
-        raw = out.stdout.split()[1] if len(out.stdout.split()) > 1 else ""
-    except (OSError, IndexError):
-        raw = ""
+    except OSError:
+        return None                      # not on PATH, or not executable
+    if out.returncode != 0:
+        return None
+    parts = out.stdout.split()
+    return parts[1] if len(parts) > 1 else None
 
-    def parts(v: str):
+
+def _require_uv() -> None:
+    """Refuse to install through a uv below the project's security floor.
+
+    Fails CLOSED: anything unverifiable is refused rather than assumed recent.
+    """
+    def triple(v: str):
         bits = v.split(".")[:3]
         return tuple(int(b) for b in bits) if len(bits) == 3 and all(b.isdigit() for b in bits) else None
 
-    have, need = parts(raw), parts(UV_MIN)
-    if have is None or have < need:
+    raw = _uv_version()
+    have = triple(raw) if raw else None
+
+    if have is None:
+        # Distinct from "too old": `uv self update` cannot help if uv is missing
+        # or broken, so do not suggest it.
         raise SystemExit(
-            f"uv {raw or '(version unreadable)'} is below this project's floor of {UV_MIN}.\n"
+            "uv could not be run, or its version could not be read.\n"
+            f"This script installs pip-audit through uv and requires >= {UV_MIN}.\n"
+            "Install or repair uv first: https://astral.sh/uv"
+        )
+    if have < triple(UV_MIN):
+        raise SystemExit(
+            f"uv {raw} is below this project's floor of {UV_MIN}.\n"
             f"Below {UV_MIN}, uv is affected by install-time advisories "
             f"(GHSA-4gg8-gxpx-9rph; below 0.11.6 also GHSA-pjjw-68hj-v9mw), and this "
             f"script installs pip-audit through uv.\n"
@@ -303,9 +324,14 @@ def run_audit(lock: Path) -> tuple[list[dict], int]:
         # argument for holding back fresh releases applies to it at least as much
         # as to the dependencies it inspects.
         proc = subprocess.run(
-            ["uvx", "--exclude-newer", cooldown(), "pip-audit", "-r", str(tmp),
-             "--no-deps", "--disable-pip", "--progress-spinner", "off", "-f", "json"],
-            capture_output=True, text=True,
+            # `uv tool run`, NOT `uvx`: uvx is a separate executable, so a newer
+            # `uv` sitting beside an older standalone `uvx` would sail past
+            # _require_uv(). Routing through the binary that was actually checked
+            # closes that gap. cwd=ROOT so uv.toml is found from any caller.
+            ["uv", "tool", "run", "--exclude-newer", cooldown(), "pip-audit",
+             "-r", str(tmp), "--no-deps", "--disable-pip",
+             "--progress-spinner", "off", "-f", "json"],
+            cwd=ROOT, capture_output=True, text=True,
         )
         if not proc.stdout.strip():
             raise SystemExit(f"pip-audit produced no output:\n{proc.stderr}")
