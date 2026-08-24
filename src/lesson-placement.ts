@@ -108,6 +108,13 @@ export function ensureLessonFormat(
 function resolveContainer(lesson: MutableLesson, kind: NodeKind, at: Placement): unknown[] {
     if (kind === 'scene') return lesson.scenes as unknown[];
 
+    if (kind === 'proof' && at.scene == null && at.step != null) {
+        // `step` names a step WITHIN a scene, so a step-level proof without a
+        // scene is malformed. Routing it to the lesson root would silently apply
+        // the op somewhere the caller never asked for.
+        throw new PlacementError('a step-level proof placement needs a scene');
+    }
+
     if (kind === 'proof' && at.scene == null) {
         // The schema allows `proof` on LessonFormat itself, so a placement with
         // no scene addresses the lesson-level collection rather than being an error.
@@ -145,13 +152,57 @@ function resolveContainer(lesson: MutableLesson, kind: NodeKind, at: Placement):
  */
 function collapseProof(lesson: MutableLesson, kind: NodeKind, at: Placement): void {
     if (kind !== 'proof') return;
-    const holder = (at.scene == null
-        ? (lesson as unknown as { proof?: Proof | Proof[] })
-        : (at.step != null
-            ? (lesson.scenes[at.scene]?.steps || [])[at.step]
-            : lesson.scenes[at.scene])) as { proof?: Proof | Proof[] } | undefined;
+    const holder = proofHolder(lesson, at);
     if (!holder) return;
-    if (Array.isArray(holder.proof) && holder.proof.length === 1) holder.proof = holder.proof[0]!;
+    if (!Array.isArray(holder.proof)) return;
+    // One proof collapses back to the bare object the corpus overwhelmingly uses;
+    // ZERO means the field should not exist at all. Leaving `proof: []` behind
+    // made deleting the last proof non-invertible — the inverse re-inserted the
+    // node but could not remove the empty array the normalization had created.
+    if (holder.proof.length === 1) holder.proof = holder.proof[0]!;
+    else if (holder.proof.length === 0) delete holder.proof;
+}
+
+/** The object holding a `proof` for this placement, or undefined. */
+function proofHolder(lesson: MutableLesson, at: Placement): { proof?: Proof | Proof[] } | undefined {
+    if (at.scene == null) return lesson as unknown as { proof?: Proof | Proof[] };
+    const scene = lesson.scenes[at.scene];
+    if (!scene) return undefined;
+    return (at.step != null ? (scene.steps || [])[at.step] : scene) as
+        { proof?: Proof | Proof[] } | undefined;
+}
+
+/**
+ * Snapshot a container field so a REFUSED op leaves no trace of itself.
+ *
+ * `resolveContainer` has two side effects: it creates a missing `steps` array,
+ * and it normalizes a bare `proof` object into a one-element array. If the op is
+ * then rejected, those changes have already landed with no inverse to undo them
+ * — the lesson is quietly reshaped by an operation the caller was told did not
+ * apply, which makes the all-or-nothing guarantee false even for a single op.
+ */
+function captureContainerShape(lesson: MutableLesson, kind: NodeKind, at: Placement): () => void {
+    let holder: Record<string, unknown> | undefined;
+    let key: string;
+
+    if (kind === 'proof') {
+        holder = proofHolder(lesson, at) as Record<string, unknown> | undefined;
+        key = 'proof';
+    } else if (kind === 'step') {
+        holder = (at.scene != null ? lesson.scenes[at.scene] : undefined) as
+            Record<string, unknown> | undefined;
+        key = 'steps';
+    } else {
+        return () => {};    // `scenes` always exists on a MutableLesson
+    }
+
+    if (!holder) return () => {};
+    const had = key in holder;
+    const original = holder[key];
+    return () => {
+        if (!had) delete holder![key];
+        else holder![key] = original;
+    };
 }
 
 /** Assert the node at `index` is still the one the op was computed against. */
@@ -211,23 +262,36 @@ export function applyBuildOps(lesson: MutableLesson, ops: BuildOp[]): BuildOp[] 
 
 function applyEach(lesson: MutableLesson, ops: BuildOp[], inverse: BuildOp[]): BuildOp[] {
     for (const op of ops) {
-        if (op.kind === 'lesson') {
-            throw new PlacementError('whole-lesson ops are not supported in iteration 1');
+        // No runtime guard for `lesson`/`proof_step` here: `BuildOp` is built over
+        // SupportedKind, so those cannot be constructed at all. tsc flags the old
+        // check as unreachable, which is the point — the type carries the
+        // constraint instead of a throw discovered at apply time.
+        // Validate the address BEFORE resolving. resolveContainer materializes a
+        // missing `steps`/`proof` array as a side effect, so resolving first meant
+        // an op that was about to be REFUSED still left `steps: []` behind — and
+        // for a bare `proof`, still converted it to an array with no inverse to
+        // put it back. Both broke the all-or-nothing promise for a single op.
+        const index = requireIndex(op.at);
+        const restoreShape = captureContainerShape(lesson, op.kind, op.at);
+        let arr: unknown[];
+        try {
+            arr = resolveContainer(lesson, op.kind, op.at);
+        } catch (err) {
+            restoreShape();
+            throw err;
         }
-        const arr = resolveContainer(lesson, op.kind, op.at);
 
         if (op.op === 'insert') {
-            const index = requireIndex(op.at);
             if (index > arr.length) {
+                restoreShape();
                 throw new PlacementError(`insert index ${index} is past the end (${arr.length})`);
             }
             arr.splice(index, 0, op.node);
             inverse.push({ op: 'delete', kind: op.kind, at: op.at } as BuildOp);
         } else if (op.op === 'replace') {
-            const index = requireIndex(op.at);
             const old = arr[index];
-            if (old === undefined) throw new PlacementError(`replace index ${index} does not exist`);
-            verifyIdentity(old, op.at);
+            if (old === undefined) { restoreShape(); throw new PlacementError(`replace index ${index} does not exist`); }
+            try { verifyIdentity(old, op.at); } catch (e) { restoreShape(); throw e; }
             // The inverse must verify what will be THERE when it runs — the
             // replacement — not what was there for the forward op. Reusing
             // `op.at` verbatim carried the OLD node's id, so undoing a replace
@@ -244,10 +308,9 @@ function applyEach(lesson: MutableLesson, ops: BuildOp[], inverse: BuildOp[]): B
             } as BuildOp);
             arr[index] = op.node;
         } else {
-            const index = requireIndex(op.at);
             const old = arr[index];
-            if (old === undefined) throw new PlacementError(`delete index ${index} does not exist`);
-            verifyIdentity(old, op.at);
+            if (old === undefined) { restoreShape(); throw new PlacementError(`delete index ${index} does not exist`); }
+            try { verifyIdentity(old, op.at); } catch (e) { restoreShape(); throw e; }
             inverse.push({ op: 'insert', kind: op.kind, at: op.at, node: old } as BuildOp);
             arr.splice(index, 1);
         }

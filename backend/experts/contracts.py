@@ -112,7 +112,21 @@ class StepOp(_BuildOpBase):
 #: exact rather than best-effort. `ProofOp`/`ProofStepOp` land in iteration 5 with
 #: `Proof`/`ProofStep` in backend/model/lesson.py; `LessonOp` if a whole-lesson
 #: build ever needs it. No refactor, no behaviour change to what already ships.
-BuildOp = Annotated[Union[SceneOp, StepOp], Field(discriminator="kind")]
+class ProofOp(_BuildOpBase):
+    kind: Literal["proof"] = "proof"
+    #: Untyped until `Proof` lands in backend/model/lesson.py (iteration 5, when
+    #: the proof builders are re-expressed under this contract). Declared now
+    #: because the TypeScript applier already implements `proof` placements —
+    #: including the lesson-level `LessonFormat.proof` — and a union that omitted
+    #: it made the two sides disagree on what an op may even be.
+    node: Optional[dict] = None
+
+
+BuildOp = Annotated[Union[SceneOp, StepOp, ProofOp], Field(discriminator="kind")]
+
+#: The kinds `applyBuildOps` implements — narrower than NODE_KINDS, which is the
+#: vocabulary the contract declares. Pinned against the TypeScript `SupportedKind`.
+SUPPORTED_KINDS: tuple[str, ...] = ("scene", "step", "proof")
 
 #: The kinds the wire contract declares, including those without an op class yet.
 #: `src/placement.ts` NodeKind must stay in step with this — the parity test checks it.
@@ -200,10 +214,20 @@ def dump_outcome(outcome) -> dict:
     declared. The client's parser rejects unknown keys, so those nulls are not
     merely noise.
 
+    ``by_alias`` is not optional here either: ``Element.from_`` carries
+    ``alias="from"`` because ``from`` is a Python keyword, so a plain dump ships
+    ``from_`` — a key the client contract does not declare, in the single field
+    this repo documents as the one place the two languages can silently diverge.
+
     Handlers must serialize through THIS, not ``model_dump()``. The parity test
     asserts against it for the same reason it exists: an earlier version of that
     test passed ``exclude_none=True`` itself and therefore validated a
     serialization the transport never performs, hiding the very mismatch it was
     written to catch.
     """
-    return outcome.model_dump(exclude_none=True)
+    dumped = outcome.model_dump(mode="json", by_alias=True, exclude_none=True)
+    # `focus` is REQUIRED by the TypeScript interface and nullable, so it must
+    # survive exclude_none as an explicit null rather than being dropped.
+    if isinstance(outcome, BuildResult) and "focus" not in dumped:
+        dumped["focus"] = None
+    return dumped

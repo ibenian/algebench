@@ -20,7 +20,8 @@ import pytest
 from pydantic import TypeAdapter
 
 from backend.experts.contracts import (
-    NODE_KINDS, BuilderOutcome, BuildOp, BuildResult, Placement, SceneOp, StepOp,
+    NODE_KINDS, SUPPORTED_KINDS, BuilderOutcome, BuildOp, BuildResult, Placement,
+    SceneOp, StepOp,
     dump_outcome,
 )
 
@@ -52,6 +53,23 @@ def _ts_union_members(src: str, name: str) -> set[str]:
 
 def test_placement_fields_match(ts_source: str) -> None:
     assert _ts_interface_fields(ts_source, "Placement") == set(Placement.model_fields)
+
+
+def test_placement_optionality_matches(ts_source: str) -> None:
+    """Names alone are not the wire shape.
+
+    Comparing only names let `field` be required in TypeScript and optional in
+    Python — the backend could emit a payload the client rejects, and this file
+    said the two agreed. Optionality is half the contract.
+    """
+    m = re.search(r"export interface Placement \{(.*?)\n\}", ts_source, re.S)
+    assert m
+    ts_optional = {name for name, q in re.findall(r"^\s*(\w+)(\??):", m.group(1), re.M) if q == "?"}
+    py_optional = {n for n, f in Placement.model_fields.items() if not f.is_required()}
+    assert ts_optional == py_optional, (
+        f"optionality disagrees: TypeScript optional {sorted(ts_optional)}, "
+        f"Python optional {sorted(py_optional)}"
+    )
 
 
 def test_node_kinds_match(ts_source: str) -> None:
@@ -116,7 +134,11 @@ def test_insert_and_replace_require_a_node_and_delete_refuses_one() -> None:
     that renders an empty scene."""
     for op in ("insert", "replace"):
         with pytest.raises(Exception):
-            OP.validate_python({"op": op, "kind": "scene", "at": {"field": "scenes", "index": 0}})
+            # NOTE: no stray keys in `at`. An earlier version passed the removed
+            # `field`, so Placement's extra="forbid" rejected the payload before
+            # _node_matches_op ran — the test passed without exercising the guard
+            # it is named for.
+            OP.validate_python({"op": op, "kind": "scene", "at": {"index": 0}})
     with pytest.raises(Exception):
         OP.validate_python({"op": "delete", "kind": "scene",
                             "at": {"index": 0}, "node": {"title": "x"}})
@@ -194,3 +216,35 @@ def test_build_result_fields_are_required_like_the_typescript_interface() -> Non
         BuildResult()                       # ops/summary/focus all missing
     with pytest.raises(Exception):
         BuildResult(ops=[], summary="s")    # focus must be passed, even as None
+
+
+def test_focus_survives_as_an_explicit_null() -> None:
+    """`focus` is REQUIRED by the TypeScript interface and nullable, so
+    exclude_none must not drop it. The previous test constructed focus=None but
+    only asserted on node and placement keys, so this branch went unchecked."""
+    op = OP.validate_python({"op": "delete", "kind": "scene", "at": {"index": 0}})
+    wire = dump_outcome(BuildResult(ops=[op], summary="s", focus=None))
+    assert "focus" in wire and wire["focus"] is None
+
+
+def test_element_from_ships_under_its_schema_name() -> None:
+    """`Element.from_` carries alias="from" because `from` is a Python keyword.
+    A dump without by_alias ships `from_`, a key the client does not declare —
+    in the one field this repo documents as the place the two languages can
+    silently diverge."""
+    op = OP.validate_python({
+        "op": "insert", "kind": "step", "at": {"scene": 0, "index": 0},
+        "node": {"title": "T", "add": [{"type": "vector", "from": [0, 0, 0], "to": [1, 1, 1]}]},
+    })
+    wire = dump_outcome(BuildResult(ops=[op], summary="s", focus=None))
+    keys = set(wire["ops"][0]["node"]["add"][0])
+    assert "from" in keys and "from_" not in keys, f"element shipped {sorted(keys)}"
+
+
+def test_supported_kinds_match(ts_source: str) -> None:
+    """`SupportedKind` is what applyBuildOps implements, narrower than the
+    declared vocabulary. Both sides must agree, or one can construct an op the
+    other cannot apply."""
+    m = re.search(r"export type SupportedKind = Extract<NodeKind, (.*?)>;", ts_source, re.S)
+    assert m, "SupportedKind not found in placement.ts"
+    assert set(re.findall(r"'([^']+)'", m.group(1))) == set(SUPPORTED_KINDS)

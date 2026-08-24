@@ -82,7 +82,16 @@ Range3D = Annotated[
     list[Annotated[list[Num], Field(min_length=2, max_length=2)]],
     Field(min_length=3, max_length=3),
 ]
-Color = Union[str, Vec3Number]
+#: `^#rrggbb` / `^#rrggbbaa`, or three components in [0, 1] — as the schema says.
+#: A bare `str` here would let the "canonical" model bless a colour the schema
+#: rejects, which is the one thing this model exists not to do.
+HexColor = Annotated[str, Field(pattern=r"^#[0-9a-fA-F]{6,8}$")]
+Rgb01 = Annotated[list[Annotated[float, Field(ge=0, le=1)]], Field(min_length=3, max_length=3)]
+Color = Union[HexColor, Rgb01]
+
+ScreenPosition = Literal[
+    "top-left", "top-right", "bottom-left", "bottom-right", "top-center", "bottom-center",
+]
 
 ElementType = Literal[
     "skybox", "axis", "grid", "vector", "point", "line", "surface",
@@ -113,9 +122,11 @@ class View(BaseModel):
     position: Optional[Vec3Number] = None
     target: Optional[Vec3Number] = None
     up: Optional[Vec3Number] = None
-    positionExpr: Optional[list[str]] = None
-    targetExpr: Optional[list[str]] = None
-    follow: Optional[Union[str, list[str]]] = None
+    # Three-item expression tuples, and a list `follow` needs at least one
+    # candidate id — the schema constrains all three, so the mirror must too.
+    positionExpr: Optional[Annotated[list[str], Field(min_length=3, max_length=3)]] = None
+    targetExpr: Optional[Annotated[list[str], Field(min_length=3, max_length=3)]] = None
+    follow: Optional[Union[str, Annotated[list[str], Field(min_length=1)]]] = None
     offset: Optional[Vec3Number] = None
     angleLockAxis: Optional[list] = None
     angleLockDirection: Optional[list] = None
@@ -132,7 +143,7 @@ class Slider(BaseModel):
     step: Optional[Num] = None
     default: Optional[Num] = None
     animate: Optional[bool] = None
-    animateMode: Optional[str] = None
+    animateMode: Optional[Literal["loop", "once", "bounce"]] = None
     autoplay: Optional[bool] = None
     duration: Optional[int] = None
     reset: Optional[bool] = None
@@ -151,8 +162,8 @@ class InfoOverlay(BaseModel):
 
     id: str
     content: str
-    position: Optional[str] = None
-    pos: Optional[str] = None
+    position: Optional[ScreenPosition] = None
+    pos: Optional[ScreenPosition] = None
     keep: Optional[bool] = None
     title: Optional[str] = None
 
@@ -198,7 +209,7 @@ class Element(BaseModel):
     arrowScale: Optional[Num] = None
     shaftScale: Optional[Num] = None
 
-    size: Optional[Num] = None
+    size: Optional[int] = None          # `$defs.element.size` is an integer
     radius: Optional[Num] = None
     points: Optional[list] = None
     text: Optional[str] = None

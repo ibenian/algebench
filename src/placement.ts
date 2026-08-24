@@ -50,7 +50,14 @@ export interface Placement {
     scene?: number;
     /** Which step, for a step-level proof. */
     step?: number;
-    /** Insert-before / replace-at position within the derived container. */
+    /**
+     * Insert-before / replace-at position within the derived container.
+     *
+     * Optional in the TYPE because a future root-level op (`kind: 'lesson'`) has
+     * no container to index into — but every currently supported op requires it,
+     * and `requireIndex` refuses an op without one. Do not read the `?` as
+     * "usually omitted".
+     */
     index?: number;
     /**
      * NOT for lookup — for VERIFICATION. On replace/delete the target already
@@ -82,12 +89,23 @@ export interface NodePayload {
  * property is not reliable, and if `node` stays a union then typing it bought
  * nothing.
  */
+/**
+ * The kinds a build op can currently target.
+ *
+ * Narrower than `NodeKind` on purpose. `NodeKind` is the vocabulary the contract
+ * declares; this is what `applyBuildOps` actually implements. Building the op
+ * union over all five let TypeScript construct `lesson` and `proof_step` ops that
+ * the applier throws on and the Python mirror had no model for — a type promising
+ * more than any layer below it delivered. They join here when implemented.
+ */
+export type SupportedKind = Extract<NodeKind, 'scene' | 'step' | 'proof'>;
+
 export type BuildOp = {
-    [K in NodeKind]:
+    [K in SupportedKind]:
         | { op: 'insert';  kind: K; at: Placement; node: NodePayload[K] }
         | { op: 'replace'; kind: K; at: Placement; node: NodePayload[K] }
         | { op: 'delete';  kind: K; at: Placement }
-}[NodeKind];
+}[SupportedKind];
 
 /** What a builder returns on success. */
 export interface BuildResult {

@@ -226,3 +226,41 @@ test('an empty-string id is verified, not treated as "no id given"', () => {
     assert.throws(() => applyBuildOps(l, [op]), PlacementError);
     assert.deepEqual(titles(l), ['a']);
 });
+
+// ---- review round 3: nothing is left behind by a refused op ---------------
+
+test('a refused op does not convert a bare proof into an array', () => {
+    // resolveContainer normalizes `proof` as a side effect. Resolving before
+    // validating meant a rejected op still reshaped the lesson, with no inverse
+    // to put it back — all-or-nothing was false even for a single op.
+    const l = { title: 'L', scenes: [{ title: 'a', proof: { title: 'p0' } }] } as unknown as MutableLesson;
+    const op = { op: 'replace', kind: 'proof', at: { scene: 0, index: 7 }, node: { title: 'x' } } as unknown as BuildOp;
+    assert.throws(() => applyBuildOps(l, [op]), PlacementError);
+    const proof = (l.scenes[0] as unknown as { proof: unknown }).proof;
+    assert.ok(!Array.isArray(proof), 'the bare-object representation must survive a refusal');
+});
+
+test('a refused op does not materialize a missing steps array', () => {
+    const l = { title: 'L', scenes: [{ title: 'a' }] } as unknown as MutableLesson;
+    const op = { op: 'insert', kind: 'step', at: { scene: 0, index: 9 }, node: step('x') } as BuildOp;
+    assert.throws(() => applyBuildOps(l, [op]), PlacementError);
+    assert.equal((l.scenes[0] as unknown as { steps?: unknown }).steps, undefined);
+});
+
+test('deleting the only proof restores its absence, so the op is invertible', () => {
+    // Leaving `proof: []` behind made the inverse incomplete: it re-inserted the
+    // node but could not remove the array normalization had created.
+    const l = { title: 'L', scenes: [{ title: 'a', proof: { title: 'p0' } }] } as unknown as MutableLesson;
+    const inv = applyBuildOps(l, [{ op: 'delete', kind: 'proof', at: { scene: 0, index: 0 } } as BuildOp]);
+    assert.equal((l.scenes[0] as unknown as { proof?: unknown }).proof, undefined, 'no empty array left behind');
+    applyBuildOps(l, inv);
+    const back = (l.scenes[0] as unknown as { proof: unknown }).proof;
+    assert.equal((back as { title: string }).title, 'p0', 'the inverse restores the original');
+});
+
+test('a step-level proof without a scene is refused, not routed to the lesson root', () => {
+    const l = { title: 'L', scenes: [scene('a')] } as MutableLesson;
+    const op = { op: 'insert', kind: 'proof', at: { step: 0, index: 0 }, node: { title: 'p' } } as unknown as BuildOp;
+    assert.throws(() => applyBuildOps(l, [op]), PlacementError);
+    assert.equal((l as unknown as { proof?: unknown }).proof, undefined);
+});
