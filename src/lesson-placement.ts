@@ -156,7 +156,11 @@ function collapseProof(lesson: MutableLesson, kind: NodeKind, at: Placement): vo
 
 /** Assert the node at `index` is still the one the op was computed against. */
 function verifyIdentity(node: unknown, at: Placement): void {
-    if (!at.id) return;
+    // `undefined` means "no verification requested"; an EMPTY STRING does not.
+    // Ids are plain strings in the schema with no minLength, so a truthiness test
+    // let `id: ""` skip stale-op checking entirely and replace or delete whatever
+    // happened to be at that index.
+    if (at.id === undefined) return;
     const actual = (node as { id?: unknown } | null | undefined)?.id;
     if (actual !== at.id) {
         throw new PlacementError(
@@ -229,11 +233,13 @@ function applyEach(lesson: MutableLesson, ops: BuildOp[], inverse: BuildOp[]): B
             // `op.at` verbatim carried the OLD node's id, so undoing a replace
             // threw `stale placement` whenever the new node had a different id
             // (or none), which is the ordinary case.
+            // Same care as verifyIdentity: distinguish an absent id from an
+            // empty one, so a replacement carrying `id: ""` is still verified.
             const replacementId = (op.node as { id?: string } | null)?.id;
             inverse.push({
                 op: 'replace',
                 kind: op.kind,
-                at: { ...op.at, ...(replacementId ? { id: replacementId } : { id: undefined }) },
+                at: { ...op.at, id: replacementId },
                 node: old,
             } as BuildOp);
             arr[index] = op.node;

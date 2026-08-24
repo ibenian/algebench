@@ -216,3 +216,13 @@ test('promoting a single scene keeps root-only fields at the root', () => {
     assert.equal(s0.unsafe, undefined);
     assert.equal(s0.title, 'solo', 'the scene keeps its own fields');
 });
+
+test('an empty-string id is verified, not treated as "no id given"', () => {
+    // Ids have no minLength in the schema, so `id: ""` is valid. A truthiness
+    // check let it skip stale-op verification and mutate whatever sat at that
+    // index; only `undefined` may mean "do not verify".
+    const l = { title: 'L', scenes: [scene('a', 'real-id')] } as MutableLesson;
+    const op: BuildOp = { op: 'replace', kind: 'scene', at: { index: 0, id: '' }, node: scene('x') };
+    assert.throws(() => applyBuildOps(l, [op]), PlacementError);
+    assert.deepEqual(titles(l), ['a']);
+});
