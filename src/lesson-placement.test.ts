@@ -278,3 +278,38 @@ test("undoing an insert will not delete a node it did not insert", () => {
     assert.throws(() => applyBuildOps(l, inv), PlacementError);
     assert.deepEqual(titles(l), ['a', 'someone-elses'], 'the wrong node must survive');
 });
+
+// ---- review round 4 -------------------------------------------------------
+
+test('an insert carrying an id is refused rather than silently ignored', () => {
+    // The forward op has nothing to verify, and the inverse derives its id from
+    // the inserted node — so an `at.id` here was quietly dropped while the caller
+    // reasonably expected it to mean something.
+    const l = lessonOf('a');
+    const op = { op: 'insert', kind: 'scene', at: { index: 1, id: 'wishful' }, node: scene('b') } as BuildOp;
+    assert.throws(() => applyBuildOps(l, [op]), PlacementError);
+    assert.deepEqual(titles(l), ['a']);
+});
+
+test('undoing a step insert leaves no empty steps array behind', () => {
+    // resolveContainer materializes `steps`; deleting the node alone would leave
+    // `steps: []`, so the "inverse" did not restore the lesson it found.
+    const l = { title: 'L', scenes: [{ title: 'a' }] } as unknown as MutableLesson;
+    const inv = applyBuildOps(l, [
+        { op: 'insert', kind: 'step', at: { scene: 0, index: 0 }, node: step('s') } as BuildOp,
+    ]);
+    applyBuildOps(l, inv);
+    assert.equal((l.scenes[0] as unknown as { steps?: unknown }).steps, undefined);
+});
+
+test('a proof that arrived as an array stays an array', () => {
+    // The schema permits `Proof` and `Proof[]` equally. Collapsing every
+    // one-element array to a bare object rewrote lessons that legitimately used
+    // the array form — a representation change nobody asked for, and one no
+    // inverse would undo.
+    const l = { title: 'L', scenes: [{ title: 'a', proof: [{ title: 'p0' }, { title: 'p1' }] }] } as unknown as MutableLesson;
+    applyBuildOps(l, [{ op: 'delete', kind: 'proof', at: { scene: 0, index: 1 } } as BuildOp]);
+    const proof = (l.scenes[0] as unknown as { proof: unknown }).proof;
+    assert.ok(Array.isArray(proof), 'the array form must survive');
+    assert.equal((proof as { title: string }[]).length, 1);
+});

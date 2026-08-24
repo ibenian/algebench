@@ -73,7 +73,16 @@ def test_placement_optionality_matches(ts_source: str) -> None:
 
 
 def test_node_kinds_match(ts_source: str) -> None:
-    assert _ts_union_members(ts_source, "NodeKind") == set(NODE_KINDS)
+    ts = _ts_union_members(ts_source, "NodeKind")
+    assert ts == set(NODE_KINDS)
+    # ...and against the ACTUAL Literal, not just the tuple beside it. Comparing
+    # only with NODE_KINDS let the two Python declarations drift apart while this
+    # test reported agreement with TypeScript.
+    from backend.experts import contracts
+    assert set(contracts.NodeKind.__args__) == ts, (
+        f"contracts.NodeKind {sorted(contracts.NodeKind.__args__)} disagrees with "
+        f"NODE_KINDS/TypeScript {sorted(ts)}"
+    )
 
 
 def test_op_classes_are_a_subset_of_the_declared_kinds() -> None:

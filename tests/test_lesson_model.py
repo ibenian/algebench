@@ -60,6 +60,28 @@ def _dump(model) -> dict:
     return model.model_dump(mode="json", by_alias=True, exclude_none=True)
 
 
+def _identical(a, b) -> bool:
+    """Structural equality that also compares NUMERIC TYPE.
+
+    `==` cannot do this job: Python holds `0 == 0.0`, and that equality reaches
+    inside lists and dicts, so `{"position": [0, 0, 10]}` compares equal to
+    `{"position": [0.0, 0.0, 10.0]}`. The round-trip assertion below is supposed
+    to guard exactly that coercion — measured: with a plain `==`, reverting
+    `Num` to `float` (the bug that once failed all 16 lessons) passed every test
+    in this file. It only ever caught the tuple-vs-list half of the problem,
+    which `==` does see.
+    """
+    if isinstance(a, bool) or isinstance(b, bool):
+        return a is b
+    if isinstance(a, (int, float)) and isinstance(b, (int, float)):
+        return type(a) is type(b) and a == b
+    if isinstance(a, dict) and isinstance(b, dict):
+        return a.keys() == b.keys() and all(_identical(a[k], b[k]) for k in a)
+    if isinstance(a, list) and isinstance(b, list):
+        return len(a) == len(b) and all(_identical(x, y) for x, y in zip(a, b))
+    return type(a) is type(b) and a == b
+
+
 # ── A. Corpus round-trip ─────────────────────────────────────────────────────
 
 @pytest.mark.parametrize("path", SCENE_FILES, ids=lambda p: p.name)
@@ -68,7 +90,7 @@ def test_model_round_trips_published_lesson(path: Path) -> None:
     scenes = raw.get("scenes") or [raw]
     for i, original in enumerate(scenes):
         parsed = Scene.model_validate(original)
-        assert _dump(parsed) == original, (
+        assert _identical(_dump(parsed), original), (
             f"{path.name} scene {i} ({original.get('title')!r}) did not round-trip — "
             f"the model is lossy or a type is too narrow"
         )

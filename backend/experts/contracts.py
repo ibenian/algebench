@@ -112,14 +112,27 @@ class StepOp(_BuildOpBase):
 #: exact rather than best-effort. `ProofOp`/`ProofStepOp` land in iteration 5 with
 #: `Proof`/`ProofStep` in backend/model/lesson.py; `LessonOp` if a whole-lesson
 #: build ever needs it. No refactor, no behaviour change to what already ships.
+class MinimalProof(BaseModel):
+    """The part of `Proof` this contract can enforce today.
+
+    `extra="allow"` because it is deliberately NOT the full model — see ProofOp.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    title: str
+    steps: list
+
+
 class ProofOp(_BuildOpBase):
     kind: Literal["proof"] = "proof"
-    #: Untyped until `Proof` lands in backend/model/lesson.py (iteration 5, when
-    #: the proof builders are re-expressed under this contract). Declared now
-    #: because the TypeScript applier already implements `proof` placements —
-    #: including the lesson-level `LessonFormat.proof` — and a union that omitted
-    #: it made the two sides disagree on what an op may even be.
-    node: Optional[dict] = None
+    #: TypeScript declares `node: Proof`, which requires `title` and `steps`, so a
+    #: bare `dict` let the backend emit a proof node the client contract rejects.
+    #: `Proof` itself is not modelled until iteration 5 (when the proof builders
+    #: are re-expressed under this contract), so this pins the two fields the
+    #: generated type makes mandatory and leaves the rest open — narrower than
+    #: `dict`, honest about not being the full model yet.
+    node: Optional[MinimalProof] = None
 
 
 BuildOp = Annotated[Union[SceneOp, StepOp, ProofOp], Field(discriminator="kind")]
@@ -228,6 +241,13 @@ def dump_outcome(outcome) -> dict:
     dumped = outcome.model_dump(mode="json", by_alias=True, exclude_none=True)
     # `focus` is REQUIRED by the TypeScript interface and nullable, so it must
     # survive exclude_none as an explicit null rather than being dropped.
-    if isinstance(outcome, BuildResult) and "focus" not in dumped:
-        dumped["focus"] = None
+    #
+    # Repair BOTH shapes: a bare BuildResult, and the nested `result` of a
+    # BuilderSuccess — which is what a builder actually returns. Checking only
+    # the bare form meant the ordinary success path still shipped a result with
+    # no `focus` key at all.
+    if isinstance(outcome, BuildResult):
+        dumped.setdefault("focus", None)
+    elif isinstance(outcome, BuilderSuccess) and isinstance(dumped.get("result"), dict):
+        dumped["result"].setdefault("focus", None)
     return dumped

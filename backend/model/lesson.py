@@ -63,7 +63,7 @@ from __future__ import annotations
 
 from typing import Annotated, Literal, Optional, Union
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
 # ── Positional aliases (mirroring the schema's $defs) ────────────────────────
 #
@@ -76,6 +76,19 @@ from pydantic import BaseModel, ConfigDict, Field
 #     the dumped shape stays a JSON array.
 
 Num = Union[int, float]
+
+
+def _integral(v):
+    """Require an integral VALUE without coercing the type it arrived as."""
+    if isinstance(v, float) and not v.is_integer():
+        raise ValueError("must be a whole number")
+    return v
+
+
+#: A JSON Schema `"type": "integer"`: integral in value, either int or float in
+#: representation. Coercing to `int` here would rewrite `1.0` as `1` and make the
+#: model lossy against real lessons.
+IntegralNum = Annotated[Union[int, float], BeforeValidator(_integral)]
 Vec3Number = Annotated[list[Num], Field(min_length=3, max_length=3)]
 Vec3 = Annotated[list[Union[Num, str]], Field(min_length=3, max_length=3)]
 Range3D = Annotated[
@@ -86,7 +99,12 @@ Range3D = Annotated[
 #: A bare `str` here would let the "canonical" model bless a colour the schema
 #: rejects, which is the one thing this model exists not to do.
 HexColor = Annotated[str, Field(pattern=r"^#[0-9a-fA-F]{6,8}$")]
-Rgb01 = Annotated[list[Annotated[float, Field(ge=0, le=1)]], Field(min_length=3, max_length=3)]
+# `Num`, not `float`: the schema says "number in [0,1]", and `1` is one. Annotating
+# `float` enforced the range correctly but rewrote `1` as `1.0` on the way out,
+# making the model lossy against real lessons — caught only once the round-trip
+# comparison started checking numeric TYPE as well as value.
+ExprTriple = Annotated[list[str], Field(min_length=3, max_length=3)]
+Rgb01 = Annotated[list[Annotated[Num, Field(ge=0, le=1)]], Field(min_length=3, max_length=3)]
 Color = Union[HexColor, Rgb01]
 
 ScreenPosition = Literal[
@@ -128,9 +146,10 @@ class View(BaseModel):
     targetExpr: Optional[Annotated[list[str], Field(min_length=3, max_length=3)]] = None
     follow: Optional[Union[str, Annotated[list[str], Field(min_length=1)]]] = None
     offset: Optional[Vec3Number] = None
-    angleLockAxis: Optional[list] = None
-    angleLockDirection: Optional[list] = None
-    angleLockVector: Optional[list] = None
+    #: The schema constrains these to integer-or-string items; `list` took anything.
+    angleLockAxis: Optional[list[Union[int, str]]] = None
+    angleLockDirection: Optional[list[Union[int, str]]] = None
+    angleLockVector: Optional[list[Union[int, str]]] = None
 
 
 class Slider(BaseModel):
@@ -184,7 +203,9 @@ class Element(BaseModel):
     id: Optional[str] = None
     label: Optional[str] = None
     color: Optional[Color] = None
-    opacity: Optional[Union[Num, str]] = None
+    #: Numeric opacity is [0,1] per the schema; only the string form (an
+    #: expression) is unrestricted. A bare `Num` accepted `2`.
+    opacity: Optional[Union[Annotated[Num, Field(ge=0, le=1)], str]] = None
     width: Optional[Num] = None
     prompt: Optional[str] = None
     # NOTE: `legendGroup` is used 66+ times in the published corpus but is NOT in
@@ -200,18 +221,27 @@ class Element(BaseModel):
     origin: Optional[Vec3] = None
     position: Optional[Vec3] = None
 
-    expr: Optional[Union[list[str], str]] = None
-    fromExpr: Optional[list[str]] = None
-    toExpr: Optional[list[str]] = None
+    #: Component triplets. Without the arity constraint a builder could emit
+    #: `expr: []` or a two-component `fromExpr`, which renders as nothing.
+    expr: Optional[Union[ExprTriple, str]] = None
+    fromExpr: Optional[ExprTriple] = None
+    toExpr: Optional[ExprTriple] = None
 
     labelPosition: Optional[Vec3] = None
     labelOffset: Optional[Vec3Number] = None
     arrowScale: Optional[Num] = None
     shaftScale: Optional[Num] = None
 
-    size: Optional[int] = None          # `$defs.element.size` is an integer
+    # `$defs.element.size` is `"type": "integer"`, which in JSON Schema means an
+    # INTEGRAL VALUE, not an integral Python type — `1.0` is a valid integer and
+    # the corpus contains it. Annotating `int` made pydantic coerce `1.0` -> `1`,
+    # silently rewriting published lessons. So: reject a fractional size, but
+    # preserve whatever numeric form it arrived in.
+    size: Optional[IntegralNum] = None
     radius: Optional[Num] = None
-    points: Optional[list] = None
+    #: `$defs.element.points` is an array of exactly-three-component vectors; a
+    #: bare `list` validated neither the item type nor the arity.
+    points: Optional[list[Vec3]] = None
     text: Optional[str] = None
     value: Optional[str] = None
 

@@ -150,17 +150,32 @@ function resolveContainer(lesson: MutableLesson, kind: NodeKind, at: Placement):
  * The published corpus writes `proof` as a bare object far more often than as an
  * array; preserving that is required for lossless round-tripping.
  */
-function collapseProof(lesson: MutableLesson, kind: NodeKind, at: Placement): void {
+function tidyContainer(
+    lesson: MutableLesson, kind: NodeKind, at: Placement, arrivedAsArray: boolean,
+): void {
+    // `steps`: resolving materializes it, so an op that empties it again (the
+    // inverse of an insert into a scene that had none) would otherwise leave
+    // `steps: []` behind and the op would not be a true inverse. An empty array
+    // carries no information the absent field does not — and no published lesson
+    // contains one, so removing it cannot rewrite existing content.
+    if (kind === 'step' && at.scene != null) {
+        const scene = lesson.scenes[at.scene] as unknown as { steps?: unknown[] } | undefined;
+        if (scene && Array.isArray(scene.steps) && scene.steps.length === 0) delete scene.steps;
+        return;
+    }
     if (kind !== 'proof') return;
     const holder = proofHolder(lesson, at);
     if (!holder) return;
     if (!Array.isArray(holder.proof)) return;
-    // One proof collapses back to the bare object the corpus overwhelmingly uses;
-    // ZERO means the field should not exist at all. Leaving `proof: []` behind
-    // made deleting the last proof non-invertible — the inverse re-inserted the
-    // node but could not remove the empty array the normalization had created.
-    if (holder.proof.length === 1) holder.proof = holder.proof[0]!;
-    else if (holder.proof.length === 0) delete holder.proof;
+    // ZERO means the field should not exist: leaving `proof: []` made deleting
+    // the last proof non-invertible, since the inverse could re-insert the node
+    // but not remove the array normalization had created.
+    if (holder.proof.length === 0) { delete holder.proof; return; }
+    // ONE collapses back to a bare object ONLY if that is how it arrived. The
+    // schema permits `Proof` and `Proof[]` equally, so collapsing unconditionally
+    // rewrote a lesson that legitimately used the array form — a representation
+    // change the caller never asked for, and one no inverse would undo.
+    if (holder.proof.length === 1 && !arrivedAsArray) holder.proof = holder.proof[0]!;
 }
 
 /** The object holding a `proof` for this placement, or undefined. */
@@ -273,6 +288,10 @@ function applyEach(lesson: MutableLesson, ops: BuildOp[], inverse: BuildOp[]): B
         // put it back. Both broke the all-or-nothing promise for a single op.
         const index = requireIndex(op.at);
         const restoreShape = captureContainerShape(lesson, op.kind, op.at);
+        // Remember the proof's ARRIVING representation: the schema permits both a
+        // bare object and an array, so the op must not silently convert between them.
+        const proofWasArray = op.kind === 'proof'
+            && Array.isArray((proofHolder(lesson, op.at) || {}).proof);
         let arr: unknown[];
         try {
             arr = resolveContainer(lesson, op.kind, op.at);
@@ -282,6 +301,14 @@ function applyEach(lesson: MutableLesson, ops: BuildOp[], inverse: BuildOp[]): B
         }
 
         if (op.op === 'insert') {
+            // An insert has no pre-existing target, so `at.id` cannot mean
+            // anything — and silently ignoring it hid a real confusion: a caller
+            // setting it reasonably expects verification, and the generated
+            // inverse derives its id from the inserted node instead. Refuse.
+            if (op.at.id !== undefined) {
+                restoreShape();
+                throw new PlacementError('an insert placement must not carry an id — there is nothing yet to verify');
+            }
             if (index > arr.length) {
                 restoreShape();
                 throw new PlacementError(`insert index ${index} is past the end (${arr.length})`);
@@ -322,7 +349,7 @@ function applyEach(lesson: MutableLesson, ops: BuildOp[], inverse: BuildOp[]): B
             arr.splice(index, 1);
         }
 
-        collapseProof(lesson, op.kind, op.at);
+        tidyContainer(lesson, op.kind, op.at, proofWasArray);
     }
 
     return inverse.reverse();
