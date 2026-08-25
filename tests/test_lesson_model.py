@@ -42,10 +42,24 @@ from validate_model_parity import CHECKS, CheckFailure, identical  # noqa: E402
 def test_model_parity_check(label: str, check) -> None:
     """Run each check from scripts/validate_model_parity.py.
 
-    The logic lives in the script so it follows the house pattern for validation
-    (validate_schema.py, validate_content.py, audit_expressions.py) and can be run
-    while editing. Restating it here would give two implementations to keep in
-    step — the exact failure these checks exist to prevent.
+    WHY THIS EXISTS WHEN validate-data.yml ALREADY RUNS THE SCRIPT
+    -------------------------------------------------------------
+    Not the same duplication as the `backend-model.yml` workflow that was deleted
+    in favour of the script. That one repeated the whole apparatus — checkout,
+    install, ~20s, a second named check — to run tests already running. This is
+    0.23s inside a suite that runs anyway, and it buys something the script cannot:
+
+      * tests.yml is a REQUIRED check and is deliberately NOT path-filtered, so
+        these checks run on every PR.
+      * validate-data.yml is path-filtered and therefore cannot be required. Its
+        filter is a hand-maintained list; today it names every file that can break
+        a mirror, but the moment one joins the set and is not added, the script
+        silently stops covering it. This wrapper is filter-independent.
+
+    The logic itself lives in the script — house pattern (validate_schema.py,
+    validate_content.py, audit_expressions.py) and runnable while editing.
+    Restating it here would leave two implementations to keep in step, which is
+    the exact failure these checks exist to catch.
     """
     try:
         check(verbose=False)
