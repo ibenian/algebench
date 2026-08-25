@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import pathlib
+import sys
 
 import pytest
 from pydantic import ValidationError
@@ -347,3 +348,19 @@ def test_truncation_is_visible_in_the_value_itself():
     so on its own, or it reads as a sentence that simply ended."""
     assert fmt._line("x" * 500, 100).endswith("…")
     assert not fmt._line("short", 100).endswith("…")
+
+
+def test_the_context_viewer_shows_every_field():
+    """scripts/show_build_context.py is how a prompt gets eyeballed before an LM
+    ever runs, so a field it forgets is a field nobody looks at."""
+    sys.path.insert(0, "scripts")
+    from show_build_context import render
+
+    req = BuildSceneRequest.model_validate(json.loads(FIXTURE.read_text()))
+    rendered = dict(render(req))
+
+    # `current`/`neighbours` are rendered from scenes(); the rest map by name.
+    assert set(rendered) == {"intent", "lesson", "conventions", "existing_names",
+                             "neighbours", "current", "clarifications", "omitted"}
+    assert all(isinstance(v, str) for v in rendered.values())
+    assert rendered["current"] and rendered["neighbours"], "a replace must show both"
