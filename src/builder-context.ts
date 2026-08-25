@@ -11,13 +11,25 @@
 // chooses nothing about context. Selection is deterministic code; it just runs on
 // the side that already holds the lesson.
 //
-// This is a WIRE SHAPE, mirrored by backend/experts/handlers/build_scene/context.py
-// and pinned by scripts/validate_model_parity.py.
+// SENT AS NAMED DATA, NOT AS ONE `context` BAG AND NOT AS PROMPT TEXT.
+// Each field below feeds exactly one `dspy.InputField`, via one formatter in
+// backend/experts/handlers/build_scene/format.py, so the request keys say what
+// the model will be told. The VALUES stay raw — `neighbours` is scene objects as
+// they appear in the lesson, because the far side only ever renders them.
+//
+// Rendering deliberately stays on the backend: prompt wording changes when the
+// MODEL changes, and putting it here would make every tweak a frontend deploy
+// with cached browsers still sending last month's format.
 // ============================================================
 
 import type { LessonFormat, Scene } from '/types/lesson.js';
 
-/** Bounds. A 40-scene lesson must not become a 100KB prompt. */
+/**
+ * Bounds on what the client SELECTS. The backend re-applies its own
+ * ceilings while formatting (format.py) — these two sets are defence in
+ * depth, not a mirror: the client's job is to send a sensible context, the
+ * backend's is to survive one that isn't.
+ */
 export const MAX_SCENES_SUMMARISED = 40;
 export const MAX_SUMMARY_CHARS = 200;
 export const MAX_INTENT_CHARS = 2000;
@@ -41,19 +53,28 @@ export interface Conventions {
 /** An agent-memory key and its SHAPE — never its value. */
 export interface MemoryRef { key: string; shape: string }
 
-export interface BuilderContext {
+/** Title, blurb, and one line per scene — the map, not the territory. */
+export interface LessonOutline {
+    title: string;
+    description: string;
+    sceneSummaries: SceneSummary[];
+}
+
+/**
+ * The body of `POST /api/expert/build_scene`, mirroring `BuildSceneRequest`
+ * in models.py. Names carry the structure; values are raw lesson data.
+ */
+export interface BuildSceneRequestBody {
     op: 'insert' | 'replace';
     sceneIndex: number;
     intent: string;
-    clarifications: Array<{ question: string; answer: string }>;
-    lessonTitle: string;
-    lessonDescription: string;
-    conventions: Conventions;
-    sceneSummaries: SceneSummary[];
+    lesson: LessonOutline;
     /** The scenes either side — enough to match tone, not the whole lesson. */
     neighbours: Scene[];
     /** The full scene, and ONLY on replace: this is what makes regenerate-with-context work. */
     current: Scene | null;
+    conventions: Conventions;
+    clarifications: Array<{ question: string; answer: string }>;
     memory: MemoryRef[];
     /** Slider ids already in use, so the model cannot collide and binding can be checked. */
     sliderVocabulary: string[];
@@ -120,14 +141,14 @@ export function collectSliderIds(scenes: LooseScene[]): string[] {
 }
 
 /** Deterministically decide what the builder sees. No I/O, no mutation. */
-export function assembleBuilderContext(opts: {
+export function assembleBuildSceneRequest(opts: {
     lesson: LessonFormat | Scene | null | undefined;
     intent: string;
     op: 'insert' | 'replace';
     sceneIndex?: number;
     clarifications?: Array<{ question: string; answer: string }>;
     memory?: MemoryRef[];
-}): BuilderContext {
+}): BuildSceneRequestBody {
     const scenes = scenesOf(opts.lesson);
     const omitted: string[] = [];
 
@@ -157,14 +178,16 @@ export function assembleBuilderContext(opts: {
         sceneIndex: target,
         intent: (opts.intent || '').trim().slice(0, MAX_INTENT_CHARS),
         clarifications: opts.clarifications || [],
-        lessonTitle: typeof lesson.title === 'string' ? lesson.title : '',
-        lessonDescription: firstLine(lesson.description),
+        lesson: {
+            title: typeof lesson.title === 'string' ? lesson.title : '',
+            description: firstLine(lesson.description),
+            sceneSummaries: summarised.map((s, index) => ({
+                index,
+                title: typeof s.title === 'string' ? s.title : '',
+                description: firstLine((s as { description?: unknown }).description),
+            })),
+        },
         conventions: deriveConventions(scenes),
-        sceneSummaries: summarised.map((s, index) => ({
-            index,
-            title: typeof s.title === 'string' ? s.title : '',
-            description: firstLine((s as { description?: unknown }).description),
-        })),
         neighbours: around.map((i) => scenes[i]!) as Scene[],
         current: opts.op === 'replace' ? (scenes[target]! as Scene) : null,
         memory: opts.memory || [],
