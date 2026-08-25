@@ -9,48 +9,68 @@ assembler's own test, which makes it a real sample rather than a hand-made one.
     ./run.sh scripts/show_build_context.py
     ./run.sh scripts/show_build_context.py --request some_request.json
 
-No LM is called. The field CONTENT is exact — the same `format_*` functions the
-handler calls — but the `[[ ## name ## ]]` framing is printed by this script, not
-by DSPy, so it is decorative and could drift from the real thing without anything
-noticing.
+No LM is called, and nothing here is an imitation: the content comes from the
+same `format_*` functions the handler calls, and the framing comes from
+`LineAdapter().format()` — the adapter that will render the real request. So a
+change to DSPy's framing shows up here instead of silently diverging from a
+hand-printed copy.
 
-Once `intent.py` declares a signature, this should render through
-`LineAdapter().format(sig, [], inputs)` instead. That returns the real messages,
-including the output-format instructions, which is where the surprises live: the
-adapter currently appends ChatAdapter's "must be formatted as a valid Python
-list[...]" reminder, contradicting the line-block template in its own system
-message.
+`--raw` prints the messages as the provider receives them, system prompt
+included. That is where the output-format instructions live, and worth looking
+at: the adapter currently appends ChatAdapter's "must be formatted as a valid
+Python list[...]" reminder, which contradicts the line-block template in its own
+system message.
 """
 from __future__ import annotations
 
 import argparse
 import json
 import pathlib
+import re
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+from backend.experts.adapters.line_adapter import LineAdapter  # noqa: E402
 from backend.experts.handlers.build_scene import format as fmt  # noqa: E402
 from backend.experts.handlers.build_scene.models import BuildSceneRequest  # noqa: E402
+from backend.experts.handlers.build_scene.signature import (  # noqa: E402
+    INPUT_FIELDS, BuildSceneInputs,
+)
 
 DEFAULT = ROOT / "tests" / "fixtures" / "build_scene_request.json"
 
 
-def render(req: BuildSceneRequest) -> list[tuple[str, str]]:
-    """One entry per `dspy.InputField`. Add a field here and in the signature."""
+def render(req: BuildSceneRequest) -> dict[str, str]:
+    """Request -> one string per `dspy.InputField`.
+
+    This is the whole of what the builder is told, and it will move into the
+    handler as-is: the handler's extra job is calling the LM, not choosing
+    different context.
+    """
     req.require_consistent()
     current, neighbours, notes = req.scenes()
-    return [
-        ("intent", fmt.format_intent(req.intent)),
-        ("lesson", fmt.format_lesson(req.lesson)),
-        ("conventions", fmt.format_conventions(req.conventions)),
-        ("existing_names", fmt.format_existing_names(req.sliderVocabulary, req.memory)),
-        ("neighbours", fmt.format_neighbours(neighbours)),
-        ("current", fmt.format_current(current)),
-        ("clarifications", fmt.format_clarifications(req.clarifications)),
-        ("omitted", fmt.format_omitted(list(req.omitted) + notes)),
-    ]
+    return {
+        "intent": fmt.format_intent(req.intent),
+        "lesson": fmt.format_lesson(req.lesson),
+        "conventions": fmt.format_conventions(req.conventions),
+        "existing_names": fmt.format_existing_names(req.sliderVocabulary, req.memory),
+        "neighbours": fmt.format_neighbours(neighbours),
+        "current": fmt.format_current(current),
+        "clarifications": fmt.format_clarifications(req.clarifications),
+        "omitted": fmt.format_omitted(list(req.omitted) + notes),
+    }
+
+
+def messages(req: BuildSceneRequest) -> list[dict]:
+    """The prompt, framed by the ADAPTER that will frame the real one.
+
+    Hand-printing `[[ ## name ## ]]` here would keep looking correct after DSPy's
+    format changed — the failure mode of every hand-maintained mirror. Going
+    through the adapter means a change there shows up here.
+    """
+    return LineAdapter().format(BuildSceneInputs, [], render(req))
 
 
 def main() -> None:
@@ -58,21 +78,39 @@ def main() -> None:
     ap.add_argument("--request", type=pathlib.Path, default=DEFAULT,
                     help=f"a build_scene request body (default: {DEFAULT.relative_to(ROOT)})")
     ap.add_argument("--field", help="show only this field")
+    ap.add_argument("--raw", action="store_true",
+                    help="print the messages as the provider receives them")
     args = ap.parse_args()
 
     req = BuildSceneRequest.model_validate(json.loads(args.request.read_text()))
     fields = render(req)
 
-    for name, value in fields:
-        if args.field and name != args.field:
-            continue
-        print(f"[[ ## {name} ## ]]")
-        print(value or "(empty)")
-        print()
+    msgs = messages(req)
+    if args.raw:
+        for m in msgs:
+            print(f"===== {m['role'].upper()} " + "=" * 46)
+            print(m["content"])
+            print()
+    else:
+        user = [m for m in msgs if m["role"] == "user"][-1]["content"]
+        if args.field:
+            print(_only(user, args.field))
+        else:
+            print(user)
 
-    shown = sum(len(v) for n, v in fields if not args.field or n == args.field)
+    total = sum(len(m["content"]) for m in msgs)
     print("—" * 60)
-    print(f"{req.op} at scene {req.sceneIndex}   |   context {shown:,} chars")
+    print(f"{req.op} at scene {req.sceneIndex}   |   "
+          f"context {sum(len(v) for v in fields.values()):,} chars   |   "
+          f"prompt {total:,} chars")
+
+
+def _only(user: str, field: str) -> str:
+    """One field out of the rendered user message, markers and all."""
+    if field not in INPUT_FIELDS:
+        raise SystemExit(f"unknown field {field!r}; choose from {', '.join(INPUT_FIELDS)}")
+    blocks = re.split(r"(?=\[\[ ## )", user)
+    return "".join(b for b in blocks if b.startswith(f"[[ ## {field} ## ]]")).rstrip()
 
 
 if __name__ == "__main__":

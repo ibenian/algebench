@@ -350,17 +350,44 @@ def test_truncation_is_visible_in_the_value_itself():
     assert not fmt._line("short", 100).endswith("…")
 
 
-def test_the_context_viewer_shows_every_field():
-    """scripts/show_build_context.py is how a prompt gets eyeballed before an LM
-    ever runs, so a field it forgets is a field nobody looks at."""
+def test_the_signature_and_the_formatters_agree():
+    """One list of fields, checked from both ends.
+
+    A field on the signature with no formatter renders empty — a hole in the
+    prompt that nothing errors about. A formatter with no field is content
+    assembled, shipped, and never shown.
+    """
     sys.path.insert(0, "scripts")
     from show_build_context import render
 
-    req = BuildSceneRequest.model_validate(json.loads(FIXTURE.read_text()))
-    rendered = dict(render(req))
+    from backend.experts.handlers.build_scene.signature import INPUT_FIELDS
 
-    # `current`/`neighbours` are rendered from scenes(); the rest map by name.
-    assert set(rendered) == {"intent", "lesson", "conventions", "existing_names",
-                             "neighbours", "current", "clarifications", "omitted"}
+    req = BuildSceneRequest.model_validate(json.loads(FIXTURE.read_text()))
+    rendered = render(req)
+
+    assert set(rendered) == set(INPUT_FIELDS)
     assert all(isinstance(v, str) for v in rendered.values())
     assert rendered["current"] and rendered["neighbours"], "a replace must show both"
+
+
+def test_the_prompt_is_rendered_by_the_adapter_not_by_us():
+    """The viewer must not hand-print DSPy's framing.
+
+    An imitation keeps looking right after the real format changes, which is the
+    failure mode of every hand-maintained mirror in this PR so far.
+    """
+    sys.path.insert(0, "scripts")
+    # The SCRIPT's own builder, not a re-implementation of it here — testing a
+    # copy of the behaviour is how the last version of this passed while the
+    # thing it described was broken.
+    from show_build_context import messages
+
+    from backend.experts.handlers.build_scene.signature import BuildSceneInputs
+
+    req = BuildSceneRequest.model_validate(json.loads(FIXTURE.read_text()))
+    user = [m for m in messages(req) if m["role"] == "user"][-1]["content"]
+
+    for name in BuildSceneInputs.input_fields:
+        assert f"[[ ## {name} ## ]]" in user, name
+    # The reason all of this exists: LaTeX arrives unescaped.
+    assert r"\vec{a}" in user and "\\\\" not in user
