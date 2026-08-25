@@ -6,7 +6,7 @@
 // from whether builds got better.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 
 import type { LessonFormat, Scene } from '/types/lesson.js';
 const { assembleBuildSceneRequest, collectSliderIds, deriveConventions, MAX_SCENES_SUMMARISED } =
@@ -109,4 +109,34 @@ test('assembly never mutates the lesson', () => {
     const before = JSON.stringify(lesson);
     assembleBuildSceneRequest({ lesson, intent: 'x', op: 'replace', sceneIndex: 0 });
     assert.equal(JSON.stringify(lesson), before);
+});
+
+// ---- the cross-language boundary ----------------------------------------
+
+test('the committed fixture still matches what the assembler produces', () => {
+    // The request crosses into Python, where models.py declares the same keys by
+    // hand. Nothing else checks that the two agree: a renamed key would not
+    // error, it would render as an emptier prompt, which reads as a weaker model.
+    //
+    // Comparing DECLARATIONS is what the old parity check did, with a regex that
+    // silently mis-parsed one-line interfaces. This compares OUTPUT instead —
+    // regenerate with UPDATE_FIXTURES=1 npm test, and the Python side renders
+    // this same file (tests/test_build_scene_request.py).
+    const path = 'tests/fixtures/build_scene_request.json';
+    const body = assembleBuildSceneRequest({
+        lesson,
+        intent: 'add a scene showing the cross product',
+        op: 'replace',
+        sceneIndex: 2,
+        clarifications: [{ question: 'right-handed?', answer: 'yes' }],
+        memory: [{ key: 'trajectory', shape: 'array of 400 [x,y,z]' }],
+    });
+    const serialised = JSON.stringify(body, null, 1) + '\n';
+
+    if (process.env.UPDATE_FIXTURES) {
+        writeFileSync(path, serialised);
+        return;
+    }
+    assert.equal(serialised, readFileSync(path, 'utf8'),
+        'assembler output drifted — rerun with UPDATE_FIXTURES=1 and check the Python side');
 });

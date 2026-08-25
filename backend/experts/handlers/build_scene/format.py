@@ -33,6 +33,8 @@ from typing import Any, Optional
 
 from backend.model.lesson import Element, Scene, Step
 
+from .models import Clarification, Conventions, LessonOutline, MemoryRef
+
 # Prompt ceilings. Unreachable from the app — src/builder-context.ts already
 # bounds selection — so these exist for a caller that skips the client.
 MAX_SCENES_SUMMARISED = 40
@@ -73,10 +75,6 @@ def _more(total: int, shown: int, noun: str) -> list[str]:
     return [f"  … (+{total - shown} more {noun})"] if total > shown else []
 
 
-def _dicts(value: Any) -> list[dict]:
-    return [v for v in value if isinstance(v, dict)] if isinstance(value, list) else []
-
-
 def _strings(value: Any) -> list[str]:
     """Non-empty strings, or nothing.
 
@@ -93,24 +91,20 @@ def format_intent(intent: str) -> str:
     return (intent or "").strip()
 
 
-def format_lesson(lesson: Any) -> str:
-    """Title, description, and one line per scene — the map, not the territory."""
-    if not isinstance(lesson, dict):
-        return EMPTY
+def format_lesson(lesson: LessonOutline) -> str:
+    """Title, blurb, and one line per scene — the map, not the territory."""
     out: list[str] = []
-    if title := _line(lesson.get("title"), MAX_SUMMARY_CHARS):
+    if title := _line(lesson.title, MAX_SUMMARY_CHARS):
         out.append(f"Title: {title}")
-    if desc := _line(lesson.get("description"), MAX_SUMMARY_CHARS):
+    if desc := _line(lesson.description, MAX_SUMMARY_CHARS):
         out.append(f"Description: {desc}")
 
-    summaries = _dicts(lesson.get("sceneSummaries"))
+    summaries = lesson.sceneSummaries
     if summaries:
         out.append("Scenes:")
-        for i, s in enumerate(summaries[:MAX_SCENES_SUMMARISED]):
-            index = s.get("index")
-            head = f"  {index if isinstance(index, int) else i}. " + (
-                _line(s.get("title"), MAX_SUMMARY_CHARS) or "(untitled)")
-            if blurb := _line(s.get("description"), MAX_SUMMARY_CHARS):
+        for s in summaries[:MAX_SCENES_SUMMARISED]:
+            head = f"  {s.index}. " + (_line(s.title, MAX_SUMMARY_CHARS) or "(untitled)")
+            if blurb := _line(s.description, MAX_SUMMARY_CHARS):
                 head += f" — {blurb}"
             out.append(head)
         out += _more(len(summaries), MAX_SCENES_SUMMARISED, "scenes")
@@ -188,65 +182,56 @@ def format_current(current: Optional[Scene]) -> str:
     return "\n".join(_format_scene(current, indent=""))
 
 
-def format_conventions(conventions: Any) -> str:
-    """House style, DERIVED by the client from the lesson's own elements.
-
-    A model told "match the lesson's style" invents one; handed the palette
-    actually in use, it reuses it.
-    """
-    if not isinstance(conventions, dict):
-        return EMPTY
+def format_conventions(conventions: Conventions) -> str:
+    """House style, derived by the client from the lesson's own elements."""
     out: list[str] = []
-    colors = _strings(conventions.get("colors"))[:12]
-    if colors:
+    if colors := _strings(conventions.colors)[:12]:
         out.append("Palette in use: " + ", ".join(_line(c, 32) for c in colors))
-    if conventions.get("labelsAreLatex"):
-        out.append("Labels are LaTeX: wrap label text in $…$.")
-    else:
-        out.append("Labels are plain text: do NOT wrap them in $…$.")
-    if conventions.get("elementsCarryPrompts"):
+    # The NEGATIVE case has to be SAID. Silence reads as no opinion, and the
+    # model falls back to whatever it happened to see in the neighbours.
+    out.append("Labels are LaTeX: wrap label text in $…$."
+               if conventions.labelsAreLatex else
+               "Labels are plain text: do NOT wrap them in $…$.")
+    if conventions.elementsCarryPrompts:
         out.append("Elements carry Ask-AI `prompt` text; write one for each new element.")
     return "\n".join(out)
 
 
-def format_existing_names(slider_ids: Any, memory: Any) -> str:
+def format_existing_names(slider_ids: list[str], memory: list[MemoryRef]) -> str:
     """Names already spoken for. Two different reasons, one field:
 
-    slider ids must not COLLIDE, and memory keys may be REFERENCED as ``$key``
-    (resolved at apply time by ``_resolve_memory_refs``, so only the key and its
-    shape belong in a prompt — never the computed value).
+    slider ids must not COLLIDE, and memory keys may be REFERENCED as ``$key``.
+    A ref's VALUE cannot appear here because it cannot appear in the request —
+    ``MemoryRef`` forbids it (see models.py).
     """
     out: list[str] = []
-    ids = _strings(slider_ids)[:MAX_NAMES]
-    if ids:
+    if ids := _strings(slider_ids)[:MAX_NAMES]:
         out.append("Slider ids already in use (do not reuse): " + ", ".join(ids))
-    refs = _dicts(memory)[:MAX_NAMES]
+    refs = list(memory or [])[:MAX_NAMES]
     if refs:
         out.append("Memory references available as $key:")
         for ref in refs:
-            key = _line(ref.get("key"))
-            if not key:
-                continue
-            shape = _line(ref.get("shape"), MAX_SUMMARY_CHARS)
-            out.append(f"  ${key}" + (f" — {shape}" if shape else ""))
+            if key := _line(ref.key):
+                shape = _line(ref.shape, MAX_SUMMARY_CHARS)
+                out.append(f"  ${key}" + (f" — {shape}" if shape else ""))
     return "\n".join(out)
 
 
-def format_clarifications(clarifications: Any) -> str:
+def format_clarifications(clarifications: list[Clarification]) -> str:
     """Questions already asked and answered. Bounded so a resumed build cannot
     grow its own prompt without limit."""
-    rounds = _dicts(clarifications)
+    rounds = list(clarifications or [])
     out: list[str] = []
     for c in rounds[:MAX_CLARIFICATIONS]:
-        question = _line(c.get("question"), 1000)
-        answer = _line(c.get("answer"), 2000)
+        question = _line(c.question, 1000)
+        answer = _line(c.answer, 2000)
         if question or answer:
             out.append(f"Q: {question}\nA: {answer}")
     out += _more(len(rounds), MAX_CLARIFICATIONS, "rounds")
     return "\n".join(out)
 
 
-def format_omitted(omitted: Any) -> str:
+def format_omitted(omitted: list[str]) -> str:
     """What the CLIENT dropped before sending. Distinct from the ceilings above:
     this is the far side's truncation, and the model should see both."""
     items = [_line(o) for o in _strings(omitted)]

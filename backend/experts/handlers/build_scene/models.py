@@ -26,16 +26,22 @@ these values are RENDERED, never written back, so a `1` shown as `1.0` in a
 prompt costs nothing. The canonical model is also parity-checked against the
 schema, which no shape invented here would be.
 
-Only three fields are typed beyond their name, because only three are read by
-CODE rather than by a formatter: ``op`` selects a branch, ``sceneIndex`` becomes
-a list index during placement (a bad one is a wrong-scene write, and the scene it
-clobbers looks fine afterwards), and ``intent`` carries a length that decides
-prompt size. Everything else is prompt material on its way to becoming text.
+SHAPE IS CHECKED HERE; SIZE IS NOT
+----------------------------------
+The split that matters, and the one an earlier version of this file got wrong by
+putting both in the same place:
 
-Prompt bounds live in ``format.py``, NOT here, because they are properties of the
-prompt rather than of the request: the honest response to an oversized context is
-to truncate it and say so, not to refuse to build the scene. See ``_format_proof``
-for the same choice.
+* **Shape** — which keys exist — is a CONTRACT with ``src/builder-context.ts``.
+  A renamed key is a bug on one side, and left unchecked it does not fail: it
+  renders as an emptier prompt, which looks like a weaker model. So the derived
+  shapes below are declared, ``extra="forbid"``, and a mismatch is a 422 that
+  names the field.
+* **Size** — how much of it there is — is a property of the PROMPT, and lives in
+  ``format.py``, where it truncates and says so. A large lesson is a legitimate
+  request; refusing to build a scene because someone wrote 41 of them is not.
+
+The earlier version bounded these models with ``max_length`` and so answered an
+oversized context with a 422. That was the mistake, not the models.
 """
 from __future__ import annotations
 
@@ -50,6 +56,70 @@ from backend.model.lesson import Scene
 MAX_INTENT_CHARS = 2000
 
 
+class SceneSummary(BaseModel):
+    """One line about a scene. NOT a ``Scene``, deliberately.
+
+    ``Scene`` would validate this — title required, everything else optional —
+    but the result would carry ``elements=None``, which reads as "this scene has
+    no elements" when it means "we did not send them". A dict is honestly
+    shapeless; a ``Scene`` with holes is dishonestly complete.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    index: int = Field(ge=0)
+    title: str = ""
+    description: str = ""
+
+
+class LessonOutline(BaseModel):
+    """The map, not the territory: what the lesson is and what is already in it."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    title: str = ""
+    description: str = ""
+    sceneSummaries: list[SceneSummary] = Field(default_factory=list)
+
+
+class Conventions(BaseModel):
+    """House style, DERIVED by the client from the lesson's own elements.
+
+    A model told "match the lesson's style" invents one; handed the palette
+    actually in use, it reuses it.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    colors: list[str] = Field(default_factory=list)
+    labelsAreLatex: bool = False
+    elementsCarryPrompts: bool = False
+
+
+class MemoryRef(BaseModel):
+    """An agent-memory key and its SHAPE.
+
+    ``extra="forbid"`` is load-bearing here rather than tidy: it means a ref
+    carrying its ``value`` is REFUSED at the door, so computed arrays cannot
+    reach a prompt even by accident. `$key` is substituted at apply time by
+    ``_resolve_memory_refs``; the value has no business in the request at all.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    key: str = Field(min_length=1)
+    shape: str = ""
+
+
+class Clarification(BaseModel):
+    """One question the builder asked and the answer it got."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    question: str = ""
+    answer: str = ""
+
+
 class BuildSceneRequest(BaseModel):
     """What the client sends. Assembled by ``src/builder-context.ts``."""
 
@@ -61,22 +131,19 @@ class BuildSceneRequest(BaseModel):
     intent: str = Field(min_length=1, max_length=MAX_INTENT_CHARS)
 
     # --- read only by format.py, on the way to the prompt -------------------
-    #: title, description, and one line per scene.
-    lesson: dict = Field(default_factory=dict)
+    lesson: LessonOutline = Field(default_factory=LessonOutline)
     #: The scenes either side of the target — enough to match tone.
     neighbours: list = Field(default_factory=list)
     #: The scene being replaced. Absent on insert; see require_consistent.
     current: Optional[dict] = None
-    #: House style derived by the client from the lesson's own elements.
-    conventions: dict = Field(default_factory=dict)
-    clarifications: list = Field(default_factory=list)
-    #: Agent-memory keys and their SHAPES — never their values.
-    memory: list = Field(default_factory=list)
+    conventions: Conventions = Field(default_factory=Conventions)
+    clarifications: list[Clarification] = Field(default_factory=list)
+    memory: list[MemoryRef] = Field(default_factory=list)
     #: Slider ids already in use, so the model cannot collide with one.
-    sliderVocabulary: list = Field(default_factory=list)
+    sliderVocabulary: list[str] = Field(default_factory=list)
     #: What the client's own bounding dropped, so a truncated context is visible
     #: rather than reading as "the model saw everything".
-    omitted: list = Field(default_factory=list)
+    omitted: list[str] = Field(default_factory=list)
 
     def scenes(self) -> tuple[Optional[Scene], list[Scene], list[str]]:
         """``(current, neighbours, notes)`` — parsed, with the two treated apart.
