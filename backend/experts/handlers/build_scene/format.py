@@ -68,7 +68,27 @@ def _line(value: Any, limit: int = MAX_FIELD) -> str:
     """
     if not isinstance(value, str):
         return EMPTY
-    return _DSPY_MARKER.sub("", value).strip().split("\n")[0][:limit].strip()
+    return _clip(_DSPY_MARKER.sub("", value).strip().split("\n")[0], limit)
+
+
+def _clip(text: str, limit: int) -> str:
+    """Truncate without showing the model broken LaTeX.
+
+    A blind slice lands mid-command: `… has length $\\frac{\\vec{a} \\` leaves a
+    dangling backslash and an UNBALANCED `$`. Models imitate what they are shown,
+    which is the same reason the whole input side avoids JSON escaping — showing
+    malformed math teaches malformed math.
+
+    So back off to something well-formed: drop a half-written command, then drop
+    an unclosed `$…$`. The ellipsis is deliberate — the alternative is a sentence
+    that merely appears to end.
+    """
+    if len(text) <= limit:
+        return text.strip()
+    cut = re.sub(r"\\[a-zA-Z]*$", "", text[:limit])
+    if cut.count("$") % 2:
+        cut = cut[:cut.rfind("$")]
+    return cut.rstrip() + "…"
 
 
 def _more(total: int, shown: int, noun: str) -> list[str]:

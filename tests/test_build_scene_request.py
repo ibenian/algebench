@@ -325,3 +325,25 @@ def test_the_fixture_is_the_shape_the_prompt_is_built_from():
               "intent", "lesson", "conventions", "clarifications",
               "memory", "sliderVocabulary", "omitted"}
     assert set(type(req).model_fields) == routed
+
+
+def test_truncation_never_shows_the_model_broken_latex():
+    """A blind slice lands mid-command and leaves an unbalanced `$`.
+
+    That matters for exactly the reason the input side avoids JSON escaping:
+    models imitate what they are shown, so malformed math in the prompt teaches
+    malformed math in the output.
+    """
+    text = (r"The projection of $\vec{b}$ onto $\vec{a}$ has length "
+            r"$\frac{\vec{a} \cdot \vec{b}}{|\vec{a}|^2}$ exactly.")
+    for limit in range(10, len(text) + 5):
+        out = fmt._line(text, limit)
+        assert out.count("$") % 2 == 0, f"unbalanced $ at limit {limit}: {out!r}"
+        assert not out.rstrip("…").endswith("\\"), f"dangling backslash at {limit}: {out!r}"
+
+
+def test_truncation_is_visible_in_the_value_itself():
+    """`omitted` reports what was dropped WHOLESALE; a clipped value has to say
+    so on its own, or it reads as a sentence that simply ended."""
+    assert fmt._line("x" * 500, 100).endswith("…")
+    assert not fmt._line("short", 100).endswith("…")
