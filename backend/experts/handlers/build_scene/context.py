@@ -12,6 +12,29 @@ without touching the expert's contract, and it can be tested without an LM call.
 
 Iteration 1 keeps selection explicit, deterministic and small. No retrieval, no
 embeddings, no summarising LM call.
+
+WHY DATACLASSES AND NOT PYDANTIC
+--------------------------------
+Everything nearby is pydantic, so the exception needs a reason. Pydantic earns its
+keep at BOUNDARIES: untrusted input arriving (`BuildSceneRequest`), or a shape
+leaving for another language (`contracts.py`). `BuilderContext` is neither. It is
+assembled by our own code from an already-validated request and consumed by our
+own prompt formatting — validation there would be re-checking what we just built.
+
+There is also a concrete cost. This holds RAW SCENE DICTS (`neighbours`,
+`current`). As pydantic fields they would either be re-validated and coerced —
+the same class of lossiness that silently rewrote `1` as `1.0` in the canonical
+model — or deep-copied for no benefit. `current` is meant to be the scene as it
+actually is.
+
+It follows the precedent too: `proof_edit`, the closest analogue, hands its DSPy
+signature plain strings (`propose_edit(derivation, current_step, request, ...)`).
+The framework's `CONTEXT_MODELS` machinery belongs to the registered-EXPERT path
+(`invoke()` with a context_id scope) and is currently empty; build_scene is a
+HANDLER, like proof_edit.
+
+`frozen=True` gives the one guarantee that does matter here: assembly cannot be
+undone downstream.
 """
 
 from __future__ import annotations
