@@ -7,6 +7,7 @@ builds got better.
 from __future__ import annotations
 
 import json
+import pathlib
 
 import pytest
 from pydantic import ValidationError
@@ -155,3 +156,34 @@ def test_conventions_state_the_negative_case_too():
     the model falls back to whatever it saw in the neighbours."""
     assert "do NOT wrap" in fmt.format_conventions({"labelsAreLatex": False})
     assert "wrap label text" in fmt.format_conventions({"labelsAreLatex": True})
+
+
+# ---- against a real lesson, not a fixture I invented ---------------------
+
+def test_a_real_scene_renders_its_pedagogy():
+    """The guard that would have caught the field-name bug.
+
+    format.py first read `text`/`operation` — proof_edit's step vocabulary.
+    Scenes use `title`/`description`, so every step rendered "(no caption)" and
+    nothing failed: a formatter has no schema to disagree with, and hand-made
+    fixtures agree with whatever the formatter believes. Only a corpus scene
+    can tell you the names are wrong.
+    """
+    lesson = json.loads(pathlib.Path("scenes/vector-operations.json").read_text())
+    scene = lesson["scenes"][2]
+    text = fmt.format_current(scene)
+
+    assert "(no caption)" not in text, "step captions are being dropped"
+    assert "About:" in text, "the scene description carries the pedagogy"
+    assert "Add vector" in text, "step titles must survive"
+    assert r"\vec{a}" in text and "\\\\" not in text, "LaTeX must arrive unescaped"
+    assert len(text) * 4 < len(json.dumps(scene)), "rendering must be a projection"
+
+
+def test_step_side_effects_are_visible():
+    """`remove` and `sliders` change what a step DOES. A builder that cannot see
+    them in the neighbours will not produce them."""
+    scene = {"steps": [{"title": "reset", "remove": [{"id": "*"}],
+                        "sliders": [{"id": "t"}], "add": [{"type": "point"}]}]}
+    line = fmt.format_current(scene)
+    assert "adds 1" in line and "removes 1" in line and "1 slider(s)" in line

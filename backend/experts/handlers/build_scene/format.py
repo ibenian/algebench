@@ -108,6 +108,11 @@ def _format_scene(scene: dict, indent: str = "  ") -> list[str]:
     out: list[str] = []
     if title := _line(scene.get("title"), MAX_SUMMARY_CHARS):
         out.append(f"{indent}Title: {title}")
+    # The description carries the PEDAGOGY — "measures how much two vectors point
+    # in the same direction". Dropping it leaves the builder matching geometry
+    # with no idea what the lesson is teaching.
+    if desc := _line(scene.get("description"), MAX_SUMMARY_CHARS):
+        out.append(f"{indent}About: {desc}")
 
     elements = _dicts(scene.get("elements"))
     for el in elements[:MAX_ELEMENTS]:
@@ -123,10 +128,18 @@ def _format_scene(scene: dict, indent: str = "  ") -> list[str]:
 
     steps = _dicts(scene.get("steps"))
     for i, step in enumerate(steps[:MAX_STEPS]):
-        caption = _line(step.get("text")) or _line(step.get("operation"))
-        added = len(_dicts(step.get("add")))
-        detail = f"adds {added}" if added else "no new elements"
-        out.append(f"{indent}step {i}: {caption or '(no caption)'} ({detail})")
+        # `title`/`description` — the SCENE vocabulary. Not `text`/`operation`,
+        # which is proof_edit's; guessing those rendered "(no caption)" for all
+        # 30 steps in the corpus, and nothing failed, because a formatter has no
+        # schema to disagree with. Verified against scenes/*.json.
+        caption = _line(step.get("title"), MAX_SUMMARY_CHARS)
+        if blurb := _line(step.get("description"), MAX_SUMMARY_CHARS):
+            caption = f"{caption} — {blurb}" if caption else blurb
+        detail = [f"adds {n}" for n in [len(_dicts(step.get("add")))] if n]
+        detail += [f"removes {n}" for n in [len(_dicts(step.get("remove")))] if n]
+        detail += [f"{n} slider(s)" for n in [len(_dicts(step.get("sliders")))] if n]
+        suffix = f" ({', '.join(detail)})" if detail else ""
+        out.append(f"{indent}step {i}: {caption or '(no caption)'}{suffix}")
     out += [f"{indent}{line}" for line in _more(len(steps), MAX_STEPS, "steps")]
     return out
 
