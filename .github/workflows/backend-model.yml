@@ -12,10 +12,23 @@ name: Backend Model
 # workflow validates DATA FILES on disk; a model-versus-schema conformance check
 # is a different thing wearing the same words.
 #
-# It does not rely on tests.yml either: that suite runs SAMPLED unless Python
-# changed, and a schema-only PR changes no Python — so these checks could be
-# sampled out of exactly the change that needs them. A named check also reads as
-# "your schema edit broke the model" rather than "tests are broken".
+# YES, tests.yml already runs these same two files — `pytest tests/` collects them
+# recursively, on every PR, as a required check. This job is deliberate duplicate
+# EXECUTION, kept for two reasons that survive scrutiny:
+#
+#   * SPEED AND SIGNAL. The full suite takes ~9 minutes; this takes seconds. A
+#     schema or contract break reports almost immediately, and reports as "your
+#     schema edit broke the model" rather than one red line among ~5900 tests.
+#   * THE JOB IS ITSELF AN ASSERTION. Installing only pydantic + jsonschema +
+#     pytest proves backend/model/lesson.py and contracts.py stand alone —
+#     something tests.yml can never show, because it runs inside the full project
+#     venv where every heavy dependency is present. test_model_imports_nothing_heavy
+#     checks a hardcoded allowlist; this job checks ALL of them.
+#
+# (An earlier version of this comment claimed tests.yml might SAMPLE these tests
+# out. That was wrong: `--sampled 200` samples the semantic-graph cross-product,
+# a parametrised generator — not the suite. Corrected rather than left standing,
+# since it was the load-bearing argument for this workflow existing.)
 #
 # Path-filtered, so do NOT mark it a required check — see the note in
 # frontend-types.yml about PRs stuck on "Expected — waiting for status".
