@@ -42,12 +42,19 @@ from backend.experts.handlers.build_scene.signature import (  # noqa: E402
 DEFAULT = ROOT / "tests" / "fixtures" / "build_scene_request.json"
 
 
-def render(req: BuildSceneRequest) -> dict[str, str]:
-    """Request -> one string per `dspy.InputField`.
+def render_inputs(req: BuildSceneRequest) -> dict[str, str]:
+    """Request -> one STRING per `dspy.InputField`, keyed by field name.
 
-    This is the whole of what the builder is told, and it will move into the
-    handler as-is: the handler's extra job is calling the LM, not choosing
-    different context.
+    The dict here is the field MAP — `format(signature, demos, inputs)` takes
+    exactly this — and not a field VALUE. The difference is the whole point:
+    DSPy serialises a dict-shaped VALUE with `json.dumps`, doubling every
+    backslash in the prompt, while the map itself is iterated and each value
+    formatted on its own. Every value below is already `str`, so each one takes
+    the `str(...)` branch and no escaping happens.
+
+    This is the whole of what the builder is told, and it moves into the handler
+    as-is: the handler's extra job is calling the LM, not choosing different
+    context.
     """
     req.require_consistent()
     current, neighbours, notes = req.scenes()
@@ -70,7 +77,7 @@ def messages(req: BuildSceneRequest) -> list[dict]:
     format changed — the failure mode of every hand-maintained mirror. Going
     through the adapter means a change there shows up here.
     """
-    return LineAdapter().format(BuildSceneInputs, [], render(req))
+    return LineAdapter().format(BuildSceneInputs, [], render_inputs(req))
 
 
 def main() -> None:
@@ -83,7 +90,7 @@ def main() -> None:
     args = ap.parse_args()
 
     req = BuildSceneRequest.model_validate(json.loads(args.request.read_text()))
-    fields = render(req)
+    fields = render_inputs(req)
 
     msgs = messages(req)
     if args.raw:

@@ -358,12 +358,12 @@ def test_the_signature_and_the_formatters_agree():
     assembled, shipped, and never shown.
     """
     sys.path.insert(0, "scripts")
-    from show_build_context import render
+    from show_build_context import render_inputs
 
     from backend.experts.handlers.build_scene.signature import INPUT_FIELDS
 
     req = BuildSceneRequest.model_validate(json.loads(FIXTURE.read_text()))
-    rendered = render(req)
+    rendered = render_inputs(req)
 
     assert set(rendered) == set(INPUT_FIELDS)
     assert all(isinstance(v, str) for v in rendered.values())
