@@ -29,7 +29,9 @@ contradicting the part of the lesson it could not see.
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import Any, Optional
+
+from backend.model.lesson import Element, Scene, Step
 
 # Prompt ceilings. Unreachable from the app — src/builder-context.ts already
 # bounds selection — so these exist for a caller that skips the client.
@@ -115,50 +117,60 @@ def format_lesson(lesson: Any) -> str:
     return "\n".join(out)
 
 
-def _format_scene(scene: dict, indent: str = "  ") -> list[str]:
+def _element_line(el: Element, indent: str) -> str:
+    parts = [_line(el.type) or "element"]
+    for name in ("id", "label"):
+        if value := _line(getattr(el, name)):
+            parts.append(f"{name}={value}")
+    # `color` is HexColor | Rgb01 — a list in the second case, so it is the one
+    # field here that is not already a string.
+    if el.color is not None:
+        parts.append(f"color={_line(el.color if isinstance(el.color, str) else str(el.color))}")
+    return f"{indent}- " + " ".join(parts)
+
+
+def _step_line(i: int, step: Step, indent: str) -> str:
+    """`title`/`description` — the SCENE vocabulary, and typed so it cannot drift.
+
+    This read `step.get("text")` once (proof_edit's names) and rendered
+    "(no caption)" for every step in the corpus while every test passed. `Step`
+    declares `title` and has no `text`, so the same mistake is now an
+    AttributeError at import-adjacent speed rather than an emptier prompt.
+    """
+    caption = _line(step.title, MAX_SUMMARY_CHARS)
+    if blurb := _line(step.description, MAX_SUMMARY_CHARS):
+        caption = f"{caption} — {blurb}" if caption else blurb
+    detail = [f"adds {n}" for n in [len(step.add or [])] if n]
+    detail += [f"removes {n}" for n in [len(step.remove or [])] if n]
+    detail += [f"{n} slider(s)" for n in [len(step.sliders or [])] if n]
+    suffix = f" ({', '.join(detail)})" if detail else ""
+    return f"{indent}step {i}: {caption or '(no caption)'}{suffix}"
+
+
+def _format_scene(scene: Scene, indent: str = "  ") -> list[str]:
     """One scene, compactly: what it shows and how it unfolds."""
     out: list[str] = []
-    if title := _line(scene.get("title"), MAX_SUMMARY_CHARS):
+    if title := _line(scene.title, MAX_SUMMARY_CHARS):
         out.append(f"{indent}Title: {title}")
     # The description carries the PEDAGOGY — "measures how much two vectors point
     # in the same direction". Dropping it leaves the builder matching geometry
     # with no idea what the lesson is teaching.
-    if desc := _line(scene.get("description"), MAX_SUMMARY_CHARS):
+    if desc := _line(scene.description, MAX_SUMMARY_CHARS):
         out.append(f"{indent}About: {desc}")
 
-    elements = _dicts(scene.get("elements"))
-    for el in elements[:MAX_ELEMENTS]:
-        parts = [_line(el.get("type")) or "element"]
-        if el_id := _line(el.get("id")):
-            parts.append(f"id={el_id}")
-        if label := _line(el.get("label")):
-            parts.append(f"label={label}")
-        if color := _line(el.get("color")):
-            parts.append(f"color={color}")
-        out.append(f"{indent}- " + " ".join(parts))
+    elements = scene.elements or []
+    out += [_element_line(el, indent) for el in elements[:MAX_ELEMENTS]]
     out += [f"{indent}{line}" for line in _more(len(elements), MAX_ELEMENTS, "elements")]
 
-    steps = _dicts(scene.get("steps"))
-    for i, step in enumerate(steps[:MAX_STEPS]):
-        # `title`/`description` — the SCENE vocabulary. Not `text`/`operation`,
-        # which is proof_edit's; guessing those rendered "(no caption)" for all
-        # 30 steps in the corpus, and nothing failed, because a formatter has no
-        # schema to disagree with. Verified against scenes/*.json.
-        caption = _line(step.get("title"), MAX_SUMMARY_CHARS)
-        if blurb := _line(step.get("description"), MAX_SUMMARY_CHARS):
-            caption = f"{caption} — {blurb}" if caption else blurb
-        detail = [f"adds {n}" for n in [len(_dicts(step.get("add")))] if n]
-        detail += [f"removes {n}" for n in [len(_dicts(step.get("remove")))] if n]
-        detail += [f"{n} slider(s)" for n in [len(_dicts(step.get("sliders")))] if n]
-        suffix = f" ({', '.join(detail)})" if detail else ""
-        out.append(f"{indent}step {i}: {caption or '(no caption)'}{suffix}")
+    steps = scene.steps or []
+    out += [_step_line(i, st, indent) for i, st in enumerate(steps[:MAX_STEPS])]
     out += [f"{indent}{line}" for line in _more(len(steps), MAX_STEPS, "steps")]
     return out
 
 
-def format_neighbours(neighbours: Any) -> str:
+def format_neighbours(neighbours: list[Scene]) -> str:
     """The scenes either side of the target — for tone, not for copying."""
-    scenes = _dicts(neighbours)
+    scenes = list(neighbours or [])
     out: list[str] = []
     for i, scene in enumerate(scenes[:MAX_NEIGHBOURS]):
         out.append(f"Neighbouring scene {i + 1}:")
@@ -167,11 +179,11 @@ def format_neighbours(neighbours: Any) -> str:
     return "\n".join(out)
 
 
-def format_current(current: Any) -> str:
+def format_current(current: Optional[Scene]) -> str:
     """The scene being replaced. Empty on insert — and that emptiness is
     CHECKED upstream by ``BuildSceneRequest.require_consistent``, so an empty
     value here means insert rather than a lost scene."""
-    if not isinstance(current, dict):
+    if current is None:
         return EMPTY
     return "\n".join(_format_scene(current, indent=""))
 
