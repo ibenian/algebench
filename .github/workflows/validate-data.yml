@@ -10,6 +10,12 @@ on:
       - 'scripts/validate_schema.py'
       - 'scripts/validate_content.py'
       - 'scripts/lint_scene.py'
+      # The hand-written mirrors and what they mirror: backend/model/lesson.py
+      # against the schema, backend/experts/contracts.py against src/placement.ts.
+      - 'scripts/validate_model_parity.py'
+      - 'backend/model/**'
+      - 'backend/experts/contracts.py'
+      - 'src/placement.ts'
   workflow_dispatch:
 
 jobs:
@@ -32,7 +38,7 @@ jobs:
           python-version: '3.13'
 
       - name: Install dependencies
-        run: pip install jsonschema
+        run: pip install jsonschema pydantic
 
       - name: Resolve changed files
         id: changed
@@ -162,6 +168,28 @@ jobs:
             --edit-last 2>/dev/null || \
           gh pr comment "${{ github.event.pull_request.number }}" \
             --body "$BODY"
+
+      # backend/model/lesson.py and backend/experts/contracts.py are maintained by
+      # hand against the schema and src/placement.ts, so nothing fails when they
+      # fall behind. Runs unconditionally: it is seconds, and the mirrors can be
+      # broken by a change to EITHER side.
+      - name: Model and contract parity
+        id: parity
+        run: |
+          set +e
+          PYTHONPATH=. python scripts/validate_model_parity.py 2>&1 | tee /tmp/parity.txt
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+
+      # Its own gate, deliberately. The step below is conditioned on scene/theme
+      # files having changed — correct for the data validations, wrong here: the
+      # mirrors are broken by editing the MODEL or the CONTRACT, changes that touch
+      # no data file at all. Sharing that gate would have let exactly the change
+      # this guards against pass unchecked.
+      - name: Fail if the mirrors drifted
+        if: always() && steps.parity.outputs.exit_code != '' && steps.parity.outputs.exit_code != '0'
+        run: |
+          echo "::error::backend/model or backend/experts/contracts.py no longer matches its source — see the log above."
+          exit 1
 
       - name: Fail if any check errored
         if: (steps.changed.outputs.scenes != '' || steps.changed.outputs.themes != '') && always()
