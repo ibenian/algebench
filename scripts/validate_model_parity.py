@@ -192,11 +192,47 @@ def check_contract_matches_typescript(verbose: bool = False) -> None:
         print("   ✅ placements, outcomes and kinds agree")
 
 
+def check_builder_context_matches_typescript(verbose: bool = False) -> None:
+    """The builder context is assembled on the client and validated here.
+
+    That makes it a wire shape like any other: the two declarations must agree, or
+    the backend rejects a context the client considers well-formed.
+    """
+    from backend.experts.handlers.build_scene.context import (
+        MAX_INTENT_CHARS, MAX_SCENES_SUMMARISED, MAX_SUMMARY_CHARS, BuilderContext,
+    )
+
+    src = (ROOT / "src" / "builder-context.ts").read_text()
+
+    ts_fields = _ts_interface_fields(src, "BuilderContext")
+    py_fields = set(BuilderContext.model_fields)
+    if ts_fields != py_fields:
+        raise CheckFailure(
+            f"BuilderContext fields disagree: only in TS {sorted(ts_fields - py_fields)}, "
+            f"only in Python {sorted(py_fields - ts_fields)}"
+        )
+
+    for name, value in (
+        ("MAX_SCENES_SUMMARISED", MAX_SCENES_SUMMARISED),
+        ("MAX_SUMMARY_CHARS", MAX_SUMMARY_CHARS),
+        ("MAX_INTENT_CHARS", MAX_INTENT_CHARS),
+    ):
+        m = re.search(rf"export const {name} = (\d+);", src)
+        if not m or int(m.group(1)) != value:
+            raise CheckFailure(
+                f"{name} disagrees: TypeScript {m.group(1) if m else 'missing'}, Python {value}"
+            )
+
+    if verbose:
+        print("   ✅ builder context fields and bounds agree")
+
+
 CHECKS = [
     ("corpus round-trips through the model", check_corpus_round_trips),
     ("model fields exist in the schema", check_model_fields_exist_in_schema),
     ("model and contract import nothing heavy", check_model_imports_nothing_heavy),
     ("contract matches src/placement.ts", check_contract_matches_typescript),
+    ("builder context matches src/builder-context.ts", check_builder_context_matches_typescript),
 ]
 
 

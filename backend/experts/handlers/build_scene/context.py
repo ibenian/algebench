@@ -1,230 +1,118 @@
-"""Assemble what the scene builder is allowed to see.
+"""The context a builder receives — validated here, ASSEMBLED on the client.
 
-A SEPARATE STAGE on purpose, not a helper inside the builder:
+    chat intent -> [client] assemble context -> [backend] validate -> DSPy builder
+                -> compose -> validate -> place
 
-    chat intent -> context assembly -> DSPy builder -> compose -> validate -> place
+Assembly moved to the client for a measured reason: the lesson is the client's
+authoritative copy and can be large. The biggest published lesson is 549KB, while
+the context derived from it is 87KB — shipping the whole lesson so the backend
+could slice it was ~6x waste on every build request.
 
-The chat tool carries only the user's intent and enough to locate the operation.
-The conversational agent does NOT choose what the expert sees — context selection
-is builder infrastructure. Keeping it out of both the chat tool and the DSPy
-module means selection can improve later (summaries, retrieval, token budgeting)
-without touching the expert's contract, and it can be tested without an LM call.
+The conversational AGENT still chooses nothing about context; selection is
+deterministic code (`src/builder-context.ts`). It simply runs on the side that
+already holds the lesson.
 
-Iteration 1 keeps selection explicit, deterministic and small. No retrieval, no
-embeddings, no summarising LM call.
+WHY THIS IS PYDANTIC WHEN THE FIRST VERSION WAS A DATACLASS
+-----------------------------------------------------------
+Because the move made it a BOUNDARY. A dataclass was right while this was built
+in-process from an already-validated request. Now it arrives over the wire from
+the client, so it is untrusted input and gets validated like any other — and it
+is mirrored by a TypeScript type, so it needs the same parity guarantees as the
+build contract. Same rule as before, opposite answer, because the shape moved.
 
-WHY DATACLASSES AND NOT PYDANTIC
---------------------------------
-Everything nearby is pydantic, so the exception needs a reason. Pydantic earns its
-keep at BOUNDARIES: untrusted input arriving (`BuildSceneRequest`), or a shape
-leaving for another language (`contracts.py`). `BuilderContext` is neither. It is
-assembled by our own code from an already-validated request and consumed by our
-own prompt formatting — validation there would be re-checking what we just built.
-
-There is also a concrete cost. This holds RAW SCENE DICTS (`neighbours`,
-`current`). As pydantic fields they would either be re-validated and coerced —
-the same class of lossiness that silently rewrote `1` as `1.0` in the canonical
-model — or deep-copied for no benefit. `current` is meant to be the scene as it
-actually is.
-
-It follows the precedent too: `proof_edit`, the closest analogue, hands its DSPy
-signature plain strings (`propose_edit(derivation, current_step, request, ...)`).
-The framework's `CONTEXT_MODELS` machinery belongs to the registered-EXPERT path
-(`invoke()` with a context_id scope) and is currently empty; build_scene is a
-HANDLER, like proof_edit.
-
-`frozen=True` gives the one guarantee that does matter here: assembly cannot be
-undone downstream.
+`neighbours` and `current` stay `dict`, deliberately: they are real scene nodes,
+and typing them as `Scene` would re-validate and COERCE them — the lossiness that
+silently rewrote `1` as `1.0` in the canonical model. They are read-only input to
+prompt formatting; the builder's OUTPUT is what must be typed.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any, Literal, Optional
+from typing import Literal, Optional
 
-#: Bounds. A 40-scene lesson must not become a 100KB prompt — the same reason
-#: proof_edit bounds a derivation rather than sending all of it.
+from pydantic import BaseModel, ConfigDict, Field
+
+#: Mirrors the constants in src/builder-context.ts (pinned by
+#: scripts/validate_model_parity.py). Enforced here too: the client is trusted to
+#: assemble the context, not to have bounded it.
 MAX_SCENES_SUMMARISED = 40
 MAX_SUMMARY_CHARS = 200
 MAX_INTENT_CHARS = 2000
+MAX_NEIGHBOURS = 2
 
 
-@dataclass(frozen=True)
-class SceneSummary:
-    """One line about a scene, cheap enough to include for every one of them."""
+class SceneSummary(BaseModel):
+    model_config = ConfigDict(extra="forbid")
 
-    index: int
-    title: str
-    description: str
-
-
-@dataclass(frozen=True)
-class Conventions:
-    """House style, DERIVED by scanning rather than asked of the model.
-
-    A model told "match the lesson's style" will invent one; a model handed the
-    palette actually in use will reuse it. Scanning is also the only way to be
-    right about a lesson nobody described in prose.
-    """
-
-    colors: tuple[str, ...] = ()
-    labels_are_latex: bool = False
-    elements_carry_prompts: bool = False
+    index: int = Field(ge=0)
+    title: str = Field(max_length=MAX_SUMMARY_CHARS)
+    description: str = Field(default="", max_length=MAX_SUMMARY_CHARS)
 
 
-@dataclass(frozen=True)
-class MemoryRef:
+class Conventions(BaseModel):
+    """House style, derived by scanning the lesson's own elements."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    colors: list[str] = Field(default_factory=list, max_length=12)
+    labelsAreLatex: bool = False
+    elementsCarryPrompts: bool = False
+
+
+class MemoryRef(BaseModel):
     """An agent-memory key and its SHAPE — never its value.
 
-    `_resolve_memory_refs` in server.py substitutes `$key` at apply time, so the
+    `_resolve_memory_refs` (server.py) substitutes `$key` at apply time, so the
     model only needs to know a key exists and roughly what it holds. The values
-    are computed arrays and matrices with no business in a prompt.
+    are computed arrays with no business in a prompt.
     """
 
-    key: str
-    shape: str
+    model_config = ConfigDict(extra="forbid")
+
+    key: str = Field(min_length=1, max_length=120)
+    shape: str = Field(default="", max_length=200)
 
 
-@dataclass(frozen=True)
-class BuilderContext:
+class Clarification(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    question: str = Field(default="", max_length=1000)
+    answer: str = Field(default="", max_length=2000)
+
+
+class BuilderContext(BaseModel):
     """Everything the scene builder sees, and nothing else."""
 
-    # where the result goes
+    model_config = ConfigDict(extra="forbid")
+
     op: Literal["insert", "replace"]
-    scene_index: int
+    sceneIndex: int = Field(ge=0)
 
-    # what was asked
-    intent: str
-    clarifications: tuple[tuple[str, str], ...] = ()
+    intent: str = Field(min_length=1, max_length=MAX_INTENT_CHARS)
+    clarifications: list[Clarification] = Field(default_factory=list, max_length=8)
 
-    # lesson-level consistency
-    lesson_title: str = ""
-    lesson_description: str = ""
-    conventions: Conventions = field(default_factory=Conventions)
-    scene_summaries: tuple[SceneSummary, ...] = ()
-    neighbours: tuple[dict, ...] = ()
-    #: The full scene, and ONLY when replacing. This is what makes
-    #: regenerate-with-context work rather than regenerate-from-scratch.
+    lessonTitle: str = Field(default="", max_length=MAX_SUMMARY_CHARS)
+    lessonDescription: str = Field(default="", max_length=MAX_SUMMARY_CHARS)
+    conventions: Conventions = Field(default_factory=Conventions)
+    sceneSummaries: list[SceneSummary] = Field(default_factory=list, max_length=MAX_SCENES_SUMMARISED)
+    #: Raw scene nodes — see the module docstring on why these are not `Scene`.
+    neighbours: list[dict] = Field(default_factory=list, max_length=MAX_NEIGHBOURS)
     current: Optional[dict] = None
-    memory: tuple[MemoryRef, ...] = ()
-    #: Slider ids already in use, so the model does not collide with them AND the
-    #: binding check has something to check against.
-    slider_vocabulary: tuple[str, ...] = ()
-    #: What bounding dropped, if anything. A silently truncated context reads as
-    #: "the model saw everything" when it did not.
-    omitted: tuple[str, ...] = ()
+    memory: list[MemoryRef] = Field(default_factory=list, max_length=32)
+    sliderVocabulary: list[str] = Field(default_factory=list, max_length=200)
+    #: What the client's bounding dropped, so a truncated context is visible
+    #: rather than reading as "the model saw everything".
+    omitted: list[str] = Field(default_factory=list, max_length=8)
 
+    def require_consistent(self) -> None:
+        """Refuse a context whose own fields disagree.
 
-def _first_line(text: Any, limit: int = MAX_SUMMARY_CHARS) -> str:
-    if not isinstance(text, str):
-        return ""
-    line = text.strip().splitlines()[0] if text.strip() else ""
-    return line[:limit]
-
-
-def _scenes_of(lesson: dict) -> list[dict]:
-    scenes = lesson.get("scenes")
-    if isinstance(scenes, list):
-        return [s for s in scenes if isinstance(s, dict)]
-    # SingleSceneFormat: the lesson IS the scene.
-    return [lesson] if lesson.get("title") or lesson.get("elements") else []
-
-
-def _elements_of(scene: dict) -> list[dict]:
-    out = [e for e in (scene.get("elements") or []) if isinstance(e, dict)]
-    for step in scene.get("steps") or []:
-        if isinstance(step, dict):
-            out += [e for e in (step.get("add") or []) if isinstance(e, dict)]
-    return out
-
-
-def derive_conventions(scenes: list[dict]) -> Conventions:
-    """Read the lesson's house style off the elements it already contains."""
-    colors: list[str] = []
-    latex = prompts = 0
-    labelled = 0
-    for scene in scenes:
-        for el in _elements_of(scene):
-            c = el.get("color")
-            if isinstance(c, str) and c.startswith("#") and c not in colors:
-                colors.append(c)
-            label = el.get("label")
-            if isinstance(label, str) and label:
-                labelled += 1
-                if "$" in label:
-                    latex += 1
-            if el.get("prompt"):
-                prompts += 1
-    return Conventions(
-        colors=tuple(colors[:12]),
-        # "Most labels" rather than "any": one stray LaTeX label should not make
-        # the builder wrap every plain word in dollars.
-        labels_are_latex=labelled > 0 and latex * 2 > labelled,
-        elements_carry_prompts=prompts > 0,
-    )
-
-
-def collect_slider_ids(scenes: list[dict]) -> tuple[str, ...]:
-    ids: list[str] = []
-    for scene in scenes:
-        for step in scene.get("steps") or []:
-            if not isinstance(step, dict):
-                continue
-            for slider in step.get("sliders") or []:
-                sid = slider.get("id") if isinstance(slider, dict) else None
-                if isinstance(sid, str) and sid and sid not in ids:
-                    ids.append(sid)
-    return tuple(ids)
-
-
-def assemble_context(
-    *,
-    lesson: dict,
-    intent: str,
-    op: Literal["insert", "replace"],
-    scene_index: Optional[int] = None,
-    clarifications: tuple[tuple[str, str], ...] = (),
-    memory: tuple[MemoryRef, ...] = (),
-) -> BuilderContext:
-    """Deterministically decide what the builder sees. No LM, no I/O."""
-    scenes = _scenes_of(lesson or {})
-    omitted: list[str] = []
-
-    # Where the result goes. An insert with no index appends; a replace must name
-    # a scene that exists, since "replace something" is not an instruction.
-    if op == "replace":
-        if scene_index is None or not (0 <= scene_index < len(scenes)):
-            raise ValueError(f"replace needs an existing scene index, got {scene_index}")
-        target = scene_index
-    else:
-        target = len(scenes) if scene_index is None else max(0, min(scene_index, len(scenes)))
-
-    summarised = scenes[:MAX_SCENES_SUMMARISED]
-    if len(scenes) > MAX_SCENES_SUMMARISED:
-        omitted.append(f"{len(scenes) - MAX_SCENES_SUMMARISED} scene summaries")
-
-    summaries = tuple(
-        SceneSummary(i, str(s.get("title") or ""), _first_line(s.get("description")))
-        for i, s in enumerate(summarised)
-    )
-
-    # Neighbours: enough to match tone and pick up where the previous scene left
-    # off, without paying for the whole lesson.
-    around = [i for i in (target - 1, target + 1) if 0 <= i < len(scenes)]
-    neighbours = tuple(scenes[i] for i in around)
-
-    return BuilderContext(
-        op=op,
-        scene_index=target,
-        intent=(intent or "").strip()[:MAX_INTENT_CHARS],
-        clarifications=clarifications,
-        lesson_title=str(lesson.get("title") or ""),
-        lesson_description=_first_line(lesson.get("description")),
-        conventions=derive_conventions(scenes),
-        scene_summaries=summaries,
-        neighbours=neighbours,
-        current=scenes[target] if op == "replace" else None,
-        memory=memory,
-        slider_vocabulary=collect_slider_ids(scenes),
-        omitted=tuple(omitted),
-    )
+        The client assembles this, so these are not hypothetical: a `replace`
+        with no `current` would silently become a from-scratch build wearing the
+        label of a refinement — the failure the user would report as "it ignored
+        my scene".
+        """
+        if self.op == "replace" and self.current is None:
+            raise ValueError("a replace context must carry the scene being replaced")
+        if self.op == "insert" and self.current is not None:
+            raise ValueError("an insert context must not carry a current scene")
