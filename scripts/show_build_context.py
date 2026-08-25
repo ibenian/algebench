@@ -9,8 +9,17 @@ assembler's own test, which makes it a real sample rather than a hand-made one.
     ./run.sh scripts/show_build_context.py
     ./run.sh scripts/show_build_context.py --request some_request.json
 
-Field markers are shown the way DSPy frames them, so what you read here is what
-the model reads — no LM is called.
+No LM is called. The field CONTENT is exact — the same `format_*` functions the
+handler calls — but the `[[ ## name ## ]]` framing is printed by this script, not
+by DSPy, so it is decorative and could drift from the real thing without anything
+noticing.
+
+Once `intent.py` declares a signature, this should render through
+`LineAdapter().format(sig, [], inputs)` instead. That returns the real messages,
+including the output-format instructions, which is where the surprises live: the
+adapter currently appends ChatAdapter's "must be formatted as a valid Python
+list[...]" reminder, contradicting the line-block template in its own system
+message.
 """
 from __future__ import annotations
 
