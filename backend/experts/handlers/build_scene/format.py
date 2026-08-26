@@ -256,3 +256,31 @@ def format_omitted(omitted: list[str]) -> str:
     this is the far side's truncation, and the model should see both."""
     items = [_line(o) for o in _strings(omitted)]
     return "; ".join(i for i in items if i)
+
+
+# --------------------------------------------------------------- the whole of it
+
+def render_inputs(req) -> dict[str, str]:
+    """Request -> one STRING per `dspy.InputField`, keyed by field name.
+
+    The dict is the field MAP — `format(signature, demos, inputs)` takes exactly
+    this — and not a field VALUE. The difference is the whole argument for this
+    module: DSPy serialises a dict-shaped VALUE with `json.dumps`, doubling every
+    backslash in the prompt, while the map itself is iterated and each value
+    formatted on its own. Every value below is already `str`.
+
+    This is the whole of what the builder is told. `scripts/show_build_context.py`
+    renders it so a prompt can be read before an LM ever runs.
+    """
+    req.require_consistent()
+    current, neighbours, notes = req.scenes()
+    return {
+        "intent": format_intent(req.intent),
+        "lesson": format_lesson(req.lesson),
+        "conventions": format_conventions(req.conventions),
+        "existing_names": format_existing_names(req.sliderVocabulary, req.memory),
+        "neighbours": format_neighbours(neighbours),
+        "current": format_current(current),
+        "clarifications": format_clarifications(req.clarifications),
+        "omitted": format_omitted(list(req.omitted) + notes),
+    }

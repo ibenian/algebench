@@ -50,7 +50,7 @@ from typing import Optional, Union
 
 from backend.model.lesson import Element, Scene, Step
 
-from .proposed import SCENE_LEVEL, SUPPORTED_TYPES, ProposedElement, ProposedStep
+from backend.experts.modules.build_scene.proposed import SCENE_LEVEL, SUPPORTED_TYPES, ProposedElement, ProposedStep
 
 log = logging.getLogger(__name__)
 

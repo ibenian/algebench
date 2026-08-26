@@ -33,41 +33,13 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from backend.experts.adapters.line_adapter import LineAdapter  # noqa: E402
-from backend.experts.handlers.build_scene import format as fmt  # noqa: E402
+from backend.experts.handlers.build_scene.format import render_inputs  # noqa: E402
 from backend.experts.handlers.build_scene.models import BuildSceneRequest  # noqa: E402
-from backend.experts.handlers.build_scene.signature import (  # noqa: E402
-    INPUT_FIELDS, BuildSceneInputs,
+from backend.experts.modules.build_scene.signature import (  # noqa: E402
+    INPUT_FIELDS, BuildSceneSig,
 )
 
 DEFAULT = ROOT / "tests" / "fixtures" / "build_scene_request.json"
-
-
-def render_inputs(req: BuildSceneRequest) -> dict[str, str]:
-    """Request -> one STRING per `dspy.InputField`, keyed by field name.
-
-    The dict here is the field MAP — `format(signature, demos, inputs)` takes
-    exactly this — and not a field VALUE. The difference is the whole point:
-    DSPy serialises a dict-shaped VALUE with `json.dumps`, doubling every
-    backslash in the prompt, while the map itself is iterated and each value
-    formatted on its own. Every value below is already `str`, so each one takes
-    the `str(...)` branch and no escaping happens.
-
-    This is the whole of what the builder is told, and it moves into the handler
-    as-is: the handler's extra job is calling the LM, not choosing different
-    context.
-    """
-    req.require_consistent()
-    current, neighbours, notes = req.scenes()
-    return {
-        "intent": fmt.format_intent(req.intent),
-        "lesson": fmt.format_lesson(req.lesson),
-        "conventions": fmt.format_conventions(req.conventions),
-        "existing_names": fmt.format_existing_names(req.sliderVocabulary, req.memory),
-        "neighbours": fmt.format_neighbours(neighbours),
-        "current": fmt.format_current(current),
-        "clarifications": fmt.format_clarifications(req.clarifications),
-        "omitted": fmt.format_omitted(list(req.omitted) + notes),
-    }
 
 
 def messages(req: BuildSceneRequest) -> list[dict]:
@@ -77,7 +49,7 @@ def messages(req: BuildSceneRequest) -> list[dict]:
     format changed — the failure mode of every hand-maintained mirror. Going
     through the adapter means a change there shows up here.
     """
-    return LineAdapter().format(BuildSceneInputs, [], render_inputs(req))
+    return LineAdapter().format(BuildSceneSig, [], render_inputs(req))
 
 
 def main() -> None:

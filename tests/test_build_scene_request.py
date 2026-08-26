@@ -360,7 +360,7 @@ def test_the_signature_and_the_formatters_agree():
     sys.path.insert(0, "scripts")
     from show_build_context import render_inputs
 
-    from backend.experts.handlers.build_scene.signature import INPUT_FIELDS
+    from backend.experts.modules.build_scene.signature import INPUT_FIELDS
 
     req = BuildSceneRequest.model_validate(json.loads(FIXTURE.read_text()))
     rendered = render_inputs(req)
@@ -382,7 +382,7 @@ def test_the_prompt_is_rendered_by_the_adapter_not_by_us():
     # thing it described was broken.
     from show_build_context import messages
 
-    from backend.experts.handlers.build_scene.signature import BuildSceneInputs
+    from backend.experts.modules.build_scene.signature import BuildSceneInputs
 
     req = BuildSceneRequest.model_validate(json.loads(FIXTURE.read_text()))
     user = [m for m in messages(req) if m["role"] == "user"][-1]["content"]

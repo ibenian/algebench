@@ -7,7 +7,7 @@ import pathlib
 import pytest
 
 from backend.experts.handlers.build_scene.compose import ComposeError, compose
-from backend.experts.handlers.build_scene.proposed import ProposedElement, ProposedStep
+from backend.experts.modules.build_scene.proposed import ProposedElement, ProposedStep
 from backend.model.lesson import Scene
 
 
@@ -231,7 +231,7 @@ def test_the_schemas_own_vocabulary_is_refused_loudly_not_swallowed():
     costs a retry with the valid keys named, which is what a retry needs.
     """
     from backend.experts.adapters.line_adapter import LineAdapter
-    from backend.experts.handlers.build_scene.signature import BuildSceneSig
+    from backend.experts.modules.build_scene.signature import BuildSceneSig
 
     completion = (
         "[[ ## is_build ## ]]\nTrue\n\n[[ ## question ## ]]\n\n"
@@ -249,7 +249,7 @@ def test_the_schemas_own_vocabulary_is_refused_loudly_not_swallowed():
 
 def test_our_own_vocabulary_parses():
     from backend.experts.adapters.line_adapter import LineAdapter
-    from backend.experts.handlers.build_scene.signature import BuildSceneSig
+    from backend.experts.modules.build_scene.signature import BuildSceneSig
 
     completion = (
         "[[ ## is_build ## ]]\nTrue\n\n[[ ## question ## ]]\n\n"
