@@ -221,13 +221,26 @@ def _element(el: ProposedElement, taken: set[str], with_prompts: bool) -> tuple[
     body: dict = {"type": el.type, "id": _mint(el, taken)}
     coords: list[Coord] = []
 
-    # `tail`/`head` are the model's words; `from`/`to` are the schema's.
+    # The proposal speaks snake_case; the schema speaks its own names. Note the
+    # schema's own asymmetry: the animated HEAD is `expr`, not `toExpr`.
     for name, value in (("position", _coord(el.position, where)),
-                        ("from", _coord(el.tail, where)),
-                        ("to", _coord(el.head, where))):
+                        ("from", _coord(el.from_pos, where)),
+                        ("to", _coord(el.to_pos, where))):
         if value is not None:
             body[name] = value
             coords.append(value)
+    # Expression geometry never joins `coords`: it has no value until the
+    # sliders exist, and a made-up one frames the scene around a number nobody
+    # chose. See `_extents`.
+    for name, raw in (("fromExpr", el.from_expr), ("expr", el.to_expr)):
+        if (value := _coord(raw, where)) is not None:
+            body[name] = [str(v) for v in value]
+
+    if el.type.startswith("animated_") and not el.to_expr.strip():
+        raise ComposeError(
+            f"{where}: an {el.type} needs `to_expr` — three math.js expressions "
+            f"in terms of a slider. Without it nothing moves, and it is a "
+            f"{el.type.removeprefix('animated_')} wearing the wrong type.")
     if (line := _polyline(el.points, where)) is not None:
         body["points"] = line
         coords += line

@@ -21,8 +21,8 @@ def _scene(**over) -> Scene:
         description="Perpendicular to both.",
         elements=[
             _el(type="axis", label="x", step=-1),
-            _el(type="vector", label=r"$\vec{a}$", step=0, tail="0,0,0", head="2, 0, 0"),
-            _el(type="vector", label=r"$\vec{b}$", step=1, tail="0,0,0", head="1, 2, 0"),
+            _el(type="vector", label=r"$\vec{a}$", step=0, from_pos="0,0,0", to_pos="2, 0, 0"),
+            _el(type="vector", label=r"$\vec{b}$", step=1, from_pos="0,0,0", to_pos="1, 2, 0"),
         ],
         steps=[ProposedStep(index=0, title="Add a"), ProposedStep(index=1, title="Add b")],
     )
@@ -222,7 +222,7 @@ def test_every_key_the_model_is_shown_can_be_filled_in(model):
 # ---- what happens when the model uses the schema's words, not ours --------
 
 def test_the_schemas_own_vocabulary_is_refused_loudly_not_swallowed():
-    """`tail`/`head` are our words; the lesson schema says `from`/`to`, and a
+    """`from_pos`/`to_pos` are our words; the lesson schema says `from`/`to`, and a
     model that knows this domain may reach for those out of habit.
 
     That must not be silent. `extra="ignore"` on ProposedElement would swallow it
@@ -244,7 +244,7 @@ def test_the_schemas_own_vocabulary_is_refused_loudly_not_swallowed():
         LineAdapter().parse(BuildSceneSig, completion)
     message = str(e.value)
     assert "unknown key 'from'" in message
-    assert "'tail'" in message and "'head'" in message, "the retry must be told the real keys"
+    assert "'from_pos'" in message and "'to_pos'" in message, "the retry must be told the real keys"
 
 
 def test_our_own_vocabulary_parses():
@@ -255,10 +255,43 @@ def test_our_own_vocabulary_parses():
         "[[ ## is_build ## ]]\nTrue\n\n[[ ## question ## ]]\n\n"
         "[[ ## title ## ]]\nT\n\n[[ ## description ## ]]\nD\n\n"
         "[[ ## steps ## ]]\nindex: 0\ntitle: Add a\n\n"
-        "[[ ## elements ## ]]\nstep: 0\ntype: vector\ntail: 0, 0, 0\nhead: 2, 0, 0\n\n"
+        "[[ ## elements ## ]]\nstep: 0\ntype: vector\nfrom_pos: 0, 0, 0\nto_pos: 2, 0, 0\n\n"
         "[[ ## completed ## ]]\n")
 
     out = LineAdapter().parse(BuildSceneSig, completion)
     scene = compose(out["title"], out["description"], out["elements"], out["steps"])
     assert scene.steps[0].add[0].from_ == [0, 0, 0]
     assert scene.steps[0].add[0].to == [2, 0, 0]
+
+
+# ---- animated elements must actually animate -----------------------------
+
+def test_an_animated_element_without_an_expression_is_refused():
+    """`animated_vector` was in SUPPORTED_TYPES while ProposedElement had no
+    expression field at all — so the model could produce one and it would sit
+    still. A static element wearing an animated type reads as a broken renderer.
+    """
+    with pytest.raises(ComposeError, match="to_expr"):
+        compose("T", "", [_el(type="animated_vector", label="v", step=-1,
+                              from_pos="0,0,0", to_pos="1,1,0")], [])
+
+
+def test_animated_expressions_map_to_the_schemas_own_names():
+    """Note the schema's asymmetry, which the proposal hides: the animated TAIL
+    is `fromExpr`, but the animated HEAD is `expr` — not `toExpr`."""
+    scene = compose("T", "", [_el(type="animated_vector", label="v", step=-1,
+                                  from_expr="0, 0, 0",
+                                  to_expr="cos(t), sin(t), 0")], [])
+    el = scene.elements[0].model_dump(exclude_none=True)
+    assert el["fromExpr"] == ["0", "0", "0"]
+    assert el["expr"] == ["cos(t)", "sin(t)", "0"]
+    assert "toExpr" not in el
+
+
+def test_expressions_do_not_frame_the_scene():
+    """An animated element's path has no extent until the slider exists."""
+    scene = compose("T", "", [
+        _el(type="point", label="p", step=-1, position="1, 1, 0"),
+        _el(type="animated_vector", label="v", step=-1, to_expr="100*t, 0, 0"),
+    ], [])
+    assert scene.range[0][1] < 10, "an expression must not become a bound"

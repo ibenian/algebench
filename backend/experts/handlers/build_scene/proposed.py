@@ -76,23 +76,36 @@ class ProposedElement(BaseModel):
         description="where it sits: three comma-separated coordinates in MATH.JS, "
                     "'1, 2, 0' or 'cos(theta), 0, r*2'. NOT LaTeX — write "
                     "cos(theta), never \\cos(\\theta). For a point or a text label")
-    # Only `from` is forced: it is a Python KEYWORD, so the field would have to
-    # be `from_` with `alias="from"` — and LineAdapter renders FIELD NAMES, not
-    # aliases, so the model would be shown `from_`, answer `from_`, and pydantic
-    # would drop it for not being the alias. Every vector would lose its tail and
-    # the scene would still compose.
+    # NAMING RULE: the schema's own word, snake_cased. Measured against every
+    # geometry key in the corpus, `from` is the ONLY one that is illegal in
+    # Python (`range` merely shadows a builtin), so nothing else needs inventing
+    # — `center`, `radius`, `vertices`, `x`/`y`/`z` will all keep their names.
     #
-    # `to` is a perfectly ordinary identifier and needed nothing. It is renamed
-    # for SYMMETRY — `tail`/`head` is a pair a reader can hold, `tail`/`to` is
-    # not — and because these are prompt surface, where a matched pair is easier
-    # to fill in correctly than a mismatched one. compose.py maps both to the
-    # schema's `from`/`to`.
-    tail: str = Field(
+    # `from` is disambiguated by a suffix the schema itself implies: it already
+    # distinguishes `from` from `fromExpr`. So static positions take `_pos` and
+    # animated ones `_expr`, and `to_*` pairs with them. The alternative,
+    # `tail`/`head`, reads well for a vector but drags the divergence into every
+    # animated field after it.
+    #
+    # It also cannot be an alias on `from`: LineAdapter renders FIELD NAMES, so
+    # the model would be shown `from_`, answer `from_`, and pydantic would drop
+    # it for not being the alias — every vector losing its tail, in silence.
+    from_pos: str = Field(
         default="",
         description="where a vector or line STARTS, as math.js 'x, y, z'")
-    head: str = Field(
+    to_pos: str = Field(
         default="",
         description="where a vector or line ENDS, as math.js 'x, y, z'")
+    from_expr: str = Field(
+        default="",
+        description="for an animated_* element: where it STARTS over time, as "
+                    "three math.js expressions 'x, y, z' in terms of a slider — "
+                    "e.g. 'cos(t), sin(t), 0'. Omit to start from a fixed point")
+    to_expr: str = Field(
+        default="",
+        description="for an animated_* element: where it ENDS over time, as "
+                    "three math.js expressions in terms of a slider. This is what "
+                    "makes an animated_* element move; without it, it does not")
     points: str = Field(
         default="",
         description="a polyline, as math.js coordinates separated by semicolons: "
