@@ -138,6 +138,11 @@ class BuildSceneRequest(BaseModel):
     current: Optional[dict] = None
     conventions: Conventions = Field(default_factory=Conventions)
     clarifications: list[Clarification] = Field(default_factory=list)
+    #: The tail of the chat thread. The expert is STATELESS, so a question it
+    #: asked and the answer it got live only here — see `handler.clarifications`.
+    #: Raw dicts because they are the chat's shape, not ours, and they are read
+    #: only by `clarifications_from_thread`.
+    messages: list[dict] = Field(default_factory=list, max_length=40)
     memory: list[MemoryRef] = Field(default_factory=list)
     #: Slider ids already in use, so the model cannot collide with one.
     sliderVocabulary: list[str] = Field(default_factory=list)

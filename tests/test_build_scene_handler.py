@@ -135,3 +135,72 @@ def test_prompts_follow_the_lessons_convention(monkeypatch, request_body):
     request_body["conventions"]["elementsCarryPrompts"] = False
     out = h.build_scene(h.BuildSceneRequest.model_validate(request_body))
     assert "prompt" not in out["result"]["ops"][0]["node"]["steps"][0]["add"][0]
+
+
+# ---- the clarification loop ---------------------------------------------
+
+THREAD = [
+    {"role": "user", "text": "add a scene about the dot product"},
+    {"role": "bot", "text": "Should the vectors be in 2D or 3D?"},
+    {"role": "user", "text": "3D please"},
+]
+
+
+def test_a_question_answered_in_the_thread_is_not_asked_again(monkeypatch, request_body):
+    """The expert is stateless, so a question it asked and the answer it got live
+    ONLY in the conversation. Without recovering them it re-parses the same
+    intent and asks the identical question forever — observed in proof_edit, in
+    production, which is why `clarifications_from_thread` exists.
+    """
+    _stub(monkeypatch, SceneProposal(is_build=True, question="Should the vectors be in 2D or 3D?"))
+    request_body["messages"] = THREAD
+    request_body["clarifications"] = []
+    out = h.build_scene(h.BuildSceneRequest.model_validate(request_body))
+    assert "question" not in out, "it re-asked a question the thread already answered"
+
+
+def test_the_recovered_answer_reaches_the_prompt(monkeypatch, request_body):
+    """Not re-asking is only half of it: the ANSWER has to be used, or the model
+    makes the same choice arbitrarily every time."""
+    seen = {}
+    monkeypatch.setattr(h, "propose_scene", lambda **kw: seen.update(kw) or SceneProposal())
+    request_body["messages"] = THREAD
+    h.build_scene(h.BuildSceneRequest.model_validate(request_body))
+    assert "3D please" in seen["clarifications"]
+    assert "2D or 3D" in seen["clarifications"]
+
+
+def test_explicit_and_thread_rounds_are_unioned_not_replaced(monkeypatch, request_body):
+    """Undercounting is the dangerous direction: the count engages
+    MAX_CLARIFICATIONS, so a missed round re-opens the loop it exists to close."""
+    _stub(monkeypatch, SceneProposal(is_build=True, question="something else?"))
+    request_body["messages"] = THREAD
+    request_body["clarifications"] = [{"question": "which colour?", "answer": "gold"}]
+    out = h.build_scene(h.BuildSceneRequest.model_validate(request_body))
+    assert "question" not in out, "two distinct rounds must exhaust the budget"
+
+
+def test_a_round_present_in_both_is_counted_once(monkeypatch, request_body):
+    """Double-counting would cut the budget in half for a client that sends
+    both — the model would be refused a question it was entitled to ask."""
+    _stub(monkeypatch, SceneProposal(is_build=True, question="still unclear?"))
+    request_body["messages"] = THREAD
+    request_body["clarifications"] = [{"question": "Should the vectors be in 2D or 3D?",
+                                       "answer": "3D please"}]
+    out = h.build_scene(h.BuildSceneRequest.model_validate(request_body))
+    assert out.get("question") == "still unclear?", "one round used, one still available"
+
+
+def test_an_ordinary_thread_yields_no_clarifications(monkeypatch, request_body):
+    """Only an assistant turn ENDING IN '?' paired with a user reply counts.
+    Otherwise ordinary conversation would silently spend the budget."""
+    seen = {}
+    monkeypatch.setattr(h, "propose_scene", lambda **kw: seen.update(kw) or SceneProposal())
+    request_body["messages"] = [
+        {"role": "user", "text": "nice scene"},
+        {"role": "bot", "text": "Glad you like it."},
+        {"role": "user", "text": "add another"},
+    ]
+    request_body["clarifications"] = []
+    h.build_scene(h.BuildSceneRequest.model_validate(request_body))
+    assert seen["clarifications"] == ""
