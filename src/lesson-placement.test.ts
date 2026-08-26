@@ -313,3 +313,19 @@ test('a proof that arrived as an array stays an array', () => {
     assert.ok(Array.isArray(proof), 'the array form must survive');
     assert.equal((proof as { title: string }[]).length, 1);
 });
+
+// ---- the op the backend actually emits ----------------------------------
+
+test('a build_scene op as the handler emits it can be applied', () => {
+    // Not a hand-written op: this is the exact shape backend/.../handler.py
+    // returns, and it was WRONG — `at: {scene: N}` instead of `at: {index: N}`.
+    // Both are Optional on `Placement`, so the Python contract check validated
+    // it and every backend test passed while the client could not apply a single
+    // result. Only running the applier finds this class of mistake.
+    const lesson = { title: 'L', scenes: [{ title: 'a' }, { title: 'b' }, { title: 'c' }] };
+    for (const op of ['replace', 'insert'] as const) {
+        const copy = JSON.parse(JSON.stringify(lesson));
+        applyBuildOps(copy, [{ op, kind: 'scene', at: { index: 2 }, node: { title: 'NEW' } } as never]);
+        assert.equal(copy.scenes[2].title, 'NEW', `${op} must land at index 2`);
+    }
+});

@@ -1,0 +1,1484 @@
+{
+ "op": "replace",
+ "sceneIndex": 2,
+ "intent": "add a scene showing the cross product",
+ "clarifications": [
+  {
+   "question": "right-handed?",
+   "answer": "yes"
+  }
+ ],
+ "lesson": {
+  "title": "Vector Operations",
+  "description": "",
+  "sceneSummaries": [
+   {
+    "index": 0,
+    "title": "Vector Addition: $\\vec{a} + \\vec{b} = \\vec{c}$",
+    "description": "The sum of two vectors $\\vec{a} = (2, 1, 0)$ and $\\vec{b} = (1, 2, 1)$ is found by placing $\\vec{b}$ at the tip of $\\vec{a}$. The resultant $\\vec{c} = (3, 3, 1)$ goes from the origin to the tip of $\\v"
+   },
+   {
+    "index": 1,
+    "title": "Cross Product: $\\vec{a} \\times \\vec{b}$",
+    "description": "The cross product of $\\vec{a} = (2, 0, 0)$ and $\\vec{b} = (1, 2, 0)$ yields $\\vec{a} \\times \\vec{b} = (0, 0, 4)$, perpendicular to both vectors."
+   },
+   {
+    "index": 2,
+    "title": "Dot Product: $\\vec{a} \\cdot \\vec{b}$",
+    "description": "The dot product $\\vec{a} \\cdot \\vec{b} = |\\vec{a}||\\vec{b}|\\cos\\theta$ measures how much two vectors point in the same direction. The projection of $\\vec{b}$ onto $\\vec{a}$ has length $\\frac{\\vec{a} \\"
+   },
+   {
+    "index": 3,
+    "title": "Scalar Multiplication: $c\\vec{v}$",
+    "description": "Multiplying a vector by a scalar $c$ stretches or shrinks it. Positive $c$ preserves direction, negative $c$ reverses it."
+   },
+   {
+    "index": 4,
+    "title": "Vector Subtraction: $\\vec{a} - \\vec{b}$",
+    "description": "Subtracting $\\vec{b}$ from $\\vec{a}$ gives the vector from the tip of $\\vec{b}$ to the tip of $\\vec{a}$. Equivalently, $\\vec{a} - \\vec{b} = \\vec{a} + (-\\vec{b})$."
+   },
+   {
+    "index": 5,
+    "title": "Span: Linear Combinations Fill Space",
+    "description": "The span of a set of vectors is the collection of all their linear combinations. One vector spans a line, two independent vectors span a plane, and three independent vectors span all of $\\mathbb{R}^3$"
+   }
+  ]
+ },
+ "conventions": {
+  "colors": [
+   "#ff4444",
+   "#44ff44",
+   "#4488ff",
+   "#ffffff",
+   "#ff6644",
+   "#44aaff",
+   "#ffcc00",
+   "#aa66ff",
+   "#44ff88",
+   "#ff44aa",
+   "#ff8844",
+   "#8866cc"
+  ],
+  "labelsAreLatex": true,
+  "elementsCarryPrompts": true
+ },
+ "neighbours": [
+  {
+   "title": "Cross Product: $\\vec{a} \\times \\vec{b}$",
+   "description": "The cross product of $\\vec{a} = (2, 0, 0)$ and $\\vec{b} = (1, 2, 0)$ yields $\\vec{a} \\times \\vec{b} = (0, 0, 4)$, perpendicular to both vectors.",
+   "markdown": "# Cross Product\n\nThe **cross product** $\\vec{a} \\times \\vec{b}$ produces a vector **perpendicular** to both input vectors.\n\n## Definition\n\nFor vectors $\\vec{a} = (a_1, a_2, a_3)$ and $\\vec{b} = (b_1, b_2, b_3)$:\n\n$$\\vec{a} \\times \\vec{b} = \\begin{vmatrix} \\hat{i} & \\hat{j} & \\hat{k} \\\\ a_1 & a_2 & a_3 \\\\ b_1 & b_2 & b_3 \\end{vmatrix}$$\n\nExpanding the determinant:\n\n$$\\vec{a} \\times \\vec{b} = (a_2 b_3 - a_3 b_2)\\hat{i} - (a_1 b_3 - a_3 b_1)\\hat{j} + (a_1 b_2 - a_2 b_1)\\hat{k}$$\n\n## This Example\n\nWith $\\vec{a} = (2, 0, 0)$ and $\\vec{b} = (1, 2, 0)$:\n\n$$\\vec{a} \\times \\vec{b} = (0 \\cdot 0 - 0 \\cdot 2, \\; 0 \\cdot 1 - 2 \\cdot 0, \\; 2 \\cdot 2 - 0 \\cdot 1) = (0, 0, 4)$$\n\nThe result points along the **positive z-axis** (shown in gold).\n\n## Geometric Meaning\n\n- **Direction**: Perpendicular to both $\\vec{a}$ and $\\vec{b}$, following the right-hand rule\n- **Magnitude**: Equal to the area of the parallelogram formed by $\\vec{a}$ and $\\vec{b}$\n\n$$|\\vec{a} \\times \\vec{b}| = |\\vec{a}| \\cdot |\\vec{b}| \\cdot \\sin\\theta = 4$$\n\nThe purple parallelogram in the visualization has area exactly $4$.\n\n## Key Properties\n\n- **Anti-commutative**: $\\vec{b} \\times \\vec{a} = -(\\vec{a} \\times \\vec{b})$\n- **Not associative**: $(\\vec{a} \\times \\vec{b}) \\times \\vec{c} \\neq \\vec{a} \\times (\\vec{b} \\times \\vec{c})$\n- **Distributive**: $\\vec{a} \\times (\\vec{b} + \\vec{c}) = \\vec{a} \\times \\vec{b} + \\vec{a} \\times \\vec{c}$\n\n> **Tip**: Use the right-hand rule — curl fingers from $\\vec{a}$ to $\\vec{b}$, your thumb points in the direction of $\\vec{a} \\times \\vec{b}$.",
+   "range": [
+    [
+     -1,
+     4
+    ],
+    [
+     -1,
+     4
+    ],
+    [
+     -1,
+     5
+    ]
+   ],
+   "scale": [
+    1,
+    1,
+    1
+   ],
+   "camera": {
+    "position": [
+     5,
+     4,
+     6
+    ],
+    "target": [
+     1.5,
+     1,
+     1.5
+    ]
+   },
+   "views": [
+    {
+     "name": "Iso",
+     "position": [
+      7,
+      5,
+      8
+     ],
+     "target": [
+      1.5,
+      1,
+      1.5
+     ],
+     "description": "Wide view showing all three vectors and the cross product"
+    },
+    {
+     "name": "Front",
+     "position": [
+      1.5,
+      1,
+      10
+     ],
+     "target": [
+      1.5,
+      1,
+      1.5
+     ],
+     "description": "Front view — see the angle between a and b in the XY plane"
+    },
+    {
+     "name": "Top",
+     "position": [
+      1.5,
+      10,
+      0.5
+     ],
+     "target": [
+      1.5,
+      0,
+      0.5
+     ],
+     "description": "Top view — see the plane spanned by a and b from above"
+    },
+    {
+     "name": "Right",
+     "position": [
+      10,
+      1,
+      1.5
+     ],
+     "target": [
+      1.5,
+      1,
+      1.5
+     ],
+     "description": "Side view along X — see vectors in the YZ plane"
+    },
+    {
+     "name": "Along $\\vec{c}$",
+     "position": [
+      1,
+      1,
+      -6
+     ],
+     "target": [
+      1,
+      1,
+      2
+     ],
+     "description": "Looking along c — confirms c is perpendicular to the ab plane"
+    }
+   ],
+   "elements": [
+    {
+     "type": "grid",
+     "plane": "xy",
+     "range": [
+      -1,
+      4
+     ],
+     "color": [
+      0.25,
+      0.25,
+      0.4
+     ],
+     "opacity": 0.1,
+     "divisions": 5
+    },
+    {
+     "type": "axis",
+     "axis": "x",
+     "range": [
+      -1,
+      4
+     ],
+     "color": "#ff4444",
+     "width": 1.5,
+     "label": "x"
+    },
+    {
+     "type": "axis",
+     "axis": "y",
+     "range": [
+      -1,
+      4
+     ],
+     "color": "#44ff44",
+     "width": 1.5,
+     "label": "y"
+    },
+    {
+     "type": "axis",
+     "axis": "z",
+     "range": [
+      -1,
+      5
+     ],
+     "color": "#4488ff",
+     "width": 1.5,
+     "label": "z"
+    },
+    {
+     "type": "point",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "color": "#ffffff",
+     "size": 10,
+     "label": "$O$",
+     "prompt": "Explain what O represents here and how it relates to the other objects in this scene."
+    }
+   ],
+   "steps": [
+    {
+     "title": "Add vector $\\vec{a}$",
+     "description": "Draw $\\vec{a} = (2, 0, 0)$ along the $x$-axis.",
+     "add": [
+      {
+       "id": "cp-vec-a",
+       "type": "vector",
+       "from": [
+        0,
+        0,
+        0
+       ],
+       "to": [
+        2,
+        0,
+        0
+       ],
+       "color": "#ff6644",
+       "label": "$\\vec{a} = (2, 0, 0)$",
+       "labelPosition": [
+        1,
+        -0.3,
+        0
+       ],
+       "prompt": "Explain what \\vec{a} = (2, 0, 0) represents here and how it relates to the other objects in this scene."
+      },
+      {
+       "id": "cp-pt-a",
+       "type": "point",
+       "position": [
+        2,
+        0,
+        0
+       ],
+       "color": "#ff6644",
+       "size": 8,
+       "label": "$A$",
+       "prompt": "Explain what A represents here and how it relates to the other objects in this scene."
+      }
+     ]
+    },
+    {
+     "title": "Add vector $\\vec{b}$",
+     "description": "Draw $\\vec{b} = (1, 2, 0)$ in the $xy$-plane — both vectors are flat.",
+     "add": [
+      {
+       "id": "cp-vec-b",
+       "type": "vector",
+       "from": [
+        0,
+        0,
+        0
+       ],
+       "to": [
+        1,
+        2,
+        0
+       ],
+       "color": "#44aaff",
+       "label": "$\\vec{b} = (1, 2, 0)$",
+       "labelPosition": [
+        0.2,
+        1.2,
+        0
+       ],
+       "prompt": "Explain what \\vec{b} = (1, 2, 0) represents here and how it relates to the other objects in this scene."
+      },
+      {
+       "id": "cp-pt-b",
+       "type": "point",
+       "position": [
+        1,
+        2,
+        0
+       ],
+       "color": "#44aaff",
+       "size": 8,
+       "label": "$B$",
+       "prompt": "Explain what B represents here and how it relates to the other objects in this scene."
+      }
+     ]
+    },
+    {
+     "title": "Show parallelogram",
+     "description": "The parallelogram spanned by $\\vec{a}$ and $\\vec{b}$ has area $|\\vec{a} \\times \\vec{b}| = 4$.",
+     "add": [
+      {
+       "id": "cp-pgram",
+       "type": "polygon",
+       "vertices": [
+        [
+         0,
+         0,
+         0
+        ],
+        [
+         2,
+         0,
+         0
+        ],
+        [
+         3,
+         2,
+         0
+        ],
+        [
+         1,
+         2,
+         0
+        ]
+       ],
+       "color": "#aa66ff",
+       "opacity": 0.3,
+       "shader": {
+        "shininess": 80,
+        "emissive": "#6633aa",
+        "specular": "#ffffff"
+       }
+      },
+      {
+       "id": "cp-pgram-line",
+       "type": "line",
+       "points": [
+        [
+         0,
+         0,
+         0
+        ],
+        [
+         2,
+         0,
+         0
+        ],
+        [
+         3,
+         2,
+         0
+        ],
+        [
+         1,
+         2,
+         0
+        ],
+        [
+         0,
+         0,
+         0
+        ]
+       ],
+       "color": "#aa66ff",
+       "width": 2,
+       "label": "Parallelogram (area = 4)",
+       "prompt": "Explain what Parallelogram (area = 4) represents here and how it relates to the other objects in this scene."
+      }
+     ]
+    },
+    {
+     "title": "Show $\\vec{a} \\times \\vec{b}$",
+     "description": "$\\vec{a} \\times \\vec{b} = (0, 0, 4)$ — perpendicular to both, pointing up by the right-hand rule.",
+     "add": [
+      {
+       "id": "cp-vec-c",
+       "type": "vector",
+       "from": [
+        0,
+        0,
+        0
+       ],
+       "to": [
+        0,
+        0,
+        4
+       ],
+       "color": "#ffcc00",
+       "label": "$\\vec{a} \\times \\vec{b} = (0, 0, 4)$",
+       "labelPosition": [
+        0.3,
+        0.3,
+        3
+       ],
+       "prompt": "Explain what \\vec{a} \\times \\vec{b} = (0, 0, 4) represents here and how it relates to the other objects in this scene."
+      },
+      {
+       "id": "cp-pt-c",
+       "type": "point",
+       "position": [
+        0,
+        0,
+        4
+       ],
+       "color": "#ffcc00",
+       "size": 10,
+       "label": "$C$",
+       "prompt": "Explain what C represents here and how it relates to the other objects in this scene."
+      }
+     ],
+     "camera": {
+      "position": [
+       5,
+       4,
+       8
+      ],
+      "target": [
+       1,
+       1,
+       2
+      ]
+     }
+    },
+    {
+     "title": "Interactive: adjust $\\vec{a}$ and $\\vec{b}$",
+     "description": "Use the sliders to change each component. The gold vector $\\vec{a} \\times \\vec{b}$ is always perpendicular to both — watch it flip when you reverse the orientation.",
+     "remove": [
+      {
+       "id": "*"
+      }
+     ],
+     "sliders": [
+      {
+       "id": "ax",
+       "label": "$a_x$",
+       "min": -3,
+       "max": 4,
+       "step": 0.1,
+       "default": 2
+      },
+      {
+       "id": "ay",
+       "label": "$a_y$",
+       "min": -3,
+       "max": 4,
+       "step": 0.1,
+       "default": 0
+      },
+      {
+       "id": "az",
+       "label": "$a_z$",
+       "min": -3,
+       "max": 4,
+       "step": 0.1,
+       "default": 0
+      },
+      {
+       "id": "bx",
+       "label": "$b_x$",
+       "min": -3,
+       "max": 4,
+       "step": 0.1,
+       "default": 1
+      },
+      {
+       "id": "by",
+       "label": "$b_y$",
+       "min": -3,
+       "max": 4,
+       "step": 0.1,
+       "default": 2
+      },
+      {
+       "id": "bz",
+       "label": "$b_z$",
+       "min": -3,
+       "max": 4,
+       "step": 0.1,
+       "default": 0
+      }
+     ],
+     "add": [
+      {
+       "type": "animated_vector",
+       "from": [
+        0,
+        0,
+        0
+       ],
+       "expr": [
+        "ax",
+        "ay",
+        "az"
+       ],
+       "color": "#ff6644",
+       "label": "$\\vec{a}$",
+       "prompt": "Explain what \\vec{a} represents here and how it relates to the other objects in this scene."
+      },
+      {
+       "type": "animated_vector",
+       "from": [
+        0,
+        0,
+        0
+       ],
+       "expr": [
+        "bx",
+        "by",
+        "bz"
+       ],
+       "color": "#44aaff",
+       "label": "$\\vec{b}$",
+       "prompt": "Explain what \\vec{b} represents here and how it relates to the other objects in this scene."
+      },
+      {
+       "type": "animated_vector",
+       "from": [
+        0,
+        0,
+        0
+       ],
+       "expr": [
+        "ay*bz - az*by",
+        "az*bx - ax*bz",
+        "ax*by - ay*bx"
+       ],
+       "color": "#ffcc00",
+       "label": "$\\vec{a} \\times \\vec{b}$",
+       "prompt": "Explain what \\vec{a} \\times \\vec{b} represents here and how it relates to the other objects in this scene."
+      },
+      {
+       "type": "animated_polygon",
+       "vertices": [
+        [
+         "0",
+         "0",
+         "0"
+        ],
+        [
+         "ax",
+         "ay",
+         "az"
+        ],
+        [
+         "ax+bx",
+         "ay+by",
+         "az+bz"
+        ],
+        [
+         "bx",
+         "by",
+         "bz"
+        ]
+       ],
+       "color": "#aa66ff",
+       "opacity": 0.3,
+       "shader": {
+        "shininess": 80,
+        "emissive": "#6633aa",
+        "specular": "#ffffff"
+       }
+      }
+     ],
+     "camera": {
+      "position": [
+       5,
+       4,
+       8
+      ],
+      "target": [
+       1,
+       1,
+       2
+      ]
+     },
+     "info": [
+      {
+       "id": "cross_metrics",
+       "position": "top-left",
+       "content": "$\\vec{a}\\times\\vec{b}=({{toFixed(ay*bz-az*by,2)}},{{toFixed(az*bx-ax*bz,2)}},{{toFixed(ax*by-ay*bx,2)}})$\n$|\\vec{a}\\times\\vec{b}|={{toFixed(sqrt(pow(ay*bz-az*by,2)+pow(az*bx-ax*bz,2)+pow(ax*by-ay*bx,2)),3)}}$"
+      }
+     ]
+    }
+   ],
+   "prompt": "Teach cross product as orientation plus area: direction from right-hand rule, magnitude as parallelogram area, and sign flip under order reversal. Ask the learner to test near-parallel vectors and explain why the cross product shrinks toward zero."
+  },
+  {
+   "title": "Scalar Multiplication: $c\\vec{v}$",
+   "description": "Multiplying a vector by a scalar $c$ stretches or shrinks it. Positive $c$ preserves direction, negative $c$ reverses it.",
+   "markdown": "# Scalar Multiplication\n\n**Scalar multiplication** scales a vector's magnitude without changing its line of action (unless $c < 0$, which reverses direction).\n\n## Definition\n\nFor a scalar $c$ and vector $\\vec{v} = (v_1, v_2, v_3)$:\n\n$$c\\vec{v} = (cv_1, cv_2, cv_3)$$\n\n## This Example\n\nWith $\\vec{v} = (1, 1.5, 0.5)$:\n\n- $2\\vec{v} = (2, 3, 1)$ — twice as long, same direction\n- $-1\\vec{v} = (-1, -1.5, -0.5)$ — same length, opposite direction\n- $0.5\\vec{v} = (0.5, 0.75, 0.25)$ — half as long, same direction\n\n## Geometric Meaning\n\n- $|c| > 1$: vector gets **longer**\n- $|c| < 1$: vector gets **shorter**\n- $c > 0$: **same direction** as original\n- $c < 0$: **opposite direction**\n- $c = 0$: **zero vector**\n\n## Magnitude\n\n$$|c\\vec{v}| = |c| \\cdot |\\vec{v}|$$\n\nFor $\\vec{v} = (1, 1.5, 0.5)$: $|\\vec{v}| = \\sqrt{1 + 2.25 + 0.25} = \\sqrt{3.5} \\approx 1.87$\n\n## Key Properties\n\n- **Associative**: $a(b\\vec{v}) = (ab)\\vec{v}$\n- **Distributive over vector addition**: $c(\\vec{u} + \\vec{v}) = c\\vec{u} + c\\vec{v}$\n- **Distributive over scalar addition**: $(a + b)\\vec{v} = a\\vec{v} + b\\vec{v}$\n- **Identity**: $1\\vec{v} = \\vec{v}$\n\n> **Tip**: All scalar multiples of $\\vec{v}$ lie along the same line through the origin. This line is the **span** of $\\vec{v}$.",
+   "range": [
+    [
+     -3,
+     4
+    ],
+    [
+     -3,
+     5
+    ],
+    [
+     -2,
+     3
+    ]
+   ],
+   "scale": [
+    1,
+    1,
+    1
+   ],
+   "camera": {
+    "position": [
+     5,
+     4,
+     5
+    ],
+    "target": [
+     0.5,
+     1,
+     0.3
+    ]
+   },
+   "views": [
+    {
+     "name": "Iso",
+     "position": [
+      7,
+      5,
+      7
+     ],
+     "target": [
+      0.5,
+      1,
+      0.3
+     ],
+     "description": "Isometric view — see the original and scaled vector together"
+    },
+    {
+     "name": "Front",
+     "position": [
+      0.5,
+      1,
+      8
+     ],
+     "target": [
+      0.5,
+      1,
+      0
+     ],
+     "description": "Front view along Z — see vectors in the XY plane"
+    },
+    {
+     "name": "Top",
+     "position": [
+      0.5,
+      8,
+      0.3
+     ],
+     "target": [
+      0.5,
+      0,
+      0.3
+     ],
+     "description": "Top view looking down — see vectors projected onto the horizontal plane"
+    },
+    {
+     "name": "Right",
+     "position": [
+      8,
+      1,
+      0.3
+     ],
+     "target": [
+      0.5,
+      1,
+      0.3
+     ],
+     "description": "Side view along X — see vectors in the YZ plane"
+    }
+   ],
+   "elements": [
+    {
+     "type": "grid",
+     "plane": "xz",
+     "range": [
+      -3,
+      4
+     ],
+     "color": [
+      0.25,
+      0.25,
+      0.4
+     ],
+     "opacity": 0.12,
+     "divisions": 7
+    },
+    {
+     "type": "axis",
+     "axis": "x",
+     "range": [
+      -3,
+      4
+     ],
+     "color": "#ff4444",
+     "width": 1.5,
+     "label": "x"
+    },
+    {
+     "type": "axis",
+     "axis": "y",
+     "range": [
+      -3,
+      5
+     ],
+     "color": "#44ff44",
+     "width": 1.5,
+     "label": "y"
+    },
+    {
+     "type": "axis",
+     "axis": "z",
+     "range": [
+      -2,
+      3
+     ],
+     "color": "#4488ff",
+     "width": 1.5,
+     "label": "z"
+    },
+    {
+     "type": "point",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "color": "#ffffff",
+     "size": 10,
+     "label": "$O$",
+     "prompt": "Explain what O represents here and how it relates to the other objects in this scene."
+    }
+   ],
+   "steps": [
+    {
+     "title": "Original vector $\\vec{v}$",
+     "description": "Start with $\\vec{v} = (1, 1.5, 0.5)$, with magnitude $|\\vec{v}| = \\sqrt{3.5} \\approx 1.87$.",
+     "add": [
+      {
+       "type": "vector",
+       "from": [
+        0,
+        0,
+        0
+       ],
+       "to": [
+        1,
+        1.5,
+        0.5
+       ],
+       "color": "#ff6644",
+       "label": "$\\vec{v} = (1, 1.5, 0.5)$",
+       "labelPosition": [
+        0.7,
+        1,
+        0.5
+       ],
+       "prompt": "Explain what \\vec{v} = (1, 1.5, 0.5) represents here and how it relates to the other objects in this scene."
+      },
+      {
+       "type": "point",
+       "position": [
+        1,
+        1.5,
+        0.5
+       ],
+       "color": "#ff6644",
+       "size": 8
+      }
+     ]
+    },
+    {
+     "title": "Double: $2\\vec{v}$",
+     "description": "$2\\vec{v} = (2, 3, 1)$ — twice the length, same direction as $\\vec{v}$.",
+     "add": [
+      {
+       "type": "vector",
+       "from": [
+        0,
+        0,
+        0
+       ],
+       "to": [
+        2,
+        3,
+        1
+       ],
+       "color": "#44aaff",
+       "label": "$2\\vec{v} = (2, 3, 1)$",
+       "labelPosition": [
+        2.3,
+        3.2,
+        1
+       ],
+       "prompt": "Explain what 2\\vec{v} = (2, 3, 1) represents here and how it relates to the other objects in this scene."
+      },
+      {
+       "type": "point",
+       "position": [
+        2,
+        3,
+        1
+       ],
+       "color": "#44aaff",
+       "size": 8
+      }
+     ]
+    },
+    {
+     "title": "Negate: $-\\vec{v}$",
+     "description": "$-\\vec{v} = (-1, -1.5, -0.5)$ — same length, opposite direction.",
+     "add": [
+      {
+       "type": "vector",
+       "from": [
+        0,
+        0,
+        0
+       ],
+       "to": [
+        -1,
+        -1.5,
+        -0.5
+       ],
+       "color": "#ff44aa",
+       "label": "$-\\vec{v} = (-1, -1.5, -0.5)$",
+       "labelPosition": [
+        -1.3,
+        -1.8,
+        -0.5
+       ],
+       "prompt": "Explain what -\\vec{v} = (-1, -1.5, -0.5) represents here and how it relates to the other objects in this scene."
+      },
+      {
+       "type": "point",
+       "position": [
+        -1,
+        -1.5,
+        -0.5
+       ],
+       "color": "#ff44aa",
+       "size": 8
+      }
+     ]
+    },
+    {
+     "title": "Half: $0.5\\vec{v}$",
+     "description": "$0.5\\vec{v} = (0.5, 0.75, 0.25)$ — all scalar multiples lie on the span of $\\vec{v}$.",
+     "add": [
+      {
+       "type": "vector",
+       "from": [
+        0,
+        0,
+        0
+       ],
+       "to": [
+        0.5,
+        0.75,
+        0.25
+       ],
+       "color": "#ffcc00",
+       "label": "$0.5\\vec{v} = (0.5, 0.75, 0.25)$",
+       "labelPosition": [
+        0.8,
+        0.3,
+        0.3
+       ],
+       "prompt": "Explain what 0.5\\vec{v} = (0.5, 0.75, 0.25) represents here and how it relates to the other objects in this scene."
+      },
+      {
+       "type": "point",
+       "position": [
+        0.5,
+        0.75,
+        0.25
+       ],
+       "color": "#ffcc00",
+       "size": 8
+      },
+      {
+       "type": "line",
+       "points": [
+        [
+         -2,
+         -3,
+         -1
+        ],
+        [
+         -1,
+         -1.5,
+         -0.5
+        ],
+        [
+         0,
+         0,
+         0
+        ],
+        [
+         1,
+         1.5,
+         0.5
+        ],
+        [
+         2,
+         3,
+         1
+        ],
+        [
+         3,
+         4.5,
+         1.5
+        ]
+       ],
+       "color": [
+        0.5,
+        0.5,
+        0.7
+       ],
+       "width": 1,
+       "label": "Span of $\\vec{v}$",
+       "prompt": "Explain what Span of $\\vec{v}$ represents here and how it relates to the other objects in this scene."
+      }
+     ]
+    }
+   ],
+   "prompt": "Teach scalar multiplication as geometric scaling along one line: magnitude scales by |c| and sign controls direction reversal. Encourage quick experiments at c=0, c<0, and |c|>1."
+  }
+ ],
+ "current": {
+  "title": "Dot Product: $\\vec{a} \\cdot \\vec{b}$",
+  "description": "The dot product $\\vec{a} \\cdot \\vec{b} = |\\vec{a}||\\vec{b}|\\cos\\theta$ measures how much two vectors point in the same direction. The projection of $\\vec{b}$ onto $\\vec{a}$ has length $\\frac{\\vec{a} \\cdot \\vec{b}}{|\\vec{a}|}$.",
+  "markdown": "# Dot Product\n\nThe **dot product** (or scalar product) takes two vectors and returns a **scalar**.\n\n## Definition\n\nFor vectors $\\vec{a} = (a_1, a_2, a_3)$ and $\\vec{b} = (b_1, b_2, b_3)$:\n\n$$\\vec{a} \\cdot \\vec{b} = a_1 b_1 + a_2 b_2 + a_3 b_3$$\n\n## Geometric Form\n\n$$\\vec{a} \\cdot \\vec{b} = |\\vec{a}| \\cdot |\\vec{b}| \\cdot \\cos\\theta$$\n\nwhere $\\theta$ is the angle between the vectors.\n\n## This Example\n\nWith $\\vec{a} = (3, 1, 0)$ and $\\vec{b} = (1, 3, 1)$:\n\n$$\\vec{a} \\cdot \\vec{b} = 3 \\cdot 1 + 1 \\cdot 3 + 0 \\cdot 1 = 6$$\n\n## Projection\n\nThe **scalar projection** of $\\vec{b}$ onto $\\vec{a}$ is:\n\n$$\\text{comp}_{\\vec{a}} \\vec{b} = \\frac{\\vec{a} \\cdot \\vec{b}}{|\\vec{a}|} = \\frac{6}{\\sqrt{10}} \\approx 1.90$$\n\nThe **vector projection** is:\n\n$$\\text{proj}_{\\vec{a}} \\vec{b} = \\frac{\\vec{a} \\cdot \\vec{b}}{|\\vec{a}|^2} \\vec{a} = \\frac{6}{10}(3, 1, 0) = (1.8, 0.6, 0)$$\n\n## Key Properties\n\n- **Commutative**: $\\vec{a} \\cdot \\vec{b} = \\vec{b} \\cdot \\vec{a}$\n- **Distributive**: $\\vec{a} \\cdot (\\vec{b} + \\vec{c}) = \\vec{a} \\cdot \\vec{b} + \\vec{a} \\cdot \\vec{c}$\n- **Orthogonality test**: $\\vec{a} \\cdot \\vec{b} = 0 \\iff \\vec{a} \\perp \\vec{b}$\n- **Self dot product**: $\\vec{a} \\cdot \\vec{a} = |\\vec{a}|^2$\n\n> **Tip**: The dot product is positive when vectors point roughly the same way, zero when perpendicular, and negative when they point apart.",
+  "range": [
+   [
+    -1,
+    5
+   ],
+   [
+    -1,
+    5
+   ],
+   [
+    -1,
+    3
+   ]
+  ],
+  "scale": [
+   1,
+   1,
+   1
+  ],
+  "camera": {
+   "position": [
+    5,
+    4,
+    5
+   ],
+   "target": [
+    1.5,
+    1.5,
+    0.5
+   ]
+  },
+  "views": [
+   {
+    "name": "Iso",
+    "position": [
+     7,
+     5,
+     7
+    ],
+    "target": [
+     1.5,
+     1.5,
+     0.5
+    ],
+    "description": "Isometric view — see both vectors and the projection clearly"
+   },
+   {
+    "name": "Front",
+    "position": [
+     1.5,
+     1.5,
+     8
+    ],
+    "target": [
+     1.5,
+     1.5,
+     0
+    ],
+    "description": "Front view — see the angle between the vectors"
+   },
+   {
+    "name": "Top",
+    "position": [
+     1.5,
+     8,
+     0.5
+    ],
+    "target": [
+     1.5,
+     0,
+     0.5
+    ],
+    "description": "Top view looking down — see vectors projected onto the horizontal plane"
+   },
+   {
+    "name": "Right",
+    "position": [
+     8,
+     1.5,
+     0.5
+    ],
+    "target": [
+     1.5,
+     1.5,
+     0.5
+    ],
+    "description": "Side view along X — see vectors in the YZ plane"
+   }
+  ],
+  "elements": [
+   {
+    "type": "grid",
+    "plane": "xz",
+    "range": [
+     -1,
+     5
+    ],
+    "color": [
+     0.25,
+     0.25,
+     0.4
+    ],
+    "opacity": 0.12,
+    "divisions": 6
+   },
+   {
+    "type": "axis",
+    "axis": "x",
+    "range": [
+     -1,
+     5
+    ],
+    "color": "#ff4444",
+    "width": 1.5,
+    "label": "x"
+   },
+   {
+    "type": "axis",
+    "axis": "y",
+    "range": [
+     -1,
+     5
+    ],
+    "color": "#44ff44",
+    "width": 1.5,
+    "label": "y"
+   },
+   {
+    "type": "axis",
+    "axis": "z",
+    "range": [
+     -1,
+     3
+    ],
+    "color": "#4488ff",
+    "width": 1.5,
+    "label": "z"
+   },
+   {
+    "type": "point",
+    "position": [
+     0,
+     0,
+     0
+    ],
+    "color": "#ffffff",
+    "size": 10,
+    "label": "$O$",
+    "prompt": "Explain what O represents here and how it relates to the other objects in this scene."
+   }
+  ],
+  "steps": [
+   {
+    "title": "Add vector $\\vec{a}$",
+    "description": "Draw $\\vec{a} = (3, 1, 0)$ from the origin along the $x$-axis.",
+    "add": [
+     {
+      "id": "dp-vec-a",
+      "type": "vector",
+      "from": [
+       0,
+       0,
+       0
+      ],
+      "to": [
+       3,
+       1,
+       0
+      ],
+      "color": "#ff6644",
+      "label": "$\\vec{a} = (3, 1, 0)$",
+      "labelPosition": [
+       1.8,
+       0.2,
+       0
+      ],
+      "prompt": "Explain what \\vec{a} = (3, 1, 0) represents here and how it relates to the other objects in this scene."
+     },
+     {
+      "id": "dp-pt-a",
+      "type": "point",
+      "position": [
+       3,
+       1,
+       0
+      ],
+      "color": "#ff6644",
+      "size": 8,
+      "label": "$A$",
+      "prompt": "Explain what A represents here and how it relates to the other objects in this scene."
+     }
+    ]
+   },
+   {
+    "title": "Add vector $\\vec{b}$",
+    "description": "Draw $\\vec{b} = (1, 3, 1)$ — it points in a different direction from $\\vec{a}$.",
+    "add": [
+     {
+      "id": "dp-vec-b",
+      "type": "vector",
+      "from": [
+       0,
+       0,
+       0
+      ],
+      "to": [
+       1,
+       3,
+       1
+      ],
+      "color": "#44aaff",
+      "label": "$\\vec{b} = (1, 3, 1)$",
+      "labelPosition": [
+       0.2,
+       2,
+       0.8
+      ],
+      "prompt": "Explain what \\vec{b} = (1, 3, 1) represents here and how it relates to the other objects in this scene."
+     },
+     {
+      "id": "dp-pt-b",
+      "type": "point",
+      "position": [
+       1,
+       3,
+       1
+      ],
+      "color": "#44aaff",
+      "size": 8,
+      "label": "$B$",
+      "prompt": "Explain what B represents here and how it relates to the other objects in this scene."
+     }
+    ]
+   },
+   {
+    "title": "Show projection of $\\vec{b}$ onto $\\vec{a}$",
+    "description": "The projection $\\text{proj}_{\\vec{a}}\\vec{b} = \\frac{\\vec{a}\\cdot\\vec{b}}{|\\vec{a}|^2}\\vec{a} = (1.8, 0.6, 0)$ drops $\\vec{b}$ perpendicularly onto $\\vec{a}$.",
+    "add": [
+     {
+      "id": "dp-vec-proj",
+      "type": "vector",
+      "from": [
+       0,
+       0,
+       0
+      ],
+      "to": [
+       1.8,
+       0.6,
+       0
+      ],
+      "color": "#ffcc00",
+      "label": "$\\text{proj}_{\\vec{a}} \\vec{b} = (1.8, 0.6, 0)$",
+      "labelPosition": [
+       1.2,
+       -0.4,
+       0
+      ],
+      "prompt": "Explain what \\text{proj}_{\\vec{a}} \\vec{b} = (1.8, 0.6, 0) represents here and how it relates to the other objects in this scene."
+     },
+     {
+      "id": "dp-pt-proj",
+      "type": "point",
+      "position": [
+       1.8,
+       0.6,
+       0
+      ],
+      "color": "#ffcc00",
+      "size": 8,
+      "label": "$P$",
+      "prompt": "Explain what P represents here and how it relates to the other objects in this scene."
+     },
+     {
+      "id": "dp-perp-line",
+      "type": "line",
+      "points": [
+       [
+        1,
+        3,
+        1
+       ],
+       [
+        1.8,
+        0.6,
+        0
+       ]
+      ],
+      "color": "#aa66ff",
+      "width": 2,
+      "label": "Perpendicular component",
+      "prompt": "Explain what Perpendicular component represents here and how it relates to the other objects in this scene."
+     }
+    ]
+   },
+   {
+    "title": "Show angle $\\theta$",
+    "description": "$\\vec{a} \\cdot \\vec{b} = 6 = |\\vec{a}||\\vec{b}|\\cos\\theta$, giving $\\theta \\approx 63°$.",
+    "add": [
+     {
+      "id": "dp-arc",
+      "type": "line",
+      "points": [
+       [
+        1.138,
+        0.379,
+        0
+       ],
+       [
+        1.094,
+        0.491,
+        0.048
+       ],
+       [
+        1.031,
+        0.607,
+        0.099
+       ],
+       [
+        0.948,
+        0.721,
+        0.152
+       ],
+       [
+        0.846,
+        0.826,
+        0.204
+       ],
+       [
+        0.73,
+        0.918,
+        0.253
+       ],
+       [
+        0.607,
+        0.992,
+        0.296
+       ],
+       [
+        0.482,
+        1.047,
+        0.333
+       ],
+       [
+        0.362,
+        1.085,
+        0.362
+       ]
+      ],
+      "color": "#44ff88",
+      "width": 3,
+      "label": "$\\theta \\approx 63°$",
+      "prompt": "Explain what \\theta \\approx 63° represents here and how it relates to the other objects in this scene."
+     },
+     {
+      "id": "dp-dot-text",
+      "type": "text",
+      "text": "$\\vec{a} \\cdot \\vec{b} = 6$",
+      "position": [
+       2,
+       3.5,
+       0
+      ],
+      "color": "#ffffff"
+     }
+    ]
+   },
+   {
+    "title": "Interactive: adjust $\\vec{a}$ and $\\vec{b}$",
+    "description": "Drag the sliders to see how the projection changes. The gold vector is $\\text{proj}_{\\vec{a}}\\vec{b}$ and the purple line shows the perpendicular rejection.",
+    "remove": [
+     {
+      "id": "*"
+     }
+    ],
+    "sliders": [
+     {
+      "id": "ax",
+      "label": "$a_x$",
+      "min": -2,
+      "max": 5,
+      "step": 0.1,
+      "default": 3
+     },
+     {
+      "id": "ay",
+      "label": "$a_y$",
+      "min": -2,
+      "max": 5,
+      "step": 0.1,
+      "default": 1
+     },
+     {
+      "id": "az",
+      "label": "$a_z$",
+      "min": -2,
+      "max": 3,
+      "step": 0.1,
+      "default": 0
+     },
+     {
+      "id": "bx",
+      "label": "$b_x$",
+      "min": -2,
+      "max": 5,
+      "step": 0.1,
+      "default": 1
+     },
+     {
+      "id": "by",
+      "label": "$b_y$",
+      "min": -2,
+      "max": 5,
+      "step": 0.1,
+      "default": 3
+     },
+     {
+      "id": "bz",
+      "label": "$b_z$",
+      "min": -2,
+      "max": 3,
+      "step": 0.1,
+      "default": 1
+     }
+    ],
+    "add": [
+     {
+      "type": "animated_vector",
+      "from": [
+       0,
+       0,
+       0
+      ],
+      "expr": [
+       "ax",
+       "ay",
+       "az"
+      ],
+      "color": "#ff6644",
+      "label": "$\\vec{a}$",
+      "prompt": "Explain what \\vec{a} represents here and how it relates to the other objects in this scene."
+     },
+     {
+      "type": "animated_vector",
+      "from": [
+       0,
+       0,
+       0
+      ],
+      "expr": [
+       "bx",
+       "by",
+       "bz"
+      ],
+      "color": "#44aaff",
+      "label": "$\\vec{b}$",
+      "prompt": "Explain what \\vec{b} represents here and how it relates to the other objects in this scene."
+     },
+     {
+      "type": "animated_vector",
+      "from": [
+       0,
+       0,
+       0
+      ],
+      "expr": [
+       "(ax*bx+ay*by+az*bz)/(ax*ax+ay*ay+az*az+0.001)*ax",
+       "(ax*bx+ay*by+az*bz)/(ax*ax+ay*ay+az*az+0.001)*ay",
+       "(ax*bx+ay*by+az*bz)/(ax*ax+ay*ay+az*az+0.001)*az"
+      ],
+      "color": "#ffcc00",
+      "label": "$\\text{proj}_{\\vec{a}} \\vec{b}$",
+      "prompt": "Explain what \\text{proj}_{\\vec{a}} \\vec{b} represents here and how it relates to the other objects in this scene."
+     },
+     {
+      "type": "animated_line",
+      "points": [
+       [
+        "(ax*bx+ay*by+az*bz)/(ax*ax+ay*ay+az*az+0.001)*ax",
+        "(ax*bx+ay*by+az*bz)/(ax*ax+ay*ay+az*az+0.001)*ay",
+        "(ax*bx+ay*by+az*bz)/(ax*ax+ay*ay+az*az+0.001)*az"
+       ],
+       [
+        "bx",
+        "by",
+        "bz"
+       ]
+      ],
+      "color": "#aa66ff",
+      "width": 2,
+      "label": "Perpendicular component",
+      "prompt": "Explain what Perpendicular component represents here and how it relates to the other objects in this scene."
+     }
+    ],
+    "info": [
+     {
+      "id": "dot_metrics",
+      "position": "top-left",
+      "content": "$\\vec{a}\\cdot\\vec{b}={{toFixed(ax*bx+ay*by+az*bz,3)}}$\n$\\cos\\theta\\approx{{toFixed((ax*bx+ay*by+az*bz)/(sqrt(ax*ax+ay*ay+az*az+0.001)*sqrt(bx*bx+by*by+bz*bz+0.001)),3)}}$\n$\\vec{\\mathrm{proj}}_{\\vec{a}}\\vec{b}=({{toFixed((ax*bx+ay*by+az*bz)/(ax*ax+ay*ay+az*az+0.001)*ax,2)}},{{toFixed((ax*bx+ay*by+az*bz)/(ax*ax+ay*ay+az*az+0.001)*ay,2)}},{{toFixed((ax*bx+ay*by+az*bz)/(ax*ax+ay*ay+az*az+0.001)*az,2)}})$"
+     }
+    ]
+   }
+  ],
+  "prompt": "Teach dot product as alignment: positive, zero, negative based on angle. Connect algebraic form to projection and cosine, and prompt learners to test orthogonality and angle changes with sliders."
+ },
+ "memory": [
+  {
+   "key": "trajectory",
+   "shape": "array of 400 [x,y,z]"
+  }
+ ],
+ "sliderVocabulary": [
+  "ax",
+  "ay",
+  "az",
+  "bx",
+  "by",
+  "bz",
+  "r"
+ ],
+ "omitted": []
+}
