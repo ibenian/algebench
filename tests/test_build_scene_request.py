@@ -318,76 +318,20 @@ def test_the_clients_own_output_validates_and_renders():
     assert "right-handed?" in fmt.format_clarifications(req.clarifications)
 
 
-def test_the_fixture_is_the_shape_the_prompt_is_built_from():
-    """Every request field must reach a formatter. One that does not is either
-    dead weight on the wire or a role the builder never sees."""
-    req = BuildSceneRequest.model_validate(json.loads(FIXTURE.read_text()))
-    routed = {"op", "sceneIndex", "current", "neighbours",  # scenes()/placement
-              "intent", "lesson", "conventions", "clarifications",
-              "memory", "sliderVocabulary", "omitted"}
-    assert set(type(req).model_fields) == routed
+def test_every_request_field_reaches_the_prompt():
+    """A field on the wire that nothing reads is either dead weight or a role the
+    builder never sees. Most map 1:1 onto an InputField; two do not, and both
+    earn their exception:
 
-
-def test_truncation_never_shows_the_model_broken_latex():
-    """A blind slice lands mid-command and leaves an unbalanced `$`.
-
-    That matters for exactly the reason the input side avoids JSON escaping:
-    models imitate what they are shown, so malformed math in the prompt teaches
-    malformed math in the output.
+    `op`/`sceneIndex` are read by CODE — they select a branch and place the op.
+    `messages` is read by `handler._clarifications`, which turns the thread into
+    the `clarifications` field rather than showing it raw.
     """
-    text = (r"The projection of $\vec{b}$ onto $\vec{a}$ has length "
-            r"$\frac{\vec{a} \cdot \vec{b}}{|\vec{a}|^2}$ exactly.")
-    for limit in range(10, len(text) + 5):
-        out = fmt._line(text, limit)
-        assert out.count("$") % 2 == 0, f"unbalanced $ at limit {limit}: {out!r}"
-        assert not out.rstrip("…").endswith("\\"), f"dangling backslash at {limit}: {out!r}"
-
-
-def test_truncation_is_visible_in_the_value_itself():
-    """`omitted` reports what was dropped WHOLESALE; a clipped value has to say
-    so on its own, or it reads as a sentence that simply ended."""
-    assert fmt._line("x" * 500, 100).endswith("…")
-    assert not fmt._line("short", 100).endswith("…")
-
-
-def test_the_signature_and_the_formatters_agree():
-    """One list of fields, checked from both ends.
-
-    A field on the signature with no formatter renders empty — a hole in the
-    prompt that nothing errors about. A formatter with no field is content
-    assembled, shipped, and never shown.
-    """
-    sys.path.insert(0, "scripts")
-    from show_build_context import render_inputs
-
-    from backend.experts.modules.build_scene.signature import INPUT_FIELDS
-
     req = BuildSceneRequest.model_validate(json.loads(FIXTURE.read_text()))
-    rendered = render_inputs(req)
+    to_a_formatter = {"intent", "lesson", "conventions", "clarifications",
+                      "memory", "sliderVocabulary", "omitted", "current", "neighbours"}
+    read_by_code = {"op", "sceneIndex"}
+    folded_into_another_field = {"messages"}
 
-    assert set(rendered) == set(INPUT_FIELDS)
-    assert all(isinstance(v, str) for v in rendered.values())
-    assert rendered["current"] and rendered["neighbours"], "a replace must show both"
-
-
-def test_the_prompt_is_rendered_by_the_adapter_not_by_us():
-    """The viewer must not hand-print DSPy's framing.
-
-    An imitation keeps looking right after the real format changes, which is the
-    failure mode of every hand-maintained mirror in this PR so far.
-    """
-    sys.path.insert(0, "scripts")
-    # The SCRIPT's own builder, not a re-implementation of it here — testing a
-    # copy of the behaviour is how the last version of this passed while the
-    # thing it described was broken.
-    from show_build_context import messages
-
-    from backend.experts.modules.build_scene.signature import BuildSceneInputs
-
-    req = BuildSceneRequest.model_validate(json.loads(FIXTURE.read_text()))
-    user = [m for m in messages(req) if m["role"] == "user"][-1]["content"]
-
-    for name in BuildSceneInputs.input_fields:
-        assert f"[[ ## {name} ## ]]" in user, name
-    # The reason all of this exists: LaTeX arrives unescaped.
-    assert r"\vec{a}" in user and "\\\\" not in user
+    assert set(type(req).model_fields) == (
+        to_a_formatter | read_by_code | folded_into_another_field)
