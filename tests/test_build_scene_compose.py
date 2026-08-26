@@ -217,3 +217,48 @@ def test_every_key_the_model_is_shown_can_be_filled_in(model):
                                    for k in keys})
     for k in keys:
         assert getattr(filled, k) not in ("", None), f"{k} was shown but is not accepted"
+
+
+# ---- what happens when the model uses the schema's words, not ours --------
+
+def test_the_schemas_own_vocabulary_is_refused_loudly_not_swallowed():
+    """`tail`/`head` are our words; the lesson schema says `from`/`to`, and a
+    model that knows this domain may reach for those out of habit.
+
+    That must not be silent. `extra="ignore"` on ProposedElement would swallow it
+    and hand back a vector with no geometry — the same silent-loss failure the
+    alias caused. LineAdapter checks keys BEFORE pydantic does, so the habit
+    costs a retry with the valid keys named, which is what a retry needs.
+    """
+    from backend.experts.adapters.line_adapter import LineAdapter
+    from backend.experts.handlers.build_scene.signature import BuildSceneSig
+
+    completion = (
+        "[[ ## is_build ## ]]\nTrue\n\n[[ ## question ## ]]\n\n"
+        "[[ ## title ## ]]\nT\n\n[[ ## description ## ]]\nD\n\n"
+        "[[ ## steps ## ]]\nindex: 0\ntitle: Add a\n\n"
+        "[[ ## elements ## ]]\nstep: 0\ntype: vector\nfrom: 0, 0, 0\nto: 2, 0, 0\n\n"
+        "[[ ## completed ## ]]\n")
+
+    with pytest.raises(Exception) as e:
+        LineAdapter().parse(BuildSceneSig, completion)
+    message = str(e.value)
+    assert "unknown key 'from'" in message
+    assert "'tail'" in message and "'head'" in message, "the retry must be told the real keys"
+
+
+def test_our_own_vocabulary_parses():
+    from backend.experts.adapters.line_adapter import LineAdapter
+    from backend.experts.handlers.build_scene.signature import BuildSceneSig
+
+    completion = (
+        "[[ ## is_build ## ]]\nTrue\n\n[[ ## question ## ]]\n\n"
+        "[[ ## title ## ]]\nT\n\n[[ ## description ## ]]\nD\n\n"
+        "[[ ## steps ## ]]\nindex: 0\ntitle: Add a\n\n"
+        "[[ ## elements ## ]]\nstep: 0\ntype: vector\ntail: 0, 0, 0\nhead: 2, 0, 0\n\n"
+        "[[ ## completed ## ]]\n")
+
+    out = LineAdapter().parse(BuildSceneSig, completion)
+    scene = compose(out["title"], out["description"], out["elements"], out["steps"])
+    assert scene.steps[0].add[0].from_ == [0, 0, 0]
+    assert scene.steps[0].add[0].to == [2, 0, 0]
