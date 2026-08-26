@@ -21,8 +21,8 @@ def _scene(**over) -> Scene:
         description="Perpendicular to both.",
         elements=[
             _el(type="axis", label="x", step=-1),
-            _el(type="vector", label=r"$\vec{a}$", step=0, **{"from": "0,0,0"}, to="2, 0, 0"),
-            _el(type="vector", label=r"$\vec{b}$", step=1, **{"from": "0,0,0"}, to="1, 2, 0"),
+            _el(type="vector", label=r"$\vec{a}$", step=0, tail="0,0,0", head="2, 0, 0"),
+            _el(type="vector", label=r"$\vec{b}$", step=1, tail="0,0,0", head="1, 2, 0"),
         ],
         steps=[ProposedStep(index=0, title="Add a"), ProposedStep(index=1, title="Add b")],
     )
@@ -94,18 +94,19 @@ def test_real_mathjs_coordinates_pass_through_untouched(expr):
     assert scene.elements[0].position[0] == expr
 
 
-def test_latex_coordinates_are_rescued():
-    """A model that has been writing LaTeX labels carries the habit into a
-    coordinate. That is the case the gate is FOR."""
-    scene = compose("T", "", [_el(type="point", label="p", step=-1,
-                                  position=r"\cos(\theta), 0, 0")], [])
-    assert scene.elements[0].position[0] == "cos(theta)"
+def test_a_latex_coordinate_is_refused_and_says_what_belongs_there():
+    """The case this is FOR: a model that has been writing KaTeX labels carries
+    the habit into a coordinate.
 
-
-def test_unparseable_latex_names_the_element():
-    with pytest.raises(ComposeError, match="does not parse"):
+    Nothing converts it. A converter cannot tell which notation it was handed,
+    and translating valid math.js as if it were LaTeX turns `cos(theta)` into
+    `c*o*s(E*a*h*t**2)` with no exception raised. The message names the field and
+    the expected notation, which is what a retry needs to hear.
+    """
+    with pytest.raises(ComposeError) as e:
         compose("T", "", [_el(type="point", label="p", step=-1,
-                              position=r"\frac{, 0, 0")], [])
+                              position=r"\cos(\theta), 0, 0")], [])
+    assert "math.js" in str(e.value) and "label" in str(e.value)
 
 
 def test_integers_stay_integers():
@@ -192,3 +193,26 @@ def test_an_unsupported_type_is_refused_by_name():
 def test_a_scene_needs_a_title():
     with pytest.raises(ComposeError, match="title"):
         compose("  ", "", [], [])
+
+
+# ---- the prompt template must round-trip ---------------------------------
+
+@pytest.mark.parametrize("model", [ProposedElement, ProposedStep])
+def test_every_key_the_model_is_shown_can_be_filled_in(model):
+    """LineAdapter renders FIELD NAMES, not aliases.
+
+    A field with an alias is therefore shown to the model under a name pydantic
+    will not accept — it answers, and the value is silently dropped. `from_`
+    (alias `from`) did exactly that: every vector lost its tail and the scene
+    still composed. This asserts the template and the parser agree.
+    """
+    from backend.experts.adapters.line_adapter import LineAdapter
+
+    template = LineAdapter().render_model(model(), model.__name__)
+    keys = [line.split(":", 1)[0] for line in template.splitlines()]
+    assert keys == list(model.model_fields), "template keys must be the field names"
+
+    filled = model.model_validate({k: "1" if model.model_fields[k].annotation is str else 1
+                                   for k in keys})
+    for k in keys:
+        assert getattr(filled, k) not in ("", None), f"{k} was shown but is not accepted"

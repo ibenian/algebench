@@ -14,19 +14,28 @@ prompts     the Ask-AI question per element, when the lesson uses them.
 staging     `range` and `camera` from the bounding box. Both appear on 84/84
             published scenes, so a scene without them is not a finished scene.
 
-WHY LaTeX IS NOT CONVERTED HERE, WHICH THE PLAN GOT WRONG
----------------------------------------------------------
-Coordinates in the corpus are ALREADY math.js — `cos(theta)`, `Rp+h`,
-`lambda + 0.6` — and not one of the 782 of them contains a backslash. Running
-them through `latex_to_mathjs` anyway is not a no-op, it is destruction::
+THREE NOTATIONS, ONE PER KIND OF FIELD, AND NO CONVERSION BETWEEN THEM
+----------------------------------------------------------------------
+========================  ==================================================
+coordinates, expressions  math.js — `cos(theta)`, `Rp+h`, `lambda + 0.6`
+labels                    KaTeX — `$\vec{a}$`
+titles, descriptions      markdown with embedded KaTeX
+========================  ==================================================
+
+The model is told which is which (see `proposed.py`, whose field descriptions are
+prompt surface). Compose does NOT translate between them, and an early version
+that tried is why this is spelled out: coordinates in the corpus are already
+math.js, none of the 782 contains a backslash, and running them through
+`latex_to_mathjs` is not a no-op but destruction::
 
     'cos(theta)'   -> 'c*o*s(E*a*h*t**2)'
     'Rp+h'         -> 'R*p + h'          # Rp is ONE variable in the corpus
     'lambda + 0.6' -> 'a*b*da*l*m + 0.6'
 
-So conversion is a RESCUE, gated on a backslash actually being present — which
-by measurement never happens to valid input, and does happen when a model that
-has been writing LaTeX labels carries the habit into a coordinate.
+No exception, just a different scene. A converter cannot tell which notation it
+was handed, so it is the PROMPT's job to get it right and this module's job to
+say plainly when it did not. Refusing names the field and the expected notation,
+which is also the feedback a retry needs.
 
 `scale` and `views` are NOT derived. `scale` appears on 41/84 scenes with no
 relationship to `range` I could find, and a `views` entry is mostly `name` and
@@ -96,22 +105,18 @@ def _scalar(part: str, where: str) -> Union[Num, str]:
 
 
 def _expression(part: str, where: str) -> str:
-    """A non-numeric coordinate: math.js, or LaTeX to be rescued.
+    """A non-numeric coordinate. Must be math.js; must not be LaTeX.
 
-    The backslash test is the whole gate, and it is not a heuristic — it is a
-    measurement. See the module docstring: converting valid math.js turns
-    `cos(theta)` into `c*o*s(E*a*h*t**2)` without erroring.
+    Backslash is the whole test, and it is a measurement rather than a heuristic:
+    0 of the corpus's 782 coordinates contain one, and every LaTeX command needs
+    one. So this never fires on valid input, and fires exactly when a model that
+    has been writing KaTeX labels carries the habit into a coordinate.
     """
     if "\\" not in part:
         return part
-    from backend.semantic_graph.mathjs_converter import latex_to_mathjs
-
-    try:
-        script, _ = latex_to_mathjs(part)
-    except Exception as e:
-        raise ComposeError(f"{where}: {part!r} looks like LaTeX but does not parse ({e})")
-    log.info("compose: rescued LaTeX coordinate %r -> %r at %s", part, script, where)
-    return script
+    raise ComposeError(
+        f"{where}: coordinate {part!r} is LaTeX, but coordinates are math.js — "
+        f"write cos(theta), not \\cos(\\theta). LaTeX belongs in `label`.")
 
 
 def _polyline(text: str, where: str) -> Optional[list[Coord]]:
@@ -216,9 +221,10 @@ def _element(el: ProposedElement, taken: set[str], with_prompts: bool) -> tuple[
     body: dict = {"type": el.type, "id": _mint(el, taken)}
     coords: list[Coord] = []
 
+    # `tail`/`head` are the model's words; `from`/`to` are the schema's.
     for name, value in (("position", _coord(el.position, where)),
-                        ("from", _coord(el.from_, where)),
-                        ("to", _coord(el.to, where))):
+                        ("from", _coord(el.tail, where)),
+                        ("to", _coord(el.head, where))):
         if value is not None:
             body[name] = value
             coords.append(value)
