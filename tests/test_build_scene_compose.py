@@ -203,8 +203,9 @@ def test_every_key_the_model_is_shown_can_be_filled_in(model):
 
     A field with an alias is therefore shown to the model under a name pydantic
     will not accept — it answers, and the value is silently dropped. `from_`
-    (alias `from`) did exactly that: every vector lost its tail and the scene
-    still composed. This asserts the template and the parser agree.
+    (alias `from`, forced because `from` is a keyword) did exactly that: every
+    vector lost its tail and the scene still composed. This asserts the template
+    and the parser agree, for any field, alias or not.
     """
     from backend.experts.adapters.line_adapter import LineAdapter
 

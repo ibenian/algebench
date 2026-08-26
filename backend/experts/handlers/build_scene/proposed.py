@@ -76,11 +76,16 @@ class ProposedElement(BaseModel):
         description="where it sits: three comma-separated coordinates in MATH.JS, "
                     "'1, 2, 0' or 'cos(theta), 0, r*2'. NOT LaTeX — write "
                     "cos(theta), never \\cos(\\theta). For a point or a text label")
-    # `tail`/`head`, not `from`/`to`: `from` is a Python keyword, so the field
-    # would have to be `from_` with an alias — and LineAdapter renders the FIELD
-    # NAME, so the model would be shown `from_`, answer `from_`, and pydantic
-    # would silently drop it for not being the alias. Every vector would lose its
-    # tail and the scene would still compose. compose.py maps these to the
+    # Only `from` is forced: it is a Python KEYWORD, so the field would have to
+    # be `from_` with `alias="from"` — and LineAdapter renders FIELD NAMES, not
+    # aliases, so the model would be shown `from_`, answer `from_`, and pydantic
+    # would drop it for not being the alias. Every vector would lose its tail and
+    # the scene would still compose.
+    #
+    # `to` is a perfectly ordinary identifier and needed nothing. It is renamed
+    # for SYMMETRY — `tail`/`head` is a pair a reader can hold, `tail`/`to` is
+    # not — and because these are prompt surface, where a matched pair is easier
+    # to fill in correctly than a mismatched one. compose.py maps both to the
     # schema's `from`/`to`.
     tail: str = Field(
         default="",
