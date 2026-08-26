@@ -270,7 +270,7 @@ def test_an_unreadable_current_scene_is_refused():
 def test_the_corpus_parses_as_neighbours():
     """The policy above is only tolerable if it almost never fires."""
     dropped = 0
-    for path in sorted(pathlib.Path("scenes").glob("*.json")):
+    for path in sorted((ROOT / "scenes").glob("*.json")):
         data = json.loads(path.read_text())
         for scene in (data.get("scenes") or [data]):
             _, ok, notes = _request(neighbours=[scene]).scenes()

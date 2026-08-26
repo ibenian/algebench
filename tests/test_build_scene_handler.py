@@ -14,7 +14,11 @@ from backend.experts.handlers.build_scene import handler as h
 from backend.experts.modules.build_scene.intent import SceneProposal
 from backend.experts.modules.build_scene.proposed import ProposedElement, ProposedStep
 
-FIXTURE = pathlib.Path("tests/fixtures/build_scene_request.json")
+#: Resolved from __file__, not the cwd. pytest can be invoked from anywhere, and
+#: a path that only works from the repo root is a test that fails for a reason
+#: unrelated to what it checks — 13 of the 14 here errored when run from /tmp.
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+FIXTURE = ROOT / "tests" / "fixtures" / "build_scene_request.json"
 
 
 @pytest.fixture
@@ -54,7 +58,7 @@ def test_the_endpoint_exists_via_discovery():
          "discover_handlers();"
          "from backend.experts.registry import HANDLER_REGISTRY;"
          "print('build_scene' in HANDLER_REGISTRY)"],
-        capture_output=True, text=True, cwd=".")
+        capture_output=True, text=True, cwd=str(ROOT))
     assert out.stdout.strip().endswith("True"), (
         f"discovery did not register build_scene\n{out.stdout}\n{out.stderr[-500:]}")
 
