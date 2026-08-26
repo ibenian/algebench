@@ -87,7 +87,7 @@ def test_a_buildable_proposal_returns_an_applicable_op(monkeypatch, request_body
     out = h.build_scene(h.BuildSceneRequest.model_validate(request_body))
     op = out["result"]["ops"][0]
     assert op["op"] == "replace" and op["kind"] == "scene"
-    assert op["at"] == {"scene": 2}, "the op must land where the request said"
+    assert op["at"] == {"index": 2}, "the op must land where the request said"
     assert op["node"]["title"] == "Cross Product"
     assert op["node"]["steps"][0]["add"][0]["from"] == [0, 0, 0], "schema names, not ours"
 
@@ -126,7 +126,11 @@ def test_the_op_matches_the_shared_build_contract(monkeypatch, request_body):
     _stub(monkeypatch, _good())
     out = h.build_scene(h.BuildSceneRequest.model_validate(request_body))
     ops = TypeAdapter(list[BuildOp]).validate_python(out["result"]["ops"])
-    assert ops[0].kind == "scene" and ops[0].at.scene == 2
+    assert ops[0].kind == "scene" and ops[0].at.index == 2
+    # The contract alone is NOT enough and this is the record of why: `scene` and
+    # `index` are both Optional on Placement, so this check passed while the op
+    # was unapplicable. src/lesson-placement.test.ts applies it for real.
+    assert ops[0].at.scene is None
 
 
 def test_prompts_follow_the_lessons_convention(monkeypatch, request_body):

@@ -158,7 +158,14 @@ def build_scene(req: BuildSceneRequest) -> dict:
             "ops": [{
                 "op": req.op,
                 "kind": "scene",
-                "at": {"scene": req.sceneIndex},
+                # `index`, NOT `scene`. For a scene-kind op the container IS
+                # `lesson.scenes`, so the position within it is `index`; `scene`
+                # is how a STEP or PROOF op says which scene to look inside.
+                # Both are Optional on `Placement`, so the contract model
+                # validates either — but `requireIndex` refuses this one, and the
+                # client cannot apply anything the expert returns. Caught by
+                # review, not by tests: mine asserted the shape I had written.
+                "at": {"index": req.sceneIndex},
                 "node": scene.model_dump(mode="json", by_alias=True, exclude_none=True),
             }],
         },

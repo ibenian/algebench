@@ -225,7 +225,10 @@ def format_existing_names(slider_ids: list[str], memory: list[MemoryRef]) -> str
     ``MemoryRef`` forbids it (see models.py).
     """
     out: list[str] = []
-    if ids := _strings(slider_ids)[:MAX_NAMES]:
+    # Through `_line` like every other value: an id carrying a newline or a field
+    # marker would forge a prompt line, which is the class of forgery guarded
+    # everywhere else here. Joining raw made this the one exception.
+    if ids := [i for i in (_line(i, 64) for i in _strings(slider_ids)[:MAX_NAMES]) if i]:
         out.append("Slider ids already in use (do not reuse): " + ", ".join(ids))
     refs = list(memory or [])[:MAX_NAMES]
     if refs:

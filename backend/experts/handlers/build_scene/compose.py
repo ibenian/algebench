@@ -236,11 +236,15 @@ def _element(el: ProposedElement, taken: set[str], with_prompts: bool) -> tuple[
         if (value := _coord(raw, where)) is not None:
             body[name] = [str(v) for v in value]
 
-    if el.type.startswith("animated_") and not el.to_expr.strip():
+    # An animated element has to carry SOMETHING time-varying, but not all of
+    # them carry it the same way: all 97 `animated_line` in the corpus are driven
+    # by `points` and NONE use `expr`, so requiring `to_expr` refused every
+    # legitimate one. Measured, not assumed — the earlier version was assumed.
+    if el.type.startswith("animated_") and not (el.to_expr.strip() or el.points.strip()):
         raise ComposeError(
-            f"{where}: an {el.type} needs `to_expr` — three math.js expressions "
-            f"in terms of a slider. Without it nothing moves, and it is a "
-            f"{el.type.removeprefix('animated_')} wearing the wrong type.")
+            f"{where}: an {el.type} needs `to_expr` (three math.js expressions in "
+            f"terms of a slider) or `points`. Without either nothing moves, and it "
+            f"is a {el.type.removeprefix('animated_')} wearing the wrong type.")
     if (line := _polyline(el.points, where)) is not None:
         body["points"] = line
         coords += line

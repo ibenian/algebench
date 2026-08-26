@@ -174,7 +174,14 @@ def check_contract_matches_typescript(verbose: bool = False) -> None:
     if _ts_interface_fields(src, "BuildResult") != set(BuildResult.model_fields):
         raise CheckFailure("BuildResult fields disagree between the two mirrors")
 
-    kinds = set(re.findall(r"'([^']+)'", re.search(r"export type NodeKind =(.*?);", src, re.S).group(1)))
+    # `.group(1)` on a bare `re.search` turns the very drift this checks for —
+    # NodeKind renamed or reshaped — into an AttributeError traceback instead of
+    # a message naming what drifted. A guard that fails unreadably is half a guard.
+    node_kind = re.search(r"export type NodeKind =(.*?);", src, re.S)
+    if not node_kind:
+        raise CheckFailure("src/placement.ts declares no `export type NodeKind` — "
+                           "renamed or removed, so nothing can be compared")
+    kinds = set(re.findall(r"'([^']+)'", node_kind.group(1)))
     if kinds != set(NODE_KINDS) or set(contracts.NodeKind.__args__) != kinds:
         raise CheckFailure(f"NodeKind disagrees: TS {sorted(kinds)}, Python {sorted(NODE_KINDS)}")
 

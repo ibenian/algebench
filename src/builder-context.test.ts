@@ -35,8 +35,11 @@ test('only a replace carries the full scene', () => {
     assert.equal(rep.current, lesson.scenes[2]);
 });
 
-test('neighbours are the scenes either side', () => {
-    const ctx = assembleBuildSceneRequest({ lesson, intent: 'x', op: 'insert', sceneIndex: 2 });
+test('neighbours are the scenes either side of the target', () => {
+    // Replace: scene 2 IS the target, so 1 and 3 flank it. The insert case is
+    // different and has its own test below — this one asserted [1, 3] for
+    // INSERT, which is where the off-by-one hid.
+    const ctx = assembleBuildSceneRequest({ lesson, intent: 'x', op: 'replace', sceneIndex: 2 });
     assert.deepEqual(ctx.neighbours.map((n) => n.title), [lesson.scenes[1]!.title, lesson.scenes[3]!.title]);
 });
 
@@ -139,4 +142,24 @@ test('the committed fixture still matches what the assembler produces', () => {
     }
     assert.equal(serialised, readFileSync(path, 'utf8'),
         'assembler output drifted — rerun with UPDATE_FIXTURES=1 and check the Python side');
+});
+
+test('insert shows the scene it will displace, not the one after it', () => {
+    // The new scene BECOMES index 2, pushing the old scene 2 to 3. So it sits
+    // between scenes 1 and 2 — showing 1 and 3 hid the scene it lands beside.
+    const ins = assembleBuildSceneRequest({ lesson, intent: 'x', op: 'insert', sceneIndex: 2 });
+    assert.deepEqual(ins.neighbours.map((n) => n.title),
+        [lesson.scenes[1]!.title, lesson.scenes[2]!.title]);
+
+    // Replace is unchanged: scene 2 IS `current`, so its neighbours are 1 and 3.
+    const rep = assembleBuildSceneRequest({ lesson, intent: 'x', op: 'replace', sceneIndex: 2 });
+    assert.deepEqual(rep.neighbours.map((n) => n.title),
+        [lesson.scenes[1]!.title, lesson.scenes[3]!.title]);
+});
+
+test('an empty intent is refused here rather than 422-ing at the backend', () => {
+    for (const intent of ['', '   ', '\n']) {
+        assert.throws(() => assembleBuildSceneRequest({ lesson, intent, op: 'insert' }),
+            /intent/, `${JSON.stringify(intent)} must be refused`);
+    }
 });

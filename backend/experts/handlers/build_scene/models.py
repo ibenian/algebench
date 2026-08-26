@@ -141,8 +141,12 @@ class BuildSceneRequest(BaseModel):
     #: The tail of the chat thread. The expert is STATELESS, so a question it
     #: asked and the answer it got live only here — see `handler.clarifications`.
     #: Raw dicts because they are the chat's shape, not ours, and they are read
-    #: only by `clarifications_from_thread`.
-    messages: list[dict] = Field(default_factory=list, max_length=40)
+    #: only by `clarifications_from_thread`, which takes its own tail (`limit=6`).
+    #: NOT length-capped here: a long conversation is a legitimate request, and
+    #: rejecting it would 422 someone for having talked a lot. Size is bounded
+    #: where it becomes prompt — the same split this module already applies to
+    #: every other field.
+    messages: list[dict] = Field(default_factory=list)
     memory: list[MemoryRef] = Field(default_factory=list)
     #: Slider ids already in use, so the model cannot collide with one.
     sliderVocabulary: list[str] = Field(default_factory=list)
@@ -169,14 +173,20 @@ class BuildSceneRequest(BaseModel):
             try:
                 current = Scene.model_validate(self.current)
             except ValidationError as e:
-                raise ValueError(f"the scene being replaced does not parse: {e.errors()[0]}")
+                raise ValueError(
+                    f"the scene being replaced does not parse: {e.errors()[0]}") from e
 
         neighbours: list[Scene] = []
+        dropped = 0
         for item in self.neighbours:
             try:
                 neighbours.append(Scene.model_validate(item))
             except ValidationError:
-                notes.append("1 neighbouring scene could not be read")
+                dropped += 1
+        # ONE note with a count. Appending per failure made two drops read as two
+        # separate single drops, which understates what the builder cannot see.
+        if dropped:
+            notes.append(f"{dropped} neighbouring scene(s) could not be read")
         return current, neighbours, notes
 
     def require_consistent(self) -> None:

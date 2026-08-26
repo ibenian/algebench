@@ -165,18 +165,30 @@ export function assembleBuildSceneRequest(opts: {
             : Math.max(0, Math.min(opts.sceneIndex, scenes.length));
     }
 
+    // The wire contract requires a non-empty intent (`min_length=1`). Rejecting
+    // here turns an avoidable 422 into a clear local failure — and "build
+    // something" with no ask is not a request the backend could serve anyway.
+    const intent = (opts.intent || '').trim().slice(0, MAX_INTENT_CHARS);
+    if (!intent) throw new Error('a build needs an intent; got an empty one');
+
     const summarised = scenes.slice(0, MAX_SCENES_SUMMARISED);
     if (scenes.length > MAX_SCENES_SUMMARISED) {
         omitted.push(`${scenes.length - MAX_SCENES_SUMMARISED} scene summaries`);
     }
 
-    const around = [target - 1, target + 1].filter((i) => i >= 0 && i < scenes.length);
+    // On REPLACE the scene at `target` is `current`, so its neighbours sit either
+    // side of it. On INSERT the new scene BECOMES `target`, displacing whatever is
+    // there — so its right-hand neighbour is the scene currently AT `target`, not
+    // the one after it. Getting this wrong showed the builder the scene it was
+    // about to be separated from and hid the one it would sit beside.
+    const right = opts.op === 'replace' ? target + 1 : target;
+    const around = [target - 1, right].filter((i) => i >= 0 && i < scenes.length);
     const lesson = (opts.lesson || {}) as { title?: unknown; description?: unknown };
 
     return {
         op: opts.op,
         sceneIndex: target,
-        intent: (opts.intent || '').trim().slice(0, MAX_INTENT_CHARS),
+        intent,
         clarifications: opts.clarifications || [],
         lesson: {
             title: typeof lesson.title === 'string' ? lesson.title : '',

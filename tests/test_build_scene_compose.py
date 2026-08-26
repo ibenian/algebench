@@ -295,3 +295,23 @@ def test_expressions_do_not_frame_the_scene():
         _el(type="animated_vector", label="v", step=-1, to_expr="100*t, 0, 0"),
     ], [])
     assert scene.range[0][1] < 10, "an expression must not become a bound"
+
+
+def test_an_animated_line_is_driven_by_points_not_an_expression():
+    """All 97 `animated_line` in the corpus use `points`; none use `expr`.
+
+    Requiring `to_expr` for every animated_* refused every legitimate one — a
+    type advertised as supported that could not be built. The earlier rule was
+    assumed; this one is measured.
+    """
+    scene = compose("T", "", [_el(type="animated_line", label="path", step=-1,
+                                  points="0,0,0; cos(t),sin(t),0")], [])
+    assert len(scene.elements[0].points) == 2
+
+
+def test_an_animated_element_with_neither_is_still_refused():
+    """The guard has to keep working: something must vary with time, or it is a
+    static element wearing an animated type."""
+    with pytest.raises(ComposeError, match="to_expr"):
+        compose("T", "", [_el(type="animated_vector", label="v", step=-1,
+                              from_pos="0,0,0", to_pos="1,1,0")], [])
