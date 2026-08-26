@@ -75,7 +75,10 @@ class ProposedElement(BaseModel):
         default="",
         description="where it sits: three comma-separated coordinates in MATH.JS, "
                     "'1, 2, 0' or 'cos(theta), 0, r*2'. NOT LaTeX — write "
-                    "cos(theta), never \\cos(\\theta). For a point or a text label")
+                    "cos(theta), never \\cos(\\theta). WORK OUT CONSTANTS: write "
+                    "'1, 0, 0', never '(2*1 + 0*2)/(2*2 + 0*0), 0, 0'. Use an "
+                    "expression only when it depends on a slider. For a point or "
+                    "a text label")
     # NAMING RULE: the schema's own word, snake_cased. Measured against every
     # geometry key in the corpus, `from` is the ONLY one that is illegal in
     # Python (`range` merely shadows a builtin), so nothing else needs inventing
@@ -92,10 +95,12 @@ class ProposedElement(BaseModel):
     # it for not being the alias — every vector losing its tail, in silence.
     from_pos: str = Field(
         default="",
-        description="where a vector or line STARTS, as math.js 'x, y, z'")
+        description="where a vector or line STARTS, as math.js 'x, y, z'. "
+                    "Work out constants — write the number, not the formula")
     to_pos: str = Field(
         default="",
-        description="where a vector or line ENDS, as math.js 'x, y, z'")
+        description="where a vector or line ENDS, as math.js 'x, y, z'. "
+                    "Work out constants — write the number, not the formula")
     from_expr: str = Field(
         default="",
         description="for an animated_* element: where it STARTS over time, as "

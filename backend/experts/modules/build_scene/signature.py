@@ -82,9 +82,15 @@ class BuildSceneSig(BuildSceneInputs):
 
     THREE NOTATIONS. Getting these wrong is the most common way the scene breaks:
 
-    * `position`, `tail`, `head`, `points` are **math.js**. Write `cos(theta)`,
-      `2*pi*r`, `Rp+h`. NEVER LaTeX — `\cos(\theta)` is refused, and a variable
-      written as `\lambda` is not the same variable as `lambda`.
+    * `position`, `from_pos`, `to_pos`, `points` are **math.js**. Write
+      `cos(theta)`, `2*pi*r`, `Rp+h`. NEVER LaTeX — `\cos(\theta)` is refused, and
+      a variable written as `\lambda` is not the same variable as `lambda`.
+
+      DO THE ARITHMETIC. A coordinate that does not depend on a slider is a
+      NUMBER: write `1, 0, 0`, not `(2*1 + 0*2 + 0*0)/(2*2 + 0*0 + 0*0) * 2, 0, 0`.
+      Both render, but only the number tells the camera where the scene is, so a
+      formula can leave your own geometry outside the frame. Show the derivation
+      in `description`, which is where a reader can read it.
     * `label` is **KaTeX** — `$\vec{a}$`, `$\theta$` — and only wraps in `$…$`
       when `conventions` says labels are LaTeX.
     * `title`, `description` and `prompt` are **markdown with embedded KaTeX**.
