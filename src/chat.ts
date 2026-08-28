@@ -17,13 +17,14 @@ export {};
 
 import { invokeExpert, ExpertError } from '/expert-client.js';
 import { applyBuildOps, ensureLessonFormat, PlacementError } from '/lesson-placement.js';
+import type { BuildOp } from '/placement.js';
 import {
     buildSceneRequestFromToolCall, interpretBuildSceneReply,
     type BuildSceneToolArgs,
 } from '/build-scene-tool.js';
 import {
-    landingStep, landOnSlot, placeholderScene, releaseOp, reserveOp, showBuildPill,
-    slotIndex,
+    failedScene, isPlaceholder, landingStep, landOnSlot, placeholderScene,
+    releaseOp, reserveOp, showBuildPill, slotIndex,
 } from '/build-progress.js';
 
 /**
@@ -580,7 +581,39 @@ async function runBuildSceneTool(tc: AlgeBenchChatToolCall): Promise<string> {
     showBuiltScene(lesson, target, -1);
     const hidePill = showBuildPill(body.op === 'replace' ? 'Rebuilding scene…' : 'Building scene…');
 
-    /** Undo the reservation, so a build that produced nothing leaves nothing. */
+    /**
+     * Leave the reason WHERE THE SCENE WOULD HAVE BEEN.
+     *
+     * A failed build used to release its slot: the scene vanished from the tree,
+     * one sentence went past in chat, and there was nothing left to inspect. The
+     * expert's reason names the element and the field it objected to, which is
+     * the most useful thing it produces when it cannot build — so the slot
+     * becomes a report the reader can navigate to and read at their own pace,
+     * and delete like any other scene.
+     *
+     * Returns false when there was no slot to convert — a `replace`, which
+     * reserves nothing because the reader is already looking at the scene being
+     * rebuilt, and which leaves that scene untouched on failure.
+     */
+    const reportFailure = (reason: string): boolean => {
+        if (!placeholder) return false;
+        const at = slotIndex(lesson.scenes, placeholder);
+        if (at < 0) return false;          // the reader deleted it mid-build
+        try {
+            applyBuildOps(lesson, [{
+                op: 'replace', kind: 'scene',
+                at: { index: at, id: (placeholder as { id?: string }).id },
+                node: failedScene(body.intent, reason),
+            } as BuildOp]);
+        } catch (e) {
+            console.error('build_scene: could not report the failure in place', e);
+            return false;
+        }
+        showBuiltScene(lesson, at, -1);
+        return true;
+    };
+
+    /** Undo the reservation, for outcomes that are not failures. */
     const release = (): void => {
         if (!placeholder) return;
         // By identity, not by the index it was reserved at: the lesson can move
@@ -601,13 +634,13 @@ async function runBuildSceneTool(tc: AlgeBenchChatToolCall): Promise<string> {
         reply = await invokeExpert('build_scene', body, { timeoutMs: BUILD_SCENE_TIMEOUT_MS });
     } catch (e) {
         hidePill();
-        release();
         const msg = e instanceof ExpertError
             ? e.message
             : 'The scene builder could not be reached.';
         console.error('build_scene: request failed', e);
+        reportFailure(msg);
         addChatMessage('assistant', msg);
-        return '';
+        return msg;
     }
     hidePill();
 
@@ -634,7 +667,10 @@ async function runBuildSceneTool(tc: AlgeBenchChatToolCall): Promise<string> {
 
     if (outcome.kind === 'refused') {
         console.warn('build_scene: refused —', outcome.reason);
-        release();
+        // The reason stays in the lesson AND goes to the agent: it is filed as an
+        // assistant turn by the caller, so the next turn can act on what the
+        // expert objected to rather than guessing why nothing appeared.
+        reportFailure(outcome.reason);
         const said = `I couldn't build that: ${outcome.reason}`;
         addChatMessage('assistant', said);
         return said;
@@ -653,9 +689,10 @@ async function runBuildSceneTool(tc: AlgeBenchChatToolCall): Promise<string> {
         // which still has to come out.
         const why = e instanceof PlacementError ? e.message : String(e);
         console.error('build_scene: could not apply', e);
-        release();
-        addChatMessage('assistant', `The scene was built but wouldn't fit the lesson: ${why}`);
-        return '';
+        const said = `The scene was built but wouldn't fit the lesson: ${why}`;
+        reportFailure(said);
+        addChatMessage('assistant', said);
+        return said;
     }
 
     showBuiltScene(lesson, landed[0]!.at.index ?? target);
@@ -703,6 +740,15 @@ function showBuiltScene(lesson: { scenes: unknown[] }, index: number, step?: num
         // in the lesson behind a viewport still captioned "Building…".
         if (index === currentSceneIndex) currentSceneIndex = -1;
         if (typeof navigateTo === 'function') navigateTo(index, targetStep);
+        // A placeholder and a failure report both have NO elements, and
+        // `loadScene` reads "no elements" as "no scene loaded" — so the viewport
+        // tells the reader to drag & drop a JSON file across the very message
+        // explaining why their build failed. Any later navigation calls
+        // `loadScene` again, which re-decides this correctly.
+        if (isPlaceholder(lesson.scenes[index])) {
+            const empty = document.getElementById('empty-state');
+            if (empty) empty.style.display = 'none';
+        }
         if (typeof window.algebenchEnsureSceneVisible === 'function') window.algebenchEnsureSceneVisible();
     } catch (e) {
         // The scene IS in the lesson; only the view failed to follow it there.

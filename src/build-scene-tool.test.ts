@@ -317,3 +317,46 @@ test('a scene whose content is all scene-level lands on the root', () => {
     assert.equal(landingStep({}), -1);
     assert.equal(landingStep(undefined), -1);
 });
+
+// ---- a failed build leaves its reason behind ------------------------------
+
+const { failedScene } = await import('/build-progress.js');
+
+test('a failure report is a valid scene carrying both the reason and the ask', () => {
+    // `$defs.scene` is additionalProperties:false, so an invented field would
+    // fail validation on export — of a lesson the reader thinks is fine.
+    const report = failedScene('show the tangent plane', "vector 'v' to_pos: expected three coordinates");
+    assert.deepEqual(Object.keys(report).sort(), ['description', 'elements', 'id', 'title']);
+    assert.match(report.description!, /expected three coordinates/);
+    assert.match(report.description!, /show the tangent plane/,
+        'the ask matters too — it is how the reader judges whether it was reasonable');
+});
+
+test('a failure REPLACES the slot rather than emptying it', () => {
+    // The old behaviour released the slot: the scene vanished from the tree, one
+    // sentence went past in chat, and there was nothing left to inspect.
+    const copy = JSON.parse(JSON.stringify(lesson)) as LessonFormat;
+    const { lesson: target } = ensureLessonFormat(copy, null);
+    const before = target.scenes.length;
+    const ph = placeholderScene('a torque scene');
+
+    applyBuildOps(target, [reserveOp(2, ph)]);
+    const at = slotIndex(target.scenes, ph);
+    applyBuildOps(target, [{
+        op: 'replace', kind: 'scene',
+        at: { index: at, id: (ph as { id: string }).id },
+        node: failedScene('a torque scene', 'sliders are not an element type'),
+    } as BuildOp]);
+
+    assert.equal(target.scenes.length, before + 1, 'the slot is occupied, not removed');
+    assert.match(String(target.scenes[2]!.id), /^unbuilt-/);
+    assert.match(target.scenes[2]!.title!, /Couldn/);
+    assert.match(target.scenes[2]!.description!, /sliders are not an element type/,
+        'the reason is the point — it must be readable in the lesson, not only in chat');
+    assert.ok(isPlaceholder(target.scenes[2]), 'still recognisable as ours, so a later build can find it');
+});
+
+test('two failures never share an id', () => {
+    assert.notEqual((failedScene('a', 'x') as { id: string }).id,
+                    (failedScene('b', 'y') as { id: string }).id);
+});

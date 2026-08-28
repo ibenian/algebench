@@ -63,7 +63,16 @@ BUILD_SCENE_TOOL_DECL = types.FunctionDeclaration(
         "The client applies the result and navigates to the scene, so do NOT call "
         "navigate_to afterwards. The expert may come back with ONE clarifying question, "
         "which the client shows to the user — when it does, wait for their answer and "
-        "call build_scene again with it folded into `intent`."
+        "call build_scene again with it folded into `intent`.\n\n"
+        "WHEN A BUILD FAILS you will see a turn in the conversation beginning \"I "
+        "couldn't build that:\" followed by the reason. That reason is precise — it "
+        "names the element and the field it objected to — and the failed scene stays "
+        "in the lesson showing it, so the user can read it too. Do not simply repeat "
+        "the reason back to them. Read it, work out what to do differently, and "
+        "PROPOSE THAT CONCRETELY: a curve instead of many line segments, fixed values "
+        "instead of an unsupported shape, a simpler scene that still makes the point. "
+        "Offer to try it. A failure the user has to diagnose themselves is worse than "
+        "no answer."
     ),
     parameters=types.Schema(
         type="OBJECT",

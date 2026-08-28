@@ -66,10 +66,38 @@ export function landingStep(scene: { steps?: Array<{ sliders?: unknown[]; add?: 
     return withContent >= 0 ? withContent : -1;
 }
 
-/** True for a scene this module put in the lesson. */
+/**
+ * The slot turned into a REPORT of why the build failed.
+ *
+ * A refused build used to take its placeholder with it: the scene vanished from
+ * the tree, one sentence went past in chat, and there was nothing left to look
+ * at. The reason is the most useful thing the expert produces when it cannot
+ * build — it names the element and the field — so it should sit where the scene
+ * would have been, not scroll away.
+ *
+ * It is an ordinary scene, so it appears in the tree, can be navigated to, and
+ * can be deleted like any other. Deliberately NOT a special UI state: a state
+ * has to be dismissed, remembered and rendered somewhere, and the thing the
+ * reader wants is simply to read what went wrong at their own pace.
+ */
+export function failedScene(intent: string, reason: string): Scene {
+    seq += 1;
+    const asked = (intent || '').trim().replace(/\s+/g, ' ');
+    return {
+        id: `unbuilt-${seq}`,
+        title: 'Couldn\u2019t build this scene',
+        // Both halves matter: WHAT was asked for, so the reader can judge whether
+        // the ask was reasonable, and WHY it failed, which is the expert's own
+        // words naming the element and the field.
+        description: `**${reason}**\n\nAsked for: ${asked || '(nothing)'}`,
+        elements: [],
+    } as unknown as Scene;
+}
+
+/** True for a scene this module put in the lesson — a placeholder or a report. */
 export function isPlaceholder(scene: unknown): boolean {
     const id = (scene as { id?: unknown } | null)?.id;
-    return typeof id === 'string' && id.startsWith('building-');
+    return typeof id === 'string' && (id.startsWith('building-') || id.startsWith('unbuilt-'));
 }
 
 /**

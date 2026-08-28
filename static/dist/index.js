@@ -21545,6 +21545,35 @@ function landingStep(scene) {
 	return withContent >= 0 ? withContent : -1;
 }
 /**
+* The slot turned into a REPORT of why the build failed.
+*
+* A refused build used to take its placeholder with it: the scene vanished from
+* the tree, one sentence went past in chat, and there was nothing left to look
+* at. The reason is the most useful thing the expert produces when it cannot
+* build — it names the element and the field — so it should sit where the scene
+* would have been, not scroll away.
+*
+* It is an ordinary scene, so it appears in the tree, can be navigated to, and
+* can be deleted like any other. Deliberately NOT a special UI state: a state
+* has to be dismissed, remembered and rendered somewhere, and the thing the
+* reader wants is simply to read what went wrong at their own pace.
+*/
+function failedScene(intent, reason) {
+	seq += 1;
+	const asked = (intent || "").trim().replace(/\s+/g, " ");
+	return {
+		id: `unbuilt-${seq}`,
+		title: "Couldn’t build this scene",
+		description: `**${reason}**\n\nAsked for: ${asked || "(nothing)"}`,
+		elements: []
+	};
+}
+/** True for a scene this module put in the lesson — a placeholder or a report. */
+function isPlaceholder(scene) {
+	const id = scene?.id;
+	return typeof id === "string" && (id.startsWith("building-") || id.startsWith("unbuilt-"));
+}
+/**
 * Where the placeholder is NOW, or -1 if it is gone.
 *
 * Not the index it was reserved at. A build takes tens of seconds and the lesson
@@ -21998,7 +22027,42 @@ async function runBuildSceneTool(tc) {
 	}
 	showBuiltScene(lesson, target, -1);
 	const hidePill = showBuildPill(body.op === "replace" ? "Rebuilding scene…" : "Building scene…");
-	/** Undo the reservation, so a build that produced nothing leaves nothing. */
+	/**
+	* Leave the reason WHERE THE SCENE WOULD HAVE BEEN.
+	*
+	* A failed build used to release its slot: the scene vanished from the tree,
+	* one sentence went past in chat, and there was nothing left to inspect. The
+	* expert's reason names the element and the field it objected to, which is
+	* the most useful thing it produces when it cannot build — so the slot
+	* becomes a report the reader can navigate to and read at their own pace,
+	* and delete like any other scene.
+	*
+	* Returns false when there was no slot to convert — a `replace`, which
+	* reserves nothing because the reader is already looking at the scene being
+	* rebuilt, and which leaves that scene untouched on failure.
+	*/
+	const reportFailure = (reason) => {
+		if (!placeholder) return false;
+		const at = slotIndex(lesson.scenes, placeholder);
+		if (at < 0) return false;
+		try {
+			applyBuildOps(lesson, [{
+				op: "replace",
+				kind: "scene",
+				at: {
+					index: at,
+					id: placeholder.id
+				},
+				node: failedScene(body.intent, reason)
+			}]);
+		} catch (e) {
+			console.error("build_scene: could not report the failure in place", e);
+			return false;
+		}
+		showBuiltScene(lesson, at, -1);
+		return true;
+	};
+	/** Undo the reservation, for outcomes that are not failures. */
 	const release = () => {
 		if (!placeholder) return;
 		const at = releaseOp(slotIndex(lesson.scenes, placeholder), placeholder);
@@ -22015,11 +22079,11 @@ async function runBuildSceneTool(tc) {
 		reply = await invokeExpert("build_scene", body, { timeoutMs: BUILD_SCENE_TIMEOUT_MS });
 	} catch (e) {
 		hidePill();
-		release();
 		const msg = e instanceof ExpertError ? e.message : "The scene builder could not be reached.";
 		console.error("build_scene: request failed", e);
+		reportFailure(msg);
 		addChatMessage("assistant", msg);
-		return "";
+		return msg;
 	}
 	hidePill();
 	const outcome = interpretBuildSceneReply(reply);
@@ -22038,7 +22102,7 @@ async function runBuildSceneTool(tc) {
 	}
 	if (outcome.kind === "refused") {
 		console.warn("build_scene: refused —", outcome.reason);
-		release();
+		reportFailure(outcome.reason);
 		const said = `I couldn't build that: ${outcome.reason}`;
 		addChatMessage("assistant", said);
 		return said;
@@ -22051,9 +22115,10 @@ async function runBuildSceneTool(tc) {
 	} catch (e) {
 		const why = e instanceof PlacementError ? e.message : String(e);
 		console.error("build_scene: could not apply", e);
-		release();
-		addChatMessage("assistant", `The scene was built but wouldn't fit the lesson: ${why}`);
-		return "";
+		const said = `The scene was built but wouldn't fit the lesson: ${why}`;
+		reportFailure(said);
+		addChatMessage("assistant", said);
+		return said;
 	}
 	showBuiltScene(lesson, landed[0].at.index ?? target);
 	console.log("%c🎬 build_scene complete", "color: #44ff44; font-weight: bold", summary);
@@ -22093,6 +22158,10 @@ function showBuiltScene(lesson, index, step) {
 		if (typeof updateDockVisibility === "function") updateDockVisibility();
 		if (index === currentSceneIndex) currentSceneIndex = -1;
 		if (typeof navigateTo === "function") navigateTo(index, targetStep);
+		if (isPlaceholder(lesson.scenes[index])) {
+			const empty = document.getElementById("empty-state");
+			if (empty) empty.style.display = "none";
+		}
 		if (typeof window.algebenchEnsureSceneVisible === "function") window.algebenchEnsureSceneVisible();
 	} catch (e) {
 		console.error("build_scene: navigation/render failed:", e);

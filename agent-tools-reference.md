@@ -104,8 +104,16 @@ omitting it appends at the end.
 The client applies the result and navigates there, so **do not call
 `navigate_to` afterwards**. The builder may come back with one clarifying
 question, which the user sees — wait for their answer, then call `build_scene`
-again with it folded into `intent`. It may also refuse, in which case the user
-is told why and the lesson is untouched.
+again with it folded into `intent`.
+
+**When a build fails**, a turn appears in the conversation beginning *"I couldn't
+build that:"* followed by the reason, and the failed scene stays in the lesson
+showing it so the user can read it too. The reason names the element and the
+field it objected to. **Don't just repeat it back.** Work out what to do
+differently and propose that concretely — a curve rather than many line segments,
+fixed values rather than an unsupported shape, a simpler scene that still makes
+the point — and offer to try it. A failure the user has to diagnose themselves is
+worse than no answer.
 
 ---
 
