@@ -320,6 +320,11 @@ def test_the_clients_own_output_validates_and_renders():
     assert "Palette in use" in fmt.format_conventions(req.conventions)
     assert "$trajectory" in fmt.format_existing_names(req.sliderVocabulary, req.memory)
     assert "right-handed?" in fmt.format_clarifications(req.clarifications)
+    # The thread rides along so a STATELESS expert can recover the rounds it
+    # already asked. A client that stopped sending it would not error — it would
+    # loop, asking the same question every turn — so assert it is really there.
+    assert [m["role"] for m in req.messages] == ["user", "assistant", "user"]
+    assert any("right-handed" in m["text"] for m in req.messages)
 
 
 def test_every_request_field_reaches_the_prompt():

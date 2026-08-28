@@ -13,10 +13,10 @@ This endpoint **writes nothing**. It returns an operation; applying it is the
 client's, through `applyBuildOps` in src/lesson-placement.ts, which is also what
 makes it undoable.
 
-It replaces the dormant `add_scene` chat tool, which is "intentionally NOT
-exposed — scene-building is disabled (unreliable output)". So there is nothing
-here to regress: the bar is not "as good as what shipped", it is "good enough to
-turn back on".
+It replaces `add_scene`, the chat tool that had the model emit scene JSON inline
+as tool arguments and was disabled for unreliable output. So there was nothing
+here to regress: the bar was not "as good as what shipped", it was "good enough
+to turn back on". `src/build-scene-tool.ts` is the client half.
 """
 from __future__ import annotations
 
@@ -117,6 +117,13 @@ def build_scene(req: BuildSceneRequest) -> dict:
 
     proposal = propose_scene(**inputs)
 
+    # 0. The CALL failed — a parse error, a dead LM. Not the same as "not a scene
+    #    request", and routing it there tells the reader they asked a question
+    #    when they asked for a scene and the builder broke.
+    if proposal.error:
+        log.warning("%s call failed: %s", LOG_TAG, proposal.error)
+        return {"reason": proposal.error}
+
     # 1. Not a scene request — the tutor chat handles it.
     if not proposal.is_build:
         log.info("%s not a build → chat", LOG_TAG)
@@ -142,6 +149,7 @@ def build_scene(req: BuildSceneRequest) -> dict:
     try:
         scene = compose(
             proposal.title, proposal.description, proposal.elements, proposal.steps,
+            proposal.sliders,
             with_prompts=bool(req.conventions.elementsCarryPrompts),
         )
     except ComposeError as e:
@@ -151,8 +159,9 @@ def build_scene(req: BuildSceneRequest) -> dict:
         log.info("%s refused: %s", LOG_TAG, e)
         return {"reason": str(e)}
 
-    log.info("%s built %r: %d element(s), %d step(s)", LOG_TAG, scene.title,
-             len(scene.elements or []), len(scene.steps or []))
+    log.info("%s built %r: %d element(s), %d step(s), %d slider(s)", LOG_TAG,
+             scene.title, len(scene.elements or []), len(scene.steps or []),
+             sum(len(s.sliders or []) for s in (scene.steps or [])))
     return {
         "result": {
             "ops": [{

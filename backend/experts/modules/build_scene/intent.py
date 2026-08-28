@@ -14,11 +14,12 @@ import re
 from functools import cache
 
 import dspy
+from dspy.utils.exceptions import AdapterParseError
 from pydantic import BaseModel, ConfigDict, Field
 
 from backend.experts.llm_config import make_adapter
 
-from .proposed import ProposedElement, ProposedStep
+from .proposed import ProposedElement, ProposedSlider, ProposedStep
 from .signature import BuildSceneSig
 
 log = logging.getLogger(__name__)
@@ -30,6 +31,11 @@ _DSPY_MARKER = re.compile(r"\[\[\s*##.*?##\s*\]\]")
 #: A scene longer than this is a lesson, not a scene — and a reader clicking
 #: through 30 steps has lost the thread well before the end.
 MAX_STEPS = 12
+#: Across the whole scene, not per step. Measured, not guessed: the corpus puts
+#: up to 17 sliders in a SINGLE step (two six-component vectors and their
+#: parameters is ordinary), so a tight cap would truncate a legitimate scene into
+#: one whose coordinates reference ids that no longer exist.
+MAX_SLIDERS = 24
 #: Bounded so one proposal cannot become an unrenderable scene.
 MAX_ELEMENTS = 60
 
@@ -41,9 +47,19 @@ class SceneProposal(BaseModel):
 
     is_build: bool = False
     question: str = ""
+    #: Set when the CALL failed — a parse error, a timeout, a dead LM. Empty on a
+    #: successful call, including one that decided this was not a build.
+    #:
+    #: Load-bearing: without it a crash returns an empty proposal, `is_build` is
+    #: false, and the handler answers `fallback_to_chat` — telling the reader
+    #: "that was not a scene request" about a request that WAS one. Observed:
+    #: the model emitted `type: slider` elements, the adapter rightly refused
+    #: the unknown `value` key, and the user was told they had asked a question.
+    error: str = ""
     title: str = ""
     description: str = ""
     steps: list[ProposedStep] = Field(default_factory=list)
+    sliders: list[ProposedSlider] = Field(default_factory=list)
     elements: list[ProposedElement] = Field(default_factory=list)
 
 
@@ -79,19 +95,49 @@ def _clean(text) -> str:
     return _DSPY_MARKER.sub("", str(text or "")).strip()
 
 
-def propose_scene(**inputs) -> SceneProposal:
-    """Ask the model for a scene. Returns an empty proposal if the call fails.
+#: What the reader is told when the call itself failed. Deliberately not the
+#: exception text: a `LineFormatError` naming `from_expr` is written for whoever
+#: maintains the signature, not for someone who asked for a scene about torque.
+CALL_FAILED = ("The scene builder could not finish this one. Try again, or "
+               "describe the scene a little differently.")
 
-    An exception here is not the caller's problem to distinguish: an empty
-    proposal has `is_build` false, which routes to the tutor chat — the same
-    place a non-request goes. The handler says so; the reader is not shown a
-    stack trace.
+
+def _attempt(inputs: dict):
+    """Ask once, and once more if the ANSWER was malformed.
+
+    A format slip loses everything. One observed response had nine correct
+    sliders, four correct vectors, axes, a grid and an origin — and a single
+    `text` element whose label ran to five lines, which is not `key: value`. The
+    adapter refused the whole answer, correctly, and fourteen good elements went
+    with it.
+
+    Retrying is worth a request here because the failure is in the SHAPE, not the
+    reasoning: sampling runs at temperature 0.7 and DSPy's cache is off by
+    default, so the second attempt is a genuinely different draw rather than the
+    same answer again. Exactly one retry — a model that malforms twice is not
+    going to be talked round, and the reader is already waiting.
     """
     try:
-        out = _builder()(**inputs)
-    except Exception:
+        return _builder()(**inputs)
+    except AdapterParseError as e:
+        log.warning("build_scene: malformed answer, retrying once: %s",
+                    str(e).splitlines()[0][:160])
+        return _builder()(**inputs)
+
+
+def propose_scene(**inputs) -> SceneProposal:
+    """Ask the model for a scene. Returns a proposal carrying `error` if it fails.
+
+    A FAILURE and a NON-REQUEST are different answers and must not collapse into
+    one. Both leave `is_build` false, so the distinction lives in `error`: the
+    handler refuses on it (and says so) rather than routing to the tutor chat as
+    though the reader had merely asked a question.
+    """
+    try:
+        out = _attempt(inputs)
+    except Exception as e:
         log.exception("build_scene: the model call failed")
-        return SceneProposal()
+        return SceneProposal(error=f"{CALL_FAILED} ({type(e).__name__})")
 
     return SceneProposal(
         is_build=bool(out.is_build),
@@ -99,6 +145,8 @@ def propose_scene(**inputs) -> SceneProposal:
         title=_clean(out.title),
         description=_clean(out.description),
         steps=[s for s in (out.steps or []) if isinstance(s, ProposedStep)][:MAX_STEPS],
+        sliders=[s for s in (getattr(out, "sliders", None) or [])
+                 if isinstance(s, ProposedSlider)][:MAX_SLIDERS],
         elements=[e for e in (out.elements or [])
                   if isinstance(e, ProposedElement)][:MAX_ELEMENTS],
     )

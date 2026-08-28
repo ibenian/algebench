@@ -94,7 +94,7 @@ A single-file Python HTTP server built on `http.server.BaseHTTPRequestHandler`. 
 
 ### Agent Memory
 
-`_agent_memory: dict` — persists across turns within a server session. The AI agent stores computed arrays, matrices, and intermediate values here via `eval_math(store_as=...)` or `mem_set(...)`. Referenced as `$key` in `add_scene` fields or as variables in subsequent `eval_math` calls.
+`_agent_memory: dict` — persists across turns within a server session. The AI agent stores computed arrays, matrices, and intermediate values here via `eval_math(store_as=...)` or `mem_set(...)`. Referenced as variables in subsequent `eval_math` calls. The `build_scene` expert is told which keys EXIST and their shape (`memory: [{key, shape}]`), never their values.
 
 ### Key Config
 
@@ -116,7 +116,7 @@ Defines all Gemini tool declarations and the dynamic system prompt builder.
 |---|---|
 | `navigate_to` | Change scene/step number |
 | `set_camera` | Move camera to preset view or custom position |
-| `add_scene` | Build and append a new 3D scene |
+| `build_scene` | Describe a scene to add or rebuild; the `build_scene` expert authors it and the client applies the returned `BuildOp` |
 | `set_sliders` | Animate sliders to target values |
 | `eval_math` | Evaluate Python math expressions; supports sweeps and `store_as` |
 | `mem_get` | Read a value from agent memory |
@@ -379,7 +379,7 @@ When the server returns tool calls, `chat.js` executes them client-side:
 |---|---|
 | `navigate_to` | Calls `window.navigateTo(scene, step)` |
 | `set_camera` | Calls `window.setCamera(...)` |
-| `add_scene` | Calls `window.addScene(sceneJson)` |
+| `build_scene` | Calls the `build_scene` expert, then `applyBuildOps` + `navigateTo` (src/build-scene-tool.ts) |
 | `set_sliders` | Calls `window.setSliders(values)` |
 | `set_preset_prompts` | Renders suggestion chips |
 | `set_info_overlay` | Calls `window.addInfoOverlay(id, content, position)` |
@@ -753,7 +753,7 @@ Response {text, toolCalls} returned to browser
         │
         ▼
 chat.js dispatches tool calls to scene-loader / camera / sliders
-  ├── add_scene    → scene-loader.js builds new AlgeBench scene
+  ├── build_scene  → build-scene-tool.ts → /api/expert/build_scene → applyBuildOps
   ├── navigate_to  → scene-loader.js rebuilds scene at target step
   ├── set_sliders  → sliders.js tweens slider values
   └── set_camera   → camera.js animates camera

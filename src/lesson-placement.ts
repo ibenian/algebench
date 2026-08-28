@@ -44,8 +44,8 @@ export interface BootstrapRecord {
 /**
  * Guarantee a `LessonFormat` to build into, promoting a displayed single scene.
  *
- * Extracted from the `add_scene` branch of src/chat.ts (the lesson-wrapper
- * bootstrap). It is simultaneously the empty-app case AND the
+ * Extracted from the lesson-wrapper bootstrap in src/chat.ts, and now called by
+ * `runBuildSceneTool` there. It is simultaneously the empty-app case AND the
  * SingleSceneFormat -> LessonFormat normalization — one function, not two.
  */
 export function ensureLessonFormat(

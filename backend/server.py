@@ -535,20 +535,6 @@ def _memory_summary(key: str, value) -> str:
     return str(type(value).__name__)
 
 
-def _resolve_memory_refs(obj):
-    """Recursively replace '$key' strings with values from _agent_memory."""
-    if isinstance(obj, str) and obj.startswith('$'):
-        key = obj[1:]
-        if key in _agent_memory:
-            return _agent_memory[key]
-        return obj  # unknown key — leave as-is
-    if isinstance(obj, dict):
-        return {k: _resolve_memory_refs(v) for k, v in obj.items()}
-    if isinstance(obj, list):
-        return [_resolve_memory_refs(item) for item in obj]
-    return obj
-
-
 def kill_server_on_port(port):
     """Kill any process using the specified port."""
     try:
@@ -667,13 +653,11 @@ def generate_html(debug=False, skip_tour=False):
                 .replace('__SKIP_TOUR__', skip_tour_js)
                 .replace('__APP_VERSION__', get_app_version()))
 
-from backend.agent_tools import (
-    ALL_TOOL_DECLS, _make_tools, build_system_prompt,
-    NAVIGATE_TOOL_DECL, SET_CAMERA_TOOL_DECL, ADD_SCENE_TOOL_DECL,
-    SET_SLIDERS_TOOL_DECL, EVAL_MATH_TOOL_DECL,
-    MEM_GET_TOOL_DECL, MEM_SET_TOOL_DECL,
-    SET_PRESET_PROMPTS_TOOL_DECL, SET_INFO_OVERLAY_TOOL_DECL,
-)
+# Only what this module USES. The per-declaration names it also imported were
+# referenced nowhere — so retiring one broke the import rather than the code
+# that read it, and the failure surfaced at collection time in unrelated tests.
+# `_make_tools` composes the tool list; ALL_TOOL_DECLS is its own default.
+from backend.agent_tools import _make_tools, build_system_prompt
 from gemini_live_tools import safe_eval_math, eval_math_sweep, MATH_NAMES, HAS_NUMPY
 
 
@@ -872,7 +856,6 @@ def call_gemini_chat(message, history, context):
         print(f"   💬 current: {message[:80]}")
 
     tool_calls = []
-    added_scenes_count = 0
     max_turns = 10
 
     config = types.GenerateContentConfig(
@@ -1007,62 +990,45 @@ def call_gemini_chat(message, history, context):
                         print(f"   (could not serialize args: {log_err})")
                         print(f"   args keys: {list(tc_args.keys())}")
 
-                # For add_scene: the scene properties are now top-level args (not nested under "scene")
-                if tc_name == 'add_scene':
-                    # Resolve $key memory references in element fields before building the scene
-                    tc_args = _resolve_memory_refs(tc_args)
-                    # Unwrap if agent nested the scene under a "scene" key (common hallucination)
-                    if isinstance(tc_args.get('scene'), dict) and 'title' in tc_args.get('scene', {}):
-                        print(f"   ⚠️  add_scene: agent wrapped scene under 'scene' key — unwrapping")
-                        tc_args = {**tc_args['scene']}
-                    # Build scene object from top-level args
-                    scene_obj = {k: v for k, v in tc_args.items() if k not in ('_parseError',)}
-                    # Normalize misplaced top-level sliders into the first step.
-                    # Renderer only registers sliders from step.sliders.
-                    normalized_root_sliders = False
-                    root_sliders = scene_obj.get('sliders')
-                    if isinstance(root_sliders, list) and len(root_sliders) > 0:
-                        steps = scene_obj.get('steps')
-                        if not isinstance(steps, list):
-                            steps = []
-                        if len(steps) == 0 or not isinstance(steps[0], dict):
-                            steps.insert(0, {
-                                "title": "Interactive Controls",
-                                "description": "Adjust sliders to explore the scene interactively.",
-                                "sliders": root_sliders
-                            })
-                        else:
-                            first = steps[0]
-                            existing = first.get('sliders')
-                            if not isinstance(existing, list):
-                                first['sliders'] = list(root_sliders)
-                            else:
-                                seen = {s.get('id') for s in existing if isinstance(s, dict)}
-                                for s in root_sliders:
-                                    if isinstance(s, dict) and s.get('id') not in seen:
-                                        existing.append(s)
-                        scene_obj['steps'] = steps
-                        scene_obj.pop('sliders', None)
-                        normalized_root_sliders = True
-                        print(f"   ⚠️  add_scene: normalized {len(root_sliders)} root-level sliders into step 1")
-                    tc_args['parsedScene'] = scene_obj
-                    if normalized_root_sliders:
-                        tc_args['_normalizedRootSliders'] = True
+                # Build tool result with context.
+                #
+                # `add_scene` used to add its own pending scenes to this count,
+                # because the scene existed the moment the tool returned. A
+                # `build_scene` call is only a REQUEST: the expert may ask a
+                # question or refuse, so counting it would let navigate_to approve
+                # a scene number that never comes to exist. The agent is told not
+                # to navigate after a build; the client does it.
+                scene_count = len(context.get('sceneTree', []))
+                if tc_name == 'build_scene':
+                    # Client-executed, like derive_proof_animation: the browser calls
+                    # the build_scene expert, applies the returned BuildOp and
+                    # navigates. We only acknowledge — the scene never enters chat.
+                    #
+                    # Deliberately NOT reporting success. The expert can still refuse
+                    # or ask a question, and this acknowledgement is written before it
+                    # has even been called; claiming the scene exists would have the
+                    # agent describe one the user may never see.
+                    intent = (tc_args.get('intent') or '').strip()
+                    if not intent:
+                        tc_result = {"status": "error",
+                                     "error": ("`intent` is required — say what the scene should "
+                                               "show and teach, then call build_scene again.")}
+                    elif tc_args.get('op') == 'replace' and not tc_args.get('scene'):
+                        tc_result = {"status": "error",
+                                     "error": ("A replace needs `scene` — the 1-based number of the "
+                                               "scene to rebuild.")}
+                    else:
+                        tc_result = {
+                            "status": "success",
+                            "initiated": True,
+                            "message": ("Scene building started — it will appear in the lesson and the "
+                                        "client will navigate to it. Briefly tell the user you're "
+                                        "building it; do NOT write the scene yourself and do NOT call "
+                                        "navigate_to. If the builder needs a detail it will ask them."),
+                        }
                     if DEBUG_MODE:
-                        print(f"   ✅ scene object — {len(scene_obj.get('elements', []))} elements, "
-                              f"{len(scene_obj.get('steps', []))} steps, title: {scene_obj.get('title', '?')}")
-                # Track add_scene calls so navigate_to validation accounts for newly added scenes
-                if tc_name == 'add_scene':
-                    added_scenes_count = added_scenes_count + 1
-
-                # Build tool result with context
-                scene_count = len(context.get('sceneTree', [])) + added_scenes_count
-                if tc_name == 'add_scene':
-                    new_scene_num = scene_count  # 1-based number of the newly added scene
-                    tc_result = {"status": "success", "newSceneNumber": new_scene_num,
-                                 "message": f"Scene added as scene {new_scene_num}. The client will auto-navigate to it. Do NOT call navigate_to."}
-                    if tc_args.get('_normalizedRootSliders'):
-                        tc_result["note"] = "Moved top-level sliders into step 1 (renderer expects step.sliders)."
+                        print(f"   🎬 build_scene: op={tc_args.get('op') or 'insert'} "
+                              f"scene={tc_args.get('scene')} intent={intent[:80]!r}")
                 elif tc_name == 'navigate_to':
                     # Agent sends 1-based scene numbers
                     req_scene = int(tc_args.get('scene', 0))  # 1-based
@@ -1154,13 +1120,13 @@ def call_gemini_chat(message, history, context):
                         result, error = safe_eval_math(expr, variables)
                     if error:
                         tc_result = {"status": "error", "expression": expr, "error": error,
-                                     "hint": "Fix the expression and call eval_math again, or call add_scene if you have enough data."}
+                                     "hint": "Fix the expression and call eval_math again."}
                         print(f"   ❌ eval_math: {error}")
                     elif store_as:
                         _agent_memory[store_as] = result
                         summary = _memory_summary(store_as, result)
                         tc_result = {"status": "success", "stored_as": store_as, "summary": summary,
-                                     "hint": f"Stored. Reference as variable '{store_as}' in eval_math, or as '${store_as}' in add_scene fields."}
+                                     "hint": f"Stored. Reference as variable '{store_as}' in eval_math."}
                         if DEBUG_MODE:
                             print(f"   ✅ eval_math → memory['{store_as}']: {summary}")
                     else:
@@ -1196,7 +1162,7 @@ def call_gemini_chat(message, history, context):
                         _agent_memory[key] = value
                         summary = _memory_summary(key, value)
                         tc_result = {"status": "success", "stored_as": key, "summary": summary,
-                                     "hint": f"Stored. Reference as variable '{key}' in eval_math, or as '${key}' in add_scene fields."}
+                                     "hint": f"Stored. Reference as variable '{key}' in eval_math."}
                         if DEBUG_MODE:
                             print(f"   💾 mem_set['{key}']: {summary}")
                 elif tc_name == 'set_preset_prompts':
@@ -1483,7 +1449,24 @@ def create_app(initial_scene_path=None, debug=False, skip_tour=None,
     # Starlette handles path confinement, ETag/304 and ranges for us.
     dist_dir = static_dir / "dist"
     if dist_dir.is_dir():
-        fastapp.mount("/dist", StaticFiles(directory=dist_dir), name="dist")
+        dist_files = StaticFiles(directory=dist_dir)
+        if debug:
+            # In debug, REVALIDATE. The bundle is requested as
+            # `/dist/index.js?v=<app version>`, which busts the cache on release
+            # but not on a rebuild — so with no Cache-Control the browser applies
+            # its own heuristic and keeps serving the previous bundle. The page
+            # then runs code that is not in the tree, which reads as a change
+            # that silently did nothing. `no-cache` still allows a 304 via the
+            # ETag Starlette already sends, so this costs a conditional request,
+            # not a re-download.
+            class _NoCacheStatic(StaticFiles):
+                def file_response(self, *a, **kw):
+                    resp = super().file_response(*a, **kw)
+                    resp.headers["Cache-Control"] = "no-cache"
+                    return resp
+
+            dist_files = _NoCacheStatic(directory=dist_dir)
+        fastapp.mount("/dist", dist_files, name="dist")
 
     # ---- TTS kill infrastructure ----
     _tts_kill_gen = [0]

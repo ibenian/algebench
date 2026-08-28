@@ -48,9 +48,12 @@ import logging
 import re
 from typing import Optional, Union
 
+from gemini_live_tools import safe_eval_math
+
 from backend.model.lesson import Element, Scene, Step
 
-from backend.experts.modules.build_scene.proposed import SCENE_LEVEL, SUPPORTED_TYPES, ProposedElement, ProposedStep
+from backend.experts.modules.build_scene.proposed import (
+    SCENE_LEVEL, SUPPORTED_TYPES, ProposedElement, ProposedSlider, ProposedStep)
 
 log = logging.getLogger(__name__)
 
@@ -86,7 +89,16 @@ def _coord(text: str, where: str) -> Optional[Coord]:
         return None
     parts = [p.strip() for p in text.split(",")]
     if len(parts) != 3:
-        raise ComposeError(f"{where}: expected three comma-separated coordinates, got {text!r}")
+        # TOO MANY parts has one cause in practice: the model tried to ADD TWO
+        # VECTORS in place — `2, 1, 0 + 0, 2, 0` for "the tip of r plus F".
+        # Naming the fix beats naming the count, because the count is not what
+        # it got wrong. (That example splits into FIVE, not six: `0 + 0` is a
+        # single part. Hence `> 3` rather than a guess at the arity.)
+        hint = (" — to add two vectors, add them COMPONENT BY COMPONENT and write "
+                "the three results: '2, 3, 0', not 'a, b, c + d, e, f'"
+                if len(parts) > 3 else "")
+        raise ComposeError(f"{where}: expected three comma-separated coordinates, "
+                           f"got {text!r}{hint}")
     return [_scalar(p, where) for p in parts]
 
 
@@ -165,20 +177,316 @@ def _prompt(el: ProposedElement) -> Optional[str]:
     return f"What does {subject} represent here?"
 
 
+#: Grid planes the schema allows. `xy` is its default and the corpus majority
+#: (63 of 84), so an unstated plane is not an error.
+PLANES = ("xy", "xz", "yz")
+AXES = ("x", "y", "z")
+
+
+def _which_axis(el: ProposedElement, where: str) -> str:
+    """Which axis this `axis` element is.
+
+    Falls back to the LABEL, because that is what the model reliably writes: an
+    axis is labelled `x` or `$x$` even when nothing said `axis: x`. Without this
+    every axis composed identically and all three were drawn on the same line —
+    the scene showed one axis wearing three labels, and nothing errored.
+    """
+    stated = el.axis.strip().lower()
+    if stated in AXES:
+        return stated
+    # `$x$`, `x`, `X` — strip the KaTeX and see what is left.
+    guess = el.label.strip().strip("$").strip().lower()
+    if guess in AXES:
+        return guess
+    raise ComposeError(
+        f"{where}: an axis element must say which axis it is — set `axis` to "
+        f"'x', 'y' or 'z'. Three axes that do not say are all drawn on the same "
+        f"line, which renders as one axis with three labels.")
+
+
+def _which_plane(el: ProposedElement) -> str:
+    stated = el.plane.strip().lower()
+    return stated if stated in PLANES else "xy"
+
+
+#: A math.js identifier, which is what a slider id has to be: it becomes a
+#: variable name inside every coordinate that references it.
+_IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_]*$")
+
+
+#: The two curve types, which are drawn by SAMPLING an interval rather than by
+#: naming endpoints — so they need `range`, and nothing else in the contract does.
+CURVE_TYPES = ("animated_curve", "parametric_curve")
+
+#: The corpus default for a curve. Enough that a sine wave reads as a curve
+#: rather than a polygon, cheap enough that nothing notices.
+CURVE_SAMPLES = 200
+
+
+def _interval(text: str, where: str) -> list:
+    """`"-2*pi, 2*pi"` -> `[-6.28, 6.28]`, keeping expressions as strings."""
+    parts = [p.strip() for p in (text or "").split(",")]
+    if len(parts) != 2 or not all(parts):
+        raise ComposeError(
+            f"{where}: a curve needs `range` — the interval it is drawn over, as "
+            f"two math.js values 'min, max' (e.g. -2*pi, 2*pi). Got {text!r}.")
+    out = []
+    for part in parts:
+        measured = _measure(part)
+        out.append(_tidy(measured) if measured is not None else part)
+    return out
+
+
+#: How finely a curve is sampled FOR FRAMING only — not for drawing, which the
+#: renderer does at `samples`. Enough to catch a sine wave's peaks and troughs.
+_FRAME_SAMPLES = 33
+
+
+def _curve_coords(body: dict, kind: str, at_rest: dict) -> list[Coord]:
+    """Points along the curve, so the frame contains the thing it is framing.
+
+    A curve names an INTERVAL, not endpoints, so it contributes no coordinates
+    the way every other element does — and a scene whose only content was a curve
+    came out with no `range` at all. Sampled at the sliders' resting values, the
+    same rule the rest of the framing uses.
+    """
+    span = body.get("range") or []
+    lo, hi = (_measure(span[0], at_rest), _measure(span[1], at_rest)) if len(span) == 2 else (None, None)
+    if lo is None or hi is None or hi <= lo:
+        return []
+    out: list[Coord] = []
+    for i in range(_FRAME_SAMPLES):
+        at = lo + (hi - lo) * i / (_FRAME_SAMPLES - 1)
+        if kind == "animated_curve":
+            value = _measure(body.get("expr", ""), {**at_rest, "x": at})
+            if value is None:
+                return []          # depends on something we cannot resolve
+            # `plane` decides which axis the height goes on, exactly as the
+            # renderer reads it — framing the wrong axis is as bad as none.
+            out.append([at, value, 0] if body.get("plane") != "xz" else [at, 0, value])
+        else:
+            triple = [_measure(body.get(a, ""), {**at_rest, "t": at}) for a in "xyz"]
+            if any(v is None for v in triple):
+                return []
+            out.append(list(triple))
+    return out
+
+
+def _curve(el: ProposedElement, body: dict, where: str) -> None:
+    """Fill in a curve's own fields, in the shape its renderer reads.
+
+    The two differ and it matters: `animated_curve` takes ONE expression for y
+    over x, while `parametric_curve` takes x, y and z separately over t. Handing
+    either the other's shape draws nothing at all.
+    """
+    body["range"] = _interval(el.range, where)
+    body["samples"] = CURVE_SAMPLES
+    if el.type == "animated_curve":
+        if not el.curve_expr.strip():
+            raise ComposeError(
+                f"{where}: an animated_curve needs `curve_expr` — y as a single "
+                f"math.js function of x, e.g. A*sin(k*x). One expression, not "
+                f"three: the curve is drawn by sampling x across `range`.")
+        body["expr"] = el.curve_expr.strip()
+        body["plane"] = _which_plane(el) if el.plane.strip() else "xy"
+        return
+    # parametric_curve: the point at parameter t, as x, y and z.
+    triple = _coord(el.to_expr, where)
+    if triple is None:
+        raise ComposeError(
+            f"{where}: a parametric_curve needs `to_expr` — the point at "
+            f"parameter t, as three math.js expressions, e.g. cos(t), sin(t), 0.")
+    for axis, value in zip("xyz", triple):
+        body[axis] = str(value)
+
+
+#: How many straight pieces in one step stop being a shape and start being a
+#: sampled curve. Measured against the corpus, where the busiest step holding
+#: `line`/`animated_line` has 5 — a coordinate frame, a chord and its drop lines.
+#: The observed approximation had 48.
+MAX_SEGMENTS_PER_STEP = 8
+
+
+def _refuse_sampled_curves(per_step: dict[int, list], scene_level: list) -> None:
+    """Refuse a curve that was PLOTTED rather than described.
+
+    A closed-form expression is resampled every frame, which is the only reason a
+    curve stays smooth as the reader drags a slider or zooms. A chain of straight
+    pieces is frozen at whatever resolution it was written at, is slow, and — as
+    observed — often does not render at all.
+
+    The prompt says this at length. It is enforced too because prompting alone
+    has already failed twice on this signature: the model kept inventing
+    `type: slider` after being told the type list was closed. A count is a crude
+    test, but the failure it catches is not subtle — 48 segments where the
+    busiest published step has 5.
+    """
+    for step, built in list(per_step.items()) + [(SCENE_LEVEL, scene_level)]:
+        pieces = [e for e in built if e.type in ("line", "animated_line")]
+        if len(pieces) <= MAX_SEGMENTS_PER_STEP:
+            continue
+        where = "the scene" if step == SCENE_LEVEL else f"step {step}"
+        raise ComposeError(
+            f"{where} has {len(pieces)} straight segments — that is a curve "
+            f"sampled by hand, not a shape. Write the formula instead: an "
+            f"`animated_curve` with one `curve_expr` for a y = f(x) graph, or a "
+            f"`parametric_curve` with `to_expr` for anything traced by a "
+            f"parameter. One element, resampled every frame, so it stays smooth "
+            f"when a slider moves.")
+
+
+def _references(built, slider_ids: set[str]) -> set[str]:
+    """Which sliders this composed element's expressions name."""
+    found: set[str] = set()
+    for value in built.model_dump(exclude_none=True).values():
+        for text in _strings(value):
+            found |= set(_NAMES.findall(text)) & slider_ids
+    return found
+
+
+def _strings(value):
+    """Every string anywhere in a composed element's value."""
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, (list, tuple)):
+        for item in value:
+            yield from _strings(item)
+
+
+def _pull_sliders_forward(by_step: dict[int, list], first_use: dict[str, int]) -> None:
+    """Move a slider to the step where it is first NEEDED, if that is earlier.
+
+    A step's sliders come into existence with the step. So an element added at
+    step 1 whose expression names `A`, with `A` introduced at step 2, cannot
+    evaluate — and an `animated_curve` that cannot evaluate renders NOTHING, with
+    no error anywhere. Observed exactly: a sine wave `A*sin(k*x)` drawn at step 1
+    with `A` at step 2 and `k` at step 3, on an empty pair of axes.
+
+    Moving the control earlier rather than refusing: the model's staging is a
+    reasonable teaching order ("show the wave, then let them change A"), and the
+    cost of honouring it literally is a blank scene. A slider appearing one step
+    before its narration is a far smaller loss.
+    """
+    for step, defined in list(by_step.items()):
+        for slider in list(defined):
+            needed = first_use.get(slider["id"])
+            # `>=`, not `>`: equality is the ordinary case — the slider is
+            # already where it is needed — and moving it to its own step would
+            # remove it from this list and append it straight back. Skipping is
+            # for clarity, not correctness; the two behave the same.
+            if needed is None or needed >= step:
+                continue
+            defined.remove(slider)
+            by_step.setdefault(needed, []).append(slider)
+            log.info("moved slider %r from step %d to %d, where it is first used",
+                     slider["id"], step, needed)
+        if not defined:
+            by_step.pop(step, None)
+
+
+def _sliders(proposed: list[ProposedSlider]) -> tuple[list, dict[int, list]]:
+    """Validate the controls and group them by the step that introduces them.
+
+    Returns `(all, by_step)`. The flat list is not used to build the scene — it
+    is the record of which ids exist, which is what makes a coordinate like
+    `rx, ry, 0` mean something.
+    """
+    built: list = []
+    by_step: dict[int, list] = {}
+    seen: set[str] = set()
+    for sl in proposed:
+        name = sl.id.strip()
+        if not _IDENTIFIER.match(name):
+            raise ComposeError(
+                f"slider id {sl.id!r} is not a usable variable name — it becomes "
+                f"a math.js identifier inside every coordinate that references "
+                f"it, so it must be letters, digits and underscores, and must "
+                f"not start with a digit.")
+        if name in seen:
+            raise ComposeError(
+                f"two sliders share the id {name!r}. A coordinate naming it "
+                f"cannot say which one it means.")
+        seen.add(name)
+        if sl.min >= sl.max:
+            raise ComposeError(
+                f"slider {name!r} has min {sl.min} and max {sl.max}: a slider "
+                f"with nowhere to travel is a constant, so write the number.")
+        # CLAMPED, not refused. A default outside the track is the model being
+        # careless about a number the reader can fix in one drag — refusing the
+        # whole scene over it costs far more than it saves.
+        start = min(max(sl.default, sl.min), sl.max)
+        body = {"id": name, "min": sl.min, "max": sl.max,
+                "step": sl.step_size if sl.step_size > 0 else 0.1,
+                "default": start}
+        if sl.label.strip():
+            body["label"] = sl.label.strip()
+        built.append(body)
+        by_step.setdefault(sl.step, []).append(body)
+    return built, by_step
+
+
 # ------------------------------------------------------------------ staging
 
-def _extents(coords: list[Coord]) -> Optional[list[tuple[float, float]]]:
-    """Per-axis (min, max) over every NUMERIC coordinate.
+def _measure(value, variables: Optional[dict] = None) -> Optional[float]:
+    """The number this coordinate is, or None when it does not have one yet.
 
-    Expression coordinates are skipped rather than guessed at: `Rp+h` has no
-    value until the sliders exist, and a made-up one would frame the scene
-    around a number nobody chose.
+    A plain number is itself. A STRING is measured only when it is CONSTANT:
+    `3*sin(pi/4)` is 2.12 and always will be, while `Rp+h` has no value until
+    the sliders exist. `safe_eval_math` draws exactly that line for us — it
+    resolves the constants it knows and refuses an unknown name — so the rule is
+    "evaluate it, and skip it if that fails", not a guess about which is which.
+
+    Skipping constants was the original behaviour and it framed scenes wrong:
+    an observed torque scene put tau at z = 3*sin(pi/4), every OTHER coordinate
+    was numeric and small, and the derived range came out [-1, 1] on z. The
+    vector the scene existed to show was drawn outside the frame.
+    """
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    if not isinstance(value, str) or not value.strip():
+        return None
+    # `^` is EXPONENTIATION in math.js and XOR in Python: `2^3` would evaluate
+    # to 1 rather than 8. A wrong number is worse than no number here, because
+    # it silently reframes the scene, so refuse rather than translate.
+    if "^" in value:
+        return None
+    # math.js accepts `PI` and `pi`; the Python evaluator only knows `pi`.
+    result, error = safe_eval_math(re.sub(r"\bPI\b", "pi", value), dict(variables or {}))
+    if error is not None or isinstance(result, bool):
+        return None
+    return float(result) if isinstance(result, (int, float)) else None
+
+
+#: Bare identifiers inside a math.js expression. Used only to ask "does this
+#: mention a slider", so operators and numbers are irrelevant.
+_NAMES = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+
+
+def _is_dynamic(value, slider_ids: set[str]) -> bool:
+    """True when this coordinate changes as the reader moves a slider."""
+    return isinstance(value, str) and bool(_NAMES.findall(value) and
+                                           set(_NAMES.findall(value)) & slider_ids)
+
+
+def _animated(kind: str) -> str:
+    """The moving counterpart of a static type."""
+    return kind if kind.startswith("animated_") else f"animated_{kind}"
+
+
+def _extents(coords: list[Coord],
+             variables: Optional[dict] = None) -> Optional[list[tuple[float, float]]]:
+    """Per-axis (min, max) over every coordinate that HAS a value.
+
+    Slider-dependent coordinates are skipped rather than guessed at: a made-up
+    value would frame the scene around a number nobody chose.
     """
     axes: list[list[float]] = [[], [], []]
     for c in coords:
         for i, v in enumerate(c):
-            if isinstance(v, (int, float)) and not isinstance(v, bool):
-                axes[i].append(float(v))
+            if (measured := _measure(v, variables)) is not None:
+                axes[i].append(measured)
     if not any(axes):
         return None
     return [(min(a), max(a)) if a else (0.0, 0.0) for a in axes]
@@ -213,34 +521,90 @@ def _tidy(x: float) -> Num:
 
 # ----------------------------------------------------------------- assembly
 
-def _element(el: ProposedElement, taken: set[str], with_prompts: bool) -> tuple[Element, list[Coord]]:
+def _element(el: ProposedElement, taken: set[str], with_prompts: bool,
+             slider_ids: Optional[set[str]] = None,
+             resting: Optional[dict] = None) -> tuple[Element, list[Coord]]:
     if el.type not in SUPPORTED_TYPES:
         raise ComposeError(f"unsupported element type {el.type!r}; "
                            f"expected one of {', '.join(SUPPORTED_TYPES)}")
     where = f"{el.type} {el.label or '(unlabelled)'!r}"
+    ids = slider_ids or set()
     body: dict = {"type": el.type, "id": _mint(el, taken)}
     coords: list[Coord] = []
 
     # The proposal speaks snake_case; the schema speaks its own names. Note the
     # schema's own asymmetry: the animated HEAD is `expr`, not `toExpr`.
-    for name, value in (("position", _coord(el.position, where)),
-                        ("from", _coord(el.from_pos, where)),
-                        ("to", _coord(el.to_pos, where))):
-        if value is not None:
+    #
+    # A STATIC coordinate that references a slider is PROMOTED to the animated
+    # form rather than refused. The renderer resolves `to` once at load, with no
+    # sliders bound, so `to: ["a_x", "a_y", "a_z"]` on a plain `vector` silently
+    # draws nothing — observed: nine sliders, a full legend, and an empty
+    # viewport. Every slider-driven vector in the corpus is an `animated_vector`
+    # carrying `expr`. Which of the two shapes to use is a representation detail
+    # the model should not have to know, and it is mechanical to decide here.
+    static = {"position": _coord(el.position, where),
+              "from": _coord(el.from_pos, where),
+              "to": _coord(el.to_pos, where)}
+    #: `from`/`to` -> the schema's animated names. `position` animates as `expr`,
+    #: the same key a moving head uses.
+    ANIMATED_NAME = {"position": "expr", "from": "fromExpr", "to": "expr"}
+
+    # Decided for the ELEMENT, not per coordinate: a line with ONE moving end is
+    # still a moving line, and it has to be built the moving way throughout.
+    moves = any(_is_dynamic(v, ids)
+                for value in static.values() if value for v in value)
+    if moves and not el.type.startswith("animated_"):
+        moving = _animated(el.type)
+        if moving not in SUPPORTED_TYPES:
+            raise ComposeError(
+                f"{where}: its coordinates depend on a slider, but there is no "
+                f"{moving} type — a {el.type} cannot move. Give it fixed "
+                f"coordinates, or use a type that can.")
+        body["type"] = moving
+    kind = body["type"]
+
+    for name, value in static.items():
+        if value is None:
+            continue
+        if moves and kind == "animated_line":
+            # An `animated_line` is driven by `points` — expression TRIPLES, not
+            # `fromExpr`/`expr`. `renderAnimatedLine` reads `el.points` and
+            # returns null without it, so promoting a line the way a vector is
+            # promoted produced an element that drew nothing and said nothing.
+            # BOTH ends go in, moving or not, or the line has only one.
+            body.setdefault("points", []).append([str(v) for v in value])
+        elif moves and any(_is_dynamic(v, ids) for v in value):
+            # Per COORDINATE, not per element: a vector with a fixed tail and a
+            # moving head is ordinary — 3 of the 4 animated vectors in the
+            # corpus's own interactive step are exactly that — and forcing the
+            # tail into `fromExpr` would rewrite a literal as an expression for
+            # no reason.
+            body[ANIMATED_NAME[name]] = [str(v) for v in value]
+        else:
             body[name] = value
-            coords.append(value)
+        # Either way it counts towards the frame: `_extents` measures it at the
+        # sliders' resting values, so an interactive scene is in shot on arrival.
+        coords.append(value)
+
     # Expression geometry never joins `coords`: it has no value until the
     # sliders exist, and a made-up one frames the scene around a number nobody
     # chose. See `_extents`.
-    for name, raw in (("fromExpr", el.from_expr), ("expr", el.to_expr)):
-        if (value := _coord(raw, where)) is not None:
-            body[name] = [str(v) for v in value]
+    # A `parametric_curve` reads `to_expr` as its x/y/z (see `_curve`), so the
+    # generic mapping would ALSO leave an `expr` triple behind — a key its
+    # renderer does not read and the schema does not want on that type.
+    if el.type != "parametric_curve":
+        for name, raw in (("fromExpr", el.from_expr), ("expr", el.to_expr)):
+            if (value := _coord(raw, where)) is not None:
+                body[name] = [str(v) for v in value]
 
     # An animated element has to carry SOMETHING time-varying, but not all of
     # them carry it the same way: all 97 `animated_line` in the corpus are driven
     # by `points` and NONE use `expr`, so requiring `to_expr` refused every
     # legitimate one. Measured, not assumed — the earlier version was assumed.
-    if el.type.startswith("animated_") and not (el.to_expr.strip() or el.points.strip()):
+    # A CURVE is exempt: it is animated by sampling `range`, and `_curve` checks
+    # its own fields. Requiring `to_expr` here refused every legitimate one.
+    if (el.type.startswith("animated_") and el.type not in CURVE_TYPES
+            and not (el.to_expr.strip() or el.points.strip())):
         raise ComposeError(
             f"{where}: an {el.type} needs `to_expr` (three math.js expressions in "
             f"terms of a slider) or `points`. Without either nothing moves, and it "
@@ -248,6 +612,15 @@ def _element(el: ProposedElement, taken: set[str], with_prompts: bool) -> tuple[
     if (line := _polyline(el.points, where)) is not None:
         body["points"] = line
         coords += line
+
+    if el.type in CURVE_TYPES:
+        _curve(el, body, where)
+        coords += _curve_coords(body, el.type, resting or {})
+
+    if el.type == "axis":
+        body["axis"] = _which_axis(el, where)
+    elif el.type == "grid":
+        body["plane"] = _which_plane(el)
 
     if el.label.strip():
         body["label"] = el.label.strip()
@@ -263,6 +636,7 @@ def compose(
     description: str,
     elements: list[ProposedElement],
     steps: list[ProposedStep],
+    sliders: Optional[list[ProposedSlider]] = None,
     *,
     with_prompts: bool = True,
 ) -> Scene:
@@ -270,15 +644,33 @@ def compose(
     if not (title or "").strip():
         raise ComposeError("a scene needs a title; the schema requires one")
 
+    built_sliders, per_step_sliders = _sliders(sliders or [])
+    # A slider-driven coordinate has no value in general, but it HAS one right
+    # now: the value the reader sees before touching anything. Framing against
+    # the defaults is what puts an interactive scene in shot on arrival, instead
+    # of falling back to a range derived from the two static points in it.
+    at_rest = {s.id: s.default for s in (sliders or []) if s.id}
+
     taken: set[str] = set()
     scene_level: list[Element] = []
     per_step: dict[int, list[Element]] = {}
     all_coords: list[Coord] = []
 
+    #: slider id -> the earliest step whose content references it.
+    first_use: dict[str, int] = {}
+
     for el in elements:
-        built, coords = _element(el, taken, with_prompts)
+        built, coords = _element(el, taken, with_prompts, set(at_rest), at_rest)
         all_coords += coords
+        for name in _references(built, set(at_rest)):
+            # A scene-level element is on screen before ANY step runs, so its
+            # sliders have to exist from step 0.
+            at = 0 if el.step == SCENE_LEVEL else el.step
+            first_use[name] = min(first_use.get(name, at), at)
         (scene_level if el.step == SCENE_LEVEL else per_step.setdefault(el.step, [])).append(built)
+
+    _refuse_sampled_curves(per_step, scene_level)
+    _pull_sliders_forward(per_step_sliders, first_use)
 
     ordered = sorted(steps, key=lambda s: s.index)
     built_steps = [
@@ -286,9 +678,16 @@ def compose(
             "title": s.title.strip() or f"Step {i + 1}",
             **({"description": s.description.strip()} if s.description.strip() else {}),
             **({"add": per_step.pop(s.index, [])} if per_step.get(s.index) else {}),
+            **({"sliders": per_step_sliders.pop(s.index)}
+               if per_step_sliders.get(s.index) else {}),
         })
         for i, s in enumerate(ordered)
     ]
+    if per_step_sliders:
+        raise ComposeError(
+            f"slider(s) placed in step(s) {sorted(per_step_sliders)}, which the "
+            f"proposal does not define (it has {len(ordered)}). A slider in a step "
+            f"that never runs leaves every coordinate naming it unresolvable.")
     if per_step:
         raise ComposeError(
             f"element(s) placed in step(s) {sorted(per_step)}, which the proposal "
@@ -302,7 +701,41 @@ def compose(
         body["elements"] = scene_level
     if built_steps:
         body["steps"] = built_steps
-    if (extents := _extents(all_coords)) is not None:
+    if (extents := _extents(all_coords, at_rest)) is not None:
         body["range"] = _range(extents)
         body["camera"] = _camera(extents)
-    return Scene.model_validate(body)
+    scene = Scene.model_validate(body)
+    _stretch_axes(scene)
+    return scene
+
+
+def _stretch_axes(scene: Scene) -> None:
+    """Give every axis the scene's own extent along that axis.
+
+    All 192 axes in the corpus carry a `range`; none rely on a default. It cannot
+    be set in `_element` because the scene range is not known until every
+    element has been measured — so it is backfilled here, in the one place that
+    already knows both.
+    """
+    if not scene.range:
+        return
+    spans = {name: scene.range[i] for i, name in enumerate(AXES) if i < len(scene.range)}
+    for el in _every_element(scene):
+        # `Element` is `extra="allow"`: the schema declares 86 properties across
+        # 23 types, so `axis` and `range` ride through as extras rather than
+        # attributes. `getattr` with a default, not `el.range`, which raises.
+        #
+        # No "unless the author set one" check: the proposal has no `range`
+        # field, so `_element` never writes one and the branch would be
+        # unreachable. Add it back the day an element can carry its own.
+        if el.type != "axis":
+            continue
+        if span := spans.get(str(getattr(el, "axis", "") or "")):
+            setattr(el, "range", list(span))
+
+
+def _every_element(scene: Scene):
+    """Scene-level elements and everything any step adds."""
+    yield from (scene.elements or [])
+    for step in (scene.steps or []):
+        yield from (step.add or [])

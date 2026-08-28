@@ -1,5 +1,5 @@
 import { C as USER_ICON, S as TRASH_ICON, _ as NEXT_ICON, a as wireThemeToggle, b as PREV_ICON, c as AI_ICON, f as FIRST_ICON, g as LAST_ICON, h as GEAR_ICON, l as ANGLE_LOCK_ICON, m as FUNCTION_ANALYSIS_ICON, n as applyTheme, o as validateProofData, r as initialTheme, s as ProofAnimator, u as BRACES_ICON, v as PAUSE_ICON, x as SHARE_VIEW_ICON, y as PLAY_ICON } from "./theme.js";
-import { r as invokeExpert, t as DERIVE_TIMEOUT_MS } from "./expert-client.js";
+import { n as ExpertError, r as invokeExpert, t as DERIVE_TIMEOUT_MS } from "./expert-client.js";
 //#region \0rolldown/runtime.js
 var __defProp = Object.defineProperty;
 var __exportAll = (all, no_symbols) => {
@@ -21102,7 +21102,543 @@ function _buildGraphNodePayload(graph, nodeId) {
 }
 window.algebenchGetGraphPanelState = getGraphPanelState;
 //#endregion
+//#region src/lesson-placement.ts
+/** Thrown when an op cannot be applied. Callers discard and clear history. */
+var PlacementError = class extends Error {};
+/**
+* Guarantee a `LessonFormat` to build into, promoting a displayed single scene.
+*
+* Extracted from the lesson-wrapper bootstrap in src/chat.ts, and now called by
+* `runBuildSceneTool` there. It is simultaneously the empty-app case AND the
+* SingleSceneFormat -> LessonFormat normalization — one function, not two.
+*/
+function ensureLessonFormat(lesson, displayedScene) {
+	if (lesson && Array.isArray(lesson.scenes)) return {
+		lesson,
+		bootstrap: {
+			previousLesson: lesson,
+			promotedScene: null,
+			bootstrapped: false
+		}
+	};
+	const source = displayedScene || (lesson && !lesson.scenes ? lesson : null);
+	let promoted = source;
+	const rootOnly = {};
+	if (source) {
+		const { import: imports, unsafe, unsafeExplanation, ...sceneOnly } = source;
+		if (imports !== void 0) rootOnly.import = imports;
+		if (unsafe !== void 0) rootOnly.unsafe = unsafe;
+		if (unsafeExplanation !== void 0) rootOnly.unsafeExplanation = unsafeExplanation;
+		promoted = sceneOnly;
+	}
+	return {
+		lesson: {
+			title: "Lesson",
+			...rootOnly,
+			scenes: promoted ? [promoted] : []
+		},
+		bootstrap: {
+			previousLesson: null,
+			promotedScene: source || null,
+			bootstrapped: true
+		}
+	};
+}
+/**
+* Resolve the container a node of `kind` lives in.
+*
+* The container is DERIVED from the kind rather than named by the placement, so
+* a mismatched pair (a Scene addressed into a step's array, say) cannot be
+* expressed at all — see the note on `Placement`.
+*
+* `proof` is `oneOf: [proof, proof[]]` in the schema and is a bare object in
+* most published occurrences, so it is normalized to a one-element array here
+* and collapsed back by `collapseProof` on write. Without that collapse the
+* model round-trip test fails on every bare-object lesson.
+*/
+function resolveContainer(lesson, kind, at) {
+	if (kind === "scene") return lesson.scenes;
+	if (kind === "proof" && at.scene == null && at.step != null) throw new PlacementError("a step-level proof placement needs a scene");
+	if (kind === "proof" && at.scene == null) {
+		const root = lesson;
+		if (root.proof == null) root.proof = [];
+		else if (!Array.isArray(root.proof)) root.proof = [root.proof];
+		return root.proof;
+	}
+	const scene = at.scene != null ? lesson.scenes[at.scene] : void 0;
+	if (!scene) throw new PlacementError(`placement names scene ${at.scene}, which does not exist`);
+	if (kind === "step") {
+		if (!Array.isArray(scene.steps)) scene.steps = [];
+		return scene.steps;
+	}
+	if (kind === "proof") {
+		const holder = at.step != null ? (scene.steps || [])[at.step] : scene;
+		if (!holder) throw new PlacementError(`placement names step ${at.step}, which does not exist`);
+		if (holder.proof == null) holder.proof = [];
+		else if (!Array.isArray(holder.proof)) holder.proof = [holder.proof];
+		return holder.proof;
+	}
+	throw new PlacementError(`no container is defined for kind '${kind}'`);
+}
+/**
+* Collapse a one-element `proof` array back to a bare object.
+*
+* The published corpus writes `proof` as a bare object far more often than as an
+* array; preserving that is required for lossless round-tripping.
+*/
+function tidyContainer(lesson, kind, at, arrivedAsArray) {
+	if (kind === "step" && at.scene != null) {
+		const scene = lesson.scenes[at.scene];
+		if (scene && Array.isArray(scene.steps) && scene.steps.length === 0) delete scene.steps;
+		return;
+	}
+	if (kind !== "proof") return;
+	const holder = proofHolder(lesson, at);
+	if (!holder) return;
+	if (!Array.isArray(holder.proof)) return;
+	if (holder.proof.length === 0) {
+		delete holder.proof;
+		return;
+	}
+	if (holder.proof.length === 1 && !arrivedAsArray) holder.proof = holder.proof[0];
+}
+/** The object holding a `proof` for this placement, or undefined. */
+function proofHolder(lesson, at) {
+	if (at.scene == null) return lesson;
+	const scene = lesson.scenes[at.scene];
+	if (!scene) return void 0;
+	return at.step != null ? (scene.steps || [])[at.step] : scene;
+}
+/**
+* Snapshot a container field so a REFUSED op leaves no trace of itself.
+*
+* `resolveContainer` has two side effects: it creates a missing `steps` array,
+* and it normalizes a bare `proof` object into a one-element array. If the op is
+* then rejected, those changes have already landed with no inverse to undo them
+* — the lesson is quietly reshaped by an operation the caller was told did not
+* apply, which makes the all-or-nothing guarantee false even for a single op.
+*/
+function captureContainerShape(lesson, kind, at) {
+	let holder;
+	let key;
+	if (kind === "proof") {
+		holder = proofHolder(lesson, at);
+		key = "proof";
+	} else if (kind === "step") {
+		holder = at.scene != null ? lesson.scenes[at.scene] : void 0;
+		key = "steps";
+	} else return () => {};
+	if (!holder) return () => {};
+	const had = key in holder;
+	const original = holder[key];
+	return () => {
+		if (!had) delete holder[key];
+		else holder[key] = original;
+	};
+}
+/** Assert the node at `index` is still the one the op was computed against. */
+function verifyIdentity(node, at) {
+	if (at.id === void 0) return;
+	const actual = node?.id;
+	if (actual !== at.id) throw new PlacementError(`stale placement: expected id ${at.id} at index ${at.index}, found ${String(actual)}`);
+}
+function requireIndex(at) {
+	if (typeof at.index !== "number" || !Number.isInteger(at.index) || at.index < 0) throw new PlacementError(`placement needs a non-negative integer index, got ${String(at.index)}`);
+	return at.index;
+}
+/**
+* Apply build ops in order, returning the INVERSE ops.
+*
+* The inverse list is REVERSED: applying several ops shifts indices, so each
+* captured inverse is only valid in the frame it was captured. Unwinding in
+* reverse order restores that frame. Without it, a two-insert result undoes to
+* the wrong positions.
+*
+* Redo needs no special case — applying an inverse returns the forward ops,
+* reconstructed against live state.
+*/
+function applyBuildOps(lesson, ops) {
+	const inverse = [];
+	try {
+		return applyEach(lesson, ops, inverse);
+	} catch (err) {
+		for (const undo of [...inverse].reverse()) try {
+			applyEach(lesson, [undo], []);
+		} catch {}
+		throw err;
+	}
+}
+function applyEach(lesson, ops, inverse) {
+	for (const op of ops) {
+		const index = requireIndex(op.at);
+		const restoreShape = captureContainerShape(lesson, op.kind, op.at);
+		const proofWasArray = op.kind === "proof" && Array.isArray((proofHolder(lesson, op.at) || {}).proof);
+		let arr;
+		try {
+			arr = resolveContainer(lesson, op.kind, op.at);
+		} catch (err) {
+			restoreShape();
+			throw err;
+		}
+		if (op.op === "insert") {
+			if (op.at.id !== void 0) {
+				restoreShape();
+				throw new PlacementError("an insert placement must not carry an id — there is nothing yet to verify");
+			}
+			if (index > arr.length) {
+				restoreShape();
+				throw new PlacementError(`insert index ${index} is past the end (${arr.length})`);
+			}
+			arr.splice(index, 0, op.node);
+			const insertedId = op.node?.id;
+			inverse.push({
+				op: "delete",
+				kind: op.kind,
+				at: {
+					...op.at,
+					id: insertedId
+				}
+			});
+		} else if (op.op === "replace") {
+			const old = arr[index];
+			if (old === void 0) {
+				restoreShape();
+				throw new PlacementError(`replace index ${index} does not exist`);
+			}
+			try {
+				verifyIdentity(old, op.at);
+			} catch (e) {
+				restoreShape();
+				throw e;
+			}
+			const replacementId = op.node?.id;
+			inverse.push({
+				op: "replace",
+				kind: op.kind,
+				at: {
+					...op.at,
+					id: replacementId
+				},
+				node: old
+			});
+			arr[index] = op.node;
+		} else {
+			const old = arr[index];
+			if (old === void 0) {
+				restoreShape();
+				throw new PlacementError(`delete index ${index} does not exist`);
+			}
+			try {
+				verifyIdentity(old, op.at);
+			} catch (e) {
+				restoreShape();
+				throw e;
+			}
+			inverse.push({
+				op: "insert",
+				kind: op.kind,
+				at: op.at,
+				node: old
+			});
+			arr.splice(index, 1);
+		}
+		tidyContainer(lesson, op.kind, op.at, proofWasArray);
+	}
+	return inverse.reverse();
+}
+var MAX_INTENT_CHARS = 2e3;
+function scenesOf(lesson) {
+	const l = lesson;
+	if (l && Array.isArray(l.scenes)) return l.scenes.filter((s) => s && typeof s === "object");
+	return l && (l.title || l.elements) ? [l] : [];
+}
+function elementsOf(scene) {
+	const out = (scene.elements || []).filter(Boolean);
+	for (const step of scene.steps || []) for (const el of step.add || []) if (el) out.push(el);
+	return out;
+}
+function firstLine(text, limit = 200) {
+	if (typeof text !== "string" || !text.trim()) return "";
+	return text.trim().split("\n")[0].slice(0, limit);
+}
+function deriveConventions(scenes) {
+	const colors = [];
+	let latex = 0, labelled = 0, prompts = 0;
+	for (const scene of scenes) for (const el of elementsOf(scene)) {
+		const c = el.color;
+		if (typeof c === "string" && c.startsWith("#") && !colors.includes(c)) colors.push(c);
+		const label = el.label;
+		if (typeof label === "string" && label) {
+			labelled++;
+			if (label.includes("$")) latex++;
+		}
+		if (el.prompt) prompts++;
+	}
+	return {
+		colors: colors.slice(0, 12),
+		labelsAreLatex: labelled > 0 && latex * 2 > labelled,
+		elementsCarryPrompts: prompts > 0
+	};
+}
+function collectSliderIds(scenes) {
+	const ids = [];
+	for (const scene of scenes) for (const step of scene.steps || []) for (const s of step.sliders || []) if (typeof s?.id === "string" && s.id && !ids.includes(s.id)) ids.push(s.id);
+	return ids;
+}
+/** Deterministically decide what the builder sees. No I/O, no mutation. */
+function assembleBuildSceneRequest(opts) {
+	const scenes = scenesOf(opts.lesson);
+	const omitted = [];
+	let target;
+	if (opts.op === "replace") {
+		if (opts.sceneIndex == null || opts.sceneIndex < 0 || opts.sceneIndex >= scenes.length) throw new Error(`replace needs an existing scene index, got ${opts.sceneIndex}`);
+		target = opts.sceneIndex;
+	} else target = opts.sceneIndex == null ? scenes.length : Math.max(0, Math.min(opts.sceneIndex, scenes.length));
+	const intent = (opts.intent || "").trim().slice(0, MAX_INTENT_CHARS);
+	if (!intent) throw new Error("a build needs an intent; got an empty one");
+	const summarised = scenes.slice(0, 40);
+	if (scenes.length > 40) omitted.push(`${scenes.length - 40} scene summaries`);
+	const right = opts.op === "replace" ? target + 1 : target;
+	const around = [target - 1, right].filter((i) => i >= 0 && i < scenes.length);
+	const lesson = opts.lesson || {};
+	return {
+		op: opts.op,
+		sceneIndex: target,
+		intent,
+		clarifications: opts.clarifications || [],
+		lesson: {
+			title: typeof lesson.title === "string" ? lesson.title : "",
+			description: firstLine(lesson.description),
+			sceneSummaries: summarised.map((s, index) => ({
+				index,
+				title: typeof s.title === "string" ? s.title : "",
+				description: firstLine(s.description)
+			}))
+		},
+		conventions: deriveConventions(scenes),
+		neighbours: around.map((i) => scenes[i]),
+		current: opts.op === "replace" ? scenes[target] : null,
+		memory: opts.memory || [],
+		sliderVocabulary: collectSliderIds(scenes),
+		omitted,
+		messages: (opts.messages || []).slice(-12).map((m) => ({
+			role: String(m && m.role || "user"),
+			text: String(m && m.text || "")
+		}))
+	};
+}
+//#endregion
+//#region src/build-scene-tool.ts
+/**
+* Translate the agent's 1-based scene number into a 0-based index.
+*
+* The agent's whole world is 1-based — `navigate_to` takes "scene 2" and means
+* the second scene — while the wire contract and `applyBuildOps` are 0-based.
+* Converting here, once, is why nothing downstream has to remember which
+* convention it is holding. `undefined` stays `undefined`: on insert that means
+* "append", which is a different instruction from "insert at 0".
+*/
+function sceneIndexFromArgs(scene) {
+	if (scene == null || scene === "") return void 0;
+	const n = typeof scene === "number" ? scene : parseInt(String(scene), 10);
+	if (!Number.isFinite(n)) return void 0;
+	return Math.max(0, Math.trunc(n) - 1);
+}
+/** Build the request body for a `build_scene` tool call. Throws on a hopeless one. */
+function buildSceneRequestFromToolCall(args, lesson, thread = [], memory = []) {
+	const op = args.op === "replace" ? "replace" : "insert";
+	return assembleBuildSceneRequest({
+		lesson,
+		intent: typeof args.intent === "string" ? args.intent : "",
+		op,
+		sceneIndex: sceneIndexFromArgs(args.scene),
+		memory,
+		messages: thread
+	});
+}
+/** One line naming what landed, for the chat log. */
+function summarise(ops) {
+	if (!ops.length) return "Nothing to apply.";
+	const op = ops[0];
+	const title = op.op === "delete" ? "" : op.node?.title;
+	const name = typeof title === "string" && title.trim() ? `“${title.trim()}”` : "a scene";
+	return op.op === "replace" ? `Rebuilt ${name}.` : `Added ${name}.`;
+}
+/**
+* Read the handler's reply into the contract's tagged union.
+*
+* The four outcomes are mutually exclusive on the wire, so this reads them in
+* the order the handler produces them and never merges two. An unrecognized
+* reply becomes `refused` rather than `passthrough`: a reply we cannot read is
+* a bug to surface, not a question to hand back to the tutor as if the user had
+* asked something conversational.
+*/
+function interpretBuildSceneReply(reply) {
+	const r = reply || {};
+	const focusIndex = typeof r.focus === "number" && Number.isInteger(r.focus) && r.focus >= 0 ? r.focus : null;
+	const focus = focusIndex == null ? void 0 : { index: focusIndex };
+	if (r.fallback_to_chat) return { kind: "passthrough" };
+	if (typeof r.question === "string" && r.question.trim()) return {
+		kind: "question",
+		question: r.question.trim(),
+		focus
+	};
+	if (typeof r.reason === "string" && r.reason.trim()) return {
+		kind: "refused",
+		reason: r.reason.trim(),
+		focus
+	};
+	const ops = r.result && Array.isArray(r.result.ops) ? r.result.ops : null;
+	if (ops && ops.length) return {
+		kind: "result",
+		result: {
+			ops,
+			summary: summarise(ops),
+			focus: focus || null
+		}
+	};
+	return {
+		kind: "refused",
+		reason: "The scene builder returned nothing usable.",
+		focus
+	};
+}
+//#endregion
+//#region src/build-progress.ts
+/** Ids are minted here so `at.id` can verify the slot is still ours. */
+var seq = 0;
+/**
+* A scene that says "this is being built", and where.
+*
+* Deliberately EMPTY rather than a guess at what is coming: a placeholder that
+* draws axes and a vector reads as a finished scene that came out wrong. The
+* caption carries the intent, so the slot explains itself while it waits.
+*/
+function placeholderScene(intent) {
+	seq += 1;
+	const asked = (intent || "").trim().replace(/\s+/g, " ");
+	return {
+		id: `building-${seq}`,
+		title: "Building…",
+		description: asked ? `Building: ${asked}` : "Building a new scene…",
+		elements: []
+	};
+}
+/**
+* Where the placeholder is NOW, or -1 if it is gone.
+*
+* Not the index it was reserved at. A build takes tens of seconds and the lesson
+* can move under it — another build landing, the user deleting a scene. Both
+* finishing moves address the slot by IDENTITY and only then by position, so a
+* shifted lesson relocates the slot instead of operating on its old neighbour.
+*/
+function slotIndex(scenes, placeholder) {
+	const id = placeholder.id;
+	return scenes.findIndex((s) => s?.id === id);
+}
+/** The op that puts a placeholder at `index`. */
+function reserveOp(index, placeholder) {
+	return {
+		op: "insert",
+		kind: "scene",
+		at: { index },
+		node: placeholder
+	};
+}
+/**
+* Turn the expert's op into one that lands ON the reserved slot.
+*
+* The expert does not know a placeholder exists — it answers the request it was
+* sent, which for an insert is "insert at N". Applying that verbatim after
+* reserving N would leave TWO scenes: the real one and the placeholder pushed
+* down beside it. So an insert becomes a replace of the slot we made.
+*
+* `at.id` carries the placeholder's id, so if anything moved the lesson while
+* the build was in flight the replace is REFUSED rather than overwriting a
+* scene the user meant to keep.
+*/
+function landOnSlot(op, placeholder, index) {
+	const id = placeholder.id;
+	if (index < 0 || op.op === "delete") return op;
+	return {
+		op: "replace",
+		kind: op.kind,
+		at: {
+			index,
+			id
+		},
+		node: op.node
+	};
+}
+/**
+* The op that takes the placeholder away again when nothing was built.
+*
+* `null` when the slot is already gone — there is nothing to remove, and an op
+* addressing a vanished index would delete a scene that is not ours.
+*/
+function releaseOp(index, placeholder) {
+	const id = placeholder.id;
+	if (index < 0) return null;
+	return {
+		op: "delete",
+		kind: "scene",
+		at: {
+			index,
+			id
+		}
+	};
+}
+/**
+* Show the in-flight pill over the 3D viewport.
+*
+* Same markup and classes as the proof-derivation pill so the two read as one
+* idea rather than two indicators that happen to spin. Returns its own remover:
+* a caller that forgets to call it leaves a pill spinning over a finished scene,
+* so there is exactly one thing to remember and no id to look up.
+*/
+function showBuildPill(text = "Building scene…") {
+	const vp = typeof document !== "undefined" ? document.getElementById("viewport") : null;
+	if (!vp) return () => {};
+	let stack = vp.querySelector(".build-indicator-stack");
+	if (!stack) {
+		stack = document.createElement("div");
+		stack.className = "graph-enrich-indicator-stack build-indicator-stack";
+		vp.appendChild(stack);
+	}
+	const el = document.createElement("div");
+	el.className = "graph-enrich-indicator";
+	el.setAttribute("role", "status");
+	const dots = document.createElement("span");
+	dots.className = "gei-dots";
+	for (let i = 0; i < 3; i += 1) dots.appendChild(document.createElement("span"));
+	const label = document.createElement("span");
+	label.className = "gei-text";
+	label.textContent = text;
+	el.appendChild(dots);
+	el.appendChild(label);
+	stack.appendChild(el);
+	const empty = document.getElementById("empty-state");
+	const wasShown = empty ? empty.style.display : null;
+	if (empty) empty.style.display = "none";
+	let removed = false;
+	return () => {
+		if (removed) return;
+		removed = true;
+		if (empty && wasShown !== null) empty.style.display = wasShown;
+		if (el.parentNode) el.parentNode.removeChild(el);
+		if (stack && !stack.childNodes.length && stack.parentNode) stack.parentNode.removeChild(stack);
+	};
+}
+//#endregion
 //#region src/chat.ts
+/**
+* How long to wait for a scene build.
+*
+* Shorter than DERIVE_TIMEOUT_MS: a build is ONE LM call with no verify-and-retry
+* loop behind it, so the 6-minute derivation budget would leave a user staring at
+* a dead chat for minutes after the request had already failed.
+*/
+var BUILD_SCENE_TIMEOUT_MS = 9e4;
 var chatHistory = [];
 var chatAvailable$1 = false;
 var chatSending = false;
@@ -21403,6 +21939,128 @@ function initChatTtsControls() {
 		});
 	}
 }
+/**
+* Run one `build_scene` tool call: assemble, ask the expert, apply, navigate.
+*
+* Returns the assistant text that must join `chatHistory`, or '' when there is
+* nothing to record. The CALLER pushes it, after the agent's own reply — order
+* matters. A clarifying question is recovered next turn by pairing an assistant
+* turn ending in '?' with the user's next turn, so a question filed BEFORE the
+* agent's reply has that reply sitting between it and the answer, the pair is
+* never made, and the expert asks the same question forever.
+*/
+async function runBuildSceneTool(tc) {
+	const args = tc.args || {};
+	let body;
+	try {
+		body = buildSceneRequestFromToolCall(args, typeof lessonSpec !== "undefined" && lessonSpec ? lessonSpec : null, chatHistory);
+	} catch (e) {
+		const why = e instanceof Error ? e.message : String(e);
+		console.warn("build_scene: not sent —", why);
+		addChatMessage("assistant", `I couldn't build that: ${why}`);
+		return "";
+	}
+	console.log("%c🎬 build_scene:", "color: #ffaa00; font-weight: bold", body.op, "at index", body.sceneIndex, "|", body.intent.slice(0, 120));
+	const { lesson, bootstrap } = ensureLessonFormat(typeof lessonSpec !== "undefined" && lessonSpec ? lessonSpec : null, typeof currentSpec !== "undefined" && currentSpec ? currentSpec : null);
+	const target = body.sceneIndex;
+	const placeholder = body.op === "insert" ? placeholderScene(body.intent) : null;
+	if (placeholder) try {
+		applyBuildOps(lesson, [reserveOp(target, placeholder)]);
+	} catch (e) {
+		console.error("build_scene: could not reserve a slot", e);
+		addChatMessage("assistant", `I couldn't make room for that scene: ${String(e)}`);
+		return "";
+	}
+	lessonSpec = lesson;
+	if (bootstrap.bootstrapped && bootstrap.promotedScene) {
+		currentSceneIndex = 0;
+		currentStepIndex = -1;
+	}
+	showBuiltScene(lesson, target, -1);
+	const hidePill = showBuildPill(body.op === "replace" ? "Rebuilding scene…" : "Building scene…");
+	/** Undo the reservation, so a build that produced nothing leaves nothing. */
+	const release = () => {
+		if (!placeholder) return;
+		const at = releaseOp(slotIndex(lesson.scenes, placeholder), placeholder);
+		if (!at) return;
+		try {
+			applyBuildOps(lesson, [at]);
+			showBuiltScene(lesson, Math.max(0, (at.at.index ?? 1) - 1), -1);
+		} catch (e) {
+			console.error("build_scene: could not release the reserved slot", e);
+		}
+	};
+	let reply;
+	try {
+		reply = await invokeExpert("build_scene", body, { timeoutMs: BUILD_SCENE_TIMEOUT_MS });
+	} catch (e) {
+		hidePill();
+		release();
+		const msg = e instanceof ExpertError ? e.message : "The scene builder could not be reached.";
+		console.error("build_scene: request failed", e);
+		addChatMessage("assistant", msg);
+		return "";
+	}
+	hidePill();
+	const outcome = interpretBuildSceneReply(reply);
+	if (outcome.kind === "passthrough") {
+		console.log("build_scene: not a build → chat");
+		release();
+		const said = "That reads more like a question than a scene to build — tell me what should be visible and I'll build it.";
+		addChatMessage("assistant", said);
+		return said;
+	}
+	if (outcome.kind === "question") {
+		console.log("build_scene: asking —", outcome.question);
+		release();
+		addChatMessage("assistant", outcome.question);
+		return outcome.question;
+	}
+	if (outcome.kind === "refused") {
+		console.warn("build_scene: refused —", outcome.reason);
+		release();
+		const said = `I couldn't build that: ${outcome.reason}`;
+		addChatMessage("assistant", said);
+		return said;
+	}
+	const { ops, summary } = outcome.result;
+	const at = placeholder ? slotIndex(lesson.scenes, placeholder) : -1;
+	const landed = placeholder ? ops.map((op) => landOnSlot(op, placeholder, at)) : ops;
+	try {
+		applyBuildOps(lesson, landed);
+	} catch (e) {
+		const why = e instanceof PlacementError ? e.message : String(e);
+		console.error("build_scene: could not apply", e);
+		release();
+		addChatMessage("assistant", `The scene was built but wouldn't fit the lesson: ${why}`);
+		return "";
+	}
+	showBuiltScene(lesson, landed[0].at.index ?? target);
+	console.log("%c🎬 build_scene complete", "color: #44ff44; font-weight: bold", summary);
+	addChatMessage("assistant", summary);
+	return summary;
+}
+/**
+* Rebuild the scene tree and put the user on scene `index`.
+*
+* `step` defaults to "whichever step carries the sliders", because a scene whose
+* interactive part IS the point renders inert at its root view. Pass an explicit
+* step for the placeholder, which has none.
+*/
+function showBuiltScene(lesson, index, step) {
+	const scene = lesson.scenes[index];
+	const first = scene && Array.isArray(scene.steps) ? scene.steps[0] : void 0;
+	const targetStep = step !== void 0 ? step : first && Array.isArray(first.sliders) && first.sliders.length ? 0 : -1;
+	try {
+		if (typeof buildSceneTree === "function") buildSceneTree(lessonSpec);
+		if (typeof updateDockVisibility === "function") updateDockVisibility();
+		if (index === currentSceneIndex) currentSceneIndex = -1;
+		if (typeof navigateTo === "function") navigateTo(index, targetStep);
+		if (typeof window.algebenchEnsureSceneVisible === "function") window.algebenchEnsureSceneVisible();
+	} catch (e) {
+		console.error("build_scene: navigation/render failed:", e);
+	}
+}
 async function sendChatMessage$1(text, { silent = false } = {}) {
 	chatSending = true;
 	if (!silent) addChatMessage("user", text);
@@ -21439,10 +22097,6 @@ async function sendChatMessage$1(text, { silent = false } = {}) {
 			console.log("%cRequest rawArgs:", "color: #aaa; font-weight: bold", tc.rawArgs || tc.args);
 			console.log("%cRequest exec args:", "color: #aaa; font-weight: bold", tc.args);
 			console.log("%cResult:", "color: #aaa; font-weight: bold", tc.result);
-			if (tc.name === "add_scene") {
-				console.log("%cparsedScene:", "color: #ffcc00; font-weight: bold", tc.args.parsedScene || "❌ NOT SET");
-				if (tc.args.scene) console.log("%craw scene:", "color: #888", typeof tc.args.scene === "string" ? tc.args.scene.substring(0, 500) : tc.args.scene);
-			}
 			console.groupEnd();
 		}
 		if (data.debug) {
@@ -21472,6 +22126,7 @@ async function sendChatMessage$1(text, { silent = false } = {}) {
 		}
 		let assistantMsg = null;
 		if (data.response) assistantMsg = addChatMessage("assistant", data.response);
+		const builderTurns = [];
 		if (data.toolCalls && data.toolCalls.length > 0) {
 			for (const tc of data.toolCalls) if (tc.name === "navigate_to") {
 				const agentScene = Math.round(Number(tc.args.scene) || 1);
@@ -21558,40 +22213,9 @@ async function sendChatMessage$1(text, { silent = false } = {}) {
 						animateCamera("__agent", 800);
 					}
 				}
-			} else if (tc.name === "add_scene") {
-				const newScene = tc.args.parsedScene;
-				if (!newScene) {
-					console.error("add_scene: no parsedScene in args");
-					continue;
-				}
-				console.log("%c🎬 add_scene:", "color: #ffaa00; font-weight: bold", "elements:", (newScene.elements || []).length, "title:", newScene.title);
-				tc._generatedScene = newScene;
-				if (typeof lessonSpec === "undefined" || !lessonSpec) {
-					const existingScene = typeof currentSpec !== "undefined" && currentSpec ? currentSpec : null;
-					lessonSpec = {
-						title: "Lesson",
-						scenes: existingScene ? [existingScene] : []
-					};
-					console.log("  Created lesson wrapper, existing scenes:", lessonSpec.scenes.length);
-					if (existingScene) {
-						currentSceneIndex = 0;
-						currentStepIndex = -1;
-					}
-				}
-				if (!Array.isArray(lessonSpec.scenes)) lessonSpec.scenes = [];
-				lessonSpec.scenes.push(newScene);
-				const targetIdx = lessonSpec.scenes.length - 1;
-				const targetStep = !!(Array.isArray(newScene.steps) && newScene.steps.length > 0 && Array.isArray(newScene.steps[0].sliders) && newScene.steps[0].sliders.length > 0) ? 0 : -1;
-				console.log("  Navigating to scene index:", targetIdx, "currentSceneIndex:", currentSceneIndex);
-				try {
-					if (typeof buildSceneTree === "function") buildSceneTree(lessonSpec);
-					if (typeof updateDockVisibility === "function") updateDockVisibility();
-					if (typeof navigateTo === "function") navigateTo(targetIdx, targetStep);
-					if (typeof window.algebenchEnsureSceneVisible === "function") window.algebenchEnsureSceneVisible();
-					console.log("%c🎬 add_scene complete", "color: #44ff44; font-weight: bold");
-				} catch (e) {
-					console.error("add_scene: navigation/render failed:", e);
-				}
+			} else if (tc.name === "build_scene") {
+				const said = await runBuildSceneTool(tc);
+				if (said) builderTurns.push(said);
 			} else if (tc.name === "set_sliders") {
 				const values = tc.args.values || {};
 				const promises = Object.entries(values).map(([id, target]) => typeof animateSlider === "function" ? animateSlider(id, parseFloat(String(target)), 800) : Promise.resolve(false));
@@ -21619,6 +22243,10 @@ async function sendChatMessage$1(text, { silent = false } = {}) {
 		chatHistory.push({
 			role: "assistant",
 			text: data.response
+		});
+		for (const said of builderTurns) chatHistory.push({
+			role: "assistant",
+			text: said
 		});
 		while (chatHistory.length > CHAT_HISTORY_MAX) chatHistory.shift();
 		const memToolNames = [
@@ -21818,7 +22446,7 @@ function renderToolCallChip(tc) {
 	} else if (tc.name === "set_camera") {
 		const reason = tc.args.reason || "better viewing angle";
 		friendlyText = "🎥 Camera adjusted" + (tc.args.view ? " (" + e(tc.args.view) + ")" : "") + " — " + e(reason);
-	} else if (tc.name === "add_scene") friendlyText = "🎬 New scene added — " + e(tc.args.title || tc.args.parsedScene?.title || "new visualization");
+	} else if (tc.name === "build_scene") friendlyText = "🎬 " + (tc.args.op === "replace" ? "Rebuilding scene" : "Building a scene") + " — " + e(String(tc.args.intent || "new visualization"));
 	else if (tc.name === "set_sliders") {
 		const vals = tc.args.values || {};
 		const parts = Object.entries(vals).map(([id, v]) => e(id) + "→" + e(String(v)));

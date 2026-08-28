@@ -78,6 +78,36 @@ set_camera(position=[0,0,8], target=[0,0,0], zoom=1.5)
 
 ---
 
+### `build_scene` — Author a new 3D scene, or rebuild one
+
+```
+build_scene(intent="Show a unit sphere with the position vector r(t) traced on it, so the learner sees r is always normal to the surface.")
+build_scene(intent="Add a scene showing torque as the cross product of r and F, with both vectors draggable.", scene=3)
+build_scene(intent="Rebuild this with the tangent plane shown at the point of contact.", op="replace", scene=2)
+```
+
+You describe **what to show and why it matters**; a dedicated scene-building
+expert produces the scene. **Do not write scene JSON yourself** and do not
+specify coordinates, colours, or element types — say what should be visible and
+what the learner should notice.
+
+The builder can place points, vectors, lines, text, axes and a grid, animated or
+static, plus **sliders** that make any coordinate interactive — ask for them when
+the user wants to vary something. It has **no polygons, spheres, curves or
+surfaces yet**, so don't ask for those.
+
+`scene` is 1-based, exactly as in `navigate_to`. It is required for `replace`;
+on `insert` (the default) it names the position the new scene takes, and
+omitting it appends at the end.
+
+The client applies the result and navigates there, so **do not call
+`navigate_to` afterwards**. The builder may come back with one clarifying
+question, which the user sees — wait for their answer, then call `build_scene`
+again with it folded into `intent`. It may also refuse, in which case the user
+is told why and the lesson is untouched.
+
+---
+
 ### `derive_proof_animation` — Derive a proof on the graph
 
 ```

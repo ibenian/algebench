@@ -101,8 +101,9 @@ class MemoryRef(BaseModel):
 
     ``extra="forbid"`` is load-bearing here rather than tidy: it means a ref
     carrying its ``value`` is REFUSED at the door, so computed arrays cannot
-    reach a prompt even by accident. `$key` is substituted at apply time by
-    ``_resolve_memory_refs``; the value has no business in the request at all.
+    reach a prompt even by accident. The builder is told a key EXISTS and what
+    shape it has, which is all it needs to reference one; the value itself has no
+    business in the request.
     """
 
     model_config = ConfigDict(extra="forbid")

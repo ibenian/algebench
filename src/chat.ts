@@ -15,6 +15,25 @@
 
 export {};
 
+import { invokeExpert, ExpertError } from '/expert-client.js';
+import { applyBuildOps, ensureLessonFormat, PlacementError } from '/lesson-placement.js';
+import {
+    buildSceneRequestFromToolCall, interpretBuildSceneReply,
+    type BuildSceneToolArgs,
+} from '/build-scene-tool.js';
+import {
+    landOnSlot, placeholderScene, releaseOp, reserveOp, showBuildPill, slotIndex,
+} from '/build-progress.js';
+
+/**
+ * How long to wait for a scene build.
+ *
+ * Shorter than DERIVE_TIMEOUT_MS: a build is ONE LM call with no verify-and-retry
+ * loop behind it, so the 6-minute derivation budget would leave a user staring at
+ * a dead chat for minutes after the request had already failed.
+ */
+const BUILD_SCENE_TIMEOUT_MS = 90_000;
+
 /** One turn of the chat transcript sent back to the server as history. */
 interface ChatHistoryEntry {
     role: 'user' | 'assistant';
@@ -493,6 +512,185 @@ function initChatTtsControls(): void {
 }
 
 // ----- Message Sending -----
+/**
+ * Run one `build_scene` tool call: assemble, ask the expert, apply, navigate.
+ *
+ * Returns the assistant text that must join `chatHistory`, or '' when there is
+ * nothing to record. The CALLER pushes it, after the agent's own reply — order
+ * matters. A clarifying question is recovered next turn by pairing an assistant
+ * turn ending in '?' with the user's next turn, so a question filed BEFORE the
+ * agent's reply has that reply sitting between it and the answer, the pair is
+ * never made, and the expert asks the same question forever.
+ */
+async function runBuildSceneTool(tc: AlgeBenchChatToolCall): Promise<string> {
+    const args = (tc.args || {}) as BuildSceneToolArgs;
+
+    let body;
+    try {
+        body = buildSceneRequestFromToolCall(
+            args,
+            (typeof lessonSpec !== 'undefined' && lessonSpec ? lessonSpec : null) as never,
+            chatHistory,
+        );
+    } catch (e) {
+        // An impossible ask — an empty intent, or a replace naming a scene that
+        // is not there. Local, so say so locally rather than spend a request.
+        const why = e instanceof Error ? e.message : String(e);
+        console.warn('build_scene: not sent —', why);
+        addChatMessage('assistant', `I couldn't build that: ${why}`);
+        return '';
+    }
+
+    console.log('%c🎬 build_scene:', 'color: #ffaa00; font-weight: bold',
+        body.op, 'at index', body.sceneIndex, '|', body.intent.slice(0, 120));
+
+    // Promote a displayed single scene into a lesson wrapper if there isn't one
+    // yet, so the very first build has somewhere to land.
+    const { lesson, bootstrap } = ensureLessonFormat(
+        (typeof lessonSpec !== 'undefined' && lessonSpec ? lessonSpec : null) as never,
+        (typeof currentSpec !== 'undefined' && currentSpec ? currentSpec : null) as never,
+    );
+    const target = body.sceneIndex;
+
+    // Reserve the slot BEFORE the request, and navigate to it. A build takes tens
+    // of seconds; without this the whole interval looks like nothing happening,
+    // because the only evidence is a chat bubble that arrives when it is over.
+    // A replace needs no placeholder — the user is already looking at the scene
+    // being rebuilt, and emptying it would hide what they are comparing against.
+    const placeholder = body.op === 'insert' ? placeholderScene(body.intent) : null;
+    if (placeholder) {
+        try {
+            applyBuildOps(lesson, [reserveOp(target, placeholder)]);
+        } catch (e) {
+            console.error('build_scene: could not reserve a slot', e);
+            addChatMessage('assistant', `I couldn't make room for that scene: ${String(e)}`);
+            return '';
+        }
+    }
+    lessonSpec = lesson as never;
+    // Bootstrapping made the displayed scene into scenes[0]; navigation still
+    // thinks it is showing a standalone spec, so `navigateTo` would see no scene
+    // change and refuse to move.
+    if (bootstrap.bootstrapped && bootstrap.promotedScene) {
+        currentSceneIndex = 0;
+        currentStepIndex = -1;
+    }
+    showBuiltScene(lesson, target, -1);
+    const hidePill = showBuildPill(body.op === 'replace' ? 'Rebuilding scene…' : 'Building scene…');
+
+    /** Undo the reservation, so a build that produced nothing leaves nothing. */
+    const release = (): void => {
+        if (!placeholder) return;
+        // By identity, not by the index it was reserved at: the lesson can move
+        // during a build, and deleting index `target` blind would remove whatever
+        // scene had shifted into it.
+        const at = releaseOp(slotIndex(lesson.scenes, placeholder), placeholder);
+        if (!at) return;
+        try {
+            applyBuildOps(lesson, [at]);
+            showBuiltScene(lesson, Math.max(0, (at.at.index ?? 1) - 1), -1);
+        } catch (e) {
+            console.error('build_scene: could not release the reserved slot', e);
+        }
+    };
+
+    let reply: unknown;
+    try {
+        reply = await invokeExpert('build_scene', body, { timeoutMs: BUILD_SCENE_TIMEOUT_MS });
+    } catch (e) {
+        hidePill();
+        release();
+        const msg = e instanceof ExpertError
+            ? e.message
+            : 'The scene builder could not be reached.';
+        console.error('build_scene: request failed', e);
+        addChatMessage('assistant', msg);
+        return '';
+    }
+    hidePill();
+
+    const outcome = interpretBuildSceneReply(reply);
+
+    if (outcome.kind === 'passthrough') {
+        // The expert read the intent as conversation, not a build. The agent has
+        // already told the user it was building something, so silence would leave
+        // them waiting for a scene that is never coming.
+        console.log('build_scene: not a build → chat');
+        release();
+        const said = 'That reads more like a question than a scene to build — tell me what should be '
+            + 'visible and I\'ll build it.';
+        addChatMessage('assistant', said);
+        return said;
+    }
+
+    if (outcome.kind === 'question') {
+        console.log('build_scene: asking —', outcome.question);
+        release();
+        addChatMessage('assistant', outcome.question);
+        return outcome.question;
+    }
+
+    if (outcome.kind === 'refused') {
+        console.warn('build_scene: refused —', outcome.reason);
+        release();
+        const said = `I couldn't build that: ${outcome.reason}`;
+        addChatMessage('assistant', said);
+        return said;
+    }
+
+    const { ops, summary } = outcome.result;
+    // The expert answers the request it was SENT — for an insert, "insert at N".
+    // Applying that verbatim on top of the reserved slot would leave two scenes.
+    const at = placeholder ? slotIndex(lesson.scenes, placeholder) : -1;
+    const landed = placeholder ? ops.map((op) => landOnSlot(op, placeholder, at)) : ops;
+    try {
+        applyBuildOps(lesson, landed);
+    } catch (e) {
+        // A stale or malformed op. `applyBuildOps` is all-or-nothing, so the
+        // lesson is as it was before this call — including the placeholder,
+        // which still has to come out.
+        const why = e instanceof PlacementError ? e.message : String(e);
+        console.error('build_scene: could not apply', e);
+        release();
+        addChatMessage('assistant', `The scene was built but wouldn't fit the lesson: ${why}`);
+        return '';
+    }
+
+    showBuiltScene(lesson, landed[0]!.at.index ?? target);
+    console.log('%c🎬 build_scene complete', 'color: #44ff44; font-weight: bold', summary);
+    addChatMessage('assistant', summary);
+    return summary;
+}
+
+/**
+ * Rebuild the scene tree and put the user on scene `index`.
+ *
+ * `step` defaults to "whichever step carries the sliders", because a scene whose
+ * interactive part IS the point renders inert at its root view. Pass an explicit
+ * step for the placeholder, which has none.
+ */
+function showBuiltScene(lesson: { scenes: unknown[] }, index: number, step?: number): void {
+    const scene = lesson.scenes[index] as { steps?: Array<{ sliders?: unknown[] }> } | undefined;
+    const first = scene && Array.isArray(scene.steps) ? scene.steps[0] : undefined;
+    const targetStep = step !== undefined
+        ? step
+        : (first && Array.isArray(first.sliders) && first.sliders.length ? 0 : -1);
+    try {
+        if (typeof buildSceneTree === 'function') buildSceneTree(lessonSpec!);
+        if (typeof updateDockVisibility === 'function') updateDockVisibility();
+        // `navigateTo` re-renders only on a CHANGE of position, and a build
+        // replaces the scene the user is already standing on — the placeholder.
+        // Without forgetting where we are it no-ops, and the finished scene sits
+        // in the lesson behind a viewport still captioned "Building…".
+        if (index === currentSceneIndex) currentSceneIndex = -1;
+        if (typeof navigateTo === 'function') navigateTo(index, targetStep);
+        if (typeof window.algebenchEnsureSceneVisible === 'function') window.algebenchEnsureSceneVisible();
+    } catch (e) {
+        // The scene IS in the lesson; only the view failed to follow it there.
+        console.error('build_scene: navigation/render failed:', e);
+    }
+}
+
 async function sendChatMessage(text: string, { silent = false }: { silent?: boolean } = {}): Promise<void> {
     chatSending = true;
     if (!silent) addChatMessage('user', text);
@@ -553,10 +751,6 @@ async function sendChatMessage(text: string, { silent = false }: { silent?: bool
                 console.log('%cRequest rawArgs:', 'color: #aaa; font-weight: bold', tc.rawArgs || tc.args);
                 console.log('%cRequest exec args:', 'color: #aaa; font-weight: bold', tc.args);
                 console.log('%cResult:', 'color: #aaa; font-weight: bold', tc.result);
-                if (tc.name === 'add_scene') {
-                    console.log('%cparsedScene:', 'color: #ffcc00; font-weight: bold', tc.args.parsedScene || '❌ NOT SET');
-                    if (tc.args.scene) console.log('%craw scene:', 'color: #888', typeof tc.args.scene === 'string' ? tc.args.scene.substring(0, 500) : tc.args.scene);
-                }
                 console.groupEnd();
             }
         }
@@ -594,6 +788,10 @@ async function sendChatMessage(text: string, { silent = false }: { silent?: bool
 
         let assistantMsg: ChatMessageElement | null = null;
         if (data.response) assistantMsg = addChatMessage('assistant', data.response);
+
+        // What a client-executed builder SAID, to be filed after the agent's own
+        // reply so the thread reads in the order the user saw it.
+        const builderTurns: string[] = [];
 
         // Execute tool calls client-side
         if (data.toolCalls && data.toolCalls.length > 0) {
@@ -676,57 +874,13 @@ async function sendChatMessage(text: string, { silent = false }: { silent?: bool
                             animateCamera('__agent', 800);
                         }
                     }
-                } else if (tc.name === 'add_scene') {
-                    // Scene properties are now top-level in args (parsedScene set by backend)
-                    const newScene = tc.args.parsedScene;
-                    if (!newScene) {
-                        console.error('add_scene: no parsedScene in args');
-                        continue;
-                    }
-
-                    console.log('%c🎬 add_scene:', 'color: #ffaa00; font-weight: bold',
-                        'elements:', (newScene.elements || []).length,
-                        'title:', newScene.title);
-
-                    // Stash for debug
-                    tc._generatedScene = newScene;
-
-                    // Add to lessonSpec (create lesson wrapper if needed)
-                    if (typeof lessonSpec === 'undefined' || !lessonSpec) {
-                        // Wrap the currently displayed single scene into a lesson
-                        const existingScene = (typeof currentSpec !== 'undefined' && currentSpec) ? currentSpec : null;
-                        lessonSpec = { title: "Lesson", scenes: existingScene ? [existingScene] : [] };
-                        console.log('  Created lesson wrapper, existing scenes:', lessonSpec.scenes!.length);
-                        // Sync navigation indices so navigateTo sees a scene change
-                        if (existingScene) {
-                            currentSceneIndex = 0;
-                            currentStepIndex = -1;
-                        }
-                    }
-                    if (!Array.isArray(lessonSpec.scenes)) lessonSpec.scenes = [];
-                    lessonSpec.scenes.push(newScene);
-                    const targetIdx = lessonSpec.scenes.length - 1;
-                    const firstStepHasSliders = !!(
-                        Array.isArray(newScene.steps) &&
-                        newScene.steps.length > 0 &&
-                        Array.isArray(newScene.steps[0]!.sliders) &&
-                        newScene.steps[0]!.sliders!.length > 0
-                    );
-                    const targetStep = firstStepHasSliders ? 0 : -1;
-                    console.log('  Navigating to scene index:', targetIdx, 'currentSceneIndex:', currentSceneIndex);
-
-                    // Rebuild scene tree UI and navigate to new scene
-                    try {
-                        if (typeof buildSceneTree === 'function') buildSceneTree(lessonSpec);
-                        if (typeof updateDockVisibility === 'function') updateDockVisibility();
-                        if (typeof navigateTo === 'function') navigateTo(targetIdx, targetStep);
-                        // A freshly-added scene must be visible — switch off the Math
-                        // view if the user is on it (unless split-docked).
-                        if (typeof window.algebenchEnsureSceneVisible === 'function') window.algebenchEnsureSceneVisible();
-                        console.log('%c🎬 add_scene complete', 'color: #44ff44; font-weight: bold');
-                    } catch(e) {
-                        console.error('add_scene: navigation/render failed:', e);
-                    }
+                } else if (tc.name === 'build_scene') {
+                    // Client-executed, like derive_proof_animation: the browser
+                    // calls the build_scene expert and applies the BuildOp it
+                    // returns. Anything the builder SAYS is collected and filed
+                    // after the agent's own reply — see runBuildSceneTool.
+                    const said = await runBuildSceneTool(tc);
+                    if (said) builderTurns.push(said);
                 } else if (tc.name === 'set_sliders') {
                     const values = tc.args.values || {};
                     const promises = Object.entries(values).map(([id, target]) =>
@@ -776,6 +930,7 @@ async function sendChatMessage(text: string, { silent = false }: { silent?: bool
         }
 
         chatHistory.push({ role: 'assistant', text: data.response });
+        for (const said of builderTurns) chatHistory.push({ role: 'assistant', text: said });
 
         while (chatHistory.length > CHAT_HISTORY_MAX) {
             chatHistory.shift();
@@ -1010,8 +1165,9 @@ function renderToolCallChip(tc: AlgeBenchChatToolCall): HTMLDivElement {
         const reason = tc.args.reason || 'better viewing angle';
         const viewLabel = tc.args.view ? ' (' + e(tc.args.view) + ')' : '';
         friendlyText = '🎥 Camera adjusted' + viewLabel + ' — ' + e(reason);
-    } else if (tc.name === 'add_scene') {
-        friendlyText = '🎬 New scene added — ' + e(tc.args.title || tc.args.parsedScene?.title || 'new visualization');
+    } else if (tc.name === 'build_scene') {
+        const verb = tc.args.op === 'replace' ? 'Rebuilding scene' : 'Building a scene';
+        friendlyText = '🎬 ' + verb + ' — ' + e(String(tc.args.intent || 'new visualization'));
     } else if (tc.name === 'set_sliders') {
         const vals = tc.args.values || {};
         const parts = Object.entries(vals).map(([id, v]) => e(id) + '→' + e(String(v)));

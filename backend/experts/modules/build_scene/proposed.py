@@ -45,6 +45,11 @@ from pydantic import BaseModel, ConfigDict, Field
 SUPPORTED_TYPES = (
     "point", "animated_point", "vector", "animated_vector",
     "line", "animated_line", "text", "axis", "grid",
+    # Curves. Added because their absence was not a gap the model worked around
+    # gracefully: asked for a sine wave it approximated one with FORTY-EIGHT
+    # `animated_line` segments, one per sample, and none of them rendered.
+    # `parametric_curve` is also the 4th most common element in the corpus (211).
+    "animated_curve", "parametric_curve",
 )
 
 #: `step` for an element that is present from the start.
@@ -62,21 +67,42 @@ class ProposedElement(BaseModel):
                     "from the start (axes, grid, origin)")
     type: str = Field(
         default="",
-        description=f"one of: {', '.join(SUPPORTED_TYPES)}")
+        # The "nothing else" half is not decoration. Asked for a scene "with
+        # sliders to adjust r and F", the model invented `type: slider` with
+        # `value`/`min`/`max` keys; the adapter refused the unknown key and the
+        # whole build died on a parse error. Naming what is NOT available, and
+        # what to do instead, costs one line and prevents that class of answer.
+        description=f"one of: {', '.join(SUPPORTED_TYPES)}. NOTHING ELSE — there "
+                    f"is no slider, polygon, sphere, curve or surface type yet, "
+                    f"and no element may carry any field not listed here. If the "
+                    f"ask needs one, show the idea with the types above at fixed "
+                    f"values rather than inventing a type")
     label: str = Field(
         default="",
-        description="the text shown beside it, in KaTeX: $\\vec{a}$, $\\theta$. "
+        description="the text shown beside it, in KaTeX, written BARE — "
+                    "$\\vec{a}$, $\\theta$, never in quotes, and ALWAYS ON ONE "
+                    "LINE. A label is a caption, not a panel: for several lines "
+                    "of maths use the step description. "
                     "Wrap maths in $…$ only when the lesson's conventions say "
                     "labels are LaTeX. Leave empty for axes and grids")
     color: str = Field(
         default="",
         description="a hex colour from the lesson's palette, e.g. #ff6644")
+    axis: str = Field(
+        default="",
+        description="for an `axis` element ONLY: which one — x, y or z. "
+                    "Required — three axes that do not say which they are all "
+                    "get drawn on top of each other")
+    plane: str = Field(
+        default="",
+        description="for a `grid` element ONLY: which plane it lies in — xy, "
+                    "xz or yz. Defaults to xy")
     position: str = Field(
         default="",
         description="where it sits: three comma-separated coordinates in MATH.JS, "
-                    "'1, 2, 0' or 'cos(theta), 0, r*2'. NOT LaTeX — write "
+                    "1, 2, 0 or cos(theta), 0, r*2 — bare, no quotes. NOT LaTeX — write "
                     "cos(theta), never \\cos(\\theta). WORK OUT CONSTANTS: write "
-                    "'1, 0, 0', never '(2*1 + 0*2)/(2*2 + 0*0), 0, 0'. Use an "
+                    "1, 0, 0, never (2*1 + 0*2)/(2*2 + 0*0), 0, 0. Use an "
                     "expression only when it depends on a slider. For a point or "
                     "a text label")
     # NAMING RULE: the schema's own word, snake_cased. Measured against every
@@ -95,31 +121,86 @@ class ProposedElement(BaseModel):
     # it for not being the alias — every vector losing its tail, in silence.
     from_pos: str = Field(
         default="",
-        description="where a vector or line STARTS, as math.js 'x, y, z'. "
+        description="where a vector or line STARTS, as math.js x, y, z — bare. "
                     "Work out constants — write the number, not the formula")
     to_pos: str = Field(
         default="",
-        description="where a vector or line ENDS, as math.js 'x, y, z'. "
+        description="where a vector or line ENDS, as math.js x, y, z — bare. "
                     "Work out constants — write the number, not the formula")
     from_expr: str = Field(
         default="",
         description="for an animated_* element: where it STARTS over time, as "
-                    "three math.js expressions 'x, y, z' in terms of a slider — "
-                    "e.g. 'cos(t), sin(t), 0'. Omit to start from a fixed point")
+                    "three math.js expressions x, y, z in terms of a slider — "
+                    "e.g. cos(t), sin(t), 0 — bare. Omit to start from a fixed point")
     to_expr: str = Field(
         default="",
         description="for an animated_* element: where it ENDS over time, as "
                     "three math.js expressions in terms of a slider. This is what "
                     "makes an animated_* element move; without it, it does not")
+    curve_expr: str = Field(
+        default="",
+        description="for an `animated_curve` ONLY: y as a single math.js function "
+                    "of x, e.g. A*sin(k*x). ONE expression, not three — the curve "
+                    "is drawn by sampling x across `range`. This is how you draw a "
+                    "graph: one curve element, never a chain of line segments")
+    range: str = Field(
+        default="",
+        description="for a curve ONLY: the interval it is drawn over, as two "
+                    "math.js values min, max. For an animated_curve that is the "
+                    "range of x; for a parametric_curve, of t. e.g. -2*pi, 2*pi")
     points: str = Field(
         default="",
         description="a polyline, as math.js coordinates separated by semicolons: "
-                    "'0,0,0; 1,1,0; 2,0,0'")
+                    "0,0,0; 1,1,0; 2,0,0 — bare, no quotes. For a HANDFUL of "
+                    "real corners: a triangle, an arrowhead, a path with three "
+                    "bends. NEVER for sampling a curve — write the formula in an "
+                    "animated_curve or parametric_curve instead")
     prompt: str = Field(
         default="",
         description="a question a reader might ask about this object, for the "
                     "Ask-AI button. Markdown with $…$ for any maths; leave empty "
                     "and one will be written for you")
+
+
+class ProposedSlider(BaseModel):
+    """One interactive control.
+
+    A slider is NOT an element — the schema hangs it off `step.sliders`, and the
+    corpus agrees. That mismatch is why the model kept writing `type: slider`
+    with `min`/`max` keys: the only place it had to put one was the element list,
+    where those keys do not exist, and the adapter refused the whole answer.
+
+    `id` is the variable name the coordinates use. A vector `to_pos` of
+    `rx, ry, rz` means nothing until a slider called `rx` exists, so ids are the
+    join between the two lists and must match exactly.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    step: int = Field(
+        default=0,
+        description="which step introduces this slider; the reader can only "
+                    "move it from that step onwards")
+    id: str = Field(
+        default="",
+        description="the variable name coordinates use, e.g. rx. A valid math.js "
+                    "identifier: letters, digits and underscore, not starting "
+                    "with a digit. Must not be an id listed in existing_names")
+    label: str = Field(
+        default="",
+        description="what the reader sees beside the control, in KaTeX and "
+                    "written BARE — $r_x$, never in quotes. Defaults to the id")
+    min: float = Field(default=0.0, description="lowest value, e.g. -5")
+    max: float = Field(default=1.0, description="highest value, e.g. 5")
+    step_size: float = Field(
+        default=0.1,
+        description="increment between values, e.g. 0.1. NOT called `step` — "
+                    "that names the scene step this slider belongs to")
+    default: float = Field(
+        default=0.0,
+        description="the value it starts at. Choose one that makes the scene "
+                    "read well the moment it appears, because it is what the "
+                    "reader sees before touching anything")
 
 
 class ProposedStep(BaseModel):
@@ -132,7 +213,7 @@ class ProposedStep(BaseModel):
     title: str = Field(
         default="",
         description="a short imperative caption in markdown with KaTeX, "
-                    "e.g. 'Add vector $\\vec{a}$'")
+                    "written BARE — e.g. Add vector $\\vec{a}$, never in quotes")
     description: str = Field(
         default="",
         description="one or two sentences saying what changes and why it "

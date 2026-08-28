@@ -133,6 +133,14 @@ test('the committed fixture still matches what the assembler produces', () => {
         sceneIndex: 2,
         clarifications: [{ question: 'right-handed?', answer: 'yes' }],
         memory: [{ key: 'trajectory', shape: 'array of 400 [x,y,z]' }],
+        // Carries a question/answer pair the Python side must recover from the
+        // THREAD rather than from `clarifications` — the two paths are unioned,
+        // and a fixture with an empty thread exercises only one of them.
+        messages: [
+            { role: 'user', text: 'add a cross product scene' },
+            { role: 'assistant', text: 'Should the frame be right-handed?' },
+            { role: 'user', text: 'yes, right-handed' },
+        ],
     });
     const serialised = JSON.stringify(body, null, 1) + '\n';
 

@@ -50,24 +50,56 @@ SET_CAMERA_TOOL_DECL = types.FunctionDeclaration(
     ),
 )
 
-ADD_SCENE_TOOL_DECL = types.FunctionDeclaration(
-    name="add_scene",
-    description="Add a new 3D scene to the lesson. Pass scene fields (title, elements, steps, etc.) as DIRECT top-level arguments — do NOT nest them under a 'scene' key. IMPORTANT: sliders must be placed in steps[].sliders (renderer does not use top-level scene.sliders). The scene is appended and the client auto-navigates to it — do NOT call navigate_to after add_scene. See system prompt for the full scene schema and examples.",
+BUILD_SCENE_TOOL_DECL = types.FunctionDeclaration(
+    name="build_scene",
+    description=(
+        "Author a new 3D scene, or rebuild an existing one, from a plain-English "
+        "description. Call this whenever the user asks for a visualization that does "
+        "not exist yet ('show me the tangent plane', 'add a scene about torque') or "
+        "asks to redo one ('rebuild scene 3 with a sphere').\n\n"
+        "DO NOT write scene JSON yourself — you describe WHAT to show and a dedicated "
+        "scene-building expert produces it. Say what should be visible and why it "
+        "matters pedagogically; do not specify coordinates, colours, or element types.\n\n"
+        "The client applies the result and navigates to the scene, so do NOT call "
+        "navigate_to afterwards. The expert may come back with ONE clarifying question, "
+        "which the client shows to the user — when it does, wait for their answer and "
+        "call build_scene again with it folded into `intent`."
+    ),
     parameters=types.Schema(
         type="OBJECT",
         properties={
-            "title": types.Schema(type="STRING", description="Scene title (supports LaTeX)"),
-            "description": types.Schema(type="STRING", description="Caption below viewport"),
-            "markdown": types.Schema(type="STRING", description="Explanation panel with LaTeX"),
-            "elements": types.Schema(type="ARRAY", items=types.Schema(type="OBJECT"), description="Array of element objects. Element labels support LaTeX — wrap math in $...$, e.g. \"$\\\\vec{a}_c$\" not \"\\\\vec{a}_c\". Plain text labels (no math) don't need $...$."  ),
-            "steps": types.Schema(type="ARRAY", items=types.Schema(type="OBJECT"), description="Progressive reveal steps. Put interactive controls in step.sliders (not at scene root)."),
-            "range": types.Schema(type="ARRAY", items=types.Schema(type="ARRAY", items=types.Schema(type="NUMBER")), description="Axis ranges [[xmin,xmax],[ymin,ymax],[zmin,zmax]]"),
-            "camera": types.Schema(type="OBJECT", description="Camera position and target", properties={
-                "position": types.Schema(type="ARRAY", items=types.Schema(type="NUMBER")),
-                "target": types.Schema(type="ARRAY", items=types.Schema(type="NUMBER")),
-            }),
+            "intent": types.Schema(
+                type="STRING",
+                description=(
+                    "What the scene should show and teach, in prose. Include the maths "
+                    "the user named. Good: 'Show a unit sphere with the position vector "
+                    "r(t) traced on it, so the learner sees that r is always normal to "
+                    "the surface.' Bad: 'sphere'.\n"
+                    "The builder can place points, vectors, lines, text, axes and a "
+                    "grid, animated or static, and SLIDERS that make any of their "
+                    "coordinates interactive — ask for them when the user wants to "
+                    "vary something. It has no polygons, spheres, curves or surfaces "
+                    "yet, so do not ask for those."
+                ),
+            ),
+            "op": types.Schema(
+                type="STRING",
+                description=(
+                    "'insert' (default) to add a new scene, 'replace' to rebuild an "
+                    "existing one. Use 'replace' only when the user asked to change a "
+                    "scene that already exists."
+                ),
+            ),
+            "scene": types.Schema(
+                type="INTEGER",
+                description=(
+                    "Scene number, 1-BASED, exactly as in navigate_to. For 'replace' "
+                    "this is the scene being rebuilt and is REQUIRED. For 'insert' the "
+                    "new scene takes this position; omit it to append at the end."
+                ),
+            ),
         },
-        required=["title", "elements"],
+        required=["intent"],
     ),
 )
 
@@ -368,8 +400,11 @@ CONTROL_COACH_TOOL_DECL = types.FunctionDeclaration(
 ALL_TOOL_DECLS = [
     NAVIGATE_TOOL_DECL,
     SET_CAMERA_TOOL_DECL,
-    # ADD_SCENE_TOOL_DECL intentionally NOT exposed — scene-building is disabled
-    # (unreliable output). The decl/handlers remain dormant for easy re-enable.
+    # Replaces the retired `add_scene`, which had the model emit scene JSON
+    # inline as tool arguments and was disabled for unreliable output. Here the
+    # agent only says what to build; the `build_scene` expert composes and
+    # validates the scene, and the client applies it as an undoable BuildOp.
+    BUILD_SCENE_TOOL_DECL,
     SET_SLIDERS_TOOL_DECL,
     EVAL_MATH_TOOL_DECL,
     MEM_GET_TOOL_DECL,
@@ -427,7 +462,8 @@ def build_system_prompt(context, agent_memory=None):
     parts = ["You are an AI math tutor embedded in an interactive 3D linear algebra visualization.\n"]
     instructions_text = """
 ## Instructions
-- You are a math tutor working within the lesson's existing scenes. For questions, explanations, calculations, and navigation — answer in chat. You do NOT build scenes.
+- You are a math tutor working within the lesson's scenes. For questions, explanations, calculations, and navigation — answer in chat.
+- **Building scenes**: when the user asks for a visualization the lesson does not have, or asks to rebuild one, call `build_scene` and describe what it should show. You do NOT write scene JSON — a dedicated expert authors it. Prefer an EXISTING scene when one already covers the topic: say so and offer to take them there. Never build a scene the user did not ask for.
 - Use LaTeX ($...$) for math notation — the client renders it. Always use single backslashes: `$\\theta$` not `$\\\\theta$`.
 - **Navigation — answer first, navigate only when explicitly asked**: If the user asks a question, answer it in chat. Do NOT navigate as a response to a question. Only call `navigate_to` when the user uses explicit navigation words: "next", "previous", "back", "go to step N", "show me scene X", "skip to", etc. A question like "what does this mean?" or "why does that happen?" is a request for explanation, not navigation. When in doubt, answer in text.
 - **Proposing navigation**: If you think the user would benefit from seeing a different step or scene, propose it in chat first — e.g. "Step 3 shows this geometrically — want me to take you there?" — and only navigate if they say yes or use an explicit navigation word in reply.
