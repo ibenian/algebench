@@ -797,3 +797,97 @@ def test_a_chain_of_moving_segments_is_caught_too():
         compose("T", "d", chain, [ProposedStep(index=0, title="one")],
                 [_sl(step=0, id="A", min=0.2, max=3, default=1),
                  _sl(step=0, id="k", min=0.5, max=4, default=1)])
+
+
+def test_a_slider_id_with_stray_whitespace_still_drives_its_element():
+    """`_sliders` is the one place that normalises an id. Reading the RAW id for
+    the resting values meant normalising in two places and disagreeing: a model
+    writing `id: ax ` got a slider called `ax` and a resting key of `ax `, so
+    nothing matched — the vector was never promoted and the frame collapsed to
+    the default extent. One trailing space, and the scene rendered nothing.
+    """
+    scene = compose("T", "d",
+                    [ProposedElement(type="vector", step=0, from_pos="0,0,0", to_pos="ax,0,0")],
+                    [ProposedStep(index=0, title="one")],
+                    [_sl(step=0, id="ax ", min=0, max=5, default=3)])
+    built = scene.steps[0].add[0].model_dump(by_alias=True, exclude_none=True)
+    assert built["type"] == "animated_vector"
+    assert built["expr"] == ["ax", "0", "0"]
+    assert scene.range[0][1] >= 3, "and the frame must hold it at rest"
+
+
+def test_framing_uses_the_value_the_reader_actually_sees():
+    """The resting values come from the BUILT sliders, so a default outside the
+    track is framed at its CLAMPED value — what is on screen — not at the number
+    the model wrote and the slider cannot reach."""
+    scene = compose("T", "d",
+                    [ProposedElement(type="vector", step=0, from_pos="0,0,0", to_pos="0,0,h")],
+                    [ProposedStep(index=0, title="one")],
+                    [_sl(step=0, id="h", min=0, max=4, default=99)])
+    assert scene.range[2][1] < 10, "99 is unreachable; the frame must use the clamped 4"
+    assert scene.range[2][1] >= 4
+
+
+# ---- a coordinate may contain commas of its own --------------------------
+
+def test_a_function_call_inside_a_coordinate_is_not_three_coordinates():
+    """Observed live, on a dot-product scene that was CORRECT and thrown away:
+
+        (ax/hypot(ax,ay,az) + bx/hypot(bx,by,bz)) * 0.5, (ay/…) * 0.5, (az/…) * 0.5
+
+    Splitting naively on `,` made that nine parts, refused the scene, and offered
+    advice about adding vectors component by component that had nothing to do
+    with it. `hypot(ax, ay, az)` is ONE value.
+    """
+    from backend.experts.handlers.build_scene.compose import _coord
+
+    parts = _coord("(ax/hypot(ax,ay,az) + bx/hypot(bx,by,bz)) * 0.5, "
+                   "(ay/hypot(ax,ay,az) + by/hypot(bx,by,bz)) * 0.5, "
+                   "(az/hypot(ax,ay,az) + bz/hypot(bx,by,bz)) * 0.5", "text")
+    assert len(parts) == 3
+    assert parts[0] == "(ax/hypot(ax,ay,az) + bx/hypot(bx,by,bz)) * 0.5"
+
+
+def test_nesting_and_bracket_kinds_are_all_respected():
+    from backend.experts.handlers.build_scene.compose import _split_top_level
+
+    assert _split_top_level("max(1, min(2, 3)), b, c", "w") == ["max(1, min(2, 3))", "b", "c"]
+    assert _split_top_level("v[0, 1], y, z", "w") == ["v[0, 1]", "y", "z"]
+    assert _split_top_level("1, 2, 0", "w") == ["1", "2", "0"]
+
+
+def test_the_vector_addition_mistake_is_still_caught():
+    """The fix must not swallow the error it was sitting next to: `2, 1, 0 + 0,
+    2, 0` has no brackets, so it still splits long and still gets the hint."""
+    with pytest.raises(ComposeError, match="COMPONENT BY COMPONENT"):
+        compose("T", "d",
+                [ProposedElement(type="vector", step=0, from_pos="0,0,0",
+                                 to_pos="2, 1, 0 + 0, 2, 0")],
+                [ProposedStep(index=0, title="one")])
+
+
+def test_a_curve_range_may_call_a_function_too():
+    """`range` had the same naive split: `0, max(a,b)` is two values."""
+    scene = compose("T", "d",
+                    [ProposedElement(type="animated_curve", step=0,
+                                     curve_expr="sin(x)", range="0, max(3, 6)")],
+                    [ProposedStep(index=0, title="one")])
+    assert scene.steps[0].add[0].model_dump(exclude_none=True)["range"] == [0, 6]
+
+
+def test_unbalanced_brackets_are_refused_not_papered_over():
+    """Clamping the depth at zero reads the text as if the stray bracket were not
+    there — which turns malformed math.js into a coordinate that composes cleanly
+    and then fails at render, silently. Refusing names the problem instead."""
+    from backend.experts.handlers.build_scene.compose import _split_top_level
+
+    for bad in ("a), b, c", "cos(t, sin(t), 0", "((1, 2, 3)"):
+        with pytest.raises(ComposeError, match="unbalanced brackets"):
+            _split_top_level(bad, "vector 'v'")
+
+    # The one a final depth check alone would MISS: the brackets cancel, so the
+    # count ends at zero, but a comma fell inside the phantom group and never
+    # split. Without the running check this reads as two coordinates and is
+    # refused for the wrong reason.
+    with pytest.raises(ComposeError, match="no '\\(' before it"):
+        _split_top_level("a), (b, c", "vector 'v'")

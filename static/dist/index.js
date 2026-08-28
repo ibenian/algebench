@@ -22214,8 +22214,11 @@ async function sendChatMessage$1(text, { silent = false } = {}) {
 					}
 				}
 			} else if (tc.name === "build_scene") {
-				const said = await runBuildSceneTool(tc);
-				if (said) builderTurns.push(said);
+				if (tc.result && tc.result.status === "error") console.log("build_scene: skipped —", tc.result.error || "refused by the server");
+				else {
+					const said = await runBuildSceneTool(tc);
+					if (said) builderTurns.push(said);
+				}
 			} else if (tc.name === "set_sliders") {
 				const values = tc.args.values || {};
 				const promises = Object.entries(values).map(([id, target]) => typeof animateSlider === "function" ? animateSlider(id, parseFloat(String(target)), 800) : Promise.resolve(false));

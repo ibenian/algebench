@@ -77,6 +77,48 @@ class ComposeError(ValueError):
 
 # --------------------------------------------------------------- coordinates
 
+def _split_top_level(text: str, where: str, sep: str = ",") -> list[str]:
+    """Split on `sep`, but not inside brackets.
+
+    A coordinate is three math.js expressions, and a math.js expression may
+    itself contain commas: `hypot(ax, ay, az)` is one value, not three. Splitting
+    naively turned a perfectly good coordinate —
+
+        (ax/hypot(ax,ay,az) + bx/hypot(bx,by,bz)) * 0.5, (ay/…) * 0.5, (az/…) * 0.5
+
+    — into NINE parts and refused the whole scene, with a message about adding
+    vectors component by component that had nothing to do with what went wrong.
+    Observed live on a dot-product scene: the build was correct and was thrown
+    away, taking the placeholder with it.
+    """
+    parts, depth, current = [], 0, []
+    for ch in text:
+        if ch in "([{":
+            depth += 1
+        elif ch in ")]}":
+            depth -= 1
+        # An unbalanced bracket is REFUSED, not clamped to zero and carried on
+        # with. Clamping reads the text as if the stray character were not there,
+        # which turns malformed math.js into a coordinate that composes cleanly
+        # and then fails at render — silently, with nothing drawn and nothing
+        # said. That is the whole failure class this module exists to close.
+        if depth < 0:
+            raise ComposeError(
+                f"{where}: unbalanced brackets in {text!r} — a ')' with no '(' "
+                f"before it. Coordinates are math.js; count the brackets.")
+        if ch == sep and depth == 0:
+            parts.append("".join(current).strip())
+            current = []
+        else:
+            current.append(ch)
+    if depth:
+        raise ComposeError(
+            f"{where}: unbalanced brackets in {text!r} — {depth} bracket(s) left "
+            f"open. Coordinates are math.js; count the brackets.")
+    parts.append("".join(current).strip())
+    return parts
+
+
 def _coord(text: str, where: str) -> Optional[Coord]:
     """`"1, 2, 0"` -> `[1, 2, 0]`; `""` -> None.
 
@@ -87,7 +129,7 @@ def _coord(text: str, where: str) -> Optional[Coord]:
     text = (text or "").strip()
     if not text:
         return None
-    parts = [p.strip() for p in text.split(",")]
+    parts = _split_top_level(text, where)
     if len(parts) != 3:
         # TOO MANY parts has one cause in practice: the model tried to ADD TWO
         # VECTORS in place — `2, 1, 0 + 0, 2, 0` for "the tip of r plus F".
@@ -225,7 +267,7 @@ CURVE_SAMPLES = 200
 
 def _interval(text: str, where: str) -> list:
     """`"-2*pi, 2*pi"` -> `[-6.28, 6.28]`, keeping expressions as strings."""
-    parts = [p.strip() for p in (text or "").split(",")]
+    parts = _split_top_level(text or "", where)
     if len(parts) != 2 or not all(parts):
         raise ComposeError(
             f"{where}: a curve needs `range` — the interval it is drawn over, as "
@@ -649,7 +691,15 @@ def compose(
     # now: the value the reader sees before touching anything. Framing against
     # the defaults is what puts an interactive scene in shot on arrival, instead
     # of falling back to a range derived from the two static points in it.
-    at_rest = {s.id: s.default for s in (sliders or []) if s.id}
+    #
+    # Read from the BUILT sliders, not the proposals. `_sliders` is the one place
+    # that normalises, and reading the raw ids here meant normalising in two
+    # places and disagreeing: a model that wrote `id: ax ` got a slider called
+    # `ax` and an `at_rest` key of `ax `, so `_is_dynamic` never matched, the
+    # vector was never promoted, and the frame collapsed to the default extent.
+    # One trailing space, and nothing rendered. It also picks up the CLAMPED
+    # default, which is the value the reader actually sees.
+    at_rest = {s["id"]: s["default"] for s in built_sliders}
 
     taken: set[str] = set()
     scene_level: list[Element] = []

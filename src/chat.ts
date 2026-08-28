@@ -879,8 +879,19 @@ async function sendChatMessage(text: string, { silent = false }: { silent?: bool
                     // calls the build_scene expert and applies the BuildOp it
                     // returns. Anything the builder SAYS is collected and filed
                     // after the agent's own reply — see runBuildSceneTool.
-                    const said = await runBuildSceneTool(tc);
-                    if (said) builderTurns.push(said);
+                    //
+                    // Respect the server's own refusal, the same way the derive
+                    // branch below does. A call with no `intent`, or a replace
+                    // naming no scene, comes back `status: 'error'` — the model
+                    // sees that and explains it in `data.response`, so building
+                    // anyway would fail again locally and tell the reader twice,
+                    // in two different wordings.
+                    if (tc.result && tc.result.status === 'error') {
+                        console.log('build_scene: skipped —', tc.result.error || 'refused by the server');
+                    } else {
+                        const said = await runBuildSceneTool(tc);
+                        if (said) builderTurns.push(said);
+                    }
                 } else if (tc.name === 'set_sliders') {
                     const values = tc.args.values || {};
                     const promises = Object.entries(values).map(([id, target]) =>
