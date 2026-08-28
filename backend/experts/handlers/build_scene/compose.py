@@ -48,8 +48,6 @@ import logging
 import re
 from typing import Optional, Union
 
-from gemini_live_tools import safe_eval_math
-
 from backend.model.lesson import Element, Scene, Step
 
 from backend.experts.modules.build_scene.proposed import (
@@ -288,46 +286,11 @@ def _interval(text: str, where: str) -> list:
         raise ComposeError(
             f"{where}: a curve needs `range` — the interval it is drawn over, as "
             f"two math.js values 'min, max' (e.g. -2*pi, 2*pi). Got {text!r}.")
-    out = []
-    for part in parts:
-        measured = _measure(part)
-        out.append(_tidy(measured) if measured is not None else part)
-    return out
-
-
-#: How finely a curve is sampled FOR FRAMING only — not for drawing, which the
-#: renderer does at `samples`. Enough to catch a sine wave's peaks and troughs.
-_FRAME_SAMPLES = 33
-
-
-def _curve_coords(body: dict, kind: str, at_rest: dict) -> list[Coord]:
-    """Points along the curve, so the frame contains the thing it is framing.
-
-    A curve names an INTERVAL, not endpoints, so it contributes no coordinates
-    the way every other element does — and a scene whose only content was a curve
-    came out with no `range` at all. Sampled at the sliders' resting values, the
-    same rule the rest of the framing uses.
-    """
-    span = body.get("range") or []
-    lo, hi = (_measure(span[0], at_rest), _measure(span[1], at_rest)) if len(span) == 2 else (None, None)
-    if lo is None or hi is None or hi <= lo:
-        return []
-    out: list[Coord] = []
-    for i in range(_FRAME_SAMPLES):
-        at = lo + (hi - lo) * i / (_FRAME_SAMPLES - 1)
-        if kind == "animated_curve":
-            value = _measure(body.get("expr", ""), {**at_rest, "x": at})
-            if value is None:
-                return []          # depends on something we cannot resolve
-            # `plane` decides which axis the height goes on, exactly as the
-            # renderer reads it — framing the wrong axis is as bad as none.
-            out.append([at, value, 0] if body.get("plane") != "xz" else [at, 0, value])
-        else:
-            triple = [_measure(body.get(a, ""), {**at_rest, "t": at}) for a in "xyz"]
-            if any(v is None for v in triple):
-                return []
-            out.append(list(triple))
-    return out
+    # `_scalar`, not an evaluator: a number stays a number and `2*pi` stays the
+    # string `2*pi`. The schema allows either — "Components can be numbers or
+    # math.js expression strings" — and math.js resolves it in the browser,
+    # which is the only place these are ever executed.
+    return [_scalar(part, where) for part in parts]
 
 
 def _curve(el: ProposedElement, body: dict, where: str) -> None:
@@ -485,40 +448,9 @@ def _sliders(proposed: list[ProposedSlider]) -> tuple[list, dict[int, list]]:
 
 # ------------------------------------------------------------------ staging
 
-def _measure(value, variables: Optional[dict] = None) -> Optional[float]:
-    """The number this coordinate is, or None when it does not have one yet.
-
-    A plain number is itself. A STRING is measured only when it is CONSTANT:
-    `3*sin(pi/4)` is 2.12 and always will be, while `Rp+h` has no value until
-    the sliders exist. `safe_eval_math` draws exactly that line for us — it
-    resolves the constants it knows and refuses an unknown name — so the rule is
-    "evaluate it, and skip it if that fails", not a guess about which is which.
-
-    Skipping constants was the original behaviour and it framed scenes wrong:
-    an observed torque scene put tau at z = 3*sin(pi/4), every OTHER coordinate
-    was numeric and small, and the derived range came out [-1, 1] on z. The
-    vector the scene existed to show was drawn outside the frame.
-    """
-    if isinstance(value, bool):
-        return None
-    if isinstance(value, (int, float)):
-        return float(value)
-    if not isinstance(value, str) or not value.strip():
-        return None
-    # `^` is EXPONENTIATION in math.js and XOR in Python: `2^3` would evaluate
-    # to 1 rather than 8. A wrong number is worse than no number here, because
-    # it silently reframes the scene, so refuse rather than translate.
-    if "^" in value:
-        return None
-    # math.js accepts `PI` and `pi`; the Python evaluator only knows `pi`.
-    result, error = safe_eval_math(re.sub(r"\bPI\b", "pi", value), dict(variables or {}))
-    if error is not None or isinstance(result, bool):
-        return None
-    return float(result) if isinstance(result, (int, float)) else None
-
-
 #: Bare identifiers inside a math.js expression. Used only to ask "does this
-#: mention a slider", so operators and numbers are irrelevant.
+#: mention a slider", so operators and numbers are irrelevant — this READS the
+#: text, it never evaluates it.
 _NAMES = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 
 
@@ -533,18 +465,32 @@ def _animated(kind: str) -> str:
     return kind if kind.startswith("animated_") else f"animated_{kind}"
 
 
-def _extents(coords: list[Coord],
-             variables: Optional[dict] = None) -> Optional[list[tuple[float, float]]]:
-    """Per-axis (min, max) over every coordinate that HAS a value.
+def _extents(coords: list[Coord]) -> Optional[list[tuple[float, float]]]:
+    """Per-axis (min, max) over every NUMERIC coordinate.
 
-    Slider-dependent coordinates are skipped rather than guessed at: a made-up
-    value would frame the scene around a number nobody chose.
+    Expression coordinates are skipped rather than guessed at: `Rp+h` has no
+    value until the sliders exist, and a made-up one would frame the scene
+    around a number nobody chose.
+
+    A TYPE CHECK, never an evaluation. A scene's expressions are math.js — plus
+    this project's own extensions — and they are executed in ONE place, the
+    browser, by math.js itself. An earlier revision of this function evaluated
+    them here with `safe_eval_math`, which is a PYTHON ast parser: that is one
+    language read through another language's grammar, and it works only where the
+    two happen to agree. Where they do not, the failure is silent and total —
+    `x^2` is exponentiation in math.js and XOR in Python, so a parabola composed
+    with no `range` and no `camera` at all. Ternaries, factorials and
+    element-wise operators diverge the same way.
+
+    The constant that started it (`3*sin(PI/4)`) should never have reached here:
+    the contract already says a coordinate not depending on a slider is a NUMBER.
+    Enforce that rule rather than building a second evaluator so it can be broken.
     """
     axes: list[list[float]] = [[], [], []]
     for c in coords:
         for i, v in enumerate(c):
-            if (measured := _measure(v, variables)) is not None:
-                axes[i].append(measured)
+            if isinstance(v, (int, float)) and not isinstance(v, bool):
+                axes[i].append(float(v))
     if not any(axes):
         return None
     return [(min(a), max(a)) if a else (0.0, 0.0) for a in axes]
@@ -580,8 +526,7 @@ def _tidy(x: float) -> Num:
 # ----------------------------------------------------------------- assembly
 
 def _element(el: ProposedElement, taken: set[str], with_prompts: bool,
-             slider_ids: Optional[set[str]] = None,
-             resting: Optional[dict] = None) -> tuple[Element, list[Coord]]:
+             slider_ids: Optional[set[str]] = None) -> tuple[Element, list[Coord]]:
     if el.type not in SUPPORTED_TYPES:
         raise ComposeError(f"unsupported element type {el.type!r}; "
                            f"expected one of {', '.join(SUPPORTED_TYPES)}")
@@ -650,8 +595,10 @@ def _element(el: ProposedElement, taken: set[str], with_prompts: bool,
             body[ANIMATED_NAME[name]] = [str(v) for v in value]
         else:
             body[name] = value
-        # Either way it counts towards the frame: `_extents` measures it at the
-        # sliders' resting values, so an interactive scene is in shot on arrival.
+        # Either way it is offered to the frame. `_extents` keeps only the
+        # LITERAL numbers among them — an expression has no value until math.js
+        # evaluates it in the browser, and guessing one here would frame the
+        # scene around a number nobody chose.
         coords.append(value)
 
     # Expression geometry never joins `coords`: it has no value until the
@@ -683,8 +630,11 @@ def _element(el: ProposedElement, taken: set[str], with_prompts: bool,
         coords += line
 
     if el.type in CURVE_TYPES:
+        # A curve names an INTERVAL, so it contributes no coordinates the way an
+        # element with endpoints does — and it must not be sampled here to invent
+        # some, because sampling means evaluating math.js in Python. Framing a
+        # curve-only scene belongs where math.js lives.
         _curve(el, body, where)
-        coords += _curve_coords(body, el.type, resting or {})
 
     if el.type == "axis":
         body["axis"] = _which_axis(el, where)
@@ -714,19 +664,13 @@ def compose(
         raise ComposeError("a scene needs a title; the schema requires one")
 
     built_sliders, per_step_sliders = _sliders(sliders or [])
-    # A slider-driven coordinate has no value in general, but it HAS one right
-    # now: the value the reader sees before touching anything. Framing against
-    # the defaults is what puts an interactive scene in shot on arrival, instead
-    # of falling back to a range derived from the two static points in it.
-    #
-    # Read from the BUILT sliders, not the proposals. `_sliders` is the one place
-    # that normalises, and reading the raw ids here meant normalising in two
-    # places and disagreeing: a model that wrote `id: ax ` got a slider called
-    # `ax` and an `at_rest` key of `ax `, so `_is_dynamic` never matched, the
-    # vector was never promoted, and the frame collapsed to the default extent.
-    # One trailing space, and nothing rendered. It also picks up the CLAMPED
-    # default, which is the value the reader actually sees.
-    at_rest = {s["id"]: s["default"] for s in built_sliders}
+    # The ids that exist, taken from the BUILT sliders rather than the proposals.
+    # `_sliders` is the one place that normalises, and reading the raw ids here
+    # meant normalising in two places and disagreeing: a model that wrote
+    # `id: ax ` got a slider called `ax` and a lookup key of `ax `, so
+    # `_is_dynamic` never matched and the vector was never promoted. One trailing
+    # space, and nothing animated.
+    slider_ids = {s["id"] for s in built_sliders}
 
     taken: set[str] = set()
     scene_level: list[Element] = []
@@ -737,9 +681,9 @@ def compose(
     first_use: dict[str, int] = {}
 
     for el in elements:
-        built, coords = _element(el, taken, with_prompts, set(at_rest), at_rest)
+        built, coords = _element(el, taken, with_prompts, slider_ids)
         all_coords += coords
-        for name in _references(built, set(at_rest)):
+        for name in _references(built, slider_ids):
             # A scene-level element is on screen before ANY step runs, so its
             # sliders have to exist from step 0.
             at = 0 if el.step == SCENE_LEVEL else el.step
@@ -778,7 +722,7 @@ def compose(
         body["elements"] = scene_level
     if built_steps:
         body["steps"] = built_steps
-    if (extents := _extents(all_coords, at_rest)) is not None:
+    if (extents := _extents(all_coords)) is not None:
         body["range"] = _range(extents)
         body["camera"] = _camera(extents)
     scene = Scene.model_validate(body)

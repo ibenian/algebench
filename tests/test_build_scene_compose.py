@@ -272,9 +272,6 @@ def test_our_own_vocabulary_parses():
     assert built.model_dump(exclude_none=True)["expr"] == ["ax", "0", "0"]
     assert scene.steps[0].sliders[0].id == "ax"
     assert scene.steps[0].sliders[0].label == "$a_x$"
-    # And the frame is computed at the slider's RESTING value, so the vector is
-    # in shot the moment the reader arrives.
-    assert scene.range[0][1] >= 2
 
 
 # ---- animated elements must actually animate -----------------------------
@@ -332,66 +329,9 @@ def test_an_animated_element_with_neither_is_still_refused():
 
 # ---- framing what the scene actually contains ----------------------------
 
-def test_a_constant_expression_coordinate_is_measured_not_skipped():
-    """Observed live: a torque scene put $\\tau$ at z = `3*sin(PI/4)` while every
-    other coordinate was numeric and small. Skipping the expression gave a z
-    range of [-1, 1] and the vector the scene existed to show was drawn OUTSIDE
-    the frame — no error, no warning, just a scene that looked broken.
-    """
-    from backend.experts.handlers.build_scene.compose import _measure
-
-    assert _measure("3*sin(PI/4)") == pytest.approx(2.1213, abs=1e-3)
-    assert _measure("3 + cos(pi/4)") == pytest.approx(3.7071, abs=1e-3)
-    assert _measure(2) == 2.0
 
 
-def test_a_slider_dependent_coordinate_still_has_no_value():
-    """The original rule, and it stands: `Rp+h` has no value until the sliders
-    exist, and inventing one frames the scene around a number nobody chose."""
-    from backend.experts.handlers.build_scene.compose import _measure
 
-    assert _measure("Rp+h") is None
-    assert _measure("cos(theta)") is None
-
-
-def test_a_caret_is_refused_rather_than_mis_evaluated(monkeypatch):
-    """`^` is exponentiation in math.js and XOR in Python: `2^3` would come back
-    as 1, not 8. A wrong number is worse than none — it silently reframes the
-    scene, and nothing downstream can tell.
-
-    `safe_eval_math` happens to refuse `^` today ("Disallowed operation: BitXor"),
-    so our own guard is defence in depth — which is the point: the caret rule is
-    OURS and must not depend on someone else's allowlist staying as it is. The
-    stub below is that allowlist changing.
-    """
-    from backend.experts.handlers.build_scene import compose as c
-
-    monkeypatch.setattr(c, "safe_eval_math", lambda expr, _vars: (eval(expr), None))
-    assert c._measure("2^3") is None, "a caret must never reach a Python evaluator"
-    assert c._measure("2*3") == 6.0, "and nothing else is affected"
-
-
-def test_an_evaluator_error_is_never_read_as_a_value(monkeypatch):
-    """Same reasoning for `error`: `safe_eval_math` returns `(None, error)` today,
-    so the `None` alone would carry the refusal. An evaluator that ever returned a
-    best-effort value ALONGSIDE an error would otherwise get to frame the scene."""
-    from backend.experts.handlers.build_scene import compose as c
-
-    monkeypatch.setattr(c, "safe_eval_math", lambda *_: (99.0, "Unknown name: 'Rp'"))
-    assert c._measure("Rp+h") is None
-
-
-def test_the_frame_contains_an_expression_valued_element():
-    """End to end: the composed range must hold the geometry, not just the part
-    of it that happened to be written as a literal."""
-    scene = compose(
-        "Torque", "tau = r x F",
-        [ProposedElement(type="vector", step=0, from_pos="0,0,0", to_pos="3,0,0"),
-         ProposedElement(type="vector", step=0, from_pos="0,0,0",
-                         to_pos="0, 0, 3*sin(PI/4)")],
-        [ProposedStep(index=0, title="Both")])
-    zlo, zhi = scene.range[2]
-    assert zhi >= 2.12, f"tau's tip is at z=2.12 and the frame stops at {zhi}"
 
 
 # ---- axes are three axes ------------------------------------------------
@@ -479,16 +419,6 @@ def test_a_slider_lands_on_the_step_that_introduces_it():
     assert [s.id for s in scene.steps[1].sliders] == ["ax"]
 
 
-def test_the_frame_is_computed_at_the_sliders_resting_value():
-    """A slider-driven coordinate has no value in general but HAS one right now:
-    what the reader sees before touching anything. Framing against the defaults
-    is what puts an interactive scene in shot on arrival."""
-    scene = compose("T", "d",
-                    [ProposedElement(type="vector", step=0, from_pos="0,0,0", to_pos="0,0,r")],
-                    [ProposedStep(index=0, title="one")],
-                    [_sl(step=0, id="r", min=0, max=6, default=4)])
-    assert scene.range[2][1] >= 4, "the vector at rest reaches z=4 and must be in frame"
-
 
 def test_an_id_that_is_not_a_variable_name_is_refused():
     """The id becomes a math.js identifier inside every coordinate naming it."""
@@ -575,15 +505,6 @@ def test_a_type_that_cannot_move_says_so():
                 [_sl(step=0, id="r", min=0, max=1)])
 
 
-def test_a_promoted_element_still_counts_towards_the_frame():
-    """It is the whole scene, so leaving it out frames the view around nothing."""
-    scene = compose("T", "d",
-                    [ProposedElement(type="vector", step=0, from_pos="0,0,0",
-                                     to_pos="0, 0, h")],
-                    [ProposedStep(index=0, title="one")],
-                    [_sl(step=0, id="h", min=0, max=9, default=6)])
-    assert scene.range[2][1] >= 6
-
 
 def test_a_tip_to_tail_vector_keeps_its_tail_and_head_apart():
     """The tip-to-tail `b` in a summation scene has BOTH ends slider-driven.
@@ -606,8 +527,6 @@ def test_a_tip_to_tail_vector_keeps_its_tail_and_head_apart():
     assert built["type"] == "animated_vector"
     assert built["fromExpr"] == ["a_x", "a_y", "0"]
     assert built["expr"] == ["a_x + b_x", "a_y + b_y", "0"]
-    # And the frame holds the head at rest: (2+1, 1+2) = (3, 3).
-    assert scene.range[0][1] >= 3 and scene.range[1][1] >= 3
 
 
 # ---- curves --------------------------------------------------------------
@@ -623,7 +542,8 @@ def test_a_graph_is_one_curve():
                      _sl(step=0, id="k", min=0.5, max=4, default=1)])
     built = scene.steps[0].add[0].model_dump(by_alias=True, exclude_none=True)
     assert built["expr"] == "A*sin(k*x)", "ONE expression, not a triple"
-    assert built["range"] == [-6.28, 6.28]
+    # The interval stays as WRITTEN: math.js resolves `-2*pi` in the browser.
+    assert built["range"] == ["-2*pi", "2*pi"]
     assert built["plane"] == "xy" and built["samples"] > 1
 
 
@@ -639,19 +559,6 @@ def test_a_parametric_curve_names_its_axes_separately():
     assert (built["x"], built["y"], built["z"]) == ("cos(t)", "sin(t)", "0")
     assert "expr" not in built, "the generic triple must not also be left behind"
 
-
-def test_a_curve_is_framed_by_sampling_it():
-    """A curve names an INTERVAL, not endpoints, so it contributes no coordinates
-    the way other elements do — a scene whose only content was a curve came out
-    with no `range` at all."""
-    scene = compose("Sine", "d",
-                    [ProposedElement(type="animated_curve", step=0, label="wave",
-                                     curve_expr="A*sin(x)", range="-2*pi, 2*pi")],
-                    [ProposedStep(index=0, title="one")],
-                    [_sl(step=0, id="A", min=0.2, max=3, default=2)])
-    assert scene.range is not None
-    assert scene.range[0][1] >= 6.28, "the whole x interval must be in frame"
-    assert scene.range[1][1] >= 2, "and the amplitude at rest"
 
 
 def test_a_curve_without_a_range_is_refused():
@@ -693,17 +600,6 @@ def test_a_line_with_one_moving_end_still_gets_both():
                     [_sl(step=0, id="w", min=0, max=5, default=3)])
     assert len(scene.steps[0].add[0].model_dump(exclude_none=True)["points"]) == 2
 
-
-def test_framing_follows_the_curve_s_own_plane():
-    """`plane: xz` plots the curve's height along z, not y — the renderer reads
-    it that way. Framing the wrong axis leaves the curve outside the view just as
-    surely as not framing it at all."""
-    scene = compose("T", "d",
-                    [ProposedElement(type="animated_curve", step=0, plane="xz",
-                                     curve_expr="3*sin(x)", range="0, 2*pi")],
-                    [ProposedStep(index=0, title="one")])
-    assert scene.range[2][1] >= 3, "the amplitude belongs on z for an xz curve"
-    assert scene.range[1][1] < 3, "and not on y"
 
 
 def test_a_slider_moves_to_the_step_that_first_needs_it():
@@ -813,19 +709,7 @@ def test_a_slider_id_with_stray_whitespace_still_drives_its_element():
     built = scene.steps[0].add[0].model_dump(by_alias=True, exclude_none=True)
     assert built["type"] == "animated_vector"
     assert built["expr"] == ["ax", "0", "0"]
-    assert scene.range[0][1] >= 3, "and the frame must hold it at rest"
 
-
-def test_framing_uses_the_value_the_reader_actually_sees():
-    """The resting values come from the BUILT sliders, so a default outside the
-    track is framed at its CLAMPED value — what is on screen — not at the number
-    the model wrote and the slider cannot reach."""
-    scene = compose("T", "d",
-                    [ProposedElement(type="vector", step=0, from_pos="0,0,0", to_pos="0,0,h")],
-                    [ProposedStep(index=0, title="one")],
-                    [_sl(step=0, id="h", min=0, max=4, default=99)])
-    assert scene.range[2][1] < 10, "99 is unreachable; the frame must use the clamped 4"
-    assert scene.range[2][1] >= 4
 
 
 # ---- a coordinate may contain commas of its own --------------------------
@@ -872,7 +756,7 @@ def test_a_curve_range_may_call_a_function_too():
                     [ProposedElement(type="animated_curve", step=0,
                                      curve_expr="sin(x)", range="0, max(3, 6)")],
                     [ProposedStep(index=0, title="one")])
-    assert scene.steps[0].add[0].model_dump(exclude_none=True)["range"] == [0, 6]
+    assert scene.steps[0].add[0].model_dump(exclude_none=True)["range"] == [0, "max(3, 6)"]
 
 
 def test_unbalanced_brackets_are_refused_not_papered_over():
@@ -954,3 +838,56 @@ def test_the_latex_refusal_does_not_double_the_thing_it_is_contrasting():
                 [ProposedStep(index=0, title="one")])
     assert r"'\cos(\theta)'" in str(e.value)
     assert "\\\\cos" not in str(e.value)
+
+
+# ---- compose never evaluates math.js -------------------------------------
+
+def test_compose_does_not_evaluate_expressions_at_all():
+    r"""The invariant, stated once so it cannot creep back.
+
+    A scene's expressions are math.js — plus this project's own extensions — and
+    they are executed in exactly ONE place: the browser, by math.js. An earlier
+    revision evaluated them here with `safe_eval_math`, a PYTHON ast parser. That
+    is one language read through another language's grammar, and it works only
+    where the two happen to agree; where they do not, the failure is silent and
+    total. `x^2` is exponentiation in math.js and XOR in Python, so a parabola
+    composed with NO `range` and NO `camera`. Ternaries, factorials and
+    element-wise operators diverge the same way.
+
+    Every one of these is a valid math.js coordinate and none of them may
+    contribute a number to the frame — not even the ones Python could parse.
+    """
+    # Every component an expression, so a literal cannot account for the frame.
+    # `3*sin(PI/4)` and `hypot(1,2,2)` are the ones Python COULD have evaluated —
+    # they are here precisely because "it happens to parse" is not a reason to.
+    for coord in ("x^2, x^2, x^2", "3*sin(PI/4), 3*sin(PI/4), 3*sin(PI/4)",
+                  "a ? 1 : 2, a ? 1 : 2, a ? 1 : 2",
+                  "hypot(1,2,2), hypot(1,2,2), hypot(1,2,2)", "2*pi, 2*pi, 2*pi"):
+        scene = compose("T", "d",
+                        [ProposedElement(type="point", step=0, label="p", position=coord)],
+                        [ProposedStep(index=0, title="one")])
+        assert scene.range is None, f"{coord!r} was evaluated to frame the scene"
+        assert scene.camera is None
+
+
+def test_the_module_does_not_import_a_python_evaluator():
+    """Guarding the boundary, not just the behaviour: the moment something in
+    here imports an evaluator again, the same class of bug is one call away."""
+    import pathlib
+
+    source = (pathlib.Path(__file__).resolve().parent.parent
+              / "backend" / "experts" / "handlers" / "build_scene" / "compose.py").read_text()
+    for banned in ("safe_eval_math", "eval_math_sweep", "ast.parse", "eval("):
+        assert f"import {banned}" not in source and f"{banned}(" not in source, (
+            f"compose.py evaluates math.js in Python again, via {banned}")
+
+
+def test_literal_coordinates_still_frame_the_scene():
+    """The other half: framing was never the problem, evaluating was. Numbers
+    are numbers and need no evaluator to be measured."""
+    scene = compose("T", "d",
+                    [ProposedElement(type="vector", step=0, label="v",
+                                     from_pos="0,0,0", to_pos="3, 4, 0")],
+                    [ProposedStep(index=0, title="one")])
+    assert scene.range[0] == [-0.5, 3.5]
+    assert scene.camera is not None
