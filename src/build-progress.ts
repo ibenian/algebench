@@ -13,8 +13,10 @@
 //
 // The placeholder is a REAL scene in the lesson, not a UI state, because that is
 // what makes it visible in the scene tree and navigable. Everything that puts
-// one there is therefore responsible for taking it away again — `finishOp`
-// below is the only way to do that, and it has a branch for every outcome.
+// one there is therefore responsible for taking it away again: `reserveOp` makes
+// the slot, and exactly one of `landOnSlot` (the build arrived) or `releaseOp`
+// (every other outcome) must finish it. Both address the slot by IDENTITY via
+// `slotIndex`, because the lesson can move while a build is in flight.
 // ============================================================
 
 import type { Scene } from '/types/lesson.js';

@@ -108,8 +108,9 @@ class BuildSceneSig(BuildSceneInputs):
 
     THE TYPE LIST IS CLOSED, AND SO IS THE FIELD LIST. `type` must be one of the
     types named on the `elements` field, and an element may carry ONLY the keys
-    shown in its block template. There is no polygon, sphere, parametric_curve or
-    surface type yet.
+    shown in its block template. There is no polygon, sphere, surface, plane or
+    vector-field type yet — but curves and sliders DO exist, and are covered
+    below; do not read this rule as forbidding them.
 
     THIS IS THE MOST COMMON WAY A BUILD FAILS. An invented type or key is not
     ignored — it is refused, and the WHOLE scene is lost, including the eleven

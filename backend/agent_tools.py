@@ -55,8 +55,8 @@ BUILD_SCENE_TOOL_DECL = types.FunctionDeclaration(
     description=(
         "Author a new 3D scene, or rebuild an existing one, from a plain-English "
         "description. Call this whenever the user asks for a visualization that does "
-        "not exist yet ('show me the tangent plane', 'add a scene about torque') or "
-        "asks to redo one ('rebuild scene 3 with a sphere').\n\n"
+        "not exist yet ('graph y = sin(x)', 'add a scene about torque') or asks to "
+        "redo one ('rebuild scene 3 with the unit circle shown').\n\n"
         "DO NOT write scene JSON yourself — you describe WHAT to show and a dedicated "
         "scene-building expert produces it. Say what should be visible and why it "
         "matters pedagogically; do not specify coordinates, colours, or element types.\n\n"
@@ -72,14 +72,16 @@ BUILD_SCENE_TOOL_DECL = types.FunctionDeclaration(
                 type="STRING",
                 description=(
                     "What the scene should show and teach, in prose. Include the maths "
-                    "the user named. Good: 'Show a unit sphere with the position vector "
-                    "r(t) traced on it, so the learner sees that r is always normal to "
-                    "the surface.' Bad: 'sphere'.\n"
+                    "the user named. Good: 'Show the sine wave y = A sin(kx) with the "
+                    "amplitude and frequency adjustable, so the learner sees which part "
+                    "of the formula controls which part of the shape.' Bad: 'a sine "
+                    "wave'.\n"
                     "The builder can place points, vectors, lines, text, axes and a "
-                    "grid, animated or static, and SLIDERS that make any of their "
-                    "coordinates interactive — ask for them when the user wants to "
-                    "vary something. It has no polygons, spheres, curves or surfaces "
-                    "yet, so do not ask for those."
+                    "grid, animated or static; CURVES, both y = f(x) graphs and "
+                    "parametric ones (circles, helices); and SLIDERS that make any "
+                    "coordinate interactive — ask for those when the user wants to "
+                    "vary something. It has no polygons, spheres, surfaces, planes or "
+                    "vector fields yet, so do not ask for those."
                 ),
             ),
             "op": types.Schema(

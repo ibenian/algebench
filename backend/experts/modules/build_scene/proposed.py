@@ -72,11 +72,18 @@ class ProposedElement(BaseModel):
         # `value`/`min`/`max` keys; the adapter refused the unknown key and the
         # whole build died on a parse error. Naming what is NOT available, and
         # what to do instead, costs one line and prevents that class of answer.
+        #
+        # It has to name what IS available just as carefully. An earlier revision
+        # of this line still said "no curve type" after curves were added — in
+        # the same f-string that interpolates SUPPORTED_TYPES listing them — and
+        # a contradiction sends the model back to approximating with segments,
+        # which is the failure the curve types exist to remove.
         description=f"one of: {', '.join(SUPPORTED_TYPES)}. NOTHING ELSE — there "
-                    f"is no slider, polygon, sphere, curve or surface type yet, "
-                    f"and no element may carry any field not listed here. If the "
-                    f"ask needs one, show the idea with the types above at fixed "
-                    f"values rather than inventing a type")
+                    f"is no polygon, sphere, surface, plane or vector-field type "
+                    f"yet, and no element may carry any field not listed here. A "
+                    f"SLIDER is not a type either: it goes in the `sliders` list. "
+                    f"If the ask needs a shape you cannot make, show the idea with "
+                    f"the types above rather than inventing a type")
     label: str = Field(
         default="",
         description="the text shown beside it, in KaTeX, written BARE — "
