@@ -889,5 +889,68 @@ def test_unbalanced_brackets_are_refused_not_papered_over():
     # count ends at zero, but a comma fell inside the phantom group and never
     # split. Without the running check this reads as two coordinates and is
     # refused for the wrong reason.
-    with pytest.raises(ComposeError, match="no '\\(' before it"):
+    with pytest.raises(ComposeError, match="nothing open before it"):
         _split_top_level("a), (b, c", "vector 'v'")
+
+
+def test_brackets_must_match_in_KIND_not_merely_in_count():
+    """`([)]` and `(]` balance numerically and are still malformed math.js.
+    Counting alone lets them through — and the whole reason this refuses at all
+    is to stop text that composes cleanly and then fails at render."""
+    from backend.experts.handlers.build_scene.compose import _split_top_level
+
+    for bad in ("([)], y, z", "(a], b, c", "[1, 2), 3"):
+        with pytest.raises(ComposeError, match="mismatched brackets"):
+            _split_top_level(bad, "vector 'v'")
+
+    # And every legitimate mix still splits.
+    assert _split_top_level("max(v[0], 1), y, z", "w") == ["max(v[0], 1)", "y", "z"]
+
+
+def test_a_refusal_names_the_FIELD_not_just_the_element():
+    """All three coordinate fields used to share one `where`, so a refusal read
+    `text '$\\theta$': expected three coordinates` and left the reader to work out
+    which of `position`, `from_pos` or `to_pos` it meant — by elimination, if they
+    happened to know a `text` has no endpoints. It names the field the MODEL
+    wrote, not the schema's (`from_pos`, not `from`), because that is the name in
+    the answer being corrected.
+    """
+    with pytest.raises(ComposeError, match=r"position: expected three"):
+        compose("T", "d", [ProposedElement(type="text", step=0, label="t", position="1, 2")],
+                [ProposedStep(index=0, title="one")])
+
+    with pytest.raises(ComposeError, match=r"to_pos: expected three"):
+        compose("T", "d", [ProposedElement(type="vector", step=0, label="v",
+                                           from_pos="0,0,0", to_pos="1, 2")],
+                [ProposedStep(index=0, title="one")])
+
+    with pytest.raises(ComposeError, match=r"range: a curve needs"):
+        compose("T", "d", [ProposedElement(type="animated_curve", step=0, curve_expr="sin(x)")],
+                [ProposedStep(index=0, title="one")])
+
+
+def test_a_refusal_shows_the_label_as_the_author_wrote_it():
+    r"""`!r` escapes the backslash, so a label that IS `$\theta$` was reported as
+    `$\\theta$` — doubling, in a module whose entire thesis is that
+    backslash-doubling is the silent corruption to avoid. It also makes the label
+    unrecognisable to whoever is trying to find the element it names.
+    """
+    with pytest.raises(ComposeError) as e:
+        compose("T", "d", [ProposedElement(type="text", step=0, label=r"$\theta$",
+                                           position="1, 2")],
+                [ProposedStep(index=0, title="one")])
+    assert r"$\theta$" in str(e.value)
+    assert r"$\\theta$" not in str(e.value)
+
+
+def test_the_latex_refusal_does_not_double_the_thing_it_is_contrasting():
+    r"""This message says "write cos(theta), not \cos(\theta)" — with `!r` the
+    quoted offender came out as `'\\cos(\\theta)'` while the advice beside it
+    showed single backslashes, so the contrast the message exists to draw was
+    between two things that looked different for the wrong reason."""
+    with pytest.raises(ComposeError) as e:
+        compose("T", "d", [ProposedElement(type="text", step=0, label="t",
+                                           position=r"\cos(\theta), 0, 0")],
+                [ProposedStep(index=0, title="one")])
+    assert r"'\cos(\theta)'" in str(e.value)
+    assert "\\\\cos" not in str(e.value)

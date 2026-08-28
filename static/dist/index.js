@@ -21525,6 +21525,26 @@ function placeholderScene(intent) {
 	};
 }
 /**
+* The step to arrive on: the first one that HAS something.
+*
+* Sliders first, because a scene whose interactive part is the point renders
+* inert without them; then the first step that adds any element; then the root.
+*
+* Not `steps[0]`. `_pull_sliders_forward` in compose.py deliberately puts a
+* slider on the step that first USES it, which is routinely step 1 or later — so
+* checking only step 0 landed the reader on an empty root and the scene they had
+* just asked for appeared to render nothing. That is the exact symptom this
+* feature kept producing for other reasons; it must not be reintroduced by the
+* navigation.
+*/
+function landingStep(scene) {
+	const steps = scene && Array.isArray(scene.steps) ? scene.steps : [];
+	const withSliders = steps.findIndex((s) => Array.isArray(s?.sliders) && s.sliders.length);
+	if (withSliders >= 0) return withSliders;
+	const withContent = steps.findIndex((s) => Array.isArray(s?.add) && s.add.length);
+	return withContent >= 0 ? withContent : -1;
+}
+/**
 * Where the placeholder is NOW, or -1 if it is gone.
 *
 * Not the index it was reserved at. A build takes tens of seconds and the lesson
@@ -21953,7 +21973,7 @@ async function runBuildSceneTool(tc) {
 	const args = tc.args || {};
 	let body;
 	try {
-		body = buildSceneRequestFromToolCall(args, typeof lessonSpec !== "undefined" && lessonSpec ? lessonSpec : null, chatHistory);
+		body = buildSceneRequestFromToolCall(args, typeof lessonSpec !== "undefined" && lessonSpec ? lessonSpec : null, chatHistory, memoryRefs());
 	} catch (e) {
 		const why = e instanceof Error ? e.message : String(e);
 		console.warn("build_scene: not sent —", why);
@@ -22041,6 +22061,24 @@ async function runBuildSceneTool(tc) {
 	return summary;
 }
 /**
+* Agent-memory KEYS and their shapes — never their values.
+*
+* `MemoryRef` is `extra="forbid"` on the backend precisely so a ref carrying its
+* `value` is refused at the door: a computed 400-point array must not reach a
+* prompt. The builder only needs to know a key EXISTS and roughly what is in it
+* to reference one.
+*
+* Without this the field was always `[]` in the real client flow, so the whole
+* design was inert — the expert could never mention a stored value.
+*/
+function memoryRefs() {
+	if (!memorySnapshot) return [];
+	return Object.entries(memorySnapshot).map(([key, entry]) => ({
+		key,
+		shape: entry && typeof entry.summary === "string" ? entry.summary : ""
+	}));
+}
+/**
 * Rebuild the scene tree and put the user on scene `index`.
 *
 * `step` defaults to "whichever step carries the sliders", because a scene whose
@@ -22049,8 +22087,7 @@ async function runBuildSceneTool(tc) {
 */
 function showBuiltScene(lesson, index, step) {
 	const scene = lesson.scenes[index];
-	const first = scene && Array.isArray(scene.steps) ? scene.steps[0] : void 0;
-	const targetStep = step !== void 0 ? step : first && Array.isArray(first.sliders) && first.sliders.length ? 0 : -1;
+	const targetStep = step !== void 0 ? step : landingStep(scene);
 	try {
 		if (typeof buildSceneTree === "function") buildSceneTree(lessonSpec);
 		if (typeof updateDockVisibility === "function") updateDockVisibility();

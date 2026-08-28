@@ -286,3 +286,34 @@ test('releasing a slot that moved refuses rather than deleting a real scene', ()
     assert.equal(target.scenes.length, before - 1);
     assert.equal(slotIndex(target.scenes, ph), -1, 'the placeholder, and only it, is gone');
 });
+
+// ---- where a finished build lands ----------------------------------------
+
+// The REAL function, not a copy of it. It lives in build-progress.ts rather than
+// chat.ts precisely so this import does not drag in the DOM — a test that
+// reimplements the thing it is testing passes no matter what the shipped code
+// does, which is the one failure mode none of the other tests here can catch.
+const { landingStep } = await import('/build-progress.js');
+
+test('a build lands on the step that first has sliders, not step 0', () => {
+    // `_pull_sliders_forward` in compose.py deliberately puts a slider on the
+    // step that first USES it, which is routinely step 1 or later. Checking only
+    // step 0 landed the reader on an empty root, and the scene they had just
+    // asked for appeared to render nothing — the exact symptom this feature kept
+    // producing for other reasons.
+    // Sliders on a LATER step than the first content, so the priority is what
+    // decides. With both on the same step the test passes either way — which is
+    // how the first version of it passed while checking nothing.
+    assert.equal(landingStep({ steps: [{ add: [{}] }, { sliders: [{ id: 'A' }] }, {}] }), 1);
+});
+
+test('with no sliders anywhere it lands on the first step that adds something', () => {
+    assert.equal(landingStep({ steps: [{}, {}, { add: [{ type: 'vector' }] }] }), 2);
+});
+
+test('a scene whose content is all scene-level lands on the root', () => {
+    // -1 is the root view, which is right when there is nothing in any step.
+    assert.equal(landingStep({ steps: [{}, {}] }), -1);
+    assert.equal(landingStep({}), -1);
+    assert.equal(landingStep(undefined), -1);
+});

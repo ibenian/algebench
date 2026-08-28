@@ -22,7 +22,8 @@ import {
     type BuildSceneToolArgs,
 } from '/build-scene-tool.js';
 import {
-    landOnSlot, placeholderScene, releaseOp, reserveOp, showBuildPill, slotIndex,
+    landingStep, landOnSlot, placeholderScene, releaseOp, reserveOp, showBuildPill,
+    slotIndex,
 } from '/build-progress.js';
 
 /**
@@ -531,6 +532,7 @@ async function runBuildSceneTool(tc: AlgeBenchChatToolCall): Promise<string> {
             args,
             (typeof lessonSpec !== 'undefined' && lessonSpec ? lessonSpec : null) as never,
             chatHistory,
+            memoryRefs(),
         );
     } catch (e) {
         // An impossible ask — an empty intent, or a replace naming a scene that
@@ -663,6 +665,25 @@ async function runBuildSceneTool(tc: AlgeBenchChatToolCall): Promise<string> {
 }
 
 /**
+ * Agent-memory KEYS and their shapes — never their values.
+ *
+ * `MemoryRef` is `extra="forbid"` on the backend precisely so a ref carrying its
+ * `value` is refused at the door: a computed 400-point array must not reach a
+ * prompt. The builder only needs to know a key EXISTS and roughly what is in it
+ * to reference one.
+ *
+ * Without this the field was always `[]` in the real client flow, so the whole
+ * design was inert — the expert could never mention a stored value.
+ */
+function memoryRefs(): Array<{ key: string; shape: string }> {
+    if (!memorySnapshot) return [];
+    return Object.entries(memorySnapshot).map(([key, entry]) => ({
+        key,
+        shape: (entry && typeof entry.summary === 'string') ? entry.summary : '',
+    }));
+}
+
+/**
  * Rebuild the scene tree and put the user on scene `index`.
  *
  * `step` defaults to "whichever step carries the sliders", because a scene whose
@@ -670,11 +691,9 @@ async function runBuildSceneTool(tc: AlgeBenchChatToolCall): Promise<string> {
  * step for the placeholder, which has none.
  */
 function showBuiltScene(lesson: { scenes: unknown[] }, index: number, step?: number): void {
-    const scene = lesson.scenes[index] as { steps?: Array<{ sliders?: unknown[] }> } | undefined;
-    const first = scene && Array.isArray(scene.steps) ? scene.steps[0] : undefined;
-    const targetStep = step !== undefined
-        ? step
-        : (first && Array.isArray(first.sliders) && first.sliders.length ? 0 : -1);
+    const scene = lesson.scenes[index] as
+        { steps?: Array<{ sliders?: unknown[]; add?: unknown[] }> } | undefined;
+    const targetStep = step !== undefined ? step : landingStep(scene);
     try {
         if (typeof buildSceneTree === 'function') buildSceneTree(lessonSpec!);
         if (typeof updateDockVisibility === 'function') updateDockVisibility();

@@ -44,6 +44,28 @@ export function placeholderScene(intent: string): Scene {
     } as unknown as Scene;
 }
 
+/**
+ * The step to arrive on: the first one that HAS something.
+ *
+ * Sliders first, because a scene whose interactive part is the point renders
+ * inert without them; then the first step that adds any element; then the root.
+ *
+ * Not `steps[0]`. `_pull_sliders_forward` in compose.py deliberately puts a
+ * slider on the step that first USES it, which is routinely step 1 or later — so
+ * checking only step 0 landed the reader on an empty root and the scene they had
+ * just asked for appeared to render nothing. That is the exact symptom this
+ * feature kept producing for other reasons; it must not be reintroduced by the
+ * navigation.
+ */
+export function landingStep(scene: { steps?: Array<{ sliders?: unknown[]; add?: unknown[] }> } | undefined): number {
+    const steps = (scene && Array.isArray(scene.steps)) ? scene.steps : [];
+    const withSliders = steps.findIndex((s) => Array.isArray(s?.sliders) && s.sliders.length);
+    if (withSliders >= 0) return withSliders;
+    const withContent = steps.findIndex((s) => Array.isArray(s?.add) && s.add.length);
+    // -1 is the ROOT view, which is right when every element is scene-level.
+    return withContent >= 0 ? withContent : -1;
+}
+
 /** True for a scene this module put in the lesson. */
 export function isPlaceholder(scene: unknown): boolean {
     const id = (scene as { id?: unknown } | null)?.id;

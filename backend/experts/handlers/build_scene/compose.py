@@ -77,8 +77,13 @@ class ComposeError(ValueError):
 
 # --------------------------------------------------------------- coordinates
 
+#: Which closer each opener expects. The KIND is tracked, not just a count:
+#: `([)]` and `(]` balance numerically and are still malformed math.js.
+_CLOSES = {"(": ")", "[": "]", "{": "}"}
+
+
 def _split_top_level(text: str, where: str, sep: str = ",") -> list[str]:
-    """Split on `sep`, but not inside brackets.
+    """Split on `sep`, but not inside brackets. Refuse brackets that do not pair.
 
     A coordinate is three math.js expressions, and a math.js expression may
     itself contain commas: `hypot(ax, ay, az)` is one value, not three. Splitting
@@ -90,31 +95,42 @@ def _split_top_level(text: str, where: str, sep: str = ",") -> list[str]:
     vectors component by component that had nothing to do with what went wrong.
     Observed live on a dot-product scene: the build was correct and was thrown
     away, taking the placeholder with it.
+
+    Bad brackets are REFUSED rather than skipped past. Reading the text as though
+    a stray character were not there turns malformed math.js into a coordinate
+    that composes cleanly and then fails at render — silently, nothing drawn and
+    nothing said, which is the failure class this module exists to close. Three
+    ways it can be wrong, all caught: a closer with nothing open, a closer of the
+    wrong KIND, and anything still open at the end.
     """
-    parts, depth, current = [], 0, []
+    parts: list[str] = []
+    stack: list[str] = []
+    current: list[str] = []
     for ch in text:
-        if ch in "([{":
-            depth += 1
+        if ch in _CLOSES:
+            stack.append(_CLOSES[ch])
         elif ch in ")]}":
-            depth -= 1
-        # An unbalanced bracket is REFUSED, not clamped to zero and carried on
-        # with. Clamping reads the text as if the stray character were not there,
-        # which turns malformed math.js into a coordinate that composes cleanly
-        # and then fails at render — silently, with nothing drawn and nothing
-        # said. That is the whole failure class this module exists to close.
-        if depth < 0:
-            raise ComposeError(
-                f"{where}: unbalanced brackets in {text!r} — a ')' with no '(' "
-                f"before it. Coordinates are math.js; count the brackets.")
-        if ch == sep and depth == 0:
+            if not stack:
+                raise ComposeError(
+                    f"{where}: unbalanced brackets in '{text}' — a '{ch}' with "
+                    f"nothing open before it. Coordinates are math.js; count the "
+                    f"brackets.")
+            if stack[-1] != ch:
+                raise ComposeError(
+                    f"{where}: mismatched brackets in '{text}' — found '{ch}' "
+                    f"where '{stack[-1]}' was expected. Coordinates are math.js; "
+                    f"check the bracket kinds.")
+            stack.pop()
+        if ch == sep and not stack:
             parts.append("".join(current).strip())
             current = []
         else:
             current.append(ch)
-    if depth:
+    if stack:
         raise ComposeError(
-            f"{where}: unbalanced brackets in {text!r} — {depth} bracket(s) left "
-            f"open. Coordinates are math.js; count the brackets.")
+            f"{where}: unbalanced brackets in '{text}' — {len(stack)} left open "
+            f"('{''.join(reversed(stack))}' missing). Coordinates are math.js; "
+            f"count the brackets.")
     parts.append("".join(current).strip())
     return parts
 
@@ -169,7 +185,7 @@ def _expression(part: str, where: str) -> str:
     if "\\" not in part:
         return part
     raise ComposeError(
-        f"{where}: coordinate {part!r} is LaTeX, but coordinates are math.js — "
+        f"{where}: coordinate '{part}' is LaTeX, but coordinates are math.js — "
         f"write cos(theta), not \\cos(\\theta). LaTeX belongs in `label`.")
 
 
@@ -321,7 +337,7 @@ def _curve(el: ProposedElement, body: dict, where: str) -> None:
     over x, while `parametric_curve` takes x, y and z separately over t. Handing
     either the other's shape draws nothing at all.
     """
-    body["range"] = _interval(el.range, where)
+    body["range"] = _interval(el.range, f"{where} range")
     body["samples"] = CURVE_SAMPLES
     if el.type == "animated_curve":
         if not el.curve_expr.strip():
@@ -333,7 +349,7 @@ def _curve(el: ProposedElement, body: dict, where: str) -> None:
         body["plane"] = _which_plane(el) if el.plane.strip() else "xy"
         return
     # parametric_curve: the point at parameter t, as x, y and z.
-    triple = _coord(el.to_expr, where)
+    triple = _coord(el.to_expr, f"{where} to_expr")
     if triple is None:
         raise ComposeError(
             f"{where}: a parametric_curve needs `to_expr` — the point at "
@@ -569,7 +585,12 @@ def _element(el: ProposedElement, taken: set[str], with_prompts: bool,
     if el.type not in SUPPORTED_TYPES:
         raise ComposeError(f"unsupported element type {el.type!r}; "
                            f"expected one of {', '.join(SUPPORTED_TYPES)}")
-    where = f"{el.type} {el.label or '(unlabelled)'!r}"
+    # Plain quotes, NOT `!r`. `repr()` escapes the backslash, so a label that is
+    # `$\theta$` was reported as `$\\theta$` — doubling in an error message, in a
+    # module whose entire thesis is that backslash-doubling is the silent
+    # corruption to avoid. It also makes the label unrecognisable to whoever is
+    # trying to find the element it names.
+    where = f"{el.type} '{el.label or '(unlabelled)'}'"
     ids = slider_ids or set()
     body: dict = {"type": el.type, "id": _mint(el, taken)}
     coords: list[Coord] = []
@@ -584,9 +605,14 @@ def _element(el: ProposedElement, taken: set[str], with_prompts: bool,
     # viewport. Every slider-driven vector in the corpus is an `animated_vector`
     # carrying `expr`. Which of the two shapes to use is a representation detail
     # the model should not have to know, and it is mechanical to decide here.
-    static = {"position": _coord(el.position, where),
-              "from": _coord(el.from_pos, where),
-              "to": _coord(el.to_pos, where)}
+    # Each field names ITSELF in the error, using the name the MODEL wrote
+    # (`from_pos`, not the schema's `from`). All three used to pass the same
+    # `where`, so a refusal said `text '$\theta$': expected three coordinates`
+    # and left you to work out which of three fields it meant — by elimination,
+    # if you happened to know a `text` has no endpoints.
+    static = {"position": _coord(el.position, f"{where} position"),
+              "from": _coord(el.from_pos, f"{where} from_pos"),
+              "to": _coord(el.to_pos, f"{where} to_pos")}
     #: `from`/`to` -> the schema's animated names. `position` animates as `expr`,
     #: the same key a moving head uses.
     ANIMATED_NAME = {"position": "expr", "from": "fromExpr", "to": "expr"}
@@ -636,7 +662,8 @@ def _element(el: ProposedElement, taken: set[str], with_prompts: bool,
     # renderer does not read and the schema does not want on that type.
     if el.type != "parametric_curve":
         for name, raw in (("fromExpr", el.from_expr), ("expr", el.to_expr)):
-            if (value := _coord(raw, where)) is not None:
+            said = "from_expr" if name == "fromExpr" else "to_expr"
+            if (value := _coord(raw, f"{where} {said}")) is not None:
                 body[name] = [str(v) for v in value]
 
     # An animated element has to carry SOMETHING time-varying, but not all of
@@ -651,7 +678,7 @@ def _element(el: ProposedElement, taken: set[str], with_prompts: bool,
             f"{where}: an {el.type} needs `to_expr` (three math.js expressions in "
             f"terms of a slider) or `points`. Without either nothing moves, and it "
             f"is a {el.type.removeprefix('animated_')} wearing the wrong type.")
-    if (line := _polyline(el.points, where)) is not None:
+    if (line := _polyline(el.points, f"{where} points")) is not None:
         body["points"] = line
         coords += line
 
