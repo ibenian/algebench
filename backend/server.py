@@ -555,7 +555,11 @@ def _replace_scene_error(scene) -> str | None:
     # to be refused here rather than trusted.
     if isinstance(scene, bool) or not isinstance(scene, (int, float)):
         try:
-            n = int(str(scene).strip())
+            # `float` then truncate, not `int`: the client parses with
+            # `parseInt`, which reads "2.5" as 2. `int("2.5")` raises, so
+            # refusing here would reject a call the client would have run —
+            # the divergence this function exists to close, in miniature.
+            n = int(float(str(scene).strip()))
         except (TypeError, ValueError):
             return bad
     else:
