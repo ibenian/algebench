@@ -4,6 +4,18 @@
 **Branch**: `feat/lesson-builder-agents`
 **Status**: Draft
 
+> **Scope — this is for CODING AGENTS, not the in-app builder.**
+>
+> The agents here are Claude Code skills that author lesson JSON *offline*, at
+> development time, from a topic. They are a separate system from the in-app
+> `build_scene` expert (`backend/experts/handlers/build_scene/`, PRs #609 / #611
+> / #613), which the runtime chat agent calls to build ONE scene, in-session, in
+> response to something a reader asked for.
+>
+> Both produce scene JSON against the same schema, and that is all they share.
+> Neither supersedes the other, and this document does not describe the runtime
+> expert — do not read the two as versions of one thing.
+
 ---
 
 ## Motivation
