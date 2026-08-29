@@ -363,10 +363,29 @@ def _refuse_sampled_curves(per_step: dict[int, list], scene_level: list) -> None
             f"when a slider moves.")
 
 
+#: Fields that are never math.js, so their words are not slider references.
+#: A DENYLIST, not an allowlist: an unknown field keeps being scanned, so a new
+#: expression-bearing key is covered the day it appears rather than the day
+#: someone remembers to list it. The cost of that choice is a false positive
+#: (a slider appears a step early); the cost of the other is an element that
+#: renders nothing and says nothing.
+_NOT_EXPRESSIONS = frozenset({"type", "id", "label", "color", "prompt", "axis", "plane"})
+
+
 def _references(built, slider_ids: set[str]) -> set[str]:
-    """Which sliders this composed element's expressions name."""
+    """Which sliders this composed element's EXPRESSIONS name.
+
+    Scanning every string field read PROSE as code. `label` is KaTeX and `prompt`
+    is an English question, so a point at `[0, 0, 0]` "referenced" a slider named
+    `a` because its prompt said "What does a represent here?", and every axis
+    "referenced" one named `x` through its own `axis: "x"`. Both then dragged the
+    slider forward to a step nothing on it actually uses — and `x`, `a`, `t` are
+    exactly the names sliders get.
+    """
     found: set[str] = set()
-    for value in built.model_dump(exclude_none=True).values():
+    for key, value in built.model_dump(exclude_none=True).items():
+        if key in _NOT_EXPRESSIONS:
+            continue
         for text in _strings(value):
             found |= set(_NAMES.findall(text)) & slider_ids
     return found
@@ -472,12 +491,6 @@ def _sliders(proposed: list[ProposedSlider]) -> tuple[list, dict[int, list]]:
 _NAMES = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 
 
-def _is_dynamic(value, slider_ids: set[str]) -> bool:
-    """True when this coordinate changes as the reader moves a slider."""
-    return isinstance(value, str) and bool(_NAMES.findall(value) and
-                                           set(_NAMES.findall(value)) & slider_ids)
-
-
 def _animated(kind: str) -> str:
     """The moving counterpart of a static type."""
     return kind if kind.startswith("animated_") else f"animated_{kind}"
@@ -543,8 +556,7 @@ def _tidy(x: float) -> Num:
 
 # ----------------------------------------------------------------- assembly
 
-def _element(el: ProposedElement, taken: set[str], with_prompts: bool,
-             slider_ids: Optional[set[str]] = None) -> tuple[Element, list[Coord]]:
+def _element(el: ProposedElement, taken: set[str], with_prompts: bool) -> tuple[Element, list[Coord]]:
     if el.type not in SUPPORTED_TYPES:
         raise ComposeError(f"unsupported element type {el.type!r}; "
                            f"expected one of {', '.join(SUPPORTED_TYPES)}")
@@ -564,7 +576,6 @@ def _element(el: ProposedElement, taken: set[str], with_prompts: bool,
     where = (f"{el.type} `{el.label.strip()}`" if el.label.strip()
              else f"{el.type} in step {el.step}" if el.step != SCENE_LEVEL
              else f"scene-level {el.type}")
-    ids = slider_ids or set()
     body: dict = {"type": el.type, "id": _mint(el, taken)}
     coords: list[Coord] = []
 
@@ -601,9 +612,20 @@ def _element(el: ProposedElement, taken: set[str], with_prompts: bool,
     #: the same key a moving head uses.
     ANIMATED_NAME = {"position": "expr", "from": "fromExpr", "to": "expr"}
 
+    # THE FIELD DECIDES, per schemas/lesson.schema.json: `from`/`to`/`position`
+    # carry CONSTANTS and the `*Expr` family carries math.js. So the test is
+    # simply "is this component a number?" — not "does it name a slider".
+    #
+    # Keying on slider names left a hole: `to_pos: 2*pi, 0, 0` references no
+    # slider, so it stayed on a static `vector` as `to: ["2*pi", 0, 0]`. That is
+    # schema-legal — `$defs.vec3` items are `oneOf: [number, string]` — but
+    # `vector.ts` passes `to` straight into `makeArrowMesh` and into
+    # `(from[0] + to[0]) / 2` with no evaluation, so the component is NaN and the
+    # element renders nothing. 0 of the corpus's 1088 coordinates mix the two.
+    #
     # Decided for the ELEMENT, not per coordinate: a line with ONE moving end is
     # still a moving line, and it has to be built the moving way throughout.
-    moves = any(_is_dynamic(v, ids)
+    moves = any(isinstance(v, str)
                 for value in static.values() if value for v in value)
     if moves and not el.type.startswith("animated_"):
         moving = _animated(el.type)
@@ -625,7 +647,7 @@ def _element(el: ProposedElement, taken: set[str], with_prompts: bool,
             # promoted produced an element that drew nothing and said nothing.
             # BOTH ends go in, moving or not, or the line has only one.
             body.setdefault("points", []).append([str(v) for v in value])
-        elif moves and any(_is_dynamic(v, ids) for v in value):
+        elif moves and any(isinstance(v, str) for v in value):
             # Per COORDINATE, not per element: a vector with a fixed tail and a
             # moving head is ordinary — 3 of the 4 animated vectors in the
             # corpus's own interactive step are exactly that — and forcing the
@@ -720,7 +742,7 @@ def compose(
     first_use: dict[str, int] = {}
 
     for el in elements:
-        built, coords = _element(el, taken, with_prompts, slider_ids)
+        built, coords = _element(el, taken, with_prompts)
         all_coords += coords
         for name in _references(built, slider_ids):
             # A scene-level element is on screen before ANY step runs, so its

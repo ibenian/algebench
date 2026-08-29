@@ -91,7 +91,12 @@ def test_real_mathjs_coordinates_pass_through_untouched(expr):
     """
     scene = compose("T", "", [_el(type="point", label="p", step=-1,
                                   position=f"{expr}, 0, 0")], [])
-    assert scene.elements[0].position[0] == expr
+    # It lands in `expr`, not `position`: a literal field carries constants and
+    # the `*Expr` family carries math.js (schemas/lesson.schema.json). What this
+    # test is about is the TEXT — verbatim, whichever field holds it.
+    body = scene.elements[0].model_dump(by_alias=True, exclude_none=True)
+    assert body["type"] == "animated_point"
+    assert body["expr"][0] == expr, "the expression must survive character for character"
 
 
 def test_a_latex_coordinate_is_refused_and_says_what_belongs_there():
@@ -493,15 +498,30 @@ def test_a_slider_driven_vector_is_promoted_to_an_animated_one():
     assert built["from"] == [0, 0, 0], "the static tail stays static"
 
 
-def test_a_constant_expression_is_not_promoted():
-    """It resolves at load, so it renders as-is. Promoting it would make a still
-    element animated for no reason and drop it out of `to`."""
+def test_a_CONSTANT_EXPRESSION_is_promoted_like_any_other():
+    """`3*sin(PI/4)` is a constant to a reader and an EXPRESSION to the schema.
+
+    An earlier version of this test asserted the opposite, on the premise that
+    such a value "resolves at load, so it renders as-is". That premise was never
+    checked and does not hold: `vector.ts` hands `to` to `dataToWorld`, which
+    does plain arithmetic — `(pos[0] - rx[0]) / …` — so a string component is
+    NaN, constant or not.
+
+    The rule is the field's definition, not the value's arithmetic character:
+    `from`/`to`/`position` carry numbers, the `*Expr` family carries math.js.
+    A model that writes a constant as a formula is also breaking a rule the
+    prompt already states ("A coordinate that does not depend on a slider is a
+    NUMBER"), but composing it into a field that cannot hold it is our bug, not
+    its.
+    """
     scene = compose("T", "d",
-                    [ProposedElement(type="vector", step=0, from_pos="0,0,0",
+                    [ProposedElement(type="vector", step=0, label="v", from_pos="0,0,0",
                                      to_pos="0, 0, 3*sin(PI/4)")],
-                    [ProposedStep(index=0, title="one")],
-                    [_sl(step=0, id="r", min=0, max=1)])
-    assert scene.steps[0].add[0].type == "vector"
+                    [ProposedStep(index=0, title="one")])
+    body = scene.steps[0].add[0].model_dump(by_alias=True, exclude_none=True)
+    assert body["type"] == "animated_vector"
+    assert body["expr"] == ["0", "0", "3*sin(PI/4)"]
+    assert "to" not in body
 
 
 def test_a_type_that_cannot_move_says_so():
@@ -968,3 +988,92 @@ def test_a_label_is_fenced_because_KaTeX_is_markdown_hostile():
                                            from_pos="0,0,0", to_pos="1, 2")],
                 [ProposedStep(index=0, title="one")])
     assert r"`$a_x$`" in str(e.value)
+
+
+# ---- a constant is never confused with an expression ---------------------
+
+def test_a_literal_coordinate_field_NEVER_holds_an_expression():
+    r"""The rule, stated once: `from`/`to`/`position` carry CONSTANTS, and the
+    `*Expr` family carries math.js — schemas/lesson.schema.json.
+
+    `$defs.vec3` would permit a string in a literal field (`items: oneOf
+    [number, string]`), but only some renderers honour that: `text.ts` falls back
+    to reading `position` as expressions, `vector.ts` passes `to` straight into
+    `makeArrowMesh` and into `(from[0] + to[0]) / 2`, so a string there is NaN and
+    the element renders nothing. 0 of the corpus's 1088 coordinates mix the two.
+
+    An earlier rule promoted only coordinates naming a SLIDER, so `2*pi, 0, 0`
+    — an expression referencing nothing — stayed static and silently failed.
+    """
+    scene = compose("T", "d", [
+        ProposedElement(type="vector", step=0, label="a", from_pos="0,0,0", to_pos="2*pi, 0, 0"),
+        ProposedElement(type="vector", step=0, label="b", from_pos="0,0,0", to_pos="ax, ay, 0"),
+        ProposedElement(type="point",  step=0, label="p", position="cos(t), 0, 0"),
+        ProposedElement(type="line",   step=0, label="l", from_pos="0,0,0", to_pos="w, 0, 0"),
+        ProposedElement(type="vector", step=0, label="c", from_pos="0,0,0", to_pos="1, 2, 3"),
+    ], [ProposedStep(index=0, title="one")],
+       [_sl(step=0, id="ax", min=0, max=3, default=1),
+        _sl(step=0, id="ay", min=0, max=3, default=1),
+        _sl(step=0, id="w", min=0, max=3, default=1)])
+
+    for el in scene.steps[0].add:
+        body = el.model_dump(by_alias=True, exclude_none=True)
+        for field in ("from", "to", "position"):
+            for part in body.get(field, []):
+                assert not isinstance(part, str), (
+                    f"{body['type']}.{field} holds the expression {part!r} — "
+                    f"a literal field must never carry one")
+        # And an element that HAS an expression must be an animated type, or the
+        # renderer will not evaluate it.
+        if any(k in body for k in ("expr", "fromExpr", "points")):
+            assert body["type"].startswith("animated_"), body["type"]
+
+
+def test_a_constant_is_never_promoted_into_an_expression_field():
+    """The other direction. A number is a number: moving `3` into `expr` would
+    make a still element animated for no reason and drop it out of `to`."""
+    scene = compose("T", "d",
+                    [ProposedElement(type="vector", step=0, label="v",
+                                     from_pos="0,0,0", to_pos="1, 2, 3")],
+                    [ProposedStep(index=0, title="one")],
+                    [_sl(step=0, id="ax", min=0, max=3, default=1)])
+    body = scene.steps[0].add[0].model_dump(by_alias=True, exclude_none=True)
+    assert body["type"] == "vector"
+    assert body["to"] == [1, 2, 3] and "expr" not in body
+
+
+def test_prose_is_not_read_as_a_slider_reference():
+    r"""Scanning every string field read English as code.
+
+    A point at `[0, 0, 0]` "referenced" a slider named `a` because its prompt
+    said *"What does a represent here?"*, and every axis "referenced" one named
+    `x` through its own `axis: "x"`. Both then dragged the slider forward to a
+    step nothing on it actually uses — and `x`, `a`, `t` are exactly the names
+    sliders get.
+    """
+    from backend.experts.handlers.build_scene.compose import _references
+    from backend.model.lesson import Element
+
+    axis = Element.model_validate({"type": "axis", "id": "scene-x", "axis": "x",
+                                   "label": "x", "prompt": "What does the x-axis show?"})
+    assert _references(axis, {"x", "y"}) == set()
+
+    point = Element.model_validate({"type": "point", "id": "s0-a", "label": r"$\vec{a}$",
+                                    "prompt": "What does a represent here?",
+                                    "position": [0, 0, 0]})
+    assert _references(point, {"a", "vec"}) == set()
+
+
+def test_a_real_reference_is_still_found_including_in_an_unknown_field():
+    """The denylist must not become an allowlist by accident: anything not named
+    as metadata is still scanned, so a new expression-bearing field is covered
+    the day it appears rather than the day someone remembers to list it."""
+    from backend.experts.handlers.build_scene.compose import _references
+    from backend.model.lesson import Element
+
+    moving = Element.model_validate({"type": "animated_vector", "id": "s0-v", "label": "v",
+                                     "from": [0, 0, 0], "expr": ["ax", "ay", "0"]})
+    assert _references(moving, {"ax", "ay", "zz"}) == {"ax", "ay"}
+
+    future = Element.model_validate({"type": "point", "id": "p", "someNewExpr": ["w*2"]})
+    assert _references(future, {"w"}) == {"w"}
