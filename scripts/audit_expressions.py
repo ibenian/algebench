@@ -118,7 +118,7 @@ _UNSCANNED_EXPR_KEYS = frozenset({
 def _is_expr_key(k):
     """Return True if k is a known expression key or matches the *Expr pattern.
 
-    Delegates to backend/model/expression_fields.py so there is ONE answer. The
+    Delegates to backend/expression_fields.py so there is ONE answer. The
     local sets remain for the discovery pass below, which needs to know which
     keys are already accounted for — that is a different question from "is this
     an expression".
