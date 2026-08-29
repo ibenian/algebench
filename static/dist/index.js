@@ -21510,7 +21510,8 @@ function sceneIndexFromArgs(scene) {
 	if (scene == null || scene === "") return void 0;
 	const n = typeof scene === "number" ? scene : parseInt(String(scene), 10);
 	if (!Number.isFinite(n)) return void 0;
-	return Math.max(0, Math.trunc(n) - 1);
+	const idx = Math.trunc(n);
+	return idx === 0 ? 0 : idx - 1;
 }
 /** Build the request body for a `build_scene` tool call. Throws on a hopeless one. */
 function buildSceneRequestFromToolCall(args, lesson, thread = [], memory = []) {

@@ -41,6 +41,30 @@ test('a 0 from a model that already counted from zero is clamped, not negated', 
     assert.equal(sceneIndexFromArgs(0), 0);
 });
 
+test('a negative scene number is not clamped into a destructive replace', () => {
+    // The hole the 0-clamp left behind: -5 became 0, which passes the replace
+    // guard and OVERWRITES the first scene. Nonsense must not resolve to a real
+    // target — it stays negative so `assembleBuildSceneRequest` refuses it.
+    assert.equal(sceneIndexFromArgs(-1), -2);
+    assert.equal(sceneIndexFromArgs(-5), -6);
+    assert.equal(sceneIndexFromArgs('-3'), -4);
+});
+
+test('replace refuses a negative scene number rather than hitting scene 1', () => {
+    // The end-to-end shape of it: a destructive op must not proceed on a target
+    // the model never meant. Refusing is the whole point, so assert the throw
+    // and not just the index.
+    assert.throws(
+        () => buildSceneRequestFromToolCall(
+            { intent: 'redo it', op: 'replace', scene: -5 }, lesson),
+        /replace needs an existing scene index/,
+    );
+    // Still works for the number the agent actually writes.
+    assert.equal(
+        buildSceneRequestFromToolCall({ intent: 'redo it', op: 'replace', scene: 2 }, lesson)
+            .sceneIndex, 1);
+});
+
 test('insert with no scene number appends', () => {
     const body = buildSceneRequestFromToolCall({ intent: 'add one at the end' }, lesson);
     assert.equal(body.op, 'insert');

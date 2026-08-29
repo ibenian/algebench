@@ -44,11 +44,17 @@ export function sceneIndexFromArgs(scene: unknown): number | undefined {
     if (scene == null || scene === '') return undefined;
     const n = typeof scene === 'number' ? scene : parseInt(String(scene), 10);
     if (!Number.isFinite(n)) return undefined;
-    // Clamp at 0 rather than letting `scene: 0` become -1. A model that sent a
-    // 0-based number anyway meant the first scene, and `assembleBuildSceneRequest`
-    // would reject -1 on replace with a message about an index the agent never
-    // wrote.
-    return Math.max(0, Math.trunc(n) - 1);
+    const idx = Math.trunc(n);
+    // `scene: 0` maps to 0 rather than -1: a model that numbered from zero anyway
+    // meant the first scene, and `assembleBuildSceneRequest` would otherwise
+    // reject -1 on replace with a message about an index the agent never wrote.
+    //
+    // A NEGATIVE is NOT that case, and clamping it the same way was a real hole:
+    // `scene: -5` became 0, cleared the replace guard, and OVERWROTE the first
+    // scene. Nonsense must not resolve to a destructive edit of a real scene, so
+    // it passes through and `assembleBuildSceneRequest` refuses it — the same
+    // refusal an out-of-range number already gets.
+    return idx === 0 ? 0 : idx - 1;
 }
 
 /** Build the request body for a `build_scene` tool call. Throws on a hopeless one. */
