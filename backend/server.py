@@ -535,6 +535,36 @@ def _memory_summary(key: str, value) -> str:
     return str(type(value).__name__)
 
 
+def _replace_scene_error(scene) -> str | None:
+    """Why this `scene` cannot name a scene to rebuild, or None if it can.
+
+    Mirrors `sceneIndexFromArgs` in src/build-scene-tool.ts, which is what
+    actually interprets the value — and the point of mirroring it is that
+    acknowledging a call the client then refuses leaves the agent describing a
+    build the reader never sees. `not tc_args.get('scene')` could not express
+    this: it read a schema-VALID `scene: 0` as missing while the client accepts
+    it, and waved a negative through while the client refuses it.
+    """
+    if scene is None or (isinstance(scene, str) and not scene.strip()):
+        return ("A replace needs `scene` — the 1-based number of the "
+                "scene to rebuild.")
+    bad = (f"`scene` must be the 1-based number of the scene to rebuild; "
+           f"got {scene!r}.")
+    # `scene` is declared INTEGER, so a non-number is a schema violation — but a
+    # NEGATIVE is not. It is a valid integer naming nothing, which is why it has
+    # to be refused here rather than trusted.
+    if isinstance(scene, bool) or not isinstance(scene, (int, float)):
+        try:
+            n = int(str(scene).strip())
+        except (TypeError, ValueError):
+            return bad
+    else:
+        n = int(scene)
+    # 0 is allowed: `sceneIndexFromArgs` reads it as a model that numbered from
+    # zero and meant the first scene, so refusing here would contradict it.
+    return bad if n < 0 else None
+
+
 def build_scene_tool_result(tc_args: dict) -> dict:
     """The acknowledgement the agent gets for a `build_scene` call.
 
@@ -550,19 +580,21 @@ def build_scene_tool_result(tc_args: dict) -> dict:
     needs a live Gemini client, so every branch inside it was unreachable from a
     test.
     """
-    # `str()` before `.strip()`: `tc_args` comes from the model via proto
-    # conversion, so a truthy non-string (an object the model invented) would
-    # raise AttributeError and take down the whole tool-call loop instead of
-    # returning a structured error the agent can act on.
-    intent = str(tc_args.get('intent') or '').strip()
+    # `intent` is declared STRING and required, so a non-string means the model
+    # broke its own schema. Testing the type is simpler than the `str()` coercion
+    # it replaces AND does not have its side effect: `str({'a': 1})` is truthy,
+    # so an invented object was acknowledged as an intent and then refused by the
+    # client, which only accepts a string.
+    raw_intent = tc_args.get('intent')
+    intent = raw_intent.strip() if isinstance(raw_intent, str) else ''
     if not intent:
         return {"status": "error",
                 "error": ("`intent` is required — say what the scene should show "
                           "and teach, then call build_scene again.")}
-    if tc_args.get('op') == 'replace' and not tc_args.get('scene'):
-        return {"status": "error",
-                "error": ("A replace needs `scene` — the 1-based number of the "
-                          "scene to rebuild.")}
+    if tc_args.get('op') == 'replace':
+        scene_error = _replace_scene_error(tc_args.get('scene'))
+        if scene_error:
+            return {"status": "error", "error": scene_error}
     return {
         "status": "success",
         "initiated": True,
