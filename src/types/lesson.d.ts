@@ -647,7 +647,7 @@ export interface Element {
    */
   vertices?: Vec3OrExpr[];
   /**
-   * Range for parametric types [tMin,tMax] or axis range [-5,5]. Components can be numbers or math.js expression strings. For vector_field: [[xMin,xMax],[yMin,yMax],[zMin,zMax]]. For grid: omit to inherit the scene range for the plane's two axes, or give one interval per axis in plane order as [[a,b],[c,d]] ('xz' means x then z) when the two axes span different extents.
+   * Range for parametric types [tMin,tMax] or axis range [-5,5]. Only this flat two-component form accepts math.js expression strings in place of numbers; the nested forms below are numeric-only. For vector_field: [[xMin,xMax],[yMin,yMax],[zMin,zMax]]. For grid: omit to inherit the scene range for the plane's two axes, or give one interval per axis in plane order as [[a,b],[c,d]] ('xz' means x then z) when the two axes span different extents.
    */
   range?: [number | string, number | string] | RangePlane | Range3D1;
   /**
