@@ -52,8 +52,14 @@ export function sceneIndexFromArgs(scene: unknown): number | undefined {
     // A NEGATIVE is NOT that case, and clamping it the same way was a real hole:
     // `scene: -5` became 0, cleared the replace guard, and OVERWROTE the first
     // scene. Nonsense must not resolve to a destructive edit of a real scene, so
-    // it passes through and `assembleBuildSceneRequest` refuses it — the same
-    // refusal an out-of-range number already gets.
+    // it passes through for `assembleBuildSceneRequest` to judge.
+    //
+    // What that judgement is depends on the op, deliberately. REPLACE refuses it,
+    // the same refusal an out-of-range number gets. INSERT clamps it to the front
+    // — the mirror of clamping a too-high index to the end, and non-destructive
+    // either way, so there is nothing to protect the lesson from. Refusing on
+    // insert as well would also put this back out of step with the server, whose
+    // `_replace_scene_error` runs only for replace.
     return idx === 0 ? 0 : idx - 1;
 }
 
