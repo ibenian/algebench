@@ -110,12 +110,12 @@ def _split_top_level(text: str, where: str, sep: str = ",") -> list[str]:
         elif ch in ")]}":
             if not stack:
                 raise ComposeError(
-                    f"{where}: unbalanced brackets in '{text}' — a '{ch}' with "
+                    f"{where}: unbalanced brackets in `{text}` — a '{ch}' with "
                     f"nothing open before it. Coordinates are math.js; count the "
                     f"brackets.")
             if stack[-1] != ch:
                 raise ComposeError(
-                    f"{where}: mismatched brackets in '{text}' — found '{ch}' "
+                    f"{where}: mismatched brackets in `{text}` — found '{ch}' "
                     f"where '{stack[-1]}' was expected. Coordinates are math.js; "
                     f"check the bracket kinds.")
             stack.pop()
@@ -126,7 +126,7 @@ def _split_top_level(text: str, where: str, sep: str = ",") -> list[str]:
             current.append(ch)
     if stack:
         raise ComposeError(
-            f"{where}: unbalanced brackets in '{text}' — {len(stack)} left open "
+            f"{where}: unbalanced brackets in `{text}` — {len(stack)} left open "
             f"('{''.join(reversed(stack))}' missing). Coordinates are math.js; "
             f"count the brackets.")
     parts.append("".join(current).strip())
@@ -154,7 +154,7 @@ def _coord(text: str, where: str) -> Optional[Coord]:
                 "the three results: '2, 3, 0', not 'a, b, c + d, e, f'"
                 if len(parts) > 3 else "")
         raise ComposeError(f"{where}: expected three comma-separated coordinates, "
-                           f"got {text!r}{hint}")
+                           f"got `{text}`{hint}")
     return [_scalar(p, where) for p in parts]
 
 
@@ -183,7 +183,7 @@ def _expression(part: str, where: str) -> str:
     if "\\" not in part:
         return part
     raise ComposeError(
-        f"{where}: coordinate '{part}' is LaTeX, but coordinates are math.js — "
+        f"{where}: coordinate `{part}` is LaTeX, but coordinates are math.js — "
         f"write cos(theta), not \\cos(\\theta). LaTeX belongs in `label`.")
 
 
@@ -280,12 +280,19 @@ CURVE_SAMPLES = 200
 
 
 def _interval(text: str, where: str) -> list:
-    """`"-2*pi, 2*pi"` -> `[-6.28, 6.28]`, keeping expressions as strings."""
+    """`"0, 6"` -> `[0, 6]`; `"-2*pi, 2*pi"` -> `["-2*pi", "2*pi"]`.
+
+    A number becomes a number and an expression stays exactly as written — the
+    schema allows either ("Components can be numbers or math.js expression
+    strings") and math.js resolves it in the browser. The docstring used to
+    promise `[-6.28, 6.28]`, from when this evaluated; leaving that claim behind
+    would invite someone to reintroduce the evaluator it describes.
+    """
     parts = _split_top_level(text or "", where)
     if len(parts) != 2 or not all(parts):
         raise ComposeError(
             f"{where}: a curve needs `range` — the interval it is drawn over, as "
-            f"two math.js values 'min, max' (e.g. -2*pi, 2*pi). Got {text!r}.")
+            f"two math.js values `min, max` (e.g. `-2*pi, 2*pi`). Got `{text}`.")
     # `_scalar`, not an evaluator: a number stays a number and `2*pi` stays the
     # string `2*pi`. The schema allows either — "Components can be numbers or
     # math.js expression strings" — and math.js resolves it in the browser,
@@ -546,7 +553,17 @@ def _element(el: ProposedElement, taken: set[str], with_prompts: bool,
     # module whose entire thesis is that backslash-doubling is the silent
     # corruption to avoid. It also makes the label unrecognisable to whoever is
     # trying to find the element it names.
-    where = f"{el.type} '{el.label or '(unlabelled)'}'"
+    # Backticks, not quotes: this string is embedded in a reason that is rendered
+    # as MARKDOWN — in chat and in the failure report — and a label is KaTeX, full
+    # of backslashes and underscores. Quoted plainly, `sa_x*sb_x` came out as
+    # `sa_xsb_x` because the asterisks were read as emphasis, which made a correct
+    # refusal look like a nonsense one.
+    #
+    # An unlabelled element says WHERE it is rather than repeating its type,
+    # which identifies nothing.
+    where = (f"{el.type} `{el.label.strip()}`" if el.label.strip()
+             else f"{el.type} in step {el.step}" if el.step != SCENE_LEVEL
+             else f"scene-level {el.type}")
     ids = slider_ids or set()
     body: dict = {"type": el.type, "id": _mint(el, taken)}
     coords: list[Coord] = []

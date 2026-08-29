@@ -836,7 +836,7 @@ def test_the_latex_refusal_does_not_double_the_thing_it_is_contrasting():
         compose("T", "d", [ProposedElement(type="text", step=0, label="t",
                                            position=r"\cos(\theta), 0, 0")],
                 [ProposedStep(index=0, title="one")])
-    assert r"'\cos(\theta)'" in str(e.value)
+    assert r"`\cos(\theta)`" in str(e.value), "fenced as code, so markdown leaves it alone"
     assert "\\\\cos" not in str(e.value)
 
 
@@ -908,3 +908,55 @@ def test_a_slider_reference_is_found_inside_a_nested_field():
     el = Element.model_validate({"type": "point", "id": "p",
                                  "style": {"offset": ["ax", 0, 0]}})
     assert _references(el, {"ax", "unused"}) == {"ax"}
+
+
+# ---- reasons are rendered as markdown, so they must survive it ------------
+
+def test_a_refused_expression_survives_markdown_rendering():
+    r"""Observed live. A `parametric_curve` range containing `sa_x*sb_x` was
+    reported to the reader as `sa_xsb_x` — the chat renders the reason as
+    markdown, and the `*` pairs were eaten as emphasis. The refusal was CORRECT
+    (8 opening brackets, 9 closing) but read as nonsense, which is worse than a
+    wrong refusal: it makes a right answer untrustworthy.
+
+    Model-authored text is therefore quoted as CODE. Asterisks and underscores
+    are what a math.js expression is made of, and both are markdown syntax.
+    """
+    bad = "0, acos(max(-1, min(1, ((sa_x*sb_x + sa_y*sb_y) / (sqrt(sa_x*sa_x) + 1e-9))))))"
+    with pytest.raises(ComposeError) as e:
+        compose("T", "d", [ProposedElement(type="animated_curve", step=0,
+                                           curve_expr="sin(x)", range=bad)],
+                [ProposedStep(index=0, title="one")])
+    assert f"`{bad}`" in str(e.value), "the offender must be fenced as code"
+    assert "'" + bad + "'" not in str(e.value), "plain quotes let markdown eat it"
+
+    # The COORDINATE path too, which is where the reader meets this most often.
+    coord = "sa_x*sb_x, sa_y*sb_y"
+    with pytest.raises(ComposeError) as e2:
+        compose("T", "d", [ProposedElement(type="vector", step=0, label="v",
+                                           from_pos="0,0,0", to_pos=coord)],
+                [ProposedStep(index=0, title="one")])
+    assert f"`{coord}`" in str(e2.value)
+    assert "'" + coord + "'" not in str(e2.value)
+
+
+def test_an_unlabelled_element_says_where_it_is():
+    """`parametric_curve '(unlabelled)'` identified nothing — and the fallback
+    that replaced it must not simply repeat the type either."""
+    with pytest.raises(ComposeError, match=r"vector in step 0 to_pos"):
+        compose("T", "d", [ProposedElement(type="vector", step=0,
+                                           from_pos="0,0,0", to_pos="1, 2")],
+                [ProposedStep(index=0, title="one")])
+    with pytest.raises(ComposeError, match=r"scene-level vector to_pos"):
+        compose("T", "d", [ProposedElement(type="vector", step=-1,
+                                           from_pos="0,0,0", to_pos="1, 2")],
+                [ProposedStep(index=0, title="one")])
+
+
+def test_a_label_is_fenced_because_KaTeX_is_markdown_hostile():
+    r"""A label is KaTeX — `$\vec{a}$`, `$a_x$` — and underscores are emphasis."""
+    with pytest.raises(ComposeError) as e:
+        compose("T", "d", [ProposedElement(type="vector", step=0, label=r"$a_x$",
+                                           from_pos="0,0,0", to_pos="1, 2")],
+                [ProposedStep(index=0, title="one")])
+    assert r"`$a_x$`" in str(e.value)

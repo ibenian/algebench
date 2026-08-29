@@ -21667,15 +21667,18 @@ function showBuildPill(text = "Building scene…") {
 	el.appendChild(label);
 	stack.appendChild(el);
 	const empty = document.getElementById("empty-state");
-	const wasShown = empty ? empty.style.display : null;
+	const store = stack;
+	if (empty && store._emptyWas === void 0) store._emptyWas = empty.style.display;
 	if (empty) empty.style.display = "none";
 	let removed = false;
 	return () => {
 		if (removed) return;
 		removed = true;
-		if (empty && wasShown !== null) empty.style.display = wasShown;
 		if (el.parentNode) el.parentNode.removeChild(el);
-		if (stack && !stack.childNodes.length && stack.parentNode) stack.parentNode.removeChild(stack);
+		if (stack && !stack.childNodes.length) {
+			if (empty && store._emptyWas !== void 0) empty.style.display = store._emptyWas;
+			if (stack.parentNode) stack.parentNode.removeChild(stack);
+		}
 	};
 }
 //#endregion

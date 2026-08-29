@@ -20,7 +20,7 @@ const lesson = JSON.parse(readFileSync('scenes/vector-operations.json', 'utf8'))
 
 // ---- the agent counts from one -------------------------------------------
 
-test('the agent`s 1-based scene number becomes a 0-based index', () => {
+test('a 1-based scene number from the agent becomes a 0-based index', () => {
     // navigate_to(scene=2) means the SECOND scene. Off by one here rebuilds a
     // neighbour of the scene the user pointed at, which is not a visible bug —
     // it is a plausible-looking wrong answer.
@@ -131,7 +131,7 @@ test('a summary names the scene that landed', () => {
 
 // ---- the whole round trip ------------------------------------------------
 
-test('a reply in the handler`s exact shape applies to the lesson', () => {
+test('a reply in the exact shape the handler returns applies to the lesson', () => {
     // The end-to-end claim: what backend/experts/handlers/build_scene/handler.py
     // returns can be applied by the client. This is the check that was missing
     // when the handler emitted `at: {scene: N}` — the contract model validated
@@ -192,7 +192,7 @@ test('two placeholders never share an id', () => {
                     (placeholderScene('b') as { id: string }).id);
 });
 
-test('the expert`s insert lands ON the reserved slot, not beside it', () => {
+test('an insert from the expert lands ON the reserved slot, not beside it', () => {
     // The expert does not know a placeholder exists — it answers "insert at N".
     // Applying that verbatim after reserving N leaves TWO scenes: the real one
     // and the placeholder pushed down next to it.

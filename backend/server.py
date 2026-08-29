@@ -535,6 +535,44 @@ def _memory_summary(key: str, value) -> str:
     return str(type(value).__name__)
 
 
+def build_scene_tool_result(tc_args: dict) -> dict:
+    """The acknowledgement the agent gets for a `build_scene` call.
+
+    Client-executed, like `derive_proof_animation`: the browser calls the
+    build_scene expert, applies the returned BuildOp and navigates. This only
+    acknowledges — the scene never enters chat.
+
+    Deliberately NOT reporting success. The expert can still refuse or ask a
+    question, and this is written before it has even been called; claiming the
+    scene exists would have the agent describe one the reader may never see.
+
+    Extracted from `call_gemini_chat` so it can be tested at all — that function
+    needs a live Gemini client, so every branch inside it was unreachable from a
+    test.
+    """
+    # `str()` before `.strip()`: `tc_args` comes from the model via proto
+    # conversion, so a truthy non-string (an object the model invented) would
+    # raise AttributeError and take down the whole tool-call loop instead of
+    # returning a structured error the agent can act on.
+    intent = str(tc_args.get('intent') or '').strip()
+    if not intent:
+        return {"status": "error",
+                "error": ("`intent` is required — say what the scene should show "
+                          "and teach, then call build_scene again.")}
+    if tc_args.get('op') == 'replace' and not tc_args.get('scene'):
+        return {"status": "error",
+                "error": ("A replace needs `scene` — the 1-based number of the "
+                          "scene to rebuild.")}
+    return {
+        "status": "success",
+        "initiated": True,
+        "message": ("Scene building started — it will appear in the lesson and the "
+                    "client will navigate to it. Briefly tell the user you're "
+                    "building it; do NOT write the scene yourself and do NOT call "
+                    "navigate_to. If the builder needs a detail it will ask them."),
+    }
+
+
 def kill_server_on_port(port):
     """Kill any process using the specified port."""
     try:
@@ -1000,35 +1038,11 @@ def call_gemini_chat(message, history, context):
                 # to navigate after a build; the client does it.
                 scene_count = len(context.get('sceneTree', []))
                 if tc_name == 'build_scene':
-                    # Client-executed, like derive_proof_animation: the browser calls
-                    # the build_scene expert, applies the returned BuildOp and
-                    # navigates. We only acknowledge — the scene never enters chat.
-                    #
-                    # Deliberately NOT reporting success. The expert can still refuse
-                    # or ask a question, and this acknowledgement is written before it
-                    # has even been called; claiming the scene exists would have the
-                    # agent describe one the user may never see.
-                    intent = (tc_args.get('intent') or '').strip()
-                    if not intent:
-                        tc_result = {"status": "error",
-                                     "error": ("`intent` is required — say what the scene should "
-                                               "show and teach, then call build_scene again.")}
-                    elif tc_args.get('op') == 'replace' and not tc_args.get('scene'):
-                        tc_result = {"status": "error",
-                                     "error": ("A replace needs `scene` — the 1-based number of the "
-                                               "scene to rebuild.")}
-                    else:
-                        tc_result = {
-                            "status": "success",
-                            "initiated": True,
-                            "message": ("Scene building started — it will appear in the lesson and the "
-                                        "client will navigate to it. Briefly tell the user you're "
-                                        "building it; do NOT write the scene yourself and do NOT call "
-                                        "navigate_to. If the builder needs a detail it will ask them."),
-                        }
+                    tc_result = build_scene_tool_result(tc_args)
                     if DEBUG_MODE:
                         print(f"   🎬 build_scene: op={tc_args.get('op') or 'insert'} "
-                              f"scene={tc_args.get('scene')} intent={intent[:80]!r}")
+                              f"scene={tc_args.get('scene')} "
+                              f"intent={str(tc_args.get('intent') or '')[:80]!r}")
                 elif tc_name == 'navigate_to':
                     # Agent sends 1-based scene numbers
                     req_scene = int(tc_args.get('scene', 0))  # 1-based

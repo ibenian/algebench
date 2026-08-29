@@ -187,20 +187,28 @@ export function showBuildPill(text = 'Building scene…'): () => void {
     // file while a build they just asked for is running. Suppressed for the
     // duration and restored on removal; every path that removes the pill
     // navigates immediately afterwards, which re-decides this correctly.
+    // Remembered on the STACK, not per pill. Two pills capture `wasShown` at
+    // different moments — the second sees the display the first already set — so
+    // per-pill restore either brings the watermark back while a build is still
+    // running, or restores the wrong value at the end. The stack is the thing
+    // whose lifetime matches the suppression, so it owns the original.
     const empty = document.getElementById('empty-state');
-    const wasShown = empty ? empty.style.display : null;
+    const store = stack as HTMLElement & { _emptyWas?: string };
+    if (empty && store._emptyWas === undefined) store._emptyWas = empty.style.display;
     if (empty) empty.style.display = 'none';
 
     let removed = false;
     return () => {
         if (removed) return;
         removed = true;
-        if (empty && wasShown !== null) empty.style.display = wasShown;
         if (el.parentNode) el.parentNode.removeChild(el);
-        // Take the stack with it once it is empty, so an absolutely-positioned
-        // empty div is not left sitting over the canvas.
-        if (stack && !stack.childNodes.length && stack.parentNode) {
-            stack.parentNode.removeChild(stack);
+        // Only when the LAST pill goes: while any build is still in flight the
+        // watermark must stay suppressed.
+        if (stack && !stack.childNodes.length) {
+            if (empty && store._emptyWas !== undefined) empty.style.display = store._emptyWas;
+            // Take the stack with it, so an absolutely-positioned empty div is
+            // not left sitting over the canvas.
+            if (stack.parentNode) stack.parentNode.removeChild(stack);
         }
     };
 }
