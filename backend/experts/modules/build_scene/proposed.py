@@ -86,12 +86,21 @@ class ProposedElement(BaseModel):
                     f"the types above rather than inventing a type")
     label: str = Field(
         default="",
-        description="the text shown beside it, in KaTeX, written BARE — "
-                    "$\\vec{a}$, $\\theta$, never in quotes, and ALWAYS ON ONE "
-                    "LINE. A label is a caption, not a panel: for several lines "
-                    "of maths use the step description. "
-                    "Wrap maths in $…$ only when the lesson's conventions say "
-                    "labels are LaTeX. Leave empty for axes and grids")
+        # NOT "written BARE" — that phrasing was added here to mean "not in
+        # quotes" and, sitting next to "in KaTeX", was read as "without
+        # delimiters": the model answered `proj_b a`, which is LaTeX with the
+        # `$…$` stripped off and renders as literal text. The quotes rule is
+        # made once, globally, in the signature; it does not need restating in a
+        # sentence that is about notation.
+        description="the text shown beside it. MATHS GOES IN $…$ — `$\\vec{a}$`, "
+                    "`$\\theta$`, `$\\text{proj}_{\\vec{b}}\\vec{a}$` — always, "
+                    "because a symbol written without them renders as literal "
+                    "text. A plain word is a plain word: `Pivot`, not `$Pivot$`. "
+                    "ALWAYS ON ONE LINE; a label is a caption, not a panel, so "
+                    "for several lines of maths use the step description. "
+                    "`conventions` says which STYLE of maths the lesson "
+                    "writes — never whether to write it as text. Leave empty "
+                    "for axes and grids")
     color: str = Field(
         default="",
         description="a hex colour from the lesson's palette, e.g. #ff6644")
@@ -204,8 +213,8 @@ class ProposedSlider(BaseModel):
                     "with a digit. Must not be an id listed in existing_names")
     label: str = Field(
         default="",
-        description="what the reader sees beside the control, in KaTeX and "
-                    "written BARE — $r_x$, never in quotes. Defaults to the id")
+        description="what the reader sees beside the control. Maths goes in $…$ "
+                    "— `$r_x$`, `$|\\vec{F}|$`. Defaults to the id")
     min: float = Field(default=0.0, description="lowest value, e.g. -5")
     max: float = Field(default=1.0, description="highest value, e.g. 5")
     step_size: float = Field(

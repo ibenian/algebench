@@ -209,9 +209,19 @@ def format_conventions(conventions: Conventions) -> str:
         out.append("Palette in use: " + ", ".join(_line(c, 32) for c in colors))
     # The NEGATIVE case has to be SAID. Silence reads as no opinion, and the
     # model falls back to whatever it happened to see in the neighbours.
-    out.append("Labels are LaTeX: wrap label text in $…$."
-               if conventions.labelsAreLatex else
-               "Labels are plain text: do NOT wrap them in $…$.")
+    #
+    # But it must not say "do NOT wrap them in $…$", which is what it used to.
+    # That reads as a ban on KaTeX for MATHEMATICS, and the flag does not mean
+    # that: the vote counts a label like `x₁` or `y = ax² + bx + c` as "plain",
+    # so a lesson writing its maths in Unicode turns the instruction into
+    # "render symbols as literal text". The choice is between two ways of
+    # writing MATHS, never between maths and not-maths.
+    out.append(
+        "Labels use KaTeX: write maths as $…$."
+        if conventions.labelsAreLatex else
+        "This lesson mostly writes label maths as plain Unicode (x₁, y = ax²). "
+        "Match that where it reads clearly; anything you cannot write that way "
+        "still goes in $…$. Never write LaTeX commands outside $…$.")
     if conventions.elementsCarryPrompts:
         out.append("Elements carry Ask-AI `prompt` text; write one for each new element.")
     return "\n".join(out)

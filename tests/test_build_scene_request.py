@@ -193,10 +193,26 @@ def test_the_formatter_still_survives_odd_but_declared_content():
 
 
 def test_conventions_state_the_negative_case_too():
-    """Saying "labels are plain text" out loud is the point. Silence reads as no opinion, and
+    """Saying something out loud is the point. Silence reads as no opinion, and
     the model falls back to whatever it saw in the neighbours."""
-    assert "do NOT wrap" in fmt.format_conventions(Conventions(labelsAreLatex=False))
-    assert "wrap label text" in fmt.format_conventions(Conventions(labelsAreLatex=True))
+    for flag in (True, False):
+        assert "$…$" in fmt.format_conventions(Conventions(labelsAreLatex=flag))
+
+
+def test_conventions_never_forbid_KaTeX_for_MATHS():
+    """The negative case used to read "do NOT wrap them in $…$", and the model
+    obeyed it literally — answering `proj_b a`, which is LaTeX with the
+    delimiters stripped and renders as literal text.
+
+    The flag does not mean what that sentence claimed. The vote counts a label
+    like `x₁` or `y = ax² + bx + c` as "plain", so a lesson writing its maths in
+    Unicode flipped it — turning a note about STYLE into a ban on notation. The
+    choice is between two ways of writing maths, never between maths and text.
+    """
+    plain = fmt.format_conventions(Conventions(labelsAreLatex=False))
+    assert "do NOT wrap" not in plain
+    assert "still goes in $…$" in plain, "the escape hatch has to be explicit"
+    assert "Never write LaTeX commands outside $…$" in plain
 
 
 # ---- against a real lesson, not a fixture I invented ---------------------
