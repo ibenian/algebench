@@ -308,7 +308,17 @@ def _curve(el: ProposedElement, body: dict, where: str) -> None:
     over x, while `parametric_curve` takes x, y and z separately over t. Handing
     either the other's shape draws nothing at all.
     """
-    body["range"] = _interval(el.range, f"{where} range")
+    # Same rule as a coordinate: numbers to the literal field, expressions to
+    # the `*Expr` one. `animated-curve.ts` reads `el.rangeExpr || el.range` and
+    # compiles a string either way, so BOTH render — but only `rangeExpr` is an
+    # expression field to `static/trust.js` and therefore to `_references`. Left
+    # in `range`, a slider named in the interval was invisible to
+    # `_pull_sliders_forward`: a curve at step 1 with `range: [0, "T"]` and `T`
+    # introduced at step 2 could not resolve its own interval, and drew nothing.
+    # That is the sine-wave bug again, through a different field.
+    interval = _interval(el.range, f"{where} range")
+    key = "rangeExpr" if any(isinstance(v, str) for v in interval) else "range"
+    body[key] = [str(v) for v in interval] if key == "rangeExpr" else interval
     body["samples"] = CURVE_SAMPLES
     if el.type == "animated_curve":
         if not el.curve_expr.strip():

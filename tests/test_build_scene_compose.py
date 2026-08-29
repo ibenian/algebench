@@ -575,8 +575,9 @@ def test_a_graph_is_one_curve():
                      _sl(step=0, id="k", min=0.5, max=4, default=1)])
     built = scene.steps[0].add[0].model_dump(by_alias=True, exclude_none=True)
     assert built["expr"] == "A*sin(k*x)", "ONE expression, not a triple"
-    # The interval stays as WRITTEN: math.js resolves `-2*pi` in the browser.
-    assert built["range"] == ["-2*pi", "2*pi"]
+    # The interval stays as WRITTEN, in the EXPRESSION field: math.js resolves
+    # `-2*pi` in the browser, and only `rangeExpr` counts as an expression field.
+    assert built["rangeExpr"] == ["-2*pi", "2*pi"] and "range" not in built
     assert built["plane"] == "xy" and built["samples"] > 1
 
 
@@ -789,7 +790,7 @@ def test_a_curve_range_may_call_a_function_too():
                     [ProposedElement(type="animated_curve", step=0,
                                      curve_expr="sin(x)", range="0, max(3, 6)")],
                     [ProposedStep(index=0, title="one")])
-    assert scene.steps[0].add[0].model_dump(exclude_none=True)["range"] == [0, "max(3, 6)"]
+    assert scene.steps[0].add[0].model_dump(exclude_none=True)["rangeExpr"] == ["0", "max(3, 6)"]
 
 
 def test_unbalanced_brackets_are_refused_not_papered_over():
@@ -1113,3 +1114,34 @@ def test_a_text_moves_in_place_because_it_has_its_own_expression_field():
     assert moving["type"] == "text" and moving["positionExpr"] == ["2*pi", "0", "0"]
     assert "position" not in moving, "a literal field must not also hold it"
     assert still["type"] == "text" and still["position"] == [1, 2, 0]
+
+
+def test_a_slider_named_in_a_curve_RANGE_is_pulled_forward_too():
+    """The sine-wave bug again, through a different field.
+
+    A curve at step 1 with `range: [0, "T"]` and `T` introduced at step 2 cannot
+    resolve its own interval and draws nothing. `range` is a literal field to
+    `static/trust.js` — `rangeExpr` is its expression variant — so an interval
+    left in `range` was invisible to `_references` and never pulled the slider
+    forward. Same rule as a coordinate: numbers to the literal field,
+    expressions to the `*Expr` one.
+    """
+    scene = compose("T", "d",
+                    [ProposedElement(type="animated_curve", step=1, label="wave",
+                                     curve_expr="sin(x)", range="0, T")],
+                    [ProposedStep(index=0, title="axes"), ProposedStep(index=1, title="wave"),
+                     ProposedStep(index=2, title="period")],
+                    [_sl(step=2, id="T", min=1, max=10, default=6)])
+    assert [s.id for s in (scene.steps[1].sliders or [])] == ["T"], \
+        "the slider must exist by the step that draws the curve"
+    built = scene.steps[1].add[0].model_dump(by_alias=True, exclude_none=True)
+    assert built["rangeExpr"] == ["0", "T"] and "range" not in built
+
+
+def test_a_numeric_interval_stays_in_the_literal_field():
+    scene = compose("T", "d",
+                    [ProposedElement(type="animated_curve", step=0, curve_expr="sin(x)",
+                                     range="0, 6.28")],
+                    [ProposedStep(index=0, title="one")])
+    built = scene.steps[0].add[0].model_dump(by_alias=True, exclude_none=True)
+    assert built["range"] == [0, 6.28] and "rangeExpr" not in built
