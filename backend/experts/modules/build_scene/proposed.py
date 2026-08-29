@@ -112,6 +112,15 @@ class ProposedElement(BaseModel):
                     "1, 0, 0, never (2*1 + 0*2)/(2*2 + 0*0), 0, 0. Use an "
                     "expression only when it depends on a slider. For a point or "
                     "a text label")
+    # See schemas/lesson.schema.json, `$defs.element.properties`, for every name
+    # these map onto — and `$defs.vec3` for why `from_pos`/`to_pos` are separate
+    # from `from_expr`/`to_expr` here even though the schema's `vec3` would let a
+    # single field carry either ("Components can be numbers or math.js expression
+    # strings"). Only some renderers honour that permission: `text.ts` falls back
+    # to reading `position` as expressions, `vector.ts` does not, and 0 of the
+    # corpus's 1088 coordinates mix the two. The dedicated `*Expr` fields are the
+    # channel that always works.
+    #
     # NAMING RULE: the schema's own word, snake_cased. Measured against every
     # geometry key in the corpus, `from` is the ONLY one that is illegal in
     # Python (`range` merely shadows a builtin), so nothing else needs inventing

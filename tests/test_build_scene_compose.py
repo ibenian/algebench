@@ -287,8 +287,16 @@ def test_an_animated_element_without_an_expression_is_refused():
 
 
 def test_animated_expressions_map_to_the_schemas_own_names():
-    """Note the schema's asymmetry, which the proposal hides: the animated TAIL
-    is `fromExpr`, but the animated HEAD is `expr` — not `toExpr`."""
+    """The tail becomes `fromExpr` and the head becomes `expr`.
+
+    `expr` is a deliberate choice, not a workaround. `toExpr` DOES exist —
+    schemas/lesson.schema.json calls it "Alias for 'expr' on
+    animated_vector/animated_cylinder", and the corpus uses it 18 times — but
+    `expr` is what every animated renderer checks first (`el.expr || el.toExpr`)
+    and the only spelling that also serves `animated_curve`, whose `expr` is a
+    single string. An earlier version of this docstring claimed `toExpr` did not
+    exist; it does.
+    """
     scene = compose("T", "", [_el(type="animated_vector", label="v", step=-1,
                                   from_expr="0, 0, 0",
                                   to_expr="cos(t), sin(t), 0")], [])
@@ -509,8 +517,8 @@ def test_a_type_that_cannot_move_says_so():
 def test_a_tip_to_tail_vector_keeps_its_tail_and_head_apart():
     """The tip-to-tail `b` in a summation scene has BOTH ends slider-driven.
 
-    The schema's asymmetry bites here: the moving tail is `fromExpr` and the
-    moving head is `expr`. Sending both to `expr` loses one of them silently —
+    The two ends go to DIFFERENT keys — the moving tail to `fromExpr`, the moving
+    head to `expr` (see schemas/lesson.schema.json). Sending both to `expr` loses one of them silently —
     the vector then starts at the origin instead of at the tip of `a`, which
     renders as a plausible picture of the wrong thing.
     """

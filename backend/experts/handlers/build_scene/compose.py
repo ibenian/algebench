@@ -568,8 +568,19 @@ def _element(el: ProposedElement, taken: set[str], with_prompts: bool,
     body: dict = {"type": el.type, "id": _mint(el, taken)}
     coords: list[Coord] = []
 
-    # The proposal speaks snake_case; the schema speaks its own names. Note the
-    # schema's own asymmetry: the animated HEAD is `expr`, not `toExpr`.
+    # The proposal speaks snake_case; the schema speaks its own names.
+    #
+    # See schemas/lesson.schema.json, `$defs.element.properties`. The vocabulary
+    # IS symmetric — `from`/`fromExpr` and `to`/`toExpr` — and an earlier comment
+    # here claimed otherwise, that "the animated HEAD is `expr`, not `toExpr`".
+    # That was simply wrong: `toExpr` exists, the corpus uses it 18 times, and
+    # the schema calls it "Alias for 'expr' on animated_vector/animated_cylinder".
+    #
+    # `expr` is still what we emit, because it is what every animated renderer
+    # checks FIRST (`el.expr || el.toExpr`, src/objects/animated-vector.ts) and
+    # it is the only spelling that also serves animated_curve, whose `expr` is a
+    # single string rather than a triple. A synonym, chosen deliberately — not a
+    # gap being worked around.
     #
     # A STATIC coordinate that references a slider is PROMOTED to the animated
     # form rather than refused. The renderer resolves `to` once at load, with no
