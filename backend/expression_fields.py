@@ -22,6 +22,13 @@ The ratio is why this is an ALLOWLIST and not a denylist: of the 86 properties
 `$defs.element` declares, 16 carry expressions and 70 do not. An earlier revision
 of `compose.py` listed 7 metadata keys and scanned everything else, which read
 `legendGroup`, `cssClass` and `align` as code.
+
+Kept directly under `backend/` rather than in `backend/model/`, whose `__init__`
+imports pydantic: `scripts/audit_expressions.py` runs in CI as a bare
+`python scripts/audit_expressions.py` with no venv, so importing anything from
+`backend.model` drags pydantic in and kills it. `backend/__init__.py` is a
+docstring and nothing else, so this stays reachable from a dependency-free
+script. That is a constraint on WHERE this file lives, not an incidental detail.
 """
 from __future__ import annotations
 

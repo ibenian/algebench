@@ -48,7 +48,7 @@ import logging
 import re
 from typing import Optional, Union
 
-from backend.model.expression_fields import carries_expressions
+from backend.expression_fields import carries_expressions
 from backend.model.lesson import Element, Scene, Step
 
 from backend.experts.modules.build_scene.proposed import (
