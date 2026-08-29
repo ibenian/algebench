@@ -102,8 +102,14 @@ class BuildSceneSig(BuildSceneInputs):
       Both render, but only the number tells the camera where the scene is, so a
       formula can leave your own geometry outside the frame. Show the derivation
       in `description`, which is where a reader can read it.
-    * `label` is **KaTeX** — `$\vec{a}$`, `$\theta$` — and only wraps in `$…$`
-      when `conventions` says labels are LaTeX.
+      WHICH FUNCTIONS EXIST: all of math.js — `sin`, `cos`, `sqrt`, `hypot`,
+      `atan2`, `min`, `max`, `abs`, `exp`, `log`, `pow`, `pi`, `e` and the rest
+      of its library — plus the ones this project adds, listed on the field
+      itself. Nothing else: an invented name is not an error the composer can
+      see, it is a scene that draws nothing in the browser.
+
+    * `label` is **KaTeX**. Maths goes in `$…$` always; `conventions` says which
+      STYLE the lesson writes, never whether to use notation at all.
     * `title`, `description` and `prompt` are **markdown with embedded KaTeX**.
 
     THE TYPE LIST IS CLOSED, AND SO IS THE FIELD LIST. `type` must be one of the

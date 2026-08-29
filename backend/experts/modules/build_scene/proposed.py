@@ -40,6 +40,15 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from backend.mathjs_extensions import extension_names
+
+#: GENERATED from `_MATHJS_EXTENSIONS` in src/expr.ts, never restated. A
+#: hand-written copy goes stale silently: the model keeps being offered a
+#: function that was removed, or never hears about one that was added, and either
+#: way it is a scene that does not render with nothing to say why. These are the
+#: names it CANNOT infer — math.js's own library it already knows.
+_EXTENSIONS = ", ".join(extension_names())
+
 #: The types iteration 1 builds. Bounded on purpose: a type the composer cannot
 #: stage is worse than one it refuses, because it renders as an empty scene.
 SUPPORTED_TYPES = (
@@ -164,10 +173,12 @@ class ProposedElement(BaseModel):
                     "makes an animated_* element move; without it, it does not")
     curve_expr: str = Field(
         default="",
-        description="for an `animated_curve` ONLY: y as a single math.js function "
+        description=f"for an `animated_curve` ONLY: y as a single math.js function "
                     "of x, e.g. A*sin(k*x). ONE expression, not three — the curve "
-                    "is drawn by sampling x across `range`. This is how you draw a "
-                    "graph: one curve element, never a chain of line segments")
+                    f"is drawn by sampling x across `range`. This is how you draw a "
+                    f"graph: one curve element, never a chain of line segments. "
+                    f"Every math.js function is available, plus these, which are "
+                    f"this project's own and exist nowhere else: {_EXTENSIONS}")
     range: str = Field(
         default="",
         description="for a curve ONLY: the interval it is drawn over, as two "
