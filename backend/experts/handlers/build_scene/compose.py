@@ -366,9 +366,20 @@ def _references(built, slider_ids: set[str]) -> set[str]:
 
 
 def _strings(value):
-    """Every string anywhere in a composed element's value."""
+    """Every string anywhere in a composed element's value.
+
+    Dicts are walked too. `Element` is `extra="allow"`, so a field this composer
+    does not build today can still ride through — and a slider reference hiding
+    in one would not be seen, `_pull_sliders_forward` would not move the slider,
+    and the element would render nothing with no error anywhere. No composed
+    element holds a dict today; this is so the answer does not depend on that
+    staying true.
+    """
     if isinstance(value, str):
         yield value
+    elif isinstance(value, dict):
+        for item in value.values():
+            yield from _strings(item)
     elif isinstance(value, (list, tuple)):
         for item in value:
             yield from _strings(item)

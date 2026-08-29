@@ -891,3 +891,20 @@ def test_literal_coordinates_still_frame_the_scene():
                     [ProposedStep(index=0, title="one")])
     assert scene.range[0] == [-0.5, 3.5]
     assert scene.camera is not None
+
+
+def test_a_slider_reference_is_found_inside_a_nested_field():
+    """`Element` is `extra="allow"`, so a field this composer does not build today
+    can still ride through. A slider reference hiding in one would not be seen,
+    the slider would not be pulled forward, and the element would render nothing
+    with no error anywhere.
+
+    Constructed by hand because nothing emits a dict field today — the point is
+    that the answer must not DEPEND on that staying true.
+    """
+    from backend.experts.handlers.build_scene.compose import _references
+    from backend.model.lesson import Element
+
+    el = Element.model_validate({"type": "point", "id": "p",
+                                 "style": {"offset": ["ax", 0, 0]}})
+    assert _references(el, {"ax", "unused"}) == {"ax"}

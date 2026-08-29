@@ -540,8 +540,12 @@ async function runBuildSceneTool(tc: AlgeBenchChatToolCall): Promise<string> {
         // is not there. Local, so say so locally rather than spend a request.
         const why = e instanceof Error ? e.message : String(e);
         console.warn('build_scene: not sent —', why);
-        addChatMessage('assistant', `I couldn't build that: ${why}`);
-        return '';
+        const said = `I couldn't build that: ${why}`;
+        addChatMessage('assistant', said);
+        // RETURNED, not just shown. The caller files it into `chatHistory`, so
+        // the agent knows what the reader was told and can act on it. Returning
+        // '' here left the agent believing its build was still in flight.
+        return said;
     }
 
     console.log('%c🎬 build_scene:', 'color: #ffaa00; font-weight: bold',
@@ -561,15 +565,17 @@ async function runBuildSceneTool(tc: AlgeBenchChatToolCall): Promise<string> {
     // A replace needs no placeholder — the user is already looking at the scene
     // being rebuilt, and emptying it would hide what they are comparing against.
     const placeholder = body.op === 'insert' ? placeholderScene(body.intent) : null;
+    let reserveFailure = '';
     if (placeholder) {
         try {
             applyBuildOps(lesson, [reserveOp(target, placeholder)]);
         } catch (e) {
             console.error('build_scene: could not reserve a slot', e);
-            addChatMessage('assistant', `I couldn't make room for that scene: ${String(e)}`);
-            return '';
+            reserveFailure = `I couldn't make room for that scene: ${String(e)}`;
+            addChatMessage('assistant', reserveFailure);
         }
     }
+    if (reserveFailure) return reserveFailure;
     lessonSpec = lesson as never;
     // Bootstrapping made the displayed scene into scenes[0]; navigation still
     // thinks it is showing a standalone spec, so `navigateTo` would see no scene

@@ -22006,20 +22006,23 @@ async function runBuildSceneTool(tc) {
 	} catch (e) {
 		const why = e instanceof Error ? e.message : String(e);
 		console.warn("build_scene: not sent —", why);
-		addChatMessage("assistant", `I couldn't build that: ${why}`);
-		return "";
+		const said = `I couldn't build that: ${why}`;
+		addChatMessage("assistant", said);
+		return said;
 	}
 	console.log("%c🎬 build_scene:", "color: #ffaa00; font-weight: bold", body.op, "at index", body.sceneIndex, "|", body.intent.slice(0, 120));
 	const { lesson, bootstrap } = ensureLessonFormat(typeof lessonSpec !== "undefined" && lessonSpec ? lessonSpec : null, typeof currentSpec !== "undefined" && currentSpec ? currentSpec : null);
 	const target = body.sceneIndex;
 	const placeholder = body.op === "insert" ? placeholderScene(body.intent) : null;
+	let reserveFailure = "";
 	if (placeholder) try {
 		applyBuildOps(lesson, [reserveOp(target, placeholder)]);
 	} catch (e) {
 		console.error("build_scene: could not reserve a slot", e);
-		addChatMessage("assistant", `I couldn't make room for that scene: ${String(e)}`);
-		return "";
+		reserveFailure = `I couldn't make room for that scene: ${String(e)}`;
+		addChatMessage("assistant", reserveFailure);
 	}
+	if (reserveFailure) return reserveFailure;
 	lessonSpec = lesson;
 	if (bootstrap.bootstrapped && bootstrap.promotedScene) {
 		currentSceneIndex = 0;
