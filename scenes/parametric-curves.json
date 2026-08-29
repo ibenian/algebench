@@ -347,18 +347,13 @@
         {
           "type": "grid",
           "plane": "xy",
-          "range": [
-            -2,
-            2
-          ],
           "color": [
             0.25,
             0.25,
             0.4
           ],
           "opacity": 0.15,
-          "divisions": 8
-        },
+          "divisions": 6},
         {
           "type": "axis",
           "axis": "x",

@@ -302,17 +302,21 @@
         "range": {
           "oneOf": [
             { "type": "array", "items": { "oneOf": [{ "type": "number" }, { "type": "string" }] }, "minItems": 2, "maxItems": 2 },
+            { "$ref": "#/$defs/rangePlane" },
             { "$ref": "#/$defs/range3D" }
           ],
-          "description": "Range for parametric types [tMin,tMax] or axis range [-5,5]. Components can be numbers or math.js expression strings. For vector_field: [[xMin,xMax],[yMin,yMax],[zMin,zMax]]."
+          "description": "Range for parametric types [tMin,tMax] or axis range [-5,5]. Components can be numbers or math.js expression strings. For vector_field: [[xMin,xMax],[yMin,yMax],[zMin,zMax]]. For grid: omit to inherit the scene range for the plane's two axes, or give one interval per axis in plane order as [[a,b],[c,d]] ('xz' means x then z) when the two axes span different extents."
         },
         "samples": {
           "type": "integer",
           "description": "Number of sample points for curves/surfaces. Default: 128 (parametric_curve), 200 (animated_curve)."
         },
         "divisions": {
-          "type": "integer",
-          "description": "Number of grid divisions. Default: 10.",
+          "oneOf": [
+            { "type": "integer", "minimum": 1 },
+            { "type": "array", "items": { "type": "integer", "minimum": 1 }, "minItems": 2, "maxItems": 2 }
+          ],
+          "description": "Number of grid divisions: one count for both axes, or [nx, ny] in plane order. A pair is needed when the two axes span different extents and the cells must still land on integer positions. Default: 10.",
           "default": 10
         },
         "axis": {
@@ -1418,6 +1422,13 @@
       "minItems": 3,
       "maxItems": 3,
       "description": "3D point [x,y,z] where each component can be a number or math.js expression string."
+    },
+    "rangePlane": {
+      "type": "array",
+      "items": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
+      "minItems": 2,
+      "maxItems": 2,
+      "description": "Per-axis ranges for a plane as [[aMin,aMax],[bMin,bMax]], in plane order."
     },
     "range3D": {
       "type": "array",

@@ -93,17 +93,13 @@
         {
           "type": "grid",
           "plane": "xy",
-          "range": [
-            -2,
-            8
-          ],
           "color": [
             0.25,
             0.25,
             0.4
           ],
           "opacity": 0.12,
-          "divisions": 10
+          "divisions": [17, 6]
         },
         {
           "type": "axis",
@@ -329,17 +325,14 @@
         {
           "type": "grid",
           "plane": "xy",
-          "range": [
-            -7,
-            7
-          ],
+          "range": [[-7, 7], [-1.5, 1.5]],
           "color": [
             0.25,
             0.25,
             0.4
           ],
           "opacity": 0.12,
-          "divisions": 14
+          "divisions": [14, 6]
         },
         {
           "type": "axis",

@@ -692,17 +692,16 @@
     {
      "type": "grid",
      "plane": "xz",
-     "range": [
-      -3,
-      4
-     ],
      "color": [
       0.25,
       0.25,
       0.4
      ],
      "opacity": 0.12,
-     "divisions": 7
+     "divisions": [
+      7,
+      5
+     ]
     },
     {
      "type": "axis",
@@ -1038,17 +1037,16 @@
    {
     "type": "grid",
     "plane": "xz",
-    "range": [
-     -1,
-     5
-    ],
     "color": [
      0.25,
      0.25,
      0.4
     ],
     "opacity": 0.12,
-    "divisions": 6
+    "divisions": [
+     6,
+     4
+    ]
    },
    {
     "type": "axis",

@@ -1933,10 +1933,9 @@
           "id": "uv_grid",
           "type": "grid",
           "plane": "xy",
-          "range": [-1, 8],
           "color": [0.25, 0.29, 0.34],
           "opacity": 0.14,
-          "divisions": 12
+          "divisions": [9, 7]
         },
         {
           "id": "uv_x_axis",
@@ -2754,10 +2753,9 @@
           "id": "pe_grid",
           "type": "grid",
           "plane": "xy",
-          "range": [-6, 6],
           "color": [0.25, 0.29, 0.34],
           "opacity": 0.14,
-          "divisions": 12
+          "divisions": [12, 7]
         }
       ],
       "steps": [
@@ -3409,10 +3407,9 @@
           "id": "s1_grid",
           "type": "grid",
           "plane": "xy",
-          "range": [-5, 7],
           "color": [0.25, 0.29, 0.34],
           "opacity": 0.14,
-          "divisions": 12
+          "divisions": [10, 8]
         }
       ],
       "steps": [
@@ -3732,10 +3729,9 @@
           "id": "s2_grid",
           "type": "grid",
           "plane": "xy",
-          "range": [-1, 6],
           "color": [0.25, 0.29, 0.34],
           "opacity": 0.14,
-          "divisions": 12
+          "divisions": [14, 12]
         },
         {
           "id": "s2_left_wall",

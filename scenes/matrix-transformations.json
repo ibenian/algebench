@@ -2480,17 +2480,13 @@
         {
           "type": "grid",
           "plane": "xy",
-          "range": [
-            -0.5,
-            4.5
-          ],
           "color": [
             0.25,
             0.25,
             0.4
           ],
           "opacity": 0.12,
-          "divisions": 10
+          "divisions": [10, 8]
         },
         {
           "type": "axis",
