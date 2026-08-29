@@ -387,68 +387,19 @@ def test_a_long_chat_thread_is_not_rejected():
     assert len(req.messages) == 200
 
 
-# ---- the function list is generated, not restated ------------------------
+# ---- the function list reaches the model ---------------------------------
 
-def test_the_mathjs_extensions_come_from_the_source_that_defines_them():
-    """A hand-written list in a prompt goes stale silently: the model keeps
-    being offered a function that was removed, or never hears about one that was
-    added, and either way it is a scene that does not render with nothing to say
-    why. These are the names it CANNOT infer — math.js's own library it knows.
+def test_the_extension_names_reach_the_prompt():
+    """Being in sync with expr.ts is worth nothing if the model is never told.
+
+    `tests/test_mathjs_extensions_sync.py` guards the LIST — that the Python
+    names match the TypeScript that implements them, in both directions. This
+    guards its USE: that the names actually reach the prompt the builder reads.
+    Two separate failures, and neither implies the other.
     """
-    from backend.mathjs_extensions import extension_names
-
-    names = extension_names()
-    # Pinned against the source, so adding one to expr.ts without the prompt
-    # noticing is impossible.
-    assert "dataTable" in names and "toFixed" in names
-    assert "binomial" in names, "the SymPy-compat names count too"
-    assert "sin" not in names, "math.js's own library is not an extension"
-
-    # And they reach the model.
     from backend.experts.modules.build_scene.proposed import ProposedElement
+    from backend.mathjs_extensions import EXTENSION_NAMES
+
     desc = ProposedElement.model_fields["curve_expr"].description
-    for n in names:
-        assert n in desc, f"{n} is available but the prompt never says so"
-
-
-def test_an_unreadable_extensions_block_FAILS_rather_than_emptying(tmp_path):
-    """The silent-failure guard. If `expr.ts` is reformatted past the pattern,
-    the list must not quietly become empty — a prompt that loses its function
-    list produces invented names, and an invented name is not an error the
-    composer can see. It is a scene that draws nothing.
-
-    Three ways it can go wrong, all of them silent if unchecked: the file is
-    gone, the block is reformatted past the pattern, or the pattern matches
-    something that is not the key list.
-    """
-
-    import backend.mathjs_extensions as m
-
-    original = m._SOURCE
-    try:
-        for label, text in (
-            ("a missing file", None),
-            # Reformatted past the pattern: the declaration is still there in
-            # spirit, but not in the shape the regex anchors on.
-            ("a block the pattern cannot find",
-             "const _MATHJS_EXTENSIONS: Record<string, unknown> = {\n"
-             "    toFixed: (v) => v,\n};\n"),
-            # The nastier one: the block IS found and keys ARE extracted, but
-            # they are the wrong keys — an inner object matched instead. Counting
-            # matches is not the same as matching the right thing.
-            ("a parse that matched the wrong thing",
-             "const _MATHJS_EXTENSIONS = {\n"
-             "    somethingElse: {\n        nested: 1,\n    },\n};\n"),
-        ):
-            m.extension_names.cache_clear()
-            if text is None:
-                m._SOURCE = original.parent / "does-not-exist.ts"
-            else:
-                m._SOURCE = tmp_path / "expr.ts"
-                m._SOURCE.write_text(text)
-            with pytest.raises(m.ExtensionsUnreadable):
-                m.extension_names()
-    finally:
-        m._SOURCE = original
-        m.extension_names.cache_clear()
-        assert "dataTable" in m.extension_names(), "the real source must still parse"
+    for name in EXTENSION_NAMES:
+        assert name in desc, f"{name} is available but the prompt never says so"

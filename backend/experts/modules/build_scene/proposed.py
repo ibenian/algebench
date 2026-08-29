@@ -40,14 +40,11 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from backend.mathjs_extensions import extension_names
+from backend.mathjs_extensions import EXTENSION_NAMES
 
-#: GENERATED from `_MATHJS_EXTENSIONS` in src/expr.ts, never restated. A
-#: hand-written copy goes stale silently: the model keeps being offered a
-#: function that was removed, or never hears about one that was added, and either
-#: way it is a scene that does not render with nothing to say why. These are the
-#: names it CANNOT infer — math.js's own library it already knows.
-_EXTENSIONS = ", ".join(extension_names())
+#: The names the model CANNOT infer — math.js's own library it already knows.
+#: Kept in sync with src/expr.ts by tests/test_mathjs_extensions_sync.py.
+_EXTENSIONS = ", ".join(EXTENSION_NAMES)
 
 #: The types iteration 1 builds. Bounded on purpose: a type the composer cannot
 #: stage is worse than one it refuses, because it renders as an empty scene.

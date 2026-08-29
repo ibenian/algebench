@@ -1,57 +1,33 @@
-"""The math.js functions this project adds, read from the source that defines them.
+"""The math.js functions this project adds, beyond math.js's own library.
 
-A scene expression is evaluated by math.js — so the model can rely on math.js's
-own library without being told. What it CANNOT know is the handful of functions
-added here, in `_MATHJS_EXTENSIONS` (src/expr.ts): `dataTable` and `bar` exist
-nowhere else, and `binomial`/`erfc`/`beta`/`conjugate` are SymPy-compatibility
-names, not math.js built-ins.
+A scene expression is evaluated by math.js, so the model can rely on everything
+math.js ships without being told. What it cannot infer is this list: `dataTable`
+and `bar` exist nowhere else, and `binomial`/`erfc`/`beta`/`conjugate` are
+SymPy-compatibility names rather than math.js built-ins.
 
-Read from the TypeScript rather than restated, because a hand-written copy in a
-prompt goes stale silently: the model keeps being offered a function that was
-removed, or never hears about one that was added, and either way the failure is
-a scene that does not render with nothing to say why. `expr.ts` already exports
-`EXTENSION_NAMES` for the same reason on the client side.
+KEEP IN SYNC WITH `_MATHJS_EXTENSIONS` in src/expr.ts — that is where they are
+implemented; this is only the name list, for the builder's prompt. The sync is
+enforced, not hoped for: `tests/test_mathjs_extensions_sync.py` reads the
+TypeScript and fails if the two disagree, so adding one there without adding it
+here breaks CI rather than quietly leaving the model unaware of it.
+
+An earlier revision parsed `expr.ts` with a regex at import time. That put a
+TypeScript parser on the request path to avoid duplicating eight strings, and
+needed three guards of its own against parsing wrong. A plain list checked by a
+test is smaller in every direction.
 """
 from __future__ import annotations
 
-import re
-from functools import cache
-from pathlib import Path
-
-_SOURCE = Path(__file__).resolve().parent.parent / "src" / "expr.ts"
-
-#: The block to read, and the keys within it. Anchored on the declaration rather
-#: than a line number so ordinary edits above it do not shift the match.
-_BLOCK = re.compile(r"^const _MATHJS_EXTENSIONS = \{(.*?)^\};", re.S | re.M)
-_KEY = re.compile(r"^    ([A-Za-z_][A-Za-z0-9_]*)\s*:", re.M)
-
-#: One name known to be in the block. If the shape of `expr.ts` changes, the
-#: extraction must FAIL rather than quietly yield fewer names — a prompt that
-#: silently loses its function list is the exact silent-failure this exists to
-#: prevent.
-_CANARY = "dataTable"
-
-
-class ExtensionsUnreadable(RuntimeError):
-    """`src/expr.ts` no longer has the shape this parser expects."""
-
-
-@cache
-def extension_names() -> tuple[str, ...]:
-    """Every function `_MATHJS_EXTENSIONS` adds, in declaration order."""
-    try:
-        source = _SOURCE.read_text(encoding="utf-8")
-    except OSError as e:
-        raise ExtensionsUnreadable(f"cannot read {_SOURCE}: {e}") from e
-    block = _BLOCK.search(source)
-    if not block:
-        raise ExtensionsUnreadable(
-            f"no `const _MATHJS_EXTENSIONS = {{…}};` block in {_SOURCE}. The "
-            f"prompt's list of project-specific math.js functions is generated "
-            f"from it; fix the pattern rather than hard-coding the names.")
-    names = tuple(_KEY.findall(block.group(1)))
-    if _CANARY not in names:
-        raise ExtensionsUnreadable(
-            f"parsed {len(names)} name(s) from {_SOURCE} but not {_CANARY!r}, so "
-            f"the parse is wrong even though it matched. Names: {names}")
-    return names
+#: Order matches the declaration in src/expr.ts, so a diff of the two reads the
+#: same way.
+EXTENSION_NAMES: tuple[str, ...] = (
+    "toFixed",
+    "concat",
+    "bar",
+    "dataTable",
+    # SymPy `jscode` compatibility — emitted as bare names by derivations.
+    "binomial",
+    "erfc",
+    "beta",
+    "conjugate",
+)
