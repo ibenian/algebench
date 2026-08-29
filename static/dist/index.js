@@ -7645,13 +7645,18 @@ function scanSpecForUnsafeJs(spec) {
 		"fy",
 		"fz"
 	]);
+	const NESTED_COORD_KEYS = /* @__PURE__ */ new Set(["points", "vertices"]);
 	const _TEMPLATE_RE = /\{\{([\s\S]*?)\}\}/g;
 	function _isExprKey(k) {
 		return EXPR_KEYS.has(k) || k.endsWith("Expr") && k.length > 4;
 	}
+	/** Whether a key's value may CONTAIN math.js at any depth. */
+	function _carriesExpressions(k) {
+		return _isExprKey(k) || NESTED_COORD_KEYS.has(k);
+	}
 	function walk(obj, parentKey, path) {
 		if (typeof obj === "string") {
-			if (parentKey && _isExprKey(parentKey) && _JS_ONLY_RE.test(obj)) issues.push({
+			if (parentKey && _carriesExpressions(parentKey) && _JS_ONLY_RE.test(obj)) issues.push({
 				path,
 				expr: obj,
 				type: "expr"
