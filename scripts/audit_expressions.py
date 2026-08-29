@@ -91,7 +91,12 @@ _JS_BUILTIN_FUNC_RE = re.compile(
 # Fields actively scanned by scanSpecForUnsafeJs in static/trust.js.
 # The trust scanner also catches any key ending in "Expr" via
 # endsWith('Expr'), so *Expr keys don't need to be listed here.
-_SCANNED_KEYS = frozenset({'expr', 'x', 'y', 'z', 'expression', 'fx', 'fy', 'fz'})
+#
+# Imported rather than restated: backend/model/expression_fields.py is the one
+# definition, shared with compose.py. A field that one of them calls an
+# expression and another does not is a field that gets EVALUATED without being
+# SCANNED, so the duplication was a security question, not only a tidiness one.
+from backend.model.expression_fields import EXPR_KEYS as _SCANNED_KEYS
 
 # Expression-bearing keys that compileExpr evaluates but that
 # scanSpecForUnsafeJs does NOT explicitly list.  Currently all *Expr

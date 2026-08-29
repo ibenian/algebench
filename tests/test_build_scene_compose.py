@@ -525,8 +525,13 @@ def test_a_CONSTANT_EXPRESSION_is_promoted_like_any_other():
 
 
 def test_a_type_that_cannot_move_says_so():
-    """Better a message naming the element than a scene missing a piece."""
-    with pytest.raises(ComposeError, match="cannot move"):
+    """Better a message naming the element than a scene missing a piece.
+
+    `axis` has neither an `animated_axis` twin nor an expression field of its
+    own, so there is nowhere for the expression to go. Contrast `text`, which
+    has `positionExpr` and therefore moves in place — see the test below.
+    """
+    with pytest.raises(ComposeError, match="no expression field"):
         compose("T", "d",
                 [ProposedElement(type="axis", axis="x", step=0, position="r,0,0")],
                 [ProposedStep(index=0, title="one")],
@@ -921,21 +926,33 @@ def test_literal_coordinates_still_frame_the_scene():
     assert scene.camera is not None
 
 
-def test_a_slider_reference_is_found_inside_a_nested_field():
-    """`Element` is `extra="allow"`, so a field this composer does not build today
-    can still ride through. A slider reference hiding in one would not be seen,
-    the slider would not be pulled forward, and the element would render nothing
-    with no error anywhere.
+def test_a_slider_reference_is_found_INSIDE_nested_coordinates():
+    """`points` holds `[["ax","ay","0"], …]` — math.js one level down.
 
-    Constructed by hand because nothing emits a dict field today — the point is
-    that the answer must not DEPEND on that staying true.
+    An `animated_line` is driven entirely by `points`, so missing this would
+    leave its sliders unmoved and the line unresolvable. `is_expression_key` says
+    no to `points` (correctly — it is not what trust.js scans), which is why
+    `carries_expressions` exists as a separate question.
     """
     from backend.experts.handlers.build_scene.compose import _references
     from backend.model.lesson import Element
 
-    el = Element.model_validate({"type": "point", "id": "p",
-                                 "style": {"offset": ["ax", 0, 0]}})
-    assert _references(el, {"ax", "unused"}) == {"ax"}
+    line = Element.model_validate({"type": "animated_line", "id": "s0-l",
+                                   "points": [["0", "0", "0"], ["ax", "ay", "0"]]})
+    assert _references(line, {"ax", "ay", "zz"}) == {"ax", "ay"}
+
+
+def test_an_unknown_field_is_not_scanned_at_all():
+    """The allowlist's whole point. `Element` is `extra="allow"`, so anything can
+    ride through — and most of what does is prose. Of the 86 properties
+    `$defs.element` declares, 16 carry expressions and 70 do not.
+    """
+    from backend.experts.handlers.build_scene.compose import _references
+    from backend.model.lesson import Element
+
+    el = Element.model_validate({"type": "point", "id": "p", "position": [0, 0, 0],
+                                 "legendGroup": "the a vector", "cssClass": "a-b-c"})
+    assert _references(el, {"a", "b", "c"}) == set()
 
 
 # ---- reasons are rendered as markdown, so they must survive it ------------
@@ -1077,3 +1094,22 @@ def test_a_real_reference_is_still_found_including_in_an_unknown_field():
 
     future = Element.model_validate({"type": "point", "id": "p", "someNewExpr": ["w*2"]})
     assert _references(future, {"w"}) == {"w"}
+
+
+def test_a_text_moves_in_place_because_it_has_its_own_expression_field():
+    """There is no `animated_text`, and refusing one was a regression I
+    introduced: `src/objects/text.ts` does `el.positionExpr ||
+    el.position.map(String)` and compiles either, and the corpus has
+    expression-positioned `text` elements that render fine.
+
+    So the question is not "does an animated twin exist" but "is there anywhere
+    for the expression to go" — and for `text` there is.
+    """
+    scene = compose("T", "d", [
+        ProposedElement(type="text", step=0, label="moving", position="2*pi, 0, 0"),
+        ProposedElement(type="text", step=0, label="still", position="1, 2, 0"),
+    ], [ProposedStep(index=0, title="one")])
+    moving, still = (e.model_dump(by_alias=True, exclude_none=True) for e in scene.steps[0].add)
+    assert moving["type"] == "text" and moving["positionExpr"] == ["2*pi", "0", "0"]
+    assert "position" not in moving, "a literal field must not also hold it"
+    assert still["type"] == "text" and still["position"] == [1, 2, 0]

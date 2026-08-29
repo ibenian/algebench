@@ -48,6 +48,7 @@ import logging
 import re
 from typing import Optional, Union
 
+from backend.model.expression_fields import carries_expressions
 from backend.model.lesson import Element, Scene, Step
 
 from backend.experts.modules.build_scene.proposed import (
@@ -363,15 +364,6 @@ def _refuse_sampled_curves(per_step: dict[int, list], scene_level: list) -> None
             f"when a slider moves.")
 
 
-#: Fields that are never math.js, so their words are not slider references.
-#: A DENYLIST, not an allowlist: an unknown field keeps being scanned, so a new
-#: expression-bearing key is covered the day it appears rather than the day
-#: someone remembers to list it. The cost of that choice is a false positive
-#: (a slider appears a step early); the cost of the other is an element that
-#: renders nothing and says nothing.
-_NOT_EXPRESSIONS = frozenset({"type", "id", "label", "color", "prompt", "axis", "plane"})
-
-
 def _references(built, slider_ids: set[str]) -> set[str]:
     """Which sliders this composed element's EXPRESSIONS name.
 
@@ -381,10 +373,17 @@ def _references(built, slider_ids: set[str]) -> set[str]:
     "referenced" one named `x` through its own `axis: "x"`. Both then dragged the
     slider forward to a step nothing on it actually uses — and `x`, `a`, `t` are
     exactly the names sliders get.
+
+    An ALLOWLIST, and not a new one: `carries_expressions` is the project's
+    existing rule, shared with `static/trust.js`'s security scanner and
+    `scripts/audit_expressions.py`. The first attempt here was a denylist of 7
+    metadata keys — backwards, since `$defs.element` declares 86 properties of
+    which only 16 carry expressions, so it read `legendGroup`, `cssClass` and
+    `align` as code.
     """
     found: set[str] = set()
     for key, value in built.model_dump(exclude_none=True).items():
-        if key in _NOT_EXPRESSIONS:
+        if not carries_expressions(key):
             continue
         for text in _strings(value):
             found |= set(_NAMES.findall(text)) & slider_ids
@@ -489,6 +488,12 @@ def _sliders(proposed: list[ProposedSlider]) -> tuple[list, dict[int, list]]:
 #: mention a slider", so operators and numbers are irrelevant — this READS the
 #: text, it never evaluates it.
 _NAMES = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+
+
+#: Types that carry their own expression field instead of an `animated_` twin.
+#: `text` compiles `positionExpr` (or `position` read as expressions) directly —
+#: see src/objects/text.ts — so it moves without changing type.
+_MOVES_IN_PLACE = {"text": {"position": "positionExpr"}}
 
 
 def _animated(kind: str) -> str:
@@ -610,7 +615,8 @@ def _element(el: ProposedElement, taken: set[str], with_prompts: bool) -> tuple[
               "to": _coord(el.to_pos, f"{where} to_pos")}
     #: `from`/`to` -> the schema's animated names. `position` animates as `expr`,
     #: the same key a moving head uses.
-    ANIMATED_NAME = {"position": "expr", "from": "fromExpr", "to": "expr"}
+    ANIMATED_NAME = dict(_MOVES_IN_PLACE.get(el.type)
+                         or {"position": "expr", "from": "fromExpr", "to": "expr"})
 
     # THE FIELD DECIDES, per schemas/lesson.schema.json: `from`/`to`/`position`
     # carry CONSTANTS and the `*Expr` family carries math.js. So the test is
@@ -627,13 +633,20 @@ def _element(el: ProposedElement, taken: set[str], with_prompts: bool) -> tuple[
     # still a moving line, and it has to be built the moving way throughout.
     moves = any(isinstance(v, str)
                 for value in static.values() if value for v in value)
-    if moves and not el.type.startswith("animated_"):
+    # Some types read expressions WITHOUT an animated variant. `text.ts` does
+    # `el.positionExpr || el.position.map(String)` and compiles either — so a
+    # moving `text` stays a `text` and its coordinates go to `positionExpr`.
+    # There is no `animated_text`, and refusing one was a regression: the corpus
+    # has expression-positioned `text` elements that render fine.
+    if moves and el.type in _MOVES_IN_PLACE:
+        pass
+    elif moves and not el.type.startswith("animated_"):
         moving = _animated(el.type)
         if moving not in SUPPORTED_TYPES:
             raise ComposeError(
-                f"{where}: its coordinates depend on a slider, but there is no "
-                f"{moving} type — a {el.type} cannot move. Give it fixed "
-                f"coordinates, or use a type that can.")
+                f"{where}: its coordinates are expressions, but there is no "
+                f"{moving} type and a {el.type} has no expression field for "
+                f"them. Give it constant coordinates, or use a type that moves.")
         body["type"] = moving
     kind = body["type"]
 
