@@ -34,6 +34,17 @@ export const MAX_SCENES_SUMMARISED = 40;
 export const MAX_SUMMARY_CHARS = 200;
 export const MAX_INTENT_CHARS = 2000;
 
+/**
+ * How many turns of the chat thread ride along.
+ *
+ * The thread is sent so a STATELESS expert can recover the clarification rounds
+ * it already asked and had answered; without it, it re-parses the same intent
+ * and asks the identical question forever. The backend's own recovery reads only
+ * the last few turns — this ceiling is about payload, not a mirror of that:
+ * enough to cover two rounds and the messages between them.
+ */
+export const MAX_THREAD_TURNS = 12;
+
 /** One line about a scene — cheap enough to include for every one. */
 export interface SceneSummary { index: number; title: string; description: string }
 
@@ -49,6 +60,9 @@ export interface Conventions {
     labelsAreLatex: boolean;
     elementsCarryPrompts: boolean;
 }
+
+/** One turn of the chat, as the backend's clarification recovery reads it. */
+export interface ThreadTurn { role: string; text: string }
 
 /** An agent-memory key and its SHAPE — never its value. */
 export interface MemoryRef { key: string; shape: string }
@@ -80,6 +94,13 @@ export interface BuildSceneRequestBody {
     sliderVocabulary: string[];
     /** What bounding dropped. A silent truncation reads as "the model saw everything". */
     omitted: string[];
+    /**
+     * The tail of the conversation, so an answered clarification is not asked
+     * again. Sent as `{role, text}` — the shape the backend's recovery reads.
+     * Anything else arrives as dicts with no `text`, every question/answer pair
+     * is skipped, and the clarification loop silently never closes.
+     */
+    messages: ThreadTurn[];
 }
 
 type LooseScene = Scene & { steps?: Array<Record<string, unknown>>; elements?: unknown[] };
@@ -148,6 +169,7 @@ export function assembleBuildSceneRequest(opts: {
     sceneIndex?: number;
     clarifications?: Array<{ question: string; answer: string }>;
     memory?: MemoryRef[];
+    messages?: ThreadTurn[];
 }): BuildSceneRequestBody {
     const scenes = scenesOf(opts.lesson);
     const omitted: string[] = [];
@@ -205,5 +227,9 @@ export function assembleBuildSceneRequest(opts: {
         memory: opts.memory || [],
         sliderVocabulary: collectSliderIds(scenes),
         omitted,
+        messages: (opts.messages || []).slice(-MAX_THREAD_TURNS).map((m) => ({
+            role: String((m && m.role) || 'user'),
+            text: String((m && m.text) || ''),
+        })),
     };
 }

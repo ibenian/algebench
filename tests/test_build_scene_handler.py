@@ -65,6 +65,32 @@ def test_the_endpoint_exists_via_discovery():
 
 # ---- the four outcomes ---------------------------------------------------
 
+def test_a_failed_call_is_refused_not_routed_to_chat(monkeypatch, request_body):
+    """A CRASH and a NON-REQUEST are different answers.
+
+    Both leave `is_build` false. Collapsing them told the reader "that was not a
+    scene request" about a request that WAS one — observed live: the model
+    emitted a `type: slider` element, the adapter rightly refused the unknown
+    `value` key, and the user was handed a conversational reply instead of being
+    told the build had failed.
+    """
+    _stub(monkeypatch, SceneProposal(is_build=False, error="the builder broke"))
+    out = h.build_scene(h.BuildSceneRequest.model_validate(request_body))
+    assert out == {"reason": "the builder broke"}
+    assert "fallback_to_chat" not in out
+
+
+def test_a_failed_call_beats_a_question_it_also_carried(monkeypatch, request_body):
+    """`error` is checked FIRST. A partial parse can leave both set, and asking
+    the reader to clarify a request that never reached the model wastes a round
+    of the budget on a question the answer cannot help."""
+    _stub(monkeypatch, SceneProposal(is_build=True, question="2D or 3D?", error="broke"))
+    request_body["clarifications"] = []
+    request_body["messages"] = []
+    out = h.build_scene(h.BuildSceneRequest.model_validate(request_body))
+    assert out == {"reason": "broke"}
+
+
 def test_not_a_scene_request_falls_back_to_chat(monkeypatch, request_body):
     _stub(monkeypatch, SceneProposal(is_build=False))
     assert h.build_scene(h.BuildSceneRequest.model_validate(request_body)) == {
@@ -72,9 +98,17 @@ def test_not_a_scene_request_falls_back_to_chat(monkeypatch, request_body):
 
 
 def test_an_underdetermined_request_asks_once(monkeypatch, request_body):
+    # Cleared explicitly. The shipped fixture carries a clarification round in
+    # BOTH `clarifications` and its thread, which is deliberate — but it means
+    # relying on the fixture for "budget untouched" makes this test read as a
+    # budget test that happens to pass.
     _stub(monkeypatch, SceneProposal(is_build=True, question="2D or 3D?"))
+    request_body["clarifications"] = []
+    request_body["messages"] = []
     out = h.build_scene(h.BuildSceneRequest.model_validate(request_body))
     assert out["question"] == "2D or 3D?"
+    assert out["focus"] == request_body["sceneIndex"], (
+        "the client scrolls to `focus`; a question about scene 2 must point at scene 2")
 
 
 def test_the_question_budget_is_bounded(monkeypatch, request_body):
@@ -212,3 +246,97 @@ def test_an_ordinary_thread_yields_no_clarifications(monkeypatch, request_body):
     request_body["clarifications"] = []
     h.build_scene(h.BuildSceneRequest.model_validate(request_body))
     assert seen["clarifications"] == ""
+
+
+# ---- the module boundary -------------------------------------------------
+
+def test_a_crashed_model_call_carries_an_error_the_handler_can_refuse_on(monkeypatch):
+    """`propose_scene` swallows the exception — but must not swallow the FACT.
+
+    Everything above stubs `propose_scene`, so nothing else watches the one line
+    that decides whether a crash is distinguishable from a considered "no". The
+    LineFormatError below is the real one: the model answered with a `slider`
+    element and the adapter refused its unknown `value` key.
+    """
+    from backend.experts.modules.build_scene import intent as it
+
+    def boom(**_):
+        raise ValueError("elements: line 6 has unknown key 'value'")
+
+    monkeypatch.setattr(it, "_builder", lambda: boom)
+    proposal = it.propose_scene(intent="x")
+
+    assert proposal.error, "a crash must be reported, not returned as an empty proposal"
+    assert not proposal.is_build
+    # The reader gets a sentence, not a traceback: the adapter's message names
+    # `from_expr` and is written for whoever maintains the signature.
+    assert "unknown key" not in proposal.error
+
+
+def _parse_error():
+    """The real exception the adapter raises — it needs a live signature."""
+    from dspy.utils.exceptions import AdapterParseError
+
+    from backend.experts.modules.build_scene.signature import BuildSceneSig
+
+    return AdapterParseError(adapter_name="LineAdapter", signature=BuildSceneSig,
+                             lm_response="", message="a value must not span lines")
+
+
+def test_a_malformed_answer_is_retried_exactly_once(monkeypatch):
+    """A format slip loses everything, and it is a slip, not a misunderstanding.
+
+    One observed response had nine correct sliders, four correct vectors, axes, a
+    grid and an origin — and one `text` label that ran to five lines, which is
+    not `key: value`. The adapter refused the whole answer and fourteen good
+    elements went with it. Sampling is at temperature 0.7 with DSPy's cache off,
+    so the retry is a genuinely different draw.
+    """
+    from backend.experts.modules.build_scene import intent as it
+
+    calls = []
+
+    def flaky(**_):
+        calls.append(1)
+        if len(calls) == 1:
+            raise _parse_error()
+        return SceneProposal(is_build=True, title="T", description="d")
+
+    monkeypatch.setattr(it, "_builder", lambda: flaky)
+    out = it.propose_scene(intent="x")
+    assert len(calls) == 2, "the first attempt must be retried"
+    assert not out.error and out.title == "T"
+
+
+def test_a_second_malformed_answer_is_not_retried_again(monkeypatch):
+    """A model that malforms twice will not be talked round, and the reader is
+    already waiting."""
+    from backend.experts.modules.build_scene import intent as it
+
+    calls = []
+
+    def always_bad(**_):
+        calls.append(1)
+        raise _parse_error()
+
+    monkeypatch.setattr(it, "_builder", lambda: always_bad)
+    out = it.propose_scene(intent="x")
+    assert len(calls) == 2, "exactly one retry, not a loop"
+    assert out.error
+
+
+def test_a_non_format_failure_is_not_retried(monkeypatch):
+    """A dead LM or a bad key fails the same way twice — spending a second
+    request on it just doubles the wait before the reader is told."""
+    from backend.experts.modules.build_scene import intent as it
+
+    calls = []
+
+    def boom(**_):
+        calls.append(1)
+        raise RuntimeError("connection refused")
+
+    monkeypatch.setattr(it, "_builder", lambda: boom)
+    out = it.propose_scene(intent="x")
+    assert len(calls) == 1
+    assert out.error

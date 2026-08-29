@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import dspy
 
-from .proposed import SUPPORTED_TYPES, ProposedElement, ProposedStep
+from .proposed import SUPPORTED_TYPES, ProposedElement, ProposedSlider, ProposedStep
 
 
 class BuildSceneInputs(dspy.Signature):
@@ -80,20 +80,87 @@ class BuildSceneSig(BuildSceneInputs):
     3. A SCENE YOU CAN BUILD — set `is_build` true, leave `question` empty, and
        fill `title`, `description`, `elements` and `steps`.
 
+    VALUES ARE WRITTEN BARE. Never wrap a value in quotes. `label: $\vec{a}$`,
+    not `label: '$\vec{a}$'` — the quotes are not stripped, they are DRAWN, and
+    a point came out on screen labelled `'P_b'` with the apostrophes showing.
+    Where an example below appears in quotes it is being quoted TO YOU; the
+    quotes are not part of the value.
+
     THREE NOTATIONS. Getting these wrong is the most common way the scene breaks:
 
     * `position`, `from_pos`, `to_pos`, `points` are **math.js**. Write
       `cos(theta)`, `2*pi*r`, `Rp+h`. NEVER LaTeX — `\cos(\theta)` is refused, and
       a variable written as `\lambda` is not the same variable as `lambda`.
 
+      A COORDINATE IS EXACTLY THREE VALUES. To place `F` at the tip of `r`, add
+      the two vectors COMPONENT BY COMPONENT and write the three results:
+      `2, 3, 0`. Never `2, 1, 0 + 0, 2, 0` — that is six values, and it is
+      refused.
+
       DO THE ARITHMETIC. A coordinate that does not depend on a slider is a
       NUMBER: write `1, 0, 0`, not `(2*1 + 0*2 + 0*0)/(2*2 + 0*0 + 0*0) * 2, 0, 0`.
       Both render, but only the number tells the camera where the scene is, so a
       formula can leave your own geometry outside the frame. Show the derivation
       in `description`, which is where a reader can read it.
-    * `label` is **KaTeX** — `$\vec{a}$`, `$\theta$` — and only wraps in `$…$`
-      when `conventions` says labels are LaTeX.
+      WHICH FUNCTIONS EXIST: all of math.js — `sin`, `cos`, `sqrt`, `hypot`,
+      `atan2`, `min`, `max`, `abs`, `exp`, `log`, `pow`, `pi`, `e` and the rest
+      of its library — plus the ones this project adds, listed on the field
+      itself. Nothing else: an invented name is not an error the composer can
+      see, it is a scene that draws nothing in the browser.
+
+    * `label` is **KaTeX**. Maths goes in `$…$` always; `conventions` says which
+      STYLE the lesson writes, never whether to use notation at all.
     * `title`, `description` and `prompt` are **markdown with embedded KaTeX**.
+
+    THE TYPE LIST IS CLOSED, AND SO IS THE FIELD LIST. `type` must be one of the
+    types named on the `elements` field, and an element may carry ONLY the keys
+    shown in its block template. There is no polygon, sphere, surface, plane or
+    vector-field type yet — but curves and sliders DO exist, and are covered
+    below; do not read this rule as forbidding them.
+
+    THIS IS THE MOST COMMON WAY A BUILD FAILS. An invented type or key is not
+    ignored — it is refused, and the WHOLE scene is lost, including the eleven
+    elements that were right. If the ask needs a shape you cannot make, show the
+    idea with the types you have.
+
+    WRITE THE FORMULA. NEVER SAMPLE IT YOURSELF.
+    ------------------------------------------------------------------
+    You are describing maths, not plotting it. Every smooth shape in this scene
+    is a CLOSED-FORM EXPRESSION that the renderer samples at draw time, and it
+    resamples on every frame — which is the only reason a curve stays smooth when
+    the reader drags a slider, and how it stays smooth when they zoom in.
+
+    So: do NOT evaluate anything at a grid of x or t values and emit the results.
+    Do not compute `sin(-6.021238)`. Do not chain segments end to end. Do not
+    list vertices along an arc. If you find yourself writing a number with six
+    decimal places, you have started plotting instead of describing, and the
+    result is dozens of dead elements approximating a shape one element states
+    exactly.
+
+    ====================================  =================================
+    y as a function of x                  `animated_curve`, one `curve_expr`
+      sine, parabola, exponential,          e.g. `A*sin(k*x)`, `x^2`, `exp(-x)`
+      Gaussian, any y = f(x)                with `range: -2*pi, 2*pi`
+    traced by a parameter                 `parametric_curve`, `to_expr` of `t`
+      circle, ellipse, helix, spiral,       e.g. `cos(t), sin(t), 0`
+      Lissajous, any (x(t), y(t), z(t))     with `range: 0, 2*pi`
+    ====================================  =================================
+
+    A `line` is for something that IS straight — an axis marker, a chord, a
+    dashed drop to the x-axis. `points` is for a handful of real corners: a
+    triangle, an arrowhead, a path with three bends. Neither is a way to draw a
+    curve, and a chain of them is refused.
+
+    This is observed, not hypothetical. Asked for a sine wave with no curve type
+    available, a model emitted FORTY-EIGHT `animated_line` segments — `from
+    -6.283185 to -6.021238`, `-6.021238 to -5.759292`, and so on. Slow, jagged,
+    unmaintainable, and it rendered nothing at all.
+
+    A SLIDER IS NOT AN ELEMENT. It goes in `sliders`, its own list, and it is
+    what makes a scene interactive: a slider `rx` creates a VARIABLE, and any
+    coordinate may then be written in terms of it — a vector with
+    `to_pos: rx, ry, 0` follows the reader's hand. Give the ids that appear in
+    coordinates a slider, or those coordinates never resolve.
 
     WHAT YOU DO NOT DECIDE. These are computed from what you propose, and a
     plausible guess at them is worse than none:
@@ -124,14 +191,19 @@ class BuildSceneSig(BuildSceneInputs):
              "is genuinely missing; otherwise empty")
     title: str = dspy.OutputField(
         desc="the scene's title: markdown with KaTeX, e.g. "
-             r"'Cross Product: $\vec{a} \times \vec{b}$'")
+             r"e.g. Cross Product: $\vec{a} \times \vec{b}$ — written bare, no quotes")
     description: str = dspy.OutputField(
         desc="one or two sentences on what the scene shows and what it teaches; "
              "markdown with $…$ for maths")
     steps: list[ProposedStep] = dspy.OutputField(
         desc="the beats of the scene, in order, indexed from 0")
+    sliders: list[ProposedSlider] = dspy.OutputField(
+        desc="the interactive controls, if any. Each names the step that "
+             "introduces it and the variable name coordinates use. Empty when "
+             "nothing in the scene varies")
     elements: list[ProposedElement] = dspy.OutputField(
-        desc=f"every object drawn. Types: {', '.join(SUPPORTED_TYPES)}. Each one "
+        desc=f"every object drawn. Types: {', '.join(SUPPORTED_TYPES)} — NOTHING "
+             f"ELSE, and no keys beyond the ones in the block template. Each one "
              f"names the step that introduces it")
 
 

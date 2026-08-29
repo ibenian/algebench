@@ -36,15 +36,33 @@ export function setIssuesPanelToggle(fn: IssuesPanelToggle): void {
 export function scanSpecForUnsafeJs(spec: unknown): boolean {
     const issues: TrustIssue[] = [];
     const EXPR_KEYS = new Set(['expr', 'x', 'y', 'z', 'expression', 'fx', 'fy', 'fz']);
+    // Coordinate arrays holding math.js ONE LEVEL DOWN: `points: [["ax","ay","0"], …]`.
+    // `animated_line` compiles every one of those strings through `compileExpr`
+    // (src/objects/animated-line.ts), exactly as it would an `expr`, and neither
+    // name follows the `*Expr` convention that would have caught them.
+    //
+    // Leaving them out was never an execution bypass — `compileExpr` gates on
+    // trust itself and returns `compile('0')` when the scene is untrusted. It
+    // meant the dialog was never OFFERED, so such a scene silently drew those
+    // points at the origin instead of asking the reader whether to run it.
+    //
+    // Mirrors NESTED_COORD_KEYS in backend/expression_fields.py, which is the
+    // definition; tests/test_expression_keys_sync.py fails if the two drift.
+    const NESTED_COORD_KEYS = new Set(['points', 'vertices']);
     const _TEMPLATE_RE = /\{\{([\s\S]*?)\}\}/g;
 
     function _isExprKey(k: string): boolean {
         return EXPR_KEYS.has(k) || (k.endsWith('Expr') && k.length > 4);
     }
 
+    /** Whether a key's value may CONTAIN math.js at any depth. */
+    function _carriesExpressions(k: string): boolean {
+        return _isExprKey(k) || NESTED_COORD_KEYS.has(k);
+    }
+
     function walk(obj: unknown, parentKey: string | null, path: string): void {
         if (typeof obj === 'string') {
-            if (parentKey && _isExprKey(parentKey) && _JS_ONLY_RE.test(obj)) {
+            if (parentKey && _carriesExpressions(parentKey) && _JS_ONLY_RE.test(obj)) {
                 issues.push({ path, expr: obj, type: 'expr' });
             }
             return;

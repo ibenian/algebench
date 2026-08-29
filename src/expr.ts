@@ -72,6 +72,13 @@ const _mathjs = math.create(math.all!);
 // Add custom helper functions HERE ONLY. They are automatically imported into
 // both the math.js evaluator (_mathjs.import) and the JS fallback scope
 // (_EXPR_HELPERS), so both evaluators always stay consistent.
+//
+// ALSO ADD THE NAME to EXTENSION_NAMES in backend/mathjs_extensions.py. That
+// list is what tells the scene-building expert these functions exist — math.js's
+// own library it already knows, but nothing here is inferable. A name missing
+// there is a function the model never uses; a name only there is one it uses and
+// that does not exist, which renders as nothing at all.
+// tests/test_mathjs_extensions_sync.py fails if the two lists disagree.
 const _MATHJS_EXTENSIONS = {
     toFixed: (val: unknown, decimals: unknown): string => Number(val).toFixed(Number(decimals)),
     concat: (...args: unknown[]): string => args.map((a) => String(a)).join(''),

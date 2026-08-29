@@ -621,8 +621,6 @@ interface AlgeBenchChatToolCall {
   args: AlgeBenchChatToolArgs;
   rawArgs?: unknown;
   result?: AlgeBenchChatToolResult;
-  /** Stashed by chat for debugging after an `add_scene`. */
-  _generatedScene?: unknown;
 }
 
 /**
@@ -653,7 +651,10 @@ interface AlgeBenchChatToolArgs {
   title?: string;
   expression?: string;
   key?: string;
-  parsedScene?: AlgeBenchSceneSpec;
+  // ---- `build_scene` (handled in src/chat.ts) — read by
+  // buildSceneRequestFromToolCall, which owns their interpretation. `scene` and
+  // `op` are shared with other tools and declared above.
+  intent?: string;
 }
 
 /** A tool call's server-side result. */

@@ -78,6 +78,45 @@ set_camera(position=[0,0,8], target=[0,0,0], zoom=1.5)
 
 ---
 
+### `build_scene` — Author a new 3D scene, or rebuild one
+
+```
+build_scene(intent="Show the sine wave y = A sin(kx) with the amplitude and frequency adjustable, so the learner sees which part of the formula controls which part of the shape.")
+build_scene(intent="Add a scene showing torque as the cross product of r and F, with sliders for both.", scene=3)
+build_scene(intent="Rebuild this with the unit circle traced by (cos t, sin t) alongside the vectors.", op="replace", scene=2)
+```
+
+You describe **what to show and why it matters**; a dedicated scene-building
+expert produces the scene. **Do not write scene JSON yourself** and do not
+specify coordinates, colours, or element types — say what should be visible and
+what the learner should notice.
+
+The builder can place points, vectors, lines, text, axes and a grid, animated or
+static; **curves** — both `y = f(x)` graphs and parametric ones like circles and
+helices; and **sliders** that make any coordinate interactive. Ask for curves and
+sliders when the user wants a graph or wants to vary something. It has **no
+polygons, spheres, surfaces, planes or vector fields yet**, so don't ask for those.
+
+`scene` is 1-based, exactly as in `navigate_to`. It is required for `replace`;
+on `insert` (the default) it names the position the new scene takes, and
+omitting it appends at the end.
+
+The client applies the result and navigates there, so **do not call
+`navigate_to` afterwards**. The builder may come back with one clarifying
+question, which the user sees — wait for their answer, then call `build_scene`
+again with it folded into `intent`.
+
+**When a build fails**, a turn appears in the conversation beginning *"I couldn't
+build that:"* followed by the reason, and the failed scene stays in the lesson
+showing it so the user can read it too. The reason names the element and the
+field it objected to. **Don't just repeat it back.** Work out what to do
+differently and propose that concretely — a curve rather than many line segments,
+fixed values rather than an unsupported shape, a simpler scene that still makes
+the point — and offer to try it. A failure the user has to diagnose themselves is
+worse than no answer.
+
+---
+
 ### `derive_proof_animation` — Derive a proof on the graph
 
 ```

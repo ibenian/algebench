@@ -91,7 +91,19 @@ _JS_BUILTIN_FUNC_RE = re.compile(
 # Fields actively scanned by scanSpecForUnsafeJs in static/trust.js.
 # The trust scanner also catches any key ending in "Expr" via
 # endsWith('Expr'), so *Expr keys don't need to be listed here.
-_SCANNED_KEYS = frozenset({'expr', 'x', 'y', 'z', 'expression', 'fx', 'fy', 'fz'})
+#
+# Imported rather than restated: backend/expression_fields.py is the one
+# definition, shared with compose.py. A field that one of them calls an
+# expression and another does not is a field that gets EVALUATED without being
+# SCANNED, so the duplication was a security question, not only a tidiness one.
+#
+# The sys.path bootstrap is not decoration: CI runs this as a bare
+# `python scripts/audit_expressions.py` with no venv and no installed package
+# (.github/workflows/audit-expressions.yml), so a plain import fails there while
+# passing locally under ./run.sh. Same pattern as scripts/ci_validate_prebaked.py.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from backend.expression_fields import (  # noqa: E402
+    EXPR_KEYS as _SCANNED_KEYS, is_expression_key as _shared_is_expr_key)
 
 # Expression-bearing keys that compileExpr evaluates but that
 # scanSpecForUnsafeJs does NOT explicitly list.  Currently all *Expr
@@ -104,8 +116,14 @@ _UNSCANNED_EXPR_KEYS = frozenset({
 })
 
 def _is_expr_key(k):
-    """Return True if k is a known expression key or matches the *Expr pattern."""
-    return k in _SCANNED_KEYS or k in _UNSCANNED_EXPR_KEYS or (k.endswith('Expr') and k not in _NON_EXPR_KEYS)
+    """Return True if k is a known expression key or matches the *Expr pattern.
+
+    Delegates to backend/expression_fields.py so there is ONE answer. The
+    local sets remain for the discovery pass below, which needs to know which
+    keys are already accounted for — that is a different question from "is this
+    an expression".
+    """
+    return _shared_is_expr_key(k) or k in _UNSCANNED_EXPR_KEYS
 
 # Keys whose string values are never mathematical expressions — labels, ids,
 # documentation fields, format strings, etc.  Excluded from the dynamic

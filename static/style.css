@@ -4364,6 +4364,15 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     background: color-mix(in srgb, var(--accent-color) 90%, transparent);
 }
 
+/* The scene-build indicator reuses the enrichment pill's markup so a build in
+   flight and a derivation in flight read as one idea. Only the ANCHOR differs:
+   #viewport has 10px of padding for the rounded board, so the pill is inset to
+   match rather than sitting on the card's edge. */
+#viewport .build-indicator-stack {
+    right: 18px;
+    bottom: 18px;
+}
+
 .graph-edge-legend {
     position: absolute;
     left: 8px;

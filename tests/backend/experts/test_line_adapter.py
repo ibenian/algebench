@@ -463,3 +463,45 @@ def test_a_duplicate_output_section_raises_rather_than_dropping():
     dup = COMPLETION + "\n[[ ## tags ## ]]\nan extra block\n"
     with pytest.raises(AdapterParseError, match="more than once"):
         LineAdapter().parse(Sig, dup)
+
+
+# ---- quotes the model added itself ---------------------------------------
+
+class QuotedBlock(BaseModel):
+    label: str = ""
+    note: str = ""
+
+
+def test_a_value_the_model_wrapped_in_quotes_is_unwrapped():
+    """Observed on screen: a point drawn with the label `'P_b'`, apostrophes and
+    all. Field descriptions write their examples in quotes and the model copies
+    the quotes into the value; nothing downstream strips them, so they reach the
+    reader as part of the label.
+    """
+    block = LineAdapter().parse_block("label: '$P_b$'\nnote: \"a caption\"",
+                                      QuotedBlock, "elements")
+    assert block.label == "$P_b$"
+    assert block.note == "a caption"
+
+
+def test_quotes_that_are_part_of_the_text_survive():
+    """The narrowness is the point — this adapter exists to leave values alone.
+
+    `''` is LaTeX's closing double quote and must not become empty; an
+    apostrophe inside a sentence is not a delimiter; and a line that merely
+    starts and ends with a quote around DIFFERENT quoted words is not one
+    quoted value.
+    """
+    a = LineAdapter().parse_block("label: ''\nnote: it's fine", QuotedBlock, "elements")
+    assert a.label == "''"
+    assert a.note == "it's fine"
+
+    b = LineAdapter().parse_block("label: 'a' and 'b'", QuotedBlock, "elements")
+    assert b.label == "'a' and 'b'"
+
+
+def test_unquoting_does_not_touch_latex():
+    r"""A KaTeX value is the thing this adapter exists to carry intact."""
+    block = LineAdapter().parse_block(r"label: $\vec{a} \times \vec{b}$",
+                                      QuotedBlock, "elements")
+    assert block.label == r"$\vec{a} \times \vec{b}$"

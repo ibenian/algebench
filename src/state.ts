@@ -191,6 +191,10 @@ export interface AppState {
     _planeMeshSerial: number;
     currentRange: number[][];
     currentScale: number[];
+    /** The scale the scene DECLARED, or [1,1,1] if it declared none. The
+     *  effective scale content is drawn at is `currentScale`, which differs
+     *  whenever the scene left it to `isotropicScale`. */
+    declaredScale: number[];
     sceneView: MathBoxNode | null;
     mainDirLight: DirectionalLight | null;
 
@@ -318,6 +322,7 @@ export const state: AppState = {
     _planeMeshSerial: 0,  // monotonically increasing counter for stable depth ordering
     currentRange: [[-5, 5], [-5, 5], [-5, 5]],
     currentScale: [1, 1, 1],
+    declaredScale: [1, 1, 1],
     sceneView: null,      // MathBox cartesian view for current scene
     mainDirLight: null,   // main directional light, controlled via settings panel
 

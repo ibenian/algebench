@@ -11,7 +11,7 @@ import { buildSliderOverlay, registerSliders, stopAllSliderLoops, stopSliderLoop
          syncSliderState } from '/sliders.js';
 import { buildCameraButtons, animateCamera, resolveEffectiveStepCamera, DEFAULT_CAMERA } from '/camera.js';
 import type { CameraView, StepCamera } from '/camera.js';
-import { dataCameraToWorld } from '/coords.js';
+import { dataCameraToWorld, isDefaultScale, isotropicScale } from '/coords.js';
 import type { Vec3 } from '/coords.js';
 import { clearLabels } from '/labels.js';
 import { scanSpecForUnsafeJs, showTrustDialog, updateJsTrustPill } from '/trust.js';
@@ -201,6 +201,7 @@ interface SceneLoaderState {
     _planeMeshSerial: number;
     currentRange: number[][];
     currentScale: number[];
+    declaredScale: number[];
     // `| undefined` on purpose: loadScene(undefined) stores undefined here, and
     // widening rather than coercing to null keeps that observable difference.
     currentSpec: SceneSpec | null | undefined;
@@ -822,6 +823,7 @@ export async function loadScene(spec: SceneSpec | null | undefined): Promise<voi
     if (!spec || !spec.elements || spec.elements.length === 0) {
         sceneState.currentRange = [[-5, 5], [-5, 5], [-5, 5]];
         sceneState.currentScale = [1, 1, 1];
+        sceneState.declaredScale = [1, 1, 1];
         buildCameraButtons(spec);
         emptyState.style.display = 'block';
         const view = sceneState.mathbox.cartesian({
@@ -841,7 +843,19 @@ export async function loadScene(spec: SceneSpec | null | undefined): Promise<voi
     emptyState.style.display = 'none';
 
     sceneState.currentRange = spec.range || [[-5, 5], [-5, 5], [-5, 5]];
-    sceneState.currentScale = spec.scale || [1, 1, 1];
+    // ISOTROPY BY DEFAULT. `scale` is the world half-extent of each axis, so a
+    // constant [1, 1, 1] stretches whichever axis spans fewest data units — see
+    // `isotropicScale`. A scene that wants that stretch says so explicitly, and
+    // an explicit `scale` still wins.
+    const chosenScale = spec.scale && !isDefaultScale(spec.scale) ? spec.scale : null;
+    sceneState.currentScale = chosenScale || isotropicScale(sceneState.currentRange);
+    // What the scene ASKED for, as opposed to what its content is drawn at
+    // above. This is the pre-isotropy `currentScale` verbatim, and the camera is
+    // the one reader left: cameras are placed by eye against a framing, so the 41
+    // published scenes that declare a `scale` keep theirs untouched. Scenes that
+    // declare none get [1, 1, 1] — what they already had, and the correct factor
+    // under isotropy. See `dataCameraToWorld`.
+    sceneState.declaredScale = spec.scale || [1, 1, 1];
     configureWorldStarfield(spec as Parameters<typeof configureWorldStarfield>[0]);
     buildCameraButtons(spec);
 

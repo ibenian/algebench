@@ -183,6 +183,29 @@ def _is_special(a: Any) -> bool:
 _COLLECTIONS = (list, dict, set, tuple, frozenset)
 
 
+def _unquote(value: str) -> str:
+    """Drop ONE matched pair of surrounding quotes the model added itself.
+
+    A quote here is never data — it is imitation. Field descriptions write their
+    examples in quotes ("e.g. 'Cross Product: $\\vec{a}$'"), and the model copies
+    the quotes into the value, so a point label rendered on screen as `'P_b'`,
+    apostrophes and all. Nothing asks for quotes and nothing downstream strips
+    them, so they reach the reader.
+
+    Deliberately narrow, because this adapter's whole purpose is to leave values
+    alone. Only when BOTH ends are the same quote character, there is something
+    between them, and that something contains no occurrence of the same
+    character — so `"it's fine"` loses its double quotes and keeps the
+    apostrophe, `''` (LaTeX's closing double quote) is left alone, and
+    `'a' and 'b'` is not silently reduced to `a' and 'b`.
+    """
+    text = value.strip()
+    if len(text) < 3 or text[0] not in "\"'" or text[-1] != text[0]:
+        return value
+    inner = text[1:-1]
+    return inner if text[0] not in inner else value
+
+
 def _is_leaf(a: Any) -> bool:
     """True if ``a`` renders as a single line (not a model, not a collection)."""
     a = _unwrap_optional(a)
@@ -394,7 +417,7 @@ class LineAdapter(ChatAdapter):
             if key in data:
                 raise LineFormatError(
                     f"{field}: duplicate key {key!r} in one block")
-            data[key] = val
+            data[key] = _unquote(val)
         if not data:
             raise LineFormatError(f"{field}: empty block")
         return model(**data)                 # pydantic validation is preserved
@@ -497,7 +520,11 @@ class LineAdapter(ChatAdapter):
                  "with the appropriate values filled in.\n",
                  "Values are LINES of plain text. Do NOT use JSON. Do NOT escape "
                  "backslashes — write LaTeX exactly as you would in a document "
-                 r"(\frac{b}{2a}, not \\frac{b}{2a}). Every value is ONE line.",
+                 r"(\frac{b}{2a}, not \\frac{b}{2a})."
+                 "\nEVERY VALUE IS ONE LINE. A value that runs onto a second line "
+                 "is refused and the WHOLE answer is lost, however good the rest "
+                 "of it is. If something will not fit, shorten it or split it "
+                 "across separate items — never wrap it.",
                  ""]
         for name in signature.input_fields:
             parts.append(f"[[ ## {name} ## ]]\n{{{name}}}\n")

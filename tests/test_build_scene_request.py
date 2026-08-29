@@ -193,10 +193,26 @@ def test_the_formatter_still_survives_odd_but_declared_content():
 
 
 def test_conventions_state_the_negative_case_too():
-    """Saying "labels are plain text" out loud is the point. Silence reads as no opinion, and
+    """Saying something out loud is the point. Silence reads as no opinion, and
     the model falls back to whatever it saw in the neighbours."""
-    assert "do NOT wrap" in fmt.format_conventions(Conventions(labelsAreLatex=False))
-    assert "wrap label text" in fmt.format_conventions(Conventions(labelsAreLatex=True))
+    for flag in (True, False):
+        assert "$…$" in fmt.format_conventions(Conventions(labelsAreLatex=flag))
+
+
+def test_conventions_never_forbid_KaTeX_for_MATHS():
+    """The negative case used to read "do NOT wrap them in $…$", and the model
+    obeyed it literally — answering `proj_b a`, which is LaTeX with the
+    delimiters stripped and renders as literal text.
+
+    The flag does not mean what that sentence claimed. The vote counts a label
+    like `x₁` or `y = ax² + bx + c` as "plain", so a lesson writing its maths in
+    Unicode flipped it — turning a note about STYLE into a ban on notation. The
+    choice is between two ways of writing maths, never between maths and text.
+    """
+    plain = fmt.format_conventions(Conventions(labelsAreLatex=False))
+    assert "do NOT wrap" not in plain
+    assert "still goes in $…$" in plain, "the escape hatch has to be explicit"
+    assert "Never write LaTeX commands outside $…$" in plain
 
 
 # ---- against a real lesson, not a fixture I invented ---------------------
@@ -320,6 +336,11 @@ def test_the_clients_own_output_validates_and_renders():
     assert "Palette in use" in fmt.format_conventions(req.conventions)
     assert "$trajectory" in fmt.format_existing_names(req.sliderVocabulary, req.memory)
     assert "right-handed?" in fmt.format_clarifications(req.clarifications)
+    # The thread rides along so a STATELESS expert can recover the rounds it
+    # already asked. A client that stopped sending it would not error — it would
+    # loop, asking the same question every turn — so assert it is really there.
+    assert [m["role"] for m in req.messages] == ["user", "assistant", "user"]
+    assert any("right-handed" in m["text"] for m in req.messages)
 
 
 def test_every_request_field_reaches_the_prompt():
@@ -364,3 +385,21 @@ def test_a_long_chat_thread_is_not_rejected():
     for having talked a lot. Size is bounded where it becomes prompt."""
     req = _request(messages=[{"role": "user", "text": f"m{i}"} for i in range(200)])
     assert len(req.messages) == 200
+
+
+# ---- the function list reaches the model ---------------------------------
+
+def test_the_extension_names_reach_the_prompt():
+    """Being in sync with expr.ts is worth nothing if the model is never told.
+
+    `tests/test_mathjs_extensions_sync.py` guards the LIST — that the Python
+    names match the TypeScript that implements them, in both directions. This
+    guards its USE: that the names actually reach the prompt the builder reads.
+    Two separate failures, and neither implies the other.
+    """
+    from backend.experts.modules.build_scene.proposed import ProposedElement
+    from backend.mathjs_extensions import EXTENSION_NAMES
+
+    desc = ProposedElement.model_fields["curve_expr"].description
+    for name in EXTENSION_NAMES:
+        assert name in desc, f"{name} is available but the prompt never says so"
