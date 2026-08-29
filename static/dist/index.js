@@ -44,6 +44,11 @@ var state = {
 		1,
 		1
 	],
+	declaredScale: [
+		1,
+		1,
+		1
+	],
 	sceneView: null,
 	mainDirLight: null,
 	lessonSpec: null,
@@ -147,6 +152,63 @@ var state = {
 //#region src/coords.ts
 var range = () => state.currentRange;
 var scale = () => state.currentScale;
+var declaredScale = () => state.declaredScale;
+/**
+* The `scale` a range implies when the scene does not choose one.
+*
+* `dataToWorld` normalises each axis by its OWN range onto [-1, 1] and then
+* multiplies by `scale[i]`, so `scale` IS the world half-extent of that axis.
+* A constant `[1, 1, 1]` therefore gives every axis the same world size however
+* many data units it spans — and a vector `(0,0,0) -> (5,1,0)` in a `[6, 2, 2]`
+* range is drawn at about 45° instead of 11°. Its direction is the one thing a
+* vector is for.
+*
+* Widths normalised by the LONGEST axis make one data unit the same distance
+* everywhere, so a circle is round, a right angle is square and a slope is the
+* slope it says — while keeping world coordinates in [-1, 1] as before. Raw
+* widths would not: a 2200-unit range would put the scene at ±2200 in world
+* space, which the camera transform and `getAbstractWidthScale` do not expect.
+*
+* This is the corpus's own isotropic convention where it chooses one — Cislunar
+* Scale has widths [1, 0.48, 0.16] and scale [1, 0.48, 0.16].
+*
+* A scene that WANTS anisotropy still says so: an explicit `scale` always wins.
+* That is a real editorial choice — a sine of amplitude 1 plotted over x ∈ [0,12]
+* is a nearly flat line rendered isotropically, so a graph legitimately stretches
+* its y axis to fill the frame.
+*/
+/**
+* Is this the legacy default rather than a decision?
+*
+* 37 of the 41 published scenes that "declare" a scale declare exactly
+* [1, 1, 1] — the pre-isotropy default written out — and 27 of those are
+* visibly distorted by it, including a unit circle drawn 2.8x taller than wide.
+* The 4 scenes that declare a genuinely different scale (artemis-ii, e.g.
+* [25, 12, 4] against widths [50, 24, 8]) are ALREADY isotropic at 1 world unit
+* per data unit. So nothing in the corpus wants the stretch, and a literal
+* [1, 1, 1] is far more likely to mean "never thought about it".
+*
+* Reading it as unspecified costs nothing elsewhere: the camera keeps its own
+* `declaredScale`, which is [1, 1, 1] for exactly these scenes either way.
+*/
+function isDefaultScale(scale) {
+	return Array.isArray(scale) && scale.length === 3 && scale.every((v) => Number(v) === 1);
+}
+function isotropicScale(range) {
+	const fallback = [
+		1,
+		1,
+		1
+	];
+	if (!Array.isArray(range) || range.length !== 3) return fallback;
+	const widths = range.map((pair) => {
+		if (!Array.isArray(pair) || pair.length !== 2) return NaN;
+		return Number(pair[1]) - Number(pair[0]);
+	});
+	if (!widths.every((w) => Number.isFinite(w) && w > 0)) return fallback;
+	const longest = Math.max(...widths);
+	return widths.map((w) => w / longest);
+}
 function dataToWorld(pos) {
 	const r = range();
 	const s = scale();
@@ -164,7 +226,7 @@ function dataToWorld(pos) {
 }
 function dataCameraToWorld$1(pos) {
 	const r = range();
-	const s = scale();
+	const s = declaredScale();
 	const [rx, ry, rz] = r ?? [];
 	if (!rx || !ry || !rz) return [
 		0,
@@ -186,7 +248,7 @@ function dataCameraToWorld$1(pos) {
 }
 function worldCameraToData$1(pos) {
 	const r = range();
-	const s = scale();
+	const s = declaredScale();
 	const [rx, ry, rz] = r ?? [];
 	if (!rx || !ry || !rz) return [
 		0,
@@ -10102,6 +10164,11 @@ async function loadScene(spec) {
 			1,
 			1
 		];
+		sceneState.declaredScale = [
+			1,
+			1,
+			1
+		];
 		buildCameraButtons(spec);
 		emptyState.style.display = "block";
 		const view = sceneState.mathbox.cartesian({
@@ -10162,7 +10229,8 @@ async function loadScene(spec) {
 		[-5, 5],
 		[-5, 5]
 	];
-	sceneState.currentScale = spec.scale || [
+	sceneState.currentScale = (spec.scale && !isDefaultScale(spec.scale) ? spec.scale : null) || isotropicScale(sceneState.currentRange);
+	sceneState.declaredScale = spec.scale || [
 		1,
 		1,
 		1

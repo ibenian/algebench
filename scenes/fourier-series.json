@@ -19,11 +19,6 @@
           0.5
         ]
       ],
-      "scale": [
-        1,
-        1,
-        1
-      ],
       "camera": {
         "position": [
           3,
@@ -108,7 +103,7 @@
             0.4
           ],
           "opacity": 0.12,
-          "divisions": 16
+          "divisions": 10
         },
         {
           "type": "axis",
@@ -259,11 +254,6 @@
           -0.5,
           0.5
         ]
-      ],
-      "scale": [
-        1,
-        1,
-        1
       ],
       "camera": {
         "position": [
@@ -523,7 +513,6 @@
       "description": "Each Fourier term is a rotating phasor. In 3D — with time as the z-axis — every frequency component traces a helix. The y-z shadow of the combined helix IS the square wave.",
       "markdown": "# Fourier in 3D: Rotating Phasors\n\nEvery Fourier term is a **rotating phasor** — a vector spinning in the complex plane at a fixed frequency. In 3D, we let time advance along the **z-axis**, so each phasor sweeps out a **helix**:\n\n$$\\text{Term } n:\\quad x(t) = A_n\\cos(nt),\\quad y(t) = A_n\\sin(nt),\\quad z = t$$\n\n## Two Views, Two Insights\n\n| Camera | What you see |\n|--------|--------------|\n| **End On** (along −z) | Phasors as circles — radius = amplitude, speed = frequency |\n| **Wave View** (along −x) | The **y-z shadow** of the helix — the actual waveform |\n\n## Square Wave Phasors\n\nOnly odd harmonics appear, each with amplitude $4/(n\\pi)$:\n\n$$x(t) = \\frac{4}{\\pi}\\!\\left(\\cos t + \\frac{\\cos 3t}{3} + \\frac{\\cos 5t}{5} + \\cdots\\right)$$\n$$y(t) = \\frac{4}{\\pi}\\!\\left(\\sin t + \\frac{\\sin 3t}{3} + \\frac{\\sin 5t}{5} + \\cdots\\right)$$\n\nThe combined helix grows increasingly complex in 3D — but its **y-z shadow** step by step becomes a square wave.\n\n## The Deep Insight\n\nA Fourier series is not merely algebra — it is a **geometric fact**: any periodic signal is the shadow of rotating helices cast onto a plane.\n\n> **Gibbs phenomenon**: Even with $N=8$ terms the shadow overshoots ~9% at each jump. The overshoot gets thinner but never vanishes no matter how many helices you add.",
       "range": [[-3, 3], [-2, 2], [0, 7]],
-      "scale": [1, 1, 1],
       "camera": {"position": [6, 4, 9], "target": [0, 0, 3.14]},
       "views": [
         {
@@ -740,7 +729,6 @@
       "description": "Square waves emerge naturally from any system with two stable states. A periodic force tilts the energy landscape until one well disappears — the system snaps to the other side. Flat regions are stable equilibrium; sharp jumps are fast barrier crossings.",
       "markdown": "# Why Square Waves Arise: Bistable Dynamics\n\nMany real systems have **two stable equilibria** — two states they naturally settle into. Under periodic forcing such systems **snap** between states, tracing a square wave in time.\n\n## The Double Well\n\nThe simplest model: a particle in a **double-well potential**:\n\n$$V(x) = x^4 - 2x^2$$\n\nStable minima at $x = \\pm 1$, unstable barrier at $x = 0$.\n\n## Periodic Forcing\n\nAn external tilt $-A\\sin(t)\\cdot x$ periodically raises one well:\n\n$$V(x,t) = x^4 - 2x^2 - A\\sin(t)\\cdot x$$\n\n- $\\sin(t) > 0$: right well deepens, left wall shrinks → ball snaps **right**\n- $\\sin(t) < 0$: left well deepens, right wall shrinks → ball snaps **left**\n\n## Why the Jumps Are Sharp\n\nAt the barrier $x=0$, the restoring force $-dV/dx = 4x - 4x^3$ is zero — but once the ball tips past, the cubic term accelerates it rapidly into the other well. The steeper the barrier, the faster the snap, and the **sharper the jump** in the time signal.\n\n## Real-World Examples\n\n| System | State $-1$ | State $+1$ |\n|--------|-----------|----------|\n| Digital logic | LOW (0 V) | HIGH (5 V) |\n| Thermostat | Heater OFF | Heater ON |\n| Neuron | Resting | Firing |\n| Relay | Open | Closed |\n\n> **Key insight**: Square waves don't require elaborate construction — they arise from any bistable system under periodic forcing. Fourier just tells you what frequencies are hidden inside the shape.",
       "range": [[-2, 2], [-1.2, 1.2], [0, 7]],
-      "scale": [1, 1, 1],
       "camera": {"position": [5, 3, 8], "target": [0, 0, 3]},
       "views": [
         {
