@@ -2645,7 +2645,8 @@
           "plane": "xy",
           "color": [0.3, 0.3, 0.5],
           "opacity": 0.1,
-          "divisions": [10, 18]}
+          "divisions": [10, 18]
+        }
       ],
       "steps": [
         {
@@ -2679,7 +2680,8 @@
               "plane": "xz",
               "color": [0.5, 0.5, 0.5],
               "opacity": 0.12,
-              "divisions": [10, 8]},
+              "divisions": [10, 8]
+            },
             {
               "id": "v-axis",
               "type": "axis",
@@ -2772,7 +2774,8 @@
               "plane": "xz",
               "color": [0.6, 0.6, 0.6],
               "opacity": 0.15,
-              "divisions": [10, 8]},
+              "divisions": [10, 8]
+            },
             {
               "id": "zero-plane-label",
               "type": "text",

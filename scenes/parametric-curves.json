@@ -353,7 +353,8 @@
             0.4
           ],
           "opacity": 0.15,
-          "divisions": 6},
+          "divisions": 6
+        },
         {
           "type": "axis",
           "axis": "x",

@@ -4588,7 +4588,8 @@
           "plane": "xy",
           "color": [0.3, 0.3, 0.5],
           "opacity": 0.15,
-          "divisions": 12},
+          "divisions": 12
+        },
         {
           "id": "ocean_surface",
           "type": "polygon",
