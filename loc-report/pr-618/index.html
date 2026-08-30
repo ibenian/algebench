@@ -113,8 +113,8 @@
 | Field | Value |
 |---|---|
 | **Branch** | `fix/build-scene-informed-retry` |
-| **Commit** | `70d2004` |
-| **Date** | 2026-08-30 17:25:43 +0000 |
+| **Commit** | `de4b110` |
+| **Date** | 2026-08-30 15:37:11 -0400 |
 
 > [!NOTE]
 > Charts render on GitHub and in Mermaid-compatible viewers.
@@ -123,7 +123,7 @@
 xychart-beta horizontal
   title "Code Lines by Directory"
   x-axis ["scenes", "src", "tests", "backend", "static", "(other)", "scripts", "docs", "schemas", "themes"]
-  bar [63322, 36065, 24656, 23404, 8992, 8274, 8268, 4205, 1856, 317]
+  bar [63322, 36065, 24595, 23308, 8992, 8274, 8268, 4205, 1856, 317]
 ```
 
 ## By Directory
@@ -132,21 +132,21 @@ xychart-beta horizontal
 |---|---:|---:|---:|
 | `scenes/` | 63,322 | 0 | 1 |
 | `src/` | 36,065 | 8,037 | 3,336 |
-| `tests/` | 24,656 | 1,923 | 5,260 |
-| `backend/` | 23,404 | 4,044 | 3,533 |
+| `tests/` | 24,595 | 1,941 | 5,252 |
+| `backend/` | 23,308 | 4,030 | 3,520 |
 | `static/` | 8,992 | 837 | 492 |
 | `(other)/` | 8,274 | 0 | 0 |
 | `scripts/` | 8,268 | 1,060 | 1,168 |
 | `docs/` | 4,205 | 9,426 | 2,978 |
 | `schemas/` | 1,856 | 0 | 0 |
 | `themes/` | 317 | 0 | 0 |
-| **Total** | **179,359** | **25,327** | **16,768** |
+| **Total** | **179,202** | **25,331** | **16,747** |
 
 ```mermaid
 xychart-beta horizontal
   title "Lines of Code by Language"
   x-axis ["JSON", "Python", "TypeScript", "CSS", "HTML", "JavaScript", "Shell", "YAML", "BASH", "Dockerfile", "TOML"]
-  bar [75092, 52682, 36214, 6639, 2302, 1300, 463, 29, 16, 16, 2]
+  bar [75092, 52525, 36214, 6639, 2302, 1300, 463, 29, 16, 16, 2]
 ```
 
 ## Summary by Language
@@ -156,7 +156,7 @@ xychart-beta horizontal
  Language              Files        Lines         Code     Comments       Blanks
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  JSON                     70        75098        75092            0            6
- Python                  261        68222        52682         5932         9608
+ Python                  261        68048        52525         5936         9587
  TypeScript              108        47655        36214         8099         3342
  CSS                       9         7697         6639          691          367
  JavaScript                7         1583         1300          142          141
@@ -182,7 +182,7 @@ xychart-beta horizontal
  |- XML                    1          228          185           43            0
  (Total)                            20071         2310        13533         4228
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Total                   564       226508       179359        29109        18040
+ Total                   564       226334       179202        29113        18019
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -358,21 +358,21 @@ xychart-beta horizontal
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  Language              Files        Lines         Code     Comments       Blanks
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Python                  261        68222        52682         5932         9608
+ Python                  261        68048        52525         5936         9587
 ─────────────────────────────────────────────────────────────────────────────────
  |_graph/sympy_translator.py         4430         3527          519          384
  |lgebench/backend/server.py         2795         2249          302          244
  |aph/test_latex_to_graph.py         2172         1735          166          271
  |s/semantic_graph_report.py         1224         1102           43           79
- |est_build_scene_compose.py         1201          929           38          234
+ |est_build_scene_compose.py         1150          868           56          226
  |semantic_graph_enricher.py         1174          820          219          135
  |cripts/graph_to_mermaid.py         1035          746          200           89
  |mpletion/step_grounding.py          960          685          132          143
  |semantic_graph_enricher.py          858          677          110           71
  |nch/backend/agent_tools.py          784          676           52           56
- |ers/build_scene/compose.py          936          661          170          105
  |ntic_graph/preprocessor.py          738          650           41           47
  |ssion_analysis/proposer.py          771          610           62           99
+ |ers/build_scene/compose.py          810          562          156           92
  |nch/scripts/render_math.py          590          543            6           41
  |s/test_graph_to_mermaid.py          740          539          100          101
  |ripts/audit_expressions.py          725          529          103           93
@@ -436,11 +436,11 @@ xychart-beta horizontal
  |ripts/extract_structure.py          259          218            5           36
  |/test_domain_relativity.py          275          218           16           41
  |/proof_completion/judge.py          256          217           10           29
+ |s/build_scene/signature.py          231          217            4           10
  |ins/test_domain_algebra.py          279          216           24           39
  |end/experts/test_refine.py          312          216           21           75
  |proof_completion/module.py          347          216          102           29
  |ch/backend/model/lesson.py          306          214           41           51
- |s/build_scene/signature.py          228          214            4           10
  |experts/test_llm_config.py          283          210            9           64
  |erts/test_domain_rescue.py          306          209           28           69
  |emantic_graph/constants.py          280          206           42           32
@@ -622,7 +622,7 @@ xychart-beta horizontal
  |lgebench/tests/__init__.py            0            0            0            0
  |es/build_scene/__init__.py            0            0            0            0
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Total                   261        68222        52682         5932         9608
+ Total                   261        68048        52525         5936         9587
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -631,8 +631,8 @@ xychart-beta horizontal
 | Category | Code Lines | % of JS+Python |
 |---|---|---|
 | TypeScript + JavaScript (frontend) | 37144 | 41% |
-| Python (backend) | 52682 | 59% |
-| **Total** | **89826** | **100%** |
+| Python (backend) | 52525 | 59% |
+| **Total** | **89669** | **100%** |
 
 </script>
 </body>
