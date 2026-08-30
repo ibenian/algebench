@@ -127,9 +127,15 @@ def _composed(proposal, req: BuildSceneRequest, inputs: dict):
     relayed: the reader already committed at step 2, and the honest reading of
     "here is why your scene was rejected" is not an invitation to reopen scope.
 
-    The SECOND reason is returned, not the first. It describes the scene that
-    would have been built, so it is the one the chat agent can act on — and when
-    the model repeats itself the two are identical anyway.
+    WHICH refusal comes back depends on how the retry failed, and the two cases
+    want opposite answers:
+
+      * it composed and was refused AGAIN — the second. It describes the scene
+        that would have been built, and when the model repeats itself the two
+        are identical anyway.
+      * it produced nothing to compose — the first, because that one is about a
+        real scene, where "the builder broke" on the second ask says nothing the
+        reader or the chat agent can act on.
     """
     try:
         return _compose(proposal, req), None
