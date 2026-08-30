@@ -31,3 +31,20 @@ EXTENSION_NAMES: tuple[str, ...] = (
     "beta",
     "conjugate",
 )
+
+
+#: The bare `Math.*` names `src/expr.ts` binds into every expression scope
+#: (`_CORE_MATH_NAMES`). Order matches the declaration there, so a diff of the
+#: two reads the same way; `tests/test_mathjs_extensions_sync.py` enforces it.
+#:
+#: Needed because `setActiveSceneFunctions` SKIPS a scene function whose name is
+#: one of these — quietly, with a `console.warn` nobody sees — so a builder that
+#: proposes `max(a, b)` as a scene function produces a scene where every call to
+#: it silently means math.js's own `max`. Compose refuses that instead.
+CORE_MATH_NAMES: tuple[str, ...] = (
+    "sin", "cos", "tan", "asin", "acos", "atan", "atan2", "sinh", "cosh", "tanh",
+    "asinh", "acosh", "atanh",
+    "abs", "sqrt", "cbrt", "pow", "exp", "log", "log2", "log10", "floor", "ceil",
+    "round", "trunc",
+    "min", "max", "sign", "hypot", "PI", "E",
+)
