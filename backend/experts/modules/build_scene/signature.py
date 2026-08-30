@@ -192,9 +192,20 @@ class BuildSceneSig(BuildSceneInputs):
     all four. One definition is one place to be right.
 
     They are math.js, like every coordinate — one expression, no `let`, no
-    `return`, no semicolons, `==` not `===`. A name already taken by a slider or
-    by math.js (`max`, `hypot`, `abs`, …) is refused, because the other one wins
-    and your function is silently never called.
+    `return`, no semicolons. math.js SPELLS SEVERAL THINGS DIFFERENTLY from
+    JavaScript, and getting one wrong is invisible: the expression simply fails
+    to parse and every call to it returns 0.
+
+    ==========================  ====================================
+    `==`                        NOT `===`
+    `or`, `and`, `not`          NOT `||`, `&&`, `!`
+    `toFixed(x, 2)`             NOT `x.toFixed(2)` — call by name
+    `a ? b : c`                 this one IS the same, and is what to use
+    ==========================  ====================================
+
+    A name already taken by a slider or by math.js (`max`, `hypot`, `abs`, …) is
+    refused, because the other one wins and your function is silently never
+    called.
 
     WHAT YOU DO NOT DECIDE. These are computed from what you propose, and a
     plausible guess at them is worse than none:
