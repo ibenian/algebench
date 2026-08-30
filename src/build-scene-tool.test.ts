@@ -58,7 +58,9 @@ test('insert clamps an out-of-range scene instead of refusing it', () => {
     const at = (scene: unknown) =>
         buildSceneRequestFromToolCall({ intent: 'add one', scene }, lesson).sceneIndex;
     assert.equal(at(-5), 0, 'a negative inserts at the front');
-    assert.equal(at(9999), n, 'a too-high number appends');
+    // Derived from `n`, not a magic 9999: the assertion is "past the end", and
+    // a literal only happens to be past the end of the fixture this test loads.
+    assert.equal(at(n + 5), n, 'a number past the end appends');
     assert.equal(at(undefined), n, 'absent still means append');
 });
 
