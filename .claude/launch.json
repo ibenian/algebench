@@ -81,10 +81,10 @@
       "autoPort": true
     },
     {
-      "name": "colorexpr-demo",
+      "name": "tensor-demo",
       "runtimeExecutable": "./algebench",
       "runtimeArgs": [
-        "scenes/draft/colorexpr-demo.json",
+        "scenes/draft/tensor-demo.json",
         "--port",
         "5754",
         "--debug",

@@ -234,7 +234,8 @@
             "parametric_curve", "parametric_surface", "sphere", "ellipsoid",
             "vectors", "vector_field", "plane", "polygon", "cylinder", "text",
             "animated_vector", "animated_line", "animated_point",
-            "animated_cylinder", "animated_polygon", "animated_curve"
+            "animated_cylinder", "animated_polygon", "animated_curve",
+            "tensor"
           ],
           "description": "Element type determining the renderer. Must be one of the supported types."
         },
@@ -288,7 +289,33 @@
           "items": { "type": "number" },
           "minItems": 2,
           "maxItems": 2,
-          "description": "Input range [lo,hi] that 'colorExpr' is normalized over before the color map is applied. Values outside are clamped. Default [0,1]."
+          "description": "Input range [lo,hi] that 'colorExpr' (or a tensor's 'valueExpr'/'values') is normalized over before the color map is applied. Values outside are clamped. Default [0,1]."
+        },
+        "shape": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 1 },
+          "minItems": 2,
+          "description": "TENSOR ONLY. Lattice shape; the last two entries are [rows, cols]. Leading dimensions are accepted and ignored for now. Example: [6,6]."
+        },
+        "valueExpr": {
+          "type": "string",
+          "description": "TENSOR ONLY. Math.js expression giving one cell's value, evaluated per cell every frame with 'row' and 'col' bound (0-based; row 0 renders at the top, as a matrix reads). Mapped through 'colorMap' over 'colorDomain'. Use slider IDs and 't' for a live matrix. Example: \"dataTable('attn', row, concat('w', col))\". For a matrix that never changes, use 'values' instead — it costs nothing per frame."
+        },
+        "values": {
+          "type": "array",
+          "description": "TENSOR ONLY. Literal cell values, either nested rows [[…],[…]] or a flat row-major list. Values that are constant build once and cost NOTHING per frame — prefer this over 'valueExpr' for a fixed matrix. Ignored when 'valueExpr' is present.",
+          "items": {}
+        },
+        "cellSize": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "TENSOR ONLY. Data-space pitch between cell centers. Default 1."
+        },
+        "gap": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 0.9,
+          "description": "TENSOR ONLY. Gap between cells as a fraction of 'cellSize', so spacing survives a cellSize change. Default 0.08."
         },
         "opacity": {
           "oneOf": [
@@ -323,7 +350,7 @@
         },
         "origin": {
           "$ref": "#/$defs/vec3",
-          "description": "Origin point [x,y,z] for vectors. Alias for 'from'. Default: [0,0,0]."
+          "description": "Origin point [x,y,z] for vectors. Alias for 'from'. Default: [0,0,0]. On tensor it is the lattice's near corner: [horizontal, vertical, normal] in the chosen 'plane'."
         },
         "points": {
           "type": "array",
@@ -363,7 +390,7 @@
         "plane": {
           "type": "string",
           "enum": ["xy", "xz", "yz"],
-          "description": "Grid plane. Default: 'xy'. Also usable on animated_curve: 'xy' (default) plots expr along y; 'xz' plots it along z (fillRegions unsupported in 'xz'). Any other value (e.g. 'yz') is not modelled for animated_curve and falls back to 'xy'.",
+          "description": "Grid plane. Default: 'xy'. Also usable on animated_curve: 'xy' (default) plots expr along y; 'xz' plots it along z (fillRegions unsupported in 'xz'). Any other value (e.g. 'yz') is not modelled for animated_curve and falls back to 'xy'. On tensor it is the plane the cell lattice is laid out in; all three values are supported.",
           "default": "xy"
         },
         "radius": {

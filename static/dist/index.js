@@ -4493,7 +4493,7 @@ function renderAxis(el, view) {
 * `[[xMin,xMax],[yMin,yMax],[zMin,zMax]]`) and the MathBox axis ids that
 * `area` wants for the same pair.
 */
-var PLANE_AXES = {
+var PLANE_AXES$1 = {
 	xy: {
 		scene: [0, 1],
 		mathbox: [1, 2]
@@ -4554,7 +4554,7 @@ function toDivisions(v) {
 * positions along two axes of different extent.
 */
 function resolveGridArea(el, sceneRange) {
-	const spec = PLANE_AXES[el.plane || "xy"] || PLANE_AXES["xy"];
+	const spec = PLANE_AXES$1[el.plane || "xy"] || PLANE_AXES$1["xy"];
 	/** The scene's own extent for the i-th axis of this plane. */
 	const inherited = (i) => toInterval(sceneRange && sceneRange[spec.scene[i]]) || [-5, 5];
 	const raw = el.range;
@@ -7865,6 +7865,250 @@ function renderAnimatedCurve(el, view) {
 	};
 }
 //#endregion
+//#region src/objects/tensor.ts
+/**
+* `tensor` — a lattice of cells whose colour carries a value.
+*
+* The authoring win is that one element replaces N*M near-identical
+* `animated_polygon`s. The rendering win is bigger and less obvious: because
+* the lattice is *derived* from `shape` rather than written out, cell geometry
+* is arithmetic instead of expressions. A hand-written 8x8 spends ~768
+* expression evaluations per frame on vertex positions that never move; this
+* spends none, and evaluates one compiled `valueExpr` per cell instead.
+*
+* The whole tensor is a single merged, non-indexed BufferGeometry with a
+* vertex-colour attribute — one mesh, one material, one draw call. A frame
+* update is a typed-array write plus one buffer upload, not N*M material
+* mutations.
+*
+* Static and animated in one type, decided by which input is given: literal
+* `values` build once and register no updater (zero per-frame cost, exactly the
+* static contract); a `valueExpr` registers one updater. The batch element
+* types this follows — `vectors`, `vector_field`, `point` with `positions[]` —
+* have no `animated_` twins either, and here the geometry never animates at
+* all, so a second type would differ by one `if`.
+*
+* "Tensor" is used in the machine-learning sense: an n-dimensional array, whose
+* *components* this renders. It carries no transformation law, so it is not a
+* tensor in the differential-geometry sense that `special-relativity.json`
+* means by the word.
+*/
+var tensorState = state;
+/** Axis indices for the two in-plane directions, per plane. */
+var PLANE_AXES = {
+	xy: [
+		0,
+		1,
+		2
+	],
+	xz: [
+		0,
+		2,
+		1
+	],
+	yz: [
+		1,
+		2,
+		0
+	]
+};
+/** Six vertices — two triangles — per quad, in the order the buffer expects. */
+var QUAD_CORNERS = [
+	[0, 0],
+	[1, 0],
+	[1, 1],
+	[0, 0],
+	[1, 1],
+	[0, 1]
+];
+/**
+* Read `shape`, tolerating the leading dimensions a future slice selector will
+* add: the last two entries are always [rows, cols], so `[2,6,6]` already reads
+* as a 6x6 lattice rather than failing.
+*/
+function readShape(raw) {
+	if (!Array.isArray(raw) || raw.length < 2) return null;
+	const rows = Number(raw[raw.length - 2]);
+	const cols = Number(raw[raw.length - 1]);
+	if (!Number.isInteger(rows) || !Number.isInteger(cols)) return null;
+	if (rows < 1 || cols < 1) return null;
+	return {
+		rows,
+		cols
+	};
+}
+/** Flatten `values` to a row-major lookup, accepting nested rows or a flat list. */
+function readValues(raw, rows, cols) {
+	if (!Array.isArray(raw)) return null;
+	const flat = [];
+	if (Array.isArray(raw[0])) for (let r = 0; r < rows; r++) {
+		const row = raw[r];
+		for (let c = 0; c < cols; c++) {
+			const v = Array.isArray(row) ? Number(row[c]) : NaN;
+			flat.push(Number.isFinite(v) ? v : 0);
+		}
+	}
+	else for (let i = 0; i < rows * cols; i++) {
+		const v = Number(raw[i]);
+		flat.push(Number.isFinite(v) ? v : 0);
+	}
+	return flat;
+}
+function renderTensor(el, _view) {
+	const shape = readShape(el.shape);
+	if (!shape) {
+		console.warn("tensor: `shape` must be [rows, cols] of positive integers; got", el.shape);
+		return null;
+	}
+	const { rows, cols } = shape;
+	const cellCount = rows * cols;
+	const origin = Array.isArray(el.origin) ? el.origin : [
+		0,
+		0,
+		0
+	];
+	const cellSize = typeof el.cellSize === "number" && el.cellSize > 0 ? el.cellSize : 1;
+	const gapRaw = typeof el.gap === "number" ? el.gap : .08;
+	const fill = cellSize * (1 - Math.max(0, Math.min(.9, gapRaw)));
+	const [hAxis, vAxis, nAxis] = PLANE_AXES[typeof el.plane === "string" && PLANE_AXES[el.plane] ? el.plane : "xy"];
+	const baseColor = parseColor(el.color || "#3b528b");
+	const colorMapFn = buildColorMap(el.colorMap);
+	const colorDomain = el.colorDomain;
+	const valueExprString = typeof el.valueExpr === "string" && el.valueExpr.trim() ? el.valueExpr.trim() : null;
+	const literalValues = readValues(el.values, rows, cols);
+	let valueFn = null;
+	if (valueExprString) try {
+		valueFn = compileExpr(valueExprString);
+	} catch (err) {
+		console.warn("tensor valueExpr compile error:", err);
+	}
+	const opacity = typeof el.opacity === "number" && isFinite(el.opacity) ? Math.max(0, Math.min(1, el.opacity)) : .95;
+	const sh = el.shader || {};
+	const vertsPerCell = QUAD_CORNERS.length;
+	const positions = new Float32Array(cellCount * vertsPerCell * 3);
+	const colors = new Float32Array(cellCount * vertsPerCell * 3);
+	/** Data-space centre of cell (r, c). Row 0 sits at the top, as a matrix reads. */
+	function cellCorner(r, c, dx, dy) {
+		const pos = [
+			0,
+			0,
+			0
+		];
+		pos[hAxis] = origin[0] + (c + .5) * cellSize + (dx - .5) * fill;
+		pos[vAxis] = origin[1] + (rows - 1 - r + .5) * cellSize + (dy - .5) * fill;
+		pos[nAxis] = origin[2];
+		return pos;
+	}
+	for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+		const cell = r * cols + c;
+		for (let k = 0; k < vertsPerCell; k++) {
+			const [dx, dy] = QUAD_CORNERS[k];
+			const w = dataToWorld(cellCorner(r, c, dx, dy));
+			const base = (cell * vertsPerCell + k) * 3;
+			positions[base] = w[0];
+			positions[base + 1] = w[1];
+			positions[base + 2] = w[2];
+		}
+	}
+	const geom = new THREE.BufferGeometry();
+	geom.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+	const colorAttr = new THREE.BufferAttribute(colors, 3);
+	geom.setAttribute("color", colorAttr);
+	/** Paint one cell's six vertices from a raw value. */
+	function paintCell(cell, raw) {
+		const u = normalizeColorValue(raw, colorDomain);
+		if (u === null) return;
+		const rgb = colorMapFn(u);
+		const r0 = rgb[0], g0 = rgb[1], b0 = rgb[2];
+		for (let k = 0; k < vertsPerCell; k++) {
+			const base = (cell * vertsPerCell + k) * 3;
+			colors[base] = r0;
+			colors[base + 1] = g0;
+			colors[base + 2] = b0;
+		}
+	}
+	/** Seed every cell with the element's static colour, so a failed or absent
+	*  value source still renders something deliberate. */
+	for (let cell = 0; cell < cellCount; cell++) for (let k = 0; k < vertsPerCell; k++) {
+		const base = (cell * vertsPerCell + k) * 3;
+		colors[base] = baseColor[0];
+		colors[base + 1] = baseColor[1];
+		colors[base + 2] = baseColor[2];
+	}
+	/** Evaluate every cell at `tSec`, binding row/col for this cell only. */
+	function paintAll(tSec) {
+		if (literalValues) {
+			for (let cell = 0; cell < cellCount; cell++) paintCell(cell, literalValues[cell]);
+			return;
+		}
+		if (!valueFn) return;
+		for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+			const raw = evalExpr(valueFn, tSec, { overrideScope: {
+				row: r,
+				col: c
+			} });
+			paintCell(r * cols + c, raw);
+		}
+	}
+	try {
+		paintAll(0);
+	} catch (err) {
+		console.warn("tensor value evaluation error:", err);
+	}
+	colorAttr.needsUpdate = true;
+	const mat = new THREE.MeshBasicMaterial({
+		vertexColors: true,
+		transparent: true,
+		opacity: tensorState.displayParams.planeOpacity * (opacity / .5),
+		side: THREE.DoubleSide,
+		depthWrite: false
+	});
+	const mesh = new THREE.Mesh(geom, mat);
+	mesh.userData.targetOpacity = opacity;
+	mesh.userData.ignorePlaneOpacity = !!sh.ignorePlaneOpacity;
+	mesh.renderOrder = el.renderOrder !== void 0 ? el.renderOrder : tensorState._planeMeshSerial++;
+	tensorState.three.scene.add(mesh);
+	tensorState.planeMeshes.push(mesh);
+	const animState = { stopped: false };
+	if (!valueFn) return {
+		type: "tensor",
+		color: baseColor,
+		label: el.label
+	};
+	const entry = {
+		exprStrings: [valueExprString],
+		animState,
+		compiledFns: [valueFn],
+		_rebuildFn() {
+			try {
+				valueFn = compileExpr(valueExprString);
+				entry.compiledFns = [valueFn];
+			} catch (err) {
+				console.warn("Slider tensor valueExpr recompile error:", err);
+			}
+		}
+	};
+	tensorState.activeAnimExprs.push(entry);
+	const startTime = tensorState.sceneStartTime;
+	tensorState.activeAnimUpdaters.push({
+		animState,
+		updateFrame(nowMs) {
+			if (!mesh.visible) return;
+			try {
+				paintAll((nowMs - startTime) / 1e3);
+				colorAttr.needsUpdate = true;
+			} catch (_err) {}
+		}
+	});
+	return {
+		type: "tensor",
+		color: baseColor,
+		label: el.label,
+		_animState: animState,
+		_animExprEntry: entry
+	};
+}
+//#endregion
 //#region src/objects/index.ts
 var objects_exports = /* @__PURE__ */ __exportAll({ renderElement: () => renderElement });
 /**
@@ -7899,6 +8143,7 @@ function renderElement(el, view) {
 		case "animated_cylinder": return renderAnimatedCylinder(el, view);
 		case "animated_polygon": return renderAnimatedPolygon(el, view);
 		case "animated_curve": return renderAnimatedCurve(el, view);
+		case "tensor": return renderTensor(el, view);
 		default:
 			console.warn("Unknown element type:", el.type);
 			return null;

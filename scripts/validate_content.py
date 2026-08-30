@@ -169,6 +169,22 @@ BUILTIN_VARS = {'t', 'x', 'y', 'z', 'u', 'v', 'pi', 'PI', 'e', 'E', 'i',
                 'sec', 'csc', 'cot'}
 
 
+#: Names an element type binds itself, per cell/sample, that are therefore
+#: defined inside its own expressions but nowhere else. Kept out of
+#: BUILTIN_VARS deliberately: a stray `row` in a vector expression is a real
+#: mistake and should still be reported.
+ELEMENT_SCOPED_VARS = {
+    'tensor': {'row', 'col'},
+}
+
+
+def element_scoped_vars(el):
+    """Extra identifiers legal inside this element's expressions."""
+    if not isinstance(el, dict):
+        return set()
+    return ELEMENT_SCOPED_VARS.get(el.get('type'), set())
+
+
 def extract_identifiers(expr):
     """Extract potential variable identifiers from a math.js expression."""
     # Remove string literals and numbers
@@ -220,7 +236,7 @@ def check_slider_refs(data):
                         continue
                     checked += 1
                     ids = extract_identifiers(expr)
-                    known = BUILTIN_VARS | active_sliders | func_names
+                    known = BUILTIN_VARS | active_sliders | func_names | element_scoped_vars(el)
                     unknown = ids - known
                     if unknown and not has_imports:
                         # Filter out likely false positives (short math tokens)

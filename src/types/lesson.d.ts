@@ -105,7 +105,7 @@ export type Vec32 = [number | string, number | string, number | string];
  */
 export type Vec33 = [number | string, number | string, number | string];
 /**
- * Origin point [x,y,z] for vectors. Alias for 'from'. Default: [0,0,0].
+ * Origin point [x,y,z] for vectors. Alias for 'from'. Default: [0,0,0]. On tensor it is the lattice's near corner: [horizontal, vertical, normal] in the chosen 'plane'.
  *
  * @minItems 3
  * @maxItems 3
@@ -604,7 +604,8 @@ export interface Element {
     | 'animated_point'
     | 'animated_cylinder'
     | 'animated_polygon'
-    | 'animated_curve';
+    | 'animated_curve'
+    | 'tensor';
   /**
    * Unique element ID for referencing in remove directives, legend toggle, and element registry. Auto-generated from label if omitted.
    */
@@ -660,12 +661,34 @@ export interface Element {
         ];
       };
   /**
-   * Input range [lo,hi] that 'colorExpr' is normalized over before the color map is applied. Values outside are clamped. Default [0,1].
+   * Input range [lo,hi] that 'colorExpr' (or a tensor's 'valueExpr'/'values') is normalized over before the color map is applied. Values outside are clamped. Default [0,1].
    *
    * @minItems 2
    * @maxItems 2
    */
   colorDomain?: [number, number];
+  /**
+   * TENSOR ONLY. Lattice shape; the last two entries are [rows, cols]. Leading dimensions are accepted and ignored for now. Example: [6,6].
+   *
+   * @minItems 2
+   */
+  shape?: [number, number, ...number[]];
+  /**
+   * TENSOR ONLY. Math.js expression giving one cell's value, evaluated per cell every frame with 'row' and 'col' bound (0-based; row 0 renders at the top, as a matrix reads). Mapped through 'colorMap' over 'colorDomain'. Use slider IDs and 't' for a live matrix. Example: "dataTable('attn', row, concat('w', col))". For a matrix that never changes, use 'values' instead — it costs nothing per frame.
+   */
+  valueExpr?: string;
+  /**
+   * TENSOR ONLY. Literal cell values, either nested rows [[…],[…]] or a flat row-major list. Values that are constant build once and cost NOTHING per frame — prefer this over 'valueExpr' for a fixed matrix. Ignored when 'valueExpr' is present.
+   */
+  values?: unknown[];
+  /**
+   * TENSOR ONLY. Data-space pitch between cell centers. Default 1.
+   */
+  cellSize?: number;
+  /**
+   * TENSOR ONLY. Gap between cells as a fraction of 'cellSize', so spacing survives a cellSize change. Default 0.08.
+   */
+  gap?: number;
   /**
    * Element opacity 0-1. Can be a math.js expression string for animated elements. Default varies by type.
    */
@@ -708,7 +731,7 @@ export interface Element {
    */
   axis?: 'x' | 'y' | 'z';
   /**
-   * Grid plane. Default: 'xy'. Also usable on animated_curve: 'xy' (default) plots expr along y; 'xz' plots it along z (fillRegions unsupported in 'xz'). Any other value (e.g. 'yz') is not modelled for animated_curve and falls back to 'xy'.
+   * Grid plane. Default: 'xy'. Also usable on animated_curve: 'xy' (default) plots expr along y; 'xz' plots it along z (fillRegions unsupported in 'xz'). Any other value (e.g. 'yz') is not modelled for animated_curve and falls back to 'xy'. On tensor it is the plane the cell lattice is laid out in; all three values are supported.
    */
   plane?: 'xy' | 'xz' | 'yz';
   /**

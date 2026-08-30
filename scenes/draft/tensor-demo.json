@@ -1,0 +1,235 @@
+{
+  "title": "tensor \u2014 one element, one lattice",
+  "scenes": [
+    {
+      "title": "tensor \u2014 one element, one lattice",
+      "description": "A 6\u00d76 row-stochastic matrix as a single `tensor` element, beside a static causal mask.",
+      "markdown": "# `tensor`\n\nBoth grids below are **one element each**, not 36.\n\n**Left** is live: one `valueExpr`, evaluated per cell with `row` and `col` bound.\nRow $i$ is a softmax over $s_{ij} = e^{-|i-j|\\cdot k}$, so every row sums to 1. Drag **sharpness** and watch it go from uniform to near-diagonal.\n\n**Right** is static: literal `values`, built once, **zero** per-frame cost \u2014 a causal mask, which is exactly the shape that makes parallel training legal.\n\nCell geometry is arithmetic on `shape`, not expressions, so nothing is re-evaluated for positions that never move.",
+      "range": [
+        [
+          -1,
+          15
+        ],
+        [
+          -1,
+          8
+        ],
+        [
+          -2,
+          2
+        ]
+      ],
+      "camera": {
+        "position": [
+          7,
+          3,
+          16
+        ],
+        "target": [
+          7,
+          3,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "Both",
+          "position": [
+            7,
+            3,
+            16
+          ],
+          "target": [
+            7,
+            3,
+            0
+          ],
+          "description": "The live matrix and the static mask together"
+        },
+        {
+          "name": "Live only",
+          "position": [
+            2.5,
+            3,
+            9
+          ],
+          "target": [
+            2.5,
+            3,
+            0
+          ],
+          "description": "Close on the softmax matrix"
+        },
+        {
+          "name": "Iso",
+          "position": [
+            14,
+            -4,
+            13
+          ],
+          "target": [
+            7,
+            3,
+            0
+          ],
+          "description": "Confirm both lattices are flat"
+        }
+      ],
+      "elements": [
+        {
+          "id": "ref",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [
+              0,
+              14
+            ],
+            [
+              0,
+              6
+            ]
+          ],
+          "divisions": [
+            14,
+            6
+          ],
+          "color": [
+            0.28,
+            0.28,
+            0.42
+          ],
+          "opacity": 0.2
+        }
+      ],
+      "steps": [
+        {
+          "title": "One element per lattice",
+          "description": "Drag **sharpness** $k$: at $k=0$ every row is uniform ($1/6$ each); as $k$ grows the mass collapses onto the diagonal. The mask on the right never changes, and costs nothing per frame.",
+          "add": [
+            {
+              "id": "attn",
+              "type": "tensor",
+              "shape": [
+                6,
+                6
+              ],
+              "origin": [
+                0,
+                0,
+                0
+              ],
+              "cellSize": 1,
+              "gap": 0.08,
+              "valueExpr": "(exp(-abs(row - col) * sharp)) / (exp(-abs(row - 0) * sharp) + exp(-abs(row - 1) * sharp) + exp(-abs(row - 2) * sharp) + exp(-abs(row - 3) * sharp) + exp(-abs(row - 4) * sharp) + exp(-abs(row - 5) * sharp))",
+              "colorMap": "viridis",
+              "colorDomain": [
+                0,
+                0.6
+              ],
+              "opacity": 0.95,
+              "shader": {
+                "ignorePlaneOpacity": true
+              },
+              "label": "softmax rows",
+              "prompt": "This is a row-stochastic attention-style matrix. Each row is a softmax over scores that decay with distance from the diagonal. Explain why every row sums to 1 and what the sharpness slider is doing to the distribution."
+            },
+            {
+              "id": "mask",
+              "type": "tensor",
+              "shape": [
+                6,
+                6
+              ],
+              "origin": [
+                8,
+                0,
+                0
+              ],
+              "cellSize": 1,
+              "gap": 0.08,
+              "values": [
+                [
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                [
+                  1,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                [
+                  1,
+                  1,
+                  1,
+                  0,
+                  0,
+                  0
+                ],
+                [
+                  1,
+                  1,
+                  1,
+                  1,
+                  0,
+                  0
+                ],
+                [
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  0
+                ],
+                [
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1
+                ]
+              ],
+              "colorMap": "magma",
+              "colorDomain": [
+                0,
+                1
+              ],
+              "opacity": 0.95,
+              "shader": {
+                "ignorePlaneOpacity": true
+              },
+              "label": "causal mask",
+              "prompt": "This is a causal mask: cell (i,j) is 1 when j <= i. Explain why masking the future is what makes it legal to train on every position of a sequence in a single parallel forward pass."
+            }
+          ],
+          "sliders": [
+            {
+              "id": "sharp",
+              "label": "sharpness $k$",
+              "min": 0,
+              "max": 3,
+              "step": 0.05,
+              "default": 0.8
+            }
+          ],
+          "info": [
+            {
+              "id": "rowsum",
+              "content": "Row 0 sums to $1.000$ by construction.\n\n$\\alpha_{00} = {{ (exp(0) / (exp(0) + exp(-1*sharp) + exp(-2*sharp) + exp(-3*sharp) + exp(-4*sharp) + exp(-5*sharp))) }}$",
+              "position": "top-right"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

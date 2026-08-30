@@ -270,6 +270,7 @@ Each element in `scene.elements` and `step.add` is dispatched by `type`:
 | `animated_line` | Polyline with per-vertex `points` expression arrays |
 | `animated_cylinder` | Cylinder with `fromExpr`/`toExpr`/`radiusExpr` |
 | `animated_polygon` | Filled polygon with per-vertex `vertices` expression arrays |
+| `tensor` | Lattice of value-coloured cells (heatmap / matrix grid). One merged geometry with a vertex-colour attribute — one mesh, one material, one draw call. Composite, like `vectors` and `vector_field`: one element expands to `rows × cols` cells inside its renderer, so the loader's snapshot-based tracking treats it as a single unit. Static with literal `values` (no per-frame updater at all), live with `valueExpr` (evaluated per cell with `row`/`col` bound) |
 
 #### Expression Evaluation
 
