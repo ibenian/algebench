@@ -119,6 +119,13 @@ export type Vec34 = [number | string, number | string, number | string];
  */
 export type Vec3OrExpr = [number | string, number | string, number | string];
 /**
+ * Per-axis ranges for a plane as [[aMin,aMax],[bMin,bMax]], in plane order.
+ *
+ * @minItems 2
+ * @maxItems 2
+ */
+export type RangePlane = [[number, number], [number, number]];
+/**
  * 3D axis ranges as [[xMin,xMax],[yMin,yMax],[zMin,zMax]].
  *
  * @minItems 3
@@ -640,17 +647,17 @@ export interface Element {
    */
   vertices?: Vec3OrExpr[];
   /**
-   * Range for parametric types [tMin,tMax] or axis range [-5,5]. Components can be numbers or math.js expression strings. For vector_field: [[xMin,xMax],[yMin,yMax],[zMin,zMax]].
+   * Range for parametric types [tMin,tMax] or axis range [-5,5]. Only this flat two-component form accepts math.js expression strings in place of numbers; the nested forms below are numeric-only. For vector_field: [[xMin,xMax],[yMin,yMax],[zMin,zMax]]. For grid: omit to inherit the scene range for the plane's two axes, or give one interval per axis in plane order as [[a,b],[c,d]] ('xz' means x then z) when the two axes span different extents.
    */
-  range?: [number | string, number | string] | Range3D1;
+  range?: [number | string, number | string] | RangePlane | Range3D1;
   /**
    * Number of sample points for curves/surfaces. Default: 128 (parametric_curve), 200 (animated_curve).
    */
   samples?: number;
   /**
-   * Number of grid divisions. Default: 10.
+   * Number of grid divisions: one count for both axes, or [nx, ny] in plane order. A pair is needed when the two axes span different extents and the cells must still land on integer positions. Default: 10.
    */
-  divisions?: number;
+  divisions?: number | [number, number];
   /**
    * Which axis this element represents (for 'axis' type) or cylinder axis direction.
    */

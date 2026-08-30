@@ -4586,10 +4586,9 @@
           "id": "grid_bg",
           "type": "grid",
           "plane": "xy",
-          "range": [-12, 22],
           "color": [0.3, 0.3, 0.5],
           "opacity": 0.15,
-          "divisions": 24
+          "divisions": 12
         },
         {
           "id": "ocean_surface",

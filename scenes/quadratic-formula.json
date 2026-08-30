@@ -49,7 +49,7 @@
           "plane": "xy",
           "color": [0.3, 0.3, 0.5],
           "opacity": 0.08,
-          "divisions": 12
+          "divisions": [12, 20]
         }
       ],
       "steps": [
@@ -712,7 +712,7 @@
           "plane": "xy",
           "color": [0.3, 0.3, 0.5],
           "opacity": 0.08,
-          "divisions": 12
+          "divisions": [12, 20]
         }
       ],
       "steps": [
@@ -1348,7 +1348,7 @@
           "plane": "xy",
           "color": [0.3, 0.3, 0.5],
           "opacity": 0.08,
-          "divisions": 12
+          "divisions": [12, 20]
         }
       ],
       "steps": [
@@ -1624,14 +1624,14 @@
           "plane": "xy",
           "color": [0.3, 0.3, 0.5],
           "opacity": 0.06,
-          "divisions": 12
+          "divisions": [12, 20]
         },
         {
           "type": "grid",
           "plane": "xz",
           "color": [0.4, 0.3, 0.6],
           "opacity": 0.06,
-          "divisions": 8
+          "divisions": [12, 8]
         }
       ],
       "steps": [
@@ -2150,7 +2150,7 @@
           "plane": "xy",
           "color": [0.3, 0.3, 0.5],
           "opacity": 0.08,
-          "divisions": 12
+          "divisions": [12, 20]
         }
       ],
       "steps": [
@@ -2643,10 +2643,9 @@
         {
           "type": "grid",
           "plane": "xy",
-          "range": [-5, 5],
           "color": [0.3, 0.3, 0.5],
           "opacity": 0.1,
-          "divisions": 10
+          "divisions": [10, 18]
         }
       ],
       "steps": [
@@ -2679,10 +2678,9 @@
               "id": "complex-input-grid",
               "type": "grid",
               "plane": "xz",
-              "range": [-4, 4],
               "color": [0.5, 0.5, 0.5],
               "opacity": 0.12,
-              "divisions": 8
+              "divisions": [10, 8]
             },
             {
               "id": "v-axis",
@@ -2774,10 +2772,9 @@
               "id": "zero-plane",
               "type": "grid",
               "plane": "xz",
-              "range": [-4, 4],
               "color": [0.6, 0.6, 0.6],
               "opacity": 0.15,
-              "divisions": 8
+              "divisions": [10, 8]
             },
             {
               "id": "zero-plane-label",

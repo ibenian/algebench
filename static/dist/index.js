@@ -4488,28 +4488,113 @@ function renderAxis(el, view) {
 }
 //#endregion
 //#region src/objects/grid.ts
+/**
+* For each grid plane: which scene-range axes it spans (indices into
+* `[[xMin,xMax],[yMin,yMax],[zMin,zMax]]`) and the MathBox axis ids that
+* `area` wants for the same pair.
+*/
+var PLANE_AXES = {
+	xy: {
+		scene: [0, 1],
+		mathbox: [1, 2]
+	},
+	xz: {
+		scene: [0, 2],
+		mathbox: [1, 3]
+	},
+	yz: {
+		scene: [1, 2],
+		mathbox: [2, 3]
+	}
+};
+var gridState = state;
+/**
+* One numeric component: a finite number, or a string that is entirely one.
+*
+* `Number()` alone is too permissive to guard with — it reads `''`, `'  '`,
+* `null`, `false` and `[]` as 0, so a malformed range would resolve to a real
+* interval of zero extent rather than being rejected. Everything this returns
+* null for falls back to the scene's own range, which is the whole point of
+* the guard.
+*/
+function toNumber(v) {
+	if (typeof v === "number") return Number.isFinite(v) ? v : null;
+	if (typeof v !== "string" || v.trim() === "") return null;
+	const n = Number(v);
+	return Number.isFinite(n) ? n : null;
+}
+/** Coerce `[a, b]` to a non-degenerate numeric interval, or null if it isn't one. */
+function toInterval(v) {
+	if (!Array.isArray(v) || v.length < 2) return null;
+	const a = toNumber(v[0]);
+	const b = toNumber(v[1]);
+	return a !== null && b !== null && a !== b ? [a, b] : null;
+}
+/** Division counts are whole numbers of cells; anything else falls back to 10. */
+function toDivisions(v) {
+	const n = toNumber(v);
+	return n !== null && Number.isInteger(n) && n >= 1 ? n : 10;
+}
+/**
+* Resolve a grid element's two-axis extent and cell counts.
+*
+* `range` is accepted in three forms, in plane order — for `xz` the first
+* entry is x and the second is z:
+*
+*   - omitted           inherit `sceneRange` for the plane's two axes, which
+*                       is nearly always what the author meant;
+*   - `[a, b]`          one interval shared by both axes (the historical form,
+*                       correct only where the two axes span the same extent);
+*   - `[[a,b], [c,d]]`  one interval per axis;
+*   - `[[a,b], [c,d], [e,f]]`  a full 3D range, of which the plane's two axes
+*                       are taken — so a scene's own `range` can be pasted in.
+*
+* `divisions` is either one count for both axes or `[nx, ny]`. Splitting the
+* two matters because a single count cannot put grid lines on integer
+* positions along two axes of different extent.
+*/
+function resolveGridArea(el, sceneRange) {
+	const spec = PLANE_AXES[el.plane || "xy"] || PLANE_AXES["xy"];
+	/** The scene's own extent for the i-th axis of this plane. */
+	const inherited = (i) => toInterval(sceneRange && sceneRange[spec.scene[i]]) || [-5, 5];
+	const raw = el.range;
+	let rangeX;
+	let rangeY;
+	if (Array.isArray(raw) && Array.isArray(raw[0])) {
+		const pick = raw.length >= 3 ? (i) => raw[spec.scene[i]] : (i) => raw[i];
+		rangeX = toInterval(pick(0)) || inherited(0);
+		rangeY = toInterval(pick(1)) || inherited(1);
+	} else {
+		const shared = toInterval(raw);
+		rangeX = shared || inherited(0);
+		rangeY = shared || inherited(1);
+	}
+	const divs = el.divisions;
+	const perAxis = Array.isArray(divs);
+	const divideX = toDivisions(perAxis ? divs[0] : divs);
+	const divideY = toDivisions(perAxis ? divs[1] : divs);
+	return {
+		rangeX,
+		rangeY,
+		width: divideX + 1,
+		height: divideY + 1,
+		axes: spec.mathbox
+	};
+}
 function renderGrid(el, view) {
-	const plane = el.plane || "xy";
-	const range = el.range || [-5, 5];
 	const color = parseColor(el.color || [
 		.3,
 		.3,
 		.5
 	]);
 	const opacity = el.opacity !== void 0 ? el.opacity : .15;
-	const divideX = el.divisions || 10;
-	const divideY = el.divisions || 10;
-	const gridAxes = {
-		xy: [1, 2],
-		xz: [1, 3],
-		yz: [2, 3]
-	}[plane] || [1, 2];
+	const area = resolveGridArea(el, gridState.currentRange);
 	view.area({
-		rangeX: range,
-		rangeY: range,
-		width: divideX + 1,
-		height: divideY + 1,
-		axes: gridAxes,
+		rangeX: area.rangeX,
+		rangeY: area.rangeY,
+		width: area.width,
+		height: area.height,
+		axes: area.axes,
 		channels: 3
 	}).surface({
 		shaded: false,

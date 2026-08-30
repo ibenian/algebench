@@ -57,10 +57,9 @@
         {
           "type": "grid",
           "plane": "xz",
-          "range": [-1, 5],
           "color": [0.25, 0.25, 0.4],
           "opacity": 0.12,
-          "divisions": 6
+          "divisions": [6, 4]
         },
         {
           "type": "axis",
@@ -541,10 +540,9 @@
         {
           "type": "grid",
           "plane": "xz",
-          "range": [-1, 5],
           "color": [0.25, 0.25, 0.4],
           "opacity": 0.12,
-          "divisions": 6
+          "divisions": [6, 4]
         },
         {
           "type": "axis",
@@ -800,10 +798,9 @@
         {
           "type": "grid",
           "plane": "xz",
-          "range": [-3, 4],
           "color": [0.25, 0.25, 0.4],
           "opacity": 0.12,
-          "divisions": 7
+          "divisions": [7, 5]
         },
         {
           "type": "axis",
@@ -984,10 +981,9 @@
         {
           "type": "grid",
           "plane": "xz",
-          "range": [-2, 5],
           "color": [0.25, 0.25, 0.4],
           "opacity": 0.12,
-          "divisions": 7
+          "divisions": [7, 5]
         },
         {
           "type": "axis",
@@ -1175,10 +1171,9 @@
         {
           "type": "grid",
           "plane": "xz",
-          "range": [-5, 5],
           "color": [0.25, 0.25, 0.4],
           "opacity": 0.1,
-          "divisions": 10
+          "divisions": [10, 7]
         },
         {
           "type": "axis",
