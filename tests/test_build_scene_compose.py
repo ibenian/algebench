@@ -8,7 +8,7 @@ import pytest
 
 from backend.experts.handlers.build_scene.compose import ComposeError, compose
 from backend.experts.modules.build_scene.proposed import (
-    ProposedElement, ProposedFunction, ProposedStep)
+    MAX_FUNCTIONS, ProposedElement, ProposedFunction, ProposedStep)
 from backend.model.lesson import Scene
 
 
@@ -1300,6 +1300,32 @@ def test_a_bad_argument_name_is_refused():
         _with_fns([_fn(name="k", args="v, 2n", expr="v")])
     with pytest.raises(ComposeError, match="listed twice"):
         _with_fns([_fn(name="k", args="v, v", expr="v")])
+
+
+def test_too_many_functions_is_refused_not_truncated():
+    """The proposal used to be sliced to the cap in `propose_scene`. Elements call
+    a function BY NAME, so dropping the tail leaves those calls unresolvable —
+    and math.js only reports that at EVALUATION time, in the browser, where the
+    renderer swallows it. A scene that draws wrong geometry and says nothing is
+    the worst of the available outcomes; refusing is the best."""
+    many = [_fn(name=f"f{i}", expr="1") for i in range(MAX_FUNCTIONS + 1)]
+    with pytest.raises(ComposeError, match="more than the"):
+        _with_fns(many)
+
+
+def test_the_cap_itself_composes():
+    """Off-by-one guard: the refusal must start ABOVE the cap, not at it."""
+    at_cap = [_fn(name=f"f{i}", expr="1") for i in range(MAX_FUNCTIONS)]
+    assert len(_with_fns(at_cap).functions) == MAX_FUNCTIONS
+
+
+def test_a_function_may_call_one_declared_later():
+    """`setActiveSceneFunctions` reserves every name before compiling any body,
+    so order carries no meaning — and the field description now says so. A
+    composer that quietly required declaration order would contradict it."""
+    scene = _with_fns([_fn(name="outer", args="x", expr="inner(x) * 2"),
+                       _fn(name="inner", args="x", expr="x + 1")])
+    assert [f["name"] for f in scene.functions] == ["outer", "inner"]
 
 
 def test_no_functions_leaves_the_key_off():
