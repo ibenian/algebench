@@ -34,18 +34,36 @@ export interface GridArea {
     axes: [number, number];
 }
 
-/** Coerce `[a, b]` to a finite numeric interval, or null if it isn't one. */
+/**
+ * One numeric component: a finite number, or a string that is entirely one.
+ *
+ * `Number()` alone is too permissive to guard with — it reads `''`, `'  '`,
+ * `null`, `false` and `[]` as 0, so a malformed range would resolve to a real
+ * interval of zero extent rather than being rejected. Everything this returns
+ * null for falls back to the scene's own range, which is the whole point of
+ * the guard.
+ */
+function toNumber(v: unknown): number | null {
+    if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+    if (typeof v !== 'string' || v.trim() === '') return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+}
+
+/** Coerce `[a, b]` to a non-degenerate numeric interval, or null if it isn't one. */
 function toInterval(v: unknown): Interval | null {
     if (!Array.isArray(v) || v.length < 2) return null;
-    const a = Number(v[0]);
-    const b = Number(v[1]);
-    return Number.isFinite(a) && Number.isFinite(b) ? [a, b] : null;
+    const a = toNumber(v[0]);
+    const b = toNumber(v[1]);
+    // A zero-width interval draws a line rather than a grid, and hands every
+    // consumer a step of 0 — fall back rather than render the degenerate case.
+    return a !== null && b !== null && a !== b ? [a, b] : null;
 }
 
 /** Division counts are whole numbers of cells; anything else falls back to 10. */
 function toDivisions(v: unknown): number {
-    const n = Math.floor(Number(v));
-    return Number.isFinite(n) && n >= 1 ? n : 10;
+    const n = toNumber(v);
+    return n !== null && Number.isInteger(n) && n >= 1 ? n : 10;
 }
 
 /**

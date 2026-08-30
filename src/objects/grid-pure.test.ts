@@ -60,11 +60,21 @@ test('divisions may differ per axis', () => {
 });
 
 test('divisions default to 10 per axis when absent or unusable', () => {
-    for (const divisions of [undefined, 0, -3, 'many']) {
+    // `true` and `''` are here because Number() reads them as 1 and 0 — a bare
+    // Number() guard would let `divisions: true` through as a single division.
+    for (const divisions of [undefined, 0, -3, 'many', true, '', null, 3.9, NaN]) {
         const a = resolveGridArea(grid({ divisions }), SCENE);
-        assert.equal(a.width, 11, `divisions=${divisions}`);
-        assert.equal(a.height, 11, `divisions=${divisions}`);
+        assert.equal(a.width, 11, `divisions=${String(divisions)}`);
+        assert.equal(a.height, 11, `divisions=${String(divisions)}`);
     }
+});
+
+test('a non-integer division count falls back rather than truncating', () => {
+    // 3.9 must not become 3: the schema declares divisions an integer, so a
+    // fractional one is malformed input and takes the same route as 'many'.
+    assert.equal(resolveGridArea(grid({ divisions: 3.9 }), SCENE).width, 11);
+    // A whole number written as a string is still a whole number.
+    assert.equal(resolveGridArea(grid({ divisions: '4' }), SCENE).width, 5);
 });
 
 test('each plane maps to its own MathBox axis pair', () => {
@@ -73,6 +83,31 @@ test('each plane maps to its own MathBox axis pair', () => {
     assert.deepEqual(resolveGridArea(grid({ plane: 'yz' }), SCENE).axes, [2, 3]);
     // An unknown plane keeps the historical xy fallback.
     assert.deepEqual(resolveGridArea(grid({ plane: 'zx' }), SCENE).axes, [1, 2]);
+});
+
+test('blank and non-numeric components fall back, never coercing to 0', () => {
+    // Number('') === Number('  ') === Number(null) === Number(false) === 0,
+    // so each of these would otherwise resolve to the [0,0] grid that draws
+    // nothing — the same silent failure the NaN guard exists to prevent.
+    for (const bad of [['', ''], ['  ', '  '], [null, null], [false, false], [[], []]]) {
+        const a = resolveGridArea(grid({ range: bad }), SCENE);
+        assert.deepEqual(a.rangeX, [-6, 6], `range=${JSON.stringify(bad)}`);
+        assert.deepEqual(a.rangeY, [-8, 12], `range=${JSON.stringify(bad)}`);
+    }
+    // A number written as a string is still a number.
+    assert.deepEqual(resolveGridArea(grid({ range: ['-2', '2'] }), SCENE).rangeX, [-2, 2]);
+});
+
+test('a zero-width range falls back rather than collapsing to a line', () => {
+    // [3,3] gives every consumer a step of 0; the scene range is more useful
+    // than a grid drawn as a single line.
+    const a = resolveGridArea(grid({ range: [3, 3] }), SCENE);
+    assert.deepEqual(a.rangeX, [-6, 6]);
+    assert.deepEqual(a.rangeY, [-8, 12]);
+    // Only one axis of a per-axis pair being degenerate keeps the other.
+    const half = resolveGridArea(grid({ plane: 'xz', range: [[-1, 11], [2, 2]] }), SCENE);
+    assert.deepEqual(half.rangeX, [-1, 11]);
+    assert.deepEqual(half.rangeY, [-4, 4]);
 });
 
 test('a non-numeric range falls back to the scene range instead of NaN geometry', () => {
