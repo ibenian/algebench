@@ -6072,6 +6072,153 @@ function renderAnimatedVector(el, view) {
 	};
 }
 //#endregion
+//#region src/colormaps.ts
+/**
+* Colormaps — turn a scalar in [0,1] into an RGB triple.
+*
+* One implementation serves two callers that used to be unrelated: `polygon`'s
+* static `gradient.stops`, and the `colorExpr` per-frame colour on animated
+* elements. Keeping them on the same interpolator is the point — a two-stop
+* colormap and a two-stop gradient must produce the same colour, or an author
+* who reaches for one after the other gets a silent mismatch.
+*
+* Colours are normalized RGB (0-1), which is what `parseColor` returns and what
+* `THREE.Color.setRGB` wants, so nothing converts on the way through.
+*/
+/**
+* Build a ramp from stops.
+*
+* Stops are sorted by `t`, so an author may list them in any order. Values
+* outside the stop range **clamp** to the terminal stops rather than
+* extrapolating — extrapolating an RGB ramp produces out-of-gamut colours that
+* three.js silently saturates, which reads as "the heatmap has a flat top".
+*/
+function buildStopsFn(stops) {
+	const parsed = stops.slice().sort((a, b) => a.t - b.t).map((s) => ({
+		t: s.t,
+		c: parseColor(s.color)
+	}));
+	if (parsed.length === 1) {
+		const only = parsed[0].c;
+		return () => only.slice();
+	}
+	return (u) => {
+		if (!(u > parsed[0].t)) return parsed[0].c.slice();
+		const last = parsed[parsed.length - 1];
+		if (u >= last.t) return last.c.slice();
+		for (let i = 0; i < parsed.length - 1; i++) {
+			const hi = parsed[i + 1];
+			if (u <= hi.t) {
+				const lo = parsed[i];
+				const span = hi.t - lo.t;
+				const f = span === 0 ? 0 : (u - lo.t) / span;
+				return [
+					lo.c[0] + f * (hi.c[0] - lo.c[0]),
+					lo.c[1] + f * (hi.c[1] - lo.c[1]),
+					lo.c[2] + f * (hi.c[2] - lo.c[2])
+				];
+			}
+		}
+		return last.c.slice();
+	};
+}
+/**
+* Named ramps, as 9 evenly-spaced stops each.
+*
+* `viridis` and `magma` are perceptually uniform and stay legible in both
+* themes — the default choice for a non-negative quantity. `blueRed` is
+* diverging and is correct **only** for signed data; using it for something
+* non-negative (an attention weight, a probability) implies a sign that isn't
+* there.
+*/
+var NAMED_STOPS = {
+	viridis: [
+		"#440154",
+		"#472d7b",
+		"#3b528b",
+		"#2c728e",
+		"#21918c",
+		"#28ae80",
+		"#5ec962",
+		"#addc30",
+		"#fde725"
+	],
+	magma: [
+		"#000004",
+		"#1c1044",
+		"#4f127b",
+		"#812581",
+		"#b5367a",
+		"#e55964",
+		"#fb8761",
+		"#fec287",
+		"#fcfdbf"
+	],
+	blueRed: [
+		"#2166ac",
+		"#4393c3",
+		"#92c5de",
+		"#d1e5f0",
+		"#f7f7f7",
+		"#fddbc7",
+		"#f4a582",
+		"#d6604d",
+		"#b2182b"
+	]
+};
+var DEFAULT_MAP = "viridis";
+function namedMap(name) {
+	const hexes = NAMED_STOPS[name] || NAMED_STOPS[DEFAULT_MAP];
+	return buildStopsFn(hexes.map((color, i) => ({
+		t: i / (hexes.length - 1),
+		color
+	})));
+}
+/**
+* Resolve a `colorMap` value into a ramp.
+*
+* Accepts a name, a `{stops:[…]}` object, or nothing (→ the default). An
+* unknown name falls back rather than throwing: a misspelled colormap should
+* cost the author the palette they wanted, not the whole scene.
+*/
+function buildColorMap(spec) {
+	if (spec && typeof spec === "object") {
+		const stops = spec.stops;
+		if (Array.isArray(stops) && stops.length > 0) return buildStopsFn(stops);
+	}
+	if (typeof spec === "string" && spec) {
+		if (!NAMED_STOPS[spec]) console.warn(`Unknown colorMap "${spec}" — falling back to ${DEFAULT_MAP}`);
+		return namedMap(spec);
+	}
+	return namedMap(DEFAULT_MAP);
+}
+/**
+* Normalize a raw `colorExpr` value onto [0,1] over `domain`, or `null` when it
+* is not a usable number.
+*
+* Returning `null` rather than 0 for a bad value matters: 0 is a legitimate
+* colour at the cold end of the ramp, so a caller that cannot distinguish
+* "black because the value is low" from "black because the expression returned
+* a matrix" has no way to keep the previous frame's colour instead.
+*/
+function normalizeColorValue(raw, domain) {
+	const v = Number(raw);
+	if (!Number.isFinite(v)) return null;
+	let lo = 0;
+	let hi = 1;
+	if (Array.isArray(domain) && domain.length >= 2) {
+		const a = Number(domain[0]);
+		const b = Number(domain[1]);
+		if (Number.isFinite(a) && Number.isFinite(b)) {
+			lo = a;
+			hi = b;
+		}
+	}
+	if (hi === lo) return 0;
+	const u = (v - lo) / (hi - lo);
+	return u < 0 ? 0 : u > 1 ? 1 : u;
+}
+//#endregion
 //#region src/objects/polygon.ts
 var polygonState = state;
 var _noiseTexture$1 = null;
@@ -6112,25 +6259,7 @@ function _computePlaneUVs$1(wVerts, normal) {
 	return proj.map(([u, v]) => [(u - minU) / scale, (v - minV) / scale]);
 }
 function _buildGradientColorFn(gradient) {
-	if (gradient.stops && gradient.stops.length > 0) {
-		const parsed = gradient.stops.slice().sort((a, b) => a.t - b.t).map((s) => ({
-			t: s.t,
-			c: parseColor(s.color)
-		}));
-		return (t) => {
-			if (t <= parsed[0].t) return parsed[0].c.slice();
-			if (t >= parsed[parsed.length - 1].t) return parsed[parsed.length - 1].c.slice();
-			for (let i = 0; i < parsed.length - 1; i++) if (t <= parsed[i + 1].t) {
-				const f = (t - parsed[i].t) / (parsed[i + 1].t - parsed[i].t);
-				return [
-					parsed[i].c[0] + f * (parsed[i + 1].c[0] - parsed[i].c[0]),
-					parsed[i].c[1] + f * (parsed[i + 1].c[1] - parsed[i].c[1]),
-					parsed[i].c[2] + f * (parsed[i + 1].c[2] - parsed[i].c[2])
-				];
-			}
-			return parsed[parsed.length - 1].c.slice();
-		};
-	}
+	if (gradient.stops && gradient.stops.length > 0) return buildStopsFn(gradient.stops);
 	const c0 = parseColor(gradient.from || "#ff0000");
 	const c1 = parseColor(gradient.to || "#0000ff");
 	return (t) => [
@@ -7034,6 +7163,8 @@ function renderAnimatedPolygon(el, view) {
 	const color = parseColor(el.color || "#aa66ff");
 	const opacityRaw = el.opacity !== void 0 ? el.opacity : .3;
 	const opacityExpr = typeof opacityRaw === "string" ? compileExpr(opacityRaw) : null;
+	const colorExprFn = typeof el.colorExpr === "string" && el.colorExpr.trim() ? compileExpr(el.colorExpr.trim()) : null;
+	const colorMapFn = colorExprFn ? buildColorMap(el.colorMap) : null;
 	const opacity = opacityExpr ? .3 : opacityRaw;
 	const thickness = el.thickness || .02;
 	const label = el.label;
@@ -7209,6 +7340,15 @@ function renderAnimatedPolygon(el, view) {
 		mat = new THREE.MeshPhongMaterial(baseMatOpts);
 	}
 	const mesh = new THREE.Mesh(geom, mat);
+	mesh.userData.targetOpacity = opacity;
+	mesh.userData.ignorePlaneOpacity = !!sh.ignorePlaneOpacity;
+	if (colorExprFn && colorMapFn) try {
+		const u0 = normalizeColorValue(evalExpr(colorExprFn, 0), el.colorDomain);
+		if (u0 !== null) {
+			const rgb0 = colorMapFn(u0);
+			mat.color.setRGB(rgb0[0], rgb0[1], rgb0[2]);
+		}
+	} catch (_err) {}
 	const _serialA = el.renderOrder !== void 0 ? el.renderOrder : animatedPolygonState._planeMeshSerial++;
 	mesh.renderOrder = _serialA;
 	mesh.position.z = el.depthZ !== void 0 ? el.depthZ : _serialA * 2e-4;
@@ -7284,6 +7424,13 @@ function renderAnimatedPolygon(el, view) {
 					mat.opacity = animatedPolygonState.displayParams.planeOpacity * (op / .5);
 					if (outlineLineNode && !outlineOpacityExpr) outlineLineNode.set("opacity", Math.min(1, op * 2));
 				}
+				if (colorExprFn && colorMapFn) try {
+					const u = normalizeColorValue(evalExpr(colorExprFn, tSec), el.colorDomain);
+					if (u !== null) {
+						const rgb = colorMapFn(u);
+						mat.color.setRGB(rgb[0], rgb[1], rgb[2]);
+					}
+				} catch (_err) {}
 				if (outlineArrayNode) outlineArrayNode.set("data", buildOutlinePts(verts));
 				if (outlineLineNode && outlineWidthExpr) outlineLineNode.set("width", evalExpr(outlineWidthExpr, tSec));
 				if (outlineLineNode && outlineOpacityExpr) outlineLineNode.set("opacity", evalExpr(outlineOpacityExpr, tSec));

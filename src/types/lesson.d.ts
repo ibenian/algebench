@@ -622,6 +622,51 @@ export interface Element {
    */
   color?: string | [number, number, number];
   /**
+   * Math.js expression returning a SCALAR, mapped through 'colorMap' to the element's color and re-evaluated every frame. May use slider IDs and 't'. Animated types only (animated_polygon). Normalized over 'colorDomain' (default [0,1]) and clamped. Example: "dataTable('attn', 3, 'w5')". Without it the static 'color' is used; the static 'color' remains the legend swatch.
+   */
+  colorExpr?: string;
+  /**
+   * Color ramp applied to 'colorExpr'. A named map, or {stops:[{t,color}, …]} for a custom palette (same stop format as 'gradient.stops'). Default 'viridis'. Use a sequential map ('viridis', 'magma') for non-negative data; 'blueRed' is diverging and implies a sign, so it is only correct for signed data. Inert without 'colorExpr'.
+   */
+  colorMap?:
+    | ('viridis' | 'magma' | 'blueRed')
+    | {
+        /**
+         * @minItems 1
+         */
+        stops: [
+          {
+            /**
+             * Position along the ramp (0 = low, 1 = high).
+             */
+            t: number;
+            /**
+             * Color at this stop.
+             */
+            color: string | [number, number, number];
+            [k: string]: unknown;
+          },
+          ...{
+            /**
+             * Position along the ramp (0 = low, 1 = high).
+             */
+            t: number;
+            /**
+             * Color at this stop.
+             */
+            color: string | [number, number, number];
+            [k: string]: unknown;
+          }[]
+        ];
+      };
+  /**
+   * Input range [lo,hi] that 'colorExpr' is normalized over before the color map is applied. Values outside are clamped. Default [0,1].
+   *
+   * @minItems 2
+   * @maxItems 2
+   */
+  colorDomain?: [number, number];
+  /**
    * Element opacity 0-1. Can be a math.js expression string for animated elements. Default varies by type.
    */
   opacity?: number | string;

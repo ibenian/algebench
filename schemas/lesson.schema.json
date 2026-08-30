@@ -254,6 +254,42 @@
           "$ref": "#/$defs/color",
           "description": "Element color as hex string '#rrggbb' or RGB array [r,g,b] with values 0-1. Default varies by type."
         },
+        "colorExpr": {
+          "type": "string",
+          "description": "Math.js expression returning a SCALAR, mapped through 'colorMap' to the element's color and re-evaluated every frame. May use slider IDs and 't'. Animated types only (animated_polygon). Normalized over 'colorDomain' (default [0,1]) and clamped. Example: \"dataTable('attn', 3, 'w5')\". Without it the static 'color' is used; the static 'color' remains the legend swatch."
+        },
+        "colorMap": {
+          "oneOf": [
+            { "type": "string", "enum": ["viridis", "magma", "blueRed"] },
+            {
+              "type": "object",
+              "properties": {
+                "stops": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "t": { "type": "number", "description": "Position along the ramp (0 = low, 1 = high)." },
+                      "color": { "$ref": "#/$defs/color", "description": "Color at this stop." }
+                    },
+                    "required": ["t", "color"]
+                  }
+                }
+              },
+              "required": ["stops"],
+              "additionalProperties": false
+            }
+          ],
+          "description": "Color ramp applied to 'colorExpr'. A named map, or {stops:[{t,color}, …]} for a custom palette (same stop format as 'gradient.stops'). Default 'viridis'. Use a sequential map ('viridis', 'magma') for non-negative data; 'blueRed' is diverging and implies a sign, so it is only correct for signed data. Inert without 'colorExpr'."
+        },
+        "colorDomain": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "Input range [lo,hi] that 'colorExpr' is normalized over before the color map is applied. Values outside are clamped. Default [0,1]."
+        },
         "opacity": {
           "oneOf": [
             { "type": "number", "minimum": 0, "maximum": 1 },

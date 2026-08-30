@@ -1,6 +1,7 @@
 import { state } from '/state.js';
 import { parseColor, addLabel3D, renderKaTeX } from '/labels.js';
 import type { Label3D } from '/labels.js';
+import { buildColorMap, normalizeColorValue } from '/colormaps.js';
 import { compileExpr, evalExpr } from '/expr.js';
 import type { CompiledExpr } from '/expr.js';
 import { dataToWorld, dataLenToWorld } from '/coords.js';
@@ -116,6 +117,12 @@ export function renderAnimatedPolygon(el: Element, view: MathBoxNode) {
     const color = parseColor(el.color || '#aa66ff') as Rgb3;
     const opacityRaw = el.opacity !== undefined ? el.opacity : 0.3;
     const opacityExpr = typeof opacityRaw === 'string' ? compileExpr(opacityRaw) : null;
+    // `colorExpr` yields a scalar; `colorMap` turns it into a colour. The static
+    // `color` above stays the seed, the fallback, and the legend swatch.
+    const colorExprFn = typeof el.colorExpr === 'string' && el.colorExpr.trim()
+        ? compileExpr(el.colorExpr.trim())
+        : null;
+    const colorMapFn = colorExprFn ? buildColorMap(el.colorMap) : null;
     const opacity = opacityExpr ? 0.3 : opacityRaw as number;
     const thickness = el.thickness || 0.02;
     const label = el.label;
@@ -302,6 +309,24 @@ export function renderAnimatedPolygon(el: Element, view: MathBoxNode) {
         mat = new THREE.MeshPhongMaterial(baseMatOpts);
     }
     const mesh = new THREE.Mesh(geom, mat);
+    // The global planeOpacity control rewrites `material.opacity` on every mesh
+    // in `planeMeshes` and reads these two back to restore it. animated_point
+    // has always set them (src/objects/animated-point.ts); this renderer did
+    // not, so a planeOpacity drag blanked an animated polygon permanently —
+    // updateFrame only restores opacity when an opacity *expression* exists.
+    mesh.userData.targetOpacity = opacity;
+    mesh.userData.ignorePlaneOpacity = !!sh.ignorePlaneOpacity;
+    // Seed the mapped colour so the first paint is right, rather than showing
+    // the static seed colour for one frame until updateFrame runs.
+    if (colorExprFn && colorMapFn) {
+        try {
+            const u0 = normalizeColorValue(evalExpr(colorExprFn, 0), el.colorDomain);
+            if (u0 !== null) {
+                const rgb0 = colorMapFn(u0);
+                mat.color.setRGB(rgb0[0]!, rgb0[1]!, rgb0[2]!);
+            }
+        } catch (_err) { /* keep the static seed colour */ }
+    }
     const _serialA = el.renderOrder !== undefined ? el.renderOrder : animatedPolygonState._planeMeshSerial++;
     mesh.renderOrder = _serialA;
     mesh.position.z = el.depthZ !== undefined ? el.depthZ : _serialA * 0.0002;
@@ -378,6 +403,25 @@ export function renderAnimatedPolygon(el: Element, view: MathBoxNode) {
                     const op = evalExpr(opacityExpr, tSec) as number;
                     mat.opacity = animatedPolygonState.displayParams.planeOpacity * (op / 0.5);
                     if (outlineLineNode && !outlineOpacityExpr) outlineLineNode.set('opacity', Math.min(1, op * 2));
+                }
+                if (colorExprFn && colorMapFn) {
+                    // Its own try/catch: a bad colour expression should cost the
+                    // colour, not abort the rest of the frame and freeze the
+                    // geometry along with it.
+                    try {
+                        const u = normalizeColorValue(evalExpr(colorExprFn, tSec), el.colorDomain);
+                        // null means the value was not a usable number — keep
+                        // the previous frame's colour rather than flashing to
+                        // the cold end of the ramp.
+                        if (u !== null) {
+                            const rgb = colorMapFn(u);
+                            // In place: `color` is a per-frame uniform, so this
+                            // is picked up on the next draw. Setting
+                            // `needsUpdate` here would force a shader-program
+                            // recompile check on every cell, every frame.
+                            mat.color.setRGB(rgb[0]!, rgb[1]!, rgb[2]!);
+                        }
+                    } catch (_err) { /* keep last colour */ }
                 }
                 if (outlineArrayNode) {
                     outlineArrayNode.set('data', buildOutlinePts(verts));

@@ -277,7 +277,12 @@ def classify_expression(expr, field_key, scene_unsafe):
         return 'unsafe_scene'
 
     if _JS_ONLY_RE.search(expr):
-        if field_key in _SCANNED_KEYS or field_key == 'content_template':
+        # `_SCANNED_KEYS` holds only the eight non-``*Expr`` names, but
+        # src/trust.ts scans anything ending in ``Expr`` too, so testing
+        # membership alone reported every ``*Expr`` field carrying JS as
+        # uncovered -- the audit's failure condition -- for fields the trust
+        # dialog does in fact cover.  ``_is_expr_key`` is that same rule.
+        if _is_expr_key(field_key) or field_key == 'content_template':
             return 'js_covered'
         return 'js_uncovered'
 

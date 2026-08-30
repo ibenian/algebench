@@ -24,7 +24,10 @@ from pathlib import Path
 
 EXPR_KEYS = {'expr', 'fromExpr', 'x', 'y', 'z', 'fx', 'fy', 'fz', 'expression',
              'radiusExpr', 'visibleExpr', 'labelExpr', 'toExpr', 'positionExpr',
-             'centerExpr', 'rangeExpr', 'valueExpr'}
+             'centerExpr', 'rangeExpr', 'valueExpr', 'colorExpr',
+             # Implemented but previously unlisted here, so their expressions
+             # were never checked for JS or scanned for slider references:
+             'sizeExpr', 'opacityExpr'}
 
 JS_PATTERNS = [
     (r'Math\.', 'Use math.js syntax (sin, cos, pi) not JavaScript (Math.sin, Math.PI)'),

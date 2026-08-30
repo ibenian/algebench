@@ -40,7 +40,9 @@ EXPR_KEYS = {
     'expr', 'fromExpr', 'toExpr', 'positionExpr', 'centerExpr',
     'x', 'y', 'z', 'fx', 'fy', 'fz', 'expression',
     'radiusExpr', 'visibleExpr', 'labelExpr', 'rangeExpr',
-    'valueExpr',
+    'valueExpr', 'colorExpr',
+    # Implemented but previously unlisted here, so the lint never reached them:
+    'sizeExpr', 'opacityExpr',
 }
 
 

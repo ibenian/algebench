@@ -1,5 +1,6 @@
 import { state } from '/state.js';
 import { parseColor, addLabel3D } from '/labels.js';
+import { buildStopsFn } from '/colormaps.js';
 import { dataToWorld, dataLenToWorld } from '/coords.js';
 import type { Vec3 } from '/coords.js';
 import type { Element, Shader } from '/types/lesson.js';
@@ -78,24 +79,10 @@ function _computePlaneUVs(wVerts: Vec3[], normal: Vector3): [number, number][] {
 // ── Gradient support: per-vertex color interpolation along an axis ──
 
 function _buildGradientColorFn(gradient: PolygonGradient): (t: number) => number[] {
+    // Stops go through the shared interpolator in /colormaps.js so a gradient
+    // and a `colorMap` with the same stops resolve to the same colour.
     if (gradient.stops && gradient.stops.length > 0) {
-        const stops = gradient.stops.slice().sort((a, b) => a.t - b.t);
-        const parsed = stops.map(s => ({ t: s.t, c: parseColor(s.color) }));
-        return (t) => {
-            if (t <= parsed[0]!.t) return parsed[0]!.c.slice();
-            if (t >= parsed[parsed.length - 1]!.t) return parsed[parsed.length - 1]!.c.slice();
-            for (let i = 0; i < parsed.length - 1; i++) {
-                if (t <= parsed[i + 1]!.t) {
-                    const f = (t - parsed[i]!.t) / (parsed[i + 1]!.t - parsed[i]!.t);
-                    return [
-                        parsed[i]!.c[0]! + f * (parsed[i + 1]!.c[0]! - parsed[i]!.c[0]!),
-                        parsed[i]!.c[1]! + f * (parsed[i + 1]!.c[1]! - parsed[i]!.c[1]!),
-                        parsed[i]!.c[2]! + f * (parsed[i + 1]!.c[2]! - parsed[i]!.c[2]!),
-                    ];
-                }
-            }
-            return parsed[parsed.length - 1]!.c.slice();
-        };
+        return buildStopsFn(gradient.stops);
     }
     const c0 = parseColor(gradient.from || '#ff0000');
     const c1 = parseColor(gradient.to || '#0000ff');
