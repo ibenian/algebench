@@ -38,10 +38,7 @@ MAX_STEPS = 12
 MAX_SLIDERS = 24
 #: Bounded so one proposal cannot become an unrenderable scene.
 MAX_ELEMENTS = 60
-#: Scene functions. Low on purpose: they exist to remove REPETITION, and a scene
-#: needing more than a handful of distinct named formulas is describing a program
-#: rather than a picture. The busiest corpus scene declares 2.
-MAX_FUNCTIONS = 8
+
 
 
 class SceneProposal(BaseModel):
@@ -152,8 +149,12 @@ def propose_scene(**inputs) -> SceneProposal:
         steps=[s for s in (out.steps or []) if isinstance(s, ProposedStep)][:MAX_STEPS],
         sliders=[s for s in (getattr(out, "sliders", None) or [])
                  if isinstance(s, ProposedSlider)][:MAX_SLIDERS],
+        # NOT truncated, unlike the lists above. An element calls a function by
+        # NAME, so dropping the tail leaves those calls unresolvable — and
+        # silently, at evaluation time, in the browser. `compose` refuses on
+        # MAX_FUNCTIONS instead, which the reader sees and the retry can act on.
         functions=[f for f in (getattr(out, "functions", None) or [])
-                   if isinstance(f, ProposedFunction)][:MAX_FUNCTIONS],
+                   if isinstance(f, ProposedFunction)],
         elements=[e for e in (out.elements or [])
                   if isinstance(e, ProposedElement)][:MAX_ELEMENTS],
     )

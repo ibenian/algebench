@@ -53,8 +53,8 @@ from backend.mathjs_extensions import CORE_MATH_NAMES, EXTENSION_NAMES
 from backend.model.lesson import Element, Scene, Step
 
 from backend.experts.modules.build_scene.proposed import (
-    SCENE_LEVEL, SUPPORTED_TYPES, ProposedElement, ProposedFunction,
-    ProposedSlider, ProposedStep)
+    MAX_FUNCTIONS, SCENE_LEVEL, SUPPORTED_TYPES, ProposedElement,
+    ProposedFunction, ProposedSlider, ProposedStep)
 
 log = logging.getLogger(__name__)
 
@@ -393,11 +393,19 @@ def _functions(proposed, slider_ids: set[str]) -> list[dict]:
     point of adding the field: a place to state a derivation once is only an
     improvement if getting it wrong is loud.
     """
+    wanted = [f for f in (proposed or []) if isinstance(f, ProposedFunction)]
+    if len(wanted) > MAX_FUNCTIONS:
+        # REFUSED, never truncated. Elements call these by name, so dropping the
+        # tail would leave those calls unresolvable — silently, at evaluation
+        # time, in the browser.
+        raise ComposeError(
+            f"{len(wanted)} scene functions is more than the {MAX_FUNCTIONS} a "
+            f"scene may declare. Fold the ones used once back into the "
+            f"expression that uses them, and keep the names for what repeats.")
+
     out: list[dict] = []
     seen: set[str] = set()
-    for fn in proposed or []:
-        if not isinstance(fn, ProposedFunction):
-            continue
+    for fn in wanted:
         name, expr = fn.name.strip(), fn.expr.strip()
         if not name and not expr:
             continue

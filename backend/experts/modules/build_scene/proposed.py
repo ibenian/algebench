@@ -61,6 +61,17 @@ SUPPORTED_TYPES = (
 #: `step` for an element that is present from the start.
 SCENE_LEVEL = -1
 
+#: Scene functions in one scene. NOT a truncation point — `compose` refuses on
+#: it. Elements call a function BY NAME, so silently dropping the tail of the
+#: list leaves those calls resolving to nothing, which math.js reports at
+#: EVALUATION time and the renderer swallows: a scene that draws wrong geometry
+#: and says nothing. The same hazard is why MAX_SLIDERS is set generously.
+#:
+#: 16 because the model reaches for these readily. The busiest corpus scene
+#: declares 2, but one live dot-product build produced 6 unprompted, so a cap
+#: near that number would refuse ordinary work rather than bound runaway.
+MAX_FUNCTIONS = 16
+
 
 class ProposedElement(BaseModel):
     """One object the model wants in the scene."""
@@ -227,10 +238,14 @@ class ProposedFunction(BaseModel):
                     "want: a function with no arguments still sees every slider")
     expr: str = Field(
         default="",
-        description="what it computes, in MATH.JS, e.g. `(ax*bx + ay*by) / "
-                    "(ax*ax + ay*ay)`. One expression — no `let`, no `return`, "
-                    "no semicolons. It may call other scene functions and name "
-                    "any slider")
+        description=f"what it computes, in MATH.JS, e.g. `(ax*bx + ay*by) / "
+                    f"(ax*ax + ay*ay)`. One expression — no `let`, no `return`, "
+                    f"no semicolons. It may name any slider, and may call ANY "
+                    f"OTHER SCENE FUNCTION regardless of the order they are "
+                    f"listed in — they are all registered before any of them "
+                    f"runs. Every math.js function is available, plus these, "
+                    f"which are this project's own and exist nowhere else: "
+                    f"{_EXTENSIONS}")
 
 
 class ProposedSlider(BaseModel):
