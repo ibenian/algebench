@@ -50,6 +50,20 @@ test('a negative scene number is not clamped into a destructive replace', () => 
     assert.equal(sceneIndexFromArgs('-3'), -4);
 });
 
+test('insert clamps an out-of-range scene instead of refusing it', () => {
+    // The asymmetry with replace is the point, so it is pinned rather than left
+    // to be rediscovered: insert only ever ADDS, so a nonsense position costs a
+    // reorder, not a lost scene. Too-high clamps to the end by the same rule.
+    const n = lesson.scenes.length;
+    const at = (scene: unknown) =>
+        buildSceneRequestFromToolCall({ intent: 'add one', scene }, lesson).sceneIndex;
+    assert.equal(at(-5), 0, 'a negative inserts at the front');
+    // Derived from `n`, not a magic 9999: the assertion is "past the end", and
+    // a literal only happens to be past the end of the fixture this test loads.
+    assert.equal(at(n + 5), n, 'a number past the end appends');
+    assert.equal(at(undefined), n, 'absent still means append');
+});
+
 test('replace refuses a negative scene number rather than hitting scene 1', () => {
     // The end-to-end shape of it: a destructive op must not proceed on a target
     // the model never meant. Refusing is the whole point, so assert the throw
