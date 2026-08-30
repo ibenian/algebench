@@ -340,3 +340,92 @@ def test_a_non_format_failure_is_not_retried(monkeypatch):
     out = it.propose_scene(intent="x")
     assert len(calls) == 1
     assert out.error
+
+
+# ---- the informed retry --------------------------------------------------
+#
+# `intent.py` already retries a MALFORMED answer. This is the other failure: a
+# well-formed proposal the composer will not accept. Nothing carried that reason
+# back to the builder, so every re-ask — the chat agent's included — reached the
+# model as the identical prompt and drew the identical scene.
+
+
+def _refusable() -> SceneProposal:
+    """A proposal `compose` rejects, for a reason it states precisely."""
+    bad = _good()
+    bad.elements[0].to_pos = r"\cos(\theta), 0, 0"
+    return bad
+
+
+def _answers(monkeypatch, *proposals: SceneProposal) -> list[dict]:
+    """Stub `propose_scene` to return each proposal in turn, recording its inputs."""
+    calls: list[dict] = []
+    queue = list(proposals)
+
+    def _next(**kw):
+        calls.append(kw)
+        return queue.pop(0) if queue else proposals[-1]
+
+    monkeypatch.setattr(h, "propose_scene", _next)
+    return calls
+
+
+def test_a_refusal_buys_one_more_ask(monkeypatch, request_body):
+    """The reason is precise enough to act on, so spend a request on it rather
+    than handing the reader a scene that was never built."""
+    calls = _answers(monkeypatch, _refusable(), _good())
+    out = h.build_scene(h.BuildSceneRequest.model_validate(request_body))
+    assert len(calls) == 2, "a compose refusal must ask again"
+    assert out["result"]["ops"][0]["node"]["title"] == "Cross Product"
+    assert "reason" not in out
+
+
+def test_the_refusal_reaches_the_second_prompt(monkeypatch, request_body):
+    """Asking again is only half of it. Without the reason in the prompt the
+    second draw is the same draw — which is the bug, not the fix."""
+    calls = _answers(monkeypatch, _refusable(), _good())
+    h.build_scene(h.BuildSceneRequest.model_validate(request_body))
+    assert calls[0]["refused"] == "", "nothing has been refused on a first ask"
+    assert "math.js" in calls[1]["refused"], "the composer's own words, not a paraphrase"
+
+
+def test_a_second_refusal_is_not_retried_again(monkeypatch, request_body):
+    """A model that ignores a precise reason twice will not be talked round, and
+    the reader is waiting."""
+    calls = _answers(monkeypatch, _refusable(), _refusable())
+    out = h.build_scene(h.BuildSceneRequest.model_validate(request_body))
+    assert len(calls) == 2, "exactly one extra ask"
+    assert "math.js" in out["reason"] and "result" not in out
+
+
+def test_a_retry_with_nothing_to_compose_reports_the_first_reason(monkeypatch, request_body):
+    """The second ask can come back empty or broken. "The scene builder could not
+    finish this one" describes no scene; the first refusal describes a real one,
+    and it is what the chat agent can propose an alternative to."""
+    calls = _answers(monkeypatch, _refusable(),
+                     SceneProposal(is_build=False, error="the builder broke"))
+    out = h.build_scene(h.BuildSceneRequest.model_validate(request_body))
+    assert len(calls) == 2
+    assert "math.js" in out["reason"], "the refusal, not the crash"
+    assert "the builder broke" not in out["reason"]
+
+
+def test_a_proposal_that_composes_is_never_asked_twice(monkeypatch, request_body):
+    """The retry is on the REFUSAL path only. Spending a second request on every
+    successful build would double the wait for the case that already works."""
+    calls = _answers(monkeypatch, _good())
+    out = h.build_scene(h.BuildSceneRequest.model_validate(request_body))
+    assert len(calls) == 1 and "result" in out
+
+
+def test_the_retry_does_not_reopen_the_question(monkeypatch, request_body):
+    """The reader committed at the clarification step. "Here is why your scene was
+    rejected" is not an invitation to ask them something else instead."""
+    asking = _good()
+    asking.question = "2D or 3D?"
+    _answers(monkeypatch, _refusable(), asking)
+    request_body["clarifications"] = []
+    request_body["messages"] = []
+    out = h.build_scene(h.BuildSceneRequest.model_validate(request_body))
+    assert "question" not in out, "a retry commits; it does not re-ask"
+    assert "result" in out

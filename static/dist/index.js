@@ -4887,12 +4887,45 @@ function renderSurface(el, view) {
 	};
 }
 //#endregion
+//#region src/objects/curve-range.ts
+/** The interval a parametric curve is sampled over: `rangeExpr`, else `range`,
+*  else `[0, 2π]`. Each end may be a number or a math.js string.
+*
+* `rangeExpr` FIRST, which `animated-curve.ts` has always done and this module
+* had never done. A curve's interval goes to `rangeExpr` the moment either end
+* is an expression — `0` to `4*pi`, or an end naming a slider — so reading only
+* `range` silently fell back to [0, 2π] and drew a shorter curve than the scene
+* asked for. No error and no warning: the endpoints it ignored were still
+* schema-legal, and subtracting the fallback's gives a perfectly good number.
+*
+* Observed on a DNA double helix whose strands ran `0` to `4*pi`. They stopped
+* half way up a ladder of rungs that spanned the whole length, because the rungs
+* were `line`s placed from the very numbers the curve discarded. Nothing in the
+* corpus writes `rangeExpr` on a parametric curve, which is why it survived —
+* the in-app scene builder is the first thing to emit one.
+*
+* `evaluate` is injected so this stays testable without math.js, and so the
+* caller can compile once and re-evaluate per build.
+*/
+function resolveCurveRange(el, evaluate) {
+	const spec = el.rangeExpr || el.range || [0, 2 * Math.PI];
+	const end = (raw, fallback) => {
+		let v;
+		try {
+			v = typeof raw === "string" ? evaluate(raw) : Number(raw);
+		} catch {
+			return fallback;
+		}
+		return Number.isFinite(v) ? v : fallback;
+	};
+	return [end(spec[0], 0), end(spec[1], 2 * Math.PI)];
+}
+//#endregion
 //#region src/objects/parametric-curve.ts
 var parametricCurveState = state;
 function renderParametricCurve(el, view) {
 	const color = parseColor(el.color || "#ff88aa");
 	const width = el.width || 3;
-	const range = el.range || [0, 2 * Math.PI];
 	const samples = el.samples || 128;
 	const opacity = el.opacity !== void 0 ? Number(el.opacity) : 1;
 	const baseOpacity = Math.max(0, Math.min(1, Number.isFinite(opacity) ? opacity : 1));
@@ -4909,8 +4942,18 @@ function renderParametricCurve(el, view) {
 	const exprX = el.x || "Math.cos(t)";
 	const exprY = el.y || "Math.sin(t)";
 	const exprZ = el.z || "0";
+	const compiled = /* @__PURE__ */ new Map();
+	const evaluate = (expr) => {
+		let c = compiled.get(expr);
+		if (!c) {
+			c = compileExpr(expr);
+			compiled.set(expr, c);
+		}
+		return Number(evalExpr(c, 0, { useVirtualTime: false }));
+	};
 	function buildPoints(fnX, fnY, fnZ) {
 		const pts = [];
+		const range = resolveCurveRange(el, evaluate);
 		const dt = (range[1] - range[0]) / samples;
 		const opts = {
 			useVirtualTime: false,

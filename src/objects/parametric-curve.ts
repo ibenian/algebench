@@ -5,6 +5,7 @@ import type { CompiledExpr } from '/expr.js';
 import { resolveLineWidth } from '/camera.js';
 import type { Vec3 } from '/coords.js';
 import type { Element } from '/types/lesson.js';
+import { resolveCurveRange } from '/objects/curve-range.js';
 
 /** parseColor returns `number[]`; spreading into `new THREE.Color(...)` needs a tuple. */
 type Rgb3 = [number, number, number];
@@ -38,7 +39,6 @@ const parametricCurveState = state as unknown as ParametricCurveState;
 export function renderParametricCurve(el: Element, view: MathBoxNode) {
     const color = parseColor(el.color || '#ff88aa') as Rgb3;
     const width = el.width || 3;
-    const range = (el.range || [0, 2 * Math.PI]) as [number, number];
     const samples = el.samples || 128;
     const opacity = (el.opacity !== undefined) ? Number(el.opacity) : 1;
     const baseOpacity = Math.max(0, Math.min(1, Number.isFinite(opacity) ? opacity : 1));
@@ -51,8 +51,19 @@ export function renderParametricCurve(el: Element, view: MathBoxNode) {
     const exprY = el.y || 'Math.sin(t)';
     const exprZ = el.z || '0';
 
+    // Compiled ONCE per distinct string, evaluated per build: `_rebuildFn` runs
+    // on every slider change, so an interval that names one has to follow it,
+    // but recompiling mid-drag would not.
+    const compiled = new Map<string, CompiledExpr>();
+    const evaluate = (expr: string): number => {
+        let c = compiled.get(expr);
+        if (!c) { c = compileExpr(expr); compiled.set(expr, c); }
+        return Number(evalExpr(c, 0, { useVirtualTime: false }));
+    };
+
     function buildPoints(fnX: CompiledExpr, fnY: CompiledExpr, fnZ: CompiledExpr): Vec3[] {
         const pts: Vec3[] = [];
+        const range = resolveCurveRange(el, evaluate);
         const dt = (range[1] - range[0]) / samples;
         // `u` is a documented alias for the curve parameter (the validators
         // and overlay allowlist accept it), so expose it alongside `t`.

@@ -680,53 +680,56 @@ def test_a_scene_level_element_needs_its_sliders_from_the_start():
 
 # ---- curves are described, not plotted -----------------------------------
 
-def test_a_hand_sampled_curve_is_refused_with_the_formula_to_write_instead():
-    """Observed: asked for a sine wave with no curve type available, a model
-    emitted FORTY-EIGHT `animated_line` segments — `-6.283185` to `-6.021238`,
-    and so on. Slow, jagged, and it rendered nothing.
-
-    Enforced as well as prompted because prompting alone has already failed twice
-    on this signature: the model kept inventing `type: slider` after being told
-    the type list was closed.
-    """
-    chain = [ProposedElement(type="line", step=0,
-                             from_pos=f"{i}, 0, 0", to_pos=f"{i + 1}, 0, 0")
-             for i in range(20)]
-    with pytest.raises(ComposeError, match="animated_curve"):
-        compose("T", "d", chain, [ProposedStep(index=0, title="one")])
-
-
-def test_a_handful_of_real_segments_is_still_fine():
-    """A coordinate frame, a chord and its drop lines. The busiest published step
-    holding lines has five, so the bound must not touch ordinary scenes."""
-    few = [ProposedElement(type="line", step=0, label=f"l{i}",
-                           from_pos="0,0,0", to_pos=f"{i + 1}, 1, 0")
-           for i in range(5)]
-    scene = compose("T", "d", few, [ProposedStep(index=0, title="one")])
-    assert len(scene.steps[0].add) == 5
+# ---- straight pieces, and how many of them ------------------------------
+#
+# There is no cap. There was one — first on the COUNT of `line`/`animated_line`
+# in a step, then on the longest chain of them — and it was removed because it
+# could never do the job it claimed. A square wave IS piecewise linear and
+# belongs in `points`; a sine wave traced the same way is the bug. The two are
+# structurally identical, so no structural rule separates them: the corpus ships
+# `square-wave` at 8 vertices and `dp-arc` at 9, both deliberate.
+#
+# The count version also refused four hand-authored scenes outright
+# (`photons-wavelength-energy` draws 15 lines in one step) and, live, a DNA
+# ladder whose nine rungs are exactly what a `line` is for.
+#
+# The pathology it existed for — 48 `animated_line` segments approximating one
+# sine wave — happened when the builder had NO CURVE TYPE. `animated_curve` and
+# `parametric_curve` were added because of it, which is the actual fix; the
+# prompt carries the rest. Asked live to "draw a sine wave by chaining 20 short
+# straight segments", the model refused and used `animated_curve`.
 
 
-def test_the_bound_applies_to_scene_level_elements_too():
-    """A chain drawn before any step runs is the same mistake."""
-    chain = [ProposedElement(type="line", step=-1,
-                             from_pos=f"{i}, 0, 0", to_pos=f"{i + 1}, 0, 0")
-             for i in range(20)]
-    with pytest.raises(ComposeError, match="the scene has"):
-        compose("T", "d", chain, [ProposedStep(index=0, title="one")])
+def test_a_ladder_of_disjoint_rungs_composes():
+    """Nine rungs between two helices. Each is a real straight thing, and the
+    `parametric_curve` the old refusal prescribed cannot draw them: one curve is
+    one connected path, so it gives you either strand and never the ladder."""
+    rungs = [ProposedElement(type="line", step=0, label=f"bp{i}",
+                             from_pos=f"cos({i}), sin({i}), {i}",
+                             to_pos=f"-cos({i}), -sin({i}), {i}")
+             for i in range(9)]
+    scene = compose("T", "d", rungs, [ProposedStep(index=0, title="one")])
+    assert len(scene.steps[0].add) == 9
 
 
-def test_a_chain_of_moving_segments_is_caught_too():
-    """The observed 48 were `animated_line`, not `line` — the model wrote them
-    slider-driven (`A * sin(k * -6.021238)`), so they arrive already promoted.
-    Checking only the static type would miss the exact case this exists for."""
-    chain = [ProposedElement(type="line", step=0,
-                             from_pos=f"{i}, A*sin(k*{i}), 0",
-                             to_pos=f"{i + 1}, A*sin(k*{i + 1}), 0")
-             for i in range(20)]
-    with pytest.raises(ComposeError, match="sampled by hand"):
-        compose("T", "d", chain, [ProposedStep(index=0, title="one")],
-                [_sl(step=0, id="A", min=0.2, max=3, default=1),
-                 _sl(step=0, id="k", min=0.5, max=4, default=1)])
+def test_many_lines_in_one_step_compose():
+    """`photons-wavelength-energy` draws 15 in a single step, hand-authored and
+    shipping. The count rule would have refused it."""
+    ticks = [ProposedElement(type="line", step=0, label=f"t{i}",
+                             from_pos=f"{i}, 0, 0", to_pos=f"{i}, 0.3, 0")
+             for i in range(15)]
+    scene = compose("T", "d", ticks, [ProposedStep(index=0, title="one")])
+    assert len(scene.steps[0].add) == 15
+
+
+def test_a_genuinely_piecewise_shape_composes():
+    """A square wave. Its corners are REAL — this is what `points` is for, and
+    the chain rule would have called it a sampled curve."""
+    wave = ProposedElement(
+        type="line", step=0, label="square wave",
+        points="0,0,0; 0,1,0; 1,1,0; 1,-1,0; 2,-1,0; 2,1,0; 3,1,0; 3,0,0")
+    scene = compose("T", "d", [wave], [ProposedStep(index=0, title="one")])
+    assert len(scene.steps[0].add[0].points) == 8
 
 
 def test_a_slider_id_with_stray_whitespace_still_drives_its_element():

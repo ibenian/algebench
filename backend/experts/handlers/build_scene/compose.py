@@ -339,41 +339,6 @@ def _curve(el: ProposedElement, body: dict, where: str) -> None:
         body[axis] = str(value)
 
 
-#: How many straight pieces in one step stop being a shape and start being a
-#: sampled curve. Measured against the corpus, where the busiest step holding
-#: `line`/`animated_line` has 5 — a coordinate frame, a chord and its drop lines.
-#: The observed approximation had 48.
-MAX_SEGMENTS_PER_STEP = 8
-
-
-def _refuse_sampled_curves(per_step: dict[int, list], scene_level: list) -> None:
-    """Refuse a curve that was PLOTTED rather than described.
-
-    A closed-form expression is resampled every frame, which is the only reason a
-    curve stays smooth as the reader drags a slider or zooms. A chain of straight
-    pieces is frozen at whatever resolution it was written at, is slow, and — as
-    observed — often does not render at all.
-
-    The prompt says this at length. It is enforced too because prompting alone
-    has already failed twice on this signature: the model kept inventing
-    `type: slider` after being told the type list was closed. A count is a crude
-    test, but the failure it catches is not subtle — 48 segments where the
-    busiest published step has 5.
-    """
-    for step, built in list(per_step.items()) + [(SCENE_LEVEL, scene_level)]:
-        pieces = [e for e in built if e.type in ("line", "animated_line")]
-        if len(pieces) <= MAX_SEGMENTS_PER_STEP:
-            continue
-        where = "the scene" if step == SCENE_LEVEL else f"step {step}"
-        raise ComposeError(
-            f"{where} has {len(pieces)} straight segments — that is a curve "
-            f"sampled by hand, not a shape. Write the formula instead: an "
-            f"`animated_curve` with one `curve_expr` for a y = f(x) graph, or a "
-            f"`parametric_curve` with `to_expr` for anything traced by a "
-            f"parameter. One element, resampled every frame, so it stays smooth "
-            f"when a slider moves.")
-
-
 def _references(built, slider_ids: set[str]) -> set[str]:
     """Which sliders this composed element's EXPRESSIONS name.
 
@@ -774,7 +739,6 @@ def compose(
             first_use[name] = min(first_use.get(name, at), at)
         (scene_level if el.step == SCENE_LEVEL else per_step.setdefault(el.step, [])).append(built)
 
-    _refuse_sampled_curves(per_step, scene_level)
     _pull_sliders_forward(per_step_sliders, first_use)
 
     ordered = sorted(steps, key=lambda s: s.index)
