@@ -19,7 +19,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from backend.experts.llm_config import make_adapter
 
-from .proposed import ProposedElement, ProposedSlider, ProposedStep
+from .proposed import ProposedElement, ProposedFunction, ProposedSlider, ProposedStep
 from .signature import BuildSceneSig
 
 log = logging.getLogger(__name__)
@@ -38,6 +38,10 @@ MAX_STEPS = 12
 MAX_SLIDERS = 24
 #: Bounded so one proposal cannot become an unrenderable scene.
 MAX_ELEMENTS = 60
+#: Scene functions. Low on purpose: they exist to remove REPETITION, and a scene
+#: needing more than a handful of distinct named formulas is describing a program
+#: rather than a picture. The busiest corpus scene declares 2.
+MAX_FUNCTIONS = 8
 
 
 class SceneProposal(BaseModel):
@@ -60,6 +64,7 @@ class SceneProposal(BaseModel):
     description: str = ""
     steps: list[ProposedStep] = Field(default_factory=list)
     sliders: list[ProposedSlider] = Field(default_factory=list)
+    functions: list[ProposedFunction] = Field(default_factory=list)
     elements: list[ProposedElement] = Field(default_factory=list)
 
 
@@ -147,6 +152,8 @@ def propose_scene(**inputs) -> SceneProposal:
         steps=[s for s in (out.steps or []) if isinstance(s, ProposedStep)][:MAX_STEPS],
         sliders=[s for s in (getattr(out, "sliders", None) or [])
                  if isinstance(s, ProposedSlider)][:MAX_SLIDERS],
+        functions=[f for f in (getattr(out, "functions", None) or [])
+                   if isinstance(f, ProposedFunction)][:MAX_FUNCTIONS],
         elements=[e for e in (out.elements or [])
                   if isinstance(e, ProposedElement)][:MAX_ELEMENTS],
     )

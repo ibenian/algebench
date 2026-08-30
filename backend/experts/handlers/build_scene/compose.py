@@ -49,10 +49,12 @@ import re
 from typing import Optional, Union
 
 from backend.expression_fields import carries_expressions
+from backend.mathjs_extensions import CORE_MATH_NAMES, EXTENSION_NAMES
 from backend.model.lesson import Element, Scene, Step
 
 from backend.experts.modules.build_scene.proposed import (
-    SCENE_LEVEL, SUPPORTED_TYPES, ProposedElement, ProposedSlider, ProposedStep)
+    SCENE_LEVEL, SUPPORTED_TYPES, ProposedElement, ProposedFunction,
+    ProposedSlider, ProposedStep)
 
 log = logging.getLogger(__name__)
 
@@ -267,7 +269,10 @@ def _which_plane(el: ProposedElement) -> str:
 
 
 #: A math.js identifier, which is what a slider id has to be: it becomes a
-#: variable name inside every coordinate that references it.
+#: variable name inside every coordinate that references it. Scene function names
+#: and their argument names answer to the same rule — it is what
+#: `_isValidSceneFunctionName` accepts in src/expr.ts — so they reuse this rather
+#: than declaring a second copy that could drift from it.
 _IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_]*$")
 
 
@@ -337,6 +342,104 @@ def _curve(el: ProposedElement, body: dict, where: str) -> None:
             f"parameter t, as three math.js expressions, e.g. cos(t), sin(t), 0.")
     for axis, value in zip("xyz", triple):
         body[axis] = str(value)
+
+
+#: Unmistakably JavaScript inside a function BODY. Deliberately narrower than a
+#: parser and deliberately STRICTER than the renderer, which accepts JS here when
+#: the reader has granted the scene trust — `gradient-descent-terrain` declares a
+#: function whose body is a `let`/`for`/`return` IIFE, and it works.
+#:
+#: The builder still may not write one. A scene it authors should render for a
+#: reader who granted nothing, and JS in a function body is the one place where
+#: that failure is invisible: an untrusted JS body compiles to `0`, so every call
+#: to it returns 0 and the scene draws confident, wrong geometry.
+#:
+#: `===`, `||` and `&&` earn their places by observation, not theory. NONE of
+#: them is in `_JS_ONLY_RE`, so none is recognised as JS at all — math.js simply
+#: fails to parse them and `compileExpr` substitutes `0`, which is a function
+#: that returns 0 forever and a scene that draws confident, wrong geometry.
+#:
+#: Both were watched happening. A live dot-product scene guarded a divide by zero
+#: with `(ax*ax + ay*ay === 0) ? 0 : …` in four separate coordinates and drew its
+#: projection at the origin. Given `functions`, the same ask produced
+#: `(mag_a(...) == 0 || mag_b(...) == 0) ? 0 : …` — `==` learned, `||` not, and
+#: math.js has `or`/`and` instead.
+_JS_IN_BODY = re.compile(
+    r"=>|\bMath\.|\blet\b|\bconst\b|\bvar\b|\breturn\b|\bfunction\b|\bif\b"
+    r"|\bfor\s*\(|\bwhile\s*\(|===|!==|\|\||&&|\$\{|;")
+
+
+def _functions(proposed, slider_ids: set[str]) -> list[dict]:
+    """Scene-level named formulas, validated the way the renderer will NOT.
+
+    `setActiveSceneFunctions` (src/expr.ts) already rejects a bad entry — an
+    invalid name, a duplicate, a reserved name, a missing `expr` — but it rejects
+    it with `console.warn` and drops it. Callers then see an undefined name, or,
+    for a body that will not compile, a function that returns 0 forever. Both are
+    silent to the reader and to the builder.
+
+    So every rule the renderer applies is applied HERE too, as a refusal that
+    names what is wrong — which the model is re-asked with. This is the whole
+    point of adding the field: a place to state a derivation once is only an
+    improvement if getting it wrong is loud.
+    """
+    out: list[dict] = []
+    seen: set[str] = set()
+    for fn in proposed or []:
+        if not isinstance(fn, ProposedFunction):
+            continue
+        name, expr = fn.name.strip(), fn.expr.strip()
+        if not name and not expr:
+            continue
+        where = f"function {name!r}" if name else "an unnamed function"
+        if not _IDENTIFIER.match(name):
+            raise ComposeError(
+                f"{where}: `name` must be a math.js identifier — letters, digits "
+                f"and underscore, not starting with a digit.")
+        # Sliders win: `_buildScope` writes them into the scope AFTER the scene
+        # functions, so a function sharing a slider's name is simply never
+        # reachable. Silent, and the harder to spot because the name resolves.
+        if name in slider_ids:
+            raise ComposeError(
+                f"{where}: a slider is already called `{name}`, and the slider "
+                f"wins — every call would read the slider instead. Rename one.")
+        if name in CORE_MATH_NAMES or name in EXTENSION_NAMES:
+            raise ComposeError(
+                f"{where}: `{name}` is already a math.js function, so the scene "
+                f"function is ignored and calls silently mean the built-in one. "
+                f"Pick another name.")
+        if name in seen:
+            raise ComposeError(f"{where}: defined twice. Only the first survives.")
+        seen.add(name)
+
+        args: list[str] = []
+        for raw in (a.strip() for a in fn.args.split(",")):
+            if not raw:
+                continue
+            if not _IDENTIFIER.match(raw):
+                raise ComposeError(
+                    f"{where}: `{raw}` is not a valid argument name — letters, "
+                    f"digits and underscore, not starting with a digit.")
+            if raw in args:
+                raise ComposeError(f"{where}: argument `{raw}` is listed twice.")
+            args.append(raw)
+
+        if not expr:
+            raise ComposeError(
+                f"{where}: needs `expr` — what it computes, as one math.js "
+                f"expression. A function with no body is dropped and every call "
+                f"to it fails.")
+        # The same LaTeX test every coordinate gets, and for the same reason.
+        _expression(expr, f"{where} expr")
+        if _JS_IN_BODY.search(expr):
+            raise ComposeError(
+                f"{where}: `expr` is JavaScript, not math.js. Write ONE math.js "
+                f"expression — no `let`, `return`, `;` or `=>`. math.js spells "
+                f"these differently: `==` not `===`, `or` not `||`, `and` not "
+                f"`&&`. A conditional IS `a ? b : c`, which math.js has.")
+        out.append({"name": name, "args": args, "expr": expr} if args
+                   else {"name": name, "expr": expr})
+    return out
 
 
 def _references(built, slider_ids: set[str]) -> set[str]:
@@ -705,6 +808,7 @@ def compose(
     elements: list[ProposedElement],
     steps: list[ProposedStep],
     sliders: Optional[list[ProposedSlider]] = None,
+    functions: Optional[list[ProposedFunction]] = None,
     *,
     with_prompts: bool = True,
 ) -> Scene:
@@ -766,6 +870,11 @@ def compose(
     body: dict = {"title": title.strip()}
     if (description or "").strip():
         body["description"] = description.strip()
+    # After the elements, so a function colliding with a slider is caught with the
+    # full slider vocabulary known — including the ids `_pull_sliders_forward`
+    # moved between steps, which do not change but are only collected above.
+    if (built_functions := _functions(functions, set(slider_ids))):
+        body["functions"] = built_functions
     if scene_level:
         body["elements"] = scene_level
     if built_steps:

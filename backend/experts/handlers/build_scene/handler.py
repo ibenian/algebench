@@ -97,7 +97,7 @@ def _last_user_text(messages) -> str:
 def _compose(proposal, req: BuildSceneRequest):
     return compose(
         proposal.title, proposal.description, proposal.elements, proposal.steps,
-        proposal.sliders,
+        proposal.sliders, proposal.functions,
         with_prompts=bool(req.conventions.elementsCarryPrompts),
     )
 

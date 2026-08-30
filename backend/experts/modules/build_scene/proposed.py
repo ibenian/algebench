@@ -195,6 +195,44 @@ class ProposedElement(BaseModel):
                     "and one will be written for you")
 
 
+class ProposedFunction(BaseModel):
+    """One named formula the whole scene can call.
+
+    The place to put a derivation ONCE. Without it the same expression is retyped
+    into every element that needs it, which is how a scene ends up stating the
+    same maths four times — observed on a dot-product scene, where the projection
+    scalar `(ax*bx + ay*by) / (ax*ax + ay*ay)` appeared in a vector's x, its y,
+    and both ends of a line, and carried an identical mistake in all four.
+
+    `args` is a STRING, like every list-shaped field here: `LineAdapter` is one
+    level deep, so `v, rn` rather than `["v", "rn"]`. See the module docstring.
+
+    A function with no `args` is still useful and is how the corpus mostly uses
+    them — it reads the sliders directly, so `projK()` sees `ax` and `bx` without
+    being handed them.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    name: str = Field(
+        default="",
+        description="what expressions call it, e.g. projK. A valid math.js "
+                    "identifier: letters, digits and underscore, not starting "
+                    "with a digit. Must not be the name of a slider or of a "
+                    "math.js function — `max`, `hypot` and the rest are taken")
+    args: str = Field(
+        default="",
+        description="its parameters, comma separated, e.g. `v, rn`. LEAVE EMPTY "
+                    "to read the sliders directly, which is usually what you "
+                    "want: a function with no arguments still sees every slider")
+    expr: str = Field(
+        default="",
+        description="what it computes, in MATH.JS, e.g. `(ax*bx + ay*by) / "
+                    "(ax*ax + ay*ay)`. One expression — no `let`, no `return`, "
+                    "no semicolons. It may call other scene functions and name "
+                    "any slider")
+
+
 class ProposedSlider(BaseModel):
     """One interactive control.
 
