@@ -113,8 +113,8 @@
 | Field | Value |
 |---|---|
 | **Branch** | `feat/build-scene-functions` |
-| **Commit** | `f29216e` |
-| **Date** | 2026-08-30 13:23:11 -0400 |
+| **Commit** | `fb8d7be` |
+| **Date** | 2026-08-30 19:37:10 +0000 |
 
 > [!NOTE]
 > Charts render on GitHub and in Mermaid-compatible viewers.
@@ -123,7 +123,7 @@
 xychart-beta horizontal
   title "Code Lines by Directory"
   x-axis ["scenes", "src", "tests", "backend", "static", "(other)", "scripts", "docs", "schemas", "themes"]
-  bar [63322, 36001, 24658, 23394, 8992, 8274, 8268, 4205, 1856, 317]
+  bar [63322, 36001, 24670, 23407, 8992, 8274, 8268, 4205, 1856, 317]
 ```
 
 ## By Directory
@@ -132,21 +132,21 @@ xychart-beta horizontal
 |---|---:|---:|---:|
 | `scenes/` | 63,322 | 0 | 1 |
 | `src/` | 36,001 | 7,992 | 3,321 |
-| `tests/` | 24,658 | 1,934 | 5,271 |
-| `backend/` | 23,394 | 4,063 | 3,529 |
+| `tests/` | 24,670 | 1,938 | 5,275 |
+| `backend/` | 23,407 | 4,072 | 3,529 |
 | `static/` | 8,992 | 837 | 492 |
 | `(other)/` | 8,274 | 0 | 0 |
 | `scripts/` | 8,268 | 1,060 | 1,168 |
 | `docs/` | 4,205 | 9,426 | 2,978 |
 | `schemas/` | 1,856 | 0 | 0 |
 | `themes/` | 317 | 0 | 0 |
-| **Total** | **179,287** | **25,312** | **16,760** |
+| **Total** | **179,312** | **25,325** | **16,764** |
 
 ```mermaid
 xychart-beta horizontal
   title "Lines of Code by Language"
   x-axis ["JSON", "Python", "TypeScript", "CSS", "HTML", "JavaScript", "Shell", "YAML", "BASH", "Dockerfile", "TOML"]
-  bar [75092, 52674, 36150, 6639, 2302, 1300, 463, 29, 16, 16, 2]
+  bar [75092, 52699, 36150, 6639, 2302, 1300, 463, 29, 16, 16, 2]
 ```
 
 ## Summary by Language
@@ -156,7 +156,7 @@ xychart-beta horizontal
  Language              Files        Lines         Code     Comments       Blanks
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  JSON                     70        75098        75092            0            6
- Python                  261        68251        52674         5962         9615
+ Python                  261        68293        52699         5975         9619
  TypeScript              106        47531        36150         8054         3327
  CSS                       9         7697         6639          691          367
  JavaScript                7         1583         1300          142          141
@@ -182,7 +182,7 @@ xychart-beta horizontal
  |- XML                    1          228          185           43            0
  (Total)                            20071         2310        13533         4228
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Total                   562       226413       179287        29094        18032
+ Total                   562       226455       179312        29107        18036
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -356,19 +356,19 @@ xychart-beta horizontal
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  Language              Files        Lines         Code     Comments       Blanks
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Python                  261        68251        52674         5962         9615
+ Python                  261        68293        52699         5975         9619
 ─────────────────────────────────────────────────────────────────────────────────
  |_graph/sympy_translator.py         4430         3527          519          384
  |lgebench/backend/server.py         2795         2249          302          244
  |aph/test_latex_to_graph.py         2172         1735          166          271
  |s/semantic_graph_report.py         1224         1102           43           79
- |est_build_scene_compose.py         1294          978           55          261
+ |est_build_scene_compose.py         1314          990           59          265
  |semantic_graph_enricher.py         1174          820          219          135
  |cripts/graph_to_mermaid.py         1035          746          200           89
  |mpletion/step_grounding.py          960          685          132          143
  |semantic_graph_enricher.py          858          677          110           71
  |nch/backend/agent_tools.py          784          676           52           56
- |ers/build_scene/compose.py          956          664          189          103
+ |ers/build_scene/compose.py          967          666          198          103
  |ntic_graph/preprocessor.py          738          650           41           47
  |ssion_analysis/proposer.py          771          610           62           99
  |nch/scripts/render_math.py          590          543            6           41
@@ -403,8 +403,8 @@ xychart-beta horizontal
  |h/test_sympy_translator.py          452          331           27           94
  |ph/test_conditional_bar.py          417          327           19           71
  |h/generators/invariants.py          412          321            7           84
- |est_proof_edit_variants.py          416          304           30           82
  |ic_graph/latex_renderer.py          451          304          103           44
+ |est_proof_edit_variants.py          416          304           30           82
  |est_build_scene_request.py          405          298           21           86
  |handlers/proof_edit/ops.py          406          293           52           61
  |on_analysis/view_ranges.py          378          293           37           48
@@ -427,11 +427,11 @@ xychart-beta horizontal
  |ins/test_domain_quantum.py          294          233           17           44
  |raph/test_postprocessor.py          318          233           24           61
  |proof_completion_derive.py          283          232           20           31
+ |s/build_scene/signature.py          246          232            4           10
  |t_autofill_proof_shapes.py          268          230            6           32
  |/scripts/regrade_proofs.py          266          229            9           28
  |s/test_domain_chemistry.py          291          229           20           42
  |ession_analysis/handler.py          272          222           19           31
- |s/build_scene/signature.py          235          221            4           10
  |es/build_scene/proposed.py          291          221           49           21
  |ripts/extract_structure.py          259          218            5           36
  |/test_domain_relativity.py          275          218           16           41
@@ -520,8 +520,8 @@ xychart-beta horizontal
  |ests/test_path_security.py          119           87            5           27
  |sion_analysis/build_log.py          112           87            8           17
  |ts/ci_validate_prebaked.py          101           85            4           12
- |proof_completion_module.py          118           85            8           25
  |_selected_nodes_context.py          108           85            7           16
+ |proof_completion_module.py          118           85            8           25
  |gebench/scripts/version.py          103           84            1           18
  |ipts/show_build_context.py           96           80            1           15
  |ntic_graph/test_service.py          107           80            4           23
@@ -537,13 +537,13 @@ xychart-beta horizontal
  |build_scene_tool_result.py           92           70            2           20
  |ph/generators/variables.py           77           68            0            9
  |dlers/proof_edit/models.py          112           67           25           20
- |experts/test_wellformed.py          123           66           17           40
  |_mathjs_extensions_sync.py           81           66            0           15
+ |experts/test_wellformed.py          123           66           17           40
  |tic_graph/test_id_utils.py           89           65            8           16
  |/test_md_report_to_html.py           87           64            0           23
  |_graph/test_disjunction.py           96           64           13           19
- |tex_renderer_derivative.py           84           64            4           16
  |tic_graph/test_integral.py           84           64            3           17
+ |tex_renderer_derivative.py           84           64            4           16
  |nch/scripts/build_scene.py           79           62            1           16
  |end/experts/test_metric.py           85           62            4           19
  |/experts/test_graph_ops.py           83           61            2           20
@@ -551,9 +551,9 @@ xychart-beta horizontal
  |gebench/scripts/_pc_env.py           71           59            0           12
  |kend/util/test_pathutil.py           76           58            3           15
  |backend/util/test_latex.py          118           57           15           46
- |mantic_graph/test_cache.py           70           57            0           13
  |test_latex_renderer_log.py           74           57            4           13
  |/test_repeated_operands.py           72           57            0           15
+ |mantic_graph/test_cache.py           70           57            0           13
  |ents/test_schema_parity.py           73           55            0           18
  |roof_animation/finalize.py           61           54            0            7
  |ckend/expression_fields.py           65           53            6            6
@@ -611,16 +611,16 @@ xychart-beta horizontal
  |ebench/backend/__init__.py            1            1            0            0
  |ebench/scripts/__init__.py            0            0            0            0
  |s/backend/util/__init__.py            0            0            0            0
- |semantic_graph/__init__.py            0            0            0            0
- |_graph/domains/__init__.py            0            0            0            0
- |/backend/model/__init__.py            0            0            0            0
  |lgebench/tests/__init__.py            0            0            0            0
+ |_graph/domains/__init__.py            0            0            0            0
+ |semantic_graph/__init__.py            0            0            0            0
+ |/backend/model/__init__.py            0            0            0            0
  |backend/agents/__init__.py            0            0            0            0
  |ackend/experts/__init__.py            0            0            0            0
  |/tests/backend/__init__.py            0            0            0            0
  |es/build_scene/__init__.py            0            0            0            0
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- Total                   261        68251        52674         5962         9615
+ Total                   261        68293        52699         5975         9619
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -629,8 +629,8 @@ xychart-beta horizontal
 | Category | Code Lines | % of JS+Python |
 |---|---|---|
 | TypeScript + JavaScript (frontend) | 37080 | 41% |
-| Python (backend) | 52674 | 59% |
-| **Total** | **89754** | **100%** |
+| Python (backend) | 52699 | 59% |
+| **Total** | **89779** | **100%** |
 
 </script>
 </body>
