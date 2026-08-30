@@ -711,8 +711,62 @@ def test_the_bound_applies_to_scene_level_elements_too():
     chain = [ProposedElement(type="line", step=-1,
                              from_pos=f"{i}, 0, 0", to_pos=f"{i + 1}, 0, 0")
              for i in range(20)]
-    with pytest.raises(ComposeError, match="the scene has"):
+    with pytest.raises(ComposeError, match="the scene chains"):
         compose("T", "d", chain, [ProposedStep(index=0, title="one")])
+
+
+def test_disjoint_rungs_are_not_a_chain():
+    """A DNA ladder. Nine `line`s, none of them touching another, each one a real
+    straight thing — which is what a `line` is FOR.
+
+    The count this guard used to be refused them, and the fix it prescribed could
+    not build them: a `parametric_curve` is ONE connected path, so it draws either
+    strand and never the rungs between. Observed live, twice, the second time
+    after the builder had been handed the refusal and dutifully cut 25 rungs to 9
+    — still one over a cap it could not satisfy at any length.
+    """
+    rungs = [ProposedElement(type="line", step=0, label=f"bp{i}",
+                             from_pos=f"cos({i}), sin({i}), {i}",
+                             to_pos=f"-cos({i}), -sin({i}), {i}")
+             for i in range(9)]
+    scene = compose("T", "d", rungs, [ProposedStep(index=0, title="one")])
+    assert len(scene.steps[0].add) == 9
+
+
+def test_a_fan_sharing_one_point_is_not_a_chain():
+    """`special-relativity` draws seven rays from the origin, so they share that
+    point six times over. Joining on ANY shared endpoint would call that a chain
+    of seven and refuse a scene that already ships — hence a joint counts only
+    where EXACTLY TWO segments meet, which is what an interior sample looks like.
+    """
+    fan = [ProposedElement(type="line", step=0, label=f"r{i}",
+                           from_pos="0,0,0", to_pos=f"10, {i}, 0")
+           for i in range(12)]
+    scene = compose("T", "d", fan, [ProposedStep(index=0, title="one")])
+    assert len(scene.steps[0].add) == 12
+
+
+def test_many_unjoined_lines_in_one_step_are_ordinary():
+    """Not a corner case: `photons-wavelength-energy` draws 15 lines in one step,
+    `conditional-probability` 10, `special-relativity` 9 — hand-authored, and all
+    of them refused by the count this replaced. Many lines is authoring; many
+    lines joined into one path is a plotted curve."""
+    ticks = [ProposedElement(type="line", step=0, label=f"t{i}",
+                             from_pos=f"{i}, 0, 0", to_pos=f"{i}, 0.3, 0")
+             for i in range(15)]
+    scene = compose("T", "d", ticks, [ProposedStep(index=0, title="one")])
+    assert len(scene.steps[0].add) == 15
+
+
+def test_the_chain_is_measured_per_step_not_across_the_scene():
+    """Eight in one step and eight in the next is sixteen lines and no chain
+    longer than eight. The reader only ever sees one step's worth at a time."""
+    halves = [ProposedElement(type="line", step=i // 8,
+                              from_pos=f"{i}, 0, 0", to_pos=f"{i + 1}, 0, 0")
+              for i in range(16)]
+    scene = compose("T", "d", halves,
+                    [ProposedStep(index=0, title="one"), ProposedStep(index=1, title="two")])
+    assert [len(st.add) for st in scene.steps] == [8, 8]
 
 
 def test_a_chain_of_moving_segments_is_caught_too():

@@ -151,6 +151,13 @@ class BuildSceneSig(BuildSceneInputs):
     triangle, an arrowhead, a path with three bends. Neither is a way to draw a
     curve, and a chain of them is refused.
 
+    It is the CHAIN that is refused, not the number. Straight pieces that do NOT
+    meet end to end are ordinary and you may use as many as the drawing needs —
+    the rungs of a ladder between two helices, the spokes of a fan, a row of tick
+    marks, a set of drop lines. Published scenes here draw fifteen in one step.
+    What you must not do is join them head to tail to trace a shape a formula
+    could state.
+
     This is observed, not hypothetical. Asked for a sine wave with no curve type
     available, a model emitted FORTY-EIGHT `animated_line` segments — `from
     -6.283185 to -6.021238`, `-6.021238 to -5.759292`, and so on. Slow, jagged,

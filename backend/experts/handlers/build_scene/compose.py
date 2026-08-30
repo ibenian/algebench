@@ -339,11 +339,94 @@ def _curve(el: ProposedElement, body: dict, where: str) -> None:
         body[axis] = str(value)
 
 
-#: How many straight pieces in one step stop being a shape and start being a
-#: sampled curve. Measured against the corpus, where the busiest step holding
-#: `line`/`animated_line` has 5 — a coordinate frame, a chord and its drop lines.
-#: The observed approximation had 48.
+#: How many straight pieces JOINED END TO END stop being a shape and start being
+#: a sampled curve. Measured against the corpus, where the longest genuine chain
+#: is 4 — a staircase in `conditional-probability`. The observed approximation
+#: had 48.
+#:
+#: This is deliberately NOT a count of the lines in a step. That is a different
+#: quantity and the corpus settles it: `photons-wavelength-energy` draws 15 in
+#: one step, `conditional-probability` 10, `special-relativity` 9 — all of them
+#: hand-authored, all of them shipping, and all of them refused by an earlier
+#: version of this guard that counted totals. Many lines in a step is ordinary
+#: authoring. Many lines joined into one path is a plotted curve.
 MAX_SEGMENTS_PER_STEP = 8
+
+
+def _joint(value) -> object:
+    """One endpoint component, comparable across the ways it can be written.
+
+    `0`, `0.0` and `"0"` are the same point; `"R*cos(t)"` is only ever equal to
+    itself. Rounded against float-parse drift, not against a model that wrote two
+    different numbers — a sampled curve writes its own joins to the digit,
+    because each sample is used once as a tail and once as a head.
+    """
+    try:
+        return round(float(value), 9)
+    except (TypeError, ValueError):
+        return str(value).strip()
+
+
+def _ends(built) -> list[tuple]:
+    """Where this straight piece starts and finishes.
+
+    Three shapes reach here and the corpus holds all three: `points`, used by
+    every `animated_line` and by plenty of plain `line`s; `from`/`to` for a
+    static line `_vector_or_line` left alone; and `fromExpr`/`expr` for one it
+    promoted.
+
+    `by_alias`, and the tests above caught its absence: `from` is a Python
+    keyword, so the field is `from_` and a plain dump keys it that way. Every
+    static chain then read as endpointless and slipped through — while the
+    `animated_line` case, whose `points` needs no alias, kept working.
+    """
+    body = built.model_dump(by_alias=True, exclude_none=True)
+    if isinstance(points := body.get("points"), list) and points:
+        return [tuple(_joint(v) for v in p) for p in points if isinstance(p, list)]
+    return [tuple(_joint(v) for v in value)
+            for key in ("from", "to", "fromExpr", "expr")
+            if isinstance(value := body.get(key), list)]
+
+
+def _longest_chain(pieces: list) -> int:
+    """The most segments joined END TO END.
+
+    A joint counts only where EXACTLY TWO segments meet. That is what separates a
+    curve from a fan, and the corpus contains both: seven rays leave the origin
+    in `special-relativity`, sharing that one point six times over. They are not
+    a chain, no reader would call them one, and refusing them would refuse a
+    scene that already ships. A sampled curve has degree-two joints by
+    construction; a fan has one vertex of degree seven and no chain at all.
+
+    Union-find over the segments, joined through their shared endpoints. The
+    answer is the largest resulting group, which for a path IS its length.
+    """
+    parent = list(range(len(pieces)))
+
+    def root(a: int) -> int:
+        while parent[a] != a:
+            parent[a] = parent[parent[a]]
+            a = parent[a]
+        return a
+
+    meeting: dict[tuple, list[int]] = {}
+    for i, piece in enumerate(pieces):
+        for end in _ends(piece):
+            meeting.setdefault(end, []).append(i)
+    for at in meeting.values():
+        # EXACTLY two. Without this line every ray of a fan merges into its
+        # neighbours through the hub they share, and twelve spokes read as a
+        # chain of twelve.
+        if len(at) != 2:
+            continue
+        for other in at[1:]:
+            if (a := root(at[0])) != (b := root(other)):
+                parent[a] = b
+
+    sizes: dict[int, int] = {}
+    for i in range(len(pieces)):
+        sizes[root(i)] = sizes.get(root(i), 0) + 1
+    return max(sizes.values(), default=0)
 
 
 def _refuse_sampled_curves(per_step: dict[int, list], scene_level: list) -> None:
@@ -356,22 +439,29 @@ def _refuse_sampled_curves(per_step: dict[int, list], scene_level: list) -> None
 
     The prompt says this at length. It is enforced too because prompting alone
     has already failed twice on this signature: the model kept inventing
-    `type: slider` after being told the type list was closed. A count is a crude
-    test, but the failure it catches is not subtle — 48 segments where the
-    busiest published step has 5.
+    `type: slider` after being told the type list was closed.
+
+    What is measured is the CHAIN, not the count. Counting was the first attempt
+    and it was wrong in both directions: it refused a DNA ladder whose rungs are
+    nine disjoint segments — exactly what a `line` is for, and unreachable by the
+    `parametric_curve` the message prescribed, since one curve is one connected
+    path — while a model could have slipped nine chained samples past it. The
+    reader saw only the false side: two helices and no rungs, twice.
     """
     for step, built in list(per_step.items()) + [(SCENE_LEVEL, scene_level)]:
         pieces = [e for e in built if e.type in ("line", "animated_line")]
-        if len(pieces) <= MAX_SEGMENTS_PER_STEP:
+        run = _longest_chain(pieces)
+        if run <= MAX_SEGMENTS_PER_STEP:
             continue
         where = "the scene" if step == SCENE_LEVEL else f"step {step}"
         raise ComposeError(
-            f"{where} has {len(pieces)} straight segments — that is a curve "
-            f"sampled by hand, not a shape. Write the formula instead: an "
+            f"{where} chains {run} straight segments end to end — that is a "
+            f"curve sampled by hand, not a shape. Write the formula instead: an "
             f"`animated_curve` with one `curve_expr` for a y = f(x) graph, or a "
             f"`parametric_curve` with `to_expr` for anything traced by a "
             f"parameter. One element, resampled every frame, so it stays smooth "
-            f"when a slider moves.")
+            f"when a slider moves. Separate segments that do NOT meet end to end "
+            f"— the rungs of a ladder, the spokes of a fan — are fine as lines.")
 
 
 def _references(built, slider_ids: set[str]) -> set[str]:
