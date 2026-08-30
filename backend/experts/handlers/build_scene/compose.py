@@ -364,9 +364,19 @@ def _curve(el: ProposedElement, body: dict, where: str) -> None:
 #: projection at the origin. Given `functions`, the same ask produced
 #: `(mag_a(...) == 0 || mag_b(...) == 0) ? 0 : …` — `==` learned, `||` not, and
 #: math.js has `or`/`and` instead.
+#: METHOD CALLS and BRACKET ACCESS come straight from `_JS_ONLY_RE`, which
+#: already treats both as JavaScript — so `x.toFixed(2)` slipped compose and then
+#: compiled to `0` in the browser, which is the silent failure this whole guard
+#: exists to stop. Also observed: given `functions`, one live answer wrote
+#: `{dotProduct().toFixed(2)}`.
+#:
+#: The leading DOT is load-bearing. `toFixed` is one of this project's own math.js
+#: extensions, so `toFixed(x, 2)` is legal and must stay legal; only `.toFixed(`
+#: — the JS method on a value — is not.
 _JS_IN_BODY = re.compile(
     r"=>|\bMath\.|\blet\b|\bconst\b|\bvar\b|\breturn\b|\bfunction\b|\bif\b"
-    r"|\bfor\s*\(|\bwhile\s*\(|===|!==|\|\||&&|\$\{|;")
+    r"|\bfor\s*\(|\bwhile\s*\(|===|!==|\|\||&&|\$\{|;"
+    r"|\.[A-Za-z_]\w*\s*\(|\[\s*['\"]")
 
 
 def _functions(proposed, slider_ids: set[str]) -> list[dict]:
@@ -436,7 +446,8 @@ def _functions(proposed, slider_ids: set[str]) -> list[dict]:
                 f"{where}: `expr` is JavaScript, not math.js. Write ONE math.js "
                 f"expression — no `let`, `return`, `;` or `=>`. math.js spells "
                 f"these differently: `==` not `===`, `or` not `||`, `and` not "
-                f"`&&`. A conditional IS `a ? b : c`, which math.js has.")
+                f"`&&`. A conditional IS `a ? b : c`, which math.js has. Call a "
+                f"function by name — `toFixed(x, 2)`, not `x.toFixed(2)`.")
         out.append({"name": name, "args": args, "expr": expr} if args
                    else {"name": name, "expr": expr})
     return out

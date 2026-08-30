@@ -1250,9 +1250,29 @@ def test_a_body_that_is_javascript_is_refused():
     # live — given `functions`, the builder learned `==` and still wrote
     # `(mag_a(..) == 0 || mag_b(..) == 0) ? 0 : ..`.
     for body in ("(()=>{let x=1; return x;})()", "Math.max(a, b)",
-                 "a === 0 ? 0 : 1", "a == 0 || b == 0", "a > 0 && b > 0", "${x}"):
+                 "a === 0 ? 0 : 1", "a == 0 || b == 0", "a > 0 && b > 0", "${x}",
+                 # METHOD CALLS and BRACKET ACCESS, both of which `_JS_ONLY_RE`
+                 # already treats as JS — so they slipped compose and compiled to
+                 # `0` in the browser. Observed: a live answer wrote
+                 # `{dotProduct().toFixed(2)}`.
+                 "x.toFixed(2)", "a.constructor(1)", "o['constructor']"):
         with pytest.raises(ComposeError, match="JavaScript, not math.js"):
             _with_fns([_fn(name="k", expr=body)])
+
+
+def test_the_bare_extension_call_is_still_allowed():
+    """The leading dot is the whole test. `toFixed` is one of this project's own
+    math.js extensions, so `toFixed(x, 2)` is legal and must stay legal — only
+    `.toFixed(`, the JS method on a value, is not."""
+    scene = _with_fns([_fn(name="k", args="x", expr="toFixed(x, 2)")])
+    assert scene.functions[0]["expr"] == "toFixed(x, 2)"
+
+
+def test_a_decimal_is_not_mistaken_for_a_method_call():
+    """`\.[A-Za-z_]` and not `\.\w`: `0.5*sin(x)` has a dot followed by a digit,
+    and reading that as property access would refuse ordinary arithmetic."""
+    scene = _with_fns([_fn(name="k", args="x", expr="0.5 * sin(x) + 1.25")])
+    assert scene.functions[0]["expr"] == "0.5 * sin(x) + 1.25"
 
 
 def test_the_mathjs_ternary_is_still_allowed():
