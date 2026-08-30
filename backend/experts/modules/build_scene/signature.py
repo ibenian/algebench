@@ -154,16 +154,19 @@ class BuildSceneSig(BuildSceneInputs):
     ====================================  =================================
 
     A `line` is for something that IS straight — an axis marker, a chord, a
-    dashed drop to the x-axis. `points` is for a handful of real corners: a
-    triangle, an arrowhead, a path with three bends. Neither is a way to draw a
-    curve, and a chain of them is refused.
+    dashed drop to the x-axis. `points` is for a handful of REAL corners: a
+    triangle, an arrowhead, a square wave's steps, a path with three bends.
 
-    It is the CHAIN that is refused, not the number. Straight pieces that do NOT
-    meet end to end are ordinary and you may use as many as the drawing needs —
-    the rungs of a ladder between two helices, the spokes of a fan, a row of tick
-    marks, a set of drop lines. Published scenes here draw fifteen in one step.
-    What you must not do is join them head to tail to trace a shape a formula
-    could state.
+    The test is whether the corners are REAL. A square wave is genuinely made of
+    straight pieces and belongs in `points`; a sine wave is not, and a chain of
+    segments tracing one is the mistake. Ask whether the shape has corners a
+    mathematician would name, or whether you are just sampling a smooth function
+    finely enough that nobody notices. If it is the second, write the formula.
+
+    The NUMBER is not the test. Straight pieces that do not meet end to end are
+    ordinary and you may use as many as the drawing needs — the rungs of a ladder
+    between two helices, the spokes of a fan, a row of tick marks, a set of drop
+    lines. Published scenes here draw fifteen in one step.
 
     This is observed, not hypothetical. Asked for a sine wave with no curve type
     available, a model emitted FORTY-EIGHT `animated_line` segments — `from
