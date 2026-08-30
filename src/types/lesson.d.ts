@@ -668,17 +668,34 @@ export interface Element {
    */
   colorDomain?: [number, number];
   /**
-   * TENSOR ONLY. Lattice shape; the last two entries are [rows, cols]. Leading dimensions are accepted and ignored for now. Example: [6,6].
+   * TENSOR ONLY. Logical shape of the data, any rank. The current grid layout draws the LAST dimension horizontally and the one before it vertically, so [6] is a row of 6 cells and [6,6] is a 6x6 matrix; higher-rank shapes are accepted and only their trailing 2D slice is drawn until slice layouts exist. Example: [6,6].
    *
-   * @minItems 2
+   * @minItems 1
    */
-  shape?: [number, number, ...number[]];
+  shape?: [number, ...number[]];
   /**
-   * TENSOR ONLY. Math.js expression giving one cell's value, evaluated per cell every frame with 'row' and 'col' bound (0-based; row 0 renders at the top, as a matrix reads). Mapped through 'colorMap' over 'colorDomain'. Use slider IDs and 't' for a live matrix. Example: "dataTable('attn', row, concat('w', col))". For a matrix that never changes, use 'values' instead — it costs nothing per frame.
+   * TENSOR ONLY. Per-axis metadata; axes[k] describes shape[k]. Labels are positioned automatically against the rendered lattice — for a 2D tensor axes[0] labels the rows down the left and axes[1] labels the columns across the top. Use this instead of hand-placing `text` elements.
+   */
+  axes?: {
+    /**
+     * One label per entry along this axis. Example: ["the","cat","sat","on","the","mat"]. Extra labels are ignored; too few leaves the remainder unlabelled.
+     */
+    labels?: string[];
+    /**
+     * Name of the axis itself, placed beyond its labels. Example: "key".
+     */
+    title?: string;
+    /**
+     * Colour for this axis's labels and title. Default: a muted grey-blue.
+     */
+    color?: string | [number, number, number];
+  }[];
+  /**
+   * TENSOR ONLY. Math.js expression giving one cell's value, evaluated per cell every frame with 'row', 'col' and 'idx' bound (0-based; row 0 renders at the top, as a matrix reads; 'idx' is the flat row-major index, and on a 1D tensor 'row' is 0). Mapped through 'colorMap' over 'colorDomain'. This is how a tensor acts as a VIEW over data held elsewhere in the scene — e.g. "dataTable('attn', row, concat('w', col))" — rather than embedding the data in the element. Use slider IDs and 't' for a live matrix. Takes precedence over 'values'. For a matrix that never changes, use 'values' instead — it costs nothing per frame.
    */
   valueExpr?: string;
   /**
-   * TENSOR ONLY. Literal cell values, either nested rows [[…],[…]] or a flat row-major list. Values that are constant build once and cost NOTHING per frame — prefer this over 'valueExpr' for a fixed matrix. Ignored when 'valueExpr' is present.
+   * TENSOR ONLY. Literal values, either nested (e.g. [[1,2],[3,4]]) or flat row-major (e.g. [1,2,3,4]). Both are normalized to flat + 'shape' internally, so the two spellings are interchangeable and the same flat list can be viewed as [4] or [2,2]. The entry count must match 'shape' exactly — a mismatch is reported rather than padded. Literal values build once and cost NOTHING per frame; prefer this over 'valueExpr' for a fixed matrix. Ignored when 'valueExpr' is present.
    */
   values?: unknown[];
   /**

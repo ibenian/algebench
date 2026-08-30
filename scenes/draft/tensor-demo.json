@@ -4,14 +4,14 @@
     {
       "title": "tensor \u2014 one element, one lattice",
       "description": "Three 6\u00d76 lattices, one per way of supplying values: live, static, and baked.",
-      "markdown": "# `tensor`\n\nEach grid below is **one element**, not 36.\n\n**Left \u2014 `valueExpr`, live.** One expression, evaluated per cell with `row` and `col` bound. Row $i$ is a softmax over $s_{ij} = e^{-|i-j|\\cdot k}$, so every row sums to 1. Drag **sharpness** and watch it go from uniform to near-diagonal.\n\n**Middle \u2014 `values`, static.** Literal numbers, built once, **zero** per-frame cost: a causal mask, the shape that makes parallel training legal.\n\n**Right \u2014 `dataTable`, baked.** Also one `valueExpr`, but it reads a table in the scene's `data` block:\n\n```\ndataTable('attn', row, concat('w', col))\n```\n\nThis is how a real lesson supplies numbers \u2014 the weights come from a model and are baked into the JSON, so nothing is invented at render time and every value is reproducible offline. This head attends mostly to the **previous token**, partly to **position 0**, and never to the future.\n\nCell geometry is arithmetic on `shape`, not expressions, so nothing is re-evaluated for positions that never move.",
+      "markdown": "# `tensor`\n\nEach grid below is **one element**, not 36.\n\n**Left \u2014 `valueExpr`, live.** One expression, evaluated per cell with `row` and `col` bound. Row $i$ is a softmax over $s_{ij} = e^{-|i-j|\\cdot k}$, so every row sums to 1. Drag **sharpness** and watch it go from uniform to near-diagonal.\n\n**Middle \u2014 `values`, static.** Literal numbers, built once, **zero** per-frame cost: a causal mask, the shape that makes parallel training legal.\n\n**Right \u2014 `dataTable`, baked.** Also one `valueExpr`, but it reads a table in the scene's `data` block:\n\n```\ndataTable('attn', row, concat('w', col))\n```\n\nThis is how a real lesson supplies numbers \u2014 the weights come from a model and are baked into the JSON, so nothing is invented at render time and every value is reproducible offline. This head attends mostly to the **previous token**, partly to **position 0**, and never to the future.\n\n**Below the baked head** \u2014 the same data at rank 1. `shape: [6]` with a flat `values` list draws a vector rather than a matrix, and the axis labels come from `axes`, not from hand-placed `text` elements.\n\nCell geometry is arithmetic on `shape`, not expressions, so nothing is re-evaluated for positions that never move.",
       "range": [
         [
           -1,
           23
         ],
         [
-          -2,
+          -4,
           9
         ],
         [
@@ -294,80 +294,76 @@
               "shader": {
                 "ignorePlaneOpacity": true
               },
+              "axes": [
+                {
+                  "labels": [
+                    "the",
+                    "cat",
+                    "sat",
+                    "on",
+                    "the",
+                    "mat"
+                  ],
+                  "title": "query"
+                },
+                {
+                  "labels": [
+                    "the",
+                    "cat",
+                    "sat",
+                    "on",
+                    "the",
+                    "mat"
+                  ],
+                  "title": "key"
+                }
+              ],
               "label": "baked \u00b7 dataTable",
               "prompt": "This attention pattern is read from the scene's data block with dataTable, not computed from a formula. It attends mostly to the previous token, partly to position 0, and never to the future. Explain what a previous-token head does and why an attention sink at position 0 shows up in real models."
             },
             {
-              "id": "tok0",
-              "type": "text",
-              "text": "the",
-              "position": [
-                15.6,
-                5.5,
+              "id": "row3",
+              "type": "tensor",
+              "shape": [
+                6
+              ],
+              "origin": [
+                16,
+                -2.2,
                 0
               ],
-              "color": "#aabbcc",
-              "align": "right"
-            },
-            {
-              "id": "tok1",
-              "type": "text",
-              "text": "cat",
-              "position": [
-                15.6,
-                4.5,
-                0
+              "cellSize": 1,
+              "values": [
+                0.2538,
+                0.0355,
+                0.6091,
+                0.1015,
+                0.0,
+                0.0
               ],
-              "color": "#aabbcc",
-              "align": "right"
-            },
-            {
-              "id": "tok2",
-              "type": "text",
-              "text": "sat",
-              "position": [
-                15.6,
-                3.5,
-                0
+              "colorMap": "viridis",
+              "colorDomain": [
+                0,
+                0.6
               ],
-              "color": "#aabbcc",
-              "align": "right"
-            },
-            {
-              "id": "tok3",
-              "type": "text",
-              "text": "on",
-              "position": [
-                15.6,
-                2.5,
-                0
+              "shader": {
+                "ignorePlaneOpacity": true
+              },
+              "axes": [
+                {
+                  "labels": [
+                    "the",
+                    "cat",
+                    "sat",
+                    "on",
+                    "the",
+                    "mat"
+                  ],
+                  "title": "row 3 (\"on\") attends to"
+                }
               ],
-              "color": "#aabbcc",
-              "align": "right"
-            },
-            {
-              "id": "tok4",
-              "type": "text",
-              "text": "the",
-              "position": [
-                15.6,
-                1.5,
-                0
-              ],
-              "color": "#aabbcc",
-              "align": "right"
-            },
-            {
-              "id": "tok5",
-              "type": "text",
-              "text": "mat",
-              "position": [
-                15.6,
-                0.5,
-                0
-              ],
-              "color": "#aabbcc",
-              "align": "right"
+              "label": "1D \u00b7 flat values",
+              "prompt": "This is row 3 of the matrix above, drawn on its own as a 1D tensor from a flat values list. Explain that a row of an attention matrix is a probability distribution over the earlier tokens."
             }
           ],
           "sliders": [

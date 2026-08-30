@@ -325,6 +325,111 @@ def check_proofs(data):
 
 # ---- Camera sanity ----
 
+def _iter_elements(data):
+    """Yield (path, element) for every element in root or step position."""
+    scenes = data.get('scenes', [data] if 'elements' in data else [])
+    for si, scene in enumerate(scenes):
+        for ei, el in enumerate(scene.get('elements', []) or []):
+            if isinstance(el, dict):
+                yield f'scenes[{si}].elements[{ei}]', el
+        for sti, step in enumerate(scene.get('steps', []) or []):
+            for ei, el in enumerate(step.get('add', []) or []):
+                if isinstance(el, dict):
+                    yield f'scenes[{si}].steps[{sti}].add[{ei}]', el
+
+
+def _nested_shape_errors(values, dims, depth, path):
+    """Walk nested `values` against `dims`, returning the first disagreement."""
+    if depth == len(dims):
+        if isinstance(values, list):
+            return f'nested values{path} is deeper than shape {dims}'
+        return None
+    if not isinstance(values, list):
+        return f'nested values{path} is shallower than shape {dims}'
+    if len(values) != dims[depth]:
+        return (f'nested values{path} has {len(values)} entries but shape '
+                f'{dims} needs {dims[depth]} at dimension {depth}')
+    for i, child in enumerate(values):
+        found = _nested_shape_errors(child, dims, depth + 1, f'{path}[{i}]')
+        if found:
+            return found
+    return None
+
+
+def check_tensors(data):
+    """Check tensor `shape` against `values` and `axes` label counts.
+
+    A shape that disagrees with its data renders nothing and logs to a console
+    the author is not watching, so it is worth catching here instead.
+    """
+    errors = []
+    warnings = []
+
+    for path, el in _iter_elements(data):
+        if el.get('type') != 'tensor':
+            continue
+
+        raw_shape = el.get('shape')
+        if not isinstance(raw_shape, list) or not raw_shape:
+            errors.append(f'{path}: tensor needs a `shape` array of positive integers')
+            continue
+        dims = []
+        for d in raw_shape:
+            if not isinstance(d, int) or isinstance(d, bool) or d < 1:
+                errors.append(f'{path}.shape: {d!r} is not a positive integer')
+                break
+            dims.append(d)
+        if len(dims) != len(raw_shape):
+            continue
+
+        size = 1
+        for d in dims:
+            size *= d
+
+        values = el.get('values')
+        if values is not None and 'valueExpr' not in el:
+            if not isinstance(values, list):
+                errors.append(f'{path}.values: must be an array')
+            elif any(isinstance(v, list) for v in values):
+                found = _nested_shape_errors(values, dims, 0, '')
+                if found:
+                    errors.append(f'{path}.values: {found}')
+            elif len(values) != size:
+                errors.append(
+                    f'{path}.values: flat values has {len(values)} entries but '
+                    f'shape {dims} needs {size}'
+                )
+
+        if values is not None and el.get('valueExpr'):
+            warnings.append(f'{path}: both `values` and `valueExpr` given; `valueExpr` wins')
+
+        axes = el.get('axes')
+        if axes is not None:
+            if not isinstance(axes, list):
+                errors.append(f'{path}.axes: must be an array, one entry per shape dimension')
+            else:
+                if len(axes) > len(dims):
+                    warnings.append(
+                        f'{path}.axes: {len(axes)} entries for a rank-{len(dims)} shape; '
+                        f'the extra ones describe no axis'
+                    )
+                for ai, axis in enumerate(axes[:len(dims)]):
+                    if not isinstance(axis, dict):
+                        errors.append(f'{path}.axes[{ai}]: must be an object')
+                        continue
+                    labels = axis.get('labels')
+                    if labels is not None:
+                        if not isinstance(labels, list):
+                            errors.append(f'{path}.axes[{ai}].labels: must be an array of strings')
+                        elif len(labels) != dims[ai]:
+                            warnings.append(
+                                f'{path}.axes[{ai}].labels: {len(labels)} labels for '
+                                f'{dims[ai]} entries along that axis'
+                            )
+
+    return errors, warnings
+
+
 def check_camera(data):
     """Check camera positions are within reasonable bounds."""
     warnings = []
@@ -506,6 +611,12 @@ def validate_file(path, fix=False):
     warnings.extend(proof_warnings)
     stats['proofs'] = (proof_count, proof_step_count, len(proof_errors), len(proof_warnings))
 
+    # Tensors
+    tensor_errors, tensor_warnings = check_tensors(data)
+    errors.extend(tensor_errors)
+    warnings.extend(tensor_warnings)
+    stats['tensors'] = (len(tensor_errors), len(tensor_warnings))
+
     # Camera
     cam_warnings = check_camera(data)
     warnings.extend(cam_warnings)
@@ -538,6 +649,7 @@ def print_report(path, errors, warnings, fixes, stats, errors_only=False):
     sc, sw = stats.get('slider_refs', (0, 0))
     pc, psc, pe, pw = stats.get('proofs', (0, 0, 0, 0))
     cw = stats.get('camera', 0)
+    te, tw = stats.get('tensors', (0, 0))
     oc, ow = stats.get('overlays', (0, 0))
     gc, gw = stats.get('semantic_graphs', (0, 0))
 
@@ -563,6 +675,8 @@ def print_report(path, errors, warnings, fixes, stats, errors_only=False):
         print(f'  Proofs:      {status(pe, pw)} ({pc} proof{"s" if pc != 1 else ""}, {psc} steps)')
     else:
         print(f'  Proofs:      N/A')
+    if te or tw:
+        print(f'  Tensors:     {status(te, tw)}')
     print(f'  Camera:      {status(0, cw)}')
     print(f'  Overlays:    {status(0, ow)} ({oc} checked)')
     if gc > 0:

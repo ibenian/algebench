@@ -7867,7 +7867,19 @@ function renderAnimatedCurve(el, view) {
 //#endregion
 //#region src/objects/tensor.ts
 /**
-* `tensor` — a lattice of cells whose colour carries a value.
+* `tensor` — N-dimensional logical data, and a spatial view of it.
+*
+* The separation is deliberate and is the point of the module: a tensor's
+* *data* is a flat row-major array plus a `shape`, and where its cells land in
+* 3D is a *layout* decision made separately. Today there is one layout (a grid:
+* 1D renders as a row of cells, 2D as a matrix). Row vectors, column vectors
+* and stacked slices are all additions to `gridLayout`'s neighbourhood rather
+* than rewrites, because nothing outside `cellCentre`/`axisAnchor` knows where
+* a cell goes.
+*
+* Nested `values` are a convenience spelling, normalized to flat + shape on the
+* way in, so the logical representation never depends on how the author chose
+* to write it down.
 *
 * The authoring win is that one element replaces N*M near-identical
 * `animated_polygon`s. The rendering win is bigger and less obvious: because
@@ -7883,10 +7895,9 @@ function renderAnimatedCurve(el, view) {
 *
 * Static and animated in one type, decided by which input is given: literal
 * `values` build once and register no updater (zero per-frame cost, exactly the
-* static contract); a `valueExpr` registers one updater. The batch element
-* types this follows — `vectors`, `vector_field`, `point` with `positions[]` —
-* have no `animated_` twins either, and here the geometry never animates at
-* all, so a second type would differ by one `if`.
+* static contract); a `valueExpr` registers one. The batch element types this
+* follows — `vectors`, `vector_field`, `point` with `positions[]` — have no
+* `animated_` twins either, and here the geometry never animates at all.
 *
 * "Tensor" is used in the machine-learning sense: an n-dimensional array, whose
 * *components* this renders. It carries no transformation law, so it is not a
@@ -7894,6 +7905,81 @@ function renderAnimatedCurve(el, view) {
 * means by the word.
 */
 var tensorState = state;
+/** Element count implied by a shape. */
+function shapeSize(dims) {
+	return dims.reduce((a, b) => a * b, 1);
+}
+/**
+* Read `shape` into a list of positive integer dimensions.
+*
+* Any rank is accepted, including 1D — the *layout* decides what it can draw,
+* which is what keeps higher-rank shapes from being a parse-time error.
+*/
+function parseShape(raw) {
+	if (!Array.isArray(raw) || raw.length < 1) return null;
+	const dims = [];
+	for (const d of raw) {
+		const n = Number(d);
+		if (!Number.isInteger(n) || n < 1) return null;
+		dims.push(n);
+	}
+	return dims;
+}
+/** Describe a shape the way an author wrote it, for error messages. */
+function fmtShape(dims) {
+	return `[${dims.join(", ")}]`;
+}
+/**
+* Normalize `values` — nested or flat — into a flat row-major array checked
+* against `dims`.
+*
+* Returns `{ error }` rather than throwing or silently padding: a shape that
+* disagrees with its data is an authoring mistake, and the useful response is
+* to say exactly where it disagrees. (The previous revision padded short input
+* with zeros, which turned a typo into a plausible-looking half-empty grid.)
+*/
+function normalizeValues(raw, dims) {
+	if (!Array.isArray(raw)) return { error: "`values` must be an array" };
+	const expected = shapeSize(dims);
+	if (!raw.some((v) => Array.isArray(v))) {
+		if (raw.length !== expected) return { error: `flat \`values\` has ${raw.length} entries but shape ${fmtShape(dims)} needs ${expected}` };
+		return { values: raw.map((v) => Number.isFinite(Number(v)) ? Number(v) : 0) };
+	}
+	const out = [];
+	let failure = null;
+	const walk = (node, depth, path) => {
+		if (failure) return;
+		const where = path.length ? ` at values[${path.join("][")}]` : "";
+		if (depth === dims.length) {
+			if (Array.isArray(node)) {
+				failure = `nested \`values\`${where} is deeper than shape ${fmtShape(dims)}`;
+				return;
+			}
+			const n = Number(node);
+			out.push(Number.isFinite(n) ? n : 0);
+			return;
+		}
+		if (!Array.isArray(node)) {
+			failure = `nested \`values\`${where} is shallower than shape ${fmtShape(dims)}: expected an array of ${dims[depth]}`;
+			return;
+		}
+		if (node.length !== dims[depth]) {
+			failure = `nested \`values\`${where} has ${node.length} entries but shape ${fmtShape(dims)} needs ${dims[depth]} at dimension ${depth}`;
+			return;
+		}
+		for (let i = 0; i < node.length; i++) walk(node[i], depth + 1, [...path, i]);
+	};
+	walk(raw, 0, []);
+	if (failure) return { error: failure };
+	return { values: out };
+}
+/** Read one axis's labels, trimmed to the axis length. */
+function readAxisLabels(axis, length) {
+	if (!axis || !Array.isArray(axis.labels)) return null;
+	const labels = axis.labels.slice(0, length).map((l) => String(l));
+	if (labels.length < length) console.warn(`tensor: axis has ${labels.length} labels for ${length} entries; the rest are unlabelled`);
+	return labels;
+}
 /** Axis indices for the two in-plane directions, per plane. */
 var PLANE_AXES = {
 	xy: [
@@ -7922,46 +8008,51 @@ var QUAD_CORNERS = [
 	[0, 1]
 ];
 /**
-* Read `shape`, tolerating the leading dimensions a future slice selector will
-* add: the last two entries are always [rows, cols], so `[2,6,6]` already reads
-* as a 6x6 lattice rather than failing.
+* The grid layout: the last shape dimension runs horizontally, the one before
+* it vertically (index 0 at the top, so the picture reads like a written
+* matrix). A 1D shape is a single row.
+*
+* This is the only place that knows where a cell goes. Alternative layouts —
+* a tensor drawn as separate row vectors, as column vectors, or as stacked
+* slices for rank 3 — are new functions of this shape, and nothing downstream
+* changes.
 */
-function readShape(raw) {
-	if (!Array.isArray(raw) || raw.length < 2) return null;
-	const rows = Number(raw[raw.length - 2]);
-	const cols = Number(raw[raw.length - 1]);
-	if (!Number.isInteger(rows) || !Number.isInteger(cols)) return null;
-	if (rows < 1 || cols < 1) return null;
+function gridLayout(dims, origin, cellSize, plane) {
+	const [hAxis, vAxis, nAxis] = PLANE_AXES[plane] || PLANE_AXES["xy"];
+	const cols = dims[dims.length - 1];
+	const rows = dims.length >= 2 ? dims[dims.length - 2] : 1;
+	/** Position from in-plane (horizontal, vertical) offsets. */
+	const at = (h, v) => {
+		const p = [
+			0,
+			0,
+			0
+		];
+		p[hAxis] = origin[0] + h;
+		p[vAxis] = origin[1] + v;
+		p[nAxis] = origin[2];
+		return p;
+	};
 	return {
 		rows,
-		cols
+		cols,
+		/** How many logical cells this layout draws — the trailing 2D slice. */
+		drawn: rows * cols,
+		/** Centre-relative corner of the cell at (r, c), `d` in [0,1]^2. */
+		corner: (r, c, dx, dy, fill) => at((c + .5) * cellSize + (dx - .5) * fill, (rows - 1 - r + .5) * cellSize + (dy - .5) * fill),
+		/** Where an axis label sits. `k` is the index along that axis. */
+		rowLabelAt: (r, pad) => at(-pad, (rows - 1 - r + .5) * cellSize),
+		colLabelAt: (c, pad) => at((c + .5) * cellSize, rows * cellSize + pad),
+		rowTitleAt: (pad) => at(-pad, rows * cellSize / 2),
+		colTitleAt: (pad) => at(cols * cellSize / 2, rows * cellSize + pad)
 	};
 }
-/** Flatten `values` to a row-major lookup, accepting nested rows or a flat list. */
-function readValues(raw, rows, cols) {
-	if (!Array.isArray(raw)) return null;
-	const flat = [];
-	if (Array.isArray(raw[0])) for (let r = 0; r < rows; r++) {
-		const row = raw[r];
-		for (let c = 0; c < cols; c++) {
-			const v = Array.isArray(row) ? Number(row[c]) : NaN;
-			flat.push(Number.isFinite(v) ? v : 0);
-		}
-	}
-	else for (let i = 0; i < rows * cols; i++) {
-		const v = Number(raw[i]);
-		flat.push(Number.isFinite(v) ? v : 0);
-	}
-	return flat;
-}
 function renderTensor(el, _view) {
-	const shape = readShape(el.shape);
-	if (!shape) {
-		console.warn("tensor: `shape` must be [rows, cols] of positive integers; got", el.shape);
+	const dims = parseShape(el.shape);
+	if (!dims) {
+		console.warn("tensor: `shape` must be an array of positive integers; got", el.shape);
 		return null;
 	}
-	const { rows, cols } = shape;
-	const cellCount = rows * cols;
 	const origin = Array.isArray(el.origin) ? el.origin : [
 		0,
 		0,
@@ -7970,12 +8061,21 @@ function renderTensor(el, _view) {
 	const cellSize = typeof el.cellSize === "number" && el.cellSize > 0 ? el.cellSize : 1;
 	const gapRaw = typeof el.gap === "number" ? el.gap : .08;
 	const fill = cellSize * (1 - Math.max(0, Math.min(.9, gapRaw)));
-	const [hAxis, vAxis, nAxis] = PLANE_AXES[typeof el.plane === "string" && PLANE_AXES[el.plane] ? el.plane : "xy"];
+	const layout = gridLayout(dims, origin, cellSize, typeof el.plane === "string" && PLANE_AXES[el.plane] ? el.plane : "xy");
+	const { rows, cols, drawn } = layout;
 	const baseColor = parseColor(el.color || "#3b528b");
 	const colorMapFn = buildColorMap(el.colorMap);
 	const colorDomain = el.colorDomain;
 	const valueExprString = typeof el.valueExpr === "string" && el.valueExpr.trim() ? el.valueExpr.trim() : null;
-	const literalValues = readValues(el.values, rows, cols);
+	let literalValues = null;
+	if (!valueExprString && el.values !== void 0) {
+		const parsed = normalizeValues(el.values, dims);
+		if ("error" in parsed) {
+			console.warn(`tensor${el.id ? ` "${el.id}"` : ""}: ${parsed.error}`);
+			return null;
+		}
+		literalValues = parsed.values;
+	}
 	let valueFn = null;
 	if (valueExprString) try {
 		valueFn = compileExpr(valueExprString);
@@ -7985,25 +8085,13 @@ function renderTensor(el, _view) {
 	const opacity = typeof el.opacity === "number" && isFinite(el.opacity) ? Math.max(0, Math.min(1, el.opacity)) : .95;
 	const sh = el.shader || {};
 	const vertsPerCell = QUAD_CORNERS.length;
-	const positions = new Float32Array(cellCount * vertsPerCell * 3);
-	const colors = new Float32Array(cellCount * vertsPerCell * 3);
-	/** Data-space centre of cell (r, c). Row 0 sits at the top, as a matrix reads. */
-	function cellCorner(r, c, dx, dy) {
-		const pos = [
-			0,
-			0,
-			0
-		];
-		pos[hAxis] = origin[0] + (c + .5) * cellSize + (dx - .5) * fill;
-		pos[vAxis] = origin[1] + (rows - 1 - r + .5) * cellSize + (dy - .5) * fill;
-		pos[nAxis] = origin[2];
-		return pos;
-	}
+	const positions = new Float32Array(drawn * vertsPerCell * 3);
+	const colors = new Float32Array(drawn * vertsPerCell * 3);
 	for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
 		const cell = r * cols + c;
 		for (let k = 0; k < vertsPerCell; k++) {
 			const [dx, dy] = QUAD_CORNERS[k];
-			const w = dataToWorld(cellCorner(r, c, dx, dy));
+			const w = dataToWorld(layout.corner(r, c, dx, dy, fill));
 			const base = (cell * vertsPerCell + k) * 3;
 			positions[base] = w[0];
 			positions[base + 1] = w[1];
@@ -8027,27 +8115,26 @@ function renderTensor(el, _view) {
 			colors[base + 2] = b0;
 		}
 	}
-	/** Seed every cell with the element's static colour, so a failed or absent
-	*  value source still renders something deliberate. */
-	for (let cell = 0; cell < cellCount; cell++) for (let k = 0; k < vertsPerCell; k++) {
+	for (let cell = 0; cell < drawn; cell++) for (let k = 0; k < vertsPerCell; k++) {
 		const base = (cell * vertsPerCell + k) * 3;
 		colors[base] = baseColor[0];
 		colors[base + 1] = baseColor[1];
 		colors[base + 2] = baseColor[2];
 	}
-	/** Evaluate every cell at `tSec`, binding row/col for this cell only. */
+	/** Evaluate every drawn cell at `tSec`, binding indices for that cell only. */
 	function paintAll(tSec) {
 		if (literalValues) {
-			for (let cell = 0; cell < cellCount; cell++) paintCell(cell, literalValues[cell]);
+			for (let cell = 0; cell < drawn; cell++) paintCell(cell, literalValues[cell]);
 			return;
 		}
 		if (!valueFn) return;
 		for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
-			const raw = evalExpr(valueFn, tSec, { overrideScope: {
+			const cell = r * cols + c;
+			paintCell(cell, evalExpr(valueFn, tSec, { overrideScope: {
 				row: r,
-				col: c
-			} });
-			paintCell(r * cols + c, raw);
+				col: c,
+				idx: cell
+			} }));
 		}
 	}
 	try {
@@ -8069,6 +8156,25 @@ function renderTensor(el, _view) {
 	mesh.renderOrder = el.renderOrder !== void 0 ? el.renderOrder : tensorState._planeMeshSerial++;
 	tensorState.three.scene.add(mesh);
 	tensorState.planeMeshes.push(mesh);
+	const axes = Array.isArray(el.axes) ? el.axes : [];
+	if (axes.length) {
+		const pad = cellSize * .35;
+		const hAxisIdx = dims.length - 1;
+		const vAxisIdx = dims.length - 2;
+		const defaultLabelColor = "#aabbcc";
+		const hAxis = axes[hAxisIdx];
+		const hColor = parseColor(hAxis && hAxis.color || defaultLabelColor);
+		const hLabels = readAxisLabels(hAxis, cols);
+		if (hLabels) for (let c = 0; c < hLabels.length; c++) addLabel3D(hLabels[c], layout.colLabelAt(c, pad), hColor);
+		if (hAxis && hAxis.title) addLabel3D(String(hAxis.title), layout.colTitleAt(pad * 3), hColor);
+		if (vAxisIdx >= 0) {
+			const vAxis = axes[vAxisIdx];
+			const vColor = parseColor(vAxis && vAxis.color || defaultLabelColor);
+			const vLabels = readAxisLabels(vAxis, rows);
+			if (vLabels) for (let r = 0; r < vLabels.length; r++) addLabel3D(vLabels[r], layout.rowLabelAt(r, pad), vColor);
+			if (vAxis && vAxis.title) addLabel3D(String(vAxis.title), layout.rowTitleAt(pad * 4), vColor);
+		}
+	}
 	const animState = { stopped: false };
 	if (!valueFn) return {
 		type: "tensor",
