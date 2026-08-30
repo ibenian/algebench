@@ -57,6 +57,13 @@ class BuildSceneInputs(dspy.Signature):
         desc="what was left out of this context because it did not fit. Anything "
              "named here you have NOT seen — do not assume it is absent from the "
              "lesson; may be empty")
+    refused: str = dspy.InputField(
+        desc="YOUR OWN previous answer to this same request was rejected, and "
+             "this is why; empty on a first attempt. It names the element and "
+             "the field the composer objected to. Do not send the same scene "
+             "back — change what it names. If the fix it suggests cannot express "
+             "the shape asked for, build a SIMPLER scene that still makes the "
+             "point rather than repeating the refused one")
 
 
 class BuildSceneSig(BuildSceneInputs):

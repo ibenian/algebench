@@ -27,7 +27,7 @@ from backend.experts.modules.proof_edit.intent import clarifications_from_thread
 from backend.experts.registry import register_handler
 
 from .compose import ComposeError, compose
-from .format import format_clarifications, render_inputs
+from .format import format_clarifications, format_refused, render_inputs
 from .models import BuildSceneRequest, Clarification
 
 log = logging.getLogger(__name__)
@@ -94,6 +94,67 @@ def _last_user_text(messages) -> str:
     return ""
 
 
+def _compose(proposal, req: BuildSceneRequest):
+    return compose(
+        proposal.title, proposal.description, proposal.elements, proposal.steps,
+        proposal.sliders,
+        with_prompts=bool(req.conventions.elementsCarryPrompts),
+    )
+
+
+def _composed(proposal, req: BuildSceneRequest, inputs: dict):
+    """Compose the proposal; on a refusal, ask ONCE more with the reason. Returns
+    ``(scene, None)`` or ``(None, reason)``.
+
+    The retry in `intent.py` does not cover this. That one fires on an
+    `AdapterParseError` — the answer was malformed — and the model call here has
+    already SUCCEEDED. What failed is downstream: a well-formed proposal that
+    `compose` will not accept, for a reason it states precisely.
+
+    Nothing carried that reason back to the builder before. The chat agent is
+    told to adapt (see BUILD_SCENE_TOOL_DECL), but `render_inputs` is the whole
+    of what the builder is told and the thread is not in it; `clarifications`
+    only recovers assistant turns ending in `?`, and "I couldn't build that: …"
+    does not. So every re-ask reached the model as the same prompt, and drew the
+    same scene. Observed on a DNA double helix, refused for its base-pair rungs
+    and refused again identically.
+
+    ONE extra ask. The reason is specific enough that a model which ignores it
+    twice is not going to be talked round, and this is on the reader's request
+    path — the fallback is the same message they used to get, one call later.
+
+    A retry that comes back with a QUESTION is composed anyway rather than
+    relayed: the reader already committed at step 2, and the honest reading of
+    "here is why your scene was rejected" is not an invitation to reopen scope.
+
+    The SECOND reason is returned, not the first. It describes the scene that
+    would have been built, so it is the one the chat agent can act on — and when
+    the model repeats itself the two are identical anyway.
+    """
+    try:
+        return _compose(proposal, req), None
+    except ComposeError as e:
+        # Bound to a plain name INSIDE the clause: Python deletes `e` at the end
+        # of an `except` block, so reading it below would be a NameError.
+        first = str(e)
+        log.info("%s refused: %s — asking again with the reason", LOG_TAG, first)
+
+    retry = propose_scene(**{**inputs, "refused": format_refused(first)})
+    if retry.error or not retry.is_build or not retry.elements:
+        # Nothing to compose. Report the ORIGINAL refusal: it is about a real
+        # scene, where "the builder broke" on the second ask says nothing the
+        # reader or the agent can use.
+        log.warning("%s retry produced nothing to compose (error=%r, is_build=%s)",
+                    LOG_TAG, retry.error, retry.is_build)
+        return None, first
+
+    try:
+        return _compose(retry, req), None
+    except ComposeError as second:
+        log.info("%s refused again: %s", LOG_TAG, second)
+        return None, str(second)
+
+
 @register_handler("build_scene", request_model=BuildSceneRequest)
 def build_scene(req: BuildSceneRequest) -> dict:
     """Propose one scene, composed and validated, as an insert or replace op."""
@@ -145,19 +206,14 @@ def build_scene(req: BuildSceneRequest) -> dict:
         log.info("%s asking: %r", LOG_TAG, proposal.question[:120])
         return {"question": proposal.question, "focus": req.sceneIndex}
 
-    # 3. Compose is where a confident proposal meets the schema.
-    try:
-        scene = compose(
-            proposal.title, proposal.description, proposal.elements, proposal.steps,
-            proposal.sliders,
-            with_prompts=bool(req.conventions.elementsCarryPrompts),
-        )
-    except ComposeError as e:
-        # 4. Refused. The message names the element and what was wrong with it,
-        #    which is what a retry would need to hear — and what the reader needs
-        #    instead of a scene that renders empty.
-        log.info("%s refused: %s", LOG_TAG, e)
-        return {"reason": str(e)}
+    # 3. Compose is where a confident proposal meets the schema. A refusal here
+    #    buys ONE more ask, with the reason in the prompt — see `_composed`.
+    scene, reason = _composed(proposal, req, inputs)
+    if scene is None:
+        # 4. Refused twice. The message names the element and what was wrong with
+        #    it, which is what the reader needs instead of a scene that renders
+        #    empty — and what the CHAT agent needs to propose something else.
+        return {"reason": reason}
 
     log.info("%s built %r: %d element(s), %d step(s), %d slider(s)", LOG_TAG,
              scene.title, len(scene.elements or []), len(scene.steps or []),
