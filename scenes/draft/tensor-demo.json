@@ -3,16 +3,16 @@
   "scenes": [
     {
       "title": "tensor \u2014 one element, one lattice",
-      "description": "A 6\u00d76 row-stochastic matrix as a single `tensor` element, beside a static causal mask.",
-      "markdown": "# `tensor`\n\nBoth grids below are **one element each**, not 36.\n\n**Left** is live: one `valueExpr`, evaluated per cell with `row` and `col` bound.\nRow $i$ is a softmax over $s_{ij} = e^{-|i-j|\\cdot k}$, so every row sums to 1. Drag **sharpness** and watch it go from uniform to near-diagonal.\n\n**Right** is static: literal `values`, built once, **zero** per-frame cost \u2014 a causal mask, which is exactly the shape that makes parallel training legal.\n\nCell geometry is arithmetic on `shape`, not expressions, so nothing is re-evaluated for positions that never move.",
+      "description": "Three 6\u00d76 lattices, one per way of supplying values: live, static, and baked.",
+      "markdown": "# `tensor`\n\nEach grid below is **one element**, not 36.\n\n**Left \u2014 `valueExpr`, live.** One expression, evaluated per cell with `row` and `col` bound. Row $i$ is a softmax over $s_{ij} = e^{-|i-j|\\cdot k}$, so every row sums to 1. Drag **sharpness** and watch it go from uniform to near-diagonal.\n\n**Middle \u2014 `values`, static.** Literal numbers, built once, **zero** per-frame cost: a causal mask, the shape that makes parallel training legal.\n\n**Right \u2014 `dataTable`, baked.** Also one `valueExpr`, but it reads a table in the scene's `data` block:\n\n```\ndataTable('attn', row, concat('w', col))\n```\n\nThis is how a real lesson supplies numbers \u2014 the weights come from a model and are baked into the JSON, so nothing is invented at render time and every value is reproducible offline. This head attends mostly to the **previous token**, partly to **position 0**, and never to the future.\n\nCell geometry is arithmetic on `shape`, not expressions, so nothing is re-evaluated for positions that never move.",
       "range": [
         [
           -1,
-          15
+          23
         ],
         [
-          -1,
-          8
+          -2,
+          9
         ],
         [
           -2,
@@ -21,33 +21,47 @@
       ],
       "camera": {
         "position": [
-          7,
+          11,
           3,
-          16
+          20
         ],
         "target": [
-          7,
+          11,
           3,
           0
         ]
       },
       "views": [
         {
-          "name": "Both",
+          "name": "All three",
           "position": [
-            7,
+            11,
             3,
-            16
+            20
           ],
           "target": [
-            7,
+            11,
             3,
             0
           ],
-          "description": "The live matrix and the static mask together"
+          "description": "Live, static and baked side by side"
         },
         {
-          "name": "Live only",
+          "name": "Baked",
+          "position": [
+            19,
+            3,
+            9
+          ],
+          "target": [
+            19,
+            3,
+            0
+          ],
+          "description": "Close on the dataTable-driven head"
+        },
+        {
+          "name": "Live",
           "position": [
             2.5,
             3,
@@ -63,18 +77,70 @@
         {
           "name": "Iso",
           "position": [
-            14,
-            -4,
-            13
+            22,
+            -6,
+            16
           ],
           "target": [
-            7,
+            11,
             3,
             0
           ],
-          "description": "Confirm both lattices are flat"
+          "description": "Confirm all three lattices are flat"
         }
       ],
+      "data": {
+        "attn": [
+          {
+            "w0": 1.0,
+            "w1": 0.0,
+            "w2": 0.0,
+            "w3": 0.0,
+            "w4": 0.0,
+            "w5": 0.0
+          },
+          {
+            "w0": 0.8571,
+            "w1": 0.1429,
+            "w2": 0.0,
+            "w3": 0.0,
+            "w4": 0.0,
+            "w5": 0.0
+          },
+          {
+            "w0": 0.2632,
+            "w1": 0.6316,
+            "w2": 0.1053,
+            "w3": 0.0,
+            "w4": 0.0,
+            "w5": 0.0
+          },
+          {
+            "w0": 0.2538,
+            "w1": 0.0355,
+            "w2": 0.6091,
+            "w3": 0.1015,
+            "w4": 0.0,
+            "w5": 0.0
+          },
+          {
+            "w0": 0.2451,
+            "w1": 0.0343,
+            "w2": 0.0343,
+            "w3": 0.5882,
+            "w4": 0.098,
+            "w5": 0.0
+          },
+          {
+            "w0": 0.237,
+            "w1": 0.0332,
+            "w2": 0.0332,
+            "w3": 0.0332,
+            "w4": 0.5687,
+            "w5": 0.0948
+          }
+        ]
+      },
       "elements": [
         {
           "id": "ref",
@@ -83,7 +149,7 @@
           "range": [
             [
               0,
-              14
+              22
             ],
             [
               0,
@@ -91,7 +157,7 @@
             ]
           ],
           "divisions": [
-            14,
+            22,
             6
           ],
           "color": [
@@ -99,16 +165,16 @@
             0.28,
             0.42
           ],
-          "opacity": 0.2
+          "opacity": 0.18
         }
       ],
       "steps": [
         {
-          "title": "One element per lattice",
-          "description": "Drag **sharpness** $k$: at $k=0$ every row is uniform ($1/6$ each); as $k$ grows the mass collapses onto the diagonal. The mask on the right never changes, and costs nothing per frame.",
+          "title": "Three ways to fill a lattice",
+          "description": "Drag **sharpness** $k$: only the left grid responds. The mask is static and the baked head comes from the scene's `data` block \u2014 neither costs anything per frame.",
           "add": [
             {
-              "id": "attn",
+              "id": "live",
               "type": "tensor",
               "shape": [
                 6,
@@ -120,19 +186,17 @@
                 0
               ],
               "cellSize": 1,
-              "gap": 0.08,
               "valueExpr": "(exp(-abs(row - col) * sharp)) / (exp(-abs(row - 0) * sharp) + exp(-abs(row - 1) * sharp) + exp(-abs(row - 2) * sharp) + exp(-abs(row - 3) * sharp) + exp(-abs(row - 4) * sharp) + exp(-abs(row - 5) * sharp))",
               "colorMap": "viridis",
               "colorDomain": [
                 0,
                 0.6
               ],
-              "opacity": 0.95,
               "shader": {
                 "ignorePlaneOpacity": true
               },
-              "label": "softmax rows",
-              "prompt": "This is a row-stochastic attention-style matrix. Each row is a softmax over scores that decay with distance from the diagonal. Explain why every row sums to 1 and what the sharpness slider is doing to the distribution."
+              "label": "live \u00b7 valueExpr",
+              "prompt": "A row-stochastic matrix computed live: each row is a softmax over scores that decay with distance from the diagonal. Explain why every row sums to 1 and what the sharpness slider does to the distribution."
             },
             {
               "id": "mask",
@@ -147,7 +211,6 @@
                 0
               ],
               "cellSize": 1,
-              "gap": 0.08,
               "values": [
                 [
                   1,
@@ -203,12 +266,108 @@
                 0,
                 1
               ],
-              "opacity": 0.95,
               "shader": {
                 "ignorePlaneOpacity": true
               },
-              "label": "causal mask",
-              "prompt": "This is a causal mask: cell (i,j) is 1 when j <= i. Explain why masking the future is what makes it legal to train on every position of a sequence in a single parallel forward pass."
+              "label": "static \u00b7 values",
+              "prompt": "A causal mask: cell (i,j) is 1 when j <= i. Explain why masking the future is what makes it legal to train on every position of a sequence in a single parallel forward pass."
+            },
+            {
+              "id": "baked",
+              "type": "tensor",
+              "shape": [
+                6,
+                6
+              ],
+              "origin": [
+                16,
+                0,
+                0
+              ],
+              "cellSize": 1,
+              "valueExpr": "dataTable('attn', row, concat('w', col))",
+              "colorMap": "viridis",
+              "colorDomain": [
+                0,
+                0.6
+              ],
+              "shader": {
+                "ignorePlaneOpacity": true
+              },
+              "label": "baked \u00b7 dataTable",
+              "prompt": "This attention pattern is read from the scene's data block with dataTable, not computed from a formula. It attends mostly to the previous token, partly to position 0, and never to the future. Explain what a previous-token head does and why an attention sink at position 0 shows up in real models."
+            },
+            {
+              "id": "tok0",
+              "type": "text",
+              "text": "the",
+              "position": [
+                15.6,
+                5.5,
+                0
+              ],
+              "color": "#aabbcc",
+              "align": "right"
+            },
+            {
+              "id": "tok1",
+              "type": "text",
+              "text": "cat",
+              "position": [
+                15.6,
+                4.5,
+                0
+              ],
+              "color": "#aabbcc",
+              "align": "right"
+            },
+            {
+              "id": "tok2",
+              "type": "text",
+              "text": "sat",
+              "position": [
+                15.6,
+                3.5,
+                0
+              ],
+              "color": "#aabbcc",
+              "align": "right"
+            },
+            {
+              "id": "tok3",
+              "type": "text",
+              "text": "on",
+              "position": [
+                15.6,
+                2.5,
+                0
+              ],
+              "color": "#aabbcc",
+              "align": "right"
+            },
+            {
+              "id": "tok4",
+              "type": "text",
+              "text": "the",
+              "position": [
+                15.6,
+                1.5,
+                0
+              ],
+              "color": "#aabbcc",
+              "align": "right"
+            },
+            {
+              "id": "tok5",
+              "type": "text",
+              "text": "mat",
+              "position": [
+                15.6,
+                0.5,
+                0
+              ],
+              "color": "#aabbcc",
+              "align": "right"
             }
           ],
           "sliders": [
@@ -224,7 +383,7 @@
           "info": [
             {
               "id": "rowsum",
-              "content": "Row 0 sums to $1.000$ by construction.\n\n$\\alpha_{00} = {{ (exp(0) / (exp(0) + exp(-1*sharp) + exp(-2*sharp) + exp(-3*sharp) + exp(-4*sharp) + exp(-5*sharp))) }}$",
+              "content": "**Live** row 0 sums to $1.000$ by construction.\n\n$\\alpha_{00} = {{ (exp(0) / (exp(0) + exp(-1*sharp) + exp(-2*sharp) + exp(-3*sharp) + exp(-4*sharp) + exp(-5*sharp))) }}$\n\n**Baked** row 3, read straight from `data`:\n\n$\\alpha_{3,2} = {{ dataTable('attn', 3, 'w2') }}$, $\\alpha_{3,0} = {{ dataTable('attn', 3, 'w0') }}$, $\\alpha_{3,5} = {{ dataTable('attn', 3, 'w5') }}$",
               "position": "top-right"
             }
           ]

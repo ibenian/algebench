@@ -20,6 +20,11 @@ import re
 import sys
 from pathlib import Path
 
+# Same bootstrap as audit_expressions.py: CI may run this as a bare script from
+# the repo root, where a plain package import would fail.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from backend.mathjs_extensions import EXTENSION_NAMES  # noqa: E402
+
 # ---- Expression safety ----
 
 EXPR_KEYS = {'expr', 'fromExpr', 'x', 'y', 'z', 'fx', 'fy', 'fz', 'expression',
@@ -166,7 +171,12 @@ BUILTIN_VARS = {'t', 'x', 'y', 'z', 'u', 'v', 'pi', 'PI', 'e', 'E', 'i',
                 'sin', 'cos', 'tan', 'sqrt', 'abs', 'pow', 'min', 'max',
                 'floor', 'ceil', 'round', 'log', 'exp', 'asin', 'acos', 'atan',
                 'atan2', 'sign', 'mod', 'toFixed', 'prev', 'tanh', 'sinh', 'cosh',
-                'sec', 'csc', 'cot'}
+                'sec', 'csc', 'cot'} | set(EXTENSION_NAMES)
+# EXTENSION_NAMES is the canonical list of what this project adds to math.js
+# (backend/mathjs_extensions.py, kept in sync with src/expr.ts by a test).
+# Without it, every scene calling `dataTable` or `concat` drew an undefined-ref
+# warning — masked until now because the check is skipped for scenes that
+# import a domain library, which the dataTable-using scenes happened to do.
 
 
 #: Names an element type binds itself, per cell/sample, that are therefore

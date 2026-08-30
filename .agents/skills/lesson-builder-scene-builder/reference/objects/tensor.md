@@ -55,6 +55,25 @@ There is no `animated_tensor`. The renderer decides:
   "colorMap": "magma" }
 ```
 
+## Baked values — the idiom a real lesson uses
+
+When the numbers come from a model rather than a formula, put them in a `data` table and read them
+per cell. Nothing is invented at render time and every value stays reproducible offline.
+
+```json
+{ "data": { "attn": [ {"w0": 0.25, "w1": 0.04, "w2": 0.61, "w3": 0.10, "w4": 0, "w5": 0 } ] },
+  "steps": [ { "add": [ {
+    "type": "tensor", "shape": [6, 6],
+    "valueExpr": "dataTable('attn', row, concat('w', col))",
+    "colorMap": "viridis", "colorDomain": [0, 0.6]
+  } ] } ] }
+```
+
+`dataTable(name, rowIndex, columnName)` takes a **column name**, not an index — hence
+`concat('w', col)` to build `w0`, `w1`, … from the cell index. A table is a list of row objects.
+
+`data` works at the lesson root or on a scene; both are merged, with scene-level winning.
+
 ## Cell indexing
 
 `row` and `col` are **0-based**, and **row 0 renders at the top**, so the picture reads like a

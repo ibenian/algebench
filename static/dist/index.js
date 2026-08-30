@@ -10952,7 +10952,8 @@ function navigateTo$1(sceneIdx, stepIdx) {
 			views: scene.views,
 			functions: scene.functions,
 			elements: scene.elements || [],
-			starfield: scene.starfield
+			starfield: scene.starfield,
+			data: scene.data
 		});
 		for (let i = 0; i <= stepIdx; i++) if (scene.steps && scene.steps[i]) {
 			const step = scene.steps[i];
