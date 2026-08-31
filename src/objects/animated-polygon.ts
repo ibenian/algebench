@@ -273,22 +273,9 @@ export function renderAnimatedPolygon(el: Element, view: MathBoxNode) {
     }
     applyGeomVerts(currentDataVerts);
 
-    // The `/ 0.5` is this renderer's long-standing boost, there so planes stay
-    // visible at the 0.2 default of the global Planes control. It is kept —
-    // 59 shipped elements have an opacity above 0.5, so changing or clamping it
-    // would restyle them — but it has to be the SAME number the control
-    // multiplies later, or the first drag of that control jumps by 2x.
-    //
-    // Deliberately unclamped: the control clamps the product itself, and a
-    // material opacity above 1 already renders as opaque, so storing the raw
-    // boosted value keeps the before and after identical on screen.
-    const ignoresPlaneOpacity = !!sh.ignorePlaneOpacity;
-    const baseOpacity = opacity / 0.5;
     const baseMatOpts: PolygonMaterialOptions = {
         color: new THREE.Color(...color),
-        opacity: ignoresPlaneOpacity
-            ? baseOpacity
-            : animatedPolygonState.displayParams.planeOpacity * baseOpacity,
+        opacity: animatedPolygonState.displayParams.planeOpacity * (opacity / 0.5),
         transparent: true,
         side: THREE.DoubleSide,
         depthWrite: false,
@@ -315,13 +302,6 @@ export function renderAnimatedPolygon(el: Element, view: MathBoxNode) {
         mat = new THREE.MeshPhongMaterial(baseMatOpts);
     }
     const mesh = new THREE.Mesh(geom, mat);
-    // The global planeOpacity control rewrites `material.opacity` on every mesh
-    // in `planeMeshes` and reads these two back to restore it. animated_point
-    // has always set them (src/objects/animated-point.ts); this renderer did
-    // not, so a planeOpacity drag blanked an animated polygon permanently —
-    // updateFrame only restores opacity when an opacity *expression* exists.
-    mesh.userData.targetOpacity = baseOpacity;
-    mesh.userData.ignorePlaneOpacity = ignoresPlaneOpacity;
     const _serialA = el.renderOrder !== undefined ? el.renderOrder : animatedPolygonState._planeMeshSerial++;
     mesh.renderOrder = _serialA;
     mesh.position.z = el.depthZ !== undefined ? el.depthZ : _serialA * 0.0002;
@@ -396,15 +376,7 @@ export function renderAnimatedPolygon(el: Element, view: MathBoxNode) {
 
                 if (opacityExpr) {
                     const op = evalExpr(opacityExpr, tSec) as number;
-                    // Same base as the initial paint, and republished to
-                    // userData so the Planes control keeps scaling the CURRENT
-                    // animated opacity rather than the one this element
-                    // happened to start with.
-                    const opBase = op / 0.5;
-                    mesh.userData.targetOpacity = opBase;
-                    mat.opacity = ignoresPlaneOpacity
-                        ? opBase
-                        : animatedPolygonState.displayParams.planeOpacity * opBase;
+                    mat.opacity = animatedPolygonState.displayParams.planeOpacity * (op / 0.5);
                     if (outlineLineNode && !outlineOpacityExpr) outlineLineNode.set('opacity', Math.min(1, op * 2));
                 }
                 if (outlineArrayNode) {
