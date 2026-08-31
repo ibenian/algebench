@@ -7311,9 +7311,11 @@ function renderAnimatedPolygon(el, view) {
 		}
 	}
 	applyGeomVerts(currentDataVerts);
+	const ignoresPlaneOpacity = !!sh.ignorePlaneOpacity;
+	const baseOpacity = opacity / .5;
 	const baseMatOpts = {
 		color: new THREE.Color(...color),
-		opacity: animatedPolygonState.displayParams.planeOpacity * (opacity / .5),
+		opacity: ignoresPlaneOpacity ? baseOpacity : animatedPolygonState.displayParams.planeOpacity * baseOpacity,
 		transparent: true,
 		side: THREE.DoubleSide,
 		depthWrite: false
@@ -7338,6 +7340,8 @@ function renderAnimatedPolygon(el, view) {
 		mat = new THREE.MeshPhongMaterial(baseMatOpts);
 	}
 	const mesh = new THREE.Mesh(geom, mat);
+	mesh.userData.targetOpacity = baseOpacity;
+	mesh.userData.ignorePlaneOpacity = ignoresPlaneOpacity;
 	const _serialA = el.renderOrder !== void 0 ? el.renderOrder : animatedPolygonState._planeMeshSerial++;
 	mesh.renderOrder = _serialA;
 	mesh.position.z = el.depthZ !== void 0 ? el.depthZ : _serialA * 2e-4;
@@ -7410,7 +7414,9 @@ function renderAnimatedPolygon(el, view) {
 				applyGeomVerts(verts);
 				if (opacityExpr) {
 					const op = evalExpr(opacityExpr, tSec);
-					mat.opacity = animatedPolygonState.displayParams.planeOpacity * (op / .5);
+					const opBase = op / .5;
+					mesh.userData.targetOpacity = opBase;
+					mat.opacity = ignoresPlaneOpacity ? opBase : animatedPolygonState.displayParams.planeOpacity * opBase;
 					if (outlineLineNode && !outlineOpacityExpr) outlineLineNode.set("opacity", Math.min(1, op * 2));
 				}
 				if (outlineArrayNode) outlineArrayNode.set("data", buildOutlinePts(verts));
