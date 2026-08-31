@@ -38,9 +38,26 @@ _COMPOUND_FIXED: set[str] = set()
 
 
 def _get_cases(config):
-    if config.getoption("--exhaustive"):
-        return exhaustive()
-    return sampled(n=config.getoption("--sampled"))
+    """Cases for this run: the sampled draw, or exhaustive UNION that draw.
+
+    The union matters. ``exhaustive()`` pins the operator to "add" and varies
+    only the other four axes, while ``sampled()`` draws from all five — so the
+    sample is the ONLY thing that ever exercises the other five operators. When
+    exhaustive ignored the sample, those combinations were covered exclusively
+    by whatever a PR happened to draw, and shrinking the PR sample silently
+    shrank the project's total coverage. Now the exhaustive run is a superset of
+    any sampled run, so the PR sample can be tuned for speed freely.
+    """
+    n = config.getoption("--sampled")
+    if not config.getoption("--exhaustive"):
+        return sampled(n=n)
+    seen, cases = set(), []
+    for t in list(exhaustive()) + list(sampled(n=n)):
+        key = (t.structure, t.relation, t.var_style, t.operator, t.nesting)
+        if key not in seen:
+            seen.add(key)
+            cases.append(t)
+    return cases
 
 
 def _safe_parse(template):

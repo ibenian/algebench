@@ -62,12 +62,12 @@ jobs:
             ARGS=(--exhaustive)
             SHOWN="--exhaustive"
             REASON="${{ github.event_name }} event — main must stay green"
-            DEPTH="FULL — exhaustive cross-product, timing tests included"
+            DEPTH="FULL — exhaustive ∪ sample, timing tests included"
           else
-            ARGS=(-m "not timing")
-            SHOWN="-m 'not timing'"
+            ARGS=(--sampled 20 -m "not timing")
+            SHOWN="--sampled 20 -m 'not timing'"
             REASON="pull request — full run happens on merge to main"
-            DEPTH="SAMPLED — --sampled 200, timing tests deselected"
+            DEPTH="FAST — sampled 20, timing tests deselected"
           fi
           # Surface the mode everywhere it's visible: the log, an annotation, and
           # the run's Summary tab.
