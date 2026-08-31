@@ -24,15 +24,21 @@ from pathlib import Path
 # the repo root, where a plain package import would fail.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from backend.mathjs_extensions import EXTENSION_NAMES  # noqa: E402
+from backend.expression_fields import is_expression_key  # noqa: E402
 
 # ---- Expression safety ----
 
-EXPR_KEYS = {'expr', 'fromExpr', 'x', 'y', 'z', 'fx', 'fy', 'fz', 'expression',
-             'radiusExpr', 'visibleExpr', 'labelExpr', 'toExpr', 'positionExpr',
-             'centerExpr', 'rangeExpr', 'valueExpr',
-             # Implemented but previously unlisted here, so their expressions
-             # were never checked for JS or scanned for slider references:
-             'sizeExpr', 'opacityExpr'}
+# Derived, not enumerated. This used to be a hand-written list, and it went
+# stale the way hand-written lists do: `sizeExpr` and `opacityExpr` were
+# implemented and missing, and after those were added by name, `textExpr` and
+# `targetExpr` were still missing — same class of bug, second round of review.
+#
+# `is_expression_key` is the rule itself (backend/expression_fields.py, mirroring
+# `_isExprKey` in src/trust.ts): the explicit non-`*Expr` names, unioned with
+# anything ending in `Expr`. A new `*Expr` field is now covered on the day it is
+# added, without anyone remembering to come here.
+def _is_expr_key(k):
+    return is_expression_key(k)
 
 JS_PATTERNS = [
     (r'Math\.', 'Use math.js syntax (sin, cos, pi) not JavaScript (Math.sin, Math.PI)'),
@@ -76,7 +82,7 @@ def collect_expressions(obj, path='', skip_keys=None):
             if key in skip_keys:
                 continue
             child_path = f'{path}.{key}' if path else key
-            if key in EXPR_KEYS:
+            if _is_expr_key(key):
                 if isinstance(val, str):
                     results.append((child_path, val))
                 elif isinstance(val, list):

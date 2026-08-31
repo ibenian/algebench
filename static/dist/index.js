@@ -8035,13 +8035,14 @@ function renderTensor(el, _view) {
 		console.warn("tensor: `shape` must be an array of positive integers; got", el.shape);
 		return null;
 	}
-	const origin = Array.isArray(el.origin) ? el.origin : [
+	const originRaw = Array.isArray(el.origin) ? el.origin : [];
+	const origin = [
 		0,
-		0,
-		0
-	];
+		1,
+		2
+	].map((i) => Number.isFinite(originRaw[i]) ? originRaw[i] : 0);
 	const cellSize = typeof el.cellSize === "number" && el.cellSize > 0 ? el.cellSize : 1;
-	const gapRaw = typeof el.gap === "number" ? el.gap : .08;
+	const gapRaw = Number.isFinite(el.gap) ? el.gap : .08;
 	const fill = cellSize * (1 - Math.max(0, Math.min(.9, gapRaw)));
 	const layout = gridLayout(dims, origin, cellSize, typeof el.plane === "string" && PLANE_AXES[el.plane] ? el.plane : "xy");
 	const { rows, cols, drawn } = layout;

@@ -261,11 +261,17 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
         return null;
     }
 
-    const origin = (Array.isArray(el.origin) ? el.origin : [0, 0, 0]) as Vec3;
+    // Per-component finite check, for the same reason as `gap` below: one NaN
+    // in the origin would propagate through every cell corner.
+    const originRaw = Array.isArray(el.origin) ? el.origin : [];
+    const origin = [0, 1, 2].map(i => (Number.isFinite(originRaw[i]) ? originRaw[i] : 0)) as Vec3;
     const cellSize = (typeof el.cellSize === 'number' && el.cellSize > 0) ? el.cellSize : 1;
     // `gap` is a fraction of the cell pitch, so a lattice keeps its spacing when
     // an author scales `cellSize`.
-    const gapRaw = (typeof el.gap === 'number') ? el.gap : 0.08;
+    // Finite, not merely a number: Math.min/Math.max propagate NaN, so a
+    // `gap: NaN` would reach every vertex and the whole lattice would come out
+    // as NaN coordinates -- an invisible element and no error anywhere.
+    const gapRaw = Number.isFinite(el.gap as number) ? (el.gap as number) : 0.08;
     const fill = cellSize * (1 - Math.max(0, Math.min(0.9, gapRaw)));
     const plane = (typeof el.plane === 'string' && PLANE_AXES[el.plane]) ? el.plane : 'xy';
 

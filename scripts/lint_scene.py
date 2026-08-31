@@ -50,14 +50,21 @@ def _valid_types():
 
 VALID_TYPES = _valid_types()
 
-EXPR_KEYS = {
-    'expr', 'fromExpr', 'toExpr', 'positionExpr', 'centerExpr',
-    'x', 'y', 'z', 'fx', 'fy', 'fz', 'expression',
-    'radiusExpr', 'visibleExpr', 'labelExpr', 'rangeExpr',
-    'valueExpr',
-    # Implemented but previously unlisted here, so the lint never reached them:
-    'sizeExpr', 'opacityExpr',
-}
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from backend.expression_fields import is_expression_key  # noqa: E402
+
+
+def _is_expr_key(k):
+    """Whether this key's value is a math.js expression.
+
+    Derived rather than enumerated, for the same reason VALID_TYPES above is
+    read from the schema. The hand-written list this replaces went stale twice:
+    `sizeExpr`/`opacityExpr` were missing, and once those were added by name
+    `textExpr`/`targetExpr` still were. `is_expression_key` is the rule itself
+    — the explicit non-`*Expr` names unioned with anything ending in `Expr` —
+    mirroring `_isExprKey` in src/trust.ts.
+    """
+    return is_expression_key(k)
 
 
 def collect_expressions(obj, path=''):
@@ -65,7 +72,7 @@ def collect_expressions(obj, path=''):
     if isinstance(obj, dict):
         for k, v in obj.items():
             full = f'{path}.{k}' if path else k
-            if k in EXPR_KEYS:
+            if _is_expr_key(k):
                 if isinstance(v, str):
                     yield full, v
                 elif isinstance(v, list):
