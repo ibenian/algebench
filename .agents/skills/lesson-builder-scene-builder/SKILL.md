@@ -144,6 +144,7 @@ If the scene outline includes a `proof_plan`:
 | `animated_point` | animated | Slider/time-driven point |
 | `animated_line` | animated | Slider/time-driven polyline |
 | `animated_polygon` | animated | Slider/time-driven filled polygon |
+| `tensor` | static/animated | **Heatmap / matrix grid** — a lattice of value-coloured cells. Static with `values`, live with `valueExpr`. Use this for any matrix; never hand-write a grid of polygons |
 
 **Detailed field reference for each type**: Read from `reference/objects/<type>.md` in this skill directory. Load only the types needed for the scene you're building.
 

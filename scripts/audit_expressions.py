@@ -103,7 +103,8 @@ _JS_BUILTIN_FUNC_RE = re.compile(
 # passing locally under ./run.sh. Same pattern as scripts/ci_validate_prebaked.py.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from backend.expression_fields import (  # noqa: E402
-    EXPR_KEYS as _SCANNED_KEYS, is_expression_key as _shared_is_expr_key)
+    EXPR_KEYS as _SCANNED_KEYS, is_expression_key as _shared_is_expr_key,
+    carries_expressions as _carries_expressions)
 
 # Expression-bearing keys that compileExpr evaluates but that
 # scanSpecForUnsafeJs does NOT explicitly list.  Currently all *Expr
@@ -277,7 +278,19 @@ def classify_expression(expr, field_key, scene_unsafe):
         return 'unsafe_scene'
 
     if _JS_ONLY_RE.search(expr):
-        if field_key in _SCANNED_KEYS or field_key == 'content_template':
+        # The question here is "does the trust dialog cover this field", so the
+        # predicate has to be the trust scanner's own. `_SCANNED_KEYS` holds
+        # only the eight non-``*Expr`` names, so testing membership against it
+        # reported every ``*Expr`` field carrying JS as uncovered -- the audit's
+        # failure condition -- for fields the dialog does cover.
+        #
+        # ``carries_expressions`` is that rule exactly: it mirrors
+        # ``_carriesExpressions`` in src/trust.ts, which unions the ``*Expr``
+        # test with NESTED_COORD_KEYS. That union is why ``vertices``/``points``
+        # belong here too: the scanner's walk keeps the parent key as it
+        # recurses through arrays, so the math.js one level down inside
+        # ``vertices: [["ax","ay","0"], …]`` is scanned like any other.
+        if _carries_expressions(field_key) or field_key == 'content_template':
             return 'js_covered'
         return 'js_uncovered'
 

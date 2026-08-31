@@ -105,7 +105,7 @@ export type Vec32 = [number | string, number | string, number | string];
  */
 export type Vec33 = [number | string, number | string, number | string];
 /**
- * Origin point [x,y,z] for vectors. Alias for 'from'. Default: [0,0,0].
+ * Origin point [x,y,z] for vectors. Alias for 'from'. Default: [0,0,0]. On tensor it is the lattice's near corner: [horizontal, vertical, normal] in the chosen 'plane'.
  *
  * @minItems 3
  * @maxItems 3
@@ -604,7 +604,8 @@ export interface Element {
     | 'animated_point'
     | 'animated_cylinder'
     | 'animated_polygon'
-    | 'animated_curve';
+    | 'animated_curve'
+    | 'tensor';
   /**
    * Unique element ID for referencing in remove directives, legend toggle, and element registry. Auto-generated from label if omitted.
    */
@@ -621,6 +622,86 @@ export interface Element {
    * Element color as hex string '#rrggbb' or RGB array [r,g,b] with values 0-1. Default varies by type.
    */
   color?: string | [number, number, number];
+  /**
+   * TENSOR ONLY. Color ramp applied to a tensor's values. A named map, or {stops:[{t,color}, …]} for a custom palette (same stop format as 'gradient.stops'). Default 'viridis'. Use a sequential map ('viridis', 'magma') for non-negative data; 'blueRed' is diverging and implies a sign, so it is only correct for signed data.
+   */
+  colorMap?:
+    | ('viridis' | 'magma' | 'blueRed')
+    | {
+        /**
+         * @minItems 1
+         */
+        stops: [
+          {
+            /**
+             * Position along the ramp (0 = low, 1 = high).
+             */
+            t: number;
+            /**
+             * Color at this stop.
+             */
+            color: string | [number, number, number];
+            [k: string]: unknown;
+          },
+          ...{
+            /**
+             * Position along the ramp (0 = low, 1 = high).
+             */
+            t: number;
+            /**
+             * Color at this stop.
+             */
+            color: string | [number, number, number];
+            [k: string]: unknown;
+          }[]
+        ];
+      };
+  /**
+   * TENSOR ONLY. Input range [lo,hi] that a tensor's 'valueExpr'/'values' are normalized over before 'colorMap' is applied. Values outside are clamped. Default [0,1].
+   *
+   * @minItems 2
+   * @maxItems 2
+   */
+  colorDomain?: [number, number];
+  /**
+   * TENSOR ONLY. Logical shape of the data, any rank. The current grid layout draws the LAST dimension horizontally and the one before it vertically, so [6] is a row of 6 cells and [6,6] is a 6x6 matrix; higher-rank shapes are accepted and only their trailing 2D slice is drawn until slice layouts exist. Example: [6,6].
+   *
+   * @minItems 1
+   */
+  shape?: [number, ...number[]];
+  /**
+   * TENSOR ONLY. Per-axis metadata; axes[k] describes shape[k]. Labels are positioned automatically against the rendered lattice — for a 2D tensor axes[0] labels the rows down the left and axes[1] labels the columns across the top. Use this instead of hand-placing `text` elements.
+   */
+  axes?: {
+    /**
+     * One label per entry along this axis. Example: ["the","cat","sat","on","the","mat"]. Extra labels are ignored; too few leaves the remainder unlabelled.
+     */
+    labels?: string[];
+    /**
+     * Name of the axis itself, placed beyond its labels. Example: "key".
+     */
+    title?: string;
+    /**
+     * Colour for this axis's labels and title. Default: a muted grey-blue.
+     */
+    color?: string | [number, number, number];
+  }[];
+  /**
+   * TENSOR ONLY. Math.js expression giving one cell's value, evaluated per cell every frame with 'row', 'col' and 'idx' bound (0-based; row 0 renders at the top, as a matrix reads; 'idx' is the flat row-major index, and on a 1D tensor 'row' is 0). Mapped through 'colorMap' over 'colorDomain'. This is how a tensor acts as a VIEW over data held elsewhere in the scene — e.g. "dataTable('attn', row, concat('w', col))" — rather than embedding the data in the element. Use slider IDs and 't' for a live matrix. Takes precedence over 'values'. For a matrix that never changes, use 'values' instead — it costs nothing per frame.
+   */
+  valueExpr?: string;
+  /**
+   * TENSOR ONLY. Literal values, either nested (e.g. [[1,2],[3,4]]) or flat row-major (e.g. [1,2,3,4]). Both are normalized to flat + 'shape' internally, so the two spellings are interchangeable and the same flat list can be viewed as [4] or [2,2]. The entry count must match 'shape' exactly — a mismatch is reported rather than padded. Literal values build once and cost NOTHING per frame; prefer this over 'valueExpr' for a fixed matrix. Ignored when 'valueExpr' is present.
+   */
+  values?: unknown[];
+  /**
+   * TENSOR ONLY. Data-space pitch between cell centers. Default 1.
+   */
+  cellSize?: number;
+  /**
+   * TENSOR ONLY. Gap between cells as a fraction of 'cellSize', so spacing survives a cellSize change. Default 0.08.
+   */
+  gap?: number;
   /**
    * Element opacity 0-1. Can be a math.js expression string for animated elements. Default varies by type.
    */
@@ -663,7 +744,7 @@ export interface Element {
    */
   axis?: 'x' | 'y' | 'z';
   /**
-   * Grid plane. Default: 'xy'. Also usable on animated_curve: 'xy' (default) plots expr along y; 'xz' plots it along z (fillRegions unsupported in 'xz'). Any other value (e.g. 'yz') is not modelled for animated_curve and falls back to 'xy'.
+   * Grid plane. Default: 'xy'. Also usable on animated_curve: 'xy' (default) plots expr along y; 'xz' plots it along z (fillRegions unsupported in 'xz'). Any other value (e.g. 'yz') is not modelled for animated_curve and falls back to 'xy'. On tensor it is the plane the cell lattice is laid out in; all three values are supported.
    */
   plane?: 'xy' | 'xz' | 'yz';
   /**

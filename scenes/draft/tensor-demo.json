@@ -1,0 +1,383 @@
+{
+  "title": "tensor \u2014 one element, one lattice",
+  "scenes": [
+    {
+      "title": "tensor \u2014 one element, one lattice",
+      "description": "Three 6\u00d76 lattices, one per way of supplying values: live, static, and baked.",
+      "markdown": "# `tensor`\n\nEach grid below is **one element**, not 36.\n\n**Left \u2014 `valueExpr`, live.** One expression, evaluated per cell with `row` and `col` bound. Row $i$ is a softmax over $s_{ij} = e^{-|i-j|\\cdot k}$, so every row sums to 1. Drag **sharpness** and watch it go from uniform to near-diagonal.\n\n**Middle \u2014 `values`, static.** Literal numbers, built once, **zero** per-frame cost: a causal mask, the shape that makes parallel training legal.\n\n**Right \u2014 `dataTable`, baked.** Also one `valueExpr`, but it reads a table in the scene's `data` block rather than computing from a formula:\n\n```\ndataTable('attn', row, concat('w', col))\n```\n\nThis is how a real lesson supplies numbers \u2014 the weights come from a model and are baked into the JSON, so nothing is invented at render time and every value is reproducible offline. This head attends mostly to the **previous token**, partly to **position 0**, and never to the future.\n\n**Sharpness reshapes the baked head too**, by $p_j^{\\,k}$ renormalized over each row. At $k \\to 0$ it flattens to uniform *over what the head is allowed to see* \u2014 the zeros stay zero, so no attention leaks into the future. At $k=1$ it is the stored head unchanged; above that it concentrates further.\n\n**Below the baked head** \u2014 the same data at rank 1. `shape: [6]` draws a vector rather than a matrix through the same code path, tracks row 3 of the matrix above, and takes its axis labels from `axes` rather than hand-placed `text` elements.\n\nCell geometry is arithmetic on `shape`, not expressions, so nothing is re-evaluated for positions that never move.",
+      "range": [
+        [
+          -1,
+          23
+        ],
+        [
+          -4,
+          9
+        ],
+        [
+          -2,
+          2
+        ]
+      ],
+      "camera": {
+        "position": [
+          11,
+          3,
+          20
+        ],
+        "target": [
+          11,
+          3,
+          0
+        ]
+      },
+      "views": [
+        {
+          "name": "All three",
+          "position": [
+            11,
+            3,
+            20
+          ],
+          "target": [
+            11,
+            3,
+            0
+          ],
+          "description": "Live, static and baked side by side"
+        },
+        {
+          "name": "Baked",
+          "position": [
+            19,
+            3,
+            9
+          ],
+          "target": [
+            19,
+            3,
+            0
+          ],
+          "description": "Close on the dataTable-driven head"
+        },
+        {
+          "name": "Live",
+          "position": [
+            2.5,
+            3,
+            9
+          ],
+          "target": [
+            2.5,
+            3,
+            0
+          ],
+          "description": "Close on the softmax matrix"
+        },
+        {
+          "name": "Iso",
+          "position": [
+            22,
+            -6,
+            16
+          ],
+          "target": [
+            11,
+            3,
+            0
+          ],
+          "description": "Confirm all three lattices are flat"
+        }
+      ],
+      "data": {
+        "attn": [
+          {
+            "w0": 1.0,
+            "w1": 0.0,
+            "w2": 0.0,
+            "w3": 0.0,
+            "w4": 0.0,
+            "w5": 0.0
+          },
+          {
+            "w0": 0.857143,
+            "w1": 0.142857,
+            "w2": 0.0,
+            "w3": 0.0,
+            "w4": 0.0,
+            "w5": 0.0
+          },
+          {
+            "w0": 0.263158,
+            "w1": 0.631579,
+            "w2": 0.105263,
+            "w3": 0.0,
+            "w4": 0.0,
+            "w5": 0.0
+          },
+          {
+            "w0": 0.253807,
+            "w1": 0.035533,
+            "w2": 0.609137,
+            "w3": 0.101523,
+            "w4": 0.0,
+            "w5": 0.0
+          },
+          {
+            "w0": 0.245098,
+            "w1": 0.034314,
+            "w2": 0.034314,
+            "w3": 0.588235,
+            "w4": 0.098039,
+            "w5": 0.0
+          },
+          {
+            "w0": 0.236967,
+            "w1": 0.033175,
+            "w2": 0.033175,
+            "w3": 0.033175,
+            "w4": 0.56872,
+            "w5": 0.094787
+          }
+        ]
+      },
+      "elements": [
+        {
+          "id": "ref",
+          "type": "grid",
+          "plane": "xy",
+          "range": [
+            [
+              0,
+              22
+            ],
+            [
+              0,
+              6
+            ]
+          ],
+          "divisions": [
+            22,
+            6
+          ],
+          "color": [
+            0.28,
+            0.28,
+            0.42
+          ],
+          "opacity": 0.18
+        }
+      ],
+      "steps": [
+        {
+          "title": "Three ways to fill a lattice",
+          "description": "Drag **sharpness** $k$: the live grid, the baked head and its row all respond. Only the **mask** is static \u2014 it has literal `values`, so it registers no per-frame work at all.",
+          "add": [
+            {
+              "id": "live",
+              "type": "tensor",
+              "shape": [
+                6,
+                6
+              ],
+              "origin": [
+                0,
+                0,
+                0
+              ],
+              "cellSize": 1,
+              "valueExpr": "(exp(-abs(row - col) * sharp)) / (exp(-abs(row - 0) * sharp) + exp(-abs(row - 1) * sharp) + exp(-abs(row - 2) * sharp) + exp(-abs(row - 3) * sharp) + exp(-abs(row - 4) * sharp) + exp(-abs(row - 5) * sharp))",
+              "colorMap": "viridis",
+              "colorDomain": [
+                0,
+                0.6
+              ],
+              "shader": {
+                "ignorePlaneOpacity": true
+              },
+              "label": "live \u00b7 valueExpr",
+              "prompt": "A row-stochastic matrix computed live: each row is a softmax over scores that decay with distance from the diagonal. Explain why every row sums to 1 and what the sharpness slider does to the distribution."
+            },
+            {
+              "id": "mask",
+              "type": "tensor",
+              "shape": [
+                6,
+                6
+              ],
+              "origin": [
+                8,
+                0,
+                0
+              ],
+              "cellSize": 1,
+              "values": [
+                [
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                [
+                  1,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                [
+                  1,
+                  1,
+                  1,
+                  0,
+                  0,
+                  0
+                ],
+                [
+                  1,
+                  1,
+                  1,
+                  1,
+                  0,
+                  0
+                ],
+                [
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  0
+                ],
+                [
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1
+                ]
+              ],
+              "colorMap": "magma",
+              "colorDomain": [
+                0,
+                1
+              ],
+              "shader": {
+                "ignorePlaneOpacity": true
+              },
+              "label": "static \u00b7 values",
+              "prompt": "A causal mask: cell (i,j) is 1 when j <= i. Explain why masking the future is what makes it legal to train on every position of a sequence in a single parallel forward pass."
+            },
+            {
+              "id": "baked",
+              "type": "tensor",
+              "shape": [
+                6,
+                6
+              ],
+              "origin": [
+                16,
+                0,
+                0
+              ],
+              "cellSize": 1,
+              "valueExpr": "(dataTable('attn', row, concat('w', col))^max(sharp, 0.001)) / (dataTable('attn', row, 'w0')^max(sharp, 0.001) + dataTable('attn', row, 'w1')^max(sharp, 0.001) + dataTable('attn', row, 'w2')^max(sharp, 0.001) + dataTable('attn', row, 'w3')^max(sharp, 0.001) + dataTable('attn', row, 'w4')^max(sharp, 0.001) + dataTable('attn', row, 'w5')^max(sharp, 0.001))",
+              "colorMap": "viridis",
+              "colorDomain": [
+                0,
+                0.6
+              ],
+              "shader": {
+                "ignorePlaneOpacity": true
+              },
+              "axes": [
+                {
+                  "labels": [
+                    "the",
+                    "cat",
+                    "sat",
+                    "on",
+                    "the",
+                    "mat"
+                  ],
+                  "title": "query"
+                },
+                {
+                  "labels": [
+                    "the",
+                    "cat",
+                    "sat",
+                    "on",
+                    "the",
+                    "mat"
+                  ],
+                  "title": "key"
+                }
+              ],
+              "label": "baked \u00b7 dataTable",
+              "prompt": "This attention pattern is read from the scene's data block with dataTable, not computed from a formula. It attends mostly to the previous token, partly to position 0, and never to the future. Explain what a previous-token head does and why an attention sink at position 0 shows up in real models."
+            },
+            {
+              "id": "row3",
+              "type": "tensor",
+              "shape": [
+                6
+              ],
+              "origin": [
+                16,
+                -2.2,
+                0
+              ],
+              "cellSize": 1,
+              "valueExpr": "(dataTable('attn', 3, concat('w', col))^max(sharp, 0.001)) / (dataTable('attn', 3, 'w0')^max(sharp, 0.001) + dataTable('attn', 3, 'w1')^max(sharp, 0.001) + dataTable('attn', 3, 'w2')^max(sharp, 0.001) + dataTable('attn', 3, 'w3')^max(sharp, 0.001) + dataTable('attn', 3, 'w4')^max(sharp, 0.001) + dataTable('attn', 3, 'w5')^max(sharp, 0.001))",
+              "colorMap": "viridis",
+              "colorDomain": [
+                0,
+                0.6
+              ],
+              "shader": {
+                "ignorePlaneOpacity": true
+              },
+              "axes": [
+                {
+                  "labels": [
+                    "the",
+                    "cat",
+                    "sat",
+                    "on",
+                    "the",
+                    "mat"
+                  ],
+                  "title": "row 3 (\"on\") attends to"
+                }
+              ],
+              "label": "1D \u00b7 rank-1 view",
+              "prompt": "This is row 3 of the matrix above, drawn on its own as a rank-1 tensor. Explain that a row of an attention matrix is a probability distribution over the earlier tokens, and what the sharpness control is doing to that distribution."
+            }
+          ],
+          "sliders": [
+            {
+              "id": "sharp",
+              "label": "sharpness $k$",
+              "min": 0,
+              "max": 3,
+              "step": 0.05,
+              "default": 0.8
+            }
+          ],
+          "info": [
+            {
+              "id": "rowsum",
+              "content": "**Live** row 0 sums to $1.000$ by construction.\n\n$\\alpha_{00} = {{ (exp(0) / (exp(0) + exp(-1*sharp) + exp(-2*sharp) + exp(-3*sharp) + exp(-4*sharp) + exp(-5*sharp))) }}$\n\n**Baked** row 3 *as stored* in `data` \u2014 what the grid shows is this, re-sharpened by $k$ (equal at $k=1$):\n\n$\\alpha_{3,2} = {{ dataTable('attn', 3, 'w2') }}$, $\\alpha_{3,0} = {{ dataTable('attn', 3, 'w0') }}$, $\\alpha_{3,5} = {{ dataTable('attn', 3, 'w5') }}$",
+              "position": "top-right"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

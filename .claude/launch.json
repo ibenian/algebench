@@ -81,6 +81,20 @@
       "autoPort": true
     },
     {
+      "name": "tensor-demo",
+      "runtimeExecutable": "./algebench",
+      "runtimeArgs": [
+        "scenes/draft/tensor-demo.json",
+        "--port",
+        "5754",
+        "--debug",
+        "--server-only",
+        "--skip-tour"
+      ],
+      "port": 5754,
+      "autoPort": true
+    },
+    {
       "name": "graph-panel-demo",
       "runtimeExecutable": "./algebench",
       "runtimeArgs": [

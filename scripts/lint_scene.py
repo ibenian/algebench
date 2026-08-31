@@ -28,20 +28,43 @@ JS_PATTERNS = [
     (r'\.\s*toFixed\s*\(', '.toFixed(n) → use toFixed(x, n)'),
 ]
 
-VALID_TYPES = {
-    'skybox', 'axis', 'grid', 'vector', 'point', 'line', 'surface',
-    'parametric_curve', 'parametric_surface', 'sphere', 'ellipsoid',
-    'vectors', 'vector_field', 'plane', 'polygon', 'cylinder', 'text',
-    'animated_vector', 'animated_line', 'animated_point',
-    'animated_cylinder', 'animated_polygon', 'animated_curve',
-}
+def _valid_types():
+    """Element types, read from the schema rather than restated here.
 
-EXPR_KEYS = {
-    'expr', 'fromExpr', 'toExpr', 'positionExpr', 'centerExpr',
-    'x', 'y', 'z', 'fx', 'fy', 'fz', 'expression',
-    'radiusExpr', 'visibleExpr', 'labelExpr', 'rangeExpr',
-    'valueExpr',
-}
+    This list was hardcoded and silently went stale: `tensor` was added to the
+    schema, the renderer and the docs, and this lint went on rejecting it as an
+    invalid type — which fails the scene-builder pipeline, since it lints each
+    scene before assembly. Reading the enum means the next element type cannot
+    reintroduce that gap.
+    """
+    schema = Path(__file__).resolve().parent.parent / 'schemas' / 'lesson.schema.json'
+    try:
+        defs = json.loads(schema.read_text())['$defs']
+        return set(defs['element']['properties']['type']['enum'])
+    except (OSError, KeyError, json.JSONDecodeError) as e:
+        # A lint that cannot read the schema should not invent its own answer
+        # and start rejecting valid scenes.
+        print(f'warning: could not read element types from {schema}: {e}', file=sys.stderr)
+        return None
+
+
+VALID_TYPES = _valid_types()
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from backend.expression_fields import is_expression_key  # noqa: E402
+
+
+def _is_expr_key(k):
+    """Whether this key's value is a math.js expression.
+
+    Derived rather than enumerated, for the same reason VALID_TYPES above is
+    read from the schema. The hand-written list this replaces went stale twice:
+    `sizeExpr`/`opacityExpr` were missing, and once those were added by name
+    `textExpr`/`targetExpr` still were. `is_expression_key` is the rule itself
+    — the explicit non-`*Expr` names unioned with anything ending in `Expr` —
+    mirroring `_isExprKey` in src/trust.ts.
+    """
+    return is_expression_key(k)
 
 
 def collect_expressions(obj, path=''):
@@ -49,7 +72,7 @@ def collect_expressions(obj, path=''):
     if isinstance(obj, dict):
         for k, v in obj.items():
             full = f'{path}.{k}' if path else k
-            if k in EXPR_KEYS:
+            if _is_expr_key(k):
                 if isinstance(v, str):
                     yield full, v
                 elif isinstance(v, list):
@@ -97,7 +120,7 @@ def lint_element(el, path, fix=False):
     el_type = el.get('type')
     if not el_type:
         errors.append(f'{path}: Missing "type" field')
-    elif el_type not in VALID_TYPES:
+    elif VALID_TYPES is not None and el_type not in VALID_TYPES:
         errors.append(f'{path}: Invalid type "{el_type}" (not in supported types)')
 
     return errors, warnings, fixes

@@ -20,11 +20,25 @@ import re
 import sys
 from pathlib import Path
 
+# Same bootstrap as audit_expressions.py: CI may run this as a bare script from
+# the repo root, where a plain package import would fail.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from backend.mathjs_extensions import EXTENSION_NAMES  # noqa: E402
+from backend.expression_fields import is_expression_key  # noqa: E402
+
 # ---- Expression safety ----
 
-EXPR_KEYS = {'expr', 'fromExpr', 'x', 'y', 'z', 'fx', 'fy', 'fz', 'expression',
-             'radiusExpr', 'visibleExpr', 'labelExpr', 'toExpr', 'positionExpr',
-             'centerExpr', 'rangeExpr', 'valueExpr'}
+# Derived, not enumerated. This used to be a hand-written list, and it went
+# stale the way hand-written lists do: `sizeExpr` and `opacityExpr` were
+# implemented and missing, and after those were added by name, `textExpr` and
+# `targetExpr` were still missing — same class of bug, second round of review.
+#
+# `is_expression_key` is the rule itself (backend/expression_fields.py, mirroring
+# `_isExprKey` in src/trust.ts): the explicit non-`*Expr` names, unioned with
+# anything ending in `Expr`. A new `*Expr` field is now covered on the day it is
+# added, without anyone remembering to come here.
+def _is_expr_key(k):
+    return is_expression_key(k)
 
 JS_PATTERNS = [
     (r'Math\.', 'Use math.js syntax (sin, cos, pi) not JavaScript (Math.sin, Math.PI)'),
@@ -68,7 +82,7 @@ def collect_expressions(obj, path='', skip_keys=None):
             if key in skip_keys:
                 continue
             child_path = f'{path}.{key}' if path else key
-            if key in EXPR_KEYS:
+            if _is_expr_key(key):
                 if isinstance(val, str):
                     results.append((child_path, val))
                 elif isinstance(val, list):
@@ -163,7 +177,32 @@ BUILTIN_VARS = {'t', 'x', 'y', 'z', 'u', 'v', 'pi', 'PI', 'e', 'E', 'i',
                 'sin', 'cos', 'tan', 'sqrt', 'abs', 'pow', 'min', 'max',
                 'floor', 'ceil', 'round', 'log', 'exp', 'asin', 'acos', 'atan',
                 'atan2', 'sign', 'mod', 'toFixed', 'prev', 'tanh', 'sinh', 'cosh',
-                'sec', 'csc', 'cot'}
+                'sec', 'csc', 'cot'} | set(EXTENSION_NAMES)
+# EXTENSION_NAMES is the canonical list of what this project adds to math.js
+# (backend/mathjs_extensions.py, kept in sync with src/expr.ts by a test).
+# Without it, every scene calling `dataTable` or `concat` drew an undefined-ref
+# warning — masked until now because the check is skipped for scenes that
+# import a domain library, which the dataTable-using scenes happened to do.
+
+
+#: Names an element type binds itself, per cell/sample, that are therefore
+#: defined inside its own expressions but nowhere else. Kept out of
+#: BUILTIN_VARS deliberately: a stray `row` in a vector expression is a real
+#: mistake and should still be reported.
+ELEMENT_SCOPED_VARS = {
+    # Keep in step with the overrideScope in renderTensor (src/objects/tensor.ts)
+    # and with the `valueExpr` description in schemas/lesson.schema.json. A name
+    # bound there but missing here produces exactly the spurious warning this
+    # table exists to prevent.
+    'tensor': {'row', 'col', 'idx'},
+}
+
+
+def element_scoped_vars(el):
+    """Extra identifiers legal inside this element's expressions."""
+    if not isinstance(el, dict):
+        return set()
+    return ELEMENT_SCOPED_VARS.get(el.get('type'), set())
 
 
 def extract_identifiers(expr):
@@ -217,7 +256,7 @@ def check_slider_refs(data):
                         continue
                     checked += 1
                     ids = extract_identifiers(expr)
-                    known = BUILTIN_VARS | active_sliders | func_names
+                    known = BUILTIN_VARS | active_sliders | func_names | element_scoped_vars(el)
                     unknown = ids - known
                     if unknown and not has_imports:
                         # Filter out likely false positives (short math tokens)
@@ -295,6 +334,135 @@ def check_proofs(data):
 
 
 # ---- Camera sanity ----
+
+def _iter_elements(data):
+    """Yield (path, element) for every element in root or step position."""
+    scenes = data.get('scenes', [data] if 'elements' in data else [])
+    for si, scene in enumerate(scenes):
+        for ei, el in enumerate(scene.get('elements', []) or []):
+            if isinstance(el, dict):
+                yield f'scenes[{si}].elements[{ei}]', el
+        for sti, step in enumerate(scene.get('steps', []) or []):
+            for ei, el in enumerate(step.get('add', []) or []):
+                if isinstance(el, dict):
+                    yield f'scenes[{si}].steps[{sti}].add[{ei}]', el
+
+
+def _nested_shape_errors(values, dims, depth, path):
+    """Walk nested `values` against `dims`, returning the first disagreement."""
+    if depth == len(dims):
+        if isinstance(values, list):
+            return f'nested values{path} is deeper than shape {dims}'
+        return None
+    if not isinstance(values, list):
+        return f'nested values{path} is shallower than shape {dims}'
+    if len(values) != dims[depth]:
+        return (f'nested values{path} has {len(values)} entries but shape '
+                f'{dims} needs {dims[depth]} at dimension {depth}')
+    for i, child in enumerate(values):
+        found = _nested_shape_errors(child, dims, depth + 1, f'{path}[{i}]')
+        if found:
+            return found
+    return None
+
+
+def check_tensors(data):
+    """Check tensor `shape` against `values` and `axes` label counts.
+
+    A shape that disagrees with its data renders nothing and logs to a console
+    the author is not watching, so it is worth catching here instead.
+    """
+    errors = []
+    warnings = []
+
+    for path, el in _iter_elements(data):
+        if el.get('type') != 'tensor':
+            continue
+
+        raw_shape = el.get('shape')
+        if not isinstance(raw_shape, list) or not raw_shape:
+            errors.append(f'{path}: tensor needs a `shape` array of positive integers')
+            continue
+        dims = []
+        for d in raw_shape:
+            # Integer-VALUED, not Python-int: JSON `6.0` is a float here, and
+            # both JSON Schema's `integer` and parseShape's `Number.isInteger`
+            # accept it. Requiring `isinstance(d, int)` made this check stricter
+            # than the schema and the renderer it is supposed to describe, so a
+            # valid scene drew a false error. Bools are excluded because
+            # `isinstance(True, int)` is true in Python and `[True, 2]` is not
+            # a shape anyone meant to write.
+            if isinstance(d, bool) or not isinstance(d, (int, float)) \
+                    or not float(d).is_integer() or d < 1:
+                errors.append(f'{path}.shape: {d!r} is not a positive integer')
+                break
+            dims.append(int(d))
+        if len(dims) != len(raw_shape):
+            continue
+
+        size = 1
+        for d in dims:
+            size *= d
+
+        # Rank > 2 is legal to declare but only its trailing 2D slice renders,
+        # so the rest of the data is dropped without a trace at runtime.
+        if len(dims) > 2:
+            drawn = dims[-1] * dims[-2]
+            warnings.append(
+                f'{path}.shape: rank {len(dims)} {dims} renders only the trailing '
+                f'{dims[-2]}x{dims[-1]} slice — {size - drawn} of {size} values are not shown'
+            )
+
+        values = el.get('values')
+        # Mirror renderTensor's own test -- `typeof el.valueExpr === 'string' &&
+        # el.valueExpr.trim()`. Testing key *presence* instead would let
+        # `"valueExpr": ""` suppress the values check here while the renderer,
+        # treating it as absent, went on to draw those same unchecked values.
+        raw_expr = el.get('valueExpr')
+        has_expr = isinstance(raw_expr, str) and raw_expr.strip() != ''
+
+        if values is not None and not has_expr:
+            if not isinstance(values, list):
+                errors.append(f'{path}.values: must be an array')
+            elif any(isinstance(v, list) for v in values):
+                found = _nested_shape_errors(values, dims, 0, '')
+                if found:
+                    errors.append(f'{path}.values: {found}')
+            elif len(values) != size:
+                errors.append(
+                    f'{path}.values: flat values has {len(values)} entries but '
+                    f'shape {dims} needs {size}'
+                )
+
+        if values is not None and has_expr:
+            warnings.append(f'{path}: both `values` and `valueExpr` given; `valueExpr` wins')
+
+        axes = el.get('axes')
+        if axes is not None:
+            if not isinstance(axes, list):
+                errors.append(f'{path}.axes: must be an array, one entry per shape dimension')
+            else:
+                if len(axes) > len(dims):
+                    warnings.append(
+                        f'{path}.axes: {len(axes)} entries for a rank-{len(dims)} shape; '
+                        f'the extra ones describe no axis'
+                    )
+                for ai, axis in enumerate(axes[:len(dims)]):
+                    if not isinstance(axis, dict):
+                        errors.append(f'{path}.axes[{ai}]: must be an object')
+                        continue
+                    labels = axis.get('labels')
+                    if labels is not None:
+                        if not isinstance(labels, list):
+                            errors.append(f'{path}.axes[{ai}].labels: must be an array of strings')
+                        elif len(labels) != dims[ai]:
+                            warnings.append(
+                                f'{path}.axes[{ai}].labels: {len(labels)} labels for '
+                                f'{dims[ai]} entries along that axis'
+                            )
+
+    return errors, warnings
+
 
 def check_camera(data):
     """Check camera positions are within reasonable bounds."""
@@ -477,6 +645,12 @@ def validate_file(path, fix=False):
     warnings.extend(proof_warnings)
     stats['proofs'] = (proof_count, proof_step_count, len(proof_errors), len(proof_warnings))
 
+    # Tensors
+    tensor_errors, tensor_warnings = check_tensors(data)
+    errors.extend(tensor_errors)
+    warnings.extend(tensor_warnings)
+    stats['tensors'] = (len(tensor_errors), len(tensor_warnings))
+
     # Camera
     cam_warnings = check_camera(data)
     warnings.extend(cam_warnings)
@@ -509,6 +683,7 @@ def print_report(path, errors, warnings, fixes, stats, errors_only=False):
     sc, sw = stats.get('slider_refs', (0, 0))
     pc, psc, pe, pw = stats.get('proofs', (0, 0, 0, 0))
     cw = stats.get('camera', 0)
+    te, tw = stats.get('tensors', (0, 0))
     oc, ow = stats.get('overlays', (0, 0))
     gc, gw = stats.get('semantic_graphs', (0, 0))
 
@@ -534,6 +709,8 @@ def print_report(path, errors, warnings, fixes, stats, errors_only=False):
         print(f'  Proofs:      {status(pe, pw)} ({pc} proof{"s" if pc != 1 else ""}, {psc} steps)')
     else:
         print(f'  Proofs:      N/A')
+    if te or tw:
+        print(f'  Tensors:     {status(te, tw)}')
     print(f'  Camera:      {status(0, cw)}')
     print(f'  Overlays:    {status(0, ow)} ({oc} checked)')
     if gc > 0:

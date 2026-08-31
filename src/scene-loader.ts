@@ -1089,6 +1089,12 @@ export function navigateTo(sceneIdx: number, stepIdx: number): void {
             functions: scene.functions,
             elements: scene.elements || [],
             starfield: scene.starfield,
+            // Without this, loadScene's lesson/scene data merge sees no scene
+            // data at all: this whitelist is the only thing it receives, so a
+            // scene-level `data` block was silently dropped for every
+            // lesson-format scene and `dataTable()` returned 0 against it —
+            // even though the scene format documents scene-level `data`.
+            data: scene.data,
         };
         loadScene(baseSpec);
 
