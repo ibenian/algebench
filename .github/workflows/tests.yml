@@ -6,21 +6,28 @@ name: Tests
 # ALWAYS runs (the check always reports); what varies is depth.
 #
 # Depth is decided by EVENT, not by which files changed:
-#   pull_request              → SAMPLED (conftest's default --sampled 200)
-#   push(main) / dispatch     → EXHAUSTIVE
+#   pull_request           → --sampled 20, and -m 'not timing'
+#   push(main) / dispatch  → --exhaustive (a SUPERSET of any sampled run)
 #
-# The trade is deliberate. A PR gets fast feedback; main gets the full
-# cross-product before anything is considered green, so a combination the
-# sampled draw happened to miss is caught at the merge rather than never.
-# The window this opens is one merge wide: a PR can go green and main can then
-# fail, which is the normal cost of sampling and is why main runs full.
+# A PR gets fast feedback; main runs everything before it counts as green. The
+# window that opens is one merge wide, which is the ordinary cost of sampling.
 #
-# This used to also run exhaustive for any PR touching Python, which in practice
-# meant most PRs took the slow path. Measured, that clause bought little: the
-# depth flag moves ~30s of a ~3.5min suite (the cross-product coverage test,
-# 25.7s → 29.7s, and the proof-edit sweep, 45.6s → 71.2s). The rest of the suite
-# is identical either way, and the slowest tests in it — CAS-backed proof edits
-# and cas_guard concurrency — are unaffected by the flag entirely.
+# main being a superset is what makes the small PR sample safe. `exhaustive()`
+# pins the operator to "add" and varies the other four axes; `sampled()` draws
+# from all five. So the sample is the only thing that ever reaches the other
+# five operators, and before it was folded into the exhaustive run, shrinking
+# the PR sample silently shrank the project's total coverage.
+#
+# Sizing, measured rather than guessed, on a 205.7s local suite:
+#   -m 'not timing'   205.7s → 151.2s   (7 tests that sleep on real timeouts)
+#   --sampled 20      151.2s → 128.9s
+#   --sampled 1       worth a further 0.9s — below the noise floor, and a real
+#                     PR build of it came in 43s SLOWER than --sampled 20.
+#
+# Test selection is therefore spent. What remains is not selection: the runner
+# is ~2.4x slower than a dev machine, `Set up .venv` rebuilds every run (~35s),
+# and the bulk of execution is CAS-backed proof edits, which are CPU-bound and
+# would parallelise.
 on:
   pull_request:
   push:
