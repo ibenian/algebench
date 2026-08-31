@@ -261,10 +261,27 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
         return null;
     }
 
-    // Per-component finite check, for the same reason as `gap` below: one NaN
-    // in the origin would propagate through every cell corner.
+    // Coerced, then checked per component. `$defs/vec3` permits a component to
+    // be a string, so a bare `Number.isFinite` would silently turn `"2"` into 0
+    // and pin the lattice to the origin.
+    //
+    // The strings vec3 permits are math.js *expressions*, and this element does
+    // not evaluate them: the lattice is built once and its whole point is that
+    // cell positions are arithmetic rather than per-frame expressions. So a
+    // component that will not coerce to a number is a limitation worth naming
+    // out loud rather than absorbing as a 0.
     const originRaw = Array.isArray(el.origin) ? el.origin : [];
-    const origin = [0, 1, 2].map(i => (Number.isFinite(originRaw[i]) ? originRaw[i] : 0)) as Vec3;
+    const origin = [0, 1, 2].map(i => {
+        const raw = originRaw[i];
+        if (raw === undefined || raw === null) return 0;
+        const n = Number(raw);
+        if (Number.isFinite(n)) return n;
+        console.warn(
+            `tensor${el.id ? ` "${el.id}"` : ''}: origin[${i}] is ${JSON.stringify(raw)}, which is not a `
+            + `number. tensor builds its lattice once and does not evaluate expression origins, so this `
+            + `component is treated as 0.`);
+        return 0;
+    }) as Vec3;
     const cellSize = (typeof el.cellSize === 'number' && el.cellSize > 0) ? el.cellSize : 1;
     // `gap` is a fraction of the cell pitch, so a lattice keeps its spacing when
     // an author scales `cellSize`.

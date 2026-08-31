@@ -8040,7 +8040,14 @@ function renderTensor(el, _view) {
 		0,
 		1,
 		2
-	].map((i) => Number.isFinite(originRaw[i]) ? originRaw[i] : 0);
+	].map((i) => {
+		const raw = originRaw[i];
+		if (raw === void 0 || raw === null) return 0;
+		const n = Number(raw);
+		if (Number.isFinite(n)) return n;
+		console.warn(`tensor${el.id ? ` "${el.id}"` : ""}: origin[${i}] is ${JSON.stringify(raw)}, which is not a number. tensor builds its lattice once and does not evaluate expression origins, so this component is treated as 0.`);
+		return 0;
+	});
 	const cellSize = typeof el.cellSize === "number" && el.cellSize > 0 ? el.cellSize : 1;
 	const gapRaw = Number.isFinite(el.gap) ? el.gap : .08;
 	const fill = cellSize * (1 - Math.max(0, Math.min(.9, gapRaw)));
