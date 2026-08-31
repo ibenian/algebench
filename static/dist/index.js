@@ -6076,11 +6076,11 @@ function renderAnimatedVector(el, view) {
 /**
 * Colormaps — turn a scalar in [0,1] into an RGB triple.
 *
-* One implementation serves two callers that used to be unrelated: `polygon`'s
-* static `gradient.stops`, and the `colorExpr` per-frame colour on animated
-* elements. Keeping them on the same interpolator is the point — a two-stop
-* colormap and a two-stop gradient must produce the same colour, or an author
-* who reaches for one after the other gets a silent mismatch.
+* One implementation serves two callers that would otherwise drift: `polygon`'s
+* static `gradient.stops`, and the per-cell colour of a `tensor`. Keeping them
+* on the same interpolator is the point — a two-stop colormap and a two-stop
+* gradient must produce the same colour, or an author who reaches for one after
+* the other gets a silent mismatch.
 *
 * Colours are normalized RGB (0-1), which is what `parseColor` returns and what
 * `THREE.Color.setRGB` wants, so nothing converts on the way through.
@@ -6193,7 +6193,7 @@ function buildColorMap(spec) {
 	return namedMap(DEFAULT_MAP);
 }
 /**
-* Normalize a raw `colorExpr` value onto [0,1] over `domain`, or `null` when it
+* Normalize a raw cell value onto [0,1] over `domain`, or `null` when it
 * is not a usable number.
 *
 * Returning `null` rather than 0 for a bad value matters: 0 is a legitimate
@@ -7163,8 +7163,6 @@ function renderAnimatedPolygon(el, view) {
 	const color = parseColor(el.color || "#aa66ff");
 	const opacityRaw = el.opacity !== void 0 ? el.opacity : .3;
 	const opacityExpr = typeof opacityRaw === "string" ? compileExpr(opacityRaw) : null;
-	const colorExprFn = typeof el.colorExpr === "string" && el.colorExpr.trim() ? compileExpr(el.colorExpr.trim()) : null;
-	const colorMapFn = colorExprFn ? buildColorMap(el.colorMap) : null;
 	const opacity = opacityExpr ? .3 : opacityRaw;
 	const thickness = el.thickness || .02;
 	const label = el.label;
@@ -7342,13 +7340,6 @@ function renderAnimatedPolygon(el, view) {
 	const mesh = new THREE.Mesh(geom, mat);
 	mesh.userData.targetOpacity = opacity;
 	mesh.userData.ignorePlaneOpacity = !!sh.ignorePlaneOpacity;
-	if (colorExprFn && colorMapFn) try {
-		const u0 = normalizeColorValue(evalExpr(colorExprFn, 0), el.colorDomain);
-		if (u0 !== null) {
-			const rgb0 = colorMapFn(u0);
-			mat.color.setRGB(rgb0[0], rgb0[1], rgb0[2]);
-		}
-	} catch (_err) {}
 	const _serialA = el.renderOrder !== void 0 ? el.renderOrder : animatedPolygonState._planeMeshSerial++;
 	mesh.renderOrder = _serialA;
 	mesh.position.z = el.depthZ !== void 0 ? el.depthZ : _serialA * 2e-4;
@@ -7424,13 +7415,6 @@ function renderAnimatedPolygon(el, view) {
 					mat.opacity = animatedPolygonState.displayParams.planeOpacity * (op / .5);
 					if (outlineLineNode && !outlineOpacityExpr) outlineLineNode.set("opacity", Math.min(1, op * 2));
 				}
-				if (colorExprFn && colorMapFn) try {
-					const u = normalizeColorValue(evalExpr(colorExprFn, tSec), el.colorDomain);
-					if (u !== null) {
-						const rgb = colorMapFn(u);
-						mat.color.setRGB(rgb[0], rgb[1], rgb[2]);
-					}
-				} catch (_err) {}
 				if (outlineArrayNode) outlineArrayNode.set("data", buildOutlinePts(verts));
 				if (outlineLineNode && outlineWidthExpr) outlineLineNode.set("width", evalExpr(outlineWidthExpr, tSec));
 				if (outlineLineNode && outlineOpacityExpr) outlineLineNode.set("opacity", evalExpr(outlineOpacityExpr, tSec));

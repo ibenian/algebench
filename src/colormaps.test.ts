@@ -1,5 +1,5 @@
-// Covers src/colormaps.ts — the scalar→colour ramp behind `colorExpr` and,
-// after this change, behind `polygon`'s `gradient.stops` as well.
+// Covers src/colormaps.ts — the scalar→colour ramp behind `tensor`'s cell
+// colours and, after this change, behind `polygon`'s `gradient.stops` as well.
 //
 // colormaps imports parseColor from labels.ts, whose import chain reads `math`
 // and `window` at module-eval time. Both are stubbed before the import, as in

@@ -1,11 +1,11 @@
 /**
  * Colormaps — turn a scalar in [0,1] into an RGB triple.
  *
- * One implementation serves two callers that used to be unrelated: `polygon`'s
- * static `gradient.stops`, and the `colorExpr` per-frame colour on animated
- * elements. Keeping them on the same interpolator is the point — a two-stop
- * colormap and a two-stop gradient must produce the same colour, or an author
- * who reaches for one after the other gets a silent mismatch.
+ * One implementation serves two callers that would otherwise drift: `polygon`'s
+ * static `gradient.stops`, and the per-cell colour of a `tensor`. Keeping them
+ * on the same interpolator is the point — a two-stop colormap and a two-stop
+ * gradient must produce the same colour, or an author who reaches for one after
+ * the other gets a silent mismatch.
  *
  * Colours are normalized RGB (0-1), which is what `parseColor` returns and what
  * `THREE.Color.setRGB` wants, so nothing converts on the way through.
@@ -107,7 +107,7 @@ export function buildColorMap(spec: unknown): ColorMapFn {
 }
 
 /**
- * Normalize a raw `colorExpr` value onto [0,1] over `domain`, or `null` when it
+ * Normalize a raw cell value onto [0,1] over `domain`, or `null` when it
  * is not a usable number.
  *
  * Returning `null` rather than 0 for a bad value matters: 0 is a legitimate

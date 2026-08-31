@@ -623,11 +623,7 @@ export interface Element {
    */
   color?: string | [number, number, number];
   /**
-   * Math.js expression returning a SCALAR, mapped through 'colorMap' to the element's color and re-evaluated every frame. May use slider IDs and 't'. Animated types only (animated_polygon). Normalized over 'colorDomain' (default [0,1]) and clamped. Example: "dataTable('attn', 3, 'w5')". Without it the static 'color' is used; the static 'color' remains the legend swatch.
-   */
-  colorExpr?: string;
-  /**
-   * Color ramp applied to 'colorExpr'. A named map, or {stops:[{t,color}, …]} for a custom palette (same stop format as 'gradient.stops'). Default 'viridis'. Use a sequential map ('viridis', 'magma') for non-negative data; 'blueRed' is diverging and implies a sign, so it is only correct for signed data. Inert without 'colorExpr'.
+   * TENSOR ONLY. Color ramp applied to a tensor's values. A named map, or {stops:[{t,color}, …]} for a custom palette (same stop format as 'gradient.stops'). Default 'viridis'. Use a sequential map ('viridis', 'magma') for non-negative data; 'blueRed' is diverging and implies a sign, so it is only correct for signed data.
    */
   colorMap?:
     | ('viridis' | 'magma' | 'blueRed')
@@ -661,7 +657,7 @@ export interface Element {
         ];
       };
   /**
-   * Input range [lo,hi] that 'colorExpr' (or a tensor's 'valueExpr'/'values') is normalized over before the color map is applied. Values outside are clamped. Default [0,1].
+   * TENSOR ONLY. Input range [lo,hi] that a tensor's 'valueExpr'/'values' are normalized over before 'colorMap' is applied. Values outside are clamped. Default [0,1].
    *
    * @minItems 2
    * @maxItems 2
