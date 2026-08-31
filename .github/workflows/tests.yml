@@ -54,16 +54,20 @@ jobs:
       - name: Run tests
         id: tests
         run: |
-          # Depth by event: a pull request runs sampled for fast feedback, and
-          # anything that lands on main runs the full cross-product.
+          # Depth by event: a pull request runs sampled and skips the clock-bound
+          # tests; anything that lands on main runs everything.
+          # An ARRAY, not a string: `-m "not timing"` contains a space, and an
+          # unquoted string would word-split into `-m`, `'not`, `timing'`.
           if [ "${{ github.event_name }}" != "pull_request" ]; then
-            MODE="--exhaustive"
+            ARGS=(--exhaustive)
+            SHOWN="--exhaustive"
             REASON="${{ github.event_name }} event — main must stay green"
-            DEPTH="FULL — exhaustive cross-product"
+            DEPTH="FULL — exhaustive cross-product, timing tests included"
           else
-            MODE=""
-            REASON="pull request — full cross-product runs on merge to main"
-            DEPTH="SAMPLED — conftest default (--sampled 200)"
+            ARGS=(-m "not timing")
+            SHOWN="-m 'not timing'"
+            REASON="pull request — full run happens on merge to main"
+            DEPTH="SAMPLED — --sampled 200, timing tests deselected"
           fi
           # Surface the mode everywhere it's visible: the log, an annotation, and
           # the run's Summary tab.
@@ -77,9 +81,9 @@ jobs:
             echo ""
             echo "**Reason:** ${REASON}"
             echo ""
-            echo "\`pytest tests/ ${MODE:-(sampled)}\`"
+            echo "\`pytest tests/ ${SHOWN}\`"
           } >> "$GITHUB_STEP_SUMMARY"
-          ./run.sh -m pytest tests/ -v --tb=short $MODE --junitxml=test-results.xml 2>&1 | tee test-output.txt
+          ./run.sh -m pytest tests/ -v --tb=short "${ARGS[@]}" --junitxml=test-results.xml 2>&1 | tee test-output.txt
           echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
 
       - name: Post failure report as PR comment

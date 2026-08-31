@@ -12,6 +12,16 @@ import os
 os.environ.setdefault("ALGEBENCH_CAS_ISOLATION", "thread")
 
 
+def pytest_configure(config):
+    config.addinivalue_line(
+        "markers",
+        "timing: spends most of its wall clock WAITING on a real timeout, "
+        "SIGTERM grace or process respawn rather than computing. Such a test "
+        "does not get faster on better hardware and is the first to flake on a "
+        "loaded runner. Deselect with -m 'not timing'.",
+    )
+
+
 def pytest_addoption(parser):
     parser.addoption(
         "--exhaustive",

@@ -173,6 +173,7 @@ def test_process_error_returns_default_keeps_worker(monkeypatch):
 # --------------------------------------------------------------------------- #
 
 
+@pytest.mark.timing
 def test_process_kills_nonterminating_and_reclaims(monkeypatch):
     """A non-terminating CPU-bound call is stopped and its worker reaped."""
     monkeypatch.setenv("ALGEBENCH_CAS_ISOLATION", "process")
@@ -195,6 +196,7 @@ def test_process_kills_nonterminating_and_reclaims(monkeypatch):
     assert cas_guard.guard(W.inc, 100) == 101
 
 
+@pytest.mark.timing
 def test_client_timeout_separate_from_recovery(monkeypatch):
     """The caller returns at the client timeout even when the kill grace is long."""
     monkeypatch.setenv("ALGEBENCH_CAS_ISOLATION", "process")
@@ -212,6 +214,7 @@ def test_client_timeout_separate_from_recovery(monkeypatch):
     assert elapsed < 1.5
 
 
+@pytest.mark.timing
 def test_graceful_sigterm_path(monkeypatch, caplog):
     """A SIGTERM-interruptible worker exits without escalating to SIGKILL."""
     monkeypatch.setenv("ALGEBENCH_CAS_ISOLATION", "process")
@@ -225,6 +228,7 @@ def test_graceful_sigterm_path(monkeypatch, caplog):
     assert "SIGKILL" not in caplog.text       # graceful unwind sufficed
 
 
+@pytest.mark.timing
 def test_hard_sigkill_path(monkeypatch, caplog):
     """A worker that ignores SIGTERM is force-killed; the core is still reclaimed."""
     monkeypatch.setenv("ALGEBENCH_CAS_ISOLATION", "process")
@@ -261,6 +265,7 @@ def test_worker_logging_is_tagged():
 # --------------------------------------------------------------------------- #
 
 
+@pytest.mark.timing
 def test_worker_recycles_after_max_calls(monkeypatch):
     monkeypatch.setenv("ALGEBENCH_CAS_ISOLATION", "process")
     monkeypatch.setenv("ALGEBENCH_CAS_POOL_SIZE", "1")
@@ -277,6 +282,7 @@ def test_worker_recycles_after_max_calls(monkeypatch):
     assert len(set(pids)) >= 2
 
 
+@pytest.mark.timing
 def test_pool_saturation_degrades(monkeypatch):
     """When every worker is busy and none free up, calls degrade to default."""
     monkeypatch.setenv("ALGEBENCH_CAS_ISOLATION", "process")
@@ -303,6 +309,7 @@ def test_pool_saturation_degrades(monkeypatch):
     assert results["hog"] == "slow"
 
 
+@pytest.mark.timing
 def test_concurrent_mixed_load(monkeypatch):
     """Concurrent fast + runaway calls: fast ones stay correct, runaways killed.
 
