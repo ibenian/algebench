@@ -379,10 +379,18 @@ def check_tensors(data):
             continue
         dims = []
         for d in raw_shape:
-            if not isinstance(d, int) or isinstance(d, bool) or d < 1:
+            # Integer-VALUED, not Python-int: JSON `6.0` is a float here, and
+            # both JSON Schema's `integer` and parseShape's `Number.isInteger`
+            # accept it. Requiring `isinstance(d, int)` made this check stricter
+            # than the schema and the renderer it is supposed to describe, so a
+            # valid scene drew a false error. Bools are excluded because
+            # `isinstance(True, int)` is true in Python and `[True, 2]` is not
+            # a shape anyone meant to write.
+            if isinstance(d, bool) or not isinstance(d, (int, float)) \
+                    or not float(d).is_integer() or d < 1:
                 errors.append(f'{path}.shape: {d!r} is not a positive integer')
                 break
-            dims.append(d)
+            dims.append(int(d))
         if len(dims) != len(raw_shape):
             continue
 

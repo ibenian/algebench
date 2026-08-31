@@ -338,6 +338,11 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     const geom = new THREE.BufferGeometry();
     geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     const colorAttr = new THREE.BufferAttribute(colors, 3);
+    // Positions never move, but a `valueExpr` tensor rewrites this whole buffer
+    // every frame. Saying so lets the driver keep it somewhere it can be
+    // respecified cheaply, rather than treating it as write-once like the
+    // default STATIC usage claims.
+    colorAttr.setUsage(THREE.DynamicDrawUsage);
     geom.setAttribute('color', colorAttr);
 
     /** Paint one cell's six vertices from a raw value. */

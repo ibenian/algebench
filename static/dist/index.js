@@ -8087,6 +8087,7 @@ function renderTensor(el, _view) {
 	const geom = new THREE.BufferGeometry();
 	geom.setAttribute("position", new THREE.BufferAttribute(positions, 3));
 	const colorAttr = new THREE.BufferAttribute(colors, 3);
+	colorAttr.setUsage(THREE.DynamicDrawUsage);
 	geom.setAttribute("color", colorAttr);
 	/** Paint one cell's six vertices from a raw value. */
 	function paintCell(cell, raw) {
