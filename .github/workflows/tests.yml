@@ -3,12 +3,24 @@ name: Tests
 # `pytest` is a REQUIRED status check (the "main protection" ruleset), so it must
 # report on every PR — path-filtering the workflow would leave a docs-only PR
 # stuck on "Expected — waiting for status to be reported" forever. So the suite
-# ALWAYS runs (the check always reports); what varies is depth: a PR that touches
-# Python runs the FULL exhaustive semantic-graph cross-product, while a PR with no
-# Python changes runs a faster SAMPLED subset (conftest's default --sampled 200).
-# In practice that's ~5193 collected tests exhaustive vs ~3977 sampled — the delta
-# is the cross-product coverage test; the rest of the suite runs the same either
-# way. push(main) and manual dispatch always run exhaustive — main must stay green.
+# ALWAYS runs (the check always reports); what varies is depth.
+#
+# Depth is decided by EVENT, not by which files changed:
+#   pull_request              → SAMPLED (conftest's default --sampled 200)
+#   push(main) / dispatch     → EXHAUSTIVE
+#
+# The trade is deliberate. A PR gets fast feedback; main gets the full
+# cross-product before anything is considered green, so a combination the
+# sampled draw happened to miss is caught at the merge rather than never.
+# The window this opens is one merge wide: a PR can go green and main can then
+# fail, which is the normal cost of sampling and is why main runs full.
+#
+# This used to also run exhaustive for any PR touching Python, which in practice
+# meant most PRs took the slow path. Measured, that clause bought little: the
+# depth flag moves ~30s of a ~3.5min suite (the cross-product coverage test,
+# 25.7s → 29.7s, and the proof-edit sweep, 45.6s → 71.2s). The rest of the suite
+# is identical either way, and the slowest tests in it — CAS-backed proof edits
+# and cas_guard concurrency — are unaffected by the flag entirely.
 on:
   pull_request:
   push:
@@ -27,24 +39,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Detect Python changes
-        id: changes
-        if: github.event_name == 'pull_request'
-        uses: dorny/paths-filter@v3
-        with:
-          filters: |
-            python:
-              - '**/*.py'
-              - 'pyproject.toml'
-              - 'pytest.ini'
-              - 'setup.cfg'
-              - 'conftest.py'
-              - 'requirements*.txt'
-              - 'requirements.lock'
-              - 'run.sh'
-              - 'algebench'
-              - '.github/workflows/tests.yml'
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -60,15 +54,15 @@ jobs:
       - name: Run tests
         id: tests
         run: |
-          # Full exhaustive cross-product when Python changed (or on push/dispatch);
-          # otherwise a faster sampled run (conftest defaults to --sampled 200).
-          if [ "${{ github.event_name }}" != "pull_request" ] || [ "${{ steps.changes.outputs.python }}" == "true" ]; then
+          # Depth by event: a pull request runs sampled for fast feedback, and
+          # anything that lands on main runs the full cross-product.
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
             MODE="--exhaustive"
-            REASON="${{ github.event_name == 'pull_request' && 'Python files changed' || format('{0} event', github.event_name) }}"
+            REASON="${{ github.event_name }} event — main must stay green"
             DEPTH="FULL — exhaustive cross-product"
           else
             MODE=""
-            REASON="no Python files changed"
+            REASON="pull request — full cross-product runs on merge to main"
             DEPTH="SAMPLED — conftest default (--sampled 200)"
           fi
           # Surface the mode everywhere it's visible: the log, an annotation, and
