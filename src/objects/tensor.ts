@@ -391,10 +391,24 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     }
     colorAttr.needsUpdate = true;
 
+    // One formula for the first paint and for the global Planes control, which
+    // recomputes `targetOpacity * planeOpacity` (or `targetOpacity` alone when
+    // ignoring it — see overlay.ts). Painting one thing here and storing
+    // another made the first drag of that control jump: at the default
+    // planeOpacity of 0.2 an `opacity: 0.95` tensor started at 0.38 and
+    // snapped to 0.95.
+    //
+    // Unlike animated_polygon this carries no `/ 0.5` boost. That fudge exists
+    // there to keep planes visible at the 0.2 default and cannot be removed
+    // without restyling every shipped scene, but it also means `opacity` above
+    // 0.5 does not mean what it says. A new element should not inherit that;
+    // an author asking for 0.95 gets 0.95, and reaches for
+    // `shader.ignorePlaneOpacity` when they want it independent of the control.
+    const ignoresPlaneOpacity = !!sh.ignorePlaneOpacity;
     const mat = new THREE.MeshBasicMaterial({
         vertexColors: true,
         transparent: true,
-        opacity: tensorState.displayParams.planeOpacity * (opacity / 0.5),
+        opacity: ignoresPlaneOpacity ? opacity : tensorState.displayParams.planeOpacity * opacity,
         side: THREE.DoubleSide,
         depthWrite: false,
     });
@@ -403,7 +417,7 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     // Read back by the global Planes opacity control; without these it dims the
     // tensor with no way back and no way to opt out.
     mesh.userData.targetOpacity = opacity;
-    mesh.userData.ignorePlaneOpacity = !!sh.ignorePlaneOpacity;
+    mesh.userData.ignorePlaneOpacity = ignoresPlaneOpacity;
     const serial = el.renderOrder !== undefined ? el.renderOrder : tensorState._planeMeshSerial++;
     mesh.renderOrder = serial;
     tensorState.three.scene.add(mesh);
