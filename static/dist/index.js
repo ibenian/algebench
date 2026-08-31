@@ -8047,6 +8047,10 @@ function renderTensor(el, _view) {
 	const fill = cellSize * (1 - Math.max(0, Math.min(.9, gapRaw)));
 	const layout = gridLayout(dims, origin, cellSize, typeof el.plane === "string" && PLANE_AXES[el.plane] ? el.plane : "xy");
 	const { rows, cols, drawn } = layout;
+	if (dims.length > 2) {
+		const total = shapeSize(dims);
+		console.warn(`tensor${el.id ? ` "${el.id}"` : ""}: shape [${dims.join(", ")}] has rank ${dims.length}; the grid layout draws the trailing ${rows}x${cols} slice, so ${total - drawn} of ${total} values are not shown. Split it into separate tensors with their own origin until slice layouts exist.`);
+	}
 	const baseColor = parseColor(el.color || "#3b528b");
 	const colorMapFn = buildColorMap(el.colorMap);
 	const colorDomain = el.colorDomain;

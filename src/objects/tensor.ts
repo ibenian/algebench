@@ -272,6 +272,19 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     const layout = gridLayout(dims, origin, cellSize, plane);
     const { rows, cols, drawn } = layout;
 
+    // Rank > 2 parses and validates, but the grid layout draws the trailing 2D
+    // slice only. Saying so is the difference between a documented limitation
+    // and silent data loss: without it an author sees a plausible 6x6 and no
+    // sign that the other slices exist.
+    if (dims.length > 2) {
+        const total = shapeSize(dims);
+        console.warn(
+            `tensor${el.id ? ` "${el.id}"` : ''}: shape [${dims.join(', ')}] has rank ${dims.length}; `
+            + `the grid layout draws the trailing ${rows}x${cols} slice, so ${total - drawn} of `
+            + `${total} values are not shown. Split it into separate tensors with their own origin `
+            + `until slice layouts exist.`);
+    }
+
     const baseColor = parseColor(el.color || '#3b528b') as Rgb3;
     const colorMapFn = buildColorMap(el.colorMap);
     const colorDomain = el.colorDomain;

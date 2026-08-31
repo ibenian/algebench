@@ -29,7 +29,7 @@ from backend.mathjs_extensions import EXTENSION_NAMES  # noqa: E402
 
 EXPR_KEYS = {'expr', 'fromExpr', 'x', 'y', 'z', 'fx', 'fy', 'fz', 'expression',
              'radiusExpr', 'visibleExpr', 'labelExpr', 'toExpr', 'positionExpr',
-             'centerExpr', 'rangeExpr', 'valueExpr', 'colorExpr',
+             'centerExpr', 'rangeExpr', 'valueExpr',
              # Implemented but previously unlisted here, so their expressions
              # were never checked for JS or scanned for slider references:
              'sizeExpr', 'opacityExpr'}
@@ -184,7 +184,11 @@ BUILTIN_VARS = {'t', 'x', 'y', 'z', 'u', 'v', 'pi', 'PI', 'e', 'E', 'i',
 #: BUILTIN_VARS deliberately: a stray `row` in a vector expression is a real
 #: mistake and should still be reported.
 ELEMENT_SCOPED_VARS = {
-    'tensor': {'row', 'col'},
+    # Keep in step with the overrideScope in renderTensor (src/objects/tensor.ts)
+    # and with the `valueExpr` description in schemas/lesson.schema.json. A name
+    # bound there but missing here produces exactly the spurious warning this
+    # table exists to prevent.
+    'tensor': {'row', 'col', 'idx'},
 }
 
 
@@ -386,8 +390,24 @@ def check_tensors(data):
         for d in dims:
             size *= d
 
+        # Rank > 2 is legal to declare but only its trailing 2D slice renders,
+        # so the rest of the data is dropped without a trace at runtime.
+        if len(dims) > 2:
+            drawn = dims[-1] * dims[-2]
+            warnings.append(
+                f'{path}.shape: rank {len(dims)} {dims} renders only the trailing '
+                f'{dims[-2]}x{dims[-1]} slice — {size - drawn} of {size} values are not shown'
+            )
+
         values = el.get('values')
-        if values is not None and 'valueExpr' not in el:
+        # Mirror renderTensor's own test -- `typeof el.valueExpr === 'string' &&
+        # el.valueExpr.trim()`. Testing key *presence* instead would let
+        # `"valueExpr": ""` suppress the values check here while the renderer,
+        # treating it as absent, went on to draw those same unchecked values.
+        raw_expr = el.get('valueExpr')
+        has_expr = isinstance(raw_expr, str) and raw_expr.strip() != ''
+
+        if values is not None and not has_expr:
             if not isinstance(values, list):
                 errors.append(f'{path}.values: must be an array')
             elif any(isinstance(v, list) for v in values):
@@ -400,7 +420,7 @@ def check_tensors(data):
                     f'shape {dims} needs {size}'
                 )
 
-        if values is not None and el.get('valueExpr'):
+        if values is not None and has_expr:
             warnings.append(f'{path}: both `values` and `valueExpr` given; `valueExpr` wins')
 
         axes = el.get('axes')
