@@ -23,7 +23,8 @@ from __future__ import annotations
 
 import dspy
 
-from .proposed import SUPPORTED_TYPES, ProposedElement, ProposedSlider, ProposedStep
+from .proposed import (
+    SUPPORTED_TYPES, ProposedElement, ProposedFunction, ProposedSlider, ProposedStep)
 
 
 class BuildSceneInputs(dspy.Signature):
@@ -179,6 +180,33 @@ class BuildSceneSig(BuildSceneInputs):
     `to_pos: rx, ry, 0` follows the reader's hand. Give the ids that appear in
     coordinates a slider, or those coordinates never resolve.
 
+    STATE A DERIVATION ONCE, IN `functions`. A scene function is a named formula
+    every expression in the scene can call — `{name: projK, args: ``, expr:
+    (ax*bx + ay*by) / (ax*ax + ay*ay)}` makes `projK()` mean that everywhere.
+    Arguments are optional and usually unnecessary: a function with none still
+    sees every slider.
+
+    Use one whenever the same subexpression would appear more than twice. A
+    projection written into a vector's x, its y, and both ends of a line is FOUR
+    copies of one idea, and a scene that did exactly that had the same mistake in
+    all four. One definition is one place to be right.
+
+    They are math.js, like every coordinate — one expression, no `let`, no
+    `return`, no semicolons. math.js SPELLS SEVERAL THINGS DIFFERENTLY from
+    JavaScript, and getting one wrong is invisible: the expression simply fails
+    to parse and every call to it returns 0.
+
+    ==========================  ====================================
+    `==`                        NOT `===`
+    `or`, `and`, `not`          NOT `||`, `&&`, `!`
+    `toFixed(x, 2)`             NOT `x.toFixed(2)` — call by name
+    `a ? b : c`                 this one IS the same, and is what to use
+    ==========================  ====================================
+
+    A name already taken by a slider or by math.js (`max`, `hypot`, `abs`, …) is
+    refused, because the other one wins and your function is silently never
+    called.
+
     WHAT YOU DO NOT DECIDE. These are computed from what you propose, and a
     plausible guess at them is worse than none:
 
@@ -218,6 +246,10 @@ class BuildSceneSig(BuildSceneInputs):
         desc="the interactive controls, if any. Each names the step that "
              "introduces it and the variable name coordinates use. Empty when "
              "nothing in the scene varies")
+    functions: list[ProposedFunction] = dspy.OutputField(
+        desc="named formulas the scene's expressions may call, so a derivation "
+             "is written ONCE rather than copied into every element that needs "
+             "it. Empty when nothing repeats")
     elements: list[ProposedElement] = dspy.OutputField(
         desc=f"every object drawn. Types: {', '.join(SUPPORTED_TYPES)} — NOTHING "
              f"ELSE, and no keys beyond the ones in the block template. Each one "

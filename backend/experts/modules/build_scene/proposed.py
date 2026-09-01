@@ -61,6 +61,17 @@ SUPPORTED_TYPES = (
 #: `step` for an element that is present from the start.
 SCENE_LEVEL = -1
 
+#: Scene functions in one scene. NOT a truncation point — `compose` refuses on
+#: it. Elements call a function BY NAME, so silently dropping the tail of the
+#: list leaves those calls resolving to nothing, which math.js reports at
+#: EVALUATION time and the renderer swallows: a scene that draws wrong geometry
+#: and says nothing. The same hazard is why MAX_SLIDERS is set generously.
+#:
+#: 16 because the model reaches for these readily. The busiest corpus scene
+#: declares 2, but one live dot-product build produced 6 unprompted, so a cap
+#: near that number would refuse ordinary work rather than bound runaway.
+MAX_FUNCTIONS = 16
+
 
 class ProposedElement(BaseModel):
     """One object the model wants in the scene."""
@@ -193,6 +204,48 @@ class ProposedElement(BaseModel):
         description="a question a reader might ask about this object, for the "
                     "Ask-AI button. Markdown with $…$ for any maths; leave empty "
                     "and one will be written for you")
+
+
+class ProposedFunction(BaseModel):
+    """One named formula the whole scene can call.
+
+    The place to put a derivation ONCE. Without it the same expression is retyped
+    into every element that needs it, which is how a scene ends up stating the
+    same maths four times — observed on a dot-product scene, where the projection
+    scalar `(ax*bx + ay*by) / (ax*ax + ay*ay)` appeared in a vector's x, its y,
+    and both ends of a line, and carried an identical mistake in all four.
+
+    `args` is a STRING, like every list-shaped field here: `LineAdapter` is one
+    level deep, so `v, rn` rather than `["v", "rn"]`. See the module docstring.
+
+    A function with no `args` is still useful and is how the corpus mostly uses
+    them — it reads the sliders directly, so `projK()` sees `ax` and `bx` without
+    being handed them.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    name: str = Field(
+        default="",
+        description="what expressions call it, e.g. projK. A valid math.js "
+                    "identifier: letters, digits and underscore, not starting "
+                    "with a digit. Must not be the name of a slider or of a "
+                    "math.js function — `max`, `hypot` and the rest are taken")
+    args: str = Field(
+        default="",
+        description="its parameters, comma separated, e.g. `v, rn`. LEAVE EMPTY "
+                    "to read the sliders directly, which is usually what you "
+                    "want: a function with no arguments still sees every slider")
+    expr: str = Field(
+        default="",
+        description=f"what it computes, in MATH.JS, e.g. `(ax*bx + ay*by) / "
+                    f"(ax*ax + ay*ay)`. One expression — no `let`, no `return`, "
+                    f"no semicolons. It may name any slider, and may call ANY "
+                    f"OTHER SCENE FUNCTION regardless of the order they are "
+                    f"listed in — they are all registered before any of them "
+                    f"runs. Every math.js function is available, plus these, "
+                    f"which are this project's own and exist nowhere else: "
+                    f"{_EXTENSIONS}")
 
 
 class ProposedSlider(BaseModel):
