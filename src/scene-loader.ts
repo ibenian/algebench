@@ -662,6 +662,16 @@ function fadeInTracker(tracker: SubTracker, duration?: number): void {
         entry.mesh.material.transparent = true;
         entry.mesh.material.opacity = 0;
     }
+    // Fade each plane mesh back to exactly what its renderer just painted.
+    // Renderers disagree on whether `planeOpacity` is already folded into that
+    // number — polygon/tensor/animated_polygon multiply it in, sphere and the
+    // rest paint the raw opacity — so any formula recomputed here lands wrong
+    // for one camp or the other. Snapshotting sidesteps the disagreement, the
+    // way fadeOutTracker already does. Reading `userData.targetOpacity` as an
+    // absolute was the old bug: animated_polygon stores a base above 1
+    // (opacity / 0.5), so those faded in fully opaque and stayed there —
+    // updateFrame only rewrites opacity when an opacity *expression* exists.
+    const planeOps = tracker.planeMeshes.map(m => m.material.opacity);
     for (const m of tracker.planeMeshes) {
         m.material.transparent = true;
         m.material.opacity = 0;
@@ -692,9 +702,8 @@ function fadeInTracker(tracker: SubTracker, duration?: number): void {
             const globalOp = entry.isShaft ? sceneState.displayParams.vectorOpacity : sceneState.displayParams.arrowOpacity;
             entry.mesh.material.opacity = ease * Math.max(0, Math.min(1, baseOp * globalOp));
         }
-        for (const m of tracker.planeMeshes) {
-            const targetOp = m.userData.targetOpacity !== undefined ? m.userData.targetOpacity : sceneState.displayParams.planeOpacity;
-            m.material.opacity = ease * targetOp;
+        for (let i = 0; i < tracker.planeMeshes.length; i++) {
+            tracker.planeMeshes[i]!.material.opacity = ease * planeOps[i]!;
         }
         for (const lbl of tracker.labels) {
             lbl.el.style.opacity = String(ease * sceneState.displayParams.labelOpacity);

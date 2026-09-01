@@ -10660,6 +10660,7 @@ function fadeInTracker(tracker, duration) {
 		entry.mesh.material.transparent = true;
 		entry.mesh.material.opacity = 0;
 	}
+	const planeOps = tracker.planeMeshes.map((m) => m.material.opacity);
 	for (const m of tracker.planeMeshes) {
 		m.material.transparent = true;
 		m.material.opacity = 0;
@@ -10685,10 +10686,7 @@ function fadeInTracker(tracker, duration) {
 			const globalOp = entry.isShaft ? sceneState.displayParams.vectorOpacity : sceneState.displayParams.arrowOpacity;
 			entry.mesh.material.opacity = ease * Math.max(0, Math.min(1, baseOp * globalOp));
 		}
-		for (const m of tracker.planeMeshes) {
-			const targetOp = m.userData.targetOpacity !== void 0 ? m.userData.targetOpacity : sceneState.displayParams.planeOpacity;
-			m.material.opacity = ease * targetOp;
-		}
+		for (let i = 0; i < tracker.planeMeshes.length; i++) tracker.planeMeshes[i].material.opacity = ease * planeOps[i];
 		for (const lbl of tracker.labels) lbl.el.style.opacity = String(ease * sceneState.displayParams.labelOpacity);
 		for (const entry of tracker.lineNodes) {
 			const baseOp = entry && typeof entry.baseOpacity === "number" ? entry.baseOpacity : 1;
