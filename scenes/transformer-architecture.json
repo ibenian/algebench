@@ -1358,22 +1358,22 @@
               "type": "animated_vector",
               "fromExpr": ["0", "0", "0"],
               "toExpr": ["tfRopeEmb(5,0,s1_qp)", "tfRopeEmb(5,1,s1_qp)", "tfRopeEmb(5,3,s1_qp)"],
-              "color": "#ff7043",
-              "width": 0.7,
-              "opacity": 0.45,
-              "arrowScale": 0.7,
-              "legendGroup": "$Q$ = mat"
+              "color": "#cbaa99",
+              "width": 0.45,
+              "opacity": 0.75,
+              "arrow": false,
+              "labelExpr": "'Q at θ=0'"
             },
             {
               "id": "s1_rp_kghost",
               "type": "animated_vector",
               "fromExpr": ["0", "0", "0"],
               "toExpr": ["tfRopeEmb(0,0,s1_kq)", "tfRopeEmb(0,1,s1_kq)", "tfRopeEmb(0,3,s1_kq)"],
-              "color": "#42a5f5",
-              "width": 0.7,
-              "opacity": 0.45,
-              "arrowScale": 0.7,
-              "legendGroup": "$K$ = the"
+              "color": "#9db4c9",
+              "width": 0.45,
+              "opacity": 0.75,
+              "arrow": false,
+              "labelExpr": "'K at θ=0'"
             },
             {
               "id": "s1_rp_txt",
