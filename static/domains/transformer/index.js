@@ -6,7 +6,8 @@
  *
  * Registers tfPerm, tfEmb, tfPE, tfX, tfOutNoPos, tfQ, tfK, tfV, tfQProbe,
  * tfScore, tfScoreScaled, tfScoreDiv, tfMaskVal, tfAttn, tfRowSum, tfOut,
- * tfRopeQ, tfRopeK, tfRopeDot, tfRopeEmb, tfRopeEmbTheta,
+ * tfRopeQ, tfRopeK, tfRopeDot, tfRopeEmb, tfRopeEmbTheta, tfRopeEmbDot, tfRopeEmbArc,
+ * tfRopeEmbNorm, tfRopeEmbAngle,
  * tfDotSample, tfDotSampleScaled, tfSampleVar
  * into the AlgeBench expression sandbox.
  *
@@ -352,6 +353,104 @@
      *  drawing with rather than a hard-coded copy that can drift out of sync. */
     function tfRopeEmbTheta(pair) { return THETA_VIS[_clampIdx(pair, THETA_VIS.length - 1)]; }
 
+
+    /** The full d_model-dimensional dot product of two RoPE'd embeddings:
+     *  <RoPE(slotA at position pa), RoPE(slotB at position pb)>.
+     *
+     *  THE RELATIVE-POSITION IDENTITY, and the reason this function exists.
+     *  Each dimension pair contributes <R_{pa.theta_i} a_i, R_{pb.theta_i} b_i>
+     *  = a_i^T R_{(pb-pa).theta_i} b_i, because R is orthogonal and
+     *  R_x^T R_y = R_{y-x}. Every term therefore depends on pb - pa ALONE, and
+     *  so does their sum: shift both positions by the same amount and this
+     *  number does not move. Verified to ~1e-16 by the domain check.
+     *
+     *  It is the FULL dot product, over all d_model coordinates. A scene that
+     *  draws only three of them is showing a projection, and the projected
+     *  vectors' own dot product is NOT in general invariant — it is only equal
+     *  to this one when the dropped coordinate contributes nothing, e.g. when
+     *  one of the two tokens is zero in that dimension pair. Do not quote this
+     *  number beside a picture that disagrees with it without saying so. */
+    function tfRopeEmbDot(slotA, pa, slotB, pb) {
+        let acc = 0;
+        for (let d = 0; d < D_MODEL; d++) {
+            acc += tfRopeEmb(slotA, d, pa) * tfRopeEmb(slotB, d, pb);
+        }
+        return acc;
+    }
+
+    /** Euclidean norm of a RoPE-rotated embedding, |RoPE(slot at p)|.
+     *
+     *  It does not depend on p, and that is the point: a rotation is an
+     *  isometry, so every dimension pair keeps its own norm and the whole
+     *  vector keeps its length at every position. Exposed as a live quantity
+     *  precisely so a lesson can show it NOT moving while the position does.
+     *  Together with tfRopeEmbAngle it completes the identity
+     *  <Q,K> = |Q| |K| cos(theta), which is why tfRopeEmbDot is invariant:
+     *  all three factors on the right are fixed once the gap is fixed. */
+    function tfRopeEmbNorm(slot, p) {
+        let acc = 0;
+        for (let d = 0; d < D_MODEL; d++) {
+            const v = tfRopeEmb(slot, d, p);
+            acc += v * v;
+        }
+        return Math.sqrt(acc);
+    }
+
+    /** The TRUE angle, IN DEGREES, between two RoPE-rotated embeddings in the
+     *  full d_model-dimensional space: acos of tfRopeEmbDot over the two norms.
+     *
+     *  Like the dot product it depends on pb - pa ALONE. Note this is the angle
+     *  in R^d_model, NOT the angle between the three-coordinate projections a
+     *  scene actually draws: dropping a coordinate shortens one vector more at
+     *  some positions than others, so the drawn angle can differ by a few
+     *  degrees and is NOT invariant. A scene printing this number beside a
+     *  projected picture must say which one it is. Returns 0 if either vector
+     *  is degenerate. */
+    function tfRopeEmbAngle(slotA, pa, slotB, pb) {
+        const na = tfRopeEmbNorm(slotA, pa);
+        const nb = tfRopeEmbNorm(slotB, pb);
+        if (!(na > 1e-12) || !(nb > 1e-12)) return 0;
+        let c = tfRopeEmbDot(slotA, pa, slotB, pb) / (na * nb);
+        c = c < -1 ? -1 : (c > 1 ? 1 : c);
+        return Math.acos(c) * 180 / Math.PI;
+    }
+
+    /** Component d of the unit-length great-circle (slerp) point at parameter
+     *  s in [0,1] between the two RoPE'd embeddings — a DRAWING aid for the
+     *  angle between them, not part of the forward pass.
+     *
+     *  Returns a point on the unit sphere of R^d_model, so s=0 and s=1 give the
+     *  two directions themselves. Any linear projection of the result still
+     *  lands on the projected direction at the endpoints, so a scene may scale
+     *  it down and draw an arc whose ends sit on the two vectors it spans. The
+     *  arc's true angular extent is acos of the normalised tfRopeEmbDot, which
+     *  depends only on pb - pa; its projected appearance need not.
+     *  Degenerate (zero-norm) or parallel inputs fall back to an endpoint. */
+    function tfRopeEmbArc(d, slotA, pa, slotB, pb, s) {
+        const c = _clampIdx(d, D_MODEL - 1);
+        const A = new Float64Array(D_MODEL);
+        const B = new Float64Array(D_MODEL);
+        let na = 0, nb = 0;
+        for (let k = 0; k < D_MODEL; k++) {
+            A[k] = tfRopeEmb(slotA, k, pa);
+            B[k] = tfRopeEmb(slotB, k, pb);
+            na += A[k] * A[k];
+            nb += B[k] * B[k];
+        }
+        na = Math.sqrt(na); nb = Math.sqrt(nb);
+        if (!(na > 1e-12) || !(nb > 1e-12)) return 0;
+        let dot = 0;
+        for (let k = 0; k < D_MODEL; k++) dot += (A[k] / na) * (B[k] / nb);
+        dot = dot < -1 ? -1 : (dot > 1 ? 1 : dot);
+        const th = Math.acos(dot);
+        const sth = Math.sin(th);
+        let t = Number(s);
+        if (!Number.isFinite(t)) t = 0;
+        t = t < 0 ? 0 : (t > 1 ? 1 : t);
+        if (sth < 1e-9) return A[c] / na;
+        return (Math.sin((1 - t) * th) * (A[c] / na) + Math.sin(t * th) * (B[c] / nb)) / sth;
+    }
+
     function tfX(i, d) { return _st().x[_clampIdx(i, N - 1) * D_MODEL + _clampIdx(d, D_MODEL - 1)]; }
 
     function tfOutNoPos(i, d) { return _st().On[_clampIdx(i, N - 1) * D_K + _clampIdx(d, D_K - 1)]; }
@@ -444,6 +543,7 @@
         tfQ, tfK, tfV, tfQProbe,
         tfScore, tfScoreScaled, tfScoreDiv, tfMaskVal, tfAttn, tfRowSum, tfOut,
         tfRopeQ, tfRopeK, tfRopeDot, tfRopeEmb, tfRopeEmbTheta,
+        tfRopeEmbDot, tfRopeEmbArc, tfRopeEmbNorm, tfRopeEmbAngle,
         tfDotSample, tfDotSampleScaled, tfSampleVar,
     });
 

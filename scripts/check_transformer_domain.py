@@ -86,6 +86,80 @@ CHECKS: list[tuple[str, str, list[float], float]] = [
     ('pairs disagree at 2*pi', '[TF.tfRopeEmb(5,0,6.2832), TF.tfRopeEmb(5,3,6.2832)]',
      [0.5, -0.293933],                                                                           5e-5),
 
+    # --- the relative-position identity, which step 10 is built on ----------
+    # <RoPE(a at p), RoPE(b at q)> depends on q - p ALONE. Shift both positions
+    # by any amount and the number must not move. Q = "mat" (slot 5), K = "the"
+    # (slot 0): "mat" is the only row with both dimension pairs non-zero, and
+    # "the" is zero in the second pair, which is what makes the drawn 3-D
+    # projection's dot product EQUAL the true 4-D one rather than merely close.
+    ('Q.K at gap 3, five absolute placements',
+     '[TF.tfRopeEmbDot(5,2,0,5), TF.tfRopeEmbDot(5,12,0,15), TF.tfRopeEmbDot(5,0,0,3),'
+     ' TF.tfRopeEmbDot(5,7.25,0,10.25), TF.tfRopeEmbDot(5,101,0,104)]',
+     [-0.424436244270] * 5,                                                                      1e-12),
+    ('one position moved -> gap 8, new value',
+     '[TF.tfRopeEmbDot(5,1,0,9)]',                              [0.421929106407],                 1e-12),
+    ('the drawn 3-D projection agrees exactly',
+     '[TF.tfRopeEmb(5,0,12)*TF.tfRopeEmb(0,0,15) + TF.tfRopeEmb(5,1,12)*TF.tfRopeEmb(0,1,15)'
+     ' + TF.tfRopeEmb(5,3,12)*TF.tfRopeEmb(0,3,15)]',
+     [-0.424436244270],                                                                          1e-12),
+    ('Q.K is symmetric in the two slots',
+     '[TF.tfRopeEmbDot(5,2,0,5) - TF.tfRopeEmbDot(0,5,5,2)]',   [0.0],                            1e-15),
+    # Why the step could NOT use "cat" and "sat": RoPE rotates each pair WITHIN
+    # itself, so a token confined to pair (1,2) never acquires a component in
+    # pair (3,4). cat and sat sit in different pairs and stay orthogonal at
+    # every pair of positions — every cell of the demo would read 0.000000.
+    # That is a limit of this one-hot-ish toy table, not of RoPE.
+    ('cat . sat is identically zero at every placement',
+     '[TF.tfRopeEmbDot(1,2,2,5), TF.tfRopeEmbDot(1,12,2,15), TF.tfRopeEmbDot(1,0,2,3),'
+     ' TF.tfRopeEmbDot(1,1,2,9), TF.tfRopeEmbDot(1,4,2,4)]',
+     [0.0] * 5,                                                                                  1e-15),
+    # Q.K = |Q| |K| cos(theta) is why the dot product is preserved, so all
+    # three factors on the right have to be pinned too. The norms are fixed by
+    # RoPE being an isometry; the angle, like the dot product, is fixed by the
+    # gap alone. These are the numbers step 10 prints on screen.
+    ('true angle is 119.35 deg at gap 3, any placement',
+     '[TF.tfRopeEmbAngle(5,2,0,5), TF.tfRopeEmbAngle(5,12,0,15), TF.tfRopeEmbAngle(5,0,0,3),'
+     ' TF.tfRopeEmbAngle(5,101,0,104), TF.tfRopeEmbAngle(5,7.25,0,10.25)]',
+     [119.3469415114] * 5,                                                                       1e-9),
+    ('true angle at gap 8 and gap 2',
+     '[TF.tfRopeEmbAngle(5,1,0,9), TF.tfRopeEmbAngle(5,3,0,5)]',
+     [60.8431728682, 73.4578502091],                                                             1e-9),
+    ('|Q| is position-invariant (RoPE is an isometry)',
+     'R(k=>TF.tfRopeEmbNorm(5,k*1.7),7)',   [0.8660254037844386] * 7,                             1e-12),
+    ('|K| is position-invariant',
+     'R(k=>TF.tfRopeEmbNorm(0,k*1.7),7)',   [1.0] * 7,                                            1e-12),
+    ('the identity closes: |Q||K|cos(theta) == Q.K',
+     '[TF.tfRopeEmbNorm(5,12)*TF.tfRopeEmbNorm(0,15)'
+     '*Math.cos(TF.tfRopeEmbAngle(5,12,0,15)*Math.PI/180) - TF.tfRopeEmbDot(5,12,0,15)]',
+     [0.0],                                                                                      1e-12),
+
+    # The global-rotation control: applying a shared orthogonal rotation theta
+    # to BOTH vectors is exactly advancing both positions by theta, because
+    # RoPE's rotation is block-diagonal and orthogonal. The step implements the
+    # slider as tfRopeEmb at (p + theta) and (q + theta), so these fractional,
+    # non-integer shared shifts are literally what sweeping theta evaluates.
+    ('shared rotation leaves Q.K alone (gap 3)',
+     '[TF.tfRopeEmbDot(5,2,0,5), TF.tfRopeEmbDot(5,2.5,0,5.5), TF.tfRopeEmbDot(5,3.7,0,6.7),'
+     ' TF.tfRopeEmbDot(5,5.3,0,8.3), TF.tfRopeEmbDot(5,9.25,0,12.25)]',
+     [-0.424436244270] * 5,                                                                      1e-9),
+    ('shared rotation leaves the true angle alone',
+     '[TF.tfRopeEmbAngle(5,2,0,5), TF.tfRopeEmbAngle(5,2.5,0,5.5), TF.tfRopeEmbAngle(5,3.7,0,6.7),'
+     ' TF.tfRopeEmbAngle(5,5.3,0,8.3), TF.tfRopeEmbAngle(5,9.25,0,12.25)]',
+     [119.3469415114] * 5,                                                                       1e-9),
+    ('shared rotation leaves both norms alone',
+     'R(k=>TF.tfRopeEmbNorm(5,2+k*0.9),7).concat(R(k=>TF.tfRopeEmbNorm(0,5+k*0.9),7))',
+     [0.8660254037844386] * 7 + [1.0] * 7,                                                       1e-12),
+
+    # the arc helper: unit-length, and its ends lie along the two directions
+    ('arc endpoints are the two directions',
+     'R(k=>TF.tfRopeEmbArc(k,5,2,0,5,0)*0.8660254037844387,4)'
+     '.concat(R(k=>TF.tfRopeEmbArc(k,5,2,0,5,1),4))',
+     [-0.662722, 0.246575, -0.322109, 0.382421, 0.283662, -0.958924, 0.0, 0.0],                   5e-6),
+    ('arc stays on the unit sphere',
+     'R(k=>Math.hypot(TF.tfRopeEmbArc(0,5,2,0,5,k/6),TF.tfRopeEmbArc(1,5,2,0,5,k/6),'
+     'TF.tfRopeEmbArc(2,5,2,0,5,k/6),TF.tfRopeEmbArc(3,5,2,0,5,k/6)),7)',
+     [1.0] * 7,                                                                                  1e-12),
+
     # --- RoPE: the score depends only on the gap m-n ------------------------
     ('R_4 q',                       'R(d=>TF.tfRopeQ(d,4),2)',  [-1.376, 0.3957],                5e-4),
     ('R_1 k',                       'R(d=>TF.tfRopeK(d,1),2)',  [-0.8229, -0.5412],              5e-4),
