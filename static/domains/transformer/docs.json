@@ -7,7 +7,7 @@
   "implementation": {
     "toy_model": "n=6 tokens, d_model=4, d_k=2 per head, n_heads=2 (one shown). d_k != d_model is deliberate: it is what makes the 1/sqrt(d_k) scaling visibly about the HEAD dimension, which is the usual error.",
     "embedding_table": "[[1,0,0,0] the, [0,1,0,0] cat, [0,0,1,0] sat, [0,0,0,1] on, [1,0,0,0] the, [0.5,0.5,0,0.5] mat]. Note 'the' occupies slots 0 and 4 with the IDENTICAL row — the two separate only once positional encoding is added.",
-    "positional_encoding": "Standard sinusoidal, base 10000: PE[pos][2i] = sin(pos / 10000^(2i/d_model)), PE[pos][2i+1] = cos(...). ADDED to the embedding, never concatenated — the width stays 4.",
+    "positional_encoding": "Standard sinusoidal, base 10000: PE[pos][2i] = sin(pos / 10000^(2i/d_model)), PE[pos][2i+1] = cos(...). ADDED to the embedding, never concatenated — the width stays 4. MUTUALLY EXCLUSIVE WITH RoPE: whenever s2_rope is on, this additive term is forced to zero regardless of s1_pe. RoPE REPLACES additive positional encoding; it does not stack on it. A model uses one scheme or the other, never both, and rotating a q that already carried a sinusoidal offset is an operation no model performs.",
     "projections": "Row-vector convention, q = x W_Q. Under that convention the ROWS of W are the images of the input basis directions. W_Q = [[0,0],[0,0],[3,0],[0,1]] reads input dims 2 and 3; W_K = [[0,0],[3,0],[0,0],[0,1]] reads dims 1 and 3; W_V = [[1,0],[0,1],[0,0],[0,0]] reads dims 0 and 1. Three different readings of ONE vector.",
     "mask": "Applied as an ADDITIVE -1e9 to the SCALED SCORES, before softmax. -1e9 stands in for -infinity so the renderer never sees a NaN; softmax's shift-invariance is what makes the substitution coherent.",
     "cache": "One shared cache keyed on the string of all forward-pass slider values, rebuilt only when a slider changes. A 6x6 tensor with a valueExpr costs 36 evaluations per frame; without the cache each would recompute the whole pass. With it, a frame is 36 array reads. The generic i.i.d. sampler has its OWN separate cache keyed on dimension only, because it is a different object and must not be invalidated by toy sliders.",
@@ -31,26 +31,95 @@
   "note": "All functions read slider values by ID at call time. The scene must define sliders with the IDs listed in sliderContracts for the lesson to respond to user input. Functions clamp their index arguments, so an out-of-range row or column returns an edge value rather than NaN.",
 
   "sliderContracts": {
-    "s1_shuffle":   { "description": "Token shuffle. 0 = original order 'the cat sat on the mat'; 1 = permuted by [5,0,3,2,1,4]. Positions never shuffle — only the tokens sitting in them.", "default": 0, "scenes": [1] },
-    "s1_pe":        { "description": "Positional-encoding strength. 0 = embeddings only (position-free); 1 = full sinusoidal PE added. Continuous so the student can watch the points travel rather than jump.", "default": 1, "scenes": [1, 2, 3] },
-    "s2_rope":      { "description": "RoPE on/off. When 1, Q and K are rotated by position*theta. V is NEVER rotated — accuracy-contract item 7.", "default": 0, "scenes": [2] },
-    "s2_m":         { "description": "RoPE query position m for the standalone demo vector.", "default": 4, "scenes": [2] },
-    "s2_n":         { "description": "RoPE key position n for the standalone demo vector. Only m-n affects the score.", "default": 1, "scenes": [2] },
-    "s2_qdir":      { "description": "Exploratory query rotation in degrees, for tfQProbe. A what-if direction, NOT the model's own query — the scene must label it as such.", "default": 0, "scenes": [2] },
-    "s3_qi":        { "description": "Which query row i is being computed and highlighted. Default 2 = 'sat', the flagship row.", "default": 2, "scenes": [2, 3] },
-    "s3_scale":     { "description": "Scaling exponent. Scores are divided by (sqrt d_k)^s3_scale, so 0 = no scaling and 1 = the correct 1/sqrt(d_k). Continuous so the row visibly relaxes.", "default": 1, "scenes": [3] },
-    "s3_mask":      { "description": "Causal mask on/off. 0 = bidirectional (every token sees every token); 1 = causal.", "default": 1, "scenes": [3] },
-    "s3_maskafter": { "description": "Mask placement. 0 = CORRECT (additive -1e9 on the scores, before softmax); 1 = WRONG (softmax first, then zero the future with no renormalization), which makes row 2 sum to 0.989933. For the misconception beat only.", "default": 0, "scenes": [3] },
-    "s3_gen_d":     { "description": "Dimension n of the GENERIC i.i.d. random vectors used by the variance argument. This is a DIFFERENT object from the toy model, whose hand-constructed Q/K do not satisfy the i.i.d. hypothesis. Labelled on screen as 'generic dimension n (NOT our d_k)'.", "default": 2, "scenes": [3] }
+    "s1_shuffle": {
+      "description": "Token shuffle. 0 = original order 'the cat sat on the mat'; 1 = permuted by [5,0,3,2,1,4]. Positions never shuffle — only the tokens sitting in them.",
+      "default": 0,
+      "scenes": [
+        1
+      ]
+    },
+    "s1_pe": {
+      "description": "Additive sinusoidal positional-encoding strength. 0 = embeddings only (position-free); 1 = full sinusoidal PE added. Continuous so the student can watch the points travel rather than jump. IGNORED (treated as 0) while s2_rope = 1 — RoPE replaces additive PE rather than stacking on it.",
+      "default": 1,
+      "scenes": [
+        1,
+        2,
+        3
+      ]
+    },
+    "s2_rope": {
+      "description": "RoPE on/off. When 1, Q and K are rotated by position*theta. V is NEVER rotated — accuracy-contract item 7. RoPE and additive sinusoidal PE are MUTUALLY EXCLUSIVE: with this on, s1_pe is forced to 0 and the layer input is the raw embedding, so position enters exactly once, as a rotation of q and k.",
+      "default": 0,
+      "scenes": [
+        2
+      ]
+    },
+    "s2_m": {
+      "description": "RoPE query position m for the standalone demo vector.",
+      "default": 4,
+      "scenes": [
+        2
+      ]
+    },
+    "s2_n": {
+      "description": "RoPE key position n for the standalone demo vector. Only m-n affects the score.",
+      "default": 1,
+      "scenes": [
+        2
+      ]
+    },
+    "s2_qdir": {
+      "description": "Exploratory query rotation in degrees, for tfQProbe. A what-if direction, NOT the model's own query — the scene must label it as such.",
+      "default": 0,
+      "scenes": [
+        2
+      ]
+    },
+    "s3_qi": {
+      "description": "Which query row i is being computed and highlighted. Default 2 = 'sat', the flagship row.",
+      "default": 2,
+      "scenes": [
+        2,
+        3
+      ]
+    },
+    "s3_scale": {
+      "description": "Scaling exponent. Scores are divided by (sqrt d_k)^s3_scale, so 0 = no scaling and 1 = the correct 1/sqrt(d_k). Continuous so the row visibly relaxes.",
+      "default": 1,
+      "scenes": [
+        3
+      ]
+    },
+    "s3_mask": {
+      "description": "Causal mask on/off. 0 = bidirectional (every token sees every token); 1 = causal.",
+      "default": 1,
+      "scenes": [
+        3
+      ]
+    },
+    "s3_maskafter": {
+      "description": "Mask placement. 0 = CORRECT (additive -1e9 on the scores, before softmax); 1 = WRONG (softmax first, then zero the future with no renormalization), which makes row 2 sum to 0.989933. For the misconception beat only.",
+      "default": 0,
+      "scenes": [
+        3
+      ]
+    },
+    "s3_gen_d": {
+      "description": "Dimension n of the GENERIC i.i.d. random vectors used by the variance argument. This is a DIFFERENT object from the toy model, whose hand-constructed Q/K do not satisfy the i.i.d. hypothesis. Labelled on screen as 'generic dimension n (NOT our d_k)'.",
+      "default": 2,
+      "scenes": [
+        3
+      ]
+    }
   },
 
   "functions": {
     "tfPerm(k)": "Source token index displayed at slot k. Identity when s1_shuffle=0.",
     "tfEmb(i,d)": "Component d (0..3) of the raw embedding at slot i, shuffle applied, NO positional encoding.",
-    "tfPE(i,d)": "Component d of the sinusoidal positional encoding for POSITION i. Never shuffles. The position argument is CONTINUOUS \u2014 it is neither rounded to a slot nor clamped to N-1 \u2014 so a scene can sweep it and watch dims 0 and 1 trace the unit circle sin(p), cos(p). Integer slot arguments are unaffected.",
-    "tfX(i,d)": "Layer input x_i = tfEmb(i,d) + s1_pe * tfPE(i,d).",
+    "tfPE(i,d)": "Component d of the sinusoidal positional encoding for POSITION i. Never shuffles. The position argument is CONTINUOUS — it is neither rounded to a slot nor clamped to N-1 — so a scene can sweep it and watch dims 0 and 1 trace the unit circle sin(p), cos(p). Integer slot arguments are unaffected.",
+    "tfX(i,d)": "Layer input x_i = tfEmb(i,d) + s1_pe * tfPE(i,d) — except when s2_rope = 1, where the additive term is forced off and x_i = tfEmb(i,d) exactly. RoPE replaces additive PE; the two are never summed.",
     "tfOutNoPos(i,d)": "Component d (0..1) of UNMASKED, POSITION-FREE attention over the raw embeddings. The permutation-equivariance object and nothing else — computed by a separate pass, because reusing the masked one would silently break the theorem. Still scaled dot-product attention, so it divides by sqrt(d_k).",
-    "tfQ(i,d)": "q_i = x_i W_Q for head 0, RoPE applied when s2_rope=1.",
+    "tfQ(i,d)": "q_i = x_i W_Q for head 0, RoPE applied when s2_rope=1 — in which case x_i carries no additive PE, because RoPE replaces it.",
     "tfK(i,d)": "k_i = x_i W_K, RoPE applied when s2_rope=1.",
     "tfV(i,d)": "v_i = x_i W_V. NEVER rotated by RoPE.",
     "tfQProbe(d,angleDeg)": "Component d of the query at slot s3_qi rotated by angleDeg in the head plane. An exploratory what-if; angleDeg=0 returns tfQ(s3_qi,d) exactly.",

@@ -4,7 +4,7 @@
  * One fixed six-token forward pass: "the cat sat on the mat",
  * d_model = 4, n_heads = 2, d_k = 2, one head shown, causal.
  *
- * Registers tfPerm, tfEmb, tfPE, tfX, tfOutNoPos, tfQ, tfK, tfV, tfQProbe,
+ * Registers tfPerm, tfToken, tfEmb, tfPE, tfX, tfOutNoPos, tfQ, tfK, tfV, tfQProbe,
  * tfScore, tfScoreScaled, tfScoreDiv, tfMaskVal, tfAttn, tfRowSum, tfOut,
  * tfRopeQ, tfRopeK, tfRopeDot, tfRopeEmb, tfRopeEmbTheta, tfRopeEmbDot, tfRopeEmbArc,
  * tfRopeEmbNorm, tfRopeEmbAngle,
@@ -17,8 +17,8 @@
  * lesson advertising rigour while showing invented attention patterns is
  * dishonest exactly where it claims to be honest.
  *
- * Every constant here is duplicated in the lesson's `data` block. They must
- * not drift: scripts/check_transformer_domain.py asserts they agree.
+ * scripts/check_transformer_domain.py pins every figure this file computes
+ * against independently derived literals, so a silent drift here fails there.
  *
  * Slider values are injected via _init({ getSlider }) called by expr.js on import.
  */
@@ -56,6 +56,11 @@
 
     // The shuffle used by the permutation-equivariance beat.
     const PERM = [5, 0, 3, 2, 1, 4];
+
+    // Token surface forms, in their original reading order. Indexed through
+    // the permutation by tfToken(), so a lattice labelled with it keeps saying
+    // which word actually occupies each slot.
+    const TOKENS = ['the', 'cat', 'sat', 'on', 'the', 'mat'];
 
     // Standalone RoPE demo vectors (scene 2). theta is 1.0 rad/position —
     // illustrative, not the paper's base-10000 schedule, which is invisible
@@ -121,8 +126,13 @@
 
     function _build() {
         const shuffle = _getSlider('s1_shuffle', 0) >= 0.5 ? 1 : 0;
-        const peOn = _getSlider('s1_pe', 1);
         const ropeOn = _getSlider('s2_rope', 0) >= 0.5 ? 1 : 0;
+        // RoPE REPLACES additive positional encoding; it does not stack on top
+        // of it. Real models pick one scheme or the other, so whenever RoPE is
+        // on the sinusoidal PE term is forced off no matter what s1_pe says.
+        // Without this, turning RoPE on in scene 2 would rotate a q that
+        // already carried a sinusoidal offset -- an operation no model performs.
+        const peOn = ropeOn ? 0 : _getSlider('s1_pe', 1);
         const scale = _getSlider('s3_scale', 1);
         const maskOn = _getSlider('s3_mask', 1) >= 0.5 ? 1 : 0;
         const maskAfter = _getSlider('s3_maskafter', 0) >= 0.5 ? 1 : 0;
@@ -132,7 +142,9 @@
         for (let i = 0; i < N; i++) perm[i] = shuffle ? PERM[i] : i;
 
         // Raw embeddings at each slot (token travels), and x = emb + pe*PE
-        // (position stays put — that asymmetry is the whole point).
+        // (position stays put — that asymmetry is the whole point). With RoPE
+        // on, peOn is 0 and x is the raw embedding: position enters later, as
+        // a rotation of q and k, and never twice.
         const emb = new Float64Array(N * D_MODEL);
         const x = new Float64Array(N * D_MODEL);
         for (let i = 0; i < N; i++) {
@@ -148,6 +160,8 @@
         const K = _project(x, W_K);
         const V = _project(x, W_V);   // V is NEVER rotated (contract item 7)
 
+        // RoPE: position as a rotation of q and k, INSTEAD of the additive PE
+        // that peOn just suppressed. Never both.
         if (ropeOn) {
             for (let i = 0; i < N; i++) {
                 const rq = _rot([Q[i * D_K], Q[i * D_K + 1]], i * ROPE_THETA);
@@ -294,6 +308,11 @@
     };
 
     function tfPerm(k) { return _st().perm[_clampIdx(k, N - 1)]; }
+
+    /** The token sitting in slot k, as a STRING. Unlike every other function
+     *  here this returns text, for `axes[].labelExpr` to render: the whole
+     *  point is that a shuffled lattice relabels itself instead of lying. */
+    function tfToken(k) { return TOKENS[tfPerm(k)]; }
 
     function tfEmb(i, d) { return _st().emb[_clampIdx(i, N - 1) * D_MODEL + _clampIdx(d, D_MODEL - 1)]; }
 
@@ -539,7 +558,7 @@
 
     window.AlgeBenchDomains.register('transformer', {
         _init({ getSlider }) { _getSlider = getSlider; },
-        tfPerm, tfEmb, tfPE, tfX, tfOutNoPos,
+        tfPerm, tfToken, tfEmb, tfPE, tfX, tfOutNoPos,
         tfQ, tfK, tfV, tfQProbe,
         tfScore, tfScoreScaled, tfScoreDiv, tfMaskVal, tfAttn, tfRowSum, tfOut,
         tfRopeQ, tfRopeK, tfRopeDot, tfRopeEmb, tfRopeEmbTheta,

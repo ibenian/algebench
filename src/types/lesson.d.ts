@@ -678,6 +678,10 @@ export interface Element {
      */
     labels?: string[];
     /**
+     * TENSOR ONLY. Math.js expression giving one label's text, evaluated per entry along this axis every frame with that entry's index bound as 'row' (rows axis), 'col' (columns axis) and 'idx' (either). Wins over 'labels' when both are given. The result is stringified, so string-valued expressions are the point: concat('slot ', idx), or a domain function returning text. Use it when the labels depend on the same live data as the cells — a lattice whose rows are permuted by a slider needs labels that permute with them, and a static 'labels' array would silently assert the wrong thing.
+     */
+    labelExpr?: string;
+    /**
      * Name of the axis itself, placed beyond its labels. Example: "key".
      */
     title?: string;

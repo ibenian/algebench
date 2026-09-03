@@ -14,7 +14,7 @@ const g = globalThis as unknown as { math: typeof mathjs; window: typeof globalT
 g.math = mathjs;
 g.window ??= globalThis;
 
-const { parseShape, normalizeValues, shapeSize } = await import('/objects/tensor.js');
+const { parseShape, normalizeValues, shapeSize, compileAxisLabelExpr } = await import('/objects/tensor.js');
 
 /** normalizeValues returns a union; assert the success arm and hand back values. */
 function ok(result: ReturnType<typeof normalizeValues>): number[] {
@@ -131,4 +131,44 @@ test('normalizeValues rejects a non-array', () => {
     for (const bad of [null, undefined, 42, 'values', {}]) {
         assert.match(err(normalizeValues(bad, [2, 2])), /must be an array/);
     }
+});
+
+// ── axis labelExpr ──
+// The key exists so a lattice whose rows are permuted by a slider can relabel
+// itself. A static `labels` array beside live `valueExpr` cells does not merely
+// look stale — with a `+` and an `=` drawn between two such lattices it asserts
+// an equation the data no longer satisfies.
+
+test('compileAxisLabelExpr ignores an axis without one', () => {
+    for (const axis of [undefined, {}, { labels: ['a', 'b'] }, { labelExpr: '' },
+                        { labelExpr: '   ' }, { labelExpr: 42 }]) {
+        assert.equal(compileAxisLabelExpr(axis as never), null);
+    }
+});
+
+test('compileAxisLabelExpr returns a node that binds the axis index', () => {
+    const fn = compileAxisLabelExpr({ labelExpr: 'row * 2' } as never);
+    assert.notEqual(fn, null);
+    assert.equal((fn as { evaluate(s: object): unknown }).evaluate({ row: 3 }), 6);
+});
+
+test('an axis label may evaluate to a string, which is the point of the key', () => {
+    // Numbers alone would only ever restate the index. Text is what lets a row
+    // keep saying which token occupies it.
+    const fn = compileAxisLabelExpr({ labelExpr: "concat('slot ', idx)" } as never);
+    assert.notEqual(fn, null);
+    const out = (fn as { evaluate(s: object): unknown }).evaluate({ idx: 2 });
+    assert.equal(typeof out, 'string');
+    assert.equal(out, 'slot 2');
+});
+
+test('a malformed labelExpr degrades to the constant 0, silently', () => {
+    // compileExpr never throws: on a parse failure in an untrusted scene it
+    // returns compile('0'). So a typo does not blank the axis or take the
+    // lattice down — every label along it just reads "0". Pinned here because
+    // it is the same silent-zero trap valueExpr has, and the failure gives an
+    // author no signal beyond the wrong thing being on screen.
+    const fn = compileAxisLabelExpr({ labelExpr: 'concat(((' } as never);
+    assert.notEqual(fn, null);
+    assert.equal((fn as { evaluate(s: object): unknown }).evaluate({ row: 3 }), 0);
 });

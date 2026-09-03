@@ -171,10 +171,33 @@ CHECKS: list[tuple[str, str, list[float], float]] = [
 BEHAVIOURAL: list[tuple[str, dict, str, list[float], float]] = [
     ('mask AFTER softmax breaks the row sum',
      {'s3_maskafter': 1}, '[TF.tfRowSum(2)]', [0.989933], 5e-5),
-    ('scaling relaxes row 3 ("on"), unscaled',
-     {'s3_scale': 0}, 'R(j=>TF.tfAttn(3,j),4)', [0.1398, 0.1618, 0.0954, 0.6030], 5e-4),
-    ('scaling relaxes row 3 ("on"), scaled',
+    # Scene 3 turns the causal mask ON at its step 4. The scaling PREDICT and
+    # REVEAL pair sits at steps 1-2, three steps EARLIER, and declares
+    # s3_mask = 0 so the row on screen shows all six keys -- the mask has not
+    # been introduced yet and must not be silently in force. These are the
+    # numbers those two steps quote.
+    ('scaling relaxes row 3 ("on"), unmasked, unscaled',
+     {'s3_scale': 0, 's3_mask': 0}, 'R(j=>TF.tfAttn(3,j),6)',
+     [0.0966, 0.1118, 0.0659, 0.4167, 0.0617, 0.2471], 5e-4),
+    ('scaling relaxes row 3 ("on"), unmasked, scaled',
+     {'s3_scale': 1, 's3_mask': 0}, 'R(j=>TF.tfAttn(3,j),6)',
+     [0.1197, 0.1327, 0.0913, 0.3365, 0.0872, 0.2325], 5e-4),
+    # From step 4 onwards the mask is on, and the doc panel's full attention
+    # table quotes this masked row.
+    ('row 3 masked and scaled (doc-panel table)',
      {'s3_scale': 1}, 'R(j=>TF.tfAttn(3,j),4)', [0.176, 0.1951, 0.1343, 0.4946], 5e-4),
+
+    # RoPE REPLACES additive positional encoding; it never stacks on top of it.
+    # With s2_rope on, the layer input must be the RAW embedding -- position
+    # enters later, once, as a rotation of q and k. If the sinusoidal PE term
+    # survived here, the lesson would be rotating a vector that already carried
+    # an additive positional offset, which no model does.
+    ('RoPE replaces additive PE: layer input is the raw embedding',
+     {'s2_rope': 1, 's1_pe': 1}, 'R(i=>R(d=>TF.tfX(i,d)-TF.tfEmb(i,d),4),6).flat()',
+     [0.0] * 24, 0.0),
+    # ...and with RoPE off the additive PE is still there (x[0] = emb + PE).
+    ('PE still added when RoPE is off',
+     {'s2_rope': 0, 's1_pe': 1}, 'R(d=>TF.tfX(0,d),4)', [1.0, 1.0, 0.0, 1.0], 5e-4),
 ]
 
 DEFAULT_SLIDERS = {
@@ -251,6 +274,37 @@ def main() -> int:
         failures += 1
 
     print()
+    print('transformer domain — tfToken (drives the embedding lattice row labels)')
+    # tfToken is the one function here that returns TEXT, not a number: scene 1
+    # step 5 feeds it to axes[].labelExpr so the lattice relabels itself under
+    # shuffle instead of asserting an equation it no longer satisfies. If the
+    # labels ever stop tracking tfPerm, the `e + PE = x` on screen becomes false.
+    tokens = ['the', 'cat', 'sat', 'on', 'the', 'mat']
+    for shuffle, want in ((0, tokens), (1, [tokens[k] for k in perm])):
+        got = _run('R(k=>TF.tfToken(k),6)', {**DEFAULT_SLIDERS, 's1_shuffle': shuffle})
+        if got == want:
+            print(f'  ok   tfToken at s1_shuffle={shuffle} -> {got}')
+        else:
+            print(f'  FAIL tfToken at s1_shuffle={shuffle}')
+            print(f'         got  {got}')
+            print(f'         want {want}')
+            failures += 1
+
+    # The labels are only honest if they name the row they sit on: the token at
+    # slot k must be the token whose embedding row tfEmb(k, .) reproduces.
+    emb = {'the': [1, 0, 0, 0], 'cat': [0, 1, 0, 0], 'sat': [0, 0, 1, 0],
+           'on': [0, 0, 0, 1], 'mat': [0.5, 0.5, 0, 0.5]}
+    for shuffle in (0, 1):
+        names = _run('R(k=>TF.tfToken(k),6)', {**DEFAULT_SLIDERS, 's1_shuffle': shuffle})
+        rows = _run('R(i=>R(d=>TF.tfEmb(i,d),4),6)', {**DEFAULT_SLIDERS, 's1_shuffle': shuffle})
+        bad = [k for k in range(6)
+               if max(abs(a - b) for a, b in zip(rows[k], emb[names[k]])) > 1e-12]
+        if not bad:
+            print(f'  ok   label names its own row at s1_shuffle={shuffle}')
+        else:
+            print(f'  FAIL label contradicts its row at s1_shuffle={shuffle}, slots {bad}')
+            failures += 1
+
     if failures:
         print(f'{failures} check(s) FAILED — the lesson quotes numbers the domain no longer computes.')
         return 1
