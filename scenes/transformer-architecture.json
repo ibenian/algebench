@@ -2092,7 +2092,8 @@
               ],
               "color": "#42a5f5",
               "width": 1,
-              "opacity": 0.45
+              "opacity": 0.45,
+              "labelExpr": "concat('key ', tfToken(s2_kj))"
             },
             {
               "id": "s2_pt_k0",
@@ -2180,8 +2181,8 @@
               "width": 0.7,
               "arrowScale": 0.55,
               "opacity": 0.75,
-              "label": "$\\mathrm{proj}_k q$",
-              "prompt": "The vector projection of the what-if query onto the selected key, ((q.k)/(k.k))k. Its signed length times |k| is exactly the score q.k printed beside that key -- which is why the score goes negative when this arrow points opposite to the key. Rotate the query and watch the two move together."
+              "prompt": "The vector projection of the what-if query onto the selected key, ((q.k)/(k.k))k. Its signed length times |k| is exactly the score q.k printed beside that key -- which is why the score goes negative when this arrow points opposite to the key. Rotate the query and watch the two move together.",
+              "labelExpr": "concat('proj onto ', tfToken(s2_kj), '  =  ', toFixed(tfQProbe(0,s2_qdir)*tfK(s2_kj,0) + tfQProbe(1,s2_qdir)*tfK(s2_kj,1), 2))"
             },
             {
               "id": "s2_line_perp",
@@ -2205,7 +2206,7 @@
           ],
           "sliders": [
             {"id": "s2_qdir", "label": "what-if query angle (deg)", "min": -180, "max": 180, "step": 1, "default": 0},
-            {"id": "s2_kj", "label": "project onto key", "min": 0, "max": 5, "step": 1, "default": 1}
+            {"id": "s2_kj", "label": "project onto key", "min": 0, "max": 5, "step": 1, "default": 1, "valueExpr": "tfToken(s2_kj)"}
           ],
           "camera": {
             "position": [1.2, 0.6, 9.0],
