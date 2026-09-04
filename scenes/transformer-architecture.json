@@ -2216,7 +2216,12 @@
             {"id": "s2_info_scores", "position": "top-left", "title": "$q\\cdot k$, live", "content": "what-if angle **{{s2_qdir}}°** · $0°$ is the model's own $q_2$. $q\\cdot k$ with *cat*: **{{ toFixed(tfQProbe(0,s2_qdir)*tfK(1,0) + tfQProbe(1,s2_qdir)*tfK(1,1), 3) }}**. Every key carries its own reading."},
             {"id": "s2_info_provenance", "position": "bottom-left", "keep": true, "title": "Standing notes", "content": "The orange query is a **what-if of yours**, not the model's $q$ — at $0°$ it is exactly $q_2$. The weights are hand-constructed for teaching, not learned."}
           ],
-          "prompt": "Manipulated: the what-if query angle. Watched: six live dot products, one per key. The critical honesty point is that the rotating arrow is the STUDENT's probe, not a model parameter - at 0 degrees it is exactly q_2 and the six readings are the model's own raw scores for 'sat'. Emphasise that q.k = |q| |k| cos(angle), so both length and direction matter: 'cat' wins partly because its key is long (4.6209 in the first head coordinate). Do not softmax anything yet and do not mention masking - scene 3 owns both. Suggested follow-up: 'which key would win if you could point the query anywhere?'"
+          "prompt": "Manipulated: the what-if query angle. Watched: six live dot products, one per key. The critical honesty point is that the rotating arrow is the STUDENT's probe, not a model parameter - at 0 degrees it is exactly q_2 and the six readings are the model's own raw scores for 'sat'. Emphasise that q.k = |q| |k| cos(angle), so both length and direction matter: 'cat' wins partly because its key is long (4.6209 in the first head coordinate). Do not softmax anything yet and do not mention masking - scene 3 owns both. Suggested follow-up: 'which key would win if you could point the query anywhere?'",
+          "remove": [
+            {"id": "s2_map_q"},
+            {"id": "s2_map_k"},
+            {"id": "s2_map_v"}
+          ]
         },
         {
           "id": "a-row-of-scores",
