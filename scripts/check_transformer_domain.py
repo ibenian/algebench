@@ -331,6 +331,24 @@ def main() -> int:
     else:
         print('  ok   proj.k == q.k and (q-proj).k == 0 at 4 angles x 6 keys')
 
+    print()
+    print('transformer domain — tfScoreProbe (drives the live row of scores)')
+    # The row of scores is bound to the WHAT-IF query now, not the model's fixed
+    # q_2. That is only safe if the default state is unchanged: at angle 0 the
+    # probe IS the model's own query, so the step may keep quoting cat 15.1397
+    # and on -7.0890. Exact equality, not a tolerance -- it is the same arithmetic.
+    probe0 = _run('R(j=>TF.tfScoreProbe(j,0),6)', DEFAULT_SLIDERS)
+    model = _run('R(j=>TF.tfScore(2,j),6)', DEFAULT_SLIDERS)
+    if probe0 == model:
+        print('  ok   tfScoreProbe(j,0) == tfScore(2,j) exactly, all six keys')
+    else:
+        print('  FAIL tfScoreProbe(j,0) != tfScore(2,j)')
+        print(f'         probe {probe0}')
+        print(f'         model {model}')
+        failures += 1
+    failures += 0 if _report('quoted row figures survive the rebinding',
+                             [probe0[1], probe0[3]], [15.1397, -7.089], 5e-5) else 1
+
     if failures:
         print(f'{failures} check(s) FAILED — the lesson quotes numbers the domain no longer computes.')
         return 1

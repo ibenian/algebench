@@ -2226,22 +2226,22 @@
         {
           "id": "a-row-of-scores",
           "title": "A row of scores",
-          "description": "Collect those six numbers into a row. They are **signed** — a query can genuinely disagree with a key — so this is the one place in the lesson where a red–blue diverging colour map is correct. Once scene 3 softmaxes them, signed is over, and every heatmap after that is single-hue.",
+          "description": "Collect those six numbers into a row — and keep turning the query: the row is the same six alignment numbers, so it moves with it. They are **signed** — a query can genuinely disagree with a key — so this is the one place in the lesson where a red–blue diverging colour map is correct. The line underneath writes the dot product out for the selected key, component by component. Once scene 3 softmaxes them, signed is over, and every heatmap after that is single-hue.",
           "add": [
             {
               "id": "s2_tensor_srow",
               "type": "tensor",
               "shape": [6],
-              "valueExpr": "tfScore(2, col)",
-              "origin": [-1.6, -2.9, 0],
-              "cellSize": 0.5,
+              "valueExpr": "tfScoreProbe(col, s2_qdir)",
+              "origin": [-2.35, -2.9, 0],
+              "cellSize": 0.75,
               "plane": "xy",
               "colorMap": "blueRed",
               "colorDomain": [-16, 16],
               "color": "#ff7043",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "raw scores $s_{2j} = q_2\\cdot k_j$ (signed)",
+              "label": "raw scores $q\\cdot k_j$ (signed)",
               "axes": [
                 {
                   "labels": ["the", "cat", "sat", "on", "the", "mat"],
@@ -2249,7 +2249,16 @@
                   "color": "#42a5f5"
                 }
               ],
-              "prompt": "Row 2 of the raw score matrix: s_2j = q_2 . k_j for the model's own query at slot 2 ('sat'). Unscaled, unmasked, un-softmaxed - six signed numbers and nothing else. Blue-red diverging is correct HERE and only here, because pre-softmax scores really do carry a sign. 'cat' is the largest at 15.1397 and 'on' the most negative at -7.0890."
+              "prompt": "The six raw scores of the WHAT-IF query against every key: q . k_j, unscaled, unmasked, un-softmaxed. The angle slider from the previous step still drives it, so the row moves as the query turns. At 0 degrees the probe IS the model's own q_2, and the row is exactly row 2 of the raw score matrix -- 'cat' largest at 15.1397, 'on' most negative at -7.0890. Blue-red diverging is correct HERE and only here, because pre-softmax scores really do carry a sign."
+            },
+            {
+              "id": "s2_pt_scoreformula",
+              "type": "animated_point",
+              "expr": ["-0.1", "-4.35", "0"],
+              "radius": 0.02,
+              "color": "#cfd8dc",
+              "labelExpr": "concat('q · k(', tfToken(s2_kj), ')  =  (', toFixed(tfQProbe(0,s2_qdir),2), ')(', toFixed(tfK(s2_kj,0),2), ')  +  (', toFixed(tfQProbe(1,s2_qdir),2), ')(', toFixed(tfK(s2_kj,1),2), ')  =  ', toFixed(tfScoreProbe(s2_kj,s2_qdir),2))",
+              "prompt": "The dot product written out for the key currently selected by the second slider: first components multiplied, plus second components multiplied. That sum is the number in that cell of the row above, and the signed length of the projection arrow times |k|. Three views of one quantity."
             }
           ],
           "camera": {

@@ -481,6 +481,13 @@
     /** Exploratory "what if the query pointed there instead" vector. NOT the
      *  model's own q — the lesson must label it as a what-if. angleDeg = 0
      *  returns tfQ(s3_qi, d) exactly. */
+    /** Score of the what-if (rotated) query against key j: q_probe . k_j.
+     *  Equals tfScore(s3_qi, j) exactly at angleDeg = 0, where the probe IS
+     *  the model's own query. */
+    function tfScoreProbe(j, angleDeg) {
+        return tfQProbe(0, angleDeg) * tfK(j, 0) + tfQProbe(1, angleDeg) * tfK(j, 1);
+    }
+
     /** Foot of the perpendicular dropped from the probe query onto key j:
      *  ((q.k)/(k.k)) * k, component d. Drawing the origin-to-foot segment
      *  makes q.k visible as a length rather than only as a printed number --
@@ -573,7 +580,7 @@
     window.AlgeBenchDomains.register('transformer', {
         _init({ getSlider }) { _getSlider = getSlider; },
         tfPerm, tfToken, tfEmb, tfPE, tfX, tfOutNoPos,
-        tfQ, tfK, tfV, tfQProbe, tfProjQK,
+        tfQ, tfK, tfV, tfQProbe, tfProjQK, tfScoreProbe,
         tfScore, tfScoreScaled, tfScoreDiv, tfMaskVal, tfAttn, tfRowSum, tfOut,
         tfRopeQ, tfRopeK, tfRopeDot, tfRopeEmb, tfRopeEmbTheta,
         tfRopeEmbDot, tfRopeEmbArc, tfRopeEmbNorm, tfRopeEmbAngle,
