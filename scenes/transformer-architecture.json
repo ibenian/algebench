@@ -2159,7 +2159,7 @@
               "id": "s2_txt_keys",
               "type": "text",
               "text": "keys $k_j$",
-              "position": [1.2, 4.0, 0],
+              "position": [3.5, -0.2, 0],
               "color": "#42a5f5"
             },
             {
