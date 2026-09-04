@@ -1668,6 +1668,15 @@
           "description": "$q$, $k$ and $v$ are **not three inputs**. They are three linear readings of the *same* vector $x_2$: $q$ asks *what am I looking for*, $k$ advertises *what I can offer*, $v$ carries *what I would contribute*. One point above the plane, three arrows down into it. Each arrow's shadow in the head plane — the faint copy from the origin — is the vector $q_2$, $k_2$ or $v_2$ itself.",
           "add": [
             {
+              "id": "s2_plane_head",
+              "type": "plane",
+              "normal": [0, 0, 1],
+              "point": [0, 0, -0.02],
+              "size": 12,
+              "color": "#4466aa",
+              "opacity": 0.1
+            },
+            {
               "id": "s2_tensor_x",
               "type": "tensor",
               "shape": [6, 4],
