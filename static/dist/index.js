@@ -1869,6 +1869,10 @@ function buildSliderOverlay() {
 		const valSpan = document.createElement("span");
 		valSpan.className = "slider-value";
 		valSpan.textContent = _formatSliderValue(s);
+		if (!s._valueExprString) {
+			const widest = Math.max(Number(s.min).toFixed(1).length, Number(s.max).toFixed(1).length);
+			valSpan.style.minWidth = `${widest}ch`;
+		}
 		row.appendChild(valSpan);
 		input.addEventListener("input", () => {
 			if (s._loopPlaying) stopSliderLoop(id);
