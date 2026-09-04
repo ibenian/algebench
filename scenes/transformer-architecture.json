@@ -1808,8 +1808,8 @@
                   "color": "#ff7043"
                 },
                 {
-                  "labels": ["h1", "h2"],
-                  "title": "$d_k = 2$",
+                  "labels": ["1", "2"],
+                  "title": "$W_Q$",
                   "color": "#ff7043"
                 }
               ],
@@ -1884,8 +1884,8 @@
                   "color": "#42a5f5"
                 },
                 {
-                  "labels": ["h1", "h2"],
-                  "title": "$d_k = 2$",
+                  "labels": ["1", "2"],
+                  "title": "$W_K$",
                   "color": "#42a5f5"
                 }
               ],
@@ -1960,8 +1960,8 @@
                   "color": "#66bb6a"
                 },
                 {
-                  "labels": ["h1", "h2"],
-                  "title": "$d_k = 2$",
+                  "labels": ["1", "2"],
+                  "title": "$W_V$",
                   "color": "#66bb6a"
                 }
               ],
