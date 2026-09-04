@@ -481,6 +481,20 @@
     /** Exploratory "what if the query pointed there instead" vector. NOT the
      *  model's own q — the lesson must label it as a what-if. angleDeg = 0
      *  returns tfQ(s3_qi, d) exactly. */
+    /** Foot of the perpendicular dropped from the probe query onto key j:
+     *  ((q.k)/(k.k)) * k, component d. Drawing the origin-to-foot segment
+     *  makes q.k visible as a length rather than only as a printed number --
+     *  |proj| * |k_j| is exactly the score. Returns 0 for a zero-length key,
+     *  where the projection is undefined and there is nothing to draw. */
+    function tfProjQK(d, angleDeg, j) {
+        const q0 = tfQProbe(0, angleDeg), q1 = tfQProbe(1, angleDeg);
+        const k0 = tfK(j, 0), k1 = tfK(j, 1);
+        const kk = k0 * k0 + k1 * k1;
+        if (kk === 0) return 0;
+        const t = (q0 * k0 + q1 * k1) / kk;
+        return _clampIdx(d, D_K - 1) === 0 ? t * k0 : t * k1;
+    }
+
     function tfQProbe(d, angleDeg) {
         const st = _st();
         const i = _clampIdx(_getSlider('s3_qi', 2), N - 1);
@@ -559,7 +573,7 @@
     window.AlgeBenchDomains.register('transformer', {
         _init({ getSlider }) { _getSlider = getSlider; },
         tfPerm, tfToken, tfEmb, tfPE, tfX, tfOutNoPos,
-        tfQ, tfK, tfV, tfQProbe,
+        tfQ, tfK, tfV, tfQProbe, tfProjQK,
         tfScore, tfScoreScaled, tfScoreDiv, tfMaskVal, tfAttn, tfRowSum, tfOut,
         tfRopeQ, tfRopeK, tfRopeDot, tfRopeEmb, tfRopeEmbTheta,
         tfRopeEmbDot, tfRopeEmbArc, tfRopeEmbNorm, tfRopeEmbAngle,

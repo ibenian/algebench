@@ -2081,8 +2081,19 @@
         {
           "id": "keys-advertise-queries-ask",
           "title": "Keys advertise, queries ask",
-          "description": "Every token puts a key on the plane. Rotate the query and watch the six alignment numbers rise and fall — that number, $q\\cdot k$, is the whole scoring mechanism. **This rotated query is a what-if of yours, not the model's own $q$**; the model's $q_2$ sits at $0^\\circ$, where the six readings are exactly the scores the model computes.",
+          "description": "Every token puts a key on the plane. Rotate the query and watch the six alignment numbers rise and fall — that number, $q\\cdot k$, is the whole scoring mechanism. Pick a key with the second slider to see *why* it is a number: drop a perpendicular from the query's tip onto that key's direction, and the foot marks $\\mathrm{proj}_k q$. The score is that projection\\'s signed length times $|k|$ — so it turns **negative** the moment the foot crosses to the far side of the origin. **This rotated query is a what-if of yours, not the model's own $q$**; the model's $q_2$ sits at $0^\\circ$, where the six readings are exactly the scores the model computes.",
           "add": [
+            {
+              "id": "s2_line_kray",
+              "type": "animated_line",
+              "points": [
+                ["-0.45*tfK(s2_kj,0)", "-0.45*tfK(s2_kj,1)", "0"],
+                ["1.45*tfK(s2_kj,0)", "1.45*tfK(s2_kj,1)", "0"]
+              ],
+              "color": "#42a5f5",
+              "width": 1,
+              "opacity": 0.45
+            },
             {
               "id": "s2_pt_k0",
               "type": "animated_point",
@@ -2159,10 +2170,42 @@
               "width": 0.9,
               "arrowScale": 0.8,
               "label": "what-if query (yours, not the model's)"
+            },
+            {
+              "id": "s2_vec_projk",
+              "type": "animated_vector",
+              "fromExpr": ["0", "0", "0"],
+              "toExpr": ["tfProjQK(0,s2_qdir,s2_kj)", "tfProjQK(1,s2_qdir,s2_kj)", "0"],
+              "color": "#ff7043",
+              "width": 0.7,
+              "arrowScale": 0.55,
+              "opacity": 0.75,
+              "label": "$\\mathrm{proj}_k q$",
+              "prompt": "The vector projection of the what-if query onto the selected key, ((q.k)/(k.k))k. Its signed length times |k| is exactly the score q.k printed beside that key -- which is why the score goes negative when this arrow points opposite to the key. Rotate the query and watch the two move together."
+            },
+            {
+              "id": "s2_line_perp",
+              "type": "animated_line",
+              "points": [
+                ["tfQProbe(0,s2_qdir)", "tfQProbe(1,s2_qdir)", "0"],
+                ["tfProjQK(0,s2_qdir,s2_kj)", "tfProjQK(1,s2_qdir,s2_kj)", "0"]
+              ],
+              "color": "#cfd8dc",
+              "width": 1,
+              "opacity": 0.4,
+              "prompt": "The perpendicular dropped from the query's tip onto the selected key's direction. It meets that line at a right angle by construction -- that right angle is what makes the foot the closest point on the line to the query, and what makes the dot product a length."
+            },
+            {
+              "id": "s2_pt_proj",
+              "type": "animated_point",
+              "expr": ["tfProjQK(0,s2_qdir,s2_kj)", "tfProjQK(1,s2_qdir,s2_kj)", "0"],
+              "radius": 0.1,
+              "color": "#ff7043"
             }
           ],
           "sliders": [
-            {"id": "s2_qdir", "label": "what-if query angle (deg)", "min": -180, "max": 180, "step": 1, "default": 0}
+            {"id": "s2_qdir", "label": "what-if query angle (deg)", "min": -180, "max": 180, "step": 1, "default": 0},
+            {"id": "s2_kj", "label": "project onto key", "min": 0, "max": 5, "step": 1, "default": 1}
           ],
           "camera": {
             "position": [1.2, 0.6, 9.0],

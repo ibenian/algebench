@@ -305,6 +305,32 @@ def main() -> int:
             print(f'  FAIL label contradicts its row at s1_shuffle={shuffle}, slots {bad}')
             failures += 1
 
+    print()
+    print('transformer domain — tfProjQK (the projection line drawn on the score step)')
+    # The picture claims two things. Both are exact, so pin them exactly:
+    #   proj . k == q . k        the drawn segment IS the printed score
+    #   (q - proj) . k == 0      the dropped line really is perpendicular
+    # If either drifts, the step shows a right angle that is not one, or a
+    # length that is not the number beside it.
+    for ang in (0, 37, -120, 180):
+        for j in range(6):
+            q = _run(f'R(dd=>TF.tfQProbe(dd,{ang}),2)', DEFAULT_SLIDERS)
+            k = _run(f'R(dd=>TF.tfK({j},dd),2)', DEFAULT_SLIDERS)
+            pr = _run(f'R(dd=>TF.tfProjQK(dd,{ang},{j}),2)', DEFAULT_SLIDERS)
+            qk = q[0] * k[0] + q[1] * k[1]
+            pk = pr[0] * k[0] + pr[1] * k[1]
+            perp = (q[0] - pr[0]) * k[0] + (q[1] - pr[1]) * k[1]
+            if abs(pk - qk) > 1e-9 or abs(perp) > 1e-9:
+                print(f'  FAIL angle={ang} key={j}: proj.k={pk:.9f} vs q.k={qk:.9f}, '
+                      f'residual.k={perp:.2e}')
+                failures += 1
+                break
+        else:
+            continue
+        break
+    else:
+        print('  ok   proj.k == q.k and (q-proj).k == 0 at 4 angles x 6 keys')
+
     if failures:
         print(f'{failures} check(s) FAILED — the lesson quotes numbers the domain no longer computes.')
         return 1
