@@ -15,6 +15,7 @@ Usage:  ./run.sh scripts/check_transformer_domain.py
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -216,7 +217,14 @@ console.log(JSON.stringify(%EXPR%));
 """
 
 
-def _run(expr: str, sliders: dict) -> list[float]:
+def _run(expr: str, sliders: dict) -> list:
+    """Whatever the expression evaluates to, as parsed JSON.
+
+    NOT list[float]: callers ask for 6x2 matrices (nested lists) and, since
+    the tfToken checks, lists of strings. Annotating the narrow case made
+    the script lie to readers and would break a type checker if one is ever
+    pointed at it.
+    """
     js = (HARNESS
           .replace('%SLIDERS%', json.dumps(sliders))
           .replace('%DOMAIN%', json.dumps(str(DOMAIN)))
@@ -348,6 +356,24 @@ def main() -> int:
         failures += 1
     failures += 0 if _report('quoted row figures survive the rebinding',
                              [probe0[1], probe0[3]], [15.1397, -7.089], 5e-5) else 1
+
+    print()
+    print('transformer domain — cache key')
+    # A slider in _KEY_SLIDERS that _build() never reads does not make the cache
+    # safer: it throws the whole forward pass away and recomputes it for
+    # identical numbers. One that _build DOES read but is missing here is worse
+    # -- stale data. Both directions are caught by comparing the two sets.
+    src = DOMAIN.read_text(encoding='utf-8')
+    keyed = set(re.findall(r"'([a-z0-9_]+)'",
+                           re.search(r'_KEY_SLIDERS = \[(.*?)\]', src, re.S).group(1)))
+    build = src[src.index('function _build()'):src.index('function _st()')]
+    read = set(re.findall(r"_getSlider\('([a-z0-9_]+)'", build))
+    if keyed == read:
+        print(f'  ok   _KEY_SLIDERS == the sliders _build() reads ({len(keyed)})')
+    else:
+        print(f'  FAIL keyed but unread: {sorted(keyed - read)}')
+        print(f'       read but unkeyed: {sorted(read - keyed)}')
+        failures += 1
 
     if failures:
         print(f'{failures} check(s) FAILED — the lesson quotes numbers the domain no longer computes.')

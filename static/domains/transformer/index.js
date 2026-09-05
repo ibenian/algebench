@@ -111,9 +111,16 @@
 
     // ---- the toy forward pass, cached ------------------------------------
 
+    // EXACTLY the sliders _build() reads, and nothing else. A slider listed here
+    // that _build ignores does not make the cache safer -- it throws the whole
+    // forward pass away and recomputes it to produce identical numbers.
+    // s2_m/s2_n are never read by this domain at all (the scene passes them as
+    // ARGUMENTS to tfRopeEmb*), and s3_qi is read by tfQProbe, which runs
+    // outside the cache. check_transformer_domain.py asserts this set matches
+    // _build's own _getSlider calls so it cannot drift back.
     const _KEY_SLIDERS = [
-        's1_shuffle', 's1_pe', 's2_rope', 's2_m', 's2_n',
-        's3_qi', 's3_scale', 's3_mask', 's3_maskafter',
+        's1_shuffle', 's1_pe', 's2_rope',
+        's3_scale', 's3_mask', 's3_maskafter',
     ];
 
     let _cache = { key: null, data: null };
@@ -445,10 +452,18 @@
      *  arc's true angular extent is acos of the normalised tfRopeEmbDot, which
      *  depends only on pb - pa; its projected appearance need not.
      *  Degenerate (zero-norm) or parallel inputs fall back to an endpoint. */
+    // Scratch for tfRopeEmbArc. It feeds a parametric_curve sampled 160 times,
+    // once per component, so allocating inside the function meant ~960 typed
+    // arrays per frame while the reader dragged. Reuse is safe here: the
+    // function fills both buffers before reading them, returns a number, and
+    // keeps nothing across calls, so there is no reentrancy to spoil.
+    const _arcA = new Float64Array(D_MODEL);
+    const _arcB = new Float64Array(D_MODEL);
+
     function tfRopeEmbArc(d, slotA, pa, slotB, pb, s) {
         const c = _clampIdx(d, D_MODEL - 1);
-        const A = new Float64Array(D_MODEL);
-        const B = new Float64Array(D_MODEL);
+        const A = _arcA;
+        const B = _arcB;
         let na = 0, nb = 0;
         for (let k = 0; k < D_MODEL; k++) {
             A[k] = tfRopeEmb(slotA, k, pa);
@@ -485,7 +500,11 @@
      *  Equals tfScore(s3_qi, j) exactly at angleDeg = 0, where the probe IS
      *  the model's own query. */
     function tfScoreProbe(j, angleDeg) {
-        return tfQProbe(0, angleDeg) * tfK(j, 0) + tfQProbe(1, angleDeg) * tfK(j, 1);
+        // One rotation, not two. Calling tfQProbe per component re-read the
+        // slider and re-rotated the vector for each of them; across the six-cell
+        // score row and the six key labels that was ~24 rotations a frame.
+        const q = _probeVec(angleDeg);
+        return q[0] * tfK(j, 0) + q[1] * tfK(j, 1);
     }
 
     /** Foot of the perpendicular dropped from the probe query onto key j:
@@ -502,11 +521,16 @@
         return _clampIdx(d, D_K - 1) === 0 ? t * k0 : t * k1;
     }
 
-    function tfQProbe(d, angleDeg) {
+    /** The what-if query as a vector: token s3_qi's own q, turned by angleDeg.
+     *  Split out so tfScoreProbe can rotate once and read both components. */
+    function _probeVec(angleDeg) {
         const st = _st();
         const i = _clampIdx(_getSlider('s3_qi', 2), N - 1);
-        const r = _rot([st.Q[i * D_K], st.Q[i * D_K + 1]], (Number(angleDeg) || 0) * Math.PI / 180);
-        return r[_clampIdx(d, D_K - 1)];
+        return _rot([st.Q[i * D_K], st.Q[i * D_K + 1]], (Number(angleDeg) || 0) * Math.PI / 180);
+    }
+
+    function tfQProbe(d, angleDeg) {
+        return _probeVec(angleDeg)[_clampIdx(d, D_K - 1)];
     }
 
     function tfScore(i, j) { return _st().S[_clampIdx(i, N - 1) * N + _clampIdx(j, N - 1)]; }
