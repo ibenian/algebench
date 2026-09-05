@@ -465,6 +465,12 @@ export function renderAnimatedVector(el: Element, view: MathBoxNode) {
             try {
                 const txt = String(evalExpr(labelExprFn, 0));
                 labelEl.el.innerHTML = renderKaTeX(txt, false);
+                // The label system measures a box ONCE and caches it, re-measuring
+                // only when boxW is null or the scale changed (labels.ts). Text that
+                // changes LENGTH therefore keeps a stale width -- and that width is
+                // what declutter and overlap avoidance read. Drop the cache so the
+                // next frame measures the text actually on screen.
+                labelEl.boxW = null;
                 labelEl._lastDynamicText = txt;
             } catch (_e) {}
         }
@@ -598,6 +604,7 @@ export function renderAnimatedVector(el: Element, view: MathBoxNode) {
                         const txt = String(evalExpr(labelExprFn, tSec));
                         if (labelEl._lastDynamicText !== txt) {
                             labelEl.el.innerHTML = renderKaTeX(txt, false);
+                            labelEl.boxW = null;
                             labelEl._lastDynamicText = txt;
                         }
                     } catch (_e) {}

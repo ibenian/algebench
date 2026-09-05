@@ -408,6 +408,19 @@ export function buildSliderOverlay(): void {
         const valSpan = document.createElement('span');
         valSpan.className = 'slider-value';
         valSpan.textContent = _formatSliderValue(s);
+        // Reserve the widest readout this slider can ever show. The track is
+        // `flex: 1`, so without this it absorbs the readout's growth: dragging a
+        // -180..180 slider past -100 adds a character, the track loses ~13px, and
+        // the thumb moves out from under a stationary cursor -- which changes the
+        // value, which can change the width back. The result is visible jitter.
+        // `ch` is exact here because .slider-value is monospaced.
+        if (!s._valueExprString) {
+            const widest = Math.max(
+                Number(s.min).toFixed(1).length,
+                Number(s.max).toFixed(1).length,
+            );
+            valSpan.style.minWidth = `${widest}ch`;
+        }
         row.appendChild(valSpan);
 
         input.addEventListener('input', () => {

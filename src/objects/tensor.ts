@@ -38,7 +38,8 @@
  */
 
 import { state } from '/state.js';
-import { parseColor, addLabel3D } from '/labels.js';
+import { parseColor, addLabel3D, renderKaTeX } from '/labels.js';
+import type { Label3D } from '/labels.js';
 import { buildColorMap, normalizeColorValue } from '/colormaps.js';
 import { compileExpr, evalExpr } from '/expr.js';
 import type { CompiledExpr } from '/expr.js';
@@ -49,6 +50,19 @@ import type { Object3D, Scene } from 'three';
 
 /** parseColor returns `number[]`; three's Color constructor needs a tuple. */
 type Rgb3 = [number, number, number];
+
+/**
+ * One axis label driven by `labelExpr`, memoising the last string it rendered
+ * so an unchanged label costs no DOM write and no KaTeX pass. `scope` binds
+ * that entry's index — `row` down the rows, `col` across the columns, and
+ * `idx` either way — exactly as `valueExpr` binds them per cell.
+ */
+interface DynamicAxisLabel {
+    label: Label3D & { _lastDynamicText?: string };
+    src: string;
+    fn: CompiledExpr;
+    scope: Record<string, number>;
+}
 
 /** A per-frame updater, as the scene loader's animation loop expects it. */
 interface AnimUpdater {
@@ -78,12 +92,16 @@ interface TensorState {
     activeAnimExprs: TensorAnimExprEntry[];
     activeAnimUpdaters: AnimUpdater[];
     sceneStartTime: number;
+    /** Read only to decide whether a recompile could change anything — see
+     *  `_rebuildFn`. Same field overlay.ts and json-browser.ts consult. */
+    _sceneJsTrustState: string | null;
 }
 const tensorState = state as unknown as TensorState;
 
 /** Per-axis metadata, as an author supplies it. `axes[k]` describes `shape[k]`. */
 interface AxisSpec {
     labels?: unknown;
+    labelExpr?: unknown;
     title?: unknown;
     color?: unknown;
 }
@@ -189,6 +207,25 @@ function readAxisLabels(axis: AxisSpec | undefined, length: number): string[] | 
         console.warn(`tensor: axis has ${labels.length} labels for ${length} entries; the rest are unlabelled`);
     }
     return labels;
+}
+
+/**
+ * Compile one axis's `labelExpr`. It wins over `labels` for the same reason
+ * `valueExpr` wins over `values`: it is the "labels are a view over data held
+ * elsewhere" contract, so an axis carrying both is asking for the live one.
+ * The expression may evaluate to a string — `concat`, `toFixed` and
+ * `dataTable` all return one — which is the point of the key.
+ */
+export function compileAxisLabelExpr(axis: AxisSpec | undefined): CompiledExpr | null {
+    const src = (axis && typeof axis.labelExpr === 'string' && axis.labelExpr.trim())
+        ? (axis.labelExpr as string).trim() : null;
+    if (!src) return null;
+    try {
+        return compileExpr(src);
+    } catch (err) {
+        console.warn('tensor axis labelExpr compile error:', err);
+        return null;
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -456,6 +493,8 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     // go through addLabel3D, so the loader's snapshot tracker picks them up and
     // they are hidden and restored with the element. ──
     const axes = Array.isArray(el.axes) ? (el.axes as AxisSpec[]) : [];
+    const dynamicLabels: DynamicAxisLabel[] = [];
+    const labelExprStrings: string[] = [];
     if (axes.length) {
         const pad = cellSize * 0.35;
         const hAxisIdx = dims.length - 1;
@@ -464,10 +503,20 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
 
         const hAxis = axes[hAxisIdx];
         const hColor = parseColor((hAxis && hAxis.color) || defaultLabelColor) as Rgb3;
-        const hLabels = readAxisLabels(hAxis, cols);
-        if (hLabels) {
-            for (let c = 0; c < hLabels.length; c++) {
-                addLabel3D(hLabels[c]!, layout.colLabelAt(c, pad), hColor);
+        const hLabelFn = compileAxisLabelExpr(hAxis);
+        if (hLabelFn) {
+            const src = String(hAxis!.labelExpr).trim();
+            labelExprStrings.push(src);
+            for (let c = 0; c < cols; c++) {
+                const label = addLabel3D('', layout.colLabelAt(c, pad), hColor);
+                dynamicLabels.push({ label, src, fn: hLabelFn, scope: { col: c, idx: c } });
+            }
+        } else {
+            const hLabels = readAxisLabels(hAxis, cols);
+            if (hLabels) {
+                for (let c = 0; c < hLabels.length; c++) {
+                    addLabel3D(hLabels[c]!, layout.colLabelAt(c, pad), hColor);
+                }
             }
         }
         if (hAxis && hAxis.title) {
@@ -478,10 +527,20 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
         if (vAxisIdx >= 0) {
             const vAxis = axes[vAxisIdx];
             const vColor = parseColor((vAxis && vAxis.color) || defaultLabelColor) as Rgb3;
-            const vLabels = readAxisLabels(vAxis, rows);
-            if (vLabels) {
-                for (let r = 0; r < vLabels.length; r++) {
-                    addLabel3D(vLabels[r]!, layout.rowLabelAt(r, pad), vColor);
+            const vLabelFn = compileAxisLabelExpr(vAxis);
+            if (vLabelFn) {
+                const src = String(vAxis!.labelExpr).trim();
+                labelExprStrings.push(src);
+                for (let r = 0; r < rows; r++) {
+                    const label = addLabel3D('', layout.rowLabelAt(r, pad), vColor);
+                    dynamicLabels.push({ label, src, fn: vLabelFn, scope: { row: r, idx: r } });
+                }
+            } else {
+                const vLabels = readAxisLabels(vAxis, rows);
+                if (vLabels) {
+                    for (let r = 0; r < vLabels.length; r++) {
+                        addLabel3D(vLabels[r]!, layout.rowLabelAt(r, pad), vColor);
+                    }
                 }
             }
             if (vAxis && vAxis.title) {
@@ -490,26 +549,88 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
         }
     }
 
+    /**
+     * Re-evaluate every expression-driven axis label. The memo is what makes
+     * this affordable per frame: a label whose text has not changed is left
+     * alone, so the common case costs one eval and a string compare rather
+     * than a KaTeX render.
+     */
+    function paintLabels(tSec: number) {
+        for (const dl of dynamicLabels) {
+            let txt: string;
+            // Same reasoning as the cell scope: overrideScope, so a scene
+            // slider named `row` cannot shadow the axis index.
+            try { txt = String(evalExpr(dl.fn, tSec, { overrideScope: dl.scope })); }
+            catch (_err) { continue; }   // keep the last text this label had
+            if (txt === dl.label._lastDynamicText) continue;
+            dl.label.el.innerHTML = renderKaTeX(txt, false);
+            // The label system measures a box ONCE and caches it, re-measuring
+            // only when boxW is null or the scale changed (labels.ts). Text that
+            // changes LENGTH therefore keeps a stale width -- and that width is
+            // what declutter and overlap avoidance read. Drop the cache so the
+            // next frame measures the text actually on screen.
+            dl.label.boxW = null;
+            dl.label._lastDynamicText = txt;
+        }
+    }
+
+    if (dynamicLabels.length) {
+        try { paintLabels(0); } catch (err) {
+            console.warn('tensor axis label evaluation error:', err);
+        }
+    }
+
     const animState = { stopped: false };
 
-    // Literal values never change, so there is nothing to run per frame. This
-    // is the static path, and it costs exactly nothing.
-    if (!valueFn) {
+    // Literal values and literal labels never change, so there is nothing to
+    // run per frame. This is the static path, and it costs exactly nothing.
+    if (!valueFn && !dynamicLabels.length) {
         return { type: 'tensor', color: baseColor, label: el.label };
     }
 
+    let compiledUnderTrust = tensorState._sceneJsTrustState;
+
     const entry: TensorAnimExprEntry = {
-        // Non-null: this branch is gated on valueExprString having compiled.
-        exprStrings: [valueExprString!],
+        exprStrings: [...(valueExprString ? [valueExprString] : []), ...labelExprStrings],
         animState,
-        compiledFns: [valueFn],
+        compiledFns: [...(valueFn ? [valueFn] : []), ...dynamicLabels.map(dl => dl.fn)],
+        // Called on EVERY slider value change, not just on a recompile
+        // (sliders.ts drives both through the same hook). Compiling the same
+        // string twice gives the same node -- a slider VALUE is read at eval
+        // time, never at compile time -- so the work was pure waste on the hot
+        // path, and worse once labelExpr added more strings to redo.
+        //
+        // The one input that changes what compileExpr RETURNS for a fixed
+        // string is the scene's JS trust state: untrusted it is compile('0'),
+        // trusted it is the JS fallback. Scene functions and domain imports do
+        // not count -- those resolve from the scope at eval time. So remember
+        // the trust the current nodes were compiled under and skip until it
+        // moves.
         _rebuildFn() {
-            try {
-                valueFn = compileExpr(valueExprString!);
-                entry.compiledFns = [valueFn];
-            } catch (err) {
-                console.warn('Slider tensor valueExpr recompile error:', err);
+            if (tensorState._sceneJsTrustState === compiledUnderTrust) return;
+            compiledUnderTrust = tensorState._sceneJsTrustState;
+            if (valueExprString) {
+                try {
+                    valueFn = compileExpr(valueExprString);
+                } catch (err) {
+                    console.warn('Slider tensor valueExpr recompile error:', err);
+                }
             }
+            // One compile per distinct expression, not one per label: the six
+            // labels down an axis all share a single `labelExpr`.
+            const recompiled = new Map<string, CompiledExpr>();
+            for (const dl of dynamicLabels) {
+                let fn = recompiled.get(dl.src);
+                if (!fn) {
+                    try { fn = compileExpr(dl.src); } catch (err) {
+                        console.warn('Slider tensor labelExpr recompile error:', err);
+                        continue;
+                    }
+                    recompiled.set(dl.src, fn);
+                }
+                dl.fn = fn;
+            }
+            entry.compiledFns = [...(valueFn ? [valueFn] : []), ...dynamicLabels.map(dl => dl.fn)];
         },
     };
     tensorState.activeAnimExprs.push(entry);
@@ -519,10 +640,14 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
         animState,
         updateFrame(nowMs) {
             if (!mesh.visible) return;
-            try {
-                paintAll((nowMs - startTime) / 1000);
-                colorAttr.needsUpdate = true;
-            } catch (_err) { /* keep the last frame's colours */ }
+            const tSec = (nowMs - startTime) / 1000;
+            if (valueFn) {
+                try {
+                    paintAll(tSec);
+                    colorAttr.needsUpdate = true;
+                } catch (_err) { /* keep the last frame's colours */ }
+            }
+            if (dynamicLabels.length) paintLabels(tSec);
         },
     });
 

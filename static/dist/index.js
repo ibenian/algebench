@@ -1869,6 +1869,10 @@ function buildSliderOverlay() {
 		const valSpan = document.createElement("span");
 		valSpan.className = "slider-value";
 		valSpan.textContent = _formatSliderValue(s);
+		if (!s._valueExprString) {
+			const widest = Math.max(Number(s.min).toFixed(1).length, Number(s.max).toFixed(1).length);
+			valSpan.style.minWidth = `${widest}ch`;
+		}
 		row.appendChild(valSpan);
 		input.addEventListener("input", () => {
 			if (s._loopPlaying) stopSliderLoop(id);
@@ -5926,6 +5930,7 @@ function renderAnimatedVector(el, view) {
 		if (labelExprFn) try {
 			const txt = String(evalExpr(labelExprFn, 0));
 			labelEl.el.innerHTML = renderKaTeX$1(txt, false);
+			labelEl.boxW = null;
 			labelEl._lastDynamicText = txt;
 		} catch (_e) {}
 	}
@@ -6049,6 +6054,7 @@ function renderAnimatedVector(el, view) {
 					const txt = String(evalExpr(labelExprFn, tSec));
 					if (labelEl._lastDynamicText !== txt) {
 						labelEl.el.innerHTML = renderKaTeX$1(txt, false);
+						labelEl.boxW = null;
 						labelEl._lastDynamicText = txt;
 					}
 				} catch (_e) {}
@@ -7066,6 +7072,7 @@ function renderAnimatedCylinder(el, view) {
 		if (labelExprFn) try {
 			const txt = String(evalExpr(labelExprFn, 0));
 			labelEl.el.innerHTML = renderKaTeX$1(txt, false);
+			labelEl.boxW = null;
 			labelEl._lastDynamicText = txt;
 		} catch (_e) {}
 	}
@@ -7105,6 +7112,7 @@ function renderAnimatedCylinder(el, view) {
 					const txt = String(evalExpr(labelExprFn, tSec));
 					if (labelEl._lastDynamicText !== txt) {
 						labelEl.el.innerHTML = renderKaTeX$1(txt, false);
+						labelEl.boxW = null;
 						labelEl._lastDynamicText = txt;
 					}
 				} catch (_e) {}
@@ -7968,6 +7976,23 @@ function readAxisLabels(axis, length) {
 	if (labels.length < length) console.warn(`tensor: axis has ${labels.length} labels for ${length} entries; the rest are unlabelled`);
 	return labels;
 }
+/**
+* Compile one axis's `labelExpr`. It wins over `labels` for the same reason
+* `valueExpr` wins over `values`: it is the "labels are a view over data held
+* elsewhere" contract, so an axis carrying both is asking for the live one.
+* The expression may evaluate to a string — `concat`, `toFixed` and
+* `dataTable` all return one — which is the point of the key.
+*/
+function compileAxisLabelExpr(axis) {
+	const src = axis && typeof axis.labelExpr === "string" && axis.labelExpr.trim() ? axis.labelExpr.trim() : null;
+	if (!src) return null;
+	try {
+		return compileExpr(src);
+	} catch (err) {
+		console.warn("tensor axis labelExpr compile error:", err);
+		return null;
+	}
+}
 /** Axis indices for the two in-plane directions, per plane. */
 var PLANE_AXES = {
 	xy: [
@@ -8159,6 +8184,8 @@ function renderTensor(el, _view) {
 	tensorState.three.scene.add(mesh);
 	tensorState.planeMeshes.push(mesh);
 	const axes = Array.isArray(el.axes) ? el.axes : [];
+	const dynamicLabels = [];
+	const labelExprStrings = [];
 	if (axes.length) {
 		const pad = cellSize * .35;
 		const hAxisIdx = dims.length - 1;
@@ -8166,34 +8193,112 @@ function renderTensor(el, _view) {
 		const defaultLabelColor = "#aabbcc";
 		const hAxis = axes[hAxisIdx];
 		const hColor = parseColor(hAxis && hAxis.color || defaultLabelColor);
-		const hLabels = readAxisLabels(hAxis, cols);
-		if (hLabels) for (let c = 0; c < hLabels.length; c++) addLabel3D(hLabels[c], layout.colLabelAt(c, pad), hColor);
+		const hLabelFn = compileAxisLabelExpr(hAxis);
+		if (hLabelFn) {
+			const src = String(hAxis.labelExpr).trim();
+			labelExprStrings.push(src);
+			for (let c = 0; c < cols; c++) {
+				const label = addLabel3D("", layout.colLabelAt(c, pad), hColor);
+				dynamicLabels.push({
+					label,
+					src,
+					fn: hLabelFn,
+					scope: {
+						col: c,
+						idx: c
+					}
+				});
+			}
+		} else {
+			const hLabels = readAxisLabels(hAxis, cols);
+			if (hLabels) for (let c = 0; c < hLabels.length; c++) addLabel3D(hLabels[c], layout.colLabelAt(c, pad), hColor);
+		}
 		if (hAxis && hAxis.title) addLabel3D(String(hAxis.title), layout.colTitleAt(pad * 3), hColor);
 		if (vAxisIdx >= 0) {
 			const vAxis = axes[vAxisIdx];
 			const vColor = parseColor(vAxis && vAxis.color || defaultLabelColor);
-			const vLabels = readAxisLabels(vAxis, rows);
-			if (vLabels) for (let r = 0; r < vLabels.length; r++) addLabel3D(vLabels[r], layout.rowLabelAt(r, pad), vColor);
+			const vLabelFn = compileAxisLabelExpr(vAxis);
+			if (vLabelFn) {
+				const src = String(vAxis.labelExpr).trim();
+				labelExprStrings.push(src);
+				for (let r = 0; r < rows; r++) {
+					const label = addLabel3D("", layout.rowLabelAt(r, pad), vColor);
+					dynamicLabels.push({
+						label,
+						src,
+						fn: vLabelFn,
+						scope: {
+							row: r,
+							idx: r
+						}
+					});
+				}
+			} else {
+				const vLabels = readAxisLabels(vAxis, rows);
+				if (vLabels) for (let r = 0; r < vLabels.length; r++) addLabel3D(vLabels[r], layout.rowLabelAt(r, pad), vColor);
+			}
 			if (vAxis && vAxis.title) addLabel3D(String(vAxis.title), layout.rowTitleAt(pad * 4), vColor);
 		}
 	}
+	/**
+	* Re-evaluate every expression-driven axis label. The memo is what makes
+	* this affordable per frame: a label whose text has not changed is left
+	* alone, so the common case costs one eval and a string compare rather
+	* than a KaTeX render.
+	*/
+	function paintLabels(tSec) {
+		for (const dl of dynamicLabels) {
+			let txt;
+			try {
+				txt = String(evalExpr(dl.fn, tSec, { overrideScope: dl.scope }));
+			} catch (_err) {
+				continue;
+			}
+			if (txt === dl.label._lastDynamicText) continue;
+			dl.label.el.innerHTML = renderKaTeX$1(txt, false);
+			dl.label.boxW = null;
+			dl.label._lastDynamicText = txt;
+		}
+	}
+	if (dynamicLabels.length) try {
+		paintLabels(0);
+	} catch (err) {
+		console.warn("tensor axis label evaluation error:", err);
+	}
 	const animState = { stopped: false };
-	if (!valueFn) return {
+	if (!valueFn && !dynamicLabels.length) return {
 		type: "tensor",
 		color: baseColor,
 		label: el.label
 	};
+	let compiledUnderTrust = tensorState._sceneJsTrustState;
 	const entry = {
-		exprStrings: [valueExprString],
+		exprStrings: [...valueExprString ? [valueExprString] : [], ...labelExprStrings],
 		animState,
-		compiledFns: [valueFn],
+		compiledFns: [...valueFn ? [valueFn] : [], ...dynamicLabels.map((dl) => dl.fn)],
 		_rebuildFn() {
-			try {
+			if (tensorState._sceneJsTrustState === compiledUnderTrust) return;
+			compiledUnderTrust = tensorState._sceneJsTrustState;
+			if (valueExprString) try {
 				valueFn = compileExpr(valueExprString);
-				entry.compiledFns = [valueFn];
 			} catch (err) {
 				console.warn("Slider tensor valueExpr recompile error:", err);
 			}
+			const recompiled = /* @__PURE__ */ new Map();
+			for (const dl of dynamicLabels) {
+				let fn = recompiled.get(dl.src);
+				if (!fn) {
+					try {
+						fn = compileExpr(dl.src);
+					} catch (err) {
+						console.warn("Slider tensor labelExpr recompile error:", err);
+						continue;
+					}
+					recompiled.set(dl.src, fn);
+				}
+				dl.fn = fn;
+			}
+			entry.compiledFns = [...valueFn ? [valueFn] : [], ...dynamicLabels.map((dl) => dl.fn)];
 		}
 	};
 	tensorState.activeAnimExprs.push(entry);
@@ -8202,10 +8307,12 @@ function renderTensor(el, _view) {
 		animState,
 		updateFrame(nowMs) {
 			if (!mesh.visible) return;
-			try {
-				paintAll((nowMs - startTime) / 1e3);
+			const tSec = (nowMs - startTime) / 1e3;
+			if (valueFn) try {
+				paintAll(tSec);
 				colorAttr.needsUpdate = true;
 			} catch (_err) {}
+			if (dynamicLabels.length) paintLabels(tSec);
 		}
 	});
 	return {
