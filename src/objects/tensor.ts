@@ -109,8 +109,8 @@ export function parseAnchor(raw: unknown): { h: -1 | 0 | 1; v: -1 | 0 | 1 } {
 export function resolveTextColor(raw: unknown): string | null {
     if (raw === undefined || raw === null) return null;
     if (typeof raw === 'string') {
-        const t = raw.trim();
-        if (!t || t.toLowerCase() === 'auto') return null;
+        raw = raw.trim();
+        if (!raw || (raw as string).toLowerCase() === 'auto') return null;
     } else if (!Array.isArray(raw)) {
         return null;
     }
@@ -121,7 +121,7 @@ export function resolveTextColor(raw: unknown): string | null {
     // vertex-colour path cannot. Read it here so the promise is kept for text.
     let alpha = 1;
     if (typeof raw === 'string') {
-        const m = /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})$/.exec(raw.trim());
+        const m = /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})$/.exec(raw);
         if (m) alpha = parseInt(m[1]!, 16) / 255;
     }
     return alpha < 1

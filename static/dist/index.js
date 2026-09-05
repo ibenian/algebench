@@ -7950,14 +7950,14 @@ function parseAnchor(raw) {
 function resolveTextColor(raw) {
 	if (raw === void 0 || raw === null) return null;
 	if (typeof raw === "string") {
-		const t = raw.trim();
-		if (!t || t.toLowerCase() === "auto") return null;
+		raw = raw.trim();
+		if (!raw || raw.toLowerCase() === "auto") return null;
 	} else if (!Array.isArray(raw)) return null;
 	const rgb = parseColor(raw);
 	const ch = (v) => Math.round(Math.max(0, Math.min(1, Number(v) || 0)) * 255);
 	let alpha = 1;
 	if (typeof raw === "string") {
-		const m = /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})$/.exec(raw.trim());
+		const m = /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})$/.exec(raw);
 		if (m) alpha = parseInt(m[1], 16) / 255;
 	}
 	return alpha < 1 ? `rgba(${ch(rgb[0])}, ${ch(rgb[1])}, ${ch(rgb[2])}, ${Math.round(alpha * 1e3) / 1e3})` : `rgb(${ch(rgb[0])}, ${ch(rgb[1])}, ${ch(rgb[2])})`;

@@ -240,6 +240,7 @@ test('resolveTextColor accepts every spelling the schema allows, and auto means 
     assert.equal(resolveTextColor(' AUTO '), null);
     assert.equal(resolveTextColor(''), null);
     assert.equal(resolveTextColor('#ffffff'), 'rgb(255, 255, 255)');
+    assert.equal(resolveTextColor('  #ffffff '), 'rgb(255, 255, 255)'); // trimmed before parsing, not only for the auto check
     assert.equal(resolveTextColor('#ff7043'), 'rgb(255, 112, 67)');
     // The [r,g,b] tuple form the schema's colour type permits was silently
     // ignored before; it must mean the same as the hex spelling.
