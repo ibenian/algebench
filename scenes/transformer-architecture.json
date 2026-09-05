@@ -2717,7 +2717,7 @@
             "target": [2.0, 4.6, 0.0]
           },
           "sliders": [
-            {"id": "s3_qi", "label": "query position $i$", "min": 0, "max": 5, "step": 1, "default": 2}
+            {"id": "s3_qi", "label": "query position $i$", "min": 0, "max": 5, "step": 1, "default": 2, "valueExpr": "concat(string(s3_qi), ' · ', tfToken(s3_qi))"}
           ],
           "add": [
             {
@@ -2769,6 +2769,7 @@
             }
           ],
           "info": [
+            {"id": "s3_stages_card", "position": "bottom-left", "keep": true, "title": "The pipeline so far", "content": "**1 · raw** $s_{ij} = q_i \\cdot k_j$"},
             {"id": "s3_info_half_a_one_query", "position": "top-left", "title": "Stage 1 — raw scores", "content": "$s_{ij} = q_i\\cdot k_j$ — signed, unscaled, unmasked. Stage **1 of 5**. Row $i$ = {{s3_qi}}; against *cat*, {{ toFixed(tfScore(s3_qi,1),4) }}. Full row and the ramp rationale: doc panel."},
             {"id": "s3_keep_card", "position": "bottom-right", "keep": true, "title": "Toy · provenance", "content": "$d_{\\text{model}} = 4$, $d_k = 2$, **one head of two**. $W_Q, W_K, W_V$ are hand-built for legibility, **not learned**."}
           ],
@@ -2789,7 +2790,7 @@
             "target": [1.6, 4.2, 0.0]
           },
           "sliders": [
-            {"id": "s3_scale", "label": "scaling exponent (0 = none, 1 = $1/\\sqrt{d_k}$)", "min": 0, "max": 1, "step": 0.01, "default": 0}
+            {"id": "s3_scale", "label": "divisor: 1 (none) → $\\sqrt{d_k} = \\sqrt2$", "min": 0, "max": 1, "step": 0.01, "default": 0, "valueExpr": "concat('÷ ', toFixed(2 ^ (s3_scale / 2), 3))"}
           ],
           "add": [
             {
@@ -2874,6 +2875,7 @@
             }
           ],
           "info": [
+            {"id": "s3_stages_card", "position": "bottom-left", "keep": true, "title": "The pipeline so far", "content": "**1 · raw** $s_{ij} = q_i \\cdot k_j$\n\n**2 · scale** $\\hat s_{ij} = s_{ij} / \\sqrt{d_k}$"},
             {"id": "s3_info_predict_scaling", "position": "top-right", "title": "Predict — commit first", "content": "Row 3 (*on*), unmasked and unscaled: softmax **0.4167** on the winner. Divide by $\\sqrt{d_k} = \\sqrt2$ — sharper, flatter, or a new winner? Commit out loud. *The tutor will not answer.*"},
             {"id": "s3_keep_card", "position": "bottom-right", "keep": true, "title": "Toy · provenance", "content": "$d_{\\text{model}} = 4$, $d_k = 2$, **one head of two**. $W_Q, W_K, W_V$ are hand-built for legibility, **not learned**."}
           ],
@@ -2888,8 +2890,8 @@
             "target": [1.8, 3.6, 0.0]
           },
           "sliders": [
-            {"id": "s3_scale", "label": "scaling exponent (0 = none, 1 = $1/\\sqrt{d_k}$)", "min": 0, "max": 1, "step": 0.01, "default": 1, "reset": true},
-            {"id": "s3_dksel", "label": "divisor: 0 = none · 1 = $\\sqrt{d_k}$ · 2 = $\\sqrt{d_{\\text{model}}}$", "min": 0, "max": 2, "step": 1, "default": 0}
+            {"id": "s3_scale", "label": "divisor: 1 (none) → $\\sqrt{d_k} = \\sqrt2$", "min": 0, "max": 1, "step": 0.01, "default": 1, "reset": true, "valueExpr": "concat('÷ ', toFixed(2 ^ (s3_scale / 2), 3))"},
+            {"id": "s3_dksel", "label": "row 2, the misconception check: which $\\sqrt{\\;\\cdot\\;}$?", "min": 0, "max": 2, "step": 1, "default": 0, "valueExpr": "s3_dksel == 2 ? 'sqrt(d_model) = 2  ✗' : (s3_dksel == 1 ? 'sqrt(d_k) = 1.414  ✓' : 'none')"}
           ],
           "remove": [
             {"id": "s3_tensor_on_raw_n"},
@@ -3003,6 +3005,7 @@
             }
           ],
           "info": [
+            {"id": "s3_stages_card", "position": "bottom-left", "keep": true, "title": "The pipeline so far", "content": "**1 · raw** $s_{ij} = q_i \\cdot k_j$\n\n**2 · scale** $\\hat s_{ij} = s_{ij} / \\sqrt{d_k}$"},
             {"id": "s3_info_reveal_scaling", "position": "top-center", "title": "Flatter, same winner", "content": "$0.4167 \\to$ **{{ toFixed(tfAttn(3,3),4) }}**; a positive constant cannot reorder a row. Row 2 $\\div\\sqrt{ {{ s3_dksel == 2 ? 4 : (s3_dksel == 1 ? 2 : 1) }} }$: $\\sqrt{d_k}$ ✓, $\\sqrt{d_{\\text{model}}}$ ✗ — $10.7054$ vs $7.5699$."},
             {"id": "s3_keep_card", "position": "bottom-right", "keep": true, "title": "Toy · provenance", "content": "$d_{\\text{model}} = 4$, $d_k = 2$, **one head of two**. $W_Q, W_K, W_V$ are hand-built for legibility, **not learned**."}
           ],
@@ -3192,6 +3195,7 @@
             }
           ],
           "info": [
+            {"id": "s3_stages_card", "position": "bottom-left", "keep": true, "title": "The pipeline so far", "content": "**1 · raw** $s_{ij} = q_i \\cdot k_j$\n\n**2 · scale** $\\hat s_{ij} = s_{ij} / \\sqrt{d_k}$"},
             {"id": "s3_info_generic_iid_vectors", "position": "bottom-left", "title": "A different object", "content": "$n$ = {{s3_gen_d}}. Your 4,000 draws give $\\mathrm{Var}(q\\cdot k)$ = **{{ toFixed(tfSampleVar(s3_gen_d,4000),2) }}**, theory $n$. Anchors $1.9773$ and $64.42$. Why this is not our toy: doc panel."},
             {"id": "s3_keep_card", "position": "bottom-right", "keep": true, "title": "Toy · provenance", "content": "$d_{\\text{model}} = 4$, $d_k = 2$, **one head of two**. $W_Q, W_K, W_V$ are hand-built for legibility, **not learned**. The pink object is a **different object** from this toy."}
           ],
@@ -3273,6 +3277,7 @@
             }
           ],
           "info": [
+            {"id": "s3_stages_card", "position": "bottom-left", "keep": true, "title": "The pipeline so far", "content": "**1 · raw** $s_{ij} = q_i \\cdot k_j$\n\n**2 · scale** $\\hat s_{ij} = s_{ij} / \\sqrt{d_k}$\n\n**3 · mask** — predict first"},
             {"id": "s3_info_predict_mask", "position": "top-right", "title": "Predict — one question", "content": "Decoder-only: position $i$ sees keys $0\\ldots i$. What exactly is removed — and do the survivors keep their values, or change? Commit first. *No answer from the tutor.*"},
             {"id": "s3_keep_card", "position": "bottom-right", "keep": true, "title": "Toy · provenance", "content": "$d_{\\text{model}} = 4$, $d_k = 2$, **one head of two**. $W_Q, W_K, W_V$ are hand-built for legibility, **not learned**."}
           ],
@@ -3288,7 +3293,7 @@
           },
           "sliders": [
             {"id": "s3_mask", "label": "causal mask on/off", "min": 0, "max": 1, "step": 1, "default": 1, "reset": true},
-            {"id": "s3_scale", "label": "scaling exponent (0 = none, 1 = $1/\\sqrt{d_k}$)", "min": 0, "max": 1, "step": 0.01, "default": 1},
+            {"id": "s3_scale", "label": "divisor: 1 (none) → $\\sqrt{d_k} = \\sqrt2$", "min": 0, "max": 1, "step": 0.01, "default": 1, "valueExpr": "concat('÷ ', toFixed(2 ^ (s3_scale / 2), 3))"},
             {"id": "s3_maskafter", "label": "mask **AFTER** softmax (**wrong**)", "min": 0, "max": 1, "step": 1, "default": 0}
           ],
           "remove": [
@@ -3432,6 +3437,7 @@
             }
           ],
           "info": [
+            {"id": "s3_stages_card", "position": "bottom-left", "keep": true, "title": "The pipeline so far", "content": "**1 · raw** $s_{ij} = q_i \\cdot k_j$\n\n**2 · scale** $\\hat s_{ij} = s_{ij} / \\sqrt{d_k}$\n\n**3 · mask** $\\hat s_{ij} + M_{ij}$, with $M_{ij} = -\\infty$ for $j > i$"},
             {"id": "s3_info_mask_before_softmax", "position": "top-left", "title": "Mask, then softmax", "content": "Live row sum **{{ toFixed(tfRowSum(s3_qi), 6) }}**. Correct order gives $1.000000$; masking *after* softmax gives $\\textcolor{#e53935}{0.989933}$. Why, and the scene-1 caveat it retires: doc panel."},
             {"id": "s3_keep_card", "position": "bottom-right", "keep": true, "title": "Toy · provenance", "content": "$d_{\\text{model}} = 4$, $d_k = 2$, **one head of two**. $W_Q, W_K, W_V$ are hand-built for legibility, **not learned**."}
           ],
@@ -3491,6 +3497,7 @@
             }
           ],
           "info": [
+            {"id": "s3_stages_card", "position": "bottom-left", "keep": true, "title": "The pipeline so far", "content": "**1 · raw** $s_{ij} = q_i \\cdot k_j$\n\n**2 · scale** $\\hat s_{ij} = s_{ij} / \\sqrt{d_k}$\n\n**3 · mask** $\\hat s_{ij} + M_{ij}$, with $M_{ij} = -\\infty$ for $j > i$\n\n**4 · softmax** $\\alpha_{ij} = \\mathrm{softmax}_j(\\hat s_{ij} + M_{ij})$"},
             {"id": "s3_info_softmax_flagship", "position": "bottom-center", "title": "The flagship row", "content": "$\\alpha_{2j} = 0.029108,\\ \\mathbf{0.970889},\\ 0.000003$, then nothing. Sum = **{{ toFixed(tfRowSum(s3_qi), 6) }}**, asserted. Row-stochastic: read across, never down."},
             {"id": "s3_keep_card", "position": "bottom-right", "keep": true, "title": "Toy · provenance", "content": "$d_{\\text{model}} = 4$, $d_k = 2$, **one head of two**. $W_Q, W_K, W_V$ are hand-built for legibility, **not learned**."}
           ],
@@ -3752,6 +3759,7 @@
             }
           ],
           "info": [
+            {"id": "s3_stages_card", "position": "bottom-left", "keep": true, "title": "The pipeline so far", "content": "**1 · raw** $s_{ij} = q_i \\cdot k_j$\n\n**2 · scale** $\\hat s_{ij} = s_{ij} / \\sqrt{d_k}$\n\n**3 · mask** $\\hat s_{ij} + M_{ij}$, with $M_{ij} = -\\infty$ for $j > i$\n\n**4 · softmax** $\\alpha_{ij} = \\mathrm{softmax}_j(\\hat s_{ij} + M_{ij})$\n\n**5 · mix** $o_i = \\sum_j \\alpha_{ij}\\, v_j$"},
             {"id": "s3_info_output_is_caged", "position": "top-center", "title": "Caged in the hull", "content": "$o_i = ({{ toFixed(tfOut(s3_qi,0),4) }},\\ {{ toFixed(tfOut(s3_qi,1),4) }})$ — the centre of mass of the *visible* $v_j$, masses $\\alpha_{ij}$. Spoke thickness = weight. The outline is the bound; dim points are values the mask hides. Points at $2\\times$. Proof 4."},
             {"id": "s3_keep_card", "position": "bottom-right", "keep": true, "title": "Toy · provenance", "content": "$d_{\\text{model}} = 4$, $d_k = 2$, **one head of two**. $W_Q, W_K, W_V$ are hand-built for legibility, **not learned**."}
           ],
@@ -3766,6 +3774,7 @@
             "target": [0.0, 0.0, 0.0]
           },
           "info": [
+            {"id": "s3_stages_card", "position": "bottom-left", "keep": true, "title": "The pipeline so far", "content": "**1 · raw** $s_{ij} = q_i \\cdot k_j$\n\n**2 · scale** $\\hat s_{ij} = s_{ij} / \\sqrt{d_k}$\n\n**3 · mask** $\\hat s_{ij} + M_{ij}$, with $M_{ij} = -\\infty$ for $j > i$\n\n**4 · softmax** $\\alpha_{ij} = \\mathrm{softmax}_j(\\hat s_{ij} + M_{ij})$\n\n**5 · mix** $o_i = \\sum_j \\alpha_{ij}\\, v_j$"},
             {"id": "s3_info_weighting_is_not_explanation", "position": "bottom-left", "title": "Not an explanation", "content": "A large $\\alpha_{ij}$ is a fact about mixing, not evidence the output depends on token $j$ (Jain & Wallace 2019; Wiegreffe & Pinter 2019 rebut in part). Full statement: doc panel."},
             {"id": "s3_keep_card", "position": "bottom-right", "keep": true, "title": "Toy · provenance", "content": "$d_{\\text{model}} = 4$, $d_k = 2$, **one head of two**. $W_Q, W_K, W_V$ are hand-built for legibility, **not learned**."}
           ],
@@ -3781,7 +3790,7 @@
             "target": [-7.8, -8.3, 0.0]
           },
           "sliders": [
-            {"id": "s3_row", "label": "highlighted query row", "min": 0, "max": 5, "step": 1, "default": 2}
+            {"id": "s3_row", "label": "highlighted query row", "min": 0, "max": 5, "step": 1, "default": 2, "valueExpr": "concat(string(s3_row), ' · ', tfToken(s3_row))"}
           ],
           "remove": [
             {"id": "s3_txt_halfA"},
@@ -3818,7 +3827,8 @@
             {"id": "s3_spoke_2"},
             {"id": "s3_spoke_3"},
             {"id": "s3_spoke_4"},
-            {"id": "s3_spoke_5"}
+            {"id": "s3_spoke_5"},
+            {"id": "s3_stages_card"}
           ],
           "add": [
             {
