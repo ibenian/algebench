@@ -37,6 +37,7 @@ elements. Use it instead of hand-writing cells — always.
 | `opacity` | `0.95` | 0–1 |
 | `widthExpr` | `1 − gap` | Per-cell **width** as a fraction of `cellSize` (0–1), with `row`, `col`, `idx` and `value` bound. See *Channels* |
 | `heightExpr` | `1 − gap` | Per-cell **height**, same scope. Independent of width |
+| `axisLabels` | `screen` | `screen`: HTML labels facing the camera. `plane`: labels and titles drawn on the lattice plane, like cell text. See *Axis labels* |
 | `anchor` | `center` | Which edge a shrunken cell keeps: `bottom`, `top`, `left`, `right`, or a pair like `bottom-left`. See *Channels* |
 | `textExpr` | — | Text drawn **inside** each cell, same scope. Plain text, fitted to the cell, on the lattice plane |
 | `textColor` | auto | Colour for cell text. Omit for automatic contrast per cell |
@@ -180,6 +181,19 @@ ignored and the remainder is left blank.
 
 The labels are ordinary 3D labels, so they hide and restore with the element and do **not** create
 legend entries.
+
+### On the plane instead of on the screen
+
+By default axis labels are screen labels: HTML that always faces the camera. Set
+`"axisLabels": "plane"` and they are drawn on the lattice plane instead, in a band above the cells
+(column labels, then the column title) and a band to the left (row labels, then the row title turned
+a quarter turn), the same way `textExpr` cell text is drawn. They then tilt, scale and occlude with
+the lattice, and never pile up with the screen labels of other elements — the right choice when the
+camera looks at the lattice from an angle, or when several lattices sit close together.
+
+Two costs. Plain text only: LaTeX is reduced to its plain reading (`key $j$` → `key j`,
+`$\alpha_{3j}$` → `α3j`), so keep plane-mode labels simple. And a label driven by `labelExpr` is
+re-evaluated per frame like cell text, with the canvas redrawn only when some label changed.
 
 ## Cell indexing
 

@@ -711,6 +711,10 @@ export interface Element {
    */
   heightExpr?: string;
   /**
+   * TENSOR ONLY. How 'axes' labels and titles are drawn. 'screen' (default): HTML labels that always face the camera, like every other label. 'plane': drawn on the lattice plane itself, in margin bands beside and above the cells, the same way 'textExpr' cell text is -- they tilt, scale and occlude with the lattice and never pile up with screen labels. Plain text only in plane mode (LaTeX is reduced to its plain reading: 'key $j$' becomes 'key j').
+   */
+  axisLabels?: 'screen' | 'plane';
+  /**
    * TENSOR ONLY. Which edge of its slot a cell shrunk by 'widthExpr' / 'heightExpr' keeps. 'center' (default) grows and shrinks about the slot centre; 'bottom', 'top', 'left', 'right' pin that edge, and a pair such as 'bottom-left' pins both. A full-size cell sits in the same place whatever the anchor. "heightExpr": "value" with "anchor": "bottom" turns a row of cells into a bar chart standing on its lattice — the way to show a distribution of values.
    */
   anchor?: string;

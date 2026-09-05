@@ -263,3 +263,13 @@ test('a size or text channel refuses an expression compileExpr would degrade to 
     assert.match(String(explainCompileDegrade('value.toFixed(2)')), /JavaScript-only/);
     assert.match(String(explainCompileDegrade('concat(((')), /does not parse/);
 });
+
+test('plainTextOfLatex gives a canvas the reading of a label that may carry LaTeX', async () => {
+    const { plainTextOfLatex } = await import('/objects/tensor.js');
+    assert.equal(plainTextOfLatex('key $j$'), 'key j');
+    assert.equal(plainTextOfLatex('$\\alpha_{3j}$'), 'α3j');
+    assert.equal(plainTextOfLatex('$d_{\\text{model}} = 4$'), 'dmodel = 4');
+    assert.equal(plainTextOfLatex('row $i$ $\\to$ key $j$'), 'row i → key j');
+    assert.equal(plainTextOfLatex('plain'), 'plain');
+    assert.equal(plainTextOfLatex('$\\unknowncmd{x}$'), 'unknowncmdx');
+});

@@ -176,7 +176,8 @@
                   "title": "key"
                 }
               ],
-              "prompt": "The live softmax matrix again, with two more channels: each cell is drawn sqrt(value) wide and tall, so its AREA is the weight, and its value is printed inside it, fitted to the shrunken cell."
+              "prompt": "The live softmax matrix again, with two more channels: each cell is drawn sqrt(value) wide and tall, so its AREA is the weight, and its value is printed inside it, fitted to the shrunken cell.",
+              "axisLabels": "plane"
             },
             {
               "id": "bars",
@@ -201,7 +202,8 @@
               "prompt": "Row 3 of the live matrix as a bar chart: heightExpr is the value itself, anchor is bottom so every bar stands on the same baseline, width is untouched, and the number rides inside each bar.",
               "textExpr": "toFixed(value, 2)",
               "textColor": "#ffffff",
-              "anchor": "bottom"
+              "anchor": "bottom",
+              "axisLabels": "plane"
             }
           ],
           "sliders": [

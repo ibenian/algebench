@@ -129,6 +129,28 @@ export function resolveTextColor(raw: unknown): string | null {
         : `rgb(${ch(rgb[0]!)}, ${ch(rgb[1]!)}, ${ch(rgb[2]!)})`;
 }
 
+/**
+ * The plain-text reading of a label that may carry LaTeX, for drawing on a
+ * canvas where KaTeX cannot run: `$`s go, `\text{}`/`\mathrm{}` unwrap,
+ * common Greek and symbol commands become their glyph, braces vanish, and any
+ * other command keeps its name without the backslash. Good enough for axis
+ * labels ("key $j$" -> "key j", "$\alpha_{3j}$" -> "α3j"); not a typesetter.
+ */
+export function plainTextOfLatex(src: string): string {
+    const greek: Record<string, string> = {
+        alpha: 'α', beta: 'β', gamma: 'γ', delta: 'δ', epsilon: 'ε', theta: 'θ', lambda: 'λ', mu: 'μ',
+        pi: 'π', rho: 'ρ', sigma: 'σ', tau: 'τ', phi: 'φ', omega: 'ω', Delta: 'Δ', Sigma: 'Σ', Omega: 'Ω',
+        cdot: '·', times: '×', to: '→', rightarrow: '→', leftarrow: '←', infty: '∞', pm: '±', le: '≤', ge: '≥', ne: '≠',
+    };
+    return src
+        .replace(/\\(?:text|mathrm|mathbf|operatorname)\{([^{}]*)\}/g, '$1')
+        .replace(/\$/g, '')
+        .replace(/\\([A-Za-z]+)/g, (_m, name: string) => greek[name] ?? name)
+        .replace(/[{}_^]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
 /** Near-black or near-white, whichever reads against the cell's colour. */
 export function contrastTextColor(rgb: readonly number[]): string {
     const lum = 0.2126 * (rgb[0] ?? 0) + 0.7152 * (rgb[1] ?? 0) + 0.0722 * (rgb[2] ?? 0);
@@ -654,6 +676,38 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     tensorState.three.scene.add(mesh);
     tensorState.planeMeshes.push(mesh);
 
+    // ── Axes, read once. `axes[k]` describes `shape[k]`; the last dimension
+    // runs horizontally and the one before it vertically, matching the layout.
+    // Two ways to draw them: `axisLabels: "screen"` (default) makes HTML decal
+    // labels that face the camera; `"plane"` draws them on the same canvas as
+    // the cell text, in margin bands around the lattice, so they tilt and
+    // occlude with the cells. ──
+    const axes = Array.isArray(el.axes) ? (el.axes as AxisSpec[]) : [];
+    const axisPlane = el.axisLabels === 'plane';
+    const hAxisIdx = dims.length - 1;
+    const vAxisIdx = dims.length - 2;
+    const defaultLabelColor = '#aabbcc';
+    const hAxis = axes[hAxisIdx];
+    const vAxis = vAxisIdx >= 0 ? axes[vAxisIdx] : undefined;
+    const hColor = parseColor((hAxis && hAxis.color) || defaultLabelColor) as Rgb3;
+    const vColor = parseColor((vAxis && vAxis.color) || defaultLabelColor) as Rgb3;
+    let hLabelFn = compileAxisLabelExpr(hAxis);
+    let vLabelFn = compileAxisLabelExpr(vAxis);
+    const hLabelSrc = hLabelFn ? String(hAxis!.labelExpr).trim() : null;
+    const vLabelSrc = vLabelFn ? String(vAxis!.labelExpr).trim() : null;
+    const hLabelsStatic = hLabelFn ? null : readAxisLabels(hAxis, cols);
+    const vLabelsStatic = vLabelFn ? null : readAxisLabels(vAxis, rows);
+    const hTitle = (hAxis && hAxis.title) ? String(hAxis.title) : null;
+    const vTitle = (vAxis && vAxis.title) ? String(vAxis.title) : null;
+    const hasHLabels = !!(hLabelFn || hLabelsStatic);
+    const hasVLabels = !!(vLabelFn || vLabelsStatic);
+    // Margin bands in pitch units: one row of column labels above, ~2.4 cells
+    // of row labels to the left (a short word), and a title band beyond each.
+    const mT = axisPlane ? (hasHLabels ? 1 : 0) + (hTitle ? 0.9 : 0) : 0;
+    const mL = axisPlane ? (hasVLabels ? 2.4 : 0) + (vTitle ? 0.9 : 0) : 0;
+    const planeLabels = axisPlane && (mT > 0 || mL > 0);
+    const cssColor = (rgb: Rgb3) => `rgb(${Math.round(rgb[0] * 255)}, ${Math.round(rgb[1] * 255)}, ${Math.round(rgb[2] * 255)})`;
+
     // ── Cell text: one canvas for the whole lattice, mapped onto one quad that
     // lies ON the lattice plane, a hair in front of the cells. It is geometry,
     // not an HTML label: it tilts with the plane, is occluded like the cells,
@@ -673,21 +727,25 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     // pixel budget keeps it inside the texture limit; and at that density no
     // string could be read anyway. Say so and skip the layer rather than
     // allocate something the GPU may refuse.
-    if (textFn && Math.max(rows, cols) > 2048) {
+    // Two caps, both about the canvas: past 2048 cells a side no pixel budget
+    // fits the texture limit, and past 16384 cells in total each cell gets
+    // under 16px, where no string is legible and the per-frame evaluation
+    // is pure cost. Say so and skip the text rather than allocate it.
+    if (textFn && (Math.max(rows, cols) > 2048 || rows * cols > 16384)) {
         console.warn(
             `tensor${el.id ? ` "${el.id}"` : ''}: textExpr is ignored on a ${rows}x${cols} lattice; `
-            + `cell text needs at least one canvas pixel per cell and the canvas is capped at 2048 a side.`);
+            + `cell text is capped at 2048 cells a side and 16384 cells in total (the canvas is 2048px a side).`);
         textFn = null;
     }
-    if (textFn) {
+    if (textFn || planeLabels) {
         // Pixels per cell pitch: enough for a short number to be crisp, and
         // capped so the whole canvas never exceeds 2048 on a side. The cap
         // wins over crispness: past ~85 cells a side the text is too small to
         // read anyway, and an oversized texture is a real memory cost.
-        const px = Math.max(1, Math.min(128, Math.floor(2048 / Math.max(rows, cols))));
+        const px = Math.max(1, Math.min(128, Math.floor(2048 / Math.max(rows + mT, cols + mL))));
         const canvas = document.createElement('canvas');
-        canvas.width = cols * px;
-        canvas.height = rows * px;
+        canvas.width = Math.ceil((cols + mL) * px);
+        canvas.height = Math.ceil((rows + mT) * px);
         const ctx = canvas.getContext('2d');
         if (ctx) {
             const tex = new THREE.CanvasTexture(canvas);
@@ -697,11 +755,14 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
             // Lift off the plane by a fraction of the pitch so the quad wins the
             // depth tie against the cells without visibly floating.
             const lift = cellSize * 0.02;
+            // The quad covers the lattice plus the label margins, so the
+            // canvas maps onto it 1:1 in pitch units.
+            const x0 = -mL * cellSize, y1 = layout.height + mT * cellSize;
             const q = [
-                dataToWorld(layout.point(0, 0, lift)),
+                dataToWorld(layout.point(x0, 0, lift)),
                 dataToWorld(layout.point(layout.width, 0, lift)),
-                dataToWorld(layout.point(layout.width, layout.height, lift)),
-                dataToWorld(layout.point(0, layout.height, lift)),
+                dataToWorld(layout.point(layout.width, y1, lift)),
+                dataToWorld(layout.point(x0, y1, lift)),
             ];
             const qPos = new Float32Array([...q[0]!, ...q[1]!, ...q[2]!, ...q[3]!]);
             // Row 0 is drawn at the top of the canvas and sits at the top of the
@@ -736,33 +797,98 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
         }
     }
 
-    /** Evaluate every cell's text and redraw the canvas if anything on it changed. */
-    function paintText(tSec: number) {
-        if (!textLayer || !textFn) return;
-        const { ctx, tex, px } = textLayer;
-        const texts: string[] = new Array(drawn);
-        const keyParts: string[] = [];
-        for (let r = 0; r < rows; r++) {
-            for (let c = 0; c < cols; c++) {
-                const cell = r * cols + c;
-                let txt = '';
+    /** One axis's label strings for this frame: the expression per entry, or the static list. */
+    function axisLabelTexts(fn: CompiledExpr | null, statics: string[] | null, n: number, isRow: boolean, tSec: number): string[] {
+        const out: string[] = new Array(n).fill('');
+        for (let k = 0; k < n; k++) {
+            if (fn) {
                 try {
-                    const out = evalExpr(textFn, tSec, { overrideScope: { row: r, col: c, idx: cell, value: cellValue[cell]! } });
-                    txt = (out === null || out === undefined) ? '' : String(out);
-                } catch (_err) { txt = ''; }
-                texts[cell] = txt;
-                keyParts.push(txt, cellW[cell]!.toFixed(3), cellH[cell]!.toFixed(3),
-                    String(Math.round(cellRgb[cell * 3]! * 255)), String(Math.round(cellRgb[cell * 3 + 1]! * 255)),
-                    String(Math.round(cellRgb[cell * 3 + 2]! * 255)));
+                    const v = evalExpr(fn, tSec, { overrideScope: isRow ? { row: k, idx: k } : { col: k, idx: k } });
+                    out[k] = (v === null || v === undefined) ? '' : String(v);
+                } catch (_err) { out[k] = ''; }
+            } else if (statics && k < statics.length) {
+                out[k] = statics[k]!;
             }
         }
+        return out;
+    }
+
+    /** Draw one string fitted into a box, in a colour, optionally rotated a quarter turn. */
+    function drawFitted(ctx: CanvasRenderingContext2D, txt: string, cx: number, cy: number, wPx: number, hPx: number, color: string, rotate = false) {
+        const t = plainTextOfLatex(txt);
+        if (!t || wPx < 2 || hPx < 2) return;
+        ctx.font = '100px system-ui, sans-serif';
+        const measured = ctx.measureText(t).width;
+        const fontPx = fitFontPx(measured, rotate ? hPx : wPx, rotate ? wPx : hPx);
+        ctx.font = `${fontPx}px system-ui, sans-serif`;
+        ctx.fillStyle = color;
+        if (rotate) {
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText(t, 0, 0);
+            ctx.restore();
+        } else {
+            ctx.fillText(t, cx, cy);
+        }
+    }
+
+    /** Evaluate every cell's text (and, in plane mode, the axis labels) and redraw the canvas if anything changed. */
+    function paintText(tSec: number) {
+        if (!textLayer || (!textFn && !planeLabels)) return;
+        const { ctx, tex, px } = textLayer;
+        const ox = mL * px, oy = mT * px;
+        const texts: string[] = new Array(drawn).fill('');
+        const keyParts: string[] = [];
+        if (textFn) {
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const cell = r * cols + c;
+                    let txt = '';
+                    try {
+                        const out = evalExpr(textFn, tSec, { overrideScope: { row: r, col: c, idx: cell, value: cellValue[cell]! } });
+                        txt = (out === null || out === undefined) ? '' : String(out);
+                    } catch (_err) { txt = ''; }
+                    texts[cell] = txt;
+                    keyParts.push(txt, cellW[cell]!.toFixed(3), cellH[cell]!.toFixed(3),
+                        String(Math.round(cellRgb[cell * 3]! * 255)), String(Math.round(cellRgb[cell * 3 + 1]! * 255)),
+                        String(Math.round(cellRgb[cell * 3 + 2]! * 255)));
+                }
+            }
+        }
+        const hTexts = planeLabels && hasHLabels ? axisLabelTexts(hLabelFn, hLabelsStatic, cols, false, tSec) : null;
+        const vTexts = planeLabels && hasVLabels ? axisLabelTexts(vLabelFn, vLabelsStatic, rows, true, tSec) : null;
+        if (hTexts) keyParts.push(...hTexts);
+        if (vTexts) keyParts.push(...vTexts);
         const key = keyParts.join('\u0001');
         if (key === textLayer.lastKey) return;
         textLayer.lastKey = key;
 
-        ctx.clearRect(0, 0, cols * px, rows * px);
+        ctx.clearRect(0, 0, textLayer.canvas.width, textLayer.canvas.height);
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
+
+        if (hTexts) {
+            const band = (mT - (hTitle ? 0.9 : 0)) * px;   // the band nearest the lattice
+            for (let c = 0; c < cols; c++) {
+                drawFitted(ctx, hTexts[c]!, ox + (c + 0.5) * px, oy - band / 2, 0.92 * px, 0.8 * band, cssColor(hColor));
+            }
+        }
+        if (hTitle && planeLabels) {
+            drawFitted(ctx, hTitle, ox + (cols * px) / 2, 0.45 * px, cols * px, 0.7 * px, cssColor(hColor));
+        }
+        if (vTexts) {
+            const band = (mL - (vTitle ? 0.9 : 0)) * px;
+            ctx.textAlign = 'right';
+            for (let r = 0; r < rows; r++) {
+                drawFitted(ctx, vTexts[r]!, ox - 0.18 * px, oy + (r + 0.5) * px, 0.9 * band, 0.8 * px, cssColor(vColor));
+            }
+            ctx.textAlign = 'center';
+        }
+        if (vTitle && planeLabels) {
+            drawFitted(ctx, vTitle, 0.45 * px, oy + (rows * px) / 2, 0.7 * px, rows * px, cssColor(vColor), true);
+        }
+
         for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
                 const cell = r * cols + c;
@@ -778,8 +904,8 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
                 ctx.fillStyle = textColorFixed || contrastTextColor([cellRgb[cell * 3]!, cellRgb[cell * 3 + 1]!, cellRgb[cell * 3 + 2]!]);
                 // Canvas y runs down while the lattice's vertical axis runs
                 // up, so the vertical anchor flips sign here.
-                const cx = (c + 0.5) * px + anchor.h * (fillFrac - cellW[cell]!) * px / 2;
-                const cy = (r + 0.5) * px - anchor.v * (fillFrac - cellH[cell]!) * px / 2;
+                const cx = ox + (c + 0.5) * px + anchor.h * (fillFrac - cellW[cell]!) * px / 2;
+                const cy = oy + (r + 0.5) * px - anchor.v * (fillFrac - cellH[cell]!) * px / 2;
                 ctx.fillText(txt, cx, cy);
             }
         }
@@ -792,66 +918,44 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
         }
     }
 
-    // ── Axis labels. `axes[k]` describes `shape[k]`; the last dimension runs
-    // horizontally and the one before it vertically, matching the layout. These
-    // go through addLabel3D, so the loader's snapshot tracker picks them up and
-    // they are hidden and restored with the element. ──
-    const axes = Array.isArray(el.axes) ? (el.axes as AxisSpec[]) : [];
+    // ── Screen-mode axis labels: HTML decals through addLabel3D, so the
+    // loader's snapshot tracker picks them up and they hide and restore with
+    // the element. In plane mode the canvas above already drew them. ──
     const dynamicLabels: DynamicAxisLabel[] = [];
     const labelExprStrings: string[] = [];
-    if (axes.length) {
+    if (hLabelSrc) labelExprStrings.push(hLabelSrc);
+    if (vLabelSrc) labelExprStrings.push(vLabelSrc);
+    if (axes.length && !axisPlane) {
         const pad = cellSize * 0.35;
-        const hAxisIdx = dims.length - 1;
-        const vAxisIdx = dims.length - 2;
-        const defaultLabelColor = '#aabbcc';
-
-        const hAxis = axes[hAxisIdx];
-        const hColor = parseColor((hAxis && hAxis.color) || defaultLabelColor) as Rgb3;
-        const hLabelFn = compileAxisLabelExpr(hAxis);
-        if (hLabelFn) {
-            const src = String(hAxis!.labelExpr).trim();
-            labelExprStrings.push(src);
+        if (hLabelFn && hLabelSrc) {
             for (let c = 0; c < cols; c++) {
                 const label = addLabel3D('', layout.colLabelAt(c, pad), hColor);
-                dynamicLabels.push({ label, src, fn: hLabelFn, scope: { col: c, idx: c } });
+                dynamicLabels.push({ label, src: hLabelSrc, fn: hLabelFn, scope: { col: c, idx: c } });
             }
-        } else {
-            const hLabels = readAxisLabels(hAxis, cols);
-            if (hLabels) {
-                for (let c = 0; c < hLabels.length; c++) {
-                    addLabel3D(hLabels[c]!, layout.colLabelAt(c, pad), hColor);
-                }
+        } else if (hLabelsStatic) {
+            for (let c = 0; c < hLabelsStatic.length; c++) {
+                addLabel3D(hLabelsStatic[c]!, layout.colLabelAt(c, pad), hColor);
             }
         }
-        if (hAxis && hAxis.title) {
-            addLabel3D(String(hAxis.title), layout.colTitleAt(pad * 3), hColor);
-        }
+        if (hTitle) addLabel3D(hTitle, layout.colTitleAt(pad * 3), hColor);
 
         // A 1D tensor has no vertical axis, so axes[1] simply does not apply.
         if (vAxisIdx >= 0) {
-            const vAxis = axes[vAxisIdx];
-            const vColor = parseColor((vAxis && vAxis.color) || defaultLabelColor) as Rgb3;
-            const vLabelFn = compileAxisLabelExpr(vAxis);
-            if (vLabelFn) {
-                const src = String(vAxis!.labelExpr).trim();
-                labelExprStrings.push(src);
+            if (vLabelFn && vLabelSrc) {
                 for (let r = 0; r < rows; r++) {
                     const label = addLabel3D('', layout.rowLabelAt(r, pad), vColor);
-                    dynamicLabels.push({ label, src, fn: vLabelFn, scope: { row: r, idx: r } });
+                    dynamicLabels.push({ label, src: vLabelSrc, fn: vLabelFn, scope: { row: r, idx: r } });
                 }
-            } else {
-                const vLabels = readAxisLabels(vAxis, rows);
-                if (vLabels) {
-                    for (let r = 0; r < vLabels.length; r++) {
-                        addLabel3D(vLabels[r]!, layout.rowLabelAt(r, pad), vColor);
-                    }
+            } else if (vLabelsStatic) {
+                for (let r = 0; r < vLabelsStatic.length; r++) {
+                    addLabel3D(vLabelsStatic[r]!, layout.rowLabelAt(r, pad), vColor);
                 }
             }
-            if (vAxis && vAxis.title) {
-                addLabel3D(String(vAxis.title), layout.rowTitleAt(pad * 4), vColor);
-            }
+            if (vTitle) addLabel3D(vTitle, layout.rowTitleAt(pad * 4), vColor);
         }
     }
+    // Plane-mode labels driven by an expression are live like the cells are.
+    const planeDynamic = planeLabels && !!(hLabelFn || vLabelFn);
 
     /**
      * Re-evaluate every expression-driven axis label. The memo is what makes
@@ -890,7 +994,7 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     // run per frame. This is the static path, and it costs exactly nothing.
     // A size or text channel is live by definition — it may read a slider —
     // so any of them registers the updater.
-    if (!valueFn && !dynamicLabels.length && !hasSizeExpr && !textFn) {
+    if (!valueFn && !dynamicLabels.length && !hasSizeExpr && !textFn && !planeDynamic) {
         return { type: 'tensor', color: baseColor, label: el.label };
     }
 
@@ -930,6 +1034,10 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
             widthFn = compileOpt(widthExprString, 'widthExpr');
             heightFn = compileOpt(heightExprString, 'heightExpr');
             textFn = compileOpt(textExprString, 'textExpr');
+            if (planeLabels) {
+                hLabelFn = compileAxisLabelExpr(hAxis);
+                vLabelFn = compileAxisLabelExpr(vAxis);
+            }
             // One compile per distinct expression, not one per label: the six
             // labels down an axis all share a single `labelExpr`.
             const recompiled = new Map<string, CompiledExpr>();
@@ -944,7 +1052,8 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
                 }
                 dl.fn = fn;
             }
-            entry.compiledFns = [...(valueFn ? [valueFn] : []), ...channelFns(), ...dynamicLabels.map(dl => dl.fn)];
+            entry.compiledFns = [...(valueFn ? [valueFn] : []), ...channelFns(), ...dynamicLabels.map(dl => dl.fn),
+                ...(planeLabels ? [hLabelFn, vLabelFn].filter((x): x is CompiledExpr => !!x) : [])];
         },
     };
     tensorState.activeAnimExprs.push(entry);

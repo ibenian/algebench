@@ -7981,6 +7981,45 @@ function resolveTextColor(raw) {
 	}
 	return alpha < 1 ? `rgba(${ch(rgb[0])}, ${ch(rgb[1])}, ${ch(rgb[2])}, ${Math.round(alpha * 1e3) / 1e3})` : `rgb(${ch(rgb[0])}, ${ch(rgb[1])}, ${ch(rgb[2])})`;
 }
+/**
+* The plain-text reading of a label that may carry LaTeX, for drawing on a
+* canvas where KaTeX cannot run: `$`s go, `\text{}`/`\mathrm{}` unwrap,
+* common Greek and symbol commands become their glyph, braces vanish, and any
+* other command keeps its name without the backslash. Good enough for axis
+* labels ("key $j$" -> "key j", "$\alpha_{3j}$" -> "α3j"); not a typesetter.
+*/
+function plainTextOfLatex(src) {
+	const greek = {
+		alpha: "α",
+		beta: "β",
+		gamma: "γ",
+		delta: "δ",
+		epsilon: "ε",
+		theta: "θ",
+		lambda: "λ",
+		mu: "μ",
+		pi: "π",
+		rho: "ρ",
+		sigma: "σ",
+		tau: "τ",
+		phi: "φ",
+		omega: "ω",
+		Delta: "Δ",
+		Sigma: "Σ",
+		Omega: "Ω",
+		cdot: "·",
+		times: "×",
+		to: "→",
+		rightarrow: "→",
+		leftarrow: "←",
+		infty: "∞",
+		pm: "±",
+		le: "≤",
+		ge: "≥",
+		ne: "≠"
+	};
+	return src.replace(/\\(?:text|mathrm|mathbf|operatorname)\{([^{}]*)\}/g, "$1").replace(/\$/g, "").replace(/\\([A-Za-z]+)/g, (_m, name) => greek[name] ?? name).replace(/[{}_^]/g, "").replace(/\s+/g, " ").trim();
+}
 /** Near-black or near-white, whichever reads against the cell's colour. */
 function contrastTextColor(rgb) {
 	return .2126 * (rgb[0] ?? 0) + .7152 * (rgb[1] ?? 0) + .0722 * (rgb[2] ?? 0) > .45 ? "#101418" : "#f4f6f8";
@@ -8341,16 +8380,39 @@ function renderTensor(el, _view) {
 	mesh.renderOrder = serial;
 	tensorState.three.scene.add(mesh);
 	tensorState.planeMeshes.push(mesh);
+	const axes = Array.isArray(el.axes) ? el.axes : [];
+	const axisPlane = el.axisLabels === "plane";
+	const hAxisIdx = dims.length - 1;
+	const vAxisIdx = dims.length - 2;
+	const defaultLabelColor = "#aabbcc";
+	const hAxis = axes[hAxisIdx];
+	const vAxis = vAxisIdx >= 0 ? axes[vAxisIdx] : void 0;
+	const hColor = parseColor(hAxis && hAxis.color || defaultLabelColor);
+	const vColor = parseColor(vAxis && vAxis.color || defaultLabelColor);
+	let hLabelFn = compileAxisLabelExpr(hAxis);
+	let vLabelFn = compileAxisLabelExpr(vAxis);
+	const hLabelSrc = hLabelFn ? String(hAxis.labelExpr).trim() : null;
+	const vLabelSrc = vLabelFn ? String(vAxis.labelExpr).trim() : null;
+	const hLabelsStatic = hLabelFn ? null : readAxisLabels(hAxis, cols);
+	const vLabelsStatic = vLabelFn ? null : readAxisLabels(vAxis, rows);
+	const hTitle = hAxis && hAxis.title ? String(hAxis.title) : null;
+	const vTitle = vAxis && vAxis.title ? String(vAxis.title) : null;
+	const hasHLabels = !!(hLabelFn || hLabelsStatic);
+	const hasVLabels = !!(vLabelFn || vLabelsStatic);
+	const mT = axisPlane ? (hasHLabels ? 1 : 0) + (hTitle ? .9 : 0) : 0;
+	const mL = axisPlane ? (hasVLabels ? 2.4 : 0) + (vTitle ? .9 : 0) : 0;
+	const planeLabels = axisPlane && (mT > 0 || mL > 0);
+	const cssColor = (rgb) => `rgb(${Math.round(rgb[0] * 255)}, ${Math.round(rgb[1] * 255)}, ${Math.round(rgb[2] * 255)})`;
 	let textLayer = null;
-	if (textFn && Math.max(rows, cols) > 2048) {
-		console.warn(`tensor${el.id ? ` "${el.id}"` : ""}: textExpr is ignored on a ${rows}x${cols} lattice; cell text needs at least one canvas pixel per cell and the canvas is capped at 2048 a side.`);
+	if (textFn && (Math.max(rows, cols) > 2048 || rows * cols > 16384)) {
+		console.warn(`tensor${el.id ? ` "${el.id}"` : ""}: textExpr is ignored on a ${rows}x${cols} lattice; cell text is capped at 2048 cells a side and 16384 cells in total (the canvas is 2048px a side).`);
 		textFn = null;
 	}
-	if (textFn) {
-		const px = Math.max(1, Math.min(128, Math.floor(2048 / Math.max(rows, cols))));
+	if (textFn || planeLabels) {
+		const px = Math.max(1, Math.min(128, Math.floor(2048 / Math.max(rows + mT, cols + mL))));
 		const canvas = document.createElement("canvas");
-		canvas.width = cols * px;
-		canvas.height = rows * px;
+		canvas.width = Math.ceil((cols + mL) * px);
+		canvas.height = Math.ceil((rows + mT) * px);
 		const ctx = canvas.getContext("2d");
 		if (ctx) {
 			const tex = new THREE.CanvasTexture(canvas);
@@ -8358,11 +8420,12 @@ function renderTensor(el, _view) {
 			tex.magFilter = THREE.LinearFilter;
 			tex.generateMipmaps = false;
 			const lift = cellSize * .02;
+			const x0 = -mL * cellSize, y1 = layout.height + mT * cellSize;
 			const q = [
-				dataToWorld(layout.point(0, 0, lift)),
+				dataToWorld(layout.point(x0, 0, lift)),
 				dataToWorld(layout.point(layout.width, 0, lift)),
-				dataToWorld(layout.point(layout.width, layout.height, lift)),
-				dataToWorld(layout.point(0, layout.height, lift))
+				dataToWorld(layout.point(layout.width, y1, lift)),
+				dataToWorld(layout.point(x0, y1, lift))
 			];
 			const qPos = new Float32Array([
 				...q[0],
@@ -8415,13 +8478,48 @@ function renderTensor(el, _view) {
 			};
 		}
 	}
-	/** Evaluate every cell's text and redraw the canvas if anything on it changed. */
+	/** One axis's label strings for this frame: the expression per entry, or the static list. */
+	function axisLabelTexts(fn, statics, n, isRow, tSec) {
+		const out = new Array(n).fill("");
+		for (let k = 0; k < n; k++) if (fn) try {
+			const v = evalExpr(fn, tSec, { overrideScope: isRow ? {
+				row: k,
+				idx: k
+			} : {
+				col: k,
+				idx: k
+			} });
+			out[k] = v === null || v === void 0 ? "" : String(v);
+		} catch (_err) {
+			out[k] = "";
+		}
+		else if (statics && k < statics.length) out[k] = statics[k];
+		return out;
+	}
+	/** Draw one string fitted into a box, in a colour, optionally rotated a quarter turn. */
+	function drawFitted(ctx, txt, cx, cy, wPx, hPx, color, rotate = false) {
+		const t = plainTextOfLatex(txt);
+		if (!t || wPx < 2 || hPx < 2) return;
+		ctx.font = "100px system-ui, sans-serif";
+		const measured = ctx.measureText(t).width;
+		ctx.font = `${fitFontPx(measured, rotate ? hPx : wPx, rotate ? wPx : hPx)}px system-ui, sans-serif`;
+		ctx.fillStyle = color;
+		if (rotate) {
+			ctx.save();
+			ctx.translate(cx, cy);
+			ctx.rotate(-Math.PI / 2);
+			ctx.fillText(t, 0, 0);
+			ctx.restore();
+		} else ctx.fillText(t, cx, cy);
+	}
+	/** Evaluate every cell's text (and, in plane mode, the axis labels) and redraw the canvas if anything changed. */
 	function paintText(tSec) {
-		if (!textLayer || !textFn) return;
+		if (!textLayer || !textFn && !planeLabels) return;
 		const { ctx, tex, px } = textLayer;
-		const texts = new Array(drawn);
+		const ox = mL * px, oy = mT * px;
+		const texts = new Array(drawn).fill("");
 		const keyParts = [];
-		for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+		if (textFn) for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
 			const cell = r * cols + c;
 			let txt = "";
 			try {
@@ -8438,12 +8536,28 @@ function renderTensor(el, _view) {
 			texts[cell] = txt;
 			keyParts.push(txt, cellW[cell].toFixed(3), cellH[cell].toFixed(3), String(Math.round(cellRgb[cell * 3] * 255)), String(Math.round(cellRgb[cell * 3 + 1] * 255)), String(Math.round(cellRgb[cell * 3 + 2] * 255)));
 		}
+		const hTexts = planeLabels && hasHLabels ? axisLabelTexts(hLabelFn, hLabelsStatic, cols, false, tSec) : null;
+		const vTexts = planeLabels && hasVLabels ? axisLabelTexts(vLabelFn, vLabelsStatic, rows, true, tSec) : null;
+		if (hTexts) keyParts.push(...hTexts);
+		if (vTexts) keyParts.push(...vTexts);
 		const key = keyParts.join("");
 		if (key === textLayer.lastKey) return;
 		textLayer.lastKey = key;
-		ctx.clearRect(0, 0, cols * px, rows * px);
+		ctx.clearRect(0, 0, textLayer.canvas.width, textLayer.canvas.height);
 		ctx.textAlign = "center";
 		ctx.textBaseline = "middle";
+		if (hTexts) {
+			const band = (mT - (hTitle ? .9 : 0)) * px;
+			for (let c = 0; c < cols; c++) drawFitted(ctx, hTexts[c], ox + (c + .5) * px, oy - band / 2, .92 * px, .8 * band, cssColor(hColor));
+		}
+		if (hTitle && planeLabels) drawFitted(ctx, hTitle, ox + cols * px / 2, .45 * px, cols * px, .7 * px, cssColor(hColor));
+		if (vTexts) {
+			const band = (mL - (vTitle ? .9 : 0)) * px;
+			ctx.textAlign = "right";
+			for (let r = 0; r < rows; r++) drawFitted(ctx, vTexts[r], ox - .18 * px, oy + (r + .5) * px, .9 * band, .8 * px, cssColor(vColor));
+			ctx.textAlign = "center";
+		}
+		if (vTitle && planeLabels) drawFitted(ctx, vTitle, .45 * px, oy + rows * px / 2, .7 * px, rows * px, cssColor(vColor), true);
 		for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
 			const cell = r * cols + c;
 			const txt = texts[cell];
@@ -8459,8 +8573,8 @@ function renderTensor(el, _view) {
 				cellRgb[cell * 3 + 1],
 				cellRgb[cell * 3 + 2]
 			]);
-			const cx = (c + .5) * px + anchor.h * (fillFrac - cellW[cell]) * px / 2;
-			const cy = (r + .5) * px - anchor.v * (fillFrac - cellH[cell]) * px / 2;
+			const cx = ox + (c + .5) * px + anchor.h * (fillFrac - cellW[cell]) * px / 2;
+			const cy = oy + (r + .5) * px - anchor.v * (fillFrac - cellH[cell]) * px / 2;
 			ctx.fillText(txt, cx, cy);
 		}
 		tex.needsUpdate = true;
@@ -8470,63 +8584,44 @@ function renderTensor(el, _view) {
 	} catch (err) {
 		console.warn("tensor textExpr evaluation error:", err);
 	}
-	const axes = Array.isArray(el.axes) ? el.axes : [];
 	const dynamicLabels = [];
 	const labelExprStrings = [];
-	if (axes.length) {
+	if (hLabelSrc) labelExprStrings.push(hLabelSrc);
+	if (vLabelSrc) labelExprStrings.push(vLabelSrc);
+	if (axes.length && !axisPlane) {
 		const pad = cellSize * .35;
-		const hAxisIdx = dims.length - 1;
-		const vAxisIdx = dims.length - 2;
-		const defaultLabelColor = "#aabbcc";
-		const hAxis = axes[hAxisIdx];
-		const hColor = parseColor(hAxis && hAxis.color || defaultLabelColor);
-		const hLabelFn = compileAxisLabelExpr(hAxis);
-		if (hLabelFn) {
-			const src = String(hAxis.labelExpr).trim();
-			labelExprStrings.push(src);
-			for (let c = 0; c < cols; c++) {
-				const label = addLabel3D("", layout.colLabelAt(c, pad), hColor);
+		if (hLabelFn && hLabelSrc) for (let c = 0; c < cols; c++) {
+			const label = addLabel3D("", layout.colLabelAt(c, pad), hColor);
+			dynamicLabels.push({
+				label,
+				src: hLabelSrc,
+				fn: hLabelFn,
+				scope: {
+					col: c,
+					idx: c
+				}
+			});
+		}
+		else if (hLabelsStatic) for (let c = 0; c < hLabelsStatic.length; c++) addLabel3D(hLabelsStatic[c], layout.colLabelAt(c, pad), hColor);
+		if (hTitle) addLabel3D(hTitle, layout.colTitleAt(pad * 3), hColor);
+		if (vAxisIdx >= 0) {
+			if (vLabelFn && vLabelSrc) for (let r = 0; r < rows; r++) {
+				const label = addLabel3D("", layout.rowLabelAt(r, pad), vColor);
 				dynamicLabels.push({
 					label,
-					src,
-					fn: hLabelFn,
+					src: vLabelSrc,
+					fn: vLabelFn,
 					scope: {
-						col: c,
-						idx: c
+						row: r,
+						idx: r
 					}
 				});
 			}
-		} else {
-			const hLabels = readAxisLabels(hAxis, cols);
-			if (hLabels) for (let c = 0; c < hLabels.length; c++) addLabel3D(hLabels[c], layout.colLabelAt(c, pad), hColor);
-		}
-		if (hAxis && hAxis.title) addLabel3D(String(hAxis.title), layout.colTitleAt(pad * 3), hColor);
-		if (vAxisIdx >= 0) {
-			const vAxis = axes[vAxisIdx];
-			const vColor = parseColor(vAxis && vAxis.color || defaultLabelColor);
-			const vLabelFn = compileAxisLabelExpr(vAxis);
-			if (vLabelFn) {
-				const src = String(vAxis.labelExpr).trim();
-				labelExprStrings.push(src);
-				for (let r = 0; r < rows; r++) {
-					const label = addLabel3D("", layout.rowLabelAt(r, pad), vColor);
-					dynamicLabels.push({
-						label,
-						src,
-						fn: vLabelFn,
-						scope: {
-							row: r,
-							idx: r
-						}
-					});
-				}
-			} else {
-				const vLabels = readAxisLabels(vAxis, rows);
-				if (vLabels) for (let r = 0; r < vLabels.length; r++) addLabel3D(vLabels[r], layout.rowLabelAt(r, pad), vColor);
-			}
-			if (vAxis && vAxis.title) addLabel3D(String(vAxis.title), layout.rowTitleAt(pad * 4), vColor);
+			else if (vLabelsStatic) for (let r = 0; r < vLabelsStatic.length; r++) addLabel3D(vLabelsStatic[r], layout.rowLabelAt(r, pad), vColor);
+			if (vTitle) addLabel3D(vTitle, layout.rowTitleAt(pad * 4), vColor);
 		}
 	}
+	const planeDynamic = planeLabels && !!(hLabelFn || vLabelFn);
 	/**
 	* Re-evaluate every expression-driven axis label. The memo is what makes
 	* this affordable per frame: a label whose text has not changed is left
@@ -8553,7 +8648,7 @@ function renderTensor(el, _view) {
 		console.warn("tensor axis label evaluation error:", err);
 	}
 	const animState = { stopped: false };
-	if (!valueFn && !dynamicLabels.length && !hasSizeExpr && !textFn) return {
+	if (!valueFn && !dynamicLabels.length && !hasSizeExpr && !textFn && !planeDynamic) return {
 		type: "tensor",
 		color: baseColor,
 		label: el.label
@@ -8592,6 +8687,10 @@ function renderTensor(el, _view) {
 			widthFn = compileOpt(widthExprString, "widthExpr");
 			heightFn = compileOpt(heightExprString, "heightExpr");
 			textFn = compileOpt(textExprString, "textExpr");
+			if (planeLabels) {
+				hLabelFn = compileAxisLabelExpr(hAxis);
+				vLabelFn = compileAxisLabelExpr(vAxis);
+			}
 			const recompiled = /* @__PURE__ */ new Map();
 			for (const dl of dynamicLabels) {
 				let fn = recompiled.get(dl.src);
@@ -8609,7 +8708,8 @@ function renderTensor(el, _view) {
 			entry.compiledFns = [
 				...valueFn ? [valueFn] : [],
 				...channelFns(),
-				...dynamicLabels.map((dl) => dl.fn)
+				...dynamicLabels.map((dl) => dl.fn),
+				...planeLabels ? [hLabelFn, vLabelFn].filter((x) => !!x) : []
 			];
 		}
 	};
