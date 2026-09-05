@@ -41,7 +41,7 @@ import { state } from '/state.js';
 import { parseColor, addLabel3D, renderKaTeX } from '/labels.js';
 import type { Label3D } from '/labels.js';
 import { buildColorMap, normalizeColorValue } from '/colormaps.js';
-import { compileExpr, evalExpr } from '/expr.js';
+import { compileExpr, evalExpr, explainCompileDegrade } from '/expr.js';
 import type { CompiledExpr } from '/expr.js';
 import { dataToWorld } from '/coords.js';
 import type { Vec3 } from '/coords.js';
@@ -477,8 +477,19 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     const widthExprString = readExpr('widthExpr');
     const heightExprString = readExpr('heightExpr');
     const textExprString = readExpr('textExpr');
+    // compileExpr degrades an unparseable or JS-only expression in an
+    // untrusted scene to the constant 0 rather than throwing. For a cell's
+    // colour that is the documented cold-lattice trap; for its width, height
+    // or text a silent 0 would COLLAPSE the cell or print "0", the opposite of
+    // "a misfiring channel keeps the default". So ask first, and disable the
+    // channel -- loudly -- when the compile would not have meant it.
     const compileOpt = (src: string | null, what: string): CompiledExpr | null => {
         if (!src) return null;
+        const why = explainCompileDegrade(src);
+        if (why) {
+            console.warn(`tensor${el.id ? ` "${el.id}"` : ''}: ${what} ${why}; the channel is disabled and cells keep their default.`);
+            return null;
+        }
         try { return compileExpr(src); } catch (err) {
             console.warn(`tensor ${what} compile error:`, err);
             return null;

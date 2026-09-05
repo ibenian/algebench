@@ -251,3 +251,15 @@ test('resolveTextColor accepts every spelling the schema allows, and auto means 
     assert.equal(resolveTextColor('#ff704380'), 'rgba(255, 112, 67, 0.502)');
     assert.equal(resolveTextColor('#ff7043ff'), 'rgb(255, 112, 67)');
 });
+
+test('a size or text channel refuses an expression compileExpr would degrade to 0', async () => {
+    // compileExpr hands back the constant 0 for an unparseable or JS-only
+    // expression in an untrusted scene. valueExpr lives with that (a cold
+    // lattice, documented); a width of 0 collapses the cell, so the channels
+    // ask first. This pins the question they ask.
+    const { explainCompileDegrade } = await import('/expr.js');
+    assert.equal(explainCompileDegrade('sqrt(value)'), null);
+    assert.equal(explainCompileDegrade("value > 0.5 ? toFixed(value, 2) : ''"), null);
+    assert.match(String(explainCompileDegrade('value.toFixed(2)')), /JavaScript-only/);
+    assert.match(String(explainCompileDegrade('concat(((')), /does not parse/);
+});

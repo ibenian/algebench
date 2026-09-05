@@ -544,6 +544,25 @@ function resolveVirtualAnimTime(rawT) {
 		return rawT;
 	}
 }
+/**
+* Why `compileExpr` would hand back the constant 0 for this string instead of
+* a real expression, or null if it would not. Mirrors compileExpr's own
+* decisions exactly -- same quote normalisation, same JS-only gate, same
+* parse -- so a caller that must NOT accept a silent zero (a channel where 0
+* has a meaning, like a cell's width) can refuse the expression up front and
+* say why, rather than discover it as a collapsed lattice.
+*/
+function explainCompileDegrade(exprStr) {
+	if (exprState._sceneJsTrustState === "trusted") return null;
+	const src = _normalizeSingleQuotes(exprStr);
+	if (_JS_ONLY_RE.test(src)) return "uses JavaScript-only syntax, which an untrusted scene compiles to 0";
+	try {
+		_mathjs.parse(src);
+		return null;
+	} catch (e) {
+		return `does not parse as math.js (${e.message}), which an untrusted scene compiles to 0`;
+	}
+}
 function compileExpr(exprStr) {
 	exprStr = _normalizeSingleQuotes(exprStr);
 	if (_JS_ONLY_RE.test(exprStr)) {
@@ -8193,6 +8212,11 @@ function renderTensor(el, _view) {
 	const textExprString = readExpr("textExpr");
 	const compileOpt = (src, what) => {
 		if (!src) return null;
+		const why = explainCompileDegrade(src);
+		if (why) {
+			console.warn(`tensor${el.id ? ` "${el.id}"` : ""}: ${what} ${why}; the channel is disabled and cells keep their default.`);
+			return null;
+		}
 		try {
 			return compileExpr(src);
 		} catch (err) {
