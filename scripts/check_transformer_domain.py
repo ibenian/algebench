@@ -390,6 +390,25 @@ def main() -> int:
             print(f'  FAIL Var(q.k) at n={dim}: got {got:.4f}, overlay says {want}')
             failures += 1
 
+    print()
+    print('transformer domain — docs.json advertises the real API')
+    # /api/domains/<name> serves Object.keys(functions) from docs.json, so an
+    # export missing from that map is invisible to any agent discovering the
+    # domain -- and an entry with no export behind it advertises something that
+    # will not resolve. Both directions have now happened on this branch, so
+    # both are checked.
+    docs = json.loads((DOMAIN.parent / 'docs.json').read_text(encoding='utf-8'))
+    documented = {re.match(r'([A-Za-z_]\w*)', k).group(1) for k in docs['functions']}
+    src = DOMAIN.read_text(encoding='utf-8')
+    reg = re.search(r"register\('transformer', \{(.*?)\n    \}\);", src, re.S).group(1)
+    exported = set(re.findall(r'\b(tf[A-Za-z]\w*)\b', reg))
+    if documented == exported:
+        print(f'  ok   docs.json functions == the domain exports ({len(exported)})')
+    else:
+        print(f'  FAIL exported but undocumented: {sorted(exported - documented)}')
+        print(f'       documented but not exported: {sorted(documented - exported)}')
+        failures += 1
+
     if failures:
         print(f'{failures} check(s) FAILED — the lesson quotes numbers the domain no longer computes.')
         return 1

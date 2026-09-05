@@ -28,7 +28,7 @@
     "permutation_equivariance": "tfOutNoPos with shuffle on equals the shuffle-off rows reordered by [5,0,3,2,1,4], max deviation 2.2e-16"
   },
 
-  "note": "All functions read slider values by ID at call time. The scene must define sliders with the IDs listed in sliderContracts for the lesson to respond to user input. Functions clamp their index arguments, so an out-of-range row or column returns an edge value rather than NaN.",
+  "note": "MOST functions read slider state at call time — either by ID directly, or through the cached forward pass _st(), which is keyed on s1_shuffle, s1_pe, s2_rope, s3_scale, s3_mask and s3_maskafter. Eight are PURE in their explicit arguments and consult no slider at all: tfPE, tfRopeQ, tfRopeK, tfRopeDot, tfRopeEmbTheta, tfDotSample, tfDotSampleScaled and tfSampleVar. Note tfRopeEmbDot is NOT among them — it reaches _st() through tfRopeEmb. The scene must define sliders with the IDs listed in sliderContracts for the lesson to respond to user input. Functions clamp their index arguments, so an out-of-range row or column returns an edge value rather than NaN.",
 
   "sliderContracts": {
     "s1_shuffle": {
@@ -141,6 +141,9 @@
     "tfRopeEmbArc(d,slotA,pa,slotB,pb,s)": "Component d of the unit-length great-circle (slerp) point at parameter s in [0,1] between two RoPE-rotated embeddings — a DRAWING aid for the angle between them, not part of the forward pass. s=0 and s=1 give the two directions themselves, so any linear projection of the result still lands on the projected direction at the endpoints and a scene can scale it down to draw an arc whose ends sit on the two vectors it spans. The arc's true angular extent is acos of the normalised tfRopeEmbDot and depends only on pb - pa; its projected appearance need not.",
     "tfDotSample(idx,n)": "q.k for the idx-th deterministic i.i.d. N(0,1) draw pair in R^n. Seeded splitmix32 + Box-Muller, fixed seed, so the scatter is identical on every load and reproducible offline. THE GENERIC OBJECT — nothing to do with the toy model's Q/K.",
     "tfDotSampleScaled(idx,n)": "tfDotSample(idx,n) / sqrt(n).",
-    "tfSampleVar(n,count)": "Empirical variance of the first `count` of 4000 samples at dimension n. The student's own small experiment; the authoritative 2,000,000-draw figures (2.0003 at n=2, 64.10 at n=64) live in the lesson data block and must be labelled as the anchor."
+    "tfSampleVar(n,count)": "Empirical variance of the first `count` of 4000 samples at dimension n. The student's own small experiment; the authoritative 2,000,000-draw figures (2.0003 at n=2, 64.10 at n=64) live in the lesson data block and must be labelled as the anchor.",
+    "tfToken(k)": "Token surface form at slot k, as a STRING (e.g. \"cat\") — TOKENS[tfPerm(k)]. The one function here that returns text rather than a number, for a tensor's axes[].labelExpr: a lattice whose rows permute needs labels that permute with them.",
+    "tfScoreProbe(j,angleDeg)": "Score of the what-if query against key j: q_probe . k_j, where q_probe is slot s3_qi's query turned by angleDeg. Equals tfScore(s3_qi,j) EXACTLY at angleDeg=0, where the probe is the model's own query. Rotates once per call, unlike two tfQProbe reads.",
+    "tfProjQK(d,angleDeg,j)": "Component d of the vector projection of the what-if query onto key j: ((q.k)/(k.k))k. Its signed length times |k_j| IS the score q.k_j, which is what makes the dot product drawable as a length. Returns 0 for a zero-length key, where the projection is undefined."
   }
 }
