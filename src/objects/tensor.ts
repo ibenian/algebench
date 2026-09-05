@@ -116,7 +116,17 @@ export function resolveTextColor(raw: unknown): string | null {
     }
     const rgb = parseColor(raw);
     const ch = (v: number) => Math.round(Math.max(0, Math.min(1, Number(v) || 0)) * 255);
-    return `rgb(${ch(rgb[0]!)}, ${ch(rgb[1]!)}, ${ch(rgb[2]!)})`;
+    // parseColor reads only the first six hex digits; the colour type also
+    // permits '#rrggbbaa', and a canvas fill can honour that alpha where the
+    // vertex-colour path cannot. Read it here so the promise is kept for text.
+    let alpha = 1;
+    if (typeof raw === 'string') {
+        const m = /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})$/.exec(raw.trim());
+        if (m) alpha = parseInt(m[1]!, 16) / 255;
+    }
+    return alpha < 1
+        ? `rgba(${ch(rgb[0]!)}, ${ch(rgb[1]!)}, ${ch(rgb[2]!)}, ${Math.round(alpha * 1000) / 1000})`
+        : `rgb(${ch(rgb[0]!)}, ${ch(rgb[1]!)}, ${ch(rgb[2]!)})`;
 }
 
 /** Near-black or near-white, whichever reads against the cell's colour. */
@@ -572,13 +582,17 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
                 // overrideScope, not extraScope: extraScope *loses* to a scene
                 // slider of the same name, so a scene with a slider called
                 // `row` would silently shadow the cell index.
-                const scope = { row: r, col: c, idx: cell, value: NaN };
+                // `value` enters the scope only AFTER the value is known: it
+                // is what the size and text channels read, and binding it for
+                // valueExpr itself would shadow a scene slider or function of
+                // that name for no reason.
+                const idxScope = { row: r, col: c, idx: cell };
                 let raw: unknown;
                 if (literalValues) raw = literalValues[cell];
-                else if (valueFn) raw = evalExpr(valueFn, tSec, { overrideScope: scope });
+                else if (valueFn) raw = evalExpr(valueFn, tSec, { overrideScope: idxScope });
                 if (raw !== undefined) paintCell(cell, raw);
                 const v = Number(raw);
-                scope.value = Number.isFinite(v) ? v : NaN;
+                const scope = { ...idxScope, value: Number.isFinite(v) ? v : NaN };
                 cellValue[cell] = scope.value;
                 if (hasSizeExpr) {
                     const w = widthFn ? resolveExtent(evalExpr(widthFn, tSec, { overrideScope: scope }), fillFrac) : fillFrac;

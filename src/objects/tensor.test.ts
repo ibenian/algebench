@@ -245,4 +245,8 @@ test('resolveTextColor accepts every spelling the schema allows, and auto means 
     // ignored before; it must mean the same as the hex spelling.
     assert.equal(resolveTextColor([1, 0.4392, 0.2627]), 'rgb(255, 112, 67)');
     assert.equal(resolveTextColor(42), null);
+    // The colour type permits '#rrggbbaa'; a canvas fill can honour the alpha
+    // that the vertex-colour path drops, so text keeps it.
+    assert.equal(resolveTextColor('#ff704380'), 'rgba(255, 112, 67, 0.502)');
+    assert.equal(resolveTextColor('#ff7043ff'), 'rgb(255, 112, 67)');
 });

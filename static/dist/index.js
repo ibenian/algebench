@@ -7955,7 +7955,12 @@ function resolveTextColor(raw) {
 	} else if (!Array.isArray(raw)) return null;
 	const rgb = parseColor(raw);
 	const ch = (v) => Math.round(Math.max(0, Math.min(1, Number(v) || 0)) * 255);
-	return `rgb(${ch(rgb[0])}, ${ch(rgb[1])}, ${ch(rgb[2])})`;
+	let alpha = 1;
+	if (typeof raw === "string") {
+		const m = /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})$/.exec(raw.trim());
+		if (m) alpha = parseInt(m[1], 16) / 255;
+	}
+	return alpha < 1 ? `rgba(${ch(rgb[0])}, ${ch(rgb[1])}, ${ch(rgb[2])}, ${Math.round(alpha * 1e3) / 1e3})` : `rgb(${ch(rgb[0])}, ${ch(rgb[1])}, ${ch(rgb[2])})`;
 }
 /** Near-black or near-white, whichever reads against the cell's colour. */
 function contrastTextColor(rgb) {
@@ -8266,18 +8271,20 @@ function renderTensor(el, _view) {
 		if (!(literalValues || valueFn) && !hasSizeExpr) return;
 		for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
 			const cell = r * cols + c;
-			const scope = {
+			const idxScope = {
 				row: r,
 				col: c,
-				idx: cell,
-				value: NaN
+				idx: cell
 			};
 			let raw;
 			if (literalValues) raw = literalValues[cell];
-			else if (valueFn) raw = evalExpr(valueFn, tSec, { overrideScope: scope });
+			else if (valueFn) raw = evalExpr(valueFn, tSec, { overrideScope: idxScope });
 			if (raw !== void 0) paintCell(cell, raw);
 			const v = Number(raw);
-			scope.value = Number.isFinite(v) ? v : NaN;
+			const scope = {
+				...idxScope,
+				value: Number.isFinite(v) ? v : NaN
+			};
 			cellValue[cell] = scope.value;
 			if (hasSizeExpr) {
 				const w = widthFn ? resolveExtent(evalExpr(widthFn, tSec, { overrideScope: scope }), fillFrac) : fillFrac;
