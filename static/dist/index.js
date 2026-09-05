@@ -5930,6 +5930,7 @@ function renderAnimatedVector(el, view) {
 		if (labelExprFn) try {
 			const txt = String(evalExpr(labelExprFn, 0));
 			labelEl.el.innerHTML = renderKaTeX$1(txt, false);
+			labelEl.boxW = null;
 			labelEl._lastDynamicText = txt;
 		} catch (_e) {}
 	}
@@ -6053,6 +6054,7 @@ function renderAnimatedVector(el, view) {
 					const txt = String(evalExpr(labelExprFn, tSec));
 					if (labelEl._lastDynamicText !== txt) {
 						labelEl.el.innerHTML = renderKaTeX$1(txt, false);
+						labelEl.boxW = null;
 						labelEl._lastDynamicText = txt;
 					}
 				} catch (_e) {}
@@ -7070,6 +7072,7 @@ function renderAnimatedCylinder(el, view) {
 		if (labelExprFn) try {
 			const txt = String(evalExpr(labelExprFn, 0));
 			labelEl.el.innerHTML = renderKaTeX$1(txt, false);
+			labelEl.boxW = null;
 			labelEl._lastDynamicText = txt;
 		} catch (_e) {}
 	}
@@ -7109,6 +7112,7 @@ function renderAnimatedCylinder(el, view) {
 					const txt = String(evalExpr(labelExprFn, tSec));
 					if (labelEl._lastDynamicText !== txt) {
 						labelEl.el.innerHTML = renderKaTeX$1(txt, false);
+						labelEl.boxW = null;
 						labelEl._lastDynamicText = txt;
 					}
 				} catch (_e) {}
@@ -8252,6 +8256,7 @@ function renderTensor(el, _view) {
 			}
 			if (txt === dl.label._lastDynamicText) continue;
 			dl.label.el.innerHTML = renderKaTeX$1(txt, false);
+			dl.label.boxW = null;
 			dl.label._lastDynamicText = txt;
 		}
 	}

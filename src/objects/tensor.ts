@@ -564,6 +564,12 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
             catch (_err) { continue; }   // keep the last text this label had
             if (txt === dl.label._lastDynamicText) continue;
             dl.label.el.innerHTML = renderKaTeX(txt, false);
+            // The label system measures a box ONCE and caches it, re-measuring
+            // only when boxW is null or the scale changed (labels.ts). Text that
+            // changes LENGTH therefore keeps a stale width -- and that width is
+            // what declutter and overlap avoidance read. Drop the cache so the
+            // next frame measures the text actually on screen.
+            dl.label.boxW = null;
             dl.label._lastDynamicText = txt;
         }
     }

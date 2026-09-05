@@ -375,6 +375,21 @@ def main() -> int:
         print(f'       read but unkeyed: {sorted(read - keyed)}')
         failures += 1
 
+    print()
+    print('transformer domain — i.i.d. sampler anchors')
+    # The step's overlay PRINTS these two numbers. They come out of a seeded
+    # RNG, so any change to how draws are consumed moves them -- which is
+    # exactly what happened when the Box-Muller buffer stopped discarding half
+    # its output. Nothing pinned them before, so the text and the code could
+    # have drifted apart silently.
+    for dim, want in ((2, 1.9773), (64, 64.4247)):
+        got = _run(f'TF.tfSampleVar({dim}, 4000)', DEFAULT_SLIDERS)
+        if abs(got - want) <= 5e-4:
+            print(f'  ok   Var(q.k) at n={dim} = {got:.4f}')
+        else:
+            print(f'  FAIL Var(q.k) at n={dim}: got {got:.4f}, overlay says {want}')
+            failures += 1
+
     if failures:
         print(f'{failures} check(s) FAILED — the lesson quotes numbers the domain no longer computes.')
         return 1

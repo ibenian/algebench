@@ -295,9 +295,12 @@
             let acc = 0;
             let buf = [];
             for (let d = 0; d < n; d++) {
-                if (buf.length < 2) buf = _normals(rng);
+                // Refill only when EMPTY. `< 2` discarded the spare on every
+                // pop -- _normals() returns two normals and one was thrown
+                // away each time, doubling the Box-Muller work for nothing.
+                if (buf.length === 0) buf = _normals(rng);
                 const qd = buf.pop();
-                if (buf.length < 2) buf = _normals(rng);
+                if (buf.length === 0) buf = _normals(rng);
                 const kd = buf.pop();
                 acc += qd * kd;
             }

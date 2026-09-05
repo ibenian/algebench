@@ -163,8 +163,10 @@ test('an axis label may evaluate to a string, which is the point of the key', ()
 });
 
 test('a malformed labelExpr degrades to the constant 0, silently', () => {
-    // compileExpr never throws: on a parse failure in an untrusted scene it
-    // returns compile('0'). So a typo does not blank the axis or take the
+    // compileExpr does not throw HERE: on a math.js parse failure in an
+    // UNTRUSTED scene it returns compile('0'). (It can throw for a trusted
+    // scene, where a malformed body reaches `Function(...)` unguarded -- a
+    // different path, and not the one this pins.) So a typo does not blank the axis or take the
     // lattice down — every label along it just reads "0". Pinned here because
     // it is the same silent-zero trap valueExpr has, and the failure gives an
     // author no signal beyond the wrong thing being on screen.
