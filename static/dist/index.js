@@ -7900,6 +7900,51 @@ function renderAnimatedCurve(el, view) {
 * tensor in the differential-geometry sense that `special-relativity.json`
 * means by the word.
 */
+/**
+* Read a `widthExpr` / `heightExpr` result as a fraction of the cell pitch.
+* Anything that is not a finite number keeps the fallback (the `gap`-derived
+* fill), so a cell whose extent expression misfires stays the size it was
+* rather than collapsing to a sliver or exploding over its neighbours.
+*/
+function resolveExtent(raw, fallback) {
+	if (raw === null || raw === void 0 || raw === "" || typeof raw === "boolean") return fallback;
+	const n = Number(raw);
+	if (!Number.isFinite(n)) return fallback;
+	return Math.max(0, Math.min(1, n));
+}
+/**
+* Font size, in canvas pixels, that fits a string into a `wPx` x `hPx` box.
+* `widthAt100` is the string's measured width at a 100px font, so the fit is
+* a pure ratio and needs no canvas of its own. The 0.86 / 0.62 margins keep
+* glyph ascenders and a little side padding inside the cell edge.
+*/
+function fitFontPx(widthAt100, wPx, hPx) {
+	const byHeight = hPx * .62;
+	const byWidth = widthAt100 > 0 ? wPx * .86 * 100 / widthAt100 : byHeight;
+	return Math.max(1, Math.floor(Math.min(byHeight, byWidth)));
+}
+/**
+* Which edge of its slot a shrunken cell keeps. `-1` keeps the low edge
+* (left / bottom), `0` centres, `+1` keeps the high edge (right / top). A
+* height-only lattice anchored at the bottom is a bar chart on its lattice;
+* centred, it is a strip of lozenges — same numbers, a different reading.
+*/
+function parseAnchor(raw) {
+	const out = {
+		h: 0,
+		v: 0
+	};
+	if (typeof raw !== "string") return out;
+	for (const word of raw.toLowerCase().split(/[\s,-]+/)) if (word === "left") out.h = -1;
+	else if (word === "right") out.h = 1;
+	else if (word === "bottom") out.v = -1;
+	else if (word === "top") out.v = 1;
+	return out;
+}
+/** Near-black or near-white, whichever reads against the cell's colour. */
+function contrastTextColor(rgb) {
+	return .2126 * (rgb[0] ?? 0) + .7152 * (rgb[1] ?? 0) + .0722 * (rgb[2] ?? 0) > .45 ? "#101418" : "#f4f6f8";
+}
 var tensorState = state;
 /** Element count implied by a shape. */
 function shapeSize(dims) {
@@ -8030,12 +8075,12 @@ var QUAD_CORNERS = [
 * slices for rank 3 — are new functions of this shape, and nothing downstream
 * changes.
 */
-function gridLayout(dims, origin, cellSize, plane) {
+function gridLayout(dims, origin, cellSize, plane, fill, anchor) {
 	const [hAxis, vAxis, nAxis] = PLANE_AXES[plane] || PLANE_AXES["xy"];
 	const cols = dims[dims.length - 1];
 	const rows = dims.length >= 2 ? dims[dims.length - 2] : 1;
-	/** Position from in-plane (horizontal, vertical) offsets. */
-	const at = (h, v) => {
+	/** Position from in-plane (horizontal, vertical) offsets, and an optional lift off the plane. */
+	const at = (h, v, nOff = 0) => {
 		const p = [
 			0,
 			0,
@@ -8043,7 +8088,7 @@ function gridLayout(dims, origin, cellSize, plane) {
 		];
 		p[hAxis] = origin[0] + h;
 		p[vAxis] = origin[1] + v;
-		p[nAxis] = origin[2];
+		p[nAxis] = origin[2] + nOff;
 		return p;
 	};
 	return {
@@ -8051,8 +8096,17 @@ function gridLayout(dims, origin, cellSize, plane) {
 		cols,
 		/** How many logical cells this layout draws — the trailing 2D slice. */
 		drawn: rows * cols,
-		/** Centre-relative corner of the cell at (r, c), `d` in [0,1]^2. */
-		corner: (r, c, dx, dy, fill) => at((c + .5) * cellSize + (dx - .5) * fill, (rows - 1 - r + .5) * cellSize + (dy - .5) * fill),
+		/**
+		* Corner of the cell at (r, c), `d` in [0,1]^2, for a `w` x `h` cell.
+		* A full-size cell (`w = h = fill`) lands in the same place whatever
+		* the anchor; the anchor only decides where a smaller one sits.
+		*/
+		corner: (r, c, dx, dy, w, h) => at((c + .5) * cellSize + anchor.h * (fill - w) / 2 + (dx - .5) * w, (rows - 1 - r + .5) * cellSize + anchor.v * (fill - h) / 2 + (dy - .5) * h),
+		/** Absolute in-plane point, lifted `nOff` off the lattice plane. */
+		point: at,
+		/** Whole-lattice extent in the plane. */
+		width: cols * cellSize,
+		height: rows * cellSize,
 		/** Where an axis label sits. `k` is the index along that axis. */
 		rowLabelAt: (r, pad) => at(-pad, (rows - 1 - r + .5) * cellSize),
 		colLabelAt: (c, pad) => at((c + .5) * cellSize, rows * cellSize + pad),
@@ -8082,7 +8136,9 @@ function renderTensor(el, _view) {
 	const cellSize = typeof el.cellSize === "number" && el.cellSize > 0 ? el.cellSize : 1;
 	const gapRaw = Number.isFinite(el.gap) ? el.gap : .08;
 	const fill = cellSize * (1 - Math.max(0, Math.min(.9, gapRaw)));
-	const layout = gridLayout(dims, origin, cellSize, typeof el.plane === "string" && PLANE_AXES[el.plane] ? el.plane : "xy");
+	const plane = typeof el.plane === "string" && PLANE_AXES[el.plane] ? el.plane : "xy";
+	const anchor = parseAnchor(el.anchor);
+	const layout = gridLayout(dims, origin, cellSize, plane, fill, anchor);
 	const { rows, cols, drawn } = layout;
 	if (dims.length > 2) {
 		const total = shapeSize(dims);
@@ -8107,33 +8163,65 @@ function renderTensor(el, _view) {
 	} catch (err) {
 		console.warn("tensor valueExpr compile error:", err);
 	}
+	const readExpr = (key) => {
+		const raw = el[key];
+		return typeof raw === "string" && raw.trim() ? raw.trim() : null;
+	};
+	const widthExprString = readExpr("widthExpr");
+	const heightExprString = readExpr("heightExpr");
+	const textExprString = readExpr("textExpr");
+	const compileOpt = (src, what) => {
+		if (!src) return null;
+		try {
+			return compileExpr(src);
+		} catch (err) {
+			console.warn(`tensor ${what} compile error:`, err);
+			return null;
+		}
+	};
+	let widthFn = compileOpt(widthExprString, "widthExpr");
+	let heightFn = compileOpt(heightExprString, "heightExpr");
+	let textFn = compileOpt(textExprString, "textExpr");
+	const hasSizeExpr = !!(widthFn || heightFn);
+	const textColorFixed = typeof el.textColor === "string" && el.textColor.trim() && el.textColor.trim() !== "auto" ? el.textColor.trim() : null;
 	const opacity = typeof el.opacity === "number" && isFinite(el.opacity) ? Math.max(0, Math.min(1, el.opacity)) : .95;
 	const sh = el.shader || {};
 	const vertsPerCell = QUAD_CORNERS.length;
 	const positions = new Float32Array(drawn * vertsPerCell * 3);
 	const colors = new Float32Array(drawn * vertsPerCell * 3);
-	for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
-		const cell = r * cols + c;
+	/** Write one cell's six vertices for a cell `w` x `h` in data units, centred on its lattice slot. */
+	function placeCell(cell, r, c, w, h) {
 		for (let k = 0; k < vertsPerCell; k++) {
 			const [dx, dy] = QUAD_CORNERS[k];
-			const w = dataToWorld(layout.corner(r, c, dx, dy, fill));
+			const p = dataToWorld(layout.corner(r, c, dx, dy, w, h));
 			const base = (cell * vertsPerCell + k) * 3;
-			positions[base] = w[0];
-			positions[base + 1] = w[1];
-			positions[base + 2] = w[2];
+			positions[base] = p[0];
+			positions[base + 1] = p[1];
+			positions[base + 2] = p[2];
 		}
 	}
+	for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) placeCell(r * cols + c, r, c, fill, fill);
 	const geom = new THREE.BufferGeometry();
-	geom.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+	const posAttr = new THREE.BufferAttribute(positions, 3);
+	if (hasSizeExpr) posAttr.setUsage(THREE.DynamicDrawUsage);
+	geom.setAttribute("position", posAttr);
 	const colorAttr = new THREE.BufferAttribute(colors, 3);
 	colorAttr.setUsage(THREE.DynamicDrawUsage);
 	geom.setAttribute("color", colorAttr);
+	const fillFrac = fill / cellSize;
+	const cellValue = new Float64Array(drawn).fill(NaN);
+	const cellW = new Float64Array(drawn).fill(fillFrac);
+	const cellH = new Float64Array(drawn).fill(fillFrac);
+	const cellRgb = new Float32Array(drawn * 3);
 	/** Paint one cell's six vertices from a raw value. */
 	function paintCell(cell, raw) {
 		const u = normalizeColorValue(raw, colorDomain);
 		if (u === null) return;
 		const rgb = colorMapFn(u);
 		const r0 = rgb[0], g0 = rgb[1], b0 = rgb[2];
+		cellRgb[cell * 3] = r0;
+		cellRgb[cell * 3 + 1] = g0;
+		cellRgb[cell * 3 + 2] = b0;
 		for (let k = 0; k < vertsPerCell; k++) {
 			const base = (cell * vertsPerCell + k) * 3;
 			colors[base] = r0;
@@ -8141,26 +8229,47 @@ function renderTensor(el, _view) {
 			colors[base + 2] = b0;
 		}
 	}
-	for (let cell = 0; cell < drawn; cell++) for (let k = 0; k < vertsPerCell; k++) {
-		const base = (cell * vertsPerCell + k) * 3;
-		colors[base] = baseColor[0];
-		colors[base + 1] = baseColor[1];
-		colors[base + 2] = baseColor[2];
-	}
-	/** Evaluate every drawn cell at `tSec`, binding indices for that cell only. */
-	function paintAll(tSec) {
-		if (literalValues) {
-			for (let cell = 0; cell < drawn; cell++) paintCell(cell, literalValues[cell]);
-			return;
+	for (let cell = 0; cell < drawn; cell++) {
+		cellRgb[cell * 3] = baseColor[0];
+		cellRgb[cell * 3 + 1] = baseColor[1];
+		cellRgb[cell * 3 + 2] = baseColor[2];
+		for (let k = 0; k < vertsPerCell; k++) {
+			const base = (cell * vertsPerCell + k) * 3;
+			colors[base] = baseColor[0];
+			colors[base + 1] = baseColor[1];
+			colors[base + 2] = baseColor[2];
 		}
-		if (!valueFn) return;
+	}
+	/**
+	* Evaluate every drawn cell at `tSec`, binding indices for that cell only:
+	* the value first (colour), then the size channels with that value in
+	* scope. Literal values still run the size channels, so a static matrix
+	* can have slider-driven cell sizes without paying for a valueExpr.
+	*/
+	function paintAll(tSec) {
+		if (!(literalValues || valueFn) && !hasSizeExpr) return;
 		for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
 			const cell = r * cols + c;
-			paintCell(cell, evalExpr(valueFn, tSec, { overrideScope: {
+			const scope = {
 				row: r,
 				col: c,
-				idx: cell
-			} }));
+				idx: cell,
+				value: NaN
+			};
+			let raw;
+			if (literalValues) raw = literalValues[cell];
+			else if (valueFn) raw = evalExpr(valueFn, tSec, { overrideScope: scope });
+			if (raw !== void 0) paintCell(cell, raw);
+			const v = Number(raw);
+			scope.value = Number.isFinite(v) ? v : NaN;
+			cellValue[cell] = scope.value;
+			if (hasSizeExpr) {
+				const w = widthFn ? resolveExtent(evalExpr(widthFn, tSec, { overrideScope: scope }), fillFrac) : fillFrac;
+				const h = heightFn ? resolveExtent(evalExpr(heightFn, tSec, { overrideScope: scope }), fillFrac) : fillFrac;
+				cellW[cell] = w;
+				cellH[cell] = h;
+				placeCell(cell, r, c, w * cellSize, h * cellSize);
+			}
 		}
 	}
 	try {
@@ -8169,6 +8278,7 @@ function renderTensor(el, _view) {
 		console.warn("tensor value evaluation error:", err);
 	}
 	colorAttr.needsUpdate = true;
+	if (hasSizeExpr) posAttr.needsUpdate = true;
 	const ignoresPlaneOpacity = !!sh.ignorePlaneOpacity;
 	const mat = new THREE.MeshBasicMaterial({
 		vertexColors: true,
@@ -8180,9 +8290,134 @@ function renderTensor(el, _view) {
 	const mesh = new THREE.Mesh(geom, mat);
 	mesh.userData.targetOpacity = opacity;
 	mesh.userData.ignorePlaneOpacity = ignoresPlaneOpacity;
-	mesh.renderOrder = el.renderOrder !== void 0 ? el.renderOrder : tensorState._planeMeshSerial++;
+	const serial = el.renderOrder !== void 0 ? el.renderOrder : tensorState._planeMeshSerial++;
+	mesh.renderOrder = serial;
 	tensorState.three.scene.add(mesh);
 	tensorState.planeMeshes.push(mesh);
+	let textLayer = null;
+	if (textFn) {
+		const px = Math.max(24, Math.min(128, Math.floor(2048 / Math.max(rows, cols))));
+		const canvas = document.createElement("canvas");
+		canvas.width = cols * px;
+		canvas.height = rows * px;
+		const ctx = canvas.getContext("2d");
+		if (ctx) {
+			const tex = new THREE.CanvasTexture(canvas);
+			tex.minFilter = THREE.LinearFilter;
+			tex.magFilter = THREE.LinearFilter;
+			tex.generateMipmaps = false;
+			const lift = cellSize * .02;
+			const q = [
+				dataToWorld(layout.point(0, 0, lift)),
+				dataToWorld(layout.point(layout.width, 0, lift)),
+				dataToWorld(layout.point(layout.width, layout.height, lift)),
+				dataToWorld(layout.point(0, layout.height, lift))
+			];
+			const qPos = new Float32Array([
+				...q[0],
+				...q[1],
+				...q[2],
+				...q[3]
+			]);
+			const qUv = new Float32Array([
+				0,
+				0,
+				1,
+				0,
+				1,
+				1,
+				0,
+				1
+			]);
+			const qGeom = new THREE.BufferGeometry();
+			qGeom.setAttribute("position", new THREE.BufferAttribute(qPos, 3));
+			qGeom.setAttribute("uv", new THREE.BufferAttribute(qUv, 2));
+			qGeom.setIndex([
+				0,
+				1,
+				2,
+				0,
+				2,
+				3
+			]);
+			const qMat = new THREE.MeshBasicMaterial({
+				map: tex,
+				transparent: true,
+				opacity: mat.opacity,
+				side: THREE.DoubleSide,
+				depthWrite: false
+			});
+			const qMesh = new THREE.Mesh(qGeom, qMat);
+			qMesh.userData.targetOpacity = opacity;
+			qMesh.userData.ignorePlaneOpacity = ignoresPlaneOpacity;
+			qMesh.renderOrder = serial + 1;
+			tensorState.three.scene.add(qMesh);
+			tensorState.planeMeshes.push(qMesh);
+			textLayer = {
+				canvas,
+				ctx,
+				tex,
+				mesh: qMesh,
+				px,
+				lastKey: ""
+			};
+		}
+	}
+	/** Evaluate every cell's text and redraw the canvas if anything on it changed. */
+	function paintText(tSec) {
+		if (!textLayer || !textFn) return;
+		const { ctx, tex, px } = textLayer;
+		const texts = new Array(drawn);
+		const keyParts = [];
+		for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+			const cell = r * cols + c;
+			let txt = "";
+			try {
+				const out = evalExpr(textFn, tSec, { overrideScope: {
+					row: r,
+					col: c,
+					idx: cell,
+					value: cellValue[cell]
+				} });
+				txt = out === null || out === void 0 ? "" : String(out);
+			} catch (_err) {
+				txt = "";
+			}
+			texts[cell] = txt;
+			keyParts.push(txt, cellW[cell].toFixed(3), cellH[cell].toFixed(3), String(Math.round(cellRgb[cell * 3] * 255)), String(Math.round(cellRgb[cell * 3 + 1] * 255)), String(Math.round(cellRgb[cell * 3 + 2] * 255)));
+		}
+		const key = keyParts.join("");
+		if (key === textLayer.lastKey) return;
+		textLayer.lastKey = key;
+		ctx.clearRect(0, 0, cols * px, rows * px);
+		ctx.textAlign = "center";
+		ctx.textBaseline = "middle";
+		for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+			const cell = r * cols + c;
+			const txt = texts[cell];
+			if (!txt) continue;
+			const wPx = cellW[cell] * px;
+			const hPx = cellH[cell] * px;
+			if (wPx < 2 || hPx < 2) continue;
+			ctx.font = "100px system-ui, sans-serif";
+			const measured = ctx.measureText(txt).width;
+			ctx.font = `${fitFontPx(measured, wPx, hPx)}px system-ui, sans-serif`;
+			ctx.fillStyle = textColorFixed || contrastTextColor([
+				cellRgb[cell * 3],
+				cellRgb[cell * 3 + 1],
+				cellRgb[cell * 3 + 2]
+			]);
+			const cx = (c + .5) * px + anchor.h * (fillFrac - cellW[cell]) * px / 2;
+			const cy = (r + .5) * px - anchor.v * (fillFrac - cellH[cell]) * px / 2;
+			ctx.fillText(txt, cx, cy);
+		}
+		tex.needsUpdate = true;
+	}
+	if (textLayer) try {
+		paintText(0);
+	} catch (err) {
+		console.warn("tensor textExpr evaluation error:", err);
+	}
 	const axes = Array.isArray(el.axes) ? el.axes : [];
 	const dynamicLabels = [];
 	const labelExprStrings = [];
@@ -8266,16 +8501,34 @@ function renderTensor(el, _view) {
 		console.warn("tensor axis label evaluation error:", err);
 	}
 	const animState = { stopped: false };
-	if (!valueFn && !dynamicLabels.length) return {
+	if (!valueFn && !dynamicLabels.length && !hasSizeExpr && !textFn) return {
 		type: "tensor",
 		color: baseColor,
 		label: el.label
 	};
 	let compiledUnderTrust = tensorState._sceneJsTrustState;
+	const channelStrings = [
+		widthExprString,
+		heightExprString,
+		textExprString
+	].filter((x) => !!x);
+	const channelFns = () => [
+		widthFn,
+		heightFn,
+		textFn
+	].filter((x) => !!x);
 	const entry = {
-		exprStrings: [...valueExprString ? [valueExprString] : [], ...labelExprStrings],
+		exprStrings: [
+			...valueExprString ? [valueExprString] : [],
+			...channelStrings,
+			...labelExprStrings
+		],
 		animState,
-		compiledFns: [...valueFn ? [valueFn] : [], ...dynamicLabels.map((dl) => dl.fn)],
+		compiledFns: [
+			...valueFn ? [valueFn] : [],
+			...channelFns(),
+			...dynamicLabels.map((dl) => dl.fn)
+		],
 		_rebuildFn() {
 			if (tensorState._sceneJsTrustState === compiledUnderTrust) return;
 			compiledUnderTrust = tensorState._sceneJsTrustState;
@@ -8284,6 +8537,9 @@ function renderTensor(el, _view) {
 			} catch (err) {
 				console.warn("Slider tensor valueExpr recompile error:", err);
 			}
+			widthFn = compileOpt(widthExprString, "widthExpr") ?? widthFn;
+			heightFn = compileOpt(heightExprString, "heightExpr") ?? heightFn;
+			textFn = compileOpt(textExprString, "textExpr") ?? textFn;
 			const recompiled = /* @__PURE__ */ new Map();
 			for (const dl of dynamicLabels) {
 				let fn = recompiled.get(dl.src);
@@ -8298,7 +8554,11 @@ function renderTensor(el, _view) {
 				}
 				dl.fn = fn;
 			}
-			entry.compiledFns = [...valueFn ? [valueFn] : [], ...dynamicLabels.map((dl) => dl.fn)];
+			entry.compiledFns = [
+				...valueFn ? [valueFn] : [],
+				...channelFns(),
+				...dynamicLabels.map((dl) => dl.fn)
+			];
 		}
 	};
 	tensorState.activeAnimExprs.push(entry);
@@ -8308,10 +8568,17 @@ function renderTensor(el, _view) {
 		updateFrame(nowMs) {
 			if (!mesh.visible) return;
 			const tSec = (nowMs - startTime) / 1e3;
-			if (valueFn) try {
+			if (valueFn || hasSizeExpr) try {
 				paintAll(tSec);
 				colorAttr.needsUpdate = true;
+				if (hasSizeExpr) posAttr.needsUpdate = true;
 			} catch (_err) {}
+			if (textLayer) {
+				textLayer.mesh.visible = mesh.visible;
+				try {
+					paintText(tSec);
+				} catch (_err) {}
+			}
 			if (dynamicLabels.length) paintLabels(tSec);
 		}
 	});

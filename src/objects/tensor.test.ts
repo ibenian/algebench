@@ -174,3 +174,61 @@ test('a malformed labelExpr degrades to the constant 0, silently', () => {
     assert.notEqual(fn, null);
     assert.equal((fn as { evaluate(s: object): unknown }).evaluate({ row: 3 }), 0);
 });
+
+// ── per-cell channels ──
+// Value drives colour by default; `widthExpr` / `heightExpr` / `textExpr` add
+// size and text as further channels over the same per-cell scope. The helpers
+// below are the parts that decide what the renderer draws and are pure, so
+// they are pinned here without a canvas or a scene.
+
+const { resolveExtent, fitFontPx, contrastTextColor } = await import('/objects/tensor.js');
+
+test('resolveExtent clamps a size result to a fraction of the pitch', () => {
+    assert.equal(resolveExtent(0.5, 0.92), 0.5);
+    assert.equal(resolveExtent(1.7, 0.92), 1);
+    assert.equal(resolveExtent(-0.2, 0.92), 0);
+    assert.equal(resolveExtent('0.25', 0.92), 0.25);
+});
+
+test('resolveExtent keeps the gap-derived fill when the result is not a number', () => {
+    // A misfiring size expression must not collapse a cell to a sliver or
+    // blow it over its neighbours; the cell keeps the size it would have had.
+    for (const bad of [NaN, undefined, null, 'wide', {}, Infinity]) {
+        assert.equal(resolveExtent(bad, 0.92), 0.92, `expected fallback for ${String(bad)}`);
+    }
+});
+
+test('fitFontPx is bound by height for short strings and by width for long ones', () => {
+    // A one-character string in a 100x100 box: height decides.
+    assert.equal(fitFontPx(60, 100, 100), 62);
+    // A wide string: width decides, and the result shrinks with the string.
+    const wide = fitFontPx(600, 100, 100);
+    assert.ok(wide < 62, `expected width-bound size, got ${wide}`);
+    assert.ok(fitFontPx(1200, 100, 100) < wide);
+});
+
+test('fitFontPx shrinks with the cell, never below 1px', () => {
+    assert.ok(fitFontPx(60, 50, 50) < fitFontPx(60, 100, 100));
+    assert.equal(fitFontPx(60, 1, 1), 1);
+    assert.equal(fitFontPx(0, 100, 100), 62); // an empty measurement falls back to the height bound
+});
+
+test('contrastTextColor picks dark text on light cells and light text on dark ones', () => {
+    assert.equal(contrastTextColor([1, 1, 1]), '#101418');
+    assert.equal(contrastTextColor([0, 0, 0]), '#f4f6f8');
+    // viridis's yellow end is light; its purple start is dark.
+    assert.equal(contrastTextColor([0.99, 0.91, 0.14]), '#101418');
+    assert.equal(contrastTextColor([0.27, 0.0, 0.33]), '#f4f6f8');
+});
+
+test('parseAnchor reads an edge, a pair, or nothing', async () => {
+    const { parseAnchor } = await import('/objects/tensor.js');
+    assert.deepEqual(parseAnchor(undefined), { h: 0, v: 0 });
+    assert.deepEqual(parseAnchor('center'), { h: 0, v: 0 });
+    assert.deepEqual(parseAnchor('bottom'), { h: 0, v: -1 });
+    assert.deepEqual(parseAnchor('top'), { h: 0, v: 1 });
+    assert.deepEqual(parseAnchor('left'), { h: -1, v: 0 });
+    assert.deepEqual(parseAnchor('bottom-left'), { h: -1, v: -1 });
+    assert.deepEqual(parseAnchor('Top Right'), { h: 1, v: 1 });
+    assert.deepEqual(parseAnchor(42), { h: 0, v: 0 });
+});

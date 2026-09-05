@@ -46,10 +46,65 @@ import type { CompiledExpr } from '/expr.js';
 import { dataToWorld } from '/coords.js';
 import type { Vec3 } from '/coords.js';
 import type { Element, Shader } from '/types/lesson.js';
-import type { Object3D, Scene } from 'three';
+import type { CanvasTexture, Mesh, Object3D, Scene } from 'three';
 
 /** parseColor returns `number[]`; three's Color constructor needs a tuple. */
 type Rgb3 = [number, number, number];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Per-cell channels — pure helpers, exported so they can be pinned by tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Read a `widthExpr` / `heightExpr` result as a fraction of the cell pitch.
+ * Anything that is not a finite number keeps the fallback (the `gap`-derived
+ * fill), so a cell whose extent expression misfires stays the size it was
+ * rather than collapsing to a sliver or exploding over its neighbours.
+ */
+export function resolveExtent(raw: unknown, fallback: number): number {
+    // Number(null) is 0 and Number('') is 0: an absent result is not "zero
+    // width", it is "no opinion", so those keep the fallback explicitly.
+    if (raw === null || raw === undefined || raw === '' || typeof raw === 'boolean') return fallback;
+    const n = Number(raw);
+    if (!Number.isFinite(n)) return fallback;
+    return Math.max(0, Math.min(1, n));
+}
+
+/**
+ * Font size, in canvas pixels, that fits a string into a `wPx` x `hPx` box.
+ * `widthAt100` is the string's measured width at a 100px font, so the fit is
+ * a pure ratio and needs no canvas of its own. The 0.86 / 0.62 margins keep
+ * glyph ascenders and a little side padding inside the cell edge.
+ */
+export function fitFontPx(widthAt100: number, wPx: number, hPx: number): number {
+    const byHeight = hPx * 0.62;
+    const byWidth = widthAt100 > 0 ? (wPx * 0.86) * 100 / widthAt100 : byHeight;
+    return Math.max(1, Math.floor(Math.min(byHeight, byWidth)));
+}
+
+/**
+ * Which edge of its slot a shrunken cell keeps. `-1` keeps the low edge
+ * (left / bottom), `0` centres, `+1` keeps the high edge (right / top). A
+ * height-only lattice anchored at the bottom is a bar chart on its lattice;
+ * centred, it is a strip of lozenges — same numbers, a different reading.
+ */
+export function parseAnchor(raw: unknown): { h: -1 | 0 | 1; v: -1 | 0 | 1 } {
+    const out = { h: 0 as -1 | 0 | 1, v: 0 as -1 | 0 | 1 };
+    if (typeof raw !== 'string') return out;
+    for (const word of raw.toLowerCase().split(/[\s,-]+/)) {
+        if (word === 'left') out.h = -1;
+        else if (word === 'right') out.h = 1;
+        else if (word === 'bottom') out.v = -1;
+        else if (word === 'top') out.v = 1;
+    }
+    return out;
+}
+
+/** Near-black or near-white, whichever reads against the cell's colour. */
+export function contrastTextColor(rgb: readonly number[]): string {
+    const lum = 0.2126 * (rgb[0] ?? 0) + 0.7152 * (rgb[1] ?? 0) + 0.0722 * (rgb[2] ?? 0);
+    return lum > 0.45 ? '#101418' : '#f4f6f8';
+}
 
 /**
  * One axis label driven by `labelExpr`, memoising the last string it rendered
@@ -256,17 +311,18 @@ const QUAD_CORNERS: [number, number][] = [
  * slices for rank 3 — are new functions of this shape, and nothing downstream
  * changes.
  */
-function gridLayout(dims: number[], origin: Vec3, cellSize: number, plane: string) {
+function gridLayout(dims: number[], origin: Vec3, cellSize: number, plane: string,
+                    fill: number, anchor: { h: -1 | 0 | 1; v: -1 | 0 | 1 }) {
     const [hAxis, vAxis, nAxis] = PLANE_AXES[plane] || PLANE_AXES['xy']!;
     const cols = dims[dims.length - 1]!;
     const rows = dims.length >= 2 ? dims[dims.length - 2]! : 1;
 
-    /** Position from in-plane (horizontal, vertical) offsets. */
-    const at = (h: number, v: number): Vec3 => {
+    /** Position from in-plane (horizontal, vertical) offsets, and an optional lift off the plane. */
+    const at = (h: number, v: number, nOff = 0): Vec3 => {
         const p: Vec3 = [0, 0, 0];
         p[hAxis!] = origin[0]! + h;
         p[vAxis!] = origin[1]! + v;
-        p[nAxis!] = origin[2]!;
+        p[nAxis!] = origin[2]! + nOff;
         return p;
     };
 
@@ -275,10 +331,19 @@ function gridLayout(dims: number[], origin: Vec3, cellSize: number, plane: strin
         cols,
         /** How many logical cells this layout draws — the trailing 2D slice. */
         drawn: rows * cols,
-        /** Centre-relative corner of the cell at (r, c), `d` in [0,1]^2. */
-        corner: (r: number, c: number, dx: number, dy: number, fill: number): Vec3 =>
-            at((c + 0.5) * cellSize + (dx - 0.5) * fill,
-               (rows - 1 - r + 0.5) * cellSize + (dy - 0.5) * fill),
+        /**
+         * Corner of the cell at (r, c), `d` in [0,1]^2, for a `w` x `h` cell.
+         * A full-size cell (`w = h = fill`) lands in the same place whatever
+         * the anchor; the anchor only decides where a smaller one sits.
+         */
+        corner: (r: number, c: number, dx: number, dy: number, w: number, h: number): Vec3 =>
+            at((c + 0.5) * cellSize + anchor.h * (fill - w) / 2 + (dx - 0.5) * w,
+               (rows - 1 - r + 0.5) * cellSize + anchor.v * (fill - h) / 2 + (dy - 0.5) * h),
+        /** Absolute in-plane point, lifted `nOff` off the lattice plane. */
+        point: at,
+        /** Whole-lattice extent in the plane. */
+        width: cols * cellSize,
+        height: rows * cellSize,
         /** Where an axis label sits. `k` is the index along that axis. */
         rowLabelAt: (r: number, pad: number): Vec3 =>
             at(-pad, (rows - 1 - r + 0.5) * cellSize),
@@ -329,7 +394,8 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     const fill = cellSize * (1 - Math.max(0, Math.min(0.9, gapRaw)));
     const plane = (typeof el.plane === 'string' && PLANE_AXES[el.plane]) ? el.plane : 'xy';
 
-    const layout = gridLayout(dims, origin, cellSize, plane);
+    const anchor = parseAnchor(el.anchor);
+    const layout = gridLayout(dims, origin, cellSize, plane, fill, anchor);
     const { rows, cols, drawn } = layout;
 
     // Rank > 2 parses and validates, but the grid layout draws the trailing 2D
@@ -371,6 +437,31 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
         }
     }
 
+    // The other per-cell channels. Each is evaluated with the same index scope
+    // as `valueExpr` plus `value`, the cell's own number, so "size follows the
+    // value" is `widthExpr: "value"` and needs no second data source. Colour
+    // stays value-driven through `colorMap`; these add to it, never replace it.
+    const readExpr = (key: 'widthExpr' | 'heightExpr' | 'textExpr'): string | null => {
+        const raw = el[key];
+        return (typeof raw === 'string' && raw.trim()) ? raw.trim() : null;
+    };
+    const widthExprString = readExpr('widthExpr');
+    const heightExprString = readExpr('heightExpr');
+    const textExprString = readExpr('textExpr');
+    const compileOpt = (src: string | null, what: string): CompiledExpr | null => {
+        if (!src) return null;
+        try { return compileExpr(src); } catch (err) {
+            console.warn(`tensor ${what} compile error:`, err);
+            return null;
+        }
+    };
+    let widthFn = compileOpt(widthExprString, 'widthExpr');
+    let heightFn = compileOpt(heightExprString, 'heightExpr');
+    let textFn = compileOpt(textExprString, 'textExpr');
+    const hasSizeExpr = !!(widthFn || heightFn);
+    const textColorFixed = (typeof el.textColor === 'string' && el.textColor.trim() && el.textColor.trim() !== 'auto')
+        ? el.textColor.trim() : null;
+
     const opacity = (typeof el.opacity === 'number' && isFinite(el.opacity))
         ? Math.max(0, Math.min(1, el.opacity)) : 0.95;
     const sh = (el.shader || {}) as Shader;
@@ -380,23 +471,29 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     const positions = new Float32Array(drawn * vertsPerCell * 3);
     const colors = new Float32Array(drawn * vertsPerCell * 3);
 
-    for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-            const cell = r * cols + c;
-            for (let k = 0; k < vertsPerCell; k++) {
-                // Non-null: k indexes QUAD_CORNERS, whose length is vertsPerCell.
-                const [dx, dy] = QUAD_CORNERS[k]!;
-                const w = dataToWorld(layout.corner(r, c, dx, dy, fill));
-                const base = (cell * vertsPerCell + k) * 3;
-                positions[base] = w[0];
-                positions[base + 1] = w[1];
-                positions[base + 2] = w[2];
-            }
+    /** Write one cell's six vertices for a cell `w` x `h` in data units, centred on its lattice slot. */
+    function placeCell(cell: number, r: number, c: number, w: number, h: number) {
+        for (let k = 0; k < vertsPerCell; k++) {
+            // Non-null: k indexes QUAD_CORNERS, whose length is vertsPerCell.
+            const [dx, dy] = QUAD_CORNERS[k]!;
+            const p = dataToWorld(layout.corner(r, c, dx, dy, w, h));
+            const base = (cell * vertsPerCell + k) * 3;
+            positions[base] = p[0];
+            positions[base + 1] = p[1];
+            positions[base + 2] = p[2];
         }
     }
 
+    for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) placeCell(r * cols + c, r, c, fill, fill);
+    }
+
     const geom = new THREE.BufferGeometry();
-    geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const posAttr = new THREE.BufferAttribute(positions, 3);
+    // Only a size channel moves vertices after the build; without one the
+    // positions really are write-once, which is the static contract.
+    if (hasSizeExpr) posAttr.setUsage(THREE.DynamicDrawUsage);
+    geom.setAttribute('position', posAttr);
     const colorAttr = new THREE.BufferAttribute(colors, 3);
     // Positions never move, but a `valueExpr` tensor rewrites this whole buffer
     // every frame. Saying so lets the driver keep it somewhere it can be
@@ -404,6 +501,14 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     // default STATIC usage claims.
     colorAttr.setUsage(THREE.DynamicDrawUsage);
     geom.setAttribute('color', colorAttr);
+
+    // Per-cell state the text layer reads back: the last value, the extents
+    // (as fractions of the pitch) and the painted colour.
+    const fillFrac = fill / cellSize;
+    const cellValue = new Float64Array(drawn).fill(NaN);
+    const cellW = new Float64Array(drawn).fill(fillFrac);
+    const cellH = new Float64Array(drawn).fill(fillFrac);
+    const cellRgb = new Float32Array(drawn * 3);
 
     /** Paint one cell's six vertices from a raw value. */
     function paintCell(cell: number, raw: unknown) {
@@ -413,6 +518,7 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
         if (u === null) return;
         const rgb = colorMapFn(u);
         const r0 = rgb[0]!, g0 = rgb[1]!, b0 = rgb[2]!;
+        cellRgb[cell * 3] = r0; cellRgb[cell * 3 + 1] = g0; cellRgb[cell * 3 + 2] = b0;
         for (let k = 0; k < vertsPerCell; k++) {
             const base = (cell * vertsPerCell + k) * 3;
             colors[base] = r0;
@@ -424,6 +530,7 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     // Seed every cell with the element's static colour, so a failed or absent
     // value source still renders something deliberate.
     for (let cell = 0; cell < drawn; cell++) {
+        cellRgb[cell * 3] = baseColor[0]; cellRgb[cell * 3 + 1] = baseColor[1]; cellRgb[cell * 3 + 2] = baseColor[2];
         for (let k = 0; k < vertsPerCell; k++) {
             const base = (cell * vertsPerCell + k) * 3;
             colors[base] = baseColor[0];
@@ -432,21 +539,36 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
         }
     }
 
-    /** Evaluate every drawn cell at `tSec`, binding indices for that cell only. */
+    /**
+     * Evaluate every drawn cell at `tSec`, binding indices for that cell only:
+     * the value first (colour), then the size channels with that value in
+     * scope. Literal values still run the size channels, so a static matrix
+     * can have slider-driven cell sizes without paying for a valueExpr.
+     */
     function paintAll(tSec: number) {
-        if (literalValues) {
-            for (let cell = 0; cell < drawn; cell++) paintCell(cell, literalValues[cell]);
-            return;
-        }
-        if (!valueFn) return;
+        const liveValue = literalValues || valueFn;
+        if (!liveValue && !hasSizeExpr) return;
         for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
                 const cell = r * cols + c;
                 // overrideScope, not extraScope: extraScope *loses* to a scene
                 // slider of the same name, so a scene with a slider called
                 // `row` would silently shadow the cell index.
-                const raw = evalExpr(valueFn, tSec, { overrideScope: { row: r, col: c, idx: cell } });
-                paintCell(cell, raw);
+                const scope = { row: r, col: c, idx: cell, value: NaN };
+                let raw: unknown;
+                if (literalValues) raw = literalValues[cell];
+                else if (valueFn) raw = evalExpr(valueFn, tSec, { overrideScope: scope });
+                if (raw !== undefined) paintCell(cell, raw);
+                const v = Number(raw);
+                scope.value = Number.isFinite(v) ? v : NaN;
+                cellValue[cell] = scope.value;
+                if (hasSizeExpr) {
+                    const w = widthFn ? resolveExtent(evalExpr(widthFn, tSec, { overrideScope: scope }), fillFrac) : fillFrac;
+                    const h = heightFn ? resolveExtent(evalExpr(heightFn, tSec, { overrideScope: scope }), fillFrac) : fillFrac;
+                    cellW[cell] = w;
+                    cellH[cell] = h;
+                    placeCell(cell, r, c, w * cellSize, h * cellSize);
+                }
             }
         }
     }
@@ -455,6 +577,7 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
         console.warn('tensor value evaluation error:', err);
     }
     colorAttr.needsUpdate = true;
+    if (hasSizeExpr) posAttr.needsUpdate = true;
 
     // One formula for the first paint and for the global Planes control, which
     // recomputes `targetOpacity * planeOpacity` (or `targetOpacity` alone when
@@ -487,6 +610,124 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     mesh.renderOrder = serial;
     tensorState.three.scene.add(mesh);
     tensorState.planeMeshes.push(mesh);
+
+    // ── Cell text: one canvas for the whole lattice, mapped onto one quad that
+    // lies ON the lattice plane, a hair in front of the cells. It is geometry,
+    // not an HTML label: it tilts with the plane, is occluded like the cells,
+    // and never piles up with the decal labels. Each string is fitted to its
+    // own cell's current extent, so it always fits, and the canvas is redrawn
+    // only when some string, size or colour actually changed. ──
+    interface TextLayer {
+        canvas: HTMLCanvasElement;
+        ctx: CanvasRenderingContext2D;
+        tex: CanvasTexture;
+        mesh: Mesh;
+        px: number;
+        lastKey: string;
+    }
+    let textLayer: TextLayer | null = null;
+    if (textFn) {
+        // Pixels per cell pitch: enough for a short number to be crisp, capped
+        // so a big lattice still fits a 2048 texture.
+        const px = Math.max(24, Math.min(128, Math.floor(2048 / Math.max(rows, cols))));
+        const canvas = document.createElement('canvas');
+        canvas.width = cols * px;
+        canvas.height = rows * px;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.minFilter = THREE.LinearFilter;
+            tex.magFilter = THREE.LinearFilter;
+            tex.generateMipmaps = false;
+            // Lift off the plane by a fraction of the pitch so the quad wins the
+            // depth tie against the cells without visibly floating.
+            const lift = cellSize * 0.02;
+            const q = [
+                dataToWorld(layout.point(0, 0, lift)),
+                dataToWorld(layout.point(layout.width, 0, lift)),
+                dataToWorld(layout.point(layout.width, layout.height, lift)),
+                dataToWorld(layout.point(0, layout.height, lift)),
+            ];
+            const qPos = new Float32Array([...q[0]!, ...q[1]!, ...q[2]!, ...q[3]!]);
+            // Row 0 is drawn at the top of the canvas and sits at the top of the
+            // lattice; CanvasTexture flips Y, so v = 1 is the canvas top.
+            const qUv = new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]);
+            const qGeom = new THREE.BufferGeometry();
+            qGeom.setAttribute('position', new THREE.BufferAttribute(qPos, 3));
+            qGeom.setAttribute('uv', new THREE.BufferAttribute(qUv, 2));
+            qGeom.setIndex([0, 1, 2, 0, 2, 3]);
+            const qMat = new THREE.MeshBasicMaterial({
+                map: tex,
+                transparent: true,
+                opacity: mat.opacity,
+                side: THREE.DoubleSide,
+                depthWrite: false,
+            });
+            const qMesh = new THREE.Mesh(qGeom, qMat);
+            qMesh.userData.targetOpacity = opacity;
+            qMesh.userData.ignorePlaneOpacity = ignoresPlaneOpacity;
+            qMesh.renderOrder = serial + 1;
+            tensorState.three.scene.add(qMesh);
+            tensorState.planeMeshes.push(qMesh);
+            textLayer = { canvas, ctx, tex, mesh: qMesh, px, lastKey: '' };
+        }
+    }
+
+    /** Evaluate every cell's text and redraw the canvas if anything on it changed. */
+    function paintText(tSec: number) {
+        if (!textLayer || !textFn) return;
+        const { ctx, tex, px } = textLayer;
+        const texts: string[] = new Array(drawn);
+        const keyParts: string[] = [];
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                const cell = r * cols + c;
+                let txt = '';
+                try {
+                    const out = evalExpr(textFn, tSec, { overrideScope: { row: r, col: c, idx: cell, value: cellValue[cell]! } });
+                    txt = (out === null || out === undefined) ? '' : String(out);
+                } catch (_err) { txt = ''; }
+                texts[cell] = txt;
+                keyParts.push(txt, cellW[cell]!.toFixed(3), cellH[cell]!.toFixed(3),
+                    String(Math.round(cellRgb[cell * 3]! * 255)), String(Math.round(cellRgb[cell * 3 + 1]! * 255)),
+                    String(Math.round(cellRgb[cell * 3 + 2]! * 255)));
+            }
+        }
+        const key = keyParts.join('\u0001');
+        if (key === textLayer.lastKey) return;
+        textLayer.lastKey = key;
+
+        ctx.clearRect(0, 0, cols * px, rows * px);
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                const cell = r * cols + c;
+                const txt = texts[cell]!;
+                if (!txt) continue;
+                const wPx = cellW[cell]! * px;
+                const hPx = cellH[cell]! * px;
+                if (wPx < 2 || hPx < 2) continue;
+                ctx.font = '100px system-ui, sans-serif';
+                const measured = ctx.measureText(txt).width;
+                const fontPx = fitFontPx(measured, wPx, hPx);
+                ctx.font = `${fontPx}px system-ui, sans-serif`;
+                ctx.fillStyle = textColorFixed || contrastTextColor([cellRgb[cell * 3]!, cellRgb[cell * 3 + 1]!, cellRgb[cell * 3 + 2]!]);
+                // Canvas y runs down while the lattice's vertical axis runs
+                // up, so the vertical anchor flips sign here.
+                const cx = (c + 0.5) * px + anchor.h * (fillFrac - cellW[cell]!) * px / 2;
+                const cy = (r + 0.5) * px - anchor.v * (fillFrac - cellH[cell]!) * px / 2;
+                ctx.fillText(txt, cx, cy);
+            }
+        }
+        tex.needsUpdate = true;
+    }
+
+    if (textLayer) {
+        try { paintText(0); } catch (err) {
+            console.warn('tensor textExpr evaluation error:', err);
+        }
+    }
 
     // ── Axis labels. `axes[k]` describes `shape[k]`; the last dimension runs
     // horizontally and the one before it vertically, matching the layout. These
@@ -584,16 +825,20 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
 
     // Literal values and literal labels never change, so there is nothing to
     // run per frame. This is the static path, and it costs exactly nothing.
-    if (!valueFn && !dynamicLabels.length) {
+    // A size or text channel is live by definition — it may read a slider —
+    // so any of them registers the updater.
+    if (!valueFn && !dynamicLabels.length && !hasSizeExpr && !textFn) {
         return { type: 'tensor', color: baseColor, label: el.label };
     }
 
     let compiledUnderTrust = tensorState._sceneJsTrustState;
 
+    const channelStrings = [widthExprString, heightExprString, textExprString].filter((x): x is string => !!x);
+    const channelFns = () => [widthFn, heightFn, textFn].filter((x): x is CompiledExpr => !!x);
     const entry: TensorAnimExprEntry = {
-        exprStrings: [...(valueExprString ? [valueExprString] : []), ...labelExprStrings],
+        exprStrings: [...(valueExprString ? [valueExprString] : []), ...channelStrings, ...labelExprStrings],
         animState,
-        compiledFns: [...(valueFn ? [valueFn] : []), ...dynamicLabels.map(dl => dl.fn)],
+        compiledFns: [...(valueFn ? [valueFn] : []), ...channelFns(), ...dynamicLabels.map(dl => dl.fn)],
         // Called on EVERY slider value change, not just on a recompile
         // (sliders.ts drives both through the same hook). Compiling the same
         // string twice gives the same node -- a slider VALUE is read at eval
@@ -616,6 +861,9 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
                     console.warn('Slider tensor valueExpr recompile error:', err);
                 }
             }
+            widthFn = compileOpt(widthExprString, 'widthExpr') ?? widthFn;
+            heightFn = compileOpt(heightExprString, 'heightExpr') ?? heightFn;
+            textFn = compileOpt(textExprString, 'textExpr') ?? textFn;
             // One compile per distinct expression, not one per label: the six
             // labels down an axis all share a single `labelExpr`.
             const recompiled = new Map<string, CompiledExpr>();
@@ -630,7 +878,7 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
                 }
                 dl.fn = fn;
             }
-            entry.compiledFns = [...(valueFn ? [valueFn] : []), ...dynamicLabels.map(dl => dl.fn)];
+            entry.compiledFns = [...(valueFn ? [valueFn] : []), ...channelFns(), ...dynamicLabels.map(dl => dl.fn)];
         },
     };
     tensorState.activeAnimExprs.push(entry);
@@ -641,11 +889,16 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
         updateFrame(nowMs) {
             if (!mesh.visible) return;
             const tSec = (nowMs - startTime) / 1000;
-            if (valueFn) {
+            if (valueFn || hasSizeExpr) {
                 try {
                     paintAll(tSec);
                     colorAttr.needsUpdate = true;
+                    if (hasSizeExpr) posAttr.needsUpdate = true;
                 } catch (_err) { /* keep the last frame's colours */ }
+            }
+            if (textLayer) {
+                textLayer.mesh.visible = mesh.visible;
+                try { paintText(tSec); } catch (_err) { /* keep the last frame's text */ }
             }
             if (dynamicLabels.length) paintLabels(tSec);
         },

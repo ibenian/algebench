@@ -699,6 +699,26 @@ export interface Element {
    */
   values?: unknown[];
   /**
+   * TENSOR ONLY. Math.js expression giving one cell's WIDTH as a fraction of 'cellSize' (0–1), evaluated per cell with 'row', 'col', 'idx' and 'value' (that cell's number) bound. The cell stays centred on its slot. Default: 1 − gap. Anything non-numeric keeps the default for that cell.
+   */
+  widthExpr?: string;
+  /**
+   * TENSOR ONLY. Math.js expression giving one cell's HEIGHT as a fraction of 'cellSize' (0–1), same scope as 'widthExpr'. Width and height are independent so a cell can be a bar in either direction.
+   */
+  heightExpr?: string;
+  /**
+   * TENSOR ONLY. Math.js expression giving the text drawn INSIDE each cell, same scope as 'widthExpr'. Rendered on the lattice plane as geometry, sized to fit the cell's current extent; plain text only, no KaTeX. An empty string draws nothing.
+   */
+  textExpr?: string;
+  /**
+   * TENSOR ONLY. Which edge of its slot a cell shrunk by 'widthExpr'/'heightExpr' keeps: 'center' (default), 'bottom', 'top', 'left', 'right', or a pair such as 'bottom-left'. 'bottom' with 'heightExpr' is a bar chart on the lattice.
+   */
+  anchor?: string;
+  /**
+   * TENSOR ONLY. Colour for 'textExpr' text. Default 'auto': near-black or near-white, whichever reads against each cell's colour.
+   */
+  textColor?: string;
+  /**
    * TENSOR ONLY. Data-space pitch between cell centers. Default 1.
    */
   cellSize?: number;
