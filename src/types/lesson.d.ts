@@ -707,10 +707,6 @@ export interface Element {
    */
   heightExpr?: string;
   /**
-   * Math.js expression for dynamic text content. Evaluated each frame; the rounded integer result replaces '%d' in textFormat. Example: "lambda * 100".
-   */
-  textExpr?: string;
-  /**
    * TENSOR ONLY. Which edge of its slot a cell shrunk by 'widthExpr' / 'heightExpr' keeps. 'center' (default) grows and shrinks about the slot centre; 'bottom', 'top', 'left', 'right' pin that edge, and a pair such as 'bottom-left' pins both. A full-size cell sits in the same place whatever the anchor. "heightExpr": "value" with "anchor": "bottom" turns a row of cells into a bar chart standing on its lattice — the way to show a distribution of values.
    */
   anchor?: string;
@@ -887,6 +883,10 @@ export interface Element {
    * Text content for 'text' type elements. Example: "Direction changed!".
    */
   text?: string;
+  /**
+   * On text: Math.js expression for dynamic text content. Evaluated each frame; the rounded integer result replaces '%d' in textFormat. Example: "lambda * 100". On tensor: the text drawn INSIDE each cell, evaluated per cell with 'row', 'col', 'idx' and 'value' bound (same scope as 'widthExpr'). Drawn on the lattice plane as geometry, so it tilts and occludes with the cells rather than floating as a screen label, and each string is sized to fit its own cell's current width and height. Plain text only, no KaTeX; use toFixed(value, 2) or concat(...). An empty string draws nothing. The canvas is redrawn only when some text, size or colour changed.
+   */
+  textExpr?: string;
   /**
    * Format string for textExpr output. Use '%d' as placeholder for the evaluated integer. Supports KaTeX. Example: "$%d\\;\\text{nm}$". Default: "%d".
    */
