@@ -3793,6 +3793,7 @@
             {"id": "s3_poly_subhull"},
             {"id": "s3_pt_out"},
             {"id": "s3_txt_hull"},
+            {"id": "s3_txt_hull_point"},
             {"id": "s3_pt_v0"},
             {"id": "s3_pt_v1"},
             {"id": "s3_pt_v2"},
@@ -3867,7 +3868,15 @@
               ],
               "color": "#ff7043",
               "opacity": 0.22,
-              "label": "highlighted query row"
+              "legendGroup": "$S = QK^{\\top}$ ($6\\times6$, signed)"
+            },
+            {
+              "id": "s3_txt_selected_S",
+              "type": "text",
+              "text": "Selected row in $S$",
+              "position": [-7.8, -11.8, 0],
+              "color": "#ff7043",
+              "legendGroup": "$S = QK^{\\top}$ ($6\\times6$, signed)"
             },
             {
               "id": "s3_tensor_M66",
@@ -3909,7 +3918,7 @@
           "title": "One pass, six distributions",
           "description": "Scale, mask, softmax — the whole matrix at once. Six rows, six distributions, the upper triangle structurally empty. Drag the highlighted row across $A$ and read its sum: every one of the six is 1.000000. Row 0 has only itself to look at, so it is forced to exactly 1. Row 2 is our 97.09% row. Read across, never down. And one more thing to notice: this is **one head**. The model has a second one, and it does something else entirely.\n\n$W_Q, W_K, W_V$ are the **learned parameters** and they are the same handful of numbers for every sentence. The 36 weights in $A$ are **computed fresh from the input on every forward pass** — change the sentence and all 36 change, while $W_Q, W_K, W_V$ do not. That is why $A$ is not a weight matrix between two layers of neurons.",
           "camera": {
-            "position": [-0.7, -8.3, 28.0],
+            "position": [-0.7, -8.3, 20.0],
             "target": [-0.7, -8.3, 0.0]
           },
           "add": [
@@ -3945,7 +3954,7 @@
               "id": "s3_txt_onehead",
               "type": "text",
               "text": "**ONE head**, of two",
-              "position": [3.6, -11.9, 0],
+              "position": [6.3, -12.7, 0],
               "color": "#26c6da",
               "legendGroup": "$A$ — row-stochastic ($6\\times6$)"
             },
@@ -3960,7 +3969,15 @@
               ],
               "color": "#66bb6a",
               "opacity": 0.22,
-              "label": "highlighted row of $A$"
+              "legendGroup": "$A$ — row-stochastic ($6\\times6$)"
+            },
+            {
+              "id": "s3_txt_selected_A",
+              "type": "text",
+              "text": "Selected row in $A$",
+              "position": [6.3, -11.8, 0],
+              "color": "#66bb6a",
+              "legendGroup": "$A$ — row-stochastic ($6\\times6$)"
             }
           ],
           "info": [
