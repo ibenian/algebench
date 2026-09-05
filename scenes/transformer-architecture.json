@@ -2627,9 +2627,9 @@
     },
     {
       "id": "scaled-dot-product-attention",
-      "title": "Scaled dot-product attention",
+      "title": "Scaled dot-product attention — a hand-built subject→verb head",
       "description": "One query, five stages, real numbers: raw score $\\to$ scale by $1/\\sqrt{d_k}$ $\\to$ mask $\\to$ softmax $\\to$ weighted sum. Then the same computation for all six queries at once, as $QK^{\\top}$.",
-      "markdown": "# Scaled dot-product attention\n\n## You are here\n\n<svg viewBox=\"0 0 460 200\" width=\"100%\" style=\"max-width:460px\">\n  <rect x=\"20\" y=\"10\" width=\"420\" height=\"32\" rx=\"6\" fill=\"#151a20\" stroke=\"#3a4450\"/>\n  <text x=\"230\" y=\"31\" text-anchor=\"middle\" fill=\"#5b6672\" font-size=\"13\" font-family=\"sans-serif\">tokens &#8594; embedding + position (scene 1)</text>\n  <rect x=\"20\" y=\"50\" width=\"420\" height=\"32\" rx=\"6\" fill=\"#151a20\" stroke=\"#3a4450\"/>\n  <text x=\"230\" y=\"71\" text-anchor=\"middle\" fill=\"#5b6672\" font-size=\"13\" font-family=\"sans-serif\">Q / K / V projections (scene 2)</text>\n  <rect x=\"20\" y=\"90\" width=\"420\" height=\"38\" rx=\"6\" fill=\"#3a1f42\" stroke=\"#ab47bc\" stroke-width=\"2\"/>\n  <text x=\"230\" y=\"114\" text-anchor=\"middle\" fill=\"#ab47bc\" font-size=\"14\" font-family=\"sans-serif\">scaled, masked, softmaxed attention &#183; one head</text>\n  <rect x=\"20\" y=\"138\" width=\"420\" height=\"32\" rx=\"6\" fill=\"#151a20\" stroke=\"#3a4450\"/>\n  <text x=\"230\" y=\"159\" text-anchor=\"middle\" fill=\"#5b6672\" font-size=\"13\" font-family=\"sans-serif\">multi-head &#183; the block &#183; the stack (still ahead)</text>\n</svg>\n\nLit: the layer this scene builds — **one head of it**. Dimmed: everything the lesson has yet to reach.\n\n## The five stages\n\nFor one query index $i$:\n\n1. **raw score** — $s_{ij} = q_i \\cdot k_j$, a signed number, one per key.\n2. **scale** — divide by $\\sqrt{d_k} = \\sqrt{2}$. Not $\\sqrt{d_{\\text{model}}} = 2$.\n3. **mask** — add $-\\infty$ (in code, $-10^{9}$) to every entry with $j > i$.\n4. **softmax** — exponentiate and normalise. The row becomes a distribution.\n5. **weighted sum** — $o_i = \\sum_j \\alpha_{ij} v_j$.\n\nStages 3 and 4 are in that order and the order is not a convention. See the mask-order table below.\n\n$$\\mathrm{Attn}(Q,K,V) = \\mathrm{softmax}\\!\\left(\\frac{QK^{\\top}}{\\sqrt{d_k}} + M\\right)V$$\n\n## Step by step\n\nThe on-screen panels are pointers. The reasoning lives here.\n\n**1 · Half A — one query at a time.** We walk one query through all five stages with real numbers\nbefore doing all six at once, because a $6\\times6$ lattice hides what a $1\\times6$ row shows.\nNothing in this step is new: scene 2 already produced the row $s_{2j}$. What is new is that it is\nnow stage one of a pipeline. The ramp is **diverging** because raw scores genuinely carry a sign —\nthe last place in the lesson where that is true. From the softmax onward every weight lattice is a\nsingle-hue viridis ramp on $[0,1]$, identical across scenes so cells stay comparable.\n\n**2 · Predict.** The row on screen is row **3** (*on*), not row 2, and the choice is deliberate:\nrow 2 is saturated and would barely move, hiding the very effect being taught. The causal mask\nis still off here — all six keys are visible, and stays that way until step 5, so nothing on\nscreen depends on a rule the lesson has not introduced. Grey means *un-revealed*. Commit to\nsharper, flatter, or a new winner before dragging.\n\n**3 · Reveal.** Flatter, same winner. Dividing every entry by one positive constant is monotone,\nso the ordering cannot change; the top weight of the unmasked row falls $0.4167 \\to 0.3365$. The misconception control\ndivides by $\\sqrt{1}$, $\\sqrt{d_k}$ or $\\sqrt{d_{\\text{model}}}$ — on the flagship entry $s_{21}$\nthat is $15.1397$, $10.7054$ and $7.5699$. $d_k$ is the *per-head* width; $d_{\\text{model}}$ never\ndivides anything.\n\n**4 · The seam.** See *Why $\\sqrt{d_k}$* below. The pink object is not the toy, and it is drawn in\na colour outside the $q/k/v/o$ palette for exactly that reason.\n\n**5 · Predict.** Two questions: what the mask removes and what happens to what stays; and why a\nmask beats simply feeding the model six truncated prefixes. This prediction sits two steps after\nthe previous one on purpose — back-to-back predictions train casual guessing.\n\n**6 · Reveal.** See *Mask before softmax* below. Structurally, the mask is what makes a single\nforward pass a legal simultaneous evaluation of every factor $p(x_t \\mid x_{<t})$: row $t$ already\nsees only its own prefix, so one pass does what six prefix passes would. That is what makes\ntraining parallel over positions. And it **retires scene 1's fine print**: proof 1 held only with\nno positional encoding and no causal mask, and two independent things break equivariance — PE,\nand this mask. Row $i$'s visible key set depends on $i$, not on the token multiset, so permuting\nthe input no longer permutes the output.\n\n**7 · Softmax.** The flagship row, asserted at six decimals rather than claimed.\n\n**8 · The hull.** $o_i$ is a convex combination of the values the query may see. With the mask on\nthat is $\\mathrm{conv}\\{v_j : j \\le i\\}$ — the forbidden value points are hidden in the viewport,\nso the reachable region is the hull of the points still on screen; at $i = 2$, the triangle on\n$v_0, v_1, v_2$. The translucent outline is the hull of all six and is a reference, not the bound.\nPoints are drawn at $2\\times$ the true $v_j$ for legibility; the coordinates below are the real\nones.\n\n| $j$ | token | $v_j$ |\n|---|---|---|\n| 0 | the | $(1.0000,\\ 1.0000)$ |\n| 1 | cat | $(0.8415,\\ 1.5403)$ |\n| 2 | sat | $(0.9093,\\ -0.4161)$ |\n| 3 | on | $(0.1411,\\ -0.9900)$ |\n| 4 | the | $(0.2432,\\ -0.6536)$ |\n| 5 | mat | $(-0.4589,\\ 0.7837)$ |\n\nA single head **mixes**; it does not create. Expressive power comes from $W_V$, $W_O$, the\nfeed-forward block and depth — all of which are ahead, not here.\n\n**9 · The pause.** See *Attention is not explanation* below.\n\n**10 · Half B.** $QK^{\\top}$ is a notational compression of the loop half A walked. Drag the\nhighlight to row 2 and compare with step 1: the same values from the same function, not merely\nsimilar. $d_k = 2$ is the inner dimension that disappears in the product; $d_{\\text{model}} = 4$\ndisappeared one step earlier, in the projection. Every position is computed in one matrix multiply\nwith no dependence on the previous position's result — which a recurrent model structurally\ncannot do.\n\n**11 · Six distributions.** Row 0 sees only itself, so its weight is *forced* to exactly $1$ and\nits output carries no information about any other token. And this is **one head**. The model has a\nsecond one.\n\n## What is learned, and what is not\n\n$W_Q$, $W_K$ and $W_V$ are the **learned parameters**: $4\\times2$ each, twenty-four numbers in\ntotal for this head, and they are the *same* numbers for every sentence the model ever sees.\n\nThe $36$ entries of $A$ are **not parameters**. They are computed from the input on every forward\npass: $A = \\mathrm{softmax}(XW_Q(XW_K)^{\\top}/\\sqrt{d_k} + M)$. Change the sentence and all $36$\nchange; $W_Q, W_K, W_V$ do not move at all until a gradient step moves them.\n\nThis is why an attention diagram is not a picture of a network's wiring. The edges between tokens\nare redrawn for every input, which is exactly what a fixed weight matrix between two layers of\nneurons cannot do — and it is the reason the same head can find the subject of *this* verb in\none sentence and a different subject in the next.\n\n## Shapes, all the way through\n\n| step | product | shape |\n|---|---|---|\n| project | $X\\,W_Q$ | $(6\\times4)(4\\times2) = 6\\times2$ |\n| score | $Q\\,K^{\\top}$ | $(6\\times2)(2\\times6) = 6\\times6$ |\n| scale + mask | $S/\\sqrt{d_k} + M$ | $6\\times6$ |\n| softmax (per row) | $A$ | $6\\times6$ |\n| mix | $A\\,V$ | $(6\\times6)(6\\times2) = 6\\times2$ |\n\n$d_{\\text{model}} = 4$ never divides anything: the only square root in the formula is\n$\\sqrt{d_k}$.\n\n## The attention matrix $A$\n\nCausal, scaled, softmaxed — the whole $6\\times6$ at the default sliders.\n\n<table style=\"border-collapse:collapse;font-family:ui-monospace,monospace;font-size:13px\">\n<tr><th style=\"padding:4px 9px;text-align:left\">query \\ key</th><th style=\"padding:4px 9px\">the</th><th style=\"padding:4px 9px\">cat</th><th style=\"padding:4px 9px\">sat</th><th style=\"padding:4px 9px\">on</th><th style=\"padding:4px 9px\">the</th><th style=\"padding:4px 9px\">mat</th><th style=\"padding:4px 9px\">row sum</th></tr>\n<tr><td style=\"padding:3px 9px\">0 the</td><td style=\"padding:3px 9px\">1.0000</td><td style=\"padding:3px 9px\">&#183;</td><td style=\"padding:3px 9px\">&#183;</td><td style=\"padding:3px 9px\">&#183;</td><td style=\"padding:3px 9px\">&#183;</td><td style=\"padding:3px 9px\">&#183;</td><td style=\"padding:3px 9px\"><b>1.0000</b></td></tr>\n<tr><td style=\"padding:3px 9px\">1 cat</td><td style=\"padding:3px 9px\">0.4914</td><td style=\"padding:3px 9px\">0.5086</td><td style=\"padding:3px 9px\">&#183;</td><td style=\"padding:3px 9px\">&#183;</td><td style=\"padding:3px 9px\">&#183;</td><td style=\"padding:3px 9px\">&#183;</td><td style=\"padding:3px 9px\"><b>1.0000</b></td></tr>\n<tr style=\"background:#241a2b\"><td style=\"padding:3px 9px\">2 sat</td><td style=\"padding:3px 9px\">0.0291</td><td style=\"padding:3px 9px\"><b>0.9709</b></td><td style=\"padding:3px 9px\">0.0000</td><td style=\"padding:3px 9px\">&#183;</td><td style=\"padding:3px 9px\">&#183;</td><td style=\"padding:3px 9px\">&#183;</td><td style=\"padding:3px 9px\"><b>1.0000</b></td></tr>\n<tr><td style=\"padding:3px 9px\">3 on</td><td style=\"padding:3px 9px\">0.1760</td><td style=\"padding:3px 9px\">0.1951</td><td style=\"padding:3px 9px\">0.1343</td><td style=\"padding:3px 9px\">0.4946</td><td style=\"padding:3px 9px\">&#183;</td><td style=\"padding:3px 9px\">&#183;</td><td style=\"padding:3px 9px\"><b>1.0000</b></td></tr>\n<tr><td style=\"padding:3px 9px\">4 the</td><td style=\"padding:3px 9px\">0.2118</td><td style=\"padding:3px 9px\">0.2430</td><td style=\"padding:3px 9px\">0.1477</td><td style=\"padding:3px 9px\">0.2586</td><td style=\"padding:3px 9px\">0.1390</td><td style=\"padding:3px 9px\">&#183;</td><td style=\"padding:3px 9px\"><b>1.0000</b></td></tr>\n<tr><td style=\"padding:3px 9px\">5 mat</td><td style=\"padding:3px 9px\">0.1531</td><td style=\"padding:3px 9px\">0.1818</td><td style=\"padding:3px 9px\">0.0976</td><td style=\"padding:3px 9px\">0.2345</td><td style=\"padding:3px 9px\">0.0904</td><td style=\"padding:3px 9px\">0.2425</td><td style=\"padding:3px 9px\"><b>1.0000</b></td></tr>\n</table>\n\nThe cells are rounded to 4 dp *independently*, so adding the printed digits in rows 4 and 5 gives\n1.0001 and 0.9999. The **row sums above are the sums of the unrounded values**, and the viewport\nprints `tfRowSum(i)` at six decimals so you can check that claim rather than take it.\n\nRow 2 is the flagship: the verb *sat* puts $0.970889$ of its mass on its subject *cat*, and\n$0.000003$ on itself. Its output is $o_2 = (0.8461,\\ 1.5246)$.\n\n## Mask before softmax, or the row is not a distribution\n\n| | $\\alpha_{2j}$ | $\\sum_j \\alpha_{2j}$ |\n|---|---|---|\n| **mask on the scores, then softmax** (correct) | $[0.029108,\\ 0.970889,\\ 0.000003,\\ 0,\\ 0,\\ 0]$ | $1.000000$ |\n| **softmax over all six, then zero the future** (wrong) | $[0.0288,\\ 0.9611,\\ 0.0000027,\\ 0,\\ 0,\\ 0]$ | $0.989933$ |\n\nThe wrong order silently deletes $1.0067\\%$ of the row's probability mass. Nothing throws; the\npicture looks almost identical; every downstream number is quietly off. Toggle\n**mask AFTER softmax (wrong)** in the viewport and read the two sums side by side at six decimals.\n\nWhy $-\\infty$ on the scores is legitimate at all is proof 5 in the panel: softmax is invariant to\nadding a constant to every entry, so it is an operation that lives naturally on the *scores*.\nIn code the $-\\infty$ is $-10^{9}$, a large finite number, so no `NaN` ever reaches the renderer.\n\n## Read across, never down\n\n$A$ is **row-stochastic**: each row is a distribution over keys, and different rows were normalised\nby different denominators. Comparing two cells in the same *column* — \"the model attends more to\n*cat* here than there\" — compares numbers that were never on a common scale. Every honest reading of\nan attention heat map is a reading *along a row*.\n\n## Why $\\sqrt{d_k}$, and what our toy cannot show you\n\nDragging the scaling slider shows a **symptom**: an unscaled row is sharper. It cannot show you why\nthe constant is $\\sqrt{d_k}$, because $W_Q$ and $W_K$ here were built by hand and the resulting $q$\nand $k$ are neither random nor independent. So the scene puts a **second, generic object** on screen:\npairs of vectors whose $2d_k$ components are fully mutually independent, zero-mean and unit-variance.\nFor those, $\\mathrm{Var}(q\\cdot k) = d_k$ exactly, which is proof 2.\n\n| $n$ | empirical $\\mathrm{Var}(q\\cdot k)$, 2,000,000 draws | theory |\n|---|---|---|\n| 2 | $2.0003$ (mean $-0.00008$) | $2$ |\n| 64 | $64.10$ | $64$ |\n\nThe figure the viewport prints is your own much smaller run — 4,000 draws — and it wobbles. The\ntable above is the anchor.\n\nThis is an **initialisation-time** argument, and it is exactly what it claims to be. After training, $q$ and $k$ are neither unit-variance nor independent, and the logit scale drifts — which is why QK-normalisation (Dehghani et al., 2023; used in OLMo 2 and Gemma 3) applies a norm to $q$ and $k$ before the dot product and lets a learned scale take over. It does not weaken the constant: at initialisation $\\sqrt{d_k}$ is the unique divisor that restores unit variance.\n\nThe \"it prevents vanishing gradients\" story is a **corollary**, not the reason. Large-variance logits\nsaturate softmax, and a saturated softmax has a small Jacobian; but that follows *from* the variance\nfact, and quoting only the consequence is how this became folklore.\n\n## Softmax and temperature\n\nThis scene uses softmax at temperature $1$ and does not vary it. Temperature, top-$k$ and nucleus\nsampling belong to the decoding step, not to attention, and the lesson reaches them later.\n\n## Attention is not explanation\n\nA large $\\alpha_{ij}$ is a fact about the mixing weights. It is **not** evidence that the model's\noutput depends on token $j$. Jain and Wallace (2019) show that alternative attention distributions\ncan leave predictions unchanged and that adversarial attention patterns can be constructed with the\nsame outputs; Wiegreffe and Pinter (2019) rebut this in part, arguing the claim depends on what one\ndemands of an explanation. This lesson teaches the **mechanism** and makes no interpretability claim.\n\n## Provenance\n\n> The weights $W_Q$, $W_K$, $W_V$ and the embedding table are **hand-constructed for legibility, not\n> learned**. Real trained weights at $d_{\\text{model}} = 4$ produce noise, not a clean subject-verb\n> head. Every figure quoted here is asserted by `scripts/check_transformer_domain.py`; the live\n> numbers come from `static/domains/transformer/index.js`.\n\n## Citations\n\n- **vaswani2017** — Vaswani et al. (2017). *Attention Is All You Need.* NeurIPS. — scaled dot-product attention, the $1/\\sqrt{d_k}$ constant and its variance justification, the causal mask.\n- **murphy2022pml** — Murphy (2022). *Probabilistic Machine Learning: An Introduction.* MIT Press, §15.4–15.5. — shapes, softmax, row-stochastic attention.\n- **murphy2023pmlat** — Murphy (2023). *Probabilistic Machine Learning: Advanced Topics.* MIT Press. — the masked decoder-only formulation.\n- **jain2019attention** — Jain & Wallace (2019). *Attention is not Explanation.* NAACL. — and Wiegreffe & Pinter (2019), *Attention is not not Explanation*, EMNLP.\n- **poloclub-transformerexplainer** — Cho et al. Transformer Explainer, Georgia Tech. — an interactive reference for the same pipeline at scale.\n- **3b1b-attention** — 3Blue1Brown, *Attention in transformers, visually explained.* — the query/key geometric intuition.\n",
+      "markdown": "# Scaled dot-product attention — a hand-built subject→verb head\n\nEvery number in this scene comes from one head whose $W_Q, W_K, W_V$ were chosen by hand so that the verb attends to its subject. It is a toy built to be legible, not a trained model; the mechanism is real, the pattern is staged.\n\n## You are here\n\n<svg viewBox=\"0 0 460 200\" width=\"100%\" style=\"max-width:460px\">\n  <rect x=\"20\" y=\"10\" width=\"420\" height=\"32\" rx=\"6\" fill=\"#151a20\" stroke=\"#3a4450\"/>\n  <text x=\"230\" y=\"31\" text-anchor=\"middle\" fill=\"#5b6672\" font-size=\"13\" font-family=\"sans-serif\">tokens &#8594; embedding + position (scene 1)</text>\n  <rect x=\"20\" y=\"50\" width=\"420\" height=\"32\" rx=\"6\" fill=\"#151a20\" stroke=\"#3a4450\"/>\n  <text x=\"230\" y=\"71\" text-anchor=\"middle\" fill=\"#5b6672\" font-size=\"13\" font-family=\"sans-serif\">Q / K / V projections (scene 2)</text>\n  <rect x=\"20\" y=\"90\" width=\"420\" height=\"38\" rx=\"6\" fill=\"#3a1f42\" stroke=\"#ab47bc\" stroke-width=\"2\"/>\n  <text x=\"230\" y=\"114\" text-anchor=\"middle\" fill=\"#ab47bc\" font-size=\"14\" font-family=\"sans-serif\">scaled, masked, softmaxed attention &#183; one head</text>\n  <rect x=\"20\" y=\"138\" width=\"420\" height=\"32\" rx=\"6\" fill=\"#151a20\" stroke=\"#3a4450\"/>\n  <text x=\"230\" y=\"159\" text-anchor=\"middle\" fill=\"#5b6672\" font-size=\"13\" font-family=\"sans-serif\">multi-head &#183; the block &#183; the stack (still ahead)</text>\n</svg>\n\nLit: the layer this scene builds — **one head of it**. Dimmed: everything the lesson has yet to reach.\n\n## The five stages\n\nFor one query index $i$:\n\n1. **raw score** — $s_{ij} = q_i \\cdot k_j$, a signed number, one per key.\n2. **scale** — divide by $\\sqrt{d_k} = \\sqrt{2}$. Not $\\sqrt{d_{\\text{model}}} = 2$.\n3. **mask** — add $-\\infty$ (in code, $-10^{9}$) to every entry with $j > i$.\n4. **softmax** — exponentiate and normalise. The row becomes a distribution.\n5. **weighted sum** — $o_i = \\sum_j \\alpha_{ij} v_j$.\n\nStages 3 and 4 are in that order and the order is not a convention. See the mask-order table below.\n\n$$\\mathrm{Attn}(Q,K,V) = \\mathrm{softmax}\\!\\left(\\frac{QK^{\\top}}{\\sqrt{d_k}} + M\\right)V$$\n\n## Step by step\n\nThe on-screen panels are pointers. The reasoning lives here.\n\n**1 · Half A — one query at a time.** We walk one query through all five stages with real numbers\nbefore doing all six at once, because a $6\\times6$ lattice hides what a $1\\times6$ row shows.\nNothing in this step is new: scene 2 already produced the row $s_{2j}$. What is new is that it is\nnow stage one of a pipeline. The ramp is **diverging** because raw scores genuinely carry a sign —\nthe last place in the lesson where that is true. From the softmax onward every weight lattice is a\nsingle-hue viridis ramp on $[0,1]$, identical across scenes so cells stay comparable.\n\n**2 · Predict.** The row on screen is row **3** (*on*), not row 2, and the choice is deliberate:\nrow 2 is saturated and would barely move, hiding the very effect being taught. The causal mask\nis still off here — all six keys are visible, and stays that way until step 5, so nothing on\nscreen depends on a rule the lesson has not introduced. Grey means *un-revealed*. Commit to\nsharper, flatter, or a new winner before dragging.\n\n**3 · Reveal.** Flatter, same winner. Dividing every entry by one positive constant is monotone,\nso the ordering cannot change; the top weight of the unmasked row falls $0.4167 \\to 0.3365$. The misconception control\ndivides by $\\sqrt{1}$, $\\sqrt{d_k}$ or $\\sqrt{d_{\\text{model}}}$ — on the flagship entry $s_{21}$\nthat is $15.1397$, $10.7054$ and $7.5699$. $d_k$ is the *per-head* width; $d_{\\text{model}}$ never\ndivides anything.\n\n**4 · The seam.** See *Why $\\sqrt{d_k}$* below. The pink object is not the toy, and it is drawn in\na colour outside the $q/k/v/o$ palette for exactly that reason.\n\n**5 · Predict.** One question: what the mask removes, and whether the survivors keep their values.\nIt is one question on purpose — the second one, why a mask beats feeding the model six truncated\nprefixes, cannot be reasoned out from anything on screen, so it is *told* in the reveal rather than\nasked. This prediction sits two steps after the previous one on purpose — back-to-back predictions\ntrain casual guessing.\n\n**6 · Reveal.** See *Mask before softmax* below. Structurally, the mask is what makes a single\nforward pass a legal simultaneous evaluation of every factor $p(x_t \\mid x_{<t})$: row $t$ already\nsees only its own prefix, so one pass does what six prefix passes would. That is what makes\ntraining parallel over positions. And it **retires scene 1's fine print**: proof 1 held only with\nno positional encoding and no causal mask, and two independent things break equivariance — PE,\nand this mask. Row $i$'s visible key set depends on $i$, not on the token multiset, so permuting\nthe input no longer permutes the output.\n\n**7 · Softmax.** The flagship row, asserted at six decimals rather than claimed.\n\n**8 · The hull.** $o_i$ is a convex combination of the values the query may see — their centre of mass, with the attention weights as the masses. The spokes from $o_i$ to each $v_j$ are as thick as $\\alpha_{ij}$, so the averaging is visible, not just its result. With the mask on\nthat is $\\mathrm{conv}\\{v_j : j \\le i\\}$ — the forbidden value points are hidden in the viewport,\nso the reachable region is the hull of the points still on screen; at $i = 2$, the triangle on\n$v_0, v_1, v_2$. Drag the query down to $i = 0$ and the hull collapses to a single point: the first\ntoken can only see itself, so its output *is* $v_0$, whatever the weights. The values the query may not see are drawn as dim ghosts, so the reason the region is small is on screen.\nPoints are drawn at $2\\times$ the true $v_j$ for legibility; the coordinates below are the real\nones.\n\n| $j$ | token | $v_j$ |\n|---|---|---|\n| 0 | the | $(1.0000,\\ 1.0000)$ |\n| 1 | cat | $(0.8415,\\ 1.5403)$ |\n| 2 | sat | $(0.9093,\\ -0.4161)$ |\n| 3 | on | $(0.1411,\\ -0.9900)$ |\n| 4 | the | $(0.2432,\\ -0.6536)$ |\n| 5 | mat | $(-0.4589,\\ 0.7837)$ |\n\nA single head **mixes**; it does not create. Expressive power comes from $W_V$, $W_O$, the\nfeed-forward block and depth — all of which are ahead, not here.\n\n**9 · The pause.** See *Attention is not explanation* below.\n\n**10 · Half B.** $QK^{\\top}$ is a notational compression of the loop half A walked. Drag the\nhighlight to row 2 and compare with step 1: the same values from the same function, not merely\nsimilar. $d_k = 2$ is the inner dimension that disappears in the product; $d_{\\text{model}} = 4$\ndisappeared one step earlier, in the projection. Every position is computed in one matrix multiply\nwith no dependence on the previous position's result — which a recurrent model structurally\ncannot do.\n\n**11 · Six distributions.** Row 0 sees only itself, so its weight is *forced* to exactly $1$ and\nits output carries no information about any other token. And this is **one head**. The model has a\nsecond one.\n\n## What is learned, and what is not\n\n$W_Q$, $W_K$ and $W_V$ are the **learned parameters**: $4\\times2$ each, twenty-four numbers in\ntotal for this head, and they are the *same* numbers for every sentence the model ever sees.\n\nThe $36$ entries of $A$ are **not parameters**. They are computed from the input on every forward\npass: $A = \\mathrm{softmax}(XW_Q(XW_K)^{\\top}/\\sqrt{d_k} + M)$. Change the sentence and all $36$\nchange; $W_Q, W_K, W_V$ do not move at all until a gradient step moves them.\n\nThis is why an attention diagram is not a picture of a network's wiring. The edges between tokens\nare redrawn for every input, which is exactly what a fixed weight matrix between two layers of\nneurons cannot do — and it is the reason the same head can find the subject of *this* verb in\none sentence and a different subject in the next.\n\n## Shapes, all the way through\n\n| step | product | shape |\n|---|---|---|\n| project | $X\\,W_Q$ | $(6\\times4)(4\\times2) = 6\\times2$ |\n| score | $Q\\,K^{\\top}$ | $(6\\times2)(2\\times6) = 6\\times6$ |\n| scale + mask | $S/\\sqrt{d_k} + M$ | $6\\times6$ |\n| softmax (per row) | $A$ | $6\\times6$ |\n| mix | $A\\,V$ | $(6\\times6)(6\\times2) = 6\\times2$ |\n\n$d_{\\text{model}} = 4$ never divides anything: the only square root in the formula is\n$\\sqrt{d_k}$.\n\n## The attention matrix $A$\n\nCausal, scaled, softmaxed — the whole $6\\times6$ at the default sliders.\n\n<table style=\"border-collapse:collapse;font-family:ui-monospace,monospace;font-size:13px\">\n<tr><th style=\"padding:4px 9px;text-align:left\">query \\ key</th><th style=\"padding:4px 9px\">the</th><th style=\"padding:4px 9px\">cat</th><th style=\"padding:4px 9px\">sat</th><th style=\"padding:4px 9px\">on</th><th style=\"padding:4px 9px\">the</th><th style=\"padding:4px 9px\">mat</th><th style=\"padding:4px 9px\">row sum</th></tr>\n<tr><td style=\"padding:3px 9px\">0 the</td><td style=\"padding:3px 9px\">1.0000</td><td style=\"padding:3px 9px\">&#183;</td><td style=\"padding:3px 9px\">&#183;</td><td style=\"padding:3px 9px\">&#183;</td><td style=\"padding:3px 9px\">&#183;</td><td style=\"padding:3px 9px\">&#183;</td><td style=\"padding:3px 9px\"><b>1.0000</b></td></tr>\n<tr><td style=\"padding:3px 9px\">1 cat</td><td style=\"padding:3px 9px\">0.4914</td><td style=\"padding:3px 9px\">0.5086</td><td style=\"padding:3px 9px\">&#183;</td><td style=\"padding:3px 9px\">&#183;</td><td style=\"padding:3px 9px\">&#183;</td><td style=\"padding:3px 9px\">&#183;</td><td style=\"padding:3px 9px\"><b>1.0000</b></td></tr>\n<tr style=\"background:#241a2b\"><td style=\"padding:3px 9px\">2 sat</td><td style=\"padding:3px 9px\">0.0291</td><td style=\"padding:3px 9px\"><b>0.9709</b></td><td style=\"padding:3px 9px\">0.0000</td><td style=\"padding:3px 9px\">&#183;</td><td style=\"padding:3px 9px\">&#183;</td><td style=\"padding:3px 9px\">&#183;</td><td style=\"padding:3px 9px\"><b>1.0000</b></td></tr>\n<tr><td style=\"padding:3px 9px\">3 on</td><td style=\"padding:3px 9px\">0.1760</td><td style=\"padding:3px 9px\">0.1951</td><td style=\"padding:3px 9px\">0.1343</td><td style=\"padding:3px 9px\">0.4946</td><td style=\"padding:3px 9px\">&#183;</td><td style=\"padding:3px 9px\">&#183;</td><td style=\"padding:3px 9px\"><b>1.0000</b></td></tr>\n<tr><td style=\"padding:3px 9px\">4 the</td><td style=\"padding:3px 9px\">0.2118</td><td style=\"padding:3px 9px\">0.2430</td><td style=\"padding:3px 9px\">0.1477</td><td style=\"padding:3px 9px\">0.2586</td><td style=\"padding:3px 9px\">0.1390</td><td style=\"padding:3px 9px\">&#183;</td><td style=\"padding:3px 9px\"><b>1.0000</b></td></tr>\n<tr><td style=\"padding:3px 9px\">5 mat</td><td style=\"padding:3px 9px\">0.1531</td><td style=\"padding:3px 9px\">0.1818</td><td style=\"padding:3px 9px\">0.0976</td><td style=\"padding:3px 9px\">0.2345</td><td style=\"padding:3px 9px\">0.0904</td><td style=\"padding:3px 9px\">0.2425</td><td style=\"padding:3px 9px\"><b>1.0000</b></td></tr>\n</table>\n\nThe cells are rounded to 4 dp *independently*, so adding the printed digits in rows 4 and 5 gives\n1.0001 and 0.9999. The **row sums above are the sums of the unrounded values**, and the viewport\nprints `tfRowSum(i)` at six decimals so you can check that claim rather than take it.\n\nRow 2 is the flagship: the verb *sat* puts $0.970889$ of its mass on its subject *cat*, and\n$0.000003$ on itself. Its output is $o_2 = (0.8461,\\ 1.5246)$.\n\n## Mask before softmax, or the row is not a distribution\n\n| | $\\alpha_{2j}$ | $\\sum_j \\alpha_{2j}$ |\n|---|---|---|\n| **mask on the scores, then softmax** (correct) | $[0.029108,\\ 0.970889,\\ 0.000003,\\ 0,\\ 0,\\ 0]$ | $1.000000$ |\n| **softmax over all six, then zero the future** (wrong) | $[0.0288,\\ 0.9611,\\ 0.0000027,\\ 0,\\ 0,\\ 0]$ | $0.989933$ |\n\nThe wrong order silently deletes $1.0067\\%$ of the row's probability mass. Nothing throws; the\npicture looks almost identical; every downstream number is quietly off. Toggle\n**mask AFTER softmax (wrong)** in the viewport and read the two sums side by side at six decimals.\n\nWhy $-\\infty$ on the scores is legitimate at all is proof 5 in the panel: softmax is invariant to\nadding a constant to every entry, so it is an operation that lives naturally on the *scores*.\nIn code the $-\\infty$ is $-10^{9}$, a large finite number, so no `NaN` ever reaches the renderer.\n\n## Read across, never down\n\n$A$ is **row-stochastic**: each row is a distribution over keys, and different rows were normalised\nby different denominators. Comparing two cells in the same *column* — \"the model attends more to\n*cat* here than there\" — compares numbers that were never on a common scale. Every honest reading of\nan attention heat map is a reading *along a row*.\n\n## Why $\\sqrt{d_k}$, and what our toy cannot show you\n\nDragging the scaling slider shows a **symptom**: an unscaled row is sharper. It cannot show you why\nthe constant is $\\sqrt{d_k}$, because $W_Q$ and $W_K$ here were built by hand and the resulting $q$\nand $k$ are neither random nor independent. So the scene puts a **second, generic object** on screen:\npairs of vectors whose $2d_k$ components are fully mutually independent, zero-mean and unit-variance.\nFor those, $\\mathrm{Var}(q\\cdot k) = d_k$ exactly, which is proof 2.\n\n| $n$ | empirical $\\mathrm{Var}(q\\cdot k)$, 2,000,000 draws | theory |\n|---|---|---|\n| 2 | $2.0003$ (mean $-0.00008$) | $2$ |\n| 64 | $64.10$ | $64$ |\n\nThe figure the viewport prints is your own much smaller run — 4,000 draws — and it wobbles. The\ntable above is the anchor.\n\nThis is an **initialisation-time** argument, and it is exactly what it claims to be. After training, $q$ and $k$ are neither unit-variance nor independent, and the logit scale drifts — which is why QK-normalisation (Dehghani et al., 2023; used in OLMo 2 and Gemma 3) applies a norm to $q$ and $k$ before the dot product and lets a learned scale take over. It does not weaken the constant: at initialisation $\\sqrt{d_k}$ is the unique divisor that restores unit variance.\n\nThe \"it prevents vanishing gradients\" story is a **corollary**, not the reason. Large-variance logits\nsaturate softmax, and a saturated softmax has a small Jacobian; but that follows *from* the variance\nfact, and quoting only the consequence is how this became folklore.\n\n## Softmax and temperature\n\nThis scene uses softmax at temperature $1$ and does not vary it. Temperature, top-$k$ and nucleus\nsampling belong to the decoding step, not to attention, and the lesson reaches them later.\n\n## Attention is not explanation\n\nA large $\\alpha_{ij}$ is a fact about the mixing weights. It is **not** evidence that the model's\noutput depends on token $j$. Jain and Wallace (2019) show that alternative attention distributions\ncan leave predictions unchanged and that adversarial attention patterns can be constructed with the\nsame outputs; Wiegreffe and Pinter (2019) rebut this in part, arguing the claim depends on what one\ndemands of an explanation. This lesson teaches the **mechanism** and makes no interpretability claim.\n\n## Provenance\n\n> The weights $W_Q$, $W_K$, $W_V$ and the embedding table are **hand-constructed for legibility, not\n> learned**. Real trained weights at $d_{\\text{model}} = 4$ produce noise, not a clean subject-verb\n> head. Every figure quoted here is asserted by `scripts/check_transformer_domain.py`; the live\n> numbers come from `static/domains/transformer/index.js`.\n\n## Citations\n\n- **vaswani2017** — Vaswani et al. (2017). *Attention Is All You Need.* NeurIPS. — scaled dot-product attention, the $1/\\sqrt{d_k}$ constant and its variance justification, the causal mask.\n- **murphy2022pml** — Murphy (2022). *Probabilistic Machine Learning: An Introduction.* MIT Press, §15.4–15.5. — shapes, softmax, row-stochastic attention.\n- **murphy2023pmlat** — Murphy (2023). *Probabilistic Machine Learning: Advanced Topics.* MIT Press. — the masked decoder-only formulation.\n- **jain2019attention** — Jain & Wallace (2019). *Attention is not Explanation.* NAACL. — and Wiegreffe & Pinter (2019), *Attention is not not Explanation*, EMNLP.\n- **poloclub-transformerexplainer** — Cho et al. Transformer Explainer, Georgia Tech. — an interactive reference for the same pipeline at scale.\n- **3b1b-attention** — 3Blue1Brown, *Attention in transformers, visually explained.* — the query/key geometric intuition.\n",
       "prompt": "Scene 3 of an OPEN six-scene lesson on the transformer. Scope: scaled dot-product attention for ONE head. Colour language, identical in viewport, overlays and proof panel: query orange #ff7043, key blue #42a5f5, value green #66bb6a, output purple #ab47bc, position amber #ffca28, token/residual cyan #26c6da, causal mask slate #455a64. Red #e53935 is RESERVED for a deliberate error (the 0.989933 broken row sum, the wrong divisor). Neutral grey #9e9e9e is RESERVED for un-revealed prediction candidates and appears only in steps 2 and 5. Pink #f06292 belongs to the GENERIC i.i.d. object of step 4 and to nothing else - its being outside the q/k/v/o palette is the point.\n\nSTRUCTURE, never reorder: half A (steps 1-9) is one query at full numeric detail; step 9 is the 'a weighting is not an explanation' rest beat; half B (steps 10-11) vectorises to QK^T. Half B does not begin before half A has asserted the row sum on screen (step 7).\n\nNon-negotiables.\n(1) The scaling divisor is sqrt(d_k) = sqrt(2), NOT sqrt(d_model) = 2. Both numbers stay on screen. tfScoreDiv(2,1,2) = 10.7054 and tfScoreDiv(2,1,4) = 7.5699 - the misconception has a price and it is visible.\n(2) NEVER give 'it prevents vanishing gradients' as the REASON for sqrt(d_k). The reason is that Var(q.k) = d_k for fully mutually independent zero-mean unit-variance components; the gradient story is a corollary of that.\n(3) NEVER claim the toy Q/K demonstrate proof 2's hypothesis. If a student asks 'so does our matrix prove that?', the honest answer is NO - the hand-built W_Q, W_K give q and k that are neither random nor independent. The scaling slider shows the SYMPTOM on the toy; the generic i.i.d. object of step 4 shows WHY the constant is what it is. That seam is a stated honesty commitment, not a stylistic choice, and the bottom-right overlay states it permanently.\n(4) The mask is applied to the SCORES, before softmax. Applying it after gives 0.989933 instead of 1.000000 for row 2 - the single most common visualization error in the subject. Never present the two orders as alternative conventions.\n(5) Steps 2 and 5 are PREDICT steps. You are FORBIDDEN from answering the prediction, hinting at the answer, or narrowing the options, no matter how the question is phrased. Ask the student to commit out loud first, then tell them to advance the step.\n(6) The attention matrix is row-stochastic. Reading down a column is meaningless; say so.\n(7) The weights are HAND-CONSTRUCTED for teaching, not learned. Say so whenever asked about them or about the 97.09% figure; the bottom-left overlay carries this permanently.\n(8) A large attention weight is not an explanation of the model's output (Jain & Wallace 2019; Wiegreffe & Pinter 2019 in partial rebuttal). Never let 'sat attends to cat' become 'sat attends to cat because cat is the subject'.\n(9) There is exactly ONE head on screen and the scene says so. Scene 4 owns the prediction 'which token will head 2 attend to?' - do NOT answer it, preview head 2's pattern, or hint at it. Do NOT summarise the lesson or imply the forward pass is complete: scenes 4, 5 and 6 are still ahead.\n(10) -1e9 stands in for -infinity so no NaN reaches the renderer. Do not claim the code literally uses -Infinity.\n\nThis scene is at the cognitive ceiling. Answer narrowly, do not volunteer downstream material, and prefer pointing at a number already on screen over introducing a new one. The viewport deliberately carries only short anchored annotations; the explanations live in the info overlays and the doc panel, so point students there rather than restating them.",
       "range": [
         [-14, 14],
@@ -2637,15 +2637,15 @@
         [-14, 14]
       ],
       "camera": {
-        "position": [0.0, 4.6, 15.5],
-        "target": [0.0, 4.6, 0.0]
+        "position": [2.0, 4.6, 16.5],
+        "target": [2.0, 4.6, 0.0]
       },
       "views": [
         {
           "name": "Stages",
           "position": [0.0, 3.6, 16.0],
           "target": [0.0, 3.6, 0.0],
-          "description": "Face-on to the five-stage pipeline strip and half A's lattice stack."
+          "description": "Face-on to half A's lattice stack."
         },
         {
           "name": "Generic",
@@ -2713,8 +2713,8 @@
           "title": "Half A — one query at a time",
           "description": "We follow ONE query all the way through, with real numbers, before doing all six at once. Take the query for *sat* (slot 2). Its six raw scores against the six keys are 10.1798, 15.1397, −2.8206, −7.0890, −5.0014, 8.6925. That is stage one of five. Drag the query position and watch the whole row change.",
           "camera": {
-            "position": [0.0, 4.6, 15.5],
-            "target": [0.0, 4.6, 0.0]
+            "position": [2.0, 4.6, 16.5],
+            "target": [2.0, 4.6, 0.0]
           },
           "sliders": [
             {"id": "s3_qi", "label": "query position $i$", "min": 0, "max": 5, "step": 1, "default": 2}
@@ -2723,54 +2723,26 @@
             {
               "id": "s3_txt_halfA",
               "type": "text",
-              "text": "**HALF A** — one query",
-              "position": [-4.3, 9.6, 0],
+              "text": "**HALF A** — one query through a hand-built subject→verb head",
+              "position": [-5.0, 9.4, 0],
               "color": "#ab47bc",
-              "legendGroup": "five-stage pipeline (half A)"
+              "align": "left"
             },
             {
               "id": "s3_txt_dims",
               "type": "text",
-              "text": "$d_{\\text{model}} = 4$ · $d_k = 2$",
-              "position": [1.9, 9.6, 0],
+              "text": "$d_{\\text{model}} = 4$, $d_k = 2$",
+              "position": [-5.0, 8.4, 0],
               "color": "#26c6da",
-              "legendGroup": "five-stage pipeline (half A)"
-            },
-            {
-              "id": "s3_tensor_strip1",
-              "type": "tensor",
-              "shape": [5],
-              "values": [1, 0, 0, 0, 0],
-              "origin": [-4.3, 8.2, 0],
-              "cellSize": 0.85,
-              "plane": "xy",
-              "colorMap": {
-                "stops": [
-                  {"t": 0, "color": "#22303a"},
-                  {"t": 1, "color": "#cfd8dc"}
-                ]
-              },
-              "colorDomain": [0, 1],
-              "color": "#cfd8dc",
-              "opacity": 0.95,
-              "shader": {"ignorePlaneOpacity": true},
-              "label": "five-stage pipeline (half A)",
-              "axes": [
-                {
-                  "labels": ["1 raw", "2 scaled", "3 masked", "4 softmax", "5 weighted sum"],
-                  "title": "one query, five stages",
-                  "color": "#cfd8dc"
-                }
-              ],
-              "prompt": "The five-stage progress strip for half A: raw score, scale by 1/sqrt(d_k), mask, softmax, weighted sum of values. Lit cells are stages already reached. It is a progress indicator, not data - it carries no numeric meaning, and its pale colour sits deliberately outside the lesson's q/k/v/o colour language."
+              "align": "left"
             },
             {
               "id": "s3_tensor_raw",
               "type": "tensor",
               "shape": [6],
               "valueExpr": "tfScore(s3_qi, col)",
-              "origin": [-2.4, 6.2, 0],
-              "cellSize": 0.8,
+              "origin": [-5.0, 6.2, 0],
+              "cellSize": 1.0,
               "plane": "xy",
               "colorMap": "blueRed",
               "colorDomain": [-16, 16],
@@ -2781,34 +2753,40 @@
               "axes": [
                 {
                   "labels": ["the", "cat", "sat", "on", "the", "mat"],
-                  "title": "key $j$",
                   "color": "#42a5f5"
                 }
               ],
               "prompt": "Row i of the raw score matrix for the currently selected query, s_ij = q_i . k_j. Unscaled, unmasked, un-softmaxed - six signed numbers. Blue-red diverging is correct here and only here, because pre-softmax scores genuinely carry a sign. At i=2 ('sat') the row is [10.1798, 15.1397, -2.8206, -7.0890, -5.0014, 8.6925]."
             },
             {
-              "id": "s3_txt_raw",
-              "type": "text",
+              "id": "s3_tensor_raw_cap",
               "text": "stage 1 — raw, signed",
-              "position": [-2.4, 5.7, 0],
+              "position": [1.4, 6.7, 0],
+              "type": "text",
+              "align": "left",
               "color": "#ff7043",
               "legendGroup": "raw scores $s_{ij}$ (signed)"
             }
           ],
           "info": [
             {"id": "s3_info_half_a_one_query", "position": "top-left", "title": "Stage 1 — raw scores", "content": "$s_{ij} = q_i\\cdot k_j$ — signed, unscaled, unmasked. Stage **1 of 5**. Row $i$ = {{s3_qi}}; against *cat*, {{ toFixed(tfScore(s3_qi,1),4) }}. Full row and the ramp rationale: doc panel."},
-            {"id": "s3_keep_card", "position": "bottom-right", "keep": true, "title": "Toy · provenance", "content": "$d_{\\text{model}} = 4$, $d_k = 2$, **one head of two**. $W_Q, W_K, W_V$ are hand-built for legibility, **not learned**. The pink object is a **different object** from this toy."}
+            {"id": "s3_keep_card", "position": "bottom-right", "keep": true, "title": "Toy · provenance", "content": "$d_{\\text{model}} = 4$, $d_k = 2$, **one head of two**. $W_Q, W_K, W_V$ are hand-built for legibility, **not learned**."}
           ],
-          "prompt": "Opening of half A. The move to sell: we are deliberately doing ONE query at full numeric detail before vectorising, because a 6x6 lattice hides what a 1x6 row shows. Nothing here is new mathematics - scene 2 already produced this row; this scene puts it at the head of a five-stage pipeline. Point at the strip: raw is lit, four stages dark. The scores are signed, which is why the ramp is diverging - and it is the last place in the lesson where that is true. Do not preview the mask or the softmax. If asked why 'cat' is the biggest, the honest answer is that W_Q and W_K were built by hand so that it would be."
+          "prompt": "Opening of half A. The move to sell: we are deliberately doing ONE query at full numeric detail before vectorising, because a 6x6 lattice hides what a 1x6 row shows. Nothing here is new mathematics - scene 2 already produced this row; this scene puts it at the head of a five-stage pipeline, and each row on screen carries its stage number in its caption. The scores are signed, which is why the ramp is diverging - and it is the last place in the lesson where that is true. Do not preview the mask or the softmax. If asked why 'cat' is the biggest, the honest answer is that W_Q and W_K were built by hand so that it would be.",
+          "remove": [
+            {"id": "s3_axis_x"},
+            {"id": "s3_axis_y"},
+            {"id": "s3_axis_z"},
+            {"id": "s3_grid"}
+          ]
         },
         {
           "id": "predict-scaling",
           "title": "PREDICT: what does dividing by $\\sqrt{d_k}$ do?",
           "description": "A different row, on purpose: *on* (slot 3), whose six scores are 2.2695, 2.4153, 1.8868, 3.7309, 1.8215, 3.2084, and whose unscaled softmax puts 0.4167 on the winner. No mask yet — every key is visible; the causal mask arrives three steps from here. Row 2 is saturated at 97% and would barely move — it would hide the effect. Before you drag anything: when we divide these scores by $\\sqrt{d_k}$, does the distribution get **sharper**, **flatter**, or does its **winner change**? Commit to one, out loud, first.",
           "camera": {
-            "position": [-0.4, 4.2, 15.0],
-            "target": [-0.4, 4.2, 0.0]
+            "position": [1.6, 4.2, 16.0],
+            "target": [1.6, 4.2, 0.0]
           },
           "sliders": [
             {"id": "s3_scale", "label": "scaling exponent (0 = none, 1 = $1/\\sqrt{d_k}$)", "min": 0, "max": 1, "step": 0.01, "default": 0}
@@ -2819,8 +2797,8 @@
               "type": "tensor",
               "shape": [6],
               "valueExpr": "tfScore(3, col)",
-              "origin": [-2.4, 4.2, 0],
-              "cellSize": 0.8,
+              "origin": [-5.0, 4.2, 0],
+              "cellSize": 1.0,
               "plane": "xy",
               "colorMap": {
                 "stops": [
@@ -2836,7 +2814,6 @@
               "axes": [
                 {
                   "labels": ["the", "cat", "sat", "on", "the", "mat"],
-                  "title": "row *on*, all six keys",
                   "color": "#9e9e9e"
                 }
               ],
@@ -2847,8 +2824,8 @@
               "type": "tensor",
               "shape": [6],
               "valueExpr": "tfAttn(3, col)",
-              "origin": [-2.4, 2.6, 0],
-              "cellSize": 0.8,
+              "origin": [-5.0, 2.6, 0],
+              "cellSize": 1.0,
               "plane": "xy",
               "colorMap": {
                 "stops": [
@@ -2864,81 +2841,71 @@
               "axes": [
                 {
                   "labels": ["the", "cat", "sat", "on", "the", "mat"],
-                  "title": "its softmax",
                   "color": "#9e9e9e"
                 }
               ],
               "prompt": "The softmax of query 3's unmasked row at the current scaling exponent. At exponent 0 (unscaled) it is [0.0966, 0.1118, 0.0659, 0.4167, 0.0617, 0.2471]. Grey = un-revealed. Do not state what happens as the exponent moves to 1."
             },
             {
-              "id": "s3_txt_predict1",
+              "id": "s3_tensor_on_raw_n_cap",
+              "text": "**PREDICT** — row *on*, unscaled",
+              "position": [1.4, 4.98, 0],
               "type": "text",
-              "text": "**PREDICT** — commit first",
-              "position": [-2.4, 1.9, 0],
+              "align": "left",
               "color": "#9e9e9e",
               "legendGroup": "un-revealed — predict first"
+            },
+            {
+              "id": "s3_tensor_on_raw_n_note",
+              "text": "commit first",
+              "position": [1.4, 4.42, 0],
+              "type": "text",
+              "align": "left",
+              "color": "#9e9e9e",
+              "legendGroup": "un-revealed — predict first"
+            },
+            {
+              "id": "s3_tensor_on_soft_n_cap",
+              "text": "its softmax",
+              "position": [1.4, 3.1, 0],
+              "type": "text",
+              "align": "left",
+              "color": "#9e9e9e"
             }
           ],
           "info": [
             {"id": "s3_info_predict_scaling", "position": "top-right", "title": "Predict — commit first", "content": "Row 3 (*on*), unmasked and unscaled: softmax **0.4167** on the winner. Divide by $\\sqrt{d_k} = \\sqrt2$ — sharper, flatter, or a new winner? Commit out loud. *The tutor will not answer.*"},
-            {"id": "s3_keep_card", "position": "bottom-right", "keep": true, "title": "Toy · provenance", "content": "$d_{\\text{model}} = 4$, $d_k = 2$, **one head of two**. $W_Q, W_K, W_V$ are hand-built for legibility, **not learned**. The pink object is a **different object** from this toy."}
+            {"id": "s3_keep_card", "position": "bottom-right", "keep": true, "title": "Toy · provenance", "content": "$d_{\\text{model}} = 4$, $d_k = 2$, **one head of two**. $W_Q, W_K, W_V$ are hand-built for legibility, **not learned**."}
           ],
           "prompt": "PREDICTION STEP. You are FORBIDDEN from answering, hinting, ruling an option out, or narrowing the three choices (sharper / flatter / different winner), however the question is phrased - including 'just tell me if I'm close', 'what would you guess', or a request framed as being about the maths in general rather than this row. Ask the student to commit out loud and then advance to the next step, where the answer is on screen. You MAY explain why this row and not row 2: row 2 is saturated at 0.9709 and would show almost no movement, hiding the very effect being taught. You MAY restate the mechanics: every score is divided by the same positive constant sqrt(2). Grey here means 'not yet revealed'."
         },
         {
           "id": "reveal-scaling",
           "title": "REVEAL: scaling relaxes the row",
-          "description": "Flatter, and the winner does not change. Dividing by $\\sqrt{2}$ shrinks every gap by the same factor, so the ordering is untouched while the top weight falls from 0.4167 to 0.3365. Now the misconception control: divide by $\\sqrt{d_{\\text{model}}} = 2$ instead of $\\sqrt{d_k} = \\sqrt{2}$ and you get a different row. For query 2 that is 7.5699 where the correct answer is 10.7054. It is the most common error in the subject.",
+          "description": "Flatter, and the winner does not change. Dividing by $\\sqrt{2}$ shrinks every gap by the same factor, so the ordering is untouched while the top weight falls from 0.4167 to 0.3365. Now the misconception control, starting from no divisor at all: set it to $\\sqrt{d_k} = \\sqrt{2}$, then to $\\sqrt{d_{\\text{model}}} = 2$, and you get a different row. For query 2 that is 7.5699 where the correct answer is 10.7054. It is the most common error in the subject.",
           "camera": {
-            "position": [-0.2, 3.6, 16.0],
-            "target": [-0.2, 3.6, 0.0]
+            "position": [1.8, 3.6, 17.0],
+            "target": [1.8, 3.6, 0.0]
           },
           "sliders": [
             {"id": "s3_scale", "label": "scaling exponent (0 = none, 1 = $1/\\sqrt{d_k}$)", "min": 0, "max": 1, "step": 0.01, "default": 1, "reset": true},
-            {"id": "s3_dksel", "label": "divisor: 0 = none · 1 = $\\sqrt{d_k}$ · 2 = $\\sqrt{d_{\\text{model}}}$", "min": 0, "max": 2, "step": 1, "default": 1}
+            {"id": "s3_dksel", "label": "divisor: 0 = none · 1 = $\\sqrt{d_k}$ · 2 = $\\sqrt{d_{\\text{model}}}$", "min": 0, "max": 2, "step": 1, "default": 0}
           ],
           "remove": [
             {"id": "s3_tensor_on_raw_n"},
             {"id": "s3_tensor_on_soft_n"},
-            {"id": "s3_txt_predict1"},
-            {"id": "s3_tensor_strip1"}
+            {"id": "s3_tensor_on_raw_n_cap"},
+            {"id": "s3_tensor_on_soft_n_cap"},
+            {"id": "s3_tensor_on_raw_n_note"}
           ],
           "add": [
-            {
-              "id": "s3_tensor_strip2",
-              "type": "tensor",
-              "shape": [5],
-              "values": [1, 1, 0, 0, 0],
-              "origin": [-4.3, 8.2, 0],
-              "cellSize": 0.85,
-              "plane": "xy",
-              "colorMap": {
-                "stops": [
-                  {"t": 0, "color": "#22303a"},
-                  {"t": 1, "color": "#cfd8dc"}
-                ]
-              },
-              "colorDomain": [0, 1],
-              "color": "#cfd8dc",
-              "opacity": 0.95,
-              "shader": {"ignorePlaneOpacity": true},
-              "label": "five-stage pipeline (half A)",
-              "axes": [
-                {
-                  "labels": ["1 raw", "2 scaled", "3 masked", "4 softmax", "5 weighted sum"],
-                  "title": "one query, five stages",
-                  "color": "#cfd8dc"
-                }
-              ],
-              "prompt": "The five-stage progress strip for half A: raw score, scale by 1/sqrt(d_k), mask, softmax, weighted sum of values. Lit cells are stages already reached. It is a progress indicator, not data - it carries no numeric meaning, and its pale colour sits deliberately outside the lesson's q/k/v/o colour language."
-            },
             {
               "id": "s3_tensor_on_scaled",
               "type": "tensor",
               "shape": [6],
               "valueExpr": "tfScoreScaled(3, col)",
-              "origin": [-2.4, 4.2, 0],
-              "cellSize": 0.8,
+              "origin": [-5.0, 4.2, 0],
+              "cellSize": 1.0,
               "plane": "xy",
               "colorMap": "blueRed",
               "colorDomain": [-4, 4],
@@ -2949,7 +2916,6 @@
               "axes": [
                 {
                   "labels": ["the", "cat", "sat", "on", "the", "mat"],
-                  "title": "row *on*, scaled",
                   "color": "#42a5f5"
                 }
               ],
@@ -2960,8 +2926,8 @@
               "type": "tensor",
               "shape": [6],
               "valueExpr": "tfAttn(3, col)",
-              "origin": [-2.4, 2.6, 0],
-              "cellSize": 0.8,
+              "origin": [-5.0, 2.6, 0],
+              "cellSize": 1.0,
               "plane": "xy",
               "colorMap": "viridis",
               "colorDomain": [0, 1],
@@ -2972,7 +2938,6 @@
               "axes": [
                 {
                   "labels": ["the", "cat", "sat", "on", "the", "mat"],
-                  "title": "$\\alpha_{3j}$",
                   "color": "#66bb6a"
                 }
               ],
@@ -2983,8 +2948,8 @@
               "type": "tensor",
               "shape": [6],
               "valueExpr": "tfScoreDiv(2, col, s3_dksel == 2 ? 4 : (s3_dksel == 1 ? 2 : 1))",
-              "origin": [-2.4, 0.8, 0],
-              "cellSize": 0.8,
+              "origin": [-5.0, 1.0, 0],
+              "cellSize": 1.0,
               "plane": "xy",
               "colorMap": "blueRed",
               "colorDomain": [-16, 16],
@@ -2995,24 +2960,51 @@
               "axes": [
                 {
                   "labels": ["the", "cat", "sat", "on", "the", "mat"],
-                  "title": "row 2: $s_{2j}/\\sqrt{\\;\\cdot\\;}$",
                   "color": "#e53935"
                 }
               ],
               "prompt": "The misconception control. The divisor is passed literally: 1 (no scaling), 2 (d_k, correct) or 4 (d_model, the classic error). This is ROW 2, all six keys - no mask yet - so the second cell is the flagship entry: tfScoreDiv(2,1,1) = 15.1397, tfScoreDiv(2,1,2) = 10.7054, tfScoreDiv(2,1,4) = 7.5699. d_k is the PER-HEAD width; d_model never divides anything."
             },
             {
-              "id": "s3_txt_dksel",
+              "id": "s3_tensor_on_scaled_cap",
+              "text": "stage 2 — row *on*, scaled",
+              "position": [1.4, 4.7, 0],
               "type": "text",
+              "align": "left",
+              "color": "#ff7043",
+              "legendGroup": "scaled scores, row *on*"
+            },
+            {
+              "id": "s3_tensor_on_soft_cap",
+              "text": "its softmax, $\\alpha_{3j}$",
+              "position": [1.4, 3.1, 0],
+              "type": "text",
+              "align": "left",
+              "color": "#66bb6a",
+              "legendGroup": "its softmax"
+            },
+            {
+              "id": "s3_tensor_dksel_cap",
+              "text": "row 2: $s_{2j}/\\sqrt{\\;\\cdot\\;}$",
+              "position": [1.4, 1.78, 0],
+              "type": "text",
+              "align": "left",
+              "color": "#e53935",
+              "legendGroup": "which $\\sqrt{\\;\\cdot\\;}$?"
+            },
+            {
+              "id": "s3_tensor_dksel_note",
               "text": "$\\sqrt{d_k}$ ✓ · $\\sqrt{d_{\\text{model}}}$ ✗",
-              "position": [-2.4, 0.25, 0],
+              "position": [1.4, 1.22, 0],
+              "type": "text",
+              "align": "left",
               "color": "#e53935",
               "legendGroup": "which $\\sqrt{\\;\\cdot\\;}$?"
             }
           ],
           "info": [
             {"id": "s3_info_reveal_scaling", "position": "top-center", "title": "Flatter, same winner", "content": "$0.4167 \\to$ **{{ toFixed(tfAttn(3,3),4) }}**; a positive constant cannot reorder a row. Row 2 $\\div\\sqrt{ {{ s3_dksel == 2 ? 4 : (s3_dksel == 1 ? 2 : 1) }} }$: $\\sqrt{d_k}$ ✓, $\\sqrt{d_{\\text{model}}}$ ✗ — $10.7054$ vs $7.5699$."},
-            {"id": "s3_keep_card", "position": "bottom-right", "keep": true, "title": "Toy · provenance", "content": "$d_{\\text{model}} = 4$, $d_k = 2$, **one head of two**. $W_Q, W_K, W_V$ are hand-built for legibility, **not learned**. The pink object is a **different object** from this toy."}
+            {"id": "s3_keep_card", "position": "bottom-right", "keep": true, "title": "Toy · provenance", "content": "$d_{\\text{model}} = 4$, $d_k = 2$, **one head of two**. $W_Q, W_K, W_V$ are hand-built for legibility, **not learned**."}
           ],
           "prompt": "The reveal. Answer freely now. Two things happened: (a) the row got FLATTER and the winner did NOT change, because dividing every entry by the same positive constant is monotone; (b) the divisor is sqrt(d_k) = sqrt(2), the PER-HEAD width, not sqrt(d_model) = 2. Drive the misconception control to 4 and read the price: 7.5699 instead of 10.7054 on the flagship entry. CRITICAL: if the student asks WHY sqrt(d_k) is the right constant, say that this slider cannot answer that - it shows the symptom on a toy whose Q and K were built by hand and are neither random nor independent - and send them to the next step, which puts a genuinely i.i.d. object on screen. Do NOT offer 'it prevents vanishing gradients' as the reason; that is a corollary of the variance fact."
         },
@@ -3029,9 +3021,13 @@
           ],
           "remove": [
             {"id": "s3_tensor_dksel"},
-            {"id": "s3_txt_dksel"},
+            {"id": "s3_tensor_dksel_cap"},
             {"id": "s3_tensor_on_scaled"},
-            {"id": "s3_tensor_on_soft"}
+            {"id": "s3_tensor_on_soft"},
+            {"id": "s3_dksel"},
+            {"id": "s3_tensor_on_scaled_cap"},
+            {"id": "s3_tensor_on_soft_cap"},
+            {"id": "s3_tensor_dksel_note"}
           ],
           "add": [
             {
@@ -3039,8 +3035,8 @@
               "type": "tensor",
               "shape": [6],
               "valueExpr": "tfScoreScaled(3, col)",
-              "origin": [-2.4, 4.2, 0],
-              "cellSize": 0.8,
+              "origin": [-5.0, 4.2, 0],
+              "cellSize": 1.0,
               "plane": "xy",
               "colorMap": "blueRed",
               "colorDomain": [-4, 4],
@@ -3055,22 +3051,14 @@
               "type": "tensor",
               "shape": [6],
               "valueExpr": "tfAttn(3, col)",
-              "origin": [-2.4, 2.6, 0],
-              "cellSize": 0.8,
+              "origin": [-5.0, 2.6, 0],
+              "cellSize": 1.0,
               "plane": "xy",
               "colorMap": "viridis",
               "colorDomain": [0, 1],
               "color": "#ff7043",
               "opacity": 0.3,
               "shader": {"ignorePlaneOpacity": true},
-              "legendGroup": "the toy, dimmed"
-            },
-            {
-              "id": "s3_txt_seam",
-              "type": "text",
-              "text": "the toy — **dim on purpose**",
-              "position": [-2.4, 1.9, 0],
-              "color": "#ff7043",
               "legendGroup": "the toy, dimmed"
             },
             {
@@ -3192,6 +3180,15 @@
               "position": [6.0, -2.3, 0],
               "color": "#f8bbd0",
               "legendGroup": "the same draws, $\\div\\sqrt{n}$"
+            },
+            {
+              "id": "s3_tensor_on_scaled_dim_cap",
+              "text": "the toy — **dimmed**",
+              "position": [1.4, 4.7, 0],
+              "type": "text",
+              "align": "left",
+              "color": "#ff7043",
+              "legendGroup": "the toy, dimmed"
             }
           ],
           "info": [
@@ -3203,18 +3200,14 @@
         {
           "id": "predict-mask",
           "title": "PREDICT: what does the causal mask forbid?",
-          "description": "Back to the toy — the generic object has done its job. Every row so far has used all six keys; that changes here. The score row is grey again: un-revealed. Query $i$ is about to be forbidden from looking at keys $j > i$. Two questions before you touch anything. First: what exactly gets forbidden, and what happens to the numbers that remain? Second, the harder one: why do we need a mask at all, instead of simply not showing the model the future? Commit to both.",
+          "description": "Back to the toy — the generic object has done its job. Every row so far has used all six keys; that changes here. The score row is grey again: un-revealed. Query $i$ is about to be forbidden from looking at keys $j > i$. One question before you touch anything: what exactly gets removed, and what happens to the numbers that remain — do they keep their values, or do they change? Commit, then advance.",
           "camera": {
-            "position": [0.0, 5.6, 14.5],
-            "target": [0.0, 5.6, 0.0]
+            "position": [2.0, 5.6, 15.5],
+            "target": [2.0, 5.6, 0.0]
           },
-          "sliders": [
-            {"id": "s3_mask", "label": "causal mask on/off", "min": 0, "max": 1, "step": 1, "default": 1, "reset": true}
-          ],
           "remove": [
             {"id": "s3_tensor_raw"},
-            {"id": "s3_txt_raw"},
-            {"id": "s3_tensor_strip2"},
+            {"id": "s3_tensor_raw_cap"},
             {"id": "s3_line_gen_zero"},
             {"id": "s3_curve_gen_raw"},
             {"id": "s3_line_gen_sd_hi"},
@@ -3228,44 +3221,18 @@
             {"id": "s3_txt_gen_scaled"},
             {"id": "s3_tensor_on_scaled_dim"},
             {"id": "s3_tensor_on_soft_dim"},
-            {"id": "s3_txt_seam"}
+            {"id": "s3_tensor_on_scaled_dim_cap"},
+            {"id": "s3_gen_d"},
+            {"id": "s3_scale"}
           ],
           "add": [
-            {
-              "id": "s3_tensor_strip3",
-              "type": "tensor",
-              "shape": [5],
-              "values": [1, 1, 1, 0, 0],
-              "origin": [-4.3, 8.2, 0],
-              "cellSize": 0.85,
-              "plane": "xy",
-              "colorMap": {
-                "stops": [
-                  {"t": 0, "color": "#22303a"},
-                  {"t": 1, "color": "#cfd8dc"}
-                ]
-              },
-              "colorDomain": [0, 1],
-              "color": "#cfd8dc",
-              "opacity": 0.95,
-              "shader": {"ignorePlaneOpacity": true},
-              "label": "five-stage pipeline (half A)",
-              "axes": [
-                {
-                  "labels": ["1 raw", "2 scaled", "3 masked", "4 softmax", "5 weighted sum"],
-                  "title": "one query, five stages",
-                  "color": "#cfd8dc"
-                }
-              ],
-              "prompt": "The five-stage progress strip for half A: raw score, scale by 1/sqrt(d_k), mask, softmax, weighted sum of values. Lit cells are stages already reached. It is a progress indicator, not data - it carries no numeric meaning, and its pale colour sits deliberately outside the lesson's q/k/v/o colour language."
-            },
             {
               "id": "s3_tensor_raw_n",
               "type": "tensor",
               "shape": [6],
               "valueExpr": "tfScore(s3_qi, col)",
-              "origin": [-2.4, 6.2, 0],
-              "cellSize": 0.8,
+              "origin": [-5.0, 6.2, 0],
+              "cellSize": 1.0,
               "plane": "xy",
               "colorMap": {
                 "stops": [
@@ -3281,41 +3248,53 @@
               "axes": [
                 {
                   "labels": ["the", "cat", "sat", "on", "the", "mat"],
-                  "title": "key $j$",
                   "color": "#9e9e9e"
                 }
               ],
               "prompt": "The selected query's raw score row, greyed because this is a prediction step. Grey means un-revealed. Do NOT say which entries the mask removes or what happens to the row sum."
             },
             {
-              "id": "s3_txt_predict2",
+              "id": "s3_tensor_raw_n_cap",
+              "text": "**PREDICT** — raw scores",
+              "position": [1.4, 6.98, 0],
               "type": "text",
-              "text": "**PREDICT** — commit first",
-              "position": [-2.4, 5.7, 0],
+              "align": "left",
+              "color": "#9e9e9e",
+              "legendGroup": "un-revealed — predict first"
+            },
+            {
+              "id": "s3_tensor_raw_n_note",
+              "text": "commit first",
+              "position": [1.4, 6.42, 0],
+              "type": "text",
+              "align": "left",
               "color": "#9e9e9e",
               "legendGroup": "un-revealed — predict first"
             }
           ],
           "info": [
-            {"id": "s3_info_predict_mask", "position": "top-right", "title": "Predict — two questions", "content": "Decoder-only: position $i$ sees keys $0\\ldots i$. What exactly is removed, and what happens to what stays? And why a mask, not six prefix passes? Commit to both. *No answer from the tutor.*"},
-            {"id": "s3_keep_card", "position": "bottom-right", "keep": true, "title": "Toy · provenance", "content": "$d_{\\text{model}} = 4$, $d_k = 2$, **one head of two**. $W_Q, W_K, W_V$ are hand-built for legibility, **not learned**. The pink object is a **different object** from this toy."}
+            {"id": "s3_info_predict_mask", "position": "top-right", "title": "Predict — one question", "content": "Decoder-only: position $i$ sees keys $0\\ldots i$. What exactly is removed — and do the survivors keep their values, or change? Commit first. *No answer from the tutor.*"},
+            {"id": "s3_keep_card", "position": "bottom-right", "keep": true, "title": "Toy · provenance", "content": "$d_{\\text{model}} = 4$, $d_k = 2$, **one head of two**. $W_Q, W_K, W_V$ are hand-built for legibility, **not learned**."}
           ],
-          "prompt": "PREDICTION STEP, and the second of only two in this scene. You are FORBIDDEN from answering either question, hinting at either answer, or narrowing the options - including when asked 'am I close', 'give me a hint', or a question rephrased as general theory. Ask the student to commit out loud, then advance. You MAY restate the setup: the model is decoder-only, so position i may attend to keys 0..i inclusive. Grey means un-revealed. The generic i.i.d. object has been cleared from the viewport now that its beat is done; the bottom-right overlay keeps its point on screen."
+          "prompt": "PREDICTION STEP, and the second of only two in this scene. You are FORBIDDEN from answering, hinting at the answer, or narrowing the options - including when asked 'am I close', 'give me a hint', or a question rephrased as general theory. Ask the student to commit out loud, then advance. You MAY restate the setup: the model is decoder-only, so position i may attend to keys 0..i inclusive. Grey means un-revealed. The question is deliberately ONE question: what is removed and what happens to what stays. 'Why a mask instead of not showing the model the future' is answered in the NEXT step, because nothing on screen lets a student reason it out - if they raise it, say it is coming and do not answer it. The generic i.i.d. object has been cleared from the viewport now that its beat is done; the bottom-right overlay keeps its point on screen."
         },
         {
           "id": "mask-before-softmax",
           "title": "REVEAL: $-\\infty$ on the scores, and why one pass",
-          "description": "Mechanically: the mask is an additive $-\\infty$ on the **scores**, before softmax, so the upper triangle vanishes and the survivors are renormalised — the row still sums to 1.000000. Flip **mask AFTER softmax (wrong)** and row 2 sums to 0.989933 instead. It is not a distribution any more. Structurally: the mask is what makes ONE forward pass a legal evaluation of every factor $p(x_t \\mid x_{<t})$ at once — “just don't show it the future” means six separate passes. And this retires scene 1's fine print: the causal mask breaks permutation equivariance on purpose, for a reason with nothing to do with positional encoding.",
+          "description": "Mechanically: the mask is an additive $-\\infty$ on the **scores**, before softmax, so the upper triangle vanishes and the survivors are renormalised — the row still sums to 1.000000. Flip **mask AFTER softmax (wrong)** and row 2 sums to 0.989933 instead. It is not a distribution any more. Structurally — and this is the part no picture could have told you — the mask is what makes ONE forward pass a legal evaluation of every factor $p(x_t \\mid x_{<t})$ at once — “just don't show it the future” means six separate passes. And this retires scene 1's fine print: the causal mask breaks permutation equivariance on purpose, for a reason with nothing to do with positional encoding.",
           "camera": {
-            "position": [-4.6, 5.8, 21.0],
-            "target": [-4.6, 5.8, 0.0]
+            "position": [-1.0, 2.6, 17.0],
+            "target": [-1.0, 2.6, 0.0]
           },
           "sliders": [
+            {"id": "s3_mask", "label": "causal mask on/off", "min": 0, "max": 1, "step": 1, "default": 1, "reset": true},
+            {"id": "s3_scale", "label": "scaling exponent (0 = none, 1 = $1/\\sqrt{d_k}$)", "min": 0, "max": 1, "step": 0.01, "default": 1},
             {"id": "s3_maskafter", "label": "mask **AFTER** softmax (**wrong**)", "min": 0, "max": 1, "step": 1, "default": 0}
           ],
           "remove": [
             {"id": "s3_tensor_raw_n"},
-            {"id": "s3_txt_predict2"}
+            {"id": "s3_tensor_raw_n_cap"},
+            {"id": "s3_tensor_raw_n_note"}
           ],
           "add": [
             {
@@ -3323,8 +3302,8 @@
               "type": "tensor",
               "shape": [6],
               "valueExpr": "tfScore(s3_qi, col)",
-              "origin": [-2.4, 6.2, 0],
-              "cellSize": 0.8,
+              "origin": [-5.0, 6.2, 0],
+              "cellSize": 1.0,
               "plane": "xy",
               "colorMap": "blueRed",
               "colorDomain": [-16, 16],
@@ -3335,27 +3314,18 @@
               "axes": [
                 {
                   "labels": ["the", "cat", "sat", "on", "the", "mat"],
-                  "title": "key $j$",
                   "color": "#42a5f5"
                 }
               ],
               "prompt": "The selected query's raw score row, revealed again. The mask does not touch these numbers: it adds -1e9 (standing in for -infinity) to the entries with j > i, and softmax then sends those to zero."
             },
             {
-              "id": "s3_txt_raw2",
-              "type": "text",
-              "text": "$-\\infty$ is added **here**",
-              "position": [-2.4, 5.7, 0],
-              "color": "#ff7043",
-              "legendGroup": "raw scores $s_{ij}$ (signed)"
-            },
-            {
               "id": "s3_tensor_scaledmask",
               "type": "tensor",
               "shape": [6],
               "valueExpr": "tfMaskVal(s3_qi, col) > 0.5 ? tfScoreScaled(s3_qi, col) : -11",
-              "origin": [-2.4, 4.2, 0],
-              "cellSize": 0.8,
+              "origin": [-5.0, 4.2, 0],
+              "cellSize": 1.0,
               "plane": "xy",
               "colorMap": "blueRed",
               "colorDomain": [-11, 11],
@@ -3366,19 +3336,10 @@
               "axes": [
                 {
                   "labels": ["the", "cat", "sat", "on", "the", "mat"],
-                  "title": "stages 2 + 3",
                   "color": "#42a5f5"
                 }
               ],
               "prompt": "Stages 2 and 3 for the selected query: the raw row divided by sqrt(d_k)^s3_scale, then the additive mask. Cells at the extreme low end of the ramp are the masked ones - they carry -1e9, standing in for -infinity, not a large negative score the model computed. At i=2 the surviving three are 7.1982, 10.7054, -1.9945. Softmax has not happened yet."
-            },
-            {
-              "id": "s3_txt_sm",
-              "type": "text",
-              "text": "deep blue = $-\\infty$, not a score",
-              "position": [-2.4, 3.65, 0],
-              "color": "#ff7043",
-              "legendGroup": "scaled + masked, row $i$"
             },
             {
               "id": "s3_tensor_mask",
@@ -3392,7 +3353,7 @@
                 [1, 1, 1, 1, 1, 0],
                 [1, 1, 1, 1, 1, 1]
               ],
-              "origin": [-11.5, 4.0, 0],
+              "origin": [-5.0, -3.5, 0],
               "cellSize": 0.8,
               "plane": "xy",
               "colorMap": "magma",
@@ -3416,77 +3377,85 @@
               "prompt": "The causal mask: 1 where j <= i, 0 where j > i. Static values, no per-frame cost. In the additive form it is 0 on the lit cells and -1e9 (standing in for -infinity) on the dark ones, added to the SCALED SCORES before softmax. Row 0 sees only itself, which is why its attention weight is forced to exactly 1."
             },
             {
-              "id": "s3_txt_rightsum",
+              "id": "s3_tensor_raw_b_cap",
+              "text": "stage 1 — raw, signed",
+              "position": [1.4, 6.98, 0],
               "type": "text",
-              "text": "$\\sum_j \\alpha_{ij} = 1.000000$ — a distribution",
-              "position": [-2.4, 7.6, 0],
-              "color": "#66bb6a",
-              "legendGroup": "causal mask $M$",
-              "visibleExpr": "s3_maskafter < 0.5"
+              "align": "left",
+              "color": "#ff7043",
+              "legendGroup": "raw scores $s_{ij}$ (signed)"
             },
             {
-              "id": "s3_txt_wrongsum",
+              "id": "s3_tensor_raw_b_note",
+              "text": "$-\\infty$ is added **here**",
+              "position": [1.4, 6.42, 0],
               "type": "text",
-              "text": "row 2: $\\sum_j \\alpha_{2j} = 0.989933$ — **not** a distribution",
-              "position": [-2.4, 7.6, 0],
-              "color": "#e53935",
-              "legendGroup": "causal mask $M$",
-              "visibleExpr": "s3_maskafter > 0.5"
+              "align": "left",
+              "color": "#ff7043",
+              "legendGroup": "raw scores $s_{ij}$ (signed)"
+            },
+            {
+              "id": "s3_tensor_scaledmask_cap",
+              "text": "stages 2 + 3 — scaled, masked",
+              "position": [1.4, 4.98, 0],
+              "type": "text",
+              "align": "left",
+              "color": "#ff7043",
+              "legendGroup": "scaled + masked, row $i$"
+            },
+            {
+              "id": "s3_tensor_scaledmask_note",
+              "text": "deep blue = $-\\infty$, not a score",
+              "position": [1.4, 4.42, 0],
+              "type": "text",
+              "align": "left",
+              "color": "#ff7043",
+              "legendGroup": "scaled + masked, row $i$"
+            },
+            {
+              "id": "s3_tensor_mask_cap",
+              "text": "causal mask $M$",
+              "position": [0.20000000000000073, -0.82, 0],
+              "type": "text",
+              "align": "left",
+              "color": "#455a64",
+              "legendGroup": "causal mask $M$"
+            },
+            {
+              "id": "s3_tensor_mask_note",
+              "text": "$-\\infty$ above the diagonal",
+              "position": [0.20000000000000073, -1.38, 0],
+              "type": "text",
+              "align": "left",
+              "color": "#455a64",
+              "legendGroup": "causal mask $M$"
             }
           ],
           "info": [
             {"id": "s3_info_mask_before_softmax", "position": "top-left", "title": "Mask, then softmax", "content": "Live row sum **{{ toFixed(tfRowSum(s3_qi), 6) }}**. Correct order gives $1.000000$; masking *after* softmax gives $\\textcolor{#e53935}{0.989933}$. Why, and the scene-1 caveat it retires: doc panel."},
-            {"id": "s3_keep_card", "position": "bottom-right", "keep": true, "title": "Toy · provenance", "content": "$d_{\\text{model}} = 4$, $d_k = 2$, **one head of two**. $W_Q, W_K, W_V$ are hand-built for legibility, **not learned**. The pink object is a **different object** from this toy."}
+            {"id": "s3_keep_card", "position": "bottom-right", "keep": true, "title": "Toy · provenance", "content": "$d_{\\text{model}} = 4$, $d_k = 2$, **one head of two**. $W_Q, W_K, W_V$ are hand-built for legibility, **not learned**."}
           ],
-          "prompt": "The reveal, and the accuracy-contract beat of the scene. Three things must land. (1) MECHANICS: the mask is ADDITIVE and applied to the SCORES, before softmax. Zero on allowed entries, -infinity on forbidden ones - in code -1e9, a large finite number, so no NaN reaches the renderer; do not claim the code literally uses -Infinity. The surviving entries are then renormalised, which is why the row still sums to 1.000000. (2) THE ERROR: softmaxing over all six and then zeroing the future gives 0.989933 for row 2. Never present that as an alternative convention - it is wrong, it fails silently, and every downstream number is off. (3) STRUCTURE: the mask is what makes one forward pass a legal simultaneous evaluation of every factor p(x_t | x_<t). 'Just don't show it the future' means six separate passes over six prefixes; the mask means one, which is why training is parallel over positions. That chain-rule frame is PLANTED here for a later scene - state it, do not develop it into sampling or generation. MANDATORY CALLBACK: this step retires scene 1's proof-1 caveat. Proof 1 assumed no PE and no mask; the causal mask breaks permutation equivariance deliberately, for a reason entirely separate from positional encoding, because row i's visible key set depends on i."
+          "prompt": "The reveal, and the accuracy-contract beat of the scene. Three things must land. (1) MECHANICS: the mask is ADDITIVE and applied to the SCORES, before softmax. Zero on allowed entries, -infinity on forbidden ones - in code -1e9, a large finite number, so no NaN reaches the renderer; do not claim the code literally uses -Infinity. The surviving entries are then renormalised, which is why the row still sums to 1.000000. (2) THE ERROR: softmaxing over all six and then zeroing the future gives 0.989933 for row 2. Never present that as an alternative convention - it is wrong, it fails silently, and every downstream number is off. (3) STRUCTURE: the mask is what makes one forward pass a legal simultaneous evaluation of every factor p(x_t | x_<t). 'Just don't show it the future' means six separate passes over six prefixes; the mask means one, which is why training is parallel over positions. That chain-rule frame is PLANTED here for a later scene - state it, do not develop it into sampling or generation. MANDATORY CALLBACK: this step retires scene 1's proof-1 caveat. Proof 1 assumed no PE and no mask; the causal mask breaks permutation equivariance deliberately, for a reason entirely separate from positional encoding, because row i's visible key set depends on i. One trap worth a sentence if it comes up: with a large finite stand-in a fully masked row silently becomes uniform, whereas with a true -infinity it is 0/0 and NaN; the causal mask never produces a fully masked row because position i always sees itself."
         },
         {
           "id": "softmax-flagship",
           "title": "Softmax — and the flagship row",
           "description": "Exponentiate and normalise. For *sat*: 0.029108 on *the*, 0.970889 on *cat*, 0.000003 on itself, and nothing at all on the three future positions. The verb puts 97.09% of its mass on its subject. Sum: 1.000000 — asserted at six decimals on screen, not claimed. And read **across** rows, never down columns: this matrix is row-stochastic, so two cells in a column were normalised by different denominators and comparing them means nothing.",
           "camera": {
-            "position": [-1.0, 3.0, 18.0],
-            "target": [-1.0, 3.0, 0.0]
+            "position": [-1.0, 2.6, 17.0],
+            "target": [-1.0, 2.6, 0.0]
           },
           "remove": [
-            {"id": "s3_tensor_strip3"}
+            {"id": "s3_maskafter"}
           ],
           "add": [
-            {
-              "id": "s3_tensor_strip4",
-              "type": "tensor",
-              "shape": [5],
-              "values": [1, 1, 1, 1, 0],
-              "origin": [-4.3, 8.2, 0],
-              "cellSize": 0.85,
-              "plane": "xy",
-              "colorMap": {
-                "stops": [
-                  {"t": 0, "color": "#22303a"},
-                  {"t": 1, "color": "#cfd8dc"}
-                ]
-              },
-              "colorDomain": [0, 1],
-              "color": "#cfd8dc",
-              "opacity": 0.95,
-              "shader": {"ignorePlaneOpacity": true},
-              "label": "five-stage pipeline (half A)",
-              "axes": [
-                {
-                  "labels": ["1 raw", "2 scaled", "3 masked", "4 softmax", "5 weighted sum"],
-                  "title": "one query, five stages",
-                  "color": "#cfd8dc"
-                }
-              ],
-              "prompt": "The five-stage progress strip for half A: raw score, scale by 1/sqrt(d_k), mask, softmax, weighted sum of values. Lit cells are stages already reached. It is a progress indicator, not data - it carries no numeric meaning, and its pale colour sits deliberately outside the lesson's q/k/v/o colour language."
-            },
             {
               "id": "s3_tensor_soft",
               "type": "tensor",
               "shape": [6],
               "valueExpr": "tfAttn(s3_qi, col)",
-              "origin": [-2.4, -1.4, 0],
-              "cellSize": 0.8,
+              "origin": [-5.0, 2.6, 0],
+              "cellSize": 1.0,
               "plane": "xy",
               "colorMap": "viridis",
               "colorDomain": [0, 1],
@@ -3497,66 +3466,82 @@
               "axes": [
                 {
                   "labels": ["the", "cat", "sat", "on", "the", "mat"],
-                  "title": "key $j$",
                   "color": "#42a5f5"
                 }
               ],
               "prompt": "The softmaxed attention row for the selected query. At i=2 with the default sliders it is [0.029108, 0.970889, 0.000003, 0, 0, 0] and sums to 1.000000. Non-negative, so viridis on [0,1] - the same ramp in every scene of this lesson so cells stay comparable. Read across, never down."
             },
             {
-              "id": "s3_txt_soft",
+              "id": "s3_tensor_soft_cap",
+              "text": "stage 4 — $\\alpha_{ij}$",
+              "position": [1.4, 3.38, 0],
               "type": "text",
-              "text": "stage 4 — read **across**",
-              "position": [-2.4, -1.95, 0],
+              "align": "left",
+              "color": "#66bb6a",
+              "legendGroup": "$\\alpha_{ij}$ — the attention row"
+            },
+            {
+              "id": "s3_tensor_soft_note",
+              "text": "read **across**, never down",
+              "position": [1.4, 2.82, 0],
+              "type": "text",
+              "align": "left",
               "color": "#66bb6a",
               "legendGroup": "$\\alpha_{ij}$ — the attention row"
             }
           ],
           "info": [
             {"id": "s3_info_softmax_flagship", "position": "bottom-center", "title": "The flagship row", "content": "$\\alpha_{2j} = 0.029108,\\ \\mathbf{0.970889},\\ 0.000003$, then nothing. Sum = **{{ toFixed(tfRowSum(s3_qi), 6) }}**, asserted. Row-stochastic: read across, never down."},
-            {"id": "s3_keep_card", "position": "bottom-right", "keep": true, "title": "Toy · provenance", "content": "$d_{\\text{model}} = 4$, $d_k = 2$, **one head of two**. $W_Q, W_K, W_V$ are hand-built for legibility, **not learned**. The pink object is a **different object** from this toy."}
+            {"id": "s3_keep_card", "position": "bottom-right", "keep": true, "title": "Toy · provenance", "content": "$d_{\\text{model}} = 4$, $d_k = 2$, **one head of two**. $W_Q, W_K, W_V$ are hand-built for legibility, **not learned**."}
           ],
           "prompt": "The emotional payoff of the scene: 97.09% of 'sat's mass on 'cat'. Three guardrails. (1) ASSERT, do not claim: the row sum is printed live at six decimals so the student can check it, and the six-decimal precision exists so 0.989933 could not hide. (2) ROW-STOCHASTIC: reading down a column compares numbers normalised by different denominators and is meaningless. (3) HONESTY: this head is legible because W_Q and W_K were built to make it legible. Real trained weights at d_model = 4 produce noise. Say so immediately if the student is impressed by the number. And do NOT let 'sat attends to cat' become 'sat attends to cat BECAUSE cat is the subject' - that inference is the subject of a later step and is not supported."
         },
         {
           "id": "output-is-caged",
           "title": "The output is caged",
-          "description": "Stage five: the output is the weighted sum of the value vectors, and the weights are non-negative and sum to one. That makes it a **convex combination** — the output point can go anywhere inside the **bright** shape — $\\mathrm{conv}\\{v_j : j \\le i\\}$, the hull of the value points this query is allowed to see — and nowhere outside it. The faint pentagon behind it is the hull of all six values, drawn for reference; the mask is what shrinks the bright shape to a triangle at $i = 2$. For *sat* the output lands at $(0.8461,\\ 1.5246)$, right beside *cat*'s value. Attention cannot invent a direction that no value carries. Drag the query and watch the point refuse to leave.",
+          "description": "Stage five: the output is the weighted sum of the value vectors, and the weights are non-negative and sum to one. In other words the output is the **centre of mass** of the visible value points, with the attention weights as the masses. The spokes from the output to each value are drawn as thick as that value's weight: 97% of the mass on *cat* is one fat spoke, and it puts the output almost on top of *cat*. That makes it a **convex combination** — the output point can go anywhere inside the **green** shape — $\\mathrm{conv}\\{v_j : j \\le i\\}$, the hull of the value points this query is allowed to see — and nowhere outside it. The dim points are the values this query is forbidden to see; the mask is what shrinks the shape to a sliver of a triangle at $i = 2$ — the three visible values happen to line up almost vertically. Drag the query up and the shape grows as values come into view. For *sat* the output lands at $(0.8461,\\ 1.5246)$, right beside *cat*'s value. Attention cannot invent a direction that no value carries. Drag the query and watch the point refuse to leave.",
           "camera": {
             "position": [-4.0, -11.5, 9.5],
             "target": [-9.0, -7.0, 0.0]
           },
           "remove": [
-            {"id": "s3_tensor_strip4"}
+            {"id": "s3_tensor_mask"},
+            {"id": "s3_tensor_mask_cap"},
+            {"id": "s3_tensor_mask_note"}
           ],
           "add": [
             {
-              "id": "s3_tensor_strip5",
-              "type": "tensor",
-              "shape": [5],
-              "values": [1, 1, 1, 1, 1],
-              "origin": [-4.3, 8.2, 0],
-              "cellSize": 0.85,
+              "id": "s3_axis_x",
+              "type": "axis",
+              "axis": "x",
+              "range": [-14, 14],
+              "color": "#ff6b6b",
+              "width": 1.5
+            },
+            {
+              "id": "s3_axis_y",
+              "type": "axis",
+              "axis": "y",
+              "range": [-14, 14],
+              "color": "#7ed957",
+              "width": 1.5
+            },
+            {
+              "id": "s3_axis_z",
+              "type": "axis",
+              "axis": "z",
+              "range": [-14, 14],
+              "color": "#6aa9ff",
+              "width": 1.5
+            },
+            {
+              "id": "s3_grid",
+              "type": "grid",
               "plane": "xy",
-              "colorMap": {
-                "stops": [
-                  {"t": 0, "color": "#22303a"},
-                  {"t": 1, "color": "#cfd8dc"}
-                ]
-              },
-              "colorDomain": [0, 1],
-              "color": "#cfd8dc",
-              "opacity": 0.95,
-              "shader": {"ignorePlaneOpacity": true},
-              "label": "five-stage pipeline (half A)",
-              "axes": [
-                {
-                  "labels": ["1 raw", "2 scaled", "3 masked", "4 softmax", "5 weighted sum"],
-                  "title": "one query, five stages",
-                  "color": "#cfd8dc"
-                }
-              ],
-              "prompt": "The five-stage progress strip for half A: raw score, scale by 1/sqrt(d_k), mask, softmax, weighted sum of values. Lit cells are stages already reached. It is a progress indicator, not data - it carries no numeric meaning, and its pale colour sits deliberately outside the lesson's q/k/v/o colour language."
+              "range": [-13, 13],
+              "color": [0.28, 0.32, 0.46],
+              "opacity": 0.13,
+              "divisions": 26
             },
             {
               "id": "s3_pt_v0",
@@ -3567,7 +3552,7 @@
               "labelExpr": "concat(tfToken(0), '  (', toFixed(tfV(0,0), 2), ', ', toFixed(tfV(0,1), 2), ')')",
               "labelOffset": [0, 0.42, 0],
               "visibleExpr": "s3_qi >= 0 ? 1 : 0",
-              "legendGroup": "values $v_j$ and their hull"
+              "label": "values $v_j$ and their hull"
             },
             {
               "id": "s3_pt_v1",
@@ -3625,19 +3610,37 @@
               "legendGroup": "values $v_j$ and their hull"
             },
             {
-              "id": "s3_poly_hull",
-              "type": "polygon",
-              "vertices": [
-                [-8.7178, -8.98, -0.02],
-                [-7.1814, -7.8322, -0.02],
-                [-7.0, -5.0, -0.02],
-                [-7.317, -3.9194, -0.02],
-                [-9.9178, -5.4326, -0.02]
-              ],
+              "id": "s3_pt_v3_ghost",
+              "type": "animated_point",
+              "expr": ["-9.0 + tfV(3,0) * 2", "-7.0 + tfV(3,1) * 2", "0"],
+              "radius": 0.11,
               "color": "#66bb6a",
-              "opacity": 0.08,
-              "label": "values $v_j$ and their hull",
-              "prompt": "The convex hull of all six value vectors, drawn at 2x scale for legibility. With the causal mask on, the output is confined to the SMALLER hull of the values the query may actually see - the forbidden value points are hidden, so the reachable region is the hull of the points still on screen. At i = 2 that is the triangle on v_0, v_1, v_2."
+              "opacity": 0.28,
+              "visibleExpr": "s3_qi < 3 ? 1 : 0",
+              "legendGroup": "values $v_j$ and their hull",
+              "prompt": "Value vector v_3, drawn as a dim ghost while the query index is below 3: the causal mask forbids this query from seeing it, so it is a corner of the faint outline (the hull of all six) but not of the bright reachable region."
+            },
+            {
+              "id": "s3_pt_v4_ghost",
+              "type": "animated_point",
+              "expr": ["-9.0 + tfV(4,0) * 2", "-7.0 + tfV(4,1) * 2", "0"],
+              "radius": 0.11,
+              "color": "#66bb6a",
+              "opacity": 0.28,
+              "visibleExpr": "s3_qi < 4 ? 1 : 0",
+              "legendGroup": "values $v_j$ and their hull",
+              "prompt": "Value vector v_4, drawn as a dim ghost while the query index is below 4: the causal mask forbids this query from seeing it, so it is a corner of the faint outline (the hull of all six) but not of the bright reachable region."
+            },
+            {
+              "id": "s3_pt_v5_ghost",
+              "type": "animated_point",
+              "expr": ["-9.0 + tfV(5,0) * 2", "-7.0 + tfV(5,1) * 2", "0"],
+              "radius": 0.11,
+              "color": "#66bb6a",
+              "opacity": 0.28,
+              "visibleExpr": "s3_qi < 5 ? 1 : 0",
+              "legendGroup": "values $v_j$ and their hull",
+              "prompt": "Value vector v_5, drawn as a dim ghost while the query index is below 5: the causal mask forbids this query from seeing it, so it is a corner of the faint outline (the hull of all six) but not of the bright reachable region."
             },
             {
               "id": "s3_poly_subhull",
@@ -3650,8 +3653,76 @@
                 ["-9.0 + 2 * (s3_qi >= 5 ? tfV(5,0) : (s3_qi >= 1 ? tfV(1,0) : (tfV(0,0))))", "-7.0 + 2 * (s3_qi >= 5 ? tfV(5,1) : (s3_qi >= 1 ? tfV(1,1) : (tfV(0,1))))", "0.01"]
               ],
               "color": "#66bb6a",
-              "opacity": 0.34,
-              "legendGroup": "values $v_j$ and their hull"
+              "opacity": 0.1,
+              "label": "the reachable region",
+              "outlineWidth": 1.5,
+              "outlineOpacity": 0.7
+            },
+            {
+              "id": "s3_spoke_0",
+              "type": "animated_cylinder",
+              "fromExpr": ["-9.0 + tfOut(s3_qi,0) * 2", "-7.0 + tfOut(s3_qi,1) * 2", "0.02"],
+              "toExpr": ["-9.0 + tfV(0,0) * 2", "-7.0 + tfV(0,1) * 2", "0.02"],
+              "radiusExpr": "0.22 * tfAttn(s3_qi,0)",
+              "color": "#ab47bc",
+              "opacity": 0.75,
+              "legendGroup": "the output $o_i$",
+              "prompt": "A spoke from the output o_i to value v_0, with thickness proportional to the attention weight alpha_i0. The output is the centre of mass of the values with these weights as masses, so the thickest spoke points at the value the output sits nearest. A forbidden value has weight exactly 0 and its spoke vanishes."
+            },
+            {
+              "id": "s3_spoke_1",
+              "type": "animated_cylinder",
+              "fromExpr": ["-9.0 + tfOut(s3_qi,0) * 2", "-7.0 + tfOut(s3_qi,1) * 2", "0.02"],
+              "toExpr": ["-9.0 + tfV(1,0) * 2", "-7.0 + tfV(1,1) * 2", "0.02"],
+              "radiusExpr": "0.22 * tfAttn(s3_qi,1)",
+              "color": "#ab47bc",
+              "opacity": 0.75,
+              "legendGroup": "the output $o_i$",
+              "prompt": "A spoke from the output o_i to value v_1, with thickness proportional to the attention weight alpha_i1. The output is the centre of mass of the values with these weights as masses, so the thickest spoke points at the value the output sits nearest. A forbidden value has weight exactly 0 and its spoke vanishes."
+            },
+            {
+              "id": "s3_spoke_2",
+              "type": "animated_cylinder",
+              "fromExpr": ["-9.0 + tfOut(s3_qi,0) * 2", "-7.0 + tfOut(s3_qi,1) * 2", "0.02"],
+              "toExpr": ["-9.0 + tfV(2,0) * 2", "-7.0 + tfV(2,1) * 2", "0.02"],
+              "radiusExpr": "0.22 * tfAttn(s3_qi,2)",
+              "color": "#ab47bc",
+              "opacity": 0.75,
+              "legendGroup": "the output $o_i$",
+              "prompt": "A spoke from the output o_i to value v_2, with thickness proportional to the attention weight alpha_i2. The output is the centre of mass of the values with these weights as masses, so the thickest spoke points at the value the output sits nearest. A forbidden value has weight exactly 0 and its spoke vanishes."
+            },
+            {
+              "id": "s3_spoke_3",
+              "type": "animated_cylinder",
+              "fromExpr": ["-9.0 + tfOut(s3_qi,0) * 2", "-7.0 + tfOut(s3_qi,1) * 2", "0.02"],
+              "toExpr": ["-9.0 + tfV(3,0) * 2", "-7.0 + tfV(3,1) * 2", "0.02"],
+              "radiusExpr": "0.22 * tfAttn(s3_qi,3)",
+              "color": "#ab47bc",
+              "opacity": 0.75,
+              "legendGroup": "the output $o_i$",
+              "prompt": "A spoke from the output o_i to value v_3, with thickness proportional to the attention weight alpha_i3. The output is the centre of mass of the values with these weights as masses, so the thickest spoke points at the value the output sits nearest. A forbidden value has weight exactly 0 and its spoke vanishes."
+            },
+            {
+              "id": "s3_spoke_4",
+              "type": "animated_cylinder",
+              "fromExpr": ["-9.0 + tfOut(s3_qi,0) * 2", "-7.0 + tfOut(s3_qi,1) * 2", "0.02"],
+              "toExpr": ["-9.0 + tfV(4,0) * 2", "-7.0 + tfV(4,1) * 2", "0.02"],
+              "radiusExpr": "0.22 * tfAttn(s3_qi,4)",
+              "color": "#ab47bc",
+              "opacity": 0.75,
+              "legendGroup": "the output $o_i$",
+              "prompt": "A spoke from the output o_i to value v_4, with thickness proportional to the attention weight alpha_i4. The output is the centre of mass of the values with these weights as masses, so the thickest spoke points at the value the output sits nearest. A forbidden value has weight exactly 0 and its spoke vanishes."
+            },
+            {
+              "id": "s3_spoke_5",
+              "type": "animated_cylinder",
+              "fromExpr": ["-9.0 + tfOut(s3_qi,0) * 2", "-7.0 + tfOut(s3_qi,1) * 2", "0.02"],
+              "toExpr": ["-9.0 + tfV(5,0) * 2", "-7.0 + tfV(5,1) * 2", "0.02"],
+              "radiusExpr": "0.22 * tfAttn(s3_qi,5)",
+              "color": "#ab47bc",
+              "opacity": 0.75,
+              "legendGroup": "the output $o_i$",
+              "prompt": "A spoke from the output o_i to value v_5, with thickness proportional to the attention weight alpha_i5. The output is the centre of mass of the values with these weights as masses, so the thickest spoke points at the value the output sits nearest. A forbidden value has weight exactly 0 and its spoke vanishes."
             },
             {
               "id": "s3_pt_out",
@@ -3669,13 +3740,22 @@
               "position": [-12.6, -10.6, 0],
               "color": "#ab47bc",
               "legendGroup": "the output $o_i$"
+            },
+            {
+              "id": "s3_txt_hull_point",
+              "type": "text",
+              "text": "at $i = 0$ the hull is **one point**: $o_0 = v_0$",
+              "position": [-7.0, -2.9, 0],
+              "color": "#ab47bc",
+              "visibleExpr": "s3_qi < 0.5",
+              "legendGroup": "the output $o_i$"
             }
           ],
           "info": [
-            {"id": "s3_info_output_is_caged", "position": "top-center", "title": "Caged in the hull", "content": "$o_i = ({{ toFixed(tfOut(s3_qi,0),4) }},\\ {{ toFixed(tfOut(s3_qi,1),4) }})$ — a convex combination of the *visible* $v_j$. The bright shape is the bound; the faint pentagon is all six. Points at $2\\times$. Proof 4."},
-            {"id": "s3_keep_card", "position": "bottom-right", "keep": true, "title": "Toy · provenance", "content": "$d_{\\text{model}} = 4$, $d_k = 2$, **one head of two**. $W_Q, W_K, W_V$ are hand-built for legibility, **not learned**. The pink object is a **different object** from this toy."}
+            {"id": "s3_info_output_is_caged", "position": "top-center", "title": "Caged in the hull", "content": "$o_i = ({{ toFixed(tfOut(s3_qi,0),4) }},\\ {{ toFixed(tfOut(s3_qi,1),4) }})$ — the centre of mass of the *visible* $v_j$, masses $\\alpha_{ij}$. Spoke thickness = weight. The outline is the bound; dim points are values the mask hides. Points at $2\\times$. Proof 4."},
+            {"id": "s3_keep_card", "position": "bottom-right", "keep": true, "title": "Toy · provenance", "content": "$d_{\\text{model}} = 4$, $d_k = 2$, **one head of two**. $W_Q, W_K, W_V$ are hand-built for legibility, **not learned**."}
           ],
-          "prompt": "Stage five and proof 4. The claim is definitional, not deep: non-negative coefficients summing to one over a finite point set IS a convex combination, so the output lies in the convex hull of the values it is allowed to see. Two precisions worth making. First, with the causal mask on the relevant hull is conv{v_j : j <= i}, not the hull of all six - the forbidden value points disappear from the viewport as the query index drops, and at i = 2 only v_0, v_1, v_2 remain, so the reachable region is the triangle on those three; the translucent outline is the hull of all six and is a reference, not the bound. Second, the point positions are the true v_j scaled by 2 and offset for legibility; the numbers in the panel are the real ones. The misconception being killed: 'attention can produce any output'. It cannot. This is a forward hook - expressive power comes from W_V, W_O, the FFN and depth, all of which later scenes handle. Mention that they are ahead; do not explain them here."
+          "prompt": "Stage five and proof 4. The claim is definitional, not deep: non-negative coefficients summing to one over a finite point set IS a convex combination, so the output lies in the convex hull of the values it is allowed to see. Two precisions worth making. First, with the causal mask on the relevant hull is conv{v_j : j <= i}, not the hull of all six - the forbidden value points disappear from the viewport as the query index drops, and at i = 2 only v_0, v_1, v_2 remain, so the reachable region is the triangle on those three; the forbidden values are drawn as dim ghosts rather than hidden, so the student can see what the mask took away. Second, the point positions are the true v_j scaled by 2 and offset for legibility; the numbers in the panel are the real ones. The misconception being killed: 'attention can produce any output'. It cannot. This is a forward hook - expressive power comes from W_V, W_O, the FFN and depth, all of which later scenes handle. Mention that they are ahead; do not explain them here. A good plain-language reading, offer it freely: the output is the centre of mass of the visible value points with the attention weights as masses, which is why 97% on cat puts the output almost on top of cat. The spokes from the output to each value are drawn with thickness proportional to alpha_ij; a forbidden value has weight exactly zero and no spoke."
         },
         {
           "id": "weighting-is-not-explanation",
@@ -3687,9 +3767,10 @@
           },
           "info": [
             {"id": "s3_info_weighting_is_not_explanation", "position": "bottom-left", "title": "Not an explanation", "content": "A large $\\alpha_{ij}$ is a fact about mixing, not evidence the output depends on token $j$ (Jain & Wallace 2019; Wiegreffe & Pinter 2019 rebut in part). Full statement: doc panel."},
-            {"id": "s3_keep_card", "position": "bottom-right", "keep": true, "title": "Toy · provenance", "content": "$d_{\\text{model}} = 4$, $d_k = 2$, **one head of two**. $W_Q, W_K, W_V$ are hand-built for legibility, **not learned**. The pink object is a **different object** from this toy."}
+            {"id": "s3_keep_card", "position": "bottom-right", "keep": true, "title": "Toy · provenance", "content": "$d_{\\text{model}} = 4$, $d_k = 2$, **one head of two**. $W_Q, W_K, W_V$ are hand-built for legibility, **not learned**."}
           ],
-          "prompt": "The mandated rest beat between the two halves - it is a step of its own on purpose, because without it the 97.09% result actively teaches a false inference. No new geometry, and the camera pulls back to show the whole scene at once. If the student pushes back ('but surely a high weight means something'), give them the honest picture: the finding is contested, Wiegreffe & Pinter rebut Jain & Wallace in part, and the defensible position is that a weight is a fact about mixing and not a causal claim about the output. Do NOT resolve the debate, and do not let the pause turn into a lecture on interpretability. Then point forward: half B is the same computation, vectorised."
+          "prompt": "The mandated rest beat between the two halves - it is a step of its own on purpose, because without it the 97.09% result actively teaches a false inference. No new geometry, and the camera pulls back to show the whole scene at once. If the student pushes back ('but surely a high weight means something'), give them the honest picture: the finding is contested, Wiegreffe & Pinter rebut Jain & Wallace in part, and the defensible position is that a weight is a fact about mixing and not a causal claim about the output. Do NOT resolve the debate, and do not let the pause turn into a lecture on interpretability. Then point forward: half B is the same computation, vectorised.",
+          "add": []
         },
         {
           "id": "half-b-qkt",
@@ -3703,18 +3784,13 @@
             {"id": "s3_row", "label": "highlighted query row", "min": 0, "max": 5, "step": 1, "default": 2}
           ],
           "remove": [
-            {"id": "s3_tensor_strip5"},
             {"id": "s3_txt_halfA"},
             {"id": "s3_txt_dims"},
-            {"id": "s3_txt_raw2"},
-            {"id": "s3_txt_wrongsum"},
-            {"id": "s3_txt_rightsum"},
-            {"id": "s3_txt_soft"},
-            {"id": "s3_txt_sm"},
+            {"id": "s3_tensor_raw_b_cap"},
+            {"id": "s3_tensor_soft_cap"},
+            {"id": "s3_tensor_scaledmask_cap"},
             {"id": "s3_tensor_scaledmask"},
-            {"id": "s3_tensor_mask"},
             {"id": "s3_poly_subhull"},
-            {"id": "s3_poly_hull"},
             {"id": "s3_pt_out"},
             {"id": "s3_txt_hull"},
             {"id": "s3_pt_v0"},
@@ -3722,7 +3798,26 @@
             {"id": "s3_pt_v2"},
             {"id": "s3_pt_v3"},
             {"id": "s3_pt_v4"},
-            {"id": "s3_pt_v5"}
+            {"id": "s3_pt_v5"},
+            {"id": "s3_tensor_raw_b"},
+            {"id": "s3_tensor_soft"},
+            {"id": "s3_qi"},
+            {"id": "s3_axis_x"},
+            {"id": "s3_axis_y"},
+            {"id": "s3_axis_z"},
+            {"id": "s3_grid"},
+            {"id": "s3_tensor_raw_b_note"},
+            {"id": "s3_tensor_soft_note"},
+            {"id": "s3_tensor_scaledmask_note"},
+            {"id": "s3_pt_v3_ghost"},
+            {"id": "s3_pt_v4_ghost"},
+            {"id": "s3_pt_v5_ghost"},
+            {"id": "s3_spoke_0"},
+            {"id": "s3_spoke_1"},
+            {"id": "s3_spoke_2"},
+            {"id": "s3_spoke_3"},
+            {"id": "s3_spoke_4"},
+            {"id": "s3_spoke_5"}
           ],
           "add": [
             {
@@ -3805,14 +3900,14 @@
           ],
           "info": [
             {"id": "s3_info_half_b_qkt", "position": "top-right", "title": "$QK^{\\top}$ — same numbers", "content": "$(6\\times2)(2\\times6) = (6\\times6)$. Row {{s3_row}} against *cat*: **{{ toFixed(tfScore(s3_row,1),4) }}**. At row 2 that is half A's own number, from the same function."},
-            {"id": "s3_keep_card", "position": "bottom-right", "keep": true, "title": "Toy · provenance", "content": "$d_{\\text{model}} = 4$, $d_k = 2$, **one head of two**. $W_Q, W_K, W_V$ are hand-built for legibility, **not learned**. The pink object is a **different object** from this toy."}
+            {"id": "s3_keep_card", "position": "bottom-right", "keep": true, "title": "Toy · provenance", "content": "$d_{\\text{model}} = 4$, $d_k = 2$, **one head of two**. $W_Q, W_K, W_V$ are hand-built for legibility, **not learned**."}
           ],
           "prompt": "The vectorisation beat, and the whole point is that nothing new happens. QK^T is a notational compression of the loop half A walked. Insist on the check: drag the highlight to row 2 and compare against the numbers from step 1 - they are the same values from the same function, not merely similar. Shapes matter: (6x2)(2x6) = 6x6, and d_k = 2 is the inner dimension that disappears in the product. The structural payoff is parallelism - every position at once, no sequential dependence, which is what a recurrent model cannot do. Do not go on to training, hardware or complexity; this scene stops at the shape."
         },
         {
           "id": "one-pass-six-distributions",
           "title": "One pass, six distributions",
-          "description": "Scale, mask, softmax — the whole matrix at once. Six rows, six distributions, every one summing to 1.000000, the upper triangle structurally empty. Row 0 has only itself to look at, so it is forced to exactly 1. Row 2 is our 97.09% row. Read across, never down. And one more thing to notice: this is **one head**. The model has a second one, and it does something else entirely.\n\n$W_Q, W_K, W_V$ are the **learned parameters** and they are the same handful of numbers for every sentence. The 36 weights in $A$ are **computed fresh from the input on every forward pass** — change the sentence and all 36 change, while $W_Q, W_K, W_V$ do not. That is why $A$ is not a weight matrix between two layers of neurons.",
+          "description": "Scale, mask, softmax — the whole matrix at once. Six rows, six distributions, the upper triangle structurally empty. Drag the highlighted row across $A$ and read its sum: every one of the six is 1.000000. Row 0 has only itself to look at, so it is forced to exactly 1. Row 2 is our 97.09% row. Read across, never down. And one more thing to notice: this is **one head**. The model has a second one, and it does something else entirely.\n\n$W_Q, W_K, W_V$ are the **learned parameters** and they are the same handful of numbers for every sentence. The 36 weights in $A$ are **computed fresh from the input on every forward pass** — change the sentence and all 36 change, while $W_Q, W_K, W_V$ do not. That is why $A$ is not a weight matrix between two layers of neurons.",
           "camera": {
             "position": [-0.7, -8.3, 28.0],
             "target": [-0.7, -8.3, 0.0]
@@ -3853,11 +3948,24 @@
               "position": [3.6, -11.9, 0],
               "color": "#26c6da",
               "legendGroup": "$A$ — row-stochastic ($6\\times6$)"
+            },
+            {
+              "id": "s3_poly_rowhl_A",
+              "type": "animated_polygon",
+              "vertices": [
+                ["3.48", "-11.07 + (5 - s3_row) * 0.9", "0.03"],
+                ["9.12", "-11.07 + (5 - s3_row) * 0.9", "0.03"],
+                ["9.12", "-10.93 + (6 - s3_row) * 0.9", "0.03"],
+                ["3.48", "-10.93 + (6 - s3_row) * 0.9", "0.03"]
+              ],
+              "color": "#66bb6a",
+              "opacity": 0.22,
+              "label": "highlighted row of $A$"
             }
           ],
           "info": [
-            {"id": "s3_info_one_pass_six_distributions", "position": "top-left", "title": "Six rows, six distributions", "content": "Row sums {{ toFixed(tfRowSum(0),6) }}, {{ toFixed(tfRowSum(1),6) }}, {{ toFixed(tfRowSum(2),6) }}, {{ toFixed(tfRowSum(3),6) }}, {{ toFixed(tfRowSum(4),6) }}, {{ toFixed(tfRowSum(5),6) }}. **One head**, of two."},
-            {"id": "s3_keep_card", "position": "bottom-right", "keep": true, "title": "Toy · provenance", "content": "$d_{\\text{model}} = 4$, $d_k = 2$, **one head of two**. $W_Q, W_K, W_V$ are hand-built for legibility, **not learned**. The pink object is a **different object** from this toy."}
+            {"id": "s3_info_one_pass_six_distributions", "position": "top-left", "title": "Six rows, six distributions", "content": "Row {{s3_row}} of $A$ sums to **{{ toFixed(tfRowSum(s3_row),6) }}** — drag the highlight across all six. Row 0 is forced to exactly 1. **One head**, of two."},
+            {"id": "s3_keep_card", "position": "bottom-right", "keep": true, "title": "Toy · provenance", "content": "$d_{\\text{model}} = 4$, $d_k = 2$, **one head of two**. $W_Q, W_K, W_V$ are hand-built for legibility, **not learned**."}
           ],
           "prompt": "The closing step, and it must NOT close the lesson. Assert the six row sums at six decimals and note that row 0 is forced to exactly 1 because it can only see itself. Re-state row-stochastic: read across, never down. Then the forward hook, and stop there: exactly ONE head is on screen and the model has two. A later scene asks what the SECOND head attends to, and that question is not yours to answer - do NOT speculate about head 2's pattern, preview it, or describe what multi-head attention adds. Equally forbidden: any recap of the lesson, any 'you have now learned', any summary or comparison table, and any statement that the forward pass is complete. It is not: multi-head, the block and the stack are all still ahead. If the student asks 'what's next?', name the topics in one line and leave them there."
         }
