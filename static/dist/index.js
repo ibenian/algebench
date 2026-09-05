@@ -8589,9 +8589,9 @@ function renderTensor(el, _view) {
 			} catch (err) {
 				console.warn("Slider tensor valueExpr recompile error:", err);
 			}
-			widthFn = compileOpt(widthExprString, "widthExpr") ?? widthFn;
-			heightFn = compileOpt(heightExprString, "heightExpr") ?? heightFn;
-			textFn = compileOpt(textExprString, "textExpr") ?? textFn;
+			widthFn = compileOpt(widthExprString, "widthExpr");
+			heightFn = compileOpt(heightExprString, "heightExpr");
+			textFn = compileOpt(textExprString, "textExpr");
 			const recompiled = /* @__PURE__ */ new Map();
 			for (const dl of dynamicLabels) {
 				let fn = recompiled.get(dl.src);

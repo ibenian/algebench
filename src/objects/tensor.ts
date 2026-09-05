@@ -924,9 +924,12 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
                     console.warn('Slider tensor valueExpr recompile error:', err);
                 }
             }
-            widthFn = compileOpt(widthExprString, 'widthExpr') ?? widthFn;
-            heightFn = compileOpt(heightExprString, 'heightExpr') ?? heightFn;
-            textFn = compileOpt(textExprString, 'textExpr') ?? textFn;
+            // No fallback to the old node: a channel that the new trust state
+            // would refuse must switch OFF, or a trusted-scene JS fallback
+            // would survive into an untrusted one.
+            widthFn = compileOpt(widthExprString, 'widthExpr');
+            heightFn = compileOpt(heightExprString, 'heightExpr');
+            textFn = compileOpt(textExprString, 'textExpr');
             // One compile per distinct expression, not one per label: the six
             // labels down an axis all share a single `labelExpr`.
             const recompiled = new Map<string, CompiledExpr>();
