@@ -658,6 +658,16 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
         lastKey: string;
     }
     let textLayer: TextLayer | null = null;
+    // A canvas is at least one pixel per cell, so past 2048 cells a side no
+    // pixel budget keeps it inside the texture limit; and at that density no
+    // string could be read anyway. Say so and skip the layer rather than
+    // allocate something the GPU may refuse.
+    if (textFn && Math.max(rows, cols) > 2048) {
+        console.warn(
+            `tensor${el.id ? ` "${el.id}"` : ''}: textExpr is ignored on a ${rows}x${cols} lattice; `
+            + `cell text needs at least one canvas pixel per cell and the canvas is capped at 2048 a side.`);
+        textFn = null;
+    }
     if (textFn) {
         // Pixels per cell pitch: enough for a short number to be crisp, and
         // capped so the whole canvas never exceeds 2048 on a side. The cap
@@ -926,6 +936,9 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     tensorState.activeAnimUpdaters.push({
         animState,
         updateFrame(nowMs) {
+            // The text quad follows the cell mesh's visibility whatever set it,
+            // so it can never be left showing over a hidden lattice.
+            if (textLayer) textLayer.mesh.visible = mesh.visible;
             if (!mesh.visible) return;
             const tSec = (nowMs - startTime) / 1000;
             if (valueFn || hasSizeExpr) {
@@ -936,7 +949,6 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
                 } catch (_err) { /* keep the last frame's colours */ }
             }
             if (textLayer) {
-                textLayer.mesh.visible = mesh.visible;
                 try { paintText(tSec); } catch (_err) { /* keep the last frame's text */ }
             }
             if (dynamicLabels.length) paintLabels(tSec);

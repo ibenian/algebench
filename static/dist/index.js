@@ -8318,6 +8318,10 @@ function renderTensor(el, _view) {
 	tensorState.three.scene.add(mesh);
 	tensorState.planeMeshes.push(mesh);
 	let textLayer = null;
+	if (textFn && Math.max(rows, cols) > 2048) {
+		console.warn(`tensor${el.id ? ` "${el.id}"` : ""}: textExpr is ignored on a ${rows}x${cols} lattice; cell text needs at least one canvas pixel per cell and the canvas is capped at 2048 a side.`);
+		textFn = null;
+	}
 	if (textFn) {
 		const px = Math.max(1, Math.min(128, Math.floor(2048 / Math.max(rows, cols))));
 		const canvas = document.createElement("canvas");
@@ -8590,6 +8594,7 @@ function renderTensor(el, _view) {
 	tensorState.activeAnimUpdaters.push({
 		animState,
 		updateFrame(nowMs) {
+			if (textLayer) textLayer.mesh.visible = mesh.visible;
 			if (!mesh.visible) return;
 			const tSec = (nowMs - startTime) / 1e3;
 			if (valueFn || hasSizeExpr) try {
@@ -8597,12 +8602,9 @@ function renderTensor(el, _view) {
 				colorAttr.needsUpdate = true;
 				if (hasSizeExpr) posAttr.needsUpdate = true;
 			} catch (_err) {}
-			if (textLayer) {
-				textLayer.mesh.visible = mesh.visible;
-				try {
-					paintText(tSec);
-				} catch (_err) {}
-			}
+			if (textLayer) try {
+				paintText(tSec);
+			} catch (_err) {}
 			if (dynamicLabels.length) paintLabels(tSec);
 		}
 	});
