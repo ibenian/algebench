@@ -8266,11 +8266,14 @@ function renderTensor(el, _view) {
 		color: baseColor,
 		label: el.label
 	};
+	let compiledUnderTrust = tensorState._sceneJsTrustState;
 	const entry = {
 		exprStrings: [...valueExprString ? [valueExprString] : [], ...labelExprStrings],
 		animState,
 		compiledFns: [...valueFn ? [valueFn] : [], ...dynamicLabels.map((dl) => dl.fn)],
 		_rebuildFn() {
+			if (tensorState._sceneJsTrustState === compiledUnderTrust) return;
+			compiledUnderTrust = tensorState._sceneJsTrustState;
 			if (valueExprString) try {
 				valueFn = compileExpr(valueExprString);
 			} catch (err) {

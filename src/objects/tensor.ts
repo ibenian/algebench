@@ -92,6 +92,9 @@ interface TensorState {
     activeAnimExprs: TensorAnimExprEntry[];
     activeAnimUpdaters: AnimUpdater[];
     sceneStartTime: number;
+    /** Read only to decide whether a recompile could change anything — see
+     *  `_rebuildFn`. Same field overlay.ts and json-browser.ts consult. */
+    _sceneJsTrustState: string | null;
 }
 const tensorState = state as unknown as TensorState;
 
@@ -579,11 +582,27 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
         return { type: 'tensor', color: baseColor, label: el.label };
     }
 
+    let compiledUnderTrust = tensorState._sceneJsTrustState;
+
     const entry: TensorAnimExprEntry = {
         exprStrings: [...(valueExprString ? [valueExprString] : []), ...labelExprStrings],
         animState,
         compiledFns: [...(valueFn ? [valueFn] : []), ...dynamicLabels.map(dl => dl.fn)],
+        // Called on EVERY slider value change, not just on a recompile
+        // (sliders.ts drives both through the same hook). Compiling the same
+        // string twice gives the same node -- a slider VALUE is read at eval
+        // time, never at compile time -- so the work was pure waste on the hot
+        // path, and worse once labelExpr added more strings to redo.
+        //
+        // The one input that changes what compileExpr RETURNS for a fixed
+        // string is the scene's JS trust state: untrusted it is compile('0'),
+        // trusted it is the JS fallback. Scene functions and domain imports do
+        // not count -- those resolve from the scope at eval time. So remember
+        // the trust the current nodes were compiled under and skip until it
+        // moves.
         _rebuildFn() {
+            if (tensorState._sceneJsTrustState === compiledUnderTrust) return;
+            compiledUnderTrust = tensorState._sceneJsTrustState;
             if (valueExprString) {
                 try {
                     valueFn = compileExpr(valueExprString);
