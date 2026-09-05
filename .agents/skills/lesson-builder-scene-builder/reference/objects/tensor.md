@@ -35,6 +35,11 @@ elements. Use it instead of hand-writing cells — always.
 | `colorDomain` | `[0,1]` | Range values are normalized over. Outside values clamp |
 | `color` | `"#3b528b"` | Fallback colour for cells with no usable value; also the legend swatch |
 | `opacity` | `0.95` | 0–1 |
+| `widthExpr` | `1 − gap` | Per-cell **width** as a fraction of `cellSize` (0–1), with `row`, `col`, `idx` and `value` bound. See *Channels* |
+| `heightExpr` | `1 − gap` | Per-cell **height**, same scope. Independent of width |
+| `anchor` | `center` | Which edge a shrunken cell keeps: `bottom`, `top`, `left`, `right`, or a pair like `bottom-left`. See *Channels* |
+| `textExpr` | — | Text drawn **inside** each cell, same scope. Plain text, fitted to the cell, on the lattice plane |
+| `textColor` | auto | Colour for cell text. Omit for automatic contrast per cell |
 | `label` | — | **One** legend entry for the whole tensor |
 | `prompt` | — | **One** Ask-AI button for the whole tensor |
 
@@ -86,6 +91,71 @@ per cell. Nothing is invented at render time and every value stays reproducible 
 `concat('w', col)` to build `w0`, `w1`, … from the cell index. A table is a list of row objects.
 
 `data` works at the lesson root or on a scene; both are merged, with scene-level winning.
+
+## Channels — what a value drives
+
+A cell's value drives its **colour** by default, through `colorMap` over `colorDomain`. Three more
+expressions can read the same per-cell scope and drive other things. All of them see `row`, `col`,
+`idx` and `value` — the cell's own number, whether it came from `valueExpr` or `values` — so "size
+follows the value" needs no second data source.
+
+| Expression | Drives | Result |
+|---|---|---|
+| `valueExpr` / `values` | colour | number, normalized over `colorDomain` |
+| `widthExpr` | cell width | fraction of `cellSize`, 0–1; the cell stays centred on its slot |
+| `heightExpr` | cell height | fraction of `cellSize`, 0–1; independent of width |
+| `textExpr` | text inside the cell | a string; `''` draws nothing |
+
+```json
+{ "type": "tensor", "shape": [6, 6],
+  "valueExpr": "dataTable('attn', row, concat('w', col))",
+  "widthExpr": "sqrt(value)", "heightExpr": "sqrt(value)",
+  "textExpr": "value >= 0.005 ? toFixed(value, 2) : ''",
+  "colorMap": "viridis", "colorDomain": [0, 1] }
+```
+
+That makes each cell's **area** the attention weight and prints the number inside it.
+
+**To see a distribution of values**, drive height alone and pin the bottom edge:
+
+```json
+{ "type": "tensor", "shape": [6],
+  "valueExpr": "tfAttn(2, col)",
+  "heightExpr": "value", "anchor": "bottom",
+  "textExpr": "toFixed(value, 2)",
+  "colorMap": "viridis", "colorDomain": [0, 1] }
+```
+
+Every bar stands on the same baseline, so heights compare by eye; without `anchor` the same
+cells shrink about their centres and read as lozenges, not bars. `heightExpr` is a fraction of
+`cellSize`, so for values outside `[0, 1]` normalize inside the expression — `value / 40`, or
+`(value - lo) / (hi - lo)` — and say the scale in the axis title.
+
+Rules for the size channels:
+
+- The result is clamped to `[0, 1]`; the default is `1 − gap`. A result that is not a number keeps
+  the default for that cell, so a misfiring expression never collapses a cell or overruns its
+  neighbours.
+- A size expression makes the tensor **live** even with literal `values` — it may read a slider —
+  so it registers the per-frame updater. Only the vertex buffer moves; nothing is re-compiled.
+
+Rules for cell text:
+
+- It is drawn **on the lattice plane** as geometry (one canvas texture on one quad, a hair in
+  front of the cells), so it tilts, scales and occludes with the cells. It is not an HTML label and
+  never piles up with the decal labels; do not use it for anything that must stay readable when the
+  camera looks along the plane.
+- Each string is fitted to its own cell's **current** width and height, so it always fits — a cell
+  shrunk by `widthExpr` gets smaller text. Keep strings short: a 6-character number is the
+  comfortable maximum at `cellSize: 1`.
+- Plain text only, no KaTeX. Use `toFixed(value, 2)`, `concat(...)`, or a domain function that
+  returns a string.
+- Text colour is automatic per cell — dark on light cells, light on dark — unless `textColor` is
+  set (a hex string or an `[r,g,b]` array; `"auto"` is the default spelled out).
+- Cost: `textExpr` is evaluated once per cell per frame, like `valueExpr`, plus a string compare.
+  The expensive part — redrawing the canvas and re-uploading the texture — happens only when some
+  string, size or colour actually changed, so a matrix whose text is not moving pays the evaluations
+  and nothing else. A text channel is never free the way literal `values` are.
 
 ## Axis labels and titles
 

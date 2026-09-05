@@ -77,6 +77,10 @@ export type Vec3Number6 = [number, number, number];
  */
 export type Vec3Number7 = [number, number, number];
 /**
+ * Color as hex string '#rrggbb' (or '#rrggbbaa' with alpha) or RGB array [r,g,b] with components 0-1.
+ */
+export type Color = string | [number, number, number];
+/**
  * Position in data space as [x,y,z]. Used by point, sphere, cylinder, text.
  *
  * @minItems 3
@@ -699,6 +703,22 @@ export interface Element {
    */
   values?: unknown[];
   /**
+   * TENSOR ONLY. Math.js expression giving one cell's WIDTH as a fraction of 'cellSize' (0-1), evaluated per cell every frame with 'row', 'col', 'idx' and 'value' (that cell's own number, from 'valueExpr' or 'values') bound. The cell stays centred on its lattice slot, so shrinking it reads as a bar or a dot at the slot. Default 1 - gap. A non-numeric result keeps the default for that cell. Colour is still driven by the value through 'colorMap'; this adds a second channel, it does not replace the first. Example: "sqrt(value)".
+   */
+  widthExpr?: string;
+  /**
+   * TENSOR ONLY. Math.js expression giving one cell's HEIGHT as a fraction of 'cellSize' (0-1), same scope and default as 'widthExpr'. Width and height are independent, so "heightExpr": "value" alone turns a row of cells into a bar chart sitting on its lattice.
+   */
+  heightExpr?: string;
+  /**
+   * TENSOR ONLY. Which edge of its slot a cell shrunk by 'widthExpr' / 'heightExpr' keeps. 'center' (default) grows and shrinks about the slot centre; 'bottom', 'top', 'left', 'right' pin that edge, and a pair such as 'bottom-left' pins both. A full-size cell sits in the same place whatever the anchor. "heightExpr": "value" with "anchor": "bottom" turns a row of cells into a bar chart standing on its lattice — the way to show a distribution of values.
+   */
+  anchor?: string;
+  /**
+   * TENSOR ONLY. Colour for 'textExpr' text: a hex string, an [r,g,b] array in 0-1, or 'auto'. Default (and 'auto'): near-black on light cells, near-white on dark ones, decided per cell from its painted colour.
+   */
+  textColor?: Color | 'auto';
+  /**
    * TENSOR ONLY. Data-space pitch between cell centers. Default 1.
    */
   cellSize?: number;
@@ -868,7 +888,7 @@ export interface Element {
    */
   text?: string;
   /**
-   * Math.js expression for dynamic text content. Evaluated each frame; the rounded integer result replaces '%d' in textFormat. Example: "lambda * 100".
+   * On text: Math.js expression for dynamic text content. Evaluated each frame; the rounded integer result replaces '%d' in textFormat. Example: "lambda * 100". On tensor: the text drawn INSIDE each cell, evaluated per cell with 'row', 'col', 'idx' and 'value' bound (same scope as 'widthExpr'). Drawn on the lattice plane as geometry, so it tilts and occludes with the cells rather than floating as a screen label, and each string is sized to fit its own cell's current width and height. Plain text only, no KaTeX; use toFixed(value, 2) or concat(...). An empty string draws nothing. The canvas is redrawn only when some text, size or colour changed.
    */
   textExpr?: string;
   /**
@@ -895,11 +915,11 @@ export interface Element {
      */
     direction?: 'x' | 'y' | 'z';
     /**
-     * Start color (t=0) for simple two-color gradient.
+     * Color as hex string '#rrggbb' (or '#rrggbbaa' with alpha) or RGB array [r,g,b] with components 0-1.
      */
     from?: string | [number, number, number];
     /**
-     * End color (t=1) for simple two-color gradient.
+     * Color as hex string '#rrggbb' (or '#rrggbbaa' with alpha) or RGB array [r,g,b] with components 0-1.
      */
     to?: string | [number, number, number];
     /**
@@ -911,7 +931,7 @@ export interface Element {
        */
       t: number;
       /**
-       * Color at this stop.
+       * Color as hex string '#rrggbb' (or '#rrggbbaa' with alpha) or RGB array [r,g,b] with components 0-1.
        */
       color: string | [number, number, number];
       [k: string]: unknown;
@@ -922,7 +942,7 @@ export interface Element {
     segments?: number;
   };
   /**
-   * Outline color for polygons. Defaults to the element color.
+   * Color as hex string '#rrggbb' (or '#rrggbbaa' with alpha) or RGB array [r,g,b] with components 0-1.
    */
   outlineColor?: string | [number, number, number];
   /**
@@ -1182,7 +1202,7 @@ export interface FillRegion {
    */
   id?: string;
   /**
-   * Fill color. Defaults to the parent curve's color.
+   * Color as hex string '#rrggbb' (or '#rrggbbaa' with alpha) or RGB array [r,g,b] with components 0-1.
    */
   color?: string | [number, number, number];
   /**
@@ -1210,7 +1230,7 @@ export interface FillRegion {
    */
   outlineWidth?: number | string;
   /**
-   * Outline color. Defaults to the fill color.
+   * Color as hex string '#rrggbb' (or '#rrggbbaa' with alpha) or RGB array [r,g,b] with components 0-1.
    */
   outlineColor?: string | [number, number, number];
   /**

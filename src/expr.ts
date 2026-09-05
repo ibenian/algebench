@@ -374,6 +374,28 @@ export function resolveVirtualAnimTime(rawT: number): number {
     }
 }
 
+/**
+ * Why `compileExpr` would hand back the constant 0 for this string instead of
+ * a real expression, or null if it would not. Mirrors compileExpr's own
+ * decisions exactly -- same quote normalisation, same JS-only gate, same
+ * parse -- so a caller that must NOT accept a silent zero (a channel where 0
+ * has a meaning, like a cell's width) can refuse the expression up front and
+ * say why, rather than discover it as a collapsed lattice.
+ */
+export function explainCompileDegrade(exprStr: string): string | null {
+    if (exprState._sceneJsTrustState === 'trusted') return null;
+    const src = _normalizeSingleQuotes(exprStr);
+    if (_JS_ONLY_RE.test(src)) {
+        return 'uses JavaScript-only syntax, which an untrusted scene compiles to 0';
+    }
+    try {
+        _mathjs.parse(src);
+        return null;
+    } catch (e) {
+        return `does not parse as math.js (${(e as Error).message}), which an untrusted scene compiles to 0`;
+    }
+}
+
 export function compileExpr(exprStr: string): CompiledExpr {
     // Normalise single-quoted strings to double-quoted so math.js can parse them
     // without falling through to the JS fallback (which requires scene trust).
