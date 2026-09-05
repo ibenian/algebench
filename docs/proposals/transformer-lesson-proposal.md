@@ -1,6 +1,6 @@
 # Transformer Architecture — Lesson Proposal
 
-**Status:** proposal · **Phase:** research/design only — this document produces no scene JSON.
+**Status:** design of record · **Phase:** scenes 1–3 built and merged (#627, [`scenes/transformer-architecture.json`](../../scenes/transformer-architecture.json)); scenes 4–6 not yet built. This document produces no scene JSON itself — it is the `constraints` input for the remaining build, and §10.1 records where the built scenes departed from the outline and what that taught.
 **Backlog entries this supersedes:** [`docs/lesson-ideas.md`](../lesson-ideas.md) "Attention & Transformers" (:754) and "The Transformer Architecture" (:840).
 
 ---
@@ -9,7 +9,7 @@
 
 The backlog already asks for a transformer lesson. It does not say **what to teach**, and that is the expensive question: modern transformers contain far more mechanism than one lesson can hold, the corpus median lesson is 6 scenes / ~25 steps / 1500–3500 lines of JSON, and a mis-scoped lesson gets rewritten rather than patched.
 
-A second constraint cannot be separated from the first. AlgeBench's element vocabulary is 3D geometry — 23 element types (`schemas/lesson.schema.json:233`), all three.js/MathBox. There is no matrix, heatmap, table, chart, or image element. **A topic is only worth including if it has an honest visual realization in that vocabulary.** So this document decides topic selection and visualization feasibility together.
+A second constraint cannot be separated from the first. AlgeBench's element vocabulary is 3D geometry — 24 element types (`schemas/lesson.schema.json:233–238`), all three.js/MathBox. The one matrix-shaped primitive is `tensor` (#622, §7), a coloured cell lattice; there is still no table, chart, or image element. **A topic is only worth including if it has an honest visual realization in that vocabulary.** So this document decides topic selection and visualization feasibility together.
 
 It settles five things:
 
@@ -19,7 +19,7 @@ It settles five things:
 4. How each topic gets drawn, using primitives verified to exist (§6)
 5. Where the numbers come from (§3) and what the renderer now provides (§7 — the prerequisite is resolved; `tensor` ships on `main`)
 
-The scene-by-scene outline is §10. The eventual build uses `/algebench-lesson-builder` with this document passed as `constraints`.
+The scene-by-scene outline is §10; §10.1 is the as-built record for scenes 1–3. The build of scenes 4–6 uses `/algebench-lesson-builder` with this document passed as `constraints`.
 
 ---
 
@@ -31,7 +31,9 @@ Everything below follows from these six principles. They come first because they
 
 The standard failure of transformer explainers is that each concept gets its own disconnected diagram, and the student never learns that they are all views of *one* computation.
 
-AlgeBench is built for the opposite. Steps are cumulative — elements persist until explicitly removed (see [`CONTRIBUTING.md`](../../CONTRIBUTING.md), "How a scene is built from root to steps"). So **the layer stack of §6.1 stays on screen for the whole lesson**, and each scene zooms into a different part of the same artifact. A step that introduces a fresh, unrelated picture is a design smell.
+AlgeBench is built for the opposite. Steps are cumulative — elements persist until explicitly removed (see [`CONTRIBUTING.md`](../../CONTRIBUTING.md), "How a scene is built from root to steps"). So **the layer stack of §6.1 stays on screen from the scene that introduces it**, and each later scene zooms into a different part of the same artifact. A step that introduces a fresh, unrelated picture is a design smell.
+
+*What scenes 1–3 did with this.* They built no stack. Each scene composes its own picture — the embedding space, the projection frames, the score row and lattices — and continuity is carried by the persistent "you are here" SVG in the doc panel (§6.5) and by one toy forward pass whose numbers recur unchanged. That is the right outcome, since the stack means nothing before the block exists, but it has a consequence: **scene 5 introduces the stack cold.** Scene 5 must therefore open by placing the objects the student already knows from scenes 2–3 onto the first sheet, so familiar pictures *become* a layer, rather than presenting the stack as a new object.
 
 ### 1.2 Four channels, four distinct jobs, no duplication
 
@@ -55,6 +57,7 @@ The corpus already proves it works: [`scenes/special-relativity.json`](../../sce
 - **`sceneStep`** on a proof step syncs the proof panel to the scene **bidirectionally** — click a proof step and the scene navigates; advance the scene and the proof follows.
 - **`labelExpr`** puts the live number *on the object*. It is the only per-frame text path in the 3D view.
 - **`prompt`** on an element gives it a per-object Ask-AI button, making the object itself interrogable.
+- **Bind a proof to the REVEAL step, never the PREDICT step.** `sceneStep` is 0-based and the sync is bidirectional, so a proof bound one step early puts its title and goal in the panel while the student is still predicting — the panel answers the question the tutor is forbidden to answer. #627's proof 1 shipped this way in review and was moved; check every binding against the step *index*, not its position in the outline.
 
 ### 1.5 The test for "tangible"
 
@@ -92,7 +95,12 @@ The failure mode of transformer explainers is completeness, not omission. The cu
 
 Each is **one step and one before/after contrast**, driven by a toggle the student flips:
 
-RoPE (belongs in the Q/K scene — it rotates Q and K, not the embeddings) · RMSNorm vs LayerNorm · pre-LN vs post-LN · SwiGLU vs ReLU/GELU FFN · GQA vs MHA · the KV cache.
+RoPE (belongs in the Q/K scene — it rotates Q and K, not the embeddings) · **NoPE** · **QK-norm** · RMSNorm vs LayerNorm · pre-LN vs post-LN · SwiGLU vs ReLU/GELU FFN · MQA/GQA vs MHA (§3.2) · the KV cache.
+
+Two of these are one-sentence deltas that close accuracy gaps rather than add mechanism:
+
+- **NoPE.** A causal decoder learns position with *no* positional encoding at all (Haviv et al. 2022; Kazemnejad et al. 2023 on length generalisation). So permutation equivariance motivates PE for the *unmasked* case; the causal mask alone already breaks it. Scene 1's reveal currently says equivariance is "the entire reason positional encoding has to exist" — that sentence needs the qualifier, and scene 3's retirement of the caveat is the natural place to name NoPE.
+- **QK-norm.** The `√d_k` variance argument is an initialisation-time statement; after training, `q` and `k` are neither unit-variance nor independent, which is why QK-norm exists (Dehghani et al. 2023; used in OLMo 2 and Gemma 3). Landed in #627 as a remark on proof 2. Accuracy item 14.
 
 ### 2.3 Cut — real topics, wrong lesson
 
@@ -139,7 +147,7 @@ tokens    n = 6
 d_model   4
 n_heads   2
 d_k       2         (per head)
-n_kv      1         (for the GQA delta: 2 query heads share 1 K/V head)
+n_kv      1         (for the shared-KV delta: 2 query heads share 1 K/V head — MQA, see §3.2)
 layers    3         (enough to show stacking; small enough to render)
 ```
 
@@ -156,7 +164,13 @@ But real trained weights at `d_model = 4` on a small corpus produce patterns tha
 1. **Constructed weights for the mechanism scenes (1–5)**, chosen so the patterns are legible, and *explicitly labelled on screen* as designed-for-teaching rather than learned. This is honest, and it is what makes the mechanism visible at all.
 2. **One real-model beat**, at the end of scene 4 or 6: actual attention maps pulled from a real pretrained small model, shown beside the toy. The contrast — clean constructed pattern vs. messy real one — is itself a teaching moment, and it inoculates the student against believing real attention maps look like textbook diagrams.
 
-Both halves are baked into the lesson's `data` block as static tables, read with `dataTable(name, row, col)`. Nothing is computed at runtime that is not reproducible offline. **Record the generation script's provenance in the lesson so the numbers can be regenerated and checked.**
+The two halves enter the lesson differently. The **constructed toy** is computed at runtime by the `transformer` domain library (§12; landed bundled with #627 at `static/domains/transformer/index.js`), and every figure quoted on screen is asserted by `scripts/check_transformer_domain.py` — if a check there fails, the lesson is wrong, not the test. The **real-model beat** is the one place the lesson's `data` block and `dataTable(name, row, col)` belong: attention maps pulled offline from a pretrained model, shipped as static tables, with the generation script's provenance recorded in the lesson so the numbers can be regenerated and checked. Nothing is computed at runtime that is not reproducible offline.
+
+One consequence of the toy's size to keep saying out loud: real models multiply the embedding by `√d_model` before adding PE (Vaswani §3.4), so PE is small next to the token. The toy omits that scale and its embeddings have norm 1, comparable to PE. Any beat that turns on PE being "as large as" the token is showing an artefact of the toy, and must say so on screen (accuracy item 13).
+
+### 3.2 Two heads cannot show GQA
+
+With `n_heads = 2` the only sharing pattern is `n_kv = 1`, and that is **multi-query attention** (Shazeer 2019), not grouped-query. GQA (Ainslie et al. 2023) needs a group size strictly between 1 and `n_heads`; accuracy item 8 would be violated by the lesson's own toy. Decision: **scene 4 teaches the delta as MQA on the toy and states GQA symbolically** — `n_heads / n_kv` query heads per K/V head, with MHA (`n_kv = n_heads`) and MQA (`n_kv = 1`) as the two ends and GQA as the interior, and the KV-cache saving quantified as `n_heads / n_kv`. Widening the toy to `n_heads = 4, n_kv = 2` would need `d_model = 8` at `d_k = 2` and would change every pinned number in scenes 1–3; not worth it for one delta.
 
 ---
 
@@ -177,6 +191,9 @@ Each item states the error it prevents. The scene author must satisfy all of the
 | 9 | SwiGLU is `(Swish(xW₁) ⊙ xW₃)W₂`, hidden width scaled by ~2/3 to hold parameter count constant | Presenting it as a drop-in activation swap |
 | 10 | Pre-LN vs post-LN: state exactly what the residual branch carries in each | The diagrams are near-identical and routinely drawn wrong |
 | 11 | Temperature: `T→0` ⇒ argmax, `T→∞` ⇒ uniform | Treating temperature as a vague "creativity" knob |
+| 12 | RoPE is **not** claimed to extrapolate. Depending only on the gap makes length extension *possible to attempt*; plain RoPE degrades past its trained length (Press et al. 2021), which is why Position Interpolation, NTK-aware scaling and YaRN exist | The most repeated overclaim in RoPE explainers — and not a consequence of proof 3 |
+| 13 | The embedding is scaled by `√d_model` before PE is added in real models (Vaswani §3.4); the toy omits it, and says so wherever PE looks as large as the token (§3.1) | Presenting a toy artefact ("position can cancel the token") as a property of the scheme |
+| 14 | The `√d_k` variance argument is an **initialisation-time** statement; trained `q`, `k` need not satisfy it | Treating the scaling as a permanent guarantee — the gap QK-norm fills (§2.2) |
 
 **On item 3 specifically** — the justification stated must be the *variance* argument, not "prevents vanishing gradients". For `q, k` with i.i.d. zero-mean unit-variance components, `Var(q·k) = d_k`; dividing by `√d_k` restores unit variance. The gradient consequence follows from that, and stating only the consequence is what makes the fact folklore. See proof 2 in §5.
 
@@ -192,11 +209,15 @@ Worth stating in the lesson itself: transformers are usually taught with *no* pr
 
 | # | Statement | Why it earns a block | Binds to |
 |---|---|---|---|
-| 1 | **Attention is permutation-equivariant.** Permuting the input sequence permutes the output identically and changes nothing else. | *The* theorem that motivates positional encoding. Prove it while the shuffled tokens are on screen showing it. | Scene 1, predict/reveal |
+| 1 | **Attention is permutation-equivariant.** Permuting the input sequence permutes the output identically and changes nothing else — and not only for one attention layer: any position-free, unmasked stack is equivariant, since FFN and norms act per token. | *The* theorem that motivates positional encoding (for the unmasked case — §2.2, NoPE). Prove it while the shuffled tokens are on screen showing it. | Scene 1, the **reveal** step (§1.4) |
 | 2 | **The `√d_k` scaling.** For `q, k` i.i.d. zero-mean unit-variance, `Var(q·k) = d_k`; dividing by `√d_k` restores unit variance. | The most hand-waved fact in the field. Four or five clean steps. | Scene 3, scaling slider |
-| 3 | **RoPE gives relative position.** `⟨R_m q, R_n k⟩ = ⟨R_{m−n} q, k⟩`, from `R_mᵀR_n = R_{n−m}`. | Short, exact, and the viewport can *show* the rotation while the proof states it. | Scene 2, RoPE step |
+| 3 | **RoPE gives relative position.** `⟨R_m q, R_n k⟩ = ⟨R_{m−n} q, k⟩`, from `R_mᵀR_n = R_{n−m}`. Its conclusion is the identity and its consequence for the score — **not** extrapolation (item 12). | Short, exact, and the viewport can *show* the rotation while the proof states it. | Scene 2, RoPE step |
 | 4 | **The output lies in the convex hull of the value rows** — weights non-negative, summing to 1. | Turns a geometric fact the viewport already displays into a stated theorem. | Scene 3, output step |
 | 5 | **Softmax is shift-invariant:** `softmax(z + c·1) = softmax(z)`. | Two lines, and it justifies both the numerically-stable implementation and why `−∞` masking works at all. | Scene 3, mask step |
+
+### 5.1a Status after #627
+
+All five flagship proofs plus the "not explanation" remark (§6.4 rule 4) landed with scenes 1–3 — six blocks: proof 1 in scene 1, proof 3 in scene 2, proofs 2, 4, 5 and the remark in scene 3. Proof 2 carries three remarks (gradients as corollary, "our toy does not satisfy this", QK-norm). That spends the 4–6 budget above, which was a corpus-fit estimate rather than a cap; the physics narratives run to 11. Scenes 4–6 may add **at most two** from §5.2 — the pre-LN identity path (scene 5) and the temperature limits (scene 6) are the natural candidates — and each must bind to a step where the viewport shows the thing being proved.
 
 ### 5.2 Held in reserve
 
@@ -354,13 +375,15 @@ This section listed three bugs the work would expose. Each landed, verified agai
 
 | Source | What it does | Take |
 |---|---|---|
-| **Transformer Explainer** (poloclub; CHI 2026, arXiv 2408.04619; 90-participant study) | Every matrix on one purple sequential scale; self-attention view animates dot-product → scale+mask → softmax as three adjacent matrices; intermediate ops **collapsed by default**, expandable on demand; hover any cell for its value; repeated blocks collapsed, heads stacked; live GPT-2 in the browser | The three-matrix sequence (§6.4) and collapse-by-default |
+| **Transformer Explainer** (poloclub; CHI 2026, arXiv 2408.04619; N=145 preference study, N=90 three-condition quiz) | Every matrix on one purple sequential scale; self-attention view animates dot-product → scale+mask → softmax as three adjacent matrices; intermediate ops **collapsed by default**, expandable on demand; hover any cell for its value; repeated blocks collapsed, heads stacked; live GPT-2 in the browser | The three-matrix sequence (§6.4) and collapse-by-default |
 | **Bycroft, LLM Visualization** | Fully 3D walkthrough of a working GPT-style model — zoom into every layer, head and matmul | Closest prior art to what this renderer natively does; evidence the layer-stack of §6.1 is a proven form, not an invention |
 | **BertViz** | The standard attention-pattern tool (head / model / neuron views) | Also the source of the honesty caveat in §6.4 — its own docs point users at saliency methods for real attributions |
 | **3Blue1Brown, attention chapter** | The `KᵀQ` grid-of-all-dot-products framing; builds from a single query before generalizing | The scene-3 ordering: one query first, then vectorize |
-| **AnimatedLLM** (arXiv 2601.04213) | Deliberately targets an *intermediate* abstraction level, between box diagrams and full matrix detail | Precedent for the collapse/expand decision |
+| **AnimatedLLM** (arXiv 2601.04213; TeachNLP @ EACL 2026) | Deliberately targets an *intermediate* abstraction level, between box diagrams and full matrix detail | Precedent for the collapse/expand decision — **design precedent only**: it reports no controlled evaluation, so it cannot be cited as evidence that the level works |
 
 **Transferable conclusions:** collapse by default and expand on demand; show the intermediate matrices, not only the result; use real numbers; keep one visual language across the whole lesson.
+
+Two further findings from the Transformer Explainer study bear directly on §1.6 and §9. Video viewers *self-rated* their understanding as high as tool users but *scored* as low as blog readers — illusory understanding — and the one component with no interactive affordance (the MLP) scored worst of all. Read together: passive beats do not merely teach less, they leave the student confident and wrong, and the first scene that drops §1.6 will be the one the quiz catches. A two-question check per scene is cheap insurance and is the only way the lesson would ever know.
 
 ### 8.1 Source hierarchy — and what each tier may be used for
 
@@ -404,7 +427,7 @@ Following the [`scenes/special-relativity.json`](../../scenes/special-relativity
 |---|---|---|
 | 1 | Shuffle the tokens — does the output change? | Permutation equivariance; motivates positional encoding (proof 1) |
 | 2 | What happens to a softmax row if we drop `1/√d_k`? | The variance argument (proof 2) |
-| 3 | Which token will head 2 attend to? | Heads specialize differently |
+| 3 | Which token will head 2 attend to? — **needs a sentence with a predictable second role** (§11 Q6); *the cat sat on the mat* has a subject–verb head and nothing else a student could guess | Heads specialize differently |
 | 4 | What does the causal mask forbid, and why not just hide the future? | The chain-rule/parallel-training answer (§8.2) |
 
 ### 9.3 Misconception targets
@@ -432,21 +455,34 @@ Tokens as IDs → embedding lookup → the permutation problem → positional en
 **Predict/reveal 1.** **Proof 1** (permutation equivariance).
 *Manipulate:* token order · *Watch:* the vector set (unchanged), then the encoded set (changed).
 Modern delta: sinusoidal PE introduced here; RoPE previewed and deferred to scene 2.
+**Built** (#627): 10 steps.
 
 ### Scene 2 — Q, K, V
 One vector, three projections. `W_Q` shown as its column vectors and the parallelogram they span (§6.2). Rotate the query, watch which keys align.
 **Modern delta: RoPE.** **Proof 3** (relative position).
 *Manipulate:* query direction, RoPE position · *Watch:* alignment with each key; the score depending only on the gap.
+**Built** (#627): 7 steps.
 
 ### Scene 3 — Scaled dot-product attention *(the heart)*
 Raw scores → the `1/√d_k` slider → softmax → causal mask → output in the convex hull. Three heatmaps side by side (§6.4 rule 2). Then **vectorization**: one query generalizes to `QKᵀ`, shapes annotated.
 **Predict/reveal 2 and 4.** **Proofs 2, 4, 5**, plus the "not explanation" remark.
 *Manipulate:* query index, scaling, mask toggle · *Watch:* row sharpness, row sum, the output point moving inside the value hull.
+**Built** (#627): 11 steps.
 
-### Scene 4 — Multi-head → GQA
-Two heads as two subspaces with different patterns; concatenate then project by `W_O`. Then the KV-cache question and **GQA** as the answer, with the saving quantified.
-**Predict/reveal 3.** Candidate site for the **real-model beat** (§3.1).
-*Manipulate:* head selector, KV-group size · *Watch:* the pattern; the cache size.
+### 10.1 As built — where scenes 1–3 departed from the outline, and what to carry forward
+
+- **Density.** 28 steps across three scenes, against the ~25-for-six the corpus median suggested. Scenes 4–6 at the same density give a ~55-step lesson, double the median. Target **six steps per remaining scene**, which lands the lesson near 46; the way to get there is fewer beats, not thinner ones. A step is either a predict/reveal pair, a manipulate/watch pair (§1.6), or a rest beat — scene 3's "not an explanation" step is the model for the last.
+- **RoPE is in two scenes, on purpose.** The outline said "previewed and deferred". The build gave scene 1 three RoPE steps on the *embedding* — the circle, the two-frequency trajectory that does not close at 2π, and the relative-position identity with a shared-rotation control, ghost vectors and a live `|Q||K|cos θ` readout — with the "real RoPE acts on q, k after projection, never on v" caveat stated, and scene 2 then restates the identity on `q, k` with proof 3. **Keep the shared-rotation interaction** — a shared orthogonal transform with an invariant readout is the clearest statement of "only the gap survives" and is worth its step; if anything is trimmed here it is the repetition of the caveat, not the interaction. The idiom generalises: *rotate everything together, show that the number does not move* is how scene 5 should show RMSNorm leaving direction alone.
+- **The hand-built weights are labelled on every scene-3 step** via a persistent provenance card. The card also says "the pink object is a different object from this toy", which is only true when the pink i.i.d. object is on screen (one step); scope that sentence to that step.
+- **Prompts.** The lesson-level `prompt` is empty, so the colour language, the provenance note and the equivariance regime are copied into all three scene prompts, and step prompts run to 400–3500 words of capitalised prohibitions. Put the invariants in the lesson prompt once; a step prompt then says only what that step needs. A rule stated once is followed at least as well as one shouted five times, and a tutor that opens every answer with disclaimers teaches nothing.
+- **Prediction options must be mutually exclusive.** Scene 1's shuffle prediction offers "stay exactly the same set" and "come out reordered" as alternatives, and the reveal's title is *the same set, relabelled* — both are right. Use: (a) different vectors; (b) the same vector in every slot, unchanged; (c) the same vectors, moved with their tokens.
+- **Tokens are words in the toy.** One sentence that real tokenisers split subwords prevents the obvious misconception at zero cost, and belongs in scene 1's first step.
+- **Small wording debts** still on `main`: `d_k = d_model / n_heads` is a convention, not a law (Gemma-class models use `d_head = 256` at `d_model = 3072`), so say "conventionally"; `W_Q` and `W_K` "have the same image — the same little rectangle" — both are rank 2, so the image is all of `ℝ²`; the rectangle is the image of the unit square.
+
+### Scene 4 — Multi-head → shared K/V
+Two heads as two subspaces with different patterns; concatenate then project by `W_O`. Then the KV-cache question and shared K/V as the answer — **MQA on the toy, GQA stated symbolically** (§3.2), with the saving quantified as `n_heads / n_kv`.
+**Predict/reveal 3** — only if §11 Q6 gives head 2 a guessable role; otherwise a manipulate/watch beat. Candidate site for the **real-model beat** (§3.1).
+*Manipulate:* head selector, `n_kv` (2 → 1) · *Watch:* the pattern; the cache size.
 
 ### Scene 5 — The block
 The residual stream as the stack's vertical axis, with sublayers writing increments. Post-LN vs pre-LN. LayerNorm vs RMSNorm. FFN as a genuine dense layer (§6.1 — the one place the neuron picture is correct), then SwiGLU.
@@ -461,10 +497,12 @@ Repeat the block; representations drift with depth. Final norm → unembedding �
 ## 11. Open questions
 
 1. ~~**`colorExpr` PR scope**~~ — **resolved.** `colorExpr` was abandoned in favour of the `tensor` composite element (#622), and all three §7.1a bugs landed with it and #623. No renderer prerequisite remains; the lesson is unblocked.
-2. **The `transformer` domain library** (§12) — its own PR, or bundled with the lesson?
+2. ~~**The `transformer` domain library** (§12) — its own PR, or bundled with the lesson?~~ — **resolved:** bundled, in #627. `docs.json` advertises every exported function and `check_transformer_domain.py` fails if the two drift.
 3. **Build the softmax/temperature sibling lesson first?** Scene 3 and scene 6 both lean on it.
 4. **`proofs/domains/ml/`** — create the domain now with proofs 2 and 3, or after the lesson ships?
 5. **Real-model beat placement** — scene 4 (next to multi-head patterns) or scene 6 (as the closing reality check)?
+6. **The toy sentence for scene 4.** Prediction 3 needs a head role the student can guess, and *the cat sat on the mat* has only subject–verb. The candidates are a coreference sentence (Alammar's *it → animal / street*, flipped by one word) and an adjective→noun sentence (3Blue1Brown). Changing the sentence changes every pinned number, so this is decided **before** scene 4 is built — either scene 4 introduces a second sentence for head 2 alone, or it keeps the sentence and drops prediction 3 for a manipulate/watch beat.
+7. **Where NoPE is said** (§2.2) — at scene 1's reveal, as the qualifier on "the reason PE has to exist", or in scene 3 when the mask retires the equivariance caveat. One place, not both.
 
 ---
 
