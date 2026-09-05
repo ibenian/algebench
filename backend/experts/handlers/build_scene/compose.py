@@ -383,6 +383,13 @@ def _functions(proposed, slider_ids: set[str]) -> list[dict]:
     improvement if getting it wrong is loud.
     """
     wanted = [f for f in (proposed or []) if isinstance(f, ProposedFunction)]
+    # Blank stanzas are "no proposal" -- the loop below skips them -- so they
+    # must not count toward the cap either. Some adapters pad the list out to a
+    # fixed length with empties, and counting those refused a response that
+    # actually declared only a handful of real functions.
+    wanted = [f for f in wanted
+              if (getattr(f, "name", "") or "").strip()
+              or (getattr(f, "expr", "") or "").strip()]
     if len(wanted) > MAX_FUNCTIONS:
         # REFUSED, never truncated. Elements call these by name, so dropping the
         # tail would leave those calls unresolvable — silently, at evaluation

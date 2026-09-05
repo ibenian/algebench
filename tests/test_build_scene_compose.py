@@ -1336,6 +1336,19 @@ def test_a_function_may_call_one_declared_later():
     assert [f["name"] for f in scene.functions] == ["outer", "inner"]
 
 
+def test_blank_stanzas_do_not_count_toward_the_cap():
+    """Empty entries are "no proposal", so they must not trigger the refusal.
+
+    Some adapters pad `functions` out to a fixed length with blanks. Counting
+    those refused a response that had declared only a handful of real ones —
+    and the refusal names a limit the model did not actually exceed, so being
+    re-asked with it teaches the wrong lesson.
+    """
+    padded = ([_fn(name=f"f{i}", expr="1") for i in range(3)]
+              + [_fn(name="", expr="") for _ in range(MAX_FUNCTIONS * 2)])
+    assert len(_with_fns(padded).functions) == 3
+
+
 def test_no_functions_leaves_the_key_off():
     """41 of 84 corpus scenes carry no `functions`, and an empty list would be a
     new key in every scene the builder writes."""
