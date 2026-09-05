@@ -49,6 +49,7 @@ import re
 from typing import Optional, Union
 
 from backend.expression_fields import carries_expressions
+from backend.js_only import JS_ONLY_ALTERNATIVES
 from backend.mathjs_extensions import CORE_MATH_NAMES, EXTENSION_NAMES
 from backend.model.lesson import Element, Scene, Step
 
@@ -344,39 +345,27 @@ def _curve(el: ProposedElement, body: dict, where: str) -> None:
         body[axis] = str(value)
 
 
-#: Unmistakably JavaScript inside a function BODY. Deliberately narrower than a
-#: parser and deliberately STRICTER than the renderer, which accepts JS here when
-#: the reader has granted the scene trust — `gradient-descent-terrain` declares a
-#: function whose body is a `let`/`for`/`return` IIFE, and it works.
+#: JavaScript in a function BODY, refused before it can reach a scene.
 #:
-#: The builder still may not write one. A scene it authors should render for a
-#: reader who granted nothing, and JS in a function body is the one place where
-#: that failure is invisible: an untrusted JS body compiles to `0`, so every call
-#: to it returns 0 and the scene draws confident, wrong geometry.
+#: `JS_ONLY_ALTERNATIVES` is a verbatim mirror of `_JS_ONLY_RE` in src/expr.ts,
+#: held there by `tests/test_js_only_sync.py`. An earlier revision hand-wrote it
+#: from memory and missed fifteen tokens plus the backtick form of bracket
+#: access — every one a body that passed compose and became `0` in the browser,
+#: which is the failure this guard exists to stop.
 #:
-#: `===`, `||` and `&&` earn their places by observation, not theory. NONE of
-#: them is in `_JS_ONLY_RE`, so none is recognised as JS at all — math.js simply
-#: fails to parse them and `compileExpr` substitutes `0`, which is a function
-#: that returns 0 forever and a scene that draws confident, wrong geometry.
-#:
-#: Both were watched happening. A live dot-product scene guarded a divide by zero
-#: with `(ax*ax + ay*ay === 0) ? 0 : …` in four separate coordinates and drew its
-#: projection at the origin. Given `functions`, the same ask produced
-#: `(mag_a(...) == 0 || mag_b(...) == 0) ? 0 : …` — `==` learned, `||` not, and
-#: math.js has `or`/`and` instead.
-#: METHOD CALLS and BRACKET ACCESS come straight from `_JS_ONLY_RE`, which
-#: already treats both as JavaScript — so `x.toFixed(2)` slipped compose and then
-#: compiled to `0` in the browser, which is the silent failure this whole guard
-#: exists to stop. Also observed: given `functions`, one live answer wrote
-#: `{dotProduct().toFixed(2)}`.
-#:
-#: The leading DOT is load-bearing. `toFixed` is one of this project's own math.js
-#: extensions, so `toFixed(x, 2)` is legal and must stay legal; only `.toFixed(`
-#: — the JS method on a value — is not.
-_JS_IN_BODY = re.compile(
-    r"=>|\bMath\.|\blet\b|\bconst\b|\bvar\b|\breturn\b|\bfunction\b|\bif\b"
-    r"|\bfor\s*\(|\bwhile\s*\(|===|!==|\|\||&&|\$\{|;"
-    r"|\.[A-Za-z_]\w*\s*\(|\[\s*['\"]")
+#: STRICTER than the renderer on purpose. It accepts a JS body when the reader
+#: has granted the scene trust — `gradient-descent-terrain` ships a `let`/`for`
+#: IIFE and works. A scene the BUILDER authors must render for a reader who
+#: granted nothing, and untrusted JS compiles to `0`: a function returning 0
+#: forever, and confident, wrong geometry.
+_JS_IN_BODY = re.compile("|".join(JS_ONLY_ALTERNATIVES))
+
+#: A semicolon is the one refusal that is NOT about JavaScript, so it is not in
+#: `_JS_ONLY_RE` and must not be: `[1,2;3,4]` is a valid math.js matrix literal
+#: and `a; b` a valid block. It is refused HERE because a scene function body is
+#: ONE expression — a block would evaluate to a ResultSet rather than a number,
+#: and a semicolon means the model wrote a statement.
+_SEMICOLON_IN_BODY = re.compile(r";")
 
 
 def _functions(proposed, slider_ids: set[str]) -> list[dict]:
@@ -449,7 +438,7 @@ def _functions(proposed, slider_ids: set[str]) -> list[dict]:
                 f"to it fails.")
         # The same LaTeX test every coordinate gets, and for the same reason.
         _expression(expr, f"{where} expr")
-        if _JS_IN_BODY.search(expr):
+        if _JS_IN_BODY.search(expr) or _SEMICOLON_IN_BODY.search(expr):
             raise ComposeError(
                 f"{where}: `expr` is JavaScript, not math.js. Write ONE math.js "
                 f"expression — no `let`, `return`, `;` or `=>`. math.js spells "

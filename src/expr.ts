@@ -124,11 +124,19 @@ _mathjs.import({
 }, { override: true });
 
 // Detects expressions that require native JS execution.
+// `===`, `!==`, `||`, `&&` and `${` are JavaScript spellings math.js does not
+// parse: it has `==`/`!=`, `or`/`and`, and no template literals. Without them a
+// scene written in JS style fell through to `_mathjs.compile`, threw, and was
+// substituted by `compile('0')` — silently, confidently zero, with no trust
+// prompt and no warning. Routing them here puts them on the same footing as
+// `let` or `=>`: refused untrusted, honoured once the reader trusts the scene.
+// NOT `;`: that is valid math.js — `[1,2;3,4]` is a matrix literal and `a; b` a
+// block — so listing it would silently zero working expressions.
 // \.([a-zA-Z_]\w*)\s*\( catches method calls like .toFixed( .constructor( —
 // prevents prototype-chain escapes (e.g. (0).constructor.constructor('return fetch(...)')()).
 // Decimal numbers (3.14) are safe because digits follow the dot, not letters.
 // \[\s*['"`] catches bracket-notation property access (e.g. obj['constructor']).
-export const _JS_ONLY_RE = /\blet\b|\bconst\b|\bvar\b|\breturn\b|\bfor\s*\(|\bwhile\s*\(|=>|\bfunction\b|\bMath\.|\.([a-zA-Z_]\w*)\s*\(|\bnew\b|\bthis\b|\btypeof\b|\binstanceof\b|\bdelete\b|\bclass\b|\basync\b|\bawait\b|\byield\b|\bthrow\b|\btry\b|\bcatch\b|\bimport\b|\bdebugger\b|\bif\b|\belse\b|\bswitch\b|\bcase\b|\bdo\b|\bbreak\b|\bcontinue\b|\bwith\s*\(|\bvoid\b|\[\s*['"`]/;
+export const _JS_ONLY_RE = /\blet\b|\bconst\b|\bvar\b|\breturn\b|\bfor\s*\(|\bwhile\s*\(|=>|\bfunction\b|\bMath\.|\.([a-zA-Z_]\w*)\s*\(|\bnew\b|\bthis\b|\btypeof\b|\binstanceof\b|\bdelete\b|\bclass\b|\basync\b|\bawait\b|\byield\b|\bthrow\b|\btry\b|\bcatch\b|\bimport\b|\bdebugger\b|\bif\b|\belse\b|\bswitch\b|\bcase\b|\bdo\b|\bbreak\b|\bcontinue\b|\bwith\s*\(|\bvoid\b|\[\s*['"`]|===|!==|\|\||&&|\$\{/;
 
 // Populated from _MATHJS_EXTENSIONS — do not add helpers here directly.
 const _EXPR_HELPERS: Record<string, unknown> = { ..._MATHJS_EXTENSIONS };

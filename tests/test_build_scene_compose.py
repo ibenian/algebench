@@ -1250,12 +1250,20 @@ def test_a_body_that_is_javascript_is_refused():
     # live — given `functions`, the builder learned `==` and still wrote
     # `(mag_a(..) == 0 || mag_b(..) == 0) ? 0 : ..`.
     for body in ("(()=>{let x=1; return x;})()", "Math.max(a, b)",
+                 # NOT math.js at all, so `compile` throws and `compileExpr`
+                 # substitutes 0 without the JS fallback being considered. All
+                 # three watched live.
                  "a === 0 ? 0 : 1", "a == 0 || b == 0", "a > 0 && b > 0", "${x}",
-                 # METHOD CALLS and BRACKET ACCESS, both of which `_JS_ONLY_RE`
-                 # already treats as JS — so they slipped compose and compiled to
-                 # `0` in the browser. Observed: a live answer wrote
-                 # `{dotProduct().toFixed(2)}`.
-                 "x.toFixed(2)", "a.constructor(1)", "o['constructor']"):
+                 # Everything below comes from `_JS_ONLY_RE` via the mirror in
+                 # backend/js_only.py. An earlier hand-written guard had the
+                 # first two and none of the rest — fifteen tokens and the
+                 # BACKTICK form of bracket access all passed compose and became
+                 # `0` in the browser.
+                 "x.toFixed(2)", "a.constructor(1)", "o['constructor']",
+                 'o["constructor"]', "o[`constructor`]",
+                 "new Date()", "this", "typeof x", "x instanceof y",
+                 "class C", "await f()", "try", "catch", "throw x",
+                 "import x", "void 0", "delete x", "switch", "do", "break"):
         with pytest.raises(ComposeError, match="JavaScript, not math.js"):
             _with_fns([_fn(name="k", expr=body)])
 
