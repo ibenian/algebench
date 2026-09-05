@@ -683,6 +683,11 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
                 side: THREE.DoubleSide,
                 depthWrite: false,
             });
+            // Disposing a material does not dispose its map. The loader tears a
+            // mesh down by disposing geometry and material, so ride that event
+            // to free the texture too; otherwise every step that adds and
+            // removes a text-bearing tensor leaks one GPU texture.
+            qMat.addEventListener('dispose', () => tex.dispose());
             const qMesh = new THREE.Mesh(qGeom, qMat);
             qMesh.userData.targetOpacity = opacity;
             qMesh.userData.ignorePlaneOpacity = ignoresPlaneOpacity;

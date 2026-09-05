@@ -8363,6 +8363,7 @@ function renderTensor(el, _view) {
 				side: THREE.DoubleSide,
 				depthWrite: false
 			});
+			qMat.addEventListener("dispose", () => tex.dispose());
 			const qMesh = new THREE.Mesh(qGeom, qMat);
 			qMesh.userData.targetOpacity = opacity;
 			qMesh.userData.ignorePlaneOpacity = ignoresPlaneOpacity;

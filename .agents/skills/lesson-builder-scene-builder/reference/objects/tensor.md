@@ -151,8 +151,11 @@ Rules for cell text:
 - Plain text only, no KaTeX. Use `toFixed(value, 2)`, `concat(...)`, or a domain function that
   returns a string.
 - Text colour is automatic per cell — dark on light cells, light on dark — unless `textColor` is
-  set. The canvas is redrawn only when some string, size or colour changed, so a static matrix with
-  static text costs nothing after the first frame.
+  set (a hex string or an `[r,g,b]` array; `"auto"` is the default spelled out).
+- Cost: `textExpr` is evaluated once per cell per frame, like `valueExpr`, plus a string compare.
+  The expensive part — redrawing the canvas and re-uploading the texture — happens only when some
+  string, size or colour actually changed, so a matrix whose text is not moving pays the evaluations
+  and nothing else. A text channel is never free the way literal `values` are.
 
 ## Axis labels and titles
 
