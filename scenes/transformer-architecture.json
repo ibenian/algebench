@@ -1678,12 +1678,11 @@
                 [-6, 6, -0.02]
               ],
               "color": "#4466aa",
-              "opacity": 0.16,
-              "gradient": {"from": "#22375f", "to": "#4b78c4", "direction": "y"},
+              "opacity": 0.18,
               "outlineColor": "#6f93d6",
               "outlineWidth": 1.5,
               "outlineOpacity": 0.5,
-              "shader": {"type": "standard", "roughness": 0.6, "metalness": 0.1, "emissive": "#101f38", "depthWrite": false, "ignorePlaneOpacity": true},
+              "shader": {"shininess": 70, "emissive": "#1b2c4d", "specular": "#9fc0ff", "depthWrite": false, "ignorePlaneOpacity": true},
               "renderOrder": -1
             },
             {
