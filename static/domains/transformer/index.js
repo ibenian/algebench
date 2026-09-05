@@ -134,7 +134,7 @@
         // already carried a sinusoidal offset -- an operation no model performs.
         const peOn = ropeOn ? 0 : _getSlider('s1_pe', 1);
         const scale = _getSlider('s3_scale', 1);
-        const maskOn = _getSlider('s3_mask', 1) >= 0.5 ? 1 : 0;
+        const maskOn = _getSlider('s3_mask', 0) >= 0.5 ? 1 : 0;
         const maskAfter = _getSlider('s3_maskafter', 0) >= 0.5 ? 1 : 0;
 
         // Which source token sits at each slot.
@@ -522,7 +522,7 @@
     }
 
     function tfMaskVal(i, j) {
-        if (_getSlider('s3_mask', 1) < 0.5) return 1;
+        if (_getSlider('s3_mask', 0) < 0.5) return 1;
         return _clampIdx(j, N - 1) <= _clampIdx(i, N - 1) ? 1 : 0;
     }
 

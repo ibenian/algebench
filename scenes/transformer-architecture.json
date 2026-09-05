@@ -1099,6 +1099,7 @@
             }
           ],
           "sliders": [
+            {"id": "s1_shuffle", "label": "shuffle tokens", "min": 0, "max": 1, "step": 1, "default": 0, "reset": true},
             {"id": "s1_pe", "label": "PE strength", "min": 0, "max": 1, "step": 0.05, "default": 0}
           ],
           "info": [
@@ -2437,9 +2438,10 @@
             {
               "id": "s2_txt_norot",
               "type": "text",
-              "text": "never rotated",
+              "text": "$v$ — drawn fixed",
               "position": [6.5, -6.3, 0],
-              "color": "#66bb6a"
+              "color": "#66bb6a",
+              "prompt": "RoPE is applied to Q and K only, never to V. This arrow is drawn static BY CONSTRUCTION -- it is a statement, not a demonstration: it could not move whatever the toggle did. The real evidence is in the domain, where v_2 is bit-identical with RoPE on and off, and check_transformer_domain.py pins that. Rotating V would be a genuine bug: the score would still depend only on the positional gap, but the OUTPUT would swing with absolute position."
             },
             {
               "id": "s2_curve_circ_q",
@@ -2801,8 +2803,7 @@
             "target": [-0.4, 4.2, 0.0]
           },
           "sliders": [
-            {"id": "s3_scale", "label": "scaling exponent (0 = none, 1 = $1/\\sqrt{d_k}$)", "min": 0, "max": 1, "step": 0.01, "default": 0},
-            {"id": "s3_mask", "label": "causal mask on/off", "min": 0, "max": 1, "step": 1, "default": 0}
+            {"id": "s3_scale", "label": "scaling exponent (0 = none, 1 = $1/\\sqrt{d_k}$)", "min": 0, "max": 1, "step": 0.01, "default": 0}
           ],
           "add": [
             {
@@ -2831,7 +2832,7 @@
                   "color": "#9e9e9e"
                 }
               ],
-              "prompt": "The six raw scores for query 3 ('on'): [2.2695, 2.4153, 1.8868, 3.7309, 1.8215, 3.2084]. No mask yet - the causal mask is introduced four steps from here, so every key is visible. Deliberately grey - grey means an un-revealed prediction candidate in this lesson. Do NOT tell the student what scaling does to this row."
+              "prompt": "The six raw scores for query 3 ('on'): [2.2695, 2.4153, 1.8868, 3.7309, 1.8215, 3.2084]. No mask yet - the causal mask is introduced three steps from here, so every key is visible. Deliberately grey - grey means an un-revealed prediction candidate in this lesson. Do NOT tell the student what scaling does to this row."
             },
             {
               "id": "s3_tensor_on_soft_n",
