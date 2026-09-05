@@ -342,8 +342,11 @@
           "description": "TENSOR ONLY. Which edge of its slot a cell shrunk by 'widthExpr' / 'heightExpr' keeps. 'center' (default) grows and shrinks about the slot centre; 'bottom', 'top', 'left', 'right' pin that edge, and a pair such as 'bottom-left' pins both. A full-size cell sits in the same place whatever the anchor. \"heightExpr\": \"value\" with \"anchor\": \"bottom\" turns a row of cells into a bar chart standing on its lattice — the way to show a distribution of values."
         },
         "textColor": {
-          "$ref": "#/$defs/color",
-          "description": "TENSOR ONLY. Colour for 'textExpr' text. Default 'auto': near-black on light cells, near-white on dark ones, decided per cell from its painted colour."
+          "oneOf": [
+            { "$ref": "#/$defs/color" },
+            { "type": "string", "enum": ["auto"] }
+          ],
+          "description": "TENSOR ONLY. Colour for 'textExpr' text: a hex string, an [r,g,b] array in 0-1, or 'auto'. Default (and 'auto'): near-black on light cells, near-white on dark ones, decided per cell from its painted colour."
         },
         "cellSize": {
           "type": "number",

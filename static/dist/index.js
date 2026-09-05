@@ -7941,6 +7941,22 @@ function parseAnchor(raw) {
 	else if (word === "top") out.v = 1;
 	return out;
 }
+/**
+* An authored `textColor` as a canvas fill style, or null for "decide per
+* cell". Accepts everything `$defs/color` does -- a hex string or an [r,g,b]
+* tuple in 0..1 -- plus the explicit `"auto"`, which means the same as
+* leaving it out. Goes through parseColor so the two spellings cannot drift.
+*/
+function resolveTextColor(raw) {
+	if (raw === void 0 || raw === null) return null;
+	if (typeof raw === "string") {
+		const t = raw.trim();
+		if (!t || t.toLowerCase() === "auto") return null;
+	} else if (!Array.isArray(raw)) return null;
+	const rgb = parseColor(raw);
+	const ch = (v) => Math.round(Math.max(0, Math.min(1, Number(v) || 0)) * 255);
+	return `rgb(${ch(rgb[0])}, ${ch(rgb[1])}, ${ch(rgb[2])})`;
+}
 /** Near-black or near-white, whichever reads against the cell's colour. */
 function contrastTextColor(rgb) {
 	return .2126 * (rgb[0] ?? 0) + .7152 * (rgb[1] ?? 0) + .0722 * (rgb[2] ?? 0) > .45 ? "#101418" : "#f4f6f8";
@@ -8183,7 +8199,7 @@ function renderTensor(el, _view) {
 	let heightFn = compileOpt(heightExprString, "heightExpr");
 	let textFn = compileOpt(textExprString, "textExpr");
 	const hasSizeExpr = !!(widthFn || heightFn);
-	const textColorFixed = typeof el.textColor === "string" && el.textColor.trim() && el.textColor.trim() !== "auto" ? el.textColor.trim() : null;
+	const textColorFixed = resolveTextColor(el.textColor);
 	const opacity = typeof el.opacity === "number" && isFinite(el.opacity) ? Math.max(0, Math.min(1, el.opacity)) : .95;
 	const sh = el.shader || {};
 	const vertsPerCell = QUAD_CORNERS.length;

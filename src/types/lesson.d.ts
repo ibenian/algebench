@@ -77,6 +77,10 @@ export type Vec3Number6 = [number, number, number];
  */
 export type Vec3Number7 = [number, number, number];
 /**
+ * Color as hex string '#rrggbb' (or '#rrggbbaa' with alpha) or RGB array [r,g,b] with components 0-1.
+ */
+export type Color = string | [number, number, number];
+/**
  * Position in data space as [x,y,z]. Used by point, sphere, cylinder, text.
  *
  * @minItems 3
@@ -711,9 +715,9 @@ export interface Element {
    */
   anchor?: string;
   /**
-   * TENSOR ONLY. Colour for 'textExpr' text. Default 'auto': near-black on light cells, near-white on dark ones, decided per cell from its painted colour.
+   * TENSOR ONLY. Colour for 'textExpr' text: a hex string, an [r,g,b] array in 0-1, or 'auto'. Default (and 'auto'): near-black on light cells, near-white on dark ones, decided per cell from its painted colour.
    */
-  textColor?: string | [number, number, number];
+  textColor?: Color | 'auto';
   /**
    * TENSOR ONLY. Data-space pitch between cell centers. Default 1.
    */
@@ -911,11 +915,11 @@ export interface Element {
      */
     direction?: 'x' | 'y' | 'z';
     /**
-     * Start color (t=0) for simple two-color gradient.
+     * Color as hex string '#rrggbb' (or '#rrggbbaa' with alpha) or RGB array [r,g,b] with components 0-1.
      */
     from?: string | [number, number, number];
     /**
-     * End color (t=1) for simple two-color gradient.
+     * Color as hex string '#rrggbb' (or '#rrggbbaa' with alpha) or RGB array [r,g,b] with components 0-1.
      */
     to?: string | [number, number, number];
     /**
@@ -927,7 +931,7 @@ export interface Element {
        */
       t: number;
       /**
-       * Color at this stop.
+       * Color as hex string '#rrggbb' (or '#rrggbbaa' with alpha) or RGB array [r,g,b] with components 0-1.
        */
       color: string | [number, number, number];
       [k: string]: unknown;
@@ -938,7 +942,7 @@ export interface Element {
     segments?: number;
   };
   /**
-   * Outline color for polygons. Defaults to the element color.
+   * Color as hex string '#rrggbb' (or '#rrggbbaa' with alpha) or RGB array [r,g,b] with components 0-1.
    */
   outlineColor?: string | [number, number, number];
   /**
@@ -1198,7 +1202,7 @@ export interface FillRegion {
    */
   id?: string;
   /**
-   * Fill color. Defaults to the parent curve's color.
+   * Color as hex string '#rrggbb' (or '#rrggbbaa' with alpha) or RGB array [r,g,b] with components 0-1.
    */
   color?: string | [number, number, number];
   /**
@@ -1226,7 +1230,7 @@ export interface FillRegion {
    */
   outlineWidth?: number | string;
   /**
-   * Outline color. Defaults to the fill color.
+   * Color as hex string '#rrggbb' (or '#rrggbbaa' with alpha) or RGB array [r,g,b] with components 0-1.
    */
   outlineColor?: string | [number, number, number];
   /**

@@ -232,3 +232,17 @@ test('parseAnchor reads an edge, a pair, or nothing', async () => {
     assert.deepEqual(parseAnchor('Top Right'), { h: 1, v: 1 });
     assert.deepEqual(parseAnchor(42), { h: 0, v: 0 });
 });
+
+test('resolveTextColor accepts every spelling the schema allows, and auto means per-cell', async () => {
+    const { resolveTextColor } = await import('/objects/tensor.js');
+    assert.equal(resolveTextColor(undefined), null);
+    assert.equal(resolveTextColor('auto'), null);
+    assert.equal(resolveTextColor(' AUTO '), null);
+    assert.equal(resolveTextColor(''), null);
+    assert.equal(resolveTextColor('#ffffff'), 'rgb(255, 255, 255)');
+    assert.equal(resolveTextColor('#ff7043'), 'rgb(255, 112, 67)');
+    // The [r,g,b] tuple form the schema's colour type permits was silently
+    // ignored before; it must mean the same as the hex spelling.
+    assert.equal(resolveTextColor([1, 0.4392, 0.2627]), 'rgb(255, 112, 67)');
+    assert.equal(resolveTextColor(42), null);
+});
