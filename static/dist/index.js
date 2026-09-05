@@ -8378,7 +8378,7 @@ function renderTensor(el, _view) {
 			const qMesh = new THREE.Mesh(qGeom, qMat);
 			qMesh.userData.targetOpacity = opacity;
 			qMesh.userData.ignorePlaneOpacity = ignoresPlaneOpacity;
-			qMesh.renderOrder = serial + 1;
+			qMesh.renderOrder = el.renderOrder !== void 0 ? serial + 1 : tensorState._planeMeshSerial++;
 			tensorState.three.scene.add(qMesh);
 			tensorState.planeMeshes.push(qMesh);
 			textLayer = {

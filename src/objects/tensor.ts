@@ -715,7 +715,10 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
             const qMesh = new THREE.Mesh(qGeom, qMat);
             qMesh.userData.targetOpacity = opacity;
             qMesh.userData.ignorePlaneOpacity = ignoresPlaneOpacity;
-            qMesh.renderOrder = serial + 1;
+            // One slot after the cells. With an authored renderOrder the author
+            // owns the numbering; otherwise reserve the slot from the shared
+            // counter so the next plane element cannot land on the same value.
+            qMesh.renderOrder = el.renderOrder !== undefined ? serial + 1 : tensorState._planeMeshSerial++;
             tensorState.three.scene.add(qMesh);
             tensorState.planeMeshes.push(qMesh);
             textLayer = { canvas, ctx, tex, mesh: qMesh, px, lastKey: '' };
