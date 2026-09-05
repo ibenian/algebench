@@ -699,25 +699,25 @@ export interface Element {
    */
   values?: unknown[];
   /**
-   * TENSOR ONLY. Math.js expression giving one cell's WIDTH as a fraction of 'cellSize' (0–1), evaluated per cell with 'row', 'col', 'idx' and 'value' (that cell's number) bound. The cell stays centred on its slot. Default: 1 − gap. Anything non-numeric keeps the default for that cell.
+   * TENSOR ONLY. Math.js expression giving one cell's WIDTH as a fraction of 'cellSize' (0-1), evaluated per cell every frame with 'row', 'col', 'idx' and 'value' (that cell's own number, from 'valueExpr' or 'values') bound. The cell stays centred on its lattice slot, so shrinking it reads as a bar or a dot at the slot. Default 1 - gap. A non-numeric result keeps the default for that cell. Colour is still driven by the value through 'colorMap'; this adds a second channel, it does not replace the first. Example: "sqrt(value)".
    */
   widthExpr?: string;
   /**
-   * TENSOR ONLY. Math.js expression giving one cell's HEIGHT as a fraction of 'cellSize' (0–1), same scope as 'widthExpr'. Width and height are independent so a cell can be a bar in either direction.
+   * TENSOR ONLY. Math.js expression giving one cell's HEIGHT as a fraction of 'cellSize' (0-1), same scope and default as 'widthExpr'. Width and height are independent, so "heightExpr": "value" alone turns a row of cells into a bar chart sitting on its lattice.
    */
   heightExpr?: string;
   /**
-   * TENSOR ONLY. Math.js expression giving the text drawn INSIDE each cell, same scope as 'widthExpr'. Rendered on the lattice plane as geometry, sized to fit the cell's current extent; plain text only, no KaTeX. An empty string draws nothing.
+   * Math.js expression for dynamic text content. Evaluated each frame; the rounded integer result replaces '%d' in textFormat. Example: "lambda * 100".
    */
   textExpr?: string;
   /**
-   * TENSOR ONLY. Which edge of its slot a cell shrunk by 'widthExpr'/'heightExpr' keeps: 'center' (default), 'bottom', 'top', 'left', 'right', or a pair such as 'bottom-left'. 'bottom' with 'heightExpr' is a bar chart on the lattice.
+   * TENSOR ONLY. Which edge of its slot a cell shrunk by 'widthExpr' / 'heightExpr' keeps. 'center' (default) grows and shrinks about the slot centre; 'bottom', 'top', 'left', 'right' pin that edge, and a pair such as 'bottom-left' pins both. A full-size cell sits in the same place whatever the anchor. "heightExpr": "value" with "anchor": "bottom" turns a row of cells into a bar chart standing on its lattice — the way to show a distribution of values.
    */
   anchor?: string;
   /**
-   * TENSOR ONLY. Colour for 'textExpr' text. Default 'auto': near-black or near-white, whichever reads against each cell's colour.
+   * TENSOR ONLY. Colour for 'textExpr' text. Default 'auto': near-black on light cells, near-white on dark ones, decided per cell from its painted colour.
    */
-  textColor?: string;
+  textColor?: string | [number, number, number];
   /**
    * TENSOR ONLY. Data-space pitch between cell centers. Default 1.
    */
@@ -887,10 +887,6 @@ export interface Element {
    * Text content for 'text' type elements. Example: "Direction changed!".
    */
   text?: string;
-  /**
-   * Math.js expression for dynamic text content. Evaluated each frame; the rounded integer result replaces '%d' in textFormat. Example: "lambda * 100".
-   */
-  textExpr?: string;
   /**
    * Format string for textExpr output. Use '%d' as placeholder for the evaluated integer. Supports KaTeX. Example: "$%d\\;\\text{nm}$". Default: "%d".
    */
