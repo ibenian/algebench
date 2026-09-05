@@ -627,9 +627,11 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     }
     let textLayer: TextLayer | null = null;
     if (textFn) {
-        // Pixels per cell pitch: enough for a short number to be crisp, capped
-        // so a big lattice still fits a 2048 texture.
-        const px = Math.max(24, Math.min(128, Math.floor(2048 / Math.max(rows, cols))));
+        // Pixels per cell pitch: enough for a short number to be crisp, and
+        // capped so the whole canvas never exceeds 2048 on a side. The cap
+        // wins over crispness: past ~85 cells a side the text is too small to
+        // read anyway, and an oversized texture is a real memory cost.
+        const px = Math.max(1, Math.min(128, Math.floor(2048 / Math.max(rows, cols))));
         const canvas = document.createElement('canvas');
         canvas.width = cols * px;
         canvas.height = rows * px;

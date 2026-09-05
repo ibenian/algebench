@@ -8296,7 +8296,7 @@ function renderTensor(el, _view) {
 	tensorState.planeMeshes.push(mesh);
 	let textLayer = null;
 	if (textFn) {
-		const px = Math.max(24, Math.min(128, Math.floor(2048 / Math.max(rows, cols))));
+		const px = Math.max(1, Math.min(128, Math.floor(2048 / Math.max(rows, cols))));
 		const canvas = document.createElement("canvas");
 		canvas.width = cols * px;
 		canvas.height = rows * px;
