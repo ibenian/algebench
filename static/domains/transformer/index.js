@@ -516,7 +516,11 @@
      *  |proj| * |k_j| is exactly the score. Returns 0 for a zero-length key,
      *  where the projection is undefined and there is nothing to draw. */
     function tfProjQK(d, angleDeg, j) {
-        const q0 = tfQProbe(0, angleDeg), q1 = tfQProbe(1, angleDeg);
+        // One rotation, as tfScoreProbe does. Two tfQProbe calls meant two
+        // _probeVec builds -- two slider reads and two rotations -- and the
+        // scene evaluates this per component, so it doubled on a per-frame path.
+        const q = _probeVec(angleDeg);
+        const q0 = q[0], q1 = q[1];
         const k0 = tfK(j, 0), k1 = tfK(j, 1);
         const kk = k0 * k0 + k1 * k1;
         if (kk === 0) return 0;
