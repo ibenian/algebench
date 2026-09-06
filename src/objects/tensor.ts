@@ -678,12 +678,12 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
 
     // ── Axes, read once. `axes[k]` describes `shape[k]`; the last dimension
     // runs horizontally and the one before it vertically, matching the layout.
-    // Two ways to draw them: `axisLabels: "screen"` (default) makes HTML decal
-    // labels that face the camera; `"plane"` draws them on the same canvas as
-    // the cell text, in margin bands around the lattice, so they tilt and
-    // occlude with the cells. ──
+    // Two ways to draw them: `axisLabels: "plane"` (default) draws them on the
+    // same canvas as the cell text, in margin bands around the lattice, so
+    // they tilt and occlude with the cells; `"screen"` makes HTML decal labels
+    // that face the camera, for a lattice read only face-on. ──
     const axes = Array.isArray(el.axes) ? (el.axes as AxisSpec[]) : [];
-    const axisPlane = el.axisLabels === 'plane';
+    const axisPlane = el.axisLabels !== 'screen';
     const hAxisIdx = dims.length - 1;
     const vAxisIdx = dims.length - 2;
     const defaultLabelColor = '#aabbcc';

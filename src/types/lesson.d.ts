@@ -711,7 +711,7 @@ export interface Element {
    */
   heightExpr?: string;
   /**
-   * TENSOR ONLY. How 'axes' labels and titles are drawn. 'screen' (default): HTML labels that always face the camera, like every other label. 'plane': drawn on the lattice plane itself, in margin bands beside and above the cells, the same way 'textExpr' cell text is -- they tilt, scale and occlude with the lattice and never pile up with screen labels. Plain text only in plane mode (LaTeX is reduced to its plain reading: 'key $j$' becomes 'key j').
+   * TENSOR ONLY. How 'axes' labels and titles are drawn. 'plane' (default): drawn on the lattice plane itself, in margin bands beside and above the cells, the same way 'textExpr' cell text is -- they tilt, scale and occlude with the lattice and never pile up with screen labels. 'screen': HTML labels that always face the camera, like every other label; use it for a lattice that is only ever read face-on and needs KaTeX in its labels. Plane mode is plain text (LaTeX is reduced to its plain reading: 'key $j$' becomes 'key j').
    */
   axisLabels?: 'screen' | 'plane';
   /**

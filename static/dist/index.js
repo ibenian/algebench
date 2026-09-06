@@ -8381,7 +8381,7 @@ function renderTensor(el, _view) {
 	tensorState.three.scene.add(mesh);
 	tensorState.planeMeshes.push(mesh);
 	const axes = Array.isArray(el.axes) ? el.axes : [];
-	const axisPlane = el.axisLabels === "plane";
+	const axisPlane = el.axisLabels !== "screen";
 	const hAxisIdx = dims.length - 1;
 	const vAxisIdx = dims.length - 2;
 	const defaultLabelColor = "#aabbcc";
