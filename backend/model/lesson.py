@@ -63,7 +63,7 @@ from __future__ import annotations
 
 from typing import Annotated, Literal, Optional, Union
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, model_validator
 
 # ── Positional aliases (mirroring the schema's $defs) ────────────────────────
 #
@@ -90,6 +90,8 @@ def _integral(v):
 #: model lossy against real lessons.
 IntegralNum = Annotated[Union[int, float], BeforeValidator(_integral)]
 Vec3Number = Annotated[list[Num], Field(min_length=3, max_length=3)]
+#: A chart's plot-area size, `[w, h]`, both positive.
+Size2 = Annotated[list[Annotated[Num, Field(gt=0)]], Field(min_length=2, max_length=2)]
 Vec3 = Annotated[list[Union[Num, str]], Field(min_length=3, max_length=3)]
 Range3D = Annotated[
     list[Annotated[list[Num], Field(min_length=2, max_length=2)]],
@@ -237,12 +239,27 @@ class Element(BaseModel):
     # the corpus contains it. Annotating `int` made pydantic coerce `1.0` -> `1`,
     # silently rewriting published lessons. So: reject a fractional size, but
     # preserve whatever numeric form it arrived in.
-    size: Optional[IntegralNum] = None
+    #: A chart's `size` is the plot area, `[w, h]` in data units; every other
+    #: type reads a pixel size. The schema says so with an if/else on `type`,
+    #: mirrored by `_size_matches_type` below.
+    size: Optional[Union[IntegralNum, Size2]] = None
     radius: Optional[Num] = None
     #: `$defs.element.points` is an array of exactly-three-component vectors; a
     #: bare `list` validated neither the item type nor the arity.
     points: Optional[list[Vec3]] = None
     text: Optional[str] = None
+
+    @model_validator(mode="after")
+    def _size_matches_type(self) -> "Element":
+        """`$defs.element` says `if type == "chart" then size: array else size: integer`."""
+        if self.size is None:
+            return self
+        if self.type == "chart":
+            if not isinstance(self.size, list):
+                raise ValueError("a chart's size is [w, h]")
+        elif isinstance(self.size, list):
+            raise ValueError(f"size on a {self.type!r} is a single number; only a chart takes [w, h]")
+        return self
     value: Optional[str] = None
 
 
