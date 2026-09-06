@@ -706,7 +706,7 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     // (measured, so a title sits right beside the words rather than a fixed
     // distance out) and a title band beyond that.
     const LABEL_BAND = 0.9, TITLE_BAND = 0.7, LABEL_GLYPH = 0.5;
-    const mT = axisPlane ? (hasHLabels ? LABEL_BAND : 0) + (hTitle ? TITLE_BAND : 0) : 0;
+    let mT = axisPlane ? (hasHLabels ? LABEL_BAND : 0) + (hTitle ? TITLE_BAND : 0) : 0;
     let vBand = 0;
     if (axisPlane && hasVLabels) {
         const probe = document.createElement('canvas').getContext('2d');
@@ -720,8 +720,20 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
         // never narrower than one cell, never wider than four.
         vBand = Math.max(1, Math.min(4, widest * LABEL_GLYPH / 100 + 0.45));
     }
-    const mL = axisPlane ? vBand + (vTitle ? TITLE_BAND : 0) : 0;
-    const planeLabels = axisPlane && (mT > 0 || mL > 0);
+    let mL = axisPlane ? vBand + (vTitle ? TITLE_BAND : 0) : 0;
+    // The canvas is capped at 2048 a side and needs at least a pixel per
+    // cell, margins included. A lattice that close to the cap cannot carry
+    // plane labels; fall back to screen labels and say so, rather than ask
+    // for a texture the GPU may refuse.
+    let planeLabels = axisPlane && (mT > 0 || mL > 0);
+    if (planeLabels && Math.max(rows + mT, cols + mL) > 2048) {
+        console.warn(
+            `tensor${el.id ? ` "${el.id}"` : ''}: axis labels fall back to the screen on a ${rows}x${cols} lattice; `
+            + `plane labels need the canvas (lattice plus label margins) to fit 2048 pixels a side.`);
+        planeLabels = false;
+        mT = 0;
+        mL = 0;
+    }
     const cssColor = (rgb: Rgb3) => `rgb(${Math.round(rgb[0] * 255)}, ${Math.round(rgb[1] * 255)}, ${Math.round(rgb[2] * 255)})`;
 
     // ── Cell text: one canvas for the whole lattice, mapped onto one quad that
@@ -947,7 +959,7 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     const labelExprStrings: string[] = [];
     if (hLabelSrc) labelExprStrings.push(hLabelSrc);
     if (vLabelSrc) labelExprStrings.push(vLabelSrc);
-    if (axes.length && !axisPlane) {
+    if (axes.length && !planeLabels) {
         const pad = cellSize * 0.35;
         if (hLabelFn && hLabelSrc) {
             for (let c = 0; c < cols; c++) {

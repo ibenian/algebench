@@ -8400,7 +8400,7 @@ function renderTensor(el, _view) {
 	const hasHLabels = !!(hLabelFn || hLabelsStatic);
 	const hasVLabels = !!(vLabelFn || vLabelsStatic);
 	const LABEL_BAND = .9, TITLE_BAND = .7, LABEL_GLYPH = .5;
-	const mT = axisPlane ? (hasHLabels ? LABEL_BAND : 0) + (hTitle ? TITLE_BAND : 0) : 0;
+	let mT = axisPlane ? (hasHLabels ? LABEL_BAND : 0) + (hTitle ? TITLE_BAND : 0) : 0;
 	let vBand = 0;
 	if (axisPlane && hasVLabels) {
 		const probe = document.createElement("canvas").getContext("2d");
@@ -8412,8 +8412,14 @@ function renderTensor(el, _view) {
 		}
 		vBand = Math.max(1, Math.min(4, widest * LABEL_GLYPH / 100 + .45));
 	}
-	const mL = axisPlane ? vBand + (vTitle ? TITLE_BAND : 0) : 0;
-	const planeLabels = axisPlane && (mT > 0 || mL > 0);
+	let mL = axisPlane ? vBand + (vTitle ? TITLE_BAND : 0) : 0;
+	let planeLabels = axisPlane && (mT > 0 || mL > 0);
+	if (planeLabels && Math.max(rows + mT, cols + mL) > 2048) {
+		console.warn(`tensor${el.id ? ` "${el.id}"` : ""}: axis labels fall back to the screen on a ${rows}x${cols} lattice; plane labels need the canvas (lattice plus label margins) to fit 2048 pixels a side.`);
+		planeLabels = false;
+		mT = 0;
+		mL = 0;
+	}
 	const cssColor = (rgb) => `rgb(${Math.round(rgb[0] * 255)}, ${Math.round(rgb[1] * 255)}, ${Math.round(rgb[2] * 255)})`;
 	let textLayer = null;
 	if (textFn && (Math.max(rows, cols) > 2048 || rows * cols > 16384)) {
@@ -8605,7 +8611,7 @@ function renderTensor(el, _view) {
 	const labelExprStrings = [];
 	if (hLabelSrc) labelExprStrings.push(hLabelSrc);
 	if (vLabelSrc) labelExprStrings.push(vLabelSrc);
-	if (axes.length && !axisPlane) {
+	if (axes.length && !planeLabels) {
 		const pad = cellSize * .35;
 		if (hLabelFn && hLabelSrc) for (let c = 0; c < cols; c++) {
 			const label = addLabel3D("", layout.colLabelAt(c, pad), hColor);
