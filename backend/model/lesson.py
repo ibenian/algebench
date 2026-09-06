@@ -90,6 +90,8 @@ def _integral(v):
 #: model lossy against real lessons.
 IntegralNum = Annotated[Union[int, float], BeforeValidator(_integral)]
 Vec3Number = Annotated[list[Num], Field(min_length=3, max_length=3)]
+#: A chart's plot-area size, `[w, h]`, both positive.
+Size2 = Annotated[list[Annotated[Num, Field(gt=0)]], Field(min_length=2, max_length=2)]
 Vec3 = Annotated[list[Union[Num, str]], Field(min_length=3, max_length=3)]
 Range3D = Annotated[
     list[Annotated[list[Num], Field(min_length=2, max_length=2)]],
@@ -237,7 +239,9 @@ class Element(BaseModel):
     # the corpus contains it. Annotating `int` made pydantic coerce `1.0` -> `1`,
     # silently rewriting published lessons. So: reject a fractional size, but
     # preserve whatever numeric form it arrived in.
-    size: Optional[IntegralNum] = None
+    #: A chart's `size` is the plot area, `[w, h]` in data units (the schema's
+    #: type conditional admits that form on `type: "chart"` alone).
+    size: Optional[Union[IntegralNum, Size2]] = None
     radius: Optional[Num] = None
     #: `$defs.element.points` is an array of exactly-three-component vectors; a
     #: bare `list` validated neither the item type nor the arity.
