@@ -3090,7 +3090,7 @@
                 {"loExpr": "-sqrt(tfSampleVar(s3_gen_d, 4000))", "hiExpr": "sqrt(tfSampleVar(s3_gen_d, 4000))", "color": "#f06292", "opacity": 0.12}
               ],
               "axes": [
-                {"title": "draw $i$", "color": "#f06292"},
+                {"title": "sample", "color": "#f06292"},
                 {"title": "$q \\cdot k$", "color": "#f06292"}
               ],
               "label": "generic $q\\cdot k$, i.i.d. in $\\mathbb{R}^n$",
@@ -3114,7 +3114,7 @@
               ],
               "yDomain": [-4, 4],
               "axes": [
-                {"title": "draw $i$", "color": "#f8bbd0"},
+                {"title": "sample", "color": "#f8bbd0"},
                 {"title": "$q \\cdot k / \\sqrt{n}$", "color": "#f8bbd0"}
               ],
               "label": "the same draws, $\\div\\sqrt{n}$",
