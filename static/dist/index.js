@@ -8524,29 +8524,34 @@ function renderTensor(el, _view) {
 			ctx.restore();
 		} else ctx.fillText(t, cx, cy);
 	}
+	const cellTexts = new Array(textFn ? drawn : 0).fill("");
+	const keyParts = [];
 	/** Evaluate every cell's text (and, in plane mode, the axis labels) and redraw the canvas if anything changed. */
 	function paintText(tSec) {
 		if (!textLayer || !textFn && !planeLabels) return;
 		const { ctx, tex, px } = textLayer;
 		const ox = mL * px, oy = mT * px;
-		const texts = new Array(drawn).fill("");
-		const keyParts = [];
-		if (textFn) for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
-			const cell = r * cols + c;
-			let txt = "";
-			try {
-				const out = evalExpr(textFn, tSec, { overrideScope: {
-					row: r,
-					col: c,
-					idx: cell,
-					value: cellValue[cell]
-				} });
-				txt = out === null || out === void 0 ? "" : String(out);
-			} catch (_err) {
-				txt = "";
+		const texts = cellTexts;
+		keyParts.length = 0;
+		if (textFn) {
+			if (texts.length !== drawn) texts.length = drawn;
+			for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+				const cell = r * cols + c;
+				let txt = "";
+				try {
+					const out = evalExpr(textFn, tSec, { overrideScope: {
+						row: r,
+						col: c,
+						idx: cell,
+						value: cellValue[cell]
+					} });
+					txt = out === null || out === void 0 ? "" : String(out);
+				} catch (_err) {
+					txt = "";
+				}
+				texts[cell] = txt;
+				keyParts.push(txt, cellW[cell].toFixed(3), cellH[cell].toFixed(3), String(Math.round(cellRgb[cell * 3] * 255)), String(Math.round(cellRgb[cell * 3 + 1] * 255)), String(Math.round(cellRgb[cell * 3 + 2] * 255)));
 			}
-			texts[cell] = txt;
-			keyParts.push(txt, cellW[cell].toFixed(3), cellH[cell].toFixed(3), String(Math.round(cellRgb[cell * 3] * 255)), String(Math.round(cellRgb[cell * 3 + 1] * 255)), String(Math.round(cellRgb[cell * 3 + 2] * 255)));
 		}
 		const hTexts = planeLabels && hasHLabels ? axisLabelTexts(hLabelFn, hLabelsStatic, cols, false, tSec) : null;
 		const vTexts = planeLabels && hasVLabels ? axisLabelTexts(vLabelFn, vLabelsStatic, rows, true, tSec) : null;
@@ -8570,7 +8575,7 @@ function renderTensor(el, _view) {
 			ctx.textAlign = "center";
 		}
 		if (vTitle && planeLabels) drawFitted(ctx, vTitle, TITLE_BAND * px / 2, oy + rows * px / 2, LABEL_GLYPH / .62 * px, rows * px, cssColor(vColor), true);
-		for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+		if (textFn) for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
 			const cell = r * cols + c;
 			const txt = texts[cell];
 			if (!txt) continue;

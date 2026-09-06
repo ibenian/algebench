@@ -849,14 +849,20 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
         }
     }
 
+    // Scratch for paintText, allocated once: it runs every frame while the
+    // layer exists, and the common frame ends at the key compare.
+    const cellTexts: string[] = new Array(textFn ? drawn : 0).fill('');
+    const keyParts: string[] = [];
+
     /** Evaluate every cell's text (and, in plane mode, the axis labels) and redraw the canvas if anything changed. */
     function paintText(tSec: number) {
         if (!textLayer || (!textFn && !planeLabels)) return;
         const { ctx, tex, px } = textLayer;
         const ox = mL * px, oy = mT * px;
-        const texts: string[] = new Array(drawn).fill('');
-        const keyParts: string[] = [];
+        const texts = cellTexts;
+        keyParts.length = 0;
         if (textFn) {
+            if (texts.length !== drawn) texts.length = drawn;
             for (let r = 0; r < rows; r++) {
                 for (let c = 0; c < cols; c++) {
                     const cell = r * cols + c;
@@ -905,7 +911,7 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
             drawFitted(ctx, vTitle, TITLE_BAND * px / 2, oy + (rows * px) / 2, LABEL_GLYPH / 0.62 * px, rows * px, cssColor(vColor), true);
         }
 
-        for (let r = 0; r < rows; r++) {
+        if (textFn) for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
                 const cell = r * cols + c;
                 const txt = texts[cell]!;
