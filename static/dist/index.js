@@ -9348,7 +9348,8 @@ function renderChart(el, view) {
 		s.node = node;
 		s.data = data;
 		s.entry = entry;
-		chartState.lineNodes.push(entry);
+		if (s.kind === "points") chartState.pointNodes.push({ node });
+		else chartState.lineNodes.push(entry);
 	}
 	for (const l of hlines) {
 		const [, v] = toPlane(0, l.y);

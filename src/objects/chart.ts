@@ -64,6 +64,7 @@ interface ChartState {
     three: { scene: Scene };
     planeMeshes: Object3D[];
     lineNodes: LineEntry[];
+    pointNodes: { node: MathBoxNode | null }[];
     activeAnimExprs: ChartAnimExprEntry[];
     activeAnimUpdaters: AnimUpdater[];
     sceneStartTime: number;
@@ -392,7 +393,9 @@ export function renderChart(el: Element, view: MathBoxNode) {
             : data.line({ color: new THREE.Color(...s.color), width: lineW, opacity: s.opacity * lineOpacity, zBias: 2 });
         entry.node = node;
         s.node = node; s.data = data; s.entry = entry;
-        chartState.lineNodes.push(entry);
+        // A point primitive has `size`, not `width`; it lives with the other
+        // points, outside the line-width updater's reach.
+        if (s.kind === 'points') chartState.pointNodes.push({ node }); else chartState.lineNodes.push(entry);
     }
     for (const l of hlines) {
         const [, v] = toPlane(0, l.y);

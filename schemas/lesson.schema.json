@@ -870,7 +870,13 @@
           "description": "Manual render order for polygon depth sorting. Auto-assigned if omitted."
         }
       },
-      "additionalProperties": true
+      "additionalProperties": true,
+      "if": { "properties": { "type": { "const": "chart" } } },
+      "else": {
+        "properties": {
+          "size": { "type": "integer", "description": "Only a chart takes the [w, h] form; every other type reads a pixel size." }
+        }
+      }
     },
     "removeDirective": {
       "type": "object",
