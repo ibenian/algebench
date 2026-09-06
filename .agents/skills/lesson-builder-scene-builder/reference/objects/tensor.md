@@ -198,12 +198,15 @@ cells (column labels, then the column title) and a band to the left (row labels,
 turned a quarter turn), the same way `textExpr` cell text is drawn. They tilt, scale and occlude
 with the lattice, and never pile up with the screen labels of other elements.
 
-Two costs. Plain text only: LaTeX is reduced to its plain reading (`key $j$` → `key j`,
-`$\alpha_{3j}$` → `α3j`), so keep labels simple. And a label driven by `labelExpr` is re-evaluated
-per frame like cell text, with the canvas redrawn only when some label changed.
+Labels and cell text are real KaTeX: the LaTeX is laid out by KaTeX and replayed onto the plane,
+so `$\alpha_{3j}$`, `$\frac{1}{\sqrt{d_k}}$` and `$\hat{x}$` come out with their subscripts,
+fraction bars and radicals, in the KaTeX faces. Two costs. A label is fitted into its band by
+scaling the whole snippet, so a tall fraction gets small; keep on-plane labels short. And a label
+driven by `labelExpr` is re-evaluated per frame like cell text, with the canvas redrawn only when
+some label changed.
 
 Set `"axisLabels": "screen"` for HTML labels that always face the camera, like every other label —
-for a lattice that is only ever read face-on and whose labels need real KaTeX.
+for a lattice that is only ever read face-on.
 
 ## Cell indexing
 

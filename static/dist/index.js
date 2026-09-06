@@ -7880,6 +7880,223 @@ function renderAnimatedCurve(el, view) {
 	};
 }
 //#endregion
+//#region src/latex-raster.ts
+/**
+* Real KaTeX on a canvas.
+*
+* On-plane text (tensor cells and axis labels, chart paper) is painted into
+* a canvas texture, and a canvas cannot host KaTeX's HTML. Instead of
+* flattening the LaTeX to a string of glyphs -- which loses fractions,
+* radicals, sub/superscripts, everything KaTeX lays out -- this module lets
+* KaTeX do the layout in a hidden DOM host and then *replays* that layout
+* onto the canvas: every text run is drawn with `fillText` in the font and
+* at the baseline the browser laid it out with, every rule (fraction bars,
+* overlines) is a `fillRect` from its border, and every stretchy glyph KaTeX
+* draws as inline SVG (radicals, wide arrows) is a `Path2D`.
+*
+* Fonts come from the page's own KaTeX stylesheet through `document.fonts`,
+* so nothing is fetched or inlined, and no `<foreignObject>` image is
+* involved -- WebKit taints a canvas drawn from one, which would break the
+* WebGL upload. The first use of a KaTeX face starts its load; rasters made
+* while a face is still loading are laid out in the fallback font, so the
+* cache is dropped and `onLatexFontsReady` listeners are told to repaint
+* once the load settles.
+*/
+var SUPERSAMPLE = 2;
+var FAMILY = "system-ui, sans-serif";
+var CACHE_MAX = 512;
+var cache = /* @__PURE__ */ new Map();
+var listeners = /* @__PURE__ */ new Set();
+var host = null;
+var probe = null;
+var fontsHooked = false;
+function hasDom() {
+	return typeof document !== "undefined" && typeof document.createElement === "function";
+}
+function getHost() {
+	if (host && host.isConnected) return host;
+	host = document.createElement("div");
+	host.setAttribute("aria-hidden", "true");
+	host.style.cssText = "position:absolute;left:-100000px;top:0;white-space:nowrap;pointer-events:none;line-height:normal";
+	document.body.appendChild(host);
+	probe = document.createElement("span");
+	probe.style.cssText = "display:inline-block;width:0;height:0;vertical-align:baseline";
+	return host;
+}
+/** When a KaTeX face is still loading, drop the rasters laid out without it and tell listeners to repaint. */
+function watchFonts() {
+	if (fontsHooked || typeof document === "undefined" || !document.fonts) return;
+	fontsHooked = true;
+	document.fonts.ready.then(() => {
+		fontsHooked = false;
+		cache.clear();
+		for (const cb of Array.from(listeners)) try {
+			cb();
+		} catch (_e) {}
+	}).catch(() => {
+		fontsHooked = false;
+	});
+}
+/**
+* Subscribe to "the KaTeX fonts finished loading, repaint". Returns the
+* unsubscribe; call it when the element that painted is torn down.
+*/
+function onLatexFontsReady(cb) {
+	listeners.add(cb);
+	return () => {
+		listeners.delete(cb);
+	};
+}
+function remember(key, r) {
+	if (cache.size >= CACHE_MAX) {
+		const oldest = cache.keys().next().value;
+		if (oldest !== void 0) cache.delete(oldest);
+	}
+	cache.set(key, r);
+	return r;
+}
+/**
+* Lay `src` out with KaTeX (markdown-lite plus `$...$`, the way every label
+* in the app is written) at `fontPx` in `color`, and replay it onto a
+* canvas. Cached by (size, colour, source).
+*/
+function rasterLatex(src, fontPx, color) {
+	const size = Math.max(1, Math.round(fontPx));
+	const key = `${size}${color}${src}`;
+	const hit = cache.get(key);
+	if (hit) return hit;
+	if (!hasDom() || !src) return remember(key, {
+		canvas: null,
+		w: src.length * size * .55,
+		h: size * 1.2
+	});
+	const h = getHost();
+	h.style.font = `${size}px ${FAMILY}`;
+	h.style.color = color;
+	h.innerHTML = renderKaTeX$1(src, false);
+	for (const m of h.querySelectorAll(".katex-mathml")) m.remove();
+	const box = h.getBoundingClientRect();
+	const w = Math.ceil(box.width), ht = Math.ceil(box.height);
+	if (w < 1 || ht < 1) return remember(key, {
+		canvas: null,
+		w: 0,
+		h: 0
+	});
+	const canvas = document.createElement("canvas");
+	canvas.width = w * SUPERSAMPLE;
+	canvas.height = ht * SUPERSAMPLE;
+	const ctx = canvas.getContext("2d");
+	if (!ctx) return remember(key, {
+		canvas: null,
+		w,
+		h: ht
+	});
+	ctx.scale(SUPERSAMPLE, SUPERSAMPLE);
+	ctx.textBaseline = "alphabetic";
+	ctx.textAlign = "left";
+	let pending = false;
+	const fonts = document.fonts;
+	const walker = document.createTreeWalker(h, NodeFilter.SHOW_TEXT);
+	let node;
+	const runs = [];
+	while (node = walker.nextNode()) if ((node.textContent || "").trim()) runs.push(node);
+	for (const t of runs) {
+		const el = t.parentElement;
+		if (!el || !probe) continue;
+		const cs = getComputedStyle(el);
+		const font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+		el.insertBefore(probe, t);
+		const baseline = probe.getBoundingClientRect().top - box.top;
+		probe.remove();
+		const range = document.createRange();
+		range.selectNodeContents(t);
+		const rr = range.getBoundingClientRect();
+		ctx.font = font;
+		ctx.fillStyle = cs.color;
+		ctx.fillText(t.textContent || "", rr.left - box.left, baseline);
+		if (fonts && !pending) try {
+			if (!fonts.check(font, t.textContent || "")) pending = true;
+		} catch (_e) {}
+	}
+	for (const el of Array.from(h.querySelectorAll("*"))) {
+		const cs = getComputedStyle(el);
+		const bw = parseFloat(cs.borderBottomWidth) || 0;
+		if (bw > 0 && cs.borderBottomStyle !== "none") {
+			const r = el.getBoundingClientRect();
+			ctx.fillStyle = cs.borderBottomColor;
+			ctx.fillRect(r.left - box.left, r.bottom - box.top - bw, r.width, bw);
+		}
+		const bt = parseFloat(cs.borderTopWidth) || 0;
+		if (bt > 0 && cs.borderTopStyle !== "none") {
+			const r = el.getBoundingClientRect();
+			ctx.fillStyle = cs.borderTopColor;
+			ctx.fillRect(r.left - box.left, r.top - box.top, r.width, bt);
+		}
+	}
+	for (const svg of Array.from(h.querySelectorAll("svg"))) {
+		const r = svg.getBoundingClientRect();
+		const vb = svg.viewBox.baseVal;
+		if (!vb || vb.width <= 0 || vb.height <= 0 || r.width <= 0 || r.height <= 0) continue;
+		const color = getComputedStyle(svg).color;
+		ctx.save();
+		ctx.beginPath();
+		ctx.rect(r.left - box.left, r.top - box.top, r.width, r.height);
+		ctx.clip();
+		ctx.translate(r.left - box.left, r.top - box.top);
+		ctx.scale(r.width / vb.width, r.height / vb.height);
+		ctx.translate(-vb.x, -vb.y);
+		ctx.fillStyle = color;
+		for (const p of Array.from(svg.querySelectorAll("path"))) {
+			const d = p.getAttribute("d");
+			if (d) ctx.fill(new Path2D(d));
+		}
+		ctx.restore();
+	}
+	h.innerHTML = "";
+	if (fonts && (pending || fonts.status === "loading")) watchFonts();
+	return remember(key, {
+		canvas,
+		w,
+		h: ht
+	});
+}
+/** Width and height (CSS px) of `src` laid out at 100px; the ratio is what fitting needs. */
+function measureLatex(src) {
+	const r = rasterLatex(src, 100, "#ffffff");
+	return {
+		w: r.w,
+		h: r.h
+	};
+}
+/**
+* The largest font size at which `src` fits a `wPx` × `hPx` box. A plain
+* word's laid-out height is about 1.15× its font size, so this lands where
+* the older glyph-height rule did while letting a fraction be as tall as it
+* needs.
+*/
+function fitLatexPx(src, wPx, hPx) {
+	const m = measureLatex(src);
+	if (m.w <= 0 || m.h <= 0) return Math.max(1, Math.floor(hPx * .62));
+	const byHeight = hPx * .72 * 100 / m.h;
+	const byWidth = wPx * .9 * 100 / m.w;
+	return Math.max(1, Math.floor(Math.min(byHeight, byWidth)));
+}
+/** Draw `src` on `ctx` at (x, y) per the alignment, in the raster cache's colour and size. */
+function drawLatex(ctx, src, x, y, o) {
+	if (!src) return;
+	const r = rasterLatex(src, o.fontPx, o.color);
+	if (!r.canvas || r.w <= 0) return;
+	const align = o.align ?? "center";
+	const vAlign = o.vAlign ?? "middle";
+	const dx = align === "left" ? 0 : align === "right" ? -r.w : -r.w / 2;
+	const dy = vAlign === "top" ? 0 : vAlign === "bottom" ? -r.h : -r.h / 2;
+	ctx.save();
+	ctx.translate(x, y);
+	if (o.rotate) ctx.rotate(o.rotate);
+	ctx.drawImage(r.canvas, dx, dy, r.w, r.h);
+	ctx.restore();
+}
+//#endregion
 //#region src/objects/tensor.ts
 /**
 * `tensor` — N-dimensional logical data, and a spatial view of it.
@@ -7945,17 +8162,6 @@ function resolveDepth(raw) {
 	return Math.max(-3, Math.min(3, n));
 }
 /**
-* Font size, in canvas pixels, that fits a string into a `wPx` x `hPx` box.
-* `widthAt100` is the string's measured width at a 100px font, so the fit is
-* a pure ratio and needs no canvas of its own. The 0.86 / 0.62 margins keep
-* glyph ascenders and a little side padding inside the cell edge.
-*/
-function fitFontPx(widthAt100, wPx, hPx) {
-	const byHeight = hPx * .62;
-	const byWidth = widthAt100 > 0 ? wPx * .86 * 100 / widthAt100 : byHeight;
-	return Math.max(1, Math.floor(Math.min(byHeight, byWidth)));
-}
-/**
 * Which edge of its slot a shrunken cell keeps. `-1` keeps the low edge
 * (left / bottom), `0` centres, `+1` keeps the high edge (right / top). A
 * height-only lattice anchored at the bottom is a bar chart on its lattice;
@@ -7993,27 +8199,6 @@ function resolveTextColor(raw) {
 		if (m) alpha = parseInt(m[1], 16) / 255;
 	}
 	return alpha < 1 ? `rgba(${ch(rgb[0])}, ${ch(rgb[1])}, ${ch(rgb[2])}, ${Math.round(alpha * 1e3) / 1e3})` : `rgb(${ch(rgb[0])}, ${ch(rgb[1])}, ${ch(rgb[2])})`;
-}
-/**
-* The plain-text reading of a label that may carry LaTeX, for drawing on a
-* canvas where KaTeX's HTML cannot go.
-*
-* KaTeX is the source of truth: render the label the way a screen label
-* would be rendered and read the glyphs back out of the HTML it produced,
-* so every command KaTeX knows -- Greek, relations, arrows -- comes out as
-* its symbol with no table to keep up to date. Layout is lost (a subscript
-* becomes a plain character), which is the price of a canvas. Without a
-* DOM (unit tests) a small structural fallback strips the markup instead.
-*/
-function plainTextOfLatex(src) {
-	if (typeof document !== "undefined" && /[$\\]/.test(src)) try {
-		const host = document.createElement("div");
-		host.innerHTML = renderKaTeX$1(src, false);
-		for (const m of host.querySelectorAll(".katex-mathml")) m.remove();
-		const txt = (host.textContent || "").replace(/\s+/g, " ").trim();
-		if (txt) return txt;
-	} catch (_err) {}
-	return src.replace(/\\(?:text|mathrm|mathbf|operatorname)\{([^{}]*)\}/g, "$1").replace(/\$/g, "").replace(/\\([A-Za-z]+)/g, "$1").replace(/[{}_^]/g, "").replace(/\s+/g, " ").trim();
 }
 /** Near-black or near-white, whichever reads against the cell's colour. */
 function contrastTextColor(rgb) {
@@ -8428,13 +8613,9 @@ function renderTensor(el, _view) {
 	let mT = axisPlane ? (hasHLabels ? LABEL_BAND : 0) + (hTitle ? TITLE_BAND : 0) : 0;
 	let vBand = 0;
 	if (axisPlane && hasVLabels) {
-		const probe = document.createElement("canvas").getContext("2d");
 		const firstTexts = axisLabelTexts(vLabelFn, vLabelsStatic, rows, true, 0);
 		let widest = 0;
-		if (probe) {
-			probe.font = "100px system-ui, sans-serif";
-			for (const t of firstTexts) widest = Math.max(widest, probe.measureText(plainTextOfLatex(t)).width);
-		}
+		for (const t of firstTexts) if (t) widest = Math.max(widest, measureLatex(t).w);
 		const measured = widest * LABEL_GLYPH / 100 + .45;
 		vBand = Math.max(1, Math.min(4, vLabelSrc ? Math.max(measured, 2.4) : measured));
 	}
@@ -8448,6 +8629,7 @@ function renderTensor(el, _view) {
 	}
 	const cssColor = (rgb) => `rgb(${Math.round(rgb[0] * 255)}, ${Math.round(rgb[1] * 255)}, ${Math.round(rgb[2] * 255)})`;
 	let textLayer = null;
+	let lastPaintT = 0;
 	/** The text quads' position buffer and per-cell placer, for lifting text with a cell's depth. */
 	let textQuads = null;
 	const textCapped = !!textExprString && (Math.max(rows, cols) > 2048 || rows * cols > 16384);
@@ -8535,7 +8717,18 @@ function renderTensor(el, _view) {
 				depthWrite: depthDeclared,
 				alphaTest: depthDeclared ? .05 : 0
 			});
-			qMat.addEventListener("dispose", () => tex.dispose());
+			const offFonts = onLatexFontsReady(() => {
+				if (textLayer) {
+					textLayer.lastKey = "";
+					try {
+						paintText(lastPaintT);
+					} catch (_e) {}
+				}
+			});
+			qMat.addEventListener("dispose", () => {
+				offFonts();
+				tex.dispose();
+			});
 			const qMesh = new THREE.Mesh(qGeom, qMat);
 			qMesh.userData.targetOpacity = opacity;
 			qMesh.userData.ignorePlaneOpacity = ignoresPlaneOpacity;
@@ -8573,27 +8766,22 @@ function renderTensor(el, _view) {
 		}
 		return out;
 	}
-	/** Draw one string fitted into a box, in a colour, optionally rotated a quarter turn. */
-	function drawFitted(ctx, txt, cx, cy, wPx, hPx, color, rotate = false) {
-		const t = plainTextOfLatex(txt);
-		if (!t || wPx < 2 || hPx < 2) return;
-		ctx.font = "100px system-ui, sans-serif";
-		const measured = ctx.measureText(t).width;
-		ctx.font = `${fitFontPx(measured, rotate ? hPx : wPx, rotate ? wPx : hPx)}px system-ui, sans-serif`;
-		ctx.fillStyle = color;
-		if (rotate) {
-			ctx.save();
-			ctx.translate(cx, cy);
-			ctx.rotate(-Math.PI / 2);
-			ctx.fillText(t, 0, 0);
-			ctx.restore();
-		} else ctx.fillText(t, cx, cy);
+	/** Draw one label (real KaTeX) fitted into a box, in a colour, optionally rotated a quarter turn. */
+	function drawFitted(ctx, txt, cx, cy, wPx, hPx, color, rotate = false, align = "center") {
+		if (!txt || wPx < 2 || hPx < 2) return;
+		drawLatex(ctx, txt, cx, cy, {
+			fontPx: fitLatexPx(txt, rotate ? hPx : wPx, rotate ? wPx : hPx),
+			color,
+			align,
+			rotate: rotate ? -Math.PI / 2 : 0
+		});
 	}
 	const cellTexts = new Array(textDeclared ? drawn : 0).fill("");
 	const keyParts = [];
 	/** Evaluate every cell's text (and, in plane mode, the axis labels) and redraw the canvas if anything changed. */
 	function paintText(tSec) {
 		if (!textLayer || !textFn && !planeLabels) return;
+		lastPaintT = tSec;
 		const { ctx, tex, px } = textLayer;
 		const ox = mL * px, oy = mT * px;
 		const texts = cellTexts;
@@ -8626,8 +8814,6 @@ function renderTensor(el, _view) {
 		if (key === textLayer.lastKey) return;
 		textLayer.lastKey = key;
 		ctx.clearRect(0, 0, textLayer.canvas.width, textLayer.canvas.height);
-		ctx.textAlign = "center";
-		ctx.textBaseline = "middle";
 		if (hTexts) {
 			const band = LABEL_BAND * px;
 			for (let c = 0; c < cols; c++) drawFitted(ctx, hTexts[c], ox + (c + .5) * px, oy - band / 2, .92 * px, LABEL_GLYPH / .62 * px, cssColor(hColor));
@@ -8635,9 +8821,7 @@ function renderTensor(el, _view) {
 		if (hTitle && planeLabels) drawFitted(ctx, hTitle, ox + cols * px / 2, TITLE_BAND * px / 2, cols * px, LABEL_GLYPH / .62 * px, cssColor(hColor));
 		if (vTexts) {
 			const band = vBand * px;
-			ctx.textAlign = "right";
-			for (let r = 0; r < rows; r++) drawFitted(ctx, vTexts[r], ox - .2 * px, oy + (r + .5) * px, band - .35 * px, LABEL_GLYPH / .62 * px, cssColor(vColor));
-			ctx.textAlign = "center";
+			for (let r = 0; r < rows; r++) drawFitted(ctx, vTexts[r], ox - .2 * px, oy + (r + .5) * px, band - .35 * px, LABEL_GLYPH / .62 * px, cssColor(vColor), false, "right");
 		}
 		if (vTitle && planeLabels) drawFitted(ctx, vTitle, TITLE_BAND * px / 2, oy + rows * px / 2, LABEL_GLYPH / .62 * px, rows * px, cssColor(vColor), true);
 		if (textFn) for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
@@ -8647,17 +8831,15 @@ function renderTensor(el, _view) {
 			const wPx = cellW[cell] * px;
 			const hPx = cellH[cell] * px;
 			if (wPx < 2 || hPx < 2) continue;
-			ctx.font = "100px system-ui, sans-serif";
-			const measured = ctx.measureText(txt).width;
-			ctx.font = `${fitFontPx(measured, wPx, hPx)}px system-ui, sans-serif`;
-			ctx.fillStyle = textColorFixed || contrastTextColor([
+			const color = textColorFixed || contrastTextColor([
 				cellRgb[cell * 3],
 				cellRgb[cell * 3 + 1],
 				cellRgb[cell * 3 + 2]
 			]);
-			const cx = ox + (c + .5) * px + anchor.h * (fillFrac - cellW[cell]) * px / 2;
-			const cy = oy + (r + .5) * px - anchor.v * (fillFrac - cellH[cell]) * px / 2;
-			ctx.fillText(txt, cx, cy);
+			drawLatex(ctx, txt, ox + (c + .5) * px + anchor.h * (fillFrac - cellW[cell]) * px / 2, oy + (r + .5) * px - anchor.v * (fillFrac - cellH[cell]) * px / 2, {
+				fontPx: fitLatexPx(txt, wPx, hPx),
+				color
+			});
 		}
 		tex.needsUpdate = true;
 	}
@@ -9257,6 +9439,7 @@ function renderChart(el, view) {
 	const ctx = canvas.getContext("2d");
 	let tex = null;
 	let paperKey = "";
+	let lastT = 0;
 	const css = (c, a = 1) => `rgba(${Math.round(c[0] * 255)}, ${Math.round(c[1] * 255)}, ${Math.round(c[2] * 255)}, ${a})`;
 	const inkRgb = fixedTextColor || [
 		.86,
@@ -9277,7 +9460,16 @@ function renderChart(el, view) {
 		paperMat.map = tex;
 		paperMat.color.set(16777215);
 		paperMat.alphaTest = .02;
-		paperMat.addEventListener("dispose", () => tex && tex.dispose());
+		const offFonts = onLatexFontsReady(() => {
+			paperKey = "";
+			try {
+				paintPaper(lastT);
+			} catch (_e) {}
+		});
+		paperMat.addEventListener("dispose", () => {
+			offFonts();
+			tex && tex.dispose();
+		});
 		const uv = new Float32Array([
 			0,
 			0,
@@ -9307,6 +9499,7 @@ function renderChart(el, view) {
 	};
 	function paintPaper(tSec) {
 		if (!ctx || !tex) return;
+		lastT = tSec;
 		const xt = niceTicks(xDom[0], xDom[1], xTickCount);
 		const yt = niceTicks(yDom[0], yDom[1], yTickCount);
 		const xLabels = xt.ticks.map((v) => tickText(xLabelFn, v, xt.step, tSec));
@@ -9373,9 +9566,6 @@ function renderChart(el, view) {
 		ctx.lineTo(X(0), Y(H));
 		ctx.stroke();
 		const tickLen = pxPer * .12;
-		const font = (px) => `${Math.max(6, Math.floor(px))}px system-ui, sans-serif`;
-		ctx.textBaseline = "top";
-		ctx.textAlign = "center";
 		ctx.fillStyle = css(xColor);
 		ctx.strokeStyle = css(xColor, .9);
 		xt.ticks.forEach((v, k) => {
@@ -9385,17 +9575,18 @@ function renderChart(el, view) {
 			ctx.moveTo(X(h), Y(0));
 			ctx.lineTo(X(h), Y(0) + tickLen);
 			ctx.stroke();
-			const txt = plainTextOfLatex(xLabels[k] || "");
+			const txt = xLabels[k] || "";
 			if (!txt) return;
-			ctx.font = font(100);
-			const measured = ctx.measureText(txt).width;
-			ctx.font = font(fitFontPx(measured, pxPer * .9, pxPer * .42));
-			ctx.fillText(txt, X(h), Y(0) + tickLen + pxPer * .06);
+			drawLatex(ctx, txt, X(h), Y(0) + tickLen + pxPer * .06, {
+				fontPx: fitLatexPx(txt, pxPer * .9, pxPer * .42),
+				color: css(xColor),
+				align: "center",
+				vAlign: "top"
+			});
 		});
-		ctx.textBaseline = "middle";
-		ctx.textAlign = "right";
 		ctx.fillStyle = css(yColor);
 		ctx.strokeStyle = css(yColor, .9);
+		let yLabelW = 0;
 		yt.ticks.forEach((v, k) => {
 			const [, vv] = toPlane(0, v);
 			if (vv < -1e-6 || vv > H + 1e-6) return;
@@ -9403,32 +9594,30 @@ function renderChart(el, view) {
 			ctx.moveTo(X(0), Y(vv));
 			ctx.lineTo(X(0) - tickLen, Y(vv));
 			ctx.stroke();
-			const txt = plainTextOfLatex(yLabels[k] || "");
+			const txt = yLabels[k] || "";
 			if (!txt) return;
-			ctx.font = font(100);
-			const measured = ctx.measureText(txt).width;
-			ctx.font = font(fitFontPx(measured, pxPer * .85, pxPer * .42));
-			ctx.fillText(txt, X(0) - tickLen - pxPer * .06, Y(vv));
+			const fontPx = fitLatexPx(txt, pxPer * .85, pxPer * .42);
+			yLabelW = Math.max(yLabelW, measureLatex(txt).w * fontPx / 100);
+			drawLatex(ctx, txt, X(0) - tickLen - pxPer * .06, Y(vv), {
+				fontPx,
+				color: css(yColor),
+				align: "right",
+				vAlign: "middle"
+			});
 		});
-		ctx.textAlign = "center";
-		ctx.textBaseline = "middle";
-		if (xTitle) {
-			const txt = plainTextOfLatex(xTitle);
-			ctx.font = font(100);
-			ctx.font = font(fitFontPx(ctx.measureText(txt).width, W * pxPer, pxPer * .5));
-			ctx.fillStyle = css(xColor);
-			ctx.fillText(txt, X(W / 2), Y(0) + pxPer * .82);
-		}
+		if (xTitle) drawLatex(ctx, xTitle, X(W / 2), Y(0) + pxPer * .82, {
+			fontPx: fitLatexPx(xTitle, W * pxPer, pxPer * .5),
+			color: css(xColor)
+		});
 		if (yTitle) {
-			const txt = plainTextOfLatex(yTitle);
-			ctx.font = font(100);
-			ctx.font = font(fitFontPx(ctx.measureText(txt).width, H * pxPer, pxPer * .5));
-			ctx.fillStyle = css(yColor);
-			ctx.save();
-			ctx.translate(X(0) - pxPer * 1.3, Y(H / 2));
-			ctx.rotate(-Math.PI / 2);
-			ctx.fillText(txt, 0, 0);
-			ctx.restore();
+			const fontPx = fitLatexPx(yTitle, H * pxPer, pxPer * .5);
+			const titleH = measureLatex(yTitle).h * fontPx / 100;
+			const cx = Math.max(titleH / 2, X(0) - tickLen - pxPer * .16 - yLabelW - titleH / 2);
+			drawLatex(ctx, yTitle, cx, Y(H / 2), {
+				fontPx,
+				color: css(yColor),
+				rotate: -Math.PI / 2
+			});
 		}
 		tex.needsUpdate = true;
 	}

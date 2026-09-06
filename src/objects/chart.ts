@@ -32,7 +32,7 @@ import { resolveLineWidth } from '/camera.js';
 import { dataToWorld } from '/coords.js';
 import type { Vec3 } from '/coords.js';
 import type { Element, Shader } from '/types/lesson.js';
-import { plainTextOfLatex, fitFontPx } from '/objects/tensor.js';
+import { drawLatex, fitLatexPx, measureLatex, onLatexFontsReady } from '/latex-raster.js';
 import type { BufferAttribute, CanvasTexture, Mesh, MeshBasicMaterial, Object3D, Scene } from 'three';
 
 type Rgb3 = [number, number, number];
@@ -436,6 +436,7 @@ export function renderChart(el: Element, view: MathBoxNode) {
     const ctx = canvas.getContext('2d');
     let tex: CanvasTexture | null = null;
     let paperKey = '';
+    let lastT = 0;
     const css = (c: Rgb3, a = 1) => `rgba(${Math.round(c[0] * 255)}, ${Math.round(c[1] * 255)}, ${Math.round(c[2] * 255)}, ${a})`;
     const inkRgb: Rgb3 = fixedTextColor || [0.86, 0.88, 0.92];
     if (ctx) {
@@ -450,7 +451,10 @@ export function renderChart(el: Element, view: MathBoxNode) {
         paperMat.alphaTest = 0.02;
         // Disposing a material does not dispose its map; free the canvas
         // texture with the mesh the loader tears down.
-        paperMat.addEventListener('dispose', () => tex && tex.dispose());
+        // KaTeX faces load on first use; a paper painted before they arrive
+        // was laid out in the fallback font, so repaint when they settle.
+        const offFonts = onLatexFontsReady(() => { paperKey = ''; try { paintPaper(lastT); } catch (_e) { /* next frame */ } });
+        paperMat.addEventListener('dispose', () => { offFonts(); tex && tex.dispose(); });
         const uv = new Float32Array([0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1]);
         paper.mesh.geometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
         writeQuad(paper.attr, -mL, W + mR, -mB, H + mT, 0);
@@ -464,6 +468,7 @@ export function renderChart(el: Element, view: MathBoxNode) {
 
     function paintPaper(tSec: number) {
         if (!ctx || !tex) return;
+        lastT = tSec;
         const xt = niceTicks(xDom[0], xDom[1], xTickCount);
         const yt = niceTicks(yDom[0], yDom[1], yTickCount);
         const xLabels = xt.ticks.map(v => tickText(xLabelFn, v, xt.step, tSec));
@@ -500,46 +505,34 @@ export function renderChart(el: Element, view: MathBoxNode) {
         ctx.beginPath(); ctx.moveTo(X(0), Y(0)); ctx.lineTo(X(0), Y(H)); ctx.stroke();
         // tick marks and labels
         const tickLen = pxPer * 0.12;
-        const font = (px: number) => `${Math.max(6, Math.floor(px))}px system-ui, sans-serif`;
-        ctx.textBaseline = 'top'; ctx.textAlign = 'center';
         ctx.fillStyle = css(xColor); ctx.strokeStyle = css(xColor, 0.9);
         xt.ticks.forEach((v, k) => {
             const [h] = toPlane(v, 0); if (h < -1e-6 || h > W + 1e-6) return;
             ctx.beginPath(); ctx.moveTo(X(h), Y(0)); ctx.lineTo(X(h), Y(0) + tickLen); ctx.stroke();
-            const txt = plainTextOfLatex(xLabels[k] || '');
+            const txt = xLabels[k] || '';
             if (!txt) return;
-            ctx.font = font(100);
-            const measured = ctx.measureText(txt).width;
-            ctx.font = font(fitFontPx(measured, pxPer * 0.9, pxPer * 0.42));
-            ctx.fillText(txt, X(h), Y(0) + tickLen + pxPer * 0.06);
+            drawLatex(ctx, txt, X(h), Y(0) + tickLen + pxPer * 0.06, { fontPx: fitLatexPx(txt, pxPer * 0.9, pxPer * 0.42), color: css(xColor), align: 'center', vAlign: 'top' });
         });
-        ctx.textBaseline = 'middle'; ctx.textAlign = 'right';
         ctx.fillStyle = css(yColor); ctx.strokeStyle = css(yColor, 0.9);
+        let yLabelW = 0;   // widest tick label, so the title sits right beside the numbers
         yt.ticks.forEach((v, k) => {
             const [, vv] = toPlane(0, v); if (vv < -1e-6 || vv > H + 1e-6) return;
             ctx.beginPath(); ctx.moveTo(X(0), Y(vv)); ctx.lineTo(X(0) - tickLen, Y(vv)); ctx.stroke();
-            const txt = plainTextOfLatex(yLabels[k] || '');
+            const txt = yLabels[k] || '';
             if (!txt) return;
-            ctx.font = font(100);
-            const measured = ctx.measureText(txt).width;
-            ctx.font = font(fitFontPx(measured, pxPer * 0.85, pxPer * 0.42));
-            ctx.fillText(txt, X(0) - tickLen - pxPer * 0.06, Y(vv));
+            const fontPx = fitLatexPx(txt, pxPer * 0.85, pxPer * 0.42);
+            yLabelW = Math.max(yLabelW, measureLatex(txt).w * fontPx / 100);
+            drawLatex(ctx, txt, X(0) - tickLen - pxPer * 0.06, Y(vv), { fontPx, color: css(yColor), align: 'right', vAlign: 'middle' });
         });
         // titles
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         if (xTitle) {
-            const txt = plainTextOfLatex(xTitle);
-            ctx.font = font(100);
-            ctx.font = font(fitFontPx(ctx.measureText(txt).width, W * pxPer, pxPer * 0.5));
-            ctx.fillStyle = css(xColor);
-            ctx.fillText(txt, X(W / 2), Y(0) + pxPer * 0.82);
+            drawLatex(ctx, xTitle, X(W / 2), Y(0) + pxPer * 0.82, { fontPx: fitLatexPx(xTitle, W * pxPer, pxPer * 0.5), color: css(xColor) });
         }
         if (yTitle) {
-            const txt = plainTextOfLatex(yTitle);
-            ctx.font = font(100);
-            ctx.font = font(fitFontPx(ctx.measureText(txt).width, H * pxPer, pxPer * 0.5));
-            ctx.fillStyle = css(yColor);
-            ctx.save(); ctx.translate(X(0) - pxPer * 1.3, Y(H / 2)); ctx.rotate(-Math.PI / 2); ctx.fillText(txt, 0, 0); ctx.restore();
+            const fontPx = fitLatexPx(yTitle, H * pxPer, pxPer * 0.5);
+            const titleH = measureLatex(yTitle).h * fontPx / 100;
+            const cx = Math.max(titleH / 2, X(0) - tickLen - pxPer * 0.16 - yLabelW - titleH / 2);
+            drawLatex(ctx, yTitle, cx, Y(H / 2), { fontPx, color: css(yColor), rotate: -Math.PI / 2 });
         }
         tex.needsUpdate = true;
     }

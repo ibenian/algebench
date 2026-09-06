@@ -71,8 +71,9 @@ same after the axis rescales.
 - Same expression gate as `tensor`: a `yExpr` the untrusted sandbox would compile to `0` is left out
   with a warning rather than drawn as a flat line at zero. Use the ternary, `toFixed(v, 2)`, and
   `sum(...)` spelled out — no `->` lambdas.
-- Titles and tick labels are plain text drawn on the plane; LaTeX is reduced to its reading
-  (`$q \cdot k$` → `q · k`).
+- Titles and tick labels are real KaTeX laid out on the plane, the same way `tensor` draws its
+  labels: `$q \cdot k / \sqrt{n}$` keeps its radical. They are fitted by scaling the whole snippet,
+  so a tall fraction in a tick label gets small; keep them short.
 - The chart draws the plot **area** at `origin`; leave room to the left and below for the paper, or
   it will overlap a neighbour.
 - It is one element, one legend entry. Several series that each need a legend row are several
@@ -83,4 +84,4 @@ same after the axis rescales.
 Considered and rejected. A rasterised series blurs the moment the plane tilts or the camera zooms; a
 library brings its own colours, fonts and legends that fight the lesson's colour language; and none
 of its interaction survives in 3-D. Everything here is drawn from the scene's own primitives, and the
-only raster is the paper, which is thin lines and short text.
+only raster is the paper, which is thin lines and short KaTeX (see `src/latex-raster.ts`).
