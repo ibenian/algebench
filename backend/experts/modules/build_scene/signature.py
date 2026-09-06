@@ -198,7 +198,9 @@ class BuildSceneSig(BuildSceneInputs):
 
     ==========================  ====================================
     `==`                        NOT `===`
-    `or`, `and`, `not`          NOT `||`, `&&`, `!`
+    `or`, `and`                 NOT `||`, `&&`
+    `not a`                     NOT `!a` — in math.js `!` is FACTORIAL, so
+                                `!a` does not parse and the call returns 0
     `toFixed(x, 2)`             NOT `x.toFixed(2)` — call by name
     `a ? b : c`                 this one IS the same, and is what to use
     ==========================  ====================================

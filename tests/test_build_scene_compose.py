@@ -1219,9 +1219,9 @@ def test_a_name_a_slider_already_uses_is_refused():
 def test_a_mathjs_name_is_refused():
     """`setActiveSceneFunctions` skips a reserved name with a console.warn, so
     every call would silently mean math.js's own `max`."""
-    with pytest.raises(ComposeError, match="already a math.js function"):
+    with pytest.raises(ComposeError, match="already a math.js built-in"):
         _with_fns([_fn(name="max", expr="1")])
-    with pytest.raises(ComposeError, match="already a math.js function"):
+    with pytest.raises(ComposeError, match="already a math.js built-in"):
         _with_fns([_fn(name="toFixed", expr="1")]), "project extensions count too"
 
 

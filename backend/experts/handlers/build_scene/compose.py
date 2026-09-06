@@ -419,9 +419,9 @@ def _functions(proposed, slider_ids: set[str]) -> list[dict]:
                 f"wins — every call would read the slider instead. Rename one.")
         if name in CORE_MATH_NAMES or name in EXTENSION_NAMES:
             raise ComposeError(
-                f"{where}: `{name}` is already a math.js function, so the scene "
-                f"function is ignored and calls silently mean the built-in one. "
-                f"Pick another name.")
+                f"{where}: `{name}` is already a math.js built-in — a function, "
+                f"or a constant like `PI` — so the scene function is ignored and "
+                f"every use silently means the built-in one. Pick another name.")
         if name in seen:
             raise ComposeError(f"{where}: defined twice. Only the first survives.")
         seen.add(name)
