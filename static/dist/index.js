@@ -8047,12 +8047,19 @@ function rasterLatex(src, fontPx, color) {
 		const vb = svg.viewBox.baseVal;
 		if (!vb || vb.width <= 0 || vb.height <= 0 || r.width <= 0 || r.height <= 0) continue;
 		const color = getComputedStyle(svg).color;
+		const par = (svg.getAttribute("preserveAspectRatio") || "xMidYMid meet").trim().split(/\s+/);
+		const align = par[0] || "xMidYMid";
+		let sx = r.width / vb.width, sy = r.height / vb.height;
+		if (align !== "none") sx = sy = par[1] === "slice" ? Math.max(sx, sy) : Math.min(sx, sy);
+		const slack = (extent, span, key) => key.endsWith("Mid") ? (extent - span) / 2 : key.endsWith("Max") ? extent - span : 0;
+		const ox = align === "none" ? 0 : slack(r.width, vb.width * sx, align.slice(0, 4));
+		const oy = align === "none" ? 0 : slack(r.height, vb.height * sy, align.slice(4));
 		ctx.save();
 		ctx.beginPath();
 		ctx.rect(r.left - box.left, r.top - box.top, r.width, r.height);
 		ctx.clip();
-		ctx.translate(r.left - box.left, r.top - box.top);
-		ctx.scale(r.width / vb.width, r.height / vb.height);
+		ctx.translate(r.left - box.left + ox, r.top - box.top + oy);
+		ctx.scale(sx, sy);
 		ctx.translate(-vb.x, -vb.y);
 		ctx.fillStyle = color;
 		for (const p of Array.from(svg.querySelectorAll("path"))) {
