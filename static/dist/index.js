@@ -8526,7 +8526,7 @@ function renderTensor(el, _view) {
 				opacity: mat.opacity,
 				side: THREE.DoubleSide,
 				depthWrite: depthDeclared,
-				alphaTest: .05
+				alphaTest: depthDeclared ? .05 : 0
 			});
 			qMat.addEventListener("dispose", () => tex.dispose());
 			const qMesh = new THREE.Mesh(qGeom, qMat);

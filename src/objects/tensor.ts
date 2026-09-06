@@ -920,14 +920,16 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
             textQuads = textDeclared ? { attr: qPosAttr, place: placeTextCell } : null;
             // alphaTest drops the canvas's transparent pixels before the depth
             // test, so the text quads can write depth over raised cells
-            // without their empty area occluding what lies behind.
+            // without their empty area occluding what lies behind. It goes
+            // with the depth write: a flat tensor writes no depth and keeps
+            // its glyph edges fully blended.
             const qMat = new THREE.MeshBasicMaterial({
                 map: tex,
                 transparent: true,
                 opacity: mat.opacity,
                 side: THREE.DoubleSide,
                 depthWrite: depthDeclared,
-                alphaTest: 0.05,
+                alphaTest: depthDeclared ? 0.05 : 0,
             });
             // Disposing a material does not dispose its map. The loader tears a
             // mesh down by disposing geometry and material, so ride that event
