@@ -2723,17 +2723,9 @@
             {
               "id": "s3_txt_halfA",
               "type": "text",
-              "text": "**HALF A** — one query through a hand-built subject→verb head",
+              "text": "**HALF A** — one query through a hand-built subject→verb head\\n$d_{\\text{model}} = 4$, $d_k = 2$",
               "position": [-5.0, 9.4, 0],
               "color": "#ab47bc",
-              "align": "left"
-            },
-            {
-              "id": "s3_txt_dims",
-              "type": "text",
-              "text": "$d_{\\text{model}} = 4$, $d_k = 2$",
-              "position": [-5.0, 8.4, 0],
-              "color": "#26c6da",
               "align": "left"
             },
             {
@@ -2851,17 +2843,8 @@
             },
             {
               "id": "s3_tensor_on_raw_n_cap",
-              "text": "**PREDICT** — row *on*, unscaled",
+              "text": "**PREDICT** — row *on*, unscaled\\ncommit first",
               "position": [1.4, 4.98, 0],
-              "type": "text",
-              "align": "left",
-              "color": "#9e9e9e",
-              "legendGroup": "un-revealed — predict first"
-            },
-            {
-              "id": "s3_tensor_on_raw_n_note",
-              "text": "commit first",
-              "position": [1.4, 4.42, 0],
               "type": "text",
               "align": "left",
               "color": "#9e9e9e",
@@ -2899,8 +2882,7 @@
             {"id": "s3_tensor_on_raw_n"},
             {"id": "s3_tensor_on_soft_n"},
             {"id": "s3_tensor_on_raw_n_cap"},
-            {"id": "s3_tensor_on_soft_n_cap"},
-            {"id": "s3_tensor_on_raw_n_note"}
+            {"id": "s3_tensor_on_soft_n_cap"}
           ],
           "add": [
             {
@@ -2996,17 +2978,8 @@
             },
             {
               "id": "s3_tensor_dksel_cap",
-              "text": "row 2: $s_{2j}/\\sqrt{\\;\\cdot\\;}$",
+              "text": "row 2: $s_{2j}/\\sqrt{\\;\\cdot\\;}$\\n$\\sqrt{d_k}$ ✓ · $\\sqrt{d_{\\text{model}}}$ ✗",
               "position": [1.4, 1.78, 0],
-              "type": "text",
-              "align": "left",
-              "color": "#e53935",
-              "legendGroup": "which $\\sqrt{\\;\\cdot\\;}$?"
-            },
-            {
-              "id": "s3_tensor_dksel_note",
-              "text": "$\\sqrt{d_k}$ ✓ · $\\sqrt{d_{\\text{model}}}$ ✗",
-              "position": [1.4, 1.22, 0],
               "type": "text",
               "align": "left",
               "color": "#e53935",
@@ -3038,8 +3011,7 @@
             {"id": "s3_tensor_on_soft"},
             {"id": "s3_dksel"},
             {"id": "s3_tensor_on_scaled_cap"},
-            {"id": "s3_tensor_on_soft_cap"},
-            {"id": "s3_tensor_dksel_note"}
+            {"id": "s3_tensor_on_soft_cap"}
           ],
           "add": [
             {
@@ -3195,17 +3167,8 @@
             },
             {
               "id": "s3_tensor_raw_n_cap",
-              "text": "**PREDICT** — raw scores",
+              "text": "**PREDICT** — raw scores\\ncommit first",
               "position": [1.4, 6.98, 0],
-              "type": "text",
-              "align": "left",
-              "color": "#9e9e9e",
-              "legendGroup": "un-revealed — predict first"
-            },
-            {
-              "id": "s3_tensor_raw_n_note",
-              "text": "commit first",
-              "position": [1.4, 6.42, 0],
               "type": "text",
               "align": "left",
               "color": "#9e9e9e",
@@ -3234,8 +3197,7 @@
           ],
           "remove": [
             {"id": "s3_tensor_raw_n"},
-            {"id": "s3_tensor_raw_n_cap"},
-            {"id": "s3_tensor_raw_n_note"}
+            {"id": "s3_tensor_raw_n_cap"}
           ],
           "add": [
             {
@@ -3323,7 +3285,7 @@
             },
             {
               "id": "s3_tensor_raw_b_cap",
-              "text": "stage 1 — raw, signed",
+              "text": "stage 1 — raw, signed\\n$-\\infty$ is added **here**",
               "position": [1.4, 6.98, 0],
               "type": "text",
               "align": "left",
@@ -3331,17 +3293,8 @@
               "legendGroup": "raw scores $s_{ij}$ (signed)"
             },
             {
-              "id": "s3_tensor_raw_b_note",
-              "text": "$-\\infty$ is added **here**",
-              "position": [1.4, 6.42, 0],
-              "type": "text",
-              "align": "left",
-              "color": "#ff7043",
-              "legendGroup": "raw scores $s_{ij}$ (signed)"
-            },
-            {
               "id": "s3_tensor_scaledmask_cap",
-              "text": "stages 2 + 3 — scaled, masked",
+              "text": "stages 2 + 3 — scaled, masked\\ndeep blue = $-\\infty$, not a score",
               "position": [1.4, 4.98, 0],
               "type": "text",
               "align": "left",
@@ -3349,27 +3302,9 @@
               "legendGroup": "scaled + masked, row $i$"
             },
             {
-              "id": "s3_tensor_scaledmask_note",
-              "text": "deep blue = $-\\infty$, not a score",
-              "position": [1.4, 4.42, 0],
-              "type": "text",
-              "align": "left",
-              "color": "#ff7043",
-              "legendGroup": "scaled + masked, row $i$"
-            },
-            {
               "id": "s3_tensor_mask_cap",
-              "text": "causal mask $M$",
+              "text": "causal mask $M$\\n$-\\infty$ above the diagonal",
               "position": [0.20000000000000073, -0.82, 0],
-              "type": "text",
-              "align": "left",
-              "color": "#455a64",
-              "legendGroup": "causal mask $M$"
-            },
-            {
-              "id": "s3_tensor_mask_note",
-              "text": "$-\\infty$ above the diagonal",
-              "position": [0.20000000000000073, -1.38, 0],
               "type": "text",
               "align": "left",
               "color": "#455a64",
@@ -3422,17 +3357,8 @@
             },
             {
               "id": "s3_tensor_soft_cap",
-              "text": "stage 4 — $\\alpha_{ij}$ · bar height is the weight",
+              "text": "stage 4 — $\\alpha_{ij}$ · bar height is the weight\\nread **across**, never down · masked keys have no bar",
               "position": [1.4, 3.38, 0],
-              "type": "text",
-              "align": "left",
-              "color": "#66bb6a",
-              "legendGroup": "$\\alpha_{ij}$ — the attention row"
-            },
-            {
-              "id": "s3_tensor_soft_note",
-              "text": "read **across**, never down · masked keys have no bar",
-              "position": [1.4, 2.82, 0],
               "type": "text",
               "align": "left",
               "color": "#66bb6a",
@@ -3456,8 +3382,7 @@
           },
           "remove": [
             {"id": "s3_tensor_mask"},
-            {"id": "s3_tensor_mask_cap"},
-            {"id": "s3_tensor_mask_note"}
+            {"id": "s3_tensor_mask_cap"}
           ],
           "add": [
             {
@@ -3737,7 +3662,6 @@
           ],
           "remove": [
             {"id": "s3_txt_halfA"},
-            {"id": "s3_txt_dims"},
             {"id": "s3_tensor_raw_b_cap"},
             {"id": "s3_tensor_soft_cap"},
             {"id": "s3_tensor_scaledmask_cap"},
@@ -3759,9 +3683,6 @@
             {"id": "s3_axis_y"},
             {"id": "s3_axis_z"},
             {"id": "s3_grid"},
-            {"id": "s3_tensor_raw_b_note"},
-            {"id": "s3_tensor_soft_note"},
-            {"id": "s3_tensor_scaledmask_note"},
             {"id": "s3_pt_v3_ghost"},
             {"id": "s3_pt_v4_ghost"},
             {"id": "s3_pt_v5_ghost"},
