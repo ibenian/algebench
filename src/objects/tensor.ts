@@ -140,7 +140,8 @@ export function plainTextOfLatex(src: string): string {
     const greek: Record<string, string> = {
         alpha: 'α', beta: 'β', gamma: 'γ', delta: 'δ', epsilon: 'ε', theta: 'θ', lambda: 'λ', mu: 'μ',
         pi: 'π', rho: 'ρ', sigma: 'σ', tau: 'τ', phi: 'φ', omega: 'ω', Delta: 'Δ', Sigma: 'Σ', Omega: 'Ω',
-        cdot: '·', times: '×', to: '→', rightarrow: '→', leftarrow: '←', infty: '∞', pm: '±', le: '≤', ge: '≥', ne: '≠',
+        cdot: '·', times: '×', to: '→', rightarrow: '→', leftarrow: '←', infty: '∞', pm: '±',
+        le: '≤', leq: '≤', ge: '≥', geq: '≥', ne: '≠', neq: '≠', approx: '≈', sum: 'Σ', prod: 'Π', sqrt: '√',
     };
     return src
         .replace(/\\(?:text|mathrm|mathbf|operatorname)\{([^{}]*)\}/g, '$1')
@@ -844,10 +845,16 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
         }
     }
 
+    // Scratch for the per-frame axis label strings, one array per axis,
+    // allocated once: paintText runs every frame when a labelExpr is live.
+    const hLabelScratch: string[] = new Array(cols).fill('');
+    const vLabelScratch: string[] = new Array(rows).fill('');
+
     /** One axis's label strings for this frame: the expression per entry, or the static list. */
     function axisLabelTexts(fn: CompiledExpr | null, statics: string[] | null, n: number, isRow: boolean, tSec: number): string[] {
-        const out: string[] = new Array(n).fill('');
+        const out = isRow ? vLabelScratch : hLabelScratch;
         for (let k = 0; k < n; k++) {
+            out[k] = '';
             if (fn) {
                 try {
                     const v = evalExpr(fn, tSec, { overrideScope: isRow ? { row: k, idx: k } : { col: k, idx: k } });

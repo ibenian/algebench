@@ -8015,8 +8015,15 @@ function plainTextOfLatex(src) {
 		infty: "∞",
 		pm: "±",
 		le: "≤",
+		leq: "≤",
 		ge: "≥",
-		ne: "≠"
+		geq: "≥",
+		ne: "≠",
+		neq: "≠",
+		approx: "≈",
+		sum: "Σ",
+		prod: "Π",
+		sqrt: "√"
 	};
 	return src.replace(/\\(?:text|mathrm|mathbf|operatorname)\{([^{}]*)\}/g, "$1").replace(/\$/g, "").replace(/\\([A-Za-z]+)/g, (_m, name) => greek[name] ?? name).replace(/[{}_^]/g, "").replace(/\s+/g, " ").trim();
 }
@@ -8503,22 +8510,27 @@ function renderTensor(el, _view) {
 			};
 		}
 	}
+	const hLabelScratch = new Array(cols).fill("");
+	const vLabelScratch = new Array(rows).fill("");
 	/** One axis's label strings for this frame: the expression per entry, or the static list. */
 	function axisLabelTexts(fn, statics, n, isRow, tSec) {
-		const out = new Array(n).fill("");
-		for (let k = 0; k < n; k++) if (fn) try {
-			const v = evalExpr(fn, tSec, { overrideScope: isRow ? {
-				row: k,
-				idx: k
-			} : {
-				col: k,
-				idx: k
-			} });
-			out[k] = v === null || v === void 0 ? "" : String(v);
-		} catch (_err) {
+		const out = isRow ? vLabelScratch : hLabelScratch;
+		for (let k = 0; k < n; k++) {
 			out[k] = "";
+			if (fn) try {
+				const v = evalExpr(fn, tSec, { overrideScope: isRow ? {
+					row: k,
+					idx: k
+				} : {
+					col: k,
+					idx: k
+				} });
+				out[k] = v === null || v === void 0 ? "" : String(v);
+			} catch (_err) {
+				out[k] = "";
+			}
+			else if (statics && k < statics.length) out[k] = statics[k];
 		}
-		else if (statics && k < statics.length) out[k] = statics[k];
 		return out;
 	}
 	/** Draw one string fitted into a box, in a colour, optionally rotated a quarter turn. */

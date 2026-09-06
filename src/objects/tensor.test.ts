@@ -268,4 +268,5 @@ test('plainTextOfLatex gives a canvas the reading of a label that may carry LaTe
     assert.equal(plainTextOfLatex('row $i$ $\\to$ key $j$'), 'row i → key j');
     assert.equal(plainTextOfLatex('plain'), 'plain');
     assert.equal(plainTextOfLatex('$\\unknowncmd{x}$'), 'unknowncmdx');
+    assert.equal(plainTextOfLatex('$x \\leq y \\neq z$'), 'x ≤ y ≠ z');
 });
