@@ -37,6 +37,7 @@ elements. Use it instead of hand-writing cells — always.
 | `opacity` | `0.95` | 0–1 |
 | `widthExpr` | `1 − gap` | Per-cell **width** as a fraction of `cellSize` (0–1), with `row`, `col`, `idx` and `value` bound. See *Channels* |
 | `heightExpr` | `1 − gap` | Per-cell **height**, same scope. Independent of width |
+| `axisLabels` | `plane` | `plane`: labels and titles drawn on the lattice plane, like cell text. `screen`: HTML labels facing the camera. See *Axis labels* |
 | `anchor` | `center` | Which edge a shrunken cell keeps: `bottom`, `top`, `left`, `right`, or a pair like `bottom-left`. See *Channels* |
 | `textExpr` | — | Text drawn **inside** each cell, same scope. Plain text, fitted to the cell, on the lattice plane |
 | `textColor` | auto | Colour for cell text. Omit for automatic contrast per cell |
@@ -178,8 +179,21 @@ beyond the labels), and `color`. All are optional — an axis with no entry is s
 A label count that disagrees with the axis length is a warning, not an error: the extras are
 ignored and the remainder is left blank.
 
-The labels are ordinary 3D labels, so they hide and restore with the element and do **not** create
-legend entries.
+The labels hide and restore with the element and do **not** create legend entries.
+
+### On the plane, or on the screen
+
+By default (`"axisLabels": "plane"`) the labels are drawn on the lattice plane, in a band above the
+cells (column labels, then the column title) and a band to the left (row labels, then the row title
+turned a quarter turn), the same way `textExpr` cell text is drawn. They tilt, scale and occlude
+with the lattice, and never pile up with the screen labels of other elements.
+
+Two costs. Plain text only: LaTeX is reduced to its plain reading (`key $j$` → `key j`,
+`$\alpha_{3j}$` → `α3j`), so keep labels simple. And a label driven by `labelExpr` is re-evaluated
+per frame like cell text, with the canvas redrawn only when some label changed.
+
+Set `"axisLabels": "screen"` for HTML labels that always face the camera, like every other label —
+for a lattice that is only ever read face-on and whose labels need real KaTeX.
 
 ## Cell indexing
 

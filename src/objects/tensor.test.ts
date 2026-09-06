@@ -162,17 +162,13 @@ test('an axis label may evaluate to a string, which is the point of the key', ()
     assert.equal(out, 'slot 2');
 });
 
-test('a malformed labelExpr degrades to the constant 0, silently', () => {
-    // compileExpr does not throw HERE: on a math.js parse failure in an
-    // UNTRUSTED scene it returns compile('0'). (It can throw for a trusted
-    // scene, where a malformed body reaches `Function(...)` unguarded -- a
-    // different path, and not the one this pins.) So a typo does not blank the axis or take the
-    // lattice down — every label along it just reads "0". Pinned here because
-    // it is the same silent-zero trap valueExpr has, and the failure gives an
-    // author no signal beyond the wrong thing being on screen.
-    const fn = compileAxisLabelExpr({ labelExpr: 'concat(((' } as never);
-    assert.notEqual(fn, null);
-    assert.equal((fn as { evaluate(s: object): unknown }).evaluate({ row: 3 }), 0);
+test('a malformed labelExpr leaves the axis unlabelled rather than reading "0"', () => {
+    // compileExpr does not throw on a math.js parse failure in an UNTRUSTED
+    // scene; it returns compile('0'), which for a label would put "0" on
+    // every entry along the axis with no signal to the author. The compiler
+    // asks explainCompileDegrade first and refuses, with a console warning.
+    assert.equal(compileAxisLabelExpr({ labelExpr: 'concat(((' } as never), null);
+    assert.equal(compileAxisLabelExpr({ labelExpr: 'idx.toFixed(1)' } as never), null);
 });
 
 // ── per-cell channels ──
@@ -263,3 +259,16 @@ test('a size or text channel refuses an expression compileExpr would degrade to 
     assert.match(String(explainCompileDegrade('value.toFixed(2)')), /JavaScript-only/);
     assert.match(String(explainCompileDegrade('concat(((')), /does not parse/);
 });
+
+test('plainTextOfLatex without a DOM strips the markup structurally', async () => {
+    // In the browser the function renders through KaTeX and reads the glyphs
+    // back, so \\alpha becomes α with no table to maintain. Under node there
+    // is no DOM, and this pins the structural fallback: markup goes, names
+    // of commands stay readable, nothing throws.
+    const { plainTextOfLatex } = await import('/objects/tensor.js');
+    assert.equal(plainTextOfLatex('key $j$'), 'key j');
+    assert.equal(plainTextOfLatex('$d_{\\text{model}} = 4$'), 'dmodel = 4');
+    assert.equal(plainTextOfLatex('$\\alpha_{3j}$'), 'alpha3j');
+    assert.equal(plainTextOfLatex('plain'), 'plain');
+});
+

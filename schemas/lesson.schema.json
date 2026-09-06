@@ -337,6 +337,11 @@
           "type": "string",
           "description": "TENSOR ONLY. Math.js expression giving one cell's HEIGHT as a fraction of 'cellSize' (0-1), same scope and default as 'widthExpr'. Width and height are independent, so \"heightExpr\": \"value\" alone turns a row of cells into a bar chart sitting on its lattice."
         },
+        "axisLabels": {
+          "type": "string",
+          "enum": ["screen", "plane"],
+          "description": "TENSOR ONLY. How 'axes' labels and titles are drawn. 'plane' (default): drawn on the lattice plane itself, in margin bands beside and above the cells, the same way 'textExpr' cell text is -- they tilt, scale and occlude with the lattice and never pile up with screen labels. 'screen': HTML labels that always face the camera, like every other label; use it for a lattice that is only ever read face-on and needs KaTeX in its labels. Plane mode is plain text (LaTeX is reduced to its plain reading: 'key $j$' becomes 'key j')."
+        },
         "anchor": {
           "type": "string",
           "description": "TENSOR ONLY. Which edge of its slot a cell shrunk by 'widthExpr' / 'heightExpr' keeps. 'center' (default) grows and shrinks about the slot centre; 'bottom', 'top', 'left', 'right' pin that edge, and a pair such as 'bottom-left' pins both. A full-size cell sits in the same place whatever the anchor. \"heightExpr\": \"value\" with \"anchor\": \"bottom\" turns a row of cells into a bar chart standing on its lattice — the way to show a distribution of values."
