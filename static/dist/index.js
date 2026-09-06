@@ -9131,6 +9131,8 @@ function formatTick(v, step) {
 }
 /** Longest side of the paper canvas, in pixels; the ceiling tensor uses for its label canvas. */
 var MAX_PAPER_PX = 2048;
+/** Most ticks an axis will try for; past this the labels cannot be read anyway. */
+var MAX_TICKS = 50;
 var PLANE_AXES = {
 	xy: [
 		0,
@@ -9270,8 +9272,13 @@ function renderChart(el, view) {
 	const xAxis = axes[0], yAxis = axes[1];
 	const xTitle = xAxis && xAxis.title ? String(xAxis.title) : null;
 	const yTitle = yAxis && yAxis.title ? String(yAxis.title) : null;
-	const xTickCount = Number(xAxis?.ticks) > 1 ? Math.floor(Number(xAxis.ticks)) : 5;
-	const yTickCount = Number(yAxis?.ticks) > 1 ? Math.floor(Number(yAxis.ticks)) : 5;
+	/** A target tick count: an integer in 2..MAX_TICKS, else the default 5. */
+	const tickCount = (raw) => {
+		const v = Number(raw);
+		return Number.isFinite(v) && v > 1 ? Math.min(MAX_TICKS, Math.floor(v)) : 5;
+	};
+	const xTickCount = tickCount(xAxis?.ticks);
+	const yTickCount = tickCount(yAxis?.ticks);
 	const xLabelSrc = typeof xAxis?.labelExpr === "string" ? xAxis.labelExpr.trim() || null : null;
 	const yLabelSrc = typeof yAxis?.labelExpr === "string" ? yAxis.labelExpr.trim() || null : null;
 	let xLabelFn = compileOpt(xLabelSrc, "axes[0].labelExpr");

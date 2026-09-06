@@ -316,6 +316,7 @@
               "ticks": {
                 "type": "integer",
                 "minimum": 2,
+                "maximum": 50,
                 "description": "CHART ONLY. How many round tick values to aim for along this axis. Default 5. The actual count depends on the domain, since ticks land on multiples of 1, 2 or 5 times a power of ten."
               },
               "color": {
