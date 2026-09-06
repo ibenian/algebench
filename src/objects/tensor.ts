@@ -46,7 +46,7 @@ import type { CompiledExpr } from '/expr.js';
 import { dataToWorld } from '/coords.js';
 import type { Vec3 } from '/coords.js';
 import type { Element, Shader } from '/types/lesson.js';
-import type { CanvasTexture, Mesh, Object3D, Scene } from 'three';
+import type { BufferAttribute, CanvasTexture, Mesh, Object3D, Scene } from 'three';
 
 /** parseColor returns `number[]`; three's Color constructor needs a tuple. */
 type Rgb3 = [number, number, number];
@@ -68,6 +68,20 @@ export function resolveExtent(raw: unknown, fallback: number): number {
     const n = Number(raw);
     if (!Number.isFinite(n)) return fallback;
     return Math.max(0, Math.min(1, n));
+}
+
+/**
+ * Read a `depthExpr` result as a fraction of the cell pitch: how far the cell
+ * stands off the lattice plane. Positive rises above it, negative sinks below
+ * it, so signed data reads as relief in both directions. Not a number is
+ * flat; the cap of 3 pitches either way keeps a runaway value from becoming
+ * a tower or a well.
+ */
+export function resolveDepth(raw: unknown): number {
+    if (raw === null || raw === undefined || raw === '' || typeof raw === 'boolean') return 0;
+    const n = Number(raw);
+    if (!Number.isFinite(n)) return 0;
+    return Math.max(-3, Math.min(3, n));
 }
 
 /**
@@ -407,9 +421,9 @@ function gridLayout(dims: number[], origin: Vec3, cellSize: number, plane: strin
          * A full-size cell (`w = h = fill`) lands in the same place whatever
          * the anchor; the anchor only decides where a smaller one sits.
          */
-        corner: (r: number, c: number, dx: number, dy: number, w: number, h: number): Vec3 =>
+        corner: (r: number, c: number, dx: number, dy: number, w: number, h: number, nOff = 0): Vec3 =>
             at((c + 0.5) * cellSize + anchor.h * (fill - w) / 2 + (dx - 0.5) * w,
-               (rows - 1 - r + 0.5) * cellSize + anchor.v * (fill - h) / 2 + (dy - 0.5) * h),
+               (rows - 1 - r + 0.5) * cellSize + anchor.v * (fill - h) / 2 + (dy - 0.5) * h, nOff),
         /** Absolute in-plane point, lifted `nOff` off the lattice plane. */
         point: at,
         /** Whole-lattice extent in the plane. */
@@ -512,12 +526,13 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     // as `valueExpr` plus `value`, the cell's own number, so "size follows the
     // value" is `widthExpr: "value"` and needs no second data source. Colour
     // stays value-driven through `colorMap`; these add to it, never replace it.
-    const readExpr = (key: 'widthExpr' | 'heightExpr' | 'textExpr'): string | null => {
+    const readExpr = (key: 'widthExpr' | 'heightExpr' | 'depthExpr' | 'textExpr'): string | null => {
         const raw = el[key];
         return (typeof raw === 'string' && raw.trim()) ? raw.trim() : null;
     };
     const widthExprString = readExpr('widthExpr');
     const heightExprString = readExpr('heightExpr');
+    const depthExprString = readExpr('depthExpr');
     const textExprString = readExpr('textExpr');
     // compileExpr degrades an unparseable or JS-only expression in an
     // untrusted scene to the constant 0 rather than throwing. For a cell's
@@ -539,6 +554,7 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     };
     let widthFn = compileOpt(widthExprString, 'widthExpr');
     let heightFn = compileOpt(heightExprString, 'heightExpr');
+    let depthFn = compileOpt(depthExprString, 'depthExpr');
     let textFn = compileOpt(textExprString, 'textExpr');
     // Declared vs live: a size channel that is written into the scene makes
     // the position buffer dynamic for good (trust can switch it on later),
@@ -546,39 +562,59 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     // recomputed whenever the rebuild hook recompiles the channels.
     const sizeChannelDeclared = !!(widthExprString || heightExprString);
     let hasSizeExpr = !!(widthFn || heightFn);
+    // Depth extrudes a cell into a box along the plane normal, up or down. A declared
+    // depth channel changes the geometry's SHAPE (30 vertices per cell, not
+    // 6), so it is decided at build like the vertex count it implies.
+    const depthDeclared = !!depthExprString;
+    let hasDepthExpr = !!depthFn;
     const textColorFixed = resolveTextColor(el.textColor);
 
     const opacity = (typeof el.opacity === 'number' && isFinite(el.opacity))
         ? Math.max(0, Math.min(1, el.opacity)) : 0.95;
     const sh = (el.shader || {}) as Shader;
 
-    // ── Geometry: built once. Cell corners are arithmetic on the layout. ──
-    const vertsPerCell = QUAD_CORNERS.length;
+    // ── Geometry: built once. Cell corners are arithmetic on the layout. A
+    // flat cell is one quad (6 vertices); a cell that can have depth is a
+    // lidless box -- the top quad plus four side quads (30 vertices), so the
+    // bump reads as a solid block rather than a floating tile. ──
+    const TOP_VERTS = QUAD_CORNERS.length;
+    const vertsPerCell = depthDeclared ? TOP_VERTS + 4 * TOP_VERTS : TOP_VERTS;
     const positions = new Float32Array(drawn * vertsPerCell * 3);
     const colors = new Float32Array(drawn * vertsPerCell * 3);
 
-    /** Write one cell's six vertices for a cell `w` x `h` in data units, centred on its lattice slot. */
-    function placeCell(cell: number, r: number, c: number, w: number, h: number) {
-        for (let k = 0; k < vertsPerCell; k++) {
-            // Non-null: k indexes QUAD_CORNERS, whose length is vertsPerCell.
-            const [dx, dy] = QUAD_CORNERS[k]!;
-            const p = dataToWorld(layout.corner(r, c, dx, dy, w, h));
+    /** The four side walls of a box, each as two triangles between the plane and the lid. */
+    const SIDE_EDGES: [[number, number], [number, number]][] = [
+        [[0, 0], [1, 0]], [[1, 0], [1, 1]], [[1, 1], [0, 1]], [[0, 1], [0, 0]],
+    ];
+
+    /** Write one cell's vertices for a `w` x `h` cell in data units, lifted `d` off the plane. */
+    function placeCell(cell: number, r: number, c: number, w: number, h: number, d = 0) {
+        let k = 0;
+        const put = (dx: number, dy: number, nOff: number) => {
+            const p = dataToWorld(layout.corner(r, c, dx, dy, w, h, nOff));
             const base = (cell * vertsPerCell + k) * 3;
             positions[base] = p[0];
             positions[base + 1] = p[1];
             positions[base + 2] = p[2];
+            k++;
+        };
+        for (const [dx, dy] of QUAD_CORNERS) put(dx, dy, d);
+        if (!depthDeclared) return;
+        for (const [[ax, ay], [bx, by]] of SIDE_EDGES) {
+            put(ax, ay, 0); put(bx, by, 0); put(bx, by, d);
+            put(ax, ay, 0); put(bx, by, d); put(ax, ay, d);
         }
     }
 
     for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) placeCell(r * cols + c, r, c, fill, fill);
+        for (let c = 0; c < cols; c++) placeCell(r * cols + c, r, c, fill, fill, 0);
     }
 
     const geom = new THREE.BufferGeometry();
     const posAttr = new THREE.BufferAttribute(positions, 3);
     // Only a size channel moves vertices after the build; without one the
     // positions really are write-once, which is the static contract.
-    if (sizeChannelDeclared) posAttr.setUsage(THREE.DynamicDrawUsage);
+    if (sizeChannelDeclared || depthDeclared) posAttr.setUsage(THREE.DynamicDrawUsage);
     geom.setAttribute('position', posAttr);
     const colorAttr = new THREE.BufferAttribute(colors, 3);
     // Positions never move, but a `valueExpr` tensor rewrites this whole buffer
@@ -594,36 +630,39 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     const cellValue = new Float64Array(drawn).fill(NaN);
     const cellW = new Float64Array(drawn).fill(fillFrac);
     const cellH = new Float64Array(drawn).fill(fillFrac);
+    const cellD = new Float64Array(drawn);
     const cellRgb = new Float32Array(drawn * 3);
 
-    /** Paint one cell's six vertices from a raw value. */
+    // The material is unlit, so a box's walls would be the same flat colour
+    // as its lid and the bump would read as a bigger tile. Shade the walls a
+    // fixed step darker, which is what makes the height legible.
+    const SIDE_SHADE = 0.68;
+
+    /** Write one colour to a cell's vertices: full on the lid, shaded on the walls. */
+    function colourCell(cell: number, r0: number, g0: number, b0: number) {
+        cellRgb[cell * 3] = r0; cellRgb[cell * 3 + 1] = g0; cellRgb[cell * 3 + 2] = b0;
+        for (let k = 0; k < vertsPerCell; k++) {
+            const shade = k < TOP_VERTS ? 1 : SIDE_SHADE;
+            const base = (cell * vertsPerCell + k) * 3;
+            colors[base] = r0 * shade;
+            colors[base + 1] = g0 * shade;
+            colors[base + 2] = b0 * shade;
+        }
+    }
+
+    /** Paint one cell from a raw value. */
     function paintCell(cell: number, raw: unknown) {
         const u = normalizeColorValue(raw, colorDomain);
         // null means the value was not a usable number — leave the cell as it
         // was rather than flashing it to the cold end of the ramp.
         if (u === null) return;
         const rgb = colorMapFn(u);
-        const r0 = rgb[0]!, g0 = rgb[1]!, b0 = rgb[2]!;
-        cellRgb[cell * 3] = r0; cellRgb[cell * 3 + 1] = g0; cellRgb[cell * 3 + 2] = b0;
-        for (let k = 0; k < vertsPerCell; k++) {
-            const base = (cell * vertsPerCell + k) * 3;
-            colors[base] = r0;
-            colors[base + 1] = g0;
-            colors[base + 2] = b0;
-        }
+        colourCell(cell, rgb[0]!, rgb[1]!, rgb[2]!);
     }
 
     // Seed every cell with the element's static colour, so a failed or absent
     // value source still renders something deliberate.
-    for (let cell = 0; cell < drawn; cell++) {
-        cellRgb[cell * 3] = baseColor[0]; cellRgb[cell * 3 + 1] = baseColor[1]; cellRgb[cell * 3 + 2] = baseColor[2];
-        for (let k = 0; k < vertsPerCell; k++) {
-            const base = (cell * vertsPerCell + k) * 3;
-            colors[base] = baseColor[0];
-            colors[base + 1] = baseColor[1];
-            colors[base + 2] = baseColor[2];
-        }
-    }
+    for (let cell = 0; cell < drawn; cell++) colourCell(cell, baseColor[0], baseColor[1], baseColor[2]);
 
     /**
      * Evaluate every drawn cell at `tSec`, binding indices for that cell only:
@@ -633,7 +672,7 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
      */
     function paintAll(tSec: number) {
         const liveValue = literalValues || valueFn;
-        if (!liveValue && !hasSizeExpr) return;
+        if (!liveValue && !hasSizeExpr && !hasDepthExpr) return;
         for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
                 const cell = r * cols + c;
@@ -652,12 +691,14 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
                 const v = Number(raw);
                 const scope = { ...idxScope, value: Number.isFinite(v) ? v : NaN };
                 cellValue[cell] = scope.value;
-                if (hasSizeExpr) {
+                if (hasSizeExpr || hasDepthExpr) {
                     const w = widthFn ? resolveExtent(evalExpr(widthFn, tSec, { overrideScope: scope }), fillFrac) : fillFrac;
                     const h = heightFn ? resolveExtent(evalExpr(heightFn, tSec, { overrideScope: scope }), fillFrac) : fillFrac;
+                    const d = depthFn ? resolveDepth(evalExpr(depthFn, tSec, { overrideScope: scope })) : 0;
                     cellW[cell] = w;
                     cellH[cell] = h;
-                    placeCell(cell, r, c, w * cellSize, h * cellSize);
+                    cellD[cell] = d;
+                    placeCell(cell, r, c, w * cellSize, h * cellSize, d * cellSize);
                 }
             }
         }
@@ -667,7 +708,7 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
         console.warn('tensor value evaluation error:', err);
     }
     colorAttr.needsUpdate = true;
-    if (hasSizeExpr) posAttr.needsUpdate = true;
+    if (hasSizeExpr || hasDepthExpr) posAttr.needsUpdate = true;
 
     // One formula for the first paint and for the global Planes control, which
     // recomputes `targetOpacity * planeOpacity` (or `targetOpacity` alone when
@@ -683,12 +724,16 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     // an author asking for 0.95 gets 0.95, and reaches for
     // `shader.ignorePlaneOpacity` when they want it independent of the control.
     const ignoresPlaneOpacity = !!sh.ignorePlaneOpacity;
+    // A flat lattice skips depth writes so translucent tiles blend like the
+    // other planes. Boxes cannot: without a depth write a wall behind shows
+    // through the wall in front and the relief reads inside-out, so a tensor
+    // with depth writes depth and lets the z-buffer sort its walls.
     const mat = new THREE.MeshBasicMaterial({
         vertexColors: true,
         transparent: true,
         opacity: ignoresPlaneOpacity ? opacity : tensorState.displayParams.planeOpacity * opacity,
         side: THREE.DoubleSide,
-        depthWrite: false,
+        depthWrite: depthDeclared,
     });
 
     const mesh = new THREE.Mesh(geom, mat);
@@ -790,6 +835,8 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
         lastKey: string;
     }
     let textLayer: TextLayer | null = null;
+    /** The text quads' position buffer and per-cell placer, for lifting text with a cell's depth. */
+    let textQuads: { attr: BufferAttribute; place: (cell: number, r: number, c: number) => void } | null = null;
     // A canvas is at least one pixel per cell, so past 2048 cells a side no
     // pixel budget keeps it inside the texture limit; and at that density no
     // string could be read anyway. Say so and skip the layer rather than
@@ -826,32 +873,66 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
             tex.minFilter = THREE.LinearFilter;
             tex.magFilter = THREE.LinearFilter;
             tex.generateMipmaps = false;
-            // Lift off the plane by a fraction of the pitch so the quad wins the
-            // depth tie against the cells without visibly floating.
+            // One quad per cell, each riding on that cell's lid, plus one quad
+            // for the label band above and one for the band to the left. All
+            // read sub-rectangles of the one canvas, so a raised cell carries
+            // its own text up with it while the labels stay on the plane.
+            // Row 0 is drawn at the top of the canvas and sits at the top of
+            // the lattice; CanvasTexture flips Y, so v = 1 is the canvas top.
             const lift = cellSize * 0.02;
-            // The quad covers the lattice plus the label margins, so the
-            // canvas maps onto it 1:1 in pitch units.
-            const x0 = -mL * cellSize, y1 = layout.height + mT * cellSize;
-            const q = [
-                dataToWorld(layout.point(x0, 0, lift)),
-                dataToWorld(layout.point(layout.width, 0, lift)),
-                dataToWorld(layout.point(layout.width, y1, lift)),
-                dataToWorld(layout.point(x0, y1, lift)),
-            ];
-            const qPos = new Float32Array([...q[0]!, ...q[1]!, ...q[2]!, ...q[3]!]);
-            // Row 0 is drawn at the top of the canvas and sits at the top of the
-            // lattice; CanvasTexture flips Y, so v = 1 is the canvas top.
-            const qUv = new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]);
+            // Cell quads exist only when there is cell text to carry; a
+            // lattice with plane labels alone gets just the two band quads.
+            const cellQuads = textDeclared ? drawn : 0;
+            const quads = cellQuads + 2;
+            const qPos = new Float32Array(quads * 6 * 3);
+            const qUv = new Float32Array(quads * 6 * 2);
+            const U = cols + mL, V = rows + mT;
+            /** Two triangles over a quad's four corners, in the order the buffer expects. */
+            const QUAD_ORDER = [0, 1, 2, 0, 2, 3] as const;
+            /** Write one quad: plane rect [h0,h1]x[v0,v1] (pitch units), lifted `n`, canvas rect [u0,u1]x[vTop,vBot] (canvas fractions from the top). */
+            const putQuad = (qi: number, h0: number, h1: number, v0: number, v1: number, n: number, u0: number, u1: number, cTop: number, cBot: number) => {
+                const P: [Vec3, Vec3, Vec3, Vec3] = [
+                    dataToWorld(layout.point(h0 * cellSize, v0 * cellSize, n)), dataToWorld(layout.point(h1 * cellSize, v0 * cellSize, n)),
+                    dataToWorld(layout.point(h1 * cellSize, v1 * cellSize, n)), dataToWorld(layout.point(h0 * cellSize, v1 * cellSize, n))];
+                const uAt = [u0, u1, u1, u0], vAt = [1 - cBot, 1 - cBot, 1 - cTop, 1 - cTop];
+                for (let i = 0; i < 6; i++) {
+                    const k = QUAD_ORDER[i]!;
+                    const p = P[k]!;
+                    const pb = (qi * 6 + i) * 3, tb = (qi * 6 + i) * 2;
+                    qPos[pb] = p[0]; qPos[pb + 1] = p[1]; qPos[pb + 2] = p[2];
+                    qUv[tb] = uAt[k]!; qUv[tb + 1] = vAt[k]!;
+                }
+            };
+            // Text sits on the lid, a hair towards the viewer of a raised cell
+            // and a hair above the floor of a sunken one.
+            const placeTextCell = (cell: number, r: number, c: number) => {
+                putQuad(cell, c, c + 1, rows - 1 - r, rows - r, cellD[cell]! * cellSize + lift,
+                        (mL + c) / U, (mL + c + 1) / U, (mT + r) / V, (mT + r + 1) / V);
+            };
+            if (textDeclared) for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) placeTextCell(r * cols + c, r, c);
+            putQuad(cellQuads, -mL, cols, rows, rows + mT, lift, 0, 1, 0, mT / V);
+            putQuad(cellQuads + 1, -mL, 0, 0, rows, lift, 0, mL / U, mT / V, 1);
             const qGeom = new THREE.BufferGeometry();
-            qGeom.setAttribute('position', new THREE.BufferAttribute(qPos, 3));
+            const qPosAttr = new THREE.BufferAttribute(qPos, 3);
+            // Only cell quads ever move (with their cells' depth); the band
+            // quads stay on the plane, so without cell text nothing is dynamic
+            // and the depth path has no quads to place.
+            if (depthDeclared && textDeclared) qPosAttr.setUsage(THREE.DynamicDrawUsage);
+            qGeom.setAttribute('position', qPosAttr);
             qGeom.setAttribute('uv', new THREE.BufferAttribute(qUv, 2));
-            qGeom.setIndex([0, 1, 2, 0, 2, 3]);
+            textQuads = textDeclared ? { attr: qPosAttr, place: placeTextCell } : null;
+            // alphaTest drops the canvas's transparent pixels before the depth
+            // test, so the text quads can write depth over raised cells
+            // without their empty area occluding what lies behind. It goes
+            // with the depth write: a flat tensor writes no depth and keeps
+            // its glyph edges fully blended.
             const qMat = new THREE.MeshBasicMaterial({
                 map: tex,
                 transparent: true,
                 opacity: mat.opacity,
                 side: THREE.DoubleSide,
-                depthWrite: false,
+                depthWrite: depthDeclared,
+                alphaTest: depthDeclared ? 0.05 : 0,
             });
             // Disposing a material does not dispose its map. The loader tears a
             // mesh down by disposing geometry and material, so ride that event
@@ -1080,14 +1161,14 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     // run per frame. This is the static path, and it costs exactly nothing.
     // A size or text channel is live by definition — it may read a slider —
     // so any of them registers the updater.
-    if (!valueFn && !dynamicLabels.length && !sizeChannelDeclared && !textDeclared && !planeDynamic) {
+    if (!valueFn && !dynamicLabels.length && !sizeChannelDeclared && !depthDeclared && !textDeclared && !planeDynamic) {
         return { type: 'tensor', color: baseColor, label: el.label };
     }
 
     let compiledUnderTrust = tensorState._sceneJsTrustState;
 
-    const channelStrings = [widthExprString, heightExprString, textExprString].filter((x): x is string => !!x);
-    const channelFns = () => [widthFn, heightFn, textFn].filter((x): x is CompiledExpr => !!x);
+    const channelStrings = [widthExprString, heightExprString, depthExprString, textExprString].filter((x): x is string => !!x);
+    const channelFns = () => [widthFn, heightFn, depthFn, textFn].filter((x): x is CompiledExpr => !!x);
     const entry: TensorAnimExprEntry = {
         exprStrings: [...(valueExprString ? [valueExprString] : []), ...channelStrings, ...labelExprStrings],
         animState,
@@ -1120,20 +1201,24 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
             widthFn = compileOpt(widthExprString, 'widthExpr');
             heightFn = compileOpt(heightExprString, 'heightExpr');
             textFn = textCapped ? null : compileOpt(textExprString, 'textExpr');
-            const hadSize = hasSizeExpr;
+            depthFn = compileOpt(depthExprString, 'depthExpr');
+            const hadSize = hasSizeExpr || hasDepthExpr;
             hasSizeExpr = !!(widthFn || heightFn);
-            if (hadSize && !hasSizeExpr) {
+            hasDepthExpr = !!depthFn;
+            if (hadSize && !hasSizeExpr && !hasDepthExpr) {
                 // The size channels just switched off: put every cell back at
                 // its default size now, rather than leave the last sizes
                 // frozen on screen with nothing updating them.
                 for (let r = 0; r < rows; r++) {
                     for (let c = 0; c < cols; c++) {
                         const cell = r * cols + c;
-                        cellW[cell] = fillFrac; cellH[cell] = fillFrac;
-                        placeCell(cell, r, c, fill, fill);
+                        cellW[cell] = fillFrac; cellH[cell] = fillFrac; cellD[cell] = 0;
+                        placeCell(cell, r, c, fill, fill, 0);
+                        if (textQuads) textQuads.place(cell, r, c);
                     }
                 }
                 posAttr.needsUpdate = true;
+                if (textQuads) textQuads.attr.needsUpdate = true;
             }
             if (planeLabels) {
                 hLabelFn = compileAxisLabelExpr(hAxis);
@@ -1165,11 +1250,15 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
             if (textLayer) textLayer.mesh.visible = mesh.visible;
             if (!mesh.visible) return;
             const tSec = (nowMs - startTime) / 1000;
-            if (valueFn || hasSizeExpr) {
+            if (valueFn || hasSizeExpr || hasDepthExpr) {
                 try {
                     paintAll(tSec);
                     colorAttr.needsUpdate = true;
-                    if (hasSizeExpr) posAttr.needsUpdate = true;
+                    if (hasSizeExpr || hasDepthExpr) posAttr.needsUpdate = true;
+                    if (hasDepthExpr && textQuads) {
+                        for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) textQuads.place(r * cols + c, r, c);
+                        textQuads.attr.needsUpdate = true;
+                    }
                 } catch (_err) { /* keep the last frame's colours */ }
             }
             // Static plane labels were painted once at build; only a text
