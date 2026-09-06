@@ -9099,6 +9099,8 @@ function formatTick(v, step) {
 	const s = v.toFixed(decimals);
 	return s === "-0" || /^-0\.0+$/.test(s) ? s.slice(1) : s;
 }
+/** Longest side of the paper canvas, in pixels; the ceiling tensor uses for its label canvas. */
+var MAX_PAPER_PX = 2048;
 var PLANE_AXES = {
 	xy: [
 		0,
@@ -9422,20 +9424,26 @@ function renderChart(el, view) {
 		}
 		attr.needsUpdate = true;
 	};
+	/** A band's quad, clipped to the plot area; a band wholly outside it collapses to nothing. */
+	const placeBand = (b) => {
+		if (!b.attr) return;
+		const [, v0] = toPlane(0, Math.min(b.lo, b.hi)), [, v1] = toPlane(0, Math.max(b.lo, b.hi));
+		writeQuad(b.attr, 0, W, Math.max(0, Math.min(H, v0)), Math.max(0, Math.min(H, v1)), lift);
+	};
 	for (const b of bands) {
 		const q = makeQuad(b.color, b.opacity, serial + 1, true);
 		b.mesh = q.mesh;
 		b.attr = q.attr;
-		const [, v0] = toPlane(0, Math.min(b.lo, b.hi)), [, v1] = toPlane(0, Math.max(b.lo, b.hi));
-		writeQuad(b.attr, 0, W, Math.max(0, v0), Math.min(H, v1), lift);
+		placeBand(b);
 	}
 	const mL = yTitle ? 1.6 : 1.1;
 	const mB = xTitle ? 1.1 : .7;
 	const mT = .25, mR = .35;
-	const pxPer = Math.max(8, Math.min(160, Math.floor(1600 / Math.max(W + mL + mR, H + mB + mT))));
+	const paperW = W + mL + mR, paperH = H + mB + mT;
+	const pxPer = Math.max(1, Math.min(160, Math.floor(MAX_PAPER_PX / Math.max(paperW, paperH))));
 	const canvas = document.createElement("canvas");
-	canvas.width = Math.ceil((W + mL + mR) * pxPer);
-	canvas.height = Math.ceil((H + mB + mT) * pxPer);
+	canvas.width = Math.min(MAX_PAPER_PX, Math.ceil(paperW * pxPer));
+	canvas.height = Math.min(MAX_PAPER_PX, Math.ceil(paperH * pxPer));
 	const ctx = canvas.getContext("2d");
 	let tex = null;
 	let paperKey = "";
@@ -9633,10 +9641,7 @@ function renderChart(el, view) {
 			const [, v] = toPlane(0, l.y);
 			l.data.set("data", [at(0, v, lift * 2), at(W, v, lift * 2)]);
 		}
-		for (const b of bands) if (b.attr) {
-			const [, v0] = toPlane(0, Math.min(b.lo, b.hi)), [, v1] = toPlane(0, Math.max(b.lo, b.hi));
-			writeQuad(b.attr, 0, W, Math.max(0, Math.min(H, v0)), Math.max(0, Math.min(H, v1)), lift);
-		}
+		for (const b of bands) placeBand(b);
 	}
 	const animState = { stopped: false };
 	const legendLabel = el.label || (series.length === 1 && seriesSpecs[0] && typeof seriesSpecs[0].label === "string" ? seriesSpecs[0].label : void 0);

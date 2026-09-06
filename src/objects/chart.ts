@@ -167,6 +167,9 @@ interface BandSpec {
     opacity?: unknown;
 }
 
+/** Longest side of the paper canvas, in pixels; the ceiling tensor uses for its label canvas. */
+const MAX_PAPER_PX = 2048;
+
 const PLANE_AXES: Record<string, [number, number, number]> = {
     xy: [0, 1, 2],
     xz: [0, 2, 1],
@@ -417,11 +420,16 @@ export function renderChart(el: Element, view: MathBoxNode) {
         for (let i = 0; i < 6; i++) { const p = P[order[i]!]!; a[i * 3] = p[0]; a[i * 3 + 1] = p[1]; a[i * 3 + 2] = p[2]; }
         attr.needsUpdate = true;
     };
+    /** A band's quad, clipped to the plot area; a band wholly outside it collapses to nothing. */
+    const placeBand = (b: Band) => {
+        if (!b.attr) return;
+        const [, v0] = toPlane(0, Math.min(b.lo, b.hi)), [, v1] = toPlane(0, Math.max(b.lo, b.hi));
+        writeQuad(b.attr, 0, W, Math.max(0, Math.min(H, v0)), Math.max(0, Math.min(H, v1)), lift);
+    };
     for (const b of bands) {
         const q = makeQuad(b.color, b.opacity, serial + 1, true);
         b.mesh = q.mesh; b.attr = q.attr;
-        const [, v0] = toPlane(0, Math.min(b.lo, b.hi)), [, v1] = toPlane(0, Math.max(b.lo, b.hi));
-        writeQuad(b.attr, 0, W, Math.max(0, v0), Math.min(H, v1), lift);
+        placeBand(b);
     }
 
     // ── The paper: a canvas over the plot plus margins for tick labels and
@@ -429,10 +437,15 @@ export function renderChart(el: Element, view: MathBoxNode) {
     const mL = yTitle ? 1.6 : 1.1;    // room for y tick labels (+ a rotated title)
     const mB = xTitle ? 1.1 : 0.7;    // room for x tick labels (+ a title)
     const mT = 0.25, mR = 0.35;
-    const pxPer = Math.max(8, Math.min(160, Math.floor(1600 / Math.max(W + mL + mR, H + mB + mT))));
+    // Pixel density from the paper's longer side so the canvas never exceeds
+    // MAX_PAPER_PX a side, the same ceiling tensor puts on its label canvas
+    // and comfortably under any GPU's texture limit; a huge chart just gets
+    // coarser paper.
+    const paperW = W + mL + mR, paperH = H + mB + mT;
+    const pxPer = Math.max(1, Math.min(160, Math.floor(MAX_PAPER_PX / Math.max(paperW, paperH))));
     const canvas = document.createElement('canvas');
-    canvas.width = Math.ceil((W + mL + mR) * pxPer);
-    canvas.height = Math.ceil((H + mB + mT) * pxPer);
+    canvas.width = Math.min(MAX_PAPER_PX, Math.ceil(paperW * pxPer));
+    canvas.height = Math.min(MAX_PAPER_PX, Math.ceil(paperH * pxPer));
     const ctx = canvas.getContext('2d');
     let tex: CanvasTexture | null = null;
     let paperKey = '';
@@ -542,10 +555,7 @@ export function renderChart(el: Element, view: MathBoxNode) {
     function place() {
         for (const s of series) if (s.data) s.data.set('data', seriesPoints(s));
         for (const l of hlines) if (l.data) { const [, v] = toPlane(0, l.y); l.data.set('data', [at(0, v, lift * 2), at(W, v, lift * 2)]); }
-        for (const b of bands) if (b.attr) {
-            const [, v0] = toPlane(0, Math.min(b.lo, b.hi)), [, v1] = toPlane(0, Math.max(b.lo, b.hi));
-            writeQuad(b.attr, 0, W, Math.max(0, Math.min(H, v0)), Math.max(0, Math.min(H, v1)), lift);
-        }
+        for (const b of bands) placeBand(b);
     }
 
     const animState = { stopped: false };
