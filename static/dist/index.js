@@ -8391,7 +8391,7 @@ function renderTensor(el, _view) {
 		transparent: true,
 		opacity: ignoresPlaneOpacity ? opacity : tensorState.displayParams.planeOpacity * opacity,
 		side: THREE.DoubleSide,
-		depthWrite: false
+		depthWrite: depthDeclared
 	});
 	const mesh = new THREE.Mesh(geom, mat);
 	mesh.userData.targetOpacity = opacity;
@@ -8520,7 +8520,8 @@ function renderTensor(el, _view) {
 				transparent: true,
 				opacity: mat.opacity,
 				side: THREE.DoubleSide,
-				depthWrite: false
+				depthWrite: depthDeclared,
+				alphaTest: .05
 			});
 			qMat.addEventListener("dispose", () => tex.dispose());
 			const qMesh = new THREE.Mesh(qGeom, qMat);

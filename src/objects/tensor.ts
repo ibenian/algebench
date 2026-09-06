@@ -722,12 +722,16 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     // an author asking for 0.95 gets 0.95, and reaches for
     // `shader.ignorePlaneOpacity` when they want it independent of the control.
     const ignoresPlaneOpacity = !!sh.ignorePlaneOpacity;
+    // A flat lattice skips depth writes so translucent tiles blend like the
+    // other planes. Boxes cannot: without a depth write a wall behind shows
+    // through the wall in front and the relief reads inside-out, so a tensor
+    // with depth writes depth and lets the z-buffer sort its walls.
     const mat = new THREE.MeshBasicMaterial({
         vertexColors: true,
         transparent: true,
         opacity: ignoresPlaneOpacity ? opacity : tensorState.displayParams.planeOpacity * opacity,
         side: THREE.DoubleSide,
-        depthWrite: false,
+        depthWrite: depthDeclared,
     });
 
     const mesh = new THREE.Mesh(geom, mat);
@@ -904,12 +908,16 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
             qGeom.setAttribute('position', qPosAttr);
             qGeom.setAttribute('uv', new THREE.BufferAttribute(qUv, 2));
             textQuads = { attr: qPosAttr, place: placeTextCell };
+            // alphaTest drops the canvas's transparent pixels before the depth
+            // test, so the text quads can write depth over raised cells
+            // without their empty area occluding what lies behind.
             const qMat = new THREE.MeshBasicMaterial({
                 map: tex,
                 transparent: true,
                 opacity: mat.opacity,
                 side: THREE.DoubleSide,
-                depthWrite: false,
+                depthWrite: depthDeclared,
+                alphaTest: 0.05,
             });
             // Disposing a material does not dispose its map. The loader tears a
             // mesh down by disposing geometry and material, so ride that event
