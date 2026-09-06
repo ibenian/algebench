@@ -8413,11 +8413,13 @@ function renderTensor(el, _view) {
 	}
 	const cssColor = (rgb) => `rgb(${Math.round(rgb[0] * 255)}, ${Math.round(rgb[1] * 255)}, ${Math.round(rgb[2] * 255)})`;
 	let textLayer = null;
-	if (textFn && (Math.max(rows, cols) > 2048 || rows * cols > 16384)) {
+	const textCapped = !!textExprString && (Math.max(rows, cols) > 2048 || rows * cols > 16384);
+	if (textCapped) {
 		console.warn(`tensor${el.id ? ` "${el.id}"` : ""}: textExpr is ignored on a ${rows}x${cols} lattice; cell text is capped at 2048 cells a side and 16384 cells in total (the canvas is 2048px a side).`);
 		textFn = null;
 	}
-	if (textFn || planeLabels) {
+	const textDeclared = !!textExprString && !textCapped;
+	if (textDeclared || planeLabels) {
 		const px = Math.max(1, Math.min(128, Math.floor(2048 / Math.max(rows + mT, cols + mL))));
 		const canvas = document.createElement("canvas");
 		canvas.width = Math.ceil((cols + mL) * px);
@@ -8524,7 +8526,7 @@ function renderTensor(el, _view) {
 			ctx.restore();
 		} else ctx.fillText(t, cx, cy);
 	}
-	const cellTexts = new Array(textFn ? drawn : 0).fill("");
+	const cellTexts = new Array(textDeclared ? drawn : 0).fill("");
 	const keyParts = [];
 	/** Evaluate every cell's text (and, in plane mode, the axis labels) and redraw the canvas if anything changed. */
 	function paintText(tSec) {
@@ -8703,7 +8705,7 @@ function renderTensor(el, _view) {
 			}
 			widthFn = compileOpt(widthExprString, "widthExpr");
 			heightFn = compileOpt(heightExprString, "heightExpr");
-			textFn = compileOpt(textExprString, "textExpr");
+			textFn = textCapped ? null : compileOpt(textExprString, "textExpr");
 			const hadSize = hasSizeExpr;
 			hasSizeExpr = !!(widthFn || heightFn);
 			if (hadSize && !hasSizeExpr) {

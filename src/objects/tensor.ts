@@ -793,13 +793,18 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     // fits the texture limit, and past 16384 cells in total each cell gets
     // under 16px, where no string is legible and the per-frame evaluation
     // is pure cost. Say so and skip the text rather than allocate it.
-    if (textFn && (Math.max(rows, cols) > 2048 || rows * cols > 16384)) {
+    // Keyed on what is DECLARED, not on what compiled: a textExpr the current
+    // trust state refuses still needs its canvas and its cap in place for the
+    // recompile that lets it through.
+    const textCapped = !!textExprString && (Math.max(rows, cols) > 2048 || rows * cols > 16384);
+    if (textCapped) {
         console.warn(
             `tensor${el.id ? ` "${el.id}"` : ''}: textExpr is ignored on a ${rows}x${cols} lattice; `
             + `cell text is capped at 2048 cells a side and 16384 cells in total (the canvas is 2048px a side).`);
         textFn = null;
     }
-    if (textFn || planeLabels) {
+    const textDeclared = !!textExprString && !textCapped;
+    if (textDeclared || planeLabels) {
         // Pixels per cell pitch: enough for a short number to be crisp, and
         // capped so the whole canvas never exceeds 2048 on a side. The cap
         // wins over crispness: past ~85 cells a side the text is too small to
@@ -898,7 +903,7 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
 
     // Scratch for paintText, allocated once: it runs every frame while the
     // layer exists, and the common frame ends at the key compare.
-    const cellTexts: string[] = new Array(textFn ? drawn : 0).fill('');
+    const cellTexts: string[] = new Array(textDeclared ? drawn : 0).fill('');
     const keyParts: string[] = [];
 
     /** Evaluate every cell's text (and, in plane mode, the axis labels) and redraw the canvas if anything changed. */
@@ -1102,7 +1107,7 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
             // would survive into an untrusted one.
             widthFn = compileOpt(widthExprString, 'widthExpr');
             heightFn = compileOpt(heightExprString, 'heightExpr');
-            textFn = compileOpt(textExprString, 'textExpr');
+            textFn = textCapped ? null : compileOpt(textExprString, 'textExpr');
             const hadSize = hasSizeExpr;
             hasSizeExpr = !!(widthFn || heightFn);
             if (hadSize && !hasSizeExpr) {
