@@ -872,6 +872,11 @@
       },
       "additionalProperties": true,
       "if": { "properties": { "type": { "const": "chart" } } },
+      "then": {
+        "properties": {
+          "size": { "type": "array", "description": "A chart's size is the plot area, [w, h] in data units; a bare number would silently fall back to the default." }
+        }
+      },
       "else": {
         "properties": {
           "size": { "type": "integer", "description": "Only a chart takes the [w, h] form; every other type reads a pixel size." }
