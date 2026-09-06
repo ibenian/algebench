@@ -8651,7 +8651,8 @@ function renderTensor(el, _view) {
 	function paintLabels(tSec) {
 		for (const dl of dynamicLabels) {
 			let txt;
-			try {
+			if (!dl.fn) txt = "";
+			else try {
 				txt = String(evalExpr(dl.fn, tSec, { overrideScope: dl.scope }));
 			} catch (_err) {
 				continue;
@@ -8668,7 +8669,7 @@ function renderTensor(el, _view) {
 		console.warn("tensor axis label evaluation error:", err);
 	}
 	const animState = { stopped: false };
-	if (!valueFn && !dynamicLabels.length && !sizeChannelDeclared && !textExprString && !planeDynamic) return {
+	if (!valueFn && !dynamicLabels.length && !sizeChannelDeclared && !textDeclared && !planeDynamic) return {
 		type: "tensor",
 		color: baseColor,
 		label: el.label
@@ -8694,7 +8695,7 @@ function renderTensor(el, _view) {
 		compiledFns: [
 			...valueFn ? [valueFn] : [],
 			...channelFns(),
-			...dynamicLabels.map((dl) => dl.fn)
+			...dynamicLabels.map((dl) => dl.fn).filter((x) => !!x)
 		],
 		_rebuildFn() {
 			if (tensorState._sceneJsTrustState === compiledUnderTrust) return;
@@ -8724,22 +8725,13 @@ function renderTensor(el, _view) {
 			}
 			const recompiled = /* @__PURE__ */ new Map();
 			for (const dl of dynamicLabels) {
-				let fn = recompiled.get(dl.src);
-				if (!fn) {
-					try {
-						fn = compileExpr(dl.src);
-					} catch (err) {
-						console.warn("Slider tensor labelExpr recompile error:", err);
-						continue;
-					}
-					recompiled.set(dl.src, fn);
-				}
-				dl.fn = fn;
+				if (!recompiled.has(dl.src)) recompiled.set(dl.src, compileAxisLabelExpr({ labelExpr: dl.src }));
+				dl.fn = recompiled.get(dl.src) ?? null;
 			}
 			entry.compiledFns = [
 				...valueFn ? [valueFn] : [],
 				...channelFns(),
-				...dynamicLabels.map((dl) => dl.fn),
+				...dynamicLabels.map((dl) => dl.fn).filter((x) => !!x),
 				...planeLabels ? [hLabelFn, vLabelFn].filter((x) => !!x) : []
 			];
 		}

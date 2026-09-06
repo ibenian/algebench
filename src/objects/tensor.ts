@@ -176,7 +176,8 @@ export function contrastTextColor(rgb: readonly number[]): string {
 interface DynamicAxisLabel {
     label: Label3D & { _lastDynamicText?: string };
     src: string;
-    fn: CompiledExpr;
+    /** null while the current trust state refuses the expression; the label then reads blank. */
+    fn: CompiledExpr | null;
     scope: Record<string, number>;
 }
 
@@ -1050,8 +1051,11 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
             let txt: string;
             // Same reasoning as the cell scope: overrideScope, so a scene
             // slider named `row` cannot shadow the axis index.
-            try { txt = String(evalExpr(dl.fn, tSec, { overrideScope: dl.scope })); }
-            catch (_err) { continue; }   // keep the last text this label had
+            if (!dl.fn) txt = '';   // refused under the current trust state
+            else {
+                try { txt = String(evalExpr(dl.fn, tSec, { overrideScope: dl.scope })); }
+                catch (_err) { continue; }   // keep the last text this label had
+            }
             if (txt === dl.label._lastDynamicText) continue;
             dl.label.el.innerHTML = renderKaTeX(txt, false);
             // The label system measures a box ONCE and caches it, re-measuring
@@ -1076,7 +1080,7 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     // run per frame. This is the static path, and it costs exactly nothing.
     // A size or text channel is live by definition — it may read a slider —
     // so any of them registers the updater.
-    if (!valueFn && !dynamicLabels.length && !sizeChannelDeclared && !textExprString && !planeDynamic) {
+    if (!valueFn && !dynamicLabels.length && !sizeChannelDeclared && !textDeclared && !planeDynamic) {
         return { type: 'tensor', color: baseColor, label: el.label };
     }
 
@@ -1087,7 +1091,7 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     const entry: TensorAnimExprEntry = {
         exprStrings: [...(valueExprString ? [valueExprString] : []), ...channelStrings, ...labelExprStrings],
         animState,
-        compiledFns: [...(valueFn ? [valueFn] : []), ...channelFns(), ...dynamicLabels.map(dl => dl.fn)],
+        compiledFns: [...(valueFn ? [valueFn] : []), ...channelFns(), ...dynamicLabels.map(dl => dl.fn).filter((x): x is CompiledExpr => !!x)],
         // Called on EVERY slider value change, not just on a recompile
         // (sliders.ts drives both through the same hook). Compiling the same
         // string twice gives the same node -- a slider VALUE is read at eval
@@ -1137,19 +1141,16 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
             }
             // One compile per distinct expression, not one per label: the six
             // labels down an axis all share a single `labelExpr`.
-            const recompiled = new Map<string, CompiledExpr>();
+            // Through compileAxisLabelExpr, the same gate the first compile
+            // used, so a downgrade that refuses the expression blanks the
+            // labels instead of reviving the silent "0".
+            const recompiled = new Map<string, CompiledExpr | null>();
             for (const dl of dynamicLabels) {
-                let fn = recompiled.get(dl.src);
-                if (!fn) {
-                    try { fn = compileExpr(dl.src); } catch (err) {
-                        console.warn('Slider tensor labelExpr recompile error:', err);
-                        continue;
-                    }
-                    recompiled.set(dl.src, fn);
-                }
-                dl.fn = fn;
+                if (!recompiled.has(dl.src)) recompiled.set(dl.src, compileAxisLabelExpr({ labelExpr: dl.src }));
+                dl.fn = recompiled.get(dl.src) ?? null;
             }
-            entry.compiledFns = [...(valueFn ? [valueFn] : []), ...channelFns(), ...dynamicLabels.map(dl => dl.fn),
+            entry.compiledFns = [...(valueFn ? [valueFn] : []), ...channelFns(),
+                ...dynamicLabels.map(dl => dl.fn).filter((x): x is CompiledExpr => !!x),
                 ...(planeLabels ? [hLabelFn, vLabelFn].filter((x): x is CompiledExpr => !!x) : [])];
         },
     };
