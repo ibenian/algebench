@@ -7983,49 +7983,24 @@ function resolveTextColor(raw) {
 }
 /**
 * The plain-text reading of a label that may carry LaTeX, for drawing on a
-* canvas where KaTeX cannot run: `$`s go, `\text{}`/`\mathrm{}` unwrap,
-* common Greek and symbol commands become their glyph, braces vanish, and any
-* other command keeps its name without the backslash. Good enough for axis
-* labels ("key $j$" -> "key j", "$\alpha_{3j}$" -> "α3j"); not a typesetter.
+* canvas where KaTeX's HTML cannot go.
+*
+* KaTeX is the source of truth: render the label the way a screen label
+* would be rendered and read the glyphs back out of the HTML it produced,
+* so every command KaTeX knows -- Greek, relations, arrows -- comes out as
+* its symbol with no table to keep up to date. Layout is lost (a subscript
+* becomes a plain character), which is the price of a canvas. Without a
+* DOM (unit tests) a small structural fallback strips the markup instead.
 */
 function plainTextOfLatex(src) {
-	const greek = {
-		alpha: "α",
-		beta: "β",
-		gamma: "γ",
-		delta: "δ",
-		epsilon: "ε",
-		theta: "θ",
-		lambda: "λ",
-		mu: "μ",
-		pi: "π",
-		rho: "ρ",
-		sigma: "σ",
-		tau: "τ",
-		phi: "φ",
-		omega: "ω",
-		Delta: "Δ",
-		Sigma: "Σ",
-		Omega: "Ω",
-		cdot: "·",
-		times: "×",
-		to: "→",
-		rightarrow: "→",
-		leftarrow: "←",
-		infty: "∞",
-		pm: "±",
-		le: "≤",
-		leq: "≤",
-		ge: "≥",
-		geq: "≥",
-		ne: "≠",
-		neq: "≠",
-		approx: "≈",
-		sum: "Σ",
-		prod: "Π",
-		sqrt: "√"
-	};
-	return src.replace(/\\(?:text|mathrm|mathbf|operatorname)\{([^{}]*)\}/g, "$1").replace(/\$/g, "").replace(/\\([A-Za-z]+)/g, (_m, name) => greek[name] ?? name).replace(/[{}_^]/g, "").replace(/\s+/g, " ").trim();
+	if (typeof document !== "undefined" && /[$\\]/.test(src)) try {
+		const host = document.createElement("div");
+		host.innerHTML = renderKaTeX$1(src, false);
+		for (const m of host.querySelectorAll(".katex-mathml")) m.remove();
+		const txt = (host.textContent || "").replace(/\s+/g, " ").trim();
+		if (txt) return txt;
+	} catch (_err) {}
+	return src.replace(/\\(?:text|mathrm|mathbf|operatorname)\{([^{}]*)\}/g, "$1").replace(/\$/g, "").replace(/\\([A-Za-z]+)/g, "$1").replace(/[{}_^]/g, "").replace(/\s+/g, " ").trim();
 }
 /** Near-black or near-white, whichever reads against the cell's colour. */
 function contrastTextColor(rgb) {

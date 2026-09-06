@@ -260,13 +260,15 @@ test('a size or text channel refuses an expression compileExpr would degrade to 
     assert.match(String(explainCompileDegrade('concat(((')), /does not parse/);
 });
 
-test('plainTextOfLatex gives a canvas the reading of a label that may carry LaTeX', async () => {
+test('plainTextOfLatex without a DOM strips the markup structurally', async () => {
+    // In the browser the function renders through KaTeX and reads the glyphs
+    // back, so \\alpha becomes α with no table to maintain. Under node there
+    // is no DOM, and this pins the structural fallback: markup goes, names
+    // of commands stay readable, nothing throws.
     const { plainTextOfLatex } = await import('/objects/tensor.js');
     assert.equal(plainTextOfLatex('key $j$'), 'key j');
-    assert.equal(plainTextOfLatex('$\\alpha_{3j}$'), 'α3j');
     assert.equal(plainTextOfLatex('$d_{\\text{model}} = 4$'), 'dmodel = 4');
-    assert.equal(plainTextOfLatex('row $i$ $\\to$ key $j$'), 'row i → key j');
+    assert.equal(plainTextOfLatex('$\\alpha_{3j}$'), 'alpha3j');
     assert.equal(plainTextOfLatex('plain'), 'plain');
-    assert.equal(plainTextOfLatex('$\\unknowncmd{x}$'), 'unknowncmdx');
-    assert.equal(plainTextOfLatex('$x \\leq y \\neq z$'), 'x ≤ y ≠ z');
 });
+
