@@ -9402,6 +9402,7 @@ function renderChart(el, view) {
 			depthWrite: false
 		});
 		const mesh = new THREE.Mesh(geom, mat);
+		mesh.frustumCulled = false;
 		mesh.userData.targetOpacity = opac;
 		mesh.userData.ignorePlaneOpacity = ignoresPlaneOpacity;
 		mesh.renderOrder = order;

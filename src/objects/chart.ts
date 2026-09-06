@@ -423,6 +423,10 @@ export function renderChart(el: Element, view: MathBoxNode) {
             side: THREE.DoubleSide, depthWrite: false,
         });
         const mesh = new THREE.Mesh(geom, mat);
+        // The vertices are written after creation and, for a band, rewritten
+        // every frame; two triangles are not worth a bounding sphere that
+        // would go stale and cull the quad, so skip the frustum test.
+        mesh.frustumCulled = false;
         mesh.userData.targetOpacity = opac;
         mesh.userData.ignorePlaneOpacity = ignoresPlaneOpacity;
         mesh.renderOrder = order;
