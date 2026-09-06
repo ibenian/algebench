@@ -698,14 +698,19 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     const vColor = parseColor((vAxis && vAxis.color) || defaultLabelColor) as Rgb3;
     let hLabelFn = compileAxisLabelExpr(hAxis);
     let vLabelFn = compileAxisLabelExpr(vAxis);
-    const hLabelSrc = hLabelFn ? String(hAxis!.labelExpr).trim() : null;
-    const vLabelSrc = vLabelFn ? String(vAxis!.labelExpr).trim() : null;
-    const hLabelsStatic = hLabelFn ? null : readAxisLabels(hAxis, cols);
-    const vLabelsStatic = vLabelFn ? null : readAxisLabels(vAxis, rows);
+    // What is DECLARED, not what compiled: a labelExpr the current trust
+    // state refuses can come back after a recompile, and the margins and
+    // the live flag must already be in place for it when it does.
+    const declaredLabelExpr = (axis: AxisSpec | undefined): string | null =>
+        (axis && typeof axis.labelExpr === 'string' && axis.labelExpr.trim()) ? axis.labelExpr.trim() : null;
+    const hLabelSrc = declaredLabelExpr(hAxis);
+    const vLabelSrc = declaredLabelExpr(vAxis);
+    const hLabelsStatic = hLabelSrc ? null : readAxisLabels(hAxis, cols);
+    const vLabelsStatic = vLabelSrc ? null : readAxisLabels(vAxis, rows);
     const hTitle = (hAxis && hAxis.title) ? String(hAxis.title) : null;
     const vTitle = (vAxis && vAxis.title) ? String(vAxis.title) : null;
-    const hasHLabels = !!(hLabelFn || hLabelsStatic);
-    const hasVLabels = !!(vLabelFn || vLabelsStatic);
+    const hasHLabels = !!(hLabelSrc || hLabelsStatic);
+    const hasVLabels = !!(vLabelSrc || vLabelsStatic);
     // Margin bands in pitch units: a row of column labels above and a title
     // band beyond it; to the left, a band as wide as the LONGEST row label
     // (measured, so a title sits right beside the words rather than a fixed
@@ -966,7 +971,7 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     if (vLabelSrc) labelExprStrings.push(vLabelSrc);
     if (axes.length && !planeLabels) {
         const pad = cellSize * 0.35;
-        if (hLabelFn && hLabelSrc) {
+        if (hLabelSrc && hLabelFn) {
             for (let c = 0; c < cols; c++) {
                 const label = addLabel3D('', layout.colLabelAt(c, pad), hColor);
                 dynamicLabels.push({ label, src: hLabelSrc, fn: hLabelFn, scope: { col: c, idx: c } });
@@ -980,7 +985,7 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
 
         // A 1D tensor has no vertical axis, so axes[1] simply does not apply.
         if (vAxisIdx >= 0) {
-            if (vLabelFn && vLabelSrc) {
+            if (vLabelSrc && vLabelFn) {
                 for (let r = 0; r < rows; r++) {
                     const label = addLabel3D('', layout.rowLabelAt(r, pad), vColor);
                     dynamicLabels.push({ label, src: vLabelSrc, fn: vLabelFn, scope: { row: r, idx: r } });
@@ -994,7 +999,7 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
         }
     }
     // Plane-mode labels driven by an expression are live like the cells are.
-    const planeDynamic = planeLabels && !!(hLabelFn || vLabelFn);
+    const planeDynamic = planeLabels && !!(hLabelSrc || vLabelSrc);
 
     /**
      * Re-evaluate every expression-driven axis label. The memo is what makes

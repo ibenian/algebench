@@ -8392,14 +8392,15 @@ function renderTensor(el, _view) {
 	const vColor = parseColor(vAxis && vAxis.color || defaultLabelColor);
 	let hLabelFn = compileAxisLabelExpr(hAxis);
 	let vLabelFn = compileAxisLabelExpr(vAxis);
-	const hLabelSrc = hLabelFn ? String(hAxis.labelExpr).trim() : null;
-	const vLabelSrc = vLabelFn ? String(vAxis.labelExpr).trim() : null;
-	const hLabelsStatic = hLabelFn ? null : readAxisLabels(hAxis, cols);
-	const vLabelsStatic = vLabelFn ? null : readAxisLabels(vAxis, rows);
+	const declaredLabelExpr = (axis) => axis && typeof axis.labelExpr === "string" && axis.labelExpr.trim() ? axis.labelExpr.trim() : null;
+	const hLabelSrc = declaredLabelExpr(hAxis);
+	const vLabelSrc = declaredLabelExpr(vAxis);
+	const hLabelsStatic = hLabelSrc ? null : readAxisLabels(hAxis, cols);
+	const vLabelsStatic = vLabelSrc ? null : readAxisLabels(vAxis, rows);
 	const hTitle = hAxis && hAxis.title ? String(hAxis.title) : null;
 	const vTitle = vAxis && vAxis.title ? String(vAxis.title) : null;
-	const hasHLabels = !!(hLabelFn || hLabelsStatic);
-	const hasVLabels = !!(vLabelFn || vLabelsStatic);
+	const hasHLabels = !!(hLabelSrc || hLabelsStatic);
+	const hasVLabels = !!(vLabelSrc || vLabelsStatic);
 	const LABEL_BAND = .9, TITLE_BAND = .7, LABEL_GLYPH = .5;
 	let mT = axisPlane ? (hasHLabels ? LABEL_BAND : 0) + (hTitle ? TITLE_BAND : 0) : 0;
 	let vBand = 0;
@@ -8614,7 +8615,7 @@ function renderTensor(el, _view) {
 	if (vLabelSrc) labelExprStrings.push(vLabelSrc);
 	if (axes.length && !planeLabels) {
 		const pad = cellSize * .35;
-		if (hLabelFn && hLabelSrc) for (let c = 0; c < cols; c++) {
+		if (hLabelSrc && hLabelFn) for (let c = 0; c < cols; c++) {
 			const label = addLabel3D("", layout.colLabelAt(c, pad), hColor);
 			dynamicLabels.push({
 				label,
@@ -8629,7 +8630,7 @@ function renderTensor(el, _view) {
 		else if (hLabelsStatic) for (let c = 0; c < hLabelsStatic.length; c++) addLabel3D(hLabelsStatic[c], layout.colLabelAt(c, pad), hColor);
 		if (hTitle) addLabel3D(hTitle, layout.colTitleAt(pad * 3), hColor);
 		if (vAxisIdx >= 0) {
-			if (vLabelFn && vLabelSrc) for (let r = 0; r < rows; r++) {
+			if (vLabelSrc && vLabelFn) for (let r = 0; r < rows; r++) {
 				const label = addLabel3D("", layout.rowLabelAt(r, pad), vColor);
 				dynamicLabels.push({
 					label,
@@ -8645,7 +8646,7 @@ function renderTensor(el, _view) {
 			if (vTitle) addLabel3D(vTitle, layout.rowTitleAt(pad * 4), vColor);
 		}
 	}
-	const planeDynamic = planeLabels && !!(hLabelFn || vLabelFn);
+	const planeDynamic = planeLabels && !!(hLabelSrc || vLabelSrc);
 	/**
 	* Re-evaluate every expression-driven axis label. The memo is what makes
 	* this affordable per frame: a label whose text has not changed is left
