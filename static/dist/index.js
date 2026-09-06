@@ -8448,11 +8448,13 @@ function renderTensor(el, _view) {
 	let textLayer = null;
 	/** The text quads' position buffer and per-cell placer, for lifting text with a cell's depth. */
 	let textQuads = null;
-	if (textFn && (Math.max(rows, cols) > 2048 || rows * cols > 16384)) {
+	const textCapped = !!textExprString && (Math.max(rows, cols) > 2048 || rows * cols > 16384);
+	if (textCapped) {
 		console.warn(`tensor${el.id ? ` "${el.id}"` : ""}: textExpr is ignored on a ${rows}x${cols} lattice; cell text is capped at 2048 cells a side and 16384 cells in total (the canvas is 2048px a side).`);
 		textFn = null;
 	}
-	if (textFn || planeLabels) {
+	const textDeclared = !!textExprString && !textCapped;
+	if (textDeclared || planeLabels) {
 		const px = Math.max(1, Math.min(128, Math.floor(2048 / Math.max(rows + mT, cols + mL))));
 		const canvas = document.createElement("canvas");
 		canvas.width = Math.ceil((cols + mL) * px);
@@ -8577,7 +8579,7 @@ function renderTensor(el, _view) {
 			ctx.restore();
 		} else ctx.fillText(t, cx, cy);
 	}
-	const cellTexts = new Array(textFn ? drawn : 0).fill("");
+	const cellTexts = new Array(textDeclared ? drawn : 0).fill("");
 	const keyParts = [];
 	/** Evaluate every cell's text (and, in plane mode, the axis labels) and redraw the canvas if anything changed. */
 	function paintText(tSec) {
@@ -8701,7 +8703,8 @@ function renderTensor(el, _view) {
 	function paintLabels(tSec) {
 		for (const dl of dynamicLabels) {
 			let txt;
-			try {
+			if (!dl.fn) txt = "";
+			else try {
 				txt = String(evalExpr(dl.fn, tSec, { overrideScope: dl.scope }));
 			} catch (_err) {
 				continue;
@@ -8718,7 +8721,7 @@ function renderTensor(el, _view) {
 		console.warn("tensor axis label evaluation error:", err);
 	}
 	const animState = { stopped: false };
-	if (!valueFn && !dynamicLabels.length && !sizeChannelDeclared && !depthDeclared && !textExprString && !planeDynamic) return {
+	if (!valueFn && !dynamicLabels.length && !sizeChannelDeclared && !depthDeclared && !textDeclared && !planeDynamic) return {
 		type: "tensor",
 		color: baseColor,
 		label: el.label
@@ -8746,7 +8749,7 @@ function renderTensor(el, _view) {
 		compiledFns: [
 			...valueFn ? [valueFn] : [],
 			...channelFns(),
-			...dynamicLabels.map((dl) => dl.fn)
+			...dynamicLabels.map((dl) => dl.fn).filter((x) => !!x)
 		],
 		_rebuildFn() {
 			if (tensorState._sceneJsTrustState === compiledUnderTrust) return;
@@ -8758,7 +8761,7 @@ function renderTensor(el, _view) {
 			}
 			widthFn = compileOpt(widthExprString, "widthExpr");
 			heightFn = compileOpt(heightExprString, "heightExpr");
-			textFn = compileOpt(textExprString, "textExpr");
+			textFn = textCapped ? null : compileOpt(textExprString, "textExpr");
 			depthFn = compileOpt(depthExprString, "depthExpr");
 			const hadSize = hasSizeExpr || hasDepthExpr;
 			hasSizeExpr = !!(widthFn || heightFn);
@@ -8781,22 +8784,13 @@ function renderTensor(el, _view) {
 			}
 			const recompiled = /* @__PURE__ */ new Map();
 			for (const dl of dynamicLabels) {
-				let fn = recompiled.get(dl.src);
-				if (!fn) {
-					try {
-						fn = compileExpr(dl.src);
-					} catch (err) {
-						console.warn("Slider tensor labelExpr recompile error:", err);
-						continue;
-					}
-					recompiled.set(dl.src, fn);
-				}
-				dl.fn = fn;
+				if (!recompiled.has(dl.src)) recompiled.set(dl.src, compileAxisLabelExpr({ labelExpr: dl.src }));
+				dl.fn = recompiled.get(dl.src) ?? null;
 			}
 			entry.compiledFns = [
 				...valueFn ? [valueFn] : [],
 				...channelFns(),
-				...dynamicLabels.map((dl) => dl.fn),
+				...dynamicLabels.map((dl) => dl.fn).filter((x) => !!x),
 				...planeLabels ? [hLabelFn, vLabelFn].filter((x) => !!x) : []
 			];
 		}
