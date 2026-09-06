@@ -8110,6 +8110,11 @@ function readAxisLabels(axis, length) {
 function compileAxisLabelExpr(axis) {
 	const src = axis && typeof axis.labelExpr === "string" && axis.labelExpr.trim() ? axis.labelExpr.trim() : null;
 	if (!src) return null;
+	const why = explainCompileDegrade(src);
+	if (why) {
+		console.warn(`tensor axis labelExpr ${why}; the axis is left unlabelled.`);
+		return null;
+	}
 	try {
 		return compileExpr(src);
 	} catch (err) {

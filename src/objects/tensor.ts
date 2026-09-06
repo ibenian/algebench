@@ -326,6 +326,15 @@ export function compileAxisLabelExpr(axis: AxisSpec | undefined): CompiledExpr |
     const src = (axis && typeof axis.labelExpr === 'string' && axis.labelExpr.trim())
         ? (axis.labelExpr as string).trim() : null;
     if (!src) return null;
+    // compileExpr degrades an unparseable or JS-only string in an untrusted
+    // scene to the constant 0 rather than throwing, which for a label means
+    // every entry along the axis reads "0" -- a wrong thing on screen with no
+    // signal. Ask first, warn, and leave the axis unlabelled instead.
+    const why = explainCompileDegrade(src);
+    if (why) {
+        console.warn(`tensor axis labelExpr ${why}; the axis is left unlabelled.`);
+        return null;
+    }
     try {
         return compileExpr(src);
     } catch (err) {
