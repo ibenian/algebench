@@ -382,7 +382,7 @@ export function renderChart(el: Element, view: MathBoxNode) {
 
     try { sample(0); } catch (err) { console.warn('chart sample error:', err); }
 
-    const lineOpacity = chartState.displayParams.lineOpacity || 1;
+    const lineOpacity = typeof chartState.displayParams.lineOpacity === 'number' ? chartState.displayParams.lineOpacity : 1;
     for (const s of series) {
         const pts = seriesPoints(s);
         const entry: LineEntry = { node: null, baseWidth: s.width, baseOpacity: s.opacity, widthParam: 'lineWidth', anchorDataPos: pts[Math.floor(pts.length / 2)] || at(W / 2, H / 2) };
@@ -463,7 +463,7 @@ export function renderChart(el: Element, view: MathBoxNode) {
     // and comfortably under any GPU's texture limit; a huge chart just gets
     // coarser paper.
     const paperW = W + mL + mR, paperH = H + mB + mT;
-    const pxPer = Math.max(1, Math.min(160, Math.floor(MAX_PAPER_PX / Math.max(paperW, paperH))));
+    const pxPer = Math.min(160, MAX_PAPER_PX / Math.max(paperW, paperH));
     const canvas = document.createElement('canvas');
     canvas.width = Math.min(MAX_PAPER_PX, Math.ceil(paperW * pxPer));
     canvas.height = Math.min(MAX_PAPER_PX, Math.ceil(paperH * pxPer));

@@ -9322,7 +9322,7 @@ function renderChart(el, view) {
 	} catch (err) {
 		console.warn("chart sample error:", err);
 	}
-	const lineOpacity = chartState.displayParams.lineOpacity || 1;
+	const lineOpacity = typeof chartState.displayParams.lineOpacity === "number" ? chartState.displayParams.lineOpacity : 1;
 	for (const s of series) {
 		const pts = seriesPoints(s);
 		const entry = {
@@ -9453,7 +9453,7 @@ function renderChart(el, view) {
 	const mB = xTitle ? 1.1 : .7;
 	const mT = .25, mR = .35;
 	const paperW = W + mL + mR, paperH = H + mB + mT;
-	const pxPer = Math.max(1, Math.min(160, Math.floor(MAX_PAPER_PX / Math.max(paperW, paperH))));
+	const pxPer = Math.min(160, MAX_PAPER_PX / Math.max(paperW, paperH));
 	const canvas = document.createElement("canvas");
 	canvas.width = Math.min(MAX_PAPER_PX, Math.ceil(paperW * pxPer));
 	canvas.height = Math.min(MAX_PAPER_PX, Math.ceil(paperH * pxPer));
