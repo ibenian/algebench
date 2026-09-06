@@ -896,7 +896,7 @@ export interface Element {
    */
   depthExpr?: string;
   /**
-   * On text: Math.js expression for dynamic text content. Evaluated each frame; the rounded integer result replaces '%d' in textFormat. Example: "lambda * 100". On tensor: the text drawn INSIDE each cell, evaluated per cell with 'row', 'col', 'idx' and 'value' bound (same scope as 'widthExpr'). Drawn on the lattice plane as geometry, so it tilts and occludes with the cells rather than floating as a screen label, and each string is sized to fit its own cell's current width and height. Plain text only, no KaTeX; use toFixed(value, 2) or concat(...). An empty string draws nothing. The canvas is redrawn only when some text, size or colour changed.
+   * On text: Math.js expression for dynamic text content. Evaluated each frame; the rounded integer result replaces '%d' in textFormat. Example: "lambda * 100". On tensor: the text drawn INSIDE each cell, evaluated per cell with 'row', 'col', 'idx' and 'value' bound (same scope as 'widthExpr'). Drawn on the cell's face as geometry -- the lattice plane, or the lid of a cell raised or sunk by 'depthExpr' -- so it tilts, moves and occludes with the cell rather than floating as a screen label, and each string is sized to fit its own cell's current width and height. Axis labels stay on the plane. Plain text only, no KaTeX; use toFixed(value, 2) or concat(...). An empty string draws nothing. The canvas is redrawn only when some text, size or colour changed.
    */
   textExpr?: string;
   /**
