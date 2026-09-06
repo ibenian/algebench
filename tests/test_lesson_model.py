@@ -78,3 +78,19 @@ def test_the_comparison_can_see_numeric_type() -> None:
     assert 0 == 0.0 and not identical(0, 0.0)
     assert not identical({"p": [0, 1]}, {"p": [0.0, 1.0]})
     assert identical({"p": [0, 1]}, {"p": [0, 1]})
+
+
+def test_size_tuple_is_chart_only() -> None:
+    """The schema's type conditional: `[w, h]` on a chart, a number elsewhere."""
+    from pydantic import ValidationError
+
+    from backend.model.lesson import Element
+
+    assert Element.model_validate({"type": "chart", "size": [6, 3]}).size == [6, 3]
+    assert Element.model_validate({"type": "point", "size": 12}).size == 12
+    with pytest.raises(ValidationError):
+        Element.model_validate({"type": "point", "size": [6, 3]})
+    with pytest.raises(ValidationError):
+        Element.model_validate({"type": "chart", "size": 8})
+    with pytest.raises(ValidationError):
+        Element.model_validate({"type": "chart", "size": [6, 0]})
