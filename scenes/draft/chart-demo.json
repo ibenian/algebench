@@ -1,0 +1,146 @@
+{
+  "title": "chart — a plot on the plane",
+  "import": ["transformer"],
+  "scenes": [
+    {
+      "title": "chart — a plot on the plane",
+      "description": "Three charts, one element each: sampled draws with a live ±1 s.d. band, a static series, and a slider-driven curve on a fixed domain.",
+      "markdown": "# `chart`\n\nEach plot below is **one element**. The series are real lines in the viewport — crisp at any angle — and the paper (axes, ticks, titles, grid) is drawn on the plane the way a `tensor` draws its labels, so it tilts with the plot and never piles up with screen labels. Use the **Iso** view to see that.\n\n**Top left — `yExpr`, live.** 64 dot products of random unit-variance vectors in $\\mathbb{R}^n$, from the transformer domain: `tfDotSample(i, n)`. Two `hlines` at $\\pm 1$ s.d. of a 4,000-draw run. Drag **n** and the band widens like $\\sqrt{n}$ while the domain re-fits.\n\n**Top right — the same draws, $\\div\\sqrt{n}$.** Same series divided by `sqrt(n)`; the band refuses to grow. This pair is the variance argument for the $1/\\sqrt{d_k}$ scaling, and it replaces twelve hand-placed elements in the transformer lesson.\n\n**Bottom left — `y`, static.** Literal values, built once, zero per-frame cost, drawn as points.\n\n**Bottom right — a fixed domain.** `sin(k x)` with `xExpr` and a fixed `yDomain`, so the slider is seen to move the curve rather than the axis.",
+      "range": [
+        [-3, 22],
+        [-5, 10],
+        [-2, 2]
+      ],
+      "camera": {
+        "position": [9.5, 2.5, 20],
+        "target": [9.5, 2.5, 0]
+      },
+      "views": [
+        {
+          "name": "All",
+          "position": [9.5, 2.5, 20],
+          "target": [9.5, 2.5, 0],
+          "description": "All four charts face-on"
+        },
+        {
+          "name": "Draws",
+          "position": [4.5, 6, 9],
+          "target": [4.5, 6, 0],
+          "description": "Close on the sampled draws"
+        },
+        {
+          "name": "Iso",
+          "position": [20, -8, 14],
+          "target": [9.5, 2.5, 0],
+          "description": "Angled, to see the paper tilt with the plot"
+        }
+      ],
+      "elements": [
+        {
+          "id": "floor",
+          "type": "grid",
+          "plane": "xy",
+          "range": [-3, 22],
+          "color": [0.28, 0.32, 0.46],
+          "opacity": 0.06,
+          "divisions": 25
+        }
+      ],
+      "steps": [
+        {
+          "id": "four-charts",
+          "title": "Four charts",
+          "description": "Drag **n** for the two draw charts and **k** for the sine.",
+          "sliders": [
+            {"id": "gen_n", "label": "n — dimension of the generic vectors", "min": 1, "max": 64, "step": 1, "default": 2},
+            {"id": "k", "label": "k — frequency", "min": 0.5, "max": 4, "step": 0.1, "default": 1}
+          ],
+          "add": [
+            {
+              "id": "draws",
+              "type": "chart",
+              "origin": [1.5, 5.0, 0],
+              "size": [6, 3],
+              "series": [
+                {"yExpr": "tfDotSample(i, gen_n)", "n": 64, "color": "#f06292", "label": "q·k, i.i.d. in R^n"}
+              ],
+              "hlines": [
+                {"yExpr": "sqrt(tfSampleVar(gen_n, 4000))", "color": "#f06292", "opacity": 0.6},
+                {"yExpr": "-sqrt(tfSampleVar(gen_n, 4000))", "color": "#f06292", "opacity": 0.6}
+              ],
+              "bands": [
+                {"loExpr": "-sqrt(tfSampleVar(gen_n, 4000))", "hiExpr": "sqrt(tfSampleVar(gen_n, 4000))", "color": "#f06292", "opacity": 0.12}
+              ],
+              "axes": [
+                {"title": "draw $i$"},
+                {"title": "$q \\cdot k$", "color": "#f06292"}
+              ],
+              "label": "q·k, i.i.d. draws",
+              "prompt": "64 sampled dot products of random vectors with independent zero-mean unit-variance components, from the transformer domain library. The two lines and the band are plus and minus one standard deviation of a 4,000-draw run. Drag n: the spread grows like sqrt(n), and the y domain re-fits so the axis end labels tell you the scale."
+            },
+            {
+              "id": "draws_scaled",
+              "type": "chart",
+              "origin": [12.5, 5.0, 0],
+              "size": [6, 3],
+              "series": [
+                {"yExpr": "tfDotSampleScaled(i, gen_n)", "n": 64, "color": "#f06292", "label": "same draws ÷ √n"}
+              ],
+              "hlines": [
+                {"yExpr": "sqrt(tfSampleVar(gen_n, 4000) / gen_n)", "color": "#f06292", "opacity": 0.6},
+                {"yExpr": "-sqrt(tfSampleVar(gen_n, 4000) / gen_n)", "color": "#f06292", "opacity": 0.6}
+              ],
+              "bands": [
+                {"loExpr": "-sqrt(tfSampleVar(gen_n, 4000) / gen_n)", "hiExpr": "sqrt(tfSampleVar(gen_n, 4000) / gen_n)", "color": "#f06292", "opacity": 0.12}
+              ],
+              "yDomain": [-4, 4],
+              "axes": [
+                {"title": "draw $i$"},
+                {"title": "$q \\cdot k / \\sqrt{n}$", "color": "#f06292"}
+              ],
+              "label": "same draws, ÷√n",
+              "prompt": "The same 64 draws divided by sqrt(n). The y domain is FIXED at -4..4 on purpose: with an auto domain the band would look the same at every n, which is true but invisible. Here the band holds its width while n climbs to 64."
+            },
+            {
+              "id": "static",
+              "type": "chart",
+              "origin": [1.5, -1.0, 0],
+              "size": [6, 3],
+              "series": [
+                {
+                  "y": [0.6, 0.3, 0.1, 0.05, 0.02, 0.01, 0.005, 0.002],
+                  "color": "#66bb6a",
+                  "kind": "points",
+                  "label": "a static series"
+                }
+              ],
+              "axes": [
+                {"title": "index"},
+                {"title": "weight", "color": "#66bb6a"}
+              ],
+              "label": "static points",
+              "prompt": "Eight literal values drawn as points. No expression, so no per-frame work: this chart costs nothing after it is built."
+            },
+            {
+              "id": "sine",
+              "type": "chart",
+              "origin": [12.5, -1.0, 0],
+              "size": [6, 3],
+              "series": [
+                {"xExpr": "i / (n - 1) * 6.2832", "yExpr": "sin(k * x)", "n": 120, "color": "#42a5f5", "label": "sin(kx)"}
+              ],
+              "xDomain": [0, 6.2832],
+              "yDomain": [-1, 1],
+              "axes": [
+                {"title": "$x$", "ticks": 4, "labelExpr": "toFixed(value, 1)"},
+                {"title": "$\\sin kx$", "color": "#42a5f5"}
+              ],
+              "label": "sin(kx)",
+              "prompt": "A curve on a fixed domain: xExpr spaces 120 samples over one turn and yExpr is sin(k x). Both domains are fixed so dragging k visibly changes the curve, not the axes."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -22,6 +22,7 @@ import { renderAnimatedCylinder } from '/objects/animated-cylinder.js';
 import { renderAnimatedPolygon } from '/objects/animated-polygon.js';
 import { renderAnimatedCurve } from '/objects/animated-curve.js';
 import { renderTensor } from '/objects/tensor.js';
+import { renderChart } from '/objects/chart.js';
 import type { Element } from '/types/lesson.js';
 
 /**
@@ -57,6 +58,7 @@ export function renderElement(el: Element, view: MathBoxNode) {
         case 'animated_polygon': return renderAnimatedPolygon(el, view);
         case 'animated_curve': return renderAnimatedCurve(el, view);
         case 'tensor': return renderTensor(el, view);
+        case 'chart': return renderChart(el, view);
         default:
             console.warn('Unknown element type:', el.type);
             return null;

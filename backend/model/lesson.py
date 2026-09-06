@@ -116,7 +116,7 @@ ElementType = Literal[
     "parametric_curve", "parametric_surface", "sphere", "ellipsoid", "vectors",
     "vector_field", "plane", "polygon", "cylinder", "text", "animated_vector",
     "animated_line", "animated_point", "animated_cylinder", "animated_polygon",
-    "animated_curve", "tensor",
+    "animated_curve", "tensor", "chart",
 ]
 
 

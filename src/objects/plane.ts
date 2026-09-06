@@ -9,7 +9,7 @@ export function renderPlane(el: Element, view: MathBoxNode) {
     const opacity = el.opacity !== undefined ? el.opacity : 0.5;
     const normal = el.normal || [0, 1, 0];
     const point = el.point || [0, 0, 0];
-    const size = el.size || 4;
+    const size = typeof el.size === 'number' && el.size > 0 ? el.size : 4;
     const label = el.label;
 
     const n = new THREE.Vector3(...normal).normalize();
