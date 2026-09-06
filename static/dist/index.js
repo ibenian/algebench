@@ -8388,6 +8388,8 @@ function renderTensor(el, _view) {
 	const vTitle = vAxis && vAxis.title ? String(vAxis.title) : null;
 	const hasHLabels = !!(hLabelSrc || hLabelsStatic);
 	const hasVLabels = !!(vLabelSrc || vLabelsStatic);
+	const hLabelScratch = new Array(cols).fill("");
+	const vLabelScratch = new Array(rows).fill("");
 	const LABEL_BAND = .9, TITLE_BAND = .7, LABEL_GLYPH = .5;
 	let mT = axisPlane ? (hasHLabels ? LABEL_BAND : 0) + (hTitle ? TITLE_BAND : 0) : 0;
 	let vBand = 0;
@@ -8485,8 +8487,6 @@ function renderTensor(el, _view) {
 			};
 		}
 	}
-	const hLabelScratch = new Array(cols).fill("");
-	const vLabelScratch = new Array(rows).fill("");
 	/** One axis's label strings for this frame: the expression per entry, or the static list. */
 	function axisLabelTexts(fn, statics, n, isRow, tSec) {
 		const out = isRow ? vLabelScratch : hLabelScratch;

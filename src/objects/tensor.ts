@@ -730,6 +730,11 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     const vTitle = (vAxis && vAxis.title) ? String(vAxis.title) : null;
     const hasHLabels = !!(hLabelSrc || hLabelsStatic);
     const hasVLabels = !!(vLabelSrc || vLabelsStatic);
+    // Scratch for the per-frame axis label strings, one array per axis,
+    // allocated once: paintText runs every frame when a labelExpr is live.
+    // Declared here, before the margin measurement below first fills them.
+    const hLabelScratch: string[] = new Array(cols).fill('');
+    const vLabelScratch: string[] = new Array(rows).fill('');
     // Margin bands in pitch units: a row of column labels above and a title
     // band beyond it; to the left, a band as wide as the LONGEST row label
     // (measured, so a title sits right beside the words rather than a fixed
@@ -853,11 +858,6 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
             textLayer = { canvas, ctx, tex, mesh: qMesh, px, lastKey: '' };
         }
     }
-
-    // Scratch for the per-frame axis label strings, one array per axis,
-    // allocated once: paintText runs every frame when a labelExpr is live.
-    const hLabelScratch: string[] = new Array(cols).fill('');
-    const vLabelScratch: string[] = new Array(rows).fill('');
 
     /** One axis's label strings for this frame: the expression per entry, or the static list. */
     function axisLabelTexts(fn: CompiledExpr | null, statics: string[] | null, n: number, isRow: boolean, tSec: number): string[] {
