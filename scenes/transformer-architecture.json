@@ -3425,7 +3425,7 @@
               "radius": 0.16,
               "color": "#66bb6a",
               "labelExpr": "concat(tfToken(0), '  (', toFixed(tfV(0,0), 2), ', ', toFixed(tfV(0,1), 2), ')')",
-              "labelOffset": [0, 0.42, 0],
+              "labelOffset": [1.4, -1.0, 0],
               "visibleExpr": "s3_qi >= 0 ? 1 : 0",
               "label": "values $v_j$ and their hull"
             },
@@ -3436,7 +3436,7 @@
               "radius": 0.16,
               "color": "#66bb6a",
               "labelExpr": "concat(tfToken(1), '  (', toFixed(tfV(1,0), 2), ', ', toFixed(tfV(1,1), 2), ')')",
-              "labelOffset": [0, 0.42, 0],
+              "labelOffset": [1.4, 0.55, 0],
               "visibleExpr": "s3_qi >= 1 ? 1 : 0",
               "legendGroup": "values $v_j$ and their hull"
             },
@@ -3447,7 +3447,7 @@
               "radius": 0.16,
               "color": "#66bb6a",
               "labelExpr": "concat(tfToken(2), '  (', toFixed(tfV(2,0), 2), ', ', toFixed(tfV(2,1), 2), ')')",
-              "labelOffset": [0, 0.42, 0],
+              "labelOffset": [1.4, 0.35, 0],
               "visibleExpr": "s3_qi >= 2 ? 1 : 0",
               "legendGroup": "values $v_j$ and their hull"
             },
@@ -3458,7 +3458,7 @@
               "radius": 0.16,
               "color": "#66bb6a",
               "labelExpr": "concat(tfToken(3), '  (', toFixed(tfV(3,0), 2), ', ', toFixed(tfV(3,1), 2), ')')",
-              "labelOffset": [0, 0.42, 0],
+              "labelOffset": [1.6, -1.2, 0],
               "visibleExpr": "s3_qi >= 3 ? 1 : 0",
               "legendGroup": "values $v_j$ and their hull"
             },
@@ -3469,7 +3469,7 @@
               "radius": 0.16,
               "color": "#66bb6a",
               "labelExpr": "concat(tfToken(4), '  (', toFixed(tfV(4,0), 2), ', ', toFixed(tfV(4,1), 2), ')')",
-              "labelOffset": [0, 0.42, 0],
+              "labelOffset": [1.4, -0.45, 0],
               "visibleExpr": "s3_qi >= 4 ? 1 : 0",
               "legendGroup": "values $v_j$ and their hull"
             },
@@ -3480,7 +3480,7 @@
               "radius": 0.16,
               "color": "#66bb6a",
               "labelExpr": "concat(tfToken(5), '  (', toFixed(tfV(5,0), 2), ', ', toFixed(tfV(5,1), 2), ')')",
-              "labelOffset": [0, 0.42, 0],
+              "labelOffset": [1.4, 0, 0],
               "visibleExpr": "s3_qi >= 5 ? 1 : 0",
               "legendGroup": "values $v_j$ and their hull"
             },
@@ -3606,7 +3606,8 @@
               "radius": 0.22,
               "color": "#ab47bc",
               "label": "the output $o_i$",
-              "prompt": "The attention output o_i = sum_j alpha_ij v_j, drawn at the same 2x scale as the value points. At i = 2 it is (0.8461, 1.5246), almost exactly v_1, because 0.970889 of the weight sits there. It is a convex combination, so no setting of any slider moves it outside the hull of the visible values."
+              "prompt": "The attention output o_i = sum_j alpha_ij v_j, drawn at the same 2x scale as the value points. At i = 2 it is (0.8461, 1.5246), almost exactly v_1, because 0.970889 of the weight sits there. It is a convex combination, so no setting of any slider moves it outside the hull of the visible values.",
+              "labelOffset": [-1.7, 0.9, 0]
             },
             {
               "id": "s3_txt_hull",
@@ -3620,7 +3621,7 @@
               "id": "s3_txt_hull_point",
               "type": "text",
               "text": "at $i = 0$ the hull is **one point**: $o_0 = v_0$",
-              "position": [-7.0, -2.9, 0],
+              "position": [-7.0, -2.2, 0],
               "color": "#ab47bc",
               "visibleExpr": "s3_qi < 0.5",
               "legendGroup": "the output $o_i$"
