@@ -114,13 +114,13 @@ export function rasterLatex(src: string, fontPx: number, color: string): LatexRa
     for (const m of h.querySelectorAll('.katex-mathml')) m.remove();
     const box = h.getBoundingClientRect();
     const w = Math.ceil(box.width), ht = Math.ceil(box.height);
-    if (w < 1 || ht < 1) return remember(key, { canvas: null, w: 0, h: 0 });
+    if (w < 1 || ht < 1) { h.innerHTML = ''; return remember(key, { canvas: null, w: 0, h: 0 }); }
 
     const canvas = document.createElement('canvas');
     canvas.width = w * SUPERSAMPLE;
     canvas.height = ht * SUPERSAMPLE;
     const ctx = canvas.getContext('2d');
-    if (!ctx) return remember(key, { canvas: null, w, h: ht });
+    if (!ctx) { h.innerHTML = ''; return remember(key, { canvas: null, w, h: ht }); }
     ctx.scale(SUPERSAMPLE, SUPERSAMPLE);
     ctx.textBaseline = 'alphabetic';
     ctx.textAlign = 'left';
