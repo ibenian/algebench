@@ -9173,13 +9173,13 @@ function renderChart(el, view) {
 	seriesSpecs.forEach((sp, k) => {
 		const ys = Array.isArray(sp.y) ? sp.y.map(Number) : null;
 		const xs = Array.isArray(sp.x) ? sp.x.map(Number) : null;
-		const yFn = ys ? null : compileOpt(sp.yExpr, `series[${k}].yExpr`);
+		const yFn = compileOpt(sp.yExpr, `series[${k}].yExpr`);
 		if (!ys && !yFn) {
 			console.warn(`chart${el.id ? ` "${el.id}"` : ""}: series[${k}] has neither y nor a usable yExpr; skipped.`);
 			return;
 		}
-		const xFn = xs ? null : compileOpt(sp.xExpr, `series[${k}].xExpr`);
-		const n = ys ? ys.length : Math.max(2, Math.min(4096, Math.floor(Number(sp.n)) || 64));
+		const xFn = compileOpt(sp.xExpr, `series[${k}].xExpr`);
+		const n = Number(sp.n) > 1 ? Math.max(2, Math.min(4096, Math.floor(Number(sp.n)))) : ys ? ys.length : 64;
 		series.push({
 			color: parseColor(sp.color || el.color || "#ff88aa"),
 			n,
@@ -9190,8 +9190,8 @@ function renderChart(el, view) {
 			ys,
 			xFn,
 			yFn,
-			xSrc: typeof sp.xExpr === "string" ? sp.xExpr.trim() : null,
-			ySrc: typeof sp.yExpr === "string" ? sp.yExpr.trim() : null,
+			xSrc: typeof sp.xExpr === "string" ? sp.xExpr.trim() || null : null,
+			ySrc: typeof sp.yExpr === "string" ? sp.yExpr.trim() || null : null,
 			px: new Array(n).fill(0),
 			py: new Array(n).fill(0),
 			node: null,
@@ -9240,7 +9240,7 @@ function renderChart(el, view) {
 	let yDom = yFixed || [0, 1];
 	/** Plot-space (h, v) in data units for a data point (x, y) under the current domains. */
 	const toPlane = (x, y) => [(x - xDom[0]) / (xDom[1] - xDom[0] || 1) * W, (y - yDom[0]) / (yDom[1] - yDom[0] || 1) * H];
-	const live = series.some((s) => s.xSrc && !s.xs || s.ySrc && !s.ys) || hlines.some((l) => l.src) || bands.some((b) => b.loSrc || b.hiSrc) || !!xLabelSrc || !!yLabelSrc;
+	const live = series.some((s) => s.xSrc || s.ySrc) || hlines.some((l) => l.src) || bands.some((b) => b.loSrc || b.hiSrc) || !!xLabelSrc || !!yLabelSrc;
 	function sample(tSec) {
 		for (const s of series) {
 			const scope = {
@@ -9251,22 +9251,22 @@ function renderChart(el, view) {
 			for (let i = 0; i < s.n; i++) {
 				scope.i = i;
 				let x;
-				if (s.xs) x = s.xs[i] ?? i;
-				else if (s.xFn) try {
+				if (s.xFn) try {
 					x = Number(evalExpr(s.xFn.fn, tSec, { overrideScope: scope }));
 				} catch (_e) {
 					x = i;
 				}
+				else if (s.xs) x = s.xs[i] ?? i;
 				else x = i;
 				if (!Number.isFinite(x)) x = i;
 				scope.x = x;
 				let y;
-				if (s.ys) y = s.ys[i] ?? 0;
-				else try {
+				if (s.yFn) try {
 					y = Number(evalExpr(s.yFn.fn, tSec, { overrideScope: scope }));
 				} catch (_e) {
 					y = NaN;
 				}
+				else y = s.ys ? s.ys[i] ?? 0 : NaN;
 				s.px[i] = x;
 				s.py[i] = Number.isFinite(y) ? y : NaN;
 			}
@@ -9678,8 +9678,8 @@ function renderChart(el, view) {
 			if (chartState._sceneJsTrustState === compiledUnderTrust) return;
 			compiledUnderTrust = chartState._sceneJsTrustState;
 			series.forEach((s, k) => {
-				if (s.ySrc && !s.ys) s.yFn = compileOpt(s.ySrc, `series[${k}].yExpr`);
-				if (s.xSrc && !s.xs) s.xFn = compileOpt(s.xSrc, `series[${k}].xExpr`);
+				if (s.ySrc) s.yFn = compileOpt(s.ySrc, `series[${k}].yExpr`);
+				if (s.xSrc) s.xFn = compileOpt(s.xSrc, `series[${k}].xExpr`);
 			});
 			hlines.forEach((l, k) => {
 				if (l.src) l.fn = compileOpt(l.src, `hlines[${k}].yExpr`);

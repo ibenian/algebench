@@ -750,11 +750,11 @@ export interface Element {
      */
     n?: number;
     /**
-     * Math.js expression for a sample's x, with 'i' and 'n' bound. Default: i.
+     * Math.js expression for a sample's x, with 'i' and 'n' bound. Default: i. Wins over 'x', which is the fallback while the expression is refused.
      */
     xExpr?: string;
     /**
-     * Math.js expression for a sample's y, with 'i', 'n' and 'x' bound. Wins over 'y'.
+     * Math.js expression for a sample's y, with 'i', 'n' and 'x' bound. Wins over 'y', which is the fallback while the expression is refused.
      */
     yExpr?: string;
     /**

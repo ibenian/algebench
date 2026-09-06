@@ -49,7 +49,9 @@ Each series is a line (or `"kind": "points"`) whose samples come from **either**
 - `y: [...]` (and optionally `x: [...]`) — static; built once, no per-frame cost.
 - `yExpr` — evaluated once per sample with `i` (0-based index), `n` (sample count) and `x` (that
   sample's x) bound; `x` is `i` unless `xExpr` (same scope, minus `x`) or `x` is given. `n` sets the
-  sample count (default 64).
+  sample count (default 64, or the literal's length). An expression wins over its literal, as
+  `valueExpr` wins over `values` on a tensor; the literal is the fallback while the expression is
+  refused.
 
 Scope names are bound the way `tensor` binds `row`/`col`: they win over a same-named slider, and
 `validate_content.py` knows them, so a stray `i` elsewhere is still reported. Only series expressions

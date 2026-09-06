@@ -247,21 +247,23 @@ export function renderChart(el: Element, view: MathBoxNode) {
     seriesSpecs.forEach((sp, k) => {
         const ys = Array.isArray(sp.y) ? sp.y.map(Number) : null;
         const xs = Array.isArray(sp.x) ? sp.x.map(Number) : null;
-        const yFn = ys ? null : compileOpt(sp.yExpr, `series[${k}].yExpr`);
+        // An expression wins over its literal, as tensor's valueExpr wins over
+        // values; the literal is the fallback while the expression is refused.
+        const yFn = compileOpt(sp.yExpr, `series[${k}].yExpr`);
         if (!ys && !yFn) {
             console.warn(`chart${el.id ? ` "${el.id}"` : ''}: series[${k}] has neither y nor a usable yExpr; skipped.`);
             return;
         }
-        const xFn = xs ? null : compileOpt(sp.xExpr, `series[${k}].xExpr`);
-        const n = ys ? ys.length : Math.max(2, Math.min(4096, Math.floor(Number(sp.n)) || 64));
+        const xFn = compileOpt(sp.xExpr, `series[${k}].xExpr`);
+        const n = Number(sp.n) > 1 ? Math.max(2, Math.min(4096, Math.floor(Number(sp.n)))) : (ys ? ys.length : 64);
         series.push({
             color: parseColor(sp.color || el.color || '#ff88aa') as Rgb3,
             n, kind: sp.kind === 'points' ? 'points' : 'line',
             width: Number(sp.width) > 0 ? Number(sp.width) : 2.5,
             opacity: Number.isFinite(Number(sp.opacity)) ? Math.max(0, Math.min(1, Number(sp.opacity))) : 1,
             xs, ys, xFn, yFn,
-            xSrc: typeof sp.xExpr === 'string' ? sp.xExpr.trim() : null,
-            ySrc: typeof sp.yExpr === 'string' ? sp.yExpr.trim() : null,
+            xSrc: typeof sp.xExpr === 'string' ? sp.xExpr.trim() || null : null,
+            ySrc: typeof sp.yExpr === 'string' ? sp.yExpr.trim() || null : null,
             px: new Array(n).fill(0), py: new Array(n).fill(0),
             node: null, data: null, entry: null,
         });
@@ -322,21 +324,21 @@ export function renderChart(el: Element, view: MathBoxNode) {
     // ── Evaluate everything at `tSec` into the sample arrays and domains ──
     // Declared, not compiled: a channel refused under the untrusted state
     // must still register the updater so a trust change can bring it back.
-    const live = series.some(s => (s.xSrc && !s.xs) || (s.ySrc && !s.ys)) || hlines.some(l => l.src) || bands.some(b => b.loSrc || b.hiSrc) || !!xLabelSrc || !!yLabelSrc;
+    const live = series.some(s => s.xSrc || s.ySrc) || hlines.some(l => l.src) || bands.some(b => b.loSrc || b.hiSrc) || !!xLabelSrc || !!yLabelSrc;
     function sample(tSec: number) {
         for (const s of series) {
             const scope = { i: 0, n: s.n, x: 0 };
             for (let i = 0; i < s.n; i++) {
                 scope.i = i;
                 let x: number;
-                if (s.xs) x = s.xs[i] ?? i;
-                else if (s.xFn) { try { x = Number(evalExpr(s.xFn.fn, tSec, { overrideScope: scope })); } catch (_e) { x = i; } }
+                if (s.xFn) { try { x = Number(evalExpr(s.xFn.fn, tSec, { overrideScope: scope })); } catch (_e) { x = i; } }
+                else if (s.xs) x = s.xs[i] ?? i;
                 else x = i;
                 if (!Number.isFinite(x)) x = i;
                 scope.x = x;
                 let y: number;
-                if (s.ys) y = s.ys[i] ?? 0;
-                else { try { y = Number(evalExpr(s.yFn!.fn, tSec, { overrideScope: scope })); } catch (_e) { y = NaN; } }
+                if (s.yFn) { try { y = Number(evalExpr(s.yFn.fn, tSec, { overrideScope: scope })); } catch (_e) { y = NaN; } }
+                else y = s.ys ? (s.ys[i] ?? 0) : NaN;
                 s.px[i] = x;
                 s.py[i] = Number.isFinite(y) ? y : NaN;
             }
@@ -594,8 +596,8 @@ export function renderChart(el: Element, view: MathBoxNode) {
             if (chartState._sceneJsTrustState === compiledUnderTrust) return;
             compiledUnderTrust = chartState._sceneJsTrustState;
             series.forEach((s, k) => {
-                if (s.ySrc && !s.ys) s.yFn = compileOpt(s.ySrc, `series[${k}].yExpr`);
-                if (s.xSrc && !s.xs) s.xFn = compileOpt(s.xSrc, `series[${k}].xExpr`);
+                if (s.ySrc) s.yFn = compileOpt(s.ySrc, `series[${k}].yExpr`);
+                if (s.xSrc) s.xFn = compileOpt(s.xSrc, `series[${k}].xExpr`);
             });
             hlines.forEach((l, k) => { if (l.src) l.fn = compileOpt(l.src, `hlines[${k}].yExpr`); });
             bands.forEach((b, k) => {
