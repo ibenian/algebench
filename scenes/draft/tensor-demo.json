@@ -217,7 +217,7 @@
               "cellSize": 1,
               "valueExpr": "exp(-abs(row - col) * sharp) / (exp(-abs(row - 0) * sharp) + exp(-abs(row - 1) * sharp) + exp(-abs(row - 2) * sharp) + exp(-abs(row - 3) * sharp) + exp(-abs(row - 4) * sharp) + exp(-abs(row - 5) * sharp))",
               "depthExpr": "value * 2.5",
-              "textExpr": "value >= 0.12 ? toFixed(value, 2) : ''",
+              "textExpr": "toFixed(value, 2)",
               "colorMap": "viridis",
               "colorDomain": [0, 1],
               "color": "#66bb6a",
