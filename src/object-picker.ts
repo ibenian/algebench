@@ -94,6 +94,8 @@ interface VisibleEntry {
 
 const PICK_PX = 20;          // screen-space radius for the nearest-anchor fallback
 const HIDE_DELAY = 600;      // grace period so the cursor can travel onto the button
+const BTN_PX = 19;           // the button's side (.ai-ask-btn)
+const GRACE_PX = 48;         // around a shown button, the pick is frozen so it cannot run away
 const MAX_NEIGHBORS = 12;    // cap the "other objects in view" list in the prompt
 
 let _raycaster: Raycaster | null = null;
@@ -308,8 +310,22 @@ function positionBtn(id: string, rect: DOMRect): boolean {
     const p = world && projectToScreen(world, rect);
     if (!p) return false;
     const btn = ensureBtn();
-    btn.style.left = (rect.left + p.x + 10) + 'px';   // just up-and-right of the hover point
-    btn.style.top = (rect.top + p.y - 26) + 'px';
+    let left = rect.left + p.x + 10;   // just up-and-right of the hover point
+    let top = rect.top + p.y - 26;
+    // A hit on the geometry can land the button inside the object's own
+    // caption, where it reads as a glyph lost in the text; lift it clear.
+    const t = reg.tracker as PickerTracker | undefined;
+    for (const lbl of (t && t.labels) || []) {
+        if (!lbl.el || lbl.visible === false || lbl.forceHidden) continue;
+        const lr = lbl.el.getBoundingClientRect();
+        if (!lr.width && !lr.height) continue;
+        if (left + BTN_PX > lr.left && left < lr.right && top + BTN_PX > lr.top && top < lr.bottom) {
+            top = lr.top - BTN_PX - 3;
+            break;
+        }
+    }
+    btn.style.left = left + 'px';
+    btn.style.top = top + 'px';
     return true;
 }
 
@@ -583,6 +599,17 @@ function onPointerMove(e: PointerEvent) {
         _rafPending = false;
         const ev = _lastEvt;
         if (!ev) return;
+        // A shown button is a target the user is travelling to. Crossing another
+        // object's caption on the way would re-pick, and the button would jump
+        // to that label's corner or hide -- so near the button, freeze the pick.
+        if (_btn && _btn.style.opacity === '1') {
+            const br = _btn.getBoundingClientRect();
+            if (ev.clientX >= br.left - GRACE_PX && ev.clientX <= br.right + GRACE_PX
+                && ev.clientY >= br.top - GRACE_PX && ev.clientY <= br.bottom + GRACE_PX) {
+                if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
+                return;
+            }
+        }
         const hit = pickAt(ev.clientX, ev.clientY);
         if (hit) showBtnFor(hit);
         else hideBtn();

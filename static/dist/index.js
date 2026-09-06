@@ -15270,6 +15270,8 @@ function setupShareButton() {
 //#region src/object-picker.ts
 var PICK_PX = 20;
 var HIDE_DELAY = 600;
+var BTN_PX = 19;
+var GRACE_PX = 48;
 var MAX_NEIGHBORS = 12;
 var _raycaster = null;
 var _canvas = null;
@@ -15467,8 +15469,20 @@ function positionBtn(id, rect) {
 	const p = world && projectToScreen(world, rect);
 	if (!p) return false;
 	const btn = ensureBtn();
-	btn.style.left = rect.left + p.x + 10 + "px";
-	btn.style.top = rect.top + p.y - 26 + "px";
+	let left = rect.left + p.x + 10;
+	let top = rect.top + p.y - 26;
+	const t = reg.tracker;
+	for (const lbl of t && t.labels || []) {
+		if (!lbl.el || lbl.visible === false || lbl.forceHidden) continue;
+		const lr = lbl.el.getBoundingClientRect();
+		if (!lr.width && !lr.height) continue;
+		if (left + BTN_PX > lr.left && left < lr.right && top + BTN_PX > lr.top && top < lr.bottom) {
+			top = lr.top - BTN_PX - 3;
+			break;
+		}
+	}
+	btn.style.left = left + "px";
+	btn.style.top = top + "px";
 	return true;
 }
 function showBtnFor(hit) {
@@ -15711,6 +15725,16 @@ function onPointerMove(e) {
 		_rafPending = false;
 		const ev = _lastEvt;
 		if (!ev) return;
+		if (_btn && _btn.style.opacity === "1") {
+			const br = _btn.getBoundingClientRect();
+			if (ev.clientX >= br.left - GRACE_PX && ev.clientX <= br.right + GRACE_PX && ev.clientY >= br.top - GRACE_PX && ev.clientY <= br.bottom + GRACE_PX) {
+				if (_hideTimer) {
+					clearTimeout(_hideTimer);
+					_hideTimer = null;
+				}
+				return;
+			}
+		}
 		const hit = pickAt(ev.clientX, ev.clientY);
 		if (hit) showBtnFor(hit);
 		else hideBtn();
