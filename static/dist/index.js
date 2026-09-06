@@ -8555,8 +8555,8 @@ function renderTensor(el, _view) {
 				keyParts.push(txt, cellW[cell].toFixed(3), cellH[cell].toFixed(3), String(Math.round(cellRgb[cell * 3] * 255)), String(Math.round(cellRgb[cell * 3 + 1] * 255)), String(Math.round(cellRgb[cell * 3 + 2] * 255)));
 			}
 		}
-		const hTexts = planeLabels && hasHLabels ? axisLabelTexts(hLabelFn, hLabelsStatic, cols, false, tSec) : null;
-		const vTexts = planeLabels && hasVLabels ? axisLabelTexts(vLabelFn, vLabelsStatic, rows, true, tSec) : null;
+		const hTexts = planeLabels && (hLabelFn || hLabelsStatic) ? axisLabelTexts(hLabelFn, hLabelsStatic, cols, false, tSec) : null;
+		const vTexts = planeLabels && (vLabelFn || vLabelsStatic) ? axisLabelTexts(vLabelFn, vLabelsStatic, rows, true, tSec) : null;
 		if (hTexts) keyParts.push(...hTexts);
 		if (vTexts) keyParts.push(...vTexts);
 		const key = keyParts.join("");
@@ -8756,7 +8756,7 @@ function renderTensor(el, _view) {
 				colorAttr.needsUpdate = true;
 				if (hasSizeExpr) posAttr.needsUpdate = true;
 			} catch (_err) {}
-			if (textLayer && (textFn || planeDynamic)) try {
+			if (textLayer && (textFn || planeLabels && (hLabelFn || vLabelFn))) try {
 				paintText(tSec);
 			} catch (_err) {}
 			if (dynamicLabels.length) paintLabels(tSec);

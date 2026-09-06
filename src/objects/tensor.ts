@@ -930,8 +930,10 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
                 }
             }
         }
-        const hTexts = planeLabels && hasHLabels ? axisLabelTexts(hLabelFn, hLabelsStatic, cols, false, tSec) : null;
-        const vTexts = planeLabels && hasVLabels ? axisLabelTexts(vLabelFn, vLabelsStatic, rows, true, tSec) : null;
+        // An axis whose labelExpr is declared but currently refused has
+        // nothing to say; skip its loop rather than push empties every frame.
+        const hTexts = planeLabels && (hLabelFn || hLabelsStatic) ? axisLabelTexts(hLabelFn, hLabelsStatic, cols, false, tSec) : null;
+        const vTexts = planeLabels && (vLabelFn || vLabelsStatic) ? axisLabelTexts(vLabelFn, vLabelsStatic, rows, true, tSec) : null;
         if (hTexts) keyParts.push(...hTexts);
         if (vTexts) keyParts.push(...vTexts);
         const key = keyParts.join('\u0001');
@@ -1165,7 +1167,8 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
             }
             // Static plane labels were painted once at build; only a text
             // channel or an expression-driven axis label can change the canvas.
-            if (textLayer && (textFn || planeDynamic)) {
+            // ...and only while some label expression is actually compiled.
+            if (textLayer && (textFn || (planeLabels && (hLabelFn || vLabelFn)))) {
                 try { paintText(tSec); } catch (_err) { /* keep the last frame's text */ }
             }
             if (dynamicLabels.length) paintLabels(tSec);
