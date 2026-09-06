@@ -367,6 +367,8 @@ export function renderChart(el: Element, view: MathBoxNode) {
         if (!xFixed) {
             const xs: number[] = [];
             for (const s of series) for (const x of s.px) xs.push(x);
+            // No padding on x: an index axis should start exactly at 0, and
+            // niceTicks already rounds the far end up to a tick.
             xDom = autoDomain(xs, 0);
         }
         if (!yFixed) {
@@ -422,6 +424,10 @@ export function renderChart(el: Element, view: MathBoxNode) {
     }
 
     const serial = el.renderOrder !== undefined ? el.renderOrder : chartState._planeMeshSerial++;
+    // Bands sit one slot above the paper; reserve that slot from the shared
+    // counter (as tensor does for its text quad) so no later plane mesh
+    // lands on the same order.
+    const bandOrder = bands.length ? (el.renderOrder !== undefined ? serial + 1 : chartState._planeMeshSerial++) : serial + 1;
     /** A quad mesh over plot-space rect, as the paper and bands need. */
     const makeQuad = (color: Rgb3, opac: number, order: number, dynamic: boolean) => {
         const pos = new Float32Array(6 * 3);
@@ -461,7 +467,7 @@ export function renderChart(el: Element, view: MathBoxNode) {
         writeQuad(b.attr, 0, W, Math.max(0, Math.min(H, v0)), Math.max(0, Math.min(H, v1)), lift);
     };
     for (const b of bands) {
-        const q = makeQuad(b.color, b.opacity, serial + 1, true);
+        const q = makeQuad(b.color, b.opacity, bandOrder, true);
         b.mesh = q.mesh; b.attr = q.attr;
         placeBand(b);
     }

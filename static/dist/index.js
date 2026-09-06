@@ -9426,6 +9426,7 @@ function renderChart(el, view) {
 		chartState.lineNodes.push(entry);
 	}
 	const serial = el.renderOrder !== void 0 ? el.renderOrder : chartState._planeMeshSerial++;
+	const bandOrder = bands.length ? el.renderOrder !== void 0 ? serial + 1 : chartState._planeMeshSerial++ : serial + 1;
 	/** A quad mesh over plot-space rect, as the paper and bands need. */
 	const makeQuad = (color, opac, order, dynamic) => {
 		const pos = /* @__PURE__ */ new Float32Array(18);
@@ -9487,7 +9488,7 @@ function renderChart(el, view) {
 		writeQuad(b.attr, 0, W, Math.max(0, Math.min(H, v0)), Math.max(0, Math.min(H, v1)), lift);
 	};
 	for (const b of bands) {
-		const q = makeQuad(b.color, b.opacity, serial + 1, true);
+		const q = makeQuad(b.color, b.opacity, bandOrder, true);
 		b.mesh = q.mesh;
 		b.attr = q.attr;
 		placeBand(b);

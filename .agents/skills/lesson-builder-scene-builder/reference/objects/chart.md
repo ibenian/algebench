@@ -65,7 +65,8 @@ actually changes.
 
 ## Domains
 
-`"auto"` fits the extent of everything drawn — series, lines, bands — pads it a little, then widens
+`"auto"` fits the extent of everything drawn — series, lines, bands — pads y a little (x is fitted
+exactly, so an index axis starts at 0), then widens
 to the nearest tick multiples so the axis ends on round numbers. That is the right default for a
 sampled quantity whose scale is the point (the ±1 s.d. band growing like √n). **Fix the domain** when
 a slider should be seen to move the data, not the axis: with `"auto"` a curve that doubles looks the
