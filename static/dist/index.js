@@ -8399,8 +8399,20 @@ function renderTensor(el, _view) {
 	const vTitle = vAxis && vAxis.title ? String(vAxis.title) : null;
 	const hasHLabels = !!(hLabelFn || hLabelsStatic);
 	const hasVLabels = !!(vLabelFn || vLabelsStatic);
-	const mT = axisPlane ? (hasHLabels ? 1 : 0) + (hTitle ? .9 : 0) : 0;
-	const mL = axisPlane ? (hasVLabels ? 2.4 : 0) + (vTitle ? .9 : 0) : 0;
+	const LABEL_BAND = .9, TITLE_BAND = .7, LABEL_GLYPH = .5;
+	const mT = axisPlane ? (hasHLabels ? LABEL_BAND : 0) + (hTitle ? TITLE_BAND : 0) : 0;
+	let vBand = 0;
+	if (axisPlane && hasVLabels) {
+		const probe = document.createElement("canvas").getContext("2d");
+		const firstTexts = axisLabelTexts(vLabelFn, vLabelsStatic, rows, true, 0);
+		let widest = 0;
+		if (probe) {
+			probe.font = "100px system-ui, sans-serif";
+			for (const t of firstTexts) widest = Math.max(widest, probe.measureText(plainTextOfLatex(t)).width);
+		}
+		vBand = Math.max(1, Math.min(4, widest * LABEL_GLYPH / 100 + .45));
+	}
+	const mL = axisPlane ? vBand + (vTitle ? TITLE_BAND : 0) : 0;
 	const planeLabels = axisPlane && (mT > 0 || mL > 0);
 	const cssColor = (rgb) => `rgb(${Math.round(rgb[0] * 255)}, ${Math.round(rgb[1] * 255)}, ${Math.round(rgb[2] * 255)})`;
 	let textLayer = null;
@@ -8547,17 +8559,17 @@ function renderTensor(el, _view) {
 		ctx.textAlign = "center";
 		ctx.textBaseline = "middle";
 		if (hTexts) {
-			const band = (mT - (hTitle ? .9 : 0)) * px;
-			for (let c = 0; c < cols; c++) drawFitted(ctx, hTexts[c], ox + (c + .5) * px, oy - band / 2, .92 * px, .8 * band, cssColor(hColor));
+			const band = LABEL_BAND * px;
+			for (let c = 0; c < cols; c++) drawFitted(ctx, hTexts[c], ox + (c + .5) * px, oy - band / 2, .92 * px, LABEL_GLYPH / .62 * px, cssColor(hColor));
 		}
-		if (hTitle && planeLabels) drawFitted(ctx, hTitle, ox + cols * px / 2, .45 * px, cols * px, .7 * px, cssColor(hColor));
+		if (hTitle && planeLabels) drawFitted(ctx, hTitle, ox + cols * px / 2, TITLE_BAND * px / 2, cols * px, LABEL_GLYPH / .62 * px, cssColor(hColor));
 		if (vTexts) {
-			const band = (mL - (vTitle ? .9 : 0)) * px;
+			const band = vBand * px;
 			ctx.textAlign = "right";
-			for (let r = 0; r < rows; r++) drawFitted(ctx, vTexts[r], ox - .18 * px, oy + (r + .5) * px, .9 * band, .8 * px, cssColor(vColor));
+			for (let r = 0; r < rows; r++) drawFitted(ctx, vTexts[r], ox - .2 * px, oy + (r + .5) * px, band - .35 * px, LABEL_GLYPH / .62 * px, cssColor(vColor));
 			ctx.textAlign = "center";
 		}
-		if (vTitle && planeLabels) drawFitted(ctx, vTitle, .45 * px, oy + rows * px / 2, .7 * px, rows * px, cssColor(vColor), true);
+		if (vTitle && planeLabels) drawFitted(ctx, vTitle, TITLE_BAND * px / 2, oy + rows * px / 2, LABEL_GLYPH / .62 * px, rows * px, cssColor(vColor), true);
 		for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
 			const cell = r * cols + c;
 			const txt = texts[cell];

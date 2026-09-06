@@ -701,10 +701,26 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     const vTitle = (vAxis && vAxis.title) ? String(vAxis.title) : null;
     const hasHLabels = !!(hLabelFn || hLabelsStatic);
     const hasVLabels = !!(vLabelFn || vLabelsStatic);
-    // Margin bands in pitch units: one row of column labels above, ~2.4 cells
-    // of row labels to the left (a short word), and a title band beyond each.
-    const mT = axisPlane ? (hasHLabels ? 1 : 0) + (hTitle ? 0.9 : 0) : 0;
-    const mL = axisPlane ? (hasVLabels ? 2.4 : 0) + (vTitle ? 0.9 : 0) : 0;
+    // Margin bands in pitch units: a row of column labels above and a title
+    // band beyond it; to the left, a band as wide as the LONGEST row label
+    // (measured, so a title sits right beside the words rather than a fixed
+    // distance out) and a title band beyond that.
+    const LABEL_BAND = 0.9, TITLE_BAND = 0.7, LABEL_GLYPH = 0.5;
+    const mT = axisPlane ? (hasHLabels ? LABEL_BAND : 0) + (hTitle ? TITLE_BAND : 0) : 0;
+    let vBand = 0;
+    if (axisPlane && hasVLabels) {
+        const probe = document.createElement('canvas').getContext('2d');
+        const firstTexts = axisLabelTexts(vLabelFn, vLabelsStatic, rows, true, 0);
+        let widest = 0;
+        if (probe) {
+            probe.font = '100px system-ui, sans-serif';
+            for (const t of firstTexts) widest = Math.max(widest, probe.measureText(plainTextOfLatex(t)).width);
+        }
+        // Width at the glyph size the labels are drawn at, plus a little air;
+        // never narrower than one cell, never wider than four.
+        vBand = Math.max(1, Math.min(4, widest * LABEL_GLYPH / 100 + 0.45));
+    }
+    const mL = axisPlane ? vBand + (vTitle ? TITLE_BAND : 0) : 0;
     const planeLabels = axisPlane && (mT > 0 || mL > 0);
     const cssColor = (rgb: Rgb3) => `rgb(${Math.round(rgb[0] * 255)}, ${Math.round(rgb[1] * 255)}, ${Math.round(rgb[2] * 255)})`;
 
@@ -869,24 +885,24 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
         ctx.textBaseline = 'middle';
 
         if (hTexts) {
-            const band = (mT - (hTitle ? 0.9 : 0)) * px;   // the band nearest the lattice
+            const band = LABEL_BAND * px;   // the band nearest the lattice
             for (let c = 0; c < cols; c++) {
-                drawFitted(ctx, hTexts[c]!, ox + (c + 0.5) * px, oy - band / 2, 0.92 * px, 0.8 * band, cssColor(hColor));
+                drawFitted(ctx, hTexts[c]!, ox + (c + 0.5) * px, oy - band / 2, 0.92 * px, LABEL_GLYPH / 0.62 * px, cssColor(hColor));
             }
         }
         if (hTitle && planeLabels) {
-            drawFitted(ctx, hTitle, ox + (cols * px) / 2, 0.45 * px, cols * px, 0.7 * px, cssColor(hColor));
+            drawFitted(ctx, hTitle, ox + (cols * px) / 2, TITLE_BAND * px / 2, cols * px, LABEL_GLYPH / 0.62 * px, cssColor(hColor));
         }
         if (vTexts) {
-            const band = (mL - (vTitle ? 0.9 : 0)) * px;
+            const band = vBand * px;
             ctx.textAlign = 'right';
             for (let r = 0; r < rows; r++) {
-                drawFitted(ctx, vTexts[r]!, ox - 0.18 * px, oy + (r + 0.5) * px, 0.9 * band, 0.8 * px, cssColor(vColor));
+                drawFitted(ctx, vTexts[r]!, ox - 0.2 * px, oy + (r + 0.5) * px, band - 0.35 * px, LABEL_GLYPH / 0.62 * px, cssColor(vColor));
             }
             ctx.textAlign = 'center';
         }
         if (vTitle && planeLabels) {
-            drawFitted(ctx, vTitle, 0.45 * px, oy + (rows * px) / 2, 0.7 * px, rows * px, cssColor(vColor), true);
+            drawFitted(ctx, vTitle, TITLE_BAND * px / 2, oy + (rows * px) / 2, LABEL_GLYPH / 0.62 * px, rows * px, cssColor(vColor), true);
         }
 
         for (let r = 0; r < rows; r++) {
