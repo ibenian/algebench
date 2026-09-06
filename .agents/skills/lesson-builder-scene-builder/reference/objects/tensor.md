@@ -40,7 +40,7 @@ elements. Use it instead of hand-writing cells — always.
 | `axisLabels` | `plane` | `plane`: labels and titles drawn on the lattice plane, like cell text. `screen`: HTML labels facing the camera. See *Axis labels* |
 | `anchor` | `center` | Which edge a shrunken cell keeps: `bottom`, `top`, `left`, `right`, or a pair like `bottom-left`. See *Channels* |
 | `depthExpr` | `0` | Per-cell **depth** off the lattice plane as a fraction of `cellSize` (−3..3), same scope. Positive rises, negative sinks; either way a solid box with shaded walls |
-| `textExpr` | — | Text drawn **inside** each cell, same scope. Plain text, fitted to the cell, on the cell's face — the lattice plane, or the lid of a cell raised by `depthExpr` |
+| `textExpr` | — | Text drawn **inside** each cell, same scope. Plain text, fitted to the cell, on the cell's face — the lattice plane, or the lid of a cell raised or sunk by `depthExpr` |
 | `textColor` | auto | Colour for cell text. Omit for automatic contrast per cell |
 | `label` | — | **One** legend entry for the whole tensor |
 | `prompt` | — | **One** Ask-AI button for the whole tensor |

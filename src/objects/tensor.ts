@@ -887,17 +887,20 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
             const qPos = new Float32Array(quads * 6 * 3);
             const qUv = new Float32Array(quads * 6 * 2);
             const U = cols + mL, V = rows + mT;
+            /** Two triangles over a quad's four corners, in the order the buffer expects. */
+            const QUAD_ORDER = [0, 1, 2, 0, 2, 3] as const;
             /** Write one quad: plane rect [h0,h1]x[v0,v1] (pitch units), lifted `n`, canvas rect [u0,u1]x[vTop,vBot] (canvas fractions from the top). */
             const putQuad = (qi: number, h0: number, h1: number, v0: number, v1: number, n: number, u0: number, u1: number, cTop: number, cBot: number) => {
-                const P = [layout.point(h0 * cellSize, v0 * cellSize, n), layout.point(h1 * cellSize, v0 * cellSize, n),
-                           layout.point(h1 * cellSize, v1 * cellSize, n), layout.point(h0 * cellSize, v1 * cellSize, n)].map(dataToWorld);
-                const T = [[u0, 1 - cBot], [u1, 1 - cBot], [u1, 1 - cTop], [u0, 1 - cTop]];
-                const order = [0, 1, 2, 0, 2, 3];
+                const P: [Vec3, Vec3, Vec3, Vec3] = [
+                    dataToWorld(layout.point(h0 * cellSize, v0 * cellSize, n)), dataToWorld(layout.point(h1 * cellSize, v0 * cellSize, n)),
+                    dataToWorld(layout.point(h1 * cellSize, v1 * cellSize, n)), dataToWorld(layout.point(h0 * cellSize, v1 * cellSize, n))];
+                const uAt = [u0, u1, u1, u0], vAt = [1 - cBot, 1 - cBot, 1 - cTop, 1 - cTop];
                 for (let i = 0; i < 6; i++) {
-                    const p = P[order[i]!]!, t = T[order[i]!]!;
+                    const k = QUAD_ORDER[i]!;
+                    const p = P[k]!;
                     const pb = (qi * 6 + i) * 3, tb = (qi * 6 + i) * 2;
                     qPos[pb] = p[0]; qPos[pb + 1] = p[1]; qPos[pb + 2] = p[2];
-                    qUv[tb] = t[0]!; qUv[tb + 1] = t[1]!;
+                    qUv[tb] = uAt[k]!; qUv[tb + 1] = vAt[k]!;
                 }
             };
             // Text sits on the lid, a hair towards the viewer of a raised cell
