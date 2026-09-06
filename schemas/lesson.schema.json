@@ -578,7 +578,7 @@
         },
         "depthExpr": {
           "type": "string",
-          "description": "TENSOR ONLY. Math.js expression giving one cell's DEPTH -- how far it rises off the lattice plane, along the plane normal, as a fraction of 'cellSize' (0-3), same scope as 'widthExpr'. A cell with depth is drawn as a solid box with shaded walls, so a large value reads as a bump rather than a flat tile; 0 (the default, and any non-numeric result) is flat. Cell text rides on the box's lid. Example: \"value * 2\" on a softmax matrix turns it into a relief map of the attention weights."
+          "description": "TENSOR ONLY. Math.js expression giving one cell's DEPTH -- how far it stands off the lattice plane along the plane normal, as a fraction of 'cellSize', same scope as 'widthExpr'. Positive rises above the plane, negative sinks below it, clamped to -3..3; 0 (the default, and any non-numeric result) is flat. A cell with depth is drawn as a solid box with shaded walls, so a large value reads as a bump and a negative one as a well; signed data such as pre-softmax scores reads as relief in both directions. Cell text rides on the box's lid. Example: \"value * 2\" on a softmax matrix is a relief map of the attention weights; \"(value - 1/6) * 4\" shows each weight above or below uniform."
         },
         "textExpr": {
           "type": "string",

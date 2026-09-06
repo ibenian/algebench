@@ -4,7 +4,7 @@
     {
       "title": "tensor — one element, one lattice",
       "description": "Three 6×6 lattices, one per way of supplying values: live, static, and baked.",
-      "markdown": "# `tensor`\n\nEach grid below is **one element**, not 36.\n\n**Left — `valueExpr`, live.** One expression, evaluated per cell with `row` and `col` bound. Row $i$ is a softmax over $s_{ij} = e^{-|i-j|\\cdot k}$, so every row sums to 1. Drag **sharpness** and watch it go from uniform to near-diagonal.\n\n**Middle — `values`, static.** Literal numbers, built once, **zero** per-frame cost: a causal mask, the shape that makes parallel training legal.\n\n**Right — `dataTable`, baked.** Also one `valueExpr`, but it reads a table in the scene's `data` block rather than computing from a formula:\n\n```\ndataTable('attn', row, concat('w', col))\n```\n\nThis is how a real lesson supplies numbers — the weights come from a model and are baked into the JSON, so nothing is invented at render time and every value is reproducible offline. This head attends mostly to the **previous token**, partly to **position 0**, and never to the future.\n\n**Sharpness reshapes the baked head too**, by $p_j^{\\,k}$ renormalized over each row. At $k \\to 0$ it flattens to uniform *over what the head is allowed to see* — the zeros stay zero, so no attention leaks into the future. At $k=1$ it is the stored head unchanged; above that it concentrates further.\n\n**Below the baked head** — the same data at rank 1. `shape: [6]` draws a vector rather than a matrix through the same code path, tracks row 3 of the matrix above, and takes its axis labels from `axes` rather than hand-placed `text` elements.\n\nCell geometry is arithmetic on `shape`, not expressions, so nothing is re-evaluated for positions that never move.\n\n**Bottom — the other channels.** Value drives colour by default; `widthExpr` and `heightExpr` make it drive size too (here `sqrt(value)` on both, so cell *area* is the weight), and `textExpr` prints the number inside the cell, fitted to whatever size the cell currently has. The row beside it uses `heightExpr` alone with `anchor: \"bottom\"`: a bar chart standing on its lattice.\\n\\n**Third row — `depthExpr`.** The second row again, with a third channel: each cell also rises off the plane by `2.5 × value`, drawn as a solid box with shaded walls. Area in the plane and height above it now say the same thing twice, which is the point of the comparison. Use the **Relief** view; face-on, a bump is just a tile.",
+      "markdown": "# `tensor`\n\nEach grid below is **one element**, not 36.\n\n**Left — `valueExpr`, live.** One expression, evaluated per cell with `row` and `col` bound. Row $i$ is a softmax over $s_{ij} = e^{-|i-j|\\cdot k}$, so every row sums to 1. Drag **sharpness** and watch it go from uniform to near-diagonal.\n\n**Middle — `values`, static.** Literal numbers, built once, **zero** per-frame cost: a causal mask, the shape that makes parallel training legal.\n\n**Right — `dataTable`, baked.** Also one `valueExpr`, but it reads a table in the scene's `data` block rather than computing from a formula:\n\n```\ndataTable('attn', row, concat('w', col))\n```\n\nThis is how a real lesson supplies numbers — the weights come from a model and are baked into the JSON, so nothing is invented at render time and every value is reproducible offline. This head attends mostly to the **previous token**, partly to **position 0**, and never to the future.\n\n**Sharpness reshapes the baked head too**, by $p_j^{\\,k}$ renormalized over each row. At $k \\to 0$ it flattens to uniform *over what the head is allowed to see* — the zeros stay zero, so no attention leaks into the future. At $k=1$ it is the stored head unchanged; above that it concentrates further.\n\n**Below the baked head** — the same data at rank 1. `shape: [6]` draws a vector rather than a matrix through the same code path, tracks row 3 of the matrix above, and takes its axis labels from `axes` rather than hand-placed `text` elements.\n\nCell geometry is arithmetic on `shape`, not expressions, so nothing is re-evaluated for positions that never move.\n\n**Bottom — the other channels.** Value drives colour by default; `widthExpr` and `heightExpr` make it drive size too (here `sqrt(value)` on both, so cell *area* is the weight), and `textExpr` prints the number inside the cell, fitted to whatever size the cell currently has. The row beside it uses `heightExpr` alone with `anchor: \"bottom\"`: a bar chart standing on its lattice.\\n\\n**Third row — `depthExpr`.** The second row again, with a third channel: each cell also rises off the plane by `2.5 × value`, drawn as a solid box with shaded walls. Area in the plane and height above it now say the same thing twice, which is the point of the comparison. The bar row uses a **signed** depth, `(value − 1/6) × 4`: a key holding more than its uniform share stands up, one holding less sinks below the plane. Use the **Relief** view; face-on, a bump is just a tile.",
       "range": [
         [-1, 23],
         [-19, 9],
@@ -245,21 +245,21 @@
               "origin": [8, -16, 0],
               "cellSize": 1,
               "valueExpr": "exp(-abs(3 - col) * sharp) / (exp(-abs(3 - 0) * sharp) + exp(-abs(3 - 1) * sharp) + exp(-abs(3 - 2) * sharp) + exp(-abs(3 - 3) * sharp) + exp(-abs(3 - 4) * sharp) + exp(-abs(3 - 5) * sharp))",
-              "depthExpr": "value * 2.5",
+              "depthExpr": "(value - 1/6) * 4",
               "textExpr": "toFixed(value, 2)",
               "colorMap": "magma",
               "colorDomain": [0, 1],
               "color": "#ff7043",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "row 3 as bars, with depth",
+              "label": "row 3: above or below uniform",
               "axes": [
                 {
                   "labels": ["the", "cat", "sat", "on", "the", "mat"],
                   "title": "key"
                 }
               ],
-              "prompt": "The second row’s bar chart again, with depth: each bar also rises off the plane by 2.5 times its weight, so the distribution reads as bars in the plane and as blocks above it.",
+              "prompt": "Row 3 of the live matrix with a SIGNED depth: (value - 1/6) * 4, so a key holding more than its uniform share of 1/6 stands up off the plane and one holding less sinks below it. Bar height in the plane still shows the weight itself. At sharpness 0 every cell is exactly uniform and the row is flat.",
               "heightExpr": "value",
               "anchor": "bottom"
             }

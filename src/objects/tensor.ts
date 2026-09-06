@@ -71,15 +71,17 @@ export function resolveExtent(raw: unknown, fallback: number): number {
 }
 
 /**
- * Read a `depthExpr` result as a fraction of the cell pitch, the height of
- * the cell's bump above the lattice plane. Not a number, or negative, is
- * flat; the cap of 3 pitches keeps a runaway value from becoming a tower.
+ * Read a `depthExpr` result as a fraction of the cell pitch: how far the cell
+ * stands off the lattice plane. Positive rises above it, negative sinks below
+ * it, so signed data reads as relief in both directions. Not a number is
+ * flat; the cap of 3 pitches either way keeps a runaway value from becoming
+ * a tower or a well.
  */
 export function resolveDepth(raw: unknown): number {
     if (raw === null || raw === undefined || raw === '' || typeof raw === 'boolean') return 0;
     const n = Number(raw);
     if (!Number.isFinite(n)) return 0;
-    return Math.max(0, Math.min(3, n));
+    return Math.max(-3, Math.min(3, n));
 }
 
 /**
@@ -560,7 +562,7 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     // recomputed whenever the rebuild hook recompiles the channels.
     const sizeChannelDeclared = !!(widthExprString || heightExprString);
     let hasSizeExpr = !!(widthFn || heightFn);
-    // Depth extrudes a cell into a box along the plane normal. A declared
+    // Depth extrudes a cell into a box along the plane normal, up or down. A declared
     // depth channel changes the geometry's SHAPE (30 vertices per cell, not
     // 6), so it is decided at build like the vertex count it implies.
     const depthDeclared = !!depthExprString;
@@ -895,6 +897,8 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
                     qUv[tb] = t[0]!; qUv[tb + 1] = t[1]!;
                 }
             };
+            // Text sits on the lid, a hair towards the viewer of a raised cell
+            // and a hair above the floor of a sunken one.
             const placeTextCell = (cell: number, r: number, c: number) => {
                 putQuad(cell, c, c + 1, rows - 1 - r, rows - r, cellD[cell]! * cellSize + lift,
                         (mL + c) / U, (mL + c + 1) / U, (mT + r) / V, (mT + r + 1) / V);

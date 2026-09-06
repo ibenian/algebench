@@ -7932,15 +7932,17 @@ function resolveExtent(raw, fallback) {
 	return Math.max(0, Math.min(1, n));
 }
 /**
-* Read a `depthExpr` result as a fraction of the cell pitch, the height of
-* the cell's bump above the lattice plane. Not a number, or negative, is
-* flat; the cap of 3 pitches keeps a runaway value from becoming a tower.
+* Read a `depthExpr` result as a fraction of the cell pitch: how far the cell
+* stands off the lattice plane. Positive rises above it, negative sinks below
+* it, so signed data reads as relief in both directions. Not a number is
+* flat; the cap of 3 pitches either way keeps a runaway value from becoming
+* a tower or a well.
 */
 function resolveDepth(raw) {
 	if (raw === null || raw === void 0 || raw === "" || typeof raw === "boolean") return 0;
 	const n = Number(raw);
 	if (!Number.isFinite(n)) return 0;
-	return Math.max(0, Math.min(3, n));
+	return Math.max(-3, Math.min(3, n));
 }
 /**
 * Font size, in canvas pixels, that fits a string into a `wPx` x `hPx` box.
