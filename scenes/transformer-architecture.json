@@ -2649,8 +2649,8 @@
         },
         {
           "name": "Generic",
-          "position": [9.5, 2.5, 20.0],
-          "target": [9.5, 2.5, 0.0],
+          "position": [20.0, 2.8, 24.0],
+          "target": [20.0, 2.8, 0.0],
           "description": "Face-on to the generic i.i.d. object — a different object from the toy."
         },
         {
@@ -3025,8 +3025,8 @@
           "title": "A different object: i.i.d. vectors",
           "description": "Say the seam out loud. The slider showed you a **symptom** on our toy: scaling changes sharpness. It cannot show you **why** $\\sqrt{d_k}$ is the right constant, because our hand-built $Q$ and $K$ are neither random nor independent. That needs vectors our toy does not have. So here is a different object, in a colour the toy never uses: pairs of vectors whose components are fully mutually independent, zero-mean and unit-variance. Drag $n$ and watch the spread of $q\\cdot k$ grow like $\\sqrt{n}$ — then watch the same draws divided by $\\sqrt{n}$ refuse to grow at all.",
           "camera": {
-            "position": [4.2, 3.2, 28.0],
-            "target": [4.2, 3.2, 0.0]
+            "position": [10.0, 3.0, 31.0],
+            "target": [10.0, 3.0, 0.0]
           },
           "sliders": [
             {"id": "s3_gen_d", "label": "generic dimension $n$ (**NOT** our $d_k$)", "min": 1, "max": 64, "step": 1, "default": 2}
@@ -3074,124 +3074,59 @@
               "legendGroup": "the toy, dimmed"
             },
             {
-              "id": "s3_line_gen_zero",
-              "type": "line",
-              "points": [
-                [6.0, 4.5, 0],
-                [13.0, 4.5, 0]
-              ],
+              "id": "s3_chart_gen_raw",
+              "type": "chart",
               "color": "#f06292",
-              "width": 1.2,
-              "opacity": 0.4,
-              "legendGroup": "generic $q\\cdot k$, i.i.d. in $\\mathbb{R}^n$"
+              "origin": [11.5, 1.5, 0],
+              "size": [7, 3.5],
+              "series": [
+                {"yExpr": "tfDotSample(i, s3_gen_d)", "n": 64, "color": "#f06292"}
+              ],
+              "hlines": [
+                {"yExpr": "sqrt(tfSampleVar(s3_gen_d, 4000))", "color": "#f06292", "opacity": 0.65},
+                {"yExpr": "-sqrt(tfSampleVar(s3_gen_d, 4000))", "color": "#f06292", "opacity": 0.65}
+              ],
+              "bands": [
+                {"loExpr": "-sqrt(tfSampleVar(s3_gen_d, 4000))", "hiExpr": "sqrt(tfSampleVar(s3_gen_d, 4000))", "color": "#f06292", "opacity": 0.12}
+              ],
+              "axes": [
+                {"title": "draw $i$", "color": "#f06292"},
+                {"title": "$q \\cdot k$", "color": "#f06292"}
+              ],
+              "label": "generic $q\\cdot k$, i.i.d. in $\\mathbb{R}^n$",
+              "prompt": "64 dot products of a generic object: q and k with components drawn i.i.d. N(0,1) under a fixed seed, in R^n with n on the slider. The two lines and the band are plus and minus one standard deviation of the student's own 4,000-draw run. Drag n: the band widens like sqrt(n) and the y axis re-fits, so the tick labels tell the scale. This object is NOT the toy; the toy's hand-built Q and K are neither random nor independent."
             },
             {
-              "id": "s3_curve_gen_raw",
-              "type": "parametric_curve",
-              "x": "6.0 + t * 0.1111",
-              "y": "4.5 + tfDotSample(round(t), s3_gen_d) * 0.18",
-              "z": "0",
-              "range": [0, 63],
-              "samples": 64,
-              "color": "#f06292",
-              "width": 2,
-              "label": "generic $q\\cdot k$, i.i.d. in $\\mathbb{R}^n$"
-            },
-            {
-              "id": "s3_line_gen_sd_hi",
-              "type": "animated_line",
-              "points": [
-                ["6.0", "4.5 + sqrt(tfSampleVar(s3_gen_d, 4000)) * 0.18", "0"],
-                ["13.0", "4.5 + sqrt(tfSampleVar(s3_gen_d, 4000)) * 0.18", "0"]
+              "id": "s3_chart_gen_scaled",
+              "type": "chart",
+              "color": "#f8bbd0",
+              "origin": [22.0, 1.5, 0],
+              "size": [7, 3.5],
+              "series": [
+                {"yExpr": "tfDotSampleScaled(i, s3_gen_d)", "n": 64, "color": "#f8bbd0"}
               ],
-              "color": "#f06292",
-              "width": 2,
-              "opacity": 0.65,
-              "legendGroup": "generic $q\\cdot k$, i.i.d. in $\\mathbb{R}^n$"
-            },
-            {
-              "id": "s3_line_gen_sd_lo",
-              "type": "animated_line",
-              "points": [
-                ["6.0", "4.5 - sqrt(tfSampleVar(s3_gen_d, 4000)) * 0.18", "0"],
-                ["13.0", "4.5 - sqrt(tfSampleVar(s3_gen_d, 4000)) * 0.18", "0"]
+              "hlines": [
+                {"yExpr": "sqrt(tfSampleVar(s3_gen_d, 4000) / s3_gen_d)", "color": "#f8bbd0", "opacity": 0.65},
+                {"yExpr": "-sqrt(tfSampleVar(s3_gen_d, 4000) / s3_gen_d)", "color": "#f8bbd0", "opacity": 0.65}
               ],
-              "color": "#f06292",
-              "width": 2,
-              "opacity": 0.65,
-              "legendGroup": "generic $q\\cdot k$, i.i.d. in $\\mathbb{R}^n$"
+              "bands": [
+                {"loExpr": "-sqrt(tfSampleVar(s3_gen_d, 4000) / s3_gen_d)", "hiExpr": "sqrt(tfSampleVar(s3_gen_d, 4000) / s3_gen_d)", "color": "#f8bbd0", "opacity": 0.12}
+              ],
+              "yDomain": [-4, 4],
+              "axes": [
+                {"title": "draw $i$", "color": "#f8bbd0"},
+                {"title": "$q \\cdot k / \\sqrt{n}$", "color": "#f8bbd0"}
+              ],
+              "label": "the same draws, $\\div\\sqrt{n}$",
+              "prompt": "The same 64 draws divided by sqrt(n). The y domain is fixed at -4..4 on purpose: with an auto domain the band would look the same at every n, which is true but invisible. Here the band holds its width while n climbs to 64. This is the variance argument for the 1/sqrt(d_k) scaling."
             },
             {
               "id": "s3_txt_gen_title",
               "type": "text",
               "text": "**A DIFFERENT OBJECT**",
-              "position": [6.0, 12.2, 0],
+              "position": [20.0, 6.0, 0],
               "color": "#f06292",
               "legendGroup": "generic $q\\cdot k$, i.i.d. in $\\mathbb{R}^n$"
-            },
-            {
-              "id": "s3_txt_gen_raw",
-              "type": "text",
-              "text": "$q\\cdot k$, band $=\\pm1$ s.d.",
-              "position": [6.0, 11.4, 0],
-              "color": "#f06292",
-              "legendGroup": "generic $q\\cdot k$, i.i.d. in $\\mathbb{R}^n$"
-            },
-            {
-              "id": "s3_line_gen2_zero",
-              "type": "line",
-              "points": [
-                [6.0, -3.5, 0],
-                [13.0, -3.5, 0]
-              ],
-              "color": "#f8bbd0",
-              "width": 1.2,
-              "opacity": 0.4,
-              "legendGroup": "the same draws, $\\div\\sqrt{n}$"
-            },
-            {
-              "id": "s3_curve_gen_scaled",
-              "type": "parametric_curve",
-              "x": "6.0 + t * 0.1111",
-              "y": "-3.5 + tfDotSampleScaled(round(t), s3_gen_d) * 0.18",
-              "z": "0",
-              "range": [0, 63],
-              "samples": 64,
-              "color": "#f8bbd0",
-              "width": 2,
-              "label": "the same draws, $\\div\\sqrt{n}$"
-            },
-            {
-              "id": "s3_line_gen2_sd_hi",
-              "type": "animated_line",
-              "points": [
-                ["6.0", "-3.5 + sqrt(tfSampleVar(s3_gen_d, 4000) / s3_gen_d) * 0.18", "0"],
-                ["13.0", "-3.5 + sqrt(tfSampleVar(s3_gen_d, 4000) / s3_gen_d) * 0.18", "0"]
-              ],
-              "color": "#f8bbd0",
-              "width": 2,
-              "opacity": 0.65,
-              "legendGroup": "the same draws, $\\div\\sqrt{n}$"
-            },
-            {
-              "id": "s3_line_gen2_sd_lo",
-              "type": "animated_line",
-              "points": [
-                ["6.0", "-3.5 - sqrt(tfSampleVar(s3_gen_d, 4000) / s3_gen_d) * 0.18", "0"],
-                ["13.0", "-3.5 - sqrt(tfSampleVar(s3_gen_d, 4000) / s3_gen_d) * 0.18", "0"]
-              ],
-              "color": "#f8bbd0",
-              "width": 2,
-              "opacity": 0.65,
-              "legendGroup": "the same draws, $\\div\\sqrt{n}$"
-            },
-            {
-              "id": "s3_txt_gen_scaled",
-              "type": "text",
-              "text": "same draws, $\\div\\sqrt{n}$",
-              "position": [6.0, -2.3, 0],
-              "color": "#f8bbd0",
-              "legendGroup": "the same draws, $\\div\\sqrt{n}$"
             },
             {
               "id": "s3_tensor_on_scaled_dim_cap",
@@ -3221,17 +3156,9 @@
           "remove": [
             {"id": "s3_tensor_raw"},
             {"id": "s3_tensor_raw_cap"},
-            {"id": "s3_line_gen_zero"},
-            {"id": "s3_curve_gen_raw"},
-            {"id": "s3_line_gen_sd_hi"},
-            {"id": "s3_line_gen_sd_lo"},
+            {"id": "s3_chart_gen_raw"},
+            {"id": "s3_chart_gen_scaled"},
             {"id": "s3_txt_gen_title"},
-            {"id": "s3_txt_gen_raw"},
-            {"id": "s3_line_gen2_zero"},
-            {"id": "s3_curve_gen_scaled"},
-            {"id": "s3_line_gen2_sd_hi"},
-            {"id": "s3_line_gen2_sd_lo"},
-            {"id": "s3_txt_gen_scaled"},
             {"id": "s3_tensor_on_scaled_dim"},
             {"id": "s3_tensor_on_soft_dim"},
             {"id": "s3_tensor_on_scaled_dim_cap"},
