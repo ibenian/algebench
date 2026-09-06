@@ -520,7 +520,12 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     let widthFn = compileOpt(widthExprString, 'widthExpr');
     let heightFn = compileOpt(heightExprString, 'heightExpr');
     let textFn = compileOpt(textExprString, 'textExpr');
-    const hasSizeExpr = !!(widthFn || heightFn);
+    // Declared vs live: a size channel that is written into the scene makes
+    // the position buffer dynamic for good (trust can switch it on later),
+    // while `hasSizeExpr` tracks whether one is compiled RIGHT NOW and is
+    // recomputed whenever the rebuild hook recompiles the channels.
+    const sizeChannelDeclared = !!(widthExprString || heightExprString);
+    let hasSizeExpr = !!(widthFn || heightFn);
     const textColorFixed = resolveTextColor(el.textColor);
 
     const opacity = (typeof el.opacity === 'number' && isFinite(el.opacity))
@@ -553,7 +558,7 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     const posAttr = new THREE.BufferAttribute(positions, 3);
     // Only a size channel moves vertices after the build; without one the
     // positions really are write-once, which is the static contract.
-    if (hasSizeExpr) posAttr.setUsage(THREE.DynamicDrawUsage);
+    if (sizeChannelDeclared) posAttr.setUsage(THREE.DynamicDrawUsage);
     geom.setAttribute('position', posAttr);
     const colorAttr = new THREE.BufferAttribute(colors, 3);
     // Positions never move, but a `valueExpr` tensor rewrites this whole buffer
@@ -1028,7 +1033,7 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     // run per frame. This is the static path, and it costs exactly nothing.
     // A size or text channel is live by definition — it may read a slider —
     // so any of them registers the updater.
-    if (!valueFn && !dynamicLabels.length && !hasSizeExpr && !textFn && !planeDynamic) {
+    if (!valueFn && !dynamicLabels.length && !sizeChannelDeclared && !textExprString && !planeDynamic) {
         return { type: 'tensor', color: baseColor, label: el.label };
     }
 
@@ -1068,6 +1073,21 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
             widthFn = compileOpt(widthExprString, 'widthExpr');
             heightFn = compileOpt(heightExprString, 'heightExpr');
             textFn = compileOpt(textExprString, 'textExpr');
+            const hadSize = hasSizeExpr;
+            hasSizeExpr = !!(widthFn || heightFn);
+            if (hadSize && !hasSizeExpr) {
+                // The size channels just switched off: put every cell back at
+                // its default size now, rather than leave the last sizes
+                // frozen on screen with nothing updating them.
+                for (let r = 0; r < rows; r++) {
+                    for (let c = 0; c < cols; c++) {
+                        const cell = r * cols + c;
+                        cellW[cell] = fillFrac; cellH[cell] = fillFrac;
+                        placeCell(cell, r, c, fill, fill);
+                    }
+                }
+                posAttr.needsUpdate = true;
+            }
             if (planeLabels) {
                 hLabelFn = compileAxisLabelExpr(hAxis);
                 vLabelFn = compileAxisLabelExpr(vAxis);
@@ -1108,7 +1128,9 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
                     if (hasSizeExpr) posAttr.needsUpdate = true;
                 } catch (_err) { /* keep the last frame's colours */ }
             }
-            if (textLayer) {
+            // Static plane labels were painted once at build; only a text
+            // channel or an expression-driven axis label can change the canvas.
+            if (textLayer && (textFn || planeDynamic)) {
                 try { paintText(tSec); } catch (_err) { /* keep the last frame's text */ }
             }
             if (dynamicLabels.length) paintLabels(tSec);

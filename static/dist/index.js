@@ -8266,7 +8266,8 @@ function renderTensor(el, _view) {
 	let widthFn = compileOpt(widthExprString, "widthExpr");
 	let heightFn = compileOpt(heightExprString, "heightExpr");
 	let textFn = compileOpt(textExprString, "textExpr");
-	const hasSizeExpr = !!(widthFn || heightFn);
+	const sizeChannelDeclared = !!(widthExprString || heightExprString);
+	let hasSizeExpr = !!(widthFn || heightFn);
 	const textColorFixed = resolveTextColor(el.textColor);
 	const opacity = typeof el.opacity === "number" && isFinite(el.opacity) ? Math.max(0, Math.min(1, el.opacity)) : .95;
 	const sh = el.shader || {};
@@ -8287,7 +8288,7 @@ function renderTensor(el, _view) {
 	for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) placeCell(r * cols + c, r, c, fill, fill);
 	const geom = new THREE.BufferGeometry();
 	const posAttr = new THREE.BufferAttribute(positions, 3);
-	if (hasSizeExpr) posAttr.setUsage(THREE.DynamicDrawUsage);
+	if (sizeChannelDeclared) posAttr.setUsage(THREE.DynamicDrawUsage);
 	geom.setAttribute("position", posAttr);
 	const colorAttr = new THREE.BufferAttribute(colors, 3);
 	colorAttr.setUsage(THREE.DynamicDrawUsage);
@@ -8671,7 +8672,7 @@ function renderTensor(el, _view) {
 		console.warn("tensor axis label evaluation error:", err);
 	}
 	const animState = { stopped: false };
-	if (!valueFn && !dynamicLabels.length && !hasSizeExpr && !textFn && !planeDynamic) return {
+	if (!valueFn && !dynamicLabels.length && !sizeChannelDeclared && !textExprString && !planeDynamic) return {
 		type: "tensor",
 		color: baseColor,
 		label: el.label
@@ -8710,6 +8711,17 @@ function renderTensor(el, _view) {
 			widthFn = compileOpt(widthExprString, "widthExpr");
 			heightFn = compileOpt(heightExprString, "heightExpr");
 			textFn = compileOpt(textExprString, "textExpr");
+			const hadSize = hasSizeExpr;
+			hasSizeExpr = !!(widthFn || heightFn);
+			if (hadSize && !hasSizeExpr) {
+				for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+					const cell = r * cols + c;
+					cellW[cell] = fillFrac;
+					cellH[cell] = fillFrac;
+					placeCell(cell, r, c, fill, fill);
+				}
+				posAttr.needsUpdate = true;
+			}
 			if (planeLabels) {
 				hLabelFn = compileAxisLabelExpr(hAxis);
 				vLabelFn = compileAxisLabelExpr(vAxis);
@@ -8749,7 +8761,7 @@ function renderTensor(el, _view) {
 				colorAttr.needsUpdate = true;
 				if (hasSizeExpr) posAttr.needsUpdate = true;
 			} catch (_err) {}
-			if (textLayer) try {
+			if (textLayer && (textFn || planeDynamic)) try {
 				paintText(tSec);
 			} catch (_err) {}
 			if (dynamicLabels.length) paintLabels(tSec);
