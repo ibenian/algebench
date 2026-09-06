@@ -32,8 +32,8 @@ with screen labels. Nothing is rasterised that you would notice.
 | `size` | `[6, 3]` | Plot area width and height in data units. The paper extends ~1.1–1.6 left and ~0.7–1.1 below for labels |
 | `plane` | `"xy"` | `"xy"`, `"xz"` or `"yz"` |
 | `series` | — | The data; see *Series* |
-| `hlines` | — | Horizontal reference lines, each a literal `y` or a `yExpr` |
-| `bands` | — | Filled bands between `lo`/`hi` (or `loExpr`/`hiExpr`), drawn behind the series |
+| `hlines` | — | Horizontal reference lines, each a literal `y` or a `yExpr` evaluated in the plain scene scope (sliders, `t`, domain functions; no `i`/`n`/`x`) |
+| `bands` | — | Filled bands between `lo`/`hi` (or `loExpr`/`hiExpr`, same scope as `hlines`), drawn behind the series |
 | `xDomain`, `yDomain` | `"auto"` | `[lo, hi]`, or auto-fit to the data and widened to round ticks |
 | `axes` | — | `axes[0]` is x, `axes[1]` is y: `title`, `ticks` (target count, default 5), `labelExpr` (formats one tick with `value` bound), `color` |
 | `grid` | `true` | Faint grid lines at the ticks |
@@ -52,7 +52,10 @@ Each series is a line (or `"kind": "points"`) whose samples come from **either**
   sample count (default 64).
 
 Scope names are bound the way `tensor` binds `row`/`col`: they win over a same-named slider, and
-`validate_content.py` knows them, so a stray `i` elsewhere is still reported.
+`validate_content.py` knows them, so a stray `i` elsewhere is still reported. Only series expressions
+see them; `hlines`, `bands` and a tick `labelExpr` (which gets `value`) are one number each and run in
+the plain scene scope, though the validator's allowance is per element, so a stray `i` in an `hline`
+is caught at runtime (the line keeps its last value) rather than by the validator.
 
 A slider or a domain function in any expression makes the chart live: it re-samples every frame and
 pushes the points into the existing lines. The paper is redrawn only when a tick label or domain

@@ -211,7 +211,9 @@ export function renderChart(el: Element, view: MathBoxNode) {
     // otherwise, the way the demo lattices do.
     const ignoresPlaneOpacity = sh.ignorePlaneOpacity !== false;
     const showGrid = chart.grid !== false;
-    const fixedTextColor = (typeof chart.textColor === 'string' && chart.textColor.trim()) ? parseColor(chart.textColor) as Rgb3 : null;
+    // `textColor` is a colour in any of the app's spellings, or 'auto' / absent for the default ink.
+    const fixedTextColor = (typeof chart.textColor === 'string' && chart.textColor.trim() && chart.textColor.trim().toLowerCase() !== 'auto')
+        || Array.isArray(chart.textColor) ? parseColor(chart.textColor as string | number[]) as Rgb3 : null;
 
     // ── Expressions: compiled through the same gate tensor uses, so a string
     // the untrusted sandbox would turn into the constant 0 disables its
@@ -266,21 +268,25 @@ export function renderChart(el: Element, view: MathBoxNode) {
     });
 
     // ── Horizontal lines and bands ──
-    interface HLine { color: Rgb3; width: number; opacity: number; y: number; fn: { src: string; fn: CompiledExpr } | null; node: MathBoxNode | null; data: MathBoxNode | null; entry: LineEntry | null; }
+    interface HLine { color: Rgb3; width: number; opacity: number; y: number; src: string | null; fn: { src: string; fn: CompiledExpr } | null; node: MathBoxNode | null; data: MathBoxNode | null; entry: LineEntry | null; }
     const hlines: HLine[] = (Array.isArray(chart.hlines) ? (chart.hlines as LineSpec[]) : []).map((sp, k) => ({
         color: parseColor(sp.color || el.color || '#aabbcc') as Rgb3,
         width: Number(sp.width) > 0 ? Number(sp.width) : 1.5,
         opacity: Number.isFinite(Number(sp.opacity)) ? Math.max(0, Math.min(1, Number(sp.opacity))) : 0.8,
         y: Number.isFinite(Number(sp.y)) ? Number(sp.y) : 0,
+        // The source outlives a refused compile so a trust change can retry it.
+        src: Number.isFinite(Number(sp.y)) || typeof sp.yExpr !== 'string' ? null : sp.yExpr.trim() || null,
         fn: Number.isFinite(Number(sp.y)) ? null : compileOpt(sp.yExpr, `hlines[${k}].yExpr`),
         node: null, data: null, entry: null,
     }));
-    interface Band { color: Rgb3; opacity: number; lo: number; hi: number; loFn: { src: string; fn: CompiledExpr } | null; hiFn: { src: string; fn: CompiledExpr } | null; mesh: Mesh | null; attr: BufferAttribute | null; }
+    interface Band { color: Rgb3; opacity: number; lo: number; hi: number; loSrc: string | null; hiSrc: string | null; loFn: { src: string; fn: CompiledExpr } | null; hiFn: { src: string; fn: CompiledExpr } | null; mesh: Mesh | null; attr: BufferAttribute | null; }
     const bands: Band[] = (Array.isArray(chart.bands) ? (chart.bands as BandSpec[]) : []).map((sp, k) => ({
         color: parseColor(sp.color || el.color || '#aabbcc') as Rgb3,
         opacity: Number.isFinite(Number(sp.opacity)) ? Math.max(0, Math.min(1, Number(sp.opacity))) : 0.18,
         lo: Number.isFinite(Number(sp.lo)) ? Number(sp.lo) : 0,
         hi: Number.isFinite(Number(sp.hi)) ? Number(sp.hi) : 0,
+        loSrc: Number.isFinite(Number(sp.lo)) || typeof sp.loExpr !== 'string' ? null : sp.loExpr.trim() || null,
+        hiSrc: Number.isFinite(Number(sp.hi)) || typeof sp.hiExpr !== 'string' ? null : sp.hiExpr.trim() || null,
         loFn: Number.isFinite(Number(sp.lo)) ? null : compileOpt(sp.loExpr, `bands[${k}].loExpr`),
         hiFn: Number.isFinite(Number(sp.hi)) ? null : compileOpt(sp.hiExpr, `bands[${k}].hiExpr`),
         mesh: null, attr: null,
@@ -293,8 +299,10 @@ export function renderChart(el: Element, view: MathBoxNode) {
     const yTitle = yAxis && yAxis.title ? String(yAxis.title) : null;
     const xTickCount = Number(xAxis?.ticks) > 1 ? Math.floor(Number(xAxis!.ticks)) : 5;
     const yTickCount = Number(yAxis?.ticks) > 1 ? Math.floor(Number(yAxis!.ticks)) : 5;
-    const xLabelFn = compileOpt(xAxis?.labelExpr, 'axes[0].labelExpr');
-    const yLabelFn = compileOpt(yAxis?.labelExpr, 'axes[1].labelExpr');
+    const xLabelSrc = typeof xAxis?.labelExpr === 'string' ? xAxis.labelExpr.trim() || null : null;
+    const yLabelSrc = typeof yAxis?.labelExpr === 'string' ? yAxis.labelExpr.trim() || null : null;
+    let xLabelFn = compileOpt(xLabelSrc, 'axes[0].labelExpr');
+    let yLabelFn = compileOpt(yLabelSrc, 'axes[1].labelExpr');
     const xColor = parseColor((xAxis && xAxis.color) || '#aabbcc') as Rgb3;
     const yColor = parseColor((yAxis && yAxis.color) || '#aabbcc') as Rgb3;
 
@@ -312,7 +320,9 @@ export function renderChart(el: Element, view: MathBoxNode) {
     ];
 
     // ── Evaluate everything at `tSec` into the sample arrays and domains ──
-    const live = series.some(s => s.xFn || s.yFn) || hlines.some(l => l.fn) || bands.some(b => b.loFn || b.hiFn) || !!xLabelFn || !!yLabelFn;
+    // Declared, not compiled: a channel refused under the untrusted state
+    // must still register the updater so a trust change can bring it back.
+    const live = series.some(s => (s.xSrc && !s.xs) || (s.ySrc && !s.ys)) || hlines.some(l => l.src) || bands.some(b => b.loSrc || b.hiSrc) || !!xLabelSrc || !!yLabelSrc;
     function sample(tSec: number) {
         for (const s of series) {
             const scope = { i: 0, n: s.n, x: 0 };
@@ -331,6 +341,8 @@ export function renderChart(el: Element, view: MathBoxNode) {
                 s.py[i] = Number.isFinite(y) ? y : NaN;
             }
         }
+        // Reference lines and bands are one number each, so they see the
+        // plain scene scope (sliders, t, domain functions) with no i/n/x.
         for (const l of hlines) {
             if (l.fn) { try { const v = Number(evalExpr(l.fn.fn, tSec, {})); if (Number.isFinite(v)) l.y = v; } catch (_e) { /* keep */ } }
         }
@@ -566,9 +578,9 @@ export function renderChart(el: Element, view: MathBoxNode) {
 
     const exprStrings = [
         ...series.flatMap(s => [s.xSrc, s.ySrc]),
-        ...hlines.map(l => l.fn?.src ?? null),
-        ...bands.flatMap(b => [b.loFn?.src ?? null, b.hiFn?.src ?? null]),
-        xLabelFn?.src ?? null, yLabelFn?.src ?? null,
+        ...hlines.map(l => l.src),
+        ...bands.flatMap(b => [b.loSrc, b.hiSrc]),
+        xLabelSrc, yLabelSrc,
     ].filter((x): x is string => !!x);
     let compiledUnderTrust = chartState._sceneJsTrustState;
     const fns = () => [
@@ -585,11 +597,14 @@ export function renderChart(el: Element, view: MathBoxNode) {
                 if (s.ySrc && !s.ys) s.yFn = compileOpt(s.ySrc, `series[${k}].yExpr`);
                 if (s.xSrc && !s.xs) s.xFn = compileOpt(s.xSrc, `series[${k}].xExpr`);
             });
-            hlines.forEach((l, k) => { if (l.fn) l.fn = compileOpt(l.fn.src, `hlines[${k}].yExpr`); });
+            hlines.forEach((l, k) => { if (l.src) l.fn = compileOpt(l.src, `hlines[${k}].yExpr`); });
             bands.forEach((b, k) => {
-                if (b.loFn) b.loFn = compileOpt(b.loFn.src, `bands[${k}].loExpr`);
-                if (b.hiFn) b.hiFn = compileOpt(b.hiFn.src, `bands[${k}].hiExpr`);
+                if (b.loSrc) b.loFn = compileOpt(b.loSrc, `bands[${k}].loExpr`);
+                if (b.hiSrc) b.hiFn = compileOpt(b.hiSrc, `bands[${k}].hiExpr`);
             });
+            if (xLabelSrc) xLabelFn = compileOpt(xLabelSrc, 'axes[0].labelExpr');
+            if (yLabelSrc) yLabelFn = compileOpt(yLabelSrc, 'axes[1].labelExpr');
+            paperKey = '';   // tick labels may have changed with the recompile
             entry.compiledFns = fns();
         },
     };

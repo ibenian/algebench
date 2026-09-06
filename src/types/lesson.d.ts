@@ -786,7 +786,7 @@ export interface Element {
     opacity?: number;
   }[];
   /**
-   * CHART ONLY. Filled horizontal bands between a low and a high y, literal ('lo'/'hi') or expressions ('loExpr'/'hiExpr'). Drawn behind the series; a translucent band is the honest way to show a spread.
+   * CHART ONLY. Filled horizontal bands between a low and a high y, literal ('lo'/'hi') or expressions ('loExpr'/'hiExpr'). Drawn behind the series; a translucent band is the honest way to show a spread. loExpr/hiExpr run in the plain scene scope, not the per-sample i/n/x of a series.
    */
   bands?: {
     lo?: number;

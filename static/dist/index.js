@@ -9149,7 +9149,7 @@ function renderChart(el, view) {
 	const opacity = typeof el.opacity === "number" && isFinite(el.opacity) ? Math.max(0, Math.min(1, el.opacity)) : .9;
 	const ignoresPlaneOpacity = (el.shader || {}).ignorePlaneOpacity !== false;
 	const showGrid = chart.grid !== false;
-	const fixedTextColor = typeof chart.textColor === "string" && chart.textColor.trim() ? parseColor(chart.textColor) : null;
+	const fixedTextColor = typeof chart.textColor === "string" && chart.textColor.trim() && chart.textColor.trim().toLowerCase() !== "auto" || Array.isArray(chart.textColor) ? parseColor(chart.textColor) : null;
 	const compileOpt = (src, what) => {
 		if (typeof src !== "string" || !src.trim()) return null;
 		const s = src.trim();
@@ -9204,6 +9204,7 @@ function renderChart(el, view) {
 		width: Number(sp.width) > 0 ? Number(sp.width) : 1.5,
 		opacity: Number.isFinite(Number(sp.opacity)) ? Math.max(0, Math.min(1, Number(sp.opacity))) : .8,
 		y: Number.isFinite(Number(sp.y)) ? Number(sp.y) : 0,
+		src: Number.isFinite(Number(sp.y)) || typeof sp.yExpr !== "string" ? null : sp.yExpr.trim() || null,
 		fn: Number.isFinite(Number(sp.y)) ? null : compileOpt(sp.yExpr, `hlines[${k}].yExpr`),
 		node: null,
 		data: null,
@@ -9214,6 +9215,8 @@ function renderChart(el, view) {
 		opacity: Number.isFinite(Number(sp.opacity)) ? Math.max(0, Math.min(1, Number(sp.opacity))) : .18,
 		lo: Number.isFinite(Number(sp.lo)) ? Number(sp.lo) : 0,
 		hi: Number.isFinite(Number(sp.hi)) ? Number(sp.hi) : 0,
+		loSrc: Number.isFinite(Number(sp.lo)) || typeof sp.loExpr !== "string" ? null : sp.loExpr.trim() || null,
+		hiSrc: Number.isFinite(Number(sp.hi)) || typeof sp.hiExpr !== "string" ? null : sp.hiExpr.trim() || null,
 		loFn: Number.isFinite(Number(sp.lo)) ? null : compileOpt(sp.loExpr, `bands[${k}].loExpr`),
 		hiFn: Number.isFinite(Number(sp.hi)) ? null : compileOpt(sp.hiExpr, `bands[${k}].hiExpr`),
 		mesh: null,
@@ -9225,8 +9228,10 @@ function renderChart(el, view) {
 	const yTitle = yAxis && yAxis.title ? String(yAxis.title) : null;
 	const xTickCount = Number(xAxis?.ticks) > 1 ? Math.floor(Number(xAxis.ticks)) : 5;
 	const yTickCount = Number(yAxis?.ticks) > 1 ? Math.floor(Number(yAxis.ticks)) : 5;
-	const xLabelFn = compileOpt(xAxis?.labelExpr, "axes[0].labelExpr");
-	const yLabelFn = compileOpt(yAxis?.labelExpr, "axes[1].labelExpr");
+	const xLabelSrc = typeof xAxis?.labelExpr === "string" ? xAxis.labelExpr.trim() || null : null;
+	const yLabelSrc = typeof yAxis?.labelExpr === "string" ? yAxis.labelExpr.trim() || null : null;
+	let xLabelFn = compileOpt(xLabelSrc, "axes[0].labelExpr");
+	let yLabelFn = compileOpt(yLabelSrc, "axes[1].labelExpr");
 	const xColor = parseColor(xAxis && xAxis.color || "#aabbcc");
 	const yColor = parseColor(yAxis && yAxis.color || "#aabbcc");
 	const xFixed = Array.isArray(chart.xDomain) && chart.xDomain.length === 2 && chart.xDomain.every((v) => Number.isFinite(Number(v))) ? [Number(chart.xDomain[0]), Number(chart.xDomain[1])] : null;
@@ -9235,7 +9240,7 @@ function renderChart(el, view) {
 	let yDom = yFixed || [0, 1];
 	/** Plot-space (h, v) in data units for a data point (x, y) under the current domains. */
 	const toPlane = (x, y) => [(x - xDom[0]) / (xDom[1] - xDom[0] || 1) * W, (y - yDom[0]) / (yDom[1] - yDom[0] || 1) * H];
-	const live = series.some((s) => s.xFn || s.yFn) || hlines.some((l) => l.fn) || bands.some((b) => b.loFn || b.hiFn) || !!xLabelFn || !!yLabelFn;
+	const live = series.some((s) => s.xSrc && !s.xs || s.ySrc && !s.ys) || hlines.some((l) => l.src) || bands.some((b) => b.loSrc || b.hiSrc) || !!xLabelSrc || !!yLabelSrc;
 	function sample(tSec) {
 		for (const s of series) {
 			const scope = {
@@ -9652,10 +9657,10 @@ function renderChart(el, view) {
 	};
 	const exprStrings = [
 		...series.flatMap((s) => [s.xSrc, s.ySrc]),
-		...hlines.map((l) => l.fn?.src ?? null),
-		...bands.flatMap((b) => [b.loFn?.src ?? null, b.hiFn?.src ?? null]),
-		xLabelFn?.src ?? null,
-		yLabelFn?.src ?? null
+		...hlines.map((l) => l.src),
+		...bands.flatMap((b) => [b.loSrc, b.hiSrc]),
+		xLabelSrc,
+		yLabelSrc
 	].filter((x) => !!x);
 	let compiledUnderTrust = chartState._sceneJsTrustState;
 	const fns = () => [
@@ -9677,12 +9682,15 @@ function renderChart(el, view) {
 				if (s.xSrc && !s.xs) s.xFn = compileOpt(s.xSrc, `series[${k}].xExpr`);
 			});
 			hlines.forEach((l, k) => {
-				if (l.fn) l.fn = compileOpt(l.fn.src, `hlines[${k}].yExpr`);
+				if (l.src) l.fn = compileOpt(l.src, `hlines[${k}].yExpr`);
 			});
 			bands.forEach((b, k) => {
-				if (b.loFn) b.loFn = compileOpt(b.loFn.src, `bands[${k}].loExpr`);
-				if (b.hiFn) b.hiFn = compileOpt(b.hiFn.src, `bands[${k}].hiExpr`);
+				if (b.loSrc) b.loFn = compileOpt(b.loSrc, `bands[${k}].loExpr`);
+				if (b.hiSrc) b.hiFn = compileOpt(b.hiSrc, `bands[${k}].hiExpr`);
 			});
+			if (xLabelSrc) xLabelFn = compileOpt(xLabelSrc, "axes[0].labelExpr");
+			if (yLabelSrc) yLabelFn = compileOpt(yLabelSrc, "axes[1].labelExpr");
+			paperKey = "";
 			entry.compiledFns = fns();
 		}
 	};
