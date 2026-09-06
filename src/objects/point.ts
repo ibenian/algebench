@@ -15,7 +15,7 @@ const pointState = state as unknown as PointState;
 export function renderPoint(el: Element, view: MathBoxNode) {
     const pos = (el.position || el.at || [0, 0, 0]) as Vec3;
     const color = parseColor(el.color || '#ffcc00') as Rgb3;
-    const size = el.size || 12;
+    const size = typeof el.size === 'number' && el.size > 0 ? el.size : 12;
     const label = el.label;
 
     // `positions` is one of the undocumented-but-live element properties the

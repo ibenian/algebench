@@ -194,7 +194,9 @@ ELEMENT_SCOPED_VARS = {
     # and with the `valueExpr` description in schemas/lesson.schema.json. A name
     # bound there but missing here produces exactly the spurious warning this
     # table exists to prevent.
-    'tensor': {'row', 'col', 'idx'},
+    'tensor': {'row', 'col', 'idx', 'value'},
+    # Keep in step with `sample()` and `tickText()` in renderChart (src/objects/chart.ts).
+    'chart': {'i', 'n', 'x', 'value'},
 }
 
 

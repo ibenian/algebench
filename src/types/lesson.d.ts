@@ -609,7 +609,8 @@ export interface Element {
     | 'animated_cylinder'
     | 'animated_polygon'
     | 'animated_curve'
-    | 'tensor';
+    | 'tensor'
+    | 'chart';
   /**
    * Unique element ID for referencing in remove directives, legend toggle, and element registry. Auto-generated from label if omitted.
    */
@@ -674,7 +675,7 @@ export interface Element {
    */
   shape?: [number, ...number[]];
   /**
-   * TENSOR ONLY. Per-axis metadata; axes[k] describes shape[k]. Labels are positioned automatically against the rendered lattice — for a 2D tensor axes[0] labels the rows down the left and axes[1] labels the columns across the top. Use this instead of hand-placing `text` elements.
+   * TENSOR and CHART. On a tensor, per-axis metadata; axes[k] describes shape[k], and labels are positioned automatically against the rendered lattice — for a 2D tensor axes[0] labels the rows down the left and axes[1] labels the columns across the top. On a chart, axes[0] is the x axis and axes[1] the y axis: 'title', 'ticks' (how many round tick values to aim for, default 5), 'labelExpr' (formats one tick with 'value' bound) and 'color'. Use this instead of hand-placing `text` elements.
    */
   axes?: {
     /**
@@ -689,6 +690,10 @@ export interface Element {
      * Name of the axis itself, placed beyond its labels. Example: "key".
      */
     title?: string;
+    /**
+     * CHART ONLY. How many round tick values to aim for along this axis. Default 5. The actual count depends on the domain, since ticks land on multiples of 1, 2 or 5 times a power of ten.
+     */
+    ticks?: number;
     /**
      * Colour for this axis's labels and title. Default: a muted grey-blue.
      */
@@ -719,9 +724,85 @@ export interface Element {
    */
   anchor?: string;
   /**
-   * TENSOR ONLY. Colour for 'textExpr' text: a hex string, an [r,g,b] array in 0-1, or 'auto'. Default (and 'auto'): near-black on light cells, near-white on dark ones, decided per cell from its painted colour.
+   * TENSOR and CHART. On a tensor, the colour for 'textExpr' text: a hex string, an [r,g,b] array in 0-1, or 'auto' (the default): near-black on light cells, near-white on dark ones, decided per cell from its painted colour. On a chart, the ink for grid and zero lines; axes take their own 'color'.
    */
   textColor?: Color | 'auto';
+  /**
+   * CHART ONLY. The x range shown, [lo, hi], or 'auto' (the default) to fit the series' x values, widened to round tick values.
+   */
+  xDomain?: [number, number] | 'auto';
+  /**
+   * CHART ONLY. The y range shown, [lo, hi], or 'auto' (the default) to fit every series, line and band with a little padding, widened to round tick values. Fix it when a slider should be seen to change the data rather than the axis.
+   */
+  yDomain?: [number, number] | 'auto';
+  /**
+   * CHART ONLY. The data. Each series is a line (or points) with either literal 'y' values (static, no per-frame cost) or a 'yExpr' evaluated once per sample with 'i' (0-based sample index), 'n' (sample count) and 'x' (that sample's x) bound. x is 'i' unless 'x' or 'xExpr' is given. Example: {"yExpr": "tfDotSample(i, s3_gen_d)", "n": 64, "color": "#f06292"}.
+   */
+  series?: {
+    id?: string;
+    /**
+     * Legend text; used as the chart's legend entry when it is the only series and the chart has no 'label'.
+     */
+    label?: string;
+    color?: Color;
+    /**
+     * Sample count for an expression series. Default 64.
+     */
+    n?: number;
+    /**
+     * Math.js expression for a sample's x, with 'i' and 'n' bound. Default: i. Wins over 'x', which is the fallback while the expression is refused.
+     */
+    xExpr?: string;
+    /**
+     * Math.js expression for a sample's y, with 'i', 'n' and 'x' bound. Wins over 'y', which is the fallback while the expression is refused.
+     */
+    yExpr?: string;
+    /**
+     * Literal x values, one per sample.
+     */
+    x?: number[];
+    /**
+     * Literal y values. Static: built once, no per-frame cost.
+     */
+    y?: number[];
+    /**
+     * Draw the samples joined (default) or as dots.
+     */
+    kind?: 'line' | 'points';
+    /**
+     * Line width. Default 2.5.
+     */
+    width?: number;
+    opacity?: number;
+  }[];
+  /**
+   * CHART ONLY. Horizontal reference lines across the plot, each at a literal 'y' or a 'yExpr' (no per-sample scope; slider IDs and domain functions as usual). A ±1 s.d. pair is two of these.
+   */
+  hlines?: {
+    y?: number;
+    yExpr?: string;
+    color?: Color;
+    width?: number;
+    opacity?: number;
+  }[];
+  /**
+   * CHART ONLY. Filled horizontal bands between a low and a high y, literal ('lo'/'hi') or expressions ('loExpr'/'hiExpr'). Drawn behind the series; a translucent band is the honest way to show a spread. loExpr/hiExpr run in the plain scene scope, not the per-sample i/n/x of a series.
+   */
+  bands?: {
+    lo?: number;
+    hi?: number;
+    loExpr?: string;
+    hiExpr?: string;
+    color?: Color;
+    /**
+     * Default 0.18.
+     */
+    opacity?: number;
+  }[];
+  /**
+   * CHART ONLY. Draw faint grid lines at the ticks. Default true.
+   */
+  grid?: boolean;
   /**
    * TENSOR ONLY. Data-space pitch between cell centers. Default 1.
    */
@@ -739,9 +820,9 @@ export interface Element {
    */
   width?: number;
   /**
-   * Point size in pixels (for 'point' type). Default: 12.
+   * On point: point size in pixels (default 12). On chart: width and height of the plot area in data units, [w, h] (default [6, 3]); the paper with tick labels and titles extends about 1.1-1.6 units to the left and 0.7-1.1 below.
    */
-  size?: number;
+  size?: number | [number, number];
   position?: Vec3;
   center?: Vec31;
   from?: Vec32;

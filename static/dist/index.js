@@ -4516,7 +4516,7 @@ function renderAxis(el, view) {
 * `[[xMin,xMax],[yMin,yMax],[zMin,zMax]]`) and the MathBox axis ids that
 * `area` wants for the same pair.
 */
-var PLANE_AXES$1 = {
+var PLANE_AXES$2 = {
 	xy: {
 		scene: [0, 1],
 		mathbox: [1, 2]
@@ -4577,7 +4577,7 @@ function toDivisions(v) {
 * positions along two axes of different extent.
 */
 function resolveGridArea(el, sceneRange) {
-	const spec = PLANE_AXES$1[el.plane || "xy"] || PLANE_AXES$1["xy"];
+	const spec = PLANE_AXES$2[el.plane || "xy"] || PLANE_AXES$2["xy"];
 	/** The scene's own extent for the i-th axis of this plane. */
 	const inherited = (i) => toInterval(sceneRange && sceneRange[spec.scene[i]]) || [-5, 5];
 	const raw = el.range;
@@ -4783,7 +4783,7 @@ function renderPoint(el, view) {
 		0
 	];
 	const color = parseColor(el.color || "#ffcc00");
-	const size = el.size || 12;
+	const size = typeof el.size === "number" && el.size > 0 ? el.size : 12;
 	const label = el.label;
 	const positions = el.positions || [pos];
 	const pointNode = view.array({
@@ -5475,7 +5475,7 @@ function renderPlane(el, view) {
 		0,
 		0
 	];
-	const size = el.size || 4;
+	const size = typeof el.size === "number" && el.size > 0 ? el.size : 4;
 	const label = el.label;
 	const n = new THREE.Vector3(...normal).normalize();
 	let t1;
@@ -7880,6 +7880,253 @@ function renderAnimatedCurve(el, view) {
 	};
 }
 //#endregion
+//#region src/latex-raster.ts
+/**
+* Real KaTeX on a canvas.
+*
+* On-plane text (tensor cells and axis labels, chart paper) is painted into
+* a canvas texture, and a canvas cannot host KaTeX's HTML. Instead of
+* flattening the LaTeX to a string of glyphs -- which loses fractions,
+* radicals, sub/superscripts, everything KaTeX lays out -- this module lets
+* KaTeX do the layout in a hidden DOM host and then *replays* that layout
+* onto the canvas: every text run is drawn with `fillText` in the font and
+* at the baseline the browser laid it out with, every rule (fraction bars,
+* overlines) is a `fillRect` from its border, and every stretchy glyph KaTeX
+* draws as inline SVG (radicals, wide arrows) is a `Path2D`.
+*
+* Fonts come from the page's own KaTeX stylesheet through `document.fonts`,
+* so nothing is fetched or inlined, and no `<foreignObject>` image is
+* involved -- WebKit taints a canvas drawn from one, which would break the
+* WebGL upload. The first use of a KaTeX face starts its load; rasters made
+* while a face is still loading are laid out in the fallback font, so the
+* cache is dropped and `onLatexFontsReady` listeners are told to repaint
+* once the load settles.
+*/
+var SUPERSAMPLE = 2;
+var FAMILY = "system-ui, sans-serif";
+var CACHE_MAX = 512;
+var cache = /* @__PURE__ */ new Map();
+/** Layout-only cache: measuring a label must not cost a canvas. */
+var metrics = /* @__PURE__ */ new Map();
+var listeners = /* @__PURE__ */ new Set();
+var host = null;
+var probe = null;
+var fontsHooked = false;
+function hasDom() {
+	return typeof document !== "undefined" && typeof document.createElement === "function";
+}
+function getHost() {
+	if (host && host.isConnected) return host;
+	host = document.createElement("div");
+	host.setAttribute("aria-hidden", "true");
+	host.style.cssText = "position:absolute;left:-100000px;top:0;white-space:nowrap;pointer-events:none;line-height:normal";
+	document.body.appendChild(host);
+	probe = document.createElement("span");
+	probe.style.cssText = "display:inline-block;width:0;height:0;vertical-align:baseline";
+	return host;
+}
+/** When a KaTeX face is still loading, drop the rasters laid out without it and tell listeners to repaint. */
+function watchFonts() {
+	if (fontsHooked || typeof document === "undefined" || !document.fonts) return;
+	fontsHooked = true;
+	document.fonts.ready.then(() => {
+		fontsHooked = false;
+		cache.clear();
+		metrics.clear();
+		for (const cb of Array.from(listeners)) try {
+			cb();
+		} catch (_e) {}
+	}).catch(() => {
+		fontsHooked = false;
+	});
+}
+/**
+* Subscribe to "the KaTeX fonts finished loading, repaint". Returns the
+* unsubscribe; call it when the element that painted is torn down.
+*/
+function onLatexFontsReady(cb) {
+	listeners.add(cb);
+	return () => {
+		listeners.delete(cb);
+	};
+}
+function remember(key, r) {
+	if (cache.size >= CACHE_MAX) {
+		const oldest = cache.keys().next().value;
+		if (oldest !== void 0) cache.delete(oldest);
+	}
+	cache.set(key, r);
+	return r;
+}
+/**
+* Lay `src` out with KaTeX (markdown-lite plus `$...$`, the way every label
+* in the app is written) at `fontPx` in `color`, and replay it onto a
+* canvas. Cached by (size, colour, source).
+*/
+function rasterLatex(src, fontPx, color) {
+	const size = Math.max(1, Math.round(fontPx));
+	const key = `${size}${color}${src}`;
+	const hit = cache.get(key);
+	if (hit) return hit;
+	if (!hasDom() || !src) return remember(key, {
+		canvas: null,
+		w: src.length * size * .55,
+		h: size * 1.2
+	});
+	const h = getHost();
+	h.style.font = `${size}px ${FAMILY}`;
+	h.style.color = color;
+	h.innerHTML = renderKaTeX$1(src, false);
+	for (const m of h.querySelectorAll(".katex-mathml")) m.remove();
+	const box = h.getBoundingClientRect();
+	const w = Math.ceil(box.width), ht = Math.ceil(box.height);
+	if (w < 1 || ht < 1) {
+		h.innerHTML = "";
+		return remember(key, {
+			canvas: null,
+			w: 0,
+			h: 0
+		});
+	}
+	const canvas = document.createElement("canvas");
+	canvas.width = w * SUPERSAMPLE;
+	canvas.height = ht * SUPERSAMPLE;
+	const ctx = canvas.getContext("2d");
+	if (!ctx) {
+		h.innerHTML = "";
+		return remember(key, {
+			canvas: null,
+			w,
+			h: ht
+		});
+	}
+	ctx.scale(SUPERSAMPLE, SUPERSAMPLE);
+	ctx.textBaseline = "alphabetic";
+	ctx.textAlign = "left";
+	let pending = false;
+	const fonts = document.fonts;
+	const walker = document.createTreeWalker(h, NodeFilter.SHOW_TEXT);
+	let node;
+	const runs = [];
+	while (node = walker.nextNode()) if ((node.textContent || "").trim()) runs.push(node);
+	for (const t of runs) {
+		const el = t.parentElement;
+		if (!el || !probe) continue;
+		const cs = getComputedStyle(el);
+		const font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+		el.insertBefore(probe, t);
+		const baseline = probe.getBoundingClientRect().top - box.top;
+		probe.remove();
+		const range = document.createRange();
+		range.selectNodeContents(t);
+		const rr = range.getBoundingClientRect();
+		ctx.font = font;
+		ctx.fillStyle = cs.color;
+		ctx.fillText(t.textContent || "", rr.left - box.left, baseline);
+		if (fonts && !pending) try {
+			if (!fonts.check(font, t.textContent || "")) pending = true;
+		} catch (_e) {}
+	}
+	for (const el of Array.from(h.querySelectorAll("*"))) {
+		const cs = getComputedStyle(el);
+		const bw = parseFloat(cs.borderBottomWidth) || 0;
+		if (bw > 0 && cs.borderBottomStyle !== "none") {
+			const r = el.getBoundingClientRect();
+			ctx.fillStyle = cs.borderBottomColor;
+			ctx.fillRect(r.left - box.left, r.bottom - box.top - bw, r.width, bw);
+		}
+		const bt = parseFloat(cs.borderTopWidth) || 0;
+		if (bt > 0 && cs.borderTopStyle !== "none") {
+			const r = el.getBoundingClientRect();
+			ctx.fillStyle = cs.borderTopColor;
+			ctx.fillRect(r.left - box.left, r.top - box.top, r.width, bt);
+		}
+	}
+	for (const svg of Array.from(h.querySelectorAll("svg"))) {
+		const r = svg.getBoundingClientRect();
+		const vb = svg.viewBox.baseVal;
+		if (!vb || vb.width <= 0 || vb.height <= 0 || r.width <= 0 || r.height <= 0) continue;
+		const color = getComputedStyle(svg).color;
+		ctx.save();
+		ctx.beginPath();
+		ctx.rect(r.left - box.left, r.top - box.top, r.width, r.height);
+		ctx.clip();
+		ctx.translate(r.left - box.left, r.top - box.top);
+		ctx.scale(r.width / vb.width, r.height / vb.height);
+		ctx.translate(-vb.x, -vb.y);
+		ctx.fillStyle = color;
+		for (const p of Array.from(svg.querySelectorAll("path"))) {
+			const d = p.getAttribute("d");
+			if (d) ctx.fill(new Path2D(d));
+		}
+		ctx.restore();
+	}
+	h.innerHTML = "";
+	if (fonts && (pending || fonts.status === "loading")) watchFonts();
+	return remember(key, {
+		canvas,
+		w,
+		h: ht
+	});
+}
+/** Width and height (CSS px) of `src` laid out at 100px; the ratio is what fitting needs. */
+function measureLatex(src) {
+	const hit = metrics.get(src);
+	if (hit) return hit;
+	let m;
+	if (!hasDom() || !src) m = {
+		w: src.length * 55,
+		h: 120
+	};
+	else {
+		const h = getHost();
+		h.style.font = `100px ${FAMILY}`;
+		h.innerHTML = renderKaTeX$1(src, false);
+		for (const el of h.querySelectorAll(".katex-mathml")) el.remove();
+		const box = h.getBoundingClientRect();
+		h.innerHTML = "";
+		m = {
+			w: Math.ceil(box.width),
+			h: Math.ceil(box.height)
+		};
+		if (document.fonts && document.fonts.status === "loading") watchFonts();
+	}
+	if (metrics.size >= CACHE_MAX) {
+		const oldest = metrics.keys().next().value;
+		if (oldest !== void 0) metrics.delete(oldest);
+	}
+	metrics.set(src, m);
+	return m;
+}
+/**
+* The largest font size at which `src` fits a `wPx` × `hPx` box. A plain
+* word's laid-out height is about 1.15× its font size, so this lands where
+* the older glyph-height rule did while letting a fraction be as tall as it
+* needs.
+*/
+function fitLatexPx(src, wPx, hPx) {
+	const m = measureLatex(src);
+	if (m.w <= 0 || m.h <= 0) return Math.max(1, Math.floor(hPx * .62));
+	const byHeight = hPx * .72 * 100 / m.h;
+	const byWidth = wPx * .9 * 100 / m.w;
+	return Math.max(1, Math.floor(Math.min(byHeight, byWidth)));
+}
+/** Draw `src` on `ctx` at (x, y) per the alignment, in the raster cache's colour and size. */
+function drawLatex(ctx, src, x, y, o) {
+	if (!src) return;
+	const r = rasterLatex(src, o.fontPx, o.color);
+	if (!r.canvas || r.w <= 0) return;
+	const align = o.align ?? "center";
+	const vAlign = o.vAlign ?? "middle";
+	const dx = align === "left" ? 0 : align === "right" ? -r.w : -r.w / 2;
+	const dy = vAlign === "top" ? 0 : vAlign === "bottom" ? -r.h : -r.h / 2;
+	ctx.save();
+	ctx.translate(x, y);
+	if (o.rotate) ctx.rotate(o.rotate);
+	ctx.drawImage(r.canvas, dx, dy, r.w, r.h);
+	ctx.restore();
+}
+//#endregion
 //#region src/objects/tensor.ts
 /**
 * `tensor` — N-dimensional logical data, and a spatial view of it.
@@ -7945,17 +8192,6 @@ function resolveDepth(raw) {
 	return Math.max(-3, Math.min(3, n));
 }
 /**
-* Font size, in canvas pixels, that fits a string into a `wPx` x `hPx` box.
-* `widthAt100` is the string's measured width at a 100px font, so the fit is
-* a pure ratio and needs no canvas of its own. The 0.86 / 0.62 margins keep
-* glyph ascenders and a little side padding inside the cell edge.
-*/
-function fitFontPx(widthAt100, wPx, hPx) {
-	const byHeight = hPx * .62;
-	const byWidth = widthAt100 > 0 ? wPx * .86 * 100 / widthAt100 : byHeight;
-	return Math.max(1, Math.floor(Math.min(byHeight, byWidth)));
-}
-/**
 * Which edge of its slot a shrunken cell keeps. `-1` keeps the low edge
 * (left / bottom), `0` centres, `+1` keeps the high edge (right / top). A
 * height-only lattice anchored at the bottom is a bar chart on its lattice;
@@ -7993,27 +8229,6 @@ function resolveTextColor(raw) {
 		if (m) alpha = parseInt(m[1], 16) / 255;
 	}
 	return alpha < 1 ? `rgba(${ch(rgb[0])}, ${ch(rgb[1])}, ${ch(rgb[2])}, ${Math.round(alpha * 1e3) / 1e3})` : `rgb(${ch(rgb[0])}, ${ch(rgb[1])}, ${ch(rgb[2])})`;
-}
-/**
-* The plain-text reading of a label that may carry LaTeX, for drawing on a
-* canvas where KaTeX's HTML cannot go.
-*
-* KaTeX is the source of truth: render the label the way a screen label
-* would be rendered and read the glyphs back out of the HTML it produced,
-* so every command KaTeX knows -- Greek, relations, arrows -- comes out as
-* its symbol with no table to keep up to date. Layout is lost (a subscript
-* becomes a plain character), which is the price of a canvas. Without a
-* DOM (unit tests) a small structural fallback strips the markup instead.
-*/
-function plainTextOfLatex(src) {
-	if (typeof document !== "undefined" && /[$\\]/.test(src)) try {
-		const host = document.createElement("div");
-		host.innerHTML = renderKaTeX$1(src, false);
-		for (const m of host.querySelectorAll(".katex-mathml")) m.remove();
-		const txt = (host.textContent || "").replace(/\s+/g, " ").trim();
-		if (txt) return txt;
-	} catch (_err) {}
-	return src.replace(/\\(?:text|mathrm|mathbf|operatorname)\{([^{}]*)\}/g, "$1").replace(/\$/g, "").replace(/\\([A-Za-z]+)/g, "$1").replace(/[{}_^]/g, "").replace(/\s+/g, " ").trim();
 }
 /** Near-black or near-white, whichever reads against the cell's colour. */
 function contrastTextColor(rgb) {
@@ -8118,7 +8333,7 @@ function compileAxisLabelExpr(axis) {
 	}
 }
 /** Axis indices for the two in-plane directions, per plane. */
-var PLANE_AXES = {
+var PLANE_AXES$1 = {
 	xy: [
 		0,
 		1,
@@ -8155,7 +8370,7 @@ var QUAD_CORNERS = [
 * changes.
 */
 function gridLayout(dims, origin, cellSize, plane, fill, anchor) {
-	const [hAxis, vAxis, nAxis] = PLANE_AXES[plane] || PLANE_AXES["xy"];
+	const [hAxis, vAxis, nAxis] = PLANE_AXES$1[plane] || PLANE_AXES$1["xy"];
 	const cols = dims[dims.length - 1];
 	const rows = dims.length >= 2 ? dims[dims.length - 2] : 1;
 	/** Position from in-plane (horizontal, vertical) offsets, and an optional lift off the plane. */
@@ -8215,7 +8430,7 @@ function renderTensor(el, _view) {
 	const cellSize = typeof el.cellSize === "number" && el.cellSize > 0 ? el.cellSize : 1;
 	const gapRaw = Number.isFinite(el.gap) ? el.gap : .08;
 	const fill = cellSize * (1 - Math.max(0, Math.min(.9, gapRaw)));
-	const plane = typeof el.plane === "string" && PLANE_AXES[el.plane] ? el.plane : "xy";
+	const plane = typeof el.plane === "string" && PLANE_AXES$1[el.plane] ? el.plane : "xy";
 	const anchor = parseAnchor(el.anchor);
 	const layout = gridLayout(dims, origin, cellSize, plane, fill, anchor);
 	const { rows, cols, drawn } = layout;
@@ -8428,13 +8643,9 @@ function renderTensor(el, _view) {
 	let mT = axisPlane ? (hasHLabels ? LABEL_BAND : 0) + (hTitle ? TITLE_BAND : 0) : 0;
 	let vBand = 0;
 	if (axisPlane && hasVLabels) {
-		const probe = document.createElement("canvas").getContext("2d");
 		const firstTexts = axisLabelTexts(vLabelFn, vLabelsStatic, rows, true, 0);
 		let widest = 0;
-		if (probe) {
-			probe.font = "100px system-ui, sans-serif";
-			for (const t of firstTexts) widest = Math.max(widest, probe.measureText(plainTextOfLatex(t)).width);
-		}
+		for (const t of firstTexts) if (t) widest = Math.max(widest, measureLatex(t).w);
 		const measured = widest * LABEL_GLYPH / 100 + .45;
 		vBand = Math.max(1, Math.min(4, vLabelSrc ? Math.max(measured, 2.4) : measured));
 	}
@@ -8448,6 +8659,7 @@ function renderTensor(el, _view) {
 	}
 	const cssColor = (rgb) => `rgb(${Math.round(rgb[0] * 255)}, ${Math.round(rgb[1] * 255)}, ${Math.round(rgb[2] * 255)})`;
 	let textLayer = null;
+	let lastPaintT = 0;
 	/** The text quads' position buffer and per-cell placer, for lifting text with a cell's depth. */
 	let textQuads = null;
 	const textCapped = !!textExprString && (Math.max(rows, cols) > 2048 || rows * cols > 16384);
@@ -8535,7 +8747,18 @@ function renderTensor(el, _view) {
 				depthWrite: depthDeclared,
 				alphaTest: depthDeclared ? .05 : 0
 			});
-			qMat.addEventListener("dispose", () => tex.dispose());
+			const offFonts = onLatexFontsReady(() => {
+				if (textLayer) {
+					textLayer.lastKey = "";
+					try {
+						paintText(lastPaintT);
+					} catch (_e) {}
+				}
+			});
+			qMat.addEventListener("dispose", () => {
+				offFonts();
+				tex.dispose();
+			});
 			const qMesh = new THREE.Mesh(qGeom, qMat);
 			qMesh.userData.targetOpacity = opacity;
 			qMesh.userData.ignorePlaneOpacity = ignoresPlaneOpacity;
@@ -8573,27 +8796,22 @@ function renderTensor(el, _view) {
 		}
 		return out;
 	}
-	/** Draw one string fitted into a box, in a colour, optionally rotated a quarter turn. */
-	function drawFitted(ctx, txt, cx, cy, wPx, hPx, color, rotate = false) {
-		const t = plainTextOfLatex(txt);
-		if (!t || wPx < 2 || hPx < 2) return;
-		ctx.font = "100px system-ui, sans-serif";
-		const measured = ctx.measureText(t).width;
-		ctx.font = `${fitFontPx(measured, rotate ? hPx : wPx, rotate ? wPx : hPx)}px system-ui, sans-serif`;
-		ctx.fillStyle = color;
-		if (rotate) {
-			ctx.save();
-			ctx.translate(cx, cy);
-			ctx.rotate(-Math.PI / 2);
-			ctx.fillText(t, 0, 0);
-			ctx.restore();
-		} else ctx.fillText(t, cx, cy);
+	/** Draw one label (real KaTeX) fitted into a box, in a colour, optionally rotated a quarter turn. */
+	function drawFitted(ctx, txt, cx, cy, wPx, hPx, color, rotate = false, align = "center") {
+		if (!txt || wPx < 2 || hPx < 2) return;
+		drawLatex(ctx, txt, cx, cy, {
+			fontPx: fitLatexPx(txt, rotate ? hPx : wPx, rotate ? wPx : hPx),
+			color,
+			align,
+			rotate: rotate ? -Math.PI / 2 : 0
+		});
 	}
 	const cellTexts = new Array(textDeclared ? drawn : 0).fill("");
 	const keyParts = [];
 	/** Evaluate every cell's text (and, in plane mode, the axis labels) and redraw the canvas if anything changed. */
 	function paintText(tSec) {
 		if (!textLayer || !textFn && !planeLabels) return;
+		lastPaintT = tSec;
 		const { ctx, tex, px } = textLayer;
 		const ox = mL * px, oy = mT * px;
 		const texts = cellTexts;
@@ -8626,8 +8844,6 @@ function renderTensor(el, _view) {
 		if (key === textLayer.lastKey) return;
 		textLayer.lastKey = key;
 		ctx.clearRect(0, 0, textLayer.canvas.width, textLayer.canvas.height);
-		ctx.textAlign = "center";
-		ctx.textBaseline = "middle";
 		if (hTexts) {
 			const band = LABEL_BAND * px;
 			for (let c = 0; c < cols; c++) drawFitted(ctx, hTexts[c], ox + (c + .5) * px, oy - band / 2, .92 * px, LABEL_GLYPH / .62 * px, cssColor(hColor));
@@ -8635,9 +8851,7 @@ function renderTensor(el, _view) {
 		if (hTitle && planeLabels) drawFitted(ctx, hTitle, ox + cols * px / 2, TITLE_BAND * px / 2, cols * px, LABEL_GLYPH / .62 * px, cssColor(hColor));
 		if (vTexts) {
 			const band = vBand * px;
-			ctx.textAlign = "right";
-			for (let r = 0; r < rows; r++) drawFitted(ctx, vTexts[r], ox - .2 * px, oy + (r + .5) * px, band - .35 * px, LABEL_GLYPH / .62 * px, cssColor(vColor));
-			ctx.textAlign = "center";
+			for (let r = 0; r < rows; r++) drawFitted(ctx, vTexts[r], ox - .2 * px, oy + (r + .5) * px, band - .35 * px, LABEL_GLYPH / .62 * px, cssColor(vColor), false, "right");
 		}
 		if (vTitle && planeLabels) drawFitted(ctx, vTitle, TITLE_BAND * px / 2, oy + rows * px / 2, LABEL_GLYPH / .62 * px, rows * px, cssColor(vColor), true);
 		if (textFn) for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
@@ -8647,17 +8861,15 @@ function renderTensor(el, _view) {
 			const wPx = cellW[cell] * px;
 			const hPx = cellH[cell] * px;
 			if (wPx < 2 || hPx < 2) continue;
-			ctx.font = "100px system-ui, sans-serif";
-			const measured = ctx.measureText(txt).width;
-			ctx.font = `${fitFontPx(measured, wPx, hPx)}px system-ui, sans-serif`;
-			ctx.fillStyle = textColorFixed || contrastTextColor([
+			const color = textColorFixed || contrastTextColor([
 				cellRgb[cell * 3],
 				cellRgb[cell * 3 + 1],
 				cellRgb[cell * 3 + 2]
 			]);
-			const cx = ox + (c + .5) * px + anchor.h * (fillFrac - cellW[cell]) * px / 2;
-			const cy = oy + (r + .5) * px - anchor.v * (fillFrac - cellH[cell]) * px / 2;
-			ctx.fillText(txt, cx, cy);
+			drawLatex(ctx, txt, ox + (c + .5) * px + anchor.h * (fillFrac - cellW[cell]) * px / 2, oy + (r + .5) * px - anchor.v * (fillFrac - cellH[cell]) * px / 2, {
+				fontPx: fitLatexPx(txt, wPx, hPx),
+				color
+			});
 		}
 		tex.needsUpdate = true;
 	}
@@ -8837,6 +9049,736 @@ function renderTensor(el, _view) {
 	};
 }
 //#endregion
+//#region src/objects/chart.ts
+/**
+* `chart` — a 2D plot that lives in the 3D scene as a planar object.
+*
+* The split is the same one `tensor` makes, and for the same reason. The
+* DATA is geometry: every series is a MathBox line in data coordinates, so it
+* is crisp at any angle and zoom, depth-tested and occluded like everything
+* else in the viewport. The PAPER — axes, ticks, tick labels, titles, grid —
+* is one canvas mapped onto a quad lying just behind the series, the way a
+* tensor draws its cell text and axis labels: thin lines and short text,
+* where a raster costs nothing you can see, and where a DOM label would face
+* the camera and pile up with its neighbours instead of tilting with the plot.
+*
+* Bindings follow `tensor` too. A series is an expression evaluated once per
+* sample with `i` (0-based sample index), `n` (sample count) and `x` (that
+* sample's x) bound, so a sampled distribution, a running statistic or a
+* slider-driven curve is one string each. Literal `y` arrays are the static
+* path and cost nothing per frame. Horizontal lines and bands take the same
+* scope minus `i`, which is what a ±1 s.d. band is. Domains are fixed or
+* `"auto"`, and an auto domain is niced to round tick values.
+*
+* What this is NOT: a charting library on a texture. That was considered and
+* rejected — a rasterised series blurs the moment the plane tilts, and the
+* library's own colours, fonts and legends fight the lesson's colour
+* language. Everything here is drawn from the scene's own primitives.
+*/
+var chartState = state;
+/**
+* Round tick values covering [lo, hi] with about `count` steps: the step is
+* 1, 2 or 5 times a power of ten, and the ticks are multiples of it. Returns
+* the ticks and the step so a caller can format labels to the right decimals.
+*/
+function niceTicks(lo, hi, count = 5) {
+	if (!Number.isFinite(lo) || !Number.isFinite(hi)) return {
+		ticks: [],
+		step: 1
+	};
+	if (hi < lo) [lo, hi] = [hi, lo];
+	const rough = (hi - lo || Math.abs(hi) || 1) / Math.max(1, count - 1);
+	const mag = Math.pow(10, Math.floor(Math.log10(rough)));
+	const norm = rough / mag;
+	const step = (norm < 1.5 ? 1 : norm < 3.5 ? 2 : norm < 7.5 ? 5 : 10) * mag;
+	const ticks = [];
+	const first = Math.ceil(lo / step - 1e-9) * step;
+	for (let v = first; v <= hi + step * 1e-9 && ticks.length < 50; v += step) ticks.push(Math.abs(v) < step * 1e-9 ? 0 : Number(v.toPrecision(12)));
+	return {
+		ticks,
+		step
+	};
+}
+/**
+* The domain to show for a set of values: their extent, padded a little so
+* the extreme samples do not sit on the frame, then widened to the nearest
+* tick multiples so the axis ends on round numbers. A flat set gets a unit
+* of room so it is still a plot and not a line on the edge.
+*/
+function autoDomain(values, pad = .05) {
+	let lo = Infinity, hi = -Infinity;
+	for (const v of values) {
+		if (!Number.isFinite(v)) continue;
+		if (v < lo) lo = v;
+		if (v > hi) hi = v;
+	}
+	if (lo === Infinity) return [0, 1];
+	if (hi - lo < 1e-12) {
+		lo -= .5;
+		hi += .5;
+	}
+	const span = hi - lo;
+	lo -= span * pad;
+	hi += span * pad;
+	const { step } = niceTicks(lo, hi);
+	return [Math.floor(lo / step) * step, Math.ceil(hi / step) * step];
+}
+/** Format a tick value to the decimals its step needs — no trailing noise. */
+function formatTick(v, step) {
+	const decimals = Math.max(0, Math.min(6, -Math.floor(Math.log10(step) + 1e-9)));
+	const s = v.toFixed(decimals);
+	return s === "-0" || /^-0\.0+$/.test(s) ? s.slice(1) : s;
+}
+/** Longest side of the paper canvas, in pixels; the ceiling tensor uses for its label canvas. */
+var MAX_PAPER_PX = 2048;
+/** Most ticks an axis will try for; past this the labels cannot be read anyway. */
+var MAX_TICKS = 50;
+var PLANE_AXES = {
+	xy: [
+		0,
+		1,
+		2
+	],
+	xz: [
+		0,
+		2,
+		1
+	],
+	yz: [
+		1,
+		2,
+		0
+	]
+};
+function renderChart(el, view) {
+	const chart = el;
+	const originRaw = Array.isArray(el.origin) ? el.origin : [];
+	const origin = [
+		0,
+		1,
+		2
+	].map((i) => {
+		const n = Number(originRaw[i]);
+		return Number.isFinite(n) ? n : 0;
+	});
+	const sizeRaw = Array.isArray(chart.size) ? chart.size : [];
+	const W = Number(sizeRaw[0]) > 0 ? Number(sizeRaw[0]) : 6;
+	const H = Number(sizeRaw[1]) > 0 ? Number(sizeRaw[1]) : 3;
+	const [hAxis, vAxis, nAxis] = PLANE_AXES[typeof el.plane === "string" && PLANE_AXES[el.plane] ? el.plane : "xy"];
+	/** Data-space point from in-plane offsets, lifted `nOff` off the plane. */
+	const at = (h, v, nOff = 0) => {
+		const p = [
+			0,
+			0,
+			0
+		];
+		p[hAxis] = origin[0] + h;
+		p[vAxis] = origin[1] + v;
+		p[nAxis] = origin[2] + nOff;
+		return p;
+	};
+	const baseColor = parseColor(el.color || "#aabbcc");
+	const opacity = typeof el.opacity === "number" && isFinite(el.opacity) ? Math.max(0, Math.min(1, el.opacity)) : .9;
+	const ignoresPlaneOpacity = (el.shader || {}).ignorePlaneOpacity !== false;
+	const showGrid = chart.grid !== false;
+	const fixedTextColor = typeof chart.textColor === "string" && chart.textColor.trim() && chart.textColor.trim().toLowerCase() !== "auto" || Array.isArray(chart.textColor) ? parseColor(chart.textColor) : null;
+	const compileOpt = (src, what) => {
+		if (typeof src !== "string" || !src.trim()) return null;
+		const s = src.trim();
+		const why = explainCompileDegrade(s);
+		if (why) {
+			console.warn(`chart${el.id ? ` "${el.id}"` : ""}: ${what} ${why}; it is left out.`);
+			return null;
+		}
+		try {
+			return {
+				src: s,
+				fn: compileExpr(s)
+			};
+		} catch (err) {
+			console.warn(`chart ${what} compile error:`, err);
+			return null;
+		}
+	};
+	const seriesSpecs = Array.isArray(chart.series) ? chart.series : [];
+	const series = [];
+	seriesSpecs.forEach((sp, k) => {
+		const ys = Array.isArray(sp.y) ? sp.y.map(Number) : null;
+		const xs = Array.isArray(sp.x) ? sp.x.map(Number) : null;
+		const yFn = compileOpt(sp.yExpr, `series[${k}].yExpr`);
+		if (!ys && !yFn) {
+			console.warn(`chart${el.id ? ` "${el.id}"` : ""}: series[${k}] has neither y nor a usable yExpr; skipped.`);
+			return;
+		}
+		const xFn = compileOpt(sp.xExpr, `series[${k}].xExpr`);
+		const n = Number(sp.n) > 1 ? Math.max(2, Math.min(4096, Math.floor(Number(sp.n)))) : ys ? ys.length : 64;
+		series.push({
+			color: parseColor(sp.color || el.color || "#ff88aa"),
+			n,
+			kind: sp.kind === "points" ? "points" : "line",
+			width: Number(sp.width) > 0 ? Number(sp.width) : 2.5,
+			opacity: Number.isFinite(Number(sp.opacity)) ? Math.max(0, Math.min(1, Number(sp.opacity))) : 1,
+			xs,
+			ys,
+			xFn,
+			yFn,
+			xSrc: typeof sp.xExpr === "string" ? sp.xExpr.trim() || null : null,
+			ySrc: typeof sp.yExpr === "string" ? sp.yExpr.trim() || null : null,
+			px: new Array(n).fill(0),
+			py: new Array(n).fill(0),
+			node: null,
+			data: null,
+			entry: null
+		});
+	});
+	const hlines = (Array.isArray(chart.hlines) ? chart.hlines : []).map((sp, k) => ({
+		color: parseColor(sp.color || el.color || "#aabbcc"),
+		width: Number(sp.width) > 0 ? Number(sp.width) : 1.5,
+		opacity: Number.isFinite(Number(sp.opacity)) ? Math.max(0, Math.min(1, Number(sp.opacity))) : .8,
+		y: Number.isFinite(Number(sp.y)) ? Number(sp.y) : NaN,
+		src: Number.isFinite(Number(sp.y)) || typeof sp.yExpr !== "string" ? null : sp.yExpr.trim() || null,
+		fn: Number.isFinite(Number(sp.y)) ? null : compileOpt(sp.yExpr, `hlines[${k}].yExpr`),
+		node: null,
+		data: null,
+		entry: null
+	}));
+	for (let k = hlines.length - 1; k >= 0; k--) {
+		const l = hlines[k];
+		if (!Number.isFinite(l.y) && !l.src) {
+			console.warn(`chart${el.id ? ` "${el.id}"` : ""}: hlines[${k}] has neither y nor yExpr; skipped.`);
+			hlines.splice(k, 1);
+		}
+	}
+	const bands = (Array.isArray(chart.bands) ? chart.bands : []).map((sp, k) => ({
+		color: parseColor(sp.color || el.color || "#aabbcc"),
+		opacity: Number.isFinite(Number(sp.opacity)) ? Math.max(0, Math.min(1, Number(sp.opacity))) : .18,
+		lo: Number.isFinite(Number(sp.lo)) ? Number(sp.lo) : NaN,
+		hi: Number.isFinite(Number(sp.hi)) ? Number(sp.hi) : NaN,
+		loSrc: Number.isFinite(Number(sp.lo)) || typeof sp.loExpr !== "string" ? null : sp.loExpr.trim() || null,
+		hiSrc: Number.isFinite(Number(sp.hi)) || typeof sp.hiExpr !== "string" ? null : sp.hiExpr.trim() || null,
+		loFn: Number.isFinite(Number(sp.lo)) ? null : compileOpt(sp.loExpr, `bands[${k}].loExpr`),
+		hiFn: Number.isFinite(Number(sp.hi)) ? null : compileOpt(sp.hiExpr, `bands[${k}].hiExpr`),
+		mesh: null,
+		attr: null
+	}));
+	for (let k = bands.length - 1; k >= 0; k--) {
+		const b = bands[k];
+		if (!Number.isFinite(b.lo) && !b.loSrc || !Number.isFinite(b.hi) && !b.hiSrc) {
+			console.warn(`chart${el.id ? ` "${el.id}"` : ""}: bands[${k}] needs lo/hi or loExpr/hiExpr; skipped.`);
+			bands.splice(k, 1);
+		}
+	}
+	const axes = Array.isArray(chart.axes) ? chart.axes : [];
+	const xAxis = axes[0], yAxis = axes[1];
+	const xTitle = xAxis && xAxis.title ? String(xAxis.title) : null;
+	const yTitle = yAxis && yAxis.title ? String(yAxis.title) : null;
+	/** A target tick count: an integer in 2..MAX_TICKS, else the default 5. */
+	const tickCount = (raw) => {
+		const v = Number(raw);
+		return Number.isFinite(v) && v > 1 ? Math.min(MAX_TICKS, Math.floor(v)) : 5;
+	};
+	const xTickCount = tickCount(xAxis?.ticks);
+	const yTickCount = tickCount(yAxis?.ticks);
+	const xLabelSrc = typeof xAxis?.labelExpr === "string" ? xAxis.labelExpr.trim() || null : null;
+	const yLabelSrc = typeof yAxis?.labelExpr === "string" ? yAxis.labelExpr.trim() || null : null;
+	let xLabelFn = compileOpt(xLabelSrc, "axes[0].labelExpr");
+	let yLabelFn = compileOpt(yLabelSrc, "axes[1].labelExpr");
+	const xColor = parseColor(xAxis && xAxis.color || "#aabbcc");
+	const yColor = parseColor(yAxis && yAxis.color || "#aabbcc");
+	const xFixed = Array.isArray(chart.xDomain) && chart.xDomain.length === 2 && chart.xDomain.every((v) => Number.isFinite(Number(v))) ? [Number(chart.xDomain[0]), Number(chart.xDomain[1])] : null;
+	const yFixed = Array.isArray(chart.yDomain) && chart.yDomain.length === 2 && chart.yDomain.every((v) => Number.isFinite(Number(v))) ? [Number(chart.yDomain[0]), Number(chart.yDomain[1])] : null;
+	let xDom = xFixed || [0, 1];
+	let yDom = yFixed || [0, 1];
+	/** Plot-space (h, v) in data units for a data point (x, y) under the current domains. */
+	const toPlane = (x, y) => [(x - xDom[0]) / (xDom[1] - xDom[0] || 1) * W, (y - yDom[0]) / (yDom[1] - yDom[0] || 1) * H];
+	const live = series.some((s) => s.xSrc || s.ySrc) || hlines.some((l) => l.src) || bands.some((b) => b.loSrc || b.hiSrc) || !!xLabelSrc || !!yLabelSrc;
+	function sample(tSec) {
+		for (const s of series) {
+			const scope = {
+				i: 0,
+				n: s.n,
+				x: 0
+			};
+			for (let i = 0; i < s.n; i++) {
+				scope.i = i;
+				let x;
+				if (s.xFn) try {
+					x = Number(evalExpr(s.xFn.fn, tSec, { overrideScope: scope }));
+				} catch (_e) {
+					x = i;
+				}
+				else if (s.xs) x = s.xs[i] ?? i;
+				else x = i;
+				if (!Number.isFinite(x)) x = i;
+				scope.x = x;
+				let y;
+				if (s.yFn) try {
+					y = Number(evalExpr(s.yFn.fn, tSec, { overrideScope: scope }));
+				} catch (_e) {
+					y = NaN;
+				}
+				else y = s.ys ? s.ys[i] ?? 0 : NaN;
+				s.px[i] = x;
+				s.py[i] = Number.isFinite(y) ? y : NaN;
+			}
+		}
+		for (const l of hlines) if (l.fn) try {
+			const v = Number(evalExpr(l.fn.fn, tSec, {}));
+			if (Number.isFinite(v)) l.y = v;
+		} catch (_e) {}
+		for (const b of bands) {
+			if (b.loFn) try {
+				const v = Number(evalExpr(b.loFn.fn, tSec, {}));
+				if (Number.isFinite(v)) b.lo = v;
+			} catch (_e) {}
+			if (b.hiFn) try {
+				const v = Number(evalExpr(b.hiFn.fn, tSec, {}));
+				if (Number.isFinite(v)) b.hi = v;
+			} catch (_e) {}
+		}
+		if (!xFixed) {
+			const xs = [];
+			for (const s of series) for (const x of s.px) xs.push(x);
+			xDom = autoDomain(xs, 0);
+		}
+		if (!yFixed) {
+			const ys = [];
+			for (const s of series) for (const y of s.py) ys.push(y);
+			for (const l of hlines) ys.push(l.y);
+			for (const b of bands) {
+				ys.push(b.lo);
+				ys.push(b.hi);
+			}
+			yDom = autoDomain(ys);
+		}
+	}
+	const lift = Math.min(W, H) * .01;
+	const seriesPoints = (s) => {
+		const pts = [];
+		for (let i = 0; i < s.n; i++) {
+			const y = Number.isFinite(s.py[i]) ? s.py[i] : yDom[0];
+			const [h, v] = toPlane(s.px[i], y);
+			pts.push(at(h, v, lift * 3));
+		}
+		return pts;
+	};
+	try {
+		sample(0);
+	} catch (err) {
+		console.warn("chart sample error:", err);
+	}
+	const lineOpacity = typeof chartState.displayParams.lineOpacity === "number" ? chartState.displayParams.lineOpacity : 1;
+	for (const s of series) {
+		const pts = seriesPoints(s);
+		const entry = {
+			node: null,
+			baseWidth: s.width,
+			baseOpacity: s.opacity,
+			widthParam: "lineWidth",
+			anchorDataPos: pts[Math.floor(pts.length / 2)] || at(W / 2, H / 2)
+		};
+		const lineW = resolveLineWidth(entry);
+		const data = view.array({
+			channels: 3,
+			width: pts.length,
+			data: pts,
+			live: true
+		});
+		const node = s.kind === "points" ? data.point({
+			color: new THREE.Color(...s.color),
+			size: lineW * 3,
+			opacity: s.opacity * lineOpacity,
+			zBias: 2
+		}) : data.line({
+			color: new THREE.Color(...s.color),
+			width: lineW,
+			opacity: s.opacity * lineOpacity,
+			zBias: 2
+		});
+		entry.node = node;
+		s.node = node;
+		s.data = data;
+		s.entry = entry;
+		if (s.kind === "points") chartState.pointNodes.push({ node });
+		else chartState.lineNodes.push(entry);
+	}
+	for (const l of hlines) {
+		const [, v] = toPlane(0, Number.isFinite(l.y) ? l.y : yDom[0]);
+		const pts = [at(0, v, lift * 2), at(W, v, lift * 2)];
+		const entry = {
+			node: null,
+			baseWidth: l.width,
+			baseOpacity: l.opacity,
+			widthParam: "lineWidth",
+			anchorDataPos: at(W / 2, v)
+		};
+		const lineW = resolveLineWidth(entry);
+		const data = view.array({
+			channels: 3,
+			width: 2,
+			data: pts,
+			live: true
+		});
+		const node = data.line({
+			color: new THREE.Color(...l.color),
+			width: lineW,
+			opacity: l.opacity * lineOpacity,
+			zBias: 1
+		});
+		if (!Number.isFinite(l.y)) node.set("visible", false);
+		entry.node = node;
+		l.node = node;
+		l.data = data;
+		l.entry = entry;
+		chartState.lineNodes.push(entry);
+	}
+	const serial = el.renderOrder !== void 0 ? el.renderOrder : chartState._planeMeshSerial++;
+	const bandOrder = bands.length ? el.renderOrder !== void 0 ? serial + 1 : chartState._planeMeshSerial++ : serial + 1;
+	/** A quad mesh over plot-space rect, as the paper and bands need. */
+	const makeQuad = (color, opac, order, dynamic) => {
+		const pos = /* @__PURE__ */ new Float32Array(18);
+		const attr = new THREE.BufferAttribute(pos, 3);
+		if (dynamic) attr.setUsage(THREE.DynamicDrawUsage);
+		const geom = new THREE.BufferGeometry();
+		geom.setAttribute("position", attr);
+		const mat = new THREE.MeshBasicMaterial({
+			color: new THREE.Color(...color),
+			transparent: true,
+			opacity: ignoresPlaneOpacity ? opac : chartState.displayParams.planeOpacity * opac,
+			side: THREE.DoubleSide,
+			depthWrite: false
+		});
+		const mesh = new THREE.Mesh(geom, mat);
+		mesh.frustumCulled = false;
+		mesh.userData.targetOpacity = opac;
+		mesh.userData.ignorePlaneOpacity = ignoresPlaneOpacity;
+		mesh.renderOrder = order;
+		chartState.three.scene.add(mesh);
+		chartState.planeMeshes.push(mesh);
+		return {
+			mesh,
+			attr
+		};
+	};
+	const writeQuad = (attr, h0, h1, v0, v1, nOff) => {
+		const P = [
+			at(h0, v0, nOff),
+			at(h1, v0, nOff),
+			at(h1, v1, nOff),
+			at(h0, v1, nOff)
+		].map(dataToWorld);
+		const order = [
+			0,
+			1,
+			2,
+			0,
+			2,
+			3
+		];
+		const a = attr.array;
+		for (let i = 0; i < 6; i++) {
+			const p = P[order[i]];
+			a[i * 3] = p[0];
+			a[i * 3 + 1] = p[1];
+			a[i * 3 + 2] = p[2];
+		}
+		attr.needsUpdate = true;
+	};
+	/** A band's quad, clipped to the plot area; a band wholly outside it collapses to nothing. */
+	const placeBand = (b) => {
+		if (!b.attr) return;
+		if (!Number.isFinite(b.lo) || !Number.isFinite(b.hi)) {
+			writeQuad(b.attr, 0, W, 0, 0, lift);
+			return;
+		}
+		const [, v0] = toPlane(0, Math.min(b.lo, b.hi)), [, v1] = toPlane(0, Math.max(b.lo, b.hi));
+		writeQuad(b.attr, 0, W, Math.max(0, Math.min(H, v0)), Math.max(0, Math.min(H, v1)), lift);
+	};
+	for (const b of bands) {
+		const q = makeQuad(b.color, b.opacity, bandOrder, true);
+		b.mesh = q.mesh;
+		b.attr = q.attr;
+		placeBand(b);
+	}
+	const mL = yTitle ? 1.6 : 1.1;
+	const mB = xTitle ? 1.1 : .7;
+	const mT = .25, mR = .35;
+	const paperW = W + mL + mR, paperH = H + mB + mT;
+	const pxPer = Math.min(160, MAX_PAPER_PX / Math.max(paperW, paperH));
+	const canvas = document.createElement("canvas");
+	canvas.width = Math.min(MAX_PAPER_PX, Math.ceil(paperW * pxPer));
+	canvas.height = Math.min(MAX_PAPER_PX, Math.ceil(paperH * pxPer));
+	const ctx = canvas.getContext("2d");
+	let tex = null;
+	let paperKey = "";
+	let lastT = 0;
+	const css = (c, a = 1) => `rgba(${Math.round(c[0] * 255)}, ${Math.round(c[1] * 255)}, ${Math.round(c[2] * 255)}, ${a})`;
+	const inkRgb = fixedTextColor || [
+		.86,
+		.88,
+		.92
+	];
+	if (ctx) {
+		tex = new THREE.CanvasTexture(canvas);
+		tex.minFilter = THREE.LinearFilter;
+		tex.magFilter = THREE.LinearFilter;
+		tex.generateMipmaps = false;
+		const paper = makeQuad([
+			1,
+			1,
+			1
+		], opacity, serial, false);
+		const paperMat = paper.mesh.material;
+		paperMat.map = tex;
+		paperMat.color.set(16777215);
+		paperMat.alphaTest = .02;
+		const offFonts = onLatexFontsReady(() => {
+			paperKey = "";
+			try {
+				paintPaper(lastT);
+			} catch (_e) {}
+		});
+		paperMat.addEventListener("dispose", () => {
+			offFonts();
+			tex && tex.dispose();
+		});
+		const uv = new Float32Array([
+			0,
+			0,
+			1,
+			0,
+			1,
+			1,
+			0,
+			0,
+			1,
+			1,
+			0,
+			1
+		]);
+		paper.mesh.geometry.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+		writeQuad(paper.attr, -mL, W + mR, -mB, H + mT, 0);
+	}
+	/** Tick label text: the axis's labelExpr with `value` bound, else the value to the step's decimals. */
+	const tickText = (fn, v, step, tSec) => {
+		if (fn) try {
+			const out = evalExpr(fn.fn, tSec, { overrideScope: { value: v } });
+			return out === null || out === void 0 ? "" : String(out);
+		} catch (_e) {
+			return "";
+		}
+		return formatTick(v, step);
+	};
+	function paintPaper(tSec) {
+		if (!ctx || !tex) return;
+		lastT = tSec;
+		const xt = niceTicks(xDom[0], xDom[1], xTickCount);
+		const yt = niceTicks(yDom[0], yDom[1], yTickCount);
+		const xLabels = xt.ticks.map((v) => tickText(xLabelFn, v, xt.step, tSec));
+		const yLabels = yt.ticks.map((v) => tickText(yLabelFn, v, yt.step, tSec));
+		const key = [
+			xDom.join(","),
+			yDom.join(","),
+			xLabels.join(""),
+			yLabels.join("")
+		].join("");
+		if (key === paperKey) return;
+		paperKey = key;
+		const cw = canvas.width, ch = canvas.height;
+		ctx.clearRect(0, 0, cw, ch);
+		const X = (h) => (mL + h) * pxPer;
+		const Y = (v) => ch - (mB + v) * pxPer;
+		ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
+		ctx.fillRect(X(0), Y(H), W * pxPer, H * pxPer);
+		if (showGrid) {
+			ctx.strokeStyle = css(inkRgb, .14);
+			ctx.lineWidth = Math.max(1, pxPer * .012);
+			for (const v of xt.ticks) {
+				const [h] = toPlane(v, 0);
+				if (h < -1e-6 || h > W + 1e-6) continue;
+				ctx.beginPath();
+				ctx.moveTo(X(h), Y(0));
+				ctx.lineTo(X(h), Y(H));
+				ctx.stroke();
+			}
+			for (const v of yt.ticks) {
+				const [, vv] = toPlane(0, v);
+				if (vv < -1e-6 || vv > H + 1e-6) continue;
+				ctx.beginPath();
+				ctx.moveTo(X(0), Y(vv));
+				ctx.lineTo(X(W), Y(vv));
+				ctx.stroke();
+			}
+		}
+		ctx.strokeStyle = css(inkRgb, .35);
+		ctx.lineWidth = Math.max(1, pxPer * .02);
+		if (yDom[0] < 0 && yDom[1] > 0) {
+			const [, v0] = toPlane(0, 0);
+			ctx.beginPath();
+			ctx.moveTo(X(0), Y(v0));
+			ctx.lineTo(X(W), Y(v0));
+			ctx.stroke();
+		}
+		if (xDom[0] < 0 && xDom[1] > 0) {
+			const [h0] = toPlane(0, 0);
+			ctx.beginPath();
+			ctx.moveTo(X(h0), Y(0));
+			ctx.lineTo(X(h0), Y(H));
+			ctx.stroke();
+		}
+		ctx.strokeStyle = css(xColor, .9);
+		ctx.lineWidth = Math.max(1, pxPer * .03);
+		ctx.beginPath();
+		ctx.moveTo(X(0), Y(0));
+		ctx.lineTo(X(W), Y(0));
+		ctx.stroke();
+		ctx.strokeStyle = css(yColor, .9);
+		ctx.beginPath();
+		ctx.moveTo(X(0), Y(0));
+		ctx.lineTo(X(0), Y(H));
+		ctx.stroke();
+		const tickLen = pxPer * .12;
+		ctx.fillStyle = css(xColor);
+		ctx.strokeStyle = css(xColor, .9);
+		xt.ticks.forEach((v, k) => {
+			const [h] = toPlane(v, 0);
+			if (h < -1e-6 || h > W + 1e-6) return;
+			ctx.beginPath();
+			ctx.moveTo(X(h), Y(0));
+			ctx.lineTo(X(h), Y(0) + tickLen);
+			ctx.stroke();
+			const txt = xLabels[k] || "";
+			if (!txt) return;
+			drawLatex(ctx, txt, X(h), Y(0) + tickLen + pxPer * .06, {
+				fontPx: fitLatexPx(txt, pxPer * .9, pxPer * .42),
+				color: css(xColor),
+				align: "center",
+				vAlign: "top"
+			});
+		});
+		ctx.fillStyle = css(yColor);
+		ctx.strokeStyle = css(yColor, .9);
+		let yLabelW = 0;
+		yt.ticks.forEach((v, k) => {
+			const [, vv] = toPlane(0, v);
+			if (vv < -1e-6 || vv > H + 1e-6) return;
+			ctx.beginPath();
+			ctx.moveTo(X(0), Y(vv));
+			ctx.lineTo(X(0) - tickLen, Y(vv));
+			ctx.stroke();
+			const txt = yLabels[k] || "";
+			if (!txt) return;
+			const fontPx = fitLatexPx(txt, pxPer * .85, pxPer * .42);
+			yLabelW = Math.max(yLabelW, measureLatex(txt).w * fontPx / 100);
+			drawLatex(ctx, txt, X(0) - tickLen - pxPer * .06, Y(vv), {
+				fontPx,
+				color: css(yColor),
+				align: "right",
+				vAlign: "middle"
+			});
+		});
+		if (xTitle) drawLatex(ctx, xTitle, X(W / 2), Y(0) + pxPer * .82, {
+			fontPx: fitLatexPx(xTitle, W * pxPer, pxPer * .5),
+			color: css(xColor)
+		});
+		if (yTitle) {
+			const fontPx = fitLatexPx(yTitle, H * pxPer, pxPer * .5);
+			const titleH = measureLatex(yTitle).h * fontPx / 100;
+			const cx = Math.max(titleH / 2, X(0) - tickLen - pxPer * .16 - yLabelW - titleH / 2);
+			drawLatex(ctx, yTitle, cx, Y(H / 2), {
+				fontPx,
+				color: css(yColor),
+				rotate: -Math.PI / 2
+			});
+		}
+		tex.needsUpdate = true;
+	}
+	try {
+		paintPaper(0);
+	} catch (err) {
+		console.warn("chart paper error:", err);
+	}
+	/** Push the current samples into the lines and bands. */
+	function place() {
+		for (const s of series) if (s.data) s.data.set("data", seriesPoints(s));
+		for (const l of hlines) if (l.data && l.node) {
+			const ok = Number.isFinite(l.y);
+			l.node.set("visible", ok);
+			if (ok) {
+				const [, v] = toPlane(0, l.y);
+				l.data.set("data", [at(0, v, lift * 2), at(W, v, lift * 2)]);
+			}
+		}
+		for (const b of bands) placeBand(b);
+	}
+	const animState = { stopped: false };
+	const legendLabel = el.label || (series.length === 1 && seriesSpecs[0] && typeof seriesSpecs[0].label === "string" ? seriesSpecs[0].label : void 0);
+	if (!live) return {
+		type: "chart",
+		color: baseColor,
+		label: legendLabel
+	};
+	const exprStrings = [
+		...series.flatMap((s) => [s.xSrc, s.ySrc]),
+		...hlines.map((l) => l.src),
+		...bands.flatMap((b) => [b.loSrc, b.hiSrc]),
+		xLabelSrc,
+		yLabelSrc
+	].filter((x) => !!x);
+	let compiledUnderTrust = chartState._sceneJsTrustState;
+	const fns = () => [
+		...series.flatMap((s) => [s.xFn?.fn, s.yFn?.fn]),
+		...hlines.map((l) => l.fn?.fn),
+		...bands.flatMap((b) => [b.loFn?.fn, b.hiFn?.fn]),
+		xLabelFn?.fn,
+		yLabelFn?.fn
+	].filter((x) => !!x);
+	const entry = {
+		exprStrings,
+		animState,
+		compiledFns: fns(),
+		_rebuildFn() {
+			if (chartState._sceneJsTrustState === compiledUnderTrust) return;
+			compiledUnderTrust = chartState._sceneJsTrustState;
+			series.forEach((s, k) => {
+				if (s.ySrc) s.yFn = compileOpt(s.ySrc, `series[${k}].yExpr`);
+				if (s.xSrc) s.xFn = compileOpt(s.xSrc, `series[${k}].xExpr`);
+			});
+			hlines.forEach((l, k) => {
+				if (l.src) l.fn = compileOpt(l.src, `hlines[${k}].yExpr`);
+			});
+			bands.forEach((b, k) => {
+				if (b.loSrc) b.loFn = compileOpt(b.loSrc, `bands[${k}].loExpr`);
+				if (b.hiSrc) b.hiFn = compileOpt(b.hiSrc, `bands[${k}].hiExpr`);
+			});
+			if (xLabelSrc) xLabelFn = compileOpt(xLabelSrc, "axes[0].labelExpr");
+			if (yLabelSrc) yLabelFn = compileOpt(yLabelSrc, "axes[1].labelExpr");
+			paperKey = "";
+			entry.compiledFns = fns();
+		}
+	};
+	chartState.activeAnimExprs.push(entry);
+	const startTime = chartState.sceneStartTime;
+	chartState.activeAnimUpdaters.push({
+		animState,
+		updateFrame(nowMs) {
+			const tSec = (nowMs - startTime) / 1e3;
+			try {
+				sample(tSec);
+				place();
+				paintPaper(tSec);
+			} catch (_err) {}
+		}
+	});
+	return {
+		type: "chart",
+		color: baseColor,
+		label: legendLabel,
+		_animState: animState,
+		_animExprEntry: entry
+	};
+}
+//#endregion
 //#region src/objects/index.ts
 var objects_exports = /* @__PURE__ */ __exportAll({ renderElement: () => renderElement });
 /**
@@ -8872,6 +9814,7 @@ function renderElement(el, view) {
 		case "animated_polygon": return renderAnimatedPolygon(el, view);
 		case "animated_curve": return renderAnimatedCurve(el, view);
 		case "tensor": return renderTensor(el, view);
+		case "chart": return renderChart(el, view);
 		default:
 			console.warn("Unknown element type:", el.type);
 			return null;

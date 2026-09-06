@@ -177,7 +177,7 @@ test('a malformed labelExpr leaves the axis unlabelled rather than reading "0"',
 // below are the parts that decide what the renderer draws and are pure, so
 // they are pinned here without a canvas or a scene.
 
-const { resolveExtent, fitFontPx, contrastTextColor } = await import('/objects/tensor.js');
+const { resolveExtent, contrastTextColor } = await import('/objects/tensor.js');
 
 test('resolveExtent clamps a size result to a fraction of the pitch', () => {
     assert.equal(resolveExtent(0.5, 0.92), 0.5);
@@ -192,21 +192,6 @@ test('resolveExtent keeps the gap-derived fill when the result is not a number',
     for (const bad of [NaN, undefined, null, 'wide', {}, Infinity]) {
         assert.equal(resolveExtent(bad, 0.92), 0.92, `expected fallback for ${String(bad)}`);
     }
-});
-
-test('fitFontPx is bound by height for short strings and by width for long ones', () => {
-    // A one-character string in a 100x100 box: height decides.
-    assert.equal(fitFontPx(60, 100, 100), 62);
-    // A wide string: width decides, and the result shrinks with the string.
-    const wide = fitFontPx(600, 100, 100);
-    assert.ok(wide < 62, `expected width-bound size, got ${wide}`);
-    assert.ok(fitFontPx(1200, 100, 100) < wide);
-});
-
-test('fitFontPx shrinks with the cell, never below 1px', () => {
-    assert.ok(fitFontPx(60, 50, 50) < fitFontPx(60, 100, 100));
-    assert.equal(fitFontPx(60, 1, 1), 1);
-    assert.equal(fitFontPx(0, 100, 100), 62); // an empty measurement falls back to the height bound
 });
 
 test('contrastTextColor picks dark text on light cells and light text on dark ones', () => {
@@ -259,19 +244,6 @@ test('a size or text channel refuses an expression compileExpr would degrade to 
     assert.match(String(explainCompileDegrade('value.toFixed(2)')), /JavaScript-only/);
     assert.match(String(explainCompileDegrade('concat(((')), /does not parse/);
 });
-
-test('plainTextOfLatex without a DOM strips the markup structurally', async () => {
-    // In the browser the function renders through KaTeX and reads the glyphs
-    // back, so \\alpha becomes α with no table to maintain. Under node there
-    // is no DOM, and this pins the structural fallback: markup goes, names
-    // of commands stay readable, nothing throws.
-    const { plainTextOfLatex } = await import('/objects/tensor.js');
-    assert.equal(plainTextOfLatex('key $j$'), 'key j');
-    assert.equal(plainTextOfLatex('$d_{\\text{model}} = 4$'), 'dmodel = 4');
-    assert.equal(plainTextOfLatex('$\\alpha_{3j}$'), 'alpha3j');
-    assert.equal(plainTextOfLatex('plain'), 'plain');
-});
-
 
 test('resolveDepth rises for positive, sinks for negative, is flat for non-numbers, and caps both ways', async () => {
     const { resolveDepth } = await import('/objects/tensor.js');

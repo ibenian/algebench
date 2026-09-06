@@ -40,6 +40,7 @@
 import { state } from '/state.js';
 import { parseColor, addLabel3D, renderKaTeX } from '/labels.js';
 import type { Label3D } from '/labels.js';
+import { drawLatex, fitLatexPx, measureLatex, onLatexFontsReady } from '/latex-raster.js';
 import { buildColorMap, normalizeColorValue } from '/colormaps.js';
 import { compileExpr, evalExpr, explainCompileDegrade } from '/expr.js';
 import type { CompiledExpr } from '/expr.js';
@@ -84,17 +85,6 @@ export function resolveDepth(raw: unknown): number {
     return Math.max(-3, Math.min(3, n));
 }
 
-/**
- * Font size, in canvas pixels, that fits a string into a `wPx` x `hPx` box.
- * `widthAt100` is the string's measured width at a 100px font, so the fit is
- * a pure ratio and needs no canvas of its own. The 0.86 / 0.62 margins keep
- * glyph ascenders and a little side padding inside the cell edge.
- */
-export function fitFontPx(widthAt100: number, wPx: number, hPx: number): number {
-    const byHeight = hPx * 0.62;
-    const byWidth = widthAt100 > 0 ? (wPx * 0.86) * 100 / widthAt100 : byHeight;
-    return Math.max(1, Math.floor(Math.min(byHeight, byWidth)));
-}
 
 /**
  * Which edge of its slot a shrunken cell keeps. `-1` keeps the low edge
@@ -141,38 +131,6 @@ export function resolveTextColor(raw: unknown): string | null {
     return alpha < 1
         ? `rgba(${ch(rgb[0]!)}, ${ch(rgb[1]!)}, ${ch(rgb[2]!)}, ${Math.round(alpha * 1000) / 1000})`
         : `rgb(${ch(rgb[0]!)}, ${ch(rgb[1]!)}, ${ch(rgb[2]!)})`;
-}
-
-/**
- * The plain-text reading of a label that may carry LaTeX, for drawing on a
- * canvas where KaTeX's HTML cannot go.
- *
- * KaTeX is the source of truth: render the label the way a screen label
- * would be rendered and read the glyphs back out of the HTML it produced,
- * so every command KaTeX knows -- Greek, relations, arrows -- comes out as
- * its symbol with no table to keep up to date. Layout is lost (a subscript
- * becomes a plain character), which is the price of a canvas. Without a
- * DOM (unit tests) a small structural fallback strips the markup instead.
- */
-export function plainTextOfLatex(src: string): string {
-    if (typeof document !== 'undefined' && /[$\\]/.test(src)) {
-        try {
-            const host = document.createElement('div');
-            host.innerHTML = renderKaTeX(src, false);
-            // KaTeX emits both a MathML tree (for assistive tech) and the HTML
-            // it draws; reading both would double every symbol.
-            for (const m of host.querySelectorAll('.katex-mathml')) m.remove();
-            const txt = (host.textContent || '').replace(/\s+/g, ' ').trim();
-            if (txt) return txt;
-        } catch (_err) { /* fall through to the structural strip */ }
-    }
-    return src
-        .replace(/\\(?:text|mathrm|mathbf|operatorname)\{([^{}]*)\}/g, '$1')
-        .replace(/\$/g, '')
-        .replace(/\\([A-Za-z]+)/g, '$1')
-        .replace(/[{}_^]/g, '')
-        .replace(/\s+/g, ' ')
-        .trim();
 }
 
 /** Near-black or near-white, whichever reads against the cell's colour. */
@@ -789,13 +747,9 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     let mT = axisPlane ? (hasHLabels ? LABEL_BAND : 0) + (hTitle ? TITLE_BAND : 0) : 0;
     let vBand = 0;
     if (axisPlane && hasVLabels) {
-        const probe = document.createElement('canvas').getContext('2d');
         const firstTexts = axisLabelTexts(vLabelFn, vLabelsStatic, rows, true, 0);
         let widest = 0;
-        if (probe) {
-            probe.font = '100px system-ui, sans-serif';
-            for (const t of firstTexts) widest = Math.max(widest, probe.measureText(plainTextOfLatex(t)).width);
-        }
+        for (const t of firstTexts) if (t) widest = Math.max(widest, measureLatex(t).w);
         // Width at the glyph size the labels are drawn at, plus a little air;
         // never narrower than one cell, never wider than four. A labelExpr is
         // measured from its first frame only, and may be refused right now
@@ -835,6 +789,7 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
         lastKey: string;
     }
     let textLayer: TextLayer | null = null;
+    let lastPaintT = 0;
     /** The text quads' position buffer and per-cell placer, for lifting text with a cell's depth. */
     let textQuads: { attr: BufferAttribute; place: (cell: number, r: number, c: number) => void } | null = null;
     // A canvas is at least one pixel per cell, so past 2048 cells a side no
@@ -938,7 +893,10 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
             // mesh down by disposing geometry and material, so ride that event
             // to free the texture too; otherwise every step that adds and
             // removes a text-bearing tensor leaks one GPU texture.
-            qMat.addEventListener('dispose', () => tex.dispose());
+            // KaTeX faces load on first use; repaint once they settle so a
+            // label laid out in the fallback font is redrawn in the real one.
+            const offFonts = onLatexFontsReady(() => { if (textLayer) { textLayer.lastKey = ''; try { paintText(lastPaintT); } catch (_e) { /* next frame */ } } });
+            qMat.addEventListener('dispose', () => { offFonts(); tex.dispose(); });
             const qMesh = new THREE.Mesh(qGeom, qMat);
             qMesh.userData.targetOpacity = opacity;
             qMesh.userData.ignorePlaneOpacity = ignoresPlaneOpacity;
@@ -969,24 +927,11 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
         return out;
     }
 
-    /** Draw one string fitted into a box, in a colour, optionally rotated a quarter turn. */
-    function drawFitted(ctx: CanvasRenderingContext2D, txt: string, cx: number, cy: number, wPx: number, hPx: number, color: string, rotate = false) {
-        const t = plainTextOfLatex(txt);
-        if (!t || wPx < 2 || hPx < 2) return;
-        ctx.font = '100px system-ui, sans-serif';
-        const measured = ctx.measureText(t).width;
-        const fontPx = fitFontPx(measured, rotate ? hPx : wPx, rotate ? wPx : hPx);
-        ctx.font = `${fontPx}px system-ui, sans-serif`;
-        ctx.fillStyle = color;
-        if (rotate) {
-            ctx.save();
-            ctx.translate(cx, cy);
-            ctx.rotate(-Math.PI / 2);
-            ctx.fillText(t, 0, 0);
-            ctx.restore();
-        } else {
-            ctx.fillText(t, cx, cy);
-        }
+    /** Draw one label (real KaTeX) fitted into a box, in a colour, optionally rotated a quarter turn. */
+    function drawFitted(ctx: CanvasRenderingContext2D, txt: string, cx: number, cy: number, wPx: number, hPx: number, color: string, rotate = false, align: 'left' | 'center' | 'right' = 'center') {
+        if (!txt || wPx < 2 || hPx < 2) return;
+        const fontPx = fitLatexPx(txt, rotate ? hPx : wPx, rotate ? wPx : hPx);
+        drawLatex(ctx, txt, cx, cy, { fontPx, color, align, rotate: rotate ? -Math.PI / 2 : 0 });
     }
 
     // Scratch for paintText, allocated once: it runs every frame while the
@@ -997,6 +942,7 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     /** Evaluate every cell's text (and, in plane mode, the axis labels) and redraw the canvas if anything changed. */
     function paintText(tSec: number) {
         if (!textLayer || (!textFn && !planeLabels)) return;
+        lastPaintT = tSec;
         const { ctx, tex, px } = textLayer;
         const ox = mL * px, oy = mT * px;
         const texts = cellTexts;
@@ -1029,8 +975,6 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
         textLayer.lastKey = key;
 
         ctx.clearRect(0, 0, textLayer.canvas.width, textLayer.canvas.height);
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
 
         if (hTexts) {
             const band = LABEL_BAND * px;   // the band nearest the lattice
@@ -1043,11 +987,9 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
         }
         if (vTexts) {
             const band = vBand * px;
-            ctx.textAlign = 'right';
             for (let r = 0; r < rows; r++) {
-                drawFitted(ctx, vTexts[r]!, ox - 0.2 * px, oy + (r + 0.5) * px, band - 0.35 * px, LABEL_GLYPH / 0.62 * px, cssColor(vColor));
+                drawFitted(ctx, vTexts[r]!, ox - 0.2 * px, oy + (r + 0.5) * px, band - 0.35 * px, LABEL_GLYPH / 0.62 * px, cssColor(vColor), false, 'right');
             }
-            ctx.textAlign = 'center';
         }
         if (vTitle && planeLabels) {
             drawFitted(ctx, vTitle, TITLE_BAND * px / 2, oy + (rows * px) / 2, LABEL_GLYPH / 0.62 * px, rows * px, cssColor(vColor), true);
@@ -1061,16 +1003,12 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
                 const wPx = cellW[cell]! * px;
                 const hPx = cellH[cell]! * px;
                 if (wPx < 2 || hPx < 2) continue;
-                ctx.font = '100px system-ui, sans-serif';
-                const measured = ctx.measureText(txt).width;
-                const fontPx = fitFontPx(measured, wPx, hPx);
-                ctx.font = `${fontPx}px system-ui, sans-serif`;
-                ctx.fillStyle = textColorFixed || contrastTextColor([cellRgb[cell * 3]!, cellRgb[cell * 3 + 1]!, cellRgb[cell * 3 + 2]!]);
+                const color = textColorFixed || contrastTextColor([cellRgb[cell * 3]!, cellRgb[cell * 3 + 1]!, cellRgb[cell * 3 + 2]!]);
                 // Canvas y runs down while the lattice's vertical axis runs
                 // up, so the vertical anchor flips sign here.
                 const cx = ox + (c + 0.5) * px + anchor.h * (fillFrac - cellW[cell]!) * px / 2;
                 const cy = oy + (r + 0.5) * px - anchor.v * (fillFrac - cellH[cell]!) * px / 2;
-                ctx.fillText(txt, cx, cy);
+                drawLatex(ctx, txt, cx, cy, { fontPx: fitLatexPx(txt, wPx, hPx), color });
             }
         }
         tex.needsUpdate = true;
