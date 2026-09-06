@@ -272,3 +272,14 @@ test('plainTextOfLatex without a DOM strips the markup structurally', async () =
     assert.equal(plainTextOfLatex('plain'), 'plain');
 });
 
+
+test('resolveDepth is flat for anything that is not a positive number, and caps a runaway value', async () => {
+    const { resolveDepth } = await import('/objects/tensor.js');
+    assert.equal(resolveDepth(0.5), 0.5);
+    assert.equal(resolveDepth(2), 2);
+    assert.equal(resolveDepth(40), 3);
+    assert.equal(resolveDepth(-1), 0);
+    for (const bad of [NaN, undefined, null, '', 'tall', {}, true]) {
+        assert.equal(resolveDepth(bad), 0, `expected flat for ${String(bad)}`);
+    }
+});

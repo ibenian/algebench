@@ -7932,6 +7932,17 @@ function resolveExtent(raw, fallback) {
 	return Math.max(0, Math.min(1, n));
 }
 /**
+* Read a `depthExpr` result as a fraction of the cell pitch, the height of
+* the cell's bump above the lattice plane. Not a number, or negative, is
+* flat; the cap of 3 pitches keeps a runaway value from becoming a tower.
+*/
+function resolveDepth(raw) {
+	if (raw === null || raw === void 0 || raw === "" || typeof raw === "boolean") return 0;
+	const n = Number(raw);
+	if (!Number.isFinite(n)) return 0;
+	return Math.max(0, Math.min(3, n));
+}
+/**
 * Font size, in canvas pixels, that fits a string into a `wPx` x `hPx` box.
 * `widthAt100` is the string's measured width at a 100px font, so the fit is
 * a pure ratio and needs no canvas of its own. The 0.86 / 0.62 margins keep
@@ -8167,7 +8178,7 @@ function gridLayout(dims, origin, cellSize, plane, fill, anchor) {
 		* A full-size cell (`w = h = fill`) lands in the same place whatever
 		* the anchor; the anchor only decides where a smaller one sits.
 		*/
-		corner: (r, c, dx, dy, w, h) => at((c + .5) * cellSize + anchor.h * (fill - w) / 2 + (dx - .5) * w, (rows - 1 - r + .5) * cellSize + anchor.v * (fill - h) / 2 + (dy - .5) * h),
+		corner: (r, c, dx, dy, w, h, nOff = 0) => at((c + .5) * cellSize + anchor.h * (fill - w) / 2 + (dx - .5) * w, (rows - 1 - r + .5) * cellSize + anchor.v * (fill - h) / 2 + (dy - .5) * h, nOff),
 		/** Absolute in-plane point, lifted `nOff` off the lattice plane. */
 		point: at,
 		/** Whole-lattice extent in the plane. */
@@ -8235,6 +8246,7 @@ function renderTensor(el, _view) {
 	};
 	const widthExprString = readExpr("widthExpr");
 	const heightExprString = readExpr("heightExpr");
+	const depthExprString = readExpr("depthExpr");
 	const textExprString = readExpr("textExpr");
 	const compileOpt = (src, what) => {
 		if (!src) return null;
@@ -8252,30 +8264,52 @@ function renderTensor(el, _view) {
 	};
 	let widthFn = compileOpt(widthExprString, "widthExpr");
 	let heightFn = compileOpt(heightExprString, "heightExpr");
+	let depthFn = compileOpt(depthExprString, "depthExpr");
 	let textFn = compileOpt(textExprString, "textExpr");
 	const sizeChannelDeclared = !!(widthExprString || heightExprString);
 	let hasSizeExpr = !!(widthFn || heightFn);
+	const depthDeclared = !!depthExprString;
+	let hasDepthExpr = !!depthFn;
 	const textColorFixed = resolveTextColor(el.textColor);
 	const opacity = typeof el.opacity === "number" && isFinite(el.opacity) ? Math.max(0, Math.min(1, el.opacity)) : .95;
 	const sh = el.shader || {};
-	const vertsPerCell = QUAD_CORNERS.length;
+	const TOP_VERTS = QUAD_CORNERS.length;
+	const vertsPerCell = depthDeclared ? TOP_VERTS + 4 * TOP_VERTS : TOP_VERTS;
 	const positions = new Float32Array(drawn * vertsPerCell * 3);
 	const colors = new Float32Array(drawn * vertsPerCell * 3);
-	/** Write one cell's six vertices for a cell `w` x `h` in data units, centred on its lattice slot. */
-	function placeCell(cell, r, c, w, h) {
-		for (let k = 0; k < vertsPerCell; k++) {
-			const [dx, dy] = QUAD_CORNERS[k];
-			const p = dataToWorld(layout.corner(r, c, dx, dy, w, h));
+	/** The four side walls of a box, each as two triangles between the plane and the lid. */
+	const SIDE_EDGES = [
+		[[0, 0], [1, 0]],
+		[[1, 0], [1, 1]],
+		[[1, 1], [0, 1]],
+		[[0, 1], [0, 0]]
+	];
+	/** Write one cell's vertices for a `w` x `h` cell in data units, lifted `d` off the plane. */
+	function placeCell(cell, r, c, w, h, d = 0) {
+		let k = 0;
+		const put = (dx, dy, nOff) => {
+			const p = dataToWorld(layout.corner(r, c, dx, dy, w, h, nOff));
 			const base = (cell * vertsPerCell + k) * 3;
 			positions[base] = p[0];
 			positions[base + 1] = p[1];
 			positions[base + 2] = p[2];
+			k++;
+		};
+		for (const [dx, dy] of QUAD_CORNERS) put(dx, dy, d);
+		if (!depthDeclared) return;
+		for (const [[ax, ay], [bx, by]] of SIDE_EDGES) {
+			put(ax, ay, 0);
+			put(bx, by, 0);
+			put(bx, by, d);
+			put(ax, ay, 0);
+			put(bx, by, d);
+			put(ax, ay, d);
 		}
 	}
-	for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) placeCell(r * cols + c, r, c, fill, fill);
+	for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) placeCell(r * cols + c, r, c, fill, fill, 0);
 	const geom = new THREE.BufferGeometry();
 	const posAttr = new THREE.BufferAttribute(positions, 3);
-	if (sizeChannelDeclared) posAttr.setUsage(THREE.DynamicDrawUsage);
+	if (sizeChannelDeclared || depthDeclared) posAttr.setUsage(THREE.DynamicDrawUsage);
 	geom.setAttribute("position", posAttr);
 	const colorAttr = new THREE.BufferAttribute(colors, 3);
 	colorAttr.setUsage(THREE.DynamicDrawUsage);
@@ -8284,34 +8318,30 @@ function renderTensor(el, _view) {
 	const cellValue = new Float64Array(drawn).fill(NaN);
 	const cellW = new Float64Array(drawn).fill(fillFrac);
 	const cellH = new Float64Array(drawn).fill(fillFrac);
+	const cellD = new Float64Array(drawn);
 	const cellRgb = new Float32Array(drawn * 3);
-	/** Paint one cell's six vertices from a raw value. */
-	function paintCell(cell, raw) {
-		const u = normalizeColorValue(raw, colorDomain);
-		if (u === null) return;
-		const rgb = colorMapFn(u);
-		const r0 = rgb[0], g0 = rgb[1], b0 = rgb[2];
+	const SIDE_SHADE = .68;
+	/** Write one colour to a cell's vertices: full on the lid, shaded on the walls. */
+	function colourCell(cell, r0, g0, b0) {
 		cellRgb[cell * 3] = r0;
 		cellRgb[cell * 3 + 1] = g0;
 		cellRgb[cell * 3 + 2] = b0;
 		for (let k = 0; k < vertsPerCell; k++) {
+			const shade = k < TOP_VERTS ? 1 : SIDE_SHADE;
 			const base = (cell * vertsPerCell + k) * 3;
-			colors[base] = r0;
-			colors[base + 1] = g0;
-			colors[base + 2] = b0;
+			colors[base] = r0 * shade;
+			colors[base + 1] = g0 * shade;
+			colors[base + 2] = b0 * shade;
 		}
 	}
-	for (let cell = 0; cell < drawn; cell++) {
-		cellRgb[cell * 3] = baseColor[0];
-		cellRgb[cell * 3 + 1] = baseColor[1];
-		cellRgb[cell * 3 + 2] = baseColor[2];
-		for (let k = 0; k < vertsPerCell; k++) {
-			const base = (cell * vertsPerCell + k) * 3;
-			colors[base] = baseColor[0];
-			colors[base + 1] = baseColor[1];
-			colors[base + 2] = baseColor[2];
-		}
+	/** Paint one cell from a raw value. */
+	function paintCell(cell, raw) {
+		const u = normalizeColorValue(raw, colorDomain);
+		if (u === null) return;
+		const rgb = colorMapFn(u);
+		colourCell(cell, rgb[0], rgb[1], rgb[2]);
 	}
+	for (let cell = 0; cell < drawn; cell++) colourCell(cell, baseColor[0], baseColor[1], baseColor[2]);
 	/**
 	* Evaluate every drawn cell at `tSec`, binding indices for that cell only:
 	* the value first (colour), then the size channels with that value in
@@ -8319,7 +8349,7 @@ function renderTensor(el, _view) {
 	* can have slider-driven cell sizes without paying for a valueExpr.
 	*/
 	function paintAll(tSec) {
-		if (!(literalValues || valueFn) && !hasSizeExpr) return;
+		if (!(literalValues || valueFn) && !hasSizeExpr && !hasDepthExpr) return;
 		for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
 			const cell = r * cols + c;
 			const idxScope = {
@@ -8337,12 +8367,14 @@ function renderTensor(el, _view) {
 				value: Number.isFinite(v) ? v : NaN
 			};
 			cellValue[cell] = scope.value;
-			if (hasSizeExpr) {
+			if (hasSizeExpr || hasDepthExpr) {
 				const w = widthFn ? resolveExtent(evalExpr(widthFn, tSec, { overrideScope: scope }), fillFrac) : fillFrac;
 				const h = heightFn ? resolveExtent(evalExpr(heightFn, tSec, { overrideScope: scope }), fillFrac) : fillFrac;
+				const d = depthFn ? resolveDepth(evalExpr(depthFn, tSec, { overrideScope: scope })) : 0;
 				cellW[cell] = w;
 				cellH[cell] = h;
-				placeCell(cell, r, c, w * cellSize, h * cellSize);
+				cellD[cell] = d;
+				placeCell(cell, r, c, w * cellSize, h * cellSize, d * cellSize);
 			}
 		}
 	}
@@ -8352,7 +8384,7 @@ function renderTensor(el, _view) {
 		console.warn("tensor value evaluation error:", err);
 	}
 	colorAttr.needsUpdate = true;
-	if (hasSizeExpr) posAttr.needsUpdate = true;
+	if (hasSizeExpr || hasDepthExpr) posAttr.needsUpdate = true;
 	const ignoresPlaneOpacity = !!sh.ignorePlaneOpacity;
 	const mat = new THREE.MeshBasicMaterial({
 		vertexColors: true,
@@ -8414,13 +8446,13 @@ function renderTensor(el, _view) {
 	}
 	const cssColor = (rgb) => `rgb(${Math.round(rgb[0] * 255)}, ${Math.round(rgb[1] * 255)}, ${Math.round(rgb[2] * 255)})`;
 	let textLayer = null;
-	const textCapped = !!textExprString && (Math.max(rows, cols) > 2048 || rows * cols > 16384);
-	if (textCapped) {
+	/** The text quads' position buffer and per-cell placer, for lifting text with a cell's depth. */
+	let textQuads = null;
+	if (textFn && (Math.max(rows, cols) > 2048 || rows * cols > 16384)) {
 		console.warn(`tensor${el.id ? ` "${el.id}"` : ""}: textExpr is ignored on a ${rows}x${cols} lattice; cell text is capped at 2048 cells a side and 16384 cells in total (the canvas is 2048px a side).`);
 		textFn = null;
 	}
-	const textDeclared = !!textExprString && !textCapped;
-	if (textDeclared || planeLabels) {
+	if (textFn || planeLabels) {
 		const px = Math.max(1, Math.min(128, Math.floor(2048 / Math.max(rows + mT, cols + mL))));
 		const canvas = document.createElement("canvas");
 		canvas.width = Math.ceil((cols + mL) * px);
@@ -8432,40 +8464,57 @@ function renderTensor(el, _view) {
 			tex.magFilter = THREE.LinearFilter;
 			tex.generateMipmaps = false;
 			const lift = cellSize * .02;
-			const x0 = -mL * cellSize, y1 = layout.height + mT * cellSize;
-			const q = [
-				dataToWorld(layout.point(x0, 0, lift)),
-				dataToWorld(layout.point(layout.width, 0, lift)),
-				dataToWorld(layout.point(layout.width, y1, lift)),
-				dataToWorld(layout.point(x0, y1, lift))
-			];
-			const qPos = new Float32Array([
-				...q[0],
-				...q[1],
-				...q[2],
-				...q[3]
-			]);
-			const qUv = new Float32Array([
-				0,
-				0,
-				1,
-				0,
-				1,
-				1,
-				0,
-				1
-			]);
+			const quads = drawn + 2;
+			const qPos = new Float32Array(quads * 6 * 3);
+			const qUv = new Float32Array(quads * 6 * 2);
+			const U = cols + mL, V = rows + mT;
+			/** Write one quad: plane rect [h0,h1]x[v0,v1] (pitch units), lifted `n`, canvas rect [u0,u1]x[vTop,vBot] (canvas fractions from the top). */
+			const putQuad = (qi, h0, h1, v0, v1, n, u0, u1, cTop, cBot) => {
+				const P = [
+					layout.point(h0 * cellSize, v0 * cellSize, n),
+					layout.point(h1 * cellSize, v0 * cellSize, n),
+					layout.point(h1 * cellSize, v1 * cellSize, n),
+					layout.point(h0 * cellSize, v1 * cellSize, n)
+				].map(dataToWorld);
+				const T = [
+					[u0, 1 - cBot],
+					[u1, 1 - cBot],
+					[u1, 1 - cTop],
+					[u0, 1 - cTop]
+				];
+				const order = [
+					0,
+					1,
+					2,
+					0,
+					2,
+					3
+				];
+				for (let i = 0; i < 6; i++) {
+					const p = P[order[i]], t = T[order[i]];
+					const pb = (qi * 6 + i) * 3, tb = (qi * 6 + i) * 2;
+					qPos[pb] = p[0];
+					qPos[pb + 1] = p[1];
+					qPos[pb + 2] = p[2];
+					qUv[tb] = t[0];
+					qUv[tb + 1] = t[1];
+				}
+			};
+			const placeTextCell = (cell, r, c) => {
+				putQuad(cell, c, c + 1, rows - 1 - r, rows - r, cellD[cell] * cellSize + lift, (mL + c) / U, (mL + c + 1) / U, (mT + r) / V, (mT + r + 1) / V);
+			};
+			for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) placeTextCell(r * cols + c, r, c);
+			putQuad(drawn, -mL, cols, rows, rows + mT, lift, 0, 1, 0, mT / V);
+			putQuad(drawn + 1, -mL, 0, 0, rows, lift, 0, mL / U, mT / V, 1);
 			const qGeom = new THREE.BufferGeometry();
-			qGeom.setAttribute("position", new THREE.BufferAttribute(qPos, 3));
+			const qPosAttr = new THREE.BufferAttribute(qPos, 3);
+			if (depthDeclared) qPosAttr.setUsage(THREE.DynamicDrawUsage);
+			qGeom.setAttribute("position", qPosAttr);
 			qGeom.setAttribute("uv", new THREE.BufferAttribute(qUv, 2));
-			qGeom.setIndex([
-				0,
-				1,
-				2,
-				0,
-				2,
-				3
-			]);
+			textQuads = {
+				attr: qPosAttr,
+				place: placeTextCell
+			};
 			const qMat = new THREE.MeshBasicMaterial({
 				map: tex,
 				transparent: true,
@@ -8527,7 +8576,7 @@ function renderTensor(el, _view) {
 			ctx.restore();
 		} else ctx.fillText(t, cx, cy);
 	}
-	const cellTexts = new Array(textDeclared ? drawn : 0).fill("");
+	const cellTexts = new Array(textFn ? drawn : 0).fill("");
 	const keyParts = [];
 	/** Evaluate every cell's text (and, in plane mode, the axis labels) and redraw the canvas if anything changed. */
 	function paintText(tSec) {
@@ -8651,8 +8700,7 @@ function renderTensor(el, _view) {
 	function paintLabels(tSec) {
 		for (const dl of dynamicLabels) {
 			let txt;
-			if (!dl.fn) txt = "";
-			else try {
+			try {
 				txt = String(evalExpr(dl.fn, tSec, { overrideScope: dl.scope }));
 			} catch (_err) {
 				continue;
@@ -8669,7 +8717,7 @@ function renderTensor(el, _view) {
 		console.warn("tensor axis label evaluation error:", err);
 	}
 	const animState = { stopped: false };
-	if (!valueFn && !dynamicLabels.length && !sizeChannelDeclared && !textDeclared && !planeDynamic) return {
+	if (!valueFn && !dynamicLabels.length && !sizeChannelDeclared && !depthDeclared && !textExprString && !planeDynamic) return {
 		type: "tensor",
 		color: baseColor,
 		label: el.label
@@ -8678,11 +8726,13 @@ function renderTensor(el, _view) {
 	const channelStrings = [
 		widthExprString,
 		heightExprString,
+		depthExprString,
 		textExprString
 	].filter((x) => !!x);
 	const channelFns = () => [
 		widthFn,
 		heightFn,
+		depthFn,
 		textFn
 	].filter((x) => !!x);
 	const entry = {
@@ -8695,7 +8745,7 @@ function renderTensor(el, _view) {
 		compiledFns: [
 			...valueFn ? [valueFn] : [],
 			...channelFns(),
-			...dynamicLabels.map((dl) => dl.fn).filter((x) => !!x)
+			...dynamicLabels.map((dl) => dl.fn)
 		],
 		_rebuildFn() {
 			if (tensorState._sceneJsTrustState === compiledUnderTrust) return;
@@ -8707,17 +8757,22 @@ function renderTensor(el, _view) {
 			}
 			widthFn = compileOpt(widthExprString, "widthExpr");
 			heightFn = compileOpt(heightExprString, "heightExpr");
-			textFn = textCapped ? null : compileOpt(textExprString, "textExpr");
-			const hadSize = hasSizeExpr;
+			textFn = compileOpt(textExprString, "textExpr");
+			depthFn = compileOpt(depthExprString, "depthExpr");
+			const hadSize = hasSizeExpr || hasDepthExpr;
 			hasSizeExpr = !!(widthFn || heightFn);
-			if (hadSize && !hasSizeExpr) {
+			hasDepthExpr = !!depthFn;
+			if (hadSize && !hasSizeExpr && !hasDepthExpr) {
 				for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
 					const cell = r * cols + c;
 					cellW[cell] = fillFrac;
 					cellH[cell] = fillFrac;
-					placeCell(cell, r, c, fill, fill);
+					cellD[cell] = 0;
+					placeCell(cell, r, c, fill, fill, 0);
+					if (textQuads) textQuads.place(cell, r, c);
 				}
 				posAttr.needsUpdate = true;
+				if (textQuads) textQuads.attr.needsUpdate = true;
 			}
 			if (planeLabels) {
 				hLabelFn = compileAxisLabelExpr(hAxis);
@@ -8725,13 +8780,22 @@ function renderTensor(el, _view) {
 			}
 			const recompiled = /* @__PURE__ */ new Map();
 			for (const dl of dynamicLabels) {
-				if (!recompiled.has(dl.src)) recompiled.set(dl.src, compileAxisLabelExpr({ labelExpr: dl.src }));
-				dl.fn = recompiled.get(dl.src) ?? null;
+				let fn = recompiled.get(dl.src);
+				if (!fn) {
+					try {
+						fn = compileExpr(dl.src);
+					} catch (err) {
+						console.warn("Slider tensor labelExpr recompile error:", err);
+						continue;
+					}
+					recompiled.set(dl.src, fn);
+				}
+				dl.fn = fn;
 			}
 			entry.compiledFns = [
 				...valueFn ? [valueFn] : [],
 				...channelFns(),
-				...dynamicLabels.map((dl) => dl.fn).filter((x) => !!x),
+				...dynamicLabels.map((dl) => dl.fn),
 				...planeLabels ? [hLabelFn, vLabelFn].filter((x) => !!x) : []
 			];
 		}
@@ -8744,10 +8808,14 @@ function renderTensor(el, _view) {
 			if (textLayer) textLayer.mesh.visible = mesh.visible;
 			if (!mesh.visible) return;
 			const tSec = (nowMs - startTime) / 1e3;
-			if (valueFn || hasSizeExpr) try {
+			if (valueFn || hasSizeExpr || hasDepthExpr) try {
 				paintAll(tSec);
 				colorAttr.needsUpdate = true;
-				if (hasSizeExpr) posAttr.needsUpdate = true;
+				if (hasSizeExpr || hasDepthExpr) posAttr.needsUpdate = true;
+				if (hasDepthExpr && textQuads) {
+					for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) textQuads.place(r * cols + c, r, c);
+					textQuads.attr.needsUpdate = true;
+				}
 			} catch (_err) {}
 			if (textLayer && (textFn || planeLabels && (hLabelFn || vLabelFn))) try {
 				paintText(tSec);

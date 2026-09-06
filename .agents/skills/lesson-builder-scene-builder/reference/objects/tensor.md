@@ -39,6 +39,7 @@ elements. Use it instead of hand-writing cells — always.
 | `heightExpr` | `1 − gap` | Per-cell **height**, same scope. Independent of width |
 | `axisLabels` | `plane` | `plane`: labels and titles drawn on the lattice plane, like cell text. `screen`: HTML labels facing the camera. See *Axis labels* |
 | `anchor` | `center` | Which edge a shrunken cell keeps: `bottom`, `top`, `left`, `right`, or a pair like `bottom-left`. See *Channels* |
+| `depthExpr` | `0` | Per-cell **depth** off the lattice plane as a fraction of `cellSize` (0–3), same scope. A raised cell is a solid box with shaded walls |
 | `textExpr` | — | Text drawn **inside** each cell, same scope. Plain text, fitted to the cell, on the lattice plane |
 | `textColor` | auto | Colour for cell text. Omit for automatic contrast per cell |
 | `label` | — | **One** legend entry for the whole tensor |
@@ -105,6 +106,7 @@ follows the value" needs no second data source.
 | `valueExpr` / `values` | colour | number, normalized over `colorDomain` |
 | `widthExpr` | cell width | fraction of `cellSize`, 0–1; the cell stays centred on its slot |
 | `heightExpr` | cell height | fraction of `cellSize`, 0–1; independent of width |
+| `depthExpr` | cell depth (a bump) | fraction of `cellSize`, 0–3, along the plane normal |
 | `textExpr` | text inside the cell | a string; `''` draws nothing |
 
 ```json
@@ -131,6 +133,11 @@ Every bar stands on the same baseline, so heights compare by eye; without `ancho
 cells shrink about their centres and read as lozenges, not bars. `heightExpr` is a fraction of
 `cellSize`, so for values outside `[0, 1]` normalize inside the expression — `value / 40`, or
 `(value - lo) / (hi - lo)` — and say the scale in the axis title.
+
+**Depth** is the third dimension. `"depthExpr": "value * 2"` raises each cell off the plane by twice
+its value in cell pitches, drawn as a solid box — lid in the cell's colour, four walls a fixed step
+darker so the height reads without lighting. A matrix becomes a relief map, and any text in the cell
+rides on the lid. It is worth an angled camera: from straight on, a bump is just a tile.
 
 Rules for the size channels:
 
