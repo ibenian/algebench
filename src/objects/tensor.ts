@@ -751,8 +751,12 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
             for (const t of firstTexts) widest = Math.max(widest, probe.measureText(plainTextOfLatex(t)).width);
         }
         // Width at the glyph size the labels are drawn at, plus a little air;
-        // never narrower than one cell, never wider than four.
-        vBand = Math.max(1, Math.min(4, widest * LABEL_GLYPH / 100 + 0.45));
+        // never narrower than one cell, never wider than four. A labelExpr is
+        // measured from its first frame only, and may be refused right now
+        // and speak later, so it reserves at least the 2.4 cells a short word
+        // needs rather than trusting one sample.
+        const measured = widest * LABEL_GLYPH / 100 + 0.45;
+        vBand = Math.max(1, Math.min(4, vLabelSrc ? Math.max(measured, 2.4) : measured));
     }
     let mL = axisPlane ? vBand + (vTitle ? TITLE_BAND : 0) : 0;
     // The canvas is capped at 2048 a side and needs at least a pixel per
@@ -790,9 +794,11 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     // string could be read anyway. Say so and skip the layer rather than
     // allocate something the GPU may refuse.
     // Two caps, both about the canvas: past 2048 cells a side no pixel budget
-    // fits the texture limit, and past 16384 cells in total each cell gets
-    // under 16px, where no string is legible and the per-frame evaluation
-    // is pure cost. Say so and skip the text rather than allocate it.
+    // fits the texture limit, and past 16384 cells in total the 2048x2048
+    // budget leaves each cell at most 256 square pixels -- a 16px square at
+    // best, less on one side for a rectangular lattice -- where no string is
+    // legible and the per-frame evaluation is pure cost. Say so and skip the
+    // text rather than allocate it.
     // Keyed on what is DECLARED, not on what compiled: a textExpr the current
     // trust state refuses still needs its canvas and its cap in place for the
     // recompile that lets it through.

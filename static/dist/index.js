@@ -8401,7 +8401,8 @@ function renderTensor(el, _view) {
 			probe.font = "100px system-ui, sans-serif";
 			for (const t of firstTexts) widest = Math.max(widest, probe.measureText(plainTextOfLatex(t)).width);
 		}
-		vBand = Math.max(1, Math.min(4, widest * LABEL_GLYPH / 100 + .45));
+		const measured = widest * LABEL_GLYPH / 100 + .45;
+		vBand = Math.max(1, Math.min(4, vLabelSrc ? Math.max(measured, 2.4) : measured));
 	}
 	let mL = axisPlane ? vBand + (vTitle ? TITLE_BAND : 0) : 0;
 	let planeLabels = axisPlane && (mT > 0 || mL > 0);
