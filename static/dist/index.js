@@ -8468,7 +8468,8 @@ function renderTensor(el, _view) {
 			tex.magFilter = THREE.LinearFilter;
 			tex.generateMipmaps = false;
 			const lift = cellSize * .02;
-			const quads = drawn + 2;
+			const cellQuads = textDeclared ? drawn : 0;
+			const quads = cellQuads + 2;
 			const qPos = new Float32Array(quads * 6 * 3);
 			const qUv = new Float32Array(quads * 6 * 2);
 			const U = cols + mL, V = rows + mT;
@@ -8507,18 +8508,18 @@ function renderTensor(el, _view) {
 			const placeTextCell = (cell, r, c) => {
 				putQuad(cell, c, c + 1, rows - 1 - r, rows - r, cellD[cell] * cellSize + lift, (mL + c) / U, (mL + c + 1) / U, (mT + r) / V, (mT + r + 1) / V);
 			};
-			for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) placeTextCell(r * cols + c, r, c);
-			putQuad(drawn, -mL, cols, rows, rows + mT, lift, 0, 1, 0, mT / V);
-			putQuad(drawn + 1, -mL, 0, 0, rows, lift, 0, mL / U, mT / V, 1);
+			if (textDeclared) for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) placeTextCell(r * cols + c, r, c);
+			putQuad(cellQuads, -mL, cols, rows, rows + mT, lift, 0, 1, 0, mT / V);
+			putQuad(cellQuads + 1, -mL, 0, 0, rows, lift, 0, mL / U, mT / V, 1);
 			const qGeom = new THREE.BufferGeometry();
 			const qPosAttr = new THREE.BufferAttribute(qPos, 3);
-			if (depthDeclared) qPosAttr.setUsage(THREE.DynamicDrawUsage);
+			if (depthDeclared && textDeclared) qPosAttr.setUsage(THREE.DynamicDrawUsage);
 			qGeom.setAttribute("position", qPosAttr);
 			qGeom.setAttribute("uv", new THREE.BufferAttribute(qUv, 2));
-			textQuads = {
+			textQuads = textDeclared ? {
 				attr: qPosAttr,
 				place: placeTextCell
-			};
+			} : null;
 			const qMat = new THREE.MeshBasicMaterial({
 				map: tex,
 				transparent: true,

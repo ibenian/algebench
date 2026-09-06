@@ -880,7 +880,10 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
             // Row 0 is drawn at the top of the canvas and sits at the top of
             // the lattice; CanvasTexture flips Y, so v = 1 is the canvas top.
             const lift = cellSize * 0.02;
-            const quads = drawn + 2;
+            // Cell quads exist only when there is cell text to carry; a
+            // lattice with plane labels alone gets just the two band quads.
+            const cellQuads = textDeclared ? drawn : 0;
+            const quads = cellQuads + 2;
             const qPos = new Float32Array(quads * 6 * 3);
             const qUv = new Float32Array(quads * 6 * 2);
             const U = cols + mL, V = rows + mT;
@@ -903,15 +906,18 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
                 putQuad(cell, c, c + 1, rows - 1 - r, rows - r, cellD[cell]! * cellSize + lift,
                         (mL + c) / U, (mL + c + 1) / U, (mT + r) / V, (mT + r + 1) / V);
             };
-            for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) placeTextCell(r * cols + c, r, c);
-            putQuad(drawn, -mL, cols, rows, rows + mT, lift, 0, 1, 0, mT / V);
-            putQuad(drawn + 1, -mL, 0, 0, rows, lift, 0, mL / U, mT / V, 1);
+            if (textDeclared) for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) placeTextCell(r * cols + c, r, c);
+            putQuad(cellQuads, -mL, cols, rows, rows + mT, lift, 0, 1, 0, mT / V);
+            putQuad(cellQuads + 1, -mL, 0, 0, rows, lift, 0, mL / U, mT / V, 1);
             const qGeom = new THREE.BufferGeometry();
             const qPosAttr = new THREE.BufferAttribute(qPos, 3);
-            if (depthDeclared) qPosAttr.setUsage(THREE.DynamicDrawUsage);
+            // Only cell quads ever move (with their cells' depth); the band
+            // quads stay on the plane, so without cell text nothing is dynamic
+            // and the depth path has no quads to place.
+            if (depthDeclared && textDeclared) qPosAttr.setUsage(THREE.DynamicDrawUsage);
             qGeom.setAttribute('position', qPosAttr);
             qGeom.setAttribute('uv', new THREE.BufferAttribute(qUv, 2));
-            textQuads = { attr: qPosAttr, place: placeTextCell };
+            textQuads = textDeclared ? { attr: qPosAttr, place: placeTextCell } : null;
             // alphaTest drops the canvas's transparent pixels before the depth
             // test, so the text quads can write depth over raised cells
             // without their empty area occluding what lies behind.
