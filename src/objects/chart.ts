@@ -276,24 +276,35 @@ export function renderChart(el: Element, view: MathBoxNode) {
         color: parseColor(sp.color || el.color || '#aabbcc') as Rgb3,
         width: Number(sp.width) > 0 ? Number(sp.width) : 1.5,
         opacity: Number.isFinite(Number(sp.opacity)) ? Math.max(0, Math.min(1, Number(sp.opacity))) : 0.8,
-        y: Number.isFinite(Number(sp.y)) ? Number(sp.y) : 0,
+        // NaN until an expression yields a value: a refused expression hides
+        // the line rather than drawing it flat at 0.
+        y: Number.isFinite(Number(sp.y)) ? Number(sp.y) : NaN,
         // The source outlives a refused compile so a trust change can retry it.
         src: Number.isFinite(Number(sp.y)) || typeof sp.yExpr !== 'string' ? null : sp.yExpr.trim() || null,
         fn: Number.isFinite(Number(sp.y)) ? null : compileOpt(sp.yExpr, `hlines[${k}].yExpr`),
         node: null, data: null, entry: null,
     }));
+    for (let k = hlines.length - 1; k >= 0; k--) {
+        const l = hlines[k]!;
+        if (!Number.isFinite(l.y) && !l.src) { console.warn(`chart${el.id ? ` "${el.id}"` : ''}: hlines[${k}] has neither y nor yExpr; skipped.`); hlines.splice(k, 1); }
+    }
     interface Band { color: Rgb3; opacity: number; lo: number; hi: number; loSrc: string | null; hiSrc: string | null; loFn: { src: string; fn: CompiledExpr } | null; hiFn: { src: string; fn: CompiledExpr } | null; mesh: Mesh | null; attr: BufferAttribute | null; }
     const bands: Band[] = (Array.isArray(chart.bands) ? (chart.bands as BandSpec[]) : []).map((sp, k) => ({
         color: parseColor(sp.color || el.color || '#aabbcc') as Rgb3,
         opacity: Number.isFinite(Number(sp.opacity)) ? Math.max(0, Math.min(1, Number(sp.opacity))) : 0.18,
-        lo: Number.isFinite(Number(sp.lo)) ? Number(sp.lo) : 0,
-        hi: Number.isFinite(Number(sp.hi)) ? Number(sp.hi) : 0,
+        lo: Number.isFinite(Number(sp.lo)) ? Number(sp.lo) : NaN,
+        hi: Number.isFinite(Number(sp.hi)) ? Number(sp.hi) : NaN,
         loSrc: Number.isFinite(Number(sp.lo)) || typeof sp.loExpr !== 'string' ? null : sp.loExpr.trim() || null,
         hiSrc: Number.isFinite(Number(sp.hi)) || typeof sp.hiExpr !== 'string' ? null : sp.hiExpr.trim() || null,
         loFn: Number.isFinite(Number(sp.lo)) ? null : compileOpt(sp.loExpr, `bands[${k}].loExpr`),
         hiFn: Number.isFinite(Number(sp.hi)) ? null : compileOpt(sp.hiExpr, `bands[${k}].hiExpr`),
         mesh: null, attr: null,
     }));
+
+    for (let k = bands.length - 1; k >= 0; k--) {
+        const b = bands[k]!;
+        if ((!Number.isFinite(b.lo) && !b.loSrc) || (!Number.isFinite(b.hi) && !b.hiSrc)) { console.warn(`chart${el.id ? ` "${el.id}"` : ''}: bands[${k}] needs lo/hi or loExpr/hiExpr; skipped.`); bands.splice(k, 1); }
+    }
 
     // ── Axes ──
     const axes = Array.isArray(chart.axes) ? (chart.axes as AxisSpec[]) : [];
@@ -398,12 +409,13 @@ export function renderChart(el: Element, view: MathBoxNode) {
         if (s.kind === 'points') chartState.pointNodes.push({ node }); else chartState.lineNodes.push(entry);
     }
     for (const l of hlines) {
-        const [, v] = toPlane(0, l.y);
+        const [, v] = toPlane(0, Number.isFinite(l.y) ? l.y : yDom[0]);
         const pts = [at(0, v, lift * 2), at(W, v, lift * 2)];
         const entry: LineEntry = { node: null, baseWidth: l.width, baseOpacity: l.opacity, widthParam: 'lineWidth', anchorDataPos: at(W / 2, v) };
         const lineW = resolveLineWidth(entry);
         const data = view.array({ channels: 3, width: 2, data: pts, live: true });
         const node = data.line({ color: new THREE.Color(...l.color), width: lineW, opacity: l.opacity * lineOpacity, zBias: 1 });
+        if (!Number.isFinite(l.y)) node.set('visible', false);
         entry.node = node;
         l.node = node; l.data = data; l.entry = entry;
         chartState.lineNodes.push(entry);
@@ -444,6 +456,7 @@ export function renderChart(el: Element, view: MathBoxNode) {
     /** A band's quad, clipped to the plot area; a band wholly outside it collapses to nothing. */
     const placeBand = (b: Band) => {
         if (!b.attr) return;
+        if (!Number.isFinite(b.lo) || !Number.isFinite(b.hi)) { writeQuad(b.attr, 0, W, 0, 0, lift); return; }
         const [, v0] = toPlane(0, Math.min(b.lo, b.hi)), [, v1] = toPlane(0, Math.max(b.lo, b.hi));
         writeQuad(b.attr, 0, W, Math.max(0, Math.min(H, v0)), Math.max(0, Math.min(H, v1)), lift);
     };
@@ -575,7 +588,11 @@ export function renderChart(el: Element, view: MathBoxNode) {
     /** Push the current samples into the lines and bands. */
     function place() {
         for (const s of series) if (s.data) s.data.set('data', seriesPoints(s));
-        for (const l of hlines) if (l.data) { const [, v] = toPlane(0, l.y); l.data.set('data', [at(0, v, lift * 2), at(W, v, lift * 2)]); }
+        for (const l of hlines) if (l.data && l.node) {
+            const ok = Number.isFinite(l.y);
+            l.node.set('visible', ok);
+            if (ok) { const [, v] = toPlane(0, l.y); l.data.set('data', [at(0, v, lift * 2), at(W, v, lift * 2)]); }
+        }
         for (const b of bands) placeBand(b);
     }
 
