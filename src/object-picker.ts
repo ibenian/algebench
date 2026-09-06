@@ -602,7 +602,9 @@ function onPointerMove(e: PointerEvent) {
         // A shown button is a target the user is travelling to. Crossing another
         // object's caption on the way would re-pick, and the button would jump
         // to that label's corner or hide -- so near the button, freeze the pick.
-        if (_btn && _btn.style.opacity === '1') {
+        // Only while the object it points at is still there: once it is removed
+        // or hidden, fall through so the button can hide or retarget.
+        if (_btn && _btn.style.opacity === '1' && _hoveredId && isPickable(_hoveredId)) {
             const br = _btn.getBoundingClientRect();
             if (ev.clientX >= br.left - GRACE_PX && ev.clientX <= br.right + GRACE_PX
                 && ev.clientY >= br.top - GRACE_PX && ev.clientY <= br.bottom + GRACE_PX) {

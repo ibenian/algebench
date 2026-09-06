@@ -15725,7 +15725,7 @@ function onPointerMove(e) {
 		_rafPending = false;
 		const ev = _lastEvt;
 		if (!ev) return;
-		if (_btn && _btn.style.opacity === "1") {
+		if (_btn && _btn.style.opacity === "1" && _hoveredId && isPickable(_hoveredId)) {
 			const br = _btn.getBoundingClientRect();
 			if (ev.clientX >= br.left - GRACE_PX && ev.clientX <= br.right + GRACE_PX && ev.clientY >= br.top - GRACE_PX && ev.clientY <= br.bottom + GRACE_PX) {
 				if (_hideTimer) {
