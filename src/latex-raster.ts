@@ -42,6 +42,8 @@ const SUPERSAMPLE = 2;
 const FAMILY = 'system-ui, sans-serif';
 const CACHE_MAX = 512;
 const cache = new Map<string, LatexRaster>();
+/** Layout-only cache: measuring a label must not cost a canvas. */
+const metrics = new Map<string, { w: number; h: number }>();
 const listeners = new Set<() => void>();
 let host: HTMLDivElement | null = null;
 let probe: HTMLSpanElement | null = null;
@@ -71,6 +73,7 @@ function watchFonts(): void {
     document.fonts.ready.then(() => {
         fontsHooked = false;
         cache.clear();
+        metrics.clear();
         for (const cb of Array.from(listeners)) { try { cb(); } catch (_e) { /* one listener must not stop the rest */ } }
     }).catch(() => { fontsHooked = false; });
 }
@@ -192,8 +195,27 @@ export function rasterLatex(src: string, fontPx: number, color: string): LatexRa
 
 /** Width and height (CSS px) of `src` laid out at 100px; the ratio is what fitting needs. */
 export function measureLatex(src: string): { w: number; h: number } {
-    const r = rasterLatex(src, 100, '#ffffff');
-    return { w: r.w, h: r.h };
+    const hit = metrics.get(src);
+    if (hit) return hit;
+    let m: { w: number; h: number };
+    if (!hasDom() || !src) {
+        m = { w: src.length * 55, h: 120 };
+    } else {
+        const h = getHost();
+        h.style.font = `100px ${FAMILY}`;
+        h.innerHTML = renderKaTeX(src, false);
+        for (const el of h.querySelectorAll('.katex-mathml')) el.remove();
+        const box = h.getBoundingClientRect();
+        h.innerHTML = '';
+        m = { w: Math.ceil(box.width), h: Math.ceil(box.height) };
+        if (document.fonts && document.fonts.status === 'loading') watchFonts();
+    }
+    if (metrics.size >= CACHE_MAX) {
+        const oldest = metrics.keys().next().value;
+        if (oldest !== undefined) metrics.delete(oldest);
+    }
+    metrics.set(src, m);
+    return m;
 }
 
 /**
@@ -229,4 +251,5 @@ export function drawLatex(ctx: CanvasRenderingContext2D, src: string, x: number,
 /** Test hook: forget every raster. */
 export function _clearLatexRasterCache(): void {
     cache.clear();
+    metrics.clear();
 }

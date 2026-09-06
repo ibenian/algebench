@@ -7906,6 +7906,8 @@ var SUPERSAMPLE = 2;
 var FAMILY = "system-ui, sans-serif";
 var CACHE_MAX = 512;
 var cache = /* @__PURE__ */ new Map();
+/** Layout-only cache: measuring a label must not cost a canvas. */
+var metrics = /* @__PURE__ */ new Map();
 var listeners = /* @__PURE__ */ new Set();
 var host = null;
 var probe = null;
@@ -7930,6 +7932,7 @@ function watchFonts() {
 	document.fonts.ready.then(() => {
 		fontsHooked = false;
 		cache.clear();
+		metrics.clear();
 		for (const cb of Array.from(listeners)) try {
 			cb();
 		} catch (_e) {}
@@ -8068,11 +8071,32 @@ function rasterLatex(src, fontPx, color) {
 }
 /** Width and height (CSS px) of `src` laid out at 100px; the ratio is what fitting needs. */
 function measureLatex(src) {
-	const r = rasterLatex(src, 100, "#ffffff");
-	return {
-		w: r.w,
-		h: r.h
+	const hit = metrics.get(src);
+	if (hit) return hit;
+	let m;
+	if (!hasDom() || !src) m = {
+		w: src.length * 55,
+		h: 120
 	};
+	else {
+		const h = getHost();
+		h.style.font = `100px ${FAMILY}`;
+		h.innerHTML = renderKaTeX$1(src, false);
+		for (const el of h.querySelectorAll(".katex-mathml")) el.remove();
+		const box = h.getBoundingClientRect();
+		h.innerHTML = "";
+		m = {
+			w: Math.ceil(box.width),
+			h: Math.ceil(box.height)
+		};
+		if (document.fonts && document.fonts.status === "loading") watchFonts();
+	}
+	if (metrics.size >= CACHE_MAX) {
+		const oldest = metrics.keys().next().value;
+		if (oldest !== void 0) metrics.delete(oldest);
+	}
+	metrics.set(src, m);
+	return m;
 }
 /**
 * The largest font size at which `src` fits a `wPx` × `hPx` box. A plain
