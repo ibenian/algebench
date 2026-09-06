@@ -29,6 +29,12 @@
           "description": "Close on the sampled draws"
         },
         {
+          "name": "Scaled",
+          "position": [15.5, 6.5, 8.5],
+          "target": [15.5, 6.5, 0],
+          "description": "Close on the scaled draws and their radical"
+        },
+        {
           "name": "Iso",
           "position": [20, -8, 14],
           "target": [9.5, 2.5, 0],
@@ -72,7 +78,7 @@
                 {"loExpr": "-sqrt(tfSampleVar(gen_n, 4000))", "hiExpr": "sqrt(tfSampleVar(gen_n, 4000))", "color": "#f06292", "opacity": 0.12}
               ],
               "axes": [
-                {"title": "draw $i$"},
+                {"title": "sample"},
                 {"title": "$q \\cdot k$", "color": "#f06292"}
               ],
               "label": "q·k, i.i.d. draws",
@@ -95,7 +101,7 @@
               ],
               "yDomain": [-4, 4],
               "axes": [
-                {"title": "draw $i$"},
+                {"title": "sample"},
                 {"title": "$q \\cdot k / \\sqrt{n}$", "color": "#f06292"}
               ],
               "label": "same draws, ÷√n",
