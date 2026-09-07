@@ -677,7 +677,8 @@ export function setupObjectPicker() {
         const hit = pickTensorCell(e.clientX, e.clientY);
         if (!hit) return;
         e.preventDefault();
-        e.stopImmediatePropagation();
+        e.stopImmediatePropagation();   // also skips the hideBtnNow listener below, so:
+        hideBtnNow();
         const x = e.clientX + 4, y = e.clientY + 6;
         showTensorCellPop(hit.bind, hit.row, hit.col, { left: x, top: y, right: x, bottom: y });
         _latticePop = true;

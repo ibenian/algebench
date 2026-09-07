@@ -10216,7 +10216,6 @@ function renderChart(el, view) {
 			let textW = 0;
 			for (const sr of legendRows) textW = Math.max(textW, measureLatex(sr.label).w * fontPx / 100);
 			const boxW = pad * 2 + swatchW + gap + textW;
-			pad * 2 + rowH * legendRows.length;
 			const bx = X(W) - pad - boxW, by = Y(H) + pad;
 			legendRows.forEach((sr, k) => {
 				const cy = by + pad + rowH * (k + .5);
@@ -16574,6 +16573,7 @@ function setupObjectPicker() {
 		if (!hit) return;
 		e.preventDefault();
 		e.stopImmediatePropagation();
+		hideBtnNow();
 		const x = e.clientX + 4, y = e.clientY + 6;
 		showTensorCellPop(hit.bind, hit.row, hit.col, {
 			left: x,

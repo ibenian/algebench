@@ -631,7 +631,6 @@ export function renderChart(el: Element, view: MathBoxNode) {
             let textW = 0;
             for (const sr of legendRows) textW = Math.max(textW, measureLatex(sr.label!).w * fontPx / 100);
             const boxW = pad * 2 + swatchW + gap + textW;
-            const boxH = pad * 2 + rowH * legendRows.length;
             const bx = X(W) - pad - boxW, by = Y(H) + pad;
             legendRows.forEach((sr, k) => {
                 const cy = by + pad + rowH * (k + 0.5);
