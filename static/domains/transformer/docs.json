@@ -292,7 +292,7 @@
       ]
     },
     "tf_prenorm": {
-      "description": "Where a norm (tf_norm 1 or 2) sits. 1 = pre-norm: each sub-layer reads the normed stream and adds its raw output, and a final norm precedes the unembedding. 0 = post-norm: add first, then normalise the sum; no final norm. Ignored while tf_norm = 0.",
+      "description": "Where a norm (tf_norm 1 or 2) sits. 1 = pre-norm: each sub-layer reads the normed stream and adds its raw output, and a final norm precedes the unembedding. 0 = post-norm: add first, then normalise the sum; no final norm. Not read while tf_norm = 0.",
       "default": 1,
       "scenes": [
         5,
@@ -327,7 +327,7 @@
     },
     "tf_wq_<l>_<h>": {
       "kind": "tensor",
-      "description": "Weight override, cell-wise (a short table overrides the cells it covers). W_Q of layer l, query head h (d_model x d_k). Absent, the hand-built table (layer 0 / head 0 at the toy shape) or the seeded initialisation stands.",
+      "description": "Weight override, cell-wise (a short table overrides the cells it covers). W_Q of layer l, query head h (d_model x d_k). Absent, the hand-built table stands at layer 0 / head 0 (K/V head 0) while d_model = 4 and d_k = 2, and the seeded initialisation everywhere else.",
       "default": "hand-built or seeded",
       "scenes": [
         5,
@@ -336,7 +336,7 @@
     },
     "tf_wk_<l>_<g>": {
       "kind": "tensor",
-      "description": "Weight override, cell-wise (a short table overrides the cells it covers). W_K of layer l, K/V head g (d_model x d_k). Absent, the hand-built table (layer 0 / head 0 at the toy shape) or the seeded initialisation stands.",
+      "description": "Weight override, cell-wise (a short table overrides the cells it covers). W_K of layer l, K/V head g (d_model x d_k). Absent, the hand-built table stands at layer 0 / head 0 (K/V head 0) while d_model = 4 and d_k = 2, and the seeded initialisation everywhere else.",
       "default": "hand-built or seeded",
       "scenes": [
         5,
@@ -345,7 +345,7 @@
     },
     "tf_wv_<l>_<g>": {
       "kind": "tensor",
-      "description": "Weight override, cell-wise (a short table overrides the cells it covers). W_V of layer l, K/V head g (d_model x d_k). Absent, the hand-built table (layer 0 / head 0 at the toy shape) or the seeded initialisation stands.",
+      "description": "Weight override, cell-wise (a short table overrides the cells it covers). W_V of layer l, K/V head g (d_model x d_k). Absent, the hand-built table stands at layer 0 / head 0 (K/V head 0) while d_model = 4 and d_k = 2, and the seeded initialisation everywhere else.",
       "default": "hand-built or seeded",
       "scenes": [
         5,
@@ -354,8 +354,8 @@
     },
     "tf_wo_<l>": {
       "kind": "tensor",
-      "description": "Weight override, cell-wise (a short table overrides the cells it covers). W_O of layer l (n_heads d_k x d_model). Absent, the hand-built table (layer 0 / head 0 at the toy shape) or the seeded initialisation stands.",
-      "default": "hand-built or seeded",
+      "description": "Weight override, cell-wise (a short table overrides the cells it covers). W_O of layer l (n_heads d_k x d_model). Absent, the seeded initialisation stands (there is no hand-built table for this weight).",
+      "default": "seeded",
       "scenes": [
         5,
         6
@@ -363,8 +363,8 @@
     },
     "tf_w1_<l>": {
       "kind": "tensor",
-      "description": "Weight override, cell-wise (a short table overrides the cells it covers). FFN W1 of layer l (d_model x d_ff). Absent, the hand-built table (layer 0 / head 0 at the toy shape) or the seeded initialisation stands.",
-      "default": "hand-built or seeded",
+      "description": "Weight override, cell-wise (a short table overrides the cells it covers). FFN W1 of layer l (d_model x d_ff). Absent, the seeded initialisation stands (there is no hand-built table for this weight).",
+      "default": "seeded",
       "scenes": [
         5,
         6
@@ -372,8 +372,8 @@
     },
     "tf_w2_<l>": {
       "kind": "tensor",
-      "description": "Weight override, cell-wise (a short table overrides the cells it covers). FFN W2 of layer l (d_ff x d_model). Absent, the hand-built table (layer 0 / head 0 at the toy shape) or the seeded initialisation stands.",
-      "default": "hand-built or seeded",
+      "description": "Weight override, cell-wise (a short table overrides the cells it covers). FFN W2 of layer l (d_ff x d_model). Absent, the seeded initialisation stands (there is no hand-built table for this weight).",
+      "default": "seeded",
       "scenes": [
         5,
         6
@@ -381,8 +381,8 @@
     },
     "tf_w3_<l>": {
       "kind": "tensor",
-      "description": "Weight override, cell-wise (a short table overrides the cells it covers). FFN gate W3 of layer l (d_model x d_ff), read only when tf_act = 2 (SwiGLU). Absent, the hand-built table (layer 0 / head 0 at the toy shape) or the seeded initialisation stands.",
-      "default": "hand-built or seeded",
+      "description": "Weight override, cell-wise (a short table overrides the cells it covers). FFN gate W3 of layer l (d_model x d_ff), read only when tf_act = 2 (SwiGLU); other activations never read it, so it cannot invalidate their cache. Absent, the seeded initialisation stands (there is no hand-built table for this weight).",
+      "default": "seeded",
       "scenes": [
         5,
         6

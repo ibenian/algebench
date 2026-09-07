@@ -320,7 +320,9 @@
         // 0 = no normalisation anywhere (the toy of scenes 1-4), 1 LayerNorm, 2 RMSNorm.
         const normKind = _intRead('tf_norm', 0, 0, 2);
         const rms = normKind === 2;
-        const pre = _read('tf_prenorm', 1) >= 0.5;       // 1 pre-norm, 0 post-norm (when a norm is on)
+        // Read only when a norm is on, so toggling it with tf_norm = 0 never
+        // invalidates the cache for nothing.
+        const pre = normKind ? _read('tf_prenorm', 1) >= 0.5 : true;   // 1 pre-norm, 0 post-norm
         const nrm = normKind ? (v) => _norm(v, n, dModel, rms) : (v) => v;
         const act = _intRead('tf_act', 0, 0, 2);         // 0 relu, 1 gelu, 2 swiglu
         const temp = Math.max(1e-6, _read('tf_temp', 1));
@@ -359,7 +361,8 @@
             }
             const Wo = _effective(_seededMatrix(`wo${l}`, heads * dk, dModel, 1 / Math.sqrt(heads * dk)), `tf_wo_${l}`, heads * dk, dModel);
             const W1 = _effective(_seededMatrix(`w1${l}`, dModel, dff, sc), `tf_w1_${l}`, dModel, dff);
-            const W3 = _effective(_seededMatrix(`w3${l}`, dModel, dff, sc), `tf_w3_${l}`, dModel, dff);
+            // The SwiGLU gate exists only under tf_act = 2; other activations never read it.
+            const W3 = cfg.act === 2 ? _effective(_seededMatrix(`w3${l}`, dModel, dff, sc), `tf_w3_${l}`, dModel, dff) : null;
             const W2 = _effective(_seededMatrix(`w2${l}`, dff, dModel, 1 / Math.sqrt(dff)), `tf_w2_${l}`, dff, dModel);
             L.push({ Wq, Wk, Wv, Wo, W1, W2, W3 });
         }
