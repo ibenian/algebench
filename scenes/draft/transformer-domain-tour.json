@@ -41,12 +41,12 @@
           "title": "Attention, per head — tfQh, tfKh, tfVh, tfAttnH, tfHeadOut, tfConcat, tfAttnOut",
           "description": "One layer of attention with every head exposed: pick the head, change the head count or share K/V, and read each function's lattice.",
           "sliders": [
-            {"id": "demo_h", "label": "head shown ($h$)", "min": 0, "max": 3, "step": 1, "default": 0},
-            {"id": "tf_heads", "label": "tf_heads — query heads", "min": 1, "max": 4, "step": 1, "default": 2},
-            {"id": "tf_kv", "label": "tf_kv — K/V heads", "min": 1, "max": 4, "step": 1, "default": 2},
-            {"id": "s3_mask", "label": "causal mask on/off", "min": 0, "max": 1, "step": 1, "default": 1},
+            {"id": "demo_h", "label": "head shown ($h$)", "min": 0, "max": 3, "step": 1, "default": 0, "valueExpr": "concat('head ', string(demo_h))"},
+            {"id": "tf_heads", "label": "tf_heads — query heads", "min": 1, "max": 4, "step": 1, "default": 2, "valueExpr": "string(tf_heads)"},
+            {"id": "tf_kv", "label": "tf_kv — K/V heads", "min": 1, "max": 4, "step": 1, "default": 2, "valueExpr": "string(tf_kv)"},
+            {"id": "s3_mask", "label": "causal mask", "min": 0, "max": 1, "step": 1, "default": 1, "valueExpr": "s3_mask >= 0.5 ? 'on' : 'off'"},
             {"id": "s3_scale", "label": "divisor: 1 (none) → $\\sqrt{d_k}$", "min": 0, "max": 1, "step": 0.05, "default": 1},
-            {"id": "s2_rope", "label": "RoPE instead of additive PE", "min": 0, "max": 1, "step": 1, "default": 0},
+            {"id": "s2_rope", "label": "position scheme", "min": 0, "max": 1, "step": 1, "default": 0, "valueExpr": "s2_rope >= 0.5 ? 'RoPE' : 'additive PE'"},
             {
               "id": "tf_wo_0",
               "kind": "tensor",
@@ -471,11 +471,11 @@
           "title": "The block — tfAttnIn, tfResid1, tfFfIn, tfFfPre, tfFfHidden, tfFfOut, tfResid2",
           "description": "The residual stream through one layer: attention increment, FFN increment, and where the norms sit.",
           "sliders": [
-            {"id": "demo_l", "label": "layer shown ($l$)", "min": 0, "max": 2, "step": 1, "default": 0},
-            {"id": "tf_layers", "label": "tf_layers — layers in the stack", "min": 1, "max": 3, "step": 1, "default": 1},
-            {"id": "tf_norm", "label": "tf_norm: 0 none · 1 LayerNorm · 2 RMSNorm", "min": 0, "max": 2, "step": 1, "default": 1},
-            {"id": "tf_prenorm", "label": "tf_prenorm: 0 post-norm · 1 pre-norm", "min": 0, "max": 1, "step": 1, "default": 1},
-            {"id": "tf_act", "label": "tf_act: 0 ReLU · 1 GELU · 2 SwiGLU", "min": 0, "max": 2, "step": 1, "default": 0},
+            {"id": "demo_l", "label": "layer shown ($l$)", "min": 0, "max": 2, "step": 1, "default": 0, "valueExpr": "concat('layer ', string(demo_l))"},
+            {"id": "tf_layers", "label": "tf_layers — layers in the stack", "min": 1, "max": 3, "step": 1, "default": 1, "valueExpr": "string(tf_layers)"},
+            {"id": "tf_norm", "label": "tf_norm — normalisation", "min": 0, "max": 2, "step": 1, "default": 1, "valueExpr": "tf_norm < 0.5 ? 'none' : (tf_norm < 1.5 ? 'LayerNorm' : 'RMSNorm')"},
+            {"id": "tf_prenorm", "label": "tf_prenorm — placement", "min": 0, "max": 1, "step": 1, "default": 1, "valueExpr": "tf_prenorm >= 0.5 ? 'pre-norm' : 'post-norm'"},
+            {"id": "tf_act", "label": "tf_act — activation", "min": 0, "max": 2, "step": 1, "default": 0, "valueExpr": "tf_act < 0.5 ? 'ReLU' : (tf_act < 1.5 ? 'GELU' : 'SwiGLU')"},
             {
               "id": "tf_w1_0",
               "kind": "tensor",
@@ -839,11 +839,11 @@
           "title": "Stack and sample — tfH by depth, tfFinal, tfWu, tfLogit, tfProb, tfArgmax, tfEntropy",
           "description": "The stream at every depth, the unembedding, and the next-token distribution under temperature.",
           "sliders": [
-            {"id": "demo_i", "label": "slot to follow ($i$)", "min": 0, "max": 5, "step": 1, "default": 2},
-            {"id": "tf_layers", "label": "tf_layers — layers in the stack", "min": 1, "max": 3, "step": 1, "default": 2},
-            {"id": "tf_temp", "label": "tf_temp — temperature", "min": 0.05, "max": 5, "step": 0.05, "default": 1},
-            {"id": "tf_norm", "label": "tf_norm: 0 none · 1 LayerNorm · 2 RMSNorm", "min": 0, "max": 2, "step": 1, "default": 1},
-            {"id": "s3_mask", "label": "causal mask on/off", "min": 0, "max": 1, "step": 1, "default": 1}
+            {"id": "demo_i", "label": "slot to follow ($i$)", "min": 0, "max": 5, "step": 1, "default": 2, "valueExpr": "concat(string(demo_i), ' · ', tfToken(demo_i))"},
+            {"id": "tf_layers", "label": "tf_layers — layers in the stack", "min": 1, "max": 3, "step": 1, "default": 2, "valueExpr": "string(tf_layers)"},
+            {"id": "tf_temp", "label": "tf_temp — temperature", "min": 0.05, "max": 5, "step": 0.05, "default": 1, "valueExpr": "toFixed(tf_temp, 2)"},
+            {"id": "tf_norm", "label": "tf_norm — normalisation", "min": 0, "max": 2, "step": 1, "default": 1, "valueExpr": "tf_norm < 0.5 ? 'none' : (tf_norm < 1.5 ? 'LayerNorm' : 'RMSNorm')"},
+            {"id": "s3_mask", "label": "causal mask", "min": 0, "max": 1, "step": 1, "default": 1, "valueExpr": "s3_mask >= 0.5 ? 'on' : 'off'"}
           ],
           "add": [
             {
