@@ -4,7 +4,7 @@
  * One fixed six-token forward pass: "the cat sat on the mat",
  * d_model = 4, n_heads = 2, d_k = 2, one head shown, causal.
  *
- * Registers tfPerm, tfToken, tfEmb, tfPE, tfX, tfOutNoPos, tfQ, tfK, tfV, tfQProbe,
+ * Registers tfPerm, tfToken, tfEmb, tfEmbBase, tfW, tfPE, tfX, tfOutNoPos, tfQ, tfK, tfV, tfQProbe,
  * tfScore, tfScoreScaled, tfScoreDiv, tfMaskVal, tfAttn, tfRowSum, tfOut,
  * tfRopeQ, tfRopeK, tfRopeDot, tfRopeEmb, tfRopeEmbTheta, tfRopeEmbDot, tfRopeEmbArc,
  * tfRopeEmbNorm, tfRopeEmbAngle,
@@ -53,6 +53,35 @@
     const W_Q = [[0, 0], [0, 0], [3, 0], [0, 1]];
     const W_K = [[0, 0], [3, 0], [0, 0], [0, 1]];
     const W_V = [[1, 0], [0, 1], [0, 0], [0, 0]];
+
+    // ---- sandbox overrides ----------------------------------------------
+    //
+    // Every embedding row and every weight entry can be set by a slider named
+    // after it (s4_e<row><dim>, s4_w<q|k|v><row><col>). With no such slider
+    // the hand-built constant stands, so scenes 1-3 compute exactly what they
+    // always did; a scene that declares one of these sliders must give it the
+    // constant as its default. Listed literally so check_transformer_domain.py
+    // can hold docs.json and the cache key to the same set.
+    const EMB_SLIDERS = [
+        ['s4_e00', 's4_e01', 's4_e02', 's4_e03'],
+        ['s4_e10', 's4_e11', 's4_e12', 's4_e13'],
+        ['s4_e20', 's4_e21', 's4_e22', 's4_e23'],
+        ['s4_e30', 's4_e31', 's4_e32', 's4_e33'],
+        ['s4_e40', 's4_e41', 's4_e42', 's4_e43'],
+        ['s4_e50', 's4_e51', 's4_e52', 's4_e53'],
+    ];
+    const WQ_SLIDERS = [['s4_wq00', 's4_wq01'], ['s4_wq10', 's4_wq11'], ['s4_wq20', 's4_wq21'], ['s4_wq30', 's4_wq31']];
+    const WK_SLIDERS = [['s4_wk00', 's4_wk01'], ['s4_wk10', 's4_wk11'], ['s4_wk20', 's4_wk21'], ['s4_wk30', 's4_wk31']];
+    const WV_SLIDERS = [['s4_wv00', 's4_wv01'], ['s4_wv10', 's4_wv11'], ['s4_wv20', 's4_wv21'], ['s4_wv30', 's4_wv31']];
+    const _OVERRIDE_SLIDERS = [EMB_SLIDERS, WQ_SLIDERS, WK_SLIDERS, WV_SLIDERS].flatMap(t => t.flat());
+
+    /** `base` with each entry replaced by its slider's value when the scene defines one. */
+    function _effective(base, ids) {
+        return base.map((row, r) => row.map((v, c) => {
+            const o = Number(_getSlider(ids[r][c], v));
+            return Number.isFinite(o) ? o : v;
+        }));
+    }
 
     // The shuffle used by the permutation-equivariance beat.
     const PERM = [5, 0, 3, 2, 1, 4];
@@ -121,13 +150,18 @@
     const _KEY_SLIDERS = [
         's1_shuffle', 's1_pe', 's2_rope',
         's3_scale', 's3_mask', 's3_maskafter',
+        ..._OVERRIDE_SLIDERS,
     ];
 
     let _cache = { key: null, data: null };
 
     function _buildKey() {
+        // An ABSENT slider must key differently from one present at 0: the
+        // build falls back to a constant for the former, so keying both as 0
+        // would hand a scene that declares an override at 0 the cached pass
+        // of a scene that never declared it (and vice versa).
         const parts = [];
-        for (const id of _KEY_SLIDERS) parts.push(id + ':' + _getSlider(id, 0));
+        for (const id of _KEY_SLIDERS) parts.push(id + ':' + _getSlider(id, '-'));
         return parts.join('|');
     }
 
@@ -143,6 +177,11 @@
         const scale = _getSlider('s3_scale', 1);
         const maskOn = _getSlider('s3_mask', 0) >= 0.5 ? 1 : 0;
         const maskAfter = _getSlider('s3_maskafter', 0) >= 0.5 ? 1 : 0;
+        // Sandbox overrides (read through _effective, keyed above).
+        const EMBe = _effective(EMB, EMB_SLIDERS);
+        const WQ = _effective(W_Q, WQ_SLIDERS);
+        const WK = _effective(W_K, WK_SLIDERS);
+        const WV = _effective(W_V, WV_SLIDERS);
 
         // Which source token sits at each slot.
         const perm = new Int32Array(N);
@@ -156,16 +195,16 @@
         const x = new Float64Array(N * D_MODEL);
         for (let i = 0; i < N; i++) {
             for (let d = 0; d < D_MODEL; d++) {
-                const e = EMB[perm[i]][d];
+                const e = EMBe[perm[i]][d];
                 emb[i * D_MODEL + d] = e;
                 x[i * D_MODEL + d] = e + peOn * _pe(i, d);
             }
         }
 
         // Projections of the positioned input.
-        const Q = _project(x, W_Q);
-        const K = _project(x, W_K);
-        const V = _project(x, W_V);   // V is NEVER rotated (contract item 7)
+        const Q = _project(x, WQ);
+        const K = _project(x, WK);
+        const V = _project(x, WV);   // V is NEVER rotated (contract item 7)
 
         // RoPE: position as a rotation of q and k, INSTEAD of the additive PE
         // that peOn just suppressed. Never both.
@@ -227,9 +266,9 @@
         // reusing the masked one above would silently break the theorem,
         // because the mask is a second, independent reason equivariance fails.
         // It is still scaled dot-product attention, so it divides by sqrt(d_k).
-        const Qn = _project(emb, W_Q);
-        const Kn = _project(emb, W_K);
-        const Vn = _project(emb, W_V);
+        const Qn = _project(emb, WQ);
+        const Kn = _project(emb, WK);
+        const Vn = _project(emb, WV);
         const On = new Float64Array(N * D_K);
         for (let i = 0; i < N; i++) {
             const row = [];
@@ -246,7 +285,7 @@
             }
         }
 
-        return { perm, emb, x, Q, K, V, S, Ss, A, O, On };
+        return { perm, emb, x, Q, K, V, S, Ss, A, O, On, EMBe, WQ, WK, WV };
     }
 
     function _st() {
@@ -324,6 +363,16 @@
      *  point is that a shuffled lattice relabels itself instead of lying. */
     function tfToken(k) { return TOKENS[tfPerm(k)]; }
 
+    /** Row r (a TOKEN row, 0..5, no shuffle) of the embedding table in force: the
+     *  hand-built value unless slider s4_e<r><d> overrides it. */
+    function tfEmbBase(r, d) { return _st().EMBe[_clampIdx(r, N - 1)][_clampIdx(d, D_MODEL - 1)]; }
+    /** Entry (r, c) of a projection matrix in force -- m = 0 for W_Q, 1 for W_K,
+     *  2 for W_V; rows index the input dim (0..3), columns the head dim (0..1). */
+    function tfW(m, r, c) {
+        const st = _st();
+        const W = _clampIdx(m, 2) === 0 ? st.WQ : (_clampIdx(m, 2) === 1 ? st.WK : st.WV);
+        return W[_clampIdx(r, D_MODEL - 1)][_clampIdx(c, D_K - 1)];
+    }
     function tfEmb(i, d) { return _st().emb[_clampIdx(i, N - 1) * D_MODEL + _clampIdx(d, D_MODEL - 1)]; }
 
     /** Positional encoding at a CONTINUOUS position. Unlike every other index
@@ -611,6 +660,7 @@
     window.AlgeBenchDomains.register('transformer', {
         _init({ getSlider }) { _getSlider = getSlider; },
         tfPerm, tfToken, tfEmb, tfPE, tfX, tfOutNoPos,
+        tfEmbBase, tfW,
         tfQ, tfK, tfV, tfQProbe, tfProjQK, tfScoreProbe,
         tfScore, tfScoreScaled, tfScoreDiv, tfMaskVal, tfAttn, tfRowSum, tfOut,
         tfRopeQ, tfRopeK, tfRopeDot, tfRopeEmb, tfRopeEmbTheta,

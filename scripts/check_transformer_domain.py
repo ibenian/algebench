@@ -368,11 +368,54 @@ def main() -> int:
                            re.search(r'_KEY_SLIDERS = \[(.*?)\]', src, re.S).group(1)))
     build = src[src.index('function _build()'):src.index('function _st()')]
     read = set(re.findall(r"_getSlider\('([a-z0-9_]+)'", build))
+    # The sandbox overrides are read through _effective(), from literal id
+    # tables spread into _KEY_SLIDERS; both sides see them the same way.
+    overrides = set(re.findall(r"'(s4_[a-z0-9]+)'", src))
+    if '..._OVERRIDE_SLIDERS' in re.search(r'_KEY_SLIDERS = \[(.*?)\]', src, re.S).group(1):
+        keyed |= overrides
+    if '_effective(' in build:
+        read |= overrides
     if keyed == read:
         print(f'  ok   _KEY_SLIDERS == the sliders _build() reads ({len(keyed)})')
     else:
         print(f'  FAIL keyed but unread: {sorted(keyed - read)}')
         print(f'       read but unkeyed: {sorted(read - keyed)}')
+        failures += 1
+
+    print()
+    print('transformer domain — sandbox overrides')
+    # Every override slider must be advertised, default to the constant it
+    # replaces, and actually move the forward pass when set.
+    docs_sc = json.loads((DOMAIN.parent / 'docs.json').read_text(encoding='utf-8'))['sliderContracts']
+    missing = sorted(overrides - set(docs_sc))
+    if missing:
+        print(f'  FAIL override sliders missing from docs.json sliderContracts: {missing[:6]}...')
+        failures += 1
+    else:
+        print(f'  ok   all {len(overrides)} override sliders are in sliderContracts')
+    base_w = _run('R(m => R(r => R(c => TF.tfW(m, r, c), 2), 4), 3)', DEFAULT_SLIDERS)
+    base_e = _run('R(r => R(d => TF.tfEmbBase(r, d), 4), 6)', DEFAULT_SLIDERS)
+    bad = []
+    for m, key in enumerate('qkv'):
+        for r in range(4):
+            for c in range(2):
+                if docs_sc.get(f's4_w{key}{r}{c}', {}).get('default') != base_w[m][r][c]:
+                    bad.append(f's4_w{key}{r}{c}')
+    for r in range(6):
+        for d in range(4):
+            if docs_sc.get(f's4_e{r}{d}', {}).get('default') != base_e[r][d]:
+                bad.append(f's4_e{r}{d}')
+    if bad:
+        print(f'  FAIL documented defaults differ from the hand-built constants: {bad[:6]}...')
+        failures += 1
+    else:
+        print('  ok   every override defaults to the constant it replaces')
+    moved = _run('TF.tfScore(2, 1)', {**DEFAULT_SLIDERS, 's4_wq20': 0})
+    stays = _run('TF.tfScore(2, 1)', DEFAULT_SLIDERS)
+    if moved != stays:
+        print(f'  ok   an override moves the forward pass (score(2,1) {stays:.4f} -> {moved:.4f})')
+    else:
+        print('  FAIL s4_wq20 = 0 left tfScore(2,1) unchanged')
         failures += 1
 
     print()
