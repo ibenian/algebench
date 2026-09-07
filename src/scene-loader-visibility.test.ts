@@ -24,9 +24,11 @@ globalThis.window ??= globalThis as unknown as Window & typeof globalThis;
 let now = 0;
 let queue: Array<(t: number) => void> = [];
 const realNow = performance.now.bind(performance);
+type RafGlobal = { requestAnimationFrame?: (cb: (t: number) => void) => number };
+const rafGlobal = globalThis as unknown as RafGlobal;
+const realRaf = rafGlobal.requestAnimationFrame;   // undefined under node; restored as such
 Object.defineProperty(performance, 'now', { configurable: true, value: () => now });
-(globalThis as unknown as { requestAnimationFrame: (cb: (t: number) => void) => number })
-    .requestAnimationFrame = (cb) => { queue.push(cb); return queue.length; };
+rafGlobal.requestAnimationFrame = (cb) => { queue.push(cb); return queue.length; };
 
 /** Advance the clock by `ms` in `stepMs` frames, running every queued callback. */
 function frames(ms: number, stepMs = 16): void {
@@ -68,7 +70,11 @@ test.beforeEach(() => {
     now = 0; queue = [];
     state.elementRegistry = {};
 });
-test.after(() => { Object.defineProperty(performance, 'now', { configurable: true, value: realNow }); });
+test.after(() => {
+    Object.defineProperty(performance, 'now', { configurable: true, value: realNow });
+    if (realRaf) rafGlobal.requestAnimationFrame = realRaf;
+    else delete rafGlobal.requestAnimationFrame;
+});
 
 // ----- hide / show -----
 
