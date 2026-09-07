@@ -87,7 +87,9 @@
                 }
               ],
               "textExpr": "toFixed(value, 2)",
-              "prompt": "tfH(l, i, d): component d of the residual stream entering layer l at slot i. Layer 0 is x: embedding plus positional encoding."
+              "prompt": "tfH(l, i, d): component d of the residual stream entering layer l at slot i. Layer 0 is x: embedding plus positional encoding.",
+              "widthExpr": "max(0.15, min(1, abs(value) / 2))",
+              "heightExpr": "max(0.15, min(1, abs(value) / 2))"
             },
             {
               "id": "t1_wq",
@@ -115,7 +117,9 @@
                 }
               ],
               "textExpr": "toFixed(value, 2)",
-              "prompt": "W_Q of layer 0, head demo_h. Head 0 is the hand-built toy; other heads are seeded tables. Every W is read by tfWq/tfWk/tfWv with (layer, head, row, col)."
+              "prompt": "W_Q of layer 0, head demo_h. Head 0 is the hand-built toy; other heads are seeded tables. Every W is read by tfWq/tfWk/tfWv with (layer, head, row, col).",
+              "widthExpr": "max(0.15, min(1, abs(value) / 2))",
+              "heightExpr": "max(0.15, min(1, abs(value) / 2))"
             },
             {
               "id": "t1_wk",
@@ -143,7 +147,9 @@
                 }
               ],
               "textExpr": "toFixed(value, 2)",
-              "prompt": "W_K of the K/V head that query head demo_h reads: tfHeadKv(h) = floor(h · n_kv / n_heads). With tf_kv = 1 every head reads the same one."
+              "prompt": "W_K of the K/V head that query head demo_h reads: tfHeadKv(h) = floor(h · n_kv / n_heads). With tf_kv = 1 every head reads the same one.",
+              "widthExpr": "max(0.15, min(1, abs(value) / 2))",
+              "heightExpr": "max(0.15, min(1, abs(value) / 2))"
             },
             {
               "id": "t1_wv",
@@ -171,7 +177,9 @@
                 }
               ],
               "textExpr": "toFixed(value, 2)",
-              "prompt": "W_V of the K/V head that query head demo_h reads."
+              "prompt": "W_V of the K/V head that query head demo_h reads.",
+              "widthExpr": "max(0.15, min(1, abs(value) / 2))",
+              "heightExpr": "max(0.15, min(1, abs(value) / 2))"
             },
             {
               "id": "t1_q",
@@ -196,7 +204,9 @@
                 }
               ],
               "textExpr": "toFixed(value, 2)",
-              "prompt": "q of every slot in layer 0, head demo_h (RoPE applied when s2_rope = 1)."
+              "prompt": "q of every slot in layer 0, head demo_h (RoPE applied when s2_rope = 1).",
+              "widthExpr": "max(0.15, min(1, abs(value) / 2))",
+              "heightExpr": "max(0.15, min(1, abs(value) / 2))"
             },
             {
               "id": "t1_k",
@@ -221,7 +231,9 @@
                 }
               ],
               "textExpr": "toFixed(value, 2)",
-              "prompt": "k as read by head demo_h: its K/V head's keys."
+              "prompt": "k as read by head demo_h: its K/V head's keys.",
+              "widthExpr": "max(0.15, min(1, abs(value) / 2))",
+              "heightExpr": "max(0.15, min(1, abs(value) / 2))"
             },
             {
               "id": "t1_v",
@@ -246,7 +258,9 @@
                 }
               ],
               "textExpr": "toFixed(value, 2)",
-              "prompt": "v as read by head demo_h. Never rotated by RoPE."
+              "prompt": "v as read by head demo_h. Never rotated by RoPE.",
+              "widthExpr": "max(0.15, min(1, abs(value) / 2))",
+              "heightExpr": "max(0.15, min(1, abs(value) / 2))"
             },
             {
               "id": "t1_s",
@@ -271,7 +285,9 @@
                 }
               ],
               "textExpr": "toFixed(value, 2)",
-              "prompt": "Scaled scores of head demo_h: tfScoreH / (sqrt d_k)^s3_scale. tfScoreH gives the raw dot products."
+              "prompt": "Scaled scores of head demo_h: tfScoreH / (sqrt d_k)^s3_scale. tfScoreH gives the raw dot products.",
+              "widthExpr": "max(0.15, min(1, abs(value) / 16))",
+              "heightExpr": "max(0.15, min(1, abs(value) / 16))"
             },
             {
               "id": "t1_a",
@@ -297,7 +313,9 @@
               ],
               "textExpr": "value >= 0.005 ? toFixed(value, 2) : ''",
               "prompt": "Attention weights of head demo_h, honouring s3_scale, s3_mask and s3_maskafter. Rows sum to 1.",
-              "depthExpr": "value * 1.5"
+              "depthExpr": "value * 1.5",
+              "widthExpr": "max(0.15, min(1, value))",
+              "heightExpr": "max(0.15, min(1, value))"
             },
             {
               "id": "t1_o",
@@ -322,7 +340,9 @@
                 }
               ],
               "textExpr": "toFixed(value, 2)",
-              "prompt": "Head demo_h's own output before concatenation and W_O: the attention-weighted average of its value rows."
+              "prompt": "Head demo_h's own output before concatenation and W_O: the attention-weighted average of its value rows.",
+              "widthExpr": "max(0.15, min(1, abs(value) / 2))",
+              "heightExpr": "max(0.15, min(1, abs(value) / 2))"
             },
             {
               "id": "t1_cat",
@@ -347,7 +367,9 @@
                 }
               ],
               "textExpr": "toFixed(value, 2)",
-              "prompt": "The concatenated heads of layer 0, n_heads × d_k wide; column c belongs to head floor(c / d_k). What W_O multiplies."
+              "prompt": "The concatenated heads of layer 0, n_heads × d_k wide; column c belongs to head floor(c / d_k). What W_O multiplies.",
+              "widthExpr": "max(0.15, min(1, abs(value) / 2))",
+              "heightExpr": "max(0.15, min(1, abs(value) / 2))"
             },
             {
               "id": "t1_wo",
@@ -376,7 +398,9 @@
               ],
               "textExpr": "toFixed(value, 2)",
               "prompt": "W_O of layer 0 (n_heads·d_k × d_model). Bound to the tensor slider tf_wo_0: hover a cell to edit it.",
-              "bind": "tf_wo_0"
+              "bind": "tf_wo_0",
+              "widthExpr": "max(0.15, min(1, abs(value) / 2))",
+              "heightExpr": "max(0.15, min(1, abs(value) / 2))"
             },
             {
               "id": "t1_ao",
@@ -401,7 +425,9 @@
                 }
               ],
               "textExpr": "toFixed(value, 2)",
-              "prompt": "The attention sub-layer's increment to the stream: concat × W_O, back at d_model width. Multi-head does not widen the stream."
+              "prompt": "The attention sub-layer's increment to the stream: concat × W_O, back at d_model width. Multi-head does not widen the stream.",
+              "widthExpr": "max(0.15, min(1, abs(value) / 2))",
+              "heightExpr": "max(0.15, min(1, abs(value) / 2))"
             }
           ],
           "info": [
@@ -490,7 +516,9 @@
                 }
               ],
               "textExpr": "toFixed(value, 2)",
-              "prompt": "The residual stream entering layer demo_l."
+              "prompt": "The residual stream entering layer demo_l.",
+              "widthExpr": "max(0.15, min(1, abs(value) / 2))",
+              "heightExpr": "max(0.15, min(1, abs(value) / 2))"
             },
             {
               "id": "t2_ain",
@@ -515,7 +543,9 @@
                 }
               ],
               "textExpr": "toFixed(value, 2)",
-              "prompt": "What attention reads: with tf_norm on and tf_prenorm = 1 this is the normed stream; otherwise the stream itself."
+              "prompt": "What attention reads: with tf_norm on and tf_prenorm = 1 this is the normed stream; otherwise the stream itself.",
+              "widthExpr": "max(0.15, min(1, abs(value) / 2))",
+              "heightExpr": "max(0.15, min(1, abs(value) / 2))"
             },
             {
               "id": "t2_ao",
@@ -540,7 +570,9 @@
                 }
               ],
               "textExpr": "toFixed(value, 2)",
-              "prompt": "The attention increment (all heads, through W_O)."
+              "prompt": "The attention increment (all heads, through W_O).",
+              "widthExpr": "max(0.15, min(1, abs(value) / 2))",
+              "heightExpr": "max(0.15, min(1, abs(value) / 2))"
             },
             {
               "id": "t2_r1",
@@ -565,7 +597,9 @@
                 }
               ],
               "textExpr": "toFixed(value, 2)",
-              "prompt": "Stream after the attention residual add (post-norm: after its norm)."
+              "prompt": "Stream after the attention residual add (post-norm: after its norm).",
+              "widthExpr": "max(0.15, min(1, abs(value) / 2))",
+              "heightExpr": "max(0.15, min(1, abs(value) / 2))"
             },
             {
               "id": "t2_fin",
@@ -590,7 +624,9 @@
                 }
               ],
               "textExpr": "toFixed(value, 2)",
-              "prompt": "What the FFN reads: normed (pre-norm) or tfResid1 itself."
+              "prompt": "What the FFN reads: normed (pre-norm) or tfResid1 itself.",
+              "widthExpr": "max(0.15, min(1, abs(value) / 2))",
+              "heightExpr": "max(0.15, min(1, abs(value) / 2))"
             },
             {
               "id": "t2_pre",
@@ -615,7 +651,9 @@
                 }
               ],
               "textExpr": "toFixed(value, 2)",
-              "prompt": "FFN hidden units before the activation: tfFfIn · W1. Row k of W1 is one neuron's fan-in."
+              "prompt": "FFN hidden units before the activation: tfFfIn · W1. Row k of W1 is one neuron's fan-in.",
+              "widthExpr": "max(0.15, min(1, abs(value) / 3))",
+              "heightExpr": "max(0.15, min(1, abs(value) / 3))"
             },
             {
               "id": "t2_hid",
@@ -640,7 +678,9 @@
                 }
               ],
               "textExpr": "toFixed(value, 2)",
-              "prompt": "After the activation chosen by tf_act: ReLU zeroes the negatives, GELU bends them, SwiGLU gates silu(x W1) by x W3."
+              "prompt": "After the activation chosen by tf_act: ReLU zeroes the negatives, GELU bends them, SwiGLU gates silu(x W1) by x W3.",
+              "widthExpr": "max(0.15, min(1, abs(value) / 3))",
+              "heightExpr": "max(0.15, min(1, abs(value) / 3))"
             },
             {
               "id": "t2_fo",
@@ -665,7 +705,9 @@
                 }
               ],
               "textExpr": "toFixed(value, 2)",
-              "prompt": "The FFN increment: hidden · W2, back at d_model width."
+              "prompt": "The FFN increment: hidden · W2, back at d_model width.",
+              "widthExpr": "max(0.15, min(1, abs(value) / 2))",
+              "heightExpr": "max(0.15, min(1, abs(value) / 2))"
             },
             {
               "id": "t2_r2",
@@ -690,7 +732,9 @@
                 }
               ],
               "textExpr": "toFixed(value, 2)",
-              "prompt": "The stream leaving layer demo_l = tfH(demo_l + 1). Pre-norm: exactly stream in + both increments."
+              "prompt": "The stream leaving layer demo_l = tfH(demo_l + 1). Pre-norm: exactly stream in + both increments.",
+              "widthExpr": "max(0.15, min(1, abs(value) / 2))",
+              "heightExpr": "max(0.15, min(1, abs(value) / 2))"
             },
             {
               "id": "t2_w1",
@@ -719,7 +763,9 @@
               ],
               "textExpr": "toFixed(value, 2)",
               "prompt": "FFN W1 of layer demo_l (d_model × d_ff). Layer 0 is bound to tf_w1_0: hover a cell to edit.",
-              "bind": "tf_w1_0"
+              "bind": "tf_w1_0",
+              "widthExpr": "max(0.15, min(1, abs(value) / 1))",
+              "heightExpr": "max(0.15, min(1, abs(value) / 1))"
             },
             {
               "id": "t2_w2",
@@ -747,7 +793,9 @@
                 }
               ],
               "textExpr": "toFixed(value, 2)",
-              "prompt": "FFN W2 of layer demo_l (d_ff × d_model)."
+              "prompt": "FFN W2 of layer demo_l (d_ff × d_model).",
+              "widthExpr": "max(0.15, min(1, abs(value) / 1))",
+              "heightExpr": "max(0.15, min(1, abs(value) / 1))"
             }
           ],
           "info": [
@@ -821,7 +869,9 @@
                 }
               ],
               "textExpr": "toFixed(value, 2)",
-              "prompt": "The stream entering layer 0 (x)."
+              "prompt": "The stream entering layer 0 (x).",
+              "widthExpr": "max(0.15, min(1, abs(value) / 2))",
+              "heightExpr": "max(0.15, min(1, abs(value) / 2))"
             },
             {
               "id": "t3_h1",
@@ -846,7 +896,9 @@
                 }
               ],
               "textExpr": "toFixed(value, 2)",
-              "prompt": "The stream after one layer."
+              "prompt": "The stream after one layer.",
+              "widthExpr": "max(0.15, min(1, abs(value) / 2))",
+              "heightExpr": "max(0.15, min(1, abs(value) / 2))"
             },
             {
               "id": "t3_h2",
@@ -871,7 +923,9 @@
                 }
               ],
               "textExpr": "toFixed(value, 2)",
-              "prompt": "After two layers (with tf_layers < 2 this repeats the last stream: indices clamp)."
+              "prompt": "After two layers (with tf_layers < 2 this repeats the last stream: indices clamp).",
+              "widthExpr": "max(0.15, min(1, abs(value) / 2))",
+              "heightExpr": "max(0.15, min(1, abs(value) / 2))"
             },
             {
               "id": "t3_h3",
@@ -896,7 +950,9 @@
                 }
               ],
               "textExpr": "toFixed(value, 2)",
-              "prompt": "After three layers."
+              "prompt": "After three layers.",
+              "widthExpr": "max(0.15, min(1, abs(value) / 2))",
+              "heightExpr": "max(0.15, min(1, abs(value) / 2))"
             },
             {
               "id": "t3_final",
@@ -921,7 +977,9 @@
                 }
               ],
               "textExpr": "toFixed(value, 2)",
-              "prompt": "The final norm of the stream leaving the stack (pre-norm), or that stream itself."
+              "prompt": "The final norm of the stream leaving the stack (pre-norm), or that stream itself.",
+              "widthExpr": "max(0.15, min(1, abs(value) / 2))",
+              "heightExpr": "max(0.15, min(1, abs(value) / 2))"
             },
             {
               "id": "t3_wu",
@@ -949,7 +1007,9 @@
                 }
               ],
               "textExpr": "toFixed(value, 2)",
-              "prompt": "Row v is the embedding row of vocabulary word v. Logits are dot products against these."
+              "prompt": "Row v is the embedding row of vocabulary word v. Logits are dot products against these.",
+              "widthExpr": "max(0.15, min(1, abs(value) / 2))",
+              "heightExpr": "max(0.15, min(1, abs(value) / 2))"
             },
             {
               "id": "t3_logit",
@@ -974,7 +1034,9 @@
                 }
               ],
               "textExpr": "toFixed(value, 2)",
-              "prompt": "Score of word v at slot i: tfFinal(i,·) · tfWu(v,·), before temperature."
+              "prompt": "Score of word v at slot i: tfFinal(i,·) · tfWu(v,·), before temperature.",
+              "widthExpr": "max(0.15, min(1, abs(value) / 3))",
+              "heightExpr": "max(0.15, min(1, abs(value) / 3))"
             },
             {
               "id": "t3_prob",
@@ -1000,7 +1062,9 @@
               ],
               "textExpr": "toFixed(value, 2)",
               "prompt": "The next-token distribution at slot i, for the token after slot i (causal). Rows sum to 1. tf_temp → 0 gives argmax, → ∞ gives uniform.",
-              "depthExpr": "value * 1.5"
+              "depthExpr": "value * 1.5",
+              "widthExpr": "max(0.15, min(1, value))",
+              "heightExpr": "max(0.15, min(1, value))"
             },
             {
               "id": "t3_next",
@@ -1025,7 +1089,9 @@
                 }
               ],
               "textExpr": "tfVocabToken(tfArgmax(row))",
-              "prompt": "The most probable next word at each slot (tfArgmax) and its probability (the cell value)."
+              "prompt": "The most probable next word at each slot (tfArgmax) and its probability (the cell value).",
+              "widthExpr": "max(0.15, min(1, value))",
+              "heightExpr": "max(0.15, min(1, value))"
             },
             {
               "id": "t3_ent",
@@ -1050,7 +1116,9 @@
                 }
               ],
               "textExpr": "toFixed(value, 2)",
-              "prompt": "Shannon entropy of the slot-i distribution: 0 at T → 0, log2(5) = 2.32 at T → ∞."
+              "prompt": "Shannon entropy of the slot-i distribution: 0 at T → 0, log2(5) = 2.32 at T → ∞.",
+              "widthExpr": "max(0.15, min(1, value))",
+              "heightExpr": "max(0.15, min(1, value))"
             },
             {
               "id": "t3_chart",
