@@ -506,7 +506,7 @@ export function renderAnimatedVector(el: Element, view: MathBoxNode) {
         }
     }
 
-    const animState = { stopped: false };
+    const animState: { stopped: boolean; hiddenByRemove?: boolean } = { stopped: false };
     animExprEntry.animState = animState;
     if (useExpr) animatedVectorState.activeAnimExprs.push(animExprEntry);
 
@@ -514,6 +514,16 @@ export function renderAnimatedVector(el: Element, view: MathBoxNode) {
     animatedVectorState.activeAnimUpdaters.push({
         animState,
         updateFrame(nowMs) {
+            // Removed by a step (scene-loader flips this): keep whatever meshes
+            // exist hidden and, above all, do not create the missing ones. The
+            // per-mesh flag below cannot cover a vector that had no meshes when
+            // the hide ran.
+            if (animState.hiddenByRemove) {
+                if (arrowCone) arrowCone.visible = false;
+                if (arrowShaft) arrowShaft.visible = false;
+                if (labelEl) labelEl.forceHidden = true;
+                return;
+            }
             if (arrowCone && !arrowCone.visible && arrowCone._hiddenByRemove) return;
 
             const elapsed = nowMs - startTime;
