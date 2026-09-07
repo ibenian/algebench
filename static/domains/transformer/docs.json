@@ -135,84 +135,84 @@
       ]
     },
     "s4_e10": {
-      "description": "Sandbox override: component 0 of embedding row 1 ('cat'). Absent, the hand-built 0 stands; a scene that declares it must default it to 0. Rows 0 and 4 are both 'the' and start identical; overriding one alone makes the two 'the's differ, which the sandbox may do on purpose.",
+      "description": "Sandbox override: component 0 of embedding row 1 ('cat'). Absent, the hand-built 0 stands; a scene that declares it must default it to 0.",
       "default": 0,
       "scenes": [
         4
       ]
     },
     "s4_e11": {
-      "description": "Sandbox override: component 1 of embedding row 1 ('cat'). Absent, the hand-built 1 stands; a scene that declares it must default it to 1. Rows 0 and 4 are both 'the' and start identical; overriding one alone makes the two 'the's differ, which the sandbox may do on purpose.",
+      "description": "Sandbox override: component 1 of embedding row 1 ('cat'). Absent, the hand-built 1 stands; a scene that declares it must default it to 1.",
       "default": 1,
       "scenes": [
         4
       ]
     },
     "s4_e12": {
-      "description": "Sandbox override: component 2 of embedding row 1 ('cat'). Absent, the hand-built 0 stands; a scene that declares it must default it to 0. Rows 0 and 4 are both 'the' and start identical; overriding one alone makes the two 'the's differ, which the sandbox may do on purpose.",
+      "description": "Sandbox override: component 2 of embedding row 1 ('cat'). Absent, the hand-built 0 stands; a scene that declares it must default it to 0.",
       "default": 0,
       "scenes": [
         4
       ]
     },
     "s4_e13": {
-      "description": "Sandbox override: component 3 of embedding row 1 ('cat'). Absent, the hand-built 0 stands; a scene that declares it must default it to 0. Rows 0 and 4 are both 'the' and start identical; overriding one alone makes the two 'the's differ, which the sandbox may do on purpose.",
+      "description": "Sandbox override: component 3 of embedding row 1 ('cat'). Absent, the hand-built 0 stands; a scene that declares it must default it to 0.",
       "default": 0,
       "scenes": [
         4
       ]
     },
     "s4_e20": {
-      "description": "Sandbox override: component 0 of embedding row 2 ('sat'). Absent, the hand-built 0 stands; a scene that declares it must default it to 0. Rows 0 and 4 are both 'the' and start identical; overriding one alone makes the two 'the's differ, which the sandbox may do on purpose.",
+      "description": "Sandbox override: component 0 of embedding row 2 ('sat'). Absent, the hand-built 0 stands; a scene that declares it must default it to 0.",
       "default": 0,
       "scenes": [
         4
       ]
     },
     "s4_e21": {
-      "description": "Sandbox override: component 1 of embedding row 2 ('sat'). Absent, the hand-built 0 stands; a scene that declares it must default it to 0. Rows 0 and 4 are both 'the' and start identical; overriding one alone makes the two 'the's differ, which the sandbox may do on purpose.",
+      "description": "Sandbox override: component 1 of embedding row 2 ('sat'). Absent, the hand-built 0 stands; a scene that declares it must default it to 0.",
       "default": 0,
       "scenes": [
         4
       ]
     },
     "s4_e22": {
-      "description": "Sandbox override: component 2 of embedding row 2 ('sat'). Absent, the hand-built 1 stands; a scene that declares it must default it to 1. Rows 0 and 4 are both 'the' and start identical; overriding one alone makes the two 'the's differ, which the sandbox may do on purpose.",
+      "description": "Sandbox override: component 2 of embedding row 2 ('sat'). Absent, the hand-built 1 stands; a scene that declares it must default it to 1.",
       "default": 1,
       "scenes": [
         4
       ]
     },
     "s4_e23": {
-      "description": "Sandbox override: component 3 of embedding row 2 ('sat'). Absent, the hand-built 0 stands; a scene that declares it must default it to 0. Rows 0 and 4 are both 'the' and start identical; overriding one alone makes the two 'the's differ, which the sandbox may do on purpose.",
+      "description": "Sandbox override: component 3 of embedding row 2 ('sat'). Absent, the hand-built 0 stands; a scene that declares it must default it to 0.",
       "default": 0,
       "scenes": [
         4
       ]
     },
     "s4_e30": {
-      "description": "Sandbox override: component 0 of embedding row 3 ('on'). Absent, the hand-built 0 stands; a scene that declares it must default it to 0. Rows 0 and 4 are both 'the' and start identical; overriding one alone makes the two 'the's differ, which the sandbox may do on purpose.",
+      "description": "Sandbox override: component 0 of embedding row 3 ('on'). Absent, the hand-built 0 stands; a scene that declares it must default it to 0.",
       "default": 0,
       "scenes": [
         4
       ]
     },
     "s4_e31": {
-      "description": "Sandbox override: component 1 of embedding row 3 ('on'). Absent, the hand-built 0 stands; a scene that declares it must default it to 0. Rows 0 and 4 are both 'the' and start identical; overriding one alone makes the two 'the's differ, which the sandbox may do on purpose.",
+      "description": "Sandbox override: component 1 of embedding row 3 ('on'). Absent, the hand-built 0 stands; a scene that declares it must default it to 0.",
       "default": 0,
       "scenes": [
         4
       ]
     },
     "s4_e32": {
-      "description": "Sandbox override: component 2 of embedding row 3 ('on'). Absent, the hand-built 0 stands; a scene that declares it must default it to 0. Rows 0 and 4 are both 'the' and start identical; overriding one alone makes the two 'the's differ, which the sandbox may do on purpose.",
+      "description": "Sandbox override: component 2 of embedding row 3 ('on'). Absent, the hand-built 0 stands; a scene that declares it must default it to 0.",
       "default": 0,
       "scenes": [
         4
       ]
     },
     "s4_e33": {
-      "description": "Sandbox override: component 3 of embedding row 3 ('on'). Absent, the hand-built 1 stands; a scene that declares it must default it to 1. Rows 0 and 4 are both 'the' and start identical; overriding one alone makes the two 'the's differ, which the sandbox may do on purpose.",
+      "description": "Sandbox override: component 3 of embedding row 3 ('on'). Absent, the hand-built 1 stands; a scene that declares it must default it to 1.",
       "default": 1,
       "scenes": [
         4
@@ -247,28 +247,28 @@
       ]
     },
     "s4_e50": {
-      "description": "Sandbox override: component 0 of embedding row 5 ('mat'). Absent, the hand-built 0.5 stands; a scene that declares it must default it to 0.5. Rows 0 and 4 are both 'the' and start identical; overriding one alone makes the two 'the's differ, which the sandbox may do on purpose.",
+      "description": "Sandbox override: component 0 of embedding row 5 ('mat'). Absent, the hand-built 0.5 stands; a scene that declares it must default it to 0.5.",
       "default": 0.5,
       "scenes": [
         4
       ]
     },
     "s4_e51": {
-      "description": "Sandbox override: component 1 of embedding row 5 ('mat'). Absent, the hand-built 0.5 stands; a scene that declares it must default it to 0.5. Rows 0 and 4 are both 'the' and start identical; overriding one alone makes the two 'the's differ, which the sandbox may do on purpose.",
+      "description": "Sandbox override: component 1 of embedding row 5 ('mat'). Absent, the hand-built 0.5 stands; a scene that declares it must default it to 0.5.",
       "default": 0.5,
       "scenes": [
         4
       ]
     },
     "s4_e52": {
-      "description": "Sandbox override: component 2 of embedding row 5 ('mat'). Absent, the hand-built 0 stands; a scene that declares it must default it to 0. Rows 0 and 4 are both 'the' and start identical; overriding one alone makes the two 'the's differ, which the sandbox may do on purpose.",
+      "description": "Sandbox override: component 2 of embedding row 5 ('mat'). Absent, the hand-built 0 stands; a scene that declares it must default it to 0.",
       "default": 0,
       "scenes": [
         4
       ]
     },
     "s4_e53": {
-      "description": "Sandbox override: component 3 of embedding row 5 ('mat'). Absent, the hand-built 0.5 stands; a scene that declares it must default it to 0.5. Rows 0 and 4 are both 'the' and start identical; overriding one alone makes the two 'the's differ, which the sandbox may do on purpose.",
+      "description": "Sandbox override: component 3 of embedding row 5 ('mat'). Absent, the hand-built 0.5 stands; a scene that declares it must default it to 0.5.",
       "default": 0.5,
       "scenes": [
         4

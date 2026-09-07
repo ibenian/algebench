@@ -156,8 +156,12 @@
     let _cache = { key: null, data: null };
 
     function _buildKey() {
+        // An ABSENT slider must key differently from one present at 0: the
+        // build falls back to a constant for the former, so keying both as 0
+        // would hand a scene that declares an override at 0 the cached pass
+        // of a scene that never declared it (and vice versa).
         const parts = [];
-        for (const id of _KEY_SLIDERS) parts.push(id + ':' + _getSlider(id, 0));
+        for (const id of _KEY_SLIDERS) parts.push(id + ':' + _getSlider(id, '-'));
         return parts.join('|');
     }
 
