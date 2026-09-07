@@ -4371,7 +4371,7 @@
               ],
               "textExpr": "tfMaskVal(row, col) > 0.5 ? toFixed(value, 1) : ''",
               "depthExpr": "tfMaskVal(row, col) > 0.5 ? value / 10 : -0.6",
-              "prompt": "The scores divided by (sqrt d_k)^scale, with the causal mask as wells: a masked cell sinks below the plane and shows no number, because its value is minus infinity (minus 1e9 in code), not a score. Masked-versus-not is decided by the mask itself, never by the score, so a large negative score in the sandbox still reads as a score. With the mask off every cell is a score."
+              "prompt": "The scores divided by (sqrt d_k)^scale, with the causal mask as wells: a masked cell sinks below the plane and shows no number. What softmax receives there is minus infinity (minus 1e9 in code); the well itself is a drawing sentinel, a value below the colour domain, not the masked score, so never quote the well as a number. Masked-versus-not is decided by the mask itself, never by the score, so a large negative score in the sandbox still reads as a score. With the mask off every cell is a score."
             },
             {
               "id": "s4_A",
@@ -4418,7 +4418,7 @@
                 }
               ],
               "textExpr": "toFixed(value, 2)",
-              "prompt": "O = A V: each output row is the attention-weighted average of the value rows it may see, so it lies in their convex hull. One head of two; W_O and the second head are scene 5."
+              "prompt": "O = A V: each output row is the attention-weighted average of the value rows it may see, so it lies in their convex hull. One head of two; W_O and the second head come in the multi-head scene that follows."
             }
           ],
           "info": [
@@ -4453,7 +4453,7 @@
             {"id": "s4_info_input", "position": "top-left", "title": "Input row of *sat* (token row 2, slot {{s4slotOf(2)}})", "content": "$x_{\\text{sat}}$ = ({{toFixed(tfX(s4slotOf(2),0),2)}}, {{toFixed(tfX(s4slotOf(2),1),2)}}, {{toFixed(tfX(s4slotOf(2),2),2)}}, {{toFixed(tfX(s4slotOf(2),3),2)}}) — embedding ({{toFixed(s4_e20,2)}}, {{toFixed(s4_e21,2)}}, {{toFixed(s4_e22,2)}}, {{toFixed(s4_e23,2)}}) plus the encoding of slot {{s4slotOf(2)}} × {{toFixed(s1_pe,2)}}. $q_{\\text{sat}}$ = ({{toFixed(tfQ(s4slotOf(2),0),2)}}, {{toFixed(tfQ(s4slotOf(2),1),2)}}), $v_{\\text{sat}}$ = ({{toFixed(tfV(s4slotOf(2),0),2)}}, {{toFixed(tfV(s4slotOf(2),1),2)}})."},
             {"id": "s4_keep_card", "position": "bottom-right", "keep": true, "title": "Toy · provenance", "content": "$d_{\\text{model}} = 4$, $d_k = 2$, **one head of two**. Every number here is recomputed from the sliders; the defaults are the hand-built $W_Q, W_K, W_V$, **not learned**."}
           ],
-          "prompt": "The input sliders override the four components of the EMBEDDING row for sat (token row 2). With the shuffle on, sat moves to slot 3; the card follows the token through s4slotOf(2), while the row-to-read-out slider follows a SLOT, so the two can point at different rows and that is worth saying if a student notices; positional encoding is added on top per the PE slider, and with RoPE on the additive PE is replaced by a rotation of q and k. The lesson to draw out: which downstream lattice moves tells you which weight matrix reads that dimension. x_2 feeds W_Q only (q moves, S row 2 moves, A row 2 moves, o moves); x_1 feeds W_K and W_V; x_0 feeds W_V only; x_3 feeds W_Q and W_K. Let the student discover this by dragging, then confirm. The sliders act on the embedding table, so the two \"the\" rows stay identical unless the student edits row 0 or 4 on the weights steps."
+          "prompt": "The input sliders override the four components of the EMBEDDING row for sat (token row 2). With the shuffle on, sat moves to slot 3; the card follows the token through s4slotOf(2), while the row-to-read-out slider follows a SLOT, so the two can point at different rows and that is worth saying if a student notices; positional encoding is added on top per the PE slider, and with RoPE on the additive PE is replaced by a rotation of q and k. The lesson to draw out: which downstream lattice moves tells you which weight matrix reads that dimension. x_2 feeds W_Q only (q moves, S row 2 moves, A row 2 moves, o moves); x_1 feeds W_K and W_V; x_0 feeds W_V only; x_3 feeds W_Q and W_K. Let the student discover this by dragging, then confirm. The sliders act on the embedding table, and only on the row for sat: no step exposes rows 0 and 4, so the two \"the\" rows stay identical throughout this scene."
         },
         {
           "id": "s4-wq",
