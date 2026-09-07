@@ -1487,7 +1487,10 @@ export function updateBoardDockHeight(): void {
         const desc = document.getElementById('scene-description');
         const capShown = !!cap && !cap.classList.contains('hidden');
         if (capShown) h = cap!.offsetHeight;
-        else if (desc && desc.childElementCount > 0) h = desc.offsetHeight;
+        // Rendered height, not child count: a text-only description (the
+        // "Load a scene to begin" placeholder) still occupies the strip, and
+        // an :empty one is display:none, so this is 0 exactly when it is gone.
+        else if (desc) h = desc.offsetHeight;
     }
     wrap.classList.toggle('caption-docked', isBoardOverlayDocked());
     wrap.style.setProperty('--caption-dock-h', h + 'px');
@@ -1511,13 +1514,14 @@ export function setBoardOverlayDocked(docked: boolean): void {
                 resetSceneDescPosition(el);
             }
         }
-        for (const b of el.querySelectorAll<HTMLElement>('.bo-dock-btn')) _styleDockBtn(b, docked);
+        for (const b of el.querySelectorAll<HTMLElement>('.bo-dock-btn')) _styleDockBtn(b, docked, el);
     }
     updateBoardDockHeight();
 }
 
-function _styleDockBtn(b: HTMLElement, docked: boolean): void {
-    b.title = docked ? 'Float the caption again' : 'Dock the caption along the bottom edge';
+function _styleDockBtn(b: HTMLElement, docked: boolean, overlay: HTMLElement): void {
+    const what = overlay.id === 'step-caption' ? 'caption' : 'description';
+    b.title = docked ? `Float the ${what} again` : `Dock the ${what} along the bottom edge`;
     b.setAttribute('aria-label', b.title);
     b.setAttribute('aria-pressed', docked ? 'true' : 'false');
     b.textContent = docked ? '⤴' : '⤓';
@@ -1535,7 +1539,7 @@ export function fillBoardOverlay(el: HTMLElement, html: string, aiBtn: HTMLEleme
     const dock = document.createElement('button');
     dock.type = 'button';
     dock.className = 'info-dock-btn bo-dock-btn';
-    _styleDockBtn(dock, isBoardOverlayDocked());
+    _styleDockBtn(dock, isBoardOverlayDocked(), el);
     dock.addEventListener('mousedown', e => e.stopPropagation());
     dock.addEventListener('click', (e) => { e.stopPropagation(); setBoardOverlayDocked(!isBoardOverlayDocked()); });
     side.appendChild(dock);

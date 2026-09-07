@@ -3314,7 +3314,7 @@ function updateBoardDockHeight() {
 		const cap = document.getElementById("step-caption");
 		const desc = document.getElementById("scene-description");
 		if (!!cap && !cap.classList.contains("hidden")) h = cap.offsetHeight;
-		else if (desc && desc.childElementCount > 0) h = desc.offsetHeight;
+		else if (desc) h = desc.offsetHeight;
 	}
 	wrap.classList.toggle("caption-docked", isBoardOverlayDocked());
 	wrap.style.setProperty("--caption-dock-h", h + "px");
@@ -3336,12 +3336,13 @@ function setBoardOverlayDocked(docked) {
 				el.style.setProperty("--caption-scale", "1");
 			} else resetSceneDescPosition(el);
 		}
-		for (const b of el.querySelectorAll(".bo-dock-btn")) _styleDockBtn(b, docked);
+		for (const b of el.querySelectorAll(".bo-dock-btn")) _styleDockBtn(b, docked, el);
 	}
 	updateBoardDockHeight();
 }
-function _styleDockBtn(b, docked) {
-	b.title = docked ? "Float the caption again" : "Dock the caption along the bottom edge";
+function _styleDockBtn(b, docked, overlay) {
+	const what = overlay.id === "step-caption" ? "caption" : "description";
+	b.title = docked ? `Float the ${what} again` : `Dock the ${what} along the bottom edge`;
 	b.setAttribute("aria-label", b.title);
 	b.setAttribute("aria-pressed", docked ? "true" : "false");
 	b.textContent = docked ? "⤴" : "⤓";
@@ -3357,7 +3358,7 @@ function fillBoardOverlay(el, html, aiBtn) {
 	const dock = document.createElement("button");
 	dock.type = "button";
 	dock.className = "info-dock-btn bo-dock-btn";
-	_styleDockBtn(dock, isBoardOverlayDocked());
+	_styleDockBtn(dock, isBoardOverlayDocked(), el);
 	dock.addEventListener("mousedown", (e) => e.stopPropagation());
 	dock.addEventListener("click", (e) => {
 		e.stopPropagation();
