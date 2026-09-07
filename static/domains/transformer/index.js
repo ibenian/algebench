@@ -161,7 +161,12 @@
         // would hand a scene that declares an override at 0 the cached pass
         // of a scene that never declared it (and vice versa).
         const parts = [];
-        for (const id of _KEY_SLIDERS) parts.push(id + ':' + _getSlider(id, '-'));
+        for (const id of _KEY_SLIDERS) {
+            // NaN is the sentinel: a numeric fallback keeps to getSlider's
+            // contract, and no declared slider ever carries NaN.
+            const v = Number(_getSlider(id, NaN));
+            parts.push(id + ':' + (Number.isNaN(v) ? '-' : v));
+        }
         return parts.join('|');
     }
 
