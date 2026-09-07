@@ -78,7 +78,7 @@ interface SubTracker {
 /** What a renderElement() call hands back for later teardown. Every field is
  *  optional: the renderers publish different subsets. */
 interface RenderResult {
-    _animState?: { stopped: boolean };
+    _animState?: { stopped: boolean; hiddenByRemove?: boolean };
     _animExprEntry?: AnimExprEntry;
     _arrowOwner?: object;
 }
@@ -87,6 +87,7 @@ interface RenderResult {
 interface ElementRegistryEntry {
     tracker: SubTracker;
     hidden: boolean;
+    animState?: { stopped: boolean; hiddenByRemove?: boolean } | null;
     type?: string;
     prompt?: string | null;
     label?: string | null;
@@ -334,7 +335,10 @@ export function renderStepAdd(elements: Element[], sliderDefs: SliderDef[] | und
             addedElementIds.push(el.id);
             // Non-null: elBefore was snapshotted under the same `el.id` guard.
             const subTracker = buildSubTracker(elGroup, elBefore!);
-            sceneState.elementRegistry[el.id] = { tracker: subTracker, hidden: false, type: el.type, prompt: el.prompt || null, label: elementDisplayName(el) };
+            sceneState.elementRegistry[el.id] = {
+                tracker: subTracker, hidden: false, type: el.type, prompt: el.prompt || null, label: elementDisplayName(el),
+                animState: (result as RenderResult | null)?._animState ?? null,
+            };
         }
     }
 
@@ -387,13 +391,37 @@ export function hideElementById(id: string): void {
     reg.hidden = true;
     const t = reg.tracker;
 
+    // Remember what each plane mesh was painted at before the fade drives it
+    // to 0. fadeInTracker snapshots the *current* opacity as its target, so a
+    // later showElementById would otherwise fade the mesh from 0 back to 0 and
+    // leave it invisible with `visible = true` (#626, #635). Arrows, labels
+    // and MathBox nodes recompute their target from base opacities and never
+    // had this problem.
+    // A fade-in still in flight has already zeroed the opacity (a jump runs
+    // several steps in one synchronous loop, so step 1's fade has not ramped
+    // when step 2's hide arrives): take its target instead of the current 0.
+    for (const m of t.planeMeshes) {
+        const inFlight = m.userData.fadeInTarget;
+        m.userData.opacityBeforeHide = typeof inFlight === 'number' ? inFlight : m.material.opacity;
+    }
+
+    // The mesh flags below only reach meshes that existed when the element
+    // was rendered. An animated_vector that started at zero length has none
+    // yet and builds them on a later frame, so its updater would paint a
+    // fresh, unflagged arrow for an element the step removed. Tell the
+    // updater directly; it checks this before touching or creating a mesh.
+    if (reg.animState) reg.animState.hiddenByRemove = true;
+
+    // A show that overtakes this fade wins: stop stepping and never stamp the
+    // meshes invisible after they were asked back.
+    const cancelled = () => !reg.hidden;
     fadeOutTracker(t, 200, () => {
         for (const entry of t.arrowMeshes) { entry.mesh.visible = false; entry.mesh._hiddenByRemove = true; }
         for (const m of t.planeMeshes) { m.visible = false; m._hiddenByRemove = true; }
         for (const lbl of t.labels) lbl.el.style.display = 'none';
         for (const entry of t.pointNodes) { try { entry.node!.set('visible', false); } catch(e) {} }
         if (t.group) { try { t.group.set('visible', false); } catch(e) {} }
-    });
+    }, cancelled);
     // Hide arrow cones immediately to prevent animated orphans
     for (const entry of t.arrowMeshes) { entry.mesh.visible = false; entry.mesh._hiddenByRemove = true; }
     for (const m of t.planeMeshes) { m.visible = false; m._hiddenByRemove = true; }
@@ -405,8 +433,14 @@ export function showElementById(id: string): void {
     if (!reg || !reg.hidden) return;
     reg.hidden = false;
     const t = reg.tracker;
+    if (reg.animState) reg.animState.hiddenByRemove = false;
     for (const entry of t.arrowMeshes) { entry.mesh._hiddenByRemove = false; }
-    for (const m of t.planeMeshes) { m._hiddenByRemove = false; }
+    for (const m of t.planeMeshes) {
+        m._hiddenByRemove = false;
+        // Put the pre-hide opacity back so fadeInTracker has a real target.
+        const saved = m.userData.opacityBeforeHide;
+        if (typeof saved === 'number') { m.material.opacity = saved; delete m.userData.opacityBeforeHide; }
+    }
 
     for (const entry of t.arrowMeshes) entry.mesh.visible = true;
     for (const m of t.planeMeshes) m.visible = true;
@@ -506,6 +540,14 @@ function undoStepRemoves(tracker: StepTracker): void {
     const stillRemovedSliders = new Set();
     for (const t of sceneState.stepTrackers) {
         if (t === tracker) break;
+        // A step that re-declares an id starts a new instance of it, so an
+        // earlier removal of that id no longer applies to what is in the
+        // registry now. Without this a scene that shows a tensor at step 2,
+        // removes it at step 3 and declares it again at step 5 never got it
+        // back when a later step's removal was undone (#626).
+        if (t.elementIds) {
+            for (const id of t.elementIds) stillRemoved.delete(id);
+        }
         if (t.removedIds) {
             for (const id of t.removedIds) stillRemoved.add(id);
         }
@@ -672,9 +714,13 @@ function fadeInTracker(tracker: SubTracker, duration?: number): void {
     // (opacity / 0.5), so those faded in fully opaque and stayed there —
     // updateFrame only rewrites opacity when an opacity *expression* exists.
     const planeOps = tracker.planeMeshes.map(m => m.material.opacity);
-    for (const m of tracker.planeMeshes) {
+    for (let i = 0; i < tracker.planeMeshes.length; i++) {
+        const m = tracker.planeMeshes[i]!;
         m.material.transparent = true;
         m.material.opacity = 0;
+        // Published while the ramp runs so a hide that lands mid-fade can
+        // record the real resting opacity rather than the 0 set just above.
+        m.userData.fadeInTarget = planeOps[i];
     }
     for (const lbl of tracker.labels) {
         lbl.el.style.transition = 'none';
@@ -725,12 +771,13 @@ function fadeInTracker(tracker: SubTracker, duration?: number): void {
             for (const lbl of tracker.labels) {
                 lbl.el.style.transition = '';
             }
+            for (const m of tracker.planeMeshes) delete m.userData.fadeInTarget;
         }
     }
     requestAnimationFrame(step);
 }
 
-function fadeOutTracker(tracker: SubTracker, duration?: number, onComplete?: () => void): void {
+function fadeOutTracker(tracker: SubTracker, duration?: number, onComplete?: () => void, cancelled?: () => boolean): void {
     duration = duration || 200;
     const startTime = performance.now();
 
@@ -738,6 +785,9 @@ function fadeOutTracker(tracker: SubTracker, duration?: number, onComplete?: () 
     const planeOps = tracker.planeMeshes.map(m => m.material.opacity);
 
     function step(now: number): void {
+        // The caller changed its mind mid-fade (a show overtook a hide): leave
+        // the opacities to whoever is driving them now and skip onComplete.
+        if (cancelled && cancelled()) return;
         // Non-null for the same reason as fadeInTracker's step().
         const t = Math.min((now - startTime) / duration!, 1);
         const ease = 1 - t * t; // inverse quadratic

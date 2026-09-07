@@ -230,6 +230,19 @@
       ],
       "port": 5753,
       "autoPort": false
+    },
+    {
+      "name": "transformer-lesson",
+      "runtimeExecutable": "/Users/ibenian/dev/algebench/.claude/worktrees/transformer-general/algebench",
+      "runtimeArgs": [
+        "/Users/ibenian/dev/algebench/.claude/worktrees/transformer-general/scenes/transformer-architecture.json",
+        "--port",
+        "5762",
+        "--debug",
+        "--server-only",
+        "--skip-tour"
+      ],
+      "port": 5762
     }
   ]
 }

@@ -71,6 +71,10 @@ interface ArrowMeshEntry {
 interface ElementRegistryEntry {
     tracker: unknown;
     hidden: boolean;
+    /** The element's per-frame updater state, when it has one. hide/show flip
+     *  `hiddenByRemove` on it so an updater that creates its meshes lazily
+     *  (an animated_vector born at zero length) still knows it is hidden. */
+    animState?: { stopped: boolean; hiddenByRemove?: boolean } | null;
     type?: string;
     prompt?: string | null;
     label?: string | null;

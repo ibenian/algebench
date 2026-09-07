@@ -6448,6 +6448,12 @@ function renderAnimatedVector(el, view) {
 	animatedVectorState.activeAnimUpdaters.push({
 		animState,
 		updateFrame(nowMs) {
+			if (animState.hiddenByRemove) {
+				if (arrowCone) arrowCone.visible = false;
+				if (arrowShaft) arrowShaft.visible = false;
+				if (labelEl) labelEl.forceHidden = true;
+				return;
+			}
 			if (arrowCone && !arrowCone.visible && arrowCone._hiddenByRemove) return;
 			const elapsed = nowMs - startTime;
 			const tSec = elapsed / 1e3;
@@ -12497,7 +12503,8 @@ function renderStepAdd(elements, sliderDefs) {
 				hidden: false,
 				type: el.type,
 				prompt: el.prompt || null,
-				label: elementDisplayName(el)
+				label: elementDisplayName(el),
+				animState: result?._animState ?? null
 			};
 		}
 	}
@@ -12538,6 +12545,12 @@ function hideElementById(id) {
 	if (!reg || reg.hidden) return;
 	reg.hidden = true;
 	const t = reg.tracker;
+	for (const m of t.planeMeshes) {
+		const inFlight = m.userData.fadeInTarget;
+		m.userData.opacityBeforeHide = typeof inFlight === "number" ? inFlight : m.material.opacity;
+	}
+	if (reg.animState) reg.animState.hiddenByRemove = true;
+	const cancelled = () => !reg.hidden;
 	fadeOutTracker(t, 200, () => {
 		for (const entry of t.arrowMeshes) {
 			entry.mesh.visible = false;
@@ -12554,7 +12567,7 @@ function hideElementById(id) {
 		if (t.group) try {
 			t.group.set("visible", false);
 		} catch (e) {}
-	});
+	}, cancelled);
 	for (const entry of t.arrowMeshes) {
 		entry.mesh.visible = false;
 		entry.mesh._hiddenByRemove = true;
@@ -12572,8 +12585,16 @@ function showElementById(id) {
 	if (!reg || !reg.hidden) return;
 	reg.hidden = false;
 	const t = reg.tracker;
+	if (reg.animState) reg.animState.hiddenByRemove = false;
 	for (const entry of t.arrowMeshes) entry.mesh._hiddenByRemove = false;
-	for (const m of t.planeMeshes) m._hiddenByRemove = false;
+	for (const m of t.planeMeshes) {
+		m._hiddenByRemove = false;
+		const saved = m.userData.opacityBeforeHide;
+		if (typeof saved === "number") {
+			m.material.opacity = saved;
+			delete m.userData.opacityBeforeHide;
+		}
+	}
 	for (const entry of t.arrowMeshes) entry.mesh.visible = true;
 	for (const m of t.planeMeshes) m.visible = true;
 	for (const lbl of t.labels) lbl.el.style.display = "";
@@ -12667,6 +12688,7 @@ function undoStepRemoves(tracker) {
 	const stillRemovedSliders = /* @__PURE__ */ new Set();
 	for (const t of sceneState.stepTrackers) {
 		if (t === tracker) break;
+		if (t.elementIds) for (const id of t.elementIds) stillRemoved.delete(id);
 		if (t.removedIds) for (const id of t.removedIds) stillRemoved.add(id);
 		if (t.removedSliders) for (const id of Object.keys(t.removedSliders)) stillRemovedSliders.add(id);
 	}
@@ -12774,9 +12796,11 @@ function fadeInTracker(tracker, duration) {
 		entry.mesh.material.opacity = 0;
 	}
 	const planeOps = tracker.planeMeshes.map((m) => m.material.opacity);
-	for (const m of tracker.planeMeshes) {
+	for (let i = 0; i < tracker.planeMeshes.length; i++) {
+		const m = tracker.planeMeshes[i];
 		m.material.transparent = true;
 		m.material.opacity = 0;
+		m.userData.fadeInTarget = planeOps[i];
 	}
 	for (const lbl of tracker.labels) {
 		lbl.el.style.transition = "none";
@@ -12817,16 +12841,20 @@ function fadeInTracker(tracker, duration) {
 			entry.node.set("opacity", ease);
 		} catch (e) {}
 		if (t < 1) requestAnimationFrame(step);
-		else for (const lbl of tracker.labels) lbl.el.style.transition = "";
+		else {
+			for (const lbl of tracker.labels) lbl.el.style.transition = "";
+			for (const m of tracker.planeMeshes) delete m.userData.fadeInTarget;
+		}
 	}
 	requestAnimationFrame(step);
 }
-function fadeOutTracker(tracker, duration, onComplete) {
+function fadeOutTracker(tracker, duration, onComplete, cancelled) {
 	duration = duration || 200;
 	const startTime = performance.now();
 	const arrowOps = tracker.arrowMeshes.map((e) => e.mesh.material.opacity);
 	const planeOps = tracker.planeMeshes.map((m) => m.material.opacity);
 	function step(now) {
+		if (cancelled && cancelled()) return;
 		const t = Math.min((now - startTime) / duration, 1);
 		const ease = 1 - t * t;
 		for (let i = 0; i < tracker.arrowMeshes.length; i++) tracker.arrowMeshes[i].mesh.material.opacity = arrowOps[i] * ease;
