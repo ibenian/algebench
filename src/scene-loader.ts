@@ -534,23 +534,36 @@ function processStepRemoves(removeList: SceneStep['remove'], tracker: StepTracke
     }
 }
 
-function undoStepRemoves(tracker: StepTracker): void {
-    if (!tracker.removedIds) return;
-    const stillRemoved = new Set();
-    const stillRemovedSliders = new Set();
-    for (const t of sceneState.stepTrackers) {
-        if (t === tracker) break;
-        // A step that re-declares an id starts a new instance of it, so an
-        // earlier removal of that id no longer applies to what is in the
-        // registry now. Without this a scene that shows a tensor at step 2,
-        // removes it at step 3 and declares it again at step 5 never got it
-        // back when a later step's removal was undone (#626).
+/** The element ids whose removal, by some tracker before `upTo`, is still in
+ *  force when `upTo` is undone. A step that re-declares an id starts a new
+ *  instance of it, so an earlier removal of that id no longer applies to what
+ *  is in the registry now. Without that rule a scene that shows a tensor at
+ *  step 2, removes it at step 3 and declares it again at step 5 never got it
+ *  back when a later step's removal was undone (#626). Exported for the test;
+ *  it reads nothing but its arguments. */
+export function removalsStillInForce(
+    trackers: ReadonlyArray<{ elementIds?: string[]; removedIds?: string[] }>,
+    upTo: unknown,
+): Set<string> {
+    const stillRemoved = new Set<string>();
+    for (const t of trackers) {
+        if (t === upTo) break;
         if (t.elementIds) {
             for (const id of t.elementIds) stillRemoved.delete(id);
         }
         if (t.removedIds) {
             for (const id of t.removedIds) stillRemoved.add(id);
         }
+    }
+    return stillRemoved;
+}
+
+function undoStepRemoves(tracker: StepTracker): void {
+    if (!tracker.removedIds) return;
+    const stillRemoved = removalsStillInForce(sceneState.stepTrackers, tracker);
+    const stillRemovedSliders = new Set();
+    for (const t of sceneState.stepTrackers) {
+        if (t === tracker) break;
         if (t.removedSliders) {
             for (const id of Object.keys(t.removedSliders)) stillRemovedSliders.add(id);
         }
