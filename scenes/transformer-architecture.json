@@ -4111,6 +4111,13 @@
           "description": "A and the output O."
         }
       ],
+      "functions": [
+        {
+          "name": "s4slotOf",
+          "args": ["tok"],
+          "expr": "tfPerm(0) == tok ? 0 : (tfPerm(1) == tok ? 1 : (tfPerm(2) == tok ? 2 : (tfPerm(3) == tok ? 3 : (tfPerm(4) == tok ? 4 : 5))))"
+        }
+      ],
       "elements": [
         {
           "id": "s4_grid",
@@ -4423,7 +4430,7 @@
         {
           "id": "s4-input",
           "title": "Change the input, watch it propagate",
-          "description": "The four sliders are the components of one input row, *sat* by default (change **row to read out** to follow another row). Push $x_2$ down and $q_{\\text{sat}}$ collapses, because $W_Q$ reads dimension 2; push $x_0$ and only $v$ moves, because $W_V$ reads dimensions 0 and 1. **Positional encoding strength** and **RoPE** change every row at once. Nothing to the right can change unless something to its left did.",
+          "description": "The four sliders are the embedding components of one token, *sat*. The card follows *sat* wherever the shuffle puts it; **row to read out** follows a slot instead. Push $x_2$ down and $q_{\\text{sat}}$ collapses, because $W_Q$ reads dimension 2; push $x_0$ and only $v$ moves, because $W_V$ reads dimensions 0 and 1. **Positional encoding strength** and **RoPE** change every row at once. Nothing to the right can change unless something to its left did.",
           "camera": {
             "position": [-8.5, 2.8, 24.0],
             "target": [-8.5, 2.8, 0.0]
@@ -4443,10 +4450,10 @@
           ],
           "add": [],
           "info": [
-            {"id": "s4_info_input", "position": "top-left", "title": "Input row 2 (sat)", "content": "$x_{\\text{sat}}$ = ({{toFixed(tfX(2,0),2)}}, {{toFixed(tfX(2,1),2)}}, {{toFixed(tfX(2,2),2)}}, {{toFixed(tfX(2,3),2)}}) — embedding ({{toFixed(s4_e20,2)}}, {{toFixed(s4_e21,2)}}, {{toFixed(s4_e22,2)}}, {{toFixed(s4_e23,2)}}) plus $\\text{PE}_2$ × {{toFixed(s1_pe,2)}}. $q_{\\text{sat}}$ = ({{toFixed(tfQ(2,0),2)}}, {{toFixed(tfQ(2,1),2)}}), $v_{\\text{sat}}$ = ({{toFixed(tfV(2,0),2)}}, {{toFixed(tfV(2,1),2)}})."},
+            {"id": "s4_info_input", "position": "top-left", "title": "Input row of *sat* (token row 2, slot {{s4slotOf(2)}})", "content": "$x_{\\text{sat}}$ = ({{toFixed(tfX(s4slotOf(2),0),2)}}, {{toFixed(tfX(s4slotOf(2),1),2)}}, {{toFixed(tfX(s4slotOf(2),2),2)}}, {{toFixed(tfX(s4slotOf(2),3),2)}}) — embedding ({{toFixed(s4_e20,2)}}, {{toFixed(s4_e21,2)}}, {{toFixed(s4_e22,2)}}, {{toFixed(s4_e23,2)}}) plus the encoding of slot {{s4slotOf(2)}} × {{toFixed(s1_pe,2)}}. $q_{\\text{sat}}$ = ({{toFixed(tfQ(s4slotOf(2),0),2)}}, {{toFixed(tfQ(s4slotOf(2),1),2)}}), $v_{\\text{sat}}$ = ({{toFixed(tfV(s4slotOf(2),0),2)}}, {{toFixed(tfV(s4slotOf(2),1),2)}})."},
             {"id": "s4_keep_card", "position": "bottom-right", "keep": true, "title": "Toy · provenance", "content": "$d_{\\text{model}} = 4$, $d_k = 2$, **one head of two**. Every number here is recomputed from the sliders; the defaults are the hand-built $W_Q, W_K, W_V$, **not learned**."}
           ],
-          "prompt": "The input sliders override the four components of the EMBEDDING row for sat (row 2); positional encoding is added on top per the PE slider, and with RoPE on the additive PE is replaced by a rotation of q and k. The lesson to draw out: which downstream lattice moves tells you which weight matrix reads that dimension. x_2 feeds W_Q only (q moves, S row 2 moves, A row 2 moves, o moves); x_1 feeds W_K and W_V; x_0 feeds W_V only; x_3 feeds W_Q and W_K. Let the student discover this by dragging, then confirm. The sliders act on the embedding table, so the two \"the\" rows stay identical unless the student edits row 0 or 4 on the weights steps."
+          "prompt": "The input sliders override the four components of the EMBEDDING row for sat (token row 2). With the shuffle on, sat moves to slot 3; the card follows the token through s4slotOf(2), while the row-to-read-out slider follows a SLOT, so the two can point at different rows and that is worth saying if a student notices; positional encoding is added on top per the PE slider, and with RoPE on the additive PE is replaced by a rotation of q and k. The lesson to draw out: which downstream lattice moves tells you which weight matrix reads that dimension. x_2 feeds W_Q only (q moves, S row 2 moves, A row 2 moves, o moves); x_1 feeds W_K and W_V; x_0 feeds W_V only; x_3 feeds W_Q and W_K. Let the student discover this by dragging, then confirm. The sliders act on the embedding table, so the two \"the\" rows stay identical unless the student edits row 0 or 4 on the weights steps."
         },
         {
           "id": "s4-wq",
