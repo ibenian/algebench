@@ -1616,9 +1616,11 @@ function _beginBoardResize(el: HTMLElement, e: MouseEvent): void {
     window.addEventListener('mouseup', onUp);
 }
 
-/** Wire the dock state at startup (called once from main). */
+/** Wire the dock state at startup (called once from main). Re-applying the
+ *  persisted state is idempotent and makes the overlays match the wrapper
+ *  whatever order the other setup calls ran in. */
 export function setupBoardOverlays(): void {
-    updateBoardDockHeight();
+    setBoardOverlayDocked(isBoardOverlayDocked());
     _observeBoardOverlays();
 }
 

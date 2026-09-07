@@ -3427,9 +3427,11 @@ function _beginBoardResize(el, e) {
 	window.addEventListener("mousemove", onMove);
 	window.addEventListener("mouseup", onUp);
 }
-/** Wire the dock state at startup (called once from main). */
+/** Wire the dock state at startup (called once from main). Re-applying the
+*  persisted state is idempotent and makes the overlays match the wrapper
+*  whatever order the other setup calls ran in. */
 function setupBoardOverlays() {
-	updateBoardDockHeight();
+	setBoardOverlayDocked(isBoardOverlayDocked());
 	_observeBoardOverlays();
 }
 function updateStepCaption(scene, stepIdx) {
