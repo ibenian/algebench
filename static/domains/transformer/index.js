@@ -335,8 +335,9 @@
         // Vocabulary: one entry per distinct surface form, in first-seen order.
         const names = n === TOY_N ? TOKENS : Array.from({ length: n }, (_, i) => 't' + i);
         const vocab = [], vocabRow = [];
+        const seen = new Set();
         for (let i = 0; i < n; i++) {
-            if (vocab.indexOf(names[i]) < 0) { vocab.push(names[i]); vocabRow.push(i); }
+            if (!seen.has(names[i])) { seen.add(names[i]); vocab.push(names[i]); vocabRow.push(i); }
         }
         return { n, dModel, heads, kv, dk, layers, dff, normKind, rms, pre, nrm, act, temp, table, names, vocab, vocabRow };
     }
