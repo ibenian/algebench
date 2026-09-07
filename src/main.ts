@@ -11,7 +11,7 @@ import { animateSlider } from '/sliders.js';
 import { setupDragDrop, setupFilePicker, setupScenesDropdown, setupVideoExportControls,
          loadBuiltinScenesList, loadInitialSceneFromQuery } from '/ui.js';
 import { setupSettingsPanel, initLightControls, setupPanelResize, setupExplainToggle,
-         setupDocSpeakButtons, setupCaptionDrag, setupSceneDescDrag, setupCamStatusPopup, setupAboutPopup,
+         setupDocSpeakButtons, setupCaptionDrag, setupSceneDescDrag, setupBoardOverlays, setupCamStatusPopup, setupAboutPopup,
          getAllElements, addInfoOverlay, removeAllInfoOverlays, updateInfoOverlays,
          setBuildSceneTreeFn } from '/overlay.js';
 import { setupFollowAngleLockToggle } from '/follow-cam.js';
@@ -69,6 +69,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupSceneDock();
     setupCaptionDrag();
     setupSceneDescDrag();
+    setupBoardOverlays();
     setupJsonViewer();
     setupContextStatusPopup();
     setupCamStatusPopup();
