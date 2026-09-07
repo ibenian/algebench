@@ -4577,3 +4577,102 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     border: 1px solid var(--border-color);
     box-shadow: var(--shadow-sm);
 }
+
+/* ---- Board overlays: shared chrome for #step-caption and #scene-description ----
+   Scrolling body + side buttons + resize grip, and the docked full-width strip.
+   These rules come last so they win over the two per-element blocks above. */
+#step-caption, #scene-description {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    padding: 0;
+    max-height: 45%;
+    box-sizing: border-box;
+}
+#scene-description:empty { display: none; }
+#step-caption.sized, #scene-description.sized { max-width: calc(100% - 16px); }
+#step-caption.resizing, #scene-description.resizing { user-select: none; transition: none; }
+.bo-body {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 10px 6px 10px 18px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(232, 230, 218, 0.28) transparent;
+}
+#scene-description .bo-body { padding: 8px 6px 8px 16px; }
+.bo-side {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 8px 8px 4px;
+}
+/* The Ask-AI button lives in the side column now, not on the overlay corner. */
+.bo-side .ai-ask-btn, .bo-side .caption-ai-btn {
+    position: static;
+    transform: none;
+    margin: 0;
+    top: auto;
+}
+.bo-side .bo-dock-btn {
+    opacity: 0;
+    font-size: 12px;
+    text-shadow: none;
+    transition: opacity 0.12s, background 0.12s, color 0.12s;
+}
+#step-caption:hover .bo-dock-btn, #scene-description:hover .bo-dock-btn { opacity: 1; }
+#step-caption:hover .ai-ask-btn, #scene-description:hover .ai-ask-btn { opacity: 1; }
+.bo-resize {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 14px;
+    height: 14px;
+    cursor: nesw-resize;
+    z-index: 2;
+}
+.bo-resize::after {
+    content: '';
+    position: absolute;
+    inset: 3px;
+    border-style: solid;
+    border-color: rgba(232, 230, 218, 0.35);
+    border-width: 2px 2px 0 0;
+    opacity: 0;
+    transition: opacity 0.12s;
+}
+#step-caption:hover .bo-resize::after, #scene-description:hover .bo-resize::after { opacity: 1; }
+#step-caption.docked .bo-resize, #scene-description.docked .bo-resize { cursor: ns-resize; }
+
+/* Docked: a strip along the bottom edge of the board, full width, its own
+   scrollbar when the text is taller than the strip. */
+#step-caption.docked, #scene-description.docked {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    width: auto;
+    max-width: none;
+    max-height: 40%;
+    transform: none;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+    text-align: left;
+    cursor: default;
+}
+#step-caption.docked { font-size: calc(0.9em * var(--caption-scale, 1)); }
+#step-caption.docked .bo-body, #scene-description.docked .bo-body { padding-left: 16px; }
+/* Everything anchored to the board's bottom edge rides on top of the strip. */
+#mathbox-wrapper.caption-docked #scene-nav { bottom: calc(12px + var(--caption-dock-h, 0px)); }
+#mathbox-wrapper.caption-docked #slider-overlay { bottom: calc(56px + var(--caption-dock-h, 0px)); }
+#mathbox-wrapper.caption-docked #legend { bottom: calc(16px + var(--caption-dock-h, 0px)); }
+#mathbox-wrapper.caption-docked .dockable-panel.pos-bottom-left,
+#mathbox-wrapper.caption-docked .dockable-panel.pos-bottom-right,
+#mathbox-wrapper.caption-docked .dockable-panel.pos-bottom-center { bottom: calc(80px + var(--caption-dock-h, 0px)); }

@@ -321,17 +321,17 @@ export function updateTitle(spec: OverlayScene | null | undefined): void {
         titleEl.innerHTML = 'AlgeBench';
     }
     if (spec && spec.description) {
-        descEl.innerHTML = renderKaTeX(spec.description, false);
         descEl.dataset.markdown = spec.description;
         const descText = spec.description;
         const btn = makeAiAskButton('ai-ask-btn', 'Ask AI to explain this scene', () => 'Can you explain this scene:\n' + descText.trim());
-        descEl.appendChild(btn);
+        fillBoardOverlay(descEl, renderKaTeX(spec.description, false), btn);
         resetSceneDescPosition(descEl);
     } else if (spec && spec.title) {
         descEl.innerHTML = '';
     } else {
         descEl.innerHTML = 'Load a scene to begin';
     }
+    updateBoardDockHeight();
     if (sourceEl) {
         sourceEl.textContent = overlayState.currentSceneSourceLabel ? `- ${overlayState.currentSceneSourceLabel}` : '- no file';
         sourceEl.title = overlayState.currentSceneSourcePath || '';
@@ -1330,7 +1330,11 @@ export function setupSettingsPanel(): void {
                 }
             } else if (param === 'captionScale') {
                 const cap = document.getElementById('step-caption');
-                if (cap) {
+                if (cap && isBoardOverlayDocked()) {
+                    // Docked strip: no transform (it must stay edge-to-edge), so
+                    // the scale becomes a font-size factor instead.
+                    cap.style.setProperty('--caption-scale', String(val));
+                } else if (cap) {
                     // Preserve a dragged caption's anchor/origin; only re-center it
                     // when it hasn't been dragged (still at left:50%).
                     const dragged = cap.style.left && cap.style.left.endsWith('px');
@@ -1395,6 +1399,210 @@ export function initLightControls(): void {
     applyLight();
 }
 
+// ----- Board overlays (step caption + scene description) -----
+//
+// Both bottom-centre overlays share one chrome: a scrolling body (so a long
+// description can never outgrow the viewport), a side column with the dock
+// toggle and the Ask-AI button, and a resize grip on the top-right corner.
+// "Docked" turns the overlay into a full-width strip along the bottom edge of
+// the board; everything else anchored to that edge (nav, sliders, legend,
+// bottom info panels) is lifted by --caption-dock-h, which tracks the strip's
+// rendered height.
+
+const BOARD_IDS = ['step-caption', 'scene-description'] as const;
+const BOARD_DOCK_KEY = 'board-overlay-docked';
+const BOARD_DOCK_H_KEY = 'board-overlay-dock-h';
+const BOARD_MIN_W = 160, BOARD_MIN_H = 48;
+let _boardDocked: boolean | null = null;
+let _boardObserver: ResizeObserver | null = null;
+
+export function isBoardOverlayDocked(): boolean {
+    if (_boardDocked === null) {
+        try { _boardDocked = localStorage.getItem(BOARD_DOCK_KEY) === '1'; } catch { _boardDocked = false; }
+    }
+    return _boardDocked;
+}
+
+function _boardSizeKey(el: HTMLElement): string {
+    return el.id === 'step-caption' ? 'caption-size' : 'scene-desc-size';
+}
+
+/** True when the mousedown landed on the overlay chrome (buttons, grip, or the
+ *  body's scrollbar) rather than on the text — those must not start a drag. */
+export function isBoardChromeEvent(e: MouseEvent): boolean {
+    const t = e.target as HTMLElement;
+    if (t.closest('.ai-ask-btn, .bo-side, .bo-resize')) return true;
+    const body = t.closest<HTMLElement>('.bo-body');
+    if (body && t === body) {
+        // A click on the vertical scrollbar reports offsetX beyond clientWidth.
+        const r = body.getBoundingClientRect();
+        if (e.clientX - r.left > body.clientWidth) return true;
+    }
+    return false;
+}
+
+/** Apply the persisted free-floating size. `legacyWidth` is the width the old
+ *  position blobs carried before sizes got their own key. */
+export function applyBoardOverlaySize(el: HTMLElement, legacyWidth?: string): void {
+    let w: number | null = null, h: number | null = null;
+    try {
+        const saved = JSON.parse(localStorage.getItem(_boardSizeKey(el)) || 'null');
+        if (saved && typeof saved === 'object') {
+            if (typeof saved.w === 'number' && saved.w >= BOARD_MIN_W) w = saved.w;
+            if (typeof saved.h === 'number' && saved.h >= BOARD_MIN_H) h = saved.h;
+        }
+    } catch {}
+    if (w == null && legacyWidth && legacyWidth.endsWith('px')) w = parseFloat(legacyWidth) || null;
+    el.style.width = w != null ? w + 'px' : '';
+    el.style.height = h != null ? h + 'px' : '';
+    el.classList.toggle('sized', w != null);
+}
+
+/** Docked geometry: the CSS `.docked` rule pins the strip; here we only clear
+ *  the inline position a drag may have left and restore the saved height. */
+export function applyBoardDockGeometry(el: HTMLElement): void {
+    el.classList.add('docked');
+    el.classList.remove('sized');
+    el.style.left = el.style.right = el.style.top = el.style.bottom = '';
+    el.style.width = el.style.transform = el.style.transformOrigin = '';
+    let h: number | null = null;
+    try { h = parseFloat(localStorage.getItem(BOARD_DOCK_H_KEY) || '') || null; } catch {}
+    el.style.height = h != null && h >= BOARD_MIN_H ? h + 'px' : '';
+    el.style.setProperty('--caption-scale', String(overlayState.displayParams.captionScale || 1));
+}
+
+/** Recompute --caption-dock-h from whichever docked overlay is showing. */
+export function updateBoardDockHeight(): void {
+    const wrap = document.getElementById('mathbox-wrapper');
+    if (!wrap) return;
+    let h = 0;
+    if (isBoardOverlayDocked()) {
+        const cap = document.getElementById('step-caption');
+        const desc = document.getElementById('scene-description');
+        const capShown = !!cap && !cap.classList.contains('hidden');
+        if (capShown) h = cap!.offsetHeight;
+        else if (desc && desc.childElementCount > 0) h = desc.offsetHeight;
+    }
+    wrap.classList.toggle('caption-docked', isBoardOverlayDocked());
+    wrap.style.setProperty('--caption-dock-h', h + 'px');
+}
+
+export function setBoardOverlayDocked(docked: boolean): void {
+    _boardDocked = !!docked;
+    try { localStorage.setItem(BOARD_DOCK_KEY, docked ? '1' : '0'); } catch {}
+    for (const id of BOARD_IDS) {
+        const el = document.getElementById(id);
+        if (!el) continue;
+        if (docked) {
+            applyBoardDockGeometry(el);
+        } else {
+            el.classList.remove('docked');
+            el.style.height = '';
+            if (id === 'step-caption') {
+                resetCaptionPosition(el);
+                el.style.setProperty('--caption-scale', '1');
+            } else {
+                resetSceneDescPosition(el);
+            }
+        }
+        for (const b of el.querySelectorAll<HTMLElement>('.bo-dock-btn')) _styleDockBtn(b, docked);
+    }
+    updateBoardDockHeight();
+}
+
+function _styleDockBtn(b: HTMLElement, docked: boolean): void {
+    b.title = docked ? 'Float the caption again' : 'Dock the caption along the bottom edge';
+    b.setAttribute('aria-pressed', docked ? 'true' : 'false');
+    b.textContent = docked ? '⤴' : '⤓';
+}
+
+/** Replace the overlay's content with `html` wrapped in the shared chrome. */
+export function fillBoardOverlay(el: HTMLElement, html: string, aiBtn: HTMLElement): void {
+    el.innerHTML = '';
+    const body = document.createElement('div');
+    body.className = 'bo-body';
+    body.innerHTML = html;
+
+    const side = document.createElement('div');
+    side.className = 'bo-side';
+    const dock = document.createElement('button');
+    dock.type = 'button';
+    dock.className = 'info-dock-btn bo-dock-btn';
+    _styleDockBtn(dock, isBoardOverlayDocked());
+    dock.addEventListener('mousedown', e => e.stopPropagation());
+    dock.addEventListener('click', (e) => { e.stopPropagation(); setBoardOverlayDocked(!isBoardOverlayDocked()); });
+    side.appendChild(dock);
+    side.appendChild(aiBtn);
+
+    const grip = document.createElement('div');
+    grip.className = 'bo-resize';
+    grip.title = 'Resize';
+    grip.addEventListener('mousedown', (e) => _beginBoardResize(el, e));
+
+    el.appendChild(body);
+    el.appendChild(side);
+    el.appendChild(grip);
+    el.classList.toggle('docked', isBoardOverlayDocked());
+    _observeBoardOverlays();
+}
+
+function _observeBoardOverlays(): void {
+    if (_boardObserver || typeof ResizeObserver === 'undefined') return;
+    _boardObserver = new ResizeObserver(() => updateBoardDockHeight());
+    for (const id of BOARD_IDS) {
+        const el = document.getElementById(id);
+        if (el) _boardObserver.observe(el);
+    }
+}
+
+// The grip sits on the top-right corner: dragging right widens, dragging up
+// grows the height (the overlay is anchored at its bottom). A centred overlay
+// widens symmetrically, so the pointer tracks the edge at twice the delta.
+function _beginBoardResize(el: HTMLElement, e: MouseEvent): void {
+    if (e.button !== 0) return;
+    e.preventDefault(); e.stopPropagation();
+    const docked = isBoardOverlayDocked();
+    const parent = el.offsetParent || document.body;
+    const pr = parent.getBoundingClientRect();
+    const scale = (el.id === 'step-caption' && !docked) ? (overlayState.displayParams.captionScale || 1) : 1;
+    const centred = !docked && !(el.style.left && el.style.left.endsWith('px'));
+    const startW = el.offsetWidth, startH = el.offsetHeight;
+    const startX = e.clientX, startY = e.clientY;
+    let w = startW, h = startH;
+    el.classList.add('resizing');
+
+    const onMove = (me: MouseEvent) => {
+        const dx = (me.clientX - startX) / scale * (centred ? 2 : 1);
+        const dy = (startY - me.clientY) / scale;
+        if (!docked) {
+            w = Math.round(Math.max(BOARD_MIN_W, Math.min(startW + dx, pr.width - 16)));
+            el.style.width = w + 'px';
+            el.classList.add('sized');
+        }
+        h = Math.round(Math.max(BOARD_MIN_H, Math.min(startH + dy, pr.height * 0.9)));
+        el.style.height = h + 'px';
+    };
+    const onUp = () => {
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+        el.classList.remove('resizing');
+        try {
+            if (docked) localStorage.setItem(BOARD_DOCK_H_KEY, String(h));
+            else localStorage.setItem(_boardSizeKey(el), JSON.stringify({ w, h }));
+        } catch {}
+        if (el.id === 'step-caption') clampCaptionIntoView(el);
+        updateBoardDockHeight();
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+}
+
+/** Wire the dock state at startup (called once from main). */
+export function setupBoardOverlays(): void {
+    updateBoardDockHeight();
+    _observeBoardOverlays();
+}
+
 // ----- Caption drag -----
 
 export function updateStepCaption(scene: OverlayScene | null | undefined, stepIdx: number): void {
@@ -1410,16 +1618,16 @@ export function updateStepCaption(scene: OverlayScene | null | undefined, stepId
         text = scene!.description;
     }
     if (text) {
-        el.innerHTML = renderMarkdown(text);
         el.dataset.markdown = text;
         const btn = makeAiAskButton('ai-ask-btn caption-ai-btn', 'Ask AI to explain this', () => `Can you explain the step description: "${text}"`);
-        el.appendChild(btn);
+        fillBoardOverlay(el, renderMarkdown(text), btn);
         el.style.opacity = String(overlayState.displayParams.overlayOpacity);
         resetCaptionPosition(el);
         el.classList.remove('hidden');
     } else {
         el.classList.add('hidden');
     }
+    updateBoardDockHeight();
 }
 
 /** `bottom` and `left` are CSS lengths ('64px', '50%'), not numbers — the
@@ -1470,23 +1678,26 @@ export function clampCaptionIntoView(el: HTMLElement): void {
 }
 
 export function resetCaptionPosition(el: HTMLElement): void {
+    if (isBoardOverlayDocked()) { applyBoardDockGeometry(el); return; }
     try {
         const saved = JSON.parse(localStorage.getItem('caption-pos') || 'null');
         if (saved && typeof saved.bottom === 'string' && saved.bottom.endsWith('px')) {
-            if (saved.width) el.style.width = saved.width;
             _applyBottomPos(el, saved.bottom, saved.left);
+            applyBoardOverlaySize(el, saved.width);
             requestAnimationFrame(() => {
                 const parent = el.offsetParent || document.body;
                 const b = parseFloat(el.style.bottom) || 0;
                 if (b < 0 || b > parent.clientHeight - 20) {
                     localStorage.removeItem('caption-pos');
                     _defaultCaptionPos(el);
+                    applyBoardOverlaySize(el);
                 }
             });
             return;
         }
     } catch {}
     _defaultCaptionPos(el);
+    applyBoardOverlaySize(el);
 }
 
 export function setupCaptionDrag(): void {
@@ -1499,7 +1710,7 @@ export function setupCaptionDrag(): void {
     const EDGE_MARGIN = 8; // matches clampCaptionIntoView so drop doesn't jump
 
     el.addEventListener('mousedown', (e) => {
-        if ((e.target as HTMLElement).closest('.ai-ask-btn')) return;
+        if (isBoardChromeEvent(e) || isBoardOverlayDocked()) return;
         dragging = true;
         startX = e.clientX;
         startY = e.clientY;
@@ -1622,15 +1833,16 @@ export function resetSceneDescPosition(el: HTMLElement): void {
     // stops the reassignment widening `el` to include null.
     if (!el) el = document.getElementById('scene-description')!;
     if (!el) return;
+    if (isBoardOverlayDocked()) { applyBoardDockGeometry(el); return; }
     try {
         const saved = JSON.parse(localStorage.getItem('scene-desc-pos') || 'null');
         if (saved && typeof saved.bottom === 'string' && saved.bottom.endsWith('px')) {
             const left = saved.left || '50%';
-            if (saved.width) el.style.width = saved.width;
             el.style.bottom    = saved.bottom;
             el.style.left      = left;
             el.style.top       = 'auto';
             el.style.transform = left.endsWith('px') ? 'none' : 'translateX(-50%)';
+            applyBoardOverlaySize(el, saved.width);
             requestAnimationFrame(() => {
                 const parent = el.offsetParent || document.body;
                 const b = parseFloat(el.style.bottom) || 0;
@@ -1640,6 +1852,7 @@ export function resetSceneDescPosition(el: HTMLElement): void {
                     el.style.left      = '50%';
                     el.style.top       = 'auto';
                     el.style.transform = 'translateX(-50%)';
+                    applyBoardOverlaySize(el);
                 }
             });
             return;
@@ -1649,6 +1862,7 @@ export function resetSceneDescPosition(el: HTMLElement): void {
     el.style.left      = '50%';
     el.style.top       = 'auto';
     el.style.transform = 'translateX(-50%)';
+    applyBoardOverlaySize(el);
 }
 
 export function setupSceneDescDrag(): void {
@@ -1657,7 +1871,7 @@ export function setupSceneDescDrag(): void {
     let dragging = false, startX = 0, startY = 0, startLeft = 0, startBottom = 0;
 
     el.addEventListener('mousedown', (e) => {
-        if ((e.target as HTMLElement).closest('.ai-ask-btn')) return;
+        if (isBoardChromeEvent(e) || isBoardOverlayDocked()) return;
         dragging = true;
         startX = e.clientX;
         startY = e.clientY;
