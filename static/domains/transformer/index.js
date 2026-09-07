@@ -153,21 +153,23 @@
         ..._OVERRIDE_SLIDERS,
     ];
 
-    let _cache = { key: null, data: null };
+    // Change detection without a key string: the last value seen for each
+    // keyed slider (NaN = absent), compared element-wise on every call. No
+    // allocation, no number-to-string, and exact -- a key string costs ten
+    // times as much once 54 sliders are keyed, and _st() runs per cell.
+    let _cache = { data: null };
+    const _last = new Float64Array(_KEY_SLIDERS.length).fill(NaN);
+    let _neverBuilt = true;
 
-    function _buildKey() {
-        // An ABSENT slider must key differently from one present at 0: the
-        // build falls back to a constant for the former, so keying both as 0
-        // would hand a scene that declares an override at 0 the cached pass
-        // of a scene that never declared it (and vice versa).
-        const parts = [];
-        for (const id of _KEY_SLIDERS) {
-            // NaN is the sentinel: a numeric fallback keeps to getSlider's
-            // contract, and no declared slider ever carries NaN.
-            const v = Number(_getSlider(id, NaN));
-            parts.push(id + ':' + (Number.isNaN(v) ? '-' : v));
+    function _stale() {
+        let changed = _neverBuilt;
+        for (let i = 0; i < _KEY_SLIDERS.length; i++) {
+            const v = Number(_getSlider(_KEY_SLIDERS[i], NaN));
+            const l = _last[i];
+            if (v !== l && !(v !== v && l !== l)) { _last[i] = v; changed = true; }
         }
-        return parts.join('|');
+        _neverBuilt = false;
+        return changed;
     }
 
     function _build() {
@@ -294,8 +296,7 @@
     }
 
     function _st() {
-        const key = _buildKey();
-        if (_cache.key !== key) _cache = { key, data: _build() };
+        if (_stale()) _cache = { data: _build() };
         return _cache.data;
     }
 
