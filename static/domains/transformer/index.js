@@ -579,7 +579,7 @@
     const _n = () => _st().N;
     const _dm = () => _st().dModel;
     const _layer = (l) => { const st = _st(); return st.L[_clampIdx(l, st.cfg.layers - 1)]; };
-    const _head = (l, h) => { const st = _st(); return _layer(l).attn.heads[_clampIdx(h, st.cfg.heads - 1)]; };
+    const _head = (l, h) => { const st = _st(); return st.L[_clampIdx(l, st.cfg.layers - 1)].attn.heads[_clampIdx(h, st.cfg.heads - 1)]; };
     const _cell = (arr, i, d, width, hiD) => { const st = _st(); return arr[_clampIdx(i, st.N - 1) * width + _clampIdx(d, hiD)]; };
 
     // Configuration
@@ -595,7 +595,7 @@
     function tfVocabToken(v) { const st = _st(); return st.cfg.vocab[_clampIdx(v, st.cfg.vocab.length - 1)]; }
     /** Which K/V head query head h reads: floor(h / (n_heads / n_kv)). */
     function tfHeadKv(h) { const c = _st().cfg; return Math.floor((_clampIdx(h, c.heads - 1) * c.kv) / c.heads); }
-    /** Numbers held in the K/V cache for the whole sequence: 2 * n * n_kv * d_k per layer. */
+    /** Numbers held in the K/V cache for the whole sequence, summed over layers: 2 * n * n_kv * d_k per layer. */
     function tfKvCache() { const c = _st().cfg; return 2 * c.n * c.kv * c.dk * c.layers; }
     /** The cache saving of sharing K/V heads, n_heads / n_kv (1 = MHA, n_heads = MQA). */
     function tfKvSaving() { const c = _st().cfg; return c.heads / c.kv; }
@@ -662,7 +662,7 @@
     }
 
     // Layer-0 / head-0 shorthands: the names scenes 1-4 read.
-    function tfPerm(k) { return _st().perm[_clampIdx(k, _n() - 1)]; }
+    function tfPerm(k) { const st = _st(); return st.perm[_clampIdx(k, st.N - 1)]; }
     function tfToken(k) { const st = _st(); return st.cfg.names[tfPerm(k)]; }
     /** Row r (a TOKEN row, no shuffle) of the embedding table in force. */
     function tfEmbBase(r, d) { const st = _st(); return st.EMBe[_clampIdx(r, st.N - 1)][_clampIdx(d, st.dModel - 1)]; }
