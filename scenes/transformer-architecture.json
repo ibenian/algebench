@@ -4355,12 +4355,12 @@
               "id": "s4_M",
               "type": "tensor",
               "shape": [6, 6],
-              "valueExpr": "tfMaskVal(row, col) > 0.5 ? tfScoreScaled(row, col) : -11",
+              "valueExpr": "tfMaskVal(row, col) > 0.5 ? tfScoreScaled(row, col) : -17",
               "origin": [6.4, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
               "colorMap": "blueRed",
-              "colorDomain": [-11, 11],
+              "colorDomain": [-16, 16],
               "color": "#ff7043",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
@@ -4369,9 +4369,9 @@
                 {"labelExpr": "tfToken(row)", "title": "query $i$", "color": "#ff7043"},
                 {"labelExpr": "tfToken(col)", "title": "$S/\\sqrt{d_k} + M$", "color": "#42a5f5"}
               ],
-              "textExpr": "value > -10.9 ? toFixed(value, 1) : ''",
-              "depthExpr": "value > -10.9 ? value / 10 : -0.6",
-              "prompt": "The scores divided by (sqrt d_k)^scale, with the causal mask as wells: a masked cell sinks below the plane and shows no number, because its value is minus infinity (minus 1e9 in code), not a score. With the mask off every cell is a score."
+              "textExpr": "tfMaskVal(row, col) > 0.5 ? toFixed(value, 1) : ''",
+              "depthExpr": "tfMaskVal(row, col) > 0.5 ? value / 10 : -0.6",
+              "prompt": "The scores divided by (sqrt d_k)^scale, with the causal mask as wells: a masked cell sinks below the plane and shows no number, because its value is minus infinity (minus 1e9 in code), not a score. Masked-versus-not is decided by the mask itself, never by the score, so a large negative score in the sandbox still reads as a score. With the mask off every cell is a score."
             },
             {
               "id": "s4_A",
