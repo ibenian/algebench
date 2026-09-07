@@ -42,6 +42,7 @@
           "description": "One layer of attention with every head exposed: pick the head, change the head count or share K/V, and read each function's lattice.",
           "sliders": [
             {"id": "demo_h", "label": "head shown ($h$)", "min": 0, "max": 3, "step": 1, "default": 0, "valueExpr": "concat('head ', string(demo_h))"},
+            {"id": "demo_i", "label": "query slot to follow ($i$)", "min": 0, "max": 5, "step": 1, "default": 2, "valueExpr": "concat(string(demo_i), ' · ', tfToken(demo_i))"},
             {"id": "tf_heads", "label": "tf_heads — query heads", "min": 1, "max": 4, "step": 1, "default": 2, "valueExpr": "string(tf_heads)"},
             {"id": "tf_kv", "label": "tf_kv — K/V heads", "min": 1, "max": 4, "step": 1, "default": 2, "valueExpr": "string(tf_kv)"},
             {"id": "s3_mask", "label": "causal mask", "min": 0, "max": 1, "step": 1, "default": 1, "valueExpr": "s3_mask >= 0.5 ? 'on' : 'off'"},
@@ -95,7 +96,7 @@
               "id": "t1_wq",
               "type": "tensor",
               "shape": [4, 2],
-              "valueExpr": "tfWq(0, demo_h, row, col)",
+              "valueExpr": "(col < tfDk() and demo_h < tfHeads()) ? (tfWq(0, demo_h, row, col)) : 0",
               "origin": [-11.2, 4.6, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -116,7 +117,7 @@
                   "labels": ["$q_0$", "$q_1$"]
                 }
               ],
-              "textExpr": "toFixed(value, 2)",
+              "textExpr": "(col < tfDk() and demo_h < tfHeads()) ? (toFixed(value, 2)) : ''",
               "prompt": "W_Q of layer 0, head demo_h. Head 0 is the hand-built toy; other heads are seeded tables. Every W is read by tfWq/tfWk/tfWv with (layer, head, row, col).",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
@@ -125,7 +126,7 @@
               "id": "t1_wk",
               "type": "tensor",
               "shape": [4, 2],
-              "valueExpr": "tfWk(0, tfHeadKv(demo_h), row, col)",
+              "valueExpr": "(col < tfDk() and demo_h < tfHeads()) ? (tfWk(0, tfHeadKv(demo_h), row, col)) : 0",
               "origin": [-8.0, 4.6, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -146,7 +147,7 @@
                   "labels": ["$k_0$", "$k_1$"]
                 }
               ],
-              "textExpr": "toFixed(value, 2)",
+              "textExpr": "(col < tfDk() and demo_h < tfHeads()) ? (toFixed(value, 2)) : ''",
               "prompt": "W_K of the K/V head that query head demo_h reads: tfHeadKv(h) = floor(h · n_kv / n_heads). With tf_kv = 1 every head reads the same one.",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
@@ -155,7 +156,7 @@
               "id": "t1_wv",
               "type": "tensor",
               "shape": [4, 2],
-              "valueExpr": "tfWv(0, tfHeadKv(demo_h), row, col)",
+              "valueExpr": "(col < tfDk() and demo_h < tfHeads()) ? (tfWv(0, tfHeadKv(demo_h), row, col)) : 0",
               "origin": [-4.8, 4.6, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -176,7 +177,7 @@
                   "labels": ["$v_0$", "$v_1$"]
                 }
               ],
-              "textExpr": "toFixed(value, 2)",
+              "textExpr": "(col < tfDk() and demo_h < tfHeads()) ? (toFixed(value, 2)) : ''",
               "prompt": "W_V of the K/V head that query head demo_h reads.",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
@@ -185,7 +186,7 @@
               "id": "t1_q",
               "type": "tensor",
               "shape": [6, 2],
-              "valueExpr": "tfQh(0, demo_h, row, col)",
+              "valueExpr": "(col < tfDk() and demo_h < tfHeads()) ? (tfQh(0, demo_h, row, col)) : 0",
               "origin": [-11.2, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -203,7 +204,7 @@
                   "labels": ["$q_0$", "$q_1$"]
                 }
               ],
-              "textExpr": "toFixed(value, 2)",
+              "textExpr": "(col < tfDk() and demo_h < tfHeads()) ? (toFixed(value, 2)) : ''",
               "prompt": "q of every slot in layer 0, head demo_h (RoPE applied when s2_rope = 1).",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
@@ -212,7 +213,7 @@
               "id": "t1_k",
               "type": "tensor",
               "shape": [6, 2],
-              "valueExpr": "tfKh(0, demo_h, row, col)",
+              "valueExpr": "(col < tfDk() and demo_h < tfHeads()) ? (tfKh(0, demo_h, row, col)) : 0",
               "origin": [-8.0, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -230,7 +231,7 @@
                   "labels": ["$k_0$", "$k_1$"]
                 }
               ],
-              "textExpr": "toFixed(value, 2)",
+              "textExpr": "(col < tfDk() and demo_h < tfHeads()) ? (toFixed(value, 2)) : ''",
               "prompt": "k as read by head demo_h: its K/V head's keys.",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
@@ -239,7 +240,7 @@
               "id": "t1_v",
               "type": "tensor",
               "shape": [6, 2],
-              "valueExpr": "tfVh(0, demo_h, row, col)",
+              "valueExpr": "(col < tfDk() and demo_h < tfHeads()) ? (tfVh(0, demo_h, row, col)) : 0",
               "origin": [-4.8, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -257,7 +258,7 @@
                   "labels": ["$v_0$", "$v_1$"]
                 }
               ],
-              "textExpr": "toFixed(value, 2)",
+              "textExpr": "(col < tfDk() and demo_h < tfHeads()) ? (toFixed(value, 2)) : ''",
               "prompt": "v as read by head demo_h. Never rotated by RoPE.",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
@@ -266,7 +267,7 @@
               "id": "t1_s",
               "type": "tensor",
               "shape": [6, 6],
-              "valueExpr": "tfScoreScaledH(0, demo_h, row, col)",
+              "valueExpr": "(demo_h < tfHeads()) ? (tfScoreScaledH(0, demo_h, row, col)) : 0",
               "origin": [-0.4, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -284,7 +285,7 @@
                   "labels": ["the", "cat", "sat", "on", "the", "mat"]
                 }
               ],
-              "textExpr": "toFixed(value, 2)",
+              "textExpr": "(demo_h < tfHeads()) ? (toFixed(value, 2)) : ''",
               "prompt": "Scaled scores of head demo_h: tfScoreH / (sqrt d_k)^s3_scale. tfScoreH gives the raw dot products.",
               "widthExpr": "max(0.15, min(1, abs(value) / 16))",
               "heightExpr": "max(0.15, min(1, abs(value) / 16))"
@@ -293,7 +294,7 @@
               "id": "t1_a",
               "type": "tensor",
               "shape": [6, 6],
-              "valueExpr": "tfAttnH(0, demo_h, row, col)",
+              "valueExpr": "(demo_h < tfHeads()) ? (tfAttnH(0, demo_h, row, col)) : 0",
               "origin": [6.4, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -311,7 +312,7 @@
                   "labels": ["the", "cat", "sat", "on", "the", "mat"]
                 }
               ],
-              "textExpr": "value >= 0.005 ? toFixed(value, 2) : ''",
+              "textExpr": "(demo_h < tfHeads()) ? (value >= 0.005 ? toFixed(value, 2) : '') : ''",
               "prompt": "Attention weights of head demo_h, honouring s3_scale, s3_mask and s3_maskafter. Rows sum to 1.",
               "depthExpr": "value * 1.5",
               "widthExpr": "max(0.15, min(1, value))",
@@ -321,7 +322,7 @@
               "id": "t1_o",
               "type": "tensor",
               "shape": [6, 2],
-              "valueExpr": "tfHeadOut(0, demo_h, row, col)",
+              "valueExpr": "(col < tfDk() and demo_h < tfHeads()) ? (tfHeadOut(0, demo_h, row, col)) : 0",
               "origin": [13.2, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -339,7 +340,7 @@
                   "labels": ["$o_0$", "$o_1$"]
                 }
               ],
-              "textExpr": "toFixed(value, 2)",
+              "textExpr": "(col < tfDk() and demo_h < tfHeads()) ? (toFixed(value, 2)) : ''",
               "prompt": "Head demo_h's own output before concatenation and W_O: the attention-weighted average of its value rows.",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
@@ -348,7 +349,7 @@
               "id": "t1_cat",
               "type": "tensor",
               "shape": [6, 4],
-              "valueExpr": "tfConcat(0, row, col)",
+              "valueExpr": "(col < tfHeads() * tfDk()) ? (tfConcat(0, row, col)) : 0",
               "origin": [16.4, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -366,7 +367,7 @@
                   "labels": ["$c_0$", "$c_1$", "$c_2$", "$c_3$"]
                 }
               ],
-              "textExpr": "toFixed(value, 2)",
+              "textExpr": "(col < tfHeads() * tfDk()) ? (toFixed(value, 2)) : ''",
               "prompt": "The concatenated heads of layer 0, n_heads × d_k wide; column c belongs to head floor(c / d_k). What W_O multiplies.",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
@@ -401,6 +402,41 @@
               "bind": "tf_wo_0",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
+            },
+            {
+              "id": "t1_chart_s",
+              "type": "chart",
+              "origin": [-0.4, -10.0, 0],
+              "size": [4.8, 4],
+              "color": "#ffa726",
+              "series": [
+                {"kind": "points", "n": 6, "xExpr": "i", "yExpr": "tfScoreScaledH(0, demo_h, demo_i, i)", "color": "#ffa726", "size": 5, "label": "tfScoreScaledH(0, h, i, j)"}
+              ],
+              "axes": [
+                {"title": "key slot $j$", "ticks": 6, "labelExpr": "tfToken(value)"},
+                {"title": "scaled score", "ticks": 4}
+              ],
+              "label": "row $i$ of the scaled scores, head $h$",
+              "prompt": "The scaled scores of query slot demo_i against every key, for the head shown. The mask has not been applied: masked keys still have a score.",
+              "xDomain": [-0.5, 5.5]
+            },
+            {
+              "id": "t1_chart_a",
+              "type": "chart",
+              "origin": [6.4, -10.0, 0],
+              "size": [4.8, 4],
+              "color": "#66bb6a",
+              "series": [
+                {"kind": "points", "n": 6, "xExpr": "i", "yExpr": "tfAttnH(0, demo_h, demo_i, i)", "color": "#66bb6a", "size": 5, "label": "tfAttnH(0, h, i, j)"}
+              ],
+              "axes": [
+                {"title": "key slot $j$", "ticks": 6, "labelExpr": "tfToken(value)"},
+                {"title": "weight", "ticks": 4}
+              ],
+              "label": "row $i$ of the attention weights, head $h$",
+              "prompt": "Softmax of the scaled-score row with the causal mask applied: masked keys are 0, the rest sum to 1.",
+              "xDomain": [-0.5, 5.5],
+              "yDomain": [0, 1]
             },
             {
               "id": "t1_ao",
@@ -472,6 +508,7 @@
           "description": "The residual stream through one layer: attention increment, FFN increment, and where the norms sit.",
           "sliders": [
             {"id": "demo_l", "label": "layer shown ($l$)", "min": 0, "max": 2, "step": 1, "default": 0, "valueExpr": "concat('layer ', string(demo_l))"},
+            {"id": "demo_i", "label": "slot to follow ($i$)", "min": 0, "max": 5, "step": 1, "default": 2, "valueExpr": "concat(string(demo_i), ' · ', tfToken(demo_i))"},
             {"id": "tf_layers", "label": "tf_layers — layers in the stack", "min": 1, "max": 3, "step": 1, "default": 1, "valueExpr": "string(tf_layers)"},
             {"id": "tf_norm", "label": "tf_norm — normalisation", "min": 0, "max": 2, "step": 1, "default": 1, "valueExpr": "tf_norm < 0.5 ? 'none' : (tf_norm < 1.5 ? 'LayerNorm' : 'RMSNorm')"},
             {"id": "tf_prenorm", "label": "tf_prenorm — placement", "min": 0, "max": 1, "step": 1, "default": 1, "valueExpr": "tf_prenorm >= 0.5 ? 'pre-norm' : 'post-norm'"},
@@ -497,7 +534,7 @@
               "id": "t2_h",
               "type": "tensor",
               "shape": [6, 4],
-              "valueExpr": "tfH(demo_l, row, col)",
+              "valueExpr": "(demo_l < tfLayers()) ? (tfH(demo_l, row, col)) : 0",
               "origin": [-20, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -515,7 +552,7 @@
                   "labels": ["$d_0$", "$d_1$", "$d_2$", "$d_3$"]
                 }
               ],
-              "textExpr": "toFixed(value, 2)",
+              "textExpr": "(demo_l < tfLayers()) ? (toFixed(value, 2)) : ''",
               "prompt": "The residual stream entering layer demo_l.",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
@@ -524,7 +561,7 @@
               "id": "t2_ain",
               "type": "tensor",
               "shape": [6, 4],
-              "valueExpr": "tfAttnIn(demo_l, row, col)",
+              "valueExpr": "(demo_l < tfLayers()) ? (tfAttnIn(demo_l, row, col)) : 0",
               "origin": [-15.6, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -542,7 +579,7 @@
                   "labels": ["$d_0$", "$d_1$", "$d_2$", "$d_3$"]
                 }
               ],
-              "textExpr": "toFixed(value, 2)",
+              "textExpr": "(demo_l < tfLayers()) ? (toFixed(value, 2)) : ''",
               "prompt": "What attention reads: with tf_norm on and tf_prenorm = 1 this is the normed stream; otherwise the stream itself.",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
@@ -551,7 +588,7 @@
               "id": "t2_ao",
               "type": "tensor",
               "shape": [6, 4],
-              "valueExpr": "tfAttnOut(demo_l, row, col)",
+              "valueExpr": "(demo_l < tfLayers()) ? (tfAttnOut(demo_l, row, col)) : 0",
               "origin": [-11.2, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -569,7 +606,7 @@
                   "labels": ["$d_0$", "$d_1$", "$d_2$", "$d_3$"]
                 }
               ],
-              "textExpr": "toFixed(value, 2)",
+              "textExpr": "(demo_l < tfLayers()) ? (toFixed(value, 2)) : ''",
               "prompt": "The attention increment (all heads, through W_O).",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
@@ -578,7 +615,7 @@
               "id": "t2_r1",
               "type": "tensor",
               "shape": [6, 4],
-              "valueExpr": "tfResid1(demo_l, row, col)",
+              "valueExpr": "(demo_l < tfLayers()) ? (tfResid1(demo_l, row, col)) : 0",
               "origin": [-6.8, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -596,7 +633,7 @@
                   "labels": ["$d_0$", "$d_1$", "$d_2$", "$d_3$"]
                 }
               ],
-              "textExpr": "toFixed(value, 2)",
+              "textExpr": "(demo_l < tfLayers()) ? (toFixed(value, 2)) : ''",
               "prompt": "Stream after the attention residual add (post-norm: after its norm).",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
@@ -605,7 +642,7 @@
               "id": "t2_fin",
               "type": "tensor",
               "shape": [6, 4],
-              "valueExpr": "tfFfIn(demo_l, row, col)",
+              "valueExpr": "(demo_l < tfLayers()) ? (tfFfIn(demo_l, row, col)) : 0",
               "origin": [-2.4, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -623,7 +660,7 @@
                   "labels": ["$d_0$", "$d_1$", "$d_2$", "$d_3$"]
                 }
               ],
-              "textExpr": "toFixed(value, 2)",
+              "textExpr": "(demo_l < tfLayers()) ? (toFixed(value, 2)) : ''",
               "prompt": "What the FFN reads: normed (pre-norm) or tfResid1 itself.",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
@@ -632,7 +669,7 @@
               "id": "t2_pre",
               "type": "tensor",
               "shape": [6, 8],
-              "valueExpr": "tfFfPre(demo_l, row, col)",
+              "valueExpr": "(demo_l < tfLayers()) ? (tfFfPre(demo_l, row, col)) : 0",
               "origin": [2.0, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -650,7 +687,7 @@
                   "labels": ["$u_0$", "$u_1$", "$u_2$", "$u_3$", "$u_4$", "$u_5$", "$u_6$", "$u_7$"]
                 }
               ],
-              "textExpr": "toFixed(value, 2)",
+              "textExpr": "(demo_l < tfLayers()) ? (toFixed(value, 2)) : ''",
               "prompt": "FFN hidden units before the activation: tfFfIn · W1. Row k of W1 is one neuron's fan-in.",
               "widthExpr": "max(0.15, min(1, abs(value) / 3))",
               "heightExpr": "max(0.15, min(1, abs(value) / 3))"
@@ -659,7 +696,7 @@
               "id": "t2_hid",
               "type": "tensor",
               "shape": [6, 8],
-              "valueExpr": "tfFfHidden(demo_l, row, col)",
+              "valueExpr": "(demo_l < tfLayers()) ? (tfFfHidden(demo_l, row, col)) : 0",
               "origin": [9.2, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -677,7 +714,7 @@
                   "labels": ["$u_0$", "$u_1$", "$u_2$", "$u_3$", "$u_4$", "$u_5$", "$u_6$", "$u_7$"]
                 }
               ],
-              "textExpr": "toFixed(value, 2)",
+              "textExpr": "(demo_l < tfLayers()) ? (toFixed(value, 2)) : ''",
               "prompt": "After the activation chosen by tf_act: ReLU zeroes the negatives, GELU bends them, SwiGLU gates silu(x W1) by x W3.",
               "widthExpr": "max(0.15, min(1, abs(value) / 3))",
               "heightExpr": "max(0.15, min(1, abs(value) / 3))"
@@ -686,7 +723,7 @@
               "id": "t2_fo",
               "type": "tensor",
               "shape": [6, 4],
-              "valueExpr": "tfFfOut(demo_l, row, col)",
+              "valueExpr": "(demo_l < tfLayers()) ? (tfFfOut(demo_l, row, col)) : 0",
               "origin": [16.4, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -704,7 +741,7 @@
                   "labels": ["$d_0$", "$d_1$", "$d_2$", "$d_3$"]
                 }
               ],
-              "textExpr": "toFixed(value, 2)",
+              "textExpr": "(demo_l < tfLayers()) ? (toFixed(value, 2)) : ''",
               "prompt": "The FFN increment: hidden · W2, back at d_model width.",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
@@ -713,7 +750,7 @@
               "id": "t2_r2",
               "type": "tensor",
               "shape": [6, 4],
-              "valueExpr": "tfResid2(demo_l, row, col)",
+              "valueExpr": "(demo_l < tfLayers()) ? (tfResid2(demo_l, row, col)) : 0",
               "origin": [20.8, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -731,10 +768,28 @@
                   "labels": ["$d_0$", "$d_1$", "$d_2$", "$d_3$"]
                 }
               ],
-              "textExpr": "toFixed(value, 2)",
+              "textExpr": "(demo_l < tfLayers()) ? (toFixed(value, 2)) : ''",
               "prompt": "The stream leaving layer demo_l = tfH(demo_l + 1). Pre-norm: exactly stream in + both increments.",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
+            },
+            {
+              "id": "t2_chart_ff",
+              "type": "chart",
+              "origin": [2.0, -10.0, 0],
+              "size": [6.4, 4],
+              "color": "#ffee58",
+              "series": [
+                {"kind": "points", "n": 8, "xExpr": "i", "yExpr": "tfFfPre(demo_l, demo_i, i)", "color": "#ffa726", "size": 5, "label": "tfFfPre(l, i, k) — before"},
+                {"kind": "points", "n": 8, "xExpr": "i", "yExpr": "tfFfHidden(demo_l, demo_i, i)", "color": "#ffee58", "size": 5, "label": "tfFfHidden(l, i, k) — after"}
+              ],
+              "axes": [
+                {"title": "hidden unit $k$", "ticks": 8},
+                {"title": "activation", "ticks": 4}
+              ],
+              "label": "FFN hidden units at slot $i$: before and after the activation",
+              "prompt": "The eight hidden units of slot demo_i in layer demo_l, before (orange) and after (yellow) the activation. ReLU: the yellow point sits on the orange one when positive and at 0 otherwise; GELU bends the negatives; SwiGLU multiplies by a gate, so yellow can leave the orange entirely.",
+              "xDomain": [-0.5, 7.5]
             },
             {
               "id": "t2_w1",
@@ -771,7 +826,7 @@
               "id": "t2_w2",
               "type": "tensor",
               "shape": [8, 4],
-              "valueExpr": "tfW2(demo_l, row, col)",
+              "valueExpr": "(demo_l < tfLayers()) ? (tfW2(demo_l, row, col)) : 0",
               "origin": [16.4, 4.6, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -792,7 +847,7 @@
                   "labels": ["$d_0$", "$d_1$", "$d_2$", "$d_3$"]
                 }
               ],
-              "textExpr": "toFixed(value, 2)",
+              "textExpr": "(demo_l < tfLayers()) ? (toFixed(value, 2)) : ''",
               "prompt": "FFN W2 of layer demo_l (d_ff × d_model).",
               "widthExpr": "max(0.15, min(1, abs(value) / 1))",
               "heightExpr": "max(0.15, min(1, abs(value) / 1))"
@@ -877,7 +932,7 @@
               "id": "t3_h1",
               "type": "tensor",
               "shape": [6, 4],
-              "valueExpr": "tfH(1, row, col)",
+              "valueExpr": "(1 <= tfLayers()) ? (tfH(1, row, col)) : 0",
               "origin": [-15.6, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -895,7 +950,7 @@
                   "labels": ["$d_0$", "$d_1$", "$d_2$", "$d_3$"]
                 }
               ],
-              "textExpr": "toFixed(value, 2)",
+              "textExpr": "(1 <= tfLayers()) ? (toFixed(value, 2)) : ''",
               "prompt": "The stream after one layer.",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
@@ -904,7 +959,7 @@
               "id": "t3_h2",
               "type": "tensor",
               "shape": [6, 4],
-              "valueExpr": "tfH(2, row, col)",
+              "valueExpr": "(2 <= tfLayers()) ? (tfH(2, row, col)) : 0",
               "origin": [-11.2, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -922,7 +977,7 @@
                   "labels": ["$d_0$", "$d_1$", "$d_2$", "$d_3$"]
                 }
               ],
-              "textExpr": "toFixed(value, 2)",
+              "textExpr": "(2 <= tfLayers()) ? (toFixed(value, 2)) : ''",
               "prompt": "After two layers (with tf_layers < 2 this repeats the last stream: indices clamp).",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
@@ -931,7 +986,7 @@
               "id": "t3_h3",
               "type": "tensor",
               "shape": [6, 4],
-              "valueExpr": "tfH(3, row, col)",
+              "valueExpr": "(3 <= tfLayers()) ? (tfH(3, row, col)) : 0",
               "origin": [-6.8, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -949,7 +1004,7 @@
                   "labels": ["$d_0$", "$d_1$", "$d_2$", "$d_3$"]
                 }
               ],
-              "textExpr": "toFixed(value, 2)",
+              "textExpr": "(3 <= tfLayers()) ? (toFixed(value, 2)) : ''",
               "prompt": "After three layers.",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
@@ -1121,23 +1176,57 @@
               "heightExpr": "max(0.15, min(1, value))"
             },
             {
-              "id": "t3_chart",
+              "id": "t3_chart_logit",
               "type": "chart",
-              "origin": [-1.6, -11.5, 0],
-              "size": [7, 4],
+              "origin": [-20, -10.0, 0],
+              "size": [5.6, 4],
+              "color": "#ffa726",
+              "series": [
+                {"kind": "points", "n": 5, "xExpr": "i", "yExpr": "tfLogit(demo_i, i)", "color": "#ffa726", "size": 5, "label": "tfLogit(i, v)"}
+              ],
+              "axes": [
+                {"title": "word $v$", "ticks": 5, "labelExpr": "tfVocabToken(value)"},
+                {"title": "logit", "ticks": 4}
+              ],
+              "label": "logits at slot $i$",
+              "prompt": "The five logits at slot demo_i: tfFinal(i,·) dot each word's embedding row. Temperature does not touch these.",
+              "xDomain": [-0.5, 4.5]
+            },
+            {
+              "id": "t3_chart_prob",
+              "type": "chart",
+              "origin": [-12.4, -10.0, 0],
+              "size": [5.6, 4],
               "color": "#66bb6a",
               "series": [
-                {"kind": "points", "n": 5, "xExpr": "i", "yExpr": "tfProb(demo_i, i)", "color": "#66bb6a", "size": 6, "label": "tfProb(demo_i, v)"},
-                {"kind": "points", "n": 5, "xExpr": "i", "yExpr": "tfLogit(demo_i, i) / 6 + 0.5", "color": "#ffa726", "size": 4, "label": "tfLogit(demo_i, v) / 6 + 0.5"}
+                {"kind": "points", "n": 5, "xExpr": "i", "yExpr": "tfProb(demo_i, i)", "color": "#66bb6a", "size": 5, "label": "tfProb(i, v)"}
               ],
-              "yDomain": [0, 1],
-              "xDomain": [-0.5, 4.5],
               "axes": [
-                {"title": "vocabulary $v$ (0 the · 1 cat · 2 sat · 3 on · 4 mat)", "ticks": 5},
+                {"title": "word $v$", "ticks": 5, "labelExpr": "tfVocabToken(value)"},
                 {"title": "probability", "ticks": 4}
               ],
-              "label": "the distribution at slot demo_i, and the logits behind it",
-              "prompt": "Green: tfProb(demo_i, v) over the five words. Orange: the logits, shifted and scaled to share the axis. Drag tf_temp: the logits do not move, the distribution sharpens or flattens."
+              "label": "the distribution at slot $i$ = softmax(logits / tf_temp)",
+              "prompt": "The same five words as probabilities. Drag tf_temp towards 0.05 and the argmax takes everything; towards 5 and every word tends to 0.2.",
+              "xDomain": [-0.5, 4.5],
+              "yDomain": [0, 1]
+            },
+            {
+              "id": "t3_chart_ent",
+              "type": "chart",
+              "origin": [-4.8, -10.0, 0],
+              "size": [5.6, 4],
+              "color": "#b0bec5",
+              "series": [
+                {"kind": "points", "n": 6, "xExpr": "i", "yExpr": "tfEntropy(i)", "color": "#b0bec5", "size": 5, "label": "tfEntropy(i)"}
+              ],
+              "axes": [
+                {"title": "slot $i$", "ticks": 6, "labelExpr": "tfToken(value)"},
+                {"title": "bits", "ticks": 4}
+              ],
+              "label": "entropy of every slot's distribution",
+              "prompt": "How spread each slot's next-token distribution is, in bits: 0 when one word has all the mass, log2(5) = 2.32 when the five are equal. All six slots move together with tf_temp.",
+              "xDomain": [-0.5, 5.5],
+              "yDomain": [0, 2.4]
             }
           ],
           "info": [
