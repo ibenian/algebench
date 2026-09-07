@@ -2671,7 +2671,9 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     text-align: center;
 }
 #step-caption:active { cursor: grabbing; }
-#step-caption.hidden { opacity: 0; }
+/* Hidden: fade out, then drop out of hit-testing and the a11y tree — a docked
+   strip keeps its full width and height, so it must not intercept clicks. */
+#step-caption.hidden { opacity: 0; pointer-events: none; visibility: hidden; transition: opacity 0.3s ease, visibility 0s linear 0.3s; }
 #step-caption .katex { color: inherit; font-size: 1.5em; }  /* board-fixed chalk */
 .caption-ai-btn {
     position: absolute;

@@ -1436,10 +1436,13 @@ export function isBoardChromeEvent(e: MouseEvent): boolean {
     const t = e.target as HTMLElement;
     if (t.closest('.ai-ask-btn, .bo-side, .bo-resize')) return true;
     const body = t.closest<HTMLElement>('.bo-body');
-    if (body && t === body) {
-        // A click on the vertical scrollbar reports offsetX beyond clientWidth.
+    if (body && t === body && body.offsetWidth > 0) {
+        // A click on the vertical scrollbar lands right of the content box.
+        // Compare as fractions of the box so a transform: scale() on the
+        // caption (captionScale) cannot skew the test either way.
         const r = body.getBoundingClientRect();
-        if (e.clientX - r.left > body.clientWidth) return true;
+        const frac = (e.clientX - r.left) / r.width;
+        if (frac > body.clientWidth / body.offsetWidth) return true;
     }
     return false;
 }

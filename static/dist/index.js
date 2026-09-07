@@ -3269,9 +3269,9 @@ function isBoardChromeEvent(e) {
 	const t = e.target;
 	if (t.closest(".ai-ask-btn, .bo-side, .bo-resize")) return true;
 	const body = t.closest(".bo-body");
-	if (body && t === body) {
+	if (body && t === body && body.offsetWidth > 0) {
 		const r = body.getBoundingClientRect();
-		if (e.clientX - r.left > body.clientWidth) return true;
+		if ((e.clientX - r.left) / r.width > body.clientWidth / body.offsetWidth) return true;
 	}
 	return false;
 }
