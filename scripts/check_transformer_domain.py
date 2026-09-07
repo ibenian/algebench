@@ -15,6 +15,7 @@ Usage:  ./run.sh scripts/check_transformer_domain.py
 from __future__ import annotations
 
 import json
+import math
 import re
 import shutil
 import subprocess
@@ -358,28 +359,107 @@ def main() -> int:
                              [probe0[1], probe0[3]], [15.1397, -7.089], 5e-5) else 1
 
     print()
-    print('transformer domain — cache key')
-    # A slider in _KEY_SLIDERS that _build() never reads does not make the cache
-    # safer: it throws the whole forward pass away and recomputes it for
-    # identical numbers. One that _build DOES read but is missing here is worse
-    # -- stale data. Both directions are caught by comparing the two sets.
-    src = DOMAIN.read_text(encoding='utf-8')
-    keyed = set(re.findall(r"'([a-z0-9_]+)'",
-                           re.search(r'_KEY_SLIDERS = \[(.*?)\]', src, re.S).group(1)))
-    build = src[src.index('function _build()'):src.index('function _st()')]
-    read = set(re.findall(r"_getSlider\('([a-z0-9_]+)'", build))
-    # The sandbox overrides are read through _effective(), from literal id
-    # tables spread into _KEY_SLIDERS; both sides see them the same way.
-    overrides = set(re.findall(r"'(s4_[a-z0-9]+)'", src))
-    if '..._OVERRIDE_SLIDERS' in re.search(r'_KEY_SLIDERS = \[(.*?)\]', src, re.S).group(1):
-        keyed |= overrides
-    if '_effective(' in build:
-        read |= overrides
-    if keyed == read:
-        print(f'  ok   _KEY_SLIDERS == the sliders _build() reads ({len(keyed)})')
+    print('transformer domain — cache (rebuilds on what it read, and only that)')
+    # The pass records every slider it reads and rebuilds when one of those
+    # changes. Both directions are checked live inside one node process: a
+    # slider the pass never reads (s2_m) must not move a number, and a
+    # configuration slider it does read (tf_layers) must.
+    live = _run('(() => { const a = TF.tfH(1, 2, 0); sliders.s2_m = 99; const b = TF.tfH(1, 2, 0); '
+                'sliders.tf_layers = 2; const c = TF.tfH(1, 2, 0); const n = TF.tfLayers(); return [a, b, c, n]; })()',
+                DEFAULT_SLIDERS)
+    if live[0] == live[1] and live[3] == 2 and live[2] == live[1]:
+        # tfH(1) is the stream leaving layer 0, which a second layer cannot change.
+        print('  ok   an unread slider leaves the pass alone; tf_layers reshapes it (layer-0 output stable)')
     else:
-        print(f'  FAIL keyed but unread: {sorted(keyed - read)}')
-        print(f'       read but unkeyed: {sorted(read - keyed)}')
+        print(f'  FAIL cache behaviour: {live}')
+        failures += 1
+    live2 = _run('(() => { const a = TF.tfFinal(2, 0); sliders.tf_layers = 2; return [a, TF.tfFinal(2, 0)]; })()', DEFAULT_SLIDERS)
+    if live2[0] != live2[1]:
+        print('  ok   adding a layer changes what leaves the stack')
+    else:
+        print(f'  FAIL a second layer left tfFinal unchanged: {live2}')
+        failures += 1
+
+    print()
+    print('transformer domain — general engine')
+    # Legacy names are layer 0 / head 0 of the general pass.
+    same = _run('[R(i=>R(d=>TF.tfQ(i,d)-TF.tfQh(0,0,i,d),2),6).flat(), R(i=>R(j=>TF.tfAttn(i,j)-TF.tfAttnH(0,0,i,j),6),6).flat(), '
+                'R(i=>R(d=>TF.tfOut(i,d)-TF.tfHeadOut(0,0,i,d),2),6).flat(), R(i=>R(d=>TF.tfX(i,d)-TF.tfH(0,i,d),4),6).flat()]', DEFAULT_SLIDERS)
+    if all(abs(v) < 1e-12 for grp in same for v in grp):
+        print('  ok   tfQ / tfAttn / tfOut / tfX are layer 0, head 0 of the general pass')
+    else:
+        print('  FAIL legacy shorthands drift from the general pass')
+        failures += 1
+    # Every head's rows are a distribution, in every layer, at any head count.
+    cfg = {**DEFAULT_SLIDERS, 'tf_layers': 2, 'tf_heads': 4, 'tf_dk': 1}
+    sums = _run('R(l=>R(h=>R(i=>R(j=>TF.tfAttnH(l,h,i,j),6).reduce((a,b)=>a+b,0),6),4),2).flat(2)', cfg)
+    if all(abs(v - 1) < 1e-9 for v in sums) and len(sums) == 48:
+        print('  ok   every attention row sums to 1 across 2 layers x 4 heads')
+    else:
+        print(f'  FAIL attention rows: {sums[:6]}...')
+        failures += 1
+    # Heads are concatenated then projected: the stream width never changes.
+    widths = _run('[TF.tfHeads()*TF.tfDk(), TF.tfDModel(), TF.tfConcat(0, 2, 3) - TF.tfHeadOut(0, 1, 2, 1)]', DEFAULT_SLIDERS)
+    if widths[0] == 4 and widths[1] == 4 and abs(widths[2]) < 1e-12:
+        print('  ok   concat is n_heads x d_k wide and column c belongs to head floor(c / d_k); the stream stays d_model')
+    else:
+        print(f'  FAIL concat / width: {widths}')
+        failures += 1
+    # Residual: the stream leaving a layer is the entering stream plus the two increments (pre-norm).
+    resid = _run('R(d=>TF.tfH(1,2,d) - (TF.tfH(0,2,d) + TF.tfAttnOut(0,2,d) + TF.tfFfOut(0,2,d)),4)', {**DEFAULT_SLIDERS, 'tf_norm': 1})
+    if all(abs(v) < 1e-12 for v in resid):
+        print('  ok   pre-norm: h_out = h_in + attention increment + FFN increment')
+    else:
+        print(f'  FAIL residual identity: {resid}')
+        failures += 1
+    # RMSNorm subtracts no mean: LayerNorm output has mean 0, RMSNorm output keeps the sign of the mean.
+    means = _run('[R(d=>TF.tfAttnIn(0,5,d),4).reduce((a,b)=>a+b,0)]', {**DEFAULT_SLIDERS, 'tf_norm': 1}) \
+          + _run('[R(d=>TF.tfAttnIn(0,5,d),4).reduce((a,b)=>a+b,0), R(d=>TF.tfH(0,5,d),4).reduce((a,b)=>a+b,0)]', {**DEFAULT_SLIDERS, 'tf_norm': 2})
+    if abs(means[0]) < 1e-9 and means[1] * means[2] > 0:
+        print('  ok   LayerNorm output has zero mean; RMSNorm keeps the mean (no subtraction)')
+    else:
+        print(f'  FAIL norm means: {means}')
+        failures += 1
+    # Shared K/V: with n_kv = 1 both heads read the same keys.
+    kv = _run('[R(i=>R(d=>TF.tfKh(0,0,i,d)-TF.tfKh(0,1,i,d),2),6).flat(), TF.tfKvSaving(), TF.tfHeadKv(1)]', {**DEFAULT_SLIDERS, 'tf_kv': 1})
+    if all(abs(v) < 1e-12 for v in kv[0]) and kv[1] == 2 and kv[2] == 0:
+        print('  ok   n_kv = 1 (MQA): both heads share one K; saving n_heads / n_kv = 2')
+    else:
+        print(f'  FAIL shared K/V: {kv}')
+        failures += 1
+    # Temperature: T -> 0 is argmax, T -> infinity is uniform (accuracy item 11).
+    cold = _run('[TF.tfProb(2, TF.tfArgmax(2)), TF.tfEntropy(2)]', {**DEFAULT_SLIDERS, 'tf_temp': 1e-3})
+    hot = _run('[R(v=>TF.tfProb(2,v),5), TF.tfEntropy(2), TF.tfVocabN()]', {**DEFAULT_SLIDERS, 'tf_temp': 1e3})
+    if cold[0] > 0.999 and cold[1] < 0.01 and all(abs(p - 0.2) < 1e-3 for p in hot[0]) and abs(hot[1] - math.log2(5)) < 1e-2:
+        print('  ok   T -> 0 puts all mass on the argmax; T -> infinity is uniform over the 5-word vocabulary')
+    else:
+        print(f'  FAIL temperature limits: cold {cold} hot {hot}')
+        failures += 1
+    # Theorem 1 for the whole stack: position-free and unmasked, a permutation
+    # of the input permutes every slot's final vector identically.
+    eq = {**DEFAULT_SLIDERS, 's1_pe': 0, 's3_mask': 0, 'tf_layers': 2}
+    a = _run('R(i=>R(d=>TF.tfFinal(i,d),4),6)', {**eq, 's1_shuffle': 0})
+    b = _run('R(i=>R(d=>TF.tfFinal(i,d),4),6)', {**eq, 's1_shuffle': 1})
+    perm = _run('R(k=>TF.tfPerm(k),6)', {**eq, 's1_shuffle': 1})
+    if all(abs(b[i][d] - a[perm[i]][d]) < 1e-9 for i in range(6) for d in range(4)):
+        print('  ok   position-free, unmasked 2-layer stack is permutation-equivariant (FFN and norms act per token)')
+    else:
+        print('  FAIL stack equivariance broken')
+        failures += 1
+    # Any shape: a 3-token, d_model = 6, 3-head model from a tf_emb table.
+    shape = _run('[TF.tfN(), TF.tfDModel(), TF.tfDk(), TF.tfHeads(), TF.tfVocabN(), R(j=>TF.tfAttnH(0,2,2,j),3).reduce((a,b)=>a+b,0)]',
+                 {**DEFAULT_SLIDERS, 'tf_emb': [[1,0,0,0,0,0],[0,1,0,0,0,0],[0,0,1,0,0,0]], 'tf_heads': 3})
+    if shape[:5] == [3, 6, 2, 3, 3] and abs(shape[5] - 1) < 1e-9:
+        print('  ok   tf_emb reshapes the model: n = 3, d_model = 6, 3 heads of d_k = 2')
+    else:
+        print(f'  FAIL reshaped model: {shape}')
+        failures += 1
+    # The general override name reaches the same table as the scene-4 alias.
+    ov = _run('R(r=>R(c=>TF.tfWq(0,0,r,c),2),4)', {**DEFAULT_SLIDERS, 'tf_wq_0_0': [[7, 7]]})
+    if ov[0] == [7, 7] and ov[2] == [3, 0]:
+        print('  ok   tf_wq_0_0 overrides layer 0 / head 0 cell-wise like s4_wq')
+    else:
+        print(f'  FAIL tf_wq_0_0 override: {ov}')
         failures += 1
 
     print()
@@ -388,6 +468,9 @@ def main() -> int:
     # such, default to the table it replaces, and actually move the forward
     # pass when a cell is set.
     docs_sc = json.loads((DOMAIN.parent / 'docs.json').read_text(encoding='utf-8'))['sliderContracts']
+    # The scene-4 aliases for the table and layer 0 / head 0, read by name in the source.
+    src = DOMAIN.read_text(encoding='utf-8')
+    overrides = set(re.findall(r"'(s4_[a-z0-9]+)'", src))
     missing = sorted(overrides - set(docs_sc))
     if missing:
         print(f'  FAIL override sliders missing from docs.json sliderContracts: {missing}')

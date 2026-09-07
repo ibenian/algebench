@@ -1,6 +1,6 @@
 {
   "name": "transformer",
-  "description": "One fixed six-token decoder-only forward pass — \"the cat sat on the mat\" at d_model=4, n_heads=2, d_k=2, one head shown, causal. Computes embeddings, sinusoidal positional encoding, the Q/K/V projections, raw and scaled scores, the causal mask, softmax attention weights and the output rows, all from a single slider-keyed cache. Functions are available in the expression sandbox after importing this domain. Importing a domain does NOT require unsafe: true.",
+  "description": "A small decoder-only transformer forward pass, general in every dimension: n tokens, d_model, n_heads, n_kv shared K/V heads, d_k, d_ff, n_layers, pre- or post-norm, LayerNorm or RMSNorm, ReLU / GELU / SwiGLU, then the final norm, the tied unembedding, logits, temperature and probabilities. Its DEFAULT configuration is the lesson's toy — \"the cat sat on the mat\" at d_model=4, n_heads=2, d_k=2, one layer, layer 0 / head 0 carrying the hand-built projections — so every figure scenes 1-4 pin is unchanged; other weights are seeded deterministic tables, and any table can be replaced by a tensor slider named after it. Functions are available in the expression sandbox after importing this domain. Importing a domain does NOT require unsafe: true.",
   "honesty_note": "THE WEIGHTS ARE HAND-CONSTRUCTED FOR LEGIBILITY, NOT LEARNED. W_Q, W_K, W_V and the embedding table were chosen so that one head shows a clean subject-verb dependency: the verb 'sat' attends 97.09% of its softmax mass to the subject 'cat'. Real trained weights at d_model=4 produce noise, not interpretable heads. Any lesson using this domain MUST label the weights on screen as designed-for-teaching. A lesson advertising mathematical accuracy while presenting invented attention patterns as learned ones is dishonest at exactly the point it claims rigour.",
   "implementation": {
     "toy_model": "n=6 tokens, d_model=4, d_k=2 per head, n_heads=2 (one shown). d_k != d_model is deliberate: it is what makes the 1/sqrt(d_k) scaling visibly about the HEAD dimension, which is the usual error.",
@@ -8,8 +8,9 @@
     "positional_encoding": "Standard sinusoidal, base 10000: PE[pos][2i] = sin(pos / 10000^(2i/d_model)), PE[pos][2i+1] = cos(...). ADDED to the embedding, never concatenated — the width stays 4. MUTUALLY EXCLUSIVE WITH RoPE: whenever s2_rope is on, this additive term is forced to zero regardless of s1_pe. RoPE REPLACES additive positional encoding; it does not stack on it. A model uses one scheme or the other, never both, and rotating a q that already carried a sinusoidal offset is an operation no model performs.",
     "projections": "Row-vector convention, q = x W_Q. Under that convention the ROWS of W are the images of the input basis directions. W_Q = [[0,0],[0,0],[3,0],[0,1]] reads input dims 2 and 3; W_K = [[0,0],[3,0],[0,0],[0,1]] reads dims 1 and 3; W_V = [[1,0],[0,1],[0,0],[0,0]] reads dims 0 and 1. Three different readings of ONE vector.",
     "mask": "Applied as an ADDITIVE -1e9 to the SCALED SCORES, before softmax. -1e9 stands in for -infinity so the renderer never sees a NaN; softmax's shift-invariance is what makes the substitution coherent.",
-    "cache": "One shared cache of the forward pass (perm, emb, x, Q, K, V, S, Ss, A, O, On, and the embedding and weight tables in force), rebuilt only when a keyed slider changes. Change detection is element-wise: the last value seen for each keyed slider (a tensor slider is walked cell by cell against a flat copy) is kept in a Float64Array (NaN = absent, so an absent slider and one present at 0 are told apart) and compared on every call, with no key string and no allocation. A 6x6 tensor with a valueExpr costs 36 evaluations per frame; without the cache each would recompute the whole pass. With it, a frame is 36 array reads plus the compare. The generic i.i.d. sampler has its OWN separate cache keyed on dimension only, because it is a different object and must not be invalidated by toy sliders.",
-    "storage": "Q, K, V, O as Float64Array(12); S, S_scaled, A as Float64Array(36)."
+    "cache": "One shared cache of the forward pass, rebuilt only when a slider it READ has changed. Which sliders those are depends on the configuration (a two-layer model reads tf_wq_1_0; a one-layer model never does), so every read inside the build is recorded with the value seen, and each call compares exactly that set against the live sliders: numbers exactly, tensor tables cell by cell against a flat copy. No key string, no allocation on the unchanged path. The generic i.i.d. sampler has its OWN separate cache keyed on dimension only.",
+    "storage": "Q, K, V, O as Float64Array(12); S, S_scaled, A as Float64Array(36).",
+    "general_engine": "Configuration comes from the embedding table in force (tf_emb of any shape, else the scene-4 alias s4_emb over the toy table: rows = n, columns = d_model) and the scalar sliders tf_layers (1), tf_heads (2), tf_kv (= n_heads; 1 is MQA), tf_dk (d_model / n_heads), tf_dff (2 d_model), tf_norm (0 none — the toy, 1 LayerNorm, 2 RMSNorm), tf_prenorm (1 pre-norm, 0 post-norm), tf_act (0 ReLU, 1 GELU, 2 SwiGLU), tf_temp (1). Per layer l: pre-norm normalises what a sub-layer READS and adds its raw output; post-norm adds first and normalises the sum. Attention: every head h reads K/V head floor(h / (n_heads / n_kv)); scores use (sqrt d_k)^s3_scale; the causal mask and its mask-after-softmax misconception follow s3_mask / s3_maskafter in every head; heads are concatenated (n_heads x d_k) and projected by W_O back to d_model. FFN: d_model -> d_ff -> d_model with the chosen activation (SwiGLU gates silu(x W1) by x W3). After the last layer, pre-norm applies a final norm; logits are the tied unembedding (each vocabulary entry's embedding row) and probabilities are softmax(logits / tf_temp). Weights: layer 0 / head 0 is the hand-built toy when d_model = 4 and d_k = 2, every other table is a seeded N(0, 1/rows) initialisation, and any table is replaced cell-wise by a tensor slider named tf_wq_<l>_<h>, tf_wk_<l>_<g>, tf_wv_<l>_<g>, tf_wo_<l>, tf_w1_<l>, tf_w2_<l>, tf_w3_<l> or tf_emb (s4_wq / s4_wk / s4_wv / s4_emb alias layer 0 / head 0 and the table)."
   },
   "verified_values": {
     "note": "Every figure below is asserted by scripts/check_transformer_domain.py. If a change breaks one, the lesson's arithmetic is wrong, not the test.",
@@ -24,7 +25,7 @@
     "rope_identity": "tfRopeDot(4,1) = tfRopeDot(3,0) = 0.918150",
     "permutation_equivariance": "tfOutNoPos with shuffle on equals the shuffle-off rows reordered by [5,0,3,2,1,4], max deviation 2.2e-16"
   },
-  "note": "MOST functions read slider state at call time — either by ID directly, or through the cached forward pass _st(), which is rebuilt when any of these change: s1_shuffle, s1_pe, s2_rope, s3_scale, s3_mask, s3_maskafter and the four sandbox override TENSOR sliders (s4_emb, s4_wq, s4_wk, s4_wv), each of which defaults to the hand-built table when the scene does not declare it. Eight are PURE in their explicit arguments and consult no slider at all: tfPE, tfRopeQ, tfRopeK, tfRopeDot, tfRopeEmbTheta, tfDotSample, tfDotSampleScaled and tfSampleVar. Note tfRopeEmbDot is NOT among them — it reaches _st() through tfRopeEmb. The scene must define sliders with the IDs listed in sliderContracts for the lesson to respond to user input. Functions clamp their index arguments, so an out-of-range row or column returns an edge value rather than NaN.",
+  "note": "MOST functions read slider state at call time — either by ID directly, or through the cached forward pass _st(), which is rebuilt when any slider it read changes: s1_shuffle, s1_pe, s2_rope, s3_scale, s3_mask, s3_maskafter, the tf_* configuration sliders, and every weight-override tensor slider (tf_wq_<l>_<h> ... and the scene-4 aliases s4_emb, s4_wq, s4_wk, s4_wv), each of which defaults to the hand-built or seeded table when the scene does not declare it. Eight are PURE in their explicit arguments and consult no slider at all: tfPE, tfRopeQ, tfRopeK, tfRopeDot, tfRopeEmbTheta, tfDotSample, tfDotSampleScaled and tfSampleVar. Note tfRopeEmbDot is NOT among them — it reaches _st() through tfRopeEmb. The scene must define sliders with the IDs listed in sliderContracts for the lesson to respond to user input. Functions clamp their index arguments, so an out-of-range row or column returns an edge value rather than NaN.",
   "sliderContracts": {
     "s1_shuffle": {
       "description": "Token shuffle. 0 = original order 'the cat sat on the mat'; 1 = permuted by [5,0,3,2,1,4]. Positions never shuffle — only the tokens sitting in them.",
@@ -241,13 +242,158 @@
       "scenes": [
         4
       ]
+    },
+    "tf_layers": {
+      "description": "Number of layers in the stack (1..12). Default 1: the toy. tfH(l) is the stream entering layer l; tfH(tf_layers) leaves it.",
+      "default": 1,
+      "scenes": [
+        5,
+        6
+      ]
+    },
+    "tf_heads": {
+      "description": "Number of query heads (1..64). Default 2. d_k defaults to d_model / n_heads; heads beyond head 0 use seeded weights unless a tf_wq_<l>_<h> slider replaces them.",
+      "default": 2,
+      "scenes": [
+        5,
+        6
+      ]
+    },
+    "tf_kv": {
+      "description": "Number of K/V heads (1..n_heads). Default n_heads (multi-head). 1 is multi-query attention: every query head reads the same K and V; n_heads / n_kv query heads share each K/V head (grouped-query in between). tfKvSaving() = n_heads / n_kv.",
+      "default": 2,
+      "scenes": [
+        5,
+        6
+      ]
+    },
+    "tf_dk": {
+      "description": "Per-head dimension. Default d_model / n_heads (a convention, not a law). Layer 0 / head 0 keeps the hand-built projections only while d_model = 4 and d_k = 2.",
+      "default": 2,
+      "scenes": [
+        5,
+        6
+      ]
+    },
+    "tf_dff": {
+      "description": "FFN hidden width. Default 2 d_model = 8 (real models use 4x, or 8/3 x for SwiGLU).",
+      "default": 8,
+      "scenes": [
+        5,
+        6
+      ]
+    },
+    "tf_norm": {
+      "description": "0 = no normalisation anywhere (the toy of scenes 1-4), 1 = LayerNorm (subtract the mean, divide by the standard deviation), 2 = RMSNorm (divide by the root mean square only: no mean, no bias). Unit gain, zero bias in both.",
+      "default": 0,
+      "scenes": [
+        5,
+        6
+      ]
+    },
+    "tf_prenorm": {
+      "description": "Where a norm (tf_norm 1 or 2) sits. 1 = pre-norm: each sub-layer reads the normed stream and adds its raw output, and a final norm precedes the unembedding. 0 = post-norm: add first, then normalise the sum; no final norm. Ignored while tf_norm = 0.",
+      "default": 1,
+      "scenes": [
+        5,
+        6
+      ]
+    },
+    "tf_act": {
+      "description": "FFN activation: 0 ReLU, 1 GELU (tanh approximation), 2 SwiGLU (silu(x W1) * (x W3), then W2).",
+      "default": 0,
+      "scenes": [
+        5,
+        6
+      ]
+    },
+    "tf_temp": {
+      "description": "Softmax temperature for the next-token distribution: tfProb = softmax(logits / T). T -> 0 is argmax, T -> infinity is uniform. Never applied to attention.",
+      "default": 1,
+      "scenes": [
+        5,
+        6
+      ]
+    },
+    "tf_emb": {
+      "kind": "tensor",
+      "shape": "[n, d_model] (any)",
+      "description": "The embedding table, of ANY shape: rows are the tokens, columns d_model. Declaring it reshapes the whole model (n and d_model follow it; tokens beyond the toy's six are named t0, t1, ...). Absent, s4_emb over the toy table stands.",
+      "default": "the toy table",
+      "scenes": [
+        5,
+        6
+      ]
+    },
+    "tf_wq_<l>_<h>": {
+      "kind": "tensor",
+      "description": "Weight override, cell-wise (a short table overrides the cells it covers). W_Q of layer l, query head h (d_model x d_k). Absent, the hand-built table (layer 0 / head 0 at the toy shape) or the seeded initialisation stands.",
+      "default": "hand-built or seeded",
+      "scenes": [
+        5,
+        6
+      ]
+    },
+    "tf_wk_<l>_<g>": {
+      "kind": "tensor",
+      "description": "Weight override, cell-wise (a short table overrides the cells it covers). W_K of layer l, K/V head g (d_model x d_k). Absent, the hand-built table (layer 0 / head 0 at the toy shape) or the seeded initialisation stands.",
+      "default": "hand-built or seeded",
+      "scenes": [
+        5,
+        6
+      ]
+    },
+    "tf_wv_<l>_<g>": {
+      "kind": "tensor",
+      "description": "Weight override, cell-wise (a short table overrides the cells it covers). W_V of layer l, K/V head g (d_model x d_k). Absent, the hand-built table (layer 0 / head 0 at the toy shape) or the seeded initialisation stands.",
+      "default": "hand-built or seeded",
+      "scenes": [
+        5,
+        6
+      ]
+    },
+    "tf_wo_<l>": {
+      "kind": "tensor",
+      "description": "Weight override, cell-wise (a short table overrides the cells it covers). W_O of layer l (n_heads d_k x d_model). Absent, the hand-built table (layer 0 / head 0 at the toy shape) or the seeded initialisation stands.",
+      "default": "hand-built or seeded",
+      "scenes": [
+        5,
+        6
+      ]
+    },
+    "tf_w1_<l>": {
+      "kind": "tensor",
+      "description": "Weight override, cell-wise (a short table overrides the cells it covers). FFN W1 of layer l (d_model x d_ff). Absent, the hand-built table (layer 0 / head 0 at the toy shape) or the seeded initialisation stands.",
+      "default": "hand-built or seeded",
+      "scenes": [
+        5,
+        6
+      ]
+    },
+    "tf_w2_<l>": {
+      "kind": "tensor",
+      "description": "Weight override, cell-wise (a short table overrides the cells it covers). FFN W2 of layer l (d_ff x d_model). Absent, the hand-built table (layer 0 / head 0 at the toy shape) or the seeded initialisation stands.",
+      "default": "hand-built or seeded",
+      "scenes": [
+        5,
+        6
+      ]
+    },
+    "tf_w3_<l>": {
+      "kind": "tensor",
+      "description": "Weight override, cell-wise (a short table overrides the cells it covers). FFN gate W3 of layer l (d_model x d_ff), read only when tf_act = 2 (SwiGLU). Absent, the hand-built table (layer 0 / head 0 at the toy shape) or the seeded initialisation stands.",
+      "default": "hand-built or seeded",
+      "scenes": [
+        5,
+        6
+      ]
     }
   },
   "functions": {
     "tfPerm(k)": "Source token index displayed at slot k. Identity when s1_shuffle=0.",
     "tfEmb(i,d)": "Component d (0..3) of the raw embedding at slot i, shuffle applied, NO positional encoding.",
     "tfEmbBase(r,d)": "Component d of embedding TOKEN row r (0..5, no shuffle) as currently in force: the hand-built table unless the tensor slider s4_emb overrides it (cell [r][d]). Use it to draw the embedding table itself; tfEmb(i,d) is the per-SLOT read with the shuffle applied.",
-    "tfW(m,r,c)": "Entry (r, c) of a projection matrix in force: m = 0 for W_Q, 1 for W_K, 2 for W_V; r is the input dim (0..3), c the head dim (0..1), row-vector convention q = x W_Q. The hand-built value unless the tensor slider s4_wq / s4_wk / s4_wv (for m = 0 / 1 / 2) overrides cell [r][c]. Use it to draw the three matrices as lattices.",
+    "tfW(m,r,c)": "Layer-0 / head-0 shorthand for tfWq / tfWk / tfWv: entry (r, c) of a projection matrix in force: m = 0 for W_Q, 1 for W_K, 2 for W_V; r is the input dim (0..3), c the head dim (0..1), row-vector convention q = x W_Q. The hand-built value unless the tensor slider s4_wq / s4_wk / s4_wv (for m = 0 / 1 / 2) overrides cell [r][c]. Use it to draw the three matrices as lattices.",
     "tfPE(i,d)": "Component d of the sinusoidal positional encoding for POSITION i. Never shuffles. The position argument is CONTINUOUS — it is neither rounded to a slot nor clamped to N-1 — so a scene can sweep it and watch dims 0 and 1 trace the unit circle sin(p), cos(p). Integer slot arguments are unaffected.",
     "tfX(i,d)": "Layer input x_i = tfEmb(i,d) + s1_pe * tfPE(i,d) — except when s2_rope = 1, where the additive term is forced off and x_i = tfEmb(i,d) exactly. RoPE replaces additive PE; the two are never summed.",
     "tfOutNoPos(i,d)": "Component d (0..1) of UNMASKED, POSITION-FREE attention over the raw embeddings. The permutation-equivariance object and nothing else — computed by a separate pass, because reusing the masked one would silently break the theorem. Still scaled dot-product attention, so it divides by sqrt(d_k).",
@@ -276,6 +422,48 @@
     "tfSampleVar(n,count)": "Empirical variance of the first `count` of 4000 samples at dimension n. The student's own small experiment; the authoritative 2,000,000-draw figures (2.0003 at n=2, 64.10 at n=64) live in the lesson data block and must be labelled as the anchor.",
     "tfToken(k)": "Token surface form at slot k, as a STRING (e.g. \"cat\") — TOKENS[tfPerm(k)]. The one function here that returns text rather than a number, for a tensor's axes[].labelExpr: a lattice whose rows permute needs labels that permute with them.",
     "tfScoreProbe(j,angleDeg)": "Score of the what-if query against key j: q_probe . k_j, where q_probe is slot s3_qi's query turned by angleDeg. Equals tfScore(s3_qi,j) EXACTLY at angleDeg=0, where the probe is the model's own query. Rotates once per call, unlike two tfQProbe reads.",
-    "tfProjQK(d,angleDeg,j)": "Component d of the vector projection of the what-if query onto key j: ((q.k)/(k.k))k. Its signed length times |k_j| IS the score q.k_j, which is what makes the dot product drawable as a length. Returns 0 for a zero-length key, where the projection is undefined."
+    "tfProjQK(d,angleDeg,j)": "Component d of the vector projection of the what-if query onto key j: ((q.k)/(k.k))k. Its signed length times |k_j| IS the score q.k_j, which is what makes the dot product drawable as a length. Returns 0 for a zero-length key, where the projection is undefined.",
+    "tfN()": "Number of tokens n in force (6 for the toy; the row count of tf_emb otherwise).",
+    "tfDModel()": "d_model in force (4 for the toy; the column count of tf_emb otherwise).",
+    "tfDk()": "Per-head dimension d_k in force (tf_dk, default d_model / n_heads).",
+    "tfHeads()": "Number of query heads (tf_heads, default 2).",
+    "tfKv()": "Number of K/V heads (tf_kv, default n_heads).",
+    "tfLayers()": "Number of layers (tf_layers, default 1).",
+    "tfDff()": "FFN hidden width (tf_dff, default 2 d_model).",
+    "tfTemp()": "Softmax temperature in force (tf_temp, default 1).",
+    "tfVocabN()": "Vocabulary size: distinct surface forms among the tokens (5 for the toy: the, cat, sat, on, mat).",
+    "tfVocabToken(v)": "Surface form of vocabulary entry v, as a STRING, in first-seen order (the toy: 0 the, 1 cat, 2 sat, 3 on, 4 mat).",
+    "tfHeadKv(h)": "Which K/V head query head h reads: floor(h / (n_heads / n_kv)). Identity under MHA, 0 for every head under MQA.",
+    "tfKvCache()": "Numbers held in the K/V cache for the whole sequence: 2 n n_kv d_k per layer, summed over layers.",
+    "tfKvSaving()": "The K/V-cache saving from sharing heads: n_heads / n_kv (1 for MHA, n_heads for MQA).",
+    "tfWq(l,h,r,c)": "W_Q of layer l, query head h, entry (r, c): r the input dim (0..d_model-1), c the head dim (0..d_k-1). Layer 0 / head 0 is the hand-built toy at the toy shape.",
+    "tfWk(l,g,r,c)": "W_K of layer l, K/V head g, entry (r, c).",
+    "tfWv(l,g,r,c)": "W_V of layer l, K/V head g, entry (r, c).",
+    "tfWo(l,r,c)": "W_O of layer l, entry (r, c): r indexes the concatenated heads (0..n_heads d_k - 1, head floor(r / d_k)), c the stream dim.",
+    "tfW1(l,r,c)": "FFN W1 of layer l (d_model x d_ff), entry (r, c).",
+    "tfW2(l,r,c)": "FFN W2 of layer l (d_ff x d_model), entry (r, c).",
+    "tfWu(v,d)": "Row v of the tied unembedding: the embedding row of vocabulary entry v, component d. tfLogit(i, v) = sum_d tfFinal(i, d) tfWu(v, d).",
+    "tfH(l,i,d)": "Component d of the residual stream ENTERING layer l at slot i. l = 0 is x (embedding plus PE); l = tf_layers is what leaves the stack, before the final norm.",
+    "tfAttnIn(l,i,d)": "What the attention sub-layer of layer l reads at slot i: the normed stream (pre-norm) or the stream itself (post-norm).",
+    "tfQh(l,h,i,d)": "q of slot i in layer l, head h, component d (RoPE applied when s2_rope = 1). tfQ = tfQh(0, 0, ...).",
+    "tfKh(l,h,i,d)": "k of slot i as read by head h of layer l (its K/V head's key), component d.",
+    "tfVh(l,h,i,d)": "v of slot i as read by head h of layer l. NEVER rotated by RoPE.",
+    "tfScoreH(l,h,i,j)": "Raw score q_i . k_j in layer l, head h.",
+    "tfScoreScaledH(l,h,i,j)": "Scaled score, tfScoreH / (sqrt d_k)^s3_scale, in layer l, head h.",
+    "tfAttnH(l,h,i,j)": "Attention weight of query slot i on key slot j in layer l, head h, honouring s3_scale, s3_mask and s3_maskafter. Rows sum to 1 (except in the mask-after misconception mode).",
+    "tfHeadOut(l,h,i,d)": "Head h's own output row i, component d (0..d_k-1) in layer l: sum_j tfAttnH(l,h,i,j) tfVh(l,h,j,d) — BEFORE concatenation and W_O. tfOut = tfHeadOut(0, 0, ...).",
+    "tfConcat(l,i,c)": "The concatenated heads of layer l at slot i, column c (0..n_heads d_k - 1); column c belongs to head floor(c / d_k). What W_O multiplies.",
+    "tfAttnOut(l,i,d)": "The attention sub-layer's increment to the stream at slot i: concat times W_O, component d (0..d_model-1). Multi-head does not widen the stream.",
+    "tfResid1(l,i,d)": "The stream after the attention residual add in layer l (post-norm: after its norm).",
+    "tfFfIn(l,i,d)": "What the FFN of layer l reads: the normed stream (pre-norm) or tfResid1 itself (post-norm).",
+    "tfFfPre(l,i,k)": "FFN hidden unit k (0..d_ff-1) at slot i BEFORE the activation: tfFfIn . W1.",
+    "tfFfHidden(l,i,k)": "FFN hidden unit k at slot i after the activation (SwiGLU: silu(x W1) * (x W3)). One neuron's fan-in is row k of W1.",
+    "tfFfOut(l,i,d)": "The FFN's increment to the stream at slot i, component d: tfFfHidden . W2.",
+    "tfResid2(l,i,d)": "The stream LEAVING layer l at slot i (= tfH(l + 1, i, d)); post-norm: after its norm.",
+    "tfFinal(i,d)": "The vector the unembedding reads at slot i: the final norm of the stream leaving the stack (pre-norm) or that stream itself (post-norm).",
+    "tfLogit(i,v)": "Logit of vocabulary entry v at slot i: tfFinal(i, .) dot tfWu(v, .), before temperature.",
+    "tfProb(i,v)": "softmax(logits / tf_temp)[v] at slot i: the model's distribution for the token AFTER slot i (causal). Sums to 1 over v.",
+    "tfArgmax(i)": "Index of the most probable vocabulary entry at slot i (independent of temperature). Feed it to tfVocabToken for the word.",
+    "tfEntropy(i)": "Shannon entropy in bits of the slot-i distribution: -> 0 as tf_temp -> 0, -> log2(tfVocabN()) as tf_temp -> infinity."
   }
 }

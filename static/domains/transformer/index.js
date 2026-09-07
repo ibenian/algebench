@@ -1,21 +1,31 @@
 /**
  * AlgeBench Domain Library — Transformer
  *
- * One fixed six-token forward pass: "the cat sat on the mat",
- * d_model = 4, n_heads = 2, d_k = 2, one head shown, causal.
+ * A small decoder-only transformer forward pass, general in every dimension:
+ * n tokens, d_model, n_heads, n_kv (shared K/V heads), d_k, d_ff, n_layers,
+ * pre- or post-norm, LayerNorm or RMSNorm, ReLU / GELU / SwiGLU, then the
+ * final norm, the (tied) unembedding, logits, temperature and probabilities.
  *
- * Registers tfPerm, tfToken, tfEmb, tfEmbBase, tfW, tfPE, tfX, tfOutNoPos, tfQ, tfK, tfV, tfQProbe,
- * tfScore, tfScoreScaled, tfScoreDiv, tfMaskVal, tfAttn, tfRowSum, tfOut,
- * tfRopeQ, tfRopeK, tfRopeDot, tfRopeEmb, tfRopeEmbTheta, tfRopeEmbDot, tfRopeEmbArc,
- * tfRopeEmbNorm, tfRopeEmbAngle,
- * tfDotSample, tfDotSampleScaled, tfSampleVar
- * into the AlgeBench expression sandbox.
+ * Its DEFAULT configuration is the lesson's toy: "the cat sat on the mat",
+ * d_model = 4, n_heads = 2, d_k = 2, one layer, and layer 0 / head 0 carries
+ * the hand-built W_Q, W_K, W_V below, so every figure scenes 1-4 pin is
+ * unchanged. Every other weight is a seeded deterministic initialisation
+ * (reproducible, not learned), and any table can be replaced by a tensor
+ * slider named after it (see docs.json). Scalar sliders tf_layers, tf_heads,
+ * tf_kv, tf_dk, tf_dff, tf_norm, tf_prenorm, tf_act, tf_temp reshape the model.
  *
- * THE WEIGHTS BELOW ARE HAND-CONSTRUCTED FOR LEGIBILITY, NOT LEARNED.
- * They are chosen so one head shows a clean subject-verb dependency
- * ("sat" attends 97.09% to "cat"). The lesson must say so on screen; a
- * lesson advertising rigour while showing invented attention patterns is
- * dishonest exactly where it claims to be honest.
+ * THE DEFAULT WEIGHTS ARE HAND-CONSTRUCTED OR SEEDED, NOT LEARNED. A lesson
+ * must say so on screen; a lesson advertising rigour while showing invented
+ * attention patterns is dishonest exactly where it claims to be honest.
+ *
+ * Functions are grouped as: configuration (tfN, tfDModel, ...), weights
+ * (tfWq, tfWk, tfWv, tfWo, tfW1, tfW2, tfWu), the pass per layer and head
+ * (tfH, tfQh, tfKh, tfVh, tfScoreH, tfAttnH, tfHeadOut, tfConcat, tfAttnOut,
+ * tfResid1, tfFfIn, tfFfHidden, tfFfOut, tfResid2), the head of the model
+ * (tfFinal, tfLogit, tfProb, tfArgmax, tfEntropy), the layer-0 / head-0
+ * shorthands scenes 1-4 use (tfX, tfQ, tfK, tfV, tfScore, tfAttn, tfOut, ...),
+ * and the scene-1/2 demonstration objects (RoPE on embeddings, the i.i.d.
+ * sampler) that are not part of the pass.
  *
  * scripts/check_transformer_domain.py pins every figure this file computes
  * against independently derived literals, so a silent drift here fails there.
@@ -26,12 +36,12 @@
 
     let _getSlider = (id, fallback = 0) => fallback; // replaced by _init
 
-    // ---- fixed model constants -------------------------------------------
+    // ---- the toy: constants the default configuration is built from ------
 
-    const N = 6;            // tokens
-    const D_MODEL = 4;
-    const D_K = 2;          // per-head; deliberately != D_MODEL (design doc §3)
-    const SQRT_DK = Math.sqrt(D_K);
+    const TOY_N = 6;
+    const TOY_D_MODEL = 4;
+    const TOY_D_K = 2;      // per head; deliberately != d_model (design doc §3)
+    const MAX_DIM = 256;    // scratch sizes for the demo helpers
 
     // Token embedding table, hand-picked. Rows are looked up per token.
     // Note "the" appears at slots 0 and 4 and gets the IDENTICAL row — the
@@ -45,7 +55,7 @@
         [0.5, 0.5, 0, 0.5],  // mat
     ];
 
-    // Per-head projections, row-vector convention: q = x W_Q.
+    // Layer 0 / head 0 projections, row-vector convention: q = x W_Q.
     // Under that convention the ROWS are the images of the input basis
     // directions, so W_Q visibly reads input dims 2 and 3 while W_K reads
     // dims 1 and 3 and W_V reads dims 0 and 1 — three different readings of
@@ -53,26 +63,6 @@
     const W_Q = [[0, 0], [0, 0], [3, 0], [0, 1]];
     const W_K = [[0, 0], [3, 0], [0, 0], [0, 1]];
     const W_V = [[1, 0], [0, 1], [0, 0], [0, 0]];
-
-    // Sandbox overrides: one TENSOR slider per table (s4_emb 6x4, s4_wq /
-    // s4_wk / s4_wv 4x2). With no such slider the hand-built constant stands,
-    // so scenes 1-3 compute exactly what they always did; a scene that
-    // declares one must give it the constant as its default. Listed literally
-    // so check_transformer_domain.py can hold docs.json and the cache key to
-    // the same set.
-    const _OVERRIDE_SLIDERS = ['s4_emb', 's4_wq', 's4_wk', 's4_wv'];
-
-    /** `base` with each entry replaced by the tensor slider's cell when the
-     *  scene defines that slider (a nested array from getSlider); any cell it
-     *  does not cover, or that is not a finite number, keeps the constant. */
-    function _effective(base, id) {
-        const o = _getSlider(id, null);
-        if (!Array.isArray(o)) return base;
-        return base.map((row, r) => row.map((v, c) => {
-            const x = Array.isArray(o[r]) ? Number(o[r][c]) : NaN;
-            return Number.isFinite(x) ? x : v;
-        }));
-    }
 
     // The shuffle used by the permutation-equivariance beat.
     const PERM = [5, 0, 3, 2, 1, 4];
@@ -90,25 +80,26 @@
     const ROPE_THETA = 1.0;
 
     const MASK_NEG = -1e9;  // stands in for -Infinity; see tfAttn
+    const LN_EPS = 1e-5;
 
     // ---- small linear algebra --------------------------------------------
 
-    /** Sinusoidal positional encoding for POSITION pos. Never shuffles. */
-    function _pe(pos, d) {
+    /** Sinusoidal positional encoding for POSITION pos in a d-dimensional model. */
+    function _pe(pos, d, dModel) {
         const pair = Math.floor(d / 2);
-        const denom = Math.pow(10000, (2 * pair) / D_MODEL);
+        const denom = Math.pow(10000, (2 * pair) / dModel);
         const angle = pos / denom;
         return (d % 2 === 0) ? Math.sin(angle) : Math.cos(angle);
     }
 
-    /** x (n x 4) times W (4 x 2) -> n x 2, flat row-major. */
-    function _project(x, W) {
-        const out = new Float64Array(N * D_K);
-        for (let i = 0; i < N; i++) {
-            for (let d = 0; d < D_K; d++) {
+    /** x (n x a, flat) times W (a x b, nested) -> n x b, flat row-major. */
+    function _matmul(x, n, a, W, b) {
+        const out = new Float64Array(n * b);
+        for (let i = 0; i < n; i++) {
+            for (let d = 0; d < b; d++) {
                 let acc = 0;
-                for (let c = 0; c < D_MODEL; c++) acc += x[i * D_MODEL + c] * W[c][d];
-                out[i * D_K + d] = acc;
+                for (let c = 0; c < a; c++) acc += x[i * a + c] * W[c][d];
+                out[i * b + d] = acc;
             }
         }
         return out;
@@ -129,199 +120,26 @@
         return [c * v[0] - s * v[1], s * v[0] + c * v[1]];
     }
 
-    // ---- the toy forward pass, cached ------------------------------------
-
-    // EXACTLY the sliders _build() reads, and nothing else. A slider listed here
-    // that _build ignores does not make the cache safer -- it throws the whole
-    // forward pass away and recomputes it to produce identical numbers.
-    // s2_m/s2_n are never read by this domain at all (the scene passes them as
-    // ARGUMENTS to tfRopeEmb*), and s3_qi is read by tfQProbe, which runs
-    // outside the cache. check_transformer_domain.py asserts this set matches
-    // _build's own _getSlider calls so it cannot drift back.
-    const _KEY_SLIDERS = [
-        's1_shuffle', 's1_pe', 's2_rope',
-        's3_scale', 's3_mask', 's3_maskafter',
-        ..._OVERRIDE_SLIDERS,
-    ];
-
-    // Change detection without a key string: the last value seen for each
-    // keyed slider (NaN = absent), compared element-wise on every call. No
-    // allocation, no number-to-string, and exact -- a key string costs ten
-    // times as much, and _st() runs per cell. A tensor slider hands back a
-    // nested array; its cells are walked against a flat copy the same way,
-    // and the copy is only retaken when something differed.
-    let _cache = { data: null };
-    const _last = new Float64Array(_KEY_SLIDERS.length).fill(NaN);
-    const _lastTable = _KEY_SLIDERS.map(() => null); // flat copy, or null while absent
-    let _neverBuilt = true;
-
-    /** Does the nested `table` hold exactly the numbers in the flat `last`? */
-    function _sameTable(table, last) {
-        let k = 0;
-        for (const row of table) {
-            if (Array.isArray(row)) {
-                for (const x of row) { if (k >= last.length || last[k++] !== Number(x)) return false; }
-            } else if (k >= last.length || last[k++] !== Number(row)) return false;
+    /** Row-wise normalisation of x (n x d). rms=1 skips the mean (RMSNorm has
+     *  no mean subtraction and no bias — accuracy item 6). Unit gain, zero bias. */
+    function _norm(x, n, d, rms) {
+        const out = new Float64Array(n * d);
+        for (let i = 0; i < n; i++) {
+            let mean = 0;
+            if (!rms) { for (let k = 0; k < d; k++) mean += x[i * d + k]; mean /= d; }
+            let ss = 0;
+            for (let k = 0; k < d; k++) { const v = x[i * d + k] - mean; ss += v * v; }
+            const inv = 1 / Math.sqrt(ss / d + LN_EPS);
+            for (let k = 0; k < d; k++) out[i * d + k] = (x[i * d + k] - mean) * inv;
         }
-        return k === last.length;
+        return out;
     }
 
-    function _stale() {
-        let changed = _neverBuilt;
-        for (let i = 0; i < _KEY_SLIDERS.length; i++) {
-            const raw = _getSlider(_KEY_SLIDERS[i], NaN);
-            if (Array.isArray(raw)) {
-                const l = _lastTable[i];
-                if (l === null || !_sameTable(raw, l)) {
-                    _lastTable[i] = raw.flat().map(Number);
-                    changed = true;
-                }
-                if (_last[i] === _last[i]) { _last[i] = NaN; changed = true; }
-                continue;
-            }
-            if (_lastTable[i] !== null) { _lastTable[i] = null; changed = true; }
-            const v = Number(raw);
-            const l = _last[i];
-            if (v !== l && !(v !== v && l !== l)) { _last[i] = v; changed = true; }
-        }
-        _neverBuilt = false;
-        return changed;
-    }
+    const _relu = v => (v > 0 ? v : 0);
+    const _gelu = v => 0.5 * v * (1 + Math.tanh(0.7978845608028654 * (v + 0.044715 * v * v * v)));
+    const _silu = v => v / (1 + Math.exp(-v));
 
-    function _build() {
-        const shuffle = _getSlider('s1_shuffle', 0) >= 0.5 ? 1 : 0;
-        const ropeOn = _getSlider('s2_rope', 0) >= 0.5 ? 1 : 0;
-        // RoPE REPLACES additive positional encoding; it does not stack on top
-        // of it. Real models pick one scheme or the other, so whenever RoPE is
-        // on the sinusoidal PE term is forced off no matter what s1_pe says.
-        // Without this, turning RoPE on in scene 2 would rotate a q that
-        // already carried a sinusoidal offset -- an operation no model performs.
-        const peOn = ropeOn ? 0 : _getSlider('s1_pe', 1);
-        const scale = _getSlider('s3_scale', 1);
-        const maskOn = _getSlider('s3_mask', 0) >= 0.5 ? 1 : 0;
-        const maskAfter = _getSlider('s3_maskafter', 0) >= 0.5 ? 1 : 0;
-        // Sandbox overrides (read through _effective, keyed above).
-        const EMBe = _effective(EMB, 's4_emb');
-        const WQ = _effective(W_Q, 's4_wq');
-        const WK = _effective(W_K, 's4_wk');
-        const WV = _effective(W_V, 's4_wv');
-
-        // Which source token sits at each slot.
-        const perm = new Int32Array(N);
-        for (let i = 0; i < N; i++) perm[i] = shuffle ? PERM[i] : i;
-
-        // Raw embeddings at each slot (token travels), and x = emb + pe*PE
-        // (position stays put — that asymmetry is the whole point). With RoPE
-        // on, peOn is 0 and x is the raw embedding: position enters later, as
-        // a rotation of q and k, and never twice.
-        const emb = new Float64Array(N * D_MODEL);
-        const x = new Float64Array(N * D_MODEL);
-        for (let i = 0; i < N; i++) {
-            for (let d = 0; d < D_MODEL; d++) {
-                const e = EMBe[perm[i]][d];
-                emb[i * D_MODEL + d] = e;
-                x[i * D_MODEL + d] = e + peOn * _pe(i, d);
-            }
-        }
-
-        // Projections of the positioned input.
-        const Q = _project(x, WQ);
-        const K = _project(x, WK);
-        const V = _project(x, WV);   // V is NEVER rotated (contract item 7)
-
-        // RoPE: position as a rotation of q and k, INSTEAD of the additive PE
-        // that peOn just suppressed. Never both.
-        if (ropeOn) {
-            for (let i = 0; i < N; i++) {
-                const rq = _rot([Q[i * D_K], Q[i * D_K + 1]], i * ROPE_THETA);
-                const rk = _rot([K[i * D_K], K[i * D_K + 1]], i * ROPE_THETA);
-                Q[i * D_K] = rq[0]; Q[i * D_K + 1] = rq[1];
-                K[i * D_K] = rk[0]; K[i * D_K + 1] = rk[1];
-            }
-        }
-
-        // Raw scores, and scores scaled by (sqrt d_k)^s3_scale.
-        const S = new Float64Array(N * N);
-        const Ss = new Float64Array(N * N);
-        const div = Math.pow(SQRT_DK, scale);
-        for (let i = 0; i < N; i++) {
-            for (let j = 0; j < N; j++) {
-                let acc = 0;
-                for (let d = 0; d < D_K; d++) acc += Q[i * D_K + d] * K[j * D_K + d];
-                S[i * N + j] = acc;
-                Ss[i * N + j] = acc / div;
-            }
-        }
-
-        // Attention weights.
-        //   maskAfter = 0 (CORRECT): additive -1e9 on the SCALED SCORES, then
-        //     softmax. Rows sum to 1.000000.
-        //   maskAfter = 1 (WRONG, for the misconception beat only): softmax
-        //     over all six, THEN zero the future with no renormalization.
-        //     Row 2 then sums to 0.98993, which is the visible failure.
-        const A = new Float64Array(N * N);
-        for (let i = 0; i < N; i++) {
-            const row = [];
-            for (let j = 0; j < N; j++) {
-                const visible = !maskOn || j <= i;
-                row.push(maskAfter ? Ss[i * N + j]
-                                   : (visible ? Ss[i * N + j] : MASK_NEG));
-            }
-            let w = _softmax(row);
-            if (maskAfter) {
-                w = w.map((p, j) => (!maskOn || j <= i) ? p : 0);  // no renormalize
-            }
-            for (let j = 0; j < N; j++) A[i * N + j] = w[j];
-        }
-
-        // Output rows: convex combinations of the value rows.
-        const O = new Float64Array(N * D_K);
-        for (let i = 0; i < N; i++) {
-            for (let d = 0; d < D_K; d++) {
-                let acc = 0;
-                for (let j = 0; j < N; j++) acc += A[i * N + j] * V[j * D_K + d];
-                O[i * D_K + d] = acc;
-            }
-        }
-
-        // The permutation-equivariance object: UNMASKED, POSITION-FREE
-        // attention over the RAW EMBEDDINGS. Deliberately a separate pass —
-        // reusing the masked one above would silently break the theorem,
-        // because the mask is a second, independent reason equivariance fails.
-        // It is still scaled dot-product attention, so it divides by sqrt(d_k).
-        const Qn = _project(emb, WQ);
-        const Kn = _project(emb, WK);
-        const Vn = _project(emb, WV);
-        const On = new Float64Array(N * D_K);
-        for (let i = 0; i < N; i++) {
-            const row = [];
-            for (let j = 0; j < N; j++) {
-                let acc = 0;
-                for (let d = 0; d < D_K; d++) acc += Qn[i * D_K + d] * Kn[j * D_K + d];
-                row.push(acc / SQRT_DK);
-            }
-            const w = _softmax(row);
-            for (let d = 0; d < D_K; d++) {
-                let acc = 0;
-                for (let j = 0; j < N; j++) acc += w[j] * Vn[j * D_K + d];
-                On[i * D_K + d] = acc;
-            }
-        }
-
-        return { perm, emb, x, Q, K, V, S, Ss, A, O, On, EMBe, WQ, WK, WV };
-    }
-
-    function _st() {
-        if (_stale()) _cache = { data: _build() };
-        return _cache.data;
-    }
-
-    // ---- the generic i.i.d. object (its OWN cache) -----------------------
-    //
-    // This has NOTHING to do with the toy model. The toy's Q and K are
-    // hand-constructed and do not satisfy the i.i.d. zero-mean unit-variance
-    // hypothesis, so they cannot demonstrate why sqrt(d_k) is the right
-    // constant — only that scaling changes sharpness. This object can.
+    // ---- seeded initialisation (reproducible, NOT learned) ----------------
 
     function _splitmix32(a) {
         return function () {
@@ -340,6 +158,25 @@
         const v = rng();
         const r = Math.sqrt(-2 * Math.log(u));
         return [r * Math.cos(2 * Math.PI * v), r * Math.sin(2 * Math.PI * v)];
+    }
+
+    /** A deterministic (rows x cols) table, entries ~ N(0, scale^2), keyed by a tag
+     *  so the same slot gets the same numbers on every rebuild and in the checker. */
+    function _seededMatrix(tag, rows, cols, scale) {
+        let h = 0x811c9dc5;
+        for (let k = 0; k < tag.length; k++) h = Math.imul(h ^ tag.charCodeAt(k), 0x01000193);
+        const rng = _splitmix32(h ^ 0x7f4a7c15);
+        const out = [];
+        let buf = [];
+        for (let r = 0; r < rows; r++) {
+            const row = [];
+            for (let c = 0; c < cols; c++) {
+                if (buf.length === 0) buf = _normals(rng);
+                row.push(buf.pop() * scale);
+            }
+            out.push(row);
+        }
+        return out;
     }
 
     let _genCache = { key: null, dots: null };
@@ -371,31 +208,462 @@
         return dots;
     }
 
+
+    // ---- reading sliders, and remembering what was read --------------------
+    //
+    // The pass is rebuilt only when a slider it READ has changed. Which
+    // sliders those are depends on the configuration (a two-layer model reads
+    // tf_wq_1_0, a one-layer model never does), so instead of a fixed key list
+    // every read inside _build goes through _read(), which records the value
+    // seen; _stale() then compares exactly that set against the live sliders.
+    // A tensor slider is recorded as a flat copy and compared cell by cell.
+
+    const ABSENT = Symbol('absent');
+    let _reads = new Map();          // id -> ABSENT | number | Float64Array
+    let _cache = { data: null };
+    let _neverBuilt = true;
+
+    function _snapshot(raw) {
+        if (raw === ABSENT) return ABSENT;
+        if (Array.isArray(raw)) return Float64Array.from(raw.flat(Infinity).map(Number));
+        return Number(raw);
+    }
+    /** Does the live value `raw` still equal the recorded `snap`? Tables are
+     *  walked in place against the flat copy: no allocation, since this runs
+     *  once per keyed slider on every _st() call, i.e. per cell per frame. */
+    function _same(snap, raw) {
+        if (snap === ABSENT || raw === ABSENT) return snap === raw;
+        if (snap instanceof Float64Array) {
+            if (!Array.isArray(raw)) return false;
+            let k = 0;
+            for (const row of raw) {
+                if (Array.isArray(row)) {
+                    for (const x of row) { if (k >= snap.length || Number(x) !== snap[k++]) return false; }
+                } else if (k >= snap.length || Number(row) !== snap[k++]) return false;
+            }
+            return k === snap.length;
+        }
+        const v = Number(raw);
+        return v === snap || (v !== v && snap !== snap);
+    }
+    /** Read a slider for the pass: the raw value, recorded for _stale(). */
+    function _readRaw(id) {
+        const raw = _getSlider(id, ABSENT);
+        _reads.set(id, _snapshot(raw));
+        return raw;
+    }
+    /** A scalar slider for the pass, or `fb` when absent / not a number. */
+    function _read(id, fb) {
+        const raw = _readRaw(id);
+        if (raw === ABSENT || Array.isArray(raw)) return fb;
+        const v = Number(raw);
+        return Number.isFinite(v) ? v : fb;
+    }
+    /** `base` with each cell replaced by the tensor slider `id` where it has
+     *  one (a nested array); cells it does not cover, or that are not finite
+     *  numbers, keep the constant. `base` may be null when the table has no
+     *  constant, in which case a missing slider yields null. */
+    function _effective(base, id, rows, cols) {
+        const o = _readRaw(id);
+        if (!Array.isArray(o)) return base;
+        const out = [];
+        for (let r = 0; r < rows; r++) {
+            const row = [];
+            for (let c = 0; c < cols; c++) {
+                const x = Array.isArray(o[r]) ? Number(o[r][c]) : NaN;
+                row.push(Number.isFinite(x) ? x : (base ? base[r][c] : 0));
+            }
+            out.push(row);
+        }
+        return out;
+    }
+
+    function _stale() {
+        if (_neverBuilt) return true;
+        for (const [id, snap] of _reads) {
+            if (!_same(snap, _getSlider(id, ABSENT))) return true;
+        }
+        return false;
+    }
+
+    function _st() {
+        if (_stale()) {
+            _reads = new Map();
+            _cache = { data: _build() };
+            _neverBuilt = false;
+        }
+        return _cache.data;
+    }
+
+    // ---- configuration --------------------------------------------------
+
+    function _intRead(id, fb, lo, hi) {
+        const v = Math.round(_read(id, fb));
+        return v < lo ? lo : (v > hi ? hi : v);
+    }
+
+    /** The model's shape, from the embedding table in force and the tf_* sliders. */
+    function _config() {
+        // The embedding table decides n and d_model: tf_emb (any shape) wins,
+        // then the scene-4 alias s4_emb over the toy table.
+        const rawEmb = _readRaw('tf_emb');
+        const table = (Array.isArray(rawEmb) && rawEmb.length && Array.isArray(rawEmb[0]))
+            ? _effective(null, 'tf_emb', rawEmb.length, rawEmb[0].length)
+            : _effective(EMB, 's4_emb', TOY_N, TOY_D_MODEL);
+        const n = table.length;
+        const dModel = table[0].length;
+        const heads = _intRead('tf_heads', 2, 1, 64);
+        const kv = _intRead('tf_kv', heads, 1, heads);
+        const dk = _intRead('tf_dk', Math.max(1, Math.floor(dModel / heads)), 1, MAX_DIM);
+        const layers = _intRead('tf_layers', 1, 1, 12);
+        const dff = _intRead('tf_dff', 2 * dModel, 1, MAX_DIM);
+        // 0 = no normalisation anywhere (the toy of scenes 1-4), 1 LayerNorm, 2 RMSNorm.
+        const normKind = _intRead('tf_norm', 0, 0, 2);
+        const rms = normKind === 2;
+        const pre = _read('tf_prenorm', 1) >= 0.5;       // 1 pre-norm, 0 post-norm (when a norm is on)
+        const nrm = normKind ? (v) => _norm(v, n, dModel, rms) : (v) => v;
+        const act = _intRead('tf_act', 0, 0, 2);         // 0 relu, 1 gelu, 2 swiglu
+        const temp = Math.max(1e-6, _read('tf_temp', 1));
+        // Vocabulary: one entry per distinct surface form, in first-seen order.
+        const names = n === TOY_N ? TOKENS : Array.from({ length: n }, (_, i) => 't' + i);
+        const vocab = [], vocabRow = [];
+        for (let i = 0; i < n; i++) {
+            if (vocab.indexOf(names[i]) < 0) { vocab.push(names[i]); vocabRow.push(i); }
+        }
+        return { n, dModel, heads, kv, dk, layers, dff, normKind, rms, pre, nrm, act, temp, table, names, vocab, vocabRow };
+    }
+
+    /** Every weight of the configured model: the hand-built toy at layer 0 /
+     *  head 0 when its shape fits, seeded tables elsewhere, any of them
+     *  replaced by a tensor slider named after it. */
+    function _weights(cfg) {
+        const { dModel, dk, heads, kv, layers, dff } = cfg;
+        const toyFits = dModel === TOY_D_MODEL && dk === TOY_D_K;
+        const sc = 1 / Math.sqrt(dModel);
+        const L = [];
+        for (let l = 0; l < layers; l++) {
+            const Wq = [], Wk = [], Wv = [];
+            for (let h = 0; h < heads; h++) {
+                const base = (l === 0 && h === 0 && toyFits) ? W_Q : _seededMatrix(`wq${l}_${h}`, dModel, dk, sc);
+                let w = _effective(base, `tf_wq_${l}_${h}`, dModel, dk);
+                if (l === 0 && h === 0) w = _effective(w, 's4_wq', dModel, dk);
+                Wq.push(w);
+            }
+            for (let g = 0; g < kv; g++) {
+                const bk = (l === 0 && g === 0 && toyFits) ? W_K : _seededMatrix(`wk${l}_${g}`, dModel, dk, sc);
+                const bv = (l === 0 && g === 0 && toyFits) ? W_V : _seededMatrix(`wv${l}_${g}`, dModel, dk, sc);
+                let wk = _effective(bk, `tf_wk_${l}_${g}`, dModel, dk);
+                let wv = _effective(bv, `tf_wv_${l}_${g}`, dModel, dk);
+                if (l === 0 && g === 0) { wk = _effective(wk, 's4_wk', dModel, dk); wv = _effective(wv, 's4_wv', dModel, dk); }
+                Wk.push(wk); Wv.push(wv);
+            }
+            const Wo = _effective(_seededMatrix(`wo${l}`, heads * dk, dModel, 1 / Math.sqrt(heads * dk)), `tf_wo_${l}`, heads * dk, dModel);
+            const W1 = _effective(_seededMatrix(`w1${l}`, dModel, dff, sc), `tf_w1_${l}`, dModel, dff);
+            const W3 = _effective(_seededMatrix(`w3${l}`, dModel, dff, sc), `tf_w3_${l}`, dModel, dff);
+            const W2 = _effective(_seededMatrix(`w2${l}`, dff, dModel, 1 / Math.sqrt(dff)), `tf_w2_${l}`, dff, dModel);
+            L.push({ Wq, Wk, Wv, Wo, W1, W2, W3 });
+        }
+        // Tied unembedding: row v of W_U is the embedding row of vocabulary entry v.
+        const Wu = cfg.vocabRow.map(r => cfg.table[r].slice());
+        return { L, Wu };
+    }
+
+    // ---- the forward pass, cached -------------------------------------------
+
+    /** One attention sub-layer on `ain` (n x d_model): every head's Q, K, V,
+     *  scores, weights and output, the concatenation and its W_O projection. */
+    function _attention(ain, cfg, Lw, opts) {
+        const { n, dModel, dk, heads, kv } = cfg;
+        const { ropeOn, scale, maskOn, maskAfter } = opts;
+        const perG = heads / kv;
+        const Ks = [], Vs = [];
+        for (let g = 0; g < kv; g++) {
+            const K = _matmul(ain, n, dModel, Lw.Wk[g], dk);
+            if (ropeOn) _rope(K, n, dk);
+            Ks.push(K);
+            Vs.push(_matmul(ain, n, dModel, Lw.Wv[g], dk));   // V is NEVER rotated
+        }
+        const div = Math.pow(Math.sqrt(dk), scale);
+        const headsOut = [];
+        const concat = new Float64Array(n * heads * dk);
+        for (let h = 0; h < heads; h++) {
+            const g = Math.floor(h / perG);
+            const Q = _matmul(ain, n, dModel, Lw.Wq[h], dk);
+            if (ropeOn) _rope(Q, n, dk);
+            const K = Ks[g], V = Vs[g];
+            const S = new Float64Array(n * n), Ss = new Float64Array(n * n), A = new Float64Array(n * n);
+            for (let i = 0; i < n; i++) {
+                for (let j = 0; j < n; j++) {
+                    let acc = 0;
+                    for (let d = 0; d < dk; d++) acc += Q[i * dk + d] * K[j * dk + d];
+                    S[i * n + j] = acc;
+                    Ss[i * n + j] = acc / div;
+                }
+            }
+            // Attention weights.
+            //   maskAfter = 0 (CORRECT): additive -1e9 on the SCALED SCORES, then
+            //     softmax. Rows sum to 1.000000.
+            //   maskAfter = 1 (WRONG, for the misconception beat only): softmax
+            //     over all n, THEN zero the future with no renormalization.
+            for (let i = 0; i < n; i++) {
+                const row = [];
+                for (let j = 0; j < n; j++) {
+                    const visible = !maskOn || j <= i;
+                    row.push(maskAfter ? Ss[i * n + j] : (visible ? Ss[i * n + j] : MASK_NEG));
+                }
+                let w = _softmax(row);
+                if (maskAfter) w = w.map((p, j) => (!maskOn || j <= i) ? p : 0);
+                for (let j = 0; j < n; j++) A[i * n + j] = w[j];
+            }
+            const O = new Float64Array(n * dk);
+            for (let i = 0; i < n; i++) {
+                for (let d = 0; d < dk; d++) {
+                    let acc = 0;
+                    for (let j = 0; j < n; j++) acc += A[i * n + j] * V[j * dk + d];
+                    O[i * dk + d] = acc;
+                    concat[i * heads * dk + h * dk + d] = acc;
+                }
+            }
+            headsOut.push({ Q, K, V, S, Ss, A, O, g });
+        }
+        const attnOut = _matmul(concat, n, heads * dk, Lw.Wo, dModel);
+        return { heads: headsOut, concat, attnOut };
+    }
+
+    /** RoPE in place on X (n x dk): pair p of position i turns by i * theta_p,
+     *  theta_p = ROPE_THETA * 10000^(-2p/dk). At dk = 2 that is the single
+     *  pair at 1.0 rad/position the lesson quotes. */
+    function _rope(X, n, dk) {
+        for (let i = 0; i < n; i++) {
+            for (let p = 0; 2 * p + 1 < dk; p++) {
+                const th = i * ROPE_THETA * Math.pow(10000, -(2 * p) / dk);
+                const a = X[i * dk + 2 * p], b = X[i * dk + 2 * p + 1];
+                const c = Math.cos(th), s = Math.sin(th);
+                X[i * dk + 2 * p] = c * a - s * b;
+                X[i * dk + 2 * p + 1] = s * a + c * b;
+            }
+        }
+    }
+
+    function _build() {
+        const cfg = _config();
+        const W = _weights(cfg);
+        const { n, dModel, dff, layers, normKind, pre, nrm, act, temp } = cfg;
+
+        const shuffle = _read('s1_shuffle', 0) >= 0.5 ? 1 : 0;
+        const ropeOn = _read('s2_rope', 0) >= 0.5 ? 1 : 0;
+        // RoPE REPLACES additive positional encoding; it does not stack on top
+        // of it. Real models pick one scheme or the other, so whenever RoPE is
+        // on the sinusoidal PE term is forced off no matter what s1_pe says.
+        const peOn = ropeOn ? 0 : _read('s1_pe', 1);
+        const scale = _read('s3_scale', 1);
+        const maskOn = _read('s3_mask', 0) >= 0.5 ? 1 : 0;
+        const maskAfter = _read('s3_maskafter', 0) >= 0.5 ? 1 : 0;
+        const opts = { ropeOn, scale, maskOn, maskAfter };
+
+        // Which source token sits at each slot.
+        const perm = new Int32Array(n);
+        for (let i = 0; i < n; i++) perm[i] = shuffle ? (n === TOY_N ? PERM[i] : (n - 1 - i)) : i;
+
+        // Raw embeddings at each slot (token travels), and x = emb + pe*PE
+        // (position stays put — that asymmetry is the whole point). With RoPE
+        // on, peOn is 0 and x is the raw embedding: position enters later, as
+        // a rotation of q and k, and never twice.
+        const emb = new Float64Array(n * dModel);
+        const x = new Float64Array(n * dModel);
+        for (let i = 0; i < n; i++) {
+            for (let d = 0; d < dModel; d++) {
+                const e = cfg.table[perm[i]][d];
+                emb[i * dModel + d] = e;
+                x[i * dModel + d] = e + peOn * _pe(i, d, dModel);
+            }
+        }
+
+        // The stack. H[l] is the residual stream entering layer l; H[layers]
+        // leaves the last one. With a norm on, pre-norm normalises what a
+        // sub-layer READS and adds its raw output; post-norm adds first and
+        // normalises the sum. With tf_norm = 0 (the toy) nrm is the identity.
+        const H = [x];
+        const L = [];
+        const add = (a, b) => { const o = new Float64Array(a.length); for (let k = 0; k < a.length; k++) o[k] = a[k] + b[k]; return o; };
+        for (let l = 0; l < layers; l++) {
+            const hin = H[l];
+            const ain = pre ? nrm(hin) : hin;
+            const attn = _attention(ain, cfg, W.L[l], opts);
+            let r1 = add(hin, attn.attnOut);
+            if (!pre) r1 = nrm(r1);
+            const fin = pre ? nrm(r1) : r1;
+            const pre1 = _matmul(fin, n, dModel, W.L[l].W1, dff);
+            const hidden = new Float64Array(n * dff);
+            if (act === 2) {
+                const gate = _matmul(fin, n, dModel, W.L[l].W3, dff);
+                for (let k = 0; k < hidden.length; k++) hidden[k] = _silu(pre1[k]) * gate[k];
+            } else {
+                const f = act === 1 ? _gelu : _relu;
+                for (let k = 0; k < hidden.length; k++) hidden[k] = f(pre1[k]);
+            }
+            const ffOut = _matmul(hidden, n, dff, W.L[l].W2, dModel);
+            let r2 = add(r1, ffOut);
+            if (!pre) r2 = nrm(r2);
+            L.push({ hin, ain, attn, r1, fin, pre1, hidden, ffOut, r2 });
+            H.push(r2);
+        }
+        const final = (normKind && pre) ? nrm(H[layers]) : H[layers];
+
+        // Logits over the vocabulary (tied unembedding), then temperature.
+        const V = cfg.vocab.length;
+        const logits = new Float64Array(n * V);
+        const probs = new Float64Array(n * V);
+        for (let i = 0; i < n; i++) {
+            const row = [];
+            for (let v = 0; v < V; v++) {
+                let acc = 0;
+                for (let d = 0; d < dModel; d++) acc += final[i * dModel + d] * W.Wu[v][d];
+                logits[i * V + v] = acc;
+                row.push(acc / temp);
+            }
+            const p = _softmax(row);
+            for (let v = 0; v < V; v++) probs[i * V + v] = p[v];
+        }
+
+        // The permutation-equivariance object: UNMASKED, POSITION-FREE
+        // attention of layer 0 / head 0 over the RAW EMBEDDINGS. Deliberately a
+        // separate pass — reusing the masked one above would silently break
+        // the theorem, because the mask is a second, independent reason
+        // equivariance fails. Still scaled dot-product attention.
+        const dk = cfg.dk;
+        const Qn = _matmul(emb, n, dModel, W.L[0].Wq[0], dk);
+        const Kn = _matmul(emb, n, dModel, W.L[0].Wk[0], dk);
+        const Vn = _matmul(emb, n, dModel, W.L[0].Wv[0], dk);
+        const On = new Float64Array(n * dk);
+        for (let i = 0; i < n; i++) {
+            const row = [];
+            for (let j = 0; j < n; j++) {
+                let acc = 0;
+                for (let d = 0; d < dk; d++) acc += Qn[i * dk + d] * Kn[j * dk + d];
+                row.push(acc / Math.sqrt(dk));
+            }
+            const w = _softmax(row);
+            for (let d = 0; d < dk; d++) {
+                let acc = 0;
+                for (let j = 0; j < n; j++) acc += w[j] * Vn[j * dk + d];
+                On[i * dk + d] = acc;
+            }
+        }
+
+        // Layer-0 / head-0 views under the names scenes 1-4 read.
+        const h0 = L[0].attn.heads[0];
+        return {
+            cfg, W, perm, emb, x, H, L, final, logits, probs, On,
+            N: n, dModel, dk,
+            Q: h0.Q, K: h0.K, V: h0.V, S: h0.S, Ss: h0.Ss, A: h0.A, O: h0.O,
+            EMBe: cfg.table, WQ: W.L[0].Wq[0], WK: W.L[0].Wk[0], WV: W.L[0].Wv[0],
+        };
+    }
+
     // ---- exported functions ----------------------------------------------
 
     const _clampIdx = (v, hi) => {
         const i = Math.round(Number(v) || 0);
         return i < 0 ? 0 : (i > hi ? hi : i);
     };
+    const _n = () => _st().N;
+    const _dm = () => _st().dModel;
+    const _layer = (l) => { const st = _st(); return st.L[_clampIdx(l, st.cfg.layers - 1)]; };
+    const _head = (l, h) => { const st = _st(); return _layer(l).attn.heads[_clampIdx(h, st.cfg.heads - 1)]; };
+    const _cell = (arr, i, d, width, hiD) => { const st = _st(); return arr[_clampIdx(i, st.N - 1) * width + _clampIdx(d, hiD)]; };
 
-    function tfPerm(k) { return _st().perm[_clampIdx(k, N - 1)]; }
+    // Configuration
+    function tfN() { return _st().N; }
+    function tfDModel() { return _st().dModel; }
+    function tfDk() { return _st().dk; }
+    function tfHeads() { return _st().cfg.heads; }
+    function tfKv() { return _st().cfg.kv; }
+    function tfLayers() { return _st().cfg.layers; }
+    function tfDff() { return _st().cfg.dff; }
+    function tfTemp() { return _st().cfg.temp; }
+    function tfVocabN() { return _st().cfg.vocab.length; }
+    function tfVocabToken(v) { const st = _st(); return st.cfg.vocab[_clampIdx(v, st.cfg.vocab.length - 1)]; }
+    /** Which K/V head query head h reads: floor(h / (n_heads / n_kv)). */
+    function tfHeadKv(h) { const c = _st().cfg; return Math.floor(_clampIdx(h, c.heads - 1) / (c.heads / c.kv)); }
+    /** Numbers held in the K/V cache for the whole sequence: 2 * n * n_kv * d_k per layer. */
+    function tfKvCache() { const c = _st().cfg; return 2 * c.n * c.kv * c.dk * c.layers; }
+    /** The cache saving of sharing K/V heads, n_heads / n_kv (1 = MHA, n_heads = MQA). */
+    function tfKvSaving() { const c = _st().cfg; return c.heads / c.kv; }
 
-    /** The token sitting in slot k, as a STRING. Unlike every other function
-     *  here this returns text, for `axes[].labelExpr` to render: the whole
-     *  point is that a shuffled lattice relabels itself instead of lying. */
-    function tfToken(k) { return TOKENS[tfPerm(k)]; }
+    // Weights
+    function tfWq(l, h, r, c) { const st = _st(); const W = st.W.L[_clampIdx(l, st.cfg.layers - 1)].Wq[_clampIdx(h, st.cfg.heads - 1)]; return W[_clampIdx(r, st.dModel - 1)][_clampIdx(c, st.dk - 1)]; }
+    function tfWk(l, g, r, c) { const st = _st(); const W = st.W.L[_clampIdx(l, st.cfg.layers - 1)].Wk[_clampIdx(g, st.cfg.kv - 1)]; return W[_clampIdx(r, st.dModel - 1)][_clampIdx(c, st.dk - 1)]; }
+    function tfWv(l, g, r, c) { const st = _st(); const W = st.W.L[_clampIdx(l, st.cfg.layers - 1)].Wv[_clampIdx(g, st.cfg.kv - 1)]; return W[_clampIdx(r, st.dModel - 1)][_clampIdx(c, st.dk - 1)]; }
+    function tfWo(l, r, c) { const st = _st(); const W = st.W.L[_clampIdx(l, st.cfg.layers - 1)].Wo; return W[_clampIdx(r, st.cfg.heads * st.dk - 1)][_clampIdx(c, st.dModel - 1)]; }
+    function tfW1(l, r, c) { const st = _st(); const W = st.W.L[_clampIdx(l, st.cfg.layers - 1)].W1; return W[_clampIdx(r, st.dModel - 1)][_clampIdx(c, st.cfg.dff - 1)]; }
+    function tfW2(l, r, c) { const st = _st(); const W = st.W.L[_clampIdx(l, st.cfg.layers - 1)].W2; return W[_clampIdx(r, st.cfg.dff - 1)][_clampIdx(c, st.dModel - 1)]; }
+    function tfWu(v, d) { const st = _st(); return st.W.Wu[_clampIdx(v, st.cfg.vocab.length - 1)][_clampIdx(d, st.dModel - 1)]; }
 
-    /** Row r (a TOKEN row, 0..5, no shuffle) of the embedding table in force: the
-     *  hand-built value unless the tensor slider s4_emb overrides it. */
-    function tfEmbBase(r, d) { return _st().EMBe[_clampIdx(r, N - 1)][_clampIdx(d, D_MODEL - 1)]; }
-    /** Entry (r, c) of a projection matrix in force -- m = 0 for W_Q, 1 for W_K,
-     *  2 for W_V; rows index the input dim (0..3), columns the head dim (0..1). */
+    // The pass, per layer and head
+    /** Component d of the residual stream entering layer l at slot i (l = 0 is x; l = n_layers is what leaves the stack). */
+    function tfH(l, i, d) { const st = _st(); return _cell(st.H[_clampIdx(l, st.cfg.layers)], i, d, st.dModel, st.dModel - 1); }
+    /** What the attention sub-layer of layer l reads: the normed stream (pre-norm) or the stream itself (post-norm). */
+    function tfAttnIn(l, i, d) { const st = _st(); return _cell(_layer(l).ain, i, d, st.dModel, st.dModel - 1); }
+    function tfQh(l, h, i, d) { const st = _st(); return _cell(_head(l, h).Q, i, d, st.dk, st.dk - 1); }
+    function tfKh(l, h, i, d) { const st = _st(); return _cell(_head(l, h).K, i, d, st.dk, st.dk - 1); }
+    function tfVh(l, h, i, d) { const st = _st(); return _cell(_head(l, h).V, i, d, st.dk, st.dk - 1); }
+    function tfScoreH(l, h, i, j) { const st = _st(); return _cell(_head(l, h).S, i, j, st.N, st.N - 1); }
+    function tfScoreScaledH(l, h, i, j) { const st = _st(); return _cell(_head(l, h).Ss, i, j, st.N, st.N - 1); }
+    function tfAttnH(l, h, i, j) { const st = _st(); return _cell(_head(l, h).A, i, j, st.N, st.N - 1); }
+    /** Head h's own output row i, component d — before the heads are concatenated and projected by W_O. */
+    function tfHeadOut(l, h, i, d) { const st = _st(); return _cell(_head(l, h).O, i, d, st.dk, st.dk - 1); }
+    /** The concatenated heads, width n_heads * d_k: column c belongs to head floor(c / d_k). */
+    function tfConcat(l, i, c) { const st = _st(); const w = st.cfg.heads * st.dk; return _cell(_layer(l).attn.concat, i, c, w, w - 1); }
+    /** The attention sub-layer's increment to the stream: concat times W_O. */
+    function tfAttnOut(l, i, d) { const st = _st(); return _cell(_layer(l).attn.attnOut, i, d, st.dModel, st.dModel - 1); }
+    /** The stream after the attention residual add (and, post-norm, its norm). */
+    function tfResid1(l, i, d) { const st = _st(); return _cell(_layer(l).r1, i, d, st.dModel, st.dModel - 1); }
+    /** What the FFN reads: the normed stream (pre-norm) or the stream itself. */
+    function tfFfIn(l, i, d) { const st = _st(); return _cell(_layer(l).fin, i, d, st.dModel, st.dModel - 1); }
+    /** FFN hidden unit k at slot i, after the activation (SwiGLU: after the gate). */
+    function tfFfHidden(l, i, k) { const st = _st(); return _cell(_layer(l).hidden, i, k, st.cfg.dff, st.cfg.dff - 1); }
+    /** FFN hidden unit k BEFORE the activation: the raw pre-activation fin . W1. */
+    function tfFfPre(l, i, k) { const st = _st(); return _cell(_layer(l).pre1, i, k, st.cfg.dff, st.cfg.dff - 1); }
+    /** The FFN's increment to the stream. */
+    function tfFfOut(l, i, d) { const st = _st(); return _cell(_layer(l).ffOut, i, d, st.dModel, st.dModel - 1); }
+    /** The stream leaving layer l (= tfH(l + 1, i, d)). */
+    function tfResid2(l, i, d) { const st = _st(); return _cell(_layer(l).r2, i, d, st.dModel, st.dModel - 1); }
+
+    // The head of the model
+    /** The vector the unembedding reads at slot i: the final norm of the stream (pre-norm) or the stream itself. */
+    function tfFinal(i, d) { const st = _st(); return _cell(st.final, i, d, st.dModel, st.dModel - 1); }
+    /** Logit of vocabulary entry v at slot i: tfFinal(i, .) dot the embedding row of v (tied unembedding), before temperature. */
+    function tfLogit(i, v) { const st = _st(); const V = st.cfg.vocab.length; return _cell(st.logits, i, v, V, V - 1); }
+    /** softmax(logits / tf_temp)[v] at slot i: the model's next-token distribution for the slot after i. */
+    function tfProb(i, v) { const st = _st(); const V = st.cfg.vocab.length; return _cell(st.probs, i, v, V, V - 1); }
+    /** Index of the most probable vocabulary entry at slot i (temperature-independent). */
+    function tfArgmax(i) {
+        const st = _st(); const V = st.cfg.vocab.length; const r = _clampIdx(i, st.N - 1);
+        let best = 0;
+        for (let v = 1; v < V; v++) if (st.logits[r * V + v] > st.logits[r * V + best]) best = v;
+        return best;
+    }
+    /** Shannon entropy (bits) of the slot-i distribution: 0 as T -> 0, log2(vocab) as T -> infinity. */
+    function tfEntropy(i) {
+        const st = _st(); const V = st.cfg.vocab.length; const r = _clampIdx(i, st.N - 1);
+        let acc = 0;
+        for (let v = 0; v < V; v++) { const p = st.probs[r * V + v]; if (p > 0) acc -= p * Math.log2(p); }
+        return acc;
+    }
+
+    // Layer-0 / head-0 shorthands: the names scenes 1-4 read.
+    function tfPerm(k) { return _st().perm[_clampIdx(k, _n() - 1)]; }
+    function tfToken(k) { const st = _st(); return st.cfg.names[tfPerm(k)]; }
+    /** Row r (a TOKEN row, no shuffle) of the embedding table in force. */
+    function tfEmbBase(r, d) { const st = _st(); return st.EMBe[_clampIdx(r, st.N - 1)][_clampIdx(d, st.dModel - 1)]; }
+    /** Entry (r, c) of a layer-0 / head-0 projection in force -- m = 0 for W_Q, 1 for W_K, 2 for W_V. */
     function tfW(m, r, c) {
         const st = _st();
         const W = _clampIdx(m, 2) === 0 ? st.WQ : (_clampIdx(m, 2) === 1 ? st.WK : st.WV);
-        return W[_clampIdx(r, D_MODEL - 1)][_clampIdx(c, D_K - 1)];
+        return W[_clampIdx(r, st.dModel - 1)][_clampIdx(c, st.dk - 1)];
     }
-    function tfEmb(i, d) { return _st().emb[_clampIdx(i, N - 1) * D_MODEL + _clampIdx(d, D_MODEL - 1)]; }
+    function tfEmb(i, d) { const st = _st(); return _cell(st.emb, i, d, st.dModel, st.dModel - 1); }
 
     /** Positional encoding at a CONTINUOUS position. Unlike every other index
      *  here, the position is NOT rounded to a slot and NOT clamped to N-1: PE
@@ -404,7 +672,7 @@
      *  slot arguments are unaffected. The component index d still clamps. */
     function tfPE(i, d) {
         const pos = Number(i);
-        return _pe(Number.isFinite(pos) ? pos : 0, _clampIdx(d, D_MODEL - 1));
+        return _pe(Number.isFinite(pos) ? pos : 0, _clampIdx(d, _dm() - 1), _dm());
     }
 
     /** Illustrative per-pair rotation rates for tfRopeEmb, in radians per
@@ -436,13 +704,13 @@
      *  with an empty pair rotates only in the plane of the other one.
      *  Both pair norms, and hence the full norm, are preserved for every p. */
     function tfRopeEmb(slot, d, p) {
-        const i = _clampIdx(slot, N - 1);
-        const c = _clampIdx(d, D_MODEL - 1);
+        const i = _clampIdx(slot, _n() - 1);
+        const c = _clampIdx(d, _dm() - 1);
         const pair = c >> 1;
         const pos = Number(p);
         const ang = (Number.isFinite(pos) ? pos : 0) * THETA_VIS[pair];
         const emb = _st().emb;
-        const base = i * D_MODEL + (pair << 1);
+        const base = i * _dm() + (pair << 1);
         const a = emb[base], b = emb[base + 1];
         const ca = Math.cos(ang), sa = Math.sin(ang);
         return (c % 2 === 0) ? (a * ca - b * sa) : (a * sa + b * ca);
@@ -472,7 +740,7 @@
      *  number beside a picture that disagrees with it without saying so. */
     function tfRopeEmbDot(slotA, pa, slotB, pb) {
         let acc = 0;
-        for (let d = 0; d < D_MODEL; d++) {
+        for (let d = 0; d < _dm(); d++) {
             acc += tfRopeEmb(slotA, d, pa) * tfRopeEmb(slotB, d, pb);
         }
         return acc;
@@ -489,7 +757,7 @@
      *  all three factors on the right are fixed once the gap is fixed. */
     function tfRopeEmbNorm(slot, p) {
         let acc = 0;
-        for (let d = 0; d < D_MODEL; d++) {
+        for (let d = 0; d < _dm(); d++) {
             const v = tfRopeEmb(slot, d, p);
             acc += v * v;
         }
@@ -531,15 +799,15 @@
     // arrays per frame while the reader dragged. Reuse is safe here: the
     // function fills both buffers before reading them, returns a number, and
     // keeps nothing across calls, so there is no reentrancy to spoil.
-    const _arcA = new Float64Array(D_MODEL);
-    const _arcB = new Float64Array(D_MODEL);
+    const _arcA = new Float64Array(MAX_DIM);
+    const _arcB = new Float64Array(MAX_DIM);
 
     function tfRopeEmbArc(d, slotA, pa, slotB, pb, s) {
-        const c = _clampIdx(d, D_MODEL - 1);
+        const c = _clampIdx(d, _dm() - 1);
         const A = _arcA;
         const B = _arcB;
         let na = 0, nb = 0;
-        for (let k = 0; k < D_MODEL; k++) {
+        for (let k = 0; k < _dm(); k++) {
             A[k] = tfRopeEmb(slotA, k, pa);
             B[k] = tfRopeEmb(slotB, k, pb);
             na += A[k] * A[k];
@@ -548,7 +816,7 @@
         na = Math.sqrt(na); nb = Math.sqrt(nb);
         if (!(na > 1e-12) || !(nb > 1e-12)) return 0;
         let dot = 0;
-        for (let k = 0; k < D_MODEL; k++) dot += (A[k] / na) * (B[k] / nb);
+        for (let k = 0; k < _dm(); k++) dot += (A[k] / na) * (B[k] / nb);
         dot = dot < -1 ? -1 : (dot > 1 ? 1 : dot);
         const th = Math.acos(dot);
         const sth = Math.sin(th);
@@ -559,61 +827,49 @@
         return (Math.sin((1 - t) * th) * (A[c] / na) + Math.sin(t * th) * (B[c] / nb)) / sth;
     }
 
-    function tfX(i, d) { return _st().x[_clampIdx(i, N - 1) * D_MODEL + _clampIdx(d, D_MODEL - 1)]; }
+    function tfX(i, d) { const st = _st(); return _cell(st.x, i, d, st.dModel, st.dModel - 1); }
 
-    function tfOutNoPos(i, d) { return _st().On[_clampIdx(i, N - 1) * D_K + _clampIdx(d, D_K - 1)]; }
+    function tfOutNoPos(i, d) { const st = _st(); return _cell(st.On, i, d, st.dk, st.dk - 1); }
 
-    function tfQ(i, d) { return _st().Q[_clampIdx(i, N - 1) * D_K + _clampIdx(d, D_K - 1)]; }
-    function tfK(i, d) { return _st().K[_clampIdx(i, N - 1) * D_K + _clampIdx(d, D_K - 1)]; }
-    function tfV(i, d) { return _st().V[_clampIdx(i, N - 1) * D_K + _clampIdx(d, D_K - 1)]; }
+    function tfQ(i, d) { const st = _st(); return _cell(st.Q, i, d, st.dk, st.dk - 1); }
+    function tfK(i, d) { const st = _st(); return _cell(st.K, i, d, st.dk, st.dk - 1); }
+    function tfV(i, d) { const st = _st(); return _cell(st.V, i, d, st.dk, st.dk - 1); }
 
-    /** Exploratory "what if the query pointed there instead" vector. NOT the
-     *  model's own q — the lesson must label it as a what-if. angleDeg = 0
-     *  returns tfQ(s3_qi, d) exactly. */
     /** Score of the what-if (rotated) query against key j: q_probe . k_j.
      *  Equals tfScore(s3_qi, j) exactly at angleDeg = 0, where the probe IS
      *  the model's own query. */
     function tfScoreProbe(j, angleDeg) {
-        // One rotation, not two. Calling tfQProbe per component re-read the
-        // slider and re-rotated the vector for each of them; across the six-cell
-        // score row and the six key labels that was ~24 rotations a frame.
         const q = _probeVec(angleDeg);
         return q[0] * tfK(j, 0) + q[1] * tfK(j, 1);
     }
 
     /** Foot of the perpendicular dropped from the probe query onto key j:
-     *  ((q.k)/(k.k)) * k, component d. Drawing the origin-to-foot segment
-     *  makes q.k visible as a length rather than only as a printed number --
-     *  |proj| * |k_j| is exactly the score. Returns 0 for a zero-length key,
-     *  where the projection is undefined and there is nothing to draw. */
+     *  ((q.k)/(k.k)) * k, component d. Returns 0 for a zero-length key. */
     function tfProjQK(d, angleDeg, j) {
-        // One rotation, as tfScoreProbe does. Two tfQProbe calls meant two
-        // _probeVec builds -- two slider reads and two rotations -- and the
-        // scene evaluates this per component, so it doubled on a per-frame path.
         const q = _probeVec(angleDeg);
         const q0 = q[0], q1 = q[1];
         const k0 = tfK(j, 0), k1 = tfK(j, 1);
         const kk = k0 * k0 + k1 * k1;
         if (kk === 0) return 0;
         const t = (q0 * k0 + q1 * k1) / kk;
-        return _clampIdx(d, D_K - 1) === 0 ? t * k0 : t * k1;
+        return _clampIdx(d, 1) === 0 ? t * k0 : t * k1;
     }
 
-    /** The what-if query as a vector: token s3_qi's own q, turned by angleDeg.
-     *  Split out so tfScoreProbe can rotate once and read both components. */
+    /** The what-if query as a vector: token s3_qi's own q (its first two
+     *  components), turned by angleDeg. Read outside the cache on purpose. */
     function _probeVec(angleDeg) {
         const st = _st();
-        const i = _clampIdx(_getSlider('s3_qi', 2), N - 1);
-        return _rot([st.Q[i * D_K], st.Q[i * D_K + 1]], (Number(angleDeg) || 0) * Math.PI / 180);
+        const i = _clampIdx(_getSlider('s3_qi', 2), st.N - 1);
+        return _rot([st.Q[i * st.dk], st.Q[i * st.dk + 1] || 0], (Number(angleDeg) || 0) * Math.PI / 180);
     }
 
     function tfQProbe(d, angleDeg) {
-        return _probeVec(angleDeg)[_clampIdx(d, D_K - 1)];
+        return _probeVec(angleDeg)[_clampIdx(d, 1)];
     }
 
-    function tfScore(i, j) { return _st().S[_clampIdx(i, N - 1) * N + _clampIdx(j, N - 1)]; }
+    function tfScore(i, j) { const st = _st(); return _cell(st.S, i, j, st.N, st.N - 1); }
 
-    function tfScoreScaled(i, j) { return _st().Ss[_clampIdx(i, N - 1) * N + _clampIdx(j, N - 1)]; }
+    function tfScoreScaled(i, j) { const st = _st(); return _cell(st.Ss, i, j, st.N, st.N - 1); }
 
     /** Divide the RAW score by sqrt(dim), with dim passed literally by the
      *  scene: 2 is d_k (correct), 4 is d_model (the classic error). Passing it
@@ -625,22 +881,23 @@
 
     function tfMaskVal(i, j) {
         if (_getSlider('s3_mask', 0) < 0.5) return 1;
-        return _clampIdx(j, N - 1) <= _clampIdx(i, N - 1) ? 1 : 0;
+        const n = _n();
+        return _clampIdx(j, n - 1) <= _clampIdx(i, n - 1) ? 1 : 0;
     }
 
-    function tfAttn(i, j) { return _st().A[_clampIdx(i, N - 1) * N + _clampIdx(j, N - 1)]; }
+    function tfAttn(i, j) { const st = _st(); return _cell(st.A, i, j, st.N, st.N - 1); }
 
     /** Accuracy-contract item 1, asserted on screen. 1.000000 when correct;
      *  0.98993 for row 2 in the mask-after-softmax mode. */
     function tfRowSum(i) {
         const st = _st();
-        const r = _clampIdx(i, N - 1);
+        const r = _clampIdx(i, st.N - 1);
         let acc = 0;
-        for (let j = 0; j < N; j++) acc += st.A[r * N + j];
+        for (let j = 0; j < st.N; j++) acc += st.A[r * st.N + j];
         return acc;
     }
 
-    function tfOut(i, d) { return _st().O[_clampIdx(i, N - 1) * D_K + _clampIdx(d, D_K - 1)]; }
+    function tfOut(i, d) { const st = _st(); return _cell(st.O, i, d, st.dk, st.dk - 1); }
 
     function tfRopeQ(d, m) { return _rot(ROPE_Q, (Number(m) || 0) * ROPE_THETA)[_clampIdx(d, 1)]; }
     function tfRopeK(d, n) { return _rot(ROPE_K, (Number(n) || 0) * ROPE_THETA)[_clampIdx(d, 1)]; }
@@ -681,6 +938,17 @@
 
     window.AlgeBenchDomains.register('transformer', {
         _init({ getSlider }) { _getSlider = getSlider; },
+        // configuration
+        tfN, tfDModel, tfDk, tfHeads, tfKv, tfLayers, tfDff, tfTemp, tfVocabN, tfVocabToken,
+        tfHeadKv, tfKvCache, tfKvSaving,
+        // weights
+        tfWq, tfWk, tfWv, tfWo, tfW1, tfW2, tfWu,
+        // the pass, per layer and head
+        tfH, tfAttnIn, tfQh, tfKh, tfVh, tfScoreH, tfScoreScaledH, tfAttnH, tfHeadOut,
+        tfConcat, tfAttnOut, tfResid1, tfFfIn, tfFfPre, tfFfHidden, tfFfOut, tfResid2,
+        // the head of the model
+        tfFinal, tfLogit, tfProb, tfArgmax, tfEntropy,
+        // layer-0 / head-0 shorthands and the scene-1/2 demonstration objects
         tfPerm, tfToken, tfEmb, tfPE, tfX, tfOutNoPos,
         tfEmbBase, tfW,
         tfQ, tfK, tfV, tfQProbe, tfProjQK, tfScoreProbe,
