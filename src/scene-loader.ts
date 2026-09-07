@@ -829,7 +829,10 @@ export async function loadScene(spec: SceneSpec | null | undefined): Promise<voi
     // Non-null: #empty-state is part of index.html's static markup. A missing
     // one threw in the JS and must keep throwing.
     const emptyState = document.getElementById('empty-state')!;
-    if (!spec || !spec.elements || spec.elements.length === 0) {
+    // A scene that builds everything in its steps has no base elements but
+    // is not empty; only a scene with neither gets the placeholder axes.
+    const hasSteps = !!(spec && Array.isArray(spec.steps) && spec.steps.length);
+    if (!spec || ((!spec.elements || spec.elements.length === 0) && !hasSteps)) {
         sceneState.currentRange = [[-5, 5], [-5, 5], [-5, 5]];
         sceneState.currentScale = [1, 1, 1];
         sceneState.declaredScale = [1, 1, 1];
@@ -875,7 +878,7 @@ export async function loadScene(spec: SceneSpec | null | undefined): Promise<voi
     sceneState.sceneView = view;
 
     let baseAutoIdCounter = 0;
-    for (const el of spec.elements) {
+    for (const el of spec.elements || []) {
         // Objects eligible for the per-object Ask-AI button — those with an author
         // `prompt`, or any labeled/text content object (auto-generated prompt;
         // axes/grid excluded as scaffolding) — must be registered, so id them.
@@ -1097,6 +1100,9 @@ export function navigateTo(sceneIdx: number, stepIdx: number): void {
             views: scene.views,
             functions: scene.functions,
             elements: scene.elements || [],
+            // Read by loadScene only to tell "builds everything in steps"
+            // apart from "empty"; the steps themselves are replayed below.
+            steps: scene.steps,
             starfield: scene.starfield,
             // Without this, loadScene's lesson/scene data merge sees no scene
             // data at all: this whitelist is the only thing it receives, so a

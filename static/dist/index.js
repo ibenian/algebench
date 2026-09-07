@@ -12898,7 +12898,8 @@ async function loadScene(spec) {
 	updateExplanationPanel(spec);
 	loadProof(sceneState.lessonSpec || spec, sceneState.currentSceneIndex, -1);
 	const emptyState = document.getElementById("empty-state");
-	if (!spec || !spec.elements || spec.elements.length === 0) {
+	const hasSteps = !!(spec && Array.isArray(spec.steps) && spec.steps.length);
+	if (!spec || (!spec.elements || spec.elements.length === 0) && !hasSteps) {
 		sceneState.currentRange = [
 			[-5, 5],
 			[-5, 5],
@@ -12988,7 +12989,7 @@ async function loadScene(spec) {
 	});
 	sceneState.sceneView = view;
 	let baseAutoIdCounter = 0;
-	for (const el of spec.elements) {
+	for (const el of spec.elements || []) {
 		const dn = elementDisplayName(el);
 		if (!el.id && (el.prompt || elementHasLabelSource(el) && el.type !== "axis" && el.type !== "grid")) el.id = "__auto_" + baseAutoIdCounter++ + "_" + Date.now();
 		const elBefore = el.id ? snapshotBefore() : null;
@@ -13172,6 +13173,7 @@ function navigateTo$1(sceneIdx, stepIdx) {
 			views: scene.views,
 			functions: scene.functions,
 			elements: scene.elements || [],
+			steps: scene.steps,
 			starfield: scene.starfield,
 			data: scene.data
 		});

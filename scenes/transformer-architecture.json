@@ -4123,17 +4123,7 @@
           "expr": "tfPerm(0) == tok ? 0 : (tfPerm(1) == tok ? 1 : (tfPerm(2) == tok ? 2 : (tfPerm(3) == tok ? 3 : (tfPerm(4) == tok ? 4 : 5))))"
         }
       ],
-      "elements": [
-        {
-          "id": "s4_grid",
-          "type": "grid",
-          "plane": "xy",
-          "range": [-24, 26],
-          "color": [0.28, 0.32, 0.46],
-          "opacity": 0.05,
-          "divisions": 25
-        }
-      ],
+      "elements": [],
       "steps": [
         {
           "id": "s4-pipeline",
