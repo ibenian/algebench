@@ -41,7 +41,7 @@
     const TOY_N = 6;
     const TOY_D_MODEL = 4;
     const TOY_D_K = 2;      // per head; deliberately != d_model (design doc §3)
-    const MAX_DIM = 256;    // scratch sizes for the demo helpers
+    const MAX_DIM = 256;    // upper bound on tf_dk and tf_dff (a legibility toy, not a model)
 
     // Token embedding table, hand-picked. Rows are looked up per token.
     // Note "the" appears at slots 0 and 4 and gets the IDENTICAL row — the
@@ -375,7 +375,6 @@
     function _attention(ain, cfg, Lw, opts) {
         const { n, dModel, dk, heads, kv } = cfg;
         const { ropeOn, scale, maskOn, maskAfter } = opts;
-        const perG = heads / kv;
         const Ks = [], Vs = [];
         for (let g = 0; g < kv; g++) {
             const K = _matmul(ain, n, dModel, Lw.Wk[g], dk);
@@ -387,7 +386,7 @@
         const headsOut = [];
         const concat = new Float64Array(n * heads * dk);
         for (let h = 0; h < heads; h++) {
-            const g = Math.floor(h / perG);
+            const g = Math.floor((h * kv) / heads);   // integer: head h reads K/V head floor(h n_kv / n_heads)
             const Q = _matmul(ain, n, dModel, Lw.Wq[h], dk);
             if (ropeOn) _rope(Q, n, dk);
             const K = Ks[g], V = Vs[g];
@@ -585,7 +584,7 @@
     function tfVocabN() { return _st().cfg.vocab.length; }
     function tfVocabToken(v) { const st = _st(); return st.cfg.vocab[_clampIdx(v, st.cfg.vocab.length - 1)]; }
     /** Which K/V head query head h reads: floor(h / (n_heads / n_kv)). */
-    function tfHeadKv(h) { const c = _st().cfg; return Math.floor(_clampIdx(h, c.heads - 1) / (c.heads / c.kv)); }
+    function tfHeadKv(h) { const c = _st().cfg; return Math.floor((_clampIdx(h, c.heads - 1) * c.kv) / c.heads); }
     /** Numbers held in the K/V cache for the whole sequence: 2 * n * n_kv * d_k per layer. */
     function tfKvCache() { const c = _st().cfg; return 2 * c.n * c.kv * c.dk * c.layers; }
     /** The cache saving of sharing K/V heads, n_heads / n_kv (1 = MHA, n_heads = MQA). */

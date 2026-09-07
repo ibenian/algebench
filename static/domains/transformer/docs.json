@@ -10,7 +10,7 @@
     "mask": "Applied as an ADDITIVE -1e9 to the SCALED SCORES, before softmax. -1e9 stands in for -infinity so the renderer never sees a NaN; softmax's shift-invariance is what makes the substitution coherent.",
     "cache": "One shared cache of the forward pass, rebuilt only when a slider it READ has changed. Which sliders those are depends on the configuration (a two-layer model reads tf_wq_1_0; a one-layer model never does), so every read inside the build is recorded with the value seen, and each call compares exactly that set against the live sliders: numbers exactly, tensor tables cell by cell against a flat copy. No key string, no allocation on the unchanged path. The generic i.i.d. sampler has its OWN separate cache keyed on dimension only.",
     "storage": "Per layer and per head, typed arrays sized from the configuration in force: Q, K, V and each head's output as Float64Array(n * d_k); S, S_scaled and A as Float64Array(n * n); the residual stream, its increments and the concatenated heads as Float64Array(n * d_model) and Float64Array(n * n_heads * d_k); the FFN hidden layer as Float64Array(n * d_ff); logits and probabilities as Float64Array(n * vocab). Weights are nested arrays (rows of columns). At the toy shape that is 12 numbers per projection and 36 per score table.",
-    "general_engine": "Configuration comes from the embedding table in force (tf_emb of any shape, else the scene-4 alias s4_emb over the toy table: rows = n, columns = d_model) and the scalar sliders tf_layers (1), tf_heads (2), tf_kv (= n_heads; 1 is MQA), tf_dk (d_model / n_heads), tf_dff (2 d_model), tf_norm (0 none — the toy, 1 LayerNorm, 2 RMSNorm), tf_prenorm (1 pre-norm, 0 post-norm), tf_act (0 ReLU, 1 GELU, 2 SwiGLU), tf_temp (1). Per layer l: pre-norm normalises what a sub-layer READS and adds its raw output; post-norm adds first and normalises the sum. Attention: every head h reads K/V head floor(h / (n_heads / n_kv)); scores use (sqrt d_k)^s3_scale; the causal mask and its mask-after-softmax misconception follow s3_mask / s3_maskafter in every head; heads are concatenated (n_heads x d_k) and projected by W_O back to d_model. FFN: d_model -> d_ff -> d_model with the chosen activation (SwiGLU gates silu(x W1) by x W3). After the last layer, pre-norm applies a final norm; logits are the tied unembedding (each vocabulary entry's embedding row) and probabilities are softmax(logits / tf_temp). Weights: layer 0 / head 0 is the hand-built toy when d_model = 4 and d_k = 2, every other table is a seeded N(0, 1/rows) initialisation, and any table is replaced cell-wise by a tensor slider named tf_wq_<l>_<h>, tf_wk_<l>_<g>, tf_wv_<l>_<g>, tf_wo_<l>, tf_w1_<l>, tf_w2_<l>, tf_w3_<l> or tf_emb (s4_wq / s4_wk / s4_wv / s4_emb alias layer 0 / head 0 and the table)."
+    "general_engine": "Configuration comes from the embedding table in force (tf_emb of any shape, else the scene-4 alias s4_emb over the toy table: rows = n, columns = d_model) and the scalar sliders tf_layers (1), tf_heads (2), tf_kv (= n_heads; 1 is MQA), tf_dk (d_model / n_heads, capped at 256), tf_dff (2 d_model, capped at 256), tf_norm (0 none — the toy, 1 LayerNorm, 2 RMSNorm), tf_prenorm (1 pre-norm, 0 post-norm), tf_act (0 ReLU, 1 GELU, 2 SwiGLU), tf_temp (1). Per layer l: pre-norm normalises what a sub-layer READS and adds its raw output; post-norm adds first and normalises the sum. Attention: every head h reads K/V head floor(h n_kv / n_heads); scores use (sqrt d_k)^s3_scale; the causal mask and its mask-after-softmax misconception follow s3_mask / s3_maskafter in every head; heads are concatenated (n_heads x d_k) and projected by W_O back to d_model. FFN: d_model -> d_ff -> d_model with the chosen activation (SwiGLU gates silu(x W1) by x W3). After the last layer, pre-norm applies a final norm; logits are the tied unembedding (each vocabulary entry's embedding row) and probabilities are softmax(logits / tf_temp). Weights: layer 0 / head 0 is the hand-built toy when d_model = 4 and d_k = 2, every other table is a seeded N(0, 1/rows) initialisation, and any table is replaced cell-wise by a tensor slider named tf_wq_<l>_<h>, tf_wk_<l>_<g>, tf_wv_<l>_<g>, tf_wo_<l>, tf_w1_<l>, tf_w2_<l>, tf_w3_<l> or tf_emb (s4_wq / s4_wk / s4_wv / s4_emb alias layer 0 / head 0 and the table)."
   },
   "verified_values": {
     "note": "Every figure below is asserted by scripts/check_transformer_domain.py. If a change breaks one, the lesson's arithmetic is wrong, not the test.",
@@ -268,7 +268,7 @@
       ]
     },
     "tf_dk": {
-      "description": "Per-head dimension. Default d_model / n_heads (a convention, not a law). Layer 0 / head 0 keeps the hand-built projections only while d_model = 4 and d_k = 2.",
+      "description": "Per-head dimension, 1..256. Default d_model / n_heads (a convention, not a law), itself clamped to 256. Layer 0 / head 0 keeps the hand-built projections only while d_model = 4 and d_k = 2.",
       "default": 2,
       "scenes": [
         5,
@@ -276,7 +276,7 @@
       ]
     },
     "tf_dff": {
-      "description": "FFN hidden width. Default 2 d_model = 8 (real models use 4x, or 8/3 x for SwiGLU).",
+      "description": "FFN hidden width, 1..256. Default 2 d_model = 8 (real models use 4x, or 8/3 x for SwiGLU), itself clamped to 256.",
       "default": 8,
       "scenes": [
         5,
@@ -433,7 +433,7 @@
     "tfTemp()": "Softmax temperature in force (tf_temp, default 1).",
     "tfVocabN()": "Vocabulary size: distinct surface forms among the tokens (5 for the toy: the, cat, sat, on, mat).",
     "tfVocabToken(v)": "Surface form of vocabulary entry v, as a STRING, in first-seen order (the toy: 0 the, 1 cat, 2 sat, 3 on, 4 mat).",
-    "tfHeadKv(h)": "Which K/V head query head h reads: floor(h / (n_heads / n_kv)). Identity under MHA, 0 for every head under MQA.",
+    "tfHeadKv(h)": "Which K/V head query head h reads: floor(h n_kv / n_heads), in integer arithmetic. Identity under MHA, 0 for every head under MQA.",
     "tfKvCache()": "Numbers held in the K/V cache for the whole sequence: 2 n n_kv d_k per layer, summed over layers.",
     "tfKvSaving()": "The K/V-cache saving from sharing heads: n_heads / n_kv (1 for MHA, n_heads for MQA).",
     "tfWq(l,h,r,c)": "W_Q of layer l, query head h, entry (r, c): r the input dim (0..d_model-1), c the head dim (0..d_k-1). Layer 0 / head 0 is the hand-built toy at the toy shape.",
