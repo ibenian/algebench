@@ -4625,8 +4625,10 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     text-shadow: none;
     transition: opacity 0.12s, background 0.12s, color 0.12s;
 }
-#step-caption:hover .bo-dock-btn, #scene-description:hover .bo-dock-btn { opacity: 1; }
-#step-caption:hover .ai-ask-btn, #scene-description:hover .ai-ask-btn { opacity: 1; }
+#step-caption:hover .bo-dock-btn, #scene-description:hover .bo-dock-btn,
+#step-caption:focus-within .bo-dock-btn, #scene-description:focus-within .bo-dock-btn { opacity: 1; }
+#step-caption:hover .ai-ask-btn, #scene-description:hover .ai-ask-btn,
+#step-caption:focus-within .ai-ask-btn, #scene-description:focus-within .ai-ask-btn { opacity: 1; }
 .bo-resize {
     position: absolute;
     top: 0;
@@ -4646,7 +4648,8 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
     opacity: 0;
     transition: opacity 0.12s;
 }
-#step-caption:hover .bo-resize::after, #scene-description:hover .bo-resize::after { opacity: 1; }
+#step-caption:hover .bo-resize::after, #scene-description:hover .bo-resize::after,
+#step-caption:focus-within .bo-resize::after, #scene-description:focus-within .bo-resize::after { opacity: 1; }
 #step-caption.docked .bo-resize, #scene-description.docked .bo-resize { cursor: ns-resize; }
 
 /* Docked: a strip along the bottom edge of the board, full width, its own

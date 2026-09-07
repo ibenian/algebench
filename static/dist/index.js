@@ -3247,6 +3247,9 @@ var BOARD_DOCK_KEY = "board-overlay-docked";
 var BOARD_DOCK_H_KEY = "board-overlay-dock-h";
 var BOARD_MIN_W = 160;
 var BOARD_MIN_H = 48;
+var BOARD_MAX_H_FRAC = .45;
+var BOARD_DOCK_MAX_H_FRAC = .4;
+var BOARD_RESIZE_DEADBAND = 4;
 var _boardDocked = null;
 var _boardObserver = null;
 function isBoardOverlayDocked() {
@@ -3339,6 +3342,7 @@ function setBoardOverlayDocked(docked) {
 }
 function _styleDockBtn(b, docked) {
 	b.title = docked ? "Float the caption again" : "Dock the caption along the bottom edge";
+	b.setAttribute("aria-label", b.title);
 	b.setAttribute("aria-pressed", docked ? "true" : "false");
 	b.textContent = docked ? "⤴" : "⤓";
 }
@@ -3389,17 +3393,20 @@ function _beginBoardResize(el, e) {
 	const centred = !docked && !(el.style.left && el.style.left.endsWith("px"));
 	const startW = el.offsetWidth, startH = el.offsetHeight;
 	const startX = e.clientX, startY = e.clientY;
-	let w = startW, h = startH;
+	const maxH = pr.height * (docked ? BOARD_DOCK_MAX_H_FRAC : BOARD_MAX_H_FRAC);
+	let w = el.classList.contains("sized") ? startW : null;
+	let h = startH;
 	el.classList.add("resizing");
 	const onMove = (me) => {
-		const dx = (me.clientX - startX) / scale * (centred ? 2 : 1);
+		const rawDx = me.clientX - startX;
+		const dx = rawDx / scale * (centred ? 2 : 1);
 		const dy = (startY - me.clientY) / scale;
-		if (!docked) {
+		if (!docked && (w != null || Math.abs(rawDx) >= BOARD_RESIZE_DEADBAND)) {
 			w = Math.round(Math.max(BOARD_MIN_W, Math.min(startW + dx, pr.width - 16)));
 			el.style.width = w + "px";
 			el.classList.add("sized");
 		}
-		h = Math.round(Math.max(BOARD_MIN_H, Math.min(startH + dy, pr.height * .9)));
+		h = Math.round(Math.max(BOARD_MIN_H, Math.min(startH + dy, maxH)));
 		el.style.height = h + "px";
 	};
 	const onUp = () => {
@@ -3408,10 +3415,10 @@ function _beginBoardResize(el, e) {
 		el.classList.remove("resizing");
 		try {
 			if (docked) localStorage.setItem(BOARD_DOCK_H_KEY, String(h));
-			else localStorage.setItem(_boardSizeKey(el), JSON.stringify({
+			else localStorage.setItem(_boardSizeKey(el), JSON.stringify(w != null ? {
 				w,
 				h
-			}));
+			} : { h }));
 		} catch {}
 		if (el.id === "step-caption") clampCaptionIntoView(el);
 		updateBoardDockHeight();
