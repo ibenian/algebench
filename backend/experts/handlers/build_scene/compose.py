@@ -49,10 +49,13 @@ import re
 from typing import Optional, Union
 
 from backend.expression_fields import carries_expressions
+from backend.js_only import JS_ONLY_ALTERNATIVES
+from backend.mathjs_extensions import CORE_MATH_NAMES, EXTENSION_NAMES
 from backend.model.lesson import Element, Scene, Step
 
 from backend.experts.modules.build_scene.proposed import (
-    SCENE_LEVEL, SUPPORTED_TYPES, ProposedElement, ProposedSlider, ProposedStep)
+    MAX_FUNCTIONS, SCENE_LEVEL, SUPPORTED_TYPES, ProposedElement,
+    ProposedFunction, ProposedSlider, ProposedStep)
 
 log = logging.getLogger(__name__)
 
@@ -267,7 +270,10 @@ def _which_plane(el: ProposedElement) -> str:
 
 
 #: A math.js identifier, which is what a slider id has to be: it becomes a
-#: variable name inside every coordinate that references it.
+#: variable name inside every coordinate that references it. Scene function names
+#: and their argument names answer to the same rule — it is what
+#: `_isValidSceneFunctionName` accepts in src/expr.ts — so they reuse this rather
+#: than declaring a second copy that could drift from it.
 _IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_]*$")
 
 
@@ -337,6 +343,118 @@ def _curve(el: ProposedElement, body: dict, where: str) -> None:
             f"parameter t, as three math.js expressions, e.g. cos(t), sin(t), 0.")
     for axis, value in zip("xyz", triple):
         body[axis] = str(value)
+
+
+#: JavaScript in a function BODY, refused before it can reach a scene.
+#:
+#: `JS_ONLY_ALTERNATIVES` is a verbatim mirror of `_JS_ONLY_RE` in src/expr.ts,
+#: held there by `tests/test_js_only_sync.py`. An earlier revision hand-wrote it
+#: from memory and missed fifteen tokens plus the backtick form of bracket
+#: access — every one a body that passed compose and became `0` in the browser,
+#: which is the failure this guard exists to stop.
+#:
+#: STRICTER than the renderer on purpose. It accepts a JS body when the reader
+#: has granted the scene trust — `gradient-descent-terrain` ships a `let`/`for`
+#: IIFE and works. A scene the BUILDER authors must render for a reader who
+#: granted nothing, and untrusted JS compiles to `0`: a function returning 0
+#: forever, and confident, wrong geometry.
+_JS_IN_BODY = re.compile("|".join(JS_ONLY_ALTERNATIVES))
+
+#: A semicolon is the one refusal that is NOT about JavaScript, so it is not in
+#: `_JS_ONLY_RE` and must not be: `[1,2;3,4]` is a valid math.js matrix literal
+#: and `a; b` a valid block. It is refused HERE because a scene function body is
+#: ONE expression — a block would evaluate to a ResultSet rather than a number,
+#: and a semicolon means the model wrote a statement.
+_SEMICOLON_IN_BODY = re.compile(r";")
+
+
+def _functions(proposed, slider_ids: set[str]) -> list[dict]:
+    """Scene-level named formulas, validated the way the renderer will NOT.
+
+    `setActiveSceneFunctions` (src/expr.ts) already rejects a bad entry — an
+    invalid name, a duplicate, a reserved name, a missing `expr` — but it rejects
+    it with `console.warn` and drops it. Callers then see an undefined name, or,
+    for a body that will not compile, a function that returns 0 forever. Both are
+    silent to the reader and to the builder.
+
+    So every rule the renderer applies is applied HERE too, as a refusal that
+    names what is wrong — which the model is re-asked with. This is the whole
+    point of adding the field: a place to state a derivation once is only an
+    improvement if getting it wrong is loud.
+    """
+    wanted = [f for f in (proposed or []) if isinstance(f, ProposedFunction)]
+    # Blank stanzas are "no proposal" -- the loop below skips them -- so they
+    # must not count toward the cap either. Some adapters pad the list out to a
+    # fixed length with empties, and counting those refused a response that
+    # actually declared only a handful of real functions.
+    wanted = [f for f in wanted
+              if (getattr(f, "name", "") or "").strip()
+              or (getattr(f, "expr", "") or "").strip()]
+    if len(wanted) > MAX_FUNCTIONS:
+        # REFUSED, never truncated. Elements call these by name, so dropping the
+        # tail would leave those calls unresolvable — silently, at evaluation
+        # time, in the browser.
+        raise ComposeError(
+            f"{len(wanted)} scene functions is more than the {MAX_FUNCTIONS} a "
+            f"scene may declare. Fold the ones used once back into the "
+            f"expression that uses them, and keep the names for what repeats.")
+
+    out: list[dict] = []
+    seen: set[str] = set()
+    for fn in wanted:
+        name, expr = fn.name.strip(), fn.expr.strip()
+        if not name and not expr:
+            continue
+        where = f"function {name!r}" if name else "an unnamed function"
+        if not _IDENTIFIER.match(name):
+            raise ComposeError(
+                f"{where}: `name` must be a math.js identifier — letters, digits "
+                f"and underscore, not starting with a digit.")
+        # Sliders win: `_buildScope` writes them into the scope AFTER the scene
+        # functions, so a function sharing a slider's name is simply never
+        # reachable. Silent, and the harder to spot because the name resolves.
+        if name in slider_ids:
+            raise ComposeError(
+                f"{where}: a slider is already called `{name}`, and the slider "
+                f"wins — every call would read the slider instead. Rename one.")
+        if name in CORE_MATH_NAMES or name in EXTENSION_NAMES:
+            raise ComposeError(
+                f"{where}: `{name}` is already a math.js built-in — a function, "
+                f"or a constant like `PI` — so the scene function is ignored and "
+                f"every use silently means the built-in one. Pick another name.")
+        if name in seen:
+            raise ComposeError(f"{where}: defined twice. Only the first survives.")
+        seen.add(name)
+
+        args: list[str] = []
+        for raw in (a.strip() for a in fn.args.split(",")):
+            if not raw:
+                continue
+            if not _IDENTIFIER.match(raw):
+                raise ComposeError(
+                    f"{where}: `{raw}` is not a valid argument name — letters, "
+                    f"digits and underscore, not starting with a digit.")
+            if raw in args:
+                raise ComposeError(f"{where}: argument `{raw}` is listed twice.")
+            args.append(raw)
+
+        if not expr:
+            raise ComposeError(
+                f"{where}: needs `expr` — what it computes, as one math.js "
+                f"expression. A function with no body is dropped and every call "
+                f"to it fails.")
+        # The same LaTeX test every coordinate gets, and for the same reason.
+        _expression(expr, f"{where} expr")
+        if _JS_IN_BODY.search(expr) or _SEMICOLON_IN_BODY.search(expr):
+            raise ComposeError(
+                f"{where}: `expr` is JavaScript, not math.js. Write ONE math.js "
+                f"expression — no `let`, `return`, `;` or `=>`. math.js spells "
+                f"these differently: `==` not `===`, `or` not `||`, `and` not "
+                f"`&&`. A conditional IS `a ? b : c`, which math.js has. Call a "
+                f"function by name — `toFixed(x, 2)`, not `x.toFixed(2)`.")
+        out.append({"name": name, "args": args, "expr": expr} if args
+                   else {"name": name, "expr": expr})
+    return out
 
 
 def _references(built, slider_ids: set[str]) -> set[str]:
@@ -705,6 +823,7 @@ def compose(
     elements: list[ProposedElement],
     steps: list[ProposedStep],
     sliders: Optional[list[ProposedSlider]] = None,
+    functions: Optional[list[ProposedFunction]] = None,
     *,
     with_prompts: bool = True,
 ) -> Scene:
@@ -766,6 +885,11 @@ def compose(
     body: dict = {"title": title.strip()}
     if (description or "").strip():
         body["description"] = description.strip()
+    # After the elements, so a function colliding with a slider is caught with the
+    # full slider vocabulary known — including the ids `_pull_sliders_forward`
+    # moved between steps, which do not change but are only collected above.
+    if (built_functions := _functions(functions, set(slider_ids))):
+        body["functions"] = built_functions
     if scene_level:
         body["elements"] = scene_level
     if built_steps:

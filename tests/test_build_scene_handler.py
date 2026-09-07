@@ -429,3 +429,32 @@ def test_the_retry_does_not_reopen_the_question(monkeypatch, request_body):
     out = h.build_scene(h.BuildSceneRequest.model_validate(request_body))
     assert "question" not in out, "a retry commits; it does not re-ask"
     assert "result" in out
+
+
+# ---- the functions bound ------------------------------------------------
+
+def test_the_proposal_keeps_one_function_past_the_cap(monkeypatch):
+    """CAP + 1, which is neither unbounded nor a truncation.
+
+    Truncating to the cap is what the lists beside it do, and it is wrong here:
+    an element calls a function BY NAME, so dropping the tail of a legitimate
+    list leaves those calls unresolvable — silently, at evaluation time, in the
+    browser. Passing everything through instead let a pathological answer make
+    the server hold an arbitrarily long list.
+
+    Keeping exactly one item past the cap satisfies both: `compose` still sees an
+    overflow and REFUSES, which the reader sees and the retry can act on, while
+    the list stays bounded.
+    """
+    from backend.experts.modules.build_scene import intent as it
+    from backend.experts.modules.build_scene.proposed import MAX_FUNCTIONS, ProposedFunction
+
+    class Answer:
+        is_build, question, title, description = True, "", "T", "d"
+        steps, sliders, elements = [], [], []
+        functions = [ProposedFunction(name=f"f{i}", expr="1") for i in range(500)]
+
+    monkeypatch.setattr(it, "_attempt", lambda _inputs: Answer())
+    kept = it.propose_scene().functions
+    assert len(kept) == MAX_FUNCTIONS + 1, "bounded, but not down to the cap"
+    assert len(kept) > MAX_FUNCTIONS, "compose must still be able to refuse it"

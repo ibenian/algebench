@@ -19,7 +19,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from backend.experts.llm_config import make_adapter
 
-from .proposed import ProposedElement, ProposedSlider, ProposedStep
+from .proposed import (
+    MAX_FUNCTIONS, ProposedElement, ProposedFunction, ProposedSlider, ProposedStep)
 from .signature import BuildSceneSig
 
 log = logging.getLogger(__name__)
@@ -38,6 +39,7 @@ MAX_STEPS = 12
 MAX_SLIDERS = 24
 #: Bounded so one proposal cannot become an unrenderable scene.
 MAX_ELEMENTS = 60
+
 
 
 class SceneProposal(BaseModel):
@@ -60,6 +62,7 @@ class SceneProposal(BaseModel):
     description: str = ""
     steps: list[ProposedStep] = Field(default_factory=list)
     sliders: list[ProposedSlider] = Field(default_factory=list)
+    functions: list[ProposedFunction] = Field(default_factory=list)
     elements: list[ProposedElement] = Field(default_factory=list)
 
 
@@ -147,6 +150,15 @@ def propose_scene(**inputs) -> SceneProposal:
         steps=[s for s in (out.steps or []) if isinstance(s, ProposedStep)][:MAX_STEPS],
         sliders=[s for s in (getattr(out, "sliders", None) or [])
                  if isinstance(s, ProposedSlider)][:MAX_SLIDERS],
+        # Sliced to the cap PLUS ONE, which is not the truncation the lists above
+        # do. An element calls a function by NAME, so dropping the tail of a
+        # legitimate list leaves those calls unresolvable — silently, at
+        # evaluation time, in the browser. Keeping one item past the cap lets
+        # `compose` still see the overflow and REFUSE it, which the reader sees
+        # and the retry can act on, while a pathological answer cannot make the
+        # server hold an arbitrarily long list.
+        functions=[f for f in (getattr(out, "functions", None) or [])
+                   if isinstance(f, ProposedFunction)][:MAX_FUNCTIONS + 1],
         elements=[e for e in (out.elements or [])
                   if isinstance(e, ProposedElement)][:MAX_ELEMENTS],
     )

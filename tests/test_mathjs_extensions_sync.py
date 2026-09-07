@@ -23,7 +23,7 @@ from pathlib import Path
 
 import pytest
 
-from backend.mathjs_extensions import EXTENSION_NAMES
+from backend.mathjs_extensions import CORE_MATH_NAMES, EXTENSION_NAMES
 
 ROOT = Path(__file__).resolve().parent.parent
 EXPR_TS = ROOT / "src" / "expr.ts"
@@ -59,3 +59,23 @@ def test_the_check_is_looking_at_something_real(known):
     """Guards the guard: if the parse silently returned nothing, the comparison
     above would pass only when the Python list were empty too."""
     assert known in _declared_in_typescript()
+
+
+_CORE_BLOCK = re.compile(r"^const _CORE_MATH_NAMES = \[(.*?)\];", re.S | re.M)
+
+
+def test_the_core_math_names_agree():
+    """`CORE_MATH_NAMES` must match `_CORE_MATH_NAMES` in expr.ts.
+
+    These are RESERVED, not offered: `setActiveSceneFunctions` skips a scene
+    function that shadows one, with a `console.warn` and nothing else. Compose
+    refuses such a name so the builder hears about it — which only works while
+    the two lists agree. A name here that expr.ts dropped refuses a legal
+    function; a name expr.ts added that is missing here lets one through to be
+    silently ignored in the browser.
+    """
+    block = _CORE_BLOCK.search(EXPR_TS.read_text(encoding="utf-8"))
+    assert block, (
+        f"no `const _CORE_MATH_NAMES = [...]` in {EXPR_TS}. If it was renamed, "
+        f"fix this pattern — do not delete the test.")
+    assert re.findall(r"'([^']+)'", block.group(1)) == list(CORE_MATH_NAMES)

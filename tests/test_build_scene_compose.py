@@ -7,7 +7,8 @@ import pathlib
 import pytest
 
 from backend.experts.handlers.build_scene.compose import ComposeError, compose
-from backend.experts.modules.build_scene.proposed import ProposedElement, ProposedStep
+from backend.experts.modules.build_scene.proposed import (
+    MAX_FUNCTIONS, ProposedElement, ProposedFunction, ProposedStep)
 from backend.model.lesson import Scene
 
 
@@ -262,12 +263,18 @@ def test_our_own_vocabulary_parses():
         "[[ ## steps ## ]]\nindex: 0\ntitle: Add a\n\n"
         "[[ ## sliders ## ]]\nstep: 0\nid: ax\nlabel: $a_x$\n"
         "min: -3\nmax: 3\nstep_size: 0.1\ndefault: 2\n\n"
+        # Every output field must appear or the adapter refuses the whole answer,
+        # `functions` included — which is the real cost of adding it, and the
+        # reason this canned response is the right place to notice.
+        "[[ ## functions ## ]]\nname: twiceAx\nexpr: 2 * ax\n\n"
         "[[ ## elements ## ]]\nstep: 0\ntype: vector\nfrom_pos: 0, 0, 0\nto_pos: ax, 0, 0\n\n"
         "[[ ## completed ## ]]\n")
 
     out = LineAdapter().parse(BuildSceneSig, completion)
     scene = compose(out["title"], out["description"], out["elements"], out["steps"],
-                    out["sliders"])
+                    out["sliders"], out["functions"])
+    assert scene.functions == [{"name": "twiceAx", "expr": "2 * ax"}], (
+        "the flat wire format has to survive the whole way to the scene")
     # PROMOTED: a slider-driven `to_pos` becomes an `animated_vector` carrying
     # `expr`, because the renderer resolves `to` once at load with no sliders
     # bound and would draw nothing at all.
@@ -1148,3 +1155,210 @@ def test_a_numeric_interval_stays_in_the_literal_field():
                     [ProposedStep(index=0, title="one")])
     built = scene.steps[0].add[0].model_dump(by_alias=True, exclude_none=True)
     assert built["range"] == [0, 6.28] and "rangeExpr" not in built
+
+
+# ---- scene functions -----------------------------------------------------
+#
+# The place to state a derivation ONCE. Every rule below is one the RENDERER
+# already applies and applies silently: `setActiveSceneFunctions` drops a bad
+# entry with a `console.warn`, or compiles a bad body to `0`. Refusing here is
+# what turns those into something the model is re-asked with.
+
+def _fn(**kw) -> ProposedFunction:
+    return ProposedFunction(**kw)
+
+
+def _sliders(*ids) -> list:
+    return [_sl(step=0, id=i, min=-5, max=5) for i in ids]
+
+
+def _with_fns(fns, elements=None, sliders=None):
+    els = elements or [ProposedElement(type="line", step=0,
+                                       from_pos="0,0,0", to_pos="1,0,0")]
+    return compose("T", "d", els, [ProposedStep(index=0, title="one")],
+                   sliders, fns)
+
+
+def test_a_function_is_declared_once_and_called_from_elements():
+    """The dot-product case. The projection scalar appeared in a vector's x, its
+    y, and both ends of a line — four copies of one idea, wrong in all four."""
+    scene = _with_fns(
+        [_fn(name="projK", expr="(ax*bx + ay*by) / (ax*ax + ay*ay)")],
+        elements=[ProposedElement(type="vector", step=0, from_pos="0,0,0",
+                                  to_pos="projK()*ax, projK()*ay, 0")],
+        sliders=_sliders("ax", "ay", "bx", "by"))
+    # `Scene` does not DECLARE `functions` — it is `extra="allow"`, so the entry
+    # rides through as a plain dict. That predates this change and the emitted
+    # JSON is the same either way.
+    assert scene.functions[0]["name"] == "projK"
+    assert scene.functions[0]["expr"] == "(ax*bx + ay*by) / (ax*ax + ay*ay)"
+
+
+def test_arguments_are_parsed_from_the_flat_string():
+    """`args` is a STRING because LineAdapter is one level deep — `v, rn`, not a
+    list. compose splits it, exactly as it splits a coordinate."""
+    scene = _with_fns([_fn(name="heatingRate", args="v, rn", expr="v^3 / sqrt(rn)")])
+    assert scene.functions[0]["args"] == ["v", "rn"]
+
+
+def test_no_arguments_leaves_args_off_entirely():
+    """A function with none still sees every slider, which is how the corpus
+    mostly uses them. Emitting `args: []` would be noise in the JSON."""
+    scene = _with_fns([_fn(name="k", expr="2 * pi")])
+    assert "args" not in scene.functions[0]
+
+
+def test_a_name_a_slider_already_uses_is_refused():
+    """`_buildScope` writes sliders into the scope AFTER scene functions, so the
+    slider wins and the function is never reachable. Silent, and hard to spot
+    precisely because the name still resolves."""
+    with pytest.raises(ComposeError, match="slider is already called"):
+        _with_fns([_fn(name="ax", expr="1")], sliders=_sliders("ax"))
+
+
+def test_a_mathjs_name_is_refused():
+    """`setActiveSceneFunctions` skips a reserved name with a console.warn, so
+    every call would silently mean math.js's own `max`."""
+    with pytest.raises(ComposeError, match="already a math.js built-in"):
+        _with_fns([_fn(name="max", expr="1")])
+    with pytest.raises(ComposeError, match="already a math.js built-in"):
+        _with_fns([_fn(name="toFixed", expr="1")]), "project extensions count too"
+
+
+def test_a_duplicate_name_is_refused():
+    """The renderer keeps the first and warns. Two definitions of one name means
+    the model believed both, and only one of them is true."""
+    with pytest.raises(ComposeError, match="defined twice"):
+        _with_fns([_fn(name="k", expr="1"), _fn(name="k", expr="2")])
+
+
+def test_a_name_that_is_not_an_identifier_is_refused():
+    with pytest.raises(ComposeError, match="must be a math.js identifier"):
+        _with_fns([_fn(name="proj-k", expr="1")])
+    with pytest.raises(ComposeError, match="must be a math.js identifier"):
+        _with_fns([_fn(name="2k", expr="1")])
+
+
+def test_a_body_that_is_javascript_is_refused():
+    """STRICTER than the renderer on purpose. It accepts a JS body when the
+    reader has granted trust — `gradient-descent-terrain` ships a `let`/`for`
+    IIFE — but a scene the builder authors must render for a reader who granted
+    nothing, and an untrusted JS body compiles to `0`: every call returns 0 and
+    the scene draws confident, wrong geometry."""
+    # `||` and `&&` sit beside `===` for the same reason: math.js has none of
+    # them, none is in `_JS_ONLY_RE`, and all three end as a silent `0`. Watched
+    # live — given `functions`, the builder learned `==` and still wrote
+    # `(mag_a(..) == 0 || mag_b(..) == 0) ? 0 : ..`.
+    for body in ("(()=>{let x=1; return x;})()", "Math.max(a, b)",
+                 # NOT math.js at all, so `compile` throws and `compileExpr`
+                 # substitutes 0 without the JS fallback being considered. All
+                 # three watched live.
+                 "a === 0 ? 0 : 1", "a == 0 || b == 0", "a > 0 && b > 0", "${x}",
+                 # Everything below comes from `_JS_ONLY_RE` via the mirror in
+                 # backend/js_only.py. An earlier hand-written guard had the
+                 # first two and none of the rest — fifteen tokens and the
+                 # BACKTICK form of bracket access all passed compose and became
+                 # `0` in the browser.
+                 "x.toFixed(2)", "a.constructor(1)", "o['constructor']",
+                 'o["constructor"]', "o[`constructor`]",
+                 "new Date()", "this", "typeof x", "x instanceof y",
+                 "class C", "await f()", "try", "catch", "throw x",
+                 "import x", "void 0", "delete x", "switch", "do", "break"):
+        with pytest.raises(ComposeError, match="JavaScript, not math.js"):
+            _with_fns([_fn(name="k", expr=body)])
+
+
+def test_the_bare_extension_call_is_still_allowed():
+    """The leading dot is the whole test. `toFixed` is one of this project's own
+    math.js extensions, so `toFixed(x, 2)` is legal and must stay legal — only
+    `.toFixed(`, the JS method on a value, is not."""
+    scene = _with_fns([_fn(name="k", args="x", expr="toFixed(x, 2)")])
+    assert scene.functions[0]["expr"] == "toFixed(x, 2)"
+
+
+def test_a_decimal_is_not_mistaken_for_a_method_call():
+    """`\.[A-Za-z_]` and not `\.\w`: `0.5*sin(x)` has a dot followed by a digit,
+    and reading that as property access would refuse ordinary arithmetic."""
+    scene = _with_fns([_fn(name="k", args="x", expr="0.5 * sin(x) + 1.25")])
+    assert scene.functions[0]["expr"] == "0.5 * sin(x) + 1.25"
+
+
+def test_the_mathjs_ternary_is_still_allowed():
+    """The fix the refusal PRESCRIBES has to work. math.js has `a ? b : c`; only
+    the `===` inside it was ever the problem."""
+    scene = _with_fns([_fn(name="k", args="a", expr="a == 0 ? 0 : 1 / a")])
+    assert scene.functions[0]["expr"] == "a == 0 ? 0 : 1 / a"
+    # And the spelling the message prescribes for the other two.
+    ok = _with_fns([_fn(name="k", args="a, b", expr="a == 0 or b == 0 ? 0 : 1")])
+    assert ok.functions[0]["expr"] == "a == 0 or b == 0 ? 0 : 1"
+
+
+def test_a_latex_body_is_refused_like_any_coordinate():
+    with pytest.raises(ComposeError):
+        _with_fns([_fn(name="k", expr=r"\frac{1}{2}")])
+
+
+def test_a_body_that_is_missing_is_refused():
+    with pytest.raises(ComposeError, match="needs `expr`"):
+        _with_fns([_fn(name="k", expr="")])
+
+
+def test_a_bad_argument_name_is_refused():
+    with pytest.raises(ComposeError, match="not a valid argument name"):
+        _with_fns([_fn(name="k", args="v, 2n", expr="v")])
+    with pytest.raises(ComposeError, match="listed twice"):
+        _with_fns([_fn(name="k", args="v, v", expr="v")])
+
+
+def test_too_many_functions_is_refused_not_truncated():
+    """The proposal used to be sliced to the cap in `propose_scene`. Elements call
+    a function BY NAME, so dropping the tail leaves those calls unresolvable —
+    and math.js only reports that at EVALUATION time, in the browser, where the
+    renderer swallows it. A scene that draws wrong geometry and says nothing is
+    the worst of the available outcomes; refusing is the best."""
+    many = [_fn(name=f"f{i}", expr="1") for i in range(MAX_FUNCTIONS + 1)]
+    with pytest.raises(ComposeError, match="more than the"):
+        _with_fns(many)
+
+
+def test_the_cap_itself_composes():
+    """Off-by-one guard: the refusal must start ABOVE the cap, not at it."""
+    at_cap = [_fn(name=f"f{i}", expr="1") for i in range(MAX_FUNCTIONS)]
+    assert len(_with_fns(at_cap).functions) == MAX_FUNCTIONS
+
+
+def test_a_function_may_call_one_declared_later():
+    """`setActiveSceneFunctions` reserves every name before compiling any body,
+    so order carries no meaning — and the field description now says so. A
+    composer that quietly required declaration order would contradict it."""
+    scene = _with_fns([_fn(name="outer", args="x", expr="inner(x) * 2"),
+                       _fn(name="inner", args="x", expr="x + 1")])
+    assert [f["name"] for f in scene.functions] == ["outer", "inner"]
+
+
+def test_blank_stanzas_do_not_count_toward_the_cap():
+    """Empty entries are "no proposal", so they must not trigger the refusal.
+
+    Some adapters pad `functions` out to a fixed length with blanks. Counting
+    those refused a response that had declared only a handful of real ones —
+    and the refusal names a limit the model did not actually exceed, so being
+    re-asked with it teaches the wrong lesson.
+    """
+    padded = ([_fn(name=f"f{i}", expr="1") for i in range(3)]
+              + [_fn(name="", expr="") for _ in range(MAX_FUNCTIONS * 2)])
+    assert len(_with_fns(padded).functions) == 3
+
+
+def test_no_functions_leaves_the_key_off():
+    """41 of 84 corpus scenes carry no `functions`, and an empty list would be a
+    new key in every scene the builder writes."""
+    scene = _with_fns(None)
+    assert "functions" not in scene.model_dump(exclude_none=True)
+
+
+def test_an_entirely_blank_entry_is_skipped_not_refused():
+    """A model that emits the block template unfilled has proposed nothing, and
+    refusing the whole scene over an empty stanza costs the reader the other
+    eleven elements that were right."""
+    scene = _with_fns([_fn(name="", expr=""), _fn(name="k", expr="1")])
+    assert [f["name"] for f in scene.functions] == ["k"]
