@@ -5,7 +5,7 @@
 
 import { state } from '/state.js';
 import { compileExpr, evalExpr, recompileActiveSceneFunctions, _getMathNamesAndValues,
-         tensorNested, type CompiledExpr } from '/expr.js';
+         type CompiledExpr } from '/expr.js';
 import { renderKaTeX, stripLatex } from '/labels.js';
 import type { Slider } from '/types/lesson.js';
 
