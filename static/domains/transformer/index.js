@@ -235,11 +235,14 @@
         if (snap === ABSENT || raw === ABSENT) return snap === raw;
         if (snap instanceof Float64Array) {
             if (!Array.isArray(raw)) return false;
+            // NaN cells compare equal to NaN, or a table holding one would
+            // rebuild the pass on every call.
+            const eq = (x, y) => x === y || (x !== x && y !== y);
             let k = 0;
             for (const row of raw) {
                 if (Array.isArray(row)) {
-                    for (const x of row) { if (k >= snap.length || Number(x) !== snap[k++]) return false; }
-                } else if (k >= snap.length || Number(row) !== snap[k++]) return false;
+                    for (const x of row) { if (k >= snap.length || !eq(Number(x), snap[k++])) return false; }
+                } else if (k >= snap.length || !eq(Number(row), snap[k++])) return false;
             }
             return k === snap.length;
         }
@@ -307,7 +310,10 @@
         // The embedding table decides n and d_model: tf_emb (any shape) wins,
         // then the scene-4 alias s4_emb over the toy table.
         const rawEmb = _readRaw('tf_emb');
-        const table = (Array.isArray(rawEmb) && rawEmb.length && Array.isArray(rawEmb[0]))
+        // A usable table has at least one row and one column; anything else
+        // (including empty rows, which would make d_model 0) falls back to the toy.
+        const embOk = Array.isArray(rawEmb) && rawEmb.length > 0 && Array.isArray(rawEmb[0]) && rawEmb[0].length > 0;
+        const table = embOk
             ? _effective(null, 'tf_emb', rawEmb.length, rawEmb[0].length)
             : _effective(EMB, 's4_emb', TOY_N, TOY_D_MODEL);
         const n = table.length;
