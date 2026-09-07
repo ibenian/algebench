@@ -278,21 +278,9 @@
         return out;
     }
 
-    // A slider the pass looked for and did not find is still a dependency: a
-    // later step may declare it, and the pass must then pick it up. But that
-    // is a step change, not a per-frame event, so absent ids are re-checked
-    // at most every ABSENT_RECHECK_MS while present ones are compared on
-    // every call; the per-cell cost stays proportional to the sliders that
-    // exist, not to every override a configuration could accept.
-    const ABSENT_RECHECK_MS = 100;
-    let _absentCheckedAt = -Infinity;
     function _stale() {
         if (_neverBuilt) return true;
-        const now = Date.now();
-        const checkAbsent = now - _absentCheckedAt >= ABSENT_RECHECK_MS;
-        if (checkAbsent) _absentCheckedAt = now;
         for (const [id, snap] of _reads) {
-            if (snap === ABSENT && !checkAbsent) continue;
             if (!_same(snap, _getSlider(id, ABSENT))) return true;
         }
         return false;
