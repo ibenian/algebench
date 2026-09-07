@@ -242,7 +242,8 @@
         "--server-only",
         "--skip-tour"
       ],
-      "port": 5761
+      "port": 5761,
+      "autoPort": false
     }
   ]
 }
