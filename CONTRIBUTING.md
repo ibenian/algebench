@@ -198,6 +198,7 @@ Use the built-in scenes in `scenes/` as reference — `eigenvalues.json` and `ma
 - Use `"remove": ["*"]` to clear all elements in a step
 - Sliders: add `"sliders": [{"id": "t", "label": "t", "min": 0, "max": 1, "value": 0.5}]`
 - Animated sliders: add `"animate": true, "duration": 2000` to a slider def
+- Tensor sliders: `{"id": "wq", "kind": "tensor", "label": "$W_Q$", "shape": [4, 2], "min": -3, "max": 3, "step": 0.1, "default": [[0,0],[0,0],[3,0],[0,1]]}` holds a whole matrix — in expressions `wq` is a matrix (`wq[row + 1, col + 1]`, `x * wq`), the panel shows it as a grid whose cells open a slider on hover, and a `tensor` element with `"bind": "wq"` shows and edits it in place
 - Dynamic labels: add `"labelExpr": "'Value: ' + toFixed(x*100, 1) + '%'"` to any animated element — the label text updates each frame based on slider values and time
 
 ---

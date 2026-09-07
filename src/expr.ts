@@ -50,7 +50,7 @@ interface SceneFunctionDef {
 // `any`; the cast goes away when state.js is converted.
 interface ExprState {
     sceneData: Record<string, unknown> | null;
-    sceneSliders: Record<string, { value: unknown } | undefined>;
+    sceneSliders: Record<string, ExprSliderView | undefined>;
     _activeDomainFunctions: Record<string, unknown>;
     activeSceneExprFunctions: Record<string, (...args: unknown[]) => unknown>;
     activeSceneFunctionDefs: SceneFunctionDef[];
@@ -184,6 +184,44 @@ function _getMathNamesAndValues(): { names: string[]; vals: unknown[] } {
     return { names, vals };
 }
 
+/** The slice of a registered slider this module reads (the full record is
+ *  typed in sliders.ts, which imports from here). */
+export interface ExprSliderView {
+    value: unknown;
+    kind?: 'scalar' | 'tensor';
+    shape?: number[] | null;
+    values?: number[] | null;
+    _nested?: number[] | number[][] | null;
+}
+
+/** A tensor slider's table as the nested array math.js indexes like a matrix
+ *  (`wq[r + 1, c + 1]`), built once per edit and cached on the slider. */
+export function tensorNested(s: ExprSliderView): number[] | number[][] {
+    if (s._nested) return s._nested;
+    const values = s.values || [];
+    const shape = s.shape || [values.length];
+    let out: number[] | number[][];
+    if (shape.length === 2) {
+        const cols = shape[1]!;
+        const rows: number[][] = [];
+        for (let r = 0; r < shape[0]!; r++) rows.push(values.slice(r * cols, (r + 1) * cols));
+        out = rows;
+    } else {
+        out = values.slice();
+    }
+    s._nested = out;
+    return out;
+}
+
+/** What an expression (or a domain library) sees for a slider: its number,
+ *  or its whole table for a tensor slider. */
+export function sliderScopeValue(s: ExprSliderView | undefined, fallback: unknown = 0): unknown {
+    if (!s) return fallback;
+    if (s.kind === 'tensor') return tensorNested(s);
+    const v = Number(s.value);
+    return Number.isFinite(v) ? v : fallback;
+}
+
 function _buildScope(extras?: ExprScope | null, overrides?: ExprScope | null): ExprScope {
     const scope: ExprScope = {
         ..._MATH_SCOPE, ..._EXPR_HELPERS,
@@ -191,7 +229,7 @@ function _buildScope(extras?: ExprScope | null, overrides?: ExprScope | null): E
         ...(exprState.activeSceneExprFunctions || {}),
         ...extras,
     };
-    for (const [id, s] of Object.entries(exprState.sceneSliders)) scope[id] = s ? s.value : 0;
+    for (const [id, s] of Object.entries(exprState.sceneSliders)) scope[id] = s ? (s.kind === 'tensor' ? tensorNested(s) : s.value) : 0;
     // ``overrides`` beat the scene sliders. Needed whenever the caller owns
     // the binding outright — e.g. a Function Analysis chart sweeping ``R``
     // over its own range in a scene that also has a slider named ``R`` (11
@@ -227,11 +265,11 @@ export async function importDomains(importList: unknown): Promise<void> {
         if (fns) {
             if (typeof fns._init === 'function') {
                 fns._init({
-                    getSlider(id: string, fallback: number = 0): number {
-                        const s = exprState.sceneSliders[id];
-                        if (!s) return fallback;
-                        const v = Number(s.value);
-                        return Number.isFinite(v) ? v : fallback;
+                    // A tensor slider hands the library its whole table (a
+                    // nested array); a scalar one its number; an absent one
+                    // the fallback, whatever its type.
+                    getSlider(id: string, fallback: unknown = 0): unknown {
+                        return sliderScopeValue(exprState.sceneSliders[id], fallback);
                     },
                 });
             }

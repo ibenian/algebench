@@ -162,13 +162,35 @@ class Slider(BaseModel):
     max: Num
     label: Optional[str] = None
     step: Optional[Num] = None
-    default: Optional[Num] = None
+    #: `$defs.slider` says `if kind == "tensor" then default: array, shape
+    #: required else default: number` -- mirrored by `_kind_shapes_default`.
+    kind: Optional[Literal["scalar", "tensor"]] = None
+    shape: Optional[Annotated[list[Annotated[int, Field(ge=1)]], Field(min_length=1, max_length=2)]] = None
+    default: Optional[Union[Num, list]] = None
     animate: Optional[bool] = None
     animateMode: Optional[Literal["loop", "once", "bounce"]] = None
     autoplay: Optional[bool] = None
     duration: Optional[int] = None
     reset: Optional[bool] = None
     valueExpr: Optional[str] = None
+
+    @model_validator(mode="after")
+    def _kind_shapes_default(self) -> "Slider":
+        if self.kind == "tensor":
+            if self.shape is None:
+                raise ValueError("a tensor slider needs a shape")
+            if self.default is not None and not isinstance(self.default, list):
+                raise ValueError("a tensor slider's default is a table")
+            if self.animate:
+                raise ValueError("a tensor slider cannot animate")
+            if self.valueExpr is not None:
+                raise ValueError("a tensor slider has no valueExpr")
+        else:
+            if isinstance(self.default, list):
+                raise ValueError("only a tensor slider takes a table as default")
+            if self.shape is not None:
+                raise ValueError("only a tensor slider has a shape")
+        return self
 
 
 class RemoveDirective(BaseModel):

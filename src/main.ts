@@ -14,6 +14,7 @@ import { setupSettingsPanel, initLightControls, setupPanelResize, setupExplainTo
          setupDocSpeakButtons, setupCaptionDrag, setupSceneDescDrag, setupBoardOverlays, setupCamStatusPopup, setupAboutPopup,
          getAllElements, addInfoOverlay, removeAllInfoOverlays, updateInfoOverlays,
          setBuildSceneTreeFn } from '/overlay.js';
+import { setupTensorCellPop } from '/tensor-slider-pop.js';
 import { setupFollowAngleLockToggle } from '/follow-cam.js';
 import { dataCameraToWorld, worldCameraToData } from '/coords.js';
 import { navigateTo, setupSceneDock, loadScene, loadLesson, isLessonFormat,
@@ -70,6 +71,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupCaptionDrag();
     setupSceneDescDrag();
     setupBoardOverlays();
+    setupTensorCellPop();
     setupJsonViewer();
     setupContextStatusPopup();
     setupCamStatusPopup();

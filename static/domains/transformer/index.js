@@ -54,32 +54,23 @@
     const W_K = [[0, 0], [3, 0], [0, 0], [0, 1]];
     const W_V = [[1, 0], [0, 1], [0, 0], [0, 0]];
 
-    // ---- sandbox overrides ----------------------------------------------
-    //
-    // Every embedding row and every weight entry can be set by a slider named
-    // after it (s4_e<row><dim>, s4_w<q|k|v><row><col>). With no such slider
-    // the hand-built constant stands, so scenes 1-3 compute exactly what they
-    // always did; a scene that declares one of these sliders must give it the
-    // constant as its default. Listed literally so check_transformer_domain.py
-    // can hold docs.json and the cache key to the same set.
-    const EMB_SLIDERS = [
-        ['s4_e00', 's4_e01', 's4_e02', 's4_e03'],
-        ['s4_e10', 's4_e11', 's4_e12', 's4_e13'],
-        ['s4_e20', 's4_e21', 's4_e22', 's4_e23'],
-        ['s4_e30', 's4_e31', 's4_e32', 's4_e33'],
-        ['s4_e40', 's4_e41', 's4_e42', 's4_e43'],
-        ['s4_e50', 's4_e51', 's4_e52', 's4_e53'],
-    ];
-    const WQ_SLIDERS = [['s4_wq00', 's4_wq01'], ['s4_wq10', 's4_wq11'], ['s4_wq20', 's4_wq21'], ['s4_wq30', 's4_wq31']];
-    const WK_SLIDERS = [['s4_wk00', 's4_wk01'], ['s4_wk10', 's4_wk11'], ['s4_wk20', 's4_wk21'], ['s4_wk30', 's4_wk31']];
-    const WV_SLIDERS = [['s4_wv00', 's4_wv01'], ['s4_wv10', 's4_wv11'], ['s4_wv20', 's4_wv21'], ['s4_wv30', 's4_wv31']];
-    const _OVERRIDE_SLIDERS = [EMB_SLIDERS, WQ_SLIDERS, WK_SLIDERS, WV_SLIDERS].flatMap(t => t.flat());
+    // Sandbox overrides: one TENSOR slider per table (s4_emb 6x4, s4_wq /
+    // s4_wk / s4_wv 4x2). With no such slider the hand-built constant stands,
+    // so scenes 1-3 compute exactly what they always did; a scene that
+    // declares one must give it the constant as its default. Listed literally
+    // so check_transformer_domain.py can hold docs.json and the cache key to
+    // the same set.
+    const _OVERRIDE_SLIDERS = ['s4_emb', 's4_wq', 's4_wk', 's4_wv'];
 
-    /** `base` with each entry replaced by its slider's value when the scene defines one. */
-    function _effective(base, ids) {
+    /** `base` with each entry replaced by the tensor slider's cell when the
+     *  scene defines that slider (a nested array from getSlider); any cell it
+     *  does not cover, or that is not a finite number, keeps the constant. */
+    function _effective(base, id) {
+        const o = _getSlider(id, null);
+        if (!Array.isArray(o)) return base;
         return base.map((row, r) => row.map((v, c) => {
-            const o = Number(_getSlider(ids[r][c], v));
-            return Number.isFinite(o) ? o : v;
+            const x = Array.isArray(o[r]) ? Number(o[r][c]) : NaN;
+            return Number.isFinite(x) ? x : v;
         }));
     }
 
@@ -156,15 +147,40 @@
     // Change detection without a key string: the last value seen for each
     // keyed slider (NaN = absent), compared element-wise on every call. No
     // allocation, no number-to-string, and exact -- a key string costs ten
-    // times as much once 54 sliders are keyed, and _st() runs per cell.
+    // times as much, and _st() runs per cell. A tensor slider hands back a
+    // nested array; its cells are walked against a flat copy the same way,
+    // and the copy is only retaken when something differed.
     let _cache = { data: null };
     const _last = new Float64Array(_KEY_SLIDERS.length).fill(NaN);
+    const _lastTable = _KEY_SLIDERS.map(() => null); // flat copy, or null while absent
     let _neverBuilt = true;
+
+    /** Does the nested `table` hold exactly the numbers in the flat `last`? */
+    function _sameTable(table, last) {
+        let k = 0;
+        for (const row of table) {
+            if (Array.isArray(row)) {
+                for (const x of row) { if (k >= last.length || last[k++] !== Number(x)) return false; }
+            } else if (k >= last.length || last[k++] !== Number(row)) return false;
+        }
+        return k === last.length;
+    }
 
     function _stale() {
         let changed = _neverBuilt;
         for (let i = 0; i < _KEY_SLIDERS.length; i++) {
-            const v = Number(_getSlider(_KEY_SLIDERS[i], NaN));
+            const raw = _getSlider(_KEY_SLIDERS[i], NaN);
+            if (Array.isArray(raw)) {
+                const l = _lastTable[i];
+                if (l === null || !_sameTable(raw, l)) {
+                    _lastTable[i] = raw.flat().map(Number);
+                    changed = true;
+                }
+                if (_last[i] === _last[i]) { _last[i] = NaN; changed = true; }
+                continue;
+            }
+            if (_lastTable[i] !== null) { _lastTable[i] = null; changed = true; }
+            const v = Number(raw);
             const l = _last[i];
             if (v !== l && !(v !== v && l !== l)) { _last[i] = v; changed = true; }
         }
@@ -185,10 +201,10 @@
         const maskOn = _getSlider('s3_mask', 0) >= 0.5 ? 1 : 0;
         const maskAfter = _getSlider('s3_maskafter', 0) >= 0.5 ? 1 : 0;
         // Sandbox overrides (read through _effective, keyed above).
-        const EMBe = _effective(EMB, EMB_SLIDERS);
-        const WQ = _effective(W_Q, WQ_SLIDERS);
-        const WK = _effective(W_K, WK_SLIDERS);
-        const WV = _effective(W_V, WV_SLIDERS);
+        const EMBe = _effective(EMB, 's4_emb');
+        const WQ = _effective(W_Q, 's4_wq');
+        const WK = _effective(W_K, 's4_wk');
+        const WV = _effective(W_V, 's4_wv');
 
         // Which source token sits at each slot.
         const perm = new Int32Array(N);
@@ -370,7 +386,7 @@
     function tfToken(k) { return TOKENS[tfPerm(k)]; }
 
     /** Row r (a TOKEN row, 0..5, no shuffle) of the embedding table in force: the
-     *  hand-built value unless slider s4_e<r><d> overrides it. */
+     *  hand-built value unless the tensor slider s4_emb overrides it. */
     function tfEmbBase(r, d) { return _st().EMBe[_clampIdx(r, N - 1)][_clampIdx(d, D_MODEL - 1)]; }
     /** Entry (r, c) of a projection matrix in force -- m = 0 for W_Q, 1 for W_K,
      *  2 for W_V; rows index the input dim (0..3), columns the head dim (0..1). */

@@ -224,6 +224,22 @@ function dataToWorld(pos) {
 		((pos[2] - rz[0]) / (rz[1] - rz[0]) * 2 - 1) * s[2]
 	];
 }
+/** Inverse of dataToWorld: a world point back to data units. */
+function worldToData(pos) {
+	const r = range();
+	const s = scale();
+	const [rx, ry, rz] = r ?? [];
+	if (!rx || !ry || !rz) return [
+		0,
+		0,
+		0
+	];
+	return [
+		(pos[0] / s[0] + 1) / 2 * (rx[1] - rx[0]) + rx[0],
+		(pos[1] / s[1] + 1) / 2 * (ry[1] - ry[0]) + ry[0],
+		(pos[2] / s[2] + 1) / 2 * (rz[1] - rz[0]) + rz[0]
+	];
+}
 function dataCameraToWorld$1(pos) {
 	const r = range();
 	const s = declaredScale();
@@ -367,6 +383,30 @@ function _getMathNamesAndValues() {
 		vals
 	};
 }
+/** A tensor slider's table as the nested array math.js indexes like a matrix
+*  (`wq[r + 1, c + 1]`), built once per edit and cached on the slider. */
+function tensorNested(s) {
+	if (s._nested) return s._nested;
+	const values = s.values || [];
+	const shape = s.shape || [values.length];
+	let out;
+	if (shape.length === 2) {
+		const cols = shape[1];
+		const rows = [];
+		for (let r = 0; r < shape[0]; r++) rows.push(values.slice(r * cols, (r + 1) * cols));
+		out = rows;
+	} else out = values.slice();
+	s._nested = out;
+	return out;
+}
+/** What an expression (or a domain library) sees for a slider: its number,
+*  or its whole table for a tensor slider. */
+function sliderScopeValue(s, fallback = 0) {
+	if (!s) return fallback;
+	if (s.kind === "tensor") return tensorNested(s);
+	const v = Number(s.value);
+	return Number.isFinite(v) ? v : fallback;
+}
 function _buildScope(extras, overrides) {
 	const scope = {
 		..._MATH_SCOPE,
@@ -375,7 +415,7 @@ function _buildScope(extras, overrides) {
 		...exprState.activeSceneExprFunctions || {},
 		...extras
 	};
-	for (const [id, s] of Object.entries(exprState.sceneSliders)) scope[id] = s ? s.value : 0;
+	for (const [id, s] of Object.entries(exprState.sceneSliders)) scope[id] = s ? s.kind === "tensor" ? tensorNested(s) : s.value : 0;
 	return overrides ? {
 		...scope,
 		...overrides
@@ -404,10 +444,7 @@ async function importDomains(importList) {
 		const fns = window.AlgeBenchDomains._registry[name];
 		if (fns) {
 			if (typeof fns._init === "function") fns._init({ getSlider(id, fallback = 0) {
-				const s = exprState.sceneSliders[id];
-				if (!s) return fallback;
-				const v = Number(s.value);
-				return Number.isFinite(v) ? v : fallback;
+				return sliderScopeValue(exprState.sceneSliders[id], fallback);
 			} });
 			const { _init, ...publicFns } = fns;
 			Object.assign(exprState._activeDomainFunctions, publicFns);
@@ -1679,6 +1716,117 @@ function injectAskButtons(contentEl) {
 //#endregion
 //#region src/sliders.ts
 var sliderState = state;
+/** Flatten a tensor slider's `default` (nested or flat) to `shape` numbers,
+*  clamped to [min, max]; a missing or malformed table reads as all zeros
+*  (clamped), and a short one is padded the same way. */
+function _flattenTable(raw, shape, min, max) {
+	const n = shape.reduce((a, b) => a * b, 1);
+	const flat = [];
+	const walk = (node) => {
+		if (Array.isArray(node)) {
+			for (const v of node) walk(v);
+			return;
+		}
+		const x = Number(node);
+		flat.push(Number.isFinite(x) ? x : 0);
+	};
+	if (raw !== void 0 && raw !== null) walk(raw);
+	const out = new Array(n);
+	for (let i = 0; i < n; i++) {
+		const v = i < flat.length ? flat[i] : 0;
+		out[i] = Math.max(min, Math.min(max, v));
+	}
+	return out;
+}
+function _parseSliderShape(raw) {
+	if (!Array.isArray(raw) || raw.length < 1 || raw.length > 2) return null;
+	const dims = raw.map((v) => Number(v));
+	return dims.every((d) => Number.isInteger(d) && d >= 1) ? dims : null;
+}
+function isTensorSlider(s) {
+	return !!s && s.kind === "tensor" && !!s.shape && !!s.values;
+}
+/** Rows and columns of a tensor slider's grid ([n] is one row of n). */
+function tensorSliderGrid(s) {
+	const shape = s.shape || [1];
+	return shape.length === 2 ? {
+		rows: shape[0],
+		cols: shape[1]
+	} : {
+		rows: 1,
+		cols: shape[0]
+	};
+}
+/** The cell's flat index, or -1 when (r, c) is off the grid. */
+function tensorCellIndex(s, r, c) {
+	const { rows, cols } = tensorSliderGrid(s);
+	if (!Number.isInteger(r) || !Number.isInteger(c) || r < 0 || c < 0 || r >= rows || c >= cols) return -1;
+	return r * cols + c;
+}
+/** Display name of one cell: the label plus [r][c] (or [i] for a vector). */
+function tensorCellName(id, r, c) {
+	const s = sliderState.sceneSliders[id];
+	const base = s && s.label || id;
+	return (s && s.shape || [1]).length === 2 ? `${base}[${r}][${c}]` : `${base}[${c}]`;
+}
+/** Set one cell of a tensor slider and re-evaluate everything that reads it.
+*  A fresh `values` array is written so an undo snapshot taken earlier keeps
+*  the old table. Returns false for an unknown slider or an off-grid cell. */
+function setTensorSliderCell(id, r, c, value) {
+	const s = sliderState.sceneSliders[id];
+	if (!isTensorSlider(s) || !Number.isFinite(value)) return false;
+	const i = tensorCellIndex(s, r, c);
+	if (i < 0) return false;
+	const v = Math.max(s.min, Math.min(s.max, value));
+	if (s.values[i] === v) return true;
+	const next = s.values.slice();
+	next[i] = v;
+	s.values = next;
+	s._nested = null;
+	_refreshTensorCells(id);
+	recompileActiveExprs();
+	syncSliderState();
+	try {
+		window.dispatchEvent(new CustomEvent("algebench:sliderchange"));
+	} catch (_) {}
+	return true;
+}
+/** Put every cell of a tensor slider back to the step's default table. */
+function resetTensorSlider(id) {
+	const s = sliderState.sceneSliders[id];
+	if (!isTensorSlider(s) || !s.defaults) return false;
+	s.values = s.defaults.slice();
+	s._nested = null;
+	_refreshTensorCells(id);
+	recompileActiveExprs();
+	syncSliderState();
+	try {
+		window.dispatchEvent(new CustomEvent("algebench:sliderchange"));
+	} catch (_) {}
+	return true;
+}
+function formatTensorCell(v) {
+	if (!Number.isFinite(v)) return "·";
+	const a = Math.abs(v);
+	return a >= 100 ? v.toFixed(0) : a >= 10 ? v.toFixed(1) : v.toFixed(2);
+}
+/** Rewrite the readouts of a tensor slider's grid on the panel. */
+function _refreshTensorCells(id) {
+	const s = sliderState.sceneSliders[id];
+	if (!isTensorSlider(s)) return;
+	const cells = document.querySelectorAll(`.tslider-cell[data-slider-id="${id}"]`);
+	for (const cell of cells) {
+		const i = Number(cell.dataset.cell);
+		const v = s.values[i];
+		if (v === void 0) continue;
+		cell.textContent = formatTensorCell(v);
+		cell.classList.toggle("changed", !!s.defaults && Math.abs(v - s.defaults[i]) > 1e-9);
+	}
+}
+var _tensorPop = null;
+function setTensorCellPopHandler(h) {
+	_tensorPop = h;
+}
 function getSliderIds() {
 	const ids = Object.keys(sliderState.sceneSliders);
 	const launchIdx = ids.indexOf("h");
@@ -1801,15 +1949,28 @@ function registerSliders(sliderDefs) {
 		if (prev) {
 			stopSliderLoop(def.id);
 			if (def.reset) prevStates[def.id] = { ...prev };
+			delete sliderState.sceneSliders[def.id];
 		}
+		const min = def.min !== void 0 ? def.min : 0;
+		const max = def.max !== void 0 ? def.max : 1;
+		const shape = def.kind === "tensor" ? _parseSliderShape(def.shape) : null;
+		const isTensor = !!shape;
+		if (def.kind === "tensor" && !shape) console.warn(`slider "${def.id}": kind "tensor" needs a shape of one or two positive integers; got`, def.shape);
+		const defaults = shape ? _flattenTable(def.default, shape, min, max) : null;
+		const scalarDefault = typeof def.default === "number" ? def.default : void 0;
 		sliderState.sceneSliders[def.id] = {
-			value: def.default !== void 0 ? def.default : (def.min + def.max) / 2,
-			min: def.min !== void 0 ? def.min : 0,
-			max: def.max !== void 0 ? def.max : 1,
+			value: isTensor ? NaN : scalarDefault !== void 0 ? scalarDefault : (min + max) / 2,
+			min,
+			max,
 			step: def.step !== void 0 ? def.step : .1,
 			label: def.label || def.id,
-			default: def.default,
-			animate: def.animate || false,
+			default: isTensor ? void 0 : scalarDefault,
+			kind: isTensor ? "tensor" : "scalar",
+			shape,
+			values: defaults ? defaults.slice() : null,
+			defaults,
+			_nested: null,
+			animate: !isTensor && (def.animate || false),
 			animateMode: String(def.animateMode || def.animationMode || "loop").toLowerCase(),
 			autoplay: def.autoplay !== false,
 			duration: def.duration || 3e3,
@@ -1869,6 +2030,10 @@ function buildSliderOverlay() {
 	overlay.appendChild(dragHandle);
 	for (const id of ids) {
 		const s = sliderState.sceneSliders[id];
+		if (isTensorSlider(s)) {
+			overlay.appendChild(_buildTensorRow(id, s));
+			continue;
+		}
 		const row = document.createElement("div");
 		row.className = "slider-row";
 		const labelSpan = document.createElement("span");
@@ -1924,6 +2089,91 @@ function buildSliderOverlay() {
 	}
 	overlay.classList.remove("hidden");
 	syncSliderState();
+}
+/** One panel row for a tensor slider: a header (label, shape, reset) over a
+*  grid of readouts the shape of the value. Hovering a readout opens that
+*  cell's slider (see tensor-slider-pop.ts); clicking the header folds the grid. */
+function _buildTensorRow(id, s) {
+	const { rows, cols } = tensorSliderGrid(s);
+	const row = document.createElement("div");
+	row.className = "slider-row slider-row-tensor";
+	row.dataset.sliderId = id;
+	const head = document.createElement("div");
+	head.className = "tslider-head";
+	const caret = document.createElement("span");
+	caret.className = "tslider-caret";
+	head.appendChild(caret);
+	const labelSpan = document.createElement("span");
+	labelSpan.className = "slider-label";
+	labelSpan.innerHTML = renderKaTeX$1(s.label || id, false);
+	labelSpan.title = stripLatex(s.label || id);
+	head.appendChild(labelSpan);
+	const shapeSpan = document.createElement("span");
+	shapeSpan.className = "tslider-shape";
+	shapeSpan.textContent = s.shape.join("×");
+	head.appendChild(shapeSpan);
+	const reset = document.createElement("button");
+	reset.type = "button";
+	reset.className = "tslider-reset";
+	reset.textContent = "↺";
+	reset.title = "Reset every cell to the default";
+	reset.setAttribute("aria-label", reset.title);
+	reset.addEventListener("mousedown", (e) => e.stopPropagation());
+	reset.addEventListener("click", (e) => {
+		e.stopPropagation();
+		resetTensorSlider(id);
+	});
+	head.appendChild(reset);
+	row.appendChild(head);
+	const grid = document.createElement("div");
+	grid.className = "tslider-grid";
+	grid.style.gridTemplateColumns = `repeat(${cols}, auto)`;
+	for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+		const i = r * cols + c;
+		const cell = document.createElement("button");
+		cell.type = "button";
+		cell.className = "tslider-cell";
+		cell.dataset.sliderId = id;
+		cell.dataset.cell = String(i);
+		cell.textContent = formatTensorCell(s.values[i]);
+		cell.title = stripLatex(tensorCellName(id, r, c));
+		if (s.defaults && Math.abs(s.values[i] - s.defaults[i]) > 1e-9) cell.classList.add("changed");
+		const open = () => {
+			if (_tensorPop) _tensorPop.show(id, r, c, cell.getBoundingClientRect());
+		};
+		cell.addEventListener("mouseenter", open);
+		cell.addEventListener("focus", open);
+		cell.addEventListener("click", open);
+		cell.addEventListener("pointerdown", (e) => {
+			if (e.button !== 0) return;
+			e.preventDefault();
+			e.stopPropagation();
+			open();
+			if (_tensorPop && _tensorPop.scrub) _tensorPop.scrub(id, r, c, e.clientX, e.pointerId, cell);
+		});
+		cell.addEventListener("mouseleave", () => {
+			if (_tensorPop) _tensorPop.scheduleHide();
+		});
+		cell.addEventListener("blur", () => {
+			if (_tensorPop) _tensorPop.scheduleHide();
+		});
+		grid.appendChild(cell);
+	}
+	row.appendChild(grid);
+	const KEY = "tslider-collapsed-" + id;
+	let collapsed = false;
+	try {
+		collapsed = localStorage.getItem(KEY) === "1";
+	} catch {}
+	row.classList.toggle("collapsed", collapsed);
+	head.addEventListener("mousedown", (e) => e.stopPropagation());
+	head.addEventListener("click", () => {
+		collapsed = !row.classList.toggle("collapsed") ? false : true;
+		try {
+			localStorage.setItem(KEY, collapsed ? "1" : "0");
+		} catch {}
+	});
+	return row;
 }
 function unregisterAnimExpr(animState) {
 	sliderState.activeAnimExprs = sliderState.activeAnimExprs.filter((e) => e.animState !== animState);
@@ -2035,7 +2285,7 @@ function recompileActiveExprs() {
 }
 function syncSliderState() {
 	const s = {};
-	for (const [id, sl] of Object.entries(sliderState.sceneSliders)) s[id] = sl.value;
+	for (const [id, sl] of Object.entries(sliderState.sceneSliders)) s[id] = isTensorSlider(sl) ? sl.values : sl.value;
 	try {
 		localStorage.setItem("algebench-sliders", JSON.stringify(s));
 	} catch (e) {}
@@ -2043,7 +2293,7 @@ function syncSliderState() {
 }
 function setSliderValue(id, value) {
 	const s = sliderState.sceneSliders[id];
-	if (!s || !Number.isFinite(value)) return false;
+	if (!s || s.kind === "tensor" || !Number.isFinite(value)) return false;
 	if (s._loopPlaying) stopSliderLoop(id);
 	s.value = Math.max(s.min, Math.min(s.max, value));
 	const input = document.querySelector(`input[data-slider-id="${id}"]`);
@@ -2059,7 +2309,7 @@ function setSliderValue(id, value) {
 function animateSlider$1(id, target, duration) {
 	return new Promise((resolve) => {
 		const slider = sliderState.sceneSliders[id];
-		if (!slider) {
+		if (!slider || slider.kind === "tensor") {
 			resolve(false);
 			return;
 		}
@@ -3007,7 +3257,9 @@ function updateStatusBar() {
 			if (countEl) countEl.textContent = String(ids.length);
 			if (tooltipEl) tooltipEl.textContent = ids.map((id) => {
 				const s = overlayState.sceneSliders[id];
-				return `${(s.label || id).replace(/\$|\\[a-z]+\{?|\}|_|\^/gi, "").trim() || id} (${id}) = ${Number(s.value).toFixed(2)}  [${s.min} … ${s.max}]`;
+				const label = (s.label || id).replace(/\$|\\[a-z]+\{?|\}|_|\^/gi, "").trim() || id;
+				if (s.kind === "tensor") return `${label} (${id}) = ${(s.shape || []).join("×")} table  [${s.min} … ${s.max}]`;
+				return `${label} (${id}) = ${Number(s.value).toFixed(2)}  [${s.min} … ${s.max}]`;
 			}).join("\n");
 			pill.classList.remove("hidden");
 		} else pill.classList.add("hidden");
@@ -8654,6 +8906,13 @@ function renderTensor(el, _view) {
 	const baseColor = parseColor(el.color || "#3b528b");
 	const colorMapFn = buildColorMap(el.colorMap);
 	const colorDomain = el.colorDomain;
+	const bindId = typeof el.bind === "string" && el.bind.trim() ? el.bind.trim() : null;
+	/** The bound slider's flat table, or null while the slider is absent. */
+	function boundValues() {
+		if (!bindId) return null;
+		const s = tensorState.sceneSliders[bindId];
+		return s && s.kind === "tensor" && s.values ? s.values : null;
+	}
 	const valueExprString = typeof el.valueExpr === "string" && el.valueExpr.trim() ? el.valueExpr.trim() : null;
 	let literalValues = null;
 	if (!valueExprString && el.values !== void 0) {
@@ -8779,7 +9038,12 @@ function renderTensor(el, _view) {
 	* can have slider-driven cell sizes without paying for a valueExpr.
 	*/
 	function paintAll(tSec) {
-		if (!(literalValues || valueFn) && !hasSizeExpr && !hasDepthExpr) return;
+		const bound = boundValues();
+		if (!(bound || literalValues || valueFn) && !hasSizeExpr && !hasDepthExpr) return;
+		if (bound && bound.length !== drawn && !boundShapeWarned) {
+			boundShapeWarned = true;
+			console.warn(`tensor${el.id ? ` "${el.id}"` : ""}: bound slider "${bindId}" holds ${bound.length} values but the lattice draws ${drawn}`);
+		}
 		for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
 			const cell = r * cols + c;
 			const idxScope = {
@@ -8788,7 +9052,8 @@ function renderTensor(el, _view) {
 				idx: cell
 			};
 			let raw;
-			if (literalValues) raw = literalValues[cell];
+			if (bound) raw = bound[cell];
+			else if (literalValues) raw = literalValues[cell];
 			else if (valueFn) raw = evalExpr(valueFn, tSec, { overrideScope: idxScope });
 			if (raw !== void 0) paintCell(cell, raw);
 			const v = Number(raw);
@@ -8808,6 +9073,7 @@ function renderTensor(el, _view) {
 			}
 		}
 	}
+	let boundShapeWarned = false;
 	try {
 		paintAll(0);
 	} catch (err) {
@@ -8826,6 +9092,24 @@ function renderTensor(el, _view) {
 	const mesh = new THREE.Mesh(geom, mat);
 	mesh.userData.targetOpacity = opacity;
 	mesh.userData.ignorePlaneOpacity = ignoresPlaneOpacity;
+	const tensorCell = bindId ? {
+		id: el.id || "",
+		bind: bindId,
+		cellAt(world) {
+			const d = worldToData(world);
+			const [hAxis, vAxis] = PLANE_AXES$1[plane] || PLANE_AXES$1["xy"];
+			const h = d[hAxis] - origin[0];
+			const v = d[vAxis] - origin[1];
+			const c = Math.floor(h / cellSize);
+			const up = Math.floor(v / cellSize);
+			if (c < 0 || c >= cols || up < 0 || up >= rows) return null;
+			return {
+				row: rows - 1 - up,
+				col: c
+			};
+		}
+	} : null;
+	if (tensorCell) mesh.userData.tensorCell = tensorCell;
 	const serial = el.renderOrder !== void 0 ? el.renderOrder : tensorState._planeMeshSerial++;
 	mesh.renderOrder = serial;
 	tensorState.three.scene.add(mesh);
@@ -8975,6 +9259,7 @@ function renderTensor(el, _view) {
 			const qMesh = new THREE.Mesh(qGeom, qMat);
 			qMesh.userData.targetOpacity = opacity;
 			qMesh.userData.ignorePlaneOpacity = ignoresPlaneOpacity;
+			if (tensorCell) qMesh.userData.tensorCell = tensorCell;
 			qMesh.renderOrder = el.renderOrder !== void 0 ? serial + 1 : tensorState._planeMeshSerial++;
 			tensorState.three.scene.add(qMesh);
 			tensorState.planeMeshes.push(qMesh);
@@ -9238,7 +9523,7 @@ function renderTensor(el, _view) {
 			if (textLayer) textLayer.mesh.visible = mesh.visible;
 			if (!mesh.visible) return;
 			const tSec = (nowMs - startTime) / 1e3;
-			if (valueFn || hasSizeExpr || hasDepthExpr) try {
+			if (valueFn || bindId || hasSizeExpr || hasDepthExpr) try {
 				paintAll(tSec);
 				colorAttr.needsUpdate = true;
 				if (hasSizeExpr || hasDepthExpr) posAttr.needsUpdate = true;
@@ -9431,6 +9716,8 @@ function renderChart(el, view) {
 			kind: sp.kind === "points" ? "points" : "line",
 			width: Number(sp.width) > 0 ? Number(sp.width) : 2.5,
 			opacity: Number.isFinite(Number(sp.opacity)) ? Math.max(0, Math.min(1, Number(sp.opacity))) : 1,
+			label: typeof sp.label === "string" && sp.label.trim() ? sp.label.trim() : null,
+			size: Number(sp.size) > 0 ? Number(sp.size) : null,
 			xs,
 			ys,
 			xFn,
@@ -9566,11 +9853,21 @@ function renderChart(el, view) {
 		}
 	}
 	const lift = Math.min(W, H) * .01;
+	const HIDDEN = [
+		NaN,
+		NaN,
+		NaN
+	];
 	const seriesPoints = (s) => {
 		const pts = [];
 		for (let i = 0; i < s.n; i++) {
+			const x = s.px[i];
 			const y = Number.isFinite(s.py[i]) ? s.py[i] : yDom[0];
-			const [h, v] = toPlane(s.px[i], y);
+			if (s.kind === "points" && (x < xDom[0] || x > xDom[1] || y < yDom[0] || y > yDom[1])) {
+				pts.push(HIDDEN);
+				continue;
+			}
+			const [h, v] = toPlane(x, y);
 			pts.push(at(h, v, lift * 3));
 		}
 		return pts;
@@ -9599,7 +9896,7 @@ function renderChart(el, view) {
 		});
 		const node = s.kind === "points" ? data.point({
 			color: new THREE.Color(...s.color),
-			size: lineW * 3,
+			size: s.size != null ? s.size * (lineW / s.width) : lineW * 3,
 			opacity: s.opacity * lineOpacity,
 			zBias: 2
 		}) : data.line({
@@ -9853,6 +10150,7 @@ function renderChart(el, view) {
 		const tickLen = pxPer * .12;
 		ctx.fillStyle = css(xColor);
 		ctx.strokeStyle = css(xColor, .9);
+		let xLabelH = 0;
 		xt.ticks.forEach((v, k) => {
 			const [h] = toPlane(v, 0);
 			if (h < -1e-6 || h > W + 1e-6) return;
@@ -9862,8 +10160,10 @@ function renderChart(el, view) {
 			ctx.stroke();
 			const txt = xLabels[k] || "";
 			if (!txt) return;
+			const fontPx = fitLatexPx(txt, pxPer * .9, pxPer * .42);
+			xLabelH = Math.max(xLabelH, measureLatex(txt).h * fontPx / 100);
 			drawLatex(ctx, txt, X(h), Y(0) + tickLen + pxPer * .06, {
-				fontPx: fitLatexPx(txt, pxPer * .9, pxPer * .42),
+				fontPx,
 				color: css(xColor),
 				align: "center",
 				vAlign: "top"
@@ -9890,10 +10190,14 @@ function renderChart(el, view) {
 				vAlign: "middle"
 			});
 		});
-		if (xTitle) drawLatex(ctx, xTitle, X(W / 2), Y(0) + pxPer * .82, {
-			fontPx: fitLatexPx(xTitle, W * pxPer, pxPer * .5),
-			color: css(xColor)
-		});
+		if (xTitle) {
+			const top = Y(0) + tickLen + pxPer * .06 + xLabelH + pxPer * .1;
+			drawLatex(ctx, xTitle, X(W / 2), top, {
+				fontPx: fitLatexPx(xTitle, W * pxPer, pxPer * .5),
+				color: css(xColor),
+				vAlign: "top"
+			});
+		}
 		if (yTitle) {
 			const fontPx = fitLatexPx(yTitle, H * pxPer, pxPer * .5);
 			const titleH = measureLatex(yTitle).h * fontPx / 100;
@@ -9902,6 +10206,40 @@ function renderChart(el, view) {
 				fontPx,
 				color: css(yColor),
 				rotate: -Math.PI / 2
+			});
+		}
+		const legendRows = series.filter((sr) => sr.label);
+		if (legendRows.length) {
+			const titleRef = xTitle || yTitle;
+			const fontPx = titleRef ? fitLatexPx(titleRef, (xTitle ? W : H) * pxPer, pxPer * .5) : pxPer * .4;
+			const rowH = fontPx * 1.25, pad = fontPx * .3, swatchW = fontPx * .9, gap = fontPx * .25;
+			let textW = 0;
+			for (const sr of legendRows) textW = Math.max(textW, measureLatex(sr.label).w * fontPx / 100);
+			const boxW = pad * 2 + swatchW + gap + textW;
+			pad * 2 + rowH * legendRows.length;
+			const bx = X(W) - pad - boxW, by = Y(H) + pad;
+			legendRows.forEach((sr, k) => {
+				const cy = by + pad + rowH * (k + .5);
+				const sx = bx + pad;
+				ctx.fillStyle = css(sr.color);
+				ctx.strokeStyle = css(sr.color);
+				if (sr.kind === "points") {
+					ctx.beginPath();
+					ctx.arc(sx + swatchW / 2, cy, fontPx * .2, 0, Math.PI * 2);
+					ctx.fill();
+				} else {
+					ctx.lineWidth = Math.max(1.5, fontPx * .12);
+					ctx.beginPath();
+					ctx.moveTo(sx, cy);
+					ctx.lineTo(sx + swatchW, cy);
+					ctx.stroke();
+				}
+				drawLatex(ctx, sr.label, sx + swatchW + gap, cy, {
+					fontPx,
+					color: css(inkRgb),
+					align: "left",
+					vAlign: "middle"
+				});
 			});
 		}
 		tex.needsUpdate = true;
@@ -13584,6 +13922,223 @@ function setupVideoExportControls() {
 	});
 }
 //#endregion
+//#region src/tensor-slider-pop.ts
+var popState = state;
+var HIDE_DELAY_MS = 450;
+var OVERLAP_PX = 2;
+var _el = null;
+var _range = null;
+var _num = null;
+var _title = null;
+var _reset = null;
+var _hideTimer$1 = null;
+var _cur = null;
+function ensure() {
+	if (_el) return _el;
+	const el = document.createElement("div");
+	el.id = "tslider-pop";
+	el.setAttribute("role", "dialog");
+	el.setAttribute("aria-label", "Edit one cell");
+	el.style.display = "none";
+	const head = document.createElement("div");
+	head.className = "tslider-pop-head";
+	_title = document.createElement("span");
+	_title.className = "tslider-pop-title";
+	head.appendChild(_title);
+	_reset = document.createElement("button");
+	_reset.type = "button";
+	_reset.className = "tslider-pop-reset";
+	_reset.textContent = "↺";
+	_reset.title = "Reset this cell";
+	_reset.setAttribute("aria-label", "Reset this cell");
+	_reset.addEventListener("click", () => {
+		if (!_cur) return;
+		const s = popState.sceneSliders[_cur.id];
+		if (!isTensorSlider(s) || !s.defaults) return;
+		const i = tensorCellIndex(s, _cur.r, _cur.c);
+		if (i >= 0) {
+			setTensorSliderCell(_cur.id, _cur.r, _cur.c, s.defaults[i]);
+			sync();
+		}
+	});
+	head.appendChild(_reset);
+	el.appendChild(head);
+	const body = document.createElement("div");
+	body.className = "tslider-pop-body";
+	_range = document.createElement("input");
+	_range.type = "range";
+	_range.className = "slider-range";
+	_range.addEventListener("input", () => {
+		if (!_cur || !_range) return;
+		setTensorSliderCell(_cur.id, _cur.r, _cur.c, parseFloat(_range.value));
+		if (_num) _num.value = String(currentValue());
+	});
+	body.appendChild(_range);
+	_num = document.createElement("input");
+	_num.type = "number";
+	_num.className = "tslider-pop-num";
+	_num.addEventListener("change", () => {
+		if (!_cur || !_num) return;
+		const v = parseFloat(_num.value);
+		if (Number.isFinite(v)) setTensorSliderCell(_cur.id, _cur.r, _cur.c, v);
+		sync();
+	});
+	_num.addEventListener("keydown", (e) => {
+		if (e.key === "Escape") hideNow();
+	});
+	body.appendChild(_num);
+	el.appendChild(body);
+	el.addEventListener("mouseenter", cancelHide);
+	el.addEventListener("mouseleave", scheduleHide);
+	el.addEventListener("focusin", cancelHide);
+	el.addEventListener("focusout", (e) => {
+		if (e.relatedTarget && el.contains(e.relatedTarget)) return;
+		scheduleHide();
+	});
+	el.addEventListener("pointerdown", (e) => e.stopPropagation());
+	el.addEventListener("mousedown", (e) => e.stopPropagation());
+	el.addEventListener("wheel", (e) => e.stopPropagation());
+	document.body.appendChild(el);
+	_el = el;
+	return el;
+}
+function currentValue() {
+	if (!_cur) return NaN;
+	const s = popState.sceneSliders[_cur.id];
+	if (!isTensorSlider(s)) return NaN;
+	const i = tensorCellIndex(s, _cur.r, _cur.c);
+	return i >= 0 ? s.values[i] : NaN;
+}
+/** Copy the cell's value into both inputs (after a reset or a typed value). */
+function sync() {
+	const v = currentValue();
+	if (_range) _range.value = String(v);
+	if (_num) _num.value = String(v);
+}
+function place(el, anchor) {
+	el.style.display = "block";
+	const w = el.offsetWidth, h = el.offsetHeight;
+	const vw = window.innerWidth, vh = window.innerHeight;
+	let left = anchor.left - 4;
+	let top = anchor.bottom - OVERLAP_PX;
+	if (top + h > vh - 4) top = anchor.top + OVERLAP_PX - h;
+	if (left + w > vw - 4) left = vw - 4 - w;
+	if (left < 4) left = 4;
+	if (top < 4) top = 4;
+	el.style.left = left + "px";
+	el.style.top = top + "px";
+}
+function showTensorCellPop(id, r, c, anchor) {
+	const s = popState.sceneSliders[id];
+	if (!isTensorSlider(s) || tensorCellIndex(s, r, c) < 0) return;
+	const el = ensure();
+	cancelHide();
+	const same = _cur && _cur.id === id && _cur.r === r && _cur.c === c;
+	_cur = {
+		id,
+		r,
+		c
+	};
+	if (_title) _title.innerHTML = renderKaTeX$1(tensorCellName(id, r, c), false);
+	if (_range) {
+		_range.min = String(s.min);
+		_range.max = String(s.max);
+		_range.step = String(s.step);
+		_range.setAttribute("aria-label", "Value of " + tensorCellName(id, r, c));
+	}
+	if (_num) {
+		_num.min = String(s.min);
+		_num.max = String(s.max);
+		_num.step = String(s.step);
+	}
+	sync();
+	if (!same || el.style.display === "none") place(el, anchor);
+}
+function scheduleHide() {
+	cancelHide();
+	if (_scrubbing) return;
+	_hideTimer$1 = setTimeout(hideNow, HIDE_DELAY_MS);
+}
+function cancelHide() {
+	if (_hideTimer$1) {
+		clearTimeout(_hideTimer$1);
+		_hideTimer$1 = null;
+	}
+}
+function hideNow() {
+	cancelHide();
+	if (_el) _el.style.display = "none";
+	_cur = null;
+}
+/** Pixels of horizontal travel that sweep the whole [min, max] range. */
+var SCRUB_PX_PER_RANGE = 240;
+var _scrubbing = false;
+/** True while a press-and-drag on a cell is in progress. */
+function isScrubbing() {
+	return _scrubbing;
+}
+/** Start editing (id, r, c) by dragging sideways from `startX`. Moves are
+*  read from the window until the button lifts, so the cursor can leave the
+*  cell; the pop stays open and follows the value. `capture` may be the
+*  element to hold pointer capture on. */
+function beginCellScrub(id, r, c, startX, pointerId, capture) {
+	const s = popState.sceneSliders[id];
+	if (!isTensorSlider(s)) return;
+	const i = tensorCellIndex(s, r, c);
+	if (i < 0) return;
+	const start = s.values[i];
+	const range = s.max - s.min;
+	const step = s.step > 0 ? s.step : .1;
+	_scrubbing = true;
+	_cur = {
+		id,
+		r,
+		c
+	};
+	cancelHide();
+	document.body.classList.add("tslider-scrubbing");
+	if (capture && pointerId !== void 0 && "setPointerCapture" in capture) try {
+		capture.setPointerCapture(pointerId);
+	} catch {}
+	const onMove = (e) => {
+		if (pointerId !== void 0 && e.pointerId !== pointerId) return;
+		const raw = start + (e.clientX - startX) / SCRUB_PX_PER_RANGE * range;
+		const v = Math.round(raw / step) * step;
+		setTensorSliderCell(id, r, c, Number(v.toFixed(10)));
+		if (_cur && _cur.id === id && _cur.r === r && _cur.c === c) sync();
+	};
+	const onUp = (e) => {
+		if (pointerId !== void 0 && e.pointerId !== pointerId) return;
+		window.removeEventListener("pointermove", onMove, true);
+		window.removeEventListener("pointerup", onUp, true);
+		window.removeEventListener("pointercancel", onUp, true);
+		_scrubbing = false;
+		document.body.classList.remove("tslider-scrubbing");
+		if (capture && pointerId !== void 0 && "releasePointerCapture" in capture) try {
+			capture.releasePointerCapture(pointerId);
+		} catch {}
+		scheduleHide();
+	};
+	window.addEventListener("pointermove", onMove, true);
+	window.addEventListener("pointerup", onUp, true);
+	window.addEventListener("pointercancel", onUp, true);
+}
+/** The cell the pop is editing, or null. */
+function tensorPopTarget() {
+	return _cur ? { ..._cur } : null;
+}
+function setupTensorCellPop() {
+	setTensorCellPopHandler({
+		show: showTensorCellPop,
+		scheduleHide,
+		scrub: beginCellScrub
+	});
+	window.addEventListener("algebench:navchange", hideNow);
+	document.addEventListener("keydown", (e) => {
+		if (e.key === "Escape" && _el && _el.style.display !== "none") hideNow();
+	});
+}
+//#endregion
 //#region src/json-browser.ts
 var browserState = state;
 function _computeSceneSummary(spec) {
@@ -15568,6 +16123,58 @@ function projectToScreen(world, rect) {
 		onScreen: v.x >= -1 && v.x <= 1 && v.y >= -1 && v.y <= 1
 	};
 }
+/** The cell of a bound `tensor` lattice under the cursor, if any: raycast the
+*  plane meshes that carry a `tensorCell` contract and ask the nearest one
+*  which cell the hit point lands in. Independent of Ask-AI pickability. */
+function pickTensorCell(clientX, clientY) {
+	if (!state.camera || !_canvas || !_raycaster) return null;
+	const rect = _canvas.getBoundingClientRect();
+	if (!rect.width || !rect.height) return null;
+	const meshes = [];
+	for (const m of state.planeMeshes) if (m && m.visible && m.userData.tensorCell) meshes.push(m);
+	if (!meshes.length) return null;
+	const ndc = {
+		x: (clientX - rect.left) / rect.width * 2 - 1,
+		y: -((clientY - rect.top) / rect.height * 2 - 1)
+	};
+	_raycaster.setFromCamera(ndc, state.camera);
+	const hits = _raycaster.intersectObjects(meshes, false);
+	for (const h of hits) {
+		const tc = h.object.userData.tensorCell;
+		if (!tc || isHidden(tc.id)) continue;
+		const cell = tc.cellAt([
+			h.point.x,
+			h.point.y,
+			h.point.z
+		]);
+		if (!cell) continue;
+		return {
+			id: tc.id,
+			bind: tc.bind,
+			row: cell.row,
+			col: cell.col
+		};
+	}
+	return null;
+}
+/** True while the cell pop was opened from the lattice (not the panel). */
+var _latticePop = false;
+function hoverTensorCell(ev) {
+	const hit = pickTensorCell(ev.clientX, ev.clientY);
+	if (hit) {
+		const x = ev.clientX + 4, y = ev.clientY + 6;
+		showTensorCellPop(hit.bind, hit.row, hit.col, {
+			left: x,
+			top: y,
+			right: x,
+			bottom: y
+		});
+		_latticePop = true;
+	} else if (_latticePop && tensorPopTarget()) {
+		_latticePop = false;
+		scheduleHide();
+	}
+}
 /** Is the cursor over a pickable object's label element? Labels are
 *  `pointer-events:none`, so the canvas still gets the move and we test their
 *  bounding boxes directly — this catches hovering the text/name tag itself
@@ -15927,6 +16534,7 @@ function buildObjectAskMessage(id) {
 	return ctx ? `${ask}\n\n${ctx}` : ask;
 }
 function onPointerMove(e) {
+	if (isScrubbing()) return;
 	if (e.buttons !== 0) {
 		hideBtnNow();
 		return;
@@ -15951,14 +16559,37 @@ function onPointerMove(e) {
 		const hit = pickAt(ev.clientX, ev.clientY);
 		if (hit) showBtnFor(hit);
 		else hideBtn();
+		hoverTensorCell(ev);
 	});
 }
 function setupObjectPicker() {
 	if (!state.renderer || !state.renderer.domElement) return;
 	_canvas = state.renderer.domElement;
 	_raycaster = new THREE.Raycaster();
+	_canvas.addEventListener("pointerdown", (e) => {
+		if (e.button !== 0) return;
+		const hit = pickTensorCell(e.clientX, e.clientY);
+		if (!hit) return;
+		e.preventDefault();
+		e.stopImmediatePropagation();
+		const x = e.clientX + 4, y = e.clientY + 6;
+		showTensorCellPop(hit.bind, hit.row, hit.col, {
+			left: x,
+			top: y,
+			right: x,
+			bottom: y
+		});
+		_latticePop = true;
+		beginCellScrub(hit.bind, hit.row, hit.col, e.clientX, e.pointerId, _canvas);
+	}, { capture: true });
 	_canvas.addEventListener("pointermove", onPointerMove, { passive: true });
-	_canvas.addEventListener("pointerleave", () => hideBtn(), { passive: true });
+	_canvas.addEventListener("pointerleave", () => {
+		hideBtn();
+		if (_latticePop) {
+			_latticePop = false;
+			scheduleHide();
+		}
+	}, { passive: true });
 	_canvas.addEventListener("pointerdown", () => hideBtnNow(), { passive: true });
 }
 //#endregion
@@ -15997,6 +16628,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 	setupCaptionDrag();
 	setupSceneDescDrag();
 	setupBoardOverlays();
+	setupTensorCellPop();
 	setupJsonViewer();
 	setupContextStatusPopup();
 	setupCamStatusPopup();
@@ -24318,7 +24950,11 @@ function buildChatContext() {
 			min: s.min,
 			max: s.max,
 			step: s.step,
-			label: s.label || id
+			label: s.label || id,
+			...s.kind === "tensor" && s.shape && s.values ? {
+				shape: s.shape,
+				values: s.values
+			} : {}
 		};
 		if (Object.keys(sliders).length > 0) runtime.sliders = sliders;
 	}

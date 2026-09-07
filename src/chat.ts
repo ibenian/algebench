@@ -246,7 +246,9 @@ function buildChatContext(): AlgeBenchChatContext {
                 min: s.min,
                 max: s.max,
                 step: s.step,
-                label: s.label || id
+                label: s.label || id,
+                // A tensor slider's number is NaN; its table is what the model needs.
+                ...(s.kind === 'tensor' && s.shape && s.values ? { shape: s.shape, values: s.values } : {}),
             };
         }
         if (Object.keys(sliders).length > 0) {

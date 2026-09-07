@@ -704,6 +704,10 @@ export interface Element {
    */
   valueExpr?: string;
   /**
+   * TENSOR ONLY. The id of a tensor slider whose table this lattice shows and edits: the cells take the slider's current values (no 'values' or 'valueExpr' needed), and hovering a cell on the plane opens that cell's slider, so the lattice on screen is the editor. The two shapes must agree.
+   */
+  bind?: string;
+  /**
    * TENSOR ONLY. Literal values, either nested (e.g. [[1,2],[3,4]]) or flat row-major (e.g. [1,2,3,4]). Both are normalized to flat + 'shape' internally, so the two spellings are interchangeable and the same flat list can be viewed as [4] or [2,2]. The entry count must match 'shape' exactly — a mismatch is reported rather than padded. Literal values build once and cost NOTHING per frame; prefer this over 'valueExpr' for a fixed matrix. Ignored when 'valueExpr' is present.
    */
   values?: unknown[];
@@ -769,6 +773,10 @@ export interface Element {
      * Draw the samples joined (default) or as dots.
      */
     kind?: 'line' | 'points';
+    /**
+     * Dot size in pixels for kind 'points' (before the Lines width setting scales it). Default: 3 x 'width'.
+     */
+    size?: number;
     /**
      * Line width. Default 2.5.
      */
@@ -1393,13 +1401,24 @@ export interface RemoveDirective {
   type?: string;
 }
 /**
- * Interactive slider that creates a named parameter usable in math.js expressions.
+ * Interactive slider that creates a named parameter usable in math.js expressions. `kind: "tensor"` makes one slider hold a whole matrix: `shape` gives its dimensions, `default` a nested table, and `min`/`max`/`step` apply to every cell. In expressions the id is then a matrix: `wq[row + 1, col + 1]`, `x * wq`, `size(wq)`.
  */
 export interface Slider {
   /**
    * Slider ID used as variable name in expressions. Example: 'pA' creates a variable pA. Must be a valid math.js identifier.
    */
   id: string;
+  /**
+   * 'scalar' (default) is one number on one track. 'tensor' is a lattice of numbers edited cell by cell: the panel shows a grid the shape of 'shape', and hovering a cell opens that cell's slider.
+   */
+  kind?: 'scalar' | 'tensor';
+  /**
+   * TENSOR ONLY. Dimensions of the value, [rows, cols] or [n]. Required when kind is 'tensor'.
+   *
+   * @minItems 1
+   * @maxItems 2
+   */
+  shape?: [number] | [number, number];
   /**
    * Display label for the slider. Supports KaTeX. Example: "$P(A)$". Defaults to the id.
    */
@@ -1417,9 +1436,9 @@ export interface Slider {
    */
   step?: number;
   /**
-   * Initial slider value. Default: midpoint of min and max.
+   * Initial value. A number for a scalar slider (default: midpoint of min and max). For a tensor slider, a nested table matching 'shape' (e.g. [[0,0],[3,0]]) or a flat row-major list; cells outside [min, max] are clamped.
    */
-  default?: number;
+  default?: number | unknown[];
   /**
    * Whether the slider auto-animates (shows play/pause button). Default: false.
    */

@@ -4699,3 +4699,99 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 #mathbox-wrapper.caption-docked .dockable-panel.pos-bottom-left,
 #mathbox-wrapper.caption-docked .dockable-panel.pos-bottom-right,
 #mathbox-wrapper.caption-docked .dockable-panel.pos-bottom-center { bottom: calc(80px + var(--caption-dock-h, 0px)); }
+
+/* ---- Tensor sliders: a grid of readouts on the panel, one cell's slider in a pop ---- */
+.slider-row-tensor {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+}
+.tslider-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    user-select: none;
+}
+.tslider-caret::before {
+    content: '▾';
+    display: inline-block;
+    font-size: 11px;
+    color: color-mix(in srgb, var(--accent-color) 70%, transparent);
+    transition: transform 0.15s;
+}
+.slider-row-tensor.collapsed .tslider-caret::before { transform: rotate(-90deg); }
+.tslider-head .slider-label { flex: 1; max-width: none; }
+.tslider-shape {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.72em;
+    color: color-mix(in srgb, var(--text-color) 55%, transparent);
+}
+.tslider-reset, .tslider-pop-reset {
+    width: 18px;
+    height: 18px;
+    border: 1px solid var(--border-color);
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--accent-color) 12%, transparent);
+    color: color-mix(in srgb, var(--accent-color) 70%, transparent);
+    font-size: 11px;
+    line-height: 1;
+    padding: 0;
+    cursor: pointer;
+}
+.tslider-reset:hover, .tslider-pop-reset:hover { color: var(--text-color); background: color-mix(in srgb, var(--accent-color) 30%, transparent); }
+.tslider-grid {
+    display: grid;
+    gap: 2px;
+    justify-content: start;
+    padding-left: 16px;
+}
+.slider-row-tensor.collapsed .tslider-grid { display: none; }
+.tslider-cell {
+    min-width: 40px;
+    padding: 2px 5px;
+    border: 1px solid color-mix(in srgb, var(--border-color) 70%, transparent);
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--accent-color) 8%, transparent);
+    color: var(--math-fg);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.78em;
+    text-align: right;
+    cursor: ew-resize;
+    transition: background 0.12s, border-color 0.12s;
+}
+.tslider-cell:hover, .tslider-cell:focus-visible {
+    background: color-mix(in srgb, var(--accent-color) 28%, transparent);
+    border-color: color-mix(in srgb, var(--accent-color) 60%, transparent);
+    outline: none;
+}
+.tslider-cell.changed { color: var(--accent-color); border-color: color-mix(in srgb, var(--accent-color) 45%, transparent); }
+
+#tslider-pop {
+    position: fixed;
+    z-index: 1200;
+    min-width: 200px;
+    padding: 6px 8px 8px;
+    background: var(--panel-bg);
+    border: 1px solid color-mix(in srgb, var(--accent-color) 50%, transparent);
+    border-radius: 8px;
+    box-shadow: var(--shadow-md, 0 4px 16px rgba(0,0,0,0.4));
+    color: var(--text-color);
+    font-size: 0.85em;
+}
+.tslider-pop-head { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.tslider-pop-title { flex: 1; color: var(--math-fg); }
+.tslider-pop-title .katex { font-size: 0.95em; }
+.tslider-pop-body { display: flex; align-items: center; gap: 8px; }
+.tslider-pop-body .slider-range { min-width: 120px; }
+.tslider-pop-num {
+    width: 64px;
+    padding: 2px 4px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--panel-bg) 70%, transparent);
+    color: var(--text-color);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.9em;
+}
+body.tslider-scrubbing, body.tslider-scrubbing * { cursor: ew-resize !important; user-select: none; }

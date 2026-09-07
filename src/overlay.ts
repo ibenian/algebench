@@ -114,7 +114,7 @@ interface OverlayState {
     currentStepIndex: number;
     currentSceneSourceLabel: string | null;
     currentSceneSourcePath: string | null;
-    sceneSliders: Record<string, { value: number; label?: string; min?: number; max?: number } | undefined>;
+    sceneSliders: Record<string, { value: number; label?: string; min?: number; max?: number; kind?: string; shape?: number[] | null } | undefined>;
     activeSceneExprFunctions: Record<string, unknown>;
     elementRegistry: Record<string, { hidden: boolean; type?: string } | undefined>;
     legendToggledOff: Set<string>;
@@ -1115,6 +1115,7 @@ export function updateStatusBar(): void {
                     // registry's own keys.
                     const s = overlayState.sceneSliders[id]!;
                     const label = (s.label || id).replace(/\$|\\[a-z]+\{?|\}|_|\^/gi, '').trim() || id;
+                    if (s.kind === 'tensor') return `${label} (${id}) = ${(s.shape || []).join('×')} table  [${s.min} … ${s.max}]`;
                     return `${label} (${id}) = ${Number(s.value).toFixed(2)}  [${s.min} … ${s.max}]`;
                 }).join('\n');
             }
