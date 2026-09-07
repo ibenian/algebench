@@ -708,7 +708,7 @@
         const c = _clampIdx(d, _dm() - 1);
         const pair = c >> 1;
         const pos = Number(p);
-        const ang = (Number.isFinite(pos) ? pos : 0) * THETA_VIS[pair];
+        const ang = (Number.isFinite(pos) ? pos : 0) * _thetaVis(pair);
         const emb = _st().emb;
         const base = i * _dm() + (pair << 1);
         const a = emb[base], b = emb[base + 1];
@@ -719,7 +719,14 @@
     /** The illustrative rotation rate tfRopeEmb uses for dimension pair
      *  `pair` (0 or 1), so a scene can display the number it is actually
      *  drawing with rather than a hard-coded copy that can drift out of sync. */
-    function tfRopeEmbTheta(pair) { return THETA_VIS[_clampIdx(pair, THETA_VIS.length - 1)]; }
+    /** The rate for dimension pair `pair`: the two illustrative values for the
+     *  toy's pairs, and the real schedule 10000^(-2p/d_model) for any further
+     *  pair a wider tf_emb brings, so a reshaped model never sees NaN here. */
+    function _thetaVis(pair) {
+        const p = Math.max(0, Math.round(Number(pair) || 0));
+        return p < THETA_VIS.length ? THETA_VIS[p] : Math.pow(10000, -(2 * p) / _dm());
+    }
+    function tfRopeEmbTheta(pair) { return _thetaVis(pair); }
 
 
     /** The full d_model-dimensional dot product of two RoPE'd embeddings:
@@ -799,11 +806,14 @@
     // arrays per frame while the reader dragged. Reuse is safe here: the
     // function fills both buffers before reading them, returns a number, and
     // keeps nothing across calls, so there is no reentrancy to spoil.
-    const _arcA = new Float64Array(MAX_DIM);
-    const _arcB = new Float64Array(MAX_DIM);
+    let _arcA = new Float64Array(TOY_D_MODEL);
+    let _arcB = new Float64Array(TOY_D_MODEL);
 
     function tfRopeEmbArc(d, slotA, pa, slotB, pb, s) {
         const c = _clampIdx(d, _dm() - 1);
+        // Grow the scratch to the model's width once; a reshaped model must
+        // not write past the end of a buffer sized for the toy.
+        if (_arcA.length < _dm()) { _arcA = new Float64Array(_dm()); _arcB = new Float64Array(_dm()); }
         const A = _arcA;
         const B = _arcB;
         let na = 0, nb = 0;
