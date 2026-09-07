@@ -1,9 +1,7 @@
 {
   "name": "transformer",
   "description": "One fixed six-token decoder-only forward pass — \"the cat sat on the mat\" at d_model=4, n_heads=2, d_k=2, one head shown, causal. Computes embeddings, sinusoidal positional encoding, the Q/K/V projections, raw and scaled scores, the causal mask, softmax attention weights and the output rows, all from a single slider-keyed cache. Functions are available in the expression sandbox after importing this domain. Importing a domain does NOT require unsafe: true.",
-
   "honesty_note": "THE WEIGHTS ARE HAND-CONSTRUCTED FOR LEGIBILITY, NOT LEARNED. W_Q, W_K, W_V and the embedding table were chosen so that one head shows a clean subject-verb dependency: the verb 'sat' attends 97.09% of its softmax mass to the subject 'cat'. Real trained weights at d_model=4 produce noise, not interpretable heads. Any lesson using this domain MUST label the weights on screen as designed-for-teaching. A lesson advertising mathematical accuracy while presenting invented attention patterns as learned ones is dishonest at exactly the point it claims rigour.",
-
   "implementation": {
     "toy_model": "n=6 tokens, d_model=4, d_k=2 per head, n_heads=2 (one shown). d_k != d_model is deliberate: it is what makes the 1/sqrt(d_k) scaling visibly about the HEAD dimension, which is the usual error.",
     "embedding_table": "[[1,0,0,0] the, [0,1,0,0] cat, [0,0,1,0] sat, [0,0,0,1] on, [1,0,0,0] the, [0.5,0.5,0,0.5] mat]. Note 'the' occupies slots 0 and 4 with the IDENTICAL row — the two separate only once positional encoding is added.",
@@ -13,7 +11,6 @@
     "cache": "One shared cache keyed on the string of all forward-pass slider values, rebuilt only when a slider changes. A 6x6 tensor with a valueExpr costs 36 evaluations per frame; without the cache each would recompute the whole pass. With it, a frame is 36 array reads. The generic i.i.d. sampler has its OWN separate cache keyed on dimension only, because it is a different object and must not be invalidated by toy sliders.",
     "storage": "Q, K, V, O as Float64Array(12); S, S_scaled, A as Float64Array(36)."
   },
-
   "verified_values": {
     "note": "Every figure below is asserted by scripts/check_transformer_domain.py. If a change breaks one, the lesson's arithmetic is wrong, not the test.",
     "x_row0": "[1.0000, 1.0000, 0.0000, 1.0000]",
@@ -27,9 +24,7 @@
     "rope_identity": "tfRopeDot(4,1) = tfRopeDot(3,0) = 0.918150",
     "permutation_equivariance": "tfOutNoPos with shuffle on equals the shuffle-off rows reordered by [5,0,3,2,1,4], max deviation 2.2e-16"
   },
-
-  "note": "MOST functions read slider state at call time — either by ID directly, or through the cached forward pass _st(), which is keyed on s1_shuffle, s1_pe, s2_rope, s3_scale, s3_mask and s3_maskafter. Eight are PURE in their explicit arguments and consult no slider at all: tfPE, tfRopeQ, tfRopeK, tfRopeDot, tfRopeEmbTheta, tfDotSample, tfDotSampleScaled and tfSampleVar. Note tfRopeEmbDot is NOT among them — it reaches _st() through tfRopeEmb. The scene must define sliders with the IDs listed in sliderContracts for the lesson to respond to user input. Functions clamp their index arguments, so an out-of-range row or column returns an edge value rather than NaN.",
-
+  "note": "MOST functions read slider state at call time — either by ID directly, or through the cached forward pass _st(), which is keyed on s1_shuffle, s1_pe, s2_rope, s3_scale, s3_mask, s3_maskafter and the 48 sandbox override sliders (s4_e*, s4_wq*, s4_wk*, s4_wv*), each of which defaults to the hand-built constant when the scene does not declare it. Eight are PURE in their explicit arguments and consult no slider at all: tfPE, tfRopeQ, tfRopeK, tfRopeDot, tfRopeEmbTheta, tfDotSample, tfDotSampleScaled and tfSampleVar. Note tfRopeEmbDot is NOT among them — it reaches _st() through tfRopeEmb. The scene must define sliders with the IDs listed in sliderContracts for the lesson to respond to user input. Functions clamp their index arguments, so an out-of-range row or column returns an edge value rather than NaN.",
   "sliderContracts": {
     "s1_shuffle": {
       "description": "Token shuffle. 0 = original order 'the cat sat on the mat'; 1 = permuted by [5,0,3,2,1,4]. Positions never shuffle — only the tokens sitting in them.",
@@ -110,12 +105,349 @@
       "scenes": [
         3
       ]
+    },
+    "s4_e00": {
+      "description": "Sandbox override: component 0 of embedding row 0 ('the'). Absent, the hand-built 1 stands; a scene that declares it must default it to 1. Rows 0 and 4 are both 'the' and start identical; overriding one alone makes the two 'the's differ, which the sandbox may do on purpose.",
+      "default": 1,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_e01": {
+      "description": "Sandbox override: component 1 of embedding row 0 ('the'). Absent, the hand-built 0 stands; a scene that declares it must default it to 0. Rows 0 and 4 are both 'the' and start identical; overriding one alone makes the two 'the's differ, which the sandbox may do on purpose.",
+      "default": 0,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_e02": {
+      "description": "Sandbox override: component 2 of embedding row 0 ('the'). Absent, the hand-built 0 stands; a scene that declares it must default it to 0. Rows 0 and 4 are both 'the' and start identical; overriding one alone makes the two 'the's differ, which the sandbox may do on purpose.",
+      "default": 0,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_e03": {
+      "description": "Sandbox override: component 3 of embedding row 0 ('the'). Absent, the hand-built 0 stands; a scene that declares it must default it to 0. Rows 0 and 4 are both 'the' and start identical; overriding one alone makes the two 'the's differ, which the sandbox may do on purpose.",
+      "default": 0,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_e10": {
+      "description": "Sandbox override: component 0 of embedding row 1 ('cat'). Absent, the hand-built 0 stands; a scene that declares it must default it to 0. Rows 0 and 4 are both 'the' and start identical; overriding one alone makes the two 'the's differ, which the sandbox may do on purpose.",
+      "default": 0,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_e11": {
+      "description": "Sandbox override: component 1 of embedding row 1 ('cat'). Absent, the hand-built 1 stands; a scene that declares it must default it to 1. Rows 0 and 4 are both 'the' and start identical; overriding one alone makes the two 'the's differ, which the sandbox may do on purpose.",
+      "default": 1,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_e12": {
+      "description": "Sandbox override: component 2 of embedding row 1 ('cat'). Absent, the hand-built 0 stands; a scene that declares it must default it to 0. Rows 0 and 4 are both 'the' and start identical; overriding one alone makes the two 'the's differ, which the sandbox may do on purpose.",
+      "default": 0,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_e13": {
+      "description": "Sandbox override: component 3 of embedding row 1 ('cat'). Absent, the hand-built 0 stands; a scene that declares it must default it to 0. Rows 0 and 4 are both 'the' and start identical; overriding one alone makes the two 'the's differ, which the sandbox may do on purpose.",
+      "default": 0,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_e20": {
+      "description": "Sandbox override: component 0 of embedding row 2 ('sat'). Absent, the hand-built 0 stands; a scene that declares it must default it to 0. Rows 0 and 4 are both 'the' and start identical; overriding one alone makes the two 'the's differ, which the sandbox may do on purpose.",
+      "default": 0,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_e21": {
+      "description": "Sandbox override: component 1 of embedding row 2 ('sat'). Absent, the hand-built 0 stands; a scene that declares it must default it to 0. Rows 0 and 4 are both 'the' and start identical; overriding one alone makes the two 'the's differ, which the sandbox may do on purpose.",
+      "default": 0,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_e22": {
+      "description": "Sandbox override: component 2 of embedding row 2 ('sat'). Absent, the hand-built 1 stands; a scene that declares it must default it to 1. Rows 0 and 4 are both 'the' and start identical; overriding one alone makes the two 'the's differ, which the sandbox may do on purpose.",
+      "default": 1,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_e23": {
+      "description": "Sandbox override: component 3 of embedding row 2 ('sat'). Absent, the hand-built 0 stands; a scene that declares it must default it to 0. Rows 0 and 4 are both 'the' and start identical; overriding one alone makes the two 'the's differ, which the sandbox may do on purpose.",
+      "default": 0,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_e30": {
+      "description": "Sandbox override: component 0 of embedding row 3 ('on'). Absent, the hand-built 0 stands; a scene that declares it must default it to 0. Rows 0 and 4 are both 'the' and start identical; overriding one alone makes the two 'the's differ, which the sandbox may do on purpose.",
+      "default": 0,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_e31": {
+      "description": "Sandbox override: component 1 of embedding row 3 ('on'). Absent, the hand-built 0 stands; a scene that declares it must default it to 0. Rows 0 and 4 are both 'the' and start identical; overriding one alone makes the two 'the's differ, which the sandbox may do on purpose.",
+      "default": 0,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_e32": {
+      "description": "Sandbox override: component 2 of embedding row 3 ('on'). Absent, the hand-built 0 stands; a scene that declares it must default it to 0. Rows 0 and 4 are both 'the' and start identical; overriding one alone makes the two 'the's differ, which the sandbox may do on purpose.",
+      "default": 0,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_e33": {
+      "description": "Sandbox override: component 3 of embedding row 3 ('on'). Absent, the hand-built 1 stands; a scene that declares it must default it to 1. Rows 0 and 4 are both 'the' and start identical; overriding one alone makes the two 'the's differ, which the sandbox may do on purpose.",
+      "default": 1,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_e40": {
+      "description": "Sandbox override: component 0 of embedding row 4 ('the'). Absent, the hand-built 1 stands; a scene that declares it must default it to 1. Rows 0 and 4 are both 'the' and start identical; overriding one alone makes the two 'the's differ, which the sandbox may do on purpose.",
+      "default": 1,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_e41": {
+      "description": "Sandbox override: component 1 of embedding row 4 ('the'). Absent, the hand-built 0 stands; a scene that declares it must default it to 0. Rows 0 and 4 are both 'the' and start identical; overriding one alone makes the two 'the's differ, which the sandbox may do on purpose.",
+      "default": 0,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_e42": {
+      "description": "Sandbox override: component 2 of embedding row 4 ('the'). Absent, the hand-built 0 stands; a scene that declares it must default it to 0. Rows 0 and 4 are both 'the' and start identical; overriding one alone makes the two 'the's differ, which the sandbox may do on purpose.",
+      "default": 0,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_e43": {
+      "description": "Sandbox override: component 3 of embedding row 4 ('the'). Absent, the hand-built 0 stands; a scene that declares it must default it to 0. Rows 0 and 4 are both 'the' and start identical; overriding one alone makes the two 'the's differ, which the sandbox may do on purpose.",
+      "default": 0,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_e50": {
+      "description": "Sandbox override: component 0 of embedding row 5 ('mat'). Absent, the hand-built 0.5 stands; a scene that declares it must default it to 0.5. Rows 0 and 4 are both 'the' and start identical; overriding one alone makes the two 'the's differ, which the sandbox may do on purpose.",
+      "default": 0.5,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_e51": {
+      "description": "Sandbox override: component 1 of embedding row 5 ('mat'). Absent, the hand-built 0.5 stands; a scene that declares it must default it to 0.5. Rows 0 and 4 are both 'the' and start identical; overriding one alone makes the two 'the's differ, which the sandbox may do on purpose.",
+      "default": 0.5,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_e52": {
+      "description": "Sandbox override: component 2 of embedding row 5 ('mat'). Absent, the hand-built 0 stands; a scene that declares it must default it to 0. Rows 0 and 4 are both 'the' and start identical; overriding one alone makes the two 'the's differ, which the sandbox may do on purpose.",
+      "default": 0,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_e53": {
+      "description": "Sandbox override: component 3 of embedding row 5 ('mat'). Absent, the hand-built 0.5 stands; a scene that declares it must default it to 0.5. Rows 0 and 4 are both 'the' and start identical; overriding one alone makes the two 'the's differ, which the sandbox may do on purpose.",
+      "default": 0.5,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_wq00": {
+      "description": "Sandbox override: W_Q[0][0] (input dim 0 -> head dim 0, row-vector convention). Absent, the hand-built 0 stands; a scene that declares it must default it to 0.",
+      "default": 0,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_wq01": {
+      "description": "Sandbox override: W_Q[0][1] (input dim 0 -> head dim 1, row-vector convention). Absent, the hand-built 0 stands; a scene that declares it must default it to 0.",
+      "default": 0,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_wq10": {
+      "description": "Sandbox override: W_Q[1][0] (input dim 1 -> head dim 0, row-vector convention). Absent, the hand-built 0 stands; a scene that declares it must default it to 0.",
+      "default": 0,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_wq11": {
+      "description": "Sandbox override: W_Q[1][1] (input dim 1 -> head dim 1, row-vector convention). Absent, the hand-built 0 stands; a scene that declares it must default it to 0.",
+      "default": 0,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_wq20": {
+      "description": "Sandbox override: W_Q[2][0] (input dim 2 -> head dim 0, row-vector convention). Absent, the hand-built 3 stands; a scene that declares it must default it to 3.",
+      "default": 3,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_wq21": {
+      "description": "Sandbox override: W_Q[2][1] (input dim 2 -> head dim 1, row-vector convention). Absent, the hand-built 0 stands; a scene that declares it must default it to 0.",
+      "default": 0,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_wq30": {
+      "description": "Sandbox override: W_Q[3][0] (input dim 3 -> head dim 0, row-vector convention). Absent, the hand-built 0 stands; a scene that declares it must default it to 0.",
+      "default": 0,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_wq31": {
+      "description": "Sandbox override: W_Q[3][1] (input dim 3 -> head dim 1, row-vector convention). Absent, the hand-built 1 stands; a scene that declares it must default it to 1.",
+      "default": 1,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_wk00": {
+      "description": "Sandbox override: W_K[0][0] (input dim 0 -> head dim 0, row-vector convention). Absent, the hand-built 0 stands; a scene that declares it must default it to 0.",
+      "default": 0,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_wk01": {
+      "description": "Sandbox override: W_K[0][1] (input dim 0 -> head dim 1, row-vector convention). Absent, the hand-built 0 stands; a scene that declares it must default it to 0.",
+      "default": 0,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_wk10": {
+      "description": "Sandbox override: W_K[1][0] (input dim 1 -> head dim 0, row-vector convention). Absent, the hand-built 3 stands; a scene that declares it must default it to 3.",
+      "default": 3,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_wk11": {
+      "description": "Sandbox override: W_K[1][1] (input dim 1 -> head dim 1, row-vector convention). Absent, the hand-built 0 stands; a scene that declares it must default it to 0.",
+      "default": 0,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_wk20": {
+      "description": "Sandbox override: W_K[2][0] (input dim 2 -> head dim 0, row-vector convention). Absent, the hand-built 0 stands; a scene that declares it must default it to 0.",
+      "default": 0,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_wk21": {
+      "description": "Sandbox override: W_K[2][1] (input dim 2 -> head dim 1, row-vector convention). Absent, the hand-built 0 stands; a scene that declares it must default it to 0.",
+      "default": 0,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_wk30": {
+      "description": "Sandbox override: W_K[3][0] (input dim 3 -> head dim 0, row-vector convention). Absent, the hand-built 0 stands; a scene that declares it must default it to 0.",
+      "default": 0,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_wk31": {
+      "description": "Sandbox override: W_K[3][1] (input dim 3 -> head dim 1, row-vector convention). Absent, the hand-built 1 stands; a scene that declares it must default it to 1.",
+      "default": 1,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_wv00": {
+      "description": "Sandbox override: W_V[0][0] (input dim 0 -> head dim 0, row-vector convention). Absent, the hand-built 1 stands; a scene that declares it must default it to 1.",
+      "default": 1,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_wv01": {
+      "description": "Sandbox override: W_V[0][1] (input dim 0 -> head dim 1, row-vector convention). Absent, the hand-built 0 stands; a scene that declares it must default it to 0.",
+      "default": 0,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_wv10": {
+      "description": "Sandbox override: W_V[1][0] (input dim 1 -> head dim 0, row-vector convention). Absent, the hand-built 0 stands; a scene that declares it must default it to 0.",
+      "default": 0,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_wv11": {
+      "description": "Sandbox override: W_V[1][1] (input dim 1 -> head dim 1, row-vector convention). Absent, the hand-built 1 stands; a scene that declares it must default it to 1.",
+      "default": 1,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_wv20": {
+      "description": "Sandbox override: W_V[2][0] (input dim 2 -> head dim 0, row-vector convention). Absent, the hand-built 0 stands; a scene that declares it must default it to 0.",
+      "default": 0,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_wv21": {
+      "description": "Sandbox override: W_V[2][1] (input dim 2 -> head dim 1, row-vector convention). Absent, the hand-built 0 stands; a scene that declares it must default it to 0.",
+      "default": 0,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_wv30": {
+      "description": "Sandbox override: W_V[3][0] (input dim 3 -> head dim 0, row-vector convention). Absent, the hand-built 0 stands; a scene that declares it must default it to 0.",
+      "default": 0,
+      "scenes": [
+        4
+      ]
+    },
+    "s4_wv31": {
+      "description": "Sandbox override: W_V[3][1] (input dim 3 -> head dim 1, row-vector convention). Absent, the hand-built 0 stands; a scene that declares it must default it to 0.",
+      "default": 0,
+      "scenes": [
+        4
+      ]
     }
   },
-
   "functions": {
     "tfPerm(k)": "Source token index displayed at slot k. Identity when s1_shuffle=0.",
     "tfEmb(i,d)": "Component d (0..3) of the raw embedding at slot i, shuffle applied, NO positional encoding.",
+    "tfEmbBase(r,d)": "Component d of embedding TOKEN row r (0..5, no shuffle) as currently in force: the hand-built table unless slider s4_e<r><d> overrides it. Use it to draw the embedding table itself; tfEmb(i,d) is the per-SLOT read with the shuffle applied.",
+    "tfW(m,r,c)": "Entry (r, c) of a projection matrix in force: m = 0 for W_Q, 1 for W_K, 2 for W_V; r is the input dim (0..3), c the head dim (0..1), row-vector convention q = x W_Q. The hand-built value unless slider s4_w<q|k|v><r><c> overrides it. Use it to draw the three matrices as lattices.",
     "tfPE(i,d)": "Component d of the sinusoidal positional encoding for POSITION i. Never shuffles. The position argument is CONTINUOUS — it is neither rounded to a slot nor clamped to N-1 — so a scene can sweep it and watch dims 0 and 1 trace the unit circle sin(p), cos(p). Integer slot arguments are unaffected.",
     "tfX(i,d)": "Layer input x_i = tfEmb(i,d) + s1_pe * tfPE(i,d) — except when s2_rope = 1, where the additive term is forced off and x_i = tfEmb(i,d) exactly. RoPE replaces additive PE; the two are never summed.",
     "tfOutNoPos(i,d)": "Component d (0..1) of UNMASKED, POSITION-FREE attention over the raw embeddings. The permutation-equivariance object and nothing else — computed by a separate pass, because reusing the masked one would silently break the theorem. Still scaled dot-product attention, so it divides by sqrt(d_k).",
