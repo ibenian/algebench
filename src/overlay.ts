@@ -329,7 +329,9 @@ export function updateTitle(spec: OverlayScene | null | undefined): void {
     } else if (spec && spec.title) {
         descEl.innerHTML = '';
     } else {
-        descEl.innerHTML = 'Load a scene to begin';
+        // Same body wrapper as real content, so the placeholder gets the
+        // overlay's padding (the outer element carries none).
+        descEl.innerHTML = '<div class="bo-body">Load a scene to begin</div>';
     }
     updateBoardDockHeight();
     if (sourceEl) {

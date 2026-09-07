@@ -2465,7 +2465,7 @@ function updateTitle(spec) {
 		fillBoardOverlay(descEl, renderKaTeX$1(spec.description, false), btn);
 		resetSceneDescPosition(descEl);
 	} else if (spec && spec.title) descEl.innerHTML = "";
-	else descEl.innerHTML = "Load a scene to begin";
+	else descEl.innerHTML = "<div class=\"bo-body\">Load a scene to begin</div>";
 	updateBoardDockHeight();
 	if (sourceEl) {
 		sourceEl.textContent = overlayState.currentSceneSourceLabel ? `- ${overlayState.currentSceneSourceLabel}` : "- no file";
