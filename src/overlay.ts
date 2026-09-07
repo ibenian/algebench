@@ -1435,7 +1435,8 @@ function _boardSizeKey(el: HTMLElement): string {
 /** True when the mousedown landed on the overlay chrome (buttons, grip, or the
  *  body's scrollbar) rather than on the text — those must not start a drag. */
 export function isBoardChromeEvent(e: MouseEvent): boolean {
-    const t = e.target as HTMLElement;
+    if (!(e.target instanceof Element)) return false;
+    const t = e.target;
     if (t.closest('.ai-ask-btn, .bo-side, .bo-resize')) return true;
     const body = t.closest<HTMLElement>('.bo-body');
     if (body && t === body && body.offsetWidth > 0) {
