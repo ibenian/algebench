@@ -4593,6 +4593,14 @@ body.rotating, body.rotating * { cursor: grabbing !important; }
 }
 #scene-description:empty { display: none; }
 #step-caption.sized, #scene-description.sized { max-width: calc(100% - 16px); }
+/* While the step caption shows, the description is faded out by the sibling
+   rule above; it also has to leave hit-testing, tab order and the a11y tree
+   (its dock and Ask-AI buttons are focusable), so drop visibility after the
+   fade, the same way #step-caption.hidden does. */
+#step-caption:not(.hidden) ~ #scene-description {
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0s linear 0.3s;
+}
 #step-caption.resizing, #scene-description.resizing { user-select: none; transition: none; }
 .bo-body {
     flex: 1 1 auto;
