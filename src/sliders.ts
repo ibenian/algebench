@@ -18,7 +18,10 @@ export interface SliderDef extends Slider {
     animationMode?: string;
 }
 
-/** A registered slider, as registerSliders() builds it into sliderState.sceneSliders. */
+/** A registered slider, as registerSliders() builds it into sliderState.sceneSliders.
+ *  A tensor slider (`kind: 'tensor'`) keeps its table in `values` (flat,
+ *  row-major, `shape` long) and leaves `value` NaN, so every scalar path
+ *  (deep links, the status pill, animation) treats it as absent. */
 export interface SceneSlider {
     value: number;
     min: number;
@@ -26,6 +29,12 @@ export interface SceneSlider {
     step: number;
     label: string;
     default: number | undefined;
+    kind: 'scalar' | 'tensor';
+    shape: number[] | null;
+    values: number[] | null;
+    defaults: number[] | null;
+    /** The nested table handed to expressions; rebuilt lazily after an edit. */
+    _nested: number[] | number[][] | null;
     animate: boolean;
     animateMode: string;
     autoplay: boolean;
@@ -111,6 +120,124 @@ interface SliderState {
 const sliderState = state as unknown as SliderState;
 
 // ----- Slider helpers -----
+
+/** Flatten a tensor slider's `default` (nested or flat) to `shape` numbers,
+ *  clamped to [min, max]; a missing or malformed table reads as all zeros
+ *  (clamped), and a short one is padded the same way. */
+function _flattenTable(raw: unknown, shape: number[], min: number, max: number): number[] {
+    const n = shape.reduce((a, b) => a * b, 1);
+    const flat: number[] = [];
+    const walk = (node: unknown) => {
+        if (Array.isArray(node)) { for (const v of node) walk(v); return; }
+        const x = Number(node);
+        flat.push(Number.isFinite(x) ? x : 0);
+    };
+    if (raw !== undefined && raw !== null) walk(raw);
+    const out = new Array<number>(n);
+    for (let i = 0; i < n; i++) {
+        const v = i < flat.length ? flat[i]! : 0;
+        out[i] = Math.max(min, Math.min(max, v));
+    }
+    return out;
+}
+
+function _parseSliderShape(raw: unknown): number[] | null {
+    if (!Array.isArray(raw) || raw.length < 1 || raw.length > 2) return null;
+    const dims = raw.map(v => Number(v));
+    return dims.every(d => Number.isInteger(d) && d >= 1) ? dims : null;
+}
+
+export function isTensorSlider(s: SceneSlider | undefined): s is SceneSlider & { shape: number[]; values: number[] } {
+    return !!s && s.kind === 'tensor' && !!s.shape && !!s.values;
+}
+
+/** Rows and columns of a tensor slider's grid ([n] is one row of n). */
+export function tensorSliderGrid(s: SceneSlider): { rows: number; cols: number } {
+    const shape = s.shape || [1];
+    return shape.length === 2 ? { rows: shape[0]!, cols: shape[1]! } : { rows: 1, cols: shape[0]! };
+}
+
+/** The cell's flat index, or -1 when (r, c) is off the grid. */
+export function tensorCellIndex(s: SceneSlider, r: number, c: number): number {
+    const { rows, cols } = tensorSliderGrid(s);
+    if (!Number.isInteger(r) || !Number.isInteger(c) || r < 0 || c < 0 || r >= rows || c >= cols) return -1;
+    return r * cols + c;
+}
+
+/** Display name of one cell: the label plus [r][c] (or [i] for a vector). */
+export function tensorCellName(id: string, r: number, c: number): string {
+    const s = sliderState.sceneSliders[id];
+    const base = (s && s.label) || id;
+    const shape = (s && s.shape) || [1];
+    return shape.length === 2 ? `${base}[${r}][${c}]` : `${base}[${c}]`;
+}
+
+/** Set one cell of a tensor slider and re-evaluate everything that reads it.
+ *  A fresh `values` array is written so an undo snapshot taken earlier keeps
+ *  the old table. Returns false for an unknown slider or an off-grid cell. */
+export function setTensorSliderCell(id: string, r: number, c: number, value: number): boolean {
+    const s = sliderState.sceneSliders[id];
+    if (!isTensorSlider(s) || !Number.isFinite(value)) return false;
+    const i = tensorCellIndex(s, r, c);
+    if (i < 0) return false;
+    const v = Math.max(s.min, Math.min(s.max, value));
+    if (s.values[i] === v) return true;
+    const next = s.values.slice();
+    next[i] = v;
+    s.values = next;
+    s._nested = null;
+    _refreshTensorCells(id);
+    recompileActiveExprs();
+    syncSliderState();
+    try { window.dispatchEvent(new CustomEvent('algebench:sliderchange')); } catch (_) { /* ignore */ }
+    return true;
+}
+
+/** Put every cell of a tensor slider back to the step's default table. */
+export function resetTensorSlider(id: string): boolean {
+    const s = sliderState.sceneSliders[id];
+    if (!isTensorSlider(s) || !s.defaults) return false;
+    s.values = s.defaults.slice();
+    s._nested = null;
+    _refreshTensorCells(id);
+    recompileActiveExprs();
+    syncSliderState();
+    try { window.dispatchEvent(new CustomEvent('algebench:sliderchange')); } catch (_) { /* ignore */ }
+    return true;
+}
+
+export function formatTensorCell(v: number): string {
+    if (!Number.isFinite(v)) return '·';
+    const a = Math.abs(v);
+    return a >= 100 ? v.toFixed(0) : a >= 10 ? v.toFixed(1) : v.toFixed(2);
+}
+
+/** Rewrite the readouts of a tensor slider's grid on the panel. */
+function _refreshTensorCells(id: string): void {
+    const s = sliderState.sceneSliders[id];
+    if (!isTensorSlider(s)) return;
+    const cells = document.querySelectorAll<HTMLElement>(`.tslider-cell[data-slider-id="${id}"]`);
+    for (const cell of cells) {
+        const i = Number(cell.dataset.cell);
+        const v = s.values[i];
+        if (v === undefined) continue;
+        cell.textContent = formatTensorCell(v);
+        cell.classList.toggle('changed', !!s.defaults && Math.abs(v - s.defaults[i]!) > 1e-9);
+    }
+}
+
+/** The hover editor for a tensor cell lives in tensor-slider-pop.ts; it
+ *  registers itself here so this module does not import it (the pop module
+ *  already imports this one). */
+export interface TensorCellPopHandler {
+    show(id: string, r: number, c: number, anchor: DOMRect | { left: number; top: number; right: number; bottom: number }): void;
+    scheduleHide(): void;
+    /** Press-and-drag editing from `startX`; see beginCellScrub in tensor-slider-pop.ts. */
+    scrub?(id: string, r: number, c: number, startX: number, pointerId?: number, capture?: Element): void;
+}
+let _tensorPop: TensorCellPopHandler | null = null;
+export function setTensorCellPopHandler(h: TensorCellPopHandler | null): void { _tensorPop = h; }
+export function getTensorCellPopHandler(): TensorCellPopHandler | null { return _tensorPop; }
 
 export function getSliderIds(): string[] {
     const ids = Object.keys(sliderState.sceneSliders);
@@ -295,15 +422,33 @@ export function registerSliders(
             if (def.reset) {
                 prevStates[def.id] = { ...prev };
             }
+            // Re-insert so the panel follows THIS step's declared order. A
+            // slider carried over from an earlier step otherwise keeps its old
+            // slot in the record and lands above the ones declared before it.
+            delete sliderState.sceneSliders[def.id];
         }
+        const min = def.min !== undefined ? def.min : 0;
+        const max = def.max !== undefined ? def.max : 1;
+        const shape = def.kind === 'tensor' ? _parseSliderShape(def.shape) : null;
+        const isTensor = !!shape;
+        if (def.kind === 'tensor' && !shape) {
+            console.warn(`slider "${def.id}": kind "tensor" needs a shape of one or two positive integers; got`, def.shape);
+        }
+        const defaults = shape ? _flattenTable(def.default, shape, min, max) : null;
+        const scalarDefault = typeof def.default === 'number' ? def.default : undefined;
         sliderState.sceneSliders[def.id] = {
-            value: def.default !== undefined ? def.default : (def.min + def.max) / 2,
-            min: def.min !== undefined ? def.min : 0,
-            max: def.max !== undefined ? def.max : 1,
+            value: isTensor ? NaN : (scalarDefault !== undefined ? scalarDefault : (min + max) / 2),
+            min,
+            max,
             step: def.step !== undefined ? def.step : 0.1,
             label: def.label || def.id,
-            default: def.default,
-            animate: def.animate || false,
+            default: isTensor ? undefined : scalarDefault,
+            kind: isTensor ? 'tensor' : 'scalar',
+            shape,
+            values: defaults ? defaults.slice() : null,
+            defaults,
+            _nested: null,
+            animate: !isTensor && (def.animate || false),
             animateMode: String(def.animateMode || def.animationMode || 'loop').toLowerCase(),
             autoplay: def.autoplay !== false,
             duration: def.duration || 3000,
@@ -384,6 +529,10 @@ export function buildSliderOverlay(): void {
         // Non-null: `ids` comes from getSliderIds(), i.e. the record's own keys.
         // A missing entry must still throw here, exactly as the JS did.
         const s = sliderState.sceneSliders[id]!;
+        if (isTensorSlider(s)) {
+            overlay.appendChild(_buildTensorRow(id, s));
+            continue;
+        }
         const row = document.createElement('div');
         row.className = 'slider-row';
 
@@ -457,6 +606,84 @@ export function buildSliderOverlay(): void {
     }
     overlay.classList.remove('hidden');
     syncSliderState();
+}
+
+/** One panel row for a tensor slider: a header (label, shape, reset) over a
+ *  grid of readouts the shape of the value. Hovering a readout opens that
+ *  cell's slider (see tensor-slider-pop.ts); clicking the header folds the grid. */
+function _buildTensorRow(id: string, s: SceneSlider & { shape: number[]; values: number[] }): HTMLElement {
+    const { rows, cols } = tensorSliderGrid(s);
+    const row = document.createElement('div');
+    row.className = 'slider-row slider-row-tensor';
+    row.dataset.sliderId = id;
+
+    const head = document.createElement('div');
+    head.className = 'tslider-head';
+    const caret = document.createElement('span');
+    caret.className = 'tslider-caret';
+    head.appendChild(caret);
+    const labelSpan = document.createElement('span');
+    labelSpan.className = 'slider-label';
+    labelSpan.innerHTML = renderKaTeX(s.label || id, false);
+    labelSpan.title = stripLatex(s.label || id);
+    head.appendChild(labelSpan);
+    const shapeSpan = document.createElement('span');
+    shapeSpan.className = 'tslider-shape';
+    shapeSpan.textContent = s.shape.join('×');
+    head.appendChild(shapeSpan);
+    const reset = document.createElement('button');
+    reset.type = 'button';
+    reset.className = 'tslider-reset';
+    reset.textContent = '↺';
+    reset.title = 'Reset every cell to the default';
+    reset.setAttribute('aria-label', reset.title);
+    reset.addEventListener('mousedown', e => e.stopPropagation());
+    reset.addEventListener('click', (e) => { e.stopPropagation(); resetTensorSlider(id); });
+    head.appendChild(reset);
+    row.appendChild(head);
+
+    const grid = document.createElement('div');
+    grid.className = 'tslider-grid';
+    grid.style.gridTemplateColumns = `repeat(${cols}, auto)`;
+    for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+            const i = r * cols + c;
+            const cell = document.createElement('button');
+            cell.type = 'button';
+            cell.className = 'tslider-cell';
+            cell.dataset.sliderId = id;
+            cell.dataset.cell = String(i);
+            cell.textContent = formatTensorCell(s.values[i]!);
+            cell.title = stripLatex(tensorCellName(id, r, c));
+            if (s.defaults && Math.abs(s.values[i]! - s.defaults[i]!) > 1e-9) cell.classList.add('changed');
+            const open = () => { if (_tensorPop) _tensorPop.show(id, r, c, cell.getBoundingClientRect()); };
+            cell.addEventListener('mouseenter', open);
+            cell.addEventListener('focus', open);
+            cell.addEventListener('click', open);
+            // Press and drag sideways scrubs the value without visiting the pop.
+            cell.addEventListener('pointerdown', (e) => {
+                if (e.button !== 0) return;
+                e.preventDefault(); e.stopPropagation();
+                open();
+                if (_tensorPop && _tensorPop.scrub) _tensorPop.scrub(id, r, c, e.clientX, e.pointerId, cell);
+            });
+            cell.addEventListener('mouseleave', () => { if (_tensorPop) _tensorPop.scheduleHide(); });
+            cell.addEventListener('blur', () => { if (_tensorPop) _tensorPop.scheduleHide(); });
+            grid.appendChild(cell);
+        }
+    }
+    row.appendChild(grid);
+
+    const KEY = 'tslider-collapsed-' + id;
+    let collapsed = false;
+    try { collapsed = localStorage.getItem(KEY) === '1'; } catch { /* ignore */ }
+    row.classList.toggle('collapsed', collapsed);
+    head.addEventListener('mousedown', e => e.stopPropagation());
+    head.addEventListener('click', () => {
+        collapsed = !row.classList.toggle('collapsed') ? false : true;
+        try { localStorage.setItem(KEY, collapsed ? '1' : '0'); } catch { /* ignore */ }
+    });
+    return row;
 }
 
 // ----- Reactive expression tracking -----
@@ -627,11 +854,11 @@ export function recompileActiveExprs(): void {
 
 export function syncSliderState(): void {
     // Persist current slider values to localStorage
-    const s: Record<string, number> = {};
+    const s: Record<string, number | number[]> = {};
     for (const [id, sl] of Object.entries(sliderState.sceneSliders)) {
         // Non-null: see the note in recompileActiveExprs() — Object.entries()
         // widens the value type, the record itself never holds undefined.
-        s[id] = sl!.value;
+        s[id] = isTensorSlider(sl) ? sl.values : sl!.value;
     }
     try { localStorage.setItem('algebench-sliders', JSON.stringify(s)); } catch(e) {}
     // Update status bar pill — call via window shim to avoid circular import
@@ -646,7 +873,7 @@ export function syncSliderState(): void {
 // — restoring a shared view must not depend on the tab actively rendering.
 export function setSliderValue(id: string, value: number): boolean {
     const s = sliderState.sceneSliders[id];
-    if (!s || !Number.isFinite(value)) return false;
+    if (!s || s.kind === 'tensor' || !Number.isFinite(value)) return false;
     if (s._loopPlaying) stopSliderLoop(id);
     s.value = Math.max(s.min, Math.min(s.max, value));
     const input = document.querySelector<HTMLInputElement>(`input[data-slider-id="${id}"]`);
@@ -667,7 +894,7 @@ export function animateSlider(id: string, target: number, duration: number): Pro
         // Cast for the same reason as startSliderLoop(): the guard on the next
         // line is real, but it does not reach the hoisted `tick` below.
         const slider = sliderState.sceneSliders[id] as SceneSlider;
-        if (!slider) { resolve(false); return; }
+        if (!slider || slider.kind === 'tensor') { resolve(false); return; }
         target = Math.max(slider.min, Math.min(slider.max, target));
         const start = slider.value;
         if (start === target) { syncSliderState(); resolve(true); return; }

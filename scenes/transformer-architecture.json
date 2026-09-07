@@ -4068,7 +4068,7 @@
       "id": "one-head-end-to-end",
       "title": "One head, end to end — every stage side by side",
       "description": "The whole attention head as one pipeline, $X \\to Q, K, V \\to S \\to$ scaled + masked $\\to A \\to O$, recomputed live from sliders on the input, the three weight matrices and every control from scenes 1–3. A sandbox: change anything, watch it propagate — and only rightward.",
-      "markdown": "# One head, end to end — every stage side by side\n\n## You are here\n\n<svg viewBox=\"0 0 460 200\" width=\"100%\" style=\"max-width:460px\">\n  <rect x=\"20\" y=\"10\" width=\"420\" height=\"32\" rx=\"6\" fill=\"#151a20\" stroke=\"#3a4450\"/>\n  <text x=\"230\" y=\"31\" text-anchor=\"middle\" fill=\"#5b6672\" font-size=\"13\" font-family=\"sans-serif\">tokens → embedding + position (scene 1)</text>\n  <rect x=\"20\" y=\"52\" width=\"420\" height=\"32\" rx=\"6\" fill=\"#151a20\" stroke=\"#3a4450\"/>\n  <text x=\"230\" y=\"73\" text-anchor=\"middle\" fill=\"#5b6672\" font-size=\"13\" font-family=\"sans-serif\">Q / K / V projections (scene 2)</text>\n  <rect x=\"20\" y=\"94\" width=\"420\" height=\"32\" rx=\"6\" fill=\"#151a20\" stroke=\"#3a4450\"/>\n  <text x=\"230\" y=\"115\" text-anchor=\"middle\" fill=\"#5b6672\" font-size=\"13\" font-family=\"sans-serif\">scaled, masked, softmaxed attention (scene 3)</text>\n  <rect x=\"20\" y=\"136\" width=\"420\" height=\"38\" rx=\"6\" fill=\"#2a1f3d\" stroke=\"#ab47bc\" stroke-width=\"2\"/>\n  <text x=\"230\" y=\"160\" text-anchor=\"middle\" fill=\"#ab47bc\" font-size=\"14\" font-family=\"sans-serif\">one head, end to end — the sandbox (scene 4)</text>\n</svg>\n\nLit: this scene. Everything above it has been taught; this scene puts it in one row and hands you the knobs.\n\n## What is on screen\n\nOne head, every stage, one plane, left to right:\n\n| lattice | shape | computed as | colour |\n|---|---|---|---|\n| $X$ | $6\\times4$ | embedding $+$ positional encoding (or the raw embedding under RoPE) | cyan |\n| $W_Q, W_K, W_V$ | $4\\times2$ each | the hand-built projections, **now editable** | orange · blue · green |\n| $Q, K, V$ | $6\\times2$ each | $XW_Q$, $XW_K$, $XW_V$ | orange · blue · green |\n| $S$ | $6\\times6$ | $QK^{\\top}$, drawn as a relief | orange |\n| $S/\\sqrt{d_k} + M$ | $6\\times6$ | scaled, then the causal mask as wells | orange |\n| $A$ | $6\\times6$ | row-wise softmax; every row sums to $1$ | green |\n| $O$ | $6\\times2$ | $AV$ — each row a convex combination of value rows | purple |\n\nNumbers are in the cells. Axis labels are the tokens, so a shuffled input reads as a shuffled lattice.\n\n## The one rule\n\n**A change propagates only rightward.** Nothing on the left can move because something on the right did. So the sandbox answers a family of questions by inspection:\n\n- *Which matrix reads dimension $d$ of the input?* Nudge $x_d$ and see which of $Q$, $K$, $V$ moves. In the hand-built head, $x_2$ feeds $W_Q$ only, $x_1$ feeds $W_K$ and $W_V$, $x_0$ feeds $W_V$ only, $x_3$ feeds $W_Q$ and $W_K$.\n- *Do keys move rows or columns of $S$?* Columns. Queries move rows. Each entry of $S$ is one query row against one key row.\n- *What does $W_V$ decide?* Not where attention looks — $S$, the masked lattice and $A$ are unchanged for every setting of $W_V$ — only what is carried into $O$.\n\n## The controls\n\n- **Row to read out** — the row the card follows through $x \\to q \\to \\sum_j\\alpha_{ij} \\to o$.\n- **Input row** — the four embedding components of *sat*. Positional encoding is added on top; with RoPE on, the additive term is replaced by a rotation of $q$ and $k$, never of $v$.\n- **$W_Q$, $W_K$, $W_V$** — every entry, one slider each, defaulting to the hand-built values. The defaults read two dimensions each; a trained matrix would be dense.\n- **Shuffle, PE strength, RoPE** — scene 1's and scene 2's controls, now acting on the whole pipeline.\n- **Divisor, mask, mask order** — scene 3's controls. The row sum on the card is the honesty check: $1.000000$ with the mask before softmax, less with the mask after.\n\n## What this scene does not claim\n\nThe weights are hand-built for legibility and the sliders make that literal. Nothing you find here is evidence about a trained model: a real $W_Q$ is dense, the head dimension is far larger than $2$, and there are many heads. The point of the sandbox is the *mechanism* — which quantities depend on which — and that is the same at any size.\n",
+      "markdown": "# One head, end to end — every stage side by side\n\n## You are here\n\n<svg viewBox=\"0 0 460 200\" width=\"100%\" style=\"max-width:460px\">\n  <rect x=\"20\" y=\"10\" width=\"420\" height=\"32\" rx=\"6\" fill=\"#151a20\" stroke=\"#3a4450\"/>\n  <text x=\"230\" y=\"31\" text-anchor=\"middle\" fill=\"#5b6672\" font-size=\"13\" font-family=\"sans-serif\">tokens → embedding + position (scene 1)</text>\n  <rect x=\"20\" y=\"52\" width=\"420\" height=\"32\" rx=\"6\" fill=\"#151a20\" stroke=\"#3a4450\"/>\n  <text x=\"230\" y=\"73\" text-anchor=\"middle\" fill=\"#5b6672\" font-size=\"13\" font-family=\"sans-serif\">Q / K / V projections (scene 2)</text>\n  <rect x=\"20\" y=\"94\" width=\"420\" height=\"32\" rx=\"6\" fill=\"#151a20\" stroke=\"#3a4450\"/>\n  <text x=\"230\" y=\"115\" text-anchor=\"middle\" fill=\"#5b6672\" font-size=\"13\" font-family=\"sans-serif\">scaled, masked, softmaxed attention (scene 3)</text>\n  <rect x=\"20\" y=\"136\" width=\"420\" height=\"38\" rx=\"6\" fill=\"#2a1f3d\" stroke=\"#ab47bc\" stroke-width=\"2\"/>\n  <text x=\"230\" y=\"160\" text-anchor=\"middle\" fill=\"#ab47bc\" font-size=\"14\" font-family=\"sans-serif\">one head, end to end — the sandbox (scene 4)</text>\n</svg>\n\nLit: this scene. Everything above it has been taught; this scene puts it in one row and hands you the knobs.\n\n## What is on screen\n\nOne head, every stage, one plane, left to right:\n\n| lattice | shape | computed as | colour |\n|---|---|---|---|\n| $X$ | $6\\times4$ | embedding $+$ positional encoding (or the raw embedding under RoPE) | cyan |\n| $W_Q, W_K, W_V$ | $4\\times2$ each | the hand-built projections, **now editable** | orange · blue · green |\n| $Q, K, V$ | $6\\times2$ each | $XW_Q$, $XW_K$, $XW_V$ | orange · blue · green |\n| $S$ | $6\\times6$ | $QK^{\\top}$, drawn as a relief | orange |\n| $S/\\sqrt{d_k} + M$ | $6\\times6$ | scaled, then the causal mask as wells | orange |\n| $A$ | $6\\times6$ | row-wise softmax; every row sums to $1$ | green |\n| $O$ | $6\\times2$ | $AV$ — each row a convex combination of value rows | purple |\n\nNumbers are in the cells. Axis labels are the tokens, so a shuffled input reads as a shuffled lattice.\n\nUnder each projection, a scatter plot shows the same numbers as geometry: the six queries $q_i$, the six keys $k_j$, and the six values $v_j$ with the six outputs $o_i$ on the same axes. Each $o_i$ is the centre of mass of the values, weighted by row $i$ of $A$, so it always sits inside the hull of the value points it attends to. The **Geometry** view frames them.\n\n## The one rule\n\n**A change propagates only rightward.** Nothing on the left can move because something on the right did. So the sandbox answers a family of questions by inspection:\n\n- *Which matrix reads dimension $d$ of the input?* Nudge $x_d$ and see which of $Q$, $K$, $V$ moves. In the hand-built head, $x_2$ feeds $W_Q$ only, $x_1$ feeds $W_K$ and $W_V$, $x_0$ feeds $W_V$ only, $x_3$ feeds $W_Q$ and $W_K$.\n- *Do keys move rows or columns of $S$?* Columns. Queries move rows. Each entry of $S$ is one query row against one key row.\n- *What does $W_V$ decide?* Not where attention looks — $S$, the masked lattice and $A$ are unchanged for every setting of $W_V$ — only what is carried into $O$.\n\n## The controls\n\n- **Row to read out** — the row the card follows through $x \\to q \\to \\sum_j\\alpha_{ij} \\to o$.\n- **Embedding table** — every component of every token, one grid; row 2 is *sat*. Positional encoding is added on top; with RoPE on, the additive term is replaced by a rotation of $q$ and $k$, never of $v$.\n- **$W_Q$, $W_K$, $W_V$** — one tensor slider each, defaulting to the hand-built matrices. Hover a cell of the lattice, or of the grid on the panel, to get that cell's slider. The defaults read two dimensions each; a trained matrix would be dense.\n- **Shuffle, PE strength, RoPE** — scene 1's and scene 2's controls, now acting on the whole pipeline.\n- **Divisor, mask, mask order** — scene 3's controls. The row sum on the card is the honesty check: $1.000000$ with the mask before softmax, less with the mask after.\n\n## What this scene does not claim\n\nThe weights are hand-built for legibility and the sliders make that literal. Nothing you find here is evidence about a trained model: a real $W_Q$ is dense, the head dimension is far larger than $2$, and there are many heads. The point of the sandbox is the *mechanism* — which quantities depend on which — and that is the same at any size.\n",
       "prompt": "Scene 4 is a SANDBOX, not new theory: the attention head of scene 3 laid out as one left-to-right pipeline and recomputed live from sliders. Colour language as everywhere in the lesson: cyan is the input x, orange is query, blue is key, green is value and the attention weights, purple is the output. Every lattice is drawn on one plane and numbers are in the cells. The invariant to repeat in every answer that needs it: a change propagates only rightward, and which lattice moves tells you which matrix reads that dimension. The weights are hand-built for legibility, not learned, and the sliders make that literal: a trained W_Q would be dense. RoPE and additive PE are exclusive; V is never rotated; the mask is additive minus infinity before softmax and masking after is wrong (the row sum shows it). Do not present the sandbox as evidence about trained models.",
       "range": [
         [-22, 26],
@@ -4109,6 +4109,11 @@
           "position": [17.0, 1.8, 20.0],
           "target": [17.0, 1.8, 0.0],
           "description": "A and the output O."
+        },
+        {
+          "name": "Geometry",
+          "position": [-7.2, -2.0, 14.0],
+          "target": [-7.2, -2.0, 0.0]
         }
       ],
       "functions": [
@@ -4118,17 +4123,7 @@
           "expr": "tfPerm(0) == tok ? 0 : (tfPerm(1) == tok ? 1 : (tfPerm(2) == tok ? 2 : (tfPerm(3) == tok ? 3 : (tfPerm(4) == tok ? 4 : 5))))"
         }
       ],
-      "elements": [
-        {
-          "id": "s4_grid",
-          "type": "grid",
-          "plane": "xy",
-          "range": [-24, 26],
-          "color": [0.28, 0.32, 0.46],
-          "opacity": 0.05,
-          "divisions": 25
-        }
-      ],
+      "elements": [],
       "steps": [
         {
           "id": "s4-pipeline",
@@ -4194,7 +4189,8 @@
                 }
               ],
               "textExpr": "toFixed(value, 1)",
-              "prompt": "W_Q, 4 by 2, row-vector convention q = x W_Q: row r says where input dimension r goes in the head. Hand-built: it reads dims 2 and 3 only. The sandbox lets every entry move; watch Q, then S, then A follow."
+              "prompt": "W_Q, 4 by 2, row-vector convention q = x W_Q: row r says where input dimension r goes in the head. Hand-built: it reads dims 2 and 3 only. The sandbox lets every entry move; watch Q, then S, then A follow.",
+              "bind": "s4_wq"
             },
             {
               "id": "s4_WK",
@@ -4223,7 +4219,8 @@
                 }
               ],
               "textExpr": "toFixed(value, 1)",
-              "prompt": "W_K, hand-built to read dims 1 and 3. Change an entry and the keys move, so every column of S moves."
+              "prompt": "W_K, hand-built to read dims 1 and 3. Change an entry and the keys move, so every column of S moves.",
+              "bind": "s4_wk"
             },
             {
               "id": "s4_WV",
@@ -4252,7 +4249,8 @@
                 }
               ],
               "textExpr": "toFixed(value, 1)",
-              "prompt": "W_V, hand-built to read dims 0 and 1. It never touches the scores or the weights: changing it moves V and O only, which is the cleanest demonstration that attention decides WHERE to look and W_V decides WHAT is carried."
+              "prompt": "W_V, hand-built to read dims 0 and 1. It never touches the scores or the weights: changing it moves V and O only, which is the cleanest demonstration that attention decides WHERE to look and W_V decides WHAT is carried.",
+              "bind": "s4_wv"
             },
             {
               "id": "s4_Q",
@@ -4419,6 +4417,55 @@
               ],
               "textExpr": "toFixed(value, 2)",
               "prompt": "O = A V: each output row is the attention-weighted average of the value rows it may see, so it lies in their convex hull. One head of two; W_O and the second head come in the multi-head scene that follows."
+            },
+            {
+              "id": "s4_chart_q",
+              "type": "chart",
+              "origin": [-11.2, -5.9, 0],
+              "size": [1.6, 1.6],
+              "series": [
+                {"kind": "points", "n": 6, "xExpr": "tfQ(i, 0)", "yExpr": "tfQ(i, 1)", "color": "#ffa726", "label": "$q_i$", "size": 4}
+              ],
+              "axes": [
+                {"title": "$q_0$", "ticks": 2},
+                {"title": "$q_1$", "ticks": 2}
+              ],
+              "label": "$q_i = x_i W_Q$ — six queries in the head plane",
+              "prompt": "Scatter of the six query vectors in the 2-D head plane, one point per slot, recomputed live from X and W_Q. Rewire W_Q and the cloud reshapes; shuffle the tokens and the points swap names but the set is unchanged. Points are not labelled with their tokens; read them against the Q lattice directly above, whose rows are in slot order: row i is point i.",
+              "color": "#ffa726"
+            },
+            {
+              "id": "s4_chart_k",
+              "type": "chart",
+              "origin": [-8.0, -5.9, 0],
+              "size": [1.6, 1.6],
+              "series": [
+                {"kind": "points", "n": 6, "xExpr": "tfK(i, 0)", "yExpr": "tfK(i, 1)", "color": "#42a5f5", "label": "$k_i$", "size": 4}
+              ],
+              "axes": [
+                {"title": "$k_0$", "ticks": 2},
+                {"title": "$k_1$", "ticks": 2}
+              ],
+              "label": "$k_j = x_j W_K$ — six keys in the same plane",
+              "prompt": "Scatter of the six key vectors. A score S[i][j] is the dot product of query point i with key point j, so a key far out along a query direction scores high with that query. W_K moves these; W_Q does not.",
+              "color": "#42a5f5"
+            },
+            {
+              "id": "s4_chart_vo",
+              "type": "chart",
+              "origin": [-4.8, -5.9, 0],
+              "size": [1.6, 1.6],
+              "series": [
+                {"kind": "points", "n": 6, "xExpr": "tfV(i, 0)", "yExpr": "tfV(i, 1)", "color": "#66bb6a", "label": "$v_j$", "size": 4},
+                {"kind": "points", "n": 6, "xExpr": "tfOut(i, 0)", "yExpr": "tfOut(i, 1)", "color": "#ab47bc", "label": "$o_i$", "size": 4}
+              ],
+              "axes": [
+                {"title": "$v_0$ / $o_0$", "ticks": 2},
+                {"title": "$v_1$ / $o_1$", "ticks": 2}
+              ],
+              "label": "$v_j$ (green) and $o_i = \\sum_j A_{ij} v_j$ (purple) — each output is a centre of mass of the values",
+              "prompt": "Green: the six value vectors v_j. Purple: the six output rows o_i, each the attention-weighted centre of mass of the values slot i attends to (weights = row i of A, non-negative, summing to 1). So every purple point lies inside the convex hull of the green ones, and with the causal mask inside the hull of the values at slots <= i; slot 0 attends only to itself, so its o coincides with its v. Move W_V and both clouds move together; move W_Q or W_K and only the purple points slide, because the weights changed but not the values. The axes auto-fit both clouds, so an edited W_V that throws the values far out keeps every point on the paper; read the tick labels for scale.",
+              "color": "#ab47bc"
             }
           ],
           "info": [
@@ -4430,7 +4477,7 @@
         {
           "id": "s4-input",
           "title": "Change the input, watch it propagate",
-          "description": "The four sliders are the embedding components of one token, *sat*. The card follows *sat* wherever the shuffle puts it; **row to read out** follows a slot instead. Push $x_2$ down and $q_{\\text{sat}}$ collapses, because $W_Q$ reads dimension 2; push $x_0$ and only $v$ moves, because $W_V$ reads dimensions 0 and 1. **Positional encoding strength** and **RoPE** change every row at once. Nothing to the right can change unless something to its left did.",
+          "description": "The embedding table is one grid on the panel: hover a cell to get its slider. Row 2 is *sat*. The card follows *sat* wherever the shuffle puts it; **row to read out** follows a slot instead. Push $x_2$ down and $q_{\\text{sat}}$ collapses, because $W_Q$ reads dimension 2; push $x_0$ and only $v$ moves, because $W_V$ reads dimensions 0 and 1. **Positional encoding strength** and **RoPE** change every row at once. Nothing to the right can change unless something to its left did.",
           "camera": {
             "position": [-8.5, 2.8, 24.0],
             "target": [-8.5, 2.8, 0.0]
@@ -4440,39 +4487,59 @@
             {"id": "s1_pe", "label": "positional encoding strength", "min": 0, "max": 1, "step": 0.05, "default": 1},
             {"id": "s2_rope", "label": "RoPE instead of additive PE", "min": 0, "max": 1, "step": 1, "default": 0, "reset": true},
             {"id": "s1_shuffle", "label": "token shuffle", "min": 0, "max": 1, "step": 1, "default": 0, "reset": true},
-            {"id": "s4_e20", "label": "$x_0$ of *sat* (row 2)", "min": -1, "max": 2, "step": 0.05, "default": 0},
-            {"id": "s4_e21", "label": "$x_1$ of *sat* (row 2)", "min": -1, "max": 2, "step": 0.05, "default": 0},
-            {"id": "s4_e22", "label": "$x_2$ of *sat* (row 2)", "min": -1, "max": 2, "step": 0.05, "default": 1},
-            {"id": "s4_e23", "label": "$x_3$ of *sat* (row 2)", "min": -1, "max": 2, "step": 0.05, "default": 0}
+            {
+              "id": "s4_emb",
+              "kind": "tensor",
+              "label": "$W_E$ — the embedding table",
+              "shape": [6, 4],
+              "min": -2,
+              "max": 2,
+              "step": 0.1,
+              "default": [
+                [1, 0, 0, 0],
+                [0, 1, 0, 0],
+                [0, 0, 1, 0],
+                [0, 0, 0, 1],
+                [1, 0, 0, 0],
+                [0.5, 0.5, 0, 0.5]
+              ]
+            }
           ],
           "remove": [
             {"type": "slider"}
           ],
           "add": [],
           "info": [
-            {"id": "s4_info_input", "position": "top-left", "title": "Input row of *sat* (token row 2, slot {{s4slotOf(2)}})", "content": "$x_{\\text{sat}}$ = ({{toFixed(tfX(s4slotOf(2),0),2)}}, {{toFixed(tfX(s4slotOf(2),1),2)}}, {{toFixed(tfX(s4slotOf(2),2),2)}}, {{toFixed(tfX(s4slotOf(2),3),2)}}) — embedding ({{toFixed(s4_e20,2)}}, {{toFixed(s4_e21,2)}}, {{toFixed(s4_e22,2)}}, {{toFixed(s4_e23,2)}}) plus the encoding of slot {{s4slotOf(2)}} × {{toFixed(s1_pe,2)}}. $q_{\\text{sat}}$ = ({{toFixed(tfQ(s4slotOf(2),0),2)}}, {{toFixed(tfQ(s4slotOf(2),1),2)}}), $v_{\\text{sat}}$ = ({{toFixed(tfV(s4slotOf(2),0),2)}}, {{toFixed(tfV(s4slotOf(2),1),2)}})."},
+            {"id": "s4_info_input", "position": "top-left", "title": "Input row of *sat* (token row 2, slot {{s4slotOf(2)}})", "content": "$x_{\\text{sat}}$ = ({{toFixed(tfX(s4slotOf(2),0),2)}}, {{toFixed(tfX(s4slotOf(2),1),2)}}, {{toFixed(tfX(s4slotOf(2),2),2)}}, {{toFixed(tfX(s4slotOf(2),3),2)}}) — embedding ({{toFixed(tfEmbBase(2,0),2)}}, {{toFixed(tfEmbBase(2,1),2)}}, {{toFixed(tfEmbBase(2,2),2)}}, {{toFixed(tfEmbBase(2,3),2)}}) plus the encoding of slot {{s4slotOf(2)}} × {{toFixed(s1_pe,2)}}. $q_{\\text{sat}}$ = ({{toFixed(tfQ(s4slotOf(2),0),2)}}, {{toFixed(tfQ(s4slotOf(2),1),2)}}), $v_{\\text{sat}}$ = ({{toFixed(tfV(s4slotOf(2),0),2)}}, {{toFixed(tfV(s4slotOf(2),1),2)}})."},
             {"id": "s4_keep_card", "position": "bottom-right", "keep": true, "title": "Toy · provenance", "content": "$d_{\\text{model}} = 4$, $d_k = 2$, **one head of two**. Every number here is recomputed from the sliders; the defaults are the hand-built $W_Q, W_K, W_V$, **not learned**."}
           ],
-          "prompt": "The input sliders override the four components of the EMBEDDING row for sat (token row 2). With the shuffle on, sat moves to slot 3; the card follows the token through s4slotOf(2), while the row-to-read-out slider follows a SLOT, so the two can point at different rows and that is worth saying if a student notices; positional encoding is added on top per the PE slider, and with RoPE on the additive PE is replaced by a rotation of q and k. The lesson to draw out: which downstream lattice moves tells you which weight matrix reads that dimension. x_2 feeds W_Q only (q moves, S row 2 moves, A row 2 moves, o moves); x_1 feeds W_K and W_V; x_0 feeds W_V only; x_3 feeds W_Q and W_K. Let the student discover this by dragging, then confirm. The sliders act on the embedding table, and only on the row for sat: no step exposes rows 0 and 4, so the two \"the\" rows stay identical throughout this scene."
+          "prompt": "The s4_emb tensor slider overrides the EMBEDDING table; the step talks about row 2, sat, but every row is editable (hover a cell on the panel grid). With the shuffle on, sat moves to slot 3; the card follows the token through s4slotOf(2), while the row-to-read-out slider follows a SLOT, so the two can point at different rows and that is worth saying if a student notices; positional encoding is added on top per the PE slider, and with RoPE on the additive PE is replaced by a rotation of q and k. The lesson to draw out: which downstream lattice moves tells you which weight matrix reads that dimension. x_2 feeds W_Q only (q moves, S row 2 moves, A row 2 moves, o moves); x_1 feeds W_K and W_V; x_0 feeds W_V only; x_3 feeds W_Q and W_K. Let the student discover this by dragging, then confirm. The tensor slider exposes the whole embedding table, rows 0 and 4 included: the two \"the\" rows start identical, and editing one of them alone is what makes the two \"the\"s differ, which a student may do on purpose."
         },
         {
           "id": "s4-wq",
           "title": "Rewire $W_Q$",
-          "description": "Eight sliders, one per entry of $W_Q$. The hand-built matrix reads $x_2 \\to q_0$ (weight 3) and $x_3 \\to q_1$ (weight 1) and nothing else. Zero the $3$ and every query loses its verb-seeking direction: the *sat* row of $S$ flattens and the 97% on *cat* dissolves. Give $x_0 \\to q_0$ a weight and the two *the* rows start asking for something.",
+          "description": "$W_Q$ is editable in place: hover a cell of the lattice, or of the grid on the panel, and drag its slider. The hand-built matrix reads $x_2 \\to q_0$ (weight 3) and $x_3 \\to q_1$ (weight 1) and nothing else. Zero the $3$ and every query loses its verb-seeking direction: the *sat* row of $S$ flattens and the 97% on *cat* dissolves. Give $x_0 \\to q_0$ a weight and the two *the* rows start asking for something.",
           "camera": {
             "position": [-1.5, 3.4, 28.0],
             "target": [-1.5, 3.4, 0.0]
           },
           "sliders": [
             {"id": "s3_qi", "label": "row to read out", "min": 0, "max": 5, "step": 1, "default": 2, "valueExpr": "concat(string(s3_qi), ' · ', tfToken(s3_qi))"},
-            {"id": "s4_wq00", "label": "$W_Q[0][0]$: $x_0 \\to q_0$", "min": -3, "max": 3, "step": 0.1, "default": 0},
-            {"id": "s4_wq01", "label": "$W_Q[0][1]$: $x_0 \\to q_1$", "min": -3, "max": 3, "step": 0.1, "default": 0},
-            {"id": "s4_wq10", "label": "$W_Q[1][0]$: $x_1 \\to q_0$", "min": -3, "max": 3, "step": 0.1, "default": 0},
-            {"id": "s4_wq11", "label": "$W_Q[1][1]$: $x_1 \\to q_1$", "min": -3, "max": 3, "step": 0.1, "default": 0},
-            {"id": "s4_wq20", "label": "$W_Q[2][0]$: $x_2 \\to q_0$", "min": -3, "max": 3, "step": 0.1, "default": 3},
-            {"id": "s4_wq21", "label": "$W_Q[2][1]$: $x_2 \\to q_1$", "min": -3, "max": 3, "step": 0.1, "default": 0},
-            {"id": "s4_wq30", "label": "$W_Q[3][0]$: $x_3 \\to q_0$", "min": -3, "max": 3, "step": 0.1, "default": 0},
-            {"id": "s4_wq31", "label": "$W_Q[3][1]$: $x_3 \\to q_1$", "min": -3, "max": 3, "step": 0.1, "default": 1}
+            {
+              "id": "s4_wq",
+              "kind": "tensor",
+              "label": "$W_Q$",
+              "shape": [4, 2],
+              "min": -3,
+              "max": 3,
+              "step": 0.1,
+              "default": [
+                [0, 0],
+                [0, 0],
+                [3, 0],
+                [0, 1]
+              ]
+            }
           ],
           "remove": [
             {"type": "slider"}
@@ -4482,7 +4549,7 @@
             {"id": "s4_info_wq", "position": "top-left", "title": "$W_Q$ in force", "content": "$q_i = x_i W_Q$. Row {{s3_qi}}: $q$ = ({{toFixed(tfQ(s3_qi,0),2)}}, {{toFixed(tfQ(s3_qi,1),2)}}); score against *cat* {{toFixed(tfScore(s3_qi,1),2)}}, weight on *cat* **{{toFixed(tfAttn(s3_qi,1),4)}}**."},
             {"id": "s4_keep_card", "position": "bottom-right", "keep": true, "title": "Toy · provenance", "content": "$d_{\\text{model}} = 4$, $d_k = 2$, **one head of two**. Every number here is recomputed from the sliders; the defaults are the hand-built $W_Q, W_K, W_V$, **not learned**."}
           ],
-          "prompt": "W_Q sliders, all eight. The pedagogical target is that a query matrix chooses WHICH input dimensions a token asks with. The hand-built W_Q makes the subject-verb head legible by reading dims 2 and 3; students should see the 0.9709 on cat dissolve when W_Q[2][0] goes to 0. Keys and values do not move on this step (W_K and W_V are untouched), so only S, the masked lattice, A and O change. Say that the defaults are hand-built and that a trained W_Q would be dense."
+          "prompt": "W_Q as one tensor slider (s4_wq); every cell is editable by hovering the lattice or the panel grid. The pedagogical target is that a query matrix chooses WHICH input dimensions a token asks with. The hand-built W_Q makes the subject-verb head legible by reading dims 2 and 3; students should see the 0.9709 on cat dissolve when W_Q[2][0] goes to 0. Keys and values do not move on this step (W_K and W_V are untouched), so only S, the masked lattice, A and O change. Say that the defaults are hand-built and that a trained W_Q would be dense."
         },
         {
           "id": "s4-wk",
@@ -4494,14 +4561,21 @@
           },
           "sliders": [
             {"id": "s3_qi", "label": "row to read out", "min": 0, "max": 5, "step": 1, "default": 2, "valueExpr": "concat(string(s3_qi), ' · ', tfToken(s3_qi))"},
-            {"id": "s4_wk00", "label": "$W_K[0][0]$: $x_0 \\to k_0$", "min": -3, "max": 3, "step": 0.1, "default": 0},
-            {"id": "s4_wk01", "label": "$W_K[0][1]$: $x_0 \\to k_1$", "min": -3, "max": 3, "step": 0.1, "default": 0},
-            {"id": "s4_wk10", "label": "$W_K[1][0]$: $x_1 \\to k_0$", "min": -3, "max": 3, "step": 0.1, "default": 3},
-            {"id": "s4_wk11", "label": "$W_K[1][1]$: $x_1 \\to k_1$", "min": -3, "max": 3, "step": 0.1, "default": 0},
-            {"id": "s4_wk20", "label": "$W_K[2][0]$: $x_2 \\to k_0$", "min": -3, "max": 3, "step": 0.1, "default": 0},
-            {"id": "s4_wk21", "label": "$W_K[2][1]$: $x_2 \\to k_1$", "min": -3, "max": 3, "step": 0.1, "default": 0},
-            {"id": "s4_wk30", "label": "$W_K[3][0]$: $x_3 \\to k_0$", "min": -3, "max": 3, "step": 0.1, "default": 0},
-            {"id": "s4_wk31", "label": "$W_K[3][1]$: $x_3 \\to k_1$", "min": -3, "max": 3, "step": 0.1, "default": 1}
+            {
+              "id": "s4_wk",
+              "kind": "tensor",
+              "label": "$W_K$",
+              "shape": [4, 2],
+              "min": -3,
+              "max": 3,
+              "step": 0.1,
+              "default": [
+                [0, 0],
+                [3, 0],
+                [0, 0],
+                [0, 1]
+              ]
+            }
           ],
           "remove": [
             {"type": "slider"}
@@ -4511,7 +4585,7 @@
             {"id": "s4_info_wk", "position": "top-left", "title": "$W_K$ in force", "content": "$k_j = x_j W_K$. Key *cat*: ({{toFixed(tfK(1,0),2)}}, {{toFixed(tfK(1,1),2)}}). Row {{s3_qi}} of $A$: weight on *cat* **{{toFixed(tfAttn(s3_qi,1),4)}}**, row sum {{toFixed(tfRowSum(s3_qi),6)}}."},
             {"id": "s4_keep_card", "position": "bottom-right", "keep": true, "title": "Toy · provenance", "content": "$d_{\\text{model}} = 4$, $d_k = 2$, **one head of two**. Every number here is recomputed from the sliders; the defaults are the hand-built $W_Q, W_K, W_V$, **not learned**."}
           ],
-          "prompt": "W_K sliders. Rows of S follow queries, columns follow keys; make the student predict which of the two moves before they drag. V and W_V are untouched so O changes only through the weights A."
+          "prompt": "W_K as one tensor slider (s4_wk), editable by hovering its cells. Rows of S follow queries, columns follow keys; make the student predict which of the two moves before they drag. V and W_V are untouched so O changes only through the weights A."
         },
         {
           "id": "s4-wv",
@@ -4523,14 +4597,21 @@
           },
           "sliders": [
             {"id": "s3_qi", "label": "row to read out", "min": 0, "max": 5, "step": 1, "default": 2, "valueExpr": "concat(string(s3_qi), ' · ', tfToken(s3_qi))"},
-            {"id": "s4_wv00", "label": "$W_V[0][0]$: $x_0 \\to v_0$", "min": -3, "max": 3, "step": 0.1, "default": 1},
-            {"id": "s4_wv01", "label": "$W_V[0][1]$: $x_0 \\to v_1$", "min": -3, "max": 3, "step": 0.1, "default": 0},
-            {"id": "s4_wv10", "label": "$W_V[1][0]$: $x_1 \\to v_0$", "min": -3, "max": 3, "step": 0.1, "default": 0},
-            {"id": "s4_wv11", "label": "$W_V[1][1]$: $x_1 \\to v_1$", "min": -3, "max": 3, "step": 0.1, "default": 1},
-            {"id": "s4_wv20", "label": "$W_V[2][0]$: $x_2 \\to v_0$", "min": -3, "max": 3, "step": 0.1, "default": 0},
-            {"id": "s4_wv21", "label": "$W_V[2][1]$: $x_2 \\to v_1$", "min": -3, "max": 3, "step": 0.1, "default": 0},
-            {"id": "s4_wv30", "label": "$W_V[3][0]$: $x_3 \\to v_0$", "min": -3, "max": 3, "step": 0.1, "default": 0},
-            {"id": "s4_wv31", "label": "$W_V[3][1]$: $x_3 \\to v_1$", "min": -3, "max": 3, "step": 0.1, "default": 0}
+            {
+              "id": "s4_wv",
+              "kind": "tensor",
+              "label": "$W_V$",
+              "shape": [4, 2],
+              "min": -3,
+              "max": 3,
+              "step": 0.1,
+              "default": [
+                [1, 0],
+                [0, 1],
+                [0, 0],
+                [0, 0]
+              ]
+            }
           ],
           "remove": [
             {"type": "slider"}
@@ -4540,7 +4621,7 @@
             {"id": "s4_info_wv", "position": "top-left", "title": "$W_V$ in force", "content": "$v_j = x_j W_V$, $o_i = \\sum_j \\alpha_{ij} v_j$. Row {{s3_qi}}: $o$ = ({{toFixed(tfOut(s3_qi,0),3)}}, {{toFixed(tfOut(s3_qi,1),3)}}); the weight on *cat* is still **{{toFixed(tfAttn(s3_qi,1),4)}}**."},
             {"id": "s4_keep_card", "position": "bottom-right", "keep": true, "title": "Toy · provenance", "content": "$d_{\\text{model}} = 4$, $d_k = 2$, **one head of two**. Every number here is recomputed from the sliders; the defaults are the hand-built $W_Q, W_K, W_V$, **not learned**."}
           ],
-          "prompt": "W_V sliders. The invariant to drive home: S, the masked lattice and A are identical for every setting of W_V, because W_V is not in the score. Only V and O move. Connect to proof 4: the output remains a convex combination of the value rows, whatever the value rows are."
+          "prompt": "W_V as one tensor slider (s4_wv), editable by hovering its cells. The invariant to drive home: S, the masked lattice and A are identical for every setting of W_V, because W_V is not in the score. Only V and O move. Connect to proof 4: the output remains a convex combination of the value rows, whatever the value rows are."
         },
         {
           "id": "s4-sandbox",
@@ -4558,18 +4639,68 @@
             {"id": "s3_mask", "label": "causal mask on/off", "min": 0, "max": 1, "step": 1, "default": 1, "reset": true},
             {"id": "s3_maskafter", "label": "mask AFTER softmax (wrong)", "min": 0, "max": 1, "step": 1, "default": 0, "reset": true},
             {"id": "s3_qi", "label": "row to read out", "min": 0, "max": 5, "step": 1, "default": 2, "valueExpr": "concat(string(s3_qi), ' · ', tfToken(s3_qi))"},
-            {"id": "s4_e20", "label": "$x_0$ of *sat* (row 2)", "min": -1, "max": 2, "step": 0.05, "default": 0},
-            {"id": "s4_e21", "label": "$x_1$ of *sat* (row 2)", "min": -1, "max": 2, "step": 0.05, "default": 0},
-            {"id": "s4_e22", "label": "$x_2$ of *sat* (row 2)", "min": -1, "max": 2, "step": 0.05, "default": 1},
-            {"id": "s4_e23", "label": "$x_3$ of *sat* (row 2)", "min": -1, "max": 2, "step": 0.05, "default": 0},
-            {"id": "s4_wq00", "label": "$W_Q[0][0]$: $x_0 \\to q_0$", "min": -3, "max": 3, "step": 0.1, "default": 0},
-            {"id": "s4_wq01", "label": "$W_Q[0][1]$: $x_0 \\to q_1$", "min": -3, "max": 3, "step": 0.1, "default": 0},
-            {"id": "s4_wq10", "label": "$W_Q[1][0]$: $x_1 \\to q_0$", "min": -3, "max": 3, "step": 0.1, "default": 0},
-            {"id": "s4_wq11", "label": "$W_Q[1][1]$: $x_1 \\to q_1$", "min": -3, "max": 3, "step": 0.1, "default": 0},
-            {"id": "s4_wq20", "label": "$W_Q[2][0]$: $x_2 \\to q_0$", "min": -3, "max": 3, "step": 0.1, "default": 3},
-            {"id": "s4_wq21", "label": "$W_Q[2][1]$: $x_2 \\to q_1$", "min": -3, "max": 3, "step": 0.1, "default": 0},
-            {"id": "s4_wq30", "label": "$W_Q[3][0]$: $x_3 \\to q_0$", "min": -3, "max": 3, "step": 0.1, "default": 0},
-            {"id": "s4_wq31", "label": "$W_Q[3][1]$: $x_3 \\to q_1$", "min": -3, "max": 3, "step": 0.1, "default": 1}
+            {
+              "id": "s4_emb",
+              "kind": "tensor",
+              "label": "$W_E$ — the embedding table",
+              "shape": [6, 4],
+              "min": -2,
+              "max": 2,
+              "step": 0.1,
+              "default": [
+                [1, 0, 0, 0],
+                [0, 1, 0, 0],
+                [0, 0, 1, 0],
+                [0, 0, 0, 1],
+                [1, 0, 0, 0],
+                [0.5, 0.5, 0, 0.5]
+              ]
+            },
+            {
+              "id": "s4_wq",
+              "kind": "tensor",
+              "label": "$W_Q$",
+              "shape": [4, 2],
+              "min": -3,
+              "max": 3,
+              "step": 0.1,
+              "default": [
+                [0, 0],
+                [0, 0],
+                [3, 0],
+                [0, 1]
+              ]
+            },
+            {
+              "id": "s4_wk",
+              "kind": "tensor",
+              "label": "$W_K$",
+              "shape": [4, 2],
+              "min": -3,
+              "max": 3,
+              "step": 0.1,
+              "default": [
+                [0, 0],
+                [3, 0],
+                [0, 0],
+                [0, 1]
+              ]
+            },
+            {
+              "id": "s4_wv",
+              "kind": "tensor",
+              "label": "$W_V$",
+              "shape": [4, 2],
+              "min": -3,
+              "max": 3,
+              "step": 0.1,
+              "default": [
+                [1, 0],
+                [0, 1],
+                [0, 0],
+                [0, 0]
+              ]
+            }
           ],
           "remove": [
             {"type": "slider"}

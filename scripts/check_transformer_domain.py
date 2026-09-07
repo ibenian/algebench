@@ -384,38 +384,44 @@ def main() -> int:
 
     print()
     print('transformer domain — sandbox overrides')
-    # Every override slider must be advertised, default to the constant it
-    # replaces, and actually move the forward pass when set.
+    # Every override is one TENSOR slider per table. It must be advertised as
+    # such, default to the table it replaces, and actually move the forward
+    # pass when a cell is set.
     docs_sc = json.loads((DOMAIN.parent / 'docs.json').read_text(encoding='utf-8'))['sliderContracts']
     missing = sorted(overrides - set(docs_sc))
     if missing:
-        print(f'  FAIL override sliders missing from docs.json sliderContracts: {missing[:6]}...')
+        print(f'  FAIL override sliders missing from docs.json sliderContracts: {missing}')
         failures += 1
     else:
         print(f'  ok   all {len(overrides)} override sliders are in sliderContracts')
     base_w = _run('R(m => R(r => R(c => TF.tfW(m, r, c), 2), 4), 3)', DEFAULT_SLIDERS)
     base_e = _run('R(r => R(d => TF.tfEmbBase(r, d), 4), 6)', DEFAULT_SLIDERS)
+    expected = {'s4_emb': ([6, 4], base_e), 's4_wq': ([4, 2], base_w[0]),
+                's4_wk': ([4, 2], base_w[1]), 's4_wv': ([4, 2], base_w[2])}
     bad = []
-    for m, key in enumerate('qkv'):
-        for r in range(4):
-            for c in range(2):
-                if docs_sc.get(f's4_w{key}{r}{c}', {}).get('default') != base_w[m][r][c]:
-                    bad.append(f's4_w{key}{r}{c}')
-    for r in range(6):
-        for d in range(4):
-            if docs_sc.get(f's4_e{r}{d}', {}).get('default') != base_e[r][d]:
-                bad.append(f's4_e{r}{d}')
+    for sid, (shape, table) in expected.items():
+        c = docs_sc.get(sid, {})
+        if c.get('kind') != 'tensor' or c.get('shape') != shape or c.get('default') != table:
+            bad.append(sid)
     if bad:
-        print(f'  FAIL documented defaults differ from the hand-built constants: {bad[:6]}...')
+        print(f'  FAIL documented tensor contracts differ from the hand-built tables: {bad}')
         failures += 1
     else:
-        print('  ok   every override defaults to the constant it replaces')
-    moved = _run('TF.tfScore(2, 1)', {**DEFAULT_SLIDERS, 's4_wq20': 0})
+        print('  ok   every override is a tensor slider defaulting to the table it replaces')
+    edited = [row[:] for row in base_w[0]]
+    edited[2][0] = 0
+    moved = _run('TF.tfScore(2, 1)', {**DEFAULT_SLIDERS, 's4_wq': edited})
     stays = _run('TF.tfScore(2, 1)', DEFAULT_SLIDERS)
     if moved != stays:
-        print(f'  ok   an override moves the forward pass (score(2,1) {stays:.4f} -> {moved:.4f})')
+        print(f'  ok   an edited cell moves the forward pass (score(2,1) {stays:.4f} -> {moved:.4f})')
     else:
-        print('  FAIL s4_wq20 = 0 left tfScore(2,1) unchanged')
+        print('  FAIL s4_wq[2][0] = 0 left tfScore(2,1) unchanged')
+        failures += 1
+    partial = _run('R(r => R(c => TF.tfW(0, r, c), 2), 4)', {**DEFAULT_SLIDERS, 's4_wq': [[7, 7]]})
+    if partial[0] == [7, 7] and partial[1:] == base_w[0][1:]:
+        print('  ok   a short table overrides the cells it covers and keeps the rest')
+    else:
+        print(f'  FAIL a short table did not fall back cell-wise: {partial}')
         failures += 1
 
     print()

@@ -149,6 +149,7 @@ interface SeriesSpec {
     kind?: unknown;
     width?: unknown;
     opacity?: unknown;
+    size?: unknown;
 }
 
 interface LineSpec {
@@ -238,6 +239,10 @@ export function renderChart(el: Element, view: MathBoxNode) {
     // ── Series ──
     interface Series {
         color: Rgb3; n: number; kind: 'line' | 'points'; width: number; opacity: number;
+        /** Legend text drawn on the paper (KaTeX); no label, no legend row. */
+        label: string | null;
+        /** Dot size in px for a point series; null = 3 x width, the old default. */
+        size: number | null;
         xs: number[] | null; ys: number[] | null;          // literal data
         xFn: { src: string; fn: CompiledExpr } | null;     // or expressions
         yFn: { src: string; fn: CompiledExpr } | null;
@@ -264,6 +269,8 @@ export function renderChart(el: Element, view: MathBoxNode) {
             n, kind: sp.kind === 'points' ? 'points' : 'line',
             width: Number(sp.width) > 0 ? Number(sp.width) : 2.5,
             opacity: Number.isFinite(Number(sp.opacity)) ? Math.max(0, Math.min(1, Number(sp.opacity))) : 1,
+            label: typeof sp.label === 'string' && sp.label.trim() ? sp.label.trim() : null,
+            size: Number(sp.size) > 0 ? Number(sp.size) : null,
             xs, ys, xFn, yFn,
             xSrc: typeof sp.xExpr === 'string' ? sp.xExpr.trim() || null : null,
             ySrc: typeof sp.yExpr === 'string' ? sp.yExpr.trim() || null : null,
@@ -390,11 +397,20 @@ export function renderChart(el: Element, view: MathBoxNode) {
     // ── Geometry: series as MathBox lines (data coordinates, so MathBox maps
     // them), bands as quads on the paper, all just in front of the paper. ──
     const lift = Math.min(W, H) * 0.01;
+    const HIDDEN: Vec3 = [NaN, NaN, NaN];   // a NaN vertex is not drawn
     const seriesPoints = (s: Series): Vec3[] => {
         const pts: Vec3[] = [];
         for (let i = 0; i < s.n; i++) {
+            const x = s.px[i]!;
             const y = Number.isFinite(s.py[i]!) ? s.py[i]! : yDom[0];
-            const [h, v] = toPlane(s.px[i]!, y);
+            // A dot outside a fixed domain must not float beyond the axes as if
+            // the paper continued there: drop it. Lines keep their samples so a
+            // curve can leave and re-enter the plot.
+            if (s.kind === 'points' && (x < xDom[0] || x > xDom[1] || y < yDom[0] || y > yDom[1])) {
+                pts.push(HIDDEN);
+                continue;
+            }
+            const [h, v] = toPlane(x, y);
             pts.push(at(h, v, lift * 3));
         }
         return pts;
@@ -409,7 +425,7 @@ export function renderChart(el: Element, view: MathBoxNode) {
         const lineW = resolveLineWidth(entry);
         const data = view.array({ channels: 3, width: pts.length, data: pts, live: true });
         const node = s.kind === 'points'
-            ? data.point({ color: new THREE.Color(...s.color), size: lineW * 3, opacity: s.opacity * lineOpacity, zBias: 2 })
+            ? data.point({ color: new THREE.Color(...s.color), size: s.size != null ? s.size * (lineW / s.width) : lineW * 3, opacity: s.opacity * lineOpacity, zBias: 2 })
             : data.line({ color: new THREE.Color(...s.color), width: lineW, opacity: s.opacity * lineOpacity, zBias: 2 });
         entry.node = node;
         s.node = node; s.data = data; s.entry = entry;
@@ -566,12 +582,15 @@ export function renderChart(el: Element, view: MathBoxNode) {
         // tick marks and labels
         const tickLen = pxPer * 0.12;
         ctx.fillStyle = css(xColor); ctx.strokeStyle = css(xColor, 0.9);
+        let xLabelH = 0;   // tallest tick label, so the title sits right under the numbers
         xt.ticks.forEach((v, k) => {
             const [h] = toPlane(v, 0); if (h < -1e-6 || h > W + 1e-6) return;
             ctx.beginPath(); ctx.moveTo(X(h), Y(0)); ctx.lineTo(X(h), Y(0) + tickLen); ctx.stroke();
             const txt = xLabels[k] || '';
             if (!txt) return;
-            drawLatex(ctx, txt, X(h), Y(0) + tickLen + pxPer * 0.06, { fontPx: fitLatexPx(txt, pxPer * 0.9, pxPer * 0.42), color: css(xColor), align: 'center', vAlign: 'top' });
+            const fontPx = fitLatexPx(txt, pxPer * 0.9, pxPer * 0.42);
+            xLabelH = Math.max(xLabelH, measureLatex(txt).h * fontPx / 100);
+            drawLatex(ctx, txt, X(h), Y(0) + tickLen + pxPer * 0.06, { fontPx, color: css(xColor), align: 'center', vAlign: 'top' });
         });
         ctx.fillStyle = css(yColor); ctx.strokeStyle = css(yColor, 0.9);
         let yLabelW = 0;   // widest tick label, so the title sits right beside the numbers
@@ -586,13 +605,45 @@ export function renderChart(el: Element, view: MathBoxNode) {
         });
         // titles
         if (xTitle) {
-            drawLatex(ctx, xTitle, X(W / 2), Y(0) + pxPer * 0.82, { fontPx: fitLatexPx(xTitle, W * pxPer, pxPer * 0.5), color: css(xColor) });
+            // Just below the tick labels, the same clearance the y title keeps
+            // from its numbers, instead of a fixed drop that gapes on a small chart.
+            const top = Y(0) + tickLen + pxPer * 0.06 + xLabelH + pxPer * 0.1;
+            drawLatex(ctx, xTitle, X(W / 2), top, { fontPx: fitLatexPx(xTitle, W * pxPer, pxPer * 0.5), color: css(xColor), vAlign: 'top' });
         }
         if (yTitle) {
             const fontPx = fitLatexPx(yTitle, H * pxPer, pxPer * 0.5);
             const titleH = measureLatex(yTitle).h * fontPx / 100;
             const cx = Math.max(titleH / 2, X(0) - tickLen - pxPer * 0.16 - yLabelW - titleH / 2);
             drawLatex(ctx, yTitle, cx, Y(H / 2), { fontPx, color: css(yColor), rotate: -Math.PI / 2 });
+        }
+        // Series legend, on the paper, top-right of the plot: a swatch (dot
+        // or dash) beside each labelled series, drawn straight over the grid
+        // with no backing. A chart whose series carry no labels gets
+        // none, so a single-series chart stays as clean as before.
+        const legendRows = series.filter(sr => sr.label);
+        if (legendRows.length) {
+            // The same size the axis titles actually render at (they are fitted
+            // to the plot width, so a small chart shrinks them below the cap),
+            // so the paper has one text size.
+            const titleRef = xTitle || yTitle;
+            const fontPx = titleRef ? fitLatexPx(titleRef, (xTitle ? W : H) * pxPer, pxPer * 0.5) : pxPer * 0.4;
+            const rowH = fontPx * 1.25, pad = fontPx * 0.3, swatchW = fontPx * 0.9, gap = fontPx * 0.25;
+            let textW = 0;
+            for (const sr of legendRows) textW = Math.max(textW, measureLatex(sr.label!).w * fontPx / 100);
+            const boxW = pad * 2 + swatchW + gap + textW;
+            const bx = X(W) - pad - boxW, by = Y(H) + pad;
+            legendRows.forEach((sr, k) => {
+                const cy = by + pad + rowH * (k + 0.5);
+                const sx = bx + pad;
+                ctx.fillStyle = css(sr.color); ctx.strokeStyle = css(sr.color);
+                if (sr.kind === 'points') {
+                    ctx.beginPath(); ctx.arc(sx + swatchW / 2, cy, fontPx * 0.2, 0, Math.PI * 2); ctx.fill();
+                } else {
+                    ctx.lineWidth = Math.max(1.5, fontPx * 0.12);
+                    ctx.beginPath(); ctx.moveTo(sx, cy); ctx.lineTo(sx + swatchW, cy); ctx.stroke();
+                }
+                drawLatex(ctx, sr.label!, sx + swatchW + gap, cy, { fontPx, color: css(inkRgb), align: 'left', vAlign: 'middle' });
+            });
         }
         tex.needsUpdate = true;
     }

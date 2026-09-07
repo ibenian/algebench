@@ -100,7 +100,7 @@ declare const math: typeof import('mathjs');
  * function callable from scene expressions.
  */
 interface AlgeBenchDomainFunctions {
-  _init?: (api: { getSlider(id: string, fallback?: number): number }) => void;
+  _init?: (api: { getSlider(id: string, fallback?: unknown): unknown }) => void;
   [fn: string]: unknown;
 }
 
@@ -507,6 +507,9 @@ interface AlgeBenchSliderState {
   value: number;
   min: number;
   max: number;
+  kind?: 'scalar' | 'tensor';
+  shape?: number[];
+  values?: number[];
   step: number;
   label?: string;
 }

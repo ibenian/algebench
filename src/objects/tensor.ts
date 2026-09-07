@@ -44,7 +44,7 @@ import { drawLatex, fitLatexPx, measureLatex, onLatexFontsReady } from '/latex-r
 import { buildColorMap, normalizeColorValue } from '/colormaps.js';
 import { compileExpr, evalExpr, explainCompileDegrade } from '/expr.js';
 import type { CompiledExpr } from '/expr.js';
-import { dataToWorld } from '/coords.js';
+import { dataToWorld, worldToData } from '/coords.js';
 import type { Vec3 } from '/coords.js';
 import type { Element, Shader } from '/types/lesson.js';
 import type { BufferAttribute, CanvasTexture, Mesh, Object3D, Scene } from 'three';
@@ -181,11 +181,21 @@ interface TensorState {
     activeAnimExprs: TensorAnimExprEntry[];
     activeAnimUpdaters: AnimUpdater[];
     sceneStartTime: number;
+    /** Read for `bind`: the tensor slider whose table this lattice shows. */
+    sceneSliders: Record<string, { kind?: string; values?: number[] | null } | undefined>;
     /** Read only to decide whether a recompile could change anything — see
      *  `_rebuildFn`. Same field overlay.ts and json-browser.ts consult. */
     _sceneJsTrustState: string | null;
 }
 const tensorState = state as unknown as TensorState;
+
+/** What a bound lattice hangs on its meshes' `userData.tensorCell` for the
+ *  object picker: the slider it edits and a world-point → cell lookup. */
+export interface TensorCellHover {
+    id: string;
+    bind: string;
+    cellAt(world: Vec3): { row: number; col: number } | null;
+}
 
 /** Per-axis metadata, as an author supplies it. `axes[k]` describes `shape[k]`. */
 interface AxisSpec {
@@ -458,6 +468,17 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     const colorMapFn = buildColorMap(el.colorMap);
     const colorDomain = el.colorDomain;
 
+    // `bind` names a tensor slider; while that slider is present the lattice
+    // shows its table and edits it in place. `valueExpr` / `values` stay the
+    // fallback for the steps before the slider exists or after it is removed,
+    // so a bound lattice never goes blank.
+    const bindId = (typeof el.bind === 'string' && el.bind.trim()) ? el.bind.trim() : null;
+    /** The bound slider's flat table, or null while the slider is absent. */
+    function boundValues(): number[] | null {
+        if (!bindId) return null;
+        const s = tensorState.sceneSliders[bindId];
+        return (s && s.kind === 'tensor' && s.values) ? s.values : null;
+    }
     const valueExprString = (typeof el.valueExpr === 'string' && el.valueExpr.trim())
         ? el.valueExpr.trim() : null;
 
@@ -629,8 +650,13 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
      * can have slider-driven cell sizes without paying for a valueExpr.
      */
     function paintAll(tSec: number) {
-        const liveValue = literalValues || valueFn;
+        const bound = boundValues();
+        const liveValue = bound || literalValues || valueFn;
         if (!liveValue && !hasSizeExpr && !hasDepthExpr) return;
+        if (bound && bound.length !== drawn && !boundShapeWarned) {
+            boundShapeWarned = true;
+            console.warn(`tensor${el.id ? ` "${el.id}"` : ''}: bound slider "${bindId}" holds ${bound.length} values but the lattice draws ${drawn}`);
+        }
         for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
                 const cell = r * cols + c;
@@ -643,7 +669,8 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
                 // that name for no reason.
                 const idxScope = { row: r, col: c, idx: cell };
                 let raw: unknown;
-                if (literalValues) raw = literalValues[cell];
+                if (bound) raw = bound[cell];
+                else if (literalValues) raw = literalValues[cell];
                 else if (valueFn) raw = evalExpr(valueFn, tSec, { overrideScope: idxScope });
                 if (raw !== undefined) paintCell(cell, raw);
                 const v = Number(raw);
@@ -662,6 +689,7 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
         }
     }
 
+    let boundShapeWarned = false;
     try { paintAll(0); } catch (err) {
         console.warn('tensor value evaluation error:', err);
     }
@@ -699,6 +727,23 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     // tensor with no way back and no way to opt out.
     mesh.userData.targetOpacity = opacity;
     mesh.userData.ignorePlaneOpacity = ignoresPlaneOpacity;
+    // A bound lattice is an editor: the picker raycasts its meshes and asks
+    // which cell a hit point lands in, then opens that cell's slider.
+    const tensorCell: TensorCellHover | null = bindId ? {
+        id: el.id || '',
+        bind: bindId,
+        cellAt(world) {
+            const d = worldToData(world);
+            const [hAxis, vAxis] = PLANE_AXES[plane] || PLANE_AXES['xy']!;
+            const h = d[hAxis!]! - origin[0]!;
+            const v = d[vAxis!]! - origin[1]!;
+            const c = Math.floor(h / cellSize);
+            const up = Math.floor(v / cellSize);
+            if (c < 0 || c >= cols || up < 0 || up >= rows) return null;
+            return { row: rows - 1 - up, col: c };
+        },
+    } : null;
+    if (tensorCell) mesh.userData.tensorCell = tensorCell;
     const serial = el.renderOrder !== undefined ? el.renderOrder : tensorState._planeMeshSerial++;
     mesh.renderOrder = serial;
     tensorState.three.scene.add(mesh);
@@ -900,6 +945,8 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
             const qMesh = new THREE.Mesh(qGeom, qMat);
             qMesh.userData.targetOpacity = opacity;
             qMesh.userData.ignorePlaneOpacity = ignoresPlaneOpacity;
+            // The text quad sits over the cells and takes the raycast first.
+            if (tensorCell) qMesh.userData.tensorCell = tensorCell;
             // One slot after the cells. With an authored renderOrder the author
             // owns the numbering; otherwise reserve the slot from the shared
             // counter so the next plane element cannot land on the same value.
@@ -1188,7 +1235,7 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
             if (textLayer) textLayer.mesh.visible = mesh.visible;
             if (!mesh.visible) return;
             const tSec = (nowMs - startTime) / 1000;
-            if (valueFn || hasSizeExpr || hasDepthExpr) {
+            if (valueFn || bindId || hasSizeExpr || hasDepthExpr) {
                 try {
                     paintAll(tSec);
                     colorAttr.needsUpdate = true;

@@ -331,6 +331,10 @@
           "type": "string",
           "description": "TENSOR ONLY. Math.js expression giving one cell's value, evaluated per cell every frame with 'row', 'col' and 'idx' bound (0-based; row 0 renders at the top, as a matrix reads; 'idx' is the flat row-major index, and on a 1D tensor 'row' is 0). Mapped through 'colorMap' over 'colorDomain'. This is how a tensor acts as a VIEW over data held elsewhere in the scene — e.g. \"dataTable('attn', row, concat('w', col))\" — rather than embedding the data in the element. Use slider IDs and 't' for a live matrix. Takes precedence over 'values'. For a matrix that never changes, use 'values' instead — it costs nothing per frame."
         },
+        "bind": {
+          "type": "string",
+          "description": "TENSOR ONLY. The id of a tensor slider whose table this lattice shows and edits: the cells take the slider's current values (no 'values' or 'valueExpr' needed), and hovering a cell on the plane opens that cell's slider, so the lattice on screen is the editor. The two shapes must agree."
+        },
         "values": {
           "type": "array",
           "description": "TENSOR ONLY. Literal values, either nested (e.g. [[1,2],[3,4]]) or flat row-major (e.g. [1,2,3,4]). Both are normalized to flat + 'shape' internally, so the two spellings are interchangeable and the same flat list can be viewed as [4] or [2,2]. The entry count must match 'shape' exactly — a mismatch is reported rather than padded. Literal values build once and cost NOTHING per frame; prefer this over 'valueExpr' for a fixed matrix. Ignored when 'valueExpr' is present.",
@@ -389,6 +393,7 @@
               "x": { "type": "array", "items": { "type": "number" }, "description": "Literal x values, one per sample." },
               "y": { "type": "array", "items": { "type": "number" }, "description": "Literal y values. Static: built once, no per-frame cost." },
               "kind": { "type": "string", "enum": ["line", "points"], "description": "Draw the samples joined (default) or as dots." },
+                  "size": { "type": "number", "exclusiveMinimum": 0, "description": "Dot size in pixels for kind 'points' (before the Lines width setting scales it). Default: 3 x 'width'." },
               "width": { "type": "number", "exclusiveMinimum": 0, "description": "Line width. Default 2.5." },
               "opacity": { "type": "number", "minimum": 0, "maximum": 1 }
             },
@@ -901,12 +906,25 @@
     },
     "slider": {
       "type": "object",
-      "description": "Interactive slider that creates a named parameter usable in math.js expressions.",
+      "description": "Interactive slider that creates a named parameter usable in math.js expressions. `kind: \"tensor\"` makes one slider hold a whole matrix: `shape` gives its dimensions, `default` a nested table, and `min`/`max`/`step` apply to every cell. In expressions the id is then a matrix: `wq[row + 1, col + 1]`, `x * wq`, `size(wq)`.",
       "required": ["id", "min", "max"],
       "properties": {
         "id": {
           "type": "string",
           "description": "Slider ID used as variable name in expressions. Example: 'pA' creates a variable pA. Must be a valid math.js identifier."
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["scalar", "tensor"],
+          "description": "'scalar' (default) is one number on one track. 'tensor' is a lattice of numbers edited cell by cell: the panel shows a grid the shape of 'shape', and hovering a cell opens that cell's slider.",
+          "default": "scalar"
+        },
+        "shape": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 1 },
+          "minItems": 1,
+          "maxItems": 2,
+          "description": "TENSOR ONLY. Dimensions of the value, [rows, cols] or [n]. Required when kind is 'tensor'."
         },
         "label": {
           "type": "string",
@@ -926,8 +944,8 @@
           "default": 0.1
         },
         "default": {
-          "type": "number",
-          "description": "Initial slider value. Default: midpoint of min and max."
+          "description": "Initial value. A number for a scalar slider (default: midpoint of min and max). For a tensor slider, a nested table matching 'shape' (e.g. [[0,0],[3,0]]) or a flat row-major list; cells outside [min, max] are clamped.",
+          "oneOf": [{ "type": "number" }, { "type": "array" }]
         },
         "animate": {
           "type": "boolean",
@@ -959,7 +977,22 @@
           "description": "Expression to format the displayed slider value. Evaluated via the standard expression engine (math.js / JS fallback). Example: \"dataTable('capsules', s5_capsule, 'name')\" displays the capsule name instead of a numeric index."
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "if": { "properties": { "kind": { "const": "tensor" } }, "required": ["kind"] },
+      "then": {
+        "required": ["shape"],
+        "properties": {
+          "default": { "type": "array" },
+          "animate": { "const": false },
+          "valueExpr": false
+        }
+      },
+      "else": {
+        "properties": {
+          "default": { "type": "number" },
+          "shape": false
+        }
+      }
     },
     "camera": {
       "type": "object",

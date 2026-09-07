@@ -26,6 +26,8 @@ import type { AppState } from '/state.js';
 import type { Vec3 } from '/coords.js';
 import type { Label3D } from '/labels.js';
 import type { Object3D, Raycaster, Vector2, Vector3 } from 'three';
+import { showTensorCellPop, scheduleHide as scheduleTensorPopHide, tensorPopTarget, beginCellScrub, isScrubbing } from '/tensor-slider-pop.js';
+import type { TensorCellHover } from '/objects/tensor.js';
 
 /** One element's registry entry, as src/state.ts types it. */
 type PickerReg = NonNullable<AppState['elementRegistry'][string]>;
@@ -194,6 +196,49 @@ function projectToScreen(world: Vector3, rect: DOMRect): ScreenPoint | null {
         ndc: v,
         onScreen: v.x >= -1 && v.x <= 1 && v.y >= -1 && v.y <= 1,
     };
+}
+
+// ----- bound tensor cells -----
+
+interface TensorCellHit { id: string; bind: string; row: number; col: number; }
+
+/** The cell of a bound `tensor` lattice under the cursor, if any: raycast the
+ *  plane meshes that carry a `tensorCell` contract and ask the nearest one
+ *  which cell the hit point lands in. Independent of Ask-AI pickability. */
+function pickTensorCell(clientX: number, clientY: number): TensorCellHit | null {
+    if (!state.camera || !_canvas || !_raycaster) return null;
+    const rect = _canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return null;
+    const meshes: Object3D[] = [];
+    for (const m of state.planeMeshes) if (m && m.visible && (m.userData as { tensorCell?: TensorCellHover }).tensorCell) meshes.push(m);
+    if (!meshes.length) return null;
+    const ndc = { x: ((clientX - rect.left) / rect.width) * 2 - 1, y: -(((clientY - rect.top) / rect.height) * 2 - 1) };
+    _raycaster.setFromCamera(ndc as unknown as Vector2, state.camera);
+    const hits = _raycaster.intersectObjects(meshes, false);
+    for (const h of hits) {
+        const tc = (h.object.userData as { tensorCell?: TensorCellHover }).tensorCell;
+        if (!tc || isHidden(tc.id)) continue;
+        const cell = tc.cellAt([h.point.x, h.point.y, h.point.z]);
+        if (!cell) continue;
+        return { id: tc.id, bind: tc.bind, row: cell.row, col: cell.col };
+    }
+    return null;
+}
+
+/** True while the cell pop was opened from the lattice (not the panel). */
+let _latticePop = false;
+
+function hoverTensorCell(ev: PointerEvent): void {
+    const hit = pickTensorCell(ev.clientX, ev.clientY);
+    if (hit) {
+        // Just under the cursor, so the pointer is already at the pop's edge.
+        const x = ev.clientX + 4, y = ev.clientY + 6;
+        showTensorCellPop(hit.bind, hit.row, hit.col, { left: x, top: y, right: x, bottom: y });
+        _latticePop = true;
+    } else if (_latticePop && tensorPopTarget()) {
+        _latticePop = false;
+        scheduleTensorPopHide();
+    }
 }
 
 // ----- picking -----
@@ -589,6 +634,7 @@ function buildObjectAskMessage(id: string | null): string {
 // ----- setup -----
 
 function onPointerMove(e: PointerEvent) {
+    if (isScrubbing()) return;   // a cell drag owns the pointer
     // Ignore moves while the user is orbiting/panning (a button is held) — hide
     // immediately so the button never lingers over the scene mid-drag.
     if (e.buttons !== 0) { hideBtnNow(); return; }
@@ -615,6 +661,7 @@ function onPointerMove(e: PointerEvent) {
         const hit = pickAt(ev.clientX, ev.clientY);
         if (hit) showBtnFor(hit);
         else hideBtn();
+        hoverTensorCell(ev);
     });
 }
 
@@ -622,8 +669,23 @@ export function setupObjectPicker() {
     if (!state.renderer || !state.renderer.domElement) return;
     _canvas = state.renderer.domElement;
     _raycaster = new THREE.Raycaster();
+    // A press on a bound lattice cell scrubs that cell instead of orbiting:
+    // capture phase, so it runs before the camera controls' own listener and
+    // can stop the event reaching them.
+    _canvas.addEventListener('pointerdown', (e) => {
+        if (e.button !== 0) return;
+        const hit = pickTensorCell(e.clientX, e.clientY);
+        if (!hit) return;
+        e.preventDefault();
+        e.stopImmediatePropagation();   // also skips the hideBtnNow listener below, so:
+        hideBtnNow();
+        const x = e.clientX + 4, y = e.clientY + 6;
+        showTensorCellPop(hit.bind, hit.row, hit.col, { left: x, top: y, right: x, bottom: y });
+        _latticePop = true;
+        beginCellScrub(hit.bind, hit.row, hit.col, e.clientX, e.pointerId, _canvas!);
+    }, { capture: true });
     _canvas.addEventListener('pointermove', onPointerMove, { passive: true });
-    _canvas.addEventListener('pointerleave', () => hideBtn(), { passive: true });
+    _canvas.addEventListener('pointerleave', () => { hideBtn(); if (_latticePop) { _latticePop = false; scheduleTensorPopHide(); } }, { passive: true });
     // Hide the button immediately while dragging (orbit) so it doesn't linger.
     _canvas.addEventListener('pointerdown', () => hideBtnNow(), { passive: true });
 }

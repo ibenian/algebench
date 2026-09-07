@@ -94,6 +94,19 @@ export function dataToWorld(pos: Vec3): Vec3 {
     ];
 }
 
+/** Inverse of dataToWorld: a world point back to data units. */
+export function worldToData(pos: Vec3): Vec3 {
+    const r = range();
+    const s = scale();
+    const [rx, ry, rz] = r ?? [];
+    if (!rx || !ry || !rz) return [0, 0, 0];
+    return [
+        (pos[0] / s[0] + 1) / 2 * (rx[1] - rx[0]) + rx[0],
+        (pos[1] / s[1] + 1) / 2 * (ry[1] - ry[0]) + ry[0],
+        (pos[2] / s[2] + 1) / 2 * (rz[1] - rz[0]) + rz[0],
+    ];
+}
+
 // Convert a camera position/target from data-space to world-space using
 // uniform normalization (largest half-span) so 2D scenes with a tiny z-range
 // don't blow up the camera distance.
