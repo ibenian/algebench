@@ -261,7 +261,7 @@
     },
     "tf_kv": {
       "description": "Number of K/V heads (1..n_heads). Default n_heads (multi-head). 1 is multi-query attention: every query head reads the same K and V; n_heads / n_kv query heads share each K/V head (grouped-query in between). tfKvSaving() = n_heads / n_kv.",
-      "default": 2,
+      "default": "n_heads (2 in the toy); a scene that declares it must give it its own default",
       "scenes": [
         5,
         6
@@ -269,7 +269,7 @@
     },
     "tf_dk": {
       "description": "Per-head dimension, 1..256. Default d_model / n_heads (a convention, not a law), itself clamped to 256. Layer 0 / head 0 keeps the hand-built projections only while d_model = 4 and d_k = 2.",
-      "default": 2,
+      "default": "d_model / n_heads (2 in the toy); a scene that declares it must give it its own default",
       "scenes": [
         5,
         6
@@ -277,7 +277,7 @@
     },
     "tf_dff": {
       "description": "FFN hidden width, 1..256. Default 2 d_model = 8 (real models use 4x, or 8/3 x for SwiGLU), itself clamped to 256.",
-      "default": 8,
+      "default": "2 d_model (8 in the toy); a scene that declares it must give it its own default",
       "scenes": [
         5,
         6

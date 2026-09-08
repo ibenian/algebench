@@ -267,7 +267,10 @@
      *  numbers, keep the constant. `base` may be null when the table has no
      *  constant, in which case a missing slider yields null. */
     function _effective(base, id, rows, cols) {
-        const o = _readRaw(id);
+        return _overlay(base, _readRaw(id), rows, cols);
+    }
+    /** `base` with the cells of the nested array `o` overlaid (see _effective). */
+    function _overlay(base, o, rows, cols) {
         if (!Array.isArray(o)) return base;
         const out = [];
         for (let r = 0; r < rows; r++) {
@@ -314,7 +317,7 @@
         // (including empty rows, which would make d_model 0) falls back to the toy.
         const embOk = Array.isArray(rawEmb) && rawEmb.length > 0 && Array.isArray(rawEmb[0]) && rawEmb[0].length > 0;
         const table = embOk
-            ? _effective(null, 'tf_emb', rawEmb.length, rawEmb[0].length)
+            ? _overlay(null, rawEmb, rawEmb.length, rawEmb[0].length)   // already read (and snapshotted) once above
             : _effective(EMB, 's4_emb', TOY_N, TOY_D_MODEL);
         const n = table.length;
         const dModel = table[0].length;
@@ -578,8 +581,9 @@
     };
     const _n = () => _st().N;
     const _dm = () => _st().dModel;
-    const _layer = (l) => { const st = _st(); return st.L[_clampIdx(l, st.cfg.layers - 1)]; };
-    const _head = (l, h) => { const st = _st(); return st.L[_clampIdx(l, st.cfg.layers - 1)].attn.heads[_clampIdx(h, st.cfg.heads - 1)]; };
+    /** Layer l of the fetched pass, and head h of it; callers pass the pass they already hold. */
+    const _layer = (st, l) => st.L[_clampIdx(l, st.cfg.layers - 1)];
+    const _head = (st, l, h) => _layer(st, l).attn.heads[_clampIdx(h, st.cfg.heads - 1)];
     /** One entry of a flat (n x width) table; the caller passes the pass it already fetched. */
     const _cell = (st, arr, i, d, width, hiD) => arr[_clampIdx(i, st.N - 1) * width + _clampIdx(d, hiD)];
 
@@ -614,31 +618,31 @@
     /** Component d of the residual stream entering layer l at slot i (l = 0 is x; l = n_layers is what leaves the stack). */
     function tfH(l, i, d) { const st = _st(); return _cell(st, st.H[_clampIdx(l, st.cfg.layers)], i, d, st.dModel, st.dModel - 1); }
     /** What the attention sub-layer of layer l reads: the normed stream (pre-norm) or the stream itself (post-norm). */
-    function tfAttnIn(l, i, d) { const st = _st(); return _cell(st, _layer(l).ain, i, d, st.dModel, st.dModel - 1); }
-    function tfQh(l, h, i, d) { const st = _st(); return _cell(st, _head(l, h).Q, i, d, st.dk, st.dk - 1); }
-    function tfKh(l, h, i, d) { const st = _st(); return _cell(st, _head(l, h).K, i, d, st.dk, st.dk - 1); }
-    function tfVh(l, h, i, d) { const st = _st(); return _cell(st, _head(l, h).V, i, d, st.dk, st.dk - 1); }
-    function tfScoreH(l, h, i, j) { const st = _st(); return _cell(st, _head(l, h).S, i, j, st.N, st.N - 1); }
-    function tfScoreScaledH(l, h, i, j) { const st = _st(); return _cell(st, _head(l, h).Ss, i, j, st.N, st.N - 1); }
-    function tfAttnH(l, h, i, j) { const st = _st(); return _cell(st, _head(l, h).A, i, j, st.N, st.N - 1); }
+    function tfAttnIn(l, i, d) { const st = _st(); return _cell(st, _layer(st, l).ain, i, d, st.dModel, st.dModel - 1); }
+    function tfQh(l, h, i, d) { const st = _st(); return _cell(st, _head(st, l, h).Q, i, d, st.dk, st.dk - 1); }
+    function tfKh(l, h, i, d) { const st = _st(); return _cell(st, _head(st, l, h).K, i, d, st.dk, st.dk - 1); }
+    function tfVh(l, h, i, d) { const st = _st(); return _cell(st, _head(st, l, h).V, i, d, st.dk, st.dk - 1); }
+    function tfScoreH(l, h, i, j) { const st = _st(); return _cell(st, _head(st, l, h).S, i, j, st.N, st.N - 1); }
+    function tfScoreScaledH(l, h, i, j) { const st = _st(); return _cell(st, _head(st, l, h).Ss, i, j, st.N, st.N - 1); }
+    function tfAttnH(l, h, i, j) { const st = _st(); return _cell(st, _head(st, l, h).A, i, j, st.N, st.N - 1); }
     /** Head h's own output row i, component d — before the heads are concatenated and projected by W_O. */
-    function tfHeadOut(l, h, i, d) { const st = _st(); return _cell(st, _head(l, h).O, i, d, st.dk, st.dk - 1); }
+    function tfHeadOut(l, h, i, d) { const st = _st(); return _cell(st, _head(st, l, h).O, i, d, st.dk, st.dk - 1); }
     /** The concatenated heads, width n_heads * d_k: column c belongs to head floor(c / d_k). */
-    function tfConcat(l, i, c) { const st = _st(); const w = st.cfg.heads * st.dk; return _cell(st, _layer(l).attn.concat, i, c, w, w - 1); }
+    function tfConcat(l, i, c) { const st = _st(); const w = st.cfg.heads * st.dk; return _cell(st, _layer(st, l).attn.concat, i, c, w, w - 1); }
     /** The attention sub-layer's increment to the stream: concat times W_O. */
-    function tfAttnOut(l, i, d) { const st = _st(); return _cell(st, _layer(l).attn.attnOut, i, d, st.dModel, st.dModel - 1); }
+    function tfAttnOut(l, i, d) { const st = _st(); return _cell(st, _layer(st, l).attn.attnOut, i, d, st.dModel, st.dModel - 1); }
     /** The stream after the attention residual add (and, post-norm, its norm). */
-    function tfResid1(l, i, d) { const st = _st(); return _cell(st, _layer(l).r1, i, d, st.dModel, st.dModel - 1); }
+    function tfResid1(l, i, d) { const st = _st(); return _cell(st, _layer(st, l).r1, i, d, st.dModel, st.dModel - 1); }
     /** What the FFN reads: the normed stream (pre-norm) or the stream itself. */
-    function tfFfIn(l, i, d) { const st = _st(); return _cell(st, _layer(l).fin, i, d, st.dModel, st.dModel - 1); }
+    function tfFfIn(l, i, d) { const st = _st(); return _cell(st, _layer(st, l).fin, i, d, st.dModel, st.dModel - 1); }
     /** FFN hidden unit k at slot i, after the activation (SwiGLU: after the gate). */
-    function tfFfHidden(l, i, k) { const st = _st(); return _cell(st, _layer(l).hidden, i, k, st.cfg.dff, st.cfg.dff - 1); }
+    function tfFfHidden(l, i, k) { const st = _st(); return _cell(st, _layer(st, l).hidden, i, k, st.cfg.dff, st.cfg.dff - 1); }
     /** FFN hidden unit k BEFORE the activation: the raw pre-activation fin . W1. */
-    function tfFfPre(l, i, k) { const st = _st(); return _cell(st, _layer(l).pre1, i, k, st.cfg.dff, st.cfg.dff - 1); }
+    function tfFfPre(l, i, k) { const st = _st(); return _cell(st, _layer(st, l).pre1, i, k, st.cfg.dff, st.cfg.dff - 1); }
     /** The FFN's increment to the stream. */
-    function tfFfOut(l, i, d) { const st = _st(); return _cell(st, _layer(l).ffOut, i, d, st.dModel, st.dModel - 1); }
+    function tfFfOut(l, i, d) { const st = _st(); return _cell(st, _layer(st, l).ffOut, i, d, st.dModel, st.dModel - 1); }
     /** The stream leaving layer l (= tfH(l + 1, i, d)). */
-    function tfResid2(l, i, d) { const st = _st(); return _cell(st, _layer(l).r2, i, d, st.dModel, st.dModel - 1); }
+    function tfResid2(l, i, d) { const st = _st(); return _cell(st, _layer(st, l).r2, i, d, st.dModel, st.dModel - 1); }
 
     // The head of the model
     /** The vector the unembedding reads at slot i: the final norm of the stream (pre-norm) or the stream itself. */
