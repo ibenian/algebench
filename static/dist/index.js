@@ -1845,6 +1845,31 @@ function _formatSliderValue(s) {
 	} catch (_e) {}
 	return Number(s.value).toFixed(1);
 }
+/** How many monospace characters the widest readout of `s` needs. Plain
+*  readouts are bounded by the two ends of the range. A formatted one
+*  (valueExpr) is measured by evaluating the format at every reachable
+*  value when the range is a small grid of steps -- the category sliders
+*  ("LayerNorm", "post-norm") are exactly that -- and otherwise by the
+*  longer of the two ends plus a little slack. Reserving it up front keeps
+*  the track from shrinking when the text changes length. */
+function _widestReadoutCh(s) {
+	if (!s._valueExprCompiled) return Math.max(Number(s.min).toFixed(1).length, Number(s.max).toFixed(1).length);
+	const step = s.step > 0 ? s.step : .1;
+	const steps = Math.round((s.max - s.min) / step);
+	const probe = (v) => {
+		const saved = s.value;
+		s.value = v;
+		try {
+			return _formatSliderValue(s).length;
+		} finally {
+			s.value = saved;
+		}
+	};
+	let widest = _formatSliderValue(s).length;
+	if (steps >= 0 && steps <= 64) for (let k = 0; k <= steps; k++) widest = Math.max(widest, probe(s.min + k * step));
+	else widest = Math.max(widest, probe(s.min), probe(s.max)) + 1;
+	return widest;
+}
 function startSliderLoop(id) {
 	const slider = sliderState.sceneSliders[id];
 	if (!slider) return;
@@ -2053,10 +2078,7 @@ function buildSliderOverlay() {
 		const valSpan = document.createElement("span");
 		valSpan.className = "slider-value";
 		valSpan.textContent = _formatSliderValue(s);
-		if (!s._valueExprString) {
-			const widest = Math.max(Number(s.min).toFixed(1).length, Number(s.max).toFixed(1).length);
-			valSpan.style.minWidth = `${widest}ch`;
-		}
+		valSpan.style.minWidth = `${_widestReadoutCh(s)}ch`;
 		row.appendChild(valSpan);
 		input.addEventListener("input", () => {
 			if (s._loopPlaying) stopSliderLoop(id);
