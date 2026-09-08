@@ -721,6 +721,10 @@
         const ang = (Number.isFinite(pos) ? pos : 0) * _thetaVis(pair);
         const emb = _st().emb;
         const base = i * _dm() + (pair << 1);
+        // An odd d_model leaves the last dimension without a partner; as in
+        // the pass's own RoPE, it is not rotated (and its partner is never
+        // read from the next row).
+        if ((pair << 1) + 1 >= _dm()) return emb[base];
         const a = emb[base], b = emb[base + 1];
         const ca = Math.cos(ang), sa = Math.sin(ang);
         return (c % 2 === 0) ? (a * ca - b * sa) : (a * sa + b * ca);
