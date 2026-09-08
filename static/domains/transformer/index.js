@@ -686,7 +686,8 @@
      *  slot arguments are unaffected. The component index d still clamps. */
     function tfPE(i, d) {
         const pos = Number(i);
-        return _pe(Number.isFinite(pos) ? pos : 0, _clampIdx(d, _dm() - 1), _dm());
+        const dm = _dm();
+        return _pe(Number.isFinite(pos) ? pos : 0, _clampIdx(d, dm - 1), dm);
     }
 
     /** Illustrative per-pair rotation rates for tfRopeEmb, in radians per
@@ -718,17 +719,19 @@
      *  with an empty pair rotates only in the plane of the other one.
      *  Both pair norms, and hence the full norm, are preserved for every p. */
     function tfRopeEmb(slot, d, p) {
-        const i = _clampIdx(slot, _n() - 1);
-        const c = _clampIdx(d, _dm() - 1);
+        const st = _st();   // once: this runs per cell per frame
+        const dm = st.dModel;
+        const i = _clampIdx(slot, st.N - 1);
+        const c = _clampIdx(d, dm - 1);
         const pair = c >> 1;
         const pos = Number(p);
-        const ang = (Number.isFinite(pos) ? pos : 0) * _thetaVis(pair);
-        const emb = _st().emb;
-        const base = i * _dm() + (pair << 1);
+        const ang = (Number.isFinite(pos) ? pos : 0) * _thetaVis(pair, dm);
+        const emb = st.emb;
+        const base = i * dm + (pair << 1);
         // An odd d_model leaves the last dimension without a partner; as in
         // the pass's own RoPE, it is not rotated (and its partner is never
         // read from the next row).
-        if ((pair << 1) + 1 >= _dm()) return emb[base];
+        if ((pair << 1) + 1 >= dm) return emb[base];
         const a = emb[base], b = emb[base + 1];
         const ca = Math.cos(ang), sa = Math.sin(ang);
         return (c % 2 === 0) ? (a * ca - b * sa) : (a * sa + b * ca);
@@ -740,11 +743,11 @@
     /** The rate for dimension pair `pair`: the two illustrative values for the
      *  toy's pairs, and the real schedule 10000^(-2p/d_model) for any further
      *  pair a wider tf_emb brings, so a reshaped model never sees NaN here. */
-    function _thetaVis(pair) {
+    function _thetaVis(pair, dModel) {
         const p = Math.max(0, Math.round(Number(pair) || 0));
-        return p < THETA_VIS.length ? THETA_VIS[p] : Math.pow(10000, -(2 * p) / _dm());
+        return p < THETA_VIS.length ? THETA_VIS[p] : Math.pow(10000, -(2 * p) / dModel);
     }
-    function tfRopeEmbTheta(pair) { return _thetaVis(pair); }
+    function tfRopeEmbTheta(pair) { return _thetaVis(pair, _dm()); }
 
 
     /** The full d_model-dimensional dot product of two RoPE'd embeddings:
@@ -765,7 +768,8 @@
      *  number beside a picture that disagrees with it without saying so. */
     function tfRopeEmbDot(slotA, pa, slotB, pb) {
         let acc = 0;
-        for (let d = 0; d < _dm(); d++) {
+        const dm = _dm();
+        for (let d = 0; d < dm; d++) {
             acc += tfRopeEmb(slotA, d, pa) * tfRopeEmb(slotB, d, pb);
         }
         return acc;
@@ -782,7 +786,8 @@
      *  all three factors on the right are fixed once the gap is fixed. */
     function tfRopeEmbNorm(slot, p) {
         let acc = 0;
-        for (let d = 0; d < _dm(); d++) {
+        const dm = _dm();
+        for (let d = 0; d < dm; d++) {
             const v = tfRopeEmb(slot, d, p);
             acc += v * v;
         }
@@ -828,14 +833,15 @@
     let _arcB = new Float64Array(TOY_D_MODEL);
 
     function tfRopeEmbArc(d, slotA, pa, slotB, pb, s) {
-        const c = _clampIdx(d, _dm() - 1);
+        const dm = _dm();
+        const c = _clampIdx(d, dm - 1);
         // Grow the scratch to the model's width once; a reshaped model must
         // not write past the end of a buffer sized for the toy.
-        if (_arcA.length < _dm()) { _arcA = new Float64Array(_dm()); _arcB = new Float64Array(_dm()); }
+        if (_arcA.length < dm) { _arcA = new Float64Array(dm); _arcB = new Float64Array(dm); }
         const A = _arcA;
         const B = _arcB;
         let na = 0, nb = 0;
-        for (let k = 0; k < _dm(); k++) {
+        for (let k = 0; k < dm; k++) {
             A[k] = tfRopeEmb(slotA, k, pa);
             B[k] = tfRopeEmb(slotB, k, pb);
             na += A[k] * A[k];
@@ -844,7 +850,7 @@
         na = Math.sqrt(na); nb = Math.sqrt(nb);
         if (!(na > 1e-12) || !(nb > 1e-12)) return 0;
         let dot = 0;
-        for (let k = 0; k < _dm(); k++) dot += (A[k] / na) * (B[k] / nb);
+        for (let k = 0; k < dm; k++) dot += (A[k] / na) * (B[k] / nb);
         dot = dot < -1 ? -1 : (dot > 1 ? 1 : dot);
         const th = Math.acos(dot);
         const sth = Math.sin(th);
