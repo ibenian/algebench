@@ -44,7 +44,7 @@
             {"id": "demo_h", "label": "head shown ($h$)", "min": 0, "max": 3, "step": 1, "default": 0, "valueExpr": "concat('head ', string(demo_h))"},
             {"id": "demo_i", "label": "query slot to follow ($i$)", "min": 0, "max": 5, "step": 1, "default": 2, "valueExpr": "concat(string(demo_i), ' · ', tfToken(demo_i))"},
             {"id": "tf_heads", "label": "tf_heads — query heads", "min": 1, "max": 4, "step": 1, "default": 2, "valueExpr": "string(tf_heads)"},
-            {"id": "tf_kv", "label": "tf_kv — K/V heads", "min": 1, "max": 4, "step": 1, "default": 2, "valueExpr": "string(tf_kv)"},
+            {"id": "tf_kv", "label": "tf_kv — K/V heads", "min": 1, "max": 4, "step": 1, "default": 2, "valueExpr": "concat(string(tfKv()), tfKv() == tf_kv ? '' : concat(' (asked ', string(tf_kv), ')'))"},
             {"id": "s3_mask", "label": "causal mask", "min": 0, "max": 1, "step": 1, "default": 1, "valueExpr": "s3_mask >= 0.5 ? 'on' : 'off'"},
             {"id": "s3_scale", "label": "divisor: 1 (none) → $\\sqrt{d_k}$", "min": 0, "max": 1, "step": 0.05, "default": 1},
             {"id": "s2_rope", "label": "position scheme", "min": 0, "max": 1, "step": 1, "default": 0, "valueExpr": "s2_rope >= 0.5 ? 'RoPE' : 'additive PE'"},
@@ -398,7 +398,7 @@
                 }
               ],
               "textExpr": "toFixed(value, 2)",
-              "prompt": "W_O of layer 0 (n_heads·d_k × d_model). Bound to the tensor slider tf_wo_0: hover a cell to edit it.",
+              "prompt": "W_O of layer 0 (n_heads·d_k × d_model). Bound to the tensor slider tf_wo_0: hover a cell to edit it. While the slider is present the lattice shows its whole 4×4 table; the engine reads only the first n_heads·d_k rows of it.",
               "bind": "tf_wo_0",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
