@@ -795,7 +795,7 @@
               "id": "t2_w1",
               "type": "tensor",
               "shape": [4, 8],
-              "valueExpr": "tfW1(demo_l, row, col)",
+              "valueExpr": "tfW1(0, row, col)",
               "origin": [2.0, 4.6, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -804,20 +804,20 @@
               "color": "#ffee58",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "tfW1(l, row, col)",
+              "label": "tfW1(0, row, col) — layer 0, bound to tf_w1_0",
               "axes": [
                 {
                   "color": "#ffee58",
                   "labels": ["$d_0$", "$d_1$", "$d_2$", "$d_3$"]
                 },
                 {
-                  "title": "tfW1(l, row, col)",
+                  "title": "tfW1(0, row, col) — layer 0, bound to tf_w1_0",
                   "color": "#ffee58",
                   "labels": ["$u_0$", "$u_1$", "$u_2$", "$u_3$", "$u_4$", "$u_5$", "$u_6$", "$u_7$"]
                 }
               ],
               "textExpr": "toFixed(value, 2)",
-              "prompt": "FFN W1 of layer demo_l (d_model × d_ff). Layer 0 is bound to tf_w1_0: hover a cell to edit.",
+              "prompt": "FFN W1 of LAYER 0 (d_model × d_ff), bound to the tensor slider tf_w1_0: hover a cell to edit it. A bound lattice always shows its slider, so this one stays on layer 0 whatever layer is shown; tfW2 beside it follows the layer selector.",
               "bind": "tf_w1_0",
               "widthExpr": "max(0.15, min(1, abs(value) / 1))",
               "heightExpr": "max(0.15, min(1, abs(value) / 1))"
@@ -978,7 +978,7 @@
                 }
               ],
               "textExpr": "(2 <= tfLayers()) ? (toFixed(value, 2)) : ''",
-              "prompt": "After two layers (with tf_layers < 2 this repeats the last stream: indices clamp).",
+              "prompt": "After two layers. Blank while tf_layers < 2: a stream the stack does not produce is not drawn (tfH itself would clamp to the last one).",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
             },
@@ -1005,7 +1005,7 @@
                 }
               ],
               "textExpr": "(3 <= tfLayers()) ? (toFixed(value, 2)) : ''",
-              "prompt": "After three layers.",
+              "prompt": "After three layers. Blank while tf_layers < 3.",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
             },
