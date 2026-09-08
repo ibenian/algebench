@@ -580,7 +580,8 @@
     const _dm = () => _st().dModel;
     const _layer = (l) => { const st = _st(); return st.L[_clampIdx(l, st.cfg.layers - 1)]; };
     const _head = (l, h) => { const st = _st(); return st.L[_clampIdx(l, st.cfg.layers - 1)].attn.heads[_clampIdx(h, st.cfg.heads - 1)]; };
-    const _cell = (arr, i, d, width, hiD) => { const st = _st(); return arr[_clampIdx(i, st.N - 1) * width + _clampIdx(d, hiD)]; };
+    /** One entry of a flat (n x width) table; the caller passes the pass it already fetched. */
+    const _cell = (st, arr, i, d, width, hiD) => arr[_clampIdx(i, st.N - 1) * width + _clampIdx(d, hiD)];
 
     // Configuration
     function tfN() { return _st().N; }
@@ -611,41 +612,41 @@
 
     // The pass, per layer and head
     /** Component d of the residual stream entering layer l at slot i (l = 0 is x; l = n_layers is what leaves the stack). */
-    function tfH(l, i, d) { const st = _st(); return _cell(st.H[_clampIdx(l, st.cfg.layers)], i, d, st.dModel, st.dModel - 1); }
+    function tfH(l, i, d) { const st = _st(); return _cell(st, st.H[_clampIdx(l, st.cfg.layers)], i, d, st.dModel, st.dModel - 1); }
     /** What the attention sub-layer of layer l reads: the normed stream (pre-norm) or the stream itself (post-norm). */
-    function tfAttnIn(l, i, d) { const st = _st(); return _cell(_layer(l).ain, i, d, st.dModel, st.dModel - 1); }
-    function tfQh(l, h, i, d) { const st = _st(); return _cell(_head(l, h).Q, i, d, st.dk, st.dk - 1); }
-    function tfKh(l, h, i, d) { const st = _st(); return _cell(_head(l, h).K, i, d, st.dk, st.dk - 1); }
-    function tfVh(l, h, i, d) { const st = _st(); return _cell(_head(l, h).V, i, d, st.dk, st.dk - 1); }
-    function tfScoreH(l, h, i, j) { const st = _st(); return _cell(_head(l, h).S, i, j, st.N, st.N - 1); }
-    function tfScoreScaledH(l, h, i, j) { const st = _st(); return _cell(_head(l, h).Ss, i, j, st.N, st.N - 1); }
-    function tfAttnH(l, h, i, j) { const st = _st(); return _cell(_head(l, h).A, i, j, st.N, st.N - 1); }
+    function tfAttnIn(l, i, d) { const st = _st(); return _cell(st, _layer(l).ain, i, d, st.dModel, st.dModel - 1); }
+    function tfQh(l, h, i, d) { const st = _st(); return _cell(st, _head(l, h).Q, i, d, st.dk, st.dk - 1); }
+    function tfKh(l, h, i, d) { const st = _st(); return _cell(st, _head(l, h).K, i, d, st.dk, st.dk - 1); }
+    function tfVh(l, h, i, d) { const st = _st(); return _cell(st, _head(l, h).V, i, d, st.dk, st.dk - 1); }
+    function tfScoreH(l, h, i, j) { const st = _st(); return _cell(st, _head(l, h).S, i, j, st.N, st.N - 1); }
+    function tfScoreScaledH(l, h, i, j) { const st = _st(); return _cell(st, _head(l, h).Ss, i, j, st.N, st.N - 1); }
+    function tfAttnH(l, h, i, j) { const st = _st(); return _cell(st, _head(l, h).A, i, j, st.N, st.N - 1); }
     /** Head h's own output row i, component d — before the heads are concatenated and projected by W_O. */
-    function tfHeadOut(l, h, i, d) { const st = _st(); return _cell(_head(l, h).O, i, d, st.dk, st.dk - 1); }
+    function tfHeadOut(l, h, i, d) { const st = _st(); return _cell(st, _head(l, h).O, i, d, st.dk, st.dk - 1); }
     /** The concatenated heads, width n_heads * d_k: column c belongs to head floor(c / d_k). */
-    function tfConcat(l, i, c) { const st = _st(); const w = st.cfg.heads * st.dk; return _cell(_layer(l).attn.concat, i, c, w, w - 1); }
+    function tfConcat(l, i, c) { const st = _st(); const w = st.cfg.heads * st.dk; return _cell(st, _layer(l).attn.concat, i, c, w, w - 1); }
     /** The attention sub-layer's increment to the stream: concat times W_O. */
-    function tfAttnOut(l, i, d) { const st = _st(); return _cell(_layer(l).attn.attnOut, i, d, st.dModel, st.dModel - 1); }
+    function tfAttnOut(l, i, d) { const st = _st(); return _cell(st, _layer(l).attn.attnOut, i, d, st.dModel, st.dModel - 1); }
     /** The stream after the attention residual add (and, post-norm, its norm). */
-    function tfResid1(l, i, d) { const st = _st(); return _cell(_layer(l).r1, i, d, st.dModel, st.dModel - 1); }
+    function tfResid1(l, i, d) { const st = _st(); return _cell(st, _layer(l).r1, i, d, st.dModel, st.dModel - 1); }
     /** What the FFN reads: the normed stream (pre-norm) or the stream itself. */
-    function tfFfIn(l, i, d) { const st = _st(); return _cell(_layer(l).fin, i, d, st.dModel, st.dModel - 1); }
+    function tfFfIn(l, i, d) { const st = _st(); return _cell(st, _layer(l).fin, i, d, st.dModel, st.dModel - 1); }
     /** FFN hidden unit k at slot i, after the activation (SwiGLU: after the gate). */
-    function tfFfHidden(l, i, k) { const st = _st(); return _cell(_layer(l).hidden, i, k, st.cfg.dff, st.cfg.dff - 1); }
+    function tfFfHidden(l, i, k) { const st = _st(); return _cell(st, _layer(l).hidden, i, k, st.cfg.dff, st.cfg.dff - 1); }
     /** FFN hidden unit k BEFORE the activation: the raw pre-activation fin . W1. */
-    function tfFfPre(l, i, k) { const st = _st(); return _cell(_layer(l).pre1, i, k, st.cfg.dff, st.cfg.dff - 1); }
+    function tfFfPre(l, i, k) { const st = _st(); return _cell(st, _layer(l).pre1, i, k, st.cfg.dff, st.cfg.dff - 1); }
     /** The FFN's increment to the stream. */
-    function tfFfOut(l, i, d) { const st = _st(); return _cell(_layer(l).ffOut, i, d, st.dModel, st.dModel - 1); }
+    function tfFfOut(l, i, d) { const st = _st(); return _cell(st, _layer(l).ffOut, i, d, st.dModel, st.dModel - 1); }
     /** The stream leaving layer l (= tfH(l + 1, i, d)). */
-    function tfResid2(l, i, d) { const st = _st(); return _cell(_layer(l).r2, i, d, st.dModel, st.dModel - 1); }
+    function tfResid2(l, i, d) { const st = _st(); return _cell(st, _layer(l).r2, i, d, st.dModel, st.dModel - 1); }
 
     // The head of the model
     /** The vector the unembedding reads at slot i: the final norm of the stream (pre-norm) or the stream itself. */
-    function tfFinal(i, d) { const st = _st(); return _cell(st.final, i, d, st.dModel, st.dModel - 1); }
+    function tfFinal(i, d) { const st = _st(); return _cell(st, st.final, i, d, st.dModel, st.dModel - 1); }
     /** Logit of vocabulary entry v at slot i: tfFinal(i, .) dot the embedding row of v (tied unembedding), before temperature. */
-    function tfLogit(i, v) { const st = _st(); const V = st.cfg.vocab.length; return _cell(st.logits, i, v, V, V - 1); }
+    function tfLogit(i, v) { const st = _st(); const V = st.cfg.vocab.length; return _cell(st, st.logits, i, v, V, V - 1); }
     /** softmax(logits / tf_temp)[v] at slot i: the model's next-token distribution for the slot after i. */
-    function tfProb(i, v) { const st = _st(); const V = st.cfg.vocab.length; return _cell(st.probs, i, v, V, V - 1); }
+    function tfProb(i, v) { const st = _st(); const V = st.cfg.vocab.length; return _cell(st, st.probs, i, v, V, V - 1); }
     /** Index of the most probable vocabulary entry at slot i (temperature-independent). */
     function tfArgmax(i) {
         const st = _st(); const V = st.cfg.vocab.length; const r = _clampIdx(i, st.N - 1);
@@ -672,7 +673,7 @@
         const W = _clampIdx(m, 2) === 0 ? st.WQ : (_clampIdx(m, 2) === 1 ? st.WK : st.WV);
         return W[_clampIdx(r, st.dModel - 1)][_clampIdx(c, st.dk - 1)];
     }
-    function tfEmb(i, d) { const st = _st(); return _cell(st.emb, i, d, st.dModel, st.dModel - 1); }
+    function tfEmb(i, d) { const st = _st(); return _cell(st, st.emb, i, d, st.dModel, st.dModel - 1); }
 
     /** Positional encoding at a CONTINUOUS position. Unlike every other index
      *  here, the position is NOT rounded to a slot and NOT clamped to N-1: PE
@@ -846,13 +847,13 @@
         return (Math.sin((1 - t) * th) * (A[c] / na) + Math.sin(t * th) * (B[c] / nb)) / sth;
     }
 
-    function tfX(i, d) { const st = _st(); return _cell(st.x, i, d, st.dModel, st.dModel - 1); }
+    function tfX(i, d) { const st = _st(); return _cell(st, st.x, i, d, st.dModel, st.dModel - 1); }
 
-    function tfOutNoPos(i, d) { const st = _st(); return _cell(st.On, i, d, st.dk, st.dk - 1); }
+    function tfOutNoPos(i, d) { const st = _st(); return _cell(st, st.On, i, d, st.dk, st.dk - 1); }
 
-    function tfQ(i, d) { const st = _st(); return _cell(st.Q, i, d, st.dk, st.dk - 1); }
-    function tfK(i, d) { const st = _st(); return _cell(st.K, i, d, st.dk, st.dk - 1); }
-    function tfV(i, d) { const st = _st(); return _cell(st.V, i, d, st.dk, st.dk - 1); }
+    function tfQ(i, d) { const st = _st(); return _cell(st, st.Q, i, d, st.dk, st.dk - 1); }
+    function tfK(i, d) { const st = _st(); return _cell(st, st.K, i, d, st.dk, st.dk - 1); }
+    function tfV(i, d) { const st = _st(); return _cell(st, st.V, i, d, st.dk, st.dk - 1); }
 
     /** Score of the what-if (rotated) query against key j: q_probe . k_j.
      *  Equals tfScore(s3_qi, j) exactly at angleDeg = 0, where the probe IS
@@ -879,16 +880,17 @@
     function _probeVec(angleDeg) {
         const st = _st();
         const i = _clampIdx(_getSlider('s3_qi', 2), st.N - 1);
-        return _rot([st.Q[i * st.dk], st.Q[i * st.dk + 1] || 0], (Number(angleDeg) || 0) * Math.PI / 180);
+        // At d_k = 1 the second component is 0, not the next slot's q_0.
+        return _rot([st.Q[i * st.dk], st.dk > 1 ? st.Q[i * st.dk + 1] : 0], (Number(angleDeg) || 0) * Math.PI / 180);
     }
 
     function tfQProbe(d, angleDeg) {
         return _probeVec(angleDeg)[_clampIdx(d, 1)];
     }
 
-    function tfScore(i, j) { const st = _st(); return _cell(st.S, i, j, st.N, st.N - 1); }
+    function tfScore(i, j) { const st = _st(); return _cell(st, st.S, i, j, st.N, st.N - 1); }
 
-    function tfScoreScaled(i, j) { const st = _st(); return _cell(st.Ss, i, j, st.N, st.N - 1); }
+    function tfScoreScaled(i, j) { const st = _st(); return _cell(st, st.Ss, i, j, st.N, st.N - 1); }
 
     /** Divide the RAW score by sqrt(dim), with dim passed literally by the
      *  scene: 2 is d_k (correct), 4 is d_model (the classic error). Passing it
@@ -904,7 +906,7 @@
         return _clampIdx(j, n - 1) <= _clampIdx(i, n - 1) ? 1 : 0;
     }
 
-    function tfAttn(i, j) { const st = _st(); return _cell(st.A, i, j, st.N, st.N - 1); }
+    function tfAttn(i, j) { const st = _st(); return _cell(st, st.A, i, j, st.N, st.N - 1); }
 
     /** Accuracy-contract item 1, asserted on screen. 1.000000 when correct;
      *  0.98993 for row 2 in the mask-after-softmax mode. */
@@ -916,7 +918,7 @@
         return acc;
     }
 
-    function tfOut(i, d) { const st = _st(); return _cell(st.O, i, d, st.dk, st.dk - 1); }
+    function tfOut(i, d) { const st = _st(); return _cell(st, st.O, i, d, st.dk, st.dk - 1); }
 
     function tfRopeQ(d, m) { return _rot(ROPE_Q, (Number(m) || 0) * ROPE_THETA)[_clampIdx(d, 1)]; }
     function tfRopeK(d, n) { return _rot(ROPE_K, (Number(n) || 0) * ROPE_THETA)[_clampIdx(d, 1)]; }
