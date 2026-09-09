@@ -410,7 +410,7 @@
               "size": [4.8, 4],
               "color": "#ffa726",
               "series": [
-                {"kind": "points", "n": 6, "xExpr": "i", "yExpr": "tfScoreScaledH(0, demo_h, demo_i, i)", "color": "#ffa726", "size": 5, "label": "tfScoreScaledH(0, h, i, j)"}
+                {"kind": "points", "n": 6, "xExpr": "(demo_h < tfHeads()) ? i : -99", "yExpr": "tfScoreScaledH(0, demo_h, demo_i, i)", "color": "#ffa726", "size": 5, "label": "tfScoreScaledH(0, h, i, j)"}
               ],
               "axes": [
                 {"title": "key slot $j$", "ticks": 6, "labelExpr": "tfToken(value)"},
@@ -427,7 +427,7 @@
               "size": [4.8, 4],
               "color": "#66bb6a",
               "series": [
-                {"kind": "points", "n": 6, "xExpr": "i", "yExpr": "tfAttnH(0, demo_h, demo_i, i)", "color": "#66bb6a", "size": 5, "label": "tfAttnH(0, h, i, j)"}
+                {"kind": "points", "n": 6, "xExpr": "(demo_h < tfHeads()) ? i : -99", "yExpr": "tfAttnH(0, demo_h, demo_i, i)", "color": "#66bb6a", "size": 5, "label": "tfAttnH(0, h, i, j)"}
               ],
               "axes": [
                 {"title": "key slot $j$", "ticks": 6, "labelExpr": "tfToken(value)"},
@@ -467,7 +467,7 @@
             }
           ],
           "info": [
-            {"id": "tour_cfg", "position": "top-left", "title": "The configuration in force", "content": "n = {{tfN()}} tokens · $d_{\\text{model}}$ = {{tfDModel()}} · $d_k$ = {{tfDk()}} · heads = {{tfHeads()}} · K/V heads = {{tfKv()}} · layers = {{tfLayers()}} · $d_{ff}$ = {{tfDff()}} · vocabulary = {{tfVocabN()}} words\\n\\nK/V cache = {{tfKvCache()}} numbers (2 · n · n_kv · d_k per layer) — sharing saves ×{{tfKvSaving()}}. Head 0 reads K/V head {{tfHeadKv(0)}}, head 1 reads {{tfHeadKv(1)}}, head 3 reads {{tfHeadKv(3)}}."}
+            {"id": "tour_cfg", "position": "top-left", "title": "The configuration in force", "content": "n = {{tfN()}} tokens · $d_{\\text{model}}$ = {{tfDModel()}} · $d_k$ = {{tfDk()}} · heads = {{tfHeads()}} · K/V heads = {{tfKv()}} · layers = {{tfLayers()}} · $d_{ff}$ = {{tfDff()}} · vocabulary = {{tfVocabN()}} words\\n\\nK/V cache = {{tfKvCache()}} numbers (2 · n · n_kv · d_k per layer) — sharing saves ×{{tfKvSaving()}}. Head 0 reads K/V head {{tfHeadKv(0)}}, head 1 reads {{tfHeadKv(1)}}, and the last head ({{tfHeads() - 1}}) reads {{tfHeadKv(tfHeads() - 1)}}."}
           ],
           "prompt": "A function tour of the general transformer engine, attention part. Every lattice is labelled with the domain call that fills it. Weights beyond layer 0 / head 0 are seeded, not learned; say so if asked what the numbers mean."
         }
@@ -780,8 +780,8 @@
               "size": [6.4, 4],
               "color": "#ffee58",
               "series": [
-                {"kind": "points", "n": 8, "xExpr": "i", "yExpr": "tfFfPre(demo_l, demo_i, i)", "color": "#ffa726", "size": 5, "label": "tfFfPre(l, i, k) — before"},
-                {"kind": "points", "n": 8, "xExpr": "i", "yExpr": "tfFfHidden(demo_l, demo_i, i)", "color": "#ffee58", "size": 5, "label": "tfFfHidden(l, i, k) — after"}
+                {"kind": "points", "n": 8, "xExpr": "(demo_l < tfLayers()) ? i : -99", "yExpr": "tfFfPre(demo_l, demo_i, i)", "color": "#ffa726", "size": 5, "label": "tfFfPre(l, i, k) — before"},
+                {"kind": "points", "n": 8, "xExpr": "(demo_l < tfLayers()) ? i : -99", "yExpr": "tfFfHidden(demo_l, demo_i, i)", "color": "#ffee58", "size": 5, "label": "tfFfHidden(l, i, k) — after"}
               ],
               "axes": [
                 {"title": "hidden unit $k$", "ticks": 8},
@@ -854,7 +854,7 @@
             }
           ],
           "info": [
-            {"id": "tour_resid", "position": "top-left", "title": "The residual identity at slot 2", "content": "pre-norm: out − (in + attention + FFN) = ({{toFixed(tfResid2(demo_l,2,0) - tfH(demo_l,2,0) - tfAttnOut(demo_l,2,0) - tfFfOut(demo_l,2,0), 6)}}, {{toFixed(tfResid2(demo_l,2,1) - tfH(demo_l,2,1) - tfAttnOut(demo_l,2,1) - tfFfOut(demo_l,2,1), 6)}}, …) — zero while tf_prenorm = 1; post-norm normalises the sums, so it is not.\\n\\nMean of tfAttnIn row 2 = {{toFixed(tfAttnIn(demo_l,2,0)+tfAttnIn(demo_l,2,1)+tfAttnIn(demo_l,2,2)+tfAttnIn(demo_l,2,3), 4)}} — zero under LayerNorm, not under RMSNorm (no mean subtraction)."}
+            {"id": "tour_resid", "position": "top-left", "title": "The residual identity at slot 2", "content": "Layer read: {{min(demo_l, tfLayers() - 1)}} — the engine clamps a selector past the top of the stack, so this card follows the last layer while the lattices go blank.\\n\\npre-norm: out − (in + attention + FFN) = ({{toFixed(tfResid2(demo_l,2,0) - tfH(demo_l,2,0) - tfAttnOut(demo_l,2,0) - tfFfOut(demo_l,2,0), 6)}}, {{toFixed(tfResid2(demo_l,2,1) - tfH(demo_l,2,1) - tfAttnOut(demo_l,2,1) - tfFfOut(demo_l,2,1), 6)}}, …) — zero while tf_prenorm = 1; post-norm normalises the sums, so it is not.\\n\\nMean of tfAttnIn row 2 = {{toFixed(tfAttnIn(demo_l,2,0)+tfAttnIn(demo_l,2,1)+tfAttnIn(demo_l,2,2)+tfAttnIn(demo_l,2,3), 4)}} — zero under LayerNorm, not under RMSNorm (no mean subtraction)."}
           ],
           "prompt": "A function tour of the general transformer engine, block part: the residual stream through one layer. The card checks the residual identity and the norm means live."
         }
