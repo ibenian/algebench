@@ -2807,7 +2807,7 @@ function buildLegend(elements) {
 		div.classList.toggle("legend-hidden", !wasOff);
 		div.querySelector(".legend-swatch").style.opacity = wasOff ? "" : "0.3";
 	});
-	for (const id of [...state.legendToggledOff]) {
+	for (const id of [...overlayState.legendToggledOff]) {
 		if (!declaredIds.has(id)) {
 			overlayState.legendToggledOff.delete(id);
 			continue;
