@@ -461,7 +461,7 @@ export function buildLegend(elements: Element[] | null | undefined): void {
     // the scene still lists is only between renders, and pruning on that
     // dropped the user's choice mid-transition — the row then redrew as
     // visible and its next click hid the element instead of restoring it.
-    for (const id of [...state.legendToggledOff]) {
+    for (const id of [...overlayState.legendToggledOff]) {
         if (!declaredIds.has(id)) {
             overlayState.legendToggledOff.delete(id);
             continue;
