@@ -369,19 +369,44 @@ export function buildLegend(elements: Element[] | null | undefined): void {
         if (!val.label) grouped.delete(key);
     }
     const items = [...grouped.values()];
+    // Clear before the empty-list return, not after it. A step whose elements
+    // carry no label+color pair builds no rows, and leaving the previous
+    // step's rows in place only hid them behind `.hidden`: they came back on
+    // the next scene that showed the legend, still carrying the old scene's
+    // element ids, and clicking one did nothing at all.
+    legend.innerHTML = '';
     if (items.length === 0) {
         legend.classList.add('hidden');
         return;
     }
     legend.classList.remove('hidden');
-    legend.innerHTML = '';
+    // Every id the legend declares this build, whether or not it is registered
+    // right now — the prune at the bottom needs the declared set, not the
+    // registered one.
+    const declaredIds = new Set<string>();
+    for (const it of items) for (const id of (it.ids || [])) declaredIds.add(id);
     for (const it of items) {
-        const clickableIds = (it.ids || []).filter((id: string) => overlayState.elementRegistry[id]);
-        const hidden = clickableIds.length > 0 && clickableIds.every((id: string) => overlayState.legendToggledOff.has(id));
+        // A row's ids are what the scene declared, not what the registry holds
+        // this instant. An element is briefly absent from the registry while a
+        // step re-renders it, and filtering on the registry there made the row
+        // both un-clickable and drawn as visible — so a toggled-off element
+        // came back as a live row whose click did nothing, or whose first
+        // click hid what the user was trying to restore.
+        const elementIds = it.ids || [];
+        // A row reads as off when every element behind it is off — by this
+        // legend's own toggle, or because the element itself is hidden. Taking
+        // only the toggle set let the two drift: an element hidden by one code
+        // path and dropped from the set by another drew a struck-through row
+        // whose click then went the wrong way.
+        const hidden = elementIds.length > 0 && elementIds.every((id: string) => {
+            if (overlayState.legendToggledOff.has(id)) return true;
+            const reg = overlayState.elementRegistry[id];
+            return !!(reg && reg.hidden);
+        });
 
         const div = document.createElement('div');
-        div.className = 'legend-item' + (clickableIds.length ? ' legend-clickable' : '') + (hidden ? ' legend-hidden' : '');
-        if (clickableIds.length) div.dataset.elementIds = clickableIds.join(',');
+        div.className = 'legend-item' + (elementIds.length ? ' legend-clickable' : '') + (hidden ? ' legend-hidden' : '');
+        if (elementIds.length) div.dataset.elementIds = elementIds.join(',');
 
         const swatch = document.createElement('div');
         swatch.className = 'legend-swatch';
@@ -396,41 +421,53 @@ export function buildLegend(elements: Element[] | null | undefined): void {
         legend.appendChild(div);
     }
 
-    // Attach click handlers (only for elements currently in the registry)
+    // Attach click handlers. `legendToggledOff` is the row's state, and it is
+    // written whether or not the element is in the registry at click time:
+    // an id that is between renders still records the choice, and the prune
+    // below applies it as soon as the element is back. The renderer calls only
+    // reach ids that exist now, so a missing one cannot swallow the click.
     for (const div of legend.querySelectorAll<HTMLElement>('.legend-clickable')) {
         div.addEventListener('click', () => {
             const elIds = (div.dataset.elementIds || '')
                 .split(',')
                 .map((s: string) => s.trim())
-                .filter(Boolean)
-                .filter((id: string) => overlayState.elementRegistry[id]);
+                .filter(Boolean);
             if (elIds.length === 0) return;
+            // Decide from the row the user just clicked, not from the toggle
+            // set. The set is bookkeeping and several paths write it; the row
+            // is what the click means. Reading the set here made a click on a
+            // struck-through row re-hide an already-hidden element and swallow
+            // itself, so un-checking never brought the element back.
+            const wasOff = div.classList.contains('legend-hidden');
             // hideElementById / showElementById are injected at runtime via window shims
-            const allHidden = elIds.every((id: string) => overlayState.legendToggledOff.has(id));
-            if (allHidden) {
-                for (const elId of elIds) {
+            for (const elId of elIds) {
+                const live = !!overlayState.elementRegistry[elId];
+                if (wasOff) {
                     overlayState.legendToggledOff.delete(elId);
-                    if (typeof window._algebenchShowElementById === 'function') window._algebenchShowElementById(elId);
-                }
-                div.classList.remove('legend-hidden');
-                // Non-null: the swatch is built into every legend item above.
-                div.querySelector<HTMLElement>('.legend-swatch')!.style.opacity = '';
-            } else {
-                for (const elId of elIds) {
+                    if (live && typeof window._algebenchShowElementById === 'function') window._algebenchShowElementById(elId);
+                } else {
                     overlayState.legendToggledOff.add(elId);
-                    if (typeof window._algebenchHideElementById === 'function') window._algebenchHideElementById(elId);
+                    if (live && typeof window._algebenchHideElementById === 'function') window._algebenchHideElementById(elId);
                 }
-                div.classList.add('legend-hidden');
-                div.querySelector<HTMLElement>('.legend-swatch')!.style.opacity = '0.3';
             }
+            div.classList.toggle('legend-hidden', !wasOff);
+            // Non-null: the swatch is built into every legend item above.
+            div.querySelector<HTMLElement>('.legend-swatch')!.style.opacity = wasOff ? '' : '0.3';
         });
     }
 
-    // Prune stale IDs and apply toggled-off state for elements hidden by user
-    for (const id of [...state.legendToggledOff]) {
-        if (!overlayState.elementRegistry[id]) {
+    // Apply the toggled-off state to elements the user hid, and drop ids this
+    // legend no longer declares. Registry absence is not the test: an element
+    // the scene still lists is only between renders, and pruning on that
+    // dropped the user's choice mid-transition — the row then redrew as
+    // visible and its next click hid the element instead of restoring it.
+    for (const id of [...overlayState.legendToggledOff]) {
+        if (!declaredIds.has(id)) {
             overlayState.legendToggledOff.delete(id);
-        } else if (!overlayState.elementRegistry[id].hidden) {
+            continue;
+        }
+        const reg = overlayState.elementRegistry[id];
+        if (reg && !reg.hidden) {
             if (typeof window._algebenchHideElementById === 'function') window._algebenchHideElementById(id);
         }
     }

@@ -2762,18 +2762,24 @@ function buildLegend(elements) {
 	}
 	for (const [key, val] of grouped) if (!val.label) grouped.delete(key);
 	const items = [...grouped.values()];
+	legend.innerHTML = "";
 	if (items.length === 0) {
 		legend.classList.add("hidden");
 		return;
 	}
 	legend.classList.remove("hidden");
-	legend.innerHTML = "";
+	const declaredIds = /* @__PURE__ */ new Set();
+	for (const it of items) for (const id of it.ids || []) declaredIds.add(id);
 	for (const it of items) {
-		const clickableIds = (it.ids || []).filter((id) => overlayState.elementRegistry[id]);
-		const hidden = clickableIds.length > 0 && clickableIds.every((id) => overlayState.legendToggledOff.has(id));
+		const elementIds = it.ids || [];
+		const hidden = elementIds.length > 0 && elementIds.every((id) => {
+			if (overlayState.legendToggledOff.has(id)) return true;
+			const reg = overlayState.elementRegistry[id];
+			return !!(reg && reg.hidden);
+		});
 		const div = document.createElement("div");
-		div.className = "legend-item" + (clickableIds.length ? " legend-clickable" : "") + (hidden ? " legend-hidden" : "");
-		if (clickableIds.length) div.dataset.elementIds = clickableIds.join(",");
+		div.className = "legend-item" + (elementIds.length ? " legend-clickable" : "") + (hidden ? " legend-hidden" : "");
+		if (elementIds.length) div.dataset.elementIds = elementIds.join(",");
 		const swatch = document.createElement("div");
 		swatch.className = "legend-swatch";
 		swatch.style.background = colorToCSS(it.color);
@@ -2785,27 +2791,31 @@ function buildLegend(elements) {
 		legend.appendChild(div);
 	}
 	for (const div of legend.querySelectorAll(".legend-clickable")) div.addEventListener("click", () => {
-		const elIds = (div.dataset.elementIds || "").split(",").map((s) => s.trim()).filter(Boolean).filter((id) => overlayState.elementRegistry[id]);
+		const elIds = (div.dataset.elementIds || "").split(",").map((s) => s.trim()).filter(Boolean);
 		if (elIds.length === 0) return;
-		if (elIds.every((id) => overlayState.legendToggledOff.has(id))) {
-			for (const elId of elIds) {
+		const wasOff = div.classList.contains("legend-hidden");
+		for (const elId of elIds) {
+			const live = !!overlayState.elementRegistry[elId];
+			if (wasOff) {
 				overlayState.legendToggledOff.delete(elId);
-				if (typeof window._algebenchShowElementById === "function") window._algebenchShowElementById(elId);
-			}
-			div.classList.remove("legend-hidden");
-			div.querySelector(".legend-swatch").style.opacity = "";
-		} else {
-			for (const elId of elIds) {
+				if (live && typeof window._algebenchShowElementById === "function") window._algebenchShowElementById(elId);
+			} else {
 				overlayState.legendToggledOff.add(elId);
-				if (typeof window._algebenchHideElementById === "function") window._algebenchHideElementById(elId);
+				if (live && typeof window._algebenchHideElementById === "function") window._algebenchHideElementById(elId);
 			}
-			div.classList.add("legend-hidden");
-			div.querySelector(".legend-swatch").style.opacity = "0.3";
 		}
+		div.classList.toggle("legend-hidden", !wasOff);
+		div.querySelector(".legend-swatch").style.opacity = wasOff ? "" : "0.3";
 	});
-	for (const id of [...state.legendToggledOff]) if (!overlayState.elementRegistry[id]) overlayState.legendToggledOff.delete(id);
-	else if (!overlayState.elementRegistry[id].hidden) {
-		if (typeof window._algebenchHideElementById === "function") window._algebenchHideElementById(id);
+	for (const id of [...overlayState.legendToggledOff]) {
+		if (!declaredIds.has(id)) {
+			overlayState.legendToggledOff.delete(id);
+			continue;
+		}
+		const reg = overlayState.elementRegistry[id];
+		if (reg && !reg.hidden) {
+			if (typeof window._algebenchHideElementById === "function") window._algebenchHideElementById(id);
+		}
 	}
 }
 var infoState = {
