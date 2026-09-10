@@ -1885,7 +1885,7 @@ function refreshSliderBounds() {
 			s.max = s._staticMax;
 		}
 		if (s.max < s.min) s.max = s.min;
-		let next = _snapToStep(Number.isFinite(s._desired) ? s._desired : s.value, s.min, s.step);
+		let next = _snapToStep(!s._loopPlaying && Number.isFinite(s._desired) ? s._desired : s.value, s.min, s.step);
 		if (next > s.max) {
 			const step = s.step > 0 ? s.step : 0;
 			next = step > 0 ? s.min + Math.floor((s.max - s.min) / step) * step : s.max;
@@ -2403,7 +2403,9 @@ function setSliderValue(id, value) {
 	const s = sliderState.sceneSliders[id];
 	if (!s || s.kind === "tensor" || !Number.isFinite(value)) return false;
 	if (s._loopPlaying) stopSliderLoop(id);
+	s._desired = value;
 	s.value = Math.max(s.min, Math.min(s.max, value));
+	refreshSliderBounds();
 	const input = document.querySelector(`input[data-slider-id="${id}"]`);
 	if (input) {
 		input.value = String(s.value);
@@ -2422,6 +2424,7 @@ function animateSlider$1(id, target, duration) {
 			return;
 		}
 		target = Math.max(slider.min, Math.min(slider.max, target));
+		slider._desired = target;
 		const start = slider.value;
 		if (start === target) {
 			syncSliderState();

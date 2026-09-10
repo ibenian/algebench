@@ -338,11 +338,17 @@ export function refreshSliderBounds(): boolean {
         // the slider is at least well defined while the configuration is.
         if (s.max < s.min) s.max = s.min;
 
-        // `_desired` is where the user put it; `value` is what expressions
-        // see. They differ only while the range excludes the choice, which is
-        // what makes the restore work: widen the range and the clamp stops
-        // biting, with no memory of having bitten.
-        const want = Number.isFinite(s._desired) ? s._desired : s.value;
+        // `_desired` is where the slider was last asked to be; `value` is what
+        // expressions see. They differ only while the range excludes the
+        // choice, which is what makes the restore work: widen the range and
+        // the clamp stops biting, with no memory of having bitten.
+        //
+        // A slider mid-sweep is the exception. Its position is the animation's,
+        // not a request, and `_desired` still holds whatever was asked for
+        // before the sweep started -- restoring that here would yank the
+        // animation back a frame at a time whenever another slider moved. Its
+        // current position is what it wants; the clamp below still applies.
+        const want = (!s._loopPlaying && Number.isFinite(s._desired)) ? s._desired : s.value;
         // Snap FIRST, then clamp -- not only when the clamp bites. A range
         // input lays its step lattice out from `min`, so a moving `min` moves
         // the grid under a value that never left the range: the control would
@@ -1042,7 +1048,19 @@ export function setSliderValue(id: string, value: number): boolean {
     const s = sliderState.sceneSliders[id];
     if (!s || s.kind === 'tensor' || !Number.isFinite(value)) return false;
     if (s._loopPlaying) stopSliderLoop(id);
+    // A deeplink, a view-state restore or the tutor moving a slider is a
+    // requested position, exactly as a drag is, so it records intent. The RAW
+    // request is what is remembered: a value the current range excludes is
+    // clamped for now and comes back if the range widens, which is the same
+    // contract a drag gets. Without this the restore is invisible to
+    // refreshSliderBounds, and a later widening would resurrect whatever
+    // position preceded the deeplink.
+    s._desired = value;
     s.value = Math.max(s.min, Math.min(s.max, value));
+    // Bounds second: this slider may be the input to another's, and its own
+    // range may exclude what was just asked for. Runs before the DOM write
+    // below so the control shows the value that survived.
+    refreshSliderBounds();
     const input = document.querySelector<HTMLInputElement>(`input[data-slider-id="${id}"]`);
     if (input) {
         input.value = String(s.value);
@@ -1063,6 +1081,11 @@ export function animateSlider(id: string, target: number, duration: number): Pro
         const slider = sliderState.sceneSliders[id] as SceneSlider;
         if (!slider || slider.kind === 'tensor') { resolve(false); return; }
         target = Math.max(slider.min, Math.min(slider.max, target));
+        // The target is the request; the frames between are not. Recording it
+        // once here -- rather than per frame -- keeps a later range change
+        // restoring where the animation was headed, and keeps
+        // refreshSliderBounds out of the tween's per-frame path.
+        slider._desired = target;
         const start = slider.value;
         if (start === target) { syncSliderState(); resolve(true); return; }
         const startTime = performance.now();
