@@ -343,12 +343,20 @@ export function refreshSliderBounds(): boolean {
         // what makes the restore work: widen the range and the clamp stops
         // biting, with no memory of having bitten.
         const want = Number.isFinite(s._desired) ? s._desired : s.value;
-        let next = Math.min(s.max, Math.max(s.min, want));
-        if (next !== want) {
-            // Land on the step grid, but never outside the range: snapping can
-            // round outward at either end.
-            next = Math.min(s.max, Math.max(s.min, _snapToStep(next, s.min, s.step)));
+        // Snap FIRST, then clamp -- not only when the clamp bites. A range
+        // input lays its step lattice out from `min`, so a moving `min` moves
+        // the grid under a value that never left the range: the control would
+        // then represent a different number than `s.value`, and the DOM and
+        // the expressions would disagree about where the slider is.
+        let next = _snapToStep(want, s.min, s.step);
+        // Snapping can round outward past either end. Coming back must land on
+        // the grid too, so the top end steps down to the last lattice point
+        // inside the range rather than sitting off-grid at `max`.
+        if (next > s.max) {
+            const step = s.step > 0 ? s.step : 0;
+            next = step > 0 ? s.min + Math.floor((s.max - s.min) / step) * step : s.max;
         }
+        if (next < s.min) next = s.min;
         if (next !== prevValue) { s.value = next; valueMoved = true; }
         if (s.min !== prevMin || s.max !== prevMax || s.value !== prevValue) {
             if (typeof s._onBoundsChange === 'function') s._onBoundsChange();
@@ -756,8 +764,14 @@ export function buildSliderOverlay(): void {
     overlay.classList.remove('hidden');
     // Apply expression bounds once the rows exist, so a slider whose range
     // depends on the configuration opens already clamped rather than showing
-    // an out-of-range position until the first drag.
-    refreshSliderBounds();
+    // an out-of-range position until the first drag. A clamp here moves a
+    // value nothing else is about to recompile against -- the input handler
+    // does that for a drag, but this runs without one -- so the scene would
+    // render the pre-clamp position until the user next touched a slider.
+    if (refreshSliderBounds()) {
+        recompileActiveExprs();
+        try { window.dispatchEvent(new CustomEvent('algebench:sliderchange')); } catch (_) { /* ignore */ }
+    }
     syncSliderState();
 }
 

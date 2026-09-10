@@ -1885,9 +1885,12 @@ function refreshSliderBounds() {
 			s.max = s._staticMax;
 		}
 		if (s.max < s.min) s.max = s.min;
-		const want = Number.isFinite(s._desired) ? s._desired : s.value;
-		let next = Math.min(s.max, Math.max(s.min, want));
-		if (next !== want) next = Math.min(s.max, Math.max(s.min, _snapToStep(next, s.min, s.step)));
+		let next = _snapToStep(Number.isFinite(s._desired) ? s._desired : s.value, s.min, s.step);
+		if (next > s.max) {
+			const step = s.step > 0 ? s.step : 0;
+			next = step > 0 ? s.min + Math.floor((s.max - s.min) / step) * step : s.max;
+		}
+		if (next < s.min) next = s.min;
 		if (next !== prevValue) {
 			s.value = next;
 			valueMoved = true;
@@ -2187,7 +2190,12 @@ function buildSliderOverlay() {
 		overlay.appendChild(row);
 	}
 	overlay.classList.remove("hidden");
-	refreshSliderBounds();
+	if (refreshSliderBounds()) {
+		recompileActiveExprs();
+		try {
+			window.dispatchEvent(new CustomEvent("algebench:sliderchange"));
+		} catch (_) {}
+	}
 	syncSliderState();
 }
 /** One panel row for a tensor slider: a header (label, shape, reset) over a
