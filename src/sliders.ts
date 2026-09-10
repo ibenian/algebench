@@ -60,6 +60,11 @@ export interface SceneSlider {
      *  range clamps what expressions see; widening it again restores this, so
      *  a configuration change does not quietly discard the chosen position. */
     _desired: number;
+    /** True while animateSlider() is tweening this slider. Distinct from
+     *  `_loopPlaying`, which is the looping sweep: both mean "the position on
+     *  screen belongs to an animation, not to a request", but they start and
+     *  stop independently. */
+    _tweening?: boolean;
     /** Installed by buildSliderOverlay() for sliders that render a play button. */
     _onPlayStateChange?: () => void;
     /** Installed by buildSliderOverlay() so refreshSliderBounds() can push new
@@ -343,12 +348,18 @@ export function refreshSliderBounds(): boolean {
         // choice, which is what makes the restore work: widen the range and
         // the clamp stops biting, with no memory of having bitten.
         //
-        // A slider mid-sweep is the exception. Its position is the animation's,
-        // not a request, and `_desired` still holds whatever was asked for
-        // before the sweep started -- restoring that here would yank the
-        // animation back a frame at a time whenever another slider moved. Its
-        // current position is what it wants; the clamp below still applies.
-        const want = (!s._loopPlaying && Number.isFinite(s._desired)) ? s._desired : s.value;
+        // A slider mid-animation is the exception, sweep or tween alike. Its
+        // position belongs to the animation, not to a request, so `_desired`
+        // is the wrong answer here in opposite ways: a sweep would be yanked
+        // back to a pre-sweep position, and a tween -- whose `_desired` is
+        // already its destination -- would jump straight to the end, dropping
+        // the frames it exists to show. That is reachable now that a settling
+        // tween runs this pass, so one of several sliders `set_sliders`
+        // animates together would collapse the rest as it landed. While a
+        // slider is animating, its current position is what it wants; the
+        // clamp below still applies.
+        const animating = !!s._loopPlaying || !!s._tweening;
+        const want = (!animating && Number.isFinite(s._desired)) ? s._desired : s.value;
         // Snap FIRST, then clamp -- not only when the clamp bites. A range
         // input lays its step lattice out from `min`, so a moving `min` moves
         // the grid under a value that never left the range: the control would
@@ -1091,6 +1102,9 @@ export function animateSlider(id: string, target: number, duration: number): Pro
         // range may itself be an expression another slider has since
         // invalidated.
         const settle = (): void => {
+            // Lowered before the pass, so this slider's own landing position
+            // is clamped and snapped like any settled value.
+            slider._tweening = false;
             if (refreshSliderBounds()) recompileActiveExprs();
             // The same event a drag emits. `set_sliders` drives this path, so
             // without it an AI-moved slider never reaches URL and view sync.
@@ -1099,6 +1113,7 @@ export function animateSlider(id: string, target: number, duration: number): Pro
         };
         const start = slider.value;
         if (start === target) { settle(); resolve(true); return; }
+        slider._tweening = true;
         const startTime = performance.now();
         function tick(now: number): void {
             const t = Math.min((now - startTime) / duration, 1);

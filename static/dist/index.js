@@ -1885,7 +1885,7 @@ function refreshSliderBounds() {
 			s.max = s._staticMax;
 		}
 		if (s.max < s.min) s.max = s.min;
-		let next = _snapToStep(!s._loopPlaying && Number.isFinite(s._desired) ? s._desired : s.value, s.min, s.step);
+		let next = _snapToStep(!(!!s._loopPlaying || !!s._tweening) && Number.isFinite(s._desired) ? s._desired : s.value, s.min, s.step);
 		if (next > s.max) {
 			const step = s.step > 0 ? s.step : 0;
 			next = step > 0 ? s.min + Math.floor((s.max - s.min) / step) * step : s.max;
@@ -2426,6 +2426,7 @@ function animateSlider$1(id, target, duration) {
 		target = Math.max(slider.min, Math.min(slider.max, target));
 		slider._desired = target;
 		const settle = () => {
+			slider._tweening = false;
 			if (refreshSliderBounds()) recompileActiveExprs();
 			try {
 				window.dispatchEvent(new CustomEvent("algebench:sliderchange"));
@@ -2438,6 +2439,7 @@ function animateSlider$1(id, target, duration) {
 			resolve(true);
 			return;
 		}
+		slider._tweening = true;
 		const startTime = performance.now();
 		function tick(now) {
 			const t = Math.min((now - startTime) / duration, 1);
