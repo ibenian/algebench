@@ -2425,9 +2425,16 @@ function animateSlider$1(id, target, duration) {
 		}
 		target = Math.max(slider.min, Math.min(slider.max, target));
 		slider._desired = target;
+		const settle = () => {
+			if (refreshSliderBounds()) recompileActiveExprs();
+			try {
+				window.dispatchEvent(new CustomEvent("algebench:sliderchange"));
+			} catch (_) {}
+			syncSliderState();
+		};
 		const start = slider.value;
 		if (start === target) {
-			syncSliderState();
+			settle();
 			resolve(true);
 			return;
 		}
@@ -2445,7 +2452,7 @@ function animateSlider$1(id, target, duration) {
 			recompileActiveExprs();
 			if (t < 1) requestAnimationFrame(tick);
 			else {
-				syncSliderState();
+				settle();
 				resolve(true);
 			}
 		}

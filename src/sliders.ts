@@ -1086,8 +1086,19 @@ export function animateSlider(id: string, target: number, duration: number): Pro
         // restoring where the animation was headed, and keeps
         // refreshSliderBounds out of the tween's per-frame path.
         slider._desired = target;
+        // Settle the bounds even when nothing has to move: `target` was
+        // clamped against this slider's CURRENT range a line above, and that
+        // range may itself be an expression another slider has since
+        // invalidated.
+        const settle = (): void => {
+            if (refreshSliderBounds()) recompileActiveExprs();
+            // The same event a drag emits. `set_sliders` drives this path, so
+            // without it an AI-moved slider never reaches URL and view sync.
+            try { window.dispatchEvent(new CustomEvent('algebench:sliderchange')); } catch (_) { /* ignore */ }
+            syncSliderState();
+        };
         const start = slider.value;
-        if (start === target) { syncSliderState(); resolve(true); return; }
+        if (start === target) { settle(); resolve(true); return; }
         const startTime = performance.now();
         function tick(now: number): void {
             const t = Math.min((now - startTime) / duration, 1);
@@ -1104,7 +1115,12 @@ export function animateSlider(id: string, target: number, duration: number): Pro
             if (t < 1) {
                 requestAnimationFrame(tick);
             } else {
-                syncSliderState();
+                // Once, on the final frame. A tween that lands somewhere its
+                // own bounds exclude -- or that moves a slider another's
+                // bounds read -- must leave the panel consistent, and a
+                // per-frame pass would put an expression evaluation for every
+                // bounded slider inside the animation loop.
+                settle();
                 resolve(true);
             }
         }
