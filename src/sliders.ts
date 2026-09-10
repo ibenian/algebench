@@ -43,8 +43,28 @@ export interface SceneSlider {
     _loopRaf: number | null;
     _valueExprString: string | null;
     _valueExprCompiled: CompiledExpr | null;
+    /** Bounds an author wrote as expressions, so a selector can be bounded by
+     *  the configuration it indexes into (`demo_h` by `tfHeads() - 1`) instead
+     *  of by a number fixed when the scene was written. Null when the author
+     *  gave plain numbers, which is the common case. */
+    _minExprString: string | null;
+    _maxExprString: string | null;
+    _minExprCompiled: CompiledExpr | null;
+    _maxExprCompiled: CompiledExpr | null;
+    /** The bounds as declared. `value` is clamped into the live range, but the
+     *  readout width is reserved from these, so a moving bound cannot shrink
+     *  the track and reintroduce the drag jitter #649 fixed. */
+    _staticMin: number;
+    _staticMax: number;
+    /** Where the user last put this slider, before any clamping. A shrinking
+     *  range clamps what expressions see; widening it again restores this, so
+     *  a configuration change does not quietly discard the chosen position. */
+    _desired: number;
     /** Installed by buildSliderOverlay() for sliders that render a play button. */
     _onPlayStateChange?: () => void;
+    /** Installed by buildSliderOverlay() so refreshSliderBounds() can push new
+     *  bounds into the row without rebuilding the whole panel. */
+    _onBoundsChange?: () => void;
 }
 
 /** The compiled regular-polygon expressions an animated_polygon entry carries. */
@@ -268,6 +288,75 @@ function _formatSliderValue(s: SceneSlider): string {
     return Number(s.value).toFixed(1);
 }
 
+/** Snap `v` to this slider's step grid, measured from its low bound. */
+function _snapToStep(v: number, lo: number, step: number): number {
+    if (!(step > 0)) return v;
+    return lo + Math.round((v - lo) / step) * step;
+}
+
+/**
+ * Re-evaluate every expression-driven bound and re-clamp the sliders that have
+ * one. This is what lets a selector be bounded by the thing it indexes into:
+ * `demo_h` with `maxExpr: "tfHeads() - 1"` cannot address a head that does not
+ * exist, so no element downstream has to guard against one.
+ *
+ * One pass, no fixpoint. Bounds are evaluated against the values sliders hold
+ * right now, so a bound reading another slider sees that slider's current
+ * position and nothing iterates. A cycle therefore settles rather than hangs,
+ * at the cost of taking one refresh to catch up -- the trade this makes on
+ * purpose, since the alternative is an unbounded loop inside an input handler.
+ *
+ * Returns true when any value moved, so the caller knows to recompile the
+ * expressions that read it.
+ */
+export function refreshSliderBounds(): boolean {
+    let valueMoved = false;
+    for (const id of Object.keys(sliderState.sceneSliders)) {
+        const s = sliderState.sceneSliders[id];
+        if (!s || (!s._minExprCompiled && !s._maxExprCompiled)) continue;
+        if (isTensorSlider(s)) continue;   // a tensor's cells clamp on edit, not here
+
+        const prevMin = s.min, prevMax = s.max, prevValue = s.value;
+        // A bound that throws, or yields something that is not a finite
+        // number, leaves the declared one in force. The alternative -- a NaN
+        // bound -- makes every clamp below produce NaN and takes the slider
+        // out of service for the rest of the scene.
+        if (s._minExprCompiled) {
+            try {
+                const v = Number(evalExpr(s._minExprCompiled, 0, { useVirtualTime: false }));
+                s.min = Number.isFinite(v) ? v : s._staticMin;
+            } catch (_e) { s.min = s._staticMin; }
+        }
+        if (s._maxExprCompiled) {
+            try {
+                const v = Number(evalExpr(s._maxExprCompiled, 0, { useVirtualTime: false }));
+                s.max = Number.isFinite(v) ? v : s._staticMax;
+            } catch (_e) { s.max = s._staticMax; }
+        }
+        // An inverted range would let the clamp below pick either end
+        // depending on which comparison ran first; collapse it to a point so
+        // the slider is at least well defined while the configuration is.
+        if (s.max < s.min) s.max = s.min;
+
+        // `_desired` is where the user put it; `value` is what expressions
+        // see. They differ only while the range excludes the choice, which is
+        // what makes the restore work: widen the range and the clamp stops
+        // biting, with no memory of having bitten.
+        const want = Number.isFinite(s._desired) ? s._desired : s.value;
+        let next = Math.min(s.max, Math.max(s.min, want));
+        if (next !== want) {
+            // Land on the step grid, but never outside the range: snapping can
+            // round outward at either end.
+            next = Math.min(s.max, Math.max(s.min, _snapToStep(next, s.min, s.step)));
+        }
+        if (next !== prevValue) { s.value = next; valueMoved = true; }
+        if (s.min !== prevMin || s.max !== prevMax || s.value !== prevValue) {
+            if (typeof s._onBoundsChange === 'function') s._onBoundsChange();
+        }
+    }
+    return valueMoved;
+}
+
 /** How many monospace characters the widest readout of `s` needs. Plain
  *  readouts are bounded by the two ends of the range. A formatted one
  *  (valueExpr) is measured by evaluating the format at every reachable
@@ -276,11 +365,18 @@ function _formatSliderValue(s: SceneSlider): string {
  *  longer of the two ends plus a little slack. Reserving it up front keeps
  *  the track from shrinking when the text changes length. */
 function _widestReadoutCh(s: SceneSlider): number {
+    // The DECLARED bounds, not the live ones. A slider whose max is an
+    // expression narrows and widens as the configuration changes; measuring
+    // the live range would resize the readout with it, and the track --
+    // `flex: 1` -- would absorb the difference, which is the drag jitter #649
+    // removed. The declared range is the widest this readout can ever be.
+    const loB = Number(s._staticMin ?? s.min);
+    const hiB = Number(s._staticMax ?? s.max);
     if (!s._valueExprCompiled) {
-        return Math.max(Number(s.min).toFixed(1).length, Number(s.max).toFixed(1).length);
+        return Math.max(loB.toFixed(1).length, hiB.toFixed(1).length);
     }
     const step = s.step > 0 ? s.step : 0.1;
-    const steps = Math.round((s.max - s.min) / step);
+    const steps = Math.round((hiB - loB) / step);
     const probe = (v: number): number => {
         const saved = s.value;
         s.value = v;
@@ -288,9 +384,9 @@ function _widestReadoutCh(s: SceneSlider): number {
     };
     let widest = _formatSliderValue(s).length;
     if (steps >= 0 && steps <= 64) {
-        for (let k = 0; k <= steps; k++) widest = Math.max(widest, probe(s.min + k * step));
+        for (let k = 0; k <= steps; k++) widest = Math.max(widest, probe(loB + k * step));
     } else {
-        widest = Math.max(widest, probe(s.min), probe(s.max)) + 1;
+        widest = Math.max(widest, probe(loB), probe(hiB)) + 1;
     }
     return widest;
 }
@@ -483,10 +579,23 @@ export function registerSliders(
             _loopRaf: null,
             _valueExprString: def.valueExpr || null,
             _valueExprCompiled: null,
+            _minExprString: def.minExpr || null,
+            _maxExprString: def.maxExpr || null,
+            _minExprCompiled: null,
+            _maxExprCompiled: null,
+            _staticMin: min,
+            _staticMax: max,
+            _desired: isTensor ? NaN : (scalarDefault !== undefined ? scalarDefault : (min + max) / 2),
         };
         if (def.valueExpr) {
             // Non-null: the entry was assigned immediately above.
             try { sliderState.sceneSliders[def.id]!._valueExprCompiled = compileExpr(def.valueExpr); } catch (_e) {}
+        }
+        if (def.minExpr) {
+            try { sliderState.sceneSliders[def.id]!._minExprCompiled = compileExpr(def.minExpr); } catch (_e) {}
+        }
+        if (def.maxExpr) {
+            try { sliderState.sceneSliders[def.id]!._maxExprCompiled = compileExpr(def.maxExpr); } catch (_e) {}
         }
         ids.push(def.id);
     }
@@ -556,6 +665,7 @@ export function buildSliderOverlay(): void {
         // Non-null: `ids` comes from getSliderIds(), i.e. the record's own keys.
         // A missing entry must still throw here, exactly as the JS did.
         const s = sliderState.sceneSliders[id]!;
+        s._onBoundsChange = undefined;   // dropped with the row it was bound to
         if (isTensorSlider(s)) {
             overlay.appendChild(_buildTensorRow(id, s));
             continue;
@@ -593,9 +703,27 @@ export function buildSliderOverlay(): void {
         valSpan.style.minWidth = `${_widestReadoutCh(s)}ch`;
         row.appendChild(valSpan);
 
+        // Push new bounds into this row without rebuilding the panel: a
+        // rebuild mid-drag would replace the input under the cursor and drop
+        // the gesture.
+        s._onBoundsChange = () => {
+            input.min = String(s.min);
+            input.max = String(s.max);
+            if (String(s.value) !== input.value) input.value = String(s.value);
+            valSpan.textContent = _formatSliderValue(s);
+        };
+
         input.addEventListener('input', () => {
             if (s._loopPlaying) stopSliderLoop(id);
             s.value = parseFloat(input.value);
+            // What the user asked for, before any clamp. Recorded on every
+            // input so a later range change restores this position and not
+            // some earlier clamped one.
+            s._desired = s.value;
+            // Bounds first: this slider may be the input to another's bound,
+            // and expressions must recompile against the clamped values rather
+            // than the ones a shrinking range has just invalidated.
+            refreshSliderBounds();
             valSpan.textContent = _formatSliderValue(s);
             recompileActiveExprs();
             syncSliderState();
@@ -626,6 +754,10 @@ export function buildSliderOverlay(): void {
         overlay.appendChild(row);
     }
     overlay.classList.remove('hidden');
+    // Apply expression bounds once the rows exist, so a slider whose range
+    // depends on the configuration opens already clamped rather than showing
+    // an out-of-range position until the first drag.
+    refreshSliderBounds();
     syncSliderState();
 }
 

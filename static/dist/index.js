@@ -1845,6 +1845,59 @@ function _formatSliderValue(s) {
 	} catch (_e) {}
 	return Number(s.value).toFixed(1);
 }
+/** Snap `v` to this slider's step grid, measured from its low bound. */
+function _snapToStep(v, lo, step) {
+	if (!(step > 0)) return v;
+	return lo + Math.round((v - lo) / step) * step;
+}
+/**
+* Re-evaluate every expression-driven bound and re-clamp the sliders that have
+* one. This is what lets a selector be bounded by the thing it indexes into:
+* `demo_h` with `maxExpr: "tfHeads() - 1"` cannot address a head that does not
+* exist, so no element downstream has to guard against one.
+*
+* One pass, no fixpoint. Bounds are evaluated against the values sliders hold
+* right now, so a bound reading another slider sees that slider's current
+* position and nothing iterates. A cycle therefore settles rather than hangs,
+* at the cost of taking one refresh to catch up -- the trade this makes on
+* purpose, since the alternative is an unbounded loop inside an input handler.
+*
+* Returns true when any value moved, so the caller knows to recompile the
+* expressions that read it.
+*/
+function refreshSliderBounds() {
+	let valueMoved = false;
+	for (const id of Object.keys(sliderState.sceneSliders)) {
+		const s = sliderState.sceneSliders[id];
+		if (!s || !s._minExprCompiled && !s._maxExprCompiled) continue;
+		if (isTensorSlider(s)) continue;
+		const prevMin = s.min, prevMax = s.max, prevValue = s.value;
+		if (s._minExprCompiled) try {
+			const v = Number(evalExpr(s._minExprCompiled, 0, { useVirtualTime: false }));
+			s.min = Number.isFinite(v) ? v : s._staticMin;
+		} catch (_e) {
+			s.min = s._staticMin;
+		}
+		if (s._maxExprCompiled) try {
+			const v = Number(evalExpr(s._maxExprCompiled, 0, { useVirtualTime: false }));
+			s.max = Number.isFinite(v) ? v : s._staticMax;
+		} catch (_e) {
+			s.max = s._staticMax;
+		}
+		if (s.max < s.min) s.max = s.min;
+		const want = Number.isFinite(s._desired) ? s._desired : s.value;
+		let next = Math.min(s.max, Math.max(s.min, want));
+		if (next !== want) next = Math.min(s.max, Math.max(s.min, _snapToStep(next, s.min, s.step)));
+		if (next !== prevValue) {
+			s.value = next;
+			valueMoved = true;
+		}
+		if (s.min !== prevMin || s.max !== prevMax || s.value !== prevValue) {
+			if (typeof s._onBoundsChange === "function") s._onBoundsChange();
+		}
+	}
+	return valueMoved;
+}
 /** How many monospace characters the widest readout of `s` needs. Plain
 *  readouts are bounded by the two ends of the range. A formatted one
 *  (valueExpr) is measured by evaluating the format at every reachable
@@ -1853,9 +1906,11 @@ function _formatSliderValue(s) {
 *  longer of the two ends plus a little slack. Reserving it up front keeps
 *  the track from shrinking when the text changes length. */
 function _widestReadoutCh(s) {
-	if (!s._valueExprCompiled) return Math.max(Number(s.min).toFixed(1).length, Number(s.max).toFixed(1).length);
+	const loB = Number(s._staticMin ?? s.min);
+	const hiB = Number(s._staticMax ?? s.max);
+	if (!s._valueExprCompiled) return Math.max(loB.toFixed(1).length, hiB.toFixed(1).length);
 	const step = s.step > 0 ? s.step : .1;
-	const steps = Math.round((s.max - s.min) / step);
+	const steps = Math.round((hiB - loB) / step);
 	const probe = (v) => {
 		const saved = s.value;
 		s.value = v;
@@ -1866,8 +1921,8 @@ function _widestReadoutCh(s) {
 		}
 	};
 	let widest = _formatSliderValue(s).length;
-	if (steps >= 0 && steps <= 64) for (let k = 0; k <= steps; k++) widest = Math.max(widest, probe(s.min + k * step));
-	else widest = Math.max(widest, probe(s.min), probe(s.max)) + 1;
+	if (steps >= 0 && steps <= 64) for (let k = 0; k <= steps; k++) widest = Math.max(widest, probe(loB + k * step));
+	else widest = Math.max(widest, probe(loB), probe(hiB)) + 1;
 	return widest;
 }
 function startSliderLoop(id) {
@@ -2002,10 +2057,23 @@ function registerSliders(sliderDefs) {
 			_loopPlaying: false,
 			_loopRaf: null,
 			_valueExprString: def.valueExpr || null,
-			_valueExprCompiled: null
+			_valueExprCompiled: null,
+			_minExprString: def.minExpr || null,
+			_maxExprString: def.maxExpr || null,
+			_minExprCompiled: null,
+			_maxExprCompiled: null,
+			_staticMin: min,
+			_staticMax: max,
+			_desired: isTensor ? NaN : scalarDefault !== void 0 ? scalarDefault : (min + max) / 2
 		};
 		if (def.valueExpr) try {
 			sliderState.sceneSliders[def.id]._valueExprCompiled = compileExpr(def.valueExpr);
+		} catch (_e) {}
+		if (def.minExpr) try {
+			sliderState.sceneSliders[def.id]._minExprCompiled = compileExpr(def.minExpr);
+		} catch (_e) {}
+		if (def.maxExpr) try {
+			sliderState.sceneSliders[def.id]._maxExprCompiled = compileExpr(def.maxExpr);
 		} catch (_e) {}
 		ids.push(def.id);
 	}
@@ -2055,6 +2123,7 @@ function buildSliderOverlay() {
 	overlay.appendChild(dragHandle);
 	for (const id of ids) {
 		const s = sliderState.sceneSliders[id];
+		s._onBoundsChange = void 0;
 		if (isTensorSlider(s)) {
 			overlay.appendChild(_buildTensorRow(id, s));
 			continue;
@@ -2080,9 +2149,17 @@ function buildSliderOverlay() {
 		valSpan.textContent = _formatSliderValue(s);
 		valSpan.style.minWidth = `${_widestReadoutCh(s)}ch`;
 		row.appendChild(valSpan);
+		s._onBoundsChange = () => {
+			input.min = String(s.min);
+			input.max = String(s.max);
+			if (String(s.value) !== input.value) input.value = String(s.value);
+			valSpan.textContent = _formatSliderValue(s);
+		};
 		input.addEventListener("input", () => {
 			if (s._loopPlaying) stopSliderLoop(id);
 			s.value = parseFloat(input.value);
+			s._desired = s.value;
+			refreshSliderBounds();
 			valSpan.textContent = _formatSliderValue(s);
 			recompileActiveExprs();
 			syncSliderState();
@@ -2110,6 +2187,7 @@ function buildSliderOverlay() {
 		overlay.appendChild(row);
 	}
 	overlay.classList.remove("hidden");
+	refreshSliderBounds();
 	syncSliderState();
 }
 /** One panel row for a tensor slider: a header (label, shape, reset) over a

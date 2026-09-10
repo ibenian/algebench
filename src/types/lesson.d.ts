@@ -1463,6 +1463,14 @@ export interface Slider {
    * Expression to format the displayed slider value. Evaluated via the standard expression engine (math.js / JS fallback). Example: "dataTable('capsules', s5_capsule, 'name')" displays the capsule name instead of a numeric index.
    */
   valueExpr?: string;
+  /**
+   * SCALAR ONLY. Expression giving the minimum, re-evaluated whenever a slider moves. Wins over 'min', which stays the fallback when the expression is absent or does not yield a finite number.
+   */
+  minExpr?: string;
+  /**
+   * SCALAR ONLY. Expression giving the maximum, re-evaluated whenever a slider moves. Bounds a selector by the thing it indexes into — maxExpr: "tfHeads() - 1" keeps the slider from addressing a head the configuration does not have, so no element downstream has to guard against one. Wins over 'max', which stays the fallback and also reserves the readout width, so a moving bound cannot resize the track. A value the range excludes is remembered and restored when the range widens again.
+   */
+  maxExpr?: string;
 }
 /**
  * Camera override for this step. Animates to this position when navigating to the step.
