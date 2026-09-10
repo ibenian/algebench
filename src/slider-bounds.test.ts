@@ -131,6 +131,38 @@ test('an animating slider is still clamped when its range excludes it', () => {
   });
 });
 
+test('an expression cannot widen the range past the declared envelope', () => {
+  // The readout reserves its width from the declared bounds, so a live range
+  // wider than they are would resize the track — reintroducing the drag jitter
+  // (#649) through the mechanism meant to prevent it.
+  withSliders({
+    n: slider({ value: 50, min: 0, max: 100, _desired: 50 }),
+    p: slider({
+      value: 5, min: 2, max: 8, _staticMin: 2, _staticMax: 8,
+      minExpr: '0 - n', maxExpr: 'n', _desired: 5,
+    }),
+  }, () => {
+    refreshSliderBounds();
+    const p = state.sceneSliders.p!;
+    assert.equal(p.max, 8, 'a wider max is clamped to the declared one');
+    assert.equal(p.min, 2, 'a lower min is clamped to the declared one');
+  });
+});
+
+test('an expression still narrows freely inside the envelope', () => {
+  withSliders({
+    n: slider({ value: 5, min: 0, max: 100, _desired: 5 }),
+    p: slider({
+      value: 7, min: 2, max: 8, _staticMin: 2, _staticMax: 8,
+      maxExpr: 'n', _desired: 7,
+    }),
+  }, () => {
+    refreshSliderBounds();
+    assert.equal(state.sceneSliders.p!.max, 5, 'narrowing is what the envelope is for');
+    assert.equal(state.sceneSliders.p!.value, 5);
+  });
+});
+
 test('a bound that throws or goes non-finite leaves the declared one in force', () => {
   withSliders({
     bad: slider({ value: 5, min: 0, max: 10, _staticMax: 10, maxExpr: 'nosuchfn(1)', _desired: 5 }),

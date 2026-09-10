@@ -1872,15 +1872,16 @@ function refreshSliderBounds() {
 		if (!s || !s._minExprCompiled && !s._maxExprCompiled) continue;
 		if (isTensorSlider(s)) continue;
 		const prevMin = s.min, prevMax = s.max, prevValue = s.value;
+		const envelope = (v) => Math.min(s._staticMax, Math.max(s._staticMin, v));
 		if (s._minExprCompiled) try {
 			const v = Number(evalExpr(s._minExprCompiled, 0, { useVirtualTime: false }));
-			s.min = Number.isFinite(v) ? v : s._staticMin;
+			s.min = Number.isFinite(v) ? envelope(v) : s._staticMin;
 		} catch (_e) {
 			s.min = s._staticMin;
 		}
 		if (s._maxExprCompiled) try {
 			const v = Number(evalExpr(s._maxExprCompiled, 0, { useVirtualTime: false }));
-			s.max = Number.isFinite(v) ? v : s._staticMax;
+			s.max = Number.isFinite(v) ? envelope(v) : s._staticMax;
 		} catch (_e) {
 			s.max = s._staticMax;
 		}

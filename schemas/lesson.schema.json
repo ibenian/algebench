@@ -978,11 +978,11 @@
         },
         "minExpr": {
           "type": "string",
-          "description": "SCALAR ONLY. Expression giving the minimum, re-evaluated whenever a slider moves. Wins over 'min', which stays the fallback when the expression is absent or does not yield a finite number."
+          "description": "SCALAR ONLY. Expression giving the minimum, re-evaluated whenever a slider moves. Narrows within the declared [min, max] envelope: a result outside it is clamped to it, and 'min' stays the fallback when the expression is absent or does not yield a finite number. Declare the widest range you want reachable."
         },
         "maxExpr": {
           "type": "string",
-          "description": "SCALAR ONLY. Expression giving the maximum, re-evaluated whenever a slider moves. Bounds a selector by the thing it indexes into — maxExpr: \"tfHeads() - 1\" keeps the slider from addressing a head the configuration does not have, so no element downstream has to guard against one. Wins over 'max', which stays the fallback and also reserves the readout width, so a moving bound cannot resize the track. A value the range excludes is remembered and restored when the range widens again."
+          "description": "SCALAR ONLY. Expression giving the maximum, re-evaluated whenever a slider moves. Bounds a selector by the thing it indexes into — maxExpr: \"tfHeads() - 1\" keeps the slider from addressing a head the configuration does not have, so no element downstream has to guard against one. Narrows within the declared [min, max] envelope -- a result outside it is clamped, because the readout reserves its width from the declared pair and a wider live range would resize the track. 'max' stays the fallback when the expression is absent or non-finite. Declare the widest range you want reachable. A value the range excludes is remembered and restored when the range widens again."
         }
       },
       "additionalProperties": false,

@@ -326,16 +326,24 @@ export function refreshSliderBounds(): boolean {
         // number, leaves the declared one in force. The alternative -- a NaN
         // bound -- makes every clamp below produce NaN and takes the slider
         // out of service for the rest of the scene.
+        // The declared bounds are an ENVELOPE, not just a fallback: an
+        // expression narrows inside them and cannot widen past them. The
+        // readout reserves its width from the declared pair, so a live range
+        // that escaped it could need more characters than were reserved, the
+        // `flex: 1` track would give up the difference, and the drag jitter
+        // #649 removed would be back -- via the very mechanism meant to
+        // prevent it. Authors who want a wide dynamic range declare it wide.
+        const envelope = (v: number): number => Math.min(s._staticMax, Math.max(s._staticMin, v));
         if (s._minExprCompiled) {
             try {
                 const v = Number(evalExpr(s._minExprCompiled, 0, { useVirtualTime: false }));
-                s.min = Number.isFinite(v) ? v : s._staticMin;
+                s.min = Number.isFinite(v) ? envelope(v) : s._staticMin;
             } catch (_e) { s.min = s._staticMin; }
         }
         if (s._maxExprCompiled) {
             try {
                 const v = Number(evalExpr(s._maxExprCompiled, 0, { useVirtualTime: false }));
-                s.max = Number.isFinite(v) ? v : s._staticMax;
+                s.max = Number.isFinite(v) ? envelope(v) : s._staticMax;
             } catch (_e) { s.max = s._staticMax; }
         }
         // An inverted range would let the clamp below pick either end
