@@ -41,7 +41,7 @@
           "title": "Attention, per head — tfQh, tfKh, tfVh, tfAttnH, tfHeadOut, tfConcat, tfAttnOut",
           "description": "One layer of attention with every head exposed: pick the head, change the head count or share K/V, and read each function's lattice.",
           "sliders": [
-            {"id": "demo_h", "label": "head shown ($h$)", "min": 0, "max": 3, "step": 1, "default": 0, "valueExpr": "concat('head ', string(demo_h))"},
+            {"id": "demo_h", "label": "head shown ($h$)", "min": 0, "max": 3, "maxExpr": "tfHeads() - 1", "step": 1, "default": 0, "valueExpr": "concat('head ', string(demo_h))"},
             {"id": "demo_i", "label": "query slot to follow ($i$)", "min": 0, "max": 5, "step": 1, "default": 2, "valueExpr": "concat(string(demo_i), ' · ', tfToken(demo_i))"},
             {"id": "tf_heads", "label": "tf_heads — query heads (2..4 here: d_k stays <= 2)", "min": 2, "max": 4, "step": 1, "default": 2, "valueExpr": "string(tf_heads)"},
             {"id": "tf_kv", "label": "tf_kv — K/V heads", "min": 1, "max": 4, "step": 1, "default": 2, "valueExpr": "concat(string(tfKv()), tfKv() == tf_kv ? '' : concat(' (asked ', string(tf_kv), ')'))"},
@@ -507,7 +507,7 @@
           "title": "The block — tfAttnIn, tfResid1, tfFfIn, tfFfPre, tfFfHidden, tfFfOut, tfResid2",
           "description": "The residual stream through one layer: attention increment, FFN increment, and where the norms sit.",
           "sliders": [
-            {"id": "demo_l", "label": "layer shown ($l$)", "min": 0, "max": 2, "step": 1, "default": 0, "valueExpr": "concat('layer ', string(demo_l))"},
+            {"id": "demo_l", "label": "layer shown ($l$)", "min": 0, "max": 2, "maxExpr": "tfLayers() - 1", "step": 1, "default": 0, "valueExpr": "concat('layer ', string(demo_l))"},
             {"id": "demo_i", "label": "slot to follow ($i$)", "min": 0, "max": 5, "step": 1, "default": 2, "valueExpr": "concat(string(demo_i), ' · ', tfToken(demo_i))"},
             {"id": "tf_layers", "label": "tf_layers — layers in the stack", "min": 1, "max": 3, "step": 1, "default": 1, "valueExpr": "string(tf_layers)"},
             {"id": "tf_norm", "label": "tf_norm — normalisation", "min": 0, "max": 2, "step": 1, "default": 1, "valueExpr": "tf_norm < 0.5 ? 'none' : (tf_norm < 1.5 ? 'LayerNorm' : 'RMSNorm')"},
