@@ -464,6 +464,97 @@
               "prompt": "The attention sub-layer's increment to the stream: concat × W_O, back at d_model width. Multi-head does not widen the stream.",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
+            },
+            {
+              "id": "t1_x_math",
+              "type": "text",
+              "text": "$X$",
+              "position": [-15.4, -4.1, 0],
+              "color": "#26c6da"
+            },
+            {
+              "id": "t1_wq_math",
+              "type": "text",
+              "text": "$W_Q^{(h)}$",
+              "position": [-10.4, 3.5, 0],
+              "color": "#ffa726"
+            },
+            {
+              "id": "t1_wk_math",
+              "type": "text",
+              "text": "$W_K^{(g)}$",
+              "position": [-7.2, 3.5, 0],
+              "color": "#42a5f5"
+            },
+            {
+              "id": "t1_wv_math",
+              "type": "text",
+              "text": "$W_V^{(g)}$",
+              "position": [-4.0, 3.5, 0],
+              "color": "#66bb6a"
+            },
+            {
+              "id": "t1_q_math",
+              "type": "text",
+              "text": "$X W_Q$",
+              "position": [-10.4, -4.1, 0],
+              "color": "#ffa726"
+            },
+            {
+              "id": "t1_k_math",
+              "type": "text",
+              "text": "$X W_K$",
+              "position": [-7.2, -4.1, 0],
+              "color": "#42a5f5"
+            },
+            {
+              "id": "t1_v_math",
+              "type": "text",
+              "text": "$X W_V$",
+              "position": [-4.0, -4.1, 0],
+              "color": "#66bb6a"
+            },
+            {
+              "id": "t1_s_math",
+              "type": "text",
+              "text": "$QK^{\\top}\\!/\\sqrt{d_k}$",
+              "position": [2.0, -4.1, 0],
+              "color": "#ffa726"
+            },
+            {
+              "id": "t1_a_math",
+              "type": "text",
+              "text": "$\\mathrm{softmax}(\\tilde S + M)$",
+              "position": [8.8, -4.1, 0],
+              "color": "#66bb6a"
+            },
+            {
+              "id": "t1_o_math",
+              "type": "text",
+              "text": "$A\\,V$",
+              "position": [14.0, -4.1, 0],
+              "color": "#ab47bc"
+            },
+            {
+              "id": "t1_cat_math",
+              "type": "text",
+              "text": "$[\\,O^{(0)} \\cdots\\,]$",
+              "position": [18.0, -4.1, 0],
+              "color": "#f06292"
+            },
+            {
+              "id": "t1_wo_math",
+              "type": "text",
+              "text": "$W_O$",
+              "position": [22.8, 3.5, 0],
+              "color": "#f06292"
+            },
+            {
+              "id": "t1_ao_math",
+              "type": "text",
+              "text": "$C\\,W_O$",
+              "position": [22.8, -4.1, 0],
+              "color": "#f06292"
             }
           ],
           "info": [
@@ -851,6 +942,83 @@
               "prompt": "FFN W2 of layer demo_l (d_ff × d_model).",
               "widthExpr": "max(0.15, min(1, abs(value) / 1))",
               "heightExpr": "max(0.15, min(1, abs(value) / 1))"
+            },
+            {
+              "id": "t2_h_math",
+              "type": "text",
+              "text": "$h^{(l)}$",
+              "position": [-18.4, -4.1, 0],
+              "color": "#26c6da"
+            },
+            {
+              "id": "t2_ain_math",
+              "type": "text",
+              "text": "$N(h)$",
+              "position": [-14.0, -4.1, 0],
+              "color": "#26c6da"
+            },
+            {
+              "id": "t2_ao_math",
+              "type": "text",
+              "text": "$\\mathrm{Attn}(a)$",
+              "position": [-9.6, -4.1, 0],
+              "color": "#f06292"
+            },
+            {
+              "id": "t2_r1_math",
+              "type": "text",
+              "text": "$h + \\mathrm{Attn}(a)$",
+              "position": [-5.2, -4.1, 0],
+              "color": "#26c6da"
+            },
+            {
+              "id": "t2_fin_math",
+              "type": "text",
+              "text": "$N(r_1)$",
+              "position": [-0.8, -4.1, 0],
+              "color": "#26c6da"
+            },
+            {
+              "id": "t2_pre_math",
+              "type": "text",
+              "text": "$f\\,W_1$",
+              "position": [5.2, -4.1, 0],
+              "color": "#ffee58"
+            },
+            {
+              "id": "t2_hid_math",
+              "type": "text",
+              "text": "$\\phi(u)$",
+              "position": [12.4, -4.1, 0],
+              "color": "#ffee58"
+            },
+            {
+              "id": "t2_fo_math",
+              "type": "text",
+              "text": "$\\phi(u)\\,W_2$",
+              "position": [18.0, -4.1, 0],
+              "color": "#ffee58"
+            },
+            {
+              "id": "t2_r2_math",
+              "type": "text",
+              "text": "$r_1 + \\phi(u)W_2$",
+              "position": [22.4, -4.1, 0],
+              "color": "#26c6da"
+            },
+            {
+              "id": "t2_w1_math",
+              "type": "text",
+              "text": "$W_1$",
+              "position": [5.2, 3.5, 0],
+              "color": "#ffee58"
+            },
+            {
+              "id": "t2_w2_math",
+              "type": "text",
+              "text": "$W_2$",
+              "position": [18.0, 3.5, 0],
+              "color": "#ffee58"
             }
           ],
           "info": [
@@ -1227,6 +1395,69 @@
               "prompt": "How spread each slot's next-token distribution is, in bits: 0 when one word has all the mass, log2(5) = 2.32 when the five are equal. All six slots move together with tf_temp.",
               "xDomain": [-0.5, 5.5],
               "yDomain": [0, 2.4]
+            },
+            {
+              "id": "t3_h0_math",
+              "type": "text",
+              "text": "$h^{(0)}$",
+              "position": [-18.4, -4.1, 0],
+              "color": "#26c6da"
+            },
+            {
+              "id": "t3_h1_math",
+              "type": "text",
+              "text": "$h^{(1)}$",
+              "position": [-14.0, -4.1, 0],
+              "color": "#26c6da"
+            },
+            {
+              "id": "t3_h2_math",
+              "type": "text",
+              "text": "$h^{(2)}$",
+              "position": [-9.6, -4.1, 0],
+              "color": "#26c6da"
+            },
+            {
+              "id": "t3_h3_math",
+              "type": "text",
+              "text": "$h^{(3)}$",
+              "position": [-5.2, -4.1, 0],
+              "color": "#26c6da"
+            },
+            {
+              "id": "t3_final_math",
+              "type": "text",
+              "text": "$N(h^{(L)})$",
+              "position": [0.0, -4.1, 0],
+              "color": "#42a5f5"
+            },
+            {
+              "id": "t3_wu_math",
+              "type": "text",
+              "text": "$W_U$",
+              "position": [0.0, 3.5, 0],
+              "color": "#42a5f5"
+            },
+            {
+              "id": "t3_logit_math",
+              "type": "text",
+              "text": "$Z$",
+              "position": [5.6, -4.1, 0],
+              "color": "#ffa726"
+            },
+            {
+              "id": "t3_prob_math",
+              "type": "text",
+              "text": "$\\mathrm{softmax}(Z/T)$",
+              "position": [11.2, -4.1, 0],
+              "color": "#66bb6a"
+            },
+            {
+              "id": "t3_ent_math",
+              "type": "text",
+              "text": "$H$",
+              "position": [16.8, -4.1, 0],
+              "color": "#b0bec5"
             }
           ],
           "info": [
