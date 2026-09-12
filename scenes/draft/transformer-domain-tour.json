@@ -6,7 +6,7 @@
       "id": "tour-attention",
       "title": "Attention, per head — tfQh, tfKh, tfVh, tfAttnH, tfHeadOut, tfConcat, tfAttnOut",
       "description": "One layer of attention at head 0, every tensor it reads editable on the lattice: change the head count or share K/V, and read each function.",
-      "markdown": "This lesson is a **function tour** of the transformer domain library, not a lesson about transformers: every lattice is labelled with the call that fills it, so an author can see what each function returns and how the `tf_*` sliders reshape it. The weights are the hand-built toy at layer 0 / head 0 and **seeded tables everywhere else — nothing here is learned.**\n\n## Attention, per head\n\nHead $h$ reads K/V head $g=\\left\\lfloor h\\,n_{kv}/n_{heads}\\right\\rfloor$ — that is `tfHeadKv(h)`. $X$ below is the ENCODED stream: the embedding table $E$ plus the positional term, not the raw input. $E$ and $\\mathrm{PE}$ have lattices of their own to the left of it.\n\n**`tfH(0, i, d)`** · n × d_model · the encoded stream, one row per slot\n$$X_{id}=E_{id}+\\mathrm{PE}_{id}$$\n\n**`tfEmbBase(i, d)`**, **`tfPE(i, d)`** · n × d_model · the two terms of that sum\n$$E_{id},\\qquad \\mathrm{PE}_{id}=\\begin{cases}\\sin\\!\\left(i/10000^{\\,2p/d_{model}}\\right) & d=2p\\\\ \\cos\\!\\left(i/10000^{\\,2p/d_{model}}\\right) & d=2p+1\\end{cases}$$\n\n**`tfWq(l, h, r, c)`**, **`tfWk(l, g, r, c)`**, **`tfWv(l, g, r, c)`** · d_model × d_k\n$$\\bigl(W_Q^{(l,h)}\\bigr)_{rc},\\qquad \\bigl(W_K^{(l,g)}\\bigr)_{rc},\\qquad \\bigl(W_V^{(l,g)}\\bigr)_{rc}$$\n\n**`tfQh(l, h, i, d)`** · n × d_k · rotated by RoPE when **position scheme** is RoPE\n$$q_{id}=\\sum_{r}X_{ir}\\bigl(W_Q^{(h)}\\bigr)_{rd}$$\n\n**`tfKh(l, h, i, d)`** · n × d_k · shared by every head with the same $g$\n$$k_{id}=\\sum_{r}X_{ir}\\bigl(W_K^{(g)}\\bigr)_{rd}$$\n\n**`tfVh(l, h, i, d)`** · n × d_k · **never** rotated by RoPE\n$$v_{id}=\\sum_{r}X_{ir}\\bigl(W_V^{(g)}\\bigr)_{rd}$$\n\n**`tfScoreH(l, h, i, j)`** · n × n · raw, unscaled, unmasked\n$$S_{ij}=q_i\\cdot k_j$$\n\n**`tfScoreScaledH(l, h, i, j)`** · n × n · $s$ is the **divisor** slider\n$$\\tilde S_{ij}=\\frac{S_{ij}}{\\bigl(\\sqrt{d_k}\\bigr)^{s}}$$\n\n**`tfAttnH(l, h, i, j)`** · n × n · additive mask, **before** the softmax, so rows sum to 1\n$$A_{ij}=\\operatorname{softmax}_j\\bigl(\\tilde S_{ij}+m_{ij}\\bigr)$$\n$$m_{ij}=\\begin{cases}0 & j\\le i\\\\ -10^{9} & j>i\\end{cases}$$\n\n**`tfHeadOut(l, h, i, d)`** · n × d_k · head $h$'s output, before $W_O$\n$$O^{(h)}_{id}=\\sum_{j}A_{ij}\\,v_{jd}$$\n\n**`tfConcat(l, i, c)`** · n × n_heads·d_k · column $c$ belongs to head $\\lfloor c/d_k\\rfloor$\n$$C_{i,\\;h d_k+d}=O^{(h)}_{id}$$\n\n**`tfWo(l, r, c)`** · n_heads·d_k × d_model · the projection back to $d_{model}$\n$$\\bigl(W_O^{(l)}\\bigr)_{rc}$$\n\n**`tfAttnOut(l, i, d)`** · n × d_model · the increment attention adds to the stream\n$$\\bigl(C\\,W_O\\bigr)_{id}$$\n\nThis scene is **head 0**, the hand-built toy: there is no head selector, and every tensor head 0 reads is yours. **input $X$ — shape** swaps the whole embedding table $E$ for a canonical one — sparse one-hot, a ramp up, a ramp down, or every slot identical — so you can watch what the *shape* of $x$ does to the scores before touching a weight. At *the table below* it uses $E$, which is the editable one.\n\nWorth noticing on the way past: **sparse barely changes anything**, because the toy table is already one-hot — slot $i$ lights component $i \\bmod d_{model}$ — so the only slot it moves is the blended one, *mat*. Follow slot 5 to see it. The ramps and *uniform* are where the scores really move: under **uniform** every slot is identical, so nothing distinguishes one key from another and the row would be flat were it not for the positional encoding. The embedding table $E$, $W_Q$, $W_K$, $W_V$ and $W_O$ are each bound to the lattice that shows them — hover a cell on the lattice itself to edit it, and watch the change travel the whole row.\n\n**tf_heads** still reshapes the model around it: at 4 you get four heads of $d_k = 1$ and the concat stays 4 wide, and head 0 keeps its own column while heads 1 to 3 run on seeded tables off screen. The count starts at 2 because the lattices are drawn two head-dimensions wide — one head would mean $d_k = 4$, and its q, k and v would not fit. **tf_kv** shows in the configuration card: head 0 always reads K/V head 0, so sharing changes the cache arithmetic rather than these lattices.\n\n**position scheme** has three settings, and the third only means anything because the first exists. At **none** no position information reaches the model at all: the token *the* at slot 0 and at slot 4 is the same vector, $(1,0,0,0)$, and attention has no way to tell them apart. **additive PE** writes position into the stream — those two slots become $(1,1,0,1)$ and $(0.24,-0.65,0.04,1.00)$, and every lattice downstream inherits it. **RoPE** leaves the stream exactly as **none** left it — compare the `tfH` lattice, it does not move — and rotates $q$ and $k$ instead: $q_2$ goes from $(3.00, 0)$ to $(-1.25, 2.73)$, so the scores change while the input does not. That is the whole idea: position enters the comparison rather than the content, and because both $q$ and $k$ turn, $q_i\\cdot k_j$ depends on $i-j$ alone.\n\n## The arithmetic\n\nQuery head $h$ reads K/V head $g=\\lfloor h\\,n_{kv}/n_{heads}\\rfloor$ (`tfHeadKv(h)`), so with $X$ the stream `tfH(0, i, d)`:\n\n$$Q = X\\,W_Q^{(h)},\\qquad K = X\\,W_K^{(g)},\\qquad V = X\\,W_V^{(g)}\\qquad (n\\times d_k)$$\n\n$$S_{ij}=q_i\\cdot k_j,\\qquad \\tilde S_{ij}=\\frac{S_{ij}}{\\left(\\sqrt{d_k}\\right)^{s}}$$\n\n$s$ is the **divisor** slider: $s=0$ divides by $1$, $s=1$ by $\\sqrt{d_k}$, and the values between are the interpolation you can drag through.\n\n$$A_{ij}=\\operatorname{softmax}_j\\!\\left(\\tilde S_{ij}+m_{ij}\\right),\\qquad m_{ij}=\\begin{cases}0 & j\\le i\\\\[2pt] -10^{9} & j>i\\end{cases}$$\n\nThe mask is **additive and applied before the softmax**, so every row of `tfAttnH` sums to exactly 1. (Masking after the softmax, by zeroing the future, leaves rows that do not sum to 1 — that is a misconception beat elsewhere, not reachable here.)\n\n$$O^{(h)}_{id}=\\sum_{j} A_{ij}\\,v_{jd},\\qquad \\operatorname{concat}_{i,\\;h\\,d_k+d}=O^{(h)}_{id},\\qquad \\texttt{tfAttnOut} = \\operatorname{concat}\\,W_O$$\n\nso column $c$ of `tfConcat` belongs to head $\\lfloor c/d_k\\rfloor$, and $W_O$ is $n_{heads}d_k\\times d_{model}$.\n\n**Each query row is computed on its own.** Row $i$ depends on $q_i$ and on *all* of $k_j,v_j$ — and on no other query. That is why **query slot to follow** moves the two charts and leaves every lattice still: it selects a row of a table that is already complete. It is also why $K$ and $V$ are worth caching, and why all $n$ queries are one matmul rather than a loop.",
+      "markdown": "This lesson is a **function tour** of the transformer domain library, not a lesson about transformers: every lattice is labelled with the call that fills it, so an author can see what each function returns and how the `tf_*` sliders reshape it. The weights are the hand-built toy at layer 0 / head 0 and **seeded tables everywhere else — nothing here is learned.**\n\n## Attention, per head\n\nHead $h$ reads K/V head $g=\\left\\lfloor h\\,n_{kv}/n_{heads}\\right\\rfloor$ — that is `tfHeadKv(h)`. $X$ below is the ENCODED stream: the embedding table $E$ plus the positional term, not the raw input. $E$ and $\\mathrm{PE}$ have lattices of their own to the left of it.\n\n**`tfH(0, i, d)`** · n × d_model · the encoded stream, one row per slot\n$$X_{id}=E_{id}+\\mathrm{PE}_{id}$$\n\n**`tfEmbBase(i, d)`**, **`tfPE(i, d)`** · n × d_model · the two terms of that sum\n$$E_{id},\\qquad \\mathrm{PE}_{id}=\\begin{cases}\\sin\\!\\left(i/10000^{\\,2p/d_{model}}\\right) & d=2p\\\\ \\cos\\!\\left(i/10000^{\\,2p/d_{model}}\\right) & d=2p+1\\end{cases}$$\n\n**`tfWq(l, h, r, c)`**, **`tfWk(l, g, r, c)`**, **`tfWv(l, g, r, c)`** · d_model × d_k\n$$\\bigl(W_Q^{(l,h)}\\bigr)_{rc},\\qquad \\bigl(W_K^{(l,g)}\\bigr)_{rc},\\qquad \\bigl(W_V^{(l,g)}\\bigr)_{rc}$$\n\n**`tfQh(l, h, i, d)`** · n × d_k · rotated by RoPE when **position scheme** is RoPE\n$$q_{id}=\\sum_{r}X_{ir}\\bigl(W_Q^{(h)}\\bigr)_{rd}$$\n\n**`tfKh(l, h, i, d)`** · n × d_k · shared by every head with the same $g$\n$$k_{id}=\\sum_{r}X_{ir}\\bigl(W_K^{(g)}\\bigr)_{rd}$$\n\n**`tfVh(l, h, i, d)`** · n × d_k · **never** rotated by RoPE\n$$v_{id}=\\sum_{r}X_{ir}\\bigl(W_V^{(g)}\\bigr)_{rd}$$\n\n**`tfScoreH(l, h, i, j)`** · n × n · raw, unscaled, unmasked\n$$S_{ij}=q_i\\cdot k_j$$\n\n**`tfScoreScaledH(l, h, i, j)`** · n × n · $s$ is the **divisor** slider\n$$\\tilde S_{ij}=\\frac{S_{ij}}{\\bigl(\\sqrt{d_k}\\bigr)^{s}}$$\n\n**`tfAttnH(l, h, i, j)`** · n × n · additive mask, **before** the softmax, so rows sum to 1\n$$A_{ij}=\\operatorname{softmax}_j\\bigl(\\tilde S_{ij}+m_{ij}\\bigr)$$\n$$m_{ij}=\\begin{cases}0 & j\\le i\\\\ -10^{9} & j>i\\end{cases}$$\n\n**`tfHeadOut(l, h, i, d)`** · n × d_k · head $h$'s output, before $W_O$\n$$O^{(h)}_{id}=\\sum_{j}A_{ij}\\,v_{jd}$$\n\n**`tfConcat(l, i, c)`** · n × n_heads·d_k · column $c$ belongs to head $\\lfloor c/d_k\\rfloor$\n$$C_{i,\\;h d_k+d}=O^{(h)}_{id}$$\n\n**`tfWo(l, r, c)`** · n_heads·d_k × d_model · the projection back to $d_{model}$\n$$\\bigl(W_O^{(l)}\\bigr)_{rc}$$\n\n**`tfAttnOut(l, i, d)`** · n × d_model · the increment attention adds to the stream\n$$\\bigl(C\\,W_O\\bigr)_{id}$$\n\nThis scene is **head 0**, the hand-built toy: there is no head selector, and every tensor head 0 reads is yours. **input $X$ — shape** swaps the whole embedding table $E$ for a canonical one — sparse one-hot, a ramp up, a ramp down, or every slot identical — so you can watch what the *shape* of $x$ does to the scores before touching a weight. At *the table below* it uses $E$, which is the editable one.\n\nWorth noticing on the way past: **sparse barely changes anything**, because the toy table is already one-hot — slot $i$ lights component $i \\bmod d_{model}$ — so the only slot it moves is the blended one, *mat*. Follow slot 5 to see it. The ramps and *uniform* are where the scores really move: under **uniform** every slot is identical, so nothing distinguishes one key from another and the row would be flat were it not for the positional encoding. $W_Q$, $W_K$, $W_V$ and $W_O$ are each bound to the lattice that shows them — hover a cell on the lattice itself to edit it, and watch the change travel the whole row. $E$ is edited in the panel rather than on its lattice: **input $X$ — shape** can replace the table, and a bound lattice would keep showing the slider's numbers instead of the preset actually in use.\n\nTwo places where a lattice shows more than the model reads, both known: the bound projections are drawn 4 × 2 whatever $d_k$ is, so at **tf_heads** 3 or 4 the second column is a weight `tfQh` never touches; and in *Stack and sample* the depth lattices past **tf_layers** blank rather than disappear, because a tensor cannot yet be hidden by expression.\n\n**tf_heads** still reshapes the model around it: at 4 you get four heads of $d_k = 1$ and the concat stays 4 wide, and head 0 keeps its own column while heads 1 to 3 run on seeded tables off screen. The count starts at 2 because the lattices are drawn two head-dimensions wide — one head would mean $d_k = 4$, and its q, k and v would not fit. **tf_kv** shows in the configuration card: head 0 always reads K/V head 0, so sharing changes the cache arithmetic rather than these lattices.\n\n**position scheme** has three settings, and the third only means anything because the first exists. At **none** no position information reaches the model at all: the token *the* at slot 0 and at slot 4 is the same vector, $(1,0,0,0)$, and attention has no way to tell them apart. **additive PE** writes position into the stream — those two slots become $(1,1,0,1)$ and $(0.24,-0.65,0.04,1.00)$, and every lattice downstream inherits it. **RoPE** leaves the stream exactly as **none** left it — compare the `tfH` lattice, it does not move — and rotates $q$ and $k$ instead: $q_2$ goes from $(3.00, 0)$ to $(-1.25, 2.73)$, so the scores change while the input does not. That is the whole idea: position enters the comparison rather than the content, and because both $q$ and $k$ turn, $q_i\\cdot k_j$ depends on $i-j$ alone.\n\n## The arithmetic\n\nQuery head $h$ reads K/V head $g=\\lfloor h\\,n_{kv}/n_{heads}\\rfloor$ (`tfHeadKv(h)`), so with $X$ the stream `tfH(0, i, d)`:\n\n$$Q = X\\,W_Q^{(h)},\\qquad K = X\\,W_K^{(g)},\\qquad V = X\\,W_V^{(g)}\\qquad (n\\times d_k)$$\n\n$$S_{ij}=q_i\\cdot k_j,\\qquad \\tilde S_{ij}=\\frac{S_{ij}}{\\left(\\sqrt{d_k}\\right)^{s}}$$\n\n$s$ is the **divisor** slider: $s=0$ divides by $1$, $s=1$ by $\\sqrt{d_k}$, and the values between are the interpolation you can drag through.\n\n$$A_{ij}=\\operatorname{softmax}_j\\!\\left(\\tilde S_{ij}+m_{ij}\\right),\\qquad m_{ij}=\\begin{cases}0 & j\\le i\\\\[2pt] -10^{9} & j>i\\end{cases}$$\n\nThe mask is **additive and applied before the softmax**, so every row of `tfAttnH` sums to exactly 1. (Masking after the softmax, by zeroing the future, leaves rows that do not sum to 1 — that is a misconception beat elsewhere, not reachable here.)\n\n$$O^{(h)}_{id}=\\sum_{j} A_{ij}\\,v_{jd},\\qquad \\operatorname{concat}_{i,\\;h\\,d_k+d}=O^{(h)}_{id},\\qquad \\texttt{tfAttnOut} = \\operatorname{concat}\\,W_O$$\n\nso column $c$ of `tfConcat` belongs to head $\\lfloor c/d_k\\rfloor$, and $W_O$ is $n_{heads}d_k\\times d_{model}$.\n\n**Each query row is computed on its own.** Row $i$ depends on $q_i$ and on *all* of $k_j,v_j$ — and on no other query. That is why **query slot to follow** moves the two charts and leaves every lattice still: it selects a row of a table that is already complete. It is also why $K$ and $V$ are worth caching, and why all $n$ queries are one matmul rather than a loop.",
       "prompt": "A function tour of the general transformer engine, attention part. Every lattice is labelled with the domain call that fills it. Weights beyond layer 0 / head 0 are seeded, not learned; say so if asked what the numbers mean.",
       "range": [
         [-22, 28],
@@ -187,7 +187,7 @@
               "color": "#ffa726",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "tfWq(0, h, row, col)",
+              "label": "tfWq(0, 0, row, col)",
               "axes": [
                 {
                   "color": "#ffa726",
@@ -200,7 +200,7 @@
                 }
               ],
               "textExpr": "(col < tfDk()) ? (toFixed(value, 2)) : ''",
-              "prompt": "W_Q of layer 0, head 0. Head 0 is the hand-built toy; other heads are seeded tables. Every W is read by tfWq/tfWk/tfWv with (layer, head, row, col).",
+              "prompt": "W_Q of layer 0, head 0. Head 0 is the hand-built toy; other heads are seeded tables. Every W is read by tfWq/tfWk/tfWv with (layer, head, row, col). Drawn 4 x 2 whatever d_k is: at tf_heads 3 or 4, d_k is 1 and the second column is a weight the model never reads.",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))",
               "bind": "tf_wq_0_0"
@@ -218,7 +218,7 @@
               "color": "#42a5f5",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "tfWk(0, tfHeadKv(h), row, col)",
+              "label": "tfWk(0, 0, row, col)",
               "axes": [
                 {
                   "color": "#42a5f5",
@@ -231,7 +231,7 @@
                 }
               ],
               "textExpr": "(col < tfDk()) ? (toFixed(value, 2)) : ''",
-              "prompt": "W_K of the K/V head that query head 0 reads: tfHeadKv(h) = floor(h · n_kv / n_heads). With tf_kv = 1 every head reads the same one.",
+              "prompt": "W_K of the K/V head that query head 0 reads: tfHeadKv(h) = floor(h · n_kv / n_heads). With tf_kv = 1 every head reads the same one. Drawn 4 x 2 whatever d_k is: at tf_heads 3 or 4, d_k is 1 and the second column is a weight the model never reads.",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))",
               "bind": "tf_wk_0_0"
@@ -249,7 +249,7 @@
               "color": "#66bb6a",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "tfWv(0, tfHeadKv(h), row, col)",
+              "label": "tfWv(0, 0, row, col)",
               "axes": [
                 {
                   "color": "#66bb6a",
@@ -262,7 +262,7 @@
                 }
               ],
               "textExpr": "(col < tfDk()) ? (toFixed(value, 2)) : ''",
-              "prompt": "W_V of the K/V head that query head 0 reads.",
+              "prompt": "W_V of the K/V head that query head 0 reads. Drawn 4 x 2 whatever d_k is: at tf_heads 3 or 4, d_k is 1 and the second column is a weight the model never reads.",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))",
               "bind": "tf_wv_0_0"
@@ -280,7 +280,7 @@
               "color": "#ffa726",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "tfQh(0, h, row, col)",
+              "label": "tfQh(0, 0, row, col)",
               "axes": [
                 {"color": "#ffa726", "labelExpr": "tfToken(row)"},
                 {
@@ -307,7 +307,7 @@
               "color": "#42a5f5",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "tfKh(0, h, row, col)",
+              "label": "tfKh(0, 0, row, col)",
               "axes": [
                 {"color": "#42a5f5", "labelExpr": "tfToken(row)"},
                 {
@@ -334,7 +334,7 @@
               "color": "#66bb6a",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "tfVh(0, h, row, col)",
+              "label": "tfVh(0, 0, row, col)",
               "axes": [
                 {"color": "#66bb6a", "labelExpr": "tfToken(row)"},
                 {
@@ -361,7 +361,7 @@
               "color": "#ffa726",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "tfScoreScaledH(0, h, i, j)",
+              "label": "tfScoreScaledH(0, 0, i, j)",
               "axes": [
                 {"color": "#ffa726", "labelExpr": "tfToken(row)"},
                 {
@@ -388,7 +388,7 @@
               "color": "#66bb6a",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "tfAttnH(0, h, i, j)",
+              "label": "tfAttnH(0, 0, i, j)",
               "axes": [
                 {"color": "#66bb6a", "labelExpr": "tfToken(row)"},
                 {
@@ -416,7 +416,7 @@
               "color": "#ab47bc",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "tfHeadOut(0, h, row, col)",
+              "label": "tfHeadOut(0, 0, row, col)",
               "axes": [
                 {"color": "#ab47bc", "labelExpr": "tfToken(row)"},
                 {
@@ -602,7 +602,7 @@
             {
               "id": "t1_s_math",
               "type": "text",
-              "text": "$QK^{\\top}\\!/\\sqrt{d_k}$",
+              "text": "$QK^{\\top}\\!/(\\sqrt{d_k})^{s}$",
               "position": [2.0, 3.58, 0],
               "color": "#ffa726"
             },
@@ -843,7 +843,7 @@
               "color": "#26c6da",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "tfH(l, row, col) — stream in",
+              "label": "tfH(0, row, col) — stream in",
               "axes": [
                 {"color": "#26c6da", "labelExpr": "tfToken(row)"},
                 {
@@ -870,11 +870,11 @@
               "color": "#26c6da",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "tfAttnIn(l, row, col)",
+              "label": "tfAttnIn(0, row, col)",
               "axes": [
                 {"color": "#26c6da", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfAttnIn(0, row, col) — $a$",
+                  "title": "tfAttnIn(0, row, col)",
                   "color": "#26c6da",
                   "labels": ["$d_0$", "$d_1$", "$d_2$", "$d_3$"]
                 }
@@ -897,7 +897,7 @@
               "color": "#f06292",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "tfAttnOut(l, row, col)",
+              "label": "tfAttnOut(0, row, col)",
               "axes": [
                 {"color": "#f06292", "labelExpr": "tfToken(row)"},
                 {
@@ -924,11 +924,11 @@
               "color": "#26c6da",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "tfResid1(l, row, col)",
+              "label": "tfResid1(0, row, col)",
               "axes": [
                 {"color": "#26c6da", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfResid1(0, row, col) — $r_1$",
+                  "title": "tfResid1(0, row, col)",
                   "color": "#26c6da",
                   "labels": ["$d_0$", "$d_1$", "$d_2$", "$d_3$"]
                 }
@@ -951,11 +951,11 @@
               "color": "#26c6da",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "tfFfIn(l, row, col)",
+              "label": "tfFfIn(0, row, col)",
               "axes": [
                 {"color": "#26c6da", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfFfIn(0, row, col) — $f$",
+                  "title": "tfFfIn(0, row, col)",
                   "color": "#26c6da",
                   "labels": ["$d_0$", "$d_1$", "$d_2$", "$d_3$"]
                 }
@@ -978,7 +978,7 @@
               "color": "#ffee58",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "tfFfPre(l, row, k) — before the activation",
+              "label": "tfFfPre(0, row, k) — before the activation",
               "axes": [
                 {"color": "#ffee58", "labelExpr": "tfToken(row)"},
                 {
@@ -1005,7 +1005,7 @@
               "color": "#ffee58",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "tfFfHidden(l, row, k) — after the activation",
+              "label": "tfFfHidden(0, row, k) — after the activation",
               "axes": [
                 {"color": "#ffee58", "labelExpr": "tfToken(row)"},
                 {
@@ -1032,7 +1032,7 @@
               "color": "#ffee58",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "tfFfOut(l, row, col)",
+              "label": "tfFfOut(0, row, col)",
               "axes": [
                 {"color": "#ffee58", "labelExpr": "tfToken(row)"},
                 {
@@ -1059,11 +1059,11 @@
               "color": "#26c6da",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "tfResid2(l, row, col) — stream out",
+              "label": "tfResid2(0, row, col) — stream out",
               "axes": [
                 {"color": "#26c6da", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfResid2(0, row, col) — stream out = $r_2$",
+                  "title": "tfResid2(0, row, col) — stream out",
                   "color": "#26c6da",
                   "labels": ["$d_0$", "$d_1$", "$d_2$", "$d_3$"]
                 }
@@ -1135,7 +1135,7 @@
               "color": "#ffee58",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "tfW2(l, row, col)",
+              "label": "tfW2(0, row, col)",
               "axes": [
                 {
                   "color": "#ffee58",
@@ -1163,7 +1163,7 @@
             {
               "id": "t2_ain_math",
               "type": "text",
-              "text": "$N(h)$",
+              "text": "$a$",
               "position": [-14.0, 3.58, 0],
               "color": "#26c6da"
             },
@@ -1177,14 +1177,14 @@
             {
               "id": "t2_r1_math",
               "type": "text",
-              "text": "$h{+}\\mathrm{Attn}$",
+              "text": "$r_1$",
               "position": [-5.2, 3.58, 0],
               "color": "#26c6da"
             },
             {
               "id": "t2_fin_math",
               "type": "text",
-              "text": "$N(r_1)$",
+              "text": "$f$",
               "position": [-0.8, 3.58, 0],
               "color": "#26c6da"
             },
@@ -1212,7 +1212,7 @@
             {
               "id": "t2_r2_math",
               "type": "text",
-              "text": "$r_1{+}\\mathrm{FFN}$",
+              "text": "$r_2$",
               "position": [22.4, 3.58, 0],
               "color": "#26c6da"
             },
@@ -1672,7 +1672,7 @@
             {
               "id": "t3_final_math",
               "type": "text",
-              "text": "$N(h^{(L)})$",
+              "text": "$\\mathrm{final}$",
               "position": [0.0, 3.58, 0],
               "color": "#42a5f5"
             },
