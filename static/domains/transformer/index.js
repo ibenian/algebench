@@ -312,10 +312,13 @@
      *  seen without hand-editing a table. Rows are slots, columns components.
      *    1 sparse    one-hot, slot i lighting component i mod d: every pair of
      *                slots is orthogonal, so q.k is 0 except where they collide.
-     *    2 ramp up   components rising across the row, magnitude rising with the
-     *                slot: later slots dominate every score they appear in.
-     *    3 ramp down components falling across the row, magnitude still rising
-     *                with the slot -- same norms as 2, opposite direction.
+     *    2 ramp up   components rising across the row AND magnitude rising with
+     *                the slot: the last tokens are the big ones, so they
+     *                dominate every score they appear in.
+     *    3 ramp down both reversed -- components falling across the row and
+     *                magnitude falling with the slot, so the FIRST tokens are
+     *                the big ones. Not 2 read backwards along one axis, which
+     *                would leave the same vector norms and change little.
      *    4 uniform   every slot identical and unit-norm: nothing distinguishes
      *                one key from another, so the softmax is flat by symmetry.
      */
@@ -327,7 +330,7 @@
                 let v;
                 if (kind === 1) v = (j === i % d) ? 1 : 0;
                 else if (kind === 2) v = ((i + 1) / n) * ((j + 1) / d);
-                else if (kind === 3) v = ((i + 1) / n) * ((d - j) / d);
+                else if (kind === 3) v = ((n - i) / n) * ((d - j) / d);
                 else v = 1 / Math.sqrt(d);
                 row.push(v);
             }
