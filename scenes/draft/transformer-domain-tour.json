@@ -48,7 +48,7 @@
           "target": [18.8, 3.29, 0.0]
         },
         {
-          "name": "Output Charts",
+          "name": "Attention Charts",
           "description": "Scores and weights for the query slot being followed, as curves.",
           "position": [5.4, -8.0, 13.0],
           "target": [5.4, -8.0, 0.0]
