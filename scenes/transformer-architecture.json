@@ -538,7 +538,7 @@
         {
           "id": "reveal-equivariance",
           "title": "REVEAL: the same set, relabelled",
-          "description": "The output **set** is identical. Every row of the shuffled run is a row of the original run, sitting at a different slot: $O_{\\text{perm}}[k] = O_{\\text{orig}}[P[k]]$, to a maximum deviation of $2.2\\times10^{-16}$ — machine precision, not approximation. Slot 3 of the shuffled run reads $(0.0231,\\ 0.9736)$, which is exactly slot 2 of the original. Attention with no position and no mask treats the sequence as a **bag of tokens**. That is not a bug in our toy model; it is a theorem, and it is the entire reason positional encoding has to exist.",
+          "description": "The output **set** is identical. Every row of the shuffled run is a row of the original run, sitting at a different slot: $O_{\\text{perm}}[k] = O_{\\text{orig}}[P[k]]$, to a maximum deviation of $2.2\\times10^{-16}$ — machine precision, not approximation. Slot 3 of the shuffled run reads $(0.0231,\\ 0.9736)$, which is exactly slot 2 of the original. Attention with no position and no mask treats the sequence as a **bag of tokens**. That is not a bug in our toy model; it is a theorem, and it is the entire reason positional encoding has to exist. These numerical examples use the default input. Edit a cell in the Input embeddings control grid to change it and watch the vectors and outputs update; reset the grid to restore the example. The original-order output updates too.",
           "remove": [
             {"id": "s1_pt_emb0_n0"},
             {"id": "s1_pt_emb1_n0"},
@@ -564,11 +564,11 @@
               "cellSize": 0.5,
               "plane": "xy",
               "colorMap": "viridis",
-              "colorDomain": [0, 1],
+              "colorDomain": [-2, 2],
               "color": "#26c6da",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "embedding rows $W_E[t_i]$",
+              "label": "input embeddings — current token order",
               "axes": [
                 {"labelExpr": "tfToken(row)", "color": "#26c6da"},
                 {
@@ -704,14 +704,6 @@
               "id": "s1_tensor_out_orig",
               "type": "tensor",
               "shape": [6, 2],
-              "values": [
-                [0.4167, 0.25],
-                [0.4167, 0.25],
-                [0.0231, 0.9736],
-                [0.3639, 0.2297],
-                [0.4167, 0.25],
-                [0.3924, 0.2413]
-              ],
               "origin": [3.2, 1.8, 0],
               "cellSize": 0.5,
               "plane": "xy",
@@ -720,7 +712,8 @@
               "color": "#ab47bc",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "$O$ — original order (frozen)",
+              "label": "$O$ — original-order view",
+              "valueExpr": "tfOutNoPos(tfPerm(0) == row ? 0 : (tfPerm(1) == row ? 1 : (tfPerm(2) == row ? 2 : (tfPerm(3) == row ? 3 : (tfPerm(4) == row ? 4 : 5)))), col)",
               "axes": [
                 {
                   "labels": ["0", "1", "2", "3", "4", "5"],
@@ -733,7 +726,7 @@
                   "color": "#ab47bc"
                 }
               ],
-              "prompt": "The frozen reference: attention output rows for the ORIGINAL token order, unmasked and position-free. Row 2 is [0.0231, 0.9736]."
+              "prompt": "The live output rearranged into original token order. It updates with input edits; this is a view of the same computation, not an independent numerical verification. The defaults give row 2 [0.0231, 0.9736]."
             },
             {
               "id": "s1_tensor_out_live",
@@ -761,14 +754,15 @@
                   "color": "#ab47bc"
                 }
               ],
-              "prompt": "The live output of UNMASKED, POSITION-FREE attention over the raw embeddings, recomputed as the shuffle control moves. With shuffle off it is cell-for-cell identical to the frozen reference beside it. With shuffle on every row is still a row of the reference, just at a different slot."
+              "prompt": "The live output of UNMASKED, POSITION-FREE attention over the raw embeddings, recomputed as the shuffle control moves. With shuffle off it is cell-for-cell identical to the original-order view beside it. With shuffle on every row is still a row of the reference, just at a different slot."
             }
           ],
           "info": [
-            {"id": "s1_info_reveal", "position": "top-center", "title": "Equivariance, measured", "content": "live slot 3: ( {{toFixed(tfOutNoPos(3,0),4)}} , {{toFixed(tfOutNoPos(3,1),4)}} ) · frozen slot 2: ( 0.0231 , 0.9736 )\n\nSame set, permuted. Regime: no PE, no mask."}
+            {"id": "s1_info_reveal", "position": "top-center", "title": "Equivariance, measured", "content": "Edit a cell in the Input embeddings control grid; the token points and output tables update live. The control grid stays in original token order. The displayed input tensor follows the shuffle: both its word labels and vector rows move together.\n\nCurrent slot 3 (original row {{toFixed(tfPerm(3),0)}}): ({{toFixed(tfOutNoPos(3,0),4)}}, {{toFixed(tfOutNoPos(3,1),4)}}).\n\nNo PE, no mask. The original-order output is a reordered view. Reset the input grid to restore the lesson’s example numbers. Rows 0 and 4 are independent inputs: editing just one can separate the two “the” vectors."}
           ],
-          "prompt": "REVEAL step. Answer freely now. The output set is permuted, not changed: Attn(PX) = P Attn(X). Walk the student through the on-screen check (live slot 3 equals frozen slot 2 equals [0.0231, 0.9736]) and the 2.2e-16 deviation, stressing that this is machine precision, i.e. exact. ALWAYS state the regime: this holds for a single self-attention layer with NO positional encoding and NO causal mask. The causal mask is a SECOND, independent reason equivariance breaks — row i's visible key set depends on i, not merely on the token multiset — and it arrives in scene 3. Never present the theorem unqualified. Open the proof panel if the student wants the algebra.",
+          "prompt": "REVEAL step. Answer freely now. The output set is permuted, not changed: Attn(PX) = P Attn(X). Walk the student through the on-screen check (live slot 3 equals frozen slot 2 equals [0.0231, 0.9736]) and the 2.2e-16 deviation, stressing that this is machine precision, i.e. exact. ALWAYS state the regime: this holds for a single self-attention layer with NO positional encoding and NO causal mask. The causal mask is a SECOND, independent reason equivariance breaks — row i's visible key set depends on i, not merely on the token multiset — and it arrives in scene 3. Never present the theorem unqualified. Open the proof panel if the student wants the algebra. The input grid is now editable. All quoted numerical examples describe the default table; after edits, use live readouts. The original-order output is a reordered view of the live computation, not an independent verification. Only the editable control grid stays in original order. The displayed input tensor uses tfToken(row) and tfEmb(row, col), so its word labels and vector rows follow the shuffle. The two the rows may be edited independently.",
           "sliders": [
+            {"id":"s4_emb","kind":"tensor","label":"Input embeddings — original token order","shape":[6,4],"min":-2,"max":2,"step":0.1,"default":[[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1],[1,0,0,0],[0.5,0.5,0,0.5]]},
             {"id": "s1_shuffle", "label": "shuffle tokens", "min": 0, "max": 1, "step": 1, "default": 1, "reset": true}
           ],
           "camera": {
