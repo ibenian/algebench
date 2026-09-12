@@ -82,7 +82,7 @@
               "axes": [
                 {"color": "#26c6da", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfH(0, row, col) — the input stream $x$",
+                  "title": "tfH(0, row, col) — the input stream $X$",
                   "color": "#26c6da",
                   "labels": ["$x_0$", "$x_1$", "$x_2$", "$x_3$"]
                 }
@@ -199,7 +199,7 @@
               "axes": [
                 {"color": "#ffa726", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfQh(0, h, row, col)",
+                  "title": "tfQh(0, h, row, col) — $Q$",
                   "color": "#ffa726",
                   "labels": ["$q_0$", "$q_1$"]
                 }
@@ -226,7 +226,7 @@
               "axes": [
                 {"color": "#42a5f5", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfKh(0, h, row, col)",
+                  "title": "tfKh(0, h, row, col) — $K$",
                   "color": "#42a5f5",
                   "labels": ["$k_0$", "$k_1$"]
                 }
@@ -253,7 +253,7 @@
               "axes": [
                 {"color": "#66bb6a", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfVh(0, h, row, col)",
+                  "title": "tfVh(0, h, row, col) — $V$",
                   "color": "#66bb6a",
                   "labels": ["$v_0$", "$v_1$"]
                 }
@@ -280,7 +280,7 @@
               "axes": [
                 {"color": "#ffa726", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfScoreScaledH(0, h, i, j)",
+                  "title": "tfScoreScaledH(0, h, i, j) — $\\tilde S$",
                   "color": "#ffa726",
                   "labels": ["the", "cat", "sat", "on", "the", "mat"]
                 }
@@ -307,7 +307,7 @@
               "axes": [
                 {"color": "#66bb6a", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfAttnH(0, h, i, j)",
+                  "title": "tfAttnH(0, h, i, j) — $A$",
                   "color": "#66bb6a",
                   "labels": ["the", "cat", "sat", "on", "the", "mat"]
                 }
@@ -335,7 +335,7 @@
               "axes": [
                 {"color": "#ab47bc", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfHeadOut(0, h, row, col)",
+                  "title": "tfHeadOut(0, h, row, col) — $O^{(h)}$",
                   "color": "#ab47bc",
                   "labels": ["$o_0$", "$o_1$"]
                 }
@@ -362,7 +362,7 @@
               "axes": [
                 {"color": "#f06292", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfConcat(0, row, c) — all heads side by side",
+                  "title": "tfConcat(0, row, c) — all heads side by side = $C$",
                   "color": "#f06292",
                   "labels": ["$c_0$", "$c_1$", "$c_2$", "$c_3$"]
                 }
@@ -665,7 +665,7 @@
               "axes": [
                 {"color": "#26c6da", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfAttnIn(l, row, col)",
+                  "title": "tfAttnIn(l, row, col) — $a$",
                   "color": "#26c6da",
                   "labels": ["$d_0$", "$d_1$", "$d_2$", "$d_3$"]
                 }
@@ -719,7 +719,7 @@
               "axes": [
                 {"color": "#26c6da", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfResid1(l, row, col)",
+                  "title": "tfResid1(l, row, col) — $r_1$",
                   "color": "#26c6da",
                   "labels": ["$d_0$", "$d_1$", "$d_2$", "$d_3$"]
                 }
@@ -746,7 +746,7 @@
               "axes": [
                 {"color": "#26c6da", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfFfIn(l, row, col)",
+                  "title": "tfFfIn(l, row, col) — $f$",
                   "color": "#26c6da",
                   "labels": ["$d_0$", "$d_1$", "$d_2$", "$d_3$"]
                 }
@@ -773,7 +773,7 @@
               "axes": [
                 {"color": "#ffee58", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfFfPre(l, row, k) — before the activation",
+                  "title": "tfFfPre(l, row, k) — before the activation = $u$",
                   "color": "#ffee58",
                   "labels": ["$u_0$", "$u_1$", "$u_2$", "$u_3$", "$u_4$", "$u_5$", "$u_6$", "$u_7$"]
                 }
@@ -854,7 +854,7 @@
               "axes": [
                 {"color": "#26c6da", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfResid2(l, row, col) — stream out",
+                  "title": "tfResid2(l, row, col) — stream out = $r_2$",
                   "color": "#26c6da",
                   "labels": ["$d_0$", "$d_1$", "$d_2$", "$d_3$"]
                 }
