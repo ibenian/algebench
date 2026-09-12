@@ -24,14 +24,34 @@
           "target": [2.5, 1.5, 0.0]
         },
         {
-          "name": "Heads",
-          "position": [-8.0, 1.5, 22.0],
-          "target": [-8.0, 1.5, 0.0]
+          "name": "Inputs",
+          "description": "The residual stream entering the layer: one row per slot, d_model wide.",
+          "position": [-15.4, 0.29, 12.2],
+          "target": [-15.4, 0.29, 0.0]
         },
         {
-          "name": "Concat",
-          "position": [18.0, 1.5, 20.0],
-          "target": [18.0, 1.5, 0.0]
+          "name": "QKV",
+          "description": "The three projections and the q, k, v they produce for the head shown.",
+          "position": [-7.2, 3.29, 21.5],
+          "target": [-7.2, 3.29, 0.0]
+        },
+        {
+          "name": "Attention",
+          "description": "Scaled scores and the attention weights the softmax turns them into.",
+          "position": [5.4, 0.29, 13.0],
+          "target": [5.4, 0.29, 0.0]
+        },
+        {
+          "name": "Output",
+          "description": "Head output, the concatenation, W_O, and the increment attention adds.",
+          "position": [18.8, 3.29, 21.5],
+          "target": [18.8, 3.29, 0.0]
+        },
+        {
+          "name": "Output Charts",
+          "description": "Scores and weights for the query slot being followed, as curves.",
+          "position": [5.4, -8.0, 13.0],
+          "target": [5.4, -8.0, 0.0]
         }
       ],
       "elements": [],
