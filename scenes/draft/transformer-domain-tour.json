@@ -578,7 +578,7 @@
             }
           ],
           "info": [
-            {"id": "tour_cfg", "position": "top-left", "title": "The configuration in force", "content": "n = {{tfN()}} tokens · $d_{\\text{model}}$ = {{tfDModel()}} · $d_k$ = {{tfDk()}} · heads = {{tfHeads()}} · K/V heads = {{tfKv()}} · layers = {{tfLayers()}} · $d_{ff}$ = {{tfDff()}} · vocabulary = {{tfVocabN()}} words\\n\\nK/V cache = {{tfKvCache()}} numbers (2 · n · n_kv · d_k per layer) — sharing saves ×{{tfKvSaving()}}. Head 0 reads K/V head {{tfHeadKv(0)}}, head 1 reads {{tfHeadKv(1)}}, and the last head ({{tfHeads() - 1}}) reads {{tfHeadKv(tfHeads() - 1)}}."}
+            {"id": "tour_cfg", "position": "bottom-left", "title": "The configuration in force", "content": "n = {{tfN()}} tokens · $d_{\\text{model}}$ = {{tfDModel()}} · $d_k$ = {{tfDk()}} · heads = {{tfHeads()}} · K/V heads = {{tfKv()}} · layers = {{tfLayers()}} · $d_{ff}$ = {{tfDff()}} · vocabulary = {{tfVocabN()}} words\\n\\nK/V cache = {{tfKvCache()}} numbers (2 · n · n_kv · d_k per layer) — sharing saves ×{{tfKvSaving()}}. Head 0 reads K/V head {{tfHeadKv(0)}}, head 1 reads {{tfHeadKv(1)}}, and the last head ({{tfHeads() - 1}}) reads {{tfHeadKv(tfHeads() - 1)}}."}
           ],
           "prompt": "A function tour of the general transformer engine, attention part. Every lattice is labelled with the domain call that fills it. Weights beyond layer 0 / head 0 are seeded, not learned; say so if asked what the numbers mean."
         }
@@ -606,9 +606,34 @@
           "target": [2.0, 1.5, 0.0]
         },
         {
+          "name": "Stream",
+          "description": "The residual stream as it enters layer l.",
+          "position": [-18.4, 0.29, 12.2],
+          "target": [-18.4, 0.29, 0.0]
+        },
+        {
+          "name": "Attention",
+          "description": "What attention reads, the increment it returns, and the first residual add.",
+          "position": [-9.6, 0.29, 13.4],
+          "target": [-9.6, 0.29, 0.0]
+        },
+        {
           "name": "FFN",
-          "position": [10.0, 1.5, 24.0],
-          "target": [10.0, 1.5, 0.0]
+          "description": "What the FFN reads, W_1, and the hidden units before and after the activation.",
+          "position": [6.6, 3.29, 21.5],
+          "target": [6.6, 3.29, 0.0]
+        },
+        {
+          "name": "Output",
+          "description": "W_2, the FFN increment, and the stream leaving the layer.",
+          "position": [20.2, 4.89, 26.5],
+          "target": [20.2, 4.89, 0.0]
+        },
+        {
+          "name": "FFN Chart",
+          "description": "The hidden units of the followed slot, before and after the activation.",
+          "position": [5.2, -8.0, 8.2],
+          "target": [5.2, -8.0, 0.0]
         }
       ],
       "elements": [],
@@ -1042,7 +1067,7 @@
             }
           ],
           "info": [
-            {"id": "tour_resid", "position": "top-left", "title": "The residual identity at slot 2", "content": "Layer read: {{min(demo_l, tfLayers() - 1)}} — the engine clamps a selector past the top of the stack, so this card follows the last layer while the lattices go blank.\\n\\npre-norm: out − (in + attention + FFN) = ({{toFixed(tfResid2(demo_l,2,0) - tfH(demo_l,2,0) - tfAttnOut(demo_l,2,0) - tfFfOut(demo_l,2,0), 6)}}, {{toFixed(tfResid2(demo_l,2,1) - tfH(demo_l,2,1) - tfAttnOut(demo_l,2,1) - tfFfOut(demo_l,2,1), 6)}}, …) — zero while tf_prenorm = 1; post-norm normalises the sums, so it is not.\\n\\nMean of tfAttnIn row 2 = {{toFixed(tfAttnIn(demo_l,2,0)+tfAttnIn(demo_l,2,1)+tfAttnIn(demo_l,2,2)+tfAttnIn(demo_l,2,3), 4)}} — zero under LayerNorm, not under RMSNorm (no mean subtraction)."}
+            {"id": "tour_resid", "position": "bottom-left", "title": "The residual identity at slot 2", "content": "Layer read: {{min(demo_l, tfLayers() - 1)}} — the engine clamps a selector past the top of the stack, so this card follows the last layer while the lattices go blank.\\n\\npre-norm: out − (in + attention + FFN) = ({{toFixed(tfResid2(demo_l,2,0) - tfH(demo_l,2,0) - tfAttnOut(demo_l,2,0) - tfFfOut(demo_l,2,0), 6)}}, {{toFixed(tfResid2(demo_l,2,1) - tfH(demo_l,2,1) - tfAttnOut(demo_l,2,1) - tfFfOut(demo_l,2,1), 6)}}, …) — zero while tf_prenorm = 1; post-norm normalises the sums, so it is not.\\n\\nMean of tfAttnIn row 2 = {{toFixed(tfAttnIn(demo_l,2,0)+tfAttnIn(demo_l,2,1)+tfAttnIn(demo_l,2,2)+tfAttnIn(demo_l,2,3), 4)}} — zero under LayerNorm, not under RMSNorm (no mean subtraction)."}
           ],
           "prompt": "A function tour of the general transformer engine, block part: the residual stream through one layer. The card checks the residual identity and the norm means live."
         }
@@ -1070,9 +1095,34 @@
           "target": [0.0, -1.0, 0.0]
         },
         {
-          "name": "Sample",
-          "position": [9.0, -4.0, 24.0],
-          "target": [9.0, -4.0, 0.0]
+          "name": "Depth",
+          "description": "The residual stream at every depth, one lattice per block boundary.",
+          "position": [-11.8, 0.29, 17.6],
+          "target": [-11.8, 0.29, 0.0]
+        },
+        {
+          "name": "Unembedding",
+          "description": "What the unembedding reads, and the tied table it reads against.",
+          "position": [0.0, 3.69, 22.7],
+          "target": [0.0, 3.69, 0.0]
+        },
+        {
+          "name": "Logits",
+          "description": "One score per vocabulary word at every slot, before temperature.",
+          "position": [5.6, 0.29, 12.2],
+          "target": [5.6, 0.29, 0.0]
+        },
+        {
+          "name": "Distribution",
+          "description": "The softmax over the vocabulary, the argmax word, and the entropy in bits.",
+          "position": [13.2, 0.29, 12.2],
+          "target": [13.2, 0.29, 0.0]
+        },
+        {
+          "name": "Distribution Charts",
+          "description": "Logits, probabilities and entropy for the slot being followed.",
+          "position": [-9.6, -8.0, 21.8],
+          "target": [-9.6, -8.0, 0.0]
         }
       ],
       "elements": [],
@@ -1481,7 +1531,7 @@
             }
           ],
           "info": [
-            {"id": "tour_sample", "position": "top-left", "title": "Slot {{demo_i}} predicts the next token", "content": "argmax = word {{tfArgmax(demo_i)}} with p = {{toFixed(tfProb(demo_i, tfArgmax(demo_i)), 3)}} · entropy {{toFixed(tfEntropy(demo_i), 3)}} bits · row sum {{toFixed(tfProb(demo_i,0)+tfProb(demo_i,1)+tfProb(demo_i,2)+tfProb(demo_i,3)+tfProb(demo_i,4), 6)}}"}
+            {"id": "tour_sample", "position": "bottom-left", "title": "Slot {{demo_i}} predicts the next token", "content": "argmax = word {{tfArgmax(demo_i)}} with p = {{toFixed(tfProb(demo_i, tfArgmax(demo_i)), 3)}} · entropy {{toFixed(tfEntropy(demo_i), 3)}} bits · row sum {{toFixed(tfProb(demo_i,0)+tfProb(demo_i,1)+tfProb(demo_i,2)+tfProb(demo_i,3)+tfProb(demo_i,4), 6)}}"}
           ],
           "prompt": "A function tour of the general transformer engine, sampling part. Emphasise that tfProb at slot i is the prediction for the token AFTER i, and that the argmax words are an artefact of seeded weights."
         }
