@@ -5,8 +5,8 @@
     {
       "id": "tour-attention",
       "title": "Attention, per head — tfQh, tfKh, tfVh, tfAttnH, tfHeadOut, tfConcat, tfAttnOut",
-      "description": "One layer of attention with every head exposed: pick the head, change the head count or share K/V, and read each function's lattice.",
-      "markdown": "This lesson is a **function tour** of the transformer domain library, not a lesson about transformers: every lattice is labelled with the call that fills it, so an author can see what each function returns and how the `tf_*` sliders reshape it. The weights are the hand-built toy at layer 0 / head 0 and **seeded tables everywhere else — nothing here is learned.**\n\n## Attention, per head\n\nHead $h$ reads K/V head $g=\\left\\lfloor h\\,n_{kv}/n_{heads}\\right\\rfloor$ — that is `tfHeadKv(h)`. $X$ below is the input stream.\n\n**`tfH(0, i, d)`** · n × d_model · the input stream, one row per slot\n$$X_{id}$$\n\n**`tfWq(l, h, r, c)`**, **`tfWk(l, g, r, c)`**, **`tfWv(l, g, r, c)`** · d_model × d_k\n$$\\bigl(W_Q^{(l,h)}\\bigr)_{rc},\\qquad \\bigl(W_K^{(l,g)}\\bigr)_{rc},\\qquad \\bigl(W_V^{(l,g)}\\bigr)_{rc}$$\n\n**`tfQh(l, h, i, d)`** · n × d_k · rotated by RoPE when `s2_rope` is on\n$$q_{id}=\\sum_{r}X_{ir}\\bigl(W_Q^{(h)}\\bigr)_{rd}$$\n\n**`tfKh(l, h, i, d)`** · n × d_k · shared by every head with the same $g$\n$$k_{id}=\\sum_{r}X_{ir}\\bigl(W_K^{(g)}\\bigr)_{rd}$$\n\n**`tfVh(l, h, i, d)`** · n × d_k · **never** rotated by RoPE\n$$v_{id}=\\sum_{r}X_{ir}\\bigl(W_V^{(g)}\\bigr)_{rd}$$\n\n**`tfScoreH(l, h, i, j)`** · n × n · raw, unscaled, unmasked\n$$S_{ij}=q_i\\cdot k_j$$\n\n**`tfScoreScaledH(l, h, i, j)`** · n × n · $s$ is the **divisor** slider\n$$\\tilde S_{ij}=\\frac{S_{ij}}{\\bigl(\\sqrt{d_k}\\bigr)^{s}}$$\n\n**`tfAttnH(l, h, i, j)`** · n × n · additive mask, **before** the softmax, so rows sum to 1\n$$A_{ij}=\\operatorname{softmax}_j\\bigl(\\tilde S_{ij}+m_{ij}\\bigr)$$\n$$m_{ij}=\\begin{cases}0 & j\\le i\\\\ -10^{9} & j>i\\end{cases}$$\n\n**`tfHeadOut(l, h, i, d)`** · n × d_k · head $h$'s output, before $W_O$\n$$O^{(h)}_{id}=\\sum_{j}A_{ij}\\,v_{jd}$$\n\n**`tfConcat(l, i, c)`** · n × n_heads·d_k · column $c$ belongs to head $\\lfloor c/d_k\\rfloor$\n$$C_{i,\\;h d_k+d}=O^{(h)}_{id}$$\n\n**`tfWo(l, r, c)`** · n_heads·d_k × d_model · the projection back to $d_{model}$\n$$\\bigl(W_O^{(l)}\\bigr)_{rc}$$\n\n**`tfAttnOut(l, i, d)`** · n × d_model · the increment attention adds to the stream\n$$\\bigl(C\\,W_O\\bigr)_{id}$$\n\nDrag **head shown** to switch heads; **tf_heads** to 4 gives four heads of d_k = 1 (the concat stays 4 wide); **tf_kv** to 1 makes every head read the same K and V. The head count starts at 2 here because the lattices are drawn two head-dimensions wide: one head would mean d_k = 4, and its q, k and v would not fit. Every input tensor is editable: the embedding table $E$, $W_Q$, $W_K$, $W_V$ and $W_O$ each have a tensor slider bound to its lattice — hover a cell to edit it, and watch the change travel the whole row. The projections are head 0 / K-V head 0 only, so edit them with **head shown** at 0; the other heads stay seeded.\n\n## The arithmetic\n\nQuery head $h$ reads K/V head $g=\\lfloor h\\,n_{kv}/n_{heads}\\rfloor$ (`tfHeadKv(h)`), so with $X$ the stream `tfH(0, i, d)`:\n\n$$Q = X\\,W_Q^{(h)},\\qquad K = X\\,W_K^{(g)},\\qquad V = X\\,W_V^{(g)}\\qquad (n\\times d_k)$$\n\n$$S_{ij}=q_i\\cdot k_j,\\qquad \\tilde S_{ij}=\\frac{S_{ij}}{\\left(\\sqrt{d_k}\\right)^{s}}$$\n\n$s$ is the **divisor** slider: $s=0$ divides by $1$, $s=1$ by $\\sqrt{d_k}$, and the values between are the interpolation you can drag through.\n\n$$A_{ij}=\\operatorname{softmax}_j\\!\\left(\\tilde S_{ij}+m_{ij}\\right),\\qquad m_{ij}=\\begin{cases}0 & j\\le i\\\\[2pt] -10^{9} & j>i\\end{cases}$$\n\nThe mask is **additive and applied before the softmax**, so every row of `tfAttnH` sums to exactly 1. (Masking after the softmax, by zeroing the future, leaves rows that do not sum to 1 — that is a misconception beat elsewhere, not reachable here.)\n\n$$O^{(h)}_{id}=\\sum_{j} A_{ij}\\,v_{jd},\\qquad \\operatorname{concat}_{i,\\;h\\,d_k+d}=O^{(h)}_{id},\\qquad \\texttt{tfAttnOut} = \\operatorname{concat}\\,W_O$$\n\nso column $c$ of `tfConcat` belongs to head $\\lfloor c/d_k\\rfloor$, and $W_O$ is $n_{heads}d_k\\times d_{model}$.\n\n**Each query row is computed on its own.** Row $i$ depends on $q_i$ and on *all* of $k_j,v_j$ — and on no other query. That is why **query slot to follow** moves the two charts and leaves every lattice still: it selects a row of a table that is already complete. It is also why $K$ and $V$ are worth caching, and why all $n$ queries are one matmul rather than a loop.",
+      "description": "One layer of attention at head 0, every tensor it reads editable on the lattice: change the head count or share K/V, and read each function.",
+      "markdown": "This lesson is a **function tour** of the transformer domain library, not a lesson about transformers: every lattice is labelled with the call that fills it, so an author can see what each function returns and how the `tf_*` sliders reshape it. The weights are the hand-built toy at layer 0 / head 0 and **seeded tables everywhere else — nothing here is learned.**\n\n## Attention, per head\n\nHead $h$ reads K/V head $g=\\left\\lfloor h\\,n_{kv}/n_{heads}\\right\\rfloor$ — that is `tfHeadKv(h)`. $X$ below is the input stream.\n\n**`tfH(0, i, d)`** · n × d_model · the input stream, one row per slot\n$$X_{id}$$\n\n**`tfWq(l, h, r, c)`**, **`tfWk(l, g, r, c)`**, **`tfWv(l, g, r, c)`** · d_model × d_k\n$$\\bigl(W_Q^{(l,h)}\\bigr)_{rc},\\qquad \\bigl(W_K^{(l,g)}\\bigr)_{rc},\\qquad \\bigl(W_V^{(l,g)}\\bigr)_{rc}$$\n\n**`tfQh(l, h, i, d)`** · n × d_k · rotated by RoPE when `s2_rope` is on\n$$q_{id}=\\sum_{r}X_{ir}\\bigl(W_Q^{(h)}\\bigr)_{rd}$$\n\n**`tfKh(l, h, i, d)`** · n × d_k · shared by every head with the same $g$\n$$k_{id}=\\sum_{r}X_{ir}\\bigl(W_K^{(g)}\\bigr)_{rd}$$\n\n**`tfVh(l, h, i, d)`** · n × d_k · **never** rotated by RoPE\n$$v_{id}=\\sum_{r}X_{ir}\\bigl(W_V^{(g)}\\bigr)_{rd}$$\n\n**`tfScoreH(l, h, i, j)`** · n × n · raw, unscaled, unmasked\n$$S_{ij}=q_i\\cdot k_j$$\n\n**`tfScoreScaledH(l, h, i, j)`** · n × n · $s$ is the **divisor** slider\n$$\\tilde S_{ij}=\\frac{S_{ij}}{\\bigl(\\sqrt{d_k}\\bigr)^{s}}$$\n\n**`tfAttnH(l, h, i, j)`** · n × n · additive mask, **before** the softmax, so rows sum to 1\n$$A_{ij}=\\operatorname{softmax}_j\\bigl(\\tilde S_{ij}+m_{ij}\\bigr)$$\n$$m_{ij}=\\begin{cases}0 & j\\le i\\\\ -10^{9} & j>i\\end{cases}$$\n\n**`tfHeadOut(l, h, i, d)`** · n × d_k · head $h$'s output, before $W_O$\n$$O^{(h)}_{id}=\\sum_{j}A_{ij}\\,v_{jd}$$\n\n**`tfConcat(l, i, c)`** · n × n_heads·d_k · column $c$ belongs to head $\\lfloor c/d_k\\rfloor$\n$$C_{i,\\;h d_k+d}=O^{(h)}_{id}$$\n\n**`tfWo(l, r, c)`** · n_heads·d_k × d_model · the projection back to $d_{model}$\n$$\\bigl(W_O^{(l)}\\bigr)_{rc}$$\n\n**`tfAttnOut(l, i, d)`** · n × d_model · the increment attention adds to the stream\n$$\\bigl(C\\,W_O\\bigr)_{id}$$\n\nThis scene is **head 0**, the hand-built toy: there is no head selector, and every tensor head 0 reads is yours. The embedding table $E$, $W_Q$, $W_K$, $W_V$ and $W_O$ are each bound to the lattice that shows them — hover a cell on the lattice itself to edit it, and watch the change travel the whole row.\n\n**tf_heads** still reshapes the model around it: at 4 you get four heads of $d_k = 1$ and the concat stays 4 wide, and head 0 keeps its own column while heads 1 to 3 run on seeded tables off screen. The count starts at 2 because the lattices are drawn two head-dimensions wide — one head would mean $d_k = 4$, and its q, k and v would not fit. **tf_kv** shows in the configuration card: head 0 always reads K/V head 0, so sharing changes the cache arithmetic rather than these lattices.\n\n## The arithmetic\n\nQuery head $h$ reads K/V head $g=\\lfloor h\\,n_{kv}/n_{heads}\\rfloor$ (`tfHeadKv(h)`), so with $X$ the stream `tfH(0, i, d)`:\n\n$$Q = X\\,W_Q^{(h)},\\qquad K = X\\,W_K^{(g)},\\qquad V = X\\,W_V^{(g)}\\qquad (n\\times d_k)$$\n\n$$S_{ij}=q_i\\cdot k_j,\\qquad \\tilde S_{ij}=\\frac{S_{ij}}{\\left(\\sqrt{d_k}\\right)^{s}}$$\n\n$s$ is the **divisor** slider: $s=0$ divides by $1$, $s=1$ by $\\sqrt{d_k}$, and the values between are the interpolation you can drag through.\n\n$$A_{ij}=\\operatorname{softmax}_j\\!\\left(\\tilde S_{ij}+m_{ij}\\right),\\qquad m_{ij}=\\begin{cases}0 & j\\le i\\\\[2pt] -10^{9} & j>i\\end{cases}$$\n\nThe mask is **additive and applied before the softmax**, so every row of `tfAttnH` sums to exactly 1. (Masking after the softmax, by zeroing the future, leaves rows that do not sum to 1 — that is a misconception beat elsewhere, not reachable here.)\n\n$$O^{(h)}_{id}=\\sum_{j} A_{ij}\\,v_{jd},\\qquad \\operatorname{concat}_{i,\\;h\\,d_k+d}=O^{(h)}_{id},\\qquad \\texttt{tfAttnOut} = \\operatorname{concat}\\,W_O$$\n\nso column $c$ of `tfConcat` belongs to head $\\lfloor c/d_k\\rfloor$, and $W_O$ is $n_{heads}d_k\\times d_{model}$.\n\n**Each query row is computed on its own.** Row $i$ depends on $q_i$ and on *all* of $k_j,v_j$ — and on no other query. That is why **query slot to follow** moves the two charts and leaves every lattice still: it selects a row of a table that is already complete. It is also why $K$ and $V$ are worth caching, and why all $n$ queries are one matmul rather than a loop.",
       "prompt": "A function tour of the general transformer engine, attention part. Every lattice is labelled with the domain call that fills it. Weights beyond layer 0 / head 0 are seeded, not learned; say so if asked what the numbers mean.",
       "range": [
         [-22, 28],
@@ -59,9 +59,8 @@
         {
           "id": "tour-attention-all",
           "title": "Attention, per head — tfQh, tfKh, tfVh, tfAttnH, tfHeadOut, tfConcat, tfAttnOut",
-          "description": "One layer of attention with every head exposed: pick the head, change the head count or share K/V, and read each function's lattice.",
+          "description": "One layer of attention at head 0, every tensor it reads editable on the lattice: change the head count or share K/V, and read each function.",
           "sliders": [
-            {"id": "demo_h", "label": "head shown ($h$)", "min": 0, "max": 3, "maxExpr": "tfHeads() - 1", "step": 1, "default": 0, "valueExpr": "concat('head ', string(demo_h))"},
             {"id": "demo_i", "label": "query slot to follow ($i$)", "min": 0, "max": 5, "step": 1, "default": 2, "valueExpr": "concat(string(demo_i), ' · ', tfToken(demo_i))"},
             {"id": "tf_heads", "label": "tf_heads — query heads (2..4 here: d_k stays <= 2)", "min": 2, "max": 4, "step": 1, "default": 2, "valueExpr": "string(tf_heads)"},
             {"id": "tf_kv", "label": "tf_kv — K/V heads", "min": 1, "max": 4, "step": 1, "default": 2, "valueExpr": "concat(string(tfKv()), tfKv() == tf_kv ? '' : concat(' (asked ', string(tf_kv), ')'))"},
@@ -178,7 +177,7 @@
               "id": "t1_wq",
               "type": "tensor",
               "shape": [4, 2],
-              "valueExpr": "(col < tfDk() and demo_h < tfHeads()) ? (tfWq(0, demo_h, row, col)) : 0",
+              "valueExpr": "(col < tfDk()) ? (tfWq(0, 0, row, col)) : 0",
               "origin": [-11.2, 4.6, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -194,21 +193,22 @@
                   "labels": ["$x_0$", "$x_1$", "$x_2$", "$x_3$"]
                 },
                 {
-                  "title": "tfWq(0, h, row, col)",
+                  "title": "tfWq(0, 0, row, col)",
                   "color": "#ffa726",
                   "labels": ["$q_0$", "$q_1$"]
                 }
               ],
-              "textExpr": "(col < tfDk() and demo_h < tfHeads()) ? (toFixed(value, 2)) : ''",
-              "prompt": "W_Q of layer 0, head demo_h. Head 0 is the hand-built toy; other heads are seeded tables. Every W is read by tfWq/tfWk/tfWv with (layer, head, row, col).",
+              "textExpr": "(col < tfDk()) ? (toFixed(value, 2)) : ''",
+              "prompt": "W_Q of layer 0, head 0. Head 0 is the hand-built toy; other heads are seeded tables. Every W is read by tfWq/tfWk/tfWv with (layer, head, row, col).",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
-              "heightExpr": "max(0.15, min(1, abs(value) / 2))"
+              "heightExpr": "max(0.15, min(1, abs(value) / 2))",
+              "bind": "tf_wq_0_0"
             },
             {
               "id": "t1_wk",
               "type": "tensor",
               "shape": [4, 2],
-              "valueExpr": "(col < tfDk() and demo_h < tfHeads()) ? (tfWk(0, tfHeadKv(demo_h), row, col)) : 0",
+              "valueExpr": "(col < tfDk()) ? (tfWk(0, 0, row, col)) : 0",
               "origin": [-8.0, 4.6, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -229,16 +229,17 @@
                   "labels": ["$k_0$", "$k_1$"]
                 }
               ],
-              "textExpr": "(col < tfDk() and demo_h < tfHeads()) ? (toFixed(value, 2)) : ''",
-              "prompt": "W_K of the K/V head that query head demo_h reads: tfHeadKv(h) = floor(h · n_kv / n_heads). With tf_kv = 1 every head reads the same one.",
+              "textExpr": "(col < tfDk()) ? (toFixed(value, 2)) : ''",
+              "prompt": "W_K of the K/V head that query head 0 reads: tfHeadKv(h) = floor(h · n_kv / n_heads). With tf_kv = 1 every head reads the same one.",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
-              "heightExpr": "max(0.15, min(1, abs(value) / 2))"
+              "heightExpr": "max(0.15, min(1, abs(value) / 2))",
+              "bind": "tf_wk_0_0"
             },
             {
               "id": "t1_wv",
               "type": "tensor",
               "shape": [4, 2],
-              "valueExpr": "(col < tfDk() and demo_h < tfHeads()) ? (tfWv(0, tfHeadKv(demo_h), row, col)) : 0",
+              "valueExpr": "(col < tfDk()) ? (tfWv(0, 0, row, col)) : 0",
               "origin": [-4.8, 4.6, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -259,16 +260,17 @@
                   "labels": ["$v_0$", "$v_1$"]
                 }
               ],
-              "textExpr": "(col < tfDk() and demo_h < tfHeads()) ? (toFixed(value, 2)) : ''",
-              "prompt": "W_V of the K/V head that query head demo_h reads.",
+              "textExpr": "(col < tfDk()) ? (toFixed(value, 2)) : ''",
+              "prompt": "W_V of the K/V head that query head 0 reads.",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
-              "heightExpr": "max(0.15, min(1, abs(value) / 2))"
+              "heightExpr": "max(0.15, min(1, abs(value) / 2))",
+              "bind": "tf_wv_0_0"
             },
             {
               "id": "t1_q",
               "type": "tensor",
               "shape": [6, 2],
-              "valueExpr": "(col < tfDk() and demo_h < tfHeads()) ? (tfQh(0, demo_h, row, col)) : 0",
+              "valueExpr": "(col < tfDk()) ? (tfQh(0, 0, row, col)) : 0",
               "origin": [-11.2, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -281,13 +283,13 @@
               "axes": [
                 {"color": "#ffa726", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfQh(0, h, row, col) — $Q$",
+                  "title": "tfQh(0, 0, row, col) — $Q$",
                   "color": "#ffa726",
                   "labels": ["$q_0$", "$q_1$"]
                 }
               ],
-              "textExpr": "(col < tfDk() and demo_h < tfHeads()) ? (toFixed(value, 2)) : ''",
-              "prompt": "q of every slot in layer 0, head demo_h (RoPE applied when s2_rope = 1).",
+              "textExpr": "(col < tfDk()) ? (toFixed(value, 2)) : ''",
+              "prompt": "q of every slot in layer 0, head 0 (RoPE applied when s2_rope = 1).",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
             },
@@ -295,7 +297,7 @@
               "id": "t1_k",
               "type": "tensor",
               "shape": [6, 2],
-              "valueExpr": "(col < tfDk() and demo_h < tfHeads()) ? (tfKh(0, demo_h, row, col)) : 0",
+              "valueExpr": "(col < tfDk()) ? (tfKh(0, 0, row, col)) : 0",
               "origin": [-8.0, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -308,13 +310,13 @@
               "axes": [
                 {"color": "#42a5f5", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfKh(0, h, row, col) — $K$",
+                  "title": "tfKh(0, 0, row, col) — $K$",
                   "color": "#42a5f5",
                   "labels": ["$k_0$", "$k_1$"]
                 }
               ],
-              "textExpr": "(col < tfDk() and demo_h < tfHeads()) ? (toFixed(value, 2)) : ''",
-              "prompt": "k as read by head demo_h: its K/V head's keys.",
+              "textExpr": "(col < tfDk()) ? (toFixed(value, 2)) : ''",
+              "prompt": "k as read by head 0: its K/V head's keys.",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
             },
@@ -322,7 +324,7 @@
               "id": "t1_v",
               "type": "tensor",
               "shape": [6, 2],
-              "valueExpr": "(col < tfDk() and demo_h < tfHeads()) ? (tfVh(0, demo_h, row, col)) : 0",
+              "valueExpr": "(col < tfDk()) ? (tfVh(0, 0, row, col)) : 0",
               "origin": [-4.8, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -335,13 +337,13 @@
               "axes": [
                 {"color": "#66bb6a", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfVh(0, h, row, col) — $V$",
+                  "title": "tfVh(0, 0, row, col) — $V$",
                   "color": "#66bb6a",
                   "labels": ["$v_0$", "$v_1$"]
                 }
               ],
-              "textExpr": "(col < tfDk() and demo_h < tfHeads()) ? (toFixed(value, 2)) : ''",
-              "prompt": "v as read by head demo_h. Never rotated by RoPE.",
+              "textExpr": "(col < tfDk()) ? (toFixed(value, 2)) : ''",
+              "prompt": "v as read by head 0. Never rotated by RoPE.",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
             },
@@ -349,7 +351,7 @@
               "id": "t1_s",
               "type": "tensor",
               "shape": [6, 6],
-              "valueExpr": "(demo_h < tfHeads()) ? (tfScoreScaledH(0, demo_h, row, col)) : 0",
+              "valueExpr": "tfScoreScaledH(0, 0, row, col)",
               "origin": [-0.4, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -362,13 +364,13 @@
               "axes": [
                 {"color": "#ffa726", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfScoreScaledH(0, h, i, j) — $\\tilde S$",
+                  "title": "tfScoreScaledH(0, 0, i, j) — $\\tilde S$",
                   "color": "#ffa726",
                   "labels": ["the", "cat", "sat", "on", "the", "mat"]
                 }
               ],
-              "textExpr": "(demo_h < tfHeads()) ? (toFixed(value, 2)) : ''",
-              "prompt": "Scaled scores of head demo_h: tfScoreH / (sqrt d_k)^s3_scale. tfScoreH gives the raw dot products.",
+              "textExpr": "toFixed(value, 2)",
+              "prompt": "Scaled scores of head 0: tfScoreH / (sqrt d_k)^s3_scale. tfScoreH gives the raw dot products.",
               "widthExpr": "max(0.15, min(1, abs(value) / 16))",
               "heightExpr": "max(0.15, min(1, abs(value) / 16))"
             },
@@ -376,7 +378,7 @@
               "id": "t1_a",
               "type": "tensor",
               "shape": [6, 6],
-              "valueExpr": "(demo_h < tfHeads()) ? (tfAttnH(0, demo_h, row, col)) : 0",
+              "valueExpr": "tfAttnH(0, 0, row, col)",
               "origin": [6.4, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -389,13 +391,13 @@
               "axes": [
                 {"color": "#66bb6a", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfAttnH(0, h, i, j) — $A$",
+                  "title": "tfAttnH(0, 0, i, j) — $A$",
                   "color": "#66bb6a",
                   "labels": ["the", "cat", "sat", "on", "the", "mat"]
                 }
               ],
-              "textExpr": "(demo_h < tfHeads()) ? (value >= 0.005 ? toFixed(value, 2) : '') : ''",
-              "prompt": "Attention weights of head demo_h, honouring s3_scale, s3_mask and s3_maskafter. Rows sum to 1.",
+              "textExpr": "value >= 0.005 ? toFixed(value, 2) : ''",
+              "prompt": "Attention weights of head 0, honouring s3_scale, s3_mask and s3_maskafter. Rows sum to 1.",
               "depthExpr": "value * 1.5",
               "widthExpr": "max(0.15, min(1, value))",
               "heightExpr": "max(0.15, min(1, value))"
@@ -404,7 +406,7 @@
               "id": "t1_o",
               "type": "tensor",
               "shape": [6, 2],
-              "valueExpr": "(col < tfDk() and demo_h < tfHeads()) ? (tfHeadOut(0, demo_h, row, col)) : 0",
+              "valueExpr": "(col < tfDk()) ? (tfHeadOut(0, 0, row, col)) : 0",
               "origin": [13.2, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -417,13 +419,13 @@
               "axes": [
                 {"color": "#ab47bc", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfHeadOut(0, h, row, col) — $O^{(h)}$",
+                  "title": "tfHeadOut(0, 0, row, col) — $O^{(h)}$",
                   "color": "#ab47bc",
                   "labels": ["$o_0$", "$o_1$"]
                 }
               ],
-              "textExpr": "(col < tfDk() and demo_h < tfHeads()) ? (toFixed(value, 2)) : ''",
-              "prompt": "Head demo_h's own output before concatenation and W_O: the attention-weighted average of its value rows.",
+              "textExpr": "(col < tfDk()) ? (toFixed(value, 2)) : ''",
+              "prompt": "Head 0's own output before concatenation and W_O: the attention-weighted average of its value rows.",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
             },
@@ -492,7 +494,7 @@
               "size": [4.8, 4],
               "color": "#ffa726",
               "series": [
-                {"kind": "points", "n": 6, "xExpr": "(demo_h < tfHeads()) ? i : -99", "yExpr": "tfScoreScaledH(0, demo_h, demo_i, i)", "color": "#ffa726", "size": 5, "label": "tfScoreScaledH(0, h, i, j)"}
+                {"kind": "points", "n": 6, "xExpr": "i", "yExpr": "tfScoreScaledH(0, 0, demo_i, i)", "color": "#ffa726", "size": 5, "label": "tfScoreScaledH(0, h, i, j)"}
               ],
               "axes": [
                 {"title": "key slot $j$", "ticks": 6, "labelExpr": "tfToken(value)"},
@@ -509,7 +511,7 @@
               "size": [4.8, 4],
               "color": "#66bb6a",
               "series": [
-                {"kind": "points", "n": 6, "xExpr": "(demo_h < tfHeads()) ? i : -99", "yExpr": "tfAttnH(0, demo_h, demo_i, i)", "color": "#66bb6a", "size": 5, "label": "tfAttnH(0, h, i, j)"}
+                {"kind": "points", "n": 6, "xExpr": "i", "yExpr": "tfAttnH(0, 0, demo_i, i)", "color": "#66bb6a", "size": 5, "label": "tfAttnH(0, h, i, j)"}
               ],
               "axes": [
                 {"title": "key slot $j$", "ticks": 6, "labelExpr": "tfToken(value)"},
@@ -557,21 +559,21 @@
             {
               "id": "t1_wq_math",
               "type": "text",
-              "text": "$W_Q^{(h)}$",
+              "text": "$W_Q^{(0)}$",
               "position": [-10.4, 9.58, 0],
               "color": "#ffa726"
             },
             {
               "id": "t1_wk_math",
               "type": "text",
-              "text": "$W_K^{(g)}$",
+              "text": "$W_K^{(0)}$",
               "position": [-7.2, 9.58, 0],
               "color": "#42a5f5"
             },
             {
               "id": "t1_wv_math",
               "type": "text",
-              "text": "$W_V^{(g)}$",
+              "text": "$W_V^{(0)}$",
               "position": [-4.0, 9.58, 0],
               "color": "#66bb6a"
             },
