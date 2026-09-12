@@ -1478,21 +1478,24 @@
               "type": "text",
               "text": "$h^{(1)}$",
               "position": [-14.0, 3.58, 0],
-              "color": "#26c6da"
+              "color": "#26c6da",
+              "visibleExpr": "1 <= tfLayers()"
             },
             {
               "id": "t3_h2_math",
               "type": "text",
               "text": "$h^{(2)}$",
               "position": [-9.6, 3.58, 0],
-              "color": "#26c6da"
+              "color": "#26c6da",
+              "visibleExpr": "2 <= tfLayers()"
             },
             {
               "id": "t3_h3_math",
               "type": "text",
               "text": "$h^{(3)}$",
               "position": [-5.2, 3.58, 0],
-              "color": "#26c6da"
+              "color": "#26c6da",
+              "visibleExpr": "3 <= tfLayers()"
             },
             {
               "id": "t3_final_math",
