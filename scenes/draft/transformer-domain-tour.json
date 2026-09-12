@@ -6,7 +6,7 @@
       "id": "tour-attention",
       "title": "Attention, per head — tfQh, tfKh, tfVh, tfAttnH, tfHeadOut, tfConcat, tfAttnOut",
       "description": "One layer of attention with every head exposed: pick the head, change the head count or share K/V, and read each function's lattice.",
-      "markdown": "This lesson is a **function tour** of the transformer domain library, not a lesson about transformers: every lattice is labelled with the call that fills it, so an author can see what each function returns and how the `tf_*` sliders reshape it. The weights are the hand-built toy at layer 0 / head 0 and **seeded tables everywhere else — nothing here is learned.**\n\n## Attention, per head\n\nHead $h$ reads K/V head $g=\\left\\lfloor h\\,n_{kv}/n_{heads}\\right\\rfloor$ — that is `tfHeadKv(h)`. $X$ below is the input stream.\n\n**`tfH(0, i, d)`** · n × d_model · the input stream, one row per slot\n$$X_{id}$$\n\n**`tfWq(l, h, r, c)`**, **`tfWk(l, g, r, c)`**, **`tfWv(l, g, r, c)`** · d_model × d_k\n$$\\bigl(W_Q^{(l,h)}\\bigr)_{rc},\\qquad \\bigl(W_K^{(l,g)}\\bigr)_{rc},\\qquad \\bigl(W_V^{(l,g)}\\bigr)_{rc}$$\n\n**`tfQh(l, h, i, d)`** · n × d_k · rotated by RoPE when `s2_rope` is on\n$$q_{id}=\\sum_{r}X_{ir}\\bigl(W_Q^{(h)}\\bigr)_{rd}$$\n\n**`tfKh(l, h, i, d)`** · n × d_k · shared by every head with the same $g$\n$$k_{id}=\\sum_{r}X_{ir}\\bigl(W_K^{(g)}\\bigr)_{rd}$$\n\n**`tfVh(l, h, i, d)`** · n × d_k · **never** rotated by RoPE\n$$v_{id}=\\sum_{r}X_{ir}\\bigl(W_V^{(g)}\\bigr)_{rd}$$\n\n**`tfScoreH(l, h, i, j)`** · n × n · raw, unscaled, unmasked\n$$S_{ij}=q_i\\cdot k_j$$\n\n**`tfScoreScaledH(l, h, i, j)`** · n × n · $s$ is the **divisor** slider\n$$\\tilde S_{ij}=\\frac{S_{ij}}{\\bigl(\\sqrt{d_k}\\bigr)^{s}}$$\n\n**`tfAttnH(l, h, i, j)`** · n × n · additive mask, **before** the softmax, so rows sum to 1\n$$A_{ij}=\\operatorname{softmax}_j\\bigl(\\tilde S_{ij}+m_{ij}\\bigr)$$\n$$m_{ij}=\\begin{cases}0 & j\\le i\\\\ -10^{9} & j>i\\end{cases}$$\n\n**`tfHeadOut(l, h, i, d)`** · n × d_k · head $h$'s output, before $W_O$\n$$O^{(h)}_{id}=\\sum_{j}A_{ij}\\,v_{jd}$$\n\n**`tfConcat(l, i, c)`** · n × n_heads·d_k · column $c$ belongs to head $\\lfloor c/d_k\\rfloor$\n$$C_{i,\\;h d_k+d}=O^{(h)}_{id}$$\n\n**`tfWo(l, r, c)`** · n_heads·d_k × d_model · the projection back to $d_{model}$\n$$\\bigl(W_O^{(l)}\\bigr)_{rc}$$\n\n**`tfAttnOut(l, i, d)`** · n × d_model · the increment attention adds to the stream\n$$\\bigl(C\\,W_O\\bigr)_{id}$$\n\nDrag **head shown** to switch heads; **tf_heads** to 4 gives four heads of d_k = 1 (the concat stays 4 wide); **tf_kv** to 1 makes every head read the same K and V. The head count starts at 2 here because the lattices are drawn two head-dimensions wide: one head would mean d_k = 4, and its q, k and v would not fit. $W_O$ is a tensor slider bound to its lattice: hover a cell to edit it.\n\n## The arithmetic\n\nQuery head $h$ reads K/V head $g=\\lfloor h\\,n_{kv}/n_{heads}\\rfloor$ (`tfHeadKv(h)`), so with $X$ the stream `tfH(0, i, d)`:\n\n$$Q = X\\,W_Q^{(h)},\\qquad K = X\\,W_K^{(g)},\\qquad V = X\\,W_V^{(g)}\\qquad (n\\times d_k)$$\n\n$$S_{ij}=q_i\\cdot k_j,\\qquad \\tilde S_{ij}=\\frac{S_{ij}}{\\left(\\sqrt{d_k}\\right)^{s}}$$\n\n$s$ is the **divisor** slider: $s=0$ divides by $1$, $s=1$ by $\\sqrt{d_k}$, and the values between are the interpolation you can drag through.\n\n$$A_{ij}=\\operatorname{softmax}_j\\!\\left(\\tilde S_{ij}+m_{ij}\\right),\\qquad m_{ij}=\\begin{cases}0 & j\\le i\\\\[2pt] -10^{9} & j>i\\end{cases}$$\n\nThe mask is **additive and applied before the softmax**, so every row of `tfAttnH` sums to exactly 1. (Masking after the softmax, by zeroing the future, leaves rows that do not sum to 1 — that is a misconception beat elsewhere, not reachable here.)\n\n$$O^{(h)}_{id}=\\sum_{j} A_{ij}\\,v_{jd},\\qquad \\operatorname{concat}_{i,\\;h\\,d_k+d}=O^{(h)}_{id},\\qquad \\texttt{tfAttnOut} = \\operatorname{concat}\\,W_O$$\n\nso column $c$ of `tfConcat` belongs to head $\\lfloor c/d_k\\rfloor$, and $W_O$ is $n_{heads}d_k\\times d_{model}$.\n\n**Each query row is computed on its own.** Row $i$ depends on $q_i$ and on *all* of $k_j,v_j$ — and on no other query. That is why **query slot to follow** moves the two charts and leaves every lattice still: it selects a row of a table that is already complete. It is also why $K$ and $V$ are worth caching, and why all $n$ queries are one matmul rather than a loop.",
+      "markdown": "This lesson is a **function tour** of the transformer domain library, not a lesson about transformers: every lattice is labelled with the call that fills it, so an author can see what each function returns and how the `tf_*` sliders reshape it. The weights are the hand-built toy at layer 0 / head 0 and **seeded tables everywhere else — nothing here is learned.**\n\n## Attention, per head\n\nHead $h$ reads K/V head $g=\\left\\lfloor h\\,n_{kv}/n_{heads}\\right\\rfloor$ — that is `tfHeadKv(h)`. $X$ below is the input stream.\n\n**`tfH(0, i, d)`** · n × d_model · the input stream, one row per slot\n$$X_{id}$$\n\n**`tfWq(l, h, r, c)`**, **`tfWk(l, g, r, c)`**, **`tfWv(l, g, r, c)`** · d_model × d_k\n$$\\bigl(W_Q^{(l,h)}\\bigr)_{rc},\\qquad \\bigl(W_K^{(l,g)}\\bigr)_{rc},\\qquad \\bigl(W_V^{(l,g)}\\bigr)_{rc}$$\n\n**`tfQh(l, h, i, d)`** · n × d_k · rotated by RoPE when `s2_rope` is on\n$$q_{id}=\\sum_{r}X_{ir}\\bigl(W_Q^{(h)}\\bigr)_{rd}$$\n\n**`tfKh(l, h, i, d)`** · n × d_k · shared by every head with the same $g$\n$$k_{id}=\\sum_{r}X_{ir}\\bigl(W_K^{(g)}\\bigr)_{rd}$$\n\n**`tfVh(l, h, i, d)`** · n × d_k · **never** rotated by RoPE\n$$v_{id}=\\sum_{r}X_{ir}\\bigl(W_V^{(g)}\\bigr)_{rd}$$\n\n**`tfScoreH(l, h, i, j)`** · n × n · raw, unscaled, unmasked\n$$S_{ij}=q_i\\cdot k_j$$\n\n**`tfScoreScaledH(l, h, i, j)`** · n × n · $s$ is the **divisor** slider\n$$\\tilde S_{ij}=\\frac{S_{ij}}{\\bigl(\\sqrt{d_k}\\bigr)^{s}}$$\n\n**`tfAttnH(l, h, i, j)`** · n × n · additive mask, **before** the softmax, so rows sum to 1\n$$A_{ij}=\\operatorname{softmax}_j\\bigl(\\tilde S_{ij}+m_{ij}\\bigr)$$\n$$m_{ij}=\\begin{cases}0 & j\\le i\\\\ -10^{9} & j>i\\end{cases}$$\n\n**`tfHeadOut(l, h, i, d)`** · n × d_k · head $h$'s output, before $W_O$\n$$O^{(h)}_{id}=\\sum_{j}A_{ij}\\,v_{jd}$$\n\n**`tfConcat(l, i, c)`** · n × n_heads·d_k · column $c$ belongs to head $\\lfloor c/d_k\\rfloor$\n$$C_{i,\\;h d_k+d}=O^{(h)}_{id}$$\n\n**`tfWo(l, r, c)`** · n_heads·d_k × d_model · the projection back to $d_{model}$\n$$\\bigl(W_O^{(l)}\\bigr)_{rc}$$\n\n**`tfAttnOut(l, i, d)`** · n × d_model · the increment attention adds to the stream\n$$\\bigl(C\\,W_O\\bigr)_{id}$$\n\nDrag **head shown** to switch heads; **tf_heads** to 4 gives four heads of d_k = 1 (the concat stays 4 wide); **tf_kv** to 1 makes every head read the same K and V. The head count starts at 2 here because the lattices are drawn two head-dimensions wide: one head would mean d_k = 4, and its q, k and v would not fit. Every input tensor is editable: the embedding table $E$, $W_Q$, $W_K$, $W_V$ and $W_O$ each have a tensor slider bound to its lattice — hover a cell to edit it, and watch the change travel the whole row. The projections are head 0 / K-V head 0 only, so edit them with **head shown** at 0; the other heads stay seeded.\n\n## The arithmetic\n\nQuery head $h$ reads K/V head $g=\\lfloor h\\,n_{kv}/n_{heads}\\rfloor$ (`tfHeadKv(h)`), so with $X$ the stream `tfH(0, i, d)`:\n\n$$Q = X\\,W_Q^{(h)},\\qquad K = X\\,W_K^{(g)},\\qquad V = X\\,W_V^{(g)}\\qquad (n\\times d_k)$$\n\n$$S_{ij}=q_i\\cdot k_j,\\qquad \\tilde S_{ij}=\\frac{S_{ij}}{\\left(\\sqrt{d_k}\\right)^{s}}$$\n\n$s$ is the **divisor** slider: $s=0$ divides by $1$, $s=1$ by $\\sqrt{d_k}$, and the values between are the interpolation you can drag through.\n\n$$A_{ij}=\\operatorname{softmax}_j\\!\\left(\\tilde S_{ij}+m_{ij}\\right),\\qquad m_{ij}=\\begin{cases}0 & j\\le i\\\\[2pt] -10^{9} & j>i\\end{cases}$$\n\nThe mask is **additive and applied before the softmax**, so every row of `tfAttnH` sums to exactly 1. (Masking after the softmax, by zeroing the future, leaves rows that do not sum to 1 — that is a misconception beat elsewhere, not reachable here.)\n\n$$O^{(h)}_{id}=\\sum_{j} A_{ij}\\,v_{jd},\\qquad \\operatorname{concat}_{i,\\;h\\,d_k+d}=O^{(h)}_{id},\\qquad \\texttt{tfAttnOut} = \\operatorname{concat}\\,W_O$$\n\nso column $c$ of `tfConcat` belongs to head $\\lfloor c/d_k\\rfloor$, and $W_O$ is $n_{heads}d_k\\times d_{model}$.\n\n**Each query row is computed on its own.** Row $i$ depends on $q_i$ and on *all* of $k_j,v_j$ — and on no other query. That is why **query slot to follow** moves the two charts and leaves every lattice still: it selects a row of a table that is already complete. It is also why $K$ and $V$ are worth caching, and why all $n$ queries are one matmul rather than a loop.",
       "prompt": "A function tour of the general transformer engine, attention part. Every lattice is labelled with the domain call that fills it. Weights beyond layer 0 / head 0 are seeded, not learned; say so if asked what the numbers mean.",
       "range": [
         [-22, 28],
@@ -68,6 +68,68 @@
             {"id": "s3_mask", "label": "causal mask", "min": 0, "max": 1, "step": 1, "default": 1, "valueExpr": "s3_mask >= 0.5 ? 'on' : 'off'"},
             {"id": "s3_scale", "label": "divisor: 1 (none) → $\\sqrt{d_k}$", "min": 0, "max": 1, "step": 0.05, "default": 1},
             {"id": "s2_rope", "label": "position scheme", "min": 0, "max": 1, "step": 1, "default": 0, "valueExpr": "s2_rope >= 0.5 ? 'RoPE' : 'additive PE'"},
+            {
+              "id": "tf_emb",
+              "kind": "tensor",
+              "label": "embedding table $E$ (before PE)",
+              "shape": [6, 4],
+              "min": -2,
+              "max": 2,
+              "step": 0.05,
+              "default": [
+                [1, 0, 0, 0],
+                [0, 1, 0, 0],
+                [0, 0, 1, 0],
+                [0, 0, 0, 1],
+                [1, 0, 0, 0],
+                [0.5, 0.5, 0, 0.5]
+              ]
+            },
+            {
+              "id": "tf_wq_0_0",
+              "kind": "tensor",
+              "label": "$W_Q$ (head 0)",
+              "shape": [4, 2],
+              "min": -3,
+              "max": 3,
+              "step": 0.05,
+              "default": [
+                [0, 0],
+                [0, 0],
+                [3, 0],
+                [0, 1]
+              ]
+            },
+            {
+              "id": "tf_wk_0_0",
+              "kind": "tensor",
+              "label": "$W_K$ (K/V head 0)",
+              "shape": [4, 2],
+              "min": -3,
+              "max": 3,
+              "step": 0.05,
+              "default": [
+                [0, 0],
+                [3, 0],
+                [0, 0],
+                [0, 1]
+              ]
+            },
+            {
+              "id": "tf_wv_0_0",
+              "kind": "tensor",
+              "label": "$W_V$ (K/V head 0)",
+              "shape": [4, 2],
+              "min": -3,
+              "max": 3,
+              "step": 0.05,
+              "default": [
+                [1, 0],
+                [0, 1],
+                [0, 0],
+                [0, 0]
+              ]
+            },
             {
               "id": "tf_wo_0",
               "kind": "tensor",
