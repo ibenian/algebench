@@ -575,6 +575,20 @@
               "text": "$C\\,W_O$",
               "position": [22.8, 3.58, 0],
               "color": "#f06292"
+            },
+            {
+              "id": "t1_chart_s_math",
+              "type": "text",
+              "text": "$\\tilde S_{ij}$",
+              "position": [2.0, -5.5, 0],
+              "color": "#ffa726"
+            },
+            {
+              "id": "t1_chart_a_math",
+              "type": "text",
+              "text": "$A_{ij}$",
+              "position": [8.8, -5.5, 0],
+              "color": "#66bb6a"
             }
           ],
           "info": [
@@ -1064,6 +1078,13 @@
               "text": "$W_2$",
               "position": [18.0, 12.78, 0],
               "color": "#ffee58"
+            },
+            {
+              "id": "t2_chart_ff_math",
+              "type": "text",
+              "text": "$u_{ik},\\ \\phi(u_{ik})$",
+              "position": [5.2, -5.5, 0],
+              "color": "#ffee58"
             }
           ],
           "info": [
@@ -1348,7 +1369,7 @@
               "axes": [
                 {"color": "#66bb6a", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfProb(i, v) — softmax(logits / tf_temp)",
+                  "title": "tfProb(i, v) — softmax(logits / tf_temp) = $P$",
                   "color": "#66bb6a",
                   "labels": ["the", "cat", "sat", "on", "mat"]
                 }
@@ -1530,6 +1551,27 @@
               "type": "text",
               "text": "$H$",
               "position": [16.8, 3.58, 0],
+              "color": "#b0bec5"
+            },
+            {
+              "id": "t3_chart_logit_math",
+              "type": "text",
+              "text": "$Z_{iv}$",
+              "position": [-17.2, -5.5, 0],
+              "color": "#ffa726"
+            },
+            {
+              "id": "t3_chart_prob_math",
+              "type": "text",
+              "text": "$P_{iv}$",
+              "position": [-9.6, -5.5, 0],
+              "color": "#66bb6a"
+            },
+            {
+              "id": "t3_chart_ent_math",
+              "type": "text",
+              "text": "$H_i$",
+              "position": [-2.0, -5.5, 0],
               "color": "#b0bec5"
             }
           ],
