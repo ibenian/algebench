@@ -664,7 +664,7 @@
       "id": "tour-block",
       "title": "The block — tfAttnIn, tfResid1, tfFfIn, tfFfPre, tfFfHidden, tfFfOut, tfResid2",
       "description": "The residual stream through one layer: attention increment, FFN increment, and where the norms sit.",
-      "markdown": "This lesson is a **function tour** of the transformer domain library, not a lesson about transformers: every lattice is labelled with the call that fills it, so an author can see what each function returns and how the `tf_*` sliders reshape it. The weights are the hand-built toy at layer 0 / head 0 and **seeded tables everywhere else — nothing here is learned.**\n\n## The block\n\n$h^{(l)}$ is the stream entering layer $l$, $N$ the normalisation in force, and $\\phi$ the activation. Each entry gives pre-norm first, post-norm after the semicolon where they differ.\n\n**`tfH(l, i, d)`** · stream entering layer $l$\n$$h^{(l)}_{id}$$\n\n**`tfAttnIn(l, i, d)`** · what attention reads\n$$a=N\\!\\left(h^{(l)}\\right);\\qquad a=h^{(l)}$$\n\n**`tfAttnOut(l, i, d)`** · the attention increment\n$$\\operatorname{Attn}(a)_{id}$$\n\n**`tfResid1(l, i, d)`** · after the first residual add\n$$r_1=h^{(l)}+\\operatorname{Attn}(a);\\qquad r_1=N\\!\\left(h^{(l)}+\\operatorname{Attn}(a)\\right)$$\n\n**`tfFfIn(l, i, d)`** · what the FFN reads\n$$f=N(r_1);\\qquad f=r_1$$\n\n**`tfW1(l, r, c)`**, **`tfW2(l, r, c)`** · d_model × d_ff, then d_ff × d_model\n$$\\bigl(W_1^{(l)}\\bigr)_{rc},\\qquad \\bigl(W_2^{(l)}\\bigr)_{rc}$$\n\n**`tfFfPre(l, i, k)`** · hidden units before the activation\n$$u_{ik}=\\bigl(f\\,W_1\\bigr)_{ik}$$\n\n**`tfFfHidden(l, i, k)`** · after it — SwiGLU is the exception, see below\n$$\\phi(u_{ik})$$\n\n**`tfFfOut(l, i, d)`** · the FFN increment\n$$\\bigl(\\phi(u)\\,W_2\\bigr)_{id}$$\n\n**`tfResid2(l, i, d)`** · stream leaving layer $l$, and equal to `tfH(l+1)`\n$$r_2=r_1+\\operatorname{FFN}(f);\\qquad r_2=N\\!\\left(r_1+\\operatorname{FFN}(f)\\right)$$\n\nSwitch **tf_norm** between none, LayerNorm and RMSNorm and **tf_prenorm** between pre and post; the card checks the residual identity and the row mean live. **tf_act** changes what happens between `tfFfPre` and `tfFfHidden`.\n\n## The arithmetic\n\nWith $h$ the stream entering the layer and $N$ the normalisation in force:\n\n$$\\textbf{pre-norm}\\quad a=N(h),\\quad r_1=h+\\operatorname{Attn}(a),\\quad f=N(r_1),\\quad r_2=r_1+\\operatorname{FFN}(f)$$\n\n$$\\textbf{post-norm}\\quad a=h,\\quad r_1=N\\!\\left(h+\\operatorname{Attn}(h)\\right),\\quad f=r_1,\\quad r_2=N\\!\\left(r_1+\\operatorname{FFN}(r_1)\\right)$$\n\nPre-norm normalises what a sub-layer *reads* and adds its raw output, so $r_2-h-\\texttt{tfAttnOut}-\\texttt{tfFfOut}=0$ identically — the card checks exactly that. Post-norm normalises the *sum*, so the identity does not hold.\n\nRow by row, with unit gain and zero bias:\n\n$$N(x)_d=\\frac{x_d-\\mu}{\\sqrt{\\sigma^2+\\varepsilon}},\\qquad \\mu=\\frac{1}{d_{model}}\\sum_k x_k,\\qquad \\sigma^2=\\frac{1}{d_{model}}\\sum_k (x_k-\\mu)^2$$\n\n**RMSNorm is the same expression with $\\mu=0$** — no mean subtraction and no bias. That is the whole difference, and it is why the card's row mean of `tfAttnIn` is zero under LayerNorm and not under RMSNorm.\n\nThe FFN widens to $d_{ff}$ and comes back:\n\n$$\\texttt{tfFfPre}=f\\,W_1,\\qquad \\texttt{tfFfHidden}=\\phi\\!\\left(\\texttt{tfFfPre}\\right),\\qquad \\texttt{tfFfOut}=\\texttt{tfFfHidden}\\,W_2$$\n\n$$\\phi_{\\text{ReLU}}(z)=\\max(0,z),\\qquad \\phi_{\\text{GELU}}(z)=\\tfrac12 z\\left(1+\\tanh\\!\\left[\\sqrt{2/\\pi}\\left(z+0.044715\\,z^{3}\\right)\\right]\\right)$$\n\n**SwiGLU is the exception: it is not elementwise.** It needs a second matrix $W_3$ of the same shape as $W_1$, and multiplies two projections of the same input together:\n\n$$\\texttt{tfFfHidden}=\\operatorname{SiLU}\\!\\left(f W_1\\right)\\odot\\left(f W_3\\right),\\qquad \\operatorname{SiLU}(z)=\\frac{z}{1+e^{-z}}$$\n\nso under `tf_act` = SwiGLU the before/after chart is no longer a function of the orange point alone — the gate is a second, unplotted quantity.",
+      "markdown": "This lesson is a **function tour** of the transformer domain library, not a lesson about transformers: every lattice is labelled with the call that fills it, so an author can see what each function returns and how the `tf_*` sliders reshape it. The weights are the hand-built toy at layer 0 / head 0 and **seeded tables everywhere else — nothing here is learned.**\n\n## The block\n\n$h^{(l)}$ is the stream entering layer $l$, $N$ the normalisation in force, and $\\phi$ the activation. Each entry gives pre-norm first, post-norm after the semicolon where they differ.\n\n**`tfH(l, i, d)`** · stream entering layer $l$\n$$h^{(l)}_{id}$$\n\n**`tfAttnIn(l, i, d)`** · what attention reads\n$$a=N\\!\\left(h^{(l)}\\right);\\qquad a=h^{(l)}$$\n\n**`tfAttnOut(l, i, d)`** · the attention increment\n$$\\operatorname{Attn}(a)_{id}$$\n\n**`tfResid1(l, i, d)`** · after the first residual add\n$$r_1=h^{(l)}+\\operatorname{Attn}(a);\\qquad r_1=N\\!\\left(h^{(l)}+\\operatorname{Attn}(a)\\right)$$\n\n**`tfFfIn(l, i, d)`** · what the FFN reads\n$$f=N(r_1);\\qquad f=r_1$$\n\n**`tfW1(l, r, c)`**, **`tfW2(l, r, c)`** · d_model × d_ff, then d_ff × d_model\n$$\\bigl(W_1^{(l)}\\bigr)_{rc},\\qquad \\bigl(W_2^{(l)}\\bigr)_{rc}$$\n\n**`tfFfPre(l, i, k)`** · hidden units before the activation\n$$u_{ik}=\\bigl(f\\,W_1\\bigr)_{ik}$$\n\n**`tfFfHidden(l, i, k)`** · after it — SwiGLU is the exception, see below\n$$\\phi(u_{ik})$$\n\n**`tfFfOut(l, i, d)`** · the FFN increment\n$$\\bigl(\\phi(u)\\,W_2\\bigr)_{id}$$\n\n**`tfResid2(l, i, d)`** · stream leaving layer $l$, and equal to `tfH(l+1)`\n$$r_2=r_1+\\operatorname{FFN}(f);\\qquad r_2=N\\!\\left(r_1+\\operatorname{FFN}(f)\\right)$$\n\nSwitch **tf_norm** between none, LayerNorm and RMSNorm and **tf_prenorm** between pre and post; the card checks the residual identity and the row mean live. **tf_act** changes what happens between `tfFfPre` and `tfFfHidden`.\n\nThis scene is layer 0 and only layer 0: there is no layer selector, and both of its FFN weights are yours — $W_1$ and $W_2$ are tensor sliders bound to their lattices, so hover a cell on the lattice itself to edit it. Depth is the next scene's subject: layer 0 reads the embedded stream and its own weights, so how many layers sit above it changes nothing here.\n\n## The arithmetic\n\nWith $h$ the stream entering the layer and $N$ the normalisation in force:\n\n$$\\textbf{pre-norm}\\quad a=N(h),\\quad r_1=h+\\operatorname{Attn}(a),\\quad f=N(r_1),\\quad r_2=r_1+\\operatorname{FFN}(f)$$\n\n$$\\textbf{post-norm}\\quad a=h,\\quad r_1=N\\!\\left(h+\\operatorname{Attn}(h)\\right),\\quad f=r_1,\\quad r_2=N\\!\\left(r_1+\\operatorname{FFN}(r_1)\\right)$$\n\nPre-norm normalises what a sub-layer *reads* and adds its raw output, so $r_2-h-\\texttt{tfAttnOut}-\\texttt{tfFfOut}=0$ identically — the card checks exactly that. Post-norm normalises the *sum*, so the identity does not hold.\n\nRow by row, with unit gain and zero bias:\n\n$$N(x)_d=\\frac{x_d-\\mu}{\\sqrt{\\sigma^2+\\varepsilon}},\\qquad \\mu=\\frac{1}{d_{model}}\\sum_k x_k,\\qquad \\sigma^2=\\frac{1}{d_{model}}\\sum_k (x_k-\\mu)^2$$\n\n**RMSNorm is the same expression with $\\mu=0$** — no mean subtraction and no bias. That is the whole difference, and it is why the card's row mean of `tfAttnIn` is zero under LayerNorm and not under RMSNorm.\n\nThe FFN widens to $d_{ff}$ and comes back:\n\n$$\\texttt{tfFfPre}=f\\,W_1,\\qquad \\texttt{tfFfHidden}=\\phi\\!\\left(\\texttt{tfFfPre}\\right),\\qquad \\texttt{tfFfOut}=\\texttt{tfFfHidden}\\,W_2$$\n\n$$\\phi_{\\text{ReLU}}(z)=\\max(0,z),\\qquad \\phi_{\\text{GELU}}(z)=\\tfrac12 z\\left(1+\\tanh\\!\\left[\\sqrt{2/\\pi}\\left(z+0.044715\\,z^{3}\\right)\\right]\\right)$$\n\n**SwiGLU is the exception: it is not elementwise.** It needs a second matrix $W_3$ of the same shape as $W_1$, and multiplies two projections of the same input together:\n\n$$\\texttt{tfFfHidden}=\\operatorname{SiLU}\\!\\left(f W_1\\right)\\odot\\left(f W_3\\right),\\qquad \\operatorname{SiLU}(z)=\\frac{z}{1+e^{-z}}$$\n\nso under `tf_act` = SwiGLU the before/after chart is no longer a function of the orange point alone — the gate is a second, unplotted quantity.",
       "prompt": "A function tour of the general transformer engine, block part: the residual stream through one layer. The card checks the residual identity and the norm means live.",
       "range": [
         [-24, 28],
@@ -719,9 +719,7 @@
           "title": "The block — tfAttnIn, tfResid1, tfFfIn, tfFfPre, tfFfHidden, tfFfOut, tfResid2",
           "description": "The residual stream through one layer: attention increment, FFN increment, and where the norms sit.",
           "sliders": [
-            {"id": "demo_l", "label": "layer shown ($l$)", "min": 0, "max": 2, "maxExpr": "tfLayers() - 1", "step": 1, "default": 0, "valueExpr": "concat('layer ', string(demo_l))"},
             {"id": "demo_i", "label": "slot to follow ($i$)", "min": 0, "max": 5, "step": 1, "default": 2, "valueExpr": "concat(string(demo_i), ' · ', tfToken(demo_i))"},
-            {"id": "tf_layers", "label": "tf_layers — layers in the stack", "min": 1, "max": 3, "step": 1, "default": 1, "valueExpr": "string(tf_layers)"},
             {"id": "tf_norm", "label": "tf_norm — normalisation", "min": 0, "max": 2, "step": 1, "default": 1, "valueExpr": "tf_norm < 0.5 ? 'none' : (tf_norm < 1.5 ? 'LayerNorm' : 'RMSNorm')"},
             {"id": "tf_prenorm", "label": "tf_prenorm — placement", "min": 0, "max": 1, "step": 1, "default": 1, "valueExpr": "tf_prenorm >= 0.5 ? 'pre-norm' : 'post-norm'"},
             {"id": "tf_act", "label": "tf_act — activation", "min": 0, "max": 2, "step": 1, "default": 0, "valueExpr": "tf_act < 0.5 ? 'ReLU' : (tf_act < 1.5 ? 'GELU' : 'SwiGLU')"},
@@ -739,6 +737,25 @@
                 [0.306, -0.076, 0.174, -0.553, 0.315, 1, -0.669, -0.399],
                 [-0.708, 0.214, -0.73, 0.069, -0.148, -0.23, -0.237, 0.19]
               ]
+            },
+            {
+              "id": "tf_w2_0",
+              "kind": "tensor",
+              "label": "$W_2$ (layer 0)",
+              "shape": [8, 4],
+              "min": -1.5,
+              "max": 1.5,
+              "step": 0.05,
+              "default": [
+                [-0.067, 0.6121, 0.0569, -0.112],
+                [0.1335, 0.1068, 0.7286, 0.226],
+                [-0.5518, 0.2014, -0.5981, 0.4822],
+                [0.5173, 0.1562, -0.1068, -0.3956],
+                [0.398, 0.3019, 0.1224, -0.1467],
+                [-0.115, -0.1497, -1.1419, -0.5529],
+                [-0.2129, -0.0608, 0.1127, -0.1961],
+                [0.1811, -0.5417, -0.0041, 0.4231]
+              ]
             }
           ],
           "add": [
@@ -746,7 +763,7 @@
               "id": "t2_h",
               "type": "tensor",
               "shape": [6, 4],
-              "valueExpr": "(demo_l < tfLayers()) ? (tfH(demo_l, row, col)) : 0",
+              "valueExpr": "tfH(0, row, col)",
               "origin": [-20, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -759,13 +776,13 @@
               "axes": [
                 {"color": "#26c6da", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfH(l, row, col) — stream in",
+                  "title": "tfH(0, row, col) — stream in",
                   "color": "#26c6da",
                   "labels": ["$d_0$", "$d_1$", "$d_2$", "$d_3$"]
                 }
               ],
-              "textExpr": "(demo_l < tfLayers()) ? (toFixed(value, 2)) : ''",
-              "prompt": "The residual stream entering layer demo_l.",
+              "textExpr": "toFixed(value, 2)",
+              "prompt": "The residual stream entering layer 0.",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
             },
@@ -773,7 +790,7 @@
               "id": "t2_ain",
               "type": "tensor",
               "shape": [6, 4],
-              "valueExpr": "(demo_l < tfLayers()) ? (tfAttnIn(demo_l, row, col)) : 0",
+              "valueExpr": "tfAttnIn(0, row, col)",
               "origin": [-15.6, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -786,12 +803,12 @@
               "axes": [
                 {"color": "#26c6da", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfAttnIn(l, row, col) — $a$",
+                  "title": "tfAttnIn(0, row, col) — $a$",
                   "color": "#26c6da",
                   "labels": ["$d_0$", "$d_1$", "$d_2$", "$d_3$"]
                 }
               ],
-              "textExpr": "(demo_l < tfLayers()) ? (toFixed(value, 2)) : ''",
+              "textExpr": "toFixed(value, 2)",
               "prompt": "What attention reads: with tf_norm on and tf_prenorm = 1 this is the normed stream; otherwise the stream itself.",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
@@ -800,7 +817,7 @@
               "id": "t2_ao",
               "type": "tensor",
               "shape": [6, 4],
-              "valueExpr": "(demo_l < tfLayers()) ? (tfAttnOut(demo_l, row, col)) : 0",
+              "valueExpr": "tfAttnOut(0, row, col)",
               "origin": [-11.2, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -813,12 +830,12 @@
               "axes": [
                 {"color": "#f06292", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfAttnOut(l, row, col)",
+                  "title": "tfAttnOut(0, row, col)",
                   "color": "#f06292",
                   "labels": ["$d_0$", "$d_1$", "$d_2$", "$d_3$"]
                 }
               ],
-              "textExpr": "(demo_l < tfLayers()) ? (toFixed(value, 2)) : ''",
+              "textExpr": "toFixed(value, 2)",
               "prompt": "The attention increment (all heads, through W_O).",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
@@ -827,7 +844,7 @@
               "id": "t2_r1",
               "type": "tensor",
               "shape": [6, 4],
-              "valueExpr": "(demo_l < tfLayers()) ? (tfResid1(demo_l, row, col)) : 0",
+              "valueExpr": "tfResid1(0, row, col)",
               "origin": [-6.8, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -840,12 +857,12 @@
               "axes": [
                 {"color": "#26c6da", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfResid1(l, row, col) — $r_1$",
+                  "title": "tfResid1(0, row, col) — $r_1$",
                   "color": "#26c6da",
                   "labels": ["$d_0$", "$d_1$", "$d_2$", "$d_3$"]
                 }
               ],
-              "textExpr": "(demo_l < tfLayers()) ? (toFixed(value, 2)) : ''",
+              "textExpr": "toFixed(value, 2)",
               "prompt": "Stream after the attention residual add (post-norm: after its norm).",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
@@ -854,7 +871,7 @@
               "id": "t2_fin",
               "type": "tensor",
               "shape": [6, 4],
-              "valueExpr": "(demo_l < tfLayers()) ? (tfFfIn(demo_l, row, col)) : 0",
+              "valueExpr": "tfFfIn(0, row, col)",
               "origin": [-2.4, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -867,12 +884,12 @@
               "axes": [
                 {"color": "#26c6da", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfFfIn(l, row, col) — $f$",
+                  "title": "tfFfIn(0, row, col) — $f$",
                   "color": "#26c6da",
                   "labels": ["$d_0$", "$d_1$", "$d_2$", "$d_3$"]
                 }
               ],
-              "textExpr": "(demo_l < tfLayers()) ? (toFixed(value, 2)) : ''",
+              "textExpr": "toFixed(value, 2)",
               "prompt": "What the FFN reads: normed (pre-norm) or tfResid1 itself.",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
@@ -881,7 +898,7 @@
               "id": "t2_pre",
               "type": "tensor",
               "shape": [6, 8],
-              "valueExpr": "(demo_l < tfLayers()) ? (tfFfPre(demo_l, row, col)) : 0",
+              "valueExpr": "tfFfPre(0, row, col)",
               "origin": [2.0, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -894,12 +911,12 @@
               "axes": [
                 {"color": "#ffee58", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfFfPre(l, row, k) — before the activation = $u$",
+                  "title": "tfFfPre(0, row, k) — before the activation = $u$",
                   "color": "#ffee58",
                   "labels": ["$u_0$", "$u_1$", "$u_2$", "$u_3$", "$u_4$", "$u_5$", "$u_6$", "$u_7$"]
                 }
               ],
-              "textExpr": "(demo_l < tfLayers()) ? (toFixed(value, 2)) : ''",
+              "textExpr": "toFixed(value, 2)",
               "prompt": "FFN hidden units before the activation: tfFfIn · W1. Row k of W1 is one neuron's fan-in.",
               "widthExpr": "max(0.15, min(1, abs(value) / 3))",
               "heightExpr": "max(0.15, min(1, abs(value) / 3))"
@@ -908,7 +925,7 @@
               "id": "t2_hid",
               "type": "tensor",
               "shape": [6, 8],
-              "valueExpr": "(demo_l < tfLayers()) ? (tfFfHidden(demo_l, row, col)) : 0",
+              "valueExpr": "tfFfHidden(0, row, col)",
               "origin": [9.2, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -921,12 +938,12 @@
               "axes": [
                 {"color": "#ffee58", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfFfHidden(l, row, k) — after the activation",
+                  "title": "tfFfHidden(0, row, k) — after the activation",
                   "color": "#ffee58",
                   "labels": ["$u_0$", "$u_1$", "$u_2$", "$u_3$", "$u_4$", "$u_5$", "$u_6$", "$u_7$"]
                 }
               ],
-              "textExpr": "(demo_l < tfLayers()) ? (toFixed(value, 2)) : ''",
+              "textExpr": "toFixed(value, 2)",
               "prompt": "After the activation chosen by tf_act: ReLU zeroes the negatives, GELU bends them, SwiGLU gates silu(x W1) by x W3.",
               "widthExpr": "max(0.15, min(1, abs(value) / 3))",
               "heightExpr": "max(0.15, min(1, abs(value) / 3))"
@@ -935,7 +952,7 @@
               "id": "t2_fo",
               "type": "tensor",
               "shape": [6, 4],
-              "valueExpr": "(demo_l < tfLayers()) ? (tfFfOut(demo_l, row, col)) : 0",
+              "valueExpr": "tfFfOut(0, row, col)",
               "origin": [16.4, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -948,12 +965,12 @@
               "axes": [
                 {"color": "#ffee58", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfFfOut(l, row, col)",
+                  "title": "tfFfOut(0, row, col)",
                   "color": "#ffee58",
                   "labels": ["$d_0$", "$d_1$", "$d_2$", "$d_3$"]
                 }
               ],
-              "textExpr": "(demo_l < tfLayers()) ? (toFixed(value, 2)) : ''",
+              "textExpr": "toFixed(value, 2)",
               "prompt": "The FFN increment: hidden · W2, back at d_model width.",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
@@ -962,7 +979,7 @@
               "id": "t2_r2",
               "type": "tensor",
               "shape": [6, 4],
-              "valueExpr": "(demo_l < tfLayers()) ? (tfResid2(demo_l, row, col)) : 0",
+              "valueExpr": "tfResid2(0, row, col)",
               "origin": [20.8, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -975,13 +992,13 @@
               "axes": [
                 {"color": "#26c6da", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfResid2(l, row, col) — stream out = $r_2$",
+                  "title": "tfResid2(0, row, col) — stream out = $r_2$",
                   "color": "#26c6da",
                   "labels": ["$d_0$", "$d_1$", "$d_2$", "$d_3$"]
                 }
               ],
-              "textExpr": "(demo_l < tfLayers()) ? (toFixed(value, 2)) : ''",
-              "prompt": "The stream leaving layer demo_l = tfH(demo_l + 1). Pre-norm: exactly stream in + both increments.",
+              "textExpr": "toFixed(value, 2)",
+              "prompt": "The stream leaving layer 0 = tfH(1). Pre-norm: exactly stream in + both increments.",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
             },
@@ -992,15 +1009,15 @@
               "size": [6.4, 4],
               "color": "#ffee58",
               "series": [
-                {"kind": "points", "n": 8, "xExpr": "(demo_l < tfLayers()) ? i : -99", "yExpr": "tfFfPre(demo_l, demo_i, i)", "color": "#ffa726", "size": 5, "label": "tfFfPre(l, i, k) — before"},
-                {"kind": "points", "n": 8, "xExpr": "(demo_l < tfLayers()) ? i : -99", "yExpr": "tfFfHidden(demo_l, demo_i, i)", "color": "#ffee58", "size": 5, "label": "tfFfHidden(l, i, k) — after"}
+                {"kind": "points", "n": 8, "xExpr": "i", "yExpr": "tfFfPre(0, demo_i, i)", "color": "#ffa726", "size": 5, "label": "tfFfPre(l, i, k) — before"},
+                {"kind": "points", "n": 8, "xExpr": "i", "yExpr": "tfFfHidden(0, demo_i, i)", "color": "#ffee58", "size": 5, "label": "tfFfHidden(l, i, k) — after"}
               ],
               "axes": [
                 {"title": "hidden unit $k$", "ticks": 8},
                 {"title": "activation", "ticks": 4}
               ],
               "label": "FFN hidden units at slot $i$: before and after the activation",
-              "prompt": "The eight hidden units of slot demo_i in layer demo_l, before (orange) and after (yellow) the activation. ReLU: the yellow point sits on the orange one when positive and at 0 otherwise; GELU bends the negatives; SwiGLU multiplies by a gate, so yellow can leave the orange entirely.",
+              "prompt": "The eight hidden units of slot demo_i in layer 0, before (orange) and after (yellow) the activation. ReLU: the yellow point sits on the orange one when positive and at 0 otherwise; GELU bends the negatives; SwiGLU multiplies by a gate, so yellow can leave the orange entirely.",
               "xDomain": [-0.5, 7.5]
             },
             {
@@ -1023,7 +1040,7 @@
                   "labels": ["$d_0$", "$d_1$", "$d_2$", "$d_3$"]
                 },
                 {
-                  "title": "tfW1(0, row, col) — layer 0, bound to tf_w1_0",
+                  "title": "tfW1(0, row, col)",
                   "color": "#ffee58",
                   "labels": ["$u_0$", "$u_1$", "$u_2$", "$u_3$", "$u_4$", "$u_5$", "$u_6$", "$u_7$"]
                 }
@@ -1038,7 +1055,7 @@
               "id": "t2_w2",
               "type": "tensor",
               "shape": [8, 4],
-              "valueExpr": "(demo_l < tfLayers()) ? (tfW2(demo_l, row, col)) : 0",
+              "valueExpr": "tfW2(0, row, col)",
               "origin": [16.4, 4.6, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -1054,20 +1071,21 @@
                   "labels": ["$u_0$", "$u_1$", "$u_2$", "$u_3$", "$u_4$", "$u_5$", "$u_6$", "$u_7$"]
                 },
                 {
-                  "title": "tfW2(l, row, col)",
+                  "title": "tfW2(0, row, col)",
                   "color": "#ffee58",
                   "labels": ["$d_0$", "$d_1$", "$d_2$", "$d_3$"]
                 }
               ],
-              "textExpr": "(demo_l < tfLayers()) ? (toFixed(value, 2)) : ''",
-              "prompt": "FFN W2 of layer demo_l (d_ff × d_model).",
+              "textExpr": "toFixed(value, 2)",
+              "prompt": "FFN W2 of layer 0 (d_ff × d_model).",
               "widthExpr": "max(0.15, min(1, abs(value) / 1))",
-              "heightExpr": "max(0.15, min(1, abs(value) / 1))"
+              "heightExpr": "max(0.15, min(1, abs(value) / 1))",
+              "bind": "tf_w2_0"
             },
             {
               "id": "t2_h_math",
               "type": "text",
-              "text": "$h^{(l)}$",
+              "text": "$h^{(0)}$",
               "position": [-18.4, 3.58, 0],
               "color": "#26c6da"
             },
@@ -1150,7 +1168,7 @@
             }
           ],
           "info": [
-            {"id": "tour_resid", "position": "bottom-left", "title": "The residual identity at slot 2", "content": "Layer read: {{min(demo_l, tfLayers() - 1)}} — the engine clamps a selector past the top of the stack, so this card follows the last layer while the lattices go blank.\\n\\npre-norm: out − (in + attention + FFN) = ({{toFixed(tfResid2(demo_l,2,0) - tfH(demo_l,2,0) - tfAttnOut(demo_l,2,0) - tfFfOut(demo_l,2,0), 6)}}, {{toFixed(tfResid2(demo_l,2,1) - tfH(demo_l,2,1) - tfAttnOut(demo_l,2,1) - tfFfOut(demo_l,2,1), 6)}}, …) — zero while tf_prenorm = 1; post-norm normalises the sums, so it is not.\\n\\nMean of tfAttnIn row 2 = {{toFixed(tfAttnIn(demo_l,2,0)+tfAttnIn(demo_l,2,1)+tfAttnIn(demo_l,2,2)+tfAttnIn(demo_l,2,3), 4)}} — zero under LayerNorm, not under RMSNorm (no mean subtraction)."}
+            {"id": "tour_resid", "position": "bottom-left", "title": "The residual identity at slot 2, layer 0", "content": "pre-norm: out − (in + attention + FFN) = ({{toFixed(tfResid2(0,2,0) - tfH(0,2,0) - tfAttnOut(0,2,0) - tfFfOut(0,2,0), 6)}}, {{toFixed(tfResid2(0,2,1) - tfH(0,2,1) - tfAttnOut(0,2,1) - tfFfOut(0,2,1), 6)}}, …) — zero while tf_prenorm = 1; post-norm normalises the sums, so it is not.\\n\\nMean of tfAttnIn row 2 = {{toFixed(tfAttnIn(0,2,0)+tfAttnIn(0,2,1)+tfAttnIn(0,2,2)+tfAttnIn(0,2,3), 4)}} — zero under LayerNorm, not under RMSNorm (no mean subtraction)."}
           ],
           "prompt": "A function tour of the general transformer engine, block part: the residual stream through one layer. The card checks the residual identity and the norm means live."
         }
