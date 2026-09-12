@@ -2270,9 +2270,9 @@ function _buildTensorRow(id, s) {
 	}
 	row.appendChild(grid);
 	const KEY = "tslider-collapsed-" + id;
-	let collapsed = false;
+	let collapsed = true;
 	try {
-		collapsed = localStorage.getItem(KEY) === "1";
+		collapsed = localStorage.getItem(KEY) !== "0";
 	} catch {}
 	row.classList.toggle("collapsed", collapsed);
 	head.addEventListener("mousedown", (e) => e.stopPropagation());

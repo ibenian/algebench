@@ -866,9 +866,14 @@ function _buildTensorRow(id: string, s: SceneSlider & { shape: number[]; values:
     }
     row.appendChild(grid);
 
+    // Collapsed unless this viewer has opened it before. A tensor slider is a
+    // whole lattice of cells, so a scene declaring several of them buries its
+    // scalar sliders under hundreds of pixels of grid before anyone asks to see
+    // one. Only an explicit '0' -- written when the viewer expands it -- opens
+    // it on load, so a deliberate choice still survives a reload.
     const KEY = 'tslider-collapsed-' + id;
-    let collapsed = false;
-    try { collapsed = localStorage.getItem(KEY) === '1'; } catch { /* ignore */ }
+    let collapsed = true;
+    try { collapsed = localStorage.getItem(KEY) !== '0'; } catch { /* ignore */ }
     row.classList.toggle('collapsed', collapsed);
     head.addEventListener('mousedown', e => e.stopPropagation());
     head.addEventListener('click', () => {
