@@ -308,6 +308,34 @@
         return v < lo ? lo : (v > hi ? hi : v);
     }
 
+    /** A canonical input stream, so the effect of x's SHAPE on attention can be
+     *  seen without hand-editing a table. Rows are slots, columns components.
+     *    1 sparse    one-hot, slot i lighting component i mod d: every pair of
+     *                slots is orthogonal, so q.k is 0 except where they collide.
+     *    2 ramp up   components rising across the row, magnitude rising with the
+     *                slot: later slots dominate every score they appear in.
+     *    3 ramp down components falling across the row, magnitude still rising
+     *                with the slot -- same norms as 2, opposite direction.
+     *    4 uniform   every slot identical and unit-norm: nothing distinguishes
+     *                one key from another, so the softmax is flat by symmetry.
+     */
+    function _presetTable(kind, n, d) {
+        const out = [];
+        for (let i = 0; i < n; i++) {
+            const row = [];
+            for (let j = 0; j < d; j++) {
+                let v;
+                if (kind === 1) v = (j === i % d) ? 1 : 0;
+                else if (kind === 2) v = ((i + 1) / n) * ((j + 1) / d);
+                else if (kind === 3) v = ((i + 1) / n) * ((d - j) / d);
+                else v = 1 / Math.sqrt(d);
+                row.push(v);
+            }
+            out.push(row);
+        }
+        return out;
+    }
+
     /** The model's shape, from the embedding table in force and the tf_* sliders. */
     function _config() {
         // The embedding table decides n and d_model: tf_emb (any shape) wins,
@@ -316,9 +344,15 @@
         // A usable table has at least one row and one column; anything else
         // (including empty rows, which would make d_model 0) falls back to the toy.
         const embOk = Array.isArray(rawEmb) && rawEmb.length > 0 && Array.isArray(rawEmb[0]) && rawEmb[0].length > 0;
-        const table = embOk
+        let table = embOk
             ? _overlay(null, rawEmb, rawEmb.length, rawEmb[0].length)   // already read (and snapshotted) once above
             : _effective(EMB, 's4_emb', TOY_N, TOY_D_MODEL);
+        // tf_emb_kind replaces the VALUES of that table with a canonical input
+        // shape, keeping its n x d_model. 0 leaves the table alone, so a scene
+        // that never declares the slider, and the edited table at 0, behave
+        // exactly as before.
+        const embKind = _intRead('tf_emb_kind', 0, 0, 4);
+        if (embKind > 0) table = _presetTable(embKind, table.length, table[0].length);
         const n = table.length;
         const dModel = table[0].length;
         const heads = _intRead('tf_heads', 2, 1, 64);
