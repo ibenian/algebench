@@ -975,6 +975,41 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     }
 
     /** Draw one label (real KaTeX) fitted into a box, in a colour, optionally rotated a quarter turn. */
+    /** The face the LaTeX rasteriser falls back to, so plain and LaTeX cells match. */
+    const FAMILY = 'system-ui, sans-serif';
+
+    /**
+     * A cell's own text, which `textExpr` defines as plain -- "toFixed(value, 2)"
+     * and the like, no KaTeX. Sending it through the LaTeX rasteriser laid every
+     * string out in a hidden DOM and replayed it onto the canvas, and both of
+     * that module's caches are keyed BY THE STRING: a lattice of numbers that
+     * changes as a slider moves misses on every cell of every update, which is
+     * where an update frame's hundreds of milliseconds were going.
+     *
+     * `fillText` needs neither. A string that does carry LaTeX -- against the
+     * documented contract, but cheap to honour -- still takes the old path.
+     */
+    function drawCellText(ctx: CanvasRenderingContext2D, txt: string, cx: number, cy: number, wPx: number, hPx: number, color: string) {
+        if (txt.indexOf('$') >= 0 || txt.indexOf('\\') >= 0) {
+            drawLatex(ctx, txt, cx, cy, { fontPx: fitLatexPx(txt, wPx, hPx), color });
+            return;
+        }
+        // Fit by height first, then shrink to width if the string is wide. One
+        // measureText per candidate size, against KaTeX's full layout pass.
+        let fontPx = Math.max(1, Math.floor(hPx * 0.62));
+        ctx.font = `${fontPx}px ${FAMILY}`;
+        const w = ctx.measureText(txt).width;
+        const maxW = wPx * 0.9;
+        if (w > maxW) {
+            fontPx = Math.max(1, Math.floor(fontPx * maxW / w));
+            ctx.font = `${fontPx}px ${FAMILY}`;
+        }
+        ctx.fillStyle = color;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(txt, cx, cy);
+    }
+
     function drawFitted(ctx: CanvasRenderingContext2D, txt: string, cx: number, cy: number, wPx: number, hPx: number, color: string, rotate = false, align: 'left' | 'center' | 'right' = 'center') {
         if (!txt || wPx < 2 || hPx < 2) return;
         const fontPx = fitLatexPx(txt, rotate ? hPx : wPx, rotate ? wPx : hPx);
@@ -1055,7 +1090,7 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
                 // up, so the vertical anchor flips sign here.
                 const cx = ox + (c + 0.5) * px + anchor.h * (fillFrac - cellW[cell]!) * px / 2;
                 const cy = oy + (r + 0.5) * px - anchor.v * (fillFrac - cellH[cell]!) * px / 2;
-                drawLatex(ctx, txt, cx, cy, { fontPx: fitLatexPx(txt, wPx, hPx), color });
+                drawCellText(ctx, txt, cx, cy, wPx, hPx, color);
             }
         }
         tex.needsUpdate = true;

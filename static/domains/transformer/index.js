@@ -308,6 +308,37 @@
         return v < lo ? lo : (v > hi ? hi : v);
     }
 
+    /** A canonical input stream, so the effect of x's SHAPE on attention can be
+     *  seen without hand-editing a table. Rows are slots, columns components.
+     *    1 sparse    one-hot, slot i lighting component i mod d: every pair of
+     *                slots is orthogonal, so q.k is 0 except where they collide.
+     *    2 ramp up   components rising across the row AND magnitude rising with
+     *                the slot: the last tokens are the big ones, so they
+     *                dominate every score they appear in.
+     *    3 ramp down both reversed -- components falling across the row and
+     *                magnitude falling with the slot, so the FIRST tokens are
+     *                the big ones. Not 2 read backwards along one axis, which
+     *                would leave the same vector norms and change little.
+     *    4 uniform   every slot identical and unit-norm: nothing distinguishes
+     *                one key from another, so the softmax is flat by symmetry.
+     */
+    function _presetTable(kind, n, d) {
+        const out = [];
+        for (let i = 0; i < n; i++) {
+            const row = [];
+            for (let j = 0; j < d; j++) {
+                let v;
+                if (kind === 1) v = (j === i % d) ? 1 : 0;
+                else if (kind === 2) v = ((i + 1) / n) * ((j + 1) / d);
+                else if (kind === 3) v = ((n - i) / n) * ((d - j) / d);
+                else v = 1 / Math.sqrt(d);
+                row.push(v);
+            }
+            out.push(row);
+        }
+        return out;
+    }
+
     /** The model's shape, from the embedding table in force and the tf_* sliders. */
     function _config() {
         // The embedding table decides n and d_model: tf_emb (any shape) wins,
@@ -316,9 +347,15 @@
         // A usable table has at least one row and one column; anything else
         // (including empty rows, which would make d_model 0) falls back to the toy.
         const embOk = Array.isArray(rawEmb) && rawEmb.length > 0 && Array.isArray(rawEmb[0]) && rawEmb[0].length > 0;
-        const table = embOk
+        let table = embOk
             ? _overlay(null, rawEmb, rawEmb.length, rawEmb[0].length)   // already read (and snapshotted) once above
             : _effective(EMB, 's4_emb', TOY_N, TOY_D_MODEL);
+        // tf_emb_kind replaces the VALUES of that table with a canonical input
+        // shape, keeping its n x d_model. 0 leaves the table alone, so a scene
+        // that never declares the slider, and the edited table at 0, behave
+        // exactly as before.
+        const embKind = _intRead('tf_emb_kind', 0, 0, 4);
+        if (embKind > 0) table = _presetTable(embKind, table.length, table[0].length);
         const n = table.length;
         const dModel = table[0].length;
         const heads = _intRead('tf_heads', 2, 1, 64);
@@ -463,11 +500,17 @@
         const { n, dModel, dff, layers, normKind, pre, nrm, act, temp } = cfg;
 
         const shuffle = _read('s1_shuffle', 0) >= 0.5 ? 1 : 0;
-        const ropeOn = _read('s2_rope', 0) >= 0.5 ? 1 : 0;
+        // tf_pos, when a scene declares it, is the whole position story:
+        //   0 none -- no position information reaches the model at all
+        //   1 additive PE -- the sinusoidal term added to the stream
+        //   2 RoPE -- q and k rotated by their slot, stream untouched
+        // Absent (-1), the scene-1..4 pair decides as it always did.
+        const posKind = _intRead('tf_pos', -1, -1, 2);
+        const ropeOn = posKind >= 0 ? (posKind === 2 ? 1 : 0) : (_read('s2_rope', 0) >= 0.5 ? 1 : 0);
         // RoPE REPLACES additive positional encoding; it does not stack on top
         // of it. Real models pick one scheme or the other, so whenever RoPE is
         // on the sinusoidal PE term is forced off no matter what s1_pe says.
-        const peOn = ropeOn ? 0 : _read('s1_pe', 1);
+        const peOn = posKind >= 0 ? (posKind === 1 ? 1 : 0) : (ropeOn ? 0 : _read('s1_pe', 1));
         const scale = _read('s3_scale', 1);
         const maskOn = _read('s3_mask', 0) >= 0.5 ? 1 : 0;
         const maskAfter = _read('s3_maskafter', 0) >= 0.5 ? 1 : 0;

@@ -5,8 +5,8 @@
     {
       "id": "tour-attention",
       "title": "Attention, per head — tfQh, tfKh, tfVh, tfAttnH, tfHeadOut, tfConcat, tfAttnOut",
-      "description": "One layer of attention with every head exposed: pick the head, change the head count or share K/V, and read each function's lattice.",
-      "markdown": "This lesson is a **function tour** of the transformer domain library, not a lesson about transformers: every lattice is labelled with the call that fills it, so an author can see what each function returns and how the `tf_*` sliders reshape it. The weights are the hand-built toy at layer 0 / head 0 and **seeded tables everywhere else — nothing here is learned.**\n\n## Attention, per head\n\n| function | shape | meaning |\n|---|---|---|\n| `tfH(0, i, d)` | n × d_model | the input stream x |\n| `tfWq(l, h, r, c)`, `tfWk(l, g, r, c)`, `tfWv(l, g, r, c)` | d_model × d_k | projections of head h / K-V head g |\n| `tfHeadKv(h)` | — | which K/V head query head h reads: ⌊h·n_kv/n_heads⌋ |\n| `tfQh`, `tfKh`, `tfVh (l, h, i, d)` | n × d_k | q, k, v as head h sees them |\n| `tfScoreH`, `tfScoreScaledH`, `tfAttnH (l, h, i, j)` | n × n | raw scores, scaled scores, weights |\n| `tfHeadOut(l, h, i, d)` | n × d_k | head h's output before W_O |\n| `tfConcat(l, i, c)` | n × n_heads·d_k | all heads side by side |\n| `tfWo(l, r, c)`, `tfAttnOut(l, i, d)` | · | the projection back to d_model, and the increment |\n\nDrag **head shown** to switch heads; **tf_heads** to 4 gives four heads of d_k = 1 (the concat stays 4 wide); **tf_kv** to 1 makes every head read the same K and V. The head count starts at 2 here because the lattices are drawn two head-dimensions wide: one head would mean d_k = 4, and its q, k and v would not fit. $W_O$ is a tensor slider bound to its lattice: hover a cell to edit it.",
+      "description": "One layer of attention at head 0: $W_Q$, $W_K$, $W_V$ and $W_O$ are edited on their own lattices, $E$ in the panel. Change the head count or share K/V, and read each function.",
+      "markdown": "This lesson is a **function tour** of the transformer domain library, not a lesson about transformers: every lattice is labelled with the call that fills it, so an author can see what each function returns and how the `tf_*` sliders reshape it. The weights are the hand-built toy at layer 0 / head 0 and **seeded tables everywhere else — nothing here is learned.**\n\n## Attention, per head\n\nHead $h$ reads K/V head $g=\\left\\lfloor h\\,n_{kv}/n_{heads}\\right\\rfloor$ — that is `tfHeadKv(h)`. $X$ below is the ENCODED stream: the embedding table $E$ plus the positional term, not the raw input. $E$ and $\\mathrm{PE}$ have lattices of their own to the left of it.\n\n**`tfH(0, i, d)`** · n × d_model · the encoded stream, one row per slot\n$$X_{id}=E_{id}+\\mathrm{PE}_{id}$$\n\n**`tfEmbBase(i, d)`**, **`tfPE(i, d)`** · n × d_model · the two terms of that sum\n$$E_{id},\\qquad \\mathrm{PE}_{id}=\\begin{cases}\\sin\\!\\left(i/10000^{\\,2p/d_{model}}\\right) & d=2p\\\\ \\cos\\!\\left(i/10000^{\\,2p/d_{model}}\\right) & d=2p+1\\end{cases}$$\n\n**`tfWq(l, h, r, c)`**, **`tfWk(l, g, r, c)`**, **`tfWv(l, g, r, c)`** · d_model × d_k\n$$\\bigl(W_Q^{(l,h)}\\bigr)_{rc},\\qquad \\bigl(W_K^{(l,g)}\\bigr)_{rc},\\qquad \\bigl(W_V^{(l,g)}\\bigr)_{rc}$$\n\n**`tfQh(l, h, i, d)`** · n × d_k · rotated by RoPE when **position scheme** is RoPE\n$$q_{id}=\\sum_{r}X_{ir}\\bigl(W_Q^{(h)}\\bigr)_{rd}$$\n\n**`tfKh(l, h, i, d)`** · n × d_k · shared by every head with the same $g$\n$$k_{id}=\\sum_{r}X_{ir}\\bigl(W_K^{(g)}\\bigr)_{rd}$$\n\n**`tfVh(l, h, i, d)`** · n × d_k · **never** rotated by RoPE\n$$v_{id}=\\sum_{r}X_{ir}\\bigl(W_V^{(g)}\\bigr)_{rd}$$\n\n**`tfScoreH(l, h, i, j)`** · n × n · raw, unscaled, unmasked\n$$S_{ij}=q_i\\cdot k_j$$\n\n**`tfScoreScaledH(l, h, i, j)`** · n × n · $s$ is the **divisor** slider\n$$\\tilde S_{ij}=\\frac{S_{ij}}{\\bigl(\\sqrt{d_k}\\bigr)^{s}}$$\n\n**`tfAttnH(l, h, i, j)`** · n × n · additive mask, **before** the softmax, so rows sum to 1\n$$A_{ij}=\\operatorname{softmax}_j\\bigl(\\tilde S_{ij}+m_{ij}\\bigr)$$\n$$m_{ij}=\\begin{cases}0 & j\\le i\\\\ -10^{9} & j>i\\end{cases}$$\n\n**`tfHeadOut(l, h, i, d)`** · n × d_k · head $h$'s output, before $W_O$\n$$O^{(h)}_{id}=\\sum_{j}A_{ij}\\,v_{jd}$$\n\n**`tfConcat(l, i, c)`** · n × n_heads·d_k · column $c$ belongs to head $\\lfloor c/d_k\\rfloor$\n$$C_{i,\\;h d_k+d}=O^{(h)}_{id}$$\n\n**`tfWo(l, r, c)`** · n_heads·d_k × d_model · the projection back to $d_{model}$\n$$\\bigl(W_O^{(l)}\\bigr)_{rc}$$\n\n**`tfAttnOut(l, i, d)`** · n × d_model · the increment attention adds to the stream\n$$\\bigl(C\\,W_O\\bigr)_{id}$$\n\nThis scene is **head 0**, the hand-built toy: there is no head selector, and every tensor head 0 reads is yours. **input $X$ — shape** swaps the whole embedding table $E$ for a canonical one — sparse one-hot, a ramp up, a ramp down, or every slot identical — so you can watch what the *shape* of $x$ does to the scores before touching a weight. At *the table below* it uses $E$, which is the editable one.\n\nWorth noticing on the way past: **sparse barely changes anything**, because the toy table is already one-hot — slot $i$ lights component $i \\bmod d_{model}$ — so the only slot it moves is the blended one, *mat*. Follow slot 5 to see it. The ramps and *uniform* are where the scores really move: under **uniform** every slot is identical, so nothing distinguishes one key from another and the row would be flat were it not for the positional encoding. $W_Q$, $W_K$, $W_V$ and $W_O$ are each bound to the lattice that shows them — hover a cell on the lattice itself to edit it, and watch the change travel the whole row. $E$ is edited in the panel rather than on its lattice: **input $X$ — shape** can replace the table, and a bound lattice would keep showing the slider's numbers instead of the preset actually in use.\n\nTwo places where a lattice shows more than the model reads, both known: the bound projections are drawn 4 × 2 whatever $d_k$ is, so at **tf_heads** 3 or 4 the second column is a weight `tfQh` never touches; and in *Stack and sample* the depth lattices past **tf_layers** blank rather than disappear, because a tensor cannot yet be hidden by expression.\n\n**tf_heads** still reshapes the model around it: at 4 you get four heads of $d_k = 1$ and the concat stays 4 wide, and head 0 keeps its own column while heads 1 to 3 run on seeded tables off screen. The count starts at 2 because the lattices are drawn two head-dimensions wide — one head would mean $d_k = 4$, and its q, k and v would not fit. **tf_kv** shows in the configuration card: head 0 always reads K/V head 0, so sharing changes the cache arithmetic rather than these lattices.\n\n**position scheme** has three settings, and the third only means anything because the first exists. At **none** no position information reaches the model at all: the token *the* at slot 0 and at slot 4 is the same vector, $(1,0,0,0)$, and attention has no way to tell them apart. **additive PE** writes position into the stream — those two slots become $(1,1,0,1)$ and $(0.24,-0.65,0.04,1.00)$, and every lattice downstream inherits it. **RoPE** leaves the stream exactly as **none** left it — compare the `tfH` lattice, it does not move — and rotates $q$ and $k$ instead: $q_2$ goes from $(3.00, 0)$ to $(-1.25, 2.73)$, so the scores change while the input does not. That is the whole idea: position enters the comparison rather than the content, and because both $q$ and $k$ turn, $q_i\\cdot k_j$ depends on $i-j$ alone.\n\n## The arithmetic\n\nQuery head $h$ reads K/V head $g=\\lfloor h\\,n_{kv}/n_{heads}\\rfloor$ (`tfHeadKv(h)`), so with $X$ the stream `tfH(0, i, d)`:\n\n$$Q = X\\,W_Q^{(h)},\\qquad K = X\\,W_K^{(g)},\\qquad V = X\\,W_V^{(g)}\\qquad (n\\times d_k)$$\n\n$$S_{ij}=q_i\\cdot k_j,\\qquad \\tilde S_{ij}=\\frac{S_{ij}}{\\left(\\sqrt{d_k}\\right)^{s}}$$\n\n$s$ is the **divisor** slider: $s=0$ divides by $1$, $s=1$ by $\\sqrt{d_k}$, and the values between are the interpolation you can drag through.\n\n$$A_{ij}=\\operatorname{softmax}_j\\!\\left(\\tilde S_{ij}+m_{ij}\\right),\\qquad m_{ij}=\\begin{cases}0 & j\\le i\\\\[2pt] -10^{9} & j>i\\end{cases}$$\n\nThe mask is **additive and applied before the softmax**, so every row of `tfAttnH` sums to exactly 1. (Masking after the softmax, by zeroing the future, leaves rows that do not sum to 1 — that is a misconception beat elsewhere, not reachable here.)\n\n$$O^{(h)}_{id}=\\sum_{j} A_{ij}\\,v_{jd},\\qquad \\operatorname{concat}_{i,\\;h\\,d_k+d}=O^{(h)}_{id},\\qquad \\texttt{tfAttnOut} = \\operatorname{concat}\\,W_O$$\n\nso column $c$ of `tfConcat` belongs to head $\\lfloor c/d_k\\rfloor$, and $W_O$ is $n_{heads}d_k\\times d_{model}$.\n\n**Each query row is computed on its own.** Row $i$ depends on $q_i$ and on *all* of $k_j,v_j$ — and on no other query. That is why **query slot to follow** moves the two charts and leaves every lattice still: it selects a row of a table that is already complete. It is also why $K$ and $V$ are worth caching, and why all $n$ queries are one matmul rather than a loop.",
       "prompt": "A function tour of the general transformer engine, attention part. Every lattice is labelled with the domain call that fills it. Weights beyond layer 0 / head 0 are seeded, not learned; say so if asked what the numbers mean.",
       "range": [
         [-22, 28],
@@ -21,17 +21,38 @@
         {
           "name": "All",
           "position": [2.5, 1.5, 40.0],
-          "target": [2.5, 1.5, 0.0]
+          "target": [2.5, 1.5, 0.0],
+          "description": ""
         },
         {
-          "name": "Heads",
-          "position": [-8.0, 1.5, 22.0],
-          "target": [-8.0, 1.5, 0.0]
+          "name": "Inputs",
+          "description": "The embedding table, the positional term, and the stream that is their sum.",
+          "position": [-17.5, 4.09, 24.0],
+          "target": [-17.5, 4.09, 0.0]
         },
         {
-          "name": "Concat",
-          "position": [18.0, 1.5, 20.0],
-          "target": [18.0, 1.5, 0.0]
+          "name": "QKV",
+          "description": "The three projections and the q, k, v they produce for head 0.",
+          "position": [-7.2, 3.29, 21.5],
+          "target": [-7.2, 3.29, 0.0]
+        },
+        {
+          "name": "Attention",
+          "description": "Scaled scores and the attention weights the softmax turns them into.",
+          "position": [5.4, 0.29, 13.0],
+          "target": [5.4, 0.29, 0.0]
+        },
+        {
+          "name": "Output",
+          "description": "Head output, the concatenation, W_O, and the increment attention adds.",
+          "position": [18.8, 3.29, 21.5],
+          "target": [18.8, 3.29, 0.0]
+        },
+        {
+          "name": "Attention Charts",
+          "description": "Scores and weights for the query slot being followed, as curves.",
+          "position": [5.4, -8.0, 13.0],
+          "target": [5.4, -8.0, 0.0]
         }
       ],
       "elements": [],
@@ -39,15 +60,77 @@
         {
           "id": "tour-attention-all",
           "title": "Attention, per head — tfQh, tfKh, tfVh, tfAttnH, tfHeadOut, tfConcat, tfAttnOut",
-          "description": "One layer of attention with every head exposed: pick the head, change the head count or share K/V, and read each function's lattice.",
+          "description": "One layer of attention at head 0: $W_Q$, $W_K$, $W_V$ and $W_O$ are edited on their own lattices, $E$ in the panel. Change the head count or share K/V, and read each function.",
           "sliders": [
-            {"id": "demo_h", "label": "head shown ($h$)", "min": 0, "max": 3, "step": 1, "default": 0, "valueExpr": "concat('head ', string(demo_h))"},
             {"id": "demo_i", "label": "query slot to follow ($i$)", "min": 0, "max": 5, "step": 1, "default": 2, "valueExpr": "concat(string(demo_i), ' · ', tfToken(demo_i))"},
             {"id": "tf_heads", "label": "tf_heads — query heads (2..4 here: d_k stays <= 2)", "min": 2, "max": 4, "step": 1, "default": 2, "valueExpr": "string(tf_heads)"},
             {"id": "tf_kv", "label": "tf_kv — K/V heads", "min": 1, "max": 4, "step": 1, "default": 2, "valueExpr": "concat(string(tfKv()), tfKv() == tf_kv ? '' : concat(' (asked ', string(tf_kv), ')'))"},
             {"id": "s3_mask", "label": "causal mask", "min": 0, "max": 1, "step": 1, "default": 1, "valueExpr": "s3_mask >= 0.5 ? 'on' : 'off'"},
             {"id": "s3_scale", "label": "divisor: 1 (none) → $\\sqrt{d_k}$", "min": 0, "max": 1, "step": 0.05, "default": 1},
-            {"id": "s2_rope", "label": "position scheme", "min": 0, "max": 1, "step": 1, "default": 0, "valueExpr": "s2_rope >= 0.5 ? 'RoPE' : 'additive PE'"},
+            {"id": "tf_pos", "label": "position scheme", "min": 0, "max": 2, "step": 1, "default": 1, "valueExpr": "tf_pos < 0.5 ? 'none' : (tf_pos < 1.5 ? 'additive PE' : 'RoPE')"},
+            {"id": "tf_emb_kind", "label": "input $X$ — shape", "min": 0, "max": 4, "step": 1, "default": 0, "valueExpr": "tf_emb_kind < 0.5 ? 'the table below' : (tf_emb_kind < 1.5 ? 'sparse (one-hot)' : (tf_emb_kind < 2.5 ? 'ramp up' : (tf_emb_kind < 3.5 ? 'ramp down' : 'uniform')))"},
+            {
+              "id": "tf_emb",
+              "kind": "tensor",
+              "label": "embedding table $E$ (before PE)",
+              "shape": [6, 4],
+              "min": -2,
+              "max": 2,
+              "step": 0.05,
+              "default": [
+                [1, 0, 0, 0],
+                [0, 1, 0, 0],
+                [0, 0, 1, 0],
+                [0, 0, 0, 1],
+                [1, 0, 0, 0],
+                [0.5, 0.5, 0, 0.5]
+              ]
+            },
+            {
+              "id": "tf_wq_0_0",
+              "kind": "tensor",
+              "label": "$W_Q$ (head 0)",
+              "shape": [4, 2],
+              "min": -3,
+              "max": 3,
+              "step": 0.05,
+              "default": [
+                [0, 0],
+                [0, 0],
+                [3, 0],
+                [0, 1]
+              ]
+            },
+            {
+              "id": "tf_wk_0_0",
+              "kind": "tensor",
+              "label": "$W_K$ (K/V head 0)",
+              "shape": [4, 2],
+              "min": -3,
+              "max": 3,
+              "step": 0.05,
+              "default": [
+                [0, 0],
+                [3, 0],
+                [0, 0],
+                [0, 1]
+              ]
+            },
+            {
+              "id": "tf_wv_0_0",
+              "kind": "tensor",
+              "label": "$W_V$ (K/V head 0)",
+              "shape": [4, 2],
+              "min": -3,
+              "max": 3,
+              "step": 0.05,
+              "default": [
+                [1, 0],
+                [0, 1],
+                [0, 0],
+                [0, 0]
+              ]
+            },
             {
               "id": "tf_wo_0",
               "kind": "tensor",
@@ -78,17 +161,17 @@
               "color": "#26c6da",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "tfH(0, row, col) — the input stream $x$",
+              "label": "tfH(0, row, col) — the encoded stream $X$",
               "axes": [
                 {"color": "#26c6da", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfH(0, row, col) — the input stream $x$",
+                  "title": "tfH(0, row, col) — the encoded stream $X$",
                   "color": "#26c6da",
                   "labels": ["$x_0$", "$x_1$", "$x_2$", "$x_3$"]
                 }
               ],
               "textExpr": "toFixed(value, 2)",
-              "prompt": "tfH(l, i, d): component d of the residual stream entering layer l at slot i. Layer 0 is x: embedding plus positional encoding.",
+              "prompt": "tfH(0, i, d): component d of the ENCODED stream at slot i — the embedding row plus the positional term, which the E and PE lattices to the left show separately. This is what W_Q, W_K and W_V read.",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
             },
@@ -96,7 +179,7 @@
               "id": "t1_wq",
               "type": "tensor",
               "shape": [4, 2],
-              "valueExpr": "(col < tfDk() and demo_h < tfHeads()) ? (tfWq(0, demo_h, row, col)) : 0",
+              "valueExpr": "(col < tfDk()) ? (tfWq(0, 0, row, col)) : 0",
               "origin": [-11.2, 4.6, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -105,28 +188,29 @@
               "color": "#ffa726",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "tfWq(0, h, row, col)",
+              "label": "tfWq(0, 0, row, col)",
               "axes": [
                 {
                   "color": "#ffa726",
                   "labels": ["$x_0$", "$x_1$", "$x_2$", "$x_3$"]
                 },
                 {
-                  "title": "tfWq(0, h, row, col)",
+                  "title": "tfWq(0, 0, row, col)",
                   "color": "#ffa726",
                   "labels": ["$q_0$", "$q_1$"]
                 }
               ],
-              "textExpr": "(col < tfDk() and demo_h < tfHeads()) ? (toFixed(value, 2)) : ''",
-              "prompt": "W_Q of layer 0, head demo_h. Head 0 is the hand-built toy; other heads are seeded tables. Every W is read by tfWq/tfWk/tfWv with (layer, head, row, col).",
+              "textExpr": "(col < tfDk()) ? (toFixed(value, 2)) : ''",
+              "prompt": "W_Q of layer 0, head 0. Head 0 is the hand-built toy; other heads are seeded tables. Every W is read by tfWq/tfWk/tfWv with (layer, head, row, col). Drawn 4 x 2 whatever d_k is: at tf_heads 3 or 4, d_k is 1 and the second column is a weight the model never reads.",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
-              "heightExpr": "max(0.15, min(1, abs(value) / 2))"
+              "heightExpr": "max(0.15, min(1, abs(value) / 2))",
+              "bind": "tf_wq_0_0"
             },
             {
               "id": "t1_wk",
               "type": "tensor",
               "shape": [4, 2],
-              "valueExpr": "(col < tfDk() and demo_h < tfHeads()) ? (tfWk(0, tfHeadKv(demo_h), row, col)) : 0",
+              "valueExpr": "(col < tfDk()) ? (tfWk(0, 0, row, col)) : 0",
               "origin": [-8.0, 4.6, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -135,7 +219,7 @@
               "color": "#42a5f5",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "tfWk(0, tfHeadKv(h), row, col)",
+              "label": "tfWk(0, 0, row, col)",
               "axes": [
                 {
                   "color": "#42a5f5",
@@ -147,16 +231,17 @@
                   "labels": ["$k_0$", "$k_1$"]
                 }
               ],
-              "textExpr": "(col < tfDk() and demo_h < tfHeads()) ? (toFixed(value, 2)) : ''",
-              "prompt": "W_K of the K/V head that query head demo_h reads: tfHeadKv(h) = floor(h · n_kv / n_heads). With tf_kv = 1 every head reads the same one.",
+              "textExpr": "(col < tfDk()) ? (toFixed(value, 2)) : ''",
+              "prompt": "W_K of the K/V head that query head 0 reads: tfHeadKv(h) = floor(h · n_kv / n_heads). With tf_kv = 1 every head reads the same one. Drawn 4 x 2 whatever d_k is: at tf_heads 3 or 4, d_k is 1 and the second column is a weight the model never reads.",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
-              "heightExpr": "max(0.15, min(1, abs(value) / 2))"
+              "heightExpr": "max(0.15, min(1, abs(value) / 2))",
+              "bind": "tf_wk_0_0"
             },
             {
               "id": "t1_wv",
               "type": "tensor",
               "shape": [4, 2],
-              "valueExpr": "(col < tfDk() and demo_h < tfHeads()) ? (tfWv(0, tfHeadKv(demo_h), row, col)) : 0",
+              "valueExpr": "(col < tfDk()) ? (tfWv(0, 0, row, col)) : 0",
               "origin": [-4.8, 4.6, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -165,7 +250,7 @@
               "color": "#66bb6a",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "tfWv(0, tfHeadKv(h), row, col)",
+              "label": "tfWv(0, 0, row, col)",
               "axes": [
                 {
                   "color": "#66bb6a",
@@ -177,16 +262,17 @@
                   "labels": ["$v_0$", "$v_1$"]
                 }
               ],
-              "textExpr": "(col < tfDk() and demo_h < tfHeads()) ? (toFixed(value, 2)) : ''",
-              "prompt": "W_V of the K/V head that query head demo_h reads.",
+              "textExpr": "(col < tfDk()) ? (toFixed(value, 2)) : ''",
+              "prompt": "W_V of the K/V head that query head 0 reads. Drawn 4 x 2 whatever d_k is: at tf_heads 3 or 4, d_k is 1 and the second column is a weight the model never reads.",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
-              "heightExpr": "max(0.15, min(1, abs(value) / 2))"
+              "heightExpr": "max(0.15, min(1, abs(value) / 2))",
+              "bind": "tf_wv_0_0"
             },
             {
               "id": "t1_q",
               "type": "tensor",
               "shape": [6, 2],
-              "valueExpr": "(col < tfDk() and demo_h < tfHeads()) ? (tfQh(0, demo_h, row, col)) : 0",
+              "valueExpr": "(col < tfDk()) ? (tfQh(0, 0, row, col)) : 0",
               "origin": [-11.2, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -195,17 +281,17 @@
               "color": "#ffa726",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "tfQh(0, h, row, col)",
+              "label": "tfQh(0, 0, row, col)",
               "axes": [
                 {"color": "#ffa726", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfQh(0, h, row, col)",
+                  "title": "tfQh(0, 0, row, col) — $Q$",
                   "color": "#ffa726",
                   "labels": ["$q_0$", "$q_1$"]
                 }
               ],
-              "textExpr": "(col < tfDk() and demo_h < tfHeads()) ? (toFixed(value, 2)) : ''",
-              "prompt": "q of every slot in layer 0, head demo_h (RoPE applied when s2_rope = 1).",
+              "textExpr": "(col < tfDk()) ? (toFixed(value, 2)) : ''",
+              "prompt": "q of every slot in layer 0, head 0 (rotated when the position scheme is RoPE).",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
             },
@@ -213,7 +299,7 @@
               "id": "t1_k",
               "type": "tensor",
               "shape": [6, 2],
-              "valueExpr": "(col < tfDk() and demo_h < tfHeads()) ? (tfKh(0, demo_h, row, col)) : 0",
+              "valueExpr": "(col < tfDk()) ? (tfKh(0, 0, row, col)) : 0",
               "origin": [-8.0, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -222,17 +308,17 @@
               "color": "#42a5f5",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "tfKh(0, h, row, col)",
+              "label": "tfKh(0, 0, row, col)",
               "axes": [
                 {"color": "#42a5f5", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfKh(0, h, row, col)",
+                  "title": "tfKh(0, 0, row, col) — $K$",
                   "color": "#42a5f5",
                   "labels": ["$k_0$", "$k_1$"]
                 }
               ],
-              "textExpr": "(col < tfDk() and demo_h < tfHeads()) ? (toFixed(value, 2)) : ''",
-              "prompt": "k as read by head demo_h: its K/V head's keys.",
+              "textExpr": "(col < tfDk()) ? (toFixed(value, 2)) : ''",
+              "prompt": "k as read by head 0: its K/V head's keys.",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
             },
@@ -240,7 +326,7 @@
               "id": "t1_v",
               "type": "tensor",
               "shape": [6, 2],
-              "valueExpr": "(col < tfDk() and demo_h < tfHeads()) ? (tfVh(0, demo_h, row, col)) : 0",
+              "valueExpr": "(col < tfDk()) ? (tfVh(0, 0, row, col)) : 0",
               "origin": [-4.8, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -249,17 +335,17 @@
               "color": "#66bb6a",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "tfVh(0, h, row, col)",
+              "label": "tfVh(0, 0, row, col)",
               "axes": [
                 {"color": "#66bb6a", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfVh(0, h, row, col)",
+                  "title": "tfVh(0, 0, row, col) — $V$",
                   "color": "#66bb6a",
                   "labels": ["$v_0$", "$v_1$"]
                 }
               ],
-              "textExpr": "(col < tfDk() and demo_h < tfHeads()) ? (toFixed(value, 2)) : ''",
-              "prompt": "v as read by head demo_h. Never rotated by RoPE.",
+              "textExpr": "(col < tfDk()) ? (toFixed(value, 2)) : ''",
+              "prompt": "v as read by head 0. Never rotated by RoPE.",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
             },
@@ -267,7 +353,7 @@
               "id": "t1_s",
               "type": "tensor",
               "shape": [6, 6],
-              "valueExpr": "(demo_h < tfHeads()) ? (tfScoreScaledH(0, demo_h, row, col)) : 0",
+              "valueExpr": "tfScoreScaledH(0, 0, row, col)",
               "origin": [-0.4, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -276,17 +362,17 @@
               "color": "#ffa726",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "tfScoreScaledH(0, h, i, j)",
+              "label": "tfScoreScaledH(0, 0, i, j)",
               "axes": [
                 {"color": "#ffa726", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfScoreScaledH(0, h, i, j)",
+                  "title": "tfScoreScaledH(0, 0, i, j) — $\\tilde S$",
                   "color": "#ffa726",
                   "labels": ["the", "cat", "sat", "on", "the", "mat"]
                 }
               ],
-              "textExpr": "(demo_h < tfHeads()) ? (toFixed(value, 2)) : ''",
-              "prompt": "Scaled scores of head demo_h: tfScoreH / (sqrt d_k)^s3_scale. tfScoreH gives the raw dot products.",
+              "textExpr": "toFixed(value, 2)",
+              "prompt": "Scaled scores of head 0: tfScoreH / (sqrt d_k)^s3_scale. tfScoreH gives the raw dot products.",
               "widthExpr": "max(0.15, min(1, abs(value) / 16))",
               "heightExpr": "max(0.15, min(1, abs(value) / 16))"
             },
@@ -294,7 +380,7 @@
               "id": "t1_a",
               "type": "tensor",
               "shape": [6, 6],
-              "valueExpr": "(demo_h < tfHeads()) ? (tfAttnH(0, demo_h, row, col)) : 0",
+              "valueExpr": "tfAttnH(0, 0, row, col)",
               "origin": [6.4, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -303,17 +389,17 @@
               "color": "#66bb6a",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "tfAttnH(0, h, i, j)",
+              "label": "tfAttnH(0, 0, i, j)",
               "axes": [
                 {"color": "#66bb6a", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfAttnH(0, h, i, j)",
+                  "title": "tfAttnH(0, 0, i, j) — $A$",
                   "color": "#66bb6a",
                   "labels": ["the", "cat", "sat", "on", "the", "mat"]
                 }
               ],
-              "textExpr": "(demo_h < tfHeads()) ? (value >= 0.005 ? toFixed(value, 2) : '') : ''",
-              "prompt": "Attention weights of head demo_h, honouring s3_scale, s3_mask and s3_maskafter. Rows sum to 1.",
+              "textExpr": "value >= 0.005 ? toFixed(value, 2) : ''",
+              "prompt": "Attention weights of head 0, honouring s3_scale, s3_mask and s3_maskafter. Rows sum to 1.",
               "depthExpr": "value * 1.5",
               "widthExpr": "max(0.15, min(1, value))",
               "heightExpr": "max(0.15, min(1, value))"
@@ -322,7 +408,7 @@
               "id": "t1_o",
               "type": "tensor",
               "shape": [6, 2],
-              "valueExpr": "(col < tfDk() and demo_h < tfHeads()) ? (tfHeadOut(0, demo_h, row, col)) : 0",
+              "valueExpr": "(col < tfDk()) ? (tfHeadOut(0, 0, row, col)) : 0",
               "origin": [13.2, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -331,17 +417,17 @@
               "color": "#ab47bc",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "tfHeadOut(0, h, row, col)",
+              "label": "tfHeadOut(0, 0, row, col)",
               "axes": [
                 {"color": "#ab47bc", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfHeadOut(0, h, row, col)",
+                  "title": "tfHeadOut(0, 0, row, col) — $O^{(h)}$",
                   "color": "#ab47bc",
                   "labels": ["$o_0$", "$o_1$"]
                 }
               ],
-              "textExpr": "(col < tfDk() and demo_h < tfHeads()) ? (toFixed(value, 2)) : ''",
-              "prompt": "Head demo_h's own output before concatenation and W_O: the attention-weighted average of its value rows.",
+              "textExpr": "(col < tfDk()) ? (toFixed(value, 2)) : ''",
+              "prompt": "Head 0's own output before concatenation and W_O: the attention-weighted average of its value rows.",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
             },
@@ -362,7 +448,7 @@
               "axes": [
                 {"color": "#f06292", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfConcat(0, row, c) — all heads side by side",
+                  "title": "tfConcat(0, row, c) — all heads side by side = $C$",
                   "color": "#f06292",
                   "labels": ["$c_0$", "$c_1$", "$c_2$", "$c_3$"]
                 }
@@ -410,14 +496,14 @@
               "size": [4.8, 4],
               "color": "#ffa726",
               "series": [
-                {"kind": "points", "n": 6, "xExpr": "(demo_h < tfHeads()) ? i : -99", "yExpr": "tfScoreScaledH(0, demo_h, demo_i, i)", "color": "#ffa726", "size": 5, "label": "tfScoreScaledH(0, h, i, j)"}
+                {"kind": "points", "n": 6, "xExpr": "i", "yExpr": "tfScoreScaledH(0, 0, demo_i, i)", "color": "#ffa726", "size": 5, "label": "tfScoreScaledH(0, 0, i, j)"}
               ],
               "axes": [
                 {"title": "key slot $j$", "ticks": 6, "labelExpr": "tfToken(value)"},
                 {"title": "scaled score", "ticks": 4}
               ],
-              "label": "row $i$ of the scaled scores, head $h$",
-              "prompt": "The scaled scores of query slot demo_i against every key, for the head shown. The mask has not been applied: masked keys still have a score.",
+              "label": "row $i$ of the scaled scores, head 0",
+              "prompt": "The scaled scores of query slot demo_i against every key, for head 0. The mask has not been applied: masked keys still have a score.",
               "xDomain": [-0.5, 5.5]
             },
             {
@@ -427,13 +513,13 @@
               "size": [4.8, 4],
               "color": "#66bb6a",
               "series": [
-                {"kind": "points", "n": 6, "xExpr": "(demo_h < tfHeads()) ? i : -99", "yExpr": "tfAttnH(0, demo_h, demo_i, i)", "color": "#66bb6a", "size": 5, "label": "tfAttnH(0, h, i, j)"}
+                {"kind": "points", "n": 6, "xExpr": "i", "yExpr": "tfAttnH(0, 0, demo_i, i)", "color": "#66bb6a", "size": 5, "label": "tfAttnH(0, 0, i, j)"}
               ],
               "axes": [
                 {"title": "key slot $j$", "ticks": 6, "labelExpr": "tfToken(value)"},
                 {"title": "weight", "ticks": 4}
               ],
-              "label": "row $i$ of the attention weights, head $h$",
+              "label": "row $i$ of the attention weights, head 0",
               "prompt": "Softmax of the scaled-score row with the causal mask applied: masked keys are 0, the rest sum to 1.",
               "xDomain": [-0.5, 5.5],
               "yDomain": [0, 1]
@@ -464,10 +550,183 @@
               "prompt": "The attention sub-layer's increment to the stream: concat × W_O, back at d_model width. Multi-head does not widen the stream.",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
+            },
+            {
+              "id": "t1_x_math",
+              "type": "text",
+              "text": "$E + \\mathrm{PE}$",
+              "position": [-15.4, 3.58, 0],
+              "color": "#26c6da"
+            },
+            {
+              "id": "t1_wq_math",
+              "type": "text",
+              "text": "$W_Q^{(0)}$",
+              "position": [-10.4, 9.58, 0],
+              "color": "#ffa726"
+            },
+            {
+              "id": "t1_wk_math",
+              "type": "text",
+              "text": "$W_K^{(0)}$",
+              "position": [-7.2, 9.58, 0],
+              "color": "#42a5f5"
+            },
+            {
+              "id": "t1_wv_math",
+              "type": "text",
+              "text": "$W_V^{(0)}$",
+              "position": [-4.0, 9.58, 0],
+              "color": "#66bb6a"
+            },
+            {
+              "id": "t1_q_math",
+              "type": "text",
+              "text": "$X W_Q$",
+              "position": [-10.4, 3.58, 0],
+              "color": "#ffa726"
+            },
+            {
+              "id": "t1_k_math",
+              "type": "text",
+              "text": "$X W_K$",
+              "position": [-7.2, 3.58, 0],
+              "color": "#42a5f5"
+            },
+            {
+              "id": "t1_v_math",
+              "type": "text",
+              "text": "$X W_V$",
+              "position": [-4.0, 3.58, 0],
+              "color": "#66bb6a"
+            },
+            {
+              "id": "t1_s_math",
+              "type": "text",
+              "text": "$QK^{\\top}\\!/(\\sqrt{d_k})^{s}$",
+              "position": [2.0, 3.58, 0],
+              "color": "#ffa726"
+            },
+            {
+              "id": "t1_a_math",
+              "type": "text",
+              "text": "$\\mathrm{softmax}$",
+              "position": [8.8, 3.58, 0],
+              "color": "#66bb6a"
+            },
+            {
+              "id": "t1_o_math",
+              "type": "text",
+              "text": "$A\\,V$",
+              "position": [14.0, 3.58, 0],
+              "color": "#ab47bc"
+            },
+            {
+              "id": "t1_cat_math",
+              "type": "text",
+              "text": "$[\\,O^{(0)} \\cdots\\,]$",
+              "position": [18.0, 3.58, 0],
+              "color": "#f06292"
+            },
+            {
+              "id": "t1_wo_math",
+              "type": "text",
+              "text": "$W_O$",
+              "position": [22.8, 9.58, 0],
+              "color": "#f06292"
+            },
+            {
+              "id": "t1_ao_math",
+              "type": "text",
+              "text": "$C\\,W_O$",
+              "position": [22.8, 3.58, 0],
+              "color": "#f06292"
+            },
+            {
+              "id": "t1_chart_s_math",
+              "type": "text",
+              "text": "$\\tilde S_{ij}$",
+              "position": [2.0, -5.5, 0],
+              "color": "#ffa726"
+            },
+            {
+              "id": "t1_chart_a_math",
+              "type": "text",
+              "text": "$A_{ij}$",
+              "position": [8.8, -5.5, 0],
+              "color": "#66bb6a"
+            },
+            {
+              "id": "t1_emb",
+              "type": "tensor",
+              "shape": [6, 4],
+              "valueExpr": "tfEmbBase(row, col)",
+              "origin": [-21.2, -3.0, 0],
+              "cellSize": 0.8,
+              "plane": "xy",
+              "colorMap": "blueRed",
+              "colorDomain": [-2, 2],
+              "color": "#26c6da",
+              "opacity": 0.95,
+              "shader": {"ignorePlaneOpacity": true},
+              "label": "tfEmbBase(row, col) — $E$",
+              "axes": [
+                {"color": "#26c6da", "labelExpr": "tfToken(row)"},
+                {
+                  "title": "tfEmbBase(row, col) — $E$",
+                  "color": "#26c6da",
+                  "labels": ["$x_0$", "$x_1$", "$x_2$", "$x_3$"]
+                }
+              ],
+              "textExpr": "toFixed(value, 2)",
+              "prompt": "The embedding table in force, before any position information. This is what the tf_emb tensor slider edits and what input X — shape replaces.",
+              "widthExpr": "max(0.15, min(1, abs(value) / 2))",
+              "heightExpr": "max(0.15, min(1, abs(value) / 2))"
+            },
+            {
+              "id": "t1_emb_math",
+              "type": "text",
+              "text": "$E$",
+              "position": [-19.6, 3.58, 0],
+              "color": "#26c6da"
+            },
+            {
+              "id": "t1_pe",
+              "type": "tensor",
+              "shape": [6, 4],
+              "valueExpr": "(tf_pos == 1) ? (tfPE(row, col)) : 0",
+              "origin": [-21.2, 4.6, 0],
+              "cellSize": 0.8,
+              "plane": "xy",
+              "colorMap": "blueRed",
+              "colorDomain": [-2, 2],
+              "color": "#b0bec5",
+              "opacity": 0.95,
+              "shader": {"ignorePlaneOpacity": true},
+              "label": "tfPE(row, col) — $\\mathrm{PE}$",
+              "axes": [
+                {"color": "#b0bec5", "labelExpr": "tfToken(row)"},
+                {
+                  "title": "tfPE(row, col) — $\\mathrm{PE}$",
+                  "color": "#b0bec5",
+                  "labels": ["$x_0$", "$x_1$", "$x_2$", "$x_3$"]
+                }
+              ],
+              "textExpr": "toFixed(value, 2)",
+              "prompt": "The sinusoidal term actually added to the stream: sin for even components, cos for odd. All zero unless the position scheme is additive PE — under none nothing is added, and under RoPE position enters as a rotation of q and k instead.",
+              "widthExpr": "max(0.15, min(1, abs(value) / 2))",
+              "heightExpr": "max(0.15, min(1, abs(value) / 2))"
+            },
+            {
+              "id": "t1_pe_math",
+              "type": "text",
+              "text": "$\\mathrm{PE}$",
+              "position": [-19.6, 11.18, 0],
+              "color": "#b0bec5"
             }
           ],
           "info": [
-            {"id": "tour_cfg", "position": "top-left", "title": "The configuration in force", "content": "n = {{tfN()}} tokens · $d_{\\text{model}}$ = {{tfDModel()}} · $d_k$ = {{tfDk()}} · heads = {{tfHeads()}} · K/V heads = {{tfKv()}} · layers = {{tfLayers()}} · $d_{ff}$ = {{tfDff()}} · vocabulary = {{tfVocabN()}} words\\n\\nK/V cache = {{tfKvCache()}} numbers (2 · n · n_kv · d_k per layer) — sharing saves ×{{tfKvSaving()}}. Head 0 reads K/V head {{tfHeadKv(0)}}, head 1 reads {{tfHeadKv(1)}}, and the last head ({{tfHeads() - 1}}) reads {{tfHeadKv(tfHeads() - 1)}}."}
+            {"id": "tour_cfg", "position": "bottom-left", "title": "The configuration in force", "content": "n = {{tfN()}} tokens · $d_{\\text{model}}$ = {{tfDModel()}} · $d_k$ = {{tfDk()}} · heads = {{tfHeads()}} · K/V heads = {{tfKv()}} · layers = {{tfLayers()}} · $d_{ff}$ = {{tfDff()}} · vocabulary = {{tfVocabN()}} words\\n\\nK/V cache = {{tfKvCache()}} numbers (2 · n · n_kv · d_k per layer) — sharing saves ×{{tfKvSaving()}}. Head 0 reads K/V head {{tfHeadKv(0)}}, head 1 reads {{tfHeadKv(1)}}, and the last head ({{tfHeads() - 1}}) reads {{tfHeadKv(tfHeads() - 1)}}."}
           ],
           "prompt": "A function tour of the general transformer engine, attention part. Every lattice is labelled with the domain call that fills it. Weights beyond layer 0 / head 0 are seeded, not learned; say so if asked what the numbers mean."
         }
@@ -477,7 +736,7 @@
       "id": "tour-block",
       "title": "The block — tfAttnIn, tfResid1, tfFfIn, tfFfPre, tfFfHidden, tfFfOut, tfResid2",
       "description": "The residual stream through one layer: attention increment, FFN increment, and where the norms sit.",
-      "markdown": "This lesson is a **function tour** of the transformer domain library, not a lesson about transformers: every lattice is labelled with the call that fills it, so an author can see what each function returns and how the `tf_*` sliders reshape it. The weights are the hand-built toy at layer 0 / head 0 and **seeded tables everywhere else — nothing here is learned.**\n\n## The block\n\n| function | meaning |\n|---|---|\n| `tfH(l, i, d)` | stream entering layer l |\n| `tfAttnIn(l, i, d)` | what attention reads (normed under pre-norm) |\n| `tfAttnOut(l, i, d)` | the attention increment |\n| `tfResid1(l, i, d)` | after the first residual add |\n| `tfFfIn(l, i, d)` | what the FFN reads |\n| `tfFfPre(l, i, k)`, `tfFfHidden(l, i, k)` | hidden units before / after the activation |\n| `tfW1(l, r, c)`, `tfW2(l, r, c)` | the FFN weights |\n| `tfFfOut(l, i, d)` | the FFN increment |\n| `tfResid2(l, i, d)` | stream leaving layer l (= tfH(l+1)) |\n\nSwitch **tf_norm** between none, LayerNorm and RMSNorm and **tf_prenorm** between pre and post; the card checks the residual identity and the row mean live. **tf_act** changes what happens between `tfFfPre` and `tfFfHidden`.",
+      "markdown": "This lesson is a **function tour** of the transformer domain library, not a lesson about transformers: every lattice is labelled with the call that fills it, so an author can see what each function returns and how the `tf_*` sliders reshape it. The weights are the hand-built toy at layer 0 / head 0 and **seeded tables everywhere else — nothing here is learned.**\n\n## The block\n\n$h^{(l)}$ is the stream entering layer $l$, $N$ the normalisation in force, and $\\phi$ the activation. Each entry gives pre-norm first, post-norm after the semicolon where they differ.\n\n**`tfH(l, i, d)`** · stream entering layer $l$\n$$h^{(l)}_{id}$$\n\n**`tfAttnIn(l, i, d)`** · what attention reads\n$$a=N\\!\\left(h^{(l)}\\right);\\qquad a=h^{(l)}$$\n\n**`tfAttnOut(l, i, d)`** · the attention increment\n$$\\operatorname{Attn}(a)_{id}$$\n\n**`tfResid1(l, i, d)`** · after the first residual add\n$$r_1=h^{(l)}+\\operatorname{Attn}(a);\\qquad r_1=N\\!\\left(h^{(l)}+\\operatorname{Attn}(a)\\right)$$\n\n**`tfFfIn(l, i, d)`** · what the FFN reads\n$$f=N(r_1);\\qquad f=r_1$$\n\n**`tfW1(l, r, c)`**, **`tfW2(l, r, c)`** · d_model × d_ff, then d_ff × d_model\n$$\\bigl(W_1^{(l)}\\bigr)_{rc},\\qquad \\bigl(W_2^{(l)}\\bigr)_{rc}$$\n\n**`tfFfPre(l, i, k)`** · hidden units before the activation\n$$u_{ik}=\\bigl(f\\,W_1\\bigr)_{ik}$$\n\n**`tfFfHidden(l, i, k)`** · after it — SwiGLU is the exception, see below\n$$\\phi(u_{ik})$$\n\n**`tfFfOut(l, i, d)`** · the FFN increment\n$$\\bigl(\\phi(u)\\,W_2\\bigr)_{id}$$\n\n**`tfResid2(l, i, d)`** · stream leaving layer $l$, and equal to `tfH(l+1)`\n$$r_2=r_1+\\operatorname{FFN}(f);\\qquad r_2=N\\!\\left(r_1+\\operatorname{FFN}(f)\\right)$$\n\nSwitch **tf_norm** between none, LayerNorm and RMSNorm and **tf_prenorm** between pre and post; the card checks the residual identity and the row mean live. **tf_act** changes what happens between `tfFfPre` and `tfFfHidden`.\n\nThis scene is layer 0 and only layer 0: there is no layer selector, and both of its FFN weights are yours — $W_1$ and $W_2$ are tensor sliders bound to their lattices, so hover a cell on the lattice itself to edit it. Depth is the next scene's subject: layer 0 reads the embedded stream and its own weights, so how many layers sit above it changes nothing here.\n\n## The arithmetic\n\nWith $h$ the stream entering the layer and $N$ the normalisation in force:\n\n$$\\textbf{pre-norm}\\quad a=N(h),\\quad r_1=h+\\operatorname{Attn}(a),\\quad f=N(r_1),\\quad r_2=r_1+\\operatorname{FFN}(f)$$\n\n$$\\textbf{post-norm}\\quad a=h,\\quad r_1=N\\!\\left(h+\\operatorname{Attn}(h)\\right),\\quad f=r_1,\\quad r_2=N\\!\\left(r_1+\\operatorname{FFN}(r_1)\\right)$$\n\nPre-norm normalises what a sub-layer *reads* and adds its raw output, so $r_2-h-\\texttt{tfAttnOut}-\\texttt{tfFfOut}=0$ identically — the card checks exactly that. Post-norm normalises the *sum*, so the identity does not hold.\n\nRow by row, with unit gain and zero bias:\n\n$$N(x)_d=\\frac{x_d-\\mu}{\\sqrt{\\sigma^2+\\varepsilon}},\\qquad \\mu=\\frac{1}{d_{model}}\\sum_k x_k,\\qquad \\sigma^2=\\frac{1}{d_{model}}\\sum_k (x_k-\\mu)^2$$\n\n**RMSNorm is the same expression with $\\mu=0$** — no mean subtraction and no bias. That is the whole difference, and it is why the card's row mean of `tfAttnIn` is zero under LayerNorm and not under RMSNorm.\n\nThe FFN widens to $d_{ff}$ and comes back:\n\n$$\\texttt{tfFfPre}=f\\,W_1,\\qquad \\texttt{tfFfHidden}=\\phi\\!\\left(\\texttt{tfFfPre}\\right),\\qquad \\texttt{tfFfOut}=\\texttt{tfFfHidden}\\,W_2$$\n\n$$\\phi_{\\text{ReLU}}(z)=\\max(0,z),\\qquad \\phi_{\\text{GELU}}(z)=\\tfrac12 z\\left(1+\\tanh\\!\\left[\\sqrt{2/\\pi}\\left(z+0.044715\\,z^{3}\\right)\\right]\\right)$$\n\n**SwiGLU is the exception: it is not elementwise.** It needs a second matrix $W_3$ of the same shape as $W_1$, and multiplies two projections of the same input together:\n\n$$\\texttt{tfFfHidden}=\\operatorname{SiLU}\\!\\left(f W_1\\right)\\odot\\left(f W_3\\right),\\qquad \\operatorname{SiLU}(z)=\\frac{z}{1+e^{-z}}$$\n\nso under `tf_act` = SwiGLU the before/after chart is no longer a function of the orange point alone — the gate is a second, unplotted quantity.",
       "prompt": "A function tour of the general transformer engine, block part: the residual stream through one layer. The card checks the residual identity and the norm means live.",
       "range": [
         [-24, 28],
@@ -492,12 +751,38 @@
         {
           "name": "All",
           "position": [2.0, 1.5, 40.0],
-          "target": [2.0, 1.5, 0.0]
+          "target": [2.0, 1.5, 0.0],
+          "description": ""
+        },
+        {
+          "name": "Stream",
+          "description": "The residual stream as it enters layer 0.",
+          "position": [-18.4, 0.29, 12.2],
+          "target": [-18.4, 0.29, 0.0]
+        },
+        {
+          "name": "Attention",
+          "description": "What attention reads, the increment it returns, and the first residual add.",
+          "position": [-9.6, 0.29, 13.4],
+          "target": [-9.6, 0.29, 0.0]
         },
         {
           "name": "FFN",
-          "position": [10.0, 1.5, 24.0],
-          "target": [10.0, 1.5, 0.0]
+          "description": "What the FFN reads, W_1, and the hidden units before and after the activation.",
+          "position": [6.6, 3.29, 21.5],
+          "target": [6.6, 3.29, 0.0]
+        },
+        {
+          "name": "Output",
+          "description": "W_2, the FFN increment, and the stream leaving the layer.",
+          "position": [20.2, 4.89, 26.5],
+          "target": [20.2, 4.89, 0.0]
+        },
+        {
+          "name": "FFN Chart",
+          "description": "The hidden units of the followed slot, before and after the activation.",
+          "position": [5.2, -8.0, 8.2],
+          "target": [5.2, -8.0, 0.0]
         }
       ],
       "elements": [],
@@ -507,9 +792,7 @@
           "title": "The block — tfAttnIn, tfResid1, tfFfIn, tfFfPre, tfFfHidden, tfFfOut, tfResid2",
           "description": "The residual stream through one layer: attention increment, FFN increment, and where the norms sit.",
           "sliders": [
-            {"id": "demo_l", "label": "layer shown ($l$)", "min": 0, "max": 2, "step": 1, "default": 0, "valueExpr": "concat('layer ', string(demo_l))"},
             {"id": "demo_i", "label": "slot to follow ($i$)", "min": 0, "max": 5, "step": 1, "default": 2, "valueExpr": "concat(string(demo_i), ' · ', tfToken(demo_i))"},
-            {"id": "tf_layers", "label": "tf_layers — layers in the stack", "min": 1, "max": 3, "step": 1, "default": 1, "valueExpr": "string(tf_layers)"},
             {"id": "tf_norm", "label": "tf_norm — normalisation", "min": 0, "max": 2, "step": 1, "default": 1, "valueExpr": "tf_norm < 0.5 ? 'none' : (tf_norm < 1.5 ? 'LayerNorm' : 'RMSNorm')"},
             {"id": "tf_prenorm", "label": "tf_prenorm — placement", "min": 0, "max": 1, "step": 1, "default": 1, "valueExpr": "tf_prenorm >= 0.5 ? 'pre-norm' : 'post-norm'"},
             {"id": "tf_act", "label": "tf_act — activation", "min": 0, "max": 2, "step": 1, "default": 0, "valueExpr": "tf_act < 0.5 ? 'ReLU' : (tf_act < 1.5 ? 'GELU' : 'SwiGLU')"},
@@ -527,6 +810,25 @@
                 [0.306, -0.076, 0.174, -0.553, 0.315, 1, -0.669, -0.399],
                 [-0.708, 0.214, -0.73, 0.069, -0.148, -0.23, -0.237, 0.19]
               ]
+            },
+            {
+              "id": "tf_w2_0",
+              "kind": "tensor",
+              "label": "$W_2$ (layer 0)",
+              "shape": [8, 4],
+              "min": -1.5,
+              "max": 1.5,
+              "step": 0.05,
+              "default": [
+                [-0.067, 0.6121, 0.0569, -0.112],
+                [0.1335, 0.1068, 0.7286, 0.226],
+                [-0.5518, 0.2014, -0.5981, 0.4822],
+                [0.5173, 0.1562, -0.1068, -0.3956],
+                [0.398, 0.3019, 0.1224, -0.1467],
+                [-0.115, -0.1497, -1.1419, -0.5529],
+                [-0.2129, -0.0608, 0.1127, -0.1961],
+                [0.1811, -0.5417, -0.0041, 0.4231]
+              ]
             }
           ],
           "add": [
@@ -534,7 +836,7 @@
               "id": "t2_h",
               "type": "tensor",
               "shape": [6, 4],
-              "valueExpr": "(demo_l < tfLayers()) ? (tfH(demo_l, row, col)) : 0",
+              "valueExpr": "tfH(0, row, col)",
               "origin": [-20, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -543,17 +845,17 @@
               "color": "#26c6da",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "tfH(l, row, col) — stream in",
+              "label": "tfH(0, row, col) — stream in",
               "axes": [
                 {"color": "#26c6da", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfH(l, row, col) — stream in",
+                  "title": "tfH(0, row, col) — stream in",
                   "color": "#26c6da",
                   "labels": ["$d_0$", "$d_1$", "$d_2$", "$d_3$"]
                 }
               ],
-              "textExpr": "(demo_l < tfLayers()) ? (toFixed(value, 2)) : ''",
-              "prompt": "The residual stream entering layer demo_l.",
+              "textExpr": "toFixed(value, 2)",
+              "prompt": "The residual stream entering layer 0.",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
             },
@@ -561,7 +863,7 @@
               "id": "t2_ain",
               "type": "tensor",
               "shape": [6, 4],
-              "valueExpr": "(demo_l < tfLayers()) ? (tfAttnIn(demo_l, row, col)) : 0",
+              "valueExpr": "tfAttnIn(0, row, col)",
               "origin": [-15.6, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -570,16 +872,16 @@
               "color": "#26c6da",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "tfAttnIn(l, row, col)",
+              "label": "tfAttnIn(0, row, col)",
               "axes": [
                 {"color": "#26c6da", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfAttnIn(l, row, col)",
+                  "title": "tfAttnIn(0, row, col)",
                   "color": "#26c6da",
                   "labels": ["$d_0$", "$d_1$", "$d_2$", "$d_3$"]
                 }
               ],
-              "textExpr": "(demo_l < tfLayers()) ? (toFixed(value, 2)) : ''",
+              "textExpr": "toFixed(value, 2)",
               "prompt": "What attention reads: with tf_norm on and tf_prenorm = 1 this is the normed stream; otherwise the stream itself.",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
@@ -588,7 +890,7 @@
               "id": "t2_ao",
               "type": "tensor",
               "shape": [6, 4],
-              "valueExpr": "(demo_l < tfLayers()) ? (tfAttnOut(demo_l, row, col)) : 0",
+              "valueExpr": "tfAttnOut(0, row, col)",
               "origin": [-11.2, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -597,16 +899,16 @@
               "color": "#f06292",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "tfAttnOut(l, row, col)",
+              "label": "tfAttnOut(0, row, col)",
               "axes": [
                 {"color": "#f06292", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfAttnOut(l, row, col)",
+                  "title": "tfAttnOut(0, row, col)",
                   "color": "#f06292",
                   "labels": ["$d_0$", "$d_1$", "$d_2$", "$d_3$"]
                 }
               ],
-              "textExpr": "(demo_l < tfLayers()) ? (toFixed(value, 2)) : ''",
+              "textExpr": "toFixed(value, 2)",
               "prompt": "The attention increment (all heads, through W_O).",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
@@ -615,7 +917,7 @@
               "id": "t2_r1",
               "type": "tensor",
               "shape": [6, 4],
-              "valueExpr": "(demo_l < tfLayers()) ? (tfResid1(demo_l, row, col)) : 0",
+              "valueExpr": "tfResid1(0, row, col)",
               "origin": [-6.8, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -624,16 +926,16 @@
               "color": "#26c6da",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "tfResid1(l, row, col)",
+              "label": "tfResid1(0, row, col)",
               "axes": [
                 {"color": "#26c6da", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfResid1(l, row, col)",
+                  "title": "tfResid1(0, row, col)",
                   "color": "#26c6da",
                   "labels": ["$d_0$", "$d_1$", "$d_2$", "$d_3$"]
                 }
               ],
-              "textExpr": "(demo_l < tfLayers()) ? (toFixed(value, 2)) : ''",
+              "textExpr": "toFixed(value, 2)",
               "prompt": "Stream after the attention residual add (post-norm: after its norm).",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
@@ -642,7 +944,7 @@
               "id": "t2_fin",
               "type": "tensor",
               "shape": [6, 4],
-              "valueExpr": "(demo_l < tfLayers()) ? (tfFfIn(demo_l, row, col)) : 0",
+              "valueExpr": "tfFfIn(0, row, col)",
               "origin": [-2.4, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -651,16 +953,16 @@
               "color": "#26c6da",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "tfFfIn(l, row, col)",
+              "label": "tfFfIn(0, row, col)",
               "axes": [
                 {"color": "#26c6da", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfFfIn(l, row, col)",
+                  "title": "tfFfIn(0, row, col)",
                   "color": "#26c6da",
                   "labels": ["$d_0$", "$d_1$", "$d_2$", "$d_3$"]
                 }
               ],
-              "textExpr": "(demo_l < tfLayers()) ? (toFixed(value, 2)) : ''",
+              "textExpr": "toFixed(value, 2)",
               "prompt": "What the FFN reads: normed (pre-norm) or tfResid1 itself.",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
@@ -669,7 +971,7 @@
               "id": "t2_pre",
               "type": "tensor",
               "shape": [6, 8],
-              "valueExpr": "(demo_l < tfLayers()) ? (tfFfPre(demo_l, row, col)) : 0",
+              "valueExpr": "tfFfPre(0, row, col)",
               "origin": [2.0, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -678,16 +980,16 @@
               "color": "#ffee58",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "tfFfPre(l, row, k) — before the activation",
+              "label": "tfFfPre(0, row, k) — before the activation",
               "axes": [
                 {"color": "#ffee58", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfFfPre(l, row, k) — before the activation",
+                  "title": "tfFfPre(0, row, k) — before the activation = $u$",
                   "color": "#ffee58",
                   "labels": ["$u_0$", "$u_1$", "$u_2$", "$u_3$", "$u_4$", "$u_5$", "$u_6$", "$u_7$"]
                 }
               ],
-              "textExpr": "(demo_l < tfLayers()) ? (toFixed(value, 2)) : ''",
+              "textExpr": "toFixed(value, 2)",
               "prompt": "FFN hidden units before the activation: tfFfIn · W1. Row k of W1 is one neuron's fan-in.",
               "widthExpr": "max(0.15, min(1, abs(value) / 3))",
               "heightExpr": "max(0.15, min(1, abs(value) / 3))"
@@ -696,7 +998,7 @@
               "id": "t2_hid",
               "type": "tensor",
               "shape": [6, 8],
-              "valueExpr": "(demo_l < tfLayers()) ? (tfFfHidden(demo_l, row, col)) : 0",
+              "valueExpr": "tfFfHidden(0, row, col)",
               "origin": [9.2, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -705,16 +1007,16 @@
               "color": "#ffee58",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "tfFfHidden(l, row, k) — after the activation",
+              "label": "tfFfHidden(0, row, k) — after the activation",
               "axes": [
                 {"color": "#ffee58", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfFfHidden(l, row, k) — after the activation",
+                  "title": "tfFfHidden(0, row, k) — after the activation",
                   "color": "#ffee58",
                   "labels": ["$u_0$", "$u_1$", "$u_2$", "$u_3$", "$u_4$", "$u_5$", "$u_6$", "$u_7$"]
                 }
               ],
-              "textExpr": "(demo_l < tfLayers()) ? (toFixed(value, 2)) : ''",
+              "textExpr": "toFixed(value, 2)",
               "prompt": "After the activation chosen by tf_act: ReLU zeroes the negatives, GELU bends them, SwiGLU gates silu(x W1) by x W3.",
               "widthExpr": "max(0.15, min(1, abs(value) / 3))",
               "heightExpr": "max(0.15, min(1, abs(value) / 3))"
@@ -723,7 +1025,7 @@
               "id": "t2_fo",
               "type": "tensor",
               "shape": [6, 4],
-              "valueExpr": "(demo_l < tfLayers()) ? (tfFfOut(demo_l, row, col)) : 0",
+              "valueExpr": "tfFfOut(0, row, col)",
               "origin": [16.4, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -732,16 +1034,16 @@
               "color": "#ffee58",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "tfFfOut(l, row, col)",
+              "label": "tfFfOut(0, row, col)",
               "axes": [
                 {"color": "#ffee58", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfFfOut(l, row, col)",
+                  "title": "tfFfOut(0, row, col)",
                   "color": "#ffee58",
                   "labels": ["$d_0$", "$d_1$", "$d_2$", "$d_3$"]
                 }
               ],
-              "textExpr": "(demo_l < tfLayers()) ? (toFixed(value, 2)) : ''",
+              "textExpr": "toFixed(value, 2)",
               "prompt": "The FFN increment: hidden · W2, back at d_model width.",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
@@ -750,7 +1052,7 @@
               "id": "t2_r2",
               "type": "tensor",
               "shape": [6, 4],
-              "valueExpr": "(demo_l < tfLayers()) ? (tfResid2(demo_l, row, col)) : 0",
+              "valueExpr": "tfResid2(0, row, col)",
               "origin": [20.8, -3.0, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -759,17 +1061,17 @@
               "color": "#26c6da",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "tfResid2(l, row, col) — stream out",
+              "label": "tfResid2(0, row, col) — stream out",
               "axes": [
                 {"color": "#26c6da", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfResid2(l, row, col) — stream out",
+                  "title": "tfResid2(0, row, col) — stream out",
                   "color": "#26c6da",
                   "labels": ["$d_0$", "$d_1$", "$d_2$", "$d_3$"]
                 }
               ],
-              "textExpr": "(demo_l < tfLayers()) ? (toFixed(value, 2)) : ''",
-              "prompt": "The stream leaving layer demo_l = tfH(demo_l + 1). Pre-norm: exactly stream in + both increments.",
+              "textExpr": "toFixed(value, 2)",
+              "prompt": "The stream leaving layer 0 = tfH(1). Pre-norm: exactly stream in + both increments.",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
             },
@@ -780,15 +1082,15 @@
               "size": [6.4, 4],
               "color": "#ffee58",
               "series": [
-                {"kind": "points", "n": 8, "xExpr": "(demo_l < tfLayers()) ? i : -99", "yExpr": "tfFfPre(demo_l, demo_i, i)", "color": "#ffa726", "size": 5, "label": "tfFfPre(l, i, k) — before"},
-                {"kind": "points", "n": 8, "xExpr": "(demo_l < tfLayers()) ? i : -99", "yExpr": "tfFfHidden(demo_l, demo_i, i)", "color": "#ffee58", "size": 5, "label": "tfFfHidden(l, i, k) — after"}
+                {"kind": "points", "n": 8, "xExpr": "i", "yExpr": "tfFfPre(0, demo_i, i)", "color": "#ffa726", "size": 5, "label": "tfFfPre(0, i, k) — before"},
+                {"kind": "points", "n": 8, "xExpr": "i", "yExpr": "tfFfHidden(0, demo_i, i)", "color": "#ffee58", "size": 5, "label": "tfFfHidden(0, i, k) — after"}
               ],
               "axes": [
                 {"title": "hidden unit $k$", "ticks": 8},
                 {"title": "activation", "ticks": 4}
               ],
               "label": "FFN hidden units at slot $i$: before and after the activation",
-              "prompt": "The eight hidden units of slot demo_i in layer demo_l, before (orange) and after (yellow) the activation. ReLU: the yellow point sits on the orange one when positive and at 0 otherwise; GELU bends the negatives; SwiGLU multiplies by a gate, so yellow can leave the orange entirely.",
+              "prompt": "The eight hidden units of slot demo_i in layer 0, before (orange) and after (yellow) the activation. ReLU: the yellow point sits on the orange one when positive and at 0 otherwise; GELU bends the negatives; SwiGLU multiplies by a gate, so yellow can leave the orange entirely.",
               "xDomain": [-0.5, 7.5]
             },
             {
@@ -811,13 +1113,13 @@
                   "labels": ["$d_0$", "$d_1$", "$d_2$", "$d_3$"]
                 },
                 {
-                  "title": "tfW1(0, row, col) — layer 0, bound to tf_w1_0",
+                  "title": "tfW1(0, row, col)",
                   "color": "#ffee58",
                   "labels": ["$u_0$", "$u_1$", "$u_2$", "$u_3$", "$u_4$", "$u_5$", "$u_6$", "$u_7$"]
                 }
               ],
               "textExpr": "toFixed(value, 2)",
-              "prompt": "FFN W1 of LAYER 0 (d_model × d_ff), bound to the tensor slider tf_w1_0: hover a cell to edit it. A bound lattice always shows its slider, so this one stays on layer 0 whatever layer is shown; tfW2 beside it follows the layer selector.",
+              "prompt": "FFN W1 of layer 0 (d_model × d_ff), bound to the tensor slider tf_w1_0: hover a cell to edit it. W2 beside it is bound to tf_w2_0 the same way, so both FFN weights of this layer are editable on their lattices.",
               "bind": "tf_w1_0",
               "widthExpr": "max(0.15, min(1, abs(value) / 1))",
               "heightExpr": "max(0.15, min(1, abs(value) / 1))"
@@ -826,7 +1128,7 @@
               "id": "t2_w2",
               "type": "tensor",
               "shape": [8, 4],
-              "valueExpr": "(demo_l < tfLayers()) ? (tfW2(demo_l, row, col)) : 0",
+              "valueExpr": "tfW2(0, row, col)",
               "origin": [16.4, 4.6, 0],
               "cellSize": 0.8,
               "plane": "xy",
@@ -835,26 +1137,111 @@
               "color": "#ffee58",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "tfW2(l, row, col)",
+              "label": "tfW2(0, row, col)",
               "axes": [
                 {
                   "color": "#ffee58",
                   "labels": ["$u_0$", "$u_1$", "$u_2$", "$u_3$", "$u_4$", "$u_5$", "$u_6$", "$u_7$"]
                 },
                 {
-                  "title": "tfW2(l, row, col)",
+                  "title": "tfW2(0, row, col)",
                   "color": "#ffee58",
                   "labels": ["$d_0$", "$d_1$", "$d_2$", "$d_3$"]
                 }
               ],
-              "textExpr": "(demo_l < tfLayers()) ? (toFixed(value, 2)) : ''",
-              "prompt": "FFN W2 of layer demo_l (d_ff × d_model).",
+              "textExpr": "toFixed(value, 2)",
+              "prompt": "FFN W2 of layer 0 (d_ff × d_model).",
               "widthExpr": "max(0.15, min(1, abs(value) / 1))",
-              "heightExpr": "max(0.15, min(1, abs(value) / 1))"
+              "heightExpr": "max(0.15, min(1, abs(value) / 1))",
+              "bind": "tf_w2_0"
+            },
+            {
+              "id": "t2_h_math",
+              "type": "text",
+              "text": "$h^{(0)}$",
+              "position": [-18.4, 3.58, 0],
+              "color": "#26c6da"
+            },
+            {
+              "id": "t2_ain_math",
+              "type": "text",
+              "text": "$a$",
+              "position": [-14.0, 3.58, 0],
+              "color": "#26c6da"
+            },
+            {
+              "id": "t2_ao_math",
+              "type": "text",
+              "text": "$\\mathrm{Attn}$",
+              "position": [-9.6, 3.58, 0],
+              "color": "#f06292"
+            },
+            {
+              "id": "t2_r1_math",
+              "type": "text",
+              "text": "$r_1$",
+              "position": [-5.2, 3.58, 0],
+              "color": "#26c6da"
+            },
+            {
+              "id": "t2_fin_math",
+              "type": "text",
+              "text": "$f$",
+              "position": [-0.8, 3.58, 0],
+              "color": "#26c6da"
+            },
+            {
+              "id": "t2_pre_math",
+              "type": "text",
+              "text": "$f\\,W_1$",
+              "position": [5.2, 3.58, 0],
+              "color": "#ffee58"
+            },
+            {
+              "id": "t2_hid_math",
+              "type": "text",
+              "text": "$\\phi(u)$",
+              "position": [12.4, 3.58, 0],
+              "color": "#ffee58"
+            },
+            {
+              "id": "t2_fo_math",
+              "type": "text",
+              "text": "$\\phi\\,W_2$",
+              "position": [18.0, 3.58, 0],
+              "color": "#ffee58"
+            },
+            {
+              "id": "t2_r2_math",
+              "type": "text",
+              "text": "$r_2$",
+              "position": [22.4, 3.58, 0],
+              "color": "#26c6da"
+            },
+            {
+              "id": "t2_w1_math",
+              "type": "text",
+              "text": "$W_1$",
+              "position": [5.2, 9.58, 0],
+              "color": "#ffee58"
+            },
+            {
+              "id": "t2_w2_math",
+              "type": "text",
+              "text": "$W_2$",
+              "position": [18.0, 12.78, 0],
+              "color": "#ffee58"
+            },
+            {
+              "id": "t2_chart_ff_math",
+              "type": "text",
+              "text": "$u_{ik},\\ \\phi(u_{ik})$",
+              "position": [5.2, -5.5, 0],
+              "color": "#ffee58"
             }
           ],
           "info": [
-            {"id": "tour_resid", "position": "top-left", "title": "The residual identity at slot 2", "content": "Layer read: {{min(demo_l, tfLayers() - 1)}} — the engine clamps a selector past the top of the stack, so this card follows the last layer while the lattices go blank.\\n\\npre-norm: out − (in + attention + FFN) = ({{toFixed(tfResid2(demo_l,2,0) - tfH(demo_l,2,0) - tfAttnOut(demo_l,2,0) - tfFfOut(demo_l,2,0), 6)}}, {{toFixed(tfResid2(demo_l,2,1) - tfH(demo_l,2,1) - tfAttnOut(demo_l,2,1) - tfFfOut(demo_l,2,1), 6)}}, …) — zero while tf_prenorm = 1; post-norm normalises the sums, so it is not.\\n\\nMean of tfAttnIn row 2 = {{toFixed(tfAttnIn(demo_l,2,0)+tfAttnIn(demo_l,2,1)+tfAttnIn(demo_l,2,2)+tfAttnIn(demo_l,2,3), 4)}} — zero under LayerNorm, not under RMSNorm (no mean subtraction)."}
+            {"id": "tour_resid", "position": "bottom-left", "title": "The residual identity at slot 2, layer 0", "content": "pre-norm: out − (in + attention + FFN) = ({{toFixed(tfResid2(0,2,0) - tfH(0,2,0) - tfAttnOut(0,2,0) - tfFfOut(0,2,0), 6)}}, {{toFixed(tfResid2(0,2,1) - tfH(0,2,1) - tfAttnOut(0,2,1) - tfFfOut(0,2,1), 6)}}, …) — zero while tf_prenorm = 1; post-norm normalises the sums, so it is not.\\n\\nMean of tfAttnIn row 2 = {{toFixed(tfAttnIn(0,2,0)+tfAttnIn(0,2,1)+tfAttnIn(0,2,2)+tfAttnIn(0,2,3), 4)}} — zero under LayerNorm, not under RMSNorm (no mean subtraction)."}
           ],
           "prompt": "A function tour of the general transformer engine, block part: the residual stream through one layer. The card checks the residual identity and the norm means live."
         }
@@ -864,7 +1251,7 @@
       "id": "tour-sample",
       "title": "Stack and sample — tfH by depth, tfFinal, tfWu, tfLogit, tfProb, tfArgmax, tfEntropy",
       "description": "The stream at every depth, the unembedding, and the next-token distribution under temperature.",
-      "markdown": "This lesson is a **function tour** of the transformer domain library, not a lesson about transformers: every lattice is labelled with the call that fills it, so an author can see what each function returns and how the `tf_*` sliders reshape it. The weights are the hand-built toy at layer 0 / head 0 and **seeded tables everywhere else — nothing here is learned.**\n\n## Stack and sample\n\n| function | meaning |\n|---|---|\n| `tfH(l, i, d)` for l = 0 … tf_layers | the stream at every depth |\n| `tfFinal(i, d)` | what the unembedding reads |\n| `tfWu(v, d)` | the tied unembedding: embedding row of word v |\n| `tfLogit(i, v)` | score of word v at slot i |\n| `tfProb(i, v)` | softmax(logits / tf_temp) |\n| `tfArgmax(i)`, `tfVocabToken(v)` | the most probable next word |\n| `tfEntropy(i)` | how spread the distribution is |\n\nDrag **tf_temp** towards 0.05 and every row of `tfProb` collapses onto its argmax; towards 5 and it flattens to 0.2 each. Add layers with **tf_layers** and watch the stream drift with depth.",
+      "markdown": "This lesson is a **function tour** of the transformer domain library, not a lesson about transformers: every lattice is labelled with the call that fills it, so an author can see what each function returns and how the `tf_*` sliders reshape it. The weights are the hand-built toy at layer 0 / head 0 and **seeded tables everywhere else — nothing here is learned.**\n\n## Stack and sample\n\n$L=$ `tf_layers`, so $h^{(L)}$ is the stream leaving the last block. $|V|$ is the vocabulary size.\n\n**`tfH(l, i, d)`** for l = 0 … tf_layers · $L+1$ states for $L$ blocks\n$$h^{(l)}_{id}$$\n\n**`tfFinal(i, d)`** · what the unembedding reads\n$$N\\!\\left(h^{(L)}\\right)_{id}\\ \\ \\text{under pre-norm};\\qquad h^{(L)}_{id}\\ \\ \\text{otherwise}$$\n\n**`tfWu(v, d)`** · **tied**: row $v$ *is* word $v$'s embedding row, not a separate matrix\n$$\\bigl(W_U\\bigr)_{vd}=E_{vd}$$\n\n**`tfLogit(i, v)`** · a similarity between slot $i$ and word $v$\n$$z_{iv}=\\sum_{d}\\text{final}_{id}\\,\\bigl(W_U\\bigr)_{vd}$$\n\n**`tfProb(i, v)`** · $T=$ `tf_temp` divides the logits inside the softmax and nowhere else\n$$p_{iv}=\\operatorname{softmax}_v\\!\\left(\\frac{z_{iv}}{T}\\right)$$\n\n**`tfArgmax(i)`**, **`tfVocabToken(v)`** · taken on the **logits**, so $T$ cannot move it\n$$\\arg\\max_v z_{iv}$$\n\n**`tfEntropy(i)`** · in bits, with $0\\le H_i\\le\\log_2\\lvert V\\rvert$\n$$H_i=-\\sum_{v}p_{iv}\\log_2 p_{iv}$$\n\nDrag **tf_temp** towards 0.05 and every row of `tfProb` collapses onto its argmax; towards 5 and it flattens to 0.2 each. Add layers with **tf_layers** and watch the stream drift with depth.\n\n## The arithmetic\n\nWith $h_L$ the stream leaving the last layer ($L=$ `tf_layers`):\n\n$$\\texttt{tfFinal}=\\begin{cases}N(h_L) & \\text{pre-norm, with a norm on}\\\\[2pt] h_L & \\text{otherwise}\\end{cases}$$\n\nThe unembedding is **tied**: row $v$ of $W_U$ *is* the embedding row of word $v$, not a separate learned matrix. So a logit is a dot product between the final stream and a word's own embedding — a similarity, literally:\n\n$$\\texttt{tfLogit}(i,v)=\\texttt{tfFinal}_{i\\cdot}\\cdot W_U^{(v)}=\\sum_{d}\\texttt{tfFinal}(i,d)\\,\\texttt{tfWu}(v,d)$$\n\n$$\\texttt{tfProb}(i,v)=\\operatorname{softmax}_v\\!\\left(\\frac{\\texttt{tfLogit}(i,v)}{T}\\right),\\qquad T=\\texttt{tf\\_temp}$$\n\n**Temperature divides the logits inside the softmax and nowhere else** — `tfLogit` is untouched by it. That is why dragging `tf_temp` moves the probability chart while the logit chart holds perfectly still. As $T\\to 0$ the softmax tends to a one-hot on the argmax; as $T$ grows it tends to the uniform $1/|V|$.\n\n$$\\texttt{tfArgmax}(i)=\\arg\\max_v \\texttt{tfLogit}(i,v),\\qquad \\texttt{tfEntropy}(i)=-\\sum_v p_{iv}\\log_2 p_{iv}\\ \\ \\text{bits}$$\n\nEntropy is bounded by $0\\le H\\le \\log_2|V|$, so with a vocabulary of $|V|$ words the flat distribution sits at $\\log_2|V|$ bits and a confident one approaches 0. Note the argmax is taken on the **logits**, so it never changes with temperature — only the confidence attached to it does.",
       "prompt": "A function tour of the general transformer engine, sampling part. Emphasise that tfProb at slot i is the prediction for the token AFTER i, and that the argmax words are an artefact of seeded weights.",
       "range": [
         [-24, 28],
@@ -879,12 +1266,38 @@
         {
           "name": "All",
           "position": [0.0, -1.0, 40.0],
-          "target": [0.0, -1.0, 0.0]
+          "target": [0.0, -1.0, 0.0],
+          "description": ""
         },
         {
-          "name": "Sample",
-          "position": [9.0, -4.0, 24.0],
-          "target": [9.0, -4.0, 0.0]
+          "name": "Depth",
+          "description": "The residual stream at every depth, one lattice per block boundary.",
+          "position": [-11.8, 0.29, 17.6],
+          "target": [-11.8, 0.29, 0.0]
+        },
+        {
+          "name": "Unembedding",
+          "description": "What the unembedding reads, and the tied table it reads against.",
+          "position": [0.0, 3.69, 22.7],
+          "target": [0.0, 3.69, 0.0]
+        },
+        {
+          "name": "Logits",
+          "description": "One score per vocabulary word at every slot, before temperature.",
+          "position": [5.6, 0.29, 12.2],
+          "target": [5.6, 0.29, 0.0]
+        },
+        {
+          "name": "Distribution",
+          "description": "The softmax over the vocabulary, the argmax word, and the entropy in bits.",
+          "position": [13.2, 0.29, 12.2],
+          "target": [13.2, 0.29, 0.0]
+        },
+        {
+          "name": "Distribution Charts",
+          "description": "Logits, probabilities and entropy for the slot being followed.",
+          "position": [-9.6, -8.0, 21.8],
+          "target": [-9.6, -8.0, 0.0]
         }
       ],
       "elements": [],
@@ -1110,7 +1523,7 @@
               "axes": [
                 {"color": "#66bb6a", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfProb(i, v) — softmax(logits / tf_temp)",
+                  "title": "tfProb(i, v) — softmax(logits / tf_temp) = $P$",
                   "color": "#66bb6a",
                   "labels": ["the", "cat", "sat", "on", "mat"]
                 }
@@ -1227,10 +1640,97 @@
               "prompt": "How spread each slot's next-token distribution is, in bits: 0 when one word has all the mass, log2(5) = 2.32 when the five are equal. All six slots move together with tf_temp.",
               "xDomain": [-0.5, 5.5],
               "yDomain": [0, 2.4]
+            },
+            {
+              "id": "t3_h0_math",
+              "type": "text",
+              "text": "$h^{(0)}$",
+              "position": [-18.4, 3.58, 0],
+              "color": "#26c6da"
+            },
+            {
+              "id": "t3_h1_math",
+              "type": "text",
+              "text": "$h^{(1)}$",
+              "position": [-14.0, 3.58, 0],
+              "color": "#26c6da",
+              "visibleExpr": "1 <= tfLayers()"
+            },
+            {
+              "id": "t3_h2_math",
+              "type": "text",
+              "text": "$h^{(2)}$",
+              "position": [-9.6, 3.58, 0],
+              "color": "#26c6da",
+              "visibleExpr": "2 <= tfLayers()"
+            },
+            {
+              "id": "t3_h3_math",
+              "type": "text",
+              "text": "$h^{(3)}$",
+              "position": [-5.2, 3.58, 0],
+              "color": "#26c6da",
+              "visibleExpr": "3 <= tfLayers()"
+            },
+            {
+              "id": "t3_final_math",
+              "type": "text",
+              "text": "$\\mathrm{final}$",
+              "position": [0.0, 3.58, 0],
+              "color": "#42a5f5"
+            },
+            {
+              "id": "t3_wu_math",
+              "type": "text",
+              "text": "$W_U$",
+              "position": [0.0, 10.38, 0],
+              "color": "#42a5f5"
+            },
+            {
+              "id": "t3_logit_math",
+              "type": "text",
+              "text": "$Z$",
+              "position": [5.6, 3.58, 0],
+              "color": "#ffa726"
+            },
+            {
+              "id": "t3_prob_math",
+              "type": "text",
+              "text": "$\\mathrm{softmax}(Z/T)$",
+              "position": [11.2, 3.58, 0],
+              "color": "#66bb6a"
+            },
+            {
+              "id": "t3_ent_math",
+              "type": "text",
+              "text": "$H$",
+              "position": [16.8, 3.58, 0],
+              "color": "#b0bec5"
+            },
+            {
+              "id": "t3_chart_logit_math",
+              "type": "text",
+              "text": "$Z_{iv}$",
+              "position": [-17.2, -5.5, 0],
+              "color": "#ffa726"
+            },
+            {
+              "id": "t3_chart_prob_math",
+              "type": "text",
+              "text": "$P_{iv}$",
+              "position": [-9.6, -5.5, 0],
+              "color": "#66bb6a"
+            },
+            {
+              "id": "t3_chart_ent_math",
+              "type": "text",
+              "text": "$H_i$",
+              "position": [-2.0, -5.5, 0],
+              "color": "#b0bec5"
             }
           ],
           "info": [
-            {"id": "tour_sample", "position": "top-left", "title": "Slot {{demo_i}} predicts the next token", "content": "argmax = word {{tfArgmax(demo_i)}} with p = {{toFixed(tfProb(demo_i, tfArgmax(demo_i)), 3)}} · entropy {{toFixed(tfEntropy(demo_i), 3)}} bits · row sum {{toFixed(tfProb(demo_i,0)+tfProb(demo_i,1)+tfProb(demo_i,2)+tfProb(demo_i,3)+tfProb(demo_i,4), 6)}}"}
+            {"id": "tour_sample", "position": "bottom-left", "title": "Slot {{demo_i}} predicts the next token", "content": "argmax = word {{tfArgmax(demo_i)}} with p = {{toFixed(tfProb(demo_i, tfArgmax(demo_i)), 3)}} · entropy {{toFixed(tfEntropy(demo_i), 3)}} bits · row sum {{toFixed(tfProb(demo_i,0)+tfProb(demo_i,1)+tfProb(demo_i,2)+tfProb(demo_i,3)+tfProb(demo_i,4), 6)}}"}
           ],
           "prompt": "A function tour of the general transformer engine, sampling part. Emphasise that tfProb at slot i is the prediction for the token AFTER i, and that the argmax words are an artefact of seeded weights."
         }

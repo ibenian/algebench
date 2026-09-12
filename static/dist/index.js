@@ -2270,9 +2270,9 @@ function _buildTensorRow(id, s) {
 	}
 	row.appendChild(grid);
 	const KEY = "tslider-collapsed-" + id;
-	let collapsed = false;
+	let collapsed = true;
 	try {
-		collapsed = localStorage.getItem(KEY) === "1";
+		collapsed = localStorage.getItem(KEY) !== "0";
 	} catch {}
 	row.classList.toggle("collapsed", collapsed);
 	head.addEventListener("mousedown", (e) => e.stopPropagation());
@@ -9432,6 +9432,40 @@ function renderTensor(el, _view) {
 		return out;
 	}
 	/** Draw one label (real KaTeX) fitted into a box, in a colour, optionally rotated a quarter turn. */
+	/** The face the LaTeX rasteriser falls back to, so plain and LaTeX cells match. */
+	const FAMILY = "system-ui, sans-serif";
+	/**
+	* A cell's own text, which `textExpr` defines as plain -- "toFixed(value, 2)"
+	* and the like, no KaTeX. Sending it through the LaTeX rasteriser laid every
+	* string out in a hidden DOM and replayed it onto the canvas, and both of
+	* that module's caches are keyed BY THE STRING: a lattice of numbers that
+	* changes as a slider moves misses on every cell of every update, which is
+	* where an update frame's hundreds of milliseconds were going.
+	*
+	* `fillText` needs neither. A string that does carry LaTeX -- against the
+	* documented contract, but cheap to honour -- still takes the old path.
+	*/
+	function drawCellText(ctx, txt, cx, cy, wPx, hPx, color) {
+		if (txt.indexOf("$") >= 0 || txt.indexOf("\\") >= 0) {
+			drawLatex(ctx, txt, cx, cy, {
+				fontPx: fitLatexPx(txt, wPx, hPx),
+				color
+			});
+			return;
+		}
+		let fontPx = Math.max(1, Math.floor(hPx * .62));
+		ctx.font = `${fontPx}px ${FAMILY}`;
+		const w = ctx.measureText(txt).width;
+		const maxW = wPx * .9;
+		if (w > maxW) {
+			fontPx = Math.max(1, Math.floor(fontPx * maxW / w));
+			ctx.font = `${fontPx}px ${FAMILY}`;
+		}
+		ctx.fillStyle = color;
+		ctx.textAlign = "center";
+		ctx.textBaseline = "middle";
+		ctx.fillText(txt, cx, cy);
+	}
 	function drawFitted(ctx, txt, cx, cy, wPx, hPx, color, rotate = false, align = "center") {
 		if (!txt || wPx < 2 || hPx < 2) return;
 		drawLatex(ctx, txt, cx, cy, {
@@ -9501,10 +9535,7 @@ function renderTensor(el, _view) {
 				cellRgb[cell * 3 + 1],
 				cellRgb[cell * 3 + 2]
 			]);
-			drawLatex(ctx, txt, ox + (c + .5) * px + anchor.h * (fillFrac - cellW[cell]) * px / 2, oy + (r + .5) * px - anchor.v * (fillFrac - cellH[cell]) * px / 2, {
-				fontPx: fitLatexPx(txt, wPx, hPx),
-				color
-			});
+			drawCellText(ctx, txt, ox + (c + .5) * px + anchor.h * (fillFrac - cellW[cell]) * px / 2, oy + (r + .5) * px - anchor.v * (fillFrac - cellH[cell]) * px / 2, wPx, hPx, color);
 		}
 		tex.needsUpdate = true;
 	}
