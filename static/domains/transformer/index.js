@@ -497,11 +497,17 @@
         const { n, dModel, dff, layers, normKind, pre, nrm, act, temp } = cfg;
 
         const shuffle = _read('s1_shuffle', 0) >= 0.5 ? 1 : 0;
-        const ropeOn = _read('s2_rope', 0) >= 0.5 ? 1 : 0;
+        // tf_pos, when a scene declares it, is the whole position story:
+        //   0 none -- no position information reaches the model at all
+        //   1 additive PE -- the sinusoidal term added to the stream
+        //   2 RoPE -- q and k rotated by their slot, stream untouched
+        // Absent (-1), the scene-1..4 pair decides as it always did.
+        const posKind = _intRead('tf_pos', -1, -1, 2);
+        const ropeOn = posKind >= 0 ? (posKind === 2 ? 1 : 0) : (_read('s2_rope', 0) >= 0.5 ? 1 : 0);
         // RoPE REPLACES additive positional encoding; it does not stack on top
         // of it. Real models pick one scheme or the other, so whenever RoPE is
         // on the sinusoidal PE term is forced off no matter what s1_pe says.
-        const peOn = ropeOn ? 0 : _read('s1_pe', 1);
+        const peOn = posKind >= 0 ? (posKind === 1 ? 1 : 0) : (ropeOn ? 0 : _read('s1_pe', 1));
         const scale = _read('s3_scale', 1);
         const maskOn = _read('s3_mask', 0) >= 0.5 ? 1 : 0;
         const maskAfter = _read('s3_maskafter', 0) >= 0.5 ? 1 : 0;
