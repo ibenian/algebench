@@ -44,6 +44,7 @@ import { drawLatex, fitLatexPx, measureLatex, onLatexFontsReady } from '/latex-r
 import { buildColorMap, normalizeColorValue } from '/colormaps.js';
 import { compileExpr, evalExpr, explainCompileDegrade } from '/expr.js';
 import type { CompiledExpr } from '/expr.js';
+import { shouldRevalue, readsTime } from '/revalue.js';
 import { dataToWorld, worldToData } from '/coords.js';
 import type { Vec3 } from '/coords.js';
 import type { Element, Shader } from '/types/lesson.js';
@@ -1226,6 +1227,13 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
     };
     tensorState.activeAnimExprs.push(entry);
 
+    // Any source reading `t` makes this lattice time-driven, so it keeps its
+    // per-frame pass while the rest coalesce onto the slider clock.
+    const alwaysLive = readsTime(
+        valueExprString, el.textExpr, el.widthExpr, el.heightExpr, el.depthExpr,
+        hLabelSrc, vLabelSrc,
+    );
+
     const startTime = tensorState.sceneStartTime;
     tensorState.activeAnimUpdaters.push({
         animState,
@@ -1235,6 +1243,12 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
             if (textLayer) textLayer.mesh.visible = mesh.visible;
             if (!mesh.visible) return;
             const tSec = (nowMs - startTime) / 1000;
+            // A lattice whose numbers only move when a slider does need not be
+            // re-evaluated on every frame of a drag: repainting its cell text
+            // costs tens of milliseconds, and doing it 120 times a second is
+            // what stalls the camera. One that reads `t` is driven by the frame
+            // clock instead, and keeps its per-frame pass.
+            if (!alwaysLive && !shouldRevalue(nowMs)) return;
             if (valueFn || bindId || hasSizeExpr || hasDepthExpr) {
                 try {
                     paintAll(tSec);
