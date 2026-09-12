@@ -21,7 +21,8 @@
         {
           "name": "All",
           "position": [2.5, 1.5, 40.0],
-          "target": [2.5, 1.5, 0.0]
+          "target": [2.5, 1.5, 0.0],
+          "description": ""
         },
         {
           "name": "Inputs",
@@ -31,7 +32,7 @@
         },
         {
           "name": "QKV",
-          "description": "The three projections and the q, k, v they produce for the head shown.",
+          "description": "The three projections and the q, k, v they produce for head 0.",
           "position": [-7.2, 3.29, 21.5],
           "target": [-7.2, 3.29, 0.0]
         },
@@ -750,11 +751,12 @@
         {
           "name": "All",
           "position": [2.0, 1.5, 40.0],
-          "target": [2.0, 1.5, 0.0]
+          "target": [2.0, 1.5, 0.0],
+          "description": ""
         },
         {
           "name": "Stream",
-          "description": "The residual stream as it enters layer l.",
+          "description": "The residual stream as it enters layer 0.",
           "position": [-18.4, 0.29, 12.2],
           "target": [-18.4, 0.29, 0.0]
         },
@@ -1117,7 +1119,7 @@
                 }
               ],
               "textExpr": "toFixed(value, 2)",
-              "prompt": "FFN W1 of LAYER 0 (d_model × d_ff), bound to the tensor slider tf_w1_0: hover a cell to edit it. A bound lattice always shows its slider, so this one stays on layer 0 whatever layer is shown; tfW2 beside it follows the layer selector.",
+              "prompt": "FFN W1 of layer 0 (d_model × d_ff), bound to the tensor slider tf_w1_0: hover a cell to edit it. W2 beside it is bound to tf_w2_0 the same way, so both FFN weights of this layer are editable on their lattices.",
               "bind": "tf_w1_0",
               "widthExpr": "max(0.15, min(1, abs(value) / 1))",
               "heightExpr": "max(0.15, min(1, abs(value) / 1))"
@@ -1264,7 +1266,8 @@
         {
           "name": "All",
           "position": [0.0, -1.0, 40.0],
-          "target": [0.0, -1.0, 0.0]
+          "target": [0.0, -1.0, 0.0],
+          "description": ""
         },
         {
           "name": "Depth",
