@@ -310,8 +310,8 @@
 
     /** A canonical input stream, so the effect of x's SHAPE on attention can be
      *  seen without hand-editing a table. Rows are slots, columns components.
-     *    1 sparse    one-hot, slot i lighting component i mod d: every pair of
-     *                slots is orthogonal, so q.k is 0 except where they collide.
+     *    1 sparse    one-hot, slot i lighting component i mod d: distinct rows
+     *                are orthogonal before the editable Q/K projections.
      *    2 ramp up   components rising across the row AND magnitude rising with
      *                the slot: the last tokens are the big ones, so they
      *                dominate every score they appear in.
@@ -501,7 +501,7 @@
 
         const shuffle = _read('s1_shuffle', 0) >= 0.5 ? 1 : 0;
         // tf_pos, when a scene declares it, is the whole position story:
-        //   0 none -- no position information reaches the model at all
+        //   0 none -- no positional signal enters the content vectors
         //   1 additive PE -- the sinusoidal term added to the stream
         //   2 RoPE -- q and k rotated by their slot, stream untouched
         // Absent (-1), the scene-1..4 pair decides as it always did.
