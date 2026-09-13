@@ -11718,6 +11718,39 @@ function buildProofStepDerivePayload(proof, index, opts = {}) {
 	return payload;
 }
 //#endregion
+//#region src/proof-sync.ts
+function matchesSceneStep(entry, target, sceneIndex, stepIndex) {
+	if (target == null) return false;
+	if (typeof target === "string" && target.includes(":")) {
+		const [sceneToken, stepToken] = target.split(":");
+		const targetScene = Number(sceneToken);
+		const targetStep = Number(stepToken);
+		return !Number.isNaN(targetScene) && !Number.isNaN(targetStep) && targetScene === sceneIndex && targetStep === stepIndex;
+	}
+	const targetStep = Number(target);
+	return !Number.isNaN(targetStep) && (entry.sceneIndex == null || entry.sceneIndex === sceneIndex) && targetStep === stepIndex;
+}
+/** Find the proof position linked to a scene step, preferring the active proof. */
+function findProofSceneStepMatch(entries, activeProofIndex, sceneIndex, stepIndex) {
+	const orderedIndexes = entries.map((_, index) => index);
+	if (activeProofIndex >= 0 && activeProofIndex < entries.length) {
+		orderedIndexes.splice(activeProofIndex, 1);
+		orderedIndexes.unshift(activeProofIndex);
+	}
+	for (const proofIndex of orderedIndexes) {
+		const matchedStep = (entries[proofIndex].proof.steps || []).findIndex((step) => matchesSceneStep(entries[proofIndex], step.sceneStep, sceneIndex, stepIndex));
+		if (matchedStep >= 0) return {
+			proofIndex,
+			stepIndex: matchedStep
+		};
+	}
+	for (const proofIndex of orderedIndexes) if (matchesSceneStep(entries[proofIndex], entries[proofIndex].proof.sceneStep, sceneIndex, stepIndex)) return {
+		proofIndex,
+		stepIndex: -1
+	};
+	return null;
+}
+//#endregion
 //#region src/proof.ts
 var proofState = state;
 var proofTechniques = {
@@ -12110,29 +12143,15 @@ function navigateProof$1(index) {
 /** Reverse sync: scene step changed, update proof to match. */
 function syncProofFromSceneStep(stepIdx) {
 	if (!proofState.proofSyncEnabled || proofState._proofSyncInProgress) return;
-	const proof = _activeProof$1();
-	if (!proof || !proof.steps) return;
-	const matchIdx = proof.steps.findIndex((s) => {
-		if (s.sceneStep == null) return false;
-		const sceneStep = s.sceneStep;
-		if (typeof sceneStep === "string" && sceneStep.includes(":")) {
-			const [siStr, stiStr] = sceneStep.split(":");
-			const si = Number(siStr);
-			const sti = Number(stiStr);
-			if (Number.isNaN(si) || Number.isNaN(sti)) return false;
-			return si === proofState.currentSceneIndex && sti === stepIdx;
-		}
-		const n = Number(sceneStep);
-		if (Number.isNaN(n)) return false;
-		return n === stepIdx;
-	});
-	if (matchIdx >= 0 && matchIdx !== proofState.proofStepIndex) {
-		proofState._proofSyncInProgress = true;
-		try {
-			navigateProof$1(matchIdx);
-		} finally {
-			proofState._proofSyncInProgress = false;
-		}
+	const match = findProofSceneStepMatch(proofState.proofSpec || [], proofState.proofActiveIndex, proofState.currentSceneIndex, stepIdx);
+	if (!match) return;
+	if (match.proofIndex === proofState.proofActiveIndex && match.stepIndex === proofState.proofStepIndex) return;
+	proofState._proofSyncInProgress = true;
+	try {
+		if (match.proofIndex !== proofState.proofActiveIndex) switchActiveProof(match.proofIndex);
+		if (match.stepIndex !== proofState.proofStepIndex) navigateProof$1(match.stepIndex);
+	} finally {
+		proofState._proofSyncInProgress = false;
 	}
 }
 /**

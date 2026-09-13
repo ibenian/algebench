@@ -8,6 +8,7 @@ import { FIRST_ICON, PREV_ICON, NEXT_ICON, LAST_ICON } from '/icons.js';
 import { renderKaTeX, renderMarkdown, makeAiAskButton, makeDeriveButton, openChatPanel, stripHtmlMacros } from '/labels.js';
 import { SgProofManager } from '/proof-animation/sg-proof.js';
 import { buildProofStepDerivePayload, describeDeriveStart } from '/proof-animation/derive-payload.js';
+import { findProofSceneStepMatch } from '/proof-sync.js';
 import type { SemanticGraph } from '/types/semantic-graph.js';
 
 /**
@@ -661,33 +662,27 @@ export function navigateProof(index: number): void {
 /** Reverse sync: scene step changed, update proof to match. */
 export function syncProofFromSceneStep(stepIdx: number): void {
     if (!proofState.proofSyncEnabled || proofState._proofSyncInProgress) return;
-    const proof = _activeProof();
-    if (!proof || !proof.steps) return;
+    const entries = proofState.proofSpec || [];
+    const match = findProofSceneStepMatch(
+        entries,
+        proofState.proofActiveIndex,
+        proofState.currentSceneIndex,
+        stepIdx,
+    );
+    if (!match) return;
+    if (match.proofIndex === proofState.proofActiveIndex
+        && match.stepIndex === proofState.proofStepIndex) return;
 
-    const matchIdx = proof.steps.findIndex(s => {
-        if (s.sceneStep == null) return false;
-        const sceneStep = s.sceneStep;
-
-        // Support "sceneIdx:stepIdx" string format as well as plain numeric indices
-        if (typeof sceneStep === 'string' && sceneStep.includes(':')) {
-            const [siStr, stiStr] = sceneStep.split(':');
-            const si = Number(siStr);
-            const sti = Number(stiStr);
-            if (Number.isNaN(si) || Number.isNaN(sti)) return false;
-            return si === proofState.currentSceneIndex && sti === stepIdx;
+    proofState._proofSyncInProgress = true;
+    try {
+        if (match.proofIndex !== proofState.proofActiveIndex) {
+            switchActiveProof(match.proofIndex);
         }
-
-        const n = Number(sceneStep);
-        if (Number.isNaN(n)) return false;
-        return n === stepIdx;
-    });
-    if (matchIdx >= 0 && matchIdx !== proofState.proofStepIndex) {
-        proofState._proofSyncInProgress = true;
-        try {
-            navigateProof(matchIdx);
-        } finally {
-            proofState._proofSyncInProgress = false;
+        if (match.stepIndex !== proofState.proofStepIndex) {
+            navigateProof(match.stepIndex);
         }
+    } finally {
+        proofState._proofSyncInProgress = false;
     }
 }
 

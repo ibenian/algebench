@@ -3449,7 +3449,7 @@
         {
           "id": "softmax-flagship",
           "title": "Softmax — and the flagship row",
-          "description": "Exponentiate and normalise. The row is drawn as bars now — height is the weight, and a masked key has no bar at all. For *sat*: 0.029108 on *the*, 0.970889 on *cat*, 0.000003 on itself, and nothing at all on the three future positions. The verb puts 97.09% of its mass on its subject. Sum: 1.000000 — asserted at six decimals on screen, not claimed. And read **across** rows, never down columns: this matrix is row-stochastic, so two cells in a column were normalised by different denominators and comparing them means nothing.",
+          "description": "Read $z_{ij}=\\hat s_{ij}+M_{ij}$ as a logit: an unnormalised log-weight. Softmax follows the visible path $\\text{logits }z\\;\\xrightarrow{\\exp}\\;\\text{positive weights }e^z\\;\\xrightarrow{\\text{normalise}}\\;\\text{probabilities }\\alpha$, where $\\alpha_{ij}=\\dfrac{\\exp(z_{ij})}{\\sum_{\\ell=0}^{n-1}\\exp(z_{i\\ell})}$. The row is drawn as bars now — height is the probability, and a masked key has no bar at all. For *sat*: 0.029108 on *the*, 0.970889 on *cat*, 0.000003 on itself, and nothing at all on the three future positions. The verb puts 97.09% of its mass on its subject. Sum: 1.000000 — asserted at six decimals on screen, not claimed. And read **across** rows, never down columns: this matrix is row-stochastic, so two cells in a column were normalised by different denominators and comparing them means nothing.",
           "camera": {
             "position": [-1.0, -3.9, 15.5],
             "target": [-1.0, 2.6, 0.0]
@@ -3485,7 +3485,7 @@
             },
             {
               "id": "s3_tensor_soft_cap",
-              "text": "stage 4 — $\\alpha_{ij}$ · bar height is the weight\\nread **across**, never down · masked keys have no bar",
+              "text": "stage 4 — logits $z$ $\\xrightarrow{\\exp}$ weights $e^z$ $\\xrightarrow{\\div\\sum}$ probabilities $\\alpha$\\nread **across**, never down · masked keys have no bar",
               "position": [1.4, 3.38, 0],
               "type": "text",
               "align": "left",
@@ -3494,11 +3494,11 @@
             }
           ],
           "info": [
-            {"id": "s3_stages_card", "position": "bottom-left", "keep": true, "title": "The pipeline so far", "content": "**1 · raw** $s_{ij} = q_i \\cdot k_j$\n\n**2 · scale** $\\hat s_{ij} = s_{ij} / \\sqrt{d_k}$\n\n**3 · mask** $\\hat s_{ij} + M_{ij}$, with $M_{ij} = -\\infty$ for $j > i$\n\n**4 · softmax** $\\alpha_{ij} = \\mathrm{softmax}_j(\\hat s_{ij} + M_{ij})$"},
+            {"id": "s3_stages_card", "position": "bottom-left", "keep": true, "title": "The pipeline so far", "content": "**1 · raw** $s_{ij} = q_i \\cdot k_j$\n\n**2 · scale** $\\hat s_{ij} = s_{ij} / \\sqrt{d_k}$\n\n**3 · mask** $\\hat s_{ij} + M_{ij}$, with $M_{ij} = -\\infty$ for $j > i$\n\n**4 · softmax** $\\underbrace{z_{ij}}_{\\text{logit / log-weight}} \\xrightarrow{\\exp} \\underbrace{e^{z_{ij}}}_{\\text{positive weight}} \\xrightarrow{\\div\\sum_\\ell e^{z_{i\\ell}}} \\underbrace{\\alpha_{ij}}_{\\text{probability}}$\n\n$$\\alpha_{ij}=\\frac{\\exp(z_{ij})}{\\sum_{\\ell=0}^{n-1}\\exp(z_{i\\ell})}$$"},
             {"id": "s3_info_softmax_flagship", "position": "bottom-center", "title": "The flagship row", "content": "$\\alpha_{2j} = 0.029108,\\ \\mathbf{0.970889},\\ 0.000003$, then nothing. Sum = **{{ toFixed(tfRowSum(s3_qi), 6) }}**, asserted. Row-stochastic: read across, never down."},
             {"id": "s3_keep_card", "position": "bottom-right", "keep": true, "title": "Toy · provenance", "content": "$d_{\\text{model}} = 4$, $d_k = 2$, **one head of two**. $W_Q, W_K, W_V$ are hand-built for legibility, **not learned**."}
           ],
-          "prompt": "The emotional payoff of the scene: 97.09% of 'sat's mass on 'cat'. Three guardrails. (1) ASSERT, do not claim: the row sum is printed live at six decimals so the student can check it, and the six-decimal precision exists so 0.989933 could not hide. (2) ROW-STOCHASTIC: reading down a column compares numbers normalised by different denominators and is meaningless. (3) HONESTY: this head is legible because W_Q and W_K were built to make it legible. Real trained weights at d_model = 4 produce noise. Say so immediately if the student is impressed by the number. And do NOT let 'sat attends to cat' become 'sat attends to cat BECAUSE cat is the subject' - that inference is the subject of a later step and is not supported."
+          "prompt": "Name the visible map explicitly: logits z are unnormalised log-weights; exp maps them to positive weights; dividing by their row sum produces probabilities alpha. Do not call the embedding space log space. The emotional payoff of the scene: 97.09% of 'sat's mass on 'cat'. Three guardrails. (1) ASSERT, do not claim: the row sum is printed live at six decimals so the student can check it, and the six-decimal precision exists so 0.989933 could not hide. (2) ROW-STOCHASTIC: reading down a column compares numbers normalised by different denominators and is meaningless. (3) HONESTY: this head is legible because W_Q and W_K were built to make it legible. Real trained weights at d_model = 4 produce noise. Say so immediately if the student is impressed by the number. And do NOT let 'sat attends to cat' become 'sat attends to cat BECAUSE cat is the subject' - that inference is the subject of a later step and is not supported."
         },
         {
           "id": "output-is-caged",
@@ -3756,7 +3756,7 @@
             }
           ],
           "info": [
-            {"id": "s3_stages_card", "position": "bottom-left", "keep": true, "title": "The pipeline so far", "content": "**1 · raw** $s_{ij} = q_i \\cdot k_j$\n\n**2 · scale** $\\hat s_{ij} = s_{ij} / \\sqrt{d_k}$\n\n**3 · mask** $\\hat s_{ij} + M_{ij}$, with $M_{ij} = -\\infty$ for $j > i$\n\n**4 · softmax** $\\alpha_{ij} = \\mathrm{softmax}_j(\\hat s_{ij} + M_{ij})$\n\n**5 · mix** $o_i = \\sum_j \\alpha_{ij}\\, v_j$"},
+            {"id": "s3_stages_card", "position": "bottom-left", "keep": true, "title": "The pipeline so far", "content": "**1 · raw** $s_{ij} = q_i \\cdot k_j$\n\n**2 · scale** $\\hat s_{ij} = s_{ij} / \\sqrt{d_k}$\n\n**3 · mask** $\\hat s_{ij} + M_{ij}$, with $M_{ij} = -\\infty$ for $j > i$\n\n**4 · softmax** $\\underbrace{z_{ij}}_{\\text{logit / log-weight}} \\xrightarrow{\\exp} \\underbrace{e^{z_{ij}}}_{\\text{positive weight}} \\xrightarrow{\\div\\sum_\\ell e^{z_{i\\ell}}} \\underbrace{\\alpha_{ij}}_{\\text{probability}}$\n\n$$\\alpha_{ij}=\\frac{\\exp(z_{ij})}{\\sum_{\\ell=0}^{n-1}\\exp(z_{i\\ell})}$$\n\n**5 · mix** $o_i = \\sum_j \\alpha_{ij}\\, v_j$"},
             {"id": "s3_info_output_is_caged", "position": "top-center", "title": "Caged in the hull", "content": "$o_i = ({{ toFixed(tfOut(s3_qi,0),4) }},\\ {{ toFixed(tfOut(s3_qi,1),4) }})$ — the centre of mass of the *visible* $v_j$, masses $\\alpha_{ij}$. Spoke thickness = weight. The outline is the bound; dim points are values the mask hides. Points at $2\\times$. Proof 4."},
             {"id": "s3_keep_card", "position": "bottom-right", "keep": true, "title": "Toy · provenance", "content": "$d_{\\text{model}} = 4$, $d_k = 2$, **one head of two**. $W_Q, W_K, W_V$ are hand-built for legibility, **not learned**."}
           ],
@@ -3771,7 +3771,7 @@
             "target": [0.0, 0.0, 0.0]
           },
           "info": [
-            {"id": "s3_stages_card", "position": "bottom-left", "keep": true, "title": "The pipeline so far", "content": "**1 · raw** $s_{ij} = q_i \\cdot k_j$\n\n**2 · scale** $\\hat s_{ij} = s_{ij} / \\sqrt{d_k}$\n\n**3 · mask** $\\hat s_{ij} + M_{ij}$, with $M_{ij} = -\\infty$ for $j > i$\n\n**4 · softmax** $\\alpha_{ij} = \\mathrm{softmax}_j(\\hat s_{ij} + M_{ij})$\n\n**5 · mix** $o_i = \\sum_j \\alpha_{ij}\\, v_j$"},
+            {"id": "s3_stages_card", "position": "bottom-left", "keep": true, "title": "The pipeline so far", "content": "**1 · raw** $s_{ij} = q_i \\cdot k_j$\n\n**2 · scale** $\\hat s_{ij} = s_{ij} / \\sqrt{d_k}$\n\n**3 · mask** $\\hat s_{ij} + M_{ij}$, with $M_{ij} = -\\infty$ for $j > i$\n\n**4 · softmax** $\\underbrace{z_{ij}}_{\\text{logit / log-weight}} \\xrightarrow{\\exp} \\underbrace{e^{z_{ij}}}_{\\text{positive weight}} \\xrightarrow{\\div\\sum_\\ell e^{z_{i\\ell}}} \\underbrace{\\alpha_{ij}}_{\\text{probability}}$\n\n$$\\alpha_{ij}=\\frac{\\exp(z_{ij})}{\\sum_{\\ell=0}^{n-1}\\exp(z_{i\\ell})}$$\n\n**5 · mix** $o_i = \\sum_j \\alpha_{ij}\\, v_j$"},
             {"id": "s3_info_weighting_is_not_explanation", "position": "bottom-left", "title": "Not an explanation", "content": "A large $\\alpha_{ij}$ is a fact about mixing, not evidence the output depends on token $j$ (Jain & Wallace 2019; Wiegreffe & Pinter 2019 rebut in part). Full statement: doc panel."},
             {"id": "s3_keep_card", "position": "bottom-right", "keep": true, "title": "Toy · provenance", "content": "$d_{\\text{model}} = 4$, $d_k = 2$, **one head of two**. $W_Q, W_K, W_V$ are hand-built for legibility, **not learned**."}
           ],
@@ -4092,7 +4092,7 @@
           "techniqueHint": "Direct: a common factor cancels. Two lines, shown in full — hiding them behind a progressive reveal would be theatre.",
           "domain": "algebra",
           "goal": "$\\mathrm{softmax}(z + c\\mathbf{1}) = \\mathrm{softmax}(z)$ for any scalar $c$ — adding the same number to every score changes nothing.",
-          "sceneStep": 5,
+          "sceneStep": 6,
           "prompt": "Proof 5, the shortest in the lesson, and it is on screen because it licenses two things the student has just seen. First, the standard implementation subtracts max_j z_j before exponentiating, purely to avoid overflow, and this identity is why that is free. Second, an additive -infinity on masked entries is a coherent operation precisely because softmax lives naturally on additive changes to the scores: e^{-inf} = 0 removes the term and the survivors renormalise into a genuine distribution. In this lesson's code -infinity is -1e9, a large finite number, so no NaN reaches the renderer - say so if asked; do not claim the code uses -Infinity literally. This is a licence for the mask's PLACEMENT, not for its order: masking after softmax is still wrong, and gives 0.989933.",
           "steps": [
             {
@@ -4106,7 +4106,7 @@
               "justification": "$e^{z_j + c} = e^{c}e^{z_j}$, and the constant $e^{c}$ factors out of the sum in the denominator. It is strictly positive, so the cancellation is always legal.",
               "explanation": "That is the whole proof. Softmax cares about *differences* between scores and nothing else — which is another way of saying the scores have no absolute zero.",
               "prompt": "Two lines, no scaffolding. The cancellation is exact and needs only that e^c is positive. Stress the reading: softmax sees only differences between scores.",
-              "sceneStep": 5
+              "sceneStep": 6
             },
             {
               "id": "p5-consequences",
@@ -4119,7 +4119,7 @@
               "justification": "Subtracting the row maximum leaves the output unchanged and keeps every exponent at most $0$, which is the standard numerically stable implementation. And an additive $-\\infty$ is just another additive change to the scores: $e^{-\\infty} = 0$ deletes the term, and the surviving entries still normalise to $1$.",
               "explanation": "This is the licence for **where** the mask goes — on the scores, as an additive term — not for what order it goes in. Masking after softmax deletes mass instead of redistributing it, and gives $0.989933$ for row 2 where a distribution requires $1.000000$. In the code the $-\\infty$ is $-10^{9}$, a large finite number, so the renderer never sees a `NaN`.",
               "prompt": "Connect the symbols to the viewport: the hl-mask spans are the dark cells of the causal lattice. Two consequences, and keep them distinct - max subtraction is a numerics trick, the additive -infinity is the mask itself. Neither licenses masking AFTER softmax.",
-              "sceneStep": 5
+              "sceneStep": 6
             }
           ]
         },
