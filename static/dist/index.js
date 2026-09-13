@@ -9846,6 +9846,7 @@ function renderChart(el, view) {
 			return;
 		}
 		const xFn = compileOpt(sp.xExpr, `series[${k}].xExpr`);
+		const pointLabelFn = compileOpt(sp.pointLabelExpr, `series[${k}].pointLabelExpr`);
 		const n = Number(sp.n) > 1 ? Math.max(2, Math.min(4096, Math.floor(Number(sp.n)))) : ys ? ys.length : 64;
 		series.push({
 			color: parseColor(sp.color || el.color || "#ff88aa"),
@@ -9859,10 +9860,13 @@ function renderChart(el, view) {
 			ys,
 			xFn,
 			yFn,
+			pointLabelFn,
 			xSrc: typeof sp.xExpr === "string" ? sp.xExpr.trim() || null : null,
 			ySrc: typeof sp.yExpr === "string" ? sp.yExpr.trim() || null : null,
+			pointLabelSrc: typeof sp.pointLabelExpr === "string" ? sp.pointLabelExpr.trim() || null : null,
 			px: new Array(n).fill(0),
 			py: new Array(n).fill(0),
+			pointLabels: new Array(n).fill(""),
 			node: null,
 			data: null,
 			entry: null
@@ -9928,7 +9932,7 @@ function renderChart(el, view) {
 	let yDom = yFixed || [0, 1];
 	/** Plot-space (h, v) in data units for a data point (x, y) under the current domains. */
 	const toPlane = (x, y) => [(x - xDom[0]) / (xDom[1] - xDom[0] || 1) * W, (y - yDom[0]) / (yDom[1] - yDom[0] || 1) * H];
-	const live = series.some((s) => s.xSrc || s.ySrc) || hlines.some((l) => l.src) || bands.some((b) => b.loSrc || b.hiSrc) || !!xLabelSrc || !!yLabelSrc;
+	const live = series.some((s) => s.xSrc || s.ySrc || s.pointLabelSrc) || hlines.some((l) => l.src) || bands.some((b) => b.loSrc || b.hiSrc) || !!xLabelSrc || !!yLabelSrc;
 	function sample(tSec) {
 		for (const s of series) {
 			const scope = {
@@ -9957,6 +9961,12 @@ function renderChart(el, view) {
 				else y = s.ys ? s.ys[i] ?? 0 : NaN;
 				s.px[i] = x;
 				s.py[i] = Number.isFinite(y) ? y : NaN;
+				if (s.pointLabelFn) try {
+					const out = evalExpr(s.pointLabelFn.fn, tSec, { overrideScope: scope });
+					s.pointLabels[i] = out === null || out === void 0 ? "" : String(out);
+				} catch (_e) {
+					s.pointLabels[i] = "";
+				}
 			}
 		}
 		for (const l of hlines) if (l.fn) try {
@@ -10223,11 +10233,16 @@ function renderChart(el, view) {
 		const yt = niceTicks(yDom[0], yDom[1], yTickCount);
 		const xLabels = xt.ticks.map((v) => tickText(xLabelFn, v, xt.step, tSec));
 		const yLabels = yt.ticks.map((v) => tickText(yLabelFn, v, yt.step, tSec));
+		const pointLabelKey = series.filter((s) => s.kind === "points" && s.pointLabelSrc).map((s) => s.pointLabels.map((label, i) => {
+			const [h, v] = toPlane(s.px[i], s.py[i]);
+			return `${label}\u0001${Math.round(h * pxPer * 2)}\u0001${Math.round(v * pxPer * 2)}`;
+		}).join("")).join("");
 		const key = [
 			xDom.join(","),
 			yDom.join(","),
 			xLabels.join(""),
-			yLabels.join("")
+			yLabels.join(""),
+			pointLabelKey
 		].join("");
 		if (key === paperKey) return;
 		paperKey = key;
@@ -10345,6 +10360,113 @@ function renderChart(el, view) {
 				rotate: -Math.PI / 2
 			});
 		}
+		const occupied = [];
+		for (const sr of series) {
+			if (sr.kind !== "points" || !sr.pointLabelSrc) continue;
+			sr.pointLabels.forEach((txt, i) => {
+				const x = sr.px[i], y = sr.py[i];
+				if (!txt || !Number.isFinite(x) || !Number.isFinite(y) || x < xDom[0] || x > xDom[1] || y < yDom[0] || y > yDom[1]) return;
+				const [h, v] = toPlane(x, y);
+				const fontPx = Math.min(pxPer * .34, fitLatexPx(txt, pxPer * 1.5, pxPer * .7));
+				const measured = measureLatex(txt);
+				const tw = measured.w * fontPx / 100, th = measured.h * fontPx / 100;
+				const px = X(h), py = Y(v), gap = Math.max(5, pxPer * .09);
+				const candidates = [
+					{
+						x: px,
+						y: py - gap,
+						align: "center",
+						vAlign: "bottom",
+						left: px - tw / 2,
+						top: py - gap - th
+					},
+					{
+						x: px,
+						y: py + gap,
+						align: "center",
+						vAlign: "top",
+						left: px - tw / 2,
+						top: py + gap
+					},
+					{
+						x: px - gap,
+						y: py,
+						align: "right",
+						vAlign: "middle",
+						left: px - gap - tw,
+						top: py - th / 2
+					},
+					{
+						x: px + gap,
+						y: py,
+						align: "left",
+						vAlign: "middle",
+						left: px + gap,
+						top: py - th / 2
+					},
+					{
+						x: px - gap,
+						y: py - gap,
+						align: "right",
+						vAlign: "bottom",
+						left: px - gap - tw,
+						top: py - gap - th
+					},
+					{
+						x: px + gap,
+						y: py - gap,
+						align: "left",
+						vAlign: "bottom",
+						left: px + gap,
+						top: py - gap - th
+					},
+					{
+						x: px - gap,
+						y: py + gap,
+						align: "right",
+						vAlign: "top",
+						left: px - gap - tw,
+						top: py + gap
+					},
+					{
+						x: px + gap,
+						y: py + gap,
+						align: "left",
+						vAlign: "top",
+						left: px + gap,
+						top: py + gap
+					}
+				];
+				const ordered = candidates.slice(i % candidates.length).concat(candidates.slice(0, i % candidates.length));
+				const plotLeft = X(0), plotRight = X(W), plotTop = Y(H), plotBottom = Y(0);
+				const fits = (c) => {
+					const box = {
+						left: c.left,
+						top: c.top,
+						right: c.left + tw,
+						bottom: c.top + th
+					};
+					if (box.left < plotLeft || box.right > plotRight || box.top < plotTop || box.bottom > plotBottom) return false;
+					return !occupied.some((other) => box.left < other.right + 3 && box.right + 3 > other.left && box.top < other.bottom + 3 && box.bottom + 3 > other.top);
+				};
+				const chosen = ordered.find(fits) || ordered.find((c) => {
+					const right = c.left + tw, bottom = c.top + th;
+					return c.left >= plotLeft && right <= plotRight && c.top >= plotTop && bottom <= plotBottom;
+				}) || candidates[0];
+				occupied.push({
+					left: chosen.left,
+					top: chosen.top,
+					right: chosen.left + tw,
+					bottom: chosen.top + th
+				});
+				drawLatex(ctx, txt, chosen.x, chosen.y, {
+					fontPx,
+					color: css(sr.color),
+					align: chosen.align,
+					vAlign: chosen.vAlign
+				});
+			});
+		}
 		const legendRows = series.filter((sr) => sr.label);
 		if (legendRows.length) {
 			const titleRef = xTitle || yTitle;
@@ -10406,7 +10528,11 @@ function renderChart(el, view) {
 		label: legendLabel
 	};
 	const exprStrings = [
-		...series.flatMap((s) => [s.xSrc, s.ySrc]),
+		...series.flatMap((s) => [
+			s.xSrc,
+			s.ySrc,
+			s.pointLabelSrc
+		]),
 		...hlines.map((l) => l.src),
 		...bands.flatMap((b) => [b.loSrc, b.hiSrc]),
 		xLabelSrc,
@@ -10414,7 +10540,11 @@ function renderChart(el, view) {
 	].filter((x) => !!x);
 	let compiledUnderTrust = chartState._sceneJsTrustState;
 	const fns = () => [
-		...series.flatMap((s) => [s.xFn?.fn, s.yFn?.fn]),
+		...series.flatMap((s) => [
+			s.xFn?.fn,
+			s.yFn?.fn,
+			s.pointLabelFn?.fn
+		]),
 		...hlines.map((l) => l.fn?.fn),
 		...bands.flatMap((b) => [b.loFn?.fn, b.hiFn?.fn]),
 		xLabelFn?.fn,
@@ -10430,6 +10560,7 @@ function renderChart(el, view) {
 			series.forEach((s, k) => {
 				if (s.ySrc) s.yFn = compileOpt(s.ySrc, `series[${k}].yExpr`);
 				if (s.xSrc) s.xFn = compileOpt(s.xSrc, `series[${k}].xExpr`);
+				if (s.pointLabelSrc) s.pointLabelFn = compileOpt(s.pointLabelSrc, `series[${k}].pointLabelExpr`);
 			});
 			hlines.forEach((l, k) => {
 				if (l.src) l.fn = compileOpt(l.src, `hlines[${k}].yExpr`);

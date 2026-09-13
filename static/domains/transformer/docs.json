@@ -315,6 +315,13 @@
         6
       ]
     },
+    "tf_x": {
+      "kind": "tensor",
+      "shape": "[n, d_model] (configured shape)",
+      "description": "Direct residual-input override AFTER positional encoding, indexed by slot. Finite cells replace X; missing or non-finite cells retain embedding plus position. Does not reshape the model or alter raw embeddings or the position-free equivariance demo. Removing the slider restores the normal input.",
+      "default": "embedding plus positional encoding",
+      "scenes": [2]
+    },
     "tf_emb": {
       "kind": "tensor",
       "shape": "[n, d_model] (any)",

@@ -778,6 +778,10 @@ export interface Element {
      */
     size?: number;
     /**
+     * For kind 'points', text drawn beside each point. Evaluated per sample with 'i', 'n', and 'x' bound.
+     */
+    pointLabelExpr?: string;
+    /**
      * Line width. Default 2.5.
      */
     width?: number;

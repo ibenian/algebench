@@ -150,6 +150,7 @@ interface SeriesSpec {
     width?: unknown;
     opacity?: unknown;
     size?: unknown;
+    pointLabelExpr?: unknown;
 }
 
 interface LineSpec {
@@ -246,8 +247,10 @@ export function renderChart(el: Element, view: MathBoxNode) {
         xs: number[] | null; ys: number[] | null;          // literal data
         xFn: { src: string; fn: CompiledExpr } | null;     // or expressions
         yFn: { src: string; fn: CompiledExpr } | null;
-        xSrc: string | null; ySrc: string | null;
+        pointLabelFn: { src: string; fn: CompiledExpr } | null;
+        xSrc: string | null; ySrc: string | null; pointLabelSrc: string | null;
         px: number[]; py: number[];                        // current sample values (data units)
+        pointLabels: string[];
         node: MathBoxNode | null; data: MathBoxNode | null; entry: LineEntry | null;
     }
     const seriesSpecs = Array.isArray(chart.series) ? (chart.series as SeriesSpec[]) : [];
@@ -263,6 +266,7 @@ export function renderChart(el: Element, view: MathBoxNode) {
             return;
         }
         const xFn = compileOpt(sp.xExpr, `series[${k}].xExpr`);
+        const pointLabelFn = compileOpt(sp.pointLabelExpr, `series[${k}].pointLabelExpr`);
         const n = Number(sp.n) > 1 ? Math.max(2, Math.min(4096, Math.floor(Number(sp.n)))) : (ys ? ys.length : 64);
         series.push({
             color: parseColor(sp.color || el.color || '#ff88aa') as Rgb3,
@@ -271,10 +275,12 @@ export function renderChart(el: Element, view: MathBoxNode) {
             opacity: Number.isFinite(Number(sp.opacity)) ? Math.max(0, Math.min(1, Number(sp.opacity))) : 1,
             label: typeof sp.label === 'string' && sp.label.trim() ? sp.label.trim() : null,
             size: Number(sp.size) > 0 ? Number(sp.size) : null,
-            xs, ys, xFn, yFn,
+            xs, ys, xFn, yFn, pointLabelFn,
             xSrc: typeof sp.xExpr === 'string' ? sp.xExpr.trim() || null : null,
             ySrc: typeof sp.yExpr === 'string' ? sp.yExpr.trim() || null : null,
+            pointLabelSrc: typeof sp.pointLabelExpr === 'string' ? sp.pointLabelExpr.trim() || null : null,
             px: new Array(n).fill(0), py: new Array(n).fill(0),
+            pointLabels: new Array(n).fill(''),
             node: null, data: null, entry: null,
         });
     });
@@ -350,7 +356,7 @@ export function renderChart(el: Element, view: MathBoxNode) {
     // ── Evaluate everything at `tSec` into the sample arrays and domains ──
     // Declared, not compiled: a channel refused under the untrusted state
     // must still register the updater so a trust change can bring it back.
-    const live = series.some(s => s.xSrc || s.ySrc) || hlines.some(l => l.src) || bands.some(b => b.loSrc || b.hiSrc) || !!xLabelSrc || !!yLabelSrc;
+    const live = series.some(s => s.xSrc || s.ySrc || s.pointLabelSrc) || hlines.some(l => l.src) || bands.some(b => b.loSrc || b.hiSrc) || !!xLabelSrc || !!yLabelSrc;
     function sample(tSec: number) {
         for (const s of series) {
             const scope = { i: 0, n: s.n, x: 0 };
@@ -367,6 +373,12 @@ export function renderChart(el: Element, view: MathBoxNode) {
                 else y = s.ys ? (s.ys[i] ?? 0) : NaN;
                 s.px[i] = x;
                 s.py[i] = Number.isFinite(y) ? y : NaN;
+                if (s.pointLabelFn) {
+                    try {
+                        const out = evalExpr(s.pointLabelFn.fn, tSec, { overrideScope: scope });
+                        s.pointLabels[i] = out === null || out === undefined ? '' : String(out);
+                    } catch (_e) { s.pointLabels[i] = ''; }
+                }
             }
         }
         // Reference lines and bands are one number each, so they see the
@@ -549,7 +561,16 @@ export function renderChart(el: Element, view: MathBoxNode) {
         const yt = niceTicks(yDom[0], yDom[1], yTickCount);
         const xLabels = xt.ticks.map(v => tickText(xLabelFn, v, xt.step, tSec));
         const yLabels = yt.ticks.map(v => tickText(yLabelFn, v, yt.step, tSec));
-        const key = [xDom.join(','), yDom.join(','), xLabels.join(''), yLabels.join('')].join('');
+        // Point labels live on the paper, so their positions and text join the
+        // cache key. Half-pixel quantisation avoids repainting for motion too
+        // small to be visible while sliders still feel immediate.
+        const pointLabelKey = series.filter(s => s.kind === 'points' && s.pointLabelSrc).map(s =>
+            s.pointLabels.map((label, i) => {
+                const [h, v] = toPlane(s.px[i]!, s.py[i]!);
+                return `${label}\u0001${Math.round(h * pxPer * 2)}\u0001${Math.round(v * pxPer * 2)}`;
+            }).join('\u0002')
+        ).join('\u0003');
+        const key = [xDom.join(','), yDom.join(','), xLabels.join(''), yLabels.join(''), pointLabelKey].join('');
         if (key === paperKey) return;
         paperKey = key;
 
@@ -616,6 +637,53 @@ export function renderChart(el: Element, view: MathBoxNode) {
             const cx = Math.max(titleH / 2, X(0) - tickLen - pxPer * 0.16 - yLabelW - titleH / 2);
             drawLatex(ctx, yTitle, cx, Y(H / 2), { fontPx, color: css(yColor), rotate: -Math.PI / 2 });
         }
+        // Point labels are drawn into the same tilted paper as the axes. Try
+        // the eight neighbouring positions and avoid labels already placed,
+        // which keeps small scatter plots legible when several dots cluster.
+        const occupied: Array<{ left: number; top: number; right: number; bottom: number }> = [];
+        for (const sr of series) {
+            if (sr.kind !== 'points' || !sr.pointLabelSrc) continue;
+            sr.pointLabels.forEach((txt, i) => {
+                const x = sr.px[i]!, y = sr.py[i]!;
+                if (!txt || !Number.isFinite(x) || !Number.isFinite(y)
+                    || x < xDom[0] || x > xDom[1] || y < yDom[0] || y > yDom[1]) return;
+                const [h, v] = toPlane(x, y);
+                // Point IDs are short mathematical labels. Giving them the
+                // same cramped height as a long tick string shrinks KaTeX's
+                // subscript layout until it looks broken on the 3D plane.
+                // Use the axis-title scale, still fitting unusually long text.
+                const fontPx = Math.min(pxPer * 0.34, fitLatexPx(txt, pxPer * 1.5, pxPer * 0.7));
+                const measured = measureLatex(txt);
+                const tw = measured.w * fontPx / 100, th = measured.h * fontPx / 100;
+                const px = X(h), py = Y(v), gap = Math.max(5, pxPer * 0.09);
+                const candidates = [
+                    { x: px, y: py - gap, align: 'center' as const, vAlign: 'bottom' as const, left: px - tw / 2, top: py - gap - th },
+                    { x: px, y: py + gap, align: 'center' as const, vAlign: 'top' as const, left: px - tw / 2, top: py + gap },
+                    { x: px - gap, y: py, align: 'right' as const, vAlign: 'middle' as const, left: px - gap - tw, top: py - th / 2 },
+                    { x: px + gap, y: py, align: 'left' as const, vAlign: 'middle' as const, left: px + gap, top: py - th / 2 },
+                    { x: px - gap, y: py - gap, align: 'right' as const, vAlign: 'bottom' as const, left: px - gap - tw, top: py - gap - th },
+                    { x: px + gap, y: py - gap, align: 'left' as const, vAlign: 'bottom' as const, left: px + gap, top: py - gap - th },
+                    { x: px - gap, y: py + gap, align: 'right' as const, vAlign: 'top' as const, left: px - gap - tw, top: py + gap },
+                    { x: px + gap, y: py + gap, align: 'left' as const, vAlign: 'top' as const, left: px + gap, top: py + gap },
+                ];
+                const ordered = candidates.slice(i % candidates.length).concat(candidates.slice(0, i % candidates.length));
+                const plotLeft = X(0), plotRight = X(W), plotTop = Y(H), plotBottom = Y(0);
+                const fits = (c: typeof candidates[number]) => {
+                    const box = { left: c.left, top: c.top, right: c.left + tw, bottom: c.top + th };
+                    if (box.left < plotLeft || box.right > plotRight || box.top < plotTop || box.bottom > plotBottom) return false;
+                    return !occupied.some(other => box.left < other.right + 3 && box.right + 3 > other.left
+                        && box.top < other.bottom + 3 && box.bottom + 3 > other.top);
+                };
+                const chosen = ordered.find(fits) || ordered.find(c => {
+                    const right = c.left + tw, bottom = c.top + th;
+                    return c.left >= plotLeft && right <= plotRight && c.top >= plotTop && bottom <= plotBottom;
+                }) || candidates[0]!;
+                occupied.push({ left: chosen.left, top: chosen.top, right: chosen.left + tw, bottom: chosen.top + th });
+                drawLatex(ctx, txt, chosen.x, chosen.y, {
+                    fontPx, color: css(sr.color), align: chosen.align, vAlign: chosen.vAlign,
+                });
+            });
+        }
         // Series legend, on the paper, top-right of the plot: a swatch (dot
         // or dash) beside each labelled series, drawn straight over the grid
         // with no backing. A chart whose series carry no labels gets
@@ -667,14 +735,14 @@ export function renderChart(el: Element, view: MathBoxNode) {
     }
 
     const exprStrings = [
-        ...series.flatMap(s => [s.xSrc, s.ySrc]),
+        ...series.flatMap(s => [s.xSrc, s.ySrc, s.pointLabelSrc]),
         ...hlines.map(l => l.src),
         ...bands.flatMap(b => [b.loSrc, b.hiSrc]),
         xLabelSrc, yLabelSrc,
     ].filter((x): x is string => !!x);
     let compiledUnderTrust = chartState._sceneJsTrustState;
     const fns = () => [
-        ...series.flatMap(s => [s.xFn?.fn, s.yFn?.fn]),
+        ...series.flatMap(s => [s.xFn?.fn, s.yFn?.fn, s.pointLabelFn?.fn]),
         ...hlines.map(l => l.fn?.fn), ...bands.flatMap(b => [b.loFn?.fn, b.hiFn?.fn]),
         xLabelFn?.fn, yLabelFn?.fn,
     ].filter((x): x is CompiledExpr => !!x);
@@ -686,6 +754,7 @@ export function renderChart(el: Element, view: MathBoxNode) {
             series.forEach((s, k) => {
                 if (s.ySrc) s.yFn = compileOpt(s.ySrc, `series[${k}].yExpr`);
                 if (s.xSrc) s.xFn = compileOpt(s.xSrc, `series[${k}].xExpr`);
+                if (s.pointLabelSrc) s.pointLabelFn = compileOpt(s.pointLabelSrc, `series[${k}].pointLabelExpr`);
             });
             hlines.forEach((l, k) => { if (l.src) l.fn = compileOpt(l.src, `hlines[${k}].yExpr`); });
             bands.forEach((b, k) => {
