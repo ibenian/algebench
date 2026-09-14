@@ -2209,18 +2209,23 @@ function _buildTensorRow(id, s) {
 	row.dataset.sliderId = id;
 	const head = document.createElement("div");
 	head.className = "tslider-head";
+	const toggle = document.createElement("button");
+	toggle.type = "button";
+	toggle.className = "tslider-toggle";
+	toggle.setAttribute("aria-label", stripLatex(s.label || id) + ", " + s.shape.join(" by "));
 	const caret = document.createElement("span");
 	caret.className = "tslider-caret";
-	head.appendChild(caret);
+	toggle.appendChild(caret);
 	const labelSpan = document.createElement("span");
 	labelSpan.className = "slider-label";
 	labelSpan.innerHTML = renderKaTeX$1(s.label || id, false);
 	labelSpan.title = stripLatex(s.label || id);
-	head.appendChild(labelSpan);
+	toggle.appendChild(labelSpan);
 	const shapeSpan = document.createElement("span");
 	shapeSpan.className = "tslider-shape";
 	shapeSpan.textContent = s.shape.join("×");
-	head.appendChild(shapeSpan);
+	toggle.appendChild(shapeSpan);
+	head.appendChild(toggle);
 	const reset = document.createElement("button");
 	reset.type = "button";
 	reset.className = "tslider-reset";
@@ -2275,9 +2280,11 @@ function _buildTensorRow(id, s) {
 		collapsed = localStorage.getItem(KEY) !== "0";
 	} catch {}
 	row.classList.toggle("collapsed", collapsed);
+	toggle.setAttribute("aria-expanded", String(!collapsed));
 	head.addEventListener("mousedown", (e) => e.stopPropagation());
-	head.addEventListener("click", () => {
-		collapsed = !row.classList.toggle("collapsed") ? false : true;
+	toggle.addEventListener("click", () => {
+		collapsed = row.classList.toggle("collapsed");
+		toggle.setAttribute("aria-expanded", String(!collapsed));
 		try {
 			localStorage.setItem(KEY, collapsed ? "1" : "0");
 		} catch {}
