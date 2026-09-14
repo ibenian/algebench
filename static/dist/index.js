@@ -9010,6 +9010,27 @@ function gridLayout(dims, origin, cellSize, plane, fill, anchor) {
 		colTitleAt: (pad) => at(cols * cellSize / 2, rows * cellSize + pad)
 	};
 }
+/**
+* Does a cell's text carry LaTeX? `textExpr` documents itself as plain -- a
+* "toFixed(value, 2)" and the like -- so the answer is no for nearly every
+* cell, and the cheap fillText path is taken. A string that does carry LaTeX,
+* against that contract, is still honoured through the rasteriser.
+*/
+function cellTextIsLatex(txt) {
+	return txt.indexOf("$") >= 0 || txt.indexOf("\\") >= 0;
+}
+/**
+* The font size a plain cell string is drawn at: fit the cell's height first,
+* then shrink to its width if the string is wide. `measureAt` is called once,
+* at the height-fitted size, and hands back the width the string takes there.
+*/
+function fitPlainCellPx(wPx, hPx, measureAt) {
+	const base = Math.max(1, Math.floor(hPx * .62));
+	const w = measureAt(base);
+	const maxW = wPx * .9;
+	if (!(w > maxW)) return base;
+	return Math.max(1, Math.floor(base * maxW / w));
+}
 function renderTensor(el, _view) {
 	const dims = parseShape(el.shape);
 	if (!dims) {
@@ -9446,21 +9467,17 @@ function renderTensor(el, _view) {
 	* documented contract, but cheap to honour -- still takes the old path.
 	*/
 	function drawCellText(ctx, txt, cx, cy, wPx, hPx, color) {
-		if (txt.indexOf("$") >= 0 || txt.indexOf("\\") >= 0) {
+		if (cellTextIsLatex(txt)) {
 			drawLatex(ctx, txt, cx, cy, {
 				fontPx: fitLatexPx(txt, wPx, hPx),
 				color
 			});
 			return;
 		}
-		let fontPx = Math.max(1, Math.floor(hPx * .62));
-		ctx.font = `${fontPx}px ${FAMILY}`;
-		const w = ctx.measureText(txt).width;
-		const maxW = wPx * .9;
-		if (w > maxW) {
-			fontPx = Math.max(1, Math.floor(fontPx * maxW / w));
-			ctx.font = `${fontPx}px ${FAMILY}`;
-		}
+		ctx.font = `${fitPlainCellPx(wPx, hPx, (px) => {
+			ctx.font = `${px}px ${FAMILY}`;
+			return ctx.measureText(txt).width;
+		})}px ${FAMILY}`;
 		ctx.fillStyle = color;
 		ctx.textAlign = "center";
 		ctx.textBaseline = "middle";
