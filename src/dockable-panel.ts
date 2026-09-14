@@ -28,28 +28,27 @@ export interface DockGeometry {
 }
 
 /**
- * Which corner a panel opens in, given what this viewer has stored and what
- * the scene asked for.
+ * Where a panel opens: the corner, and the offsets measured from it.
  *
- * `h`/`v` are written only by a drag, and the corner is recomputed in the same
- * breath, so a blob without them is one the viewer never moved: its corner is
- * only whatever the scene asked for LAST time. A scene that changes its
- * default -- to stop a card covering the camera controls, say -- should reach
- * that viewer, while a card they did place stays where they put it.
+ * The three travel together, which is the whole point of resolving them in one
+ * place. `h`/`v` are written only by a drag, and the corner is recomputed in
+ * the same breath, so an offset means nothing without the corner it was
+ * measured from -- keeping stale offsets against a different corner puts the
+ * panel somewhere the viewer never left it.
  *
- * A drag writes BOTH offsets, so half of one is not a placement: it is an
- * incomplete blob, and `applyGeom` would render its missing coordinate as the
- * string "nullpx" and lose the CSS anchor with it. Both, or neither.
- *
- * `includes` is the validation throughout: a stored corner that is not one of
- * CORNERS is not trusted, and neither is an option that is not.
+ * So the placement is honoured only when the blob carries all three: a corner
+ * that is one of CORNERS, and BOTH offsets. Anything less is a blob the viewer
+ * never moved (or one half-written), the scene's own corner wins, and the
+ * offsets go back to null so `applyGeom` anchors by CSS class instead of
+ * writing "nullpx" or a coordinate from somebody else's corner.
  */
-export function resolveCorner(saved: Partial<DockGeometry> | null, corner: string): DockCorner {
+export function resolvePlacement(saved: Partial<DockGeometry> | null, corner: string): { corner: DockCorner; h: number | null; v: number | null } {
     const storedOk = !!(saved && CORNERS.includes(saved.corner as DockCorner));
-    const everDragged = !!(saved && saved.h != null && saved.v != null);
-    if (everDragged && storedOk) return saved!.corner as DockCorner;
-    if (CORNERS.includes(corner as DockCorner)) return corner as DockCorner;
-    return storedOk ? (saved!.corner as DockCorner) : 'top-left';
+    const placed = !!(saved && storedOk && saved.h != null && saved.v != null);
+    if (placed) return { corner: saved!.corner as DockCorner, h: saved!.h!, v: saved!.v! };
+    const fallback = CORNERS.includes(corner as DockCorner) ? (corner as DockCorner)
+        : (storedOk ? (saved!.corner as DockCorner) : 'top-left');
+    return { corner: fallback, h: null, v: null };
 }
 
 export interface DockablePanelOptions {
@@ -129,10 +128,13 @@ export function createDockablePanel(opts: DockablePanelOptions): DockablePanel {
     function saveGeom(g: Partial<DockGeometry>): void { try { localStorage.setItem(KEY, JSON.stringify(g)); } catch {} }
 
     const saved = loadGeom();
+    // Size and collapse survive on their own; only the placement has to be
+    // resolved as a unit.
+    const placement = resolvePlacement(saved, corner);
     const geom: DockGeometry = {
-        corner: resolveCorner(saved, corner),
-        h: saved && saved.h != null ? saved.h : null,
-        v: saved && saved.v != null ? saved.v : null,
+        corner: placement.corner,
+        h: placement.h,
+        v: placement.v,
         w: saved && saved.w != null ? saved.w : null,
         ht: saved && saved.ht != null ? saved.ht : null,
         collapsed: !!(saved && saved.collapsed),
