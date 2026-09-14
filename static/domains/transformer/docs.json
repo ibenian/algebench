@@ -408,7 +408,7 @@
   "functions": {
     "tfPerm(k)": "Source token index displayed at slot k. Identity when s1_shuffle=0.",
     "tfEmb(i,d)": "Component d (0..d_model-1; 0..3 in the toy) of the raw embedding at slot i, shuffle applied, NO positional encoding.",
-    "tfEmbBase(r,d)": "Component d of embedding TOKEN row r (0..n-1, no shuffle) of the embedding table IN FORCE: tf_emb when a scene declares it (any shape), else the toy table with any s4_emb cells overlaid. Use it to draw the embedding table itself; tfEmb(i,d) is the per-SLOT read with the shuffle applied.",
+    "tfEmbBase(r,d)": "Component d of embedding TOKEN row r (0..n-1, no shuffle) of the embedding table IN FORCE: the canonical preset when tf_emb_kind is 1-4, which REPLACES the table values before the forward pass; otherwise tf_emb when a scene declares it (any shape), else the toy table with any s4_emb cells overlaid. Use it to draw the embedding table itself; tfEmb(i,d) is the per-SLOT read with the shuffle applied.",
     "tfW(m,r,c)": "Layer-0 / head-0 shorthand for tfWq / tfWk / tfWv: entry (r, c) of a projection matrix in force: m = 0 for W_Q, 1 for W_K, 2 for W_V; r is the input dim (0..d_model-1; 0..3 in the toy), c the head dim (0..d_k-1; 0..1 in the toy), row-vector convention q = x W_Q. The hand-built value unless the tensor slider s4_wq / s4_wk / s4_wv (for m = 0 / 1 / 2) overrides cell [r][c]. Use it to draw the three matrices as lattices.",
     "tfPE(i,d)": "Component d of the sinusoidal positional encoding for POSITION i. Never shuffles. The position argument is CONTINUOUS — it is neither rounded to a slot nor clamped to N-1 — so a scene can sweep it and watch dims 0 and 1 trace the unit circle sin(p), cos(p). Integer slot arguments are unaffected.",
     "tfX(i,d)": "Layer input x_i = tfEmb(i,d) + s1_pe * tfPE(i,d) — except when s2_rope = 1, where the additive term is forced off and x_i = tfEmb(i,d) exactly. RoPE replaces additive PE; the two are never summed. A scene declaring tf_pos overrides both switches: tf_pos = 0 leaves x_i position-free, 1 adds the PE term, 2 is RoPE and leaves x_i = tfEmb(i,d).",
@@ -458,7 +458,7 @@
     "tfWo(l,r,c)": "W_O of layer l, entry (r, c): r indexes the concatenated heads (0..n_heads d_k - 1, head floor(r / d_k)), c the stream dim.",
     "tfW1(l,r,c)": "FFN W1 of layer l (d_model x d_ff), entry (r, c).",
     "tfW2(l,r,c)": "FFN W2 of layer l (d_ff x d_model), entry (r, c).",
-    "tfWu(v,d)": "Row v of the tied unembedding: the embedding row of vocabulary entry v, component d. tfLogit(i, v) = sum_d tfFinal(i, d) tfWu(v, d).",
+    "tfWu(v,d)": "Row v of the tied unembedding: the embedding row of vocabulary entry v, component d. tfLogit(i, v) = sum_d tfFinal(i, d) tfWu(v, d). Tied to the table IN FORCE, so a tf_emb_kind preset moves the unembedding with the embedding.",
     "tfH(l,i,d)": "Component d of the residual stream ENTERING layer l at slot i. l = 0 is x (embedding plus PE); l = tf_layers is what leaves the stack, before the final norm.",
     "tfAttnIn(l,i,d)": "What the attention sub-layer of layer l reads at slot i: the normed stream (pre-norm) or the stream itself (post-norm).",
     "tfQh(l,h,i,d)": "q of slot i in layer l, head h, component d (RoPE applied when s2_rope = 1, or when tf_pos = 2 in a scene that declares tf_pos, which overrides it). tfQ = tfQh(0, 0, ...).",

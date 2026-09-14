@@ -171,7 +171,7 @@
                 }
               ],
               "textExpr": "toFixed(value, 2)",
-              "prompt": "tfH(0, i, d): component d of the ENCODED stream at slot i — the embedding row plus the positional term, which the E and PE lattices to the left show separately. This is what W_Q, W_K and W_V read.",
+              "prompt": "tfH(0, i, d): component d of the ENCODED stream at slot i. Under position scheme additive PE it is the embedding row plus the positional term, which the E and PE lattices to the left show separately; under none and under RoPE it is the embedding row alone, since RoPE rotates q and k instead of writing position into the stream. This is what W_Q, W_K and W_V read.",
               "widthExpr": "max(0.15, min(1, abs(value) / 2))",
               "heightExpr": "max(0.15, min(1, abs(value) / 2))"
             },
