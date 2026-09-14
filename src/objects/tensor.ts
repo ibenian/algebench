@@ -409,6 +409,31 @@ function gridLayout(dims: number[], origin: Vec3, cellSize: number, plane: strin
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Does a cell's text carry LaTeX? `textExpr` documents itself as plain -- a
+ * "toFixed(value, 2)" and the like -- so the answer is no for nearly every
+ * cell, and the cheap fillText path is taken. A string that does carry LaTeX,
+ * against that contract, is still honoured through the rasteriser.
+ */
+export function cellTextIsLatex(txt: string): boolean {
+    return txt.indexOf('$') >= 0 || txt.indexOf('\\') >= 0;
+}
+
+/**
+ * The font size a plain cell string is drawn at: fit the cell's height first,
+ * then shrink to its width if the string is wide. `measureAt` is called once,
+ * at the height-fitted size, and hands back the width the string takes there.
+ */
+export function fitPlainCellPx(wPx: number, hPx: number, measureAt: (fontPx: number) => number): number {
+    const base = Math.max(1, Math.floor(hPx * 0.62));
+    const w = measureAt(base);
+    const maxW = wPx * 0.9;
+    if (!(w > maxW)) return base;
+    return Math.max(1, Math.floor(base * maxW / w));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export function renderTensor(el: Element, _view: MathBoxNode) {
     const dims = parseShape(el.shape);
     if (!dims) {
@@ -990,20 +1015,17 @@ export function renderTensor(el: Element, _view: MathBoxNode) {
      * documented contract, but cheap to honour -- still takes the old path.
      */
     function drawCellText(ctx: CanvasRenderingContext2D, txt: string, cx: number, cy: number, wPx: number, hPx: number, color: string) {
-        if (txt.indexOf('$') >= 0 || txt.indexOf('\\') >= 0) {
+        if (cellTextIsLatex(txt)) {
             drawLatex(ctx, txt, cx, cy, { fontPx: fitLatexPx(txt, wPx, hPx), color });
             return;
         }
-        // Fit by height first, then shrink to width if the string is wide. One
-        // measureText per candidate size, against KaTeX's full layout pass.
-        let fontPx = Math.max(1, Math.floor(hPx * 0.62));
+        // One measureText, at the height-fitted size, against KaTeX's full
+        // layout pass.
+        const fontPx = fitPlainCellPx(wPx, hPx, (px) => {
+            ctx.font = `${px}px ${FAMILY}`;
+            return ctx.measureText(txt).width;
+        });
         ctx.font = `${fontPx}px ${FAMILY}`;
-        const w = ctx.measureText(txt).width;
-        const maxW = wPx * 0.9;
-        if (w > maxW) {
-            fontPx = Math.max(1, Math.floor(fontPx * maxW / w));
-            ctx.font = `${fontPx}px ${FAMILY}`;
-        }
         ctx.fillStyle = color;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
