@@ -310,8 +310,9 @@
 
     /** A canonical input stream, so the effect of x's SHAPE on attention can be
      *  seen without hand-editing a table. Rows are slots, columns components.
-     *    1 sparse    one-hot, slot i lighting component i mod d: distinct rows
-     *                are orthogonal before the editable Q/K projections.
+     *    1 sparse    one-hot, slot i lighting component i mod d: rows on
+     *                different active components are orthogonal before the
+     *                editable Q/K projections; rows repeat when n > d.
      *    2 ramp up   components rising across the row AND magnitude rising with
      *                the slot: the last tokens are the big ones, so they
      *                dominate every score they appear in.
@@ -319,8 +320,10 @@
      *                magnitude falling with the slot, so the FIRST tokens are
      *                the big ones. Not 2 read backwards along one axis, which
      *                would leave the same vector norms and change little.
-     *    4 uniform   every slot identical and unit-norm: nothing distinguishes
-     *                one key from another, so the softmax is flat by symmetry.
+     *    4 uniform   every embedding row identical and unit-norm. Without
+     *                positional encoding, visible-key logits match; softmax is
+     *                flat across all keys when unmasked, or within each causal
+     *                prefix when the mask is on.
      */
     function _presetTable(kind, n, d) {
         const out = [];

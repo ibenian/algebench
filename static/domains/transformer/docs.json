@@ -93,6 +93,20 @@
         3
       ]
     },
+    "tf_pos": {
+      "description": "Position scheme for the function tour. 0 = none, 1 = additive sinusoidal PE, 2 = RoPE. Additive PE changes the residual stream; RoPE leaves that stream position-free and rotates Q/K instead.",
+      "default": 1,
+      "scenes": [
+        1
+      ]
+    },
+    "tf_emb_kind": {
+      "description": "Canonical embedding-table preset for the function tour. 0 = the editable tf_emb table, 1 = sparse one-hot, 2 = ramp up, 3 = ramp down, 4 = uniform. Presets replace E before the selected position scheme is applied.",
+      "default": 0,
+      "scenes": [
+        1
+      ]
+    },
     "s3_maskafter": {
       "description": "Mask placement. 0 = CORRECT (additive -1e9 on the scores, before softmax); 1 = WRONG (softmax first, then zero the future with no renormalization), which makes row 2 sum to 0.989933. For the misconception beat only.",
       "default": 0,
