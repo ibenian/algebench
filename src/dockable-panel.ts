@@ -37,14 +37,16 @@ export interface DockGeometry {
  * panel somewhere the viewer never left it.
  *
  * So the placement is honoured only when the blob carries all three: a corner
- * that is one of CORNERS, and BOTH offsets. Anything less is a blob the viewer
- * never moved (or one half-written), the scene's own corner wins, and the
- * offsets go back to null so `applyGeom` anchors by CSS class instead of
- * writing "nullpx" or a coordinate from somebody else's corner.
+ * that is one of CORNERS, and BOTH offsets as finite numbers. Anything less is
+ * a blob the viewer never moved (or one half-written, or hand-edited -- this
+ * comes out of `localStorage`, which the viewer can write), the scene's own
+ * corner wins, and the offsets go back to null so `applyGeom` anchors by CSS
+ * class instead of writing "nullpx", "badpx", or a coordinate measured from
+ * somebody else's corner.
  */
 export function resolvePlacement(saved: Partial<DockGeometry> | null, corner: string): { corner: DockCorner; h: number | null; v: number | null } {
     const storedOk = !!(saved && CORNERS.includes(saved.corner as DockCorner));
-    const placed = !!(saved && storedOk && saved.h != null && saved.v != null);
+    const placed = !!(saved && storedOk && Number.isFinite(saved.h as number) && Number.isFinite(saved.v as number));
     if (placed) return { corner: saved!.corner as DockCorner, h: saved!.h!, v: saved!.v! };
     const fallback = CORNERS.includes(corner as DockCorner) ? (corner as DockCorner)
         : (storedOk ? (saved!.corner as DockCorner) : 'top-left');

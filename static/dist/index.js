@@ -2489,14 +2489,16 @@ var CORNERS = [
 * panel somewhere the viewer never left it.
 *
 * So the placement is honoured only when the blob carries all three: a corner
-* that is one of CORNERS, and BOTH offsets. Anything less is a blob the viewer
-* never moved (or one half-written), the scene's own corner wins, and the
-* offsets go back to null so `applyGeom` anchors by CSS class instead of
-* writing "nullpx" or a coordinate from somebody else's corner.
+* that is one of CORNERS, and BOTH offsets as finite numbers. Anything less is
+* a blob the viewer never moved (or one half-written, or hand-edited -- this
+* comes out of `localStorage`, which the viewer can write), the scene's own
+* corner wins, and the offsets go back to null so `applyGeom` anchors by CSS
+* class instead of writing "nullpx", "badpx", or a coordinate measured from
+* somebody else's corner.
 */
 function resolvePlacement(saved, corner) {
 	const storedOk = !!(saved && CORNERS.includes(saved.corner));
-	if (!!(saved && storedOk && saved.h != null && saved.v != null)) return {
+	if (!!(saved && storedOk && Number.isFinite(saved.h) && Number.isFinite(saved.v))) return {
 		corner: saved.corner,
 		h: saved.h,
 		v: saved.v

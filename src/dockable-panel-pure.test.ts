@@ -55,3 +55,24 @@ test('half a placement, or one measured from a corner that is not a corner, is d
         { corner: 'bottom-right', h: null, v: null });
     assert.deepEqual(resolvePlacement(null, 'nowhere'), { corner: 'top-left', h: null, v: null });
 });
+
+test('an offset that is not a finite number is not an offset', async () => {
+    // The blob is parsed out of localStorage, which the viewer can write by
+    // hand, so "not null" is not the question — applyGeom would concatenate
+    // whatever arrives with 'px' and emit `badpx`, which styles nothing and
+    // leaves the panel unpositioned because the CSS anchor was skipped too.
+    for (const bad of ['bad', '12', NaN, Infinity, -Infinity, null, undefined, {}, [], true]) {
+        assert.deepEqual(
+            resolvePlacement({ corner: 'top-left', h: bad as unknown as number, v: 40 }, 'bottom-left'),
+            { corner: 'bottom-left', h: null, v: null },
+            `expected h=${String(bad)} to be rejected`);
+        assert.deepEqual(
+            resolvePlacement({ corner: 'top-left', h: 12, v: bad as unknown as number }, 'bottom-left'),
+            { corner: 'bottom-left', h: null, v: null },
+            `expected v=${String(bad)} to be rejected`);
+    }
+
+    // Finite numbers, including negatives and zero, are placements.
+    assert.deepEqual(resolvePlacement({ corner: 'top-left', h: -4, v: 0 }, 'bottom-left'),
+        { corner: 'top-left', h: -4, v: 0 });
+});

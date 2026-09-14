@@ -462,7 +462,7 @@
     "tfH(l,i,d)": "Component d of the residual stream ENTERING layer l at slot i. l = 0 is x (embedding plus PE); l = tf_layers is what leaves the stack, before the final norm.",
     "tfAttnIn(l,i,d)": "What the attention sub-layer of layer l reads at slot i: the normed stream (pre-norm) or the stream itself (post-norm).",
     "tfQh(l,h,i,d)": "q of slot i in layer l, head h, component d (RoPE applied when s2_rope = 1, or when tf_pos = 2 in a scene that declares tf_pos, which overrides it). tfQ = tfQh(0, 0, ...).",
-    "tfKh(l,h,i,d)": "k of slot i as read by head h of layer l (its K/V head's key), component d.",
+    "tfKh(l,h,i,d)": "k of slot i as read by head h of layer l (its K/V head's key), component d. Rotated with q: RoPE applied when s2_rope = 1, or when tf_pos = 2 in a scene that declares tf_pos, which overrides it. tfK = tfKh(0, 0, ...).",
     "tfVh(l,h,i,d)": "v of slot i as read by head h of layer l. NEVER rotated by RoPE.",
     "tfScoreH(l,h,i,j)": "Raw score q_i . k_j in layer l, head h.",
     "tfScoreScaledH(l,h,i,j)": "Scaled score, tfScoreH / (sqrt d_k)^s3_scale, in layer l, head h.",
