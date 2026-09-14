@@ -285,7 +285,7 @@
               "axes": [
                 {"color": "#ffa726", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfQh(0, 0, row, col) — $Q$",
+                  "title": "tfQh(0, 0, row, col) — $Q=\\mathcal{R}(XW_Q)$",
                   "color": "#ffa726",
                   "labels": ["$q_0$", "$q_1$"]
                 }
@@ -312,7 +312,7 @@
               "axes": [
                 {"color": "#42a5f5", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfKh(0, 0, row, col) — $K$",
+                  "title": "tfKh(0, 0, row, col) — $K=\\mathcal{R}(XW_K)$",
                   "color": "#42a5f5",
                   "labels": ["$k_0$", "$k_1$"]
                 }
@@ -339,7 +339,7 @@
               "axes": [
                 {"color": "#66bb6a", "labelExpr": "tfToken(row)"},
                 {
-                  "title": "tfVh(0, 0, row, col) — $V$",
+                  "title": "tfVh(0, 0, row, col) — $V=XW_V$",
                   "color": "#66bb6a",
                   "labels": ["$v_0$", "$v_1$"]
                 }
