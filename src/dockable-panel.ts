@@ -27,6 +27,27 @@ export interface DockGeometry {
     collapsed: boolean;
 }
 
+/**
+ * Which corner a panel opens in, given what this viewer has stored and what
+ * the scene asked for.
+ *
+ * `h`/`v` are written only by a drag, and the corner is recomputed in the same
+ * breath, so a blob without them is one the viewer never moved: its corner is
+ * only whatever the scene asked for LAST time. A scene that changes its
+ * default -- to stop a card covering the camera controls, say -- should reach
+ * that viewer, while a card they did place stays where they put it.
+ *
+ * `includes` is the validation throughout: a stored corner that is not one of
+ * CORNERS is not trusted, and neither is an option that is not.
+ */
+export function resolveCorner(saved: Partial<DockGeometry> | null, corner: string): DockCorner {
+    const storedOk = !!(saved && CORNERS.includes(saved.corner as DockCorner));
+    const everDragged = !!(saved && (saved.h != null || saved.v != null));
+    if (everDragged && storedOk) return saved!.corner as DockCorner;
+    if (CORNERS.includes(corner as DockCorner)) return corner as DockCorner;
+    return storedOk ? (saved!.corner as DockCorner) : 'top-left';
+}
+
 export interface DockablePanelOptions {
     /** localStorage suffix (e.g. 'info-foo' or 'info-drawer'). */
     persistKey: string;
@@ -105,9 +126,7 @@ export function createDockablePanel(opts: DockablePanelOptions): DockablePanel {
 
     const saved = loadGeom();
     const geom: DockGeometry = {
-        // Non-null: `includes` is the validation — a saved blob without a corner
-        // fails it and falls through to the `corner` option, exactly as before.
-        corner: (saved && CORNERS.includes(saved.corner!)) ? saved.corner! : (CORNERS.includes(corner) ? corner : 'top-left'),
+        corner: resolveCorner(saved, corner),
         h: saved && saved.h != null ? saved.h : null,
         v: saved && saved.v != null ? saved.v : null,
         w: saved && saved.w != null ? saved.w : null,

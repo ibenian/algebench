@@ -2479,6 +2479,25 @@ var CORNERS = [
 	"top-center",
 	"bottom-center"
 ];
+/**
+* Which corner a panel opens in, given what this viewer has stored and what
+* the scene asked for.
+*
+* `h`/`v` are written only by a drag, and the corner is recomputed in the same
+* breath, so a blob without them is one the viewer never moved: its corner is
+* only whatever the scene asked for LAST time. A scene that changes its
+* default -- to stop a card covering the camera controls, say -- should reach
+* that viewer, while a card they did place stays where they put it.
+*
+* `includes` is the validation throughout: a stored corner that is not one of
+* CORNERS is not trusted, and neither is an option that is not.
+*/
+function resolveCorner(saved, corner) {
+	const storedOk = !!(saved && CORNERS.includes(saved.corner));
+	if (!!(saved && (saved.h != null || saved.v != null)) && storedOk) return saved.corner;
+	if (CORNERS.includes(corner)) return corner;
+	return storedOk ? saved.corner : "top-left";
+}
 function _clamp(v, lo, hi) {
 	return Math.max(lo, Math.min(hi, v));
 }
@@ -2507,7 +2526,7 @@ function createDockablePanel(opts) {
 	}
 	const saved = loadGeom();
 	const geom = {
-		corner: saved && CORNERS.includes(saved.corner) ? saved.corner : CORNERS.includes(corner) ? corner : "top-left",
+		corner: resolveCorner(saved, corner),
 		h: saved && saved.h != null ? saved.h : null,
 		v: saved && saved.v != null ? saved.v : null,
 		w: saved && saved.w != null ? saved.w : null,
