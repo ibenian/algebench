@@ -231,10 +231,16 @@ export function resetTensorSlider(id: string): boolean {
     return true;
 }
 
+/** A figure space is exactly one digit wide in the monospace cell font, so a
+ *  non-negative readout can hold the column open where a minus sign would go
+ *  and the grid stops jittering as values cross zero. */
+const SIGN_SLOT = '\u2007';
+
 export function formatTensorCell(v: number): string {
     if (!Number.isFinite(v)) return '·';
     const a = Math.abs(v);
-    return a >= 100 ? v.toFixed(0) : a >= 10 ? v.toFixed(1) : v.toFixed(2);
+    const digits = a >= 100 ? 0 : a >= 10 ? 1 : 2;
+    return (v < 0 ? '' : SIGN_SLOT) + v.toFixed(digits);
 }
 
 /** Rewrite the readouts of a tensor slider's grid on the panel. */
