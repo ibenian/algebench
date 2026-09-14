@@ -22,11 +22,17 @@ test('a panel the viewer never dragged follows the scene default, one they place
     assert.equal(resolveCorner({ corner: 'top-left', h: null, v: null }, 'bottom-left'), 'bottom-left');
     assert.equal(resolveCorner({ corner: 'top-left', h: null, v: null, collapsed: true }, 'bottom-left'), 'bottom-left');
 
-    // Dragged: either offset present means the viewer placed it, and their
-    // placement outranks the scene.
-    assert.equal(resolveCorner({ corner: 'top-left', h: 12, v: null }, 'bottom-left'), 'top-left');
-    assert.equal(resolveCorner({ corner: 'top-left', h: null, v: 40 }, 'bottom-left'), 'top-left');
+    // Dragged: a drag writes both offsets, and that placement outranks the
+    // scene. Zero is a placement, not an absence.
     assert.equal(resolveCorner({ corner: 'bottom-right', h: 0, v: 0 }, 'bottom-left'), 'bottom-right');
+    assert.equal(resolveCorner({ corner: 'top-left', h: 12, v: 40 }, 'bottom-left'), 'top-left');
+
+    // Half a placement is not one. A drag never writes a lone offset, so a
+    // blob carrying one is incomplete -- and applyGeom would turn the missing
+    // coordinate into the string "nullpx" and lose the anchor. Treated as
+    // un-dragged, which also sends applyGeom down its CSS-anchoring branch.
+    assert.equal(resolveCorner({ corner: 'top-left', h: 12, v: null }, 'bottom-left'), 'bottom-left');
+    assert.equal(resolveCorner({ corner: 'top-left', h: null, v: 40 }, 'bottom-left'), 'bottom-left');
 });
 
 test('resolveCorner trusts neither a stored corner nor an option that is not a corner', async () => {

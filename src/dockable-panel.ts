@@ -37,12 +37,16 @@ export interface DockGeometry {
  * default -- to stop a card covering the camera controls, say -- should reach
  * that viewer, while a card they did place stays where they put it.
  *
+ * A drag writes BOTH offsets, so half of one is not a placement: it is an
+ * incomplete blob, and `applyGeom` would render its missing coordinate as the
+ * string "nullpx" and lose the CSS anchor with it. Both, or neither.
+ *
  * `includes` is the validation throughout: a stored corner that is not one of
  * CORNERS is not trusted, and neither is an option that is not.
  */
 export function resolveCorner(saved: Partial<DockGeometry> | null, corner: string): DockCorner {
     const storedOk = !!(saved && CORNERS.includes(saved.corner as DockCorner));
-    const everDragged = !!(saved && (saved.h != null || saved.v != null));
+    const everDragged = !!(saved && saved.h != null && saved.v != null);
     if (everDragged && storedOk) return saved!.corner as DockCorner;
     if (CORNERS.includes(corner as DockCorner)) return corner as DockCorner;
     return storedOk ? (saved!.corner as DockCorner) : 'top-left';
@@ -192,8 +196,10 @@ export function createDockablePanel(opts: DockablePanelOptions): DockablePanel {
         el.style.width = geom.w ? geom.w + 'px' : '';
         el.style.height = (geom.ht && !geom.collapsed) ? geom.ht + 'px' : '';
 
-        if (geom.h == null && geom.v == null) {
-            // Un-dragged: rely on CSS class anchoring (keeps center transform, etc.)
+        if (geom.h == null || geom.v == null) {
+            // Un-dragged, or a half-written blob: rely on CSS class anchoring
+            // (keeps center transform, etc.). Writing one offset without the
+            // other would emit "nullpx" and drop the anchor.
             el.classList.add('pos-' + geom.corner);
         } else {
             const isRight = geom.corner.includes('right');

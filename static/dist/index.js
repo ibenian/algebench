@@ -2489,12 +2489,16 @@ var CORNERS = [
 * default -- to stop a card covering the camera controls, say -- should reach
 * that viewer, while a card they did place stays where they put it.
 *
+* A drag writes BOTH offsets, so half of one is not a placement: it is an
+* incomplete blob, and `applyGeom` would render its missing coordinate as the
+* string "nullpx" and lose the CSS anchor with it. Both, or neither.
+*
 * `includes` is the validation throughout: a stored corner that is not one of
 * CORNERS is not trusted, and neither is an option that is not.
 */
 function resolveCorner(saved, corner) {
 	const storedOk = !!(saved && CORNERS.includes(saved.corner));
-	if (!!(saved && (saved.h != null || saved.v != null)) && storedOk) return saved.corner;
+	if (!!(saved && saved.h != null && saved.v != null) && storedOk) return saved.corner;
 	if (CORNERS.includes(corner)) return corner;
 	return storedOk ? saved.corner : "top-left";
 }
@@ -2581,7 +2585,7 @@ function createDockablePanel(opts) {
 		el.classList.add("anchor-" + geom.corner);
 		el.style.width = geom.w ? geom.w + "px" : "";
 		el.style.height = geom.ht && !geom.collapsed ? geom.ht + "px" : "";
-		if (geom.h == null && geom.v == null) el.classList.add("pos-" + geom.corner);
+		if (geom.h == null || geom.v == null) el.classList.add("pos-" + geom.corner);
 		else {
 			const isRight = geom.corner.includes("right");
 			const isBottom = geom.corner.includes("bottom");
