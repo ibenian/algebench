@@ -503,7 +503,7 @@
                 {"title": "scaled score", "ticks": 4}
               ],
               "label": "row $i$ of the scaled scores, head 0",
-              "prompt": "The scaled scores of query slot demo_i against every key, for head 0. The mask has not been applied: masked keys still have a score.",
+              "prompt": "The scaled scores of query slot demo_i against every key, for head 0. These are pre-mask whatever the causal mask slider says: every key has a score here, and the mask (when on) acts on the row below.",
               "xDomain": [-0.5, 5.5]
             },
             {
@@ -520,7 +520,7 @@
                 {"title": "weight", "ticks": 4}
               ],
               "label": "row $i$ of the attention weights, head 0",
-              "prompt": "Softmax of the scaled-score row with the causal mask applied: masked keys are 0, the rest sum to 1.",
+              "prompt": "Softmax of the scaled-score row, honouring the causal mask slider. With the mask on, keys after slot demo_i are 0 and the rest sum to 1; with it off every key has a weight and the row still sums to 1 — the softmax normalises either way.",
               "xDomain": [-0.5, 5.5],
               "yDomain": [0, 1]
             },
