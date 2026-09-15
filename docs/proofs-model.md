@@ -332,9 +332,13 @@ For root-level proofs, `scene_step` uses string format `"sceneIdx:stepIdx"`:
 
 When the user advances the scene step to index N:
 
-1. Search active proof steps for `scene_step === N`
-2. If found, scroll to / navigate to that proof step
-3. Proof counter updates
+1. Search the active proof for a step linked to N
+2. If it has no match, search the other proofs and switch to the first matching proof
+3. Navigate to the matching proof step and update the proof counter
+
+Plain numeric links are scoped to the proof's own scene. Cross-scene links use
+the explicit `"sceneIdx:stepIdx"` form, which prevents equal step numbers in a
+different scene from stealing the active proof.
 
 ### 6.3 Loop Prevention
 
@@ -561,4 +565,3 @@ Deferred from initial implementation. See the [Proof Structure v2 Proposal](prop
 - **Student-constructed proofs** — editable steps validated by the agent
 - **Annotation lines** — visual arrows/labels drawn over highlighted regions (beyond tooltips)
 - **Persistent step memory** — save per-proof step positions to localStorage
-

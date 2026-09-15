@@ -538,7 +538,7 @@
         {
           "id": "reveal-equivariance",
           "title": "REVEAL: the same set, relabelled",
-          "description": "The output **set** is identical. Every row of the shuffled run is a row of the original run, sitting at a different slot: $O_{\\text{perm}}[k] = O_{\\text{orig}}[P[k]]$, to a maximum deviation of $2.2\\times10^{-16}$ — machine precision, not approximation. Slot 3 of the shuffled run reads $(0.0231,\\ 0.9736)$, which is exactly slot 2 of the original. Attention with no position and no mask treats the sequence as a **bag of tokens**. That is not a bug in our toy model; it is a theorem, and it is the entire reason positional encoding has to exist.",
+          "description": "The output **set** is identical. Every row of the shuffled run is a row of the original run, sitting at a different slot: $O_{\\text{perm}}[k] = O_{\\text{orig}}[P[k]]$, to a maximum deviation of $2.2\\times10^{-16}$ — machine precision, not approximation. Slot 3 of the shuffled run reads $(0.0231,\\ 0.9736)$, which is exactly slot 2 of the original. Attention with no position and no mask treats the sequence as a **bag of tokens**. That is not a bug in our toy model; it is a theorem, and it is the entire reason positional encoding has to exist. These numerical examples use the default input. Edit a cell in the Input embeddings control grid to change it and watch the vectors and outputs update; reset the grid to restore the example. The original-order output updates too.",
           "remove": [
             {"id": "s1_pt_emb0_n0"},
             {"id": "s1_pt_emb1_n0"},
@@ -564,11 +564,11 @@
               "cellSize": 0.5,
               "plane": "xy",
               "colorMap": "viridis",
-              "colorDomain": [0, 1],
+              "colorDomain": [-2, 2],
               "color": "#26c6da",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "embedding rows $W_E[t_i]$",
+              "label": "input embeddings — current token order",
               "axes": [
                 {"labelExpr": "tfToken(row)", "color": "#26c6da"},
                 {
@@ -704,14 +704,6 @@
               "id": "s1_tensor_out_orig",
               "type": "tensor",
               "shape": [6, 2],
-              "values": [
-                [0.4167, 0.25],
-                [0.4167, 0.25],
-                [0.0231, 0.9736],
-                [0.3639, 0.2297],
-                [0.4167, 0.25],
-                [0.3924, 0.2413]
-              ],
               "origin": [3.2, 1.8, 0],
               "cellSize": 0.5,
               "plane": "xy",
@@ -720,7 +712,8 @@
               "color": "#ab47bc",
               "opacity": 0.95,
               "shader": {"ignorePlaneOpacity": true},
-              "label": "$O$ — original order (frozen)",
+              "label": "$O$ — original-order view",
+              "valueExpr": "tfOutNoPos(tfPerm(0) == row ? 0 : (tfPerm(1) == row ? 1 : (tfPerm(2) == row ? 2 : (tfPerm(3) == row ? 3 : (tfPerm(4) == row ? 4 : 5)))), col)",
               "axes": [
                 {
                   "labels": ["0", "1", "2", "3", "4", "5"],
@@ -733,7 +726,7 @@
                   "color": "#ab47bc"
                 }
               ],
-              "prompt": "The frozen reference: attention output rows for the ORIGINAL token order, unmasked and position-free. Row 2 is [0.0231, 0.9736]."
+              "prompt": "The live output rearranged into original token order. It updates with input edits; this is a view of the same computation, not an independent numerical verification. The defaults give row 2 [0.0231, 0.9736]."
             },
             {
               "id": "s1_tensor_out_live",
@@ -761,14 +754,15 @@
                   "color": "#ab47bc"
                 }
               ],
-              "prompt": "The live output of UNMASKED, POSITION-FREE attention over the raw embeddings, recomputed as the shuffle control moves. With shuffle off it is cell-for-cell identical to the frozen reference beside it. With shuffle on every row is still a row of the reference, just at a different slot."
+              "prompt": "The live output of UNMASKED, POSITION-FREE attention over the raw embeddings, recomputed as the shuffle control moves. With shuffle off it is cell-for-cell identical to the original-order view beside it. With shuffle on every row is still a row of the reference, just at a different slot."
             }
           ],
           "info": [
-            {"id": "s1_info_reveal", "position": "top-center", "title": "Equivariance, measured", "content": "live slot 3: ( {{toFixed(tfOutNoPos(3,0),4)}} , {{toFixed(tfOutNoPos(3,1),4)}} ) · frozen slot 2: ( 0.0231 , 0.9736 )\n\nSame set, permuted. Regime: no PE, no mask."}
+            {"id": "s1_info_reveal", "position": "top-center", "title": "Equivariance, measured", "content": "Edit a cell in the Input embeddings control grid; the token points and output tables update live. The control grid stays in original token order. The displayed input tensor follows the shuffle: both its word labels and vector rows move together.\n\nCurrent slot 3 (original row {{toFixed(tfPerm(3),0)}}): ({{toFixed(tfOutNoPos(3,0),4)}}, {{toFixed(tfOutNoPos(3,1),4)}}).\n\nNo PE, no mask. The original-order output is a reordered view. Reset the input grid to restore the lesson’s example numbers. Rows 0 and 4 are independent inputs: editing just one can separate the two “the” vectors."}
           ],
-          "prompt": "REVEAL step. Answer freely now. The output set is permuted, not changed: Attn(PX) = P Attn(X). Walk the student through the on-screen check (live slot 3 equals frozen slot 2 equals [0.0231, 0.9736]) and the 2.2e-16 deviation, stressing that this is machine precision, i.e. exact. ALWAYS state the regime: this holds for a single self-attention layer with NO positional encoding and NO causal mask. The causal mask is a SECOND, independent reason equivariance breaks — row i's visible key set depends on i, not merely on the token multiset — and it arrives in scene 3. Never present the theorem unqualified. Open the proof panel if the student wants the algebra.",
+          "prompt": "REVEAL step. Answer freely now. The output set is permuted, not changed: Attn(PX) = P Attn(X). Walk the student through the on-screen check (live slot 3 equals frozen slot 2 equals [0.0231, 0.9736]) and the 2.2e-16 deviation, stressing that this is machine precision, i.e. exact. ALWAYS state the regime: this holds for a single self-attention layer with NO positional encoding and NO causal mask. The causal mask is a SECOND, independent reason equivariance breaks — row i's visible key set depends on i, not merely on the token multiset — and it arrives in scene 3. Never present the theorem unqualified. Open the proof panel if the student wants the algebra. The input grid is now editable. All quoted numerical examples describe the default table; after edits, use live readouts. The original-order output is a reordered view of the live computation, not an independent verification. Only the editable control grid stays in original order. The displayed input tensor uses tfToken(row) and tfEmb(row, col), so its word labels and vector rows follow the shuffle. The two the rows may be edited independently.",
           "sliders": [
+            {"id":"s4_emb","kind":"tensor","label":"Input embeddings — original token order","shape":[6,4],"min":-2,"max":2,"step":0.1,"default":[[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1],[1,0,0,0],[0.5,0.5,0,0.5]]},
             {"id": "s1_shuffle", "label": "shuffle tokens", "min": 0, "max": 1, "step": 1, "default": 1, "reset": true}
           ],
           "camera": {
@@ -1583,22 +1577,34 @@
       },
       "views": [
         {
-          "name": "Projection",
-          "position": [6.5, 3.5, 11.0],
-          "target": [0.0, 1.0, 0.8],
-          "description": "Isometric — the drop from $\\mathbb{R}^4$ into the 2D head plane."
+          "name": "Inputs",
+          "position": [-6.2, 3.0, 6.5],
+          "target": [-6.2, 3.0, 0.3],
+          "description": "Face-on to the editable $X$ input tensor."
         },
         {
-          "name": "Head plane",
-          "position": [0.8, 0.6, 9.5],
-          "target": [0.8, 0.6, 0],
-          "description": "Face-on to the head plane. $d_k = 2$, so this view is the honest one."
+          "name": "Vectors",
+          "position": [3.5, -3.5, 8.5],
+          "target": [0, 0, 0.6],
+          "description": "The input points together with the full-scale $q_2$, $k_2$ and $v_2$ output vectors."
         },
         {
           "name": "Weights",
-          "position": [-4.3, 4.4, 7.5],
-          "target": [-4.3, 4.4, 0],
-          "description": "Face-on to $W_Q$, $W_K$, $W_V$ and their basis images."
+          "position": [4.2, 3.6, 9.5],
+          "target": [4.2, 3.6, 0],
+          "description": "Face-on to the editable $W_Q$, $W_K$ and $W_V$ tensors."
+        },
+        {
+          "name": "Q / K / V",
+          "position": [5.0, -5.4, 10.5],
+          "target": [5.0, -5.4, 0],
+          "description": "Face-on to the three charts of projected query, key and value outputs."
+        },
+        {
+          "name": "Scores",
+          "position": [6.4, -8.7, 11.5],
+          "target": [6.4, -8.7, 0],
+          "description": "Face-on to the six signed similarities $q_2\\cdot k_j$."
         },
         {
           "name": "RoPE",
@@ -1607,9 +1613,9 @@
           "description": "Face-on to the standalone RoPE subspace."
         },
         {
-          "name": "Iso",
-          "position": [12.0, 10.0, 12.0],
-          "target": [-0.5, 1.0, 0],
+          "name": "Overview",
+          "position": [12.0, 10.0, 14.0],
+          "target": [1.0, -2.0, 0],
           "description": "Isometric overview of the whole scene."
         }
       ],
@@ -1636,29 +1642,30 @@
           "axis": "z",
           "range": [-8, 8],
           "color": "#6aa9ff",
-          "width": 1.5
+          "width": 1.5,
+          "label": "dim 4"
         },
         {
           "id": "s2_grid_head",
           "type": "grid",
           "plane": "xy",
-          "range": [-5, 5],
+          "range": [[-9, 11.5], [-10.2, 7]],
           "color": [0.3, 0.34, 0.5],
           "opacity": 0.2,
-          "divisions": 10
+          "divisions": [20, 17]
         },
         {
           "id": "s2_txt_axis_x",
           "type": "text",
-          "text": "head dim 1",
-          "position": [6.6, -0.45, 0],
+          "text": "dim 1",
+          "position": [8.7, -0.45, 0],
           "color": "#ff6b6b"
         },
         {
           "id": "s2_txt_axis_y",
           "type": "text",
-          "text": "head dim 2",
-          "position": [0.5, 6.6, 0],
+          "text": "dim 2",
+          "position": [-0.8, 6.3, 0],
           "color": "#7ed957"
         }
       ],
@@ -1672,10 +1679,10 @@
               "id": "s2_plane_head",
               "type": "polygon",
               "vertices": [
-                [-6, -6, -0.02],
-                [6, -6, -0.02],
-                [6, 6, -0.02],
-                [-6, 6, -0.02]
+                [-9, -10.2, -0.02],
+                [11.5, -10.2, -0.02],
+                [11.5, 7, -0.02],
+                [-9, 7, -0.02]
               ],
               "color": "#4466aa",
               "opacity": 0.18,
@@ -1687,10 +1694,12 @@
             },
             {
               "id": "s2_tensor_x",
+              "bind": "tf_x",
+              "textExpr": "toFixed(value, 2)",
               "type": "tensor",
               "shape": [6, 4],
               "valueExpr": "tfX(row, col)",
-              "origin": [3.4, 3.6, 0],
+              "origin": [-7.5, 3, 0.3],
               "cellSize": 0.5,
               "plane": "xy",
               "colorMap": "blueRed",
@@ -1706,7 +1715,7 @@
                 },
                 {
                   "labels": ["x1", "x2", "x3", "x4"],
-                  "title": "$d_{\\text{model}} = 4$",
+                  "title": "$X$ · $6 \\times 4$",
                   "color": "#26c6da"
                 }
               ],
@@ -1807,8 +1816,14 @@
         },
         {
           "id": "projection-is-what-it-does-to-the-basis",
-          "title": "A projection is what it does to the basis",
-          "description": "With the row-vector convention $q = x W_Q$, the image of basis direction $e_d$ is the $d$-th **row** of $W_Q$. Our $W_Q$ has rows $[0,0]$, $[0,0]$, $[3,0]$, $[0,1]$ — two of the four input directions are sent to zero. The projection literally throws information away. $W_K$ throws away a *different* pair, and $W_V$ a different pair again. That is the whole difference between the three: not three inputs, three different things **kept**.",
+          "title": "Basis vectors define each transformation",
+          "description": "Each row of $W_Q$, $W_K$ or $W_V$ is the transformed image of one input basis vector under that transformation. Edit X or a weight matrix directly by hovering a cell. The original full-scale $q_2$, $k_2$ and $v_2$ vectors remain in the central head space; the charts show all six projected outputs and the six signed similarities $q_2K^\\top$.",
+          "remove": [
+            {"id": "s2_pt_x2"},
+            {"id": "s2_map_q"},
+            {"id": "s2_map_k"},
+            {"id": "s2_map_v"}
+          ],
           "add": [
             {
               "id": "s2_tensor_wq",
@@ -1820,15 +1835,17 @@
                 [3, 0],
                 [0, 1]
               ],
-              "origin": [-7.4, 4.8, 0],
+              "origin": [1.5, 3.8, 0.3],
               "cellSize": 0.45,
               "plane": "xy",
-              "colorMap": "viridis",
-              "colorDomain": [0, 3],
+              "colorMap": "blueRed",
+              "colorDomain": [-4, 4],
               "color": "#ff7043",
               "opacity": 0.95,
-              "shader": {"ignorePlaneOpacity": true},
-              "label": "$W_Q$ — designed for teaching",
+              "shader": {
+                "ignorePlaneOpacity": true
+              },
+              "label": "basis-vector images defining $W_Q$",
               "axes": [
                 {
                   "labels": ["dim 1", "dim 2", "dim 3", "dim 4"],
@@ -1840,51 +1857,9 @@
                   "color": "#ff7043"
                 }
               ],
-              "prompt": "This 4x2 lattice is W_Q, hand-constructed for legibility and NOT learned. Under the row-vector convention q = x W, ROW d is the image of input basis direction e_d. Keeps input dims 3 and 4 and sends the other two to zero. That is the entire difference between the three projections - not three inputs, three different things kept."
-            },
-            {
-              "id": "s2_line_wq_frame",
-              "type": "line",
-              "points": [
-                [-7.4, 4.2, 0],
-                [-7.4, 3.0, 0],
-                [-5.6000000000000005, 3.0, 0]
-              ],
-              "color": "#ff7043",
-              "width": 2,
-              "opacity": 0.6,
-              "legendGroup": "$W_Q$ — designed for teaching"
-            },
-            {
-              "id": "s2_vec_wq_img0",
-              "type": "vector",
-              "from": [-7.4, 3.0, 0],
-              "to": [-5.9, 3.0, 0],
-              "color": "#ff7043",
-              "width": 0.9,
-              "legendGroup": "$W_Q$ — designed for teaching"
-            },
-            {
-              "id": "s2_vec_wq_img1",
-              "type": "vector",
-              "from": [-7.4, 3.0, 0],
-              "to": [-7.4, 3.5, 0],
-              "color": "#ff7043",
-              "width": 0.9,
-              "legendGroup": "$W_Q$ — designed for teaching"
-            },
-            {
-              "id": "s2_poly_wq",
-              "type": "polygon",
-              "vertices": [
-                [-7.4, 3.0, 0],
-                [-5.9, 3.0, 0],
-                [-5.9, 3.5, 0],
-                [-7.4, 3.5, 0]
-              ],
-              "color": "#ff7043",
-              "opacity": 0.16,
-              "legendGroup": "$W_Q$ — designed for teaching"
+              "prompt": "This 4x2 lattice is W_Q, hand-constructed for legibility and NOT learned. Under the row-vector convention q = x W, ROW d is the image of input basis direction e_d. Keeps input dims 3 and 4 and sends the other two to zero. That is the entire difference between the three projections - not three inputs, three different things kept. These statements describe the defaults. Every cell is editable; all four basis images and the resulting vector update with the matrix.",
+              "bind": "s4_wq",
+              "textExpr": "toFixed(value, 2)"
             },
             {
               "id": "s2_tensor_wk",
@@ -1896,15 +1871,17 @@
                 [0, 0],
                 [0, 1]
               ],
-              "origin": [-5.2, 4.8, 0],
+              "origin": [4, 3.8, 0.3],
               "cellSize": 0.45,
               "plane": "xy",
-              "colorMap": "viridis",
-              "colorDomain": [0, 3],
+              "colorMap": "blueRed",
+              "colorDomain": [-4, 4],
               "color": "#42a5f5",
               "opacity": 0.95,
-              "shader": {"ignorePlaneOpacity": true},
-              "label": "$W_K$ — designed for teaching",
+              "shader": {
+                "ignorePlaneOpacity": true
+              },
+              "label": "basis-vector images defining $W_K$",
               "axes": [
                 {
                   "labels": ["dim 1", "dim 2", "dim 3", "dim 4"],
@@ -1916,51 +1893,9 @@
                   "color": "#42a5f5"
                 }
               ],
-              "prompt": "This 4x2 lattice is W_K, hand-constructed for legibility and NOT learned. Under the row-vector convention q = x W, ROW d is the image of input basis direction e_d. Keeps input dims 2 and 4 and sends the other two to zero. That is the entire difference between the three projections - not three inputs, three different things kept."
-            },
-            {
-              "id": "s2_line_wk_frame",
-              "type": "line",
-              "points": [
-                [-5.2, 4.2, 0],
-                [-5.2, 3.0, 0],
-                [-3.4000000000000004, 3.0, 0]
-              ],
-              "color": "#42a5f5",
-              "width": 2,
-              "opacity": 0.6,
-              "legendGroup": "$W_K$ — designed for teaching"
-            },
-            {
-              "id": "s2_vec_wk_img0",
-              "type": "vector",
-              "from": [-5.2, 3.0, 0],
-              "to": [-3.7, 3.0, 0],
-              "color": "#42a5f5",
-              "width": 0.9,
-              "legendGroup": "$W_K$ — designed for teaching"
-            },
-            {
-              "id": "s2_vec_wk_img1",
-              "type": "vector",
-              "from": [-5.2, 3.0, 0],
-              "to": [-5.2, 3.5, 0],
-              "color": "#42a5f5",
-              "width": 0.9,
-              "legendGroup": "$W_K$ — designed for teaching"
-            },
-            {
-              "id": "s2_poly_wk",
-              "type": "polygon",
-              "vertices": [
-                [-5.2, 3.0, 0],
-                [-3.7, 3.0, 0],
-                [-3.7, 3.5, 0],
-                [-5.2, 3.5, 0]
-              ],
-              "color": "#42a5f5",
-              "opacity": 0.16,
-              "legendGroup": "$W_K$ — designed for teaching"
+              "prompt": "This 4x2 lattice is W_K, hand-constructed for legibility and NOT learned. Under the row-vector convention q = x W, ROW d is the image of input basis direction e_d. Keeps input dims 2 and 4 and sends the other two to zero. That is the entire difference between the three projections - not three inputs, three different things kept. These statements describe the defaults. Every cell is editable; all four basis images and the resulting vector update with the matrix.",
+              "bind": "s4_wk",
+              "textExpr": "toFixed(value, 2)"
             },
             {
               "id": "s2_tensor_wv",
@@ -1972,15 +1907,17 @@
                 [0, 0],
                 [0, 0]
               ],
-              "origin": [-3.0, 4.8, 0],
+              "origin": [6.5, 3.8, 0.3],
               "cellSize": 0.45,
               "plane": "xy",
-              "colorMap": "viridis",
-              "colorDomain": [0, 3],
+              "colorMap": "blueRed",
+              "colorDomain": [-4, 4],
               "color": "#66bb6a",
               "opacity": 0.95,
-              "shader": {"ignorePlaneOpacity": true},
-              "label": "$W_V$ — designed for teaching",
+              "shader": {
+                "ignorePlaneOpacity": true
+              },
+              "label": "basis-vector images defining $W_V$",
               "axes": [
                 {
                   "labels": ["dim 1", "dim 2", "dim 3", "dim 4"],
@@ -1992,61 +1929,218 @@
                   "color": "#66bb6a"
                 }
               ],
-              "prompt": "This 4x2 lattice is W_V, hand-constructed for legibility and NOT learned. Under the row-vector convention q = x W, ROW d is the image of input basis direction e_d. Keeps input dims 1 and 2 and sends the other two to zero. That is the entire difference between the three projections - not three inputs, three different things kept."
+              "prompt": "This 4x2 lattice is W_V, hand-constructed for legibility and NOT learned. Under the row-vector convention q = x W, ROW d is the image of input basis direction e_d. Keeps input dims 1 and 2 and sends the other two to zero. That is the entire difference between the three projections - not three inputs, three different things kept. These statements describe the defaults. Every cell is editable; all four basis images and the resulting vector update with the matrix.",
+              "bind": "s4_wv",
+              "textExpr": "toFixed(value, 2)"
             },
             {
-              "id": "s2_line_wv_frame",
-              "type": "line",
-              "points": [
-                [-3.0, 4.2, 0],
-                [-3.0, 3.0, 0],
-                [-1.2, 3.0, 0]
+              "id": "s2_input_pt_0",
+              "type": "animated_point",
+              "expr": ["tfX(0,0)", "tfX(0,1)", "tfX(0,3)"],
+              "color": "#26c6da",
+              "radius": 0.13,
+              "labelExpr": "'the'",
+              "label": "input points — dims 1 · 2 · 4",
+              "prompt": "Input row 0 plotted exactly as in scene 1: coordinate 1 on x, coordinate 2 on y, and coordinate 4 on z. Coordinate 3 remains visible in the editable X tensor."
+            },
+            {
+              "id": "s2_input_pt_1",
+              "type": "animated_point",
+              "expr": ["tfX(1,0)", "tfX(1,1)", "tfX(1,3)"],
+              "color": "#26c6da",
+              "radius": 0.13,
+              "labelExpr": "'cat'",
+              "legendGroup": "input points — dims 1 · 2 · 4",
+              "prompt": "Input row 1 plotted exactly as in scene 1: coordinate 1 on x, coordinate 2 on y, and coordinate 4 on z. Coordinate 3 remains visible in the editable X tensor."
+            },
+            {
+              "id": "s2_input_pt_2",
+              "type": "animated_point",
+              "expr": ["tfX(2,0)", "tfX(2,1)", "tfX(2,3)"],
+              "color": "#26c6da",
+              "radius": 0.17,
+              "glow": true,
+              "glowScale": 1.7,
+              "labelExpr": "'sat'",
+              "legendGroup": "input points — dims 1 · 2 · 4",
+              "prompt": "The selected input x2 plotted exactly as in scene 1: coordinate 1 on x, coordinate 2 on y, and coordinate 4 on z. Editing any of those cells moves this point; all four coordinates still drive q2, k2 and v2 according to the matrices."
+            },
+            {
+              "id": "s2_input_pt_3",
+              "type": "animated_point",
+              "expr": ["tfX(3,0)", "tfX(3,1)", "tfX(3,3)"],
+              "color": "#26c6da",
+              "radius": 0.13,
+              "labelExpr": "'on'",
+              "legendGroup": "input points — dims 1 · 2 · 4",
+              "prompt": "Input row 3 plotted exactly as in scene 1: coordinate 1 on x, coordinate 2 on y, and coordinate 4 on z. Coordinate 3 remains visible in the editable X tensor."
+            },
+            {
+              "id": "s2_input_pt_4",
+              "type": "animated_point",
+              "expr": ["tfX(4,0)", "tfX(4,1)", "tfX(4,3)"],
+              "color": "#26c6da",
+              "radius": 0.13,
+              "labelExpr": "'the'",
+              "legendGroup": "input points — dims 1 · 2 · 4",
+              "prompt": "Input row 4 plotted exactly as in scene 1: coordinate 1 on x, coordinate 2 on y, and coordinate 4 on z. Coordinate 3 remains visible in the editable X tensor."
+            },
+            {
+              "id": "s2_input_pt_5",
+              "type": "animated_point",
+              "expr": ["tfX(5,0)", "tfX(5,1)", "tfX(5,3)"],
+              "color": "#26c6da",
+              "radius": 0.13,
+              "labelExpr": "'mat'",
+              "legendGroup": "input points — dims 1 · 2 · 4",
+              "prompt": "Input row 5 plotted exactly as in scene 1: coordinate 1 on x, coordinate 2 on y, and coordinate 4 on z. Coordinate 3 remains visible in the editable X tensor."
+            },
+            {
+              "id": "s2_chart_q",
+              "type": "chart",
+              "origin": [1.8, -5.4, 0],
+              "size": [2.4, 2.4],
+              "series": [
+                {"kind": "points", "n": 6, "xExpr": "tfQ(i,0)", "yExpr": "tfQ(i,1)", "pointLabelExpr": "concat('$q_{', string(i), '}$')", "color": "#ff7043", "size": 9}
               ],
-              "color": "#66bb6a",
-              "width": 2,
-              "opacity": 0.6,
-              "legendGroup": "$W_V$ — designed for teaching"
-            },
-            {
-              "id": "s2_vec_wv_img0",
-              "type": "vector",
-              "from": [-3.0, 3.0, 0],
-              "to": [-2.5, 3.0, 0],
-              "color": "#66bb6a",
-              "width": 0.9,
-              "legendGroup": "$W_V$ — designed for teaching"
-            },
-            {
-              "id": "s2_vec_wv_img1",
-              "type": "vector",
-              "from": [-3.0, 3.0, 0],
-              "to": [-3.0, 3.5, 0],
-              "color": "#66bb6a",
-              "width": 0.9,
-              "legendGroup": "$W_V$ — designed for teaching"
-            },
-            {
-              "id": "s2_poly_wv",
-              "type": "polygon",
-              "vertices": [
-                [-3.0, 3.0, 0],
-                [-2.5, 3.0, 0],
-                [-2.5, 3.5, 0],
-                [-3.0, 3.5, 0]
+              "axes": [
+                {"title": "$q_{i,1}$", "ticks": 3, "color": "#ff7043"},
+                {"title": "$q_{i,2}$", "ticks": 3, "color": "#ff7043"}
               ],
-              "color": "#66bb6a",
-              "opacity": 0.16,
-              "legendGroup": "$W_V$ — designed for teaching"
+              "label": "Query projections — all tokens",
+              "prompt": "The six actual query outputs q_i = x_i W_Q in the two-dimensional query subspace. Editing a row of X moves its point; editing W_Q reshapes this whole cloud."
+            },
+            {
+              "id": "s2_chart_k",
+              "type": "chart",
+              "origin": [5, -5.4, 0],
+              "size": [2.4, 2.4],
+              "series": [
+                {"kind": "points", "n": 6, "xExpr": "tfK(i,0)", "yExpr": "tfK(i,1)", "pointLabelExpr": "concat('$k_{', string(i), '}$')", "color": "#42a5f5", "size": 9}
+              ],
+              "axes": [
+                {"title": "$k_{i,1}$", "ticks": 3, "color": "#42a5f5"},
+                {"title": "$k_{i,2}$", "ticks": 3, "color": "#42a5f5"}
+              ],
+              "label": "Key projections — all tokens",
+              "prompt": "The six actual key outputs k_i = x_i W_K in the two-dimensional key subspace. Editing a row of X moves its point; editing W_K reshapes this whole cloud."
+            },
+            {
+              "id": "s2_chart_v",
+              "type": "chart",
+              "origin": [8.2, -5.4, 0],
+              "size": [2.4, 2.4],
+              "series": [
+                {"kind": "points", "n": 6, "xExpr": "tfV(i,0)", "yExpr": "tfV(i,1)", "pointLabelExpr": "concat('$v_{', string(i), '}$')", "color": "#66bb6a", "size": 9}
+              ],
+              "axes": [
+                {"title": "$v_{i,1}$", "ticks": 3, "color": "#66bb6a"},
+                {"title": "$v_{i,2}$", "ticks": 3, "color": "#66bb6a"}
+              ],
+              "label": "Value projections — all tokens",
+              "prompt": "The six actual value outputs v_i = x_i W_V in the two-dimensional value subspace. Editing a row of X moves its point; editing W_V reshapes this whole cloud."
+            },
+            {
+              "id": "s2_chart_similarity",
+              "type": "chart",
+              "origin": [1.8, -8.7, 0],
+              "size": [9.2, 2.1],
+              "xDomain": [-0.5, 5.5],
+              "series": [
+                {"kind": "line", "n": 6, "xExpr": "i", "yExpr": "tfScore(2,i)", "color": "#ffca28", "width": 1.5, "opacity": 0.55},
+                {"kind": "points", "n": 6, "xExpr": "i", "yExpr": "tfScore(2,i)", "pointLabelExpr": "concat('$k_{', string(i), '}$')", "color": "#ffca28", "size": 9}
+              ],
+              "axes": [
+                {"title": "key slot $j$", "ticks": 6, "color": "#ffca28"},
+                {"title": "$q_2 \\cdot k_j$", "ticks": 4, "color": "#ffca28"}
+              ],
+              "label": "sat-to-key similarity scores",
+              "prompt": "The six signed query-key similarities q_2 dot k_j before scaling, masking, or softmax. Editing row 2 of X or W_Q moves the query; editing any input row or W_K moves keys."
             }
           ],
           "camera": {
-            "position": [-4.9, 4.6, 8.5],
-            "target": [-4.9, 4.6, 0]
+            "position": [1.25, -8, 22],
+            "target": [1.25, -1.6, 0]
           },
           "info": [
-            {"id": "s2_info_rows", "position": "top-left", "title": "Rows are basis images", "content": "$xW = \\sum_d x_d\\,W[d,:]$, so row $d$ **is** the image of $e_d$. $W_Q$ reads dims 3, 4 · $W_K$ dims 2, 4 · $W_V$ dims 1, 2 — each sends the other two directions to $0$."}
+            {
+              "id": "s2_info_rows",
+              "position": "top-left",
+              "title": "Basis images above, outputs below",
+              "content": "The cyan input points now share the main origin, reusing scene 1's display: coordinates 1, 2 and 4 lie on the three axes, while coordinate 3 remains in the editable $X$ tensor. The orange, blue and green arrows are the full-scale $q_2$, $k_2$ and $v_2$ vectors for **sat** on the $z=0$ head plane. Sharing axes here is a visual comparison; $X$ and the head outputs still belong to different vector spaces."
+            },
+            {
+              "id": "s2_projection_values",
+              "position": "bottom-right",
+              "title": "Live: $x_2 \\to q_2, k_2, v_2$",
+              "content": "$x_2$ = ({{toFixed(tfX(2,0),2)}}, {{toFixed(tfX(2,1),2)}}, {{toFixed(tfX(2,2),2)}}, {{toFixed(tfX(2,3),2)}})\n\n$q_2$ = ({{toFixed(tfQ(2,0),2)}}, {{toFixed(tfQ(2,1),2)}})\n\n$k_2$ = ({{toFixed(tfK(2,0),2)}}, {{toFixed(tfK(2,1),2)}})\n\n$v_2$ = ({{toFixed(tfV(2,0),2)}}, {{toFixed(tfV(2,1),2)}})\n\nChange the fourth coordinate, $x_{2,4}$: the $q_2$ and $k_2$ arrows move; $v_2$ stays fixed because the default $W_V$ ignores that coordinate."
+            }
           ],
-          "prompt": "Row-vector convention is doing the work here: x W = sum_d x_d * W[d,:], so ROW d of W is the image of basis direction e_d. Each mini-frame under a weight lattice shows only the nonzero row images; the two missing arrows are the discarded input directions, and their absence IS the content. Note that W_Q and W_K send their kept pair onto the same little rectangle while reading different input dims - same destination, different source, which separates 'what it produces' from 'what it looks at'. Be precise if asked: both matrices are rank 2, so the IMAGE of each is all of R^2; what they share is the image of the unit square, the rectangle, not the image as a subspace. Say every time that these matrices are hand-constructed for legibility and not learned. Do not let a student conclude that a projection is invertible: two of four directions are gone."
+          "prompt": "Interactive linear maps with row-vector convention: xW = sum_d x_d W[d,:]. The four tensors X, W_Q, W_K, W_V are editable by hovering their viewport cells. Three separate charts show every row of Q, K and V in the query, key and value 2-D subspaces. An edit to X row i moves point i in all three charts. A weight edit moves its own chart, and W_Q and W_K also move the similarity chart, which is q_2 . k_j: W_Q through q_2, W_K through every k_j. W_V is the only one confined to its own chart. X is edited after positional encoding, which is not applied twice. Claims about discarded directions and rank 2 describe only the default matrices; after edits inspect the actual rows. These are maps from R^4 to R^2, not orthogonal shadows onto a plane inside R^4. The grid reset buttons restore defaults. The next step restores the fixed lesson inputs and weights.",
+          "sliders": [
+            {
+              "id": "tf_x",
+              "kind": "tensor",
+              "label": "$X$ — edit any cell to move its q, k, v",
+              "shape": [6, 4],
+              "min": -4,
+              "max": 4,
+              "step": 0.1,
+              "default": [
+                [1, 1, 0, 1],
+                [0.8414709848078965, 1.5403023058681398, 0.009999833334166664, 0.9999500004166653],
+                [0.9092974268256817, -0.4161468365471424, 1.0199986666933332, 0.9998000066665778],
+                [0.1411200080598672, -0.9899924966004454, 0.02999550020249566, 1.9995500337489875],
+                [0.2431975046920718, -0.6536436208636119, 0.03998933418663416, 0.9992001066609779],
+                [-0.45892427466313845, 0.7836621854632262, 0.04997916927067833, 1.4987502603949663]
+              ]
+            },
+            {
+              "id": "s4_wq",
+              "kind": "tensor",
+              "label": "$W_Q$ — hover a cell to edit",
+              "shape": [4, 2],
+              "min": -4,
+              "max": 4,
+              "step": 0.1,
+              "default": [
+                [0, 0],
+                [0, 0],
+                [3, 0],
+                [0, 1]
+              ]
+            },
+            {
+              "id": "s4_wk",
+              "kind": "tensor",
+              "label": "$W_K$ — hover a cell to edit",
+              "shape": [4, 2],
+              "min": -4,
+              "max": 4,
+              "step": 0.1,
+              "default": [
+                [0, 0],
+                [3, 0],
+                [0, 0],
+                [0, 1]
+              ]
+            },
+            {
+              "id": "s4_wv",
+              "kind": "tensor",
+              "label": "$W_V$ — hover a cell to edit",
+              "shape": [4, 2],
+              "min": -4,
+              "max": 4,
+              "step": 0.1,
+              "default": [
+                [1, 0],
+                [0, 1],
+                [0, 0],
+                [0, 0]
+              ]
+            }
+          ]
         },
         {
           "id": "dk-is-not-dmodel",
@@ -2062,29 +2156,62 @@
             }
           ],
           "camera": {
-            "position": [-0.8, 1.6, 11.0],
+            "position": [-0.8, 1.6, 11],
             "target": [-0.8, 1.6, 0]
           },
           "info": [
-            {"id": "s2_info_dk", "position": "top-right", "keep": true, "title": "Two widths", "content": "$d_{\\text{model}} = 4$, the residual stream · $d_k = 2$, one head. $W_Q$ is $4\\times 2$: not square, not invertible. Scene 3 divides by $\\sqrt{d_k}$, never $\\sqrt{d_{\\text{model}}}$."}
+            {
+              "id": "s2_info_dk",
+              "position": "top-right",
+              "keep": true,
+              "title": "Two widths",
+              "content": "$d_{\\text{model}} = 4$, the residual stream · $d_k = 2$, one head. $W_Q$ is $4\\times 2$: not square, not invertible. Scene 3 divides by $\\sqrt{d_k}$, never $\\sqrt{d_{\\text{model}}}$."
+            }
           ],
           "prompt": "No new geometry - this is a naming step, and the pedagogy requires d_k and d_model to be visible SIMULTANEOUSLY from here to the end of the lesson. d_model = 4 is the residual width; d_k = 2 is one head's private workspace. Conventionally d_k = d_model / n_heads, which is why 4/2 = 2 here - a convention, not a law: Gemma uses a head dimension of 256 with d_model 3072 and 16 heads, so the heads are wider than the even split. The scaling constant in scene 3 is sqrt(d_k), never sqrt(d_model) - do not preview the derivation, just plant that the two numbers differ and that scene 3 settles which one is used. Suggested follow-up: 'why is W_Q not square?'",
           "remove": [
-            {"id": "s2_tensor_wq"},
-            {"id": "s2_line_wq_frame"},
-            {"id": "s2_poly_wq"},
-            {"id": "s2_vec_wq_img0"},
-            {"id": "s2_vec_wq_img1"},
-            {"id": "s2_tensor_wk"},
-            {"id": "s2_line_wk_frame"},
-            {"id": "s2_poly_wk"},
-            {"id": "s2_vec_wk_img0"},
-            {"id": "s2_vec_wk_img1"},
-            {"id": "s2_tensor_wv"},
-            {"id": "s2_line_wv_frame"},
-            {"id": "s2_poly_wv"},
-            {"id": "s2_vec_wv_img0"},
-            {"id": "s2_vec_wv_img1"}
+            {
+              "id": "s2_tensor_wq"
+            },
+            {
+              "id": "s2_tensor_wk"
+            },
+            {
+              "id": "s2_tensor_wv"
+            },
+            {
+              "id": "s2_chart_q"
+            },
+            {
+              "id": "s2_chart_k"
+            },
+            {
+              "id": "s2_chart_v"
+            },
+            {
+              "id": "s2_chart_similarity"
+            },
+            {
+              "id": "s2_input_pt_0"
+            },
+            {
+              "id": "s2_input_pt_1"
+            },
+            {
+              "id": "s2_input_pt_2"
+            },
+            {
+              "id": "s2_input_pt_3"
+            },
+            {
+              "id": "s2_input_pt_4"
+            },
+            {
+              "id": "s2_input_pt_5"
+            },
+            {
+              "type": "slider"
+            }
           ]
         },
         {
@@ -2225,12 +2352,7 @@
             {"id": "s2_info_scores", "position": "top-left", "title": "$q\\cdot k$, live", "content": "what-if angle **{{s2_qdir}}°** · $0°$ is the model's own $q_2$. $q\\cdot k$ with *cat*: **{{ toFixed(tfQProbe(0,s2_qdir)*tfK(1,0) + tfQProbe(1,s2_qdir)*tfK(1,1), 3) }}**. Every key carries its own reading."},
             {"id": "s2_info_provenance", "position": "bottom-left", "keep": true, "title": "Standing notes", "content": "The orange query is a **what-if of yours**, not the model's $q$ — at $0°$ it is exactly $q_2$. The weights are hand-constructed for teaching, not learned."}
           ],
-          "prompt": "Manipulated: the what-if query angle. Watched: six live dot products, one per key. The critical honesty point is that the rotating arrow is the STUDENT's probe, not a model parameter - at 0 degrees it is exactly q_2 and the six readings are the model's own raw scores for 'sat'. Emphasise that q.k = |q| |k| cos(angle), so both length and direction matter: 'cat' wins partly because its key is long (4.6209 in the first head coordinate). Do not softmax anything yet and do not mention masking - scene 3 owns both. Suggested follow-up: 'which key would win if you could point the query anywhere?'",
-          "remove": [
-            {"id": "s2_map_q"},
-            {"id": "s2_map_k"},
-            {"id": "s2_map_v"}
-          ]
+          "prompt": "Manipulated: the what-if query angle. Watched: six live dot products, one per key. The critical honesty point is that the rotating arrow is the STUDENT's probe, not a model parameter - at 0 degrees it is exactly q_2 and the six readings are the model's own raw scores for 'sat'. Emphasise that q.k = |q| |k| cos(angle), so both length and direction matter: 'cat' wins partly because its key is long (4.6209 in the first head coordinate). Do not softmax anything yet and do not mention masking - scene 3 owns both. Suggested follow-up: 'which key would win if you could point the query anywhere?'"
         },
         {
           "id": "a-row-of-scores",
@@ -2515,7 +2637,6 @@
           "prompt": "Two objects on screen and they must not be conflated. (1) The standalone RoPE subspace bottom-right: its own demo vectors q = [0.6,-1.3], k = [-0.9,0.4], theta = 1.0 rad/position, driven by m and n. (2) The main head plane above, which is NOT rotated and does not respond to this step: the forward pass this lesson computes uses additive sinusoidal PE throughout. THE GEOMETRY IS THE POINT HERE. Each tip rides a circle of fixed radius (|q| = 1.4318, |k| = 0.9849): a rotation preserves length, which is exactly why position is encoded as an angle rather than as an added offset - an offset would move the vector off its circle and change its norm, and with it the vector's own self-similarity. The encoding is also PERIODIC: carry m round to 2*pi and R_m q returns to exactly itself, which is what the full-turn range exists to show. RANGE HONESTY, state it plainly if asked: the model's own positions are the integers 0 to 5, so at theta = 1.0 the six-token sequence spans 5 radians - about 286 degrees, roughly four fifths of a turn, not quite a full circle. The sliders run to 6.3 so the student can close the circle and see the periodicity; values past 5 are exploring the ROTATION and do not claim a seventh token, and the fractional values between integers exist only so the motion can be watched. The amber wedge is the angle between the two arrows; its opening is a function of m - n alone, which is the next step's theorem made visible, and it holds under a shared shift of any size including one that wraps past 2*pi. RoPE AND ADDITIVE PE ARE ALTERNATIVES, NEVER BOTH: the domain library forces the PE term out of x whenever RoPE is switched on, because no model applies a sinusoidal offset and then rotates the result. That is also why the head plane above is not wired to a RoPE switch. Say plainly, if asked, that this toy has no legible RoPE-only configuration: its hand-built embedding table leans on PE to give 'sat' a non-zero key and value, and without the PE term k_2 and v_2 are exactly zero - a limit of the six-word table, not of RoPE. V is untouched in the subspace on screen: the green arrow sits still while R_m q and R_n k sweep - accuracy-contract item 7 and the misconception this step kills. Rotating V is a real implementation bug people ship. Be honest that theta = 1.0 is illustrative: the paper uses a base-10000 frequency ladder with one frequency per coordinate pair, which at d_k = 2 is a single pair and would be invisible. RoPE replaces additive positional encoding inside Q and K; it is not added to the embedding the way scene 1's sinusoidal PE was. Suggested follow-up: 'what breaks if you rotate V too?'",
           "remove": [
             {"id": "s2_tensor_x"},
-            {"id": "s2_pt_x2"},
             {"id": "s2_tensor_srow"},
             {"id": "s2_txt_keys"},
             {"id": "s2_txt_dk"},
@@ -3321,7 +3442,7 @@
         {
           "id": "softmax-flagship",
           "title": "Softmax — and the flagship row",
-          "description": "Exponentiate and normalise. The row is drawn as bars now — height is the weight, and a masked key has no bar at all. For *sat*: 0.029108 on *the*, 0.970889 on *cat*, 0.000003 on itself, and nothing at all on the three future positions. The verb puts 97.09% of its mass on its subject. Sum: 1.000000 — asserted at six decimals on screen, not claimed. And read **across** rows, never down columns: this matrix is row-stochastic, so two cells in a column were normalised by different denominators and comparing them means nothing.",
+          "description": "Read $z_{ij}=\\hat s_{ij}+M_{ij}$ as a logit: an unnormalised log-weight. Softmax follows the visible path $\\text{logits }z\\;\\xrightarrow{\\exp}\\;\\text{positive weights }e^z\\;\\xrightarrow{\\text{normalise}}\\;\\text{probabilities }\\alpha$, where $\\alpha_{ij}=\\dfrac{\\exp(z_{ij})}{\\sum_{\\ell=0}^{n-1}\\exp(z_{i\\ell})}$. The row is drawn as bars now — height is the probability, and a masked key has no bar at all. For *sat*: 0.029108 on *the*, 0.970889 on *cat*, 0.000003 on itself, and nothing at all on the three future positions. The verb puts 97.09% of its mass on its subject. Sum: 1.000000 — asserted at six decimals on screen, not claimed. And read **across** rows, never down columns: this matrix is row-stochastic, so two cells in a column were normalised by different denominators and comparing them means nothing.",
           "camera": {
             "position": [-1.0, -3.9, 15.5],
             "target": [-1.0, 2.6, 0.0]
@@ -3357,7 +3478,7 @@
             },
             {
               "id": "s3_tensor_soft_cap",
-              "text": "stage 4 — $\\alpha_{ij}$ · bar height is the weight\\nread **across**, never down · masked keys have no bar",
+              "text": "stage 4 — logits $z$ $\\xrightarrow{\\exp}$ weights $e^z$ $\\xrightarrow{\\div\\sum}$ probabilities $\\alpha$\\nread **across**, never down · masked keys have no bar",
               "position": [1.4, 3.38, 0],
               "type": "text",
               "align": "left",
@@ -3366,11 +3487,11 @@
             }
           ],
           "info": [
-            {"id": "s3_stages_card", "position": "bottom-left", "keep": true, "title": "The pipeline so far", "content": "**1 · raw** $s_{ij} = q_i \\cdot k_j$\n\n**2 · scale** $\\hat s_{ij} = s_{ij} / \\sqrt{d_k}$\n\n**3 · mask** $\\hat s_{ij} + M_{ij}$, with $M_{ij} = -\\infty$ for $j > i$\n\n**4 · softmax** $\\alpha_{ij} = \\mathrm{softmax}_j(\\hat s_{ij} + M_{ij})$"},
+            {"id": "s3_stages_card", "position": "bottom-left", "keep": true, "title": "The pipeline so far", "content": "**1 · raw** $s_{ij} = q_i \\cdot k_j$\n\n**2 · scale** $\\hat s_{ij} = s_{ij} / \\sqrt{d_k}$\n\n**3 · mask** $\\hat s_{ij} + M_{ij}$, with $M_{ij} = -\\infty$ for $j > i$\n\n**4 · softmax** $\\underbrace{z_{ij}}_{\\text{logit / log-weight}} \\xrightarrow{\\exp} \\underbrace{e^{z_{ij}}}_{\\text{positive weight}} \\xrightarrow{\\div\\sum_\\ell e^{z_{i\\ell}}} \\underbrace{\\alpha_{ij}}_{\\text{probability}}$\n\n$$\\alpha_{ij}=\\frac{\\exp(z_{ij})}{\\sum_{\\ell=0}^{n-1}\\exp(z_{i\\ell})}$$"},
             {"id": "s3_info_softmax_flagship", "position": "bottom-center", "title": "The flagship row", "content": "$\\alpha_{2j} = 0.029108,\\ \\mathbf{0.970889},\\ 0.000003$, then nothing. Sum = **{{ toFixed(tfRowSum(s3_qi), 6) }}**, asserted. Row-stochastic: read across, never down."},
             {"id": "s3_keep_card", "position": "bottom-right", "keep": true, "title": "Toy · provenance", "content": "$d_{\\text{model}} = 4$, $d_k = 2$, **one head of two**. $W_Q, W_K, W_V$ are hand-built for legibility, **not learned**."}
           ],
-          "prompt": "The emotional payoff of the scene: 97.09% of 'sat's mass on 'cat'. Three guardrails. (1) ASSERT, do not claim: the row sum is printed live at six decimals so the student can check it, and the six-decimal precision exists so 0.989933 could not hide. (2) ROW-STOCHASTIC: reading down a column compares numbers normalised by different denominators and is meaningless. (3) HONESTY: this head is legible because W_Q and W_K were built to make it legible. Real trained weights at d_model = 4 produce noise. Say so immediately if the student is impressed by the number. And do NOT let 'sat attends to cat' become 'sat attends to cat BECAUSE cat is the subject' - that inference is the subject of a later step and is not supported."
+          "prompt": "Name the visible map explicitly: logits z are unnormalised log-weights; exp maps them to positive weights; dividing by their row sum produces probabilities alpha. Do not call the embedding space log space. The emotional payoff of the scene: 97.09% of 'sat's mass on 'cat'. Three guardrails. (1) ASSERT, do not claim: the row sum is printed live at six decimals so the student can check it, and the six-decimal precision exists so 0.989933 could not hide. (2) ROW-STOCHASTIC: reading down a column compares numbers normalised by different denominators and is meaningless. (3) HONESTY: this head is legible because W_Q and W_K were built to make it legible. Real trained weights at d_model = 4 produce noise. Say so immediately if the student is impressed by the number. And do NOT let 'sat attends to cat' become 'sat attends to cat BECAUSE cat is the subject' - that inference is the subject of a later step and is not supported."
         },
         {
           "id": "output-is-caged",
@@ -3628,7 +3749,7 @@
             }
           ],
           "info": [
-            {"id": "s3_stages_card", "position": "bottom-left", "keep": true, "title": "The pipeline so far", "content": "**1 · raw** $s_{ij} = q_i \\cdot k_j$\n\n**2 · scale** $\\hat s_{ij} = s_{ij} / \\sqrt{d_k}$\n\n**3 · mask** $\\hat s_{ij} + M_{ij}$, with $M_{ij} = -\\infty$ for $j > i$\n\n**4 · softmax** $\\alpha_{ij} = \\mathrm{softmax}_j(\\hat s_{ij} + M_{ij})$\n\n**5 · mix** $o_i = \\sum_j \\alpha_{ij}\\, v_j$"},
+            {"id": "s3_stages_card", "position": "bottom-left", "keep": true, "title": "The pipeline so far", "content": "**1 · raw** $s_{ij} = q_i \\cdot k_j$\n\n**2 · scale** $\\hat s_{ij} = s_{ij} / \\sqrt{d_k}$\n\n**3 · mask** $\\hat s_{ij} + M_{ij}$, with $M_{ij} = -\\infty$ for $j > i$\n\n**4 · softmax** $\\underbrace{z_{ij}}_{\\text{logit / log-weight}} \\xrightarrow{\\exp} \\underbrace{e^{z_{ij}}}_{\\text{positive weight}} \\xrightarrow{\\div\\sum_\\ell e^{z_{i\\ell}}} \\underbrace{\\alpha_{ij}}_{\\text{probability}}$\n\n$$\\alpha_{ij}=\\frac{\\exp(z_{ij})}{\\sum_{\\ell=0}^{n-1}\\exp(z_{i\\ell})}$$\n\n**5 · mix** $o_i = \\sum_j \\alpha_{ij}\\, v_j$"},
             {"id": "s3_info_output_is_caged", "position": "top-center", "title": "Caged in the hull", "content": "$o_i = ({{ toFixed(tfOut(s3_qi,0),4) }},\\ {{ toFixed(tfOut(s3_qi,1),4) }})$ — the centre of mass of the *visible* $v_j$, masses $\\alpha_{ij}$. Spoke thickness = weight. The outline is the bound; dim points are values the mask hides. Points at $2\\times$. Proof 4."},
             {"id": "s3_keep_card", "position": "bottom-right", "keep": true, "title": "Toy · provenance", "content": "$d_{\\text{model}} = 4$, $d_k = 2$, **one head of two**. $W_Q, W_K, W_V$ are hand-built for legibility, **not learned**."}
           ],
@@ -3643,7 +3764,7 @@
             "target": [0.0, 0.0, 0.0]
           },
           "info": [
-            {"id": "s3_stages_card", "position": "bottom-left", "keep": true, "title": "The pipeline so far", "content": "**1 · raw** $s_{ij} = q_i \\cdot k_j$\n\n**2 · scale** $\\hat s_{ij} = s_{ij} / \\sqrt{d_k}$\n\n**3 · mask** $\\hat s_{ij} + M_{ij}$, with $M_{ij} = -\\infty$ for $j > i$\n\n**4 · softmax** $\\alpha_{ij} = \\mathrm{softmax}_j(\\hat s_{ij} + M_{ij})$\n\n**5 · mix** $o_i = \\sum_j \\alpha_{ij}\\, v_j$"},
+            {"id": "s3_stages_card", "position": "bottom-left", "keep": true, "title": "The pipeline so far", "content": "**1 · raw** $s_{ij} = q_i \\cdot k_j$\n\n**2 · scale** $\\hat s_{ij} = s_{ij} / \\sqrt{d_k}$\n\n**3 · mask** $\\hat s_{ij} + M_{ij}$, with $M_{ij} = -\\infty$ for $j > i$\n\n**4 · softmax** $\\underbrace{z_{ij}}_{\\text{logit / log-weight}} \\xrightarrow{\\exp} \\underbrace{e^{z_{ij}}}_{\\text{positive weight}} \\xrightarrow{\\div\\sum_\\ell e^{z_{i\\ell}}} \\underbrace{\\alpha_{ij}}_{\\text{probability}}$\n\n$$\\alpha_{ij}=\\frac{\\exp(z_{ij})}{\\sum_{\\ell=0}^{n-1}\\exp(z_{i\\ell})}$$\n\n**5 · mix** $o_i = \\sum_j \\alpha_{ij}\\, v_j$"},
             {"id": "s3_info_weighting_is_not_explanation", "position": "bottom-left", "title": "Not an explanation", "content": "A large $\\alpha_{ij}$ is a fact about mixing, not evidence the output depends on token $j$ (Jain & Wallace 2019; Wiegreffe & Pinter 2019 rebut in part). Full statement: doc panel."},
             {"id": "s3_keep_card", "position": "bottom-right", "keep": true, "title": "Toy · provenance", "content": "$d_{\\text{model}} = 4$, $d_k = 2$, **one head of two**. $W_Q, W_K, W_V$ are hand-built for legibility, **not learned**."}
           ],
@@ -3964,7 +4085,7 @@
           "techniqueHint": "Direct: a common factor cancels. Two lines, shown in full — hiding them behind a progressive reveal would be theatre.",
           "domain": "algebra",
           "goal": "$\\mathrm{softmax}(z + c\\mathbf{1}) = \\mathrm{softmax}(z)$ for any scalar $c$ — adding the same number to every score changes nothing.",
-          "sceneStep": 5,
+          "sceneStep": 6,
           "prompt": "Proof 5, the shortest in the lesson, and it is on screen because it licenses two things the student has just seen. First, the standard implementation subtracts max_j z_j before exponentiating, purely to avoid overflow, and this identity is why that is free. Second, an additive -infinity on masked entries is a coherent operation precisely because softmax lives naturally on additive changes to the scores: e^{-inf} = 0 removes the term and the survivors renormalise into a genuine distribution. In this lesson's code -infinity is -1e9, a large finite number, so no NaN reaches the renderer - say so if asked; do not claim the code uses -Infinity literally. This is a licence for the mask's PLACEMENT, not for its order: masking after softmax is still wrong, and gives 0.989933.",
           "steps": [
             {
@@ -3978,7 +4099,7 @@
               "justification": "$e^{z_j + c} = e^{c}e^{z_j}$, and the constant $e^{c}$ factors out of the sum in the denominator. It is strictly positive, so the cancellation is always legal.",
               "explanation": "That is the whole proof. Softmax cares about *differences* between scores and nothing else — which is another way of saying the scores have no absolute zero.",
               "prompt": "Two lines, no scaffolding. The cancellation is exact and needs only that e^c is positive. Stress the reading: softmax sees only differences between scores.",
-              "sceneStep": 5
+              "sceneStep": 6
             },
             {
               "id": "p5-consequences",
@@ -3991,7 +4112,7 @@
               "justification": "Subtracting the row maximum leaves the output unchanged and keeps every exponent at most $0$, which is the standard numerically stable implementation. And an additive $-\\infty$ is just another additive change to the scores: $e^{-\\infty} = 0$ deletes the term, and the surviving entries still normalise to $1$.",
               "explanation": "This is the licence for **where** the mask goes — on the scores, as an additive term — not for what order it goes in. Masking after softmax deletes mass instead of redistributing it, and gives $0.989933$ for row 2 where a distribution requires $1.000000$. In the code the $-\\infty$ is $-10^{9}$, a large finite number, so the renderer never sees a `NaN`.",
               "prompt": "Connect the symbols to the viewport: the hl-mask spans are the dark cells of the causal lattice. Two consequences, and keep them distinct - max subtraction is a numerics trick, the additive -infinity is the mask itself. Neither licenses masking AFTER softmax.",
-              "sceneStep": 5
+              "sceneStep": 6
             }
           ]
         },

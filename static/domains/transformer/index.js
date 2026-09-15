@@ -529,11 +529,17 @@
         // a rotation of q and k, and never twice.
         const emb = new Float64Array(n * dModel);
         const x = new Float64Array(n * dModel);
+        // Optional direct editing of the residual input, AFTER position is
+        // added. Slot-indexed, with the configured shape; it does not change
+        // embeddings or the position-free equivariance demonstration.
+        const inputOverride = _readRaw('tf_x');
         for (let i = 0; i < n; i++) {
             for (let d = 0; d < dModel; d++) {
                 const e = cfg.table[perm[i]][d];
                 emb[i * dModel + d] = e;
-                x[i * dModel + d] = e + peOn * _pe(i, d, dModel);
+                const edited = Array.isArray(inputOverride) && Array.isArray(inputOverride[i])
+                    ? Number(inputOverride[i][d]) : NaN;
+                x[i * dModel + d] = Number.isFinite(edited) ? edited : e + peOn * _pe(i, d, dModel);
             }
         }
 
