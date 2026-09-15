@@ -200,6 +200,24 @@ BEHAVIOURAL: list[tuple[str, dict, str, list[float], float]] = [
     # ...and with RoPE off the additive PE is still there (x[0] = emb + PE).
     ('PE still added when RoPE is off',
      {'s2_rope': 0, 's1_pe': 1}, 'R(d=>TF.tfX(0,d),4)', [1.0, 1.0, 0.0, 1.0], 5e-4),
+
+    # tf_pos is the unified scene control and takes precedence over both legacy
+    # switches. Pin X and one Q/K row so each mode proves both where position
+    # enters and where it does not.
+    ('tf_pos none overrides legacy PE and RoPE',
+     {'tf_pos': 0, 's1_pe': 1, 's2_rope': 1},
+     'R(d=>TF.tfX(2,d),4).concat(R(d=>TF.tfQh(0,0,2,d),2),R(d=>TF.tfKh(0,0,1,d),2))',
+     [0, 0, 1, 0, 3, 0, 3, 0], 1e-12),
+    ('tf_pos additive overrides legacy RoPE',
+     {'tf_pos': 1, 's1_pe': 0, 's2_rope': 1},
+     'R(d=>TF.tfX(2,d),4).concat(R(d=>TF.tfQh(0,0,2,d),2),R(d=>TF.tfKh(0,0,1,d),2))',
+     [0.909297426826, -0.416146836547, 1.019998666693, 0.999800006667,
+      3.059996000080, 0.999800006667, 4.620906917604, 0.999950000417], 1e-12),
+    ('tf_pos RoPE overrides legacy additive PE',
+     {'tf_pos': 2, 's1_pe': 1, 's2_rope': 0},
+     'R(d=>TF.tfX(2,d),4).concat(R(d=>TF.tfQh(0,0,2,d),2),R(d=>TF.tfKh(0,0,1,d),2))',
+     [0, 0, 1, 0, -1.248440509641, 2.727892280477,
+      1.620906917604, 2.524412954424], 1e-12),
 ]
 
 DEFAULT_SLIDERS = {
@@ -454,6 +472,23 @@ def main() -> int:
     else:
         print(f'  FAIL reshaped model: {shape}')
         failures += 1
+    # Every tf_emb_kind keeps that arbitrary shape while replacing its values
+    # with the promised canonical table. Pin the first and last rows so changes
+    # to either the slot factor or component factor are caught.
+    preset_base = [[9, 8, 7, 6, 5, 4], [3, 2, 1, 0, -1, -2], [-3, -4, -5, -6, -7, -8]]
+    preset_rows = {
+        0: [9, 8, 7, 6, 5, 4, -3, -4, -5, -6, -7, -8],
+        1: [1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+        2: [1/18, 2/18, 3/18, 4/18, 5/18, 6/18, 1/6, 2/6, 3/6, 4/6, 5/6, 1],
+        3: [1, 5/6, 4/6, 3/6, 2/6, 1/6, 1/3, 5/18, 4/18, 3/18, 2/18, 1/18],
+        4: [1/math.sqrt(6)] * 12,
+    }
+    for kind, rows in preset_rows.items():
+        got = _run('[TF.tfN(),TF.tfDModel()].concat(R(d=>TF.tfEmbBase(0,d),6),R(d=>TF.tfEmbBase(2,d),6))',
+                   {**DEFAULT_SLIDERS, 'tf_emb': preset_base, 'tf_emb_kind': kind})
+        if not _report(f'tf_emb_kind {kind} keeps 3 x 6 and pins representative rows',
+                       got, [3, 6, *rows], 1e-12):
+            failures += 1
     # The general override name reaches the same table as the scene-4 alias.
     ov = _run('R(r=>R(c=>TF.tfWq(0,0,r,c),2),4)', {**DEFAULT_SLIDERS, 'tf_wq_0_0': [[7, 7]]})
     if ov[0] == [7, 7] and ov[2] == [3, 0]:
