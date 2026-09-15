@@ -2000,8 +2000,6 @@
               "type": "chart",
               "origin": [1.8, -5.4, 0],
               "size": [2.4, 2.4],
-              "xDomain": [-5, 5],
-              "yDomain": [-3, 3],
               "series": [
                 {"kind": "points", "n": 6, "xExpr": "tfQ(i,0)", "yExpr": "tfQ(i,1)", "pointLabelExpr": "concat('$q_{', string(i), '}$')", "color": "#ff7043", "size": 9}
               ],
@@ -2017,8 +2015,6 @@
               "type": "chart",
               "origin": [5, -5.4, 0],
               "size": [2.4, 2.4],
-              "xDomain": [-5, 5],
-              "yDomain": [-3, 3],
               "series": [
                 {"kind": "points", "n": 6, "xExpr": "tfK(i,0)", "yExpr": "tfK(i,1)", "pointLabelExpr": "concat('$k_{', string(i), '}$')", "color": "#42a5f5", "size": 9}
               ],
@@ -2034,8 +2030,6 @@
               "type": "chart",
               "origin": [8.2, -5.4, 0],
               "size": [2.4, 2.4],
-              "xDomain": [-5, 5],
-              "yDomain": [-3, 3],
               "series": [
                 {"kind": "points", "n": 6, "xExpr": "tfV(i,0)", "yExpr": "tfV(i,1)", "pointLabelExpr": "concat('$v_{', string(i), '}$')", "color": "#66bb6a", "size": 9}
               ],
@@ -2052,7 +2046,6 @@
               "origin": [1.8, -8.7, 0],
               "size": [9.2, 2.1],
               "xDomain": [-0.5, 5.5],
-              "yDomain": [-10, 18],
               "series": [
                 {"kind": "line", "n": 6, "xExpr": "i", "yExpr": "tfScore(2,i)", "color": "#ffca28", "width": 1.5, "opacity": 0.55},
                 {"kind": "points", "n": 6, "xExpr": "i", "yExpr": "tfScore(2,i)", "pointLabelExpr": "concat('$k_{', string(i), '}$')", "color": "#ffca28", "size": 9}
@@ -2083,7 +2076,7 @@
               "content": "$x_2$ = ({{toFixed(tfX(2,0),2)}}, {{toFixed(tfX(2,1),2)}}, {{toFixed(tfX(2,2),2)}}, {{toFixed(tfX(2,3),2)}})\n\n$q_2$ = ({{toFixed(tfQ(2,0),2)}}, {{toFixed(tfQ(2,1),2)}})\n\n$k_2$ = ({{toFixed(tfK(2,0),2)}}, {{toFixed(tfK(2,1),2)}})\n\n$v_2$ = ({{toFixed(tfV(2,0),2)}}, {{toFixed(tfV(2,1),2)}})\n\nChange the fourth coordinate, $x_{2,4}$: the $q_2$ and $k_2$ arrows move; $v_2$ stays fixed because the default $W_V$ ignores that coordinate."
             }
           ],
-          "prompt": "Interactive linear maps with row-vector convention: xW = sum_d x_d W[d,:]. The four tensors X, W_Q, W_K, W_V are editable by hovering their viewport cells. Three separate charts show every row of Q, K and V in the query, key and value 2-D subspaces. An edit to X row i moves point i in all three charts; an edit to one weight matrix affects only its corresponding chart. X is edited after positional encoding, which is not applied twice. Claims about discarded directions and rank 2 describe only the default matrices; after edits inspect the actual rows. These are maps from R^4 to R^2, not orthogonal shadows onto a plane inside R^4. The grid reset buttons restore defaults. The next step restores the fixed lesson inputs and weights.",
+          "prompt": "Interactive linear maps with row-vector convention: xW = sum_d x_d W[d,:]. The four tensors X, W_Q, W_K, W_V are editable by hovering their viewport cells. Three separate charts show every row of Q, K and V in the query, key and value 2-D subspaces. An edit to X row i moves point i in all three charts. A weight edit moves its own chart, and W_Q and W_K also move the similarity chart, which is q_2 . k_j: W_Q through q_2, W_K through every k_j. W_V is the only one confined to its own chart. X is edited after positional encoding, which is not applied twice. Claims about discarded directions and rank 2 describe only the default matrices; after edits inspect the actual rows. These are maps from R^4 to R^2, not orthogonal shadows onto a plane inside R^4. The grid reset buttons restore defaults. The next step restores the fixed lesson inputs and weights.",
           "sliders": [
             {
               "id": "tf_x",

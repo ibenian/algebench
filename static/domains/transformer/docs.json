@@ -198,6 +198,7 @@
         ]
       ],
       "scenes": [
+        2,
         4
       ]
     },
@@ -227,6 +228,7 @@
         ]
       ],
       "scenes": [
+        2,
         4
       ]
     },
@@ -256,6 +258,7 @@
         ]
       ],
       "scenes": [
+        2,
         4
       ]
     },
@@ -336,7 +339,9 @@
       "shape": "[n, d_model] (configured shape)",
       "description": "Direct residual-input override AFTER positional encoding, indexed by slot. Finite cells replace X; missing or non-finite cells retain embedding plus position. Does not reshape the model or alter raw embeddings or the position-free equivariance demo. Removing the slider restores the normal input.",
       "default": "embedding plus positional encoding",
-      "scenes": [2]
+      "scenes": [
+        2
+      ]
     },
     "tf_emb": {
       "kind": "tensor",
@@ -418,7 +423,7 @@
     "tfEmbBase(r,d)": "Component d of embedding TOKEN row r (0..n-1, no shuffle) of the embedding table IN FORCE: the canonical preset when tf_emb_kind is 1-4, which REPLACES the table values before the forward pass; otherwise tf_emb when a scene declares it (any shape), else the toy table with any s4_emb cells overlaid. Use it to draw the embedding table itself; tfEmb(i,d) is the per-SLOT read with the shuffle applied.",
     "tfW(m,r,c)": "Layer-0 / head-0 shorthand for tfWq / tfWk / tfWv: entry (r, c) of a projection matrix in force: m = 0 for W_Q, 1 for W_K, 2 for W_V; r is the input dim (0..d_model-1; 0..3 in the toy), c the head dim (0..d_k-1; 0..1 in the toy), row-vector convention q = x W_Q. The hand-built value unless the tensor slider s4_wq / s4_wk / s4_wv (for m = 0 / 1 / 2) overrides cell [r][c]. Use it to draw the three matrices as lattices.",
     "tfPE(i,d)": "Component d of the sinusoidal positional encoding for POSITION i. Never shuffles. The position argument is CONTINUOUS — it is neither rounded to a slot nor clamped to N-1 — so a scene can sweep it and watch dims 0 and 1 trace the unit circle sin(p), cos(p). Integer slot arguments are unaffected.",
-    "tfX(i,d)": "Layer input x_i = tfEmb(i,d) + s1_pe * tfPE(i,d) — except when s2_rope = 1, where the additive term is forced off and x_i = tfEmb(i,d) exactly. RoPE replaces additive PE; the two are never summed. A scene declaring tf_pos overrides both switches: tf_pos = 0 leaves x_i position-free, 1 adds the PE term, 2 is RoPE and leaves x_i = tfEmb(i,d).",
+    "tfX(i,d)": "Layer input x_i = tfEmb(i,d) + s1_pe * tfPE(i,d) — except when s2_rope = 1, where the additive term is forced off and x_i = tfEmb(i,d) exactly. RoPE replaces additive PE; the two are never summed. A scene declaring tf_pos overrides both switches: tf_pos = 0 leaves x_i position-free, 1 adds the PE term, 2 is RoPE and leaves x_i = tfEmb(i,d). A scene declaring the tf_x tensor slider overrides this per cell: a finite tf_x[i][d] REPLACES the value, while a missing or non-finite cell keeps embedding plus position. The override lands after the position term, so it is the residual input itself.",
     "tfOutNoPos(i,d)": "Component d (0..d_k-1; 0..1 in the toy) of UNMASKED, POSITION-FREE attention over the raw embeddings. The permutation-equivariance object and nothing else — computed by a separate pass, because reusing the masked one would silently break the theorem. Still scaled dot-product attention, so it divides by sqrt(d_k).",
     "tfQ(i,d)": "q_i = x_i W_Q for head 0. RoPE applied when tf_pos = 2; in a scene that does not declare tf_pos, the legacy s2_rope = 1 decides instead -- in which case x_i carries no additive PE, because RoPE replaces it. tf_pos = 0 or 1 suppresses RoPE even where s2_rope is 1.",
     "tfK(i,d)": "k_i = x_i W_K, rotated with q. RoPE applied when tf_pos = 2; in a scene that does not declare tf_pos, the legacy s2_rope = 1 decides instead. tf_pos = 0 or 1 suppresses RoPE even where s2_rope is 1.",

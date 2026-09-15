@@ -9821,11 +9821,67 @@ function niceTicks(lo, hi, count = 5) {
 	};
 }
 /**
-* The domain to show for a set of values: their extent, padded a little so
-* the extreme samples do not sit on the frame, then widened to the nearest
-* tick multiples so the axis ends on round numbers. A flat set gets a unit
-* of room so it is still a plot and not a line on the edge.
+* The set of label boxes already placed on a paper, as a uniform grid.
+*
+* A flat list answered `overlaps` by scanning every box, which is O(n^2) over a
+* repaint -- and `fits` asks eight times per label while a points series takes
+* up to 4096 samples, so a dense labelled chart spent millions of comparisons
+* every time a slider moved. Bucketing by cell turns each question into a scan
+* of the handful of boxes near it. The answer is identical either way; only the
+* number of comparisons changes.
 */
+function makeLabelOccupancy(cellPx) {
+	const cell = Math.max(8, cellPx);
+	const placed = /* @__PURE__ */ new Map();
+	const cellsOf = (b) => {
+		const keys = [];
+		for (let cx = Math.floor(b.left / cell); cx <= Math.floor(b.right / cell); cx++) for (let cy = Math.floor(b.top / cell); cy <= Math.floor(b.bottom / cell); cy++) keys.push(cx + ":" + cy);
+		return keys;
+	};
+	return {
+		overlaps(b) {
+			const g = 3;
+			for (const key of cellsOf({
+				left: b.left - g,
+				top: b.top - g,
+				right: b.right + g,
+				bottom: b.bottom + g
+			})) for (const other of placed.get(key) || []) if (b.left < other.right + g && b.right + g > other.left && b.top < other.bottom + g && b.bottom + g > other.top) return true;
+			return false;
+		},
+		add(b) {
+			for (const key of cellsOf(b)) {
+				const bucket = placed.get(key);
+				if (bucket) bucket.push(b);
+				else placed.set(key, [b]);
+			}
+		}
+	};
+}
+/**
+* Where one point's label goes: the first of the eight neighbouring positions
+* that is inside the plot and clear of the labels already placed; failing that
+* the first that is merely inside the plot; failing that the first candidate,
+* so a label is never dropped silently.
+*
+* `startAt` rotates the preference order per sample, which stops a row of
+* points from stacking every label in the same direction.
+*/
+function chooseLabelPlacement(candidates, tw, th, plot, startAt, occupancy) {
+	const offset = candidates.length ? (startAt % candidates.length + candidates.length) % candidates.length : 0;
+	const ordered = candidates.slice(offset).concat(candidates.slice(0, offset));
+	const boxOf = (c) => ({
+		left: c.left,
+		top: c.top,
+		right: c.left + tw,
+		bottom: c.top + th
+	});
+	const inPlot = (b) => b.left >= plot.left && b.right <= plot.right && b.top >= plot.top && b.bottom <= plot.bottom;
+	return ordered.find((c) => {
+		const b = boxOf(c);
+		return inPlot(b) && !occupancy.overlaps(b);
+	}) || ordered.find((c) => inPlot(boxOf(c))) || candidates[0];
+}
 function autoDomain(values, pad = .05) {
 	let lo = Infinity, hi = -Infinity;
 	for (const v of values) {
@@ -10446,7 +10502,7 @@ function renderChart(el, view) {
 				rotate: -Math.PI / 2
 			});
 		}
-		const occupied = [];
+		const occupancy = makeLabelOccupancy(pxPer * .5);
 		for (const sr of series) {
 			if (sr.kind !== "points" || !sr.pointLabelSrc) continue;
 			sr.pointLabels.forEach((txt, i) => {
@@ -10457,7 +10513,7 @@ function renderChart(el, view) {
 				const measured = measureLatex(txt);
 				const tw = measured.w * fontPx / 100, th = measured.h * fontPx / 100;
 				const px = X(h), py = Y(v), gap = Math.max(5, pxPer * .09);
-				const candidates = [
+				const chosen = chooseLabelPlacement([
 					{
 						x: px,
 						y: py - gap,
@@ -10522,24 +10578,13 @@ function renderChart(el, view) {
 						left: px + gap,
 						top: py + gap
 					}
-				];
-				const ordered = candidates.slice(i % candidates.length).concat(candidates.slice(0, i % candidates.length));
-				const plotLeft = X(0), plotRight = X(W), plotTop = Y(H), plotBottom = Y(0);
-				const fits = (c) => {
-					const box = {
-						left: c.left,
-						top: c.top,
-						right: c.left + tw,
-						bottom: c.top + th
-					};
-					if (box.left < plotLeft || box.right > plotRight || box.top < plotTop || box.bottom > plotBottom) return false;
-					return !occupied.some((other) => box.left < other.right + 3 && box.right + 3 > other.left && box.top < other.bottom + 3 && box.bottom + 3 > other.top);
-				};
-				const chosen = ordered.find(fits) || ordered.find((c) => {
-					const right = c.left + tw, bottom = c.top + th;
-					return c.left >= plotLeft && right <= plotRight && c.top >= plotTop && bottom <= plotBottom;
-				}) || candidates[0];
-				occupied.push({
+				], tw, th, {
+					left: X(0),
+					right: X(W),
+					top: Y(H),
+					bottom: Y(0)
+				}, i, occupancy);
+				occupancy.add({
 					left: chosen.left,
 					top: chosen.top,
 					right: chosen.left + tw,
@@ -10646,7 +10691,10 @@ function renderChart(el, view) {
 			series.forEach((s, k) => {
 				if (s.ySrc) s.yFn = compileOpt(s.ySrc, `series[${k}].yExpr`);
 				if (s.xSrc) s.xFn = compileOpt(s.xSrc, `series[${k}].xExpr`);
-				if (s.pointLabelSrc) s.pointLabelFn = compileOpt(s.pointLabelSrc, `series[${k}].pointLabelExpr`);
+				if (s.pointLabelSrc) {
+					s.pointLabelFn = compileOpt(s.pointLabelSrc, `series[${k}].pointLabelExpr`);
+					if (!s.pointLabelFn) s.pointLabels.fill("");
+				}
 			});
 			hlines.forEach((l, k) => {
 				if (l.src) l.fn = compileOpt(l.src, `hlines[${k}].yExpr`);
@@ -11816,11 +11864,30 @@ function matchesSceneStep(entry, target, sceneIndex, stepIndex) {
 	const targetStep = Number(target);
 	return !Number.isNaN(targetStep) && (entry.sceneIndex == null || entry.sceneIndex === sceneIndex) && targetStep === stepIndex;
 }
+/**
+* Can the learner see this proof at this position? The same question
+* `_isProofInContext` asks in proof.ts, asked here because the sync matcher
+* gets the WHOLE spec: without it a proof declared on a later step could be
+* matched and switched to before the learner has reached it.
+*
+* An entry with no `level` is not judged -- the field is optional on this
+* interface, and a caller that does not supply it (a test fixture, an expert's
+* proof arriving unvalidated) should keep the old behaviour rather than have
+* every one of its proofs silently filtered out.
+*/
+function isEntryVisible(entry, sceneIndex, stepIndex) {
+	if (entry.level == null) return true;
+	if (entry.level === "file") return true;
+	if (entry.level === "scene") return entry.sceneIndex === sceneIndex;
+	if (entry.level === "step") return entry.sceneIndex === sceneIndex && (entry.stepIndex ?? 0) <= stepIndex;
+	return false;
+}
 /** Find the proof position linked to a scene step, preferring the active proof. */
 function findProofSceneStepMatch(entries, activeProofIndex, sceneIndex, stepIndex) {
-	const orderedIndexes = entries.map((_, index) => index);
-	if (activeProofIndex >= 0 && activeProofIndex < entries.length) {
-		orderedIndexes.splice(activeProofIndex, 1);
+	const orderedIndexes = entries.map((_, index) => index).filter((index) => isEntryVisible(entries[index], sceneIndex, stepIndex));
+	const activePos = orderedIndexes.indexOf(activeProofIndex);
+	if (activePos > 0) {
+		orderedIndexes.splice(activePos, 1);
 		orderedIndexes.unshift(activeProofIndex);
 	}
 	for (const proofIndex of orderedIndexes) {

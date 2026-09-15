@@ -4,6 +4,10 @@ interface SceneLinkedStep {
 
 interface SceneLinkedProofEntry {
     sceneIndex?: number;
+    /** Where the proof is declared: mirrors ProofEntry in proof.ts. */
+    level?: string;
+    /** For a step-level entry, the step it is declared on. */
+    stepIndex?: number;
     proof: SceneLinkedStep & { steps?: SceneLinkedStep[] };
 }
 
@@ -32,6 +36,27 @@ function matchesSceneStep(
         && targetStep === stepIndex;
 }
 
+/**
+ * Can the learner see this proof at this position? The same question
+ * `_isProofInContext` asks in proof.ts, asked here because the sync matcher
+ * gets the WHOLE spec: without it a proof declared on a later step could be
+ * matched and switched to before the learner has reached it.
+ *
+ * An entry with no `level` is not judged -- the field is optional on this
+ * interface, and a caller that does not supply it (a test fixture, an expert's
+ * proof arriving unvalidated) should keep the old behaviour rather than have
+ * every one of its proofs silently filtered out.
+ */
+export function isEntryVisible(entry: SceneLinkedProofEntry, sceneIndex: number, stepIndex: number): boolean {
+    if (entry.level == null) return true;
+    if (entry.level === 'file') return true;
+    if (entry.level === 'scene') return entry.sceneIndex === sceneIndex;
+    if (entry.level === 'step') {
+        return entry.sceneIndex === sceneIndex && (entry.stepIndex ?? 0) <= stepIndex;
+    }
+    return false;
+}
+
 /** Find the proof position linked to a scene step, preferring the active proof. */
 export function findProofSceneStepMatch(
     entries: SceneLinkedProofEntry[],
@@ -39,9 +64,12 @@ export function findProofSceneStepMatch(
     sceneIndex: number,
     stepIndex: number,
 ): ProofSceneStepMatch | null {
-    const orderedIndexes = entries.map((_, index) => index);
-    if (activeProofIndex >= 0 && activeProofIndex < entries.length) {
-        orderedIndexes.splice(activeProofIndex, 1);
+    const orderedIndexes = entries
+        .map((_, index) => index)
+        .filter(index => isEntryVisible(entries[index]!, sceneIndex, stepIndex));
+    const activePos = orderedIndexes.indexOf(activeProofIndex);
+    if (activePos > 0) {
+        orderedIndexes.splice(activePos, 1);
         orderedIndexes.unshift(activeProofIndex);
     }
 

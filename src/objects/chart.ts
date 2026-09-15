@@ -104,6 +104,83 @@ export function niceTicks(lo: number, hi: number, count = 5): { ticks: number[];
  * tick multiples so the axis ends on round numbers. A flat set gets a unit
  * of room so it is still a plot and not a line on the edge.
  */
+/** A rectangle in paper pixels, as the label layout passes them around. */
+export interface LabelBox { left: number; top: number; right: number; bottom: number }
+
+/** How much clear space a placed label keeps around itself, in paper pixels. */
+export const LABEL_GAP_PX = 3;
+
+/**
+ * The set of label boxes already placed on a paper, as a uniform grid.
+ *
+ * A flat list answered `overlaps` by scanning every box, which is O(n^2) over a
+ * repaint -- and `fits` asks eight times per label while a points series takes
+ * up to 4096 samples, so a dense labelled chart spent millions of comparisons
+ * every time a slider moved. Bucketing by cell turns each question into a scan
+ * of the handful of boxes near it. The answer is identical either way; only the
+ * number of comparisons changes.
+ */
+export function makeLabelOccupancy(cellPx: number) {
+    const cell = Math.max(8, cellPx);
+    const placed = new Map<string, LabelBox[]>();
+    const cellsOf = (b: LabelBox): string[] => {
+        const keys: string[] = [];
+        for (let cx = Math.floor(b.left / cell); cx <= Math.floor(b.right / cell); cx++) {
+            for (let cy = Math.floor(b.top / cell); cy <= Math.floor(b.bottom / cell); cy++) {
+                keys.push(cx + ':' + cy);
+            }
+        }
+        return keys;
+    };
+    return {
+        overlaps(b: LabelBox): boolean {
+            // The gap is applied to the QUERY box, so a neighbour sitting one
+            // cell over is still reached.
+            const g = LABEL_GAP_PX;
+            for (const key of cellsOf({ left: b.left - g, top: b.top - g, right: b.right + g, bottom: b.bottom + g })) {
+                for (const other of placed.get(key) || []) {
+                    if (b.left < other.right + g && b.right + g > other.left
+                        && b.top < other.bottom + g && b.bottom + g > other.top) return true;
+                }
+            }
+            return false;
+        },
+        add(b: LabelBox): void {
+            for (const key of cellsOf(b)) {
+                const bucket = placed.get(key);
+                if (bucket) bucket.push(b); else placed.set(key, [b]);
+            }
+        },
+    };
+}
+
+/**
+ * Where one point's label goes: the first of the eight neighbouring positions
+ * that is inside the plot and clear of the labels already placed; failing that
+ * the first that is merely inside the plot; failing that the first candidate,
+ * so a label is never dropped silently.
+ *
+ * `startAt` rotates the preference order per sample, which stops a row of
+ * points from stacking every label in the same direction.
+ */
+export function chooseLabelPlacement<T extends { left: number; top: number }>(
+    candidates: T[],
+    tw: number,
+    th: number,
+    plot: LabelBox,
+    startAt: number,
+    occupancy: { overlaps(b: LabelBox): boolean },
+): T {
+    const offset = candidates.length ? ((startAt % candidates.length) + candidates.length) % candidates.length : 0;
+    const ordered = candidates.slice(offset).concat(candidates.slice(0, offset));
+    const boxOf = (c: T): LabelBox => ({ left: c.left, top: c.top, right: c.left + tw, bottom: c.top + th });
+    const inPlot = (b: LabelBox) => b.left >= plot.left && b.right <= plot.right
+        && b.top >= plot.top && b.bottom <= plot.bottom;
+    return ordered.find(c => { const b = boxOf(c); return inPlot(b) && !occupancy.overlaps(b); })
+        || ordered.find(c => inPlot(boxOf(c)))
+        || candidates[0]!;
+}
+
 export function autoDomain(values: number[], pad = 0.05): [number, number] {
     let lo = Infinity, hi = -Infinity;
     for (const v of values) {
@@ -640,7 +717,9 @@ export function renderChart(el: Element, view: MathBoxNode) {
         // Point labels are drawn into the same tilted paper as the axes. Try
         // the eight neighbouring positions and avoid labels already placed,
         // which keeps small scatter plots legible when several dots cluster.
-        const occupied: Array<{ left: number; top: number; right: number; bottom: number }> = [];
+        // Cell size is the gap-inflated label height, so a box spans a
+        // couple of cells and a test reads a couple more.
+        const occupancy = makeLabelOccupancy(pxPer * 0.5);
         for (const sr of series) {
             if (sr.kind !== 'points' || !sr.pointLabelSrc) continue;
             sr.pointLabels.forEach((txt, i) => {
@@ -666,19 +745,9 @@ export function renderChart(el: Element, view: MathBoxNode) {
                     { x: px - gap, y: py + gap, align: 'right' as const, vAlign: 'top' as const, left: px - gap - tw, top: py + gap },
                     { x: px + gap, y: py + gap, align: 'left' as const, vAlign: 'top' as const, left: px + gap, top: py + gap },
                 ];
-                const ordered = candidates.slice(i % candidates.length).concat(candidates.slice(0, i % candidates.length));
-                const plotLeft = X(0), plotRight = X(W), plotTop = Y(H), plotBottom = Y(0);
-                const fits = (c: typeof candidates[number]) => {
-                    const box = { left: c.left, top: c.top, right: c.left + tw, bottom: c.top + th };
-                    if (box.left < plotLeft || box.right > plotRight || box.top < plotTop || box.bottom > plotBottom) return false;
-                    return !occupied.some(other => box.left < other.right + 3 && box.right + 3 > other.left
-                        && box.top < other.bottom + 3 && box.bottom + 3 > other.top);
-                };
-                const chosen = ordered.find(fits) || ordered.find(c => {
-                    const right = c.left + tw, bottom = c.top + th;
-                    return c.left >= plotLeft && right <= plotRight && c.top >= plotTop && bottom <= plotBottom;
-                }) || candidates[0]!;
-                occupied.push({ left: chosen.left, top: chosen.top, right: chosen.left + tw, bottom: chosen.top + th });
+                const plot = { left: X(0), right: X(W), top: Y(H), bottom: Y(0) };
+                const chosen = chooseLabelPlacement(candidates, tw, th, plot, i, occupancy);
+                occupancy.add({ left: chosen.left, top: chosen.top, right: chosen.left + tw, bottom: chosen.top + th });
                 drawLatex(ctx, txt, chosen.x, chosen.y, {
                     fontPx, color: css(sr.color), align: chosen.align, vAlign: chosen.vAlign,
                 });
@@ -754,7 +823,14 @@ export function renderChart(el: Element, view: MathBoxNode) {
             series.forEach((s, k) => {
                 if (s.ySrc) s.yFn = compileOpt(s.ySrc, `series[${k}].yExpr`);
                 if (s.xSrc) s.xFn = compileOpt(s.xSrc, `series[${k}].xExpr`);
-                if (s.pointLabelSrc) s.pointLabelFn = compileOpt(s.pointLabelSrc, `series[${k}].pointLabelExpr`);
+                if (s.pointLabelSrc) {
+                    s.pointLabelFn = compileOpt(s.pointLabelSrc, `series[${k}].pointLabelExpr`);
+                    // A refused expression must not keep displaying what it
+                    // produced while it was trusted: the sampler only writes
+                    // these while pointLabelFn exists, so nothing else would
+                    // ever clear them.
+                    if (!s.pointLabelFn) s.pointLabels.fill('');
+                }
             });
             hlines.forEach((l, k) => { if (l.src) l.fn = compileOpt(l.src, `hlines[${k}].yExpr`); });
             bands.forEach((b, k) => {
