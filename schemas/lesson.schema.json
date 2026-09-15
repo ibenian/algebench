@@ -393,7 +393,8 @@
               "x": { "type": "array", "items": { "type": "number" }, "description": "Literal x values, one per sample." },
               "y": { "type": "array", "items": { "type": "number" }, "description": "Literal y values. Static: built once, no per-frame cost." },
               "kind": { "type": "string", "enum": ["line", "points"], "description": "Draw the samples joined (default) or as dots." },
-                  "size": { "type": "number", "exclusiveMinimum": 0, "description": "Dot size in pixels for kind 'points' (before the Lines width setting scales it). Default: 3 x 'width'." },
+              "size": { "type": "number", "exclusiveMinimum": 0, "description": "Dot size in pixels for kind 'points' (before the Lines width setting scales it). Default: 3 x 'width'." },
+              "pointLabelExpr": { "type": "string", "description": "For kind 'points', text drawn beside each point. Evaluated per sample with 'i', 'n', and 'x' bound." },
               "width": { "type": "number", "exclusiveMinimum": 0, "description": "Line width. Default 2.5." },
               "opacity": { "type": "number", "minimum": 0, "maximum": 1 }
             },
