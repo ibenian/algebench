@@ -244,6 +244,20 @@
       ],
       "port": 5761,
       "autoPort": false
+    },
+    {
+      "name": "transformer-tour",
+      "runtimeExecutable": "./algebench",
+      "runtimeArgs": [
+        "scenes/draft/transformer-domain-tour.json",
+        "--port",
+        "5762",
+        "--debug",
+        "--server-only",
+        "--skip-tour"
+      ],
+      "port": 5762,
+      "autoPort": false
     }
   ]
 }

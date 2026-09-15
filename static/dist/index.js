@@ -2214,18 +2214,23 @@ function _buildTensorRow(id, s) {
 	row.dataset.sliderId = id;
 	const head = document.createElement("div");
 	head.className = "tslider-head";
+	const toggle = document.createElement("button");
+	toggle.type = "button";
+	toggle.className = "tslider-toggle";
+	toggle.setAttribute("aria-label", stripLatex(s.label || id) + ", " + s.shape.join(" by "));
 	const caret = document.createElement("span");
 	caret.className = "tslider-caret";
-	head.appendChild(caret);
+	toggle.appendChild(caret);
 	const labelSpan = document.createElement("span");
 	labelSpan.className = "slider-label";
 	labelSpan.innerHTML = renderKaTeX$1(s.label || id, false);
 	labelSpan.title = stripLatex(s.label || id);
-	head.appendChild(labelSpan);
+	toggle.appendChild(labelSpan);
 	const shapeSpan = document.createElement("span");
 	shapeSpan.className = "tslider-shape";
 	shapeSpan.textContent = s.shape.join("×");
-	head.appendChild(shapeSpan);
+	toggle.appendChild(shapeSpan);
+	head.appendChild(toggle);
 	const reset = document.createElement("button");
 	reset.type = "button";
 	reset.className = "tslider-reset";
@@ -2275,14 +2280,16 @@ function _buildTensorRow(id, s) {
 	}
 	row.appendChild(grid);
 	const KEY = "tslider-collapsed-" + id;
-	let collapsed = false;
+	let collapsed = true;
 	try {
-		collapsed = localStorage.getItem(KEY) === "1";
+		collapsed = localStorage.getItem(KEY) !== "0";
 	} catch {}
 	row.classList.toggle("collapsed", collapsed);
+	toggle.setAttribute("aria-expanded", String(!collapsed));
 	head.addEventListener("mousedown", (e) => e.stopPropagation());
-	head.addEventListener("click", () => {
-		collapsed = !row.classList.toggle("collapsed") ? false : true;
+	toggle.addEventListener("click", () => {
+		collapsed = row.classList.toggle("collapsed");
+		toggle.setAttribute("aria-expanded", String(!collapsed));
 		try {
 			localStorage.setItem(KEY, collapsed ? "1" : "0");
 		} catch {}
@@ -2477,6 +2484,36 @@ var CORNERS = [
 	"top-center",
 	"bottom-center"
 ];
+/**
+* Where a panel opens: the corner, and the offsets measured from it.
+*
+* The three travel together, which is the whole point of resolving them in one
+* place. `h`/`v` are written only by a drag, and the corner is recomputed in
+* the same breath, so an offset means nothing without the corner it was
+* measured from -- keeping stale offsets against a different corner puts the
+* panel somewhere the viewer never left it.
+*
+* So the placement is honoured only when the blob carries all three: a corner
+* that is one of CORNERS, and BOTH offsets as finite numbers. Anything less is
+* a blob the viewer never moved (or one half-written, or hand-edited -- this
+* comes out of `localStorage`, which the viewer can write), the scene's own
+* corner wins, and the offsets go back to null so `applyGeom` anchors by CSS
+* class instead of writing "nullpx", "badpx", or a coordinate measured from
+* somebody else's corner.
+*/
+function resolvePlacement(saved, corner) {
+	const storedOk = !!(saved && CORNERS.includes(saved.corner));
+	if (!!(saved && storedOk && Number.isFinite(saved.h) && Number.isFinite(saved.v))) return {
+		corner: saved.corner,
+		h: saved.h,
+		v: saved.v
+	};
+	return {
+		corner: CORNERS.includes(corner) ? corner : storedOk ? saved.corner : "top-left",
+		h: null,
+		v: null
+	};
+}
 function _clamp(v, lo, hi) {
 	return Math.max(lo, Math.min(hi, v));
 }
@@ -2504,10 +2541,11 @@ function createDockablePanel(opts) {
 		} catch {}
 	}
 	const saved = loadGeom();
+	const placement = resolvePlacement(saved, corner);
 	const geom = {
-		corner: saved && CORNERS.includes(saved.corner) ? saved.corner : CORNERS.includes(corner) ? corner : "top-left",
-		h: saved && saved.h != null ? saved.h : null,
-		v: saved && saved.v != null ? saved.v : null,
+		corner: placement.corner,
+		h: placement.h,
+		v: placement.v,
 		w: saved && saved.w != null ? saved.w : null,
 		ht: saved && saved.ht != null ? saved.ht : null,
 		collapsed: !!(saved && saved.collapsed)
@@ -2560,7 +2598,7 @@ function createDockablePanel(opts) {
 		el.classList.add("anchor-" + geom.corner);
 		el.style.width = geom.w ? geom.w + "px" : "";
 		el.style.height = geom.ht && !geom.collapsed ? geom.ht + "px" : "";
-		if (geom.h == null && geom.v == null) el.classList.add("pos-" + geom.corner);
+		if (geom.h == null || geom.v == null) el.classList.add("pos-" + geom.corner);
 		else {
 			const isRight = geom.corner.includes("right");
 			const isBottom = geom.corner.includes("bottom");
@@ -9015,6 +9053,27 @@ function gridLayout(dims, origin, cellSize, plane, fill, anchor) {
 		colTitleAt: (pad) => at(cols * cellSize / 2, rows * cellSize + pad)
 	};
 }
+/**
+* Does a cell's text carry LaTeX? `textExpr` documents itself as plain -- a
+* "toFixed(value, 2)" and the like -- so the answer is no for nearly every
+* cell, and the cheap fillText path is taken. A string that does carry LaTeX,
+* against that contract, is still honoured through the rasteriser.
+*/
+function cellTextIsLatex(txt) {
+	return txt.indexOf("$") >= 0 || txt.indexOf("\\") >= 0;
+}
+/**
+* The font size a plain cell string is drawn at: fit the cell's height first,
+* then shrink to its width if the string is wide. `measureAt` is called once,
+* at the height-fitted size, and hands back the width the string takes there.
+*/
+function fitPlainCellPx(wPx, hPx, measureAt) {
+	const base = Math.max(1, Math.floor(hPx * .62));
+	const w = measureAt(base);
+	const maxW = wPx * .9;
+	if (!(w > maxW)) return base;
+	return Math.max(1, Math.floor(base * maxW / w));
+}
 function renderTensor(el, _view) {
 	const dims = parseShape(el.shape);
 	if (!dims) {
@@ -9437,6 +9496,36 @@ function renderTensor(el, _view) {
 		return out;
 	}
 	/** Draw one label (real KaTeX) fitted into a box, in a colour, optionally rotated a quarter turn. */
+	/** The face the LaTeX rasteriser falls back to, so plain and LaTeX cells match. */
+	const FAMILY = "system-ui, sans-serif";
+	/**
+	* A cell's own text, which `textExpr` defines as plain -- "toFixed(value, 2)"
+	* and the like, no KaTeX. Sending it through the LaTeX rasteriser laid every
+	* string out in a hidden DOM and replayed it onto the canvas, and both of
+	* that module's caches are keyed BY THE STRING: a lattice of numbers that
+	* changes as a slider moves misses on every cell of every update, which is
+	* where an update frame's hundreds of milliseconds were going.
+	*
+	* `fillText` needs neither. A string that does carry LaTeX -- against the
+	* documented contract, but cheap to honour -- still takes the old path.
+	*/
+	function drawCellText(ctx, txt, cx, cy, wPx, hPx, color) {
+		if (cellTextIsLatex(txt)) {
+			drawLatex(ctx, txt, cx, cy, {
+				fontPx: fitLatexPx(txt, wPx, hPx),
+				color
+			});
+			return;
+		}
+		ctx.font = `${fitPlainCellPx(wPx, hPx, (px) => {
+			ctx.font = `${px}px ${FAMILY}`;
+			return ctx.measureText(txt).width;
+		})}px ${FAMILY}`;
+		ctx.fillStyle = color;
+		ctx.textAlign = "center";
+		ctx.textBaseline = "middle";
+		ctx.fillText(txt, cx, cy);
+	}
 	function drawFitted(ctx, txt, cx, cy, wPx, hPx, color, rotate = false, align = "center") {
 		if (!txt || wPx < 2 || hPx < 2) return;
 		drawLatex(ctx, txt, cx, cy, {
@@ -9506,10 +9595,7 @@ function renderTensor(el, _view) {
 				cellRgb[cell * 3 + 1],
 				cellRgb[cell * 3 + 2]
 			]);
-			drawLatex(ctx, txt, ox + (c + .5) * px + anchor.h * (fillFrac - cellW[cell]) * px / 2, oy + (r + .5) * px - anchor.v * (fillFrac - cellH[cell]) * px / 2, {
-				fontPx: fitLatexPx(txt, wPx, hPx),
-				color
-			});
+			drawCellText(ctx, txt, ox + (c + .5) * px + anchor.h * (fillFrac - cellW[cell]) * px / 2, oy + (r + .5) * px - anchor.v * (fillFrac - cellH[cell]) * px / 2, wPx, hPx, color);
 		}
 		tex.needsUpdate = true;
 	}

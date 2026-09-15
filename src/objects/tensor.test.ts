@@ -256,3 +256,37 @@ test('resolveDepth rises for positive, sinks for negative, is flat for non-numbe
         assert.equal(resolveDepth(bad), 0, `expected flat for ${String(bad)}`);
     }
 });
+
+test('a cell takes the LaTeX path only when its text carries LaTeX', async () => {
+    // textExpr's contract is plain text, and the fast fillText path exists
+    // because sending a lattice of changing numbers through the rasteriser
+    // missed its string-keyed caches on every cell of every frame. A string
+    // that does carry LaTeX, against the contract, still has to be honoured.
+    const { cellTextIsLatex } = await import('/objects/tensor.js');
+    assert.equal(cellTextIsLatex('0.42'), false);
+    assert.equal(cellTextIsLatex('-1e-9'), false);
+    assert.equal(cellTextIsLatex(''), false);
+    assert.equal(cellTextIsLatex('$x$'), true);
+    assert.equal(cellTextIsLatex('\\alpha'), true);
+    assert.equal(cellTextIsLatex('1 \\times 10^{3}'), true);
+});
+
+test('a plain cell fits its height, then shrinks only when the string is too wide', async () => {
+    const { fitPlainCellPx } = await import('/objects/tensor.js');
+    // A narrow string keeps the height fit, floor(hPx * 0.62), and measureAt
+    // is asked exactly once, at that size.
+    const calls: number[] = [];
+    const measure = (w: number) => (px: number) => { calls.push(px); return w; };
+    assert.equal(fitPlainCellPx(100, 50, measure(10)), 31);
+    assert.deepEqual(calls, [31]);
+
+    // Wide: 90 px of text in a 90 px budget (100 * 0.9) is still a fit; 180 px
+    // halves the size.
+    assert.equal(fitPlainCellPx(100, 50, measure(90)), 31);
+    assert.equal(fitPlainCellPx(100, 50, measure(180)), 15);
+    assert.equal(fitPlainCellPx(100, 50, measure(310)), 9);
+
+    // Never zero, however small the cell or however wide the string.
+    assert.equal(fitPlainCellPx(100, 0, measure(1)), 1);
+    assert.equal(fitPlainCellPx(1, 50, measure(10000)), 1);
+});

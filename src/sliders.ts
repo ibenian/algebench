@@ -817,18 +817,29 @@ function _buildTensorRow(id: string, s: SceneSlider & { shape: number[]; values:
 
     const head = document.createElement('div');
     head.className = 'tslider-head';
+    // The caret, the label and the shape are one real button: the grid starts
+    // collapsed and `display: none` takes every cell out of the tab order, so
+    // a div with a click listener would leave a keyboard-only viewer no way
+    // back in. A native button carries the tab stop and Enter/Space itself.
+    // The reset button stays its SIBLING -- a button inside a button is
+    // invalid, and the inner one is not reliably reachable.
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'tslider-toggle';
+    toggle.setAttribute('aria-label', stripLatex(s.label || id) + ', ' + s.shape.join(' by '));
     const caret = document.createElement('span');
     caret.className = 'tslider-caret';
-    head.appendChild(caret);
+    toggle.appendChild(caret);
     const labelSpan = document.createElement('span');
     labelSpan.className = 'slider-label';
     labelSpan.innerHTML = renderKaTeX(s.label || id, false);
     labelSpan.title = stripLatex(s.label || id);
-    head.appendChild(labelSpan);
+    toggle.appendChild(labelSpan);
     const shapeSpan = document.createElement('span');
     shapeSpan.className = 'tslider-shape';
     shapeSpan.textContent = s.shape.join('×');
-    head.appendChild(shapeSpan);
+    toggle.appendChild(shapeSpan);
+    head.appendChild(toggle);
     const reset = document.createElement('button');
     reset.type = 'button';
     reset.className = 'tslider-reset';
@@ -872,13 +883,20 @@ function _buildTensorRow(id: string, s: SceneSlider & { shape: number[]; values:
     }
     row.appendChild(grid);
 
+    // Collapsed unless this viewer has opened it before. A tensor slider is a
+    // whole lattice of cells, so a scene declaring several of them buries its
+    // scalar sliders under hundreds of pixels of grid before anyone asks to see
+    // one. Only an explicit '0' -- written when the viewer expands it -- opens
+    // it on load, so a deliberate choice still survives a reload.
     const KEY = 'tslider-collapsed-' + id;
-    let collapsed = false;
-    try { collapsed = localStorage.getItem(KEY) === '1'; } catch { /* ignore */ }
+    let collapsed = true;
+    try { collapsed = localStorage.getItem(KEY) !== '0'; } catch { /* ignore */ }
     row.classList.toggle('collapsed', collapsed);
+    toggle.setAttribute('aria-expanded', String(!collapsed));
     head.addEventListener('mousedown', e => e.stopPropagation());
-    head.addEventListener('click', () => {
-        collapsed = !row.classList.toggle('collapsed') ? false : true;
+    toggle.addEventListener('click', () => {
+        collapsed = row.classList.toggle('collapsed');
+        toggle.setAttribute('aria-expanded', String(!collapsed));
         try { localStorage.setItem(KEY, collapsed ? '1' : '0'); } catch { /* ignore */ }
     });
     return row;

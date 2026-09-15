@@ -27,6 +27,32 @@ export interface DockGeometry {
     collapsed: boolean;
 }
 
+/**
+ * Where a panel opens: the corner, and the offsets measured from it.
+ *
+ * The three travel together, which is the whole point of resolving them in one
+ * place. `h`/`v` are written only by a drag, and the corner is recomputed in
+ * the same breath, so an offset means nothing without the corner it was
+ * measured from -- keeping stale offsets against a different corner puts the
+ * panel somewhere the viewer never left it.
+ *
+ * So the placement is honoured only when the blob carries all three: a corner
+ * that is one of CORNERS, and BOTH offsets as finite numbers. Anything less is
+ * a blob the viewer never moved (or one half-written, or hand-edited -- this
+ * comes out of `localStorage`, which the viewer can write), the scene's own
+ * corner wins, and the offsets go back to null so `applyGeom` anchors by CSS
+ * class instead of writing "nullpx", "badpx", or a coordinate measured from
+ * somebody else's corner.
+ */
+export function resolvePlacement(saved: Partial<DockGeometry> | null, corner: string): { corner: DockCorner; h: number | null; v: number | null } {
+    const storedOk = !!(saved && CORNERS.includes(saved.corner as DockCorner));
+    const placed = !!(saved && storedOk && Number.isFinite(saved.h as number) && Number.isFinite(saved.v as number));
+    if (placed) return { corner: saved!.corner as DockCorner, h: saved!.h!, v: saved!.v! };
+    const fallback = CORNERS.includes(corner as DockCorner) ? (corner as DockCorner)
+        : (storedOk ? (saved!.corner as DockCorner) : 'top-left');
+    return { corner: fallback, h: null, v: null };
+}
+
 export interface DockablePanelOptions {
     /** localStorage suffix (e.g. 'info-foo' or 'info-drawer'). */
     persistKey: string;
@@ -104,12 +130,13 @@ export function createDockablePanel(opts: DockablePanelOptions): DockablePanel {
     function saveGeom(g: Partial<DockGeometry>): void { try { localStorage.setItem(KEY, JSON.stringify(g)); } catch {} }
 
     const saved = loadGeom();
+    // Size and collapse survive on their own; only the placement has to be
+    // resolved as a unit.
+    const placement = resolvePlacement(saved, corner);
     const geom: DockGeometry = {
-        // Non-null: `includes` is the validation — a saved blob without a corner
-        // fails it and falls through to the `corner` option, exactly as before.
-        corner: (saved && CORNERS.includes(saved.corner!)) ? saved.corner! : (CORNERS.includes(corner) ? corner : 'top-left'),
-        h: saved && saved.h != null ? saved.h : null,
-        v: saved && saved.v != null ? saved.v : null,
+        corner: placement.corner,
+        h: placement.h,
+        v: placement.v,
         w: saved && saved.w != null ? saved.w : null,
         ht: saved && saved.ht != null ? saved.ht : null,
         collapsed: !!(saved && saved.collapsed),
@@ -173,8 +200,10 @@ export function createDockablePanel(opts: DockablePanelOptions): DockablePanel {
         el.style.width = geom.w ? geom.w + 'px' : '';
         el.style.height = (geom.ht && !geom.collapsed) ? geom.ht + 'px' : '';
 
-        if (geom.h == null && geom.v == null) {
-            // Un-dragged: rely on CSS class anchoring (keeps center transform, etc.)
+        if (geom.h == null || geom.v == null) {
+            // Un-dragged, or a half-written blob: rely on CSS class anchoring
+            // (keeps center transform, etc.). Writing one offset without the
+            // other would emit "nullpx" and drop the anchor.
             el.classList.add('pos-' + geom.corner);
         } else {
             const isRight = geom.corner.includes('right');
