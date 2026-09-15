@@ -5,7 +5,7 @@
   "implementation": {
     "toy_model": "Default configuration: n=6 tokens, d_model=4, d_k=2 per head, n_heads=2, one layer, no norm. d_k != d_model is deliberate: it is what makes the 1/sqrt(d_k) scaling visibly about the HEAD dimension, which is the usual error. Every dimension can be changed by the tf_* sliders and a tf_emb table; the toy is only the default.",
     "embedding_table": "[[1,0,0,0] the, [0,1,0,0] cat, [0,0,1,0] sat, [0,0,0,1] on, [1,0,0,0] the, [0.5,0.5,0,0.5] mat]. Note 'the' occupies slots 0 and 4 with the IDENTICAL row — the two separate only once positional encoding is added.",
-    "positional_encoding": "Standard sinusoidal, base 10000: PE[pos][2i] = sin(pos / 10000^(2i/d_model)), PE[pos][2i+1] = cos(...). ADDED to the embedding, never concatenated — the width stays d_model (4 in the toy). MUTUALLY EXCLUSIVE WITH RoPE: whenever s2_rope is on, this additive term is forced to zero regardless of s1_pe. RoPE REPLACES additive positional encoding; it does not stack on it. A model uses one scheme or the other, never both, and rotating a q that already carried a sinusoidal offset is an operation no model performs.",
+    "positional_encoding": "Standard sinusoidal, base 10000: PE[pos][2i] = sin(pos / 10000^(2i/d_model)), PE[pos][2i+1] = cos(...). ADDED to the embedding, never concatenated — the width stays d_model (4 in the toy). MUTUALLY EXCLUSIVE WITH RoPE: whenever s2_rope is on, this additive term is forced to zero regardless of s1_pe. RoPE REPLACES additive positional encoding; it does not stack on it. A model uses one scheme or the other, never both, and rotating a q that already carried a sinusoidal offset is an operation no model performs. A scene declaring tf_pos overrides BOTH legacy switches and is then the whole position story: tf_pos = 0 no positional signal in the content vectors, 1 this additive term, 2 RoPE. s1_pe and s2_rope are ignored wherever tf_pos is present.",
     "projections": "Row-vector convention, q = x W_Q. Under that convention the ROWS of W are the images of the input basis directions. W_Q = [[0,0],[0,0],[3,0],[0,1]] reads input dims 2 and 3; W_K = [[0,0],[3,0],[0,0],[0,1]] reads dims 1 and 3; W_V = [[1,0],[0,1],[0,0],[0,0]] reads dims 0 and 1. Three different readings of ONE vector.",
     "mask": "Applied as an ADDITIVE -1e9 to the SCALED SCORES, before softmax. -1e9 stands in for -infinity so the renderer never sees a NaN; softmax's shift-invariance is what makes the substitution coherent.",
     "cache": "One shared cache of the forward pass, rebuilt only when a slider it READ has changed. Which sliders those are depends on the configuration (a two-layer model reads tf_wq_1_0; a one-layer model never does), so every read inside the build is recorded with the value seen, and each call compares exactly that set against the live sliders: numbers exactly, tensor tables cell by cell against a flat copy. No key string, no allocation on the unchanged path. The generic i.i.d. sampler has its OWN separate cache keyed on dimension only.",
@@ -25,7 +25,7 @@
     "rope_identity": "tfRopeDot(4,1) = tfRopeDot(3,0) = 0.918150",
     "permutation_equivariance": "tfOutNoPos with shuffle on equals the shuffle-off rows reordered by [5,0,3,2,1,4], max deviation 2.2e-16"
   },
-  "note": "MOST functions read slider state at call time — either by ID directly, or through the cached forward pass _st(), which is rebuilt when any slider it read changes: s1_shuffle, s1_pe, s2_rope, s3_scale, s3_mask, s3_maskafter, the tf_* configuration sliders, and every weight-override tensor slider (tf_wq_<l>_<h> ... and the scene-4 aliases s4_emb, s4_wq, s4_wk, s4_wv), each of which defaults to the hand-built or seeded table when the scene does not declare it. Six are PURE in their explicit arguments and consult no slider at all: tfRopeQ, tfRopeK, tfRopeDot, tfDotSample, tfDotSampleScaled and tfSampleVar. tfPE and tfRopeEmbTheta depend only on the configured d_model, which they take from the cached pass (one staleness compare per call, no rebuild unless a slider changed), so they move when tf_emb reshapes the model and at no other time; tfRopeEmbDot reaches the whole pass through tfRopeEmb. The scene must define sliders with the IDs listed in sliderContracts for the lesson to respond to user input. Functions clamp their index arguments, so an out-of-range row or column returns an edge value rather than NaN.",
+  "note": "MOST functions read slider state at call time — either by ID directly, or through the cached forward pass _st(), which is rebuilt when any slider it read changes: s1_shuffle, s1_pe, s2_rope, tf_pos (which overrides both of those when a scene declares it), tf_emb_kind, s3_scale, s3_mask, s3_maskafter, the tf_* configuration sliders, and every weight-override tensor slider (tf_wq_<l>_<h> ... and the scene-4 aliases s4_emb, s4_wq, s4_wk, s4_wv), each of which defaults to the hand-built or seeded table when the scene does not declare it. Six are PURE in their explicit arguments and consult no slider at all: tfRopeQ, tfRopeK, tfRopeDot, tfDotSample, tfDotSampleScaled and tfSampleVar. tfPE and tfRopeEmbTheta depend only on the configured d_model, which they take from the cached pass (one staleness compare per call, no rebuild unless a slider changed), so they move when tf_emb reshapes the model and at no other time; tfRopeEmbDot reaches the whole pass through tfRopeEmb. The scene must define sliders with the IDs listed in sliderContracts for the lesson to respond to user input. A contract's \"scenes\" are the scenes of the transformer lesson that declare it: 1-4 are that lesson's own, and 5-6 is the tf_* configuration family, which the lesson does not yet declare and which the function tour uses. No entry means no shipped scene declares it; a scene may declare any contract regardless of the list. Functions clamp their index arguments, so an out-of-range row or column returns an edge value rather than NaN.",
   "sliderContracts": {
     "s1_shuffle": {
       "description": "Token shuffle. 0 = original order; 1 = the tokens permuted while the positions stay put. At the toy's n = 6 the permutation is [5,0,3,2,1,4] ('the cat sat on the mat' -> 'mat the on sat cat the'); for any other n (a reshaped tf_emb) it is the reversal n-1-i. Positions never shuffle — only the tokens sitting in them.",
@@ -35,7 +35,7 @@
       ]
     },
     "s1_pe": {
-      "description": "Additive sinusoidal positional-encoding strength. 0 = embeddings only (position-free); 1 = full sinusoidal PE added. Continuous so the student can watch the points travel rather than jump. IGNORED (treated as 0) while s2_rope = 1 — RoPE replaces additive PE rather than stacking on it.",
+      "description": "Additive sinusoidal positional-encoding strength. 0 = embeddings only (position-free); 1 = full sinusoidal PE added. Continuous so the student can watch the points travel rather than jump. IGNORED (treated as 0) while s2_rope = 1 — RoPE replaces additive PE rather than stacking on it. A scene that declares tf_pos overrides this: tf_pos is then the whole position story and this switch is ignored.",
       "default": 1,
       "scenes": [
         1,
@@ -44,7 +44,7 @@
       ]
     },
     "s2_rope": {
-      "description": "RoPE on/off. When 1, Q and K are rotated by position*theta. V is NEVER rotated — accuracy-contract item 7. RoPE and additive sinusoidal PE are MUTUALLY EXCLUSIVE: with this on, s1_pe is forced to 0 and the layer input is the raw embedding, so position enters exactly once, as a rotation of q and k.",
+      "description": "RoPE on/off. When 1, Q and K are rotated by position*theta. V is NEVER rotated — accuracy-contract item 7. RoPE and additive sinusoidal PE are MUTUALLY EXCLUSIVE: with this on, s1_pe is forced to 0 and the layer input is the raw embedding, so position enters exactly once, as a rotation of q and k. A scene that declares tf_pos overrides this: tf_pos is then the whole position story and this switch is ignored.",
       "default": 0,
       "scenes": [
         2
@@ -91,6 +91,22 @@
       "default": 1,
       "scenes": [
         3
+      ]
+    },
+    "tf_pos": {
+      "description": "Position scheme for the function tour. 0 = none, 1 = additive sinusoidal PE, 2 = RoPE. Additive PE changes the residual stream; RoPE leaves that stream position-free and rotates Q/K instead.",
+      "default": 1,
+      "scenes": [
+        5,
+        6
+      ]
+    },
+    "tf_emb_kind": {
+      "description": "Canonical embedding-table preset for the function tour. 0 = the editable tf_emb table, 1 = sparse one-hot, 2 = ramp up, 3 = ramp down, 4 = uniform. Presets replace E before the selected position scheme is applied.",
+      "default": 0,
+      "scenes": [
+        5,
+        6
       ]
     },
     "s3_maskafter": {
@@ -399,13 +415,13 @@
   "functions": {
     "tfPerm(k)": "Source token index displayed at slot k. Identity when s1_shuffle=0.",
     "tfEmb(i,d)": "Component d (0..d_model-1; 0..3 in the toy) of the raw embedding at slot i, shuffle applied, NO positional encoding.",
-    "tfEmbBase(r,d)": "Component d of embedding TOKEN row r (0..n-1, no shuffle) of the embedding table IN FORCE: tf_emb when a scene declares it (any shape), else the toy table with any s4_emb cells overlaid. Use it to draw the embedding table itself; tfEmb(i,d) is the per-SLOT read with the shuffle applied.",
+    "tfEmbBase(r,d)": "Component d of embedding TOKEN row r (0..n-1, no shuffle) of the embedding table IN FORCE: the canonical preset when tf_emb_kind is 1-4, which REPLACES the table values before the forward pass; otherwise tf_emb when a scene declares it (any shape), else the toy table with any s4_emb cells overlaid. Use it to draw the embedding table itself; tfEmb(i,d) is the per-SLOT read with the shuffle applied.",
     "tfW(m,r,c)": "Layer-0 / head-0 shorthand for tfWq / tfWk / tfWv: entry (r, c) of a projection matrix in force: m = 0 for W_Q, 1 for W_K, 2 for W_V; r is the input dim (0..d_model-1; 0..3 in the toy), c the head dim (0..d_k-1; 0..1 in the toy), row-vector convention q = x W_Q. The hand-built value unless the tensor slider s4_wq / s4_wk / s4_wv (for m = 0 / 1 / 2) overrides cell [r][c]. Use it to draw the three matrices as lattices.",
     "tfPE(i,d)": "Component d of the sinusoidal positional encoding for POSITION i. Never shuffles. The position argument is CONTINUOUS — it is neither rounded to a slot nor clamped to N-1 — so a scene can sweep it and watch dims 0 and 1 trace the unit circle sin(p), cos(p). Integer slot arguments are unaffected.",
-    "tfX(i,d)": "Layer input x_i = tfEmb(i,d) + s1_pe * tfPE(i,d) — except when s2_rope = 1, where the additive term is forced off and x_i = tfEmb(i,d) exactly. RoPE replaces additive PE; the two are never summed.",
+    "tfX(i,d)": "Layer input x_i = tfEmb(i,d) + s1_pe * tfPE(i,d) — except when s2_rope = 1, where the additive term is forced off and x_i = tfEmb(i,d) exactly. RoPE replaces additive PE; the two are never summed. A scene declaring tf_pos overrides both switches: tf_pos = 0 leaves x_i position-free, 1 adds the PE term, 2 is RoPE and leaves x_i = tfEmb(i,d).",
     "tfOutNoPos(i,d)": "Component d (0..d_k-1; 0..1 in the toy) of UNMASKED, POSITION-FREE attention over the raw embeddings. The permutation-equivariance object and nothing else — computed by a separate pass, because reusing the masked one would silently break the theorem. Still scaled dot-product attention, so it divides by sqrt(d_k).",
-    "tfQ(i,d)": "q_i = x_i W_Q for head 0, RoPE applied when s2_rope=1 — in which case x_i carries no additive PE, because RoPE replaces it.",
-    "tfK(i,d)": "k_i = x_i W_K, RoPE applied when s2_rope=1.",
+    "tfQ(i,d)": "q_i = x_i W_Q for head 0. RoPE applied when tf_pos = 2; in a scene that does not declare tf_pos, the legacy s2_rope = 1 decides instead -- in which case x_i carries no additive PE, because RoPE replaces it. tf_pos = 0 or 1 suppresses RoPE even where s2_rope is 1.",
+    "tfK(i,d)": "k_i = x_i W_K, rotated with q. RoPE applied when tf_pos = 2; in a scene that does not declare tf_pos, the legacy s2_rope = 1 decides instead. tf_pos = 0 or 1 suppresses RoPE even where s2_rope is 1.",
     "tfV(i,d)": "v_i = x_i W_V. NEVER rotated by RoPE.",
     "tfQProbe(d,angleDeg)": "Component d of the query at slot s3_qi rotated by angleDeg in the head plane. An exploratory what-if; angleDeg=0 returns tfQ(s3_qi,d) exactly.",
     "tfScore(i,j)": "Raw unscaled unmasked q_i . k_j.",
@@ -449,11 +465,11 @@
     "tfWo(l,r,c)": "W_O of layer l, entry (r, c): r indexes the concatenated heads (0..n_heads d_k - 1, head floor(r / d_k)), c the stream dim.",
     "tfW1(l,r,c)": "FFN W1 of layer l (d_model x d_ff), entry (r, c).",
     "tfW2(l,r,c)": "FFN W2 of layer l (d_ff x d_model), entry (r, c).",
-    "tfWu(v,d)": "Row v of the tied unembedding: the embedding row of vocabulary entry v, component d. tfLogit(i, v) = sum_d tfFinal(i, d) tfWu(v, d).",
+    "tfWu(v,d)": "Row v of the tied unembedding: the embedding row of vocabulary entry v, component d. tfLogit(i, v) = sum_d tfFinal(i, d) tfWu(v, d). Tied to the table IN FORCE, so a tf_emb_kind preset moves the unembedding with the embedding.",
     "tfH(l,i,d)": "Component d of the residual stream ENTERING layer l at slot i. l = 0 is x (embedding plus PE); l = tf_layers is what leaves the stack, before the final norm.",
     "tfAttnIn(l,i,d)": "What the attention sub-layer of layer l reads at slot i: the normed stream (pre-norm) or the stream itself (post-norm).",
-    "tfQh(l,h,i,d)": "q of slot i in layer l, head h, component d (RoPE applied when s2_rope = 1). tfQ = tfQh(0, 0, ...).",
-    "tfKh(l,h,i,d)": "k of slot i as read by head h of layer l (its K/V head's key), component d.",
+    "tfQh(l,h,i,d)": "q of slot i in layer l, head h, component d (RoPE applied when s2_rope = 1, or when tf_pos = 2 in a scene that declares tf_pos, which overrides it). tfQ = tfQh(0, 0, ...).",
+    "tfKh(l,h,i,d)": "k of slot i as read by head h of layer l (its K/V head's key), component d. Rotated with q: RoPE applied when s2_rope = 1, or when tf_pos = 2 in a scene that declares tf_pos, which overrides it. tfK = tfKh(0, 0, ...).",
     "tfVh(l,h,i,d)": "v of slot i as read by head h of layer l. NEVER rotated by RoPE.",
     "tfScoreH(l,h,i,j)": "Raw score q_i . k_j in layer l, head h.",
     "tfScoreScaledH(l,h,i,j)": "Scaled score, tfScoreH / (sqrt d_k)^s3_scale, in layer l, head h.",
@@ -464,10 +480,10 @@
     "tfResid1(l,i,d)": "The stream after the attention residual add in layer l (post-norm: after its norm).",
     "tfFfIn(l,i,d)": "What the FFN of layer l reads: the normed stream (pre-norm) or tfResid1 itself (post-norm).",
     "tfFfPre(l,i,k)": "FFN hidden unit k (0..d_ff-1) at slot i BEFORE the activation: tfFfIn . W1.",
-    "tfFfHidden(l,i,k)": "FFN hidden unit k at slot i after the activation (SwiGLU: silu(x W1) * (x W3)). One neuron's fan-in is row k of W1.",
+    "tfFfHidden(l,i,k)": "FFN hidden unit k at slot i after the activation (SwiGLU: silu(tfFfIn . W1) * (tfFfIn . W3) -- BOTH projections read tfFfIn, not the residual stream). W1 is d_model x d_ff, so one neuron's fan-in is COLUMN k of it, not row k.",
     "tfFfOut(l,i,d)": "The FFN's increment to the stream at slot i, component d: tfFfHidden . W2.",
     "tfResid2(l,i,d)": "The stream LEAVING layer l at slot i (= tfH(l + 1, i, d)); post-norm: after its norm.",
-    "tfFinal(i,d)": "The vector the unembedding reads at slot i: the final norm of the stream leaving the stack (pre-norm) or that stream itself (post-norm).",
+    "tfFinal(i,d)": "The vector the unembedding reads at slot i: the final norm of the stream leaving the stack when tf_norm is on AND pre-norm is selected, otherwise that stream itself. With tf_norm = 0 there is no final norm whatever tf_prenorm says, because the normaliser is the identity.",
     "tfLogit(i,v)": "Logit of vocabulary entry v at slot i: tfFinal(i, .) dot tfWu(v, .), before temperature.",
     "tfProb(i,v)": "softmax(logits / tf_temp)[v] at slot i: the model's distribution for the token AFTER slot i (causal). Sums to 1 over v.",
     "tfArgmax(i)": "Index of the most probable vocabulary entry at slot i (independent of temperature). Feed it to tfVocabToken for the word.",
