@@ -11862,7 +11862,7 @@ function matchesSceneStep(entry, target, sceneIndex, stepIndex) {
 		return !Number.isNaN(targetScene) && !Number.isNaN(targetStep) && targetScene === sceneIndex && targetStep === stepIndex;
 	}
 	const targetStep = Number(target);
-	return !Number.isNaN(targetStep) && (entry.sceneIndex == null || entry.sceneIndex === sceneIndex) && targetStep === stepIndex;
+	return !Number.isNaN(targetStep) && entry.sceneIndex != null && entry.sceneIndex === sceneIndex && targetStep === stepIndex;
 }
 /**
 * Can the learner see this proof at this position? The same question

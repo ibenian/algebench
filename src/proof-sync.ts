@@ -30,9 +30,18 @@ function matchesSceneStep(
         return !Number.isNaN(targetScene) && !Number.isNaN(targetStep)
             && targetScene === sceneIndex && targetStep === stepIndex;
     }
+    // The bare-number form is SCENE-SCOPED: it means "step N of the scene this
+    // proof belongs to". A root-level entry has no scene, so a number on one
+    // would mean "step N of any scene" -- and would take the active proof away
+    // from the scene-scoped proof that actually links there, in every scene
+    // that happens to reach the same step number. docs/proofs-model.md 6.1 is
+    // explicit that a root-level link uses the "sceneIdx:stepIdx" form, which
+    // is handled above; a number here is outside the contract, so it matches
+    // nothing rather than matching everywhere.
     const targetStep = Number(target);
     return !Number.isNaN(targetStep)
-        && (entry.sceneIndex == null || entry.sceneIndex === sceneIndex)
+        && entry.sceneIndex != null
+        && entry.sceneIndex === sceneIndex
         && targetStep === stepIndex;
 }
 
