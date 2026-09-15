@@ -16,7 +16,7 @@ import type { SceneSlider } from '/sliders.js';
 (globalThis as unknown as { math: typeof mathjs }).math = mathjs;
 
 const { state } = await import('/state.js');
-const { _sliderValueNum, getSliderIds } = await import('/sliders.js');
+const { _sliderValueNum, getSliderIds, formatTensorCell } = await import('/sliders.js');
 
 /**
  * Replace the shared slider registry with `entries` for one test.
@@ -81,4 +81,38 @@ test('getSliderIds does not reorder when only one of the pair is present', () =>
   withSliders({ v0: {}, h_target: {} }, () => {
     assert.deepEqual(getSliderIds(), ['v0', 'h_target']);
   });
+});
+
+// A tensor grid's columns are sized to their content, so the readout's
+// character count has to be the same whatever the value is — a minus sign
+// that widens the text reflows the column under it while the user scrubs.
+// U+2007 FIGURE SPACE is one digit wide in the cell's monospace font and
+// holds the sign's place open.
+const SIGN_SLOT = '\u2007';
+
+test('formatTensorCell keeps the sign slot filled on non-negative values', () => {
+  assert.equal(formatTensorCell(2.5), SIGN_SLOT + '2.50');
+  assert.equal(formatTensorCell(0), SIGN_SLOT + '0.00');
+  assert.equal(formatTensorCell(-0), SIGN_SLOT + '0.00');
+  assert.equal(formatTensorCell(-2.5), '-2.50');
+
+  // Same width across zero is the whole point of the slot.
+  assert.equal(formatTensorCell(2.5).length, formatTensorCell(-2.5).length);
+  assert.equal(formatTensorCell(0).length, formatTensorCell(-1.25).length);
+});
+
+test('formatTensorCell drops a decimal at each magnitude boundary', () => {
+  assert.equal(formatTensorCell(9.999), SIGN_SLOT + '10.00');   // below 10: two decimals
+  assert.equal(formatTensorCell(10), SIGN_SLOT + '10.0');
+  assert.equal(formatTensorCell(99.94), SIGN_SLOT + '99.9');
+  assert.equal(formatTensorCell(100), SIGN_SLOT + '100');
+  assert.equal(formatTensorCell(-10), '-10.0');
+  assert.equal(formatTensorCell(-100), '-100');
+
+  // The boundary is on the magnitude, so a sign never changes the precision.
+  assert.equal(formatTensorCell(42.5).slice(1), formatTensorCell(-42.5).slice(1));
+});
+
+test('formatTensorCell shows a placeholder for non-finite values', () => {
+  for (const v of [NaN, Infinity, -Infinity]) assert.equal(formatTensorCell(v), '\u00b7');
 });
