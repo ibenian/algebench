@@ -4306,7 +4306,7 @@ function resolveSmallVectorAutoScale(vectorLen, coneLen) {
 }
 function updateControlsHint() {
 	const hint = document.getElementById("controls-hint");
-	if (hint) hint.innerHTML = "Drag: rotate &middot; Shift+drag or 2-finger scroll: pan &middot; Pinch/wheel: zoom &middot; &#8997;+drag: roll";
+	if (hint) hint.innerHTML = "Drag: rotate &middot; &#8984;/Ctrl+drag: rotate about one axis &middot; Shift+drag or 2-finger scroll: pan &middot; Pinch/wheel: zoom &middot; &#8997;+drag: roll";
 }
 function configureControlsInstance(ctrl, target) {
 	if (!ctrl) return;
@@ -4337,20 +4337,202 @@ function configureControlsInstance(ctrl, target) {
 	}
 	ctrl.update();
 }
-function screenToArcball(clientX, clientY) {
-	if (!cameraState.renderer) return new THREE.Vector3(0, 0, 1);
+/** The ball's on-screen radius, as a fraction of the viewport's shorter side. */
+var ARCBALL_RADIUS_FRACTION = .14;
+/** How much further the drag turns per ball-radius of travel outside the ball. */
+var ARCBALL_OUTSIDE_RADIANS = 1.2;
+/** Where the ball sits on screen (its centre and pixel radius). */
+function arcballScreenDisc() {
+	if (!cameraState.renderer || !cameraState.camera || !cameraState.controls) return null;
 	const rect = cameraState.renderer.domElement.getBoundingClientRect();
-	const nx = (clientX - rect.left - rect.width * .5) / (rect.width * .5);
-	const ny = -(clientY - rect.top - rect.height * .5) / (rect.height * .5);
-	const r2 = nx * nx + ny * ny;
-	if (r2 <= 1) return new THREE.Vector3(nx, ny, Math.sqrt(1 - r2));
-	const r = Math.sqrt(r2);
-	return new THREE.Vector3(nx / r, ny / r, 0);
+	const ndc = cameraState.controls.target.clone().project(cameraState.camera);
+	return {
+		cx: rect.left + (ndc.x * .5 + .5) * rect.width,
+		cy: rect.top + (-ndc.y * .5 + .5) * rect.height,
+		r: Math.min(rect.width, rect.height) * ARCBALL_RADIUS_FRACTION
+	};
 }
-function applyArcballOrbit(prevPt, currPt) {
+/**
+* The point on the ball under a pixel, as a unit vector in camera space
+* (+Z toward the viewer), so that dragging turns the surface point the
+* pointer is actually on.
+*
+* This is a ray/sphere intersection, not the usual `z = sqrt(1 - x^2 - y^2)`
+* hemisphere: that mapping is orthographic, and under a perspective camera the
+* near side of the ball projects outward, so the grabbed point slipped ahead of
+* the cursor (measured at 1.4x the cursor's travel). Rays that miss the ball
+* carry on around the same great circle, so a drag outside it keeps turning
+* the same way as one inside.
+*/
+function screenToArcball(clientX, clientY) {
+	const disc = arcballScreenDisc();
+	if (!disc || !cameraState.camera || !cameraState.renderer) return new THREE.Vector3(0, 0, 1);
+	const rect = cameraState.renderer.domElement.getBoundingClientRect();
+	const radius = arcballWorldRadius(disc.r);
+	const dist = Math.max(cameraState.camera.position.distanceTo(cameraState.controls.target), 1e-6);
+	const centre = new THREE.Vector3(0, 0, -dist);
+	const ndcX = (clientX - rect.left) / rect.width * 2 - 1;
+	const ndcY = -((clientY - rect.top) / rect.height) * 2 + 1;
+	let origin;
+	let dir;
+	if (cameraState.camera.isOrthographicCamera) {
+		const halfW = Math.abs((cameraState.camera.right - cameraState.camera.left) / 2);
+		const halfH = Math.abs((cameraState.camera.top - cameraState.camera.bottom) / 2);
+		const zoom = cameraState.camera.zoom || 1;
+		origin = new THREE.Vector3(ndcX * halfW / zoom, ndcY * halfH / zoom, 0);
+		dir = new THREE.Vector3(0, 0, -1);
+	} else {
+		const tanHalfFov = Math.tan((cameraState.camera.fov || 75) * Math.PI / 360);
+		origin = new THREE.Vector3(0, 0, 0);
+		dir = new THREE.Vector3(ndcX * tanHalfFov * (rect.width / rect.height), ndcY * tanHalfFov, -1).normalize();
+	}
+	const toCentre = centre.clone().sub(origin);
+	const along = toCentre.dot(dir);
+	const perp2 = toCentre.lengthSq() - along * along;
+	const half2 = radius * radius - perp2;
+	if (half2 > 0) return origin.clone().addScaledVector(dir, along - Math.sqrt(half2)).sub(centre).normalize();
+	const lateral = new THREE.Vector3(clientX - disc.cx, -(clientY - disc.cy), 0);
+	if (lateral.lengthSq() < 1e-12) return new THREE.Vector3(0, 0, 1);
+	const overshoot = lateral.length() / disc.r - 1;
+	lateral.normalize();
+	const angle = (cameraState.camera.isOrthographicCamera ? Math.PI / 2 : Math.acos(Math.min(radius / dist, 1))) + overshoot * ARCBALL_OUTSIDE_RADIANS;
+	return new THREE.Vector3(0, 0, 1).multiplyScalar(Math.cos(angle)).addScaledVector(lateral, Math.sin(angle));
+}
+/**
+* Keep only `q`'s rotation about `axis`, in place (a swing/twist split).
+*
+* The axis is the arcball's own, in camera space — so a constrained drag turns
+* about the ball as the viewer sees it, not about a world axis that may be
+* pointing anywhere on screen. The angle still comes from the arcball, so the
+* grab tracks the pointer along that one degree of freedom.
+*/
+function twistAboutAxis(q, axis) {
+	const a = axis.clone().normalize();
+	const projected = a.multiplyScalar(new THREE.Vector3(q.x, q.y, q.z).dot(a));
+	q.set(projected.x, projected.y, projected.z, q.w);
+	if (q.lengthSq() < 1e-12) q.set(0, 0, 0, 1);
+	else q.normalize();
+}
+/** World units per screen pixel at the orbit pivot. */
+function worldPerPixelAtTarget() {
+	if (!cameraState.camera || !cameraState.renderer || !cameraState.controls) return 1;
+	const h = Math.max(cameraState.renderer.domElement?.clientHeight || 1, 1);
+	if (cameraState.camera.isOrthographicCamera) return Math.abs((cameraState.camera.top - cameraState.camera.bottom) / h);
+	const dist = Math.max(cameraState.camera.position.distanceTo(cameraState.controls.target), .001);
+	const fov = (cameraState.camera.fov || 75) * Math.PI / 180;
+	return 2 * dist * Math.tan(fov / 2) / h;
+}
+/**
+* World radius of a ball whose *silhouette* is `pixels` wide on screen.
+*
+* Not `pixels * worldPerPixel`: that measures across the plane through the
+* pivot, while a perspective camera sees a sphere's silhouette from its
+* tangent, which is wider. Getting this wrong draws a ball bigger than the
+* sphere the pointer is mapped onto, so a grab near the rim visibly slips.
+*/
+function arcballWorldRadius(pixels) {
+	if (!cameraState.camera || !cameraState.controls) return pixels;
+	const perPixel = worldPerPixelAtTarget();
+	if (cameraState.camera.isOrthographicCamera) return pixels * perPixel;
+	const dist = Math.max(cameraState.camera.position.distanceTo(cameraState.controls.target), 1e-6);
+	return dist * Math.sin(Math.atan(pixels * perPixel / dist));
+}
+var ballHelper = null;
+/** Draw (or resize) the translucent ball the drag is notionally grabbing. */
+function showArcballBall() {
+	if (!cameraState.three || !cameraState.controls) return;
+	const disc = arcballScreenDisc();
+	if (!disc) return;
+	const radius = arcballWorldRadius(disc.r);
+	if (!ballHelper) {
+		ballHelper = new THREE.Group();
+		const shell = new THREE.Mesh(new THREE.SphereGeometry(1, 48, 32), new THREE.MeshBasicMaterial({
+			color: 10474751,
+			transparent: true,
+			opacity: .03,
+			depthWrite: false,
+			side: THREE.FrontSide
+		}));
+		const wires = new THREE.LineSegments(new THREE.WireframeGeometry(new THREE.SphereGeometry(1, 24, 16)), new THREE.ShaderMaterial({
+			transparent: true,
+			depthWrite: false,
+			uniforms: {
+				uColor: { value: new THREE.Color(10474751) },
+				uOpacity: { value: .16 }
+			},
+			vertexShader: `
+                    varying vec3 vWorldPos;
+                    varying vec3 vNormalW;
+                    void main() {
+                        vec4 wp = modelMatrix * vec4(position, 1.0);
+                        vWorldPos = wp.xyz;
+                        // Unit sphere centred on the group's origin, so the
+                        // surface normal is just the vertex direction.
+                        vNormalW = normalize(mat3(modelMatrix) * position);
+                        gl_Position = projectionMatrix * viewMatrix * wp;
+                    }`,
+			fragmentShader: `
+                    uniform vec3 uColor;
+                    uniform float uOpacity;
+                    varying vec3 vWorldPos;
+                    varying vec3 vNormalW;
+                    void main() {
+                        if (dot(vNormalW, normalize(cameraPosition - vWorldPos)) < 0.0) discard;
+                        gl_FragColor = vec4(uColor, uOpacity);
+                    }`
+		}));
+		ballHelper.add(shell, wires);
+		for (const child of ballHelper.children) {
+			child.renderOrder = 9998;
+			child.frustumCulled = false;
+		}
+		cameraState.three.scene.add(ballHelper);
+	}
+	ballHelper.scale.setScalar(radius);
+	ballHelper.position.copy(cameraState.controls.target);
+}
+function hideArcballBall() {
+	if (!ballHelper) return;
+	cameraState.three?.scene.remove(ballHelper);
+	for (const child of ballHelper.children) {
+		child.geometry.dispose();
+		child.material.dispose();
+	}
+	ballHelper = null;
+}
+var grabHelper = null;
+/** Mark the point on the ball the pointer is holding (`pt` is camera-space). */
+function showGrabMarker(pt) {
+	if (!cameraState.three || !cameraState.camera || !cameraState.controls) return;
+	const disc = arcballScreenDisc();
+	if (!disc) return;
+	const radius = arcballWorldRadius(disc.r);
+	if (!grabHelper) {
+		grabHelper = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12), new THREE.MeshBasicMaterial({
+			color: 16765286,
+			depthTest: false,
+			depthWrite: false
+		}));
+		grabHelper.renderOrder = 1e4;
+		grabHelper.frustumCulled = false;
+		cameraState.three.scene.add(grabHelper);
+	}
+	const world = pt.clone().applyQuaternion(cameraState.camera.quaternion).multiplyScalar(radius);
+	grabHelper.position.copy(cameraState.controls.target).add(world);
+	grabHelper.scale.setScalar(worldPerPixelAtTarget() * 6);
+}
+function hideGrabMarker() {
+	if (!grabHelper) return;
+	cameraState.three?.scene.remove(grabHelper);
+	grabHelper.geometry.dispose();
+	grabHelper.material.dispose();
+	grabHelper = null;
+}
+function applyArcballOrbit(prevPt, currPt, axis = null) {
 	if (!cameraState.camera || !cameraState.controls) return;
 	if (prevPt.distanceToSquared(currPt) < 1e-10) return;
 	const q = new THREE.Quaternion().setFromUnitVectors(currPt.clone().normalize(), prevPt.clone().normalize());
+	if (axis) twistAboutAxis(q, axis);
 	const camQ = cameraState.camera.quaternion.clone();
 	const worldQ = camQ.clone().multiply(q).multiply(camQ.clone().conjugate());
 	const target = cameraState.controls.target.clone();
@@ -4360,6 +4542,7 @@ function applyArcballOrbit(prevPt, currPt) {
 	cameraState.camera.position.copy(target).add(offset);
 	cameraState.camera.lookAt(target);
 	cameraState.controls.update();
+	showArcballBall();
 	cameraState.arcballLastMoveTime = performance.now();
 	cameraState.arcballInertiaQ = cameraState.arcballInertiaQ ? cameraState.arcballInertiaQ.slerp(worldQ, .5) : worldQ.clone();
 }
@@ -4424,7 +4607,7 @@ function setupRollDrag(container) {
 			return;
 		}
 		if (e.shiftKey) return;
-		if (e.ctrlKey || e.metaKey) return;
+		const axis = e.metaKey ? new THREE.Vector3(1, 0, 0) : e.ctrlKey ? new THREE.Vector3(0, 1, 0) : null;
 		e.preventDefault();
 		e.stopImmediatePropagation();
 		if (cameraState.arcballInertiaId) {
@@ -4432,7 +4615,12 @@ function setupRollDrag(container) {
 			cameraState.arcballInertiaId = null;
 		}
 		cameraState.arcballInertiaQ = null;
-		orbitDrag = { pt: screenToArcball(e.clientX, e.clientY) };
+		orbitDrag = {
+			pt: screenToArcball(e.clientX, e.clientY),
+			axis
+		};
+		showArcballBall();
+		showGrabMarker(orbitDrag.pt);
 		document.body.classList.add("rotating");
 		if (cameraState.controls) cameraState.controls.enabled = false;
 	}, { capture: true });
@@ -4442,8 +4630,9 @@ function setupRollDrag(container) {
 			e.stopImmediatePropagation();
 			if ((e.buttons & 1) === 0) return endOrbitDrag();
 			const currPt = screenToArcball(e.clientX, e.clientY);
-			applyArcballOrbit(orbitDrag.pt, currPt);
+			applyArcballOrbit(orbitDrag.pt, currPt, orbitDrag.axis);
 			orbitDrag.pt = currPt;
+			showGrabMarker(currPt);
 			return;
 		}
 		if (!cameraState.rollDrag) return;
@@ -4462,6 +4651,8 @@ function setupRollDrag(container) {
 	function endOrbitDrag() {
 		if (!orbitDrag) return;
 		orbitDrag = null;
+		hideArcballBall();
+		hideGrabMarker();
 		document.body.classList.remove("rotating");
 		if (cameraState.controls) {
 			cameraState.controls.enabled = true;
@@ -4489,6 +4680,9 @@ function setupRollDrag(container) {
 		endOrbitDrag();
 		endRollDrag();
 	}, { capture: true });
+	inputSurface.addEventListener("contextmenu", (e) => {
+		if (orbitDrag) e.preventDefault();
+	});
 	window.addEventListener("pointerup", () => {
 		endOrbitDrag();
 		endRollDrag();
