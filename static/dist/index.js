@@ -64,7 +64,6 @@ var state = {
 		1,
 		0
 	],
-	rollDrag: null,
 	arcballMomentum: .5,
 	arcballInertiaId: null,
 	arcballInertiaQ: null,
@@ -4306,7 +4305,7 @@ function resolveSmallVectorAutoScale(vectorLen, coneLen) {
 }
 function updateControlsHint() {
 	const hint = document.getElementById("controls-hint");
-	if (hint) hint.innerHTML = "Drag: rotate &middot; &#8984;/Ctrl+drag: rotate about one axis &middot; Shift+drag or 2-finger scroll: pan &middot; Pinch/wheel: zoom &middot; &#8997;+drag: roll";
+	if (hint) hint.innerHTML = "Drag: rotate &middot; &#8984;/Ctrl/&#8997;+drag: rotate about one axis &middot; Shift+drag or 2-finger scroll: pan &middot; Pinch/wheel: zoom";
 }
 function configureControlsInstance(ctrl, target) {
 	if (!ctrl) return;
@@ -4533,6 +4532,11 @@ function applyArcballOrbit(prevPt, currPt, axis = null) {
 	if (prevPt.distanceToSquared(currPt) < 1e-10) return;
 	const q = new THREE.Quaternion().setFromUnitVectors(currPt.clone().normalize(), prevPt.clone().normalize());
 	if (axis) twistAboutAxis(q, axis);
+	applyCameraSpaceRotation(q);
+}
+/** Turn the camera about its pivot by `q`, a rotation given in camera space. */
+function applyCameraSpaceRotation(q) {
+	if (!cameraState.camera || !cameraState.controls) return;
 	const camQ = cameraState.camera.quaternion.clone();
 	const worldQ = camQ.clone().multiply(q).multiply(camQ.clone().conjugate());
 	const target = cameraState.controls.target.clone();
@@ -4545,6 +4549,19 @@ function applyArcballOrbit(prevPt, currPt, axis = null) {
 	showArcballBall();
 	cameraState.arcballLastMoveTime = performance.now();
 	cameraState.arcballInertiaQ = cameraState.arcballInertiaQ ? cameraState.arcballInertiaQ.slerp(worldQ, .5) : worldQ.clone();
+}
+/**
+* Roll about the screen normal, driven by sideways pointer travel.
+*
+* The arcball's own twist about that axis would mean rolling by swinging the
+* pointer in a circle around the pivot, and sideways travel would do nothing —
+* so roll keeps the rule it has always had. The axis is still the arcball's,
+* and the ball is still drawn; only the angle comes from elsewhere.
+*/
+var ROLL_RADIANS_PER_PIXEL = .0045;
+function applyAxisRoll(dx) {
+	if (Math.abs(dx) < 1e-6) return;
+	applyCameraSpaceRotation(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), dx * ROLL_RADIANS_PER_PIXEL));
 }
 function startArcballInertia() {
 	if (cameraState.arcballInertiaId) {
@@ -4579,35 +4596,15 @@ function startArcballInertia() {
 	}
 	cameraState.arcballInertiaId = requestAnimationFrame(step);
 }
-function applyCameraRoll(deltaAngle) {
-	if (!cameraState.camera || !cameraState.controls) return;
-	const viewDir = new THREE.Vector3().subVectors(cameraState.controls.target, cameraState.camera.position);
-	if (viewDir.lengthSq() < 1e-12) return;
-	viewDir.normalize();
-	const q = new THREE.Quaternion().setFromAxisAngle(viewDir, deltaAngle);
-	cameraState.camera.up.applyQuaternion(q).normalize();
-	cameraState.camera.lookAt(cameraState.controls.target);
-	cameraState.controls.update();
-}
 function setupRollDrag(container) {
 	if (!container) return;
 	const inputSurface = container;
 	let orbitDrag = null;
 	inputSurface.addEventListener("mousedown", (e) => {
 		if (e.button !== 0) return;
-		if (e.altKey) {
-			e.preventDefault();
-			e.stopImmediatePropagation();
-			cameraState.rollDrag = {
-				x: e.clientX,
-				awaitingMouseUp: false
-			};
-			document.body.classList.add("rotating");
-			if (cameraState.controls) cameraState.controls.enabled = false;
-			return;
-		}
 		if (e.shiftKey) return;
-		const axis = e.metaKey ? new THREE.Vector3(1, 0, 0) : e.ctrlKey ? new THREE.Vector3(0, 1, 0) : null;
+		const axis = e.metaKey ? new THREE.Vector3(1, 0, 0) : e.ctrlKey ? new THREE.Vector3(0, 1, 0) : e.altKey ? new THREE.Vector3(0, 0, 1) : null;
+		const axisClass = e.metaKey ? "rotating-axis-x" : e.ctrlKey ? "rotating-axis-y" : e.altKey ? "rotating-axis-z" : null;
 		e.preventDefault();
 		e.stopImmediatePropagation();
 		if (cameraState.arcballInertiaId) {
@@ -4617,8 +4614,10 @@ function setupRollDrag(container) {
 		cameraState.arcballInertiaQ = null;
 		orbitDrag = {
 			pt: screenToArcball(e.clientX, e.clientY),
-			axis
+			axis,
+			x: e.clientX
 		};
+		if (axisClass) document.body.classList.add(axisClass);
 		showArcballBall();
 		showGrabMarker(orbitDrag.pt);
 		document.body.classList.add("rotating");
@@ -4630,27 +4629,18 @@ function setupRollDrag(container) {
 			e.stopImmediatePropagation();
 			if ((e.buttons & 1) === 0) return endOrbitDrag();
 			const currPt = screenToArcball(e.clientX, e.clientY);
-			applyArcballOrbit(orbitDrag.pt, currPt, orbitDrag.axis);
+			if (orbitDrag.axis && orbitDrag.axis.z === 1) applyAxisRoll(e.clientX - orbitDrag.x);
+			else applyArcballOrbit(orbitDrag.pt, currPt, orbitDrag.axis);
 			orbitDrag.pt = currPt;
+			orbitDrag.x = e.clientX;
 			showGrabMarker(currPt);
 			return;
 		}
-		if (!cameraState.rollDrag) return;
-		e.preventDefault();
-		e.stopImmediatePropagation();
-		if (!e.altKey) {
-			cameraState.rollDrag.awaitingMouseUp = true;
-			return;
-		}
-		if ((e.buttons & 1) === 0) return endRollDrag();
-		if (cameraState.rollDrag.awaitingMouseUp) return;
-		const dx = e.clientX - cameraState.rollDrag.x;
-		cameraState.rollDrag.x = e.clientX;
-		applyCameraRoll(-dx * .0045);
 	});
 	function endOrbitDrag() {
 		if (!orbitDrag) return;
 		orbitDrag = null;
+		document.body.classList.remove("rotating-axis-x", "rotating-axis-y", "rotating-axis-z");
 		hideArcballBall();
 		hideGrabMarker();
 		document.body.classList.remove("rotating");
@@ -4660,53 +4650,33 @@ function setupRollDrag(container) {
 		}
 		startArcballInertia();
 	}
-	function endRollDrag() {
-		document.body.classList.remove("rotating");
-		if (cameraState.controls) {
-			cameraState.controls.enabled = true;
-			cameraState.controls.update();
-		}
-		if (!cameraState.rollDrag) return;
-		cameraState.rollDrag = null;
-	}
-	window.addEventListener("keyup", (e) => {
-		if (e.key === "Alt" && cameraState.rollDrag) cameraState.rollDrag.awaitingMouseUp = true;
-	});
 	window.addEventListener("mouseup", (e) => {
-		if (cameraState.rollDrag || orbitDrag) {
+		if (orbitDrag) {
 			e.preventDefault();
 			e.stopImmediatePropagation();
 		}
 		endOrbitDrag();
-		endRollDrag();
 	}, { capture: true });
 	inputSurface.addEventListener("contextmenu", (e) => {
 		if (orbitDrag) e.preventDefault();
 	});
 	window.addEventListener("pointerup", () => {
 		endOrbitDrag();
-		endRollDrag();
 	}, { capture: true });
 	document.addEventListener("mouseup", () => {
 		endOrbitDrag();
-		endRollDrag();
 	}, true);
 	window.addEventListener("mouseleave", () => {
 		endOrbitDrag();
-		endRollDrag();
 	});
 	window.addEventListener("blur", () => {
 		endOrbitDrag();
-		endRollDrag();
 	});
 	document.addEventListener("visibilitychange", () => {
-		if (document.hidden) {
-			endOrbitDrag();
-			endRollDrag();
-		}
+		if (document.hidden) endOrbitDrag();
 	});
 	window.addEventListener("mousedown", () => {
-		if (!cameraState.rollDrag && !orbitDrag && cameraState.controls && !cameraState.controls.enabled) cameraState.controls.enabled = true;
+		if (!orbitDrag && cameraState.controls && !cameraState.controls.enabled) cameraState.controls.enabled = true;
 	}, { capture: true });
 }
 function activateExprCamera(viewSpec, key) {

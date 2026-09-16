@@ -102,18 +102,13 @@ export interface StepCamera {
 }
 
 /** The in-flight arcball drag, while the pointer is down. */
-/** The in-flight alt-drag camera roll: the last pointer x, plus a latch that
- *  suspends rolling when alt is released mid-drag until the mouse comes up. */
-interface RollDragState {
-    x: number;
-    awaitingMouseUp: boolean;
-}
-
 /** The in-flight arcball orbit: the previous point on the virtual sphere. */
 interface OrbitDragState {
     pt: Vector3;
     /** Camera-space axis the drag is pinned to, or null for a free arcball. */
     axis: Vector3 | null;
+    /** Previous pointer x, for the roll axis — see applyAxisRoll. */
+    x: number;
 }
 
 /** An expression-driven camera view, compiled and ticked each frame. */
@@ -146,7 +141,6 @@ interface CameraState {
     mainDirLight: import('three').DirectionalLight | null;
     animationFrameId: number | null;
     cameraAnimating: boolean;
-    rollDrag: RollDragState | null;
     arcballMomentum: number;
     arcballInertiaId: number | null;
     arcballInertiaQ: Quaternion | null;
@@ -280,7 +274,7 @@ export function updateAdaptiveLineWidths(): void { return; }
 
 export function updateControlsHint(): void {
     const hint = document.getElementById('controls-hint');
-    if (hint) hint.innerHTML = 'Drag: rotate &middot; &#8984;/Ctrl+drag: rotate about one axis &middot; Shift+drag or 2-finger scroll: pan &middot; Pinch/wheel: zoom &middot; &#8997;+drag: roll';
+    if (hint) hint.innerHTML = 'Drag: rotate &middot; &#8984;/Ctrl/&#8997;+drag: rotate about one axis &middot; Shift+drag or 2-finger scroll: pan &middot; Pinch/wheel: zoom';
 }
 
 export function configureControlsInstance(ctrl: ThreeControls, target?: Vector3 | null): void {
@@ -575,6 +569,12 @@ function applyArcballOrbit(prevPt: Vector3, currPt: Vector3, axis: Vector3 | nul
     );
     if (axis) twistAboutAxis(q, axis);
 
+    applyCameraSpaceRotation(q);
+}
+
+/** Turn the camera about its pivot by `q`, a rotation given in camera space. */
+function applyCameraSpaceRotation(q: Quaternion): void {
+    if (!cameraState.camera || !cameraState.controls) return;
     const camQ   = cameraState.camera.quaternion.clone();
     const worldQ = camQ.clone().multiply(q).multiply(camQ.clone().conjugate());
 
@@ -592,6 +592,22 @@ function applyArcballOrbit(prevPt: Vector3, currPt: Vector3, axis: Vector3 | nul
     cameraState.arcballInertiaQ = cameraState.arcballInertiaQ
         ? cameraState.arcballInertiaQ.slerp(worldQ, 0.5)
         : worldQ.clone();
+}
+
+/**
+ * Roll about the screen normal, driven by sideways pointer travel.
+ *
+ * The arcball's own twist about that axis would mean rolling by swinging the
+ * pointer in a circle around the pivot, and sideways travel would do nothing —
+ * so roll keeps the rule it has always had. The axis is still the arcball's,
+ * and the ball is still drawn; only the angle comes from elsewhere.
+ */
+const ROLL_RADIANS_PER_PIXEL = 0.0045;
+
+function applyAxisRoll(dx: number): void {
+    if (Math.abs(dx) < 1e-6) return;
+    applyCameraSpaceRotation(new THREE.Quaternion().setFromAxisAngle(
+        new THREE.Vector3(0, 0, 1), dx * ROLL_RADIANS_PER_PIXEL));
 }
 
 function startArcballInertia(): void {
@@ -626,16 +642,6 @@ function startArcballInertia(): void {
     cameraState.arcballInertiaId = requestAnimationFrame(step);
 }
 
-function applyCameraRoll(deltaAngle: number): void {
-    if (!cameraState.camera || !cameraState.controls) return;
-    const viewDir = new THREE.Vector3().subVectors(cameraState.controls.target, cameraState.camera.position);
-    if (viewDir.lengthSq() < 1e-12) return;
-    viewDir.normalize();
-    const q = new THREE.Quaternion().setFromAxisAngle(viewDir, deltaAngle);
-    cameraState.camera.up.applyQuaternion(q).normalize();
-    cameraState.camera.lookAt(cameraState.controls.target);
-    cameraState.controls.update();
-}
 
 export function setupRollDrag(container: HTMLElement | null): void {
     if (!container) return;
@@ -645,22 +651,22 @@ export function setupRollDrag(container: HTMLElement | null): void {
     inputSurface.addEventListener('mousedown', (e) => {
         if (e.button !== 0) return;
 
-        if (e.altKey) {
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            cameraState.rollDrag = { x: e.clientX, awaitingMouseUp: false };
-            document.body.classList.add('rotating');
-            if (cameraState.controls) cameraState.controls.enabled = false;
-            return;
-        }
-
         if (e.shiftKey) return;
-        // Cmd and Ctrl pin the drag to one axis of the arcball — cmd to its
-        // horizontal axis, ctrl to its vertical one. Latched here, so letting
-        // go of the key mid-drag cannot change what the drag is doing.
+        // Cmd, Ctrl and Alt each pin the drag to one axis of the arcball — its
+        // horizontal, vertical and screen-normal axis in turn. Latched here, so
+        // letting go of the key mid-drag cannot change what the drag is doing.
         const axis = e.metaKey ? new THREE.Vector3(1, 0, 0)
                   : e.ctrlKey ? new THREE.Vector3(0, 1, 0)
+                  : e.altKey  ? new THREE.Vector3(0, 0, 1)
                   : null;
+        // Turning about the horizontal axis moves the pointer up and down, and
+        // vice versa, so the cursor shows the direction that still does
+        // something rather than the axis itself. Rolling has no such direction:
+        // it wants the pointer swung around the pivot.
+        const axisClass = e.metaKey ? 'rotating-axis-x'
+                        : e.ctrlKey ? 'rotating-axis-y'
+                        : e.altKey  ? 'rotating-axis-z'
+                        : null;
 
         e.preventDefault();
         e.stopImmediatePropagation();
@@ -669,7 +675,8 @@ export function setupRollDrag(container: HTMLElement | null): void {
             cameraState.arcballInertiaId = null;
         }
         cameraState.arcballInertiaQ = null;
-        orbitDrag = { pt: screenToArcball(e.clientX, e.clientY), axis };
+        orbitDrag = { pt: screenToArcball(e.clientX, e.clientY), axis, x: e.clientX };
+        if (axisClass) document.body.classList.add(axisClass);
         showArcballBall();
         showGrabMarker(orbitDrag.pt);
         document.body.classList.add('rotating');
@@ -682,29 +689,19 @@ export function setupRollDrag(container: HTMLElement | null): void {
             e.stopImmediatePropagation();
             if ((e.buttons & 1) === 0) return endOrbitDrag();
             const currPt = screenToArcball(e.clientX, e.clientY);
-            applyArcballOrbit(orbitDrag.pt, currPt, orbitDrag.axis);
+            if (orbitDrag.axis && orbitDrag.axis.z === 1) applyAxisRoll(e.clientX - orbitDrag.x);
+            else applyArcballOrbit(orbitDrag.pt, currPt, orbitDrag.axis);
             orbitDrag.pt = currPt;
+            orbitDrag.x = e.clientX;
             showGrabMarker(currPt);
             return;
         }
-
-        if (!cameraState.rollDrag) return;
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        if (!e.altKey) {
-            cameraState.rollDrag.awaitingMouseUp = true;
-            return;
-        }
-        if ((e.buttons & 1) === 0) return endRollDrag();
-        if (cameraState.rollDrag.awaitingMouseUp) return;
-        const dx = e.clientX - cameraState.rollDrag.x;
-        cameraState.rollDrag.x = e.clientX;
-        applyCameraRoll(-dx * 0.0045);
     });
 
     function endOrbitDrag() {
         if (!orbitDrag) return;
         orbitDrag = null;
+        document.body.classList.remove('rotating-axis-x', 'rotating-axis-y', 'rotating-axis-z');
         hideArcballBall();
         hideGrabMarker();
         document.body.classList.remove('rotating');
@@ -715,29 +712,12 @@ export function setupRollDrag(container: HTMLElement | null): void {
         startArcballInertia();
     }
 
-    function endRollDrag() {
-        document.body.classList.remove('rotating');
-        if (cameraState.controls) {
-            cameraState.controls.enabled = true;
-            cameraState.controls.update();
-        }
-        if (!cameraState.rollDrag) return;
-        cameraState.rollDrag = null;
-    }
-
-    window.addEventListener('keyup', (e) => {
-        if (e.key === 'Alt' && cameraState.rollDrag) {
-            cameraState.rollDrag.awaitingMouseUp = true;
-        }
-    });
-
     window.addEventListener('mouseup', (e) => {
-        if (cameraState.rollDrag || orbitDrag) {
+        if (orbitDrag) {
             e.preventDefault();
             e.stopImmediatePropagation();
         }
         endOrbitDrag();
-        endRollDrag();
     }, { capture: true });
 
     // Ctrl+click is a right-click on macOS: keep its menu out of the drag.
@@ -745,15 +725,15 @@ export function setupRollDrag(container: HTMLElement | null): void {
         if (orbitDrag) e.preventDefault();
     });
 
-    window.addEventListener('pointerup', () => { endOrbitDrag(); endRollDrag(); }, { capture: true });
-    document.addEventListener('mouseup', () => { endOrbitDrag(); endRollDrag(); }, true);
-    window.addEventListener('mouseleave', () => { endOrbitDrag(); endRollDrag(); });
-    window.addEventListener('blur', () => { endOrbitDrag(); endRollDrag(); });
+    window.addEventListener('pointerup', () => { endOrbitDrag(); }, { capture: true });
+    document.addEventListener('mouseup', () => { endOrbitDrag(); }, true);
+    window.addEventListener('mouseleave', () => { endOrbitDrag(); });
+    window.addEventListener('blur', () => { endOrbitDrag(); });
     document.addEventListener('visibilitychange', () => {
-        if (document.hidden) { endOrbitDrag(); endRollDrag(); }
+        if (document.hidden) { endOrbitDrag(); }
     });
     window.addEventListener('mousedown', () => {
-        if (!cameraState.rollDrag && !orbitDrag && cameraState.controls && !cameraState.controls.enabled) {
+        if (!orbitDrag && cameraState.controls && !cameraState.controls.enabled) {
             cameraState.controls.enabled = true;
         }
     }, { capture: true });

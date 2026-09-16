@@ -828,6 +828,15 @@ html, body {
 #mathbox-container canvas { cursor: grab; }
 /* Closed-fist grabbing cursor while rotating — overrides MathBox cursor plugin */
 body.rotating, body.rotating * { cursor: grabbing !important; }
+/* A drag pinned to one axis of the arcball says so: the cursor points along
+   the direction the pointer can still move, not the axis it turns about. */
+body.rotating-axis-x, body.rotating-axis-x * { cursor: ns-resize !important; }
+body.rotating-axis-y, body.rotating-axis-y * { cursor: ew-resize !important; }
+/* Roll has no single direction to point at — it wants the pointer swung
+   around the pivot — so it gets a circular arrow rather than a resize cursor. */
+body.rotating-axis-z, body.rotating-axis-z * {
+    cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'><g fill='none' stroke='%23000' stroke-width='4' stroke-linecap='round'><path d='M18 12a6 6 0 1 1-2.2-4.6'/><path d='M12 3.6l4 2.6-3.4 3'/></g><g fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round'><path d='M18 12a6 6 0 1 1-2.2-4.6'/><path d='M12 3.6l4 2.6-3.4 3'/></g></svg>") 12 12, grabbing !important;
+}
 
 /* Camera Buttons */
 #camera-buttons {
