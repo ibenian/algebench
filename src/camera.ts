@@ -308,6 +308,8 @@ export function configureControlsInstance(ctrl: ThreeControls, target?: Vector3 
 const ARCBALL_RADIUS_FRACTION = 0.14;
 /** How much further the drag turns per ball-radius of travel outside the ball. */
 const ARCBALL_OUTSIDE_RADIANS = 1.2;
+/** Ceiling on the coast after a flick — about 170 degrees a second at 60fps. */
+const MAX_INERTIA_RADIANS_PER_FRAME = 0.05;
 
 /** Where the ball sits on screen (its centre and pixel radius). */
 function arcballScreenDisc(): { cx: number; cy: number; r: number } | null {
@@ -620,6 +622,15 @@ function startArcballInertia(): void {
         performance.now() - cameraState.arcballLastMoveTime > 80 ||
         cameraState.arcballInertiaQ.angleTo(identity) < 0.0002) {
         cameraState.arcballInertiaQ = null; return;
+    }
+    // The coast replays the last pointer move once per frame, so a flick hands
+    // it however far that one move turned the view — measured at 1.59 rad, and
+    // 91 degrees per frame reads as the view spinning on by itself long after
+    // the button is up. Cap the speed; the decay below still ends it.
+    const flick = cameraState.arcballInertiaQ.angleTo(identity);
+    if (flick > MAX_INERTIA_RADIANS_PER_FRAME) {
+        cameraState.arcballInertiaQ = new THREE.Quaternion()
+            .slerp(cameraState.arcballInertiaQ, MAX_INERTIA_RADIANS_PER_FRAME / flick);
     }
     const slerpT = Math.pow(0.01, cameraState.arcballMomentum);
     function step() {

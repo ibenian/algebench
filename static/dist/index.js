@@ -4340,6 +4340,8 @@ function configureControlsInstance(ctrl, target) {
 var ARCBALL_RADIUS_FRACTION = .14;
 /** How much further the drag turns per ball-radius of travel outside the ball. */
 var ARCBALL_OUTSIDE_RADIANS = 1.2;
+/** Ceiling on the coast after a flick — about 170 degrees a second at 60fps. */
+var MAX_INERTIA_RADIANS_PER_FRAME = .05;
 /** Where the ball sits on screen (its centre and pixel radius). */
 function arcballScreenDisc() {
 	if (!cameraState.renderer || !cameraState.camera || !cameraState.controls) return null;
@@ -4573,6 +4575,8 @@ function startArcballInertia() {
 		cameraState.arcballInertiaQ = null;
 		return;
 	}
+	const flick = cameraState.arcballInertiaQ.angleTo(identity);
+	if (flick > MAX_INERTIA_RADIANS_PER_FRAME) cameraState.arcballInertiaQ = new THREE.Quaternion().slerp(cameraState.arcballInertiaQ, MAX_INERTIA_RADIANS_PER_FRAME / flick);
 	const slerpT = Math.pow(.01, cameraState.arcballMomentum);
 	function step() {
 		if (!cameraState.arcballInertiaQ || !cameraState.camera || !cameraState.controls) {
