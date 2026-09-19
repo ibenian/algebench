@@ -828,6 +828,15 @@ html, body {
 #mathbox-container canvas { cursor: grab; }
 /* Closed-fist grabbing cursor while rotating — overrides MathBox cursor plugin */
 body.rotating, body.rotating * { cursor: grabbing !important; }
+/* A drag pinned to one axis of the arcball says so: the cursor points along
+   the direction the pointer can still move, not the axis it turns about. */
+body.rotating-axis-x, body.rotating-axis-x * { cursor: ns-resize !important; }
+body.rotating-axis-y, body.rotating-axis-y * { cursor: ew-resize !important; }
+/* Roll has no single direction to point at — it wants the pointer swung
+   around the pivot — so it gets a circular arrow rather than a resize cursor. */
+body.rotating-axis-z, body.rotating-axis-z * {
+    cursor: url("data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='24'%20height='24'%20viewBox='0%200%2024%2024'%3E%3Cg%20fill='none'%20stroke='%23000'%20stroke-width='4'%20stroke-linecap='round'%3E%3Cpath%20d='M18%2012a6%206%200%201%201-2.2-4.6'/%3E%3Cpath%20d='M12%203.6l4%202.6-3.4%203'/%3E%3C/g%3E%3Cg%20fill='none'%20stroke='%23fff'%20stroke-width='2'%20stroke-linecap='round'%3E%3Cpath%20d='M18%2012a6%206%200%201%201-2.2-4.6'/%3E%3Cpath%20d='M12%203.6l4%202.6-3.4%203'/%3E%3C/g%3E%3C/svg%3E") 12 12, grabbing !important;
+}
 
 /* Camera Buttons */
 #camera-buttons {

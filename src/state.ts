@@ -98,12 +98,6 @@ interface AnimPosEntry {
     startTime?: number;
 }
 
-/** The in-flight alt-drag camera roll (src/camera.ts's private RollDragState). */
-interface RollDragState {
-    x: number;
-    awaitingMouseUp: boolean;
-}
-
 /** The orbit/trackball controls fields the loader and follow-cam save and
  *  restore around a camera takeover. */
 interface SavedControlsState {
@@ -221,7 +215,6 @@ export interface AppState {
 
     // ----- Camera / controls -----
     sceneUp: number[];
-    rollDrag: RollDragState | null;
     arcballMomentum: number;
     arcballInertiaId: number | null;
     arcballInertiaQ: Quaternion | null;
@@ -342,7 +335,6 @@ export const state: AppState = {
 
     // ----- Camera / controls -----
     sceneUp: [0, 1, 0],
-    rollDrag: null,
     arcballMomentum: 0.5,
     arcballInertiaId: null,
     arcballInertiaQ: null,
