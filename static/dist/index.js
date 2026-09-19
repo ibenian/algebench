@@ -16932,10 +16932,12 @@ function labelHitTest(clientX, clientY) {
 	return null;
 }
 /** Every visible mesh the ray meets, nearest first. The one raycast both the
-*  Ask-AI pick and the pivot are built on. */
-function rayHits(clientX, clientY) {
+*  Ask-AI pick and the pivot are built on. A caller that has already measured
+*  the canvas passes its rect in: pickAt runs on every pointer move and holds
+*  one, and measuring it again here would be a second layout read per hover. */
+function rayHits(clientX, clientY, known) {
 	if (!state.camera || !_canvas || !_raycaster) return [];
-	const rect = _canvas.getBoundingClientRect();
+	const rect = known ?? _canvas.getBoundingClientRect();
 	if (!rect.width || !rect.height) return [];
 	const ndc = {
 		x: (clientX - rect.left) / rect.width * 2 - 1,
@@ -16985,7 +16987,7 @@ function pickAt(clientX, clientY) {
 		point: null,
 		labelEl: lh.el
 	};
-	const hits = rayHits(clientX, clientY);
+	const hits = rayHits(clientX, clientY, rect);
 	if (hits.length) {
 		const map = buildMeshIdMap();
 		for (const h of hits) {
