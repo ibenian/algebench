@@ -653,6 +653,84 @@ function startArcballInertia(): void {
     cameraState.arcballInertiaId = requestAnimationFrame(step);
 }
 
+// ----- Pivot -----
+
+/** How long the pivot takes to slide to a double-clicked point. */
+const PIVOT_MOVE_MS = 350;
+/** How long the ball lingers afterwards, to say where the pivot landed. */
+const PIVOT_FLASH_MS = 700;
+
+let pivotMoveId: number | null = null;
+let pivotFlashTimer: number | null = null;
+
+/** Show the ball and take it away again, unless a drag has claimed it. */
+function flashArcballBall(): void {
+    showArcballBall();
+    cancelBallFlash();
+    pivotFlashTimer = window.setTimeout(() => {
+        pivotFlashTimer = null;
+        // A drag that started during the flash owns the ball now; hiding it
+        // here would pull the sphere out from under the pointer mid-rotation.
+        if (!document.body.classList.contains('rotating')) hideArcballBall();
+    }, PIVOT_FLASH_MS);
+}
+
+/** Drop a pending flash, so a drag's own ball outlives it. */
+function cancelBallFlash(): void {
+    if (pivotFlashTimer === null) return;
+    clearTimeout(pivotFlashTimer);
+    pivotFlashTimer = null;
+}
+
+/**
+ * Turn the view about `world` from now on.
+ *
+ * The camera does not move: OrbitControls keeps its offset from the target, so
+ * shifting the target swings the aim rather than the viewpoint, and the point
+ * double-clicked ends up in the middle of the viewport with the orbit radius
+ * equal to the distance to it. Panning or a camera-view button moves the pivot
+ * again, exactly as they did before.
+ */
+export function setOrbitPivot(world: Vector3, duration: number = PIVOT_MOVE_MS): void {
+    if (!cameraState.camera || !cameraState.controls) return;
+    // Both of these drive the target every frame and would fight the slide.
+    deactivateFollowCam();
+    deactivateExprCamera();
+    if (cameraState.arcballInertiaId) {
+        cancelAnimationFrame(cameraState.arcballInertiaId);
+        cameraState.arcballInertiaId = null;
+    }
+    cameraState.arcballInertiaQ = null;
+    if (pivotMoveId !== null) { cancelAnimationFrame(pivotMoveId); pivotMoveId = null; }
+
+    const start = cameraState.controls.target.clone();
+    const end   = world.clone();
+    // Double-clicking the current pivot still flashes the ball: the click did
+    // land, and silence would read as a miss.
+    if (duration <= 0 || start.distanceTo(end) < 1e-6) {
+        cameraState.controls.target.copy(end);
+        cameraState.controls.update();
+        flashArcballBall();
+        return;
+    }
+
+    const startTime = performance.now();
+    function step(now: number): void {
+        if (!cameraState.controls) { pivotMoveId = null; return; }
+        const raw = Math.min((now - startTime) / duration, 1);
+        const t = raw < 0.5 ? 4*raw*raw*raw : 1 - Math.pow(-2*raw + 2, 3) / 2;
+        cameraState.controls.target.lerpVectors(start, end, t);
+        cameraState.controls.update();
+        // Redrawn each frame so the ball rides the pivot and keeps its
+        // on-screen size as the orbit radius changes under it.
+        showArcballBall();
+        if (raw < 1) { pivotMoveId = requestAnimationFrame(step); return; }
+        pivotMoveId = null;
+        flashArcballBall();
+    }
+    pivotMoveId = requestAnimationFrame(step);
+}
+
 
 export function setupRollDrag(container: HTMLElement | null): void {
     if (!container) return;
@@ -688,6 +766,7 @@ export function setupRollDrag(container: HTMLElement | null): void {
         cameraState.arcballInertiaQ = null;
         orbitDrag = { pt: screenToArcball(e.clientX, e.clientY), axis, x: e.clientX };
         if (axisClass) document.body.classList.add(axisClass);
+        cancelBallFlash();   // this drag owns the ball now
         showArcballBall();
         showGrabMarker(orbitDrag.pt);
         document.body.classList.add('rotating');

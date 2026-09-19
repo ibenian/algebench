@@ -22,6 +22,7 @@
 import { state } from '/state.js';
 import { dataToWorld } from '/coords.js';
 import { makeAiAskButton } from '/labels.js';
+import { setOrbitPivot } from '/camera.js';
 import type { AppState } from '/state.js';
 import type { Vec3 } from '/coords.js';
 import type { Label3D } from '/labels.js';
@@ -684,6 +685,20 @@ export function setupObjectPicker() {
         _latticePop = true;
         beginCellScrub(hit.bind, hit.row, hit.col, e.clientX, e.pointerId, _canvas!);
     }, { capture: true });
+    // Double-click an object to turn the view about it from then on. The hit
+    // point is where the ray actually met the geometry, so double-clicking the
+    // far end of a long vector pivots there rather than at its anchor; the
+    // screen-anchor fallback (points, lines, curves, axes — the types a
+    // raycaster cannot hit) has only the anchor to offer.
+    _canvas.addEventListener('dblclick', (e) => {
+        if (e.button !== 0) return;
+        const hit = pickAt(e.clientX, e.clientY);
+        if (!hit) return;
+        const point = hit.point ?? worldAnchor(hit.id, state.elementRegistry[hit.id]);
+        if (!point) return;
+        e.preventDefault();
+        setOrbitPivot(point);
+    });
     _canvas.addEventListener('pointermove', onPointerMove, { passive: true });
     _canvas.addEventListener('pointerleave', () => { hideBtn(); if (_latticePop) { _latticePop = false; scheduleTensorPopHide(); } }, { passive: true });
     // Hide the button immediately while dragging (orbit) so it doesn't linger.

@@ -4600,6 +4600,77 @@ function startArcballInertia() {
 	}
 	cameraState.arcballInertiaId = requestAnimationFrame(step);
 }
+/** How long the pivot takes to slide to a double-clicked point. */
+var PIVOT_MOVE_MS = 350;
+/** How long the ball lingers afterwards, to say where the pivot landed. */
+var PIVOT_FLASH_MS = 700;
+var pivotMoveId = null;
+var pivotFlashTimer = null;
+/** Show the ball and take it away again, unless a drag has claimed it. */
+function flashArcballBall() {
+	showArcballBall();
+	cancelBallFlash();
+	pivotFlashTimer = window.setTimeout(() => {
+		pivotFlashTimer = null;
+		if (!document.body.classList.contains("rotating")) hideArcballBall();
+	}, PIVOT_FLASH_MS);
+}
+/** Drop a pending flash, so a drag's own ball outlives it. */
+function cancelBallFlash() {
+	if (pivotFlashTimer === null) return;
+	clearTimeout(pivotFlashTimer);
+	pivotFlashTimer = null;
+}
+/**
+* Turn the view about `world` from now on.
+*
+* The camera does not move: OrbitControls keeps its offset from the target, so
+* shifting the target swings the aim rather than the viewpoint, and the point
+* double-clicked ends up in the middle of the viewport with the orbit radius
+* equal to the distance to it. Panning or a camera-view button moves the pivot
+* again, exactly as they did before.
+*/
+function setOrbitPivot(world, duration = PIVOT_MOVE_MS) {
+	if (!cameraState.camera || !cameraState.controls) return;
+	deactivateFollowCam();
+	deactivateExprCamera();
+	if (cameraState.arcballInertiaId) {
+		cancelAnimationFrame(cameraState.arcballInertiaId);
+		cameraState.arcballInertiaId = null;
+	}
+	cameraState.arcballInertiaQ = null;
+	if (pivotMoveId !== null) {
+		cancelAnimationFrame(pivotMoveId);
+		pivotMoveId = null;
+	}
+	const start = cameraState.controls.target.clone();
+	const end = world.clone();
+	if (duration <= 0 || start.distanceTo(end) < 1e-6) {
+		cameraState.controls.target.copy(end);
+		cameraState.controls.update();
+		flashArcballBall();
+		return;
+	}
+	const startTime = performance.now();
+	function step(now) {
+		if (!cameraState.controls) {
+			pivotMoveId = null;
+			return;
+		}
+		const raw = Math.min((now - startTime) / duration, 1);
+		const t = raw < .5 ? 4 * raw * raw * raw : 1 - Math.pow(-2 * raw + 2, 3) / 2;
+		cameraState.controls.target.lerpVectors(start, end, t);
+		cameraState.controls.update();
+		showArcballBall();
+		if (raw < 1) {
+			pivotMoveId = requestAnimationFrame(step);
+			return;
+		}
+		pivotMoveId = null;
+		flashArcballBall();
+	}
+	pivotMoveId = requestAnimationFrame(step);
+}
 function setupRollDrag(container) {
 	if (!container) return;
 	const inputSurface = container;
@@ -4622,6 +4693,7 @@ function setupRollDrag(container) {
 			x: e.clientX
 		};
 		if (axisClass) document.body.classList.add(axisClass);
+		cancelBallFlash();
 		showArcballBall();
 		showGrabMarker(orbitDrag.pt);
 		document.body.classList.add("rotating");
@@ -17233,6 +17305,15 @@ function setupObjectPicker() {
 		_latticePop = true;
 		beginCellScrub(hit.bind, hit.row, hit.col, e.clientX, e.pointerId, _canvas);
 	}, { capture: true });
+	_canvas.addEventListener("dblclick", (e) => {
+		if (e.button !== 0) return;
+		const hit = pickAt(e.clientX, e.clientY);
+		if (!hit) return;
+		const point = hit.point ?? worldAnchor(hit.id, state.elementRegistry[hit.id]);
+		if (!point) return;
+		e.preventDefault();
+		setOrbitPivot(point);
+	});
 	_canvas.addEventListener("pointermove", onPointerMove, { passive: true });
 	_canvas.addEventListener("pointerleave", () => {
 		hideBtn();
