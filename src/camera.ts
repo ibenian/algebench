@@ -311,8 +311,13 @@ const ARCBALL_OUTSIDE_RADIANS = 1.2;
 /** Ceiling on the coast after a flick — about 170 degrees a second at 60fps. */
 const MAX_INERTIA_RADIANS_PER_FRAME = 0.05;
 
-/** Where the ball sits on screen (its centre and pixel radius). */
-function arcballScreenDisc(): { cx: number; cy: number; r: number } | null {
+/**
+ * Where the ball sits on screen (its centre and pixel radius). The canvas rect
+ * comes back with it: measuring it is the one layout read here, and callers
+ * that need the rect themselves would otherwise ask for it a second time on
+ * the pointer-move path.
+ */
+function arcballScreenDisc(): { cx: number; cy: number; r: number; rect: DOMRect } | null {
     if (!cameraState.renderer || !cameraState.camera || !cameraState.controls) return null;
     const rect = cameraState.renderer.domElement.getBoundingClientRect();
     // The ball is centred on the orbit pivot, not on the viewport, so grabbing
@@ -322,6 +327,7 @@ function arcballScreenDisc(): { cx: number; cy: number; r: number } | null {
         cx: rect.left + (ndc.x * 0.5 + 0.5) * rect.width,
         cy: rect.top  + (-ndc.y * 0.5 + 0.5) * rect.height,
         r: Math.min(rect.width, rect.height) * ARCBALL_RADIUS_FRACTION,
+        rect,
     };
 }
 
@@ -340,7 +346,7 @@ function arcballScreenDisc(): { cx: number; cy: number; r: number } | null {
 function screenToArcball(clientX: number, clientY: number): Vector3 {
     const disc = arcballScreenDisc();
     if (!disc || !cameraState.camera || !cameraState.renderer) return new THREE.Vector3(0, 0, 1);
-    const rect = cameraState.renderer.domElement.getBoundingClientRect();
+    const rect = disc.rect;
     const radius = arcballWorldRadius(disc.r);
     const dist = Math.max(
         cameraState.camera.position.distanceTo(cameraState.controls!.target), 1e-6);
@@ -665,8 +671,8 @@ let pivotFlashTimer: number | null = null;
 
 /** Show the ball and take it away again, unless a drag has claimed it. */
 function flashArcballBall(): void {
-    showArcballBall();
     cancelBallFlash();
+    showArcballBall();
     pivotFlashTimer = window.setTimeout(() => {
         pivotFlashTimer = null;
         // A drag that started during the flash owns the ball now; hiding it
@@ -693,6 +699,10 @@ function cancelBallFlash(): void {
  */
 export function setOrbitPivot(world: Vector3, duration: number = PIVOT_MOVE_MS): void {
     if (!cameraState.camera || !cameraState.controls) return;
+    // A flash still pending from the last double-click would fire part-way
+    // through this slide — `rotating` is not set, so it would dispose the ball
+    // and leave the next frame to build it again, a blink mid-animation.
+    cancelBallFlash();
     // Both of these drive the target every frame and would fight the slide.
     deactivateFollowCam();
     deactivateExprCamera();

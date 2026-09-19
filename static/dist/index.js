@@ -4342,7 +4342,12 @@ var ARCBALL_RADIUS_FRACTION = .14;
 var ARCBALL_OUTSIDE_RADIANS = 1.2;
 /** Ceiling on the coast after a flick — about 170 degrees a second at 60fps. */
 var MAX_INERTIA_RADIANS_PER_FRAME = .05;
-/** Where the ball sits on screen (its centre and pixel radius). */
+/**
+* Where the ball sits on screen (its centre and pixel radius). The canvas rect
+* comes back with it: measuring it is the one layout read here, and callers
+* that need the rect themselves would otherwise ask for it a second time on
+* the pointer-move path.
+*/
 function arcballScreenDisc() {
 	if (!cameraState.renderer || !cameraState.camera || !cameraState.controls) return null;
 	const rect = cameraState.renderer.domElement.getBoundingClientRect();
@@ -4350,7 +4355,8 @@ function arcballScreenDisc() {
 	return {
 		cx: rect.left + (ndc.x * .5 + .5) * rect.width,
 		cy: rect.top + (-ndc.y * .5 + .5) * rect.height,
-		r: Math.min(rect.width, rect.height) * ARCBALL_RADIUS_FRACTION
+		r: Math.min(rect.width, rect.height) * ARCBALL_RADIUS_FRACTION,
+		rect
 	};
 }
 /**
@@ -4368,7 +4374,7 @@ function arcballScreenDisc() {
 function screenToArcball(clientX, clientY) {
 	const disc = arcballScreenDisc();
 	if (!disc || !cameraState.camera || !cameraState.renderer) return new THREE.Vector3(0, 0, 1);
-	const rect = cameraState.renderer.domElement.getBoundingClientRect();
+	const rect = disc.rect;
 	const radius = arcballWorldRadius(disc.r);
 	const dist = Math.max(cameraState.camera.position.distanceTo(cameraState.controls.target), 1e-6);
 	const centre = new THREE.Vector3(0, 0, -dist);
@@ -4608,8 +4614,8 @@ var pivotMoveId = null;
 var pivotFlashTimer = null;
 /** Show the ball and take it away again, unless a drag has claimed it. */
 function flashArcballBall() {
-	showArcballBall();
 	cancelBallFlash();
+	showArcballBall();
 	pivotFlashTimer = window.setTimeout(() => {
 		pivotFlashTimer = null;
 		if (!document.body.classList.contains("rotating")) hideArcballBall();
@@ -4632,6 +4638,7 @@ function cancelBallFlash() {
 */
 function setOrbitPivot(world, duration = PIVOT_MOVE_MS) {
 	if (!cameraState.camera || !cameraState.controls) return;
+	cancelBallFlash();
 	deactivateFollowCam();
 	deactivateExprCamera();
 	if (cameraState.arcballInertiaId) {
