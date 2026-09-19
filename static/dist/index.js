@@ -4623,6 +4623,12 @@ function flashArcballBall() {
 		if (!document.body.classList.contains("rotating")) hideArcballBall();
 	}, PIVOT_FLASH_MS);
 }
+/** Stop a pivot slide mid-flight, leaving the target wherever it reached. */
+function cancelPivotMove() {
+	if (pivotMoveId === null) return;
+	cancelAnimationFrame(pivotMoveId);
+	pivotMoveId = null;
+}
 /** Drop a pending flash, so a drag's own ball outlives it. */
 function cancelBallFlash() {
 	if (pivotFlashTimer === null) return;
@@ -4648,10 +4654,7 @@ function setOrbitPivot(world, duration = PIVOT_MOVE_MS) {
 		cameraState.arcballInertiaId = null;
 	}
 	cameraState.arcballInertiaQ = null;
-	if (pivotMoveId !== null) {
-		cancelAnimationFrame(pivotMoveId);
-		pivotMoveId = null;
-	}
+	cancelPivotMove();
 	const start = cameraState.controls.target.clone();
 	const end = world.clone();
 	if (duration <= 0 || start.distanceTo(end) < 1e-6) {
@@ -4702,6 +4705,7 @@ function setupRollDrag(container) {
 			x: e.clientX
 		};
 		if (axisClass) document.body.classList.add(axisClass);
+		cancelPivotMove();
 		cancelBallFlash();
 		showArcballBall();
 		showGrabMarker(orbitDrag.pt);
@@ -16953,8 +16957,9 @@ function rayHits(clientX, clientY) {
 * types a raycaster cannot hit: points, lines, curves, axes.
 */
 function pivotPointAt(clientX, clientY) {
-	const map = buildMeshIdMap();
-	for (const h of rayHits(clientX, clientY)) {
+	const hits = rayHits(clientX, clientY);
+	const map = hits.length ? buildMeshIdMap() : null;
+	for (const h of hits) {
 		const id = map.get(h.object);
 		if (id && isHidden(id)) continue;
 		return h.point.clone();

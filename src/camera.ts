@@ -689,6 +689,13 @@ function flashArcballBall(): void {
     }, PIVOT_FLASH_MS);
 }
 
+/** Stop a pivot slide mid-flight, leaving the target wherever it reached. */
+function cancelPivotMove(): void {
+    if (pivotMoveId === null) return;
+    cancelAnimationFrame(pivotMoveId);
+    pivotMoveId = null;
+}
+
 /** Drop a pending flash, so a drag's own ball outlives it. */
 function cancelBallFlash(): void {
     if (pivotFlashTimer === null) return;
@@ -719,7 +726,7 @@ export function setOrbitPivot(world: Vector3, duration: number = PIVOT_MOVE_MS):
         cameraState.arcballInertiaId = null;
     }
     cameraState.arcballInertiaQ = null;
-    if (pivotMoveId !== null) { cancelAnimationFrame(pivotMoveId); pivotMoveId = null; }
+    cancelPivotMove();
 
     const start = cameraState.controls.target.clone();
     const end   = world.clone();
@@ -784,6 +791,11 @@ export function setupRollDrag(container: HTMLElement | null): void {
         cameraState.arcballInertiaQ = null;
         orbitDrag = { pt: screenToArcball(e.clientX, e.clientY), axis, x: e.clientX };
         if (axisClass) document.body.classList.add(axisClass);
+        // A pivot slide still running would keep lerping the target out from
+        // under this drag, which turns about that same target — the two would
+        // take turns moving the view. The drag wins; the pivot stops wherever
+        // it got to.
+        cancelPivotMove();
         cancelBallFlash();   // this drag owns the ball now
         showArcballBall();
         showGrabMarker(orbitDrag.pt);

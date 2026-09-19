@@ -294,9 +294,12 @@ function rayHits(clientX: number, clientY: number) {
  * types a raycaster cannot hit: points, lines, curves, axes.
  */
 function pivotPointAt(clientX: number, clientY: number): Vector3 | null {
-    const map = buildMeshIdMap();
-    for (const h of rayHits(clientX, clientY)) {
-        const id = map.get(h.object);
+    const hits = rayHits(clientX, clientY);
+    // Built only once there is something to name, so a double-click on empty
+    // space does not walk the whole registry on its way to the fallback.
+    const map = hits.length ? buildMeshIdMap() : null;
+    for (const h of hits) {
+        const id = map!.get(h.object);
         // A mesh switched off in the legend is not there to be aimed at, even
         // though three.js still counts it visible.
         if (id && isHidden(id)) continue;
