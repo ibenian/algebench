@@ -4351,6 +4351,7 @@ var MAX_INERTIA_RADIANS_PER_FRAME = .05;
 function arcballScreenDisc() {
 	if (!cameraState.renderer || !cameraState.camera || !cameraState.controls) return null;
 	const rect = cameraState.renderer.domElement.getBoundingClientRect();
+	if (rect.width <= 0 || rect.height <= 0) return null;
 	const ndc = cameraState.controls.target.clone().project(cameraState.camera);
 	return {
 		cx: rect.left + (ndc.x * .5 + .5) * rect.width,
@@ -4430,7 +4431,8 @@ function worldPerPixelAtTarget() {
 	return 2 * dist * Math.tan(fov / 2) / h;
 }
 /**
-* World radius of a ball whose *silhouette* is `pixels` wide on screen.
+* World radius of a ball whose *silhouette* has a radius of `pixels` on screen
+* (a radius, not a width — every caller passes `disc.r`).
 *
 * Not `pixels * worldPerPixel`: that measures across the plane through the
 * pivot, while a perspective camera sees a sphere's silhouette from its

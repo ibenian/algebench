@@ -320,6 +320,13 @@ const MAX_INERTIA_RADIANS_PER_FRAME = 0.05;
 function arcballScreenDisc(): { cx: number; cy: number; r: number; rect: DOMRect } | null {
     if (!cameraState.renderer || !cameraState.camera || !cameraState.controls) return null;
     const rect = cameraState.renderer.domElement.getBoundingClientRect();
+    // A collapsed canvas has no disc, and saying so here is what keeps the
+    // divisions in screenToArcball finite. A drag cannot start on a 0x0
+    // canvas, but it can be in progress when one collapses — the move handler
+    // is on `window`, not the canvas — and a NaN quaternion from that frame
+    // would go straight into the camera, where nothing but a reload gets it
+    // back out.
+    if (rect.width <= 0 || rect.height <= 0) return null;
     // The ball is centred on the orbit pivot, not on the viewport, so grabbing
     // a point on it turns the same point that the rotation actually swings.
     const ndc = cameraState.controls.target.clone().project(cameraState.camera as unknown as Camera);
@@ -433,7 +440,8 @@ function worldPerPixelAtTarget(): number {
 }
 
 /**
- * World radius of a ball whose *silhouette* is `pixels` wide on screen.
+ * World radius of a ball whose *silhouette* has a radius of `pixels` on screen
+ * (a radius, not a width — every caller passes `disc.r`).
  *
  * Not `pixels * worldPerPixel`: that measures across the plane through the
  * pivot, while a perspective camera sees a sphere's silhouette from its
