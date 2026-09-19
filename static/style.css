@@ -835,7 +835,7 @@ body.rotating-axis-y, body.rotating-axis-y * { cursor: ew-resize !important; }
 /* Roll has no single direction to point at — it wants the pointer swung
    around the pivot — so it gets a circular arrow rather than a resize cursor. */
 body.rotating-axis-z, body.rotating-axis-z * {
-    cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'><g fill='none' stroke='%23000' stroke-width='4' stroke-linecap='round'><path d='M18 12a6 6 0 1 1-2.2-4.6'/><path d='M12 3.6l4 2.6-3.4 3'/></g><g fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round'><path d='M18 12a6 6 0 1 1-2.2-4.6'/><path d='M12 3.6l4 2.6-3.4 3'/></g></svg>") 12 12, grabbing !important;
+    cursor: url("data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='24'%20height='24'%20viewBox='0%200%2024%2024'%3E%3Cg%20fill='none'%20stroke='%23000'%20stroke-width='4'%20stroke-linecap='round'%3E%3Cpath%20d='M18%2012a6%206%200%201%201-2.2-4.6'/%3E%3Cpath%20d='M12%203.6l4%202.6-3.4%203'/%3E%3C/g%3E%3Cg%20fill='none'%20stroke='%23fff'%20stroke-width='2'%20stroke-linecap='round'%3E%3Cpath%20d='M18%2012a6%206%200%201%201-2.2-4.6'/%3E%3Cpath%20d='M12%203.6l4%202.6-3.4%203'/%3E%3C/g%3E%3C/svg%3E") 12 12, grabbing !important;
 }
 
 /* Camera Buttons */
