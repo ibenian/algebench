@@ -16927,6 +16927,42 @@ function labelHitTest(clientX, clientY) {
 	}
 	return null;
 }
+/** Every visible mesh the ray meets, nearest first. The one raycast both the
+*  Ask-AI pick and the pivot are built on. */
+function rayHits(clientX, clientY) {
+	if (!state.camera || !_canvas || !_raycaster) return [];
+	const rect = _canvas.getBoundingClientRect();
+	if (!rect.width || !rect.height) return [];
+	const ndc = {
+		x: (clientX - rect.left) / rect.width * 2 - 1,
+		y: -((clientY - rect.top) / rect.height) * 2 + 1
+	};
+	_raycaster.setFromCamera(ndc, state.camera);
+	return _raycaster.intersectObjects(pickableMeshes(), false);
+}
+/**
+* Where a double-click should put the orbit pivot: the nearest point of solid
+* geometry under the cursor.
+*
+* Deliberately wider than `pickAt`. The Ask-AI button only offers itself for
+* elements an author opted in (`prompt`) or that carry a label, which is the
+* right bar for "there is something to say about this" but the wrong one for
+* "turn the view about this" — on a dense scene most of what you would aim at
+* is neither. Anything the ray meets will do, and only when it meets nothing
+* does this fall back to the named-element path, which is what covers the
+* types a raycaster cannot hit: points, lines, curves, axes.
+*/
+function pivotPointAt(clientX, clientY) {
+	const map = buildMeshIdMap();
+	for (const h of rayHits(clientX, clientY)) {
+		const id = map.get(h.object);
+		if (id && isHidden(id)) continue;
+		return h.point.clone();
+	}
+	const hit = pickAt(clientX, clientY);
+	if (!hit) return null;
+	return hit.point ?? worldAnchor(hit.id, state.elementRegistry[hit.id]);
+}
 /** Resolve the element under a client-space point: raycast first, then fall back
 *  to the nearest projected anchor within PICK_PX. Returns `{ id, point }` (point
 *  = the world hit location for a raycast hit, so the button can appear right
@@ -16944,12 +16980,7 @@ function pickAt(clientX, clientY) {
 		point: null,
 		labelEl: lh.el
 	};
-	const ndc = {
-		x: localX / rect.width * 2 - 1,
-		y: -(localY / rect.height * 2 - 1)
-	};
-	_raycaster.setFromCamera(ndc, state.camera);
-	const hits = _raycaster.intersectObjects(pickableMeshes(), false);
+	const hits = rayHits(clientX, clientY);
 	if (hits.length) {
 		const map = buildMeshIdMap();
 		for (const h of hits) {
@@ -17316,9 +17347,7 @@ function setupObjectPicker() {
 	}, { capture: true });
 	_canvas.addEventListener("dblclick", (e) => {
 		if (e.button !== 0) return;
-		const hit = pickAt(e.clientX, e.clientY);
-		if (!hit) return;
-		const point = hit.point ?? worldAnchor(hit.id, state.elementRegistry[hit.id]);
+		const point = pivotPointAt(e.clientX, e.clientY);
 		if (!point) return;
 		e.preventDefault();
 		setOrbitPivot(point);

@@ -265,6 +265,48 @@ function labelHitTest(clientX: number, clientY: number): { id: string; el: HTMLE
     return null;
 }
 
+/** Every visible mesh the ray meets, nearest first. The one raycast both the
+ *  Ask-AI pick and the pivot are built on. */
+function rayHits(clientX: number, clientY: number) {
+    if (!state.camera || !_canvas || !_raycaster) return [];
+    const rect = _canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return [];
+    const ndc = {
+        x:  ((clientX - rect.left) / rect.width) * 2 - 1,
+        y: -((clientY - rect.top) / rect.height) * 2 + 1,
+    };
+    // `as unknown as Vector2` — three only reads `.x`/`.y` off `coords`;
+    // the plain object literal is exactly what the JavaScript passed.
+    _raycaster.setFromCamera(ndc as unknown as Vector2, state.camera);
+    return _raycaster.intersectObjects(pickableMeshes(), false);
+}
+
+/**
+ * Where a double-click should put the orbit pivot: the nearest point of solid
+ * geometry under the cursor.
+ *
+ * Deliberately wider than `pickAt`. The Ask-AI button only offers itself for
+ * elements an author opted in (`prompt`) or that carry a label, which is the
+ * right bar for "there is something to say about this" but the wrong one for
+ * "turn the view about this" — on a dense scene most of what you would aim at
+ * is neither. Anything the ray meets will do, and only when it meets nothing
+ * does this fall back to the named-element path, which is what covers the
+ * types a raycaster cannot hit: points, lines, curves, axes.
+ */
+function pivotPointAt(clientX: number, clientY: number): Vector3 | null {
+    const map = buildMeshIdMap();
+    for (const h of rayHits(clientX, clientY)) {
+        const id = map.get(h.object);
+        // A mesh switched off in the legend is not there to be aimed at, even
+        // though three.js still counts it visible.
+        if (id && isHidden(id)) continue;
+        return h.point.clone();
+    }
+    const hit = pickAt(clientX, clientY);
+    if (!hit) return null;
+    return hit.point ?? worldAnchor(hit.id, state.elementRegistry[hit.id]);
+}
+
 /** Resolve the element under a client-space point: raycast first, then fall back
  *  to the nearest projected anchor within PICK_PX. Returns `{ id, point }` (point
  *  = the world hit location for a raycast hit, so the button can appear right
@@ -283,12 +325,7 @@ function pickAt(clientX: number, clientY: number): PickHit | null {
     if (lh) return { id: lh.id, point: null, labelEl: lh.el };
 
     // 2) Raycast the real meshes (true geometry + occlusion ordering).
-    const ndc = { x: (localX / rect.width) * 2 - 1, y: -((localY / rect.height) * 2 - 1) };
-    // `as unknown as Vector2` — three only reads `.x`/`.y` off `coords`;
-    // the plain object literal is exactly what the JavaScript passed.
-    // `_raycaster!` — setupObjectPicker creates it before wiring this listener.
-    _raycaster!.setFromCamera(ndc as unknown as Vector2, state.camera);
-    const hits = _raycaster!.intersectObjects(pickableMeshes(), false);
+    const hits = rayHits(clientX, clientY);
     if (hits.length) {
         const map = buildMeshIdMap();
         for (const h of hits) {
@@ -685,16 +722,12 @@ export function setupObjectPicker() {
         _latticePop = true;
         beginCellScrub(hit.bind, hit.row, hit.col, e.clientX, e.pointerId, _canvas!);
     }, { capture: true });
-    // Double-click an object to turn the view about it from then on. The hit
-    // point is where the ray actually met the geometry, so double-clicking the
-    // far end of a long vector pivots there rather than at its anchor; the
-    // screen-anchor fallback (points, lines, curves, axes — the types a
-    // raycaster cannot hit) has only the anchor to offer.
+    // Double-click an object to turn the view about it from then on. The pivot
+    // goes where the ray actually met the geometry, so double-clicking the far
+    // end of a long vector pivots there rather than at its anchor.
     _canvas.addEventListener('dblclick', (e) => {
         if (e.button !== 0) return;
-        const hit = pickAt(e.clientX, e.clientY);
-        if (!hit) return;
-        const point = hit.point ?? worldAnchor(hit.id, state.elementRegistry[hit.id]);
+        const point = pivotPointAt(e.clientX, e.clientY);
         if (!point) return;
         e.preventDefault();
         setOrbitPivot(point);
