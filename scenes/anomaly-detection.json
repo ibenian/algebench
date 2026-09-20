@@ -147,7 +147,7 @@
                   "labelExpr": "toFixed(value, 0)"
                 }
               ],
-              "label": "192 measurements",
+              "label": "192 measurements · red = planted",
               "prompt": "192 two-dimensional measurements. 180 are standard normal; 12 were drawn uniformly over a wide square and rejected if they landed inside radius 3. The student is being asked to eyeball the outliers before any method is introduced, so do NOT name which indices are planted unless they ask directly. If they ask how they could possibly be sure, that is the point of the scene: they cannot, and neither can an algorithm — what an algorithm produces is a ranking, and the cut is a decision someone makes."
             }
           ],
@@ -171,7 +171,7 @@
           "prompt": "The twelve planted points are revealed. Keep the emphasis on what makes them POINT anomalies -- each is extreme considered alone, so no notion of neighbourhood or sequence is needed. This is the least interesting case and the one every tutorial stops at. The contamination rate here is 6.3%, which is enormous; real rates are 0.01% to 1%, and scene 6 is about what that gap does to precision.",
           "add": [
             {
-              "id": "cloud-planted",
+              "id": "cloud",
               "type": "chart",
               "origin": [
                 1.5,
@@ -192,6 +192,14 @@
               ],
               "series": [
                 {
+                  "xExpr": "adX('blob', i)",
+                  "yExpr": "adY('blob', i)",
+                  "n": 192,
+                  "kind": "points",
+                  "color": "#78909c",
+                  "label": "192 measurements"
+                },
+                {
                   "xExpr": "adLabel('blob', i) > 0 ? adX('blob', i) : 99",
                   "yExpr": "adLabel('blob', i) > 0 ? adY('blob', i) : 99",
                   "n": 192,
@@ -202,17 +210,17 @@
               ],
               "axes": [
                 {
-                  "title": "",
+                  "title": "$x_1$",
                   "ticks": 5,
                   "labelExpr": "toFixed(value, 0)"
                 },
                 {
-                  "title": "",
+                  "title": "$x_2$",
                   "ticks": 5,
                   "labelExpr": "toFixed(value, 0)"
                 }
               ],
-              "label": "planted point anomalies",
+              "label": "192 measurements · red = planted",
               "prompt": "The same chart area, overlaid, showing only the twelve planted points. The trick that hides the other 180 is worth explaining if asked: the series returns the sentinel 99 for any point whose label is 0, and 99 falls outside the chart's FIXED domain, so the renderer drops it. A points series outside a fixed domain is not drawn. Emphasise that these twelve are extreme one at a time — that is what makes them POINT anomalies, and it is the least interesting kind."
             }
           ],
@@ -612,7 +620,7 @@
                   "labelExpr": "toFixed(value, 0)"
                 }
               ],
-              "label": "60 readings",
+              "label": "60 readings · blue kσ · green MAD · amber Tukey",
               "prompt": "Sixty readings drawn from N(50, 3). The contamination slider replaces up to eight of them, at fixed slots 7, 23, 41, 12, 55, 30, 48 and 3 in that order, with the fixed values 72, 78, 69, 85, 74, 92, 67 and 88. Fixed order matters: raising the slider adds one outlier and disturbs none of the ones already there, so the student can attribute every change to the one reading they just added."
             }
           ],
@@ -644,7 +652,7 @@
           "prompt": "Introduce the k-sigma rule and its normal-distribution calibration. Two things to land: (1) k = 3 corresponds to 0.27% two-sided ONLY under normality, and most operational metrics are heavy-tailed, so the practical false-positive rate is much higher than the budget implies; (2) the rule is still working correctly here, which is the necessary setup for it failing in the next step. Do not jump ahead to masking yet.",
           "add": [
             {
-              "id": "z-fences",
+              "id": "readings",
               "type": "chart",
               "origin": [
                 1.5,
@@ -665,14 +673,12 @@
               ],
               "series": [
                 {
-                  "y": [
-                    0
-                  ],
-                  "x": [
-                    0
-                  ],
-                  "color": "#42a5f5",
-                  "opacity": 0
+                  "xExpr": "i",
+                  "yExpr": "adV(i, contam)",
+                  "n": 60,
+                  "kind": "points",
+                  "color": "#78909c",
+                  "label": "60 readings"
                 }
               ],
               "hlines": [
@@ -694,13 +700,17 @@
               ],
               "axes": [
                 {
-                  "title": ""
+                  "title": "reading",
+                  "ticks": 5,
+                  "labelExpr": "toFixed(value, 0)"
                 },
                 {
-                  "title": ""
+                  "title": "value",
+                  "ticks": 7,
+                  "labelExpr": "toFixed(value, 0)"
                 }
               ],
-              "label": "mean ± k·sd",
+              "label": "60 readings · blue kσ · green MAD · amber Tukey",
               "prompt": "The z-rule's fences: mean plus and minus k standard deviations, with the mean itself drawn faintly between them. Blue is the colour of the non-robust family throughout this lesson. Both fences and the centre line are live expressions, so they move the instant either slider moves."
             }
           ],
@@ -724,7 +734,7 @@
           "prompt": "The core failure. Get the student to drag the slider themselves rather than reading the numbers off the panel. The mechanism must be stated as a loop, not as a fact: an outlier inflates s, the fence is defined in terms of s, so the fence moves out past the outlier. At contam = 8 the mean is 53.50 and the sd is 10.63, so the upper 3-sigma fence sits at about 85.4, and readings 7, 12, 23, 41, 48 and 55 (values 72, 85, 78, 69, 67, 74) all fall below it -- six of the eight planted readings, missed. Only 30 and 3 (values 92 and 88) survive the fence. This is masking. Swamping is the mirror image and is worth naming: the same inflation can push the LOWER fence down past good readings, which on other datasets produces false positives at the opposite tail.",
           "add": [
             {
-              "id": "z-flagged",
+              "id": "readings",
               "type": "chart",
               "origin": [
                 1.5,
@@ -745,6 +755,14 @@
               ],
               "series": [
                 {
+                  "xExpr": "i",
+                  "yExpr": "adV(i, contam)",
+                  "n": 60,
+                  "kind": "points",
+                  "color": "#78909c",
+                  "label": "60 readings"
+                },
+                {
                   "xExpr": "abs(adZv(i, contam)) > kz ? i : 999",
                   "yExpr": "abs(adZv(i, contam)) > kz ? adV(i, contam) : 999",
                   "n": 60,
@@ -760,15 +778,36 @@
                   "color": "#ef5350"
                 }
               ],
-              "axes": [
+              "hlines": [
                 {
-                  "title": ""
+                  "yExpr": "adFenceZ(1, kz, contam)",
+                  "color": "#42a5f5",
+                  "opacity": 0.9
                 },
                 {
-                  "title": ""
+                  "yExpr": "adFenceZ(-1, kz, contam)",
+                  "color": "#42a5f5",
+                  "opacity": 0.9
+                },
+                {
+                  "yExpr": "adMeanV(contam)",
+                  "color": "#42a5f5",
+                  "opacity": 0.35
                 }
               ],
-              "label": "flagged by the z-rule",
+              "axes": [
+                {
+                  "title": "reading",
+                  "ticks": 5,
+                  "labelExpr": "toFixed(value, 0)"
+                },
+                {
+                  "title": "value",
+                  "ticks": 7,
+                  "labelExpr": "toFixed(value, 0)"
+                }
+              ],
+              "label": "60 readings · blue kσ · green MAD · amber Tukey",
               "prompt": "Two overlays on the same plot area. Blue points are readings the k-sigma rule flags. RED points are planted outliers the rule MISSED -- the ones inside their own fence. At contamination 8 there are six red points and two blue. Both series hide their non-members with a sentinel of 999, which falls outside the chart's fixed domain and is therefore not drawn."
             }
           ],
@@ -800,7 +839,7 @@
           "prompt": "The fix, and the derivation of 1.4826. Emphasise that nothing about the RULE changed -- it is still 'flag anything more than k scale units from the centre'. Only the estimators changed, and that was enough. The breakdown-point framing is the general principle: the mean and sd have breakdown 0, the median and MAD have breakdown 1/2. The proof panel derives 1.4826 = 1/Phi^{-1}(0.75) from the definition of MAD under normality, and argues both breakdown points. If the student asks about other robust scale estimators, Qn and Sn (Rousseeuw and Croux) are more efficient than MAD at the same breakdown point, and trimmed or Winsorized statistics are the cruder cousins.",
           "add": [
             {
-              "id": "mad-fences",
+              "id": "readings",
               "type": "chart",
               "origin": [
                 1.5,
@@ -821,17 +860,45 @@
               ],
               "series": [
                 {
-                  "y": [
-                    0
-                  ],
-                  "x": [
-                    0
-                  ],
-                  "color": "#66bb6a",
-                  "opacity": 0
+                  "xExpr": "i",
+                  "yExpr": "adV(i, contam)",
+                  "n": 60,
+                  "kind": "points",
+                  "color": "#78909c",
+                  "label": "60 readings"
+                },
+                {
+                  "xExpr": "abs(adZv(i, contam)) > kz ? i : 999",
+                  "yExpr": "abs(adZv(i, contam)) > kz ? adV(i, contam) : 999",
+                  "n": 60,
+                  "kind": "points",
+                  "color": "#42a5f5",
+                  "label": "flagged by the z-rule"
+                },
+                {
+                  "xExpr": "adPlanted(i, contam) > 0 ? (abs(adZv(i, contam)) <= kz ? i : 999) : 999",
+                  "yExpr": "adPlanted(i, contam) > 0 ? (abs(adZv(i, contam)) <= kz ? adV(i, contam) : 999) : 999",
+                  "n": 60,
+                  "kind": "points",
+                  "color": "#ef5350"
                 }
               ],
               "hlines": [
+                {
+                  "yExpr": "adFenceZ(1, kz, contam)",
+                  "color": "#42a5f5",
+                  "opacity": 0.9
+                },
+                {
+                  "yExpr": "adFenceZ(-1, kz, contam)",
+                  "color": "#42a5f5",
+                  "opacity": 0.9
+                },
+                {
+                  "yExpr": "adMeanV(contam)",
+                  "color": "#42a5f5",
+                  "opacity": 0.35
+                },
                 {
                   "yExpr": "adFenceM(1, kz, contam)",
                   "color": "#66bb6a",
@@ -858,13 +925,17 @@
               ],
               "axes": [
                 {
-                  "title": ""
+                  "title": "reading",
+                  "ticks": 5,
+                  "labelExpr": "toFixed(value, 0)"
                 },
                 {
-                  "title": ""
+                  "title": "value",
+                  "ticks": 7,
+                  "labelExpr": "toFixed(value, 0)"
                 }
               ],
-              "label": "median ± k·1.4826·MAD",
+              "label": "60 readings · blue kσ · green MAD · amber Tukey",
               "prompt": "The robust fences, in green. The band between them is the region the modified z-score calls normal. Compare its width against the blue fences at the same k: at contamination 8 the green band is about 23 units wide and the blue one about 64. Green is the colour of the robust family throughout the lesson."
             }
           ],
@@ -987,7 +1058,7 @@
           ],
           "add": [
             {
-              "id": "tukey-fences",
+              "id": "readings",
               "type": "chart",
               "origin": [
                 1.5,
@@ -1008,17 +1079,60 @@
               ],
               "series": [
                 {
-                  "y": [
-                    0
-                  ],
-                  "x": [
-                    0
-                  ],
-                  "color": "#ffa726",
-                  "opacity": 0
+                  "xExpr": "i",
+                  "yExpr": "adV(i, contam)",
+                  "n": 60,
+                  "kind": "points",
+                  "color": "#78909c",
+                  "label": "60 readings"
+                },
+                {
+                  "xExpr": "abs(adZv(i, contam)) > kz ? i : 999",
+                  "yExpr": "abs(adZv(i, contam)) > kz ? adV(i, contam) : 999",
+                  "n": 60,
+                  "kind": "points",
+                  "color": "#42a5f5",
+                  "label": "flagged by the z-rule"
+                },
+                {
+                  "xExpr": "adPlanted(i, contam) > 0 ? (abs(adZv(i, contam)) <= kz ? i : 999) : 999",
+                  "yExpr": "adPlanted(i, contam) > 0 ? (abs(adZv(i, contam)) <= kz ? adV(i, contam) : 999) : 999",
+                  "n": 60,
+                  "kind": "points",
+                  "color": "#ef5350"
                 }
               ],
               "hlines": [
+                {
+                  "yExpr": "adFenceZ(1, kz, contam)",
+                  "color": "#42a5f5",
+                  "opacity": 0.9
+                },
+                {
+                  "yExpr": "adFenceZ(-1, kz, contam)",
+                  "color": "#42a5f5",
+                  "opacity": 0.9
+                },
+                {
+                  "yExpr": "adMeanV(contam)",
+                  "color": "#42a5f5",
+                  "opacity": 0.35
+                },
+                {
+                  "yExpr": "adFenceM(1, kz, contam)",
+                  "color": "#66bb6a",
+                  "opacity": 0.9
+                },
+                {
+                  "yExpr": "adFenceM(-1, kz, contam)",
+                  "color": "#66bb6a",
+                  "opacity": 0.9
+                },
+                {
+                  "yExpr": "adMedV(contam)",
+                  "color": "#66bb6a",
+                  "opacity": 0.35
+                },
                 {
                   "yExpr": "adFenceT(1, 1.5, contam)",
                   "color": "#ffa726",
@@ -1030,15 +1144,27 @@
                   "opacity": 0.8
                 }
               ],
-              "axes": [
+              "bands": [
                 {
-                  "title": ""
-                },
-                {
-                  "title": ""
+                  "loExpr": "adFenceM(-1, kz, contam)",
+                  "hiExpr": "adFenceM(1, kz, contam)",
+                  "color": "#66bb6a",
+                  "opacity": 0.08
                 }
               ],
-              "label": "Tukey's fences, Q ± 1.5·IQR",
+              "axes": [
+                {
+                  "title": "reading",
+                  "ticks": 5,
+                  "labelExpr": "toFixed(value, 0)"
+                },
+                {
+                  "title": "value",
+                  "ticks": 7,
+                  "labelExpr": "toFixed(value, 0)"
+                }
+              ],
+              "label": "60 readings · blue kσ · green MAD · amber Tukey",
               "prompt": "Tukey's fences in amber. They sit closer in than the MAD fences at k = 3 because 1.5 IQR is about 2.7 sigma under normality, not 3. Quartiles have breakdown point 1/4, so these hold at 8 of 60 contamination but would break above 25%."
             }
           ],
@@ -2569,7 +2695,7 @@
           "prompt": "The failure, and the student should verify it by dragging tau rather than taking it on faith. The exact numbers at k = 20: tight cluster kNN median 0.27 with 95th percentile 0.53, loose cluster median 1.30, strays 1.22, 2.97, 1.84. Since 1.22 < 1.30, catching the quietest stray requires a threshold below the loose cluster's median. The diagnosis matters more than the failure: the score is an ABSOLUTE distance, but what makes a point anomalous is how its distance compares to its NEIGHBOURS' distances. Every fix in this scene is a way of making the score relative.",
           "add": [
             {
-              "id": "cloud-global-flag",
+              "id": "cloud-global",
               "type": "chart",
               "origin": [
                 1.5,
@@ -2590,6 +2716,14 @@
               ],
               "series": [
                 {
+                  "xExpr": "adX('dense', i)",
+                  "yExpr": "adY('dense', i)",
+                  "n": 153,
+                  "kind": "points",
+                  "color": "#78909c",
+                  "label": "153 points, two densities"
+                },
+                {
                   "xExpr": "adKnn('dense', i, k) > tau ? adX('dense', i) : 99",
                   "yExpr": "adKnn('dense', i, k) > tau ? adY('dense', i) : 99",
                   "n": 153,
@@ -2607,17 +2741,21 @@
               ],
               "axes": [
                 {
-                  "title": ""
+                  "title": "$x_1$",
+                  "ticks": 5,
+                  "labelExpr": "toFixed(value, 0)"
                 },
                 {
-                  "title": ""
+                  "title": "$x_2$",
+                  "ticks": 5,
+                  "labelExpr": "toFixed(value, 0)"
                 }
               ],
-              "label": "flagged by kNN distance > τ",
+              "label": "153 points, two densities",
               "prompt": "Amber marks every point the global rule flags; red marks the three planted strays regardless of the rule's verdict. When amber swallows the whole right-hand cluster while a red point sits unflagged, the student is looking at the exact failure the scene is about."
             },
             {
-              "id": "knn-scores",
+              "id": "scores",
               "type": "chart",
               "origin": [
                 12.5,
@@ -2704,7 +2842,67 @@
           "prompt": "The fix. Make sure the student sees WHY the ratio works -- the denominator is the point's own density and the numerator is its neighbourhood's, so a uniformly sparse region cancels to 1 while a sparse point in a dense region does not. The scale-free property is the prize: LOF is dimensionless and comparable between regions, kNN distance is neither. Honest limits, which the step text does not have room for: below about k = 10 LOF is noisy because lrd is estimated from too few neighbours; above the size of the smallest genuine cluster it stops being local and that cluster starts scoring as anomalous wholesale; and in high dimension it degrades exactly like kNN, for the reason the last step measures. Let the student drag k to the extremes and watch both failures happen.",
           "add": [
             {
-              "id": "lof-scores",
+              "id": "cloud-global",
+              "type": "chart",
+              "origin": [
+                1.5,
+                0.5,
+                0
+              ],
+              "size": [
+                8,
+                6
+              ],
+              "xDomain": [
+                -5,
+                5
+              ],
+              "yDomain": [
+                -4,
+                4
+              ],
+              "series": [
+                {
+                  "xExpr": "adX('dense', i)",
+                  "yExpr": "adY('dense', i)",
+                  "n": 153,
+                  "kind": "points",
+                  "color": "#78909c",
+                  "label": "153 points, two densities"
+                },
+                {
+                  "xExpr": "adLof('dense', i, k) > 2 ? adX('dense', i) : 99",
+                  "yExpr": "adLof('dense', i, k) > 2 ? adY('dense', i) : 99",
+                  "n": 153,
+                  "kind": "points",
+                  "color": "#66bb6a",
+                  "label": "flagged by LOF > 2"
+                },
+                {
+                  "xExpr": "adLabel('dense', i) > 0 ? adX('dense', i) : 99",
+                  "yExpr": "adLabel('dense', i) > 0 ? adY('dense', i) : 99",
+                  "n": 153,
+                  "kind": "points",
+                  "color": "#ef5350"
+                }
+              ],
+              "axes": [
+                {
+                  "title": "$x_1$",
+                  "ticks": 5,
+                  "labelExpr": "toFixed(value, 0)"
+                },
+                {
+                  "title": "$x_2$",
+                  "ticks": 5,
+                  "labelExpr": "toFixed(value, 0)"
+                }
+              ],
+              "label": "153 points, two densities",
+              "prompt": "The left plot now shows LOF's verdict instead of the global rule's: green rings exactly the three red points. The element id is reused deliberately so the student sees the same plot area change its mind, rather than a fourth chart appearing."
+            },
+            {
+              "id": "scores",
               "type": "chart",
               "origin": [
                 12.5,
@@ -2774,54 +2972,6 @@
               ],
               "label": "LOF · grey line at 1 · gold threshold at 2",
               "prompt": "The same 153 points, scored by LOF instead of distance. The step at index 90 that dominated the kNN plot is GONE -- both clusters sit in the green band around 1. The three red points are far above the gold line at 2. If the student drags k below about 8, watch the band widen and false positives appear; above about 40 the tight cluster's own structure starts to matter."
-            },
-            {
-              "id": "cloud-global-flag",
-              "type": "chart",
-              "origin": [
-                1.5,
-                0.5,
-                0
-              ],
-              "size": [
-                8,
-                6
-              ],
-              "xDomain": [
-                -5,
-                5
-              ],
-              "yDomain": [
-                -4,
-                4
-              ],
-              "series": [
-                {
-                  "xExpr": "adLof('dense', i, k) > 2 ? adX('dense', i) : 99",
-                  "yExpr": "adLof('dense', i, k) > 2 ? adY('dense', i) : 99",
-                  "n": 153,
-                  "kind": "points",
-                  "color": "#66bb6a",
-                  "label": "flagged by LOF > 2"
-                },
-                {
-                  "xExpr": "adLabel('dense', i) > 0 ? adX('dense', i) : 99",
-                  "yExpr": "adLabel('dense', i) > 0 ? adY('dense', i) : 99",
-                  "n": 153,
-                  "kind": "points",
-                  "color": "#ef5350"
-                }
-              ],
-              "axes": [
-                {
-                  "title": ""
-                },
-                {
-                  "title": ""
-                }
-              ],
-              "label": "flagged by LOF > 2",
-              "prompt": "The left plot now shows LOF's verdict instead of the global rule's: green rings exactly the three red points. The element id is reused deliberately so the student sees the same plot area change its mind, rather than a fourth chart appearing."
             }
           ],
           "info": [
@@ -2852,13 +3002,7 @@
           "prompt": "Mahalanobis, and the reversal. The two marked points are indices 160 (along the ridge, Euclidean 4.58, Mahalanobis 2.28) and 161 (across the ridge, Euclidean 1.98, Mahalanobis 3.98). The drawn ellipse is the exact locus of Mahalanobis distance 2, computed from the eigen-decomposition of the sample covariance -- scripts/check_anomaly_domain.py verifies that every drawn vertex has Mahalanobis distance exactly 2. The intuition to offer: Mahalanobis is Euclidean distance after whitening, i.e. after rescaling each principal direction by its own standard deviation, so it measures 'how many sigmas, in the direction that matters'. The contamination caveat is not optional -- the covariance is estimated from the same contaminated data, and MCD exists because of it.",
           "remove": [
             {
-              "id": "cloud-global-flag"
-            },
-            {
-              "id": "lof-scores"
-            },
-            {
-              "id": "knn-scores"
+              "id": "scores"
             },
             {
               "id": "cloud-global"
@@ -3408,7 +3552,7 @@
           ],
           "add": [
             {
-              "id": "ring-flagged",
+              "id": "ring",
               "type": "chart",
               "origin": [
                 12.0,
@@ -3429,6 +3573,33 @@
               ],
               "series": [
                 {
+                  "xExpr": "adX('ring', i)",
+                  "yExpr": "adY('ring', i)",
+                  "n": 208,
+                  "kind": "points",
+                  "color": "#78909c",
+                  "label": "an annulus, with points in the hole"
+                },
+                {
+                  "xExpr": "adLabel('ring', i) > 0 ? adX('ring', i) : 99",
+                  "yExpr": "adLabel('ring', i) > 0 ? adY('ring', i) : 99",
+                  "n": 208,
+                  "kind": "points",
+                  "color": "#ef5350"
+                },
+                {
+                  "xExpr": "adKdeB('ring', i / (n - 1) * 6.283185307179586, nu, gamma, 0, 0)",
+                  "yExpr": "adKdeB('ring', i / (n - 1) * 6.283185307179586, nu, gamma, 1, 0)",
+                  "n": 97,
+                  "color": "#ab47bc"
+                },
+                {
+                  "xExpr": "adKdeB('ring', i / (n - 1) * 6.283185307179586, nu, gamma, 0, 1)",
+                  "yExpr": "adKdeB('ring', i / (n - 1) * 6.283185307179586, nu, gamma, 1, 1)",
+                  "n": 97,
+                  "color": "#ab47bc"
+                },
+                {
                   "xExpr": "adKdeIn('ring', i, nu, gamma) < 1 ? adX('ring', i) : 99",
                   "yExpr": "adKdeIn('ring', i, nu, gamma) < 1 ? adY('ring', i) : 99",
                   "n": 208,
@@ -3439,13 +3610,17 @@
               ],
               "axes": [
                 {
-                  "title": ""
+                  "title": "$x_1$",
+                  "ticks": 5,
+                  "labelExpr": "toFixed(value, 0)"
                 },
                 {
-                  "title": ""
+                  "title": "$x_2$",
+                  "ticks": 5,
+                  "labelExpr": "toFixed(value, 0)"
                 }
               ],
-              "label": "rejected by the boundary",
+              "label": "annulus · red = planted · purple = the ν level set",
               "prompt": "Amber rings every training point the boundary rejects. Two things to watch while dragging: the COUNT stays at about nu times 208 no matter what gamma does, because nu is a quantile; but WHICH points are rejected changes completely. At large gamma the amber points scatter over the whole annulus rather than concentrating on the planted ones -- the detector is rejecting ordinary ring points that happen to sit in small local gaps."
             }
           ],
@@ -3469,13 +3644,10 @@
           "prompt": "Closing step. The single rule -- only average comparable scales -- is the most portable thing in the scene, and the failure it prevents is concrete: raw-averaging a kNN distance in feature units with an isolation score in (0,1) lets the distance decide every vote. Rank averaging is the recommended default because it is invariant to any monotone rescaling and anomaly scores are badly skewed. Name the variants if asked: maximum of standardised scores for recall, feature bagging (average of maximum over random feature subsets) for high dimension, LSCP for per-point detector selection. The forward hinge is that all five detectors output a SCORE and none of them outputs a decision, which is what scene 6 is about -- though scene 5 comes first and asks whether a learned representation can beat all of them.",
           "remove": [
             {
-              "id": "iso-field"
-            },
-            {
-              "id": "ring-flagged"
-            },
-            {
               "id": "ring"
+            },
+            {
+              "id": "iso-field"
             }
           ],
           "add": [
