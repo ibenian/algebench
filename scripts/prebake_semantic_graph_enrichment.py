@@ -81,40 +81,21 @@ from pathlib import Path
 # Reuse the backend's normalization + the prebake writer verbatim so output
 # formatting matches ``prebake_semantic_graphs`` exactly. Importing backend is
 # heavy (FastAPI/genai) but this is an offline CLI, so that cost is irrelevant.
-from backend.server import _normalize_proofs  # noqa: E402
 from backend.model import SemanticGraph  # noqa: E402
 from _json_format import dumps_compact_leaves  # noqa: E402
+# The three-level proof traversal lives in prebake_semantic_graphs so the two
+# passes can never drift: an enrichment run that visited a different set of
+# steps from the bake that produced them would leave graphs half-enriched.
 from scripts.prebake_semantic_graphs import (  # noqa: E402
     _existing_graph,
     _fmt_bytes,
+    iter_proof_steps,
 )
 
 # Annotation nodes carry free-text labels that can exceed Pydantic field limits
 # and aren't meaningful to the enricher — the server strips them before
 # validation and re-attaches afterward (server.py ~1485). We mirror that here.
 _ANNOTATION_TYPE = "annotation"
-
-
-def _iter_steps(spec):
-    """Yield ``(scene_idx, proof_idx, step_idx, scene, proof, step)`` for every
-    proof step. Carries the scene/proof so enrichment context can be built,
-    mirroring the traversal in the server's autofill + ``buildEnrichContext``.
-    """
-    if not isinstance(spec, dict):
-        return
-    scenes_list = spec.get("scenes")
-    if not isinstance(scenes_list, list):
-        return
-    for si, sc in enumerate(scenes_list):
-        if not isinstance(sc, dict):
-            continue
-        for pi, proof in enumerate(_normalize_proofs(sc.get("proof"))):
-            steps = proof.get("steps")
-            if not isinstance(steps, list):
-                continue
-            for ki, step in enumerate(steps):
-                if isinstance(step, dict):
-                    yield si, pi, ki, sc, proof, step
 
 
 def _is_enriched(graph):
@@ -235,7 +216,7 @@ def analyze(spec):
     """
     steps_report = []
     counts = {"enriched": 0, "unenriched": 0, "noGraph": 0}
-    for si, pi, ki, _sc, _pr, step in _iter_steps(spec):
+    for loc, _sc, _pr, step in iter_proof_steps(spec):
         math_src = step.get("math")
         if not math_src or not isinstance(math_src, str):
             continue
@@ -248,7 +229,8 @@ def analyze(spec):
             status = "unenriched"
         counts[status] += 1
         steps_report.append({
-            "scene": si, "proof": pi, "step": ki,
+            "scene": loc.scene, "proof": loc.proof, "step": loc.k,
+            "level": loc.level, "ownerStep": loc.owner_step, "loc": loc.label,
             "mathPreview": (math_src[:60] + "…") if len(math_src) > 60 else math_src,
             "status": status,
             "nodeCount": len(graph.get("nodes", [])) if isinstance(graph, dict) else 0,
@@ -272,11 +254,13 @@ def _print_status(report, path):
           f"noGraph={c['noGraph']}")
     listed = [s for s in report["steps"] if s["status"] != "enriched"]
     if listed:
-        # [scene.proof.step] — zero-based indices: which scene in the lesson,
-        # which proof in that scene, which step in that proof.
-        print("   [scene.proof.step]:")
+        # Zero-based address: which container, which proof in it, which step
+        # in that proof. The container is the scene index, `NsM` for scene N's
+        # step M, or `root` for a lesson-level proof — a bare scene index
+        # could not tell scene N's own proof from the one on its step.
+        print("   [scene|sceneSstep|root . proof . step]:")
     for s in listed:
-        print(f"   {icon[s['status']]} [{s['scene']}.{s['proof']}.{s['step']}] "
+        print(f"   {icon[s['status']]} [{s['loc']}] "
               f"{s['status']:<10} {s['mathPreview']}")
     if c["noGraph"]:
         print(f"   ∅ {c['noGraph']} step(s) have math but no baked graph — "
@@ -315,9 +299,9 @@ async def enrich_all(spec, *, rebake, concurrency, retries):
         {"max_retries": retries},
     )
 
-    targets = []  # (si, pi, ki, step, graph, context)
+    targets = []  # (loc, step, graph, context)
     skipped_enriched = no_graph = 0
-    for si, pi, ki, sc, pr, step in _iter_steps(spec):
+    for loc, sc, pr, step in iter_proof_steps(spec):
         math_src = step.get("math")
         if not math_src or not isinstance(math_src, str):
             continue
@@ -329,7 +313,7 @@ async def enrich_all(spec, *, rebake, concurrency, retries):
             skipped_enriched += 1
             continue
         ctx = _build_context(spec, sc, pr, step)
-        targets.append((si, pi, ki, step, graph, ctx))
+        targets.append((loc, step, graph, ctx))
 
     agent = agent_cls() if targets else None
     sem = asyncio.Semaphore(max(1, concurrency))
@@ -337,24 +321,30 @@ async def enrich_all(spec, *, rebake, concurrency, retries):
     errors = []
     changed = []
 
-    async def _run(si, pi, ki, step, graph, ctx):
+    # `loc` is passed in, never closed over: these run concurrently, so a
+    # closure over the loop variable would tag every result with the LAST
+    # step's address.
+    async def _run(loc, step, graph, ctx):
         nonlocal enriched
         async with sem:
             t0 = time.perf_counter()
             try:
                 out = await _enrich_graph(agent, graph, ctx, rebake=rebake)
             except Exception as e:  # noqa: BLE001 — isolate one bad step
-                errors.append({"scene": si, "proof": pi, "step": ki,
+                errors.append({"scene": loc.scene, "proof": loc.proof, "step": loc.k,
+                               "loc": loc.label,
                                "error": f"{type(e).__name__}: {str(e).strip()[:200]}"})
-                print(f"   ✗ [{si}.{pi}.{ki}] enrich failed: {type(e).__name__}: {e}",
+                print(f"   ✗ [{loc.label}] enrich failed: {type(e).__name__}: {e}",
                       file=sys.stderr)
                 return
             # Persist onto the in-memory spec; the caller writes (or not).
             step["semanticGraph"]["graph"] = out
             enriched += 1
-            changed.append({"scene": si, "proof": pi, "step": ki})
+            changed.append({"scene": loc.scene, "proof": loc.proof, "step": loc.k,
+                            "level": loc.level, "ownerStep": loc.owner_step,
+                            "loc": loc.label})
             field_n = len(((out.get("enrichment") or {}).get("fields")) or [])
-            print(f"   ✨ [{si}.{pi}.{ki}] enriched  "
+            print(f"   ✨ [{loc.label}] enriched  "
                   f"nodes={len(out.get('nodes', []))} fields={field_n}  "
                   f"({time.perf_counter() - t0:.1f}s)")
 
