@@ -14,7 +14,7 @@ annotated-types==0.7.0
     # via pydantic
 antlr4-python3-runtime==4.11.1
     # via -r requirements.txt
-anyio==4.14.0
+anyio==4.14.2
     # via
     #   asyncer
     #   dspy
@@ -128,7 +128,7 @@ hf-xet==1.5.1 ; platform_machine == 'AMD64' or platform_machine == 'aarch64' or 
     # via huggingface-hub
 httpcore==1.0.9
     # via httpx
-httpcore2==2.4.0
+httpcore2==2.12.0 ; sys_platform != 'emscripten'
     # via httpx2
 httptools==0.8.0
     # via uvicorn
@@ -140,8 +140,10 @@ httpx==0.28.1
     #   openai
     #   pydantic-ai-slim
     #   pydantic-graph
-httpx2==2.4.0
+httpx2==2.12.0
     # via genai-prices
+httpx2-jsfetch==1.0 ; sys_platform == 'emscripten'
+    # via httpx2
 huggingface-hub==1.20.1
     # via tokenizers
 idna==3.18
@@ -307,7 +309,7 @@ tqdm==4.68.3
     #   huggingface-hub
     #   openai
     #   optuna
-truststore==0.10.4
+truststore==0.10.4 ; sys_platform != 'emscripten'
     # via
     #   httpcore2
     #   httpx2
