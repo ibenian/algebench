@@ -4336,8 +4336,13 @@ function configureControlsInstance(ctrl, target) {
 	}
 	ctrl.update();
 }
-/** The ball's on-screen radius, as a fraction of the viewport's shorter side. */
-var ARCBALL_RADIUS_FRACTION = .14;
+/** The ball's on-screen radius, as a fraction of the viewport's shorter side.
+*  0.25 puts its DIAMETER at half the shorter side — the ball covers half the
+*  screen across, which is what "half the screen" asks for. Raising this makes
+*  a given pointer travel turn the view LESS: the drag angle is the arc swept
+*  on the ball, so a wider ball is a finer control, and past the rim the
+*  ARCBALL_OUTSIDE_RADIANS fallback takes over later than it used to. */
+var ARCBALL_RADIUS_FRACTION = .25;
 /** How much further the drag turns per ball-radius of travel outside the ball. */
 var ARCBALL_OUTSIDE_RADIANS = 1.2;
 /** Ceiling on the coast after a flick — about 170 degrees a second at 60fps. */
