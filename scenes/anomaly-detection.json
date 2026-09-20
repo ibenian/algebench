@@ -567,14 +567,6 @@
               "max": 8,
               "step": 1,
               "default": 0
-            },
-            {
-              "id": "kz",
-              "label": "$k$ — fence width, in estimated $\\sigma$",
-              "min": 2,
-              "max": 5,
-              "step": 0.1,
-              "default": 3
             }
           ],
           "add": [
@@ -725,7 +717,17 @@
               2.9,
               0
             ]
-          }
+          },
+          "sliders": [
+            {
+              "id": "kz",
+              "label": "$k$ — fence width, in estimated $\\sigma$",
+              "min": 2,
+              "max": 5,
+              "step": 0.1,
+              "default": 3
+            }
+          ]
         },
         {
           "id": "contaminate",
@@ -2610,24 +2612,6 @@
           "title": "One cloud, two densities",
           "description": "153 points. A **tight** cluster on the left (90 points, $\\sigma = 0.25$), a **loose** one on the right (60 points, $\\sigma = 1.0$), and three strays that belong to neither.\n\nBoth clusters are *normal*. The difference between them is not anomaly, it is **scale** — and scale is exactly what a single global distance threshold cannot accommodate.\n\nNothing is flagged yet. Look at the three strays and ask yourself what distance would separate them from the loose cluster.",
           "prompt": "Set-up only. No detector has run. Push the student to make the prediction: what single distance would separate the three strays from the loose cluster? The answer is none, and the next step proves it with the actual numbers. Both clusters are legitimately normal -- the loose one is not anomalous, it is just less dense, and conflating low density with anomaly is precisely the error the scene is about to expose.",
-          "sliders": [
-            {
-              "id": "k",
-              "label": "$k$ — neighbourhood size",
-              "min": 2,
-              "max": 40,
-              "step": 1,
-              "default": 20
-            },
-            {
-              "id": "tau",
-              "label": "$\\tau$ — global distance threshold",
-              "min": 0.2,
-              "max": 3.2,
-              "step": 0.05,
-              "default": 1.2
-            }
-          ],
           "add": [
             {
               "id": "cloud-global",
@@ -2833,7 +2817,25 @@
               2.9,
               0
             ]
-          }
+          },
+          "sliders": [
+            {
+              "id": "k",
+              "label": "$k$ — neighbourhood size",
+              "min": 2,
+              "max": 40,
+              "step": 1,
+              "default": 20
+            },
+            {
+              "id": "tau",
+              "label": "$\\tau$ — global distance threshold",
+              "min": 0.2,
+              "max": 3.2,
+              "step": 0.05,
+              "default": 1.2
+            }
+          ]
         },
         {
           "id": "lof",
@@ -2993,7 +2995,12 @@
               2.9,
               0
             ]
-          }
+          },
+          "remove": [
+            {
+              "id": "tau"
+            }
+          ]
         },
         {
           "id": "mahalanobis",
@@ -3006,6 +3013,9 @@
             },
             {
               "id": "cloud-global"
+            },
+            {
+              "id": "k"
             }
           ],
           "add": [
@@ -3289,24 +3299,6 @@
           "title": "Stop modelling normal. Count cuts.",
           "description": "Pick a feature at random. Pick a split point uniformly inside its observed range. Recurse. Stop when a point is alone.\n\nA point in a dense region needs many cuts before the region around it is empty. A point out on its own gets separated almost immediately, because almost any cut has it on one side by itself.\n\nSo **the depth at which a point falls out of the tree is itself an anomaly score** — no distance, no density estimate, no covariance, no model of what normal looks like. Average that depth over a forest of 100 trees, each built on a subsample of 128 points, and you have the Isolation Forest.\n\nThe chart is the resulting score for all 192 points of the scene-1 cloud. Red are the planted twelve.",
           "prompt": "Introduce isolation as an idea before any formula. The reframing is the point: every earlier method asked 'how far from normal is this', and this one asks 'how easy is this to separate', which needs no model of normal at all. Practical consequences worth naming: linear time, constant memory, no distance computation, and therefore no dependence on the distance concentration that ended scene 3. The scores here run about 0.53 for a typical inlier against 0.72 and above for the planted points. If a student asks why the inliers are near 0.5 rather than 0: 0.5 is where a point of exactly average path length lands, by construction of the 2^(-E[h]/c) score, so 0.5 means ordinary and 1 means trivially isolated.",
-          "sliders": [
-            {
-              "id": "nu",
-              "label": "$\\nu$ — fraction of training data rejected",
-              "min": 0.01,
-              "max": 0.4,
-              "step": 0.01,
-              "default": 0.1
-            },
-            {
-              "id": "gamma",
-              "label": "$\\gamma$ — RBF kernel width",
-              "min": 0.05,
-              "max": 3,
-              "step": 0.05,
-              "default": 0.5
-            }
-          ],
           "add": [
             {
               "id": "iso-scores",
@@ -3535,7 +3527,25 @@
               4.03,
               0
             ]
-          }
+          },
+          "sliders": [
+            {
+              "id": "nu",
+              "label": "$\\nu$ — fraction of training data rejected",
+              "min": 0.01,
+              "max": 0.4,
+              "step": 0.01,
+              "default": 0.1
+            },
+            {
+              "id": "gamma",
+              "label": "$\\gamma$ — RBF kernel width",
+              "min": 0.05,
+              "max": 3,
+              "step": 0.05,
+              "default": 0.5
+            }
+          ]
         },
         {
           "id": "gamma",
@@ -3648,6 +3658,12 @@
             },
             {
               "id": "iso-field"
+            },
+            {
+              "id": "nu"
+            },
+            {
+              "id": "gamma"
             }
           ],
           "add": [
@@ -5134,6 +5150,9 @@
             },
             {
               "id": "capacity-curve"
+            },
+            {
+              "id": "rank"
             }
           ],
           "add": [
@@ -5552,14 +5571,6 @@
               "max": 1,
               "step": 0.01,
               "default": 0.5
-            },
-            {
-              "id": "pi",
-              "label": "$\\pi$ — true base rate in the population",
-              "min": 0.0005,
-              "max": 0.2,
-              "step": 0.0005,
-              "default": 0.08
             }
           ],
           "add": [
@@ -6006,7 +6017,17 @@
               0.65,
               0
             ]
-          }
+          },
+          "sliders": [
+            {
+              "id": "pi",
+              "label": "$\\pi$ — true base rate in the population",
+              "min": 0.0005,
+              "max": 0.2,
+              "step": 0.0005,
+              "default": 0.08
+            }
+          ]
         },
         {
           "id": "shipping",
@@ -6025,6 +6046,12 @@
             },
             {
               "id": "alerts"
+            },
+            {
+              "id": "pi"
+            },
+            {
+              "id": "thr"
             }
           ],
           "add": [
