@@ -272,6 +272,20 @@
       ],
       "port": 5755,
       "autoPort": true
+    },
+    {
+      "name": "anomaly-detection",
+      "runtimeExecutable": "./algebench",
+      "runtimeArgs": [
+        "scenes/anomaly-detection.json",
+        "--port",
+        "5763",
+        "--debug",
+        "--server-only",
+        "--skip-tour"
+      ],
+      "port": 5763,
+      "autoPort": true
     }
   ]
 }
