@@ -620,10 +620,12 @@ export function renderChart(el: Element, view: MathBoxNode) {
                 a.dom[0] = NaN; a.dom[1] = NaN;
                 continue;
             }
-            // The axis is drawn as if the transform were affine. Check the
-            // midpoint against what that assumption predicts and say so once
-            // if it is not -- a log or squared transform would be silently
-            // mislabelled everywhere except the two endpoints.
+            // The axis is drawn as if the transform were affine. Probe five
+            // interior points against what that assumption predicts and say
+            // so once if any of them disagrees -- value^2 or log(value) would
+            // otherwise be silently mislabelled everywhere except the two
+            // endpoints, and value^3 everywhere except the endpoints AND the
+            // midpoint, which is why one sample is not enough.
             if (!a.checked) {
                 // Sampled once, not per frame. A transform affine at one
                 // slider value is affine at the next; paying five extra
