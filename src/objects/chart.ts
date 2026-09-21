@@ -503,7 +503,10 @@ export function renderChart(el: Element, view: MathBoxNode) {
         src: string; fn: { src: string; fn: CompiledExpr } | null;
         /** [f(yDom[0]), f(yDom[1])] — recomputed whenever the primary moves. */
         dom: [number, number];
-        warned: boolean;
+        /** The affinity probe is a one-time diagnostic; this latches
+         *  after the first attempt, pass or fail, so the steady-state cost
+         *  stays at the two endpoint evaluations the design promises. */
+        checked: boolean;
     }
     const rightSpecs = Array.isArray(chart.rightAxes)
         ? (chart.rightAxes as RightAxisSpec[]).slice(0, MAX_RIGHT_AXES) : [];
@@ -525,7 +528,7 @@ export function renderChart(el: Element, view: MathBoxNode) {
             // NaN, not [0, 1]: a refused or unparseable transform leaves the
             // domain unusable so the draw loop's finite check skips the axis,
             // rather than rendering a confident, fabricated 0-1 scale.
-            dom: [NaN, NaN], warned: false,
+            dom: [NaN, NaN], checked: false,
         });
     });
 
@@ -625,7 +628,12 @@ export function renderChart(el: Element, view: MathBoxNode) {
             // midpoint against what that assumption predicts and say so once
             // if it is not -- a log or squared transform would be silently
             // mislabelled everywhere except the two endpoints.
-            if (!a.warned) {
+            if (!a.checked) {
+                // Sampled once, not per frame. A transform affine at one
+                // slider value is affine at the next; paying five extra
+                // evaluations every frame to re-confirm that is not worth it,
+                // and the warning was always a one-time diagnostic.
+                a.checked = true;
                 const miss = affineMissSampled(
                     (t) => at(yDom[0] + t * (yDom[1] - yDom[0])), lo, hi);
                 if (miss === null || miss > 0.01) {
@@ -633,7 +641,6 @@ export function renderChart(el: Element, view: MathBoxNode) {
                         + `"${a.src}" is ${miss === null ? 'not evaluable across its domain'
                                                          : 'not affine'}; the axis is drawn from `
                         + `its endpoints, so interior ticks will be wrong.`);
-                    a.warned = true;
                 }
             }
             a.dom[0] = lo; a.dom[1] = hi;

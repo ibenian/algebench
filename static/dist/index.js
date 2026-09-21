@@ -10406,7 +10406,7 @@ function renderChart(el, view) {
 			src,
 			fn: compileOpt(src, `rightAxes[${k}].fromPrimaryExpr`),
 			dom: [NaN, NaN],
-			warned: false
+			checked: false
 		});
 	});
 	const xFixed = Array.isArray(chart.xDomain) && chart.xDomain.length === 2 && chart.xDomain.every((v) => Number.isFinite(Number(v))) ? [Number(chart.xDomain[0]), Number(chart.xDomain[1])] : null;
@@ -10501,12 +10501,10 @@ function renderChart(el, view) {
 				a.dom[1] = NaN;
 				continue;
 			}
-			if (!a.warned) {
+			if (!a.checked) {
+				a.checked = true;
 				const miss = affineMissSampled((t) => at(yDom[0] + t * (yDom[1] - yDom[0])), lo, hi);
-				if (miss === null || miss > .01) {
-					console.warn(`chart${el.id ? ` "${el.id}"` : ""}: rightAxes fromPrimaryExpr "${a.src}" is ${miss === null ? "not evaluable across its domain" : "not affine"}; the axis is drawn from its endpoints, so interior ticks will be wrong.`);
-					a.warned = true;
-				}
+				if (miss === null || miss > .01) console.warn(`chart${el.id ? ` "${el.id}"` : ""}: rightAxes fromPrimaryExpr "${a.src}" is ${miss === null ? "not evaluable across its domain" : "not affine"}; the axis is drawn from its endpoints, so interior ticks will be wrong.`);
 			}
 			a.dom[0] = lo;
 			a.dom[1] = hi;

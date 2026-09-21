@@ -100,10 +100,24 @@ which is how a z-scale shows a standard deviation inflating.
 
 The axis is drawn by evaluating `fromPrimaryExpr` at the primary domain's **two
 endpoints** and interpolating between them. That is exact for any affine
-transform — `a * value + b` — and wrong in the middle for anything else. The
-renderer checks the midpoint and warns once in the console if it departs by more
-than a per cent, so `value^2` or `log(value)` tells you rather than quietly
-mislabelling its interior ticks.
+transform — `a * value + b` — and wrong in the middle for anything else.
+
+To catch that, the renderer samples **five interior points** once, on the first
+frame, and warns in the console if the worst of them departs from where an
+affine transform would put it by more than a per cent. It samples five rather
+than just the midpoint because the midpoint alone cannot detect an odd-symmetric
+transform: `value^3` over `[-1, 1]` has endpoints `-1` and `1` and a midpoint of
+exactly `0`, so a midpoint check sees no departure at all while an interior tick
+at `0.5` belongs at `0.125`. The fractions used are deliberately not symmetric
+about the centre for the same reason.
+
+A sample that will not evaluate — a singularity such as `1 / value` somewhere
+inside the domain — is reported as *not evaluable*, not waved through.
+
+The probe runs **once per axis**, not per frame: a transform that is affine at
+one slider value is affine at the next, and re-confirming it every frame would
+cost five extra evaluations per axis on top of the two endpoints. The
+steady-state cost is those two.
 
 ### `%` in a title
 
