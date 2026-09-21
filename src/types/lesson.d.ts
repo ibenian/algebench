@@ -1161,6 +1161,133 @@ export interface Element {
    * Manual render order for polygon depth sorting. Auto-assigned if omitted.
    */
   renderOrder?: number;
+  /**
+   * On chart: right-hand axes. Each relabels the SAME plot rows through a transform of the primary y — nothing is plotted against one, so the two scales cannot disagree about where a datum sits. Stacked outward from the plot edge, each choosing round ticks in its own units. Use for a value and its z-score, or a temperature in two units. At most 3.
+   *
+   * @maxItems 3
+   */
+  rightAxes?:
+    | []
+    | [
+        {
+          /**
+           * Transform of a primary-y value, with `value` bound — e.g. (value - adMeanV(contam)) / adStdV(contam). Assumed AFFINE: the axis is drawn from the primary domain's two endpoints, and a non-affine transform warns once and mislabels its interior ticks. Re-evaluated live, so a z-scale widens as the standard deviation it divides by does.
+           */
+          fromPrimaryExpr: string;
+          /**
+           * Rotated axis title, KaTeX. Reserves extra margin.
+           */
+          title?: string;
+          /**
+           * Target tick count (default 5).
+           */
+          ticks?: number;
+          /**
+           * Formats one tick, with `value` bound.
+           */
+          labelExpr?: string;
+          color?: Color;
+        }
+      ]
+    | [
+        {
+          /**
+           * Transform of a primary-y value, with `value` bound — e.g. (value - adMeanV(contam)) / adStdV(contam). Assumed AFFINE: the axis is drawn from the primary domain's two endpoints, and a non-affine transform warns once and mislabels its interior ticks. Re-evaluated live, so a z-scale widens as the standard deviation it divides by does.
+           */
+          fromPrimaryExpr: string;
+          /**
+           * Rotated axis title, KaTeX. Reserves extra margin.
+           */
+          title?: string;
+          /**
+           * Target tick count (default 5).
+           */
+          ticks?: number;
+          /**
+           * Formats one tick, with `value` bound.
+           */
+          labelExpr?: string;
+          color?: Color;
+        },
+        {
+          /**
+           * Transform of a primary-y value, with `value` bound — e.g. (value - adMeanV(contam)) / adStdV(contam). Assumed AFFINE: the axis is drawn from the primary domain's two endpoints, and a non-affine transform warns once and mislabels its interior ticks. Re-evaluated live, so a z-scale widens as the standard deviation it divides by does.
+           */
+          fromPrimaryExpr: string;
+          /**
+           * Rotated axis title, KaTeX. Reserves extra margin.
+           */
+          title?: string;
+          /**
+           * Target tick count (default 5).
+           */
+          ticks?: number;
+          /**
+           * Formats one tick, with `value` bound.
+           */
+          labelExpr?: string;
+          color?: Color;
+        }
+      ]
+    | [
+        {
+          /**
+           * Transform of a primary-y value, with `value` bound — e.g. (value - adMeanV(contam)) / adStdV(contam). Assumed AFFINE: the axis is drawn from the primary domain's two endpoints, and a non-affine transform warns once and mislabels its interior ticks. Re-evaluated live, so a z-scale widens as the standard deviation it divides by does.
+           */
+          fromPrimaryExpr: string;
+          /**
+           * Rotated axis title, KaTeX. Reserves extra margin.
+           */
+          title?: string;
+          /**
+           * Target tick count (default 5).
+           */
+          ticks?: number;
+          /**
+           * Formats one tick, with `value` bound.
+           */
+          labelExpr?: string;
+          color?: Color;
+        },
+        {
+          /**
+           * Transform of a primary-y value, with `value` bound — e.g. (value - adMeanV(contam)) / adStdV(contam). Assumed AFFINE: the axis is drawn from the primary domain's two endpoints, and a non-affine transform warns once and mislabels its interior ticks. Re-evaluated live, so a z-scale widens as the standard deviation it divides by does.
+           */
+          fromPrimaryExpr: string;
+          /**
+           * Rotated axis title, KaTeX. Reserves extra margin.
+           */
+          title?: string;
+          /**
+           * Target tick count (default 5).
+           */
+          ticks?: number;
+          /**
+           * Formats one tick, with `value` bound.
+           */
+          labelExpr?: string;
+          color?: Color;
+        },
+        {
+          /**
+           * Transform of a primary-y value, with `value` bound — e.g. (value - adMeanV(contam)) / adStdV(contam). Assumed AFFINE: the axis is drawn from the primary domain's two endpoints, and a non-affine transform warns once and mislabels its interior ticks. Re-evaluated live, so a z-scale widens as the standard deviation it divides by does.
+           */
+          fromPrimaryExpr: string;
+          /**
+           * Rotated axis title, KaTeX. Reserves extra margin.
+           */
+          title?: string;
+          /**
+           * Target tick count (default 5).
+           */
+          ticks?: number;
+          /**
+           * Formats one tick, with `value` bound.
+           */
+          labelExpr?: string;
+          color?: Color;
+        }
+      ];
   [k: string]: unknown;
 }
 /**

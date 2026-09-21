@@ -258,6 +258,20 @@
       ],
       "port": 5762,
       "autoPort": false
+    },
+    {
+      "name": "chart-demo",
+      "runtimeExecutable": "./algebench",
+      "runtimeArgs": [
+        "scenes/draft/chart-demo.json",
+        "--port",
+        "5755",
+        "--debug",
+        "--server-only",
+        "--skip-tour"
+      ],
+      "port": 5755,
+      "autoPort": true
     }
   ]
 }

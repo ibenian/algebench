@@ -113,3 +113,108 @@ test('the occupancy grid answers exactly what a full scan would', async () => {
     }
     assert.ok(boxes.length > 20, 'expected the spread to place a meaningful number of boxes');
 });
+
+// --- right-hand axes -------------------------------------------------------
+// A right axis relabels the primary y through a transform, and is drawn from
+// that transform's value at the two domain endpoints. That is exact for an
+// affine map and wrong in the middle for anything else, so the renderer
+// measures the departure and warns once. These pin the measure.
+
+const { affineMissSampled, rightAxisDomain, rightAxisPlace } = await import('/objects/chart.js');
+
+// The two decisions the right axis makes beyond the affine check: deriving its
+// domain from a transform, and placing a value from that domain back onto the
+// plot. Both are what `sample()` and the draw loop call, so a regression in
+// either now fails here rather than silently mislabelling an axis.
+
+const C_TO_F = (v: number): number => v * 9 / 5 + 32;
+
+test('rightAxisDomain maps the primary endpoints through the transform', () => {
+    // 0..40 C -> 32..104 F, the demo's own pairing.
+    assert.deepEqual(rightAxisDomain(C_TO_F, [0, 40]), [32, 104]);
+});
+
+test('rightAxisDomain retires the axis when an endpoint will not evaluate', () => {
+    // A slider-driven denominator reaching zero: the transform yields a
+    // non-finite value, and the axis must go rather than keep a stale scale.
+    assert.equal(rightAxisDomain(() => null, [0, 40]), null);
+    assert.equal(rightAxisDomain((v) => v / 0, [0, 40]), null);
+    assert.equal(rightAxisDomain((v) => (v === 0 ? 1 : NaN), [0, 40]), null);
+    // Degenerate: a constant transform has no rows to distinguish.
+    assert.equal(rightAxisDomain(() => 7, [0, 40]), null);
+});
+
+test('rightAxisPlace inverts the mapping onto the plot', () => {
+    const dom: readonly [number, number] = [32, 104];
+    assert.equal(rightAxisPlace(32, dom, 100), 0);      // bottom
+    assert.equal(rightAxisPlace(104, dom, 100), 100);   // top
+    assert.equal(rightAxisPlace(68, dom, 100), 50);     // 20 C, halfway
+});
+
+test('rightAxisPlace handles a descending transform', () => {
+    // Negative slope: dom is [f(yLo), f(yHi)], so the fraction simply inverts
+    // and the axis reads downward without any special case.
+    const dom = rightAxisDomain((v: number) => 100 - v, [0, 40]);
+    assert.ok(dom, 'a descending transform still yields a domain');
+    // `+ 0` normalises the signed zero a descending domain produces:
+    // (100 - 100) / (60 - 100) is -0, which positions identically to 0 and
+    // stringifies to "0", so it is an artifact of strict equality, not a bug.
+    assert.equal(rightAxisPlace(100, dom, 100) + 0, 0);
+    assert.equal(rightAxisPlace(60, dom, 100), 100);
+    assert.equal(rightAxisPlace(80, dom, 100), 50);
+});
+
+test('rightAxisPlace does not divide by zero on a collapsed domain', () => {
+    // rightAxisDomain rejects these, but the helper is defensive on its own.
+    assert.equal(Number.isFinite(rightAxisPlace(5, [5, 5], 100)), true);
+});
+
+test('a z-transform restretches with its denominator', () => {
+    // The demo's own axis: (v - 18) / (1 + k) over 0..40 C. These are the
+    // figures the PR quotes, asserted rather than remembered.
+    const z = (k: number) => {
+        const d = rightAxisDomain((v: number) => (v - 18) / (1 + k), [0, 40]);
+        assert.ok(d, `k=${k} must yield a domain`);
+        return d;
+    };
+    const z1 = z(1), z4 = z(4);
+    assert.deepEqual(z1.map((n) => +n.toFixed(4)), [-9, 11]);
+    assert.deepEqual(z4.map((n) => +n.toFixed(4)), [-3.6, 4.4]);
+    // Same rows either way: the bottom of the plot stays the bottom while the
+    // number printed beside it changes.
+    assert.equal(rightAxisPlace(z1[0], z1, 100), 0);
+    assert.equal(rightAxisPlace(z4[0], z4, 100), 0);
+});
+
+// A single midpoint sample is not enough to certify an affine transform, so
+// the renderer samples several interior points. These pin the cases that
+// defeat one sample.
+
+test('affineMissSampled certifies a genuinely affine transform', () => {
+    const at = (t: number) => 32 + t * (104 - 32);      // C -> F over 0..40
+    assert.equal(affineMissSampled(at, 32, 104), 0);
+});
+
+test('affineMissSampled catches a cubic that the midpoint alone misses', () => {
+    // value^3 over [-1, 1] is odd-symmetric about the domain's centre, so a
+    // MIDPOINT-ONLY check sees no departure at all...
+    const at = (t: number) => Math.pow(-1 + t * 2, 3);
+    assert.equal(at(0.5) - (-1 + 0.5 * 2), 0, 'the midpoint alone looks affine');
+    // ...while an interior tick at 0.5 belongs at 0.125 and would be drawn at
+    // 0.5. Sampling several unequal fractions is what catches it.
+    const miss = affineMissSampled(at, -1, 1);
+    assert.ok(miss !== null && miss > 0.1, `expected a large miss, got ${miss}`);
+});
+
+test('affineMissSampled reports null when the transform cannot be sampled', () => {
+    // A singularity inside the domain: "cannot verify", not "fine".
+    assert.equal(affineMissSampled(() => null, 0, 10), null);
+    assert.equal(affineMissSampled((t) => (t === 0.5 ? NaN : t), 0, 10), null);
+    assert.equal(affineMissSampled((t) => 1 / (t - 0.5), 0, 10), null);
+});
+
+test('affineMissSampled still flags a plainly curved transform', () => {
+    const at = (t: number) => Math.pow(t * 40, 2);      // value^2 over 0..40
+    const miss = affineMissSampled(at, 0, 1600);
+    assert.ok(miss !== null && miss > 0.1, `expected a large miss, got ${miss}`);
+});

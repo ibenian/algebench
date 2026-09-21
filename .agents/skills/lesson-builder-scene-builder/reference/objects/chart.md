@@ -63,6 +63,67 @@ A slider or a domain function in any expression makes the chart live: it re-samp
 pushes the points into the existing lines. The paper is redrawn only when a tick label or domain
 actually changes.
 
+## Right-hand axes
+
+A second scale on the right, for when one quantity is worth reading two ways — a
+temperature in °C and °F, a value and its z-score.
+
+```json
+"rightAxes": [
+  { "fromPrimaryExpr": "value * 9 / 5 + 32", "title": "$^\\circ$F", "ticks": 6,
+    "labelExpr": "toFixed(value, 0)", "color": "#ef5350" },
+  { "fromPrimaryExpr": "(value - 18) / (1 + k)", "title": "$z$", "color": "#42a5f5" }
+]
+```
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `fromPrimaryExpr` | required | Transform of a primary-y value, with `value` bound. Re-evaluated live |
+| `title` | — | Rotated title outside the numbers, KaTeX. Reserves extra margin |
+| `ticks` | `5` | Target tick count, chosen as round numbers **in this axis's own units** |
+| `labelExpr` | — | Formats one tick, `value` bound |
+| `color` | `#aabbcc` | Ink for the line, ticks, numbers and title |
+
+At most **3**, stacked outward from the plot edge in order.
+
+**Nothing is plotted against a right axis.** It relabels the rows the primary y
+already placed, so the two scales cannot disagree about where a datum sits. That
+is the whole reason this is safe: a true dual-axis chart puts a second series on
+an unrelated scale, and their crossings then look meaningful when they are not.
+If you want that, you want two charts.
+
+Because the axis is live, a transform that reads a slider restretches as that
+slider moves while the curve and every other axis stay exactly where they were —
+which is how a z-scale shows a standard deviation inflating.
+
+### The affine assumption
+
+The axis is drawn by evaluating `fromPrimaryExpr` at the primary domain's **two
+endpoints** and interpolating between them. That is exact for any affine
+transform — `a * value + b` — and wrong in the middle for anything else.
+
+To catch that, the renderer samples **five interior points** once, on the first
+frame, and warns in the console if the worst of them departs from where an
+affine transform would put it by more than a per cent. It samples five rather
+than just the midpoint because the midpoint alone cannot detect an odd-symmetric
+transform: `value^3` over `[-1, 1]` has endpoints `-1` and `1` and a midpoint of
+exactly `0`, so a midpoint check sees no departure at all while an interior tick
+at `0.5` belongs at `0.125`. The fractions used are deliberately not symmetric
+about the centre for the same reason.
+
+A sample that will not evaluate — a singularity such as `1 / value` somewhere
+inside the domain — is reported as *not evaluable*, not waved through.
+
+The probe runs **once per axis**, not per frame: a transform that is affine at
+one slider value is affine at the next, and re-confirming it every frame would
+cost five extra evaluations per axis on top of the two endpoints. The
+steady-state cost is those two.
+
+### `%` in a title
+
+Titles are TeX, where `%` begins a comment and would silently swallow the rest
+of the line. Write `\\%` in JSON for a literal per-cent sign.
+
 ## Domains
 
 `"auto"` fits the extent of everything drawn — series, lines, bands — pads y a little (x is fitted

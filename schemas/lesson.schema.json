@@ -5,14 +5,21 @@
   "description": "Schema for AlgeBench lesson and scene JSON files. Supports both single-scene format (with top-level 'elements') and multi-scene lesson format (with 'scenes' array).",
   "type": "object",
   "anyOf": [
-    { "$ref": "#/$defs/lessonFormat" },
-    { "$ref": "#/$defs/singleSceneFormat" }
+    {
+      "$ref": "#/$defs/lessonFormat"
+    },
+    {
+      "$ref": "#/$defs/singleSceneFormat"
+    }
   ],
   "$defs": {
     "lessonFormat": {
       "type": "object",
       "description": "Multi-scene lesson format with a 'scenes' array.",
-      "required": ["title", "scenes"],
+      "required": [
+        "title",
+        "scenes"
+      ],
       "properties": {
         "title": {
           "type": "string",
@@ -20,7 +27,9 @@
         },
         "import": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Domain library names to import from static/domains/<name>/index.js. These register additional math functions available in expressions. Example: [\"astrodynamics\"]."
         },
         "unsafe": {
@@ -42,7 +51,9 @@
         },
         "scenes": {
           "type": "array",
-          "items": { "$ref": "#/$defs/scene" },
+          "items": {
+            "$ref": "#/$defs/scene"
+          },
           "minItems": 1,
           "description": "Array of scenes in the lesson. Each scene has its own 3D elements, steps, camera, and optional proof."
         }
@@ -52,32 +63,104 @@
     "singleSceneFormat": {
       "type": "object",
       "description": "Single-scene format with top-level 'elements' (no 'scenes' array).",
-      "required": ["title", "elements"],
+      "required": [
+        "title",
+        "elements"
+      ],
       "properties": {
-        "title": { "type": "string", "description": "Scene title." },
-        "description": { "type": "string", "description": "Short description of the scene shown below the title." },
-        "markdown": { "type": "string", "description": "Markdown content for the explanation panel (supports KaTeX via $...$ and $$...$$)." },
-        "prompt": { "type": "string", "description": "System prompt for the AI chat tutor in this scene." },
-        "import": { "type": "array", "items": { "type": "string" }, "description": "Domain library names to import." },
-        "unsafe": { "type": "boolean", "default": false, "description": "Marks scene as containing native JS." },
-        "unsafeExplanation": { "type": "string", "description": "Explanation for unsafe JS trust dialog." },
-        "range": { "$ref": "#/$defs/range3D", "description": "Axis ranges as [[xMin,xMax],[yMin,yMax],[zMin,zMax]]. Default: [[-5,5],[-5,5],[-5,5]]." },
-        "scale": { "$ref": "#/$defs/vec3Number", "description": "Axis scale factors as [sx,sy,sz]. Default: [1,1,1]." },
-        "camera": { "$ref": "#/$defs/camera", "description": "Initial camera position and target." },
-        "views": { "type": "array", "items": { "$ref": "#/$defs/view" }, "description": "Named camera presets shown as buttons." },
-        "functions": { "type": "array", "items": { "$ref": "#/$defs/sceneFunction" }, "description": "Reusable math functions available in expressions." },
-        "data": { "$ref": "#/$defs/dataTable", "description": "Data tables accessible via dataTable() in expressions." },
-        "starfield": { "$ref": "#/$defs/starfield", "description": "Background starfield configuration." },
-        "elements": { "type": "array", "items": { "$ref": "#/$defs/element" }, "description": "Base scene elements rendered on load." },
-        "steps": { "type": "array", "items": { "$ref": "#/$defs/step" }, "description": "Incremental steps that add/remove elements." },
-        "proof": { "$ref": "#/$defs/proofOrProofArray", "description": "Proof(s) associated with this scene." }
+        "title": {
+          "type": "string",
+          "description": "Scene title."
+        },
+        "description": {
+          "type": "string",
+          "description": "Short description of the scene shown below the title."
+        },
+        "markdown": {
+          "type": "string",
+          "description": "Markdown content for the explanation panel (supports KaTeX via $...$ and $$...$$)."
+        },
+        "prompt": {
+          "type": "string",
+          "description": "System prompt for the AI chat tutor in this scene."
+        },
+        "import": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Domain library names to import."
+        },
+        "unsafe": {
+          "type": "boolean",
+          "default": false,
+          "description": "Marks scene as containing native JS."
+        },
+        "unsafeExplanation": {
+          "type": "string",
+          "description": "Explanation for unsafe JS trust dialog."
+        },
+        "range": {
+          "$ref": "#/$defs/range3D",
+          "description": "Axis ranges as [[xMin,xMax],[yMin,yMax],[zMin,zMax]]. Default: [[-5,5],[-5,5],[-5,5]]."
+        },
+        "scale": {
+          "$ref": "#/$defs/vec3Number",
+          "description": "Axis scale factors as [sx,sy,sz]. Default: [1,1,1]."
+        },
+        "camera": {
+          "$ref": "#/$defs/camera",
+          "description": "Initial camera position and target."
+        },
+        "views": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/view"
+          },
+          "description": "Named camera presets shown as buttons."
+        },
+        "functions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/sceneFunction"
+          },
+          "description": "Reusable math functions available in expressions."
+        },
+        "data": {
+          "$ref": "#/$defs/dataTable",
+          "description": "Data tables accessible via dataTable() in expressions."
+        },
+        "starfield": {
+          "$ref": "#/$defs/starfield",
+          "description": "Background starfield configuration."
+        },
+        "elements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/element"
+          },
+          "description": "Base scene elements rendered on load."
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/step"
+          },
+          "description": "Incremental steps that add/remove elements."
+        },
+        "proof": {
+          "$ref": "#/$defs/proofOrProofArray",
+          "description": "Proof(s) associated with this scene."
+        }
       },
       "additionalProperties": false
     },
     "scene": {
       "type": "object",
       "description": "A single scene within a lesson, containing 3D elements and optional steps.",
-      "required": ["title"],
+      "required": [
+        "title"
+      ],
       "properties": {
         "id": {
           "type": "string",
@@ -113,12 +196,16 @@
         },
         "views": {
           "type": "array",
-          "items": { "$ref": "#/$defs/view" },
+          "items": {
+            "$ref": "#/$defs/view"
+          },
           "description": "Named camera presets rendered as clickable buttons. Example: Overview, Face On, Iso."
         },
         "functions": {
           "type": "array",
-          "items": { "$ref": "#/$defs/sceneFunction" },
+          "items": {
+            "$ref": "#/$defs/sceneFunction"
+          },
           "description": "Reusable scene-level functions callable from expressions. Registered in the math.js sandbox."
         },
         "data": {
@@ -131,13 +218,17 @@
         },
         "elements": {
           "type": "array",
-          "items": { "$ref": "#/$defs/element" },
+          "items": {
+            "$ref": "#/$defs/element"
+          },
           "description": "Base scene elements rendered when the scene loads (before any steps).",
           "default": []
         },
         "steps": {
           "type": "array",
-          "items": { "$ref": "#/$defs/step" },
+          "items": {
+            "$ref": "#/$defs/step"
+          },
           "description": "Incremental steps that add/remove elements and sliders. Navigated with Next/Prev."
         },
         "proof": {
@@ -155,7 +246,9 @@
     "step": {
       "type": "object",
       "description": "An incremental step that adds/removes elements and configures sliders.",
-      "required": ["title"],
+      "required": [
+        "title"
+      ],
       "properties": {
         "id": {
           "type": "string",
@@ -175,18 +268,24 @@
         },
         "add": {
           "type": "array",
-          "items": { "$ref": "#/$defs/element" },
+          "items": {
+            "$ref": "#/$defs/element"
+          },
           "description": "Elements to add in this step. Each element must have a 'type' field.",
           "default": []
         },
         "remove": {
           "type": "array",
-          "items": { "$ref": "#/$defs/removeDirective" },
+          "items": {
+            "$ref": "#/$defs/removeDirective"
+          },
           "description": "Directives to hide elements or sliders from previous steps."
         },
         "sliders": {
           "type": "array",
-          "items": { "$ref": "#/$defs/slider" },
+          "items": {
+            "$ref": "#/$defs/slider"
+          },
           "description": "Slider definitions added in this step. Sliders create interactive parameters for expressions."
         },
         "camera": {
@@ -195,7 +294,9 @@
         },
         "info": {
           "type": "array",
-          "items": { "$ref": "#/$defs/infoOverlay" },
+          "items": {
+            "$ref": "#/$defs/infoOverlay"
+          },
           "description": "Info overlay panels displayed during this step."
         },
         "range": {
@@ -225,16 +326,36 @@
     "element": {
       "type": "object",
       "description": "A 3D visual element. The 'type' field determines which renderer is used and which properties are valid.",
-      "required": ["type"],
+      "required": [
+        "type"
+      ],
       "properties": {
         "type": {
           "type": "string",
           "enum": [
-            "skybox", "axis", "grid", "vector", "point", "line", "surface",
-            "parametric_curve", "parametric_surface", "sphere", "ellipsoid",
-            "vectors", "vector_field", "plane", "polygon", "cylinder", "text",
-            "animated_vector", "animated_line", "animated_point",
-            "animated_cylinder", "animated_polygon", "animated_curve",
+            "skybox",
+            "axis",
+            "grid",
+            "vector",
+            "point",
+            "line",
+            "surface",
+            "parametric_curve",
+            "parametric_surface",
+            "sphere",
+            "ellipsoid",
+            "vectors",
+            "vector_field",
+            "plane",
+            "polygon",
+            "cylinder",
+            "text",
+            "animated_vector",
+            "animated_line",
+            "animated_point",
+            "animated_cylinder",
+            "animated_polygon",
+            "animated_curve",
             "tensor",
             "chart"
           ],
@@ -258,7 +379,14 @@
         },
         "colorMap": {
           "oneOf": [
-            { "type": "string", "enum": ["viridis", "magma", "blueRed"] },
+            {
+              "type": "string",
+              "enum": [
+                "viridis",
+                "magma",
+                "blueRed"
+              ]
+            },
             {
               "type": "object",
               "properties": {
@@ -268,14 +396,25 @@
                   "items": {
                     "type": "object",
                     "properties": {
-                      "t": { "type": "number", "description": "Position along the ramp (0 = low, 1 = high)." },
-                      "color": { "$ref": "#/$defs/color", "description": "Color at this stop." }
+                      "t": {
+                        "type": "number",
+                        "description": "Position along the ramp (0 = low, 1 = high)."
+                      },
+                      "color": {
+                        "$ref": "#/$defs/color",
+                        "description": "Color at this stop."
+                      }
                     },
-                    "required": ["t", "color"]
+                    "required": [
+                      "t",
+                      "color"
+                    ]
                   }
                 }
               },
-              "required": ["stops"],
+              "required": [
+                "stops"
+              ],
               "additionalProperties": false
             }
           ],
@@ -283,14 +422,19 @@
         },
         "colorDomain": {
           "type": "array",
-          "items": { "type": "number" },
+          "items": {
+            "type": "number"
+          },
           "minItems": 2,
           "maxItems": 2,
           "description": "TENSOR ONLY. Input range [lo,hi] that a tensor's 'valueExpr'/'values' are normalized over before 'colorMap' is applied. Values outside are clamped. Default [0,1]."
         },
         "shape": {
           "type": "array",
-          "items": { "type": "integer", "minimum": 1 },
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          },
           "minItems": 1,
           "description": "TENSOR ONLY. Logical shape of the data, any rank. The current grid layout draws the LAST dimension horizontally and the one before it vertically, so [6] is a row of 6 cells and [6,6] is a 6x6 matrix; higher-rank shapes are accepted and only their trailing 2D slice is drawn until slice layouts exist. Example: [6,6]."
         },
@@ -302,7 +446,9 @@
             "properties": {
               "labels": {
                 "type": "array",
-                "items": { "type": "string" },
+                "items": {
+                  "type": "string"
+                },
                 "description": "One label per entry along this axis. Example: [\"the\",\"cat\",\"sat\",\"on\",\"the\",\"mat\"]. Extra labels are ignored; too few leaves the remainder unlabelled."
               },
               "labelExpr": {
@@ -350,7 +496,10 @@
         },
         "axisLabels": {
           "type": "string",
-          "enum": ["screen", "plane"],
+          "enum": [
+            "screen",
+            "plane"
+          ],
           "description": "TENSOR ONLY. How 'axes' labels and titles are drawn. 'plane' (default): drawn on the lattice plane itself, in margin bands beside and above the cells, the same way 'textExpr' cell text is -- they tilt, scale and occlude with the lattice and never pile up with screen labels. 'screen': HTML labels that always face the camera, like every other label; use it for a lattice that is only ever read face-on and needs KaTeX in its labels. Plane mode is plain text (LaTeX is reduced to its plain reading: 'key $j$' becomes 'key j')."
         },
         "anchor": {
@@ -359,22 +508,53 @@
         },
         "textColor": {
           "oneOf": [
-            { "$ref": "#/$defs/color" },
-            { "type": "string", "enum": ["auto"] }
+            {
+              "$ref": "#/$defs/color"
+            },
+            {
+              "type": "string",
+              "enum": [
+                "auto"
+              ]
+            }
           ],
           "description": "TENSOR and CHART. On a tensor, the colour for 'textExpr' text: a hex string, an [r,g,b] array in 0-1, or 'auto' (the default): near-black on light cells, near-white on dark ones, decided per cell from its painted colour. On a chart, the ink for grid and zero lines; axes take their own 'color'."
         },
         "xDomain": {
           "oneOf": [
-            { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
-            { "type": "string", "enum": ["auto"] }
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            {
+              "type": "string",
+              "enum": [
+                "auto"
+              ]
+            }
           ],
           "description": "CHART ONLY. The x range shown, [lo, hi], or 'auto' (the default) to fit the series' x values, widened to round tick values."
         },
         "yDomain": {
           "oneOf": [
-            { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
-            { "type": "string", "enum": ["auto"] }
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            {
+              "type": "string",
+              "enum": [
+                "auto"
+              ]
+            }
           ],
           "description": "CHART ONLY. The y range shown, [lo, hi], or 'auto' (the default) to fit every series, line and band with a little padding, widened to round tick values. Fix it when a slider should be seen to change the data rather than the axis."
         },
@@ -384,19 +564,70 @@
           "items": {
             "type": "object",
             "properties": {
-              "id": { "type": "string" },
-              "label": { "type": "string", "description": "Legend text; used as the chart's legend entry when it is the only series and the chart has no 'label'." },
-              "color": { "$ref": "#/$defs/color" },
-              "n": { "type": "integer", "minimum": 2, "description": "Sample count for an expression series. Default 64." },
-              "xExpr": { "type": "string", "description": "Math.js expression for a sample's x, with 'i' and 'n' bound. Default: i. Wins over 'x', which is the fallback while the expression is refused." },
-              "yExpr": { "type": "string", "description": "Math.js expression for a sample's y, with 'i', 'n' and 'x' bound. Wins over 'y', which is the fallback while the expression is refused." },
-              "x": { "type": "array", "items": { "type": "number" }, "description": "Literal x values, one per sample." },
-              "y": { "type": "array", "items": { "type": "number" }, "description": "Literal y values. Static: built once, no per-frame cost." },
-              "kind": { "type": "string", "enum": ["line", "points"], "description": "Draw the samples joined (default) or as dots." },
-              "size": { "type": "number", "exclusiveMinimum": 0, "description": "Dot size in pixels for kind 'points' (before the Lines width setting scales it). Default: 3 x 'width'." },
-              "pointLabelExpr": { "type": "string", "description": "For kind 'points', text drawn beside each point. Evaluated per sample with 'i', 'n', and 'x' bound." },
-              "width": { "type": "number", "exclusiveMinimum": 0, "description": "Line width. Default 2.5." },
-              "opacity": { "type": "number", "minimum": 0, "maximum": 1 }
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string",
+                "description": "Legend text; used as the chart's legend entry when it is the only series and the chart has no 'label'."
+              },
+              "color": {
+                "$ref": "#/$defs/color"
+              },
+              "n": {
+                "type": "integer",
+                "minimum": 2,
+                "description": "Sample count for an expression series. Default 64."
+              },
+              "xExpr": {
+                "type": "string",
+                "description": "Math.js expression for a sample's x, with 'i' and 'n' bound. Default: i. Wins over 'x', which is the fallback while the expression is refused."
+              },
+              "yExpr": {
+                "type": "string",
+                "description": "Math.js expression for a sample's y, with 'i', 'n' and 'x' bound. Wins over 'y', which is the fallback while the expression is refused."
+              },
+              "x": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "description": "Literal x values, one per sample."
+              },
+              "y": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "description": "Literal y values. Static: built once, no per-frame cost."
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "line",
+                  "points"
+                ],
+                "description": "Draw the samples joined (default) or as dots."
+              },
+              "size": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "description": "Dot size in pixels for kind 'points' (before the Lines width setting scales it). Default: 3 x 'width'."
+              },
+              "pointLabelExpr": {
+                "type": "string",
+                "description": "For kind 'points', text drawn beside each point. Evaluated per sample with 'i', 'n', and 'x' bound."
+              },
+              "width": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "description": "Line width. Default 2.5."
+              },
+              "opacity": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
             },
             "additionalProperties": false
           }
@@ -407,11 +638,24 @@
           "items": {
             "type": "object",
             "properties": {
-              "y": { "type": "number" },
-              "yExpr": { "type": "string" },
-              "color": { "$ref": "#/$defs/color" },
-              "width": { "type": "number", "exclusiveMinimum": 0 },
-              "opacity": { "type": "number", "minimum": 0, "maximum": 1 }
+              "y": {
+                "type": "number"
+              },
+              "yExpr": {
+                "type": "string"
+              },
+              "color": {
+                "$ref": "#/$defs/color"
+              },
+              "width": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "opacity": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
             },
             "additionalProperties": false
           }
@@ -422,12 +666,27 @@
           "items": {
             "type": "object",
             "properties": {
-              "lo": { "type": "number" },
-              "hi": { "type": "number" },
-              "loExpr": { "type": "string" },
-              "hiExpr": { "type": "string" },
-              "color": { "$ref": "#/$defs/color" },
-              "opacity": { "type": "number", "minimum": 0, "maximum": 1, "description": "Default 0.18." }
+              "lo": {
+                "type": "number"
+              },
+              "hi": {
+                "type": "number"
+              },
+              "loExpr": {
+                "type": "string"
+              },
+              "hiExpr": {
+                "type": "string"
+              },
+              "color": {
+                "$ref": "#/$defs/color"
+              },
+              "opacity": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1,
+                "description": "Default 0.18."
+              }
             },
             "additionalProperties": false
           }
@@ -449,8 +708,14 @@
         },
         "opacity": {
           "oneOf": [
-            { "type": "number", "minimum": 0, "maximum": 1 },
-            { "type": "string" }
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            {
+              "type": "string"
+            }
           ],
           "description": "Element opacity 0-1. Can be a math.js expression string for animated elements. Default varies by type."
         },
@@ -460,8 +725,18 @@
         },
         "size": {
           "oneOf": [
-            { "type": "integer" },
-            { "type": "array", "items": { "type": "number", "exclusiveMinimum": 0 }, "minItems": 2, "maxItems": 2 }
+            {
+              "type": "integer"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "minItems": 2,
+              "maxItems": 2
+            }
           ],
           "description": "On point: point size in pixels (default 12). On chart: width and height of the plot area in data units, [w, h] (default [6, 3]); the paper with tick labels and titles extends about 1.1-1.6 units to the left and 0.7-1.1 below."
         },
@@ -487,19 +762,41 @@
         },
         "points": {
           "type": "array",
-          "items": { "$ref": "#/$defs/vec3OrExpr" },
+          "items": {
+            "$ref": "#/$defs/vec3OrExpr"
+          },
           "description": "Array of points for lines, polygons, animated_line. Each point is [x,y,z] (numbers or expression strings)."
         },
         "vertices": {
           "type": "array",
-          "items": { "$ref": "#/$defs/vec3OrExpr" },
+          "items": {
+            "$ref": "#/$defs/vec3OrExpr"
+          },
           "description": "Array of vertex positions for polygon/animated_polygon. Each is [x,y,z] (numbers or expression strings)."
         },
         "range": {
           "oneOf": [
-            { "type": "array", "items": { "oneOf": [{ "type": "number" }, { "type": "string" }] }, "minItems": 2, "maxItems": 2 },
-            { "$ref": "#/$defs/rangePlane" },
-            { "$ref": "#/$defs/range3D" }
+            {
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ]
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            {
+              "$ref": "#/$defs/rangePlane"
+            },
+            {
+              "$ref": "#/$defs/range3D"
+            }
           ],
           "description": "Range for parametric types [tMin,tMax] or axis range [-5,5]. Only this flat two-component form accepts math.js expression strings in place of numbers; the nested forms below are numeric-only. For vector_field: [[xMin,xMax],[yMin,yMax],[zMin,zMax]]. For grid: omit to inherit the scene range for the plane's two axes, or give one interval per axis in plane order as [[a,b],[c,d]] ('xz' means x then z) when the two axes span different extents."
         },
@@ -509,20 +806,39 @@
         },
         "divisions": {
           "oneOf": [
-            { "type": "integer", "minimum": 1 },
-            { "type": "array", "items": { "type": "integer", "minimum": 1 }, "minItems": 2, "maxItems": 2 }
+            {
+              "type": "integer",
+              "minimum": 1
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "minItems": 2,
+              "maxItems": 2
+            }
           ],
           "description": "Number of grid divisions: one count for both axes, or [nx, ny] in plane order. A pair is needed when the two axes span different extents and the cells must still land on integer positions. Default: 10.",
           "default": 10
         },
         "axis": {
           "type": "string",
-          "enum": ["x", "y", "z"],
+          "enum": [
+            "x",
+            "y",
+            "z"
+          ],
           "description": "Which axis this element represents (for 'axis' type) or cylinder axis direction."
         },
         "plane": {
           "type": "string",
-          "enum": ["xy", "xz", "yz"],
+          "enum": [
+            "xy",
+            "xz",
+            "yz"
+          ],
           "description": "Grid plane. Default: 'xy'. Also usable on animated_curve: 'xy' (default) plots expr along y; 'xz' plots it along z (fillRegions unsupported in 'xz'). Any other value (e.g. 'yz') is not modelled for animated_curve and falls back to 'xy'. On tensor it is the plane the cell lattice is laid out in; all three values are supported.",
           "default": "xy"
         },
@@ -550,17 +866,23 @@
           "oneOf": [
             {
               "type": "array",
-              "items": { "type": "string" },
+              "items": {
+                "type": "string"
+              },
               "minItems": 3,
               "maxItems": 3
             },
-            { "type": "string" }
+            {
+              "type": "string"
+            }
           ],
           "description": "Expression(s) for animated elements. Array of 3 math.js strings [x,y,z] for animated_vector/point, or single string for animated_curve/surface. Example: [\"k*2\", \"k*1\", \"0\"]."
         },
         "fromExpr": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "minItems": 3,
           "maxItems": 3,
           "description": "Math.js expression array [x,y,z] for dynamic start point of animated vectors/cylinders."
@@ -583,14 +905,18 @@
         },
         "uRange": {
           "type": "array",
-          "items": { "type": "number" },
+          "items": {
+            "type": "number"
+          },
           "minItems": 2,
           "maxItems": 2,
           "description": "U parameter range [min,max] for parametric surfaces. Default: [0, 2π]."
         },
         "vRange": {
           "type": "array",
-          "items": { "type": "number" },
+          "items": {
+            "type": "number"
+          },
           "minItems": 2,
           "maxItems": 2,
           "description": "V parameter range [min,max] for parametric surfaces. Default: [0, 2π]."
@@ -622,7 +948,10 @@
         },
         "style": {
           "type": "string",
-          "enum": ["solid", "gradient"],
+          "enum": [
+            "solid",
+            "gradient"
+          ],
           "description": "Skybox style. 'solid' uses a single color, 'gradient' blends topColor to bottomColor."
         },
         "topColor": {
@@ -676,7 +1005,11 @@
         },
         "align": {
           "type": "string",
-          "enum": ["left", "center", "right"],
+          "enum": [
+            "left",
+            "center",
+            "right"
+          ],
           "default": "center",
           "description": "Horizontal alignment of text labels. 'right' anchors the right edge at the position (text draws leftward). Default: 'center'."
         },
@@ -702,7 +1035,11 @@
           "properties": {
             "direction": {
               "type": "string",
-              "enum": ["x", "y", "z"],
+              "enum": [
+                "x",
+                "y",
+                "z"
+              ],
               "default": "y",
               "description": "Axis along which to interpolate colors. Default: 'y'."
             },
@@ -719,10 +1056,21 @@
               "items": {
                 "type": "object",
                 "properties": {
-                  "t": { "type": "number", "minimum": 0, "maximum": 1, "description": "Position along the gradient (0=start, 1=end)." },
-                  "color": { "$ref": "#/$defs/color", "description": "Color at this stop." }
+                  "t": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "description": "Position along the gradient (0=start, 1=end)."
+                  },
+                  "color": {
+                    "$ref": "#/$defs/color",
+                    "description": "Color at this stop."
+                  }
                 },
-                "required": ["t", "color"]
+                "required": [
+                  "t",
+                  "color"
+                ]
               },
               "description": "Array of color stops for multi-color gradients. Each stop has a position t (0-1) and a color."
             },
@@ -741,21 +1089,31 @@
         },
         "outlineOpacity": {
           "oneOf": [
-            { "type": "number" },
-            { "type": "string" }
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
           ],
           "description": "Outline opacity for polygons. Can be an expression string. Default: min(1, opacity * 2)."
         },
         "outlineWidth": {
           "oneOf": [
-            { "type": "number" },
-            { "type": "string" }
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
           ],
           "description": "Outline width for polygons. Can be an expression string. Default: 0 (no outline) or 1.5 for regular polygons."
         },
         "fillRegions": {
           "type": "array",
-          "items": { "$ref": "#/$defs/fillRegion" },
+          "items": {
+            "$ref": "#/$defs/fillRegion"
+          },
           "description": "Filled regions for animated_curve. Define areas above/below/between curves."
         },
         "showCurve": {
@@ -765,7 +1123,9 @@
         },
         "rangeExpr": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "minItems": 2,
           "maxItems": 2,
           "description": "Dynamic range [minExpr, maxExpr] for animated_curve parameter."
@@ -780,26 +1140,34 @@
         },
         "data": {
           "type": "array",
-          "items": { "$ref": "#/$defs/vec3OrExpr" },
+          "items": {
+            "$ref": "#/$defs/vec3OrExpr"
+          },
           "description": "Alias for 'points'. Array of [x,y,z] points for line elements."
         },
         "positionExpr": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "minItems": 3,
           "maxItems": 3,
           "description": "Alias for 'expr' on animated_point. Math.js expression array [x,y,z] for dynamic position."
         },
         "toExpr": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "minItems": 3,
           "maxItems": 3,
           "description": "Alias for 'expr' on animated_vector/animated_cylinder. Math.js expression array [x,y,z] for dynamic endpoint."
         },
         "centerExpr": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "minItems": 3,
           "maxItems": 3,
           "description": "Math.js expression array [x,y,z] for dynamic center position of sphere/ellipsoid."
@@ -875,18 +1243,65 @@
         "renderOrder": {
           "type": "number",
           "description": "Manual render order for polygon depth sorting. Auto-assigned if omitted."
+        },
+        "rightAxes": {
+          "type": "array",
+          "maxItems": 3,
+          "description": "On chart: right-hand axes. Each relabels the SAME plot rows through a transform of the primary y — nothing is plotted against one, so the two scales cannot disagree about where a datum sits. Stacked outward from the plot edge, each choosing round ticks in its own units. Use for a value and its z-score, or a temperature in two units. At most 3.",
+          "items": {
+            "type": "object",
+            "required": [
+              "fromPrimaryExpr"
+            ],
+            "properties": {
+              "fromPrimaryExpr": {
+                "type": "string",
+                "description": "Transform of a primary-y value, with `value` bound — e.g. (value - adMeanV(contam)) / adStdV(contam). Assumed AFFINE: the axis is drawn from the primary domain's two endpoints, and a non-affine transform warns once and mislabels its interior ticks. Re-evaluated live, so a z-scale widens as the standard deviation it divides by does."
+              },
+              "title": {
+                "type": "string",
+                "description": "Rotated axis title, KaTeX. Reserves extra margin."
+              },
+              "ticks": {
+                "type": "integer",
+                "minimum": 2,
+                "description": "Target tick count (default 5).",
+                "maximum": 50
+              },
+              "labelExpr": {
+                "type": "string",
+                "description": "Formats one tick, with `value` bound."
+              },
+              "color": {
+                "$ref": "#/$defs/color"
+              }
+            },
+            "additionalProperties": false
+          }
         }
       },
       "additionalProperties": true,
-      "if": { "properties": { "type": { "const": "chart" } } },
+      "if": {
+        "properties": {
+          "type": {
+            "const": "chart"
+          }
+        }
+      },
       "then": {
         "properties": {
-          "size": { "type": "array", "description": "A chart's size is the plot area, [w, h] in data units; a bare number would silently fall back to the default." }
+          "size": {
+            "type": "array",
+            "description": "A chart's size is the plot area, [w, h] in data units; a bare number would silently fall back to the default."
+          }
         }
       },
       "else": {
         "properties": {
-          "size": { "type": "integer", "description": "Only a chart takes the [w, h] form; every other type reads a pixel size." }
+          "size": {
+            "type": "integer",
+            "description": "Only a chart takes the [w, h] form; every other type reads a pixel size."
+          }
         }
       }
     },
@@ -908,7 +1323,11 @@
     "slider": {
       "type": "object",
       "description": "Interactive slider that creates a named parameter usable in math.js expressions. `kind: \"tensor\"` makes one slider hold a whole matrix: `shape` gives its dimensions, `default` a nested table, and `min`/`max`/`step` apply to every cell. In expressions the id is then a matrix: `wq[row + 1, col + 1]`, `x * wq`, `size(wq)`.",
-      "required": ["id", "min", "max"],
+      "required": [
+        "id",
+        "min",
+        "max"
+      ],
       "properties": {
         "id": {
           "type": "string",
@@ -916,13 +1335,19 @@
         },
         "kind": {
           "type": "string",
-          "enum": ["scalar", "tensor"],
+          "enum": [
+            "scalar",
+            "tensor"
+          ],
           "description": "'scalar' (default) is one number on one track. 'tensor' is a lattice of numbers edited cell by cell: the panel shows a grid the shape of 'shape', and hovering a cell opens that cell's slider.",
           "default": "scalar"
         },
         "shape": {
           "type": "array",
-          "items": { "type": "integer", "minimum": 1 },
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          },
           "minItems": 1,
           "maxItems": 2,
           "description": "TENSOR ONLY. Dimensions of the value, [rows, cols] or [n]. Required when kind is 'tensor'."
@@ -946,7 +1371,14 @@
         },
         "default": {
           "description": "Initial value. A number for a scalar slider (default: midpoint of min and max). For a tensor slider, a nested table matching 'shape' (e.g. [[0,0],[3,0]]) or a flat row-major list; cells outside [min, max] are clamped.",
-          "oneOf": [{ "type": "number" }, { "type": "array" }]
+          "oneOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "array"
+            }
+          ]
         },
         "animate": {
           "type": "boolean",
@@ -955,7 +1387,11 @@
         },
         "animateMode": {
           "type": "string",
-          "enum": ["loop", "once", "bounce"],
+          "enum": [
+            "loop",
+            "once",
+            "bounce"
+          ],
           "description": "Animation mode. 'loop': repeats 0→1→0→1; 'once': plays 0→1 then stops; 'bounce': triangle wave 0→1→0. Default: 'loop'.",
           "default": "loop"
         },
@@ -987,12 +1423,27 @@
         }
       },
       "additionalProperties": false,
-      "if": { "properties": { "kind": { "const": "tensor" } }, "required": ["kind"] },
-      "then": {
-        "required": ["shape"],
+      "if": {
         "properties": {
-          "default": { "type": "array" },
-          "animate": { "const": false },
+          "kind": {
+            "const": "tensor"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
+      "then": {
+        "required": [
+          "shape"
+        ],
+        "properties": {
+          "default": {
+            "type": "array"
+          },
+          "animate": {
+            "const": false
+          },
           "valueExpr": false,
           "minExpr": false,
           "maxExpr": false
@@ -1000,7 +1451,9 @@
       },
       "else": {
         "properties": {
-          "default": { "type": "number" },
+          "default": {
+            "type": "number"
+          },
           "shape": false
         }
       }
@@ -1027,7 +1480,9 @@
     "view": {
       "type": "object",
       "description": "Named camera preset shown as a clickable button.",
-      "required": ["name"],
+      "required": [
+        "name"
+      ],
       "properties": {
         "name": {
           "type": "string",
@@ -1043,7 +1498,9 @@
         },
         "positionExpr": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "minItems": 3,
           "maxItems": 3,
           "description": "Dynamic camera position as expression triplet [xExpr,yExpr,zExpr]. Evaluated each frame in data space."
@@ -1054,7 +1511,9 @@
         },
         "targetExpr": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "minItems": 3,
           "maxItems": 3,
           "description": "Dynamic camera target as expression triplet [xExpr,yExpr,zExpr]. Evaluated each frame in data space."
@@ -1065,8 +1524,16 @@
         },
         "follow": {
           "oneOf": [
-            { "type": "string" },
-            { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1
+            }
           ],
           "description": "Element ID (or list of candidate IDs — the live one is tracked) to follow with the camera. The camera tracks the element's animated position."
         },
@@ -1076,17 +1543,23 @@
         },
         "angleLockAxis": {
           "type": "array",
-          "items": { "type": "integer" },
+          "items": {
+            "type": "integer"
+          },
           "description": "Axis indices for angle-lock camera mode."
         },
         "angleLockDirection": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Element IDs defining the angle-lock direction vector."
         },
         "angleLockVector": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Element IDs defining the angle-lock reference vector."
         }
       },
@@ -1099,7 +1572,9 @@
         "oneOf": [
           {
             "type": "array",
-            "items": { "type": "object" },
+            "items": {
+              "type": "object"
+            },
             "description": "Table: array of row objects with string keys and number/string values."
           },
           {
@@ -1112,7 +1587,10 @@
     "sceneFunction": {
       "type": "object",
       "description": "Reusable function registered in the math.js sandbox. Can be called from any expression in the scene.",
-      "required": ["name", "expr"],
+      "required": [
+        "name",
+        "expr"
+      ],
       "properties": {
         "name": {
           "type": "string",
@@ -1120,7 +1598,9 @@
         },
         "args": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Function argument names. Example: [\"mode\"] for a function that takes one argument."
         },
         "expr": {
@@ -1178,7 +1658,10 @@
     "infoOverlay": {
       "type": "object",
       "description": "Info panel overlay displayed during a step.",
-      "required": ["id", "content"],
+      "required": [
+        "id",
+        "content"
+      ],
       "properties": {
         "id": {
           "type": "string",
@@ -1190,13 +1673,27 @@
         },
         "position": {
           "type": "string",
-          "enum": ["top-left", "top-right", "bottom-left", "bottom-right", "top-center", "bottom-center"],
+          "enum": [
+            "top-left",
+            "top-right",
+            "bottom-left",
+            "bottom-right",
+            "top-center",
+            "bottom-center"
+          ],
           "description": "Screen position for the overlay. Default: 'top-left'.",
           "default": "top-left"
         },
         "pos": {
           "type": "string",
-          "enum": ["top-left", "top-right", "bottom-left", "bottom-right", "top-center", "bottom-center"],
+          "enum": [
+            "top-left",
+            "top-right",
+            "bottom-left",
+            "bottom-right",
+            "top-center",
+            "bottom-center"
+          ],
           "description": "Alias for 'position'. Prefer 'position' in new scenes."
         },
         "keep": {
@@ -1214,7 +1711,9 @@
     "virtualTime": {
       "type": "object",
       "description": "Virtual time expression that replaces the default wall-clock 't' variable. Allows slider-controlled time for scrubbing.",
-      "required": ["expr"],
+      "required": [
+        "expr"
+      ],
       "properties": {
         "expr": {
           "type": "string",
@@ -1229,7 +1728,11 @@
       "properties": {
         "type": {
           "type": "string",
-          "enum": ["basic", "phong", "standard"],
+          "enum": [
+            "basic",
+            "phong",
+            "standard"
+          ],
           "description": "Three.js material type. 'basic': no lighting; 'phong': Phong shading (default); 'standard': PBR material.",
           "default": "phong"
         },
@@ -1349,15 +1852,24 @@
       "properties": {
         "n": {
           "oneOf": [
-            { "type": "integer", "minimum": 3 },
-            { "type": "string" }
+            {
+              "type": "integer",
+              "minimum": 3
+            },
+            {
+              "type": "string"
+            }
           ],
           "description": "Number of sides. Can be an expression string for animated polygons. Example: \"N\" (slider-driven)."
         },
         "radius": {
           "oneOf": [
-            { "type": "number" },
-            { "type": "string" }
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
           ],
           "description": "Circumradius. Can be an expression string. Default: 1."
         },
@@ -1365,8 +1877,12 @@
           "type": "array",
           "items": {
             "oneOf": [
-              { "type": "number" },
-              { "type": "string" }
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
             ]
           },
           "minItems": 3,
@@ -1375,14 +1891,22 @@
         },
         "rotation": {
           "oneOf": [
-            { "type": "number" },
-            { "type": "string" }
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
           ],
           "description": "Rotation angle in radians. Can be an expression string. Default: 0."
         },
         "plane": {
           "type": "string",
-          "enum": ["xy", "xz", "yz"],
+          "enum": [
+            "xy",
+            "xz",
+            "yz"
+          ],
           "description": "Plane in which the polygon is generated. Default: \"xy\"."
         }
       },
@@ -1402,8 +1926,12 @@
         },
         "opacity": {
           "oneOf": [
-            { "type": "number" },
-            { "type": "string" }
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
           ],
           "description": "Fill opacity. Can be expression string. Default: 0.35."
         },
@@ -1425,8 +1953,12 @@
         },
         "outlineWidth": {
           "oneOf": [
-            { "type": "number" },
-            { "type": "string" }
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
           ],
           "description": "Outline width for the fill region."
         },
@@ -1436,8 +1968,12 @@
         },
         "outlineOpacity": {
           "oneOf": [
-            { "type": "number" },
-            { "type": "string" }
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
           ],
           "description": "Outline opacity."
         }
@@ -1446,10 +1982,14 @@
     },
     "proofOrProofArray": {
       "oneOf": [
-        { "$ref": "#/$defs/proof" },
+        {
+          "$ref": "#/$defs/proof"
+        },
         {
           "type": "array",
-          "items": { "$ref": "#/$defs/proof" }
+          "items": {
+            "$ref": "#/$defs/proof"
+          }
         }
       ],
       "description": "A single proof or array of proofs."
@@ -1457,7 +1997,10 @@
     "proof": {
       "type": "object",
       "description": "A step-by-step mathematical proof or derivation displayed in the proof panel.",
-      "required": ["title", "steps"],
+      "required": [
+        "title",
+        "steps"
+      ],
       "properties": {
         "id": {
           "type": "string",
@@ -1474,11 +2017,23 @@
         "technique": {
           "type": "string",
           "enum": [
-            "direct", "contradiction", "contrapositive", "cases",
-            "induction", "strongInduction", "wellOrdering",
-            "construction", "nonConstructive", "counterexample",
-            "exhaustion", "equivalence", "invariant", "probabilistic",
-            "existence", "uniqueness", "derivation"
+            "direct",
+            "contradiction",
+            "contrapositive",
+            "cases",
+            "induction",
+            "strongInduction",
+            "wellOrdering",
+            "construction",
+            "nonConstructive",
+            "counterexample",
+            "exhaustion",
+            "equivalence",
+            "invariant",
+            "probabilistic",
+            "existence",
+            "uniqueness",
+            "derivation"
           ],
           "description": "Proof technique shown as a colored badge. 'derivation' is hidden (no badge shown)."
         },
@@ -1488,12 +2043,16 @@
         },
         "domain": {
           "type": "string",
-          "description": "Subject domain of the proof (\"physics\", \"algebra\", \"calculus\", \"quantum\", \"statistics\", \u2026). Free-form, not enumerated. Read by the Function Analysis page as `mathDomain` context: it is the signal that decides whether e.g. negative time is exploration or nonsense, which the CAS's purely mathematical domain can never know. Set on standalone proofs under proofs/domains/."
+          "description": "Subject domain of the proof (\"physics\", \"algebra\", \"calculus\", \"quantum\", \"statistics\", …). Free-form, not enumerated. Read by the Function Analysis page as `mathDomain` context: it is the signal that decides whether e.g. negative time is exploration or nonsense, which the CAS's purely mathematical domain can never know. Set on standalone proofs under proofs/domains/."
         },
         "sceneStep": {
           "oneOf": [
-            { "type": "integer" },
-            { "type": "string" }
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            }
           ],
           "description": "Scene step to navigate to when viewing the proof goal. Integer for step index, or 'sceneIdx:stepIdx' string. Enables bidirectional sync between proof and scene navigation."
         },
@@ -1503,7 +2062,9 @@
         },
         "steps": {
           "type": "array",
-          "items": { "$ref": "#/$defs/proofStep" },
+          "items": {
+            "$ref": "#/$defs/proofStep"
+          },
           "minItems": 1,
           "description": "Array of proof steps rendered sequentially."
         }
@@ -1513,7 +2074,9 @@
     "proofStep": {
       "type": "object",
       "description": "A single step in a mathematical proof.",
-      "required": ["label"],
+      "required": [
+        "label"
+      ],
       "properties": {
         "id": {
           "type": "string",
@@ -1546,18 +2109,26 @@
         },
         "tags": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Tags displayed as small badges on the step. Example: [\"algebra\", \"key-insight\"]."
         },
         "highlights": {
           "type": "object",
-          "additionalProperties": { "$ref": "#/$defs/proofHighlight" },
+          "additionalProperties": {
+            "$ref": "#/$defs/proofHighlight"
+          },
           "description": "Named highlight regions in the math expression. Keys match \\\\htmlClass{hl-<name>}{...} spans in the math field."
         },
         "sceneStep": {
           "oneOf": [
-            { "type": "integer" },
-            { "type": "string" }
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            }
           ],
           "description": "Scene step to sync to when this proof step is active. Integer for step index in current scene, or 'sceneIdx:stepIdx' for cross-scene."
         },
@@ -1572,7 +2143,9 @@
                   "description": "Semantic graph JSON (nodes + edges) used by the Mermaid renderer and the interactive info panel. See schemas/semantic-graph.schema.json. Produced by scripts/latex_to_graph.py."
                 }
               },
-              "required": ["graph"],
+              "required": [
+                "graph"
+              ],
               "additionalProperties": false
             },
             {
@@ -1583,7 +2156,10 @@
                   "properties": {
                     "reason": {
                       "type": "string",
-                      "enum": ["parse_failed", "parse_crashed"],
+                      "enum": [
+                        "parse_failed",
+                        "parse_crashed"
+                      ],
                       "description": "'parse_failed' — parser returned no graph (unsupported construct). 'parse_crashed' — parser raised an exception."
                     },
                     "message": {
@@ -1595,11 +2171,16 @@
                       "description": "The original LaTeX source that failed to parse."
                     }
                   },
-                  "required": ["reason", "message"],
+                  "required": [
+                    "reason",
+                    "message"
+                  ],
                   "additionalProperties": false
                 }
               },
-              "required": ["error"],
+              "required": [
+                "error"
+              ],
               "additionalProperties": false
             }
           ]
@@ -1613,7 +2194,23 @@
       "properties": {
         "color": {
           "type": "string",
-          "enum": ["cyan", "yellow", "green", "orange", "magenta", "red", "blue", "pink", "white", "gray", "gold", "silver", "purple", "teal", "lime"],
+          "enum": [
+            "cyan",
+            "yellow",
+            "green",
+            "orange",
+            "magenta",
+            "red",
+            "blue",
+            "pink",
+            "white",
+            "gray",
+            "gold",
+            "silver",
+            "purple",
+            "teal",
+            "lime"
+          ],
           "description": "Highlight color. Default: 'cyan'.",
           "default": "cyan"
         },
@@ -1633,7 +2230,11 @@
         },
         {
           "type": "array",
-          "items": { "type": "number", "minimum": 0, "maximum": 1 },
+          "items": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
           "minItems": 3,
           "maxItems": 3,
           "description": "RGB array with values 0-1. Example: [0.5, 0.2, 0.8]."
@@ -1643,7 +2244,9 @@
     },
     "vec3Number": {
       "type": "array",
-      "items": { "type": "number" },
+      "items": {
+        "type": "number"
+      },
       "minItems": 3,
       "maxItems": 3,
       "description": "3D vector as [x,y,z] numeric array."
@@ -1652,8 +2255,12 @@
       "type": "array",
       "items": {
         "oneOf": [
-          { "type": "number" },
-          { "type": "string" }
+          {
+            "type": "number"
+          },
+          {
+            "type": "string"
+          }
         ]
       },
       "minItems": 3,
@@ -1664,8 +2271,12 @@
       "type": "array",
       "items": {
         "oneOf": [
-          { "type": "number" },
-          { "type": "string" }
+          {
+            "type": "number"
+          },
+          {
+            "type": "string"
+          }
         ]
       },
       "minItems": 3,
@@ -1674,7 +2285,14 @@
     },
     "rangePlane": {
       "type": "array",
-      "items": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
+      "items": {
+        "type": "array",
+        "items": {
+          "type": "number"
+        },
+        "minItems": 2,
+        "maxItems": 2
+      },
       "minItems": 2,
       "maxItems": 2,
       "description": "Per-axis ranges for a plane as [[aMin,aMax],[bMin,bMax]], in plane order."
@@ -1683,7 +2301,9 @@
       "type": "array",
       "items": {
         "type": "array",
-        "items": { "type": "number" },
+        "items": {
+          "type": "number"
+        },
         "minItems": 2,
         "maxItems": 2
       },

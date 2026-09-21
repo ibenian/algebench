@@ -1,43 +1,108 @@
 {
   "title": "chart — a plot on the plane",
-  "import": ["transformer"],
+  "import": [
+    "transformer"
+  ],
   "scenes": [
     {
       "title": "chart — a plot on the plane",
-      "description": "Three charts, one element each: sampled draws with a live ±1 s.d. band, a static series, and a slider-driven curve on a fixed domain.",
-      "markdown": "# `chart`\n\nEach plot below is **one element**. The series are real lines in the viewport — crisp at any angle — and the paper (axes, ticks, titles, grid) is drawn on the plane the way a `tensor` draws its labels, so it tilts with the plot and never piles up with screen labels. Use the **Iso** view to see that.\n\n**Top left — `yExpr`, live.** 64 dot products of random unit-variance vectors in $\\mathbb{R}^n$, from the transformer domain: `tfDotSample(i, n)`. Two `hlines` at $\\pm 1$ s.d. of a 4,000-draw run. Drag **n** and the band widens like $\\sqrt{n}$ while the domain re-fits.\n\n**Top right — the same draws, $\\div\\sqrt{n}$.** Same series divided by `sqrt(n)`; the band refuses to grow. This pair is the variance argument for the $1/\\sqrt{d_k}$ scaling, and it replaces twelve hand-placed elements in the transformer lesson.\n\n**Bottom left — `y`, static.** Literal values, built once, zero per-frame cost, drawn as points.\n\n**Bottom right — a fixed domain.** `sin(k x)` with `xExpr` and a fixed `yDomain`, so the slider is seen to move the curve rather than the axis.",
+      "description": "Five charts, one element each: sampled draws with a live ±1 s.d. band, a static series, a slider-driven curve on a fixed domain, and one series read on three scales at once.",
+      "markdown": "# `chart`\n\nEach plot below is **one element**. The series are real lines in the viewport — crisp at any angle — and the paper (axes, ticks, titles, grid) is drawn on the plane the way a `tensor` draws its labels, so it tilts with the plot and never piles up with screen labels. Use the **Iso** view to see that.\n\n**Top left — `yExpr`, live.** 64 dot products of random unit-variance vectors in $\\mathbb{R}^n$, from the transformer domain: `tfDotSample(i, n)`. Two `hlines` at $\\pm 1$ s.d. of a 4,000-draw run. Drag **n** and the band widens like $\\sqrt{n}$ while the domain re-fits.\n\n**Top right — the same draws, $\\div\\sqrt{n}$.** Same series divided by `sqrt(n)`; the band refuses to grow. This pair is the variance argument for the $1/\\sqrt{d_k}$ scaling, and it replaces twelve hand-placed elements in the transformer lesson.\n\n**Bottom left — `y`, static.** Literal values, built once, zero per-frame cost, drawn as points.\n\n**Bottom right — a fixed domain.** `sin(k x)` with `xExpr` and a fixed `yDomain`, so the slider is seen to move the curve rather than the axis.\n\n**Bottom — one series, three scales.** A temperature plotted against the primary y in °C, with two `rightAxes` relabelling the *same* plot rows: °F via `value * 9 / 5 + 32`, and a z-score whose transform reads **k**. Drag **k** and that one scale restretches while the curve and the other two axes do not move. A right axis is a transform of the left, not a scale of its own, so it cannot disagree with the data — which is the thing a true dual-axis chart cannot promise.",
       "range": [
-        [-3, 22],
-        [-5, 10],
-        [-2, 2]
+        [
+          -3,
+          22
+        ],
+        [
+          -11,
+          10
+        ],
+        [
+          -2,
+          2
+        ]
       ],
       "camera": {
-        "position": [9.5, 2.5, 20],
-        "target": [9.5, 2.5, 0]
+        "position": [
+          9.5,
+          -0.5,
+          27
+        ],
+        "target": [
+          9.5,
+          -0.5,
+          0
+        ]
       },
       "views": [
         {
           "name": "All",
-          "position": [9.5, 2.5, 20],
-          "target": [9.5, 2.5, 0],
-          "description": "All four charts face-on"
+          "position": [
+            9.5,
+            -0.5,
+            27
+          ],
+          "target": [
+            9.5,
+            -0.5,
+            0
+          ],
+          "description": "All five charts"
         },
         {
           "name": "Draws",
-          "position": [4.5, 6, 9],
-          "target": [4.5, 6, 0],
+          "position": [
+            4.5,
+            6,
+            9
+          ],
+          "target": [
+            4.5,
+            6,
+            0
+          ],
           "description": "Close on the sampled draws"
         },
         {
           "name": "Scaled",
-          "position": [15.5, 6.5, 8.5],
-          "target": [15.5, 6.5, 0],
+          "position": [
+            15.5,
+            6.5,
+            8.5
+          ],
+          "target": [
+            15.5,
+            6.5,
+            0
+          ],
           "description": "Close on the scaled draws and their radical"
         },
         {
+          "name": "Right axes",
+          "position": [
+            5.0,
+            -7.0,
+            11
+          ],
+          "target": [
+            5.0,
+            -7.0,
+            0
+          ],
+          "description": "Close on the two right-hand axes"
+        },
+        {
           "name": "Iso",
-          "position": [20, -8, 14],
-          "target": [9.5, 2.5, 0],
+          "position": [
+            20,
+            -10,
+            18
+          ],
+          "target": [
+            9.5,
+            -0.5,
+            0
+          ],
           "description": "Angled, to see the paper tilt with the plot"
         }
       ],
@@ -46,40 +111,91 @@
           "id": "floor",
           "type": "grid",
           "plane": "xy",
-          "range": [-3, 22],
-          "color": [0.28, 0.32, 0.46],
+          "range": [
+            -3,
+            22
+          ],
+          "color": [
+            0.28,
+            0.32,
+            0.46
+          ],
           "opacity": 0.06,
           "divisions": 25
         }
       ],
       "steps": [
         {
-          "id": "four-charts",
-          "title": "Four charts",
-          "description": "Drag **n** for the two draw charts and **k** for the sine.",
+          "id": "five-charts",
+          "title": "Five charts",
+          "description": "Drag **n** for the two draw charts, **k** for the sine and for the bottom chart's z-axis.",
           "sliders": [
-            {"id": "gen_n", "label": "n — dimension of the generic vectors", "min": 1, "max": 64, "step": 1, "default": 2},
-            {"id": "k", "label": "k — frequency", "min": 0.5, "max": 4, "step": 0.1, "default": 1}
+            {
+              "id": "gen_n",
+              "label": "n — dimension of the generic vectors",
+              "min": 1,
+              "max": 64,
+              "step": 1,
+              "default": 2
+            },
+            {
+              "id": "k",
+              "label": "k — frequency",
+              "min": 0.5,
+              "max": 4,
+              "step": 0.1,
+              "default": 1
+            }
           ],
           "add": [
             {
               "id": "draws",
               "type": "chart",
-              "origin": [1.5, 5.0, 0],
-              "size": [6, 3],
+              "origin": [
+                1.5,
+                5.0,
+                0
+              ],
+              "size": [
+                6,
+                3
+              ],
               "series": [
-                {"yExpr": "tfDotSample(i, gen_n)", "n": 64, "color": "#f06292", "label": "q·k, i.i.d. in R^n"}
+                {
+                  "yExpr": "tfDotSample(i, gen_n)",
+                  "n": 64,
+                  "color": "#f06292",
+                  "label": "q·k, i.i.d. in R^n"
+                }
               ],
               "hlines": [
-                {"yExpr": "sqrt(tfSampleVar(gen_n, 4000))", "color": "#f06292", "opacity": 0.6},
-                {"yExpr": "-sqrt(tfSampleVar(gen_n, 4000))", "color": "#f06292", "opacity": 0.6}
+                {
+                  "yExpr": "sqrt(tfSampleVar(gen_n, 4000))",
+                  "color": "#f06292",
+                  "opacity": 0.6
+                },
+                {
+                  "yExpr": "-sqrt(tfSampleVar(gen_n, 4000))",
+                  "color": "#f06292",
+                  "opacity": 0.6
+                }
               ],
               "bands": [
-                {"loExpr": "-sqrt(tfSampleVar(gen_n, 4000))", "hiExpr": "sqrt(tfSampleVar(gen_n, 4000))", "color": "#f06292", "opacity": 0.12}
+                {
+                  "loExpr": "-sqrt(tfSampleVar(gen_n, 4000))",
+                  "hiExpr": "sqrt(tfSampleVar(gen_n, 4000))",
+                  "color": "#f06292",
+                  "opacity": 0.12
+                }
               ],
               "axes": [
-                {"title": "sample"},
-                {"title": "$q \\cdot k$", "color": "#f06292"}
+                {
+                  "title": "sample"
+                },
+                {
+                  "title": "$q \\cdot k$",
+                  "color": "#f06292"
+                }
               ],
               "label": "q·k, i.i.d. draws",
               "prompt": "64 sampled dot products of random vectors with independent zero-mean unit-variance components, from the transformer domain library. The two lines and the band are plus and minus one standard deviation of a 4,000-draw run. Drag n: the spread grows like sqrt(n), and the y domain re-fits so the axis end labels tell you the scale."
@@ -87,22 +203,55 @@
             {
               "id": "draws_scaled",
               "type": "chart",
-              "origin": [12.5, 5.0, 0],
-              "size": [6, 3],
+              "origin": [
+                12.5,
+                5.0,
+                0
+              ],
+              "size": [
+                6,
+                3
+              ],
               "series": [
-                {"yExpr": "tfDotSampleScaled(i, gen_n)", "n": 64, "color": "#f06292", "label": "same draws ÷ √n"}
+                {
+                  "yExpr": "tfDotSampleScaled(i, gen_n)",
+                  "n": 64,
+                  "color": "#f06292",
+                  "label": "same draws ÷ √n"
+                }
               ],
               "hlines": [
-                {"yExpr": "sqrt(tfSampleVar(gen_n, 4000) / gen_n)", "color": "#f06292", "opacity": 0.6},
-                {"yExpr": "-sqrt(tfSampleVar(gen_n, 4000) / gen_n)", "color": "#f06292", "opacity": 0.6}
+                {
+                  "yExpr": "sqrt(tfSampleVar(gen_n, 4000) / gen_n)",
+                  "color": "#f06292",
+                  "opacity": 0.6
+                },
+                {
+                  "yExpr": "-sqrt(tfSampleVar(gen_n, 4000) / gen_n)",
+                  "color": "#f06292",
+                  "opacity": 0.6
+                }
               ],
               "bands": [
-                {"loExpr": "-sqrt(tfSampleVar(gen_n, 4000) / gen_n)", "hiExpr": "sqrt(tfSampleVar(gen_n, 4000) / gen_n)", "color": "#f06292", "opacity": 0.12}
+                {
+                  "loExpr": "-sqrt(tfSampleVar(gen_n, 4000) / gen_n)",
+                  "hiExpr": "sqrt(tfSampleVar(gen_n, 4000) / gen_n)",
+                  "color": "#f06292",
+                  "opacity": 0.12
+                }
               ],
-              "yDomain": [-4, 4],
+              "yDomain": [
+                -4,
+                4
+              ],
               "axes": [
-                {"title": "sample"},
-                {"title": "$q \\cdot k / \\sqrt{n}$", "color": "#f06292"}
+                {
+                  "title": "sample"
+                },
+                {
+                  "title": "$q \\cdot k / \\sqrt{n}$",
+                  "color": "#f06292"
+                }
               ],
               "label": "same draws, ÷√n",
               "prompt": "The same 64 draws divided by sqrt(n). The y domain is FIXED at -4..4 on purpose: with an auto domain the band would look the same at every n, which is true but invisible. Here the band holds its width while n climbs to 64."
@@ -110,19 +259,40 @@
             {
               "id": "static",
               "type": "chart",
-              "origin": [1.5, -1.0, 0],
-              "size": [6, 3],
+              "origin": [
+                1.5,
+                -1.0,
+                0
+              ],
+              "size": [
+                6,
+                3
+              ],
               "series": [
                 {
-                  "y": [0.6, 0.3, 0.1, 0.05, 0.02, 0.01, 0.005, 0.002],
+                  "y": [
+                    0.6,
+                    0.3,
+                    0.1,
+                    0.05,
+                    0.02,
+                    0.01,
+                    0.005,
+                    0.002
+                  ],
                   "color": "#66bb6a",
                   "kind": "points",
                   "label": "a static series"
                 }
               ],
               "axes": [
-                {"title": "index"},
-                {"title": "weight", "color": "#66bb6a"}
+                {
+                  "title": "index"
+                },
+                {
+                  "title": "weight",
+                  "color": "#66bb6a"
+                }
               ],
               "label": "static points",
               "prompt": "Eight literal values drawn as points. No expression, so no per-frame work: this chart costs nothing after it is built."
@@ -130,19 +300,106 @@
             {
               "id": "sine",
               "type": "chart",
-              "origin": [12.5, -1.0, 0],
-              "size": [6, 3],
-              "series": [
-                {"xExpr": "i / (n - 1) * 6.2832", "yExpr": "sin(k * x)", "n": 120, "color": "#42a5f5", "label": "sin(kx)"}
+              "origin": [
+                12.5,
+                -1.0,
+                0
               ],
-              "xDomain": [0, 6.2832],
-              "yDomain": [-1, 1],
+              "size": [
+                6,
+                3
+              ],
+              "series": [
+                {
+                  "xExpr": "i / (n - 1) * 6.2832",
+                  "yExpr": "sin(k * x)",
+                  "n": 120,
+                  "color": "#42a5f5",
+                  "label": "sin(kx)"
+                }
+              ],
+              "xDomain": [
+                0,
+                6.2832
+              ],
+              "yDomain": [
+                -1,
+                1
+              ],
               "axes": [
-                {"title": "$x$", "ticks": 4, "labelExpr": "toFixed(value, 1)"},
-                {"title": "$\\sin kx$", "color": "#42a5f5"}
+                {
+                  "title": "$x$",
+                  "ticks": 4,
+                  "labelExpr": "toFixed(value, 1)"
+                },
+                {
+                  "title": "$\\sin kx$",
+                  "color": "#42a5f5"
+                }
               ],
               "label": "sin(kx)",
               "prompt": "A curve on a fixed domain: xExpr spaces 120 samples over one turn and yExpr is sin(k x). Both domains are fixed so dragging k visibly changes the curve, not the axes."
+            },
+            {
+              "id": "right-axes",
+              "type": "chart",
+              "origin": [
+                1.5,
+                -8.5,
+                0
+              ],
+              "size": [
+                6,
+                3
+              ],
+              "xDomain": [
+                0,
+                59
+              ],
+              "yDomain": [
+                0,
+                40
+              ],
+              "series": [
+                {
+                  "xExpr": "i",
+                  "yExpr": "18 + 12 * sin(i / 9) + 3 * cos(i / 2.5)",
+                  "n": 60,
+                  "color": "#78909c",
+                  "label": "temperature $^\\circ$C"
+                }
+              ],
+              "axes": [
+                {
+                  "title": "sample",
+                  "ticks": 5,
+                  "labelExpr": "toFixed(value, 0)"
+                },
+                {
+                  "title": "$^\\circ$C",
+                  "ticks": 6,
+                  "labelExpr": "toFixed(value, 0)",
+                  "color": "#78909c"
+                }
+              ],
+              "rightAxes": [
+                {
+                  "fromPrimaryExpr": "value * 9 / 5 + 32",
+                  "title": "$^\\circ$F",
+                  "ticks": 6,
+                  "labelExpr": "toFixed(value, 0)",
+                  "color": "#ef5350"
+                },
+                {
+                  "fromPrimaryExpr": "(value - 18) / (1 + k)",
+                  "title": "$z = (T - 18)/\\sigma$",
+                  "ticks": 6,
+                  "labelExpr": "toFixed(value, 1)",
+                  "color": "#42a5f5"
+                }
+              ],
+              "label": "one series, three scales",
+              "prompt": "One series, three scales. The temperature is plotted against the primary y in Celsius; each right axis relabels those same plot rows through a transform of it. Fahrenheit is the exact affine relabel everyone already trusts, and it is checkable on screen: 10 C and 50 F are BOTH rendered ticks and sit on the same row. (0 C does correspond to 32 F, but 32 is not a round number in the F axis's own units so it is never drawn as a tick -- which is the point of each axis choosing round values in its own scale rather than inheriting the other's rows.) The blue z-axis reads the k slider, so dragging k restretches that scale while the curve and the other two axes do not move a pixel. Because a right axis is a transform of the left rather than a scale of its own, it cannot disagree with the data; a true dual-axis chart, with a second series on an unrelated scale, cannot promise that."
             }
           ]
         }
