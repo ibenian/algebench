@@ -112,7 +112,12 @@ def _build_context(spec, scene, proof, step):
     temperature), so baking with it produces the same result the live UI would.
     """
     ctx = {}
-    if isinstance(spec, dict):
+    # `loadLesson` nulls `state.lessonSpec` when the file is not lesson format
+    # (`isLessonFormat`: a non-empty `scenes` array), so for a bare single-scene
+    # file the live path sends neither lesson NOR scene metadata. Mirror that,
+    # or these newly reachable proofs get enrichment the browser never would.
+    is_lesson = isinstance(spec, dict) and isinstance(spec.get("scenes"), list) and spec["scenes"]
+    if is_lesson:
         if spec.get("title"):
             ctx["lessonTitle"] = spec["title"]
         if spec.get("description"):

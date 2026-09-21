@@ -261,8 +261,14 @@ def iter_proof_steps(spec):
         scene_steps = sc.get("steps")
         if not isinstance(scene_steps, list):
             continue
+        # For the bare fallback `sc` IS the spec, and the browser's
+        # buildEnrichContext resolves its scene from `lesson.scenes`, which
+        # such a file does not have — so it sends no scene context at all.
+        # Passing `sc` here would instead send the root title/description as
+        # BOTH lesson and scene context, which is not what the live UI does.
+        scene_obj = None if sc is spec else sc
         for sti, scene_step in enumerate(scene_steps):
-            yield from _walk(scene_step, si, sti, sc)
+            yield from _walk(scene_step, si, sti, scene_obj)
 
 
 def _existing_graph(step):
@@ -311,8 +317,14 @@ def analyze(spec):
     counts = {"valid": 0, "stale": 0, "missing": 0,
               "errorUnbaked": 0, "errorBroken": 0}
     total_derive = 0.0    # cost to re-derive every step (the full bake cost)
-    runtime_derive = 0.0  # cost the server still pays at load: steps without a
-                          # valid baked graph (missing/stale/error are re-derived)
+    runtime_derive = 0.0  # cost the server pays AT LOAD. `_autofill_semantic_graphs`
+                          # walks scenes[*].proof only, so only scene-level steps
+                          # without a valid baked graph land here.
+    ondemand_derive = 0.0 # the same work for root- and step-level proofs, which
+                          # the server never fills: it is paid on the first
+                          # POST /api/graph/from-latex when a reader opens the
+                          # Graph tab, not on load. Kept out of the prebake
+                          # recommendation so an unopened tab cannot ask for a bake.
     for loc, _scene, _proof, step in iter_proof_steps(spec):
         math_src = step.get("math")
         if not math_src or not isinstance(math_src, str):
@@ -338,7 +350,10 @@ def analyze(spec):
             status = "stale"
             detail = "baked graph structure differs from fresh derivation"
         if status != "valid":
-            runtime_derive += dt
+            if loc.level == "scene":
+                runtime_derive += dt
+            else:
+                ondemand_derive += dt
         counts[status] += 1
         steps_report.append({
             # `scene`/`proof`/`step` keep their original meaning (step is
@@ -378,6 +393,7 @@ def analyze(spec):
         "outOfSync": out_of_sync,
         "deriveSeconds": round(total_derive, 2),
         "runtimeDeriveSeconds": round(runtime_derive, 2),
+        "onDemandDeriveSeconds": round(ondemand_derive, 2),
         "recommendPrebake": recommend,
         "recommendReason": reason,
         "steps": steps_report,
@@ -436,6 +452,9 @@ def _print_human(report, path):
                   f"{s['status']:<12} {s['mathPreview']}")
     if report["outOfSync"]:
         print(f"   ✗ {report['outOfSync']} committed graph(s) out of sync (stale or broken)")
+    if report.get("onDemandDeriveSeconds"):
+        print(f"   ℹ️  {report['onDemandDeriveSeconds']}s of root/step-level derivation is "
+              f"paid on first Graph-tab open, not at load")
     print(f"   → recommend prebake: {'YES' if report['recommendPrebake'] else 'no'} "
           f"({report['recommendReason']})")
 
