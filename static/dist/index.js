@@ -10360,7 +10360,7 @@ function renderChart(el, view) {
 			labelFn: compileOpt(labelSrc, `rightAxes[${k}].labelExpr`),
 			src,
 			fn: compileOpt(src, `rightAxes[${k}].fromPrimaryExpr`),
-			dom: [0, 1],
+			dom: [NaN, NaN],
 			warned: false
 		});
 	});
@@ -10424,6 +10424,21 @@ function renderChart(el, view) {
 				if (Number.isFinite(v)) b.hi = v;
 			} catch (_e) {}
 		}
+		if (!xFixed) {
+			const xs = [];
+			for (const s of series) for (const x of s.px) xs.push(x);
+			xDom = autoDomain(xs, 0);
+		}
+		if (!yFixed) {
+			const ys = [];
+			for (const s of series) for (const y of s.py) ys.push(y);
+			for (const l of hlines) ys.push(l.y);
+			for (const b of bands) {
+				ys.push(b.lo);
+				ys.push(b.hi);
+			}
+			yDom = autoDomain(ys);
+		}
 		for (const a of rightAxes) {
 			if (!a.fn) continue;
 			const at = (y) => {
@@ -10445,21 +10460,6 @@ function renderChart(el, view) {
 			}
 			a.dom[0] = lo;
 			a.dom[1] = hi;
-		}
-		if (!xFixed) {
-			const xs = [];
-			for (const s of series) for (const x of s.px) xs.push(x);
-			xDom = autoDomain(xs, 0);
-		}
-		if (!yFixed) {
-			const ys = [];
-			for (const s of series) for (const y of s.py) ys.push(y);
-			for (const l of hlines) ys.push(l.y);
-			for (const b of bands) {
-				ys.push(b.lo);
-				ys.push(b.hi);
-			}
-			yDom = autoDomain(ys);
 		}
 	}
 	const lift = Math.min(W, H) * .01;
@@ -10701,12 +10701,22 @@ function renderChart(el, view) {
 			const [h, v] = toPlane(s.px[i], s.py[i]);
 			return `${label}\u0001${Math.round(h * pxPer * 2)}\u0001${Math.round(v * pxPer * 2)}`;
 		}).join("")).join("");
+		const rightTicks = rightAxes.map((a) => {
+			const [lo, hi] = a.dom;
+			if (!Number.isFinite(lo) || !Number.isFinite(hi) || lo === hi) return null;
+			const t = niceTicks(Math.min(lo, hi), Math.max(lo, hi), a.ticks);
+			return {
+				ticks: t.ticks,
+				labels: t.ticks.map((v) => tickText(a.labelFn, v, t.step, tSec))
+			};
+		});
 		const key = [
 			xDom.join(","),
 			yDom.join(","),
 			xLabels.join(""),
 			yLabels.join(""),
 			rightAxes.map((a) => a.dom.join(",")).join(";"),
+			rightTicks.map((t) => t ? t.labels.join("") : "").join(""),
 			pointLabelKey
 		].join("");
 		if (key === paperKey) return;
@@ -10826,26 +10836,25 @@ function renderChart(el, view) {
 			});
 		}
 		let rightPen = X(W);
-		for (const a of rightAxes) {
-			const [lo, hi] = a.dom;
-			if (!Number.isFinite(lo) || !Number.isFinite(hi) || lo === hi) continue;
+		rightAxes.forEach((a, ri) => {
+			const pre = rightTicks[ri];
+			if (!pre) return;
 			ctx.fillStyle = css(a.color);
 			ctx.strokeStyle = css(a.color, .9);
 			ctx.beginPath();
 			ctx.moveTo(rightPen, Y(0));
 			ctx.lineTo(rightPen, Y(H));
 			ctx.stroke();
-			const at = niceTicks(Math.min(lo, hi), Math.max(lo, hi), a.ticks);
 			let wLab = 0;
-			for (const v of at.ticks) {
+			pre.ticks.forEach((v, ti) => {
 				const vv = toPlaneYOn(v, a);
-				if (vv < -1e-6 || vv > H + 1e-6) continue;
+				if (vv < -1e-6 || vv > H + 1e-6) return;
 				ctx.beginPath();
 				ctx.moveTo(rightPen, Y(vv));
 				ctx.lineTo(rightPen + tickLen, Y(vv));
 				ctx.stroke();
-				const txt = tickText(a.labelFn, v, at.step, tSec);
-				if (!txt) continue;
+				const txt = pre.labels[ti] || "";
+				if (!txt) return;
 				const fontPx = fitLatexPx(txt, pxPer * .85, pxPer * .42);
 				wLab = Math.max(wLab, measureLatex(txt).w * fontPx / 100);
 				drawLatex(ctx, txt, rightPen + tickLen + pxPer * .06, Y(vv), {
@@ -10854,7 +10863,7 @@ function renderChart(el, view) {
 					align: "left",
 					vAlign: "middle"
 				});
-			}
+			});
 			rightPen += tickLen + pxPer * .06 + wLab;
 			if (a.title) {
 				const fontPx = fitLatexPx(a.title, H * pxPer, pxPer * .5);
@@ -10868,7 +10877,7 @@ function renderChart(el, view) {
 				rightPen += titleH / 2;
 			}
 			rightPen += pxPer * .12;
-		}
+		});
 		const occupancy = makeLabelOccupancy(pxPer * .5);
 		for (const sr of series) {
 			if (sr.kind !== "points" || !sr.pointLabelSrc) continue;

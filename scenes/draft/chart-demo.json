@@ -7,7 +7,7 @@
     {
       "title": "chart — a plot on the plane",
       "description": "Five charts, one element each: sampled draws with a live ±1 s.d. band, a static series, a slider-driven curve on a fixed domain, and one series read on three scales at once.",
-      "markdown": "# `chart`\n\nEach plot below is **one element**. The series are real lines in the viewport — crisp at any angle — and the paper (axes, ticks, titles, grid) is drawn on the plane the way a `tensor` draws its labels, so it tilts with the plot and never piles up with screen labels. Use the **Iso** view to see that.\n\n**Top left — `yExpr`, live.** 64 dot products of random unit-variance vectors in $\\mathbb{R}^n$, from the transformer domain: `tfDotSample(i, n)`. Two `hlines` at $\\pm 1$ s.d. of a 4,000-draw run. Drag **n** and the band widens like $\\sqrt{n}$ while the domain re-fits.\n\n**Top right — the same draws, $\\div\\sqrt{n}$.** Same series divided by `sqrt(n)`; the band refuses to grow. This pair is the variance argument for the $1/\\sqrt{d_k}$ scaling, and it replaces twelve hand-placed elements in the transformer lesson.\n\n**Bottom left — `y`, static.** Literal values, built once, zero per-frame cost, drawn as points.\n\n**Bottom right — a fixed domain.** `sin(k x)` with `xExpr` and a fixed `yDomain`, so the slider is seen to move the curve rather than the axis.",
+      "markdown": "# `chart`\n\nEach plot below is **one element**. The series are real lines in the viewport — crisp at any angle — and the paper (axes, ticks, titles, grid) is drawn on the plane the way a `tensor` draws its labels, so it tilts with the plot and never piles up with screen labels. Use the **Iso** view to see that.\n\n**Top left — `yExpr`, live.** 64 dot products of random unit-variance vectors in $\\mathbb{R}^n$, from the transformer domain: `tfDotSample(i, n)`. Two `hlines` at $\\pm 1$ s.d. of a 4,000-draw run. Drag **n** and the band widens like $\\sqrt{n}$ while the domain re-fits.\n\n**Top right — the same draws, $\\div\\sqrt{n}$.** Same series divided by `sqrt(n)`; the band refuses to grow. This pair is the variance argument for the $1/\\sqrt{d_k}$ scaling, and it replaces twelve hand-placed elements in the transformer lesson.\n\n**Bottom left — `y`, static.** Literal values, built once, zero per-frame cost, drawn as points.\n\n**Bottom right — a fixed domain.** `sin(k x)` with `xExpr` and a fixed `yDomain`, so the slider is seen to move the curve rather than the axis.\n\n**Bottom — one series, three scales.** A temperature plotted against the primary y in °C, with two `rightAxes` relabelling the *same* plot rows: °F via `value * 9 / 5 + 32`, and a z-score whose transform reads **k**. Drag **k** and that one scale restretches while the curve and the other two axes do not move. A right axis is a transform of the left, not a scale of its own, so it cannot disagree with the data — which is the thing a true dual-axis chart cannot promise.",
       "range": [
         [
           -3,
@@ -126,9 +126,9 @@
       ],
       "steps": [
         {
-          "id": "four-charts",
-          "title": "Four charts",
-          "description": "Drag **n** for the two draw charts and **k** for the sine.",
+          "id": "five-charts",
+          "title": "Five charts",
+          "description": "Drag **n** for the two draw charts, **k** for the sine and for the bottom chart's z-axis.",
           "sliders": [
             {
               "id": "gen_n",

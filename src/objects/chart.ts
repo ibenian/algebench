@@ -472,7 +472,10 @@ export function renderChart(el: Element, view: MathBoxNode) {
             ticks: tickCount(a.ticks),
             labelSrc, labelFn: compileOpt(labelSrc, `rightAxes[${k}].labelExpr`),
             src, fn: compileOpt(src, `rightAxes[${k}].fromPrimaryExpr`),
-            dom: [0, 1], warned: false,
+            // NaN, not [0, 1]: a refused or unparseable transform leaves the
+            // domain unusable so the draw loop's finite check skips the axis,
+            // rather than rendering a confident, fabricated 0-1 scale.
+            dom: [NaN, NaN], warned: false,
         });
     });
 
@@ -531,6 +534,21 @@ export function renderChart(el: Element, view: MathBoxNode) {
             if (b.loFn) { try { const v = Number(evalExpr(b.loFn.fn, tSec, {})); if (Number.isFinite(v)) b.lo = v; } catch (_e) { /* keep */ } }
             if (b.hiFn) { try { const v = Number(evalExpr(b.hiFn.fn, tSec, {})); if (Number.isFinite(v)) b.hi = v; } catch (_e) { /* keep */ } }
         }
+        if (!xFixed) {
+            const xs: number[] = [];
+            for (const s of series) for (const x of s.px) xs.push(x);
+            // No padding on x: an index axis should start exactly at 0, and
+            // niceTicks already rounds the far end up to a tick.
+            xDom = autoDomain(xs, 0);
+        }
+        if (!yFixed) {
+            const ys: number[] = [];
+            for (const s of series) for (const y of s.py) ys.push(y);
+            for (const l of hlines) ys.push(l.y);
+            for (const b of bands) { ys.push(b.lo); ys.push(b.hi); }
+            yDom = autoDomain(ys);
+        }
+
         // Map the primary domain's endpoints through each right axis, so a
         // z-scale widens exactly as the standard deviation it divides by does.
         // A refused or non-finite endpoint keeps the last good one rather than
@@ -559,20 +577,6 @@ export function renderChart(el: Element, view: MathBoxNode) {
                 }
             }
             a.dom[0] = lo; a.dom[1] = hi;
-        }
-        if (!xFixed) {
-            const xs: number[] = [];
-            for (const s of series) for (const x of s.px) xs.push(x);
-            // No padding on x: an index axis should start exactly at 0, and
-            // niceTicks already rounds the far end up to a tick.
-            xDom = autoDomain(xs, 0);
-        }
-        if (!yFixed) {
-            const ys: number[] = [];
-            for (const s of series) for (const y of s.py) ys.push(y);
-            for (const l of hlines) ys.push(l.y);
-            for (const b of bands) { ys.push(b.lo); ys.push(b.hi); }
-            yDom = autoDomain(ys);
         }
     }
 
@@ -743,11 +747,21 @@ export function renderChart(el: Element, view: MathBoxNode) {
                 return `${label}\u0001${Math.round(h * pxPer * 2)}\u0001${Math.round(v * pxPer * 2)}`;
             }).join('\u0002')
         ).join('\u0003');
-        // A right axis's domain joins the key: without it the paper would not
-        // repaint when only that scale moved, so its numbers would freeze
-        // while the data they describe kept sliding.
+        // A right axis contributes both its domain and its rendered tick text.
+        // The domain alone is not enough: a labelExpr reading a slider can
+        // change every label while the numeric domain holds still, and the
+        // paper would never repaint. Computed here, before the guard, and
+        // reused by the draw loop rather than evaluated a second time.
+        const rightTicks = rightAxes.map(a => {
+            const [lo, hi] = a.dom;
+            if (!Number.isFinite(lo) || !Number.isFinite(hi) || lo === hi) return null;
+            const t = niceTicks(Math.min(lo, hi), Math.max(lo, hi), a.ticks);
+            return { ticks: t.ticks, labels: t.ticks.map(v => tickText(a.labelFn, v, t.step, tSec)) };
+        });
         const key = [xDom.join(','), yDom.join(','), xLabels.join(''), yLabels.join(''),
-                     rightAxes.map(a => a.dom.join(',')).join(';'), pointLabelKey].join('');
+                     rightAxes.map(a => a.dom.join(',')).join(';'),
+                     rightTicks.map(t => t ? t.labels.join('\u0001') : '').join('\u0002'),
+                     pointLabelKey].join('');
         if (key === paperKey) return;
         paperKey = key;
 
@@ -818,24 +832,23 @@ export function renderChart(el: Element, view: MathBoxNode) {
         // own round ticks in its own domain, so the numbers are readable
         // rather than being whatever the primary scale's rows happen to hit.
         let rightPen = X(W);
-        for (const a of rightAxes) {
-            const [lo, hi] = a.dom;
-            if (!Number.isFinite(lo) || !Number.isFinite(hi) || lo === hi) continue;
+        rightAxes.forEach((a, ri) => {
+            const pre = rightTicks[ri];
+            if (!pre) return;   // no usable domain: the axis is skipped entirely
             ctx.fillStyle = css(a.color); ctx.strokeStyle = css(a.color, 0.9);
             ctx.beginPath(); ctx.moveTo(rightPen, Y(0)); ctx.lineTo(rightPen, Y(H)); ctx.stroke();
-            const at = niceTicks(Math.min(lo, hi), Math.max(lo, hi), a.ticks);
             let wLab = 0;
-            for (const v of at.ticks) {
+            pre.ticks.forEach((v, ti) => {
                 const vv = toPlaneYOn(v, a);
-                if (vv < -1e-6 || vv > H + 1e-6) continue;
+                if (vv < -1e-6 || vv > H + 1e-6) return;
                 ctx.beginPath(); ctx.moveTo(rightPen, Y(vv)); ctx.lineTo(rightPen + tickLen, Y(vv)); ctx.stroke();
-                const txt = tickText(a.labelFn, v, at.step, tSec);
-                if (!txt) continue;
+                const txt = pre.labels[ti] || '';
+                if (!txt) return;
                 const fontPx = fitLatexPx(txt, pxPer * 0.85, pxPer * 0.42);
                 wLab = Math.max(wLab, measureLatex(txt).w * fontPx / 100);
                 drawLatex(ctx, txt, rightPen + tickLen + pxPer * 0.06, Y(vv),
                           { fontPx, color: css(a.color), align: 'left', vAlign: 'middle' });
-            }
+            });
             rightPen += tickLen + pxPer * 0.06 + wLab;
             if (a.title) {
                 const fontPx = fitLatexPx(a.title, H * pxPer, pxPer * 0.5);
@@ -848,7 +861,7 @@ export function renderChart(el: Element, view: MathBoxNode) {
                 rightPen += titleH / 2;
             }
             rightPen += pxPer * 0.12;
-        }
+        });
         // Point labels are drawn into the same tilted paper as the axes. Try
         // the eight neighbouring positions and avoid labels already placed,
         // which keeps small scatter plots legible when several dots cluster.
