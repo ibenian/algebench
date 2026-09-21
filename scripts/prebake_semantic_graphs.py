@@ -279,6 +279,19 @@ def _existing_graph(step):
     return None
 
 
+def _error_record(step):
+    """True when a step carries a ``semanticGraph.error`` and no graph.
+
+    The two consumers disagree about these. ``_autofill_semantic_graphs``
+    skips only on ``sg.graph``, so at load it retries an error-only step and
+    pays the failed parse again. ``renderCurrentStepGraph`` checks ``sg.error``
+    first and shows the banner without POSTing, so on demand it costs nothing.
+    """
+    sg = step.get("semanticGraph")
+    return (isinstance(sg, dict) and isinstance(sg.get("error"), dict)
+            and not isinstance(sg.get("graph"), dict))
+
+
 def _structural_signature(graph):
     """Canonical structural fingerprint of a baked-graph dict, for staleness.
 
@@ -356,8 +369,12 @@ def analyze(spec):
         # the CI gate are for, not a derivation anyone pays for.
         if not was_baked:
             if loc.level == "scene":
+                # The server retries regardless of an error record, so it pays
+                # even for a step it will only fail to parse again.
                 runtime_derive += dt
-            else:
+            elif not _error_record(step):
+                # The Graph tab shows the banner and returns without POSTing,
+                # so an error-only root/step record costs nothing on demand.
                 ondemand_derive += dt
         counts[status] += 1
         steps_report.append({
