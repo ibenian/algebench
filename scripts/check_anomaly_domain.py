@@ -333,8 +333,13 @@ def main() -> int:
         own = np.asarray([float(np.exp(-0.5 * ((pts - p) ** 2).sum(axis=1)).mean()) for p in pts])
         check(f'nu-quantile nu={nu}', run(f'[AD.adKdeQ("ring", {nu}, 0.5)]'),
               [np.quantile(own, nu)], 1e-12)
-        # nu means what it says: exactly a nu fraction of the training points
-        # fall below the threshold.
+        # nu is an OPERATIONAL ANALOGUE of a nu-SVM's nu, not the same
+        # guarantee. The threshold is an interpolated empirical quantile and
+        # membership keeps ties (>=), so the realised rejection is only
+        # APPROXIMATELY nu -- which is why the tolerance below is a point and
+        # a half of the sample rather than zero, and why the label says ~nu.
+        # A nu-SVM's nu bounds the training-error fraction above and the
+        # support-vector fraction below; this bounds neither.
         rejected = float((own < np.quantile(own, nu)).mean())
         assert_true(f'nu={nu} rejects ~nu of the training set ({rejected:.3f})',
                     abs(rejected - nu) <= 1.5 / len(pts) + 1e-9)
