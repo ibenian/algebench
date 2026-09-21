@@ -987,12 +987,14 @@ export function renderChart(el: Element, view: MathBoxNode) {
         ...series.flatMap(s => [s.xSrc, s.ySrc, s.pointLabelSrc]),
         ...hlines.map(l => l.src),
         ...bands.flatMap(b => [b.loSrc, b.hiSrc]),
+        ...rightAxes.flatMap(a => [a.src, a.labelSrc]),
         xLabelSrc, yLabelSrc,
     ].filter((x): x is string => !!x);
     let compiledUnderTrust = chartState._sceneJsTrustState;
     const fns = () => [
         ...series.flatMap(s => [s.xFn?.fn, s.yFn?.fn, s.pointLabelFn?.fn]),
         ...hlines.map(l => l.fn?.fn), ...bands.flatMap(b => [b.loFn?.fn, b.hiFn?.fn]),
+        ...rightAxes.flatMap(a => [a.fn?.fn, a.labelFn?.fn]),
         xLabelFn?.fn, yLabelFn?.fn,
     ].filter((x): x is CompiledExpr => !!x);
     const entry: ChartAnimExprEntry = {
@@ -1019,6 +1021,15 @@ export function renderChart(el: Element, view: MathBoxNode) {
             });
             if (xLabelSrc) xLabelFn = compileOpt(xLabelSrc, 'axes[0].labelExpr');
             if (yLabelSrc) yLabelFn = compileOpt(yLabelSrc, 'axes[1].labelExpr');
+            rightAxes.forEach((a, k) => {
+                a.fn = compileOpt(a.src, `rightAxes[${k}].fromPrimaryExpr`);
+                if (a.labelSrc) a.labelFn = compileOpt(a.labelSrc, `rightAxes[${k}].labelExpr`);
+                // Both directions matter. Granting trust must bring a retired
+                // axis back, and REVOKING it must retire one that was drawing
+                // from native JS -- so the domain is cleared and only a
+                // successful re-evaluation restores it.
+                if (!a.fn) { a.dom[0] = NaN; a.dom[1] = NaN; }
+            });
             paperKey = '';   // tick labels may have changed with the recompile
             entry.compiledFns = fns();
         },

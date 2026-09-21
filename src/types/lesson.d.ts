@@ -1187,7 +1187,6 @@ export interface Element {
            */
           labelExpr?: string;
           color?: Color;
-          [k: string]: unknown;
         }
       ]
     | [
@@ -1209,7 +1208,6 @@ export interface Element {
            */
           labelExpr?: string;
           color?: Color;
-          [k: string]: unknown;
         },
         {
           /**
@@ -1229,7 +1227,6 @@ export interface Element {
            */
           labelExpr?: string;
           color?: Color;
-          [k: string]: unknown;
         }
       ]
     | [
@@ -1251,7 +1248,6 @@ export interface Element {
            */
           labelExpr?: string;
           color?: Color;
-          [k: string]: unknown;
         },
         {
           /**
@@ -1271,7 +1267,6 @@ export interface Element {
            */
           labelExpr?: string;
           color?: Color;
-          [k: string]: unknown;
         },
         {
           /**
@@ -1291,7 +1286,6 @@ export interface Element {
            */
           labelExpr?: string;
           color?: Color;
-          [k: string]: unknown;
         }
       ];
   [k: string]: unknown;

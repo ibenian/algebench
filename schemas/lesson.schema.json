@@ -1265,7 +1265,8 @@
               "ticks": {
                 "type": "integer",
                 "minimum": 2,
-                "description": "Target tick count (default 5)."
+                "description": "Target tick count (default 5).",
+                "maximum": 50
               },
               "labelExpr": {
                 "type": "string",
@@ -1274,7 +1275,8 @@
               "color": {
                 "$ref": "#/$defs/color"
               }
-            }
+            },
+            "additionalProperties": false
           }
         }
       },

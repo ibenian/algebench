@@ -11066,6 +11066,7 @@ function renderChart(el, view) {
 		]),
 		...hlines.map((l) => l.src),
 		...bands.flatMap((b) => [b.loSrc, b.hiSrc]),
+		...rightAxes.flatMap((a) => [a.src, a.labelSrc]),
 		xLabelSrc,
 		yLabelSrc
 	].filter((x) => !!x);
@@ -11078,6 +11079,7 @@ function renderChart(el, view) {
 		]),
 		...hlines.map((l) => l.fn?.fn),
 		...bands.flatMap((b) => [b.loFn?.fn, b.hiFn?.fn]),
+		...rightAxes.flatMap((a) => [a.fn?.fn, a.labelFn?.fn]),
 		xLabelFn?.fn,
 		yLabelFn?.fn
 	].filter((x) => !!x);
@@ -11105,6 +11107,14 @@ function renderChart(el, view) {
 			});
 			if (xLabelSrc) xLabelFn = compileOpt(xLabelSrc, "axes[0].labelExpr");
 			if (yLabelSrc) yLabelFn = compileOpt(yLabelSrc, "axes[1].labelExpr");
+			rightAxes.forEach((a, k) => {
+				a.fn = compileOpt(a.src, `rightAxes[${k}].fromPrimaryExpr`);
+				if (a.labelSrc) a.labelFn = compileOpt(a.labelSrc, `rightAxes[${k}].labelExpr`);
+				if (!a.fn) {
+					a.dom[0] = NaN;
+					a.dom[1] = NaN;
+				}
+			});
 			paperKey = "";
 			entry.compiledFns = fns();
 		}
