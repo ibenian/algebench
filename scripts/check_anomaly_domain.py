@@ -33,6 +33,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import hashlib
+
 import numpy as np
 
 REPO = Path(__file__).resolve().parent.parent
@@ -51,6 +53,33 @@ console.log(JSON.stringify(%EXPR%));
 """
 
 _failures: list[str] = []
+
+
+# Pinned digest of the seeded corpus. The parity checks below read their
+# reference inputs out of the module under test, which makes them a check of
+# the ARITHMETIC only: if the dataset generator drifted, `raw` would drift with
+# it and every comparison would still agree. Hashing the corpus closes that
+# hole -- a change to the PRNG, the sampler or any dataset's parameters moves
+# this digest and fails here, before the arithmetic is ever compared.
+# Regenerate deliberately (and say why in the commit) if the data is meant to
+# change. 15 significant digits is shortest-round-trip for a float64 in both
+# Python and JS, so the hash is stable across platforms.
+CORPUS_DIGEST = 'b15252af354755037748e050d2761fd73293e14b42227d33886ed02edf140318'
+
+
+def _digest(obj) -> str:
+    """Stable SHA-256 over a nested structure of numbers."""
+    def canon(o):
+        if isinstance(o, dict):
+            return '{' + ','.join(f'{k}:{canon(o[k])}' for k in sorted(o)) + '}'
+        if isinstance(o, (list, tuple)) or isinstance(o, np.ndarray):
+            return '[' + ','.join(canon(v) for v in o) + ']'
+        if isinstance(o, (bool, np.bool_)):
+            return str(int(o))
+        if isinstance(o, (int, np.integer)):
+            return str(int(o))
+        return f'{float(o):.15g}'
+    return hashlib.sha256(canon(obj).encode()).hexdigest()
 
 
 def run(expr: str):
@@ -174,6 +203,14 @@ def main() -> int:
         'evalLab: R(i => AD.adEvalLabel(i), AD.adEvalN())'
         '}'
     )
+    got_digest = _digest(raw)
+    if CORPUS_DIGEST == '__PIN_ME__':
+        print(f'  !! CORPUS_DIGEST is unpinned; set it to {got_digest}')
+    else:
+        assert_true('the seeded corpus matches its pinned digest',
+                    got_digest == CORPUS_DIGEST,
+                    f'got {got_digest}, pinned {CORPUS_DIGEST}')
+
     ds = {t: {'pts': np.column_stack([raw['ds'][t]['x'], raw['ds'][t]['y']]),
               'lab': np.asarray(raw['ds'][t]['lab'], dtype=int)} for t in tags}
     metric = np.asarray(raw['metric'], dtype=float)      # [contam][i]
