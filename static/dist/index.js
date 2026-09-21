@@ -10060,15 +10060,6 @@ function renderTensor(el, _view) {
 * language. Everything here is drawn from the scene's own primitives.
 */
 var chartState = state;
-/**
-* Round tick values covering [lo, hi] with about `count` steps: the step is
-* 1, 2 or 5 times a power of ten, and the ticks are multiples of it. Returns
-* the ticks and the step so a caller can format labels to the right decimals.
-*/
-/** How far a transform departs from affine over [lo, hi], as a fraction of the
-*  span: 0 when the midpoint lands exactly halfway. A right axis is drawn from
-*  its two endpoints, so anything above a per-cent or so mislabels the middle.
-*  Exported for the tests; the renderer only asks whether it is small. */
 /** The right-axis domain implied by a transform, or null when the axis cannot
 *  be drawn. `at` returns the transform's value at a primary-y value, or null
 *  when it will not evaluate. Null out means retire the axis: a domain that
@@ -10119,6 +10110,11 @@ function affineMissSampled(at, lo, hi) {
 	}
 	return worst;
 }
+/**
+* Round tick values covering [lo, hi] with about `count` steps: the step is
+* 1, 2 or 5 times a power of ten, and the ticks are multiples of it. Returns
+* the ticks and the step so a caller can format labels to the right decimals.
+*/
 function niceTicks(lo, hi, count = 5) {
 	if (!Number.isFinite(lo) || !Number.isFinite(hi)) return {
 		ticks: [],
