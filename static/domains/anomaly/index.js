@@ -15,8 +15,11 @@
  * on every rebuild and in scripts/check_anomaly_domain.py. The lesson must say
  * so on screen: a lesson claiming that a detector "finds" something should be
  * honest that it planted it. What is NOT invented is the scoring — that part
- * is the real algorithm, and scripts/check_anomaly_domain.py recomputes
- * every score from scratch in NumPy and compares.
+ * is the real algorithm, and scripts/check_anomaly_domain.py recomputes the
+ * statistical, distance, density and evaluation scores from scratch in NumPy
+ * and compares. The Isolation Forest is the exception: its trees are
+ * randomised, so the checker pins c(n), the score/depth identity, ranges,
+ * separation and determinism rather than rebuilding the seeded forest.
  *
  * Every function is PURE in its explicit arguments. No function reads a
  * slider. A scene passes its sliders in (`adLof('dense', i, k)`), which is
@@ -520,15 +523,26 @@
     // ---- scene 4: isolation, and a one-class boundary ---------------------
 
     /** Expected path length of an unsuccessful search in a BST of n nodes:
-     *  c(n) = 2 H(n-1) - 2(n-1)/n, with H(m) ~ ln m + gamma. This is the
-     *  normalisation in the Isolation Forest score, and the reason the score
-     *  is comparable across sample sizes at all. */
+     *  c(n) = 2 H(n-1) - 2(n-1)/n. The harmonic number is summed EXACTLY,
+     *  not replaced by ln(m) + gamma: depth-capped trees produce small leaves
+     *  constantly, and the asymptotic is 27.6% low at n = 3 and 14.5% low at
+     *  n = 4, which is precisely where it gets used most. It agrees to 0.1%
+     *  by n = 128, so the cost of being exact is a memoised prefix sum.
+     *  Above HARMONIC_MAX the asymptotic is accurate to ~1e-13 and is used
+     *  so a stray huge argument cannot spin. */
     const EULER = 0.5772156649015329;
+    const HARMONIC_MAX = 100000;
+    const _harmonic = [0, 1];     // _harmonic[m] = H(m)
+    function _H(m) {
+        if (m > HARMONIC_MAX) return Math.log(m) + EULER + 1 / (2 * m);
+        for (let j = _harmonic.length; j <= m; j++) _harmonic[j] = _harmonic[j - 1] + 1 / j;
+        return _harmonic[m];
+    }
     function adCPath(n) {
         const nn = Math.max(1, Math.round(_num(n, 2)));
         if (nn <= 1) return 0;
         if (nn === 2) return 1;
-        return 2 * (Math.log(nn - 1) + EULER) - 2 * (nn - 1) / nn;
+        return 2 * _H(nn - 1) - 2 * (nn - 1) / nn;
     }
 
     const ISO_TREES = 100;

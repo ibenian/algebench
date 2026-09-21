@@ -3,9 +3,15 @@
 
 The lesson's claim is that every score on screen is the published definition,
 not a hand-drawn impression of one. This script makes that claim testable: it
-pulls the raw datasets out of static/domains/anomaly/index.js, recomputes
-every score FROM SCRATCH in NumPy from the textbook formula, and compares. A
-drift in either the data or the arithmetic fails here.
+pulls the raw datasets out of static/domains/anomaly/index.js, recomputes the
+statistical, distance, density and evaluation scores FROM SCRATCH in NumPy from
+the textbook formula, and compares. A drift in either the data or the arithmetic
+fails here -- the data via a pinned digest of the whole seeded corpus.
+
+The Isolation Forest is the one exception, and it is deliberate: the trees are
+randomised, so a reimplementation cannot be compared pointwise. What is pinned
+instead is c(n), the score/depth identity, ranges, separation and determinism.
+A bug in subsampling, axis choice or split construction would NOT be caught.
 
 Three kinds of check:
 
@@ -127,11 +133,18 @@ def assert_true(label: str, ok: bool, detail: str = '') -> None:
 # --------------------------------------------------------------------------
 
 def ref_c(n: int) -> float:
+    """c(n) = 2 H(n-1) - 2(n-1)/n, with H summed exactly.
+
+    This used to mirror the module's ln(m) + gamma shortcut, which made the
+    parity check agree with the implementation while both drifted from the
+    formula the lesson displays -- a reference has to be independent of the
+    thing it checks to be worth anything.
+    """
     if n <= 1:
         return 0.0
     if n == 2:
         return 1.0
-    return 2 * (math.log(n - 1) + EULER) - 2 * (n - 1) / n
+    return 2 * sum(1.0 / j for j in range(1, n)) - 2 * (n - 1) / n
 
 
 def ref_knn(pts: np.ndarray, k: int) -> np.ndarray:
