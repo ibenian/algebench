@@ -10065,6 +10065,15 @@ var chartState = state;
 * 1, 2 or 5 times a power of ten, and the ticks are multiples of it. Returns
 * the ticks and the step so a caller can format labels to the right decimals.
 */
+/** How far a transform departs from affine over [lo, hi], as a fraction of the
+*  span: 0 when the midpoint lands exactly halfway. A right axis is drawn from
+*  its two endpoints, so anything above a per-cent or so mislabels the middle.
+*  Exported for the tests; the renderer only asks whether it is small. */
+function affineMiss(lo, mid, hi) {
+	const span = Math.abs(hi - lo);
+	if (!(span > 0) || !Number.isFinite(mid)) return 0;
+	return Math.abs(mid - (lo + hi) / 2) / span;
+}
 function niceTicks(lo, hi, count = 5) {
 	if (!Number.isFinite(lo) || !Number.isFinite(hi)) return {
 		ticks: [],
@@ -10172,6 +10181,8 @@ function formatTick(v, step) {
 /** Longest side of the paper canvas, in pixels; the ceiling tensor uses for its label canvas. */
 var MAX_PAPER_PX = 2048;
 /** Most ticks an axis will try for; past this the labels cannot be read anyway. */
+/** Right-hand axes beyond this are ignored; the margin has to fit them. */
+var MAX_RIGHT_AXES = 3;
 var MAX_TICKS = 50;
 var PLANE_AXES = {
 	xy: [
@@ -10331,13 +10342,38 @@ function renderChart(el, view) {
 	let yLabelFn = compileOpt(yLabelSrc, "axes[1].labelExpr");
 	const xColor = parseColor(xAxis && xAxis.color || "#aabbcc");
 	const yColor = parseColor(yAxis && yAxis.color || "#aabbcc");
+	const rightSpecs = Array.isArray(chart.rightAxes) ? chart.rightAxes.slice(0, MAX_RIGHT_AXES) : [];
+	const rightAxes = [];
+	rightSpecs.forEach((a, k) => {
+		if (!a || typeof a !== "object") return;
+		const src = typeof a.fromPrimary === "string" ? a.fromPrimary.trim() : "";
+		if (!src) {
+			console.warn(`chart${el.id ? ` "${el.id}"` : ""}: rightAxes[${k}] needs fromPrimary; skipped.`);
+			return;
+		}
+		const labelSrc = typeof a.labelExpr === "string" ? a.labelExpr.trim() || null : null;
+		rightAxes.push({
+			title: a.title ? String(a.title) : null,
+			color: parseColor(a.color || "#aabbcc"),
+			ticks: tickCount(a.ticks),
+			labelSrc,
+			labelFn: compileOpt(labelSrc, `rightAxes[${k}].labelExpr`),
+			src,
+			fn: compileOpt(src, `rightAxes[${k}].fromPrimary`),
+			dom: [0, 1],
+			warned: false
+		});
+	});
 	const xFixed = Array.isArray(chart.xDomain) && chart.xDomain.length === 2 && chart.xDomain.every((v) => Number.isFinite(Number(v))) ? [Number(chart.xDomain[0]), Number(chart.xDomain[1])] : null;
 	const yFixed = Array.isArray(chart.yDomain) && chart.yDomain.length === 2 && chart.yDomain.every((v) => Number.isFinite(Number(v))) ? [Number(chart.yDomain[0]), Number(chart.yDomain[1])] : null;
 	let xDom = xFixed || [0, 1];
 	let yDom = yFixed || [0, 1];
 	/** Plot-space (h, v) in data units for a data point (x, y) under the current domains. */
 	const toPlane = (x, y) => [(x - xDom[0]) / (xDom[1] - xDom[0] || 1) * W, (y - yDom[0]) / (yDom[1] - yDom[0] || 1) * H];
-	const live = series.some((s) => s.xSrc || s.ySrc || s.pointLabelSrc) || hlines.some((l) => l.src) || bands.some((b) => b.loSrc || b.hiSrc) || !!xLabelSrc || !!yLabelSrc;
+	/** Plot-local v for a value read on right axis `a`. The mapping is affine,
+	*  so the two endpoints fix it and the interior interpolates. */
+	const toPlaneYOn = (y, a) => (y - a.dom[0]) / (a.dom[1] - a.dom[0] || 1) * H;
+	const live = series.some((s) => s.xSrc || s.ySrc || s.pointLabelSrc) || hlines.some((l) => l.src) || bands.some((b) => b.loSrc || b.hiSrc) || !!xLabelSrc || !!yLabelSrc || rightAxes.length > 0;
 	function sample(tSec) {
 		for (const s of series) {
 			const scope = {
@@ -10387,6 +10423,28 @@ function renderChart(el, view) {
 				const v = Number(evalExpr(b.hiFn.fn, tSec, {}));
 				if (Number.isFinite(v)) b.hi = v;
 			} catch (_e) {}
+		}
+		for (const a of rightAxes) {
+			if (!a.fn) continue;
+			const at = (y) => {
+				try {
+					const v = Number(evalExpr(a.fn.fn, tSec, { overrideScope: { value: y } }));
+					return Number.isFinite(v) ? v : null;
+				} catch (_e) {
+					return null;
+				}
+			};
+			const lo = at(yDom[0]), hi = at(yDom[1]);
+			if (lo === null || hi === null) continue;
+			if (!a.warned) {
+				const mid = at((yDom[0] + yDom[1]) / 2);
+				if (mid !== null && affineMiss(lo, mid, hi) > .01) {
+					console.warn(`chart${el.id ? ` "${el.id}"` : ""}: rightAxes fromPrimary "${a.src}" is not affine; the axis is drawn from its endpoints, so interior ticks will be wrong.`);
+					a.warned = true;
+				}
+			}
+			a.dom[0] = lo;
+			a.dom[1] = hi;
 		}
 		if (!xFixed) {
 			const xs = [];
@@ -10564,7 +10622,8 @@ function renderChart(el, view) {
 	}
 	const mL = yTitle ? 1.6 : 1.1;
 	const mB = xTitle ? 1.1 : .7;
-	const mT = .25, mR = .35;
+	const mT = .25;
+	const mR = .35 + rightAxes.reduce((acc, a) => acc + (a.title ? 1.6 : 1.1), 0);
 	const paperW = W + mL + mR, paperH = H + mB + mT;
 	const pxPer = Math.min(160, MAX_PAPER_PX / Math.max(paperW, paperH));
 	const canvas = document.createElement("canvas");
@@ -10645,10 +10704,11 @@ function renderChart(el, view) {
 		const key = [
 			xDom.join(","),
 			yDom.join(","),
-			xLabels.join(""),
-			yLabels.join(""),
+			xLabels.join(""),
+			yLabels.join(""),
+			rightAxes.map((a) => a.dom.join(",")).join(";"),
 			pointLabelKey
-		].join("");
+		].join("");
 		if (key === paperKey) return;
 		paperKey = key;
 		const cw = canvas.width, ch = canvas.height;
@@ -10764,6 +10824,50 @@ function renderChart(el, view) {
 				color: css(yColor),
 				rotate: -Math.PI / 2
 			});
+		}
+		let rightPen = X(W);
+		for (const a of rightAxes) {
+			const [lo, hi] = a.dom;
+			if (!Number.isFinite(lo) || !Number.isFinite(hi) || lo === hi) continue;
+			ctx.fillStyle = css(a.color);
+			ctx.strokeStyle = css(a.color, .9);
+			ctx.beginPath();
+			ctx.moveTo(rightPen, Y(0));
+			ctx.lineTo(rightPen, Y(H));
+			ctx.stroke();
+			const at = niceTicks(Math.min(lo, hi), Math.max(lo, hi), a.ticks);
+			let wLab = 0;
+			for (const v of at.ticks) {
+				const vv = toPlaneYOn(v, a);
+				if (vv < -1e-6 || vv > H + 1e-6) continue;
+				ctx.beginPath();
+				ctx.moveTo(rightPen, Y(vv));
+				ctx.lineTo(rightPen + tickLen, Y(vv));
+				ctx.stroke();
+				const txt = tickText(a.labelFn, v, at.step, tSec);
+				if (!txt) continue;
+				const fontPx = fitLatexPx(txt, pxPer * .85, pxPer * .42);
+				wLab = Math.max(wLab, measureLatex(txt).w * fontPx / 100);
+				drawLatex(ctx, txt, rightPen + tickLen + pxPer * .06, Y(vv), {
+					fontPx,
+					color: css(a.color),
+					align: "left",
+					vAlign: "middle"
+				});
+			}
+			rightPen += tickLen + pxPer * .06 + wLab;
+			if (a.title) {
+				const fontPx = fitLatexPx(a.title, H * pxPer, pxPer * .5);
+				const titleH = measureLatex(a.title).h * fontPx / 100;
+				rightPen += pxPer * .1 + titleH / 2;
+				drawLatex(ctx, a.title, rightPen, Y(H / 2), {
+					fontPx,
+					color: css(a.color),
+					rotate: -Math.PI / 2
+				});
+				rightPen += titleH / 2;
+			}
+			rightPen += pxPer * .12;
 		}
 		const occupancy = makeLabelOccupancy(pxPer * .5);
 		for (const sr of series) {

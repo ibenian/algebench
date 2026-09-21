@@ -113,3 +113,33 @@ test('the occupancy grid answers exactly what a full scan would', async () => {
     }
     assert.ok(boxes.length > 20, 'expected the spread to place a meaningful number of boxes');
 });
+
+// --- right-hand axes -------------------------------------------------------
+// A right axis relabels the primary y through a transform, and is drawn from
+// that transform's value at the two domain endpoints. That is exact for an
+// affine map and wrong in the middle for anything else, so the renderer
+// measures the departure and warns once. These pin the measure.
+
+const { affineMiss } = await import('/objects/chart.js');
+
+test('affineMiss is zero for an affine transform', () => {
+    // C -> F over 0..40 C: 32, 68, 104. The midpoint is exactly halfway.
+    assert.equal(affineMiss(32, 68, 104), 0);
+    // A z-scale: (v - 18) / 3 over 0..40.
+    assert.equal(affineMiss(-6, 0.6666666666666666, 7.333333333333333) < 1e-12, true);
+    // Negative slope is still affine.
+    assert.equal(affineMiss(100, 50, 0), 0);
+});
+
+test('affineMiss catches a curved transform', () => {
+    // v^2 over 0..40 -> 0, 400, 1600. Halfway would be 800; it is 400.
+    assert.equal(affineMiss(0, 400, 1600), 0.25);
+    // log10 over 1..100 -> 0, log10(50)=1.699, 2. Halfway would be 1.
+    assert.ok(affineMiss(0, Math.log10(50), 2) > 0.3);
+});
+
+test('affineMiss is defined on a degenerate or unusable span', () => {
+    assert.equal(affineMiss(5, 5, 5), 0);          // zero span: nothing to mislabel
+    assert.equal(affineMiss(0, NaN, 10), 0);       // a refused midpoint accuses nobody
+    assert.equal(affineMiss(0, Infinity, 10), 0);
+});

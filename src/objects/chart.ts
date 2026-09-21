@@ -81,6 +81,16 @@ const chartState = state as unknown as ChartState;
  * 1, 2 or 5 times a power of ten, and the ticks are multiples of it. Returns
  * the ticks and the step so a caller can format labels to the right decimals.
  */
+/** How far a transform departs from affine over [lo, hi], as a fraction of the
+ *  span: 0 when the midpoint lands exactly halfway. A right axis is drawn from
+ *  its two endpoints, so anything above a per-cent or so mislabels the middle.
+ *  Exported for the tests; the renderer only asks whether it is small. */
+export function affineMiss(lo: number, mid: number, hi: number): number {
+    const span = Math.abs(hi - lo);
+    if (!(span > 0) || !Number.isFinite(mid)) return 0;
+    return Math.abs(mid - (lo + hi) / 2) / span;
+}
+
 export function niceTicks(lo: number, hi: number, count = 5): { ticks: number[]; step: number } {
     if (!Number.isFinite(lo) || !Number.isFinite(hi)) return { ticks: [], step: 1 };
     if (hi < lo) [lo, hi] = [hi, lo];
@@ -214,6 +224,13 @@ interface AxisSpec {
     color?: unknown;
 }
 
+/** A right-hand axis: the SAME plot rows relabelled through a transform of the
+ *  primary y, not a scale of its own. Nothing is plotted against it, so it
+ *  cannot disagree with the data. */
+interface RightAxisSpec extends AxisSpec {
+    fromPrimary?: unknown;  // expression in `value` (a primary-y value)
+}
+
 interface SeriesSpec {
     id?: unknown;
     label?: unknown;
@@ -250,6 +267,8 @@ interface BandSpec {
 /** Longest side of the paper canvas, in pixels; the ceiling tensor uses for its label canvas. */
 const MAX_PAPER_PX = 2048;
 /** Most ticks an axis will try for; past this the labels cannot be read anyway. */
+/** Right-hand axes beyond this are ignored; the margin has to fit them. */
+const MAX_RIGHT_AXES = 3;
 const MAX_TICKS = 50;
 
 const PLANE_AXES: Record<string, [number, number, number]> = {
@@ -417,6 +436,42 @@ export function renderChart(el: Element, view: MathBoxNode) {
     const xColor = parseColor((xAxis && xAxis.color) || '#aabbcc') as Rgb3;
     const yColor = parseColor((yAxis && yAxis.color) || '#aabbcc') as Rgb3;
 
+    // ── Right-hand axes ──
+    // The same plot rows, relabelled. A right axis names a transform of the
+    // primary y (`fromPrimary`, in `value`), and the axis is drawn by mapping
+    // the primary domain's two endpoints through it. Nothing is plotted
+    // against a right axis, so the two scales cannot disagree about where a
+    // datum sits -- which is the failure mode of a true dual-axis chart,
+    // where two unrelated series make their crossings look meaningful.
+    interface RightAxis {
+        title: string | null; color: Rgb3; ticks: number;
+        labelSrc: string | null; labelFn: { src: string; fn: CompiledExpr } | null;
+        src: string; fn: { src: string; fn: CompiledExpr } | null;
+        /** [f(yDom[0]), f(yDom[1])] — recomputed whenever the primary moves. */
+        dom: [number, number];
+        warned: boolean;
+    }
+    const rightSpecs = Array.isArray(chart.rightAxes)
+        ? (chart.rightAxes as RightAxisSpec[]).slice(0, MAX_RIGHT_AXES) : [];
+    const rightAxes: RightAxis[] = [];
+    rightSpecs.forEach((a, k) => {
+        if (!a || typeof a !== 'object') return;
+        const src = typeof a.fromPrimary === 'string' ? a.fromPrimary.trim() : '';
+        if (!src) {
+            console.warn(`chart${el.id ? ` "${el.id}"` : ''}: rightAxes[${k}] needs fromPrimary; skipped.`);
+            return;
+        }
+        const labelSrc = typeof a.labelExpr === 'string' ? a.labelExpr.trim() || null : null;
+        rightAxes.push({
+            title: a.title ? String(a.title) : null,
+            color: parseColor(a.color || '#aabbcc') as Rgb3,
+            ticks: tickCount(a.ticks),
+            labelSrc, labelFn: compileOpt(labelSrc, `rightAxes[${k}].labelExpr`),
+            src, fn: compileOpt(src, `rightAxes[${k}].fromPrimary`),
+            dom: [0, 1], warned: false,
+        });
+    });
+
     const xFixed = Array.isArray(chart.xDomain) && chart.xDomain.length === 2 && chart.xDomain.every(v => Number.isFinite(Number(v)))
         ? [Number(chart.xDomain[0]), Number(chart.xDomain[1])] as [number, number] : null;
     const yFixed = Array.isArray(chart.yDomain) && chart.yDomain.length === 2 && chart.yDomain.every(v => Number.isFinite(Number(v)))
@@ -429,11 +484,16 @@ export function renderChart(el: Element, view: MathBoxNode) {
         ((x - xDom[0]) / ((xDom[1] - xDom[0]) || 1)) * W,
         ((y - yDom[0]) / ((yDom[1] - yDom[0]) || 1)) * H,
     ];
+    /** Plot-local v for a value read on right axis `a`. The mapping is affine,
+     *  so the two endpoints fix it and the interior interpolates. */
+    const toPlaneYOn = (y: number, a: { dom: [number, number] }): number =>
+        ((y - a.dom[0]) / ((a.dom[1] - a.dom[0]) || 1)) * H;
 
     // ── Evaluate everything at `tSec` into the sample arrays and domains ──
     // Declared, not compiled: a channel refused under the untrusted state
     // must still register the updater so a trust change can bring it back.
-    const live = series.some(s => s.xSrc || s.ySrc || s.pointLabelSrc) || hlines.some(l => l.src) || bands.some(b => b.loSrc || b.hiSrc) || !!xLabelSrc || !!yLabelSrc;
+    const live = series.some(s => s.xSrc || s.ySrc || s.pointLabelSrc) || hlines.some(l => l.src) || bands.some(b => b.loSrc || b.hiSrc) || !!xLabelSrc || !!yLabelSrc
+        || rightAxes.length > 0;
     function sample(tSec: number) {
         for (const s of series) {
             const scope = { i: 0, n: s.n, x: 0 };
@@ -466,6 +526,35 @@ export function renderChart(el: Element, view: MathBoxNode) {
         for (const b of bands) {
             if (b.loFn) { try { const v = Number(evalExpr(b.loFn.fn, tSec, {})); if (Number.isFinite(v)) b.lo = v; } catch (_e) { /* keep */ } }
             if (b.hiFn) { try { const v = Number(evalExpr(b.hiFn.fn, tSec, {})); if (Number.isFinite(v)) b.hi = v; } catch (_e) { /* keep */ } }
+        }
+        // Map the primary domain's endpoints through each right axis, so a
+        // z-scale widens exactly as the standard deviation it divides by does.
+        // A refused or non-finite endpoint keeps the last good one rather than
+        // collapsing the axis to a point.
+        for (const a of rightAxes) {
+            if (!a.fn) continue;
+            const at = (y: number): number | null => {
+                try {
+                    const v = Number(evalExpr(a.fn!.fn, tSec, { overrideScope: { value: y } }));
+                    return Number.isFinite(v) ? v : null;
+                } catch (_e) { return null; }
+            };
+            const lo = at(yDom[0]), hi = at(yDom[1]);
+            if (lo === null || hi === null) continue;
+            // The axis is drawn as if the transform were affine. Check the
+            // midpoint against what that assumption predicts and say so once
+            // if it is not -- a log or squared transform would be silently
+            // mislabelled everywhere except the two endpoints.
+            if (!a.warned) {
+                const mid = at((yDom[0] + yDom[1]) / 2);
+                if (mid !== null && affineMiss(lo, mid, hi) > 0.01) {
+                    console.warn(`chart${el.id ? ` "${el.id}"` : ''}: rightAxes fromPrimary `
+                        + `"${a.src}" is not affine; the axis is drawn from its endpoints, `
+                        + `so interior ticks will be wrong.`);
+                    a.warned = true;
+                }
+            }
+            a.dom[0] = lo; a.dom[1] = hi;
         }
         if (!xFixed) {
             const xs: number[] = [];
@@ -588,7 +677,10 @@ export function renderChart(el: Element, view: MathBoxNode) {
     // titles, redrawn only when a tick label or title changes. ──
     const mL = yTitle ? 1.6 : 1.1;    // room for y tick labels (+ a rotated title)
     const mB = xTitle ? 1.1 : 0.7;    // room for x tick labels (+ a title)
-    const mT = 0.25, mR = 0.35;
+    const mT = 0.25;
+    // Same reservation the left margin makes, once per right axis: room for
+    // the tick numbers, plus more when a rotated title sits outside them.
+    const mR = 0.35 + rightAxes.reduce((acc, a) => acc + (a.title ? 1.6 : 1.1), 0);
     // Pixel density from the paper's longer side so the canvas never exceeds
     // MAX_PAPER_PX a side, the same ceiling tensor puts on its label canvas
     // and comfortably under any GPU's texture limit; a huge chart just gets
@@ -647,7 +739,11 @@ export function renderChart(el: Element, view: MathBoxNode) {
                 return `${label}\u0001${Math.round(h * pxPer * 2)}\u0001${Math.round(v * pxPer * 2)}`;
             }).join('\u0002')
         ).join('\u0003');
-        const key = [xDom.join(','), yDom.join(','), xLabels.join(''), yLabels.join(''), pointLabelKey].join('');
+        // A right axis's domain joins the key: without it the paper would not
+        // repaint when only that scale moved, so its numbers would freeze
+        // while the data they describe kept sliding.
+        const key = [xDom.join(','), yDom.join(','), xLabels.join(''), yLabels.join(''),
+                     rightAxes.map(a => a.dom.join(',')).join(';'), pointLabelKey].join('');
         if (key === paperKey) return;
         paperKey = key;
 
@@ -713,6 +809,41 @@ export function renderChart(el: Element, view: MathBoxNode) {
             const titleH = measureLatex(yTitle).h * fontPx / 100;
             const cx = Math.max(titleH / 2, X(0) - tickLen - pxPer * 0.16 - yLabelW - titleH / 2);
             drawLatex(ctx, yTitle, cx, Y(H / 2), { fontPx, color: css(yColor), rotate: -Math.PI / 2 });
+        }
+        // Right-hand axes, stacked outward from the plot edge. Each picks its
+        // own round ticks in its own domain, so the numbers are readable
+        // rather than being whatever the primary scale's rows happen to hit.
+        let rightPen = X(W);
+        for (const a of rightAxes) {
+            const [lo, hi] = a.dom;
+            if (!Number.isFinite(lo) || !Number.isFinite(hi) || lo === hi) continue;
+            ctx.fillStyle = css(a.color); ctx.strokeStyle = css(a.color, 0.9);
+            ctx.beginPath(); ctx.moveTo(rightPen, Y(0)); ctx.lineTo(rightPen, Y(H)); ctx.stroke();
+            const at = niceTicks(Math.min(lo, hi), Math.max(lo, hi), a.ticks);
+            let wLab = 0;
+            for (const v of at.ticks) {
+                const vv = toPlaneYOn(v, a);
+                if (vv < -1e-6 || vv > H + 1e-6) continue;
+                ctx.beginPath(); ctx.moveTo(rightPen, Y(vv)); ctx.lineTo(rightPen + tickLen, Y(vv)); ctx.stroke();
+                const txt = tickText(a.labelFn, v, at.step, tSec);
+                if (!txt) continue;
+                const fontPx = fitLatexPx(txt, pxPer * 0.85, pxPer * 0.42);
+                wLab = Math.max(wLab, measureLatex(txt).w * fontPx / 100);
+                drawLatex(ctx, txt, rightPen + tickLen + pxPer * 0.06, Y(vv),
+                          { fontPx, color: css(a.color), align: 'left', vAlign: 'middle' });
+            }
+            rightPen += tickLen + pxPer * 0.06 + wLab;
+            if (a.title) {
+                const fontPx = fitLatexPx(a.title, H * pxPer, pxPer * 0.5);
+                const titleH = measureLatex(a.title).h * fontPx / 100;
+                rightPen += pxPer * 0.1 + titleH / 2;
+                // Mirrored from the left title so the text runs up the page on
+                // both sides rather than upside down on one.
+                drawLatex(ctx, a.title, rightPen, Y(H / 2),
+                          { fontPx, color: css(a.color), rotate: -Math.PI / 2 });
+                rightPen += titleH / 2;
+            }
+            rightPen += pxPer * 0.12;
         }
         // Point labels are drawn into the same tilted paper as the axes. Try
         // the eight neighbouring positions and avoid labels already placed,
