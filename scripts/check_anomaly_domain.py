@@ -62,9 +62,12 @@ _failures: list[str] = []
 # hole -- a change to the PRNG, the sampler or any dataset's parameters moves
 # this digest and fails here, before the arithmetic is ever compared.
 # Regenerate deliberately (and say why in the commit) if the data is meant to
-# change. 15 significant digits is shortest-round-trip for a float64 in both
-# Python and JS, so the hash is stable across platforms.
-CORPUS_DIGEST = 'b15252af354755037748e050d2761fd73293e14b42227d33886ed02edf140318'
+# change. Canonicalised at 17 significant digits, which is the IEEE-754
+# guarantee that every float64 survives the round trip -- 15 does NOT: it
+# fails on ~94% of random binary64 values and genuinely collides distinct
+# ones (1.0000000000000002 and 1.0000000000000004 both print as "1"), which
+# would have let a drifting generator slip past this very check.
+CORPUS_DIGEST = '3c842548855ff7321131729f494ec7209cffa21ff80b9c9a04ab70821699d489'
 
 
 def _digest(obj) -> str:
@@ -78,7 +81,7 @@ def _digest(obj) -> str:
             return str(int(o))
         if isinstance(o, (int, np.integer)):
             return str(int(o))
-        return f'{float(o):.15g}'
+        return f'{float(o):.17g}'
     return hashlib.sha256(canon(obj).encode()).hexdigest()
 
 

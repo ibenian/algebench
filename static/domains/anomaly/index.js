@@ -646,22 +646,30 @@
         return s / n;
     }
 
-    const _kdeScoreCache = Object.create(null);
+    // Keyed on the exact gamma, not a rounded one: these functions are
+    // documented as pure in their explicit arguments, and rounding made
+    // gamma = 0.5 and gamma = 0.5000004 share an answer. Rounding was also
+    // what bounded the key count, so the cap below takes over that job --
+    // same wholesale clear as the isolation memo, so dragging a slider
+    // cannot leak.
+    const KDE_CACHE_MAX = 64;
+    let _kdeScoreCache = new Map();
 
     /** Every training point's own density, computed once per (tag, gamma).
      *  A scene colours 200 points by whether they are inside the boundary on
      *  every frame; without this that is 40,000 exponentials per frame for a
      *  quantity that only changes when gamma does. */
     function _kdeScores(tag, gamma) {
-        const key = String(tag) + '|' + gamma.toFixed(6);
-        let c = _kdeScoreCache[key];
+        const key = String(tag) + '|' + gamma;
+        let c = _kdeScoreCache.get(key);
         if (c) return c;
         const d = _ds(tag), n = d.n;
         const raw = new Float64Array(n);
         for (let i = 0; i < n; i++) raw[i] = adKde(tag, d.x[i], d.y[i], gamma);
         const sorted = Float64Array.from(raw).sort();
         c = { raw, sorted };
-        _kdeScoreCache[key] = c;
+        if (_kdeScoreCache.size >= KDE_CACHE_MAX) _kdeScoreCache.clear();
+        _kdeScoreCache.set(key, c);
         return c;
     }
 
@@ -690,14 +698,18 @@
     // read back by interpolation. Tracing costs about two million
     // exponentials; doing it per frame, per vertex, would not run.
     const BOUND_A = 128;
-    const _boundCache = Object.create(null);
+    // Exact key, for the same reason as the density cache, with a cap in
+    // place of the rounding that used to bound it. A trace is ~70ms, so this
+    // holds a slider's worth of them and no more.
+    const BOUND_CACHE_MAX = 64;
+    let _boundCache = new Map();
 
     function _boundary(tag, nu, gamma, rMax) {
         const g = Math.max(1e-6, _num(gamma, 0.5));
         const nuv = Math.min(0.9, Math.max(0.001, _num(nu, 0.1)));
         const R = _num(rMax, 8);
-        const key = String(tag) + '|' + nuv.toFixed(5) + '|' + g.toFixed(5) + '|' + R.toFixed(3);
-        let b = _boundCache[key];
+        const key = String(tag) + '|' + nuv + '|' + g + '|' + R;
+        let b = _boundCache.get(key);
         if (b) return b;
         const thr = adKdeQ(tag, nuv, g);
         const outer = new Float64Array(BOUND_A + 1);
@@ -735,7 +747,8 @@
         inner[BOUND_A] = inner[0];
         outer[BOUND_A] = outer[0];
         b = { inner, outer };
-        _boundCache[key] = b;
+        if (_boundCache.size >= BOUND_CACHE_MAX) _boundCache.clear();
+        _boundCache.set(key, b);
         return b;
     }
 
