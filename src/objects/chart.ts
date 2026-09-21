@@ -316,9 +316,9 @@ interface BandSpec {
 
 /** Longest side of the paper canvas, in pixels; the ceiling tensor uses for its label canvas. */
 const MAX_PAPER_PX = 2048;
-/** Most ticks an axis will try for; past this the labels cannot be read anyway. */
 /** Right-hand axes beyond this are ignored; the margin has to fit them. */
 const MAX_RIGHT_AXES = 3;
+/** Most ticks an axis will try for; past this the labels cannot be read anyway. */
 const MAX_TICKS = 50;
 
 const PLANE_AXES: Record<string, [number, number, number]> = {

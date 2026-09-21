@@ -399,7 +399,7 @@
                 }
               ],
               "label": "one series, three scales",
-              "prompt": "One series, three scales. The temperature is plotted against the primary y in Celsius; each right axis relabels those same plot rows through a transform of it. Fahrenheit is the exact affine relabel everyone already trusts -- a reader can check 0 C against 32 F on screen and see the axes agree. The blue z-axis reads the k slider, so dragging k restretches that scale while the curve and the other two axes do not move a pixel. Because a right axis is a transform of the left rather than a scale of its own, it cannot disagree with the data; a true dual-axis chart, with a second series on an unrelated scale, cannot promise that."
+              "prompt": "One series, three scales. The temperature is plotted against the primary y in Celsius; each right axis relabels those same plot rows through a transform of it. Fahrenheit is the exact affine relabel everyone already trusts, and it is checkable on screen: 10 C and 50 F are BOTH rendered ticks and sit on the same row. (0 C does correspond to 32 F, but 32 is not a round number in the F axis's own units so it is never drawn as a tick -- which is the point of each axis choosing round values in its own scale rather than inheriting the other's rows.) The blue z-axis reads the k slider, so dragging k restretches that scale while the curve and the other two axes do not move a pixel. Because a right axis is a transform of the left rather than a scale of its own, it cannot disagree with the data; a true dual-axis chart, with a second series on an unrelated scale, cannot promise that."
             }
           ]
         }

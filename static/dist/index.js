@@ -10221,9 +10221,9 @@ function formatTick(v, step) {
 }
 /** Longest side of the paper canvas, in pixels; the ceiling tensor uses for its label canvas. */
 var MAX_PAPER_PX = 2048;
-/** Most ticks an axis will try for; past this the labels cannot be read anyway. */
 /** Right-hand axes beyond this are ignored; the margin has to fit them. */
 var MAX_RIGHT_AXES = 3;
+/** Most ticks an axis will try for; past this the labels cannot be read anyway. */
 var MAX_TICKS = 50;
 var PLANE_AXES = {
 	xy: [
