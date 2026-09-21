@@ -10088,10 +10088,36 @@ function rightAxisDomain(at, yDom) {
 function rightAxisPlace(y, dom, H) {
 	return (y - dom[0]) / (dom[1] - dom[0] || 1) * H;
 }
-function affineMiss(lo, mid, hi) {
+/** The worst departure from affine across several interior points, or `null`
+*  when the transform could not be sampled there at all. `at` takes a
+*  fraction 0..1 of the primary domain.
+*
+*  The midpoint alone is not enough, and the counter-example is ordinary:
+*  `value^3` over [-1, 1] has endpoints -1 and 1 and midpoint 0, so a
+*  midpoint check reads exactly 0 while an interior tick at 0.5 belongs at
+*  0.125 and would be drawn at 0.5. Any transform odd-symmetric about the
+*  domain's centre defeats a single sample.
+*
+*  `null` means "could not verify", not "fine": a singularity such as
+*  `1 / value` returns nothing usable somewhere inside, and treating that as
+*  affine is how an axis ends up confidently mislabelled. */
+function affineMissSampled(at, lo, hi) {
 	const span = Math.abs(hi - lo);
-	if (!(span > 0) || !Number.isFinite(mid)) return 0;
-	return Math.abs(mid - (lo + hi) / 2) / span;
+	if (!(span > 0)) return 0;
+	const FRACTIONS = [
+		.17,
+		.33,
+		.5,
+		.66,
+		.83
+	];
+	let worst = 0;
+	for (const t of FRACTIONS) {
+		const got = at(t);
+		if (got === null || !Number.isFinite(got)) return null;
+		worst = Math.max(worst, Math.abs(got - (lo + t * (hi - lo))) / span);
+	}
+	return worst;
 }
 function niceTicks(lo, hi, count = 5) {
 	if (!Number.isFinite(lo) || !Number.isFinite(hi)) return {
@@ -10476,9 +10502,9 @@ function renderChart(el, view) {
 				continue;
 			}
 			if (!a.warned) {
-				const mid = at((yDom[0] + yDom[1]) / 2);
-				if (mid !== null && affineMiss(lo, mid, hi) > .01) {
-					console.warn(`chart${el.id ? ` "${el.id}"` : ""}: rightAxes fromPrimaryExpr "${a.src}" is not affine; the axis is drawn from its endpoints, so interior ticks will be wrong.`);
+				const miss = affineMissSampled((t) => at(yDom[0] + t * (yDom[1] - yDom[0])), lo, hi);
+				if (miss === null || miss > .01) {
+					console.warn(`chart${el.id ? ` "${el.id}"` : ""}: rightAxes fromPrimaryExpr "${a.src}" is ${miss === null ? "not evaluable across its domain" : "not affine"}; the axis is drawn from its endpoints, so interior ticks will be wrong.`);
 					a.warned = true;
 				}
 			}
