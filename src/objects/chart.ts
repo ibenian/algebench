@@ -228,7 +228,11 @@ interface AxisSpec {
  *  primary y, not a scale of its own. Nothing is plotted against it, so it
  *  cannot disagree with the data. */
 interface RightAxisSpec extends AxisSpec {
-    fromPrimary?: unknown;  // expression in `value` (a primary-y value)
+    // The `Expr` suffix is load-bearing, not decoration: it is what makes
+    // `is_expression_key` (backend/expression_fields.py) and `scanSpecForUnsafeJs`
+    // (src/trust.ts) treat this as math.js. A key they do not recognise is one
+    // that gets evaluated without being scanned.
+    fromPrimaryExpr?: unknown;  // expression in `value` (a primary-y value)
 }
 
 interface SeriesSpec {
@@ -438,7 +442,7 @@ export function renderChart(el: Element, view: MathBoxNode) {
 
     // ── Right-hand axes ──
     // The same plot rows, relabelled. A right axis names a transform of the
-    // primary y (`fromPrimary`, in `value`), and the axis is drawn by mapping
+    // primary y (`fromPrimaryExpr`, in `value`), and the axis is drawn by mapping
     // the primary domain's two endpoints through it. Nothing is plotted
     // against a right axis, so the two scales cannot disagree about where a
     // datum sits -- which is the failure mode of a true dual-axis chart,
@@ -456,9 +460,9 @@ export function renderChart(el: Element, view: MathBoxNode) {
     const rightAxes: RightAxis[] = [];
     rightSpecs.forEach((a, k) => {
         if (!a || typeof a !== 'object') return;
-        const src = typeof a.fromPrimary === 'string' ? a.fromPrimary.trim() : '';
+        const src = typeof a.fromPrimaryExpr === 'string' ? a.fromPrimaryExpr.trim() : '';
         if (!src) {
-            console.warn(`chart${el.id ? ` "${el.id}"` : ''}: rightAxes[${k}] needs fromPrimary; skipped.`);
+            console.warn(`chart${el.id ? ` "${el.id}"` : ''}: rightAxes[${k}] needs fromPrimaryExpr; skipped.`);
             return;
         }
         const labelSrc = typeof a.labelExpr === 'string' ? a.labelExpr.trim() || null : null;
@@ -467,7 +471,7 @@ export function renderChart(el: Element, view: MathBoxNode) {
             color: parseColor(a.color || '#aabbcc') as Rgb3,
             ticks: tickCount(a.ticks),
             labelSrc, labelFn: compileOpt(labelSrc, `rightAxes[${k}].labelExpr`),
-            src, fn: compileOpt(src, `rightAxes[${k}].fromPrimary`),
+            src, fn: compileOpt(src, `rightAxes[${k}].fromPrimaryExpr`),
             dom: [0, 1], warned: false,
         });
     });
@@ -548,7 +552,7 @@ export function renderChart(el: Element, view: MathBoxNode) {
             if (!a.warned) {
                 const mid = at((yDom[0] + yDom[1]) / 2);
                 if (mid !== null && affineMiss(lo, mid, hi) > 0.01) {
-                    console.warn(`chart${el.id ? ` "${el.id}"` : ''}: rightAxes fromPrimary `
+                    console.warn(`chart${el.id ? ` "${el.id}"` : ''}: rightAxes fromPrimaryExpr `
                         + `"${a.src}" is not affine; the axis is drawn from its endpoints, `
                         + `so interior ticks will be wrong.`);
                     a.warned = true;

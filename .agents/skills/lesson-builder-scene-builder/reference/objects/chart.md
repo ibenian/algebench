@@ -70,15 +70,15 @@ temperature in °C and °F, a value and its z-score.
 
 ```json
 "rightAxes": [
-  { "fromPrimary": "value * 9 / 5 + 32", "title": "$^\\circ$F", "ticks": 6,
+  { "fromPrimaryExpr": "value * 9 / 5 + 32", "title": "$^\\circ$F", "ticks": 6,
     "labelExpr": "toFixed(value, 0)", "color": "#ef5350" },
-  { "fromPrimary": "(value - 18) / (1 + k)", "title": "$z$", "color": "#42a5f5" }
+  { "fromPrimaryExpr": "(value - 18) / (1 + k)", "title": "$z$", "color": "#42a5f5" }
 ]
 ```
 
 | Field | Default | Description |
 |-------|---------|-------------|
-| `fromPrimary` | required | Transform of a primary-y value, with `value` bound. Re-evaluated live |
+| `fromPrimaryExpr` | required | Transform of a primary-y value, with `value` bound. Re-evaluated live |
 | `title` | — | Rotated title outside the numbers, KaTeX. Reserves extra margin |
 | `ticks` | `5` | Target tick count, chosen as round numbers **in this axis's own units** |
 | `labelExpr` | — | Formats one tick, `value` bound |
@@ -98,7 +98,7 @@ which is how a z-scale shows a standard deviation inflating.
 
 ### The affine assumption
 
-The axis is drawn by evaluating `fromPrimary` at the primary domain's **two
+The axis is drawn by evaluating `fromPrimaryExpr` at the primary domain's **two
 endpoints** and interpolating between them. That is exact for any affine
 transform — `a * value + b` — and wrong in the middle for anything else. The
 renderer checks the midpoint and warns once in the console if it departs by more

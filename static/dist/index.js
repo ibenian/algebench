@@ -10346,9 +10346,9 @@ function renderChart(el, view) {
 	const rightAxes = [];
 	rightSpecs.forEach((a, k) => {
 		if (!a || typeof a !== "object") return;
-		const src = typeof a.fromPrimary === "string" ? a.fromPrimary.trim() : "";
+		const src = typeof a.fromPrimaryExpr === "string" ? a.fromPrimaryExpr.trim() : "";
 		if (!src) {
-			console.warn(`chart${el.id ? ` "${el.id}"` : ""}: rightAxes[${k}] needs fromPrimary; skipped.`);
+			console.warn(`chart${el.id ? ` "${el.id}"` : ""}: rightAxes[${k}] needs fromPrimaryExpr; skipped.`);
 			return;
 		}
 		const labelSrc = typeof a.labelExpr === "string" ? a.labelExpr.trim() || null : null;
@@ -10359,7 +10359,7 @@ function renderChart(el, view) {
 			labelSrc,
 			labelFn: compileOpt(labelSrc, `rightAxes[${k}].labelExpr`),
 			src,
-			fn: compileOpt(src, `rightAxes[${k}].fromPrimary`),
+			fn: compileOpt(src, `rightAxes[${k}].fromPrimaryExpr`),
 			dom: [0, 1],
 			warned: false
 		});
@@ -10439,7 +10439,7 @@ function renderChart(el, view) {
 			if (!a.warned) {
 				const mid = at((yDom[0] + yDom[1]) / 2);
 				if (mid !== null && affineMiss(lo, mid, hi) > .01) {
-					console.warn(`chart${el.id ? ` "${el.id}"` : ""}: rightAxes fromPrimary "${a.src}" is not affine; the axis is drawn from its endpoints, so interior ticks will be wrong.`);
+					console.warn(`chart${el.id ? ` "${el.id}"` : ""}: rightAxes fromPrimaryExpr "${a.src}" is not affine; the axis is drawn from its endpoints, so interior ticks will be wrong.`);
 					a.warned = true;
 				}
 			}

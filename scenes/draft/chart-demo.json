@@ -384,14 +384,14 @@
               ],
               "rightAxes": [
                 {
-                  "fromPrimary": "value * 9 / 5 + 32",
+                  "fromPrimaryExpr": "value * 9 / 5 + 32",
                   "title": "$^\\circ$F",
                   "ticks": 6,
                   "labelExpr": "toFixed(value, 0)",
                   "color": "#ef5350"
                 },
                 {
-                  "fromPrimary": "(value - 18) / (1 + k)",
+                  "fromPrimaryExpr": "(value - 18) / (1 + k)",
                   "title": "$z = (T - 18)/\\sigma$",
                   "ticks": 6,
                   "labelExpr": "toFixed(value, 1)",

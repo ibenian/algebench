@@ -1251,10 +1251,10 @@
           "items": {
             "type": "object",
             "required": [
-              "fromPrimary"
+              "fromPrimaryExpr"
             ],
             "properties": {
-              "fromPrimary": {
+              "fromPrimaryExpr": {
                 "type": "string",
                 "description": "Transform of a primary-y value, with `value` bound — e.g. (value - adMeanV(contam)) / adStdV(contam). Assumed AFFINE: the axis is drawn from the primary domain's two endpoints, and a non-affine transform warns once and mislabels its interior ticks. Re-evaluated live, so a z-scale widens as the standard deviation it divides by does."
               },
