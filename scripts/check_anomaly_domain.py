@@ -73,7 +73,7 @@ _failures: list[str] = []
 # fails on ~94% of random binary64 values and genuinely collides distinct
 # ones (1.0000000000000002 and 1.0000000000000004 both print as "1"), which
 # would have let a drifting generator slip past this very check.
-CORPUS_DIGEST = '3c842548855ff7321131729f494ec7209cffa21ff80b9c9a04ab70821699d489'
+CORPUS_DIGEST = '6c37ec383fb87d815e6eb6e0708e13ae8f001f9d5ab8a03428665b8ec7c86572'
 
 
 def _digest(obj) -> str:
@@ -213,6 +213,10 @@ def main() -> int:
             f'lab: R(i => AD.adLabel("{t}", i), AD.adN("{t}"))}}'
             for t in tags) + '},'
         'metric: R(c => R(i => AD.adV(i, c), AD.adMetricN()), 9),'
+        # adPlanted is the metric's ground truth and scene 2 colours the
+        # missed readings with it, so it belongs in the digest: a regression
+        # there is scene-visible but moves nothing the parity checks compare.
+        'planted: R(c => R(i => AD.adPlanted(i, c), AD.adMetricN()), 9),'
         'sig: R(i => AD.adSig(i), AD.adSigN()),'
         'sigLab: R(i => AD.adSigLabel(i), AD.adSigN()),'
         'score: R(i => AD.adScore(i), AD.adEvalN()),'

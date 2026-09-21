@@ -693,9 +693,13 @@
         return _kdeScores(tag, Math.max(1e-6, _num(gamma, 0.5))).raw[_clampI(i, 0, d.n - 1)];
     }
 
-    /** The nu-quantile of the training points' own density scores. Declaring
-     *  everything below it an outlier makes nu the fraction rejected — which
-     *  is exactly what nu means in a nu-SVM. */
+    /** The nu-quantile of the training points' own density scores. This is an
+     *  interpolated empirical quantile and the membership test keeps ties
+     *  (>=), so declaring everything below it an outlier rejects APPROXIMATELY
+     *  nu of them -- nu = 0.1 rejects 0.101 of 'ring'. That is an operational
+     *  analogue of a nu-SVM's nu, not the same guarantee: there nu bounds the
+     *  training-error fraction above and the support-vector fraction below,
+     *  and this is a full-rank kernel density rather than an SVM. */
     function adKdeQ(tag, nu, gamma) {
         const g = Math.max(1e-6, _num(gamma, 0.5));
         const nuv = Math.min(0.9, Math.max(0.001, _num(nu, 0.1)));
