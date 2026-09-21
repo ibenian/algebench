@@ -10069,6 +10069,25 @@ var chartState = state;
 *  span: 0 when the midpoint lands exactly halfway. A right axis is drawn from
 *  its two endpoints, so anything above a per-cent or so mislabels the middle.
 *  Exported for the tests; the renderer only asks whether it is small. */
+/** The right-axis domain implied by a transform, or null when the axis cannot
+*  be drawn. `at` returns the transform's value at a primary-y value, or null
+*  when it will not evaluate. Null out means retire the axis: a domain that
+*  cannot be computed must not fall back to a stale or invented one.
+*  Exported for the tests. */
+function rightAxisDomain(at, yDom) {
+	const lo = at(yDom[0]), hi = at(yDom[1]);
+	if (lo === null || hi === null || !Number.isFinite(lo) || !Number.isFinite(hi)) return null;
+	if (lo === hi) return null;
+	return [lo, hi];
+}
+/** Plot-local v (0..H) for a value read on a right axis. The inverse of the
+*  transform, done by interpolating between the endpoints — which is why the
+*  transform must be affine. Descending transforms work: `dom` is [f(yLo),
+*  f(yHi)] in that order, so a negative slope simply inverts the fraction.
+*  Exported for the tests. */
+function rightAxisPlace(y, dom, H) {
+	return (y - dom[0]) / (dom[1] - dom[0] || 1) * H;
+}
 function affineMiss(lo, mid, hi) {
 	const span = Math.abs(hi - lo);
 	if (!(span > 0) || !Number.isFinite(mid)) return 0;
@@ -10372,7 +10391,7 @@ function renderChart(el, view) {
 	const toPlane = (x, y) => [(x - xDom[0]) / (xDom[1] - xDom[0] || 1) * W, (y - yDom[0]) / (yDom[1] - yDom[0] || 1) * H];
 	/** Plot-local v for a value read on right axis `a`. The mapping is affine,
 	*  so the two endpoints fix it and the interior interpolates. */
-	const toPlaneYOn = (y, a) => (y - a.dom[0]) / (a.dom[1] - a.dom[0] || 1) * H;
+	const toPlaneYOn = (y, a) => rightAxisPlace(y, a.dom, H);
 	const live = series.some((s) => s.xSrc || s.ySrc || s.pointLabelSrc) || hlines.some((l) => l.src) || bands.some((b) => b.loSrc || b.hiSrc) || !!xLabelSrc || !!yLabelSrc || rightAxes.length > 0;
 	function sample(tSec) {
 		for (const s of series) {
@@ -10449,8 +10468,13 @@ function renderChart(el, view) {
 					return null;
 				}
 			};
-			const lo = at(yDom[0]), hi = at(yDom[1]);
-			if (lo === null || hi === null) continue;
+			const derived = rightAxisDomain(at, yDom);
+			const lo = derived ? derived[0] : null, hi = derived ? derived[1] : null;
+			if (lo === null || hi === null) {
+				a.dom[0] = NaN;
+				a.dom[1] = NaN;
+				continue;
+			}
 			if (!a.warned) {
 				const mid = at((yDom[0] + yDom[1]) / 2);
 				if (mid !== null && affineMiss(lo, mid, hi) > .01) {
@@ -10710,15 +10734,15 @@ function renderChart(el, view) {
 				labels: t.ticks.map((v) => tickText(a.labelFn, v, t.step, tSec))
 			};
 		});
-		const key = [
-			xDom.join(","),
-			yDom.join(","),
-			xLabels.join(""),
-			yLabels.join(""),
-			rightAxes.map((a) => a.dom.join(",")).join(";"),
-			rightTicks.map((t) => t ? t.labels.join("") : "").join(""),
+		const key = JSON.stringify([
+			xDom,
+			yDom,
+			xLabels,
+			yLabels,
+			rightAxes.map((a) => a.dom),
+			rightTicks.map((t) => t && t.labels),
 			pointLabelKey
-		].join("");
+		]);
 		if (key === paperKey) return;
 		paperKey = key;
 		const cw = canvas.width, ch = canvas.height;

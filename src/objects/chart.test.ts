@@ -120,7 +120,7 @@ test('the occupancy grid answers exactly what a full scan would', async () => {
 // affine map and wrong in the middle for anything else, so the renderer
 // measures the departure and warns once. These pin the measure.
 
-const { affineMiss } = await import('/objects/chart.js');
+const { affineMiss, rightAxisDomain, rightAxisPlace } = await import('/objects/chart.js');
 
 test('affineMiss is zero for an affine transform', () => {
     // C -> F over 0..40 C: 32, 68, 104. The midpoint is exactly halfway.
@@ -142,4 +142,62 @@ test('affineMiss is defined on a degenerate or unusable span', () => {
     assert.equal(affineMiss(5, 5, 5), 0);          // zero span: nothing to mislabel
     assert.equal(affineMiss(0, NaN, 10), 0);       // a refused midpoint accuses nobody
     assert.equal(affineMiss(0, Infinity, 10), 0);
+});
+
+// The two decisions the right axis makes beyond the affine check: deriving its
+// domain from a transform, and placing a value from that domain back onto the
+// plot. Both are what `sample()` and the draw loop call, so a regression in
+// either now fails here rather than silently mislabelling an axis.
+
+const C_TO_F = (v) => v * 9 / 5 + 32;
+
+test('rightAxisDomain maps the primary endpoints through the transform', () => {
+    // 0..40 C -> 32..104 F, the demo's own pairing.
+    assert.deepEqual(rightAxisDomain(C_TO_F, [0, 40]), [32, 104]);
+});
+
+test('rightAxisDomain retires the axis when an endpoint will not evaluate', () => {
+    // A slider-driven denominator reaching zero: the transform yields a
+    // non-finite value, and the axis must go rather than keep a stale scale.
+    assert.equal(rightAxisDomain(() => null, [0, 40]), null);
+    assert.equal(rightAxisDomain((v) => v / 0, [0, 40]), null);
+    assert.equal(rightAxisDomain((v) => (v === 0 ? 1 : NaN), [0, 40]), null);
+    // Degenerate: a constant transform has no rows to distinguish.
+    assert.equal(rightAxisDomain(() => 7, [0, 40]), null);
+});
+
+test('rightAxisPlace inverts the mapping onto the plot', () => {
+    const dom = [32, 104];
+    assert.equal(rightAxisPlace(32, dom, 100), 0);      // bottom
+    assert.equal(rightAxisPlace(104, dom, 100), 100);   // top
+    assert.equal(rightAxisPlace(68, dom, 100), 50);     // 20 C, halfway
+});
+
+test('rightAxisPlace handles a descending transform', () => {
+    // Negative slope: dom is [f(yLo), f(yHi)], so the fraction simply inverts
+    // and the axis reads downward without any special case.
+    const dom = rightAxisDomain((v) => 100 - v, [0, 40]);
+    assert.deepEqual(dom, [100, 60]);
+    // `+ 0` normalises the signed zero a descending domain produces:
+    // (100 - 100) / (60 - 100) is -0, which positions identically to 0 and
+    // stringifies to "0", so it is an artifact of strict equality, not a bug.
+    assert.equal(rightAxisPlace(100, dom, 100) + 0, 0);
+    assert.equal(rightAxisPlace(60, dom, 100), 100);
+    assert.equal(rightAxisPlace(80, dom, 100), 50);
+});
+
+test('rightAxisPlace does not divide by zero on a collapsed domain', () => {
+    // rightAxisDomain rejects these, but the helper is defensive on its own.
+    assert.equal(Number.isFinite(rightAxisPlace(5, [5, 5], 100)), true);
+});
+
+test('a z-transform restretches with its denominator', () => {
+    // The demo's own axis: (v - 18) / (1 + k) over 0..40 C.
+    const z = (k) => rightAxisDomain((v) => (v - 18) / (1 + k), [0, 40]);
+    assert.deepEqual(z(1).map((n) => +n.toFixed(4)), [-9, 11]);
+    assert.deepEqual(z(4).map((n) => +n.toFixed(4)), [-3.6, 4.4]);
+    // Same rows, so a fixed primary value keeps its pixel position while the
+    // numbers printed beside it change.
+    assert.equal(rightAxisPlace(z(1)[0], z(1), 100), 0);
+    assert.equal(rightAxisPlace(z(4)[0], z(4), 100), 0);
 });

@@ -85,6 +85,30 @@ const chartState = state as unknown as ChartState;
  *  span: 0 when the midpoint lands exactly halfway. A right axis is drawn from
  *  its two endpoints, so anything above a per-cent or so mislabels the middle.
  *  Exported for the tests; the renderer only asks whether it is small. */
+/** The right-axis domain implied by a transform, or null when the axis cannot
+ *  be drawn. `at` returns the transform's value at a primary-y value, or null
+ *  when it will not evaluate. Null out means retire the axis: a domain that
+ *  cannot be computed must not fall back to a stale or invented one.
+ *  Exported for the tests. */
+export function rightAxisDomain(
+    at: (y: number) => number | null,
+    yDom: readonly [number, number],
+): [number, number] | null {
+    const lo = at(yDom[0]), hi = at(yDom[1]);
+    if (lo === null || hi === null || !Number.isFinite(lo) || !Number.isFinite(hi)) return null;
+    if (lo === hi) return null;   // a degenerate axis has no rows to label
+    return [lo, hi];
+}
+
+/** Plot-local v (0..H) for a value read on a right axis. The inverse of the
+ *  transform, done by interpolating between the endpoints — which is why the
+ *  transform must be affine. Descending transforms work: `dom` is [f(yLo),
+ *  f(yHi)] in that order, so a negative slope simply inverts the fraction.
+ *  Exported for the tests. */
+export function rightAxisPlace(y: number, dom: readonly [number, number], H: number): number {
+    return ((y - dom[0]) / ((dom[1] - dom[0]) || 1)) * H;
+}
+
 export function affineMiss(lo: number, mid: number, hi: number): number {
     const span = Math.abs(hi - lo);
     if (!(span > 0) || !Number.isFinite(mid)) return 0;
@@ -494,7 +518,7 @@ export function renderChart(el: Element, view: MathBoxNode) {
     /** Plot-local v for a value read on right axis `a`. The mapping is affine,
      *  so the two endpoints fix it and the interior interpolates. */
     const toPlaneYOn = (y: number, a: { dom: [number, number] }): number =>
-        ((y - a.dom[0]) / ((a.dom[1] - a.dom[0]) || 1)) * H;
+        rightAxisPlace(y, a.dom, H);
 
     // ── Evaluate everything at `tSec` into the sample arrays and domains ──
     // Declared, not compiled: a channel refused under the untrusted state
@@ -551,8 +575,7 @@ export function renderChart(el: Element, view: MathBoxNode) {
 
         // Map the primary domain's endpoints through each right axis, so a
         // z-scale widens exactly as the standard deviation it divides by does.
-        // A refused or non-finite endpoint keeps the last good one rather than
-        // collapsing the axis to a point.
+        // An endpoint that will not evaluate retires the axis until it does.
         for (const a of rightAxes) {
             if (!a.fn) continue;
             const at = (y: number): number | null => {
@@ -561,8 +584,17 @@ export function renderChart(el: Element, view: MathBoxNode) {
                     return Number.isFinite(v) ? v : null;
                 } catch (_e) { return null; }
             };
-            const lo = at(yDom[0]), hi = at(yDom[1]);
-            if (lo === null || hi === null) continue;
+            const derived = rightAxisDomain(at, yDom);
+            const lo = derived ? derived[0] : null, hi = derived ? derived[1] : null;
+            if (lo === null || hi === null) {
+                // NOT "keep the last good value", which is what hlines and
+                // bands do above. A stale hline sits in the wrong place; a
+                // stale AXIS relabels the current rows with an old transform
+                // and states something false about them. When a slider-driven
+                // denominator reaches zero the axis has to go, not lie.
+                a.dom[0] = NaN; a.dom[1] = NaN;
+                continue;
+            }
             // The axis is drawn as if the transform were affine. Check the
             // midpoint against what that assumption predicts and say so once
             // if it is not -- a log or squared transform would be silently
@@ -758,10 +790,10 @@ export function renderChart(el: Element, view: MathBoxNode) {
             const t = niceTicks(Math.min(lo, hi), Math.max(lo, hi), a.ticks);
             return { ticks: t.ticks, labels: t.ticks.map(v => tickText(a.labelFn, v, t.step, tSec)) };
         });
-        const key = [xDom.join(','), yDom.join(','), xLabels.join(''), yLabels.join(''),
-                     rightAxes.map(a => a.dom.join(',')).join(';'),
-                     rightTicks.map(t => t ? t.labels.join('\u0001') : '').join('\u0002'),
-                     pointLabelKey].join('');
+        const key = JSON.stringify([xDom, yDom, xLabels, yLabels,
+                                    rightAxes.map(a => a.dom),
+                                    rightTicks.map(t => t && t.labels),
+                                    pointLabelKey]);
         if (key === paperKey) return;
         paperKey = key;
 
